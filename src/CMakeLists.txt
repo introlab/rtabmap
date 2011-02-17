@@ -1,0 +1,125 @@
+
+### Qt Gui stuff ###
+SET(headers_ui 
+	./ObjDeletionHandler.h
+)
+
+#This will generate moc_* for Qt
+QT4_WRAP_CPP(moc_srcs ${headers_ui})
+
+SET(SRC_FILES
+    main.cpp
+    ${moc_srcs} 
+)
+
+SET(INCLUDE_DIRS
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${UTILITE_INCLUDE_DIR}
+    ${OpenCV_INCLUDE_DIRS}
+)
+
+INCLUDE(${QT_USE_FILE})
+
+SET(LIBRARIES
+    ${UTILITE_LIBRARY}
+    ${QT_LIBRARIES} 
+	${OpenCV_LIBS} 
+)
+
+# Make sure the compiler can find include files from our library.
+INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
+
+# For Apple set the icns file containing icons
+IF(APPLE AND BUILD_AS_BUNDLE)
+  # set how it shows up in the Info.plist file
+  SET(MACOSX_BUNDLE_ICON_FILE ${PROJECT_NAME}.icns) 
+  # set where in the bundle to put the icns file
+  SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+  # include the icns file in the target
+  SET(SRC_FILES ${SRC_FILES} ${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}.icns)
+ENDIF(APPLE AND BUILD_AS_BUNDLE)
+
+# Add exe icon resource
+IF(WIN32)
+  IF( MINGW )
+    # resource compilation for MinGW
+    ADD_CUSTOM_COMMAND( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/AppIco.o
+                        COMMAND windres.exe -I${CMAKE_CURRENT_SOURCE_DIR} -i${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}.rc 
+                             -o ${CMAKE_CURRENT_BINARY_DIR}/AppIco.o )
+    SET(SRC_FILES ${SRC_FILES} ${CMAKE_CURRENT_BINARY_DIR}/AppIco.o)
+  ELSE( MINGW )
+    SET(SRC_FILES ${SRC_FILES} ${PROJECT_NAME}.rc)
+  ENDIF( MINGW )
+ENDIF(WIN32)
+
+# Add binary
+IF(APPLE AND BUILD_AS_BUNDLE)
+  ADD_EXECUTABLE(main_app MACOSX_BUNDLE ${SRC_FILES})
+ELSE()
+  ADD_EXECUTABLE(main_app WIN32 ${SRC_FILES})
+ENDIF()
+TARGET_LINK_LIBRARIES(main_app corelib guilib ${LIBRARIES})
+
+IF(APPLE AND BUILD_AS_BUNDLE)
+  SET_TARGET_PROPERTIES(main_app PROPERTIES
+    OUTPUT_NAME ${CMAKE_BUNDLE_NAME})
+ELSEIF(WIN32)
+  SET_TARGET_PROPERTIES(main_app PROPERTIES
+    OUTPUT_NAME ${PROJECT_NAME})
+ELSE()
+  SET_TARGET_PROPERTIES(main_app PROPERTIES
+    OUTPUT_NAME ${PROJECT_PREFIX})
+ENDIF()
+
+#---------------------------
+# Installation stuff
+#--------------------------- 
+INSTALL(TARGETS main_app
+        RUNTIME DESTINATION bin COMPONENT runtime
+        BUNDLE DESTINATION "${CMAKE_BUNDLE_LOCATION}" COMPONENT runtime)
+      
+IF(APPLE AND BUILD_AS_BUNDLE)
+INSTALL(CODE "execute_process(COMMAND ln -s \"../MacOS/${CMAKE_BUNDLE_NAME}\" ${PROJECT_NAME}
+        WORKING_DIRECTORY \$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin)")
+ENDIF(APPLE AND BUILD_AS_BUNDLE)
+       
+SET(APPS "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/${PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX}")
+IF((APPLE AND BUILD_AS_BUNDLE) OR WIN32)
+  SET(plugin_dest_dir bin)
+  SET(qtconf_dest_dir bin)
+  IF(APPLE)
+    SET(plugin_dest_dir MacOS)
+    SET(qtconf_dest_dir Resources)
+    SET(APPS "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/MacOS/${CMAKE_BUNDLE_NAME}")
+  ENDIF(APPLE)
+
+  # Install needed Qt plugins by copying directories from the qt installation
+  # One can cull what gets copied by using 'REGEX "..." EXCLUDE'
+  INSTALL(DIRECTORY "${QT_PLUGINS_DIR}/imageformats" DESTINATION ${plugin_dest_dir}/plugins COMPONENT runtime)
+  
+  # install a qt.conf file
+  # this inserts some cmake code into the install script to write the file
+  SET(QT_CONF_FILE [Paths]\nPlugins=plugins)
+  IF(APPLE)
+    SET(QT_CONF_FILE [Paths]\nPlugins=MacOS/plugins)
+  ENDIF(APPLE)
+  INSTALL(CODE "
+    file(WRITE \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${qtconf_dest_dir}/qt.conf\" \"${QT_CONF_FILE}\")
+    " COMPONENT runtime)
+
+  # directories to look for dependencies
+  SET(DIRS ${QT_LIBRARY_DIRS} ${PROJECT_SOURCE_DIR}/bin)
+
+  # Now the work of copying dependencies into the bundle/package
+  # The quotes are escaped and variables to use at install time have their $ escaped
+  # An alternative is the do a configure_file() on a script and use install(SCRIPT  ...).
+  # Note that the image plugins depend on QtSvg and QtXml, and it got those copied
+  # over.
+  # To find dependencies, cmake use "otool" on Apple and "dumpbin" on Windows (make sure you have one of them).
+  install(CODE "
+   file(GLOB_RECURSE QTPLUGINS \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/plugins/*${CMAKE_SHARED_LIBRARY_SUFFIX}\")
+    include(\"BundleUtilities\")
+    fixup_bundle(\"${APPS}\" \"\${QTPLUGINS}\" \"${DIRS}\")
+  " COMPONENT runtime)
+ENDIF((APPLE AND BUILD_AS_BUNDLE) OR WIN32)
+  
