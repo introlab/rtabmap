@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
 
 	/* Set logger type */
 	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kDebug); // Disable log with level
+	ULogger::setLevel(ULogger::kWarning); // Disable log with level
 
 	ULOGGER_INFO("Program started...");
 
@@ -63,6 +63,7 @@ int main(int argc, char* argv[])
 
 	ULOGGER_INFO("Free memory...");
 
+	delete mainWindow;
 	//Since we can't put the Rtabmap object in the MainWindow class,
 	//we pop up a message box indicating that the rtabmap object
 	// is being deleted (saving data to the database)
@@ -70,14 +71,13 @@ int main(int argc, char* argv[])
 	msg->setEnabled(false);
 	msg->setIconPixmap(QPixmap(":/images/RTAB-Map.ico"));
 	msg->setWindowIcon(QIcon(":/images/RTAB-Map.ico"));
+	msg->show();
 	ObjDeletionThread<Rtabmap> delThread(rtabmap);
 	ObjDeletionHandler handler(delThread.id(), app, SLOT(quit()));
 	UEventsManager::addHandler(&handler);
-	delThread.startDeletion();
-	msg->show();
+	delThread.startDeletion(1); // make sure that app-exec() is called before the deletion of the object
 	app->exec();
 	delete msg;
-	delete mainWindow;
 	delete app;
 
 	ULOGGER_INFO("All done! Closing...");
