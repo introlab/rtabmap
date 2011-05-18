@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
 	//Since we can't put the Rtabmap object in the MainWindow class,
 	//we pop up a message box indicating that the rtabmap object
 	// is being deleted (saving data to the database)
-	QMessageBox * msg = new QMessageBox(QMessageBox::Information, QObject::tr("RTAB-Map is closing..."), QObject::tr("The detector is saving the working memory to database..."), QMessageBox::NoButton);
+	QMessageBox * msg = new QMessageBox(QMessageBox::Information, QObject::tr("RTAB-Map is closing..."), QObject::tr("The detector is saving the working memory to database (located in RTAB-Map's working directory)..."), QMessageBox::NoButton);
 	msg->setEnabled(false);
 	msg->setIconPixmap(QPixmap(":/images/RTAB-Map.ico"));
 	msg->setWindowIcon(QIcon(":/images/RTAB-Map.ico"));
