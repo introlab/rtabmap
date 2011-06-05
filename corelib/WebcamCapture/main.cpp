@@ -77,7 +77,7 @@ protected:
 		if(e->getClassName().compare("SMStateEvent") == 0)
 		{
 			const rtabmap::SMStateEvent * event = (const rtabmap::SMStateEvent*)e;
-			const rtabmap::SMState * sm = event->getData();
+			const rtabmap::SMState * sm = event->getSMState();
 			const IplImage * image = 0;
 			if(sm)
 			{

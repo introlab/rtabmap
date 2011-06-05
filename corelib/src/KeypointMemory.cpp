@@ -829,7 +829,7 @@ Signature * KeypointMemory::createSignature(int id, const SMState * smState, boo
 			nbCommonWords = _vwd->getTotalActiveReferences() / treeSize;
 		}
 
-		if(!smState->isDescriptorsProvided())
+		if(smState->getSensors().empty())
 		{
 			image = smState->getImage();
 			if(image && _keypointDetector)
@@ -847,9 +847,9 @@ Signature * KeypointMemory::createSignature(int id, const SMState * smState, boo
 		}
 		else
 		{
-			if(smState->getSensorStates().size() >= _badSignRatio * nbCommonWords)
+			if(smState->getSensors().size() >= _badSignRatio * nbCommonWords)
 			{
-				descriptors = smState->getSensorStates();
+				descriptors = smState->getSensors();
 				keypoints = smState->getKeypoints();
 			}
 			image = smState->getImage();

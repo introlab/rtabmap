@@ -521,7 +521,7 @@ void Rtabmap::handleEvent(UEvent* event)
 		if(event->getClassName().compare("SMStateEvent") == 0)
 		{
 			SMStateEvent * e = (SMStateEvent*)event;
-			SMState * data = e->getDataOwnership();
+			SMState * data = e->getSMStateOwnership();
 			this->addSMState(data);
 		}
 	}

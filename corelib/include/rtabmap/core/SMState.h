@@ -26,6 +26,7 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <list>
 #include <vector>
+#include <utilite/ULogger.h>
 
 namespace rtabmap {
 
@@ -36,42 +37,104 @@ public:
 	// Constructor 1
 	// image and/or keypoints can be passed for debugging (rtabmap will not re-extract keypoints/descriptors from the image if not null, only for debug/visualization)
 	// take image ownership
-	SMState(const std::list<std::vector<float> > & sensorStates, const std::list<std::vector<float> > & actuatorStates, IplImage * image = 0, const std::list<cv::KeyPoint> & keypoints = std::list<cv::KeyPoint>()) :
-		_sensorStates(sensorStates),
-		_actuatorStates(actuatorStates),
+	SMState(const std::list<std::vector<float> > & sensors, const std::list<std::vector<float> > & actuators, IplImage * image = 0, const std::list<cv::KeyPoint> & keypoints = std::list<cv::KeyPoint>()) :
+		_sensors(sensors),
+		_actuators(actuators),
 		_image(image),
-		_keypoints(keypoints),
-		_descriptorsProvided(true)
+		_keypoints(keypoints)
 	{}
-	// Constructor 2 :
+	// Constructor 2 : for convenience with ROS conversion...
+	// Sensors and actuators vectors will be split into a list with smaller vectors of length sensorStep and actuatorStep respectively.
+	// image and/or keypoints can be passed for debugging (rtabmap will not re-extract keypoints/descriptors from the image if not null, only for debug/visualization)
+	// take image ownership
+	SMState(const std::vector<float> & sensors, int sensorStep, const std::vector<float> & actuators, int actuatorStep, IplImage * image = 0, const std::list<cv::KeyPoint> & keypoints = std::list<cv::KeyPoint>()) :
+		_image(image),
+		_keypoints(keypoints)
+	{
+		if(sensorStep && sensors.size() % sensorStep != 0)
+		{
+			UERROR("Sensors must all have the same length.");
+		}
+		if(actuatorStep && actuators.size() % actuatorStep != 0)
+		{
+			UERROR("Actuators must all have the same length.");
+		}
+		for(unsigned int i=0; i<sensors.size() && i<i+sensorStep; i+=sensorStep)
+		{
+			_sensors.push_back(std::vector<float>(sensors.data()+i, sensors.data()+i+actuatorStep));
+		}
+		for(unsigned int i=0; i<actuators.size() && i<i+actuatorStep; i+=actuatorStep)
+		{
+			_actuators.push_back(std::vector<float>(actuators.data()+i, actuators.data()+i+actuatorStep));
+		}
+	}
+	// Constructor 3 :
 	// rtabmap will automatically extract keypoints and descriptors from the image...
 	// take image ownership
-	SMState(IplImage * image, const std::list<std::vector<float> > & actuatorStates = std::list<std::vector<float> >()) :
-		_actuatorStates(actuatorStates),
-		_image(image),
-		_descriptorsProvided(false)
+	SMState(IplImage * image) :
+		_image(image)
 	{}
+	// Constructor 4 :
+	// rtabmap will automatically extract keypoints and descriptors from the image...
+	// take image ownership
+	SMState(IplImage * image, const std::list<std::vector<float> > & actuators) :
+		_actuators(actuators),
+		_image(image)
+	{}
+
 	virtual ~SMState()
 	{
 		if(_image)
+		{
 			cvReleaseImage(&_image);
+		}
 	}
 
-	bool isDescriptorsProvided() const {return _descriptorsProvided;}
 	const IplImage * getImage() const {return _image;}
 	const std::list<cv::KeyPoint> & getKeypoints() const {return _keypoints;}
-	const std::list<std::vector<float> > & getSensorStates() const {return _sensorStates;}
-	const std::list<std::vector<float> > & getActuatorStates() const {return _actuatorStates;}
+	const std::list<std::vector<float> > & getSensors() const {return _sensors;}
+	const std::list<std::vector<float> > & getActuators() const {return _actuators;}
+	void setSensors(const std::list<std::vector<float> > & sensors) {_sensors=sensors;}
+	void setActuators(const std::list<std::vector<float> > & actuators) {_actuators=actuators;}
 
-	void setSensorStates(const std::list<std::vector<float> > & sensorStates) {_sensorStates=sensorStates;}
-	void setActuatorStates(const std::list<std::vector<float> > & actuatorStates) {_actuatorStates=actuatorStates;}
+	void getSensorsMerged(std::vector<float> & sensors, int & step) const
+	{
+		sensors.clear();
+		step = 0;
+		if(_sensors.size())
+		{
+			// here we assume that all sensors have the same length
+			step = _sensors.front().size();
+			for(std::list<std::vector<float> >::const_iterator iter = _sensors.begin();
+					iter != _sensors.end();
+					++iter)
+			{
+				sensors.insert(sensors.end(), iter->begin(), iter->end());
+			}
+		}
+	}
+	void getActuatorsMerged(std::vector<float> & actuators, int & step) const
+	{
+		actuators.clear();
+		step = 0;
+		if(_actuators.size())
+		{
+			// here we assume that all sensors have the same length
+			step = _actuators.front().size();
+			for(std::list<std::vector<float> >::const_iterator iter = _actuators.begin();
+					iter != _actuators.end();
+					++iter)
+			{
+				actuators.insert(actuators.end(), iter->begin(), iter->end());
+			}
+		}
+	}
 
 private:
-	std::list<std::vector<float> > _sensorStates; // descriptors
-	std::list<std::vector<float> > _actuatorStates;
+	std::list<std::vector<float> > _sensors; // descriptors
+	std::list<std::vector<float> > _actuators;
 	IplImage * _image;
 	std::list<cv::KeyPoint> _keypoints;
-	bool _descriptorsProvided;
 };
 
 // Sensorimotor state event
@@ -84,8 +147,8 @@ public:
 		_state(state) {}
 
 	virtual ~SMStateEvent() {if(_state) delete _state;}
-	const SMState * getData() const {return _state;}
-	SMState * getDataOwnership() {SMState * state = _state; _state=0; return state;}
+	const SMState * getSMState() const {return _state;}
+	SMState * getSMStateOwnership() {SMState * state = _state; _state=0; return state;}
 	virtual std::string getClassName() const {return "SMStateEvent";} // TODO : macro?
 
 private:

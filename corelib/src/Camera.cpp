@@ -290,7 +290,10 @@ void Camera::process()
 	if(image)
 	{
 		SMState * smState = _postThreatement->process(image);
-		this->post(new SMStateEvent(smState));
+		if(smState)
+		{
+			this->post(new SMStateEvent(smState));
+		}
 		double elapsed = timer.ticks();
 		UDEBUG("Post treatment time = %fs", elapsed);
 		if(_imageRate>0)

@@ -270,7 +270,7 @@ bool Memory::update(const SMState * smState, std::list<std::pair<std::string, fl
 
 
 	// It will be added to the short-time memory, no need to delete it...
-	this->addSignatureToStm(signature, smState->getActuatorStates());
+	this->addSignatureToStm(signature, smState->getActuators());
 	_lastSignature = signature;
 
 	if(_lastLoopClosureId == 0)
