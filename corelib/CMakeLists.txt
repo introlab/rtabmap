@@ -1,0 +1,16 @@
+ADD_SUBDIRECTORY( src )
+ADD_SUBDIRECTORY( ConsoleApp )
+ADD_SUBDIRECTORY( ImagesJoiner )
+ADD_SUBDIRECTORY( WebcamCapture )
+
+IF(QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND)
+	ADD_SUBDIRECTORY( DatabaseViewer )
+ELSE()
+   MESSAGE(STATUS "[WARNING] Qt4 not found, the databaseViewer program will not be built...")
+ENDIF()
+
+IF(CPPUNIT_FOUND)
+	ADD_SUBDIRECTORY( tests )
+ELSE(CPPUNIT_FOUND)
+   MESSAGE(STATUS "CppUnit is not found, tests for the ${PROJECT_NAME} project won't be compiled...")
+ENDIF(CPPUNIT_FOUND)

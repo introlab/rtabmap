@@ -1,0 +1,435 @@
+/*
+ * Copyright (C) 2010-2011, Mathieu Labbe and IntRoLab - Universite de Sherbrooke
+ *
+ * This file is part of RTAB-Map.
+ *
+ * RTAB-Map is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * RTAB-Map is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "StatsToolBox.h"
+
+#include <QtGui/QHBoxLayout>
+#include <QtGui/QVBoxLayout>
+#include <QtGui/QGridLayout>
+#include <QtGui/QMenu>
+#include <QtGui/QLabel>
+#include <QtGui/QToolButton>
+#include <QtCore/QChildEvent>
+#include <QtCore/QDir>
+#include <QtGui/QContextMenuEvent>
+#include <QtGui/QToolBox>
+
+#include "Plot.h"
+#include "utilite/ULogger.h"
+
+namespace rtabmap {
+
+StatItem::StatItem(const QString & name, float x, float y, const QString & unit, const QMenu * menu, QGridLayout * grid, QWidget * parent) :
+	QWidget(parent),
+	_xValue(x)
+{
+	this->setupUi(grid);
+	_name->setText(name);
+	_value->setNum(y);
+	_unit->setText(unit);
+	this->updateMenu(menu);
+}
+
+StatItem::~StatItem()
+{
+
+}
+
+void StatItem::setValue(float x, float y)
+{
+	_value->setText(QString::number(y, 'g', 4));
+	_xValue = x;
+	emit valueChanged(x,y);
+}
+
+void StatItem::setupUi(QGridLayout * grid)
+{
+	_menu = new QMenu(this);
+	_menu->addMenu("Add to figure...");
+	_button = new QToolButton(this);
+	_button->setIcon(QIcon(":/images/Plot16.png"));
+	_button->setPopupMode(QToolButton::InstantPopup);
+	_button->setMenu(_menu);
+	_name = new QLabel(this);
+	_name->setWordWrap(true);
+	_value = new QLabel(this);
+	_unit = new QLabel(this);
+
+	if(grid)
+	{
+		int row = grid->rowCount();
+
+		//This fixes an issue where the
+		//button (used on col 0) of the first line in the
+		//toolbox couldn't be clicked
+		grid->addWidget(_button, row, 3);
+		grid->addWidget(_name, row, 0);
+		grid->addWidget(_value, row, 1);
+		grid->addWidget(_unit, row, 2);
+	}
+	else
+	{
+		QHBoxLayout * layout = new QHBoxLayout(this);
+		this->setLayout(layout);
+		layout->addWidget(_button);
+		layout->addWidget(_name);
+		layout->addWidget(_value);
+		layout->addWidget(_unit);
+		layout->addStretch();
+		layout->setMargin(0);
+	}
+}
+
+void StatItem::updateMenu(const QMenu * menu)
+{
+	_menu->clear();
+	QAction * action;
+	QList<QAction *> actions = menu->actions();
+	QMenu * plotMenu = _menu->addMenu("Add to figure...");
+	for(int i=0; i<actions.size(); ++i)
+	{
+		action = plotMenu->addAction(actions.at(i)->text());
+		connect(action, SIGNAL(triggered()), this, SLOT(preparePlotRequest()));
+	}
+}
+
+void StatItem::preparePlotRequest()
+{
+	QAction * action = qobject_cast<QAction*>(sender());
+	if(action)
+	{
+		emit plotRequested(this, action->text());
+	}
+}
+
+
+
+
+
+
+
+
+StatsToolBox::StatsToolBox(QWidget * parent) :
+	QWidget(parent)
+{
+	ULOGGER_DEBUG("");
+	//Statistics in the GUI (for plotting)
+	_statBox = new QToolBox(this);
+	this->setLayout(new QVBoxLayout());
+	this->layout()->setMargin(0);
+	this->layout()->addWidget(_statBox);
+	_statBox->layout()->setSpacing(0);
+	_plotMenu = new QMenu(this);
+	_plotMenu->addAction(tr("<New figure>"));
+	_workingDirectory = QDir::homePath();
+}
+
+StatsToolBox::~StatsToolBox()
+{
+	closeFigures();
+}
+
+void StatsToolBox::closeFigures()
+{
+	QMap<QString, QWidget*> figuresTmp = _figures;
+	for(QMap<QString, QWidget*>::iterator iter = figuresTmp.begin(); iter!=figuresTmp.end(); ++iter)
+	{
+		iter.value()->close();
+	}
+}
+
+void StatsToolBox::updateStat(const QString & statFullName, float x, float y)
+{
+	// round float to max 2 numbers after the dot
+	//x = (float(int(100*x)))/100;
+	//y = (float(int(100*y)))/100;
+
+	StatItem * item = _statBox->findChild<StatItem *>(statFullName);
+	if(item)
+	{
+		item->setValue(x, y);
+	}
+	else
+	{
+		// statFullName format : "Grp/Name/unit"
+		QStringList list = statFullName.split('/');
+		QString grp;
+		QString name;
+		QString unit;
+		if(list.size() >= 3)
+		{
+			grp = list.at(0);
+			name = list.at(1);
+			unit = list.at(2);
+		}
+		else if(list.size() == 2)
+		{
+			grp = list.at(0);
+			name = list.at(1);
+		}
+		else if(list.size() == 1)
+		{
+			name = list.at(0);
+		}
+		else
+		{
+			ULOGGER_WARN("A statistic has no name");
+			return;
+		}
+
+		if(grp.isEmpty())
+		{
+			grp = tr("Global");
+		}
+
+		int index = -1;
+		for(int i=0; i<_statBox->count(); ++i)
+		{
+			if(_statBox->itemText(i).compare(grp) == 0)
+			{
+				index = i;
+				break;
+			}
+		}
+
+		if(index<0)
+		{
+			QWidget * newWidget = new QWidget(_statBox);
+			index = _statBox->addItem(newWidget, grp);
+			QVBoxLayout * layout = new QVBoxLayout(newWidget);
+			newWidget->setLayout(layout);
+			QGridLayout * grid = new QGridLayout();
+			grid->setVerticalSpacing(2);
+			grid->setColumnStretch(0, 1);
+			layout->addLayout(grid);
+			layout->addStretch();
+		}
+
+		QVBoxLayout * layout = qobject_cast<QVBoxLayout *>(_statBox->widget(index)->layout());
+		if(!layout)
+		{
+			ULOGGER_ERROR("Layout is null ?!?");
+			return;
+		}
+		QGridLayout * grid = qobject_cast<QGridLayout *>(layout->itemAt(0)->layout());
+		if(!grid)
+		{
+			ULOGGER_ERROR("Layout is null ?!?");
+			return;
+		}
+
+		item = new StatItem(name, x, y, unit, _plotMenu, grid, _statBox->widget(index));
+		item->setObjectName(statFullName);
+
+		//layout->insertWidget(layout->count()-1, item);
+		connect(item, SIGNAL(plotRequested(const StatItem *, const QString &)), this, SLOT(plot(const StatItem *, const QString &)));
+		connect(this, SIGNAL(menuChanged(const QMenu *)), item, SLOT(updateMenu(const QMenu *)));
+	}
+}
+
+void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
+{
+	QWidget * fig = _figures.value(plotName, (QWidget*)0);
+	Plot * plot = 0;
+	if(fig)
+	{
+		plot = fig->findChild<Plot *>(plotName);
+	}
+	if(plot)
+	{
+		// if not already in the plot
+		if(!plot->contains(stat->objectName()))
+		{
+			PlotCurve * curve = new PlotCurve(stat->objectName(), plot);
+			curve->setPen(plot->getRandomPenColored());
+			connect(stat, SIGNAL(valueChanged(float, float)), curve, SLOT(addValue(float, float)));
+			if(!plot->addCurve(curve))
+			{
+				ULOGGER_WARN("Already added to the figure");
+			}
+		}
+		else
+		{
+			ULOGGER_WARN("Already added to the figure");
+		}
+		plot->activateWindow();
+	}
+	else
+	{
+		//Create a new plot
+		QString id = tr("Figure 0");
+		if(_plotMenu->actions().size())
+		{
+			id = _plotMenu->actions().last()->text();
+		}
+		id.replace(tr("Figure "), "");
+		QString newPlotName = QString(tr("Figure %1")).arg(id.toInt()+1);
+		//Dock
+		QWidget * figure = new QWidget(0, Qt::Window);
+		_figures.insert(newPlotName, figure);
+		figure->setLayout(new QHBoxLayout());
+		figure->setWindowTitle(newPlotName);
+		figure->setAttribute(Qt::WA_DeleteOnClose, true);
+		connect(figure, SIGNAL(destroyed(QObject*)), this, SLOT(figureDeleted(QObject*)));
+		//Plot
+		Plot * newPlot = new Plot(figure);
+		newPlot->setWorkingDirectory(_workingDirectory);
+		newPlot->setMaxVisibleItems(10);
+		newPlot->setObjectName(newPlotName);
+		figure->layout()->addWidget(newPlot);
+		_plotMenu->addAction(newPlotName);
+
+		//Add a new curve linked to the statBox
+		PlotCurve * curve = new PlotCurve(stat->objectName(), newPlot);
+		curve->setPen(newPlot->getRandomPenColored());
+		connect(stat, SIGNAL(valueChanged(float, float)), curve, SLOT(addValue(float, float)));
+		if(!newPlot->addCurve(curve))
+		{
+			ULOGGER_ERROR("Not supposed to be here !?!");
+			delete curve;
+		}
+		figure->show();
+
+		emit menuChanged(_plotMenu);
+	}
+}
+
+void StatsToolBox::figureDeleted(QObject * obj)
+{
+	if(obj)
+	{
+		QWidget * plot = qobject_cast<QWidget*>(obj);
+		if(plot)
+		{
+			_figures.remove(plot->windowTitle());
+			QList<QAction*> actions = _plotMenu->actions();
+			for(int i=0; i<actions.size(); ++i)
+			{
+				if(actions.at(i)->text().compare(plot->windowTitle()) == 0)
+				{
+					_plotMenu->removeAction(actions.at(i));
+					delete actions[i];
+					emit menuChanged(_plotMenu);
+					break;
+				}
+			}
+		}
+		else
+		{
+			UERROR("");
+		}
+	}
+	else
+	{
+		UERROR("");
+	}
+}
+
+void StatsToolBox::contextMenuEvent(QContextMenuEvent * event)
+{
+	QMenu topMenu(this);
+	QMenu * menu = topMenu.addMenu(tr("Add all statistics from tab \"%1\" to...").arg(_statBox->itemText(_statBox->currentIndex())));
+	QList<QAction* > actions = _plotMenu->actions();
+	menu->addActions(actions);
+	QAction * action = topMenu.exec(event->globalPos());
+	QString plotName;
+	if(action)
+	{
+		for(int i=0; i<actions.size(); ++i)
+		{
+			if(actions.at(i) == action)
+			{
+				plotName = actions.at(i)->text();
+				break;
+			}
+		}
+	}
+
+	if(!plotName.isEmpty())
+	{
+		QList<StatItem*> items = _statBox->currentWidget()->findChildren<StatItem*>();
+		for(int i=0; i<items.size(); ++i)
+		{
+			this->plot(items.at(i), plotName);
+			if(plotName.compare(tr("<New figure>")) == 0)
+			{
+				plotName = _plotMenu->actions().last()->text();
+			}
+		}
+	}
+}
+
+void StatsToolBox::getFiguresSetup(QList<int> & curvesPerFigure, QStringList & curveNames)
+{
+	curvesPerFigure.clear();
+	curveNames.clear();
+	for(QMap<QString, QWidget*>::iterator i=_figures.begin(); i!=_figures.end(); ++i)
+	{
+		QList<Plot *> plots = i.value()->findChildren<Plot *>();
+		if(plots.size() == 1)
+		{
+			QStringList names = plots[0]->curveNames();
+			curvesPerFigure.append(names.size());
+			curveNames.append(names);
+		}
+		else
+		{
+			UERROR("");
+		}
+	}
+}
+void StatsToolBox::addCurve(const QString & name, bool newFigure)
+{
+	StatItem * item = _statBox->findChild<StatItem *>(name);
+	if(!item)
+	{
+		this->updateStat(name, 0, 0);
+		item = _statBox->findChild<StatItem *>(name);
+	}
+
+	if(item)
+	{
+		if(newFigure)
+		{
+			this->plot(item, "");
+		}
+		else
+		{
+			this->plot(item, _plotMenu->actions().last()->text());
+		}
+	}
+	else
+	{
+		ULOGGER_ERROR("Not supposed to be here...");
+	}
+}
+
+void StatsToolBox::setWorkingDirectory(const QString & workingDirectory)
+{
+	if(QDir(_workingDirectory).exists())
+	{
+		_workingDirectory = workingDirectory;
+	}
+	else
+	{
+		ULOGGER_ERROR("The directory \"%s\" doesn't exist", workingDirectory.toStdString().c_str());
+	}
+}
+
+}

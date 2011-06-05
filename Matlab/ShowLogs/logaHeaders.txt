@@ -1,0 +1,17 @@
+fprintf(_foutFloat, "%f %f %f %f %f %f %f %f %f\n",
+				totalTime,
+				timeMemoryUpdate,
+				timeReactivations,
+				timeLikelihoodCalculation,
+				timePosteriorCalculation,
+				timeHypothesesCreation,
+				timeHypothesesValidation,
+				timeRealTimeLimitReachedProcess,
+				timeStatsCreation);
+fprintf(_foutInt, "%d %d %d %d\n", 
+				lcHypothesisId, 
+				mostLikelihoodId, 
+				signaturesRemoved, 
+				hessianThr,
+				wordsNewSign,
+				dictionarySize);

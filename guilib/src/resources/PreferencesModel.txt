@@ -1,0 +1,22 @@
+0General
+1Bayes filter
+1Similarity
+1Memory strategy
+0Source
+1Images
+1Video
+1Usb device
+0Signature type
+1Keypoint-based
+2Detectors
+3SURF detector
+3Star detector
+2Descriptor
+2Dictionary
+1FFT-based
+0Hypotheses creation
+1Simple
+1Std dev
+0Hypotheses verification
+1Sequence
+1Epipolar constraints

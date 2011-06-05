@@ -1,0 +1,1 @@
+This directory contains the same tests than the ones used in the c++ library corelib.
