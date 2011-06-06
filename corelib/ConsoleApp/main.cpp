@@ -413,12 +413,9 @@ int main(int argc, char * argv[])
 			if(i<maxTeleopActions)
 			{
 				// ONLY TESTING HERE if maxTeleopActions>0
-				std::vector<float> v(5);
-				v[0] = 1;
-				v[1] = 16;
-				v[2] = 32;
-				v[3] = 64;
-				v[4] = 128;
+				std::vector<float> v(2);
+				v[0] = 2;
+				v[1] = 0;
 				teleopActions.push_back(v);
 				smState = new SMState(image, teleopActions);
 			}

@@ -1303,7 +1303,6 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionOpen_working_directory->setEnabled(true);
 		_ui->actionApply_settings_to_the_detector->setEnabled(true);
 		_ui->menuSelect_source->setEnabled(true);
-		_ui->doubleSpinBox_stats_imgRate->setEnabled(true);
 		_ui->statusbar->clearMessage();
 		_state = newState;
 		_oneSecondTimer->stop();
@@ -1378,7 +1377,6 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionOpen_working_directory->setEnabled(false);
 		_ui->actionApply_settings_to_the_detector->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
-		_ui->doubleSpinBox_stats_imgRate->setEnabled(false);
 		_ui->statusbar->showMessage(tr("Monitoring..."));
 		_state = newState;
 		_ui->label_elapsedTime->setText("00:00:00");

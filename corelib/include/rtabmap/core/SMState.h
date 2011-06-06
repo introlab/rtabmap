@@ -61,7 +61,7 @@ public:
 		}
 		for(unsigned int i=0; i<sensors.size() && i<i+sensorStep; i+=sensorStep)
 		{
-			_sensors.push_back(std::vector<float>(sensors.data()+i, sensors.data()+i+actuatorStep));
+			_sensors.push_back(std::vector<float>(sensors.data()+i, sensors.data()+i+sensorStep));
 		}
 		for(unsigned int i=0; i<actuators.size() && i<i+actuatorStep; i+=actuatorStep)
 		{

@@ -868,7 +868,7 @@ bool DBDriverSqlite3::addNeighborQuery(int id, int neighbor, const std::list<std
 				}
 				actions.insert(actions.end(), iter->begin(), iter->end());
 			}
-			rc = sqlite3_bind_blob(ppStmt, 4, (unsigned char *)actions.data(), actions.size()*sizeof(float), SQLITE_STATIC);
+			rc = sqlite3_bind_blob(ppStmt, 4, actions.data(), actions.size()*sizeof(float), SQLITE_STATIC);
 			if (rc != SQLITE_OK)
 			{
 				ULOGGER_ERROR("DB error 2.4: %s", sqlite3_errmsg(_ppDb));
@@ -1970,20 +1970,30 @@ bool DBDriverSqlite3::loadNeighborsQuery(int signatureId, NeighborsMap & neighbo
 		rc = sqlite3_step(ppStmt);
 		while(rc == SQLITE_ROW)
 		{
+			actions.clear();
 			nid = sqlite3_column_int(ppStmt, 0);
 			actionSize = sqlite3_column_int(ppStmt, 1);
 			data = (const float *)sqlite3_column_blob(ppStmt, 2); 	// actions array
 			dataSize = sqlite3_column_bytes(ppStmt, 2)/sizeof(float);
 
+			//UDEBUG("%d=%s", nid, uBytes2Hex((char *)data, dataSize*sizeof(float)).c_str());
+			//UDEBUG("actionSize=%d, dataSize=%d", actionSize, dataSize);
+
+			//std::stringstream stream;
+			//stream << nid << "=";
 			for(int i=0; i<dataSize; i+=actionSize)
 			{
+				//stream << "[";
 				std::vector<float> action(actionSize);
 				for(int j=0; j<actionSize; ++j)
 				{
-					action[j] = data[i*actionSize + j];
+					action[j] = data[i + j];
+					//stream << action[j] << ",";
 				}
 				actions.push_back(action);
+				//stream << "],";
 			}
+			//UDEBUG("%s", stream.str().c_str());
 			neighbors.insert(neighbors.end(), std::pair<int, std::list<std::vector<float> > >(nid, actions)); // nid
 			rc = sqlite3_step(ppStmt);
 		}
@@ -2168,10 +2178,10 @@ bool DBDriverSqlite3::updateQuery(const std::list<Signature *> & signatures) con
 					rc = sqlite3_finalize(ppStmt);
 					return false;
 				}
+				std::vector<float> actions;
 				if(actionSize)
 				{
 					//Concatenate actions
-					std::vector<float> actions;
 					for(std::list<std::vector<float> >::const_iterator iter=i->second.begin(); iter!=i->second.end(); ++iter)
 					{
 						if(iter->size() != actionSize)
@@ -2180,7 +2190,7 @@ bool DBDriverSqlite3::updateQuery(const std::list<Signature *> & signatures) con
 						}
 						actions.insert(actions.end(), iter->begin(), iter->end());
 					}
-					rc = sqlite3_bind_blob(ppStmt, 4, (unsigned char *)actions.data(), actions.size()*sizeof(float), SQLITE_STATIC);
+					rc = sqlite3_bind_blob(ppStmt, 4, actions.data(), actions.size()*sizeof(float), SQLITE_STATIC);
 				}
 				else
 				{
@@ -2435,6 +2445,7 @@ bool DBDriverSqlite3::saveQuery(const KeypointSignature * ss) const
 				if(compressed)
 				{
 					cvReleaseMat(&compressed);
+					compressed=0;
 				}
 				return false;
 			}
@@ -2444,6 +2455,7 @@ bool DBDriverSqlite3::saveQuery(const KeypointSignature * ss) const
 		if(compressed)
 		{
 			cvReleaseMat(&compressed);// release before any return false
+			compressed=0;
 		}
 		if (rc != SQLITE_DONE)
 		{
@@ -2607,10 +2619,10 @@ bool DBDriverSqlite3::saveQuery(const KeypointSignature * ss) const
 					rc = sqlite3_finalize(ppStmt);
 					return false;
 				}
+				std::vector<float> actions;
 				if(actionSize)
 				{
 					//Concatenate actions
-					std::vector<float> actions;
 					for(std::list<std::vector<float> >::const_iterator iter=i->second.begin(); iter!=i->second.end(); ++iter)
 					{
 						if(iter->size() != actionSize)
@@ -2619,7 +2631,7 @@ bool DBDriverSqlite3::saveQuery(const KeypointSignature * ss) const
 						}
 						actions.insert(actions.end(), iter->begin(), iter->end());
 					}
-					rc = sqlite3_bind_blob(ppStmt, 4, (unsigned char *)actions.data(), actions.size()*sizeof(float), SQLITE_STATIC);
+					rc = sqlite3_bind_blob(ppStmt, 4, actions.data(), actions.size()*sizeof(float), SQLITE_STATIC);
 				}
 				else
 				{
@@ -2755,6 +2767,7 @@ bool DBDriverSqlite3::saveQuery(const std::list<KeypointSignature *> & signature
 					if(compressed)
 					{
 						cvReleaseMat(&compressed);
+						compressed = 0;
 					}
 					return false;
 				}
@@ -2932,10 +2945,10 @@ bool DBDriverSqlite3::saveQuery(const std::list<KeypointSignature *> & signature
 					rc = sqlite3_finalize(ppStmt);
 					return false;
 				}
+				std::vector<float> actions;
 				if(actionSize)
 				{
 					//Concatenate actions
-					std::vector<float> actions;
 					for(std::list<std::vector<float> >::const_iterator iter=i->second.begin(); iter!=i->second.end(); ++iter)
 					{
 						if(iter->size() != actionSize)
@@ -2944,7 +2957,11 @@ bool DBDriverSqlite3::saveQuery(const std::list<KeypointSignature *> & signature
 						}
 						actions.insert(actions.end(), iter->begin(), iter->end());
 					}
-					rc = sqlite3_bind_blob(ppStmt, 4, (unsigned char *)actions.data(), actions.size()*sizeof(float), SQLITE_STATIC);
+
+					//UDEBUG("actions.size()=%d",actions.size());
+					//UDEBUG("%d=%s", i->first, uBytes2Hex((char*)actions.data(), actions.size()*sizeof(float)).c_str());
+
+					rc = sqlite3_bind_blob(ppStmt, 4, actions.data(), actions.size()*sizeof(float), SQLITE_STATIC);
 				}
 				else
 				{
@@ -3032,7 +3049,7 @@ bool DBDriverSqlite3::saveQuery(const std::vector<VisualWord *> & visualWords) c
 						rc = sqlite3_finalize(ppStmt);
 						return false;
 					}
-					rc = sqlite3_bind_blob(ppStmt, 3, (unsigned char *)w->getDescriptor(), w->getDim()*sizeof(float), SQLITE_STATIC);
+					rc = sqlite3_bind_blob(ppStmt, 3, w->getDescriptor(), w->getDim()*sizeof(float), SQLITE_STATIC);
 					if (rc != SQLITE_OK)
 					{
 						ULOGGER_ERROR("DB error 2.4: %s", sqlite3_errmsg(_ppDb));

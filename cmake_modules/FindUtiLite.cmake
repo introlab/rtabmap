@@ -11,12 +11,11 @@
 
 SET(UTILITE_VERSION_REQUIRED 0.2.11)
 
-SET (UTILITE_ROOT)
+SET(UTILITE_ROOT)
 
 # Add ROS UtiLite directory if ROS is installed
 FIND_PROGRAM(ROSPACK_EXEC NAME rospack PATHS)  
 IF(ROSPACK_EXEC)  
-    MESSAGE(STATUS "Found rospack executable : ${ROSPACK_EXEC}")
 	EXECUTE_PROCESS(COMMAND ${ROSPACK_EXEC} find utilite 
 			   	    OUTPUT_VARIABLE UTILITE_ROS_PATH
 					OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -81,4 +80,3 @@ ELSE ()
       MESSAGE(FATAL_ERROR "Could not find UtiLite. Verify your PATH if it is already installed or download it at http://utilite.googlecode.com")
    ENDIF (UtiLite_FIND_REQUIRED)
 ENDIF ()
-
