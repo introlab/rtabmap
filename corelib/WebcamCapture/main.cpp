@@ -37,10 +37,11 @@ void showUsage()
 			"   -device #:			Id of the webcam (default 0)\n"
 			"   -width #:			Image width (default 640)\n"
 			"   -height #:			Image height (default 480)\n"
+			"   -rawSize            Resize image after capturing the with default size\n"
 			"   -fps #.#:			Frame rate (Hz) (default 2.0)\n"
-			"   -show bool:			Image shown while capturing (default true)\n"
+			"   -hide :			    Image not shown while capturing (default true)\n"
 			"   -dir \"path\":		Path of the images saved (default \"./imagesCaptured\")\n"
-			"   -save bool:			Save images captured (default true)\n"
+			"   -save :			    Save images captured (default true)\n"
 			"   -startId #:			Image id to start with (default 1)\n"
 			"   -ext \"ext\":		Image extension (default \"jpg\")\n"
 			"   -debug:				Debug trace\n");
@@ -121,10 +122,11 @@ int main(int argc, char * argv[])
 	int usbDevice = 0;
 	int imageWidth = 640;
 	int imageHeight = 480;
+	bool rawSize = false;
 	float imageRate = 2.0;
 	int startId = 1;
 	std::string extension = "jpg";
-	bool save = true;
+	bool save = false;
 	std::string targetDirectory = UDirectory::currentDir(true) + "imagesCaptured";
 
 	for(int i=1; i<argc; ++i)
@@ -176,10 +178,9 @@ int main(int argc, char * argv[])
 			++i;
 		}
 
-		if(strcmp(argv[i], "-show") == 0 && i+1<argc)
+		if(strcmp(argv[i], "-hide") == 0 && i+1<argc)
 		{
-			show = uStr2Bool(argv[i+1]);
-			++i;
+			show = false;
 		}
 
 		if(strcmp(argv[i], "-dir") == 0 && i+1<argc)
@@ -190,8 +191,7 @@ int main(int argc, char * argv[])
 
 		if(strcmp(argv[i], "-save") == 0 && i+1<argc)
 		{
-			save = uStr2Bool(argv[i+1]);
-			++i;
+			save = true;
 		}
 		
 		if(strcmp(argv[i], "-debug") == 0)
@@ -217,6 +217,7 @@ int main(int argc, char * argv[])
 		   "   device=%d\n"
 		   "   width=%d\n"
 		   "   height=%d\n"
+		   "   rawSize=%d\n"
 		   "   hz=%f\n"
 		   "   show=%s\n"
 		   "   dir=%s\n"
@@ -226,6 +227,7 @@ int main(int argc, char * argv[])
 		   usbDevice, 
 		   imageWidth, 
 		   imageHeight, 
+		   uBool2str(rawSize).c_str(),
 		   imageRate, 
 		   uBool2str(show).c_str(), 
 		   targetDirectory.c_str(),
@@ -235,7 +237,7 @@ int main(int argc, char * argv[])
 
 	UDirectory::makeDir(targetDirectory);
 
-	rtabmap::CameraVideo cam(usbDevice, imageWidth, imageHeight, false, imageRate);
+	rtabmap::CameraVideo cam(usbDevice, rawSize, imageRate, false, imageWidth, imageHeight);
 	if(!cam.init())
 	{
 		printf("Can't initialize the camera...\n");

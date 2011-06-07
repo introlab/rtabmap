@@ -46,6 +46,9 @@
        <attribute name="headerVisible">
         <bool>false</bool>
        </attribute>
+       <attribute name="headerVisible">
+        <bool>false</bool>
+       </attribute>
       </widget>
      </item>
      <item>
@@ -65,7 +68,7 @@
           <enum>QFrame::Raised</enum>
          </property>
          <property name="currentIndex">
-          <number>0</number>
+          <number>1</number>
          </property>
          <widget class="QWidget" name="page_22">
           <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -546,7 +549,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               <item>
                <widget class="QStackedWidget" name="stackedWidget_2">
                 <property name="currentIndex">
-                 <number>1</number>
+                 <number>0</number>
                 </property>
                 <widget class="QWidget" name="page_7">
                  <layout class="QVBoxLayout" name="verticalLayout_30">
@@ -573,6 +576,24 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       <widget class="QLabel" name="label_38">
                        <property name="text">
                         <string>Usb device</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="0">
+                      <widget class="QCheckBox" name="general_checkBox_rawImageSizeCaptured">
+                       <property name="text">
+                        <string/>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="1">
+                      <widget class="QLabel" name="label_13">
+                       <property name="text">
+                        <string>Raw image size captured.
+If false, the usb driver is configured with the image width/height above. If true, the image is resized after the capture.</string>
+                       </property>
+                       <property name="wordWrap">
+                        <bool>true</bool>
                        </property>
                       </widget>
                      </item>
@@ -1050,8 +1071,8 @@ We can edit how will like the prediction used in the Bayes filter when there is 
                     <rect>
                      <x>0</x>
                      <y>0</y>
-                     <width>518</width>
-                     <height>147</height>
+                     <width>26</width>
+                     <height>78</height>
                     </rect>
                    </property>
                    <layout class="QHBoxLayout" name="horizontalLayout_2">

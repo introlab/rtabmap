@@ -85,6 +85,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->general_checkBox_autoRestart, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	//usbDevice group
 	connect(_ui->source_usbDevice_spinBox_id, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->general_checkBox_rawImageSizeCaptured, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_imgWidth, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_imgheight, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	//images group
@@ -520,6 +521,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	//usbDevice group
 	settings.beginGroup("usbDevice");
 	_ui->source_usbDevice_spinBox_id->setValue(settings.value("id",_ui->source_usbDevice_spinBox_id->value()).toInt());
+	_ui->general_checkBox_rawImageSizeCaptured->setChecked(settings.value("rawImageSizeCaptured", _ui->general_checkBox_rawImageSizeCaptured->isChecked()).toBool());
 	settings.endGroup(); // usbDevice
 	//images group
 	settings.beginGroup("images");
@@ -659,6 +661,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath)
 	//usbDevice group
 	settings.beginGroup("usbDevice");
 	settings.setValue("id", 			_ui->source_usbDevice_spinBox_id->value());
+	settings.setValue("rawImageSizeCaptured", _ui->general_checkBox_rawImageSizeCaptured->isChecked());
 	settings.endGroup(); //usbDevice
 	//images group
 	settings.beginGroup("images");
@@ -1528,6 +1531,10 @@ QString PreferencesDialog::getSourceVideoPath() const
 int PreferencesDialog::getSourceUsbDeviceId() const
 {
 	return _ui->source_usbDevice_spinBox_id->value();
+}
+bool PreferencesDialog::isSourceUsbRawImageSizeCaptured() const
+{
+	return _ui->general_checkBox_rawImageSizeCaptured->isChecked();
 }
 QString PreferencesDialog::getSourceDatabasePath() const
 {

@@ -438,10 +438,11 @@ IplImage * CameraImages::takeImage()
 // CameraVideo
 /////////////////////////
 CameraVideo::CameraVideo(int usbDevice,
+						 bool rawImageSizeCaptured,
 						 float imageRate,
 						 bool autoRestart,
 						 unsigned int imageWidth,
-						  unsigned int imageHeight) :
+						 unsigned int imageHeight) :
 	Camera(imageRate, autoRestart, imageWidth, imageHeight),
 	_capture(0),
 	_src(kUsbDevice),
