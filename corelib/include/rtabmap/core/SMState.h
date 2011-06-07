@@ -34,22 +34,20 @@ namespace rtabmap {
 class SMState
 {
 public:
+	// Constructor 0 : ownership is transferred
+	SMState(IplImage * image = 0) :
+		_image(image)
+	{}
 	// Constructor 1
-	// image and/or keypoints can be passed for debugging (rtabmap will not re-extract keypoints/descriptors from the image if not null, only for debug/visualization)
-	// take image ownership
-	SMState(const std::list<std::vector<float> > & sensors, const std::list<std::vector<float> > & actuators, IplImage * image = 0, const std::list<cv::KeyPoint> & keypoints = std::list<cv::KeyPoint>()) :
+	SMState(const std::list<std::vector<float> > & sensors, const std::list<std::vector<float> > & actuators) :
 		_sensors(sensors),
 		_actuators(actuators),
-		_image(image),
-		_keypoints(keypoints)
+		_image(0)
 	{}
 	// Constructor 2 : for convenience with ROS conversion...
 	// Sensors and actuators vectors will be split into a list with smaller vectors of length sensorStep and actuatorStep respectively.
-	// image and/or keypoints can be passed for debugging (rtabmap will not re-extract keypoints/descriptors from the image if not null, only for debug/visualization)
-	// take image ownership
-	SMState(const std::vector<float> & sensors, int sensorStep, const std::vector<float> & actuators, int actuatorStep, IplImage * image = 0, const std::list<cv::KeyPoint> & keypoints = std::list<cv::KeyPoint>()) :
-		_image(image),
-		_keypoints(keypoints)
+	SMState(const std::vector<float> & sensors, int sensorStep, const std::vector<float> & actuators, int actuatorStep) :
+		_image(0)
 	{
 		if(sensorStep && sensors.size() % sensorStep != 0)
 		{
@@ -68,19 +66,6 @@ public:
 			_actuators.push_back(std::vector<float>(actuators.data()+i, actuators.data()+i+actuatorStep));
 		}
 	}
-	// Constructor 3 :
-	// rtabmap will automatically extract keypoints and descriptors from the image...
-	// take image ownership
-	SMState(IplImage * image) :
-		_image(image)
-	{}
-	// Constructor 4 :
-	// rtabmap will automatically extract keypoints and descriptors from the image...
-	// take image ownership
-	SMState(IplImage * image, const std::list<std::vector<float> > & actuators) :
-		_actuators(actuators),
-		_image(image)
-	{}
 
 	virtual ~SMState()
 	{
@@ -96,6 +81,17 @@ public:
 	const std::list<std::vector<float> > & getActuators() const {return _actuators;}
 	void setSensors(const std::list<std::vector<float> > & sensors) {_sensors=sensors;}
 	void setActuators(const std::list<std::vector<float> > & actuators) {_actuators=actuators;}
+	void setKeypoints(const std::list<cv::KeyPoint> & keypoints) {_keypoints = keypoints;}
+
+	//ownership is transferred
+	void setImage(IplImage * image)
+	{
+		if(_image)
+		{
+			cvReleaseImage(&_image);
+		}
+		_image = image;
+	}
 
 	void getSensorsMerged(std::vector<float> & sensors, int & step) const
 	{

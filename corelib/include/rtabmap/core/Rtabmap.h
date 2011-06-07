@@ -75,6 +75,7 @@ public:
 	Rtabmap();
 	virtual ~Rtabmap();
 
+	// ownership is transferred
 	void process(SMState * data);
 	void dumpData();
 
@@ -110,7 +111,7 @@ private:
 	virtual void killCleanup();
 	virtual void startInit();
 	void process();
-	void addSMState(SMState * data);
+	void addSMState(SMState * data); // ownership is transferred
 	SMState * getSMState();
 	void setupLogFiles();
 	void releaseAllStrategies();

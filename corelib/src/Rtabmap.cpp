@@ -1243,6 +1243,7 @@ void Rtabmap::process()
 	delete smState;
 }
 
+// ownership is transferred
 void Rtabmap::addSMState(SMState * data)
 {
 	ULOGGER_DEBUG("");
@@ -1361,6 +1362,7 @@ void Rtabmap::setWorkingDirectory(std::string path)
 	}
 }
 
+// ownership is transferred
 void Rtabmap::process(SMState * data)
 {
 	if(!this->isRunning())

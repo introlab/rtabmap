@@ -417,11 +417,13 @@ int main(int argc, char * argv[])
 				v[0] = 2;
 				v[1] = 0;
 				teleopActions.push_back(v);
-				smState = new SMState(image, teleopActions);
+				smState = new SMState(std::list<std::vector<float> >(), teleopActions);
+				smState->setImage(image);
 			}
 			else
 			{
-				smState = new SMState(image, actions);
+				smState = new SMState(std::list<std::vector<float> >(), actions);
+				smState->setImage(image);
 			}
 			rtabmap->process(smState);
 			loopClosureId = rtabmap->getLoopClosureId();

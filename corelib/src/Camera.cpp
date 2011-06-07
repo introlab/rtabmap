@@ -36,13 +36,10 @@
 namespace rtabmap
 {
 
-SMState * CamPostTreatment::process(IplImage * image)
+SMState * CamPostTreatment::process(const IplImage * image) const
 {
-	if(image)
-	{
-		return new SMState(image);
-	}
-	return 0;
+	//no threatment...
+	return new SMState();
 }
 
 CamKeypointTreatment::~CamKeypointTreatment()
@@ -56,13 +53,14 @@ CamKeypointTreatment::~CamKeypointTreatment()
 		delete _keypointDescriptor;
 	}
 }
-SMState * CamKeypointTreatment::process(IplImage * image)
+SMState * CamKeypointTreatment::process(const IplImage * image) const
 {
 	if(image)
 	{
 		std::list<cv::KeyPoint> keypoints = _keypointDetector->generateKeypoints(image);
 		std::list<std::vector<float> > descriptors = _keypointDescriptor->generateDescriptors(image, keypoints);
-		SMState * smState = new SMState(descriptors, std::list<std::vector<float> >(), image, keypoints);
+		SMState * smState = new SMState(descriptors, std::list<std::vector<float> >());
+		smState->setKeypoints(keypoints);
 		return smState;
 	}
 	return 0;
@@ -292,6 +290,7 @@ void Camera::process()
 		SMState * smState = _postThreatement->process(image);
 		if(smState)
 		{
+			smState->setImage(image);
 			this->post(new SMStateEvent(smState));
 		}
 		double elapsed = timer.ticks();

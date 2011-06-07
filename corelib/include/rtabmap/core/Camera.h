@@ -47,7 +47,7 @@ public:
 		this->parseParameters(parameters);
 	}
 	virtual ~CamPostTreatment() {}
-	virtual SMState * process(IplImage * image);
+	virtual SMState * process(const IplImage * image) const;
 	virtual void parseParameters(const ParametersMap & parameters) {}
 };
 
@@ -68,7 +68,7 @@ public:
 		this->parseParameters(parameters);
 	}
 	virtual ~CamKeypointTreatment();
-	virtual SMState * process(IplImage * image);
+	virtual SMState * process(const IplImage * image) const;
 	virtual void parseParameters(const ParametersMap & parameters);
 	DetectorStrategy detectorStrategy() const;
 private:
