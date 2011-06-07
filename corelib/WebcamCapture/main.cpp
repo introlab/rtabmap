@@ -217,7 +217,7 @@ int main(int argc, char * argv[])
 		   "   device=%d\n"
 		   "   width=%d\n"
 		   "   height=%d\n"
-		   "   rawSize=%d\n"
+		   "   rawSize=%s\n"
 		   "   hz=%f\n"
 		   "   show=%s\n"
 		   "   dir=%s\n"
