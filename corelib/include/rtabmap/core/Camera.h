@@ -200,6 +200,7 @@ private:
 
 	// Usb camera
 	int _usbDevice;
+	bool _rawImageSizeCaptured;
 };
 
 
