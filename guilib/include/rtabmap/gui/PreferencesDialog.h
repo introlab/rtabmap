@@ -111,7 +111,6 @@ public:
 	bool getSourceImagesRefreshDir() const;	//Images group
 	QString getSourceVideoPath() const;	//Video group
 	int getSourceUsbDeviceId() const;		//UsbDevice group
-	bool isSourceUsbRawImageSizeCaptured() const; //UsbDevice group
 	QString getSourceDatabasePath() const; 			//Database group
 	bool getSourceDatabaseIgnoreChildren() const;	//Database group
 

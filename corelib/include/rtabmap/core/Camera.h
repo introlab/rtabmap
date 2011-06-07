@@ -176,7 +176,6 @@ public:
 
 public:
 	CameraVideo(int usbDevice = 0,
-			bool rawImageSizeCaptured = false,
 			float imageRate = 0,
 			bool autoRestart = false,
 			unsigned int imageWidth = 0,
@@ -200,7 +199,6 @@ private:
 
 	// Usb camera
 	int _usbDevice;
-	bool _rawImageSizeCaptured;
 };
 
 

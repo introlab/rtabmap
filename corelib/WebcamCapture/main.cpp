@@ -37,7 +37,6 @@ void showUsage()
 			"   -device #:			Id of the webcam (default 0)\n"
 			"   -width #:			Image width (default 640)\n"
 			"   -height #:			Image height (default 480)\n"
-			"   -rawSize            Resize image after capturing the with default size\n"
 			"   -fps #.#:			Frame rate (Hz) (default 2.0)\n"
 			"   -hide :			    Image not shown while capturing (default true)\n"
 			"   -dir \"path\":		Path of the images saved (default \"./imagesCaptured\")\n"
@@ -122,7 +121,6 @@ int main(int argc, char * argv[])
 	int usbDevice = 0;
 	int imageWidth = 640;
 	int imageHeight = 480;
-	bool rawSize = false;
 	float imageRate = 2.0;
 	int startId = 1;
 	std::string extension = "jpg";
@@ -217,7 +215,6 @@ int main(int argc, char * argv[])
 		   "   device=%d\n"
 		   "   width=%d\n"
 		   "   height=%d\n"
-		   "   rawSize=%s\n"
 		   "   hz=%f\n"
 		   "   show=%s\n"
 		   "   dir=%s\n"
@@ -227,7 +224,6 @@ int main(int argc, char * argv[])
 		   usbDevice, 
 		   imageWidth, 
 		   imageHeight, 
-		   uBool2str(rawSize).c_str(),
 		   imageRate, 
 		   uBool2str(show).c_str(), 
 		   targetDirectory.c_str(),
@@ -237,7 +233,7 @@ int main(int argc, char * argv[])
 
 	UDirectory::makeDir(targetDirectory);
 
-	rtabmap::CameraVideo cam(usbDevice, rawSize, imageRate, false, imageWidth, imageHeight);
+	rtabmap::CameraVideo cam(usbDevice, imageRate, false, imageWidth, imageHeight);
 	if(!cam.init())
 	{
 		printf("Can't initialize the camera...\n");

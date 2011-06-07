@@ -438,7 +438,6 @@ IplImage * CameraImages::takeImage()
 // CameraVideo
 /////////////////////////
 CameraVideo::CameraVideo(int usbDevice,
-						 bool rawImageSizeCaptured,
 						 float imageRate,
 						 bool autoRestart,
 						 unsigned int imageWidth,
@@ -446,8 +445,7 @@ CameraVideo::CameraVideo(int usbDevice,
 	Camera(imageRate, autoRestart, imageWidth, imageHeight),
 	_capture(0),
 	_src(kUsbDevice),
-	_usbDevice(usbDevice),
-	_rawImageSizeCaptured(rawImageSizeCaptured)
+	_usbDevice(usbDevice)
 {
 
 }
@@ -485,7 +483,7 @@ bool CameraVideo::init()
 	{
 		ULOGGER_DEBUG("CameraVideo::init() Usb device initialization on device %d with imgSize=[%d,%d]", _usbDevice, getImageWidth(), getImageHeight());
 		_capture = cvCaptureFromCAM(_usbDevice);
-		if(_capture && getImageWidth() && getImageHeight() && !_rawImageSizeCaptured)
+		if(_capture && getImageWidth() && getImageHeight())
 		{
 			cvSetCaptureProperty(_capture, CV_CAP_PROP_FRAME_WIDTH, double(getImageWidth()));
 			cvSetCaptureProperty(_capture, CV_CAP_PROP_FRAME_HEIGHT, double(getImageHeight()));

@@ -992,7 +992,6 @@ void MainWindow::startDetection()
 	{
 		_camera = new CameraVideo(
 				_preferencesDialog->getSourceUsbDeviceId(),
-				_preferencesDialog->isSourceUsbRawImageSizeCaptured(),
 				_preferencesDialog->getGeneralImageRate(),
 				_preferencesDialog->getGeneralAutoRestart(),
 				_preferencesDialog->getSourceWidth(),
