@@ -134,6 +134,7 @@ private:
 	bool _localGraphCleaned;
 	unsigned int _maxRetrieved;
 	bool _actionsByTime;
+	bool _actionsSentRejectHyp;
 
 	int _lcHypothesisId;
 	int _reactivateId;

@@ -64,6 +64,7 @@ Rtabmap::Rtabmap() :
 	_localGraphCleaned(Parameters::defaultRtabmapLocalGraphCleaned()),
 	_maxRetrieved(Parameters::defaultRtabmapMaxRetrieved()),
 	_actionsByTime(Parameters::defaultRtabmapActionsByTime()),
+	_actionsSentRejectHyp(Parameters::defaultRtabmapActionsSentRejectHyp()),
 	_lcHypothesisId(0),
 	_reactivateId(0),
 	_highestHypothesisValue(0),
@@ -269,7 +270,10 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		_actionsByTime = uStr2Bool(iter->second.c_str());
 	}
-
+	if((iter=parameters.find(Parameters::kRtabmapActionsSentRejectHyp())) != parameters.end())
+	{
+		_actionsSentRejectHyp = uStr2Bool(iter->second.c_str());
+	}
 
 	// By default, we create our strategies if they are not already created.
 	// If they already exists, we check the parameters if a change is requested
@@ -952,7 +956,8 @@ void Rtabmap::process()
 		sLoop = _memory->getSignature(highestHypothesisId);
 	}
 
-	if(sLoop)
+	// only send actions if rejectLoopReason!=3 (decreasing hypotheses)
+	if(sLoop && (_actionsSentRejectHyp || rejectLoopReason != 3))
 	{
 		// select the actions of the neighbor with the highest
 		// weight (select the more recent if some have the same weight)

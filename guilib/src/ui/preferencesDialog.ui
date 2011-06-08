@@ -913,21 +913,21 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="8" column="0">
+              <item row="9" column="0">
                <widget class="QLineEdit" name="lineEdit_workingDirectory">
                 <property name="readOnly">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="8" column="2">
+              <item row="9" column="2">
                <widget class="QLabel" name="label_87">
                 <property name="text">
                  <string>Working directory (where the database is saved/loaded)</string>
                 </property>
                </widget>
               </item>
-              <item row="8" column="1">
+              <item row="9" column="1">
                <widget class="QToolButton" name="toolButton_workingDirectory">
                 <property name="text">
                  <string>...</string>
@@ -971,6 +971,26 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                <widget class="QLabel" name="label_39">
                 <property name="text">
                  <string>Select next actions based only on the more recent neighbor of the current node, otherwise, weight is also used.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="0">
+               <widget class="QCheckBox" name="general_checkBox_actionsSentRejectHyp">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="2">
+               <widget class="QLabel" name="label_40">
+                <property name="text">
+                 <string>Actions sent also on rejected hypotheses (on decreasing hypotheses)</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1073,8 +1093,8 @@ We can edit how will like the prediction used in the Bayes filter when there is 
                     <rect>
                      <x>0</x>
                      <y>0</y>
-                     <width>524</width>
-                     <height>138</height>
+                     <width>26</width>
+                     <height>78</height>
                     </rect>
                    </property>
                    <layout class="QHBoxLayout" name="horizontalLayout_2">
