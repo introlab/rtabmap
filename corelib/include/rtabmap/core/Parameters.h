@@ -131,6 +131,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM_STR(Rtabmap, WorkingDirectory, Parameters::getDefaultWorkingDirectory());	   // Working directory
 	RTABMAP_PARAM(Rtabmap, LocalGraphCleaned, bool, false);	   // Clean the neighborhood of the retrieved id
 	RTABMAP_PARAM(Rtabmap, MaxRetrieved,       unsigned int, 2); // Maximum locations retrieved at the same time from LTM
+	RTABMAP_PARAM(Rtabmap, ActionsByTime,       bool, true); // Select next actions based on the more recent neighbor of the current node, otherwise, weight is also used
 
 	// Hypotheses selection
 	RTABMAP_PARAM(Rtabmap, LoopThr,    	     float, 0.10); // Loop closing threshold

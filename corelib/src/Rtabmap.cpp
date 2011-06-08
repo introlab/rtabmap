@@ -63,6 +63,7 @@ Rtabmap::Rtabmap() :
 	_remThr(Parameters::defaultRtabmapReactivationThr()),
 	_localGraphCleaned(Parameters::defaultRtabmapLocalGraphCleaned()),
 	_maxRetrieved(Parameters::defaultRtabmapMaxRetrieved()),
+	_actionsByTime(Parameters::defaultRtabmapActionsByTime()),
 	_lcHypothesisId(0),
 	_reactivateId(0),
 	_highestHypothesisValue(0),
@@ -263,6 +264,10 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	if((iter=parameters.find(Parameters::kRtabmapMaxRetrieved())) != parameters.end())
 	{
 		_maxRetrieved = std::atoi(iter->second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kRtabmapActionsByTime())) != parameters.end())
+	{
+		_actionsByTime = uStr2Bool(iter->second.c_str());
 	}
 
 
@@ -950,7 +955,9 @@ void Rtabmap::process()
 	if(sLoop)
 	{
 		// select the actions of the neighbor with the highest
-		// weight (select the more recent is some have the same weight)
+		// weight (select the more recent if some have the same weight)
+		// OR
+		// select the newest one (with actions)
 		const NeighborsMap & neighbors =  sLoop->getNeighbors();
 		const Signature * s;
 		int currentWeight = -1;
@@ -958,11 +965,19 @@ void Rtabmap::process()
 		{
 			if(iter->second.size())
 			{
-				s = _memory->getSignature(iter->first);
-				if(s && s->getWeight() > currentWeight)
+				if(_actionsByTime)
 				{
-					currentWeight = s->getWeight();
 					_actions = iter->second;
+					break;
+				}
+				else // use also weight
+				{
+					s = _memory->getSignature(iter->first);
+					if(s && s->getWeight() > currentWeight)
+					{
+						currentWeight = s->getWeight();
+						_actions = iter->second;
+					}
 				}
 			}
 		}

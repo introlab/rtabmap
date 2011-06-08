@@ -68,7 +68,7 @@
           <enum>QFrame::Raised</enum>
          </property>
          <property name="currentIndex">
-          <number>1</number>
+          <number>2</number>
          </property>
          <widget class="QWidget" name="page_22">
           <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -913,21 +913,21 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="7" column="0">
+              <item row="8" column="0">
                <widget class="QLineEdit" name="lineEdit_workingDirectory">
                 <property name="readOnly">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="7" column="2">
+              <item row="8" column="2">
                <widget class="QLabel" name="label_87">
                 <property name="text">
                  <string>Working directory (where the database is saved/loaded)</string>
                 </property>
                </widget>
               </item>
-              <item row="7" column="1">
+              <item row="8" column="1">
                <widget class="QToolButton" name="toolButton_workingDirectory">
                 <property name="text">
                  <string>...</string>
@@ -951,6 +951,26 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                <widget class="QLabel" name="label_103">
                 <property name="text">
                  <string>Maximum locations retrieved at the same time from LTM to WM.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="0">
+               <widget class="QCheckBox" name="general_checkBox_actionsByTime">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="2">
+               <widget class="QLabel" name="label_39">
+                <property name="text">
+                 <string>Select next actions based only on the more recent neighbor of the current node, otherwise, weight is also used.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1053,8 +1073,8 @@ We can edit how will like the prediction used in the Bayes filter when there is 
                     <rect>
                      <x>0</x>
                      <y>0</y>
-                     <width>98</width>
-                     <height>78</height>
+                     <width>524</width>
+                     <height>138</height>
                     </rect>
                    </property>
                    <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -1661,8 +1681,7 @@ see Sqlite3 doc 'PRAGMA journal_mode'</string>
               <item row="1" column="1">
                <widget class="QLabel" name="label_86">
                 <property name="text">
-                 <string>Database auto cleaning,
-delete old signatures in the database after run (the ones which will never be reactivated)</string>
+                 <string>Database auto cleaning : don't save signature with a loop closure (only keeping the newest one).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>

@@ -110,6 +110,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_spinBox_imagesBufferSize->setObjectName(Parameters::kRtabmapSMStateBufferSize().c_str());
 	_ui->general_spinBox_minMemorySizeForLoopDetection->setObjectName(Parameters::kRtabmapMinMemorySizeForLoopDetection().c_str());
 	_ui->general_spinBox_maxRetrieved->setObjectName(Parameters::kRtabmapMaxRetrieved().c_str());
+	_ui->general_checkBox_actionsByTime->setObjectName(Parameters::kRtabmapActionsByTime().c_str());
 	_ui->lineEdit_workingDirectory->setObjectName(Parameters::kRtabmapWorkingDirectory().c_str());
 	connect(_ui->toolButton_workingDirectory, SIGNAL(clicked()), this, SLOT(changeWorkingDirectory()));
 

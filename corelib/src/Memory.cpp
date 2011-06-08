@@ -963,7 +963,7 @@ void Memory::moveToTrash(Signature * s)
 			_dbDriver &&
 			!s->isBadSignature() &&
 			s->id()>0 &&
-			(s->getLoopClosureId() == 0 || s->isSaved()))
+			((s->getLoopClosureId() == 0 || s->isSaved()) || !_databaseCleaned))
 		{
 			_dbDriver->asyncSave(s);
 		}

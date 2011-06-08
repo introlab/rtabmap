@@ -133,6 +133,7 @@ private:
 	float _remThr;
 	bool _localGraphCleaned;
 	unsigned int _maxRetrieved;
+	bool _actionsByTime;
 
 	int _lcHypothesisId;
 	int _reactivateId;
