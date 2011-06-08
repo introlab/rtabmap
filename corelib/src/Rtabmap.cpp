@@ -445,23 +445,7 @@ void Rtabmap::mainLoop()
 		this->parseParameters(parameters);
 		break;
 	case kStateReseting:
-		if(_memory)
-		{
-			if(_memory)
-			{
-				UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
-				_memory->init(DB_TYPE, _wDir + DB_NAME);
-				UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
-			}
-			if(_bayesFilter)
-			{
-				_bayesFilter->reset();
-			}
-		}
-		_reactivateId = 0;
-		_highestHypothesisValue = 0;
-		_spreadMargin = 0;
-		this->setupLogFiles();
+		this->resetMemory();
 		break;
 	case kStateDumpingMemory:
 		if(_memory)
@@ -483,24 +467,7 @@ void Rtabmap::mainLoop()
 		}
 		break;
 	case kStateDeletingMemory:
-		if(_memory)
-		{
-			UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
-			_memory->init(DB_TYPE, _wDir + DB_NAME, true);
-			UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
-		}
-		else
-		{
-			UFile::erase(_wDir + DB_NAME);
-		}
-		if(_bayesFilter)
-		{
-			_bayesFilter->reset();
-		}
-		_reactivateId = 0;
-		_highestHypothesisValue = 0;
-		_spreadMargin = 0;
-		this->setupLogFiles();
+		this->deleteMemory();
 		break;
 	default:
 		uSleep(100);
@@ -509,14 +476,52 @@ void Rtabmap::mainLoop()
 	}
 }
 
+void Rtabmap::resetMemory()
+{
+	if(_memory)
+	{
+		if(_memory)
+		{
+			UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
+			_memory->init(DB_TYPE, _wDir + DB_NAME);
+			UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
+		}
+		if(_bayesFilter)
+		{
+			_bayesFilter->reset();
+		}
+	}
+	_reactivateId = 0;
+	_highestHypothesisValue = 0;
+	_spreadMargin = 0;
+	this->setupLogFiles();
+}
+
+void Rtabmap::deleteMemory()
+{
+	if(_memory)
+	{
+		UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
+		_memory->init(DB_TYPE, _wDir + DB_NAME, true);
+		UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
+	}
+	else
+	{
+		UFile::erase(_wDir + DB_NAME);
+	}
+	if(_bayesFilter)
+	{
+		_bayesFilter->reset();
+	}
+	_reactivateId = 0;
+	_highestHypothesisValue = 0;
+	_spreadMargin = 0;
+	this->setupLogFiles();
+}
+
 void Rtabmap::handleEvent(UEvent* event)
 {
-	if(this->isKilled())
-	{
-		return;
-	}
-
-	if(_state.empty()) // If empty, RTAB-Map is detecting
+	if(this->isRunning())
 	{
 		if(event->getClassName().compare("SMStateEvent") == 0)
 		{
@@ -525,7 +530,7 @@ void Rtabmap::handleEvent(UEvent* event)
 			this->addSMState(data);
 		}
 	}
-	if(event->getClassName().compare("RtabmapEventCmd") == 0)
+	else if(event->getClassName().compare("RtabmapEventCmd") == 0)
 	{
 		RtabmapEventCmd * rtabmapEvent = (RtabmapEventCmd*)event;
 		RtabmapEventCmd::Cmd cmd = rtabmapEvent->getCmd();
@@ -564,11 +569,11 @@ void Rtabmap::handleEvent(UEvent* event)
 		}
 		else if(cmd == RtabmapEventCmd::kCmdDeleteMemory)
 		{
-				ULOGGER_DEBUG("CMD_DELETE_MEMORY");
-				pushNewState(kStateDeletingMemory);
+			ULOGGER_DEBUG("CMD_DELETE_MEMORY");
+			pushNewState(kStateDeletingMemory);
 		}
 	}
-	if(event->getClassName().compare("ParamEvent") == 0)
+	else if(event->getClassName().compare("ParamEvent") == 0)
 	{
 		ULOGGER_DEBUG("changing parameters");
 		pushNewState(kStateChangingParameters, ((ParamEvent*)event)->getParameters());

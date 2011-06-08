@@ -111,6 +111,8 @@ private:
 	virtual void killCleanup();
 	virtual void startInit();
 	void process();
+	void resetMemory();
+	void deleteMemory();
 	void addSMState(SMState * data); // ownership is transferred
 	SMState * getSMState();
 	void setupLogFiles();
