@@ -165,11 +165,6 @@ void Rtabmap::startInit()
 
 void Rtabmap::pushNewState(State newState, const ParametersMap & parameters)
 {
-	if(this->isIdle())
-	{
-		this->start();
-	}
-
 	ULOGGER_DEBUG("to %d", newState);
 
 	_stateMutex.lock();
@@ -521,14 +516,11 @@ void Rtabmap::deleteMemory()
 
 void Rtabmap::handleEvent(UEvent* event)
 {
-	if(this->isRunning())
+	if(this->isRunning() && event->getClassName().compare("SMStateEvent") == 0)
 	{
-		if(event->getClassName().compare("SMStateEvent") == 0)
-		{
-			SMStateEvent * e = (SMStateEvent*)event;
-			SMState * data = e->getSMStateOwnership();
-			this->addSMState(data);
-		}
+		SMStateEvent * e = (SMStateEvent*)event;
+		SMState * data = e->getSMStateOwnership();
+		this->addSMState(data);
 	}
 	else if(event->getClassName().compare("RtabmapEventCmd") == 0)
 	{
