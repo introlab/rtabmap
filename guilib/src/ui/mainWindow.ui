@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>612</width>
-    <height>632</height>
+    <width>839</width>
+    <height>447</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -265,8 +265,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>612</width>
-     <height>22</height>
+     <width>839</width>
+     <height>23</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -388,13 +388,13 @@
   </widget>
   <widget class="QDockWidget" name="dockWidget_statsV2">
    <property name="floating">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
    <property name="windowTitle">
     <string>Statistics</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>8</number>
+    <number>1</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QVBoxLayout" name="verticalLayout_8">
@@ -619,7 +619,7 @@
   </widget>
   <widget class="QDockWidget" name="dockWidget_likelihood">
    <property name="floating">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
    <property name="windowTitle">
     <string>Likelihood</string>
@@ -647,7 +647,7 @@
     <string>Console</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>1</number>
+    <number>8</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_2">
     <layout class="QVBoxLayout" name="verticalLayout_5">
