@@ -378,7 +378,6 @@ bool DBDriverSqlite3::getAllSignatureIdsQuery(std::set<int> & ids) const
 
 		query << "SELECT id "
 			  << "FROM Signature "
-			  << "WHERE loopClosureId == 0 "
 			  << "ORDER BY id";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
