@@ -20,7 +20,6 @@
 #include "VerifyHypotheses.h"
 #include "rtabmap/core/Parameters.h"
 #include "Signature.h"
-#include "Memory.h"
 #include <cstdlib>
 #include <opencv2/calib3d/calib3d.hpp>
 
@@ -29,139 +28,65 @@
 namespace rtabmap
 {
 
-VerifyHypotheses::VerifyHypotheses(const ParametersMap & parameters) :
-	_status(0)
+HypVerificator::HypVerificator(const ParametersMap & parameters)
 {
 	this->parseParameters(parameters);
 }
 
-void VerifyHypotheses::parseParameters(const ParametersMap & parameters)
+void HypVerificator::parseParameters(const ParametersMap & parameters)
 {
+}
+
+bool HypVerificator::verify(const Signature * ref, const Signature * hyp)
+{
+	UDEBUG("");
+	return ref && hyp && !ref->isBadSignature() && !hyp->isBadSignature();
 }
 
 
 
 /////////////////////////
-// VerifyHypothesesSimple
+// HypVerificatorSim
 /////////////////////////
-VerifyHypothesesSimple::VerifyHypothesesSimple(const ParametersMap & parameters) :
-	VerifyHypotheses(parameters)
+HypVerificatorSim::HypVerificatorSim(const ParametersMap & parameters) :
+	HypVerificator(parameters),
+	_similarity(Parameters::defaultVhSimilarity())
 {
 	this->parseParameters(parameters);
 }
 
-VerifyHypothesesSimple::~VerifyHypothesesSimple()
+HypVerificatorSim::~HypVerificatorSim()
 {
 }
 
-void VerifyHypothesesSimple::parseParameters(const ParametersMap & parameters)
-{
-	VerifyHypotheses::parseParameters(parameters);
-}
-
-int VerifyHypothesesSimple::verifyHypotheses(const std::list<int> & hypotheses, const Memory * mem)
-{
-	int hypothesis = 0;
-
-	if(!hypotheses.empty())
-	{
-		for(std::list<int>::const_iterator i = hypotheses.begin(); i!=hypotheses.end(); ++i)
-		{
-			if(*i > 0)
-			{
-				hypothesis = *i;
-				break;
-			}
-		}
-	}
-
-	return hypothesis;
-}
-
-
-/////////////////////////
-// VerifyHypothesesSignSeq
-/////////////////////////
-/*VerifyHypothesesSignSeq::VerifyHypothesesSignSeq(const ParametersMap & parameters) :
-	VerifyHypotheses(parameters),
-	_seqLength(Parameters::defaultVhEpSeqLength())
-{
-	this->parseParameters(parameters);
-}
-
-VerifyHypothesesSignSeq::~VerifyHypothesesSignSeq() {
-
-}
-
-void VerifyHypothesesSignSeq::parseParameters(const ParametersMap & parameters)
+void HypVerificatorSim::parseParameters(const ParametersMap & parameters)
 {
 	ParametersMap::const_iterator iter;
-	if((iter=parameters.find(Parameters::kVhEpSeqLength())) != parameters.end())
+	if((iter=parameters.find(Parameters::kVhSimilarity())) != parameters.end())
 	{
-		_seqLength = atoi((*iter).second.c_str());
+		_similarity = std::atof((*iter).second.c_str());
 	}
-	VerifyHypotheses::parseParameters(parameters);
+
+	HypVerificator::parseParameters(parameters);
 }
 
-int VerifyHypothesesSignSeq::verifyHypotheses(const std::list<int> & hypotheses, const Memory * mem)
+bool HypVerificatorSim::verify(const Signature * ref, const Signature * hyp)
 {
-	int hypothesis = 0;
-	std::map<int, int> hypothesesToKeep;
-
-	// update hypotheses
-	std::map<int, int>::iterator tmp;
-	for(std::list<int>::const_iterator j=hypotheses.begin(); j!=hypotheses.end(); ++j)
+	UDEBUG("");
+	if(ref && hyp)
 	{
-		// Add it like a new hypothesis
-		hypothesesToKeep.insert(std::pair<int, int>(*j, 1)); // NOTE : It will be deleted if an updated hypothesis gives the same id.
-
-		// If we have already this hypothesis, just keep it
-		tmp = _hypotheses.find(*j);
-		if(tmp != _hypotheses.end())
-		{
-			hypothesesToKeep.insert(std::pair<int, int>((*tmp).first, (*tmp).second));
-		}
-
-		// Forward hypothesis
-		tmp = _hypotheses.find(*j-1);
-		if(tmp != _hypotheses.end())
-		{
-			hypothesesToKeep.insert(std::pair<int, int>(*j, (*tmp).second+1));
-		}
-
-		// Backward hypothesis
-		tmp = _hypotheses.find(*j+1);
-		if(tmp != _hypotheses.end())
-		{
-			hypothesesToKeep.insert(std::pair<int, int>(*j, (*tmp).second-1));
-		}
+		return ref->compareTo(hyp) >= _similarity;
 	}
 
-	_hypotheses = hypothesesToKeep;
-
-	// if an hypothesis has at least 3 references, return the id
-	if(_hypotheses.size()>0)
-	{
-		for(std::map<int, int>::iterator i=_hypotheses.begin(); i!=_hypotheses.end(); ++i)
-		{
-			if((*i).second > _seqLength)
-			{
-				hypothesis = (*i).first;
-				break; // return the first
-			}
-		}
-	}
-
-	return hypothesis;
-}*/
-
+	return false;
+}
 
 
 /////////////////////////
-// VerifyHypothesesEpipolarGeo
+// HypVerificatorEpipolarGeo
 /////////////////////////
-VerifyHypothesesEpipolarGeo::VerifyHypothesesEpipolarGeo(const ParametersMap & parameters) :
-	VerifyHypotheses(parameters),
+HypVerificatorEpipolarGeo::HypVerificatorEpipolarGeo(const ParametersMap & parameters) :
+	HypVerificator(parameters),
 	_matchCountMinAccepted(Parameters::defaultVhEpMatchCountMin()),
 	_ransacParam1(Parameters::defaultVhEpRansacParam1()),
 	_ransacParam2(Parameters::defaultVhEpRansacParam2())
@@ -169,11 +94,11 @@ VerifyHypothesesEpipolarGeo::VerifyHypothesesEpipolarGeo(const ParametersMap & p
 	this->parseParameters(parameters);
 }
 
-VerifyHypothesesEpipolarGeo::~VerifyHypothesesEpipolarGeo() {
+HypVerificatorEpipolarGeo::~HypVerificatorEpipolarGeo() {
 
 }
 
-void VerifyHypothesesEpipolarGeo::parseParameters(const ParametersMap & parameters)
+void HypVerificatorEpipolarGeo::parseParameters(const ParametersMap & parameters)
 {
 	ParametersMap::const_iterator iter;
 	if((iter=parameters.find(Parameters::kVhEpMatchCountMin())) != parameters.end())
@@ -188,66 +113,26 @@ void VerifyHypothesesEpipolarGeo::parseParameters(const ParametersMap & paramete
 	{
 		_ransacParam2 = std::atof((*iter).second.c_str());
 	}
-	VerifyHypotheses::parseParameters(parameters);
+	HypVerificator::parseParameters(parameters);
 }
 
-void VerifyHypothesesEpipolarGeo::setStatus(int status)
+bool HypVerificatorEpipolarGeo::verify(const Signature * ref, const Signature * hyp)
 {
-	// Only set if the status was not set before. This will keep the
-	// first error (when comparing with many signatures)
-	if(status == UNDEFINED || this->getStatus() == UNDEFINED || status == ACCEPTED)
+	UDEBUG("");
+	const KeypointSignature * ssRef = dynamic_cast<const KeypointSignature *>(ref);
+	const KeypointSignature * ssHyp = dynamic_cast<const KeypointSignature *>(hyp);
+	if(ssRef && ssHyp)
 	{
-		VerifyHypotheses::setStatus(status);
+		return doEpipolarGeometry(ssHyp, ssRef);
 	}
+
+	return false;
 }
 
-int VerifyHypothesesEpipolarGeo::verifyHypotheses(const std::list<int> & hypotheses, const Memory * mem)
-{
-	ULOGGER_DEBUG("");
-	int hypothesis = 0;
-	this->setStatus(UNDEFINED);
-
-	if(mem && !hypotheses.empty())
-	{
-		const KeypointSignature * ssRef = dynamic_cast<const KeypointSignature *>(mem->getLastSignature());
-		if(ssRef)
-		{
-			unsigned int i=0;
-			for(std::list<int>::const_iterator iter = hypotheses.begin(); iter!=hypotheses.end(); ++iter)
-			{
-				if(*iter > 0)
-				{
-					const KeypointSignature * ssHyp = dynamic_cast<const KeypointSignature *>(mem->getSignature(*iter));
-					if(ssHyp)
-					{
-						if(doEpipolarGeometry(ssHyp, ssRef))
-						{
-							hypothesis = *iter;
-							break;
-						}
-					}
-				}
-				++i;
-			}
-		}
-	}
-	else if(!mem)
-	{
-		this->setStatus(this->MEMORY_IS_NULL);
-	}
-	else if(hypotheses.empty())
-	{
-		this->setStatus(this->NO_HYPOTHESIS);
-	}
-
-	return hypothesis;
-}
-
-bool VerifyHypothesesEpipolarGeo::doEpipolarGeometry(const KeypointSignature * ssA, const KeypointSignature * ssB)
+bool HypVerificatorEpipolarGeo::doEpipolarGeometry(const KeypointSignature * ssA, const KeypointSignature * ssB)
 {
 	if(ssA == 0 || ssB == 0)
 	{
-		this->setStatus(this->NULL_MATCHING_SURF_SIGNATURES);
 		return false;
 	}
 	ULOGGER_DEBUG("id(%d,%d)", ssA->id(), ssB->id());
@@ -280,7 +165,6 @@ bool VerifyHypothesesEpipolarGeo::doEpipolarGeometry(const KeypointSignature * s
 			float(pairs.size()) / float(similarities));
 	if(pairsCount < _matchCountMinAccepted)
 	{
-		this->setStatus(this->NOT_ENOUGH_MATCHING_PAIRS);
 		return false;
 	}
 
@@ -452,17 +336,14 @@ bool VerifyHypothesesEpipolarGeo::doEpipolarGeometry(const KeypointSignature * s
 
 		if(goodCount < _matchCountMinAccepted)
 		{
-			this->setStatus(this->EPIPOLAR_CONSTRAINT_FAILED);
 			ULOGGER_DEBUG("Epipolar constraint failed A : not enough inliers (%d), min is %d", goodCount, _matchCountMinAccepted);
 			return false;
 		}
 		else
 		{
-			this->setStatus(this->ACCEPTED);
 			return true;
 		}
 	}
-	this->setStatus(this->FUNDAMENTAL_MATRIX_NOT_FOUND);
 	return false;
 }
 
@@ -470,7 +351,7 @@ bool VerifyHypothesesEpipolarGeo::doEpipolarGeometry(const KeypointSignature * s
  * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (2,2) (4,4) (6a,6a) (6b,6b)]
  * realPairsCount = 5
  */
-int VerifyHypothesesEpipolarGeo::findPairsDirect(const std::multimap<int, cv::KeyPoint> & wordsA,
+int HypVerificatorEpipolarGeo::findPairsDirect(const std::multimap<int, cv::KeyPoint> & wordsA,
 		const std::multimap<int, cv::KeyPoint> & wordsB,
 		std::list<std::pair<cv::KeyPoint, cv::KeyPoint> > & pairs,
 		std::list<int> & pairsId)
@@ -500,7 +381,7 @@ int VerifyHypothesesEpipolarGeo::findPairsDirect(const std::multimap<int, cv::Ke
  * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(2,2) (4,4)]
  * realPairsCount = 5
  */
-int VerifyHypothesesEpipolarGeo::findPairsOne(const std::multimap<int, cv::KeyPoint> & wordsA,
+int HypVerificatorEpipolarGeo::findPairsOne(const std::multimap<int, cv::KeyPoint> & wordsA,
 		const std::multimap<int, cv::KeyPoint> & wordsB,
 		std::list<std::pair<cv::KeyPoint, cv::KeyPoint> > & pairs,
 		std::list<int> & pairsId)
@@ -531,7 +412,7 @@ int VerifyHypothesesEpipolarGeo::findPairsOne(const std::multimap<int, cv::KeyPo
  * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (1,1b) (2,2) (4,4) (6a,6a) (6a,6b) (6b,6a) (6b,6b)]
  * realPairsCount = 5
  */
-int VerifyHypothesesEpipolarGeo::findPairsAll(const std::multimap<int, cv::KeyPoint> & wordsA,
+int HypVerificatorEpipolarGeo::findPairsAll(const std::multimap<int, cv::KeyPoint> & wordsA,
 		const std::multimap<int, cv::KeyPoint> & wordsB,
 		std::list<std::pair<cv::KeyPoint, cv::KeyPoint> > & pairs,
 		std::list<int> & pairsId)
@@ -565,7 +446,7 @@ int VerifyHypothesesEpipolarGeo::findPairsAll(const std::multimap<int, cv::KeyPo
  * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [1 2 4 6]
  * return 4
  */
-std::list<int> VerifyHypothesesEpipolarGeo::findSameIds(const std::multimap<int, cv::KeyPoint> & wordsA,
+std::list<int> HypVerificatorEpipolarGeo::findSameIds(const std::multimap<int, cv::KeyPoint> & wordsA,
 		const std::multimap<int, cv::KeyPoint> & wordsB)
 {
 	std::list<int> sameIds;
@@ -580,7 +461,7 @@ std::list<int> VerifyHypothesesEpipolarGeo::findSameIds(const std::multimap<int,
 	return sameIds;
 }
 
-int VerifyHypothesesEpipolarGeo::getTotalSimilarities(const std::multimap<int, cv::KeyPoint> & wordsA, const std::multimap<int, cv::KeyPoint> & wordsB)
+int HypVerificatorEpipolarGeo::getTotalSimilarities(const std::multimap<int, cv::KeyPoint> & wordsA, const std::multimap<int, cv::KeyPoint> & wordsB)
 {
 	const std::list<int> & ids = uUniqueKeys(wordsA);
 	int total = 0;

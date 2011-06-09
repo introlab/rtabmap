@@ -49,6 +49,8 @@ int main(int argc, char* argv[])
 	/* Start thread's task */
 	mainWindow->showNormal();
 
+	rtabmap->start();
+
 	// Now wait for application to finish
 	app->connect( app, SIGNAL( lastWindowClosed() ),
 				app, SLOT( quit() ) );

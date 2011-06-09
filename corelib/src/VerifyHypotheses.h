@@ -32,85 +32,51 @@
 namespace rtabmap
 {
 
-class Memory;
+class Signature;
 
-class RTABMAP_EXP VerifyHypotheses
+// return always true, i.e, there is no verification
+class RTABMAP_EXP HypVerificator
 {
 public:
-	virtual ~VerifyHypotheses() {}
-	virtual int verifyHypotheses(const std::list<int> & hypotheses, const Memory * mem) = 0;
+	HypVerificator(const ParametersMap & parameters = ParametersMap());
+	virtual ~HypVerificator() {}
+	virtual bool verify(const Signature * ref, const Signature * hyp);
 
-	int getStatus() {return _status;}
-	virtual void parseParameters(const ParametersMap & parameters);
-
-protected:
-	VerifyHypotheses(const ParametersMap & parameters = ParametersMap());
-	virtual void setStatus(int status) {_status = status;}
-
-private:
-	int _status;
-};
-
-
-/////////////////////////
-// VerifyHypothesesSimple
-/////////////////////////
-class VerifyHypothesesSimple : public VerifyHypotheses {
-public:
-	VerifyHypothesesSimple(const ParametersMap & parameters = ParametersMap());
-	virtual ~VerifyHypothesesSimple();
-	virtual int verifyHypotheses(const std::list<int> & hypotheses, const Memory * mem);
 	virtual void parseParameters(const ParametersMap & parameters);
 };
 
 
 /////////////////////////
-// VerifyHypothesesSignSeq
+// HypVerificatorSim
 /////////////////////////
-/*class VerifyHypothesesSignSeq : public VerifyHypotheses {
+class HypVerificatorSim : public HypVerificator {
 public:
-	VerifyHypothesesSignSeq(const ParametersMap & parameters = ParametersMap());
-	virtual ~VerifyHypothesesSignSeq();
-	virtual int verifyHypotheses(const std::list<int> & hypotheses, const Memory * mem);
+	HypVerificatorSim(const ParametersMap & parameters = ParametersMap());
+	virtual ~HypVerificatorSim();
+	virtual bool verify(const Signature * ref, const Signature * hyp);
 	virtual void parseParameters(const ParametersMap & parameters);
 
 private:
-	std::map<int, int> _hypotheses;
-	int _seqLength;
-
-};*/
-
+	float _similarity;
+};
 
 
 /////////////////////////
-// VerifyHypothesesEpipolarGeo
+// HypVerificatorEpipolarGeo
 /////////////////////////
 class KeypointSignature;
 
-class RTABMAP_EXP VerifyHypothesesEpipolarGeo : public VerifyHypotheses
+class RTABMAP_EXP HypVerificatorEpipolarGeo : public HypVerificator
 {
-public:
-	enum STATUS
-	{
-		UNDEFINED,
-		ACCEPTED,
-		NO_HYPOTHESIS,
-		MEMORY_IS_NULL,
-		NOT_ENOUGH_MATCHING_PAIRS,
-		EPIPOLAR_CONSTRAINT_FAILED,
-		NULL_MATCHING_SURF_SIGNATURES,
-		FUNDAMENTAL_MATRIX_NOT_FOUND
-	};
-
 public:
 	static int findPairsOne(const std::multimap<int, cv::KeyPoint> & wordsA, const std::multimap<int, cv::KeyPoint> & wordsB, std::list<std::pair<cv::KeyPoint, cv::KeyPoint> > & pairs, std::list<int> & pairsId);
 	static int findPairsDirect(const std::multimap<int, cv::KeyPoint> & wordsA, const std::multimap<int, cv::KeyPoint> & wordsB, std::list<std::pair<cv::KeyPoint, cv::KeyPoint> > & pairs, std::list<int> & pairsId);
 	static int findPairsAll(const std::multimap<int, cv::KeyPoint> & wordsA, const std::multimap<int, cv::KeyPoint> & wordsB, std::list<std::pair<cv::KeyPoint, cv::KeyPoint> > & pairs, std::list<int> & pairsId);
 	static std::list<int> findSameIds(const std::multimap<int, cv::KeyPoint> & wordsA, const std::multimap<int, cv::KeyPoint> & wordsB);
 public:
-	VerifyHypothesesEpipolarGeo(const ParametersMap & parameters = ParametersMap());
-	virtual ~VerifyHypothesesEpipolarGeo();
-	virtual int verifyHypotheses(const std::list<int> & hypotheses, const Memory * mem);
+	HypVerificatorEpipolarGeo(const ParametersMap & parameters = ParametersMap());
+	virtual ~HypVerificatorEpipolarGeo();
+	virtual bool verify(const Signature * ref, const Signature * hyp);
 	virtual void parseParameters(const ParametersMap & parameters);
 
 	int getTotalSimilarities(const std::multimap<int, cv::KeyPoint> & wordsA, const std::multimap<int, cv::KeyPoint> & wordsB);
@@ -122,9 +88,6 @@ public:
 	void setMatchCountMinAccepted(int matchCountMinAccepted) {_matchCountMinAccepted = matchCountMinAccepted;}
 	void setRansacParam1(double ransacParam1) {_ransacParam1 = ransacParam1;}
 	void setRansacParam2(double ransacParam2) {_ransacParam2 = ransacParam2;}
-
-protected:
-	virtual void setStatus(int status);
 
 private:
 	bool doEpipolarGeometry(const KeypointSignature * ssA, const KeypointSignature * ssB);

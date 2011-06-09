@@ -121,7 +121,7 @@ typedef std::pair<const std::string, std::string> ParametersPair;
 class RTABMAP_EXP Parameters
 {
 	// Rtabmap parameters
-	RTABMAP_PARAM(Rtabmap, VhStrategy, 	        int, 0);	   // Simple 0, Epipolar 1
+	RTABMAP_PARAM(Rtabmap, VhStrategy, 	        int, 0);	   // None 0, Similarity 1, Epipolar 2
 	RTABMAP_PARAM(Rtabmap, PublishStats, 	     bool, true); // Publishing statistics
 	RTABMAP_PARAM(Rtabmap, ReactivationThr,     float, 0.0); // Reactivation threshold
 	RTABMAP_PARAM(Rtabmap, TimeThr, 		     float, 0.7); // Maximum time allowed for the detector (s) (0 means infinity)
@@ -197,6 +197,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM_STR(Bayes, PredictionLC, "0.1 0.24 0.18 0.1 0.04 0.01"); // Prediction of loop closures (Gaussian-like, must be pair size) - Format: {VirtualPlaceProb, LoopClosureProb, BackwardNeighborLvl1, ForwardNeighborLvl1, BackwardNeighborLvl2, ForwardNeighborLvl2, ...}
 
 	// Verify hypotheses
+	RTABMAP_PARAM(Vh,   Similarity,    float, 0.5); // Minimum similarity to accept an hypothesis
 	RTABMAP_PARAM(VhEp, MatchCountMin, int, 8);     // Minimum of matching visual words pairs to accept the loop hypothesis
 	RTABMAP_PARAM(VhEp, RansacParam1,  float, 3.0);  // Fundamental matrix (see cvFindFundamentalMat()): Max distance (in pixels) from the epipolar line for a point to be inlier
 	RTABMAP_PARAM(VhEp, RansacParam2,  float, 0.99); // Fundamental matrix (see cvFindFundamentalMat()): Performance of the RANSAC

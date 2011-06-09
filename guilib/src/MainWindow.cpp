@@ -303,9 +303,9 @@ void MainWindow::handleEvent(UEvent* anEvent)
 		RtabmapEvent * rtabmapEvent = (RtabmapEvent*)anEvent;
 		const Statistics & stats = rtabmapEvent->getStats();
 		int highestHypothesisId = int(uValue(stats.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
-		int rejectLoopReason = int(uValue(stats.data(), Statistics::kLoopRejected_reason(), 0.0f));
+		bool rejectedHyp = bool(uValue(stats.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
 		if((stats.loopClosureId() > 0 && _ui->actionPause_on_match->isChecked()) ||
-		   (stats.loopClosureId() == 0 && highestHypothesisId > 0 && _ui->actionPause_when_a_loop_hypothesis_is_rejected->isChecked() && (rejectLoopReason >= 12 || (rejectLoopReason == 3 && uValue(stats.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f)>=_preferencesDialog->getLoopThr()))))
+		   (stats.loopClosureId() == 0 && highestHypothesisId > 0 && _ui->actionPause_when_a_loop_hypothesis_is_rejected->isChecked() && rejectedHyp))
 		{
 			if(_state != kPaused)
 			{
@@ -423,7 +423,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			}
 			ULOGGER_DEBUG("");
 			_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
-			int rejectLoopReason = int(uValue(stat.data(), Statistics::kLoopRejected_reason(), 0.0f));
+			int rejectedHyp = bool(uValue(stat.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
 			if(stat.loopClosureId()>0)
 			{
 				_ui->label_stats_loopClosuresDetected->setText(QString::number(_ui->label_stats_loopClosuresDetected->text().toInt() + 1));
@@ -453,8 +453,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					_ui->imageView_loopClosure->scene()->addPixmap(QPixmap::fromImage(img))->setVisible(this->_ui->checkBox_showImageLoop->isChecked());
 				}
 			}
-			else if(rejectLoopReason>=12 ||
-					(rejectLoopReason == 3 && uValue(stat.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f)>=_preferencesDialog->getLoopThr()))
+			else if(rejectedHyp)
 			{
 				ULOGGER_DEBUG("");
 				_ui->label_stats_loopClosuresRejected->setText(QString::number(_ui->label_stats_loopClosuresRejected->text().toInt() + 1));
@@ -462,87 +461,37 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 				if(_preferencesDialog->imageRejectedShown())
 				{
-					// rejectLoopReason,
-					// 1 is for not enough hypotheses, [not supposed to occur if highestHypothesisId is set]
-					// 10 to ... means rejecting reasons from the hypotheses verification step.
-					// UNDEFINED, 10
-					// ACCEPTED, 11
-					// NO_HYPOTHESIS, 12
-					// MEMORY_IS_NULL, 13
-					// NOT_ENOUGH_MATCHING_PAIRS, 14
-					// EPIPOLAR_CONSTRAINT_FAILED, 15
-					// NULL_MATCHING_SURF_SIGNATURES 16
-					// FUNDAMENTAL_MATRIX_NOT_FOUND 17
-					if(rejectLoopReason == 3 ||
-					   ((rejectLoopReason-10)>=0 && (rejectLoopReason-10) < 12))
+					QColor color = Qt::yellow;
+					QGraphicsTextItem * textItem = _ui->imageView_loopClosure->scene()->addText(tr("Rejected hypothesis"));
+
+					textItem->setDefaultTextColor(QColor(255-color.red(), 255-color.green(), 255-color.blue())); // color inverted
+					textItem->setZValue(2);
+
+					_ui->imageView_loopClosure->setBackgroundBrush(QBrush(color));
+					QImage img;
+					QMap<int, QByteArray>::iterator iter = _imagesMap.find(highestHypothesisId);
+					if(iter != _imagesMap.end())
 					{
-						QColor color;
-						QGraphicsTextItem * textItem = 0;
-						switch(rejectLoopReason)
+						if(!img.loadFromData(iter.value(), "JPEG"))
 						{
-						case 3:
-							textItem = _ui->imageView_loopClosure->scene()->addText(tr("Rejected by hypothesis ratio"));
-							color = Qt::yellow;
-							break;
-						case 13:
-							textItem = _ui->imageView_loopClosure->scene()->addText(tr("Memory is null (Intern error)"));
-							color = Qt::blue;
-							break;
-						case 14:
-							textItem = _ui->imageView_loopClosure->scene()->addText(tr("Not enough matching pairs"));
-							color = Qt::red;
-							break;
-						case 15:
-							textItem = _ui->imageView_loopClosure->scene()->addText(tr("Epipolar geometry verification failed"));
-							color = Qt::cyan;
-							break;
-						case 16:
-							textItem = _ui->imageView_loopClosure->scene()->addText(tr("Signatures are not the same type"));
-							color = Qt::magenta;
-							break;
-						case 17:
-							textItem = _ui->imageView_loopClosure->scene()->addText(tr("Fundamental matrix not found"));
-							color = Qt::yellow;
-							break;
-						default:
-							textItem = _ui->imageView_loopClosure->scene()->addText(tr("Undefined rejecting reason!?"));
-							color = Qt::blue;
-							break;
-						}
-						textItem->setDefaultTextColor(QColor(255-color.red(), 255-color.green(), 255-color.blue())); // color inverted
-						textItem->setZValue(2);
-
-						_ui->imageView_loopClosure->setBackgroundBrush(QBrush(color));
-						QImage img;
-						QMap<int, QByteArray>::iterator iter = _imagesMap.find(highestHypothesisId);
-						if(iter != _imagesMap.end())
-						{
-							if(!img.loadFromData(iter.value(), "JPEG"))
-							{
-								ULOGGER_ERROR("conversion from QByteArray to QImage failed");
-								img = QImage();
-							}
-						}
-						else if(stat.loopClosureImage())
-						{
-							img = Ipl2QImage(stat.loopClosureImage());
-						}
-
-						if(!img.isNull())
-						{
-							_ui->imageView_loopClosure->scene()->addPixmap(QPixmap::fromImage(img));
+							ULOGGER_ERROR("conversion from QByteArray to QImage failed");
+							img = QImage();
 						}
 					}
-					else
+					else if(stat.loopClosureImage())
 					{
-						ULOGGER_ERROR("rejectLoopReason=%d-10 is outside of the range of Qt::GlobalColor", rejectLoopReason);
+						img = Ipl2QImage(stat.loopClosureImage());
+					}
+
+					if(!img.isNull())
+					{
+						_ui->imageView_loopClosure->scene()->addPixmap(QPixmap::fromImage(img));
 					}
 				}
-			}
-			ULOGGER_DEBUG("");
-			if((stat.loopClosureId()>0 || rejectLoopReason>=12) && highestHypothesisIsSaved)
-			{
-				_ui->label_matchId->setText(QString("[Retrieved!] ").append(_ui->label_matchId->text()));
+				if(highestHypothesisIsSaved)
+				{
+					_ui->label_matchId->setText(QString("[Retrieved!] ").append(_ui->label_matchId->text()));
+				}
 			}
 
 			ULOGGER_DEBUG("");

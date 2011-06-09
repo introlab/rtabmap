@@ -419,7 +419,7 @@ void KeypointMemory::merge(const Signature * from, Signature * to, MergingStrate
 				std::list<std::pair<cv::KeyPoint, cv::KeyPoint> > pairs;
 				std::list<int> pairsId;
 				std::set<int> pairsIdSet;
-				VerifyHypothesesEpipolarGeo::findPairsDirect(wordsA, wordsB, pairs, pairsId);
+				HypVerificatorEpipolarGeo::findPairsDirect(wordsA, wordsB, pairs, pairsId);
 				std::list<std::pair<cv::KeyPoint, cv::KeyPoint> >::iterator kpIt = pairs.begin();
 				std::list<int>::iterator idIt = pairsId.begin();
 				for(; kpIt != pairs.end() && idIt != pairsId.end(); ++kpIt, ++idIt)
@@ -570,7 +570,7 @@ void KeypointMemory::merge(const Signature * from, Signature * to, MergingStrate
 				{
 					std::list<std::pair<cv::KeyPoint, cv::KeyPoint> > pairs;
 					std::list<int> pairsId;
-					VerifyHypothesesEpipolarGeo::findPairsDirect(wordsA, wordsB, pairs, pairsId);
+					HypVerificatorEpipolarGeo::findPairsDirect(wordsA, wordsB, pairs, pairsId);
 					std::set<int> ignoredIds(pairsId.begin(), pairsId.end());
 					int dif = maxWords - (int)wordsA.size();
 					newWords = getMostDescriptiveWords(wordsB, dif, ignoredIds);
@@ -598,7 +598,7 @@ void KeypointMemory::merge(const Signature * from, Signature * to, MergingStrate
 			    	}
 			    	std::list<std::pair<cv::KeyPoint, cv::KeyPoint> > pairs;
 					std::list<int> pairsId;
-					VerifyHypothesesEpipolarGeo::findPairsDirect(wordsA, wordsB, pairs, pairsId);
+					HypVerificatorEpipolarGeo::findPairsDirect(wordsA, wordsB, pairs, pairsId);
 					std::set<int> ignoredIds(pairsId.begin(), pairsId.end());
 					int dif = maxWords - (int)wordsB.size();
 					newWords = getMostDescriptiveWords(wordsA, dif, ignoredIds);

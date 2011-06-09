@@ -46,7 +46,7 @@ namespace rtabmap
 class RTABMAP_EXP Statistics
 {
 	RTABMAP_STATS(Loop, Closure_id,);
-	RTABMAP_STATS(Loop, Rejected_reason,);
+	RTABMAP_STATS(Loop, RejectedHypothesis,);
 	RTABMAP_STATS(Loop, Highest_hypothesis_id,);
 	RTABMAP_STATS(Loop, Highest_hypothesis_value,);
 	RTABMAP_STATS(Loop, Vp_likelihood,);

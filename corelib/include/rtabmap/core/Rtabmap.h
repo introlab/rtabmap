@@ -39,7 +39,7 @@ namespace rtabmap
 
 class Signature;
 
-class VerifyHypotheses;
+class HypVerificator;
 class Memory;
 class BayesFilter;
 class SMState;
@@ -60,7 +60,7 @@ public:
 		kStateDeletingMemory
 	};
 
-	enum VhStrategy {kVhSimple, kVhEpipolar, kVhUndef};
+	enum VhStrategy {kVhNone, kVhSim, kVhEpipolar, kVhUndef};
 
 	static const char * kDefaultIniFileName;
 	static const char * kDefaultIniFilePath;
@@ -153,7 +153,7 @@ private:
 
 	// Abstract classes containing all loop closure
 	// strategies for a type of signature or configuration.
-	VerifyHypotheses * _vhStrategy;
+	HypVerificator * _vhStrategy;
 	BayesFilter * _bayesFilter;
 
 	Memory * _memory;

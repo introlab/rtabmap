@@ -188,7 +188,7 @@ float KeypointSignature::compareTo(const Signature * s) const
 			std::list<std::pair<cv::KeyPoint, cv::KeyPoint> > pairs;
 			std::list<int> pairsId;
 			int totalWords = _words.size()>words.size()?_words.size():words.size();
-			VerifyHypothesesEpipolarGeo::findPairsDirect(words, _words, pairs, pairsId);
+			HypVerificatorEpipolarGeo::findPairsDirect(words, _words, pairs, pairsId);
 
 			similarity = float(pairs.size()) / float(totalWords);
 

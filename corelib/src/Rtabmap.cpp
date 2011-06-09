@@ -299,8 +299,8 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 		vhStrategy = (VhStrategy)std::atoi((*iter).second.c_str());
 	}
 	if(!_vhStrategy ||
-	   (vhStrategy!=kVhUndef && ( (vhStrategy == kVhSimple && !dynamic_cast<VerifyHypothesesSimple*>(_vhStrategy)) ||
-							      (vhStrategy == kVhEpipolar && !dynamic_cast<VerifyHypothesesEpipolarGeo*>(_vhStrategy)) ) ))
+	   (vhStrategy!=kVhUndef && ( (vhStrategy == kVhSim && !dynamic_cast<HypVerificatorSim*>(_vhStrategy)) ||
+							      (vhStrategy == kVhEpipolar && !dynamic_cast<HypVerificatorEpipolarGeo*>(_vhStrategy)) ) ))
 	{
 		if(_vhStrategy)
 		{
@@ -310,11 +310,13 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 		switch(vhStrategy)
 		{
 		case kVhEpipolar:
-			_vhStrategy = new VerifyHypothesesEpipolarGeo(parameters);
+			_vhStrategy = new HypVerificatorEpipolarGeo(parameters);
 			break;
-		case kVhSimple:
+		case kVhSim:
+			_vhStrategy = new HypVerificatorSim(parameters);
+			break;
 		default:
-			_vhStrategy = new VerifyHypothesesSimple(parameters);
+			_vhStrategy = new HypVerificator(parameters);
 			break;
 		}
 	}
@@ -605,6 +607,7 @@ void Rtabmap::process()
 
 	int refId = Memory::kIdInvalid;
 	float hypothesisRatio = 0.0f; // Only used for statistics
+	bool rejectedHypothesis = false;
 
 	std::map<int, float> likelihood;
 	std::map<int, float> adjustedLikelihood;
@@ -613,7 +616,6 @@ void Rtabmap::process()
 	std::list<std::pair<int, float> > reactivateHypotheses;
 
 	std::map<int, int> childCount;
-	int rejectLoopReason = 0;
 	unsigned int signaturesReactivated = 0;
 
 	const Signature * signature = 0;
@@ -819,71 +821,49 @@ void Rtabmap::process()
 			timeHypothesesCreation = timer.ticks();
 			ULOGGER_INFO("timeHypothesesCreation=%f",timeHypothesesCreation);
 
-			rejectLoopReason = 1; //Default: NOT_ENOUGH_HYPOTHESES
 			if(hypotheses.size())
 			{
 				// Loop closure Threshold
-				if(!signature->isBadSignature() &&
-				   likelihood.at(hypotheses.front().first) > 0.0f &&
-				   hypotheses.front().second >= _loopThr &&
-				   hypotheses.front().second >= _loopRatio*_highestHypothesisValue &&
-				   _highestHypothesisValue)
+				if(likelihood.at(hypotheses.front().first) > 0.0f &&
+				   hypotheses.front().second >= _loopThr)
 				{
 					//============================================================
 					// Hypothesis verification for loop closure with geometric
 					// information (like the epipolar geometry or using the local map
 					// associated with the signature)
 					//============================================================
-					//std::list<int> h;
-					//h.push_back(hypotheses.front().first);
-					_lcHypothesisId = hypotheses.front().first;
-					//_lcHypothesisId = _vhStrategy->verifyHypotheses(h, _memory);
+					if(hypotheses.front().second >= _loopRatio*_highestHypothesisValue &&
+					   _highestHypothesisValue &&
+					   _vhStrategy->verify(signature, _memory->getSignature(hypotheses.front().first)))
+					{
+						_lcHypothesisId = hypotheses.front().first;
+					}
+					else
+					{
+						rejectedHypothesis = true;
+					}
 
 					timeHypothesesValidation = timer.ticks();
 					ULOGGER_INFO("timeHypothesesValidation=%f",timeHypothesesValidation);
 
-					//rejectLoopReason = 10 + _vhStrategy->getStatus();
-
 					// We are tracking the next loop closures,
 					// reset the retrieval margin
 					_spreadMargin = 0;
-
-					rejectLoopReason = 10; //Accepted
-
 				}
 
-				if(hypotheses.front().second < _loopThr)
-				{
-					rejectLoopReason = 2;
-				}
-
+				//============================================================
+				// Retrieval id update
+				//============================================================
 				int lastReactivatedId = _reactivateId;
-				// Recalling Threshold
-				//this->selectHypotheses(posterior, reactivateHypotheses, false);
-				//if(reactivateHypotheses.front().second >= _remThr)
-				//{
-					//Priority to single hypotheses over _remThr
-				//	_reactivateId = reactivateHypotheses.front().first;
-				//}
-				//else
-				//if(_lcHypothesisId)
-				//{
-				//	_reactivateId = _lcHypothesisId;
-				//}
-				//else
-				//{
-					//_reactivateId = hypotheses.front().first;
-					std::list<std::pair<int, float> > hyp;
-					this->selectHypotheses(posterior, hyp, false);
-					if(likelihood.at(hyp.front().first) > _remThr)
-					{
-						_reactivateId = hyp.front().first;
-					}
-				//}
+				std::list<std::pair<int, float> > hyp;
+				this->selectHypotheses(posterior, hyp, false);
+				if(likelihood.at(hyp.front().first) > _remThr)
+				{
+					_reactivateId = hyp.front().first;
+				}
 
 				if(hypotheses.front().second < _loopRatio*_highestHypothesisValue)
 				{
-					rejectLoopReason = 3;
 					if(std::find(reactivatedIds.begin(),reactivatedIds.end(), hypotheses.front().first) != reactivatedIds.end())
 					{
 						// We are loosing the next loop closures (it
@@ -957,7 +937,7 @@ void Rtabmap::process()
 	}
 
 	// only send actions if rejectLoopReason!=3 (decreasing hypotheses)
-	if(sLoop && (_actionsSentRejectHyp || rejectLoopReason != 3))
+	if(sLoop && (_actionsSentRejectHyp || !rejectedHypothesis))
 	{
 		// select the actions of the neighbor with the highest
 		// weight (select the more recent if some have the same weight)
@@ -1115,7 +1095,7 @@ void Rtabmap::process()
 			}
 
 			//Epipolar geometry constraint
-			stat->addStatistic(Statistics::kLoopRejected_reason(), rejectLoopReason);
+			stat->addStatistic(Statistics::kLoopRejectedHypothesis(), rejectedHypothesis?1.0f:0);
 			timeStatsCreation = timer.ticks();
 		}
 		else
@@ -1245,7 +1225,7 @@ void Rtabmap::process()
 				refWordsCount,
 				dictionarySize,
 				int(_memory->getWorkingMemSize()),
-				rejectLoopReason,
+				rejectedHypothesis?1:0,
 				processMemoryUsed,
 				databaseMemoryUsed,
 				signaturesReactivated,

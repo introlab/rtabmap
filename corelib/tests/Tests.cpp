@@ -468,7 +468,7 @@ void Tests::testVerifyHypotheses()
 	wordsB.insert(std::pair<int, cv::KeyPoint>(6, cv::KeyPoint(5, 5, 1)));
 	wordsB.insert(std::pair<int, cv::KeyPoint>(6, cv::KeyPoint(6, 6, 1)));
 
-	int total = VerifyHypothesesEpipolarGeo::findPairsAll(wordsA, wordsB, pairs, pairsId);
+	int total = HypVerificatorEpipolarGeo::findPairsAll(wordsA, wordsB, pairs, pairsId);
 
 	//printf("[%d,%d]\n", total, (int)pairs.size());
 	CPPUNIT_ASSERT(total == 5);

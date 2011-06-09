@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>892</width>
-    <height>792</height>
+    <height>796</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -46,9 +46,6 @@
        <attribute name="headerVisible">
         <bool>false</bool>
        </attribute>
-       <attribute name="headerVisible">
-        <bool>false</bool>
-       </attribute>
       </widget>
      </item>
      <item>
@@ -68,7 +65,7 @@
           <enum>QFrame::Raised</enum>
          </property>
          <property name="currentIndex">
-          <number>2</number>
+          <number>14</number>
          </property>
          <widget class="QWidget" name="page_22">
           <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1093,8 +1090,8 @@ We can edit how will like the prediction used in the Bayes filter when there is 
                     <rect>
                      <x>0</x>
                      <y>0</y>
-                     <width>26</width>
-                     <height>78</height>
+                     <width>98</width>
+                     <height>71</height>
                     </rect>
                    </property>
                    <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -2712,6 +2709,11 @@ Lower the ratio -&gt; higher the precision</string>
                 </item>
                 <item>
                  <property name="text">
+                  <string>Similarity</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
                   <string>Epipolar constraints</string>
                  </property>
                 </item>
@@ -2736,6 +2738,58 @@ Lower the ratio -&gt; higher the precision</string>
               <size>
                <width>20</width>
                <height>40</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="page_15">
+          <layout class="QVBoxLayout" name="verticalLayout_14">
+           <item>
+            <widget class="QGroupBox" name="groupBox_vh_similarity">
+             <property name="title">
+              <string>2Similarity verification</string>
+             </property>
+             <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,10">
+              <item row="0" column="0">
+               <widget class="QDoubleSpinBox" name="vh_doubleSpinBox_similarity">
+                <property name="decimals">
+                 <number>2</number>
+                </property>
+                <property name="maximum">
+                 <double>0.990000000000000</double>
+                </property>
+                <property name="singleStep">
+                 <double>0.010000000000000</double>
+                </property>
+                <property name="value">
+                 <double>0.500000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QLabel" name="label_55">
+                <property name="text">
+                 <string>Minimum similarity to accept an hypothesis</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <spacer name="verticalSpacer_2">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>619</height>
               </size>
              </property>
             </spacer>

@@ -184,6 +184,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	// verifyHypotheses
 	_ui->comboBox_vh_strategy->setObjectName(Parameters::kRtabmapVhStrategy().c_str());
+	_ui->vh_doubleSpinBox_similarity->setObjectName(Parameters::kVhSimilarity().c_str());
 	_ui->surf_spinBox_matchCountMinAccepted->setObjectName(Parameters::kVhEpMatchCountMin().c_str());
 	_ui->surf_doubleSpinBox_ransacParam1->setObjectName(Parameters::kVhEpRansacParam1().c_str());
 	_ui->surf_doubleSpinBox_ransacParam2->setObjectName(Parameters::kVhEpRansacParam2().c_str());
@@ -1047,7 +1048,11 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 				{
 					// No panel related...
 				}
-				else if(value == 1) // 1 epipolar
+				else if(value == 1) // 1 similarity
+				{
+					this->addParameters(_ui->groupBox_vh_similarity);
+				}
+				else if(value == 2) // 2 epipolar
 				{
 					this->addParameters(_ui->groupBox_vh_epipolar);
 				}
