@@ -106,6 +106,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	{
 		_preferencesDialog = new PreferencesDialog(this);
 	}
+	_preferencesDialog->init();
 
 	// Restore window geometry
 	_preferencesDialog->loadMainWindowState(this);

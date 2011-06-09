@@ -203,11 +203,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->treeView, SIGNAL(clicked(QModelIndex)), this, SLOT(clicked(QModelIndex)));
 	_ui->treeView->expandToDepth(1);
 
-	this->readSettings();
-	this->writeSettings();// This will create the ini file if not exist
-
-	this->loadWindowGeometry("PreferencesDialog", this);
-
 	_obsoletePanels = kPanelAll;
 	_initialized = true;
 }
@@ -215,6 +210,17 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 PreferencesDialog::~PreferencesDialog() {
 	this->saveWindowGeometry("PreferencesDialog", this);
 	delete _ui;
+}
+
+void PreferencesDialog::init()
+{
+	this->readSettings();
+	this->writeSettings();// This will create the ini file if not exist
+
+	this->loadWindowGeometry("PreferencesDialog", this);
+
+	_obsoletePanels = kPanelAll;
+	_initialized = true;
 }
 
 void PreferencesDialog::setupTreeView()

@@ -74,6 +74,8 @@ public:
 	PreferencesDialog(QWidget * parent = 0);
 	virtual ~PreferencesDialog();
 
+	void init();
+
 	void saveWindowGeometry(const QString & windowName, const QWidget * window);
 	void loadWindowGeometry(const QString & windowName, QWidget * window);
 	void saveMainWindowState(const QMainWindow * mainWindow);
