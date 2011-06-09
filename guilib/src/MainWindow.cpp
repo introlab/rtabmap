@@ -86,7 +86,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	splash.showMessage(tr("Loading..."));
 	QApplication::processEvents();
 
-	this->setWindowTitle(tr("Constant-Time Appearance-Based Mapping"));
+	this->setWindowTitle(tr("Real-Time Appearance-Based Mapping"));
 	this->setWindowIconText(tr("RTAB-Map"));
 
 	// Create dialogs
