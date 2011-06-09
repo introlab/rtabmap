@@ -205,6 +205,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	_obsoletePanels = kPanelAll;
 	_initialized = true;
+
+	_progressDialog = new QProgressDialog(this);
+	_progressDialog->setWindowTitle(tr("Read parameters..."));
+	_progressDialog->setMaximum(2);
 }
 
 PreferencesDialog::~PreferencesDialog() {
@@ -744,33 +748,7 @@ void PreferencesDialog::writeCoreSettings(const QString & filePath)
 
 bool PreferencesDialog::validateForm()
 {
-	if(	validatePanelGeneral() &&
-		validatePanelFourier() &&
-		validatePanelSurf() )
-	{
-		return true;
-	}
-
-	return false;
-}
-
-bool PreferencesDialog::validatePanelGeneral()
-{
-	/*if(_ui->general_spinBox_hardThr->value() < _ui->general_spinBox_softThr->value())
-	{
-		QMessageBox::warning(this, tr("Settings validator"), tr("The hard threshold must be bigger than the soft threshold."));
-		return false;
-	}*/
-	return true;
-}
-
-bool PreferencesDialog::validatePanelFourier()
-{
-	return true;
-}
-
-bool PreferencesDialog::validatePanelSurf()
-{
+	//TODO...
 	return true;
 }
 
@@ -781,19 +759,31 @@ QString PreferencesDialog::getParamMessage()
 
 void PreferencesDialog::showEvent ( QShowEvent * event )
 {
-	QProgressDialog statusDialog;
-	statusDialog.setWindowTitle(tr("Read parameters..."));
-	statusDialog.setLabelText(this->getParamMessage());
-	statusDialog.setMaximum(2);
-	statusDialog.setWindowModality(Qt::WindowModal);
-	statusDialog.show();
+	this->readSettingsBegin();
+}
+
+void PreferencesDialog::readSettingsBegin()
+{
+	_progressDialog->setLabelText(this->getParamMessage());
+	_progressDialog->show();
+
+	// this will let the MainThread to display the progress dialog before reading the parameters...
+	QTimer::singleShot(10, this, SLOT(readSettingsEnd()));
+}
+
+void PreferencesDialog::readSettingsEnd()
+{
+	QApplication::processEvents();
 
 	this->readSettings();
-	statusDialog.setValue(1);
-	statusDialog.setLabelText(tr("Reading GUI settings..."));
+
+	_progressDialog->setValue(1);
+	_progressDialog->setLabelText(tr("Reading GUI settings..."));
+
 	this->setupPredictionPanel();
 	this->setupKpRoiPanel();
-	statusDialog.setValue(2);
+
+	_progressDialog->setValue(2); // this will make closing...
 }
 
 void PreferencesDialog::saveWindowGeometry(const QString & windowName, const QWidget * window)
@@ -1587,7 +1577,7 @@ void PreferencesDialog::setHardThr(int value)
 		}
 		else
 		{
-			this->readSettings();
+			this->readSettingsBegin();
 		}
 	}
 }
@@ -1605,7 +1595,7 @@ void PreferencesDialog::setReactivationThr(int value)
 		}
 		else
 		{
-			this->readSettings();
+			this->readSettingsBegin();
 		}
 	}
 }
@@ -1622,7 +1612,7 @@ void PreferencesDialog::setImgRate(double value)
 		}
 		else
 		{
-			this->readSettings();
+			this->readSettingsBegin();
 		}
 	}
 }
@@ -1639,7 +1629,7 @@ void PreferencesDialog::setAutoRestart(bool value)
 		}
 		else
 		{
-			this->readSettings();
+			this->readSettingsBegin();
 		}
 	}
 }
@@ -1656,7 +1646,7 @@ void PreferencesDialog::setTimeLimit(double value)
 		}
 		else
 		{
-			this->readSettings();
+			this->readSettingsBegin();
 		}
 	}
 }

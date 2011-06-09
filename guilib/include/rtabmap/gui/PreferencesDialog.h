@@ -37,6 +37,7 @@ class QGroupBox;
 class QMainWindow;
 class QLineEdit;
 class QSlider;
+class QProgressDialog;
 
 namespace rtabmap {
 
@@ -155,6 +156,7 @@ private slots:
 	void updateKpROI();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
+	void readSettingsEnd();
 
 protected:
 	virtual void showEvent ( QShowEvent * event );
@@ -175,9 +177,6 @@ protected:
 
 private:
 	bool validateForm();
-	bool validatePanelGeneral();
-	bool validatePanelFourier();
-	bool validatePanelSurf();
 	void setupTreeView();
 	void setupSignals();
 	void setupPredictionPanel();
@@ -188,6 +187,7 @@ private:
 	void addParameter(const QObject * object, const QString & value);
 	void addParameters(const QGroupBox * box);
 	QList<QGroupBox*> getGroupBoxes();
+	void readSettingsBegin();
 
 protected:
 	rtabmap::ParametersMap _parameters;
@@ -201,6 +201,8 @@ private:
 	//For Bayes filter prediction parameters
 	QList<QSlider*> _predictionLCSliders; // Sliders used to setup the prediction
 	bool _predictionPanelInitialized;
+
+	QProgressDialog * _progressDialog;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(PreferencesDialog::PANEL_FLAGS)

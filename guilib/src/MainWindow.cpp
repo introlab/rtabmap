@@ -49,6 +49,7 @@
 #include <QtGui/QDesktopServices>
 #include <QtCore/QStringList>
 #include <QtCore/QProcess>
+#include <QtGui/QSplashScreen>
 
 #define LOG_FILE_NAME "LogRtabmap.txt"
 #define SHARE_SHOW_LOG_FILE "share/rtabmap/ShowLogs.m"
@@ -78,6 +79,12 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	ULOGGER_DEBUG("");
 
 	initGuiResource();
+
+	QPixmap pixmap(":images/RTAB-Map.png");
+	QSplashScreen splash(pixmap);
+	splash.show();
+	splash.showMessage(tr("Loading..."));
+	QApplication::processEvents();
 
 	this->setWindowTitle(tr("Constant-Time Appearance-Based Mapping"));
 	this->setWindowIconText(tr("RTAB-Map"));
@@ -227,6 +234,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	this->applyPrefSettings(PreferencesDialog::kPanelAll);
 
 	_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
+
+	splash.close();
 }
 
 MainWindow::~MainWindow()
