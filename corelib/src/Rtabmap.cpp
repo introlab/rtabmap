@@ -1573,7 +1573,6 @@ void Rtabmap::dumpPrediction() const
 void Rtabmap::readParameters(const char * configFile, ParametersMap & parameters)
 {
 	CSimpleIniA ini;
-	ini.SetUnicode();
 	ini.LoadFile(configFile);
 	const CSimpleIniA::TKeyVal * keyValMap = ini.GetSection("Core");
 	if(keyValMap)
@@ -1601,7 +1600,6 @@ void Rtabmap::readParameters(const char * configFile, ParametersMap & parameters
 void Rtabmap::writeParameters(const char * configFile, const ParametersMap & parameters)
 {
 	CSimpleIniA ini;
-	ini.SetUnicode();
 	ini.LoadFile(configFile);
 
 	for(ParametersMap::const_iterator i=parameters.begin(); i!=parameters.end(); ++i)

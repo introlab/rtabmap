@@ -204,7 +204,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->treeView->expandToDepth(1);
 
 	_obsoletePanels = kPanelAll;
-	_initialized = true;
 
 	_progressDialog = new QProgressDialog(this);
 	_progressDialog->setWindowTitle(tr("Read parameters..."));
@@ -947,13 +946,14 @@ void PreferencesDialog::selectSource(Src src)
 		}
 		else
 		{
-			this->readSettings();
+			this->readSettingsBegin();
 		}
 	}
 }
 
 void PreferencesDialog::setParameter(const std::string & key, const std::string & value)
 {
+	UDEBUG("%s=%s", key.c_str(), value.c_str());
 	QObject * obj = _ui->stackedWidget->findChild<QObject*>(key.c_str());
 	if(obj)
 	{
