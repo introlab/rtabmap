@@ -46,6 +46,9 @@
        <attribute name="headerVisible">
         <bool>false</bool>
        </attribute>
+       <attribute name="headerVisible">
+        <bool>false</bool>
+       </attribute>
       </widget>
      </item>
      <item>
@@ -65,7 +68,7 @@
           <enum>QFrame::Raised</enum>
          </property>
          <property name="currentIndex">
-          <number>14</number>
+          <number>2</number>
          </property>
          <widget class="QWidget" name="page_22">
           <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -987,7 +990,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               <item row="8" column="2">
                <widget class="QLabel" name="label_40">
                 <property name="text">
-                 <string>Actions sent also on rejected hypotheses (on decreasing hypotheses)</string>
+                 <string>Actions sent also on rejected hypotheses</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1090,8 +1093,8 @@ We can edit how will like the prediction used in the Bayes filter when there is 
                     <rect>
                      <x>0</x>
                      <y>0</y>
-                     <width>98</width>
-                     <height>71</height>
+                     <width>524</width>
+                     <height>138</height>
                     </rect>
                    </property>
                    <layout class="QHBoxLayout" name="horizontalLayout_2">
