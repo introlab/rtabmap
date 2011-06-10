@@ -96,6 +96,7 @@ public:
 	bool isVerticalLayoutUsed() const;
 	bool isImageFlipped() const;
 	bool imageRejectedShown() const;
+	bool imageHighestHypShown() const;
 	bool beepOnPause() const;
 	int getKeypointsOpacity() const;
 	QString getWorkingDirectory();

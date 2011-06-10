@@ -68,7 +68,7 @@
           <enum>QFrame::Raised</enum>
          </property>
          <property name="currentIndex">
-          <number>2</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="page_22">
           <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -327,7 +327,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </item>
                </widget>
               </item>
-              <item row="10" column="2">
+              <item row="11" column="2">
                <widget class="QLabel" name="label_88">
                 <property name="text">
                  <string>Beep! on special events (finished processing the data set, an error has occured, ...)</string>
@@ -337,14 +337,14 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="10" column="0">
+              <item row="11" column="0">
                <widget class="QCheckBox" name="checkBox_beep">
                 <property name="text">
                  <string/>
                 </property>
                </widget>
               </item>
-              <item row="11" column="0">
+              <item row="12" column="0">
                <widget class="QSlider" name="horizontalSlider_keypointsOpacity">
                 <property name="minimum">
                  <number>0</number>
@@ -360,13 +360,33 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="11" column="2">
+              <item row="12" column="2">
                <widget class="QLabel" name="label_102">
                 <property name="text">
                  <string>Keypoints opacity</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="2">
+               <widget class="QLabel" name="label_105">
+                <property name="text">
+                 <string>Show the image of the highest hypothesis</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="0">
+               <widget class="QCheckBox" name="checkBox_imageHighestHypShown">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
                 </property>
                </widget>
               </item>
@@ -1093,8 +1113,8 @@ We can edit how will like the prediction used in the Bayes filter when there is 
                     <rect>
                      <x>0</x>
                      <y>0</y>
-                     <width>524</width>
-                     <height>138</height>
+                     <width>26</width>
+                     <height>78</height>
                     </rect>
                    </property>
                    <layout class="QHBoxLayout" name="horizontalLayout_2">

@@ -389,6 +389,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			_ui->imageView_loopClosure->scene()->clear();
 			_ui->imageView_source->resetTransform();
 			_ui->imageView_loopClosure->resetTransform();
+			_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
 
 			_ui->label_matchId->clear();
 			QPixmap refPixmap;
@@ -413,9 +414,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				_ui->imageView_loopClosure->setSceneRect(sceneRect);
 			}
 			ULOGGER_DEBUG("");
+			QImage lcImg;
 			if(stat.loopClosureImage())
 			{
-				QImage img = Ipl2QImage(stat.loopClosureImage());
+				lcImg = Ipl2QImage(stat.loopClosureImage());
 				//Only kept if it not added as a child in the core, that
 				//means it will never used for a loop closure detection
 				if(_preferencesDialog->isImagesKept())
@@ -426,81 +428,76 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						QByteArray ba;
 						QBuffer buffer(&ba);
 						buffer.open(QIODevice::WriteOnly);
-						img.save(&buffer, "JPEG"); // writes image into JPEG format
+						lcImg.save(&buffer, "JPEG"); // writes image into JPEG format
 						_imagesMap.insert(id, ba);
 					}
 				}
 			}
 			ULOGGER_DEBUG("");
-			_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
 			int rejectedHyp = bool(uValue(stat.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
-			if(stat.loopClosureId()>0)
+			if(highestHypothesisId > 0)
 			{
-				_ui->label_stats_loopClosuresDetected->setText(QString::number(_ui->label_stats_loopClosuresDetected->text().toInt() + 1));
-				if(highestHypothesisIsSaved)
+				bool show = true;
+				if(stat.loopClosureId() > 0)
 				{
-					_ui->label_stats_loopClosuresReactivatedDetected->setText(QString::number(_ui->label_stats_loopClosuresReactivatedDetected->text().toInt() + 1));
-				}
-				_ui->label_matchId->setText(QString("Match ID = %1").arg(stat.loopClosureId()));
-
-				QImage img;
-				QMap<int, QByteArray>::iterator iter = _imagesMap.find(stat.loopClosureId());
-				if(iter != _imagesMap.end())
-				{
-					if(!img.loadFromData(iter.value(), "JPEG"))
+					_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::green));
+					_ui->label_stats_loopClosuresDetected->setText(QString::number(_ui->label_stats_loopClosuresDetected->text().toInt() + 1));
+					if(highestHypothesisIsSaved)
 					{
-						ULOGGER_ERROR("conversion from QByteArray to QImage failed");
-						img = QImage();
+						_ui->label_stats_loopClosuresReactivatedDetected->setText(QString::number(_ui->label_stats_loopClosuresReactivatedDetected->text().toInt() + 1));
+					}
+					_ui->label_matchId->setText(QString("Match ID = %1").arg(stat.loopClosureId()));
+				}
+				else if(rejectedHyp)
+				{
+					show = _preferencesDialog->imageRejectedShown() || _preferencesDialog->imageHighestHypShown();;
+					if(show)
+					{
+						QColor color(Qt::red);
+						_ui->imageView_loopClosure->setBackgroundBrush(QBrush(color));
+						_ui->label_stats_loopClosuresRejected->setText(QString::number(_ui->label_stats_loopClosuresRejected->text().toInt() + 1));
+						_ui->label_matchId->setText(QString("Loop hypothesis (%1) rejected!").arg(highestHypothesisId));
+						QGraphicsTextItem * textItem = _ui->imageView_loopClosure->scene()->addText(tr("Rejected hypothesis"));
+						textItem->setDefaultTextColor(QColor(255-color.red(), 255-color.green(), 255-color.blue())); // color inverted
+						textItem->setZValue(2);
 					}
 				}
-				else if(stat.loopClosureImage())
+				else
 				{
-					img = Ipl2QImage(stat.loopClosureImage());
-				}
-
-				if(!img.isNull())
-				{
-					_ui->imageView_loopClosure->scene()->addPixmap(QPixmap::fromImage(img))->setVisible(this->_ui->checkBox_showImageLoop->isChecked());
-				}
-			}
-			else if(rejectedHyp)
-			{
-				ULOGGER_DEBUG("");
-				_ui->label_stats_loopClosuresRejected->setText(QString::number(_ui->label_stats_loopClosuresRejected->text().toInt() + 1));
-				_ui->label_matchId->setText(QString("Loop hypothesis (%1) rejected!").arg(highestHypothesisId));
-
-				if(_preferencesDialog->imageRejectedShown())
-				{
-					QColor color = Qt::yellow;
-					QGraphicsTextItem * textItem = _ui->imageView_loopClosure->scene()->addText(tr("Rejected hypothesis"));
-
-					textItem->setDefaultTextColor(QColor(255-color.red(), 255-color.green(), 255-color.blue())); // color inverted
-					textItem->setZValue(2);
-
-					_ui->imageView_loopClosure->setBackgroundBrush(QBrush(color));
-					QImage img;
-					QMap<int, QByteArray>::iterator iter = _imagesMap.find(highestHypothesisId);
-					if(iter != _imagesMap.end())
+					show = _preferencesDialog->imageHighestHypShown();
+					if(show)
 					{
-						if(!img.loadFromData(iter.value(), "JPEG"))
+						_ui->label_matchId->setText(QString("Highest hypothesis (%1)").arg(highestHypothesisId));
+					}
+				}
+
+				if(show)
+				{
+					if(lcImg.isNull())
+					{
+						QMap<int, QByteArray>::iterator iter = _imagesMap.find(stat.loopClosureId());
+						if(iter != _imagesMap.end())
 						{
-							ULOGGER_ERROR("conversion from QByteArray to QImage failed");
-							img = QImage();
+							if(!lcImg.loadFromData(iter.value(), "JPEG"))
+							{
+								ULOGGER_ERROR("conversion from QByteArray to QImage failed");
+								lcImg = QImage();
+							}
+						}
+						else if(stat.loopClosureImage())
+						{
+							lcImg = Ipl2QImage(stat.loopClosureImage());
 						}
 					}
-					else if(stat.loopClosureImage())
-					{
-						img = Ipl2QImage(stat.loopClosureImage());
-					}
 
-					if(!img.isNull())
+					if(!lcImg.isNull())
 					{
-						_ui->imageView_loopClosure->scene()->addPixmap(QPixmap::fromImage(img));
+						_ui->imageView_loopClosure->scene()->addPixmap(QPixmap::fromImage(lcImg))->setVisible(this->_ui->checkBox_showImageLoop->isChecked());
 					}
-				}
-				if(highestHypothesisIsSaved)
-				{
-					_ui->label_matchId->setText(QString("[Retrieved!] ").append(_ui->label_matchId->text()));
+					if(highestHypothesisIsSaved)
+					{
+						_ui->label_matchId->setText(QString("[Retrieved!] ").append(_ui->label_matchId->text()));
+					}
 				}
 			}
 

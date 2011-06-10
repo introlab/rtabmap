@@ -915,7 +915,6 @@ void Rtabmap::process()
 	// Select next actions
 	//============================================================
 	const Signature * sLoop = 0;
-	int lcHypothesisReactivated = -1;
 	int highestHypothesisId = 0;
 	if(hypotheses.size() > 0)
 	{
@@ -924,12 +923,6 @@ void Rtabmap::process()
 	if(_lcHypothesisId > 0)
 	{
 		sLoop = _memory->getSignature(_lcHypothesisId);
-		//Just for stats
-		lcHypothesisReactivated = 0;
-		if(sLoop && sLoop->isSaved())
-		{
-			lcHypothesisReactivated = 1;
-		}
 	}
 	else if(highestHypothesisId > 0)
 	{
@@ -980,6 +973,7 @@ void Rtabmap::process()
 	int refUniqueWordsCount = 0;
 	const KeypointSignature * ssRef = 0;
 	const KeypointSignature * ssLoop = 0;
+	int lcHypothesisReactivated = 0;
 	KeypointMemory * kpMem = dynamic_cast<KeypointMemory *>(_memory);
 	if(kpMem)
 	{
@@ -1034,6 +1028,12 @@ void Rtabmap::process()
 			stat->addStatistic(Statistics::kParent_id(), signature->getLoopClosureId());
 			if(sLoop)
 			{
+				lcHypothesisReactivated = 0;
+				if(sLoop && sLoop->isSaved())
+				{
+					lcHypothesisReactivated = 1;
+				}
+
 				const IplImage * img = sLoop->getImage();
 				if(!img && _memory->isRawDataKept())
 				{

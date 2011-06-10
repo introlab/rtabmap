@@ -506,6 +506,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_verticalLayoutUsed->setChecked(settings.value("verticalLayoutUsed", _ui->checkBox_verticalLayoutUsed->isChecked()).toBool());
 	_ui->checkBox_imageFlipped->setChecked(settings.value("imageFlipped", _ui->checkBox_imageFlipped->isChecked()).toBool());
 	_ui->checkBox_imageRejectedShown->setChecked(settings.value("imageRejectedShown", _ui->checkBox_imageRejectedShown->isChecked()).toBool());
+	_ui->checkBox_imageHighestHypShown->setChecked(settings.value("imageHighestHypShown", _ui->checkBox_imageHighestHypShown->isChecked()).toBool());
 	_ui->checkBox_beep->setChecked(settings.value("beep", _ui->checkBox_beep->isChecked()).toBool());
 	_ui->horizontalSlider_keypointsOpacity->setValue(settings.value("keypointsOpacity", _ui->horizontalSlider_keypointsOpacity->value()).toInt());
 
@@ -646,6 +647,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath)
 	settings.setValue("verticalLayoutUsed", _ui->checkBox_verticalLayoutUsed->isChecked());
 	settings.setValue("imageFlipped", _ui->checkBox_imageFlipped->isChecked());
 	settings.setValue("imageRejectedShown", _ui->checkBox_imageRejectedShown->isChecked());
+	settings.setValue("imageHighestHypShown", _ui->checkBox_imageHighestHypShown->isChecked());
 	settings.setValue("beep", _ui->checkBox_beep->isChecked());
 	settings.setValue("keypointsOpacity", _ui->horizontalSlider_keypointsOpacity->value());
 	settings.endGroup(); // General
@@ -1477,6 +1479,10 @@ bool PreferencesDialog::isImageFlipped() const
 bool PreferencesDialog::imageRejectedShown() const
 {
 	return _ui->checkBox_imageRejectedShown->isChecked();
+}
+bool PreferencesDialog::imageHighestHypShown() const
+{
+	return _ui->checkBox_imageHighestHypShown->isChecked();
 }
 bool PreferencesDialog::beepOnPause() const
 {
