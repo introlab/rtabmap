@@ -804,11 +804,16 @@ bool DBDriverSqlite3::getLoopClosureIdQuery(int signatureId, int & loopId) const
 	return false;
 }
 
-bool DBDriverSqlite3::addNeighborQuery(int id, int neighbor, const std::list<std::vector<float> > & actuatorStates) const
+bool DBDriverSqlite3::addNeighborQuery(int id, int newNeighbor, int oldNeighbor) const
 {
-	ULOGGER_DEBUG("id=%d, neighbor=%d, actuatorStates=%d", id, neighbor, actuatorStates.size());
+	ULOGGER_DEBUG("id=%d, newNeighbor=%d, oldNeighbor=%d", id, newNeighbor, oldNeighbor);
 	if(_ppDb)
 	{
+
+		NeighborsMap neighbors;
+		this->loadNeighborsQuery(id, neighbors);
+		std::list<std::vector<float> > actuatorStates = uValue(neighbors, oldNeighbor, std::list<std::vector<float> >());
+
 		UTimer timer;
 		timer.start();
 		int rc = SQLITE_OK;
@@ -840,7 +845,7 @@ bool DBDriverSqlite3::addNeighborQuery(int id, int neighbor, const std::list<std
 			rc = sqlite3_finalize(ppStmt);
 			return false;
 		}
-		rc = sqlite3_bind_int(ppStmt, 2, neighbor);
+		rc = sqlite3_bind_int(ppStmt, 2, newNeighbor);
 		if (rc != SQLITE_OK)
 		{
 			ULOGGER_ERROR("DB error 2.2: %s", sqlite3_errmsg(_ppDb));

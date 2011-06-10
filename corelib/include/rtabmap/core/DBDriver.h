@@ -71,7 +71,7 @@ public:
 	bool deleteAllObsoleteSSVWLinks() const;
 	bool deleteUnreferencedWords() const;
 
-	bool addNeighbor(int id, int neighbor, const std::list<std::vector<float> > & actuatorStates);
+	bool addNeighbor(int id, int newNeighbor, int oldNeighbor);
 	bool removeNeighbor(int id, int neighbor);
 
 public:
@@ -126,7 +126,7 @@ private:
 	virtual bool getNeighborIdsQuery(int signatureId, std::set<int> & neighbors) const = 0;
 	virtual bool getWeightQuery(int signatureId, int & weight) const = 0;
 	virtual bool getLoopClosureIdQuery(int signatureId, int & loopId) const = 0;
-	virtual bool addNeighborQuery(int id, int neighbor, const std::list<std::vector<float> > & actuatorStates) const = 0;
+	virtual bool addNeighborQuery(int id, int newNeighbor, int oldNeighbor) const = 0;
 
 	virtual bool saveQuery(const std::vector<VisualWord *> & visualWords) const = 0;
 	virtual bool updateQuery(const std::list<Signature *> & signatures) const = 0;

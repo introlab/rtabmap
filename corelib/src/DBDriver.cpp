@@ -571,7 +571,7 @@ bool DBDriver::deleteUnreferencedWords() const
 	return false;
 }
 
-bool DBDriver::addNeighbor(int id, int neighbor, const std::list<std::vector<float> > & actuatorStates)
+bool DBDriver::addNeighbor(int id, int newNeighbor, int oldNeighbor)
 {
 	bool r = false;
 	Signature * s = 0;
@@ -579,7 +579,9 @@ bool DBDriver::addNeighbor(int id, int neighbor, const std::list<std::vector<flo
 	s = uValue(_trashSignatures, id, s);
 	if(s)
 	{
-		s->addNeighbor(neighbor, actuatorStates);
+		const NeighborsMap & neighbors = s->getNeighbors();
+		std::list<std::vector<float> > actions = uValue(s->getNeighbors(), oldNeighbor, std::list<std::vector<float> >());
+		s->addNeighbor(newNeighbor, actions);
 		r = true;
 	}
 	_trashesMutex.unlock();
@@ -587,7 +589,7 @@ bool DBDriver::addNeighbor(int id, int neighbor, const std::list<std::vector<flo
 	if(!r)
 	{
 		_dbSafeAccessMutex.lock();
-		r = this->addNeighborQuery(id, neighbor, actuatorStates);
+		r = this->addNeighborQuery(id, newNeighbor, oldNeighbor);
 		_dbSafeAccessMutex.unlock();
 	}
 

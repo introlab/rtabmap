@@ -1056,8 +1056,7 @@ void Memory::addLoopClosureLink(int oldId, int newId, bool rehearsal)
 					bool newHasNeighbor = newS->hasNeighbor(i->first);
 					if(!newHasNeighbor)
 					{
-						//empty actions... they are not backward compatible
-						newS->addNeighbor(i->first, std::list<std::vector<float> >());
+						newS->addNeighbor(i->first, i->second);
 					}
 					if(neighbor)
 					{
@@ -1080,7 +1079,7 @@ void Memory::addLoopClosureLink(int oldId, int newId, bool rehearsal)
 					else if(_dbDriver)
 					{
 						ULOGGER_DEBUG("*i=%d not found in WM or STM, modifying it in database...", i->first);
-						_dbDriver->addNeighbor(i->first, newS->id(), i->second);
+						_dbDriver->addNeighbor(i->first, newS->id(), oldS->id());
 					}
 				}
 			}

@@ -50,7 +50,7 @@ private:
 	virtual bool getNeighborIdsQuery(int signatureId, std::set<int> & neighbors) const;
 	virtual bool getWeightQuery(int signatureId, int & weight) const;
 	virtual bool getLoopClosureIdQuery(int signatureId, int & loopId) const;
-	virtual bool addNeighborQuery(int id, int neighbor, const std::list<std::vector<float> > & actuatorStates) const;
+	virtual bool addNeighborQuery(int id, int newNeighbor, int oldNeighbor) const;
 
 	virtual bool saveQuery(const std::vector<VisualWord *> & visualWords) const;
 	virtual bool updateQuery(const std::list<Signature *> & signatures) const;
