@@ -531,7 +531,7 @@ std::list<int> VWDictionary::addNewWords(const std::list<std::vector<float> > & 
 					}
 					else
 					{
-						UWARN("Not enough nearest neighbors found!");
+						UWARN("Not enough nearest neighbors found! fullResults=%d (descriptor %d)", fullResults.size(), i);
 						badDist = true; // Rejected
 					}
 				}

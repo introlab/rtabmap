@@ -677,11 +677,11 @@ Signature * KeypointMemory::createSignature(int id, const SMState * smState, boo
 		unsigned int descriptorSize = descriptors.begin()->size();
 		if(_parallelized)
 		{
-			ULOGGER_DEBUG("time descriptor and memory update (size=%d) = %fs", descriptorSize, timer.ticks());
+			ULOGGER_DEBUG("time descriptor and memory update (%d of size=%d) = %fs", (int)descriptors.size(), (int)descriptorSize, timer.ticks());
 		}
 		else
 		{
-			ULOGGER_DEBUG("time descriptor (size=%d) = %fs", descriptorSize, timer.ticks());
+			ULOGGER_DEBUG("time descriptor (%d of size=%d) = %fs", (int)descriptors.size(), (int)descriptorSize, timer.ticks());
 		}
 
 		//append actuators
@@ -713,7 +713,7 @@ Signature * KeypointMemory::createSignature(int id, const SMState * smState, boo
 				}
 				descriptors.push_back(descriptor);
 			}
-			ULOGGER_DEBUG("time setup actuators (%d) like descriptors %fs", (int)actuatorSize, timer.ticks());
+			ULOGGER_DEBUG("time setup actuators (%d of length %d) like descriptors %fs", (int)actuators.size(), (int)actuatorSize, timer.ticks());
 		}
 
 		wordIds = _vwd->addNewWords(descriptors, descriptorSize, id);
