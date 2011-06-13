@@ -700,7 +700,7 @@ Signature * KeypointMemory::createSignature(int id, const SMState * smState, boo
 				std::vector<float> descriptor(descriptorSize);
 				// normalize actuator values
 				std::vector<float> actuatorNormalized = uNormalize(*iter);
-				for(unsigned int i=0; i<descriptorSize && i<actuatorSize; ++i)
+				for(unsigned int i=0; i<descriptorSize; ++i)
 				{
 					if(i<actuatorSize)
 					{
