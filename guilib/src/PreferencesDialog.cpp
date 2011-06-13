@@ -159,6 +159,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_kp_tfIdfLikelihoodUsed->setObjectName(Parameters::kKpTfIdfLikelihoodUsed().c_str());
 	_ui->checkBox_kp_tfIdfNormalized->setObjectName(Parameters::kKpTfIdfNormalized().c_str());
 	_ui->checkBox_kp_parallelized->setObjectName(Parameters::kKpParallelized().c_str());
+	_ui->checkBox_kp_sensorStateOnly->setObjectName(Parameters::kKpSensorStateOnly().c_str());
 	_ui->lineEdit_kp_roi->setObjectName(Parameters::kKpRoiRatios().c_str());
 	_ui->lineEdit_dictionaryPath->setObjectName(Parameters::kKpDictionaryPath().c_str());
 	connect(_ui->toolButton_dictionaryPath, SIGNAL(clicked()), this, SLOT(changeDictionaryPath()));

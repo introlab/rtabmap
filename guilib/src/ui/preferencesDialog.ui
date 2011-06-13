@@ -68,7 +68,7 @@
           <enum>QFrame::Raised</enum>
          </property>
          <property name="currentIndex">
-          <number>0</number>
+          <number>7</number>
          </property>
          <widget class="QWidget" name="page_22">
           <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1113,8 +1113,8 @@ We can edit how will like the prediction used in the Bayes filter when there is 
                     <rect>
                      <x>0</x>
                      <y>0</y>
-                     <width>26</width>
-                     <height>78</height>
+                     <width>524</width>
+                     <height>138</height>
                     </rect>
                    </property>
                    <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -2009,7 +2009,7 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="9" column="0">
+              <item row="10" column="0">
                <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi0">
                 <property name="suffix">
                  <string> %</string>
@@ -2019,7 +2019,7 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="9" column="1">
+              <item row="10" column="1">
                <widget class="QLabel" name="label_97">
                 <property name="text">
                  <string>Left ROI ratio (0 = no change)</string>
@@ -2029,7 +2029,7 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="10" column="0">
+              <item row="11" column="0">
                <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi1">
                 <property name="suffix">
                  <string> %</string>
@@ -2039,7 +2039,7 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="11" column="0">
+              <item row="12" column="0">
                <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi2">
                 <property name="suffix">
                  <string> %</string>
@@ -2049,7 +2049,7 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="12" column="0">
+              <item row="13" column="0">
                <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi3">
                 <property name="suffix">
                  <string> %</string>
@@ -2059,7 +2059,7 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="10" column="1">
+              <item row="11" column="1">
                <widget class="QLabel" name="label_98">
                 <property name="text">
                  <string>Right ROI ratio (0 = no change)</string>
@@ -2069,7 +2069,7 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="11" column="1">
+              <item row="12" column="1">
                <widget class="QLabel" name="label_99">
                 <property name="text">
                  <string>Top ROI ratio (0 = no change)</string>
@@ -2079,7 +2079,7 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="12" column="1">
+              <item row="13" column="1">
                <widget class="QLabel" name="label_100">
                 <property name="text">
                  <string>Bottom ROI ratio (0 = no change)</string>
@@ -2089,14 +2089,14 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="8" column="0">
+              <item row="9" column="0">
                <widget class="QLineEdit" name="lineEdit_kp_roi">
                 <property name="readOnly">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="8" column="1">
+              <item row="9" column="1">
                <widget class="QLabel" name="label_101">
                 <property name="text">
                  <string>ROI ratios [left, right, top, bottom]</string>
@@ -2118,6 +2118,26 @@ generate the number of words requested.</string>
               </item>
               <item row="6" column="0">
                <widget class="QCheckBox" name="checkBox_kp_tfIdfNormalized">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="1">
+               <widget class="QLabel" name="label_106">
+                <property name="text">
+                 <string>If using only sensors state (without actuators) for the sensorimotor state nearest neighbor computation</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="0">
+               <widget class="QCheckBox" name="checkBox_kp_sensorStateOnly">
                 <property name="text">
                  <string/>
                 </property>

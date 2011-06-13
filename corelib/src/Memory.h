@@ -46,7 +46,7 @@ public:
 	static const int kIdVirtual;
 	static const int kIdInvalid;
 
-	enum MergingStrategy{kFullMerging, kUseOnlyFromMerging, kUseOnlyDestMerging};
+	enum MergingStrategy{kUseOnlyFromMerging, kUseOnlyDestMerging};
 
 public:
 	Memory(const ParametersMap & parameters = ParametersMap());

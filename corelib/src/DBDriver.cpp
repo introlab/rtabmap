@@ -579,7 +579,6 @@ bool DBDriver::addNeighbor(int id, int newNeighbor, int oldNeighbor)
 	s = uValue(_trashSignatures, id, s);
 	if(s)
 	{
-		const NeighborsMap & neighbors = s->getNeighbors();
 		std::list<std::vector<float> > actions = uValue(s->getNeighbors(), oldNeighbor, std::list<std::vector<float> >());
 		s->addNeighbor(newNeighbor, actions);
 		r = true;

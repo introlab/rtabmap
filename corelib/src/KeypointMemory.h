@@ -81,6 +81,7 @@ private:
 	float _badSignRatio;;
 	bool _tfIdfLikelihoodUsed;
 	bool _parallelized;
+	bool _sensorStateOnly;
 	bool _tfIdfNormalized;
 };
 

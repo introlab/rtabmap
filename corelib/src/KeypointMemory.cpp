@@ -43,6 +43,7 @@ KeypointMemory::KeypointMemory(const ParametersMap & parameters) :
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
 	_parallelized(Parameters::defaultKpParallelized()),
+	_sensorStateOnly(Parameters::defaultKpSensorStateOnly()),
 	_tfIdfNormalized(Parameters::defaultKpTfIdfNormalized())
 {
 	_vwd = new VWDictionary(parameters);
@@ -92,6 +93,11 @@ void KeypointMemory::parseParameters(const ParametersMap & parameters)
 	if((iter=parameters.find(Parameters::kKpParallelized())) != parameters.end())
 	{
 		_parallelized = uStr2Bool((*iter).second.c_str());
+	}
+
+	if((iter=parameters.find(Parameters::kKpSensorStateOnly())) != parameters.end())
+	{
+		_sensorStateOnly = uStr2Bool((*iter).second.c_str());
 	}
 
 	if((iter=parameters.find(Parameters::kKpTfIdfNormalized())) != parameters.end())
@@ -314,10 +320,10 @@ void KeypointMemory::clear()
 void KeypointMemory::preUpdate()
 {
 	Memory::preUpdate();
+	this->cleanUnusedWords();
 	if(_vwd && !_parallelized)
 	{
 		//When parallelized, it is done in CreateSignature
-		this->cleanUnusedWords();
 		_vwd->update();
 	}
 }
@@ -401,215 +407,20 @@ void KeypointMemory::merge(const Signature * from, Signature * to, MergingStrate
 	timer.start();
 	if(sFrom && sTo)
 	{
-		const std::multimap<int, cv::KeyPoint> & wordsA = sFrom->getWords();
-		if(wordsA.size())
+		if(s == kUseOnlyFromMerging)
 		{
-			UTimer timer2;
-			const std::multimap<int, cv::KeyPoint> & wordsB = sTo->getWords();
-			int maxWords = wordsA.size()>wordsB.size()?wordsA.size():wordsB.size();
-			//if(_keypointDescriptor)
-			//{
-			//	maxWords = _keypointDetector->getWordsPerImageTarget();
-			//}
+			this->disableWordsRef(sTo->id());
+			sTo->setWords(sFrom->getWords());
 
-			std::multimap<int, cv::KeyPoint> newWords;
-			if(s == kFullMerging)
-			{
-				// add features contained in each signatures
-				std::list<std::pair<cv::KeyPoint, cv::KeyPoint> > pairs;
-				std::list<int> pairsId;
-				std::set<int> pairsIdSet;
-				HypVerificatorEpipolarGeo::findPairsDirect(wordsA, wordsB, pairs, pairsId);
-				std::list<std::pair<cv::KeyPoint, cv::KeyPoint> >::iterator kpIt = pairs.begin();
-				std::list<int>::iterator idIt = pairsId.begin();
-				for(; kpIt != pairs.end() && idIt != pairsId.end(); ++kpIt, ++idIt)
-				{
-					newWords.insert(newWords.end(), std::pair<int, cv::KeyPoint>(*idIt, kpIt->second));
-					pairsIdSet.insert(pairsIdSet.end(), *idIt);
-				}
-				ULOGGER_DEBUG("newWords.size() = %d, time add pairs = %fs", newWords.size(), timer2.ticks());
-
-				// fill the merged target signature with the farthest features from each signatures
-				int dif = maxWords - (int)newWords.size();
-				if(dif>0)
-				{
-					//////////
-					// Add words with the highest response from the two signatures
-					//////////
-					std::multimap<int, cv::KeyPoint> allWords = wordsA;
-					allWords.insert(wordsB.begin(), wordsB.end());
-					allWords = getMostDescriptiveWords(allWords, dif, pairsIdSet);
-					newWords.insert(allWords.begin(), allWords.end());
-					//////////
-
-
-					//////////
-					// Add words by using the descriptor distance, TIME COMSUMMING! though more precise...
-					//////////
-					/*std::list<std::pair<const VisualWord*, const cv::KeyPoint *> > descriptors;
-					//get all descriptors from features not found in the two signatures
-					// for A
-					for(std::multimap<int, cv::KeyPoint>::const_iterator itKey = wordsA.begin(); itKey != wordsA.end(); ++itKey)
-					{
-						if(pairsIdSet.find(itKey->first) == pairsIdSet.end())
-						{
-							descriptors.push_back(std::pair<const VisualWord*, const cv::KeyPoint *>(_vwd->getWord(itKey->first), &(itKey->second)));
-						}
-					}
-					// for B
-					for(std::multimap<int, cv::KeyPoint>::const_iterator itKey = wordsB.begin(); itKey != wordsB.end(); ++itKey)
-					{
-						if(pairsIdSet.find(itKey->first) == pairsIdSet.end())
-						{
-							descriptors.push_back(std::pair<const VisualWord*, const cv::KeyPoint *>(_vwd->getWord(itKey->first), &(itKey->second)));
-						}
-					}
-
-					ULOGGER_DEBUG("descriptors.size()=%d, wordsA.size()=%d, wordsB.size()=%d", descriptors.size(), wordsA.size(), wordsB.size());
-					if(descriptors.size() > (unsigned int)dif)
-					{
-						FlannKdTreeNN nn;
-						nn.setStrategy(FlannKdTreeNN::kKDTree);
-						int k=2;
-						cv::Mat results(descriptors.size(), k, CV_32SC1); // results index
-						cv::Mat dists;
-						if(nn.isDist64F())
-						{
-							dists = cv::Mat(descriptors.size(), k, CV_64FC1); // Distance results are CV_64FC1;
-						}
-						else
-						{
-							dists = cv::Mat(descriptors.size(), k, CV_32FC1); // Distance results are CV_32FC1
-						}
-						cv::Mat data(descriptors.size(), descriptors.begin()->first->getDim(), CV_32F); // SURF descriptors are CV_32F
-
-						ULOGGER_DEBUG("time prepare nn = %fs", timer2.ticks());
-						nn.search(data, data, results, dists, k, descriptors.begin()->first->getDim());
-						ULOGGER_DEBUG("time nn = %fs", timer2.ticks());
-
-						//add keypoint which are farthest of their second neighbor
-						std::list<std::pair<const VisualWord *, const cv::KeyPoint *> >::iterator iter = descriptors.begin();
-						if(nn.isDist64F())
-						{
-							std::multimap<double, std::pair<int, const cv::KeyPoint *> > fartherWords;
-							for(unsigned int i=0; i<descriptors.size(); ++i)
-							{
-								if(fartherWords.size() >= (unsigned int)dif && dists.at<double>(i,1) > fartherWords.begin()->first)
-								{
-									fartherWords.erase(fartherWords.begin());
-									fartherWords.insert(std::pair<double, std::pair<int, const cv::KeyPoint *> >(dists.at<double>(i,1), std::pair<int, const cv::KeyPoint *>(iter->first->id(), iter->second)));
-								}
-								else if(fartherWords.size() < (unsigned int)dif)
-								{
-									fartherWords.insert(std::pair<double, std::pair<int, const cv::KeyPoint *> >(dists.at<double>(i,1), std::pair<int, const cv::KeyPoint *>(iter->first->id(), iter->second)));
-								}
-
-								++iter;
-							}
-							ULOGGER_DEBUG("fartherWords.size()=%d",fartherWords.size());
-							std::map<double, std::pair<int, const cv::KeyPoint *> >::iterator iterfw = fartherWords.begin();
-							for(; iterfw != fartherWords.end(); ++iterfw)
-							{
-								//ULOGGER_DEBUG("adding words %d", iterfw->second.first);
-								newWords.insert(std::pair<int, cv::KeyPoint>(iterfw->second.first, *(iterfw->second.second)));
-							}
-						}
-						else
-						{
-							std::multimap<float, std::pair<int, const cv::KeyPoint *> > fartherWords;
-							for(unsigned int i=0; i<descriptors.size(); ++i)
-							{
-								if(fartherWords.size() >= (unsigned int)dif && dists.at<float>(i,1) > fartherWords.begin()->first)
-								{
-									fartherWords.erase(fartherWords.begin());
-									fartherWords.insert(std::pair<float, std::pair<int, const cv::KeyPoint *> >(dists.at<float>(i,1), std::pair<int, const cv::KeyPoint *>(iter->first->id(), iter->second)));
-								}
-								else if(fartherWords.size() < (unsigned int)dif)
-								{
-									fartherWords.insert(std::pair<float, std::pair<int, const cv::KeyPoint *> >(dists.at<float>(i,1), std::pair<int, const cv::KeyPoint *>(iter->first->id(), iter->second)));
-								}
-								++iter;
-							}
-							ULOGGER_DEBUG("fartherWords.size()=%d",fartherWords.size());
-							std::map<float, std::pair<int, const cv::KeyPoint *> >::iterator iterfw = fartherWords.begin();
-							for(; iterfw != fartherWords.end(); ++iterfw)
-							{
-								//ULOGGER_DEBUG("adding words %d", iterfw->second.first);
-								newWords.insert(std::pair<int, cv::KeyPoint>(iterfw->second.first, *(iterfw->second.second)));
-							}
-						}
-					}
-					else
-					{
-						//add all
-						std::list<std::pair<const VisualWord*, const cv::KeyPoint *> >::iterator iter = descriptors.begin();
-						for(; iter != descriptors.end(); ++iter)
-						{
-							//ULOGGER_DEBUG("adding words %d", iter->first->id());
-							newWords.insert(std::pair<int, cv::KeyPoint>(iter->first->id(), *(iter->second)));
-						}
-					}*/
-					//////////
-				}
-				ULOGGER_DEBUG("time add to newWords = %fs", timer2.ticks());
-				ULOGGER_DEBUG("maxWords=%d, pairsCount=%d, dif = %d, newWords.size()=%d, _vwd->getUnusedWordsSize()=%d", maxWords, pairs.size(), dif, newWords.size(), _vwd->getUnusedWordsSize());
-				this->disableWordsRef(sTo->id());
-				sTo->setWords(newWords);
-				std::list<int> id;
-				id.push_back(sTo->id());
-				this->enableWordsRef(id);
-			}
-			else if(s == kUseOnlyFromMerging)
-			{
-				this->disableWordsRef(sTo->id());
-				if(wordsA.size() >= (unsigned int)maxWords)
-				{
-					sTo->setWords(wordsA);
-				}
-				else
-				{
-					std::list<std::pair<cv::KeyPoint, cv::KeyPoint> > pairs;
-					std::list<int> pairsId;
-					HypVerificatorEpipolarGeo::findPairsDirect(wordsA, wordsB, pairs, pairsId);
-					std::set<int> ignoredIds(pairsId.begin(), pairsId.end());
-					int dif = maxWords - (int)wordsA.size();
-					newWords = getMostDescriptiveWords(wordsB, dif, ignoredIds);
-					newWords.insert(wordsA.begin(), wordsA.end());
-					sTo->setWords(newWords);
-				}
-				std::list<int> id;
-				id.push_back(sTo->id());
-				this->enableWordsRef(id);
-				// Set old image to new merged signature
-				sTo->setImage(sFrom->getImage());
-			}
-			else if(s == kUseOnlyDestMerging)
-			{
-				if(wordsB.size() >= (unsigned int)maxWords)
-				{
-					// do nothing... already "merged"
-				}
-			    else
-				{
-			    	this->disableWordsRef(sTo->id());
-			    	if(wordsB.size() == 0)
-			    	{
-			    		ULOGGER_WARN("The merged signature is empty!");
-			    	}
-			    	std::list<std::pair<cv::KeyPoint, cv::KeyPoint> > pairs;
-					std::list<int> pairsId;
-					HypVerificatorEpipolarGeo::findPairsDirect(wordsA, wordsB, pairs, pairsId);
-					std::set<int> ignoredIds(pairsId.begin(), pairsId.end());
-					int dif = maxWords - (int)wordsB.size();
-					newWords = getMostDescriptiveWords(wordsA, dif, ignoredIds);
-					newWords.insert(wordsB.begin(), wordsB.end());
-					sTo->setWords(newWords);
-					std::list<int> id;
-					id.push_back(sTo->id());
-					this->enableWordsRef(id);
-				}
-
-			}
+			std::list<int> id;
+			id.push_back(sTo->id());
+			this->enableWordsRef(id);
+			// Set old image to new merged signature
+			sTo->setImage(sFrom->getImage());
+		}
+		else if(s == kUseOnlyDestMerging)
+		{
+			// do nothing... already "merged"
 		}
 	}
 	else
@@ -816,17 +627,16 @@ Signature * KeypointMemory::createSignature(int id, const SMState * smState, boo
 
 	if(smState)
 	{
-		if(_parallelized)
-		{
-			this->cleanUnusedWords();
-			preUpdateThread.start();
-		}
-
 		int treeSize= this->getWorkingMemSize() + this->getStMemSize();
 		int nbCommonWords = 0;
 		if(treeSize > 0)
 		{
 			nbCommonWords = _vwd->getTotalActiveReferences() / treeSize;
+		}
+
+		if(_parallelized)
+		{
+			preUpdateThread.start();
 		}
 
 		if(smState->getSensors().empty())
@@ -856,13 +666,57 @@ Signature * KeypointMemory::createSignature(int id, const SMState * smState, boo
 		}
 	}
 
-	preUpdateThread.join(); // Wait the dictionary to be updated
+	if(_parallelized)
+	{
+		preUpdateThread.join(); // Wait the dictionary to be updated
+	}
 
 	std::list<int> wordIds;
 	if(descriptors.size())
 	{
-		ULOGGER_DEBUG("time descriptor and memory update (size=%d) = %fs", descriptors.begin()->size(), timer.ticks());
-		wordIds = _vwd->addNewWords(descriptors, descriptors.begin()->size(), id);
+		unsigned int descriptorSize = descriptors.begin()->size();
+		if(_parallelized)
+		{
+			ULOGGER_DEBUG("time descriptor and memory update (size=%d) = %fs", descriptorSize, timer.ticks());
+		}
+		else
+		{
+			ULOGGER_DEBUG("time descriptor (size=%d) = %fs", descriptorSize, timer.ticks());
+		}
+
+		//append actuators
+		if(!_sensorStateOnly && smState->getActuators().size())
+		{
+			const std::list<std::vector<float> > & actuators = smState->getActuators();
+
+			unsigned int actuatorSize = actuators.begin()->size();
+			if(actuatorSize > descriptorSize)
+			{
+				UERROR("Actuator's size (%d) is larger than descriptor size (%d)", actuatorSize, descriptorSize);
+			}
+
+			for(std::list<std::vector<float> >::const_iterator iter = actuators.begin(); iter!=actuators.end(); ++iter)
+			{
+				std::vector<float> descriptor(descriptorSize);
+				// normalize actuator values
+				std::vector<float> actuatorNormalized = uNormalize(*iter);
+				for(unsigned int i=0; i<descriptorSize && i<actuatorSize; ++i)
+				{
+					if(i<actuatorSize)
+					{
+						descriptor[i] = actuatorNormalized[i];
+					}
+					else
+					{
+						descriptor[i] = 0;
+					}
+				}
+				descriptors.push_back(descriptor);
+			}
+			ULOGGER_DEBUG("time setup actuators (%d) like descriptors %fs", (int)actuatorSize, timer.ticks());
+		}
+
+		wordIds = _vwd->addNewWords(descriptors, descriptorSize, id);
 		ULOGGER_DEBUG("time addNewWords %fs", timer.ticks());
 	}
 	else
