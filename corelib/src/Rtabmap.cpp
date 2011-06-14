@@ -937,8 +937,7 @@ void Rtabmap::process()
 		// OR
 		// select the newest one (with actions)
 		const NeighborsMap & neighbors =  sLoop->getNeighbors();
-		const Signature * s;
-		int currentWeight = -1;
+		float currentHyp = -1;
 		for(NeighborsMap::const_reverse_iterator iter=neighbors.rbegin(); iter!=neighbors.rend(); ++iter)
 		{
 			if(iter->second.size())
@@ -948,12 +947,12 @@ void Rtabmap::process()
 					_actions = iter->second;
 					break;
 				}
-				else // use also weight
+				else // use hypothesis value
 				{
-					s = _memory->getSignature(iter->first);
-					if(s && s->getWeight() > currentWeight)
+					float hyp = uValue(posterior, iter->first, 0.0f);
+					if(hyp > currentHyp)
 					{
-						currentWeight = s->getWeight();
+						currentHyp = hyp;
 						_actions = iter->second;
 					}
 				}
