@@ -141,7 +141,7 @@ class RTABMAP_EXP Parameters
 	// Memory
 	RTABMAP_PARAM(Mem, SimilarityThr, 	       float, 0.20);  // Similarity between the last signature and neighbor
 	RTABMAP_PARAM(Mem, SimilarityOnlyLast,     bool, false);	// Only compare to the last signature in STM, otherwise it compares to all signatures in STM
-	RTABMAP_PARAM(Mem, RawDataKept, 		   bool, false); // Keep raw data
+	RTABMAP_PARAM(Mem, RawDataKept, 		   bool, true); // Keep raw data
 	RTABMAP_PARAM(Mem, MaxStMemSize, 		   unsigned int, 25); // Short-time memory size
 	RTABMAP_PARAM(Mem, CommonSignatureUsed,    bool, true); // A common signature/virtual place is automatically updated with id -1
 	RTABMAP_PARAM(Mem, IncrementalMemory, 	   bool, true);

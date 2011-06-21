@@ -425,11 +425,14 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					if(stat.loopClosureId()>0 || highestHypothesisId>0)
 					{
 						int id = stat.loopClosureId()>0?stat.loopClosureId():highestHypothesisId;
-						QByteArray ba;
-						QBuffer buffer(&ba);
-						buffer.open(QIODevice::WriteOnly);
-						lcImg.save(&buffer, "JPEG"); // writes image into JPEG format
-						_imagesMap.insert(id, ba);
+						if(!_imagesMap.contains(id))
+						{
+							QByteArray ba;
+							QBuffer buffer(&ba);
+							buffer.open(QIODevice::WriteOnly);
+							lcImg.save(&buffer, "JPEG"); // writes image into JPEG format
+							_imagesMap.insert(id, ba);
+						}
 					}
 				}
 			}
@@ -475,7 +478,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				{
 					if(lcImg.isNull())
 					{
-						QMap<int, QByteArray>::iterator iter = _imagesMap.find(stat.loopClosureId());
+						int id = stat.loopClosureId()>0?stat.loopClosureId():highestHypothesisId;
+						QMap<int, QByteArray>::iterator iter = _imagesMap.find(id);
 						if(iter != _imagesMap.end())
 						{
 							if(!lcImg.loadFromData(iter.value(), "JPEG"))
@@ -483,10 +487,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 								ULOGGER_ERROR("conversion from QByteArray to QImage failed");
 								lcImg = QImage();
 							}
-						}
-						else if(stat.loopClosureImage())
-						{
-							lcImg = Ipl2QImage(stat.loopClosureImage());
 						}
 					}
 
