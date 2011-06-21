@@ -317,7 +317,7 @@ lcRejected = sum(LogI(:, 8) == 1)
 %%
 %Precision-Recall graph
 GroundTruthFile = [PathPrefix '/' GT_file];
-if exist(GroundTruthFile, 'file')
+if ~isempty(GT_file) && exist(GroundTruthFile, 'file')
     PR = getPrecisionRecall(LogI, LogF, GroundTruthFile, 1.0);  
     
     Precision = PR(:,1);
