@@ -62,7 +62,7 @@ void Tests::testAvpd()
 	//Logger::setLevel(Logger::kDebug);
 	//Logger::setType(Logger::kTypeInvalid);
 
-	std::string path = "./data/090206-3";
+	std::string path = "./data/samples";
 
 	CameraImages camera(path);
 	CPPUNIT_ASSERT_MESSAGE("Camera initialization failed!\n", camera.init());
@@ -167,7 +167,7 @@ void Tests::testCamera()
 	CPPUNIT_ASSERT( count == 10 );*/
 
 	//CameraImages class
-	path = "data/090206-3";
+	path = "data/samples";
 	CameraImages cameraImages(path, false, 0, false, 80);
 	CPPUNIT_ASSERT( cameraImages.init() );
 	CPPUNIT_ASSERT( cameraImages.isIdle() == true);
@@ -182,7 +182,7 @@ void Tests::testCamera()
 	CPPUNIT_ASSERT( count == 5 );
 
 	//CameraDatabase class
-	path = "./data/090206-3.db";
+	path = "./data/samples.db";
 	CameraDatabase cameraDatabase(path, false); // ignoreChildren=false;
 	CPPUNIT_ASSERT( cameraDatabase.init() );
 	CPPUNIT_ASSERT( cameraDatabase.isIdle() == true);
@@ -325,7 +325,7 @@ void Tests::testKeypointMemory()
 	parameters.insert(ParametersPair(Parameters::kKpTfIdfLikelihoodUsed(), "true"));
 	mem.setCommonSignatureUsed(true);
 	mem.setMaxStMemSize(1);
-	mem.init("sqlite3", "./data/090206-3.db", false, parameters);
+	mem.init("sqlite3", "./data/samples.db", false, parameters);
 	//ULOGGER_INFO("mem.getStMemIds().size() = %d, mem.getStMemIds().size()=%d", mem.getWorkingMemIds().size(), mem.getStMemIds().size());
 	CPPUNIT_ASSERT( mem.getWorkingMem().size() + mem.getStMem().size() == 83 );
 
