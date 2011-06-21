@@ -46,9 +46,6 @@
        <attribute name="headerVisible">
         <bool>false</bool>
        </attribute>
-       <attribute name="headerVisible">
-        <bool>false</bool>
-       </attribute>
       </widget>
      </item>
      <item>
@@ -68,7 +65,7 @@
           <enum>QFrame::Raised</enum>
          </property>
          <property name="currentIndex">
-          <number>2</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="page_22">
           <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -101,7 +98,7 @@
               <item row="1" column="0">
                <widget class="QComboBox" name="comboBox_loggerLevel">
                 <property name="currentIndex">
-                 <number>1</number>
+                 <number>2</number>
                 </property>
                 <property name="sizeAdjustPolicy">
                  <enum>QComboBox::AdjustToContents</enum>
@@ -255,7 +252,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               <item row="2" column="0">
                <widget class="QComboBox" name="comboBox_loggerEventLevel">
                 <property name="currentIndex">
-                 <number>1</number>
+                 <number>3</number>
                 </property>
                 <property name="sizeAdjustPolicy">
                  <enum>QComboBox::AdjustToContents</enum>
@@ -1113,8 +1110,8 @@ We can edit how will like the prediction used in the Bayes filter when there is 
                     <rect>
                      <x>0</x>
                      <y>0</y>
-                     <width>524</width>
-                     <height>138</height>
+                     <width>98</width>
+                     <height>71</height>
                     </rect>
                    </property>
                    <layout class="QHBoxLayout" name="horizontalLayout_2">
