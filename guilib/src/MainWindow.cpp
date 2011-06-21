@@ -1061,7 +1061,7 @@ void MainWindow::deleteMemory()
 	{
 		button = QMessageBox::question(this,
 				tr("Deleting memory..."),
-				tr("The remote database file \"%1\" will be deleted. Are you sure you want to continue? (This cannot be reverted)").arg(dbPath),
+				tr("The remote database file \"%1\" and log files will be deleted. Are you sure you want to continue? (This cannot be reverted)").arg(dbPath),
 				QMessageBox::Yes|QMessageBox::No,
 				QMessageBox::No);
 	}
@@ -1069,7 +1069,7 @@ void MainWindow::deleteMemory()
 	{
 		button = QMessageBox::question(this,
 				tr("Deleting memory..."),
-				tr("The database file \"%1\" (%2 MB) will be deleted. Are you sure you want to continue? (This cannot be reverted)").arg(dbPath).arg(UFile::length(dbPath.toStdString())/1000000),
+				tr("The database file \"%1\" (%2 MB) and log files will be deleted. Are you sure you want to continue? (This cannot be reverted)").arg(dbPath).arg(UFile::length(dbPath.toStdString())/1000000),
 				QMessageBox::Yes|QMessageBox::No,
 				QMessageBox::No);
 	}

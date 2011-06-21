@@ -115,7 +115,7 @@ private:
 	void deleteMemory();
 	void addSMState(SMState * data); // ownership is transferred
 	SMState * getSMState();
-	void setupLogFiles();
+	void setupLogFiles(bool overwrite = false);
 	void releaseAllStrategies();
 	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
 	void dumpPrediction() const;

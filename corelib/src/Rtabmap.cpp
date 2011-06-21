@@ -110,7 +110,7 @@ std::string Rtabmap::getVersion()
 	return RTABMAP_VERSION;
 }
 
-void Rtabmap::setupLogFiles()
+void Rtabmap::setupLogFiles(bool overwrite)
 {
 	// Log files
 	if(_foutFloat)
@@ -124,12 +124,21 @@ void Rtabmap::setupLogFiles()
 		_foutInt = 0;
 	}
 
+	std::string attributes = "a+"; // append to log files
+	if(overwrite)
+	{
+		// If a file with the same name already exists
+		// its content is erased and the file is treated
+		// as a new empty file.
+		attributes = "w";
+	}
+
 #ifdef _MSC_VER
-	fopen_s(&_foutFloat, (_wDir+LOG_F).toStdString().c_str(), "a+");
-	fopen_s(&_foutInt, (_wDir+LOG_I).toStdString().c_str(), "a+");
+	fopen_s(&_foutFloat, (_wDir+LOG_F).toStdString().c_str(), attributes.c_str());
+	fopen_s(&_foutInt, (_wDir+LOG_I).toStdString().c_str(), attributes.c_str());
 #else
-	_foutFloat = fopen((_wDir+LOG_F).c_str(), "a+");
-	_foutInt = fopen((_wDir+LOG_I).c_str(), "a+");
+	_foutFloat = fopen((_wDir+LOG_F).c_str(), attributes.c_str());
+	_foutInt = fopen((_wDir+LOG_I).c_str(), attributes.c_str());
 #endif
 
 	ULOGGER_DEBUG("Log file (int)=%s", (_wDir+LOG_I).c_str());
@@ -522,7 +531,7 @@ void Rtabmap::deleteMemory()
 	_reactivateId = 0;
 	_highestHypothesisValue = 0;
 	_spreadMargin = 0;
-	this->setupLogFiles();
+	this->setupLogFiles(true);
 }
 
 void Rtabmap::handleEvent(UEvent* event)

@@ -266,7 +266,7 @@
      <x>0</x>
      <y>0</y>
      <width>839</width>
-     <height>23</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -279,17 +279,17 @@
     <property name="title">
      <string>Edit</string>
     </property>
-    <addaction name="actionReset_the_memory"/>
-    <addaction name="actionDelete_memory"/>
+    <addaction name="actionApply_settings_to_the_detector"/>
+    <addaction name="actionClear_cache"/>
     <addaction name="separator"/>
     <addaction name="actionOpen_working_directory"/>
+    <addaction name="actionDelete_memory"/>
+    <addaction name="separator"/>
     <addaction name="actionDump_the_memory"/>
     <addaction name="actionDump_the_prediction_matrix"/>
     <addaction name="actionGenerate_map"/>
+    <addaction name="actionReset_the_memory"/>
     <addaction name="separator"/>
-    <addaction name="actionApply_settings_to_the_detector"/>
-    <addaction name="separator"/>
-    <addaction name="actionClear_cache"/>
     <addaction name="actionAuto_screen_capture"/>
    </widget>
    <widget class="QMenu" name="menu6">
