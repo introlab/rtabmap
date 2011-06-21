@@ -52,7 +52,8 @@
 #include <QtGui/QSplashScreen>
 
 #define LOG_FILE_NAME "LogRtabmap.txt"
-#define SHARE_SHOW_LOG_FILE "share/rtabmap/ShowLogs.m"
+#define SHARE_SHOW_LOG_FILE "share/rtabmap/showlogs.m"
+#define SHARE_GET_PRECISION_RECALL_FILE "share/rtabmap/getPrecisionRecall.m"
 #define SHARE_IMPORT_FILE   "share/rtabmap/importfile.m"
 
 using namespace rtabmap;
@@ -1020,7 +1021,7 @@ void MainWindow::stopDetection()
 		emit stateChanged(kIdle);
 	}
 
-	//Copy ShowLogs.m from appDirPath/../share/rtabmap/ShowLogs.m to working directory. (appDirPath is in bin)
+	//Copy showlogs.m from appDirPath/../share/rtabmap/ShowLogs.m to working directory. (appDirPath is in bin)
 	QString showLogFileSrc = (QApplication::applicationDirPath()+"/../")+SHARE_SHOW_LOG_FILE;
 	QString showLogFileTarget = (_preferencesDialog->getWorkingDirectory()+"/")+UFile::getName(SHARE_SHOW_LOG_FILE).c_str();
 	if(!QFile::exists(showLogFileTarget) && QFile::exists(showLogFileSrc))
@@ -1034,6 +1035,14 @@ void MainWindow::stopDetection()
 	if(!QFile::exists(importFileTarget) && QFile::exists(importFileSrc))
 	{
 		QFile::copy(importFileSrc, importFileTarget);
+	}
+
+	// copy getPrecisionRecall.m
+	QString getPrFileSrc = (QApplication::applicationDirPath()+"/../")+SHARE_GET_PRECISION_RECALL_FILE;
+	QString getPrFileTarget = (_preferencesDialog->getWorkingDirectory()+"/")+UFile::getName(SHARE_GET_PRECISION_RECALL_FILE).c_str();
+	if(!QFile::exists(getPrFileTarget) && QFile::exists(getPrFileSrc))
+	{
+		QFile::copy(getPrFileSrc, getPrFileTarget);
 	}
 }
 

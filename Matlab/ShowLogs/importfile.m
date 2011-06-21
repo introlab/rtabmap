@@ -1,4 +1,4 @@
-function importfile(fileToRead1)
+function [Data] = importfile(fileToRead1)
 %IMPORTFILE(FILETOREAD1)
 %  Imports data from the specified file
 %  FILETOREAD1:  file to read
@@ -14,9 +14,8 @@ rawData1 = importdata(fileToRead1);
 [unused,name] = fileparts(fileToRead1); %#ok
 newData1.(genvarname(name)) = rawData1;
 
-% Create new variables in the base workspace from those fields.
 vars = fieldnames(newData1);
-for i = 1:length(vars)
-    assignin('base', vars{i}, newData1.(vars{i}));
+if length(vars) > 0
+    Data = newData1.(vars{1});
 end
 

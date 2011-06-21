@@ -200,7 +200,8 @@ set(CPACK_SOURCE_IGNORE_FILES
 
 # Share files
 INSTALL(FILES 
- ${PROJECT_SOURCE_DIR}/Matlab/ShowLogs/ShowLogs.m 
+ ${PROJECT_SOURCE_DIR}/Matlab/ShowLogs/showlogs.m 
+ ${PROJECT_SOURCE_DIR}/Matlab/ShowLogs/getPrecisionRecall.m 
  ${PROJECT_SOURCE_DIR}/Matlab/ShowLogs/importfile.m 
  DESTINATION share/${PROJECT_PREFIX} 
  COMPONENT runtime)
