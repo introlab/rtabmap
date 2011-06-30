@@ -73,6 +73,8 @@ public:
 	MainWindow(PreferencesDialog * prefDialog = 0, QWidget * parent = 0);
 	~MainWindow();
 
+	QString getWorkingDirectory() const;
+
 public slots:
 	void changeState(MainWindow::State state);
 

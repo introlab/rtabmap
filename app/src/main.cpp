@@ -49,6 +49,7 @@ int main(int argc, char* argv[])
 	/* Start thread's task */
 	mainWindow->showNormal();
 
+	rtabmap->setWorkingDirectory(mainWindow->getWorkingDirectory().toStdString());
 	rtabmap->start();
 
 	// Now wait for application to finish

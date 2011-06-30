@@ -1092,6 +1092,11 @@ void MainWindow::deleteMemory()
 	this->clearTheCache();
 }
 
+QString MainWindow::getWorkingDirectory() const
+{
+	return _preferencesDialog->getWorkingDirectory();
+}
+
 void MainWindow::openWorkingDirectory()
 {
 	QString filePath = _preferencesDialog->getWorkingDirectory();
