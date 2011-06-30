@@ -357,7 +357,7 @@ bool CameraImages::init()
 		delete _dir;
 		_dir = 0;
 	}
-	_dir = new UDirectory(_path, "jpg ppm png bmp");
+	_dir = new UDirectory(_path, "jpg ppm png bmp pnm");
 	_count = 0;
 	if(_path[_path.size()-1] != '\\' && _path[_path.size()-1] != '/')
 	{
