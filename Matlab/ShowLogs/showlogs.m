@@ -47,6 +47,7 @@ LogF = importfile([PathPrefix '/' 'LogF.txt']);
 % 15 stddev likelihood
 % 16 vp hypothesis
 % 17 timeEmtyingTrash
+% 18 rehearsalValue
 
 LogI = importfile([PathPrefix '/' 'LogI.txt']);
 % COLUMN HEADERS : 
@@ -63,8 +64,10 @@ LogI = importfile([PathPrefix '/' 'LogI.txt']);
 % 11 signaturesReactivated
 % 12 lcHypothesisReactivated
 % 13 refUniqueWordsCount
-% 14 reactivateId
-% 15 non nulls count
+% 14 _reactivateId
+% 15 nonNulls.size()
+% 16 directNeighborsNotReactivated
+% 17 _spreadMargin
 
 if isempty(LogI) || isempty(LogF)
     error('Log files are empty')

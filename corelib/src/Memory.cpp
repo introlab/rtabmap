@@ -236,20 +236,22 @@ void Memory::preUpdate()
 	}
 }
 
-bool Memory::update(const SMState * smState, std::list<std::pair<std::string, float> > & stats)
+bool Memory::update(const SMState * smState, std::map<std::string, float> & stats)
 {
 	ULOGGER_DEBUG("");
 	UTimer timer;
 	UTimer totalTimer;
 	timer.start();
+	float t;
 
 	//============================================================
 	// Pre update...
 	//============================================================
 	ULOGGER_DEBUG("pre-updating...");
 	this->preUpdate();
-	stats.push_back(std::pair<std::string, float>(std::string("TimingMem/Pre-update/ms"), timer.ticks()*1000));
-	ULOGGER_DEBUG("time preUpdate=%f ms", stats.back().second);
+	t=timer.ticks()*1000;
+	stats.insert(std::pair<std::string, float>(std::string("TimingMem/Pre-update/ms"), t));
+	ULOGGER_DEBUG("time preUpdate=%f ms", t);
 
 	//============================================================
 	// Create a signature with the image received.
@@ -279,8 +281,9 @@ bool Memory::update(const SMState * smState, std::list<std::pair<std::string, fl
 		_lastLoopClosureId = signature->id();
 	}
 
-	stats.push_back(std::pair<std::string, float>(std::string("TimingMem/Signature creation/ms"), timer.ticks()*1000));
-	ULOGGER_DEBUG("time creating signature=%f ms", stats.back().second);
+	t=timer.ticks()*1000;
+	stats.insert(std::pair<std::string, float>(std::string("TimingMem/Signature creation/ms"), t));
+	ULOGGER_DEBUG("time creating signature=%f ms", t);
 
 	//============================================================
 	// Comparison step...
@@ -295,8 +298,8 @@ bool Memory::update(const SMState * smState, std::list<std::pair<std::string, fl
 		UTimer t;
 		maxId = rehearsal(signature, _similarityOnlyLast, maxValue);
 		UDEBUG("t=%fs", t.ticks());
-		stats.push_back(std::pair<std::string, float>(std::string("Memory/Rehearsal Max Id/"), maxId));
-		stats.push_back(std::pair<std::string, float>(std::string("Memory/Rehearsal Value/"), maxValue));
+		stats.insert(std::pair<std::string, float>(std::string("Memory/Rehearsal Max Id/"), maxId));
+		stats.insert(std::pair<std::string, float>(std::string("Memory/Rehearsal Value/"), maxValue));
 		if(maxId > 0 && maxValue >= _similarityThreshold)
 		{
 			if(_incrementalMemory)
@@ -320,8 +323,10 @@ bool Memory::update(const SMState * smState, std::list<std::pair<std::string, fl
 		}
 		UDEBUG("t=%fs", t.ticks());
 	}
-	stats.push_back(std::pair<std::string, float>(std::string("TimingMem/Rehearsal/ms"), timer.ticks()*1000));
-	ULOGGER_DEBUG("time rehearsal=%f ms", stats.back().second);
+
+	t=timer.ticks()*1000;
+	stats.insert(std::pair<std::string, float>(std::string("TimingMem/Rehearsal/ms"), t));
+	ULOGGER_DEBUG("time rehearsal=%f ms", t);
 
 	//============================================================
 	// Update the common signature
@@ -354,7 +359,7 @@ bool Memory::update(const SMState * smState, std::list<std::pair<std::string, fl
 
 	UDEBUG("totalTimer = %fs", totalTimer.ticks());
 
-	stats.push_back(std::pair<std::string, float>(std::string("Memory/Last loop closure/"), _lastLoopClosureId));
+	stats.insert(std::pair<std::string, float>(std::string("Memory/Last loop closure/"), _lastLoopClosureId));
 
 	return true;
 }
@@ -630,7 +635,7 @@ void Memory::clear()
 /**
  * Compute the likelihood of the signature with some others in the memory. If
  * the signature ids list is empty, the likelihood will be calculated
- * for all signatures in the working time memory.
+ * for all signatures in the working memory.
  * If an error occurs, the result is empty.
  */
 std::map<int, float> Memory::computeLikelihood(const Signature * signature, const std::set<int> & signatureIds) const
@@ -655,21 +660,25 @@ std::map<int, float> Memory::computeLikelihood(const Signature * signature, cons
 		std::map<int, int>::const_iterator iter = wm.begin();
 		for(; iter!=wm.end(); ++iter)
 		{
-			float sim = signature->compareTo(this->getSignature(iter->first));
-			likelihood.insert(likelihood.end(), std::pair<int, float>(iter->first, sim));
-			sumSimilarity += sim;
-			UDEBUG("sim %d with %d = %f", signature->id(), iter->first, sim);
-			if(sim>maxSim)
+			//ignore the last in WM
+			if(iter->first != wm.rbegin()->first)
 			{
-				maxSim = sim;
-			}
-			if(sim)
-			{
-				++nonNulls;
-			}
-			else
-			{
-				++nulls;
+				float sim = signature->compareTo(this->getSignature(iter->first));
+				likelihood.insert(likelihood.end(), std::pair<int, float>(iter->first, sim));
+				sumSimilarity += sim;
+				UDEBUG("sim %d with %d = %f", signature->id(), iter->first, sim);
+				if(sim>maxSim)
+				{
+					maxSim = sim;
+				}
+				if(sim)
+				{
+					++nonNulls;
+				}
+				else
+				{
+					++nulls;
+				}
 			}
 		}
 		ULOGGER_DEBUG("sumSimilarity=%f, maxSim=%f, nonNulls=%d, nulls=%d)", sumSimilarity, maxSim, nonNulls, nulls);
@@ -829,13 +838,23 @@ Signature * Memory::getRemovableSignature(const std::list<int> & ignoredIds, boo
 		if(_lastLoopClosureId > 0 && _stMem.find(_lastLoopClosureId) == _stMem.end())
 		{
 			// If set, it must be in WM
+			bool nullWeightFound = false;
 			std::map<int, int>::const_iterator iter = _workingMem.find(_lastLoopClosureId);
 			while(iter != _workingMem.end())
 			{
 				++currentRecentWmSize;
+				Signature * s = uValue(_signatures, iter->first, (Signature*)0);
+				if(s && s->getWeight() == 0)
+				{
+					nullWeightFound = true;
+				}
+				else if(!s)
+				{
+					UERROR("Signature not found ?!?");
+				}
 				++iter;
 			}
-			if(currentRecentWmSize && currentRecentWmSize < recentWmMaxSize)
+			if(currentRecentWmSize>1 && !nullWeightFound && currentRecentWmSize < recentWmMaxSize)
 			{
 				recentWmImmunized = true;
 			}
@@ -1022,6 +1041,9 @@ void Memory::addLoopClosureLink(int oldId, int newId, bool rehearsal)
 				{
 					_lastLoopClosureId = newS->id();
 				}
+
+				// update weight
+				newS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
 			}
 			else
 			{
@@ -1030,9 +1052,10 @@ void Memory::addLoopClosureLink(int oldId, int newId, bool rehearsal)
 				//this->merge(oldS, newS, kFullMerging);
 
 				_lastLoopClosureId = newS->id();
+
+				newS->setWeight(newS->getWeight() + oldS->getWeight());
 			}
 
-			newS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
 			oldS->setLoopClosureId(newS->id());
 
 			// keep actions from the old

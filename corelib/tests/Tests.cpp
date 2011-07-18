@@ -287,7 +287,7 @@ void Tests::testBayesFilter()
 	for(int i=1; i<11; ++i)
 	{
 		//ULOGGER_DEBUG("--- %d ---", i);
-		std::list<std::pair<std::string, float> > memStats;
+		std::map<std::string, float> memStats;
 		mem.update(0, memStats);
 		posterior = bayes.computePosterior(&mem, likelihood);
 		likelihood.insert(std::pair<int, float>(i, 1));

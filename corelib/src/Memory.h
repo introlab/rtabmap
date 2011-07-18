@@ -53,7 +53,7 @@ public:
 	virtual ~Memory();
 
 	virtual void parseParameters(const ParametersMap & parameters);
-	bool update(const SMState * rawData, std::list<std::pair<std::string, float> > & stats);
+	bool update(const SMState * rawData, std::map<std::string, float> & stats);
 	virtual bool init(const std::string & dbDriverName, const std::string & dbUrl, bool dbOverwritten = false, const ParametersMap & parameters = ParametersMap());
 	virtual std::map<int, float> computeLikelihood(const Signature * signature, const std::set<int> & signatureIds = std::set<int>()) const;
 	virtual int forget(const std::list<int> & ignoredIds = std::list<int>());

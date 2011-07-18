@@ -2047,7 +2047,7 @@ void Plot::captureScreen()
 		dir.mkdir(targetDir);
 	}
 	targetDir += "/";
-	QString name = QDateTime::currentDateTime().toString("yyMMdd-hhmmsszzz") + ".png";
+	QString name = QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + ".png";
 	QPixmap figure = QPixmap::grabWidget(this);
 	figure.save(targetDir + name);
 }

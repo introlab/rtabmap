@@ -888,7 +888,7 @@ void MainWindow::captureScreen()
 		dir.mkdir(targetDir);
 	}
 	targetDir += "/";
-	QString name = QDateTime::currentDateTime().toString("yyMMdd-hhmmsszzz") + ".png";
+	QString name = QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + ".png";
 	_ui->statusbar->clearMessage();
 	QPixmap figure = QPixmap::grabWidget(this);
 	figure.save(targetDir + name);

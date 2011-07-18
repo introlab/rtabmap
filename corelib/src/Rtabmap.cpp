@@ -612,7 +612,7 @@ void Rtabmap::process()
 	double timeMemoryCleanup = 0;
 	double timeEmptyingMemoryTrash = 0;
 	double timeStatsCreation = 0;
-	std::list<std::pair<std::string, float> > memUpdateStats;
+	std::map<std::string, float> memUpdateStats;
 
 	int refId = Memory::kIdInvalid;
 	float hypothesisRatio = 0.0f; // Only used for statistics
@@ -781,7 +781,7 @@ void Rtabmap::process()
 			//============================================================
 			// Likelihood computation
 			// Get the likelihood of the new signature
-			// with all images contained in the working time memory + reactivated.
+			// with all images contained in the working memory + reactivated.
 			//============================================================
 			ULOGGER_INFO("computing likelihood...");
 			likelihood = _memory->computeLikelihood(signature);
@@ -854,26 +854,40 @@ void Rtabmap::process()
 
 					timeHypothesesValidation = timer.ticks();
 					ULOGGER_INFO("timeHypothesesValidation=%f",timeHypothesesValidation);
-
-					// We are tracking the next loop closures,
-					// reset the retrieval margin
-					_spreadMargin = 0;
 				}
 
 				//============================================================
 				// Retrieval id update
 				//============================================================
-				int lastReactivatedId = _reactivateId;
 				std::list<std::pair<int, float> > hyp;
-				this->selectHypotheses(posterior, hyp, false);
-				if(likelihood.at(hyp.front().first) > _remThr)
+				// using likelihood (only if in reactivated ids)
+				this->selectHypotheses(likelihood, hyp, false);
+				if(std::find(reactivatedIds.begin(),reactivatedIds.end(), hyp.front().first) != reactivatedIds.end())
 				{
 					_reactivateId = hyp.front().first;
 				}
-
-				if(hypotheses.front().second < _loopRatio*_highestHypothesisValue)
+				else
 				{
-					if(std::find(reactivatedIds.begin(),reactivatedIds.end(), hypotheses.front().first) != reactivatedIds.end())
+					//using highest hypothesis
+					this->selectHypotheses(posterior, hyp, false);
+					if(likelihood.at(hyp.front().first) > _remThr)
+					{
+						_reactivateId = hyp.front().first;
+					}
+					// else don't change the reactivateId
+				}
+
+				// Spreading margin...
+				if(hypotheses.front().second >= _loopThr && !rejectedHypothesis)
+				{
+					// We are tracking the next loop closures,
+					// reset the retrieval margin
+					_spreadMargin = 0;
+					UDEBUG("Margin=0");
+				}
+				else if(std::find(reactivatedIds.begin(),reactivatedIds.end(), hypotheses.front().first) != reactivatedIds.end())
+				{
+					if(signaturesReactivated<2 || hypotheses.front().second < _loopRatio*_highestHypothesisValue)
 					{
 						// We are loosing the next loop closures (it
 						// can be temporary occlusions/bad images),
@@ -881,21 +895,9 @@ void Rtabmap::process()
 						++_spreadMargin;
 						UDEBUG("Margin++");
 					}
-					else
-					{
-						// We lost the next loop closures (a new path is taken),
-						// reset the retrieval margin
-						_spreadMargin = 0;
-						UDEBUG("Margin=0");
-					}
+					//else don't change the margin
 				}
-				else if(signaturesReactivated < 2 && _reactivateId == lastReactivatedId)
-				{
-					// If we are still, spread margin if no signatures were loaded...
-					++_spreadMargin;
-					UDEBUG("Margin++");
-				}
-				else if(signaturesReactivated >= 2)
+				else
 				{
 					// We lost the next loop closures (a new path is taken),
 					// reset the retrieval margin
@@ -982,6 +984,7 @@ void Rtabmap::process()
 	const KeypointSignature * ssRef = 0;
 	const KeypointSignature * ssLoop = 0;
 	int lcHypothesisReactivated = 0;
+	float rehearsalValue = uValue(memUpdateStats, std::string("Memory/Rehearsal Value/"), 0.0f);
 	KeypointMemory * kpMem = dynamic_cast<KeypointMemory *>(_memory);
 	if(kpMem)
 	{
@@ -1061,6 +1064,7 @@ void Rtabmap::process()
 			stat->addStatistic(Statistics::kLoopVp_likelihood(), vpLikelihood);
 			stat->addStatistic(Statistics::kLoopReactivateId(), _reactivateId);
 			stat->addStatistic(Statistics::kLoopHypothesis_ratio(), hypothesisRatio);
+			stat->addStatistic(Statistics::kLoopRetrieval_margin(), _spreadMargin);
 
 			// Child count by parent signature on the root of the memory ... for statistics
 			stat->setWeights(_memory->getWeights());
@@ -1082,7 +1086,7 @@ void Rtabmap::process()
 			stat->addStatistic(Statistics::kTimingCleaning_neighbors(), timeCleaningNeighbors*1000);
 
 			// memory update timings
-			for(std::list<std::pair<std::string, float> >::iterator iter = memUpdateStats.begin(); iter!=memUpdateStats.end(); ++iter)
+			for(std::map<std::string, float>::iterator iter = memUpdateStats.begin(); iter!=memUpdateStats.end(); ++iter)
 			{
 				stat->addStatistic(iter->first, iter->second);
 			}
@@ -1203,7 +1207,7 @@ void Rtabmap::process()
 	if(_foutFloat)
 	{
 
-		fprintf(_foutFloat, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+		fprintf(_foutFloat, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
 				totalTime,
 				timeMemoryUpdate,
 				timeReactivations,
@@ -1220,12 +1224,13 @@ void Rtabmap::process()
 				mean,
 				stddev,
 				vpHypothesis,
-				timeEmptyingMemoryTrash);
+				timeEmptyingMemoryTrash,
+				rehearsalValue);
 	}
 
 	if(_foutInt)
 	{
-		fprintf(_foutInt, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %lu %d\n",
+		fprintf(_foutInt, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %lu %d %d\n",
 				_lcHypothesisId,
 				highestHypothesisId,
 				signaturesRemoved,
@@ -1241,7 +1246,8 @@ void Rtabmap::process()
 				refUniqueWordsCount,
 				_reactivateId,
 				nonNulls.size(),
-				directNeighborsNotReactivated);
+				directNeighborsNotReactivated,
+				_spreadMargin);
 	}
 	ULOGGER_INFO("Time logging = %f...", timer.ticks());
 	//ULogger::flush();
