@@ -454,30 +454,26 @@ std::map<int, float> KeypointMemory::computeLikelihood(const Signature * signatu
 			const std::map<int, int> & wm = this->getWorkingMem();
 			for(std::map<int, int>::const_iterator iter = wm.begin(); iter!=wm.end(); ++iter)
 			{
-				//ignore the last in WM
-				if(iter->first != wm.rbegin()->first)
+				likelihood.insert(likelihood.end(), std::pair<int, float>(iter->first, 0));
+				if(_tfIdfNormalized)
 				{
-					likelihood.insert(likelihood.end(), std::pair<int, float>(iter->first, 0));
-					if(_tfIdfNormalized)
+					const KeypointSignature * s = dynamic_cast<const KeypointSignature *>(this->getSignature(iter->first));
+					float wordsCountRatio = -1; // default invalid
+					if(s)
 					{
-						const KeypointSignature * s = dynamic_cast<const KeypointSignature *>(this->getSignature(iter->first));
-						float wordsCountRatio = -1; // default invalid
-						if(s)
+						if(s->getWords().size() > newSurf->getWords().size())
 						{
-							if(s->getWords().size() > newSurf->getWords().size())
-							{
-								wordsCountRatio = float(newSurf->getWords().size()) / float(s->getWords().size());
-							}
-							else if(newSurf->getWords().size())
-							{
-								wordsCountRatio = float(s->getWords().size()) / float(newSurf->getWords().size());
-							}
-							calculatedWordsRatio.insert(std::pair<int, float>(iter->first, wordsCountRatio));
+							wordsCountRatio = float(newSurf->getWords().size()) / float(s->getWords().size());
 						}
-						else
+						else if(newSurf->getWords().size())
 						{
-							calculatedWordsRatio.insert(std::pair<int, float>(iter->first, wordsCountRatio));
+							wordsCountRatio = float(s->getWords().size()) / float(newSurf->getWords().size());
 						}
+						calculatedWordsRatio.insert(std::pair<int, float>(iter->first, wordsCountRatio));
+					}
+					else
+					{
+						calculatedWordsRatio.insert(std::pair<int, float>(iter->first, wordsCountRatio));
 					}
 				}
 			}

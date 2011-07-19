@@ -660,25 +660,21 @@ std::map<int, float> Memory::computeLikelihood(const Signature * signature, cons
 		std::map<int, int>::const_iterator iter = wm.begin();
 		for(; iter!=wm.end(); ++iter)
 		{
-			//ignore the last in WM
-			if(iter->first != wm.rbegin()->first)
+			float sim = signature->compareTo(this->getSignature(iter->first));
+			likelihood.insert(likelihood.end(), std::pair<int, float>(iter->first, sim));
+			sumSimilarity += sim;
+			UDEBUG("sim %d with %d = %f", signature->id(), iter->first, sim);
+			if(sim>maxSim)
 			{
-				float sim = signature->compareTo(this->getSignature(iter->first));
-				likelihood.insert(likelihood.end(), std::pair<int, float>(iter->first, sim));
-				sumSimilarity += sim;
-				UDEBUG("sim %d with %d = %f", signature->id(), iter->first, sim);
-				if(sim>maxSim)
-				{
-					maxSim = sim;
-				}
-				if(sim)
-				{
-					++nonNulls;
-				}
-				else
-				{
-					++nulls;
-				}
+				maxSim = sim;
+			}
+			if(sim)
+			{
+				++nonNulls;
+			}
+			else
+			{
+				++nulls;
 			}
 		}
 		ULOGGER_DEBUG("sumSimilarity=%f, maxSim=%f, nonNulls=%d, nulls=%d)", sumSimilarity, maxSim, nonNulls, nulls);

@@ -892,7 +892,7 @@ void Rtabmap::process()
 						// We are loosing the next loop closures (it
 						// can be temporary occlusions/bad images),
 						//increment the retrieval margin
-						++_spreadMargin;
+						_spreadMargin+=2;
 						UDEBUG("Margin++");
 					}
 					//else don't change the margin

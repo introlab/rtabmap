@@ -368,9 +368,6 @@ int main(int argc, char * argv[])
 	pm.insert(ParametersPair(Parameters::kRtabmapPublishStats(), uBool2str(false)));
 	rtabmap->init(pm);
 
-
-
-
 	printf("Avpd init time = %fs\n", timer.ticks());
 
 	// Start thread's task
@@ -396,6 +393,12 @@ int main(int argc, char * argv[])
 	}
 	printf("\nProcessing images...\n");
 
+	//setup camera
+	ParametersMap allParam;
+	Rtabmap::readParameters(rtabmap->getIniFilePath().c_str(), allParam);
+	pm.insert(allParam.begin(), allParam.end());
+	CamKeypointTreatment imageToSMState(pm);
+
 	UTimer iterationTimer;
 	int imagesProcessed = 0;
 	std::list<std::vector<float> > teleopActions;
@@ -407,9 +410,9 @@ int main(int argc, char * argv[])
 		int i=0;
 		while(image && g_forever)
 		{
+			SMState * smState = imageToSMState.process(image);
 			++imagesProcessed;
 			iterationTimer.start();
-			SMState * smState;
 			if(i<maxTeleopActions)
 			{
 				// ONLY TESTING HERE if maxTeleopActions>0
@@ -417,12 +420,12 @@ int main(int argc, char * argv[])
 				v[0] = 2;
 				v[1] = 0;
 				teleopActions.push_back(v);
-				smState = new SMState(std::list<std::vector<float> >(), teleopActions);
+				smState->setActuators(teleopActions);
 				smState->setImage(image);
 			}
 			else
 			{
-				smState = new SMState(std::list<std::vector<float> >(), actions);
+				smState->setActuators(actions);
 				smState->setImage(image);
 			}
 			rtabmap->process(smState);
