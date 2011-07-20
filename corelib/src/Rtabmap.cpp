@@ -833,8 +833,7 @@ void Rtabmap::process()
 			if(hypotheses.size())
 			{
 				// Loop closure Threshold
-				if(likelihood.at(hypotheses.front().first) > 0.0f &&
-				   hypotheses.front().second >= _loopThr)
+				if(hypotheses.front().second >= _loopThr)
 				{
 					//============================================================
 					// Hypothesis verification for loop closure with geometric
@@ -843,7 +842,8 @@ void Rtabmap::process()
 					//============================================================
 					if(hypotheses.front().second >= _loopRatio*_highestHypothesisValue &&
 					   _highestHypothesisValue &&
-					   _vhStrategy->verify(signature, _memory->getSignature(hypotheses.front().first)))
+					   _vhStrategy->verify(signature, _memory->getSignature(hypotheses.front().first)) &&
+					   likelihood.at(hypotheses.front().first) > 0.0f)
 					{
 						_lcHypothesisId = hypotheses.front().first;
 					}
