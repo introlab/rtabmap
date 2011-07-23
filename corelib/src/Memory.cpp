@@ -1014,7 +1014,7 @@ void Memory::addLoopClosureLink(int oldId, int newId, bool rehearsal)
 		if(oldS->getLoopClosureId() > 0 && oldS->getLoopClosureId() == newS->id())
 		{
 			// do nothing, already merged
-			newS->setWeight(newS->getWeight() + 1);
+			UDEBUG("already merged");
 		}
 		else if(oldS->getLoopClosureId() > 0)
 		{
@@ -1023,7 +1023,7 @@ void Memory::addLoopClosureLink(int oldId, int newId, bool rehearsal)
 		}
 		else if(newS->getLoopClosureId() > 0)
 		{
-			ULOGGER_ERROR("Not supposed to occur!");
+			UFATAL("Not supposed to occur!");
 		}
 		else
 		{
@@ -1040,6 +1040,16 @@ void Memory::addLoopClosureLink(int oldId, int newId, bool rehearsal)
 
 				// update weight
 				newS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
+
+				// Find if a location in WM has a loop closure with the old location,
+				// if yes, redirect the loop closure ref to the new one.
+				for(std::map<int, Signature *>::iterator iter=_signatures.begin(); iter != _signatures.end(); ++iter)
+				{
+					if(_stMem.find(iter->first) == _stMem.end() && iter->second->getLoopClosureId() == oldS->id())
+					{
+						iter->second->setLoopClosureId(newS->id());
+					}
+				}
 			}
 			else
 			{

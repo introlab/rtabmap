@@ -855,6 +855,10 @@ void Rtabmap::process()
 					timeHypothesesValidation = timer.ticks();
 					ULOGGER_INFO("timeHypothesesValidation=%f",timeHypothesesValidation);
 				}
+				else if(hypotheses.front().second < _loopRatio*_highestHypothesisValue)
+				{
+					rejectedHypothesis = true;
+				}
 
 				//============================================================
 				// Retrieval id update
@@ -862,6 +866,7 @@ void Rtabmap::process()
 				std::list<std::pair<int, float> > hyp;
 				// using likelihood (only if in reactivated ids)
 				this->selectHypotheses(likelihood, hyp, false);
+				int lastReactivatedId = _reactivateId;
 				if(std::find(reactivatedIds.begin(),reactivatedIds.end(), hyp.front().first) != reactivatedIds.end())
 				{
 					_reactivateId = hyp.front().first;
@@ -887,7 +892,7 @@ void Rtabmap::process()
 				}
 				else if(std::find(reactivatedIds.begin(),reactivatedIds.end(), hypotheses.front().first) != reactivatedIds.end())
 				{
-					if(signaturesReactivated<2 || hypotheses.front().second < _loopRatio*_highestHypothesisValue)
+					if(signaturesReactivated<_maxRetrieved || (hypotheses.front().first == lastReactivatedId && rejectedHypothesis))
 					{
 						// We are loosing the next loop closures (it
 						// can be temporary occlusions/bad images),

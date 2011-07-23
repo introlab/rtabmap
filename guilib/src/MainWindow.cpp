@@ -50,6 +50,7 @@
 #include <QtCore/QStringList>
 #include <QtCore/QProcess>
 #include <QtGui/QSplashScreen>
+#include <QtGui/QInputDialog>
 
 #define LOG_FILE_NAME "LogRtabmap.txt"
 #define SHARE_SHOW_LOG_FILE "share/rtabmap/showlogs.m"
@@ -75,7 +76,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_oneSecondTimer(0),
 	_elapsedTime(0),
 	_posteriorCurve(0),
-	_likelihoodCurve(0)
+	_likelihoodCurve(0),
+	_autoScreenCaptureFormat("png")
 {
 	ULOGGER_DEBUG("");
 
@@ -166,6 +168,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->menuShow_view->addAction(_ui->dockWidget_likelihood->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_statsV2->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_console->toggleViewAction());
+	_ui->menuShow_view->addAction(_ui->toolBar->toggleViewAction());
+	_ui->toolBar->setWindowTitle(tr("Control toolbar"));
 	QAction * a = _ui->menuShow_view->addAction("Status");
 	a->setCheckable(false);
 	connect(a, SIGNAL(triggered(bool)), _initProgressDialog, SLOT(show()));
@@ -183,6 +187,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionGenerate_map, SIGNAL(triggered()), this , SLOT(generateMap()));
 	connect(_ui->actionDelete_memory, SIGNAL(triggered()), this , SLOT(deleteMemory()));
 	connect(_ui->menuEdit, SIGNAL(aboutToShow()), this, SLOT(updateEditMenu()));
+	connect(_ui->actionAuto_screen_capture, SIGNAL(triggered(bool)), this, SLOT(selectScreenCaptureFormat(bool)));
 
 #if defined(Q_WS_MAC) or defined(Q_WS_WIN)
 	connect(_ui->actionOpen_working_directory, SIGNAL(triggered()), SLOT(openWorkingDirectory()));
@@ -219,10 +224,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->doubleSpinBox_stats_timeLimit, SIGNAL(editingFinished()), this, SLOT(changeTimeLimitSetting()));
 	connect(this, SIGNAL(imgRateChanged(double)), _preferencesDialog, SLOT(setImgRate(double)));
 	connect(this, SIGNAL(timeLimitChanged(double)), _preferencesDialog, SLOT(setTimeLimit(double)));
-	connect(_ui->checkBox_showFeatures, SIGNAL(toggled(bool)), this, SLOT(updateItemsShown()));
-	connect(_ui->checkBox_showFeaturesLoop, SIGNAL(toggled(bool)), this, SLOT(updateItemsShown()));
-	connect(_ui->checkBox_showImage, SIGNAL(toggled(bool)), this, SLOT(updateItemsShown()));
-	connect(_ui->checkBox_showImageLoop, SIGNAL(toggled(bool)), this, SLOT(updateItemsShown()));
 
 	// Statistics from the detector
 	qRegisterMetaType<rtabmap::Statistics>("rtabmap::Statistics");
@@ -410,7 +411,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				}
 				QRectF sceneRect = img.rect();
 				refPixmap = QPixmap::fromImage(img);
-				_ui->imageView_source->scene()->addPixmap(refPixmap)->setVisible(this->_ui->checkBox_showImage->isChecked());
+				_ui->imageView_source->scene()->addPixmap(refPixmap)->setVisible(this->_ui->imageView_source->isImageShown());
 				_ui->imageView_source->setSceneRect(sceneRect);
 				_ui->imageView_loopClosure->setSceneRect(sceneRect);
 			}
@@ -439,6 +440,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			}
 			ULOGGER_DEBUG("");
 			int rejectedHyp = bool(uValue(stat.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
+			float highestHypothesisValue = uValue(stat.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f);
 			if(highestHypothesisId > 0)
 			{
 				bool show = true;
@@ -452,7 +454,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					}
 					_ui->label_matchId->setText(QString("Match ID = %1").arg(stat.loopClosureId()));
 				}
-				else if(rejectedHyp)
+				else if(rejectedHyp && highestHypothesisValue >= _preferencesDialog->getLoopThr())
 				{
 					show = _preferencesDialog->imageRejectedShown() || _preferencesDialog->imageHighestHypShown();;
 					if(show)
@@ -493,7 +495,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 					if(!lcImg.isNull())
 					{
-						_ui->imageView_loopClosure->scene()->addPixmap(QPixmap::fromImage(lcImg))->setVisible(this->_ui->checkBox_showImageLoop->isChecked());
+						_ui->imageView_loopClosure->scene()->addPixmap(QPixmap::fromImage(lcImg))->setVisible(this->_ui->imageView_loopClosure->isImageShown());
 					}
 					if(highestHypothesisIsSaved)
 					{
@@ -744,7 +746,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 			// GREEN = NEW
 			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(0, 255, 0, alpha));
 		}
-		item->setVisible(this->_ui->checkBox_showFeatures->isChecked());
+		item->setVisible(this->_ui->imageView_source->isFeaturesShown());
 		this->_ui->imageView_source->scene()->addItem(item);
 		item->setZValue(1);
 	}
@@ -786,7 +788,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 			// GREEN = NEW
 			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(0, 255, 0, alpha));
 		}
-		item->setVisible(this->_ui->checkBox_showFeaturesLoop->isChecked());
+		item->setVisible(this->_ui->imageView_loopClosure->isFeaturesShown());
 		this->_ui->imageView_loopClosure->scene()->addItem(item);
 		item->setZValue(1);
 	}
@@ -799,35 +801,6 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 			_lastId = (*refWords.rbegin()).first;
 		}
 		_lastIds = QSet<int>::fromList(QList<int>::fromStdList(uKeys(refWords)));
-	}
-}
-
-void MainWindow::updateItemsShown()
-{
-	QList<QGraphicsItem*> items = _ui->imageView_source->scene()->items();
-	for(int i=0; i<items.size(); ++i)
-	{
-		if(qgraphicsitem_cast<KeypointItem*>(items.at(i)))
-		{
-			items.at(i)->setVisible(_ui->checkBox_showFeatures->isChecked());
-		}
-		else if(qgraphicsitem_cast<QGraphicsPixmapItem*>(items.at(i)))
-		{
-			items.at(i)->setVisible(_ui->checkBox_showImage->isChecked());
-		}
-	}
-
-	items = _ui->imageView_loopClosure->scene()->items();
-	for(int i=0; i<items.size(); ++i)
-	{
-		if(qgraphicsitem_cast<KeypointItem*>(items.at(i)))
-		{
-			items.at(i)->setVisible(_ui->checkBox_showFeaturesLoop->isChecked());
-		}
-		else if(qgraphicsitem_cast<QGraphicsPixmapItem*>(items.at(i)))
-		{
-			items.at(i)->setVisible(_ui->checkBox_showImageLoop->isChecked());
-		}
 	}
 }
 
@@ -888,7 +861,7 @@ void MainWindow::captureScreen()
 		dir.mkdir(targetDir);
 	}
 	targetDir += "/";
-	QString name = QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + ".png";
+	QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + ".") + _autoScreenCaptureFormat;
 	_ui->statusbar->clearMessage();
 	QPixmap figure = QPixmap::grabWidget(this);
 	figure.save(targetDir + name);
@@ -1250,6 +1223,24 @@ void MainWindow::loadFigures()
 	}
 
 }
+
+void MainWindow::selectScreenCaptureFormat(bool checked)
+{
+	if(checked)
+	{
+		QStringList items;
+		items << QString("png") << QString("jpg");
+		bool ok;
+		QString item = QInputDialog::getItem(this, tr("Select format"), tr("Format:"), items, 0, false, &ok);
+		if(ok && !item.isEmpty())
+		{
+			_autoScreenCaptureFormat = item;
+		}
+		this->captureScreen();
+	}
+}
+
+//END ACTIONS
 
 // STATES
 // Must be called by the GUI thread, use signal StateChanged()

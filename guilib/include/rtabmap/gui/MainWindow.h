@@ -101,13 +101,13 @@ private slots:
 	void clearTheCache();
 	void saveFigures();
 	void loadFigures();
+	void selectScreenCaptureFormat(bool checked);
 	void updateElapsedTime();
 	void processStats(const rtabmap::Statistics & stat);
 	void applyAllPrefSettings();
 	void applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags);
 	void applyPrefSettings(const rtabmap::ParametersMap & parameters);
 	void processRtabmapEventInit(int status, const QString & info);
-	void updateItemsShown();
 	void changeImgRateSetting();
 	void changeTimeLimitSetting();
 	void captureScreen();
@@ -157,6 +157,7 @@ private:
 	QActionGroup * _selectSourceGrp;
 
 	QString _graphSavingFileName;
+	QString _autoScreenCaptureFormat;
 };
 
 }

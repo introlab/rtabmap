@@ -326,7 +326,7 @@ private:
 	void setupUi();
 	void createActions();
 	void createMenus();
-
+	void selectScreenCaptureFormat();
 
 private:
 	PlotLegend * _legend;
@@ -349,6 +349,7 @@ private:
 	QTime _refreshIntervalTime;
 	int _lowestRefreshRate;
 	QTime _refreshStartTime;
+	QString _autoScreenCaptureFormat;
 
 	QMenu * _menu;
 	QAction * _aShowLegend;

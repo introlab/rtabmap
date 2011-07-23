@@ -1333,7 +1333,8 @@ void OrientableLabel::paintEvent(QPaintEvent* event)
 
 Plot::Plot(QWidget *parent) :
 	QWidget(parent),
-	_maxVisibleItems(-1)
+	_maxVisibleItems(-1),
+	_autoScreenCaptureFormat("png")
 {
 	this->setupUi();
 	this->createActions();
@@ -1451,7 +1452,7 @@ void Plot::createActions()
 	_aYLabelVertical->setCheckable(true);
 	_aYLabelVertical->setChecked(true);
 	_aSaveFigure = new QAction(tr("Save figure..."), this);
-	_aAutoScreenCapture = new QAction(tr("Auto screen capture"), this);
+	_aAutoScreenCapture = new QAction(tr("Auto screen capture..."), this);
 	_aAutoScreenCapture->setCheckable(true);
 	_aClearData = new QAction(tr("Clear data"), this);
 
@@ -1974,28 +1975,10 @@ void Plot::contextMenuEvent(QContextMenuEvent * event)
 	}
 	else if(action == _aAutoScreenCapture)
 	{
-		this->captureScreen();
-		/*if(_aAutoScreenCapture->isChecked())
+		if(_aAutoScreenCapture->isChecked())
 		{
-			bool ok;
-			int value = QInputDialog::getInt(this,
-					action->text(),
-					tr("Screen capture delay (ms) [min=100]:"),
-					_autoScreenCaptureDelay,
-					100,
-					2147483647,
-					100,
-					&ok);
-			if(ok)
-			{
-				_autoScreenCaptureDelay = value;
-				this->autoCaptureScreen();
-			}
-			else
-			{
-				_aAutoScreenCapture->setChecked(false);
-			}
-		}*/
+			this->selectScreenCaptureFormat();
+		}
 	}
 	else if(action == _aClearData)
 	{
@@ -2047,9 +2030,22 @@ void Plot::captureScreen()
 		dir.mkdir(targetDir);
 	}
 	targetDir += "/";
-	QString name = QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + ".png";
+	QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + ".") + _autoScreenCaptureFormat;
 	QPixmap figure = QPixmap::grabWidget(this);
 	figure.save(targetDir + name);
+}
+
+void Plot::selectScreenCaptureFormat()
+{
+	QStringList items;
+	items << QString("png") << QString("jpg");
+	bool ok;
+	QString item = QInputDialog::getItem(this, tr("Select format"), tr("Format:"), items, 0, false, &ok);
+	if(ok && !item.isEmpty())
+	{
+		_autoScreenCaptureFormat = item;
+	}
+	this->captureScreen();
 }
 
 // for convenience...

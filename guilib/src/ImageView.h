@@ -23,6 +23,9 @@
 #include <QtGui/QGraphicsView>
 #include <QtCore/QRectF>
 
+class QAction;
+class QMenu;
+
 namespace rtabmap {
 
 class ImageView : public QGraphicsView {
@@ -35,6 +38,9 @@ public:
 
 	void resetZoom();
 
+	bool isImageShown();
+	bool isFeaturesShown();
+
 protected:
 	virtual void contextMenuEvent(QContextMenuEvent * e);
 	virtual void wheelEvent(QWheelEvent * e);
@@ -43,9 +49,17 @@ private slots:
 	void updateZoom();
 
 private:
+	void updateItemsShown();
+
+private:
 	int _zoom;
 	int _minZoom;
 	QString _savedFileName;
+
+	QMenu * _menu;
+	QAction * _showImage;
+	QAction * _showFeatures;
+	QAction * _saveImage;
 };
 
 }

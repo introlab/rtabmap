@@ -24,7 +24,9 @@
 #include <QtGui/QMenu>
 #include <QtGui/QFileDialog>
 #include <QtCore/QDir>
+#include <QtGui/QAction>
 #include "utilite/ULogger.h"
+#include "KeypointItem.h"
 
 namespace rtabmap {
 
@@ -37,6 +39,15 @@ ImageView::ImageView(QWidget * parent) :
 	this->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
 	this->setScene(new QGraphicsScene(this));
 	connect(this->scene(), SIGNAL(sceneRectChanged(const QRectF &)), this, SLOT(updateZoom()));
+
+	_menu = new QMenu(tr(""), this);
+	_showImage = _menu->addAction(tr("Show image"));
+	_showImage->setCheckable(true);
+	_showImage->setChecked(true);
+	_showFeatures = _menu->addAction(tr("Show features"));
+	_showFeatures->setCheckable(true);
+	_showFeatures->setChecked(true);
+	_saveImage = _menu->addAction(tr("Save picture..."));
 }
 
 ImageView::~ImageView() {
@@ -49,12 +60,20 @@ void ImageView::resetZoom()
 	this->setDragMode(QGraphicsView::NoDrag);
 }
 
+bool ImageView::isImageShown()
+{
+	return _showImage->isChecked();
+}
+
+bool ImageView::isFeaturesShown()
+{
+	return _showFeatures->isChecked();
+}
+
 void ImageView::contextMenuEvent(QContextMenuEvent * e)
 {
-	QMenu menu(tr(""), this);
-	QAction * saveImage = menu.addAction(tr("Save picture..."));
-
-	if(menu.exec(e->globalPos()) == saveImage)
+	QAction * action = _menu->exec(e->globalPos());
+	if(action == _saveImage)
 	{
 		QString text;
 #ifdef QT_SVG_LIB
@@ -69,6 +88,26 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 			QPainter p(&img);
 			this->scene()->render(&p, this->sceneRect(), this->sceneRect());
 			img.save(text);
+		}
+	}
+	else if(action == _showFeatures || action == _showImage)
+	{
+		this->updateItemsShown();
+	}
+}
+
+void ImageView::updateItemsShown()
+{
+	QList<QGraphicsItem*> items = this->scene()->items();
+	for(int i=0; i<items.size(); ++i)
+	{
+		if(qgraphicsitem_cast<KeypointItem*>(items.at(i)))
+		{
+			items.at(i)->setVisible(_showFeatures->isChecked());
+		}
+		else if(qgraphicsitem_cast<QGraphicsPixmapItem*>(items.at(i)))
+		{
+			items.at(i)->setVisible(_showImage->isChecked());
 		}
 	}
 }
