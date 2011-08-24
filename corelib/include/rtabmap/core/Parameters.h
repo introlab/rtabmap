@@ -133,6 +133,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Rtabmap, MaxRetrieved,       unsigned int, 2); // Maximum locations retrieved at the same time from LTM
 	RTABMAP_PARAM(Rtabmap, ActionsByTime,       bool, false); // Select next actions using directly the more recent neighbor of the current node, otherwise, highest hypothesis is used
 	RTABMAP_PARAM(Rtabmap, ActionsSentRejectHyp,  bool, false); // Actions sent also on rejected hypotheses (on decreasing hypotheses)
+	RTABMAP_PARAM(Rtabmap, ConfidenceThr, 		float, 0.0); // Actions are not sent when the loop closure hypothesis is under the confidence threshold
 
 	// Hypotheses selection
 	RTABMAP_PARAM(Rtabmap, LoopThr,    	     float, 0.10); // Loop closing threshold

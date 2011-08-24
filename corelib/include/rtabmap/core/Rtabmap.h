@@ -135,6 +135,7 @@ private:
 	unsigned int _maxRetrieved;
 	bool _actionsByTime;
 	bool _actionsSentRejectHyp;
+	float _confidenceThr;
 
 	int _lcHypothesisId;
 	int _reactivateId;
