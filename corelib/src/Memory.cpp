@@ -955,7 +955,7 @@ void Memory::moveToTrash(Signature * s)
 					UDEBUG("A neighbor is not found (%d)", *iter);
 					_dbDriver->removeNeighbor(*iter, s->id());
 				}
-				s->removeNeighbor(*iter);
+				//s->removeNeighbor(*iter); // Commented to keep a trace in db
 			}
 
 			if(s->getWeight() && s->getLoopClosureId() > 0)

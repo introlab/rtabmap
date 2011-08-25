@@ -1075,6 +1075,7 @@ void Rtabmap::process()
 			stat->addStatistic(Statistics::kLoopReactivateId(), _reactivateId);
 			stat->addStatistic(Statistics::kLoopHypothesis_ratio(), hypothesisRatio);
 			stat->addStatistic(Statistics::kLoopRetrieval_margin(), _spreadMargin);
+			stat->addStatistic(Statistics::kLoopActions(), (int)_actions.size());
 
 			// Child count by parent signature on the root of the memory ... for statistics
 			stat->setWeights(_memory->getWeights());

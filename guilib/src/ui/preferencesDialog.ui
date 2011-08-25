@@ -1026,6 +1026,9 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               </item>
               <item row="9" column="0">
                <widget class="QDoubleSpinBox" name="general_doubleSpinBox_confidenceThr">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
                 <property name="maximum">
                  <double>1.000000000000000</double>
                 </property>
@@ -1133,8 +1136,8 @@ We can edit how will like the prediction used in the Bayes filter when there is 
                     <rect>
                      <x>0</x>
                      <y>0</y>
-                     <width>28</width>
-                     <height>71</height>
+                     <width>98</width>
+                     <height>64</height>
                     </rect>
                    </property>
                    <layout class="QHBoxLayout" name="horizontalLayout_2">

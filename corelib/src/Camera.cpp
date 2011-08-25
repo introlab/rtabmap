@@ -36,10 +36,9 @@
 namespace rtabmap
 {
 
-SMState * CamPostTreatment::process(const IplImage * image) const
+void CamPostTreatment::process(SMState * smState) const
 {
 	//no threatment...
-	return new SMState();
 }
 
 CamKeypointTreatment::~CamKeypointTreatment()
@@ -53,17 +52,15 @@ CamKeypointTreatment::~CamKeypointTreatment()
 		delete _keypointDescriptor;
 	}
 }
-SMState * CamKeypointTreatment::process(const IplImage * image) const
+void CamKeypointTreatment::process(SMState * smState) const
 {
-	if(image)
+	if(smState && smState->getImage() && smState->getKeypoints().size() == 0 && smState->getSensors().size() == 0)
 	{
-		std::list<cv::KeyPoint> keypoints = _keypointDetector->generateKeypoints(image);
-		std::list<std::vector<float> > descriptors = _keypointDescriptor->generateDescriptors(image, keypoints);
-		SMState * smState = new SMState(descriptors, std::list<std::vector<float> >());
+		std::list<cv::KeyPoint> keypoints = _keypointDetector->generateKeypoints(smState->getImage());
+		std::list<std::vector<float> > descriptors = _keypointDescriptor->generateDescriptors(smState->getImage(), keypoints);
+		smState->setSensors(descriptors);
 		smState->setKeypoints(keypoints);
-		return smState;
 	}
-	return 0;
 }
 
 void CamKeypointTreatment::parseParameters(const ParametersMap & parameters)
@@ -284,15 +281,12 @@ void Camera::process()
 {
 	UTimer timer;
 	ULOGGER_DEBUG("Camera::process()");
-	IplImage * image = this->takeImage();
-	if(image)
+	SMState * smState = this->takeImage();
+	if(smState)
 	{
-		SMState * smState = _postThreatement->process(image);
-		if(smState)
-		{
-			smState->setImage(image);
-			this->post(new SMStateEvent(smState));
-		}
+		_postThreatement->process(smState);
+		this->post(new SMStateEvent(smState));
+
 		double elapsed = timer.ticks();
 		UDEBUG("Post treatment time = %fs", elapsed);
 		if(_imageRate>0)
@@ -370,7 +364,7 @@ bool CameraImages::init()
 	return _dir != 0;
 }
 
-IplImage * CameraImages::takeImage()
+SMState * CameraImages::takeImage()
 {
 	IplImage * img = 0;
 	if(_dir)
@@ -428,7 +422,11 @@ IplImage * CameraImages::takeImage()
 		cvReleaseImage(&img);
 		img = resampledImg;
 	}
-	return img;
+	if(img)
+	{
+		return new SMState(img);
+	}
+	return 0;
 }
 
 
@@ -505,7 +503,7 @@ bool CameraVideo::init()
 	return true;
 }
 
-IplImage * CameraVideo::takeImage()
+SMState * CameraVideo::takeImage()
 {
 	IplImage * img = 0;  // Null image
 	if(_capture)
@@ -543,7 +541,11 @@ IplImage * CameraVideo::takeImage()
 		img = cvCloneImage(img);
 	}
 
-	return img;
+	if(img)
+	{
+		return new SMState(img);
+	}
+	return 0;
 }
 
 
@@ -606,20 +608,43 @@ bool CameraDatabase::init()
 	}
 	else
 	{
-		// TODO load all signatures only if ignoreChildren is false
 		_dbDriver->getAllSignatureIds(_ids);
 		_indexIter = _ids.begin();
 	}
 	return true;
 }
 
-IplImage * CameraDatabase::takeImage()
+SMState * CameraDatabase::takeImage()
 {
 	IplImage * img = 0;
 	if(_dbDriver && _indexIter != _ids.end())
 	{
-		_dbDriver->getImage(*_indexIter, &img);
-		++_indexIter;
+		if(_ignoreChildren)
+		{
+			bool ignore = true;
+			while(img == 0 && _indexIter != _ids.end() && ignore)
+			{
+				ignore = false;
+				int loopId = 0;
+				if(_dbDriver->getLoopClosureId(*_indexIter, loopId))
+				{
+					if(loopId == *_indexIter+1)
+					{
+						ignore = true;
+					}
+					else
+					{
+						_dbDriver->getImage(*_indexIter, &img);
+					}
+				}
+				++_indexIter;
+			}
+		}
+		else
+		{
+			_dbDriver->getImage(*_indexIter, &img);
+			++_indexIter;
+		}
 	}
 	else if(!_dbDriver)
 	{
@@ -647,7 +672,27 @@ IplImage * CameraDatabase::takeImage()
 		img = resampledImg;
 	}
 
-	return img;
+	if(img)
+	{
+		SMState * smState = new SMState(img);
+		if(_dbDriver && _indexIter!=_ids.begin())
+		{
+			std::set<int>::iterator iter = _indexIter;
+			--iter;
+			std::map<int, std::list<std::vector<float> > > neighbors;
+			_dbDriver->loadNeighbors(*iter, neighbors);
+			for(std::map<int, std::list<std::vector<float> > >::iterator i=neighbors.begin(); i!=neighbors.end(); ++i)
+			{
+				if(i->first > *iter && i->second.size())
+				{
+					smState->setActuators(i->second);
+					break;
+				}
+			}
+		}
+		return smState;
+	}
+	return 0;
 }
 
 } // namespace rtabmap

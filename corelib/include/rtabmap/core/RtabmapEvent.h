@@ -52,7 +52,8 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Vp_likelihood,);
 	RTABMAP_STATS(Loop, ReactivateId,);
 	RTABMAP_STATS(Loop, Hypothesis_ratio,);
-	RTABMAP_STATS(Loop, Retrieval_margin,)
+	RTABMAP_STATS(Loop, Retrieval_margin,);
+	RTABMAP_STATS(Loop, Actions,);
 
 	RTABMAP_STATS(Memory, Working_memory_size,);
 	RTABMAP_STATS(Memory, Short_time_memory_size,);

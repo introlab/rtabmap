@@ -406,11 +406,11 @@ int main(int argc, char * argv[])
 	std::list<std::vector<float> > actions;
 	while(loopDataset <= repeat && g_forever)
 	{
-		image = camera->takeImage();
+		SMState * smState = camera->takeImage();
 		int i=0;
-		while(image && g_forever)
+		while(smState && g_forever)
 		{
-			SMState * smState = imageToSMState.process(image);
+			imageToSMState.process(smState);
 			++imagesProcessed;
 			iterationTimer.start();
 			if(i<maxTeleopActions)
@@ -435,7 +435,7 @@ int main(int argc, char * argv[])
 			{
 				++countLoopDetected;
 			}
-			image = camera->takeImage();
+			smState = camera->takeImage();
 			if(++count % 100 == 0)
 			{
 				printf(" count = %d, loop closures = %d\n", count, countLoopDetected);

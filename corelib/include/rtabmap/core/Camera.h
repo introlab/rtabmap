@@ -38,7 +38,7 @@ class KeypointDescriptor;
 class SMState;
 
 /**
- * Only encapsulate the image in a newly created SMState.
+ * No treatment
  */
 class RTABMAP_EXP CamPostTreatment
 {
@@ -47,7 +47,7 @@ public:
 		this->parseParameters(parameters);
 	}
 	virtual ~CamPostTreatment() {}
-	virtual SMState * process(const IplImage * image) const;
+	virtual void process(SMState * smState) const;
 	virtual void parseParameters(const ParametersMap & parameters) {}
 };
 
@@ -68,7 +68,7 @@ public:
 		this->parseParameters(parameters);
 	}
 	virtual ~CamKeypointTreatment();
-	virtual SMState * process(const IplImage * image) const;
+	virtual void process(SMState * smState) const;
 	virtual void parseParameters(const ParametersMap & parameters);
 	DetectorStrategy detectorStrategy() const;
 private:
@@ -90,7 +90,7 @@ public:
 public:
 	virtual ~Camera();
 
-	virtual IplImage * takeImage() = 0;
+	virtual SMState * takeImage() = 0;
 	virtual bool init() = 0;
 	bool isPaused() const {return !this->isRunning();}
 	bool isCapturing() const {return this->isRunning();}
@@ -145,7 +145,7 @@ public:
 			unsigned int imageHeight = 0);
 	virtual ~CameraImages();
 
-	virtual IplImage * takeImage();
+	virtual SMState * takeImage();
 	virtual bool init();
 
 private:
@@ -187,7 +187,7 @@ public:
 			unsigned int imageHeight = 0);
 	virtual ~CameraVideo();
 
-	virtual IplImage * takeImage();
+	virtual SMState * takeImage();
 	virtual bool init();
 
 private:
@@ -222,7 +222,7 @@ public:
 			unsigned int imageHeight = 0);
 	virtual ~CameraDatabase();
 
-	virtual IplImage * takeImage();
+	virtual SMState * takeImage();
 	virtual bool init();
 
 private:

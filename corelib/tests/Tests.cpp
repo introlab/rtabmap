@@ -81,20 +81,21 @@ void Tests::testAvpd()
 
 
 	/* Start thread's task */
-	IplImage * image = 0;
+	SMState * smState = 0;
 
-	image = camera.takeImage();
+	smState = camera.takeImage();
 	int imgCount = 0;
-	while(image)
+	while(smState)
 	{
 		++imgCount;
 		printf("Processing image %d/84...\n", imgCount);
-		ctabmap.process(new SMState(image));
-		image = camera.takeImage();
+		ctabmap.process(smState);
+		smState = camera.takeImage();
 	}
-	if(image)
+	if(smState)
 	{
-		cvReleaseImage(&image);
+		delete smState;
+		smState = 0;
 	}
 
 	CPPUNIT_ASSERT(imgCount == 84);
@@ -141,7 +142,7 @@ void Tests::testCamera()
 {
 	//Logger::setType(Logger::kTypeFile, "LogTestAvpdCore/testCamera.txt", false);
 	std::string path;
-	IplImage * image = 0;
+	SMState * smState = 0;
 	int count;
 
 	//CameraVideo class FIXME add a video in svn and reactivate this test
@@ -171,13 +172,14 @@ void Tests::testCamera()
 	CameraImages cameraImages(path, false, 0, false, 80);
 	CPPUNIT_ASSERT( cameraImages.init() );
 	CPPUNIT_ASSERT( cameraImages.isIdle() == true);
-	image = cameraImages.takeImage();
+	smState = cameraImages.takeImage();
 	count = 0;
-	while(image)
+	while(smState)
 	{
-		cvReleaseImage(&image);
+		delete smState;
+		smState = 0;
 		++count;
-		image = cameraImages.takeImage();
+		smState = cameraImages.takeImage();
 	}
 	CPPUNIT_ASSERT( count == 5 );
 
@@ -186,13 +188,14 @@ void Tests::testCamera()
 	CameraDatabase cameraDatabase(path, false); // ignoreChildren=false;
 	CPPUNIT_ASSERT( cameraDatabase.init() );
 	CPPUNIT_ASSERT( cameraDatabase.isIdle() == true);
-	image = cameraDatabase.takeImage();
+	smState = cameraDatabase.takeImage();
 	count = 0;
-	while(image)
+	while(smState)
 	{
 		++count;
-		cvReleaseImage(&image);
-		image = cameraDatabase.takeImage();
+		delete smState;
+		smState = 0;
+		smState = cameraDatabase.takeImage();
 	}
 	//ULOGGER_INFO("%d", count);
 	CPPUNIT_ASSERT( count == 82 );
