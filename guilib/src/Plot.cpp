@@ -1859,7 +1859,7 @@ void Plot::contextMenuEvent(QContextMenuEvent * event)
 					(min+max)/2,
 					-2147483647,
 					2147483647,
-					2,
+					4,
 					&ok);
 			if(ok)
 			{

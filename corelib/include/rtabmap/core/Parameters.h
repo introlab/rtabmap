@@ -166,7 +166,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Kp, ReactivatedWordsComparedToNewWords, bool, true); //Reactivated words are compared to the last words added in the dictionary (which are not indexed)
 	RTABMAP_PARAM(Kp, TfIdfLikelihoodUsed, bool, false); // Use of the td-idf strategy to compute the likelihood
 	RTABMAP_PARAM(Kp, Parallelized, bool, true); // If the dictionary update and signature creation were parallelized
-	RTABMAP_PARAM(Kp, SensorStateOnly, bool, false); // If using only sensors state (without actuators) for sensorimotor state nearest neighbor computation
+	RTABMAP_PARAM(Kp, SensorStateOnly, bool, true); // If using only sensors state (without actuators) for sensorimotor state nearest neighbor computation
 	RTABMAP_PARAM(Kp, TfIdfNormalized, bool, false); // If tf-idf weighting is normalized by the words count ratio between compared signatures
 	RTABMAP_PARAM_STR(Kp, RoiRatios, "0.0 0.0 0.0 0.0"); // Region of interest ratios [left, right, top, bottom]
 	RTABMAP_PARAM_STR(Kp, DictionaryPath, ""); // Path of the pre-computed dictionary
