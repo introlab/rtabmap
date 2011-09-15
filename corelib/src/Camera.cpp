@@ -382,7 +382,7 @@ SMState * CameraImages::takeImage()
 				{
 					_lastFileName = *fileNames.rbegin();
 					std::string fullPath = _path + _lastFileName;
-					img = cvLoadImage(fullPath.c_str(), CV_LOAD_IMAGE_UNCHANGED);
+					img = cvLoadImage(fullPath.c_str(), CV_LOAD_IMAGE_COLOR);
 				}
 			}
 		}
@@ -401,7 +401,7 @@ SMState * CameraImages::takeImage()
 				if(fileName.size())
 				{
 					ULOGGER_DEBUG("Loading image : %s\n", fullPath.c_str());
-					img = cvLoadImage(fullPath.c_str(), CV_LOAD_IMAGE_UNCHANGED);
+					img = cvLoadImage(fullPath.c_str(), CV_LOAD_IMAGE_COLOR);
 				}
 			}
 		}

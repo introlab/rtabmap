@@ -607,6 +607,10 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 	else if((RtabmapEventInit::Status)status == RtabmapEventInit::kInitialized)
 	{
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
+		if(_state == kPaused)
+		{
+			this->pauseDetection();
+		}
 	}
 	else
 	{
