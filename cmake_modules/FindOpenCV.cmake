@@ -66,6 +66,17 @@ if(NOT OpenCV_DIR)
 	ENDIF(ROSPACK_EXEC)
 endif(NOT OpenCV_DIR)
 
+if(NOT OpenCV_DIR)
+	# typical root dirs of installations, exactly one of them is used
+	SET (OpenCV_POSSIBLE_ROOT_DIRS
+	  /usr/local
+	  /usr/opt
+	  /usr
+	  )
+    find_path(OpenCV_PATH "OpenCVConfig.cmake" HINTS ${OpenCV_POSSIBLE_ROOT_DIRS} PATH_SUFFIXES "share/opencv")
+    SET(OpenCV_DIR ${OpenCV_PATH})
+endif(NOT OpenCV_DIR)
+
 ##====================================================
 ## Find OpenCV libraries
 ##----------------------------------------------------
