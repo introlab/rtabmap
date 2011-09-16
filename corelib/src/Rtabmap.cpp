@@ -1236,7 +1236,7 @@ void Rtabmap::process()
 
 	if(_foutInt)
 	{
-		fprintf(_foutInt, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %lu %d %d\n",
+		fprintf(_foutInt, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %u %d %d\n",
 				_lcHypothesisId,
 				highestHypothesisId,
 				signaturesRemoved,
