@@ -92,7 +92,6 @@ public:
 	int getTotalMemSize() const;
 	const std::string & getGraphFileName() const {return _graphFileName;}
 
-	void setReactivationDisabled(bool reactivationDisabled);
 	void setMaxTimeAllowed(float maxTimeAllowed); // in sec
 	void setDataBufferSize(int size);
 	void setWorkingDirectory(std::string path);
@@ -124,13 +123,12 @@ private:
 private:
 	// Modifiable parameters
 	bool _publishStats;
-	bool _reactivationDisabled;
 	float _maxTimeAllowed; // in sec
 	int _smStateBufferMaxSize;
 	unsigned int _minMemorySizeForLoopDetection;
 	float _loopThr;
 	float _loopRatio;
-	float _remThr;
+	float _retrievalThr;
 	bool _localGraphCleaned;
 	unsigned int _maxRetrieved;
 	bool _actionsByTime;

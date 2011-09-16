@@ -54,13 +54,12 @@ const char * Rtabmap::kDefaultIniFileName = "rtabmap.ini";
 
 Rtabmap::Rtabmap() :
 	_publishStats(Parameters::defaultRtabmapPublishStats()),
-	_reactivationDisabled(Parameters::defaultRtabmapDisableReactivation()),
 	_maxTimeAllowed(Parameters::defaultRtabmapTimeThr()), // 1 sec
 	_smStateBufferMaxSize(Parameters::defaultRtabmapSMStateBufferSize()),
 	_minMemorySizeForLoopDetection(Parameters::defaultRtabmapMinMemorySizeForLoopDetection()),
 	_loopThr(Parameters::defaultRtabmapLoopThr()),
 	_loopRatio(Parameters::defaultRtabmapLoopRatio()),
-	_remThr(Parameters::defaultRtabmapReactivationThr()),
+	_retrievalThr(Parameters::defaultRtabmapRetrievalThr()),
 	_localGraphCleaned(Parameters::defaultRtabmapLocalGraphCleaned()),
 	_maxRetrieved(Parameters::defaultRtabmapMaxRetrieved()),
 	_actionsByTime(Parameters::defaultRtabmapActionsByTime()),
@@ -236,10 +235,6 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		_publishStats = uStr2Bool(iter->second.c_str());
 	}
-	if((iter=parameters.find(Parameters::kRtabmapDisableReactivation())) != parameters.end())
-	{
-		_reactivationDisabled = uStr2Bool(iter->second.c_str());
-	}
 	if((iter=parameters.find(Parameters::kRtabmapTimeThr())) != parameters.end())
 	{
 		_maxTimeAllowed = std::atof(iter->second.c_str());
@@ -252,9 +247,9 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		_loopRatio = std::atof(iter->second.c_str());
 	}
-	if((iter=parameters.find(Parameters::kRtabmapReactivationThr())) != parameters.end())
+	if((iter=parameters.find(Parameters::kRtabmapRetrievalThr())) != parameters.end())
 	{
-		_remThr = std::atof(iter->second.c_str());
+		_retrievalThr = std::atof(iter->second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kRtabmapSMStateBufferSize())) != parameters.end())
 	{
@@ -698,7 +693,7 @@ void Rtabmap::process()
 		// If a loop closure occurred the last frame, activate neighbors
 		// for the likelihood
 		//============================================================
-		if(!_reactivationDisabled && _reactivateId > 0 )
+		if(_reactivateId > 0 )
 		{
 			//Load neighbors
 			ULOGGER_INFO("Reactivating signatures... around id=%d", _reactivateId);
@@ -880,7 +875,7 @@ void Rtabmap::process()
 				{
 					//using highest hypothesis
 					this->selectHypotheses(posterior, hyp, false);
-					if(likelihood.at(hyp.front().first) > _remThr)
+					if(likelihood.at(hyp.front().first) > _retrievalThr)
 					{
 						_reactivateId = hyp.front().first;
 					}
@@ -1319,11 +1314,6 @@ SMState * Rtabmap::getSMState()
 }
 
 // SETTERS
-void Rtabmap::setReactivationDisabled(bool reactivationDisabled)
-{
-	_reactivationDisabled = reactivationDisabled;
-}
-
 void Rtabmap::setMaxTimeAllowed(float maxTimeAllowed)
 {
 	//must be positive, 0 mean inf time allowed (no time limit)

@@ -123,16 +123,15 @@ class RTABMAP_EXP Parameters
 	// Rtabmap parameters
 	RTABMAP_PARAM(Rtabmap, VhStrategy, 	        int, 0);	   // None 0, Similarity 1, Epipolar 2
 	RTABMAP_PARAM(Rtabmap, PublishStats, 	     bool, true); // Publishing statistics
-	RTABMAP_PARAM(Rtabmap, ReactivationThr,     float, 0.0); // Reactivation threshold
+	RTABMAP_PARAM(Rtabmap, RetrievalThr,     float, 0.0); // Reactivation threshold
 	RTABMAP_PARAM(Rtabmap, TimeThr, 		     float, 0.7); // Maximum time allowed for the detector (s) (0 means infinity)
-	RTABMAP_PARAM(Rtabmap, DisableReactivation, bool, false); // Memory reactivation when a loop closure occurs : 0=enable, 1=disable
 	RTABMAP_PARAM(Rtabmap, SMStateBufferSize,    int, 1);      // Data buffer size (0 min inf)
-	RTABMAP_PARAM(Rtabmap, MinMemorySizeForLoopDetection, unsigned int, 15); //Minimum size of the memory to create loop closure hypotheses
+	RTABMAP_PARAM(Rtabmap, MinMemorySizeForLoopDetection, unsigned int, 25); //Minimum size of the memory to create loop closure hypotheses
 	RTABMAP_PARAM_STR(Rtabmap, WorkingDirectory, Parameters::getDefaultWorkingDirectory());	   // Working directory
 	RTABMAP_PARAM(Rtabmap, LocalGraphCleaned, bool, false);	   // Clean the neighborhood of the retrieved id
 	RTABMAP_PARAM(Rtabmap, MaxRetrieved,       unsigned int, 2); // Maximum locations retrieved at the same time from LTM
-	RTABMAP_PARAM(Rtabmap, ActionsByTime,       bool, false); // Select next actions using directly the more recent neighbor of the current node, otherwise, highest hypothesis is used
-	RTABMAP_PARAM(Rtabmap, ActionsSentRejectHyp,  bool, false); // Actions sent also on rejected hypotheses (on decreasing hypotheses)
+	RTABMAP_PARAM(Rtabmap, ActionsByTime,       bool, true); // Select next actions using directly the more recent neighbor of the current node, otherwise, highest hypothesis is used
+	RTABMAP_PARAM(Rtabmap, ActionsSentRejectHyp,  bool, true); // Actions sent also on rejected hypotheses (on decreasing hypotheses)
 	RTABMAP_PARAM(Rtabmap, ConfidenceThr, 		float, 0.0); // Actions are not sent when the loop closure hypothesis is under the confidence threshold
 
 	// Hypotheses selection
@@ -154,7 +153,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Kp, NNStrategy,     	int, 2);	  // Naive 0, kdTree 1, kdForest 2
 	RTABMAP_PARAM(Kp, IncrementalDictionary, bool, true);
 	RTABMAP_PARAM(Kp, WordsPerImage,    int, 400);
-	RTABMAP_PARAM(Kp, BadSignRatio,    float, 0.05); //Bad signature ratio (less than Ratio x AverageWordsPerImage = bad)
+	RTABMAP_PARAM(Kp, BadSignRatio,    float, 0.2); //Bad signature ratio (less than Ratio x AverageWordsPerImage = bad)
 	RTABMAP_PARAM(Kp, MinDistUsed,     bool, false); // The nearest neighbor must have a distance < minDist
 	RTABMAP_PARAM(Kp, MinDist, 	    float, 0.05); // Matching a descriptor with a word (euclidean distance ^ 2)
 	RTABMAP_PARAM(Kp, NndrUsed, 	    bool, true);  // If NNDR ratio is used
@@ -179,7 +178,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(DbSqlite3, JournalMode,  int, 0);	 	 // 0=DELETE, 1=TRUNCATE, 2=PERSIST, 3=MEMORY, 4=OFF (see sqlite3 doc : "PRAGMA journal_mode")
 
 	RTABMAP_PARAM(SURF, Extended, 		  bool, false); // true=128, false=64
-	RTABMAP_PARAM(SURF, HessianThreshold, float, 100.0);
+	RTABMAP_PARAM(SURF, HessianThreshold, float, 150.0);
 	RTABMAP_PARAM(SURF, Octaves, 		  int, 4);
 	RTABMAP_PARAM(SURF, OctaveLayers, 	  int, 2);
 	RTABMAP_PARAM(SURF, GpuVersion, 	  bool, false);

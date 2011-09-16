@@ -104,10 +104,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	// Map objects name with the corresponding parameter key, needed for the addParameter() slots
 	//Rtabmap
-	_ui->general_doubleSpinBox_reactivationThr->setObjectName(Parameters::kRtabmapReactivationThr().c_str());
+	_ui->general_doubleSpinBox_retrievalThr->setObjectName(Parameters::kRtabmapRetrievalThr().c_str());
 	_ui->general_checkBox_publishStats->setObjectName(Parameters::kRtabmapPublishStats().c_str());
 	_ui->general_doubleSpinBox_timeThr->setObjectName(Parameters::kRtabmapTimeThr().c_str());
-	_ui->general_checkBox_disableReactivation->setObjectName(Parameters::kRtabmapDisableReactivation().c_str());
 	_ui->general_spinBox_imagesBufferSize->setObjectName(Parameters::kRtabmapSMStateBufferSize().c_str());
 	_ui->general_spinBox_minMemorySizeForLoopDetection->setObjectName(Parameters::kRtabmapMinMemorySizeForLoopDetection().c_str());
 	_ui->general_spinBox_maxRetrieved->setObjectName(Parameters::kRtabmapMaxRetrieved().c_str());
@@ -1554,9 +1553,9 @@ double PreferencesDialog::getLoopThr() const
 {
 	return _ui->general_doubleSpinBox_hardThr->value();
 }
-double PreferencesDialog::getReacThr() const
+double PreferencesDialog::getRetrievalThr() const
 {
-	return _ui->general_doubleSpinBox_reactivationThr->value();
+	return _ui->general_doubleSpinBox_retrievalThr->value();
 }
 double PreferencesDialog::getVpThr() const
 {
@@ -1591,13 +1590,13 @@ void PreferencesDialog::setHardThr(int value)
 	}
 }
 
-void PreferencesDialog::setReactivationThr(int value)
+void PreferencesDialog::setRetrievalThr(int value)
 {
 	double dValue = double(value)/100;
 	ULOGGER_DEBUG("reactivation thr=%f", dValue);
-	if(_ui->general_doubleSpinBox_reactivationThr->value() != dValue)
+	if(_ui->general_doubleSpinBox_retrievalThr->value() != dValue)
 	{
-		_ui->general_doubleSpinBox_reactivationThr->setValue(dValue);
+		_ui->general_doubleSpinBox_retrievalThr->setValue(dValue);
 		if(validateForm())
 		{
 			this->writeSettings();

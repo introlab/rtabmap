@@ -142,7 +142,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	ThresholdCurve * tc;
 	tc = _ui->posteriorPlot->addThreshold("Loop closure thr", float(_preferencesDialog->getLoopThr()));
 	connect(this, SIGNAL(loopClosureThrChanged(float)), tc, SLOT(setThreshold(float)));
-	tc = _ui->posteriorPlot->addThreshold("Retrieval thr", float(_preferencesDialog->getReacThr()));
+	tc = _ui->posteriorPlot->addThreshold("Retrieval thr", float(_preferencesDialog->getRetrievalThr()));
 	connect(this, SIGNAL(loopClosureThrChanged(float)), tc, SLOT(setThreshold(float)));
 
 	_likelihoodCurve = new PdfPlotCurve("Likelihood", &_imagesMap, this);
@@ -552,7 +552,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				float value;
 				value = float(_preferencesDialog->getLoopThr());
 				emit(loopClosureThrChanged(value));
-				value = float(_preferencesDialog->getReacThr());
+				value = float(_preferencesDialog->getRetrievalThr());
 				emit(retrievalThrChanged(value));
 			}
 			if(!stat.likelihood().empty() && _ui->dockWidget_likelihood->isVisible())
@@ -700,7 +700,7 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters)
 	float value;
 	value = float(_preferencesDialog->getLoopThr());
 	emit(loopClosureThrChanged(value));
-	value = float(_preferencesDialog->getReacThr());
+	value = float(_preferencesDialog->getRetrievalThr());
 	emit(retrievalThrChanged(value));
 }
 

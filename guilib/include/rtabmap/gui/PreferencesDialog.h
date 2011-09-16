@@ -124,7 +124,7 @@ public:
 
 	//specific
 	double getLoopThr() const;
-	double getReacThr() const;
+	double getRetrievalThr() const;
 	double getVpThr() const;
 	double getExpThr() const;
 
@@ -134,7 +134,7 @@ signals:
 
 public slots:
 	void setHardThr(int value);
-	void setReactivationThr(int value);
+	void setRetrievalThr(int value);
 	void setImgRate(double value);
 	void setAutoRestart(bool value);
 	void setTimeLimit(double value);
