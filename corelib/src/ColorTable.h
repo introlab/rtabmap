@@ -2,11 +2,13 @@
 #ifndef COLORTABLE_H
 #define COLORTABLE_H
 
+#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+
 #include <vector>
 
 namespace rtabmap
 {
-class ColorTable
+class RTABMAP_EXP ColorTable
 {
 public:
 	ColorTable(int size);
