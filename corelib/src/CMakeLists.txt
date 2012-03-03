@@ -5,6 +5,7 @@ SET(SRC_FILES
 	
 	Memory.cpp
 	KeypointMemory.cpp
+	SMMemory.cpp
 	
 	DBDriverFactory.cpp
 	DBDriver.cpp

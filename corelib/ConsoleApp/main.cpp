@@ -427,7 +427,7 @@ int main(int argc, char * argv[])
 	std::list<std::vector<float> > actions;
 	while(loopDataset <= repeat && g_forever)
 	{
-		SMState * smState = camera->takeImage();
+		SMState * smState = camera->takeSMState();
 		int i=0;
 		while(smState && g_forever)
 		{
@@ -456,7 +456,7 @@ int main(int argc, char * argv[])
 			{
 				++countLoopDetected;
 			}
-			smState = camera->takeImage();
+			smState = camera->takeSMState();
 			if(++count % 100 == 0)
 			{
 				printf(" count = %d, loop closures = %d\n", count, countLoopDetected);

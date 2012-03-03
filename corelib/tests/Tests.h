@@ -31,14 +31,14 @@
 class Tests : public CppUnit::TestFixture  {
 
   CPPUNIT_TEST_SUITE( Tests );
-  CPPUNIT_TEST( testAvpd );
-  CPPUNIT_TEST( testDBDriverFactory );
+  //CPPUNIT_TEST( testAvpd );
+  //CPPUNIT_TEST( testDBDriverFactory );
   CPPUNIT_TEST( testSqlite3Database );
   CPPUNIT_TEST( testBayesFilter );
-  CPPUNIT_TEST( testKeypointMemory );
+  //CPPUNIT_TEST( testKeypointMemory );
   CPPUNIT_TEST( testCamera );
-  CPPUNIT_TEST( testVWDictionary );
-  CPPUNIT_TEST( testVerifyHypotheses );
+  //CPPUNIT_TEST( testVWDictionary );
+  //CPPUNIT_TEST( testVerifyHypotheses );
   CPPUNIT_TEST_SUITE_END();
 
 private:
@@ -53,7 +53,7 @@ public:
 	  ULogger::reset();
 	  ULogger::setType(ULogger::kTypeConsole);
 	  ULogger::setLevel(ULogger::kError);
-	  //Util::Logger::setLevel(Util::Logger::kDebug);
+	  //ULogger::setLevel(ULogger::kDebug);
   }
 
   void tearDown() 

@@ -14,6 +14,7 @@ ENDIF()
 
 IF(CPPUNIT_FOUND)
 	ADD_SUBDIRECTORY( tests )
+	#MESSAGE(STATUS "Tests are desactivated...")
 ELSE(CPPUNIT_FOUND)
    MESSAGE(STATUS "CppUnit is not found, tests for the ${PROJECT_NAME} project won't be compiled...")
 ENDIF(CPPUNIT_FOUND)
