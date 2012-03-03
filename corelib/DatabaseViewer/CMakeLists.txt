@@ -18,6 +18,7 @@ QT4_WRAP_CPP(moc_srcs ${headers_ui})
 SET(SRC_FILES 
 	./main.cpp
 	./MainWindow.cpp
+	../../guilib/src/KeypointItem.cpp
 	${moc_srcs} 
 	${moc_uis} 
 )
@@ -26,7 +27,7 @@ SET(INCLUDE_DIRS
 	${CMAKE_CURRENT_SOURCE_DIR}/../include
 	${CMAKE_CURRENT_SOURCE_DIR}/../src
 	${CMAKE_CURRENT_SOURCE_DIR}
-	${UTILITE_INCLUDE_DIR}
+	${UTILITE_INCLUDE_DIRS}
 	${OpenCV_INCLUDE_DIRS}
 	${CMAKE_CURRENT_BINARY_DIR} # for qt ui generated in binary dir
 )
@@ -34,7 +35,7 @@ SET(INCLUDE_DIRS
 INCLUDE(${QT_USE_FILE})
 
 SET(LIBRARIES
-    ${UTILITE_LIBRARY}
+    ${UTILITE_LIBRARIES}
     ${QT_LIBRARIES} 
 	${OpenCV_LIBRARIES} 
 	#${QWT5_LIBRARY} 

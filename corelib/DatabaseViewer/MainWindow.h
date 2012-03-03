@@ -26,13 +26,15 @@
 #include <QtCore/QSet>
 #include <QtGui/QImage>
 #include <opencv2/core/core.hpp>
+#include <opencv2/features2d/features2d.hpp>
 #include <set>
 
 class Ui_MainWindow;
+class QGraphicsScene;
 
 namespace rtabmap
 {
-class Memory;
+class KeypointMemory;
 }
 
 class MainWindow : public QMainWindow
@@ -57,12 +59,13 @@ private slots:
 private:
 	void updateIds();
 	QImage ipl2QImage(const IplImage *newImage);
+	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, QGraphicsScene * scene);
 
 private:
 	Ui_MainWindow * ui_;
 	QMap<int, QByteArray> imagesMap_;
 	QList<int> ids_;
-	rtabmap::Memory * memory_;
+	rtabmap::KeypointMemory * memory_;
 	QString pathDatabase_;
 };
 

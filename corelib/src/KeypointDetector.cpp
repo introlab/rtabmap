@@ -60,10 +60,10 @@ void KeypointDetector::parseParameters(const ParametersMap & parameters)
 	}
 }
 
-std::list<cv::KeyPoint> KeypointDetector::generateKeypoints(const IplImage * image)
+std::vector<cv::KeyPoint> KeypointDetector::generateKeypoints(const IplImage * image)
 {
 	ULOGGER_DEBUG("");
-	std::list<cv::KeyPoint> keypoints;
+	std::vector<cv::KeyPoint> keypoints;
 	if(image)
 	{
 		UTimer timer;
@@ -97,27 +97,39 @@ std::list<cv::KeyPoint> KeypointDetector::generateKeypoints(const IplImage * ima
 					// Remove words under the new hessian threshold
 
 					// Sort words by hessian
-					std::multimap<float, std::list<cv::KeyPoint>::iterator> hessianMap; // <hessian,id>
-					for(std::list<cv::KeyPoint>::iterator itKey = keypoints.begin(); itKey != keypoints.end(); ++itKey)
+					std::multimap<float, std::vector<cv::KeyPoint>::iterator> hessianMap; // <hessian,id>
+					for(std::vector<cv::KeyPoint>::iterator itKey = keypoints.begin(); itKey != keypoints.end(); ++itKey)
 					{
 						//Keep track of the data, to be easier to manage the data in the next step
-						hessianMap.insert(std::pair<float, std::list<cv::KeyPoint>::iterator>(fabs(itKey->response), itKey));
+						hessianMap.insert(std::pair<float, std::vector<cv::KeyPoint>::iterator>(fabs(itKey->response), itKey));
 					}
 
 					// Remove them from the signature
-					int removed = 0;
-					unsigned int stopIndex = hessianMap.size()-_wordsPerImageTarget;
-					std::multimap<float, std::list<cv::KeyPoint>::iterator>::iterator iter = hessianMap.begin();
-					for(unsigned int k=0; k < stopIndex && iter!=hessianMap.end(); ++k, ++iter)
+					int removed = hessianMap.size()-_wordsPerImageTarget;
+					std::multimap<float, std::vector<cv::KeyPoint>::iterator>::reverse_iterator iter = hessianMap.rbegin();
+					std::vector<cv::KeyPoint> kptsTmp(_wordsPerImageTarget);
+					for(unsigned int k=0; k < kptsTmp.size() && iter!=hessianMap.rend(); ++k, ++iter)
 					{
-						keypoints.erase(iter->second);
-						++removed;
+						kptsTmp[k] = *iter->second;
+						// Adjust keypoint position to raw image
+						kptsTmp[k].pt.x += roi.x;
+						kptsTmp[k].pt.y += roi.y;
 					}
 					if(iter->first!=0)
 					{
 						_adaptiveResponseThr = iter->first;
 					}
+					keypoints = kptsTmp;
 					ULOGGER_DEBUG("%d keypoints removed, (kept %d)", removed, keypoints.size());
+				}
+				else if(roi.x || roi.y)
+				{
+					// Adjust keypoint position to raw image
+					for(std::vector<cv::KeyPoint>::iterator iter=keypoints.begin(); iter!=keypoints.end(); ++iter)
+					{
+						iter->pt.x += roi.x;
+						iter->pt.y += roi.y;
+					}
 				}
 			}
 			else
@@ -133,12 +145,14 @@ std::list<cv::KeyPoint> KeypointDetector::generateKeypoints(const IplImage * ima
 			ULOGGER_DEBUG("new _adaptiveResponseThr=%f", _adaptiveResponseThr);
 			ULOGGER_DEBUG("adjusting hessian threshold time = %f s", timer.ticks());
 		}
-
-		// Adjust keypoint position to raw image
-		for(std::list<cv::KeyPoint>::iterator iter=keypoints.begin(); iter!=keypoints.end(); ++iter)
+		else if(roi.x || roi.y)
 		{
-			iter->pt.x += roi.x;
-			iter->pt.y += roi.y;
+			// Adjust keypoint position to raw image
+			for(std::vector<cv::KeyPoint>::iterator iter=keypoints.begin(); iter!=keypoints.end(); ++iter)
+			{
+				iter->pt.x += roi.x;
+				iter->pt.y += roi.y;
+			}
 		}
 	}
 	else
@@ -232,14 +246,14 @@ cv::Rect KeypointDetector::computeRoi(const IplImage * image) const
 SURFDetector::SURFDetector(const ParametersMap & parameters) :
 		KeypointDetector(parameters)
 {
-	_surf.hessianThreshold = Parameters::defaultSURFHessianThreshold();
-	_surf.extended = Parameters::defaultSURFExtended();
-	_surf.nOctaveLayers = Parameters::defaultSURFOctaveLayers();
-	_surf.nOctaves = Parameters::defaultSURFOctaves();
+	_params.hessianThreshold = Parameters::defaultSURFHessianThreshold();
+	_params.extended = Parameters::defaultSURFExtended();
+	_params.nOctaveLayers = Parameters::defaultSURFOctaveLayers();
+	_params.nOctaves = Parameters::defaultSURFOctaves();
 	_gpuVersion = Parameters::defaultSURFGpuVersion();
-	_upright = Parameters::defaultSURFUpright();
+	_params.upright = Parameters::defaultSURFUpright();
 	this->parseParameters(parameters);
-	this->setAdaptiveResponseThr(_surf.hessianThreshold);
+	this->setAdaptiveResponseThr(_params.hessianThreshold);
 }
 
 SURFDetector::~SURFDetector()
@@ -251,24 +265,24 @@ void SURFDetector::parseParameters(const ParametersMap & parameters)
 	ParametersMap::const_iterator iter;
 	if((iter=parameters.find(Parameters::kSURFExtended())) != parameters.end())
 	{
-		_surf.extended = uStr2Bool((*iter).second.c_str());
+		_params.extended = uStr2Bool((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFHessianThreshold())) != parameters.end())
 	{
-		_surf.hessianThreshold = std::atof((*iter).second.c_str());
-		this->setAdaptiveResponseThr(_surf.hessianThreshold);
+		_params.hessianThreshold = std::atof((*iter).second.c_str());
+		this->setAdaptiveResponseThr(_params.hessianThreshold);
 	}
 	if((iter=parameters.find(Parameters::kSURFOctaveLayers())) != parameters.end())
 	{
-		_surf.nOctaveLayers = std::atoi((*iter).second.c_str());
+		_params.nOctaveLayers = std::atoi((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFOctaves())) != parameters.end())
 	{
-		_surf.nOctaves = std::atoi((*iter).second.c_str());
+		_params.nOctaves = std::atoi((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFOctaves())) != parameters.end())
 	{
-		_surf.nOctaves = std::atoi((*iter).second.c_str());
+		_params.nOctaves = std::atoi((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFGpuVersion())) != parameters.end())
 	{
@@ -276,15 +290,15 @@ void SURFDetector::parseParameters(const ParametersMap & parameters)
 	}
 	if((iter=parameters.find(Parameters::kSURFUpright())) != parameters.end())
 	{
-		_upright = uStr2Bool((*iter).second.c_str());
+		_params.upright = uStr2Bool((*iter).second.c_str());
 	}
 	KeypointDetector::parseParameters(parameters);
 }
 
-std::list<cv::KeyPoint> SURFDetector::_generateKeypoints(const IplImage * image, const cv::Rect & roi) const
+std::vector<cv::KeyPoint> SURFDetector::_generateKeypoints(const IplImage * image, const cv::Rect & roi) const
 {
 	ULOGGER_DEBUG("");
-	std::list<cv::KeyPoint> keypoints;
+	std::vector<cv::KeyPoint> keypoints;
 	if(!image)
 	{
 		ULOGGER_ERROR("Image is null ?!?");
@@ -307,32 +321,31 @@ std::list<cv::KeyPoint> SURFDetector::_generateKeypoints(const IplImage * image,
 		img =  cv::Mat(image);
 	}
 
-	cv::SURF surf = _surf;
+	CvSURFParams params = _params;
 	if(this->isUsingAdaptiveResponseThr())
 	{
-		surf.hessianThreshold = this->getAdaptiveResponseThr(); // use the adaptive threshold
+		params.hessianThreshold = this->getAdaptiveResponseThr(); // use the adaptive threshold
 	}
 
 	cv::Mat imgRoi(img, roi);
-	std::vector<cv::KeyPoint> k;
 #if OPENCV_SURF_GPU
 	if(_gpuVersion )
 	{
 		cv::gpu::GpuMat imgGpu(imgRoi);
 		cv::gpu::GpuMat keypointsGpu;
-		cv::gpu::SURF_GPU surfGpu(surf.hessianThreshold, surf.nOctaves, surf.nOctaveLayers, surf.extended, 0.01f, _upright);
+		cv::gpu::SURF_GPU surfGpu(params.hessianThreshold, params.nOctaves, params.nOctaveLayers, params.extended, 0.01f, params.upright);
 		surfGpu(imgGpu, cv::gpu::GpuMat(), keypointsGpu);
-		surfGpu.downloadKeypoints(keypointsGpu, k);
+		surfGpu.downloadKeypoints(keypointsGpu, keypoints);
 	}
 	else
 	{
-		surf(imgRoi, cv::Mat(), k); // Opencv surf keypoints
+		cv::SurfFeatureDetector detector(params.hessianThreshold, params.nOctaves, params.nOctaveLayers, params.upright);
+		detector.detect(imgRoi, keypoints);
 	}
 #else
-	surf(imgRoi, cv::Mat(), k); // Opencv surf keypoints
+	cv::SurfFeatureDetector detector(params.hessianThreshold, params.nOctaves, params.nOctaveLayers, params.upright);
+	detector.detect(imgRoi, keypoints);
 #endif
-	keypoints = uVectorToList(k);
-
 
 	if(imageGrayScale)
 	{
@@ -372,10 +385,10 @@ void SIFTDetector::parseParameters(const ParametersMap & parameters)
 	KeypointDetector::parseParameters(parameters);
 }
 
-std::list<cv::KeyPoint> SIFTDetector::_generateKeypoints(const IplImage * image, const cv::Rect & roi) const
+std::vector<cv::KeyPoint> SIFTDetector::_generateKeypoints(const IplImage * image, const cv::Rect & roi) const
 {
 	ULOGGER_DEBUG("");
-	std::list<cv::KeyPoint> keypoints;
+	std::vector<cv::KeyPoint> keypoints;
 	if(!image)
 	{
 		ULOGGER_ERROR("Image is null ?!?");
@@ -403,13 +416,10 @@ std::list<cv::KeyPoint> SIFTDetector::_generateKeypoints(const IplImage * image,
 	{
 		detectorParam.threshold = this->getAdaptiveResponseThr(); // use the adaptive threshold
 	}
-	cv::Mat mask;
-	cv::SIFT sift(_commonParams, detectorParam);
 
+	cv::SiftFeatureDetector detector(detectorParam, _commonParams);
 	cv::Mat imgRoi(img, roi);
-	std::vector<cv::KeyPoint> k;
-	sift(imgRoi, mask, k); // Opencv surf keypoints
-	keypoints = uVectorToList(k);
+	detector.detect(imgRoi, keypoints); // Opencv surf keypoints
 	if(imageGrayScale)
 	{
 		cvReleaseImage(&imageGrayScale);
@@ -424,13 +434,13 @@ std::list<cv::KeyPoint> SIFTDetector::_generateKeypoints(const IplImage * image,
 StarDetector::StarDetector(const ParametersMap & parameters) :
 	KeypointDetector(parameters)
 {
-	_star.lineThresholdBinarized = Parameters::defaultStarLineThresholdBinarized();
-	_star.lineThresholdProjected = Parameters::defaultStarLineThresholdProjected();
-	_star.maxSize = Parameters::defaultStarMaxSize();
-	_star.responseThreshold = Parameters::defaultStarResponseThreshold();
-	_star.suppressNonmaxSize = Parameters::defaultStarSuppressNonmaxSize();
+	_params.lineThresholdBinarized = Parameters::defaultStarLineThresholdBinarized();
+	_params.lineThresholdProjected = Parameters::defaultStarLineThresholdProjected();
+	_params.maxSize = Parameters::defaultStarMaxSize();
+	_params.responseThreshold = Parameters::defaultStarResponseThreshold();
+	_params.suppressNonmaxSize = Parameters::defaultStarSuppressNonmaxSize();
 	this->parseParameters(parameters);
-	this->setAdaptiveResponseThr(_star.responseThreshold);
+	this->setAdaptiveResponseThr(_params.responseThreshold);
 }
 
 StarDetector::~StarDetector()
@@ -443,32 +453,32 @@ void StarDetector::parseParameters(const ParametersMap & parameters)
 	ParametersMap::const_iterator iter;
 	if((iter=parameters.find(Parameters::kStarLineThresholdBinarized())) != parameters.end())
 	{
-		_star.lineThresholdBinarized = std::atoi((*iter).second.c_str());
+		_params.lineThresholdBinarized = std::atoi((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kStarLineThresholdProjected())) != parameters.end())
 	{
-		_star.lineThresholdProjected = std::atoi((*iter).second.c_str());
+		_params.lineThresholdProjected = std::atoi((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kStarMaxSize())) != parameters.end())
 	{
-		_star.maxSize = std::atoi((*iter).second.c_str());
+		_params.maxSize = std::atoi((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kStarResponseThreshold())) != parameters.end())
 	{
-		_star.responseThreshold = int(std::atof((*iter).second.c_str()));
-		this->setAdaptiveResponseThr(_star.responseThreshold);
+		_params.responseThreshold = int(std::atof((*iter).second.c_str()));
+		this->setAdaptiveResponseThr(_params.responseThreshold);
 	}
 	if((iter=parameters.find(Parameters::kStarSuppressNonmaxSize())) != parameters.end())
 	{
-		_star.suppressNonmaxSize = std::atoi((*iter).second.c_str());
+		_params.suppressNonmaxSize = std::atoi((*iter).second.c_str());
 	}
 	KeypointDetector::parseParameters(parameters);
 }
 
-std::list<cv::KeyPoint> StarDetector::_generateKeypoints(const IplImage * image, const cv::Rect & roi) const
+std::vector<cv::KeyPoint> StarDetector::_generateKeypoints(const IplImage * image, const cv::Rect & roi) const
 {
 	ULOGGER_DEBUG("");
-	std::list<cv::KeyPoint> keypoints;
+	std::vector<cv::KeyPoint> keypoints;
 	if(!image)
 	{
 		ULOGGER_ERROR("Image is null ?!?");
@@ -476,20 +486,72 @@ std::list<cv::KeyPoint> StarDetector::_generateKeypoints(const IplImage * image,
 	}
 
 	cv::Mat img(image);
-	cv::Mat mask;
 	// TODO More testing needed with the star detector, NN search distance must be changed to 0.8
 	//find keypoints with the star detector
-	cv::StarDetector star = _star;
+	CvStarDetectorParams params = _params;
 	if(this->isUsingAdaptiveResponseThr())
 	{
-		star.responseThreshold = this->getAdaptiveResponseThr(); // use the adaptive threshold
+		params.responseThreshold = this->getAdaptiveResponseThr(); // use the adaptive threshold
 	}
 
 	// Get keypoints with the star detector
 	cv::Mat imgRoi(img, roi);
-	std::vector<cv::KeyPoint> k;
-	star(imgRoi, k);
-	keypoints = uVectorToList(k);
+	cv::StarFeatureDetector detector(params);
+	detector.detect(imgRoi, keypoints);
+	return keypoints;
+}
+
+//////////////////////////
+//FastDetector
+//////////////////////////
+FASTDetector::FASTDetector(const ParametersMap & parameters) :
+	KeypointDetector(parameters),
+	_threshold(Parameters::defaultFASTThreshold()),
+	_nonmaxSuppression(Parameters::defaultFASTNonmaxSuppression())
+{
+	this->parseParameters(parameters);
+	this->setAdaptiveResponseThr(_threshold);
+}
+
+FASTDetector::~FASTDetector()
+{
+}
+
+void FASTDetector::parseParameters(const ParametersMap & parameters)
+{
+	ParametersMap::const_iterator iter;
+	if((iter=parameters.find(Parameters::kFASTThreshold())) != parameters.end())
+	{
+		_threshold = std::atoi((*iter).second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kFASTNonmaxSuppression())) != parameters.end())
+	{
+		_nonmaxSuppression = uStr2Bool((*iter).second.c_str());
+	}
+	KeypointDetector::parseParameters(parameters);
+}
+
+std::vector<cv::KeyPoint> FASTDetector::_generateKeypoints(const IplImage * image, const cv::Rect & roi) const
+{
+	ULOGGER_DEBUG("");
+	std::vector<cv::KeyPoint> keypoints;
+	if(!image)
+	{
+		ULOGGER_ERROR("Image is null ?!?");
+		return keypoints;
+	}
+
+	cv::Mat img(image);
+	cv::Mat imgRoi(img, roi);
+	int threshold = _threshold;
+	if(this->isUsingAdaptiveResponseThr())
+	{
+		threshold = (int)this->getAdaptiveResponseThr(); // use the adaptive threshold
+	}
+	cv::FastFeatureDetector fast(threshold, _nonmaxSuppression);
+
+	// Get keypoints with the fast detector
+	fast.detect(imgRoi, keypoints);
 	return keypoints;
 }
 

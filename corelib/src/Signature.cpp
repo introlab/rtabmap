@@ -17,15 +17,35 @@
  * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Signature.h"
+#include "rtabmap/core/Signature.h"
 #include "Memory.h"
 #include <opencv2/highgui/highgui.hpp>
 #include "VerifyHypotheses.h"
+#include "rtabmap/core/SMState.h"
 
 #include "utilite/UtiLite.h"
 
 namespace rtabmap
 {
+
+bool NeighborLink::updateIds(int idFrom, int idTo)
+{
+	bool modified = false;
+	if(_id == idFrom)
+	{
+		_id = idTo;
+		modified = true;
+	}
+	for(unsigned int i=0; i<_baseIds.size(); ++i)
+	{
+		if(_baseIds[i] == idFrom)
+		{
+			_baseIds[i] = idTo;
+			modified = true;
+		}
+	}
+	return modified;
+}
 
 Signature::~Signature()
 {
@@ -39,16 +59,12 @@ Signature::~Signature()
 Signature::Signature(int id, const IplImage * image, bool keepImage) :
 		_id(id),
 		_weight(0),
-		_loopClosureId(0),
 		_image(0),
 		_saved(false),
-		_width(0),
-		_height(0)
+		_modified(true)
 {
 	if(image)
 	{
-		_width = image->width;
-		_height = image->height;
 		if(keepImage)
 		{
 			_image = cvCloneImage(image);
@@ -68,10 +84,11 @@ void Signature::setImage(const IplImage * image)
 	{
 		cvReleaseImage(&_image);
 		_image = cvCloneImage(image);
+		_modified = true;
 	}
 	else
 	{
-		UWARN("Parameter is null or no image is saved.");
+		UDEBUG("Parameter is null or no image is saved.");
 	}
 }
 
@@ -111,44 +128,57 @@ IplImage * Signature::decompressImage(const CvMat * imageCompressed)
 	return cvDecodeImage(imageCompressed, CV_LOAD_IMAGE_ANYCOLOR);
 }
 
-void Signature::addNeighbors(const NeighborsMap & neighbors)
+void Signature::addNeighbors(const NeighborsMultiMap & neighbors)
 {
-	for(NeighborsMap::const_iterator i=neighbors.begin(); i!=neighbors.end(); ++i)
+	for(NeighborsMultiMap::const_iterator i=neighbors.begin(); i!=neighbors.end(); ++i)
 	{
-		this->addNeighbor(i->first, i->second);
-		//UDEBUG("%d -> %d, a=%d", this->id(), i->first, i->second.size());
+		this->addNeighbor(i->second);
 	}
 }
 
-void Signature::addNeighbor(int neighbor, const std::list<std::vector<float> > & actions)
+void Signature::addNeighbor(const NeighborLink & neighbor)
 {
-	ULOGGER_DEBUG("Adding neighbor %d to %d with %d actions", neighbor, this->id(), actions.size());
-	std::pair<NeighborsMap::iterator, bool> inserted = _neighbors.insert(std::pair<int, std::list<std::vector<float> > >(neighbor, actions));
-	//UDEBUG("%d -> %d, a=%d", this->id(), neighbor, actions.size());
-	if(!inserted.second)
+	UDEBUG("Add neighbor %d to %d", neighbor.id(), this->id());
+	/*std::string baseIdsDebug;
+	const std::vector<int> & baseIds = neighbor.baseIds();
+	for(unsigned int i=0; i<baseIds.size(); ++i)
 	{
-		ULOGGER_ERROR("neighbor %d already added to %d", neighbor, this->id());
-		return;
+		baseIdsDebug.append(uNumber2str(baseIds[i]));
+		if(i+1 < baseIds.size())
+		{
+			baseIdsDebug.append(", ");
+		}
 	}
-	if(neighbor == _id)
-	{
-		ULOGGER_ERROR("same Id ? (%d)", neighbor, this->id());
-		return;
-	}
+	UDEBUG("Adding neighbor %d to %d with %d actions, %d baseIds = [%s]", neighbor.id(), this->id(), neighbor.actions().size(), neighbor.baseIds().size(), baseIdsDebug.c_str());
+    */
+
+	_neighbors.insert(std::pair<int, NeighborLink>(neighbor.id(), neighbor));
+	_neighborsModified = true;
 }
 
-void Signature::removeNeighbor(int neighbor)
+void Signature::changeNeighborIds(int idFrom, int idTo)
 {
-	ULOGGER_DEBUG("Removing neighbor %d to %d", neighbor, this->id());
-	// we delete the first found because there is not supposed
-	// to have more than one occurrence of this neighbor (see addNeighbor())
-	int erased = _neighbors.erase(neighbor);
-	if(!erased)
+	std::pair<NeighborsMultiMap::iterator, NeighborsMultiMap::iterator> pair = _neighbors.equal_range(idFrom);
+
+	if(pair.first != _neighbors.end() && pair.first != pair.second)
 	{
-		ULOGGER_WARN("neighbor %d not found in %d", neighbor, this->id());
+		std::list<NeighborLink> linksToAdd;
+		for(NeighborsMultiMap::iterator iter = pair.first; iter!=pair.second; ++iter)
+		{
+			NeighborLink link = iter->second;
+			link.updateIds(idFrom, idTo);
+			linksToAdd.push_back(link);
+		}
+		_neighbors.erase(idFrom);
+		for(std::list<NeighborLink>::iterator iter=linksToAdd.begin(); iter!=linksToAdd.end(); ++iter)
+		{
+			_neighbors.insert(std::pair<int, NeighborLink>(iter->id(), *iter));
+		}
+		_modified = true;
+		_neighborsModified = true;
+		UDEBUG("(%d) neighbor ids changed from %d to %d", _id, idFrom, idTo);
 	}
 }
-
 
 
 
@@ -191,19 +221,6 @@ float KeypointSignature::compareTo(const Signature * s) const
 			HypVerificatorEpipolarGeo::findPairsDirect(words, _words, pairs, pairsId);
 
 			similarity = float(pairs.size()) / float(totalWords);
-
-			// Adjust similarity with the ratio of words between the signatures
-			/*float ratio = 1;
-			if(_words.size() > words.size() && _words.size())
-			{
-				ratio = float(words.size()) / float(_words.size());
-			}
-			else
-			{
-				ratio = float(_words.size()) / float(words.size());
-			}
-
-			similarity *= ratio;*/
 		}
 	}
 	return similarity;
@@ -215,6 +232,7 @@ void KeypointSignature::changeWordsRef(int oldWordId, int activeWordId)
 	if(kps.size())
 	{
 		_words.erase(oldWordId);
+		_wordsChanged.insert(std::make_pair(oldWordId, activeWordId));
 		for(std::list<cv::KeyPoint>::const_iterator iter=kps.begin(); iter!=kps.end(); ++iter)
 		{
 			_words.insert(std::pair<int, cv::KeyPoint>(activeWordId, (*iter)));
@@ -240,4 +258,126 @@ void KeypointSignature::removeWord(int wordId)
 	_words.erase(wordId);
 }
 
+
+
+
+
+//SMSignature
+SMSignature::SMSignature(
+		const std::vector<int> & sensors,
+		const std::vector<unsigned char> & motionMask,
+		int id,
+		const IplImage * image,
+		bool keepRawData) :
+	Signature(id, image, keepRawData),
+	_sensors(sensors),
+	_motionMask(motionMask)
+{
+	if(_sensors.size() != _motionMask.size() && _motionMask.size() > 0)
+	{
+		UFATAL("Sensors and mask must have the same size (%d vs %d)", (int)_sensors.size(), (int)_motionMask.size());
+	}
+	UDEBUG("sensors=%d", (int)_sensors.size());
 }
+
+SMSignature::SMSignature(int id) :
+	Signature(id)
+{
+}
+
+SMSignature::~SMSignature()
+{
+}
+
+float SMSignature::compareTo(const Signature * s) const
+{
+	const SMSignature * sm = dynamic_cast<const SMSignature *>(s);
+	float similarity = 0;
+
+	if(sm)
+	{
+		const std::vector<int> & sensorsB = sm->getSensors();
+		const std::vector<unsigned char> & motionMaskB = sm->getMotionMask();
+
+		if(_sensors.size() == sensorsB.size() && _sensors.size()) //Compatible
+		{
+			bool appearanceOnly = false;
+			if(appearanceOnly)
+			{
+				std::multiset<int> sensorsSetA(_sensors.begin(), _sensors.end());
+				std::multiset<int> sensorsSetB(sensorsB.begin(), sensorsB.end());
+				std::set<int> ids(_sensors.begin(), _sensors.end());
+				std::multiset<int>::iterator iterA;
+				std::multiset<int>::iterator iterB;
+				float realPairsCount = 0;
+				for(std::set<int>::iterator i=ids.begin(); i!=ids.end(); ++i)
+				{
+					iterA = sensorsSetA.find(*i);
+					iterB = sensorsSetB.find(*i);
+					while(iterA != sensorsSetA.end() && iterB != sensorsSetB.end() && *iterA == *iterB && *iterA == *i)
+					{
+						++iterA;
+						++iterB;
+						++realPairsCount;
+					}
+				}
+				similarity = realPairsCount / float(_sensors.size());
+			}
+			else if(_motionMask.size() == _sensors.size() &&
+					_motionMask.size() == motionMaskB.size())
+			{
+				int sum = 0;
+				int maskSumA = 0;
+				int maskSumB = 0;
+
+				// compare sensors
+				for(unsigned int i=0; i<_sensors.size(); ++i)
+				{
+					maskSumA += _motionMask[i];
+					maskSumB += motionMaskB[i];
+					sum += _sensors.at(i) == sensorsB.at(i) && _motionMask[i] && motionMaskB[i] ? 1 : 0;
+				}
+
+				int totalSize = maskSumA>maskSumB?maskSumA:maskSumB;
+				if(totalSize)
+				{
+					similarity = float(sum)/float(totalSize);
+				}
+			}
+			else
+			{
+				int sum = 0;
+				// compare sensors
+				for(unsigned int i=0; i<_sensors.size(); ++i)
+				{
+					sum += _sensors.at(i) == sensorsB.at(i) ? 1 : 0;
+				}
+				similarity = float(sum)/float(_sensors.size());
+			}
+
+			if(similarity<0 || similarity>1)
+			{
+				UERROR("Something wrong! similarity is not between 0 and 1 (%f)", similarity);
+			}
+		}
+		else if(!s->isBadSignature() && !this->isBadSignature())
+		{
+			UWARN("Not compatible signatures : nb sensors A=%d B=%d", (int)_sensors.size(), (int)sensorsB.size());
+		}
+	}
+	else if(s)
+	{
+		UWARN("Only SM signatures are compared. (type tested=%s)", s->signatureType().c_str());
+	}
+	return similarity;
+}
+
+
+bool SMSignature::isBadSignature() const
+{
+	if(_sensors.size() == 0)
+		return true;
+	return false;
+}
+
+} //namespace rtabmap

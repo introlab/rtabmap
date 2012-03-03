@@ -30,11 +30,12 @@
 #include "utilite/UMutex.h"
 #include "utilite/UThreadNode.h"
 #include "rtabmap/core/Parameters.h"
+#include "rtabmap/core/Signature.h"
 
 namespace rtabmap {
 
-class Signature;
 class KeypointSignature;
+class SMSignature;
 class VWDictionary;
 class VisualWord;
 
@@ -52,6 +53,7 @@ class RTABMAP_EXP DBDriver : public UThreadNode
 public:
 	virtual ~DBDriver();
 
+	virtual std::string getDriverName() const = 0;
 	virtual void parseParameters(const ParametersMap & parameters);
 	const std::string & getUrl() const {return _url;}
 
@@ -62,6 +64,7 @@ public:
 	void asyncSave(VisualWord * s);
 	void emptyTrashes(bool async = false);
 	double getEmptyTrashesTime() const {return _emptyTrashesTime;}
+	bool isImagesCompressed() const {return _imagesCompressed;}
 
 public:
 	bool addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed) const;
@@ -71,15 +74,12 @@ public:
 	bool deleteAllObsoleteSSVWLinks() const;
 	bool deleteUnreferencedWords() const;
 
-	bool addNeighbor(int id, int newNeighbor, int oldNeighbor);
-	bool removeNeighbor(int id, int neighbor);
-
 public:
 	// Mutex-protected methods of abstract versions below
 	bool getSignature(int signatureId, Signature ** s);
 	bool getVisualWord(int wordId, VisualWord ** vw);
 
-	bool openConnection(const std::string & url);
+	bool openConnection(const std::string & url, bool overwritten = false);
 	void closeConnection();
 	bool isConnected() const;
 	long getMemoryUsed() const; // In bytes
@@ -93,28 +93,27 @@ public:
 	// Load objects
 	bool load(VWDictionary * dictionary) const;
 	bool loadLastSignatures(std::list<Signature *> & signatures) const;
-	bool loadKeypointSignatures(const std::list<int> & ids, std::list<Signature *> & signatures, bool onlyParents = false);
+	bool loadKeypointSignatures(const std::list<int> & ids, std::list<Signature *> & signatures);
+	bool loadSMSignatures(const std::list<int> & ids, std::list<Signature *> & signatures);
 	bool loadWords(const std::list<int> & wordIds, std::list<VisualWord *> & vws);
 
 	// Specific queries...
 	bool getImage(int id, IplImage ** img) const;
-	bool getNeighborIds(int signatureId, std::set<int> & neighbors) const;
-	bool loadNeighbors(int signatureId, std::map<int, std::list<std::vector<float> > > & neighbors) const;
+	bool getNeighborIds(int signatureId, std::list<int> & neighbors, bool onlyWithActions = false) const;
+	bool loadNeighbors(int signatureId, NeighborsMultiMap & neighbors) const;
 	bool getWeight(int signatureId, int & weight) const;
-	bool getLoopClosureId(int signatureId, int & loopId) const;
-	bool getImageCompressed(int id, CvMat ** compressed) const;
+	bool getLoopClosureIds(int signatureId, std::set<int> & loopIds, std::set<int> & childIds) const;
 	bool getAllSignatureIds(std::set<int> & ids) const;
 	bool getLastSignatureId(int & id) const;
 	bool getLastVisualWordId(int & id) const;
 	bool getSurfNi(int signatureId, int & ni) const;
-	bool getChildrenIds(int signatureId, std::list<int> & ids) const;
 	bool getHighestWeightedSignatures(unsigned int count, std::multimap<int, int> & ids) const;
 
 protected:
 	DBDriver(const ParametersMap & parameters = ParametersMap());
 
 private:
-	virtual bool connectDatabaseQuery(const std::string & url) = 0;
+	virtual bool connectDatabaseQuery(const std::string & url, bool overwritten = false) = 0;
 	virtual void disconnectDatabaseQuery() = 0;
 	virtual bool isConnectedQuery() const = 0;
 	virtual long getMemoryUsedQuery() const = 0; // In bytes
@@ -123,15 +122,13 @@ private:
 
 	virtual bool changeWordsRefQuery(const std::map<int, int> & refsToChange) const = 0; // <oldWordId, activeWordId>
 	virtual bool deleteWordsQuery(const std::vector<int> & ids) const = 0;
-	virtual bool getNeighborIdsQuery(int signatureId, std::set<int> & neighbors) const = 0;
+	virtual bool getNeighborIdsQuery(int signatureId, std::list<int> & neighbors, bool onlyWithActions = false) const = 0;
 	virtual bool getWeightQuery(int signatureId, int & weight) const = 0;
-	virtual bool getLoopClosureIdQuery(int signatureId, int & loopId) const = 0;
-	virtual bool addNeighborQuery(int id, int newNeighbor, int oldNeighbor) const = 0;
+	virtual bool getLoopClosureIdsQuery(int signatureId, std::set<int> & loopIds, std::set<int> & childIds) const = 0;
 
 	virtual bool saveQuery(const std::vector<VisualWord *> & visualWords) const = 0;
 	virtual bool updateQuery(const std::list<Signature *> & signatures) const = 0;
-	virtual bool saveQuery(const KeypointSignature * ss) const = 0;
-	virtual bool saveQuery(const std::list<KeypointSignature *> & signatures) const = 0;
+	virtual bool saveQuery(const std::list<Signature *> & signatures) const = 0;
 
 	// Load objects
 	virtual bool loadQuery(VWDictionary * dictionary) const = 0;
@@ -139,16 +136,17 @@ private:
 	virtual bool loadQuery(int signatureId, Signature ** s) const = 0;
 	virtual bool loadQuery(int wordId, VisualWord ** vw) const = 0;
 	virtual bool loadQuery(int signatureId, KeypointSignature * ss) const = 0;
-	virtual bool loadKeypointSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures, bool onlyParents = false) const = 0;
+	virtual bool loadQuery(int signatureId, SMSignature * ss) const = 0;
+	virtual bool loadKeypointSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const = 0;
+	virtual bool loadSMSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const = 0;
 	virtual bool loadWordsQuery(const std::list<int> & wordIds, std::list<VisualWord *> & vws) const = 0;
-	virtual bool loadNeighborsQuery(int signatureId, std::map<int, std::list<std::vector<float> > > & neighbors) const = 0;
+	virtual bool loadNeighborsQuery(int signatureId, NeighborsMultiMap & neighbors) const = 0;
 
-	virtual bool getImageCompressedQuery(int id, CvMat ** compressed) const = 0;
+	virtual bool getImageQuery(int id, IplImage ** image) const = 0;
 	virtual bool getAllSignatureIdsQuery(std::set<int> & ids) const = 0;
 	virtual bool getLastSignatureIdQuery(int & id) const = 0;
 	virtual bool getLastVisualWordIdQuery(int & id) const = 0;
 	virtual bool getSurfNiQuery(int signatureId, int & ni) const = 0;
-	virtual bool getChildrenIdsQuery(int signatureId, std::list<int> & ids) const = 0;
 	virtual bool getHighestWeightedSignaturesQuery(unsigned int count, std::multimap<int,int> & signatures) const = 0;
 
 private:
@@ -168,6 +166,7 @@ private:
 	USemaphore _addSem;
 	unsigned int _minSignaturesToSave;
 	unsigned int _minWordsToSave;
+	bool _imagesCompressed;
 	bool _asyncWaiting;
 	double _emptyTrashesTime;
 	std::string _url;

@@ -44,6 +44,7 @@ class Plot;
 class PdfPlotCurve;
 class StatsToolBox;
 class DetailedProgressDialog;
+class TwistGridWidget;
 
 class RTABMAP_EXP MainWindow : public QMainWindow, public UEventsHandler
 {
@@ -71,7 +72,7 @@ public:
 	 *                   dialog is automatically destroyed with the MainWindow.
 	 */
 	MainWindow(PreferencesDialog * prefDialog = 0, QWidget * parent = 0);
-	~MainWindow();
+	virtual ~MainWindow();
 
 	QString getWorkingDirectory() const;
 
@@ -118,10 +119,11 @@ signals:
 	void stateChanged(MainWindow::State);
 	void rtabmapEventInitReceived(int status, const QString & info);
 	void imgRateChanged(double);
-	void timeLimitChanged(double);
+	void timeLimitChanged(float);
 	void noMoreImagesReceived();
 	void loopClosureThrChanged(float);
 	void retrievalThrChanged(float);
+	void twistReceived(float x, float y, float z, float roll, float pitch, float yaw, int row, int col);
 
 private:
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
@@ -143,6 +145,7 @@ private:
 
 	QSet<int> _lastIds;
 	int _lastId;
+	bool _processingStatistics;
 
 	QMap<int, QByteArray> _imagesMap;
 

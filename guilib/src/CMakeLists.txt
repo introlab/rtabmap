@@ -11,6 +11,7 @@ SET(headers_ui
 	./PdfPlot.h
 	./StatsToolBox.h
 	./DetailedProgressDialog.h
+	./TwistWidget.h
 )
 
 SET(uis
@@ -49,6 +50,7 @@ SET(SRC_FILES
 	./DetailedProgressDialog.cpp
 	./AboutDialog.cpp
 	./ConsoleWidget.cpp
+	./TwistWidget.cpp
 	${moc_srcs} 
 	${moc_uis} 
 	${srcs_qrc}
@@ -57,7 +59,7 @@ SET(SRC_FILES
 SET(INCLUDE_DIRS
 	${CMAKE_CURRENT_SOURCE_DIR}/../include
 	${CMAKE_CURRENT_SOURCE_DIR}
-	${UTILITE_INCLUDE_DIR}
+	${UTILITE_INCLUDE_DIRS}
 	${OpenCV_INCLUDE_DIRS}
 	${CMAKE_CURRENT_BINARY_DIR} # for qt ui generated in binary dir
 )
@@ -65,7 +67,7 @@ SET(INCLUDE_DIRS
 INCLUDE(${QT_USE_FILE})
 
 SET(LIBRARIES
-    ${UTILITE_LIBRARY}
+    ${UTILITE_LIBRARIES}
     ${QT_LIBRARIES} 
 	${OpenCV_LIBS} 
 )

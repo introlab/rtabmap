@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>550</width>
-    <height>318</height>
+    <width>600</width>
+    <height>350</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,6 +19,52 @@
      <layout class="QVBoxLayout" name="verticalLayout_6">
       <item>
        <widget class="QGraphicsView" name="graphicsView_A"/>
+      </item>
+      <item>
+       <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
+        <item row="0" column="1">
+         <widget class="QLabel" name="label_actionsA">
+          <property name="text">
+           <string>Actions</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="label_parentsA">
+          <property name="text">
+           <string>Parents</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_actionsA_2">
+          <property name="text">
+           <string>Actions</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_parentsA_2">
+          <property name="text">
+           <string>Parents</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_childrenA_2">
+          <property name="text">
+           <string>Children</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLabel" name="label_childrenA">
+          <property name="text">
+           <string>Children</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
@@ -76,6 +122,52 @@
      <layout class="QVBoxLayout" name="verticalLayout_5">
       <item>
        <widget class="QGraphicsView" name="graphicsView_B"/>
+      </item>
+      <item>
+       <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
+        <item row="0" column="1">
+         <widget class="QLabel" name="label_actionsB">
+          <property name="text">
+           <string>Actions</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="label_parentsB">
+          <property name="text">
+           <string>Parents</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_actionsA_4">
+          <property name="text">
+           <string>Actions</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_parentsA_4">
+          <property name="text">
+           <string>Parents</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_childrenA_3">
+          <property name="text">
+           <string>Children</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLabel" name="label_childrenB">
+          <property name="text">
+           <string>Children</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -136,8 +228,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>550</width>
-     <height>22</height>
+     <width>600</width>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">

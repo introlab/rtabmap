@@ -22,7 +22,8 @@
 
 #include <QtGui/QDialog>
 #include <QtCore/QUrl>
-#include "ui_aboutDialog.h"
+
+class Ui_aboutDialog;
 
 namespace rtabmap {
 
@@ -33,10 +34,10 @@ class AboutDialog : public QDialog
 public:
 	AboutDialog(QWidget * parent = 0);
 
-	virtual ~AboutDialog() {}
+	virtual ~AboutDialog();
 
 private:
-	Ui_aboutDialog _ui;
+	Ui_aboutDialog * _ui;
 };
 
 }

@@ -33,25 +33,26 @@
 
 using namespace rtabmap;
 
-#define GENERATED_GT_NAME "GroundTruth_generated.txt"
+#define GENERATED_GT_NAME "GroundTruth_generated.bmp"
 
 void showUsage()
 {
 	printf("\nUsage:\n"
 			"rtabmap-console [options] \"path\"\n"
-			"  path                            For images, use the directory path. For videos, use full\n "
+			"  path                            For images, use the directory path. For videos or databases, use full\n "
 			"                                  path name\n"
 			"Options:\n"
-			"  -t #.##                         Time threshold (seconds)\n"
+			"  -t #.##                         Time threshold (ms)\n"
 			"  -rate #.##                      Acquisition time (seconds)\n"
 			"  -rateHz #.##                    Acquisition rate (Hz), for convenience\n"
 			"  -repeat #                       Repeat the process on the data set # times (minimum of 1)\n"
-			"  -createGT #                     Generate a ground truth file of dim # (>0, must match the size\n"
-			"                                   of the data set)\n"
+			"  -createGT                       Generate a ground truth file\n"
 			"  -image_width #                  Force an image width (Default 0: original size used).\n"
 			"                                   The height must be also specified if changed.\n"
 			"  -image_height #                 Force an image height (Default 0: original size used)\n"
 			"                                   The height must be also specified if changed.\n"
+			"  -start_at #                     When \"path\" is a directory of images, set this parameter "
+			"                                   to start processing at image # (default 1)."
 			"  -\"parameter name\" \"value\"       Overwrite a specific RTAB-Map's parameter :\n"
 			"                                     -SURF/HessianThreshold 150\n"
 			"                                   For parameters in table format, add ',' between values :\n"
@@ -112,9 +113,10 @@ int main(int argc, char * argv[])
 	float rate = 0.0;
 	int loopDataset = 0;
 	int repeat = 0;
-	int createGT = 0;
+	bool createGT = false;
 	int imageWidth = 0;
 	int imageHeight = 0;
+	int startAt = 1;
 	ParametersMap pm;
 	ULogger::Level logLevel = ULogger::kError;
 	ULogger::Level exitLevel = ULogger::kFatal;
@@ -239,13 +241,13 @@ int main(int argc, char * argv[])
 			}
 			continue;
 		}
-		if(strcmp(argv[i], "-createGT") == 0)
+		if(strcmp(argv[i], "-start_at") == 0)
 		{
 			++i;
 			if(i < argc)
 			{
-				createGT = std::atoi(argv[i]);
-				if(createGT < 1)
+				startAt = std::atoi(argv[i]);
+				if(startAt < 0)
 				{
 					showUsage();
 				}
@@ -254,6 +256,11 @@ int main(int argc, char * argv[])
 			{
 				showUsage();
 			}
+			continue;
+		}
+		if(strcmp(argv[i], "-createGT") == 0)
+		{
+			createGT = true;
 			continue;
 		}
 		if(strcmp(argv[i], "-debug") == 0)
@@ -299,7 +306,11 @@ int main(int argc, char * argv[])
 				{
 					value = uReplaceChar(value, ',', ' ');
 				}
-				pm.insert(ParametersPair(key, value));
+				std::pair<ParametersMap::iterator, bool> inserted = pm.insert(ParametersPair(key, value));
+				if(inserted.second == false)
+				{
+					inserted.first->second = value;
+				}
 			}
 			else
 			{
@@ -331,11 +342,19 @@ int main(int argc, char * argv[])
 	Camera * camera = 0;
 	if(UDirectory::exists(path))
 	{
-		camera = new CameraImages(path, 1, false, 0.0f, false, imageWidth, imageHeight);
+		camera = new CameraImages(path, startAt, false, 0.0f, false, imageWidth, imageHeight);
 	}
 	else
 	{
-		camera = new CameraVideo(path, 0.0f, false, imageWidth, imageHeight);
+		std::list<std::string> list = uSplit(path, '.');
+		if(list.size() == 2 && list.back().compare("db") == 0)
+		{
+			camera = new CameraDatabase(path, true, 0.0f, false, imageWidth, imageHeight);
+		}
+		else
+		{
+			camera = new CameraVideo(path, 0.0f, false, imageWidth, imageHeight);
+		}
 	}
 
 	if(!camera || !camera->init())
@@ -344,19 +363,12 @@ int main(int argc, char * argv[])
 		exit(1);
 	}
 
-
-	CvMat * groundTruthMat = 0;
-	if(createGT)
-	{
-		printf("Creating the ground truth matrix...%dx%d\n", createGT, createGT);
-		groundTruthMat = cvCreateMat(createGT, createGT, CV_32FC1);
-	}
-
+	std::map<int, int> groundTruth;
 
 	// Create tasks
 	Rtabmap * rtabmap = new Rtabmap();
 	rtabmap->init();
-	rtabmap->setMaxTimeAllowed(timeThreshold); // in sec
+	rtabmap->setMaxTimeAllowed(timeThreshold); // in ms
 
 	//ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setType(ULogger::kTypeFile, rtabmap->getWorkingDir()+"/LogConsole.txt", false);
@@ -365,7 +377,7 @@ int main(int argc, char * argv[])
 	ULogger::setExitLevel(exitLevel);
 
 	// Disable statistics (we don't need them)
-	pm.insert(ParametersPair(Parameters::kRtabmapPublishStats(), uBool2str(false)));
+	pm.insert(ParametersPair(Parameters::kRtabmapPublishStats(), uBool2Str(false)));
 	rtabmap->init(pm);
 
 	printf("Avpd init time = %fs\n", timer.ticks());
@@ -378,10 +390,15 @@ int main(int argc, char * argv[])
 
 	printf("\nParameters : \n");
 	printf(" Data set : %s\n", path.c_str());
-	printf(" Time threshold = %1.2f\n", timeThreshold);
+	printf(" Time threshold = %1.2f ms\n", timeThreshold);
 	printf(" Image rate = %1.2f s (%1.2f Hz)\n", rate, 1/rate);
-	printf(" Repeating dataset = %s\n", repeat?"true":"false");
+	printf(" Repeating data set = %s\n", repeat?"true":"false");
 	printf(" Camera width=%d, height=%d (0 is default)\n", imageWidth, imageHeight);
+	printf(" Camera starts at image %d (default 1)\n", startAt);
+	if(createGT)
+	{
+		printf(" Creating the ground truth matrix.\n");
+	}
 	printf(" INFO: All other parameters are taken from the INI file located in \"~/.rtabmap\"\n");
 	if(pm.size()>1)
 	{
@@ -390,6 +407,10 @@ int main(int argc, char * argv[])
 		{
 			printf("    %s=%s\n",iter->first.c_str(), iter->second.c_str());
 		}
+	}
+	if(rtabmap->getWorkingMem().size() || rtabmap->getStMem().size())
+	{
+		printf("[Warning] RTAB-Map database is not empty (%s)\n", (rtabmap->getWorkingDir()+Rtabmap::kDefaultDatabaseName).c_str());
 	}
 	printf("\nProcessing images...\n");
 
@@ -453,11 +474,11 @@ int main(int argc, char * argv[])
 			}
 
 			// Update generated ground truth matrix
-			if(groundTruthMat)
+			if(createGT)
 			{
-				if(loopClosureId > 0 && loopClosureId-1 < groundTruthMat->cols)
+				if(loopClosureId > 0)
 				{
-					cvmSet(groundTruthMat, i, loopClosureId-1, 1);
+					groundTruth.insert(std::make_pair(i, loopClosureId-1));
 				}
 			}
 
@@ -475,13 +496,35 @@ int main(int argc, char * argv[])
 					uSleep(delta*1000);
 				}
 			}
-			if(rtabmap->getLoopClosureId())
+			if(actions.size())
 			{
-				printf(" iteration(%d) actions=%d loop(%d) time=%fs\n", count, (int)actions.size(), rtabmap->getLoopClosureId(), iterationTime);
+				if(rtabmap->getLoopClosureId())
+				{
+					printf(" iteration(%d) actions=%d loop(%d) time=%fs *\n", count, (int)actions.size(), rtabmap->getLoopClosureId(), iterationTime);
+				}
+				else if(rtabmap->getReactivatedId())
+				{
+					printf(" iteration(%d) actions=%d high(%d) time=%fs\n", count, (int)actions.size(), rtabmap->getReactivatedId(), iterationTime);
+				}
+				else
+				{
+					printf(" iteration(%d) actions=%d time=%fs\n", count, (int)actions.size(), iterationTime);
+				}
 			}
 			else
 			{
-				printf(" iteration(%d) actions=%d time=%fs\n", count, (int)actions.size(), iterationTime);
+				if(rtabmap->getLoopClosureId())
+				{
+					printf(" iteration(%d) loop(%d) time=%fs *\n", count, rtabmap->getLoopClosureId(), iterationTime);
+				}
+				else if(rtabmap->getReactivatedId())
+				{
+					printf(" iteration(%d) high(%d) time=%fs\n", count, rtabmap->getReactivatedId(), iterationTime);
+				}
+				else
+				{
+					printf(" iteration(%d) time=%fs\n", count, iterationTime);
+				}
 			}
 
 			if(timeThreshold && iterationTime > timeThreshold*100.0f)
@@ -500,47 +543,19 @@ int main(int argc, char * argv[])
 	printf("Processing images completed. Loop closures found = %d\n", countLoopDetected);
 	printf(" Total time = %fs\n", timer.ticks());
 
-	if(groundTruthMat)
+	if(imagesProcessed && createGT)
 	{
-		if(rtabmap->getTotalMemSize() != groundTruthMat->rows)
+		cv::Mat groundTruthMat = cv::Mat::zeros(imagesProcessed, imagesProcessed, CV_8U);
+
+		for(std::map<int, int>::iterator iter = groundTruth.begin(); iter!=groundTruth.end(); ++iter)
 		{
-			printf("WARNING : Ground truth matrix size and the image count don't match : Image captured=%d, GroundTruthSize = %d\n", imagesProcessed, groundTruthMat->rows);
+			groundTruthMat.at<unsigned char>(iter->first, iter->second) = 255;
 		}
 
 		// Generate the ground truth file
-		printf("Generate ground truth to file %s, size of %d\n", (rtabmap->getWorkingDir()+GENERATED_GT_NAME).c_str(), groundTruthMat->rows);
-		FILE* fout = 0;
-#ifdef _MSC_VER
-		fopen_s(&fout, (rtabmap->getWorkingDir()+GENERATED_GT_NAME).c_str(), "w+");
-#else
-		fout = fopen((rtabmap->getWorkingDir()+GENERATED_GT_NAME).c_str(), "w+");
-#endif
-		if(fout)
-		{
-			for(int i=0; i<groundTruthMat->rows; i++)
-			{
-				for(int j=0; j<groundTruthMat->cols; j++)
-				{
-					fprintf(fout, "%d", cvmGet(groundTruthMat,i,j)>0?255:0);
-					if(j+1<groundTruthMat->cols)
-					{
-						fprintf(fout," ");
-					}
-				}
-				if(i+1<groundTruthMat->rows)
-				{
-					fprintf(fout,"\n");
-				}
-			}
-			fclose(fout);
-			fout = 0;
-		}
-		else
-		{
-			printf("ERROR : Can't generate the ground truth file \"%s\"...\n", (rtabmap->getWorkingDir()+GENERATED_GT_NAME).c_str());
-		}
-		cvReleaseMat(&groundTruthMat);
-		groundTruthMat = 0;
+		printf("Generate ground truth to file %s, size of %d\n", (rtabmap->getWorkingDir()+GENERATED_GT_NAME).c_str(), groundTruthMat.rows);
+		IplImage img = groundTruthMat;
+		cvSaveImage((rtabmap->getWorkingDir()+GENERATED_GT_NAME).c_str(), &img);
 		printf(" Creating ground truth file = %fs\n", timer.ticks());
 	}
 

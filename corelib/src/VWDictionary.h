@@ -50,18 +50,17 @@ public:
 	virtual void update();
 
 	virtual std::list<int> addNewWords(
-			const std::list<std::vector<float> > & descriptors,
-			unsigned int dim,
+			const cv::Mat & descriptors,
 			int signatureId);
 	virtual void addWord(VisualWord * vw);
 
 	virtual std::vector<int> findNN(const std::list<VisualWord *> & vws, bool searchInNewlyAddedWords = true) const;
-	void naiveNNSearch(const std::list<VisualWord *> & words, const float * d, unsigned int length, std::map<float, int> & results, unsigned int k) const;
+	void naiveNNSearch(const std::list<VisualWord *> & words, const float * d, int length, std::map<float, int> & results, unsigned int k) const;
 
 	void addWordRef(int wordId, int signatureId);
 	void removeAllWordRef(int wordId, int signatureId);
 	const VisualWord * getWord(int id) const;
-	void setWordSaved(int id, bool saved);
+	const VisualWord * getUnusedWord(int id) const;
 	void setLastWordId(int id) {_lastWordId = id;}
 	void getCommonWords(unsigned int nbCommonWords, int totalSign, std::list<int> & commonWords) const;
 	const std::map<int, VisualWord *> & getVisualWords() const {return _visualWords;}
@@ -105,12 +104,12 @@ private:
 	float _nndrRatio;
 	unsigned int _maxLeafs;
 	std::string _dictionaryPath; // a pre-computed dictionary (.txt)
-	unsigned int _dim;
+	int _dim;
 	int _lastWordId;
 	NearestNeighbor * _nn;
 	cv::Mat _dataTree;
 	std::map<int ,int> _mapIndexId;
-	std::map<int, VisualWord*> _unusedWords; //<id,VisualWord*>
+	std::map<int, VisualWord*> _unusedWords; //<id,VisualWord*>, note that these words stay in _visualWords
 };
 
 } // namespace rtabmap

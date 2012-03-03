@@ -23,6 +23,7 @@
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
 #include "Memory.h"
+#include <opencv2/features2d/features2d.hpp>
 
 namespace rtabmap {
 
@@ -34,8 +35,8 @@ class KeypointDescriptor;
 class RTABMAP_EXP KeypointMemory : public Memory
 {
 public:
-	enum DetectorStrategy {kDetectorSurf, kDetectorStar, kDetectorSift, kDetectorUndef};
-	enum DescriptorStrategy {kDescriptorSurf, kDescriptorColorSurf, kDescriptorLaplacianSurf, kDescriptorSift, kDescriptorHueSurf, kDescriptorUndef};
+	enum DetectorStrategy {kDetectorSurf, kDetectorStar, kDetectorSift, kDetectorFast, kDetectorUndef};
+	enum DescriptorStrategy {kDescriptorSurf, kDescriptorSift, kDescriptorBrief, kDescriptorColor, kDescriptorHue, kDescriptorUndef};
 
 public:
 	KeypointMemory(const ParametersMap & parameters = ParametersMap());
@@ -43,9 +44,9 @@ public:
 
 	virtual void parseParameters(const ParametersMap & parameters);
 	virtual bool init(const std::string & dbDriverName, const std::string & dbUrl, bool dbOverwritten = false, const ParametersMap & parameters = ParametersMap());
-	virtual std::map<int, float> computeLikelihood(const Signature * signature, const std::set<int> & signatureIds = std::set<int>()) const;
-	virtual int forget(const std::list<int> & ignoredIds = std::list<int>());
-	virtual int reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, unsigned int maxTouched);
+	virtual std::map<int, float> computeLikelihood(const Signature * signature, const std::list<int> & ids, float & maximumScore);
+	virtual int forget(const std::set<int> & ignoredIds = std::set<int>());
+	virtual std::set<int> reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, double & timeDbAccess);
 	virtual void dumpMemory(std::string directory) const;
 	virtual void dumpSignatures(const char * fileNameSign) const;
 
@@ -54,6 +55,7 @@ public:
 	const KeypointDetector * getKeypointDetector() const {return _keypointDetector;}
 	const KeypointDescriptor * getKeypointDescriptor() const {return _keypointDescriptor;}
 	const VWDictionary * getVWD() const {return _vwd;}
+	std::multimap<int, cv::KeyPoint> getWords(int signatureId) const;
 	DetectorStrategy detectorStrategy() const;
 
 protected:
@@ -62,10 +64,11 @@ protected:
 	virtual void clear();
 	virtual void moveToTrash(Signature * s);
 	virtual void preUpdate();
-	virtual void merge(const Signature * from, Signature * to, MergingStrategy s);
 
 private:
+	virtual void copyData(const Signature * from, Signature * to);
 	virtual Signature * createSignature(int id, const SMState * rawData, bool keepRawData=false);
+
 	void disableWordsRef(int signatureId);
 	void enableWordsRef(const std::list<int> & signatureIds);
 	void cleanUnusedWords();
@@ -81,7 +84,6 @@ private:
 	float _badSignRatio;;
 	bool _tfIdfLikelihoodUsed;
 	bool _parallelized;
-	bool _sensorStateOnly;
 	bool _tfIdfNormalized;
 };
 

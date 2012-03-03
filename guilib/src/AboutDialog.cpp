@@ -19,14 +19,21 @@
 
 #include "AboutDialog.h"
 #include "rtabmap/core/Rtabmap.h"
+#include "ui_aboutDialog.h"
 
 namespace rtabmap {
 
 AboutDialog::AboutDialog(QWidget * parent) :
 	QDialog(parent)
 {
-	_ui.setupUi(this);
-	_ui.label_version->setText(Rtabmap::getVersion().c_str());
+	_ui = new Ui_aboutDialog();
+	_ui->setupUi(this);
+	_ui->label_version->setText(Rtabmap::getVersion().c_str());
+}
+
+AboutDialog::~AboutDialog()
+{
+	delete _ui;
 }
 
 }

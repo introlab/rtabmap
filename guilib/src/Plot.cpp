@@ -138,7 +138,6 @@ void PlotItem::setPreviousItem(PlotItem * previousItem)
 
 void PlotItem::showDescription(bool shown)
 {
-	ULOGGER_DEBUG("");
 	if(shown)
 	{
 		this->setPen(QPen(Qt::black, 2));
@@ -313,7 +312,7 @@ void PlotCurve::attach(Plot * plot)
 	_plot = plot;
 	for(int i=0; i<_items.size(); ++i)
 	{
-		_plot->scene()->addItem(_items.at(i));
+		_plot->addItem(_items.at(i));
 	}
 }
 
@@ -385,14 +384,13 @@ void PlotCurve::_addValue(PlotItem * data)
 		{
 			data->setPreviousItem((PlotItem *)_items.last());
 
-			//apply scale
 			QGraphicsLineItem * line = new QGraphicsLineItem();
 			line->setPen(_pen);
 			line->setVisible(false);
 			_items.append(line);
 			if(_plot)
 			{
-				_plot->scene()->addItem(line);
+				_plot->addItem(line);
 			}
 
 			//Update min/max
@@ -413,7 +411,7 @@ void PlotCurve::_addValue(PlotItem * data)
 		//data->showDescription(_valuesShown);
 		if(_plot)
 		{
-			_plot->scene()->addItem(_items.last());
+			_plot->addItem(_items.last());
 		}
 	}
 	else
@@ -604,7 +602,7 @@ void PlotCurve::setBrush(const QBrush & brush)
 	ULOGGER_WARN("Not used...");
 }
 
-void PlotCurve::update(float scaleX, float scaleY, float offsetX, float offsetY, int xDir, int yDir, bool allDataKept)
+void PlotCurve::update(float scaleX, float scaleY, float offsetX, float offsetY, float xDir, float yDir, bool allDataKept)
 {
 	//ULOGGER_DEBUG("scaleX=%f, scaleY=%f, offsetX=%f, offsetY=%f, xDir=%d, yDir=%d, _plot->scene()->width()=%f, _plot->scene()->height=%f", scaleX, scaleY, offsetX, offsetY, xDir, yDir,_plot->scene()->width(),_plot->scene()->height());
 	//make sure direction values are 1 or -1
@@ -636,14 +634,14 @@ void PlotCurve::update(float scaleX, float scaleY, float offsetX, float offsetY,
 			}
 			else
 			{
-				item->setPos(((xDir*item->data().x()+offsetX)*scaleX-item->rect().width()/2),
-							((yDir*item->data().y()+offsetY)*scaleY-item->rect().width()/2));
+				QPointF newPos(((xDir*item->data().x()+offsetX)*scaleX-item->rect().width()/2.0f),
+							   ((yDir*item->data().y()+offsetY)*scaleY-item->rect().width()/2.0f));
 				if(!item->isVisible())
 				{
 					item->setVisible(true);
 				}
+				item->setPos(newPos);
 			}
-
 		}
 		else
 		{
@@ -679,7 +677,44 @@ void PlotCurve::update(float scaleX, float scaleY, float offsetX, float offsetY,
 
 }
 
-int PlotCurve::itemsSize()
+void PlotCurve::draw(QPainter * painter)
+{
+	if(painter)
+	{
+		for(int i=_items.size()-1; i>=0 && _items.at(i)->isVisible(); i-=2)
+		{
+			//plotItem
+			const PlotItem * item = (const PlotItem *)_items.at(i);
+			int x = (int)item->x();
+			if(x<0)
+			{
+				break;
+			}
+
+			// draw line in first
+			if(i-1>=0)
+			{
+				painter->save();
+				painter->setPen(this->pen());
+				painter->setBrush(this->brush());
+				//lineItem
+				const QGraphicsLineItem * item = (const QGraphicsLineItem *)_items.at(i-1);
+				QLineF line = item->line();
+				int x = (int)line.p1().x();
+				if(x<0)
+				{
+					line.setP1(QPoint(0, line.p1().y()));
+				}
+				painter->drawLine(line);
+				painter->restore();
+			}
+
+			painter->drawEllipse(item->pos()+QPointF(item->rect().width()/2, item->rect().height()/2), (int)item->rect().width()/2, (int)item->rect().height()/2);
+		}
+	}
+}
+
+int PlotCurve::itemsSize() const
 {
 	return _items.size();
 }
@@ -822,7 +857,7 @@ void ThresholdCurve::setOrientation(Qt::Orientation orientation)
 	}
 }
 
-void ThresholdCurve::update(float scaleX, float scaleY, float offsetX, float offsetY, int xDir, int yDir, bool allDataKept)
+void ThresholdCurve::update(float scaleX, float scaleY, float offsetX, float offsetY, float xDir, float yDir, bool allDataKept)
 {
 	if(_items.size() == 3)
 	{
@@ -835,14 +870,14 @@ void ThresholdCurve::update(float scaleX, float scaleY, float offsetX, float off
 				item = (PlotItem*)_items.at(0);
 				item->setData(QPointF(-offsetX/xDir, item->data().y()));
 				item = (PlotItem*)_items.at(2);
-				item->setData(QPointF( (_plot->scene()->width()/scaleX-offsetX)/xDir, item->data().y()));
+				item->setData(QPointF( (_plot->sceneRect().width()/scaleX-offsetX)/xDir, item->data().y()));
 			}
 			else
 			{
 				item = (PlotItem*)_items.at(0);
 				item->setData(QPointF(item->data().x(), -offsetY/yDir));
 				item = (PlotItem*)_items.at(2);
-				item->setData(QPointF(item->data().x(), (_plot->scene()->height()/scaleY-offsetY)/yDir));
+				item->setData(QPointF(item->data().x(), (_plot->sceneRect().height()/scaleY-offsetY)/yDir));
 			}
 			this->updateMinMax();
 		}
@@ -954,23 +989,23 @@ void PlotAxis::setAxis(float & min, float & max)
 	if(min != max)
 	{
 		float mul = 1;
-		float rangef = fabsf(max - min);
+		float rangef = max - min;
 		int countStep = _count/5;
 		float val;
 		for(int i=0; i<6; ++i)
 		{
-			val = (rangef/countStep) * mul;
-			if( val >= 1 && val < 10)
+			val = (rangef/float(countStep)) * mul;
+			if( val >= 1.0f && val < 10.0f)
 			{
 				break;
 			}
 			else if(val<1)
 			{
-				mul *= 10;
+				mul *= 10.0f;
 			}
 			else
 			{
-				mul /= 10;
+				mul /= 10.0f;
 			}
 		}
 		//ULOGGER_DEBUG("min=%f, max=%f", min, max);
@@ -1187,6 +1222,7 @@ void PlotLegend::addItem(const PlotCurve * curve)
 	if(curve)
 	{
 		PlotLegendItem * legendItem = new PlotLegendItem(curve, this);
+		legendItem->setAutoDefault(false);
 		legendItem->setFlat(_flat);
 		legendItem->setCheckable(true);
 		legendItem->setChecked(false);
@@ -1194,7 +1230,7 @@ void PlotLegend::addItem(const PlotCurve * curve)
 		legendItem->setIconSize(QSize(25,20));
 		connect(legendItem, SIGNAL(toggled(bool)), this, SLOT(redirectToggled(bool)));
 		connect(legendItem, SIGNAL(legendItemRemoved(const PlotCurve *)), this, SLOT(removeLegendItem(const PlotCurve *)));
-	
+
 		// layout
 		QHBoxLayout * hLayout = new QHBoxLayout();
 		hLayout->addWidget(legendItem);
@@ -1218,7 +1254,7 @@ QPixmap PlotLegend::createSymbol(const QPen & pen, const QBrush & brush)
 	return pixmap;
 }
 
-void PlotLegend::removeLegendItem(const PlotCurve * curve)
+bool PlotLegend::remove(const PlotCurve * curve)
 {
 	QList<PlotLegendItem *> items = this->findChildren<PlotLegendItem*>();
 	for(int i=0; i<items.size(); ++i)
@@ -1226,8 +1262,17 @@ void PlotLegend::removeLegendItem(const PlotCurve * curve)
 		if(items.at(i)->curve() == curve)
 		{
 			delete items.at(i);
-			emit legendItemRemoved(curve);
+			return true;
 		}
+	}
+	return false;
+}
+
+void PlotLegend::removeLegendItem(const PlotCurve * curve)
+{
+	if(this->remove(curve))
+	{
+		emit legendItemRemoved(curve);
 	}
 }
 
@@ -1342,6 +1387,7 @@ Plot::Plot(QWidget *parent) :
 
 	// This will update actions
 	this->showLegend(true);
+	this->setGraphicsView(false);
 	this->setMaxVisibleItems(0);
 	this->showGrid(false);
 	this->showRefreshRate(false);
@@ -1367,12 +1413,9 @@ Plot::Plot(QWidget *parent) :
 
 Plot::~Plot()
 {
+	_aAutoScreenCapture->setChecked(false);
 	ULOGGER_DEBUG("%s", this->title().toStdString().c_str());
-	QList<PlotCurve*> curves = _curves.values();
-	for(int i=0; i<curves.size(); ++i)
-	{
-		this->removeCurve(curves.at(i));
-	}
+	this->removeCurves();
 }
 
 void Plot::setupUi()
@@ -1382,6 +1425,11 @@ void Plot::setupUi()
 	_view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	_view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	_view->setScene(new QGraphicsScene(0,0,0,0,this));
+	_view->setStyleSheet( "QGraphicsView { border-style: none; }" );
+	_sceneRoot = _view->scene()->addText("");
+	_sceneRoot->translate(0,0);
+	_graphicsViewHolder = new QWidget(this);
+	_graphicsViewHolder->setMinimumSize(100,100);
 	_verticalAxis = new PlotAxis(Qt::Vertical, 0, 1, this);
 	_horizontalAxis = new PlotAxis(Qt::Horizontal, 0, 1, this);
 	_title = new QLabel("");
@@ -1402,18 +1450,23 @@ void Plot::setupUi()
 	_refreshRate->setVisible(false);
 
 	//layouts
-	QGridLayout * grid = new QGridLayout();
+	QVBoxLayout * vLayout = new QVBoxLayout(_graphicsViewHolder);
+	vLayout->setContentsMargins(0,0,0,0);
+	vLayout->addWidget(_view);
+
+	QGridLayout * grid = new QGridLayout(this);
 	grid->setContentsMargins(0,0,0,0);
-	this->setLayout(grid);
 	grid->addWidget(_title, 0, 2);
 	grid->addWidget(_yLabel, 1, 0);
 	grid->addWidget(_verticalAxis, 1, 1);
 	grid->addWidget(_refreshRate, 2, 1);
-	grid->addWidget(_view, 1, 2);
+	grid->addWidget(_graphicsViewHolder, 1, 2);
 	grid->setColumnStretch(2, 1);
+	grid->setRowStretch(1, 1);
 	grid->addWidget(_horizontalAxis, 2, 2);
 	grid->addWidget(_xLabel, 3, 2);
 	grid->addWidget(_legend, 1, 3);
+
 	connect(_legend, SIGNAL(legendItemToggled(const PlotCurve *, bool)), this, SLOT(showCurve(const PlotCurve *, bool)));
 	connect(_legend, SIGNAL(legendItemRemoved(const PlotCurve *)), this, SLOT(removeCurve(const PlotCurve *)));
 }
@@ -1426,6 +1479,8 @@ void Plot::createActions()
 	_aShowGrid->setCheckable(true);
 	_aShowRefreshRate = new QAction(tr("Show refresh rate"), this);
 	_aShowRefreshRate->setCheckable(true);
+	_aGraphicsView = new QAction(tr("Graphics view"), this);
+	_aGraphicsView->setCheckable(true);
 	_aKeepAllData = new QAction(tr("Keep all data"), this);
 	_aKeepAllData->setCheckable(true);
 	_aLimit0 = new QAction(tr("No maximum items shown"), this);
@@ -1473,6 +1528,7 @@ void Plot::createMenus()
 	_menu->addAction(_aShowLegend);
 	_menu->addAction(_aShowGrid);
 	_menu->addAction(_aShowRefreshRate);
+	_menu->addAction(_aGraphicsView);
 	_menu->addAction(_aKeepAllData);
 	_menu->addSeparator()->setStatusTip(tr("Maximum items shown"));
 	_menu->addAction(_aLimit0);
@@ -1516,18 +1572,31 @@ bool Plot::addCurve(PlotCurve * curve)
 {
 	if(curve)
 	{
+		// only last curve can trigger an update, so disable previous connections
+		if(!qobject_cast<ThresholdCurve*>(curve))
+		{
+			for(int i=_curves.size()-1; i>=0; --i)
+			{
+				if(!qobject_cast<ThresholdCurve*>(_curves.at(i)))
+				{
+					disconnect(_curves.at(i), SIGNAL(dataChanged(const PlotCurve *)), this, SLOT(updateAxis()));
+					break;
+				}
+			}
+		}
+
 		// add curve
-		_curves.insert(curve, curve);
+		_curves.append(curve);
 		curve->attach(this); // ownership is transferred
 		this->updateAxis(curve);
 		curve->setStartX(_axisMaximums[1]);
+
 		connect(curve, SIGNAL(dataChanged(const PlotCurve *)), this, SLOT(updateAxis()));
 
 		_legend->addItem(curve);
 
 		ULOGGER_DEBUG("Curve \"%s\" added to plot \"%s\"", curve->name().toStdString().c_str(), this->title().toStdString().c_str());
 
-		this->update();
 		return true;
 	}
 	else
@@ -1540,7 +1609,7 @@ bool Plot::addCurve(PlotCurve * curve)
 QStringList Plot::curveNames()
 {
 	QStringList names;
-	for(QMap<const PlotCurve*, PlotCurve*>::iterator iter = _curves.begin(); iter!=_curves.end(); ++iter)
+	for(QList<PlotCurve*>::iterator iter = _curves.begin(); iter!=_curves.end(); ++iter)
 	{
 		if(*iter)
 		{
@@ -1552,7 +1621,7 @@ QStringList Plot::curveNames()
 
 bool Plot::contains(const QString & curveName)
 {
-	for(QMap<const PlotCurve*, PlotCurve*>::iterator iter = _curves.begin(); iter!=_curves.end(); ++iter)
+	for(QList<PlotCurve*>::iterator iter = _curves.begin(); iter!=_curves.end(); ++iter)
 	{
 		if(*iter && (*iter)->name().compare(curveName) == 0)
 		{
@@ -1567,15 +1636,14 @@ QPen Plot::getRandomPenColored()
 	return QPen((Qt::GlobalColor)(_penStyleCount++ % 12 + 7 ));
 }
 
-void Plot::replot()
+void Plot::replot(QPainter * painter)
 {
-	QList<PlotCurve *> curves = _curves.values();
 	if(_maxVisibleItems>0)
 	{
 		PlotCurve * c = 0;
 		int maxItem = 0;
 		// find the curve with the most items
-		for(QList<PlotCurve *>::iterator i=curves.begin(); i!=curves.end(); ++i)
+		for(QList<PlotCurve *>::iterator i=_curves.begin(); i!=_curves.end(); ++i)
 		{
 			if((*i)->isVisible() && ((PlotCurve *)(*i))->itemsSize() > maxItem)
 			{
@@ -1597,43 +1665,18 @@ void Plot::replot()
 
 	_verticalAxis->setAxis(axis[2], axis[3]);
 	_horizontalAxis->setAxis(axis[0], axis[1]);
+	if(_aGraphicsView->isChecked() && !painter)
+	{
+		_verticalAxis->update();
+		_horizontalAxis->update();
+	}
 
 	//ULOGGER_DEBUG("x1=%f, x2=%f, y1=%f, y2=%f", _axisMaximums[0], _axisMaximums[1], _axisMaximums[2], _axisMaximums[3]);
 
-	QRectF newRect(0,0, _view->size().width(), _view->size().height());
+	QRectF newRect(0,0, _graphicsViewHolder->size().width(), _graphicsViewHolder->size().height());
 	_view->scene()->setSceneRect(newRect);
-	int borderHor = _horizontalAxis->border();
-	int borderVer = _verticalAxis->border();
-
-	float scaleX = 1;
-	float scaleY = 1;
-	float den = 0;
-	den = axis[1] - axis[0];
-	if(den != 0)
-	{
-		scaleX = (_view->sceneRect().width()-(borderHor*2)) / den;
-	}
-	den = axis[3] - axis[2];
-	if(den != 0)
-	{
-		scaleY = (_view->sceneRect().height()-(borderVer*2)) / den;
-	}
-
-	for(QList<PlotCurve *>::iterator i=curves.begin(); i!=curves.end(); ++i)
-	{
-		if((*i)->isVisible())
-		{
-			int xDir = 1;
-			int yDir = -1;
-			(*i)->update(scaleX,
-						scaleY,
-						xDir<0?axis[1]+float(borderHor-2)/scaleX:-(axis[0]-float(borderHor-2)/scaleX),
-						yDir<0?axis[3]+float(borderVer-2)/scaleY:-(axis[2]-float(borderVer-2)/scaleY),
-						xDir,
-						yDir,
-						_aKeepAllData->isChecked());
-		}
-	}
+	float borderHor = (float)_horizontalAxis->border();
+	float borderVer = (float)_verticalAxis->border();
 
 	//grid
 	qDeleteAll(hGridLines);
@@ -1642,27 +1685,91 @@ void Plot::replot()
 	vGridLines.clear();
 	if(_aShowGrid->isChecked())
 	{
-		borderHor-=2;
-		borderVer-=2;
 		// TODO make a PlotGrid class ?
-		int w = _view->sceneRect().width()-(borderHor*2);
-		int h = _view->sceneRect().height()-(borderVer*2);
-		float stepH = w / _horizontalAxis->count();
-		float stepV = h / _verticalAxis->count();
+		float w = newRect.width()-(borderHor*2);
+		float h = newRect.height()-(borderVer*2);
+		float stepH = w / float(_horizontalAxis->count());
+		float stepV = h / float(_verticalAxis->count());
 		QPen pen(Qt::DashLine);
-		for(int i=0; i*stepV < h+stepV; i+=5)
+		for(float i=0.0f; i*stepV <= h+stepV; i+=5.0f)
 		{
 			//horizontal lines
-			hGridLines.append(_view->scene()->addLine(0, stepV*i+borderVer, borderHor, stepV*i+borderVer));
-			hGridLines.append(_view->scene()->addLine(borderHor, stepV*i+borderVer, w+borderHor, stepV*i+borderVer, pen));
-			hGridLines.append(_view->scene()->addLine(w+borderHor, stepV*i+borderVer, w+borderHor*2, stepV*i+borderVer));
+			if(!_aGraphicsView->isChecked())
+			{
+				if(painter)
+				{
+					painter->drawLine(0, stepV*i+borderVer+0.5f, borderHor, stepV*i+borderVer+0.5f);
+					painter->save();
+					painter->setPen(pen);
+					painter->drawLine(borderHor, stepV*i+borderVer+0.5f, w+borderHor, stepV*i+borderVer+0.5f);
+					painter->restore();
+					painter->drawLine(w+borderHor, stepV*i+borderVer+0.5f, w+borderHor*2, stepV*i+borderVer+0.5f);
+				}
+			}
+			else
+			{
+				hGridLines.append(new QGraphicsLineItem(0, stepV*i+borderVer, borderHor, stepV*i+borderVer, _sceneRoot));
+				hGridLines.append(new QGraphicsLineItem(borderHor, stepV*i+borderVer, w+borderHor, stepV*i+borderVer, _sceneRoot));
+				hGridLines.last()->setPen(pen);
+				hGridLines.append(new QGraphicsLineItem(w+borderHor, stepV*i+borderVer, w+borderHor*2, stepV*i+borderVer, _sceneRoot));
+			}
 		}
-		for(int i=0; i*stepH < w+stepH; i+=5)
+		for(float i=0; i*stepH < w+stepH; i+=5.0f)
 		{
 			//vertical lines
-			vGridLines.append(_view->scene()->addLine(stepH*i+borderHor, 0, stepH*i+borderHor, borderVer));
-			vGridLines.append(_view->scene()->addLine(stepH*i+borderHor, borderVer, stepH*i+borderHor, h+borderVer, pen));
-			vGridLines.append(_view->scene()->addLine(stepH*i+borderHor, h+borderVer, stepH*i+borderHor, h+borderVer*2));
+			if(!_aGraphicsView->isChecked())
+			{
+				if(painter)
+				{
+					painter->drawLine(stepH*i+borderHor+0.5f, 0, stepH*i+borderHor+0.5f, borderVer);
+					painter->save();
+					painter->setPen(pen);
+					painter->drawLine(stepH*i+borderHor+0.5f, borderVer, stepH*i+borderHor+0.5f, h+borderVer);
+					painter->restore();
+					painter->drawLine(stepH*i+borderHor+0.5f, h+borderVer, stepH*i+borderHor+0.5f, h+borderVer*2);
+				}
+			}
+			else
+			{
+				vGridLines.append(new QGraphicsLineItem(stepH*i+borderHor, 0, stepH*i+borderHor, borderVer, _sceneRoot));
+				vGridLines.append(new QGraphicsLineItem(stepH*i+borderHor, borderVer, stepH*i+borderHor, h+borderVer, _sceneRoot));
+				vGridLines.last()->setPen(pen);
+				vGridLines.append(new QGraphicsLineItem(stepH*i+borderHor, h+borderVer, stepH*i+borderHor, h+borderVer*2, _sceneRoot));
+			}
+		}
+	}
+
+	// curves
+	float scaleX = 1;
+	float scaleY = 1;
+	float den = 0;
+	den = axis[1] - axis[0];
+	if(den != 0)
+	{
+		scaleX = (newRect.width()-(borderHor*2)) / den;
+	}
+	den = axis[3] - axis[2];
+	if(den != 0)
+	{
+		scaleY = (newRect.height()-(borderVer*2)) / den;
+	}
+	for(QList<PlotCurve *>::iterator i=_curves.begin(); i!=_curves.end(); ++i)
+	{
+		if((*i)->isVisible())
+		{
+			float xDir = 1.0f;
+			float yDir = -1.0f;
+			(*i)->update(scaleX,
+						scaleY,
+						xDir<0?axis[1]+borderHor/scaleX:-(axis[0]-borderHor/scaleX),
+						yDir<0?axis[3]+borderVer/scaleY:-(axis[2]-borderVer/scaleY),
+						xDir,
+						yDir,
+						_aKeepAllData->isChecked());
+			if(painter)
+			{
+				(*i)->draw(painter);
+			}
 		}
 	}
 
@@ -1674,8 +1781,8 @@ void Plot::replot()
 		{
 			_lowestRefreshRate = refreshRate;
 		}
-		// Refresh the label only after each 100 ms
-		if(_refreshStartTime.elapsed() > 100)
+		// Refresh the label only after each 1000 ms
+		if(_refreshStartTime.elapsed() > 1000)
 		{
 			_refreshRate->setText(QString::number(_lowestRefreshRate));
 			_lowestRefreshRate = 99;
@@ -1700,10 +1807,9 @@ void Plot::setFixedYAxis(float y1, float y2)
 
 void Plot::updateAxis(const PlotCurve * curve)
 {
-	PlotCurve * value = _curves.value(curve, 0);
-	if(value && value->isVisible() && value->itemsSize() && value->isMinMaxValid())
+	if(curve && curve->isVisible() && curve->itemsSize() && curve->isMinMaxValid())
 	{
-		const QVector<float> & minMax = value->getMinMax();
+		const QVector<float> & minMax = curve->getMinMax();
 		//ULOGGER_DEBUG("x1=%f, x2=%f, y1=%f, y2=%f", minMax[0], minMax[1], minMax[2], minMax[3]);
 		if(minMax.size() != 4)
 		{
@@ -1711,7 +1817,7 @@ void Plot::updateAxis(const PlotCurve * curve)
 			return;
 		}
 		this->updateAxis(minMax[0], minMax[1], minMax[2], minMax[3]);
-		this->update();
+		_aGraphicsView->isChecked()?this->replot(0):this->update();
 	}
 }
 
@@ -1777,25 +1883,48 @@ void Plot::updateAxis()
 		}
 	}
 
-	QList<PlotCurve*> curves = _curves.values();
-	for(int i=0; i<curves.size(); ++i)
+	for(int i=0; i<_curves.size(); ++i)
 	{
-		if(curves.at(i)->isVisible() && curves.at(i)->isMinMaxValid())
+		if(_curves.at(i)->isVisible() && _curves.at(i)->isMinMaxValid())
 		{
-			const QVector<float> & minMax = curves.at(i)->getMinMax();
+			const QVector<float> & minMax = _curves.at(i)->getMinMax();
 			this->updateAxis(minMax[0], minMax[1], minMax[2], minMax[3]);
 		}
 	}
 
-	this->update();
+	_aGraphicsView->isChecked()?this->replot(0):this->update();
 
 	this->captureScreen();
 }
 
 void Plot::paintEvent(QPaintEvent * event)
 {
-	this->replot();
-	QWidget::paintEvent(event);
+	UDEBUG("");
+	if(!_aGraphicsView->isChecked())
+	{
+		QPainter painter(this);
+		painter.translate(_graphicsViewHolder->pos());
+		painter.save();
+		painter.setBrush(Qt::white);
+		painter.setPen(QPen(Qt::NoPen));
+		painter.drawRect(_graphicsViewHolder->rect());
+		painter.restore();
+
+		this->replot(&painter);
+	}
+	else
+	{
+		QWidget::paintEvent(event);
+	}
+}
+
+void Plot::resizeEvent(QResizeEvent * event)
+{
+	if(_aGraphicsView->isChecked())
+	{
+		this->replot(0);
+	}
+	QWidget::resizeEvent(event);
 }
 
 void Plot::contextMenuEvent(QContextMenuEvent * event)
@@ -1818,6 +1947,10 @@ void Plot::contextMenuEvent(QContextMenuEvent * event)
 	{
 		this->showRefreshRate(_aShowRefreshRate->isChecked());
 	}
+	else if(action == _aGraphicsView)
+	{
+		this->setGraphicsView(_aGraphicsView->isChecked());
+	}
 	else if(action == _aKeepAllData)
 	{
 		this->keepAllData(_aKeepAllData->isChecked());
@@ -1831,7 +1964,6 @@ void Plot::contextMenuEvent(QContextMenuEvent * event)
 			action == _aLimitCustom)
 	{
 		this->setMaxVisibleItems(action->text().toInt());
-		this->updateAxis();
 	}
 	else if(action == _aAddVerticalLine || action == _aAddHorizontalLine)
 	{
@@ -1982,16 +2114,7 @@ void Plot::contextMenuEvent(QContextMenuEvent * event)
 	}
 	else if(action == _aClearData)
 	{
-		QList<PlotCurve *> curves = _curves.values();
-		for(int i=0; i<curves.size(); ++i)
-		{
-			// Don't clear threshold curves
-			if(qobject_cast<ThresholdCurve*>(curves.at(i)) == 0)
-			{
-				curves.at(i)->clear();
-			}
-		}
-		this->update();
+		this->clearData();
 	}
 	else
 	{
@@ -2048,6 +2171,19 @@ void Plot::selectScreenCaptureFormat()
 	this->captureScreen();
 }
 
+void Plot::clearData()
+{
+	for(int i=0; i<_curves.size(); ++i)
+	{
+		// Don't clear threshold curves
+		if(qobject_cast<ThresholdCurve*>(_curves.at(i)) == 0)
+		{
+			_curves.at(i)->clear();
+		}
+	}
+	_aGraphicsView->isChecked()?this->replot(0):this->update();
+}
+
 // for convenience...
 ThresholdCurve * Plot::addThreshold(const QString & name, float value, Qt::Orientation orientation)
 {
@@ -2064,7 +2200,7 @@ ThresholdCurve * Plot::addThreshold(const QString & name, float value, Qt::Orien
 	}
 	else
 	{
-		this->update();
+		_aGraphicsView->isChecked()?this->replot(0):this->update();
 	}
 	return curve;
 }
@@ -2074,6 +2210,10 @@ void Plot::setTitle(const QString & text)
 	_title->setText(text);
 	_title->setVisible(!text.isEmpty());
 	this->update();
+	if(_aGraphicsView->isChecked())
+	{
+		QTimer::singleShot(10, this, SLOT(updateAxis()));
+	}
 }
 
 void Plot::setXLabel(const QString & text)
@@ -2081,6 +2221,10 @@ void Plot::setXLabel(const QString & text)
 	_xLabel->setText(text);
 	_xLabel->setVisible(!text.isEmpty());
 	this->update();
+	if(_aGraphicsView->isChecked())
+	{
+		QTimer::singleShot(10, this, SLOT(updateAxis()));
+	}
 }
 
 void Plot::setYLabel(const QString & text, Qt::Orientation orientation)
@@ -2090,11 +2234,15 @@ void Plot::setYLabel(const QString & text, Qt::Orientation orientation)
 	_yLabel->setVisible(!text.isEmpty());
 	_aYLabelVertical->setChecked(orientation==Qt::Vertical);
 	this->update();
+	if(_aGraphicsView->isChecked())
+	{
+		QTimer::singleShot(10, this, SLOT(updateAxis()));
+	}
 }
 
-QGraphicsScene * Plot::scene() const
+void Plot::addItem(QGraphicsItem * item)
 {
-	return _view->scene();
+	item->setParentItem(_sceneRoot);
 }
 
 void Plot::showLegend(bool shown)
@@ -2102,12 +2250,16 @@ void Plot::showLegend(bool shown)
 	_legend->setVisible(shown);
 	_aShowLegend->setChecked(shown);
 	this->update();
+	if(_aGraphicsView->isChecked())
+	{
+		QTimer::singleShot(10, this, SLOT(updateAxis()));
+	}
 }
 
 void Plot::showGrid(bool shown)
 {
 	_aShowGrid->setChecked(shown);
-	this->update();
+	_aGraphicsView->isChecked()?this->replot(0):this->update();
 }
 
 void Plot::showRefreshRate(bool shown)
@@ -2115,6 +2267,17 @@ void Plot::showRefreshRate(bool shown)
 	_aShowRefreshRate->setChecked(shown);
 	_refreshRate->setVisible(shown);
 	this->update();
+	if(_aGraphicsView->isChecked())
+	{
+		QTimer::singleShot(10, this, SLOT(updateAxis()));
+	}
+}
+
+void Plot::setGraphicsView(bool on)
+{
+	_aGraphicsView->setChecked(on);
+	_view->setVisible(on);
+	_aGraphicsView->isChecked()?this->replot(0):this->update();
 }
 
 void Plot::keepAllData(bool kept)
@@ -2155,11 +2318,17 @@ void Plot::setMaxVisibleItems(int maxVisibleItems)
 		_aLimitCustom->setText(QString::number(maxVisibleItems));
 	}
 	_maxVisibleItems = maxVisibleItems;
+	updateAxis();
+}
+
+QRectF Plot::sceneRect() const
+{
+	return _view->sceneRect();
 }
 
 void Plot::removeCurves()
 {
-	QList<PlotCurve*> tmp = _curves.values();
+	QList<PlotCurve*> tmp = _curves;
 	for(QList<PlotCurve*>::iterator iter=tmp.begin(); iter!=tmp.end(); ++iter)
 	{
 		this->removeCurve(*iter);
@@ -2169,13 +2338,27 @@ void Plot::removeCurves()
 
 void Plot::removeCurve(const PlotCurve * curve)
 {
-	PlotCurve * c = _curves.value(curve, 0);
+	QList<PlotCurve *>::iterator iter = qFind(_curves.begin(), _curves.end(), curve);
 	ULOGGER_DEBUG("Plot=\"%s\" removing curve=\"%s\"", this->objectName().toStdString().c_str(), curve?curve->name().toStdString().c_str():"");
-	if(c)
+	if(iter!=_curves.end())
 	{
+		PlotCurve * c = *iter;
 		c->detach(this);
-		_curves.remove(c);
-		_legend->removeLegendItem(c);
+		_curves.erase(iter);
+		_legend->remove(c);
+		if(!qobject_cast<ThresholdCurve*>(c))
+		{
+			// transfer update connection to next curve
+			for(int i=_curves.size()-1; i>=0; --i)
+			{
+				if(!qobject_cast<ThresholdCurve*>(_curves.at(i)))
+				{
+					connect(_curves.at(i), SIGNAL(dataChanged(const PlotCurve *)), this, SLOT(updateAxis()));
+					break;
+				}
+			}
+		}
+
 		if(c->parent() == this)
 		{
 			delete c;
@@ -2187,9 +2370,10 @@ void Plot::removeCurve(const PlotCurve * curve)
 
 void Plot::showCurve(const PlotCurve * curve, bool shown)
 {
-	PlotCurve * value = _curves.value(curve, 0);
-	if(value)
+	QList<PlotCurve *>::iterator iter = qFind(_curves.begin(), _curves.end(), curve);
+	if(iter!=_curves.end())
 	{
+		PlotCurve * value = *iter;
 		if(value->isVisible() != shown)
 		{
 			value->setVisible(shown);

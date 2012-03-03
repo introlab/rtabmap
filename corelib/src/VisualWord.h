@@ -31,7 +31,7 @@ class SignatureSurf;
 class RTABMAP_EXP VisualWord
 {
 public:
-	VisualWord(int id, const float * descriptor, unsigned int dim, int signatureId = 0);
+	VisualWord(int id, const float * descriptor, int dim, int signatureId = 0);
 	~VisualWord();
 
 	void addRef(int signatureId);
@@ -40,7 +40,7 @@ public:
 	int getTotalReferences() const {return _totalReferences;}
 	int id() const {return _id;}
 	const float * getDescriptor() const {return _descriptor;}
-	unsigned int getDim() const {return _dim;}
+	int getDim() const {return _dim;}
 	const std::map<int, int> & getReferences() const {return _references;} // (signature id , occurrence in the signature)
 
 	bool isSaved() const {return _saved;}
@@ -49,7 +49,7 @@ public:
 private:
 	int _id;
 	float * _descriptor;
-	unsigned int _dim;
+	int _dim;
 	bool _saved; // If it's saved to bd
 
 	int _totalReferences;

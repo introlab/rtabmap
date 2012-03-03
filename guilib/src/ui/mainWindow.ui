@@ -132,7 +132,7 @@
      <x>0</x>
      <y>0</y>
      <width>842</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -228,7 +228,7 @@
     <number>8</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
-    <layout class="QVBoxLayout" name="verticalLayout_4">
+    <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="rtabmap::Plot" name="posteriorPlot" native="true"/>
      </item>
@@ -268,7 +268,7 @@
       <number>2</number>
      </property>
      <item>
-      <layout class="QGridLayout" name="gridLayout">
+      <layout class="QGridLayout" name="gridLayout" columnstretch="10,0">
        <property name="sizeConstraint">
         <enum>QLayout::SetMinimumSize</enum>
        </property>
@@ -296,6 +296,9 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_stats_imgRate">
          <property name="alignment">
           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+         <property name="suffix">
+          <string> Hz</string>
          </property>
          <property name="decimals">
           <number>1</number>
@@ -407,13 +410,6 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="2">
-        <widget class="QLabel" name="label_17">
-         <property name="text">
-          <string>Hz</string>
-         </property>
-        </widget>
-       </item>
        <item row="2" column="0">
         <widget class="QLabel" name="label_2">
          <property name="text">
@@ -424,26 +420,25 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="2">
-        <widget class="QLabel" name="label_21">
-         <property name="text">
-          <string>s</string>
-         </property>
-        </widget>
-       </item>
        <item row="2" column="1">
         <widget class="QDoubleSpinBox" name="doubleSpinBox_stats_timeLimit">
          <property name="alignment">
           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
          </property>
+         <property name="suffix">
+          <string> ms</string>
+         </property>
          <property name="decimals">
-          <number>2</number>
+          <number>0</number>
          </property>
          <property name="maximum">
-          <double>10.000000000000000</double>
+          <double>99999.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>50.000000000000000</double>
          </property>
          <property name="value">
-          <double>0.450000000000000</double>
+          <double>450.000000000000000</double>
          </property>
         </widget>
        </item>
@@ -494,16 +489,9 @@
     <number>8</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_4">
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
+    <layout class="QVBoxLayout" name="verticalLayout_6">
      <item>
-      <widget class="rtabmap::Plot" name="likelihoodPlot" native="true">
-       <property name="minimumSize">
-        <size>
-         <width>20</width>
-         <height>20</height>
-        </size>
-       </property>
-      </widget>
+      <widget class="rtabmap::Plot" name="likelihoodPlot" native="true"/>
      </item>
     </layout>
    </widget>
@@ -519,6 +507,24 @@
     <layout class="QVBoxLayout" name="verticalLayout_5">
      <item>
       <widget class="rtabmap::ConsoleWidget" name="widget" native="true"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget_twist">
+   <property name="floating">
+    <bool>false</bool>
+   </property>
+   <property name="windowTitle">
+    <string>Actions</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_5">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="rtabmap::TwistGridWidget" name="twistWidget" native="true"/>
      </item>
     </layout>
    </widget>
@@ -733,6 +739,12 @@
    <class>rtabmap::ConsoleWidget</class>
    <extends>QWidget</extends>
    <header>ConsoleWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>rtabmap::TwistGridWidget</class>
+   <extends>QWidget</extends>
+   <header>TwistWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -119,7 +119,7 @@ void PdfPlotCurve::setData(const QMap<int, float> & dataMap, const QMap<int, int
 		UDEBUG("margin=%d", margin);
 		while(margin < 0)
 		{
-			PdfPlotItem * newItem = new PdfPlotItem(0, 0, -1);
+			PdfPlotItem * newItem = new PdfPlotItem(0, 0, 2, 0);
 			newItem->setImagesRef(_imagesMapRef);
 			this->_addValue(newItem);
 			++margin;

@@ -19,15 +19,17 @@
 
 #include "BayesFilter.h"
 #include "Memory.h"
-#include "Signature.h"
+#include "rtabmap/core/Signature.h"
 #include "rtabmap/core/Parameters.h"
+#include <iostream>
 
 #include "utilite/UtiLite.h"
 
 namespace rtabmap {
 
 BayesFilter::BayesFilter(const ParametersMap & parameters) :
-	_virtualPlacePrior(Parameters::defaultBayesVirtualPlacePriorThr())
+	_virtualPlacePrior(Parameters::defaultBayesVirtualPlacePriorThr()),
+	_predictionOnNonNullActionsOnly(Parameters::defaultBayesPredictionOnNonNullActionsOnly())
 {
 	this->setPredictionLC(Parameters::defaultBayesPredictionLC());
 	this->parseParameters(parameters);
@@ -47,6 +49,11 @@ void BayesFilter::parseParameters(const ParametersMap & parameters)
 	{
 		this->setPredictionLC((*iter).second);
 	}
+	if((iter=parameters.find(Parameters::kBayesPredictionOnNonNullActionsOnly())) != parameters.end())
+	{
+		_predictionOnNonNullActionsOnly = uStr2Bool((*iter).second.c_str());
+	}
+
 }
 
 void BayesFilter::setVirtualPlacePrior(float virtualPlacePrior)
@@ -73,23 +80,18 @@ void BayesFilter::setPredictionLC(const std::string & prediction)
 	std::list<std::string> strValues = uSplit(prediction, ' ');
 	if(strValues.size() < 2)
 	{
-		ULOGGER_ERROR("The number of values < 2 (prediction=\"%s\")", prediction.c_str());
+		UERROR("The number of values < 2 (prediction=\"%s\")", prediction.c_str());
 	}
 	else
 	{
 		std::vector<double> tmpValues(strValues.size());
 		int i=0;
 		bool valid = true;
-		float sum = 0;;
 		for(std::list<std::string>::iterator iter = strValues.begin(); iter!=strValues.end(); ++iter)
 		{
 			tmpValues[i] = std::atof((*iter).c_str());
-			sum += tmpValues[i];
-			if(i>1)
-			{
-				sum += tmpValues[i]; // add a second time
-			}
-			if(tmpValues[i] < 0 || tmpValues[i]>1)
+			//UINFO("%d=%e", i, tmpValues[i]);
+			if(tmpValues[i] < 0.0 || tmpValues[i]>1.0)
 			{
 				valid = false;
 				break;
@@ -97,9 +99,9 @@ void BayesFilter::setPredictionLC(const std::string & prediction)
 			++i;
 		}
 
-		if(!valid || sum <= 0 || sum > 1.001)
+		if(!valid)
 		{
-			ULOGGER_ERROR("The prediction is not valid (the sum must be between >0 && <=1, sum=%f), negative values are not allowed (prediction=\"%s\")", sum, prediction.c_str());
+			UERROR("The prediction is not valid (values must be between >0 && <=1) prediction=\"%s\"", prediction.c_str());
 		}
 		else
 		{
@@ -119,7 +121,7 @@ std::string BayesFilter::getPredictionLCStr() const
 	std::string values;
 	for(unsigned int i=0; i<_predictionLC.size(); ++i)
 	{
-		values.append(uNumber2str(_predictionLC[i]));
+		values.append(uNumber2Str(_predictionLC[i]));
 		if(i+1 < _predictionLC.size())
 		{
 			values.append(" ");
@@ -167,16 +169,10 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	// Recursive Bayes estimation...
 	// STEP 1 - Prediction : Prior*lastPosterior
 	prediction = cvCreateMat(likelihood.size(), likelihood.size(), CV_32FC1);
-	std::map<int, int> likelihoodKeys;
-	int index = 0;
-	for(std::map<int, float>::const_iterator iter=likelihood.begin(); iter!=likelihood.end(); ++iter)
-	{
-		likelihoodKeys.insert(likelihoodKeys.end(), std::pair<int, int>(iter->first, index++));
-	}
-
-	if(this->generatePrediction(prediction, memory, likelihoodKeys))
+	if(this->generatePrediction(prediction, memory, uKeys(likelihood)))
 	{
 		ULOGGER_DEBUG("STEP1-generate prior=%fs, rows=%d, cols=%d", timer.ticks(), prediction->rows, prediction->cols);
+		//std::cout << "Prediction=" << cv::Mat(prediction) << std::endl;
 
 		// Adjust the last posterior if some images were
 		// reactivated or removed from the working memory
@@ -188,12 +184,18 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 			posterior->data.fl[j++] = (*i).second;
 		}
 		ULOGGER_DEBUG("STEP1-update posterior=%fs, posterior=%d, _posterior size=%d", posterior->rows, _posterior.size());
+		//std::cout << "LastPosterior=" << cv::Mat(posterior) << std::endl;
 
 		// Multiply prediction matrix with the last posterior
 		// (m,m) X (m,1) = (m,1)
 		prior = cvCreateMat(likelihood.size(), 1, CV_32FC1);
 		cvMatMul(prediction, posterior, prior);
 		ULOGGER_DEBUG("STEP1-matrix mult time=%fs", timer.ticks());
+		//std::cout << "ResultingPrior=" << cv::Mat(prior) << std::endl;
+
+		ULOGGER_DEBUG("STEP1-matrix mult time=%fs", timer.ticks());
+		std::vector<float> likelihoodValues = uValues(likelihood);
+		//std::cout << "Likelihood=" << cv::Mat(likelihoodValues) << std::endl;
 
 		// STEP 2 - Update : Multiply with observations (likelihood)
 		j=0;
@@ -231,7 +233,7 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	return _posterior;
 }
 
-bool BayesFilter::generatePrediction(CvMat * prediction, const Memory * memory, const std::map<int, int> & likelihoodIds) const
+bool BayesFilter::generatePrediction(CvMat * prediction, const Memory * memory, const std::vector<int> & ids) const
 {
 	ULOGGER_DEBUG("");
 	UTimer timer;
@@ -239,97 +241,108 @@ bool BayesFilter::generatePrediction(CvMat * prediction, const Memory * memory, 
 	UTimer timerGlobal;
 	timerGlobal.start();
 
-	if(!likelihoodIds.size() ||
+	if(!memory ||
 	   prediction == 0 ||
 	   prediction->rows != prediction->cols ||
-	   (unsigned int)prediction->rows != likelihoodIds.size()/*||
-	   prediction->type != CV_32FC1*/ ||
+	   (unsigned int)prediction->rows != ids.size() ||
 	   _predictionLC.size() < 2 ||
-	   !memory)
+	   !ids.size())
 	{
 		ULOGGER_ERROR( "fail");
 		return false;
+	}
+
+	std::map<int, int> idToIndexMap;
+	for(unsigned int i=0; i<ids.size(); ++i)
+	{
+		if(ids[i] == 0)
+		{
+			UFATAL("Signature id is null ?!?");
+		}
+		idToIndexMap.insert(idToIndexMap.end(), std::make_pair(ids[i], i));
 	}
 
 	//int rows = prediction->rows;
 	cvSetZero(prediction);
 	int cols = prediction->cols;
 
-	// Each priors are column vectors
-	unsigned int i=0;
+	// Each prior is a column vector
 	ULOGGER_DEBUG("_predictionLC.size()=%d",_predictionLC.size());
-	for(std::map<int, int>::const_iterator iter=likelihoodIds.begin(); iter!=likelihoodIds.end(); ++iter)
+	for(unsigned int i=0; i<ids.size(); ++i)
 	{
-		if(iter->first > 0)
+		int loopSignId = ids[i];
+		if(loopSignId > 0)
 		{
-			// Create the sum of 2 gaussians around the loop closure
-
-			int loopClosureId = iter->first;
-
 			// Set high values (gaussians curves) to loop closure neighbors
-			const Signature * loopSign = memory->getSignature(loopClosureId);
-			if(!loopSign)
+
+			float sum = 0.0f; // sum values added
+
+			float totalModelValues = 0.0f;
+			for(unsigned int j=0; j<_predictionLC.size(); ++j)
 			{
-				ULOGGER_ERROR("loopSign %d is not found?!?", loopClosureId);
+				totalModelValues += _predictionLC[j];
 			}
 
-			// LoopID
-			prediction->data.fl[i + i*cols] += _predictionLC[1];
-
-			// look up for each neighbors (RECURSIVE)
-			this->addNeighborProb(prediction, i, memory, likelihoodIds, loopSign, 1);
-
-			//ULOGGER_DEBUG("neighbor prob for %d, neighbors=%d, time = %fs", loopSign->id(), loopSign->getNeighborIds().size(), timer.ticks());
-
-			float totalModelValues = _predictionLC[0] + _predictionLC[1];
-			for(unsigned int j=2; j<_predictionLC.size(); ++j)
+			// ADD prob for each neighbors
+			double dbAccessTime = 0.0;
+			std::map<int, int> neighbors = memory->getNeighborsId(dbAccessTime, loopSignId, _predictionLC.size()-1, 0, _predictionOnNonNullActionsOnly);
+			sum += this->addNeighborProb(prediction, i, neighbors, idToIndexMap);
+			// ADD values of not found neighbors to loop closure
+			if(sum < totalModelValues-_predictionLC[0])
 			{
-				totalModelValues += _predictionLC[j]*2;
+				float delta = totalModelValues-_predictionLC[0]-sum;
+				prediction->data.fl[i + i*cols] += delta;
+				sum+=delta;
 			}
 
-			//Add values of not found neighbors to the loop closure
-			float sum = 0;
-			for(int j=0; j<cols; ++j)
+			float allOtherPlacesValue = 0;
+			if(totalModelValues < 1)
 			{
-				sum += prediction->data.fl[i + j*cols];
-			}
-			if(sum < (totalModelValues-_predictionLC[0]))
-			{
-				float gap = (totalModelValues-_predictionLC[0]) - sum;
-				prediction->data.fl[i + i*cols] += gap;
-				sum += gap;
-			}
-
-			// add virtual place prob
-			if(likelihoodIds.begin()->first < 0)
-			{
-				sum += prediction->data.fl[i] = _predictionLC[0];
+				allOtherPlacesValue = 1.0f - totalModelValues;
 			}
 
 			// Set all loop events to small values according to the model
-			if(totalModelValues < 1.0f)
+			if(allOtherPlacesValue > 0 && cols>1)
 			{
-				float value = (1.0f-totalModelValues) / float(cols);
-				for(int j=0; j<cols; ++j)
+				float value = allOtherPlacesValue / float(cols - 1);
+				for(int j=ids[0] < 0?1:0; j<cols; ++j)
 				{
-					if(!prediction->data.fl[i + j*cols])
+					if(prediction->data.fl[i + j*cols] == 0)
 					{
-						sum += prediction->data.fl[i + j*cols] = value;
+						prediction->data.fl[i + j*cols] = value;
+						sum += prediction->data.fl[i + j*cols];
 					}
 				}
 			}
 
-			//normalize this row,
-			for(int j=0; j<cols; ++j)
+			//normalize this row
+			float maxNorm = 1 - (ids[0]<0?_predictionLC[0]:0); // 1 - virtual place probability
+			if(sum<maxNorm-0.0001 || sum>maxNorm+0.0001)
 			{
-				prediction->data.fl[i + j*cols] /= sum;
+				for(int j=ids[0] < 0?1:0; j<cols; ++j)
+				{
+					prediction->data.fl[i + j*cols] *= maxNorm / sum;
+				}
+				sum = maxNorm;
+			}
+
+			// ADD virtual place prob
+			if(ids[0] < 0)
+			{
+				prediction->data.fl[i] = _predictionLC[0];
+				sum += prediction->data.fl[i];
 			}
 
 			//debug
 			//for(int j=0; j<cols; ++j)
 			//{
-			//	ULOGGER_DEBUG("test = %f", prediction->data.fl[i + j*cols]);
+			//	ULOGGER_DEBUG("test col=%d = %f", i, prediction->data.fl[i + j*cols]);
 			//}
+
+			if(sum<0.99 || sum > 1.01)
+			{
+				UWARN("Prediction is not normalized sum=%f", sum);
+			}
 		}
 		else
 		{
@@ -368,7 +381,6 @@ bool BayesFilter::generatePrediction(CvMat * prediction, const Memory * memory, 
 				}
 			}
 		}
-		++i;
 	}
 
 	ULOGGER_DEBUG("time = %fs", timerGlobal.ticks());
@@ -402,57 +414,21 @@ void BayesFilter::updatePosterior(const Memory * memory, const std::vector<int> 
 	_posterior = newPosterior;
 }
 
-//recursive...
-float BayesFilter::addNeighborProb(CvMat * prediction, unsigned int row, const Memory * memory, const std::map<int, int> & likelihoodIds, const Signature * s, unsigned int level) const
+float BayesFilter::addNeighborProb(CvMat * prediction, unsigned int col, const std::map<int, int> & neighbors, const std::map<int, int> & idToIndexMap) const
 {
-	if(!likelihoodIds.size() ||
-	   prediction == 0 ||
-	   prediction->rows != prediction->cols ||
-	   (unsigned int)prediction->rows != likelihoodIds.size() ||
-	   _predictionLC.size() < 2 ||
-	   !memory ||
-	   !prediction ||
-	   level<1)
+	if((unsigned int)prediction->cols != idToIndexMap.size() ||
+	   (unsigned int)prediction->rows != idToIndexMap.size())
 	{
-		ULOGGER_ERROR( "fail");
-		return 0;
+		UFATAL("Requirements no met");
 	}
 
-	if(level+1 >= _predictionLC.size() || !s)
-	{
-		return 0;
-	}
-
-	double value = _predictionLC[level+1];
 	float sum=0;
-
-	const NeighborsMap & neighbors = s->getNeighbors();
-	for(NeighborsMap::const_iterator iter=neighbors.begin(); iter!= neighbors.end(); ++iter)
+	for(std::map<int, int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
 	{
-		int index = uValue(likelihoodIds, iter->first, -1);
+		int index = uValue(idToIndexMap, iter->first, -1);
 		if(index >= 0)
 		{
-			bool alreadyAdded = false;
-			// the value can be already added in the recursion
-			if(value > prediction->data.fl[row + index*prediction->cols])
-			{
-				sum -= prediction->data.fl[row + index*prediction->cols];
-				prediction->data.fl[row + index*prediction->cols] = value;
-				sum += value;
-			}
-			else
-			{
-				alreadyAdded = true;
-			}
-
-			if(!alreadyAdded && level+1 < _predictionLC.size())
-			{
-				sum += addNeighborProb(prediction, row, memory, likelihoodIds, memory->getSignature(iter->first), level+1);
-			}
-		}
-		else
-		{
-			//ULOGGER_DEBUG("BayesFilter::generatePrediction(...) F (id %d) Not found for loop %d", loopSign->getNeighborForward(), loopClosureId);
+			sum += prediction->data.fl[col + index*prediction->cols] = _predictionLC[iter->second+1];
 		}
 	}
 	return sum;

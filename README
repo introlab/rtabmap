@@ -17,6 +17,7 @@
  - OpenCV
  - UtiLite library (http://code.google.com/p/utilite/)
  - sqlite3 (only for Unix, the win32 binaries are already added to this project)
+ - fftw-3
  - MinGW (only for Windows)
 	
  Optionals :

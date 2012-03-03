@@ -3,6 +3,8 @@
 #define MAINWINDOW_H_
 
 #include <QtGui/QMainWindow>
+#include <QtGui/QSlider>
+#include <QtGui/QHBoxLayout>
 #include <QtCore/QTimer>
 #include "Plot.h"
 
@@ -13,10 +15,11 @@ class MainWindow : public QMainWindow
 	Q_OBJECT
 public:
 	MainWindow() {
+		//Plot
 		Plot * plot = new Plot(this);
 		plot->setObjectName("Figure 1");
-		plot->setMaxVisibleItems(25);
-		this->setCentralWidget(plot); // ownership transferred
+		plot->setMaxVisibleItems(50);
+		plot->showRefreshRate(true);
 		PlotCurve * curveA = new PlotCurve("Curve A", this);
 		PlotCurve * curveB = new PlotCurve("Curve B", this);
 		curveA->setPen(QPen(Qt::red));
@@ -25,8 +28,23 @@ public:
 		plot->addCurve(curveB); // ownership transferred
 		connect(this, SIGNAL(valueUpdatedA(float)), curveA, SLOT(addValue(float)));
 		connect(this, SIGNAL(valueUpdatedB(float)), curveB, SLOT(addValue(float)));
+
+		//Control
+		QSlider * slider = new QSlider(Qt::Vertical, this);
+		slider->setMinimum(1); // Hz
+		slider->setMaximum(100); // Hz
+		slider->setValue(10);
+		connect(slider, SIGNAL(valueChanged(int)), this, SLOT(setRate(int)));
+
+		// layout
+		QWidget * placeHolder = new QWidget(this);
+		this->setCentralWidget(placeHolder);
+		QHBoxLayout * hlayout = new QHBoxLayout(placeHolder);
+		hlayout->addWidget(plot, 1);
+		hlayout->addWidget(slider);
+
 		connect(&timer_, SIGNAL(timeout()), this, SLOT(updateCounter()));
-		timer_.start(100);
+		setRate(slider->value());
 		qsrand(1);
 	}
 	~MainWindow() {}
@@ -34,6 +52,9 @@ public slots:
 	void updateCounter() {
 		emit valueUpdatedA(qrand() % 100);
 		emit valueUpdatedB(qrand() % 50);
+	}
+	void setRate(int rate) {
+		timer_.start(1000/rate);
 	}
 signals:
 	void valueUpdatedA(float);

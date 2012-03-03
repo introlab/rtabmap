@@ -44,7 +44,7 @@ signals:
 protected:
 	virtual void handleEvent(UEvent * event)
 	{
-		if(event->getClassName().compare("ObjDeletedEvent") == 0 &&
+		if(event->getClassName().compare("UObjDeletedEvent") == 0 &&
 		   event->getCode() == _watchedId)
 		{
 			emit objDeletionEventReceived(_watchedId);

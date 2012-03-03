@@ -31,6 +31,7 @@
 #include <utilite/UTimer.h>
 #include "KeypointMemory.h"
 #include "rtabmap/core/DBDriver.h"
+#include "../../guilib/src/KeypointItem.h"
 
 MainWindow::MainWindow(QWidget * parent) :
 	QMainWindow(parent),
@@ -237,23 +238,70 @@ void MainWindow::generateLocalGraph()
 			QString path = QFileDialog::getSaveFileName(this, tr("Save File"), pathDatabase_+"/Graph" + QString::number(id) + ".dot", tr("Graphiz file (*.dot)"));
 			if(!path.isEmpty())
 			{
-				std::map<int, int> ids;
-				memory_->getNeighborsId(ids, id, margin-1, true);
-				ids.insert(std::pair<int,int>(id, 0));
-				std::set<int> idsSet;
-				for(std::map<int, int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
+				if(memory_->getSignature(id) > 0)
 				{
-					idsSet.insert(idsSet.end(), iter->first);
+					double dbAccessTime = 0.0;
+					std::map<int, int> ids = memory_->getNeighborsId(dbAccessTime, id, margin, -1, false, false, false);
+					if(ids.size() > 0)
+					{
+						ids.insert(std::pair<int,int>(id, 0));
+						std::set<int> idsSet;
+						for(std::map<int, int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
+						{
+							idsSet.insert(idsSet.end(), iter->first);
+							UINFO("Node %d", iter->first);
+						}
+						UINFO("idsSet=%d", idsSet.size());
+						memory_->generateGraph(path.toStdString(), idsSet);
+					}
+					else
+					{
+						QMessageBox::critical(this, tr("Error"), tr("No neighbors found for signature %1.").arg(id));
+					}
 				}
-				memory_->generateGraph(path.toStdString(), idsSet);
+				else
+				{
+					QMessageBox::critical(this, tr("Error"), tr("Signature %1 not found in database.").arg(id));
+				}
 			}
 		}
+	}
+}
+
+void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, QGraphicsScene * scene)
+{
+	if(!scene)
+	{
+		return;
+	}
+	rtabmap::KeypointItem * item = 0;
+	int alpha = 70;
+	for(std::multimap<int, cv::KeyPoint>::const_iterator i = refWords.begin(); i != refWords.end(); ++i )
+	{
+		const cv::KeyPoint & r = (*i).second;
+		int id = (*i).first;
+		QString info = QString( "WordRef = %1\n"
+								"Laplacian = %2\n"
+								"Dir = %3\n"
+								"Hessian = %4\n"
+								"X = %5\n"
+								"Y = %6\n"
+								"Size = %7").arg(id).arg(1).arg(r.angle).arg(r.response).arg(r.pt.x).arg(r.pt.y).arg(r.size);
+		float radius = r.size*1.2/9.*2;
+
+		item = new rtabmap::KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 255, 0, alpha));
+
+		scene->addItem(item);
+		item->setZValue(1);
 	}
 }
 
 void MainWindow::sliderAValueChanged(int value)
 {
 	ui_->label_indexA->setText(QString::number(value));
+	ui_->label_actionsA->clear();
+	ui_->label_parentsA->clear();
+	ui_->label_childrenA->clear();
 	if(value >= 0 && value < ids_.size())
 	{
 		ui_->graphicsView_A->scene()->clear();
@@ -261,6 +309,7 @@ void MainWindow::sliderAValueChanged(int value)
 		ui_->label_idA->setText(QString::number(id));
 		if(id>0)
 		{
+			// image
 			QImage img;
 			QMap<int, QByteArray>::iterator iter = imagesMap_.find(id);
 			if(iter == imagesMap_.end())
@@ -277,7 +326,7 @@ void MainWindow::sliderAValueChanged(int value)
 							QByteArray ba;
 							QBuffer buffer(&ba);
 							buffer.open(QIODevice::WriteOnly);
-							img.save(&buffer, "JPEG"); // writes image into ba in JPEG format
+							img.save(&buffer, "BMP"); // writes image into ba in BMP format
 							imagesMap_.insert(id, ba);
 						}
 					}
@@ -285,7 +334,16 @@ void MainWindow::sliderAValueChanged(int value)
 			}
 			else
 			{
-				img.loadFromData(iter.value(), "JPEG");
+				img.loadFromData(iter.value(), "BMP");
+			}
+
+			if(memory_)
+			{
+				std::multimap<int, cv::KeyPoint> words = memory_->getWords(id);
+				if(words.size())
+				{
+					drawKeypoints(words, ui_->graphicsView_A->scene());
+				}
 			}
 
 			if(!img.isNull())
@@ -295,6 +353,61 @@ void MainWindow::sliderAValueChanged(int value)
 			else
 			{
 				ULOGGER_DEBUG("Image is empty");
+			}
+
+			// actions
+			if(id-1 > 0)
+			{
+				std::list<rtabmap::NeighborLink> links = memory_->getNeighborLinks(id-1, true, true);
+				for(std::list<rtabmap::NeighborLink>::iterator iter = links.begin(); iter!=links.end(); ++iter)
+				{
+					if(iter->id()>id-1 && iter->actions().size())
+					{
+						QString str;
+						const std::list<std::vector<float> > & actions = iter->actions();
+						unsigned int j=0;
+						for(std::list<std::vector<float> >::const_iterator jter=actions.begin(); jter!=actions.end(); ++jter)
+						{
+							for(unsigned int i=0; i<jter->size(); ++i)
+							{
+								str.append(QString("%1 ").arg(jter->at(i)));
+							}
+							if(j+1 < actions.size())
+							{
+								str.append(QString("\n"));
+							}
+							++j;
+						}
+						if(str.size())
+						{
+							ui_->label_actionsA->setText(str);
+						}
+						break;
+					}
+				}
+			}
+
+			// loops
+			std::set<int> parents;
+			std::set<int> children;
+			memory_->getLoopClosureIds(id, parents, children, true);
+			if(parents.size())
+			{
+				QString str;
+				for(std::set<int>::iterator iter=parents.begin(); iter!=parents.end(); ++iter)
+				{
+					str.append(QString("%1 ").arg(*iter));
+				}
+				ui_->label_parentsA->setText(str);
+			}
+			if(children.size())
+			{
+				QString str;
+				for(std::set<int>::iterator iter=children.begin(); iter!=children.end(); ++iter)
+				{
+					str.append(QString("%1 ").arg(*iter));
+				}
+				ui_->label_childrenA->setText(str);
 			}
 		}
 
@@ -310,6 +423,9 @@ void MainWindow::sliderAValueChanged(int value)
 void MainWindow::sliderBValueChanged(int value)
 {
 	ui_->label_indexB->setText(QString::number(value));
+	ui_->label_actionsB->clear();
+	ui_->label_parentsB->clear();
+	ui_->label_childrenB->clear();
 	if(value >= 0 && value < ids_.size())
 	{
 		ui_->graphicsView_B->scene()->clear();
@@ -317,6 +433,7 @@ void MainWindow::sliderBValueChanged(int value)
 		ui_->label_idB->setText(QString::number(id));
 		if(id>0)
 		{
+			//image
 			QImage img;
 			QMap<int, QByteArray>::iterator iter = imagesMap_.find(id);
 			if(iter == imagesMap_.end())
@@ -334,7 +451,7 @@ void MainWindow::sliderBValueChanged(int value)
 							QByteArray ba;
 							QBuffer buffer(&ba);
 							buffer.open(QIODevice::WriteOnly);
-							img.save(&buffer, "JPEG"); // writes image into ba in JPEG format
+							img.save(&buffer, "BMP"); // writes image into ba in BMP format
 							imagesMap_.insert(id, ba);
 						}
 					}
@@ -342,7 +459,16 @@ void MainWindow::sliderBValueChanged(int value)
 			}
 			else
 			{
-				img.loadFromData(iter.value(), "JPEG");
+				img.loadFromData(iter.value(), "BMP");
+			}
+
+			if(memory_)
+			{
+				std::multimap<int, cv::KeyPoint> words = memory_->getWords(id);
+				if(words.size())
+				{
+					drawKeypoints(words, ui_->graphicsView_B->scene());
+				}
 			}
 
 			if(!img.isNull())
@@ -352,6 +478,61 @@ void MainWindow::sliderBValueChanged(int value)
 			else
 			{
 				ULOGGER_DEBUG("Image is empty");
+			}
+
+			// actions
+			if(id-1 > 0)
+			{
+				std::list<rtabmap::NeighborLink> links = memory_->getNeighborLinks(id-1, true, true);
+				for(std::list<rtabmap::NeighborLink>::iterator iter = links.begin(); iter!=links.end(); ++iter)
+				{
+					if(iter->id()>id-1 && iter->actions().size())
+					{
+						QString str("");
+						const std::list<std::vector<float> > & actions = iter->actions();
+						unsigned int j=0;
+						for(std::list<std::vector<float> >::const_iterator jter=actions.begin(); jter!=actions.end(); ++jter)
+						{
+							for(unsigned int i=0; i<jter->size(); ++i)
+							{
+								str.append(QString("%1 ").arg(jter->at(i)));
+							}
+							if(j+1 < actions.size())
+							{
+								str.append(QString("\n"));
+							}
+							++j;
+						}
+						if(str.size())
+						{
+							ui_->label_actionsB->setText(str);
+						}
+						break;
+					}
+				}
+			}
+
+			// loops
+			std::set<int> parents;
+			std::set<int> children;
+			memory_->getLoopClosureIds(id, parents, children, true);
+			if(parents.size())
+			{
+				QString str;
+				for(std::set<int>::iterator iter=parents.begin(); iter!=parents.end(); ++iter)
+				{
+					str.append(QString("%1 ").arg(*iter));
+				}
+				ui_->label_parentsB->setText(str);
+			}
+			if(children.size())
+			{
+				QString str;
+				for(std::set<int>::iterator iter=children.begin(); iter!=children.end(); ++iter)
+				{
+					str.append(QString("%1 ").arg(*iter));
+				}
+				ui_->label_childrenB->setText(str);
 			}
 		}
 

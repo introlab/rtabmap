@@ -27,6 +27,8 @@
 #include "rtabmap/core/Parameters.h"
 #include <set>
 #include <stack>
+#include <list>
+#include <vector>
 
 class UDirectory;
 
@@ -57,8 +59,8 @@ public:
 class RTABMAP_EXP CamKeypointTreatment : public CamPostTreatment
 {
 public:
-	enum DetectorStrategy {kDetectorSurf, kDetectorStar, kDetectorSift, kDetectorUndef};
-	enum DescriptorStrategy {kDescriptorSurf, kDescriptorColorSurf, kDescriptorLaplacianSurf, kDescriptorSift, kDescriptorHueSurf, kDescriptorUndef};
+	enum DetectorStrategy {kDetectorSurf, kDetectorStar, kDetectorSift, kDetectorFast, kDetectorUndef};
+	enum DescriptorStrategy {kDescriptorSurf, kDescriptorSift, kDescriptorBrief, kDescriptorColor, kDescriptorHue, kDescriptorUndef};
 
 public:
 	CamKeypointTreatment(const ParametersMap & parameters = ParametersMap()) :
@@ -90,13 +92,16 @@ public:
 public:
 	virtual ~Camera();
 
-	virtual SMState * takeImage() = 0;
+	virtual IplImage * takeImage(std::list<std::vector<float> > * actions = 0) = 0;
+	SMState * takeSMState();
 	virtual bool init() = 0;
 	bool isPaused() const {return !this->isRunning();}
 	bool isCapturing() const {return this->isRunning();}
 	unsigned int getImageWidth() const {return _imageWidth;}
 	unsigned int getImageHeight() const {return _imageHeight;}
 	void setPostThreatement(CamPostTreatment * strategy); // ownership is transferred
+	void setImageRate(float imageRate) {_imageRate = imageRate;}
+	void setAutoRestart(bool autoRestart) {_autoRestart = autoRestart;}
 
 protected:
 	/**
@@ -145,7 +150,7 @@ public:
 			unsigned int imageHeight = 0);
 	virtual ~CameraImages();
 
-	virtual SMState * takeImage();
+	virtual IplImage * takeImage(std::list<std::vector<float> > * actions = 0);
 	virtual bool init();
 
 private:
@@ -187,7 +192,7 @@ public:
 			unsigned int imageHeight = 0);
 	virtual ~CameraVideo();
 
-	virtual SMState * takeImage();
+	virtual IplImage * takeImage(std::list<std::vector<float> > * actions = 0);
 	virtual bool init();
 
 private:
@@ -215,19 +220,19 @@ class RTABMAP_EXP CameraDatabase :
 {
 public:
 	CameraDatabase(const std::string & path,
-			bool ignoreChildren,
+			bool loadActions,
 			float imageRate = 0,
 			bool autoRestart = false,
 			unsigned int imageWidth = 0,
 			unsigned int imageHeight = 0);
 	virtual ~CameraDatabase();
 
-	virtual SMState * takeImage();
+	virtual IplImage * takeImage(std::list<std::vector<float> > * actions = 0);
 	virtual bool init();
 
 private:
 	std::string _path;
-	bool _ignoreChildren;
+	bool _loadActions;
 	std::set<int>::iterator _indexIter;
 	DBDriver * _dbDriver;
 	std::set<int> _ids;

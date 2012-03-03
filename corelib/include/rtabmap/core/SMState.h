@@ -23,6 +23,7 @@
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
 #include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui_c.h>
 #include <opencv2/features2d/features2d.hpp>
 #include <list>
 #include <vector>
@@ -39,7 +40,7 @@ public:
 		_image(image)
 	{}
 	// Constructor 1
-	SMState(const std::list<std::vector<float> > & sensors, const std::list<std::vector<float> > & actuators) :
+	SMState(const cv::Mat & sensors, const std::list<std::vector<float> > & actuators) :
 		_sensors(sensors),
 		_actuators(actuators),
 		_image(0)
@@ -76,12 +77,12 @@ public:
 	}
 
 	const IplImage * getImage() const {return _image;}
-	const std::list<cv::KeyPoint> & getKeypoints() const {return _keypoints;}
-	const std::list<std::vector<float> > & getSensors() const {return _sensors;}
+	const std::vector<cv::KeyPoint> & getKeypoints() const {return _keypoints;}
+	const cv::Mat & getSensors() const {return _sensors;}
 	const std::list<std::vector<float> > & getActuators() const {return _actuators;}
-	void setSensors(const std::list<std::vector<float> > & sensors) {_sensors=sensors;}
+	void setSensors(const cv::Mat & sensors) {_sensors=sensors;}
 	void setActuators(const std::list<std::vector<float> > & actuators) {_actuators=actuators;}
-	void setKeypoints(const std::list<cv::KeyPoint> & keypoints) {_keypoints = keypoints;}
+	void setKeypoints(const std::vector<cv::KeyPoint> & keypoints) {_keypoints = keypoints;}
 
 	//ownership is transferred
 	void setImage(IplImage * image)
@@ -97,15 +98,15 @@ public:
 	{
 		sensors.clear();
 		step = 0;
-		if(_sensors.size())
+		if(!_sensors.empty())
 		{
 			// here we assume that all sensors have the same length
-			step = _sensors.front().size();
-			for(std::list<std::vector<float> >::const_iterator iter = _sensors.begin();
-					iter != _sensors.end();
-					++iter)
+			step = _sensors.cols;
+			sensors = std::vector<float>(_sensors.total());
+			for(int i=0; i<_sensors.rows; ++i)
 			{
-				sensors.insert(sensors.end(), iter->begin(), iter->end());
+				const float * rowFl = _sensors.ptr<float>(i);
+				memcpy(&sensors[i*_sensors.cols], rowFl, _sensors.cols*sizeof(float));
 			}
 		}
 	}
@@ -127,10 +128,10 @@ public:
 	}
 
 private:
-	std::list<std::vector<float> > _sensors; // descriptors
+	cv::Mat _sensors; // descriptors
 	std::list<std::vector<float> > _actuators;
 	IplImage * _image;
-	std::list<cv::KeyPoint> _keypoints;
+	std::vector<cv::KeyPoint> _keypoints;
 };
 
 // Sensorimotor state event

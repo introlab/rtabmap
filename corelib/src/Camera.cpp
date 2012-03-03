@@ -54,10 +54,10 @@ CamKeypointTreatment::~CamKeypointTreatment()
 }
 void CamKeypointTreatment::process(SMState * smState) const
 {
-	if(smState && smState->getImage() && smState->getKeypoints().size() == 0 && smState->getSensors().size() == 0)
+	if(_keypointDetector && _keypointDescriptor && smState && smState->getImage() && smState->getKeypoints().size() == 0 && smState->getSensors().empty())
 	{
-		std::list<cv::KeyPoint> keypoints = _keypointDetector->generateKeypoints(smState->getImage());
-		std::list<std::vector<float> > descriptors = _keypointDescriptor->generateDescriptors(smState->getImage(), keypoints);
+		std::vector<cv::KeyPoint> keypoints = _keypointDetector->generateKeypoints(smState->getImage());
+		cv::Mat descriptors = _keypointDescriptor->generateDescriptors(smState->getImage(), keypoints);
 		smState->setSensors(descriptors);
 		smState->setKeypoints(keypoints);
 	}
@@ -90,6 +90,9 @@ void CamKeypointTreatment::parseParameters(const ParametersMap & parameters)
 		case kDetectorSift:
 			_keypointDetector = new SIFTDetector(parameters);
 			break;
+		case kDetectorFast:
+			_keypointDetector = new FASTDetector(parameters);
+			break;
 		case kDetectorSurf:
 		default:
 			_keypointDetector = new SURFDetector(parameters);
@@ -117,20 +120,17 @@ void CamKeypointTreatment::parseParameters(const ParametersMap & parameters)
 		}
 		switch(descriptorStrategy)
 		{
-		case kDescriptorColorSurf:
-			// see decorator pattern...
-			_keypointDescriptor = new ColorDescriptor(parameters, new SURFDescriptor(parameters));
-			break;
-		case kDescriptorLaplacianSurf:
-			// see decorator pattern...
-			_keypointDescriptor = new LaplacianDescriptor(parameters, new SURFDescriptor(parameters));
-			break;
 		case kDescriptorSift:
 			_keypointDescriptor = new SIFTDescriptor(parameters);
 			break;
-		case kDescriptorHueSurf:
-			// see decorator pattern...
-			_keypointDescriptor = new HueDescriptor(parameters, new SURFDescriptor(parameters));
+		case kDescriptorBrief:
+			_keypointDescriptor = new BRIEFDescriptor(parameters);
+			break;
+		case kDescriptorColor:
+			_keypointDescriptor = new ColorDescriptor(parameters);
+			break;
+		case kDescriptorHue:
+			_keypointDescriptor = new HueDescriptor(parameters);
 			break;
 		case kDescriptorSurf:
 		default:
@@ -174,10 +174,23 @@ Camera::Camera(float imageRate,
 	UEventsManager::addHandler(this);
 }
 
-Camera::~Camera(void)
+Camera::~Camera()
 {
-	this->kill();
+	join(true);
 	delete _postThreatement;
+}
+
+SMState * Camera::takeSMState()
+{
+	std::list<std::vector<float> > actions;
+	IplImage * img = this->takeImage(&actions);
+	if(img)
+	{
+		SMState * smState = new SMState(cv::Mat(), actions);
+		smState->setImage(img);
+		return smState;
+	}
+	return 0;
 }
 
 void Camera::mainLoop()
@@ -231,36 +244,6 @@ void Camera::pushNewState(State newState, const ParametersMap & parameters)
 
 void Camera::handleEvent(UEvent* anEvent)
 {
-	if(anEvent->getClassName().compare("CameraEvent") == 0)
-	{
-		CameraEvent * cameraEvent = (CameraEvent*)anEvent;
-		if(cameraEvent->getCode() == CameraEvent::kCodeCtrl)
-		{
-			CameraEvent::Cmd cmd = cameraEvent->getCommand();
-
-			if(cmd == CameraEvent::kCmdPause)
-			{
-				if(this->isRunning())
-				{
-					this->kill();
-				}
-				else
-				{
-					this->start();
-				}
-			}
-			else if(cmd == CameraEvent::kCmdChangeParam)
-			{
-				// TODO : Put in global Parameters ?
-				_imageRate = cameraEvent->getImageRate();
-				_autoRestart = cameraEvent->getAutoRestart();
-			}
-			else
-			{
-				ULOGGER_DEBUG("Camera::handleEvent(Util::Event* anEvent) : command undefined...");
-			}
-		}
-	}
 	if(anEvent->getClassName().compare("ParamEvent") == 0)
 	{
 		if(this->isIdle())
@@ -281,7 +264,7 @@ void Camera::process()
 {
 	UTimer timer;
 	ULOGGER_DEBUG("Camera::process()");
-	SMState * smState = this->takeImage();
+	SMState * smState = this->takeSMState();
 	if(smState)
 	{
 		_postThreatement->process(smState);
@@ -336,7 +319,7 @@ CameraImages::CameraImages(const std::string & path,
 
 CameraImages::~CameraImages(void)
 {
-	this->kill();
+	join(true);
 	if(_dir)
 	{
 		delete _dir;
@@ -361,11 +344,19 @@ bool CameraImages::init()
 	{
 		ULOGGER_ERROR("Directory path not valid \"%s\"", _path.c_str());
 	}
+	else if(_dir->getFileNames().size() == 0)
+	{
+		UWARN("Directory is empty \"%s\"", _path.c_str());
+	}
 	return _dir != 0;
 }
 
-SMState * CameraImages::takeImage()
+IplImage * CameraImages::takeImage(std::list<std::vector<float> > * actions)
 {
+	if(actions)
+	{
+		actions->clear();
+	}
 	IplImage * img = 0;
 	if(_dir)
 	{
@@ -406,6 +397,10 @@ SMState * CameraImages::takeImage()
 			}
 		}
 	}
+	else
+	{
+		UWARN("Directory is not set, camera must be initialized.");
+	}
 	if(img &&
 	   getImageWidth() &&
 	   getImageHeight() &&
@@ -422,11 +417,7 @@ SMState * CameraImages::takeImage()
 		cvReleaseImage(&img);
 		img = resampledImg;
 	}
-	if(img)
-	{
-		return new SMState(img);
-	}
-	return 0;
+	return img;
 }
 
 
@@ -461,7 +452,7 @@ CameraVideo::CameraVideo(const std::string & fileName,
 
 CameraVideo::~CameraVideo()
 {
-	this->kill();
+	join(true);
 	if(_capture)
 	{
 		cvReleaseCapture(&_capture);
@@ -503,8 +494,12 @@ bool CameraVideo::init()
 	return true;
 }
 
-SMState * CameraVideo::takeImage()
+IplImage * CameraVideo::takeImage(std::list<std::vector<float> > * actions)
 {
+	if(actions)
+	{
+		actions->clear();
+	}
 	IplImage * img = 0;  // Null image
 	if(_capture)
 	{
@@ -528,9 +523,9 @@ SMState * CameraVideo::takeImage()
 	   getImageHeight() != (unsigned int)img->height)
 	{
 		// declare a destination IplImage object with correct size, depth and channels
-		IplImage * resampledImg = cvCreateImage( cvSize((int)(getImageWidth()) ,
-											   (int)(getImageHeight()) ),
-											   img->depth, img->nChannels );
+		IplImage * resampledImg = cvCreateImage( cvSize((int)(getImageWidth()),(int)(getImageHeight())),
+											   img->depth,
+											   img->nChannels );
 
 		//use cvResize to resize source to a destination image (linear interpolation)
 		cvResize(img, resampledImg);
@@ -541,11 +536,7 @@ SMState * CameraVideo::takeImage()
 		img = cvCloneImage(img);
 	}
 
-	if(img)
-	{
-		return new SMState(img);
-	}
-	return 0;
+	return img;
 }
 
 
@@ -558,14 +549,14 @@ SMState * CameraVideo::takeImage()
 // CameraDatabase
 /////////////////////////
 CameraDatabase::CameraDatabase(const std::string & path,
-								bool ignoreChildren,
+								bool loadActions,
 								float imageRate,
 								bool autoRestart,
 								unsigned int imageWidth,
 								unsigned int imageHeight) :
 	Camera(imageRate, autoRestart, imageWidth, imageHeight),
 	_path(path),
-	_ignoreChildren(ignoreChildren),
+	_loadActions(loadActions),
 	_indexIter(_ids.begin()),
 	_dbDriver(0)
 {
@@ -573,7 +564,7 @@ CameraDatabase::CameraDatabase(const std::string & path,
 
 CameraDatabase::~CameraDatabase(void)
 {
-	this->kill();
+	join(true);
 	if(_dbDriver)
 	{
 		_dbDriver->closeConnection();
@@ -614,37 +605,41 @@ bool CameraDatabase::init()
 	return true;
 }
 
-SMState * CameraDatabase::takeImage()
+IplImage * CameraDatabase::takeImage(std::list<std::vector<float> > * actions)
 {
+	if(actions)
+	{
+		actions->clear();
+	}
 	IplImage * img = 0;
 	if(_dbDriver && _indexIter != _ids.end())
 	{
-		if(_ignoreChildren)
+		// Get image
+		_dbDriver->getImage(*_indexIter, &img);
+
+		// Get actions from its previous neighbor
+		if(actions && _loadActions)
 		{
-			bool ignore = true;
-			while(img == 0 && _indexIter != _ids.end() && ignore)
+			if(*_indexIter-1 > 0)
 			{
-				ignore = false;
-				int loopId = 0;
-				if(_dbDriver->getLoopClosureId(*_indexIter, loopId))
+				NeighborsMultiMap neighbors;
+				_dbDriver->loadNeighbors(*_indexIter-1, neighbors);
+				for(NeighborsMultiMap::iterator iter = neighbors.begin(); iter!=neighbors.end(); ++iter)
 				{
-					if(loopId == *_indexIter+1)
+					if(iter->first>*_indexIter-1 && iter->second.actions().size())
 					{
-						ignore = true;
-					}
-					else
-					{
-						_dbDriver->getImage(*_indexIter, &img);
+						*actions = iter->second.actions();
+						break;
 					}
 				}
-				++_indexIter;
+				if(actions->size() == 0)
+				{
+					UWARN("actions from previous %d to current %d are null", *_indexIter-1, *_indexIter);
+				}
 			}
 		}
-		else
-		{
-			_dbDriver->getImage(*_indexIter, &img);
-			++_indexIter;
-		}
+
+		++_indexIter;
 	}
 	else if(!_dbDriver)
 	{
@@ -672,27 +667,7 @@ SMState * CameraDatabase::takeImage()
 		img = resampledImg;
 	}
 
-	if(img)
-	{
-		SMState * smState = new SMState(img);
-		if(_dbDriver && _indexIter!=_ids.begin())
-		{
-			std::set<int>::iterator iter = _indexIter;
-			--iter;
-			std::map<int, std::list<std::vector<float> > > neighbors;
-			_dbDriver->loadNeighbors(*iter, neighbors);
-			for(std::map<int, std::list<std::vector<float> > >::iterator i=neighbors.begin(); i!=neighbors.end(); ++i)
-			{
-				if(i->first > *iter && i->second.size())
-				{
-					smState->setActuators(i->second);
-					break;
-				}
-			}
-		}
-		return smState;
-	}
-	return 0;
+	return img;
 }
 
 } // namespace rtabmap

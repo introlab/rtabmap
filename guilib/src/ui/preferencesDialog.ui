@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>892</width>
-    <height>796</height>
+    <width>941</width>
+    <height>739</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -23,58 +23,50 @@
    <iconset resource="../GuiLib.qrc">
     <normaloff>:/images/RTAB-Map.ico</normaloff>:/images/RTAB-Map.ico</iconset>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_18" stretch="0,0">
-   <property name="spacing">
-    <number>0</number>
-   </property>
-   <property name="margin">
-    <number>0</number>
-   </property>
+  <layout class="QVBoxLayout" name="verticalLayout_26">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
+    <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,1">
      <item>
-      <widget class="QTreeView" name="treeView">
-       <property name="minimumSize">
-        <size>
-         <width>180</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="editTriggers">
-        <set>QAbstractItemView::NoEditTriggers</set>
-       </property>
-       <attribute name="headerVisible">
-        <bool>false</bool>
-       </attribute>
-      </widget>
+      <layout class="QVBoxLayout" name="verticalLayout_18">
+       <item>
+        <widget class="QTreeView" name="treeView">
+         <property name="minimumSize">
+          <size>
+           <width>180</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="editTriggers">
+          <set>QAbstractItemView::NoEditTriggers</set>
+         </property>
+         <attribute name="headerVisible">
+          <bool>false</bool>
+         </attribute>
+        </widget>
+       </item>
+      </layout>
      </item>
      <item>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
+      <layout class="QVBoxLayout" name="verticalLayout_24">
        <property name="spacing">
-        <number>6</number>
+        <number>0</number>
        </property>
        <item>
         <widget class="QStackedWidget" name="stackedWidget">
-         <property name="maximumSize">
-          <size>
-           <width>600</width>
-           <height>16777215</height>
-          </size>
-         </property>
          <property name="frameShadow">
           <enum>QFrame::Raised</enum>
          </property>
          <property name="currentIndex">
-          <number>4</number>
+          <number>6</number>
          </property>
          <widget class="QWidget" name="page_22">
           <layout class="QVBoxLayout" name="verticalLayout_29">
            <item>
-            <widget class="QGroupBox" name="groupBox_generalSettingsGui">
+            <widget class="QGroupBox" name="groupBox_generalSettingsGui0">
              <property name="title">
-              <string>0General settings (GUI)</string>
+              <string>General settings (GUI)</string>
              </property>
-             <layout class="QGridLayout" name="gridLayout_23" columnstretch="0,0,10">
+             <layout class="QGridLayout" name="gridLayout_23" columnstretch="0,0,1">
               <item row="0" column="0">
                <widget class="QCheckBox" name="general_checkBox_imagesKept">
                 <property name="text">
@@ -88,7 +80,7 @@
               <item row="0" column="2">
                <widget class="QLabel" name="label_59">
                 <property name="text">
-                 <string>Keep images received. Used to show the loop closure image. (The cache can be cleared with the related action in the Edit menu)</string>
+                 <string>Keep images received. Used to show the loop closure image. (The cache can be cleared with the related action in the Edit menu).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -128,7 +120,7 @@
               <item row="1" column="2">
                <widget class="QLabel" name="label_60">
                 <property name="text">
-                 <string>Logger level</string>
+                 <string>Logger level.</string>
                 </property>
                </widget>
               </item>
@@ -145,7 +137,7 @@
               <item row="4" column="2">
                <widget class="QLabel" name="label_67">
                 <property name="text">
-                 <string>Logger print time</string>
+                 <string>Logger print time.</string>
                 </property>
                </widget>
               </item>
@@ -178,7 +170,7 @@
                <widget class="QLabel" name="label_68">
                 <property name="text">
                  <string>Logger type: 
-when using the file type, logs are saved in Logrtabmap.txt (located in the working directory)</string>
+when using the file type, logs are saved in Logrtabmap.txt (located in the working directory).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -195,7 +187,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               <item row="7" column="2">
                <widget class="QLabel" name="label_70">
                 <property name="text">
-                 <string>Vertical layout used for the main window </string>
+                 <string>Vertical layout used for the main window.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>false</bool>
@@ -215,7 +207,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               <item row="9" column="2">
                <widget class="QLabel" name="label_73">
                 <property name="text">
-                 <string>Show image when an hypothesis is rejected</string>
+                 <string>Show image when an hypothesis is rejected.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -225,7 +217,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               <item row="8" column="2">
                <widget class="QLabel" name="label_80">
                 <property name="text">
-                 <string>Flip image (as like a mirror)</string>
+                 <string>Flip image (as like a mirror).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>false</bool>
@@ -242,7 +234,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               <item row="2" column="2">
                <widget class="QLabel" name="label_61">
                 <property name="text">
-                 <string>Logger event sent level (fatal messages are always sent)</string>
+                 <string>Logger event sent level (fatal messages are always sent).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -277,16 +269,6 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                   <string>ERROR</string>
                  </property>
                 </item>
-               </widget>
-              </item>
-              <item row="3" column="2">
-               <widget class="QLabel" name="label_62">
-                <property name="text">
-                 <string>Logger level on which the process will automatically pause, showing the log console. A level set under the logger event level will do nothing.</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
                </widget>
               </item>
               <item row="3" column="0">
@@ -327,7 +309,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               <item row="11" column="2">
                <widget class="QLabel" name="label_88">
                 <property name="text">
-                 <string>Beep! on special events (finished processing the data set, an error has occured, ...)</string>
+                 <string>Beep! on special events (finished processing the data set, an error has occured, ...).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -360,7 +342,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               <item row="12" column="2">
                <widget class="QLabel" name="label_102">
                 <property name="text">
-                 <string>Keypoints opacity</string>
+                 <string>Keypoints opacity.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -370,7 +352,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               <item row="10" column="2">
                <widget class="QLabel" name="label_105">
                 <property name="text">
-                 <string>Show the image of the highest hypothesis</string>
+                 <string>Show the image of the highest hypothesis.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -384,6 +366,16 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                 <property name="checked">
                  <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="2">
+               <widget class="QLabel" name="label_62">
+                <property name="text">
+                 <string>Logger level on which the process will automatically pause, showing the log console. A level set under the logger event level will do nothing.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -420,8 +412,8 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>40</height>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -431,9 +423,9 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
          <widget class="QWidget" name="page_4">
           <layout class="QVBoxLayout" name="verticalLayout_7">
            <item>
-            <widget class="QGroupBox" name="groupBox_11">
+            <widget class="QGroupBox" name="groupBox_source0">
              <property name="title">
-              <string>0Source</string>
+              <string>Source</string>
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_5">
               <item>
@@ -468,7 +460,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 <item row="0" column="1">
                  <widget class="QLabel" name="label_20">
                   <property name="text">
-                   <string>Source type</string>
+                   <string>Source type.</string>
                   </property>
                  </widget>
                 </item>
@@ -491,7 +483,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 <item row="1" column="1">
                  <widget class="QLabel" name="label_2">
                   <property name="text">
-                   <string>Image rate (img/s)</string>
+                   <string>Image rate (img/s).</string>
                   </property>
                  </widget>
                 </item>
@@ -505,14 +497,14 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 <item row="2" column="1">
                  <widget class="QLabel" name="label_6">
                   <property name="text">
-                   <string>Auto restart</string>
+                   <string>Auto restart.</string>
                   </property>
                  </widget>
                 </item>
                 <item row="3" column="1">
                  <widget class="QLabel" name="label_10">
                   <property name="text">
-                   <string>Image width (set to 0 to use the default size of the source)</string>
+                   <string>Image width (set to 0 to use the default size of the source).</string>
                   </property>
                   <property name="wordWrap">
                    <bool>true</bool>
@@ -522,7 +514,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 <item row="4" column="1">
                  <widget class="QLabel" name="label_11">
                   <property name="text">
-                   <string>Image height (set to 0 to use the default size of the source)</string>
+                   <string>Image height (set to 0 to use the default size of the source).</string>
                   </property>
                   <property name="wordWrap">
                    <bool>true</bool>
@@ -561,12 +553,26 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                   </property>
                  </widget>
                 </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="general_checkBox_cameraKeypoints">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QLabel" name="label_13">
+                  <property name="text">
+                   <string>Keypoints extraction post threatement.</string>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </item>
               <item>
                <widget class="QStackedWidget" name="stackedWidget_2">
                 <property name="currentIndex">
-                 <number>0</number>
+                 <number>3</number>
                 </property>
                 <widget class="QWidget" name="page_7">
                  <layout class="QVBoxLayout" name="verticalLayout_30">
@@ -592,7 +598,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                      <item row="0" column="1">
                       <widget class="QLabel" name="label_38">
                        <property name="text">
-                        <string>Usb device</string>
+                        <string>Usb device.</string>
                        </property>
                       </widget>
                      </item>
@@ -606,8 +612,8 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                     </property>
                     <property name="sizeHint" stdset="0">
                      <size>
-                      <width>20</width>
-                      <height>40</height>
+                      <width>0</width>
+                      <height>0</height>
                      </size>
                     </property>
                    </spacer>
@@ -649,7 +655,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                      <item row="1" column="1">
                       <widget class="QLabel" name="label_21">
                        <property name="text">
-                        <string>Start position (default 1, 0=start from the last)</string>
+                        <string>Start position (default 1, 0=start from the last).</string>
                        </property>
                       </widget>
                      </item>
@@ -663,7 +669,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                      <item row="2" column="1">
                       <widget class="QLabel" name="label_34">
                        <property name="text">
-                        <string>Refresh the directory files list after each image loaded</string>
+                        <string>Refresh the directory files list after each image loaded.</string>
                        </property>
                       </widget>
                      </item>
@@ -677,8 +683,8 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                     </property>
                     <property name="sizeHint" stdset="0">
                      <size>
-                      <width>20</width>
-                      <height>40</height>
+                      <width>0</width>
+                      <height>0</height>
                      </size>
                     </property>
                    </spacer>
@@ -717,8 +723,8 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                     </property>
                     <property name="sizeHint" stdset="0">
                      <size>
-                      <width>20</width>
-                      <height>40</height>
+                      <width>0</width>
+                      <height>0</height>
                      </size>
                     </property>
                    </spacer>
@@ -732,7 +738,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                     <property name="title">
                      <string>Database (Sqlite3)</string>
                     </property>
-                    <layout class="QGridLayout" name="gridLayout_9" columnstretch="0,10">
+                    <layout class="QGridLayout" name="gridLayout_9" columnstretch="0,0">
                      <item row="0" column="0">
                       <widget class="QToolButton" name="source_database_toolButton_selectSource">
                        <property name="text">
@@ -747,17 +753,20 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                        </property>
                       </widget>
                      </item>
-                     <item row="1" column="0">
-                      <widget class="QCheckBox" name="source_database_checkBox_ignoreChildren">
+                     <item row="1" column="1">
+                      <widget class="QLabel" name="label_39">
                        <property name="text">
-                        <string/>
+                        <string>Load actions.</string>
                        </property>
                       </widget>
                      </item>
-                     <item row="1" column="1">
-                      <widget class="QLabel" name="label_7">
+                     <item row="1" column="0">
+                      <widget class="QCheckBox" name="source_database_checkBox_loadActions">
                        <property name="text">
-                        <string>Ignore children signatures</string>
+                        <string/>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
                        </property>
                       </widget>
                      </item>
@@ -771,8 +780,8 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                     </property>
                     <property name="sizeHint" stdset="0">
                      <size>
-                      <width>20</width>
-                      <height>40</height>
+                      <width>0</width>
+                      <height>0</height>
                      </size>
                     </property>
                    </spacer>
@@ -781,32 +790,191 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </widget>
                </widget>
               </item>
-              <item>
-               <spacer name="verticalSpacer_7">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <spacer name="verticalSpacer_7">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="page_20">
+          <layout class="QVBoxLayout" name="verticalLayout_23">
+           <item>
+            <widget class="QGroupBox" name="groupBox_rtabmap_basic0">
+             <property name="title">
+              <string>RTAB-Map settings</string>
+             </property>
+             <layout class="QGridLayout" name="gridLayout_25" columnstretch="0,0,1">
+              <item row="1" column="0">
+               <widget class="QDoubleSpinBox" name="general_doubleSpinBox_timeThr_2">
+                <property name="decimals">
+                 <number>0</number>
                 </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>40</height>
-                 </size>
+                <property name="maximum">
+                 <double>10000.000000000000000</double>
                 </property>
-               </spacer>
+                <property name="singleStep">
+                 <double>50.000000000000000</double>
+                </property>
+                <property name="value">
+                 <double>700.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="2">
+               <widget class="QLabel" name="label_64">
+                <property name="text">
+                 <string>T_time : Max time (ms) allowed (0 means inf).</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QDoubleSpinBox" name="general_doubleSpinBox_hardThr_2">
+                <property name="maximum">
+                 <double>1.000000000000000</double>
+                </property>
+                <property name="singleStep">
+                 <double>0.010000000000000</double>
+                </property>
+                <property name="value">
+                 <double>0.950000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="2">
+               <widget class="QLabel" name="label_121">
+                <property name="text">
+                 <string>T_loop : Loop closure threshold.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_hessianThr_2">
+                <property name="decimals">
+                 <number>0</number>
+                </property>
+                <property name="maximum">
+                 <double>50000.000000000000000</double>
+                </property>
+                <property name="value">
+                 <double>500.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="2">
+               <widget class="QLabel" name="label_7">
+                <property name="text">
+                 <string>T_response : SURF hessian threshold.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QSpinBox" name="general_spinBox_imagesBufferSize_2">
+                <property name="maximum">
+                 <number>999</number>
+                </property>
+                <property name="value">
+                 <number>1</number>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="2">
+               <widget class="QLabel" name="label_112">
+                <property name="text">
+                 <string>Images buffer size (0 means inf).</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0">
+               <widget class="QCheckBox" name="general_checkBox_publishStats_2">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="2">
+               <widget class="QLabel" name="label_37">
+                <property name="text">
+                 <string>Publish statistics.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="0">
+               <widget class="QLineEdit" name="lineEdit_workingDirectory_2">
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="1">
+               <widget class="QToolButton" name="toolButton_workingDirectory_2">
+                <property name="text">
+                 <string>...</string>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="2">
+               <widget class="QLabel" name="label_123">
+                <property name="text">
+                 <string>Working directory (where the database is saved/loaded).</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
               </item>
              </layout>
             </widget>
+           </item>
+           <item>
+            <spacer name="verticalSpacer_5">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+            </spacer>
            </item>
           </layout>
          </widget>
          <widget class="QWidget" name="page">
           <layout class="QVBoxLayout" name="verticalLayout_15">
            <item>
-            <widget class="QGroupBox" name="groupBox">
+            <widget class="QGroupBox" name="groupBox_rtabmap_advanced0">
              <property name="title">
-              <string>0RTAB-Map settings</string>
+              <string>RTAB-Map settings</string>
              </property>
-             <layout class="QGridLayout" name="gridLayout_4" columnstretch="1,0,0">
+             <layout class="QGridLayout" name="gridLayout_4" columnstretch="0,0,0">
               <item row="0" column="0">
                <widget class="QCheckBox" name="general_checkBox_publishStats">
                 <property name="text">
@@ -820,28 +988,24 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               <item row="0" column="2">
                <widget class="QLabel" name="label_35">
                 <property name="text">
-                 <string>Publish statistics</string>
+                 <string>Publish statistics (when false, this desactives other &quot;Publish *&quot;).</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="1" column="0">
-               <widget class="QDoubleSpinBox" name="general_doubleSpinBox_timeThr">
-                <property name="maximum">
-                 <double>10.000000000000000</double>
-                </property>
-                <property name="value">
-                 <double>1.000000000000000</double>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="2">
+              <item row="4" column="2">
                <widget class="QLabel" name="label_18">
                 <property name="text">
-                 <string>Max time allowed (sec)</string>
+                 <string>T_time : Max time (ms) allowed (0 means inf).</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="2" column="0">
+              <item row="6" column="0">
                <widget class="QSpinBox" name="general_spinBox_imagesBufferSize">
                 <property name="maximum">
                  <number>999</number>
@@ -851,40 +1015,17 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="2" column="2">
+              <item row="6" column="2">
                <widget class="QLabel" name="label_84">
                 <property name="text">
-                 <string>Images buffer size (0 means inf)</string>
+                 <string>Images buffer size (0 means inf).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
-               <widget class="QSpinBox" name="general_spinBox_minMemorySizeForLoopDetection">
-                <property name="maximum">
-                 <number>999</number>
-                </property>
-                <property name="singleStep">
-                 <number>1</number>
-                </property>
-                <property name="value">
-                 <number>30</number>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="2">
-               <widget class="QLabel" name="label_89">
-                <property name="text">
-                 <string>Minimum size of the working memory to create loop closure hypotheses</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="0">
+              <item row="7" column="0">
                <widget class="QDoubleSpinBox" name="general_doubleSpinBox_hardThr">
                 <property name="maximum">
                  <double>1.000000000000000</double>
@@ -897,27 +1038,27 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="4" column="2">
+              <item row="7" column="2">
                <widget class="QLabel" name="label_93">
                 <property name="text">
-                 <string>Loop closure threshold</string>
+                 <string>T_loop : Loop closure threshold. Setting to 0 means that the new place hypothesis is used as threshold.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="5" column="2">
+              <item row="8" column="2">
                <widget class="QLabel" name="label_96">
                 <property name="text">
-                 <string>The loop closure hypothesis must be over LoopRatio x lastHypothesisValue</string>
+                 <string>T_ratio : The loop closure hypothesis must be over T_ratio x lastHypothesisValue.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="5" column="0">
+              <item row="8" column="0">
                <widget class="QDoubleSpinBox" name="general_doubleSpinBox_loopRatio">
                 <property name="maximum">
                  <double>1.000000000000000</double>
@@ -930,28 +1071,31 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="10" column="0">
+              <item row="15" column="0">
                <widget class="QLineEdit" name="lineEdit_workingDirectory">
                 <property name="readOnly">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="10" column="2">
+              <item row="15" column="2">
                <widget class="QLabel" name="label_87">
                 <property name="text">
-                 <string>Working directory (where the database is saved/loaded)</string>
+                 <string>Working directory (where the database is saved/loaded).</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="10" column="1">
+              <item row="15" column="1">
                <widget class="QToolButton" name="toolButton_workingDirectory">
                 <property name="text">
                  <string>...</string>
                 </property>
                </widget>
               </item>
-              <item row="6" column="0">
+              <item row="9" column="0">
                <widget class="QSpinBox" name="general_spinBox_maxRetrieved">
                 <property name="maximum">
                  <number>999</number>
@@ -964,7 +1108,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="6" column="2">
+              <item row="9" column="2">
                <widget class="QLabel" name="label_103">
                 <property name="text">
                  <string>Maximum locations retrieved at the same time from LTM to WM.</string>
@@ -974,57 +1118,37 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="7" column="0">
-               <widget class="QCheckBox" name="general_checkBox_actionsByTime">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="2">
-               <widget class="QLabel" name="label_39">
-                <property name="text">
-                 <string>Select next actions using directly the more recent neighbor of the current node, otherwise, highest hypothesis is used</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="0">
+              <item row="13" column="0">
                <widget class="QCheckBox" name="general_checkBox_actionsSentRejectHyp">
                 <property name="text">
                  <string/>
                 </property>
                 <property name="checked">
-                 <bool>false</bool>
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="8" column="2">
+              <item row="13" column="2">
                <widget class="QLabel" name="label_40">
                 <property name="text">
-                 <string>Actions sent also on rejected hypotheses</string>
+                 <string>Actions sent also on rejected hypotheses.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="9" column="2">
+              <item row="14" column="2">
                <widget class="QLabel" name="label_52">
                 <property name="text">
-                 <string>Actions are not sent when the loop closure hypothesis is under the confidence threshold</string>
+                 <string>Actions are not sent when the loop closure hypothesis is under the confidence threshold.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="9" column="0">
+              <item row="14" column="0">
                <widget class="QDoubleSpinBox" name="general_doubleSpinBox_confidenceThr">
                 <property name="decimals">
                  <number>3</number>
@@ -1040,6 +1164,153 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
+              <item row="4" column="0">
+               <widget class="QDoubleSpinBox" name="general_doubleSpinBox_timeThr">
+                <property name="decimals">
+                 <number>0</number>
+                </property>
+                <property name="maximum">
+                 <double>10000.000000000000000</double>
+                </property>
+                <property name="singleStep">
+                 <double>50.000000000000000</double>
+                </property>
+                <property name="value">
+                 <double>700.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="2">
+               <widget class="QLabel" name="label_107">
+                <property name="text">
+                 <string>Neighborhood summation for hypothesis selection.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="0">
+               <widget class="QCheckBox" name="general_checkBox_neighborhoodSummation">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="2">
+               <widget class="QLabel" name="label_108">
+                <property name="text">
+                 <string>Remove std dev on likelihood normalization.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="0">
+               <widget class="QCheckBox" name="general_checkBox_likelihoodStdDevRemoved">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="2">
+               <widget class="QLabel" name="label_111">
+                <property name="text">
+                 <string>Maximum signatures allowed in Working Memory (0 means inf).</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0">
+               <widget class="QSpinBox" name="general_spinBox_memoryThr">
+                <property name="maximum">
+                 <number>99999</number>
+                </property>
+                <property name="value">
+                 <number>0</number>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="2">
+               <widget class="QLabel" name="label_115">
+                <property name="text">
+                 <string>Highest neighbor likelihood for hypothesis selection.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="0">
+               <widget class="QCheckBox" name="general_checkBox_likelihoodUsed">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="2">
+               <widget class="QLabel" name="label_91">
+                <property name="text">
+                 <string>Publish images.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="2">
+               <widget class="QLabel" name="label_106">
+                <property name="text">
+                 <string>Publish pdf.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="2">
+               <widget class="QLabel" name="label_116">
+                <property name="text">
+                 <string>Publish likelihood.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QCheckBox" name="general_checkBox_publishImages">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QCheckBox" name="general_checkBox_publishPdf">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QCheckBox" name="general_checkBox_publishLikelihood">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
              </layout>
             </widget>
            </item>
@@ -1050,8 +1321,8 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>40</height>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -1059,24 +1330,24 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
           </layout>
          </widget>
          <widget class="QWidget" name="page_23">
-          <layout class="QVBoxLayout" name="verticalLayout_27">
+          <layout class="QVBoxLayout" name="verticalLayout_2">
            <item>
-            <widget class="QGroupBox" name="groupBox_4">
+            <widget class="QGroupBox" name="groupBox_bayes1">
              <property name="title">
-              <string>1Bayes filter</string>
+              <string>Bayes filter</string>
              </property>
-             <layout class="QVBoxLayout" name="verticalLayout_31">
+             <layout class="QVBoxLayout" name="verticalLayout_22">
+              <item>
+               <widget class="QLabel" name="label">
+                <property name="text">
+                 <string>Prediction probabilities for each loop closure event:</string>
+                </property>
+               </widget>
+              </item>
               <item>
                <widget class="QLabel" name="label_76">
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>100</height>
-                 </size>
-                </property>
                 <property name="text">
-                 <string>Prediction probabilities for each loop closure event:
-We can edit how will like the prediction used in the Bayes filter when there is a loop closure hypothesis. The values of the sliders are in %. LC is the loop closure event. +- values are the probabilities to be at one of the neighbours of the LC after a loop closure on LC. VP (virtual place) is the probability to be in a new place since a loop closure was found on the last iteration.</string>
+                 <string>We can edit how will like the prediction used in the Bayes filter when there is a loop closure hypothesis. Format is [VP LC N1 N2 N3...]. LC is the loop closure event and N# are its neighbors. VP (virtual place) is the probability to be in a new place when a loop closure was found on the last iteration.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1084,235 +1355,54 @@ We can edit how will like the prediction used in the Bayes filter when there is 
                </widget>
               </item>
               <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_3">
-                <item>
-                 <layout class="QVBoxLayout" name="verticalLayout_35">
-                  <item>
-                   <widget class="QLabel" name="label_69">
-                    <property name="text">
-                     <string>VP</string>
-                    </property>
-                    <property name="alignment">
-                     <set>Qt::AlignCenter</set>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <layout class="QHBoxLayout" name="horizontalLayout_5">
-                    <item>
-                     <widget class="QSlider" name="verticalSlider_prediction_vp">
-                      <property name="orientation">
-                       <enum>Qt::Vertical</enum>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </item>
-                  <item>
-                   <widget class="QLabel" name="label_prediction_vp">
-                    <property name="text">
-                     <string>0</string>
-                    </property>
-                    <property name="alignment">
-                     <set>Qt::AlignCenter</set>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item>
-                 <widget class="QScrollArea" name="scrollArea">
-                  <property name="minimumSize">
-                   <size>
-                    <width>0</width>
-                    <height>50</height>
-                   </size>
-                  </property>
-                  <property name="widgetResizable">
-                   <bool>true</bool>
-                  </property>
-                  <widget class="QWidget" name="scrollAreaWidgetContents">
-                   <property name="geometry">
-                    <rect>
-                     <x>0</x>
-                     <y>0</y>
-                     <width>508</width>
-                     <height>138</height>
-                    </rect>
-                   </property>
-                   <layout class="QHBoxLayout" name="horizontalLayout_2">
-                    <property name="spacing">
-                     <number>0</number>
-                    </property>
-                    <property name="margin">
-                     <number>0</number>
-                    </property>
-                    <item>
-                     <spacer name="horizontalSpacer_2">
-                      <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
-                      </property>
-                      <property name="sizeHint" stdset="0">
-                       <size>
-                        <width>141</width>
-                        <height>20</height>
-                       </size>
-                      </property>
-                     </spacer>
-                    </item>
-                    <item>
-                     <layout class="QHBoxLayout" name="horizontalLayout_prior_NM"/>
-                    </item>
-                    <item>
-                     <layout class="QVBoxLayout" name="verticalLayout_28">
-                      <item>
-                       <widget class="QLabel" name="label_64">
-                        <property name="text">
-                         <string>LC</string>
-                        </property>
-                        <property name="alignment">
-                         <set>Qt::AlignCenter</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_4">
-                        <item>
-                         <widget class="QSlider" name="verticalSlider_prediction_lp">
-                          <property name="orientation">
-                           <enum>Qt::Vertical</enum>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                      <item>
-                       <widget class="QLabel" name="label_prediction_lp">
-                        <property name="text">
-                         <string>0</string>
-                        </property>
-                        <property name="alignment">
-                         <set>Qt::AlignCenter</set>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </item>
-                    <item>
-                     <layout class="QHBoxLayout" name="horizontalLayout_prior_NP"/>
-                    </item>
-                    <item>
-                     <spacer name="horizontalSpacer_3">
-                      <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
-                      </property>
-                      <property name="sizeHint" stdset="0">
-                       <size>
-                        <width>141</width>
-                        <height>20</height>
-                       </size>
-                      </property>
-                     </spacer>
-                    </item>
-                   </layout>
-                  </widget>
-                 </widget>
-                </item>
-               </layout>
-              </item>
-              <item>
-               <layout class="QFormLayout" name="formLayout_18">
-                <property name="fieldGrowthPolicy">
-                 <enum>QFormLayout::ExpandingFieldsGrow</enum>
-                </property>
+               <layout class="QGridLayout" name="gridLayout_24">
                 <item row="0" column="0">
-                 <widget class="QLabel" name="label_14">
-                  <property name="text">
-                   <string>Neighbors</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="1">
-                 <widget class="QSpinBox" name="spinBox_bayes_neighbors">
-                  <property name="maximum">
-                   <number>9</number>
-                  </property>
-                  <property name="value">
-                   <number>2</number>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="0">
                  <widget class="QLabel" name="label_65">
                   <property name="text">
                    <string>Prediction</string>
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="1">
-                 <widget class="QLineEdit" name="lineEdit_bayes_predictionLC">
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="0">
+                <item row="1" column="0">
                  <widget class="QLabel" name="label_66">
                   <property name="text">
                    <string>Sum</string>
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="1">
+                <item row="1" column="1">
                  <widget class="QLabel" name="label_prediction_sum">
                   <property name="text">
                    <string/>
                   </property>
                  </widget>
                 </item>
-                <item row="3" column="0">
-                 <widget class="QLabel" name="label_63">
-                  <property name="text">
-                   <string>Preview</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="1">
-                 <widget class="rtabmap::Plot" name="predictionPlot" native="true">
-                  <property name="minimumSize">
-                   <size>
-                    <width>100</width>
-                    <height>100</height>
-                   </size>
+                <item row="0" column="1">
+                 <widget class="QLineEdit" name="lineEdit_bayes_predictionLC">
+                  <property name="readOnly">
+                   <bool>false</bool>
                   </property>
                  </widget>
                 </item>
                </layout>
               </item>
               <item>
-               <widget class="QLabel" name="label_90">
-                <property name="text">
-                 <string>Prediction probability for the no loop closure event:
-The VP here is the probability to be in a new place since no loop closure was found on the last iteration.</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <layout class="QFormLayout" name="formLayout_26">
-                <item row="0" column="0">
-                 <widget class="QLabel" name="label_91">
+               <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="0,1">
+                <item>
+                 <widget class="QLabel" name="label_63">
                   <property name="text">
-                   <string>Virtual place prior</string>
-                  </property>
-                  <property name="wordWrap">
-                   <bool>true</bool>
+                   <string>Preview</string>
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="1">
+                <item>
+                 <widget class="rtabmap::Plot" name="predictionPlot" native="true"/>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QGridLayout" name="gridLayout_22" columnstretch="0,1">
+                <item row="1" column="0">
                  <widget class="QDoubleSpinBox" name="general_doubleSpinBox_vp">
                   <property name="maximum">
                    <double>1.000000000000000</double>
@@ -1321,7 +1411,34 @@ The VP here is the probability to be in a new place since no loop closure was fo
                    <double>0.010000000000000</double>
                   </property>
                   <property name="value">
-                   <double>0.800000000000000</double>
+                   <double>0.900000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLabel" name="label_113">
+                  <property name="text">
+                   <string>The VP here is the probability to be in a new place since no loop closure was found on the last iteration.</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_bayes_predictionNonNullActionsOnly">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QLabel" name="label_114">
+                  <property name="text">
+                   <string>Make prediction on non-null action neighbors only</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
                   </property>
                  </widget>
                 </item>
@@ -1330,39 +1447,39 @@ The VP here is the probability to be in a new place since no loop closure was fo
               <item>
                <widget class="QLabel" name="label_92">
                 <property name="text">
-                 <string>(NOTE) If you want to use the virtual place (VP) probability, the option &quot;Common signature used&quot; in the Memory panel must be set to true (this will update the common signature representing the virtual place)</string>
+                 <string>(NOTE) If you want to use the virtual place (VP) probability, the option &quot;Common signature used&quot; in the Memory panel must be set to true (this will update the common signature representing the virtual place).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item>
-               <spacer name="verticalSpacer_5">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>0</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
              </layout>
             </widget>
+           </item>
+           <item>
+            <spacer name="verticalSpacer_23">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+            </spacer>
            </item>
           </layout>
          </widget>
          <widget class="QWidget" name="page_3">
           <layout class="QVBoxLayout" name="verticalLayout_4">
            <item>
-            <widget class="QGroupBox" name="groupBox_10">
+            <widget class="QGroupBox" name="groupBox_memory1">
              <property name="title">
-              <string>1Memory strategy</string>
+              <string>Memory strategy</string>
              </property>
-             <layout class="QGridLayout" name="gridLayout_10" columnstretch="0,0">
+             <layout class="QGridLayout" name="gridLayout_10" columnstretch="0,1">
               <item row="0" column="0">
                <widget class="QDoubleSpinBox" name="general_doubleSpinBox_retrievalThr">
                 <property name="minimumSize">
@@ -1385,7 +1502,7 @@ The VP here is the probability to be in a new place since no loop closure was fo
               <item row="0" column="1">
                <widget class="QLabel" name="label_31">
                 <property name="text">
-                 <string>Retrieval threshold</string>
+                 <string>Retrieval threshold.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>false</bool>
@@ -1402,14 +1519,14 @@ The VP here is the probability to be in a new place since no loop closure was fo
               <item row="1" column="1">
                <widget class="QLabel" name="label_79">
                 <property name="text">
-                 <string>Retrieved words are compared to the last words added in the dictionary (which are not yet indexed, may be add a time overhead for a minor likelihood improvement)</string>
+                 <string>Retrieved words are compared to the last words added in the dictionary (which are not yet indexed, may be add a time overhead for a minor likelihood improvement).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
+              <item row="2" column="0">
                <widget class="QSpinBox" name="general_spinBox_maxStMemSize">
                 <property name="minimum">
                  <number>1</number>
@@ -1422,17 +1539,17 @@ The VP here is the probability to be in a new place since no loop closure was fo
                 </property>
                </widget>
               </item>
-              <item row="3" column="1">
+              <item row="2" column="1">
                <widget class="QLabel" name="label_29">
                 <property name="text">
-                 <string>Short-time memory size</string>
+                 <string>STM size : Short-term memory size.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>false</bool>
                 </property>
                </widget>
               </item>
-              <item row="4" column="0">
+              <item row="3" column="0">
                <widget class="QCheckBox" name="general_checkBox_incrementalMemory">
                 <property name="text">
                  <string/>
@@ -1442,17 +1559,17 @@ The VP here is the probability to be in a new place since no loop closure was fo
                 </property>
                </widget>
               </item>
-              <item row="4" column="1">
+              <item row="3" column="1">
                <widget class="QLabel" name="label_57">
                 <property name="text">
-                 <string>Incremental Memory</string>
+                 <string>Incremental Memory.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>false</bool>
                 </property>
                </widget>
               </item>
-              <item row="5" column="0">
+              <item row="4" column="0">
                <widget class="QCheckBox" name="general_checkBox_commonSignatureUsed">
                 <property name="text">
                  <string/>
@@ -1462,57 +1579,17 @@ The VP here is the probability to be in a new place since no loop closure was fo
                 </property>
                </widget>
               </item>
-              <item row="5" column="1">
+              <item row="4" column="1">
                <widget class="QLabel" name="label_83">
                 <property name="text">
-                 <string>Common signature used (virtual place)</string>
+                 <string>Common signature used (virtual place).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>false</bool>
                 </property>
                </widget>
               </item>
-              <item row="6" column="1">
-               <widget class="QLabel" name="label_37">
-                <property name="text">
-                 <string>(iterations) Delay required to transfer a signature to the database</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>false</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="6" column="0">
-               <widget class="QSpinBox" name="mem_spinBox_delayRequired">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>0</height>
-                 </size>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QLabel" name="label_177">
-                <property name="text">
-                 <string>Clean the neighborhood of the retrieved id</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>false</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="0">
-               <widget class="QCheckBox" name="general_checkBox_localGraphCleaned">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="checked">
-                 <bool>false</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="0">
+              <item row="5" column="0">
                <widget class="QDoubleSpinBox" name="general_doubleSpinBox_recentWmRatio">
                 <property name="minimumSize">
                  <size>
@@ -1531,10 +1608,34 @@ The VP here is the probability to be in a new place since no loop closure was fo
                 </property>
                </widget>
               </item>
-              <item row="7" column="1">
+              <item row="5" column="1">
                <widget class="QLabel" name="label_33">
                 <property name="text">
-                 <string>Ratio of locations after the last loop closure in WM that cannot be transferred</string>
+                 <string>T_recent : Ratio of locations after the last loop closure in WM that cannot be transferred.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="0">
+               <widget class="QComboBox" name="comboBox_signatureType">
+                <item>
+                 <property name="text">
+                  <string>Keypoint</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Sensorimotor</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="6" column="1">
+               <widget class="QLabel" name="label_36">
+                <property name="text">
+                 <string>Signature type.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1551,8 +1652,8 @@ The VP here is the probability to be in a new place since no loop closure was fo
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>40</height>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -1562,11 +1663,11 @@ The VP here is the probability to be in a new place since no loop closure was fo
          <widget class="QWidget" name="page_24">
           <layout class="QVBoxLayout" name="verticalLayout_33">
            <item>
-            <widget class="QGroupBox" name="groupBox_12">
+            <widget class="QGroupBox" name="groupBox_database2">
              <property name="title">
-              <string>2Database</string>
+              <string>Database</string>
              </property>
-             <layout class="QGridLayout" name="gridLayout_11" columnstretch="0,10">
+             <layout class="QGridLayout" name="gridLayout_11" columnstretch="0,1">
               <item row="0" column="0">
                <widget class="QCheckBox" name="general_checkBox_keepRawData">
                 <property name="text">
@@ -1580,19 +1681,9 @@ The VP here is the probability to be in a new place since no loop closure was fo
               <item row="0" column="1">
                <widget class="QLabel" name="label_85">
                 <property name="text">
-                 <string>Keep raw data (images) </string>
+                 <string>Keep raw data (images) .</string>
                 </property>
                 <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="0">
-               <widget class="QCheckBox" name="general_checkBox_databaseCleaned">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="checked">
                  <bool>true</bool>
                 </property>
                </widget>
@@ -1647,7 +1738,7 @@ The VP here is the probability to be in a new place since no loop closure was fo
                <widget class="QLabel" name="label_75">
                 <property name="text">
                  <string>Sqlite3 cache size,
-see Sqlite3 doc 'PRAGMA cache_size'</string>
+see Sqlite3 doc 'PRAGMA cache_size'.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1687,7 +1778,7 @@ see Sqlite3 doc 'PRAGMA cache_size'</string>
                <widget class="QLabel" name="label_77">
                 <property name="text">
                  <string>Sqlite3 journal mode,
-see Sqlite3 doc 'PRAGMA journal_mode'</string>
+see Sqlite3 doc 'PRAGMA journal_mode'.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1697,7 +1788,7 @@ see Sqlite3 doc 'PRAGMA journal_mode'</string>
               <item row="4" column="1">
                <widget class="QLabel" name="label_74">
                 <property name="text">
-                 <string>Using database in the memory instead of a file on the hard disk (this greatly improve database access performance but it requires more RAM memory)</string>
+                 <string>Using database in the memory instead of a file on the hard disk (this greatly improve database access performance but it requires more RAM memory).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1725,13 +1816,86 @@ see Sqlite3 doc 'PRAGMA journal_mode'</string>
                </widget>
               </item>
               <item row="1" column="1">
-               <widget class="QLabel" name="label_86">
+               <widget class="QLabel" name="label_110">
                 <property name="text">
-                 <string>Database auto cleaning : don't save signature with a loop closure (only keeping the newest one).</string>
+                 <string>Compress images when saving to database.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QCheckBox" name="general_checkBox_imagesCompressed">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="1">
+               <widget class="QLabel" name="label_89">
+                <property name="text">
+                 <string>Sqlite3 synchronous,
+see Sqlite3 doc 'PRAGMA synchronous'.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="1">
+               <widget class="QLabel" name="label_120">
+                <property name="text">
+                 <string>Sqlite3 temp store,
+see Sqlite3 doc 'PRAGMA temp_store'.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="0">
+               <widget class="QComboBox" name="comboBox_dbSynchronous">
+                <property name="currentIndex">
+                 <number>2</number>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>OFF</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>NORMAL</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>FULL</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="8" column="0">
+               <widget class="QComboBox" name="comboBox_dbTempStore">
+                <item>
+                 <property name="text">
+                  <string>DEFAULT</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>FILE</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>MEMORY</string>
+                 </property>
+                </item>
                </widget>
               </item>
              </layout>
@@ -1744,8 +1908,8 @@ see Sqlite3 doc 'PRAGMA journal_mode'</string>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>40</height>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -1755,9 +1919,9 @@ see Sqlite3 doc 'PRAGMA journal_mode'</string>
          <widget class="QWidget" name="page_2">
           <layout class="QVBoxLayout" name="verticalLayout">
            <item>
-            <widget class="QGroupBox" name="groupBox_9">
+            <widget class="QGroupBox" name="groupBox_rehearsal2">
              <property name="title">
-              <string>2Rehearsal</string>
+              <string>Rehearsal</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_12" columnstretch="0,10">
               <item row="0" column="0">
@@ -1776,11 +1940,11 @@ see Sqlite3 doc 'PRAGMA journal_mode'</string>
               <item row="0" column="1">
                <widget class="QLabel" name="label_16">
                 <property name="text">
-                 <string>Similarity threshold (set to 1 to disable rehearsal)</string>
+                 <string>Similarity threshold (set to 1 to disable rehearsal).</string>
                 </property>
                </widget>
               </item>
-              <item row="1" column="1">
+              <item row="2" column="1">
                <widget class="QLabel" name="label_17">
                 <property name="text">
                  <string>Only compare to the last signature in STM, otherwise all signatures in STM are compared.</string>
@@ -1790,8 +1954,25 @@ see Sqlite3 doc 'PRAGMA journal_mode'</string>
                 </property>
                </widget>
               </item>
-              <item row="1" column="0">
+              <item row="2" column="0">
                <widget class="QCheckBox" name="general_checkBox_similarityOnlyLast">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLabel" name="label_119">
+                <property name="text">
+                 <string>The data of the new location is cleared, then old location's data is copied back to new one. The similarity threshold may be also lower than without data copied.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QCheckBox" name="general_checkBox_dataMergedOnRehearsal">
                 <property name="text">
                  <string/>
                 </property>
@@ -1807,8 +1988,8 @@ see Sqlite3 doc 'PRAGMA journal_mode'</string>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>40</height>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -1818,12 +1999,12 @@ see Sqlite3 doc 'PRAGMA journal_mode'</string>
          <widget class="QWidget" name="page_9">
           <layout class="QVBoxLayout" name="verticalLayout_58">
            <item>
-            <widget class="QGroupBox" name="groupBox_signature_keypoint">
+            <widget class="QGroupBox" name="groupBox_signature_keypoint1">
              <property name="title">
-              <string>1Signature</string>
+              <string>Keypoints</string>
              </property>
-             <layout class="QGridLayout" name="gridLayout_14" columnstretch="0,10">
-              <item row="0" column="0">
+             <layout class="QGridLayout" name="gridLayout_14" columnstretch="0,1">
+              <item row="1" column="0">
                <widget class="QSpinBox" name="surf_spinBox_wordsPerImageTarget">
                 <property name="minimum">
                  <number>0</number>
@@ -1836,7 +2017,7 @@ see Sqlite3 doc 'PRAGMA journal_mode'</string>
                 </property>
                </widget>
               </item>
-              <item row="0" column="1">
+              <item row="1" column="1">
                <widget class="QLabel" name="label_22">
                 <property name="toolTip">
                  <string>0 means that the response (hessian) threshold 
@@ -1845,14 +2026,14 @@ Otherwise, the threshold is modified to
 generate the number of words requested.</string>
                 </property>
                 <property name="text">
-                 <string>Words per image target</string>
+                 <string>Words per image target.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="1" column="0">
+              <item row="2" column="0">
                <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_ratioBadSign">
                 <property name="decimals">
                  <number>2</number>
@@ -1871,7 +2052,7 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="1" column="1">
+              <item row="2" column="1">
                <widget class="QLabel" name="label_81">
                 <property name="toolTip">
                  <string>0 means that the response (hessian) threshold 
@@ -1880,14 +2061,14 @@ Otherwise, the threshold is modified to
 generate the number of words requested.</string>
                 </property>
                 <property name="text">
-                 <string>Bad signature ratio (less than Ratio x AverageWordsPerImage = bad)</string>
+                 <string>Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="2" column="0">
+              <item row="3" column="0">
                <widget class="QCheckBox" name="checkBox_kp_usingAdaptiveResponseThr">
                 <property name="text">
                  <string/>
@@ -1897,17 +2078,17 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="2" column="1">
+              <item row="3" column="1">
                <widget class="QLabel" name="label_54">
                 <property name="text">
-                 <string>Use adaptive response threshold</string>
+                 <string>Use adaptive response threshold.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
+              <item row="4" column="0">
                <widget class="QComboBox" name="comboBox_detector_strategy">
                 <item>
                  <property name="text">
@@ -1924,33 +2105,28 @@ generate the number of words requested.</string>
                   <string>SIFT</string>
                  </property>
                 </item>
+                <item>
+                 <property name="text">
+                  <string>FAST</string>
+                 </property>
+                </item>
                </widget>
               </item>
-              <item row="3" column="1">
+              <item row="4" column="1">
                <widget class="QLabel" name="label_117">
                 <property name="text">
-                 <string>Keypoint detector</string>
+                 <string>Keypoint detector.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="4" column="0">
+              <item row="5" column="0">
                <widget class="QComboBox" name="comboBox_descriptor_strategy">
                 <item>
                  <property name="text">
                   <string>SURF</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Color+SURF</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Laplacian+SURF</string>
                  </property>
                 </item>
                 <item>
@@ -1960,22 +2136,32 @@ generate the number of words requested.</string>
                 </item>
                 <item>
                  <property name="text">
-                  <string>Hue+SURF</string>
+                  <string>BRIEF</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Color</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Hue</string>
                  </property>
                 </item>
                </widget>
               </item>
-              <item row="4" column="1">
+              <item row="5" column="1">
                <widget class="QLabel" name="label_24">
                 <property name="text">
-                 <string>Keypoint descriptor</string>
+                 <string>Keypoint descriptor.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="5" column="0">
+              <item row="6" column="0">
                <widget class="QCheckBox" name="checkBox_kp_tfIdfLikelihoodUsed">
                 <property name="text">
                  <string/>
@@ -1985,17 +2171,17 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="5" column="1">
+              <item row="6" column="1">
                <widget class="QLabel" name="label_82">
                 <property name="text">
-                 <string>Use the tf-idf method to compute the likelihood</string>
+                 <string>Use the tf-idf method to compute the likelihood.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="7" column="0">
+              <item row="8" column="0">
                <widget class="QCheckBox" name="checkBox_kp_parallelized">
                 <property name="text">
                  <string/>
@@ -2005,10 +2191,10 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="7" column="1">
+              <item row="8" column="1">
                <widget class="QLabel" name="label_94">
                 <property name="text">
-                 <string>If the dictionary update and signature creation were parallelized</string>
+                 <string>If the dictionary update and signature creation were parallelized.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -2028,7 +2214,7 @@ generate the number of words requested.</string>
               <item row="10" column="1">
                <widget class="QLabel" name="label_97">
                 <property name="text">
-                 <string>Left ROI ratio (0 = no change)</string>
+                 <string>Left ROI ratio (0 = no change).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -2068,7 +2254,7 @@ generate the number of words requested.</string>
               <item row="11" column="1">
                <widget class="QLabel" name="label_98">
                 <property name="text">
-                 <string>Right ROI ratio (0 = no change)</string>
+                 <string>Right ROI ratio (0 = no change).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -2078,7 +2264,7 @@ generate the number of words requested.</string>
               <item row="12" column="1">
                <widget class="QLabel" name="label_99">
                 <property name="text">
-                 <string>Top ROI ratio (0 = no change)</string>
+                 <string>Top ROI ratio (0 = no change).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -2088,7 +2274,7 @@ generate the number of words requested.</string>
               <item row="13" column="1">
                <widget class="QLabel" name="label_100">
                 <property name="text">
-                 <string>Bottom ROI ratio (0 = no change)</string>
+                 <string>Bottom ROI ratio (0 = no change).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -2105,24 +2291,24 @@ generate the number of words requested.</string>
               <item row="9" column="1">
                <widget class="QLabel" name="label_101">
                 <property name="text">
-                 <string>ROI ratios [left, right, top, bottom]</string>
+                 <string>ROI ratios [left, right, top, bottom].</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="6" column="1">
+              <item row="7" column="1">
                <widget class="QLabel" name="label_104">
                 <property name="text">
-                 <string>If tf-idf weighting is normalized by the words count ratio between compared signatures</string>
+                 <string>If tf-idf weighting is normalized by the words count ratio between compared signatures.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="6" column="0">
+              <item row="7" column="0">
                <widget class="QCheckBox" name="checkBox_kp_tfIdfNormalized">
                 <property name="text">
                  <string/>
@@ -2132,18 +2318,18 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="8" column="1">
-               <widget class="QLabel" name="label_106">
+              <item row="0" column="1">
+               <widget class="QLabel" name="label_90">
                 <property name="text">
-                 <string>If using only sensors state (without actuators) for the sensorimotor state nearest neighbor computation</string>
+                 <string>Publish keypoints.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="8" column="0">
-               <widget class="QCheckBox" name="checkBox_kp_sensorStateOnly">
+              <item row="0" column="0">
+               <widget class="QCheckBox" name="checkBox_kp_publishKeypoints">
                 <property name="text">
                  <string/>
                 </property>
@@ -2162,8 +2348,8 @@ generate the number of words requested.</string>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>40</height>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -2173,11 +2359,11 @@ generate the number of words requested.</string>
          <widget class="QWidget" name="page_11">
           <layout class="QVBoxLayout" name="verticalLayout_10">
            <item>
-            <widget class="QGroupBox" name="groupBox_detector_surf">
+            <widget class="QGroupBox" name="groupBox_detector_surf2">
              <property name="title">
-              <string>2SURF detector</string>
+              <string>SURF detector</string>
              </property>
-             <layout class="QGridLayout" name="gridLayout_15" columnstretch="0,10">
+             <layout class="QGridLayout" name="gridLayout_15" columnstretch="0,1">
               <item row="0" column="0">
                <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_hessianThr">
                 <property name="decimals">
@@ -2194,7 +2380,7 @@ generate the number of words requested.</string>
               <item row="0" column="1">
                <widget class="QLabel" name="label_4">
                 <property name="text">
-                 <string>Hessian threshold</string>
+                 <string>Hessian threshold.</string>
                 </property>
                </widget>
               </item>
@@ -2214,7 +2400,7 @@ generate the number of words requested.</string>
               <item row="1" column="1">
                <widget class="QLabel" name="label_26">
                 <property name="text">
-                 <string>Octaves</string>
+                 <string>Octaves.</string>
                 </property>
                </widget>
               </item>
@@ -2234,11 +2420,11 @@ generate the number of words requested.</string>
               <item row="2" column="1">
                <widget class="QLabel" name="label_41">
                 <property name="text">
-                 <string>Octave layers</string>
+                 <string>Octave layers.</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
+              <item row="4" column="0">
                <widget class="QCheckBox" name="surf_checkBox_gpuVersion">
                 <property name="enabled">
                  <bool>true</bool>
@@ -2248,7 +2434,7 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="1">
+              <item row="4" column="1">
                <widget class="QLabel" name="label_48">
                 <property name="text">
                  <string>GPU version (as well for descriptor) - OpenCV must be compiled with CUDA from NVidia, otherwise, the application may crash if set.</string>
@@ -2258,20 +2444,20 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="4" column="0">
+              <item row="3" column="1">
+               <widget class="QLabel" name="label_49">
+                <property name="text">
+                 <string>U-SURF used.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
                <widget class="QCheckBox" name="surf_checkBox_upright">
                 <property name="enabled">
                  <bool>true</bool>
                 </property>
                 <property name="text">
                  <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="1">
-               <widget class="QLabel" name="label_49">
-                <property name="text">
-                 <string>U-SURF used (only with GPU version)</string>
                 </property>
                </widget>
               </item>
@@ -2285,8 +2471,8 @@ generate the number of words requested.</string>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>40</height>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -2296,9 +2482,9 @@ generate the number of words requested.</string>
          <widget class="QWidget" name="page_12">
           <layout class="QVBoxLayout" name="verticalLayout_11">
            <item>
-            <widget class="QGroupBox" name="groupBox_detector_star">
+            <widget class="QGroupBox" name="groupBox_detector_star2">
              <property name="title">
-              <string>2Star detector</string>
+              <string>Star detector</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_16" columnstretch="0,10">
               <item row="0" column="0">
@@ -2317,7 +2503,7 @@ generate the number of words requested.</string>
               <item row="0" column="1">
                <widget class="QLabel" name="label_45">
                 <property name="text">
-                 <string>Maximum size</string>
+                 <string>Maximum size.</string>
                 </property>
                </widget>
               </item>
@@ -2337,7 +2523,7 @@ generate the number of words requested.</string>
               <item row="1" column="1">
                <widget class="QLabel" name="label_42">
                 <property name="text">
-                 <string>Response threshold</string>
+                 <string>Response threshold.</string>
                 </property>
                </widget>
               </item>
@@ -2357,7 +2543,7 @@ generate the number of words requested.</string>
               <item row="2" column="1">
                <widget class="QLabel" name="label_43">
                 <property name="text">
-                 <string>Line threshold projected</string>
+                 <string>Line threshold projected.</string>
                 </property>
                </widget>
               </item>
@@ -2377,7 +2563,7 @@ generate the number of words requested.</string>
               <item row="3" column="1">
                <widget class="QLabel" name="label_44">
                 <property name="text">
-                 <string>Line threshold binarized</string>
+                 <string>Line threshold binarized.</string>
                 </property>
                </widget>
               </item>
@@ -2397,7 +2583,7 @@ generate the number of words requested.</string>
               <item row="4" column="1">
                <widget class="QLabel" name="label_46">
                 <property name="text">
-                 <string>Suppress Nonmax size</string>
+                 <string>Suppress Nonmax size.</string>
                 </property>
                </widget>
               </item>
@@ -2411,8 +2597,8 @@ generate the number of words requested.</string>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>40</height>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -2422,9 +2608,9 @@ generate the number of words requested.</string>
          <widget class="QWidget" name="page_8">
           <layout class="QVBoxLayout" name="verticalLayout_3">
            <item>
-            <widget class="QGroupBox" name="groupBox_detector_sift">
+            <widget class="QGroupBox" name="groupBox_detector_sift2">
              <property name="title">
-              <string>2SIFT detector</string>
+              <string>SIFT detector</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_19" columnstretch="0,10">
               <item row="0" column="0">
@@ -2449,14 +2635,14 @@ generate the number of words requested.</string>
               <item row="0" column="1">
                <widget class="QLabel" name="label_5">
                 <property name="text">
-                 <string>Threshold</string>
+                 <string>Threshold.</string>
                 </property>
                </widget>
               </item>
               <item row="1" column="1">
                <widget class="QLabel" name="label_30">
                 <property name="text">
-                 <string>Edge threshold</string>
+                 <string>Edge threshold.</string>
                 </property>
                </widget>
               </item>
@@ -2480,8 +2666,65 @@ generate the number of words requested.</string>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>579</height>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="page_17">
+          <layout class="QVBoxLayout" name="verticalLayout_20">
+           <item>
+            <widget class="QGroupBox" name="groupBox_detector_fast2">
+             <property name="title">
+              <string>FAST detector</string>
+             </property>
+             <layout class="QGridLayout" name="gridLayout_20" columnstretch="0,10">
+              <item row="0" column="1">
+               <widget class="QLabel" name="label_15">
+                <property name="text">
+                 <string>Threshold.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLabel" name="label_56">
+                <property name="text">
+                 <string>NonmaxSuppression.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QSpinBox" name="fast_spinBox_Threshold">
+                <property name="maximum">
+                 <number>999</number>
+                </property>
+                <property name="value">
+                 <number>10</number>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QCheckBox" name="fast_checkBox_nonmaxSuppression">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <spacer name="verticalSpacer_21">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -2491,9 +2734,9 @@ generate the number of words requested.</string>
          <widget class="QWidget" name="page_13">
           <layout class="QVBoxLayout" name="verticalLayout_17">
            <item>
-            <widget class="QGroupBox" name="groupBox_surfDescriptor">
+            <widget class="QGroupBox" name="groupBox_descriptor_surf2">
              <property name="title">
-              <string>2SURF descriptor</string>
+              <string>SURF descriptor</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_17" columnstretch="0,10">
               <item row="0" column="0">
@@ -2506,7 +2749,7 @@ generate the number of words requested.</string>
               <item row="0" column="1">
                <widget class="QLabel" name="label_8">
                 <property name="text">
-                 <string>Descriptor extended (true=128, false=64)</string>
+                 <string>Descriptor extended (true=128, false=64).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -2523,8 +2766,57 @@ generate the number of words requested.</string>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>40</height>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="page_18">
+          <layout class="QVBoxLayout" name="verticalLayout_21">
+           <item>
+            <widget class="QGroupBox" name="groupBox_descriptor_brief2">
+             <property name="title">
+              <string>BRIEF descriptor</string>
+             </property>
+             <layout class="QGridLayout" name="gridLayout_21" columnstretch="0,10">
+              <item row="0" column="1">
+               <widget class="QLabel" name="label_19">
+                <property name="text">
+                 <string>Descriptor size (16, 32 or 64).</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QSpinBox" name="brief_spinBox_size">
+                <property name="minimum">
+                 <number>16</number>
+                </property>
+                <property name="maximum">
+                 <number>64</number>
+                </property>
+                <property name="value">
+                 <number>32</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <spacer name="verticalSpacer_22">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -2534,9 +2826,9 @@ generate the number of words requested.</string>
          <widget class="QWidget" name="page_14">
           <layout class="QVBoxLayout" name="verticalLayout_12">
            <item>
-            <widget class="QGroupBox" name="groupBox_dictionary_strategy">
+            <widget class="QGroupBox" name="groupBox_dictionary_strategy2">
              <property name="title">
-              <string>2Dictionary</string>
+              <string>Dictionary</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_18" columnstretch="0,0,10">
               <item row="0" column="0">
@@ -2564,7 +2856,7 @@ generate the number of words requested.</string>
               <item row="0" column="2">
                <widget class="QLabel" name="label_12">
                 <property name="text">
-                 <string>Nearest neighbor strategy</string>
+                 <string>Nearest neighbor strategy.</string>
                 </property>
                </widget>
               </item>
@@ -2581,7 +2873,7 @@ generate the number of words requested.</string>
               <item row="1" column="2">
                <widget class="QLabel" name="label_47">
                 <property name="text">
-                 <string>Use an incremental dictionary</string>
+                 <string>Use an incremental dictionary.</string>
                 </property>
                </widget>
               </item>
@@ -2602,7 +2894,7 @@ generate the number of words requested.</string>
                <widget class="QLabel" name="label_9">
                 <property name="text">
                  <string>Minimum distance (for the nearest neighbor)
-Lower the distance -&gt; higher the precision</string>
+Lower the distance -&gt; higher the precision.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>false</bool>
@@ -2637,7 +2929,7 @@ Lower the distance -&gt; higher the precision</string>
                 <property name="text">
                  <string>NNDR ratio
 (A matching pair is accepted, if its distance is closer than X times the distance of the second nearest neighbor)
-Lower the ratio -&gt; higher the precision</string>
+Lower the ratio -&gt; higher the precision.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -2647,7 +2939,7 @@ Lower the ratio -&gt; higher the precision</string>
               <item row="5" column="2">
                <widget class="QLabel" name="label_23">
                 <property name="text">
-                 <string>Use nearest neighbor distance ratio approach (NNDR)</string>
+                 <string>Use nearest neighbor distance ratio approach (NNDR).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -2657,7 +2949,7 @@ Lower the ratio -&gt; higher the precision</string>
               <item row="3" column="2">
                <widget class="QLabel" name="label_32">
                 <property name="text">
-                 <string>Use a minimum distance for the nearest neighbor</string>
+                 <string>Use a minimum distance for the nearest neighbor.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -2677,7 +2969,7 @@ Lower the ratio -&gt; higher the precision</string>
               <item row="7" column="2">
                <widget class="QLabel" name="label_95">
                 <property name="text">
-                 <string>Maximum number of leafs checked (when using kd-trees)</string>
+                 <string>Maximum number of leafs checked (when using kd-trees).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -2707,7 +2999,7 @@ Lower the ratio -&gt; higher the precision</string>
               <item row="2" column="2">
                <widget class="QLabel" name="label_51">
                 <property name="text">
-                 <string>Path to a pre-computed dictionary (when &quot;Use an incremental dictionary&quot; is not set)</string>
+                 <string>Path to a pre-computed dictionary (when &quot;Use an incremental dictionary&quot; is not set).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -2724,8 +3016,167 @@ Lower the ratio -&gt; higher the precision</string>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>40</height>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="page_16">
+          <layout class="QVBoxLayout" name="verticalLayout_19">
+           <item>
+            <widget class="QGroupBox" name="groupBox_signature_sensorimotor1">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="title">
+              <string>Sensorimotor</string>
+             </property>
+             <layout class="QGridLayout" name="gridLayout_13" columnstretch="0,1">
+              <item row="2" column="1">
+               <widget class="QLabel" name="label_53">
+                <property name="text">
+                 <string>Use log-polar images.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QCheckBox" name="checkBox_logpolar">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QLabel" name="label_58">
+                <property name="text">
+                 <string>Use likelihood voting scheme.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QCheckBox" name="checkBox_votingScheme">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="1">
+               <widget class="QLabel" name="label_86">
+                <property name="text">
+                 <string>Color table size</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QComboBox" name="sm_colorTable_comboBox">
+                <property name="currentIndex">
+                 <number>0</number>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>8</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>16</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>32</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>64</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>128</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>256</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>512</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>1024</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>65536</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QLabel" name="label_118">
+                <property name="text">
+                 <string>Publish masks.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QCheckBox" name="checkBox_publishMasks">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLabel" name="label_109">
+                <property name="text">
+                 <string>Use motion masks.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QCheckBox" name="checkBox_motionMaskUsed">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <spacer name="verticalSpacer_14">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -2735,7 +3186,7 @@ Lower the ratio -&gt; higher the precision</string>
          <widget class="QWidget" name="page_19">
           <layout class="QVBoxLayout" name="verticalLayout_13">
            <item>
-            <widget class="QGroupBox" name="groupBox_vh_strategy">
+            <widget class="QGroupBox" name="groupBox_vh_strategy1">
              <property name="minimumSize">
               <size>
                <width>0</width>
@@ -2743,7 +3194,7 @@ Lower the ratio -&gt; higher the precision</string>
               </size>
              </property>
              <property name="title">
-              <string>1Hypotheses verification strategies</string>
+              <string>Hypotheses verification strategies</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_3" columnstretch="0,10">
               <item row="0" column="0">
@@ -2771,7 +3222,7 @@ Lower the ratio -&gt; higher the precision</string>
               <item row="0" column="1">
                <widget class="QLabel" name="label_50">
                 <property name="text">
-                 <string>Hypotheses verification</string>
+                 <string>Hypotheses verification.</string>
                 </property>
                </widget>
               </item>
@@ -2785,8 +3236,8 @@ Lower the ratio -&gt; higher the precision</string>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>40</height>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -2796,9 +3247,9 @@ Lower the ratio -&gt; higher the precision</string>
          <widget class="QWidget" name="page_15">
           <layout class="QVBoxLayout" name="verticalLayout_14">
            <item>
-            <widget class="QGroupBox" name="groupBox_vh_similarity">
+            <widget class="QGroupBox" name="groupBox_vh_similarity2">
              <property name="title">
-              <string>2Similarity verification</string>
+              <string>Similarity verification</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,10">
               <item row="0" column="0">
@@ -2820,7 +3271,7 @@ Lower the ratio -&gt; higher the precision</string>
               <item row="0" column="1">
                <widget class="QLabel" name="label_55">
                 <property name="text">
-                 <string>Minimum similarity to accept an hypothesis</string>
+                 <string>Minimum similarity to accept an hypothesis.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -2837,8 +3288,8 @@ Lower the ratio -&gt; higher the precision</string>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>619</height>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -2848,9 +3299,9 @@ Lower the ratio -&gt; higher the precision</string>
          <widget class="QWidget" name="page_21">
           <layout class="QVBoxLayout" name="verticalLayout_25">
            <item>
-            <widget class="QGroupBox" name="groupBox_vh_epipolar">
+            <widget class="QGroupBox" name="groupBox_vh_epipolar2">
              <property name="title">
-              <string>2Epipolar constraints</string>
+              <string>Epipolar constraints</string>
              </property>
              <layout class="QGridLayout" name="gridLayout" columnstretch="0,10">
               <item row="0" column="0">
@@ -2869,7 +3320,7 @@ Lower the ratio -&gt; higher the precision</string>
               <item row="0" column="1">
                <widget class="QLabel" name="label_25">
                 <property name="text">
-                 <string>Minimum match count to accept a loop closure</string>
+                 <string>Minimum match count to accept a loop closure.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -2895,7 +3346,7 @@ Lower the ratio -&gt; higher the precision</string>
               <item row="1" column="1">
                <widget class="QLabel" name="label_27">
                 <property name="text">
-                 <string>Fundamental Matrix : Distance (pixels) for inliers</string>
+                 <string>Fundamental Matrix : Distance (pixels) for inliers.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -2921,7 +3372,7 @@ Lower the ratio -&gt; higher the precision</string>
               <item row="2" column="1">
                <widget class="QLabel" name="label_28">
                 <property name="text">
-                 <string>Fundamental Matrix : Ransac performance</string>
+                 <string>Fundamental Matrix : Ransac performance.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -2938,8 +3389,8 @@ Lower the ratio -&gt; higher the precision</string>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>40</height>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -2949,28 +3400,59 @@ Lower the ratio -&gt; higher the precision</string>
         </widget>
        </item>
        <item>
-        <widget class="QDialogButtonBox" name="buttonBox_local">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <property name="leftMargin">
+          <number>12</number>
          </property>
-         <property name="standardButtons">
-          <set>QDialogButtonBox::Apply|QDialogButtonBox::RestoreDefaults</set>
+         <property name="rightMargin">
+          <number>12</number>
          </property>
-        </widget>
+         <item>
+          <widget class="QDialogButtonBox" name="buttonBox_local">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="standardButtons">
+            <set>QDialogButtonBox::Apply|QDialogButtonBox::RestoreDefaults</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </item>
     </layout>
    </item>
    <item>
-    <widget class="QDialogButtonBox" name="buttonBox_global">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-     </property>
-    </widget>
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <widget class="QRadioButton" name="radioButton_basic">
+       <property name="text">
+        <string>Basic</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="radioButton_advanced">
+       <property name="text">
+        <string>Advanced</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QDialogButtonBox" name="buttonBox_global">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="standardButtons">
+        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
   </layout>
  </widget>
@@ -2985,38 +3467,5 @@ Lower the ratio -&gt; higher the precision</string>
  <resources>
   <include location="../GuiLib.qrc"/>
  </resources>
- <connections>
-  <connection>
-   <sender>verticalSlider_prediction_lp</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>label_prediction_lp</receiver>
-   <slot>setNum(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>508</x>
-     <y>179</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>509</x>
-     <y>233</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>verticalSlider_prediction_vp</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>label_prediction_vp</receiver>
-   <slot>setNum(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>314</x>
-     <y>185</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>315</x>
-     <y>241</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

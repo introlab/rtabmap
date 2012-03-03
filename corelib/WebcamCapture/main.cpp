@@ -92,7 +92,7 @@ protected:
 				if(save_)
 				{
 					std::string fileName = targetDir_ + "/";
-					fileName += uNumber2str(id_++);
+					fileName += uNumber2Str(id_++);
 					fileName += ".";
 					fileName += ext_;
 					cvSaveImage(fileName.c_str(), image);
@@ -225,11 +225,11 @@ int main(int argc, char * argv[])
 		   imageWidth, 
 		   imageHeight, 
 		   imageRate, 
-		   uBool2str(show).c_str(), 
+		   uBool2Str(show).c_str(),
 		   targetDirectory.c_str(),
 		   extension.c_str(),
 		   startId,
-		   uBool2str(save).c_str());
+		   uBool2Str(save).c_str());
 
 	UDirectory::makeDir(targetDirectory);
 

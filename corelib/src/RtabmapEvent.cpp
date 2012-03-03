@@ -115,7 +115,6 @@ void Statistics::setLoopClosureImage(const IplImage * loopClosureImage)
 
 Statistics & Statistics::operator=(const Statistics & s)
 {
-	ULOGGER_DEBUG("");
 	_data = s.data();
 	if(_refImage)
 	{
@@ -143,7 +142,9 @@ Statistics & Statistics::operator=(const Statistics & s)
 	_weights = s.weights();
 	_refWords = s.refWords();
 	_loopWords = s.loopWords();
-
+	_refMotionMask = s.refMotionMask();
+	_loopMotionMask = s.loopMotionMask();
+	_actions = s.getActions();
 	return *this;
 }
 

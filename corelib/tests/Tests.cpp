@@ -22,7 +22,7 @@
 
 //Headers for the test BEGIN
 #include "rtabmap/core/Camera.h"
-#include "Signature.h"
+#include "rtabmap/core/Signature.h"
 #include "VWDictionary.h"
 #include "rtabmap/core/EpipolarGeometry.h"
 #include "rtabmap/core/Rtabmap.h"
@@ -76,6 +76,7 @@ void Tests::testAvpd()
 	parameters.insert(ParametersPair(Parameters::kRtabmapPublishStats(), "true"));
 	parameters.insert(ParametersPair(Parameters::kRtabmapTimeThr(), "0"));
 	parameters.insert(ParametersPair(Parameters::kSURFHessianThreshold(), "500"));
+	UDirectory::makeDir("./LogTestAvpdCore/");
 	ctabmap.setWorkingDirectory("./LogTestAvpdCore/");
 	ctabmap.init(parameters);
 
@@ -83,14 +84,14 @@ void Tests::testAvpd()
 	/* Start thread's task */
 	SMState * smState = 0;
 
-	smState = camera.takeImage();
+	smState = camera.takeSMState();
 	int imgCount = 0;
 	while(smState)
 	{
 		++imgCount;
 		printf("Processing image %d/84...\n", imgCount);
 		ctabmap.process(smState);
-		smState = camera.takeImage();
+		smState = camera.takeSMState();
 	}
 	if(smState)
 	{
@@ -140,7 +141,6 @@ void Tests::testAvpd()
 
 void Tests::testCamera()
 {
-	//Logger::setType(Logger::kTypeFile, "LogTestAvpdCore/testCamera.txt", false);
 	std::string path;
 	SMState * smState = 0;
 	int count;
@@ -169,33 +169,33 @@ void Tests::testCamera()
 
 	//CameraImages class
 	path = "data/samples";
-	CameraImages cameraImages(path, false, 0, false, 80);
+	CameraImages cameraImages(path, 1, false, 0, false, 80);
 	CPPUNIT_ASSERT( cameraImages.init() );
 	CPPUNIT_ASSERT( cameraImages.isIdle() == true);
-	smState = cameraImages.takeImage();
+	smState = cameraImages.takeSMState();
 	count = 0;
 	while(smState)
 	{
 		delete smState;
 		smState = 0;
 		++count;
-		smState = cameraImages.takeImage();
+		smState = cameraImages.takeSMState();
 	}
-	CPPUNIT_ASSERT( count == 5 );
+	CPPUNIT_ASSERT( count == 84 );
 
 	//CameraDatabase class
 	path = "./data/samples.db";
-	CameraDatabase cameraDatabase(path, false); // ignoreChildren=false;
+	CameraDatabase cameraDatabase(path, false, false); // ignoreChildren=false; loadActions=false
 	CPPUNIT_ASSERT( cameraDatabase.init() );
 	CPPUNIT_ASSERT( cameraDatabase.isIdle() == true);
-	smState = cameraDatabase.takeImage();
+	smState = cameraDatabase.takeSMState();
 	count = 0;
 	while(smState)
 	{
 		++count;
 		delete smState;
 		smState = 0;
-		smState = cameraDatabase.takeImage();
+		smState = cameraDatabase.takeSMState();
 	}
 	//ULOGGER_INFO("%d", count);
 	CPPUNIT_ASSERT( count == 82 );
@@ -217,29 +217,84 @@ void Tests::testDBDriverFactory()
 // TODO not finished
 void Tests::testSqlite3Database()
 {
-	//Util::Logger::setLevel(Logger::kDebug);
-	//Util::Logger::setType(Logger::kTypeConsole);
-	ULogger::setType(ULogger::kTypeFile, "LogTestAvpdCore/testSqlite3Database.txt", false);
-
 	ParametersMap parameters;
 	parameters.insert(ParametersPair(Parameters::kDbSqlite3InMemory(), "false"));
 	DBDriver * driver = DBDriverFactory::createDBDriver("sqlite3", parameters);
 
 	CPPUNIT_ASSERT(driver);
-
-	driver->openConnection("LogTestAvpdCore/tmpDatabase.db");
-
+	CPPUNIT_ASSERT(driver->openConnection("LogTestAvpdCore/tmpDatabase.db"));
 	delete driver;
 
-	ULogger::write("testSqlite3Database end...");
+	//== Test SMSignature save/load ==//
+	UFile::erase("LogTestAvpdCore/tmpDatabase.db");
+	parameters.clear();
+	parameters.insert(ParametersPair(Parameters::kMemSignatureType(), "1"));
+	driver = DBDriverFactory::createDBDriver("sqlite3", parameters);
+	CPPUNIT_ASSERT(driver);
+	CPPUNIT_ASSERT(driver->openConnection("LogTestAvpdCore/tmpDatabase.db"));
+	std::vector<int> sensors;
+	std::vector<unsigned char> motionMask;
+	std::vector<int> sensors1;
+	std::vector<int> sensors2;
+	bool keepRawData = true;
+	CameraImages camera("./data/samples");
+	CPPUNIT_ASSERT_MESSAGE("Camera initialization failed!\n", camera.init());
+
+	IplImage * image = camera.takeImage();
+	CPPUNIT_ASSERT(image);
+	SMSignature * sm1 = new SMSignature(sensors, motionMask, 1, image, keepRawData);
+	sensors1 = sm1->getSensors();
+	cvReleaseImage(&image);
+	sm1->addNeighbor(NeighborLink(2));
+
+	image = camera.takeImage();
+	CPPUNIT_ASSERT(image);
+	SMSignature * sm2 = new SMSignature(sensors, motionMask, 2, image, keepRawData);
+	sensors2 = sm2->getSensors();
+	cvReleaseImage(&image);
+	sm2->addNeighbor(NeighborLink(1));
+
+	//save them
+	driver->asyncSave(sm1);
+	sm1 = 0;
+	driver->asyncSave(sm2);
+	sm2 = 0;
+	driver->emptyTrashes(false);
+
+	//load them
+	Signature * s1 = 0;
+	Signature * s2 = 0;
+	driver->getSignature(1, &s1);
+	driver->getSignature(2, &s2);
+	CPPUNIT_ASSERT(s1);
+	CPPUNIT_ASSERT(s2);
+	sm1 = dynamic_cast<SMSignature*>(s1);
+	sm2 = dynamic_cast<SMSignature*>(s2);
+	CPPUNIT_ASSERT(sm1);
+	CPPUNIT_ASSERT(sm2);
+
+	//compare
+	CPPUNIT_ASSERT(sensors1.size() > 0 && sensors1.size() == sm1->getSensors().size());
+	CPPUNIT_ASSERT(sensors2.size() > 0 && sensors2.size() == sm2->getSensors().size());
+	for(unsigned int i=0; i<sensors1.size(); ++i)
+	{
+		CPPUNIT_ASSERT(sensors1.at(i) == sm1->getSensors().at(i));
+	}
+	for(unsigned int i=0; i<sensors2.size(); ++i)
+	{
+		CPPUNIT_ASSERT(sensors2.at(i) == sm2->getSensors().at(i));
+	}
+	CPPUNIT_ASSERT(sm1->getNeighbors().size() == 1);
+	CPPUNIT_ASSERT(sm2->getNeighbors().size() == 1);
+
+	delete sm1;
+	delete sm2;
+	delete driver;
 }
 
 // TODO add some tests to test when a signature is forgotten or reactivated
 void Tests::testBayesFilter()
 {
-	//Util::Logger::setLevel(Logger::kDebug);
-	//Util::Logger::setType(Logger::kTypeConsole);
-
 	BayesFilter bayes;
 
 	//Parameters checks
@@ -250,14 +305,14 @@ void Tests::testBayesFilter()
 	parameters.insert(ParametersPair(Parameters::kBayesVirtualPlacePriorThr(), "0.01"));
 	parameters.insert(ParametersPair(Parameters::kBayesPredictionLC(), "0.01 0.02 0.03 0.04"));
 	bayes.parseParameters(parameters);
-	CPPUNIT_ASSERT( uNumber2str(bayes.getVirtualPlacePrior()).compare("0.01") == 0 );
+	CPPUNIT_ASSERT( uNumber2Str(bayes.getVirtualPlacePrior()).compare("0.01") == 0 );
 	CPPUNIT_ASSERT( bayes.getPredictionLCStr().compare("0.01 0.02 0.03 0.04") == 0 );
 	bayes.setVirtualPlacePrior(-1);
 	CPPUNIT_ASSERT( bayes.getVirtualPlacePrior() == 0 );
 	bayes.setVirtualPlacePrior(1.1);
 	CPPUNIT_ASSERT( bayes.getVirtualPlacePrior() == 1 );
 	bayes.setVirtualPlacePrior(0.6);
-	CPPUNIT_ASSERT( uNumber2str(bayes.getVirtualPlacePrior()).compare("0.6") == 0 );
+	CPPUNIT_ASSERT( uNumber2Str(bayes.getVirtualPlacePrior()).compare("0.6") == 0 );
 	bayes.setPredictionLC("");
 	CPPUNIT_ASSERT( bayes.getPredictionLCStr().compare("0.01 0.02 0.03 0.04") == 0 );
 	bayes.setPredictionLC("0,01 0,02");
@@ -265,7 +320,7 @@ void Tests::testBayesFilter()
 	bayes.setPredictionLC("0.01 0.02");
 	CPPUNIT_ASSERT( bayes.getPredictionLCStr().compare("0.01 0.02") == 0 );
 	bayes.setPredictionLC("0.01 0.02 0.03");
-	CPPUNIT_ASSERT( bayes.getPredictionLCStr().compare("0.01 0.02") == 0 );
+	CPPUNIT_ASSERT( bayes.getPredictionLCStr().compare("0.01 0.02 0.03") == 0 );
 
 	//reset parameters...
 	bayes = BayesFilter();
@@ -277,7 +332,7 @@ void Tests::testBayesFilter()
 	//parameters
 	mem.setCommonSignatureUsed(true);
 	mem.setMaxStMemSize(1);
-	bayes.setPredictionLC("0 0.22 0.19 0.25 0.04 0.1 0.02 0.04 0.01 0.01");
+	bayes.setPredictionLC("0.1 0.24 0.18 0.1 0.04 0.01");
 	bayes.setVirtualPlacePrior(0.9);
 
 	std::map<int, float> likelihood;
@@ -307,7 +362,7 @@ void Tests::testBayesFilter()
 		}
 	}
 	// Result wanted generated by the TestBayesFilter.m script (MatLab/Tests)
-	int resultWanted1[100] = {1000,0,0,0,0,0,0,0,0,0,900,99,0,0,0,0,0,0,0,0,810,113,75,0,0,0,0,0,0,0,729,109,96,64,0,0,0,0,0,0,656,100,98,87,56,0,0,0,0,0,590,93,95,93,78,49,0,0,0,0,531,86,90,92,85,69,42,0,0,0,478,80,86,90,86,77,62,37,0,0,430,75,81,87,86,80,70,55,33,0,387,69,77,83,84,80,73,63,49,29};
+	int resultWanted1[100] = {1000,0,0,0,0,0,0,0,0,0,900,99,0,0,0,0,0,0,0,0,820,117,62,0,0,0,0,0,0,0,756,111,82,50,0,0,0,0,0,0,704,103,84,67,40,0,0,0,0,0,663,96,82,69,54,32,0,0,0,0,631,90,79,69,58,44,26,0,0,0,604,84,76,68,58,48,36,21,0,0,583,79,73,66,58,49,40,30,17,0,567,74,69,64,58,50,41,33,25,14};
 	for(int i=0; i<100; ++i)
 	{
 		ULOGGER_DEBUG("%d vs %d", result[i], resultWanted1[i]);
@@ -361,7 +416,8 @@ void Tests::testKeypointMemory()
 		CPPUNIT_ASSERT(*i == signWordsRequired[j]);
 		++j;
 	}
-	likelihood = mem.computeLikelihood(lastSign);
+	float maximumScore;
+	likelihood = mem.computeLikelihood(lastSign, std::list<int>(mem.getWorkingMem().begin(), mem.getWorkingMem().end()), maximumScore);
 	//ULOGGER_INFO("likelihood.size() = %d", likelihood.size());
 	std::vector<float> values = uValues(likelihood);
 	int likelihoodWanted[82] = {109,157,263,203,87,66,78,49,60,40,47,43,43,55,102,102,147,0,38,61,64,74,69,103,39,20,44,33,14,14,20,12,18,8,59,19,41,26,45,117,124,173,223,74,0,10,17,53,33,24,33,43,52,68,119,124,146,159,28,68,59,115,71,95,37,18,16,49,9,28,20,9,15,11,10,35,45,73,18,92,167,219};
@@ -378,16 +434,17 @@ void Tests::testVWDictionary()
 	VWDictionary dictionary;
 	dictionary.setNndrUsed(false);
 	std::list<cv::KeyPoint> keypoints;
-	std::list<std::vector<float> > descriptors;
+	cv::Mat descriptors;
 	unsigned int dim = 2;
 	std::vector<float> v(dim);
 
 	keypoints.push_back(cv::KeyPoint(cv::Point2f(1,1), 10, 30, 500, 2, 0));
 	v[0] = 3;
 	v[1] = 4;
+	descriptors = cv::Mat(0, 2, CV_32F);
 	descriptors.push_back(v);
 
-	dictionary.addNewWords(descriptors, dim, 1);
+	dictionary.addNewWords(descriptors, 1);
 	CPPUNIT_ASSERT(dictionary.getVisualWords().size() == 1);
 
 	//Create a word with the next descriptor (the distance^2 with the first word added = 2)

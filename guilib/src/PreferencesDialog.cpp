@@ -49,8 +49,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_obsoletePanels(kPanelDummy),
 	_ui(0),
 	_indexModel(0),
-	_initialized(false),
-	_predictionPanelInitialized(false)
+	_initialized(false)
 {
 	ULOGGER_DEBUG("");
 
@@ -64,6 +63,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->buttonBox_local, SIGNAL(clicked(QAbstractButton *)), this, SLOT(resetApply(QAbstractButton *)));
 	connect(_ui->pushButton_loadConfig, SIGNAL(clicked()), this, SLOT(loadConfigFrom()));
 	connect(_ui->pushButton_saveConfig, SIGNAL(clicked()), this, SLOT(saveConfigTo()));
+	connect(_ui->radioButton_basic, SIGNAL(toggled(bool)), this, SLOT(setupTreeView()));
 
 	// General panel
 	connect(_ui->general_checkBox_imagesKept, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
@@ -75,6 +75,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_imageFlipped, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->comboBox_loggerType, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_imageRejectedShown, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->checkBox_imageHighestHypShown, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_beep, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->horizontalSlider_keypointsOpacity, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 
@@ -84,6 +85,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_comboBox_type, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->general_doubleSpinBox_imgRate, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->general_checkBox_autoRestart, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->general_checkBox_cameraKeypoints, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	//usbDevice group
 	connect(_ui->source_usbDevice_spinBox_id, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_imgWidth, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -99,18 +101,38 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	//database group
 	connect(_ui->source_database_toolButton_selectSource, SIGNAL(clicked()), this, SLOT(selectSource()));
 	connect(_ui->source_database_lineEdit_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->source_database_checkBox_ignoreChildren, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_database_checkBox_loadActions, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
+	//Rtabmap basic
+	connect(_ui->general_doubleSpinBox_timeThr, SIGNAL(valueChanged(double)), _ui->general_doubleSpinBox_timeThr_2, SLOT(setValue(double)));
+	connect(_ui->general_doubleSpinBox_hardThr, SIGNAL(valueChanged(double)), _ui->general_doubleSpinBox_hardThr_2, SLOT(setValue(double)));
+	connect(_ui->surf_doubleSpinBox_hessianThr, SIGNAL(valueChanged(double)), _ui->surf_doubleSpinBox_hessianThr_2, SLOT(setValue(double)));
+	connect(_ui->general_spinBox_imagesBufferSize, SIGNAL(valueChanged(int)), _ui->general_spinBox_imagesBufferSize_2, SLOT(setValue(int)));
+	connect(_ui->general_checkBox_publishStats, SIGNAL(clicked(bool)), _ui->general_checkBox_publishStats_2, SLOT(setChecked(bool)));
+	connect(_ui->lineEdit_workingDirectory, SIGNAL(textChanged(const QString &)), _ui->lineEdit_workingDirectory_2, SLOT(setText(const QString &)));
+
+	connect(_ui->general_doubleSpinBox_timeThr_2, SIGNAL(valueChanged(double)), _ui->general_doubleSpinBox_timeThr, SLOT(setValue(double)));
+	connect(_ui->general_doubleSpinBox_hardThr_2, SIGNAL(valueChanged(double)), _ui->general_doubleSpinBox_hardThr, SLOT(setValue(double)));
+	connect(_ui->surf_doubleSpinBox_hessianThr_2, SIGNAL(valueChanged(double)), _ui->surf_doubleSpinBox_hessianThr, SLOT(setValue(double)));
+	connect(_ui->general_spinBox_imagesBufferSize_2, SIGNAL(valueChanged(int)), _ui->general_spinBox_imagesBufferSize, SLOT(setValue(int)));
+	connect(_ui->general_checkBox_publishStats_2, SIGNAL(clicked(bool)), _ui->general_checkBox_publishStats, SLOT(setChecked(bool)));
+	connect(_ui->lineEdit_workingDirectory_2, SIGNAL(textChanged(const QString &)), _ui->lineEdit_workingDirectory, SLOT(setText(const QString &)));
+	connect(_ui->toolButton_workingDirectory_2, SIGNAL(clicked()), this, SLOT(changeWorkingDirectory()));
 
 	// Map objects name with the corresponding parameter key, needed for the addParameter() slots
 	//Rtabmap
 	_ui->general_doubleSpinBox_retrievalThr->setObjectName(Parameters::kRtabmapRetrievalThr().c_str());
 	_ui->general_checkBox_publishStats->setObjectName(Parameters::kRtabmapPublishStats().c_str());
+	_ui->general_checkBox_publishImages->setObjectName(Parameters::kRtabmapPublishImages().c_str());
+	_ui->general_checkBox_publishPdf->setObjectName(Parameters::kRtabmapPublishPdf().c_str());
+	_ui->general_checkBox_publishLikelihood->setObjectName(Parameters::kRtabmapPublishLikelihood().c_str());
 	_ui->general_doubleSpinBox_timeThr->setObjectName(Parameters::kRtabmapTimeThr().c_str());
+	_ui->general_spinBox_memoryThr->setObjectName(Parameters::kRtabmapMemoryThr().c_str());
 	_ui->general_spinBox_imagesBufferSize->setObjectName(Parameters::kRtabmapSMStateBufferSize().c_str());
-	_ui->general_spinBox_minMemorySizeForLoopDetection->setObjectName(Parameters::kRtabmapMinMemorySizeForLoopDetection().c_str());
 	_ui->general_spinBox_maxRetrieved->setObjectName(Parameters::kRtabmapMaxRetrieved().c_str());
-	_ui->general_checkBox_actionsByTime->setObjectName(Parameters::kRtabmapActionsByTime().c_str());
+	_ui->general_checkBox_neighborhoodSummation->setObjectName(Parameters::kRtabmapSelectionNeighborhoodSummationUsed().c_str());
+	_ui->general_checkBox_likelihoodUsed->setObjectName(Parameters::kRtabmapSelectionLikelihoodUsed().c_str());
+	_ui->general_checkBox_likelihoodStdDevRemoved->setObjectName(Parameters::kRtabmapLikelihoodStdDevRemoved().c_str());
 	_ui->general_checkBox_actionsSentRejectHyp->setObjectName(Parameters::kRtabmapActionsSentRejectHyp().c_str());
 	_ui->general_doubleSpinBox_confidenceThr->setObjectName(Parameters::kRtabmapConfidenceThr().c_str());
 	_ui->lineEdit_workingDirectory->setObjectName(Parameters::kRtabmapWorkingDirectory().c_str());
@@ -123,17 +145,19 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_doubleSpinBox_similarityThr->setObjectName(Parameters::kMemSimilarityThr().c_str());
 	_ui->general_checkBox_incrementalMemory->setObjectName(Parameters::kMemIncrementalMemory().c_str());
 	_ui->general_checkBox_commonSignatureUsed->setObjectName(Parameters::kMemCommonSignatureUsed().c_str());
-	_ui->general_checkBox_databaseCleaned->setObjectName(Parameters::kMemDatabaseCleaned().c_str());
-	_ui->mem_spinBox_delayRequired->setObjectName(Parameters::kMemDelayRequired().c_str());
-	_ui->general_checkBox_localGraphCleaned->setObjectName(Parameters::kRtabmapLocalGraphCleaned().c_str());
 	_ui->general_doubleSpinBox_recentWmRatio->setObjectName(Parameters::kMemRecentWmRatio().c_str());
+	_ui->general_checkBox_dataMergedOnRehearsal->setObjectName(Parameters::kMemDataMergedOnRehearsal().c_str());
+	_ui->comboBox_signatureType->setObjectName(Parameters::kMemSignatureType().c_str());
 
 	// Database
 	_ui->spinBox_dbMinSignToSave->setObjectName(Parameters::kDbMinSignaturesToSave().c_str());
 	_ui->spinBox_dbMinWordsToSave->setObjectName(Parameters::kDbMinWordsToSave().c_str());
+	_ui->general_checkBox_imagesCompressed->setObjectName(Parameters::kDbImagesCompressed().c_str());
 	_ui->checkBox_dbInMemory->setObjectName(Parameters::kDbSqlite3InMemory().c_str());
 	_ui->spinBox_dbCacheSize->setObjectName(Parameters::kDbSqlite3CacheSize().c_str());
 	_ui->comboBox_dbJournalMode->setObjectName(Parameters::kDbSqlite3JournalMode().c_str());
+	_ui->comboBox_dbSynchronous->setObjectName(Parameters::kDbSqlite3Synchronous().c_str());
+	_ui->comboBox_dbTempStore->setObjectName(Parameters::kDbSqlite3TempStore().c_str());
 
 	// Create hypotheses
 	_ui->general_doubleSpinBox_hardThr->setObjectName(Parameters::kRtabmapLoopThr().c_str());
@@ -142,8 +166,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	//Bayes
 	_ui->general_doubleSpinBox_vp->setObjectName(Parameters::kBayesVirtualPlacePriorThr().c_str());
 	_ui->lineEdit_bayes_predictionLC->setObjectName(Parameters::kBayesPredictionLC().c_str());
+	_ui->checkBox_bayes_predictionNonNullActionsOnly->setObjectName(Parameters::kBayesPredictionOnNonNullActionsOnly().c_str());
+	connect(_ui->lineEdit_bayes_predictionLC, SIGNAL(textChanged(const QString &)), this, SLOT(updatePredictionPlot()));
 
 	//Keypoint-based
+	_ui->checkBox_kp_publishKeypoints->setObjectName(Parameters::kKpPublishKeypoints().c_str());
 	_ui->comboBox_dictionary_strategy->setObjectName(Parameters::kKpNNStrategy().c_str());
 	_ui->checkBox_dictionary_incremental->setObjectName(Parameters::kKpIncrementalDictionary().c_str());
 	_ui->comboBox_detector_strategy->setObjectName(Parameters::kKpDetectorStrategy().c_str());
@@ -160,7 +187,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_kp_tfIdfLikelihoodUsed->setObjectName(Parameters::kKpTfIdfLikelihoodUsed().c_str());
 	_ui->checkBox_kp_tfIdfNormalized->setObjectName(Parameters::kKpTfIdfNormalized().c_str());
 	_ui->checkBox_kp_parallelized->setObjectName(Parameters::kKpParallelized().c_str());
-	_ui->checkBox_kp_sensorStateOnly->setObjectName(Parameters::kKpSensorStateOnly().c_str());
 	_ui->lineEdit_kp_roi->setObjectName(Parameters::kKpRoiRatios().c_str());
 	_ui->lineEdit_dictionaryPath->setObjectName(Parameters::kKpDictionaryPath().c_str());
 	connect(_ui->toolButton_dictionaryPath, SIGNAL(clicked()), this, SLOT(changeDictionaryPath()));
@@ -184,6 +210,20 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->sift_doubleSpinBox_Thr->setObjectName(Parameters::kSIFTThreshold().c_str());
 	_ui->sift_doubleSpinBox_edgeThr->setObjectName(Parameters::kSIFTEdgeThreshold().c_str());
 
+	//FAST detector
+	_ui->fast_spinBox_Threshold->setObjectName(Parameters::kFASTThreshold().c_str());
+	_ui->fast_checkBox_nonmaxSuppression->setObjectName(Parameters::kFASTNonmaxSuppression().c_str());
+
+	//BRIEF descriptor
+	_ui->brief_spinBox_size->setObjectName(Parameters::kBRIEFSize().c_str());
+
+	// Sensorimotor
+	_ui->checkBox_publishMasks->setObjectName(Parameters::kSMPublishMasks().c_str());
+	_ui->checkBox_motionMaskUsed->setObjectName(Parameters::kSMMotionMaskUsed().c_str());
+	_ui->checkBox_logpolar->setObjectName(Parameters::kSMLogPolarUsed().c_str());
+	_ui->checkBox_votingScheme->setObjectName(Parameters::kSMVotingSchemeUsed().c_str());
+	_ui->sm_colorTable_comboBox->setObjectName(Parameters::kSMColorTable().c_str());
+
 	// verifyHypotheses
 	_ui->comboBox_vh_strategy->setObjectName(Parameters::kRtabmapVhStrategy().c_str());
 	_ui->vh_doubleSpinBox_similarity->setObjectName(Parameters::kVhSimilarity().c_str());
@@ -203,7 +243,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stackedWidget->setCurrentIndex(0);
 	this->setupTreeView();
 	connect(_ui->treeView, SIGNAL(clicked(QModelIndex)), this, SLOT(clicked(QModelIndex)));
-	_ui->treeView->expandToDepth(1);
 
 	_obsoletePanels = kPanelAll;
 
@@ -230,25 +269,50 @@ void PreferencesDialog::init()
 
 void PreferencesDialog::setupTreeView()
 {
-	QFile modelFile(":/resources/PreferencesModel.txt");
-	if(modelFile.open(QIODevice::ReadOnly | QIODevice::Text))
+	int currentIndex = 0;
+	if(_indexModel)
 	{
-		_indexModel = new QStandardItemModel(this);
-		// Parse the model
-		QList<QGroupBox*> boxes = this->getGroupBoxes();
-		QStandardItem * parentItem = _indexModel->invisibleRootItem();
-		int index = 0;
-		this->parseModel(boxes, parentItem, 0, index); // recursive method
-		if(index != _ui->stackedWidget->count())
+		currentIndex = _indexModel->itemFromIndex(_ui->treeView->currentIndex())->data().toInt();
+		_ui->treeView->setModel(0);
+		delete _indexModel;
+	}
+	_indexModel = new QStandardItemModel(this);
+	// Parse the model
+	QList<QGroupBox*> boxes = this->getGroupBoxes();
+	if(_ui->radioButton_basic->isChecked())
+	{
+		boxes = boxes.mid(0,3);
+	}
+	else // Advanced
+	{
+		boxes.removeAt(2);
+	}
+
+	QStandardItem * parentItem = _indexModel->invisibleRootItem();
+	int index = 0;
+	this->parseModel(boxes, parentItem, 0, index); // recursive method
+	if(_ui->radioButton_advanced->isChecked() && index != _ui->stackedWidget->count()-1)
+	{
+		ULOGGER_ERROR("The tree model is not the same size of the stacked widgets...%d vs %d advanced stacks", index, _ui->stackedWidget->count()-1);
+	}
+	if(_ui->radioButton_basic->isChecked())
+	{
+		if(currentIndex >= 2)
 		{
-			ULOGGER_ERROR("The tree model is not the same size of the stacked widgets...%d vs %d stacks", index, _ui->stackedWidget->count());
+			_ui->stackedWidget->setCurrentIndex(2);
+			currentIndex = 2;
 		}
-		_ui->treeView->setModel(_indexModel);
 	}
-	else
+	else // Advanced
 	{
-		ULOGGER_ERROR("Can't open resource file \"PreferencesModel.txt\"");
+		if(currentIndex == 2)
+		{
+			_ui->stackedWidget->setCurrentIndex(3);
+		}
 	}
+	_ui->treeView->setModel(_indexModel);
+	_ui->treeView->setCurrentIndex(_indexModel->index(currentIndex, 0));
+	_ui->treeView->expandToDepth(1);
 }
 
 // recursive...
@@ -263,20 +327,19 @@ bool PreferencesDialog::parseModel(QList<QGroupBox*> & boxes, QStandardItem * pa
 	QStandardItem * currentItem = 0;
 	while(absoluteIndex < boxes.size())
 	{
+		QString objectName = boxes.at(absoluteIndex)->objectName();
 		QString title = boxes.at(absoluteIndex)->title();
 		bool ok = false;
-		int lvl = QString(title.at(0)).toInt(&ok);
+		int lvl = QString(objectName.at(objectName.size()-1)).toInt(&ok);
 		if(!ok)
 		{
-			ULOGGER_ERROR("Error while parsing the first number of the QGroupBox title, the first character must be the number in the hierarchy");
+			ULOGGER_ERROR("Error while parsing the first number of the QGroupBox title (%s), the first character must be the number in the hierarchy", title.toStdString().c_str());
 			return false;
 		}
 
 
 		if(lvl == currentLevel)
 		{
-			title.remove(0, 1);
-			boxes.at(absoluteIndex)->setTitle(title);
 			QStandardItem * item = new QStandardItem(title);
 			item->setData(absoluteIndex);
 			currentItem = item;
@@ -354,7 +417,12 @@ void PreferencesDialog::clicked(const QModelIndex &index)
 	QStandardItem * item = _indexModel->itemFromIndex(index);
 	if(item)
 	{
-		_ui->stackedWidget->setCurrentIndex(item->data().toInt());
+		int index = item->data().toInt();
+		if(_ui->radioButton_advanced->isChecked() && index >= 2)
+		{
+			++index;
+		}
+		_ui->stackedWidget->setCurrentIndex(index);
 	}
  }
 
@@ -370,7 +438,7 @@ void PreferencesDialog::closeDialog ( QAbstractButton * button )
 		break;
 
 	case QDialogButtonBox::AcceptRole:
-		if(_obsoletePanels & kPanelAll || _parameters.size())
+		if((_obsoletePanels & kPanelAll) || _parameters.size())
 		{
 			if(validateForm())
 			{
@@ -415,7 +483,7 @@ void PreferencesDialog::resetSettings(int panelNumber)
 	QList<QGroupBox*> boxes = this->getGroupBoxes();
 	if(panelNumber >= 0 && panelNumber < boxes.size())
 	{
-		if(boxes.at(panelNumber)->objectName() == "groupBox_generalSettingsGui")
+		if(boxes.at(panelNumber)->objectName() == "groupBox_generalSettingsGui0")
 		{
 			_ui->general_checkBox_imagesKept->setChecked(DEFAULT_GUI_IMAGES_KEPT);
 			_ui->comboBox_loggerLevel->setCurrentIndex(DEFAULT_LOGGER_LEVEL);
@@ -423,12 +491,22 @@ void PreferencesDialog::resetSettings(int panelNumber)
 			_ui->comboBox_loggerPauseLevel->setCurrentIndex(DEFAULT_LOGGER_PAUSE_LEVEL);
 			_ui->checkBox_logger_printTime->setChecked(DEFAULT_LOGGER_PRINT_TIME);
 		}
-		else if(boxes.at(panelNumber)->objectName() == "groupBox_source")
+		else if(boxes.at(panelNumber)->objectName() == "groupBox_source0")
 		{
 			_ui->general_doubleSpinBox_imgRate->setValue(1.0);
 			_ui->source_spinBox_imgWidth->setValue(0);
 			_ui->source_spinBox_imgheight->setValue(0);
 			_ui->general_checkBox_autoRestart->setChecked(false);
+			_ui->general_checkBox_cameraKeypoints->setChecked(false);
+		}
+		else if(boxes.at(panelNumber)->objectName() == "groupBox_rtabmap_basic0")
+		{
+			_ui->general_doubleSpinBox_timeThr_2->setValue(Parameters::defaultRtabmapTimeThr());
+			_ui->general_doubleSpinBox_hardThr_2->setValue(Parameters::defaultRtabmapLoopThr());
+			_ui->surf_doubleSpinBox_hessianThr_2->setValue(Parameters::defaultSURFHessianThreshold());
+			_ui->general_spinBox_imagesBufferSize_2->setValue(Parameters::defaultRtabmapSMStateBufferSize());
+			_ui->general_checkBox_publishStats_2->setChecked(Parameters::defaultRtabmapPublishStats());
+			_ui->lineEdit_workingDirectory_2->setText(Parameters::defaultRtabmapWorkingDirectory().c_str());
 		}
 		else
 		{
@@ -442,11 +520,6 @@ void PreferencesDialog::resetSettings(int panelNumber)
 				{
 					this->setParameter(key, defaults.at(key));
 				}
-			}
-
-			if(boxes.at(panelNumber)->findChild<QLineEdit*>(_ui->lineEdit_bayes_predictionLC->objectName()))
-			{
-				this->setupPredictionPanel();
 			}
 
 			if(boxes.at(panelNumber)->findChild<QLineEdit*>(_ui->lineEdit_kp_roi->objectName()))
@@ -529,6 +602,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.beginGroup("Camera");
 	_ui->general_doubleSpinBox_imgRate->setValue(settings.value("imgRate", _ui->general_doubleSpinBox_imgRate->value()).toDouble());
 	_ui->general_checkBox_autoRestart->setChecked(settings.value("autoRestart", _ui->general_checkBox_autoRestart->isChecked()).toBool());
+	_ui->general_checkBox_cameraKeypoints->setChecked(settings.value("cameraKeypoints", _ui->general_checkBox_cameraKeypoints->isChecked()).toBool());
 	_ui->source_comboBox_type->setCurrentIndex(settings.value("type", _ui->source_comboBox_type->currentIndex()).toInt());
 	_ui->source_spinBox_imgWidth->setValue(settings.value("imgWidth",_ui->source_spinBox_imgWidth->value()).toInt());
 	_ui->source_spinBox_imgheight->setValue(settings.value("imgHeight",_ui->source_spinBox_imgheight->value()).toInt());
@@ -549,7 +623,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	//database group
 	settings.beginGroup("database");
 	_ui->source_database_lineEdit_path->setText(settings.value("path",_ui->source_database_lineEdit_path->text()).toString());
-	_ui->source_database_checkBox_ignoreChildren->setChecked(settings.value("ignoreChildren",_ui->source_database_checkBox_ignoreChildren->isChecked()).toBool());
+	_ui->source_database_checkBox_loadActions->setChecked(settings.value("loadActions",_ui->source_database_checkBox_loadActions->isChecked()).toBool());
 	settings.endGroup(); // usbDevice
 	settings.endGroup(); // Camera
 }
@@ -669,6 +743,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath)
 
 	settings.setValue("imgRate", 		_ui->general_doubleSpinBox_imgRate->value());
 	settings.setValue("autoRestart", 	_ui->general_checkBox_autoRestart->isChecked());
+	settings.setValue("cameraKeypoints", _ui->general_checkBox_cameraKeypoints->isChecked());
 	settings.setValue("type", 			_ui->source_comboBox_type->currentIndex());
 	settings.setValue("imgWidth", 		_ui->source_spinBox_imgWidth->value());
 	settings.setValue("imgHeight", 		_ui->source_spinBox_imgheight->value());
@@ -689,7 +764,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath)
 	//database group
 	settings.beginGroup("database");
 	settings.setValue("path", 			_ui->source_database_lineEdit_path->text());
-	settings.setValue("ignoreChildren", _ui->source_database_checkBox_ignoreChildren->isChecked());
+	settings.setValue("loadActions", _ui->source_database_checkBox_loadActions->isChecked());
 	settings.endGroup(); //usbDevice
 
 	settings.endGroup(); // Camera
@@ -730,7 +805,7 @@ void PreferencesDialog::writeCoreSettings(const QString & filePath)
 			}
 			else if(check)
 			{
-				settings.setValue(obj->objectName(), uBool2str(check->isChecked()).c_str());
+				settings.setValue(obj->objectName(), uBool2Str(check->isChecked()).c_str());
 			}
 			else if(lineEdit)
 			{
@@ -783,7 +858,7 @@ void PreferencesDialog::readSettingsEnd()
 	_progressDialog->setValue(1);
 	_progressDialog->setLabelText(tr("Reading GUI settings..."));
 
-	this->setupPredictionPanel();
+	this->updatePredictionPlot();
 	this->setupKpRoiPanel();
 
 	_progressDialog->setValue(2); // this will make closing...
@@ -1038,53 +1113,95 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 {
 	if(object)
 	{
-		const QComboBox * comboBox = qobject_cast<const QComboBox*>(object);
-		if(comboBox)
-		{
-			// Add related panels to parameters
-			if(comboBox == _ui->comboBox_vh_strategy)
-			{
-				if(value == 0) // 0 none
-				{
-					// No panel related...
-				}
-				else if(value == 1) // 1 similarity
-				{
-					this->addParameters(_ui->groupBox_vh_similarity);
-				}
-				else if(value == 2) // 2 epipolar
-				{
-					this->addParameters(_ui->groupBox_vh_epipolar);
-				}
-			}
-			else if(comboBox == _ui->comboBox_detector_strategy)
-			{
-				if(value == 0) // 0 surf
-				{
-					this->addParameters(_ui->groupBox_detector_surf);
-				}
-				else if(value == 1) // 1 star
-				{
-					this->addParameters(_ui->groupBox_detector_star);
-				}
-				else if(value == 2) // 2 sift
-				{
-					this->addParameters(_ui->groupBox_detector_sift);
-				}
-			}
-			else if(comboBox == _ui->comboBox_descriptor_strategy)
-			{
-				this->addParameters(_ui->groupBox_surfDescriptor);
-			}
-		}
 		// Make sure the value is inserted, check if the same key already exists
 		rtabmap::ParametersMap::iterator iter = _parameters.find(object->objectName().toStdString());
 		if(iter != _parameters.end())
 		{
 			_parameters.erase(iter);
 		}
-		_parameters.insert(rtabmap::ParametersPair(object->objectName().toStdString(), QString::number(value).toStdString()));
-		//ULOGGER_DEBUG("PreferencesDialog::addParameter(object, int) Added [\"%s\",\"%s\"]", object->objectName().toStdString().c_str(), QString::number(value).toStdString().c_str());
+
+		const QComboBox * comboBox = qobject_cast<const QComboBox*>(object);
+		const QSpinBox * spinbox = qobject_cast<const QSpinBox*>(object);
+		const QCheckBox * checkbox = qobject_cast<const QCheckBox*>(object);
+		if(comboBox || spinbox)
+		{
+			if(comboBox)
+			{
+				// Add related panels to parameters
+				if(comboBox == _ui->comboBox_vh_strategy)
+				{
+					if(value == 0) // 0 none
+					{
+						// No panel related...
+					}
+					else if(value == 1) // 1 similarity
+					{
+						this->addParameters(_ui->groupBox_vh_similarity2);
+					}
+					else if(value == 2) // 2 epipolar
+					{
+						this->addParameters(_ui->groupBox_vh_epipolar2);
+					}
+				}
+				else if(comboBox == _ui->comboBox_detector_strategy)
+				{
+					if(value == 0) // 0 surf
+					{
+						this->addParameters(_ui->groupBox_detector_surf2);
+					}
+					else if(value == 1) // 1 star
+					{
+						this->addParameters(_ui->groupBox_detector_star2);
+					}
+					else if(value == 2) // 2 sift
+					{
+						this->addParameters(_ui->groupBox_detector_sift2);
+					}
+					else if(value == 3) // 3 fast
+					{
+						this->addParameters(_ui->groupBox_detector_fast2);
+					}
+				}
+				else if(comboBox == _ui->comboBox_descriptor_strategy)
+				{
+					if(value == 0) // 0 surf
+					{
+						this->addParameters(_ui->groupBox_descriptor_surf2);
+					}
+					else if(value == 3) // 1 sift
+					{
+						// no panel
+					}
+					else if(value == 5) // 2 brief
+					{
+						this->addParameters(_ui->groupBox_descriptor_brief2);
+					}
+				}
+				else if(comboBox == _ui->comboBox_signatureType)
+				{
+					if(value == 0) // 0 keypoint
+					{
+						this->addParameters(_ui->groupBox_signature_keypoint1);
+					}
+					else if(value == 1) // 1 sensorimotor
+					{
+						this->addParameters(_ui->groupBox_signature_sensorimotor1);
+					}
+				}
+			}
+			// Add parameter
+			_parameters.insert(rtabmap::ParametersPair(object->objectName().toStdString(), QString::number(value).toStdString()));
+		}
+		else if(checkbox)
+		{
+			// Add parameter
+			_parameters.insert(rtabmap::ParametersPair(object->objectName().toStdString(), uBool2Str(value)));
+		}
+		else
+		{
+			UWARN("Undefined object \"%s\"", object->objectName().toStdString().c_str());
+		}
+
 	}
 	else
 	{
@@ -1214,7 +1331,6 @@ QList<QGroupBox*> PreferencesDialog::getGroupBoxes()
 		if(gb)
 		{
 			boxes.append(gb);
-			this->addParameters(gb);
 		}
 		else
 		{
@@ -1224,133 +1340,26 @@ QList<QGroupBox*> PreferencesDialog::getGroupBoxes()
 	return boxes;
 }
 
-void PreferencesDialog::setupPredictionPanel()
+void PreferencesDialog::updatePredictionPlot()
 {
-	QString prediction = _ui->lineEdit_bayes_predictionLC->text();
-	QStringList values = prediction.split(' ');
-	if(values.size() < 2)
-	{
-		ULOGGER_ERROR("The prediction string is not valid (prediction=\"%s\",size=%d)", prediction.toStdString().c_str(), values.size());
-		return;
-	}
+	QStringList values = _ui->lineEdit_bayes_predictionLC->text().split(' ');
 
-	//Signals
-	connect(_ui->spinBox_bayes_neighbors, SIGNAL(valueChanged(int)), this, SLOT(updatePredictionLCSliders()));
-
-	//Set values
-	_ui->spinBox_bayes_neighbors->setValue(values.size()-2);
-	this->updatePredictionLCSliders();
-	if(_predictionLCSliders.size() != values.size())
+	QVector<float> dataX((values.size()-2)*2 + 1);
+	QVector<float> dataY((values.size()-2)*2 + 1);
+	double value;
+	double sum = 0;
+	int lvl = 1;
+	bool ok = false;
+	bool error = false;
+	int loopClosureIndex = (dataX.size()-1)/2;
+	for(int i=0; i<values.size(); ++i)
 	{
-		ULOGGER_ERROR("The sliders list were not updated");
-		return;
-	}
-	for(int i=0; i<_predictionLCSliders.size(); ++i)
-	{
-		bool ok;
-		_predictionLCSliders.at(i)->setValue(int(QString(values.at(i)).toFloat(&ok) * 100));
+		value = values.at(i).toDouble(&ok);
 		if(!ok)
 		{
-			ULOGGER_WARN("conversion failed to float with string \"%s\"", values.at(i).toStdString().c_str());
+			UERROR("Error parsing prediction : %s", values.at(i).toStdString().c_str());
+			error = true;
 		}
-	}
-	_predictionPanelInitialized = true;
-	this->updatePredictionLC();
-}
-
-void PreferencesDialog::updatePredictionLCSliders()
-{
-	int neighborsCount = _ui->spinBox_bayes_neighbors->value();
-	if(neighborsCount < 0 || neighborsCount>9)
-	{
-		ULOGGER_ERROR("neighborsCount not valid (=%d)", neighborsCount);
-		return;
-	}
-
-	if(_predictionLCSliders.size() == 1)
-	{
-		_predictionLCSliders.clear(); // must be pair...
-		ULOGGER_WARN("The list of sliders is supposed to be pair");
-	}
-
-	if(_predictionLCSliders.size() == 0)
-	{
-		_predictionLCSliders.append(_ui->verticalSlider_prediction_vp);
-		_predictionLCSliders.append(_ui->verticalSlider_prediction_lp);
-		connect(_ui->verticalSlider_prediction_vp, SIGNAL(valueChanged(int)), this, SLOT(updatePredictionLC()));
-		connect(_ui->verticalSlider_prediction_lp, SIGNAL(valueChanged(int)), this, SLOT(updatePredictionLC()));
-	}
-
-	// If we don't have enough sliders
-	while((_predictionLCSliders.size()-2) < neighborsCount)
-	{
-		int neighbor = _predictionLCSliders.size();
-		QVBoxLayout * vLayout = 0;
-		QHBoxLayout * hLayout = 0;
-		QSlider * slider = 0;
-		QLabel * value = 0;
-		QLabel * title = 0;
-
-		slider = new QSlider(Qt::Vertical, this);
-
-		title = new QLabel(QString("l%1").arg(neighbor-1), slider);
-
-		title->setAlignment(Qt::AlignCenter);
-		value = new QLabel(slider);
-		value->setAlignment(Qt::AlignCenter);
-		//layout
-		vLayout = new QVBoxLayout();
-		vLayout->addWidget(title);
-		hLayout = new QHBoxLayout();
-		hLayout->addWidget(slider);
-		vLayout->addLayout(hLayout);
-		vLayout->addWidget(value);
-
-		_ui->horizontalLayout_prior_NP->insertLayout(-1, vLayout);
-
-		_predictionLCSliders.push_back(slider);
-		connect(slider, SIGNAL(valueChanged(int)), this, SLOT(updatePredictionLC()));
-		connect(slider, SIGNAL(valueChanged(int)), value, SLOT(setNum(int)));
-	}
-
-	// If we have too much sliders
-	while((_predictionLCSliders.size()-2) > neighborsCount)
-	{
-		// delete layouts and items
-		delete _ui->horizontalLayout_prior_NP->itemAt(_ui->horizontalLayout_prior_NP->count()-1)->layout()->takeAt(0)->widget(); //label
-		delete _ui->horizontalLayout_prior_NP->itemAt(_ui->horizontalLayout_prior_NP->count()-1)->layout()->itemAt(0)->layout()->takeAt(0)->widget(); //slider
-		delete _ui->horizontalLayout_prior_NP->itemAt(_ui->horizontalLayout_prior_NP->count()-1)->layout()->takeAt(0)->layout(); //slider hlayout
-		delete _ui->horizontalLayout_prior_NP->itemAt(_ui->horizontalLayout_prior_NP->count()-1)->layout()->takeAt(0)->widget(); //spinbox
-		delete _ui->horizontalLayout_prior_NP->takeAt(_ui->horizontalLayout_prior_NP->count()-1);
-		// remove the last slider
-		_predictionLCSliders.removeLast();
-	}
-
-	this->updatePredictionLC();
-}
-
-void PreferencesDialog::updatePredictionLC()
-{
-	if(!_predictionPanelInitialized)
-	{
-		return;
-	}
-	if(_predictionLCSliders.size() < 2)
-	{
-		ULOGGER_ERROR("Not enough slider in the list (%d)", _predictionLCSliders.size());
-		return;
-	}
-
-	QString values;
-	QVector<float> dataX((_predictionLCSliders.size()-2)*2 + 1);
-	QVector<float> dataY((_predictionLCSliders.size()-2)*2 + 1);
-	float value;
-	float sum = 0;
-	int lvl = 1;
-	int loopClosureIndex = (dataX.size()-1)/2;
-	for(int i=0; i<_predictionLCSliders.size(); ++i)
-	{
-		value = (float(_predictionLCSliders.at(i)->value()))/100;
 		sum+=value;
 		if(i==0)
 		{
@@ -1368,22 +1377,19 @@ void PreferencesDialog::updatePredictionLC()
 			dataY[loopClosureIndex+lvl] = value;
 			dataX[loopClosureIndex+lvl] = lvl;
 			++lvl;
-			sum+=value; // double sum
-		}
-		values.append(QString::number(value));
-		if(i+1 < _predictionLCSliders.size())
-		{
-			values.append(' ');
 		}
 	}
 
 	_ui->label_prediction_sum->setNum(sum);
-	if(sum<=0 || sum>1.001)
+	if(error)
 	{
 		_ui->label_prediction_sum->setText(QString("<font color=#FF0000>") + _ui->label_prediction_sum->text() + "</font>");
-		ULOGGER_WARN("The prediction is not valid (the sum must be between >0 && <=1) (sum=%f)", sum);
 	}
-	else if(sum == 1)
+	else if(sum == 1.0)
+	{
+		_ui->label_prediction_sum->setText(QString("<font color=#00FF00>") + _ui->label_prediction_sum->text() + "</font>");
+	}
+	else if(sum > 1.0)
 	{
 		_ui->label_prediction_sum->setText(QString("<font color=#FFa500>") + _ui->label_prediction_sum->text() + "</font>");
 	}
@@ -1394,7 +1400,6 @@ void PreferencesDialog::updatePredictionLC()
 
 	_ui->predictionPlot->removeCurves();
 	_ui->predictionPlot->addCurve(new PlotCurve("Prediction", dataX, dataY, _ui->predictionPlot));
-	_ui->lineEdit_bayes_predictionLC->setText(values);
 }
 
 void PreferencesDialog::setupKpRoiPanel()
@@ -1504,6 +1509,10 @@ bool PreferencesDialog::getGeneralAutoRestart() const
 {
 	return _ui->general_checkBox_autoRestart->isChecked();
 }
+bool PreferencesDialog::getGeneralCameraKeypoints() const
+{
+	return _ui->general_checkBox_cameraKeypoints->isChecked();
+}
 int PreferencesDialog::getSourceType() const
 {
 	return _ui->source_comboBox_type->currentIndex();
@@ -1544,9 +1553,9 @@ QString PreferencesDialog::getSourceDatabasePath() const
 {
 	return _ui->source_database_lineEdit_path->text();
 }
-bool PreferencesDialog::getSourceDatabaseIgnoreChildren() const
+bool PreferencesDialog::getSourceDatabaseLoadActions() const
 {
-	return _ui->source_database_checkBox_ignoreChildren->isChecked();
+	return _ui->source_database_checkBox_loadActions->isChecked();
 }
 
 double PreferencesDialog::getLoopThr() const
@@ -1566,7 +1575,7 @@ bool PreferencesDialog::isImagesKept() const
 {
 	return _ui->general_checkBox_imagesKept->isChecked();
 }
-double PreferencesDialog::getTimeLimit() const
+float PreferencesDialog::getTimeLimit() const
 {
 	return _ui->general_doubleSpinBox_timeThr->value();
 }
@@ -1642,7 +1651,7 @@ void PreferencesDialog::setAutoRestart(bool value)
 	}
 }
 
-void PreferencesDialog::setTimeLimit(double value)
+void PreferencesDialog::setTimeLimit(float value)
 {
 	ULOGGER_DEBUG("timeLimit=%fs", value);
 	if(_ui->general_doubleSpinBox_timeThr->value() != value)

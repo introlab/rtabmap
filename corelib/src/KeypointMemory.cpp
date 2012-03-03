@@ -19,7 +19,7 @@
 
 #include "KeypointMemory.h"
 #include "VWDictionary.h"
-#include "Signature.h"
+#include "rtabmap/core/Signature.h"
 #include "rtabmap/core/DBDriver.h"
 #include "utilite/UtiLite.h"
 #include "rtabmap/core/Parameters.h"
@@ -43,7 +43,6 @@ KeypointMemory::KeypointMemory(const ParametersMap & parameters) :
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
 	_parallelized(Parameters::defaultKpParallelized()),
-	_sensorStateOnly(Parameters::defaultKpSensorStateOnly()),
 	_tfIdfNormalized(Parameters::defaultKpTfIdfNormalized())
 {
 	_vwd = new VWDictionary(parameters);
@@ -95,11 +94,6 @@ void KeypointMemory::parseParameters(const ParametersMap & parameters)
 		_parallelized = uStr2Bool((*iter).second.c_str());
 	}
 
-	if((iter=parameters.find(Parameters::kKpSensorStateOnly())) != parameters.end())
-	{
-		_sensorStateOnly = uStr2Bool((*iter).second.c_str());
-	}
-
 	if((iter=parameters.find(Parameters::kKpTfIdfNormalized())) != parameters.end())
 	{
 		_tfIdfNormalized = uStr2Bool((*iter).second.c_str());
@@ -133,6 +127,9 @@ void KeypointMemory::parseParameters(const ParametersMap & parameters)
 		case kDetectorSift:
 			_keypointDetector = new SIFTDetector(parameters);
 			break;
+		case kDetectorFast:
+			_keypointDetector = new FASTDetector(parameters);
+			break;
 		case kDetectorSurf:
 		default:
 			_keypointDetector = new SURFDetector(parameters);
@@ -160,20 +157,17 @@ void KeypointMemory::parseParameters(const ParametersMap & parameters)
 		}
 		switch(descriptorStrategy)
 		{
-		case kDescriptorColorSurf:
-			// see decorator pattern...
-			_keypointDescriptor = new ColorDescriptor(parameters, new SURFDescriptor(parameters));
-			break;
-		case kDescriptorLaplacianSurf:
-			// see decorator pattern...
-			_keypointDescriptor = new LaplacianDescriptor(parameters, new SURFDescriptor(parameters));
-			break;
 		case kDescriptorSift:
 			_keypointDescriptor = new SIFTDescriptor(parameters);
 			break;
-		case kDescriptorHueSurf:
-			// see decorator pattern...
-			_keypointDescriptor = new HueDescriptor(parameters, new SURFDescriptor(parameters));
+		case kDescriptorBrief:
+			_keypointDescriptor = new BRIEFDescriptor(parameters);
+			break;
+		case kDescriptorColor:
+			_keypointDescriptor = new ColorDescriptor(parameters);
+			break;
+		case kDescriptorHue:
+			_keypointDescriptor = new HueDescriptor(parameters);
 			break;
 		case kDescriptorSurf:
 		default:
@@ -207,7 +201,7 @@ KeypointMemory::DetectorStrategy KeypointMemory::detectorStrategy() const
 
 bool KeypointMemory::init(const std::string & dbDriverName, const std::string & dbUrl, bool dbOverwritten, const ParametersMap & parameters)
 {
-	ULOGGER_DEBUG("KeypointMemory::init()");
+	UDEBUG("");
 	// This will open a connection to the database,
 	// this calls also clear()
 	bool success = Memory::init(dbDriverName, dbUrl, dbOverwritten, parameters);
@@ -217,8 +211,8 @@ bool KeypointMemory::init(const std::string & dbDriverName, const std::string & 
 	{
 		UEventsManager::post(new RtabmapEventInit(std::string("Loading dictionary...")));
 		_dbDriver->load(_vwd);
-		ULOGGER_DEBUG("%d words loaded!", _vwd->getVisualWords().size());
-		UEventsManager::post(new RtabmapEventInit(std::string("Loading dictionary, done! (") + uNumber2str(int(_vwd->getVisualWords().size())) + " loaded)"));
+		UDEBUG("%d words loaded!", _vwd->getVisualWords().size());
+		UEventsManager::post(new RtabmapEventInit(std::string("Loading dictionary, done! (") + uNumber2Str(int(_vwd->getVisualWords().size())) + " loaded)"));
 	}
 
 	// Enable loaded signatures
@@ -290,7 +284,7 @@ void KeypointMemory::clear()
 
 	if(_dbDriver)
 	{
-		_dbDriver->kill();
+		_dbDriver->join(true);
 		cleanUnusedWords();
 		_dbDriver->emptyTrashes();
 
@@ -302,7 +296,7 @@ void KeypointMemory::clear()
 			// all signatures with the old word to the active one...
 			//_dbDriver->changeWordsRef(_wordRefsToChange);
 			//remove old values
-			_dbDriver->deleteUnreferencedWords();
+			//_dbDriver->deleteUnreferencedWords();
 		//	_dbDriver->commit();
 		//}
 		ULOGGER_DEBUG("");
@@ -327,40 +321,6 @@ void KeypointMemory::preUpdate()
 		_vwd->update();
 	}
 }
-
-
-// TODO Really useful?
-/*void KeypointMemory::postUpdate()
-{
-	ULOGGER_DEBUG("");
-	// Detect if the last signature is a bad one. If the signature has less than 15% of
-	// the average words/signature.
-	KeypointSignature * ss = dynamic_cast<KeypointSignature *>(this->_getLastSignature());
-
-	float ratio = 0;
-	if(ss)
-	{
-		ratio = float(uUniqueKeys(ss->getWords()).size()) / float(ss->getWords().size());
-	}
-
-	int nbCommonWords = 0;
-	ULOGGER_DEBUG("_workingMem.size() = %d, _stMem.size()=%d", _workingMem.size(), _stMem.size());
-	int treeSize= _workingMem.size() + _stMem.size();//Don't count the virtual place
-	if(treeSize > 0)
-	{
-		nbCommonWords = _vwd->getTotalActiveReferences() / treeSize;
-	}
-
-	ULOGGER_DEBUG("ratio=%f, treeSize=%d, nbCommonWords=%d", ratio, treeSize, nbCommonWords);
-
-	if(//(ratio < _badSignRatio) ||
-	   (nbCommonWords && ss && ss->getWords().size() < _badSignRatio * nbCommonWords))
-	{
-		ULOGGER_WARN("id %d is a bad signature", ss->id());
-		this->disableWordsRef(ss->id());
-		ss->removeAllWords();
-	}
-}*/
 
 // NON class method! only used in merge()
 std::multimap<int, cv::KeyPoint> getMostDescriptiveWords(const std::multimap<int, cv::KeyPoint> & words, int max, const std::set<int> & ignoredIds)
@@ -398,49 +358,57 @@ std::multimap<int, cv::KeyPoint> getMostDescriptiveWords(const std::multimap<int
 	return mostDescriptiveWords;
 }
 
-void KeypointMemory::merge(const Signature * from, Signature * to, MergingStrategy s)
+std::multimap<int, cv::KeyPoint> KeypointMemory::getWords(int signatureId) const
 {
-	// The signatures must be KeypointSignature
-	const KeypointSignature * sFrom = dynamic_cast<const KeypointSignature *>(from);
-	KeypointSignature * sTo = dynamic_cast<KeypointSignature *>(to);
-	UTimer timer;
-	timer.start();
-	if(sFrom && sTo)
+	std::multimap<int, cv::KeyPoint> words;
+	if(signatureId>0)
 	{
-		if(s == kUseOnlyFromMerging)
+		const Signature * s = this->getSignature(signatureId);
+		if(s)
 		{
-			this->disableWordsRef(sTo->id());
-			sTo->setWords(sFrom->getWords());
+			const KeypointSignature * ks = dynamic_cast<const KeypointSignature*>(s);
+			if(ks)
+			{
+				words = ks->getWords();
+			}
+		}
+		else if(_dbDriver)
+		{
+			std::list<int> ids;
+			ids.push_back(signatureId);
+			std::list<Signature *> signatures;
+			_dbDriver->loadKeypointSignatures(ids, signatures);
+			if(signatures.size())
+			{
+				const KeypointSignature * ks = dynamic_cast<const KeypointSignature*>(signatures.front());
+				if(ks)
+				{
+					words = ks->getWords();
+				}
+			}
+			for(std::list<Signature *>::iterator iter = signatures.begin(); iter!=signatures.end(); ++iter)
+			{
+				delete *iter;
+			}
+		}
+	}
+	return words;
+}
 
-			std::list<int> id;
-			id.push_back(sTo->id());
-			this->enableWordsRef(id);
-			// Set old image to new merged signature
-			sTo->setImage(sFrom->getImage());
-		}
-		else if(s == kUseOnlyDestMerging)
-		{
-			// do nothing... already "merged"
-		}
+std::map<int, float> KeypointMemory::computeLikelihood(const Signature * signature, const std::list<int> & ids, float & maximumScore)
+{
+	if(!_tfIdfLikelihoodUsed)
+	{
+		return Memory::computeLikelihood(signature, ids, maximumScore);
 	}
 	else
 	{
-		ULOGGER_ERROR("Can't merge the signatures because there are not same type.");
-	}
-	ULOGGER_DEBUG("Merging time = %fs", timer.ticks());
-}
-
-std::map<int, float> KeypointMemory::computeLikelihood(const Signature * signature, const std::set<int> & signatureIds) const
-{
-	//return Memory::computeLikelihood(signature, signatureIds);
-
-	// TODO cleanup , old way...
-	if(_tfIdfLikelihoodUsed)
-	{
+		// TODO cleanup , old way...
 		UTimer timer;
 		timer.start();
 		std::map<int, float> likelihood;
 		std::map<int, float> calculatedWordsRatio;
+		maximumScore = 0;
 
 		const KeypointSignature * newSurf = dynamic_cast<const KeypointSignature *>(signature);
 		if(!newSurf)
@@ -448,61 +416,34 @@ std::map<int, float> KeypointMemory::computeLikelihood(const Signature * signatu
 			ULOGGER_ERROR("The signature is not a KeypointSignature");
 			return likelihood; // Must be a KeypointSignature *
 		}
-
-		if(signatureIds.size() == 0)
+		else if(ids.empty())
 		{
-			const std::map<int, int> & wm = this->getWorkingMem();
-			for(std::map<int, int>::const_iterator iter = wm.begin(); iter!=wm.end(); ++iter)
-			{
-				likelihood.insert(likelihood.end(), std::pair<int, float>(iter->first, 0));
-				if(_tfIdfNormalized)
-				{
-					const KeypointSignature * s = dynamic_cast<const KeypointSignature *>(this->getSignature(iter->first));
-					float wordsCountRatio = -1; // default invalid
-					if(s)
-					{
-						if(s->getWords().size() > newSurf->getWords().size())
-						{
-							wordsCountRatio = float(newSurf->getWords().size()) / float(s->getWords().size());
-						}
-						else if(newSurf->getWords().size())
-						{
-							wordsCountRatio = float(s->getWords().size()) / float(newSurf->getWords().size());
-						}
-						calculatedWordsRatio.insert(std::pair<int, float>(iter->first, wordsCountRatio));
-					}
-					else
-					{
-						calculatedWordsRatio.insert(std::pair<int, float>(iter->first, wordsCountRatio));
-					}
-				}
-			}
+			UWARN("ids list is empty");
+			return likelihood;
 		}
-		else
+
+		for(std::list<int>::const_iterator iter = ids.begin(); iter!=ids.end(); ++iter)
 		{
-			for(std::set<int>::const_iterator i=signatureIds.begin(); i != signatureIds.end(); ++i)
+			likelihood.insert(likelihood.end(), std::pair<int, float>(*iter, 0));
+			if(_tfIdfNormalized)
 			{
-				likelihood.insert(likelihood.end(), std::pair<int, float>(*i, 0));
-				if(_tfIdfNormalized)
+				const KeypointSignature * s = dynamic_cast<const KeypointSignature *>(this->getSignature(*iter));
+				float wordsCountRatio = -1; // default invalid
+				if(s)
 				{
-					const KeypointSignature * s = dynamic_cast<const KeypointSignature *>(this->getSignature(*i));
-					float wordsCountRatio = -1; // default invalid
-					if(s)
+					if(s->getWords().size() > newSurf->getWords().size())
 					{
-						if(s->getWords().size() > newSurf->getWords().size())
-						{
-							wordsCountRatio = float(newSurf->getWords().size()) / float(s->getWords().size());
-						}
-						else if(newSurf->getWords().size())
-						{
-							wordsCountRatio = float(s->getWords().size()) / float(newSurf->getWords().size());
-						}
-						calculatedWordsRatio.insert(std::pair<int, float>(*i, wordsCountRatio));
+						wordsCountRatio = float(newSurf->getWords().size()) / float(s->getWords().size());
 					}
-					else
+					else if(newSurf->getWords().size())
 					{
-						calculatedWordsRatio.insert(std::pair<int, float>(*i, wordsCountRatio));
+						wordsCountRatio = float(s->getWords().size()) / float(newSurf->getWords().size());
 					}
+					calculatedWordsRatio.insert(std::pair<int, float>(*iter, wordsCountRatio));
+				}
+				else
+				{
+					calculatedWordsRatio.insert(std::pair<int, float>(*iter, wordsCountRatio));
 				}
 			}
 		}
@@ -518,7 +459,7 @@ std::map<int, float> KeypointMemory::computeLikelihood(const Signature * signatu
 		const VisualWord * vw;
 		float normalizationRatio;
 
-		N = likelihood.size();
+		N = this->getSignatures().size();
 
 		if(N)
 		{
@@ -572,14 +513,11 @@ std::map<int, float> KeypointMemory::computeLikelihood(const Signature * signatu
 					}
 				}
 			}
+			maximumScore = log(N);
 		}
 
-		ULOGGER_DEBUG("compute likelihood... %f s", timer.ticks());
+		ULOGGER_DEBUG("compute likelihood, maximumScore=%f... %f s", maximumScore, timer.ticks());
 		return likelihood;
-	}
-	else
-	{
-		return Memory::computeLikelihood(signature, signatureIds);
 	}
 
 }
@@ -599,11 +537,34 @@ int KeypointMemory::getNi(int signatureId) const
 	return ni;
 }
 
+void KeypointMemory::copyData(const Signature * from, Signature * to)
+{
+	// The signatures must be KeypointSignature
+	const KeypointSignature * sFrom = dynamic_cast<const KeypointSignature *>(from);
+	KeypointSignature * sTo = dynamic_cast<KeypointSignature *>(to);
+	UTimer timer;
+	timer.start();
+	if(sFrom && sTo)
+	{
+		this->disableWordsRef(sTo->id());
+		sTo->setWords(sFrom->getWords());
+
+		std::list<int> id;
+		id.push_back(sTo->id());
+		this->enableWordsRef(id);
+	}
+	else
+	{
+		ULOGGER_ERROR("Can't merge the signatures because there are not same type.");
+	}
+	ULOGGER_DEBUG("Merging time = %fs", timer.ticks());
+}
+
 class PreUpdateThread : public UThreadNode
 {
 public:
 	PreUpdateThread(VWDictionary * vwp) : _vwp(vwp) {}
-	~PreUpdateThread() {}
+	virtual ~PreUpdateThread() {}
 private:
 	void mainLoop() {
 		if(_vwp)
@@ -621,8 +582,8 @@ Signature * KeypointMemory::createSignature(int id, const SMState * smState, boo
 
 	UTimer timer;
 	timer.start();
-	std::list<cv::KeyPoint> keypoints;
-	std::list<std::vector<float> > descriptors;
+	std::vector<cv::KeyPoint> keypoints;
+	cv::Mat descriptors;
 	const IplImage * image = 0;
 
 	if(smState)
@@ -657,7 +618,7 @@ Signature * KeypointMemory::createSignature(int id, const SMState * smState, boo
 		}
 		else
 		{
-			if(smState->getSensors().size() >= _badSignRatio * nbCommonWords)
+			if(smState->getSensors().rows >= _badSignRatio * nbCommonWords)
 			{
 				descriptors = smState->getSensors();
 				keypoints = smState->getKeypoints();
@@ -672,62 +633,29 @@ Signature * KeypointMemory::createSignature(int id, const SMState * smState, boo
 	}
 
 	std::list<int> wordIds;
-	if(descriptors.size())
+	if(descriptors.rows)
 	{
-		unsigned int descriptorSize = descriptors.begin()->size();
 		if(_parallelized)
 		{
-			ULOGGER_DEBUG("time descriptor and memory update (%d of size=%d) = %fs", (int)descriptors.size(), (int)descriptorSize, timer.ticks());
+			ULOGGER_DEBUG("time descriptor and memory update (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, timer.ticks());
 		}
 		else
 		{
-			ULOGGER_DEBUG("time descriptor (%d of size=%d) = %fs", (int)descriptors.size(), (int)descriptorSize, timer.ticks());
+			ULOGGER_DEBUG("time descriptor (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, timer.ticks());
 		}
 
-		//append actuators
-		if(!_sensorStateOnly && smState->getActuators().size())
-		{
-			const std::list<std::vector<float> > & actuators = smState->getActuators();
-
-			unsigned int actuatorSize = actuators.begin()->size();
-			if(actuatorSize > descriptorSize)
-			{
-				UERROR("Actuator's size (%d) is larger than descriptor size (%d)", actuatorSize, descriptorSize);
-			}
-
-			for(std::list<std::vector<float> >::const_iterator iter = actuators.begin(); iter!=actuators.end(); ++iter)
-			{
-				std::vector<float> descriptor(descriptorSize);
-				// normalize actuator values
-				std::vector<float> actuatorNormalized = uNormalize(*iter);
-				for(unsigned int i=0; i<descriptorSize; ++i)
-				{
-					if(i<actuatorSize)
-					{
-						descriptor[i] = actuatorNormalized[i];
-					}
-					else
-					{
-						descriptor[i] = 0;
-					}
-				}
-				descriptors.push_back(descriptor);
-			}
-			ULOGGER_DEBUG("time setup actuators (%d of length %d) like descriptors %fs", (int)actuators.size(), (int)actuatorSize, timer.ticks());
-		}
-
-		wordIds = _vwd->addNewWords(descriptors, descriptorSize, id);
+		wordIds = _vwd->addNewWords(descriptors, id);
 		ULOGGER_DEBUG("time addNewWords %fs", timer.ticks());
 	}
-	else
+	else if(id>0)
 	{
-		ULOGGER_WARN("id %d is a bad signature", id);
+		UDEBUG("id %d is a bad signature", id);
 	}
 
 	std::multimap<int, cv::KeyPoint> words;
 	if(wordIds.size() > 0)
 	{
-		std::list<cv::KeyPoint>::iterator kpIter = keypoints.begin();
+		std::vector<cv::KeyPoint>::iterator kpIter = keypoints.begin();
 		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end(); ++iter)
 		{
 			if(kpIter != keypoints.end())
@@ -737,6 +665,7 @@ Signature * KeypointMemory::createSignature(int id, const SMState * smState, boo
 			}
 			else
 			{
+				UWARN("Words (%d) and keypoints(%d) are not the same size ?!?", (int)wordIds.size(), (int)keypoints.size());
 				words.insert(std::pair<int, cv::KeyPoint >(*iter, cv::KeyPoint()));
 			}
 		}
@@ -787,7 +716,7 @@ void KeypointMemory::disableWordsRef(int signatureId)
 
 void KeypointMemory::cleanUnusedWords()
 {
-	ULOGGER_DEBUG("");
+	UINFO("");
 	if(_vwd->isIncremental())
 	{
 		std::vector<VisualWord*> removedWords = _vwd->getUnusedWords();
@@ -799,7 +728,7 @@ void KeypointMemory::cleanUnusedWords()
 
 			for(unsigned int i=0; i<removedWords.size(); ++i)
 			{
-				if(_dbDriver)
+				if(_dbDriver && !removedWords[i]->isSaved())
 				{
 					_dbDriver->asyncSave(removedWords[i]);
 				}
@@ -809,7 +738,7 @@ void KeypointMemory::cleanUnusedWords()
 				}
 			}
 		}
-		ULOGGER_DEBUG("%d words removed...", removedWords.size());
+		UINFO("%d words removed...", removedWords.size());
 	}
 }
 
@@ -834,23 +763,9 @@ void KeypointMemory::enableWordsRef(const std::list<int> & signatureIds)
 			//Find words in the signature which they are not in the current dictionary
 			for(std::list<int>::const_iterator k=uniqueKeys.begin(); k!=uniqueKeys.end(); ++k)
 			{
-				if(_vwd->getWord(*k) == 0)
+				if(_vwd->getWord(*k) == 0 && _vwd->getUnusedWord(*k) == 0)
 				{
-					//std::map<int,int>::iterator iter = _wordRefsToChange.find(*k);
-					//if(iter != _wordRefsToChange.end())
-					//{
-					//	ss->changeWordsRef(iter->first, iter->second);
-					//	uniqueKeys.push_back(iter->second);
-					//}
-					//else
-					if(oldWordIds.find(*k) == oldWordIds.end())
-					{
-						oldWordIds.insert(oldWordIds.end(), *k);
-					}
-					else
-					{
-						//UDEBUG("*k=%d", *k);
-					}
+					oldWordIds.insert(oldWordIds.end(), *k);
 				}
 			}
 		}
@@ -862,7 +777,8 @@ void KeypointMemory::enableWordsRef(const std::list<int> & signatureIds)
 	std::list<VisualWord *> vws;
 	if(oldWordIds.size() && _dbDriver)
 	{
-		_dbDriver->loadWords(std::list<int>(oldWordIds.begin(), oldWordIds.end()), vws); // get the descriptors
+		// get the descriptors
+		_dbDriver->loadWords(std::list<int>(oldWordIds.begin(), oldWordIds.end()), vws);
 	}
 	ULOGGER_DEBUG("loading words(%d) time=%fs", oldWordIds.size(), timer.ticks());
 
@@ -879,11 +795,11 @@ void KeypointMemory::enableWordsRef(const std::list<int> & signatureIds)
 			{
 				//ULOGGER_DEBUG("Match found %d with %d", (*iterVws)->id(), vwActiveIds[i]);
 				refsToChange.insert(refsToChange.end(), std::pair<int, int>((*iterVws)->id(), vwActiveIds[i]));
-				if((*iterVws)->isSaved() || !_dbDriver)
+				if((*iterVws)->isSaved())
 				{
 					delete (*iterVws);
 				}
-				else
+				else if(_dbDriver)
 				{
 					_dbDriver->asyncSave(*iterVws);
 				}
@@ -891,7 +807,7 @@ void KeypointMemory::enableWordsRef(const std::list<int> & signatureIds)
 			else
 			{
 				//add to dictionary
-				_vwd->addWord(*iterVws);
+				_vwd->addWord(*iterVws); // take ownership
 			}
 			++i;
 		}
@@ -930,7 +846,7 @@ void KeypointMemory::enableWordsRef(const std::list<int> & signatureIds)
 	ULOGGER_DEBUG("%d words total ref added from %d signatures, time=%fs...", count, surfSigns.size(), timer.ticks());
 }
 
-int KeypointMemory::forget(const std::list<int> & ignoredIds)
+int KeypointMemory::forget(const std::set<int> & ignoredIds)
 {
 	ULOGGER_DEBUG("");
 	int signaturesRemoved = 0;
@@ -946,12 +862,20 @@ int KeypointMemory::forget(const std::list<int> & ignoredIds)
 		// dictionary to respect the limit.
 		while(wordsRemoved < newWords)
 		{
-			KeypointSignature *  s = dynamic_cast<KeypointSignature *>(this->getRemovableSignature(ignoredIds));
-			if(s)
+			std::list<Signature *> signatures = this->getRemovableSignatures(1, ignoredIds);
+			if(signatures.size())
 			{
-				++signaturesRemoved;
-				this->moveToTrash(s);
-				wordsRemoved = _vwd->getUnusedWordsSize();
+				KeypointSignature *  s = dynamic_cast<KeypointSignature *>(signatures.front());
+				if(s)
+				{
+					++signaturesRemoved;
+					this->moveToTrash(s);
+					wordsRemoved = _vwd->getUnusedWordsSize();
+				}
+				else
+				{
+					break;
+				}
 			}
 			else
 			{
@@ -968,7 +892,7 @@ int KeypointMemory::forget(const std::list<int> & ignoredIds)
 	return signaturesRemoved;
 }
 
-int KeypointMemory::reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, unsigned int maxTouched)
+std::set<int> KeypointMemory::reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, double & timeDbAccess)
 {
 	// get the signatures, if not in the working memory, they
 	// will be loaded from the database in an more efficient way
@@ -977,7 +901,6 @@ int KeypointMemory::reactivateSignatures(const std::list<int> & ids, unsigned in
 	ULOGGER_DEBUG("");
 	UTimer timer;
 	std::list<int> idsToLoad;
-	unsigned int touched = 0;
 	std::map<int, int>::iterator wmIter;
 	for(std::list<int>::const_iterator i=ids.begin(); i!=ids.end(); ++i)
 	{
@@ -985,16 +908,10 @@ int KeypointMemory::reactivateSignatures(const std::list<int> & ids, unsigned in
 		{
 			if(!maxLoaded || idsToLoad.size() < maxLoaded)
 			{
-				//When loaded from the long-term memory, the signature
-				// is automatically added on top of the working memory
 				idsToLoad.push_back(*i);
+				UINFO("Loading location %d from database...", *i);
 			}
 		}
-		else if(touched < maxTouched)
-		{
-			this->touch(*i);
-		}
-		++touched;
 	}
 
 	ULOGGER_DEBUG("idsToLoad = %d", idsToLoad.size());
@@ -1002,8 +919,9 @@ int KeypointMemory::reactivateSignatures(const std::list<int> & ids, unsigned in
 	std::list<Signature *> reactivatedSigns;
 	if(_dbDriver)
 	{
-		_dbDriver->loadKeypointSignatures(idsToLoad, reactivatedSigns, true);
+		_dbDriver->loadKeypointSignatures(idsToLoad, reactivatedSigns);
 	}
+	timeDbAccess = timer.getElapsedTime();
 	std::list<int> idsLoaded;
 	for(std::list<Signature *>::iterator i=reactivatedSigns.begin(); i!=reactivatedSigns.end(); ++i)
 	{
@@ -1013,7 +931,7 @@ int KeypointMemory::reactivateSignatures(const std::list<int> & ids, unsigned in
 	}
 	this->enableWordsRef(idsLoaded);
 	ULOGGER_DEBUG("time = %fs", timer.ticks());
-	return reactivatedSigns.size();
+	return std::set<int>(idsToLoad.begin(), idsToLoad.end());
 }
 
 void KeypointMemory::moveToTrash(Signature * s)

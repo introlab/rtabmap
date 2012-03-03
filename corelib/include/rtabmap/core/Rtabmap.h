@@ -64,6 +64,7 @@ public:
 
 	static const char * kDefaultIniFileName;
 	static const char * kDefaultIniFilePath;
+	static const char * kDefaultDatabaseName;
 
 public:
 	static std::string getVersion();
@@ -84,6 +85,7 @@ public:
 
 	const std::string & getWorkingDir() const {return _wDir;}
 	int getLoopClosureId() const;
+	int getReactivatedId() const;
 	int getLastSignatureId() const;
 	const std::list<std::vector<float> > & getActions() const {return _actions;}
 	std::list<int> getWorkingMem() const;
@@ -92,15 +94,16 @@ public:
 	int getTotalMemSize() const;
 	const std::string & getGraphFileName() const {return _graphFileName;}
 
-	void setMaxTimeAllowed(float maxTimeAllowed); // in sec
+	void setMaxTimeAllowed(float maxTimeAllowed); // in ms
 	void setDataBufferSize(int size);
 	void setWorkingDirectory(std::string path);
 	void setGraphFileName(const std::string & fileName) {_graphFileName = fileName;}
 
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
-	void selectHypotheses(const std::map<int, float> & posterior,
-						  std::list<std::pair<int, float> > & hypotheses,
-						  bool useNeighborSum) const;
+	std::pair<int, float> selectHypothesis(const std::map<int, float> & posterior,
+											const std::map<int, float> & likelihood,
+											bool neighborSumUsed,
+											bool likelihoodUsed) const;
 
 protected:
 	virtual void handleEvent(UEvent * anEvent);
@@ -110,8 +113,7 @@ private:
 	virtual void killCleanup();
 	virtual void startInit();
 	void process();
-	void resetMemory();
-	void deleteMemory();
+	void resetMemory(bool dbOverwritten = false);
 	void addSMState(SMState * data); // ownership is transferred
 	SMState * getSMState();
 	void setupLogFiles(bool overwrite = false);
@@ -123,22 +125,27 @@ private:
 private:
 	// Modifiable parameters
 	bool _publishStats;
-	float _maxTimeAllowed; // in sec
+	bool _publishImages;
+	bool _publishPdf;
+	bool _publishLikelihood;
+	bool _publishKeypoints;
+	bool _publishMasks;
+	float _maxTimeAllowed; // in ms
+	unsigned int _maxMemoryAllowed; // signatures count in WM
 	int _smStateBufferMaxSize;
-	unsigned int _minMemorySizeForLoopDetection;
 	float _loopThr;
 	float _loopRatio;
 	float _retrievalThr;
-	bool _localGraphCleaned;
 	unsigned int _maxRetrieved;
-	bool _actionsByTime;
+	bool _selectionNeighborhoodSummationUsed;
+	bool _selectionLikelihoodUsed;
 	bool _actionsSentRejectHyp;
 	float _confidenceThr;
+	bool _likelihoodStdDevRemoved;
 
 	int _lcHypothesisId;
 	int _reactivateId;
-	float _highestHypothesisValue;
-	unsigned int _spreadMargin;
+	float _lastLcHypothesisValue;
 	int _lastLoopClosureId;
 	std::list<std::vector<float> > _actions;
 

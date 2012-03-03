@@ -51,17 +51,19 @@ public:
 	float getVirtualPlacePrior() const {return _virtualPlacePrior;}
 	const std::vector<double> & getPredictionLC() const; // {Vp, Lc, l1, l2, l3, l4...}
 	std::string getPredictionLCStr() const; // for convenience {Vp, Lc, l1, l2, l3, l4...}
+	bool isPredictionOnNonNullActionsOnly() const {return _predictionOnNonNullActionsOnly;}
 
-	bool generatePrediction(CvMat * prediction, const Memory * memory, const std::map<int, int> & likelihoodIds) const;
-	float addNeighborProb(CvMat * prediction, unsigned int row,  const Memory * memory, const std::map<int, int> & likelihoodIds, const Signature * s, unsigned int level) const;
+	bool generatePrediction(CvMat * prediction, const Memory * memory, const std::vector<int> & ids) const;
 
 private:
 	void updatePosterior(const Memory * memory, const std::vector<int> & likelihoodIds);
+	float addNeighborProb(CvMat * prediction, unsigned int col, const std::map<int, int> & neighbors, const std::map<int, int> & idToIndexMap) const;
 
 private:
 	std::map<int, float> _posterior;
 	float _virtualPlacePrior;
 	std::vector<double> _predictionLC; // {Vp, Lc, l1, l2, l3, l4...}
+	bool _predictionOnNonNullActionsOnly;
 };
 
 } // namespace rtabmap

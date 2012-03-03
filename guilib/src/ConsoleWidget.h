@@ -20,8 +20,15 @@
 #ifndef CONSOLEWIDGET_H_
 #define CONSOLEWIDGET_H_
 
-#include "ui_consoleWidget.h"
 #include <utilite/UEventsHandler.h>
+#include <QtGui/QWidget>
+#include <QtCore/QMutex>
+#include <QtCore/QTimer>
+#include <QtCore/QTime>
+
+class Ui_consoleWidget;
+class QMessageBox;
+class QTextCursor;
 
 namespace rtabmap {
 
@@ -39,12 +46,21 @@ public slots:
 signals:
 	void msgReceived(const QString &, int);
 
+private slots:
+	void flushConsole();
+
 protected:
 	virtual void handleEvent(UEvent * anEvent);
 
 private:
-	Ui_consoleWidget _ui;
-
+	Ui_consoleWidget * _ui;
+	QMessageBox * _errorMessage;
+	QMutex _errorMessageMutex;
+	QMutex _msgListMutex;
+	QTimer _timer;
+	QTime _time;
+	QTextCursor * _textCursor;
+	QList<QPair<QString, int> > _msgList;
 };
 
 }

@@ -31,72 +31,31 @@
 
 namespace rtabmap {
 
-KeypointDescriptor::KeypointDescriptor(const ParametersMap & parameters, KeypointDescriptor * childDescriptor) :
-	_childDescriptor(childDescriptor)
+KeypointDescriptor::KeypointDescriptor(const ParametersMap & parameters)
 {
 	this->parseParameters(parameters);
 }
 
 KeypointDescriptor::~KeypointDescriptor()
 {
-	if(_childDescriptor)
-	{
-		delete _childDescriptor;
-	}
 }
 
 void KeypointDescriptor::parseParameters(const ParametersMap & parameters)
 {
-	if(_childDescriptor)
-	{
-		_childDescriptor->parseParameters(parameters);
-	}
-}
-
-std::list<std::vector<float> > KeypointDescriptor::generateDescriptors(const IplImage * image, const std::list<cv::KeyPoint> & keypoints) const
-{
-	ULOGGER_DEBUG("");
-	// see decorator pattern...
-	std::list<std::vector<float> > descriptors = this->_generateDescriptors(image, keypoints);
-	std::list<std::vector<float> > childDescriptors;
-	if(_childDescriptor)
-	{
-		childDescriptors = _childDescriptor->generateDescriptors(image, keypoints);
-
-		if(childDescriptors.size() && childDescriptors.size() == descriptors.size())
-		{
-			std::list<std::vector<float> >::iterator iterDesc = descriptors.begin();
-			std::list<std::vector<float> >::iterator iterChild = childDescriptors.begin();
-			for(; iterDesc!=descriptors.end(); ++iterDesc, ++iterChild)
-			{
-				iterDesc->insert(iterDesc->end(), iterChild->begin(), iterChild->end());
-			}
-		}
-	}
-	return descriptors;
-}
-
-void KeypointDescriptor::setChildDescriptor(KeypointDescriptor * childDescriptor)
-{
-	if(_childDescriptor)
-	{
-		delete _childDescriptor;
-	}
-	_childDescriptor = childDescriptor;
 }
 
 //////////////////////////
 //SURFDescriptor
 //////////////////////////
-SURFDescriptor::SURFDescriptor(const ParametersMap & parameters, KeypointDescriptor * childDescriptor) :
-	KeypointDescriptor(parameters, childDescriptor)
+SURFDescriptor::SURFDescriptor(const ParametersMap & parameters) :
+	KeypointDescriptor(parameters)
 {
-	_surf.hessianThreshold = Parameters::defaultSURFHessianThreshold();
-	_surf.extended = Parameters::defaultSURFExtended();
-	_surf.nOctaveLayers = Parameters::defaultSURFOctaveLayers();
-	_surf.nOctaves = Parameters::defaultSURFOctaves();
+	_params.hessianThreshold = Parameters::defaultSURFHessianThreshold();
+	_params.extended = Parameters::defaultSURFExtended();
+	_params.nOctaveLayers = Parameters::defaultSURFOctaveLayers();
+	_params.nOctaves = Parameters::defaultSURFOctaves();
+	_params.upright = Parameters::defaultSURFUpright();
 	_gpuVersion = Parameters::defaultSURFGpuVersion();
-	_upright = Parameters::defaultSURFUpright();
 	this->parseParameters(parameters);
 }
 
@@ -109,35 +68,35 @@ void SURFDescriptor::parseParameters(const ParametersMap & parameters)
 	ParametersMap::const_iterator iter;
 	if((iter=parameters.find(Parameters::kSURFExtended())) != parameters.end())
 	{
-		_surf.extended = uStr2Bool((*iter).second.c_str());
+		_params.extended = uStr2Bool((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFHessianThreshold())) != parameters.end())
 	{
-		_surf.hessianThreshold = std::atof((*iter).second.c_str()); // is it needed for the descriptor?
+		_params.hessianThreshold = std::atof((*iter).second.c_str()); // is it needed for the descriptor?
 	}
 	if((iter=parameters.find(Parameters::kSURFOctaveLayers())) != parameters.end())
 	{
-		_surf.nOctaveLayers = std::atoi((*iter).second.c_str()); // is it needed for the descriptor?
+		_params.nOctaveLayers = std::atoi((*iter).second.c_str()); // is it needed for the descriptor?
 	}
 	if((iter=parameters.find(Parameters::kSURFOctaves())) != parameters.end())
 	{
-		_surf.nOctaves = std::atoi((*iter).second.c_str()); // is it needed for the descriptor?
+		_params.nOctaves = std::atoi((*iter).second.c_str()); // is it needed for the descriptor?
+	}
+	if((iter=parameters.find(Parameters::kSURFUpright())) != parameters.end())
+	{
+		_params.upright = uStr2Bool((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFGpuVersion())) != parameters.end())
 	{
 		_gpuVersion = uStr2Bool((*iter).second.c_str());
 	}
-	if((iter=parameters.find(Parameters::kSURFUpright())) != parameters.end())
-	{
-		_upright = uStr2Bool((*iter).second.c_str());
-	}
 	KeypointDescriptor::parseParameters(parameters);
 }
 
-std::list<std::vector<float> > SURFDescriptor::_generateDescriptors(const IplImage * image, const std::list<cv::KeyPoint> & keypoints) const
+cv::Mat SURFDescriptor::generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	ULOGGER_DEBUG("");
-	std::list<std::vector<float> > descriptors;
+	cv::Mat descriptors;
 	if(!image)
 	{
 		ULOGGER_ERROR("Image is null ?!?");
@@ -159,33 +118,35 @@ std::list<std::vector<float> > SURFDescriptor::_generateDescriptors(const IplIma
 	{
 		img =  cv::Mat(image);
 	}
-	cv::Mat mask;
-	std::vector<cv::KeyPoint> k = uListToVector(keypoints);
-	std::vector<float> d;
 #if OPENCV_SURF_GPU
 	if(_gpuVersion)
 	{
+		std::vector<float> d;
 		cv::gpu::GpuMat imgGpu(img);
 		cv::gpu::GpuMat descriptorsGpu;
 		cv::gpu::GpuMat keypointsGpu;
-		cv::gpu::SURF_GPU surfGpu(_surf.hessianThreshold, _surf.nOctaves, _surf.nOctaveLayers, _surf.extended, 0.01f, _upright);
-		surfGpu.uploadKeypoints(k, keypointsGpu);
+		cv::gpu::SURF_GPU surfGpu(_params.hessianThreshold, _params.nOctaves, _params.nOctaveLayers, _params.extended, 0.01f, _params.upright);
+		surfGpu.uploadKeypoints(keypoints, keypointsGpu);
 		surfGpu(imgGpu, cv::gpu::GpuMat(), keypointsGpu, descriptorsGpu, true);
 		surfGpu.downloadDescriptors(descriptorsGpu, d);
+		unsigned int dim = _params.extended?128:64;
+		descriptors = cv::Mat(d.size()/dim, dim, CV_32F);
+		for(int i=0; i<descriptors.rows; ++i)
+		{
+			float * rowFl = descriptors.ptr<float>(i);
+			memcpy(rowFl, &d[i*dim], dim*sizeof(float));
+		}
 	}
 	else
 	{
-		_surf(img, mask, k, d, true); // Opencv surf descriptors
+		cv::SurfDescriptorExtractor extractor(_params.nOctaves, _params.nOctaveLayers, _params.extended, _params.upright);
+		extractor.compute(img, keypoints, descriptors);
 	}
 #else
-	_surf(img, mask, k, d, true); // Opencv surf descriptors
+	cv::SurfDescriptorExtractor extractor(_params.nOctaves, _params.nOctaveLayers, _params.extended, _params.upright);
+	extractor.compute(img, keypoints, descriptors);
 #endif
 
-	unsigned int dim = _surf.descriptorSize();
-	for(unsigned int i=0; i<d.size(); i+=dim)
-	{
-		descriptors.push_back(std::vector<float>(d.begin()+i, d.begin()+i+dim));
-	}
 	if(imageGrayScale)
 	{
 		cvReleaseImage(&imageGrayScale);
@@ -196,8 +157,8 @@ std::list<std::vector<float> > SURFDescriptor::_generateDescriptors(const IplIma
 //////////////////////////
 //SIFTDescriptor
 //////////////////////////
-SIFTDescriptor::SIFTDescriptor(const ParametersMap & parameters, KeypointDescriptor * childDescriptor) :
-	KeypointDescriptor(parameters, childDescriptor)
+SIFTDescriptor::SIFTDescriptor(const ParametersMap & parameters) :
+	KeypointDescriptor(parameters)
 {
 	this->parseParameters(parameters);
 }
@@ -212,10 +173,10 @@ void SIFTDescriptor::parseParameters(const ParametersMap & parameters)
 	KeypointDescriptor::parseParameters(parameters);
 }
 
-std::list<std::vector<float> > SIFTDescriptor::_generateDescriptors(const IplImage * image, const std::list<cv::KeyPoint> & keypoints) const
+cv::Mat SIFTDescriptor::generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	ULOGGER_DEBUG("");
-	std::list<std::vector<float> > descriptors;
+	cv::Mat descriptors;
 	if(!image)
 	{
 		ULOGGER_ERROR("Image is null ?!?");
@@ -237,17 +198,8 @@ std::list<std::vector<float> > SIFTDescriptor::_generateDescriptors(const IplIma
 	{
 		img =  cv::Mat(image);
 	}
-	cv::Mat mask;
-	std::vector<cv::KeyPoint> k = uListToVector(keypoints);
-	cv::Mat d;
-	cv::SIFT sift(_commonParams, cv::SIFT::DetectorParams(), _descriptorParams);
-	sift(img, mask, k, d, true); // Opencv surf descriptors
-	unsigned int dim = sift.descriptorSize();
-	//ULOGGER_DEBUG("row=%d, col=%d, type=%d (float=%d)", d.rows, d.cols, d.type(), CV_32F);
-	for(int i=0; i<d.rows; ++i)
-	{
-		descriptors.push_back(std::vector<float>(d.ptr<float>(i), d.ptr<float>(i)+dim));
-	}
+	cv::SiftDescriptorExtractor extractor(_descriptorParams, _commonParams);
+	extractor.compute(img, keypoints, descriptors);
 	if(imageGrayScale)
 	{
 		cvReleaseImage(&imageGrayScale);
@@ -256,35 +208,60 @@ std::list<std::vector<float> > SIFTDescriptor::_generateDescriptors(const IplIma
 }
 
 //////////////////////////
-//LaplacianDescriptor
+//BRIEFDescriptor
 //////////////////////////
-LaplacianDescriptor::LaplacianDescriptor(const ParametersMap & parameters, KeypointDescriptor * childDescriptor) :
-	KeypointDescriptor(parameters, childDescriptor)
+BRIEFDescriptor::BRIEFDescriptor(const ParametersMap & parameters) :
+	KeypointDescriptor(parameters),
+	_size(Parameters::defaultBRIEFSize())
 {
 	this->parseParameters(parameters);
 }
 
-LaplacianDescriptor::~LaplacianDescriptor()
+BRIEFDescriptor::~BRIEFDescriptor()
 {
 }
 
-void LaplacianDescriptor::parseParameters(const ParametersMap & parameters)
+void BRIEFDescriptor::parseParameters(const ParametersMap & parameters)
 {
-	// No parameter...
+	ParametersMap::const_iterator iter;
+	if((iter=parameters.find(Parameters::kBRIEFSize())) != parameters.end())
+	{
+		_size = std::atoi((*iter).second.c_str());
+	}
 	KeypointDescriptor::parseParameters(parameters);
 }
 
-std::list<std::vector<float> > LaplacianDescriptor::_generateDescriptors(const IplImage * image, const std::list<cv::KeyPoint> & keypoints) const
+cv::Mat BRIEFDescriptor::generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	ULOGGER_DEBUG("");
-	std::list<std::vector<float> > descriptors;
-
-	//create descriptors...
-	for(std::list<cv::KeyPoint>::const_iterator key=keypoints.begin(); key!=keypoints.end(); ++key)
+	cv::Mat descriptors;
+	if(!image)
 	{
-		std::vector<float> laplacian(1);
-		laplacian[0] = uSign(key->response);
-		descriptors.push_back(laplacian);
+		ULOGGER_ERROR("Image is null ?!?");
+		return descriptors;
+	}
+	// BRIEF support only grayscale images ?
+	IplImage * imageGrayScale = 0;
+	if(image->nChannels != 1 || image->depth != IPL_DEPTH_8U)
+	{
+		imageGrayScale = cvCreateImage(cvSize(image->width,image->height), IPL_DEPTH_8U, 1);
+		cvCvtColor(image, imageGrayScale, CV_BGR2GRAY);
+	}
+	cv::Mat img;
+	if(imageGrayScale)
+	{
+		img = cv::Mat(imageGrayScale);
+	}
+	else
+	{
+		img =  cv::Mat(image);
+	}
+	cv::BriefDescriptorExtractor brief(_size);
+	brief.compute(img, keypoints, descriptors);
+
+	if(imageGrayScale)
+	{
+		cvReleaseImage(&imageGrayScale);
 	}
 	return descriptors;
 }
@@ -292,8 +269,8 @@ std::list<std::vector<float> > LaplacianDescriptor::_generateDescriptors(const I
 //////////////////////////
 //ColorDescriptor
 //////////////////////////
-ColorDescriptor::ColorDescriptor(const ParametersMap & parameters, KeypointDescriptor * childDescriptor) :
-	KeypointDescriptor(parameters, childDescriptor)
+ColorDescriptor::ColorDescriptor(const ParametersMap & parameters) :
+	KeypointDescriptor(parameters)
 {
 	this->parseParameters(parameters);
 }
@@ -308,10 +285,10 @@ void ColorDescriptor::parseParameters(const ParametersMap & parameters)
 	KeypointDescriptor::parseParameters(parameters);
 }
 
-std::list<std::vector<float> > ColorDescriptor::_generateDescriptors(const IplImage * image, const std::list<cv::KeyPoint> & keypoints) const
+cv::Mat ColorDescriptor::generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	ULOGGER_DEBUG("");
-	std::list<std::vector<float> > descriptors;
+	cv::Mat descriptors;
 	if(!image)
 	{
 		ULOGGER_ERROR("Image is null ?!?");
@@ -335,7 +312,9 @@ std::list<std::vector<float> > ColorDescriptor::_generateDescriptors(const IplIm
 	}
 
 	//create descriptors...
-	for(std::list<cv::KeyPoint>::const_iterator key=keypoints.begin(); key!=keypoints.end(); ++key)
+	descriptors = cv::Mat(keypoints.size(), 6, CV_32F);
+	int i=0;
+	for(std::vector<cv::KeyPoint>::const_iterator key=keypoints.begin(); key!=keypoints.end(); ++key)
 	{
 
 		int grayMax = -1;  // grayValue
@@ -380,11 +359,11 @@ std::list<std::vector<float> > ColorDescriptor::_generateDescriptors(const IplIm
 				}
 			}
 		}
-		for(int i=0; i<6; ++i)
+		for(int j=0; j<6; ++j)
 		{
-			d[i] /= 255; // Normalize between 0 and 1
+			descriptors.at<float>(i,j) = d[j] / 255; // Normalize between 0 and 1
 		}
-		descriptors.push_back(std::vector<float>(d, d + sizeof(d) / sizeof(float)));
+		++i;
 	}
 
 	if(imageConverted)
@@ -409,8 +388,8 @@ void ColorDescriptor::getCircularROI(int R, std::vector<int> & RxV) const
 //////////////////////////
 //HueDescriptor
 //////////////////////////
-HueDescriptor::HueDescriptor(const ParametersMap & parameters, KeypointDescriptor * childDescriptor) :
-		ColorDescriptor(parameters, childDescriptor)
+HueDescriptor::HueDescriptor(const ParametersMap & parameters) :
+		ColorDescriptor(parameters)
 {
 	this->parseParameters(parameters);
 }
@@ -425,10 +404,10 @@ void HueDescriptor::parseParameters(const ParametersMap & parameters)
 	KeypointDescriptor::parseParameters(parameters);
 }
 
-std::list<std::vector<float> > HueDescriptor::_generateDescriptors(const IplImage * image, const std::list<cv::KeyPoint> & keypoints) const
+cv::Mat HueDescriptor::generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	ULOGGER_DEBUG("");
-	std::list<std::vector<float> > descriptors;
+	cv::Mat descriptors;
 	if(!image)
 	{
 		ULOGGER_ERROR("Image is null ?!?");
@@ -452,7 +431,9 @@ std::list<std::vector<float> > HueDescriptor::_generateDescriptors(const IplImag
 	}
 
 	//create descriptors...
-	for(std::list<cv::KeyPoint>::const_iterator key=keypoints.begin(); key!=keypoints.end(); ++key)
+	descriptors = cv::Mat(keypoints.size(), 2, CV_32F);
+	int i=0;
+	for(std::vector<cv::KeyPoint>::const_iterator key=keypoints.begin(); key!=keypoints.end(); ++key)
 	{
 
 		int intensityMax = -1;
@@ -512,7 +493,9 @@ std::list<std::vector<float> > HueDescriptor::_generateDescriptors(const IplImag
 		r = float(img(center.y+dyd, center.x+dxd)[2]) / 255.0f;
 		d[1] = rgb2hue(r, g, b);
 
-		descriptors.push_back(std::vector<float>(d, d + sizeof(d) / sizeof(float)));
+		float * rowFl = descriptors.ptr<float>(i);
+		memcpy(rowFl, &d[i*2], 2*sizeof(float));
+		++i;
 	}
 
 	if(imageConverted)

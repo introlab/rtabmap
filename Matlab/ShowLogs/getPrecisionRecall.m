@@ -32,7 +32,14 @@ if ~isempty(GroundTruth)
     
     
     %[highestHypot, CorrespondingID, GT, Accepted, Good, Index, UnderLoopRatio] descending order
-    lc = [LogF(:,10) LogI(:,2) sum(GroundTruth == 255, 2)>0 LogI(:, 1) > 0 zeros(length(LogI(:,1)),1) (1:length(LogF(:,10)))' LogI(:, 8) == 1];
+    if(sum(LogI(:,8) == 10) > 0)
+        %OLD
+        warning('Detected old Log format...');
+        lc = [LogF(:,10) LogI(:,2) sum(GroundTruth == 255, 2)>0 (LogI(:, 8) == 10 | LogI(:, 8) == 11) zeros(length(LogI(:,1)),1) (1:length(LogF(:,10)))' LogI(:, 8) == 3];
+    else
+        %NEW 
+        lc = [LogF(:,10) LogI(:,2) sum(GroundTruth == 255, 2)>0 LogI(:, 1) > 0 zeros(length(LogI(:,1)),1) (1:length(LogF(:,10)))' LogI(:, 8) == 1];
+    end
     
     %eliminate loops on diagonal
     ignored = 0;
@@ -70,21 +77,24 @@ if ~isempty(GroundTruth)
             lc(i,5) = 1;
         end
         
-        PR(i,2) = sum(lc(1:i,5) & ~lc(1:i,7) & lc(1:i,2))/GT_total_positives;
+        %Recall = Loop closures detected / GT loop closures
+        PR(i,2) = sum(lc(1:i,5) & ~lc(1:i,7) & lc(1:i,2)) / GT_total_positives;
+        
+        %Precision = Good loop closures / total loop closure detected
         PR(i,1) = sum(lc(1:i,5) & ~lc(1:i,7) & lc(1:i,2)) / sum(~lc(1:i, 7) & lc(1:i,2));
-        
-        %PR(i,2) = sum(lc(1:i,5))/GT_total_positives;
-        %PR(i,1) = sum(lc(1:i,5)) / i;
-        
-        PR(i,4) = sum(lc(1:i,4) & lc(1:i,5))/GT_total_positives;
-        PR(i,3) = sum(lc(1:i,4) & lc(1:i,5)) / sum(lc(1:i,4));
         
         if ~lc(i,5) && ~lc(i,7) && id && lc(i,1) >= LoopThr
             display(['False positive! id=' num2str(lc(i,6)) ' with old=' num2str(id) ' (p=' num2str(lc(i,1)) ')'] )
         end
-       
-        if lc(i,4) ~= lc(i,5) && lc(i,4)
-            display(['False positive! (v) id=' num2str(lc(i,6)) ' with old=' num2str(id) ' (p=' num2str(lc(i,1)) ')'] )
+        
+        %Recall = Loop closures detected / GT loop closures
+        PR(i,4) = sum(lc(i,4) & lc(1:i,5) & ~lc(1:i,7) & lc(1:i,2)) / GT_total_positives;
+        
+        %Precision = Good loop closures / total loop closure detected
+        PR(i,3) = sum(lc(i,4) & lc(1:i,5) & ~lc(1:i,7) & lc(1:i,2)) / sum(~lc(1:i, 7) & lc(1:i,2) & lc(i,4));
+        
+        if lc(i,4) && ~lc(i,5) && ~lc(i,7) && id && lc(i,1) >= LoopThr
+            display(['False positive accepted! id=' num2str(lc(i,6)) ' with old=' num2str(id) ' (p=' num2str(lc(i,1)) ')'] )
         end
     end
     
@@ -95,12 +105,12 @@ if ~isempty(GroundTruth)
     else
         display('Recall max (Precision=100%) = 0')
     end
-    indexV = find(PR(:,3) == 1);
-    if ~isempty(indexV)
-        maxRecallVerified = PR(indexV(end),4) * 100;
-        display(['Recall max (Precision=100%, with verification) = ' num2str(maxRecallVerified) '% (p=' num2str(lc(indexV(end),1)) ')'])
+    indexAccepted = find(PR(:,3) == 1);
+    if ~isempty(indexAccepted)
+        maxRecall = PR(indexAccepted(end),2) * 100;
+        display(['Recall max accepted (Precision=100%) = ' num2str(maxRecall) '% (p=' num2str(lc(indexAccepted(end),1)) '), accepted=' num2str(sum(lc(1:indexAccepted(end),5) & ~lc(1:indexAccepted(end),7) & lc(1:indexAccepted(end),2)))])
     else
-        display('Recall max (Precision=100%, with verification) = 0')
+        display('Recall max accepted (Precision=100%) = 0')
     end
     display(['ignored = ' num2str(ignored)])
 end

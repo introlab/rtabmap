@@ -24,9 +24,8 @@
 namespace rtabmap
 {
 
-Parameters * Parameters::instance_ = 0;
-UDestroyer<Parameters> Parameters::destroyer_;
 ParametersMap Parameters::parameters_;
+Parameters Parameters::instance_;
 
 Parameters::Parameters()
 {
@@ -38,27 +37,7 @@ Parameters::~Parameters()
 
 const ParametersMap & Parameters::getDefaultParameters()
 {
-	return Parameters::getInstance()->getParameters();
-}
-
-Parameters * Parameters::getInstance()
-{
-	if(!instance_)
-	{
-		instance_ = new Parameters();
-		destroyer_.setDoomed(instance_);
-	}
-	return instance_;
-}
-
-const ParametersMap & Parameters::getParameters() const
-{
 	return parameters_;
-}
-
-void Parameters::addParameter(const std::string & key, const std::string & value)
-{
-	parameters_.insert(ParametersPair(key, value));
 }
 
 std::string Parameters::getDefaultWorkingDirectory()

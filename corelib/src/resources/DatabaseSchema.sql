@@ -23,14 +23,30 @@ CREATE TABLE Signature (
 	id INTEGER NOT NULL,
 	type VARCHAR NOT NULL,
 	weight INTEGER,
-	loopClosureId INTEGER,
-	image BLOB,
-	imgWidth INTEGER,
-	imgHeight INTEGER,
+	loopClosureIds BLOB,
+	childLoopClosureIds BLOB,
 	timeEnter DATE,
 	PRIMARY KEY (id),
-	FOREIGN KEY (type) REFERENCES SignatureType(type),
-	FOREIGN KEY (loopClosureId) REFERENCES Signature(id)
+	FOREIGN KEY (type) REFERENCES SignatureType(type)
+);
+
+CREATE TABLE Image (
+	id INTEGER NOT NULL,
+	width INTEGER NOT NULL,
+	height INTEGER NOT NULL,
+	channels INTEGER NOT NULL,
+	compressed CHAR NOT NULL,
+	data BLOB,
+	timeEnter DATE,
+	PRIMARY KEY (id)
+);
+
+CREATE TABLE SMState (
+	id INTEGER NOT NULL,
+	sensors BLOB,
+	motionMask BLOB,
+	timeEnter DATE,
+	FOREIGN KEY (id) REFERENCES Signature(id)
 );
 
 CREATE TABLE Neighbor (
@@ -38,8 +54,7 @@ CREATE TABLE Neighbor (
     nid INTEGER NOT NULL,
     actionSize INTEGER,
     actions BLOB,
-    timeEnter DATE,
-    PRIMARY KEY (sid, nid),
+    baseIds BLOB,
     FOREIGN KEY (sid) REFERENCES Signature(id),
     FOREIGN KEY (nid) REFERENCES Signature(id)
 );
@@ -66,7 +81,6 @@ CREATE TABLE Map_SS_VW (
 	size INTEGER NOT NULL,
 	dir FLOAT NOT NULL,
 	hessian FLOAT NOT NULL,
-	timeEnter DATE,
 	FOREIGN KEY (signatureId) REFERENCES Signature(id),
 	FOREIGN KEY (visualWordId) REFERENCES VisualWord(id)
 );
@@ -90,20 +104,38 @@ CREATE TABLE StatisticsAfterRunSurf (
 CREATE TRIGGER insert_Signature BEFORE INSERT ON Signature 
 WHEN NOT EXISTS (SELECT type FROM SignatureType WHERE SignatureType.type = NEW.type)
 BEGIN
- SELECT RAISE(ABORT, 'Foreign key constraint failed');
+ SELECT RAISE(ABORT, 'Foreign key Signature.type constraint failed');
 END;
 
-CREATE TRIGGER insert_Neighbor BEFORE INSERT ON Neighbor 
+CREATE TRIGGER insert_SMState BEFORE INSERT ON SMState 
+WHEN NOT EXISTS (SELECT id FROM Signature WHERE Signature.id = NEW.id)
+BEGIN
+ SELECT RAISE(ABORT, 'Foreign key SMState.id constraint failed');
+END;
+
+--CREATE TRIGGER insert_Neighbor_unique BEFORE INSERT ON Neighbor 
+--WHEN NEW.sid = NEW.nid
+--BEGIN
+-- SELECT RAISE(ABORT, 'Cannot add self references');
+--END;
+
+CREATE TRIGGER insert_Neighbor_sid BEFORE INSERT ON Neighbor 
 WHEN NOT EXISTS (SELECT id FROM Signature WHERE Signature.id = NEW.sid)
 BEGIN
- SELECT RAISE(ABORT, 'Foreign key constraint failed');
+ SELECT RAISE(ABORT, 'Foreign key Neighbor.sid constraint failed');
 END;
 
+--Commented before a link can be added before the neighbor is saved...
+--CREATE TRIGGER insert_Neighbor_nid BEFORE INSERT ON Neighbor 
+--WHEN NOT EXISTS (SELECT id FROM Signature WHERE Signature.id = NEW.nid)
+--BEGIN
+-- SELECT RAISE(ABORT, 'Foreign key Neighbor.nid constraint failed');
+--END;
+
 CREATE TRIGGER insert_Map_SS_VW BEFORE INSERT ON Map_SS_VW 
-WHEN NOT EXISTS (SELECT type FROM Signature WHERE Signature.id = NEW.signatureId AND type='surf')
---OR NOT EXISTS (SELECT id FROM VisualWord WHERE VisualWord.id = NEW.visualWordId)
+WHEN NOT EXISTS (SELECT type FROM Signature WHERE Signature.id = NEW.signatureId AND type='KeypointSignature')
 BEGIN
- SELECT RAISE(ABORT, 'Foreign key constraint failed');
+ SELECT RAISE(ABORT, 'KeypointSignature type constraint failed');
 END;
 
  --   Creating a trigger for timeEnter
@@ -112,19 +144,9 @@ BEGIN
  UPDATE Signature SET timeEnter = DATETIME('NOW')  WHERE rowid = new.rowid;
 END;
 
-CREATE TRIGGER insert_Neighbor_timeEnter AFTER INSERT ON Neighbor
-BEGIN
- UPDATE Neighbor SET timeEnter = DATETIME('NOW')  WHERE rowid = new.rowid;
-END;
-
 CREATE TRIGGER insert_VisualWord_timeEnter AFTER INSERT ON VisualWord
 BEGIN
  UPDATE VisualWord SET timeEnter = DATETIME('NOW')  WHERE rowid = new.rowid;
-END;
-
-CREATE TRIGGER insert_Map_SS_VW_timeEnter AFTER INSERT ON Map_SS_VW
-BEGIN
- UPDATE Map_SS_VW SET timeEnter = DATETIME('NOW')  WHERE rowid = new.rowid;
 END;
 
 CREATE TRIGGER insert_StatisticsAfterRun_timeEnter AFTER INSERT ON StatisticsAfterRun
@@ -142,18 +164,19 @@ END;
 -- INDEXES
 -- *******************************************************************
 CREATE INDEX IDX_Map_SS_VW_SignatureId on Map_SS_VW (signatureId);
-CREATE INDEX IDX_Map_SS_VW_VisualWordId on Map_SS_VW (visualWordId);
-CREATE INDEX IDX_Signature_Id on Signature (id);
-CREATE INDEX IDX_VisualWord_Id on VisualWord (id);
-CREATE INDEX IDX_Signature_TimeEnter on Signature (timeEnter);
-CREATE INDEX IDX_VisualWord_TimeEnter on VisualWord (timeEnter);
+-- CREATE INDEX IDX_Map_SS_VW_VisualWordId on Map_SS_VW (visualWordId);
+-- CREATE INDEX IDX_Signature_Id on Signature (id);
+-- CREATE INDEX IDX_VisualWord_Id on VisualWord (id);
+CREATE INDEX IDX_SMState_Id on SMState (id);
+-- CREATE INDEX IDX_Signature_TimeEnter on Signature (timeEnter);
+-- CREATE INDEX IDX_VisualWord_TimeEnter on VisualWord (timeEnter);
 CREATE INDEX IDX_Neighbor_Sid on Neighbor (sid);
 
 -- *******************************************************************
 -- Data
 -- *******************************************************************
-INSERT INTO SignatureType(type) VALUES ('fourier');
-INSERT INTO SignatureType(type) VALUES ('surf');
+INSERT INTO SignatureType(type) VALUES ('KeypointSignature');
+INSERT INTO SignatureType(type) VALUES ('SMSignature');
 
 -- *******************************************************************
 -- TESTS

@@ -29,6 +29,7 @@
 #include <QtCore/QDir>
 #include <QtGui/QContextMenuEvent>
 #include <QtGui/QToolBox>
+#include <QtGui/QDialog>
 
 #include "Plot.h"
 #include "utilite/ULogger.h"
@@ -281,19 +282,20 @@ void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 		id.replace(tr("Figure "), "");
 		QString newPlotName = QString(tr("Figure %1")).arg(id.toInt()+1);
 		//Dock
-		QWidget * figure = new QWidget(0, Qt::Window);
+		QDialog * figure = new QDialog(0, Qt::Window);
 		_figures.insert(newPlotName, figure);
-		figure->setLayout(new QHBoxLayout());
+		QHBoxLayout * hLayout = new QHBoxLayout(figure);
 		figure->setWindowTitle(newPlotName);
 		figure->setAttribute(Qt::WA_DeleteOnClose, true);
 		connect(figure, SIGNAL(destroyed(QObject*)), this, SLOT(figureDeleted(QObject*)));
 		//Plot
 		Plot * newPlot = new Plot(figure);
 		newPlot->setWorkingDirectory(_workingDirectory);
-		newPlot->setMaxVisibleItems(10);
+		newPlot->setMaxVisibleItems(50);
 		newPlot->setObjectName(newPlotName);
-		figure->layout()->addWidget(newPlot);
+		hLayout->addWidget(newPlot);
 		_plotMenu->addAction(newPlotName);
+		figure->setSizeGripEnabled(true);
 
 		//Add a new curve linked to the statBox
 		PlotCurve * curve = new PlotCurve(stat->objectName(), newPlot);
@@ -347,16 +349,36 @@ void StatsToolBox::contextMenuEvent(QContextMenuEvent * event)
 	QMenu * menu = topMenu.addMenu(tr("Add all statistics from tab \"%1\" to...").arg(_statBox->itemText(_statBox->currentIndex())));
 	QList<QAction* > actions = _plotMenu->actions();
 	menu->addActions(actions);
+	QAction * aClearFigures = topMenu.addAction(tr("Clear all figures"));
 	QAction * action = topMenu.exec(event->globalPos());
 	QString plotName;
 	if(action)
 	{
-		for(int i=0; i<actions.size(); ++i)
+		if(action == aClearFigures)
 		{
-			if(actions.at(i) == action)
+			for(QMap<QString, QWidget*>::iterator i=_figures.begin(); i!=_figures.end(); ++i)
+				{
+				QList<Plot *> plots = i.value()->findChildren<Plot *>();
+				if(plots.size() == 1)
+				{
+					QStringList names = plots[0]->curveNames();
+					plots[0]->clearData();
+				}
+				else
+				{
+					UERROR("");
+				}
+			}
+		}
+		else
+		{
+			for(int i=0; i<actions.size(); ++i)
 			{
-				plotName = actions.at(i)->text();
-				break;
+				if(actions.at(i) == action)
+				{
+					plotName = actions.at(i)->text();
+					break;
+				}
 			}
 		}
 	}
@@ -422,9 +444,21 @@ void StatsToolBox::addCurve(const QString & name, bool newFigure)
 
 void StatsToolBox::setWorkingDirectory(const QString & workingDirectory)
 {
-	if(QDir(_workingDirectory).exists())
+	if(QDir(workingDirectory).exists())
 	{
 		_workingDirectory = workingDirectory;
+		for(QMap<QString, QWidget*>::iterator i=_figures.begin(); i!=_figures.end(); ++i)
+		{
+			QList<Plot *> plots = i.value()->findChildren<Plot *>();
+			if(plots.size() == 1)
+			{
+				plots[0]->setWorkingDirectory(_workingDirectory);
+			}
+			else
+			{
+				UERROR("");
+			}
+		}
 	}
 	else
 	{

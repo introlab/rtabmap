@@ -94,13 +94,14 @@ public:
 
 	void setDefaultStepX(float stepX) {_defaultStepX = stepX;}
 	QString name() const {return _name;}
-	int itemsSize();
+	int itemsSize() const;
 	QPointF getItemData(int index);
 	void setStartX(float startX) {_startX = startX;}
 	bool isVisible() const {return _visible;}
 	void setData(QVector<PlotItem*> & data); // take the ownership
 	void setData(const QVector<float> & x, const QVector<float> & y);
 	void getData(QVector<float> & x, QVector<float> & y) const; // only call in Qt MainThread
+	void draw(QPainter * painter);
 
 public slots:
 	virtual void clear();
@@ -125,7 +126,7 @@ protected:
 	int removeItem(int index);
 	void _addValue(PlotItem * data);;
 	virtual bool isMinMaxValid() const {return _minMax.size();}
-	virtual void update(float scaleX, float scaleY, float offsetX, float offsetY, int xDir, int yDir, bool allDataKept);
+	virtual void update(float scaleX, float scaleY, float offsetX, float offsetY, float xDir, float yDir, bool allDataKept);
 	QList<QGraphicsItem *> _items;
 	Plot * _plot;
 
@@ -150,7 +151,7 @@ class ThresholdCurve : public PlotCurve
 
 public:
 	ThresholdCurve(const QString & name, float thesholdValue, Qt::Orientation orientation = Qt::Horizontal, QObject * parent = 0);
-	~ThresholdCurve();
+	virtual ~ThresholdCurve();
 
 public slots:
 	void setThreshold(float threshold);
@@ -158,7 +159,7 @@ public slots:
 
 protected:
 	friend class Plot;
-	virtual void update(float scaleX, float scaleY, float offsetX, float offsetY, int xDir, int yDir, bool allDataKept);
+	virtual void update(float scaleX, float scaleY, float offsetX, float offsetY, float xDir, float yDir, bool allDataKept);
 	virtual bool isMinMaxValid() const {return false;}
 
 private:
@@ -231,6 +232,7 @@ public:
 	bool isFlat() const {return _flat;}
 	void addItem(const PlotCurve * curve);
 	QPixmap createSymbol(const QPen & pen, const QBrush & brush);
+	bool remove(const PlotCurve * curve);
 
 public slots:
 	void removeLegendItem(const PlotCurve * curve);
@@ -282,7 +284,7 @@ public:
 	virtual ~Plot();
 
 	PlotCurve * addCurve(const QString & curveName);
-	bool addCurve(PlotCurve * curve);
+	bool addCurve(PlotCurve * curves);
 	QStringList curveNames();
 	bool contains(const QString & curveName);
 	void removeCurves();
@@ -303,24 +305,31 @@ public:
 	void setTitle(const QString & text);
 	void setXLabel(const QString & text);
 	void setYLabel(const QString & text, Qt::Orientation orientation = Qt::Vertical);
-	QGraphicsScene * scene() const;
 	void setWorkingDirectory(const QString & workingDirectory);
+	void setGraphicsView(bool on);
+	QRectF sceneRect() const;
 
 public slots:
 	void removeCurve(const PlotCurve * curve);
 	void showCurve(const PlotCurve * curve, bool shown);
+	void updateAxis(); //reset axis and recompute it with all curves minMax
+	void clearData();
 
 private slots:
 	void captureScreen();
 	void updateAxis(const PlotCurve * curve);
-	void updateAxis(); //reset axis and recompute it with all curves minMax
 
 protected:
 	virtual void contextMenuEvent(QContextMenuEvent * event);
 	virtual void paintEvent(QPaintEvent * event);
+	virtual void resizeEvent(QResizeEvent * event);
 
 private:
-	void replot();
+	friend class PlotCurve;
+	void addItem(QGraphicsItem * item);
+
+private:
+	void replot(QPainter * painter);
 	bool updateAxis(float x, float y);
 	bool updateAxis(float x1, float x2, float y1, float y2);
 	void setupUi();
@@ -331,6 +340,8 @@ private:
 private:
 	PlotLegend * _legend;
 	QGraphicsView * _view;
+	QGraphicsItem * _sceneRoot;
+	QWidget * _graphicsViewHolder;
 	float _axisMaximums[4]; // {x1->x2, y1->y2}
 	bool _axisMaximumsSet[4]; // {x1->x2, y1->y2}
 	bool _fixedAxis[2];
@@ -340,7 +351,7 @@ private:
 	int _maxVisibleItems;
 	QList<QGraphicsLineItem *> hGridLines;
 	QList<QGraphicsLineItem *> vGridLines;
-	QMap<const PlotCurve*, PlotCurve*> _curves;
+	QList<PlotCurve*> _curves;
 	QLabel * _title;
 	QLabel * _xLabel;
 	OrientableLabel * _yLabel;
@@ -372,6 +383,7 @@ private:
 	QAction * _aSaveFigure;
 	QAction * _aAutoScreenCapture;
 	QAction * _aClearData;
+	QAction * _aGraphicsView;
 };
 
 #ifndef PLOT_WIDGET_OUT_OF_LIB

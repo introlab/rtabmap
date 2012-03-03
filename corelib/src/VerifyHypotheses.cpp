@@ -19,7 +19,7 @@
 
 #include "VerifyHypotheses.h"
 #include "rtabmap/core/Parameters.h"
-#include "Signature.h"
+#include "rtabmap/core/Signature.h"
 #include <cstdlib>
 #include <opencv2/calib3d/calib3d.hpp>
 

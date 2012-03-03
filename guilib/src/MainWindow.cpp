@@ -31,6 +31,8 @@
 #include "PdfPlot.h"
 #include "StatsToolBox.h"
 #include "DetailedProgressDialog.h"
+#include "TwistWidget.h"
+#include "rtabmap/core/SMState.h"
 
 
 #include <QtGui/QCloseEvent>
@@ -73,6 +75,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_preferencesDialog(0),
 	_aboutDialog(0),
 	_lastId(0),
+	_processingStatistics(false),
 	_oneSecondTimer(0),
 	_elapsedTime(0),
 	_posteriorCurve(0),
@@ -105,6 +108,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 		_ui->dockWidget_likelihood->setVisible(false);
 		_ui->dockWidget_statsV2->setVisible(false);
 		_ui->dockWidget_console->setVisible(false);
+		_ui->dockWidget_twist->setVisible(false);
 	}
 
 	if(prefDialog)
@@ -143,7 +147,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	tc = _ui->posteriorPlot->addThreshold("Loop closure thr", float(_preferencesDialog->getLoopThr()));
 	connect(this, SIGNAL(loopClosureThrChanged(float)), tc, SLOT(setThreshold(float)));
 	tc = _ui->posteriorPlot->addThreshold("Retrieval thr", float(_preferencesDialog->getRetrievalThr()));
-	connect(this, SIGNAL(loopClosureThrChanged(float)), tc, SLOT(setThreshold(float)));
+	connect(this, SIGNAL(retrievalThrChanged(float)), tc, SLOT(setThreshold(float)));
 
 	_likelihoodCurve = new PdfPlotCurve("Likelihood", &_imagesMap, this);
 	_ui->likelihoodPlot->addCurve(_likelihoodCurve);
@@ -168,12 +172,12 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->menuShow_view->addAction(_ui->dockWidget_likelihood->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_statsV2->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_console->toggleViewAction());
+	_ui->menuShow_view->addAction(_ui->dockWidget_twist->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->toolBar->toggleViewAction());
 	_ui->toolBar->setWindowTitle(tr("Control toolbar"));
 	QAction * a = _ui->menuShow_view->addAction("Status");
 	a->setCheckable(false);
 	connect(a, SIGNAL(triggered(bool)), _initProgressDialog, SLOT(show()));
-
 
 	// connect actions with custom slots
 	connect(_ui->actionStart, SIGNAL(triggered()), this, SLOT(startDetection()));
@@ -188,6 +192,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionDelete_memory, SIGNAL(triggered()), this , SLOT(deleteMemory()));
 	connect(_ui->menuEdit, SIGNAL(aboutToShow()), this, SLOT(updateEditMenu()));
 	connect(_ui->actionAuto_screen_capture, SIGNAL(triggered(bool)), this, SLOT(selectScreenCaptureFormat(bool)));
+
+	_ui->actionPause->setShortcut(Qt::Key_Space);
 
 #if defined(Q_WS_MAC) or defined(Q_WS_WIN)
 	connect(_ui->actionOpen_working_directory, SIGNAL(triggered()), SLOT(openWorkingDirectory()));
@@ -223,7 +229,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->doubleSpinBox_stats_imgRate, SIGNAL(editingFinished()), this, SLOT(changeImgRateSetting()));
 	connect(_ui->doubleSpinBox_stats_timeLimit, SIGNAL(editingFinished()), this, SLOT(changeTimeLimitSetting()));
 	connect(this, SIGNAL(imgRateChanged(double)), _preferencesDialog, SLOT(setImgRate(double)));
-	connect(this, SIGNAL(timeLimitChanged(double)), _preferencesDialog, SLOT(setTimeLimit(double)));
+	connect(this, SIGNAL(timeLimitChanged(float)), _preferencesDialog, SLOT(setTimeLimit(float)));
+
+	connect(this, SIGNAL(twistReceived(float, float, float, float, float, float, int, int)), _ui->twistWidget, SLOT(addTwist(float, float, float, float, float, float, int, int)));
 
 	// Statistics from the detector
 	qRegisterMetaType<rtabmap::Statistics>("rtabmap::Statistics");
@@ -313,7 +321,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 	if(anEvent->getClassName().compare("RtabmapEvent") == 0)
 	{
 		RtabmapEvent * rtabmapEvent = (RtabmapEvent*)anEvent;
-		const Statistics & stats = rtabmapEvent->getStats();
+		Statistics stats = rtabmapEvent->getStats();
 		int highestHypothesisId = int(uValue(stats.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
 		bool rejectedHyp = bool(uValue(stats.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
 		if((stats.loopClosureId() > 0 && _ui->actionPause_on_match->isChecked()) ||
@@ -328,8 +336,23 @@ void MainWindow::handleEvent(UEvent* anEvent)
 				this->pauseDetection();
 			}
 		}
-		Statistics statsCp = stats;
-		emit statsReceived(statsCp);
+
+		// Performance issue: don't process the pdf and likelihood if the last event is
+		// not yet completely processed, to avoid an unresponsive GUI when events accumulate.
+		if(_processingStatistics || !_ui->dockWidget_posterior->isVisible())
+		{
+			stats.setPosterior(std::map<int, float>());
+		}
+		if(_processingStatistics || !_ui->dockWidget_likelihood->isVisible())
+		{
+			stats.setLikelihood(std::map<int, float>());
+		}
+		if(_processingStatistics || (!_ui->dockWidget_posterior->isVisible() && !_ui->dockWidget_likelihood->isVisible()))
+		{
+			stats.setWeights(std::map<int,int>());
+		}
+
+		emit statsReceived(stats);
 	}
 	else if(anEvent->getClassName().compare("RtabmapEventInit") == 0)
 	{
@@ -368,10 +391,45 @@ void MainWindow::handleEvent(UEvent* anEvent)
 			}
 		}
 	}
+	else if(anEvent->getClassName().compare("SMStateEvent") == 0)
+	{
+		SMStateEvent * smEvent = (SMStateEvent*)anEvent;
+		if(smEvent->getSMState() != 0)
+		{
+			const SMState * sm = smEvent->getSMState();
+			if(sm->getActuators().size())
+			{
+				const std::list<std::vector<float> > & actions = sm->getActuators();
+				int col = 0;
+				for(std::list<std::vector<float> >::const_iterator iter=actions.begin(); iter!=actions.end(); ++iter)
+				{
+					const std::vector<float> & a = *iter;
+					if(a.size() == 6)
+					{
+						//Assume its a twist
+						emit twistReceived(a[0], a[1], a[2], a[3], a[4], a[5], 0, col++);
+					}
+				}
+				if(col != 2)
+				{
+					UWARN("col (%d) != 2", col);
+				}
+			}
+			else
+			{
+				UDEBUG("Actions null");
+			}
+		}
+		else
+		{
+			UDEBUG("SMState is null...");
+		}
+	}
 }
 
 void MainWindow::processStats(const rtabmap::Statistics & stat)
 {
+	_processingStatistics = true;
 	ULOGGER_DEBUG("");
 	QTime time;
 	time.start();
@@ -414,6 +472,23 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				_ui->imageView_source->scene()->addPixmap(refPixmap)->setVisible(this->_ui->imageView_source->isImageShown());
 				_ui->imageView_source->setSceneRect(sceneRect);
 				_ui->imageView_loopClosure->setSceneRect(sceneRect);
+
+				UDEBUG("Adding mask = %d", stat.refMotionMask().size());
+				if(stat.refMotionMask().size() == (unsigned int)img.width()*img.height())
+				{
+					UDEBUG("Adding mask");
+					const std::vector<unsigned char> & maskData = stat.refMotionMask();
+					QImage mask(img.size(), QImage::Format_ARGB32);
+					int i=0;
+					for(int y=0; y<mask.height(); ++y)
+					{
+						for(int x=0; x<mask.width(); ++x)
+						{
+							mask.setPixel(x,y,qRgba(255,0,255,!maskData[i++]*_preferencesDialog->getKeypointsOpacity()));
+						}
+					}
+					_ui->imageView_source->scene()->addPixmap(QPixmap::fromImage(mask));
+				}
 			}
 			ULOGGER_DEBUG("");
 			QImage lcImg;
@@ -463,9 +538,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						_ui->imageView_loopClosure->setBackgroundBrush(QBrush(color));
 						_ui->label_stats_loopClosuresRejected->setText(QString::number(_ui->label_stats_loopClosuresRejected->text().toInt() + 1));
 						_ui->label_matchId->setText(QString("Loop hypothesis (%1) rejected!").arg(highestHypothesisId));
-						QGraphicsTextItem * textItem = _ui->imageView_loopClosure->scene()->addText(tr("Rejected hypothesis"));
-						textItem->setDefaultTextColor(QColor(255-color.red(), 255-color.green(), 255-color.blue())); // color inverted
-						textItem->setZValue(2);
 					}
 				}
 				else
@@ -496,10 +568,22 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					if(!lcImg.isNull())
 					{
 						_ui->imageView_loopClosure->scene()->addPixmap(QPixmap::fromImage(lcImg))->setVisible(this->_ui->imageView_loopClosure->isImageShown());
-					}
-					if(highestHypothesisIsSaved)
-					{
-						_ui->label_matchId->setText(QString("[Retrieved!] ").append(_ui->label_matchId->text()));
+						UDEBUG("Adding mask = %d", stat.loopMotionMask().size());
+						if(stat.loopMotionMask().size() == (unsigned int)lcImg.width()*lcImg.height())
+						{
+							UDEBUG("Adding mask");
+							const std::vector<unsigned char> & maskData = stat.loopMotionMask();
+							QImage mask(lcImg.size(), QImage::Format_ARGB32);
+							int i=0;
+							for(int y=0; y<mask.height(); ++y)
+							{
+								for(int x=0; x<mask.width(); ++x)
+								{
+									mask.setPixel(x,y,qRgba(255,0,255,!maskData[i++]*_preferencesDialog->getKeypointsOpacity()));
+								}
+							}
+							_ui->imageView_loopClosure->scene()->addPixmap(QPixmap::fromImage(mask));
+						}
 					}
 				}
 			}
@@ -534,6 +618,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the last signature/", stat.refImageId(), stat.refWords().size());
 			_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the loop signature/", stat.refImageId(), stat.loopWords().size());
 			ULOGGER_DEBUG("");
+
+			// PDF AND LIKELIHOOD
 			if(!stat.posterior().empty() && _ui->dockWidget_posterior->isVisible())
 			{
 				ULOGGER_DEBUG("");
@@ -570,6 +656,30 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				ULOGGER_DEBUG("");
 			}
 
+			// ACTIONS
+			if(stat.getActions().size())
+			{
+				const std::list<std::vector<float> > & actions = stat.getActions();
+				int col = 0;
+				for(std::list<std::vector<float> >::const_iterator iter=actions.begin(); iter!=actions.end(); ++iter)
+				{
+					const std::vector<float> & a = *iter;
+					if(a.size() == 6)
+					{
+						//Assume its a twist
+						emit twistReceived(a[0], a[1], a[2], a[3], a[4], a[5], 1, col++);
+					}
+				}
+				if(col != 2)
+				{
+					UERROR("col (%d) != 2", col);
+				}
+			}
+			else
+			{
+				UDEBUG("Actions are empty...");
+			}
+
 			ULOGGER_DEBUG("");
 			// Update statistics tool box
 			const std::map<std::string, float> & statistics = stat.data();
@@ -591,6 +701,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	_ui->statsToolBox->updateStat("/Gui refresh stats/ms", stat.refImageId(), elapsedTime);
 
 	this->captureScreen();
+	_processingStatistics = false;
 }
 
 void MainWindow::processRtabmapEventInit(int status, const QString & info)
@@ -607,10 +718,6 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 	else if((RtabmapEventInit::Status)status == RtabmapEventInit::kInitialized)
 	{
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
-		if(_state == kPaused)
-		{
-			this->pauseDetection();
-		}
 	}
 	else
 	{
@@ -653,7 +760,11 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		this->updateSelectSourceMenu(_preferencesDialog->getSourceType());
 		_ui->label_stats_source->setText(_selectSourceGrp->checkedAction()->text().replace('.', ""));
 
-		this->post(new CameraEvent(CameraEvent::kCmdChangeParam, _preferencesDialog->getGeneralImageRate(), _preferencesDialog->getGeneralAutoRestart()));
+		if(_camera)
+		{
+			_camera->setImageRate(_preferencesDialog->getGeneralImageRate());
+			_camera->setAutoRestart(_preferencesDialog->getGeneralAutoRestart());
+		}
 	}
 
 	if(flags & PreferencesDialog::kPanelGeneral)
@@ -676,6 +787,7 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters)
 			rtabmap::ParametersMap parametersModified = parameters;
 			if(parametersModified.erase(Parameters::kRtabmapWorkingDirectory()))
 			{
+				_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 				if(_state == kMonitoring)
 				{
 					QMessageBox::information(this, tr("Working memory changed"), tr("The remote working directory can't be changed while the interface is in monitoring mode."));
@@ -843,7 +955,7 @@ void MainWindow::changeImgRateSetting()
 
 void MainWindow::changeTimeLimitSetting()
 {
-	emit timeLimitChanged(_ui->doubleSpinBox_stats_timeLimit->value());
+	emit timeLimitChanged((float)_ui->doubleSpinBox_stats_timeLimit->value());
 }
 
 void MainWindow::captureScreen()
@@ -916,7 +1028,7 @@ void MainWindow::startDetection()
 	{
 		_camera = new CameraDatabase(
 				_preferencesDialog->getSourceDatabasePath().toStdString(),
-				_preferencesDialog->getSourceDatabaseIgnoreChildren(),
+				_preferencesDialog->getSourceDatabaseLoadActions(),
 				_preferencesDialog->getGeneralImageRate(),
 				_preferencesDialog->getGeneralAutoRestart(),
 				_preferencesDialog->getSourceWidth(),
@@ -941,7 +1053,10 @@ void MainWindow::startDetection()
 		return;
 	}
 
-	_camera->setPostThreatement(new CamKeypointTreatment(_preferencesDialog->getAllParameters()));
+	if(_preferencesDialog->getGeneralCameraKeypoints())
+	{
+		_camera->setPostThreatement(new CamKeypointTreatment(_preferencesDialog->getAllParameters()));
+	}
 
 	if(!_camera->init())
 	{
@@ -966,14 +1081,23 @@ void MainWindow::startDetection()
 
 void MainWindow::pauseDetection()
 {
-	ULOGGER_DEBUG("");
-	this->post(new CameraEvent(CameraEvent::kCmdPause));
-	emit stateChanged(kPaused);
+	if(_camera)
+	{
+		if(_state == kPaused)
+		{
+			// On Ctrl-click, start the camera and pause it automatically
+			if(QApplication::keyboardModifiers() & Qt::ShiftModifier)
+			{
+				emit stateChanged(kPaused);
+			}
+		}
+		emit stateChanged(kPaused);
+	}
 }
 
 void MainWindow::stopDetection()
 {
-	if(_state == kIdle)
+	if(_state == kIdle || !_camera)
 	{
 		return;
 	}
@@ -991,8 +1115,7 @@ void MainWindow::stopDetection()
 	if(_camera)
 	{
 		UEventsManager::removeHandler(_camera);
-		//_camera->killSafely();
-
+		_camera->join(true);
 		delete _camera;
 		_camera = 0;
 		emit stateChanged(kIdle);
@@ -1268,6 +1391,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionOpen_working_directory->setEnabled(true);
 		_ui->actionApply_settings_to_the_detector->setEnabled(true);
 		_ui->menuSelect_source->setEnabled(true);
+		_ui->doubleSpinBox_stats_imgRate->setEnabled(true);
 		_ui->statusbar->clearMessage();
 		_state = newState;
 		_oneSecondTimer->stop();
@@ -1313,6 +1437,10 @@ void MainWindow::changeState(MainWindow::State newState)
 			_state = kDetecting;
 			_elapsedTime->start();
 			_oneSecondTimer->start();
+			if(_camera)
+			{
+				_camera->start();
+			}
 		}
 		else if(_state == kDetecting)
 		{
@@ -1325,6 +1453,10 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionGenerate_map->setEnabled(true);
 			_state = kPaused;
 			_oneSecondTimer->stop();
+			if(_camera)
+			{
+				_camera->join(true);
+			}
 		}
 		break;
 	case kMonitoring:
@@ -1342,6 +1474,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionOpen_working_directory->setEnabled(false);
 		_ui->actionApply_settings_to_the_detector->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
+		_ui->doubleSpinBox_stats_imgRate->setEnabled(false);
 		_ui->statusbar->showMessage(tr("Monitoring..."));
 		_state = newState;
 		_ui->label_elapsedTime->setText("00:00:00");

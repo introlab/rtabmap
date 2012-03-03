@@ -24,7 +24,7 @@
 namespace rtabmap
 {
 
-VisualWord::VisualWord(int id, const float * descriptor, unsigned int dim, int signatureId) :
+VisualWord::VisualWord(int id, const float * descriptor, int dim, int signatureId) :
 	_id(id),
 	_saved(false),
 	_totalReferences(0)

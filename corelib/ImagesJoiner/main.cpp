@@ -84,16 +84,16 @@ int main(int argc, char * argv[])
 
 	while(imagesExist)
 	{
-		std::string fileNameTarget = uNumber2str(counterJoined);
+		std::string fileNameTarget = uNumber2Str(counterJoined);
 		if(inv)
 		{
-			fileNameA =  uNumber2str(counterImages+1);
-			fileNameB =  uNumber2str(counterImages);
+			fileNameA =  uNumber2Str(counterImages+1);
+			fileNameB =  uNumber2Str(counterImages);
 		}
 		else
 		{
-			fileNameA =  uNumber2str(counterImages);
-			fileNameB =  uNumber2str(counterImages+1);
+			fileNameA =  uNumber2Str(counterImages);
+			fileNameB =  uNumber2Str(counterImages+1);
 		}
 
 		while(fileNameA.size() < sizeFileName)

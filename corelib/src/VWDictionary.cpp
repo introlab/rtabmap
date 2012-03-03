@@ -20,7 +20,7 @@
 #include "VWDictionary.h"
 
 #include "VisualWord.h"
-#include "Signature.h"
+#include "rtabmap/core/Signature.h"
 #include "rtabmap/core/DBDriver.h"
 #include "NearestNeighbor.h"
 #include "rtabmap/core/Parameters.h"
@@ -406,24 +406,23 @@ void VWDictionary::removeAllWordRef(int wordId, int signatureId)
 	}
 }
 
-std::list<int> VWDictionary::addNewWords(const std::list<std::vector<float> > & descriptors,
-							   unsigned int dim,
+std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 							   int signatureId)
 {
 	UTimer timer;
 	std::list<int> wordIds;
 	ULOGGER_DEBUG("");
-	if(_dim && _dim != dim && dim)
+	if(_dim && _dim != descriptors.cols && descriptors.cols)
 	{
-		ULOGGER_WARN("Descriptor size has changed! (%d to %d), Nearest neighbor approaches may not work with different descriptor sizes.", _dim, dim);
+		ULOGGER_WARN("Descriptor size has changed! (%d to %d), Nearest neighbor approaches may not work with different descriptor sizes.", _dim, descriptors.cols);
 	}
-	else if(!dim)
+	else if(!descriptors.cols)
 	{
 		ULOGGER_ERROR("Descriptor size is null?!?");
 		return wordIds;
 	}
-	_dim = dim;
-	if (descriptors.size() == 0 || !_dim)
+	_dim = descriptors.cols;
+	if (descriptors.empty() || !_dim)
 	{
 		ULOGGER_ERROR("Parameters don't fit the requirements of this method");
 		return wordIds;
@@ -442,31 +441,24 @@ std::list<int> VWDictionary::addNewWords(const std::list<std::vector<float> > & 
 	{
 		std::list<VisualWord *> newWords;
 
-		cv::Mat results(descriptors.size(), k, CV_32SC1); // results index
+		cv::Mat results(descriptors.rows, k, CV_32SC1); // results index
 		cv::Mat dists;
 		if(_nn->isDist64F())
 		{
-			dists = cv::Mat(descriptors.size(), k, CV_64FC1); // Distance results are CV_64FC1;
+			dists = cv::Mat(descriptors.rows, k, CV_64FC1); // Distance results are CV_64FC1;
 		}
 		else
 		{
-			dists = cv::Mat(descriptors.size(), k, CV_32FC1); // Distance results are CV_32FC1
+			dists = cv::Mat(descriptors.rows, k, CV_32FC1); // Distance results are CV_32FC1
 		}
-		cv::Mat newPts(descriptors.size(), _dim, CV_32F); // SURF descriptors are CV_32F
-
-		// fill the request matrix
-		std::list<std::vector<float> >::const_iterator itDesc = descriptors.begin();
-		for(unsigned int i=0; i<descriptors.size(); ++itDesc, ++i)
+		cv::Mat newPts; // SURF descriptors are CV_32F
+		if(descriptors.type()!=CV_32F)
 		{
-			float * rowFl = newPts.ptr<float>(i);
-			if(itDesc->size() == _dim)
-			{
-				memcpy(rowFl, (const float *)itDesc->data(), _dim*sizeof(float));
-			}
-			else
-			{
-				ULOGGER_WARN("Descriptors are not the same size! The result may be wrong...");
-			}
+			descriptors.convertTo(newPts, CV_32F); // make sure it's CV_32F
+		}
+		else
+		{
+			newPts = descriptors;
 		}
 
 		UTimer timerLocal;
@@ -480,7 +472,7 @@ std::list<int> VWDictionary::addNewWords(const std::list<std::vector<float> > & 
 		}
 
 		//
-		for(unsigned int i = 0; i < descriptors.size(); ++i)
+		for(int i = 0; i < descriptors.rows; ++i)
 		{
 			// Check if this descriptor matches with a word from the last signature (a word not already added to the tree)
 			std::map<float, int> fullResults; // Contains results from the kd-tree search and the naive search in new words
@@ -531,7 +523,10 @@ std::list<int> VWDictionary::addNewWords(const std::list<std::vector<float> > & 
 					}
 					else
 					{
-						UWARN("Not enough nearest neighbors found! fullResults=%d (descriptor %d)", fullResults.size(), i);
+						if(!_dataTree.empty())
+						{
+							UWARN("Not enough nearest neighbors found! fullResults=%d (descriptor %d)", fullResults.size(), i);
+						}
 						badDist = true; // Rejected
 					}
 				}
@@ -566,10 +561,9 @@ std::list<int> VWDictionary::addNewWords(const std::list<std::vector<float> > & 
 		ULOGGER_DEBUG("Naive NN");
 		UTimer timer;
 		timer.start();
-		std::list<std::vector<float> >::const_iterator itDesc = descriptors.begin();
-		for(; itDesc!=descriptors.end();++itDesc)
+		for(int i=0; i<descriptors.rows; ++i)
 		{
-			const float* d = itDesc->data();
+			const float* d = descriptors.ptr<float>(i);
 
 			std::map<float, int> results;
 			naiveNNSearch(uValuesList(_visualWords), d, _dim, results, k);
@@ -871,14 +865,14 @@ void VWDictionary::addWord(VisualWord * vw)
 }
 
 // dist = (euclidean dist)^2, "k" nearest neighbors
-void VWDictionary::naiveNNSearch(const std::list<VisualWord *> & words, const float * d, unsigned int length, std::map<float, int> & results, unsigned int k) const
+void VWDictionary::naiveNNSearch(const std::list<VisualWord *> & words, const float * d, int length, std::map<float, int> & results, unsigned int k) const
 {
 	double total_cost = 0;
 	double t0, t1, t2, t3;
 	const float * dw = 0;
 	bool goodMatch;
 
-	if(!words.size() && k > 0)
+	if(!words.size() || k == 0)
 	{
 		return;
 	}
@@ -896,7 +890,7 @@ void VWDictionary::naiveNNSearch(const std::list<VisualWord *> & words, const fl
 			total_cost += t0*t0;
 
 			// compare descriptors
-			unsigned int i = 0;
+			int i = 0;
 			if(length>=4)
 			{
 				for(; i <= length-4; i += 4 )
@@ -1036,16 +1030,12 @@ void VWDictionary::getCommonWords(unsigned int nbCommonWords, int totalSign, std
 
 const VisualWord * VWDictionary::getWord(int id) const
 {
-	return uValue(_visualWords, id);
+	return uValue(_visualWords, id, (VisualWord *)0);
 }
 
-void VWDictionary::setWordSaved(int id, bool saved)
+const VisualWord * VWDictionary::getUnusedWord(int id) const
 {
-	VisualWord * w = uValue(_visualWords, id);
-	if(w)
-	{
-		w->setSaved(saved);
-	}
+	return uValue(_unusedWords, id, (VisualWord *)0);
 }
 
 std::vector<VisualWord*> VWDictionary::getUnusedWords() const

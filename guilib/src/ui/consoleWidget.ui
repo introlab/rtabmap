@@ -14,9 +14,6 @@
    <string>consoleWidget</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
-   <property name="margin">
-    <number>0</number>
-   </property>
    <item>
     <widget class="QTextEdit" name="textEdit">
      <property name="lineWrapMode">
@@ -24,6 +21,13 @@
      </property>
      <property name="readOnly">
       <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="pushButton_clear">
+     <property name="text">
+      <string>Clear</string>
      </property>
     </widget>
    </item>

@@ -35,6 +35,7 @@
 namespace rtabmap {
 
 class Signature;
+class NeighborLink;
 class DBDriver;
 class Node;
 class SMState;
@@ -46,8 +47,6 @@ public:
 	static const int kIdVirtual;
 	static const int kIdInvalid;
 
-	enum MergingStrategy{kUseOnlyFromMerging, kUseOnlyDestMerging};
-
 public:
 	Memory(const ParametersMap & parameters = ParametersMap());
 	virtual ~Memory();
@@ -55,31 +54,34 @@ public:
 	virtual void parseParameters(const ParametersMap & parameters);
 	bool update(const SMState * rawData, std::map<std::string, float> & stats);
 	virtual bool init(const std::string & dbDriverName, const std::string & dbUrl, bool dbOverwritten = false, const ParametersMap & parameters = ParametersMap());
-	virtual std::map<int, float> computeLikelihood(const Signature * signature, const std::set<int> & signatureIds = std::set<int>()) const;
-	virtual int forget(const std::list<int> & ignoredIds = std::list<int>());
-	virtual int reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, unsigned int maxTouched);
+	virtual std::map<int, float> computeLikelihood(const Signature * signature, const std::list<int> & ids, float & maximumScore);
+	virtual int forget(const std::set<int> & ignoredIds = std::set<int>());
+	virtual std::set<int> reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, double & timeDbAccess);
 
 	int cleanup(const std::list<int> & ignoredIds = std::list<int>());
 	void emptyTrash();
 	void joinTrashThread();
-	void addLoopClosureLink(int oldId, int newId, bool rehearsal = false);
-	void getNeighborsId(std::map<int,int> & ids, int signatureId, unsigned int margin, bool checkInDatabase = true, int ignoredId = 0) const;
+	bool addLoopClosureLink(int oldId, int newId);
+	std::map<int, int> getNeighborsId(double & dbAccessTime, int signatureId, unsigned int margin, int maxCheckedInDatabase = -1, bool onlyWithActions = false, bool incrementMarginOnLoop = false, bool ignoreSTM = true, bool ignoreLoopIds = false) const;
+	float compareOneToOne(const std::vector<int> & idsA, const std::vector<int> & idsB);
 
 	//getters
 	unsigned int getWorkingMemSize() const {return _workingMem.size();}
 	unsigned int getStMemSize() const {return _stMem.size();};
-	const std::map<int, int> & getWorkingMem() const {return _workingMem;}
+	const std::set<int> & getWorkingMem() const {return _workingMem;}
 	const std::set<int> & getStMem() const {return _stMem;}
-	std::list<int> getChildrenIds(int signatureId) const;
+	std::list<NeighborLink> getNeighborLinks(int signatureId, bool ignoreNeighborByLoopClosure = false, bool lookInDatabase = false) const;
+	void getLoopClosureIds(int signatureId, std::set<int> & loopClosureIds, std::set<int> & childLoopClosureIds, bool lookInDatabase = false) const;
 	bool isRawDataKept() const {return _rawDataKept;}
+	float getSimilarityThr() const {return _similarityThreshold;}
 	std::map<int, int> getWeights() const;
 	int getWeight(int id) const;
+	const std::vector<int> & getLastBaseIds() const {return _lastBaseIds;}
 	float getSimilarityOnlyLast() const {return _similarityOnlyLast;}
 	const Signature * getLastSignature() const;
 	int getDatabaseMemoryUsed() const; // in bytes
 	double getDbSavingTime() const;
 	IplImage * getImage(int id) const;
-	bool isDatabaseCleaned()  const {return _databaseCleaned;}
 	bool isCommonSignatureUsed() const {return _commonSignatureUsed;}
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}
@@ -93,7 +95,6 @@ public:
 	void setSimilarityOnlyLast(int similarityOnlyLast) {_similarityOnlyLast = similarityOnlyLast;}
 	void setOldSignatureRatio(float oldSignatureRatio);
 	void setMaxStMemSize(unsigned int maxStMemSize);
-	void setDelayRequired(int delayRequired);
 	void setRecentWmRatio(float recentWmRatio);
 	void setCommonSignatureUsed(bool commonSignatureUsed);
 	void setRawDataKept(bool rawDataKept) {_rawDataKept = rawDataKept;}
@@ -109,7 +110,6 @@ public:
 protected:
 	virtual void preUpdate();
 	virtual void postUpdate() {}
-	virtual void merge(const Signature * from, Signature * to, MergingStrategy s) = 0;
 
 	virtual void addSignatureToStm(Signature * signature, const std::list<std::vector<float> > & actions = std::list<std::vector<float> >());
 	virtual void clear();
@@ -118,41 +118,45 @@ protected:
 
 	void addSignatureToWm(Signature * signature);
 	Signature * _getSignature(int id) const;
-	Signature * _getLastSignature();
-	Signature * getRemovableSignature(const std::list<int> & ignoredIds = std::list<int>(), bool onlyLoopedSignatures = false);
+	std::list<Signature *> getRemovableSignatures(int count, const std::set<int> & ignoredIds = std::set<int>());
 	int getNextId();
 	void initCountId();
-	int rehearsal(const Signature * signature, bool onlyLast, float & similarity);
-	void touch(int signatureId);
+	void rehearsal(Signature * signature, std::map<std::string, float> & stats);
+
 	const std::map<int, Signature*> & getSignatures() const {return _signatures;}
 
 private:
-	void createVirtualSignature(Signature ** signature);
+	virtual void copyData(const Signature * from, Signature * to) = 0;
 	virtual Signature * createSignature(int id, const SMState * rawData, bool keepRawData=false) = 0;
+
+	void createVirtualSignature(Signature ** signature);
 	void cleanGraph(const Node * root);
 protected:
 	DBDriver * _dbDriver;
 
 private:
+	// parameters
 	float _similarityThreshold;
 	bool _similarityOnlyLast;
 	bool _rawDataKept;
-	int _idCount;
-	Signature * _lastSignature;
-	int _lastLoopClosureId;
 	bool _incrementalMemory;
 	unsigned int _maxStMemSize;
 	bool _commonSignatureUsed;
-	bool _databaseCleaned; //if true, delete old signatures in the database
-	int _delayRequired;
 	float _recentWmRatio;
+	bool _dataMergedOnRehearsal;
+
+	int _idCount;
+	Signature * _lastSignature;
+	int _lastLoopClosureId;
 	bool _memoryChanged; // False by default, become true when Memory::update() is called.
 	bool _merging;
 	int _signaturesAdded;
 
 	std::map<int, Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
-	std::set<int> _stMem;
-	std::map<int, int> _workingMem; // id, timeStamp
+	std::set<int> _stMem; // id
+	std::set<int> _workingMem; // id,age
+	std::vector<int> _lastBaseIds;
+	std::map<int, std::map<int, float> > _similaritiesMap;
 };
 
 } // namespace rtabmap

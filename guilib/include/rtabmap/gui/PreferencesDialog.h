@@ -104,6 +104,7 @@ public:
 	// source panel
 	double getGeneralImageRate() const;
 	bool getGeneralAutoRestart() const;
+	bool getGeneralCameraKeypoints() const;
 	int getSourceType() const;
 	QString getSourceTypeStr() const;
 	int getSourceWidth() const;
@@ -117,10 +118,11 @@ public:
 	int getSourceUsbDeviceId() const;		//UsbDevice group
 	QString getSourceDatabasePath() const; 			//Database group
 	bool getSourceDatabaseIgnoreChildren() const;	//Database group
+	bool getSourceDatabaseLoadActions() const;	//Database group
 
 	//
 	bool isImagesKept() const;
-	double getTimeLimit() const;
+	float getTimeLimit() const;
 
 	//specific
 	double getLoopThr() const;
@@ -137,7 +139,7 @@ public slots:
 	void setRetrievalThr(int value);
 	void setImgRate(double value);
 	void setAutoRestart(bool value);
-	void setTimeLimit(double value);
+	void setTimeLimit(float value);
 	void selectSource(Src src = kSrcUndef);
 
 private slots:
@@ -152,12 +154,12 @@ private slots:
 	void addParameter(int value);
 	void addParameter(double value);
 	void addParameter(const QString & value);
-	void updatePredictionLCSliders();
-	void updatePredictionLC();
+	void updatePredictionPlot();
 	void updateKpROI();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
 	void readSettingsEnd();
+	void setupTreeView();
 
 protected:
 	virtual void showEvent ( QShowEvent * event );
@@ -178,9 +180,7 @@ protected:
 
 private:
 	bool validateForm();
-	void setupTreeView();
 	void setupSignals();
-	void setupPredictionPanel();
 	void setupKpRoiPanel();
 	bool parseModel(QList<QGroupBox*> & boxes, QStandardItem * parentItem, int currentLevel, int & absoluteIndex);
 	void addParameter(const QObject * object, int value);
@@ -198,10 +198,6 @@ private:
 	Ui_preferencesDialog * _ui;
 	QStandardItemModel * _indexModel;
 	bool _initialized;
-
-	//For Bayes filter prediction parameters
-	QList<QSlider*> _predictionLCSliders; // Sliders used to setup the prediction
-	bool _predictionPanelInitialized;
 
 	QProgressDialog * _progressDialog;
 };

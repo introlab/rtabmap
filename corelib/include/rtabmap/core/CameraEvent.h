@@ -33,45 +33,18 @@ class RTABMAP_EXP CameraEvent :
 {
 public:
 	enum Code {
-		kCodeCtrl,
 		kCodeNoMoreImages
 	};
 
-	enum Cmd {
-		kCmdUndefined,
-		kCmdPause,
-		kCmdChangeParam
-	};
-
 public:
-	CameraEvent(Cmd command, float imageRate = -1, bool autoRestart = false) :
-		UEvent(kCodeCtrl),
-		_command(command),
-		_imageRate(imageRate),
-		_autoRestart(autoRestart)
-	{
-	}
-
 	CameraEvent() :
-		UEvent(kCodeNoMoreImages),
-		_command(kCmdUndefined),
-		_imageRate(-1)
+		UEvent(kCodeNoMoreImages)
 	{
-
 	}
 
 	virtual ~CameraEvent() {}
 
 	virtual std::string getClassName() const {return std::string("CameraEvent");}
-
-	const Cmd & getCommand() const {return _command;}
-	float getImageRate() const {return _imageRate;}
-	bool getAutoRestart() const {return _autoRestart;}
-
-private:
-	Cmd _command;
-	float _imageRate;
-	bool _autoRestart;
 };
 
 } // namespace rtabmap
