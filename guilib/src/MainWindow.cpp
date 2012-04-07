@@ -824,6 +824,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	KeypointItem * item = 0;
 	int alpha = _preferencesDialog->getKeypointsOpacity()*255/100;
 	ULOGGER_DEBUG("refWords.size() = %d", refWords.size());
+	QMap<int, KeypointItem*> addedKeypoints;
 	for(std::multimap<int, cv::KeyPoint>::const_iterator i = refWords.begin(); i != refWords.end(); ++i )
 	{
 		const cv::KeyPoint & r = (*i).second;
@@ -865,12 +866,14 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 		item->setVisible(this->_ui->imageView_source->isFeaturesShown());
 		this->_ui->imageView_source->scene()->addItem(item);
 		item->setZValue(1);
+		addedKeypoints.insert(id, item);
 	}
 	ULOGGER_DEBUG("source time = %f s", timer.ticks());
 
 	timer.start();
 	item = 0;
 	ULOGGER_DEBUG("loopWords.size() = %d", loopWords.size());
+	QList<QPair<KeypointItem*, KeypointItem*> > uniqueCorrespondences;
 	for(std::multimap<int, cv::KeyPoint>::const_iterator i = loopWords.begin(); i != loopWords.end(); ++i )
 	{
 		const cv::KeyPoint & r = (*i).second;
@@ -888,6 +891,11 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 		{
 			// PINK = FOUND IN LOOP SIGNATURE
 			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 0, 255, alpha));
+			//To draw lines... get only unique correspondences
+			if(uValues(refWords, id).size() == 1 && uValues(loopWords, id).size() == 1)
+			{
+				uniqueCorrespondences.push_back(QPair<KeypointItem*, KeypointItem*>(addedKeypoints.value(id), item));
+			}
 		}
 		else if(id<=_lastId)
 		{
@@ -917,6 +925,38 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 			_lastId = (*refWords.rbegin()).first;
 		}
 		_lastIds = QSet<int>::fromList(QList<int>::fromStdList(uKeys(refWords)));
+	}
+
+	// Draw lines between corresponding features...
+	// TODO: support mirror view, switching between vertical to horizontal layout
+	int deltaX = this->_ui->imageView_source->sceneRect().width();
+	int deltaY = 0;
+	if(_preferencesDialog->isVerticalLayoutUsed())
+	{
+		deltaX = 0;
+		deltaY = this->_ui->imageView_source->sceneRect().height();
+	}
+	for(QList<QPair<KeypointItem*, KeypointItem*> >::iterator iter = uniqueCorrespondences.begin();
+		iter!=uniqueCorrespondences.end();
+		++iter)
+	{
+		QGraphicsLineItem * item = this->_ui->imageView_source->scene()->addLine(
+				iter->first->rect().x()+iter->first->rect().width()/2,
+				iter->first->rect().y()+iter->first->rect().height()/2,
+				iter->second->rect().x()+iter->second->rect().width()/2+deltaX,
+				iter->second->rect().y()+iter->second->rect().height()/2+deltaY,
+				QPen(QColor(255, 255, 255, alpha)));
+		item->setVisible(this->_ui->imageView_source->isLinesShown());
+		item->setZValue(1);
+
+		item = this->_ui->imageView_loopClosure->scene()->addLine(
+				iter->first->rect().x()+iter->first->rect().width()/2-deltaX,
+				iter->first->rect().y()+iter->first->rect().height()/2-deltaY,
+				iter->second->rect().x()+iter->second->rect().width()/2,
+				iter->second->rect().y()+iter->second->rect().height()/2,
+				QPen(QColor(255, 255, 255, alpha)));
+		item->setVisible(this->_ui->imageView_loopClosure->isLinesShown());
+		item->setZValue(1);
 	}
 }
 

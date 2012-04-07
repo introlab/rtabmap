@@ -40,6 +40,7 @@ public:
 
 	bool isImageShown();
 	bool isFeaturesShown();
+	bool isLinesShown();
 
 protected:
 	virtual void contextMenuEvent(QContextMenuEvent * e);
@@ -59,6 +60,7 @@ private:
 	QMenu * _menu;
 	QAction * _showImage;
 	QAction * _showFeatures;
+	QAction * _showLines;
 	QAction * _saveImage;
 };
 

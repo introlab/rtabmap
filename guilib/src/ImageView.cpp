@@ -47,6 +47,9 @@ ImageView::ImageView(QWidget * parent) :
 	_showFeatures = _menu->addAction(tr("Show features"));
 	_showFeatures->setCheckable(true);
 	_showFeatures->setChecked(true);
+	_showLines = _menu->addAction(tr("Show lines"));
+	_showLines->setCheckable(true);
+	_showLines->setChecked(false);
 	_saveImage = _menu->addAction(tr("Save picture..."));
 }
 
@@ -70,6 +73,11 @@ bool ImageView::isFeaturesShown()
 	return _showFeatures->isChecked();
 }
 
+bool ImageView::isLinesShown()
+{
+	return _showLines->isChecked();
+}
+
 void ImageView::contextMenuEvent(QContextMenuEvent * e)
 {
 	QAction * action = _menu->exec(e->globalPos());
@@ -90,7 +98,7 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 			img.save(text);
 		}
 	}
-	else if(action == _showFeatures || action == _showImage)
+	else if(action == _showFeatures || action == _showImage || action == _showLines)
 	{
 		this->updateItemsShown();
 	}
@@ -104,6 +112,10 @@ void ImageView::updateItemsShown()
 		if(qgraphicsitem_cast<KeypointItem*>(items.at(i)))
 		{
 			items.at(i)->setVisible(_showFeatures->isChecked());
+		}
+		else if( qgraphicsitem_cast<QGraphicsLineItem*>(items.at(i)))
+		{
+			items.at(i)->setVisible(_showLines->isChecked());
 		}
 		else if(qgraphicsitem_cast<QGraphicsPixmapItem*>(items.at(i)))
 		{
