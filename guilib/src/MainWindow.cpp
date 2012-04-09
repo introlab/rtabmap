@@ -928,34 +928,34 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	}
 
 	// Draw lines between corresponding features...
-	// TODO: support mirror view, switching between vertical to horizontal layout
-	int deltaX = this->_ui->imageView_source->sceneRect().width();
+	int deltaX = _ui->imageView_source->sceneRect().width();
 	int deltaY = 0;
 	if(_preferencesDialog->isVerticalLayoutUsed())
 	{
 		deltaX = 0;
-		deltaY = this->_ui->imageView_source->sceneRect().height();
+		deltaY = _ui->imageView_source->sceneRect().height();
+		deltaY += _ui->label_matchId->height()/_ui->imageView_source->transform().m22();
 	}
 	for(QList<QPair<KeypointItem*, KeypointItem*> >::iterator iter = uniqueCorrespondences.begin();
 		iter!=uniqueCorrespondences.end();
 		++iter)
 	{
-		QGraphicsLineItem * item = this->_ui->imageView_source->scene()->addLine(
+		QGraphicsLineItem * item = _ui->imageView_source->scene()->addLine(
 				iter->first->rect().x()+iter->first->rect().width()/2,
 				iter->first->rect().y()+iter->first->rect().height()/2,
 				iter->second->rect().x()+iter->second->rect().width()/2+deltaX,
 				iter->second->rect().y()+iter->second->rect().height()/2+deltaY,
 				QPen(QColor(255, 255, 255, alpha)));
-		item->setVisible(this->_ui->imageView_source->isLinesShown());
+		item->setVisible(_ui->imageView_source->isLinesShown());
 		item->setZValue(1);
 
-		item = this->_ui->imageView_loopClosure->scene()->addLine(
+		item = _ui->imageView_loopClosure->scene()->addLine(
 				iter->first->rect().x()+iter->first->rect().width()/2-deltaX,
 				iter->first->rect().y()+iter->first->rect().height()/2-deltaY,
 				iter->second->rect().x()+iter->second->rect().width()/2,
 				iter->second->rect().y()+iter->second->rect().height()/2,
 				QPen(QColor(255, 255, 255, alpha)));
-		item->setVisible(this->_ui->imageView_loopClosure->isLinesShown());
+		item->setVisible(_ui->imageView_loopClosure->isLinesShown());
 		item->setZValue(1);
 	}
 }
