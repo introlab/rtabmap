@@ -951,12 +951,6 @@ void Rtabmap::process()
 						ULOGGER_INFO("ns=%d m=%d", iter->first, iter->second);
 						idsSorted.insert(iter->first);
 						reactivatedIdsSet.insert(iter->first);
-
-						if(m<neighborhoodSize)
-						{
-							//immunized locations in the neighborhood from being transferred
-							immunizedLocations.insert(iter->first);
-						}
 					}
 					std::map<int, int>::iterator tmp = iter++;
 					neighbors.erase(tmp);
