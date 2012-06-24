@@ -30,22 +30,26 @@ void TwistGridWidget::addTwist(float x, float y, float z, float roll, float pitc
 {
 	if(_grid->itemAtPosition(row, col+1))
 	{
-		QLayoutItem * item = _grid->itemAtPosition(row, col+1);
-		if(item)
-		{
-			QWidget * w = item->widget();
-			if(w)
-			{
-				_grid->removeItem(item);
-				w->deleteLater();
-			}
-		}
+		TwistWidget * w = (TwistWidget*)_grid->itemAtPosition(row, col+1)->widget();
+		w->setData(x, y, z, roll, pitch, yaw);
+		this->update();
 	}
-	_grid->addWidget(new TwistWidget(x, y, z, roll, pitch, yaw, this), row, col+1);
+	else
+	{
+		_grid->addWidget(new TwistWidget(x, y, z, roll, pitch, yaw, this), row, col+1);
+	}
 }
 
 TwistWidget::TwistWidget(float x, float y, float z, float roll, float pitch, float yaw, QWidget * parent, Qt::WindowFlags f) :
 		QWidget(parent, f)
+{
+	this->setData(x, y, z, roll, pitch, yaw);
+
+	this->setFixedSize(SIZE,SIZE);
+	this->setMinimumSize(SIZE,SIZE);
+}
+
+void TwistWidget::setData(float x, float y, float z, float roll, float pitch, float yaw)
 {
 	if(qAbs(z) > 0.00001)
 	{
@@ -60,9 +64,6 @@ TwistWidget::TwistWidget(float x, float y, float z, float roll, float pitch, flo
 	_roll = roll;
 	_pitch = pitch;
 	_yaw = yaw;
-
-	this->setFixedSize(SIZE,SIZE);
-	this->setMinimumSize(SIZE,SIZE);
 }
 
 void TwistWidget::paintEvent(QPaintEvent * event)

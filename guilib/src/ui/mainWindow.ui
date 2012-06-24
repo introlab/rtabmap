@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>842</width>
-    <height>457</height>
+    <width>1056</width>
+    <height>642</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -21,7 +21,7 @@
    <set>QMainWindow::AllowNestedDocks|QMainWindow::AllowTabbedDocks|QMainWindow::AnimatedDocks|QMainWindow::VerticalTabs</set>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout_5">
+   <layout class="QHBoxLayout" name="horizontalLayout_3">
     <property name="spacing">
      <number>0</number>
     </property>
@@ -29,100 +29,70 @@
      <number>0</number>
     </property>
     <item>
-     <widget class="QFrame" name="frame">
-      <property name="frameShape">
-       <enum>QFrame::Box</enum>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <property name="spacing">
+       <number>0</number>
       </property>
-      <property name="frameShadow">
-       <enum>QFrame::Raised</enum>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout">
-       <property name="spacing">
-        <number>0</number>
-       </property>
-       <property name="margin">
-        <number>0</number>
-       </property>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_9">
-         <item>
-          <widget class="QLabel" name="label_refId">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>18</height>
-            </size>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="rtabmap::ImageView" name="imageView_source">
-         <property name="verticalScrollBarPolicy">
-          <enum>Qt::ScrollBarAlwaysOff</enum>
-         </property>
-         <property name="horizontalScrollBarPolicy">
-          <enum>Qt::ScrollBarAlwaysOff</enum>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
+      <item>
+       <widget class="QLabel" name="label_refId">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>18</height>
+         </size>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="rtabmap::ImageView" name="imageView_source">
+        <property name="verticalScrollBarPolicy">
+         <enum>Qt::ScrollBarAlwaysOff</enum>
+        </property>
+        <property name="horizontalScrollBarPolicy">
+         <enum>Qt::ScrollBarAlwaysOff</enum>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </item>
     <item>
-     <widget class="QFrame" name="frame_2">
-      <property name="frameShape">
-       <enum>QFrame::Box</enum>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <property name="spacing">
+       <number>0</number>
       </property>
-      <property name="frameShadow">
-       <enum>QFrame::Raised</enum>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
-       <property name="spacing">
-        <number>0</number>
-       </property>
-       <property name="margin">
-        <number>0</number>
-       </property>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_4">
-         <item>
-          <widget class="QLabel" name="label_matchId">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>18</height>
-            </size>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="rtabmap::ImageView" name="imageView_loopClosure">
-         <property name="verticalScrollBarPolicy">
-          <enum>Qt::ScrollBarAlwaysOff</enum>
-         </property>
-         <property name="horizontalScrollBarPolicy">
-          <enum>Qt::ScrollBarAlwaysOff</enum>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
+      <item>
+       <widget class="QLabel" name="label_matchId">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>18</height>
+         </size>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="rtabmap::ImageView" name="imageView_loopClosure">
+        <property name="verticalScrollBarPolicy">
+         <enum>Qt::ScrollBarAlwaysOff</enum>
+        </property>
+        <property name="horizontalScrollBarPolicy">
+         <enum>Qt::ScrollBarAlwaysOff</enum>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>
@@ -131,8 +101,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>842</width>
-     <height>22</height>
+     <width>1056</width>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -145,6 +115,20 @@
     <property name="title">
      <string>Edit</string>
     </property>
+    <widget class="QMenu" name="menuAspect_ratio">
+     <property name="title">
+      <string>Aspect ratio</string>
+     </property>
+     <addaction name="action16_9"/>
+     <addaction name="action16_10"/>
+     <addaction name="action4_3"/>
+     <addaction name="separator"/>
+     <addaction name="action1080p"/>
+     <addaction name="action720p"/>
+     <addaction name="action480p"/>
+     <addaction name="action360p"/>
+     <addaction name="action240p"/>
+    </widget>
     <addaction name="actionApply_settings_to_the_detector"/>
     <addaction name="actionClear_cache"/>
     <addaction name="separator"/>
@@ -157,6 +141,7 @@
     <addaction name="actionReset_the_memory"/>
     <addaction name="separator"/>
     <addaction name="actionAuto_screen_capture"/>
+    <addaction name="menuAspect_ratio"/>
    </widget>
    <widget class="QMenu" name="menu6">
     <property name="title">
@@ -174,9 +159,23 @@
      <property name="title">
       <string>Select source</string>
      </property>
-     <addaction name="actionStream"/>
-     <addaction name="actionImages"/>
-     <addaction name="actionVideo"/>
+     <widget class="QMenu" name="menuImage">
+      <property name="title">
+       <string>Image</string>
+      </property>
+      <addaction name="actionUsbCamera"/>
+      <addaction name="actionImageFiles"/>
+      <addaction name="actionVideo"/>
+     </widget>
+     <widget class="QMenu" name="menuAudio">
+      <property name="title">
+       <string>Audio</string>
+      </property>
+      <addaction name="actionMic"/>
+      <addaction name="actionAudioFile"/>
+     </widget>
+     <addaction name="menuImage"/>
+     <addaction name="menuAudio"/>
      <addaction name="actionDatabase"/>
     </widget>
     <addaction name="menuSelect_source"/>
@@ -230,7 +229,7 @@
    <widget class="QWidget" name="dockWidgetContents">
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="rtabmap::Plot" name="posteriorPlot" native="true"/>
+      <widget class="UPlot" name="posteriorPlot" native="true"/>
      </item>
     </layout>
    </widget>
@@ -491,7 +490,7 @@
    <widget class="QWidget" name="dockWidgetContents_4">
     <layout class="QVBoxLayout" name="verticalLayout_6">
      <item>
-      <widget class="rtabmap::Plot" name="likelihoodPlot" native="true"/>
+      <widget class="UPlot" name="likelihoodPlot" native="true"/>
      </item>
     </layout>
    </widget>
@@ -529,53 +528,39 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="dockWidget_audioProcessedFrames">
+   <property name="windowTitle">
+    <string>Audio Processed Frames</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_9">
+    <layout class="QVBoxLayout" name="verticalLayout_10">
+     <item>
+      <widget class="USpectrogram" name="widget_audioProcessedFrames" native="true"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget_audioLoopFrames">
+   <property name="windowTitle">
+    <string>Audio Loop Frames</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_10">
+    <layout class="QVBoxLayout" name="verticalLayout_11">
+     <item>
+      <widget class="USpectrogram" name="widget_audioLoopFrames" native="true"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
-   </property>
-  </action>
-  <action name="actionStream">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Usb device</string>
-   </property>
-  </action>
-  <action name="actionVideo">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Video...</string>
-   </property>
-  </action>
-  <action name="actionImages">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Images...</string>
-   </property>
-  </action>
-  <action name="actionSURF">
-   <property name="text">
-    <string>SURF</string>
-   </property>
-  </action>
-  <action name="actionFourier">
-   <property name="text">
-    <string>Fourier</string>
-   </property>
-  </action>
-  <action name="actionSIFT">
-   <property name="text">
-    <string>SIFT</string>
-   </property>
-  </action>
-  <action name="actionCenSurE">
-   <property name="text">
-    <string>CenSurE</string>
    </property>
   </action>
   <action name="actionHelp">
@@ -616,6 +601,9 @@
    <property name="text">
     <string>Pause</string>
    </property>
+   <property name="toolTip">
+    <string>Pause</string>
+   </property>
   </action>
   <action name="actionPause_on_match">
    <property name="checkable">
@@ -651,14 +639,6 @@
   <action name="actionDump_the_memory">
    <property name="text">
     <string>Dump the memory</string>
-   </property>
-  </action>
-  <action name="actionDatabase">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Database...</string>
    </property>
   </action>
   <action name="actionPause_when_a_loop_hypothesis_is_rejected">
@@ -716,18 +696,106 @@
     <string>Show working directory in file browser</string>
    </property>
   </action>
+  <action name="action16_9">
+   <property name="text">
+    <string>16:9</string>
+   </property>
+  </action>
+  <action name="action16_10">
+   <property name="text">
+    <string>16:10</string>
+   </property>
+  </action>
+  <action name="action4_3">
+   <property name="text">
+    <string>4:3</string>
+   </property>
+  </action>
+  <action name="action360p">
+   <property name="text">
+    <string>360p</string>
+   </property>
+  </action>
+  <action name="action480p">
+   <property name="text">
+    <string>480p</string>
+   </property>
+  </action>
+  <action name="action720p">
+   <property name="text">
+    <string>720p</string>
+   </property>
+  </action>
+  <action name="action1080p">
+   <property name="text">
+    <string>1080p</string>
+   </property>
+  </action>
+  <action name="action240p">
+   <property name="text">
+    <string>240p</string>
+   </property>
+  </action>
+  <action name="actionUsbCamera">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Usb camera</string>
+   </property>
+  </action>
+  <action name="actionImageFiles">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Images...</string>
+   </property>
+  </action>
+  <action name="actionVideo">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Video...</string>
+   </property>
+  </action>
+  <action name="actionMic">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Mic</string>
+   </property>
+  </action>
+  <action name="actionAudioFile">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>File...</string>
+   </property>
+  </action>
+  <action name="actionDatabase">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Database...</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
-   <class>rtabmap::Plot</class>
+   <class>UPlot</class>
    <extends>QWidget</extends>
-   <header>Plot.h</header>
+   <header>utilite/UPlot.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>rtabmap::ImageView</class>
    <extends>QGraphicsView</extends>
-   <header>ImageView.h</header>
+   <header>../include/rtabmap/gui/ImageView.h</header>
   </customwidget>
   <customwidget>
    <class>rtabmap::StatsToolBox</class>
@@ -745,6 +813,12 @@
    <class>rtabmap::TwistGridWidget</class>
    <extends>QWidget</extends>
    <header>TwistWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>USpectrogram</class>
+   <extends>QWidget</extends>
+   <header>utilite/USpectrogram.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<?fileVersion 4.0.0?>
-
-<cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
+<?fileVersion 4.0.0?><cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
 	<storageModule moduleId="org.eclipse.cdt.core.settings">
 		<cconfiguration id="0.1790260204">
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="0.1790260204" moduleId="org.eclipse.cdt.core.settings" name="Unix">
@@ -27,251 +25,127 @@
 							<builder arguments="-C ${ProjDirPath}/build VERBOSE=true" buildPath="${workspace_loc:/RTAB-Map}" command="make" id="org.eclipse.cdt.build.core.settings.default.builder.1868197384" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" superClass="org.eclipse.cdt.build.core.settings.default.builder"/>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.libs.45793018" name="holder for library settings" superClass="org.eclipse.cdt.build.core.settings.holder.libs"/>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.894008781" name="Assembly" superClass="org.eclipse.cdt.build.core.settings.holder">
+								<option id="org.eclipse.cdt.build.core.settings.holder.undef.incpaths.584706788" name="Undefined Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.undef.incpaths" valueType="undefIncludePath">
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/ts/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/flann/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/core/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/features2d/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/imgproc/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/imgproc/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/highgui/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/ml/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/photo/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/legacy/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/include/opencv"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/include/opencv"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/calib3d/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/build"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/contrib/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/build"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/objdetect/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/gpu/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/stitching/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/core/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/calib3d/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/video/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/highgui/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/features2d/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/ml/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/nonfree/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/flann/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/gpu/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/videostab/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/video/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/legacy/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/contrib/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/objdetect/include"/>
+								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1694566822" languageId="org.eclipse.cdt.core.assembly" languageName="Assembly" sourceContentType="org.eclipse.cdt.core.asmSource" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder">
+								<option id="org.eclipse.cdt.build.core.settings.holder.undef.incpaths.449413398" name="Undefined Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.undef.incpaths" valueType="undefIncludePath">
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/ts/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/flann/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/core/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/features2d/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/imgproc/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/imgproc/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/highgui/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/ml/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/photo/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/legacy/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/include/opencv"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/include/opencv"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/calib3d/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/build"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/contrib/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/build"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/objdetect/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/gpu/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/stitching/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/core/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/calib3d/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/video/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/highgui/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/features2d/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/ml/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/nonfree/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/flann/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/gpu/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/videostab/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/video/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/legacy/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/contrib/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/objdetect/include"/>
+								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1666253491" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.1172725717" name="GNU C" superClass="org.eclipse.cdt.build.core.settings.holder">
+								<option id="org.eclipse.cdt.build.core.settings.holder.undef.incpaths.508497091" name="Undefined Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.undef.incpaths" valueType="undefIncludePath">
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/ts/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/flann/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/core/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/features2d/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/imgproc/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/imgproc/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/highgui/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/ml/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/photo/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/legacy/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/include/opencv"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/include/opencv"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/calib3d/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/build"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/contrib/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/build"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/objdetect/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/gpu/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/stitching/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/core/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/calib3d/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/video/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/highgui/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/features2d/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/ml/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/nonfree/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/flann/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/gpu/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/videostab/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/video/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/legacy/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.4.0-beta2/modules/contrib/include"/>
+									<listOptionValue builtIn="false" value="/Users/MatLab/workspace/OpenCV-2.3.1/modules/objdetect/include"/>
+								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.230409752" languageId="org.eclipse.cdt.core.gcc" languageName="GNU C" sourceContentType="org.eclipse.cdt.core.cSource,org.eclipse.cdt.core.cHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
 						</toolChain>
 					</folderInfo>
-					<fileInfo id="0.1790260204.17195747" name="main.cpp" rcbsApplicability="disable" resourcePath="app/src/main.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.43698106">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.43698106" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.592706535" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.963755406" name="main.cpp" rcbsApplicability="disable" resourcePath="guilib/ExamplePlot/main.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.163064930">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.163064930" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.457374515" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.247586034" name="Plot.cpp" rcbsApplicability="disable" resourcePath="guilib/src/Plot.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1677775980">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1677775980" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.376644361" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1918058508" name="ImageView.cpp" rcbsApplicability="disable" resourcePath="guilib/src/ImageView.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.36093201">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.36093201" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1037384722" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1501067786" name="PdfPlot.cpp" rcbsApplicability="disable" resourcePath="guilib/src/PdfPlot.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.596773393">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.596773393" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1229871618" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1109966598" name="DetailedProgressDialog.cpp" rcbsApplicability="disable" resourcePath="guilib/src/DetailedProgressDialog.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1518558347">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1518558347" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1619420504" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.741699645" name="TwistWidget.cpp" rcbsApplicability="disable" resourcePath="guilib/src/TwistWidget.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.204021036">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.204021036" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.998316033" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1694005000" name="PreferencesDialog.cpp" rcbsApplicability="disable" resourcePath="guilib/src/PreferencesDialog.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.321422930">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.321422930" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.654647069" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1751737658" name="qtipl.cpp" rcbsApplicability="disable" resourcePath="guilib/src/qtipl.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1193328688">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1193328688" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1710101875" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1841585229" name="KeypointItem.cpp" rcbsApplicability="disable" resourcePath="guilib/src/KeypointItem.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.2075740125">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.2075740125" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1426409531" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1180598487" name="StatsToolBox.cpp" rcbsApplicability="disable" resourcePath="guilib/src/StatsToolBox.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.962612433">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.962612433" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1041182284" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.193474239" name="ConsoleWidget.cpp" rcbsApplicability="disable" resourcePath="guilib/src/ConsoleWidget.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1263801846">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1263801846" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1103538875" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1689777814" name="MainWindow.cpp" rcbsApplicability="disable" resourcePath="guilib/src/MainWindow.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1290821373">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1290821373" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.885070806" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1864450429" name="AboutDialog.cpp" rcbsApplicability="disable" resourcePath="guilib/src/AboutDialog.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.597819193">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.597819193" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1321263311" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.2000992740" name="main.cpp" rcbsApplicability="disable" resourcePath="corelib/ImagesJoiner/main.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.608202966">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.608202966" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1484361081" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1890403723" name="Tests.cpp" rcbsApplicability="disable" resourcePath="corelib/tests/Tests.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1125450504">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1125450504" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.850450296" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.385586154" name="main.cpp" rcbsApplicability="disable" resourcePath="corelib/tests/main.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.400659066">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.400659066" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1019248648" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.2020098547" name="main.cpp" rcbsApplicability="disable" resourcePath="corelib/ImagesDbExtractor/main.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1503066556">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1503066556" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.2006785057" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.988063105" name="lzw.cc" rcbsApplicability="disable" resourcePath="corelib/ColorTableGenerator/lzw.cc" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.539119865">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.539119865" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1621841990" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.967698673" name="main.cpp" rcbsApplicability="disable" resourcePath="corelib/ColorTableGenerator/main.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1989329192">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1989329192" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1348047678" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1620286307" name="main.cpp" rcbsApplicability="disable" resourcePath="corelib/ConsoleApp/main.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.2907447">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.2907447" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.2074335115" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.306796892" name="main.cpp" rcbsApplicability="disable" resourcePath="corelib/WebcamCapture/main.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.83878016">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.83878016" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1802075635" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1294115810" name="BayesFilter.cpp" rcbsApplicability="disable" resourcePath="corelib/src/BayesFilter.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.2068628825">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.2068628825" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1022608575" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.233161727" name="Signature.cpp" rcbsApplicability="disable" resourcePath="corelib/src/Signature.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.198776638">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.198776638" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.676226186" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.722592392" name="DBDriverFactory.cpp" rcbsApplicability="disable" resourcePath="corelib/src/DBDriverFactory.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1351008708">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1351008708" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.545394658" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.275777881" name="DBDriver.cpp" rcbsApplicability="disable" resourcePath="corelib/src/DBDriver.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.2085002614">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.2085002614" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1884262766" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.721956674" name="lzw.cc" rcbsApplicability="disable" resourcePath="corelib/src/lzw.cc" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.419126237">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.419126237" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1905165847" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1953710653" name="ColorTable.cpp" rcbsApplicability="disable" resourcePath="corelib/src/ColorTable.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1963225049">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1963225049" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1596155056" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1418040880" name="KeypointDescriptor.cpp" rcbsApplicability="disable" resourcePath="corelib/src/KeypointDescriptor.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1605918302">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1605918302" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1270538574" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1790800655" name="Camera.cpp" rcbsApplicability="disable" resourcePath="corelib/src/Camera.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.911906612">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.911906612" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.23507765" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.127865846" name="VisualWord.cpp" rcbsApplicability="disable" resourcePath="corelib/src/VisualWord.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1908859815">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1908859815" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1767390138" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1603324886" name="Memory.cpp" rcbsApplicability="disable" resourcePath="corelib/src/Memory.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1766592203">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1766592203" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.114976254" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1259692999" name="Parameters.cpp" rcbsApplicability="disable" resourcePath="corelib/src/Parameters.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.871376435">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.871376435" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.77652377" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.765040840" name="NearestNeighbor.cpp" rcbsApplicability="disable" resourcePath="corelib/src/NearestNeighbor.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1594668504">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1594668504" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1851206249" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.725611740" name="VerifyHypotheses.cpp" rcbsApplicability="disable" resourcePath="corelib/src/VerifyHypotheses.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.433505890">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.433505890" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1737567446" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1285626576" name="DBDriverSqlite3.cpp" rcbsApplicability="disable" resourcePath="corelib/src/DBDriverSqlite3.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.984272817">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.984272817" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.401817937" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1043861490" name="Rtabmap.cpp" rcbsApplicability="disable" resourcePath="corelib/src/Rtabmap.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1131762744">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1131762744" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.974552388" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.408115838" name="RtabmapEvent.cpp" rcbsApplicability="disable" resourcePath="corelib/src/RtabmapEvent.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1649158856">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1649158856" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.383927142" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.842386403" name="SMMemory.cpp" rcbsApplicability="disable" resourcePath="corelib/src/SMMemory.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.87108044">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.87108044" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1086344362" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.40478822" name="VWDictionary.cpp" rcbsApplicability="disable" resourcePath="corelib/src/VWDictionary.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1742581214">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1742581214" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.633256001" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.2143269686" name="KeypointDetector.cpp" rcbsApplicability="disable" resourcePath="corelib/src/KeypointDetector.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.207570047">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.207570047" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.41613360" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1847950433" name="KeypointMemory.cpp" rcbsApplicability="disable" resourcePath="corelib/src/KeypointMemory.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1634124374">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1634124374" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.857393517" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.706873041" name="EpipolarGeometry.cpp" rcbsApplicability="disable" resourcePath="corelib/src/EpipolarGeometry.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1267443685">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1267443685" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.275028502" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1501643207" name="main.cpp" rcbsApplicability="disable" resourcePath="corelib/ColorIndexesGenerator/main.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.731547621">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.731547621" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1954137907" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.341242776" name="main.cpp" rcbsApplicability="disable" resourcePath="corelib/LogPolar/main.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1902417096">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1902417096" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1476322339" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.1425892561" name="main.cpp" rcbsApplicability="disable" resourcePath="corelib/DatabaseViewer/main.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.98711309">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.98711309" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.232672573" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
-					<fileInfo id="0.1790260204.403258437" name="MainWindow.cpp" rcbsApplicability="disable" resourcePath="corelib/DatabaseViewer/MainWindow.cpp" toolsToInvoke="org.eclipse.cdt.build.core.settings.holder.1789919121.1982142658">
-						<tool id="org.eclipse.cdt.build.core.settings.holder.1789919121.1982142658" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder.894008781">
-							<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1603965228" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
-						</tool>
-					</fileInfo>
 					<sourceEntries>
 						<entry excluding="build" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
@@ -280,208 +154,6 @@
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
 			<storageModule moduleId="org.eclipse.cdt.core.language.mapping"/>
 			<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
-			<storageModule moduleId="scannerConfiguration">
-				<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-				<profile id="org.eclipse.cdt.make.core.GCCStandardMakePerProjectProfile">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="specsFile">
-						<runAction arguments="-E -P -v -dD ${plugin_state_location}/${specs_file}" command="gcc" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<profile id="org.eclipse.cdt.make.core.GCCStandardMakePerFileProfile">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="makefileGenerator">
-						<runAction arguments="-E -P -v -dD" command="" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<profile id="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfile">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="specsFile">
-						<runAction arguments="-E -P -v -dD ${plugin_state_location}/${specs_file}" command="gcc" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<profile id="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileCPP">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="specsFile">
-						<runAction arguments="-E -P -v -dD ${plugin_state_location}/specs.cpp" command="g++" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<profile id="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileC">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="specsFile">
-						<runAction arguments="-E -P -v -dD ${plugin_state_location}/specs.c" command="gcc" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<profile id="org.eclipse.cdt.managedbuilder.core.GCCWinManagedMakePerProjectProfile">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="specsFile">
-						<runAction arguments="-c 'gcc -E -P -v -dD &quot;${plugin_state_location}/${specs_file}&quot;'" command="sh" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<profile id="org.eclipse.cdt.managedbuilder.core.GCCWinManagedMakePerProjectProfileCPP">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="specsFile">
-						<runAction arguments="-c 'g++ -E -P -v -dD &quot;${plugin_state_location}/specs.cpp&quot;'" command="sh" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<profile id="org.eclipse.cdt.managedbuilder.core.GCCWinManagedMakePerProjectProfileC">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="specsFile">
-						<runAction arguments="-c 'gcc -E -P -v -dD &quot;${plugin_state_location}/specs.c&quot;'" command="sh" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<scannerConfigBuildInfo instanceId="0.1790260204">
-					<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.make.core.GCCStandardMakePerFileProfile"/>
-					<profile id="org.eclipse.cdt.make.core.GCCStandardMakePerProjectProfile">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="specsFile">
-							<runAction arguments="-E -P -v -dD ${plugin_state_location}/${specs_file}" command="gcc" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-					<profile id="org.eclipse.cdt.make.core.GCCStandardMakePerFileProfile">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="makefileGenerator">
-							<runAction arguments="-E -P -v -dD" command="" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-					<profile id="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfile">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="specsFile">
-							<runAction arguments="-E -P -v -dD ${plugin_state_location}/${specs_file}" command="gcc" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-					<profile id="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileCPP">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="specsFile">
-							<runAction arguments="-E -P -v -dD ${plugin_state_location}/specs.cpp" command="g++" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-					<profile id="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileC">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="specsFile">
-							<runAction arguments="-E -P -v -dD ${plugin_state_location}/specs.c" command="gcc" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-					<profile id="org.eclipse.cdt.managedbuilder.core.GCCWinManagedMakePerProjectProfile">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="specsFile">
-							<runAction arguments="-c 'gcc -E -P -v -dD &quot;${plugin_state_location}/${specs_file}&quot;'" command="sh" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-					<profile id="org.eclipse.cdt.managedbuilder.core.GCCWinManagedMakePerProjectProfileCPP">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="specsFile">
-							<runAction arguments="-c 'g++ -E -P -v -dD &quot;${plugin_state_location}/specs.cpp&quot;'" command="sh" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-					<profile id="org.eclipse.cdt.managedbuilder.core.GCCWinManagedMakePerProjectProfileC">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="specsFile">
-							<runAction arguments="-c 'gcc -E -P -v -dD &quot;${plugin_state_location}/specs.c&quot;'" command="sh" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-				</scannerConfigBuildInfo>
-			</storageModule>
-			<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
-				<buildTargets>
-					<target name="CMake-MinGW-Debug" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-						<buildCommand>cmake</buildCommand>
-						<buildArguments>-E chdir build/ cmake -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Debug ../</buildArguments>
-						<buildTarget/>
-						<stopOnError>true</stopOnError>
-						<useDefaultCommand>false</useDefaultCommand>
-						<runAllBuilders>true</runAllBuilders>
-					</target>
-					<target name="CMake-MinGW-Release" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-						<buildCommand>cmake</buildCommand>
-						<buildArguments>-E chdir build/ cmake -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Release ../</buildArguments>
-						<buildTarget/>
-						<stopOnError>true</stopOnError>
-						<useDefaultCommand>false</useDefaultCommand>
-						<runAllBuilders>true</runAllBuilders>
-					</target>
-					<target name="CMake-Unix-Debug" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-						<buildCommand>cmake</buildCommand>
-						<buildArguments>-E chdir build/ cmake -G "Unix Makefiles" -D CMAKE_BUILD_TYPE=Debug ../</buildArguments>
-						<buildTarget/>
-						<stopOnError>true</stopOnError>
-						<useDefaultCommand>false</useDefaultCommand>
-						<runAllBuilders>true</runAllBuilders>
-					</target>
-					<target name="CMake-Unix-Release" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-						<buildCommand>cmake</buildCommand>
-						<buildArguments>-E chdir build/ cmake -G "Unix Makefiles" -D CMAKE_BUILD_TYPE=Release ../</buildArguments>
-						<buildTarget/>
-						<stopOnError>true</stopOnError>
-						<useDefaultCommand>false</useDefaultCommand>
-						<runAllBuilders>true</runAllBuilders>
-					</target>
-				</buildTargets>
-			</storageModule>
 		</cconfiguration>
 		<cconfiguration id="0.1790260204.1906025362">
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="0.1790260204.1906025362" moduleId="org.eclipse.cdt.core.settings" name="MinGW">
@@ -507,15 +179,25 @@
 							<builder arguments="-C ${ProjDirPath}/build VERBOSE=true" buildPath="${workspace_loc:/RTAB-Map}" command="mingw32-make" id="org.eclipse.cdt.build.core.settings.default.builder.1893174344" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" superClass="org.eclipse.cdt.build.core.settings.default.builder"/>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.libs.359841287" name="holder for library settings" superClass="org.eclipse.cdt.build.core.settings.holder.libs"/>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.2036478542" name="Assembly" superClass="org.eclipse.cdt.build.core.settings.holder">
-								<option id="org.eclipse.cdt.build.core.settings.holder.undef.incpaths.562568401" name="Undefined Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.undef.incpaths" valueType="undefIncludePath">
-									<listOptionValue builtIn="false" value="C:/OpenCV2.0/include/opencv"/>
+								<option id="org.eclipse.cdt.build.core.settings.holder.undef.incpaths.562568401" name="Undefined Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.undef.incpaths"/>
+								<option id="org.eclipse.cdt.build.core.settings.holder.incpaths.1681573069" name="Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.incpaths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;C:\Program Files (x86)\utilite\include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;M:\opencv-svn\build\install\include&quot;"/>
 								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1080087738" languageId="org.eclipse.cdt.core.assembly" languageName="Assembly" sourceContentType="org.eclipse.cdt.core.asmSource" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.2076089335" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder">
+								<option id="org.eclipse.cdt.build.core.settings.holder.incpaths.1846481663" name="Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.incpaths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;C:\Program Files (x86)\utilite\include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;M:\opencv-svn\build\install\include&quot;"/>
+								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.865357815" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.469283430" name="GNU C" superClass="org.eclipse.cdt.build.core.settings.holder">
+								<option id="org.eclipse.cdt.build.core.settings.holder.incpaths.1029977695" name="Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.incpaths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;C:\Program Files (x86)\utilite\include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;M:\opencv-svn\build\install\include&quot;"/>
+								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1452552582" languageId="org.eclipse.cdt.core.gcc" languageName="GNU C" sourceContentType="org.eclipse.cdt.core.cSource,org.eclipse.cdt.core.cHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
 						</toolChain>
@@ -528,245 +210,10 @@
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
 			<storageModule moduleId="org.eclipse.cdt.core.language.mapping"/>
 			<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
-			<storageModule moduleId="scannerConfiguration">
-				<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-				<profile id="org.eclipse.cdt.make.core.GCCStandardMakePerProjectProfile">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="specsFile">
-						<runAction arguments="-E -P -v -dD ${plugin_state_location}/${specs_file}" command="gcc" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<profile id="org.eclipse.cdt.make.core.GCCStandardMakePerFileProfile">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="makefileGenerator">
-						<runAction arguments="-E -P -v -dD" command="" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<profile id="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfile">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="specsFile">
-						<runAction arguments="-E -P -v -dD ${plugin_state_location}/${specs_file}" command="gcc" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<profile id="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileCPP">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="specsFile">
-						<runAction arguments="-E -P -v -dD ${plugin_state_location}/specs.cpp" command="g++" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<profile id="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileC">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="specsFile">
-						<runAction arguments="-E -P -v -dD ${plugin_state_location}/specs.c" command="gcc" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<profile id="org.eclipse.cdt.managedbuilder.core.GCCWinManagedMakePerProjectProfile">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="specsFile">
-						<runAction arguments="-c 'gcc -E -P -v -dD &quot;${plugin_state_location}/${specs_file}&quot;'" command="sh" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<profile id="org.eclipse.cdt.managedbuilder.core.GCCWinManagedMakePerProjectProfileCPP">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="specsFile">
-						<runAction arguments="-c 'g++ -E -P -v -dD &quot;${plugin_state_location}/specs.cpp&quot;'" command="sh" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<profile id="org.eclipse.cdt.managedbuilder.core.GCCWinManagedMakePerProjectProfileC">
-					<buildOutputProvider>
-						<openAction enabled="true" filePath=""/>
-						<parser enabled="true"/>
-					</buildOutputProvider>
-					<scannerInfoProvider id="specsFile">
-						<runAction arguments="-c 'gcc -E -P -v -dD &quot;${plugin_state_location}/specs.c&quot;'" command="sh" useDefault="true"/>
-						<parser enabled="true"/>
-					</scannerInfoProvider>
-				</profile>
-				<scannerConfigBuildInfo instanceId="0.1790260204">
-					<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.make.core.GCCStandardMakePerFileProfile"/>
-					<profile id="org.eclipse.cdt.make.core.GCCStandardMakePerProjectProfile">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="specsFile">
-							<runAction arguments="-E -P -v -dD ${plugin_state_location}/${specs_file}" command="gcc" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-					<profile id="org.eclipse.cdt.make.core.GCCStandardMakePerFileProfile">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="makefileGenerator">
-							<runAction arguments="-E -P -v -dD" command="" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-					<profile id="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfile">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="specsFile">
-							<runAction arguments="-E -P -v -dD ${plugin_state_location}/${specs_file}" command="gcc" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-					<profile id="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileCPP">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="specsFile">
-							<runAction arguments="-E -P -v -dD ${plugin_state_location}/specs.cpp" command="g++" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-					<profile id="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileC">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="specsFile">
-							<runAction arguments="-E -P -v -dD ${plugin_state_location}/specs.c" command="gcc" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-					<profile id="org.eclipse.cdt.managedbuilder.core.GCCWinManagedMakePerProjectProfile">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="specsFile">
-							<runAction arguments="-c 'gcc -E -P -v -dD &quot;${plugin_state_location}/${specs_file}&quot;'" command="sh" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-					<profile id="org.eclipse.cdt.managedbuilder.core.GCCWinManagedMakePerProjectProfileCPP">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="specsFile">
-							<runAction arguments="-c 'g++ -E -P -v -dD &quot;${plugin_state_location}/specs.cpp&quot;'" command="sh" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-					<profile id="org.eclipse.cdt.managedbuilder.core.GCCWinManagedMakePerProjectProfileC">
-						<buildOutputProvider>
-							<openAction enabled="true" filePath=""/>
-							<parser enabled="true"/>
-						</buildOutputProvider>
-						<scannerInfoProvider id="specsFile">
-							<runAction arguments="-c 'gcc -E -P -v -dD &quot;${plugin_state_location}/specs.c&quot;'" command="sh" useDefault="true"/>
-							<parser enabled="true"/>
-						</scannerInfoProvider>
-					</profile>
-				</scannerConfigBuildInfo>
-			</storageModule>
-			<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
-				<buildTargets>
-					<target name="CMake-MinGW-Debug" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-						<buildCommand>cmake</buildCommand>
-						<buildArguments>-E chdir build/ cmake -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Debug ../</buildArguments>
-						<buildTarget/>
-						<stopOnError>true</stopOnError>
-						<useDefaultCommand>false</useDefaultCommand>
-						<runAllBuilders>true</runAllBuilders>
-					</target>
-					<target name="CMake-MinGW-Release" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-						<buildCommand>cmake</buildCommand>
-						<buildArguments>-E chdir build/ cmake -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Release ../</buildArguments>
-						<buildTarget/>
-						<stopOnError>true</stopOnError>
-						<useDefaultCommand>false</useDefaultCommand>
-						<runAllBuilders>true</runAllBuilders>
-					</target>
-					<target name="CMake-Unix-Debug" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-						<buildCommand>cmake</buildCommand>
-						<buildArguments>-E chdir build/ cmake -G "Unix Makefiles" -D CMAKE_BUILD_TYPE=Debug ../</buildArguments>
-						<buildTarget/>
-						<stopOnError>true</stopOnError>
-						<useDefaultCommand>false</useDefaultCommand>
-						<runAllBuilders>true</runAllBuilders>
-					</target>
-					<target name="CMake-Unix-Release" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-						<buildCommand>cmake</buildCommand>
-						<buildArguments>-E chdir build/ cmake -G "Unix Makefiles" -D CMAKE_BUILD_TYPE=Release ../</buildArguments>
-						<buildTarget/>
-						<stopOnError>true</stopOnError>
-						<useDefaultCommand>false</useDefaultCommand>
-						<runAllBuilders>true</runAllBuilders>
-					</target>
-				</buildTargets>
-			</storageModule>
 		</cconfiguration>
 	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 		<project id="CTAB-Map.null.2089313587" name="CTAB-Map"/>
-	</storageModule>
-	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
-		<buildTargets>
-			<target name="CMake-MinGW-Debug" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-				<buildCommand>cmake</buildCommand>
-				<buildArguments>-E chdir build/ cmake -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Debug ../</buildArguments>
-				<stopOnError>true</stopOnError>
-				<useDefaultCommand>false</useDefaultCommand>
-				<runAllBuilders>true</runAllBuilders>
-			</target>
-			<target name="CMake-MinGW-Release" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-				<buildCommand>cmake</buildCommand>
-				<buildArguments>-E chdir build/ cmake -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Release ../</buildArguments>
-				<stopOnError>true</stopOnError>
-				<useDefaultCommand>false</useDefaultCommand>
-				<runAllBuilders>true</runAllBuilders>
-			</target>
-			<target name="CMake-Unix-Debug" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-				<buildCommand>cmake</buildCommand>
-				<buildArguments>-E chdir build/ cmake -G "Unix Makefiles" -D CMAKE_BUILD_TYPE=Debug ../</buildArguments>
-				<stopOnError>true</stopOnError>
-				<useDefaultCommand>false</useDefaultCommand>
-				<runAllBuilders>true</runAllBuilders>
-			</target>
-			<target name="CMake-Unix-Release" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-				<buildCommand>cmake</buildCommand>
-				<buildArguments>-E chdir build/ cmake -G "Unix Makefiles" -D CMAKE_BUILD_TYPE=Release ../</buildArguments>
-				<buildTarget/>
-				<stopOnError>true</stopOnError>
-				<useDefaultCommand>false</useDefaultCommand>
-				<runAllBuilders>true</runAllBuilders>
-			</target>
-		</buildTargets>
 	</storageModule>
 	<storageModule moduleId="scannerConfiguration">
 		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
@@ -1018,4 +465,40 @@
 		</scannerConfigBuildInfo>
 	</storageModule>
 	<storageModule moduleId="refreshScope"/>
+	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
+		<buildTargets>
+			<target name="CMake-MinGW-Debug" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+				<buildCommand>cmake</buildCommand>
+				<buildArguments>-E chdir build/ cmake -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Debug -D BUILD_TESTS=ON ../</buildArguments>
+				<buildTarget/>
+				<stopOnError>true</stopOnError>
+				<useDefaultCommand>false</useDefaultCommand>
+				<runAllBuilders>true</runAllBuilders>
+			</target>
+			<target name="CMake-MinGW-Release" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+				<buildCommand>cmake</buildCommand>
+				<buildArguments>-E chdir build/ cmake -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Release -D BUILD_TESTS=ON ../</buildArguments>
+				<buildTarget/>
+				<stopOnError>true</stopOnError>
+				<useDefaultCommand>false</useDefaultCommand>
+				<runAllBuilders>true</runAllBuilders>
+			</target>
+			<target name="CMake-Unix-Debug" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+				<buildCommand>cmake</buildCommand>
+				<buildArguments>-E chdir build/ cmake -G "Unix Makefiles" -D CMAKE_BUILD_TYPE=Debug -D BUILD_TESTS=ON ../</buildArguments>
+				<buildTarget/>
+				<stopOnError>true</stopOnError>
+				<useDefaultCommand>false</useDefaultCommand>
+				<runAllBuilders>true</runAllBuilders>
+			</target>
+			<target name="CMake-Unix-Release" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+				<buildCommand>cmake</buildCommand>
+				<buildArguments>-E chdir build/ cmake -G "Unix Makefiles" -D CMAKE_BUILD_TYPE=Release  -D BUILD_TESTS=ON ../</buildArguments>
+				<buildTarget/>
+				<stopOnError>true</stopOnError>
+				<useDefaultCommand>false</useDefaultCommand>
+				<runAllBuilders>true</runAllBuilders>
+			</target>
+		</buildTargets>
+	</storageModule>
 </cproject>

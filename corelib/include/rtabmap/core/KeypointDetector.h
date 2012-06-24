@@ -36,24 +36,21 @@ class VWDictionary;
 class RTABMAP_EXP KeypointDetector
 {
 public:
+	enum DetectorType {kDetectorSurf, kDetectorStar, kDetectorSift, kDetectorFast, kDetectorUndef};
+
+public:
 	virtual ~KeypointDetector() {}
-	std::vector<cv::KeyPoint> generateKeypoints(const IplImage * image);
+	std::vector<cv::KeyPoint> generateKeypoints(const cv::Mat & image);
 	virtual void parseParameters(const ParametersMap & parameters);
 	unsigned int getWordsPerImageTarget() const {return _wordsPerImageTarget;}
-	double getAdaptiveResponseThr() const {return _adaptiveResponseThr;}
-	virtual double getMinimumResponseThr() const = 0;
-	bool isUsingAdaptiveResponseThr() const {return _usingAdaptiveResponseThr;}
 	void setRoi(const std::string & roi);
-	cv::Rect computeRoi(const IplImage * image) const;
+	cv::Rect computeRoi(const cv::Mat & image) const;
 protected:
 	KeypointDetector(const ParametersMap & parameters = ParametersMap());
-	void setAdaptiveResponseThr(float adaptiveResponseThr) {_adaptiveResponseThr = adaptiveResponseThr;}
 private:
-	virtual std::vector<cv::KeyPoint> _generateKeypoints(const IplImage * image, const cv::Rect & roi) const = 0;
+	virtual std::vector<cv::KeyPoint> _generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const = 0;
 private:
 	unsigned int _wordsPerImageTarget;
-	bool _usingAdaptiveResponseThr;
-	double _adaptiveResponseThr;
 	std::vector<float> _roiRatios; // size 4
 };
 
@@ -64,11 +61,15 @@ public:
 	SURFDetector(const ParametersMap & parameters = ParametersMap());
 	virtual ~SURFDetector();
 	virtual void parseParameters(const ParametersMap & parameters);
-	virtual double getMinimumResponseThr() const {return _params.hessianThreshold;};
 private:
-	virtual std::vector<cv::KeyPoint> _generateKeypoints(const IplImage * image, const cv::Rect & roi) const;
+	virtual std::vector<cv::KeyPoint> _generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const;
 private:
-	CvSURFParams _params;
+	double _hessianThreshold;
+	int _nOctaves;
+	int _nOctaveLayers;
+	bool _extended;
+	bool _upright;
+
 	bool _gpuVersion;
 };
 
@@ -79,12 +80,14 @@ public:
 	SIFTDetector(const ParametersMap & parameters = ParametersMap());
 	virtual ~SIFTDetector();
 	virtual void parseParameters(const ParametersMap & parameters);
-	virtual double getMinimumResponseThr() const {return _detectorParams.threshold;};
 private:
-	virtual std::vector<cv::KeyPoint> _generateKeypoints(const IplImage * image, const cv::Rect & roi) const;
+	virtual std::vector<cv::KeyPoint> _generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const;
 private:
-	cv::SIFT::CommonParams _commonParams;
-	cv::SIFT::DetectorParams _detectorParams;
+	int _nfeatures;
+	int _nOctaveLayers;
+	double _contrastThreshold;
+	double _edgeThreshold;
+	double _sigma;
 };
 
 //StarDetector
@@ -94,11 +97,14 @@ public:
 	StarDetector(const ParametersMap & parameters = ParametersMap());
 	virtual ~StarDetector();
 	virtual void parseParameters(const ParametersMap & parameters);
-	virtual double getMinimumResponseThr() const {return (double)_params.responseThreshold;};
 private:
-	virtual std::vector<cv::KeyPoint> _generateKeypoints(const IplImage * image, const cv::Rect & roi) const;
+	virtual std::vector<cv::KeyPoint> _generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const;
 private:
-	CvStarDetectorParams _params;
+	int _maxSize;
+	int _responseThreshold;
+	int _lineThresholdProjected;
+	int _lineThresholdBinarized;
+	int _suppressNonmaxSize;
 };
 
 //FASTDetector
@@ -108,9 +114,8 @@ public:
 	FASTDetector(const ParametersMap & parameters = ParametersMap());
 	virtual ~FASTDetector();
 	virtual void parseParameters(const ParametersMap & parameters);
-	virtual double getMinimumResponseThr() const {return (double)_threshold;};
 private:
-	virtual std::vector<cv::KeyPoint> _generateKeypoints(const IplImage * image, const cv::Rect & roi) const;
+	virtual std::vector<cv::KeyPoint> _generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const;
 private:
 	int _threshold;
 	bool _nonmaxSuppression;

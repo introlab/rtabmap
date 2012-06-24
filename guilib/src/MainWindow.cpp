@@ -19,20 +19,23 @@
 
 #include "rtabmap/gui/MainWindow.h"
 #include "ui_mainWindow.h"
-#include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/Camera.h"
-#include "qtipl.h"
-#include "KeypointItem.h"
+#include "rtabmap/core/Micro.h"
+#include "rtabmap/core/DBReader.h"
+#include "rtabmap/core/SensorimotorEvent.h"
+#include "CameraMicro.h"
+#include "rtabmap/gui/qtipl.h"
+#include "rtabmap/gui/KeypointItem.h"
 #include "AboutDialog.h"
-#include "utilite/UtiLite.h"
+#include <utilite/UtiLite.h>
+#include <utilite/UPlot.h>
 #include "rtabmap/core/Parameters.h"
-#include "ImageView.h"
-#include "Plot.h"
+#include "rtabmap/gui/ImageView.h"
 #include "PdfPlot.h"
 #include "StatsToolBox.h"
 #include "DetailedProgressDialog.h"
 #include "TwistWidget.h"
-#include "rtabmap/core/SMState.h"
+#include "rtabmap/core/Sensor.h"
 
 
 #include <QtGui/QCloseEvent>
@@ -71,6 +74,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui(0),
 	_state(kIdle),
 	_camera(0),
+	_mic(0),
+	_cameraMic(0),
+	_dbReader(0),
 	_srcType(kSrcUndefined),
 	_preferencesDialog(0),
 	_aboutDialog(0),
@@ -109,6 +115,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 		_ui->dockWidget_statsV2->setVisible(false);
 		_ui->dockWidget_console->setVisible(false);
 		_ui->dockWidget_twist->setVisible(false);
+		_ui->dockWidget_audioLoopFrames->setVisible(false);
+		_ui->dockWidget_audioProcessedFrames->setVisible(false);
 	}
 
 	if(prefDialog)
@@ -143,7 +151,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->posteriorPlot->addCurve(_posteriorCurve);
 	_ui->posteriorPlot->showLegend(false);
 	_ui->posteriorPlot->setFixedYAxis(0,1);
-	ThresholdCurve * tc;
+	UPlotCurveThreshold * tc;
 	tc = _ui->posteriorPlot->addThreshold("Loop closure thr", float(_preferencesDialog->getLoopThr()));
 	connect(this, SIGNAL(loopClosureThrChanged(float)), tc, SLOT(setThreshold(float)));
 	tc = _ui->posteriorPlot->addThreshold("Retrieval thr", float(_preferencesDialog->getRetrievalThr()));
@@ -153,7 +161,12 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->likelihoodPlot->addCurve(_likelihoodCurve);
 	_ui->likelihoodPlot->showLegend(false);
 
-	_ui->doubleSpinBox_stats_imgRate->setValue(_preferencesDialog->getGeneralImageRate());
+	_ui->widget_audioProcessedFrames->setScaled(true, true);
+	_ui->widget_audioProcessedFrames->setOnlyLastFramesDrawn(true);
+	_ui->widget_audioLoopFrames->setScaled(true, true);
+	_ui->widget_audioLoopFrames->setOnlyLastFramesDrawn(true);
+
+	_ui->doubleSpinBox_stats_imgRate->setValue(_preferencesDialog->getGeneralInputRate());
 	_ui->doubleSpinBox_stats_timeLimit->setValue(_preferencesDialog->getTimeLimit());
 
 	_initProgressDialog = new DetailedProgressDialog(this);
@@ -173,6 +186,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->menuShow_view->addAction(_ui->dockWidget_statsV2->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_console->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_twist->toggleViewAction());
+	_ui->menuShow_view->addAction(_ui->dockWidget_audioLoopFrames->toggleViewAction());
+	_ui->menuShow_view->addAction(_ui->dockWidget_audioProcessedFrames->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->toolBar->toggleViewAction());
 	_ui->toolBar->setWindowTitle(tr("Control toolbar"));
 	QAction * a = _ui->menuShow_view->addAction("Status");
@@ -192,6 +207,14 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionDelete_memory, SIGNAL(triggered()), this , SLOT(deleteMemory()));
 	connect(_ui->menuEdit, SIGNAL(aboutToShow()), this, SLOT(updateEditMenu()));
 	connect(_ui->actionAuto_screen_capture, SIGNAL(triggered(bool)), this, SLOT(selectScreenCaptureFormat(bool)));
+	connect(_ui->action16_9, SIGNAL(triggered()), this, SLOT(setAspectRatio16_9()));
+	connect(_ui->action16_10, SIGNAL(triggered()), this, SLOT(setAspectRatio16_10()));
+	connect(_ui->action4_3, SIGNAL(triggered()), this, SLOT(setAspectRatio4_3()));
+	connect(_ui->action240p, SIGNAL(triggered()), this, SLOT(setAspectRatio240p()));
+	connect(_ui->action360p, SIGNAL(triggered()), this, SLOT(setAspectRatio360p()));
+	connect(_ui->action480p, SIGNAL(triggered()), this, SLOT(setAspectRatio480p()));
+	connect(_ui->action720p, SIGNAL(triggered()), this, SLOT(setAspectRatio720p()));
+	connect(_ui->action1080p, SIGNAL(triggered()), this, SLOT(setAspectRatio1080p()));
 
 	_ui->actionPause->setShortcut(Qt::Key_Space);
 
@@ -202,15 +225,21 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 #endif
 
 	//Settings menu
-	_selectSourceGrp = new QActionGroup(this);
-	_selectSourceGrp->addAction(_ui->actionStream);
-	_selectSourceGrp->addAction(_ui->actionImages);
-	_selectSourceGrp->addAction(_ui->actionVideo);
-	_selectSourceGrp->addAction(_ui->actionDatabase);
-	this->updateSelectSourceMenu(_preferencesDialog->getSourceType());
-	connect(_ui->actionImages, SIGNAL(triggered()), this, SLOT(selectImages()));
+	_selectSourceImageGrp = new QActionGroup(this);
+	_selectSourceImageGrp->addAction(_ui->actionUsbCamera);
+	_selectSourceImageGrp->addAction(_ui->actionImageFiles);
+	_selectSourceImageGrp->addAction(_ui->actionVideo);
+	this->updateSelectSourceImageMenu(_preferencesDialog->getSourceImageType());
+	connect(_ui->actionImageFiles, SIGNAL(triggered()), this, SLOT(selectImages()));
 	connect(_ui->actionVideo, SIGNAL(triggered()), this, SLOT(selectVideo()));
-	connect(_ui->actionStream, SIGNAL(triggered()), this, SLOT(selectStream()));
+	connect(_ui->actionUsbCamera, SIGNAL(triggered()), this, SLOT(selectStream()));
+	_selectSourceAudioGrp = new QActionGroup(this);
+	_selectSourceAudioGrp->addAction(_ui->actionMic);
+	_selectSourceAudioGrp->addAction(_ui->actionAudioFile);
+	this->updateSelectSourceAudioMenu(_preferencesDialog->getSourceAudioType());
+	connect(_ui->actionMic, SIGNAL(triggered()), this, SLOT(selectMic()));
+	connect(_ui->actionAudioFile, SIGNAL(triggered()), this, SLOT(selectAudioFile()));
+	this->updateSelectSourceDatabase(_preferencesDialog->isSourceDatabaseUsed());
 	connect(_ui->actionDatabase, SIGNAL(triggered()), this, SLOT(selectDatabase()));
 
 	connect(_ui->actionSave_state, SIGNAL(triggered()), this, SLOT(saveFigures()));
@@ -228,11 +257,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	// more connects...
 	connect(_ui->doubleSpinBox_stats_imgRate, SIGNAL(editingFinished()), this, SLOT(changeImgRateSetting()));
 	connect(_ui->doubleSpinBox_stats_timeLimit, SIGNAL(editingFinished()), this, SLOT(changeTimeLimitSetting()));
-	connect(this, SIGNAL(imgRateChanged(double)), _preferencesDialog, SLOT(setImgRate(double)));
+	connect(this, SIGNAL(imgRateChanged(double)), _preferencesDialog, SLOT(setInputRate(double)));
 	connect(this, SIGNAL(timeLimitChanged(float)), _preferencesDialog, SLOT(setTimeLimit(float)));
 
 	connect(this, SIGNAL(twistReceived(float, float, float, float, float, float, int, int)), _ui->twistWidget, SLOT(addTwist(float, float, float, float, float, float, int, int)));
-
 	// Statistics from the detector
 	qRegisterMetaType<rtabmap::Statistics>("rtabmap::Statistics");
 	connect(this, SIGNAL(statsReceived(rtabmap::Statistics)), this, SLOT(processStats(rtabmap::Statistics)));
@@ -308,6 +336,24 @@ void MainWindow::closeEvent(QCloseEvent* event)
 			delete _camera;
 			_camera = 0;
 		}
+		if(_mic)
+		{
+			UERROR("Mic must be already deleted here!");
+			delete _mic;
+			_mic = 0;
+		}
+		if(_cameraMic)
+		{
+			UERROR("CameraMic must be already deleted here!");
+			delete _mic;
+			_mic = 0;
+		}
+		if(_dbReader)
+		{
+			UERROR("DBReader must be already deleted here!");
+			delete _dbReader;
+			_dbReader = 0;
+		}
 		event->accept();
 	}
 	else
@@ -331,7 +377,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 			{
 				if(_preferencesDialog->beepOnPause())
 				{
-					QApplication::beep();
+					QMetaObject::invokeMethod(this, "beep");
 				}
 				this->pauseDetection();
 			}
@@ -367,9 +413,20 @@ void MainWindow::handleEvent(UEvent* anEvent)
 		{
 			if(_preferencesDialog->beepOnPause())
 			{
-				QApplication::beep();
+				QMetaObject::invokeMethod(this, "beep");
 			}
-			//_ui->statusbar->showMessage(tr("The source has no more images..."));
+			emit noMoreImagesReceived();
+		}
+	}
+	else if(anEvent->getClassName().compare("MicroEvent") == 0)
+	{
+		MicroEvent * microEvent = (MicroEvent*)anEvent;
+		if(microEvent->getCode() == MicroEvent::kTypeNoMoreFrames)
+		{
+			if(_preferencesDialog->beepOnPause())
+			{
+				QMetaObject::invokeMethod(this, "beep");
+			}
 			emit noMoreImagesReceived();
 		}
 	}
@@ -385,44 +442,23 @@ void MainWindow::handleEvent(UEvent* anEvent)
 				_logEventTime->start();
 				if(_preferencesDialog->beepOnPause())
 				{
-					QApplication::beep();
+					QMetaObject::invokeMethod(this, "beep");
 				}
 				pauseDetection();
 			}
 		}
 	}
-	else if(anEvent->getClassName().compare("SMStateEvent") == 0)
+	else if(anEvent->getClassName().compare("SensorimotorEvent") == 0)
 	{
-		SMStateEvent * smEvent = (SMStateEvent*)anEvent;
-		if(smEvent->getSMState() != 0)
+		SensorimotorEvent * e = (rtabmap::SensorimotorEvent*)anEvent;
+
+		if(e->getCode() == SensorimotorEvent::kTypeNoMoreData)
 		{
-			const SMState * sm = smEvent->getSMState();
-			if(sm->getActuators().size())
+			if(_preferencesDialog->beepOnPause())
 			{
-				const std::list<std::vector<float> > & actions = sm->getActuators();
-				int col = 0;
-				for(std::list<std::vector<float> >::const_iterator iter=actions.begin(); iter!=actions.end(); ++iter)
-				{
-					const std::vector<float> & a = *iter;
-					if(a.size() == 6)
-					{
-						//Assume its a twist
-						emit twistReceived(a[0], a[1], a[2], a[3], a[4], a[5], 0, col++);
-					}
-				}
-				if(col != 2)
-				{
-					UWARN("col (%d) != 2", col);
-				}
+				QMetaObject::invokeMethod(this, "beep");
 			}
-			else
-			{
-				UDEBUG("Actions null");
-			}
-		}
-		else
-		{
-			UDEBUG("SMState is null...");
+			emit noMoreImagesReceived();
 		}
 	}
 }
@@ -436,260 +472,362 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	//Affichage des stats et images
 	if(stat.extended())
 	{
-		ULOGGER_DEBUG("");
+		UDEBUG("");
 		_ui->label_refId->setText(QString("New ID = %1").arg(stat.refImageId()));
 		int highestHypothesisId = static_cast<float>(uValue(stat.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
 		bool refParentId = (int)uValue(stat.data(), Statistics::kParent_id(), 0.0f);
 		bool highestHypothesisIsSaved = (bool)uValue(stat.data(), Statistics::kHypothesis_reactivated(), 0.0f);
-		//if(!(_state == kPaused && !_ui->label_matchId->text().isEmpty() && !(stat.loopClosureId()>0 || highestHypothesisId>0)))
+
+		// Loop closure info
+		_ui->imageView_source->scene()->clear();
+		_ui->imageView_loopClosure->scene()->clear();
+		_ui->imageView_source->resetTransform();
+		_ui->imageView_loopClosure->resetTransform();
+		_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
+
+		// extract some sensors
+		cv::Mat refImage;
+		cv::Mat refAudioFrame;
+		bool twistSet = false;
+		for(std::list<Sensor>::const_iterator iter = stat.refRawData().begin(); iter!=stat.refRawData().end(); ++iter)
 		{
-			ULOGGER_DEBUG("");
-			// Loop closure info
-			_ui->imageView_source->scene()->clear();
-			_ui->imageView_loopClosure->scene()->clear();
-			_ui->imageView_source->resetTransform();
-			_ui->imageView_loopClosure->resetTransform();
-			_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
-
-			_ui->label_matchId->clear();
-			QPixmap refPixmap;
-			_ui->label_stats_imageNumber->setText(QString::number(stat.refImageId()));
-			if(stat.refImage())
+			if(refImage.empty() && iter->type() == Sensor::kTypeImage)
 			{
-				QImage img = Ipl2QImage(stat.refImage());
-				//Only kept if it not added as a child in the core, that
-				//means it will never used for a loop closure detection
-				if(_preferencesDialog->isImagesKept())
+				refImage = iter->data();
+			}
+			else if(refAudioFrame.empty() && iter->type() == Sensor::kTypeAudioFreqSqrdMagn)
+			{
+				refAudioFrame = iter->data();
+			}
+			else if(iter->type() == Sensor::kTypeTwist)
+			{
+				if(!twistSet)
 				{
-					QByteArray ba;
-					QBuffer buffer(&ba);
-					buffer.open(QIODevice::WriteOnly);
-					img.save(&buffer, "JPEG"); // writes image into JPEG format
-					_imagesMap.insert(stat.refImageId(), ba);
-				}
-				QRectF sceneRect = img.rect();
-				refPixmap = QPixmap::fromImage(img);
-				_ui->imageView_source->scene()->addPixmap(refPixmap)->setVisible(this->_ui->imageView_source->isImageShown());
-				_ui->imageView_source->setSceneRect(sceneRect);
-				_ui->imageView_loopClosure->setSceneRect(sceneRect);
-
-				UDEBUG("Adding mask = %d", stat.refMotionMask().size());
-				if(stat.refMotionMask().size() == (unsigned int)img.width()*img.height())
-				{
-					UDEBUG("Adding mask");
-					const std::vector<unsigned char> & maskData = stat.refMotionMask();
-					QImage mask(img.size(), QImage::Format_ARGB32);
-					int i=0;
-					for(int y=0; y<mask.height(); ++y)
+					const Sensor & a = *iter;
+					if(a.data().total() == 6 && (a.data().type() & CV_32F))
 					{
-						for(int x=0; x<mask.width(); ++x)
-						{
-							mask.setPixel(x,y,qRgba(255,0,255,!maskData[i++]*_preferencesDialog->getKeypointsOpacity()));
-						}
+						emit twistReceived(a.data().at<float>(0),
+								a.data().at<float>(1),
+								a.data().at<float>(2),
+								a.data().at<float>(3),
+								a.data().at<float>(4),
+								a.data().at<float>(5),
+								0,
+								0);
 					}
-					_ui->imageView_source->scene()->addPixmap(QPixmap::fromImage(mask));
-				}
-			}
-			ULOGGER_DEBUG("");
-			QImage lcImg;
-			if(stat.loopClosureImage())
-			{
-				lcImg = Ipl2QImage(stat.loopClosureImage());
-				//Only kept if it not added as a child in the core, that
-				//means it will never used for a loop closure detection
-				if(_preferencesDialog->isImagesKept())
-				{
-					if(stat.loopClosureId()>0 || highestHypothesisId>0)
+					else
 					{
-						int id = stat.loopClosureId()>0?stat.loopClosureId():highestHypothesisId;
-						if(!_imagesMap.contains(id))
-						{
-							QByteArray ba;
-							QBuffer buffer(&ba);
-							buffer.open(QIODevice::WriteOnly);
-							lcImg.save(&buffer, "JPEG"); // writes image into JPEG format
-							_imagesMap.insert(id, ba);
-						}
+						UERROR("Twist must be CV_32F and have 6 elements (%d)", a.data().total());
 					}
+					twistSet = true; // Show only the first
 				}
 			}
-			ULOGGER_DEBUG("");
-			int rejectedHyp = bool(uValue(stat.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
-			float highestHypothesisValue = uValue(stat.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f);
-			if(highestHypothesisId > 0)
+			else if(iter->type() != Sensor::kTypeImageFeatures2d)
 			{
-				bool show = true;
-				if(stat.loopClosureId() > 0)
-				{
-					_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::green));
-					_ui->label_stats_loopClosuresDetected->setText(QString::number(_ui->label_stats_loopClosuresDetected->text().toInt() + 1));
-					if(highestHypothesisIsSaved)
-					{
-						_ui->label_stats_loopClosuresReactivatedDetected->setText(QString::number(_ui->label_stats_loopClosuresReactivatedDetected->text().toInt() + 1));
-					}
-					_ui->label_matchId->setText(QString("Match ID = %1").arg(stat.loopClosureId()));
-				}
-				else if(rejectedHyp && highestHypothesisValue >= _preferencesDialog->getLoopThr())
-				{
-					show = _preferencesDialog->imageRejectedShown() || _preferencesDialog->imageHighestHypShown();;
-					if(show)
-					{
-						QColor color(Qt::red);
-						_ui->imageView_loopClosure->setBackgroundBrush(QBrush(color));
-						_ui->label_stats_loopClosuresRejected->setText(QString::number(_ui->label_stats_loopClosuresRejected->text().toInt() + 1));
-						_ui->label_matchId->setText(QString("Loop hypothesis (%1) rejected!").arg(highestHypothesisId));
-					}
-				}
-				else
-				{
-					show = _preferencesDialog->imageHighestHypShown();
-					if(show)
-					{
-						_ui->label_matchId->setText(QString("Highest hypothesis (%1)").arg(highestHypothesisId));
-					}
-				}
-
-				if(show)
-				{
-					if(lcImg.isNull())
-					{
-						int id = stat.loopClosureId()>0?stat.loopClosureId():highestHypothesisId;
-						QMap<int, QByteArray>::iterator iter = _imagesMap.find(id);
-						if(iter != _imagesMap.end())
-						{
-							if(!lcImg.loadFromData(iter.value(), "JPEG"))
-							{
-								ULOGGER_ERROR("conversion from QByteArray to QImage failed");
-								lcImg = QImage();
-							}
-						}
-					}
-
-					if(!lcImg.isNull())
-					{
-						_ui->imageView_loopClosure->scene()->addPixmap(QPixmap::fromImage(lcImg))->setVisible(this->_ui->imageView_loopClosure->isImageShown());
-						UDEBUG("Adding mask = %d", stat.loopMotionMask().size());
-						if(stat.loopMotionMask().size() == (unsigned int)lcImg.width()*lcImg.height())
-						{
-							UDEBUG("Adding mask");
-							const std::vector<unsigned char> & maskData = stat.loopMotionMask();
-							QImage mask(lcImg.size(), QImage::Format_ARGB32);
-							int i=0;
-							for(int y=0; y<mask.height(); ++y)
-							{
-								for(int x=0; x<mask.width(); ++x)
-								{
-									mask.setPixel(x,y,qRgba(255,0,255,!maskData[i++]*_preferencesDialog->getKeypointsOpacity()));
-								}
-							}
-							_ui->imageView_loopClosure->scene()->addPixmap(QPixmap::fromImage(mask));
-						}
-					}
-				}
+				UWARN("Source type %d not handled", iter->type());
 			}
-
-			ULOGGER_DEBUG("");
-			if(_ui->imageView_loopClosure->items().size() || stat.loopClosureId()>0)
+		}
+		cv::Mat loopImage;
+		cv::Mat loopAudioFrame;
+		for(std::list<Sensor>::const_iterator iter = stat.loopClosureRawData().begin(); iter!=stat.loopClosureRawData().end(); ++iter)
+		{
+			if(loopImage.empty() && iter->type() == Sensor::kTypeImage)
 			{
-				this->drawKeypoints(stat.refWords(), stat.loopWords());
+				loopImage = iter->data();
 			}
-			else
+			else if(loopAudioFrame.empty() && iter->type() == Sensor::kTypeAudioFreqSqrdMagn)
 			{
-				this->drawKeypoints(stat.refWords(), std::multimap<int, cv::KeyPoint>()); //empty loop keypoints...
+				loopAudioFrame = iter->data();
 			}
-
-			// We use the reference image to resize the 2 views
-			_ui->imageView_source->resetZoom();
-			_ui->imageView_loopClosure->resetZoom();
-			if(!stat.refImage())
+			else if(iter->type() == Sensor::kTypeTwist)
 			{
-				_ui->imageView_source->setSceneRect(_ui->imageView_source->scene()->itemsBoundingRect());
-				_ui->imageView_loopClosure->setSceneRect(_ui->imageView_source->scene()->itemsBoundingRect());
+				// do nothing
 			}
-			_ui->imageView_source->fitInView(_ui->imageView_source->sceneRect(), Qt::KeepAspectRatio);
-			_ui->imageView_loopClosure->fitInView(_ui->imageView_source->sceneRect(), Qt::KeepAspectRatio);
-
-			if(_preferencesDialog->isImageFlipped())
+			else if(iter->type() != Sensor::kTypeImageFeatures2d)
 			{
-				_ui->imageView_source->scale(-1.0, 1.0);
-				_ui->imageView_loopClosure->scale(-1.0, 1.0);
-			}
-
-			_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the last signature/", stat.refImageId(), stat.refWords().size());
-			_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the loop signature/", stat.refImageId(), stat.loopWords().size());
-			ULOGGER_DEBUG("");
-
-			// PDF AND LIKELIHOOD
-			if(!stat.posterior().empty() && _ui->dockWidget_posterior->isVisible())
-			{
-				ULOGGER_DEBUG("");
-				if(!refParentId)
-				{
-					_posteriorCurve->setData(QMap<int, float>(stat.posterior()), QMap<int, int>(stat.weights()), stat.refImageId());
-				}
-				else
-				{
-					// if the new signature has a parent, don't add it
-					_posteriorCurve->setData(QMap<int, float>(stat.posterior()), QMap<int, int>(stat.weights()), 0);
-				}
-
-				ULOGGER_DEBUG("");
-				//Adjust thresholds
-				float value;
-				value = float(_preferencesDialog->getLoopThr());
-				emit(loopClosureThrChanged(value));
-				value = float(_preferencesDialog->getRetrievalThr());
-				emit(retrievalThrChanged(value));
-			}
-			if(!stat.likelihood().empty() && _ui->dockWidget_likelihood->isVisible())
-			{
-				ULOGGER_DEBUG("");
-				if(!refParentId)
-				{
-					_likelihoodCurve->setData(QMap<int, float>(stat.likelihood()), QMap<int, int>(stat.weights()), stat.refImageId());
-				}
-				else
-				{
-					// if the new signature has a parent, don't add it
-					_likelihoodCurve->setData(QMap<int, float>(stat.likelihood()), QMap<int, int>(stat.weights()), 0);
-				}
-				ULOGGER_DEBUG("");
-			}
-
-			// ACTIONS
-			if(stat.getActions().size())
-			{
-				const std::list<std::vector<float> > & actions = stat.getActions();
-				int col = 0;
-				for(std::list<std::vector<float> >::const_iterator iter=actions.begin(); iter!=actions.end(); ++iter)
-				{
-					const std::vector<float> & a = *iter;
-					if(a.size() == 6)
-					{
-						//Assume its a twist
-						emit twistReceived(a[0], a[1], a[2], a[3], a[4], a[5], 1, col++);
-					}
-				}
-				if(col != 2)
-				{
-					UERROR("col (%d) != 2", col);
-				}
-			}
-			else
-			{
-				UDEBUG("Actions are empty...");
-			}
-
-			ULOGGER_DEBUG("");
-			// Update statistics tool box
-			const std::map<std::string, float> & statistics = stat.data();
-			for(std::map<std::string, float>::const_iterator iter = statistics.begin(); iter != statistics.end(); ++iter)
-			{
-				//ULOGGER_DEBUG("Updating stat \"%s\"", (*iter).first.c_str());
-				_ui->statsToolBox->updateStat(QString((*iter).first.c_str()).replace('_', ' '), stat.refImageId(), (*iter).second);
+				UWARN("Source type %d not handled", iter->type());
 			}
 		}
 
+		_ui->label_matchId->clear();
+		QPixmap refPixmap;
+		_ui->label_stats_imageNumber->setText(QString::number(stat.refImageId()));
+		if(!refImage.empty())
+		{
+			IplImage iplImg = refImage;
+			QImage img = Ipl2QImage(&iplImg);
+			//Only kept if it not added as a child in the core, that
+			//means it will never used for a loop closure detection
+			if(_preferencesDialog->isImagesKept())
+			{
+				QByteArray ba;
+				QBuffer buffer(&ba);
+				buffer.open(QIODevice::WriteOnly);
+				img.save(&buffer, "JPEG"); // writes image into JPEG format
+				_imagesMap.insert(stat.refImageId(), ba);
+			}
+			QRectF sceneRect = img.rect();
+			refPixmap = QPixmap::fromImage(img);
+			_ui->imageView_source->scene()->addPixmap(refPixmap)->setVisible(this->_ui->imageView_source->isImageShown());
+			_ui->imageView_source->setSceneRect(sceneRect);
+			_ui->imageView_loopClosure->setSceneRect(sceneRect);
+
+			UDEBUG("Adding mask = %d", stat.refMotionMask().size());
+			if(stat.refMotionMask().size() == (unsigned int)img.width()*img.height())
+			{
+				UDEBUG("Adding mask");
+				const std::vector<unsigned char> & maskData = stat.refMotionMask();
+				QImage mask(img.size(), QImage::Format_ARGB32);
+				int i=0;
+				for(int y=0; y<mask.height(); ++y)
+				{
+					for(int x=0; x<mask.width(); ++x)
+					{
+						mask.setPixel(x,y,qRgba(255,0,255,!maskData[i++]*_preferencesDialog->getKeypointsOpacity()));
+					}
+				}
+				_ui->imageView_source->scene()->addPixmap(QPixmap::fromImage(mask));
+			}
+		}
+
+		QImage lcImg;
+		if(!loopImage.empty())
+		{
+			IplImage iplImg = loopImage;
+			lcImg = Ipl2QImage(&iplImg);
+			//Only kept if it not added as a child in the core, that
+			//means it will never used for a loop closure detection
+			if(_preferencesDialog->isImagesKept())
+			{
+				if(stat.loopClosureId()>0 || highestHypothesisId>0)
+				{
+					int id = stat.loopClosureId()>0?stat.loopClosureId():highestHypothesisId;
+					if(!_imagesMap.contains(id))
+					{
+						QByteArray ba;
+						QBuffer buffer(&ba);
+						buffer.open(QIODevice::WriteOnly);
+						lcImg.save(&buffer, "JPEG"); // writes image into JPEG format
+						_imagesMap.insert(id, ba);
+					}
+				}
+			}
+		}
+
+		int rejectedHyp = bool(uValue(stat.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
+		float highestHypothesisValue = uValue(stat.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f);
+		if(highestHypothesisId > 0)
+		{
+			bool show = true;
+			if(stat.loopClosureId() > 0)
+			{
+				_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::green));
+				_ui->label_stats_loopClosuresDetected->setText(QString::number(_ui->label_stats_loopClosuresDetected->text().toInt() + 1));
+				if(highestHypothesisIsSaved)
+				{
+					_ui->label_stats_loopClosuresReactivatedDetected->setText(QString::number(_ui->label_stats_loopClosuresReactivatedDetected->text().toInt() + 1));
+				}
+				_ui->label_matchId->setText(QString("Match ID = %1").arg(stat.loopClosureId()));
+			}
+			else if(rejectedHyp && highestHypothesisValue >= _preferencesDialog->getLoopThr())
+			{
+				show = _preferencesDialog->imageRejectedShown() || _preferencesDialog->imageHighestHypShown();;
+				if(show)
+				{
+					QColor color(Qt::red);
+					_ui->imageView_loopClosure->setBackgroundBrush(QBrush(color));
+					_ui->label_stats_loopClosuresRejected->setText(QString::number(_ui->label_stats_loopClosuresRejected->text().toInt() + 1));
+					_ui->label_matchId->setText(QString("Loop hypothesis (%1) rejected!").arg(highestHypothesisId));
+				}
+			}
+			else
+			{
+				show = _preferencesDialog->imageHighestHypShown();
+				if(show)
+				{
+					_ui->label_matchId->setText(QString("Highest hypothesis (%1)").arg(highestHypothesisId));
+				}
+			}
+
+			if(show)
+			{
+				if(lcImg.isNull())
+				{
+					int id = stat.loopClosureId()>0?stat.loopClosureId():highestHypothesisId;
+					QMap<int, QByteArray>::iterator iter = _imagesMap.find(id);
+					if(iter != _imagesMap.end())
+					{
+						if(!lcImg.loadFromData(iter.value(), "JPEG"))
+						{
+							ULOGGER_ERROR("conversion from QByteArray to QImage failed");
+							lcImg = QImage();
+						}
+					}
+				}
+
+				if(!lcImg.isNull())
+				{
+					_ui->imageView_loopClosure->scene()->addPixmap(QPixmap::fromImage(lcImg))->setVisible(this->_ui->imageView_loopClosure->isImageShown());
+					UDEBUG("Adding mask = %d", stat.loopMotionMask().size());
+					if(stat.loopMotionMask().size() == (unsigned int)lcImg.width()*lcImg.height())
+					{
+						UDEBUG("Adding mask");
+						const std::vector<unsigned char> & maskData = stat.loopMotionMask();
+						QImage mask(lcImg.size(), QImage::Format_ARGB32);
+						int i=0;
+						for(int y=0; y<mask.height(); ++y)
+						{
+							for(int x=0; x<mask.width(); ++x)
+							{
+								mask.setPixel(x,y,qRgba(255,0,255,!maskData[i++]*_preferencesDialog->getKeypointsOpacity()));
+							}
+						}
+						_ui->imageView_loopClosure->scene()->addPixmap(QPixmap::fromImage(mask));
+					}
+				}
+			}
+		}
+
+		if(_ui->imageView_loopClosure->items().size() || stat.loopClosureId()>0)
+		{
+			this->drawKeypoints(stat.refWords(), stat.loopWords());
+		}
+		else
+		{
+			this->drawKeypoints(stat.refWords(), std::multimap<int, cv::KeyPoint>()); //empty loop keypoints...
+		}
+
+		// We use the reference image to resize the 2 views
+		_ui->imageView_source->resetZoom();
+		_ui->imageView_loopClosure->resetZoom();
+		if(refImage.empty())
+		{
+			_ui->imageView_source->setSceneRect(_ui->imageView_source->scene()->itemsBoundingRect());
+			_ui->imageView_loopClosure->setSceneRect(_ui->imageView_source->scene()->itemsBoundingRect());
+		}
+		_ui->imageView_source->fitInView(_ui->imageView_source->sceneRect(), Qt::KeepAspectRatio);
+		_ui->imageView_loopClosure->fitInView(_ui->imageView_source->sceneRect(), Qt::KeepAspectRatio);
+
+		if(_preferencesDialog->isImageFlipped())
+		{
+			_ui->imageView_source->scale(-1.0, 1.0);
+			_ui->imageView_loopClosure->scale(-1.0, 1.0);
+		}
+
+		_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the last signature/", stat.refImageId(), stat.refWords().size());
+		_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the loop signature/", stat.refImageId(), stat.loopWords().size());
+		ULOGGER_DEBUG("");
+
+		// PDF AND LIKELIHOOD
+		if(!stat.posterior().empty() && _ui->dockWidget_posterior->isVisible())
+		{
+			UDEBUG("");
+			if(!refParentId)
+			{
+				_posteriorCurve->setData(QMap<int, float>(stat.posterior()), QMap<int, int>(stat.weights()), stat.refImageId());
+			}
+			else
+			{
+				// if the new signature has a parent, don't add it
+				_posteriorCurve->setData(QMap<int, float>(stat.posterior()), QMap<int, int>(stat.weights()), 0);
+			}
+
+			ULOGGER_DEBUG("");
+			//Adjust thresholds
+			float value;
+			value = float(_preferencesDialog->getLoopThr());
+			emit(loopClosureThrChanged(value));
+			value = float(_preferencesDialog->getRetrievalThr());
+			emit(retrievalThrChanged(value));
+		}
+		if(!stat.likelihood().empty() && _ui->dockWidget_likelihood->isVisible())
+		{
+			UDEBUG("");
+			if(!refParentId)
+			{
+				_likelihoodCurve->setData(QMap<int, float>(stat.likelihood()), QMap<int, int>(stat.weights()), stat.refImageId());
+			}
+			else
+			{
+				// if the new signature has a parent, don't add it
+				_likelihoodCurve->setData(QMap<int, float>(stat.likelihood()), QMap<int, int>(stat.weights()), 0);
+			}
+			ULOGGER_DEBUG("");
+		}
+
+		// Audio frame
+		if(_ui->dockWidget_audioProcessedFrames->isVisible() && !refAudioFrame.empty())
+		{
+			if(_mic)
+			{
+				_ui->widget_audioProcessedFrames->setSamplingRate(_mic->fs());
+			}
+			std::vector<float> v((float*)refAudioFrame.data, ((float*)refAudioFrame.data) + refAudioFrame.cols);
+			_ui->widget_audioProcessedFrames->push(v);
+		}
+		if(_ui->dockWidget_audioLoopFrames->isVisible())
+		{
+			if(_mic)
+			{
+				_ui->widget_audioLoopFrames->setSamplingRate(_mic->fs());
+			}
+			std::vector<float> v;
+			if(!loopAudioFrame.empty())
+			{
+				v = std::vector<float>((float*)loopAudioFrame.data, ((float*)loopAudioFrame.data) + loopAudioFrame.cols);
+			}
+			else if(!refAudioFrame.empty())
+			{
+				v = std::vector<float>(refAudioFrame.cols, 0);
+			}
+
+			if(v.size())
+			{
+				_ui->widget_audioLoopFrames->push(v);
+			}
+		}
+
+		// ACTIONS
+		if(stat.getActuators().size())
+		{
+			const std::list<Actuator> & actuators = stat.getActuators();
+			for(std::list<Actuator>::const_iterator iter=actuators.begin(); iter!=actuators.end(); ++iter)
+			{
+				const Actuator & a = *iter;
+				if(a.type() == Actuator::kTypeTwist)
+				{
+					if(a.data().total() == 6 && (a.data().type() & CV_32F))
+					{
+						emit twistReceived(a.data().at<float>(0),
+								a.data().at<float>(1),
+								a.data().at<float>(2),
+								a.data().at<float>(3),
+								a.data().at<float>(4),
+								a.data().at<float>(5),
+								1,
+								0);
+					}
+					else
+					{
+						UERROR("Twist must be CV_32F and have 6 elements (%d)", a.data().total());
+					}
+					break; // Show only the first
+				}
+			}
+		}
+		else
+		{
+			UDEBUG("Actions are empty...");
+		}
+
+		// Update statistics tool box
+		const std::map<std::string, float> & statistics = stat.data();
+		for(std::map<std::string, float>::const_iterator iter = statistics.begin(); iter != statistics.end(); ++iter)
+		{
+			//ULOGGER_DEBUG("Updating stat \"%s\"", (*iter).first.c_str());
+			_ui->statsToolBox->updateStat(QString((*iter).first.c_str()).replace('_', ' '), stat.refImageId(), (*iter).second);
+		}
+		UDEBUG("");
 	}
 	else if(!stat.extended() && stat.loopClosureId()>0)
 	{
@@ -697,9 +835,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		_ui->label_matchId->setText(QString("Match ID = %1").arg(stat.loopClosureId()));
 	}
 	float elapsedTime = static_cast<float>(time.elapsed());
-	ULOGGER_INFO("Processing statistics time = %fs", elapsedTime/1000.0f);
+	UINFO("Processing statistics time = %fs", elapsedTime/1000.0f);
 	_ui->statsToolBox->updateStat("/Gui refresh stats/ms", stat.refImageId(), elapsedTime);
-
 	this->captureScreen();
 	_processingStatistics = false;
 }
@@ -756,14 +893,37 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 	if(flags & PreferencesDialog::kPanelSource)
 	{
 		// Camera settings...
-		_ui->doubleSpinBox_stats_imgRate->setValue(_preferencesDialog->getGeneralImageRate());
-		this->updateSelectSourceMenu(_preferencesDialog->getSourceType());
-		_ui->label_stats_source->setText(_selectSourceGrp->checkedAction()->text().replace('.', ""));
+		_ui->doubleSpinBox_stats_imgRate->setValue(_preferencesDialog->getGeneralInputRate());
+		this->updateSelectSourceImageMenu(_preferencesDialog->getSourceImageType());
+		this->updateSelectSourceAudioMenu(_preferencesDialog->getSourceAudioType());
+		this->updateSelectSourceDatabase(_preferencesDialog->isSourceDatabaseUsed());
+		QString src;
+		if(_preferencesDialog->isSourceImageUsed() && _preferencesDialog->isSourceAudioUsed())
+		{
+			src = (_preferencesDialog->getSourceImageTypeStr() + "+") + _preferencesDialog->getSourceAudioTypeStr();
+		}
+		else if(_preferencesDialog->isSourceImageUsed())
+		{
+			src = _preferencesDialog->getSourceImageTypeStr();
+		}
+		else if(_preferencesDialog->isSourceAudioUsed())
+		{
+			src = _preferencesDialog->getSourceAudioTypeStr();
+		}
+		else if(_preferencesDialog->isSourceDatabaseUsed())
+		{
+			src = "Database";
+		}
+		_ui->label_stats_source->setText(src);
 
 		if(_camera)
 		{
-			_camera->setImageRate(_preferencesDialog->getGeneralImageRate());
+			_camera->setImageRate(_preferencesDialog->getGeneralInputRate());
 			_camera->setAutoRestart(_preferencesDialog->getGeneralAutoRestart());
+		}
+		if(_dbReader)
+		{
+			_dbReader->setFrameRate(_preferencesDialog->getGeneralInputRate());
 		}
 	}
 
@@ -782,9 +942,10 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters)
 	ULOGGER_DEBUG("");
 	if(parameters.size())
 	{
+		rtabmap::ParametersMap parametersModified = parameters;
+
 		if(_state != kIdle)
 		{
-			rtabmap::ParametersMap parametersModified = parameters;
 			if(parametersModified.erase(Parameters::kRtabmapWorkingDirectory()))
 			{
 				_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
@@ -799,10 +960,10 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters)
 			}
 			this->post(new ParamEvent(parametersModified));
 		}
-		else if(parameters.size() == _preferencesDialog->getAllParameters().size())
+		else if(parametersModified.size() == _preferencesDialog->getAllParameters().size())
 		{
 			// Send only if all parameters are sent
-			this->post(new ParamEvent(parameters));
+			this->post(new ParamEvent(parametersModified));
 		}
 	}
 
@@ -945,7 +1106,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 				iter->first->rect().y()+iter->first->rect().height()/2,
 				iter->second->rect().x()+iter->second->rect().width()/2+deltaX,
 				iter->second->rect().y()+iter->second->rect().height()/2+deltaY,
-				QPen(QColor(255, 255, 255, alpha)));
+				QPen(QColor(0, 255, 255, alpha)));
 		item->setVisible(_ui->imageView_source->isLinesShown());
 		item->setZValue(1);
 
@@ -954,7 +1115,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 				iter->first->rect().y()+iter->first->rect().height()/2-deltaY,
 				iter->second->rect().x()+iter->second->rect().width()/2,
 				iter->second->rect().y()+iter->second->rect().height()/2,
-				QPen(QColor(255, 255, 255, alpha)));
+				QPen(QColor(0, 255, 255, alpha)));
 		item->setVisible(_ui->imageView_loopClosure->isLinesShown());
 		item->setZValue(1);
 	}
@@ -968,24 +1129,60 @@ void MainWindow::resizeEvent(QResizeEvent* anEvent)
 	_ui->imageView_loopClosure->resetZoom();
 }
 
-void MainWindow::updateSelectSourceMenu(int type)
+void MainWindow::updateSelectSourceImageMenu(int type)
 {
-	switch(type)
+	if(_preferencesDialog->isSourceImageUsed())
 	{
-	case 0:
-		_ui->actionStream->setChecked(true);
-		break;
-	case 1:
-		_ui->actionImages->setChecked(true);
-		break;
-	case 2:
-		_ui->actionVideo->setChecked(true);
-		break;
-	case 3:
-	default:
-		_ui->actionDatabase->setChecked(true);
-		break;
+		switch(type)
+		{
+		case 0:
+			_ui->actionUsbCamera->setChecked(true);
+			break;
+		case 1:
+			_ui->actionImageFiles->setChecked(true);
+			break;
+		case 2:
+			_ui->actionVideo->setChecked(true);
+			break;
+		default:
+			UERROR("Unknown source image type");
+			break;
+		}
 	}
+	else
+	{
+		// they are exclusive actions, so check/uncheck one should disable all.
+		_ui->actionUsbCamera->setChecked(true);
+		_ui->actionUsbCamera->setChecked(false);
+	}
+}
+
+void MainWindow::updateSelectSourceAudioMenu(int type)
+{
+	if(_preferencesDialog->isSourceAudioUsed())
+	{
+		switch(type)
+		{
+		case 0:
+			_ui->actionMic->setChecked(true);
+			break;
+		case 1:
+		default:
+			_ui->actionAudioFile->setChecked(true);
+			break;
+		}
+	}
+	else
+	{
+		// they are exclusive actions, so check/uncheck one should disable all.
+		_ui->actionMic->setChecked(true);
+		_ui->actionMic->setChecked(false);
+	}
+}
+
+void MainWindow::updateSelectSourceDatabase(bool used)
+{
+	_ui->actionDatabase->setChecked(used);
 }
 
 void MainWindow::changeImgRateSetting()
@@ -1024,10 +1221,15 @@ void MainWindow::captureScreen()
 	_ui->statusbar->showMessage(tr("Screen captured \"%1\"").arg(targetDir + name), _preferencesDialog->getTimeLimit()*500);
 }
 
+void MainWindow::beep()
+{
+	QApplication::beep();
+}
 
 //ACTIONS
 void MainWindow::startDetection()
 {
+	UDEBUG("");
 	emit stateChanged(kStartingDetection);
 
 	if(_camera != 0)
@@ -1035,113 +1237,293 @@ void MainWindow::startDetection()
 		QMessageBox::warning(this,
 						     tr("RTAB-Map"),
 						     tr("A camera is running, stop it first."));
-		ULogger::write("_camera is not null... stop it first");
+		UWARN("_camera is not null... it must be stopped first");
+		emit stateChanged(kIdle);
+		return;
+	}
+	if(_mic != 0)
+	{
+		QMessageBox::warning(this,
+							 tr("RTAB-Map"),
+							 tr("A mic is running, stop it first."));
+		UWARN("_mic is not null... it must be stopped first");
+		emit stateChanged(kIdle);
+		return;
+	}
+	if(_dbReader != 0)
+	{
+		QMessageBox::warning(this,
+							 tr("RTAB-Map"),
+							 tr("A database reader is running, stop it first."));
+		UWARN("_dbReader is not null... it must be stopped first");
 		emit stateChanged(kIdle);
 		return;
 	}
 
-	// Change type of the camera...
-	//
-	int sourceType = _preferencesDialog->getSourceType();
-	if(sourceType == 1) //Images
+	// Adjust pre-requirements
+	if( !_preferencesDialog->isSourceImageUsed() &&
+		!_preferencesDialog->isSourceAudioUsed() &&
+		!_preferencesDialog->isSourceDatabaseUsed())
 	{
-		_camera = new CameraImages(
-				_preferencesDialog->getSourceImagesPath().append(QDir::separator()).toStdString(),
-				_preferencesDialog->getSourceImagesStartPos(),
-				_preferencesDialog->getSourceImagesRefreshDir(),
-				_preferencesDialog->getGeneralImageRate(),
-				_preferencesDialog->getGeneralAutoRestart(),
-				_preferencesDialog->getSourceWidth(),
-				_preferencesDialog->getSourceHeight()
-				);
+		QMessageBox::warning(this,
+				 tr("RTAB-Map"),
+				 tr("No sources are selected. See Preferences->Source panel."));
+		UWARN("No sources are selected. See Preferences->Source panel.");
+		emit stateChanged(kIdle);
+		return;
 	}
-	else if(sourceType == 2)
+	if(_preferencesDialog->getMemoryType() == 0)
 	{
-		_camera = new CameraVideo(
-				_preferencesDialog->getSourceVideoPath().toStdString(),
-				_preferencesDialog->getGeneralImageRate(),
-				_preferencesDialog->getGeneralAutoRestart(),
-				_preferencesDialog->getSourceWidth(),
-				_preferencesDialog->getSourceHeight());
-	}
-	else if(sourceType == 3)
-	{
-		_camera = new CameraDatabase(
-				_preferencesDialog->getSourceDatabasePath().toStdString(),
-				_preferencesDialog->getSourceDatabaseLoadActions(),
-				_preferencesDialog->getGeneralImageRate(),
-				_preferencesDialog->getGeneralAutoRestart(),
-				_preferencesDialog->getSourceWidth(),
-				_preferencesDialog->getSourceHeight());
-	}
-	else if(sourceType == 0)
-	{
-		_camera = new CameraVideo(
-				_preferencesDialog->getSourceUsbDeviceId(),
-				_preferencesDialog->getGeneralImageRate(),
-				_preferencesDialog->getGeneralAutoRestart(),
-				_preferencesDialog->getSourceWidth(),
-				_preferencesDialog->getSourceHeight());
+		//KeypointMemory
+		if(!_preferencesDialog->isSourceImageUsed() && !_preferencesDialog->isSourceDatabaseUsed())
+		{
+			QMessageBox::warning(this,
+					 tr("RTAB-Map"),
+					 tr("Image source is not selected. See Preferences->Source panel. "
+					    "Keypoint memory only works with images."));
+			UWARN("Image source is not selected. See Preferences->Source panel. "
+				  "Keypoint memory only works with images.");
+			emit stateChanged(kIdle);
+			return;
+		}
+		else if(_preferencesDialog->isSourceAudioUsed())
+		{
+			QMessageBox::information(this,
+					 tr("RTAB-Map"),
+					 tr("Audio source is selected. Keypoint memory only works with images... "
+					    "the audio source is now disabled."));
+			UDEBUG("Audio source is selected. Keypoint memory only works with images... "
+				   "the audio source is now disabled.");
+			_preferencesDialog->disableSourceAudio();
+		}
 	}
 	else
 	{
-		QMessageBox::warning(this,
+		//SM memory
+		if(_preferencesDialog->isSourceImageUsed() && _preferencesDialog->getGeneralCameraKeypoints())
+		{
+			QMessageBox::information(this,
+				 tr("RTAB-Map"),
+				 tr("Keypoint features extraction is selected for the camera. "
+				    "Sensorimotor memory doesn't handle features (only raw images), "
+				    "so it is overkill to extract them... keypoints extraction is now disabled."));
+			UDEBUG("Keypoint features extraction is selected for the camera. "
+				   "Sensorimotor memory doesn't handle features (only raw images), "
+				   "so it is overkill to extract them... keypoints extraction is now disabled.");
+			_preferencesDialog->disableGeneralCameraKeypoints();
+		}
+	}
+
+	if(_preferencesDialog->isSourceDatabaseUsed())
+	{
+		_dbReader = new DBReader(_preferencesDialog->getSourceDatabasePath().toStdString(),
+								 _preferencesDialog->getGeneralInputRate());
+
+		if(!_dbReader->init())
+		{
+			ULOGGER_WARN("init DBReader failed... ");
+			QMessageBox::warning(this,
 								   tr("RTAB-Map"),
-								   tr("Source type is not supported..."));
-		ULOGGER_WARN("iSource type not supported...");
-		emit stateChanged(kIdle);
-		return;
+								   tr("Database reader initialization failed..."));
+			emit stateChanged(kIdle);
+			delete _dbReader;
+			_dbReader = 0;
+			return;
+		}
 	}
-
-	if(_preferencesDialog->getGeneralCameraKeypoints())
+	else
 	{
-		_camera->setPostThreatement(new CamKeypointTreatment(_preferencesDialog->getAllParameters()));
+		if(_preferencesDialog->isSourceImageUsed())
+		{
+			// Change type of the camera...
+			//
+			int sourceType = _preferencesDialog->getSourceImageType();
+			if(sourceType == 1) //Images
+			{
+				_camera = new CameraImages(
+						_preferencesDialog->getSourceImagesPath().append(QDir::separator()).toStdString(),
+						_preferencesDialog->getSourceImagesStartPos(),
+						_preferencesDialog->getSourceImagesRefreshDir(),
+						_preferencesDialog->getGeneralInputRate(),
+						_preferencesDialog->getGeneralAutoRestart(),
+						_preferencesDialog->getSourceWidth(),
+						_preferencesDialog->getSourceHeight(),
+						_preferencesDialog->getFramesDropped()
+						);
+			}
+			else if(sourceType == 2)
+			{
+				_camera = new CameraVideo(
+						_preferencesDialog->getSourceVideoPath().toStdString(),
+						_preferencesDialog->getGeneralInputRate(),
+						_preferencesDialog->getGeneralAutoRestart(),
+						_preferencesDialog->getSourceWidth(),
+						_preferencesDialog->getSourceHeight(),
+						_preferencesDialog->getFramesDropped());
+			}
+			else if(sourceType == 0)
+			{
+				_camera = new CameraVideo(
+						_preferencesDialog->getSourceUsbDeviceId(),
+						_preferencesDialog->getGeneralInputRate(),
+						_preferencesDialog->getGeneralAutoRestart(),
+						_preferencesDialog->getSourceWidth(),
+						_preferencesDialog->getSourceHeight(),
+						_preferencesDialog->getFramesDropped());
+			}
+			else
+			{
+				QMessageBox::warning(this,
+										   tr("RTAB-Map"),
+										   tr("Source type is not supported..."));
+				ULOGGER_WARN("iSource type not supported...");
+				emit stateChanged(kIdle);
+				return;
+			}
+
+			if(_preferencesDialog->getGeneralCameraKeypoints())
+			{
+				_camera->setFeaturesExtracted(true);
+				_camera->parseParameters(_preferencesDialog->getAllParameters());
+			}
+
+			if(!_camera->init())
+			{
+				ULOGGER_WARN("init camera failed... ");
+				QMessageBox::warning(this,
+									   tr("RTAB-Map"),
+									   tr("Camera initialization failed..."));
+				emit stateChanged(kIdle);
+				delete _camera;
+				_camera = 0;
+				return;
+			}
+
+			UEventsManager::addHandler(_camera); //thread
+		}
+		if(_preferencesDialog->isSourceAudioUsed())
+		{
+			UDEBUG("");
+			int sourceAudioType = _preferencesDialog->getSourceAudioType();
+			if(sourceAudioType == 1) //Audio file
+			{
+				_mic = new Micro(MicroEvent::kTypeFrameFreqSqrdMagn,
+						_preferencesDialog->getSourceAudioPath().toStdString(),
+						true,
+						44100.0/_preferencesDialog->getGeneralInputRate(),
+						0,
+						_preferencesDialog->getSourceAudioPlayWhileRecording());
+			}
+			else // Mic
+			{
+				_mic = new Micro(MicroEvent::kTypeFrameFreqSqrdMagn,
+						_preferencesDialog->getSourceMicDevice(),
+						_preferencesDialog->getSourceMicFs(),
+						float(_preferencesDialog->getSourceMicFs())/_preferencesDialog->getGeneralInputRate(),
+						1,
+						_preferencesDialog->getSourceMicSampleSize());
+			}
+
+			if(!_mic->init())
+			{
+				QMessageBox::warning(this,
+									   tr("RTAB-Map"),
+									   tr("Mic initialization failed..."));
+				ULOGGER_WARN("init mic failed... ");
+				emit stateChanged(kIdle);
+				delete _mic;
+				_mic = 0;
+				if(_camera)
+				{
+					delete _camera;
+					_camera = 0;
+				}
+				return;
+			}
+		}
+
+		if(_camera && _mic)
+		{
+			_cameraMic = new CameraMicro(_camera, _mic);
+		}
 	}
 
-	if(!_camera->init())
-	{
-		QMessageBox::warning(this,
-							   tr("RTAB-Map"),
-							   tr("Camera initialization failed..."));
-		ULOGGER_WARN("init camera failed... ");
-		emit stateChanged(kIdle);
-		delete _camera;
-		_camera = 0;
-		return;
-	}
-
-	UEventsManager::addHandler(_camera); //thread
-
+	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdCleanSensorsBuffer));
 	this->applyAllPrefSettings();
 
-	_camera->start();
+	if(!_preferencesDialog->isStatisticsPublished())
+	{
+		QMessageBox::information(this,
+				tr("Information"),
+				tr("Note that publishing statistics is disabled, "
+				   "progress will not be shown in the GUI."));
+	}
 
 	emit stateChanged(kDetecting);
 }
 
 void MainWindow::pauseDetection()
 {
-	if(_camera)
+	if(_camera || _mic || _dbReader)
 	{
-		if(_state == kPaused)
+		if(_state == kPaused && (QApplication::keyboardModifiers() & Qt::ShiftModifier))
 		{
 			// On Ctrl-click, start the camera and pause it automatically
-			if(QApplication::keyboardModifiers() & Qt::ShiftModifier)
+			if((_camera &&_camera->isRunning()) ||
+				(_mic &&_mic->isRunning()) ||
+				(_cameraMic && _cameraMic->isRunning()) ||
+				(_dbReader && _dbReader->isRunning()))
+			{
+				//Don't wait for GUI thread, kill now
+				if(_cameraMic)
+				{
+					_cameraMic->kill();
+				}
+				else
+				{
+					if(_camera)
+					{
+						_camera->kill();
+					}
+					if(_mic)
+					{
+						_mic->kill();
+					}
+				}
+				if(_dbReader)
+				{
+					_dbReader->kill();
+				}
+			}
+			emit stateChanged(kPaused);
+			if(_preferencesDialog->getGeneralInputRate())
+			{
+				QTimer::singleShot(1000/_preferencesDialog->getGeneralInputRate() + 10, this, SLOT(pauseDetection()));
+			}
+			else
 			{
 				emit stateChanged(kPaused);
 			}
 		}
-		emit stateChanged(kPaused);
+		else
+		{
+			emit stateChanged(kPaused);
+		}
 	}
 }
 
 void MainWindow::stopDetection()
 {
-	if(_state == kIdle || !_camera)
+	if(_state == kIdle || (!_camera && !_mic && !_dbReader))
 	{
 		return;
 	}
-	if(_state == kDetecting && !_camera->isPaused())
+
+	if(_state == kDetecting &&
+			( (!_mic && _camera && _camera->isRunning()) ||
+			  (!_camera && _mic && _mic->isRunning()) ||
+			  (_cameraMic && _cameraMic->isRunning()) ||
+			  (_dbReader && _dbReader->isRunning())) )
 	{
 		QMessageBox::StandardButton button = QMessageBox::question(this, tr("Stopping process..."), tr("Are you sure you want to stop the process?"), QMessageBox::Yes|QMessageBox::No, QMessageBox::No);
 
@@ -1152,14 +1534,48 @@ void MainWindow::stopDetection()
 	}
 
 	ULOGGER_DEBUG("");
+	// kill the processes
+	if(_cameraMic)
+	{
+		_cameraMic->join(true);
+	}
+	else
+	{
+		if(_camera)
+		{
+			_camera->join(true);
+		}
+		if(_mic)
+		{
+			_mic->join(true);
+		}
+	}
+	if(_dbReader)
+	{
+		_dbReader->join(true);
+	}
+	// delete the processes
+	if(_cameraMic)
+	{
+		delete _cameraMic;
+		_cameraMic = 0;
+	}
 	if(_camera)
 	{
-		UEventsManager::removeHandler(_camera);
-		_camera->join(true);
 		delete _camera;
 		_camera = 0;
-		emit stateChanged(kIdle);
 	}
+	if(_mic)
+	{
+		delete _mic;
+		_mic = 0;
+	}
+	if(_dbReader)
+	{
+		delete _dbReader;
+		_dbReader = 0;
+	}
+	emit stateChanged(kIdle);
 
 	//Copy showlogs.m from appDirPath/../share/rtabmap/ShowLogs.m to working directory. (appDirPath is in bin)
 	QString showLogFileSrc = (QApplication::applicationDirPath()+"/../")+SHARE_SHOW_LOG_FILE;
@@ -1205,7 +1621,7 @@ void MainWindow::generateMap()
 void MainWindow::deleteMemory()
 {
 	QMessageBox::StandardButton button;
-	QString dbPath = _preferencesDialog->getWorkingDirectory() + "/LTM.db";
+	QString dbPath = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "LTM.db";
 	if(_state == kMonitoring)
 	{
 		button = QMessageBox::question(this,
@@ -1272,22 +1688,32 @@ void MainWindow::updateEditMenu()
 
 void MainWindow::selectImages()
 {
-	_preferencesDialog->selectSource(PreferencesDialog::kSrcImages);
+	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcImages);
 }
 
 void MainWindow::selectVideo()
 {
-	_preferencesDialog->selectSource(PreferencesDialog::kSrcVideo);
+	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcVideo);
 }
 
 void MainWindow::selectStream()
 {
-	_preferencesDialog->selectSource(PreferencesDialog::kSrcUsbDevice);
+	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcUsbDevice);
+}
+
+void MainWindow::selectMic()
+{
+	_preferencesDialog->selectSourceAudio(PreferencesDialog::kSrcAudioMicDevice);
+}
+
+void MainWindow::selectAudioFile()
+{
+	_preferencesDialog->selectSourceAudio(PreferencesDialog::kSrcAudioFile);
 }
 
 void MainWindow::selectDatabase()
 {
-	_preferencesDialog->selectSource(PreferencesDialog::kSrcDatabase);
+	_preferencesDialog->selectSourceDatabase(true);
 }
 
 void MainWindow::resetTheMemory()
@@ -1339,7 +1765,7 @@ void MainWindow::saveFigures()
 		QMessageBox msgBox;
 		msgBox.setText("There is no figure shown.");
 		msgBox.setInformativeText("Do you want to save anyway ? (this will erase the previous saved configuration)");
-		msgBox.setStandardButtons(QMessageBox::Save | QMessageBox::Cancel);
+		msgBox.setStandardButtons(QFlags<QMessageBox::StandardButton>(QMessageBox::Save | QMessageBox::Cancel));
 		msgBox.setDefaultButton(QMessageBox::Cancel);
 		int ret = msgBox.exec();
 		if(ret == QMessageBox::Cancel)
@@ -1407,6 +1833,72 @@ void MainWindow::selectScreenCaptureFormat(bool checked)
 	}
 }
 
+void MainWindow::setAspectRatio(int w, int h)
+{
+	QRect rect = this->geometry();
+	if(h<100 && w<100)
+	{
+		// it is a ratio
+		if(float(rect.width())/float(rect.height()) > float(w)/float(h))
+		{
+			rect.setWidth(w*(rect.height()/h));
+			rect.setHeight((rect.height()/h)*h);
+		}
+		else
+		{
+			rect.setHeight(h*(rect.width()/w));
+			rect.setWidth((rect.width()/w)*w);
+		}
+	}
+	else
+	{
+		// it is absolute size
+		rect.setWidth(w);
+		rect.setHeight(h);
+	}
+	this->setGeometry(rect);
+}
+
+void MainWindow::setAspectRatio16_9()
+{
+	this->setAspectRatio(16, 9);
+}
+
+void MainWindow::setAspectRatio16_10()
+{
+	this->setAspectRatio(16, 10);
+}
+
+void MainWindow::setAspectRatio4_3()
+{
+	this->setAspectRatio(4, 3);
+}
+
+void MainWindow::setAspectRatio240p()
+{
+	this->setAspectRatio((240*16)/9, 240);
+}
+
+void MainWindow::setAspectRatio360p()
+{
+	this->setAspectRatio((360*16)/9, 360);
+}
+
+void MainWindow::setAspectRatio480p()
+{
+	this->setAspectRatio((480*16)/9, 480);
+}
+
+void MainWindow::setAspectRatio720p()
+{
+	this->setAspectRatio((720*16)/9, 720);
+}
+
+void MainWindow::setAspectRatio1080p()
+{
+	this->setAspectRatio((1080*16)/9, 1080);
+}
+
 //END ACTIONS
 
 // STATES
@@ -1462,6 +1954,25 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->label_elapsedTime->setText("00:00:00");
 		_elapsedTime->start();
 		_oneSecondTimer->start();
+		if(_cameraMic)
+		{
+			_cameraMic->start();
+		}
+		else
+		{
+			if(_camera)
+			{
+				_camera->start();
+			}
+			if(_mic)
+			{
+				_mic->start();
+			}
+		}
+		if(_dbReader)
+		{
+			_dbReader->start();
+		}
 		break;
 
 	case kPaused:
@@ -1477,14 +1988,29 @@ void MainWindow::changeState(MainWindow::State newState)
 			_state = kDetecting;
 			_elapsedTime->start();
 			_oneSecondTimer->start();
-			if(_camera)
+			if(_cameraMic)
 			{
-				_camera->start();
+				_cameraMic->start();
+			}
+			else
+			{
+				if(_camera)
+				{
+					_camera->start();
+				}
+				if(_mic)
+				{
+					_mic->start();
+				}
+			}
+			if(_dbReader)
+			{
+				_dbReader->start();
 			}
 		}
 		else if(_state == kDetecting)
 		{
-			_ui->actionPause->setToolTip(tr("Continue"));
+			_ui->actionPause->setToolTip(tr("Continue (shift-click for step-by-step)"));
 			_ui->actionPause->setChecked(true);
 			_ui->statusbar->showMessage(tr("Paused..."));
 			_ui->actionReset_the_memory->setEnabled(true);
@@ -1493,9 +2019,25 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionGenerate_map->setEnabled(true);
 			_state = kPaused;
 			_oneSecondTimer->stop();
-			if(_camera)
+			// kill sensors
+			if(_cameraMic)
 			{
-				_camera->join(true);
+				_cameraMic->join(true);
+			}
+			else
+			{
+				if(_camera)
+				{
+					_camera->join(true);
+				}
+				if(_mic)
+				{
+					_mic->join(true);
+				}
+			}
+			if(_dbReader)
+			{
+				_dbReader->join(true);
 			}
 		}
 		break;

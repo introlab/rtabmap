@@ -22,11 +22,13 @@
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
-#include "utilite/UEvent.h"
+#include "rtabmap/core/Sensor.h"
+#include "rtabmap/core/Actuator.h"
+#include <utilite/UEvent.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include "utilite/ULogger.h"
+#include <utilite/ULogger.h>
 #include <list>
 #include <vector>
 
@@ -63,6 +65,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Memory, Signatures_removed,);
 	RTABMAP_STATS(Memory, Signatures_retrieved,);
 	RTABMAP_STATS(Memory, Images_buffered,);
+	RTABMAP_STATS(Memory, Similarities_map,);
 
 	RTABMAP_STATS(Timing, Memory_update, ms);
 	RTABMAP_STATS(Timing, Cleaning_neighbors, ms);
@@ -90,7 +93,6 @@ public:
 
 public:
 	Statistics();
-	Statistics(const Statistics & s);
 	virtual ~Statistics();
 
 	// name format = "Grp/Name/unit"
@@ -100,11 +102,9 @@ public:
 	void setExtended(bool extended) {_extended = extended;}
 	void setRefImageId(int refImageId) {_refImageId = refImageId;}
 	void setLoopClosureId(int loopClosureId) {_loopClosureId = loopClosureId;}
-	void setActions(const std::list<std::vector<float> > & actions) {_actions = actions;}
-	void setRefImage(IplImage ** refImage);
-	void setRefImage(const IplImage * refImage);
-	void setLoopClosureImage(IplImage ** loopClosureImage);
-	void setLoopClosureImage(const IplImage * loopClosureImage);
+	void setActuators(const std::list<Actuator> & actuators) {_actuators = actuators;}
+	void setRefRawData(const std::list<Sensor> & refRawData);
+	void setLoopClosureRawData(const std::list<Sensor> & loopClosureRawData);
 	void setWeights(const std::map<int, int> & weights) {_weights = weights;}
 	void setPosterior(const std::map<int, float> & posterior) {_posterior = posterior;}
 	void setLikelihood(const std::map<int, float> & likelihood) {_likelihood = likelihood;}
@@ -117,9 +117,9 @@ public:
 	bool extended() const {return _extended;}
 	int refImageId() const {return _refImageId;}
 	int loopClosureId() const {return _loopClosureId;}
-	const std::list<std::vector<float> > & getActions() const {return _actions;}
-	const IplImage * refImage() const {return _refImage;}
-	const IplImage * loopClosureImage() const {return _loopClosureImage;}
+	const std::list<Actuator> & getActuators() const {return _actuators;}
+	const std::list<Sensor> & refRawData() const {return _refRawData;}
+	const std::list<Sensor> & loopClosureRawData() const {return _loopClosureRawData;}
 	const std::map<int, int> & weights() const {return _weights;}
 	const std::map<int, float> & posterior() const {return _posterior;}
 	const std::map<int, float> & likelihood() const {return _likelihood;}
@@ -130,20 +130,17 @@ public:
 
 	const std::map<std::string, float> & data() const {return _data;}
 
-
-	Statistics & operator=(const Statistics & s);
-
 private:
 	int _extended; // 0 -> only loop closure and last signature ID fields are filled
 
 	int _refImageId;
 	int _loopClosureId;
 
-	std::list<std::vector<float> > _actions;
+	std::list<Actuator> _actuators;
 
 	// extended data start here...
-	IplImage * _refImage; // Released by the event destructor
-	IplImage * _loopClosureImage; // Released by the event destructor
+	std::list<Sensor> _refRawData;
+	std::list<Sensor> _loopClosureRawData;
 
 	std::map<int, int> _weights;
 	std::map<int, float> _posterior;
@@ -191,7 +188,8 @@ public:
 		kCmdDumpMemory,
 		kCmdDumpPrediction,
 		kCmdGenerateGraph,
-		kCmdDeleteMemory};
+		kCmdDeleteMemory,
+		kCmdCleanSensorsBuffer};
 public:
 	RtabmapEventCmd(Cmd cmd) :
 		UEvent(0),

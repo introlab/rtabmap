@@ -10,8 +10,10 @@ SET(SRC_FILES
 	DBDriverFactory.cpp
 	DBDriver.cpp
 	DBDriverSqlite3.cpp
+	DBReader.cpp
 	
     Camera.cpp
+    Micro.cpp
     EpipolarGeometry.cpp
 	VisualWord.cpp
 	VWDictionary.cpp
@@ -34,6 +36,7 @@ SET(INCLUDE_DIRS
     ${OpenCV_INCLUDE_DIRS}
 	${SQLITE3_INCLUDE_DIR}
 	${ZLIB_INCLUDE_DIRS}
+	${FFTW3F_INCLUDE_DIRS}
 )
 
 SET(LIBRARIES
@@ -41,6 +44,7 @@ SET(LIBRARIES
 	${OpenCV_LIBS} 
 	${SQLITE3_LIBRARY}
 	${ZLIB_LIBRARIES}
+	${FFTW3F_LIBRARIES}
 )
 
 ####################################
@@ -128,27 +132,19 @@ SET(RESOURCES
 # Make sure the compiler can find include files from our library.
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
-IF(WIN32)
-    IF(BUILD_SHARED_LIBS)   
-	   ADD_DEFINITIONS(-DRTABMAP_EXPORTS) 
-	ELSE()
-	   ADD_DEFINITIONS(-DRTABMAP_EXPORTS_STATIC)
-	ENDIF()
-ENDIF(WIN32)
-
 # Add binary that is built from the source file "main.cpp".
 # The extension is automatically found.
-ADD_LIBRARY(corelib ${SRC_FILES} ${RESOURCES})
-TARGET_LINK_LIBRARIES(corelib ${LIBRARIES})
+ADD_LIBRARY(rtabmap_corelib ${SRC_FILES} ${RESOURCES})
+TARGET_LINK_LIBRARIES(rtabmap_corelib ${LIBRARIES})
 
 SET_TARGET_PROPERTIES(
-corelib 
+rtabmap_corelib 
 PROPERTIES
  OUTPUT_NAME ${PROJECT_PREFIX}_core
  INSTALL_NAME_DIR ${CMAKE_INSTALL_PREFIX}/lib
 )
 
-INSTALL(TARGETS corelib
+INSTALL(TARGETS rtabmap_corelib
         RUNTIME DESTINATION bin COMPONENT runtime
         LIBRARY DESTINATION lib COMPONENT devel
         ARCHIVE DESTINATION lib COMPONENT devel)

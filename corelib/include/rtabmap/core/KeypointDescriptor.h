@@ -32,9 +32,12 @@ namespace rtabmap {
 
 class RTABMAP_EXP KeypointDescriptor {
 public:
+	enum DescriptorType {kDescriptorSurf, kDescriptorSift, kDescriptorBrief, kDescriptorColor, kDescriptorHue, kDescriptorUndef};
+
+public:
 	virtual ~KeypointDescriptor();
 	virtual void parseParameters(const ParametersMap & parameters);
-	virtual cv::Mat generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const = 0;
+	virtual cv::Mat generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const = 0;
 
 protected:
 	KeypointDescriptor(const ParametersMap & parameters = ParametersMap());
@@ -47,10 +50,15 @@ public:
 	SURFDescriptor(const ParametersMap & parameters = ParametersMap());
 	virtual ~SURFDescriptor();
 	virtual void parseParameters(const ParametersMap & parameters);
-	virtual cv::Mat generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
-	CvSURFParams _params;
+	double _hessianThreshold;
+	int _nOctaves;
+	int _nOctaveLayers;
+	bool _extended;
+	bool _upright;
+
 	bool _gpuVersion;
 };
 
@@ -61,11 +69,14 @@ public:
 	SIFTDescriptor(const ParametersMap & parameters = ParametersMap());
 	virtual ~SIFTDescriptor();
 	virtual void parseParameters(const ParametersMap & parameters);
-	virtual cv::Mat generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
-	cv::SIFT::CommonParams _commonParams;
-	cv::SIFT::DescriptorParams _descriptorParams;
+	int _nfeatures;
+	int _nOctaveLayers;
+	double _contrastThreshold;
+	double _edgeThreshold;
+	double _sigma;
 };
 
 //BRIEFDescriptor
@@ -75,7 +86,7 @@ public:
 	BRIEFDescriptor(const ParametersMap & parameters = ParametersMap());
 	virtual ~BRIEFDescriptor();
 	virtual void parseParameters(const ParametersMap & parameters);
-	virtual cv::Mat generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
 	int _size;
@@ -88,7 +99,7 @@ public:
 	ColorDescriptor(const ParametersMap & parameters = ParametersMap());
 	virtual ~ColorDescriptor();
 	virtual void parseParameters(const ParametersMap & parameters);
-	virtual cv::Mat generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 protected:
 	void getCircularROI(int R, std::vector<int> & RxV) const;
 };
@@ -100,7 +111,7 @@ public:
 	HueDescriptor(const ParametersMap & parameters = ParametersMap());
 	virtual ~HueDescriptor();
 	virtual void parseParameters(const ParametersMap & parameters);
-	virtual cv::Mat generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 private:
 	// assuming that rgb values are normalized [0,1]
 	float rgb2hue(float r, float g, float b) const;

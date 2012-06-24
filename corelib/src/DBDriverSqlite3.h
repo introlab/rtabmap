@@ -50,7 +50,7 @@ private:
 
 	virtual bool changeWordsRefQuery(const std::map<int, int> & refsToChange) const; // <oldWordId, activeWordId>
 	virtual bool deleteWordsQuery(const std::vector<int> & ids) const;
-	virtual bool getNeighborIdsQuery(int signatureId, std::list<int> & neighbors, bool onlyWithActions = false) const;
+	virtual bool getNeighborIdsQuery(int signatureId, std::set<int> & neighbors, bool onlyWithActions = false) const;
 	virtual bool getWeightQuery(int signatureId, int & weight) const;
 	virtual bool getLoopClosureIdsQuery(int signatureId, std::set<int> & loopIds, std::set<int> & childIds) const;
 
@@ -60,7 +60,7 @@ private:
 
 	// Load objects
 	virtual bool loadQuery(VWDictionary * dictionary) const;
-	virtual bool loadLastSignaturesQuery(std::list<Signature *> & signatures) const;
+	virtual bool loadLastNodesQuery(std::list<Signature *> & signatures) const;
 	virtual bool loadQuery(int signatureId, Signature ** s) const;
 	virtual bool loadQuery(int wordId, VisualWord ** vw) const;
 	virtual bool loadQuery(int signatureId, KeypointSignature * ss) const;
@@ -69,28 +69,30 @@ private:
 	virtual bool loadSMSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const;
 	virtual bool loadWordsQuery(const std::list<int> & wordIds, std::list<VisualWord *> & vws) const;
 	virtual bool loadNeighborsQuery(int signatureId, NeighborsMultiMap & neighbors) const;
-	bool loadNeighborsQuery(std::list<Signature *> & signatures) const;
+	bool loadLinksQuery(std::list<Signature *> & signatures) const;
 
-	virtual bool getImageQuery(int id, IplImage ** image) const;
-	virtual bool getAllSignatureIdsQuery(std::set<int> & ids) const;
-	virtual bool getLastSignatureIdQuery(int & id) const;
-	virtual bool getLastVisualWordIdQuery(int & id) const;
-	virtual bool getSurfNiQuery(int signatureId, int & ni) const;
-	virtual bool getHighestWeightedSignaturesQuery(unsigned int count, std::multimap<int, int> & ids) const;
+	virtual bool getRawDataQuery(int id, std::list<Sensor> & rawData) const;
+	virtual bool getActuatorDataQuery(int id, std::list<Actuator> & data) const;
+	virtual bool getAllNodeIdsQuery(std::set<int> & ids) const;
+	virtual bool getLastNodeIdQuery(int & id) const;
+	virtual bool getLastWordIdQuery(int & id) const;
+	virtual bool getInvertedIndexNiQuery(int signatureId, int & ni) const;
+	virtual bool getHighestWeightedNodeIdsQuery(unsigned int count, std::multimap<int, int> & ids) const;
 
 private:
-	std::string queryStepSignature() const;
-	std::string queryStepImage() const;
-	std::string queryStepNeighborLink() const;
+	std::string queryStepNode() const;
+	std::string queryStepSensor() const;
+	std::string queryStepLink() const;
+	std::string queryStepActuator() const;
 	std::string queryStepWordsChanged() const;
 	std::string queryStepKeypoint() const;
 	std::string queryStepSensors() const;
-	int stepSignature(sqlite3_stmt * ppStmt, const Signature * s) const;
-	int stepImage(sqlite3_stmt * ppStmt, int id, const IplImage * img) const;
-	int stepNeighborLink(sqlite3_stmt * ppStmt, int signatureId, const NeighborLink & n) const;
+	int stepNode(sqlite3_stmt * ppStmt, const Signature * s) const;
+	int stepSensor(sqlite3_stmt * ppStmt, int id, int num, const std::vector<int> & data, const Sensor & sensor) const;
+	int stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, int type, int actuator_id, const std::vector<int> & baseIds) const;
+	int stepActuator(sqlite3_stmt * ppStmt, int id, int num, const Actuator & actuator) const;
 	int stepWordsChanged(sqlite3_stmt * ppStmt, int signatureId, int oldWordId, int newWordId) const;
 	int stepKeypoint(sqlite3_stmt * ppStmt, int signatureId, int wordId, const cv::KeyPoint & kp) const;
-	int stepSensors(sqlite3_stmt * ppStmt, const SMSignature * s) const;
 
 private:
 	int loadOrSaveDb(sqlite3 *pInMemory, const std::string & fileName, int isSave) const;

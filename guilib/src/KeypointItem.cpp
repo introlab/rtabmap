@@ -17,7 +17,7 @@
  * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "KeypointItem.h"
+#include "rtabmap/gui/KeypointItem.h"
 
 #include <QtGui/QPen>
 #include <QtGui/QBrush>

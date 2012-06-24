@@ -17,12 +17,12 @@
  * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "VWDictionary.h"
+#include "rtabmap/core/VWDictionary.h"
+#include "rtabmap/core/VisualWord.h"
 
-#include "VisualWord.h"
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/DBDriver.h"
-#include "NearestNeighbor.h"
+#include "rtabmap/core/NearestNeighbor.h"
 #include "rtabmap/core/Parameters.h"
 
 #include "utilite/UtiLite.h"
@@ -232,7 +232,11 @@ void VWDictionary::setNNStrategy(NNStrategy strategy, const ParametersMap & para
 		switch(strategy)
 		{
 		case kNNKdTree:
-			_nn = new KdTreeNN(parameters);
+			//FIXME KdTreeNN is broken...
+			//_nn = new KdTreeNN(parameters);
+			//break;
+			UWARN("KdTree OpenCV is broken, setting nearest neighbor strategy to KdForest FLANN...");
+			_nn = new FlannKdTreeNN(parameters);
 			break;
 		case kNNFlannKdTree:
 			_nn = new FlannKdTreeNN(parameters);
@@ -248,9 +252,9 @@ void VWDictionary::setNNStrategy(NNStrategy strategy, const ParametersMap & para
 		}
 		else if(!_nn)
 		{
+			this->update();
 			_dataTree = cv::Mat();
 		}
-		this->update();
 	}
 }
 
@@ -364,7 +368,10 @@ void VWDictionary::update()
 
 void VWDictionary::clear()
 {
-	ULOGGER_DEBUG("%d words destroyed", _visualWords.size());
+	if(_visualWords.size())
+	{
+		UWARN("Visual dictionary would be already empty here (%d words still in dictionary).", _visualWords.size());
+	}
 	for(std::map<int, VisualWord *>::iterator i=_visualWords.begin(); i!=_visualWords.end(); ++i)
 	{
 		delete (*i).second;
@@ -373,6 +380,9 @@ void VWDictionary::clear()
 	_lastNewWordsAddedCount = 0;
 	_totalActiveReferences = 0;
 	_lastWordId = 0;
+	_dataTree = cv::Mat();
+	_mapIndexId.clear();
+	_unusedWords.clear();
 }
 
 int VWDictionary::getNextId()
@@ -467,6 +477,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 		if(!_dataTree.empty())
 		{
 			//Find nearest neighbors
+			UDEBUG("newPts.total()=%d ", newPts.total());
 			_nn->search(newPts, results, dists, k, _maxLeafs);
 			ULOGGER_DEBUG("Time to find nn = %f s", timerLocal.ticks());
 		}
@@ -537,6 +548,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 					_visualWords.insert(_visualWords.end(), std::pair<int, VisualWord *>(vw->id(), vw));
 					newWords.push_back(vw);
 					wordIds.push_back(vw->id());
+					UASSERT(vw->id()>0);
 					++newWordsCount;
 				}
 				else
@@ -544,6 +556,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 					++dupWordsCount;
 					this->addWordRef(fullResults.begin()->second, signatureId);
 					wordIds.push_back(fullResults.begin()->second);
+					UASSERT(fullResults.begin()->second>0);
 				}
 			}
 			else if(fullResults.size())
@@ -552,6 +565,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 				++dupWordsCount;
 				this->addWordRef(fullResults.begin()->second, signatureId);
 				wordIds.push_back(fullResults.begin()->second);
+				UASSERT(fullResults.begin()->second>0);
 			}
 		}
 		ULOGGER_DEBUG("naive search and add ref/words time = %f s", timerLocal.ticks());
@@ -601,12 +615,14 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 					VisualWord * vw = new VisualWord(getNextId(), d, _dim, signatureId);
 					_visualWords.insert(_visualWords.end(), std::pair<int, VisualWord *>(vw->id(), vw));
 					wordIds.push_back(vw->id());
+					UASSERT(vw->id()>0);
 				}
 				else
 				{
 					++dupWordsCount;
 					this->addWordRef(results.begin()->second, signatureId);
 					wordIds.push_back(results.begin()->second);
+					UASSERT(results.begin()->second>0);
 				}
 			}
 			else if(results.size())
@@ -615,6 +631,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 				++dupWordsCount;
 				this->addWordRef(results.begin()->second, signatureId);
 				wordIds.push_back(results.begin()->second);
+				UASSERT(results.begin()->second>0);
 			}
 		}
 		ULOGGER_DEBUG("Naive search time = %fs", timer.ticks());

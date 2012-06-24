@@ -17,14 +17,14 @@
  * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "qtipl.h"
+#include "rtabmap/gui/qtipl.h"
 #include "utilite/ULogger.h"
 #include <opencv2/core/core_c.h>
 
 namespace rtabmap {
 
 // TODO : support only from gray 8bits ?
-QImage Ipl2QImage(const IplImage *newImage)
+QImage Ipl2QImage(const IplImage *newImage, int alpha)
 {
 	QImage qtemp;
 	if (newImage && newImage->depth == IPL_DEPTH_8U && cvGetSize(newImage).width>0)
@@ -33,13 +33,13 @@ QImage Ipl2QImage(const IplImage *newImage)
 		int y;
 		char* data = newImage->imageData;
 		
-		qtemp= QImage(newImage->width, newImage->height,QImage::Format_RGB32 );
+		qtemp= QImage(newImage->width, newImage->height,QImage::Format_ARGB32 );
 		for( y = 0; y < newImage->height; y++, data +=newImage->widthStep )
 		{
 			for( x = 0; x < newImage->width; x++)
 			{
 				uint *p = (uint*)qtemp.scanLine (y) + x;
-				*p = qRgb(data[x * newImage->nChannels+2], data[x * newImage->nChannels+1],data[x * newImage->nChannels]);
+				*p = qRgba(data[x * newImage->nChannels+2], data[x * newImage->nChannels+1],data[x * newImage->nChannels], alpha);
 			}
 		}
 	}

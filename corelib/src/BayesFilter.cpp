@@ -17,8 +17,8 @@
  * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "BayesFilter.h"
-#include "Memory.h"
+#include "rtabmap/core/BayesFilter.h"
+#include "rtabmap/core/Memory.h"
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/Parameters.h"
 #include <iostream>
@@ -160,9 +160,9 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	UTimer timer;
 	timer.start();
 
-	CvMat * prediction = 0;
-	CvMat * prior = 0;
-	CvMat * posterior = 0;
+	cv::Mat prediction;
+	cv::Mat prior;
+	cv::Mat posterior;
 
 	float sum = 0;
 	int j=0;
@@ -171,27 +171,26 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	prediction = cvCreateMat(likelihood.size(), likelihood.size(), CV_32FC1);
 	if(this->generatePrediction(prediction, memory, uKeys(likelihood)))
 	{
-		ULOGGER_DEBUG("STEP1-generate prior=%fs, rows=%d, cols=%d", timer.ticks(), prediction->rows, prediction->cols);
-		//std::cout << "Prediction=" << cv::Mat(prediction) << std::endl;
+		ULOGGER_DEBUG("STEP1-generate prior=%fs, rows=%d, cols=%d", timer.ticks(), prediction.rows, prediction.cols);
+		//std::cout << "Prediction=" << prediction << std::endl;
 
 		// Adjust the last posterior if some images were
 		// reactivated or removed from the working memory
-		posterior = cvCreateMat(likelihood.size(), 1, CV_32FC1);
+		posterior = cv::Mat(likelihood.size(), 1, CV_32FC1);
 		this->updatePosterior(memory, uKeys(likelihood));
 		j=0;
 		for(std::map<int, float>::const_iterator i=_posterior.begin(); i!= _posterior.end(); ++i)
 		{
-			posterior->data.fl[j++] = (*i).second;
+			((float*)posterior.data)[j++] = (*i).second;
 		}
-		ULOGGER_DEBUG("STEP1-update posterior=%fs, posterior=%d, _posterior size=%d", posterior->rows, _posterior.size());
-		//std::cout << "LastPosterior=" << cv::Mat(posterior) << std::endl;
+		ULOGGER_DEBUG("STEP1-update posterior=%fs, posterior=%d, _posterior size=%d", posterior.rows, _posterior.size());
+		//std::cout << "LastPosterior=" << posterior << std::endl;
 
 		// Multiply prediction matrix with the last posterior
 		// (m,m) X (m,1) = (m,1)
-		prior = cvCreateMat(likelihood.size(), 1, CV_32FC1);
-		cvMatMul(prediction, posterior, prior);
+		prior = prediction * posterior;
 		ULOGGER_DEBUG("STEP1-matrix mult time=%fs", timer.ticks());
-		//std::cout << "ResultingPrior=" << cv::Mat(prior) << std::endl;
+		//std::cout << "ResultingPrior=" << prior << std::endl;
 
 		ULOGGER_DEBUG("STEP1-matrix mult time=%fs", timer.ticks());
 		std::vector<float> likelihoodValues = uValues(likelihood);
@@ -204,7 +203,7 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 			std::map<int, float>::iterator p =_posterior.find((*i).first);
 			if(p!= _posterior.end())
 			{
-				(*p).second = (*i).second * prior->data.fl[j++];
+				(*p).second = (*i).second * ((float*)prior.data)[j++];
 				sum+=(*p).second;
 			}
 			else
@@ -226,14 +225,10 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 		ULOGGER_DEBUG("normalize time=%fs", timer.ticks());
 	}
 
-	cvReleaseMat(&prediction);
-	cvReleaseMat(&prior);
-	cvReleaseMat(&posterior);
-
 	return _posterior;
 }
 
-bool BayesFilter::generatePrediction(CvMat * prediction, const Memory * memory, const std::vector<int> & ids) const
+bool BayesFilter::generatePrediction(cv::Mat & prediction, const Memory * memory, const std::vector<int> & ids) const
 {
 	ULOGGER_DEBUG("");
 	UTimer timer;
@@ -242,9 +237,9 @@ bool BayesFilter::generatePrediction(CvMat * prediction, const Memory * memory, 
 	timerGlobal.start();
 
 	if(!memory ||
-	   prediction == 0 ||
-	   prediction->rows != prediction->cols ||
-	   (unsigned int)prediction->rows != ids.size() ||
+	   prediction.empty() ||
+	   prediction.rows != prediction.cols ||
+	   (unsigned int)prediction.rows != ids.size() ||
 	   _predictionLC.size() < 2 ||
 	   !ids.size())
 	{
@@ -262,9 +257,9 @@ bool BayesFilter::generatePrediction(CvMat * prediction, const Memory * memory, 
 		idToIndexMap.insert(idToIndexMap.end(), std::make_pair(ids[i], i));
 	}
 
-	//int rows = prediction->rows;
-	cvSetZero(prediction);
-	int cols = prediction->cols;
+	//int rows = prediction.rows;
+	prediction = cv::Mat::zeros(prediction.rows, prediction.cols, prediction.type());
+	int cols = prediction.cols;
 
 	// Each prior is a column vector
 	ULOGGER_DEBUG("_predictionLC.size()=%d",_predictionLC.size());
@@ -291,7 +286,7 @@ bool BayesFilter::generatePrediction(CvMat * prediction, const Memory * memory, 
 			if(sum < totalModelValues-_predictionLC[0])
 			{
 				float delta = totalModelValues-_predictionLC[0]-sum;
-				prediction->data.fl[i + i*cols] += delta;
+				((float*)prediction.data)[i + i*cols] += delta;
 				sum+=delta;
 			}
 
@@ -307,10 +302,10 @@ bool BayesFilter::generatePrediction(CvMat * prediction, const Memory * memory, 
 				float value = allOtherPlacesValue / float(cols - 1);
 				for(int j=ids[0] < 0?1:0; j<cols; ++j)
 				{
-					if(prediction->data.fl[i + j*cols] == 0)
+					if(((float*)prediction.data)[i + j*cols] == 0)
 					{
-						prediction->data.fl[i + j*cols] = value;
-						sum += prediction->data.fl[i + j*cols];
+						((float*)prediction.data)[i + j*cols] = value;
+						sum += ((float*)prediction.data)[i + j*cols];
 					}
 				}
 			}
@@ -321,7 +316,7 @@ bool BayesFilter::generatePrediction(CvMat * prediction, const Memory * memory, 
 			{
 				for(int j=ids[0] < 0?1:0; j<cols; ++j)
 				{
-					prediction->data.fl[i + j*cols] *= maxNorm / sum;
+					((float*)prediction.data)[i + j*cols] *= maxNorm / sum;
 				}
 				sum = maxNorm;
 			}
@@ -329,14 +324,14 @@ bool BayesFilter::generatePrediction(CvMat * prediction, const Memory * memory, 
 			// ADD virtual place prob
 			if(ids[0] < 0)
 			{
-				prediction->data.fl[i] = _predictionLC[0];
-				sum += prediction->data.fl[i];
+				((float*)prediction.data)[i] = _predictionLC[0];
+				sum += ((float*)prediction.data)[i];
 			}
 
 			//debug
 			//for(int j=0; j<cols; ++j)
 			//{
-			//	ULOGGER_DEBUG("test col=%d = %f", i, prediction->data.fl[i + j*cols]);
+			//	ULOGGER_DEBUG("test col=%d = %f", i, prediction.data.fl[i + j*cols]);
 			//}
 
 			if(sum<0.99 || sum > 1.01)
@@ -351,16 +346,16 @@ bool BayesFilter::generatePrediction(CvMat * prediction, const Memory * memory, 
 			{
 				if(cols>1) // The first must be the virtual place
 				{
-					prediction->data.fl[i] = _virtualPlacePrior;
+					((float*)prediction.data)[i] = _virtualPlacePrior;
 					float val = (1.0-_virtualPlacePrior)/(cols-1);
 					for(int j=1; j<cols; j++)
 					{
-						prediction->data.fl[i + j*cols] = val;
+						((float*)prediction.data)[i + j*cols] = val;
 					}
 				}
 				else if(cols>0)
 				{
-					prediction->data.fl[i] = 1;
+					((float*)prediction.data)[i] = 1;
 				}
 			}
 			else
@@ -372,12 +367,12 @@ bool BayesFilter::generatePrediction(CvMat * prediction, const Memory * memory, 
 					float val = 1.0/cols;
 					for(int j=0; j<cols; j++)
 					{
-						prediction->data.fl[i + j*cols] = val;
+						((float*)prediction.data)[i + j*cols] = val;
 					}
 				}
 				else if(cols>0)
 				{
-					prediction->data.fl[i] = 1;
+					((float*)prediction.data)[i] = 1;
 				}
 			}
 		}
@@ -414,10 +409,10 @@ void BayesFilter::updatePosterior(const Memory * memory, const std::vector<int> 
 	_posterior = newPosterior;
 }
 
-float BayesFilter::addNeighborProb(CvMat * prediction, unsigned int col, const std::map<int, int> & neighbors, const std::map<int, int> & idToIndexMap) const
+float BayesFilter::addNeighborProb(cv::Mat & prediction, unsigned int col, const std::map<int, int> & neighbors, const std::map<int, int> & idToIndexMap) const
 {
-	if((unsigned int)prediction->cols != idToIndexMap.size() ||
-	   (unsigned int)prediction->rows != idToIndexMap.size())
+	if((unsigned int)prediction.cols != idToIndexMap.size() ||
+	   (unsigned int)prediction.rows != idToIndexMap.size())
 	{
 		UFATAL("Requirements no met");
 	}
@@ -428,7 +423,7 @@ float BayesFilter::addNeighborProb(CvMat * prediction, unsigned int col, const s
 		int index = uValue(idToIndexMap, iter->first, -1);
 		if(index >= 0)
 		{
-			sum += prediction->data.fl[col + index*prediction->cols] = _predictionLC[iter->second+1];
+			sum += ((float*)prediction.data)[col + index*prediction.cols] = _predictionLC[iter->second+1];
 		}
 	}
 	return sum;

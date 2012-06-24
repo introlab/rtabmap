@@ -26,6 +26,9 @@
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/gpu/gpu.hpp>
 #include <opencv2/core/version.hpp>
+#if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
+#include <opencv2/nonfree/features2d.hpp>
+#endif
 
 #define OPENCV_SURF_GPU CV_MAJOR_VERSION >= 2 and CV_MINOR_VERSION >=2 and CV_SUBMINOR_VERSION>=1
 
@@ -48,14 +51,14 @@ void KeypointDescriptor::parseParameters(const ParametersMap & parameters)
 //SURFDescriptor
 //////////////////////////
 SURFDescriptor::SURFDescriptor(const ParametersMap & parameters) :
-	KeypointDescriptor(parameters)
+	KeypointDescriptor(parameters),
+	_hessianThreshold(Parameters::defaultSURFHessianThreshold()),
+	_nOctaves(Parameters::defaultSURFOctaves()),
+	_nOctaveLayers(Parameters::defaultSURFOctaveLayers()),
+	_extended(Parameters::defaultSURFExtended()),
+	_upright(Parameters::defaultSURFUpright()),
+	_gpuVersion(Parameters::defaultSURFGpuVersion())
 {
-	_params.hessianThreshold = Parameters::defaultSURFHessianThreshold();
-	_params.extended = Parameters::defaultSURFExtended();
-	_params.nOctaveLayers = Parameters::defaultSURFOctaveLayers();
-	_params.nOctaves = Parameters::defaultSURFOctaves();
-	_params.upright = Parameters::defaultSURFUpright();
-	_gpuVersion = Parameters::defaultSURFGpuVersion();
 	this->parseParameters(parameters);
 }
 
@@ -68,23 +71,27 @@ void SURFDescriptor::parseParameters(const ParametersMap & parameters)
 	ParametersMap::const_iterator iter;
 	if((iter=parameters.find(Parameters::kSURFExtended())) != parameters.end())
 	{
-		_params.extended = uStr2Bool((*iter).second.c_str());
+		_extended = uStr2Bool((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFHessianThreshold())) != parameters.end())
 	{
-		_params.hessianThreshold = std::atof((*iter).second.c_str()); // is it needed for the descriptor?
+		_hessianThreshold = std::atof((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFOctaveLayers())) != parameters.end())
 	{
-		_params.nOctaveLayers = std::atoi((*iter).second.c_str()); // is it needed for the descriptor?
+		_nOctaveLayers = std::atoi((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFOctaves())) != parameters.end())
 	{
-		_params.nOctaves = std::atoi((*iter).second.c_str()); // is it needed for the descriptor?
+		_nOctaves = std::atoi((*iter).second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kSURFOctaves())) != parameters.end())
+	{
+		_nOctaves = std::atoi((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFUpright())) != parameters.end())
 	{
-		_params.upright = uStr2Bool((*iter).second.c_str());
+		_upright = uStr2Bool((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFGpuVersion())) != parameters.end())
 	{
@@ -93,32 +100,31 @@ void SURFDescriptor::parseParameters(const ParametersMap & parameters)
 	KeypointDescriptor::parseParameters(parameters);
 }
 
-cv::Mat SURFDescriptor::generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const
+cv::Mat SURFDescriptor::generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	ULOGGER_DEBUG("");
 	cv::Mat descriptors;
-	if(!image)
+	if(image.empty())
 	{
 		ULOGGER_ERROR("Image is null ?!?");
 		return descriptors;
 	}
 	// SURF support only grayscale images
-	IplImage * imageGrayScale = 0;
-	if(image->nChannels != 1 || image->depth != IPL_DEPTH_8U)
+	cv::Mat imageGrayScale;
+	if(image.channels() != 1 || image.depth() != CV_8U)
 	{
-		imageGrayScale = cvCreateImage(cvSize(image->width,image->height), IPL_DEPTH_8U, 1);
-		cvCvtColor(image, imageGrayScale, CV_BGR2GRAY);
+		cv::cvtColor(image, imageGrayScale, CV_BGR2GRAY);
 	}
 	cv::Mat img;
-	if(imageGrayScale)
+	if(!imageGrayScale.empty())
 	{
-		img = cv::Mat(imageGrayScale);
+		img = imageGrayScale;
 	}
 	else
 	{
-		img =  cv::Mat(image);
+		img =  image;
 	}
-#if OPENCV_SURF_GPU
+/*#if OPENCV_SURF_GPU
 	if(_gpuVersion)
 	{
 		std::vector<float> d;
@@ -142,15 +148,15 @@ cv::Mat SURFDescriptor::generateDescriptors(const IplImage * image, std::vector<
 		cv::SurfDescriptorExtractor extractor(_params.nOctaves, _params.nOctaveLayers, _params.extended, _params.upright);
 		extractor.compute(img, keypoints, descriptors);
 	}
+#else*/
+#if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
+	cv::SURF extractor(_hessianThreshold, _nOctaves, _nOctaveLayers, _extended, _upright);
+	extractor.compute(img, keypoints, descriptors);
 #else
-	cv::SurfDescriptorExtractor extractor(_params.nOctaves, _params.nOctaveLayers, _params.extended, _params.upright);
+	cv::SurfDescriptorExtractor extractor(_nOctaves, _nOctaveLayers, _extended, _upright);
 	extractor.compute(img, keypoints, descriptors);
 #endif
-
-	if(imageGrayScale)
-	{
-		cvReleaseImage(&imageGrayScale);
-	}
+//#endif
 	return descriptors;
 }
 
@@ -158,7 +164,12 @@ cv::Mat SURFDescriptor::generateDescriptors(const IplImage * image, std::vector<
 //SIFTDescriptor
 //////////////////////////
 SIFTDescriptor::SIFTDescriptor(const ParametersMap & parameters) :
-	KeypointDescriptor(parameters)
+	KeypointDescriptor(parameters),
+	_nfeatures(Parameters::defaultSIFTNFeatures()),
+	_nOctaveLayers(Parameters::defaultSIFTNOctaveLayers()),
+	_contrastThreshold(Parameters::defaultSIFTContrastThreshold()),
+	_edgeThreshold(Parameters::defaultSIFTEdgeThreshold()),
+	_sigma(Parameters::defaultSIFTSigma())
 {
 	this->parseParameters(parameters);
 }
@@ -170,40 +181,64 @@ SIFTDescriptor::~SIFTDescriptor()
 void SIFTDescriptor::parseParameters(const ParametersMap & parameters)
 {
 	ParametersMap::const_iterator iter;
+	if((iter=parameters.find(Parameters::kSIFTContrastThreshold())) != parameters.end())
+	{
+		_contrastThreshold = std::atof((*iter).second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kSIFTEdgeThreshold())) != parameters.end())
+	{
+		_edgeThreshold = std::atof((*iter).second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kSIFTNFeatures())) != parameters.end())
+	{
+		_nfeatures = std::atoi((*iter).second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kSIFTNOctaveLayers())) != parameters.end())
+	{
+		_nOctaveLayers = std::atoi((*iter).second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kSIFTSigma())) != parameters.end())
+	{
+		_sigma = std::atof((*iter).second.c_str());
+	}
 	KeypointDescriptor::parseParameters(parameters);
 }
 
-cv::Mat SIFTDescriptor::generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const
+cv::Mat SIFTDescriptor::generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	ULOGGER_DEBUG("");
 	cv::Mat descriptors;
-	if(!image)
+	if(image.empty())
 	{
 		ULOGGER_ERROR("Image is null ?!?");
 		return descriptors;
 	}
 	// SURF support only grayscale images
-	IplImage * imageGrayScale = 0;
-	if(image->nChannels != 1 || image->depth != IPL_DEPTH_8U)
+	cv::Mat imageGrayScale;
+	if(image.channels() != 1 || image.depth() != CV_8U)
 	{
-		imageGrayScale = cvCreateImage(cvSize(image->width,image->height), IPL_DEPTH_8U, 1);
-		cvCvtColor(image, imageGrayScale, CV_BGR2GRAY);
+		cv::cvtColor(image, imageGrayScale, CV_BGR2GRAY);
 	}
 	cv::Mat img;
-	if(imageGrayScale)
+	if(!imageGrayScale.empty())
 	{
-		img = cv::Mat(imageGrayScale);
+		img = imageGrayScale;
 	}
 	else
 	{
-		img =  cv::Mat(image);
+		img =  image;
 	}
-	cv::SiftDescriptorExtractor extractor(_descriptorParams, _commonParams);
+#if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
+	cv::SIFT extractor(_nfeatures, _nOctaveLayers, _contrastThreshold, _edgeThreshold, _sigma);
 	extractor.compute(img, keypoints, descriptors);
-	if(imageGrayScale)
-	{
-		cvReleaseImage(&imageGrayScale);
-	}
+#else
+	cv::SIFT extractor(cv::SIFT::DescriptorParams::GET_DEFAULT_MAGNIFICATION(),
+			cv::SIFT::DescriptorParams::DEFAULT_IS_NORMALIZE,
+			true,
+			cv::SIFT::CommonParams::DEFAULT_NOCTAVES,
+			_nOctaveLayers);
+	extractor(img, cv::Mat(), keypoints, descriptors, true);
+#endif
 	return descriptors;
 }
 
@@ -231,38 +266,32 @@ void BRIEFDescriptor::parseParameters(const ParametersMap & parameters)
 	KeypointDescriptor::parseParameters(parameters);
 }
 
-cv::Mat BRIEFDescriptor::generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const
+cv::Mat BRIEFDescriptor::generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	ULOGGER_DEBUG("");
 	cv::Mat descriptors;
-	if(!image)
+	if(image.empty())
 	{
 		ULOGGER_ERROR("Image is null ?!?");
 		return descriptors;
 	}
 	// BRIEF support only grayscale images ?
-	IplImage * imageGrayScale = 0;
-	if(image->nChannels != 1 || image->depth != IPL_DEPTH_8U)
+	cv::Mat imageGrayScale;
+	if(image.channels() != 1 || image.depth() != CV_8U)
 	{
-		imageGrayScale = cvCreateImage(cvSize(image->width,image->height), IPL_DEPTH_8U, 1);
-		cvCvtColor(image, imageGrayScale, CV_BGR2GRAY);
+		cv::cvtColor(image, imageGrayScale, CV_BGR2GRAY);
 	}
 	cv::Mat img;
-	if(imageGrayScale)
+	if(!imageGrayScale.empty())
 	{
-		img = cv::Mat(imageGrayScale);
+		img = imageGrayScale;
 	}
 	else
 	{
-		img =  cv::Mat(image);
+		img =  image;
 	}
 	cv::BriefDescriptorExtractor brief(_size);
 	brief.compute(img, keypoints, descriptors);
-
-	if(imageGrayScale)
-	{
-		cvReleaseImage(&imageGrayScale);
-	}
 	return descriptors;
 }
 
@@ -285,30 +314,29 @@ void ColorDescriptor::parseParameters(const ParametersMap & parameters)
 	KeypointDescriptor::parseParameters(parameters);
 }
 
-cv::Mat ColorDescriptor::generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const
+cv::Mat ColorDescriptor::generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	ULOGGER_DEBUG("");
 	cv::Mat descriptors;
-	if(!image)
+	if(image.empty())
 	{
 		ULOGGER_ERROR("Image is null ?!?");
 		return descriptors;
 	}
 
-	IplImage * imageConverted = 0;
-	if(image->nChannels != 3 || image->depth != IPL_DEPTH_8U)
+	cv::Mat imageConverted;
+	if(image.channels() != 3 || image.depth() != CV_8U)
 	{
-		imageConverted = cvCreateImage(cvSize(image->width,image->height), IPL_DEPTH_8U, 3);
-		cvCvtColor(image, imageConverted, CV_GRAY2BGR);
+		cv::cvtColor(image, imageConverted, CV_GRAY2BGR);
 	}
 	cv::Mat imgMat;
-	if(imageConverted)
+	if(!imageConverted.empty())
 	{
-		imgMat = cv::Mat(imageConverted);
+		imgMat = imageConverted;
 	}
 	else
 	{
-		imgMat =  cv::Mat(image);
+		imgMat =  image;
 	}
 
 	//create descriptors...
@@ -365,12 +393,6 @@ cv::Mat ColorDescriptor::generateDescriptors(const IplImage * image, std::vector
 		}
 		++i;
 	}
-
-	if(imageConverted)
-	{
-		cvReleaseImage(&imageConverted);
-	}
-
 	return descriptors;
 }
 
@@ -404,30 +426,29 @@ void HueDescriptor::parseParameters(const ParametersMap & parameters)
 	KeypointDescriptor::parseParameters(parameters);
 }
 
-cv::Mat HueDescriptor::generateDescriptors(const IplImage * image, std::vector<cv::KeyPoint> & keypoints) const
+cv::Mat HueDescriptor::generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	ULOGGER_DEBUG("");
 	cv::Mat descriptors;
-	if(!image)
+	if(image.empty())
 	{
 		ULOGGER_ERROR("Image is null ?!?");
 		return descriptors;
 	}
 
-	IplImage * imageConverted = 0;
-	if(image->nChannels != 3 || image->depth != IPL_DEPTH_8U)
+	cv::Mat imageConverted;
+	if(image.channels() != 3 || image.depth() != CV_8U)
 	{
-		imageConverted = cvCreateImage(cvSize(image->width,image->height), IPL_DEPTH_8U, 3);
-		cvCvtColor(image, imageConverted, CV_GRAY2BGR);
+		cv::cvtColor(image, imageConverted, CV_GRAY2BGR);
 	}
 	cv::Mat imgMat;
-	if(imageConverted)
+	if(!imageConverted.empty())
 	{
-		imgMat = cv::Mat(imageConverted);
+		imgMat = imageConverted;
 	}
 	else
 	{
-		imgMat =  cv::Mat(image);
+		imgMat =  image;
 	}
 
 	//create descriptors...
@@ -497,12 +518,6 @@ cv::Mat HueDescriptor::generateDescriptors(const IplImage * image, std::vector<c
 		memcpy(rowFl, &d[i*2], 2*sizeof(float));
 		++i;
 	}
-
-	if(imageConverted)
-	{
-		cvReleaseImage(&imageConverted);
-	}
-
 	return descriptors;
 }
 

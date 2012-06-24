@@ -30,6 +30,9 @@
 
 namespace rtabmap {
 class Camera;
+class Micro;
+class CameraMicro;
+class DBReader;
 }
 
 class QGraphicsScene;
@@ -85,6 +88,7 @@ protected:
 	virtual void resizeEvent(QResizeEvent* anEvent);
 
 private slots:
+	void beep();
 	void startDetection();
 	void pauseDetection();
 	void stopDetection();
@@ -95,6 +99,8 @@ private slots:
 	void selectImages();
 	void selectVideo();
 	void selectStream();
+	void selectMic();
+	void selectAudioFile();
 	void selectDatabase();
 	void resetTheMemory();
 	void dumpTheMemory();
@@ -112,6 +118,15 @@ private slots:
 	void changeImgRateSetting();
 	void changeTimeLimitSetting();
 	void captureScreen();
+	void setAspectRatio(int w, int h);
+	void setAspectRatio16_9();
+	void setAspectRatio16_10();
+	void setAspectRatio4_3();
+	void setAspectRatio240p();
+	void setAspectRatio360p();
+	void setAspectRatio480p();
+	void setAspectRatio720p();
+	void setAspectRatio1080p();
 
 signals:
 	void statsReceived(const rtabmap::Statistics &);
@@ -128,13 +143,18 @@ signals:
 private:
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
 	void setupMainLayout(bool vertical);
-	void updateSelectSourceMenu(int type);
+	void updateSelectSourceImageMenu(int type);
+	void updateSelectSourceAudioMenu(int type);
+	void updateSelectSourceDatabase(bool used);
 
 private:
 	Ui_mainWindow * _ui;
 
 	State _state;
 	rtabmap::Camera * _camera;
+	rtabmap::Micro * _mic;
+	rtabmap::CameraMicro * _cameraMic;
+	rtabmap::DBReader * _dbReader;
 
 	SrcType _srcType;
 	QString _srcPath;
@@ -156,8 +176,13 @@ private:
 	PdfPlotCurve * _posteriorCurve;
 	PdfPlotCurve * _likelihoodCurve;
 
+	UPlotCurve * _audioCurve;
+	UPlotCurve * _audioCurveLoop;
+
 	DetailedProgressDialog * _initProgressDialog;
-	QActionGroup * _selectSourceGrp;
+	QActionGroup * _selectSourceImageGrp;
+	QActionGroup * _selectSourceAudioGrp;
+
 
 	QString _graphSavingFileName;
 	QString _autoScreenCaptureFormat;

@@ -20,11 +20,11 @@
 #ifndef PDFPLOT_H_
 #define PDFPLOT_H_
 
-#include "Plot.h"
+#include <utilite/UPlot.h>
 
 namespace rtabmap {
 
-class PdfPlotItem : public PlotItem
+class PdfPlotItem : public UPlotItem
 {
 public:
 	PdfPlotItem(float dataX, float dataY, float width, int childCount = -1);
@@ -47,7 +47,7 @@ private:
 
 };
 
-class PdfPlotCurve : public PlotCurve
+class PdfPlotCurve : public UPlotCurve
 {
 	Q_OBJECT
 

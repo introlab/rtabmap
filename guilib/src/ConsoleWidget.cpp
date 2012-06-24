@@ -74,16 +74,16 @@ void ConsoleWidget::handleEvent(UEvent * anEvent)
 		{
 			if(logEvent->getCode() == ULogger::kFatal)
 			{
-				_timer.start(0);
+				QMetaObject::invokeMethod(&_timer, "start", Q_ARG(int, 0));
 			}
 			else
 			{
-				_timer.start(OLD_TIME);
+				QMetaObject::invokeMethod(&_timer, "start", Q_ARG(int, OLD_TIME));
 			}
 		}
 		else
 		{
-			_timer.start(0);
+			QMetaObject::invokeMethod(&_timer, "start", Q_ARG(int, 0));
 		}
 
 		if(logEvent->getCode() == ULogger::kFatal)

@@ -92,22 +92,23 @@ public:
 
 	// Load objects
 	bool load(VWDictionary * dictionary) const;
-	bool loadLastSignatures(std::list<Signature *> & signatures) const;
+	bool loadLastNodes(std::list<Signature *> & signatures) const;
 	bool loadKeypointSignatures(const std::list<int> & ids, std::list<Signature *> & signatures);
 	bool loadSMSignatures(const std::list<int> & ids, std::list<Signature *> & signatures);
 	bool loadWords(const std::list<int> & wordIds, std::list<VisualWord *> & vws);
 
 	// Specific queries...
-	bool getImage(int id, IplImage ** img) const;
-	bool getNeighborIds(int signatureId, std::list<int> & neighbors, bool onlyWithActions = false) const;
+	bool getRawData(int id, std::list<Sensor> & data) const;
+	bool getActuatorData(int id, std::list<Actuator> & data) const;
+	bool getNeighborIds(int signatureId, std::set<int> & neighbors, bool onlyWithActions = false) const;
 	bool loadNeighbors(int signatureId, NeighborsMultiMap & neighbors) const;
 	bool getWeight(int signatureId, int & weight) const;
 	bool getLoopClosureIds(int signatureId, std::set<int> & loopIds, std::set<int> & childIds) const;
-	bool getAllSignatureIds(std::set<int> & ids) const;
-	bool getLastSignatureId(int & id) const;
-	bool getLastVisualWordId(int & id) const;
-	bool getSurfNi(int signatureId, int & ni) const;
-	bool getHighestWeightedSignatures(unsigned int count, std::multimap<int, int> & ids) const;
+	bool getAllNodeIds(std::set<int> & ids) const;
+	bool getLastNodeId(int & id) const;
+	bool getLastWordId(int & id) const;
+	bool getInvertedIndexNi(int signatureId, int & ni) const;
+	bool getHighestWeightedNodeIds(unsigned int count, std::multimap<int, int> & ids) const;
 
 protected:
 	DBDriver(const ParametersMap & parameters = ParametersMap());
@@ -122,7 +123,7 @@ private:
 
 	virtual bool changeWordsRefQuery(const std::map<int, int> & refsToChange) const = 0; // <oldWordId, activeWordId>
 	virtual bool deleteWordsQuery(const std::vector<int> & ids) const = 0;
-	virtual bool getNeighborIdsQuery(int signatureId, std::list<int> & neighbors, bool onlyWithActions = false) const = 0;
+	virtual bool getNeighborIdsQuery(int signatureId, std::set<int> & neighbors, bool onlyWithActions = false) const = 0;
 	virtual bool getWeightQuery(int signatureId, int & weight) const = 0;
 	virtual bool getLoopClosureIdsQuery(int signatureId, std::set<int> & loopIds, std::set<int> & childIds) const = 0;
 
@@ -132,7 +133,7 @@ private:
 
 	// Load objects
 	virtual bool loadQuery(VWDictionary * dictionary) const = 0;
-	virtual bool loadLastSignaturesQuery(std::list<Signature *> & signatures) const = 0;
+	virtual bool loadLastNodesQuery(std::list<Signature *> & signatures) const = 0;
 	virtual bool loadQuery(int signatureId, Signature ** s) const = 0;
 	virtual bool loadQuery(int wordId, VisualWord ** vw) const = 0;
 	virtual bool loadQuery(int signatureId, KeypointSignature * ss) const = 0;
@@ -142,12 +143,13 @@ private:
 	virtual bool loadWordsQuery(const std::list<int> & wordIds, std::list<VisualWord *> & vws) const = 0;
 	virtual bool loadNeighborsQuery(int signatureId, NeighborsMultiMap & neighbors) const = 0;
 
-	virtual bool getImageQuery(int id, IplImage ** image) const = 0;
-	virtual bool getAllSignatureIdsQuery(std::set<int> & ids) const = 0;
-	virtual bool getLastSignatureIdQuery(int & id) const = 0;
-	virtual bool getLastVisualWordIdQuery(int & id) const = 0;
-	virtual bool getSurfNiQuery(int signatureId, int & ni) const = 0;
-	virtual bool getHighestWeightedSignaturesQuery(unsigned int count, std::multimap<int,int> & signatures) const = 0;
+	virtual bool getRawDataQuery(int id, std::list<Sensor> & rawData) const = 0;
+	virtual bool getActuatorDataQuery(int id, std::list<Actuator> & rawData) const = 0;
+	virtual bool getAllNodeIdsQuery(std::set<int> & ids) const = 0;
+	virtual bool getLastNodeIdQuery(int & id) const = 0;
+	virtual bool getLastWordIdQuery(int & id) const = 0;
+	virtual bool getInvertedIndexNiQuery(int signatureId, int & ni) const = 0;
+	virtual bool getHighestWeightedNodeIdsQuery(unsigned int count, std::multimap<int,int> & signatures) const = 0;
 
 private:
 	//non-abstract methods
@@ -167,7 +169,6 @@ private:
 	unsigned int _minSignaturesToSave;
 	unsigned int _minWordsToSave;
 	bool _imagesCompressed;
-	bool _asyncWaiting;
 	double _emptyTrashesTime;
 	std::string _url;
 };

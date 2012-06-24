@@ -22,60 +22,69 @@
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
 #include <opencv2/highgui/highgui.hpp>
-#include "utilite/UThreadNode.h"
-#include "utilite/UEventsHandler.h"
+#include <opencv2/features2d/features2d.hpp>
+#include <utilite/UThreadNode.h>
+#include <utilite/UEventsHandler.h>
+#include <utilite/UEvent.h>
+#include <utilite/UDirectory.h>
+#include <utilite/UTimer.h>
 #include "rtabmap/core/Parameters.h"
+#include "rtabmap/core/KeypointDetector.h"
+#include "rtabmap/core/KeypointDescriptor.h"
 #include <set>
 #include <stack>
 #include <list>
 #include <vector>
 
-class UDirectory;
-
 namespace rtabmap
 {
 
-class KeypointDetector;
-class KeypointDescriptor;
-class SMState;
-
-/**
- * No treatment
- */
-class RTABMAP_EXP CamPostTreatment
+class CameraEvent :
+	public UEvent
 {
 public:
-	CamPostTreatment(const ParametersMap & parameters = ParametersMap()) {
-		this->parseParameters(parameters);
-	}
-	virtual ~CamPostTreatment() {}
-	virtual void process(SMState * smState) const;
-	virtual void parseParameters(const ParametersMap & parameters) {}
-};
-
-/**
- * Extract keypoints from the image
- */
-class RTABMAP_EXP CamKeypointTreatment : public CamPostTreatment
-{
-public:
-	enum DetectorStrategy {kDetectorSurf, kDetectorStar, kDetectorSift, kDetectorFast, kDetectorUndef};
-	enum DescriptorStrategy {kDescriptorSurf, kDescriptorSift, kDescriptorBrief, kDescriptorColor, kDescriptorHue, kDescriptorUndef};
+	enum Code {
+		kCodeFeatures,
+		kCodeImage,
+		kCodeNoMoreImages
+	};
 
 public:
-	CamKeypointTreatment(const ParametersMap & parameters = ParametersMap()) :
-		_keypointDetector(0),
-		_keypointDescriptor(0)
+	CameraEvent(const cv::Mat & image, int cameraId = 0) :
+		UEvent(kCodeImage),
+		_cameraId(cameraId),
+		_image(image)
 	{
-		this->parseParameters(parameters);
 	}
-	virtual ~CamKeypointTreatment();
-	virtual void process(SMState * smState) const;
-	virtual void parseParameters(const ParametersMap & parameters);
-	DetectorStrategy detectorStrategy() const;
+	CameraEvent(const cv::Mat & descriptors, const std::vector<cv::KeyPoint> & keypoints, const cv::Mat & image = cv::Mat(), int cameraId = 0) :
+		UEvent(kCodeFeatures),
+		_cameraId(cameraId),
+		_image(image),
+		_descriptors(descriptors),
+		_keypoints(keypoints)
+	{
+	}
+	CameraEvent(int cameraId = 0) :
+		UEvent(kCodeNoMoreImages),
+		_cameraId(cameraId)
+	{
+	}
+
+	int cameraId() const {return _cameraId;}
+
+	// Image or descriptors
+	const cv::Mat & image() const {return _image;}
+	const cv::Mat & descriptors() const {return _descriptors;}
+	const std::vector<cv::KeyPoint> & keypoints() const {return _keypoints;}
+
+	virtual ~CameraEvent() {}
+	virtual std::string getClassName() const {return std::string("CameraEvent");}
+
 private:
-	KeypointDetector * _keypointDetector;
-	KeypointDescriptor * _keypointDescriptor;
+	int _cameraId;
+	cv::Mat _image;
+	cv::Mat _descriptors;
+	std::vector<cv::KeyPoint> _keypoints;
 };
 
 /**
@@ -91,17 +100,20 @@ public:
 
 public:
 	virtual ~Camera();
-
-	virtual IplImage * takeImage(std::list<std::vector<float> > * actions = 0) = 0;
-	SMState * takeSMState();
+	cv::Mat takeImage();
+	cv::Mat takeImage(cv::Mat & descriptors, std::vector<cv::KeyPoint> & keypoints);
 	virtual bool init() = 0;
 	bool isPaused() const {return !this->isRunning();}
 	bool isCapturing() const {return this->isRunning();}
 	unsigned int getImageWidth() const {return _imageWidth;}
 	unsigned int getImageHeight() const {return _imageHeight;}
-	void setPostThreatement(CamPostTreatment * strategy); // ownership is transferred
+	float getImageRate() const {return _imageRate;}
+	bool isFeaturesExtracted() const {return _featuresExtracted;}
+	void setFeaturesExtracted(bool featuresExtracted, KeypointDetector::DetectorType detector = KeypointDetector::kDetectorUndef, KeypointDescriptor::DescriptorType descriptor = KeypointDescriptor::kDescriptorUndef);
 	void setImageRate(float imageRate) {_imageRate = imageRate;}
 	void setAutoRestart(bool autoRestart) {_autoRestart = autoRestart;}
+	virtual void parseParameters(const ParametersMap & parameters);
+	int id() const {return _id;}
 
 protected:
 	/**
@@ -109,15 +121,16 @@ protected:
 	 *
 	 * @param imageRate : image/second , 0 for fast as the camera can
 	 */
-	Camera(float imageRate = 0, bool autoRestart = false, unsigned int imageWidth = 0, unsigned int imageHeight = 0);
+	Camera(float imageRate = 0, bool autoRestart = false, unsigned int imageWidth = 0, unsigned int imageHeight = 0, unsigned int framesDropped = 0, int id = 0);
 
 	virtual void handleEvent(UEvent* anEvent);
+	virtual cv::Mat captureImage() = 0;
 
 private:
+	virtual void mainLoopBegin();
 	virtual void mainLoop();
 	void process();
 	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
-	virtual void parseParameters(const ParametersMap & parameters) {_postThreatement->parseParameters(parameters);}
 
 private:
 	float _imageRate;
@@ -125,11 +138,16 @@ private:
 	bool _autoRestart;
 	unsigned int _imageWidth;
 	unsigned int _imageHeight;
-	CamPostTreatment * _postThreatement;
+	unsigned int _framesDropped;
+	UTimer _frameRateTimer;
 
 	UMutex _stateMutex;
 	std::stack<State> _state;
 	std::stack<ParametersMap> _stateParam;
+
+	bool _featuresExtracted;
+	KeypointDetector * _keypointDetector;
+	KeypointDescriptor * _keypointDescriptor;
 };
 
 
@@ -147,11 +165,15 @@ public:
 			float imageRate = 0,
 			bool autoRestart = false,
 			unsigned int imageWidth = 0,
-			unsigned int imageHeight = 0);
+			unsigned int imageHeight = 0,
+			unsigned int framesDropped = 0,
+			int id = 0);
 	virtual ~CameraImages();
 
-	virtual IplImage * takeImage(std::list<std::vector<float> > * actions = 0);
 	virtual bool init();
+
+protected:
+	virtual cv::Mat captureImage();
 
 private:
 	std::string _path;
@@ -159,7 +181,7 @@ private:
 	// If the list of files in the directory is refreshed
 	// on each call of takeImage()
 	bool _refreshDir;
-	UDirectory * _dir;
+	UDirectory _dir;
 	int _count;
 	std::string _lastFileName;
 
@@ -184,58 +206,33 @@ public:
 			float imageRate = 0,
 			bool autoRestart = false,
 			unsigned int imageWidth = 0,
-			unsigned int imageHeight = 0);
+			unsigned int imageHeight = 0,
+			unsigned int framesDropped = 0,
+			int id = 0);
 	CameraVideo(const std::string & fileName,
 			float imageRate = 0,
 			bool autoRestart = false,
 			unsigned int imageWidth = 0,
-			unsigned int imageHeight = 0);
+			unsigned int imageHeight = 0,
+			unsigned int framesDropped = 0,
+			int id = 0);
 	virtual ~CameraVideo();
 
-	virtual IplImage * takeImage(std::list<std::vector<float> > * actions = 0);
 	virtual bool init();
+	int getUsbDevice() {return _usbDevice;}
+
+protected:
+	virtual cv::Mat captureImage();
 
 private:
 	// File type
 	std::string _fileName;
 
-	CvCapture* _capture;
+	cv::VideoCapture _capture;
 	Source _src;
 
 	// Usb camera
 	int _usbDevice;
-};
-
-
-
-
-
-
-/////////////////////////
-// CameraDatabase
-/////////////////////////
-class DBDriver;
-class RTABMAP_EXP CameraDatabase :
-	public Camera
-{
-public:
-	CameraDatabase(const std::string & path,
-			bool loadActions,
-			float imageRate = 0,
-			bool autoRestart = false,
-			unsigned int imageWidth = 0,
-			unsigned int imageHeight = 0);
-	virtual ~CameraDatabase();
-
-	virtual IplImage * takeImage(std::list<std::vector<float> > * actions = 0);
-	virtual bool init();
-
-private:
-	std::string _path;
-	bool _loadActions;
-	std::set<int>::iterator _indexIter;
-	DBDriver * _dbDriver;
-	std::set<int> _ids;
 };
 
 

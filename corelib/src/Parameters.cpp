@@ -45,9 +45,9 @@ std::string Parameters::getDefaultWorkingDirectory()
 	std::string path = UDirectory::homeDir();
 	if(!path.empty())
 	{
-		UDirectory::makeDir(path += "/Documents");
-		UDirectory::makeDir(path += "/RTAB-Map");
-		path += "/"; // add trailing separator
+		UDirectory::makeDir(path += UDirectory::separator() + "Documents");
+		UDirectory::makeDir(path += UDirectory::separator() + "RTAB-Map");
+		path += UDirectory::separator(); // add trailing separator
 	}
 	else
 	{

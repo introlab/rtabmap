@@ -18,31 +18,44 @@
  */
 
 #include "rtabmap/core/Camera.h"
-#include "rtabmap/core/CameraEvent.h"
 #include "utilite/UEventsManager.h"
 #include "utilite/UConversion.h"
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/core/DBDriverFactory.h"
 #include "rtabmap/core/KeypointDescriptor.h"
 #include "rtabmap/core/KeypointDetector.h"
-#include "rtabmap/core/SMState.h"
 #include "utilite/UStl.h"
 #include "utilite/UConversion.h"
 #include "utilite/UFile.h"
 #include "utilite/UDirectory.h"
 #include "utilite/UTimer.h"
-#include <opencv2/imgproc/imgproc_c.h>
+#include <opencv2/imgproc/imgproc.hpp>
 
 namespace rtabmap
 {
 
-void CamPostTreatment::process(SMState * smState) const
+Camera::Camera(float imageRate,
+		bool autoRestart,
+		unsigned int imageWidth,
+		unsigned int imageHeight,
+		unsigned int framesDropped,
+		int id) :
+	_imageRate(imageRate),
+	_id(id),
+	_autoRestart(autoRestart),
+	_imageWidth(imageWidth),
+	_imageHeight(imageHeight),
+	_framesDropped(framesDropped),
+	_featuresExtracted(false),
+	_keypointDetector(0),
+	_keypointDescriptor(0)
 {
-	//no threatment...
 }
 
-CamKeypointTreatment::~CamKeypointTreatment()
+Camera::~Camera()
 {
+	UEventsManager::removeHandler(this);
+	join(true);
 	if(_keypointDetector)
 	{
 		delete _keypointDetector;
@@ -52,48 +65,56 @@ CamKeypointTreatment::~CamKeypointTreatment()
 		delete _keypointDescriptor;
 	}
 }
-void CamKeypointTreatment::process(SMState * smState) const
+
+void Camera::setFeaturesExtracted(bool featuresExtracted, KeypointDetector::DetectorType detector, KeypointDescriptor::DescriptorType descriptor)
 {
-	if(_keypointDetector && _keypointDescriptor && smState && smState->getImage() && smState->getKeypoints().size() == 0 && smState->getSensors().empty())
+	_featuresExtracted = featuresExtracted;
+	if(detector != KeypointDetector::kDetectorUndef || descriptor != KeypointDescriptor::kDescriptorUndef)
 	{
-		std::vector<cv::KeyPoint> keypoints = _keypointDetector->generateKeypoints(smState->getImage());
-		cv::Mat descriptors = _keypointDescriptor->generateDescriptors(smState->getImage(), keypoints);
-		smState->setSensors(descriptors);
-		smState->setKeypoints(keypoints);
+		ParametersMap pm;
+		pm.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str((int)detector)));
+		pm.insert(ParametersPair(Parameters::kKpDescriptorStrategy(), uNumber2Str((int)detector)));
+		this->parseParameters(pm);
 	}
 }
 
-void CamKeypointTreatment::parseParameters(const ParametersMap & parameters)
+void Camera::parseParameters(const ParametersMap & parameters)
 {
 	UDEBUG("");
 	ParametersMap::const_iterator iter;
 	//Keypoint detector
-	DetectorStrategy detectorStrategy = kDetectorUndef;
+	KeypointDetector::DetectorType detector = KeypointDetector::kDetectorUndef;
 	if((iter=parameters.find(Parameters::kKpDetectorStrategy())) != parameters.end())
 	{
-		detectorStrategy = (DetectorStrategy)std::atoi((*iter).second.c_str());
+		detector = (KeypointDetector::DetectorType)std::atoi((*iter).second.c_str());
 	}
-	DetectorStrategy currentDetectorStrategy = this->detectorStrategy();
-	if(!_keypointDetector || ( detectorStrategy!=kDetectorUndef && (detectorStrategy != currentDetectorStrategy) ) )
+	//Keypoint descriptor
+	KeypointDescriptor::DescriptorType descriptor = KeypointDescriptor::kDescriptorUndef;
+	if((iter=parameters.find(Parameters::kKpDescriptorStrategy())) != parameters.end())
 	{
-		ULOGGER_DEBUG("new detector strategy %d", int(detectorStrategy));
+		descriptor = (KeypointDescriptor::DescriptorType)std::atoi((*iter).second.c_str());
+	}
+
+	if(detector!=KeypointDetector::kDetectorUndef)
+	{
+		ULOGGER_DEBUG("new detector strategy %d", int(detector));
 		if(_keypointDetector)
 		{
 			delete _keypointDetector;
 			_keypointDetector = 0;
 		}
-		switch(detectorStrategy)
+		switch(detector)
 		{
-		case kDetectorStar:
+		case KeypointDetector::kDetectorStar:
 			_keypointDetector = new StarDetector(parameters);
 			break;
-		case kDetectorSift:
+		case KeypointDetector::kDetectorSift:
 			_keypointDetector = new SIFTDetector(parameters);
 			break;
-		case kDetectorFast:
+		case KeypointDetector::kDetectorFast:
 			_keypointDetector = new FASTDetector(parameters);
 			break;
-		case kDetectorSurf:
+		case KeypointDetector::kDetectorSurf:
 		default:
 			_keypointDetector = new SURFDetector(parameters);
 			break;
@@ -104,35 +125,29 @@ void CamKeypointTreatment::parseParameters(const ParametersMap & parameters)
 		_keypointDetector->parseParameters(parameters);
 	}
 
-	//Keypoint descriptor
-	DescriptorStrategy descriptorStrategy = kDescriptorUndef;
-	if((iter=parameters.find(Parameters::kKpDescriptorStrategy())) != parameters.end())
+	if(descriptor!=KeypointDescriptor::kDescriptorUndef)
 	{
-		descriptorStrategy = (DescriptorStrategy)std::atoi((*iter).second.c_str());
-	}
-	if(!_keypointDescriptor || descriptorStrategy!=kDescriptorUndef)
-	{
-		ULOGGER_DEBUG("new descriptor strategy %d", int(descriptorStrategy));
+		ULOGGER_DEBUG("new descriptor strategy %d", int(descriptor));
 		if(_keypointDescriptor)
 		{
 			delete _keypointDescriptor;
 			_keypointDescriptor = 0;
 		}
-		switch(descriptorStrategy)
+		switch(descriptor)
 		{
-		case kDescriptorSift:
+		case KeypointDescriptor::kDescriptorSift:
 			_keypointDescriptor = new SIFTDescriptor(parameters);
 			break;
-		case kDescriptorBrief:
+		case KeypointDescriptor::kDescriptorBrief:
 			_keypointDescriptor = new BRIEFDescriptor(parameters);
 			break;
-		case kDescriptorColor:
+		case KeypointDescriptor::kDescriptorColor:
 			_keypointDescriptor = new ColorDescriptor(parameters);
 			break;
-		case kDescriptorHue:
+		case KeypointDescriptor::kDescriptorHue:
 			_keypointDescriptor = new HueDescriptor(parameters);
 			break;
-		case kDescriptorSurf:
+		case KeypointDescriptor::kDescriptorSurf:
 		default:
 			_keypointDescriptor = new SURFDescriptor(parameters);
 			break;
@@ -142,55 +157,11 @@ void CamKeypointTreatment::parseParameters(const ParametersMap & parameters)
 	{
 		_keypointDescriptor->parseParameters(parameters);
 	}
-	CamPostTreatment::parseParameters(parameters);
 }
 
-CamKeypointTreatment::DetectorStrategy CamKeypointTreatment::detectorStrategy() const
+void Camera::mainLoopBegin()
 {
-	DetectorStrategy strategy = kDetectorUndef;
-	StarDetector * star = dynamic_cast<StarDetector*>(_keypointDetector);
-	SURFDetector * surf = dynamic_cast<SURFDetector*>(_keypointDetector);
-	if(star)
-	{
-		strategy = kDetectorStar;
-	}
-	else if(surf)
-	{
-		strategy = kDetectorSurf;
-	}
-	return strategy;
-}
-
-Camera::Camera(float imageRate,
-		bool autoRestart,
-		unsigned int imageWidth,
-		unsigned int imageHeight) :
-	_imageRate(imageRate),
-	_autoRestart(autoRestart),
-	_imageWidth(imageWidth),
-	_imageHeight(imageHeight)
-{
-	_postThreatement = new CamPostTreatment();
-	UEventsManager::addHandler(this);
-}
-
-Camera::~Camera()
-{
-	join(true);
-	delete _postThreatement;
-}
-
-SMState * Camera::takeSMState()
-{
-	std::list<std::vector<float> > actions;
-	IplImage * img = this->takeImage(&actions);
-	if(img)
-	{
-		SMState * smState = new SMState(cv::Mat(), actions);
-		smState->setImage(img);
-		return smState;
-	}
-	return 0;
+	_frameRateTimer.start();
 }
 
 void Camera::mainLoop()
@@ -217,16 +188,6 @@ void Camera::mainLoop()
 	else if(state == kStateChangingParameters)
 	{
 		this->parseParameters(parameters);
-	}
-}
-
-// ownership is transferred
-void Camera::setPostThreatement(CamPostTreatment * strategy)
-{
-	if(strategy)
-	{
-		delete _postThreatement;
-		_postThreatement = strategy;
 	}
 }
 
@@ -260,29 +221,105 @@ void Camera::handleEvent(UEvent* anEvent)
 	}
 }
 
+cv::Mat Camera::takeImage()
+{
+	cv::Mat descriptors;
+	std::vector<cv::KeyPoint> keypoints;
+	bool tmp = _featuresExtracted;
+	_featuresExtracted = false; // no need to extract descriptors/keypoints in this function
+	cv::Mat img = takeImage(descriptors, keypoints);
+	_featuresExtracted = tmp;
+	return img;
+}
+
+cv::Mat Camera::takeImage(cv::Mat & descriptors, std::vector<cv::KeyPoint> & keypoints)
+{
+	descriptors = cv::Mat();
+	keypoints.clear();
+	if(_imageRate>0)
+	{
+		int sleepTime = (1000.0f/_imageRate - 1000.0f*_frameRateTimer.getElapsedTime());
+		if(sleepTime > 2)
+		{
+			uSleep(sleepTime-2);
+		}
+
+		// Add precision at the cost of a small overhead
+		while(_frameRateTimer.getElapsedTime() < 1.0/double(_imageRate)-0.000001)
+		{
+			//
+		}
+
+		double slept = _frameRateTimer.getElapsedTime();
+		_frameRateTimer.start();
+		UDEBUG("slept=%fs vs target=%fs", slept, 1.0/double(_imageRate));
+	}
+
+	cv::Mat img;
+	if(!this->isKilled())
+	{
+		UTimer timer;
+		img = this->captureImage();
+		UDEBUG("Time capturing image = %fs", timer.ticks());
+		if(img.depth() != CV_8U)
+		{
+			UWARN("Images should have already 8U depth !?");
+			cv::Mat tmp = img;
+			img = cv::Mat();
+			tmp.convertTo(img, CV_8U);
+			UDEBUG("Time converting image to 8U = %fs", timer.ticks());
+		}
+
+		if(!img.empty())
+		{
+			if(_featuresExtracted && _keypointDetector && _keypointDescriptor)
+			{
+				keypoints = _keypointDetector->generateKeypoints(img);
+				descriptors = _keypointDescriptor->generateDescriptors(img, keypoints);
+				UDEBUG("Post treatment time = %fs", timer.ticks());
+			}
+
+			if(_framesDropped)
+			{
+				unsigned int count = 0;
+				while(count++ < _framesDropped)
+				{
+					cv::Mat tmp = this->captureImage();
+					if(!tmp.empty())
+					{
+						UDEBUG("frame dropped (%d/%d)", (int)count, (int)_framesDropped);
+					}
+					else
+					{
+						break;
+					}
+				}
+				UDEBUG("Frames dropped time = %fs", timer.ticks());
+			}
+		}
+	}
+	return img;
+}
+
 void Camera::process()
 {
 	UTimer timer;
 	ULOGGER_DEBUG("Camera::process()");
-	SMState * smState = this->takeSMState();
-	if(smState)
+	cv::Mat descriptors;
+	std::vector<cv::KeyPoint> keypoints;
+	cv::Mat img = this->takeImage(descriptors, keypoints);
+	if(!img.empty())
 	{
-		_postThreatement->process(smState);
-		this->post(new SMStateEvent(smState));
-
-		double elapsed = timer.ticks();
-		UDEBUG("Post treatment time = %fs", elapsed);
-		if(_imageRate>0)
+		if(_featuresExtracted)
 		{
-			float sleepTime = 1000.0f/_imageRate - 1000.0f*elapsed;
-			if(sleepTime > 0)
-			{
-				UDEBUG("Now sleeping for = %fms", sleepTime);
-				uSleep(sleepTime);
-			}
+			this->post(new CameraEvent(descriptors, keypoints, img, _id));
+		}
+		else
+		{
+			this->post(new CameraEvent(img, _id));
 		}
 	}
-	else
+	else if(!this->isKilled())
 	{
 		if(_autoRestart)
 		{
@@ -292,7 +329,7 @@ void Camera::process()
 		{
 			ULOGGER_DEBUG("Camera::process() : no more images...");
 			this->kill();
-			this->post(new CameraEvent());
+			this->post(new CameraEvent(_id));
 		}
 	}
 }
@@ -307,12 +344,13 @@ CameraImages::CameraImages(const std::string & path,
 					 float imageRate,
 					 bool autoRestart,
 					 unsigned int imageWidth,
-					 unsigned int imageHeight) :
-	Camera(imageRate, autoRestart, imageWidth, imageHeight),
+					 unsigned int imageHeight,
+					 unsigned int framesDropped,
+					 int id) :
+	Camera(imageRate, autoRestart, imageWidth, imageHeight, framesDropped, id),
 	_path(path),
 	_startAt(startAt),
 	_refreshDir(refreshDir),
-	_dir(0),
 	_count(0)
 {
 }
@@ -320,60 +358,48 @@ CameraImages::CameraImages(const std::string & path,
 CameraImages::~CameraImages(void)
 {
 	join(true);
-	if(_dir)
-	{
-		delete _dir;
-		_dir = 0;
-	}
 }
 
 bool CameraImages::init()
 {
-	if(_dir)
-	{
-		delete _dir;
-		_dir = 0;
-	}
-	_dir = new UDirectory(_path, "jpg ppm png bmp pnm");
+	UDEBUG("");
+	_dir = UDirectory(_path, "jpg ppm png bmp pnm");
 	_count = 0;
 	if(_path[_path.size()-1] != '\\' && _path[_path.size()-1] != '/')
 	{
 		_path.append("/");
 	}
-	if(!_dir)
+	if(!_dir.isValid())
 	{
-		ULOGGER_ERROR("Directory path not valid \"%s\"", _path.c_str());
+		ULOGGER_ERROR("Directory path is not valid \"%s\"", _path.c_str());
 	}
-	else if(_dir->getFileNames().size() == 0)
+	else if(_dir.getFileNames().size() == 0)
 	{
 		UWARN("Directory is empty \"%s\"", _path.c_str());
 	}
-	return _dir != 0;
+	return _dir.isValid();
 }
 
-IplImage * CameraImages::takeImage(std::list<std::vector<float> > * actions)
+cv::Mat CameraImages::captureImage()
 {
-	if(actions)
-	{
-		actions->clear();
-	}
-	IplImage * img = 0;
-	if(_dir)
+	UDEBUG("");
+	cv::Mat img;
+	if(_dir.isValid())
 	{
 		if(_refreshDir)
 		{
-			_dir->update();
+			_dir.update();
 		}
 		if(_startAt == 0)
 		{
-			const std::list<std::string> & fileNames = _dir->getFileNames();
+			const std::list<std::string> & fileNames = _dir.getFileNames();
 			if(fileNames.size())
 			{
 				if(_lastFileName.empty() || uStrNumCmp(_lastFileName,*fileNames.rbegin()) < 0)
 				{
 					_lastFileName = *fileNames.rbegin();
 					std::string fullPath = _path + _lastFileName;
-					img = cvLoadImage(fullPath.c_str(), CV_LOAD_IMAGE_COLOR);
+					img = cv::imread(fullPath.c_str());
 				}
 			}
 		}
@@ -381,18 +407,31 @@ IplImage * CameraImages::takeImage(std::list<std::vector<float> > * actions)
 		{
 			std::string fileName;
 			std::string fullPath;
-			fileName = _dir->getNextFileName();
+			fileName = _dir.getNextFileName();
 			if(fileName.size())
 			{
 				fullPath = _path + fileName;
-				while(++_count < _startAt && (fileName = _dir->getNextFileName()).size())
+				while(++_count < _startAt && (fileName = _dir.getNextFileName()).size())
 				{
 					fullPath = _path + fileName;
 				}
 				if(fileName.size())
 				{
-					ULOGGER_DEBUG("Loading image : %s\n", fullPath.c_str());
-					img = cvLoadImage(fullPath.c_str(), CV_LOAD_IMAGE_COLOR);
+					ULOGGER_DEBUG("Loading image : %s", fullPath.c_str());
+#if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
+					img = cv::imread(fullPath.c_str(), cv::IMREAD_UNCHANGED);
+#else
+					img = cv::imread(fullPath.c_str(), -1);
+#endif
+					// FIXME : it seems that some png are incorrectly loaded with opencv c++ interface, where c interface works...
+					if(img.depth() != CV_8U)
+					{
+						// The depth should be 8U
+						UWARN("Cannot read the image correctly, falling back to old OpenCV C interface...");
+						IplImage * i = cvLoadImage(fullPath.c_str());
+						img = cv::Mat(i, true);
+						cvReleaseImage(&i);
+					}
 				}
 			}
 		}
@@ -401,22 +440,18 @@ IplImage * CameraImages::takeImage(std::list<std::vector<float> > * actions)
 	{
 		UWARN("Directory is not set, camera must be initialized.");
 	}
-	if(img &&
+
+	if(!img.empty() &&
 	   getImageWidth() &&
 	   getImageHeight() &&
-	   getImageWidth() != (unsigned int)img->width &&
-	   getImageHeight() != (unsigned int)img->height)
+	   getImageWidth() != (unsigned int)img.cols &&
+	   getImageHeight() != (unsigned int)img.rows)
 	{
-		// declare a destination IplImage object with correct size, depth and channels
-		IplImage * resampledImg = cvCreateImage( cvSize((int)(getImageWidth()) ,
-											   (int)(getImageHeight()) ),
-											   img->depth, img->nChannels );
-
-		//use cvResize to resize source to a destination image (linear interpolation)
-		cvResize(img, resampledImg);
-		cvReleaseImage(&img);
-		img = resampledImg;
+		cv::Mat resampled;
+		cv::resize(img, resampled, cv::Size(getImageWidth(), getImageHeight()));
+		img = resampled;
 	}
+	UDEBUG("");
 	return img;
 }
 
@@ -429,9 +464,10 @@ CameraVideo::CameraVideo(int usbDevice,
 						 float imageRate,
 						 bool autoRestart,
 						 unsigned int imageWidth,
-						 unsigned int imageHeight) :
-	Camera(imageRate, autoRestart, imageWidth, imageHeight),
-	_capture(0),
+						 unsigned int imageHeight,
+						 unsigned int framesDropped,
+						 int id) :
+	Camera(imageRate, autoRestart, imageWidth, imageHeight, framesDropped, id),
 	_src(kUsbDevice),
 	_usbDevice(usbDevice)
 {
@@ -442,10 +478,11 @@ CameraVideo::CameraVideo(const std::string & fileName,
 						   float imageRate,
 						   bool autoRestart,
 						   unsigned int imageWidth,
-						   unsigned int imageHeight) :
-	Camera(imageRate, autoRestart, imageWidth, imageHeight),
+						   unsigned int imageHeight,
+						   unsigned int framesDropped,
+						   int id) :
+	Camera(imageRate, autoRestart, imageWidth, imageHeight, framesDropped, id),
 	_fileName(fileName),
-	_capture(0),
 	_src(kVideoFile)
 {
 }
@@ -453,221 +490,71 @@ CameraVideo::CameraVideo(const std::string & fileName,
 CameraVideo::~CameraVideo()
 {
 	join(true);
-	if(_capture)
-	{
-		cvReleaseCapture(&_capture);
-	}
+	_capture.release();
 }
 
 bool CameraVideo::init()
 {
-	if(_capture)
+	if(_capture.isOpened())
 	{
-		cvReleaseCapture(&_capture);
-		_capture = 0;
+		_capture.release();
 	}
 
 	if(_src == kUsbDevice)
 	{
 		ULOGGER_DEBUG("CameraVideo::init() Usb device initialization on device %d with imgSize=[%d,%d]", _usbDevice, getImageWidth(), getImageHeight());
-		_capture = cvCaptureFromCAM(_usbDevice);
-		if(_capture && getImageWidth() && getImageHeight())
+		_capture.open(_usbDevice);
+		if(getImageWidth() && getImageHeight())
 		{
-			cvSetCaptureProperty(_capture, CV_CAP_PROP_FRAME_WIDTH, double(getImageWidth()));
-			cvSetCaptureProperty(_capture, CV_CAP_PROP_FRAME_HEIGHT, double(getImageHeight()));
+			_capture.set(CV_CAP_PROP_FRAME_WIDTH, double(getImageWidth()));
+			_capture.set(CV_CAP_PROP_FRAME_HEIGHT, double(getImageHeight()));
 		}
 	}
 	else if(_src == kVideoFile)
 	{
-		ULOGGER_DEBUG("CameraVideo::init() filename=\"%s\"", _fileName.c_str());
-		_capture = cvCaptureFromAVI(_fileName.c_str());
+		ULOGGER_DEBUG("Camera: filename=\"%s\"", _fileName.c_str());
+		_capture.open(_fileName.c_str());
 	}
 	else
 	{
-		ULOGGER_ERROR("CameraVideo::init() Unknown source...");
+		ULOGGER_ERROR("Camera: Unknown source...");
 	}
-	if(!_capture)
+	if(!_capture.isOpened())
 	{
-		ULOGGER_ERROR("CameraVideo::init() Failed to create a capture object!");
+		ULOGGER_ERROR("Camera: Failed to create a capture object!");
+		_capture.release();
 		return false;
 	}
 	return true;
 }
 
-IplImage * CameraVideo::takeImage(std::list<std::vector<float> > * actions)
+cv::Mat CameraVideo::captureImage()
 {
-	if(actions)
+	cv::Mat img;  // Null image
+	if(_capture.isOpened())
 	{
-		actions->clear();
-	}
-	IplImage * img = 0;  // Null image
-	if(_capture)
-	{
-		if(!cvGrabFrame(_capture)){              // capture a frame
-			ULOGGER_WARN("CameraVideo: Could not grab a frame, the end of the feed may be reached...");
-		}
-		else
-		{
-			img=cvRetrieveFrame(_capture);           // retrieve the captured frame
-		}
+		_capture.read(img);
 	}
 	else
 	{
-		ULOGGER_WARN("CameraVideo::takeImage() The camera must be initialized before requesting an image.");
+		ULOGGER_WARN("The camera must be initialized before requesting an image.");
 	}
 
-	if(img &&
+	if(!img.empty() &&
 	   getImageWidth() &&
 	   getImageHeight() &&
-	   getImageWidth() != (unsigned int)img->width &&
-	   getImageHeight() != (unsigned int)img->height)
+	   getImageWidth() != (unsigned int)img.cols &&
+	   getImageHeight() != (unsigned int)img.rows)
 	{
-		// declare a destination IplImage object with correct size, depth and channels
-		IplImage * resampledImg = cvCreateImage( cvSize((int)(getImageWidth()),(int)(getImageHeight())),
-											   img->depth,
-											   img->nChannels );
-
-		//use cvResize to resize source to a destination image (linear interpolation)
-		cvResize(img, resampledImg);
-		img = resampledImg;
-	}
-	else if(img)
-	{
-		img = cvCloneImage(img);
-	}
-
-	return img;
-}
-
-
-
-
-
-
-
-/////////////////////////
-// CameraDatabase
-/////////////////////////
-CameraDatabase::CameraDatabase(const std::string & path,
-								bool loadActions,
-								float imageRate,
-								bool autoRestart,
-								unsigned int imageWidth,
-								unsigned int imageHeight) :
-	Camera(imageRate, autoRestart, imageWidth, imageHeight),
-	_path(path),
-	_loadActions(loadActions),
-	_indexIter(_ids.begin()),
-	_dbDriver(0)
-{
-}
-
-CameraDatabase::~CameraDatabase(void)
-{
-	join(true);
-	if(_dbDriver)
-	{
-		_dbDriver->closeConnection();
-		delete _dbDriver;
-	}
-}
-
-bool CameraDatabase::init()
-{
-	if(_dbDriver)
-	{
-		_dbDriver->closeConnection();
-		delete _dbDriver;
-		_dbDriver = 0;
-	}
-	_ids.clear();
-	_indexIter = _ids.begin();
-
-	std::string driverType = "sqlite3";
-	ParametersMap parameters;
-	parameters.insert(ParametersPair(Parameters::kDbSqlite3InMemory(), "false"));
-	_dbDriver = rtabmap::DBDriverFactory::createDBDriver(driverType, parameters);
-	if(!_dbDriver)
-	{
-		ULOGGER_ERROR("CameraDatabase::init() can't create \"%s\" driver",driverType.c_str());
-		return false;
-	}
-	else if(!_dbDriver->openConnection(_path.c_str()))
-	{
-		ULOGGER_ERROR("CameraDatabase::init() Can't read database \"%s\"",_path.c_str());
-		return false;
+		cv::Mat resampled;
+		cv::resize(img, resampled, cv::Size(getImageWidth(), getImageHeight()));
+		return resampled;
 	}
 	else
 	{
-		_dbDriver->getAllSignatureIds(_ids);
-		_indexIter = _ids.begin();
+		// clone required
+		return img.clone();
 	}
-	return true;
-}
-
-IplImage * CameraDatabase::takeImage(std::list<std::vector<float> > * actions)
-{
-	if(actions)
-	{
-		actions->clear();
-	}
-	IplImage * img = 0;
-	if(_dbDriver && _indexIter != _ids.end())
-	{
-		// Get image
-		_dbDriver->getImage(*_indexIter, &img);
-
-		// Get actions from its previous neighbor
-		if(actions && _loadActions)
-		{
-			if(*_indexIter-1 > 0)
-			{
-				NeighborsMultiMap neighbors;
-				_dbDriver->loadNeighbors(*_indexIter-1, neighbors);
-				for(NeighborsMultiMap::iterator iter = neighbors.begin(); iter!=neighbors.end(); ++iter)
-				{
-					if(iter->first>*_indexIter-1 && iter->second.actions().size())
-					{
-						*actions = iter->second.actions();
-						break;
-					}
-				}
-				if(actions->size() == 0)
-				{
-					UWARN("actions from previous %d to current %d are null", *_indexIter-1, *_indexIter);
-				}
-			}
-		}
-
-		++_indexIter;
-	}
-	else if(!_dbDriver)
-	{
-		ULOGGER_WARN("The camera must be initialized first...");
-	}
-	else if(_ids.size() == 0)
-	{
-		ULOGGER_WARN("The database \"%s\" is empty...", _path.c_str());
-	}
-
-	if(img &&
-	   getImageWidth() &&
-	   getImageHeight() &&
-	   getImageWidth() != (unsigned int)img->width &&
-	   getImageHeight() != (unsigned int)img->height)
-	{
-		// declare a destination IplImage object with correct size, depth and channels
-		IplImage * resampledImg = cvCreateImage( cvSize((int)(getImageWidth()) ,
-											   (int)(getImageHeight()) ),
-											   img->depth, img->nChannels );
-
-		//use cvResize to resize source to a destination image (linear interpolation)
-		cvResize(img, resampledImg);
-		cvReleaseImage(&img);
-		img = resampledImg;
-	}
-
-	return img;
 }
 
 } // namespace rtabmap

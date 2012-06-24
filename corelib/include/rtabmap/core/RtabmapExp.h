@@ -20,15 +20,11 @@
 #ifndef RTABMAPEXP_H
 #define RTABMAPEXP_H
 
-#ifdef WIN32
-  #ifdef RTABMAP_EXPORTS
+#if defined(_WIN32)
+  #if defined(rtabmap_corelib_EXPORTS) || defined(rtabmap_guilib_EXPORTS)
     #define RTABMAP_EXP   __declspec( dllexport )
   #else
-    #ifdef RTABMAP_EXPORTS_STATIC
-    #define RTABMAP_EXP
-    #else
-      #define RTABMAP_EXP   __declspec( dllimport )
-    #endif
+    #define RTABMAP_EXP   __declspec( dllimport )
   #endif
 #else
   #define RTABMAP_EXP

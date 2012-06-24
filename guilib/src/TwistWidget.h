@@ -36,6 +36,8 @@ public:
 	TwistWidget(float x, float y, float z, float roll, float pitch, float yaw, QWidget * parent, Qt::WindowFlags f = 0);
 	virtual ~TwistWidget() {}
 
+	void setData(float x, float y, float z, float roll, float pitch, float yaw);
+
 protected:
 	virtual void paintEvent(QPaintEvent * event);
 

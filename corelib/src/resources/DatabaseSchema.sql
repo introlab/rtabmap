@@ -1,221 +1,136 @@
 -- *******************************************************************
 --  construct_avpd_db: Script for creating the database
 --   Usage:
---       $ sqlite3 AvpdDatabase.db < DatabaseSchema.sql
+--       $ sqlite3 LTM.db < DatabaseSchema.sql
 --
 -- *******************************************************************
 
 -- *******************************************************************
 -- CLEAN
 -- *******************************************************************
-/*DROP TABLE Signature;
-DROP TABLE SignatureType;
-DROP TABLE Neighbor;
-DROP TABLE VisualWord;
-DROP TABLE Map_SS_VW;
-DROP TABLE StatisticsAfterRun;
-DROP TABLE StatisticsAfterRunSurf;*/
+/*DROP TABLE Node;
+DROP TABLE Link;
+DROP TABLE Sensor;
+DROP TABLE Actuator;
+DROP TABLE Word;
+DROP TABLE Map_Node_Word;
+DROP TABLE Statistics;
+DROP TABLE StatisticsSurf;*/
 
 -- *******************************************************************
 -- CREATE
 -- *******************************************************************
-CREATE TABLE Signature (
+CREATE TABLE Node (
 	id INTEGER NOT NULL,
-	type VARCHAR NOT NULL,
+	type INTEGER NOT NULL, -- 0=Keypoint, 1=Sensor
 	weight INTEGER,
-	loopClosureIds BLOB,
-	childLoopClosureIds BLOB,
-	timeEnter DATE,
-	PRIMARY KEY (id),
-	FOREIGN KEY (type) REFERENCES SignatureType(type)
+	time_enter DATE,
+	PRIMARY KEY (id)
 );
 
-CREATE TABLE Image (
+CREATE TABLE Sensor (
 	id INTEGER NOT NULL,
+	num INTEGER NOT NULL,
+	type INTEGER NOT NULL, -- kTypeImage=0, kTypeImageFeatures2d, kTypeAudio, kTypeAudioFreq, kTypeAudioFreqSqrdMagn, kTypeJointState, kTypeNotSpecified
+	data BLOB, -- PostProcessed data (indexed integers)
+	raw_width INTEGER NOT NULL,
+	raw_height INTEGER NOT NULL,
+	raw_data_type INTEGER NOT NULL,
+	raw_compressed CHAR NOT NULL,
+	raw_data BLOB,
+	PRIMARY KEY (id, num)
+);
+
+CREATE TABLE Link (
+	from_id INTEGER NOT NULL,
+	to_id INTEGER NOT NULL,
+	type INTEGER NOT NULL, -- neighbor=0, loop=1, child=2
+	actuator_id INTEGER,
+	base_ids BLOB,
+	FOREIGN KEY (from_id) REFERENCES Node(id),
+	FOREIGN KEY (to_id) REFERENCES Node(id)
+);
+
+CREATE TABLE Actuator (
+	id INTEGER NOT NULL,
+	num INTEGER NOT NULL,
+	type INTEGER NOT NULL, -- kTypeTwist=0, kTypeNotSpecified
 	width INTEGER NOT NULL,
 	height INTEGER NOT NULL,
-	channels INTEGER NOT NULL,
-	compressed CHAR NOT NULL,
+	data_type INTEGER NOT NULL,
 	data BLOB,
-	timeEnter DATE,
-	PRIMARY KEY (id)
+	PRIMARY KEY (id, num)
 );
 
-CREATE TABLE SMState (
+-- 
+CREATE TABLE Word (
 	id INTEGER NOT NULL,
-	sensors BLOB,
-	motionMask BLOB,
-	timeEnter DATE,
-	FOREIGN KEY (id) REFERENCES Signature(id)
-);
-
-CREATE TABLE Neighbor (
-    sid INTEGER NOT NULL,
-    nid INTEGER NOT NULL,
-    actionSize INTEGER,
-    actions BLOB,
-    baseIds BLOB,
-    FOREIGN KEY (sid) REFERENCES Signature(id),
-    FOREIGN KEY (nid) REFERENCES Signature(id)
-);
-
-CREATE TABLE SignatureType (
-	type VARCHAR NOT NULL,
-	PRIMARY KEY (type)
-);
-
-CREATE TABLE VisualWord (
-	id INTEGER NOT NULL,
-	descriptorSize INTEGER NOT NULL,
+	descriptor_size INTEGER NOT NULL,
 	descriptor BLOB NOT NULL,
-	timeEnter DATE,
+	time_enter DATE,
 	PRIMARY KEY (id)
 );
 
-CREATE TABLE Map_SS_VW (
-	signatureId INTEGER NOT NULL,
-	visualWordId INTEGER NOT NULL,
+CREATE TABLE Map_Node_Word (
+	node_id INTEGER NOT NULL,
+	word_id INTEGER NOT NULL,
 	pos_x FLOAT NOT NULL,
 	pos_y FLOAT NOT NULL,
-	laplacian INTEGER NOT NULL,
 	size INTEGER NOT NULL,
 	dir FLOAT NOT NULL,
-	hessian FLOAT NOT NULL,
-	FOREIGN KEY (signatureId) REFERENCES Signature(id),
-	FOREIGN KEY (visualWordId) REFERENCES VisualWord(id)
+	response FLOAT NOT NULL,
+	FOREIGN KEY (node_id) REFERENCES Node(id),
+	FOREIGN KEY (word_id) REFERENCES Word(id)
 );
 
-CREATE TABLE StatisticsAfterRun (
-	stMemSize INTEGER,
-	lastSignAdded INTEGER,
-	processMemUsed INTEGER,
-	databaseMemUsed INTEGER,
-	timeEnter DATE
+CREATE TABLE Statistics (
+	STM_size INTEGER,
+	last_sign_added INTEGER,
+	process_mem_used INTEGER,
+	database_mem_used INTEGER,
+	time_enter DATE
 );
 
-CREATE TABLE StatisticsAfterRunSurf (
-	dictionarySize INTEGER,
-	timeEnter DATE
+CREATE TABLE StatisticsDictionary (
+	dictionary_size INTEGER,
+	time_enter DATE
 );
 
 -- *******************************************************************
 -- TRIGGERS
 -- *******************************************************************
-CREATE TRIGGER insert_Signature BEFORE INSERT ON Signature 
-WHEN NOT EXISTS (SELECT type FROM SignatureType WHERE SignatureType.type = NEW.type)
+CREATE TRIGGER insert_Map_Node_Word BEFORE INSERT ON Map_Node_Word 
+WHEN NOT EXISTS (SELECT type FROM Node WHERE Node.id = NEW.node_id AND type=0)
 BEGIN
- SELECT RAISE(ABORT, 'Foreign key Signature.type constraint failed');
+ SELECT RAISE(ABORT, 'Keypoint type constraint failed');
 END;
 
-CREATE TRIGGER insert_SMState BEFORE INSERT ON SMState 
-WHEN NOT EXISTS (SELECT id FROM Signature WHERE Signature.id = NEW.id)
+ --   Creating a trigger for time_enter
+CREATE TRIGGER insert_Node_timeEnter AFTER INSERT ON Node
 BEGIN
- SELECT RAISE(ABORT, 'Foreign key SMState.id constraint failed');
+ UPDATE Node SET time_enter = DATETIME('NOW')  WHERE rowid = new.rowid;
 END;
 
---CREATE TRIGGER insert_Neighbor_unique BEFORE INSERT ON Neighbor 
---WHEN NEW.sid = NEW.nid
---BEGIN
--- SELECT RAISE(ABORT, 'Cannot add self references');
---END;
-
-CREATE TRIGGER insert_Neighbor_sid BEFORE INSERT ON Neighbor 
-WHEN NOT EXISTS (SELECT id FROM Signature WHERE Signature.id = NEW.sid)
+CREATE TRIGGER insert_Word_timeEnter AFTER INSERT ON Word
 BEGIN
- SELECT RAISE(ABORT, 'Foreign key Neighbor.sid constraint failed');
+ UPDATE Word SET time_enter = DATETIME('NOW')  WHERE rowid = new.rowid;
 END;
 
---Commented before a link can be added before the neighbor is saved...
---CREATE TRIGGER insert_Neighbor_nid BEFORE INSERT ON Neighbor 
---WHEN NOT EXISTS (SELECT id FROM Signature WHERE Signature.id = NEW.nid)
---BEGIN
--- SELECT RAISE(ABORT, 'Foreign key Neighbor.nid constraint failed');
---END;
-
-CREATE TRIGGER insert_Map_SS_VW BEFORE INSERT ON Map_SS_VW 
-WHEN NOT EXISTS (SELECT type FROM Signature WHERE Signature.id = NEW.signatureId AND type='KeypointSignature')
+CREATE TRIGGER insert_Statistics_timeEnter AFTER INSERT ON Statistics
 BEGIN
- SELECT RAISE(ABORT, 'KeypointSignature type constraint failed');
+ UPDATE Statistics SET time_enter = DATETIME('NOW')  WHERE rowid = new.rowid;
 END;
 
- --   Creating a trigger for timeEnter
-CREATE TRIGGER insert_Signature_timeEnter AFTER INSERT ON Signature
+CREATE TRIGGER insert_StatisticsDictionary_timeEnter AFTER INSERT ON StatisticsDictionary
 BEGIN
- UPDATE Signature SET timeEnter = DATETIME('NOW')  WHERE rowid = new.rowid;
-END;
-
-CREATE TRIGGER insert_VisualWord_timeEnter AFTER INSERT ON VisualWord
-BEGIN
- UPDATE VisualWord SET timeEnter = DATETIME('NOW')  WHERE rowid = new.rowid;
-END;
-
-CREATE TRIGGER insert_StatisticsAfterRun_timeEnter AFTER INSERT ON StatisticsAfterRun
-BEGIN
- UPDATE StatisticsAfterRun SET timeEnter = DATETIME('NOW')  WHERE rowid = new.rowid;
-END;
-
-CREATE TRIGGER insert_StatisticsAfterRunSurf_timeEnter AFTER INSERT ON StatisticsAfterRunSurf
-BEGIN
- UPDATE StatisticsAfterRunSurf SET timeEnter = DATETIME('NOW')  WHERE rowid = new.rowid;
+ UPDATE StatisticsDictionary SET time_enter = DATETIME('NOW')  WHERE rowid = new.rowid;
 END;
 
 
 -- *******************************************************************
 -- INDEXES
 -- *******************************************************************
-CREATE INDEX IDX_Map_SS_VW_SignatureId on Map_SS_VW (signatureId);
--- CREATE INDEX IDX_Map_SS_VW_VisualWordId on Map_SS_VW (visualWordId);
--- CREATE INDEX IDX_Signature_Id on Signature (id);
--- CREATE INDEX IDX_VisualWord_Id on VisualWord (id);
-CREATE INDEX IDX_SMState_Id on SMState (id);
--- CREATE INDEX IDX_Signature_TimeEnter on Signature (timeEnter);
--- CREATE INDEX IDX_VisualWord_TimeEnter on VisualWord (timeEnter);
-CREATE INDEX IDX_Neighbor_Sid on Neighbor (sid);
+CREATE INDEX IDX_Map_Node_Word_node_id on Map_Node_Word (node_id);
+CREATE INDEX IDX_Sensor_Id on Sensor (id);
+CREATE INDEX IDX_Link_from_id on Link (from_id);
 
--- *******************************************************************
--- Data
--- *******************************************************************
-INSERT INTO SignatureType(type) VALUES ('KeypointSignature');
-INSERT INTO SignatureType(type) VALUES ('SMSignature');
-
--- *******************************************************************
--- TESTS
--- *******************************************************************
--- *** Data Test ***
-/*
-INSERT INTO Signature VALUES(1, 'surf', null, null, null);
-INSERT INTO Signature VALUES(2, 'surf', null, null, null);
-INSERT INTO Signature VALUES(3, 'surf', null, null, null);
-INSERT INTO VisualWord VALUES (1, 1, 2,'0.213213 0.4352323', null);
-INSERT INTO VisualWord VALUES (2, 1, 2,'0.213213 0.4352323', null);
-INSERT INTO VisualWord VALUES (3, 3, 2,'0.213213 0.4352323', null);
-INSERT INTO Map_SS_VW VALUES (1, 1, 0,0,0,0,0, null);
-INSERT INTO Map_SS_VW VALUES (2, 1, 0,0,0,0,0, null);
-INSERT INTO Map_SS_VW VALUES (2, 2, 0,0,0,0,0, null);
-*/
-
-/*
--- For loading words
-SELECT vw.id, vw.laplacian, vw.descriptorSize, vw.descriptor, m.signatureId FROM VisualWord as vw INNER JOIN Map_SS_VW as m on vw.id=m.visualWordId ORDER BY vw.id;
-*/
-
-
--- Refreshing the dictionary
-/*SELECT * FROM Map_SS_VW;
-SELECT * FROM VisualWord;*/
-/*
-DELETE FROM VisualWord;
-INSERT INTO VisualWord VALUES (1, 1, 2,'0.213213 0.4352323', null);
-DELETE FROM Map_SS_VW WHERE NOT EXISTS (SELECT id FROM VisualWord WHERE id = Map_SS_VW.visualWordId);
-*/
-/*SELECT * FROM Map_SS_VW;
-SELECT * FROM VisualWord;*/
-
-/*
--- Loading only signatures on the last short time memory based on DATE
-INSERT INTO Signature VALUES(4, 'surf', null, null, null);
-INSERT INTO Signature VALUES(5, 'surf', 4, null, null);
-INSERT INTO Signature VALUES(6, 'surf', null, null, null);
-INSERT INTO Map_SS_VW VALUES (4, 1, 0,0,0,0,0, null);
-SELECT s.id FROM Signature AS s WHERE s.timeEnter >= (SELECT vw.timeEnter FROM VisualWord AS vw LIMIT 1) AND s.loopClosureId IS NULL;
-*/

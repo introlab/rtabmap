@@ -44,8 +44,7 @@ int main(int argc, char* argv[])
 
 	/* Add handlers to the EventsManager */
 	UEventsManager::addHandler(mainWindow);
-	UEventsManager::removeHandler(rtabmap); // Force removing for rtabmap to be the last.. FIXME: Rtabmap object should not register to EventsManager in its constructor...
-	UEventsManager::addHandler(rtabmap); //thread
+	UEventsManager::addHandler(rtabmap);
 
 	/* Start thread's task */
 	mainWindow->showNormal();

@@ -18,15 +18,18 @@
  */
 
 #include "rtabmap/core/KeypointDetector.h"
-#include "VWDictionary.h"
+#include "rtabmap/core/VWDictionary.h"
 #include "utilite/ULogger.h"
 #include "utilite/UTimer.h"
 #include "utilite/UStl.h"
 #include "rtabmap/core/Parameters.h"
 #include "utilite/UConversion.h"
-#include <opencv2/imgproc/imgproc_c.h>
-#include <opencv2/gpu/gpu.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+//#include <opencv2/gpu/gpu.hpp>
 #include <opencv2/core/version.hpp>
+#if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
+#include <opencv2/nonfree/features2d.hpp>
+#endif
 
 #define OPENCV_SURF_GPU CV_MAJOR_VERSION >= 2 and CV_MINOR_VERSION >=2 and CV_SUBMINOR_VERSION>=1
 
@@ -35,8 +38,6 @@ namespace rtabmap
 
 KeypointDetector::KeypointDetector(const ParametersMap & parameters) :
 		_wordsPerImageTarget(Parameters::defaultKpWordsPerImage()),
-		_usingAdaptiveResponseThr(Parameters::defaultKpUsingAdaptiveResponseThr()),
-		_adaptiveResponseThr(1),
 		_roiRatios(std::vector<float>(4, 0.0f))
 {
 	this->setRoi(Parameters::defaultKpRoiRatios());
@@ -50,21 +51,17 @@ void KeypointDetector::parseParameters(const ParametersMap & parameters)
 	{
 		_wordsPerImageTarget = std::atoi((*iter).second.c_str());
 	}
-	if((iter=parameters.find(Parameters::kKpUsingAdaptiveResponseThr())) != parameters.end())
-	{
-		_usingAdaptiveResponseThr = uStr2Bool((*iter).second.c_str());
-	}
 	if((iter=parameters.find(Parameters::kKpRoiRatios())) != parameters.end())
 	{
 		this->setRoi((*iter).second);
 	}
 }
 
-std::vector<cv::KeyPoint> KeypointDetector::generateKeypoints(const IplImage * image)
+std::vector<cv::KeyPoint> KeypointDetector::generateKeypoints(const cv::Mat & image)
 {
 	ULOGGER_DEBUG("");
 	std::vector<cv::KeyPoint> keypoints;
-	if(image)
+	if(!image.empty())
 	{
 		UTimer timer;
 		timer.start();
@@ -79,17 +76,8 @@ std::vector<cv::KeyPoint> KeypointDetector::generateKeypoints(const IplImage * i
 		// Variable hessian threshold
 		if(_wordsPerImageTarget > 0)
 		{
-			ULOGGER_DEBUG("_adaptiveResponseThr=%f", _adaptiveResponseThr);
 			if(keypoints.size() > 0)
 			{
-				if(keypoints.size() > _wordsPerImageTarget)
-				{
-					_adaptiveResponseThr *= 1+((float(keypoints.size())/float(_wordsPerImageTarget)-1)/1000);
-				}
-				else if(keypoints.size() < _wordsPerImageTarget)
-				{
-					_adaptiveResponseThr *= 1-((1-float(keypoints.size())/float(_wordsPerImageTarget))/1);
-				}
 				// 10% margin...
 				if(keypoints.size() > 1.1 * _wordsPerImageTarget)
 				{
@@ -115,12 +103,8 @@ std::vector<cv::KeyPoint> KeypointDetector::generateKeypoints(const IplImage * i
 						kptsTmp[k].pt.x += roi.x;
 						kptsTmp[k].pt.y += roi.y;
 					}
-					if(iter->first!=0)
-					{
-						_adaptiveResponseThr = iter->first;
-					}
 					keypoints = kptsTmp;
-					ULOGGER_DEBUG("%d keypoints removed, (kept %d)", removed, keypoints.size());
+					ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, keypoints.size(), kptsTmp.size()?kptsTmp.back().response:0.0f);
 				}
 				else if(roi.x || roi.y)
 				{
@@ -132,18 +116,8 @@ std::vector<cv::KeyPoint> KeypointDetector::generateKeypoints(const IplImage * i
 					}
 				}
 			}
-			else
-			{
-				_adaptiveResponseThr /= 2;
-			}
 
-			if(_adaptiveResponseThr < this->getMinimumResponseThr())
-			{
-				_adaptiveResponseThr = this->getMinimumResponseThr();
-			}
-
-			ULOGGER_DEBUG("new _adaptiveResponseThr=%f", _adaptiveResponseThr);
-			ULOGGER_DEBUG("adjusting hessian threshold time = %f s", timer.ticks());
+			ULOGGER_DEBUG("removing words time = %f s", timer.ticks());
 		}
 		else if(roi.x || roi.y)
 		{
@@ -193,16 +167,16 @@ void KeypointDetector::setRoi(const std::string & roi)
 	}
 }
 
-cv::Rect KeypointDetector::computeRoi(const IplImage * image) const
+cv::Rect KeypointDetector::computeRoi(const cv::Mat & image) const
 {
-	if(image && _roiRatios.size() == 4)
+	if(!image.empty() && _roiRatios.size() == 4)
 	{
-		cv::Rect roi(0, 0, image->width, image->height);
+		float width = image.cols;
+		float height = image.rows;
+		cv::Rect roi(0, 0, width, height);
 		UDEBUG("roi ratios = %f, %f, %f, %f", _roiRatios[0],_roiRatios[1],_roiRatios[2],_roiRatios[3]);
 		UDEBUG("roi = %d, %d, %d, %d", roi.x, roi.y, roi.width, roi.height);
 
-		float width = image->width;
-		float height = image->height;
 		//left roi
 		if(_roiRatios[0] > 0 && _roiRatios[0] < 1 - _roiRatios[1])
 		{
@@ -244,16 +218,15 @@ cv::Rect KeypointDetector::computeRoi(const IplImage * image) const
 //SURFDetector
 //////////////////////////
 SURFDetector::SURFDetector(const ParametersMap & parameters) :
-		KeypointDetector(parameters)
+		KeypointDetector(parameters),
+		_hessianThreshold(Parameters::defaultSURFHessianThreshold()),
+		_nOctaves(Parameters::defaultSURFOctaves()),
+		_nOctaveLayers(Parameters::defaultSURFOctaveLayers()),
+		_extended(Parameters::defaultSURFExtended()),
+		_upright(Parameters::defaultSURFUpright()),
+		_gpuVersion(Parameters::defaultSURFGpuVersion())
 {
-	_params.hessianThreshold = Parameters::defaultSURFHessianThreshold();
-	_params.extended = Parameters::defaultSURFExtended();
-	_params.nOctaveLayers = Parameters::defaultSURFOctaveLayers();
-	_params.nOctaves = Parameters::defaultSURFOctaves();
-	_gpuVersion = Parameters::defaultSURFGpuVersion();
-	_params.upright = Parameters::defaultSURFUpright();
 	this->parseParameters(parameters);
-	this->setAdaptiveResponseThr(_params.hessianThreshold);
 }
 
 SURFDetector::~SURFDetector()
@@ -265,70 +238,62 @@ void SURFDetector::parseParameters(const ParametersMap & parameters)
 	ParametersMap::const_iterator iter;
 	if((iter=parameters.find(Parameters::kSURFExtended())) != parameters.end())
 	{
-		_params.extended = uStr2Bool((*iter).second.c_str());
+		_extended = uStr2Bool((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFHessianThreshold())) != parameters.end())
 	{
-		_params.hessianThreshold = std::atof((*iter).second.c_str());
-		this->setAdaptiveResponseThr(_params.hessianThreshold);
+		_hessianThreshold = std::atof((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFOctaveLayers())) != parameters.end())
 	{
-		_params.nOctaveLayers = std::atoi((*iter).second.c_str());
+		_nOctaveLayers = std::atoi((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFOctaves())) != parameters.end())
 	{
-		_params.nOctaves = std::atoi((*iter).second.c_str());
+		_nOctaves = std::atoi((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFOctaves())) != parameters.end())
 	{
-		_params.nOctaves = std::atoi((*iter).second.c_str());
+		_nOctaves = std::atoi((*iter).second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kSURFUpright())) != parameters.end())
+	{
+		_upright = uStr2Bool((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSURFGpuVersion())) != parameters.end())
 	{
 		_gpuVersion = uStr2Bool((*iter).second.c_str());
 	}
-	if((iter=parameters.find(Parameters::kSURFUpright())) != parameters.end())
-	{
-		_params.upright = uStr2Bool((*iter).second.c_str());
-	}
 	KeypointDetector::parseParameters(parameters);
 }
 
-std::vector<cv::KeyPoint> SURFDetector::_generateKeypoints(const IplImage * image, const cv::Rect & roi) const
+std::vector<cv::KeyPoint> SURFDetector::_generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const
 {
 	ULOGGER_DEBUG("");
 	std::vector<cv::KeyPoint> keypoints;
-	if(!image)
+	if(image.empty())
 	{
 		ULOGGER_ERROR("Image is null ?!?");
 		return keypoints;
 	}
 	// SURF support only grayscale images
-	IplImage * imageGrayScale = 0;
-	if(image->nChannels != 1 || image->depth != IPL_DEPTH_8U)
+	cv::Mat imageGrayScale;
+	if(image.channels() != 1 || image.depth() != CV_8U)
 	{
-		imageGrayScale = cvCreateImage(cvSize(image->width,image->height), IPL_DEPTH_8U, 1);
-		cvCvtColor(image, imageGrayScale, CV_BGR2GRAY);
+		cv::cvtColor(image, imageGrayScale, CV_BGR2GRAY);
 	}
 	cv::Mat img;
-	if(imageGrayScale)
+	if(!imageGrayScale.empty())
 	{
-		img = cv::Mat(imageGrayScale);
+		img = imageGrayScale;
 	}
 	else
 	{
-		img =  cv::Mat(image);
-	}
-
-	CvSURFParams params = _params;
-	if(this->isUsingAdaptiveResponseThr())
-	{
-		params.hessianThreshold = this->getAdaptiveResponseThr(); // use the adaptive threshold
+		img = image;
 	}
 
 	cv::Mat imgRoi(img, roi);
-#if OPENCV_SURF_GPU
+/*#if OPENCV_SURF_GPU
 	if(_gpuVersion )
 	{
 		cv::gpu::GpuMat imgGpu(imgRoi);
@@ -342,15 +307,15 @@ std::vector<cv::KeyPoint> SURFDetector::_generateKeypoints(const IplImage * imag
 		cv::SurfFeatureDetector detector(params.hessianThreshold, params.nOctaves, params.nOctaveLayers, params.upright);
 		detector.detect(imgRoi, keypoints);
 	}
-#else
-	cv::SurfFeatureDetector detector(params.hessianThreshold, params.nOctaves, params.nOctaveLayers, params.upright);
+#else*/
+	cv::SURF detector(_hessianThreshold, _nOctaves, _nOctaveLayers, _extended, _upright);
+#if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
 	detector.detect(imgRoi, keypoints);
+#else
+	detector(imgRoi, cv::Mat(), keypoints);
 #endif
+//#endif
 
-	if(imageGrayScale)
-	{
-		cvReleaseImage(&imageGrayScale);
-	}
 	return keypoints;
 }
 
@@ -358,12 +323,14 @@ std::vector<cv::KeyPoint> SURFDetector::_generateKeypoints(const IplImage * imag
 //SIFTDetector
 //////////////////////////
 SIFTDetector::SIFTDetector(const ParametersMap & parameters) :
-		KeypointDetector(parameters)
+		KeypointDetector(parameters),
+		_nfeatures(Parameters::defaultSIFTNFeatures()),
+		_nOctaveLayers(Parameters::defaultSIFTNOctaveLayers()),
+		_contrastThreshold(Parameters::defaultSIFTContrastThreshold()),
+		_edgeThreshold(Parameters::defaultSIFTEdgeThreshold()),
+		_sigma(Parameters::defaultSIFTSigma())
 {
-	_detectorParams.threshold = Parameters::defaultSIFTThreshold();
-	_detectorParams.edgeThreshold = Parameters::defaultSIFTEdgeThreshold();
 	this->parseParameters(parameters);
-	this->setAdaptiveResponseThr(_detectorParams.threshold);
 }
 
 SIFTDetector::~SIFTDetector()
@@ -373,57 +340,62 @@ SIFTDetector::~SIFTDetector()
 void SIFTDetector::parseParameters(const ParametersMap & parameters)
 {
 	ParametersMap::const_iterator iter;
-	if((iter=parameters.find(Parameters::kSIFTThreshold())) != parameters.end())
+	if((iter=parameters.find(Parameters::kSIFTContrastThreshold())) != parameters.end())
 	{
-		_detectorParams.threshold = std::atof((*iter).second.c_str());
-		this->setAdaptiveResponseThr(_detectorParams.threshold);
+		_contrastThreshold = std::atof((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kSIFTEdgeThreshold())) != parameters.end())
 	{
-		_detectorParams.edgeThreshold = std::atof((*iter).second.c_str());
+		_edgeThreshold = std::atof((*iter).second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kSIFTNFeatures())) != parameters.end())
+	{
+		_nfeatures = std::atoi((*iter).second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kSIFTNOctaveLayers())) != parameters.end())
+	{
+		_nOctaveLayers = std::atoi((*iter).second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kSIFTSigma())) != parameters.end())
+	{
+		_sigma = std::atof((*iter).second.c_str());
 	}
 	KeypointDetector::parseParameters(parameters);
 }
 
-std::vector<cv::KeyPoint> SIFTDetector::_generateKeypoints(const IplImage * image, const cv::Rect & roi) const
+std::vector<cv::KeyPoint> SIFTDetector::_generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const
 {
 	ULOGGER_DEBUG("");
 	std::vector<cv::KeyPoint> keypoints;
-	if(!image)
+	if(image.empty())
 	{
 		ULOGGER_ERROR("Image is null ?!?");
 		return keypoints;
 	}
 	// SURF support only grayscale images
-	IplImage * imageGrayScale = 0;
-	if(image->nChannels != 1 || image->depth != IPL_DEPTH_8U)
+	cv::Mat imageGrayScale;
+	if(image.channels() != 1 || image.depth() != CV_8U)
 	{
-		imageGrayScale = cvCreateImage(cvSize(image->width,image->height), IPL_DEPTH_8U, 1);
-		cvCvtColor(image, imageGrayScale, CV_BGR2GRAY);
+		cv::cvtColor(image, imageGrayScale, CV_BGR2GRAY);
 	}
 	cv::Mat img;
-	if(imageGrayScale)
+	if(!imageGrayScale.empty())
 	{
-		img = cv::Mat(imageGrayScale);
+		img = imageGrayScale;
 	}
 	else
 	{
-		img =  cv::Mat(image);
+		img = image;
 	}
 
-	cv::SIFT::DetectorParams detectorParam = _detectorParams;
-	if(this->isUsingAdaptiveResponseThr())
-	{
-		detectorParam.threshold = this->getAdaptiveResponseThr(); // use the adaptive threshold
-	}
-
-	cv::SiftFeatureDetector detector(detectorParam, _commonParams);
 	cv::Mat imgRoi(img, roi);
+#if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
+	cv::SIFT detector(_nfeatures, _nOctaveLayers, _contrastThreshold, _edgeThreshold, _sigma);
 	detector.detect(imgRoi, keypoints); // Opencv surf keypoints
-	if(imageGrayScale)
-	{
-		cvReleaseImage(&imageGrayScale);
-	}
+#else
+	cv::SIFT detector(_contrastThreshold, _edgeThreshold, cv::SIFT::CommonParams::DEFAULT_NOCTAVES, _nOctaveLayers);
+	detector(imgRoi, cv::Mat(), keypoints); // Opencv surf keypoints
+#endif
 	return keypoints;
 }
 
@@ -432,15 +404,14 @@ std::vector<cv::KeyPoint> SIFTDetector::_generateKeypoints(const IplImage * imag
 //StarDetector
 //////////////////////////
 StarDetector::StarDetector(const ParametersMap & parameters) :
-	KeypointDetector(parameters)
+	KeypointDetector(parameters),
+	_maxSize(Parameters::defaultStarMaxSize()),
+	_responseThreshold(Parameters::defaultStarResponseThreshold()),
+	_lineThresholdProjected(Parameters::defaultStarLineThresholdProjected()),
+	_lineThresholdBinarized(Parameters::defaultStarLineThresholdBinarized()),
+	_suppressNonmaxSize(Parameters::defaultStarSuppressNonmaxSize())
 {
-	_params.lineThresholdBinarized = Parameters::defaultStarLineThresholdBinarized();
-	_params.lineThresholdProjected = Parameters::defaultStarLineThresholdProjected();
-	_params.maxSize = Parameters::defaultStarMaxSize();
-	_params.responseThreshold = Parameters::defaultStarResponseThreshold();
-	_params.suppressNonmaxSize = Parameters::defaultStarSuppressNonmaxSize();
 	this->parseParameters(parameters);
-	this->setAdaptiveResponseThr(_params.responseThreshold);
 }
 
 StarDetector::~StarDetector()
@@ -453,51 +424,47 @@ void StarDetector::parseParameters(const ParametersMap & parameters)
 	ParametersMap::const_iterator iter;
 	if((iter=parameters.find(Parameters::kStarLineThresholdBinarized())) != parameters.end())
 	{
-		_params.lineThresholdBinarized = std::atoi((*iter).second.c_str());
+		_lineThresholdBinarized = std::atoi((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kStarLineThresholdProjected())) != parameters.end())
 	{
-		_params.lineThresholdProjected = std::atoi((*iter).second.c_str());
+		_lineThresholdProjected = std::atoi((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kStarMaxSize())) != parameters.end())
 	{
-		_params.maxSize = std::atoi((*iter).second.c_str());
+		_maxSize = std::atoi((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kStarResponseThreshold())) != parameters.end())
 	{
-		_params.responseThreshold = int(std::atof((*iter).second.c_str()));
-		this->setAdaptiveResponseThr(_params.responseThreshold);
+		_responseThreshold = int(std::atof((*iter).second.c_str()));
 	}
 	if((iter=parameters.find(Parameters::kStarSuppressNonmaxSize())) != parameters.end())
 	{
-		_params.suppressNonmaxSize = std::atoi((*iter).second.c_str());
+		_suppressNonmaxSize = std::atoi((*iter).second.c_str());
 	}
 	KeypointDetector::parseParameters(parameters);
 }
 
-std::vector<cv::KeyPoint> StarDetector::_generateKeypoints(const IplImage * image, const cv::Rect & roi) const
+std::vector<cv::KeyPoint> StarDetector::_generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const
 {
 	ULOGGER_DEBUG("");
 	std::vector<cv::KeyPoint> keypoints;
-	if(!image)
+	if(image.empty())
 	{
 		ULOGGER_ERROR("Image is null ?!?");
 		return keypoints;
 	}
 
 	cv::Mat img(image);
-	// TODO More testing needed with the star detector, NN search distance must be changed to 0.8
-	//find keypoints with the star detector
-	CvStarDetectorParams params = _params;
-	if(this->isUsingAdaptiveResponseThr())
-	{
-		params.responseThreshold = this->getAdaptiveResponseThr(); // use the adaptive threshold
-	}
 
 	// Get keypoints with the star detector
 	cv::Mat imgRoi(img, roi);
-	cv::StarFeatureDetector detector(params);
+	cv::StarDetector detector(_maxSize, _responseThreshold, _lineThresholdProjected, _lineThresholdBinarized, _suppressNonmaxSize);
+#if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
 	detector.detect(imgRoi, keypoints);
+#else
+	detector(imgRoi, keypoints);
+#endif
 	return keypoints;
 }
 
@@ -510,7 +477,6 @@ FASTDetector::FASTDetector(const ParametersMap & parameters) :
 	_nonmaxSuppression(Parameters::defaultFASTNonmaxSuppression())
 {
 	this->parseParameters(parameters);
-	this->setAdaptiveResponseThr(_threshold);
 }
 
 FASTDetector::~FASTDetector()
@@ -531,11 +497,11 @@ void FASTDetector::parseParameters(const ParametersMap & parameters)
 	KeypointDetector::parseParameters(parameters);
 }
 
-std::vector<cv::KeyPoint> FASTDetector::_generateKeypoints(const IplImage * image, const cv::Rect & roi) const
+std::vector<cv::KeyPoint> FASTDetector::_generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const
 {
 	ULOGGER_DEBUG("");
 	std::vector<cv::KeyPoint> keypoints;
-	if(!image)
+	if(image.empty())
 	{
 		ULOGGER_ERROR("Image is null ?!?");
 		return keypoints;
@@ -543,12 +509,8 @@ std::vector<cv::KeyPoint> FASTDetector::_generateKeypoints(const IplImage * imag
 
 	cv::Mat img(image);
 	cv::Mat imgRoi(img, roi);
-	int threshold = _threshold;
-	if(this->isUsingAdaptiveResponseThr())
-	{
-		threshold = (int)this->getAdaptiveResponseThr(); // use the adaptive threshold
-	}
-	cv::FastFeatureDetector fast(threshold, _nonmaxSuppression);
+
+	cv::FastFeatureDetector fast(_threshold, _nonmaxSuppression);
 
 	// Get keypoints with the fast detector
 	fast.detect(imgRoi, keypoints);

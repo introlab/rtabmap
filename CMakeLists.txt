@@ -14,7 +14,7 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 #######################
 # VERSION
 #######################
-SET(PROJECT_VERSION "0.3.2")
+SET(PROJECT_VERSION "0.4.0")
 
 STRING(REGEX MATCHALL "[0-9]" PROJECT_VERSION_PARTS "${PROJECT_VERSION}")
 
@@ -45,9 +45,9 @@ ENDIF()
 
 IF(MINGW)
     # Hide the --enable-auto-import warning
-	SET(CMAKE_EXE_LINKER_FLAGS "-enable-auto-import")  
-	SET(CMAKE_MODULE_LINKER_FLAGS "-enable-auto-import") 
-	SET(CMAKE_SHARED_LINKER_FLAGS "-enable-auto-import") 
+	SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--enable-auto-import")  
+	SET(CMAKE_MODULE_LINKER_FLAGS "-Wl,--enable-auto-import") 
+	SET(CMAKE_SHARED_LINKER_FLAGS "-Wl,--enable-auto-import") 
 ENDIF(MINGW)
 
 # GCC 4 required
@@ -82,7 +82,10 @@ ELSEIF(APPLE)
 ENDIF()
 
 ####### Build libraries as shared or static #######
-OPTION(BUILD_SHARED_LIBS "Set to OFF to build static libraries" ON)
+# It is a bit messed up on Windows between STATIC and SHARED, if we don't want
+# to add UtiLite_DEFINITIONS in FindUtiLite.cmake... to know from 3rd party application if it needs to
+# link dynamically [UTILITE_EXP __declspec( dllimport )] or statically (UTILITE_EXP "nothing").
+OPTION( BUILD_SHARED_LIBS "Set to OFF to build static libraries" ON )
 
 ####### SET RPATH #########
 # When RPATH is activated (supported on most UNIX systems), 
@@ -107,6 +110,12 @@ SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
+####### BUILD OPTIONS #######
+OPTION(BUILD_TESTS "Set to ON to build tests" OFF)
+OPTION(BUILD_LIBS_ONLY "Set to ON to build only the libraries" OFF)
+IF(APPLE AND BUILD_AS_BUNDLE)
+	OPTION(BUILD_AS_BUNDLE "Set to ON to build as bundle (DragNDrop)" OFF)
+ENDIF(APPLE AND BUILD_AS_BUNDLE)
 
 ####### DEPENDENCIES #######
 FIND_PACKAGE(UtiLite REQUIRED)
@@ -114,18 +123,30 @@ FIND_PACKAGE(OpenCV REQUIRED)
 FIND_PACKAGE(Sqlite3 REQUIRED)
 FIND_PACKAGE(FFTW3F REQUIRED)
 FIND_PACKAGE(ZLIB REQUIRED)
+
 # If Qt is here, the GUI will be built
 FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg) 
-# If CppUnit is here, the test will be built
-FIND_PACKAGE(CppUnit)
+
+IF(BUILD_TESTS)
+	# If CppUnit is here, the tests will be built
+	FIND_PACKAGE(CppUnit REQUIRED)
+ENDIF(BUILD_TESTS)
 
 ####### OSX BUNDLE CMAKE_INSTALL_PREFIX #######
-OPTION(BUILD_AS_BUNDLE "Set to ON to build as bundle (DragNDrop)" OFF)
 IF(APPLE AND BUILD_AS_BUNDLE)
   IF(QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND)
     
     #Force to Off, easiest to package into the bundle
-    SET( BUILD_SHARED_LIBS OFF )
+    IF(BUILD_SHARED_LIBS)
+    	MESSAGE(STATUS "As BUILD_AS_BUNDLE=ON, set BUILD_SHARED_LIBS=OFF")
+    	SET( BUILD_SHARED_LIBS OFF )
+    ENDIF(BUILD_SHARED_LIBS)
+    
+    #Must create app, so force to off BUILD_LIBS_ONLY
+    IF(BUILD_LIBS_ONLY)
+   		MESSAGE(STATUS "As BUILD_AS_BUNDLE=ON, set BUILD_LIBS_ONLY=OFF")
+   		SET( BUILD_LIBS_ONLY OFF )
+    ENDIF(BUILD_LIBS_ONLY)
     
     # Required when packaging, and set CMAKE_INSTALL_PREFIX to "/".
     SET(CPACK_SET_DESTDIR TRUE) 
@@ -153,15 +174,23 @@ ENDIF(APPLE AND BUILD_AS_BUNDLE)
 
 ####### SOURCES (Projects) #######
 ADD_SUBDIRECTORY( corelib )
-INCLUDE_DIRECTORIES(corelib/include/)
 
 IF(QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND)
    ADD_SUBDIRECTORY( guilib )
-   INCLUDE_DIRECTORIES(guilib/include/)
-   ADD_SUBDIRECTORY( app )
+   IF(NOT BUILD_LIBS_ONLY)
+   	 ADD_SUBDIRECTORY( app )
+   ENDIF(NOT BUILD_LIBS_ONLY)
 ELSE()
    MESSAGE(STATUS "[WARNING] Qt4 not found, the GUI lib and the stand-alone application will not be compiled...")
 ENDIF()
+
+IF(NOT BUILD_LIBS_ONLY)
+	ADD_SUBDIRECTORY( tools )
+ENDIF(NOT BUILD_LIBS_ONLY)
+
+IF(BUILD_TESTS)
+	ADD_SUBDIRECTORY( tests )
+ENDIF(BUILD_TESTS)
 
 #######################
 # Uninstall target, for "make uninstall"
@@ -271,7 +300,12 @@ MESSAGE(STATUS "--------------------------------------------")
 MESSAGE(STATUS "Info :")
 MESSAGE(STATUS "  CMAKE_INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}")
 MESSAGE(STATUS "  CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
-MESSAGE(STATUS "  BUILD_SHARED_LIBS = ${BUILD_SHARED_LIBS}")
+IF(NOT WIN32)
+	# see comment above for the BUILD_SHARED_LIBS option on Windows
+	MESSAGE(STATUS "  BUILD_SHARED_LIBS = ${BUILD_SHARED_LIBS}")
+ENDIF(NOT WIN32)
+MESSAGE(STATUS "  BUILD_LIBS_ONLY = ${BUILD_LIBS_ONLY}")
+MESSAGE(STATUS "  BUILD_TESTS = ${BUILD_TESTS}")
 IF(APPLE)
 MESSAGE(STATUS "  BUILD_AS_BUNDLE = ${BUILD_AS_BUNDLE}")
 ENDIF(APPLE)

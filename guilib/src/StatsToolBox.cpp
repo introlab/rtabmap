@@ -31,8 +31,8 @@
 #include <QtGui/QToolBox>
 #include <QtGui/QDialog>
 
-#include "Plot.h"
-#include "utilite/ULogger.h"
+#include <utilite/UPlot.h>
+#include <utilite/ULogger.h>
 
 namespace rtabmap {
 
@@ -54,7 +54,7 @@ StatItem::~StatItem()
 
 void StatItem::setValue(float x, float y)
 {
-	_value->setText(QString::number(y, 'g', 4));
+	_value->setText(QString::number(y, 'g', 3));
 	_xValue = x;
 	emit valueChanged(x,y);
 }
@@ -247,17 +247,17 @@ void StatsToolBox::updateStat(const QString & statFullName, float x, float y)
 void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 {
 	QWidget * fig = _figures.value(plotName, (QWidget*)0);
-	Plot * plot = 0;
+	UPlot * plot = 0;
 	if(fig)
 	{
-		plot = fig->findChild<Plot *>(plotName);
+		plot = fig->findChild<UPlot *>(plotName);
 	}
 	if(plot)
 	{
 		// if not already in the plot
 		if(!plot->contains(stat->objectName()))
 		{
-			PlotCurve * curve = new PlotCurve(stat->objectName(), plot);
+			UPlotCurve * curve = new UPlotCurve(stat->objectName(), plot);
 			curve->setPen(plot->getRandomPenColored());
 			connect(stat, SIGNAL(valueChanged(float, float)), curve, SLOT(addValue(float, float)));
 			if(!plot->addCurve(curve))
@@ -289,7 +289,7 @@ void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 		figure->setAttribute(Qt::WA_DeleteOnClose, true);
 		connect(figure, SIGNAL(destroyed(QObject*)), this, SLOT(figureDeleted(QObject*)));
 		//Plot
-		Plot * newPlot = new Plot(figure);
+		UPlot * newPlot = new UPlot(figure);
 		newPlot->setWorkingDirectory(_workingDirectory);
 		newPlot->setMaxVisibleItems(50);
 		newPlot->setObjectName(newPlotName);
@@ -298,7 +298,7 @@ void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 		figure->setSizeGripEnabled(true);
 
 		//Add a new curve linked to the statBox
-		PlotCurve * curve = new PlotCurve(stat->objectName(), newPlot);
+		UPlotCurve * curve = new UPlotCurve(stat->objectName(), newPlot);
 		curve->setPen(newPlot->getRandomPenColored());
 		connect(stat, SIGNAL(valueChanged(float, float)), curve, SLOT(addValue(float, float)));
 		if(!newPlot->addCurve(curve))
@@ -358,7 +358,7 @@ void StatsToolBox::contextMenuEvent(QContextMenuEvent * event)
 		{
 			for(QMap<QString, QWidget*>::iterator i=_figures.begin(); i!=_figures.end(); ++i)
 				{
-				QList<Plot *> plots = i.value()->findChildren<Plot *>();
+				QList<UPlot *> plots = i.value()->findChildren<UPlot *>();
 				if(plots.size() == 1)
 				{
 					QStringList names = plots[0]->curveNames();
@@ -403,7 +403,7 @@ void StatsToolBox::getFiguresSetup(QList<int> & curvesPerFigure, QStringList & c
 	curveNames.clear();
 	for(QMap<QString, QWidget*>::iterator i=_figures.begin(); i!=_figures.end(); ++i)
 	{
-		QList<Plot *> plots = i.value()->findChildren<Plot *>();
+		QList<UPlot *> plots = i.value()->findChildren<UPlot *>();
 		if(plots.size() == 1)
 		{
 			QStringList names = plots[0]->curveNames();
@@ -449,7 +449,7 @@ void StatsToolBox::setWorkingDirectory(const QString & workingDirectory)
 		_workingDirectory = workingDirectory;
 		for(QMap<QString, QWidget*>::iterator i=_figures.begin(); i!=_figures.end(); ++i)
 		{
-			QList<Plot *> plots = i.value()->findChildren<Plot *>();
+			QList<UPlot *> plots = i.value()->findChildren<UPlot *>();
 			if(plots.size() == 1)
 			{
 				plots[0]->setWorkingDirectory(_workingDirectory);

@@ -17,18 +17,18 @@
  * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "KeypointMemory.h"
-#include "VWDictionary.h"
+#include "rtabmap/core/KeypointMemory.h"
+#include "rtabmap/core/VWDictionary.h"
+#include "rtabmap/core/VisualWord.h"
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/DBDriver.h"
 #include "utilite/UtiLite.h"
 #include "rtabmap/core/Parameters.h"
-#include "rtabmap/core/SMState.h"
 #include "rtabmap/core/KeypointDetector.h"
 #include "rtabmap/core/KeypointDescriptor.h"
 #include "rtabmap/core/RtabmapEvent.h"
-#include "NearestNeighbor.h"
-#include "VerifyHypotheses.h"
+#include "rtabmap/core/NearestNeighbor.h"
+#include "rtabmap/core/VerifyHypotheses.h"
 #include "utilite/UStl.h"
 #include <opencv2/core/core.hpp>
 #include <set>
@@ -105,13 +105,12 @@ void KeypointMemory::parseParameters(const ParametersMap & parameters)
 	}
 
 	//Keypoint detector
-	DetectorStrategy detectorStrategy = kDetectorUndef;
+	KeypointDetector::DetectorType detectorStrategy = KeypointDetector::kDetectorUndef;
 	if((iter=parameters.find(Parameters::kKpDetectorStrategy())) != parameters.end())
 	{
-		detectorStrategy = (DetectorStrategy)std::atoi((*iter).second.c_str());
+		detectorStrategy = (KeypointDetector::DetectorType)std::atoi((*iter).second.c_str());
 	}
-	DetectorStrategy currentDetectorStrategy = this->detectorStrategy();
-	if(!_keypointDetector || ( detectorStrategy!=kDetectorUndef && (detectorStrategy != currentDetectorStrategy) ) )
+	if(!_keypointDetector ||  detectorStrategy!=KeypointDetector::kDetectorUndef)
 	{
 		ULOGGER_DEBUG("new detector strategy %d", int(detectorStrategy));
 		if(_keypointDetector)
@@ -121,16 +120,16 @@ void KeypointMemory::parseParameters(const ParametersMap & parameters)
 		}
 		switch(detectorStrategy)
 		{
-		case kDetectorStar:
+		case KeypointDetector::kDetectorStar:
 			_keypointDetector = new StarDetector(parameters);
 			break;
-		case kDetectorSift:
+		case KeypointDetector::kDetectorSift:
 			_keypointDetector = new SIFTDetector(parameters);
 			break;
-		case kDetectorFast:
+		case KeypointDetector::kDetectorFast:
 			_keypointDetector = new FASTDetector(parameters);
 			break;
-		case kDetectorSurf:
+		case KeypointDetector::kDetectorSurf:
 		default:
 			_keypointDetector = new SURFDetector(parameters);
 			break;
@@ -142,12 +141,12 @@ void KeypointMemory::parseParameters(const ParametersMap & parameters)
 	}
 
 	//Keypoint descriptor
-	DescriptorStrategy descriptorStrategy = kDescriptorUndef;
+	KeypointDescriptor::DescriptorType descriptorStrategy = KeypointDescriptor::kDescriptorUndef;
 	if((iter=parameters.find(Parameters::kKpDescriptorStrategy())) != parameters.end())
 	{
-		descriptorStrategy = (DescriptorStrategy)std::atoi((*iter).second.c_str());
+		descriptorStrategy = (KeypointDescriptor::DescriptorType)std::atoi((*iter).second.c_str());
 	}
-	if(!_keypointDescriptor || descriptorStrategy!=kDescriptorUndef)
+	if(!_keypointDescriptor || descriptorStrategy!=KeypointDescriptor::kDescriptorUndef)
 	{
 		ULOGGER_DEBUG("new descriptor strategy %d", int(descriptorStrategy));
 		if(_keypointDescriptor)
@@ -157,19 +156,19 @@ void KeypointMemory::parseParameters(const ParametersMap & parameters)
 		}
 		switch(descriptorStrategy)
 		{
-		case kDescriptorSift:
+		case KeypointDescriptor::kDescriptorSift:
 			_keypointDescriptor = new SIFTDescriptor(parameters);
 			break;
-		case kDescriptorBrief:
+		case KeypointDescriptor::kDescriptorBrief:
 			_keypointDescriptor = new BRIEFDescriptor(parameters);
 			break;
-		case kDescriptorColor:
+		case KeypointDescriptor::kDescriptorColor:
 			_keypointDescriptor = new ColorDescriptor(parameters);
 			break;
-		case kDescriptorHue:
+		case KeypointDescriptor::kDescriptorHue:
 			_keypointDescriptor = new HueDescriptor(parameters);
 			break;
-		case kDescriptorSurf:
+		case KeypointDescriptor::kDescriptorSurf:
 		default:
 			_keypointDescriptor = new SURFDescriptor(parameters);
 			break;
@@ -181,22 +180,6 @@ void KeypointMemory::parseParameters(const ParametersMap & parameters)
 	}
 
 	Memory::parseParameters(parameters);
-}
-
-KeypointMemory::DetectorStrategy KeypointMemory::detectorStrategy() const
-{
-	DetectorStrategy strategy = kDetectorUndef;
-	StarDetector * star = dynamic_cast<StarDetector*>(_keypointDetector);
-	SURFDetector * surf = dynamic_cast<SURFDetector*>(_keypointDetector);
-	if(star)
-	{
-		strategy = kDetectorStar;
-	}
-	else if(surf)
-	{
-		strategy = kDetectorSurf;
-	}
-	return strategy;
 }
 
 bool KeypointMemory::init(const std::string & dbDriverName, const std::string & dbUrl, bool dbOverwritten, const ParametersMap & parameters)
@@ -241,10 +224,10 @@ bool KeypointMemory::init(const std::string & dbDriverName, const std::string & 
 
 // TODO : Use only the parent method (in Memory)
 // 1- Put "setEnabled" in the abstract Signature class, so this method is accessible from Memory
-void KeypointMemory::addSignatureToStm(Signature * signature, const std::list<std::vector<float> > & actions)
+void KeypointMemory::addSignatureToStm(Signature * signature, const std::list<Actuator> & actuators)
 {
 	ULOGGER_DEBUG("");
-	Memory::addSignatureToStm(signature, actions);
+	Memory::addSignatureToStm(signature, actuators);
 
 	UTimer timer;
 	KeypointSignature * ss = dynamic_cast<KeypointSignature *>(signature);
@@ -300,15 +283,15 @@ void KeypointMemory::clear()
 		//	_dbDriver->commit();
 		//}
 		ULOGGER_DEBUG("");
-
-		_dbDriver->start();
 	}
 	else
 	{
 		cleanUnusedWords();
 	}
-
-	_commonWords.clear();
+	if(_vwd)
+	{
+		_vwd->clear();
+	}
 }
 
 void KeypointMemory::preUpdate()
@@ -336,11 +319,6 @@ std::multimap<int, cv::KeyPoint> getMostDescriptiveWords(const std::multimap<int
 			{
 				responseWordMap.insert(std::pair<float, std::pair<int, const cv::KeyPoint *> >(itKey->second.response, std::pair<int, const cv::KeyPoint *>(itKey->first, &(itKey->second))));
 			}
-		}
-		int endIndex = 0;
-		if(responseWordMap.size() > (unsigned int)max)
-		{
-			endIndex = responseWordMap.size() - max;
 		}
 
 		//add them
@@ -532,7 +510,7 @@ int KeypointMemory::getNi(int signatureId) const
 	}
 	else
 	{
-		_dbDriver->getSurfNi(signatureId, ni);
+		_dbDriver->getInvertedIndexNi(signatureId, ni);
 	}
 	return ni;
 }
@@ -576,7 +554,7 @@ private:
 	VWDictionary * _vwp;
 };
 
-Signature * KeypointMemory::createSignature(int id, const SMState * smState, bool keepRawData)
+Signature * KeypointMemory::createSignature(int id, const std::list<Sensor> & sensors, bool keepRawData)
 {
 	PreUpdateThread preUpdateThread(_vwd);
 
@@ -584,46 +562,67 @@ Signature * KeypointMemory::createSignature(int id, const SMState * smState, boo
 	timer.start();
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat descriptors;
-	const IplImage * image = 0;
 
-	if(smState)
+	int treeSize= this->getWorkingMemSize() + this->getStMemSize();
+	int nbCommonWords = 0;
+	if(treeSize > 0)
 	{
-		int treeSize= this->getWorkingMemSize() + this->getStMemSize();
-		int nbCommonWords = 0;
-		if(treeSize > 0)
+		nbCommonWords = _vwd->getTotalActiveReferences() / treeSize;
+	}
+
+	if(_parallelized)
+	{
+		preUpdateThread.start();
+	}
+
+	std::list<Sensor>::const_iterator iterImage = sensors.end();
+	std::list<Sensor>::const_iterator iterImageFeatures = sensors.end();
+	for(std::list<Sensor>::const_iterator iter=sensors.begin(); iter!=sensors.end(); ++iter)
+	{
+		if(iter->type() == Sensor::kTypeImage)
 		{
-			nbCommonWords = _vwd->getTotalActiveReferences() / treeSize;
+			iterImage = iter;
+		}
+		else if(iter->type() == Sensor::kTypeImageFeatures2d)
+		{
+			iterImageFeatures = iter;
+		}
+	}
+	if(iterImage == sensors.end() && iterImageFeatures == sensors.end())
+	{
+		UERROR("Keypoint memory only supports image[features] sensor type.");
+		return 0;
+	}
+	if(iterImageFeatures != sensors.end())
+	{
+		// DESCRIPTORS
+		if(iterImageFeatures->data().rows && iterImageFeatures->data().rows >= _badSignRatio * nbCommonWords)
+		{
+			if(iterImageFeatures->data().type() == CV_32F)
+			{
+				descriptors = iterImageFeatures->data();
+				keypoints = iterImageFeatures->getKeypoints();
+			}
+			else
+			{
+				UERROR("Descriptors must be CV_32F.");
+			}
+		}
+	}
+	else
+	{
+		// IMAGE RAW
+		if(_keypointDetector)
+		{
+			keypoints = _keypointDetector->generateKeypoints(iterImage->data());
+			ULOGGER_DEBUG("time keypoints = %fs", timer.ticks());
 		}
 
-		if(_parallelized)
-		{
-			preUpdateThread.start();
-		}
+		ULOGGER_DEBUG("ratio=%f, treeSize=%d, nbCommonWords=%d", _badSignRatio, treeSize, nbCommonWords);
 
-		if(smState->getSensors().empty())
+		if(keypoints.size() && keypoints.size() >= _badSignRatio * nbCommonWords)
 		{
-			image = smState->getImage();
-			if(image && _keypointDetector)
-			{
-				keypoints = _keypointDetector->generateKeypoints(image);
-				ULOGGER_DEBUG("time keypoints = %fs", timer.ticks());
-			}
-
-			ULOGGER_DEBUG("ratio=%f, treeSize=%d, nbCommonWords=%d", _badSignRatio, treeSize, nbCommonWords);
-
-			if(keypoints.size() && keypoints.size() >= _badSignRatio * nbCommonWords)
-			{
-				descriptors = _keypointDescriptor->generateDescriptors(image, keypoints);
-			}
-		}
-		else
-		{
-			if(smState->getSensors().rows >= _badSignRatio * nbCommonWords)
-			{
-				descriptors = smState->getSensors();
-				keypoints = smState->getKeypoints();
-			}
-			image = smState->getImage();
+			descriptors = _keypointDescriptor->generateDescriptors(iterImage->data(), keypoints);
 		}
 	}
 
@@ -665,13 +664,26 @@ Signature * KeypointMemory::createSignature(int id, const SMState * smState, boo
 			}
 			else
 			{
-				UWARN("Words (%d) and keypoints(%d) are not the same size ?!?", (int)wordIds.size(), (int)keypoints.size());
+				if(keypoints.size())
+				{
+					UWARN("Words (%d) and keypoints(%d) are not the same size ?!?", (int)wordIds.size(), (int)keypoints.size());
+				}
 				words.insert(std::pair<int, cv::KeyPoint >(*iter, cv::KeyPoint()));
 			}
 		}
 	}
 
-	KeypointSignature * ks = new KeypointSignature(words, id, image, keepRawData);
+	KeypointSignature * ks;
+	std::list<Sensor> tmp;
+	if(keepRawData && iterImage != sensors.end())
+	{
+		UDEBUG("");
+		//Just keep image if there's one
+		tmp.push_back(*iterImage);
+	}
+
+	ks = new KeypointSignature(words, id, tmp);
+
 	ULOGGER_DEBUG("time new signature (id=%d) %fs", id, timer.ticks());
 	if(words.size())
 	{

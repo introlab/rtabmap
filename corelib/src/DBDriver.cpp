@@ -20,7 +20,8 @@
 #include "rtabmap/core/DBDriver.h"
 
 #include "rtabmap/core/Signature.h"
-#include "VWDictionary.h"
+#include "rtabmap/core/VWDictionary.h"
+#include "rtabmap/core/VisualWord.h"
 #include "utilite/UConversion.h"
 #include "utilite/UMath.h"
 #include "utilite/ULogger.h"
@@ -33,7 +34,6 @@ DBDriver::DBDriver(const ParametersMap & parameters) :
 	_minSignaturesToSave(Parameters::defaultDbMinSignaturesToSave()),
 	_minWordsToSave(Parameters::defaultDbMinWordsToSave()),
 	_imagesCompressed(Parameters::defaultDbImagesCompressed()),
-	_asyncWaiting(true),
 	_emptyTrashesTime(0)
 {
 	this->parseParameters(parameters);
@@ -109,16 +109,12 @@ long DBDriver::getMemoryUsed() const
 
 void DBDriver::mainLoop()
 {
-	UDEBUG("");
 	this->emptyTrashes();
-	UDEBUG("");
 	this->kill(); // Do it only once
-	UDEBUG("");
 }
 
 void DBDriver::killCleanup()
 {
-	UDEBUG("");
 }
 
 void DBDriver::beginTransaction() const
@@ -165,8 +161,6 @@ void DBDriver::emptyTrashes(bool async)
 		visualWords = _trashVisualWords;
 		_trashSignatures.clear();
 		_trashVisualWords.clear();
-
-		_asyncWaiting = true;
 
 		_dbSafeAccessMutex.lock();
 	}
@@ -219,32 +213,35 @@ void DBDriver::emptyTrashes(bool async)
 
 void DBDriver::asyncSave(Signature * s)
 {
-	_trashesMutex.lock();
+	if(s)
 	{
-		_trashSignatures.insert(std::pair<int, Signature*>(s->id(), s));
-		if(_trashSignatures.size() > _minSignaturesToSave && this->isRunning() && _asyncWaiting)
+		UDEBUG("s=%d", s->id());
+		_trashesMutex.lock();
 		{
-			ULOGGER_DEBUG("(Sign) Releasing addSem...");
-			_asyncWaiting = false;
-			this->start();
+			_trashSignatures.insert(std::pair<int, Signature*>(s->id(), s));
+			if(_trashSignatures.size() > _minSignaturesToSave && this->isIdle())
+			{
+				this->start();
+			}
 		}
+		_trashesMutex.unlock();
 	}
-	_trashesMutex.unlock();
 }
 
 void DBDriver::asyncSave(VisualWord * vw)
 {
-	_trashesMutex.lock();
+	if(vw)
 	{
-		_trashVisualWords.insert(std::pair<int, VisualWord*>(vw->id(), vw));
-		if(_trashVisualWords.size() > _minWordsToSave && this->isRunning() && _asyncWaiting)
+		_trashesMutex.lock();
 		{
-			ULOGGER_DEBUG("(Word) Releasing addSem...");
-			_asyncWaiting = false;
-			this->start();
+			_trashVisualWords.insert(std::pair<int, VisualWord*>(vw->id(), vw));
+			if(_trashVisualWords.size() > _minWordsToSave && this->isIdle())
+			{
+				this->start();
+			}
 		}
+		_trashesMutex.unlock();
 	}
-	_trashesMutex.unlock();
 }
 
 bool DBDriver::getSignature(int signatureId, Signature ** s)
@@ -350,11 +347,11 @@ bool DBDriver::load(VWDictionary * dictionary) const
 	return r;
 }
 
-bool DBDriver::loadLastSignatures(std::list<Signature *> & signatures) const
+bool DBDriver::loadLastNodes(std::list<Signature *> & signatures) const
 {
 	bool r;
 	_dbSafeAccessMutex.lock();
-	r = this->loadLastSignaturesQuery(signatures);
+	r = this->loadLastNodesQuery(signatures);
 	_dbSafeAccessMutex.unlock();
 	return r;
 }
@@ -605,7 +602,7 @@ bool DBDriver::deleteAllObsoleteSSVWLinks() const
 	if(this->isConnected())
 	{
 		std::string query;
-		query += "DELETE FROM Map_SS_VW WHERE NOT EXISTS (SELECT id FROM VisualWord WHERE id = Map_SS_VW.visualWordId);";
+		query += "DELETE FROM Map_Node_Word WHERE NOT EXISTS (SELECT id FROM Word WHERE id = Map_Node_Word.word_id);";
 
 		_dbSafeAccessMutex.lock();
 		bool r = this->executeNoResultQuery(query);
@@ -620,7 +617,7 @@ bool DBDriver::deleteUnreferencedWords() const
 	ULOGGER_DEBUG("");
 	if(this->isConnected())
 	{
-		std::string query = "DELETE FROM visualword WHERE id NOT IN (SELECT visualWordid FROM map_ss_vw);";
+		std::string query = "DELETE FROM Word WHERE id NOT IN (SELECT word_id FROM Map_Node_Word);";
 		_dbSafeAccessMutex.lock();
 		bool r = this->executeNoResultQuery(query);
 		_dbSafeAccessMutex.unlock();
@@ -630,16 +627,25 @@ bool DBDriver::deleteUnreferencedWords() const
 }
 
 //TODO Check also in the trash ?
-bool DBDriver::getImage(int id, IplImage ** img) const
+bool DBDriver::getRawData(int id, std::list<Sensor> & rawData) const
 {
 	_dbSafeAccessMutex.lock();
-	bool result = this->getImageQuery(id, img);
+	bool result = this->getRawDataQuery(id, rawData);
 	_dbSafeAccessMutex.unlock();
 	return result;
 }
 
 //TODO Check also in the trash ?
-bool DBDriver::getNeighborIds(int signatureId, std::list<int> & neighbors, bool onlyWithActions) const
+bool DBDriver::getActuatorData(int id, std::list<Actuator> & data) const
+{
+	_dbSafeAccessMutex.lock();
+	bool result = this->getActuatorDataQuery(id, data);
+	_dbSafeAccessMutex.unlock();
+	return result;
+}
+
+//TODO Check also in the trash ?
+bool DBDriver::getNeighborIds(int signatureId, std::set<int> & neighbors, bool onlyWithActions) const
 {
 	bool r;
 	_dbSafeAccessMutex.lock();
@@ -679,50 +685,50 @@ bool DBDriver::getLoopClosureIds(int signatureId, std::set<int> & loopIds, std::
 }
 
 //TODO Check also in the trash ?
-bool DBDriver::getAllSignatureIds(std::set<int> & ids) const
+bool DBDriver::getAllNodeIds(std::set<int> & ids) const
 {
 	bool r;
 	_dbSafeAccessMutex.lock();
-	r = this->getAllSignatureIdsQuery(ids);
+	r = this->getAllNodeIdsQuery(ids);
 	_dbSafeAccessMutex.unlock();
 	return r;
 }
 
 //TODO Check also in the trash ?
-bool DBDriver::getLastSignatureId(int & id) const
+bool DBDriver::getLastNodeId(int & id) const
 {
 	bool r;
 	_dbSafeAccessMutex.lock();
-	r = this->getLastSignatureIdQuery(id);
+	r = this->getLastNodeIdQuery(id);
 	_dbSafeAccessMutex.unlock();
 	return r;
 }
 
 //TODO Check also in the trash ?
-bool DBDriver::getLastVisualWordId(int & id) const
+bool DBDriver::getLastWordId(int & id) const
 {
 	bool r;
 	_dbSafeAccessMutex.lock();
-	r = this->getLastVisualWordIdQuery(id);
+	r = this->getLastWordIdQuery(id);
 	_dbSafeAccessMutex.unlock();
 	return r;
 }
 
 //TODO Check also in the trash ?
-bool DBDriver::getSurfNi(int signatureId, int & ni) const
+bool DBDriver::getInvertedIndexNi(int signatureId, int & ni) const
 {
 	bool r;
 	_dbSafeAccessMutex.lock();
-	r = this->getSurfNiQuery(signatureId, ni);
+	r = this->getInvertedIndexNiQuery(signatureId, ni);
 	_dbSafeAccessMutex.unlock();
 	return r;
 }
 
-bool DBDriver::getHighestWeightedSignatures(unsigned int count, std::multimap<int, int> & ids) const
+bool DBDriver::getHighestWeightedNodeIds(unsigned int count, std::multimap<int, int> & ids) const
 {
 	bool r;
 	_dbSafeAccessMutex.lock();
-	r = this->getHighestWeightedSignaturesQuery(count, ids);
+	r = this->getHighestWeightedNodeIdsQuery(count, ids);
 	_dbSafeAccessMutex.unlock();
 	return r;
 }
@@ -733,7 +739,7 @@ bool DBDriver::addStatisticsAfterRun(int stMemSize, int lastSignAdded, int proce
 	if(this->isConnected())
 	{
 		std::stringstream query;
-		query << "INSERT INTO StatisticsAfterRun(stMemSize,lastSignAdded,processMemUsed,databaseMemUsed) values("
+		query << "INSERT INTO Statistics(STM_size,last_sign_added,process_mem_used,database_mem_used) values("
 			  << stMemSize << ","
 		      << lastSignAdded << ","
 		      << processMemUsed << ","
@@ -751,7 +757,7 @@ bool DBDriver::addStatisticsAfterRunSurf(int dictionarySize) const
 	if(this->isConnected())
 	{
 		std::stringstream query;
-		query << "INSERT INTO StatisticsAfterRunSurf(dictionarySize) values(" << dictionarySize << ");";
+		query << "INSERT INTO StatisticsDictionary(dictionary_size) values(" << dictionarySize << ");";
 
 		bool r = this->executeNoResultQuery(query.str());
 		return r;

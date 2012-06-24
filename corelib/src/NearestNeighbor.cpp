@@ -17,7 +17,7 @@
  * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "NearestNeighbor.h"
+#include "rtabmap/core/NearestNeighbor.h"
 #include "utilite/ULogger.h"
 #include <opencv2/core/core.hpp>
 
@@ -27,70 +27,30 @@ namespace rtabmap
 /////////////////////////
 // KdTreeNN
 /////////////////////////
-KdTreeNN::KdTreeNN(const ParametersMap & parameters) :
-		_tree(0)
+KdTreeNN::KdTreeNN(const ParametersMap & parameters)
 {
-	ULOGGER_DEBUG("");
 	this->parseParameters(parameters);
 }
 
 KdTreeNN::~KdTreeNN()
 {
-	if(_tree)
-	{
-		cvReleaseFeatureTree(_tree);
-	}
 }
 
 void KdTreeNN::setData(const cv::Mat & data)
 {
-	if(_tree)
-	{
-		cvReleaseFeatureTree(_tree);
-		_tree = 0;
-	}
-
-	// convert to old style mat (data is not copied)
-	_dataMat = data;
-	_tree = cvCreateKDTree(&_dataMat);
+	//(data is not copied)
+	_tree.build(data);
 }
 
 void KdTreeNN::search(const cv::Mat & queries, cv::Mat & indices, cv::Mat & dists, int knn, int emax)
 {
-	ULOGGER_DEBUG("");
-	if(_tree)
-	{
-		// convert to old style mat (data is not copied)
-		CvMat queriesMat = queries;
-		CvMat indicesMat = indices;
-		CvMat distsMat = dists;
-		cvFindFeatures(_tree, &queriesMat, &indicesMat, &distsMat, knn, emax);
-	}
-	else
-	{
-		ULOGGER_ERROR("The search tree is not created, setData() must be called first");
-	}
+	_tree.findNearest(queries, knn, emax, indices, cv::noArray(), dists);
 }
 
 void KdTreeNN::search(const cv::Mat & data, const cv::Mat & queries, cv::Mat & indices, cv::Mat & dists, int knn, int emax) const
 {
-	ULOGGER_DEBUG("");
-	CvMat dataMat = data;
-	CvFeatureTree * tree = cvCreateKDTree(&dataMat);
-
-	if(tree)
-	{
-		// convert to old style mat (data is not copied)
-		CvMat queriesMat = queries;
-		CvMat indicesMat = indices;
-		CvMat distsMat = dists;
-		cvFindFeatures(tree, &queriesMat, &indicesMat, &distsMat, knn, emax);
-		cvReleaseFeatureTree(tree);
-	}
-	else
-	{
-		ULOGGER_ERROR("The search tree creation failed ?!?");
-	}
+	cv::KDTree tree(data);
+	tree.findNearest(queries, knn, emax, indices, cv::noArray(), dists);
 }
 
 void KdTreeNN::parseParameters(const ParametersMap & parameters)

@@ -32,31 +32,13 @@ const std::map<std::string, float> & Statistics::defaultData()
 Statistics::Statistics() :
 	_extended(0),
 	_refImageId(0),
-	_loopClosureId(0),
-	_refImage(0),
-	_loopClosureImage(0)
+	_loopClosureId(0)
 {
 	_defaultDataInitialized = true;
 }
-Statistics::Statistics(const Statistics & s) :
-	_extended(0),
-	_refImageId(0),
-	_loopClosureId(0),
-	_refImage(0),
-	_loopClosureImage(0)
-{
-	*this = s;
-}
+
 Statistics::~Statistics()
 {
-	if(_refImage)
-	{
-		cvReleaseImage(&_refImage);
-	}
-	if(_loopClosureImage)
-	{
-		cvReleaseImage(&_loopClosureImage);
-	}
 }
 
 // name format = "Grp/Name/unit"
@@ -65,87 +47,14 @@ void Statistics::addStatistic(const std::string & name, float value)
 	_data.insert(std::pair<std::string, float>(name, value));
 }
 
-//take the ownership of the image, the image will be
-//deleted in the 'Statistics' destructor
-void Statistics::setRefImage(IplImage ** refImage)
+void Statistics::setRefRawData(const std::list<Sensor> & refRawData)
 {
-	if(_refImage)
-		cvReleaseImage(&_refImage);
-	_refImage = *refImage;
+	_refRawData = refRawData;
 }
 
-// Copy the image
-void Statistics::setRefImage(const IplImage * refImage)
+void Statistics::setLoopClosureRawData(const std::list<Sensor> & loopClosureRawData)
 {
-	if(_refImage)
-		cvReleaseImage(&_refImage);
-	if(refImage)
-	{
-		_refImage = cvCloneImage(refImage);
-	}
-	else
-	{
-		_refImage = 0;
-	}
-}
-
-//take the ownership of the image, the image will be
-//deleted in the 'Statistics' destructor
-void Statistics::setLoopClosureImage(IplImage ** loopClosureImage)
-{
-	if(_loopClosureImage)
-		cvReleaseImage(&_loopClosureImage);
-	_loopClosureImage = *loopClosureImage;
-}
-
-// Copy the image
-void Statistics::setLoopClosureImage(const IplImage * loopClosureImage)
-{
-	if(_loopClosureImage)
-		cvReleaseImage(&_loopClosureImage);
-	if(loopClosureImage)
-	{
-		_loopClosureImage = cvCloneImage(loopClosureImage);
-	}
-	else
-	{
-		_loopClosureImage = 0;
-	}
-}
-
-Statistics & Statistics::operator=(const Statistics & s)
-{
-	_data = s.data();
-	if(_refImage)
-	{
-		cvReleaseImage(&_refImage);
-		_refImage = 0;
-	}
-	if(_loopClosureImage)
-	{
-		cvReleaseImage(&_loopClosureImage);
-		_loopClosureImage = 0;
-	}
-	_extended = s.extended();
-	_refImageId = s.refImageId();
-	_loopClosureId = s.loopClosureId();
-	if(s.refImage())
-	{
-		_refImage = cvCloneImage(s.refImage());
-	}
-	if(s.loopClosureImage())
-	{
-		_loopClosureImage = cvCloneImage(s.loopClosureImage());
-	}
-	_posterior = s.posterior();
-	_likelihood = s.likelihood();
-	_weights = s.weights();
-	_refWords = s.refWords();
-	_loopWords = s.loopWords();
-	_refMotionMask = s.refMotionMask();
-	_loopMotionMask = s.loopMotionMask();
-	_actions = s.getActions();
-	return *this;
+	_loopClosureRawData = loopClosureRawData;
 }
 
 }

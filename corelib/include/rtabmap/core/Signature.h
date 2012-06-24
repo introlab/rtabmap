@@ -24,6 +24,8 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include "rtabmap/core/Sensor.h"
+#include "rtabmap/core/Actuator.h"
 #include <map>
 #include <list>
 #include <vector>
@@ -37,21 +39,24 @@ namespace rtabmap
 class RTABMAP_EXP NeighborLink
 {
 public:
-	NeighborLink(int id, const std::list<std::vector<float> > & actions = std::list<std::vector<float> >(), const std::vector<int> & baseIds = std::vector<int>()) :
-		_id(id),
-		_actions(actions),
+	NeighborLink(int toId, const std::vector<int> & baseIds = std::vector<int>(), const std::list<Actuator> & actuators = std::list<Actuator>(), int actuatorId = 0) :
+		_toId(toId),
+		_actuatorId(actuatorId),
+		_actuators(actuators),
 		_baseIds(baseIds)
 	{}
 	virtual ~NeighborLink() {}
 
-	int id() const {return _id;}
-	const std::list<std::vector<float> > & actions() const {return _actions;}
+	int toId() const {return _toId;}
+	int actuatorId() const {return _actuatorId;}
+	const std::list<Actuator> & actuators() const {return _actuators;}
 	const std::vector<int> & baseIds() const {return _baseIds;}
 	bool updateIds(int idFrom, int idTo);
 
 private:
-	int _id;
-	std::list<std::vector<float> > _actions;
+	int _toId;
+	int _actuatorId;
+	std::list<Actuator> _actuators;
 	std::vector<int> _baseIds; // first is the nearest
 };
 
@@ -61,10 +66,6 @@ typedef std::multimap<int, NeighborLink> NeighborsMultiMap;
 class RTABMAP_EXP Signature
 {
 public:
-	static CvMat * compressImage(const IplImage * image);
-	static IplImage * decompressImage(const CvMat * imageCompressed);
-
-public:
 	virtual ~Signature();
 
 	/**
@@ -72,29 +73,35 @@ public:
 	 */
 	virtual float compareTo(const Signature * signature) const = 0;
 	virtual bool isBadSignature() const = 0;
-	virtual std::string signatureType() const = 0;
+	virtual std::string nodeType() const = 0;
 
-	const IplImage * getImage() const;
-	void setImage(const IplImage * image);
+	void setRawData(const std::list<Sensor> & rawData) {_rawData = rawData;}
+	const std::list<Sensor> & getRawData() const {return _rawData;}
 
 	int id() const {return _id;}
 
 	void addNeighbors(const NeighborsMultiMap & neighbors);
 	void addNeighbor(const NeighborLink & neighbor);
-	void removeNeighbor(int neighborId) {if(_neighbors.erase(neighborId)) _neighborsModified = true;}
+	void removeNeighbor(int neighborId) {
+		if(_neighbors.erase(neighborId))
+			_neighborsModified = true;
+		_neighborsWithActuators.erase(neighborId);
+		_neighborsAll.erase(neighborId);}
 	bool hasNeighbor(int neighborId) const {return _neighbors.find(neighborId) != _neighbors.end();}
 	void setWeight(int weight) {if(_weight!=weight)_modified=true;_weight = weight;}
-	void setLoopClosureIds(const std::set<int> & loopClosureIds) {_loopClosureIds = loopClosureIds;_modified=true;}
-	void addLoopClosureId(int loopClosureId) {if(loopClosureId && _loopClosureIds.insert(loopClosureId).second)_modified=true;}
-	void removeLoopClosureId(int loopClosureId) {if(loopClosureId && _loopClosureIds.erase(loopClosureId))_modified=true;}
+	void setLoopClosureIds(const std::set<int> & loopClosureIds) {_loopClosureIds = loopClosureIds;_neighborsModified=true;}
+	void addLoopClosureId(int loopClosureId) {if(loopClosureId && _loopClosureIds.insert(loopClosureId).second)_neighborsModified=true;}
+	void removeLoopClosureId(int loopClosureId) {if(loopClosureId && _loopClosureIds.erase(loopClosureId))_neighborsModified=true;}
 	bool hasLoopClosureId(int loopClosureId) const {return _loopClosureIds.find(loopClosureId) != _loopClosureIds.end();}
-	void setChildLoopClosureIds(std::set<int> & childLoopClosureIds) {_childLoopClosureIds = childLoopClosureIds;_modified=true;}
-	void addChildLoopClosureId(int childLoopClosureId) {if(childLoopClosureId && _childLoopClosureIds.insert(childLoopClosureId).second)_modified=true;}
+	void setChildLoopClosureIds(std::set<int> & childLoopClosureIds) {_childLoopClosureIds = childLoopClosureIds;_neighborsModified=true;}
+	void addChildLoopClosureId(int childLoopClosureId) {if(childLoopClosureId && _childLoopClosureIds.insert(childLoopClosureId).second)_neighborsModified=true;}
 	void setSaved(bool saved) {_saved = saved;}
 	void setModified(bool modified) {_modified = modified; _neighborsModified = modified;}
 	void changeNeighborIds(int idFrom, int idTo);
 
 	const NeighborsMultiMap & getNeighbors() const {return _neighbors;}
+	const std::set<int> & getNeighborsWithActuators() const {return _neighborsWithActuators;}
+	const std::set<int> & getNeighborsAll() const {return _neighborsAll;}
 	int getWeight() const {return _weight;}
 	const std::set<int> & getLoopClosureIds() const {return _loopClosureIds;}
 	const std::set<int> & getChildLoopClosureIds() const {return _childLoopClosureIds;}
@@ -103,15 +110,18 @@ public:
 	bool isNeighborsModified() const {return _neighborsModified;}
 
 protected:
-	Signature(int id, const IplImage * image = 0, bool keepImage = false);
+	Signature(int id);
+	Signature(int id, const std::list<Sensor> & rawData);
 
 private:
 	int _id;
 	NeighborsMultiMap _neighbors; // id, neighborLink
+	std::set<int> _neighborsWithActuators; // Hack, to increase efficiency of Memory::getNeighborIds()
+	std::set<int> _neighborsAll; // Hack, to increase efficiency of Memory::getNeighborIds()
 	int _weight;
 	std::set<int> _loopClosureIds;
 	std::set<int> _childLoopClosureIds;
-	IplImage * _image;
+	std::list<Sensor> _rawData;
 	bool _saved; // If it's saved to bd
 	bool _modified;
 	bool _neighborsModified; // Optimization when updating signatures in database
@@ -125,18 +135,20 @@ class RTABMAP_EXP KeypointSignature :
 	public Signature
 {
 public:
+	KeypointSignature(int id);
+	KeypointSignature(
+			const std::multimap<int, cv::KeyPoint> & words,
+			int id);
 	KeypointSignature(
 			const std::multimap<int, cv::KeyPoint> & words,
 			int id,
-			const IplImage * image = 0,
-			bool keepRawData = false);
-	KeypointSignature(int id);
+			const std::list<Sensor> & sensors);
 
 	virtual ~KeypointSignature();
 
 	virtual float compareTo(const Signature * signature) const;
 	virtual bool isBadSignature() const;
-	virtual std::string signatureType() const {return "KeypointSignature";};
+	virtual std::string nodeType() const {return "KeypointSignature";};
 
 	void removeAllWords();
 	void removeWord(int wordId);
@@ -164,27 +176,24 @@ class RTABMAP_EXP SMSignature :
 {
 public:
 	SMSignature(
-		const std::vector<int> & sensors,
-		const std::vector<unsigned char> & motionMask,
+		const std::list<std::vector<int> > & data,
+		int id);
+	SMSignature(
+		const std::list<std::vector<int> > & data,
 		int id,
-		const IplImage * image = 0,
-		bool keepRawData = false);
+		const std::list<Sensor> & rawData);
 	SMSignature(int id);
 
 	virtual ~SMSignature();
 
 	virtual float compareTo(const Signature * signature) const;
 	virtual bool isBadSignature() const;
-	virtual std::string signatureType() const {return "SMSignature";};
+	virtual std::string nodeType() const {return "SMSignature";};
 
-	void setSensors(const std::vector<int> & sensors) {_sensors= sensors;}
-	const std::vector<int> & getSensors() const {return _sensors;}
-
-	void setMotionMask(const std::vector<unsigned char> & motionMask) {_motionMask= motionMask;}
-	const std::vector<unsigned char> & getMotionMask() const {return _motionMask;}
+	void setSensors(const std::list<std::vector<int> > & data) {_data = data;}
+	const std::list<std::vector<int> > & getData() const {return _data;}
 private:
-	std::vector<int> _sensors;
-	std::vector<unsigned char> _motionMask;
+	std::list<std::vector<int> > _data;
 };
 
 

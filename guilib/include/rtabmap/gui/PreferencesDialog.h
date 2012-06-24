@@ -38,10 +38,9 @@ class QMainWindow;
 class QLineEdit;
 class QSlider;
 class QProgressDialog;
+class UPlotCurve;
 
 namespace rtabmap {
-
-class PlotCurve;
 
 class RTABMAP_EXP PreferencesDialog : public QDialog
 {
@@ -64,8 +63,13 @@ public:
 		kSrcUndef,
 		kSrcUsbDevice,
 		kSrcImages,
-		kSrcVideo,
-		kSrcDatabase
+		kSrcVideo
+	};
+
+	enum SrcAudio {
+		kSrcAudioUndef,
+		kSrcAudioMicDevice,
+		kSrcAudioFile
 	};
 
 public:
@@ -102,13 +106,17 @@ public:
 	QString getWorkingDirectory();
 
 	// source panel
-	double getGeneralImageRate() const;
+	double getGeneralInputRate() const;
+	bool isSourceImageUsed() const;
+	bool isSourceAudioUsed() const;
+	bool isSourceDatabaseUsed() const;
 	bool getGeneralAutoRestart() const;
 	bool getGeneralCameraKeypoints() const;
-	int getSourceType() const;
-	QString getSourceTypeStr() const;
+	int getSourceImageType() const;
+	QString getSourceImageTypeStr() const;
 	int getSourceWidth() const;
 	int getSourceHeight() const;
+	int getFramesDropped() const;
 	QString getSourceImagesPath() const;	//Images group
 	QString getSourceImagesSuffix() const;	//Images group
 	int getSourceImagesSuffixIndex() const;	//Images group
@@ -116,31 +124,44 @@ public:
 	bool getSourceImagesRefreshDir() const;	//Images group
 	QString getSourceVideoPath() const;	//Video group
 	int getSourceUsbDeviceId() const;		//UsbDevice group
-	QString getSourceDatabasePath() const; 			//Database group
-	bool getSourceDatabaseIgnoreChildren() const;	//Database group
-	bool getSourceDatabaseLoadActions() const;	//Database group
+	int getSourceAudioType() const; //Audio group
+	QString getSourceAudioTypeStr() const; //Audio group
+	int getSourceMicDevice() const;	//Audio group
+	int getSourceMicFs() const;	//Audio group
+	int getSourceMicSampleSize() const;	//Audio group
+	QString getSourceAudioPath() const; //Audio group
+	bool getSourceAudioPlayWhileRecording() const; //Audio group
+	QString getSourceDatabasePath() const; //Database group
 
 	//
 	bool isImagesKept() const;
 	float getTimeLimit() const;
+	int getMemoryType() const;
 
 	//specific
+	bool isStatisticsPublished() const;
 	double getLoopThr() const;
 	double getRetrievalThr() const;
 	double getVpThr() const;
 	double getExpThr() const;
+
+	//
+	void disableSourceAudio();
+	void disableGeneralCameraKeypoints();
 
 signals:
 	void settingsChanged(PreferencesDialog::PANEL_FLAGS);
 	void settingsChanged(rtabmap::ParametersMap);
 
 public slots:
+	void setInputRate(double value);
 	void setHardThr(int value);
 	void setRetrievalThr(int value);
-	void setImgRate(double value);
 	void setAutoRestart(bool value);
 	void setTimeLimit(float value);
-	void selectSource(Src src = kSrcUndef);
+	void selectSourceImage(Src src = kSrcUndef);
+	void selectSourceAudio(SrcAudio = kSrcAudioUndef);
+	void selectSourceDatabase(bool user = false);
 
 private slots:
 	void closeDialog ( QAbstractButton * button );
@@ -160,6 +181,7 @@ private slots:
 	void changeDictionaryPath();
 	void readSettingsEnd();
 	void setupTreeView();
+	void updateBasicParameter();
 
 protected:
 	virtual void showEvent ( QShowEvent * event );

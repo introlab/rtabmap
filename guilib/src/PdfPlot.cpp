@@ -23,7 +23,7 @@
 namespace rtabmap {
 
 PdfPlotItem::PdfPlotItem(float dataX, float dataY, float width, int childCount) :
-	PlotItem(dataX, dataY, width),
+	UPlotItem(dataX, dataY, width),
 	_img(0),
 	_imagesRef(0)
 {
@@ -85,7 +85,7 @@ void PdfPlotItem::showDescription(bool shown)
 		if(_img)
 			_img->setVisible(false);
 	}
-	PlotItem::showDescription(shown);
+	UPlotItem::showDescription(shown);
 }
 
 
@@ -93,7 +93,7 @@ void PdfPlotItem::showDescription(bool shown)
 
 
 PdfPlotCurve::PdfPlotCurve(const QString & name, const QMap<int, QByteArray> * imagesMapRef = 0, QObject * parent) :
-	PlotCurve(name, parent),
+	UPlotCurve(name, parent),
 	_imagesMapRef(imagesMapRef)
 {
 
@@ -106,7 +106,7 @@ PdfPlotCurve::~PdfPlotCurve()
 
 void PdfPlotCurve::clear()
 {
-	PlotCurve::clear();
+	UPlotCurve::clear();
 }
 
 void PdfPlotCurve::setData(const QMap<int, float> & dataMap, const QMap<int, int> & weightsMap, int lastId)

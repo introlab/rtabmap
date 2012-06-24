@@ -1,79 +1,111 @@
-# - Find UTILITE
-# This module finds an installed UTILITE package.
+# - Find UtiLite
+# This module finds an installed UtiLite package.
 #
 # It sets the following variables:
-#  UTILITE_FOUND              - Set to false, or undefined, if UTILITE isn't found.
-#  UTILITE_INCLUDE_DIRS        - The UTILITE include directory.
-#  UTILITE_LIBRARIES            - The UTILITE library to link against.
+#  UtiLite_FOUND              - Set to false, or undefined, if UtiLite isn't found.
+#  UtiLite_INCLUDE_DIRS        - The UtiLite include directory.
+#  UtiLite_LIBRARIES            - The UtiLite library to link against.
 #  URESOURCEGENERATOR_EXEC    - The resource generator tool executable
+#
+# Backward compatibility:
+#  UTILITE_FOUND              - Set to false, or undefined, if UtiLite isn't found.
+#  UTILITE_INCLUDE_DIRS       - The UtiLite include directory.
+#  UTILITE_LIBRARIES          - The UtiLite library to link against.
+#  UTILITE_INCLUDE_DIR        - The UtiLite include directory.
+#  UTILITE_LIBRARY            - The UtiLite library to link against.
 #
 # 
 
-SET(UTILITE_VERSION_REQUIRED 0.2.13)
+SET(UtiLite_VERSION_REQUIRED 0.2.14)
 
-SET(UTILITE_ROOT)
+SET(UtiLite_ROOT)
 
 # Add ROS UtiLite directory if ROS is installed
 FIND_PROGRAM(ROSPACK_EXEC NAME rospack PATHS)  
 IF(ROSPACK_EXEC)  
 	EXECUTE_PROCESS(COMMAND ${ROSPACK_EXEC} find utilite 
-			   	    OUTPUT_VARIABLE UTILITE_ROS_PATH
+			   	    OUTPUT_VARIABLE UtiLite_ROS_PATH
 					OUTPUT_STRIP_TRAILING_WHITESPACE
 					WORKING_DIRECTORY "./"
 	)
-	IF(UTILITE_ROS_PATH)
-	    MESSAGE(STATUS "Found UtiLite ROS pkg : ${UTILITE_ROS_PATH}")
-	    SET(UTILITE_ROOT
-	        ${UTILITE_ROS_PATH}/utilite
-	        ${UTILITE_ROOT}
+	IF(UtiLite_ROS_PATH)
+	    MESSAGE(STATUS "Found UtiLite ROS pkg : ${UtiLite_ROS_PATH}")
+	    SET(UtiLite_ROOT
+	        ${UtiLite_ROS_PATH}/utilite
+	        ${UtiLite_ROOT}
 	    )
-	ENDIF(UTILITE_ROS_PATH)
+	ENDIF(UtiLite_ROS_PATH)
 ENDIF(ROSPACK_EXEC)
 
-FIND_PROGRAM(URESOURCEGENERATOR_EXEC NAME uresourcegenerator PATHS ${UTILITE_ROOT}/bin)  
+FIND_PROGRAM(URESOURCEGENERATOR_EXEC NAME uresourcegenerator PATHS ${UtiLite_ROOT}/bin)  
 IF(URESOURCEGENERATOR_EXEC)  
 	EXECUTE_PROCESS(COMMAND ${URESOURCEGENERATOR_EXEC} -v 
-			   	    OUTPUT_VARIABLE UTILITE_VERSION
+			   	    OUTPUT_VARIABLE UtiLite_VERSION
 					OUTPUT_STRIP_TRAILING_WHITESPACE
 					WORKING_DIRECTORY "./"
 	)
 	
-	IF(UTILITE_VERSION VERSION_LESS UTILITE_VERSION_REQUIRED)
+	IF(UtiLite_VERSION VERSION_LESS UtiLite_VERSION_REQUIRED)
 	    IF(UtiLite_FIND_REQUIRED)
-	    	MESSAGE(FATAL_ERROR "Your version of UtiLite is too old (${UTILITE_VERSION}), UtiLite ${UTILITE_VERSION_REQUIRED} is required.")
+	    	MESSAGE(FATAL_ERROR "Your version of UtiLite is too old (${UtiLite_VERSION}), UtiLite ${UtiLite_VERSION_REQUIRED} is required.")
 	    ENDIF(UtiLite_FIND_REQUIRED)
-	ENDIF(UTILITE_VERSION VERSION_LESS UTILITE_VERSION_REQUIRED)
+	ENDIF(UtiLite_VERSION VERSION_LESS UtiLite_VERSION_REQUIRED)
 
 	IF(WIN32)
-		FIND_PATH(UTILITE_INCLUDE_DIRS 
+		FIND_PATH(UtiLite_INCLUDE_DIRS 
 				utilite/UEventsManager.h
 				PATH_SUFFIXES "../include")
 	
-		FIND_LIBRARY(UTILITE_LIBRARIES NAMES utilite
+		FIND_LIBRARY(UtiLite_LIBRARIES 
+				NAMES utilite
+			 	PATH_SUFFIXES "../lib")
+		FIND_LIBRARY(UtiLite_Qt 
+				NAMES utilite_qt
+			 	PATH_SUFFIXES "../lib")
+		FIND_LIBRARY(UtiLite_Audio 
+				NAMES utilite_audio
 			 	PATH_SUFFIXES "../lib")
 	
 	ELSE()
-		FIND_PATH(UTILITE_INCLUDE_DIRS 
+		FIND_PATH(UtiLite_INCLUDE_DIRS 
 				utilite/UEventsManager.h
-				PATHS ${UTILITE_ROOT}/include)
+				PATHS ${UtiLite_ROOT}/include)
 	
-		FIND_LIBRARY(UTILITE_LIBRARIES 
+		FIND_LIBRARY(UtiLite_LIBRARIES 
 				NAMES utilite
-				PATHS ${UTILITE_ROOT}/lib)
+				PATHS ${UtiLite_ROOT}/lib)
+		FIND_LIBRARY(UtiLite_Qt 
+				NAMES utilite_qt
+				PATHS ${UtiLite_ROOT}/lib)
+		FIND_LIBRARY(UtiLite_Audio 
+				NAMES utilite_audio
+				PATHS ${UtiLite_ROOT}/lib)
 	ENDIF()
+	IF(UtiLite_LIBRARIES AND UtiLite_Qt)
+		SET(UtiLite_LIBRARIES ${UtiLite_LIBRARIES} ${UtiLite_Qt})
+	ENDIF(UtiLite_LIBRARIES AND UtiLite_Qt)
+	IF(UtiLite_LIBRARIES AND UtiLite_Audio)
+		SET(UtiLite_LIBRARIES ${UtiLite_LIBRARIES} ${UtiLite_Audio})
+	ENDIF(UtiLite_LIBRARIES AND UtiLite_Audio)
 	
-	IF (UTILITE_INCLUDE_DIRS AND UTILITE_LIBRARIES)
-	   SET(UTILITE_FOUND TRUE)
-	ENDIF (UTILITE_INCLUDE_DIRS AND UTILITE_LIBRARIES)
+	IF (UtiLite_INCLUDE_DIRS AND UtiLite_LIBRARIES)
+	   SET(UtiLite_FOUND TRUE)
+	ENDIF (UtiLite_INCLUDE_DIRS AND UtiLite_LIBRARIES)
 ENDIF(URESOURCEGENERATOR_EXEC)
 
-IF (UTILITE_FOUND)
-   # show which UTILITE was found only if not quiet
+IF (UtiLite_FOUND)
+   # show which UtiLite was found only if not quiet
    IF (NOT UtiLite_FIND_QUIETLY)
-      MESSAGE(STATUS "Found UtiLite ${UTILITE_VERSION}")
+      MESSAGE(STATUS "Found UtiLite ${UtiLite_VERSION}")
    ENDIF (NOT UtiLite_FIND_QUIETLY)
+   # backward compatibility...
+   SET(UTILITE_FOUND ${UtiLite_FOUND})
+   SET(UTILITE_INCLUDE_DIRS ${UtiLite_INCLUDE_DIRS})
+   SET(UTILITE_LIBRARIES ${UtiLite_LIBRARIES})
+   SET(UTILITE_INCLUDE_DIR ${UtiLite_INCLUDE_DIRS})
+   SET(UTILITE_LIBRARY ${UtiLite_LIBRARIES})
 ELSE ()
-   # fatal error if UTILITE is required but not found
+   # fatal error if UtiLite is required but not found
    IF (UtiLite_FIND_REQUIRED)
       MESSAGE(FATAL_ERROR "Could not find UtiLite. Verify your PATH if it is already installed or download it at http://utilite.googlecode.com")
    ENDIF (UtiLite_FIND_REQUIRED)

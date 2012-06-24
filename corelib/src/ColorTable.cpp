@@ -5,7 +5,7 @@
  *,  Author: MatLab
  */
 
-#include "ColorTable.h"
+#include "rtabmap/core/ColorTable.h"
 #include "ColorIndexes65536_bin_zip.h"
 #include "ColorIndexes1024_bin_zip.h"
 #include "ColorIndexes512_bin_zip.h"
@@ -75,21 +75,19 @@ ColorTable::ColorTable(int size) :
 	uLongf totalUncompressed = uncompressed.size();
 	UDEBUG("zip bytes=%d, uncompressed prediction=%d", (int)bytes.size(), (int)totalUncompressed);
 	int err_code = uncompress((Bytef*)uncompressed.data(), &totalUncompressed, (const Bytef*)bytes.data(), bytes.size());
-	if(err_code == Z_OK)
+	UDEBUG("totalUncompressed=%ld", totalUncompressed);
+
+	if(err_code == Z_MEM_ERROR)
 	{
-		UDEBUG("Ok! totalUncompressed=%ld", totalUncompressed);
-	}
-	else if(err_code == Z_MEM_ERROR)
-	{
-		UFATAL("Z_MEM_ERROR");
+		UFATAL("Z_MEM_ERROR : Insufficient memory.");
 	}
 	else if(err_code == Z_BUF_ERROR)
 	{
-		UFATAL("Z_BUF_ERROR");
+		UFATAL("Z_BUF_ERROR : The buffer dest was not large enough to hold the uncompressed data.");
 	}
 	else if(err_code == Z_DATA_ERROR)
 	{
-		UFATAL("Z_DATA_ERROR");
+		UFATAL("Z_DATA_ERROR : The compressed data (referenced by source) was corrupted.");
 	}
 
 	_rgb2indexed = std::vector<unsigned short>(uncompressed.size()/sizeof(unsigned short));

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>941</width>
-    <height>739</height>
+    <width>1166</width>
+    <height>978</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -57,7 +57,7 @@
           <enum>QFrame::Raised</enum>
          </property>
          <property name="currentIndex">
-          <number>6</number>
+          <number>3</number>
          </property>
          <widget class="QWidget" name="page_22">
           <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -421,50 +421,16 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
           </layout>
          </widget>
          <widget class="QWidget" name="page_4">
-          <layout class="QVBoxLayout" name="verticalLayout_7">
+          <layout class="QVBoxLayout" name="verticalLayout_27">
            <item>
             <widget class="QGroupBox" name="groupBox_source0">
              <property name="title">
               <string>Source</string>
              </property>
-             <layout class="QVBoxLayout" name="verticalLayout_5">
+             <layout class="QVBoxLayout" name="verticalLayout_7">
               <item>
-               <layout class="QGridLayout" name="gridLayout_5" columnstretch="0,10">
+               <layout class="QGridLayout" name="gridLayout_28" columnstretch="0,1">
                 <item row="0" column="0">
-                 <widget class="QComboBox" name="source_comboBox_type">
-                  <property name="currentIndex">
-                   <number>0</number>
-                  </property>
-                  <item>
-                   <property name="text">
-                    <string>Usb device (Webcam)</string>
-                   </property>
-                  </item>
-                  <item>
-                   <property name="text">
-                    <string>Images (ex. 1.jpg, 2.jpg...)</string>
-                   </property>
-                  </item>
-                  <item>
-                   <property name="text">
-                    <string>Video file (AVI)</string>
-                   </property>
-                  </item>
-                  <item>
-                   <property name="text">
-                    <string>Database</string>
-                   </property>
-                  </item>
-                 </widget>
-                </item>
-                <item row="0" column="1">
-                 <widget class="QLabel" name="label_20">
-                  <property name="text">
-                   <string>Source type.</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="0">
                  <widget class="QDoubleSpinBox" name="general_doubleSpinBox_imgRate">
                   <property name="decimals">
                    <number>1</number>
@@ -480,314 +446,549 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="1">
-                 <widget class="QLabel" name="label_2">
+                <item row="0" column="1">
+                 <widget class="QLabel" name="label_3">
                   <property name="text">
-                   <string>Image rate (img/s).</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="0">
-                 <widget class="QCheckBox" name="general_checkBox_autoRestart">
-                  <property name="text">
-                   <string/>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="1">
-                 <widget class="QLabel" name="label_6">
-                  <property name="text">
-                   <string>Auto restart.</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="1">
-                 <widget class="QLabel" name="label_10">
-                  <property name="text">
-                   <string>Image width (set to 0 to use the default size of the source).</string>
-                  </property>
-                  <property name="wordWrap">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="4" column="1">
-                 <widget class="QLabel" name="label_11">
-                  <property name="text">
-                   <string>Image height (set to 0 to use the default size of the source).</string>
-                  </property>
-                  <property name="wordWrap">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="0">
-                 <widget class="QSpinBox" name="source_spinBox_imgWidth">
-                  <property name="minimum">
-                   <number>0</number>
-                  </property>
-                  <property name="maximum">
-                   <number>999999999</number>
-                  </property>
-                  <property name="singleStep">
-                   <number>160</number>
-                  </property>
-                  <property name="value">
-                   <number>0</number>
-                  </property>
-                 </widget>
-                </item>
-                <item row="4" column="0">
-                 <widget class="QSpinBox" name="source_spinBox_imgheight">
-                  <property name="minimum">
-                   <number>0</number>
-                  </property>
-                  <property name="maximum">
-                   <number>999999999</number>
-                  </property>
-                  <property name="singleStep">
-                   <number>120</number>
-                  </property>
-                  <property name="value">
-                   <number>0</number>
-                  </property>
-                 </widget>
-                </item>
-                <item row="5" column="0">
-                 <widget class="QCheckBox" name="general_checkBox_cameraKeypoints">
-                  <property name="text">
-                   <string/>
-                  </property>
-                 </widget>
-                </item>
-                <item row="5" column="1">
-                 <widget class="QLabel" name="label_13">
-                  <property name="text">
-                   <string>Keypoints extraction post threatement.</string>
+                   <string>Input rate (images/s, audio frames/s).</string>
                   </property>
                  </widget>
                 </item>
                </layout>
               </item>
               <item>
-               <widget class="QStackedWidget" name="stackedWidget_2">
-                <property name="currentIndex">
-                 <number>3</number>
+               <widget class="QGroupBox" name="groupBox_sourceImage">
+                <property name="title">
+                 <string>Image source</string>
                 </property>
-                <widget class="QWidget" name="page_7">
-                 <layout class="QVBoxLayout" name="verticalLayout_30">
-                  <item>
-                   <widget class="QGroupBox" name="source_groupBox_usbDevice">
-                    <property name="title">
-                     <string>Usb device</string>
-                    </property>
-                    <layout class="QGridLayout" name="gridLayout_6" columnstretch="0,0">
-                     <item row="0" column="0">
-                      <widget class="QSpinBox" name="source_usbDevice_spinBox_id">
-                       <property name="minimum">
-                        <number>-1</number>
+                <property name="checkable">
+                 <bool>true</bool>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_5">
+                 <item>
+                  <layout class="QGridLayout" name="gridLayout_5" columnstretch="0,1">
+                   <item row="0" column="0">
+                    <widget class="QComboBox" name="source_comboBox_image_type">
+                     <property name="currentIndex">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <property name="text">
+                       <string>Usb camera</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Images</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Video file</string>
+                      </property>
+                     </item>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QLabel" name="label_20">
+                     <property name="text">
+                      <string>Source type. 0-Usb camera (Webcam), 1-Images (directory of images), 2-Video (AVI), 3-Database (RTAB-Map's database).</string>
+                     </property>
+                     <property name="wordWrap">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QCheckBox" name="general_checkBox_autoRestart">
+                     <property name="text">
+                      <string/>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="1">
+                    <widget class="QLabel" name="label_6">
+                     <property name="text">
+                      <string>Auto restart.</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="1">
+                    <widget class="QLabel" name="label_10">
+                     <property name="text">
+                      <string>Image width (set to 0 to use the default size of the source).</string>
+                     </property>
+                     <property name="wordWrap">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="3" column="1">
+                    <widget class="QLabel" name="label_11">
+                     <property name="text">
+                      <string>Image height (set to 0 to use the default size of the source).</string>
+                     </property>
+                     <property name="wordWrap">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="0">
+                    <widget class="QSpinBox" name="source_spinBox_imgWidth">
+                     <property name="minimum">
+                      <number>0</number>
+                     </property>
+                     <property name="maximum">
+                      <number>999999999</number>
+                     </property>
+                     <property name="singleStep">
+                      <number>160</number>
+                     </property>
+                     <property name="value">
+                      <number>0</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="3" column="0">
+                    <widget class="QSpinBox" name="source_spinBox_imgheight">
+                     <property name="minimum">
+                      <number>0</number>
+                     </property>
+                     <property name="maximum">
+                      <number>999999999</number>
+                     </property>
+                     <property name="singleStep">
+                      <number>120</number>
+                     </property>
+                     <property name="value">
+                      <number>0</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="5" column="0">
+                    <widget class="QCheckBox" name="general_checkBox_cameraKeypoints">
+                     <property name="text">
+                      <string/>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="5" column="1">
+                    <widget class="QLabel" name="label_13">
+                     <property name="text">
+                      <string>Keypoints extraction post threatement.</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="4" column="1">
+                    <widget class="QLabel" name="label_128">
+                     <property name="text">
+                      <string>Frames dropped (ignore X frames after each frame acquired, used to decrease source framerate)</string>
+                     </property>
+                     <property name="wordWrap">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="4" column="0">
+                    <widget class="QSpinBox" name="source_spinBox_framesDropped">
+                     <property name="minimum">
+                      <number>0</number>
+                     </property>
+                     <property name="maximum">
+                      <number>999999999</number>
+                     </property>
+                     <property name="singleStep">
+                      <number>1</number>
+                     </property>
+                     <property name="value">
+                      <number>0</number>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <widget class="QStackedWidget" name="stackedWidget_image">
+                   <property name="currentIndex">
+                    <number>2</number>
+                   </property>
+                   <widget class="QWidget" name="page_7">
+                    <layout class="QVBoxLayout" name="verticalLayout_30">
+                     <item>
+                      <widget class="QGroupBox" name="source_groupBox_usbDevice">
+                       <property name="title">
+                        <string>Usb device</string>
                        </property>
-                       <property name="maximum">
-                        <number>999999999</number>
-                       </property>
-                       <property name="value">
-                        <number>0</number>
-                       </property>
+                       <layout class="QGridLayout" name="gridLayout_6" columnstretch="0,1">
+                        <item row="0" column="0">
+                         <widget class="QSpinBox" name="source_usbDevice_spinBox_id">
+                          <property name="minimum">
+                           <number>-1</number>
+                          </property>
+                          <property name="maximum">
+                           <number>999999999</number>
+                          </property>
+                          <property name="value">
+                           <number>0</number>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="0" column="1">
+                         <widget class="QLabel" name="label_38">
+                          <property name="text">
+                           <string>Usb device.</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
                       </widget>
                      </item>
-                     <item row="0" column="1">
-                      <widget class="QLabel" name="label_38">
-                       <property name="text">
-                        <string>Usb device.</string>
+                     <item>
+                      <spacer name="verticalSpacer_8">
+                       <property name="orientation">
+                        <enum>Qt::Vertical</enum>
                        </property>
-                      </widget>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>0</width>
+                         <height>0</height>
+                        </size>
+                       </property>
+                      </spacer>
                      </item>
                     </layout>
                    </widget>
-                  </item>
-                  <item>
-                   <spacer name="verticalSpacer_8">
-                    <property name="orientation">
-                     <enum>Qt::Vertical</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>0</width>
-                      <height>0</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                 </layout>
-                </widget>
-                <widget class="QWidget" name="page_5">
-                 <layout class="QVBoxLayout" name="verticalLayout_6">
-                  <item>
-                   <widget class="QGroupBox" name="source_groupBox_images">
-                    <property name="title">
-                     <string>Images dataset</string>
-                    </property>
-                    <layout class="QGridLayout" name="gridLayout_7" columnstretch="0,10">
-                     <item row="0" column="0">
-                      <widget class="QToolButton" name="source_images_toolButton_selectSource">
-                       <property name="text">
-                        <string>...</string>
+                   <widget class="QWidget" name="page_5">
+                    <layout class="QVBoxLayout" name="verticalLayout_6">
+                     <item>
+                      <widget class="QGroupBox" name="source_groupBox_images">
+                       <property name="title">
+                        <string>Images dataset</string>
                        </property>
+                       <layout class="QGridLayout" name="gridLayout_7" columnstretch="0,10">
+                        <item row="0" column="0">
+                         <widget class="QToolButton" name="source_images_toolButton_selectSource">
+                          <property name="text">
+                           <string>...</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="0" column="1">
+                         <widget class="QLineEdit" name="source_images_lineEdit_path">
+                          <property name="readOnly">
+                           <bool>false</bool>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="1" column="0">
+                         <widget class="QSpinBox" name="source_images_spinBox_startPos">
+                          <property name="minimum">
+                           <number>0</number>
+                          </property>
+                          <property name="maximum">
+                           <number>999999999</number>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="1" column="1">
+                         <widget class="QLabel" name="label_21">
+                          <property name="text">
+                           <string>Start position (default 1, 0=start from the last).</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="2" column="0">
+                         <widget class="QCheckBox" name="source_images_refreshDir">
+                          <property name="text">
+                           <string/>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="2" column="1">
+                         <widget class="QLabel" name="label_34">
+                          <property name="text">
+                           <string>Refresh the directory files list after each image loaded.</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
                       </widget>
                      </item>
-                     <item row="0" column="1">
-                      <widget class="QLineEdit" name="source_images_lineEdit_path">
-                       <property name="readOnly">
-                        <bool>false</bool>
+                     <item>
+                      <spacer name="verticalSpacer_9">
+                       <property name="orientation">
+                        <enum>Qt::Vertical</enum>
                        </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="0">
-                      <widget class="QSpinBox" name="source_images_spinBox_startPos">
-                       <property name="minimum">
-                        <number>0</number>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>0</width>
+                         <height>0</height>
+                        </size>
                        </property>
-                       <property name="maximum">
-                        <number>999999999</number>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="1">
-                      <widget class="QLabel" name="label_21">
-                       <property name="text">
-                        <string>Start position (default 1, 0=start from the last).</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="2" column="0">
-                      <widget class="QCheckBox" name="source_images_refreshDir">
-                       <property name="text">
-                        <string/>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="2" column="1">
-                      <widget class="QLabel" name="label_34">
-                       <property name="text">
-                        <string>Refresh the directory files list after each image loaded.</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </widget>
-                  </item>
-                  <item>
-                   <spacer name="verticalSpacer_9">
-                    <property name="orientation">
-                     <enum>Qt::Vertical</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>0</width>
-                      <height>0</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                 </layout>
-                </widget>
-                <widget class="QWidget" name="page_6">
-                 <layout class="QVBoxLayout" name="verticalLayout_8">
-                  <item>
-                   <widget class="QGroupBox" name="source_groupBox_video">
-                    <property name="title">
-                     <string>Video (AVI)</string>
-                    </property>
-                    <layout class="QGridLayout" name="gridLayout_8" columnstretch="0,10">
-                     <item row="0" column="0">
-                      <widget class="QToolButton" name="source_video_toolButton_selectSource">
-                       <property name="text">
-                        <string>...</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="0" column="1">
-                      <widget class="QLineEdit" name="source_video_lineEdit_path">
-                       <property name="readOnly">
-                        <bool>false</bool>
-                       </property>
-                      </widget>
+                      </spacer>
                      </item>
                     </layout>
                    </widget>
-                  </item>
-                  <item>
-                   <spacer name="verticalSpacer_10">
-                    <property name="orientation">
-                     <enum>Qt::Vertical</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>0</width>
-                      <height>0</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                 </layout>
-                </widget>
-                <widget class="QWidget" name="page_10">
-                 <layout class="QVBoxLayout" name="verticalLayout_16">
-                  <item>
-                   <widget class="QGroupBox" name="source_groupBox_video_2">
-                    <property name="title">
-                     <string>Database (Sqlite3)</string>
-                    </property>
-                    <layout class="QGridLayout" name="gridLayout_9" columnstretch="0,0">
-                     <item row="0" column="0">
-                      <widget class="QToolButton" name="source_database_toolButton_selectSource">
-                       <property name="text">
-                        <string>...</string>
+                   <widget class="QWidget" name="page_6">
+                    <layout class="QVBoxLayout" name="verticalLayout_8">
+                     <item>
+                      <widget class="QGroupBox" name="source_groupBox_video">
+                       <property name="title">
+                        <string>Video (AVI)</string>
                        </property>
+                       <layout class="QGridLayout" name="gridLayout_8" columnstretch="0,10">
+                        <item row="0" column="0">
+                         <widget class="QToolButton" name="source_video_toolButton_selectSource">
+                          <property name="text">
+                           <string>...</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="0" column="1">
+                         <widget class="QLineEdit" name="source_video_lineEdit_path">
+                          <property name="readOnly">
+                           <bool>false</bool>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
                       </widget>
                      </item>
-                     <item row="0" column="1">
-                      <widget class="QLineEdit" name="source_database_lineEdit_path">
-                       <property name="readOnly">
-                        <bool>false</bool>
+                     <item>
+                      <spacer name="verticalSpacer_10">
+                       <property name="orientation">
+                        <enum>Qt::Vertical</enum>
                        </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="1">
-                      <widget class="QLabel" name="label_39">
-                       <property name="text">
-                        <string>Load actions.</string>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>0</width>
+                         <height>0</height>
+                        </size>
                        </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="0">
-                      <widget class="QCheckBox" name="source_database_checkBox_loadActions">
-                       <property name="text">
-                        <string/>
-                       </property>
-                       <property name="checked">
-                        <bool>true</bool>
-                       </property>
-                      </widget>
+                      </spacer>
                      </item>
                     </layout>
                    </widget>
-                  </item>
-                  <item>
-                   <spacer name="verticalSpacer_11">
-                    <property name="orientation">
-                     <enum>Qt::Vertical</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>0</width>
-                      <height>0</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                 </layout>
-                </widget>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_sourceAudio">
+                <property name="title">
+                 <string>Audio source</string>
+                </property>
+                <property name="checkable">
+                 <bool>true</bool>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_28">
+                 <item>
+                  <layout class="QGridLayout" name="gridLayout_26" columnstretch="0,1">
+                   <item row="0" column="0">
+                    <widget class="QComboBox" name="source_comboBox_audio_type">
+                     <property name="currentIndex">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <property name="text">
+                       <string>Mic</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Audio file</string>
+                      </property>
+                     </item>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QLabel" name="label_122">
+                     <property name="text">
+                      <string>Source type. 0-Mic (Microphone), 1-Audio file (WAV, MP3,...).</string>
+                     </property>
+                     <property name="wordWrap">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <widget class="QStackedWidget" name="stackedWidget_audio">
+                   <property name="currentIndex">
+                    <number>1</number>
+                   </property>
+                   <widget class="QWidget" name="page_25">
+                    <layout class="QVBoxLayout" name="verticalLayout_31">
+                     <item>
+                      <widget class="QGroupBox" name="source_groupBox_micDevice">
+                       <property name="title">
+                        <string>Mic</string>
+                       </property>
+                       <layout class="QGridLayout" name="gridLayout_27" columnstretch="0,1">
+                        <item row="0" column="0">
+                         <widget class="QSpinBox" name="source_micDevice">
+                          <property name="minimum">
+                           <number>-1</number>
+                          </property>
+                          <property name="maximum">
+                           <number>999999999</number>
+                          </property>
+                          <property name="value">
+                           <number>0</number>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="0" column="1">
+                         <widget class="QLabel" name="label_124">
+                          <property name="text">
+                           <string>Mic device.</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="1" column="0">
+                         <widget class="QSpinBox" name="source_micFs">
+                          <property name="minimum">
+                           <number>4800</number>
+                          </property>
+                          <property name="maximum">
+                           <number>999999999</number>
+                          </property>
+                          <property name="value">
+                           <number>48000</number>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="1" column="1">
+                         <widget class="QLabel" name="label_133">
+                          <property name="text">
+                           <string>fs (sampling frequency)</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="2" column="1">
+                         <widget class="QLabel" name="label_135">
+                          <property name="text">
+                           <string>Sample size (1, 2 or 4 bytes... e.g. 2=16bits per sample)</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="2" column="0">
+                         <widget class="QSpinBox" name="source_micSampleSize">
+                          <property name="minimum">
+                           <number>1</number>
+                          </property>
+                          <property name="maximum">
+                           <number>4</number>
+                          </property>
+                          <property name="value">
+                           <number>2</number>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                     </item>
+                     <item>
+                      <spacer name="verticalSpacer_25">
+                       <property name="orientation">
+                        <enum>Qt::Vertical</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>0</width>
+                         <height>0</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                    </layout>
+                   </widget>
+                   <widget class="QWidget" name="page_27">
+                    <layout class="QVBoxLayout" name="verticalLayout_32">
+                     <item>
+                      <widget class="QGroupBox" name="source_groupBox_audioFile">
+                       <property name="title">
+                        <string>Audio file (WAV, MP3, ...)</string>
+                       </property>
+                       <layout class="QGridLayout" name="gridLayout_29" columnstretch="0,10">
+                        <item row="0" column="0">
+                         <widget class="QToolButton" name="source_audio_toolButton_selectSource">
+                          <property name="text">
+                           <string>...</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="0" column="1">
+                         <widget class="QLineEdit" name="source_audio_lineEdit_path">
+                          <property name="readOnly">
+                           <bool>false</bool>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="1" column="0">
+                         <widget class="QCheckBox" name="source_checkBox_playWhileRecording">
+                          <property name="text">
+                           <string/>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="1" column="1">
+                         <widget class="QLabel" name="label_14">
+                          <property name="text">
+                           <string>Play sound while recording from the file.</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                     </item>
+                     <item>
+                      <spacer name="verticalSpacer_27">
+                       <property name="orientation">
+                        <enum>Qt::Vertical</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>0</width>
+                         <height>0</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                    </layout>
+                   </widget>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_sourceDatabase">
+                <property name="title">
+                 <string>Database source</string>
+                </property>
+                <property name="checkable">
+                 <bool>true</bool>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_9">
+                 <item row="0" column="0">
+                  <widget class="QToolButton" name="source_database_toolButton_selectSource">
+                   <property name="text">
+                    <string>...</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="source_database_lineEdit_path"/>
+                 </item>
+                </layout>
                </widget>
               </item>
              </layout>
@@ -885,7 +1086,74 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
+              <item row="6" column="2">
+               <widget class="QLabel" name="label_112">
+                <property name="text">
+                 <string>Images buffer size (0 means inf).</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="0">
+               <widget class="QCheckBox" name="general_checkBox_publishStats_2">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="2">
+               <widget class="QLabel" name="label_37">
+                <property name="text">
+                 <string>Publish statistics.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="0">
+               <widget class="QLineEdit" name="lineEdit_workingDirectory_2">
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="1">
+               <widget class="QToolButton" name="toolButton_workingDirectory_2">
+                <property name="text">
+                 <string>...</string>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="2">
+               <widget class="QLabel" name="label_123">
+                <property name="text">
+                 <string>Working directory (where the database is saved/loaded).</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
               <item row="4" column="0">
+               <widget class="QDoubleSpinBox" name="general_doubleSpinBox_similarityThr_2">
+                <property name="maximum">
+                 <double>1.000000000000000</double>
+                </property>
+                <property name="singleStep">
+                 <double>0.010000000000000</double>
+                </property>
+                <property name="value">
+                 <double>0.500000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="0">
                <widget class="QSpinBox" name="general_spinBox_imagesBufferSize_2">
                 <property name="maximum">
                  <number>999</number>
@@ -896,9 +1164,9 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                </widget>
               </item>
               <item row="4" column="2">
-               <widget class="QLabel" name="label_112">
+               <widget class="QLabel" name="label_125">
                 <property name="text">
-                 <string>Images buffer size (0 means inf).</string>
+                 <string>T_similarity : Similarity threshold (set to 1 to disable Rehearsal/Weight Update).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -906,19 +1174,32 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                </widget>
               </item>
               <item row="5" column="0">
-               <widget class="QCheckBox" name="general_checkBox_publishStats_2">
-                <property name="text">
-                 <string/>
+               <widget class="QSpinBox" name="general_spinBox_maxStMemSize_2">
+                <property name="minimum">
+                 <number>1</number>
                 </property>
-                <property name="checked">
-                 <bool>true</bool>
+                <property name="maximum">
+                 <number>9999</number>
+                </property>
+                <property name="value">
+                 <number>15</number>
                 </property>
                </widget>
               </item>
               <item row="5" column="2">
-               <widget class="QLabel" name="label_37">
+               <widget class="QLabel" name="label_126">
                 <property name="text">
-                 <string>Publish statistics.</string>
+                 <string>STM size : Short-term memory size.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="2">
+               <widget class="QLabel" name="label_134">
+                <property name="text">
+                 <string>Memory/signature type. 0-Keypoint (bag-of-words detection), 1-Sensorimotor (experimental).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -926,27 +1207,17 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                </widget>
               </item>
               <item row="7" column="0">
-               <widget class="QLineEdit" name="lineEdit_workingDirectory_2">
-                <property name="readOnly">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="1">
-               <widget class="QToolButton" name="toolButton_workingDirectory_2">
-                <property name="text">
-                 <string>...</string>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="2">
-               <widget class="QLabel" name="label_123">
-                <property name="text">
-                 <string>Working directory (where the database is saved/loaded).</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
+               <widget class="QComboBox" name="comboBox_signatureType_2">
+                <item>
+                 <property name="text">
+                  <string>Keypoint</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Sensorimotor</string>
+                 </property>
+                </item>
                </widget>
               </item>
              </layout>
@@ -974,7 +1245,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
              <property name="title">
               <string>RTAB-Map settings</string>
              </property>
-             <layout class="QGridLayout" name="gridLayout_4" columnstretch="0,0,0">
+             <layout class="QGridLayout" name="gridLayout_4" columnstretch="0,0,1">
               <item row="0" column="0">
                <widget class="QCheckBox" name="general_checkBox_publishStats">
                 <property name="text">
@@ -988,7 +1259,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               <item row="0" column="2">
                <widget class="QLabel" name="label_35">
                 <property name="text">
-                 <string>Publish statistics (when false, this desactives other &quot;Publish *&quot;).</string>
+                 <string>Publish statistics (when false, this disables other &quot;Publish *&quot;).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1071,14 +1342,14 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="15" column="0">
+              <item row="16" column="0">
                <widget class="QLineEdit" name="lineEdit_workingDirectory">
                 <property name="readOnly">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="15" column="2">
+              <item row="16" column="2">
                <widget class="QLabel" name="label_87">
                 <property name="text">
                  <string>Working directory (where the database is saved/loaded).</string>
@@ -1088,7 +1359,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="15" column="1">
+              <item row="16" column="1">
                <widget class="QToolButton" name="toolButton_workingDirectory">
                 <property name="text">
                  <string>...</string>
@@ -1118,7 +1389,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="13" column="0">
+              <item row="14" column="0">
                <widget class="QCheckBox" name="general_checkBox_actionsSentRejectHyp">
                 <property name="text">
                  <string/>
@@ -1128,7 +1399,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="13" column="2">
+              <item row="14" column="2">
                <widget class="QLabel" name="label_40">
                 <property name="text">
                  <string>Actions sent also on rejected hypotheses.</string>
@@ -1138,7 +1409,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="14" column="2">
+              <item row="15" column="2">
                <widget class="QLabel" name="label_52">
                 <property name="text">
                  <string>Actions are not sent when the loop closure hypothesis is under the confidence threshold.</string>
@@ -1148,7 +1419,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="14" column="0">
+              <item row="15" column="0">
                <widget class="QDoubleSpinBox" name="general_doubleSpinBox_confidenceThr">
                 <property name="decimals">
                  <number>3</number>
@@ -1177,6 +1448,16 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                 <property name="value">
                  <double>700.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0">
+               <widget class="QSpinBox" name="general_spinBox_memoryThr">
+                <property name="maximum">
+                 <number>99999</number>
+                </property>
+                <property name="value">
+                 <number>0</number>
                 </property>
                </widget>
               </item>
@@ -1230,16 +1511,6 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                 </property>
                </widget>
               </item>
-              <item row="5" column="0">
-               <widget class="QSpinBox" name="general_spinBox_memoryThr">
-                <property name="maximum">
-                 <number>99999</number>
-                </property>
-                <property name="value">
-                 <number>0</number>
-                </property>
-               </widget>
-              </item>
               <item row="11" column="2">
                <widget class="QLabel" name="label_115">
                 <property name="text">
@@ -1263,7 +1534,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               <item row="1" column="2">
                <widget class="QLabel" name="label_91">
                 <property name="text">
-                 <string>Publish images.</string>
+                 <string>Publish raw data (images).</string>
                 </property>
                </widget>
               </item>
@@ -1282,7 +1553,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                </widget>
               </item>
               <item row="1" column="0">
-               <widget class="QCheckBox" name="general_checkBox_publishImages">
+               <widget class="QCheckBox" name="general_checkBox_publishRawData">
                 <property name="text">
                  <string/>
                 </property>
@@ -1303,6 +1574,26 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               </item>
               <item row="3" column="0">
                <widget class="QCheckBox" name="general_checkBox_publishLikelihood">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="13" column="2">
+               <widget class="QLabel" name="label_132">
+                <property name="text">
+                 <string>Ignore null values on likelihood normalization.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="13" column="0">
+               <widget class="QCheckBox" name="general_checkBox_likelihoodNullValuesIgnored">
                 <property name="text">
                  <string/>
                 </property>
@@ -1396,7 +1687,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                  </widget>
                 </item>
                 <item>
-                 <widget class="rtabmap::Plot" name="predictionPlot" native="true"/>
+                 <widget class="UPlot" name="predictionPlot" native="true"/>
                 </item>
                </layout>
               </item>
@@ -1635,7 +1926,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
               <item row="6" column="1">
                <widget class="QLabel" name="label_36">
                 <property name="text">
-                 <string>Signature type.</string>
+                 <string>Memory/signature type. 0-Keypoint (bag-of-words detection), 1-Sensorimotor (experimental).</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1921,7 +2212,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
            <item>
             <widget class="QGroupBox" name="groupBox_rehearsal2">
              <property name="title">
-              <string>Rehearsal</string>
+              <string>Rehearsal / Weight Update</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_12" columnstretch="0,10">
               <item row="0" column="0">
@@ -1940,7 +2231,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
               <item row="0" column="1">
                <widget class="QLabel" name="label_16">
                 <property name="text">
-                 <string>Similarity threshold (set to 1 to disable rehearsal).</string>
+                 <string>T_similarity : Similarity threshold (set to 1 to disable Rehearsal/Weight Update).</string>
                 </property>
                </widget>
               </item>
@@ -2004,6 +2295,256 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
               <string>Keypoints</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_14" columnstretch="0,1">
+              <item row="12" column="1">
+               <widget class="QLabel" name="label_100">
+                <property name="text">
+                 <string>Bottom ROI ratio (0 = no change).</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="0">
+               <widget class="QLineEdit" name="lineEdit_kp_roi">
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="1">
+               <widget class="QLabel" name="label_98">
+                <property name="text">
+                 <string>Right ROI ratio (0 = no change).</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="1">
+               <widget class="QLabel" name="label_99">
+                <property name="text">
+                 <string>Top ROI ratio (0 = no change).</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="0">
+               <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi3">
+                <property name="suffix">
+                 <string> %</string>
+                </property>
+                <property name="decimals">
+                 <number>0</number>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="1">
+               <widget class="QLabel" name="label_97">
+                <property name="text">
+                 <string>Left ROI ratio (0 = no change).</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="0">
+               <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi1">
+                <property name="suffix">
+                 <string> %</string>
+                </property>
+                <property name="decimals">
+                 <number>0</number>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="0">
+               <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi2">
+                <property name="suffix">
+                 <string> %</string>
+                </property>
+                <property name="decimals">
+                 <number>0</number>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="0">
+               <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi0">
+                <property name="suffix">
+                 <string> %</string>
+                </property>
+                <property name="decimals">
+                 <number>0</number>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="1">
+               <widget class="QLabel" name="label_82">
+                <property name="text">
+                 <string>Use the tf-idf method to compute the likelihood.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="0">
+               <widget class="QCheckBox" name="checkBox_kp_parallelized">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="1">
+               <widget class="QLabel" name="label_94">
+                <property name="text">
+                 <string>If the dictionary update and signature creation were parallelized.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QComboBox" name="comboBox_descriptor_strategy">
+                <item>
+                 <property name="text">
+                  <string>SURF</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>SIFT</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>BRIEF</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Color</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Hue</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="4" column="1">
+               <widget class="QLabel" name="label_24">
+                <property name="text">
+                 <string>Keypoint descriptor.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0">
+               <widget class="QCheckBox" name="checkBox_kp_tfIdfLikelihoodUsed">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QLabel" name="label_117">
+                <property name="text">
+                 <string>Keypoint detector.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="1">
+               <widget class="QLabel" name="label_101">
+                <property name="text">
+                 <string>ROI ratios [left, right, top, bottom].</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="1">
+               <widget class="QLabel" name="label_104">
+                <property name="text">
+                 <string>If tf-idf weighting is normalized by the words count ratio between compared signatures.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="0">
+               <widget class="QCheckBox" name="checkBox_kp_tfIdfNormalized">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QComboBox" name="comboBox_detector_strategy">
+                <item>
+                 <property name="text">
+                  <string>SURF</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Star</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>SIFT</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>FAST</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QLabel" name="label_90">
+                <property name="text">
+                 <string>Publish keypoints.</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QCheckBox" name="checkBox_kp_publishKeypoints">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
               <item row="1" column="0">
                <widget class="QSpinBox" name="surf_spinBox_wordsPerImageTarget">
                 <property name="minimum">
@@ -2068,276 +2609,6 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
-               <widget class="QCheckBox" name="checkBox_kp_usingAdaptiveResponseThr">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="1">
-               <widget class="QLabel" name="label_54">
-                <property name="text">
-                 <string>Use adaptive response threshold.</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="0">
-               <widget class="QComboBox" name="comboBox_detector_strategy">
-                <item>
-                 <property name="text">
-                  <string>SURF</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Star</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>SIFT</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>FAST</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-              <item row="4" column="1">
-               <widget class="QLabel" name="label_117">
-                <property name="text">
-                 <string>Keypoint detector.</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="0">
-               <widget class="QComboBox" name="comboBox_descriptor_strategy">
-                <item>
-                 <property name="text">
-                  <string>SURF</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>SIFT</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>BRIEF</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Color</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Hue</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-              <item row="5" column="1">
-               <widget class="QLabel" name="label_24">
-                <property name="text">
-                 <string>Keypoint descriptor.</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="6" column="0">
-               <widget class="QCheckBox" name="checkBox_kp_tfIdfLikelihoodUsed">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="6" column="1">
-               <widget class="QLabel" name="label_82">
-                <property name="text">
-                 <string>Use the tf-idf method to compute the likelihood.</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="0">
-               <widget class="QCheckBox" name="checkBox_kp_parallelized">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="1">
-               <widget class="QLabel" name="label_94">
-                <property name="text">
-                 <string>If the dictionary update and signature creation were parallelized.</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="10" column="0">
-               <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi0">
-                <property name="suffix">
-                 <string> %</string>
-                </property>
-                <property name="decimals">
-                 <number>0</number>
-                </property>
-               </widget>
-              </item>
-              <item row="10" column="1">
-               <widget class="QLabel" name="label_97">
-                <property name="text">
-                 <string>Left ROI ratio (0 = no change).</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="11" column="0">
-               <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi1">
-                <property name="suffix">
-                 <string> %</string>
-                </property>
-                <property name="decimals">
-                 <number>0</number>
-                </property>
-               </widget>
-              </item>
-              <item row="12" column="0">
-               <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi2">
-                <property name="suffix">
-                 <string> %</string>
-                </property>
-                <property name="decimals">
-                 <number>0</number>
-                </property>
-               </widget>
-              </item>
-              <item row="13" column="0">
-               <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi3">
-                <property name="suffix">
-                 <string> %</string>
-                </property>
-                <property name="decimals">
-                 <number>0</number>
-                </property>
-               </widget>
-              </item>
-              <item row="11" column="1">
-               <widget class="QLabel" name="label_98">
-                <property name="text">
-                 <string>Right ROI ratio (0 = no change).</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="12" column="1">
-               <widget class="QLabel" name="label_99">
-                <property name="text">
-                 <string>Top ROI ratio (0 = no change).</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="13" column="1">
-               <widget class="QLabel" name="label_100">
-                <property name="text">
-                 <string>Bottom ROI ratio (0 = no change).</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="9" column="0">
-               <widget class="QLineEdit" name="lineEdit_kp_roi">
-                <property name="readOnly">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="9" column="1">
-               <widget class="QLabel" name="label_101">
-                <property name="text">
-                 <string>ROI ratios [left, right, top, bottom].</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="1">
-               <widget class="QLabel" name="label_104">
-                <property name="text">
-                 <string>If tf-idf weighting is normalized by the words count ratio between compared signatures.</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="0">
-               <widget class="QCheckBox" name="checkBox_kp_tfIdfNormalized">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QLabel" name="label_90">
-                <property name="text">
-                 <string>Publish keypoints.</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="0">
-               <widget class="QCheckBox" name="checkBox_kp_publishKeypoints">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
              </layout>
             </widget>
            </item>
@@ -2361,7 +2632,7 @@ generate the number of words requested.</string>
            <item>
             <widget class="QGroupBox" name="groupBox_detector_surf2">
              <property name="title">
-              <string>SURF detector</string>
+              <string>SURF detector/descriptor</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_15" columnstretch="0,1">
               <item row="0" column="0">
@@ -2424,17 +2695,17 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="4" column="0">
+              <item row="5" column="0">
                <widget class="QCheckBox" name="surf_checkBox_gpuVersion">
                 <property name="enabled">
-                 <bool>true</bool>
+                 <bool>false</bool>
                 </property>
                 <property name="text">
                  <string/>
                 </property>
                </widget>
               </item>
-              <item row="4" column="1">
+              <item row="5" column="1">
                <widget class="QLabel" name="label_48">
                 <property name="text">
                  <string>GPU version (as well for descriptor) - OpenCV must be compiled with CUDA from NVidia, otherwise, the application may crash if set.</string>
@@ -2444,20 +2715,37 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="1">
+              <item row="4" column="1">
                <widget class="QLabel" name="label_49">
                 <property name="text">
                  <string>U-SURF used.</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
+              <item row="4" column="0">
                <widget class="QCheckBox" name="surf_checkBox_upright">
                 <property name="enabled">
                  <bool>true</bool>
                 </property>
                 <property name="text">
                  <string/>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QCheckBox" name="checkBox_surfExtended">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QLabel" name="label_8">
+                <property name="text">
+                 <string>Descriptor extended (true=128, false=64).</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -2471,8 +2759,8 @@ generate the number of words requested.</string>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>0</width>
-               <height>0</height>
+               <width>694</width>
+               <height>545</height>
               </size>
              </property>
             </spacer>
@@ -2610,11 +2898,21 @@ generate the number of words requested.</string>
            <item>
             <widget class="QGroupBox" name="groupBox_detector_sift2">
              <property name="title">
-              <string>SIFT detector</string>
+              <string>SIFT detector/descriptor</string>
              </property>
-             <layout class="QGridLayout" name="gridLayout_19" columnstretch="0,10">
+             <layout class="QGridLayout" name="gridLayout_19" columnstretch="0,1">
               <item row="0" column="0">
-               <widget class="QDoubleSpinBox" name="sift_doubleSpinBox_Thr">
+               <widget class="QSpinBox" name="sift_spinBox_nFeatures"/>
+              </item>
+              <item row="4" column="1">
+               <widget class="QLabel" name="label_129">
+                <property name="text">
+                 <string>Sigma.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QDoubleSpinBox" name="sift_doubleSpinBox_contrastThr">
                 <property name="decimals">
                  <number>6</number>
                 </property>
@@ -2632,27 +2930,54 @@ generate the number of words requested.</string>
                 </property>
                </widget>
               </item>
-              <item row="0" column="1">
+              <item row="2" column="1">
                <widget class="QLabel" name="label_5">
                 <property name="text">
-                 <string>Threshold.</string>
+                 <string>Contrast threshold.</string>
                 </property>
                </widget>
               </item>
-              <item row="1" column="1">
+              <item row="3" column="1">
                <widget class="QLabel" name="label_30">
                 <property name="text">
                  <string>Edge threshold.</string>
                 </property>
                </widget>
               </item>
-              <item row="1" column="0">
+              <item row="3" column="0">
                <widget class="QDoubleSpinBox" name="sift_doubleSpinBox_edgeThr">
                 <property name="singleStep">
                  <double>0.100000000000000</double>
                 </property>
                 <property name="value">
                  <double>10.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QDoubleSpinBox" name="sift_doubleSpinBox_sigma">
+                <property name="singleStep">
+                 <double>0.100000000000000</double>
+                </property>
+                <property name="value">
+                 <double>10.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QSpinBox" name="sift_spinBox_nOctaveLayers"/>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLabel" name="label_130">
+                <property name="text">
+                 <string>nOctaveLayers.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QLabel" name="label_131">
+                <property name="text">
+                 <string>nFeatures.</string>
                 </property>
                </widget>
               </item>
@@ -2718,49 +3043,6 @@ generate the number of words requested.</string>
            </item>
            <item>
             <spacer name="verticalSpacer_21">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>0</width>
-               <height>0</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="page_13">
-          <layout class="QVBoxLayout" name="verticalLayout_17">
-           <item>
-            <widget class="QGroupBox" name="groupBox_descriptor_surf2">
-             <property name="title">
-              <string>SURF descriptor</string>
-             </property>
-             <layout class="QGridLayout" name="gridLayout_17" columnstretch="0,10">
-              <item row="0" column="0">
-               <widget class="QCheckBox" name="checkBox_surfExtended">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QLabel" name="label_8">
-                <property name="text">
-                 <string>Descriptor extended (true=128, false=64).</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <spacer name="verticalSpacer_18">
              <property name="orientation">
               <enum>Qt::Vertical</enum>
              </property>
@@ -3038,6 +3320,26 @@ Lower the ratio -&gt; higher the precision.</string>
               <string>Sensorimotor</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_13" columnstretch="0,1">
+              <item row="4" column="0">
+               <widget class="QDoubleSpinBox" name="sm_audioDBThreshold">
+                <property name="suffix">
+                 <string> dB</string>
+                </property>
+                <property name="decimals">
+                 <number>0</number>
+                </property>
+                <property name="maximum">
+                 <double>1000.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QLabel" name="label_86">
+                <property name="text">
+                 <string>Color table size</string>
+                </property>
+               </widget>
+              </item>
               <item row="2" column="1">
                <widget class="QLabel" name="label_53">
                 <property name="text">
@@ -3055,31 +3357,7 @@ Lower the ratio -&gt; higher the precision.</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="1">
-               <widget class="QLabel" name="label_58">
-                <property name="text">
-                 <string>Use likelihood voting scheme.</string>
-                </property>
-               </widget>
-              </item>
               <item row="3" column="0">
-               <widget class="QCheckBox" name="checkBox_votingScheme">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="1">
-               <widget class="QLabel" name="label_86">
-                <property name="text">
-                 <string>Color table size</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="0">
                <widget class="QComboBox" name="sm_colorTable_comboBox">
                 <property name="currentIndex">
                  <number>0</number>
@@ -3157,6 +3435,53 @@ Lower the ratio -&gt; higher the precision.</string>
               </item>
               <item row="1" column="0">
                <widget class="QCheckBox" name="checkBox_motionMaskUsed">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="1">
+               <widget class="QLabel" name="label_127">
+                <property name="text">
+                 <string>Audio dB threshold (0 dB means no threshold)</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0">
+               <widget class="QCheckBox" name="checkBox_dBIndexing">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="1">
+               <widget class="QLabel" name="label_69">
+                <property name="text">
+                 <string>Decibel (dB) indexing (otherwise it's squared magnitude indexing)</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="1">
+               <widget class="QLabel" name="label_136">
+                <property name="text">
+                 <string>Make audio signature magnitude-invariant</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="0">
+               <widget class="QCheckBox" name="checkBox_audioMagnitudeInvariant">
                 <property name="text">
                  <string/>
                 </property>
@@ -3458,9 +3783,9 @@ Lower the ratio -&gt; higher the precision.</string>
  </widget>
  <customwidgets>
   <customwidget>
-   <class>rtabmap::Plot</class>
+   <class>UPlot</class>
    <extends>QWidget</extends>
-   <header>Plot.h</header>
+   <header>utilite/UPlot.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

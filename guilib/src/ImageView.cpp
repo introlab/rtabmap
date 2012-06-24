@@ -17,7 +17,7 @@
  * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ImageView.h"
+#include "rtabmap/gui/ImageView.h"
 
 #include <QtGui/QWheelEvent>
 #include <QtCore/qmath.h>
@@ -26,7 +26,7 @@
 #include <QtCore/QDir>
 #include <QtGui/QAction>
 #include "utilite/ULogger.h"
-#include "KeypointItem.h"
+#include "rtabmap/gui/KeypointItem.h"
 
 namespace rtabmap {
 
@@ -73,9 +73,21 @@ bool ImageView::isFeaturesShown()
 	return _showFeatures->isChecked();
 }
 
+void ImageView::setFeaturesShown(bool shown)
+{
+	_showFeatures->setChecked(shown);
+	this->updateItemsShown();
+}
+
 bool ImageView::isLinesShown()
 {
 	return _showLines->isChecked();
+}
+
+void ImageView::setLinesShown(bool shown)
+{
+	_showLines->setChecked(shown);
+	this->updateItemsShown();
 }
 
 void ImageView::contextMenuEvent(QContextMenuEvent * e)

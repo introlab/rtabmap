@@ -6,8 +6,7 @@ SET(headers_ui
 	../include/${PROJECT_PREFIX}/gui/PreferencesDialog.h
 	./AboutDialog.h
 	./ConsoleWidget.h
-	./ImageView.h
-	./Plot.h
+	../include/${PROJECT_PREFIX}/gui/ImageView.h
 	./PdfPlot.h
 	./StatsToolBox.h
 	./DetailedProgressDialog.h
@@ -44,7 +43,6 @@ SET(SRC_FILES
 	./KeypointItem.cpp
 	./qtipl.cpp
 	./ImageView.cpp
-	./Plot.cpp
 	./PdfPlot.cpp
 	./StatsToolBox.cpp
 	./DetailedProgressDialog.cpp
@@ -57,6 +55,7 @@ SET(SRC_FILES
 )
 
 SET(INCLUDE_DIRS
+	${PROJECT_SOURCE_DIR}/corelib/include
 	${CMAKE_CURRENT_SOURCE_DIR}/../include
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${UTILITE_INCLUDE_DIRS}
@@ -75,27 +74,19 @@ SET(LIBRARIES
 #include files
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
-IF(WIN32)
-    IF(BUILD_SHARED_LIBS)   
-	   ADD_DEFINITIONS(-DRTABMAP_EXPORTS) 
-	ELSE()
-	   ADD_DEFINITIONS(-DRTABMAP_EXPORTS_STATIC)
-	ENDIF()
-ENDIF(WIN32)
-
-# create an executable file named "AvpdGui" from the source files
-ADD_LIBRARY(guilib ${SRC_FILES})
+# create a library from the source files
+ADD_LIBRARY(rtabmap_guilib ${SRC_FILES})
 # Linking with Qt libraries
-TARGET_LINK_LIBRARIES(guilib corelib ${LIBRARIES})
+TARGET_LINK_LIBRARIES(rtabmap_guilib rtabmap_corelib ${LIBRARIES})
 
 SET_TARGET_PROPERTIES(
-guilib 
+rtabmap_guilib 
 PROPERTIES
  OUTPUT_NAME ${PROJECT_PREFIX}_gui
  INSTALL_NAME_DIR ${CMAKE_INSTALL_PREFIX}/lib
 )
 
-INSTALL(TARGETS guilib
+INSTALL(TARGETS rtabmap_guilib
         RUNTIME DESTINATION bin COMPONENT runtime
         LIBRARY DESTINATION lib COMPONENT devel
         ARCHIVE DESTINATION lib COMPONENT devel)
