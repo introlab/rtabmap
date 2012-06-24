@@ -236,23 +236,24 @@ cv::Mat Camera::takeImage(cv::Mat & descriptors, std::vector<cv::KeyPoint> & key
 {
 	descriptors = cv::Mat();
 	keypoints.clear();
-	if(_imageRate>0)
+	float imageRate = _imageRate;
+	if(imageRate>0)
 	{
-		int sleepTime = (1000.0f/_imageRate - 1000.0f*_frameRateTimer.getElapsedTime());
+		int sleepTime = (1000.0f/imageRate - 1000.0f*_frameRateTimer.getElapsedTime());
 		if(sleepTime > 2)
 		{
 			uSleep(sleepTime-2);
 		}
 
 		// Add precision at the cost of a small overhead
-		while(_frameRateTimer.getElapsedTime() < 1.0/double(_imageRate)-0.000001)
+		while(_frameRateTimer.getElapsedTime() < 1.0/double(imageRate)-0.000001)
 		{
 			//
 		}
 
 		double slept = _frameRateTimer.getElapsedTime();
 		_frameRateTimer.start();
-		UDEBUG("slept=%fs vs target=%fs", slept, 1.0/double(_imageRate));
+		UDEBUG("slept=%fs vs target=%fs", slept, 1.0/double(imageRate));
 	}
 
 	cv::Mat img;
