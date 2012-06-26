@@ -193,7 +193,7 @@ protected:
 	virtual void readSettings(const QString & filePath = QString());
 	virtual void readGuiSettings(const QString & filePath = QString());
 	virtual void readCameraSettings(const QString & filePath = QString());
-	virtual void readCoreSettings(const QString & filePath = QString());
+	virtual bool readCoreSettings(const QString & filePath = QString());
 
 	virtual void writeSettings(const QString & filePath = QString());
 	virtual void writeGuiSettings(const QString & filePath = QString());

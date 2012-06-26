@@ -606,7 +606,12 @@ void PreferencesDialog::readSettings(const QString & filePath)
 	ULOGGER_DEBUG("");
 	readGuiSettings(filePath);
 	readCameraSettings(filePath);
-	readCoreSettings(filePath);
+	if(!readCoreSettings(filePath))
+	{
+		_parameters.clear();
+		_obsoletePanels = kPanelDummy;
+		this->reject();
+	}
 }
 
 void PreferencesDialog::readGuiSettings(const QString & filePath)
@@ -687,7 +692,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.endGroup(); // Database
 }
 
-void PreferencesDialog::readCoreSettings(const QString & filePath)
+bool PreferencesDialog::readCoreSettings(const QString & filePath)
 {
 	UDEBUG("");
 	QString path = getIniFilePath();
@@ -695,6 +700,12 @@ void PreferencesDialog::readCoreSettings(const QString & filePath)
 	{
 		path = filePath;
 	}
+
+	if(!QFile::exists(path))
+	{
+		QMessageBox::information(this, tr("INI file doesn't exist..."), tr("The configuration file \"%1\" does not exist, it will be created with default parameters.").arg(path));
+	}
+
 	QSettings settings(path, QSettings::IniFormat);
 
 	const rtabmap::ParametersMap & parameters = Parameters::getDefaultParameters();
@@ -731,6 +742,7 @@ void PreferencesDialog::readCoreSettings(const QString & filePath)
 		}
 	}
 	settings.endGroup(); // Core
+	return true;
 }
 
 void PreferencesDialog::saveConfigTo()
@@ -927,10 +939,13 @@ void PreferencesDialog::readSettingsEnd()
 	this->readSettings();
 
 	_progressDialog->setValue(1);
-	_progressDialog->setLabelText(tr("Reading GUI settings..."));
+	if(this->isVisible())
+	{
+		_progressDialog->setLabelText(tr("Setup dialog..."));
 
-	this->updatePredictionPlot();
-	this->setupKpRoiPanel();
+		this->updatePredictionPlot();
+		this->setupKpRoiPanel();
+	}
 
 	_progressDialog->setValue(2); // this will make closing...
 }
@@ -1550,7 +1565,12 @@ QList<QGroupBox*> PreferencesDialog::getGroupBoxes()
 void PreferencesDialog::updatePredictionPlot()
 {
 	QStringList values = _ui->lineEdit_bayes_predictionLC->text().split(' ');
-
+	if(values.size() < 2)
+	{
+		UERROR("Error parsing prediction (must have at least 2 items) : %s",
+				_ui->lineEdit_bayes_predictionLC->text().toStdString().c_str());
+		return;
+	}
 	QVector<float> dataX((values.size()-2)*2 + 1);
 	QVector<float> dataY((values.size()-2)*2 + 1);
 	double value;
