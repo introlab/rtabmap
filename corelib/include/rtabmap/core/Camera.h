@@ -103,15 +103,23 @@ public:
 	cv::Mat takeImage();
 	cv::Mat takeImage(cv::Mat & descriptors, std::vector<cv::KeyPoint> & keypoints);
 	virtual bool init() = 0;
+
+	//getters
 	bool isPaused() const {return !this->isRunning();}
 	bool isCapturing() const {return this->isRunning();}
-	unsigned int getImageWidth() const {return _imageWidth;}
-	unsigned int getImageHeight() const {return _imageHeight;}
+	void getImageSize(unsigned int & width, unsigned int & height);
 	float getImageRate() const {return _imageRate;}
 	bool isFeaturesExtracted() const {return _featuresExtracted;}
-	void setFeaturesExtracted(bool featuresExtracted, KeypointDetector::DetectorType detector = KeypointDetector::kDetectorUndef, KeypointDescriptor::DescriptorType descriptor = KeypointDescriptor::kDescriptorUndef);
+
+	//setters
+	void setFeaturesExtracted(bool featuresExtracted,
+			KeypointDetector::DetectorType detector = KeypointDetector::kDetectorUndef,
+			KeypointDescriptor::DescriptorType descriptor = KeypointDescriptor::kDescriptorUndef);
 	void setImageRate(float imageRate) {_imageRate = imageRate;}
 	void setAutoRestart(bool autoRestart) {_autoRestart = autoRestart;}
+	void setImageSize(unsigned int width, unsigned int height);
+
+
 	virtual void parseParameters(const ParametersMap & parameters);
 	int id() const {return _id;}
 
@@ -140,6 +148,7 @@ private:
 	unsigned int _imageHeight;
 	unsigned int _framesDropped;
 	UTimer _frameRateTimer;
+	UMutex _imageSizeMutex;
 
 	UMutex _stateMutex;
 	std::stack<State> _state;
@@ -171,6 +180,7 @@ public:
 	virtual ~CameraImages();
 
 	virtual bool init();
+	std::string getPath() const {return _path;}
 
 protected:
 	virtual cv::Mat captureImage();
@@ -209,7 +219,7 @@ public:
 			unsigned int imageHeight = 0,
 			unsigned int framesDropped = 0,
 			int id = 0);
-	CameraVideo(const std::string & fileName,
+	CameraVideo(const std::string & filePath,
 			float imageRate = 0,
 			bool autoRestart = false,
 			unsigned int imageWidth = 0,
@@ -219,14 +229,15 @@ public:
 	virtual ~CameraVideo();
 
 	virtual bool init();
-	int getUsbDevice() {return _usbDevice;}
+	int getUsbDevice() const {return _usbDevice;}
+	const std::string & getFilePath() const {return _filePath;}
 
 protected:
 	virtual cv::Mat captureImage();
 
 private:
 	// File type
-	std::string _fileName;
+	std::string _filePath;
 
 	cv::VideoCapture _capture;
 	Source _src;

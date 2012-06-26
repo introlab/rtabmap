@@ -78,6 +78,26 @@ void Camera::setFeaturesExtracted(bool featuresExtracted, KeypointDetector::Dete
 	}
 }
 
+void Camera::setImageSize(unsigned int width, unsigned int height)
+{
+	_imageSizeMutex.lock();
+	{
+		_imageWidth = width;
+		_imageHeight = height;
+	}
+	_imageSizeMutex.unlock();
+}
+
+void Camera::getImageSize(unsigned int & width, unsigned int & height)
+{
+	_imageSizeMutex.lock();
+	{
+		width = _imageWidth;
+		height = _imageHeight;
+	}
+	_imageSizeMutex.unlock();
+}
+
 void Camera::parseParameters(const ParametersMap & parameters)
 {
 	UDEBUG("");
@@ -262,17 +282,18 @@ cv::Mat Camera::takeImage(cv::Mat & descriptors, std::vector<cv::KeyPoint> & key
 		UTimer timer;
 		img = this->captureImage();
 		UDEBUG("Time capturing image = %fs", timer.ticks());
-		if(img.depth() != CV_8U)
-		{
-			UWARN("Images should have already 8U depth !?");
-			cv::Mat tmp = img;
-			img = cv::Mat();
-			tmp.convertTo(img, CV_8U);
-			UDEBUG("Time converting image to 8U = %fs", timer.ticks());
-		}
 
 		if(!img.empty())
 		{
+			if(img.depth() != CV_8U)
+			{
+				UWARN("Images should have already 8U depth !?");
+				cv::Mat tmp = img;
+				img = cv::Mat();
+				tmp.convertTo(img, CV_8U);
+				UDEBUG("Time converting image to 8U = %fs", timer.ticks());
+			}
+
 			if(_featuresExtracted && _keypointDetector && _keypointDescriptor)
 			{
 				keypoints = _keypointDetector->generateKeypoints(img);
@@ -424,6 +445,8 @@ cv::Mat CameraImages::captureImage()
 #else
 					img = cv::imread(fullPath.c_str(), -1);
 #endif
+					UDEBUG("width=%d, height=%d, channels=%d, elementSize=%d, total=%d", img.cols, img.rows, img.channels(), img.elemSize(), img.total());
+
 					// FIXME : it seems that some png are incorrectly loaded with opencv c++ interface, where c interface works...
 					if(img.depth() != CV_8U)
 					{
@@ -442,17 +465,21 @@ cv::Mat CameraImages::captureImage()
 		UWARN("Directory is not set, camera must be initialized.");
 	}
 
+	unsigned int w;
+	unsigned int h;
+	this->getImageSize(w, h);
+
 	if(!img.empty() &&
-	   getImageWidth() &&
-	   getImageHeight() &&
-	   getImageWidth() != (unsigned int)img.cols &&
-	   getImageHeight() != (unsigned int)img.rows)
+	   w &&
+	   h &&
+	   w != (unsigned int)img.cols &&
+	   h != (unsigned int)img.rows)
 	{
 		cv::Mat resampled;
-		cv::resize(img, resampled, cv::Size(getImageWidth(), getImageHeight()));
+		cv::resize(img, resampled, cv::Size(w, h));
 		img = resampled;
 	}
-	UDEBUG("");
+
 	return img;
 }
 
@@ -475,7 +502,7 @@ CameraVideo::CameraVideo(int usbDevice,
 
 }
 
-CameraVideo::CameraVideo(const std::string & fileName,
+CameraVideo::CameraVideo(const std::string & filePath,
 						   float imageRate,
 						   bool autoRestart,
 						   unsigned int imageWidth,
@@ -483,7 +510,7 @@ CameraVideo::CameraVideo(const std::string & fileName,
 						   unsigned int framesDropped,
 						   int id) :
 	Camera(imageRate, autoRestart, imageWidth, imageHeight, framesDropped, id),
-	_fileName(fileName),
+	_filePath(filePath),
 	_src(kVideoFile)
 {
 }
@@ -503,18 +530,23 @@ bool CameraVideo::init()
 
 	if(_src == kUsbDevice)
 	{
-		ULOGGER_DEBUG("CameraVideo::init() Usb device initialization on device %d with imgSize=[%d,%d]", _usbDevice, getImageWidth(), getImageHeight());
+		unsigned int w;
+		unsigned int h;
+		this->getImageSize(w, h);
+
+		ULOGGER_DEBUG("CameraVideo::init() Usb device initialization on device %d with imgSize=[%d,%d]", _usbDevice, w, h);
 		_capture.open(_usbDevice);
-		if(getImageWidth() && getImageHeight())
+
+		if(w && h)
 		{
-			_capture.set(CV_CAP_PROP_FRAME_WIDTH, double(getImageWidth()));
-			_capture.set(CV_CAP_PROP_FRAME_HEIGHT, double(getImageHeight()));
+			_capture.set(CV_CAP_PROP_FRAME_WIDTH, double(w));
+			_capture.set(CV_CAP_PROP_FRAME_HEIGHT, double(h));
 		}
 	}
 	else if(_src == kVideoFile)
 	{
-		ULOGGER_DEBUG("Camera: filename=\"%s\"", _fileName.c_str());
-		_capture.open(_fileName.c_str());
+		ULOGGER_DEBUG("Camera: filename=\"%s\"", _filePath.c_str());
+		_capture.open(_filePath.c_str());
 	}
 	else
 	{
@@ -541,14 +573,18 @@ cv::Mat CameraVideo::captureImage()
 		ULOGGER_WARN("The camera must be initialized before requesting an image.");
 	}
 
+	unsigned int w;
+	unsigned int h;
+	this->getImageSize(w, h);
+
 	if(!img.empty() &&
-	   getImageWidth() &&
-	   getImageHeight() &&
-	   getImageWidth() != (unsigned int)img.cols &&
-	   getImageHeight() != (unsigned int)img.rows)
+	   w &&
+	   h &&
+	   w != (unsigned int)img.cols &&
+	   h != (unsigned int)img.rows)
 	{
 		cv::Mat resampled;
-		cv::resize(img, resampled, cv::Size(getImageWidth(), getImageHeight()));
+		cv::resize(img, resampled, cv::Size(w, h));
 		return resampled;
 	}
 	else
