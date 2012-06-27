@@ -168,7 +168,7 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	int j=0;
 	// Recursive Bayes estimation...
 	// STEP 1 - Prediction : Prior*lastPosterior
-	prediction = cvCreateMat(likelihood.size(), likelihood.size(), CV_32FC1);
+	prediction = cv::Mat(likelihood.size(), likelihood.size(), CV_32FC1);
 	if(this->generatePrediction(prediction, memory, uKeys(likelihood)))
 	{
 		ULOGGER_DEBUG("STEP1-generate prior=%fs, rows=%d, cols=%d", timer.ticks(), prediction.rows, prediction.cols);
