@@ -189,6 +189,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionDump_the_prediction_matrix, SIGNAL(triggered()), this, SLOT(dumpThePrediction()));
 	connect(_ui->actionClear_cache, SIGNAL(triggered()), this, SLOT(clearTheCache()));
 	connect(_ui->actionAbout, SIGNAL(triggered()), _aboutDialog , SLOT(exec()));
+	connect(_ui->actionPrint_loop_closure_IDs_to_console, SIGNAL(triggered()), this, SLOT(printLoopClosureIds()));
 	connect(_ui->actionGenerate_map, SIGNAL(triggered()), this , SLOT(generateMap()));
 	connect(_ui->actionGenerate_local_map, SIGNAL(triggered()), this, SLOT(generateLocalMap()));
 	connect(_ui->actionDelete_memory, SIGNAL(triggered()), this , SLOT(deleteMemory()));
@@ -492,6 +493,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		int rejectedHyp = bool(uValue(stat.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
 		float highestHypothesisValue = uValue(stat.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f);
+		int matchId = 0;
 		if(highestHypothesisId > 0)
 		{
 			bool show = true;
@@ -504,6 +506,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					_ui->label_stats_loopClosuresReactivatedDetected->setText(QString::number(_ui->label_stats_loopClosuresReactivatedDetected->text().toInt() + 1));
 				}
 				_ui->label_matchId->setText(QString("Match ID = %1").arg(stat.loopClosureId()));
+				matchId = stat.loopClosureId();
 			}
 			else if(rejectedHyp && highestHypothesisValue >= _preferencesDialog->getLoopThr())
 			{
@@ -547,6 +550,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				}
 			}
 		}
+		_refIds.push_back(stat.refImageId());
+		_loopClosureIds.push_back(matchId);
 
 		if(_ui->imageView_loopClosure->items().size() || stat.loopClosureId()>0)
 		{
@@ -1222,6 +1227,25 @@ void MainWindow::stopDetection()
 	}
 }
 
+void MainWindow::printLoopClosureIds()
+{
+	_ui->dockWidget_console->show();
+	QString msgRef;
+	QString msgLoop;
+	for(int i = 0; i<_refIds.size(); ++i)
+	{
+		msgRef.append(QString::number(_refIds[i]));
+		msgLoop.append(QString::number(_loopClosureIds[i]));
+		if(i < _refIds.size() - 1)
+		{
+			msgRef.append(" ");
+			msgLoop.append(" ");
+		}
+	}
+	_ui->widget_console->appendMsg(QString("IDs = [%1];").arg(msgRef));
+	_ui->widget_console->appendMsg(QString("LoopIDs = [%1];").arg(msgLoop));
+}
+
 void MainWindow::generateMap()
 {
 	if(_graphSavingFileName.isEmpty())
@@ -1395,6 +1419,8 @@ void MainWindow::clearTheCache()
 	_ui->label_stats_loopClosuresDetected->setText("0");
 	_ui->label_stats_loopClosuresReactivatedDetected->setText("0");
 	_ui->label_stats_loopClosuresRejected->setText("0");
+	_refIds.clear();
+	_loopClosureIds.clear();
 }
 
 void MainWindow::updateElapsedTime()

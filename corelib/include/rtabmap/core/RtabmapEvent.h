@@ -57,8 +57,6 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Memory, Signatures_removed,);
 	RTABMAP_STATS(Memory, Signatures_retrieved,);
 	RTABMAP_STATS(Memory, Images_buffered,);
-	RTABMAP_STATS(Memory, Similarities_map,);
-	RTABMAP_STATS(Memory, Loop_closures_map,);
 
 	RTABMAP_STATS(Timing, Memory_update, ms);
 	RTABMAP_STATS(Timing, Cleaning_neighbors, ms);

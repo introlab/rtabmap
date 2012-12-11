@@ -41,7 +41,7 @@ public:
 	virtual ~ConsoleWidget();
 
 public slots:
-	void appendMsg(const QString & msg, int level);
+	void appendMsg(const QString & msg, int level = 1);
 
 signals:
 	void msgReceived(const QString &, int);

@@ -90,6 +90,7 @@ private slots:
 	void startDetection();
 	void pauseDetection();
 	void stopDetection();
+	void printLoopClosureIds();
 	void generateMap();
 	void generateLocalMap();
 	void deleteMemory();
@@ -175,6 +176,9 @@ private:
 
 	QString _graphSavingFileName;
 	QString _autoScreenCaptureFormat;
+
+	QVector<int> _refIds;
+	QVector<int> _loopClosureIds;
 };
 
 }

@@ -102,7 +102,7 @@
      <x>0</x>
      <y>0</y>
      <width>1056</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -137,6 +137,7 @@
     <addaction name="separator"/>
     <addaction name="actionDump_the_memory"/>
     <addaction name="actionDump_the_prediction_matrix"/>
+    <addaction name="actionPrint_loop_closure_IDs_to_console"/>
     <addaction name="actionGenerate_map"/>
     <addaction name="actionGenerate_local_map"/>
     <addaction name="actionReset_the_memory"/>
@@ -510,7 +511,7 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="rtabmap::ConsoleWidget" name="widget" native="true"/>
+      <widget class="rtabmap::ConsoleWidget" name="widget_console" native="true"/>
      </item>
     </layout>
    </widget>
@@ -749,6 +750,11 @@
   <action name="actionGenerate_local_map">
    <property name="text">
     <string>Generate local map...</string>
+   </property>
+  </action>
+  <action name="actionPrint_loop_closure_IDs_to_console">
+   <property name="text">
+    <string>Print loop closure IDs to console</string>
    </property>
   </action>
  </widget>
