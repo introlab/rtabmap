@@ -20,6 +20,7 @@
 #include "AboutDialog.h"
 #include "rtabmap/core/Rtabmap.h"
 #include "ui_aboutDialog.h"
+#include <opencv2/core/version.hpp>
 
 namespace rtabmap {
 
@@ -29,6 +30,7 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui = new Ui_aboutDialog();
 	_ui->setupUi(this);
 	_ui->label_version->setText(Rtabmap::getVersion().c_str());
+	_ui->label_opencv_version->setText(CV_VERSION);
 }
 
 AboutDialog::~AboutDialog()
