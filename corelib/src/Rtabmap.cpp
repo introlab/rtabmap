@@ -732,7 +732,7 @@ void Rtabmap::process()
 			// Adjust the likelihood (with mean and std dev)
 			adjustedLikelihood = rawLikelihood;
 			this->adjustLikelihood(adjustedLikelihood);
-			UWARN("wm=%d rawLikelihood=%d adjust=%d", wm.size(), rawLikelihood.size(), adjustedLikelihood.size());
+
 			// Apply sensory attention
 			likelihood = adjustedLikelihood;
 
