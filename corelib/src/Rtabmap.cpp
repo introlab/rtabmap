@@ -1021,7 +1021,8 @@ void Rtabmap::process()
 	refWordsCount = signature->getWords().size();
 	refUniqueWordsCount = uUniqueKeys(signature->getWords()).size();
 
-	float vpHypothesis = posterior.at(Memory::kIdVirtual);
+	// Posterior is empty if a bad signature is detected
+	float vpHypothesis = posterior.size()?posterior.at(Memory::kIdVirtual):0.0f;
 
 	// only prepare statistics if required or when there is a loop closure
 	Statistics * stat = 0;

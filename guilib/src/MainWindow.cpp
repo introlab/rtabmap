@@ -1259,6 +1259,9 @@ void MainWindow::generateMap()
 		RtabmapEventCmd * event = new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateGraph);
 		event->setStr(path.toStdString());
 		this->post(event); // The event is automatically deleted by the EventsManager...
+
+		_ui->dockWidget_console->show();
+		_ui->widget_console->appendMsg(QString("Graph saved... Tip:\nneato -Tpdf \"%1\" -o out.pdf").arg(_graphSavingFileName).arg(_graphSavingFileName));
 	}
 }
 
@@ -1298,6 +1301,9 @@ void MainWindow::generateLocalMap()
 				QString str = path + QString(";") + QString::number(id) + QString(";") + QString::number(margin);
 				event->setStr(str.toStdString());
 				this->post(event); // The event is automatically deleted by the EventsManager...
+
+				_ui->dockWidget_console->show();
+				_ui->widget_console->appendMsg(QString("Graph saved... Tip:\nneato -Tpdf \"%1\" -o out.pdf").arg(_graphSavingFileName).arg(_graphSavingFileName));
 			}
 		}
 	}
