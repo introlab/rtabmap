@@ -10,11 +10,10 @@
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
-#include "rtabmap/core/Sensor.h"
-#include "rtabmap/core/Actuator.h"
-
 #include <utilite/UThreadNode.h>
 #include <utilite/UTimer.h>
+
+#include <opencv2/core/core.hpp>
 
 #include <set>
 
@@ -25,14 +24,12 @@ class DBDriver;
 class RTABMAP_EXP DBReader : public UThreadNode {
 public:
 	DBReader(const std::string & databasePath,
-			 float frameRate = 0.0f,
-			 const std::set<Sensor::Type> & sensorTypes = std::set<Sensor::Type>(),
-			 const std::set<Actuator::Type> & actuatorTypes = std::set<Actuator::Type>());
+			 float frameRate = 0.0f);
 	virtual ~DBReader();
 
-	bool init();
+	bool init(int startIndex=0);
 	void setFrameRate(float frameRate);
-	void getNextSensorimotorState(std::list<Sensor> & sensors, std::list<Actuator> & actuators);
+	void getNextImage(cv::Mat & sensors);
 
 protected:
 	virtual void mainLoopBegin();
@@ -41,8 +38,6 @@ protected:
 private:
 	std::string _path;
 	float _frameRate;
-	std::set<Sensor::Type> _sensorTypes;
-	std::set<Actuator::Type> _actuatorTypes;
 
 	DBDriver * _dbDriver;
 	UTimer _timer;

@@ -18,11 +18,11 @@
  */
 
 #include "rtabmap/core/VWDictionary.h"
-#include "rtabmap/core/VisualWord.h"
+#include "VisualWord.h"
 
-#include "rtabmap/core/Signature.h"
+#include "Signature.h"
 #include "rtabmap/core/DBDriver.h"
-#include "rtabmap/core/NearestNeighbor.h"
+#include "NearestNeighbor.h"
 #include "rtabmap/core/Parameters.h"
 
 #include "utilite/UtiLite.h"
@@ -231,15 +231,8 @@ void VWDictionary::setNNStrategy(NNStrategy strategy, const ParametersMap & para
 		}
 		switch(strategy)
 		{
-		case kNNKdTree:
-			//FIXME KdTreeNN is broken...
-			//_nn = new KdTreeNN(parameters);
-			//break;
-			UWARN("KdTree OpenCV is broken, setting nearest neighbor strategy to KdForest FLANN...");
-			_nn = new FlannKdTreeNN(parameters);
-			break;
 		case kNNFlannKdTree:
-			_nn = new FlannKdTreeNN(parameters);
+			_nn = new FlannNN(FlannNN::kKDTree, parameters);
 			break;
 		case kNNNaive:
 		default:
@@ -261,13 +254,7 @@ void VWDictionary::setNNStrategy(NNStrategy strategy, const ParametersMap & para
 VWDictionary::NNStrategy VWDictionary::nnStrategy() const
 {
 	NNStrategy strategy = kNNUndef;
-	KdTreeNN * kdTree = dynamic_cast<KdTreeNN*>(_nn);
-	FlannKdTreeNN * flannKdTree = dynamic_cast<FlannKdTreeNN*>(_nn);
-	if(kdTree)
-	{
-		strategy = kNNKdTree;
-	}
-	else if(flannKdTree)
+	if(_nn)
 	{
 		strategy = kNNFlannKdTree;
 	}
@@ -338,7 +325,7 @@ void VWDictionary::update()
 		}
 
 		// Create the kd-Tree
-		_dataTree = cv::Mat::zeros(_visualWords.size(), _dim, CV_32F); // SURF descriptors are CV_32F
+		_dataTree = cv::Mat(_visualWords.size(), _dim, CV_32F); // SURF descriptors are CV_32F
 		std::map<int, VisualWord*>::const_iterator iter = _visualWords.begin();
 		for(unsigned int i=0; i < _visualWords.size(); ++i, ++iter)
 		{
@@ -355,7 +342,7 @@ void VWDictionary::update()
 			}
 		}
 
-		ULOGGER_DEBUG("_mapIndexId.size() = %d, words.size()=%d",_mapIndexId.size(), _visualWords.size());
+		ULOGGER_DEBUG("_mapIndexId.size() = %d, words.size()=%d, _dim=%d",_mapIndexId.size(), _visualWords.size(), _dim);
 		ULOGGER_DEBUG("copying data = %f s", timer.ticks());
 
 		// Update the nearest neighbor algorithm
@@ -453,14 +440,8 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 
 		cv::Mat results(descriptors.rows, k, CV_32SC1); // results index
 		cv::Mat dists;
-		if(_nn->isDist64F())
-		{
-			dists = cv::Mat(descriptors.rows, k, CV_64FC1); // Distance results are CV_64FC1;
-		}
-		else
-		{
-			dists = cv::Mat(descriptors.rows, k, CV_32FC1); // Distance results are CV_32FC1
-		}
+		dists = cv::Mat(descriptors.rows, k, CV_32FC1); // Distance results are CV_32FC1
+
 		cv::Mat newPts; // SURF descriptors are CV_32F
 		if(descriptors.type()!=CV_32F)
 		{
@@ -494,19 +475,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 				for(unsigned int j=0; j<k; ++j)
 				{
 					float dist;
-					if(_nn->isDist64F())
-					{
-						dist = (float)dists.at<double>(i,j);
-					}
-					else
-					{
-						dist = dists.at<float>(i,j);
-					}
-					if(!_nn->isDistSquared())
-					{
-						dist*=dist;
-					}
-
+					dist = dists.at<float>(i,j);
 					fullResults.insert(std::pair<float, int>(dist, uValue(_mapIndexId, results.at<int>(i,j))));
 				}
 			}
@@ -664,16 +633,8 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws, bool 
 			cv::Mat dists;
 			cv::Mat resultsNotIndexed(vws.size(), k, CV_32SC1);
 			cv::Mat distsNotIndexed;
-			if(_nn->isDist64F())
-			{
-				dists = cv::Mat(vws.size(), k, CV_64FC1); // Distance results are CV_64FC1;
-				distsNotIndexed = cv::Mat(vws.size(), k, CV_64FC1); // Distance results are CV_64FC1;
-			}
-			else
-			{
-				dists = cv::Mat(vws.size(), k, CV_32FC1); // Distance results are CV_32FC1
-				distsNotIndexed = cv::Mat(vws.size(), k, CV_32FC1); // Distance results are CV_32FC1
-			}
+			dists = cv::Mat(vws.size(), k, CV_32FC1); // Distance results are CV_32FC1
+			distsNotIndexed = cv::Mat(vws.size(), k, CV_32FC1); // Distance results are CV_32FC1
 			cv::Mat newPts(vws.size(), _dim, CV_32F); // SURF descriptors are CV_32F
 
 			// fill the request matrix
@@ -740,36 +701,12 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws, bool 
 					float dist;
 					if(!_dataTree.empty())
 					{
-						if(_nn->isDist64F())
-						{
-							dist = (float)dists.at<double>(i,j);
-						}
-						else
-						{
-							dist = dists.at<float>(i,j);
-						}
-						if(!_nn->isDistSquared())
-						{
-							dist*=dist;
-						}
-
+						dist = dists.at<float>(i,j);
 						fullResults.insert(std::pair<float, int>(dist, uValue(_mapIndexId, results.at<int>(i,j))));
 					}
 					if(searchInNewlyAddedWords && unreferencedWordsCount)
 					{
-						if(_nn->isDist64F())
-						{
-							dist = (float)distsNotIndexed.at<double>(i,j);
-						}
-						else
-						{
-							dist = distsNotIndexed.at<float>(i,j);
-						}
-						if(!_nn->isDistSquared())
-						{
-							dist*=dist;
-						}
-
+						dist = distsNotIndexed.at<float>(i,j);
 						fullResults.insert(std::pair<float, int>(dist, uValue(mapIndexIdNotIndexed, resultsNotIndexed.at<int>(i,j))));
 					}
 				}
@@ -1038,7 +975,7 @@ void VWDictionary::getCommonWords(unsigned int nbCommonWords, int totalSign, std
 		}
 		else
 		{
-			commonWords = uValues(countMap);
+			commonWords = uValuesList(countMap);
 		}
 		ULOGGER_DEBUG("time = %f s", timer.ticks());
 	}

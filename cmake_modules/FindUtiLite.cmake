@@ -16,7 +16,7 @@
 #
 # 
 
-SET(UtiLite_VERSION_REQUIRED 0.2.14)
+SET(UtiLite_VERSION_REQUIRED 0.3.0)
 
 SET(UtiLite_ROOT)
 
@@ -65,6 +65,12 @@ IF(URESOURCEGENERATOR_EXEC)
 		FIND_LIBRARY(UtiLite_Audio 
 				NAMES utilite_audio
 			 	PATH_SUFFIXES "../lib")
+		FIND_LIBRARY(UtiLite_Cv 
+				NAMES utilite_cv
+			 	PATH_SUFFIXES "../lib")
+		FIND_LIBRARY(UtiLite_Cvqt 
+				NAMES utilite_cvqt
+			 	PATH_SUFFIXES "../lib")
 	
 	ELSE()
 		FIND_PATH(UtiLite_INCLUDE_DIRS 
@@ -80,12 +86,24 @@ IF(URESOURCEGENERATOR_EXEC)
 		FIND_LIBRARY(UtiLite_Audio 
 				NAMES utilite_audio
 				PATHS ${UtiLite_ROOT}/lib)
+		FIND_LIBRARY(UtiLite_Cv 
+				NAMES utilite_cv
+				PATHS ${UtiLite_ROOT}/lib)
+		FIND_LIBRARY(UtiLite_Cvqt 
+				NAMES utilite_cvqt
+				PATHS ${UtiLite_ROOT}/lib)
 	ENDIF()
 	IF(UtiLite_LIBRARIES AND UtiLite_Qt)
 		SET(UtiLite_LIBRARIES ${UtiLite_LIBRARIES} ${UtiLite_Qt})
 	ENDIF(UtiLite_LIBRARIES AND UtiLite_Qt)
 	IF(UtiLite_LIBRARIES AND UtiLite_Audio)
 		SET(UtiLite_LIBRARIES ${UtiLite_LIBRARIES} ${UtiLite_Audio})
+	ENDIF(UtiLite_LIBRARIES AND UtiLite_Audio)
+	IF(UtiLite_LIBRARIES AND UtiLite_Cv)
+		SET(UtiLite_LIBRARIES ${UtiLite_LIBRARIES} ${UtiLite_Cv})
+	ENDIF(UtiLite_LIBRARIES AND UtiLite_Audio)
+	IF(UtiLite_LIBRARIES AND UtiLite_Cvqt)
+		SET(UtiLite_LIBRARIES ${UtiLite_LIBRARIES} ${UtiLite_Cvqt})
 	ENDIF(UtiLite_LIBRARIES AND UtiLite_Audio)
 	
 	IF (UtiLite_INCLUDE_DIRS AND UtiLite_LIBRARIES)

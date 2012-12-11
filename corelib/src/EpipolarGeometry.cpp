@@ -18,9 +18,11 @@
  */
 
 #include "rtabmap/core/EpipolarGeometry.h"
+#include "Signature.h"
 #include "utilite/ULogger.h"
 #include "utilite/UTimer.h"
 #include "utilite/UStl.h"
+#include "utilite/UMath.h"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/core_c.h>
@@ -30,8 +32,74 @@
 namespace rtabmap
 {
 
+/////////////////////////
+// HypVerificatorEpipolarGeo
+/////////////////////////
+EpipolarGeometry::EpipolarGeometry(const ParametersMap & parameters) :
+	_matchCountMinAccepted(Parameters::defaultVhEpMatchCountMin()),
+	_ransacParam1(Parameters::defaultVhEpRansacParam1()),
+	_ransacParam2(Parameters::defaultVhEpRansacParam2())
+{
+	this->parseParameters(parameters);
+}
+
+EpipolarGeometry::~EpipolarGeometry() {
+
+}
+
+void EpipolarGeometry::parseParameters(const ParametersMap & parameters)
+{
+	ParametersMap::const_iterator iter;
+	if((iter=parameters.find(Parameters::kVhEpMatchCountMin())) != parameters.end())
+	{
+		_matchCountMinAccepted = std::atoi((*iter).second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kVhEpRansacParam1())) != parameters.end())
+	{
+		_ransacParam1 = std::atof((*iter).second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kVhEpRansacParam2())) != parameters.end())
+	{
+		_ransacParam2 = std::atof((*iter).second.c_str());
+	}
+}
+
+bool EpipolarGeometry::check(const Signature * ssA, const Signature * ssB)
+{
+	if(ssA == 0 || ssB == 0)
+	{
+		return false;
+	}
+	ULOGGER_DEBUG("id(%d,%d)", ssA->id(), ssB->id());
+
+	std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
+
+	findPairsUnique(ssA->getWords(), ssB->getWords(), pairs);
+
+	if((int)pairs.size()<_matchCountMinAccepted)
+	{
+		return false;
+	}
+
+	std::vector<uchar> status;
+	cv::Mat f = findFFromWords(pairs, status, _ransacParam1, _ransacParam2);
+
+	int inliers = uSum(status);
+	if(inliers < _matchCountMinAccepted)
+	{
+		ULOGGER_DEBUG("Epipolar constraint failed A : not enough inliers (%d/%d), min is %d", inliers, pairs.size(), _matchCountMinAccepted);
+		return false;
+	}
+	else
+	{
+		UDEBUG("inliers = %d/%d", inliers, pairs.size());
+		return true;
+	}
+}
+
+//STATIC STUFF
 //Epipolar geometry
-void findEpipolesFromF(const cv::Mat & fundamentalMatrix, cv::Vec3d & e1, cv::Vec3d & e2)
+void EpipolarGeometry::findEpipolesFromF(const cv::Mat & fundamentalMatrix, cv::Vec3d & e1, cv::Vec3d & e2)
 {
 	if(fundamentalMatrix.rows != 3 || fundamentalMatrix.cols != 3)
 	{
@@ -66,7 +134,7 @@ void findEpipolesFromF(const cv::Mat & fundamentalMatrix, cv::Vec3d & e1, cv::Ve
 //Assuming P0 = [eye(3) zeros(3,1)]
 // x1 and x2 are 2D points
 // return camera matrix P (3x4) matrix
-cv::Mat findPFromF(const cv::Mat & fundamentalMatrix, const cv::Mat & x1, const cv::Mat & x2)
+cv::Mat EpipolarGeometry::findPFromF(const cv::Mat & fundamentalMatrix, const cv::Mat & x1, const cv::Mat & x2)
 {
 
 	if(fundamentalMatrix.rows != 3 || fundamentalMatrix.cols != 3)
@@ -229,7 +297,7 @@ cv::Mat findPFromF(const cv::Mat & fundamentalMatrix, const cv::Mat & x1, const 
 	return p;
 }
 
-cv::Mat findFFromWords(
+cv::Mat EpipolarGeometry::findFFromWords(
 		const std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs, // id, kpt1, kpt2
 		std::vector<uchar> & status,
 		double ransacParam1,
@@ -312,7 +380,7 @@ cv::Mat findFFromWords(
 	return fundamentalMatrix;
 }
 
-void findRTFromP(
+void EpipolarGeometry::findRTFromP(
 		const cv::Mat & p,
 		cv::Mat & r,
 		cv::Mat & t)
@@ -331,7 +399,7 @@ void findRTFromP(
  * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (2,2) (4,4) (6a,6a) (6b,6b)]
  * realPairsCount = 5
  */
-int findPairs(const std::multimap<int, cv::KeyPoint> & wordsA,
+int EpipolarGeometry::findPairs(const std::multimap<int, cv::KeyPoint> & wordsA,
 		const std::multimap<int, cv::KeyPoint> & wordsB,
 		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs)
 {
@@ -359,7 +427,7 @@ int findPairs(const std::multimap<int, cv::KeyPoint> & wordsA,
  * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(2,2) (4,4)]
  * realPairsCount = 5
  */
-int findPairsUnique(const std::multimap<int, cv::KeyPoint> & wordsA,
+int EpipolarGeometry::findPairsUnique(const std::multimap<int, cv::KeyPoint> & wordsA,
 		const std::multimap<int, cv::KeyPoint> & wordsB,
 		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs)
 {
@@ -388,7 +456,7 @@ int findPairsUnique(const std::multimap<int, cv::KeyPoint> & wordsA,
  * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (1,1b) (2,2) (4,4) (6a,6a) (6a,6b) (6b,6a) (6b,6b)]
  * realPairsCount = 5
  */
-int findPairsAll(const std::multimap<int, cv::KeyPoint> & wordsA,
+int EpipolarGeometry::findPairsAll(const std::multimap<int, cv::KeyPoint> & wordsA,
 		const std::multimap<int, cv::KeyPoint> & wordsB,
 		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs)
 {

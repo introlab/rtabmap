@@ -20,7 +20,7 @@
 #pragma once
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
+#include "rtabmap/core/Parameters.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <list>
@@ -29,56 +29,82 @@
 namespace rtabmap
 {
 
-//epipolar geometry
-void RTABMAP_EXP findEpipolesFromF(
-		const cv::Mat & fundamentalMatrix,
-		cv::Vec3d & e1,
-		cv::Vec3d & e2);
+class Signature;
 
-cv::Mat RTABMAP_EXP findPFromF(
-		const cv::Mat & fundamentalMatrix,
-		const cv::Mat & x1,
-		const cv::Mat & x2);
+class RTABMAP_EXP EpipolarGeometry
+{
+public:
+	EpipolarGeometry(const ParametersMap & parameters = ParametersMap());
+	virtual ~EpipolarGeometry();
+	bool check(const Signature * ssA, const Signature * ssB);
+	void parseParameters(const ParametersMap & parameters);
 
-// return fundamental matrix
-// status -> inliers = 1, outliers = 0
-cv::Mat RTABMAP_EXP findFFromWords(
-		const std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs, // id, kpt1, kpt2
-		std::vector<uchar> & status,
-		double ransacParam1 = 3.0,
-		double ransacParam2 = 0.99);
+	int getMatchCountMinAccepted() const {return _matchCountMinAccepted;}
+	double getRansacParam1() const {return _ransacParam1;}
+	double getRansacParam2() const {return _ransacParam2;}
 
-// assume a canonical camera (without K)
-void RTABMAP_EXP findRTFromP(
-		const cv::Mat & p,
-		cv::Mat & r,
-		cv::Mat & t);
+	void setMatchCountMinAccepted(int matchCountMinAccepted) {_matchCountMinAccepted = matchCountMinAccepted;}
+	void setRansacParam1(double ransacParam1) {_ransacParam1 = ransacParam1;}
+	void setRansacParam2(double ransacParam2) {_ransacParam2 = ransacParam2;}
 
-/**
- * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (2,2) (4,4) (6a,6a) (6b,6b)]
- * realPairsCount = 5
- */
-int RTABMAP_EXP findPairs(
-		const std::multimap<int, cv::KeyPoint> & wordsA,
-		const std::multimap<int, cv::KeyPoint> & wordsB,
-		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs);
 
-/**
- * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(2,2) (4,4)]
- * realPairsCount = 5
- */
-int RTABMAP_EXP findPairsUnique(
-		const std::multimap<int, cv::KeyPoint> & wordsA,
-		const std::multimap<int, cv::KeyPoint> & wordsB,
-		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs);
+	// STATIC STUFF
+	//epipolar geometry
+	static void RTABMAP_EXP findEpipolesFromF(
+			const cv::Mat & fundamentalMatrix,
+			cv::Vec3d & e1,
+			cv::Vec3d & e2);
 
-/**
- * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (1,1b) (2,2) (4,4) (6a,6a) (6a,6b) (6b,6a) (6b,6b)]
- * realPairsCount = 5
- */
-int RTABMAP_EXP findPairsAll(
-		const std::multimap<int, cv::KeyPoint> & wordsA,
-		const std::multimap<int, cv::KeyPoint> & wordsB,
-		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs);
+	static cv::Mat RTABMAP_EXP findPFromF(
+			const cv::Mat & fundamentalMatrix,
+			const cv::Mat & x1,
+			const cv::Mat & x2);
+
+	// return fundamental matrix
+	// status -> inliers = 1, outliers = 0
+	static cv::Mat RTABMAP_EXP findFFromWords(
+			const std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs, // id, kpt1, kpt2
+			std::vector<uchar> & status,
+			double ransacParam1 = 3.0,
+			double ransacParam2 = 0.99);
+
+	// assume a canonical camera (without K)
+	static void RTABMAP_EXP findRTFromP(
+			const cv::Mat & p,
+			cv::Mat & r,
+			cv::Mat & t);
+
+	/**
+	 * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (2,2) (4,4) (6a,6a) (6b,6b)]
+	 * realPairsCount = 5
+	 */
+	static int RTABMAP_EXP findPairs(
+			const std::multimap<int, cv::KeyPoint> & wordsA,
+			const std::multimap<int, cv::KeyPoint> & wordsB,
+			std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs);
+
+	/**
+	 * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(2,2) (4,4)]
+	 * realPairsCount = 5
+	 */
+	static int RTABMAP_EXP findPairsUnique(
+			const std::multimap<int, cv::KeyPoint> & wordsA,
+			const std::multimap<int, cv::KeyPoint> & wordsB,
+			std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs);
+
+	/**
+	 * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (1,1b) (2,2) (4,4) (6a,6a) (6a,6b) (6b,6a) (6b,6b)]
+	 * realPairsCount = 5
+	 */
+	static int RTABMAP_EXP findPairsAll(
+			const std::multimap<int, cv::KeyPoint> & wordsA,
+			const std::multimap<int, cv::KeyPoint> & wordsB,
+			std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs);
+
+private:
+	int _matchCountMinAccepted;
+	double _ransacParam1;
+	double _ransacParam2;
+};
 
 } // namespace rtabmap

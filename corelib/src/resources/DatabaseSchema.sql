@@ -1,5 +1,5 @@
 -- *******************************************************************
---  construct_avpd_db: Script for creating the database
+--  DatabaseSchema: Script for creating the database
 --   Usage:
 --       $ sqlite3 LTM.db < DatabaseSchema.sql
 --
@@ -8,58 +8,35 @@
 -- *******************************************************************
 -- CLEAN
 -- *******************************************************************
-/*DROP TABLE Node;
-DROP TABLE Link;
-DROP TABLE Sensor;
-DROP TABLE Actuator;
-DROP TABLE Word;
-DROP TABLE Map_Node_Word;
-DROP TABLE Statistics;
-DROP TABLE StatisticsSurf;*/
+/*DROP TABLE Node;*/
 
 -- *******************************************************************
 -- CREATE
 -- *******************************************************************
 CREATE TABLE Node (
 	id INTEGER NOT NULL,
-	type INTEGER NOT NULL, -- 0=Keypoint, 1=Sensor
 	weight INTEGER,
 	time_enter DATE,
 	PRIMARY KEY (id)
 );
 
-CREATE TABLE Sensor (
+CREATE TABLE Image (
 	id INTEGER NOT NULL,
-	num INTEGER NOT NULL,
-	type INTEGER NOT NULL, -- kTypeImage=0, kTypeImageFeatures2d, kTypeAudio, kTypeAudioFreq, kTypeAudioFreqSqrdMagn, kTypeJointState, kTypeNotSpecified
-	data BLOB, -- PostProcessed data (indexed integers)
 	raw_width INTEGER NOT NULL,
 	raw_height INTEGER NOT NULL,
 	raw_data_type INTEGER NOT NULL,
 	raw_compressed CHAR NOT NULL,
 	raw_data BLOB,
-	PRIMARY KEY (id, num)
+	time_enter DATE,
+	PRIMARY KEY (id)
 );
 
 CREATE TABLE Link (
 	from_id INTEGER NOT NULL,
 	to_id INTEGER NOT NULL,
 	type INTEGER NOT NULL, -- neighbor=0, loop=1, child=2
-	actuator_id INTEGER,
-	base_ids BLOB,
 	FOREIGN KEY (from_id) REFERENCES Node(id),
 	FOREIGN KEY (to_id) REFERENCES Node(id)
-);
-
-CREATE TABLE Actuator (
-	id INTEGER NOT NULL,
-	num INTEGER NOT NULL,
-	type INTEGER NOT NULL, -- kTypeTwist=0, kTypeNotSpecified
-	width INTEGER NOT NULL,
-	height INTEGER NOT NULL,
-	data_type INTEGER NOT NULL,
-	data BLOB,
-	PRIMARY KEY (id, num)
 );
 
 -- 
@@ -92,17 +69,17 @@ CREATE TABLE Statistics (
 );
 
 CREATE TABLE StatisticsDictionary (
-	dictionary_size INTEGER,
-	time_enter DATE
+        dictionary_size INTEGER,
+        time_enter DATE
 );
 
 -- *******************************************************************
 -- TRIGGERS
 -- *******************************************************************
 CREATE TRIGGER insert_Map_Node_Word BEFORE INSERT ON Map_Node_Word 
-WHEN NOT EXISTS (SELECT type FROM Node WHERE Node.id = NEW.node_id AND type=0)
+WHEN NOT EXISTS (SELECT Node.id FROM Node WHERE Node.id = NEW.node_id)
 BEGIN
- SELECT RAISE(ABORT, 'Keypoint type constraint failed');
+ SELECT RAISE(ABORT, 'Foreign key constraint failed in Map_Node_Word table');
 END;
 
  --   Creating a trigger for time_enter
@@ -121,16 +98,10 @@ BEGIN
  UPDATE Statistics SET time_enter = DATETIME('NOW')  WHERE rowid = new.rowid;
 END;
 
-CREATE TRIGGER insert_StatisticsDictionary_timeEnter AFTER INSERT ON StatisticsDictionary
-BEGIN
- UPDATE StatisticsDictionary SET time_enter = DATETIME('NOW')  WHERE rowid = new.rowid;
-END;
-
 
 -- *******************************************************************
 -- INDEXES
 -- *******************************************************************
 CREATE INDEX IDX_Map_Node_Word_node_id on Map_Node_Word (node_id);
-CREATE INDEX IDX_Sensor_Id on Sensor (id);
 CREATE INDEX IDX_Link_from_id on Link (from_id);
 

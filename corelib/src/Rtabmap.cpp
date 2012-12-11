@@ -20,21 +20,15 @@
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/Version.h"
-#include "rtabmap/core/Sensor.h"
-#include "rtabmap/core/Actuator.h"
-#include "rtabmap/core/SensorimotorEvent.h"
-#include "rtabmap/core/KeypointDetector.h"
+#include "rtabmap/core/Features2d.h"
 
 #include "rtabmap/core/Camera.h"
-#include "rtabmap/core/VWDictionary.h"
-#include "rtabmap/core/Signature.h"
-#include "rtabmap/core/Micro.h"
+#include "Signature.h"
 
-#include "rtabmap/core/VerifyHypotheses.h"
+#include "rtabmap/core/EpipolarGeometry.h"
 
-#include "rtabmap/core/KeypointMemory.h"
-#include "rtabmap/core/SMMemory.h"
-#include "rtabmap/core/BayesFilter.h"
+#include "rtabmap/core/Memory.h"
+#include "BayesFilter.h"
 
 #include <utilite/UtiLite.h>
 
@@ -43,12 +37,20 @@
 #include <stdlib.h>
 #include <set>
 
-#define DB_TYPE "sqlite3"
-
 #define LOG_F "LogF.txt"
 #define LOG_I "LogI.txt"
 
 #define GRAPH_FILE_NAME "Graph.dot"
+
+//
+//
+//
+// =======================================================
+// MAIN LOOP, see method "void Rtabmap::process();" below.
+// =======================================================
+//
+//
+//
 
 namespace rtabmap
 {
@@ -57,34 +59,27 @@ const char * Rtabmap::kDefaultDatabaseName = "LTM.db";
 
 Rtabmap::Rtabmap() :
 	_publishStats(Parameters::defaultRtabmapPublishStats()),
-	_publishRawData(Parameters::defaultRtabmapPublishRawData()),
+	_publishImage(Parameters::defaultRtabmapPublishImage()),
 	_publishPdf(Parameters::defaultRtabmapPublishPdf()),
 	_publishLikelihood(Parameters::defaultRtabmapPublishLikelihood()),
 	_publishKeypoints(Parameters::defaultKpPublishKeypoints()),
-	_publishMasks(Parameters::defaultSMPublishMasks()),
 	_maxTimeAllowed(Parameters::defaultRtabmapTimeThr()), // 700 ms
 	_maxMemoryAllowed(Parameters::defaultRtabmapMemoryThr()), // 0=inf
-	_sensorsBufferMaxSize(Parameters::defaultRtabmapSMStateBufferSize()),
+	_imageBufferMaxSize(Parameters::defaultRtabmapImageBufferSize()),
 	_loopThr(Parameters::defaultRtabmapLoopThr()),
 	_loopRatio(Parameters::defaultRtabmapLoopRatio()),
-	_retrievalThr(Parameters::defaultRtabmapRetrievalThr()),
 	_maxRetrieved(Parameters::defaultRtabmapMaxRetrieved()),
-	_selectionNeighborhoodSummationUsed(Parameters::defaultRtabmapSelectionNeighborhoodSummationUsed()),
-	_selectionLikelihoodUsed(Parameters::defaultRtabmapSelectionLikelihoodUsed()),
-	_actionsSentRejectHyp(Parameters::defaultRtabmapActionsSentRejectHyp()),
-	_confidenceThr(Parameters::defaultRtabmapConfidenceThr()),
-	_likelihoodStdDevRemoved(Parameters::defaultRtabmapLikelihoodStdDevRemoved()),
 	_likelihoodNullValuesIgnored(Parameters::defaultRtabmapLikelihoodNullValuesIgnored()),
+	_statisticLogsBufferedInRAM(Parameters::defaultRtabmapStatisticLogsBufferedInRAM()),
 	_lcHypothesisId(0),
-	_reactivateId(0),
+	_retrievedId(0),
 	_lastLcHypothesisValue(0),
 	_lastLoopClosureId(0),
-	_vhStrategy(0),
+	_epipolarGeometry(0),
 	_bayesFilter(0),
 	_memory(0),
 	_foutFloat(0),
-	_foutInt(0),
-	_graphFileName(GRAPH_FILE_NAME)
+	_foutInt(0)
 {
 	ULOGGER_DEBUG("Working directory=%s", Parameters::defaultRtabmapWorkingDirectory().c_str());
 	this->setWorkingDirectory(Parameters::defaultRtabmapWorkingDirectory());
@@ -98,6 +93,7 @@ Rtabmap::~Rtabmap() {
 	// Stop the thread first
 	join(true);
 
+	flushStatisticLogs();
 	if(_foutFloat)
 	{
 		fclose(_foutFloat);
@@ -120,6 +116,7 @@ std::string Rtabmap::getVersion()
 
 void Rtabmap::setupLogFiles(bool overwrite)
 {
+	flushStatisticLogs();
 	// Log files
 	if(_foutFloat)
 	{
@@ -153,13 +150,35 @@ void Rtabmap::setupLogFiles(bool overwrite)
 	ULOGGER_DEBUG("Log file (float)=%s", (_wDir+LOG_F).c_str());
 }
 
+void Rtabmap::flushStatisticLogs()
+{
+	if(_foutFloat && _bufferedLogsF.size())
+	{
+		UDEBUG("_bufferedLogsF.size=%d", _bufferedLogsF.size());
+		for(std::list<std::string>::iterator iter = _bufferedLogsF.begin(); iter!=_bufferedLogsF.end(); ++iter)
+		{
+			fprintf(_foutFloat, "%s", iter->c_str());
+		}
+		_bufferedLogsF.clear();
+	}
+	if(_foutInt && _bufferedLogsI.size())
+	{
+		UDEBUG("_bufferedLogsI.size=%d", _bufferedLogsI.size());
+		for(std::list<std::string>::iterator iter = _bufferedLogsI.begin(); iter!=_bufferedLogsI.end(); ++iter)
+		{
+			fprintf(_foutInt, "%s", iter->c_str());
+		}
+		_bufferedLogsI.clear();
+	}
+}
+
 void Rtabmap::releaseAllStrategies()
 {
 	ULOGGER_DEBUG("");
-	if(_vhStrategy)
+	if(_epipolarGeometry)
 	{
-		delete _vhStrategy;
-		_vhStrategy = 0;
+		delete _epipolarGeometry;
+		_epipolarGeometry = 0;
 	}
 	if(_memory)
 	{
@@ -184,7 +203,7 @@ void Rtabmap::pushNewState(State newState, const ParametersMap & parameters)
 	}
 	_stateMutex.unlock();
 
-	_sensorimotorAdded.release();
+	_imageAdded.release();
 }
 
 void Rtabmap::init(const ParametersMap & parameters)
@@ -234,9 +253,9 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		_publishStats = uStr2Bool(iter->second.c_str());
 	}
-	if((iter=parameters.find(Parameters::kRtabmapPublishRawData())) != parameters.end())
+	if((iter=parameters.find(Parameters::kRtabmapPublishImage())) != parameters.end())
 	{
-		_publishRawData = uStr2Bool(iter->second.c_str());
+		_publishImage = uStr2Bool(iter->second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kRtabmapPublishPdf())) != parameters.end())
 	{
@@ -249,10 +268,6 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	if((iter=parameters.find(Parameters::kKpPublishKeypoints())) != parameters.end())
 	{
 		_publishKeypoints = uStr2Bool(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSMPublishMasks())) != parameters.end())
-	{
-		_publishMasks = uStr2Bool(iter->second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kRtabmapTimeThr())) != parameters.end())
 	{
@@ -270,13 +285,9 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		_loopRatio = std::atof(iter->second.c_str());
 	}
-	if((iter=parameters.find(Parameters::kRtabmapRetrievalThr())) != parameters.end())
+	if((iter=parameters.find(Parameters::kRtabmapImageBufferSize())) != parameters.end())
 	{
-		_retrievalThr = std::atof(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kRtabmapSMStateBufferSize())) != parameters.end())
-	{
-		_sensorsBufferMaxSize = std::atoi(iter->second.c_str());
+		_imageBufferMaxSize = std::atoi(iter->second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
 	{
@@ -286,59 +297,25 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		_maxRetrieved = std::atoi(iter->second.c_str());
 	}
-	if((iter=parameters.find(Parameters::kRtabmapSelectionNeighborhoodSummationUsed())) != parameters.end())
-	{
-		_selectionNeighborhoodSummationUsed = uStr2Bool(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kRtabmapSelectionLikelihoodUsed())) != parameters.end())
-	{
-		_selectionLikelihoodUsed = uStr2Bool(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kRtabmapActionsSentRejectHyp())) != parameters.end())
-	{
-		_actionsSentRejectHyp = uStr2Bool(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kRtabmapConfidenceThr())) != parameters.end())
-	{
-		_confidenceThr = std::atof(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kRtabmapLikelihoodStdDevRemoved())) != parameters.end())
-	{
-		_likelihoodStdDevRemoved = uStr2Bool(iter->second.c_str());
-	}
 	if((iter=parameters.find(Parameters::kRtabmapLikelihoodNullValuesIgnored())) != parameters.end())
 	{
 		_likelihoodNullValuesIgnored = uStr2Bool(iter->second.c_str());
 	}
-	int signatureType = -1;
-	if((iter=parameters.find(Parameters::kMemSignatureType())) != parameters.end())
+	if((iter=parameters.find(Parameters::kRtabmapStatisticLogsBufferedInRAM())) != parameters.end())
 	{
-		signatureType = std::atoi(iter->second.c_str());
+		_statisticLogsBufferedInRAM = uStr2Bool(iter->second.c_str());
 	}
 
 	// By default, we create our strategies if they are not already created.
 	// If they already exists, we check the parameters if a change is requested
 
-	if(!_memory ||
-			(signatureType>=0 && ((dynamic_cast<KeypointMemory*>(_memory) && signatureType!=0) || (dynamic_cast<SMMemory*>(_memory) && signatureType!=1))))
+	if(!_memory)
 	{
 		UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
 		UEventsManager::post(new RtabmapEventInit("Creating memory..."));
-		if(_memory)
-		{
-			delete _memory;
-			_memory = 0;
-		}
-		if(signatureType == 1)
-		{
-			_memory = new SMMemory(parameters);
-		}
-		else
-		{
-			_memory = new KeypointMemory(parameters);
-		}
+		_memory = new Memory(parameters);
 		UEventsManager::post(new RtabmapEventInit("Creating memory, done!"));
-		_memory->init(DB_TYPE, _wDir + kDefaultDatabaseName, false, parameters);
+		_memory->init(_wDir + kDefaultDatabaseName, false, parameters);
 		UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
 	}
 	else
@@ -352,31 +329,18 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		vhStrategy = (VhStrategy)std::atoi((*iter).second.c_str());
 	}
-	if(!_vhStrategy ||
-	   (vhStrategy!=kVhUndef && ( (vhStrategy == kVhSim && !dynamic_cast<HypVerificatorSim*>(_vhStrategy)) ||
-							      (vhStrategy == kVhEpipolar && !dynamic_cast<HypVerificatorEpipolarGeo*>(_vhStrategy)) ) ))
+	if(!_epipolarGeometry && vhStrategy == kVhEpipolar)
 	{
-		if(_vhStrategy)
-		{
-			delete _vhStrategy;
-			_vhStrategy = 0;
-		}
-		switch(vhStrategy)
-		{
-		case kVhEpipolar:
-			_vhStrategy = new HypVerificatorEpipolarGeo(parameters);
-			break;
-		case kVhSim:
-			_vhStrategy = new HypVerificatorSim(parameters);
-			break;
-		default:
-			_vhStrategy = new HypVerificator(parameters);
-			break;
-		}
+		_epipolarGeometry = new EpipolarGeometry(parameters);
 	}
-	else if(_vhStrategy)
+	else if(_epipolarGeometry && vhStrategy == kVhNone)
 	{
-		_vhStrategy->parseParameters(parameters);
+		delete _epipolarGeometry;
+		_epipolarGeometry = 0;
+	}
+	else if(_epipolarGeometry)
+	{
+		_epipolarGeometry->parseParameters(parameters);
 	}
 
 	// Bayes filter, create one if not exists
@@ -397,7 +361,7 @@ int Rtabmap::getLoopClosureId() const
 
 int Rtabmap::getReactivatedId() const
 {
-	return _reactivateId;
+	return _retrievedId;
 }
 
 int Rtabmap::getLastSignatureId() const
@@ -462,17 +426,17 @@ int Rtabmap::getTotalMemSize() const
 
 void Rtabmap::clearBufferedSensors()
 {
-	_sensorimotorMutex.lock();
+	_imageMutex.lock();
 	{
-		_sensorimotorBuffer.clear();
+		_imageBuffer.clear();
 	}
-	_sensorimotorMutex.unlock();
+	_imageMutex.unlock();
 }
 
 
 void Rtabmap::mainLoopBegin()
 {
-	if(!_memory || !_vhStrategy || !_bayesFilter)
+	if(!_memory || !_bayesFilter)
 	{
 		ULOGGER_DEBUG("Rtabmap thread started without all strategies defined...");
 		//this->killSafely();
@@ -484,7 +448,7 @@ void Rtabmap::mainLoopKill()
 	this->clearBufferedSensors();
 
 	// this will post the newData semaphore
-	_sensorimotorAdded.release();
+	_imageAdded.release();
 }
 
 void Rtabmap::mainLoop()
@@ -531,7 +495,14 @@ void Rtabmap::mainLoop()
 		if(_memory)
 		{
 			_memory->joinTrashThread(); // make sure the trash is flushed
-			_memory->generateGraph(this->getGraphFileName());
+			_memory->generateGraph(parameters.at("path"));
+		}
+		break;
+	case kStateGeneratingLocalGraph:
+		if(_memory)
+		{
+			_memory->joinTrashThread(); // make sure the trash is flushed
+			this->generateLocalGraph(parameters.at("path"), atoi(parameters.at("id").c_str()), atoi(parameters.at("margin").c_str()));
 		}
 		break;
 	case kStateDeletingMemory:
@@ -551,7 +522,7 @@ void Rtabmap::resetMemory(bool dbOverwritten)
 	if(_memory)
 	{
 		UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
-		_memory->init(DB_TYPE, _wDir + kDefaultDatabaseName, dbOverwritten);
+		_memory->init(_wDir + kDefaultDatabaseName, dbOverwritten);
 		UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
 		if(_bayesFilter)
 		{
@@ -565,7 +536,7 @@ void Rtabmap::resetMemory(bool dbOverwritten)
 		UFile::erase(_wDir + kDefaultDatabaseName);
 	}
 	this->clearBufferedSensors();
-	_reactivateId = 0;
+	_retrievedId = 0;
 	_lastLcHypothesisValue = 0;
 	this->setupLogFiles(dbOverwritten);
 }
@@ -574,49 +545,10 @@ void Rtabmap::handleEvent(UEvent* event)
 {
 	if(this->isRunning() && event->getClassName().compare("CameraEvent") == 0)
 	{
-		std::list<Sensor> sensors;
 		CameraEvent * e = (CameraEvent*)event;
-		if(e->getCode() == CameraEvent::kCodeFeatures)
+		if(e->getCode() == CameraEvent::kCodeImage || e->getCode() == CameraEvent::kCodeFeatures)
 		{
-			sensors.push_back(Sensor(e->descriptors(), e->keypoints(), e->cameraId()));
-			sensors.push_back(Sensor(e->image(), Sensor::kTypeImage, e->cameraId()));
-		}
-		else if(e->getCode() == CameraEvent::kCodeImage)
-		{
-			sensors.push_back(Sensor(e->image(), Sensor::kTypeImage, e->cameraId()));
-		}
-		if(sensors.size())
-		{
-			this->addSensorimotor(sensors, std::list<Actuator>());
-		}
-	}
-	else if(this->isRunning() && event->getClassName().compare("MicroEvent") == 0)
-	{
-		std::list<Sensor> sensors;
-		MicroEvent * e = (MicroEvent*)event;
-		if(e->getCode() == MicroEvent::kTypeFrameFreqSqrdMagn)
-		{
-			sensors.push_back(Sensor(e->frame(), Sensor::kTypeAudioFreqSqrdMagn, e->microId()));
-		}
-		else if(e->getCode() == MicroEvent::kTypeFrameFreq)
-		{
-			sensors.push_back(Sensor(e->frame(), Sensor::kTypeAudioFreq, e->microId()));
-		}
-		else if(e->getCode() == MicroEvent::kTypeFrame)
-		{
-			sensors.push_back(Sensor(e->frame(), Sensor::kTypeAudio, e->microId()));
-		}
-		if(sensors.size())
-		{
-			this->addSensorimotor(sensors, std::list<Actuator>());
-		}
-	}
-	else if(this->isRunning() && event->getClassName().compare("SensorimotorEvent") == 0)
-	{
-		SensorimotorEvent * e = (SensorimotorEvent*)event;
-		if(e->getCode() == SensorimotorEvent::kTypeData)
-		{
-			this->addSensorimotor(e->sensors(), e->actuators());
+			this->addImage(e->image());
 		}
 	}
 	else if(event->getClassName().compare("RtabmapEventCmd") == 0)
@@ -651,9 +583,23 @@ void Rtabmap::handleEvent(UEvent* event)
 		{
 			if(_memory && !rtabmapEvent->getStr().empty())
 			{
-				this->setGraphFileName(rtabmapEvent->getStr());
 				ULOGGER_DEBUG("CMD_GENERATE_GRAPH");
-				pushNewState(kStateGeneratingGraph);
+				ParametersMap param;
+				param.insert(ParametersPair("path", rtabmapEvent->getStr()));
+				pushNewState(kStateGeneratingGraph, param);
+			}
+		}
+		else if(cmd == RtabmapEventCmd::kCmdGenerateLocalGraph)
+		{
+			std::list<std::string> values = uSplit(rtabmapEvent->getStr(), ';');
+			if(_memory && values.size() == 3)
+			{
+				ULOGGER_DEBUG("CMD_GENERATE_LOCAL_GRAPH");
+				ParametersMap param;
+				param.insert(ParametersPair("path", *values.begin()));
+				param.insert(ParametersPair("id", *(++values.begin())));
+				param.insert(ParametersPair("margin", *values.rbegin()));
+				pushNewState(kStateGeneratingLocalGraph, param);
 			}
 		}
 		else if(cmd == RtabmapEventCmd::kCmdDeleteMemory)
@@ -674,6 +620,9 @@ void Rtabmap::handleEvent(UEvent* event)
 	}
 }
 
+//============================================================
+// MAIN LOOP
+//============================================================
 void Rtabmap::process()
 {
 	UDEBUG("");
@@ -686,12 +635,12 @@ void Rtabmap::process()
 	double timeMemoryUpdate = 0;
 	double timeCleaningNeighbors = 0;
 	double timeReactivations = 0;
+	double timeAddLoopClosureLink = 0;
 	double timeRetrievalDbAccess = 0;
 	double timeLikelihoodCalculation = 0;
 	double timePosteriorCalculation = 0;
 	double timeHypothesesCreation = 0;
 	double timeHypothesesValidation = 0;
-	double timeActionSelection = 0;
 	double timeRealTimeLimitReachedProcess = 0;
 	double timeMemoryCleanup = 0;
 	double timeEmptyingTrash = 0;
@@ -703,10 +652,12 @@ void Rtabmap::process()
 	float hypothesisRatio = 0.0f; // Only used for statistics
 	bool rejectedHypothesis = false;
 
-	std::map<int, float> likelihood;
+	std::map<int, float> rawLikelihood;
 	std::map<int, float> adjustedLikelihood;
+	std::map<int, float> likelihood;
+	std::map<int, int> weights;
 	std::map<int, float> posterior;
-	std::pair<int, float> hypothesis;
+	std::pair<int, float> hypothesis(0, 0.0f);
 	std::list<std::pair<int, float> > reactivateHypotheses;
 
 	std::map<int, int> childCount;
@@ -714,13 +665,9 @@ void Rtabmap::process()
 
 	const Signature * signature = 0;
 	const Signature * sLoop = 0;
-	std::list<Sensor> sensors;
-	std::list<Actuator> actuators;
+	Image image;
 
 	_lcHypothesisId = 0;
-	_actuators.clear();
-	int neighborSelected = _reactivateId;
-	int actionsChosen = 0; // for stats
 
 	std::set<int> immunizedLocations;
 
@@ -728,26 +675,26 @@ void Rtabmap::process()
 	// Wait for an image...
 	//============================================================
 	ULOGGER_INFO("getting data...");
-	this->getSensorimotor(sensors, actuators);
-	if(!sensors.size())
+	this->getImage(image);
+	if(image.empty())
 	{
-		ULOGGER_INFO("sensors list is null...");
+		ULOGGER_INFO("image is null...");
 		return;
 	}
 
 	timer.start();
 	timerTotal.start();
 
-	if(!_memory || !_vhStrategy || !_bayesFilter)
+	if(!_memory || !_bayesFilter)
 	{
 		UFATAL("RTAB-Map is not initialized, data received is ignored.");
 	}
 
 	//============================================================
-	// Memory Update : Location creation + Rehearsal
+	// Memory Update : Location creation + Add to STM + Weight Update (Rehearsal)
 	//============================================================
 	ULOGGER_INFO("Updating memory...");
-	if(!_memory->update(sensors, actuators, memUpdateStats))
+	if(!_memory->update(image, memUpdateStats))
 	{
 		return;
 	}
@@ -777,14 +724,17 @@ void Rtabmap::process()
 			// with all images contained in the working memory + reactivated.
 			//============================================================
 			ULOGGER_INFO("computing likelihood...");
-			float maximumScore;
 			const std::set<int> & wm = _memory->getWorkingMem();
-			std::list<int> signaturesToCompare(wm.begin(), wm.end());
-			likelihood = _memory->computeLikelihood(signature, signaturesToCompare, maximumScore);
 
-			// Adjust the likelihood
-			adjustedLikelihood = likelihood;
+			std::list<int> signaturesToCompare(wm.begin(), wm.end());
+			rawLikelihood = _memory->computeLikelihood(signature, signaturesToCompare);
+
+			// Adjust the likelihood (with mean and std dev)
+			adjustedLikelihood = rawLikelihood;
 			this->adjustLikelihood(adjustedLikelihood);
+			UWARN("wm=%d rawLikelihood=%d adjust=%d", wm.size(), rawLikelihood.size(), adjustedLikelihood.size());
+			// Apply sensory attention
+			likelihood = adjustedLikelihood;
 
 			timeLikelihoodCalculation = timer.ticks();
 			ULOGGER_INFO("timeLikelihoodCalculation=%fs",timeLikelihoodCalculation);
@@ -796,7 +746,7 @@ void Rtabmap::process()
 			ULOGGER_INFO("getting posterior...");
 
 			// Compute the posterior
-			posterior = _bayesFilter->computePosterior(_memory, adjustedLikelihood);
+			posterior = _bayesFilter->computePosterior(_memory, likelihood);
 			timePosteriorCalculation = timer.ticks();
 			ULOGGER_INFO("timePosteriorCalculation=%fs",timePosteriorCalculation);
 
@@ -811,18 +761,18 @@ void Rtabmap::process()
 			ULOGGER_INFO("creating hypotheses...");
 			if(posterior.size())
 			{
-				if(posterior.size())
+				hypothesis.first = 0;
+				hypothesis.second = 0.0f;
+				for(std::map<int, float>::const_reverse_iterator iter = posterior.rbegin(); iter != posterior.rend(); ++iter)
 				{
-					hypothesis = this->selectHypothesis(posterior,
-							adjustedLikelihood,
-							_selectionNeighborhoodSummationUsed,
-							_selectionLikelihoodUsed);
-					// When using a virtual place, use sum of LC probabilities (1 - virtual place hypothesis).
-					if(posterior.begin()->first == Memory::kIdVirtual)
+					if(iter->first > 0 && iter->second > hypothesis.second)
 					{
-						hypothesis.second = 1-posterior.begin()->second;
+						hypothesis.first = iter->first;
+						hypothesis.second = iter->second;
 					}
 				}
+				// With the virtual place, use sum of LC probabilities (1 - virtual place hypothesis).
+				hypothesis.second = 1-posterior.begin()->second;
 			}
 			timeHypothesesCreation = timer.ticks();
 			ULOGGER_INFO("Hypothesis=%d, value=%f, timeHypothesesCreation=%fs", hypothesis.first, hypothesis.second, timeHypothesesCreation);
@@ -832,17 +782,15 @@ void Rtabmap::process()
 				// Loop closure Threshold
 				// When _loopThr=0, accept loop closure if the hypothesis is over
 				// the virtual (new) place hypothesis.
-				if((_loopThr > 0 && hypothesis.second >= _loopThr) ||
-				   (_loopThr == 0 && posterior.begin()->first == Memory::kIdVirtual && hypothesis.second > posterior.begin()->second))
+				if(hypothesis.second >= _loopThr)
 				{
 					//============================================================
 					// Hypothesis verification for loop closure with geometric
 					// information (like the epipolar geometry or using the local map
 					// associated with the signature)
 					//============================================================
-					if(hypothesis.second >= _loopRatio*_lastLcHypothesisValue &&
-					   _lastLcHypothesisValue &&
-					   _vhStrategy->verify(signature, _memory->getSignature(hypothesis.first)))
+					if(_lastLcHypothesisValue && hypothesis.second >= _loopRatio*_lastLcHypothesisValue &&
+					   (!_epipolarGeometry || _epipolarGeometry->check(signature, _memory->getSignature(hypothesis.first))))
 					{
 						_lcHypothesisId = hypothesis.first;
 					}
@@ -865,60 +813,14 @@ void Rtabmap::process()
 				//============================================================
 				// Retrieval id update
 				//============================================================
-				_reactivateId = hypothesis.first;
+				_retrievedId = hypothesis.first;
 
 				//for statistic...
 				hypothesisRatio = _lastLcHypothesisValue>0?hypothesis.second/_lastLcHypothesisValue:0;
 				_lastLcHypothesisValue = hypothesis.second;
 
-				//=============================================================
-				// Update loop closure links
-				//=============================================================
-				// Make the new one the parent of the old one
-				if(_lcHypothesisId>0)
-				{
-					_memory->addLoopClosureLink(_lcHypothesisId, signature->id());
-				}
 			}
 		} // if(_memory->getWorkingMemSize())
-
-		//============================================================
-		// Select next actions
-		//============================================================
-		timer.start();
-		if(hypothesis.first > 0)
-		{
-			sLoop = _memory->getSignature(hypothesis.first);
-		}
-
-		neighborSelected = _reactivateId;
-		// only send actions if rejectLoopReason!=3 (decreasing hypotheses)
-		if(sLoop && (_actionsSentRejectHyp || !rejectedHypothesis) && (_lastLcHypothesisValue > _confidenceThr))
-		{
-			// TODO to verify
-			std::list<NeighborLink> neighbors = _memory->getNeighborLinks(sLoop->id(), false, false, true);
-			float currentMaxSim = -1;
-			UINFO("Actions: neighbors.size=%d", neighbors.size());
-			for(std::list<NeighborLink>::const_reverse_iterator iter=neighbors.rbegin(); iter!=neighbors.rend() && currentMaxSim!=1.0f; ++iter)
-			{
-				float sim = _memory->compareOneToOne(iter->baseIds(), _memory->getLastBaseIds());
-				UDEBUG("Neighbor baseIds comparison with %d = %f", iter->toId(), sim);
-				if(sim > currentMaxSim)
-				{
-					currentMaxSim = sim;
-					if(iter->actuators().size())
-					{
-						_actuators = iter->actuators();
-					}
-					neighborSelected = iter->toId();
-				}
-				++actionsChosen;
-			}
-			_reactivateId = neighborSelected;
-		}
-		UDEBUG("Action taken from neighbor %d", neighborSelected);
-		timeActionSelection = timer.ticks();
-		ULOGGER_INFO("timeActionSelection=%fs",timeActionSelection);
 	}// !isBadSignature
 
 	//============================================================
@@ -929,43 +831,113 @@ void Rtabmap::process()
 	timeJoiningTrash = timer.ticks();
 	ULOGGER_INFO("Time emptying memory trash = %fs,  joining (actual overhead) = %fs", timeEmptyingTrash, timeJoiningTrash);
 
+	// also copy weights before the memory is changed
+	if(_publishStats && (_publishLikelihood || _publishPdf))
+	{
+		weights = _memory->getWeights();
+	}
+
 	//============================================================
 	// RETRIEVAL : Loop closure neighbors reactivation
 	//============================================================
-	if(_reactivateId > 0 )
+	if(_retrievedId > 0 )
 	{
 		//Load neighbors
-		ULOGGER_INFO("Retrieving locations... around id=%d", _reactivateId);
+		ULOGGER_INFO("Retrieving locations... around id=%d", _retrievedId);
 		unsigned int neighborhoodSize = _bayesFilter->getPredictionLC().size()-1;
-		unsigned int margin = neighborhoodSize;//_memory->getStMemSize();
+		unsigned int margin = neighborhoodSize;
+
 		UTimer timeGetN;
 		unsigned int nbLoadedFromDb = 0;
 		std::set<int> reactivatedIdsSet;
 		std::list<int> reactivatedIds;
 		double timeGetNeighborsTimeDb = 0.0;
 		double timeGetNeighborsSpaceDb = 0.0;
-
-		// Direct neighbors TIME
-		std::map<int, int> neighbors = _memory->getNeighborsId(timeGetNeighborsTimeDb, _reactivateId, margin, _maxRetrieved, _bayesFilter->isPredictionOnNonNullActionsOnly(), true, true, true);
+		std::map<int, int> neighbors;
+		bool firstPassDone = false;
 		unsigned int m = 0;
+		int nbDirectNeighborsInDb = 0;
+
+		// priority in time
+		// Direct neighbors TIME
+		ULOGGER_DEBUG("In TIME");
+		neighbors = _memory->getNeighborsId(_retrievedId,
+				margin,
+				_maxRetrieved,
+				true,
+				true,
+				&timeGetNeighborsTimeDb);
 		//Priority to locations near in time (direct neighbor) then by space (loop closure)
 		while(m < margin)
 		{
 			std::set<int> idsSorted;
 			for(std::map<int, int>::iterator iter=neighbors.begin(); iter!=neighbors.end();)
 			{
-				if((unsigned int)iter->second == m)
+				if(!firstPassDone && _memory->isInSTM(iter->first))
+				{
+					neighbors.erase(iter++);
+				}
+				else if((unsigned int)iter->second == m)
 				{
 					if(reactivatedIdsSet.find(iter->first) == reactivatedIdsSet.end())
 					{
-						ULOGGER_INFO("nt=%d m=%d", iter->first, iter->second);
 						idsSorted.insert(iter->first);
 						reactivatedIdsSet.insert(iter->first);
+
+						if(m == 1 && _memory->getSignature(iter->first) == 0)
+						{
+							++nbDirectNeighborsInDb;
+						}
 
 						if(m<neighborhoodSize)
 						{
 							//immunized locations in the neighborhood from being transferred
 							immunizedLocations.insert(iter->first);
+						}
+						UDEBUG("nt=%d m=%d immunized=1", iter->first, iter->second);
+					}
+					std::map<int, int>::iterator tmp = iter++;
+					neighbors.erase(tmp);
+				}
+				else
+				{
+					++iter;
+				}
+			}
+			firstPassDone = true;
+			reactivatedIds.insert(reactivatedIds.end(), idsSorted.rbegin(), idsSorted.rend());
+			++m;
+		}
+
+		// neighbors SPACE, already added direct neighbors will be ignored
+		ULOGGER_DEBUG("In SPACE");
+		neighbors = _memory->getNeighborsId(_retrievedId,
+				margin,
+				_maxRetrieved,
+				true,
+				false,
+				&timeGetNeighborsSpaceDb);
+		m = 0;
+		firstPassDone = false;
+		while(m < margin)
+		{
+			std::set<int> idsSorted;
+			for(std::map<int, int>::iterator iter=neighbors.begin(); iter!=neighbors.end();)
+			{
+				if(!firstPassDone && _memory->isInSTM(iter->first))
+				{
+					neighbors.erase(iter++);
+				}
+				else if((unsigned int)iter->second == m)
+				{
+					if(reactivatedIdsSet.find(iter->first) == reactivatedIdsSet.end())
+					{
+						idsSorted.insert(iter->first);
+						reactivatedIdsSet.insert(iter->first);
+
+						if(m == 1 && _memory->getSignature(iter->first) == 0)
+						{
+							++nbDirectNeighborsInDb;
 						}
 					}
 					std::map<int, int>::iterator tmp = iter++;
@@ -976,43 +948,36 @@ void Rtabmap::process()
 					++iter;
 				}
 			}
+			firstPassDone = true;
 			reactivatedIds.insert(reactivatedIds.end(), idsSorted.rbegin(), idsSorted.rend());
 			++m;
 		}
-		// neighbors SPACE, already added direct neighbors will be ignored
-		neighbors = _memory->getNeighborsId(timeGetNeighborsSpaceDb, _reactivateId, margin, _maxRetrieved, _bayesFilter->isPredictionOnNonNullActionsOnly(), true, true, false);
-		m = 0;
-		while(m < margin)
-		{
-			std::set<int> idsSorted;
-			for(std::map<int, int>::iterator iter=neighbors.begin(); iter!=neighbors.end();)
-			{
-				if((unsigned int)iter->second == m)
-				{
-					if(reactivatedIdsSet.find(iter->first) == reactivatedIdsSet.end())
-					{
-						ULOGGER_INFO("ns=%d m=%d", iter->first, iter->second);
-						idsSorted.insert(iter->first);
-						reactivatedIdsSet.insert(iter->first);
-					}
-					std::map<int, int>::iterator tmp = iter++;
-					neighbors.erase(tmp);
-				}
-				else
-				{
-					++iter;
-				}
-			}
-			reactivatedIds.insert(reactivatedIds.end(), idsSorted.rbegin(), idsSorted.rend());
-			++m;
-		}
-		ULOGGER_INFO("margin=%d, neighborhoodSize=%d, reactivatedIds.size=%d, nbLoadedFromDb=%d time=%fs", margin, neighborhoodSize, reactivatedIds.size(), (int)nbLoadedFromDb, timeGetN.ticks());
+		ULOGGER_INFO("margin=%d, "
+				"neighborhoodSize=%d, "
+				"reactivatedIds.size=%d, "
+				"nbLoadedFromDb=%d, "
+				"nbDirectNeighborsInDb=%d, "
+				"time=%fs (%fs %fs)",
+				margin,
+				neighborhoodSize,
+				reactivatedIds.size(),
+				(int)nbLoadedFromDb,
+				nbDirectNeighborsInDb,
+				timeGetN.ticks(),
+				timeGetNeighborsTimeDb,
+				timeGetNeighborsSpaceDb);
 
-		// Max 2 signatures retrieved
-		signaturesRetrieved = _memory->reactivateSignatures(reactivatedIds, _maxRetrieved, timeRetrievalDbAccess);
+		// Not important if the loop closure hypothesis don't have all its neighbors loaded,
+		// only a loop closure link is added...
+		signaturesRetrieved = _memory->reactivateSignatures(
+				reactivatedIds,
+				_maxRetrieved,
+				timeRetrievalDbAccess);
+
+		ULOGGER_INFO("retrieval of %d reactivatedIds=%fs (db time = %fs)", (int)signaturesRetrieved.size(), timeGetN.ticks(), timeRetrievalDbAccess);
+
 		timeRetrievalDbAccess += timeGetNeighborsTimeDb + timeGetNeighborsSpaceDb;
-		UINFO("timeRetrievalDbAccess=%fs", timeRetrievalDbAccess);
-		ULOGGER_INFO("retrieval of %d reactivatedIds=%fs", (int)signaturesRetrieved.size(), timeGetN.ticks());
+		UINFO("total timeRetrievalDbAccess=%fs", timeRetrievalDbAccess);
 
 		// Immunize just retrieved signatures
 		immunizedLocations.insert(signaturesRetrieved.begin(), signaturesRetrieved.end());
@@ -1020,58 +985,47 @@ void Rtabmap::process()
 	timeReactivations = timer.ticks();
 	ULOGGER_INFO("timeReactivations=%fs", timeReactivations);
 
+	//=============================================================
+	// Update loop closure links
+	// (updated: place this after retrieval to be sure that neighbors of the loop closure are in RAM)
+	//=============================================================
+	// Make the new one the parent of the old one
+	if(_lcHypothesisId>0)
+	{
+		rejectedHypothesis = !_memory->addLoopClosureLink(_lcHypothesisId, signature->id());
+
+		if(rejectedHypothesis)
+		{
+			_lcHypothesisId = 0;
+		}
+	}
+	timeAddLoopClosureLink = timer.ticks();
+	ULOGGER_INFO("timeAddLoopClosureLink=%fs", timeAddLoopClosureLink);
 
 	//============================================================
 	// Prepare statistics
 	//============================================================
 	// Data used for the statistics event and for the log files
-	int processMemoryUsed = UProcessInfo::getMemoryUsage()/(1024*1024); // MB
-	int databaseMemoryUsed = _memory->getDatabaseMemoryUsed(); // MB
 	int dictionarySize = 0;
 	int refWordsCount = 0;
 	int refUniqueWordsCount = 0;
-	const KeypointSignature * ssRef = 0;
-	const KeypointSignature * ssLoop = 0;
 	int lcHypothesisReactivated = 0;
 	float rehearsalValue = uValue(memUpdateStats, std::string("Memory/Rehearsal Max Value/"), 0.0f);
-	KeypointMemory * kpMem = dynamic_cast<KeypointMemory *>(_memory);
+	int rehearsalMaxId = (int)uValue(memUpdateStats, std::string("Memory/Rehearsal Max Id/"), 0.0f);
+	sLoop = _memory->getSignature(hypothesis.first);
 	if(sLoop)
 	{
 		lcHypothesisReactivated = sLoop->isSaved()?1.0f:0.0f;
 	}
-	if(kpMem)
-	{
-		if(sLoop)
-		{
-			ssLoop = dynamic_cast<const KeypointSignature *>(sLoop);
-		}
-		ssRef = dynamic_cast<const KeypointSignature *>(signature);
-		dictionarySize = kpMem->getVWD()->getVisualWords().size();
-		if(ssRef)
-		{
-			refWordsCount = ssRef->getWords().size();
-			refUniqueWordsCount = uUniqueKeys(ssRef->getWords()).size();
-		}
-		else
-		{
-			ULOGGER_WARN("The new signature can't be casted to a KeypointSignature while the Memory is this type ?");
-		}
-	}
+	dictionarySize = _memory->getVWDictionarySize();
+	refWordsCount = signature->getWords().size();
+	refUniqueWordsCount = uUniqueKeys(signature->getWords()).size();
 
-	float vpLikelihood = 0.0f;
-	if(adjustedLikelihood.size() && adjustedLikelihood.begin()->first == -1)
-	{
-		vpLikelihood = adjustedLikelihood.begin()->second;
-	}
-	float vpHypothesis = 0.0f;
-	if(posterior.find(Memory::kIdVirtual) != posterior.end())
-	{
-		vpHypothesis = posterior.at(Memory::kIdVirtual);
-	}
+	float vpHypothesis = posterior.at(Memory::kIdVirtual);
 
 	// only prepare statistics if required or when there is a loop closure
 	Statistics * stat = 0;
-	if(_lcHypothesisId || _actuators.size() || _publishStats)
+	if(_lcHypothesisId || _publishStats)
 	{
 		ULOGGER_INFO("sending stats...");
 		stat = new Statistics();
@@ -1081,44 +1035,31 @@ void Rtabmap::process()
 			stat->setLoopClosureId(_lcHypothesisId);
 			ULOGGER_INFO("Loop closure detected! With id=%d", _lcHypothesisId);
 		}
-		if(_actuators.size())
-		{
-			stat->setActuators(_actuators);
-		}
 		if(_publishStats && refId != Memory::kIdInvalid)
 		{
 			ULOGGER_INFO("send all stats...");
 			stat->setExtended(1);
 
-			stat->addStatistic(Statistics::kParent_id(), signature->getLoopClosureIds().size()?*signature->getLoopClosureIds().rbegin():0);
-
 			stat->addStatistic(Statistics::kLoopHighest_hypothesis_id(), hypothesis.first);
 			stat->addStatistic(Statistics::kLoopHighest_hypothesis_value(), hypothesis.second);
 			stat->addStatistic(Statistics::kHypothesis_reactivated(), lcHypothesisReactivated);
-			stat->addStatistic(Statistics::kLoopVp_likelihood(), vpLikelihood);
 			stat->addStatistic(Statistics::kLoopVp_hypothesis(), vpHypothesis);
-			stat->addStatistic(Statistics::kLoopReactivateId(), _reactivateId);
+			stat->addStatistic(Statistics::kLoopReactivateId(), _retrievedId);
 			stat->addStatistic(Statistics::kLoopHypothesis_ratio(), hypothesisRatio);
-			stat->addStatistic(Statistics::kLoopActions(), (int)_actuators.size());
-			stat->addStatistic(Statistics::kLoopActions_of(), neighborSelected);
-			stat->addStatistic(Statistics::kLoopActions_chosen(), actionsChosen);
 
 			stat->addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMemSize());
 			stat->addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMemSize());
-			stat->addStatistic(Statistics::kMemoryDatabase_size(), (float)databaseMemoryUsed);
-			stat->addStatistic(Statistics::kMemoryProcess_memory_used(), (float)processMemoryUsed);
 			stat->addStatistic(Statistics::kMemorySignatures_retrieved(), (float)signaturesRetrieved.size());
-			stat->addStatistic(Statistics::kMemoryImages_buffered(), (float)_sensorimotorBuffer.size());
-			stat->addStatistic(Statistics::kMemorySimilarities_map(), (float)_memory->getSimilaritiesMap().size());
+			stat->addStatistic(Statistics::kMemoryImages_buffered(), (float)_imageBuffer.size());
 
 			// timing...
 			stat->addStatistic(Statistics::kTimingMemory_update(), timeMemoryUpdate*1000);
 			stat->addStatistic(Statistics::kTimingReactivation(), timeReactivations*1000);
+			stat->addStatistic(Statistics::kTimingAdd_loop_closure_link(), timeAddLoopClosureLink*1000);
 			stat->addStatistic(Statistics::kTimingLikelihood_computation(), timeLikelihoodCalculation*1000);
 			stat->addStatistic(Statistics::kTimingPosterior_computation(), timePosteriorCalculation*1000);
 			stat->addStatistic(Statistics::kTimingHypotheses_creation(), timeHypothesesCreation*1000);
 			stat->addStatistic(Statistics::kTimingHypotheses_validation(), timeHypothesesValidation*1000);
-			stat->addStatistic(Statistics::kTimingAction_selection(), timeActionSelection*1000);
 			stat->addStatistic(Statistics::kTimingCleaning_neighbors(), timeCleaningNeighbors*1000);
 
 			// memory update timings
@@ -1133,59 +1074,46 @@ void Rtabmap::process()
 			//Epipolar geometry constraint
 			stat->addStatistic(Statistics::kLoopRejectedHypothesis(), rejectedHypothesis?1.0f:0);
 
-			if(_publishRawData)
+			if(_publishImage)
 			{
-				stat->setRefRawData(sensors); // raw data
+				stat->setRefImage(image.image()); // raw data
 				if(sLoop)
 				{
-					lcHypothesisReactivated = 0;
-					if(sLoop->isSaved())
-					{
-						lcHypothesisReactivated = 1;
-					}
+					UTimer tmpTimer;
+					cv::Mat im = _memory->getImage(sLoop->id());
 
-					const std::list<Sensor> & data = sLoop->getRawData();
-					if(data.empty() && _memory->isRawDataKept())
+					if(tmpTimer.elapsed() > 0.03)
 					{
-						std::list<Sensor> d = _memory->getRawData(sLoop->id());
-						stat->setLoopClosureRawData(d);
+						UWARN("getting image time = %fs", tmpTimer.ticks());
 					}
-					else if(!data.empty())
-					{
-						stat->setLoopClosureRawData(data);
-					}
+					stat->setLoopImage(im);
 				}
 			}
+
 			if(_publishLikelihood || _publishPdf)
 			{
 				// Child count by parent signature on the root of the memory ... for statistics
-				stat->setWeights(_memory->getWeights());
+				stat->setWeights(weights);
 				if(_publishPdf)
 				{
 					stat->setPosterior(posterior);
 				}
 				if(_publishLikelihood)
 				{
-					stat->setLikelihood(adjustedLikelihood);
+					stat->setLikelihood(likelihood);
+					stat->setRawLikelihood(rawLikelihood);
 				}
 			}
+
 			if(_publishKeypoints)
 			{
 				//Copy keypoints
-				if(ssRef)
-				{
-					stat->setRefWords(ssRef->getWords());
-				}
-				if(ssLoop)
+				stat->setRefWords(signature->getWords());
+				if(sLoop)
 				{
 					//Copy keypoints
-					stat->setLoopWords(ssLoop->getWords());
+					stat->setLoopWords(sLoop->getWords());
 				}
-			}
-			if(_publishMasks)
-			{
-				// Copy mask
-				UWARN("Publish motion masks TODO");
 			}
 		}
 
@@ -1203,7 +1131,7 @@ void Rtabmap::process()
 	//============================================================
 	// TRANSFER
 	//============================================================
-	// If time allowed for the detection exceed the limit of
+	// If time allowed for the detection exceeds the limit of
 	// real-time, move the oldest signature with less frequency
 	// entry (from X oldest) from the short term memory to the
 	// long term memory.
@@ -1274,104 +1202,111 @@ void Rtabmap::process()
 
 	// Log info...
 	// TODO : use a specific class which will handle the RtabmapEvent
-	if(_foutFloat)
+	std::string logF = uFormat("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+								totalTime,
+								timeMemoryUpdate,
+								timeReactivations,
+								timeLikelihoodCalculation,
+								timePosteriorCalculation,
+								timeHypothesesCreation,
+								timeHypothesesValidation,
+								timeRealTimeLimitReachedProcess,
+								timeStatsCreation,
+								_lastLcHypothesisValue,
+								0,
+								maxLikelihood,
+								sumLikelihoods,
+								mean,
+								stddev,
+								vpHypothesis,
+								timeJoiningTrash,
+								rehearsalValue,
+								timeEmptyingTrash,
+								timeRetrievalDbAccess,
+								timeAddLoopClosureLink);
+	std::string logI = uFormat("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
+								_lcHypothesisId,
+								hypothesis.first,
+								signaturesRemoved,
+								0,
+								refWordsCount,
+								dictionarySize,
+								int(_memory->getWorkingMemSize()),
+								rejectedHypothesis?1:0,
+								0,
+								0,
+								int(signaturesRetrieved.size()),
+								lcHypothesisReactivated,
+								refUniqueWordsCount,
+								_retrievedId,
+								int(nonNulls.size()),
+								rehearsalMaxId,
+								rehearsalMaxId>0?1:0);
+	if(_statisticLogsBufferedInRAM)
 	{
-
-		fprintf(_foutFloat, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
-				totalTime,
-				timeMemoryUpdate,
-				timeReactivations,
-				timeLikelihoodCalculation,
-				timePosteriorCalculation,
-				timeHypothesesCreation,
-				timeHypothesesValidation,
-				timeRealTimeLimitReachedProcess,
-				timeStatsCreation,
-				_lastLcHypothesisValue,
-				vpLikelihood,
-				maxLikelihood,
-				sumLikelihoods,
-				mean,
-				stddev,
-				vpHypothesis,
-				timeJoiningTrash,
-				rehearsalValue,
-				timeEmptyingTrash,
-				timeRetrievalDbAccess);
+		_bufferedLogsF.push_back(logF);
+		_bufferedLogsI.push_back(logI);
 	}
-
-	if(_foutInt)
+	else
 	{
-		fprintf(_foutInt, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
-				_lcHypothesisId,
-				hypothesis.first,
-				signaturesRemoved,
-				0,
-				refWordsCount,
-				dictionarySize,
-				int(_memory->getWorkingMemSize()),
-				rejectedHypothesis?1:0,
-				processMemoryUsed,
-				databaseMemoryUsed,
-				int(signaturesRetrieved.size()),
-				lcHypothesisReactivated,
-				refUniqueWordsCount,
-				_reactivateId,
-				int(nonNulls.size()));
+		if(_foutFloat)
+		{
+			fprintf(_foutFloat, "%s", logF.c_str());
+		}
+		if(_foutInt)
+		{
+			fprintf(_foutInt, "%s", logI.c_str());
+		}
 	}
 	UINFO("Time logging = %f...", timer.ticks());
 	//ULogger::flush();
 
 }
 
-void Rtabmap::addSensorimotor(const std::list<Sensor> & sensors, const std::list<Actuator> & actuators)
+void Rtabmap::addImage(const Image & image)
 {
-	UDEBUG("sensors %d, actuators %d", sensors.size(), actuators.size());
-	if(!sensors.size() && !actuators.size())
+	if(image.empty())
 	{
-		ULOGGER_ERROR("Sensors and actuators empty !?");
+		ULOGGER_ERROR("image empty !?");
 		return;
 	}
 
 	bool notify = true;
-	_sensorimotorMutex.lock();
+	_imageMutex.lock();
 	{
-		_sensorimotorBuffer.push_back(std::make_pair(sensors, actuators));
-		while(_sensorsBufferMaxSize > 0 && _sensorimotorBuffer.size() >= (unsigned int)_sensorsBufferMaxSize)
+		_imageBuffer.push_back(image);
+		while(_imageBufferMaxSize > 0 && _imageBuffer.size() >= (unsigned int)_imageBufferMaxSize)
 		{
 			ULOGGER_WARN("Data buffer is full, the oldest data is removed to add the new one.");
-			_sensorimotorBuffer.pop_front();
+			_imageBuffer.pop_front();
 			notify = false;
 		}
 	}
-	_sensorimotorMutex.unlock();
+	_imageMutex.unlock();
 
 	if(notify)
 	{
-		_sensorimotorAdded.release();
+		_imageAdded.release();
 	}
 }
 
-void Rtabmap::getSensorimotor(std::list<Sensor> & sensors, std::list<Actuator> & actuators)
+void Rtabmap::getImage(Image & image)
 {
 	ULOGGER_DEBUG("");
-	sensors.clear();
-	actuators.clear();
 
 	ULOGGER_INFO("waiting for data");
-	_sensorimotorAdded.acquire();
+	_imageAdded.acquire();
 	ULOGGER_INFO("wake-up");
 
-	_sensorimotorMutex.lock();
+	_imageMutex.lock();
 	{
-		if(!_sensorimotorBuffer.empty())
+		if(!_imageBuffer.empty())
 		{
-			sensors = _sensorimotorBuffer.front().first;
-			actuators = _sensorimotorBuffer.front().second;
-			_sensorimotorBuffer.pop_front();
+			image = _imageBuffer.front();
+			_imageBuffer.pop_front();
 		}
 	}
-	_sensorimotorMutex.unlock();
+	_imageMutex.unlock();
 }
 
 // SETTERS
@@ -1395,11 +1330,11 @@ void Rtabmap::setDataBufferSize(int size)
 	if(size < 0)
 	{
 		ULOGGER_WARN("size < 0, then setting it to 0 (inf).");
-		_sensorsBufferMaxSize = 0;
+		_imageBufferMaxSize = 0;
 	}
 	else
 	{
-		_sensorsBufferMaxSize = size;
+		_imageBufferMaxSize = size;
 	}
 }
 
@@ -1419,7 +1354,7 @@ void Rtabmap::setWorkingDirectory(std::string path)
 			if(_memory)
 			{
 				UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
-				_memory->init(DB_TYPE, _wDir + kDefaultDatabaseName);
+				_memory->init(_wDir + kDefaultDatabaseName);
 				UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
 				setupLogFiles();
 				//clear all buffered images
@@ -1437,26 +1372,16 @@ void Rtabmap::setWorkingDirectory(std::string path)
 	}
 }
 
-void Rtabmap::process(const std::list<Sensor> & data)
+void Rtabmap::process(const cv::Mat & image)
 {
-	if(!this->isRunning())
-	{
-		this->addSensorimotor(data, std::list<Actuator>());
-		this->process();
-	}
-	else
-	{
-		UERROR("The core thread is running!");
-	}
+	this->process(Image(image));
 }
 
-void Rtabmap::process(const Sensor & data)
+void Rtabmap::process(const Image & image)
 {
 	if(!this->isRunning())
 	{
-		std::list<Sensor> sensors;
-		sensors.push_back(data);
-		this->addSensorimotor(sensors, std::list<Actuator>());
+		this->addImage(image);
 		this->process();
 	}
 	else
@@ -1476,7 +1401,7 @@ void Rtabmap::dumpData()
 
 void Rtabmap::adjustLikelihood(std::map<int, float> & likelihood) const
 {
-	ULOGGER_DEBUG("");
+	ULOGGER_DEBUG("likelihood.size()=%d", likelihood.size());
 	UTimer timer;
 	timer.start();
 	if(likelihood.size()==0)
@@ -1484,81 +1409,41 @@ void Rtabmap::adjustLikelihood(std::map<int, float> & likelihood) const
 		return;
 	}
 
-	// remove min
-	std::vector<float> allValues = uValues(likelihood);
-	float min = 0.0f;
-	/*float min = -1;
-	if(allValues.size())
-	{
-		std::vector<float>::iterator iter=allValues.begin();
-		if(likelihood.begin()->first == -1)
-		{
-			++iter;
-		}
-		for(; iter!=allValues.end(); ++iter)
-		{
-			if((min == -1 || min>*iter))
-			{
-				min = *iter;
-			}
-		}
-		iter=allValues.begin();
-		if(likelihood.begin()->first == -1)
-		{
-			++iter;
-		}
-		for(; iter!=allValues.end() && min != -1; ++iter)
-		{
-			*iter -= min;
-		}
-	}*/
-
-	//for(unsigned int i=0; i<allValues.size(); ++i)
-	//{
-		//UDEBUG("allValues[%d]=%f", (int)i, allValues[i]);
-	//}
-
-	// Use only non-null values
+	// Use only non-null values (ignore virtual place)
 	std::list<float> values;
-	for(unsigned int i=0; i<allValues.size(); ++i)
+	for(std::map<int, float>::iterator iter = ++likelihood.begin(); iter!=likelihood.end(); ++iter)
 	{
-		if(!_likelihoodNullValuesIgnored || allValues[i])
+		if((iter->second >= 0 && !_likelihoodNullValuesIgnored) ||
+		   (iter->second > 0 && _likelihoodNullValuesIgnored))
 		{
-			values.push_back(allValues[i]);
+			values.push_back(iter->second);
 		}
 	}
+	UDEBUG("values.size=%d", values.size());
 
-	if(likelihood.begin()->first == -1 && likelihood.begin()->second != 0)
-	{
-		likelihood.begin()->second = 0;
-		values.pop_front();
-	}
-
-
-
-	//Compute mean
 	float mean = uMean(values);
-
-	//Compute std dev
 	float stdDev = uStdDev(values, mean);
+
 
 	//Adjust likelihood with mean and standard deviation (see Angeli phd)
 	float epsilon = 0.0001;
 	float max = 0.0f;
 	int maxId = 0;
-	for(std::map<int, float>::iterator iter=likelihood.begin(); iter!= likelihood.end(); ++iter)
+	for(std::map<int, float>::iterator iter=++likelihood.begin(); iter!= likelihood.end(); ++iter)
 	{
-		float value = iter->second - min;
-		if(value > mean+(!_likelihoodStdDevRemoved?0:stdDev) && mean)
+		float value = iter->second;
+		if(value > mean+stdDev && mean)
 		{
-			if(_likelihoodStdDevRemoved)
+			iter->second = (value-(stdDev-epsilon))/mean;
+			if(value > max)
 			{
-				iter->second = (value-(stdDev-epsilon))/mean;
+				max = value;
+				maxId = iter->first;
 			}
-			else
-			{
-				iter->second = value/mean;
-			}
+		}
+		else if(value == 1.0f && stdDev == 0)
+		{
+			iter->second = 1.0f;
 			if(value > max)
 			{
 				max = value;
@@ -1567,120 +1452,21 @@ void Rtabmap::adjustLikelihood(std::map<int, float> & likelihood) const
 		}
 		else
 		{
-			iter->second = 1;
+			iter->second = 1.0f;
 		}
 	}
 
-	if(likelihood.begin()->first == -1)
+	if(stdDev > epsilon && max)
 	{
-		if(stdDev > epsilon && max)
-		{
-			likelihood.begin()->second = mean/stdDev + 1;
-		}
-		else
-		{
-			likelihood.begin()->second = 100; // infinity
-			ULOGGER_DEBUG("Set vp likelihood to 10, time=%fs", timer.ticks());
-		}
-		if(likelihood.begin()->second<1.0f)
-		{
-			likelihood.begin()->second = 1.0f;
-		}
+		likelihood.begin()->second = mean/stdDev + 1.0f;
 	}
-
-	ULOGGER_DEBUG("mean=%f, stdDev=%f, max=%f, maxId=%d, time=%fs", mean, stdDev, max, maxId, timer.ticks());
-}
-
-std::pair<int, float> Rtabmap::selectHypothesis(const std::map<int, float> & posterior,
-							const std::map<int, float> & likelihood,
-							bool neighborSumUsed,
-							bool likelihoodUsed) const
-{
-	ULOGGER_DEBUG("");
-	if(!_bayesFilter || !_memory)
+	else
 	{
-		ULOGGER_ERROR("RTAB-Map must be initialized first!");
-		return std::pair<int, float>(0, 0.0f);
-	}
-	if(posterior.size() == 0)
-	{
-		ULOGGER_ERROR("Posterior parameter size = 0?");
-		return std::pair<int, float>(0, 0.0f);
+		likelihood.begin()->second = 2.0f; //2 * std dev
 	}
 
-	int id = 0;
-	float value;
-	float totalLoopClosure = 0.0f;
-	int hypothesisId = 0;
-	float hypothesisValue = 0.0f;
-	UTimer timer;
-	timer.start();
-	UTimer timerGlobal;
-	timerGlobal.start();
-	for(std::map<int, float>::const_reverse_iterator iter = posterior.rbegin(); iter != posterior.rend(); ++iter)
-	{
-		value = (*iter).second;
-		id = (*iter).first;
-		if(id > 0)
-		{
-			totalLoopClosure += value;
-
-			if(value > hypothesisValue)
-			{
-				hypothesisId = id;
-				hypothesisValue = (*iter).second;
-			}
-		}
-	}
-
-	if((likelihoodUsed || neighborSumUsed) && hypothesisId > 0)
-	{
-		//select highest likelihood from the neighborhood of the highest hypothesis
-		double dbAccessTime = 0.0;
-		std::map<int, int> neighbors = _memory->getNeighborsId(dbAccessTime, hypothesisId, _bayesFilter->getPredictionLC().size()-1, 0);
-		float oldlikelihood = likelihood.at(hypothesisId);
-		int oldId = hypothesisId;
-		float highestLikelihood = oldlikelihood;
-		bool modified = false;
-		std::set<int> loopIds, childIds;
-
-		for(std::map<int, int>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
-		{
-			if(likelihoodUsed)
-			{
-				std::map<int, float>::const_iterator sim = likelihood.find(jter->first);
-				if(sim != likelihood.end())
-				{
-					if(sim->second > highestLikelihood)
-					{
-						UDEBUG("sim->first=%d, sim->second=%f", sim->first, sim->second);
-						highestLikelihood = sim->second;
-						hypothesisId = sim->first;
-						modified = true;
-					}
-				}
-			}
-			if(neighborSumUsed)
-			{
-				if(jter->first != oldId)
-				{
-					std::map<int, float>::const_iterator tmpIter = posterior.find(jter->first);
-					if(tmpIter!=posterior.end())
-					{
-						hypothesisValue += tmpIter->second;
-					}
-				}
-			}
-		}
-		if(modified)
-		{
-			UDEBUG("Lc hypothesis (%d) changed to neighbor (%d) with higher likelihood (%f->%f)", oldId, hypothesisId, oldlikelihood, highestLikelihood);
-		}
-	}
-
-
-	ULOGGER_DEBUG("time=%fs", timerGlobal.ticks());
-	return std::make_pair(hypothesisId, hypothesisValue);
+	double time = timer.ticks();
+	UDEBUG("mean=%f, stdDev=%f, max=%f, maxId=%d, time=%fs", mean, stdDev, max, maxId, time);
 }
 
 void Rtabmap::dumpPrediction() const
@@ -1688,8 +1474,7 @@ void Rtabmap::dumpPrediction() const
 	if(_memory && _bayesFilter)
 	{
 		const std::set<int> & wm = _memory->getWorkingMem();
-		cv::Mat prediction(wm.size(), wm.size(), CV_32FC1);
-		_bayesFilter->generatePrediction(prediction, _memory, std::vector<int>(wm.begin(), wm.end()));
+		cv::Mat prediction = _bayesFilter->generatePrediction(_memory, std::vector<int>(wm.begin(), wm.end()));
 
 		FILE* fout = 0;
 		std::string fileName = this->getWorkingDir() + "/DumpPrediction.txt";
@@ -1715,6 +1500,31 @@ void Rtabmap::dumpPrediction() const
 	else
 	{
 		UWARN("Memory and/or the Bayes filter are not created");
+	}
+}
+
+void Rtabmap::generateLocalGraph(const std::string & path, int id, int margin)
+{
+	if(_memory)
+	{
+		std::map<int, int> ids = _memory->getNeighborsId(id, margin, -1, false);
+
+		if(ids.size() > 0)
+		{
+			ids.insert(std::pair<int,int>(id, 0));
+			std::set<int> idsSet;
+			for(std::map<int, int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
+			{
+				idsSet.insert(idsSet.end(), iter->first);
+				UINFO("Node %d", iter->first);
+			}
+			UINFO("idsSet=%d", idsSet.size());
+			_memory->generateGraph(path, idsSet);
+		}
+		else
+		{
+			UERROR("No neighbors found for signature %d.", id);
+		}
 	}
 }
 

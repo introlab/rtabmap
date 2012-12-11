@@ -29,8 +29,7 @@
 #include "utilite/UVariant.h"
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/Parameters.h"
-#include "rtabmap/core/Sensor.h"
-#include "rtabmap/core/Actuator.h"
+#include "rtabmap/core/Image.h"
 #include <opencv2/core/core.hpp>
 #include <list>
 #include <stack>
@@ -39,9 +38,7 @@
 namespace rtabmap
 {
 
-class Signature;
-
-class HypVerificator;
+class EpipolarGeometry;
 class Memory;
 class BayesFilter;
 
@@ -58,11 +55,12 @@ public:
 		kStateDumpingMemory,
 		kStateDumpingPrediction,
 		kStateGeneratingGraph,
+		kStateGeneratingLocalGraph,
 		kStateDeletingMemory,
 		kStateCleanSensorsBuffer
 	};
 
-	enum VhStrategy {kVhNone, kVhSim, kVhEpipolar, kVhUndef};
+	enum VhStrategy {kVhNone, kVhEpipolar, kVhUndef};
 
 	static const char * kDefaultIniFileName;
 	static const char * kDefaultIniFilePath;
@@ -78,9 +76,10 @@ public:
 	Rtabmap();
 	virtual ~Rtabmap();
 
-	void process(const std::list<Sensor> & data);
-	void process(const Sensor & data); // for convenience when only one sensor is used
+	void process(const cv::Mat & image); // for convenience
+	void process(const Image & image); // for convenience
 	void dumpData();
+	void generateLocalGraph(const std::string & path, int id, int margin);
 
 	void init(const ParametersMap & param);
 	void init(const char * configFile = 0);
@@ -90,23 +89,19 @@ public:
 	int getLoopClosureId() const;
 	int getReactivatedId() const;
 	int getLastSignatureId() const;
-	const std::list<Actuator> & getActuator() const {return _actuators;}
+	float getLcHypValue() const {return _lastLcHypothesisValue;}
 	std::list<int> getWorkingMem() const;
 	std::set<int> getStMem() const;
 	std::map<int, int> getWeights() const;
 	int getTotalMemSize() const;
-	const std::string & getGraphFileName() const {return _graphFileName;}
 
 	void setMaxTimeAllowed(float maxTimeAllowed); // in ms
 	void setDataBufferSize(int size);
 	void setWorkingDirectory(std::string path);
-	void setGraphFileName(const std::string & fileName) {_graphFileName = fileName;}
 
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
 	std::pair<int, float> selectHypothesis(const std::map<int, float> & posterior,
-											const std::map<int, float> & likelihood,
-											bool neighborSumUsed,
-											bool likelihoodUsed) const;
+											const std::map<int, float> & likelihood) const;
 
 protected:
 	virtual void handleEvent(UEvent * anEvent);
@@ -117,9 +112,10 @@ private:
 	virtual void mainLoopBegin();
 	void process();
 	void resetMemory(bool dbOverwritten = false);
-	void addSensorimotor(const std::list<Sensor> & sensors, const std::list<Actuator> & actuators);
-	void getSensorimotor(std::list<Sensor> & sensors, std::list<Actuator> & actuators);
+	void addImage(const Image & image);
+	void getImage(Image & image);
 	void setupLogFiles(bool overwrite = false);
+	void flushStatisticLogs();
 	void releaseAllStrategies();
 	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
 	void dumpPrediction() const;
@@ -128,51 +124,45 @@ private:
 private:
 	// Modifiable parameters
 	bool _publishStats;
-	bool _publishRawData;
+	bool _publishImage;
 	bool _publishPdf;
 	bool _publishLikelihood;
 	bool _publishKeypoints;
-	bool _publishMasks;
 	float _maxTimeAllowed; // in ms
 	unsigned int _maxMemoryAllowed; // signatures count in WM
-	int _sensorsBufferMaxSize;
+	int _imageBufferMaxSize;
 	float _loopThr;
 	float _loopRatio;
-	float _retrievalThr;
 	unsigned int _maxRetrieved;
-	bool _selectionNeighborhoodSummationUsed;
-	bool _selectionLikelihoodUsed;
-	bool _actionsSentRejectHyp;
-	float _confidenceThr;
-	bool _likelihoodStdDevRemoved;
 	bool _likelihoodNullValuesIgnored;
+	bool _statisticLogsBufferedInRAM;
 
 	int _lcHypothesisId;
-	int _reactivateId;
+	int _retrievedId;
 	float _lastLcHypothesisValue;
 	int _lastLoopClosureId;
-	std::list<Actuator> _actuators;
 
 	UMutex _stateMutex;
 	std::stack<State> _state;
 	std::stack<ParametersMap> _stateParam;
 
-	std::list<std::pair<std::list<Sensor>, std::list<Actuator> > > _sensorimotorBuffer;
-	UMutex _sensorimotorMutex;
-	USemaphore _sensorimotorAdded;
+	std::list<Image> _imageBuffer;
+	UMutex _imageMutex;
+	USemaphore _imageAdded;
 
 	// Abstract classes containing all loop closure
 	// strategies for a type of signature or configuration.
-	HypVerificator * _vhStrategy;
+	EpipolarGeometry * _epipolarGeometry;
 	BayesFilter * _bayesFilter;
 
 	Memory * _memory;
 
 	FILE* _foutFloat;
 	FILE* _foutInt;
+	std::list<std::string> _bufferedLogsF;
+	std::list<std::string> _bufferedLogsI;
 
 	std::string _wDir;
-	std::string _graphFileName;
 };
 
 #endif /* RTABMAP_H_ */

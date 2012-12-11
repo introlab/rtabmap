@@ -19,8 +19,8 @@
 
 #include "DBDriverSqlite3.h"
 
-#include "rtabmap/core/Signature.h"
-#include "rtabmap/core/VisualWord.h"
+#include "Signature.h"
+#include "VisualWord.h"
 #include "rtabmap/core/VWDictionary.h"
 #include "DatabaseSchema_sql.h"
 #include <set>
@@ -318,15 +318,7 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 		// Create the database
 		std::string schema = DATABASESCHEMA_SQL;
 		schema = uHex2Str(schema);
-		if(this->executeNoResultQuery(schema.c_str()))
-		{
-			ULOGGER_DEBUG("Database schema created.");
-		}
-		else
-		{
-			ULOGGER_ERROR("Database creation failed!");
-			return false;
-		}
+		this->executeNoResultQuery(schema.c_str());
 	}
 
 	//Set database optimizations
@@ -376,7 +368,7 @@ bool DBDriverSqlite3::isConnectedQuery() const
 }
 
 // In bytes
-bool DBDriverSqlite3::executeNoResultQuery(const std::string & sql) const
+void DBDriverSqlite3::executeNoResultQuery(const std::string & sql) const
 {
 	if(_ppDb)
 	{
@@ -384,16 +376,9 @@ bool DBDriverSqlite3::executeNoResultQuery(const std::string & sql) const
 		timer.start();
 		int rc;
 		rc = sqlite3_exec(_ppDb, sql.c_str(), 0, 0, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1 (rc=%d): %s", rc, sqlite3_errmsg(_ppDb));
-			ULOGGER_ERROR("The query is: %s", sql.c_str());
-			return false;
-		}
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
-		return true;
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s, the query is %s", sqlite3_errmsg(_ppDb), sql.c_str()).c_str());
+		UDEBUG("Time=%fs", timer.ticks());
 	}
-	return false;
 }
 
 long DBDriverSqlite3::getMemoryUsedQuery() const
@@ -408,7 +393,7 @@ long DBDriverSqlite3::getMemoryUsedQuery() const
 	}
 }
 
-bool DBDriverSqlite3::getRawDataQuery(int id, std::list<Sensor> & rawData) const
+void DBDriverSqlite3::getImageQuery(int nodeId, cv::Mat & image) const
 {
 	if(_ppDb)
 	{
@@ -417,24 +402,15 @@ bool DBDriverSqlite3::getRawDataQuery(int id, std::list<Sensor> & rawData) const
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
-		rawData.clear();
 
-		query << "SELECT num, type, raw_width, raw_height, raw_data_type, raw_compressed, raw_data "
-			  << "FROM Sensor "
-			  << "WHERE id = " << id
-			  << " ORDER BY num"
+		query << "SELECT raw_width, raw_height, raw_data_type, raw_compressed, raw_data "
+			  << "FROM Image "
+			  << "WHERE id = " << nodeId
 			  <<";";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-		int num;
-		int type;
 		int width;
 		int height;
 		int dataType;
@@ -445,11 +421,9 @@ bool DBDriverSqlite3::getRawDataQuery(int id, std::list<Sensor> & rawData) const
 
 		// Process the result if one
 		rc = sqlite3_step(ppStmt);
-		while(rc == SQLITE_ROW)
+		if(rc == SQLITE_ROW)
 		{
 			index = 0;
-			num = sqlite3_column_int(ppStmt, index++);
-			type = sqlite3_column_int(ppStmt, index++);
 			width = sqlite3_column_int(ppStmt, index++);
 			height = sqlite3_column_int(ppStmt, index++);
 			dataType = sqlite3_column_int(ppStmt, index++);
@@ -466,124 +440,34 @@ bool DBDriverSqlite3::getRawDataQuery(int id, std::list<Sensor> & rawData) const
 					std::vector<unsigned char> compressed(dataSize);
 					memcpy(compressed.data(), data, dataSize);
 #if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
-					cv::Mat dataMat = cv::imdecode(compressed, cv::IMREAD_UNCHANGED);
+					image = cv::imdecode(compressed, cv::IMREAD_UNCHANGED);
 #else
-					cv::Mat dataMat = cv::imdecode(compressed, -1);
+					image = cv::imdecode(compressed, -1);
 #endif
-					if(dataType != dataMat.type() || width != dataMat.cols || height != dataMat.rows)
+					if(dataType != image.type() || width != image.cols || height != image.rows)
 					{
 						UFATAL("dataType != dataMat.type() || width != dataMat.cols || height != dataMat.rows");
 					}
-					rawData.push_back(Sensor(dataMat, (Sensor::Type)type, num));
 				}
 				else
 				{
-					cv::Mat dataMat(height, width, dataType);
-					memcpy(dataMat.data, data, dataSize);
-					rawData.push_back(Sensor(dataMat, (Sensor::Type)type, num));
+					image = cv::Mat(height, width, dataType);
+					memcpy(image.data, data, dataSize);
 				}
 			}
 			rc = sqlite3_step(ppStmt); // next result...
 		}
 
-		if(rc != SQLITE_DONE)
-		{
-			ULOGGER_ERROR("Not done ?!? ");
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		ULOGGER_DEBUG("Time=%fs", timer.ticks());
-		return true;
 	}
-	return false;
 }
 
-bool DBDriverSqlite3::getActuatorDataQuery(int id, std::list<Actuator> & actuators) const
-{
-	if(_ppDb)
-	{
-		UTimer timer;
-		timer.start();
-		int rc = SQLITE_OK;
-		sqlite3_stmt * ppStmt = 0;
-		std::stringstream query;
-		actuators.clear();
-
-		query << "SELECT num, type, width, height, data_type, data "
-			  << "FROM Actuator "
-			  << "WHERE id = " << id
-			  << " ORDER BY num"
-			  <<";";
-
-		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
-
-		int num;
-		int type;
-		int width;
-		int height;
-		int dataType;
-		const void * data = 0;
-		int dataSize = 0;
-		int index = 0;
-
-		// Process the result if one
-		rc = sqlite3_step(ppStmt);
-		while(rc == SQLITE_ROW)
-		{
-			index = 0;
-			num = sqlite3_column_int(ppStmt, index++);
-			type = sqlite3_column_int(ppStmt, index++);
-			width = sqlite3_column_int(ppStmt, index++);
-			height = sqlite3_column_int(ppStmt, index++);
-			dataType = sqlite3_column_int(ppStmt, index++);
-
-			data = sqlite3_column_blob(ppStmt, index);
-			dataSize = sqlite3_column_bytes(ppStmt, index++);
-
-			if(dataSize>4 && data)
-			{
-				cv::Mat dataMat(height, width, dataType);
-				memcpy(dataMat.data, data, dataSize);
-				actuators.push_back(Actuator(dataMat, (Actuator::Type)type, num));
-			}
-			rc = sqlite3_step(ppStmt); // next result...
-		}
-
-		if(rc != SQLITE_DONE)
-		{
-			ULOGGER_ERROR("Not done ?!? ");
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
-
-		// Finalize (delete) the statement
-		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
-		return true;
-	}
-	return false;
-}
-
-bool DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids) const
+void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids) const
 {
 	if(_ppDb)
 	{
@@ -598,12 +482,7 @@ bool DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids) const
 			  << "ORDER BY id";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 
 		// Process the result if one
@@ -613,53 +492,32 @@ bool DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids) const
 			ids.insert(ids.end(), sqlite3_column_int(ppStmt, 0)); // Signature Id
 			rc = sqlite3_step(ppStmt);
 		}
-		if(rc != SQLITE_DONE)
-		{
-			ULOGGER_ERROR("DB error 2: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		ULOGGER_DEBUG("Time=%f", timer.ticks());
-		return true;
 	}
-	return false;
 }
 
-bool DBDriverSqlite3::getLastNodeIdQuery(int & id) const
+void DBDriverSqlite3::getLastIdQuery(const std::string & tableName, int & id) const
 {
 	if(_ppDb)
 	{
+		UDEBUG("get last id from table \"%s\"", tableName.c_str());
 		UTimer timer;
 		timer.start();
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		//query.append("BEGIN TRANSACTION;");
-
-		// Create a new entry in table KeypointSignature
 		query << "SELECT max(id) "
-			  << "FROM Node;";
-
-		//query.append("COMMIT;");
-
-		//ULOGGER_DEBUG("DBDriverSqlite3::getLastSignatureId() Execute query : %s", query.toStdString().c_str());
+			  << "FROM " << tableName
+			  << ";";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 
 		// Process the result if one
@@ -668,12 +526,7 @@ bool DBDriverSqlite3::getLastNodeIdQuery(int & id) const
 		{
 			id = sqlite3_column_int(ppStmt, 0); // Signature Id
 			rc = sqlite3_step(ppStmt);
-			if(rc != SQLITE_DONE)
-			{
-				ULOGGER_ERROR("Supposed to received only 1 result... ");
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		}
 		else
 		{
@@ -682,78 +535,12 @@ bool DBDriverSqlite3::getLastNodeIdQuery(int & id) const
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		ULOGGER_DEBUG("Time=%fs", timer.ticks());
-		return true;
 	}
-	return false;
 }
 
-bool DBDriverSqlite3::getLastWordIdQuery(int & id) const
-{
-	if(_ppDb && id > 0)
-	{
-		UTimer timer;
-		timer.start();
-		int rc = SQLITE_OK;
-		sqlite3_stmt * ppStmt = 0;
-		std::stringstream query;
-
-		//query.append("BEGIN TRANSACTION;");
-
-		// Create a new entry in table KeypointSignature
-		query << "SELECT max(id) "
-			  << "FROM Word;";
-
-		//query.append("COMMIT;");
-
-		//ULOGGER_DEBUG("DBDriverSqlite3::getLastSignatureId() Execute query : %s", query.toStdString().c_str());
-
-		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
-
-
-		// Process the result if one
-		rc = sqlite3_step(ppStmt);
-		if(rc == SQLITE_ROW)
-		{
-			id = sqlite3_column_int(ppStmt, 0); // VisualWord Id
-			rc = sqlite3_step(ppStmt);
-			if(rc != SQLITE_DONE)
-			{
-				ULOGGER_ERROR("Supposed to received only 1 result... ");
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-		}
-		else
-		{
-			ULOGGER_ERROR("No result !?! from the DB");
-		}
-
-		// Finalize (delete) the statement
-		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
-		return true;
-	}
-	return false;
-}
-
-bool DBDriverSqlite3::getInvertedIndexNiQuery(int nodeId, int & ni) const
+void DBDriverSqlite3::getInvertedIndexNiQuery(int nodeId, int & ni) const
 {
 	ni = 0;
 	if(_ppDb)
@@ -764,7 +551,7 @@ bool DBDriverSqlite3::getInvertedIndexNiQuery(int nodeId, int & ni) const
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		// Create a new entry in table KeypointSignature
+		// Create a new entry in table Signature
 		query << "SELECT count(word_id) "
 			  << "FROM Map_Node_Word "
 			  << "WHERE node_id=" << nodeId << ";";
@@ -774,12 +561,7 @@ bool DBDriverSqlite3::getInvertedIndexNiQuery(int nodeId, int & ni) const
 		//ULOGGER_DEBUG("DBDriverSqlite3::getSurfNi() Execute query : %s", query.toStdString().c_str());
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 
 		// Process the result if one
@@ -788,12 +570,7 @@ bool DBDriverSqlite3::getInvertedIndexNiQuery(int nodeId, int & ni) const
 		{
 			ni = sqlite3_column_int(ppStmt, 0);
 			rc = sqlite3_step(ppStmt);
-			if(rc != SQLITE_DONE)
-			{
-				ULOGGER_ERROR("Supposed to received only 1 result... node=%d", nodeId);
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		}
 		else
 		{
@@ -803,19 +580,13 @@ bool DBDriverSqlite3::getInvertedIndexNiQuery(int nodeId, int & ni) const
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		ULOGGER_DEBUG("Time=%fs", timer.ticks());
-		return true;
 	}
-	return false;
 }
 
 // default onlyWithActions = false
-bool DBDriverSqlite3::getNeighborIdsQuery(int nodeId, std::set<int> & neighbors, bool onlyWithActions) const
+void DBDriverSqlite3::getNeighborIdsQuery(int nodeId, std::set<int> & neighbors, bool onlyWithActions) const
 {
 	neighbors.clear();
 	if(_ppDb)
@@ -836,12 +607,7 @@ bool DBDriverSqlite3::getNeighborIdsQuery(int nodeId, std::set<int> & neighbors,
 		}
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 
 		// Process the result if one
@@ -851,31 +617,20 @@ bool DBDriverSqlite3::getNeighborIdsQuery(int nodeId, std::set<int> & neighbors,
 			neighbors.insert(sqlite3_column_int(ppStmt, 0)); // nid
 			rc = sqlite3_step(ppStmt);
 		}
-		if(rc != SQLITE_DONE)
-		{
-			ULOGGER_ERROR("DB error 2: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		if(neighbors.size() == 0)
 		{
 			UERROR("No neighbors loaded from node %d", nodeId);
 		}
-		return true;
 	}
-	return false;
 }
 
-bool DBDriverSqlite3::getWeightQuery(int nodeId, int & weight) const
+void DBDriverSqlite3::getWeightQuery(int nodeId, int & weight) const
 {
 	weight = 0;
 	if(_ppDb)
@@ -891,12 +646,7 @@ bool DBDriverSqlite3::getWeightQuery(int nodeId, int & weight) const
 			  << ";";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 
 		// Process the result if one
@@ -906,26 +656,15 @@ bool DBDriverSqlite3::getWeightQuery(int nodeId, int & weight) const
 			weight= sqlite3_column_int(ppStmt, 0); // weight
 			rc = sqlite3_step(ppStmt);
 		}
-		if(rc != SQLITE_DONE)
-		{
-			ULOGGER_ERROR("DB error 2: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
-		return true;
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	}
-	return false;
 }
 
-bool DBDriverSqlite3::getLoopClosureIdsQuery(int nodeId, std::set<int> & loopIds, std::set<int> & childIds) const
+void DBDriverSqlite3::getLoopClosureIdsQuery(int nodeId, std::set<int> & loopIds, std::set<int> & childIds) const
 {
 	loopIds.clear();
 	childIds.clear();
@@ -943,19 +682,12 @@ bool DBDriverSqlite3::getLoopClosureIdsQuery(int nodeId, std::set<int> & loopIds
 			  << ";";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		int toId = 0;
 		int type;
-		UDEBUG("time =%fs", timer.ticks());
 		// Process the result if one
 		rc = sqlite3_step(ppStmt);
-		UDEBUG("time =%fs", timer.ticks());
 		while(rc == SQLITE_ROW)
 		{
 			int index = 0;
@@ -980,358 +712,18 @@ bool DBDriverSqlite3::getLoopClosureIdsQuery(int nodeId, std::set<int> & loopIds
 			}
 			rc = sqlite3_step(ppStmt);
 		}
-		if(rc != SQLITE_DONE)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		UDEBUG("time =%fs", timer.getElapsedTime());
-
-		return true;
 	}
-	return false;
-}
-
-//return <weight,id>
-bool DBDriverSqlite3::getHighestWeightedNodeIdsQuery(unsigned int count, std::multimap<int,int> & ids) const
-{
-	if(_ppDb && count)
-	{
-		UTimer timer;
-		timer.start();
-		int rc = SQLITE_OK;
-		sqlite3_stmt * ppStmt = 0;
-		std::stringstream query;
-
-		query << "SELECT weight,id "
-			  << "FROM Node "
-			  /*<< "WHERE loopClosureIds = 0 "*/
-			  << "ORDER BY weight DESC "
-			  << "LIMIT " << count << ";";
-
-		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
-
-
-		// Process the result if one
-		rc = sqlite3_step(ppStmt);
-		int weight = 0;
-		int id = 0;
-		while(rc == SQLITE_ROW)
-		{
-			weight = sqlite3_column_int(ppStmt, 0); // Weight
-			id = sqlite3_column_int(ppStmt, 1); // Signature Id
-			if(ids.size() < count ||
-			   (ids.size() && ids.begin()->first < weight))
-			{
-				ids.insert(std::pair<int,int>(weight, id));
-			}
-			if(ids.size() >= count)
-			{
-				ids.erase(ids.begin());
-			}
-			rc = sqlite3_step(ppStmt);
-		}
-		if(rc != SQLITE_DONE)
-		{
-			ULOGGER_ERROR("DB error 2: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
-
-		// Finalize (delete) the statement
-		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
-		ULOGGER_DEBUG("Time=%f", timer.ticks());
-		return true;
-	}
-	return false;
-}
-
-bool DBDriverSqlite3::loadQuery(int nodeId, Signature ** s) const
-{
-	ULOGGER_DEBUG("Signature");
-	*s = 0;
-	if(_ppDb)
-	{
-		int type = -1;
-		int weight = 0;
-		UTimer timer;
-		timer.start();
-		int rc = SQLITE_OK;
-		sqlite3_stmt * ppStmt = 0;
-		std::stringstream query;
-
-		query << "SELECT type, weight "
-			  << "FROM Node "
-			  << "WHERE id=" << nodeId << ";";
-
-		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
-
-
-		// Process the result if one
-		rc = sqlite3_step(ppStmt);
-		if(rc == SQLITE_ROW)
-		{
-			int index = 0;
-			type = sqlite3_column_int(ppStmt, index++); // Node type
-			weight = sqlite3_column_int(ppStmt, index++); // weight
-			rc = sqlite3_step(ppStmt);
-			if(rc != SQLITE_DONE)
-			{
-				ULOGGER_ERROR("Supposed to receive only 1 result... node=%d", nodeId);
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-		}
-		else
-		{
-			ULOGGER_ERROR("No result !?! from the DB, node=%d",nodeId);
-		}
-
-
-		// Finalize (delete) the statement
-		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
-
-		//get neighbors
-		NeighborsMultiMap neighbors;
-		this->loadNeighborsQuery(nodeId, neighbors);
-
-		//get loop / child links
-		std::set<int> loopIds;
-		std::set<int> childIds;
-		this->getLoopClosureIds(nodeId, loopIds, childIds);
-
-		if(type == 0)
-		{
-			*s = new KeypointSignature(nodeId);
-			if(*s)
-			{
-				(*s)->setWeight(weight);
-				(*s)->setLoopClosureIds(loopIds);
-				(*s)->setChildLoopClosureIds(childIds);
-				(*s)->addNeighbors(neighbors);
-				if(this->loadQuery(nodeId, (KeypointSignature*)*s))
-				{
-					(*s)->setSaved(true);
-					(*s)->setModified(false);
-					return true;
-				}
-				else if(*s)
-				{
-					delete *s;
-					*s = 0;
-				}
-			}
-			else
-			{
-				UFATAL("Cannot allocate memory !!!");
-			}
-		}
-		else if(type == 1)
-		{
-			*s = new SMSignature(nodeId);
-			if(*s)
-			{
-				(*s)->setWeight(weight);
-				(*s)->setLoopClosureIds(loopIds);
-				(*s)->setChildLoopClosureIds(childIds);
-				(*s)->addNeighbors(neighbors);
-				if(this->loadQuery(nodeId, (SMSignature*)*s))
-				{
-					(*s)->setSaved(true);
-					(*s)->setModified(false);
-					return true;
-				}
-				else if(*s)
-				{
-					delete *s;
-					*s = 0;
-				}
-			}
-			else
-			{
-				UFATAL("Cannot allocate memory !!!");
-			}
-		}
-
-		return false; // signature not created
-	}
-	return false;
-}
-
-bool DBDriverSqlite3::loadQuery(int nodeId, KeypointSignature * ks) const
-{
-	UDEBUG("KeypointSignature %d", nodeId);
-	if(_ppDb && ks)
-	{
-		UTimer timer;
-		timer.start();
-		int rc = SQLITE_OK;
-		sqlite3_stmt * ppStmt = 0;
-		std::stringstream query;
-		std::multimap<int, cv::KeyPoint> visualWords;
-
-		// Get the map from signature and visual words
-		query << "SELECT word_id, pos_x, pos_y, size, dir, response "
-			  << "FROM Map_Node_Word "
-			  << "WHERE node_id=" << nodeId
-			  << " ORDER BY word_id;"; // used for fast insertion below
-
-		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
-
-		// Process the result if one
-		rc = sqlite3_step(ppStmt);
-		int visualWordId = 0;
-		float pos_x = 0;
-		float pos_y = 0;
-		int size = 0;
-		float dir = 0;
-		float response = 0;
-		while(rc == SQLITE_ROW)
-		{
-			int index=0;
-			visualWordId = sqlite3_column_int(ppStmt, index++);
-			pos_x = sqlite3_column_double(ppStmt, index++);
-			pos_y = sqlite3_column_double(ppStmt, index++);
-			size = sqlite3_column_int(ppStmt, index++);
-			dir = sqlite3_column_double(ppStmt, index++);
-			response = sqlite3_column_double(ppStmt, index++);
-			visualWords.insert(visualWords.end(), std::pair<int, cv::KeyPoint>(visualWordId, cv::KeyPoint(cv::Point2f(pos_x,pos_y),size,dir,response, 0, -1)));
-			rc = sqlite3_step(ppStmt);
-		}
-		if(rc != SQLITE_DONE)
-		{
-			ULOGGER_ERROR("DB error 2: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
-
-		// Finalize (delete) the statement
-		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
-
-		ks->setWords(visualWords);
-
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
-		return true;
-	}
-	return false;
-}
-
-bool DBDriverSqlite3::loadQuery(int nodeId, SMSignature * sm) const
-{
-	ULOGGER_DEBUG("SMSignature");
-	if(_ppDb && sm)
-	{
-		UTimer timer;
-		timer.start();
-		int rc = SQLITE_OK;
-		sqlite3_stmt * ppStmt = 0;
-		std::stringstream query;
-		std::list<std::vector<int> > sensors;
-		std::vector<int> sensor;
-
-		// Get the map from signature
-		query << "SELECT data "
-			  << "FROM Sensor "
-			  << "WHERE id=" << nodeId;
-
-		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
-
-		const void * data = 0;
-		int dataSize = 0;
-
-		// Process the result if one
-		rc = sqlite3_step(ppStmt);
-		while(rc == SQLITE_ROW)
-		{
-			int index = 0;
-			data = sqlite3_column_blob(ppStmt, index);
-			dataSize = sqlite3_column_bytes(ppStmt, index++);
-			//Create the sensor
-			if(dataSize>4 && data)
-			{
-				sensor = std::vector<int>(dataSize/sizeof(int));
-				memcpy(&(sensor[0]), data, dataSize);
-				sensors.push_back(sensor);
-			}
-
-			rc = sqlite3_step(ppStmt);
-		}
-
-		if(rc != SQLITE_DONE)
-		{
-			UERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
-
-		// Finalize (delete) the statement
-		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
-
-		sm->setSensors(sensors);
-
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
-		return true;
-	}
-	return false;
 }
 
 //may be slower than the previous version but don't have a limit of words that can be loaded at the same time
-bool DBDriverSqlite3::loadKeypointSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & nodes) const
+void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & nodes) const
 {
 	ULOGGER_DEBUG("count=%d", (int)ids.size());
 	if(_ppDb && ids.size())
@@ -1350,18 +742,13 @@ bool DBDriverSqlite3::loadKeypointSignaturesQuery(const std::list<int> & ids, st
 				 "FROM Map_Node_Word "
 				 "INNER JOIN Node "
 				 "ON Node.id = node_id "
-				 "WHERE Node.type = 0 AND node_id = ? ";
+				 "WHERE node_id = ? ";
 
 		query << " ORDER BY word_id"; // Needed for fast insertion below
 		query << ";";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		int id = 0;
 		int weight = 0;
@@ -1377,12 +764,7 @@ bool DBDriverSqlite3::loadKeypointSignaturesQuery(const std::list<int> & ids, st
 			ULOGGER_DEBUG("Loading %d...", *iter);
 			// bind id
 			rc = sqlite3_bind_int(ppStmt, 1, *iter);
-			if (rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 			id = 0;
 			weight = 0;
@@ -1417,18 +799,13 @@ bool DBDriverSqlite3::loadKeypointSignaturesQuery(const std::list<int> & ids, st
 				visualWords.insert(visualWords.end(), std::pair<int, cv::KeyPoint>(visualWordId, cv::KeyPoint(cv::Point2f(pos_x,pos_y),size,dir,response, 0, -1)));
 				rc = sqlite3_step(ppStmt);
 			}
-			if(rc != SQLITE_DONE)
-			{
-				ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 			// create the node
 			if(id)
 			{
 				ULOGGER_DEBUG("Creating %d with %d keypoints", *iter, visualWords.size());
-				KeypointSignature * ss = new KeypointSignature(visualWords, id);
+				Signature * ss = new Signature(id, visualWords);
 				if(ss)
 				{
 					ss->setWeight(weight);
@@ -1445,26 +822,16 @@ bool DBDriverSqlite3::loadKeypointSignaturesQuery(const std::list<int> & ids, st
 			{
 				ULOGGER_ERROR("Node %d not found in database", *iter);
 				rc = sqlite3_finalize(ppStmt);
-				return false;
 			}
 
 			//reset
 			rc = sqlite3_reset(ppStmt);
-			if (rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		}
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		ULOGGER_DEBUG("Time=%fs", timer.ticks());
 
@@ -1479,152 +846,10 @@ bool DBDriverSqlite3::loadKeypointSignaturesQuery(const std::list<int> & ids, st
 		{
 			UERROR("Some signatures not found in database");
 		}
-
-		return true;
 	}
-	return false;
 }
 
-bool DBDriverSqlite3::loadSMSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const
-{
-	ULOGGER_DEBUG("count=%d", ids.size());
-	if(_ppDb && ids.size())
-	{
-		std::string type;
-		UTimer timer;
-		timer.start();
-		int rc = SQLITE_OK;
-		sqlite3_stmt * ppStmt = 0;
-		std::stringstream query;
-		unsigned int loaded = 0;
-
-		// Prepare the query...
-		query << "SELECT Node.id, weight, data "
-			  << "FROM Sensor "
-			  << "INNER JOIN Node "
-			  << "ON Node.id = Sensor.id "
-			  << "WHERE Node.type = 1 AND Node.id=? ";
-		query << ";";
-
-		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
-
-		for(std::list<int>::const_iterator iter=ids.begin(); iter!=ids.end(); ++iter)
-		{
-			ULOGGER_DEBUG("Loading %d...", *iter);
-			// bind id
-			rc = sqlite3_bind_int(ppStmt, 1, *iter);
-			if (rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-
-			int id = 0;
-			int weight = 0;
-			std::list<std::vector<int> > postData;
-			const void * data = 0;
-			int dataSize = 0;
-
-			// Process the result if one
-			rc = sqlite3_step(ppStmt);
-			while(rc == SQLITE_ROW)
-			{
-				int index = 0;
-
-				if(id == 0)
-				{
-					id = sqlite3_column_int(ppStmt, index++);
-					weight = sqlite3_column_int(ppStmt, index++);
-				}
-				else
-				{
-					index = 2;
-				}
-
-				//post processed data
-				data = sqlite3_column_blob(ppStmt, index);
-				dataSize = sqlite3_column_bytes(ppStmt, index++);
-				//Create the data
-				if(dataSize>4 && data)
-				{
-					std::vector<int> sensors = std::vector<int>(dataSize/sizeof(int));
-					memcpy(&(sensors[0]), data, dataSize);
-					postData.push_back(sensors);
-				}
-
-				rc = sqlite3_step(ppStmt);
-			}
-
-			if(id)
-			{
-				ULOGGER_DEBUG("Creating %d", id);
-				SMSignature * sm = new SMSignature(postData, id);
-				if(sm)
-				{
-					sm->setWeight(weight);
-					sm->setSaved(true);
-					signatures.push_back(sm);
-				}
-				else
-				{
-					UFATAL("Cannot allocate memory !!!");
-				}
-				++loaded;
-			}
-
-			if(rc != SQLITE_DONE)
-			{
-				ULOGGER_ERROR("Db error: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-
-			//reset
-			rc = sqlite3_reset(ppStmt);
-			if (rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-		}
-
-		// Finalize (delete) the statement
-		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
-
-		UINFO("Time=%fs", timer.ticks());
-
-		this->loadLinksQuery(signatures);
-		for(std::list<Signature*>::iterator iter = signatures.begin(); iter!=signatures.end(); ++iter)
-		{
-			(*iter)->setModified(false);
-		}
-		UINFO("Time load neighbors=%fs", timer.ticks());
-
-		if(ids.size() != loaded)
-		{
-			UERROR("Some signatures not found in database");
-		}
-
-		return true;
-	}
-	return false;
-}
-
-
-bool DBDriverSqlite3::loadLastNodesQuery(std::list<Signature *> & nodes) const
+void DBDriverSqlite3::loadLastNodesQuery(std::list<Signature *> & nodes) const
 {
 	ULOGGER_DEBUG("");
 	if(_ppDb)
@@ -1640,17 +865,11 @@ bool DBDriverSqlite3::loadLastNodesQuery(std::list<Signature *> & nodes) const
 		// Get the map from signature and visual words
 		query << "SELECT n.id "
 				 "FROM Node AS n "
-				 "WHERE n.time_enter >= (SELECT MAX(time_enter) FROM Statistics);"
-				 /*"AND s.parentId IS NULL;"*/;
+				 "WHERE n.time_enter >= (SELECT MAX(time_enter) FROM Statistics) "
+				 "ORDER BY n.id;";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		// Process the result if one
 		rc = sqlite3_step(ppStmt);
@@ -1660,43 +879,20 @@ bool DBDriverSqlite3::loadLastNodesQuery(std::list<Signature *> & nodes) const
 			rc = sqlite3_step(ppStmt); // next result...
 		}
 
-		if(rc != SQLITE_DONE)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		ULOGGER_DEBUG("Loading %d signatures...", ids.size());
-		Signature * s = 0;
-		int count = 0;
-		for(std::list<int>::iterator i=ids.begin(); i!=ids.end(); ++i)
-		{
-			this->loadQuery(*i, &s);
-			if(s)
-			{
-				++count;
-				nodes.push_back(s);
-			}
-		}
-
-		ULOGGER_DEBUG("loaded=%d, Time=%fs", count, timer.ticks());
-
-		return true;
+		this->loadSignaturesQuery(ids, nodes);
+		ULOGGER_DEBUG("loaded=%d, Time=%fs", nodes.size(), timer.ticks());
 	}
-	return false;
 }
 
 // TODO DO IT IN A MORE EFFICiENT WAY !!!!
-bool DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
+void DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
 {
 	ULOGGER_DEBUG("");
 	if(_ppDb && dictionary)
@@ -1720,12 +916,7 @@ bool DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
 				 "ORDER BY vw.id;";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		// Process the result if one
 		int id = 0;
@@ -1787,29 +978,18 @@ bool DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
 		getLastWordId(id);
 		dictionary->setLastWordId(id);
 
-		if(rc != SQLITE_DONE)
-		{
-			ULOGGER_ERROR("DB error 2: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		ULOGGER_DEBUG("Time=%fs", timer.ticks());
-		return true;
 	}
-	return false;
 }
 
 //may be slower than the previous version but don't have a limit of words that can be loaded at the same time
-bool DBDriverSqlite3::loadWordsQuery(const std::list<int> & wordIds, std::list<VisualWord *> & vws) const
+void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const
 {
 	ULOGGER_DEBUG("size=%d", wordIds.size());
 	if(_ppDb && wordIds.size())
@@ -1823,87 +1003,62 @@ bool DBDriverSqlite3::loadWordsQuery(const std::list<int> & wordIds, std::list<V
 		std::set<int> loaded;
 
 		// Get the map from signature and visual words
-		query << "SELECT vw.id, vw.descriptor_size, vw.descriptor "
+		query << "SELECT vw.descriptor_size, vw.descriptor "
 				 "FROM Word as vw "
 				 "WHERE vw.id = ?;";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-		int id=0;
 		int descriptorSize;
 		const void * descriptor;
 		int dRealSize;
-		for(std::list<int>::const_iterator iter=wordIds.begin(); iter!=wordIds.end(); ++iter)
+		for(std::set<int>::const_iterator iter=wordIds.begin(); iter!=wordIds.end(); ++iter)
 		{
 			// bind id
 			rc = sqlite3_bind_int(ppStmt, 1, *iter);
-			if (rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error 2.1: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 			// Process the result if one
 			rc = sqlite3_step(ppStmt);
-			while(rc == SQLITE_ROW)
+			if(rc == SQLITE_ROW)
 			{
-				id = sqlite3_column_int(ppStmt, 0); 			// VisualWord Id
-				descriptorSize = sqlite3_column_int(ppStmt, 1); // VisualWord descriptor size
-				descriptor = sqlite3_column_blob(ppStmt, 2); 	// VisualWord descriptor array
-				dRealSize = sqlite3_column_bytes(ppStmt, 2);
+				int index = 0;
+				descriptorSize = sqlite3_column_int(ppStmt, index++); // VisualWord descriptor size
+				descriptor = sqlite3_column_blob(ppStmt, index); 	// VisualWord descriptor array
+				dRealSize = sqlite3_column_bytes(ppStmt, index++);
 
 				if(dRealSize/int(sizeof(float)) != descriptorSize)
 				{
 					UERROR("Saved buffer size (%d) is not the same as descriptor size (%d)", dRealSize/sizeof(float), descriptorSize);
 				}
 
-				VisualWord * vw = new VisualWord(id, &((const float *)descriptor)[0], descriptorSize);
+				VisualWord * vw = new VisualWord(*iter, &((const float *)descriptor)[0], descriptorSize);
 				if(vw)
 				{
 					vw->setSaved(true);
 				}
 				vws.push_back(vw);
-				loaded.insert(loaded.end(), id);
+				loaded.insert(loaded.end(), *iter);
 
-				rc = sqlite3_step(ppStmt); // next result...
+				rc = sqlite3_step(ppStmt);
 			}
 
-			if(rc != SQLITE_DONE)
-			{
-				ULOGGER_ERROR("DB error 2.2: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 			rc = sqlite3_reset(ppStmt);
-			if (rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error 2.3: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		}
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		ULOGGER_DEBUG("Time=%fs", timer.ticks());
 
 		if(wordIds.size() != loaded.size())
 		{
-			for(std::list<int>::const_iterator iter = wordIds.begin(); iter!=wordIds.end(); ++iter)
+			for(std::set<int>::const_iterator iter = wordIds.begin(); iter!=wordIds.end(); ++iter)
 			{
 				if(loaded.find(*iter) == loaded.end())
 				{
@@ -1912,93 +1067,10 @@ bool DBDriverSqlite3::loadWordsQuery(const std::list<int> & wordIds, std::list<V
 			}
 			UERROR("Query (%d) doesn't match loaded words (%d)", wordIds.size(), loaded.size());
 		}
-
-		return true;
 	}
-	return false;
 }
 
-bool DBDriverSqlite3::loadQuery(int wordId, VisualWord ** vw) const
-{
-	*vw = 0;
-	//ULOGGER_DEBUG("DBDriverSqlite3::load(int, VisualWord **)");
-	if(_ppDb)
-	{
-		std::string type;
-		UTimer timer;
-		timer.start();
-		int rc = SQLITE_OK;
-		sqlite3_stmt * ppStmt = 0;
-		std::stringstream query;
-
-		// Get the map from signature and visual words
-		query << "SELECT vw.id, vw.descriptor_size, vw.descriptor "
-				 "FROM Word AS vw "
-				 "WHERE vw.id = " << wordId << ";";
-
-		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
-
-		// Process the result if one
-		int id=0;
-		int descriptorSize;
-		const void * descriptor;
-		int dRealSize;
-
-		rc = sqlite3_step(ppStmt);
-
-		if(rc == SQLITE_ROW)
-		{
-			id = sqlite3_column_int(ppStmt, 0); 			// VisualWord Id
-			descriptorSize = sqlite3_column_int(ppStmt, 1); // VisualWord descriptor size
-			descriptor = sqlite3_column_blob(ppStmt, 2); 	// VisualWord descriptor array
-			dRealSize = sqlite3_column_bytes(ppStmt, 2);
-
-			if(dRealSize/int(sizeof(float)) != descriptorSize)
-			{
-				UERROR("Saved buffer size (%d) is not the same as descriptor size (%d)", dRealSize/sizeof(float), descriptorSize);
-			}
-
-			rc = sqlite3_step(ppStmt);
-			if(rc != SQLITE_DONE)
-			{
-				ULOGGER_ERROR("Supposed to received only 1 result... wordId=%d", wordId);
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-
-			//Create the word
-			*vw = new VisualWord(id, &((const float *)descriptor)[0], descriptorSize);
-			if(*vw)
-			{
-				(*vw)->setSaved(true);
-			}
-		}
-		else
-		{
-			ULOGGER_ERROR("No result !?! from the DB, wordId=%d", wordId);
-		}
-
-		// Finalize (delete) the statement
-		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
-
-		//ULOGGER_DEBUG("DBDriverSqlite3::load(int, VisualWord **) Time=%fs", timer.ticks());
-		return true;
-	}
-	return false;
-}
-
-bool DBDriverSqlite3::loadNeighborsQuery(int signatureId, NeighborsMultiMap & neighbors) const
+void DBDriverSqlite3::loadNeighborsQuery(int signatureId, std::set<int> & neighbors) const
 {
 	neighbors.clear();
 	if(_ppDb)
@@ -2009,32 +1081,14 @@ bool DBDriverSqlite3::loadNeighborsQuery(int signatureId, NeighborsMultiMap & ne
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		query << "SELECT to_id, actuator_id, num, base_ids, Actuator.type, width, height, data_type, data FROM Link "
-		      << "LEFT JOIN Actuator "
-		      << "ON Actuator.id = actuator_id "
+		query << "SELECT to_id FROM Link "
 		      << "WHERE from_id = " << signatureId
-			  << " AND Link.type = 0"
-			  << " ORDER BY to_id, actuator_id, num";
+			  << " ORDER BY to_id";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		int toId = -1;
-		int actuatorId = -1;
-		int actuatorNum = -1;
-		int actuatorType;
-		int actuatorWidth;
-		int actuatorHeight;
-		int actuatorDataType;
-		const void * data = 0;
-		int dataSize = 0;
-		std::list<Actuator> actuators;
-		std::vector<int> baseIds;
 
 		// Process the result if one
 		rc = sqlite3_step(ppStmt);
@@ -2042,83 +1096,26 @@ bool DBDriverSqlite3::loadNeighborsQuery(int signatureId, NeighborsMultiMap & ne
 		{
 			int index = 0;
 
-			int tmpToId = sqlite3_column_int(ppStmt, index++);
-			int tmpActuatorId = sqlite3_column_int(ppStmt, index++);
-			int tmpActuatorNum = sqlite3_column_int(ppStmt, index++);
+			toId = sqlite3_column_int(ppStmt, index++);
 
-			if((tmpToId != toId && toId >= 0) ||
-				(tmpActuatorId != actuatorId && actuatorId >= 0) ||
-				(tmpActuatorNum <= actuatorNum && actuatorNum >= 0))
-			{
-				neighbors.insert(neighbors.end(), std::pair<int, NeighborLink>(toId, NeighborLink(toId, baseIds, actuators)));
-				actuators.clear();
-			}
-			toId = tmpToId;
-			actuatorId = tmpActuatorId;
-			actuatorNum = tmpActuatorNum;
-
-			// baseIds
-			dataSize = sqlite3_column_bytes(ppStmt, index);
-			data = sqlite3_column_blob(ppStmt, index++);
-			if(dataSize>4)
-			{
-				baseIds = std::vector<int>(dataSize/sizeof(int));
-				memcpy(baseIds.data(), data, dataSize);
-			}
-
-			if(actuatorId)
-			{
-				actuatorType = sqlite3_column_int(ppStmt, index++);
-				actuatorWidth = sqlite3_column_int(ppStmt, index++);
-				actuatorHeight = sqlite3_column_int(ppStmt, index++);
-				actuatorDataType = sqlite3_column_int(ppStmt, index++);
-
-				data = sqlite3_column_blob(ppStmt, index);
-				dataSize = sqlite3_column_bytes(ppStmt, index++);
-
-				//Create the actuator
-				if(dataSize>4 && data)
-				{
-					cv::Mat dataMat(actuatorHeight, actuatorWidth, actuatorDataType);
-					memcpy(dataMat.data, data, dataSize);
-					actuators.push_back(Actuator(dataMat, (Actuator::Type)actuatorType, actuatorNum));
-				}
-			}
+			neighbors.insert(neighbors.end(), toId);
 			rc = sqlite3_step(ppStmt);
 		}
-		// add the last
-		if(toId > 0)
-		{
-			neighbors.insert(neighbors.end(), std::pair<int, NeighborLink>(toId, NeighborLink(toId, baseIds, actuators)));
-			actuators.clear();
-		}
 
-		if(rc != SQLITE_DONE)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		if(neighbors.size() == 0)
 		{
-			UERROR("No neighbors loaded form signature %d", signatureId);
+			UERROR("No neighbors loaded from signature %d", signatureId);
 		}
-
-		return true;
 	}
-	return false;
 }
 
-bool DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
+void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 {
 	if(_ppDb)
 	{
@@ -2127,45 +1124,24 @@ bool DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
+		int totalLinksLoaded = 0;
 
-		query << "SELECT to_id, Link.type, actuator_id, num, base_ids, Actuator.type, width, height, data_type, data FROM Link "
-			  << "LEFT JOIN Actuator "
-			  << "ON Actuator.id = actuator_id "
+		query << "SELECT to_id, type FROM Link "
 			  << "WHERE from_id = ? "
-			  << "ORDER BY to_id, actuator_id, num;";
+			  << "ORDER BY to_id";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		for(std::list<Signature*>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
 		{
 			// bind id
 			rc = sqlite3_bind_int(ppStmt, 1, (*iter)->id());
-			if (rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 			int toId = -1;
 			int linkType = -1;
-			int actuatorId = -1;
-			int actuatorNum = -1;
-			int actuatorType;
-			int actuatorWidth;
-			int actuatorHeight;
-			int actuatorDataType;
-			const void * data = 0;
-			int dataSize = 0;
-			std::list<Actuator> actuators;
-			std::vector<int> baseIds;
-			NeighborsMultiMap neighbors;
+			std::set<int> neighbors;
 			std::set<int> loopIds;
 			std::set<int> childIds;
 
@@ -2175,91 +1151,29 @@ bool DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 			{
 				int index = 0;
 
-				int tmpToId = sqlite3_column_int(ppStmt, index++);
-				int tmpLinkType = sqlite3_column_int(ppStmt, index++);
-				int tmpActuatorId = sqlite3_column_int(ppStmt, index++);
-				int tmpActuatorNum = sqlite3_column_int(ppStmt, index++);
+				toId = sqlite3_column_int(ppStmt, index++);
+				linkType = sqlite3_column_int(ppStmt, index++);
 
-				if((tmpToId != toId && toId >= 0) ||
-					(tmpLinkType != linkType && linkType >= 0) ||
-					(tmpActuatorId != actuatorId && actuatorId >= 0) ||
-					(tmpActuatorNum <= actuatorNum && actuatorNum >= 0))
+				if(linkType == 1)
 				{
-					if(linkType == 1)
-					{
-						UDEBUG("Load link from %d to %d, type=%d", (*iter)->id(), toId, 1);
-						loopIds.insert(toId);
-					}
-					else if(linkType == 2)
-					{
-						UDEBUG("Load link from %d to %d, type=%d", (*iter)->id(), toId, 2);
-						childIds.insert(toId);
-					}
-					else if(linkType == 0)
-					{
-						UDEBUG("Load link from %d to %d, type=%d", (*iter)->id(), toId, 0);
-						neighbors.insert(neighbors.end(), std::pair<int, NeighborLink>(toId, NeighborLink(toId, baseIds, actuators)));
-						actuators.clear();
-					}
+					UDEBUG("Load link from %d to %d, type=%d", (*iter)->id(), toId, 1);
+					loopIds.insert(toId);
 				}
-				toId = tmpToId;
-				linkType = tmpLinkType;
-				actuatorId = tmpActuatorId;
-				actuatorNum = tmpActuatorNum;
-
-				// baseIds
-				dataSize = sqlite3_column_bytes(ppStmt, index);
-				data = sqlite3_column_blob(ppStmt, index++);
-				if(dataSize>4)
+				else if(linkType == 2)
 				{
-					baseIds = std::vector<int>(dataSize/sizeof(int));
-					memcpy(baseIds.data(), data, dataSize);
+					UDEBUG("Load link from %d to %d, type=%d", (*iter)->id(), toId, 2);
+					childIds.insert(toId);
+				}
+				else if(linkType == 0)
+				{
+					UDEBUG("Load link from %d to %d, type=%d", (*iter)->id(), toId, 0);
+					neighbors.insert(neighbors.end(), toId);
 				}
 
-				if(actuatorId)
-				{
-					actuatorType = sqlite3_column_int(ppStmt, index++);
-					actuatorWidth = sqlite3_column_int(ppStmt, index++);
-					actuatorHeight = sqlite3_column_int(ppStmt, index++);
-					actuatorDataType = sqlite3_column_int(ppStmt, index++);
-
-					data = sqlite3_column_blob(ppStmt, index);
-					dataSize = sqlite3_column_bytes(ppStmt, index++);
-
-					//Create the actuator
-					if(dataSize>4 && data)
-					{
-						cv::Mat dataMat(actuatorHeight, actuatorWidth, actuatorDataType);
-						memcpy(dataMat.data, data, dataSize);
-						actuators.push_back(Actuator(dataMat, (Actuator::Type)actuatorType, actuatorNum));
-					}
-				}
+				++totalLinksLoaded;
 				rc = sqlite3_step(ppStmt);
 			}
-			// add the last
-			if(linkType == 1)
-			{
-				loopIds.insert(toId);
-			}
-			else if(linkType == 2)
-			{
-				childIds.insert(toId);
-			}
-			else if(linkType == 0)
-			{
-				neighbors.insert(neighbors.end(), std::pair<int, NeighborLink>(toId, NeighborLink(toId, baseIds, actuators)));
-				actuators.clear();
-			}
-			else if(linkType != -1)
-			{
-				UERROR("Not handled link type %d", linkType);
-			}
-			if(rc != SQLITE_DONE)
-			{
-				ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 			// add links
 			(*iter)->addNeighbors(neighbors);
@@ -2268,29 +1182,18 @@ bool DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 
 			//reset
 			rc = sqlite3_reset(ppStmt);
-			if (rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-			UINFO("time=%fs, neighbors.size=%d, loopIds=%d, childIds=%d", timer.ticks(), neighbors.size(), loopIds.size(), childIds.size());
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+			UINFO("time=%fs, node=%d, neighbors.size=%d, loopIds=%d, childIds=%d", (*iter)->id(), timer.ticks(), neighbors.size(), loopIds.size(), childIds.size());
 		}
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
-		return true;
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	}
-	return false;
 }
 
 
-bool DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes) const
+void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes) const
 {
 	if(_ppDb && nodes.size())
 	{
@@ -2299,17 +1202,10 @@ bool DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes) const
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;
 		Signature * s = 0;
-		std::list<KeypointSignature*> kpSignatures;
-		std::list<SMSignature*> smSignatures;
 
 		std::string query = "UPDATE Node SET weight=?, time_enter = DATETIME('NOW') WHERE id=?;";
 		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		for(std::list<Signature *>::const_iterator i=nodes.begin(); i!=nodes.end(); ++i)
 		{
@@ -2317,349 +1213,104 @@ bool DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes) const
 			int index = 1;
 			if(s)
 			{
-				if(s->nodeType().compare("KeypointSignature") == 0)
-				{
-					kpSignatures.push_back((KeypointSignature *)s);
-				}
-				else if(s->nodeType().compare("SMSignature") == 0)
-				{
-					smSignatures.push_back((SMSignature *)s);
-				}
-				else
-				{
-					UFATAL("type not implemented !");
-				}
-
 				rc = sqlite3_bind_int(ppStmt, index++, s->getWeight());
-				if (rc != SQLITE_OK)
-				{
-					ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-					rc = sqlite3_finalize(ppStmt);
-					return false;
-				}
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 				rc = sqlite3_bind_int(ppStmt, index++, s->id());
-				if (rc != SQLITE_OK)
-				{
-					ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-					rc = sqlite3_finalize(ppStmt);
-					return false;
-				}
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 				//step
 				rc=sqlite3_step(ppStmt);
-				if (rc != SQLITE_DONE)
-				{
-					ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-					rc = sqlite3_finalize(ppStmt);
-					return false;
-				}
+				UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 				rc = sqlite3_reset(ppStmt);
-				if (rc != SQLITE_OK)
-				{
-					ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-					rc = sqlite3_finalize(ppStmt);
-					return false;
-				}
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 			}
 		}
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1.12: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		ULOGGER_DEBUG("Update Node table, Time=%fs", timer.ticks());
 
 		// Update links part1
 		query = "DELETE FROM Link WHERE from_id=?;";
 		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		for(std::list<Signature *>::const_iterator j=nodes.begin(); j!=nodes.end(); ++j)
 		{
 			if((*j)->isNeighborsModified())
 			{
 				rc = sqlite3_bind_int(ppStmt, 1, (*j)->id());
-				if (rc != SQLITE_OK)
-				{
-					ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-					rc = sqlite3_finalize(ppStmt);
-					return false;
-				}
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 				rc=sqlite3_step(ppStmt);
-				if (rc != SQLITE_DONE)
-				{
-					ULOGGER_ERROR("DB error sid=%d: %s", (*j)->id(), sqlite3_errmsg(_ppDb));
-					rc = sqlite3_finalize(ppStmt);
-					return false;
-				}
+				UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 				rc = sqlite3_reset(ppStmt);
-				if (rc != SQLITE_OK)
-				{
-					ULOGGER_ERROR("DB error, sid=%d: %s", (*j)->id(), sqlite3_errmsg(_ppDb));
-					rc = sqlite3_finalize(ppStmt);
-					return false;
-				}
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 			}
 		}
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		// Update links part2
 		query = queryStepLink();
 		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		for(std::list<Signature *>::const_iterator j=nodes.begin(); j!=nodes.end(); ++j)
 		{
 			if((*j)->isNeighborsModified())
 			{
 				// Save neighbor links
-				const NeighborsMultiMap & neighbors = (*j)->getNeighbors();
-				for(NeighborsMultiMap::const_iterator i=neighbors.begin(); i!=neighbors.end(); ++i)
+				const std::set<int> & neighbors = (*j)->getNeighbors();
+				for(std::set<int>::const_iterator i=neighbors.begin(); i!=neighbors.end(); ++i)
 				{
-					if(stepLink(ppStmt, (*j)->id(), i->first, 0, i->second.actuatorId(), i->second.baseIds()) != SQLITE_OK)
-					{
-						ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-						rc = sqlite3_finalize(ppStmt);
-						return false;
-					}
+					stepLink(ppStmt, (*j)->id(), *i, 0);
 				}
 				// save loop closure links
 				const std::set<int> & loopIds = (*j)->getLoopClosureIds();
 				for(std::set<int>::const_iterator i=loopIds.begin(); i!=loopIds.end(); ++i)
 				{
-					if(stepLink(ppStmt, (*j)->id(), *i, 1, 0, std::vector<int>()) != SQLITE_OK)
-					{
-						ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-						rc = sqlite3_finalize(ppStmt);
-						return false;
-					}
+					stepLink(ppStmt, (*j)->id(), *i, 1);
 				}
 				const std::set<int> & childIds = (*j)->getChildLoopClosureIds();
 				for(std::set<int>::const_iterator i=childIds.begin(); i!=childIds.end(); ++i)
 				{
-					if(stepLink(ppStmt, (*j)->id(), *i, 2, 0, std::vector<int>()) != SQLITE_OK)
-					{
-						ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-						rc = sqlite3_finalize(ppStmt);
-						return false;
-					}
+					stepLink(ppStmt, (*j)->id(), *i, 2);
 				}
 			}
 		}
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		ULOGGER_DEBUG("Update Neighbors Time=%fs", timer.ticks());
 
-		if(kpSignatures.size())
+		// Update word references
+		query = queryStepWordsChanged();
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		for(std::list<Signature *>::const_iterator j=nodes.begin(); j!=nodes.end(); ++j)
 		{
-			// Update word references
-			query = queryStepWordsChanged();
-			rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
-			if(rc != SQLITE_OK)
+			if((*j)->getWordsChanged().size())
 			{
-				ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-			for(std::list<KeypointSignature *>::const_iterator j=kpSignatures.begin(); j!=kpSignatures.end(); ++j)
-			{
-				if((*j)->getWordsChanged().size())
+				const std::map<int, int> & wordsChanged = (*j)->getWordsChanged();
+				for(std::map<int, int>::const_iterator iter=wordsChanged.begin(); iter!=wordsChanged.end(); ++iter)
 				{
-					const std::map<int, int> & wordsChanged = (*j)->getWordsChanged();
-					for(std::map<int, int>::const_iterator iter=wordsChanged.begin(); iter!=wordsChanged.end(); ++iter)
-					{
-						if(stepWordsChanged(ppStmt, (*j)->id(), iter->first, iter->second) != SQLITE_OK)
-						{
-							ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-							rc = sqlite3_finalize(ppStmt);
-							return false;
-						}
-					}
+					stepWordsChanged(ppStmt, (*j)->id(), iter->first, iter->second);
 				}
 			}
-			// Finalize (delete) the statement
-			rc = sqlite3_finalize(ppStmt);
-			if(rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-				return false;
-			}
-		}
-		ULOGGER_DEBUG("KpSignatures update=%fs", timer.ticks());
-
-		if(smSignatures.size())
-		{
-			// Is something to update ???
-		}
-		ULOGGER_DEBUG("SMSignatures update=%fs", timer.ticks());
-
-
-		return true;
-	}
-	return false;
-}
-
-// <oldWordId, activeWordId>
-// TODO DO IT IN A MORE EFFICiENT WAY !!!! (if it is possible...)
-bool DBDriverSqlite3::changeWordsRefQuery(const std::map<int, int> & refsToChange) const
-{
-	ULOGGER_DEBUG("Changing %d references...", refsToChange.size());
-	if(_ppDb && refsToChange.size())
-	{
-		UTimer timer;
-		timer.start();
-		int rc = SQLITE_OK;
-		sqlite3_stmt * ppStmt = 0;
-
-		const char * query = "UPDATE Map_Node_Word SET word_id = ? WHERE word_id = ?;";
-
-		rc = sqlite3_prepare_v2(_ppDb, query, -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
-
-		int count=0;
-		for(std::map<int, int>::const_iterator i=refsToChange.begin(); i!=refsToChange.end(); ++i)
-		{
-			rc = sqlite3_bind_int(ppStmt, 1, (*i).second);
-			if (rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error 1.1: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-			rc = sqlite3_bind_int(ppStmt, 2, (*i).first);
-			if (rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error 1.2: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-
-			//step
-			rc=sqlite3_step(ppStmt);
-			if (rc != SQLITE_DONE)
-			{
-				ULOGGER_ERROR("DB error 1.10: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-
-			rc = sqlite3_reset(ppStmt);
-			if (rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error 1.11: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-
-			if(++count % 5000 == 0)
-			{
-				ULOGGER_DEBUG("Changed %d references...", count);
-			}
 		}
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 5: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
-		return true;
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		ULOGGER_DEBUG("signatures update=%fs", timer.ticks());
 	}
-	return false;
 }
 
-bool DBDriverSqlite3::deleteWordsQuery(const std::vector<int> & ids) const
-{
-	if(_ppDb && ids.size())
-	{
-		UTimer timer;
-		timer.start();
-		int rc = SQLITE_OK;
-		sqlite3_stmt * ppStmt = 0;
-
-		const char * query = "DELETE FROM Word WHERE id = ?;";
-
-		rc = sqlite3_prepare_v2(_ppDb, query, -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
-
-		for(unsigned int i=0; i<ids.size(); ++i)
-		{
-			rc = sqlite3_bind_int(ppStmt, 1, ids[i]);
-			if (rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error 1.1: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-
-			//step
-			rc=sqlite3_step(ppStmt);
-			if (rc != SQLITE_DONE)
-			{
-				ULOGGER_ERROR("DB error 1.10: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-
-			rc = sqlite3_reset(ppStmt);
-			if (rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error 1.11: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-		}
-		// Finalize (delete) the statement
-		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 5: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
-		return true;
-	}
-	return false;
-}
-
-bool DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
+void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 {
 	UDEBUG("");
 	if(_ppDb && signatures.size())
@@ -2669,263 +1320,91 @@ bool DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 		timer.start();
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;
-		std::list<KeypointSignature*> kpSignatures;
-		std::list<SMSignature*> smSignatures;
 
 		// Signature table
 		std::string query = queryStepNode();
 		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 		{
-			if(stepNode(ppStmt, *i) != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-			if((*i)->nodeType().compare("KeypointSignature") == 0)
-			{
-				kpSignatures.push_back((KeypointSignature *)(*i));
-			}
-			else if((*i)->nodeType().compare("SMSignature") == 0)
-			{
-				smSignatures.push_back((SMSignature *)(*i));
-			}
-			else
-			{
-				UFATAL("type not implemented !");
-			}
+			stepNode(ppStmt, *i);
 		}
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		UDEBUG("Time=%fs", timer.ticks());
 
 		// Create new entries in table Link
 		query = queryStepLink();
 		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		for(std::list<Signature *>::const_iterator jter=signatures.begin(); jter!=signatures.end(); ++jter)
 		{
 			// Save neighbor links
-			const NeighborsMultiMap & neighbors = (*jter)->getNeighbors();
-			for(NeighborsMultiMap::const_iterator i=neighbors.begin(); i!=neighbors.end(); ++i)
+			const std::set<int> & neighbors = (*jter)->getNeighbors();
+			for(std::set<int>::const_iterator i=neighbors.begin(); i!=neighbors.end(); ++i)
 			{
-				if(stepLink(ppStmt, (*jter)->id(), i->first, 0, i->second.actuatorId(), i->second.baseIds()) != SQLITE_OK)
-				{
-					ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-					rc = sqlite3_finalize(ppStmt);
-					return false;
-				}
+				stepLink(ppStmt, (*jter)->id(), *i, 0);
 			}
 			// save loop closure links
 			const std::set<int> & loopIds = (*jter)->getLoopClosureIds();
 			for(std::set<int>::const_iterator i=loopIds.begin(); i!=loopIds.end(); ++i)
 			{
-				if(stepLink(ppStmt, (*jter)->id(), *i, 1, 0, std::vector<int>()) != SQLITE_OK)
-				{
-					ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-					rc = sqlite3_finalize(ppStmt);
-					return false;
-				}
+				stepLink(ppStmt, (*jter)->id(), *i, 1);
 			}
 			const std::set<int> & childIds = (*jter)->getChildLoopClosureIds();
 			for(std::set<int>::const_iterator i=childIds.begin(); i!=childIds.end(); ++i)
 			{
-				if(stepLink(ppStmt, (*jter)->id(), *i, 2, 0, std::vector<int>()) != SQLITE_OK)
-				{
-					ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-					rc = sqlite3_finalize(ppStmt);
-					return false;
-				}
+				stepLink(ppStmt, (*jter)->id(), *i, 2);
 			}
 		}
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3.5: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
-
-		// Create new entries in table Actuator
-		query = queryStepActuator();
-		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-			rc = sqlite3_finalize(ppStmt);
-			return false;
-		}
-		for(std::list<Signature *>::const_iterator jter=signatures.begin(); jter!=signatures.end(); ++jter)
-		{
-			// Save actuators
-			const NeighborsMultiMap & neighbors = (*jter)->getNeighbors();
-			for(NeighborsMultiMap::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
-			{
-				//only save the next actions
-				if(iter->second.actuatorId() == (*jter)->id() + 1)
-				{
-					const std::list<Actuator> & actuators = iter->second.actuators();
-					int k=0;
-					for(std::list<Actuator>::const_iterator kter=actuators.begin(); kter!=actuators.end(); ++kter)
-					{
-						if(stepActuator(ppStmt, iter->second.actuatorId(), k++, *kter) != SQLITE_OK)
-						{
-							UERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-							rc = sqlite3_finalize(ppStmt);
-							return false;
-						}
-					}
-					break;
-				}
-			}
-		}
-		// Finalize (delete) the statement
-		rc = sqlite3_finalize(ppStmt);
-		if(rc != SQLITE_OK)
-		{
-			ULOGGER_ERROR("DB error 3.5: %s", sqlite3_errmsg(_ppDb));
-			return false;
-		}
-
-		if(kpSignatures.size())
-		{
-			// Create new entries in table Map_Word_Node
-			query = queryStepKeypoint();
-			rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
-			if(rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error 2: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-			for(std::list<KeypointSignature *>::const_iterator i=kpSignatures.begin(); i!=kpSignatures.end(); ++i)
-			{
-				for(std::multimap<int, cv::KeyPoint>::const_iterator w=(*i)->getWords().begin(); w!=(*i)->getWords().end(); ++w)
-				{
-					if(stepKeypoint(ppStmt, (*i)->id(), w->first, w->second) != SQLITE_OK)
-					{
-						ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-						rc = sqlite3_finalize(ppStmt);
-						return false;
-					}
-				}
-			}
-			// Finalize (delete) the statement
-			rc = sqlite3_finalize(ppStmt);
-			if(rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error 2.11: %s", sqlite3_errmsg(_ppDb));
-				return false;
-			}
-
-			// Add raw sensors
-			query = queryStepSensor();
-			rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
-			if(rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-			for(std::list<KeypointSignature *>::const_iterator i=kpSignatures.begin(); i!=kpSignatures.end(); ++i)
-			{
-				int k=0;
-				for(std::list<Sensor>::const_iterator rawSensor=(*i)->getRawData().begin(); rawSensor!=(*i)->getRawData().end(); ++rawSensor)
-				{
-					if(stepSensor(ppStmt, (*i)->id(), k++, std::vector<int>(), *rawSensor) != SQLITE_OK)
-					{
-						ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-						rc = sqlite3_finalize(ppStmt);
-						return false;
-					}
-				}
-			}
-			// Finalize (delete) the statement
-			rc = sqlite3_finalize(ppStmt);
-			if(rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error 2.11: %s", sqlite3_errmsg(_ppDb));
-				return false;
-			}
-		}
-
-		if(smSignatures.size())
-		{
-			// Add sensors
-			query = queryStepSensor();
-			rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
-			if(rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
-			for(std::list<SMSignature *>::const_iterator i=smSignatures.begin(); i!=smSignatures.end(); ++i)
-			{
-				int k=0;
-				std::list<std::vector<int> >::const_iterator postIter=(*i)->getData().begin();
-				std::list<Sensor>::const_iterator rawSensor=(*i)->getRawData().begin();
-				for(; postIter!=(*i)->getData().end(); ++postIter)
-				{
-					if(rawSensor != (*i)->getRawData().end())
-					{
-						if(stepSensor(ppStmt, (*i)->id(), k++, *postIter, *rawSensor) != SQLITE_OK)
-						{
-							ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-							rc = sqlite3_finalize(ppStmt);
-							return false;
-						}
-						++rawSensor;
-					}
-					else
-					{
-						cv::Mat empty;
-						if(stepSensor(ppStmt, (*i)->id(), k++, *postIter, Sensor(empty, Sensor::kTypeNotSpecified)) != SQLITE_OK)
-						{
-							ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-							rc = sqlite3_finalize(ppStmt);
-							return false;
-						}
-					}
-				}
-			}
-			// Finalize (delete) the statement
-			rc = sqlite3_finalize(ppStmt);
-			if(rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error 2.11: %s", sqlite3_errmsg(_ppDb));
-				return false;
-			}
-		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		UDEBUG("Time=%fs", timer.ticks());
 
-		return true;
+
+		// Create new entries in table Map_Word_Node
+		query = queryStepKeypoint();
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
+		{
+			for(std::multimap<int, cv::KeyPoint>::const_iterator w=(*i)->getWords().begin(); w!=(*i)->getWords().end(); ++w)
+			{
+				stepKeypoint(ppStmt, (*i)->id(), w->first, w->second);
+			}
+		}
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		UDEBUG("Time=%fs", timer.ticks());
+
+		// Add images
+		query = queryStepImage();
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
+		{
+			if(!(*i)->getImage().empty())
+			{
+				stepImage(ppStmt, (*i)->id(), (*i)->getImage());
+			}
+		}
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		UDEBUG("Time=%fs", timer.ticks());
 	}
-	return false;
 }
 
-/* BUG : there is a problem with the code at line indicated below... So it is commented.*/
-bool DBDriverSqlite3::saveQuery(const std::vector<VisualWord *> & words) const
+void DBDriverSqlite3::saveQuery(const std::vector<VisualWord *> & words) const
 {
-	ULOGGER_DEBUG("visualWords size=%d", words.size());
+	UDEBUG("visualWords size=%d", words.size());
 	if(_ppDb)
 	{
 		std::string type;
@@ -2940,83 +1419,41 @@ bool DBDriverSqlite3::saveQuery(const std::vector<VisualWord *> & words) const
 		{
 			query = std::string("INSERT INTO Word(id, descriptor_size, descriptor) VALUES(?,?,?);");
 			rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
-			if(rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error 1: %s", sqlite3_errmsg(_ppDb));
-				rc = sqlite3_finalize(ppStmt);
-				return false;
-			}
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 			for(std::vector<VisualWord *>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 			{
 				const VisualWord * w = *iter;
 				if(w && !w->isSaved())
 				{
 					rc = sqlite3_bind_int(ppStmt, 1, w->id());
-					if (rc != SQLITE_OK)
-					{
-						ULOGGER_ERROR("DB error 2.1: %s", sqlite3_errmsg(_ppDb));
-						rc = sqlite3_finalize(ppStmt);
-						return false;
-					}
+					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 					rc = sqlite3_bind_int(ppStmt, 2, w->getDim());
-					if (rc != SQLITE_OK)
-					{
-						ULOGGER_ERROR("DB error 2.3: %s", sqlite3_errmsg(_ppDb));
-						rc = sqlite3_finalize(ppStmt);
-						return false;
-					}
+					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 					rc = sqlite3_bind_blob(ppStmt, 3, w->getDescriptor(), w->getDim()*sizeof(float), SQLITE_STATIC);
-					if (rc != SQLITE_OK)
-					{
-						ULOGGER_ERROR("DB error 2.4: %s", sqlite3_errmsg(_ppDb));
-						rc = sqlite3_finalize(ppStmt);
-						return false;
-					}
+					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 					//execute query
 					rc=sqlite3_step(ppStmt);
-					if (rc != SQLITE_DONE)
-					{
-						ULOGGER_ERROR("DB error 3: %s", sqlite3_errmsg(_ppDb));
-						rc = sqlite3_finalize(ppStmt);
-						return false;
-					}
+					UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 					rc = sqlite3_reset(ppStmt);
-					if (rc != SQLITE_OK)
-					{
-						ULOGGER_ERROR("DB error 4: %s", sqlite3_errmsg(_ppDb));
-						rc = sqlite3_finalize(ppStmt);
-						return false;
-					}
+					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 				}
 			}
 			// Finalize (delete) the statement
 			rc = sqlite3_finalize(ppStmt);
-			if(rc != SQLITE_OK)
-			{
-				ULOGGER_ERROR("DB error 5: %s", sqlite3_errmsg(_ppDb));
-				return false;
-			}
-		}
-		else
-		{
-			//ULOGGER_DEBUG("DBDriverSqlite3::save(std::list<VisualWord*>) Warning : Empty words ref : size(words)=%d", words.size());
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		}
 
-
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
-
-		return true;
+		UDEBUG("Time=%fs", timer.ticks());
 	}
-	return false;
 }
 
 std::string DBDriverSqlite3::queryStepNode() const
 {
-	return "INSERT INTO Node(id, type, weight) VALUES(?,?,?);";
+	return "INSERT INTO Node(id, weight) VALUES(?,?);";
 }
-int DBDriverSqlite3::stepNode(sqlite3_stmt * ppStmt, const Signature * s) const
+void DBDriverSqlite3::stepNode(sqlite3_stmt * ppStmt, const Signature * s) const
 {
 	if(!ppStmt || !s)
 	{
@@ -3025,38 +1462,24 @@ int DBDriverSqlite3::stepNode(sqlite3_stmt * ppStmt, const Signature * s) const
 	int rc = SQLITE_OK;
 
 	int index = 1;
-	std::string type = s->nodeType();
 	rc = sqlite3_bind_int(ppStmt, index++, s->id());
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
-	rc = sqlite3_bind_int(ppStmt, index++, type.compare("KeypointSignature")==0?0:1);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_int(ppStmt, index++, s->getWeight());
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 	//step
 	rc=sqlite3_step(ppStmt);
-	if (rc != SQLITE_DONE)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-	return sqlite3_reset(ppStmt);
+	rc = sqlite3_reset(ppStmt);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 }
 
-std::string DBDriverSqlite3::queryStepSensor() const
+std::string DBDriverSqlite3::queryStepImage() const
 {
-	return "INSERT INTO Sensor(id, num, type, data, raw_width, raw_height, raw_data_type, raw_compressed, raw_data) VALUES(?,?,?,?,?,?,?,?,?);";
+	return "INSERT INTO Image(id, raw_width, raw_height, raw_data_type, raw_compressed, raw_data) VALUES(?,?,?,?,?,?);";
 }
-int DBDriverSqlite3::stepSensor(sqlite3_stmt * ppStmt, int id, int num, const std::vector<int> & postProcessedData, const Sensor & sensor) const
+void DBDriverSqlite3::stepImage(sqlite3_stmt * ppStmt, int id, const cv::Mat & image) const
 {
 	if(!ppStmt)
 	{
@@ -3068,60 +1491,22 @@ int DBDriverSqlite3::stepSensor(sqlite3_stmt * ppStmt, int id, int num, const st
 	int index = 1;
 
 	rc = sqlite3_bind_int(ppStmt, index++, id);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
-	rc = sqlite3_bind_int(ppStmt, index++, num);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
-	rc = sqlite3_bind_int(ppStmt, index++, sensor.type());
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-	if(postProcessedData.size())
-	{
-		rc = sqlite3_bind_blob(ppStmt, index++, postProcessedData.data(), postProcessedData.size()*sizeof(int), SQLITE_STATIC);
-	}
-	else
-	{
-		rc = sqlite3_bind_zeroblob(ppStmt, index++, 4);
-	}
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	rc = sqlite3_bind_int(ppStmt, index++, image.cols);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	rc = sqlite3_bind_int(ppStmt, index++, image.rows);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	rc = sqlite3_bind_int(ppStmt, index++, image.type());
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	rc = sqlite3_bind_int(ppStmt, index++, this->isImagesCompressed()?1:0);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-	rc = sqlite3_bind_int(ppStmt, index++, sensor.data().cols);
-	if (rc != SQLITE_OK)
+	if(image.total())
 	{
-		return rc;
-	}
-	rc = sqlite3_bind_int(ppStmt, index++, sensor.data().rows);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
-	rc = sqlite3_bind_int(ppStmt, index++, sensor.data().type());
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
-	rc = sqlite3_bind_int(ppStmt, index++, this->isImagesCompressed() && sensor.type()==Sensor::kTypeImage?1:0);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
-
-	if(sensor.data().total())
-	{
-		if(this->isImagesCompressed() && sensor.type()==Sensor::kTypeImage)
+		if(this->isImagesCompressed())
 		{
-			cv::imencode(".png", sensor.data(), compressed);
+			cv::imencode(".png", image, compressed);
 			if(compressed.size())
 			{
 				rc = sqlite3_bind_blob(ppStmt, index++, compressed.data(), compressed.size()*sizeof(uchar), SQLITE_STATIC);
@@ -3134,102 +1519,34 @@ int DBDriverSqlite3::stepSensor(sqlite3_stmt * ppStmt, int id, int num, const st
 		}
 		else
 		{
-			if(!sensor.data().isContinuous())
+			if(!image.isContinuous())
 			{
 				UWARN("matrix is not continuous");
 			}
-			rc = sqlite3_bind_blob(ppStmt, index++, sensor.data().data, sensor.data().total()*sensor.data().elemSize(), SQLITE_STATIC);
+			rc = sqlite3_bind_blob(ppStmt, index++, image.data, image.total()*image.elemSize(), SQLITE_STATIC);
 		}
 	}
 	else
 	{
 		rc = sqlite3_bind_zeroblob(ppStmt, index++, 4);
 	}
-
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 	//step
 	rc=sqlite3_step(ppStmt);
-	if (rc != SQLITE_DONE)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-	return sqlite3_reset(ppStmt);
+	rc = sqlite3_reset(ppStmt);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 }
 
-std::string DBDriverSqlite3::queryStepLink() const
+std::string DBDriverSqlite3::queryStepNodeToSensor() const
 {
-	return "INSERT INTO Link(from_id, to_id, type, actuator_id, base_ids) VALUES(?,?,?,?,?);";
+	return "INSERT INTO Node_To_Sensor(node_id, sensor_id, num) VALUES(?,?,?);";
 }
-int DBDriverSqlite3::stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, int type, int actuatorId, const std::vector<int> & baseIds) const
+void DBDriverSqlite3::stepNodeToSensor(sqlite3_stmt * ppStmt, int nodeId, int sensorId, int num) const
 {
 	if(!ppStmt)
-	{
-		UFATAL("");
-	}
-	UDEBUG("Save link from %d to %d, type=%d, a_id=%d", fromId, toId, type, actuatorId);
-	int rc = SQLITE_OK;
-	int index = 1;
-	rc = sqlite3_bind_int(ppStmt, index++, fromId);
-	if (rc != SQLITE_OK)
-	{
-		UERROR("");
-		return rc;
-	}
-	rc = sqlite3_bind_int(ppStmt, index++, toId);
-	if (rc != SQLITE_OK)
-	{
-		UERROR("");
-		return rc;
-	}
-	rc = sqlite3_bind_int(ppStmt, index++, type);
-	if (rc != SQLITE_OK)
-	{
-		UERROR("");
-		return rc;
-	}
-	rc = sqlite3_bind_int(ppStmt, index++, actuatorId);
-	if (rc != SQLITE_OK)
-	{
-		UERROR("");
-		return rc;
-	}
-
-	if(baseIds.size())
-	{
-		rc = sqlite3_bind_blob(ppStmt, index++, baseIds.data(), baseIds.size()*sizeof(int), SQLITE_STATIC);
-	}
-	else
-	{
-		rc = sqlite3_bind_zeroblob(ppStmt, index++, 4);
-	}
-	if (rc != SQLITE_OK)
-	{
-		UERROR("");
-		return rc;
-	}
-
-	rc=sqlite3_step(ppStmt);
-	if (rc != SQLITE_DONE)
-	{
-		UERROR("");
-		return rc;
-	}
-
-	return sqlite3_reset(ppStmt);
-}
-
-std::string DBDriverSqlite3::queryStepActuator() const
-{
-	return "INSERT INTO Actuator(id, num, type, width, height, data_type, data) VALUES(?,?,?,?,?,?,?);";
-}
-int DBDriverSqlite3::stepActuator(sqlite3_stmt * ppStmt, int id, int num, const Actuator & actuator) const
-{
-	if(!ppStmt || actuator.data().total() == 0)
 	{
 		UFATAL("");
 	}
@@ -3238,63 +1555,53 @@ int DBDriverSqlite3::stepActuator(sqlite3_stmt * ppStmt, int id, int num, const 
 	std::vector<unsigned char> compressed;
 	int index = 1;
 
-	rc = sqlite3_bind_int(ppStmt, index++, id);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	rc = sqlite3_bind_int(ppStmt, index++, nodeId);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	rc = sqlite3_bind_int(ppStmt, index++, sensorId);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_int(ppStmt, index++, num);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
-	rc = sqlite3_bind_int(ppStmt, index++, actuator.type());
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
-	rc = sqlite3_bind_int(ppStmt, index++, actuator.data().cols);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
-	rc = sqlite3_bind_int(ppStmt, index++, actuator.data().rows);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
-	rc = sqlite3_bind_int(ppStmt, index++, actuator.data().type());
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
-
-	if(!actuator.data().isContinuous())
-	{
-		UWARN("matrix is not continuous");
-	}
-	rc = sqlite3_bind_blob(ppStmt, index++, actuator.data().data, actuator.data().total()*actuator.data().elemSize(), SQLITE_STATIC);
-
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 	//step
 	rc=sqlite3_step(ppStmt);
-	if (rc != SQLITE_DONE)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-	return sqlite3_reset(ppStmt);
+	rc = sqlite3_reset(ppStmt);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+}
+
+std::string DBDriverSqlite3::queryStepLink() const
+{
+	return "INSERT INTO Link(from_id, to_id, type) VALUES(?,?,?);";
+}
+void DBDriverSqlite3::stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, int type) const
+{
+	if(!ppStmt)
+	{
+		UFATAL("");
+	}
+	UDEBUG("Save link from %d to %d, type=%d", fromId, toId, type);
+	int rc = SQLITE_OK;
+	int index = 1;
+	rc = sqlite3_bind_int(ppStmt, index++, fromId);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	rc = sqlite3_bind_int(ppStmt, index++, toId);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	rc = sqlite3_bind_int(ppStmt, index++, type);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+	rc=sqlite3_step(ppStmt);
+	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+	rc=sqlite3_reset(ppStmt);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 }
 
 std::string DBDriverSqlite3::queryStepWordsChanged() const
 {
 	return "UPDATE Map_Node_Word SET word_id = ? WHERE word_id = ? AND node_id = ?;";
 }
-int DBDriverSqlite3::stepWordsChanged(sqlite3_stmt * ppStmt, int nodeId, int oldWordId, int newWordId) const
+void DBDriverSqlite3::stepWordsChanged(sqlite3_stmt * ppStmt, int nodeId, int oldWordId, int newWordId) const
 {
 	if(!ppStmt)
 	{
@@ -3303,35 +1610,24 @@ int DBDriverSqlite3::stepWordsChanged(sqlite3_stmt * ppStmt, int nodeId, int old
 	int rc = SQLITE_OK;
 	int index = 1;
 	rc = sqlite3_bind_int(ppStmt, index++, newWordId);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_int(ppStmt, index++, oldWordId);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_int(ppStmt, index++, nodeId);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 	rc=sqlite3_step(ppStmt);
-	if (rc != SQLITE_DONE)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-	return sqlite3_reset(ppStmt);
+	rc=sqlite3_reset(ppStmt);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 }
 
 std::string DBDriverSqlite3::queryStepKeypoint() const
 {
 	return "INSERT INTO Map_Node_Word(node_id, word_id, pos_x, pos_y, size, dir, response) VALUES(?,?,?,?,?,?,?);";
 }
-int DBDriverSqlite3::stepKeypoint(sqlite3_stmt * ppStmt, int nodeId, int wordId, const cv::KeyPoint & kp) const
+void DBDriverSqlite3::stepKeypoint(sqlite3_stmt * ppStmt, int nodeId, int wordId, const cv::KeyPoint & kp) const
 {
 	if(!ppStmt)
 	{
@@ -3340,48 +1636,25 @@ int DBDriverSqlite3::stepKeypoint(sqlite3_stmt * ppStmt, int nodeId, int wordId,
 	int rc = SQLITE_OK;
 	int index = 1;
 	rc = sqlite3_bind_int(ppStmt, index++, nodeId);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_int(ppStmt, index++, wordId);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_double(ppStmt, index++, kp.pt.x);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_double(ppStmt, index++, kp.pt.y);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_int(ppStmt, index++, kp.size);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_double(ppStmt, index++, kp.angle);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_double(ppStmt, index++, kp.response);
-	if (rc != SQLITE_OK)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 	rc=sqlite3_step(ppStmt);
-	if (rc != SQLITE_DONE)
-	{
-		return rc;
-	}
+	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-	return sqlite3_reset(ppStmt);
+	rc = sqlite3_reset(ppStmt);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 }
 
 } // namespace rtabmap

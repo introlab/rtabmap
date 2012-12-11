@@ -36,13 +36,24 @@
 
 namespace rtabmap {
 
-StatItem::StatItem(const QString & name, float x, float y, const QString & unit, const QMenu * menu, QGridLayout * grid, QWidget * parent) :
+StatItem::StatItem(const QString & name, const std::vector<float> & x, const std::vector<float> & y, const QString & unit, const QMenu * menu, QGridLayout * grid, QWidget * parent) :
 	QWidget(parent),
-	_xValue(x)
+	_button(0),
+	_name(0),
+	_value(0),
+	_unit(0),
+	_menu(0)
 {
 	this->setupUi(grid);
 	_name->setText(name);
-	_value->setNum(y);
+	if(y.size() == 1)
+	{
+		_value->setNum(y[0]);
+	}
+	else if(y.size() > 1)
+	{
+		_value->setText("*");
+	}
 	_unit->setText(unit);
 	this->updateMenu(menu);
 }
@@ -55,8 +66,18 @@ StatItem::~StatItem()
 void StatItem::setValue(float x, float y)
 {
 	_value->setText(QString::number(y, 'g', 3));
-	_xValue = x;
 	emit valueChanged(x,y);
+}
+
+void StatItem::setValues(const std::vector<float> & x, const std::vector<float> & y)
+{
+	_value->setText("*");
+	emit valuesChanged(x,y);
+}
+
+QString StatItem::value() const
+{
+	return _value->text();
 }
 
 void StatItem::setupUi(QGridLayout * grid)
@@ -157,6 +178,14 @@ void StatsToolBox::closeFigures()
 
 void StatsToolBox::updateStat(const QString & statFullName, float x, float y)
 {
+	std::vector<float> vx(1),vy(1);
+	vx[0] = x;
+	vy[0] = y;
+	updateStat(statFullName, vx, vy);
+}
+
+void StatsToolBox::updateStat(const QString & statFullName, const std::vector<float> & x, const std::vector<float> & y)
+{
 	// round float to max 2 numbers after the dot
 	//x = (float(int(100*x)))/100;
 	//y = (float(int(100*y)))/100;
@@ -164,7 +193,14 @@ void StatsToolBox::updateStat(const QString & statFullName, float x, float y)
 	StatItem * item = _statBox->findChild<StatItem *>(statFullName);
 	if(item)
 	{
-		item->setValue(x, y);
+		if(y.size() == 1 && x.size() == 1)
+		{
+			item->setValue(x[0], y[0]);
+		}
+		else
+		{
+			item->setValues(x, y);
+		}
 	}
 	else
 	{
@@ -260,6 +296,11 @@ void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 			UPlotCurve * curve = new UPlotCurve(stat->objectName(), plot);
 			curve->setPen(plot->getRandomPenColored());
 			connect(stat, SIGNAL(valueChanged(float, float)), curve, SLOT(addValue(float, float)));
+			connect(stat, SIGNAL(valuesChanged(const std::vector<float> &, const std::vector<float> &)), curve, SLOT(setData(const std::vector<float> &, const std::vector<float> &)));
+			if(stat->value().compare("*") == 0)
+			{
+				plot->setMaxVisibleItems(0);
+			}
 			if(!plot->addCurve(curve))
 			{
 				ULOGGER_WARN("Already added to the figure");
@@ -285,6 +326,7 @@ void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 		QDialog * figure = new QDialog(0, Qt::Window);
 		_figures.insert(newPlotName, figure);
 		QHBoxLayout * hLayout = new QHBoxLayout(figure);
+		hLayout->setContentsMargins(0,0,0,0);
 		figure->setWindowTitle(newPlotName);
 		figure->setAttribute(Qt::WA_DeleteOnClose, true);
 		connect(figure, SIGNAL(destroyed(QObject*)), this, SLOT(figureDeleted(QObject*)));
@@ -301,6 +343,11 @@ void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 		UPlotCurve * curve = new UPlotCurve(stat->objectName(), newPlot);
 		curve->setPen(newPlot->getRandomPenColored());
 		connect(stat, SIGNAL(valueChanged(float, float)), curve, SLOT(addValue(float, float)));
+		connect(stat, SIGNAL(valuesChanged(const std::vector<float> &, const std::vector<float> &)), curve, SLOT(setData(const std::vector<float> &, const std::vector<float> &)));
+		if(stat->value().compare("*") == 0)
+		{
+			newPlot->setMaxVisibleItems(0);
+		}
 		if(!newPlot->addCurve(curve))
 		{
 			ULOGGER_ERROR("Not supposed to be here !?!");
@@ -357,7 +404,7 @@ void StatsToolBox::contextMenuEvent(QContextMenuEvent * event)
 		if(action == aClearFigures)
 		{
 			for(QMap<QString, QWidget*>::iterator i=_figures.begin(); i!=_figures.end(); ++i)
-				{
+			{
 				QList<UPlot *> plots = i.value()->findChildren<UPlot *>();
 				if(plots.size() == 1)
 				{

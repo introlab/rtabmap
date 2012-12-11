@@ -10,10 +10,9 @@
 #include <utilite/UStl.h>
 #include <utilite/UMath.h>
 #include <opencv2/calib3d/calib3d.hpp>
-#include "rtabmap/core/VWDictionary.h"
-#include "rtabmap/core/KeypointDescriptor.h"
-#include "rtabmap/core/KeypointDetector.h"
+#include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/EpipolarGeometry.h"
+#include "rtabmap/core/VWDictionary.h"
 
 #include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/qtipl.h"
@@ -200,13 +199,13 @@ int main(int argc, char** argv)
    // Find pairs
    timer.start();
    std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
-   findPairsUnique(words1, words2, pairs);
+   EpipolarGeometry::findPairsUnique(words1, words2, pairs);
    UINFO("find pairs = %d ms", timer.elapsed());
 
    // Find fundamental matrix
    timer.start();
    std::vector<uchar> status;
-   cv::Mat fundamentalMatrix = findFFromWords(pairs, status);
+   cv::Mat fundamentalMatrix = EpipolarGeometry::findFFromWords(pairs, status);
    UINFO("inliers = %d/%d", uSum(status), pairs.size());
    UINFO("find F = %d ms", timer.elapsed());
    if(!fundamentalMatrix.empty())
@@ -290,7 +289,7 @@ int main(int argc, char** argv)
 		std::cout<<"K=" << k << std::endl;
 		timer.start();
 		//std::cout<<"e=" << e << std::endl;
-		cv::Mat p = findPFromF(e, x1, x2);
+		cv::Mat p = EpipolarGeometry::findPFromF(e, x1, x2);
 		cv::Mat p0 = cv::Mat::zeros(3, 4, CV_64FC1);
 		p0.at<double>(0,0) = 1;
 		p0.at<double>(1,1) = 1;
@@ -333,7 +332,7 @@ int main(int argc, char** argv)
 		//Show rotation/translation of the second camera
 		cv::Mat r;
 		cv::Mat t;
-		findRTFromP(p, r, t);
+		EpipolarGeometry::findRTFromP(p, r, t);
 		std::cout<< "R=" << r << std::endl;
 		std::cout<< "t=" << t << std::endl;
 

@@ -4,13 +4,13 @@
 SET(headers_ui 
 	../include/${PROJECT_PREFIX}/gui/MainWindow.h
 	../include/${PROJECT_PREFIX}/gui/PreferencesDialog.h
+	../include/${PROJECT_PREFIX}/gui/DatabaseViewer.h
 	./AboutDialog.h
 	./ConsoleWidget.h
 	../include/${PROJECT_PREFIX}/gui/ImageView.h
 	./PdfPlot.h
 	./StatsToolBox.h
 	./DetailedProgressDialog.h
-	./TwistWidget.h
 )
 
 SET(uis
@@ -18,6 +18,7 @@ SET(uis
     ./ui/preferencesDialog.ui
     ./ui/aboutDialog.ui
     ./ui/consoleWidget.ui
+    ./ui/DatabaseViewer.ui
 )
 
 SET(qrc 
@@ -48,7 +49,7 @@ SET(SRC_FILES
 	./DetailedProgressDialog.cpp
 	./AboutDialog.cpp
 	./ConsoleWidget.cpp
-	./TwistWidget.cpp
+	./DatabaseViewer.cpp
 	${moc_srcs} 
 	${moc_uis} 
 	${srcs_qrc}

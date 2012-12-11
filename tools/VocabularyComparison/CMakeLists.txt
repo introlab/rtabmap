@@ -1,0 +1,25 @@
+
+SET(INCLUDE_DIRS
+	${PROJECT_SOURCE_DIR}/corelib/include
+    ${UTILITE_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
+)
+
+SET(LIBRARIES
+    ${UTILITE_LIBRARIES}
+	${OpenCV_LIBRARIES}
+)
+
+INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
+
+ADD_EXECUTABLE(vocabularyComparison main.cpp)
+TARGET_LINK_LIBRARIES(vocabularyComparison rtabmap_corelib ${LIBRARIES})
+
+SET_TARGET_PROPERTIES( vocabularyComparison 
+  PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-vocabularyComparison)
+
+INSTALL(TARGETS vocabularyComparison
+        RUNTIME DESTINATION bin COMPONENT runtime
+        LIBRARY DESTINATION lib COMPONENT devel
+        ARCHIVE DESTINATION lib COMPONENT devel)
+

@@ -17,7 +17,7 @@
  * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "rtabmap/core/VisualWord.h"
+#include "VisualWord.h"
 #include "utilite/ULogger.h"
 #include "utilite/UStl.h"
 

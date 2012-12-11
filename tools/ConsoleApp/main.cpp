@@ -380,9 +380,9 @@ int main(int argc, char * argv[])
 	rtabmap->init();
 	rtabmap->setMaxTimeAllowed(timeThreshold); // in ms
 
-	//ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setType(ULogger::kTypeFile, rtabmap->getWorkingDir()+"/LogConsole.txt", false);
-	ULogger::setBuffered(true);
+	ULogger::setType(ULogger::kTypeConsole);
+	//ULogger::setType(ULogger::kTypeFile, rtabmap->getWorkingDir()+"/LogConsole.txt", false);
+	//ULogger::setBuffered(true);
 	ULogger::setLevel(logLevel);
 	ULogger::setExitLevel(exitLevel);
 
@@ -432,28 +432,38 @@ int main(int argc, char * argv[])
 	camera->parseParameters(pm);
 
 	UTimer iterationTimer;
+	UTimer rtabmapTimer;
 	int imagesProcessed = 0;
 	std::list<std::vector<float> > teleopActions;
 	while(loopDataset <= repeat && g_forever)
 	{
 		cv::Mat descriptors;
 		std::vector<cv::KeyPoint> keypoints;
-		cv::Mat img = camera->takeImage(descriptors, keypoints);
+		cv::Mat cvImg = camera->takeImage(descriptors, keypoints);
+		Image img(cvImg, descriptors, keypoints);
 		int i=0;
+		double maxIterationTime = 0.0;
+		int maxIterationTimeId = 0;
 		while(!img.empty() && g_forever)
 		{
 			++imagesProcessed;
 			iterationTimer.start();
-			rtabmap->process(Sensor(descriptors, keypoints));
+			rtabmapTimer.start();
+			rtabmap->process(img);
+			double rtabmapTime = rtabmapTimer.elapsed();
 			loopClosureId = rtabmap->getLoopClosureId();
 			if(rtabmap->getLoopClosureId())
 			{
 				++countLoopDetected;
 			}
-			img = camera->takeImage(descriptors, keypoints);
+			cvImg = camera->takeImage(descriptors, keypoints);
+			img = Image(cvImg, descriptors, keypoints);
 			if(++count % 100 == 0)
 			{
-				printf(" count = %d, loop closures = %d\n", count, countLoopDetected);
+				printf(" count = %d, loop closures = %d, max time (at %d) = %fs\n",
+						count, countLoopDetected, maxIterationTimeId, maxIterationTime);
+				maxIterationTime = 0.0;
+				maxIterationTimeId = 0;
 				std::map<int, int> wm = rtabmap->getWeights();
 				printf(" WM(%d)=[", (int)wm.size());
 				for(std::map<int, int>::iterator iter=wm.begin(); iter!=wm.end();++iter)
@@ -480,24 +490,32 @@ int main(int argc, char * argv[])
 
 			double iterationTime = iterationTimer.ticks();
 
+			if(rtabmapTime > maxIterationTime)
+			{
+				maxIterationTime = rtabmapTime;
+				maxIterationTimeId = count;
+			}
+
 			ULogger::flush();
 
 			if(rtabmap->getLoopClosureId())
 			{
-				printf(" iteration(%d) loop(%d) time=%fs *\n", count, rtabmap->getLoopClosureId(), iterationTime);
+				printf(" iteration(%d) loop(%d) hyp(%.2f) time=%fs/%fs *\n",
+						count, rtabmap->getLoopClosureId(), rtabmap->getLcHypValue(), rtabmapTime, iterationTime);
 			}
 			else if(rtabmap->getReactivatedId())
 			{
-				printf(" iteration(%d) high(%d) time=%fs\n", count, rtabmap->getReactivatedId(), iterationTime);
+				printf(" iteration(%d) high(%d) hyp(%.2f) time=%fs/%fs\n",
+						count, rtabmap->getReactivatedId(), rtabmap->getLcHypValue(), rtabmapTime, iterationTime);
 			}
 			else
 			{
-				printf(" iteration(%d) time=%fs\n", count, iterationTime);
+				printf(" iteration(%d) time=%fs/%fs\n", count, rtabmapTime, iterationTime);
 			}
 
-			if(timeThreshold && iterationTime > timeThreshold*100.0f)
+			if(timeThreshold && rtabmapTime > timeThreshold*100.0f)
 			{
-				printf(" ERROR,  there is  problem, too much time taken... %fs", iterationTime);
+				printf(" ERROR,  there is  problem, too much time taken... %fs", rtabmapTime);
 				break; // there is  problem, don't continue
 			}
 		}

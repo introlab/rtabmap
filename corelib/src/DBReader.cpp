@@ -7,24 +7,20 @@
 
 #include "rtabmap/core/DBReader.h"
 #include "rtabmap/core/DBDriver.h"
-
-#include "rtabmap/core/SensorimotorEvent.h"
-#include "rtabmap/core/DBDriverFactory.h"
+#include "DBDriverSqlite3.h"
 
 #include <utilite/ULogger.h>
 #include <utilite/UEventsManager.h>
 #include <utilite/UFile.h>
 
+#include "rtabmap/core/Camera.h"
+
 namespace rtabmap {
 
 DBReader::DBReader(const std::string & databasePath,
-				   float frameRate,
-		           const std::set<Sensor::Type> & sensorTypes,
-		           const std::set<Actuator::Type> & actuatorTypes) :
+				   float frameRate) :
 	_path(databasePath),
 	_frameRate(frameRate),
-	_sensorTypes(sensorTypes),
-	_actuatorTypes(actuatorTypes),
 	_dbDriver(0),
 	_currentId(_ids.end())
 {
@@ -40,7 +36,7 @@ DBReader::~DBReader()
 	}
 }
 
-bool DBReader::init()
+bool DBReader::init(int startIndex)
 {
 	if(_dbDriver)
 	{
@@ -59,7 +55,7 @@ bool DBReader::init()
 
 	rtabmap::ParametersMap parameters;
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), "false"));
-	_dbDriver = DBDriverFactory::createDBDriver("sqlite3", parameters);
+	_dbDriver = new DBDriverSqlite3(parameters);
 	if(!_dbDriver)
 	{
 		UERROR("Driver doesn't exist.");
@@ -75,6 +71,18 @@ bool DBReader::init()
 
 	_dbDriver->getAllNodeIds(_ids);
 	_currentId = _ids.begin();
+	if(startIndex>0 && _ids.size())
+	{
+		std::set<int>::iterator iter = _ids.lower_bound(startIndex);
+		if(iter == _ids.end())
+		{
+			UWARN("Start index is too high (%d), the last in database is %d. Starting from beginning...", startIndex, *_ids.rbegin());
+		}
+		else
+		{
+			_currentId = iter;
+		}
+	}
 
 	return true;
 }
@@ -94,27 +102,23 @@ void DBReader::mainLoopBegin()
 
 void DBReader::mainLoop()
 {
-	std::list<Sensor> sensors;
-	std::list<Actuator> actuators;
-	this->getNextSensorimotorState(sensors, actuators);
-	if(!sensors.empty() || !actuators.empty())
+	cv::Mat image;
+	this->getNextImage(image);
+	if(!image.empty())
 	{
-		UEventsManager::post(new SensorimotorEvent(sensors, actuators));
+		UEventsManager::post(new CameraEvent(image));
 	}
 	else if(!this->isKilled())
 	{
-		UDEBUG("no more sensorimotor states...");
+		UDEBUG("no more images...");
 		this->kill();
-		UEventsManager::post(new SensorimotorEvent());
+		UEventsManager::post(new CameraEvent());
 	}
 
 }
 
-void DBReader::getNextSensorimotorState(std::list<Sensor> & sensors, std::list<Actuator> & actuators)
+void DBReader::getNextImage(cv::Mat & image)
 {
-	sensors.clear();
-	actuators.clear();
-
 	if(_dbDriver)
 	{
 		float frameRate = _frameRate;
@@ -140,49 +144,12 @@ void DBReader::getNextSensorimotorState(std::list<Sensor> & sensors, std::list<A
 		if(!this->isKilled() && _currentId != _ids.end())
 		{
 			//sensors
-			_dbDriver->getRawData(*_currentId, sensors);
-
-			//actuators
-			NeighborsMultiMap neighbors;
+			_dbDriver->getImage(*_currentId, image);
 			++_currentId;
-			if(_currentId != _ids.end())
+			if(image.empty())
 			{
-				_dbDriver->getActuatorData(*_currentId, actuators);
+				UWARN("No image loaded from the database!");
 			}
-
-			UDEBUG("sensors.size=%d actuators.size=%d", sensors.size(), actuators.size());
-
-			//filtering for types wanted
-			if(_sensorTypes.size())
-			{
-				for(std::list<Sensor>::iterator jter=sensors.begin(); jter!=sensors.end();)
-				{
-					if(_sensorTypes.find((Sensor::Type)jter->type()) == _sensorTypes.end())
-					{
-						jter = sensors.erase(jter);
-					}
-					else
-					{
-						++jter;
-					}
-				}
-			}
-			if(_actuatorTypes.size())
-			{
-				for(std::list<Actuator>::iterator jter=actuators.begin(); jter!=actuators.end();)
-				{
-					if(_actuatorTypes.find((Actuator::Type)jter->type()) == _actuatorTypes.end())
-					{
-						jter = actuators.erase(jter);
-					}
-					else
-					{
-						++jter;
-					}
-				}
-			}
-
-			UDEBUG("after filtering sensors.size=%d actuators.size=%d", sensors.size(), actuators.size());
 		}
 	}
 	else

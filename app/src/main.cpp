@@ -30,10 +30,9 @@ using namespace rtabmap;
 
 int main(int argc, char* argv[])
 {
-
 	/* Set logger type */
 	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kWarning); // Disable log with level
+	ULogger::setLevel(ULogger::kInfo); // Disable log with level
 
 	ULOGGER_INFO("Program started...");
 
@@ -67,6 +66,7 @@ int main(int argc, char* argv[])
 	ULOGGER_INFO("Free memory...");
 
 	delete mainWindow;
+
 	//Since we can't put the Rtabmap object in the MainWindow class,
 	//we pop up a message box indicating that the rtabmap object
 	// is being deleted (saving data to the database)

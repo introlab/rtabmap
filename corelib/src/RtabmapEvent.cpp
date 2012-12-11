@@ -47,14 +47,14 @@ void Statistics::addStatistic(const std::string & name, float value)
 	_data.insert(std::pair<std::string, float>(name, value));
 }
 
-void Statistics::setRefRawData(const std::list<Sensor> & refRawData)
+void Statistics::setRefImage(const cv::Mat & image)
 {
-	_refRawData = refRawData;
+	_refImage = image;
 }
 
-void Statistics::setLoopClosureRawData(const std::list<Sensor> & loopClosureRawData)
+void Statistics::setLoopImage(const cv::Mat & image)
 {
-	_loopClosureRawData = loopClosureRawData;
+	_loopImage = image;
 }
 
 }

@@ -29,8 +29,8 @@
 #include <utilite/UDirectory.h>
 #include <utilite/UTimer.h>
 #include "rtabmap/core/Parameters.h"
-#include "rtabmap/core/KeypointDetector.h"
-#include "rtabmap/core/KeypointDescriptor.h"
+#include "rtabmap/core/Features2d.h"
+#include "rtabmap/core/Image.h"
 #include <set>
 #include <stack>
 #include <list>
@@ -59,9 +59,7 @@ public:
 	CameraEvent(const cv::Mat & descriptors, const std::vector<cv::KeyPoint> & keypoints, const cv::Mat & image = cv::Mat(), int cameraId = 0) :
 		UEvent(kCodeFeatures),
 		_cameraId(cameraId),
-		_image(image),
-		_descriptors(descriptors),
-		_keypoints(keypoints)
+		_image(image, descriptors, keypoints)
 	{
 	}
 	CameraEvent(int cameraId = 0) :
@@ -73,18 +71,14 @@ public:
 	int cameraId() const {return _cameraId;}
 
 	// Image or descriptors
-	const cv::Mat & image() const {return _image;}
-	const cv::Mat & descriptors() const {return _descriptors;}
-	const std::vector<cv::KeyPoint> & keypoints() const {return _keypoints;}
+	const Image & image() const {return _image;}
 
 	virtual ~CameraEvent() {}
 	virtual std::string getClassName() const {return std::string("CameraEvent");}
 
 private:
 	int _cameraId;
-	cv::Mat _image;
-	cv::Mat _descriptors;
-	std::vector<cv::KeyPoint> _keypoints;
+	Image _image;
 };
 
 /**

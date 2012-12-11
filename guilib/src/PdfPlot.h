@@ -40,10 +40,10 @@ protected:
 	virtual void showDescription(bool shown);
 
 private:
-	QGraphicsTextItem * _text;
 	QGraphicsPixmapItem * _img;
 	int _childCount;
 	const QMap<int, QByteArray> * _imagesRef;
+	QGraphicsTextItem * _text;
 
 };
 
@@ -56,7 +56,7 @@ public:
 	virtual ~PdfPlotCurve();
 
 	virtual void clear();
-	void setData(const QMap<int, float> & dataMap, const QMap<int, int> & weightsMap, int lastId);
+	void setData(const QMap<int, float> & dataMap, const QMap<int, int> & weightsMap);
 
 private:
 	const QMap<int, QByteArray> * _imagesMapRef;

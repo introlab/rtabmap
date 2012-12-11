@@ -138,6 +138,7 @@
     <addaction name="actionDump_the_memory"/>
     <addaction name="actionDump_the_prediction_matrix"/>
     <addaction name="actionGenerate_map"/>
+    <addaction name="actionGenerate_local_map"/>
     <addaction name="actionReset_the_memory"/>
     <addaction name="separator"/>
     <addaction name="actionAuto_screen_capture"/>
@@ -167,15 +168,7 @@
       <addaction name="actionImageFiles"/>
       <addaction name="actionVideo"/>
      </widget>
-     <widget class="QMenu" name="menuAudio">
-      <property name="title">
-       <string>Audio</string>
-      </property>
-      <addaction name="actionMic"/>
-      <addaction name="actionAudioFile"/>
-     </widget>
      <addaction name="menuImage"/>
-     <addaction name="menuAudio"/>
      <addaction name="actionDatabase"/>
     </widget>
     <addaction name="menuSelect_source"/>
@@ -228,6 +221,12 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
     <layout class="QHBoxLayout" name="horizontalLayout">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="margin">
+      <number>0</number>
+     </property>
      <item>
       <widget class="UPlot" name="posteriorPlot" native="true"/>
      </item>
@@ -263,8 +262,11 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QVBoxLayout" name="verticalLayout_8">
+     <property name="spacing">
+      <number>0</number>
+     </property>
      <property name="margin">
-      <number>2</number>
+      <number>0</number>
      </property>
      <item>
       <layout class="QGridLayout" name="gridLayout" columnstretch="10,0">
@@ -444,22 +446,7 @@
       </layout>
      </item>
      <item>
-      <widget class="QFrame" name="frame_3">
-       <property name="frameShape">
-        <enum>QFrame::Box</enum>
-       </property>
-       <property name="frameShadow">
-        <enum>QFrame::Raised</enum>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout_3">
-        <property name="margin">
-         <number>0</number>
-        </property>
-        <item>
-         <widget class="rtabmap::StatsToolBox" name="statsToolBox" native="true"/>
-        </item>
-       </layout>
-      </widget>
+      <widget class="rtabmap::StatsToolBox" name="statsToolBox" native="true"/>
      </item>
      <item>
       <spacer name="verticalSpacer_2">
@@ -489,6 +476,18 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_4">
     <layout class="QVBoxLayout" name="verticalLayout_6">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
      <item>
       <widget class="UPlot" name="likelihoodPlot" native="true"/>
      </item>
@@ -504,56 +503,35 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_2">
     <layout class="QVBoxLayout" name="verticalLayout_5">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="margin">
+      <number>0</number>
+     </property>
      <item>
       <widget class="rtabmap::ConsoleWidget" name="widget" native="true"/>
      </item>
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="dockWidget_twist">
-   <property name="floating">
-    <bool>false</bool>
-   </property>
+  <widget class="QDockWidget" name="dockWidget_rawlikelihood">
    <property name="windowTitle">
-    <string>Actions</string>
+    <string>Raw Likelihood</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>1</number>
+    <number>8</number>
    </attribute>
-   <widget class="QWidget" name="dockWidgetContents_5">
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
+   <widget class="QWidget" name="dockWidgetContents_6">
+    <layout class="QVBoxLayout" name="verticalLayout_4">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="margin">
+      <number>0</number>
+     </property>
      <item>
-      <widget class="rtabmap::TwistGridWidget" name="twistWidget" native="true"/>
-     </item>
-    </layout>
-   </widget>
-  </widget>
-  <widget class="QDockWidget" name="dockWidget_audioProcessedFrames">
-   <property name="windowTitle">
-    <string>Audio Processed Frames</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>2</number>
-   </attribute>
-   <widget class="QWidget" name="dockWidgetContents_9">
-    <layout class="QVBoxLayout" name="verticalLayout_10">
-     <item>
-      <widget class="USpectrogram" name="widget_audioProcessedFrames" native="true"/>
-     </item>
-    </layout>
-   </widget>
-  </widget>
-  <widget class="QDockWidget" name="dockWidget_audioLoopFrames">
-   <property name="windowTitle">
-    <string>Audio Loop Frames</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>2</number>
-   </attribute>
-   <widget class="QWidget" name="dockWidgetContents_10">
-    <layout class="QVBoxLayout" name="verticalLayout_11">
-     <item>
-      <widget class="USpectrogram" name="widget_audioLoopFrames" native="true"/>
+      <widget class="UPlot" name="rawLikelihoodPlot" native="true"/>
      </item>
     </layout>
    </widget>
@@ -760,28 +738,17 @@
     <string>Video...</string>
    </property>
   </action>
-  <action name="actionMic">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Mic</string>
-   </property>
-  </action>
-  <action name="actionAudioFile">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>File...</string>
-   </property>
-  </action>
   <action name="actionDatabase">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
     <string>Database...</string>
+   </property>
+  </action>
+  <action name="actionGenerate_local_map">
+   <property name="text">
+    <string>Generate local map...</string>
    </property>
   </action>
  </widget>
@@ -807,18 +774,6 @@
    <class>rtabmap::ConsoleWidget</class>
    <extends>QWidget</extends>
    <header>ConsoleWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>rtabmap::TwistGridWidget</class>
-   <extends>QWidget</extends>
-   <header>TwistWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>USpectrogram</class>
-   <extends>QWidget</extends>
-   <header>utilite/USpectrogram.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

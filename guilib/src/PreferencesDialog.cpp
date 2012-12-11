@@ -18,6 +18,7 @@
  */
 
 #include "rtabmap/gui/PreferencesDialog.h"
+#include "rtabmap/gui/DatabaseViewer.h"
 #include <QtCore/QSettings>
 #include <QtCore/QDir>
 #include <QtGui/QFileDialog>
@@ -26,6 +27,7 @@
 #include <QtGui/QMainWindow>
 #include <QtCore/QTimer>
 #include <QtGui/QProgressDialog>
+#include <QtGui/QScrollBar>
 #include "ui_preferencesDialog.h"
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/Parameters.h"
@@ -39,6 +41,7 @@
 #define DEFAULT_LOGGER_EVENT_LEVEL 3
 #define DEFAULT_LOGGER_PAUSE_LEVEL 4
 #define DEFAULT_LOGGER_PRINT_TIME true
+#define DEFAULT_LOGGER_TYPE 1
 
 using namespace rtabmap;
 
@@ -101,80 +104,60 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	//video group
 	connect(_ui->source_video_toolButton_selectSource, SIGNAL(clicked()), this, SLOT(selectSourceImage()));
 	connect(_ui->source_video_lineEdit_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
-	//Audio source
-	connect(_ui->groupBox_sourceAudio, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
-	_ui->stackedWidget_audio->setCurrentIndex(_ui->source_comboBox_audio_type->currentIndex());
-	connect(_ui->source_comboBox_audio_type, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_audio, SLOT(setCurrentIndex(int)));
-	connect(_ui->source_comboBox_audio_type, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	//audioDevice group
-	connect(_ui->source_audio_toolButton_selectSource, SIGNAL(clicked()), this, SLOT(selectSourceAudio()));
-	connect(_ui->source_micDevice, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->source_micFs, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->source_micSampleSize, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->source_audio_lineEdit_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->source_checkBox_playWhileRecording, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	//database group
 	connect(_ui->source_database_toolButton_selectSource, SIGNAL(clicked()), this, SLOT(selectSourceDatabase()));
+	connect(_ui->toolButton_dbViewer, SIGNAL(clicked()), this, SLOT(openDatabaseViewer()));
 	connect(_ui->groupBox_sourceDatabase, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_database_lineEdit_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_spinBox_databaseStartPos, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	//Rtabmap basic
 	connect(_ui->general_doubleSpinBox_timeThr, SIGNAL(valueChanged(double)), _ui->general_doubleSpinBox_timeThr_2, SLOT(setValue(double)));
 	connect(_ui->general_doubleSpinBox_hardThr, SIGNAL(valueChanged(double)), _ui->general_doubleSpinBox_hardThr_2, SLOT(setValue(double)));
 	connect(_ui->surf_doubleSpinBox_hessianThr, SIGNAL(valueChanged(double)), _ui->surf_doubleSpinBox_hessianThr_2, SLOT(setValue(double)));
-	connect(_ui->general_doubleSpinBox_similarityThr, SIGNAL(valueChanged(double)), _ui->general_doubleSpinBox_similarityThr_2, SLOT(setValue(double)));
+	connect(_ui->doubleSpinBox_similarityThreshold, SIGNAL(valueChanged(double)), _ui->doubleSpinBox_similarityThreshold_2, SLOT(setValue(double)));
 	connect(_ui->general_spinBox_imagesBufferSize, SIGNAL(valueChanged(int)), _ui->general_spinBox_imagesBufferSize_2, SLOT(setValue(int)));
 	connect(_ui->general_spinBox_maxStMemSize, SIGNAL(valueChanged(int)), _ui->general_spinBox_maxStMemSize_2, SLOT(setValue(int)));
 
-	connect(_ui->comboBox_signatureType, SIGNAL(currentIndexChanged(int)), _ui->comboBox_signatureType_2, SLOT(setCurrentIndex(int)));
 	connect(_ui->lineEdit_workingDirectory, SIGNAL(textChanged(const QString &)), _ui->lineEdit_workingDirectory_2, SLOT(setText(const QString &)));
 
 	connect(_ui->general_doubleSpinBox_timeThr_2, SIGNAL(editingFinished()), this, SLOT(updateBasicParameter()));
 	connect(_ui->general_doubleSpinBox_hardThr_2, SIGNAL(editingFinished()), this, SLOT(updateBasicParameter()));
 	connect(_ui->surf_doubleSpinBox_hessianThr_2, SIGNAL(editingFinished()), this, SLOT(updateBasicParameter()));
-	connect(_ui->general_doubleSpinBox_similarityThr_2, SIGNAL(editingFinished()), this, SLOT(updateBasicParameter()));
+	connect(_ui->doubleSpinBox_similarityThreshold_2, SIGNAL(editingFinished()), this, SLOT(updateBasicParameter()));
 	connect(_ui->general_spinBox_imagesBufferSize_2, SIGNAL(editingFinished()), this, SLOT(updateBasicParameter()));
 	connect(_ui->general_spinBox_maxStMemSize_2, SIGNAL(editingFinished()), this, SLOT(updateBasicParameter()));
 	connect(_ui->general_checkBox_publishStats, SIGNAL(stateChanged(int)), this, SLOT(updateBasicParameter()));
 	connect(_ui->general_checkBox_publishStats_2, SIGNAL(stateChanged(int)), this, SLOT(updateBasicParameter()));
 
-	connect(_ui->comboBox_signatureType_2, SIGNAL(currentIndexChanged(int)), _ui->comboBox_signatureType, SLOT(setCurrentIndex(int)));
 	connect(_ui->lineEdit_workingDirectory_2, SIGNAL(textChanged(const QString &)), _ui->lineEdit_workingDirectory, SLOT(setText(const QString &)));
 	connect(_ui->toolButton_workingDirectory_2, SIGNAL(clicked()), this, SLOT(changeWorkingDirectory()));
 
 	// Map objects name with the corresponding parameter key, needed for the addParameter() slots
 	//Rtabmap
-	_ui->general_doubleSpinBox_retrievalThr->setObjectName(Parameters::kRtabmapRetrievalThr().c_str());
 	_ui->general_checkBox_publishStats->setObjectName(Parameters::kRtabmapPublishStats().c_str());
-	_ui->general_checkBox_publishRawData->setObjectName(Parameters::kRtabmapPublishRawData().c_str());
+	_ui->general_checkBox_publishRawData->setObjectName(Parameters::kRtabmapPublishImage().c_str());
 	_ui->general_checkBox_publishPdf->setObjectName(Parameters::kRtabmapPublishPdf().c_str());
 	_ui->general_checkBox_publishLikelihood->setObjectName(Parameters::kRtabmapPublishLikelihood().c_str());
+	_ui->general_checkBox_statisticLogsBufferedInRAM->setObjectName(Parameters::kRtabmapStatisticLogsBufferedInRAM().c_str());
 	_ui->general_doubleSpinBox_timeThr->setObjectName(Parameters::kRtabmapTimeThr().c_str());
 	_ui->general_spinBox_memoryThr->setObjectName(Parameters::kRtabmapMemoryThr().c_str());
-	_ui->general_spinBox_imagesBufferSize->setObjectName(Parameters::kRtabmapSMStateBufferSize().c_str());
+	_ui->general_spinBox_imagesBufferSize->setObjectName(Parameters::kRtabmapImageBufferSize().c_str());
 	_ui->general_spinBox_maxRetrieved->setObjectName(Parameters::kRtabmapMaxRetrieved().c_str());
-	_ui->general_checkBox_neighborhoodSummation->setObjectName(Parameters::kRtabmapSelectionNeighborhoodSummationUsed().c_str());
-	_ui->general_checkBox_likelihoodUsed->setObjectName(Parameters::kRtabmapSelectionLikelihoodUsed().c_str());
-	_ui->general_checkBox_likelihoodStdDevRemoved->setObjectName(Parameters::kRtabmapLikelihoodStdDevRemoved().c_str());
 	_ui->general_checkBox_likelihoodNullValuesIgnored->setObjectName(Parameters::kRtabmapLikelihoodNullValuesIgnored().c_str());
-	_ui->general_checkBox_actionsSentRejectHyp->setObjectName(Parameters::kRtabmapActionsSentRejectHyp().c_str());
-	_ui->general_doubleSpinBox_confidenceThr->setObjectName(Parameters::kRtabmapConfidenceThr().c_str());
 	_ui->lineEdit_workingDirectory->setObjectName(Parameters::kRtabmapWorkingDirectory().c_str());
 	connect(_ui->toolButton_workingDirectory, SIGNAL(clicked()), this, SLOT(changeWorkingDirectory()));
 
 	// Memory
-	_ui->general_checkBox_keepRawData->setObjectName(Parameters::kMemRawDataKept().c_str());
-	_ui->general_spinBox_maxStMemSize->setObjectName(Parameters::kMemMaxStMemSize().c_str());
-	_ui->general_checkBox_similarityOnlyLast->setObjectName(Parameters::kMemSimilarityOnlyLast().c_str());
-	_ui->general_doubleSpinBox_similarityThr->setObjectName(Parameters::kMemSimilarityThr().c_str());
+	_ui->general_checkBox_keepRawData->setObjectName(Parameters::kMemImageKept().c_str());
+	_ui->general_spinBox_maxStMemSize->setObjectName(Parameters::kMemSTMSize().c_str());
+	_ui->general_checkBox_similarityOnlyLast->setObjectName(Parameters::kMemRehearsalOnlyWithLast().c_str());
+	_ui->doubleSpinBox_similarityThreshold->setObjectName(Parameters::kMemRehearsalSimilarity().c_str());
 	_ui->general_checkBox_incrementalMemory->setObjectName(Parameters::kMemIncrementalMemory().c_str());
-	_ui->general_checkBox_commonSignatureUsed->setObjectName(Parameters::kMemCommonSignatureUsed().c_str());
 	_ui->general_doubleSpinBox_recentWmRatio->setObjectName(Parameters::kMemRecentWmRatio().c_str());
 	_ui->general_checkBox_dataMergedOnRehearsal->setObjectName(Parameters::kMemDataMergedOnRehearsal().c_str());
-	_ui->comboBox_signatureType->setObjectName(Parameters::kMemSignatureType().c_str());
 
 	// Database
-	_ui->spinBox_dbMinSignToSave->setObjectName(Parameters::kDbMinSignaturesToSave().c_str());
-	_ui->spinBox_dbMinWordsToSave->setObjectName(Parameters::kDbMinWordsToSave().c_str());
 	_ui->general_checkBox_imagesCompressed->setObjectName(Parameters::kDbImagesCompressed().c_str());
 	_ui->checkBox_dbInMemory->setObjectName(Parameters::kDbSqlite3InMemory().c_str());
 	_ui->spinBox_dbCacheSize->setObjectName(Parameters::kDbSqlite3CacheSize().c_str());
@@ -189,7 +172,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	//Bayes
 	_ui->general_doubleSpinBox_vp->setObjectName(Parameters::kBayesVirtualPlacePriorThr().c_str());
 	_ui->lineEdit_bayes_predictionLC->setObjectName(Parameters::kBayesPredictionLC().c_str());
-	_ui->checkBox_bayes_predictionNonNullActionsOnly->setObjectName(Parameters::kBayesPredictionOnNonNullActionsOnly().c_str());
+	_ui->checkBox_bayes_fullPredictionUpdate->setObjectName(Parameters::kBayesFullPredictionUpdate().c_str());
 	connect(_ui->lineEdit_bayes_predictionLC, SIGNAL(textChanged(const QString &)), this, SLOT(updatePredictionPlot()));
 
 	//Keypoint-based
@@ -207,7 +190,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->surf_doubleSpinBox_ratioBadSign->setObjectName(Parameters::kKpBadSignRatio().c_str());
 	_ui->general_checkBox_reactivatedWordsComparedToNewWords->setObjectName(Parameters::kKpReactivatedWordsComparedToNewWords().c_str());
 	_ui->checkBox_kp_tfIdfLikelihoodUsed->setObjectName(Parameters::kKpTfIdfLikelihoodUsed().c_str());
-	_ui->checkBox_kp_tfIdfNormalized->setObjectName(Parameters::kKpTfIdfNormalized().c_str());
 	_ui->checkBox_kp_parallelized->setObjectName(Parameters::kKpParallelized().c_str());
 	_ui->lineEdit_kp_roi->setObjectName(Parameters::kKpRoiRatios().c_str());
 	_ui->lineEdit_dictionaryPath->setObjectName(Parameters::kKpDictionaryPath().c_str());
@@ -221,13 +203,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->surf_checkBox_upright->setObjectName(Parameters::kSURFUpright().c_str());
 	_ui->surf_checkBox_gpuVersion->setObjectName(Parameters::kSURFGpuVersion().c_str());
 
-	//Star detector
-	_ui->star_spinBox_maxSize->setObjectName(Parameters::kStarMaxSize().c_str());
-	_ui->star_spinBox_responseThr->setObjectName(Parameters::kStarResponseThreshold().c_str());
-	_ui->star_spinBox_lineThrProj->setObjectName(Parameters::kStarLineThresholdProjected().c_str());
-	_ui->star_spinBox_lineThrBin->setObjectName(Parameters::kStarLineThresholdBinarized().c_str());
-	_ui->star_spinBox_suppressNonmaxSize->setObjectName(Parameters::kStarSuppressNonmaxSize().c_str());
-
 	//SIFT detector
 	_ui->sift_spinBox_nFeatures->setObjectName(Parameters::kSIFTNFeatures().c_str());
 	_ui->sift_spinBox_nOctaveLayers->setObjectName(Parameters::kSIFTNOctaveLayers().c_str());
@@ -235,25 +210,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->sift_doubleSpinBox_edgeThr->setObjectName(Parameters::kSIFTEdgeThreshold().c_str());
 	_ui->sift_doubleSpinBox_sigma->setObjectName(Parameters::kSIFTSigma().c_str());
 
-	//FAST detector
-	_ui->fast_spinBox_Threshold->setObjectName(Parameters::kFASTThreshold().c_str());
-	_ui->fast_checkBox_nonmaxSuppression->setObjectName(Parameters::kFASTNonmaxSuppression().c_str());
-
-	//BRIEF descriptor
-	_ui->brief_spinBox_size->setObjectName(Parameters::kBRIEFSize().c_str());
-
-	// Sensorimotor
-	_ui->checkBox_publishMasks->setObjectName(Parameters::kSMPublishMasks().c_str());
-	_ui->checkBox_motionMaskUsed->setObjectName(Parameters::kSMMotionMaskUsed().c_str());
-	_ui->checkBox_logpolar->setObjectName(Parameters::kSMLogPolarUsed().c_str());
-	_ui->sm_colorTable_comboBox->setObjectName(Parameters::kSMColorTable().c_str());
-	_ui->sm_audioDBThreshold->setObjectName(Parameters::kSMAudioDBThreshold().c_str());
-	_ui->checkBox_dBIndexing->setObjectName(Parameters::kSMAudioDBIndexing().c_str());
-	_ui->checkBox_audioMagnitudeInvariant->setObjectName(Parameters::kSMMagnitudeInvariant().c_str());
-
 	// verifyHypotheses
 	_ui->comboBox_vh_strategy->setObjectName(Parameters::kRtabmapVhStrategy().c_str());
-	_ui->vh_doubleSpinBox_similarity->setObjectName(Parameters::kVhSimilarity().c_str());
 	_ui->surf_spinBox_matchCountMinAccepted->setObjectName(Parameters::kVhEpMatchCountMin().c_str());
 	_ui->surf_doubleSpinBox_ransacParam1->setObjectName(Parameters::kVhEpRansacParam1().c_str());
 	_ui->surf_doubleSpinBox_ransacParam2->setObjectName(Parameters::kVhEpRansacParam2().c_str());
@@ -339,7 +297,7 @@ void PreferencesDialog::setupTreeView()
 	}
 	_ui->treeView->setModel(_indexModel);
 	_ui->treeView->setCurrentIndex(_indexModel->index(currentIndex, 0));
-	_ui->treeView->expandToDepth(1);
+	_ui->treeView->expandToDepth(0);
 }
 
 // recursive...
@@ -450,6 +408,8 @@ void PreferencesDialog::clicked(const QModelIndex &index)
 			++index;
 		}
 		_ui->stackedWidget->setCurrentIndex(index);
+		_ui->scrollArea->horizontalScrollBar()->setValue(0);
+		_ui->scrollArea->verticalScrollBar()->setValue(0);
 	}
  }
 
@@ -519,6 +479,7 @@ void PreferencesDialog::resetSettings(int panelNumber)
 			_ui->comboBox_loggerEventLevel->setCurrentIndex(DEFAULT_LOGGER_EVENT_LEVEL);
 			_ui->comboBox_loggerPauseLevel->setCurrentIndex(DEFAULT_LOGGER_PAUSE_LEVEL);
 			_ui->checkBox_logger_printTime->setChecked(DEFAULT_LOGGER_PRINT_TIME);
+			_ui->comboBox_loggerType->setCurrentIndex(DEFAULT_LOGGER_TYPE);
 		}
 		else if(boxes.at(panelNumber)->objectName() == "groupBox_source0")
 		{
@@ -529,31 +490,29 @@ void PreferencesDialog::resetSettings(int panelNumber)
 			_ui->source_spinBox_framesDropped->setValue(0);
 			_ui->general_checkBox_autoRestart->setChecked(false);
 			_ui->general_checkBox_cameraKeypoints->setChecked(false);
-
-			_ui->groupBox_sourceAudio->setChecked(false);
-			_ui->source_micDevice->setValue(0);
-			_ui->source_micFs->setValue(48000);
-			_ui->source_micSampleSize->setValue(2);
+			_ui->source_images_spinBox_startPos->setValue(1);
+			_ui->source_images_refreshDir->setChecked(false);
 
 			_ui->groupBox_sourceDatabase->setChecked(false);
+			_ui->source_spinBox_databaseStartPos->setValue(0);
 		}
 		else if(boxes.at(panelNumber)->objectName() == "groupBox_rtabmap_basic0")
 		{
 			_ui->general_doubleSpinBox_timeThr_2->setValue(Parameters::defaultRtabmapTimeThr());
 			_ui->general_doubleSpinBox_hardThr_2->setValue(Parameters::defaultRtabmapLoopThr());
 			_ui->surf_doubleSpinBox_hessianThr_2->setValue(Parameters::defaultSURFHessianThreshold());
-			_ui->general_doubleSpinBox_similarityThr_2->setValue(Parameters::defaultMemSimilarityThr());
-			_ui->general_spinBox_imagesBufferSize_2->setValue(Parameters::defaultRtabmapSMStateBufferSize());
-			_ui->general_spinBox_maxStMemSize_2->setValue(Parameters::defaultMemMaxStMemSize());
+			_ui->doubleSpinBox_similarityThreshold_2->setValue(Parameters::defaultMemRehearsalSimilarity());
+			_ui->general_spinBox_imagesBufferSize_2->setValue(Parameters::defaultRtabmapImageBufferSize());
+			_ui->general_spinBox_maxStMemSize_2->setValue(Parameters::defaultMemSTMSize());
 			_ui->general_checkBox_publishStats_2->setChecked(Parameters::defaultRtabmapPublishStats());
 			_ui->lineEdit_workingDirectory_2->setText(Parameters::defaultRtabmapWorkingDirectory().c_str());
 			// match the advanced (spin and doubleSpin boxes)
 			_ui->general_doubleSpinBox_timeThr->setValue(Parameters::defaultRtabmapTimeThr());
 			_ui->general_doubleSpinBox_hardThr->setValue(Parameters::defaultRtabmapLoopThr());
 			_ui->surf_doubleSpinBox_hessianThr->setValue(Parameters::defaultSURFHessianThreshold());
-			_ui->general_doubleSpinBox_similarityThr->setValue(Parameters::defaultMemSimilarityThr());
-			_ui->general_spinBox_imagesBufferSize->setValue(Parameters::defaultRtabmapSMStateBufferSize());
-			_ui->general_spinBox_maxStMemSize->setValue(Parameters::defaultMemMaxStMemSize());
+			_ui->doubleSpinBox_similarityThreshold->setValue(Parameters::defaultMemRehearsalSimilarity());
+			_ui->general_spinBox_imagesBufferSize->setValue(Parameters::defaultRtabmapImageBufferSize());
+			_ui->general_spinBox_maxStMemSize->setValue(Parameters::defaultMemSTMSize());
 		}
 		else
 		{
@@ -676,19 +635,10 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.endGroup(); // video
 	settings.endGroup(); // Camera
 
-	settings.beginGroup("Audio");
-	_ui->groupBox_sourceAudio->setChecked(settings.value("audioUsed", _ui->groupBox_sourceAudio->isChecked()).toBool());
-	_ui->source_comboBox_audio_type->setCurrentIndex(settings.value("type", _ui->source_comboBox_audio_type->currentIndex()).toInt());
-	_ui->source_micDevice->setValue(settings.value("id",_ui->source_micDevice->value()).toInt());
-	_ui->source_micFs->setValue(settings.value("fs",_ui->source_micFs->value()).toInt());
-	_ui->source_micSampleSize->setValue(settings.value("sampleSize",_ui->source_micSampleSize->value()).toInt());
-	_ui->source_audio_lineEdit_path->setText(settings.value("path",_ui->source_audio_lineEdit_path->text()).toString());
-	_ui->source_checkBox_playWhileRecording->setChecked(settings.value("playWhileRecording",_ui->source_checkBox_playWhileRecording->isChecked()).toBool());
-	settings.endGroup(); // Audio
-
 	settings.beginGroup("Database");
 	_ui->groupBox_sourceDatabase->setChecked(settings.value("databaseUsed", _ui->groupBox_sourceDatabase->isChecked()).toBool());
 	_ui->source_database_lineEdit_path->setText(settings.value("path",_ui->source_database_lineEdit_path->text()).toString());
+	_ui->source_spinBox_databaseStartPos->setValue(settings.value("startPos", _ui->source_spinBox_databaseStartPos->value()).toInt());
 	settings.endGroup(); // Database
 }
 
@@ -708,9 +658,11 @@ bool PreferencesDialog::readCoreSettings(const QString & filePath)
 
 	QSettings settings(path, QSettings::IniFormat);
 
-	const rtabmap::ParametersMap & parameters = Parameters::getDefaultParameters();
+
 	settings.beginGroup("Core");
 	QStringList keys = settings.allKeys();
+	// Get profile
+	const rtabmap::ParametersMap & parameters = Parameters::getDefaultParameters();
 	for(rtabmap::ParametersMap::const_iterator iter = parameters.begin(); iter!=parameters.end(); ++iter)
 	{
 		QString key((*iter).first.c_str());
@@ -836,20 +788,10 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath)
 
 	settings.endGroup(); // Camera
 
-	settings.beginGroup("Audio");
-	settings.setValue("audioUsed", 		_ui->groupBox_sourceAudio->isChecked());
-	settings.setValue("type", 			_ui->source_comboBox_audio_type->currentIndex());
-	settings.setValue("id", 			_ui->source_micDevice->value());
-	settings.setValue("fs", 			_ui->source_micFs->value());
-	settings.setValue("sampleSize", 	_ui->source_micSampleSize->value());
-
-	settings.setValue("path", 			_ui->source_audio_lineEdit_path->text());
-	settings.setValue("playWhileRecording", _ui->source_checkBox_playWhileRecording->isChecked());
-	settings.endGroup(); // Audio
-
 	settings.beginGroup("Database");
 	settings.setValue("databaseUsed", 	_ui->groupBox_sourceDatabase->isChecked());
 	settings.setValue("path", 			_ui->source_database_lineEdit_path->text());
+	settings.setValue("startPos",       _ui->source_spinBox_databaseStartPos->value());
 	settings.endGroup();
 }
 
@@ -1108,59 +1050,6 @@ void PreferencesDialog::selectSourceImage(Src src)
 	}
 }
 
-void PreferencesDialog::selectSourceAudio(SrcAudio src)
-{
-	ULOGGER_DEBUG("");
-
-	bool fromPrefDialog = false;
-	//bool modified = false;
-	if(src == kSrcAudioUndef)
-	{
-		fromPrefDialog = true;
-		if(_ui->source_comboBox_audio_type->currentIndex() == 1)
-		{
-			src = kSrcAudioFile;
-		}
-		else
-		{
-			src = kSrcAudioMicDevice;
-		}
-	}
-	else
-	{
-		// from user
-		_ui->groupBox_sourceAudio->setChecked(true);
-	}
-
-	if(src == kSrcAudioFile)
-	{
-		QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->source_audio_lineEdit_path->text(), tr("Audio files (*.wav *.mp3)"));
-		QFile file(path);
-		if(!path.isEmpty() && file.exists())
-		{
-			_ui->source_comboBox_audio_type->setCurrentIndex(1);
-			_ui->source_audio_lineEdit_path->setText(path);
-		}
-	}
-	else
-	{
-		_ui->source_comboBox_audio_type->setCurrentIndex(0);
-	}
-
-	if(!fromPrefDialog && _obsoletePanels)
-	{
-		_ui->groupBox_sourceDatabase->setChecked(false);
-		if(validateForm())
-		{
-			this->writeSettings();
-		}
-		else
-		{
-			this->readSettingsBegin();
-		}
-	}
-}
-
 void PreferencesDialog::selectSourceDatabase(bool user)
 {
 	ULOGGER_DEBUG("");
@@ -1176,12 +1065,12 @@ void PreferencesDialog::selectSourceDatabase(bool user)
 	if(!path.isEmpty() && file.exists())
 	{
 		_ui->source_database_lineEdit_path->setText(path);
+		_ui->source_spinBox_databaseStartPos->setValue(0);
 	}
 
 	if(user && _obsoletePanels)
 	{
 		_ui->groupBox_sourceImage->setChecked(false);
-		_ui->groupBox_sourceAudio->setChecked(false);
 		if(validateForm())
 		{
 			this->writeSettings();
@@ -1190,6 +1079,21 @@ void PreferencesDialog::selectSourceDatabase(bool user)
 		{
 			this->readSettingsBegin();
 		}
+	}
+}
+
+void PreferencesDialog::openDatabaseViewer()
+{
+	DatabaseViewer * viewer = new DatabaseViewer(this);
+	viewer->setAttribute(Qt::WA_DeleteOnClose, true);
+	viewer->setWindowModality(Qt::WindowModal);
+	if(viewer->openDatabase(_ui->source_database_lineEdit_path->text()))
+	{
+		viewer->show();
+	}
+	else
+	{
+		delete viewer;
 	}
 }
 
@@ -1204,17 +1108,30 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 		QComboBox * combo = qobject_cast<QComboBox *>(obj);
 		QCheckBox * check = qobject_cast<QCheckBox *>(obj);
 		QLineEdit * lineEdit = qobject_cast<QLineEdit *>(obj);
+		bool ok;
 		if(spin)
 		{
-			spin->setValue(QString(value.c_str()).toInt());
+			spin->setValue(QString(value.c_str()).toInt(&ok));
+			if(!ok)
+			{
+				UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
+			}
 		}
 		else if(doubleSpin)
 		{
-			doubleSpin->setValue(QString(value.c_str()).toDouble());
+			doubleSpin->setValue(QString(value.c_str()).toDouble(&ok));
+			if(!ok)
+			{
+				UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
+			}
 		}
 		else if(combo)
 		{
-			combo->setCurrentIndex(QString(value.c_str()).toInt());
+			combo->setCurrentIndex(QString(value.c_str()).toInt(&ok));
+			if(!ok)
+			{
+				UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
+			}
 		}
 		else if(check)
 		{
@@ -1297,11 +1214,7 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 					{
 						// No panel related...
 					}
-					else if(value == 1) // 1 similarity
-					{
-						this->addParameters(_ui->groupBox_vh_similarity2);
-					}
-					else if(value == 2) // 2 epipolar
+					else if(value == 1) // 2 epipolar
 					{
 						this->addParameters(_ui->groupBox_vh_epipolar2);
 					}
@@ -1312,17 +1225,9 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 					{
 						this->addParameters(_ui->groupBox_detector_surf2);
 					}
-					else if(value == 1) // 1 star
-					{
-						this->addParameters(_ui->groupBox_detector_star2);
-					}
-					else if(value == 2) // 2 sift
+					else if(value == 1) // 1 sift
 					{
 						this->addParameters(_ui->groupBox_detector_sift2);
-					}
-					else if(value == 3) // 3 fast
-					{
-						this->addParameters(_ui->groupBox_detector_fast2);
 					}
 				}
 				else if(comboBox == _ui->comboBox_descriptor_strategy)
@@ -1334,21 +1239,6 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 					else if(value == 1) // 1 sift
 					{
 						this->addParameters(_ui->groupBox_detector_sift2);
-					}
-					else if(value == 2) // 2 brief
-					{
-						this->addParameters(_ui->groupBox_descriptor_brief2);
-					}
-				}
-				else if(comboBox == _ui->comboBox_signatureType)
-				{
-					if(value == 0) // 0 keypoint
-					{
-						this->addParameters(_ui->groupBox_signature_keypoint1);
-					}
-					else if(value == 1) // 1 sensorimotor
-					{
-						this->addParameters(_ui->groupBox_signature_sensorimotor1);
 					}
 				}
 			}
@@ -1464,10 +1354,6 @@ void PreferencesDialog::updateBasicParameter()
 	{
 		_ui->surf_doubleSpinBox_hessianThr->setValue(_ui->surf_doubleSpinBox_hessianThr_2->value());
 	}
-	else if(sender() == _ui->general_doubleSpinBox_similarityThr_2)
-	{
-		_ui->general_doubleSpinBox_similarityThr->setValue(_ui->general_doubleSpinBox_similarityThr_2->value());
-	}
 	else if(sender() == _ui->general_spinBox_imagesBufferSize_2)
 	{
 		_ui->general_spinBox_imagesBufferSize->setValue(_ui->general_spinBox_imagesBufferSize_2->value());
@@ -1484,15 +1370,19 @@ void PreferencesDialog::updateBasicParameter()
 	{
 		_ui->general_checkBox_publishStats->setChecked(_ui->general_checkBox_publishStats_2->isChecked());
 	}
+	else if(sender() == _ui->doubleSpinBox_similarityThreshold_2)
+	{
+		_ui->doubleSpinBox_similarityThreshold->setValue(_ui->doubleSpinBox_similarityThreshold_2->value());
+	}
 	else
 	{
 		//update all values (only those using editingFinished signal)
 		_ui->general_doubleSpinBox_timeThr->setValue(_ui->general_doubleSpinBox_timeThr_2->value());
 		_ui->general_doubleSpinBox_hardThr->setValue(_ui->general_doubleSpinBox_hardThr_2->value());
 		_ui->surf_doubleSpinBox_hessianThr->setValue(_ui->surf_doubleSpinBox_hessianThr_2->value());
-		_ui->general_doubleSpinBox_similarityThr->setValue(_ui->general_doubleSpinBox_similarityThr_2->value());
 		_ui->general_spinBox_imagesBufferSize->setValue(_ui->general_spinBox_imagesBufferSize_2->value());
 		_ui->general_spinBox_maxStMemSize->setValue(_ui->general_spinBox_maxStMemSize_2->value());
+		_ui->doubleSpinBox_similarityThreshold->setValue(_ui->doubleSpinBox_similarityThreshold_2->value());
 	}
 }
 
@@ -1507,10 +1397,8 @@ void PreferencesDialog::makeObsoleteSourcePanel()
 	if(sender() == _ui->groupBox_sourceDatabase && _ui->groupBox_sourceDatabase->isChecked())
 	{
 		_ui->groupBox_sourceImage->setChecked(false);
-		_ui->groupBox_sourceAudio->setChecked(false);
 	}
-	else if((sender() == _ui->groupBox_sourceImage && _ui->groupBox_sourceImage->isChecked()) ||
-			(sender() == _ui->groupBox_sourceAudio && _ui->groupBox_sourceAudio->isChecked()))
+	else if(sender() == _ui->groupBox_sourceImage && _ui->groupBox_sourceImage->isChecked())
 	{
 		_ui->groupBox_sourceDatabase->setChecked(false);
 	}
@@ -1564,7 +1452,7 @@ QList<QGroupBox*> PreferencesDialog::getGroupBoxes()
 
 void PreferencesDialog::updatePredictionPlot()
 {
-	QStringList values = _ui->lineEdit_bayes_predictionLC->text().split(' ');
+	QStringList values = _ui->lineEdit_bayes_predictionLC->text().simplified().split(' ');
 	if(values.size() < 2)
 	{
 		UERROR("Error parsing prediction (must have at least 2 items) : %s",
@@ -1584,7 +1472,7 @@ void PreferencesDialog::updatePredictionPlot()
 		value = values.at(i).toDouble(&ok);
 		if(!ok)
 		{
-			UERROR("Error parsing prediction : %s", values.at(i).toStdString().c_str());
+			UERROR("Error parsing prediction : \"%s\"", values.at(i).toStdString().c_str());
 			error = true;
 		}
 		sum+=value;
@@ -1736,10 +1624,6 @@ bool PreferencesDialog::isSourceImageUsed() const
 {
 	return _ui->groupBox_sourceImage->isChecked();
 }
-bool PreferencesDialog::isSourceAudioUsed() const
-{
-	return _ui->groupBox_sourceAudio->isChecked();
-}
 bool PreferencesDialog::isSourceDatabaseUsed() const
 {
 	return _ui->groupBox_sourceDatabase->isChecked();
@@ -1792,37 +1676,13 @@ int PreferencesDialog::getSourceUsbDeviceId() const
 {
 	return _ui->source_usbDevice_spinBox_id->value();
 }
-int PreferencesDialog::getSourceAudioType() const
-{
-	return _ui->source_comboBox_audio_type->currentIndex();
-}
-QString PreferencesDialog::getSourceAudioTypeStr() const
-{
-	return _ui->source_comboBox_audio_type->currentText();
-}
-int PreferencesDialog::getSourceMicDevice() const
-{
-	return _ui->source_micDevice->value();
-}
-int PreferencesDialog::getSourceMicFs() const
-{
-	return _ui->source_micFs->value();
-}
-int PreferencesDialog::getSourceMicSampleSize() const
-{
-	return _ui->source_micSampleSize->value();
-}
-QString PreferencesDialog::getSourceAudioPath() const
-{
-	return _ui->source_audio_lineEdit_path->text();
-}
-bool PreferencesDialog::getSourceAudioPlayWhileRecording() const
-{
-	return _ui->source_checkBox_playWhileRecording->isChecked();
-}
 QString PreferencesDialog::getSourceDatabasePath() const
 {
 	return _ui->source_database_lineEdit_path->text();
+}
+int PreferencesDialog::getSourceDatabaseStartPos() const
+{
+	return _ui->source_spinBox_databaseStartPos->value();
 }
 
 bool PreferencesDialog::isStatisticsPublished() const
@@ -1832,10 +1692,6 @@ bool PreferencesDialog::isStatisticsPublished() const
 double PreferencesDialog::getLoopThr() const
 {
 	return _ui->general_doubleSpinBox_hardThr->value();
-}
-double PreferencesDialog::getRetrievalThr() const
-{
-	return _ui->general_doubleSpinBox_retrievalThr->value();
 }
 double PreferencesDialog::getVpThr() const
 {
@@ -1850,10 +1706,6 @@ float PreferencesDialog::getTimeLimit() const
 {
 	return _ui->general_doubleSpinBox_timeThr->value();
 }
-int PreferencesDialog::getMemoryType() const
-{
-	return _ui->comboBox_signatureType->currentIndex();
-}
 
 /*** SETTERS ***/
 void PreferencesDialog::setHardThr(int value)
@@ -1863,24 +1715,6 @@ void PreferencesDialog::setHardThr(int value)
 	if(_ui->general_doubleSpinBox_hardThr->value() != dValue)
 	{
 		_ui->general_doubleSpinBox_hardThr->setValue(dValue);
-		if(validateForm())
-		{
-			this->writeSettings();
-		}
-		else
-		{
-			this->readSettingsBegin();
-		}
-	}
-}
-
-void PreferencesDialog::setRetrievalThr(int value)
-{
-	double dValue = double(value)/100;
-	ULOGGER_DEBUG("reactivation thr=%f", dValue);
-	if(_ui->general_doubleSpinBox_retrievalThr->value() != dValue)
-	{
-		_ui->general_doubleSpinBox_retrievalThr->setValue(dValue);
 		if(validateForm())
 		{
 			this->writeSettings();
@@ -1932,22 +1766,6 @@ void PreferencesDialog::setTimeLimit(float value)
 	if(_ui->general_doubleSpinBox_timeThr->value() != value)
 	{
 		_ui->general_doubleSpinBox_timeThr->setValue(value);
-		if(validateForm())
-		{
-			this->writeSettings();
-		}
-		else
-		{
-			this->readSettingsBegin();
-		}
-	}
-}
-
-void PreferencesDialog::disableSourceAudio()
-{
-	if(_ui->groupBox_sourceAudio->isChecked())
-	{
-		_ui->groupBox_sourceAudio->setChecked(false);
 		if(validateForm())
 		{
 			this->writeSettings();

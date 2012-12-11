@@ -18,7 +18,7 @@
  */
 
 #include <QtGui/QApplication>
-#include "MainWindow.h"
+#include "rtabmap/gui/DatabaseViewer.h"
 #include "utilite/ULogger.h"
 
 int main(int argc, char * argv[])
@@ -27,7 +27,7 @@ int main(int argc, char * argv[])
 	ULogger::setLevel(ULogger::kInfo);
 
 	QApplication * app = new QApplication(argc, argv);
-	MainWindow * mainWindow = new MainWindow();
+	DatabaseViewer * mainWindow = new DatabaseViewer();
 	mainWindow->showNormal();
 
 	// Now wait for application to finish

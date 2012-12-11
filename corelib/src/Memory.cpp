@@ -22,15 +22,16 @@
 #include <utilite/UTimer.h>
 #include <utilite/UConversion.h>
 #include <utilite/UProcessInfo.h>
+#include <utilite/UMath.h>
 
 #include "rtabmap/core/Memory.h"
-#include "rtabmap/core/Signature.h"
-#include "rtabmap/core/DBDriverFactory.h"
-#include "rtabmap/core/DBDriver.h"
+#include "Signature.h"
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/RtabmapEvent.h"
-#include "rtabmap/core/Sensor.h"
-#include "Node.h"
+#include "rtabmap/core/VWDictionary.h"
+#include "VisualWord.h"
+#include "rtabmap/core/Features2d.h"
+#include "DBDriverSqlite3.h"
 
 namespace rtabmap {
 
@@ -40,23 +41,31 @@ const int Memory::kIdInvalid = 0;
 
 Memory::Memory(const ParametersMap & parameters) :
 	_dbDriver(0),
-	_similarityThreshold(Parameters::defaultMemSimilarityThr()),
-	_similarityOnlyLast(Parameters::defaultMemSimilarityOnlyLast()),
-	_rawDataKept(Parameters::defaultMemRawDataKept()),
+	_similarityThreshold(Parameters::defaultMemRehearsalSimilarity()),
+	_rehearsalOnlyWithLast(Parameters::defaultMemRehearsalOnlyWithLast()),
+	_rawDataKept(Parameters::defaultMemImageKept()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
-	_maxStMemSize(Parameters::defaultMemMaxStMemSize()),
-	_commonSignatureUsed(Parameters::defaultMemCommonSignatureUsed()),
+	_maxStMemSize(Parameters::defaultMemSTMSize()),
 	_recentWmRatio(Parameters::defaultMemRecentWmRatio()),
 	_dataMergedOnRehearsal(Parameters::defaultMemDataMergedOnRehearsal()),
 	_idCount(kIdStart),
 	_lastSignature(0),
 	_lastLoopClosureId(0),
-	_memoryChanged(false)
+	_memoryChanged(false),
+	_signaturesAdded(0),
+
+	_keypointDetector(0),
+	_keypointDescriptor(0),
+	_reactivatedWordsComparedToNewWords(Parameters::defaultKpReactivatedWordsComparedToNewWords()),
+	_badSignRatio(Parameters::defaultKpBadSignRatio()),
+	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
+	_parallelized(Parameters::defaultKpParallelized())
 {
+	_vwd = new VWDictionary(parameters);
 	this->parseParameters(parameters);
 }
 
-bool Memory::init(const std::string & dbDriverName, const std::string & dbUrl, bool dbOverwritten, const ParametersMap & parameters)
+bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const ParametersMap & parameters)
 {
 	ULOGGER_DEBUG("");
 	this->parseParameters(parameters);
@@ -70,17 +79,11 @@ bool Memory::init(const std::string & dbDriverName, const std::string & dbUrl, b
 		UEventsManager::post(new RtabmapEventInit("Closing database connection..."));
 		_dbDriver->closeConnection();
 		UEventsManager::post(new RtabmapEventInit("Closing database connection, done!"));
-
-		if(_dbDriver->getDriverName().compare(dbDriverName) != 0)
-		{
-			delete _dbDriver;
-			_dbDriver = 0;
-		}
 	}
 
 	if(_dbDriver == 0)
 	{
-		_dbDriver = DBDriverFactory::createDBDriver(dbDriverName, parameters); // inMemory
+		_dbDriver = new DBDriverSqlite3(parameters);
 	}
 
 	bool success = false;
@@ -99,7 +102,7 @@ bool Memory::init(const std::string & dbDriverName, const std::string & dbUrl, b
 			for(std::list<Signature*>::reverse_iterator iter=dbSignatures.rbegin(); iter!=dbSignatures.rend(); ++iter)
 			{
 				_signatures.insert(std::pair<int, Signature *>((*iter)->id(), *iter));
-				if(_stMem.size() <= _maxStMemSize)
+				if((int)_stMem.size() <= _maxStMemSize)
 				{
 					_stMem.insert((*iter)->id());
 				}
@@ -130,9 +133,37 @@ bool Memory::init(const std::string & dbDriverName, const std::string & dbUrl, b
 		_idCount = kIdStart;
 	}
 
-	this->setCommonSignatureUsed(_commonSignatureUsed);
+	_workingMem.insert(kIdVirtual);
 
 	ULOGGER_DEBUG("ids start with %d", _idCount);
+
+
+	// Now load the dictionary if we have a connection
+	if(_vwd && _dbDriver && _dbDriver->isConnected())
+	{
+		UEventsManager::post(new RtabmapEventInit(std::string("Loading dictionary...")));
+		_dbDriver->load(_vwd);
+		UDEBUG("%d words loaded!", _vwd->getVisualWords().size());
+		UEventsManager::post(new RtabmapEventInit(std::string("Loading dictionary, done! (") + uNumber2Str(int(_vwd->getVisualWords().size())) + " loaded)"));
+	}
+
+	// Enable loaded signatures
+	Signature * ss;
+	const std::map<int, Signature *> & signatures = this->getSignatures();
+	for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
+	{
+		ss = this->_getSignature(i->first);
+		if(ss)
+		{
+			ss->setEnabled(true);
+		}
+	}
+
+	if(_vwd)
+	{
+		ULOGGER_DEBUG("Total word reference added = %d", _vwd->getTotalActiveReferences());
+	}
+
 	return success;
 }
 
@@ -162,21 +193,34 @@ Memory::~Memory()
 			_dbDriver = 0;
 		}
 	}
+
+	if(_keypointDetector)
+	{
+		delete _keypointDetector;
+	}
+	if(_keypointDescriptor)
+	{
+		delete _keypointDescriptor;
+	}
+	if(_vwd)
+	{
+		delete _vwd;
+	}
 }
 
 void Memory::parseParameters(const ParametersMap & parameters)
 {
 	ULOGGER_DEBUG("");
 	ParametersMap::const_iterator iter;
-	if((iter=parameters.find(Parameters::kMemSimilarityThr())) != parameters.end())
+	if((iter=parameters.find(Parameters::kMemRehearsalSimilarity())) != parameters.end())
 	{
 		this->setSimilarityThreshold(std::atof((*iter).second.c_str()));
 	}
-	if((iter=parameters.find(Parameters::kMemSimilarityOnlyLast())) != parameters.end())
+	if((iter=parameters.find(Parameters::kMemRehearsalOnlyWithLast())) != parameters.end())
 	{
-		_similarityOnlyLast = uStr2Bool((*iter).second.c_str());
+		_rehearsalOnlyWithLast = uStr2Bool((*iter).second.c_str());
 	}
-	if((iter=parameters.find(Parameters::kMemRawDataKept())) != parameters.end())
+	if((iter=parameters.find(Parameters::kMemImageKept())) != parameters.end())
 	{
 		_rawDataKept = uStr2Bool((*iter).second.c_str());
 	}
@@ -184,13 +228,9 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	{
 		_incrementalMemory = uStr2Bool((*iter).second.c_str());
 	}
-	if((iter=parameters.find(Parameters::kMemMaxStMemSize())) != parameters.end())
+	if((iter=parameters.find(Parameters::kMemSTMSize())) != parameters.end())
 	{
 		this->setMaxStMemSize(std::atoi((*iter).second.c_str()));
-	}
-	if((iter=parameters.find(Parameters::kMemCommonSignatureUsed())) != parameters.end())
-	{
-		this->setCommonSignatureUsed(uStr2Bool((*iter).second.c_str()));
 	}
 	if((iter=parameters.find(Parameters::kMemRecentWmRatio())) != parameters.end())
 	{
@@ -204,14 +244,107 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	{
 		_dbDriver->parseParameters(parameters);
 	}
+
+
+	// Keypoint stuff
+	if(_vwd)
+	{
+		_vwd->parseParameters(parameters);
+	}
+
+	if((iter=parameters.find(Parameters::kKpReactivatedWordsComparedToNewWords())) != parameters.end())
+	{
+		_reactivatedWordsComparedToNewWords = uStr2Bool((*iter).second.c_str());
+	}
+
+	if((iter=parameters.find(Parameters::kKpTfIdfLikelihoodUsed())) != parameters.end())
+	{
+		_tfIdfLikelihoodUsed = uStr2Bool((*iter).second.c_str());
+	}
+
+	if((iter=parameters.find(Parameters::kKpParallelized())) != parameters.end())
+	{
+		_parallelized = uStr2Bool((*iter).second.c_str());
+	}
+
+	if((iter=parameters.find(Parameters::kKpBadSignRatio())) != parameters.end())
+	{
+		_badSignRatio = std::atof((*iter).second.c_str());
+	}
+
+	//Keypoint detector
+	KeypointDetector::DetectorType detectorStrategy = KeypointDetector::kDetectorUndef;
+	if((iter=parameters.find(Parameters::kKpDetectorStrategy())) != parameters.end())
+	{
+		detectorStrategy = (KeypointDetector::DetectorType)std::atoi((*iter).second.c_str());
+	}
+	if(!_keypointDetector ||  detectorStrategy!=KeypointDetector::kDetectorUndef)
+	{
+		ULOGGER_DEBUG("new detector strategy %d", int(detectorStrategy));
+		if(_keypointDetector)
+		{
+			delete _keypointDetector;
+			_keypointDetector = 0;
+		}
+		switch(detectorStrategy)
+		{
+		case KeypointDetector::kDetectorSift:
+			_keypointDetector = new SIFTDetector(parameters);
+			break;
+		case KeypointDetector::kDetectorSurf:
+		default:
+			_keypointDetector = new SURFDetector(parameters);
+			break;
+		}
+	}
+	else if(_keypointDetector)
+	{
+		_keypointDetector->parseParameters(parameters);
+	}
+
+	//Keypoint descriptor
+	KeypointDescriptor::DescriptorType descriptorStrategy = KeypointDescriptor::kDescriptorUndef;
+	if((iter=parameters.find(Parameters::kKpDescriptorStrategy())) != parameters.end())
+	{
+		descriptorStrategy = (KeypointDescriptor::DescriptorType)std::atoi((*iter).second.c_str());
+	}
+	if(!_keypointDescriptor || descriptorStrategy!=KeypointDescriptor::kDescriptorUndef)
+	{
+		ULOGGER_DEBUG("new descriptor strategy %d", int(descriptorStrategy));
+		if(_keypointDescriptor)
+		{
+			delete _keypointDescriptor;
+			_keypointDescriptor = 0;
+		}
+		switch(descriptorStrategy)
+		{
+		case KeypointDescriptor::kDescriptorSift:
+			_keypointDescriptor = new SIFTDescriptor(parameters);
+			break;
+		case KeypointDescriptor::kDescriptorSurf:
+		default:
+			_keypointDescriptor = new SURFDescriptor(parameters);
+			break;
+		}
+	}
+	else if(_keypointDescriptor)
+	{
+		_keypointDescriptor->parseParameters(parameters);
+	}
 }
 
 void Memory::preUpdate()
 {
 	_signaturesAdded = 0;
+	this->cleanUnusedWords();
+	if(_vwd && !_parallelized)
+	{
+		//When parallelized, it is done in CreateSignature
+		_vwd->update();
+	}
 }
 
-bool Memory::update(const std::list<Sensor> & sensors, const std::list<Actuator> & actuators, std::map<std::string, float> & stats)
+bool Memory::update(const Image & image, std::map<std::string, float> & stats)
 {
 	ULOGGER_DEBUG("");
 	UTimer timer;
@@ -231,7 +364,7 @@ bool Memory::update(const std::list<Sensor> & sensors, const std::list<Actuator>
 	//============================================================
 	// Create a signature with the image received.
 	//============================================================
-	Signature * signature = this->createSignature(this->getNextId(), sensors, this->isRawDataKept());
+	Signature * signature = this->createSignature(this->getNextId(), image, this->isRawDataKept());
 	if (signature == 0)
 	{
 		UERROR("Failed to create a signature");
@@ -239,7 +372,7 @@ bool Memory::update(const std::list<Sensor> & sensors, const std::list<Actuator>
 	}
 
 	// It will be added to the short-term memory, no need to delete it...
-	this->addSignatureToStm(signature, actuators);
+	this->addSignatureToStm(signature);
 
 	_lastSignature = signature;
 
@@ -267,8 +400,9 @@ bool Memory::update(const std::list<Sensor> & sensors, const std::list<Actuator>
 	//============================================================
 	// Transfer the oldest signature of the short-term memory to the working memory
 	//============================================================
-	while(_stMem.size() > _maxStMemSize && _stMem.size())
+	while(_stMem.size() && (int)_stMem.size() > _maxStMemSize)
 	{
+		UDEBUG("Inserting node %d from STM in WM...", *_stMem.begin());
 		_workingMem.insert(_workingMem.end(), *_stMem.begin());
 		_stMem.erase(*_stMem.begin());
 		++_signaturesAdded;
@@ -286,16 +420,17 @@ bool Memory::update(const std::list<Sensor> & sensors, const std::list<Actuator>
 	return true;
 }
 
-void Memory::setSimilarityThreshold(float similarityThreshold)
+void Memory::setSimilarityThreshold(float similarity)
 {
-	if(similarityThreshold>=0 && similarityThreshold<=1)
+	if(similarity>=0 && similarity <=1)
 	{
-		_similarityThreshold = similarityThreshold;
+		_similarityThreshold = similarity;
 	}
 	else
 	{
-		ULOGGER_ERROR("similarityThreshold=%f", similarityThreshold);
+		ULOGGER_ERROR("Error similarity threshold \"%f\" (must be between 0 and 1)", similarity);
 	}
+
 }
 
 void Memory::setMaxStMemSize(unsigned int maxStMemSize)
@@ -307,7 +442,6 @@ void Memory::setMaxStMemSize(unsigned int maxStMemSize)
 	else
 	{
 		_maxStMemSize = maxStMemSize;
-		_lastBaseIds.resize(maxStMemSize, 0);
 	}
 }
 
@@ -323,47 +457,33 @@ void Memory::setRecentWmRatio(float recentWmRatio)
 	}
 }
 
-void Memory::setCommonSignatureUsed(bool commonSignatureUsed)
-{
-	_commonSignatureUsed = commonSignatureUsed;
-
-	if(_commonSignatureUsed)
-	{
-		_workingMem.insert(kIdVirtual);
-	}
-	else
-	{
-		// remove virtual signature
-		_workingMem.erase(kIdVirtual);
-	}
-}
-
-void Memory::addSignatureToStm(Signature * signature, const std::list<Actuator> & actuators)
+void Memory::addSignatureToStm(Signature * signature)
 {
 	UTimer timer;
 	// add signature on top of the short-term memory
 	if(signature)
 	{
-		UDEBUG("adding %d with a=%d", signature->id(), (int)actuators.size());
+		UDEBUG("adding %d", signature->id());
 		// Update neighbors
 		if(_stMem.size())
 		{
 			// If you want to use Bayes's parameter _predictionOnNonNullActionsOnly with no actions, dummy actions must be sent (null actions are not handled in sqlite3 driver)
-			_signatures.at(*_stMem.rbegin())->addNeighbor(NeighborLink(signature->id(), _lastBaseIds, actuators, signature->id()));
+			_signatures.at(*_stMem.rbegin())->addNeighbor(signature->id());
 			// actions are not backward compatible, so set null actions
-			signature->addNeighbor(NeighborLink(*_stMem.rbegin()));
+			signature->addNeighbor(*_stMem.rbegin());
+			UDEBUG("Min STM id = %d", *_stMem.begin());
 		}
 
 		_signatures.insert(_signatures.end(), std::pair<int, Signature *>(signature->id(), signature));
 		_stMem.insert(_stMem.end(), signature->id());
 
-		// udpate baseIds
-		if(_lastBaseIds.size())
+		if(_vwd)
 		{
-			// shift base ids (first is the last added)
-			std::vector<int> tmpCpy = _lastBaseIds;
-			_lastBaseIds[0] = signature->id();
-			memcpy(&_lastBaseIds[1], tmpCpy.data(), (tmpCpy.size()-1) * sizeof(int));
+			ULOGGER_DEBUG("%d words ref for the signature %d", signature->getWords().size(), signature->id());
+		}
+		if(signature->getWords().size())
+		{
+			signature->setEnabled(true);
 		}
 	}
 
@@ -374,6 +494,7 @@ void Memory::addSignatureToWm(Signature * signature)
 {
 	if(signature)
 	{
+		UDEBUG("Inserting node %d in WM...", signature->id());
 		_workingMem.insert(signature->id());
 		_signatures.insert(std::pair<int, Signature*>(signature->id(), signature));
 		++_signaturesAdded;
@@ -394,31 +515,14 @@ Signature * Memory::_getSignature(int id) const
 	return uValue(_signatures, id, (Signature*)0);
 }
 
-Signature * Memory::getSignatureLtMem(int id)
+int Memory::getVWDictionarySize() const
 {
-	ULOGGER_DEBUG("id=%d", id);
-	Signature * s = 0;
-	if(id>0 && _dbDriver)
-	{
-		// Look up in the database
-		_dbDriver->getSignature(id, &s);
-		if(s)
-		{
-			_signatures.insert(std::pair<int, Signature *>(s->id(), s));
-			_workingMem.insert(s->id());
-			++_signaturesAdded;
-		}
-		else
-		{
-			UFATAL("");
-		}
-	}
-	return s;
+	return _vwd->getVisualWords().size();
 }
 
-std::list<NeighborLink> Memory::getNeighborLinks(int signatureId, bool ignoreNeighborByLoopClosure, bool lookInDatabase, bool onlyWithActions) const
+std::set<int> Memory::getNeighborLinks(int signatureId, bool ignoreNeighborByLoopClosure, bool lookInDatabase) const
 {
-	std::list<NeighborLink> links;
+	std::set<int> links;
 	Signature * sTop = uValue(_signatures, signatureId, (Signature*)0);
 	if(sTop)
 	{
@@ -430,14 +534,8 @@ std::list<NeighborLink> Memory::getNeighborLinks(int signatureId, bool ignoreNei
 			loops.pop_front();
 			if(s)
 			{
-				const NeighborsMultiMap & neighbors = s->getNeighbors();
-				for(NeighborsMultiMap::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
-				{
-					if(!onlyWithActions || (onlyWithActions && iter->second.actuators().size()))
-					{
-						links.push_back(iter->second);
-					}
-				}
+				const std::set<int> & neighbors = s->getNeighbors();
+				links.insert(neighbors.begin(), neighbors.end());
 				if(!ignoreNeighborByLoopClosure)
 				{
 					const std::set<int> & loopIds = s->getLoopClosureIds();
@@ -469,14 +567,8 @@ std::list<NeighborLink> Memory::getNeighborLinks(int signatureId, bool ignoreNei
 				loops.pop_front();
 				if(s)
 				{
-					const NeighborsMultiMap & neighbors = s->getNeighbors();
-					for(NeighborsMultiMap::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
-					{
-						if(!onlyWithActions || (onlyWithActions && iter->second.actuators().size()))
-						{
-							links.push_back(iter->second);
-						}
-					}
+					const std::set<int> & neighbors = s->getNeighbors();
+					links.insert(neighbors.begin(), neighbors.end());
 					const std::set<int> & childIds = s->getChildLoopClosureIds();
 					for(std::set<int>::const_iterator iter = childIds.begin(); iter!=childIds.end(); ++iter)
 					{
@@ -491,19 +583,13 @@ std::list<NeighborLink> Memory::getNeighborLinks(int signatureId, bool ignoreNei
 	}
 	else if(lookInDatabase && _dbDriver)
 	{
-		NeighborsMultiMap neighbors;
+		std::set<int> neighbors;
 		_dbDriver->loadNeighbors(signatureId, neighbors);
-		for(NeighborsMultiMap::iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
-		{
-			if(!onlyWithActions || (onlyWithActions && iter->second.actuators().size()))
-			{
-				links.push_back(iter->second);
-			}
-		}
+		links.insert(neighbors.begin(), neighbors.end());
 	}
 	else
 	{
-		UDEBUG("Cannot found signature %d in memory", signatureId);
+		UWARN("Cannot find signature %d in memory", signatureId);
 	}
 	return links;
 }
@@ -511,34 +597,36 @@ std::list<NeighborLink> Memory::getNeighborLinks(int signatureId, bool ignoreNei
 // return map<Id,Margin>, including signatureId
 // maxCheckedInDatabase = -1 means no limit to check in database (default)
 // maxCheckedInDatabase = 0 means don't check in database
-std::map<int, int> Memory::getNeighborsId(double & dbAccessTime,
-		int signatureId,
+std::map<int, int> Memory::getNeighborsId(int signatureId,
 		unsigned int margin,
 		int maxCheckedInDatabase, // default -1 (no limit)
-		bool onlyWithActions, // default false
 		bool incrementMarginOnLoop, // default false
-		bool ignoreSTM, // default true
-		bool ignoreLoopIds // default false
+		bool ignoreLoopIds, // default false
+		double * dbAccessTime
 		) const
 {
 	//ULOGGER_DEBUG("signatureId=%d, neighborsMargin=%d", signatureId, margin);
-	dbAccessTime = 0;
+	if(dbAccessTime)
+	{
+		*dbAccessTime = 0;
+	}
 	std::map<int, int> ids;
 	if(signatureId<=0)
 	{
 		return ids;
 	}
 	int nbLoadedFromDb = 0;
-	std::list<int> currentMargin;
-	std::list<int> nextMargin;
-	nextMargin.push_back(signatureId);
+	std::list<int> curentMarginList;
+	std::set<int> currentMargin;
+	std::set<int> nextMargin;
+	nextMargin.insert(signatureId);
 	unsigned int m = 0;
 	while(m < margin && nextMargin.size())
 	{
-		currentMargin = nextMargin;
+		curentMarginList = std::list<int>(nextMargin.begin(), nextMargin.end());
 		nextMargin.clear();
 		// first pass: count number of node in current margin in database
-		for(std::list<int>::iterator jter = currentMargin.begin(); jter!=currentMargin.end();++jter)
+		for(std::list<int>::iterator jter = curentMarginList.begin(); jter!=curentMarginList.end();++jter)
 		{
 			if(!uContains(ids, *jter))
 			{
@@ -550,11 +638,12 @@ std::map<int, int> Memory::getNeighborsId(double & dbAccessTime,
 			}
 		}
 
-		for(std::list<int>::iterator jter = currentMargin.begin(); jter!=currentMargin.end(); ++jter)
+		for(std::list<int>::iterator jter = curentMarginList.begin(); jter!=curentMarginList.end(); ++jter)
 		{
 			if(ids.insert(std::pair<int, int>(*jter, m)).second)
 			{
-				// Look up in the short time memory if all ids are here, if not... load them from the database
+				//UDEBUG("Added %d with margin %d", *jter, m);
+				// Look up in STM/WM if all ids are here, if not... load them from the database
 				const Signature * s = this->getSignature(*jter);
 				std::set<int> tmpNeighborIds;
 				std::set<int> tmpLoopClosureIds;
@@ -564,14 +653,8 @@ std::map<int, int> Memory::getNeighborsId(double & dbAccessTime,
 				const std::set<int> * childLoopClosureIds = &tmpChildLoopClosureIds;
 				if(s)
 				{
-					if(onlyWithActions)
-					{
-						neighborIds = &s->getNeighborsWithActuators();
-					}
-					else
-					{
-						neighborIds = &s->getNeighborsAll();
-					}
+					neighborIds = &s->getNeighbors();
+
 					if(!ignoreLoopIds)
 					{
 						loopClosureIds = &s->getLoopClosureIds();
@@ -581,45 +664,51 @@ std::map<int, int> Memory::getNeighborsId(double & dbAccessTime,
 				else if(maxCheckedInDatabase == -1 || (maxCheckedInDatabase > 0 && _dbDriver && nbLoadedFromDb < maxCheckedInDatabase))
 				{
 					UTimer timer;
-					_dbDriver->getNeighborIds(*jter, tmpNeighborIds, onlyWithActions);
+					_dbDriver->getNeighborIds(*jter, tmpNeighborIds);
 					if(!ignoreLoopIds)
 					{
 						_dbDriver->getLoopClosureIds(*jter, tmpLoopClosureIds, tmpChildLoopClosureIds);
 					}
-					dbAccessTime += timer.getElapsedTime();
+					if(dbAccessTime)
+					{
+						*dbAccessTime += timer.getElapsedTime();
+					}
 				}
 
 				// Neighbor links
 				for(std::set<int>::const_iterator iter=neighborIds->begin(); iter!=neighborIds->end(); ++iter)
 				{
 					if( (ignoreLoopIds || (loopClosureIds->find(*iter) == loopClosureIds->end() && childLoopClosureIds->find(*iter) == childLoopClosureIds->end())) &&
-						(!ignoreSTM || (!_stMem.size() || *iter < *_stMem.begin()) ) &&
-						!uContains(ids, *iter))
+						!uContains(ids, *iter) &&
+						nextMargin.find(*iter) == nextMargin.end())
 					{
-						nextMargin.push_back(*iter);
+						nextMargin.insert(*iter);
 					}
 				}
 
 				// Parent links
 				for(std::set<int>::const_iterator iter=loopClosureIds->begin(); iter!=loopClosureIds->end(); ++iter)
 				{
-					if( *iter &&
-						(!ignoreSTM || (!_stMem.size() || *iter < *_stMem.begin()) ) &&
-						!uContains(ids, *iter))
+					if( *iter && !uContains(ids, *iter)/* && isInNeighborLimits(*iter, limits)*/)
 					{
 						if(incrementMarginOnLoop)
 						{
-							nextMargin.push_back(*iter);
+							nextMargin.insert(*iter);
+							//UDEBUG("next of %d + %d", *jter, *iter);
 						}
 						else
 						{
-							const Signature * s = this->getSignature(*iter);
-							if(!s)
+							if(currentMargin.insert(*iter).second)
 							{
-								// update db count because it's on current margin
-								++nbLoadedFromDb;
+								const Signature * s = this->getSignature(*iter);
+								if(!s)
+								{
+									// update db count because it's on current margin
+									++nbLoadedFromDb;
+								}
+								curentMarginList.push_back(*iter);
+								//UDEBUG("current of %d + %d", *jter, *iter);
 							}
-							currentMargin.push_back(*iter);
 						}
 					}
 				}
@@ -627,23 +716,26 @@ std::map<int, int> Memory::getNeighborsId(double & dbAccessTime,
 				//Child links
 				for(std::set<int>::const_iterator iter=childLoopClosureIds->begin(); iter!=childLoopClosureIds->end(); ++iter)
 				{
-					if( *iter &&
-						(!ignoreSTM || (!_stMem.size() || *iter < *_stMem.begin()) ) &&
-						!uContains(ids, *iter))
+					if( *iter && !uContains(ids, *iter)/* && isInNeighborLimits(*iter, limits)*/)
 					{
 						if(incrementMarginOnLoop)
 						{
-							nextMargin.push_back(*iter);
+							nextMargin.insert(*iter);
+							//UDEBUG("next of %d + %d", *jter, *iter);
 						}
 						else
 						{
-							const Signature * s = this->getSignature(*iter);
-							if(!s)
+							if(currentMargin.insert(*iter).second)
 							{
-								// update db count because it's on current margin
-								++nbLoadedFromDb;
+								const Signature * s = this->getSignature(*iter);
+								if(!s)
+								{
+									// update db count because it's on current margin
+									++nbLoadedFromDb;
+								}
+								curentMarginList.push_back(*iter);
+								//UDEBUG("current of %d + %d", *jter, *iter);
 							}
-							currentMargin.push_back(*iter);
 						}
 					}
 				}
@@ -710,6 +802,17 @@ void Memory::clear()
 
 	if(_dbDriver)
 	{
+		int size = 0;
+		if(_vwd)
+		{
+			size = _vwd->getVisualWords().size();
+		}
+
+		_dbDriver->addStatisticsAfterRunSurf(size);
+	}
+
+	if(_dbDriver)
+	{
 		_dbDriver->emptyTrashes();
 		_dbDriver->join();
 	}
@@ -739,7 +842,7 @@ void Memory::clear()
 	{
 		if(i->second)
 		{
-			ULOGGER_DEBUG("deleting from the working and the short-time memory: %d", i->first);
+			ULOGGER_DEBUG("deleting from the working and the short-term memory: %d", i->first);
 			this->moveToTrash(i->second);
 		}
 	}
@@ -766,8 +869,21 @@ void Memory::clear()
 	_lastLoopClosureId = 0;
 	_idCount = kIdStart;
 	_memoryChanged = false;
-	_lastBaseIds = std::vector<int>(_lastBaseIds.size(), 0);
-	_similaritiesMap.clear();
+
+	if(_dbDriver)
+	{
+		_dbDriver->join(true);
+		cleanUnusedWords();
+		_dbDriver->emptyTrashes();
+	}
+	else
+	{
+		cleanUnusedWords();
+	}
+	if(_vwd)
+	{
+		_vwd->clear();
+	}
 }
 
 /**
@@ -775,162 +891,120 @@ void Memory::clear()
  * Important: Assuming that all other ids are under 'signature' id.
  * If an error occurs, the result is empty.
  */
-std::map<int, float> Memory::computeLikelihood(const Signature * signature, const std::list<int> & ids, float & maximumScore)
+std::map<int, float> Memory::computeLikelihood(const Signature * signature, const std::list<int> & ids)
 {
-	UTimer timer;
-	timer.start();
-	std::map<int, float> likelihood;
-	maximumScore = 0;
-
-	if(!signature)
+	if(!_tfIdfLikelihoodUsed)
 	{
-		ULOGGER_ERROR("The signature is null");
+		UTimer timer;
+		timer.start();
+		std::map<int, float> likelihood;
+
+		if(!signature)
+		{
+			ULOGGER_ERROR("The signature is null");
+			return likelihood;
+		}
+		else if(ids.empty())
+		{
+			UWARN("ids list is empty");
+			return likelihood;
+		}
+
+		for(std::list<int>::const_iterator iter = ids.begin(); iter!=ids.end(); ++iter)
+		{
+			float sim = 0.0f;
+			if(*iter > 0)
+			{
+				const Signature * sB = this->getSignature(*iter);
+				if(!sB)
+				{
+					UFATAL("Signature %d not found in WM ?!?", *iter);
+				}
+				sim = signature->compareTo(sB);
+			}
+
+			likelihood.insert(likelihood.end(), std::pair<int, float>(*iter, sim));
+		}
+
+		ULOGGER_DEBUG("compute likelihood... %f s", timer.ticks());
 		return likelihood;
 	}
-	else if(ids.empty())
+	else
 	{
-		UWARN("ids list is empty");
+		// TODO cleanup , old way...
+		UTimer timer;
+		timer.start();
+		std::map<int, float> likelihood;
+		std::map<int, float> calculatedWordsRatio;
+
+		if(!signature)
+		{
+			ULOGGER_ERROR("The signature is null");
+			return likelihood;
+		}
+		else if(ids.empty())
+		{
+			UWARN("ids list is empty");
+			return likelihood;
+		}
+
+		for(std::list<int>::const_iterator iter = ids.begin(); iter!=ids.end(); ++iter)
+		{
+			likelihood.insert(likelihood.end(), std::pair<int, float>(*iter, 0.0f));
+		}
+
+		const std::list<int> & wordIds = uUniqueKeys(signature->getWords());
+
+		float nwi; // nwi is the number of a specific word referenced by a place
+		float ni; // ni is the total of words referenced by a place
+		float nw; // nw is the number of places referenced by a specific word
+		float N; // N is the total number of places
+
+		float logNnw;
+		const VisualWord * vw;
+
+		N = this->getSignatures().size();
+
+		if(N)
+		{
+			ULOGGER_DEBUG("processing... ");
+			// Pour chaque mot dans la signature SURF
+			for(std::list<int>::const_iterator i=wordIds.begin(); i!=wordIds.end(); ++i)
+			{
+				// "Inverted index" - Pour chaque endroit contenu dans chaque mot
+				vw = _vwd->getWord(*i);
+				if(vw)
+				{
+					const std::map<int, int> & refs = vw->getReferences();
+					nw = refs.size();
+					if(nw)
+					{
+						logNnw = log10(N/nw);
+						if(logNnw)
+						{
+							for(std::map<int, int>::const_iterator j=refs.begin(); j!=refs.end(); ++j)
+							{
+								std::map<int, float>::iterator iter = likelihood.find(j->first);
+								if(iter != likelihood.end())
+								{
+									nwi = j->second;
+									ni = this->getNi(j->first);
+									if(ni != 0)
+									{
+										//ULOGGER_DEBUG("%d, %f %f %f %f", vw->id(), logNnw, nwi, ni, ( nwi  * logNnw ) / ni);
+										iter->second += ( nwi  * logNnw ) / ni;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		ULOGGER_DEBUG("compute likelihood %f s", timer.ticks());
 		return likelihood;
 	}
-
-	float sumSimilarity = 0.0f;
-	float maxSim = 0.0f;
-	int maxId = 0;
-	std::map<int, std::map<int, float> >::iterator iterB = _similaritiesMap.find(signature->id());
-	if(iterB == _similaritiesMap.end())
-	{
-		iterB = _similaritiesMap.insert(_similaritiesMap.end(), std::make_pair(signature->id(), std::map<int, float>()));
-	}
-	for(std::list<int>::const_iterator iter = ids.begin(); iter!=ids.end(); ++iter)
-	{
-		float sim = 0;
-		if(*iter > 0)
-		{
-			const Signature * sB = this->getSignature(*iter);
-			if(!sB)
-			{
-				UFATAL("Signature %d not wfound in WM ?!?", *iter);
-			}
-			sim = signature->compareTo(sB);
-			iterB->second.insert(iterB->second.end(), std::make_pair(sB->id(), sim));
-		}
-		likelihood.insert(likelihood.end(), std::pair<int, float>(*iter, sim));
-		sumSimilarity += sim;
-		UDEBUG("sim %d with %d = %f", signature->id(), *iter, sim);
-		if(sim>maxSim)
-		{
-			maxSim = sim;
-			maxId = *iter;
-		}
-	}
-	ULOGGER_DEBUG("sumSimilarity=%f, maxSim=%f, id=%d)", sumSimilarity, maxSim, maxId);
-
-	ULOGGER_DEBUG("_similaritiesMap.size() = %d", (int)_similaritiesMap.size());
-	ULOGGER_DEBUG("compute likelihood... %f s", timer.ticks());
-	maximumScore = 1.0f;
-	return likelihood;
-}
-
-float Memory::compareOneToOne(const std::vector<int> & idsA, const std::vector<int> & idsB)
-{
-	/*std::string baseIdsDebug;
-	for(unsigned int i=0; i<idsA.size(); ++i)
-	{
-		baseIdsDebug.append(uNumber2str(idsA[i]));
-		if(i+1 < idsA.size())
-		{
-			baseIdsDebug.append(", ");
-		}
-	}
-	UDEBUG("baseIdsA = [%s]", baseIdsDebug.c_str());
-	baseIdsDebug.clear();
-	for(unsigned int i=0; i<idsB.size(); ++i)
-	{
-		baseIdsDebug.append(uNumber2str(idsB[i]));
-		if(i+1 < idsB.size())
-		{
-			baseIdsDebug.append(", ");
-		}
-	}
-	UDEBUG("baseIdsB = [%s]", baseIdsDebug.c_str());
-*/
-
-	float sim = 0.0f;
-	const Signature * sA;
-	const Signature * sB;
-	int idSmall;
-	int idBig;
-	bool added;
-	int nbCompared = 0;
-	for(unsigned int i=0; i<idsA.size() && i<idsB.size(); ++i)
-	{
-		if(idsA[i] < idsB[i])
-		{
-			idSmall = idsA[i];
-			idBig = idsB[i];
-		}
-		else
-		{
-			idSmall = idsB[i];
-			idBig = idsA[i];
-		}
-		added = false;
-		std::map<int, std::map<int, float> >::iterator iterBig = _similaritiesMap.find(idBig);
-		if(iterBig != _similaritiesMap.end())
-		{
-			std::map<int, float>::iterator iterSmall = iterBig->second.find(idSmall);
-			if(iterSmall != iterBig->second.end())
-			{
-				//UDEBUG("(%d, %d, %f)", idBig, idSmall, iterSmall->second);
-				sim += iterSmall->second;
-				added = true;
-			}
-		}
-		if(!added)
-		{
-			sA = getSignature(idsA[i]);
-			sB = getSignature(idsB[i]);
-			if(sA && sB)
-			{
-				float tmp = sA->compareTo(sB);
-				sim += tmp;
-				if(iterBig != _similaritiesMap.end())
-				{
-					iterBig->second.insert(std::make_pair(idSmall, tmp));
-				}
-				else
-				{
-					std::map<int, float> tmpMap;
-					tmpMap.insert(std::make_pair(idSmall, tmp));
-					_similaritiesMap.insert(_similaritiesMap.end(), std::make_pair(idBig, tmpMap));
-				}
-				//UDEBUG("Added (%d,%d,%f) to similaritiesMap", idBig, idSmall, tmp);
-				++nbCompared;
-			}
-			else
-			{
-				if(sA && idsB[i])
-				{
-					UDEBUG("Not found B %d", idsB[i]);
-				}
-				if(sB && idsA[i])
-				{
-					UDEBUG("Not found A %d", idsA[i]);
-				}
-			}
-		}
-		else
-		{
-			++nbCompared;
-		}
-	}
-	int total = (int)(idsA.size()>idsB.size()?idsA.size():idsB.size());
-	if(total)
-	{
-		sim /= float(total);
-	}
-	UDEBUG("sim=%f, idsA=%d, idsB=%d, nbCompared=%d", sim, (int)idsA.size(), (int)idsB.size(), nbCompared);
-	return sim;
 }
 
 // Weights of the signatures in the working memory <signature id, weight>
@@ -948,38 +1022,67 @@ std::map<int, int> Memory::getWeights() const
 			}
 			weights.insert(weights.end(), std::make_pair(*iter, s->getWeight()));
 		}
+		else
+		{
+			weights.insert(weights.end(), std::make_pair(*iter, -1));
+		}
 	}
 	return weights;
-}
-
-int Memory::getWeight(int id) const
-{
-	int weight = 0;
-	const Signature * s = this->getSignature(id);
-	if(s)
-	{
-		weight = s->getWeight();
-	}
-	else if(_dbDriver)
-	{
-		_dbDriver->getWeight(id, weight);
-	}
-	return weight;
 }
 
 int Memory::forget(const std::set<int> & ignoredIds)
 {
 	ULOGGER_DEBUG("");
-	// Remove one more than total added during the iteration
-	std::list<Signature *> signatures = getRemovableSignatures(_signaturesAdded+1, ignoredIds);
-	for(std::list<Signature *>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
+	int signaturesRemoved = 0;
+	if(_vwd->isIncremental())
 	{
-		// When a signature is deleted, it notifies the memory
-		// and it is removed from the memory list
-		this->moveToTrash(*iter);
+		int newWords = 0;
+		int wordsRemoved = 0;
+
+		// Get how many new words added for the last run...
+		newWords = _vwd->getNotIndexedWordsCount();
+
+		// So we need to remove at least "newWords" words from the
+		// dictionary to respect the limit.
+		while(wordsRemoved < newWords)
+		{
+			std::list<Signature *> signatures = this->getRemovableSignatures(1, ignoredIds);
+			if(signatures.size())
+			{
+				Signature *  s = dynamic_cast<Signature *>(signatures.front());
+				if(s)
+				{
+					++signaturesRemoved;
+					this->moveToTrash(s);
+					wordsRemoved = _vwd->getUnusedWordsSize();
+				}
+				else
+				{
+					break;
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+		ULOGGER_DEBUG("newWords=%d, wordsRemoved=%d", newWords, wordsRemoved);
 	}
-	UDEBUG("signaturesRemoved=%d, _signaturesAdded=%d", (int)signatures.size(), _signaturesAdded);
-	return (int)signatures.size();
+	else
+	{
+		ULOGGER_DEBUG("");
+		// Remove one more than total added during the iteration
+		std::list<Signature *> signatures = getRemovableSignatures(_signaturesAdded+1, ignoredIds);
+		for(std::list<Signature *>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
+		{
+			// When a signature is deleted, it notifies the memory
+			// and it is removed from the memory list
+			this->moveToTrash(*iter);
+		}
+		UDEBUG("signaturesRemoved=%d, _signaturesAdded=%d", (int)signatures.size(), _signaturesAdded);
+		signaturesRemoved = (int)signatures.size();
+	}
+	return signaturesRemoved;
 }
 
 
@@ -1014,32 +1117,6 @@ void Memory::joinTrashThread()
 		_dbDriver->join();
 		UDEBUG("");
 	}
-}
-
-std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, double & timeDbAccess)
-{
-	// get the signatures, if not in the working memory, they will be loaded from the database
-	std::set<int> loaded;
-	UTimer timer;
-	for(std::list<int>::const_iterator i=ids.begin(); i!=ids.end(); ++i)
-	{
-		if(((maxLoaded && loaded.size() < maxLoaded) || !maxLoaded ) &&
-		   _signatures.find(*i) == _signatures.end())
-		{
-			if(getSignatureLtMem(*i))
-			{
-				//When loaded from the long-term memory, the signature
-				// is automatically added on top of the working memory
-				loaded.insert(*i);
-			}
-			else
-			{
-				UFATAL("Cannot load signature %d from LTM", *i);
-			}
-		}
-	}
-	timeDbAccess = timer.getElapsedTime();
-	return loaded;
 }
 
 class WeightIdKey
@@ -1121,12 +1198,12 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 				if(s)
 				{
 					// Its loop closures must not be in STM to be removable, rehearsal issue
-					const std::set<int> & loopClosureIds = s->getLoopClosureIds();
 					bool foundInSTM = false;
-					for(std::set<int>::const_iterator iter = loopClosureIds.begin(); iter!=loopClosureIds.end(); ++iter)
+					for(std::set<int>::const_iterator iter = s->getLoopClosureIds().begin(); iter!=s->getLoopClosureIds().end(); ++iter)
 					{
 						if(_stMem.find(*iter) != _stMem.end())
 						{
+							UDEBUG("Ignored %d because it has a parent (%d) in STM", s->id(), *iter);
 							foundInSTM = true;
 							break;
 						}
@@ -1138,6 +1215,7 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 						{
 							if(s->hasNeighbor(*iter))
 							{
+								UDEBUG("Ignored %d because it has a neighbor (%d) in STM", s->id(), *iter);
 								foundInSTM = true;
 								break;
 							}
@@ -1145,7 +1223,7 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 					}
 					if(!foundInSTM)
 					{
-						// looped signature priority to be transferred
+						// less weighted signature priority to be transferred
 						signatureMap.insert(std::make_pair(WeightIdKey(s->getWeight(), s->id()), s));
 					}
 				}
@@ -1224,28 +1302,29 @@ void Memory::moveToTrash(Signature * s)
 	UINFO("id=%d", s?s->id():0);
 	if(s)
 	{
+		this->disableWordsRef(s->id());
+
 		_workingMem.erase(s->id());
 		_stMem.erase(s->id());
 		_signatures.erase(s->id());
-		_similaritiesMap.erase(s->id());
 
 		if(_lastSignature == s)
 		{
 			_lastSignature = 0;
 		}
 
-		// In the case of loop closure detection (neighbor links have 1 empty action),
-		// remove neighbor links with bad signatures.
+		// Remove neighbor links with bad signatures (assuming that is done in cleanup),
+		// the bad signatures are always the last signature added.
 		if(s->isBadSignature())
 		{
-			const NeighborsMultiMap & neighbors = s->getNeighbors();
-			for(NeighborsMultiMap::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
+			const std::set<int> & neighbors = s->getNeighbors();
+			for(std::set<int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
 			{
-				Signature * n = this->_getSignature(iter->first);
+				Signature * n = this->_getSignature(*iter);
 				// neighbor to s
 				if(n)
 				{
-					NeighborsMultiMap::const_iterator jter = n->getNeighbors().find(s->id());
+					std::set<int>::const_iterator jter = n->getNeighbors().find(s->id());
 					if(jter != n->getNeighbors().end())
 					{
 						n->removeNeighbor(s->id());
@@ -1287,33 +1366,24 @@ bool Memory::addLoopClosureLink(int oldId, int newId)
 			UDEBUG("already merged, old=%d, new=%d", oldId, newId);
 			return true;
 		}
-		/*else if(oldLoopclosureIds.size())
-		{
-			for(std::set<int>::const_reverse_iterator iter = oldLoopclosureIds.rbegin(); iter!=oldLoopclosureIds.rend(); ++iter)
-			{
-				// Cannot be the first in STM because of the neighbor redirection issue.
-				if(this->isInSTM(*iter) && *iter != *_stMem.begin())
-				{
-					// If there is already a loop closure with an location in STM, rehearse with it.
-					return addLoopClosureLink(*iter, newId);
-				}
-			}
-		}*/
 
 		// Set loop closure link
 		oldS->addLoopClosureId(newS->id());
 		UDEBUG("Add loop closure link between %d and %d", oldS->id(), newS->id());
 
-		if(_stMem.find(oldS->id()) == _stMem.end())
+		bool onRehearsal = this->isInSTM(oldS->id());
+		if(!onRehearsal)
 		{
 			// During loop closure in WM
 			newS->addChildLoopClosureId(oldS->id());
 			_lastLoopClosureId = newS->id();
 			newS->setWeight(newS->getWeight() + oldS->getWeight());
 			oldS->setWeight(0);
+			return true;
 		}
 		else
 		{
+			UDEBUG("On rehearsal");
 			// During rehearsal in STM...
 			// Here we merge the new location with the old one,
 			// redirecting all neighbor links to new location.
@@ -1329,9 +1399,7 @@ bool Memory::addLoopClosureLink(int oldId, int newId)
 			for(std::set<int>::iterator iter=_stMem.begin(); iter!=_stMem.end(); ++iter)
 			{
 				Signature * s = _getSignature(*iter);
-				// don't modify old links of oldS (cameraDatabase needs this info
-				// to reload properly the actions).
-				if(s && s->id() > oldS->id())
+				if(s)
 				{
 					s->changeNeighborIds(oldS->id(), newS->id());
 				}
@@ -1340,62 +1408,41 @@ bool Memory::addLoopClosureLink(int oldId, int newId)
 					UERROR("Location %d is not in RAM?!?", *iter);
 				}
 			}
+		}
 
-			// redirect neighbor links
-			const NeighborsMultiMap & neighbors = oldS->getNeighbors();
-			bool allSameIdsAdded = false;
-			for(NeighborsMultiMap::const_iterator iter = neighbors.begin(); iter!=neighbors.end(); ++iter)
+		UDEBUG("");
+		// redirect neighbor links
+		std::set<int> neighbors = oldS->getNeighbors();
+		for(std::set<int>::const_iterator iter = neighbors.begin(); iter!=neighbors.end(); ++iter)
+		{
+			int link = *iter;
+			if(link != newS->id() && link != oldS->id())
 			{
-				NeighborLink link = iter->second;
-				link.updateIds(oldS->id(), newS->id());
-				// Forward links have baseIds set, Backward links have baseIds null
-				if(link.toId() == newS->id() && link.baseIds().size())
+				Signature * s = this->_getSignature(link);
+				if(s)
 				{
-					// Limit the number of self references to STM size (baseIds size)
-					bool allSameIds = true;
-					const std::vector<int> & ids = link.baseIds();
-					for(unsigned int i=0; i<ids.size(); ++i)
-					{
-						if(ids[i]!=newS->id())
-						{
-							allSameIds = false;
-							break;
-						}
-					}
-					if(!allSameIds || (allSameIds && !allSameIdsAdded))
+					// modify neighbor "from"
+					s->changeNeighborIds(oldS->id(), newS->id());
+
+					if(!newS->hasNeighbor(link))
 					{
 						newS->addNeighbor(link);
-						if(allSameIds && !allSameIdsAdded)
-						{
-							allSameIdsAdded = true;
-						}
-					}
-					else if (link.actuators().size() && link.actuators().size())
-					{
-						// Show warning when actions are used.
-						UWARN("Ignored self reference link because base ids are all the same. (id=%d)", newS->id());
-					}
-					else
-					{
-						UDEBUG("Ignored self reference link because base ids are all the same. (id=%d)", newS->id());
 					}
 				}
-				else if(link.toId() != newS->id())
+				else
 				{
-					Signature * s = this->_getSignature(link.toId());
-					if(s)
-					{
-						// modify neighbor "from"
-						s->changeNeighborIds(oldS->id(), newS->id());
-					}
-					else
-					{
-						UERROR("Didn't find neighbor %d of %d in RAM...", link.toId(), oldS->id());
-					}
-					newS->addNeighbor(link);
+					UERROR("Didn't find neighbor %d of %d in RAM...", link, oldS->id());
 				}
 			}
 
+			if(link == newS->id())
+			{
+				oldS->removeNeighbor(link);
+			}
+		}
+
+		if(onRehearsal)
+		{
 			// redirect child loop closure links
 			const std::set<int> & childIds = oldS->getChildLoopClosureIds();
 			for(std::set<int>::const_iterator iter = childIds.begin(); iter!=childIds.end(); ++iter)
@@ -1418,44 +1465,16 @@ bool Memory::addLoopClosureLink(int oldId, int newId)
 				}
 			}
 
-			// udpate current baseIds
-			for(unsigned int i=0; i<_lastBaseIds.size(); ++i)
-			{
-				if(_lastBaseIds[i] == oldS->id())
-				{
-					_lastBaseIds[i] = newS->id();
-				}
-			}
-
 			if(_dataMergedOnRehearsal)
 			{
 				this->copyData(oldS, newS);
 				// Set old image to new signature
-				if(this->isRawDataKept())
-				{
-					if(oldS->getRawData().size() == 0)
-					{
-						// try load from database
-						if(oldS->isSaved() && _dbDriver)
-						{
-							std::list<Sensor> rawData;
-							if(_dbDriver->getRawData(oldS->id(), rawData))
-							{
-								newS->setRawData(rawData);
-							}
-							UDEBUG("Loaded raw data from database");
-						}
-					}
-					else
-					{
-						newS->setRawData(oldS->getRawData());
-					}
-				}
 			}
 
 			// remove old location
 			moveToTrash(oldS);
 		}
+
 		return true;
 	}
 	else
@@ -1475,8 +1494,48 @@ bool Memory::addLoopClosureLink(int oldId, int newId)
 void Memory::dumpMemory(std::string directory) const
 {
 	ULOGGER_DEBUG("");
+	this->dumpDictionary((directory+"DumpMemoryWordRef.txt").c_str(), (directory+"DumpMemoryWordDesc.txt").c_str());
 	this->dumpSignatures((directory + "DumpMemorySign.txt").c_str());
 	this->dumpMemoryTree((directory + "DumpMemoryTree.txt").c_str());
+}
+
+void Memory::dumpDictionary(const char * fileNameRef, const char * fileNameDesc) const
+{
+	if(_vwd)
+	{
+		_vwd->exportDictionary(fileNameRef, fileNameDesc);
+	}
+}
+
+void Memory::dumpSignatures(const char * fileNameSign) const
+{
+	FILE* foutSign = 0;
+#ifdef _MSC_VER
+	fopen_s(&foutSign, fileNameSign, "w");
+#else
+	foutSign = fopen(fileNameSign, "w");
+#endif
+
+	if(foutSign)
+	{
+		fprintf(foutSign, "SignatureID WordsID...\n");
+		const std::map<int, Signature *> & signatures = this->getSignatures();
+		for(std::map<int, Signature *>::const_iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
+		{
+			fprintf(foutSign, "%d ", iter->first);
+			const Signature * ss = dynamic_cast<const Signature *>(iter->second);
+			if(ss)
+			{
+				const std::multimap<int, cv::KeyPoint> & ref = ss->getWords();
+				for(std::multimap<int, cv::KeyPoint>::const_iterator jter=ref.begin(); jter!=ref.end(); ++jter)
+				{
+					fprintf(foutSign, "%d ", (*jter).first);
+				}
+			}
+			fprintf(foutSign, "\n");
+		}
+		fclose(foutSign);
+	}
 }
 
 void Memory::dumpMemoryTree(const char * fileNameTree) const
@@ -1526,7 +1585,7 @@ void Memory::rehearsal(Signature * signature, std::map<std::string, float> & sta
 	std::set<int> mem = _stMem;
 	mem.erase(signature->id());
 
-	if(_similarityOnlyLast && mem.size())
+	if(_rehearsalOnlyWithLast && mem.size())
 	{
 		int last = *mem.rbegin();
 		mem.clear();
@@ -1539,9 +1598,8 @@ void Memory::rehearsal(Signature * signature, std::map<std::string, float> & sta
 	}
 
 	std::list<int> ids(mem.begin(), mem.end());
-	float maximumScore = 1.0f;
 	// similarities must be between 0 and 1
-	similarities = Memory::computeLikelihood(signature, ids, maximumScore);
+	similarities = Memory::computeLikelihood(signature, ids);
 
 	UDEBUG("t=%fs", timer.ticks());
 	if(similarities.size() == 0)
@@ -1549,32 +1607,29 @@ void Memory::rehearsal(Signature * signature, std::map<std::string, float> & sta
 		ULOGGER_WARN("similarities size == 0 ?");
 		return;
 	}
-	else if(maximumScore == 0)
-	{
-		ULOGGER_WARN("maximumScore == 0 ?");
-		return;
-	}
 
+	//============================================================
+	// Compare
+	//============================================================
 	ULOGGER_DEBUG("Comparing with last signatures...");
-	float value = 0;
 	int id = 0;
 	int nbMerged = 0;
-	float maxValue = 0;
-	int maxId = 0;
+	std::list<int> merged;
+	float maxSim = 1.0f;
 	for(std::map<int, float>::iterator iter=similarities.begin(); iter!=similarities.end(); ++iter)
 	{
-		value = iter->second/maximumScore; // scale to 0 and 1
+		float value = iter->second;
 		id = iter->first;
-		if(value > maxValue)
+		if(value >= _similarityThreshold)
 		{
-			maxId = id;
-			maxValue = value;
-		}
+			if(maxSim < 0.0f || maxSim<=value)
+			{
+				maxSim = value;
+			}
 
-		if(value > _similarityThreshold)
-		{
 			if(_incrementalMemory)
 			{
+				merged.push_back(id);
 				this->addLoopClosureLink(id, signature->id());
 			}
 			else
@@ -1593,27 +1648,33 @@ void Memory::rehearsal(Signature * signature, std::map<std::string, float> & sta
 		}
 	}
 
-	stats.insert(std::pair<std::string, float>(std::string("Memory/Rehearsal Max Id/"), maxId));
-	stats.insert(std::pair<std::string, float>(std::string("Memory/Rehearsal Max Value/"), maxValue));
+	if(merged.size()> 1)
+	{
+		for(std::list<int>::iterator iter=merged.begin(); iter!=merged.end(); ++iter)
+		{
+			UDEBUG("Multiple merge on rehearsal of %d with %d", signature->id(), *iter);
+		}
+	}
 
-	stats.insert(std::pair<std::string, float>(std::string("Memory/Rehearsal nbMerged/"), nbMerged));
+	stats.insert(std::pair<std::string, float>("Rehearsal/last merged/", merged.size()?*merged.rbegin():0));
+	stats.insert(std::pair<std::string, float>("Rehearsal/nb merged/", nbMerged));
 
-	UDEBUG("maxId=%d, maxSim=%f, t=%fs", maxId, maxValue, timer.ticks());
+	UDEBUG("nbMerged=%d, lastMerged=%d, t=%fs", nbMerged, merged.size()?*merged.rbegin():0, timer.ticks());
 }
 
-std::list<Sensor> Memory::getRawData(int id) const
+cv::Mat Memory::getImage(int signatureId) const
 {
-	std::list<Sensor> data;
-	const Signature * s = this->getSignature(id);
-	if(s && s->getRawData().size())
+	cv::Mat image;
+	const Signature * s = this->getSignature(signatureId);
+	if(s)
 	{
-		data = s->getRawData();
+		image = s->getImage();
 	}
-	else if(_dbDriver)
+	if(image.empty() && this->isRawDataKept() && _dbDriver)
 	{
-		_dbDriver->getRawData(id, data);
+		_dbDriver->getImage(signatureId, image);
 	}
-	return data;
+	return image;
 }
 
 void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
@@ -1650,39 +1711,38 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 		 }
 
 		 const char * colorG = "green";
-		 const char * colorA = "red";
-		 const char * colorB = "skyBlue";
-		 UINFO("Generating map with %d locations", ids.size());
+		 const char * colorP = "pink";
+;		 UINFO("Generating map with %d locations", ids.size());
 		 fprintf(fout, "digraph G {\n");
-		 std::set<std::pair<int, int> > linksAdded;
 		 for(std::set<int>::iterator i=ids.begin(); i!=ids.end(); ++i)
 		 {
 			 if(_signatures.find(*i) == _signatures.end())
 			 {
 				 int id = *i;
-				 NeighborsMultiMap neighbors;
-				 _dbDriver->loadNeighbors(id, neighbors);
-				 int weight = 0;
-				 _dbDriver->getWeight(id, weight);
-				 for(NeighborsMultiMap::iterator iter = neighbors.begin(); iter!=neighbors.end(); ++iter)
-				 {
-					 if(id!=iter->first && _signatures.find(iter->first) == _signatures.end())
-					 {
-						 int weightNeighbor = 0;
-						 _dbDriver->getWeight(iter->first, weightNeighbor);
-						 linksAdded.insert(std::pair<int, int>(iter->first, id));
-						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"%d\", fontcolor=%s, fontsize=8];\n",
-								 id,
-								 weight,
-								 iter->first,
-								 weightNeighbor,
-								 (int)iter->second.actuators().size(),
-								 iter->second.actuators().size()>0?colorA:colorB);
-					 }
-				 }
 				 std::set<int> loopIds;
 				 std::set<int> childIds;
 				 _dbDriver->getLoopClosureIds(id, loopIds, childIds);
+
+				 std::set<int> neighbors;
+				 _dbDriver->loadNeighbors(id, neighbors);
+				 int weight = 0;
+				 _dbDriver->getWeight(id, weight);
+				 for(std::set<int>::iterator iter = neighbors.begin(); iter!=neighbors.end(); ++iter)
+				 {
+					 if(id!=*iter)
+					 {
+						 int weightNeighbor = 0;
+						 _dbDriver->getWeight(*iter, weightNeighbor);
+						 UDEBUG("Add neighbor link from %d to %d", id, *iter);
+						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\"\n",
+								 id,
+								 weight,
+								 *iter,
+								 weightNeighbor);
+					 }
+				 }
+
+				 // loop closure links...
 				 for(std::set<int>::iterator iter = loopIds.begin(); iter!=loopIds.end(); ++iter)
 				 {
 					 int weightNeighbor = 0;
@@ -1694,51 +1754,14 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 					 {
 						 weightNeighbor = _signatures.find(*iter)->second->getWeight();
 					 }
-					 linksAdded.insert(std::pair<int, int>(*iter, id));
-					 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"#\", fontcolor=%s, fontsize=8];\n",
+					 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
 							 id,
 							 weight,
 							 *iter,
 							 weightNeighbor,
 							 colorG);
 				 }
-			 }
-		 }
-		 for(std::map<int, Signature*>::iterator i=_signatures.begin(); i!=_signatures.end(); ++i)
-		 {
-			 if(ids.find(i->first) != ids.end())
-			 {
-				 int id = i->second->id();
-				 const NeighborsMultiMap & neighbors = i->second->getNeighbors();
-				 int weight = i->second->getWeight();
-				 for(NeighborsMultiMap::const_iterator iter = neighbors.begin(); iter!=neighbors.end(); ++iter)
-				 {
-					 //if(linksAdded.find(std::pair<int, int>(id, iter->first)) == linksAdded.end() &&
-					//	linksAdded.find(std::pair<int, int>(iter->first, id)) == linksAdded.end())
-					 if(id != iter->first)
-					 {
-						 int weightNeighbor = 0;
-						 const Signature * s = this->getSignature(iter->first);
-						 if(s)
-						 {
-							 weightNeighbor = s->getWeight();
-						 }
-						 else
-						 {
-							 _dbDriver->getWeight(iter->first, weightNeighbor);
-						 }
-						 linksAdded.insert(std::pair<int, int>(iter->first, id));
-						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"%d\", fontcolor=%s, fontsize=8];\n",
-								 id,
-								 weight,
-								 iter->first,
-								 weightNeighbor,
-								 (int)iter->second.actuators().size(),
-								 iter->second.actuators().size()>0?colorA:colorB);
-					 }
-				 }
-				 const std::set<int> & loopIds = i->second->getLoopClosureIds();
-				 for(std::set<int>::const_iterator iter = loopIds.begin(); iter!=loopIds.end(); ++iter)
+				 for(std::set<int>::iterator iter = childIds.begin(); iter!=childIds.end(); ++iter)
 				 {
 					 int weightNeighbor = 0;
 					 if(_signatures.find(*iter) == _signatures.end())
@@ -1749,310 +1772,621 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 					 {
 						 weightNeighbor = _signatures.find(*iter)->second->getWeight();
 					 }
-					 linksAdded.insert(std::pair<int, int>(*iter, id));
-					 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"%d\", fontcolor=%s, fontsize=8];\n",
+					 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
 							 id,
 							 weight,
 							 *iter,
 							 weightNeighbor,
-							 (int)0,
-							 colorG);
+							 colorP);
+				 }
+			 }
+		 }
+		 for(std::map<int, Signature*>::iterator i=_signatures.begin(); i!=_signatures.end(); ++i)
+		 {
+			 if(ids.find(i->first) != ids.end())
+			 {
+				 int id = i->second->id();
+				 const std::set<int> & loopIds = i->second->getLoopClosureIds();
+				 //don't show children when _loopClosuresMerged is on
+				 //if(!_loopClosuresMerged || (loopIds.size() == 0))
+				 {
+					 const std::set<int> & neighbors = i->second->getNeighbors();
+					 int weight = i->second->getWeight();
+					 for(std::set<int>::const_iterator iter = neighbors.begin(); iter!=neighbors.end(); ++iter)
+					 {
+						 if(id != *iter)
+						 {
+							 int weightNeighbor = 0;
+							 const Signature * s = this->getSignature(*iter);
+							 if(s)
+							 {
+								 weightNeighbor = s->getWeight();
+							 }
+							 else
+							 {
+								 _dbDriver->getWeight(*iter, weightNeighbor);
+							 }
+							 UDEBUG("Add neighbor link from %d to %d", id, *iter);
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\";\n",
+									 id,
+									 weight,
+									 *iter,
+									 weightNeighbor);
+						 }
+					 }
+
+					 // loop closure link
+					 for(std::set<int>::const_iterator iter = loopIds.begin(); iter!=loopIds.end(); ++iter)
+					 {
+						 int weightNeighbor = 0;
+						 if(_signatures.find(*iter) == _signatures.end())
+						 {
+							 _dbDriver->getWeight(*iter, weightNeighbor);
+						 }
+						 else
+						 {
+							 weightNeighbor = _signatures.find(*iter)->second->getWeight();
+						 }
+						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
+								 id,
+								 weight,
+								 *iter,
+								 weightNeighbor,
+								 colorG);
+					 }
+
+					 // child loop closure link
+					 const std::set<int> & childIds = i->second->getChildLoopClosureIds();
+					 for(std::set<int>::const_iterator iter = childIds.begin(); iter!=childIds.end(); ++iter)
+					 {
+						 int weightNeighbor = 0;
+						 if(_signatures.find(*iter) == _signatures.end())
+						 {
+							 _dbDriver->getWeight(*iter, weightNeighbor);
+						 }
+						 else
+						 {
+							 weightNeighbor = _signatures.find(*iter)->second->getWeight();
+						 }
+						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
+								 id,
+								 weight,
+								 *iter,
+								 weightNeighbor,
+								 colorP);
+					 }
 				 }
 			 }
 		 }
 		 fprintf(fout, "}\n");
 		 fclose(fout);
+		 UINFO("Graph saved to \"%s\"", fileName.c_str());
 	}
 }
 
-void Memory::cleanLocalGraph(int id, unsigned int margin)
+// Only used to generate a .dot file
+class GraphNode
 {
-	if(margin >= _stMem.size())
+public:
+	GraphNode(int id, GraphNode * parent = 0) :
+		_parent(parent),
+		_id(id)
 	{
-		UERROR("The margin (%d) must be smaller than the ST size (%d)", margin, _stMem.size());
-		return;
-	}
-
-	UTimer timer;
-	UDEBUG("Cleaning local graph for location %d", id);
-	Node root(id);
-	this->createGraph(&root, margin);
-	this->cleanGraph(&root);
-
-	UDEBUG("time=%fs", timer.ticks());
-}
-
-void Memory::cleanLTM(int maxDepth)
-{
-	UDEBUG("");
-	if(!_dbDriver || !_workingMem.size())
-	{
-		return;
-	}
-
-	UTimer timer;
-	int wmSize = _signatures.size();
-	UDEBUG("Getting %d highest weighted signatures...", wmSize);
-
-	UDEBUG("time clear=%fs", timer.ticks());
-
-	std::multimap<int, int> highestWeightedSignatures;
-	//Add active signatures...
-	for(std::map<int, Signature*>::iterator iter = _signatures.begin(); iter!=_signatures.end(); ++iter)
-	{
-		Signature * s = iter->second;
-		highestWeightedSignatures.insert(std::pair<int, int>(s->getWeight(), s->id()));
-	}
-	//Look in the database
-	UDEBUG("highestWeightedSignatures.size()=%d", highestWeightedSignatures.size());
-	_dbDriver->getHighestWeightedNodeIds(wmSize, highestWeightedSignatures);
-	UDEBUG("highestWeightedSignatures.size()=%d", highestWeightedSignatures.size());
-
-	std::set<int> weightedSignatures;
-	for(std::map<int, int>::iterator iter=highestWeightedSignatures.begin(); iter!=highestWeightedSignatures.end(); ++iter)
-	{
-		weightedSignatures.insert(iter->second);
-		UDEBUG("High signature: %d, w=%d", iter->second, iter->first);
-	}
-
-	int i=0;
-	for(std::map<int, int>::iterator iter=highestWeightedSignatures.begin(); iter!=highestWeightedSignatures.end(); ++iter)
-	{
-		Node root(iter->second);
-		UDEBUG("Creating graph around %d (w=%d) [%d/%d]", iter->second, iter->first, i++, highestWeightedSignatures.size());
-		this->createGraph(&root, maxDepth, weightedSignatures);
-		this->cleanGraph(&root);
-	}
-
-	UDEBUG("time cleaning LTM=%fs", timer.ticks());
-}
-
-// FIXME may not work anymore
-void Memory::cleanGraph(const Node * root)
-{
-	if(!root)
-	{
-		UERROR("root is null");
-		return;
-	}
-	UDEBUG("Cleaning graph around %d", root->id());
-
-	UTimer timer;
-	std::list<std::list<int> > paths;
-	root->expand(paths);
-
-	/*int i=0;
-	for(std::list<std::list<int> >::iterator iter=paths.begin(); iter!=paths.end();++iter)
-	{
-		std::stringstream str;
-		std::list<int> & path = *iter;
-		for(std::list<int>::iterator jter = path.begin(); jter!=path.end(); ++jter)
+		if(_parent)
 		{
-			str << *jter << " ";
+			_parent->addChild(this);
 		}
-		UDEBUG("Paths[%d], %s", i++, str.str().c_str());
-	}*/
-
-	std::set<int> centerNodes;
-	for(std::list<std::list<int> >::iterator iter=paths.begin(); iter!=paths.end(); ++iter)
+	}
+	virtual ~GraphNode()
 	{
-		std::list<int> & path = *iter;
-		if(path.size() > 2)
+		//We copy the set because when a child is destroyed, it is removed from its parent.
+		std::set<GraphNode*> children = _children;
+		_children.clear();
+		for(std::set<GraphNode*>::iterator iter=children.begin(); iter!=children.end(); ++iter)
 		{
-			for(std::list<int>::iterator jter = ++path.begin(); jter!=--path.end(); ++jter)
+			delete *iter;
+		}
+		children.clear();
+		if(_parent)
+		{
+			_parent->removeChild(this);
+		}
+	}
+	int id() const {return _id;}
+	bool isAncestor(int id) const
+	{
+		if(_parent)
+		{
+			if(_parent->id() == id)
 			{
-				centerNodes.insert(*jter);
+				return true;
 			}
+			return _parent->isAncestor(id);
+		}
+		return false;
+	}
+
+	void expand(std::list<std::list<int> > & paths, std::list<int> currentPath = std::list<int>()) const
+	{
+		currentPath.push_back(_id);
+		if(_children.size() == 0)
+		{
+			paths.push_back(currentPath);
+			return;
+		}
+		for(std::set<GraphNode*>::const_iterator iter=_children.begin(); iter!=_children.end(); ++iter)
+		{
+			(*iter)->expand(paths, currentPath);
 		}
 	}
 
-	std::set<int> terminalNodes;
-	for(std::list<std::list<int> >::iterator iter=paths.begin(); iter!=paths.end(); ++iter)
+private:
+	void addChild(GraphNode * child)
 	{
-		std::list<int> & path = *iter;
-		if(centerNodes.find(path.back()) == centerNodes.end())
-		{
-			terminalNodes.insert(path.back());
-			//UDEBUG("terminal=%d", path.back());
-		}
+		_children.insert(child);
+	}
+	void removeChild(GraphNode * child)
+	{
+		_children.erase(child);
 	}
 
-	std::set<int> toRemove;
-	for(std::list<std::list<int> >::iterator iter=paths.begin(); iter!=paths.end();)
-	{
-		std::list<int> & path = *iter;
-		if(centerNodes.find(iter->back()) != centerNodes.end())
-		{
-			if(path.size() > 2)
-			{
-				for(std::list<int>::iterator jter = ++path.begin(); jter!=--path.end(); ++jter)
-				{
-					toRemove.insert(*jter);
-				}
-			}
-			iter = paths.erase(iter);
-		}
-		else
-		{
-			++iter;
-		}
-	}
-
-	/*i=0;
-	for(std::list<std::list<int> >::iterator iter=paths.begin(); iter!=paths.end();++iter)
-	{
-		std::stringstream str;
-		std::list<int> & path = *iter;
-		for(std::list<int>::iterator jter = path.begin(); jter!=path.end(); ++jter)
-		{
-			str << *jter << " ";
-		}
-		UDEBUG("Paths[%d], %s", i++, str.str().c_str());
-	}*/
-
-	std::set<int> immunized;
-	while(paths.size())
-	{
-		bool allRemovable = false;
-		int terminal = paths.begin()->back();
-		//UDEBUG("terminal=%d", terminal);
-		std::multimap<int, std::list<int> > sortedPaths;
-		for(std::list<std::list<int> >::iterator iter=paths.begin(); iter!=paths.end();)
-		{
-			std::list<int> & path = *iter;
-			if(path.back() == terminal)
-			{
-				if(terminalNodes.find(terminal) == terminalNodes.end())
-				{
-					allRemovable = true;
-					if(immunized.find(terminal) == immunized.end())
-					{
-						toRemove.insert(terminal);
-					}
-				}
-				int pathWeight = 0;
-				if(path.size() > 2)
-				{
-					for(std::list<int>::iterator jter = ++path.begin(); jter!=--path.end(); ++jter)
-					{
-						if(immunized.find(*jter) == immunized.end())
-						{
-							toRemove.insert(*jter);
-						}
-						int w = this->getWeight(*jter);
-						//UDEBUG("id(%d) w=%d", *jter, w);
-						pathWeight += w;
-					}
-				}
-				sortedPaths.insert(std::pair<int, std::list<int> >(pathWeight, *iter));
-				iter = paths.erase(iter);
-			}
-			else
-			{
-				++iter;
-			}
-		}
-		if(sortedPaths.size() && !allRemovable)
-		{
-			std::list<int> & path = (--sortedPaths.end())->second;
-			if(sortedPaths.count((--sortedPaths.end())->first) > 1)
-			{
-				int highestWeight = (--sortedPaths.end())->first;
-				std::map<int, std::list<int> >::iterator iter = --sortedPaths.end();
-				--iter;
-				while(iter->first == highestWeight)
-				{
-					if(iter->second.size() < path.size())
-					{
-						path = iter->second;
-					}
-					if(iter == sortedPaths.begin())
-					{
-						break;
-					}
-					--iter;
-				}
-			}
-			for(std::list<int>::iterator jter = path.begin(); jter!=path.end(); ++jter)
-			{
-				toRemove.erase(*jter);
-				immunized.insert(*jter);
-				//UDEBUG("Immunized %d", *jter);
-			}
-		}
-	}
-
-	//for(std::set<int>::iterator iter=toRemove.begin(); iter!=toRemove.end(); ++iter)
-	//{
-	//	UDEBUG("toRemove=%d",*iter);
-	//}
-
-	std::string strToRemove;
-	for(std::set<int>::iterator iter=toRemove.begin(); iter!=toRemove.end();++iter)
-	{
-		Signature * s = this->_getSignature(*iter);
-		if(!s || (s && !s->getLoopClosureIds().size() && _stMem.find(s->id()) == _stMem.end()))
-		{
-			_memoryChanged = true;
-			if(strToRemove.size())
-			{
-				strToRemove.append(" OR ");
-			}
-			strToRemove.append("id=");
-			strToRemove.append(uNumber2Str(*iter));
-
-			if(s)
-			{
-				this->moveToTrash(s);
-			}
-			else if(_dbDriver)
-			{
-				// remove reference from active neighbors
-				std::set<int> neighbors;
-				_dbDriver->getNeighborIds(*iter, neighbors);
-				for(std::set<int>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
-				{
-					s = this->_getSignature(*jter);
-					if(s)
-					{
-						//s->removeNeighbor(*iter); // FIXME
-					}
-				}
-			}
-
-		}
-	}
-
-	UDEBUG("Removing %s", strToRemove.c_str());
-	if(_dbDriver && !strToRemove.empty())
-	{
-		UWARN("Not implemented...");
-		//_dbDriver->executeNoResult(std::string("UPDATE Node SET loopClosureId=-1 WHERE ") + strToRemove);
-	}
-
-	UDEBUG("time=%fs", timer.ticks());
-}
+private:
+	std::set<GraphNode*> _children;
+	GraphNode * _parent;
+	int _id;
+};
 
 //recursive
-void Memory::createGraph(Node * parent, unsigned int maxDepth, const std::set<int> & endIds)
+void Memory::createGraph(GraphNode * parent, unsigned int maxDepth, const std::set<int> & endIds)
 {
 	if(maxDepth == 0 || !parent)
 	{
 		return;
 	}
-	double dbAccessTime = 0.0;
-	std::map<int, int> neighbors = this->getNeighborsId(dbAccessTime, parent->id(), 1, -1, false, false, false);
+	std::map<int, int> neighbors = this->getNeighborsId(parent->id(), 1, -1, false);
 	for(std::map<int, int>::iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
 	{
 		if(!parent->isAncestor(iter->first))
 		{
-			Node * n = new Node(iter->first, parent);
+			GraphNode * n = new GraphNode(iter->first, parent);
 			if(endIds.find(iter->first) == endIds.end())
 			{
 				this->createGraph(n, maxDepth-1, endIds);
 			}
 		}
 	}
+}
+
+// Keypoint stuff
+std::multimap<int, cv::KeyPoint> Memory::getWords(int signatureId) const
+{
+	std::multimap<int, cv::KeyPoint> words;
+	if(signatureId>0)
+	{
+		const Signature * s = this->getSignature(signatureId);
+		if(s)
+		{
+			const Signature * ks = dynamic_cast<const Signature*>(s);
+			if(ks)
+			{
+				words = ks->getWords();
+			}
+		}
+		else if(_dbDriver)
+		{
+			std::list<int> ids;
+			ids.push_back(signatureId);
+			std::list<Signature *> signatures;
+			_dbDriver->loadSignatures(ids, signatures);
+			if(signatures.size())
+			{
+				const Signature * ks = dynamic_cast<const Signature*>(signatures.front());
+				if(ks)
+				{
+					words = ks->getWords();
+				}
+			}
+			for(std::list<Signature *>::iterator iter = signatures.begin(); iter!=signatures.end(); ++iter)
+			{
+				delete *iter;
+			}
+		}
+	}
+	return words;
+}
+
+int Memory::getNi(int signatureId) const
+{
+	int ni = 0;
+	const Signature * s = this->getSignature(signatureId);
+	if(s) // Must be a SurfSignature
+	{
+		ni = ((Signature *)s)->getWords().size();
+	}
+	else
+	{
+		_dbDriver->getInvertedIndexNi(signatureId, ni);
+	}
+	return ni;
+}
+
+
+void Memory::copyData(const Signature * from, Signature * to)
+{
+	// The signatures must be KeypointSignature
+	const Signature * sFrom = dynamic_cast<const Signature *>(from);
+	Signature * sTo = dynamic_cast<Signature *>(to);
+	UTimer timer;
+	timer.start();
+	if(sFrom && sTo)
+	{
+		this->disableWordsRef(sTo->id());
+		sTo->setWords(sFrom->getWords());
+
+		std::list<int> id;
+		id.push_back(sTo->id());
+		this->enableWordsRef(id);
+
+		if(this->isRawDataKept())
+		{
+			if(sFrom->getImage().empty())
+			{
+				// try load from database
+				if(sFrom->isSaved() && _dbDriver)
+				{
+					cv::Mat image;
+					_dbDriver->getImage(sFrom->id(), image);
+					if(!image.empty())
+					{
+						sTo->setImage(image);
+					}
+					UDEBUG("Loaded image data from database");
+				}
+			}
+			else
+			{
+				sTo->setImage(sFrom->getImage());
+			}
+		}
+	}
+	else
+	{
+		ULOGGER_ERROR("Can't merge the signatures because there are not same type.");
+	}
+	ULOGGER_DEBUG("Merging time = %fs", timer.ticks());
+}
+
+class PreUpdateThread : public UThreadNode
+{
+public:
+	PreUpdateThread(VWDictionary * vwp) : _vwp(vwp) {}
+	virtual ~PreUpdateThread() {}
+private:
+	void mainLoop() {
+		if(_vwp)
+		{
+			_vwp->update();
+		}
+		this->kill();
+	}
+	VWDictionary * _vwp;
+};
+
+Signature * Memory::createSignature(int id, const Image & image, bool keepRawData)
+{
+	PreUpdateThread preUpdateThread(_vwd);
+
+	UTimer timer;
+	timer.start();
+	std::vector<cv::KeyPoint> keypoints;
+	cv::Mat descriptors;
+
+	int treeSize= this->getWorkingMemSize() + this->getStMemSize();
+	int nbCommonWords = 0;
+	if(treeSize > 0)
+	{
+		nbCommonWords = _vwd->getTotalActiveReferences() / treeSize;
+	}
+
+	if(_parallelized)
+	{
+		preUpdateThread.start();
+	}
+
+	if(!image.descriptors().empty())
+	{
+		// DESCRIPTORS
+		if(image.descriptors().rows && image.descriptors().rows >= _badSignRatio * nbCommonWords)
+		{
+				if(image.descriptors().type() == CV_32F)
+				{
+						descriptors = image.descriptors();
+						keypoints = image.keypoints();
+				}
+				else
+				{
+						UERROR("Descriptors must be CV_32F.");
+				}
+		}
+	}
+	else
+	{
+		// IMAGE RAW
+		if(_keypointDetector)
+		{
+			keypoints = _keypointDetector->generateKeypoints(image.image());
+			ULOGGER_DEBUG("time keypoints = %fs", timer.ticks());
+		}
+
+		ULOGGER_DEBUG("ratio=%f, treeSize=%d, nbCommonWords=%d", _badSignRatio, treeSize, nbCommonWords);
+
+		if(keypoints.size() && keypoints.size() >= _badSignRatio * nbCommonWords)
+		{
+			descriptors = _keypointDescriptor->generateDescriptors(image.image(), keypoints);
+		}
+	}
+
+	if(_parallelized)
+	{
+		preUpdateThread.join(); // Wait the dictionary to be updated
+	}
+
+	std::list<int> wordIds;
+	if(descriptors.rows)
+	{
+		if(_parallelized)
+		{
+			ULOGGER_DEBUG("time descriptor and memory update (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, timer.ticks());
+		}
+		else
+		{
+			ULOGGER_DEBUG("time descriptor (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, timer.ticks());
+		}
+
+		wordIds = _vwd->addNewWords(descriptors, id);
+		ULOGGER_DEBUG("time addNewWords %fs", timer.ticks());
+	}
+	else if(id>0)
+	{
+		UDEBUG("id %d is a bad signature", id);
+	}
+
+	std::multimap<int, cv::KeyPoint> words;
+	if(wordIds.size() > 0)
+	{
+		std::vector<cv::KeyPoint>::iterator kpIter = keypoints.begin();
+		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end(); ++iter)
+		{
+			if(kpIter != keypoints.end())
+			{
+				words.insert(std::pair<int, cv::KeyPoint >(*iter, *kpIter));
+				++kpIter;
+			}
+			else
+			{
+				if(keypoints.size())
+				{
+					UWARN("Words (%d) and keypoints(%d) are not the same size ?!?", (int)wordIds.size(), (int)keypoints.size());
+				}
+				words.insert(std::pair<int, cv::KeyPoint >(*iter, cv::KeyPoint()));
+			}
+		}
+	}
+
+	Signature * ks;
+	if(keepRawData)
+	{
+		ks = new Signature(id, words, image.image());
+	}
+	else
+	{
+		ks = new Signature(id, words);
+	}
+
+
+
+	ULOGGER_DEBUG("time new signature (id=%d) %fs", id, timer.ticks());
+	if(words.size())
+	{
+		ks->setEnabled(true); // All references are already activated in the dictionary at this point (see _vwd->addNewWords())
+	}
+	return ks;
+}
+
+void Memory::disableWordsRef(int signatureId)
+{
+	ULOGGER_DEBUG("id=%d", signatureId);
+
+	Signature * ss = dynamic_cast<Signature *>(this->_getSignature(signatureId));
+	if(ss && ss->isEnabled())
+	{
+		const std::multimap<int, cv::KeyPoint> & words = ss->getWords();
+		const std::list<int> & keys = uUniqueKeys(words);
+		int count = _vwd->getTotalActiveReferences();
+		// First remove all references
+		for(std::list<int>::const_iterator i=keys.begin(); i!=keys.end(); ++i)
+		{
+			_vwd->removeAllWordRef(*i, signatureId);
+		}
+
+		count -= _vwd->getTotalActiveReferences();
+		ss->setEnabled(false);
+		ULOGGER_DEBUG("%d words total ref removed from signature %d...", count, ss->id());
+	}
+}
+
+void Memory::cleanUnusedWords()
+{
+	UINFO("");
+	if(_vwd->isIncremental())
+	{
+		std::vector<VisualWord*> removedWords = _vwd->getUnusedWords();
+
+		if(removedWords.size())
+		{
+			// remove them from the dictionary
+			_vwd->removeWords(removedWords);
+
+			for(unsigned int i=0; i<removedWords.size(); ++i)
+			{
+				if(_dbDriver && !removedWords[i]->isSaved())
+				{
+					_dbDriver->asyncSave(removedWords[i]);
+				}
+				else
+				{
+					delete removedWords[i];
+				}
+			}
+		}
+		UINFO("%d words removed...", removedWords.size());
+	}
+}
+
+void Memory::enableWordsRef(const std::list<int> & signatureIds)
+{
+	ULOGGER_DEBUG("size=%d", signatureIds.size());
+	UTimer timer;
+	timer.start();
+
+	std::map<int, int> refsToChange; //<oldWordId, activeWordId>
+
+	std::set<int> oldWordIds;
+	std::list<Signature *> surfSigns;
+	for(std::list<int>::const_iterator i=signatureIds.begin(); i!=signatureIds.end(); ++i)
+	{
+		Signature * ss = dynamic_cast<Signature *>(this->_getSignature(*i));
+		if(ss && !ss->isEnabled())
+		{
+			surfSigns.push_back(ss);
+			std::list<int> uniqueKeys = uUniqueKeys(ss->getWords());
+
+			//Find words in the signature which they are not in the current dictionary
+			for(std::list<int>::const_iterator k=uniqueKeys.begin(); k!=uniqueKeys.end(); ++k)
+			{
+				if(_vwd->getWord(*k) == 0 && _vwd->getUnusedWord(*k) == 0)
+				{
+					oldWordIds.insert(oldWordIds.end(), *k);
+				}
+			}
+		}
+	}
+
+	ULOGGER_DEBUG("oldWordIds.size()=%d, getOldIds time=%fs", oldWordIds.size(), timer.ticks());
+
+	// the words were deleted, so try to math it with an active word
+	std::list<VisualWord *> vws;
+	if(oldWordIds.size() && _dbDriver)
+	{
+		// get the descriptors
+		_dbDriver->loadWords(oldWordIds, vws);
+	}
+	ULOGGER_DEBUG("loading words(%d) time=%fs", oldWordIds.size(), timer.ticks());
+
+
+	if(vws.size())
+	{
+		//Search in the dictionary
+		std::vector<int> vwActiveIds = _vwd->findNN(vws, _reactivatedWordsComparedToNewWords);
+		ULOGGER_DEBUG("find active ids (number=%d) time=%fs", vws.size(), timer.ticks());
+		int i=0;
+		for(std::list<VisualWord *>::iterator iterVws=vws.begin(); iterVws!=vws.end(); ++iterVws)
+		{
+			if(vwActiveIds[i] > 0)
+			{
+				//ULOGGER_DEBUG("Match found %d with %d", (*iterVws)->id(), vwActiveIds[i]);
+				refsToChange.insert(refsToChange.end(), std::pair<int, int>((*iterVws)->id(), vwActiveIds[i]));
+				if((*iterVws)->isSaved())
+				{
+					delete (*iterVws);
+				}
+				else if(_dbDriver)
+				{
+					_dbDriver->asyncSave(*iterVws);
+				}
+			}
+			else
+			{
+				//add to dictionary
+				_vwd->addWord(*iterVws); // take ownership
+			}
+			++i;
+		}
+		ULOGGER_DEBUG("Added %d to dictionary, time=%fs", vws.size()-refsToChange.size(), timer.ticks());
+
+		//update the global references map and update the signatures reactivated
+		for(std::map<int, int>::const_iterator iter=refsToChange.begin(); iter != refsToChange.end(); ++iter)
+		{
+			//uInsert(_wordRefsToChange, (const std::pair<int, int>)*iter); // This will be used to change references in the database
+			for(std::list<Signature *>::iterator j=surfSigns.begin(); j!=surfSigns.end(); ++j)
+			{
+				(*j)->changeWordsRef(iter->first, iter->second);
+			}
+		}
+		ULOGGER_DEBUG("changing ref, total=%d, time=%fs", refsToChange.size(), timer.ticks());
+	}
+
+	int count = _vwd->getTotalActiveReferences();
+
+	// Reactivate references and signatures
+	for(std::list<Signature *>::iterator j=surfSigns.begin(); j!=surfSigns.end(); ++j)
+	{
+		const std::vector<int> & keys = uKeys((*j)->getWords());
+		// Add all references
+		for(std::vector<int>::const_iterator i=keys.begin(); i!=keys.end(); ++i)
+		{
+			_vwd->addWordRef(*i, (*j)->id());
+		}
+		if(keys.size())
+		{
+			(*j)->setEnabled(true);
+		}
+	}
+
+	count = _vwd->getTotalActiveReferences() - count;
+	ULOGGER_DEBUG("%d words total ref added from %d signatures, time=%fs...", count, surfSigns.size(), timer.ticks());
+}
+
+std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, double & timeDbAccess)
+{
+	// get the signatures, if not in the working memory, they
+	// will be loaded from the database in an more efficient way
+	// than how it is done in the Memory
+
+	ULOGGER_DEBUG("");
+	UTimer timer;
+	std::list<int> idsToLoad;
+	std::map<int, int>::iterator wmIter;
+	for(std::list<int>::const_iterator i=ids.begin(); i!=ids.end(); ++i)
+	{
+		if(!this->getSignature(*i) && !uContains(idsToLoad, *i))
+		{
+			if(!maxLoaded || idsToLoad.size() < maxLoaded)
+			{
+				idsToLoad.push_back(*i);
+				UINFO("Loading location %d from database...", *i);
+			}
+		}
+	}
+
+	ULOGGER_DEBUG("idsToLoad = %d", idsToLoad.size());
+
+	std::list<Signature *> reactivatedSigns;
+	if(_dbDriver)
+	{
+		_dbDriver->loadSignatures(idsToLoad, reactivatedSigns);
+	}
+	timeDbAccess = timer.getElapsedTime();
+	std::list<int> idsLoaded;
+	for(std::list<Signature *>::iterator i=reactivatedSigns.begin(); i!=reactivatedSigns.end(); ++i)
+	{
+		idsLoaded.push_back((*i)->id());
+		//append to working memory
+		this->addSignatureToWm(*i);
+	}
+	this->enableWordsRef(idsLoaded);
+	ULOGGER_DEBUG("time = %fs", timer.ticks());
+	return std::set<int>(idsToLoad.begin(), idsToLoad.end());
 }
 
 } // namespace rtabmap

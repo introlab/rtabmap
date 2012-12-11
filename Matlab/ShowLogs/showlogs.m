@@ -60,7 +60,7 @@ LogI = importfile([PathPrefix '/' 'LogI.txt']);
 % 4 hessianThr,
 % 5 wordsNewSign,
 % 6 dictionarySize,
-% 7 this->getSTMem().size(),
+% 7 this->getWorkingMem().size(),
 % 8 rejectedHypothesis?,
 % 9 processMemoryUsed,
 % 10 databaseMemoryUsed
@@ -69,8 +69,8 @@ LogI = importfile([PathPrefix '/' 'LogI.txt']);
 % 13 refUniqueWordsCount
 % 14 _reactivateId
 % 15 nonNulls.size()
-% 16 directNeighborsNotReactivated
-% 17 _spreadMargin
+% 16 rehearsalMaxId
+% 17 rehearsalNbMerged
 
 if isempty(LogI) || isempty(LogF)
     error('Log files are empty')
@@ -103,8 +103,9 @@ ylabel('Time (ms)')
 xlabel('Location indexes')
 meanTime = mean(LogF(:,1))*1000
 plot([1 length(LogF(:,1))], [700 700], 'r')
-plot([1 length(LogF(:,1))], [1000 1000], 'k--')
-legend('Processing time', 'Time limit', 'Acquisition rate (1 Hz)')
+%plot([1 length(LogF(:,1))], [350 350], 'r')
+%legend('Processing time', 'Time limit')%, 'Acquisition rate (1 Hz)')
+title('Processing time')
 
 maxTime = max(sum(LogF(:,2:7),2)+LogF(:,17))
 maxDict = max(LogI(:, 6))
@@ -202,15 +203,17 @@ meanDict = mean(LogI(:,6))
 meanWordsPerSign = mean(LogI(:,5))
 %% -------------------------
 
-figure
-subplot(211)
-plot(LogF(:,20) + LogF(:,17)); %17 join or 19 empty trash
-ylabel('Time (s)')
-xlabel('Location indexes')
-subplot(212)
-plot(LogI(:,7));
-ylabel('WM size (locations)')
-xlabel('Location indexes')
+if size(LogF, 2) > 19
+    figure
+    subplot(211)
+    plot(LogF(:,20) + LogF(:,17)); %17 join or 19 empty trash
+    ylabel('Time (s)')
+    xlabel('Location indexes')
+    subplot(212)
+    plot(LogI(:,7));
+    ylabel('WM size (locations)')
+    xlabel('Location indexes')
+end
 
 %% -------------------------
 % Detected/Accepted/Rejected loop closures
@@ -335,7 +338,7 @@ lcRejected = sum(LogI(:, 8) == 1)
 %Precision-Recall graph
 GroundTruthFile = [GT_file];
 if ~isempty(GT_file) && exist(GroundTruthFile, 'file')
-    PR = getPrecisionRecall(LogI, LogF, GroundTruthFile, 0.09);  
+    PR = getPrecisionRecall(LogI, LogF, GroundTruthFile, 0.07);  
     
     Precision = PR(:,1);
     Recall = PR(:,2);

@@ -30,14 +30,14 @@
 namespace rtabmap
 {
 
-class NearestNeighbor;
+class FlannNN;
 class DBDriver;
 class VisualWord;
 
 class RTABMAP_EXP VWDictionary
 {
 public:
-	enum NNStrategy{kNNNaive, kNNKdTree, kNNFlannKdTree, kNNUndef};
+	enum NNStrategy{kNNNaive, kNNFlannKdTree, kNNUndef};
 	static const int ID_START;
 	static const int ID_INVALID;
 
@@ -106,7 +106,7 @@ private:
 	std::string _dictionaryPath; // a pre-computed dictionary (.txt)
 	int _dim;
 	int _lastWordId;
-	NearestNeighbor * _nn;
+	FlannNN * _nn;
 	cv::Mat _dataTree;
 	std::map<int ,int> _mapIndexId;
 	std::map<int, VisualWord*> _unusedWords; //<id,VisualWord*>, note that these words stay in _visualWords

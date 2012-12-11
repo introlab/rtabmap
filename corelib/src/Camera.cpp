@@ -21,9 +21,7 @@
 #include "utilite/UEventsManager.h"
 #include "utilite/UConversion.h"
 #include "rtabmap/core/DBDriver.h"
-#include "rtabmap/core/DBDriverFactory.h"
-#include "rtabmap/core/KeypointDescriptor.h"
-#include "rtabmap/core/KeypointDetector.h"
+#include "rtabmap/core/Features2d.h"
 #include "utilite/UStl.h"
 #include "utilite/UConversion.h"
 #include "utilite/UFile.h"
@@ -125,14 +123,8 @@ void Camera::parseParameters(const ParametersMap & parameters)
 		}
 		switch(detector)
 		{
-		case KeypointDetector::kDetectorStar:
-			_keypointDetector = new StarDetector(parameters);
-			break;
 		case KeypointDetector::kDetectorSift:
 			_keypointDetector = new SIFTDetector(parameters);
-			break;
-		case KeypointDetector::kDetectorFast:
-			_keypointDetector = new FASTDetector(parameters);
 			break;
 		case KeypointDetector::kDetectorSurf:
 		default:
@@ -157,15 +149,6 @@ void Camera::parseParameters(const ParametersMap & parameters)
 		{
 		case KeypointDescriptor::kDescriptorSift:
 			_keypointDescriptor = new SIFTDescriptor(parameters);
-			break;
-		case KeypointDescriptor::kDescriptorBrief:
-			_keypointDescriptor = new BRIEFDescriptor(parameters);
-			break;
-		case KeypointDescriptor::kDescriptorColor:
-			_keypointDescriptor = new ColorDescriptor(parameters);
-			break;
-		case KeypointDescriptor::kDescriptorHue:
-			_keypointDescriptor = new HueDescriptor(parameters);
 			break;
 		case KeypointDescriptor::kDescriptorSurf:
 		default:
@@ -511,7 +494,8 @@ CameraVideo::CameraVideo(const std::string & filePath,
 						   int id) :
 	Camera(imageRate, autoRestart, imageWidth, imageHeight, framesDropped, id),
 	_filePath(filePath),
-	_src(kVideoFile)
+	_src(kVideoFile),
+	_usbDevice(0)
 {
 }
 

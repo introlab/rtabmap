@@ -30,8 +30,6 @@
 
 namespace rtabmap {
 class Camera;
-class Micro;
-class CameraMicro;
 class DBReader;
 }
 
@@ -93,14 +91,13 @@ private slots:
 	void pauseDetection();
 	void stopDetection();
 	void generateMap();
+	void generateLocalMap();
 	void deleteMemory();
 	void openWorkingDirectory();
 	void updateEditMenu();
 	void selectImages();
 	void selectVideo();
 	void selectStream();
-	void selectMic();
-	void selectAudioFile();
 	void selectDatabase();
 	void resetTheMemory();
 	void dumpTheMemory();
@@ -137,14 +134,12 @@ signals:
 	void timeLimitChanged(float);
 	void noMoreImagesReceived();
 	void loopClosureThrChanged(float);
-	void retrievalThrChanged(float);
 	void twistReceived(float x, float y, float z, float roll, float pitch, float yaw, int row, int col);
 
 private:
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
 	void setupMainLayout(bool vertical);
 	void updateSelectSourceImageMenu(int type);
-	void updateSelectSourceAudioMenu(int type);
 	void updateSelectSourceDatabase(bool used);
 
 private:
@@ -152,8 +147,6 @@ private:
 
 	State _state;
 	rtabmap::Camera * _camera;
-	rtabmap::Micro * _mic;
-	rtabmap::CameraMicro * _cameraMic;
 	rtabmap::DBReader * _dbReader;
 
 	SrcType _srcType;
@@ -175,14 +168,10 @@ private:
 
 	PdfPlotCurve * _posteriorCurve;
 	PdfPlotCurve * _likelihoodCurve;
-
-	UPlotCurve * _audioCurve;
-	UPlotCurve * _audioCurveLoop;
+	PdfPlotCurve * _rawLikelihoodCurve;
 
 	DetailedProgressDialog * _initProgressDialog;
 	QActionGroup * _selectSourceImageGrp;
-	QActionGroup * _selectSourceAudioGrp;
-
 
 	QString _graphSavingFileName;
 	QString _autoScreenCaptureFormat;

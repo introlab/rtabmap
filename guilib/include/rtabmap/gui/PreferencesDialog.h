@@ -24,6 +24,7 @@
 
 #include <QtGui/QDialog>
 #include <QtCore/QModelIndex>
+#include <set>
 
 #include "rtabmap/core/Parameters.h"
 
@@ -66,12 +67,6 @@ public:
 		kSrcVideo
 	};
 
-	enum SrcAudio {
-		kSrcAudioUndef,
-		kSrcAudioMicDevice,
-		kSrcAudioFile
-	};
-
 public:
 	static QString getIniFilePath();
 
@@ -108,7 +103,6 @@ public:
 	// source panel
 	double getGeneralInputRate() const;
 	bool isSourceImageUsed() const;
-	bool isSourceAudioUsed() const;
 	bool isSourceDatabaseUsed() const;
 	bool getGeneralAutoRestart() const;
 	bool getGeneralCameraKeypoints() const;
@@ -124,29 +118,22 @@ public:
 	bool getSourceImagesRefreshDir() const;	//Images group
 	QString getSourceVideoPath() const;	//Video group
 	int getSourceUsbDeviceId() const;		//UsbDevice group
-	int getSourceAudioType() const; //Audio group
-	QString getSourceAudioTypeStr() const; //Audio group
-	int getSourceMicDevice() const;	//Audio group
-	int getSourceMicFs() const;	//Audio group
-	int getSourceMicSampleSize() const;	//Audio group
-	QString getSourceAudioPath() const; //Audio group
-	bool getSourceAudioPlayWhileRecording() const; //Audio group
 	QString getSourceDatabasePath() const; //Database group
+	int getSourceDatabaseStartPos() const; //Database group
+
+	int getIgnoredDCComponents() const;
 
 	//
 	bool isImagesKept() const;
 	float getTimeLimit() const;
-	int getMemoryType() const;
 
 	//specific
 	bool isStatisticsPublished() const;
 	double getLoopThr() const;
-	double getRetrievalThr() const;
 	double getVpThr() const;
 	double getExpThr() const;
 
 	//
-	void disableSourceAudio();
 	void disableGeneralCameraKeypoints();
 
 signals:
@@ -156,11 +143,9 @@ signals:
 public slots:
 	void setInputRate(double value);
 	void setHardThr(int value);
-	void setRetrievalThr(int value);
 	void setAutoRestart(bool value);
 	void setTimeLimit(float value);
 	void selectSourceImage(Src src = kSrcUndef);
-	void selectSourceAudio(SrcAudio = kSrcAudioUndef);
 	void selectSourceDatabase(bool user = false);
 
 private slots:
@@ -182,6 +167,7 @@ private slots:
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();
+	void openDatabaseViewer();
 
 protected:
 	virtual void showEvent ( QShowEvent * event );

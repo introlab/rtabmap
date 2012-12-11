@@ -35,11 +35,6 @@ Parameters::~Parameters()
 {
 }
 
-const ParametersMap & Parameters::getDefaultParameters()
-{
-	return parameters_;
-}
-
 std::string Parameters::getDefaultWorkingDirectory()
 {
 	std::string path = UDirectory::homeDir();

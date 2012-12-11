@@ -18,18 +18,17 @@
  */
 
 #include "PdfPlot.h"
-#include "utilite/ULogger.h"
+#include <utilite/ULogger.h>
 
 namespace rtabmap {
 
 PdfPlotItem::PdfPlotItem(float dataX, float dataY, float width, int childCount) :
 	UPlotItem(dataX, dataY, width),
 	_img(0),
-	_imagesRef(0)
+	_imagesRef(0),
+	_text(0)
 {
 	setLikelihood(dataX, dataY, childCount);
-	_text = new QGraphicsTextItem(this);
-	_text->setVisible(false);
 }
 
 PdfPlotItem::~PdfPlotItem()
@@ -39,7 +38,7 @@ PdfPlotItem::~PdfPlotItem()
 
 void PdfPlotItem::setLikelihood(int id, float value, int childCount)
 {
-	if(id != this->data().x())
+	if(_img && id != this->data().x())
 	{
 		delete _img;
 		_img = 0;
@@ -50,6 +49,11 @@ void PdfPlotItem::setLikelihood(int id, float value, int childCount)
 
 void PdfPlotItem::showDescription(bool shown)
 {
+	if(!_text)
+	{
+		_text = new QGraphicsTextItem(this);
+		_text->setVisible(false);
+	}
 	if(shown)
 	{
 		if(!_img && _imagesRef)
@@ -71,7 +75,14 @@ void PdfPlotItem::showDescription(bool shown)
 			_text->setPos(this->mapFromScene(4+150,0));
 		else
 			_text->setPos(this->mapFromScene(4,0));
-		_text->setPlainText(QString("ID = %1\nValue = %2\nWeight = %3").arg(this->data().x()).arg(this->data().y()).arg(_childCount));
+		if(_childCount >= 0)
+		{
+			_text->setPlainText(QString("ID = %1\nValue = %2\nWeight = %3").arg(this->data().x()).arg(this->data().y()).arg(_childCount));
+		}
+		else
+		{
+			_text->setPlainText(QString("ID = %1\nValue = %2").arg(this->data().x()).arg(this->data().y()));
+		}
 		_text->setVisible(true);
 		if(_img)
 		{
@@ -109,14 +120,14 @@ void PdfPlotCurve::clear()
 	UPlotCurve::clear();
 }
 
-void PdfPlotCurve::setData(const QMap<int, float> & dataMap, const QMap<int, int> & weightsMap, int lastId)
+void PdfPlotCurve::setData(const QMap<int, float> & dataMap, const QMap<int, int> & weightsMap)
 {
-	ULOGGER_DEBUG("dataSize=%d", dataMap.size());
+	ULOGGER_DEBUG("dataMap=%d, weightsMap=%d", dataMap.size(), weightsMap.size());
 	if(dataMap.size() > 0)
 	{
 		//match the size of the current data
 		int margin = int((_items.size()+1)/2) - dataMap.size();
-		UDEBUG("margin=%d", margin);
+
 		while(margin < 0)
 		{
 			PdfPlotItem * newItem = new PdfPlotItem(0, 0, 2, 0);
@@ -124,6 +135,7 @@ void PdfPlotCurve::setData(const QMap<int, float> & dataMap, const QMap<int, int
 			this->_addValue(newItem);
 			++margin;
 		}
+
 		while(margin > 0)
 		{
 			this->removeItem(0);
@@ -133,10 +145,14 @@ void PdfPlotCurve::setData(const QMap<int, float> & dataMap, const QMap<int, int
 		ULOGGER_DEBUG("itemsize=%d", _items.size());
 
 		// update values
-		int index = 0;
-		for(QMap<int, float>::const_iterator i=dataMap.begin(); i!=dataMap.end(); ++i, index+=2)
+		QList<QGraphicsItem*>::iterator iter = _items.begin();
+		QMap<int, int>::const_iterator j=weightsMap.begin();
+		for(QMap<int, float>::const_iterator i=dataMap.begin(); i!=dataMap.end(); ++i, ++j)
 		{
-			((PdfPlotItem*)_items[index])->setLikelihood(i.key(),  i.value(), weightsMap.value(i.key(),-1));
+			((PdfPlotItem*)*iter)->setLikelihood(i.key(),  i.value(), j!=weightsMap.end()?j.value():-1);
+			//2 times...
+			++iter;
+			++iter;
 		}
 
 		//reset minMax, this will force the plot to update the axes

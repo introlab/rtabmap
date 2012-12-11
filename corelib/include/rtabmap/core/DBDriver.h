@@ -30,11 +30,10 @@
 #include "utilite/UMutex.h"
 #include "utilite/UThreadNode.h"
 #include "rtabmap/core/Parameters.h"
-#include "rtabmap/core/Signature.h"
 
 namespace rtabmap {
 
-class KeypointSignature;
+class Signature;
 class SMSignature;
 class VWDictionary;
 class VisualWord;
@@ -53,26 +52,21 @@ class RTABMAP_EXP DBDriver : public UThreadNode
 public:
 	virtual ~DBDriver();
 
-	virtual std::string getDriverName() const = 0;
 	virtual void parseParameters(const ParametersMap & parameters);
 	const std::string & getUrl() const {return _url;}
 
 	void beginTransaction() const;
 	void commit() const;
 
-	void asyncSave(Signature * s);
-	void asyncSave(VisualWord * s);
+	void asyncSave(Signature * s); //ownership transferred
+	void asyncSave(VisualWord * vw); //ownership transferred
 	void emptyTrashes(bool async = false);
 	double getEmptyTrashesTime() const {return _emptyTrashesTime;}
 	bool isImagesCompressed() const {return _imagesCompressed;}
 
 public:
-	bool addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed) const;
-	bool addStatisticsAfterRunSurf(int dictionarySize) const;
-
-	bool deleteAllVisualWords() const;
-	bool deleteAllObsoleteSSVWLinks() const;
-	bool deleteUnreferencedWords() const;
+	void addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed) const;
+	void addStatisticsAfterRunSurf(int dictionarySize) const;
 
 public:
 	// Mutex-protected methods of abstract versions below
@@ -84,31 +78,24 @@ public:
 	bool isConnected() const;
 	long getMemoryUsed() const; // In bytes
 
-	bool executeNoResult(const std::string & sql) const;
-
-	// Update
-	bool changeWordsRef(const std::map<int, int> & refsToChange); // <oldWordId, activeWordId>
-	bool deleteWords(const std::vector<int> & ids);
+	void executeNoResult(const std::string & sql) const;
 
 	// Load objects
-	bool load(VWDictionary * dictionary) const;
-	bool loadLastNodes(std::list<Signature *> & signatures) const;
-	bool loadKeypointSignatures(const std::list<int> & ids, std::list<Signature *> & signatures);
-	bool loadSMSignatures(const std::list<int> & ids, std::list<Signature *> & signatures);
-	bool loadWords(const std::list<int> & wordIds, std::list<VisualWord *> & vws);
+	void load(VWDictionary * dictionary) const;
+	void loadLastNodes(std::list<Signature *> & signatures) const;
+	void loadSignatures(const std::list<int> & ids, std::list<Signature *> & signatures);
+	void loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws);
 
 	// Specific queries...
-	bool getRawData(int id, std::list<Sensor> & data) const;
-	bool getActuatorData(int id, std::list<Actuator> & data) const;
-	bool getNeighborIds(int signatureId, std::set<int> & neighbors, bool onlyWithActions = false) const;
-	bool loadNeighbors(int signatureId, NeighborsMultiMap & neighbors) const;
-	bool getWeight(int signatureId, int & weight) const;
-	bool getLoopClosureIds(int signatureId, std::set<int> & loopIds, std::set<int> & childIds) const;
-	bool getAllNodeIds(std::set<int> & ids) const;
-	bool getLastNodeId(int & id) const;
-	bool getLastWordId(int & id) const;
-	bool getInvertedIndexNi(int signatureId, int & ni) const;
-	bool getHighestWeightedNodeIds(unsigned int count, std::multimap<int, int> & ids) const;
+	void getImage(int id, cv::Mat & image) const;
+	void getNeighborIds(int signatureId, std::set<int> & neighbors, bool onlyWithActions = false) const;
+	void loadNeighbors(int signatureId, std::set<int> & neighbors) const;
+	void getWeight(int signatureId, int & weight) const;
+	void getLoopClosureIds(int signatureId, std::set<int> & loopIds, std::set<int> & childIds) const;
+	void getAllNodeIds(std::set<int> & ids) const;
+	void getLastNodeId(int & id) const;
+	void getLastWordId(int & id) const;
+	void getInvertedIndexNi(int signatureId, int & ni) const;
 
 protected:
 	DBDriver(const ParametersMap & parameters = ParametersMap());
@@ -119,41 +106,31 @@ private:
 	virtual bool isConnectedQuery() const = 0;
 	virtual long getMemoryUsedQuery() const = 0; // In bytes
 
-	virtual bool executeNoResultQuery(const std::string & sql) const = 0;
+	virtual void executeNoResultQuery(const std::string & sql) const = 0;
 
-	virtual bool changeWordsRefQuery(const std::map<int, int> & refsToChange) const = 0; // <oldWordId, activeWordId>
-	virtual bool deleteWordsQuery(const std::vector<int> & ids) const = 0;
-	virtual bool getNeighborIdsQuery(int signatureId, std::set<int> & neighbors, bool onlyWithActions = false) const = 0;
-	virtual bool getWeightQuery(int signatureId, int & weight) const = 0;
-	virtual bool getLoopClosureIdsQuery(int signatureId, std::set<int> & loopIds, std::set<int> & childIds) const = 0;
+	virtual void getNeighborIdsQuery(int signatureId, std::set<int> & neighbors, bool onlyWithActions = false) const = 0;
+	virtual void getWeightQuery(int signatureId, int & weight) const = 0;
+	virtual void getLoopClosureIdsQuery(int signatureId, std::set<int> & loopIds, std::set<int> & childIds) const = 0;
 
-	virtual bool saveQuery(const std::vector<VisualWord *> & visualWords) const = 0;
-	virtual bool updateQuery(const std::list<Signature *> & signatures) const = 0;
-	virtual bool saveQuery(const std::list<Signature *> & signatures) const = 0;
+	virtual void saveQuery(const std::vector<VisualWord *> & visualWords) const = 0;
+	virtual void updateQuery(const std::list<Signature *> & signatures) const = 0;
+	virtual void saveQuery(const std::list<Signature *> & signatures) const = 0;
 
 	// Load objects
-	virtual bool loadQuery(VWDictionary * dictionary) const = 0;
-	virtual bool loadLastNodesQuery(std::list<Signature *> & signatures) const = 0;
-	virtual bool loadQuery(int signatureId, Signature ** s) const = 0;
-	virtual bool loadQuery(int wordId, VisualWord ** vw) const = 0;
-	virtual bool loadQuery(int signatureId, KeypointSignature * ss) const = 0;
-	virtual bool loadQuery(int signatureId, SMSignature * ss) const = 0;
-	virtual bool loadKeypointSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const = 0;
-	virtual bool loadSMSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const = 0;
-	virtual bool loadWordsQuery(const std::list<int> & wordIds, std::list<VisualWord *> & vws) const = 0;
-	virtual bool loadNeighborsQuery(int signatureId, NeighborsMultiMap & neighbors) const = 0;
+	virtual void loadQuery(VWDictionary * dictionary) const = 0;
+	virtual void loadLastNodesQuery(std::list<Signature *> & signatures) const = 0;
+	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const = 0;
+	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const = 0;
+	virtual void loadNeighborsQuery(int signatureId, std::set<int> & neighbors) const = 0;
 
-	virtual bool getRawDataQuery(int id, std::list<Sensor> & rawData) const = 0;
-	virtual bool getActuatorDataQuery(int id, std::list<Actuator> & rawData) const = 0;
-	virtual bool getAllNodeIdsQuery(std::set<int> & ids) const = 0;
-	virtual bool getLastNodeIdQuery(int & id) const = 0;
-	virtual bool getLastWordIdQuery(int & id) const = 0;
-	virtual bool getInvertedIndexNiQuery(int signatureId, int & ni) const = 0;
-	virtual bool getHighestWeightedNodeIdsQuery(unsigned int count, std::multimap<int,int> & signatures) const = 0;
+	virtual void getImageQuery(int id, cv::Mat & rawData) const = 0;
+	virtual void getAllNodeIdsQuery(std::set<int> & ids) const = 0;
+	virtual void getLastIdQuery(const std::string & tableName, int & id) const = 0;
+	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const = 0;
 
 private:
 	//non-abstract methods
-	bool saveOrUpdate(const std::vector<Signature *> & signatures) const;
+	void saveOrUpdate(const std::vector<Signature *> & signatures) const;
 
 	//thread stuff
 	virtual void mainLoop();
@@ -166,8 +143,6 @@ private:
 	UMutex _trashesMutex;
 	UMutex _dbSafeAccessMutex;
 	USemaphore _addSem;
-	unsigned int _minSignaturesToSave;
-	unsigned int _minWordsToSave;
 	bool _imagesCompressed;
 	double _emptyTrashesTime;
 	std::string _url;
