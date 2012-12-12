@@ -71,6 +71,15 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	this->parseParameters(parameters);
 
 	UEventsManager::post(new RtabmapEventInit("Clearing memory..."));
+	if(!_memoryChanged)
+	{
+		if(_dbDriver)
+		{
+			_dbDriver->closeConnection();
+			delete _dbDriver;
+			_dbDriver = 0;
+		}
+	}
 	this->clear();
 	UEventsManager::post(new RtabmapEventInit("Clearing memory, done!"));
 
@@ -1347,8 +1356,7 @@ void Memory::moveToTrash(Signature * s)
 			}
 		}
 
-		if(_memoryChanged &&
-			_dbDriver &&
+		if(	_dbDriver &&
 			s->id()>0)
 		{
 			_dbDriver->asyncSave(s);
