@@ -859,16 +859,16 @@ void DBDriverSqlite3::loadLastNodesQuery(std::list<Signature *> & nodes) const
 		timer.start();
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;
-		std::stringstream query;
+		std::string query;
 		std::list<int> ids;
 
 		// Get the map from signature and visual words
-		query << "SELECT n.id "
+		query = "SELECT n.id "
 				 "FROM Node AS n "
 				 "WHERE n.time_enter >= (SELECT MAX(time_enter) FROM Statistics) "
 				 "ORDER BY n.id;";
 
-		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		// Process the result if one
@@ -891,7 +891,6 @@ void DBDriverSqlite3::loadLastNodesQuery(std::list<Signature *> & nodes) const
 	}
 }
 
-// TODO DO IT IN A MORE EFFICiENT WAY !!!!
 void DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
 {
 	ULOGGER_DEBUG("");
@@ -902,65 +901,42 @@ void DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
 		timer.start();
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;
-		std::stringstream query;
+		std::string query;
 		std::list<VisualWord *> visualWords;
 
-		// Get the map from signature and visual words
-		query << "SELECT vw.id, vw.descriptor_size, vw.descriptor, m.node_id "
-				 "FROM Word as vw "
-				 "INNER JOIN Map_Node_Word as m "
-				 "ON vw.id=m.word_id "
-				 "WHERE vw.time_enter >= (SELECT MAX(time_enter) FROM Statistics) "
-				 "ORDER BY vw.id;";
+		// Get the visual words
+		query = "SELECT id, descriptor_size, descriptor "
+				"FROM Word "
+				"WHERE time_enter >= (SELECT MAX(time_enter) FROM Statistics) "
+				"ORDER BY id;";
 
-		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		// Process the result if one
 		int id = 0;
-		int lastId = 0;
 		int descriptorSize = 0;
 		const void * descriptor = 0;
 		int dRealSize = 0;
-		int signatureId;
 		rc = sqlite3_step(ppStmt);
 		int count = 0;
 		while(rc == SQLITE_ROW)
 		{
-			id = sqlite3_column_int(ppStmt, 0); 			// VisualWord Id
+			int index=0;
+			id = sqlite3_column_int(ppStmt, index++); 			// VisualWord Id
 			if(id>0)
 			{
-				if(id != lastId)
-				{
-					descriptorSize = sqlite3_column_int(ppStmt, 1); // VisualWord descriptor size
-					descriptor = sqlite3_column_blob(ppStmt, 2); 	// VisualWord descriptor array
-					dRealSize = sqlite3_column_bytes(ppStmt, 2);
-				}
+				descriptorSize = sqlite3_column_int(ppStmt, index++); // VisualWord descriptor size
+				descriptor = sqlite3_column_blob(ppStmt, index); 	// VisualWord descriptor array
+				dRealSize = sqlite3_column_bytes(ppStmt, index++);
+
 				if(dRealSize/int(sizeof(float)) != descriptorSize)
 				{
 					UERROR("Saved buffer size (%d) is not the same as descriptor size (%d)", dRealSize/sizeof(float), descriptorSize);
 				}
-				lastId = id;
-				signatureId = sqlite3_column_int(ppStmt, 3); 	// Signature ref Id
-				if(dictionary->getWord(id) != 0)
-				{
-					// Use VWDictionary::addWordRef instead of VisualWord::addRef()
-					// This will increment _totalActiveReferences in the dictionary
-					dictionary->addWordRef(id, signatureId);
-				}
-				else
-				{
-					VisualWord * vw = new VisualWord(id, &((const float *)descriptor)[0], descriptorSize, signatureId);
-					if(vw)
-					{
-						vw->setSaved(true);
-						dictionary->addWord(vw);
-					}
-					else
-					{
-						ULOGGER_ERROR("Couldn't create a Visual word!?");
-					}
-				}
+				VisualWord * vw = new VisualWord(id, &((const float *)descriptor)[0], descriptorSize, 0);
+				vw->setSaved(true);
+				dictionary->addWord(vw);
 			}
 			else
 			{
@@ -968,19 +944,68 @@ void DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
 			}
 			if(++count % 5000 == 0)
 			{
-				ULOGGER_DEBUG("Loaded %d word references...", count);
+				ULOGGER_DEBUG("Loaded %d words...", count);
 			}
 			rc = sqlite3_step(ppStmt); // next result...
 		}
-
-		getLastWordId(id);
-		dictionary->setLastWordId(id);
-
 		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		/*
+		// Load references
+		// Get the map from signature and visual words
+		query = "SELECT node_id "
+				"FROM Map_Node_Word "
+				"INNER JOIN Node "
+				"ON Node.id = node_id "
+				"WHERE word_id = ? AND node.time_enter >= (SELECT MAX(time_enter) FROM Statistics);";
+
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		int signatureId;
+		count = 0;
+		for(std::map<int, VisualWord*>::const_iterator iter=dictionary->getVisualWords().begin(); iter!=dictionary->getVisualWords().end(); ++iter)
+		{
+			// bind id
+			rc = sqlite3_bind_int(ppStmt, 1, iter->first);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+			rc = sqlite3_step(ppStmt);
+			while(rc == SQLITE_ROW)
+			{
+				int index=0;
+				signatureId = sqlite3_column_int(ppStmt, index++);
+				if(signatureId>0)
+				{
+					dictionary->addWordRef(iter->first, signatureId);
+				}
+				else
+				{
+					ULOGGER_ERROR("Wrong signature id ?!? (%d)", signatureId);
+				}
+				if(++count % 5000 == 0)
+				{
+					ULOGGER_DEBUG("Loaded %d word references...", count);
+				}
+				rc = sqlite3_step(ppStmt); // next result...
+			}
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+			//reset
+			rc = sqlite3_reset(ppStmt);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		}
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());*/
+
+		// Get Last word id
+		getLastWordId(id);
+		dictionary->setLastWordId(id);
 
 		ULOGGER_DEBUG("Time=%fs", timer.ticks());
 	}
@@ -1308,6 +1333,45 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes) const
 	}
 }
 
+void DBDriverSqlite3::updateQuery(const std::list<VisualWord *> & words) const
+{
+	if(_ppDb && words.size())
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		VisualWord * w = 0;
+
+		std::string query = "UPDATE Word SET time_enter = DATETIME('NOW') WHERE id=?;";
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		for(std::list<VisualWord *>::const_iterator i=words.begin(); i!=words.end(); ++i)
+		{
+			w = *i;
+			int index = 1;
+			if(w)
+			{
+				rc = sqlite3_bind_int(ppStmt, index++, w->id());
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+				//step
+				rc=sqlite3_step(ppStmt);
+				UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+				rc = sqlite3_reset(ppStmt);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+			}
+		}
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		ULOGGER_DEBUG("Update Word table, Time=%fs", timer.ticks());
+	}
+}
+
 void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 {
 	UDEBUG("");
@@ -1400,7 +1464,7 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 	}
 }
 
-void DBDriverSqlite3::saveQuery(const std::vector<VisualWord *> & words) const
+void DBDriverSqlite3::saveQuery(const std::list<VisualWord *> & words) const
 {
 	UDEBUG("visualWords size=%d", words.size());
 	if(_ppDb)
@@ -1418,7 +1482,7 @@ void DBDriverSqlite3::saveQuery(const std::vector<VisualWord *> & words) const
 			query = std::string("INSERT INTO Word(id, descriptor_size, descriptor) VALUES(?,?,?);");
 			rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-			for(std::vector<VisualWord *>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+			for(std::list<VisualWord *>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 			{
 				const VisualWord * w = *iter;
 				if(w && !w->isSaved())

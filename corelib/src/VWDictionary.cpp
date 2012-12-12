@@ -379,13 +379,25 @@ int VWDictionary::getNextId()
 
 void VWDictionary::addWordRef(int wordId, int signatureId)
 {
-	VisualWord * vw = 0;
-	vw = uValue(_visualWords, wordId, vw);
-	if(vw)
+	if(signatureId > 0 && wordId > 0)
 	{
-		vw->addRef(signatureId);
-		_totalActiveReferences += 1;
-		_unusedWords.erase(vw->id());
+		VisualWord * vw = 0;
+		vw = uValue(_visualWords, wordId, vw);
+		if(!vw)
+		{
+			vw = uValue(_unusedWords, wordId, vw);
+			_visualWords.insert(std::pair<int, VisualWord*>(vw->id(), vw));
+			_unusedWords.erase(vw->id());
+		}
+		if(vw)
+		{
+			vw->addRef(signatureId);
+			_totalActiveReferences += 1;
+		}
+		else
+		{
+			UERROR("Not found word %d", wordId);
+		}
 	}
 }
 
@@ -813,8 +825,15 @@ void VWDictionary::addWord(VisualWord * vw)
 {
 	if(vw)
 	{
-		_visualWords.insert(std::pair<int, VisualWord *>(vw->id(), vw));
-		_totalActiveReferences += uSum(uValues(vw->getReferences()));
+		if(vw->getReferences().size())
+		{
+			_visualWords.insert(std::pair<int, VisualWord *>(vw->id(), vw));
+			_totalActiveReferences += uSum(uValues(vw->getReferences()));
+		}
+		else
+		{
+			_unusedWords.insert(std::pair<int, VisualWord *>(vw->id(), vw));
+		}
 	}
 }
 

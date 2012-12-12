@@ -112,9 +112,11 @@ private:
 	virtual void getWeightQuery(int signatureId, int & weight) const = 0;
 	virtual void getLoopClosureIdsQuery(int signatureId, std::set<int> & loopIds, std::set<int> & childIds) const = 0;
 
-	virtual void saveQuery(const std::vector<VisualWord *> & visualWords) const = 0;
-	virtual void updateQuery(const std::list<Signature *> & signatures) const = 0;
 	virtual void saveQuery(const std::list<Signature *> & signatures) const = 0;
+	virtual void saveQuery(const std::list<VisualWord *> & words) const = 0;
+	virtual void updateQuery(const std::list<Signature *> & signatures) const = 0;
+	virtual void updateQuery(const std::list<VisualWord *> & words) const = 0;
+
 
 	// Load objects
 	virtual void loadQuery(VWDictionary * dictionary) const = 0;
@@ -131,6 +133,7 @@ private:
 private:
 	//non-abstract methods
 	void saveOrUpdate(const std::vector<Signature *> & signatures) const;
+	void saveOrUpdate(const std::vector<VisualWord *> & words) const;
 
 	//thread stuff
 	virtual void mainLoop();

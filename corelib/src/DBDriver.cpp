@@ -178,7 +178,7 @@ void DBDriver::emptyTrashes(bool async)
 			if(this->isConnected())
 			{
 				//Only one query to the database
-				this->saveQuery(uValues(visualWords));
+				this->saveOrUpdate(uValues(visualWords));
 			}
 
 			for(std::map<int, VisualWord *>::iterator iter=visualWords.begin(); iter!=visualWords.end(); ++iter)
@@ -223,7 +223,6 @@ void DBDriver::asyncSave(VisualWord * vw)
 	}
 }
 
-//Automatically begin and commit a transaction
 void DBDriver::saveOrUpdate(const std::vector<Signature *> & signatures) const
 {
 	ULOGGER_DEBUG("");
@@ -232,6 +231,36 @@ void DBDriver::saveOrUpdate(const std::vector<Signature *> & signatures) const
 	if(this->isConnected() && signatures.size())
 	{
 		for(std::vector<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end();++i)
+		{
+			if((*i)->isSaved())
+			{
+				toUpdate.push_back(*i);
+			}
+			else
+			{
+				toSave.push_back(*i);
+			}
+		}
+
+		if(toUpdate.size())
+		{
+			this->updateQuery(toUpdate);
+		}
+		if(toSave.size())
+		{
+			this->saveQuery(toSave);
+		}
+	}
+}
+
+void DBDriver::saveOrUpdate(const std::vector<VisualWord *> & words) const
+{
+	ULOGGER_DEBUG("");
+	std::list<VisualWord *> toSave;
+	std::list<VisualWord *> toUpdate;
+	if(this->isConnected() && words.size())
+	{
+		for(std::vector<VisualWord *>::const_iterator i=words.begin(); i!=words.end();++i)
 		{
 			if((*i)->isSaved())
 			{

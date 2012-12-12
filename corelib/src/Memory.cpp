@@ -139,14 +139,15 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 
 
 	// Now load the dictionary if we have a connection
-	if(_vwd && _dbDriver && _dbDriver->isConnected())
+	if(_dbDriver && _dbDriver->isConnected())
 	{
 		UEventsManager::post(new RtabmapEventInit(std::string("Loading dictionary...")));
 		_dbDriver->load(_vwd);
-		UDEBUG("%d words loaded!", _vwd->getVisualWords().size());
-		UEventsManager::post(new RtabmapEventInit(std::string("Loading dictionary, done! (") + uNumber2Str(int(_vwd->getVisualWords().size())) + " loaded)"));
+		UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
+		UEventsManager::post(new RtabmapEventInit(std::string("Loading dictionary, done! (") + uNumber2Str(int(_vwd->getUnusedWordsSize())) + " words)"));
 	}
 
+	UEventsManager::post(new RtabmapEventInit(std::string("Adding word references...")));
 	// Enable loaded signatures
 	Signature * ss;
 	const std::map<int, Signature *> & signatures = this->getSignatures();
@@ -155,14 +156,26 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 		ss = this->_getSignature(i->first);
 		if(ss)
 		{
-			ss->setEnabled(true);
+			const std::multimap<int, cv::KeyPoint> & words = ss->getWords();
+			if(words.size())
+			{
+				UDEBUG("node=%d, word references=%d", ss->id(), words.size());
+				for(std::multimap<int, cv::KeyPoint>::const_iterator iter = words.begin(); iter!=words.end(); ++iter)
+				{
+					_vwd->addWordRef(iter->first, i->first);
+				}
+				ss->setEnabled(true);
+			}
 		}
 	}
 
-	if(_vwd)
+	UEventsManager::post(new RtabmapEventInit(uFormat("Adding word references, done! (%d)", _vwd->getTotalActiveReferences())));
+
+	if(_vwd->getUnusedWordsSize())
 	{
-		ULOGGER_DEBUG("Total word reference added = %d", _vwd->getTotalActiveReferences());
+		UWARN("_vwd->getUnusedWordsSize() must be empty... size=%d", _vwd->getUnusedWordsSize());
 	}
+	ULOGGER_DEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
 
 	return success;
 }
@@ -857,6 +870,11 @@ void Memory::clear()
 		ULOGGER_ERROR("_stMem must be empty here, size=%d", _stMem.size());
 	}
 	_stMem.clear();
+	if(_signatures.size()!=0)
+	{
+		ULOGGER_ERROR("_signatures must be empty here, size=%d", _signatures.size());
+	}
+	_signatures.clear();
 
 	ULOGGER_DEBUG("");
 	// Wait until the db trash has finished cleaning the memory
@@ -2211,7 +2229,7 @@ void Memory::disableWordsRef(int signatureId)
 
 		count -= _vwd->getTotalActiveReferences();
 		ss->setEnabled(false);
-		ULOGGER_DEBUG("%d words total ref removed from signature %d...", count, ss->id());
+		ULOGGER_DEBUG("%d words total ref removed from signature %d... (total active ref = %d)", count, ss->id(), _vwd->getTotalActiveReferences());
 	}
 }
 
@@ -2229,7 +2247,7 @@ void Memory::cleanUnusedWords()
 
 			for(unsigned int i=0; i<removedWords.size(); ++i)
 			{
-				if(_dbDriver && !removedWords[i]->isSaved())
+				if(_dbDriver)
 				{
 					_dbDriver->asyncSave(removedWords[i]);
 				}
