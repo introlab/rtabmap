@@ -910,9 +910,7 @@ void DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
 				 "FROM Word as vw "
 				 "INNER JOIN Map_Node_Word as m "
 				 "ON vw.id=m.word_id "
-				 "INNER JOIN Node as n "
-				 "ON n.id=m.node_id "
-				 "WHERE n.time_enter >= (SELECT MAX(time_enter) FROM Statistics) "
+				 "WHERE vw.time_enter >= (SELECT MAX(time_enter) FROM Statistics) "
 				 "ORDER BY vw.id;";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
