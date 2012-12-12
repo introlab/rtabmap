@@ -177,9 +177,9 @@ ELSE()
    MESSAGE(STATUS "[WARNING] Qt4 not found, the GUI lib and the stand-alone application will not be compiled...")
 ENDIF()
 
-IF(NOT BUILD_LIBS_ONLY)
+IF(NOT BUILD_LIBS_ONLY AND NOT BUILD_AS_BUNDLE)
 	ADD_SUBDIRECTORY( tools )
-ENDIF(NOT BUILD_LIBS_ONLY)
+ENDIF(NOT BUILD_LIBS_ONLY AND NOT BUILD_AS_BUNDLE)
 
 #######################
 # Uninstall target, for "make uninstall"
