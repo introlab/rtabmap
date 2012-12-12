@@ -1181,7 +1181,7 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 			//reset
 			rc = sqlite3_reset(ppStmt);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-			UINFO("time=%fs, node=%d, neighbors.size=%d, loopIds=%d, childIds=%d", (*iter)->id(), timer.ticks(), neighbors.size(), loopIds.size(), childIds.size());
+			UINFO("time=%fs, node=%d, neighbors.size=%d, loopIds=%d, childIds=%d", timer.ticks(), (*iter)->id(), neighbors.size(), loopIds.size(), childIds.size());
 		}
 
 		// Finalize (delete) the statement
