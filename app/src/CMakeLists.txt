@@ -116,6 +116,9 @@ IF((APPLE AND BUILD_AS_BUNDLE) OR WIN32)
 
   # directories to look for dependencies
   SET(DIRS ${QT_LIBRARY_DIRS} ${PROJECT_SOURCE_DIR}/bin)
+  IF(APPLE)
+    SET(DIRS ${DIRS} /usr/local /usr/local/lib)
+  ENDIF(APPLE)
 
   # Now the work of copying dependencies into the bundle/package
   # The quotes are escaped and variables to use at install time have their $ escaped
