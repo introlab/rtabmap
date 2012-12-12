@@ -386,8 +386,11 @@ void VWDictionary::addWordRef(int wordId, int signatureId)
 		if(!vw)
 		{
 			vw = uValue(_unusedWords, wordId, vw);
-			_visualWords.insert(std::pair<int, VisualWord*>(vw->id(), vw));
-			_unusedWords.erase(vw->id());
+			if(vw)
+			{
+				_visualWords.insert(std::pair<int, VisualWord*>(vw->id(), vw));
+				_unusedWords.erase(vw->id());
+			}
 		}
 		if(vw)
 		{

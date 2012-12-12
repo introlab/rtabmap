@@ -813,15 +813,11 @@ void Memory::clear()
 {
 	ULOGGER_DEBUG("");
 
+	this->cleanUnusedWords();
+
 	if(_dbDriver)
 	{
-		int size = 0;
-		if(_vwd)
-		{
-			size = _vwd->getVisualWords().size();
-		}
-
-		_dbDriver->addStatisticsAfterRunSurf(size);
+		_dbDriver->addStatisticsAfterRunSurf(_vwd->getVisualWords().size());
 	}
 
 	if(_dbDriver)
