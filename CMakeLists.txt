@@ -11,6 +11,8 @@ SET(PROJECT_PREFIX rtabmap)
 ####### local cmake modules #######
 SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 
+CONFIGURE_FILE(FindRTABMap.cmake.in FindRTABMap.cmake @ONLY)
+
 #######################
 # VERSION
 #######################
@@ -230,6 +232,9 @@ INSTALL(FILES
  ${PROJECT_SOURCE_DIR}/Matlab/ShowLogs/importfile.m 
  DESTINATION share/${PROJECT_PREFIX} 
  COMPONENT runtime)
+ 
+INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/FindRTABMap.cmake DESTINATION share/${PROJECT_PREFIX} COMPONENT devel)
+
 
 IF(WIN32)
   SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING.txt")
