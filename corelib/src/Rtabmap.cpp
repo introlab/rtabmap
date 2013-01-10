@@ -75,6 +75,7 @@ Rtabmap::Rtabmap() :
 	_retrievedId(0),
 	_lastLcHypothesisValue(0),
 	_lastLoopClosureId(0),
+	_lastProcessTime(0.0),
 	_epipolarGeometry(0),
 	_bayesFilter(0),
 	_memory(0),
@@ -514,6 +515,15 @@ void Rtabmap::mainLoop()
 	default:
 		UFATAL("Invalid state !?!?");
 		break;
+	}
+}
+
+void Rtabmap::deleteMemory()
+{
+	// Only if rtabmap's thread is not started...
+	if(!this->isRunning())
+	{
+		this->resetMemory(true);
 	}
 }
 
@@ -1146,6 +1156,7 @@ void Rtabmap::process()
 		ULOGGER_INFO("Removing old signatures because time limit is reached %f>%f or memory is reached %d>%d...", totalTime*1000, _maxTimeAllowed, _memory->getWorkingMemSize(), _maxMemoryAllowed);
 		signaturesRemoved = _memory->forget(immunizedLocations);
 	}
+	_lastProcessTime = totalTime;
 
 	timeRealTimeLimitReachedProcess = timer.ticks();
 	ULOGGER_INFO("Time limit reached processing = %f...", timeRealTimeLimitReachedProcess);

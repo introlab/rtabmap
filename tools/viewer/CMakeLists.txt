@@ -26,8 +26,3 @@ TARGET_LINK_LIBRARIES(databaseViewer rtabmap_corelib rtabmap_guilib ${LIBRARIES}
 SET_TARGET_PROPERTIES( databaseViewer 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-databaseViewer)
 
-INSTALL(TARGETS databaseViewer
-        RUNTIME DESTINATION bin COMPONENT runtime
-        LIBRARY DESTINATION lib COMPONENT devel
-        ARCHIVE DESTINATION lib COMPONENT devel)
-

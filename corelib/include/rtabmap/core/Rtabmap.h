@@ -94,10 +94,13 @@ public:
 	std::set<int> getStMem() const;
 	std::map<int, int> getWeights() const;
 	int getTotalMemSize() const;
+	double getLastProcessTime() const {return _lastProcessTime;};
 
 	void setMaxTimeAllowed(float maxTimeAllowed); // in ms
 	void setDataBufferSize(int size);
 	void setWorkingDirectory(std::string path);
+
+	void deleteMemory();
 
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
 	std::pair<int, float> selectHypothesis(const std::map<int, float> & posterior,
@@ -141,6 +144,7 @@ private:
 	int _retrievedId;
 	float _lastLcHypothesisValue;
 	int _lastLoopClosureId;
+	double _lastProcessTime;
 
 	UMutex _stateMutex;
 	std::stack<State> _state;

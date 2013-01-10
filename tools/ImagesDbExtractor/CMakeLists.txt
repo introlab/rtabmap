@@ -23,8 +23,3 @@ TARGET_LINK_LIBRARIES(imagesDbExtractor rtabmap_corelib ${LIBRARIES})
 SET_TARGET_PROPERTIES( imagesDbExtractor 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-imagesDbExtractor)
 
-INSTALL(TARGETS imagesDbExtractor
-        RUNTIME DESTINATION bin COMPONENT runtime
-        LIBRARY DESTINATION lib COMPONENT devel
-        ARCHIVE DESTINATION lib COMPONENT devel)
-

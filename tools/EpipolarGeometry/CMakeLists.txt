@@ -26,8 +26,4 @@ TARGET_LINK_LIBRARIES(epipolar_geometry rtabmap_corelib rtabmap_guilib ${LIBRARI
 SET_TARGET_PROPERTIES( epipolar_geometry 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-epipolar_geometry)
 
-INSTALL(TARGETS epipolar_geometry
-        RUNTIME DESTINATION bin COMPONENT runtime
-        LIBRARY DESTINATION lib COMPONENT devel
-        ARCHIVE DESTINATION lib COMPONENT devel)
 
