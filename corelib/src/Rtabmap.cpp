@@ -151,9 +151,6 @@ void Rtabmap::setupLogFiles(bool overwrite)
 	_foutFloat = fopen((_wDir+LOG_F).c_str(), attributes.c_str());
 	_foutInt = fopen((_wDir+LOG_I).c_str(), attributes.c_str());
 #endif
-
-	printf("addLogFHeader=%d\n", addLogFHeader?1:0);
-
 	// add header (column identification)
 	if(addLogFHeader && _foutFloat)
 	{
@@ -594,6 +591,14 @@ void Rtabmap::mainLoop()
 	default:
 		UFATAL("Invalid state !?!?");
 		break;
+	}
+}
+
+void Rtabmap::generateGraph(const std::string & path) const
+{
+	if(!this->isRunning() && _memory)
+	{
+		_memory->generateGraph(path);
 	}
 }
 

@@ -96,6 +96,7 @@ public:
 	double getLastProcessTime() const {return _lastProcessTime;};
 
 	void setTimeThreshold(float maxTimeAllowed); // in ms
+	void generateGraph(const std::string & path) const;
 
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
 	std::pair<int, float> selectHypothesis(const std::map<int, float> & posterior,
