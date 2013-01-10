@@ -1214,7 +1214,7 @@ void Rtabmap::process()
 								timeRealTimeLimitReachedProcess,
 								timeStatsCreation,
 								_lastLcHypothesisValue,
-								0,
+								0.0f,
 								maxLikelihood,
 								sumLikelihoods,
 								mean,
