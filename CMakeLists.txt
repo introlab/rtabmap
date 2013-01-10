@@ -11,8 +11,6 @@ SET(PROJECT_PREFIX rtabmap)
 ####### local cmake modules #######
 SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 
-CONFIGURE_FILE(FindRTABMap.cmake.in FindRTABMap.cmake @ONLY)
-
 #######################
 # VERSION
 #######################
@@ -233,7 +231,7 @@ INSTALL(FILES
  DESTINATION share/${PROJECT_PREFIX} 
  COMPONENT runtime)
  
-INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/FindRTABMap.cmake DESTINATION share/${PROJECT_PREFIX} COMPONENT devel)
+INSTALL(FILES ${PROJECT_SOURCE_DIR}/cmake_modules/FindRTABMap.cmake DESTINATION share/${PROJECT_PREFIX} COMPONENT devel)
 
 
 IF(WIN32)
