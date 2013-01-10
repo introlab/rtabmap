@@ -38,64 +38,82 @@ int main(int argc, char * argv[])
 	std::string path = argv[1];
 
 	// rtabmap::Camera is simply a convenience wrapper of OpenCV cv::VideoCapture and cv::imread
-	float imageRate = 1.0f; // 1 Hz
-	rtabmap::CameraImages camera(path, 1, false, imageRate);
-
+	rtabmap::CameraImages camera(path);
 	if(!camera.init())
 	{
 		printf("Camera init failed, using path \"%s\"\n", path.c_str());
 		exit(1);
 	}
 
-	// Create tasks
+	// Create RTAB-Map
 	rtabmap::Rtabmap rtabmap;
 
-	// Where database is saved
-	rtabmap.setWorkingDirectory(".");
+	// Set the time threshold
+	rtabmap.setTimeThreshold(700.0f); // Time threshold : 700 ms, 0 ms means no limit
 
-	// Initialize rtabmap: load database...
-	// It will automatically create config.ini
-	// with default parameters if it not exists
-	rtabmap.init("./config.ini");
+	// To set other parameters, the Parameters interface must be used (Parameters.h).
+	// Example here to change the loop closure threshold (default 0.15).
+	// Lower the threshold, more loop closures are detected but there is more chance of false positives.
+	rtabmap::ParametersMap parameters;
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapLoopThr(), "0.11"));
 
-	// For this example, we want to delete the memory at each start.
-	rtabmap.deleteMemory();
+	// The time threshold set above is also a parameter, one could have set it the same way:
+	//   parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapTimeThr(), "700"));
+	// Or SURF hessian treshold:
+	//   parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFHessianThreshold(), "150"));
 
-	rtabmap.setMaxTimeAllowed(700); // Time threshold : 700 ms
+	// Initialize rtabmap: load/create database...
+	rtabmap.init(parameters);
 
-	// Start thread's task
+	// Process each image of the directory...
+	printf("\nProcessing images... from directory \"%s\"\n", path.c_str());
+
 	int countLoopDetected=0;
-
-	printf("\nProcessing images at %f Hz... from directory \"%s\"\n", imageRate, path.c_str());
-
-	int imagesProcessed = 0;
-
-	cv::Mat img = camera.takeImage();
 	int i=0;
+	cv::Mat img = camera.takeImage();
 	while(!img.empty())
 	{
-		++imagesProcessed;
-		rtabmap.process(rtabmap::Image(img));
+		// Process image : Main loop of RTAB-Map
+		rtabmap.process(img);
+
+		// Check if a loop closure is detected and print some info
 		if(rtabmap.getLoopClosureId())
 		{
 			++countLoopDetected;
 		}
-		img = camera.takeImage();
-
 		++i;
-
 		if(rtabmap.getLoopClosureId())
 		{
-			printf(" iteration(%d) ptime(%fs) loop(%d) hyp(%.2f)\n",
-					i, rtabmap.getLastProcessTime(), rtabmap.getLoopClosureId(), rtabmap.getLcHypValue());
+			printf(" #%d ptime(%fs) STM(%d) WM(%d) hyp(%d) value(%.2f) *LOOP %d->%d*\n",
+					i,
+					rtabmap.getLastProcessTime(),
+					rtabmap.getSTM().size(), // short-term memory
+					rtabmap.getWM().size(), // working memory
+					rtabmap.getLoopClosureId(),
+					rtabmap.getLcHypValue(),
+					rtabmap.getLastLocationId(),
+					rtabmap.getLoopClosureId());
 		}
 		else
 		{
-			printf(" iteration(%d) ptime(%fs)\n", i, rtabmap.getLastProcessTime());
+			printf(" #%d ptime(%fs) STM(%d) WM(%d) hyp(%d) value(%.2f)\n",
+					i,
+					rtabmap.getLastProcessTime(),
+					rtabmap.getSTM().size(), // short-term memory
+					rtabmap.getWM().size(), // working memory
+					rtabmap.getRetrievedId(), // highest loop closure hypothesis
+					rtabmap.getLcHypValue());
 		}
+
+		//Get next image
+		img = camera.takeImage();
 	}
 
 	printf("Processing images completed. Loop closures found = %d\n", countLoopDetected);
+
+	// Cleanup... save database and logs
+	printf("Saving Long-Term Memory to \"LTM.db\"...\n");
+	rtabmap.close();
 
 	return 0;
 }

@@ -2103,7 +2103,7 @@ Signature * Memory::createSignature(int id, const Image & image, bool keepRawDat
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat descriptors;
 
-	int treeSize= this->getWorkingMemSize() + this->getStMemSize();
+	int treeSize= _workingMem.size() + _stMem.size();
 	int nbCommonWords = 0;
 	if(treeSize > 0)
 	{

@@ -54,10 +54,9 @@
 
 namespace rtabmap
 {
-const char * Rtabmap::kDefaultIniFileName = "rtabmap.ini";
 const char * Rtabmap::kDefaultDatabaseName = "LTM.db";
 
-Rtabmap::Rtabmap() :
+Rtabmap::Rtabmap(const std::string & workingDirectory, bool deleteMemory) :
 	_publishStats(Parameters::defaultRtabmapPublishStats()),
 	_publishImage(Parameters::defaultRtabmapPublishImage()),
 	_publishPdf(Parameters::defaultRtabmapPublishPdf()),
@@ -82,8 +81,11 @@ Rtabmap::Rtabmap() :
 	_foutFloat(0),
 	_foutInt(0)
 {
-	ULOGGER_DEBUG("Working directory=%s", Parameters::defaultRtabmapWorkingDirectory().c_str());
-	this->setWorkingDirectory(Parameters::defaultRtabmapWorkingDirectory());
+	this->setWorkingDirectory(workingDirectory);
+	if(deleteMemory)
+	{
+		this->resetMemory(true);
+	}
 }
 
 Rtabmap::~Rtabmap() {
@@ -139,6 +141,9 @@ void Rtabmap::setupLogFiles(bool overwrite)
 		attributes = "w";
 	}
 
+	bool addLogFHeader = overwrite || !UFile::exists(_wDir+LOG_F);
+	bool addLogIHeader = overwrite || !UFile::exists(_wDir+LOG_I);
+
 #ifdef _MSC_VER
 	fopen_s(&_foutFloat, (_wDir+LOG_F).toStdString().c_str(), attributes.c_str());
 	fopen_s(&_foutInt, (_wDir+LOG_I).toStdString().c_str(), attributes.c_str());
@@ -146,6 +151,55 @@ void Rtabmap::setupLogFiles(bool overwrite)
 	_foutFloat = fopen((_wDir+LOG_F).c_str(), attributes.c_str());
 	_foutInt = fopen((_wDir+LOG_I).c_str(), attributes.c_str());
 #endif
+
+	printf("addLogFHeader=%d\n", addLogFHeader?1:0);
+
+	// add header (column identification)
+	if(addLogFHeader && _foutFloat)
+	{
+		fprintf(_foutFloat, "Column headers:\n");
+		fprintf(_foutFloat, " 1-Total iteration time (s)\n");
+		fprintf(_foutFloat, " 2-Memory update time (s)\n");
+		fprintf(_foutFloat, " 3-Retrieval time (s)\n");
+		fprintf(_foutFloat, " 4-Likelihood time (s)\n");
+		fprintf(_foutFloat, " 5-Posterior time (s)\n");
+		fprintf(_foutFloat, " 6-Hypothesis selection time (s)\n");
+		fprintf(_foutFloat, " 7-Transfer time (s)\n");
+		fprintf(_foutFloat, " 8-Statistics creation time (s)\n");
+		fprintf(_foutFloat, " 9-Loop closure hypothesis value\n");
+		fprintf(_foutFloat, " 10-NAN\n");
+		fprintf(_foutFloat, " 11-Maximum likelihood\n");
+		fprintf(_foutFloat, " 12-Sum likelihood\n");
+		fprintf(_foutFloat, " 13-Mean likelihood\n");
+		fprintf(_foutFloat, " 14-Std dev likelihood\n");
+		fprintf(_foutFloat, " 15-Virtual place hypothesis\n");
+		fprintf(_foutFloat, " 16-Join trash time (s)\n");
+		fprintf(_foutFloat, " 17-Weight Update (rehearsal) similarity\n");
+		fprintf(_foutFloat, " 18-Empty trash time (s)\n");
+		fprintf(_foutFloat, " 19-Retrieval database access time (s)\n");
+		fprintf(_foutFloat, " 20-Add loop closure link time (s)\n");
+	}
+	if(addLogIHeader && _foutInt)
+	{
+		fprintf(_foutInt, "Column headers:\n");
+		fprintf(_foutInt, " 1-Loop closure ID\n");
+		fprintf(_foutInt, " 2-Highest loop closure hypothesis\n");
+		fprintf(_foutInt, " 3-Locations transferred\n");
+		fprintf(_foutInt, " 4-NAN\n");
+		fprintf(_foutInt, " 5-Words extracted from the last image\n");
+		fprintf(_foutInt, " 6-Vocabulary size\n");
+		fprintf(_foutInt, " 7-Working memory size\n");
+		fprintf(_foutInt, " 8-Is loop closure hypothesis rejected?\n");
+		fprintf(_foutInt, " 9-NAN\n");
+		fprintf(_foutInt, " 10-NAN\n");
+		fprintf(_foutInt, " 11-Locations retrieved\n");
+		fprintf(_foutInt, " 12-Retrieval location ID\n");
+		fprintf(_foutInt, " 13-Unique words extraced from last image\n");
+		fprintf(_foutInt, " 14-Retrieval ID\n");
+		fprintf(_foutInt, " 15-Non-null likelihood values\n");
+		fprintf(_foutInt, " 16-Weight Update ID\n");
+		fprintf(_foutInt, " 17-Is last location merged through Weight Update?\n");
+	}
 
 	ULOGGER_DEBUG("Log file (int)=%s", (_wDir+LOG_I).c_str());
 	ULOGGER_DEBUG("Log file (float)=%s", (_wDir+LOG_F).c_str());
@@ -220,30 +274,40 @@ void Rtabmap::init(const ParametersMap & parameters)
 	setupLogFiles();
 }
 
-std::string Rtabmap::getIniFilePath()
-{
-	std::string privatePath = UDirectory::homeDir() + "/.rtabmap";
-	if(!UDirectory::exists(privatePath))
-	{
-		UDirectory::makeDir(privatePath);
-	}
-	return (privatePath + "/") + kDefaultIniFileName;
-}
-
 void Rtabmap::init(const char * configFile)
 {
-	std::string config = this->getIniFilePath();
-	if(configFile)
-	{
-		config = configFile;
-	}
-	ULOGGER_DEBUG("file path = %s", config.c_str());
-
 	// fill ctrl struct with values from the configuration file
 	ParametersMap param;// = Parameters::defaultParameters;
-	this->readParameters(config.c_str(), param);
+
+	if(configFile)
+	{
+		ULOGGER_DEBUG("Read parameters from = %s", configFile);
+		this->readParameters(configFile, param);
+	}
 
 	this->init(param);
+}
+
+void Rtabmap::close()
+{
+	UEventsManager::removeHandler(this);
+
+	// Stop the thread first
+	join(true);
+
+	flushStatisticLogs();
+	if(_foutFloat)
+	{
+		fclose(_foutFloat);
+		_foutFloat = 0;
+	}
+	if(_foutInt)
+	{
+		fclose(_foutInt);
+		_foutInt = 0;
+	}
+
+	this->releaseAllStrategies();
 }
 
 void Rtabmap::parseParameters(const ParametersMap & parameters)
@@ -360,12 +424,12 @@ int Rtabmap::getLoopClosureId() const
 	return _lcHypothesisId;
 }
 
-int Rtabmap::getReactivatedId() const
+int Rtabmap::getRetrievedId() const
 {
 	return _retrievedId;
 }
 
-int Rtabmap::getLastSignatureId() const
+int Rtabmap::getLastLocationId() const
 {
 	int id = 0;
 	if(_memory && _memory->getLastSignature())
@@ -375,9 +439,8 @@ int Rtabmap::getLastSignatureId() const
 	return id;
 }
 
-std::list<int> Rtabmap::getWorkingMem() const
+std::list<int> Rtabmap::getWM() const
 {
-	ULOGGER_DEBUG("");
 	std::list<int> mem;
 	if(_memory)
 	{
@@ -387,9 +450,17 @@ std::list<int> Rtabmap::getWorkingMem() const
 	return mem;
 }
 
+int Rtabmap::getWMSize() const
+{
+	if(_memory)
+	{
+		return _memory->getWorkingMem().size()-1; // remove virtual place
+	}
+	return 0;
+}
+
 std::map<int, int> Rtabmap::getWeights() const
 {
-	ULOGGER_DEBUG("");
 	std::map<int, int> weights;
 	if(_memory)
 	{
@@ -399,15 +470,23 @@ std::map<int, int> Rtabmap::getWeights() const
 	return weights;
 }
 
-std::set<int> Rtabmap::getStMem() const
+std::set<int> Rtabmap::getSTM() const
 {
-	ULOGGER_DEBUG("");
 	std::set<int> mem;
 	if(_memory)
 	{
 		mem = _memory->getStMem();
 	}
 	return mem;
+}
+
+int Rtabmap::getSTMSize() const
+{
+	if(_memory)
+	{
+		return _memory->getStMem().size();
+	}
+	return 0;
 }
 
 int Rtabmap::getTotalMemSize() const
@@ -515,15 +594,6 @@ void Rtabmap::mainLoop()
 	default:
 		UFATAL("Invalid state !?!?");
 		break;
-	}
-}
-
-void Rtabmap::deleteMemory()
-{
-	// Only if rtabmap's thread is not started...
-	if(!this->isRunning())
-	{
-		this->resetMemory(true);
 	}
 }
 
@@ -726,7 +796,7 @@ void Rtabmap::process()
 		// If the working memory is empty, don't do the detection. It happens when it
 		// is the first time the detector is started (there needs some images to
 		// fill the short-time memory before a signature is added to the working memory).
-		if(_memory->getWorkingMemSize())
+		if(_memory->getWorkingMem().size())
 		{
 			//============================================================
 			// Likelihood computation
@@ -1058,8 +1128,8 @@ void Rtabmap::process()
 			stat->addStatistic(Statistics::kLoopReactivateId(), _retrievedId);
 			stat->addStatistic(Statistics::kLoopHypothesis_ratio(), hypothesisRatio);
 
-			stat->addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMemSize());
-			stat->addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMemSize());
+			stat->addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMem().size());
+			stat->addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMem().size());
 			stat->addStatistic(Statistics::kMemorySignatures_retrieved(), (float)signaturesRetrieved.size());
 			stat->addStatistic(Statistics::kMemoryImages_buffered(), (float)_imageBuffer.size());
 
@@ -1151,9 +1221,9 @@ void Rtabmap::process()
 	ULOGGER_INFO("Total time processing = %fs...", totalTime);
 	timer.start();
 	if((_maxTimeAllowed != 0 && totalTime*1000>_maxTimeAllowed) ||
-		(_maxMemoryAllowed != 0 && _memory->getWorkingMemSize() > _maxMemoryAllowed))
+		(_maxMemoryAllowed != 0 && _memory->getWorkingMem().size() > _maxMemoryAllowed))
 	{
-		ULOGGER_INFO("Removing old signatures because time limit is reached %f>%f or memory is reached %d>%d...", totalTime*1000, _maxTimeAllowed, _memory->getWorkingMemSize(), _maxMemoryAllowed);
+		ULOGGER_INFO("Removing old signatures because time limit is reached %f>%f or memory is reached %d>%d...", totalTime*1000, _maxTimeAllowed, _memory->getWorkingMem().size(), _maxMemoryAllowed);
 		signaturesRemoved = _memory->forget(immunizedLocations);
 	}
 	_lastProcessTime = totalTime;
@@ -1243,7 +1313,7 @@ void Rtabmap::process()
 								0,
 								refWordsCount,
 								dictionarySize,
-								int(_memory->getWorkingMemSize()),
+								int(_memory->getWorkingMem().size()),
 								rejectedHypothesis?1:0,
 								0,
 								0,
@@ -1322,7 +1392,7 @@ void Rtabmap::getImage(Image & image)
 }
 
 // SETTERS
-void Rtabmap::setMaxTimeAllowed(float maxTimeAllowed)
+void Rtabmap::setTimeThreshold(float maxTimeAllowed)
 {
 	//must be positive, 0 mean inf time allowed (no time limit)
 	_maxTimeAllowed = maxTimeAllowed;

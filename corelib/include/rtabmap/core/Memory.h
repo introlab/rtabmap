@@ -77,8 +77,6 @@ public:
 			double * dbAccessTime = 0) const;
 
 	//getters
-	unsigned int getWorkingMemSize() const {return _workingMem.size();}
-	unsigned int getStMemSize() const {return _stMem.size();};
 	const std::set<int> & getWorkingMem() const {return _workingMem;}
 	const std::set<int> & getStMem() const {return _stMem;}
 	int getMaxStMemSize() const {return _maxStMemSize;}

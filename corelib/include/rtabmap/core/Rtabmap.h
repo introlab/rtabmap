@@ -62,45 +62,40 @@ public:
 
 	enum VhStrategy {kVhNone, kVhEpipolar, kVhUndef};
 
-	static const char * kDefaultIniFileName;
-	static const char * kDefaultIniFilePath;
 	static const char * kDefaultDatabaseName;
 
 public:
 	static std::string getVersion();
-	static std::string getIniFilePath();
 	static void readParameters(const char * configFile, ParametersMap & parameters);
 	static void writeParameters(const char * configFile, const ParametersMap & parameters);
 
 public:
-	Rtabmap();
+	Rtabmap(const std::string & workingDirectory = ".", bool deleteMemory = true);
 	virtual ~Rtabmap();
 
 	void process(const cv::Mat & image); // for convenience
 	void process(const Image & image); // for convenience
-	void dumpData();
-	void generateLocalGraph(const std::string & path, int id, int margin);
 
 	void init(const ParametersMap & param);
 	void init(const char * configFile = 0);
 	void clearBufferedSensors();
 
+	void close();
+
 	const std::string & getWorkingDir() const {return _wDir;}
 	int getLoopClosureId() const;
-	int getReactivatedId() const;
-	int getLastSignatureId() const;
+	int getRetrievedId() const;
+	int getLastLocationId() const;
 	float getLcHypValue() const {return _lastLcHypothesisValue;}
-	std::list<int> getWorkingMem() const;
-	std::set<int> getStMem() const;
+	std::list<int> getWM() const; // working memory
+	std::set<int> getSTM() const; // short-term memory
+	int getWMSize() const; // working memory size
+	int getSTMSize() const; // short-term memory size
 	std::map<int, int> getWeights() const;
 	int getTotalMemSize() const;
 	double getLastProcessTime() const {return _lastProcessTime;};
 
-	void setMaxTimeAllowed(float maxTimeAllowed); // in ms
-	void setDataBufferSize(int size);
-	void setWorkingDirectory(std::string path);
-
-	void deleteMemory();
+	void setTimeThreshold(float maxTimeAllowed); // in ms
 
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
 	std::pair<int, float> selectHypothesis(const std::map<int, float> & posterior,
@@ -122,7 +117,11 @@ private:
 	void releaseAllStrategies();
 	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
 	void dumpPrediction() const;
+	void dumpData();
+	void generateLocalGraph(const std::string & path, int id, int margin);
 	void parseParameters(const ParametersMap & parameters);
+	void setWorkingDirectory(std::string path);
+	void setDataBufferSize(int size);
 
 private:
 	// Modifiable parameters

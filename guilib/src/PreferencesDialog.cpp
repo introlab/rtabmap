@@ -548,7 +548,12 @@ QString PreferencesDialog::getWorkingDirectory()
 
 QString PreferencesDialog::getIniFilePath()
 {
-	return Rtabmap::getIniFilePath().c_str();
+	QString privatePath = QDir::homePath() + "/.rtabmap";
+	if(!QDir(privatePath).exists())
+	{
+		QDir::home().mkdir(".rtabmap");
+	}
+	return privatePath + "/rtabmap.ini";
 }
 
 void PreferencesDialog::loadConfigFrom()

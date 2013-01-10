@@ -37,19 +37,17 @@ int main(int argc, char* argv[])
 	ULOGGER_INFO("Program started...");
 
 	/* Create tasks */
-	Rtabmap * rtabmap = new Rtabmap();
 	QApplication * app = new QApplication(argc, argv);
 	MainWindow * mainWindow = new MainWindow();
 
-	/* Add handlers to the EventsManager */
 	UEventsManager::addHandler(mainWindow);
-	UEventsManager::addHandler(rtabmap);
 
 	/* Start thread's task */
 	mainWindow->showNormal();
 
-	rtabmap->setWorkingDirectory(mainWindow->getWorkingDirectory().toStdString());
-	rtabmap->start();
+	Rtabmap * rtabmap = new Rtabmap(mainWindow->getWorkingDirectory().toStdString(), false);
+	rtabmap->start(); // start it not initialized... will be initialized by event from the gui
+	UEventsManager::addHandler(rtabmap);
 
 	// Now wait for application to finish
 	app->connect( app, SIGNAL( lastWindowClosed() ),

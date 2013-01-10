@@ -57,10 +57,7 @@ void showUsage()
 			"                                     -SURF/HessianThreshold 150\n"
 			"                                   For parameters in table format, add ',' between values :\n"
 			"                                     -Kp/RoiRatios 0,0,0.1,0\n"
-			"                                   Default parameters can be found in ~/.rtabmap/rtabmap.ini\n"
-			"  -default_params                 Show default RTAB-Map's parameters (WARNING : \n"
-			"                                   parameters from rtabmap.ini (if exists) overwrite the default \n"
-			"                                   ones shown here)\n"
+			"  -default_params                 Show default RTAB-Map's parameters\n"
 			"  -debug                          Set Log level to Debug (Default Error)\n"
 			"  -info                           Set Log level to Info (Default Error)\n"
 			"  -warn                           Set Log level to Warning (Default Error)\n"
@@ -375,20 +372,18 @@ int main(int argc, char * argv[])
 
 	std::map<int, int> groundTruth;
 
-	// Create tasks
-	Rtabmap * rtabmap = new Rtabmap();
-	rtabmap->init();
-	rtabmap->setMaxTimeAllowed(timeThreshold); // in ms
-
 	ULogger::setType(ULogger::kTypeConsole);
-	//ULogger::setType(ULogger::kTypeFile, rtabmap->getWorkingDir()+"/LogConsole.txt", false);
+	//ULogger::setType(ULogger::kTypeFile, rtabmap.getWorkingDir()+"/LogConsole.txt", false);
 	//ULogger::setBuffered(true);
 	ULogger::setLevel(logLevel);
 	ULogger::setExitLevel(exitLevel);
 
+	// Create tasks : memory is deleted
+	Rtabmap rtabmap(Parameters::defaultRtabmapWorkingDirectory());
 	// Disable statistics (we don't need them)
 	pm.insert(ParametersPair(Parameters::kRtabmapPublishStats(), uBool2Str(false)));
-	rtabmap->init(pm);
+	rtabmap.init(pm);
+	rtabmap.setTimeThreshold(timeThreshold); // in ms
 
 	printf("Avpd init time = %fs\n", timer.ticks());
 
@@ -409,7 +404,7 @@ int main(int argc, char * argv[])
 	{
 		printf(" Creating the ground truth matrix.\n");
 	}
-	printf(" INFO: All other parameters are taken from the INI file located in \"~/.rtabmap\"\n");
+	printf(" INFO: All other parameters are set to defaults\n");
 	if(pm.size()>1)
 	{
 		printf("   Overwritten parameters :\n");
@@ -418,16 +413,13 @@ int main(int argc, char * argv[])
 			printf("    %s=%s\n",iter->first.c_str(), iter->second.c_str());
 		}
 	}
-	if(rtabmap->getWorkingMem().size() || rtabmap->getStMem().size())
+	if(rtabmap.getWM().size() || rtabmap.getSTM().size())
 	{
-		printf("[Warning] RTAB-Map database is not empty (%s)\n", (rtabmap->getWorkingDir()+Rtabmap::kDefaultDatabaseName).c_str());
+		printf("[Warning] RTAB-Map database is not empty (%s)\n", (rtabmap.getWorkingDir()+Rtabmap::kDefaultDatabaseName).c_str());
 	}
 	printf("\nProcessing images...\n");
 
 	//setup camera
-	ParametersMap allParam;
-	Rtabmap::readParameters(rtabmap->getIniFilePath().c_str(), allParam);
-	pm.insert(allParam.begin(), allParam.end());
 	camera->setFeaturesExtracted(true);
 	camera->parseParameters(pm);
 
@@ -449,10 +441,10 @@ int main(int argc, char * argv[])
 			++imagesProcessed;
 			iterationTimer.start();
 			rtabmapTimer.start();
-			rtabmap->process(img);
+			rtabmap.process(img);
 			double rtabmapTime = rtabmapTimer.elapsed();
-			loopClosureId = rtabmap->getLoopClosureId();
-			if(rtabmap->getLoopClosureId())
+			loopClosureId = rtabmap.getLoopClosureId();
+			if(rtabmap.getLoopClosureId())
 			{
 				++countLoopDetected;
 			}
@@ -464,7 +456,7 @@ int main(int argc, char * argv[])
 						count, countLoopDetected, maxIterationTimeId, maxIterationTime);
 				maxIterationTime = 0.0;
 				maxIterationTimeId = 0;
-				std::map<int, int> wm = rtabmap->getWeights();
+				std::map<int, int> wm = rtabmap.getWeights();
 				printf(" WM(%d)=[", (int)wm.size());
 				for(std::map<int, int>::iterator iter=wm.begin(); iter!=wm.end();++iter)
 				{
@@ -498,15 +490,15 @@ int main(int argc, char * argv[])
 
 			ULogger::flush();
 
-			if(rtabmap->getLoopClosureId())
+			if(rtabmap.getLoopClosureId())
 			{
 				printf(" iteration(%d) loop(%d) hyp(%.2f) time=%fs/%fs *\n",
-						count, rtabmap->getLoopClosureId(), rtabmap->getLcHypValue(), rtabmapTime, iterationTime);
+						count, rtabmap.getLoopClosureId(), rtabmap.getLcHypValue(), rtabmapTime, iterationTime);
 			}
-			else if(rtabmap->getReactivatedId())
+			else if(rtabmap.getRetrievedId())
 			{
 				printf(" iteration(%d) high(%d) hyp(%.2f) time=%fs/%fs\n",
-						count, rtabmap->getReactivatedId(), rtabmap->getLcHypValue(), rtabmapTime, iterationTime);
+						count, rtabmap.getRetrievedId(), rtabmap.getLcHypValue(), rtabmapTime, iterationTime);
 			}
 			else
 			{
@@ -539,9 +531,9 @@ int main(int argc, char * argv[])
 		}
 
 		// Generate the ground truth file
-		printf("Generate ground truth to file %s, size of %d\n", (rtabmap->getWorkingDir()+GENERATED_GT_NAME).c_str(), groundTruthMat.rows);
+		printf("Generate ground truth to file %s, size of %d\n", (rtabmap.getWorkingDir()+GENERATED_GT_NAME).c_str(), groundTruthMat.rows);
 		IplImage img = groundTruthMat;
-		cvSaveImage((rtabmap->getWorkingDir()+GENERATED_GT_NAME).c_str(), &img);
+		cvSaveImage((rtabmap.getWorkingDir()+GENERATED_GT_NAME).c_str(), &img);
 		printf(" Creating ground truth file = %fs\n", timer.ticks());
 	}
 
@@ -551,11 +543,7 @@ int main(int argc, char * argv[])
 		camera = 0 ;
 	}
 
-	if(rtabmap)
-	{
-		delete rtabmap;
-		rtabmap = 0;
-	}
+	rtabmap.close();
 
 	printf(" Cleanup time = %fs\n", timer.ticks());
 
