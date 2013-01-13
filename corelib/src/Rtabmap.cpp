@@ -56,7 +56,7 @@ namespace rtabmap
 {
 const char * Rtabmap::kDefaultDatabaseName = "LTM.db";
 
-Rtabmap::Rtabmap(const std::string & workingDirectory, bool deleteMemory) :
+Rtabmap::Rtabmap() :
 	_publishStats(Parameters::defaultRtabmapPublishStats()),
 	_publishImage(Parameters::defaultRtabmapPublishImage()),
 	_publishPdf(Parameters::defaultRtabmapPublishPdf()),
@@ -81,11 +81,6 @@ Rtabmap::Rtabmap(const std::string & workingDirectory, bool deleteMemory) :
 	_foutFloat(0),
 	_foutInt(0)
 {
-	this->setWorkingDirectory(workingDirectory);
-	if(deleteMemory)
-	{
-		this->resetMemory(true);
-	}
 }
 
 Rtabmap::~Rtabmap() {
@@ -258,31 +253,40 @@ void Rtabmap::pushNewState(State newState, const ParametersMap & parameters)
 	_imageAdded.release();
 }
 
-void Rtabmap::init(const ParametersMap & parameters)
+void Rtabmap::init(const ParametersMap & parameters, bool deleteMemory)
 {
 	if(this->isRunning())
 	{
 		pushNewState(kStateChangingParameters, parameters);
+		if(deleteMemory)
+		{
+			pushNewState(kStateDeletingMemory);
+		}
 	}
 	else
 	{
+		if(deleteMemory)
+		{
+			this->resetMemory(true);
+		}
+
 		this->parseParameters(parameters);
 	}
 	setupLogFiles();
 }
 
-void Rtabmap::init(const char * configFile)
+void Rtabmap::init(const std::string & configFile, bool deleteMemory)
 {
 	// fill ctrl struct with values from the configuration file
 	ParametersMap param;// = Parameters::defaultParameters;
 
-	if(configFile)
+	if(!configFile.empty())
 	{
-		ULOGGER_DEBUG("Read parameters from = %s", configFile);
+		ULOGGER_DEBUG("Read parameters from = %s", configFile.c_str());
 		this->readParameters(configFile, param);
 	}
 
-	this->init(param);
+	this->init(param, deleteMemory);
 }
 
 void Rtabmap::close()
@@ -1615,10 +1619,10 @@ void Rtabmap::generateLocalGraph(const std::string & path, int id, int margin)
 	}
 }
 
-void Rtabmap::readParameters(const char * configFile, ParametersMap & parameters)
+void Rtabmap::readParameters(const std::string & configFile, ParametersMap & parameters)
 {
 	CSimpleIniA ini;
-	ini.LoadFile(configFile);
+	ini.LoadFile(configFile.c_str());
 	const CSimpleIniA::TKeyVal * keyValMap = ini.GetSection("Core");
 	if(keyValMap)
 	{
@@ -1638,14 +1642,14 @@ void Rtabmap::readParameters(const char * configFile, ParametersMap & parameters
 	{
 		ULOGGER_WARN("Section \"Core\" in %s doesn't exist... "
 				    "Ignore this warning if the ini file does not exist yet. "
-				    "The ini file will be automatically created when this node will close.", configFile);
+				    "The ini file will be automatically created when this node will close.", configFile.c_str());
 	}
 }
 
-void Rtabmap::writeParameters(const char * configFile, const ParametersMap & parameters)
+void Rtabmap::writeParameters(const std::string & configFile, const ParametersMap & parameters)
 {
 	CSimpleIniA ini;
-	ini.LoadFile(configFile);
+	ini.LoadFile(configFile.c_str());
 
 	for(ParametersMap::const_iterator i=parameters.begin(); i!=parameters.end(); ++i)
 	{
@@ -1654,7 +1658,7 @@ void Rtabmap::writeParameters(const char * configFile, const ParametersMap & par
 		ini.SetValue("Core", key.c_str(), (*i).second.c_str(), NULL, true);
 	}
 
-	ini.SaveFile(configFile);
+	ini.SaveFile(configFile.c_str());
 }
 
 } // namespace rtabmap

@@ -66,18 +66,18 @@ public:
 
 public:
 	static std::string getVersion();
-	static void readParameters(const char * configFile, ParametersMap & parameters);
-	static void writeParameters(const char * configFile, const ParametersMap & parameters);
+	static void readParameters(const std::string & configFile, ParametersMap & parameters);
+	static void writeParameters(const std::string & configFile, const ParametersMap & parameters);
 
 public:
-	Rtabmap(const std::string & workingDirectory = ".", bool deleteMemory = true);
+	Rtabmap();
 	virtual ~Rtabmap();
 
 	void process(const cv::Mat & image); // for convenience
 	void process(const Image & image); // for convenience
 
-	void init(const ParametersMap & param);
-	void init(const char * configFile = 0);
+	void init(const ParametersMap & param, bool deleteMemory = true);
+	void init(const std::string & configFile = "", bool deleteMemory = true);
 	void clearBufferedSensors();
 
 	void close();

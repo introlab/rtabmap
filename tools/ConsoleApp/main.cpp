@@ -379,9 +379,12 @@ int main(int argc, char * argv[])
 	ULogger::setExitLevel(exitLevel);
 
 	// Create tasks : memory is deleted
-	Rtabmap rtabmap(Parameters::defaultRtabmapWorkingDirectory());
+	Rtabmap rtabmap;
 	// Disable statistics (we don't need them)
 	pm.insert(ParametersPair(Parameters::kRtabmapPublishStats(), uBool2Str(false)));
+	// use default working directory
+	pm.insert(ParametersPair(Parameters::kRtabmapWorkingDirectory(), Parameters::defaultRtabmapWorkingDirectory()));
+
 	rtabmap.init(pm);
 	rtabmap.setTimeThreshold(timeThreshold); // in ms
 
