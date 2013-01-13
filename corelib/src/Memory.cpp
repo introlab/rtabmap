@@ -2198,7 +2198,7 @@ Signature * Memory::createSignature(int id, const Image & image, bool keepRawDat
 	Signature * ks;
 	if(keepRawData)
 	{
-		ks = new Signature(id, words, image.image());
+		ks = new Signature(id, words, image.image().clone());
 	}
 	else
 	{
