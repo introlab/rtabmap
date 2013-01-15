@@ -1642,13 +1642,12 @@ void Memory::rehearsal(Signature * signature, std::map<std::string, float> & sta
 	{
 		float value = iter->second;
 		id = iter->first;
+		if(maxSim<=value)
+		{
+			maxSim = value;
+		}
 		if(value >= _similarityThreshold)
 		{
-			if(maxSim<=value)
-			{
-				maxSim = value;
-			}
-
 			if(_incrementalMemory)
 			{
 				merged.push_back(id);
