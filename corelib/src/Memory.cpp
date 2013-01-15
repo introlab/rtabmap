@@ -1637,7 +1637,7 @@ void Memory::rehearsal(Signature * signature, std::map<std::string, float> & sta
 	int id = 0;
 	int nbMerged = 0;
 	std::list<int> merged;
-	float maxSim = 1.0f;
+	float maxSim = -1.0f;
 	for(std::map<int, float>::iterator iter=similarities.begin(); iter!=similarities.end(); ++iter)
 	{
 		float value = iter->second;
