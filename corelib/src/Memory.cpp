@@ -1680,6 +1680,7 @@ void Memory::rehearsal(Signature * signature, std::map<std::string, float> & sta
 
 	stats.insert(std::pair<std::string, float>("Rehearsal/last merged/", merged.size()?*merged.rbegin():0));
 	stats.insert(std::pair<std::string, float>("Rehearsal/nb merged/", nbMerged));
+	stats.insert(std::pair<std::string, float>("Rehearsal/max similarity/", maxSim));
 
 	UDEBUG("nbMerged=%d, lastMerged=%d, t=%fs", nbMerged, merged.size()?*merged.rbegin():0, timer.ticks());
 }
