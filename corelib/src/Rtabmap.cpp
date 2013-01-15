@@ -85,25 +85,7 @@ Rtabmap::Rtabmap() :
 
 Rtabmap::~Rtabmap() {
 	UDEBUG("");
-
-	UEventsManager::removeHandler(this);
-
-	// Stop the thread first
-	join(true);
-
-	flushStatisticLogs();
-	if(_foutFloat)
-	{
-		fclose(_foutFloat);
-		_foutFloat = 0;
-	}
-	if(_foutInt)
-	{
-		fclose(_foutInt);
-		_foutInt = 0;
-	}
-
-	this->releaseAllStrategies();
+	this->close();
 }
 
 std::string Rtabmap::getVersion()
@@ -255,6 +237,7 @@ void Rtabmap::pushNewState(State newState, const ParametersMap & parameters)
 
 void Rtabmap::init(const ParametersMap & parameters, bool deleteMemory)
 {
+	UScopeMutex s(&_threadMutex);
 	if(this->isRunning())
 	{
 		pushNewState(kStateChangingParameters, parameters);
@@ -267,6 +250,12 @@ void Rtabmap::init(const ParametersMap & parameters, bool deleteMemory)
 	{
 		if(deleteMemory)
 		{
+			// Set the working directory before
+			ParametersMap::const_iterator iter;
+			if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
+			{
+				this->setWorkingDirectory(iter->second.c_str());
+			}
 			this->resetMemory(true);
 		}
 
@@ -277,6 +266,7 @@ void Rtabmap::init(const ParametersMap & parameters, bool deleteMemory)
 
 void Rtabmap::init(const std::string & configFile, bool deleteMemory)
 {
+	UScopeMutex s(&_threadMutex);
 	// fill ctrl struct with values from the configuration file
 	ParametersMap param;// = Parameters::defaultParameters;
 
@@ -430,8 +420,9 @@ int Rtabmap::getRetrievedId() const
 	return _retrievedId;
 }
 
-int Rtabmap::getLastLocationId() const
+int Rtabmap::getLastLocationId()
 {
+	UScopeMutex s(&_threadMutex);
 	int id = 0;
 	if(_memory && _memory->getLastSignature())
 	{
@@ -440,8 +431,9 @@ int Rtabmap::getLastLocationId() const
 	return id;
 }
 
-std::list<int> Rtabmap::getWM() const
+std::list<int> Rtabmap::getWM()
 {
+	UScopeMutex s(&_threadMutex);
 	std::list<int> mem;
 	if(_memory)
 	{
@@ -451,8 +443,9 @@ std::list<int> Rtabmap::getWM() const
 	return mem;
 }
 
-int Rtabmap::getWMSize() const
+int Rtabmap::getWMSize()
 {
+	UScopeMutex s(&_threadMutex);
 	if(_memory)
 	{
 		return _memory->getWorkingMem().size()-1; // remove virtual place
@@ -460,8 +453,9 @@ int Rtabmap::getWMSize() const
 	return 0;
 }
 
-std::map<int, int> Rtabmap::getWeights() const
+std::map<int, int> Rtabmap::getWeights()
 {
+	UScopeMutex s(&_threadMutex);
 	std::map<int, int> weights;
 	if(_memory)
 	{
@@ -471,8 +465,9 @@ std::map<int, int> Rtabmap::getWeights() const
 	return weights;
 }
 
-std::set<int> Rtabmap::getSTM() const
+std::set<int> Rtabmap::getSTM()
 {
+	UScopeMutex s(&_threadMutex);
 	std::set<int> mem;
 	if(_memory)
 	{
@@ -481,8 +476,9 @@ std::set<int> Rtabmap::getSTM() const
 	return mem;
 }
 
-int Rtabmap::getSTMSize() const
+int Rtabmap::getSTMSize()
 {
+	UScopeMutex s(&_threadMutex);
 	if(_memory)
 	{
 		return _memory->getStMem().size();
@@ -490,8 +486,9 @@ int Rtabmap::getSTMSize() const
 	return 0;
 }
 
-int Rtabmap::getTotalMemSize() const
+int Rtabmap::getTotalMemSize()
 {
+	UScopeMutex s(&_threadMutex);
 	ULOGGER_DEBUG("");
 	int memSize = 0;
 	if(_memory)
@@ -534,6 +531,8 @@ void Rtabmap::mainLoopKill()
 
 void Rtabmap::mainLoop()
 {
+	UScopeMutex s(&_threadMutex);
+
 	State state = kStateDetecting;
 	ParametersMap parameters;
 
@@ -598,16 +597,19 @@ void Rtabmap::mainLoop()
 	}
 }
 
-void Rtabmap::generateGraph(const std::string & path) const
+void Rtabmap::generateGraph(const std::string & path)
 {
-	if(!this->isRunning() && _memory)
+	UScopeMutex s(&_threadMutex);
+	if(_memory)
 	{
+		_memory->joinTrashThread(); // make sure the trash is flushed
 		_memory->generateGraph(path);
 	}
 }
 
 void Rtabmap::resetMemory(bool dbOverwritten)
 {
+	UScopeMutex s(&_threadMutex);
 	if(_memory)
 	{
 		UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
@@ -1366,7 +1368,7 @@ void Rtabmap::addImage(const Image & image)
 	_imageMutex.lock();
 	{
 		_imageBuffer.push_back(image);
-		while(_imageBufferMaxSize > 0 && _imageBuffer.size() >= (unsigned int)_imageBufferMaxSize)
+		while(_imageBufferMaxSize > 0 && _imageBuffer.size() > (unsigned int)_imageBufferMaxSize)
 		{
 			ULOGGER_WARN("Data buffer is full, the oldest data is removed to add the new one.");
 			_imageBuffer.pop_front();
@@ -1431,6 +1433,7 @@ void Rtabmap::setDataBufferSize(int size)
 
 void Rtabmap::setWorkingDirectory(std::string path)
 {
+	UScopeMutex scopeMutex(&_threadMutex);
 	if(path.size() && (path.at(path.size()-1) != '\\' || path.at(path.size()-1) != '/' ))
 	{
 		path += UDirectory::separator();
@@ -1465,11 +1468,13 @@ void Rtabmap::setWorkingDirectory(std::string path)
 
 void Rtabmap::process(const cv::Mat & image)
 {
+	UScopeMutex s(&_threadMutex);
 	this->process(Image(image));
 }
 
 void Rtabmap::process(const Image & image)
 {
+	UScopeMutex s(&_threadMutex);
 	if(!this->isRunning())
 	{
 		this->addImage(image);
@@ -1477,16 +1482,23 @@ void Rtabmap::process(const Image & image)
 	}
 	else
 	{
-		UERROR("The core thread is running!");
+		UERROR("The rtabmap thread is running! Don't start rtabmap thread if you want to use this method directly.");
 	}
 }
 
 void Rtabmap::dumpData()
 {
+	UScopeMutex s(&_threadMutex);
 	if(_memory)
 	{
 		_memory->dumpMemory(this->getWorkingDir());
 	}
+}
+
+void Rtabmap::updateParameters(const ParametersMap & parameters)
+{
+	UScopeMutex s(&_threadMutex);
+	this->parseParameters(parameters);
 }
 
 
@@ -1560,8 +1572,9 @@ void Rtabmap::adjustLikelihood(std::map<int, float> & likelihood) const
 	UDEBUG("mean=%f, stdDev=%f, max=%f, maxId=%d, time=%fs", mean, stdDev, max, maxId, time);
 }
 
-void Rtabmap::dumpPrediction() const
+void Rtabmap::dumpPrediction()
 {
+	UScopeMutex s(&_threadMutex);
 	if(_memory && _bayesFilter)
 	{
 		const std::set<int> & wm = _memory->getWorkingMem();

@@ -85,18 +85,24 @@ public:
 	const std::string & getWorkingDir() const {return _wDir;}
 	int getLoopClosureId() const;
 	int getRetrievedId() const;
-	int getLastLocationId() const;
+	int getLastLocationId();
 	float getLcHypValue() const {return _lastLcHypothesisValue;}
-	std::list<int> getWM() const; // working memory
-	std::set<int> getSTM() const; // short-term memory
-	int getWMSize() const; // working memory size
-	int getSTMSize() const; // short-term memory size
-	std::map<int, int> getWeights() const;
-	int getTotalMemSize() const;
+	std::list<int> getWM(); // working memory
+	std::set<int> getSTM(); // short-term memory
+	int getWMSize(); // working memory size
+	int getSTMSize(); // short-term memory size
+	std::map<int, int> getWeights();
+	int getTotalMemSize();
 	double getLastProcessTime() const {return _lastProcessTime;};
 
 	void setTimeThreshold(float maxTimeAllowed); // in ms
-	void generateGraph(const std::string & path) const;
+
+	void generateGraph(const std::string & path);
+	void resetMemory(bool dbOverwritten = false);
+	void dumpPrediction();
+	void dumpData();
+	void updateParameters(const ParametersMap & parameters);
+	void setWorkingDirectory(std::string path);
 
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
 	std::pair<int, float> selectHypothesis(const std::map<int, float> & posterior,
@@ -110,18 +116,14 @@ private:
 	virtual void mainLoopKill();
 	virtual void mainLoopBegin();
 	void process();
-	void resetMemory(bool dbOverwritten = false);
 	void addImage(const Image & image);
 	void getImage(Image & image);
 	void setupLogFiles(bool overwrite = false);
 	void flushStatisticLogs();
 	void releaseAllStrategies();
 	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
-	void dumpPrediction() const;
-	void dumpData();
 	void generateLocalGraph(const std::string & path, int id, int margin);
 	void parseParameters(const ParametersMap & parameters);
-	void setWorkingDirectory(std::string path);
 	void setDataBufferSize(int size);
 
 private:
@@ -153,6 +155,8 @@ private:
 	std::list<Image> _imageBuffer;
 	UMutex _imageMutex;
 	USemaphore _imageAdded;
+
+	UMutex _threadMutex;
 
 	// Abstract classes containing all loop closure
 	// strategies for a type of signature or configuration.

@@ -46,6 +46,7 @@ int main(int argc, char* argv[])
 	mainWindow->showNormal();
 
 	Rtabmap * rtabmap = new Rtabmap();
+	rtabmap->setWorkingDirectory(mainWindow->getWorkingDirectory().toStdString());
 	rtabmap->start(); // start it not initialized... will be initialized by event from the gui
 	UEventsManager::addHandler(rtabmap);
 
