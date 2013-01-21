@@ -142,7 +142,7 @@ protected:
 
 private:
 	void copyData(const Signature * from, Signature * to);
-	Signature * createSignature(int id,
+	Signature * createSignature(
 			const Image & image,
 			bool keepRawData=false);
 

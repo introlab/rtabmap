@@ -386,7 +386,7 @@ bool Memory::update(const Image & image, std::map<std::string, float> & stats)
 	//============================================================
 	// Create a signature with the image received.
 	//============================================================
-	Signature * signature = this->createSignature(this->getNextId(), image, this->isRawDataKept());
+	Signature * signature = this->createSignature(image, this->isRawDataKept());
 	if (signature == 0)
 	{
 		UERROR("Failed to create a signature");
@@ -2094,7 +2094,7 @@ private:
 	VWDictionary * _vwp;
 };
 
-Signature * Memory::createSignature(int id, const Image & image, bool keepRawData)
+Signature * Memory::createSignature(const Image & image, bool keepRawData)
 {
 	PreUpdateThread preUpdateThread(_vwd);
 
@@ -2102,6 +2102,11 @@ Signature * Memory::createSignature(int id, const Image & image, bool keepRawDat
 	timer.start();
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat descriptors;
+	int id = image.id();
+	if(!id)
+	{
+		id = this->getNextId();
+	}
 
 	int treeSize= _workingMem.size() + _stMem.size();
 	int nbCommonWords = 0;

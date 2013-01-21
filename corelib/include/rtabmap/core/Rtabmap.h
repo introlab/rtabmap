@@ -73,7 +73,7 @@ public:
 	Rtabmap();
 	virtual ~Rtabmap();
 
-	void process(const cv::Mat & image); // for convenience
+	void process(const cv::Mat & image, int id=0); // for convenience, an id is automatically generated if id=0
 	void process(const Image & image); // for convenience
 
 	void init(const ParametersMap & param, bool deleteMemory = true);
@@ -94,6 +94,7 @@ public:
 	std::map<int, int> getWeights();
 	int getTotalMemSize();
 	double getLastProcessTime() const {return _lastProcessTime;};
+	std::multimap<int, cv::KeyPoint> getWords(int nodeId);
 
 	void setTimeThreshold(float maxTimeAllowed); // in ms
 

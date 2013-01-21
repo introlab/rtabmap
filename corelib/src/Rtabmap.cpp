@@ -502,6 +502,23 @@ int Rtabmap::getTotalMemSize()
 	return memSize;
 }
 
+std::multimap<int, cv::KeyPoint> Rtabmap::getWords(int nodeId)
+{
+	UScopeMutex s(&_threadMutex);
+	std::multimap<int, cv::KeyPoint> words;
+
+	if(_memory)
+	{
+		const Signature * s = _memory->getSignature(nodeId);
+		if(s)
+		{
+			words = s->getWords();
+		}
+	}
+
+	return words;
+}
+
 void Rtabmap::clearBufferedSensors()
 {
 	_imageMutex.lock();
@@ -1466,10 +1483,10 @@ void Rtabmap::setWorkingDirectory(std::string path)
 	}
 }
 
-void Rtabmap::process(const cv::Mat & image)
+void Rtabmap::process(const cv::Mat & image, int id)
 {
 	UScopeMutex s(&_threadMutex);
-	this->process(Image(image));
+	this->process(Image(image, id));
 }
 
 void Rtabmap::process(const Image & image)

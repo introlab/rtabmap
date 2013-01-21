@@ -435,7 +435,7 @@ int main(int argc, char * argv[])
 		cv::Mat descriptors;
 		std::vector<cv::KeyPoint> keypoints;
 		cv::Mat cvImg = camera->takeImage(descriptors, keypoints);
-		Image img(cvImg, descriptors, keypoints);
+		Image img(cvImg, 0, descriptors, keypoints);
 		int i=0;
 		double maxIterationTime = 0.0;
 		int maxIterationTimeId = 0;
@@ -452,7 +452,7 @@ int main(int argc, char * argv[])
 				++countLoopDetected;
 			}
 			cvImg = camera->takeImage(descriptors, keypoints);
-			img = Image(cvImg, descriptors, keypoints);
+			img = Image(cvImg, 0, descriptors, keypoints);
 			if(++count % 100 == 0)
 			{
 				printf(" count = %d, loop closures = %d, max time (at %d) = %fs\n",

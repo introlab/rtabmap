@@ -59,7 +59,7 @@ public:
 	CameraEvent(const cv::Mat & descriptors, const std::vector<cv::KeyPoint> & keypoints, const cv::Mat & image = cv::Mat(), int cameraId = 0) :
 		UEvent(kCodeFeatures),
 		_cameraId(cameraId),
-		_image(image, descriptors, keypoints)
+		_image(image, 0, descriptors, keypoints)
 	{
 	}
 	CameraEvent(int cameraId = 0) :
