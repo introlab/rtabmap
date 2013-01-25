@@ -71,18 +71,19 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	this->parseParameters(parameters);
 
 	UEventsManager::post(new RtabmapEventInit("Clearing memory..."));
+	DBDriver * tmpDriver = 0;
 	if(!_memoryChanged)
 	{
 		if(_dbDriver)
 		{
-			_dbDriver->closeConnection();
-			delete _dbDriver;
-			_dbDriver = 0;
+			tmpDriver = _dbDriver;
+			_dbDriver = 0; // HACK for the clear() below to think that there is no db
 		}
 	}
 	this->clear();
 	UEventsManager::post(new RtabmapEventInit("Clearing memory, done!"));
 
+	_dbDriver = tmpDriver;
 	if(_dbDriver)
 	{
 		UEventsManager::post(new RtabmapEventInit("Closing database connection..."));

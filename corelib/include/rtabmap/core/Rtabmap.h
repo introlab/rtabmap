@@ -95,6 +95,7 @@ public:
 	int getTotalMemSize();
 	double getLastProcessTime() const {return _lastProcessTime;};
 	std::multimap<int, cv::KeyPoint> getWords(int nodeId);
+	std::map<int, int> getNeighbors(int nodeId, int margin, bool lookInLTM = false);
 
 	void setTimeThreshold(float maxTimeAllowed); // in ms
 

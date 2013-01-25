@@ -519,6 +519,19 @@ std::multimap<int, cv::KeyPoint> Rtabmap::getWords(int nodeId)
 	return words;
 }
 
+std::map<int, int> Rtabmap::getNeighbors(int nodeId, int margin, bool lookInLTM)
+{
+	UScopeMutex s(&_threadMutex);
+	std::map<int, int> ids;
+
+	if(_memory)
+	{
+		ids = _memory->getNeighborsId(nodeId, margin, lookInLTM?-1:0);
+	}
+
+	return ids;
+}
+
 void Rtabmap::clearBufferedSensors()
 {
 	_imageMutex.lock();
