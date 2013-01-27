@@ -1106,6 +1106,7 @@ void DBDriverSqlite3::loadNeighborsQuery(int signatureId, std::set<int> & neighb
 
 		query << "SELECT to_id FROM Link "
 		      << "WHERE from_id = " << signatureId
+		      << " AND type = 0"
 			  << " ORDER BY to_id";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
@@ -1133,7 +1134,7 @@ void DBDriverSqlite3::loadNeighborsQuery(int signatureId, std::set<int> & neighb
 
 		if(neighbors.size() == 0)
 		{
-			UERROR("No neighbors loaded from signature %d", signatureId);
+			//UERROR("No neighbors loaded from signature %d", signatureId);
 		}
 	}
 }

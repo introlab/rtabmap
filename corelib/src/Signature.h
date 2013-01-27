@@ -59,6 +59,7 @@ public:
 	void setLoopClosureIds(const std::set<int> & loopClosureIds) {_loopClosureIds = loopClosureIds;_neighborsModified=true;}
 	void addLoopClosureId(int loopClosureId) {if(loopClosureId && _loopClosureIds.insert(loopClosureId).second)_neighborsModified=true;}
 	void removeLoopClosureId(int loopClosureId) {if(loopClosureId && _loopClosureIds.erase(loopClosureId))_neighborsModified=true;}
+	void removeChildLoopClosureId(int childLoopClosureId) {if(childLoopClosureId && _childLoopClosureIds.erase(childLoopClosureId))_neighborsModified=true;}
 	bool hasLoopClosureId(int loopClosureId) const {return _loopClosureIds.find(loopClosureId) != _loopClosureIds.end();}
 	void setChildLoopClosureIds(std::set<int> & childLoopClosureIds) {_childLoopClosureIds = childLoopClosureIds;_neighborsModified=true;}
 	void addChildLoopClosureId(int childLoopClosureId) {if(childLoopClosureId && _childLoopClosureIds.insert(childLoopClosureId).second)_neighborsModified=true;}

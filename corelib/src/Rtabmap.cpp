@@ -468,12 +468,11 @@ std::map<int, int> Rtabmap::getWeights()
 std::set<int> Rtabmap::getSTM()
 {
 	UScopeMutex s(&_threadMutex);
-	std::set<int> mem;
 	if(_memory)
 	{
-		mem = _memory->getStMem();
+		return _memory->getStMem();
 	}
-	return mem;
+	return std::set<int>();
 }
 
 int Rtabmap::getSTMSize()
@@ -489,47 +488,49 @@ int Rtabmap::getSTMSize()
 int Rtabmap::getTotalMemSize()
 {
 	UScopeMutex s(&_threadMutex);
-	ULOGGER_DEBUG("");
-	int memSize = 0;
 	if(_memory)
 	{
 		const Signature * s  =_memory->getLastSignature();
 		if(s)
 		{
-			memSize = s->id();
+			return s->id();
 		}
 	}
-	return memSize;
+	return 0;
 }
 
-std::multimap<int, cv::KeyPoint> Rtabmap::getWords(int nodeId)
+std::multimap<int, cv::KeyPoint> Rtabmap::getWords(int locationId)
 {
 	UScopeMutex s(&_threadMutex);
-	std::multimap<int, cv::KeyPoint> words;
-
 	if(_memory)
 	{
-		const Signature * s = _memory->getSignature(nodeId);
+		const Signature * s = _memory->getSignature(locationId);
 		if(s)
 		{
-			words = s->getWords();
+			return s->getWords();
 		}
 	}
-
-	return words;
+	return std::multimap<int, cv::KeyPoint>();
 }
 
 std::map<int, int> Rtabmap::getNeighbors(int nodeId, int margin, bool lookInLTM)
 {
 	UScopeMutex s(&_threadMutex);
-	std::map<int, int> ids;
-
 	if(_memory)
 	{
-		ids = _memory->getNeighborsId(nodeId, margin, lookInLTM?-1:0);
+		return _memory->getNeighborsId(nodeId, margin, lookInLTM?-1:0);
 	}
+	return std::map<int, int>();
+}
 
-	return ids;
+bool Rtabmap::isInSTM(int locationId)
+{
+	UScopeMutex s(&_threadMutex);
+	if(_memory)
+	{
+		return _memory->isInSTM(locationId);
+	}
+	return false;
 }
 
 void Rtabmap::clearBufferedSensors()

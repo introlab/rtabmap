@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>4</number>
+                <number>7</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1864,9 +1864,9 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                      </widget>
                     </item>
                     <item row="2" column="1">
-                     <widget class="QLabel" name="label_17">
+                     <widget class="QLabel" name="label_119">
                       <property name="text">
-                       <string>Only compare to the last signature in STM, otherwise all signatures in STM are compared.</string>
+                       <string>On merging, keep old data. The similarity threshold may be lower than updating to new data.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -1874,24 +1874,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                      </widget>
                     </item>
                     <item row="2" column="0">
-                     <widget class="QCheckBox" name="general_checkBox_similarityOnlyLast">
-                      <property name="text">
-                       <string/>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="1" column="1">
-                     <widget class="QLabel" name="label_119">
-                      <property name="text">
-                       <string>The data of the new location is cleared, then old location's data is copied back to new one. The similarity threshold may be also lower than without data copied.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="1" column="0">
-                     <widget class="QCheckBox" name="general_checkBox_dataMergedOnRehearsal">
+                     <widget class="QCheckBox" name="general_checkBox_RehearsalOldDataKept">
                       <property name="text">
                        <string/>
                       </property>
@@ -1904,6 +1887,40 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       </property>
                       <property name="value">
                        <double>0.200000000000000</double>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="1">
+                     <widget class="QLabel" name="label_19">
+                      <property name="text">
+                       <string>On merging, update to new id.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="0">
+                     <widget class="QCheckBox" name="general_checkBox_RehearsalIdUpdatedToNewOne">
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QCheckBox" name="general_checkBox_similarityOnlyLast">
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QLabel" name="label_17">
+                      <property name="text">
+                       <string>Only compare to the last signature in STM, otherwise all signatures in STM are compared.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
                       </property>
                      </widget>
                     </item>

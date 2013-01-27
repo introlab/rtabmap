@@ -144,7 +144,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, STMSize, 		        unsigned int, 30); // Short-term memory size
 	RTABMAP_PARAM(Mem, IncrementalMemory, 	    bool, true);
 	RTABMAP_PARAM(Mem, RecentWmRatio,           float, 0.2); // Ratio of locations after the last loop closure in WM that cannot be transferred
-	RTABMAP_PARAM(Mem, DataMergedOnRehearsal,   bool, true); // Merge data on rehearsal
+	RTABMAP_PARAM(Mem, RehearsalOldDataKept,    bool, true); // On merge, keep old data
+	RTABMAP_PARAM(Mem, RehearsalIdUpdatedToNewOne,   bool, true); // On merge, update to new id
 
 	// KeypointMemory (Keypoint-based)
 	RTABMAP_PARAM(Kp, PublishKeypoints,      bool, true); // Publishing keypoints

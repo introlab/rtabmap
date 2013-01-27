@@ -163,7 +163,8 @@ private:
 	bool _incrementalMemory;
 	int _maxStMemSize;
 	float _recentWmRatio;
-	bool _dataMergedOnRehearsal;
+	bool _oldDataKeptOnRehearsal;
+	bool _idUpdatedToNewOneRehearsal;
 
 	int _idCount;
 	Signature * _lastSignature;

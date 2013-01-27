@@ -47,7 +47,8 @@ Memory::Memory(const ParametersMap & parameters) :
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
 	_maxStMemSize(Parameters::defaultMemSTMSize()),
 	_recentWmRatio(Parameters::defaultMemRecentWmRatio()),
-	_dataMergedOnRehearsal(Parameters::defaultMemDataMergedOnRehearsal()),
+	_oldDataKeptOnRehearsal(Parameters::defaultMemRehearsalOldDataKept()),
+	_idUpdatedToNewOneRehearsal(Parameters::defaultMemRehearsalIdUpdatedToNewOne()),
 	_idCount(kIdStart),
 	_lastSignature(0),
 	_lastLoopClosureId(0),
@@ -259,13 +260,24 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	{
 		this->setRecentWmRatio(std::atof((*iter).second.c_str()));
 	}
-	if((iter=parameters.find(Parameters::kMemDataMergedOnRehearsal())) != parameters.end())
+	if((iter=parameters.find(Parameters::kMemRehearsalOldDataKept())) != parameters.end())
 	{
-		_dataMergedOnRehearsal = uStr2Bool((*iter).second.c_str());
+		_oldDataKeptOnRehearsal = uStr2Bool((*iter).second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kMemRehearsalIdUpdatedToNewOne())) != parameters.end())
+	{
+		_idUpdatedToNewOneRehearsal = uStr2Bool((*iter).second.c_str());
 	}
 	if(_dbDriver)
 	{
 		_dbDriver->parseParameters(parameters);
+	}
+
+	// verification...
+	if(!_idUpdatedToNewOneRehearsal && !_rehearsalOnlyWithLast)
+	{
+		UWARN("if _idUpdatedToNewOneRehearsal=false, _rehearsalOnlyWithLast must be true");
+		_rehearsalOnlyWithLast = true;
 	}
 
 
@@ -1348,13 +1360,10 @@ void Memory::moveToTrash(Signature * s)
 				// neighbor to s
 				if(n)
 				{
-					std::set<int>::const_iterator jter = n->getNeighbors().find(s->id());
-					if(jter != n->getNeighbors().end())
-					{
-						n->removeNeighbor(s->id());
-					}
+					n->removeNeighbor(s->id());
 				}
 			}
+			s->removeNeighbors();
 		}
 
 		if(	_dbDriver &&
@@ -1390,85 +1399,77 @@ bool Memory::addLoopClosureLink(int oldId, int newId)
 			return true;
 		}
 
-		// Set loop closure link
-		oldS->addLoopClosureId(newS->id());
 		UDEBUG("Add loop closure link between %d and %d", oldS->id(), newS->id());
 
 		bool onRehearsal = this->isInSTM(oldS->id());
 		if(!onRehearsal)
 		{
 			// During loop closure in WM
+			oldS->addLoopClosureId(newS->id());
 			newS->addChildLoopClosureId(oldS->id());
 			_lastLoopClosureId = newS->id();
 			newS->setWeight(newS->getWeight() + oldS->getWeight());
 			oldS->setWeight(0);
-			return true;
+			return true; // RETURN
 		}
-		else
+
+		// During rehearsal in STM
+		if(_idUpdatedToNewOneRehearsal)
 		{
-			UDEBUG("On rehearsal");
-			// During rehearsal in STM...
-			// Here we merge the new location with the old one,
-			// redirecting all neighbor links to new location.
+			// update weight
+			newS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
+
+			oldS->addLoopClosureId(newS->id()); // to keep track of the merged location
+
 			if(_lastLoopClosureId == oldS->id())
 			{
 				_lastLoopClosureId = newS->id();
 			}
-
+		}
+		else
+		{
 			// update weight
-			newS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
+			oldS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
 
-			// redirect all baseIds from old id to new id
-			for(std::set<int>::iterator iter=_stMem.begin(); iter!=_stMem.end(); ++iter)
+			newS->addLoopClosureId(oldS->id()); // to keep track of the merged location
+
+			if(_lastSignature == newS)
 			{
-				Signature * s = _getSignature(*iter);
-				if(s)
-				{
-					s->changeNeighborIds(oldS->id(), newS->id());
-				}
-				else if(!s)
-				{
-					UERROR("Location %d is not in RAM?!?", *iter);
-				}
+				_lastSignature = oldS;
 			}
 		}
 
-		UDEBUG("");
-		// redirect neighbor links
-		std::set<int> neighbors = oldS->getNeighbors();
-		for(std::set<int>::const_iterator iter = neighbors.begin(); iter!=neighbors.end(); ++iter)
+		if(_idUpdatedToNewOneRehearsal)
 		{
-			int link = *iter;
-			if(link != newS->id() && link != oldS->id())
+			// redirect neighbor links
+			std::set<int> neighbors = oldS->getNeighbors();
+			for(std::set<int>::const_iterator iter = neighbors.begin(); iter!=neighbors.end(); ++iter)
 			{
-				Signature * s = this->_getSignature(link);
-				if(s)
+				int link = *iter;
+				if(link != newS->id() && link != oldS->id())
 				{
-					// modify neighbor "from"
-					s->changeNeighborIds(oldS->id(), newS->id());
-
-					if(!newS->hasNeighbor(link))
+					Signature * s = this->_getSignature(link);
+					if(s)
 					{
-						newS->addNeighbor(link);
+						// modify neighbor "from"
+						s->changeNeighborIds(oldS->id(), newS->id());
+
+						if(!newS->hasNeighbor(link))
+						{
+							newS->addNeighbor(link);
+						}
+					}
+					else
+					{
+						UERROR("Didn't find neighbor %d of %d in RAM...", link, oldS->id());
 					}
 				}
-				else
-				{
-					UERROR("Didn't find neighbor %d of %d in RAM...", link, oldS->id());
-				}
 			}
+			oldS->removeNeighbors();
 
-			if(link == newS->id())
-			{
-				oldS->removeNeighbor(link);
-			}
-		}
-
-		if(onRehearsal)
-		{
 			// redirect child loop closure links
-			const std::set<int> & childIds = oldS->getChildLoopClosureIds();
-			for(std::set<int>::const_iterator iter = childIds.begin(); iter!=childIds.end(); ++iter)
+			std::set<int> childIds = oldS->getChildLoopClosureIds();
+			for(std::set<int>::iterator iter = childIds.begin(); iter!=childIds.end(); ++iter)
 			{
 				if(*iter == newS->id())
 				{
@@ -1486,17 +1487,26 @@ bool Memory::addLoopClosureLink(int oldId, int newId)
 				{
 					UERROR("A location (%d, child of %d) in WM/STM cannot be transferred if its loop closure id is in STM", *iter, oldS->id());
 				}
+				oldS->removeChildLoopClosureId(*iter);
 			}
-
-			if(_dataMergedOnRehearsal)
-			{
-				this->copyData(oldS, newS);
-				// Set old image to new signature
-			}
-
-			// remove old location
-			moveToTrash(oldS);
 		}
+
+		//remove mutual links
+		oldS->removeNeighbor(newId);
+		newS->removeNeighbor(oldId);
+
+		if(_oldDataKeptOnRehearsal && _idUpdatedToNewOneRehearsal)
+		{
+			// Set old image to new signature
+			this->copyData(oldS, newS);
+		}
+		else if(!_oldDataKeptOnRehearsal && !_idUpdatedToNewOneRehearsal)
+		{
+			this->copyData(newS, oldS);
+		}
+
+		// remove location
+		moveToTrash(_idUpdatedToNewOneRehearsal?oldS:newS);
 
 		return true;
 	}
@@ -1755,7 +1765,14 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 					 if(id!=*iter)
 					 {
 						 int weightNeighbor = 0;
-						 _dbDriver->getWeight(*iter, weightNeighbor);
+						 if(_signatures.find(*iter) == _signatures.end())
+						 {
+							 _dbDriver->getWeight(*iter, weightNeighbor);
+						 }
+						 else
+						 {
+							 weightNeighbor = _signatures.find(*iter)->second->getWeight();
+						 }
 						 UDEBUG("Add neighbor link from %d to %d", id, *iter);
 						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\"\n",
 								 id,
@@ -1777,6 +1794,7 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 					 {
 						 weightNeighbor = _signatures.find(*iter)->second->getWeight();
 					 }
+					 UDEBUG("Add loop link from %d to %d", id, *iter);
 					 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
 							 id,
 							 weight,
@@ -1795,6 +1813,7 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 					 {
 						 weightNeighbor = _signatures.find(*iter)->second->getWeight();
 					 }
+					 UDEBUG("Add child link from %d to %d", id, *iter);
 					 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
 							 id,
 							 weight,
@@ -1850,6 +1869,7 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 						 {
 							 weightNeighbor = _signatures.find(*iter)->second->getWeight();
 						 }
+						 UDEBUG("Add loop link from %d to %d", id, *iter);
 						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
 								 id,
 								 weight,
@@ -1871,6 +1891,7 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 						 {
 							 weightNeighbor = _signatures.find(*iter)->second->getWeight();
 						 }
+						 UDEBUG("Add child link from %d to %d", id, *iter);
 						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
 								 id,
 								 weight,

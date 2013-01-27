@@ -155,7 +155,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_similarityThreshold->setObjectName(Parameters::kMemRehearsalSimilarity().c_str());
 	_ui->general_checkBox_incrementalMemory->setObjectName(Parameters::kMemIncrementalMemory().c_str());
 	_ui->general_doubleSpinBox_recentWmRatio->setObjectName(Parameters::kMemRecentWmRatio().c_str());
-	_ui->general_checkBox_dataMergedOnRehearsal->setObjectName(Parameters::kMemDataMergedOnRehearsal().c_str());
+	_ui->general_checkBox_RehearsalOldDataKept->setObjectName(Parameters::kMemRehearsalOldDataKept().c_str());
+	_ui->general_checkBox_RehearsalIdUpdatedToNewOne->setObjectName(Parameters::kMemRehearsalIdUpdatedToNewOne().c_str());
 
 	// Database
 	_ui->general_checkBox_imagesCompressed->setObjectName(Parameters::kDbImagesCompressed().c_str());
