@@ -31,6 +31,9 @@ void showUsage()
 
 int main(int argc, char * argv[])
 {
+//	ULogger::setType(ULogger::kTypeConsole);
+	//ULogger::setLevel(ULogger::kDebug);
+
 	if(argc < 2)
 	{
 		showUsage();

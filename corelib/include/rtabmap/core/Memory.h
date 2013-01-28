@@ -75,6 +75,7 @@ public:
 			bool incrementMarginOnLoop = false,
 			bool ignoreLoopIds = false,
 			double * dbAccessTime = 0) const;
+	void deleteLastLocation();
 
 	//getters
 	const std::set<int> & getWorkingMem() const {return _workingMem;}

@@ -97,6 +97,7 @@ public:
 	std::multimap<int, cv::KeyPoint> getWords(int locationId);
 	std::map<int, int> getNeighbors(int nodeId, int margin, bool lookInLTM = false);
 	bool isInSTM(int locationId);
+	Statistics getStatistics();
 
 	void setTimeThreshold(float maxTimeAllowed); // in ms
 
@@ -106,6 +107,7 @@ public:
 	void dumpData();
 	void updateParameters(const ParametersMap & parameters);
 	void setWorkingDirectory(std::string path);
+	void deleteLastLocation();
 
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
 	std::pair<int, float> selectHypothesis(const std::map<int, float> & posterior,
@@ -172,6 +174,8 @@ private:
 	FILE* _foutInt;
 	std::list<std::string> _bufferedLogsF;
 	std::list<std::string> _bufferedLogsI;
+
+	Statistics statistics_;
 
 	std::string _wDir;
 };

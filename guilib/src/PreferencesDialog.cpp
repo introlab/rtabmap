@@ -401,7 +401,7 @@ void PreferencesDialog::setupSignals()
 void PreferencesDialog::clicked(const QModelIndex &index)
  {
 	QStandardItem * item = _indexModel->itemFromIndex(index);
-	if(item)
+	if(item && item->isEnabled())
 	{
 		int index = item->data().toInt();
 		if(_ui->radioButton_advanced->isChecked() && index >= 2)
@@ -575,7 +575,32 @@ void PreferencesDialog::readSettings(const QString & filePath)
 	{
 		_parameters.clear();
 		_obsoletePanels = kPanelDummy;
-		this->reject();
+
+		// only keep GUI settings
+		QStandardItem * parentItem = _indexModel->invisibleRootItem();
+		if(parentItem)
+		{
+			for(int i=1; i<parentItem->rowCount(); ++i)
+			{
+				parentItem->child(i)->setEnabled(false);
+			}
+		}
+		_ui->radioButton_basic->setEnabled(false);
+		_ui->radioButton_advanced->setEnabled(false);
+	}
+	else
+	{
+		// enable settings
+		QStandardItem * parentItem = _indexModel->invisibleRootItem();
+		if(parentItem)
+		{
+			for(int i=0; i<parentItem->rowCount(); ++i)
+			{
+				parentItem->child(i)->setEnabled(true);
+			}
+		}
+		_ui->radioButton_basic->setEnabled(true);
+		_ui->radioButton_advanced->setEnabled(true);
 	}
 }
 

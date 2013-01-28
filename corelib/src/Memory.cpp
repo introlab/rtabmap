@@ -1384,6 +1384,38 @@ const Signature * Memory::getLastSignature() const
 	return _lastSignature;
 }
 
+void Memory::deleteLastLocation()
+{
+	Signature * lastSignature = _lastSignature;
+	if(_lastSignature)
+	{
+		UDEBUG("deleting last location %d", lastSignature->id());
+		const std::set<int> & neighbors = lastSignature->getNeighbors();
+		for(std::set<int>::iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
+		{
+			Signature * s = _getSignature(*iter);
+			if(s)
+			{
+				s->removeNeighbor(lastSignature->id());
+				_lastSignature = s;
+			}
+		}
+
+		const std::set<int> & child = lastSignature->getChildLoopClosureIds();
+		for(std::set<int>::iterator iter=child.begin(); iter!=child.end(); ++iter)
+		{
+			Signature * s = _getSignature(*iter);
+			if(s)
+			{
+				s->removeLoopClosureId(lastSignature->id());
+				s->setWeight(s->getWeight() + lastSignature->getWeight());
+			}
+		}
+
+		this->moveToTrash(lastSignature);
+	}
+}
+
 bool Memory::addLoopClosureLink(int oldId, int newId)
 {
 	ULOGGER_INFO("old=%d, new=%d", oldId, newId);

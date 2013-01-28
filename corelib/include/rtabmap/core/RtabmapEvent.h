@@ -149,16 +149,16 @@ private:
 class RtabmapEvent : public UEvent
 {
 public:
-	RtabmapEvent(Statistics ** stats) :
+	RtabmapEvent(const Statistics & stats) :
 		UEvent(0),
-		_stats(*stats) {}
+		_stats(stats) {}
 
-	virtual ~RtabmapEvent() {if(_stats) delete _stats;}
-	const Statistics & getStats() const {return *_stats;}
+	virtual ~RtabmapEvent() {}
+	const Statistics & getStats() const {return _stats;}
 	virtual std::string getClassName() const {return std::string("RtabmapEvent");}
 
 private:
-	Statistics * _stats;
+	Statistics _stats;
 };
 
 class RtabmapEventCmd : public UEvent

@@ -533,6 +533,12 @@ bool Rtabmap::isInSTM(int locationId)
 	return false;
 }
 
+Statistics Rtabmap::getStatistics()
+{
+	UScopeMutex s(&_threadMutex);
+	return statistics_;
+}
+
 void Rtabmap::clearBufferedSensors()
 {
 	_imageMutex.lock();
@@ -1146,60 +1152,59 @@ void Rtabmap::process()
 	// Posterior is empty if a bad signature is detected
 	float vpHypothesis = posterior.size()?posterior.at(Memory::kIdVirtual):0.0f;
 
-	// only prepare statistics if required or when there is a loop closure
-	Statistics * stat = 0;
+	// prepare statistics
+	statistics_ = Statistics(); // reset
 	if(_lcHypothesisId || _publishStats)
 	{
 		ULOGGER_INFO("sending stats...");
-		stat = new Statistics();
-		stat->setRefImageId(refId);
+		statistics_.setRefImageId(refId);
 		if(_lcHypothesisId != Memory::kIdInvalid)
 		{
-			stat->setLoopClosureId(_lcHypothesisId);
+			statistics_.setLoopClosureId(_lcHypothesisId);
 			ULOGGER_INFO("Loop closure detected! With id=%d", _lcHypothesisId);
 		}
 		if(_publishStats && refId != Memory::kIdInvalid)
 		{
 			ULOGGER_INFO("send all stats...");
-			stat->setExtended(1);
+			statistics_.setExtended(1);
 
-			stat->addStatistic(Statistics::kLoopHighest_hypothesis_id(), hypothesis.first);
-			stat->addStatistic(Statistics::kLoopHighest_hypothesis_value(), hypothesis.second);
-			stat->addStatistic(Statistics::kHypothesis_reactivated(), lcHypothesisReactivated);
-			stat->addStatistic(Statistics::kLoopVp_hypothesis(), vpHypothesis);
-			stat->addStatistic(Statistics::kLoopReactivateId(), _retrievedId);
-			stat->addStatistic(Statistics::kLoopHypothesis_ratio(), hypothesisRatio);
+			statistics_.addStatistic(Statistics::kLoopHighest_hypothesis_id(), hypothesis.first);
+			statistics_.addStatistic(Statistics::kLoopHighest_hypothesis_value(), hypothesis.second);
+			statistics_.addStatistic(Statistics::kHypothesis_reactivated(), lcHypothesisReactivated);
+			statistics_.addStatistic(Statistics::kLoopVp_hypothesis(), vpHypothesis);
+			statistics_.addStatistic(Statistics::kLoopReactivateId(), _retrievedId);
+			statistics_.addStatistic(Statistics::kLoopHypothesis_ratio(), hypothesisRatio);
 
-			stat->addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMem().size());
-			stat->addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMem().size());
-			stat->addStatistic(Statistics::kMemorySignatures_retrieved(), (float)signaturesRetrieved.size());
-			stat->addStatistic(Statistics::kMemoryImages_buffered(), (float)_imageBuffer.size());
+			statistics_.addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMem().size());
+			statistics_.addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMem().size());
+			statistics_.addStatistic(Statistics::kMemorySignatures_retrieved(), (float)signaturesRetrieved.size());
+			statistics_.addStatistic(Statistics::kMemoryImages_buffered(), (float)_imageBuffer.size());
 
 			// timing...
-			stat->addStatistic(Statistics::kTimingMemory_update(), timeMemoryUpdate*1000);
-			stat->addStatistic(Statistics::kTimingReactivation(), timeReactivations*1000);
-			stat->addStatistic(Statistics::kTimingAdd_loop_closure_link(), timeAddLoopClosureLink*1000);
-			stat->addStatistic(Statistics::kTimingLikelihood_computation(), timeLikelihoodCalculation*1000);
-			stat->addStatistic(Statistics::kTimingPosterior_computation(), timePosteriorCalculation*1000);
-			stat->addStatistic(Statistics::kTimingHypotheses_creation(), timeHypothesesCreation*1000);
-			stat->addStatistic(Statistics::kTimingHypotheses_validation(), timeHypothesesValidation*1000);
-			stat->addStatistic(Statistics::kTimingCleaning_neighbors(), timeCleaningNeighbors*1000);
+			statistics_.addStatistic(Statistics::kTimingMemory_update(), timeMemoryUpdate*1000);
+			statistics_.addStatistic(Statistics::kTimingReactivation(), timeReactivations*1000);
+			statistics_.addStatistic(Statistics::kTimingAdd_loop_closure_link(), timeAddLoopClosureLink*1000);
+			statistics_.addStatistic(Statistics::kTimingLikelihood_computation(), timeLikelihoodCalculation*1000);
+			statistics_.addStatistic(Statistics::kTimingPosterior_computation(), timePosteriorCalculation*1000);
+			statistics_.addStatistic(Statistics::kTimingHypotheses_creation(), timeHypothesesCreation*1000);
+			statistics_.addStatistic(Statistics::kTimingHypotheses_validation(), timeHypothesesValidation*1000);
+			statistics_.addStatistic(Statistics::kTimingCleaning_neighbors(), timeCleaningNeighbors*1000);
 
 			// memory update timings
 			for(std::map<std::string, float>::iterator iter = memUpdateStats.begin(); iter!=memUpdateStats.end(); ++iter)
 			{
-				stat->addStatistic(iter->first, iter->second);
+				statistics_.addStatistic(iter->first, iter->second);
 			}
 
 			// Surf specific parameters
-			stat->addStatistic(Statistics::kKeypointDictionary_size(), dictionarySize);
+			statistics_.addStatistic(Statistics::kKeypointDictionary_size(), dictionarySize);
 
 			//Epipolar geometry constraint
-			stat->addStatistic(Statistics::kLoopRejectedHypothesis(), rejectedHypothesis?1.0f:0);
+			statistics_.addStatistic(Statistics::kLoopRejectedHypothesis(), rejectedHypothesis?1.0f:0);
 
 			if(_publishImage)
 			{
-				stat->setRefImage(image.image()); // raw data
+				statistics_.setRefImage(image.image()); // raw data
 				if(sLoop)
 				{
 					UTimer tmpTimer;
@@ -1209,33 +1214,33 @@ void Rtabmap::process()
 					{
 						UWARN("getting image time = %fs", tmpTimer.ticks());
 					}
-					stat->setLoopImage(im);
+					statistics_.setLoopImage(im);
 				}
 			}
 
 			if(_publishLikelihood || _publishPdf)
 			{
 				// Child count by parent signature on the root of the memory ... for statistics
-				stat->setWeights(weights);
+				statistics_.setWeights(weights);
 				if(_publishPdf)
 				{
-					stat->setPosterior(posterior);
+					statistics_.setPosterior(posterior);
 				}
 				if(_publishLikelihood)
 				{
-					stat->setLikelihood(likelihood);
-					stat->setRawLikelihood(rawLikelihood);
+					statistics_.setLikelihood(likelihood);
+					statistics_.setRawLikelihood(rawLikelihood);
 				}
 			}
 
 			if(_publishKeypoints)
 			{
 				//Copy keypoints
-				stat->setRefWords(signature->getWords());
+				statistics_.setRefWords(signature->getWords());
 				if(sLoop)
 				{
 					//Copy keypoints
-					stat->setLoopWords(sLoop->getWords());
+					statistics_.setLoopWords(sLoop->getWords());
 				}
 			}
 		}
@@ -1280,21 +1285,18 @@ void Rtabmap::process()
 	//==============================================================
 	// Finalize statistics and log files
 	//==============================================================
-	if(stat)
+	if(_publishStats)
 	{
-		if(_publishStats)
-		{
-			stat->addStatistic(Statistics::kTimingStatistics_creation(), timeStatsCreation*1000);
-			stat->addStatistic(Statistics::kTimingTotal(), totalTime*1000);
-			stat->addStatistic(Statistics::kTimingForgetting(), timeRealTimeLimitReachedProcess*1000);
-			stat->addStatistic(Statistics::kTimingJoining_trash(), timeJoiningTrash*1000);
-			stat->addStatistic(Statistics::kTimingEmptying_trash(), timeEmptyingTrash*1000);
-			stat->addStatistic(Statistics::kTimingMemory_cleanup(), timeMemoryCleanup*1000);
-			stat->addStatistic(Statistics::kMemorySignatures_removed(), signaturesRemoved);
-		}
-		ULOGGER_DEBUG("posting stat event...");
-		this->post(new RtabmapEvent(&stat)); // the stat will be automatically deleted
+		statistics_.addStatistic(Statistics::kTimingStatistics_creation(), timeStatsCreation*1000);
+		statistics_.addStatistic(Statistics::kTimingTotal(), totalTime*1000);
+		statistics_.addStatistic(Statistics::kTimingForgetting(), timeRealTimeLimitReachedProcess*1000);
+		statistics_.addStatistic(Statistics::kTimingJoining_trash(), timeJoiningTrash*1000);
+		statistics_.addStatistic(Statistics::kTimingEmptying_trash(), timeEmptyingTrash*1000);
+		statistics_.addStatistic(Statistics::kTimingMemory_cleanup(), timeMemoryCleanup*1000);
+		statistics_.addStatistic(Statistics::kMemorySignatures_removed(), signaturesRemoved);
 	}
+	ULOGGER_DEBUG("posting statistics_ event...");
+	this->post(new RtabmapEvent(statistics_));
 
 	std::list<float> nonNulls;
 	float sumLikelihoods = 0.0f;
@@ -1494,6 +1496,15 @@ void Rtabmap::setWorkingDirectory(std::string path)
 	else
 	{
 		ULOGGER_ERROR("Directory \"%s\" doesn't exist!", path.c_str());
+	}
+}
+
+void Rtabmap::deleteLastLocation()
+{
+	UScopeMutex s(&_threadMutex);
+	if(_memory)
+	{
+		_memory->deleteLastLocation();
 	}
 }
 

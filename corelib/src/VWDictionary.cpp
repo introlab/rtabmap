@@ -50,6 +50,7 @@ VWDictionary::VWDictionary(const ParametersMap & parameters) :
 	_lastWordId(0),
 	_nn(0)
 {
+	this->setNNStrategy((NNStrategy)Parameters::defaultKpNNStrategy(), parameters);
 	this->parseParameters(parameters);
 }
 
@@ -103,7 +104,9 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 	{
 		nnStrategy = (NNStrategy)std::atoi((*iter).second.c_str());
 	}
+
 	NNStrategy currentNNStrategy = this->nnStrategy();
+
 	if(!_nn || ( nnStrategy!=kNNUndef && (nnStrategy != currentNNStrategy) ) )
 	{
 		this->setNNStrategy(nnStrategy, parameters);
