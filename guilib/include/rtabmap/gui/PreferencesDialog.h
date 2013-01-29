@@ -68,12 +68,10 @@ public:
 	};
 
 public:
-	static QString getIniFilePath();
-
-public:
 	PreferencesDialog(QWidget * parent = 0);
 	virtual ~PreferencesDialog();
 
+	virtual QString getIniFilePath();
 	void init();
 
 	void saveWindowGeometry(const QString & windowName, const QWidget * window);
