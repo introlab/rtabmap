@@ -86,7 +86,7 @@ public:
 	int getLoopClosureId() const;
 	int getRetrievedId() const;
 	int getLastLocationId();
-	float getLcHypValue() const {return _lastLcHypothesisValue;}
+	float getLcHypValue() const {return _lcHypothesisValue;}
 	std::list<int> getWM(); // working memory
 	std::set<int> getSTM(); // short-term memory
 	int getWMSize(); // working memory size
@@ -108,6 +108,7 @@ public:
 	void updateParameters(const ParametersMap & parameters);
 	void setWorkingDirectory(std::string path);
 	void deleteLastLocation();
+	void rejectLastLoopClosure();
 
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
 	std::pair<int, float> selectHypothesis(const std::map<int, float> & posterior,
@@ -148,9 +149,8 @@ private:
 	bool _statisticLogsBufferedInRAM;
 
 	int _lcHypothesisId;
+	float _lcHypothesisValue;
 	int _retrievedId;
-	float _lastLcHypothesisValue;
-	int _lastLoopClosureId;
 	double _lastProcessTime;
 
 	UMutex _stateMutex;

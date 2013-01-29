@@ -1391,7 +1391,7 @@ void Memory::deleteLastLocation()
 	{
 		UDEBUG("deleting last location %d", lastSignature->id());
 		const std::set<int> & neighbors = lastSignature->getNeighbors();
-		for(std::set<int>::iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
+		for(std::set<int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
 		{
 			Signature * s = _getSignature(*iter);
 			if(s)
@@ -1402,7 +1402,7 @@ void Memory::deleteLastLocation()
 		}
 
 		const std::set<int> & child = lastSignature->getChildLoopClosureIds();
-		for(std::set<int>::iterator iter=child.begin(); iter!=child.end(); ++iter)
+		for(std::set<int>::const_iterator iter=child.begin(); iter!=child.end(); ++iter)
 		{
 			Signature * s = _getSignature(*iter);
 			if(s)
@@ -1411,8 +1411,44 @@ void Memory::deleteLastLocation()
 				s->setWeight(s->getWeight() + lastSignature->getWeight());
 			}
 		}
+		lastSignature->setWeight(0);
 
 		this->moveToTrash(lastSignature);
+	}
+}
+
+void Memory::rejectLastLoopClosure()
+{
+	if(_lastSignature && _savedLoopClosureInfo.size())
+	{
+		UDEBUG("removing loop closure from location %d", _lastSignature->id());
+		UASSERT(_savedLoopClosureInfo.size() == 3);
+		// format _savedLoopClosureInfo[]
+		// 0-previous last loop closure id
+		// 1-parent loop closure id + weight
+		// 2-child loop closure id + weight
+
+		if(_savedLoopClosureInfo[1].first == _lastSignature->id())
+		{
+			std::set<int> child = _lastSignature->getChildLoopClosureIds();
+			for(std::set<int>::iterator iter=child.begin(); iter!=child.end(); ++iter)
+			{
+				if(*iter == _savedLoopClosureInfo[2].first)
+				{
+					Signature * s = _getSignature(*iter);
+					if(s)
+					{
+						s->removeLoopClosureId(_lastSignature->id());
+						s->setWeight(_savedLoopClosureInfo[2].second);
+					}
+					_lastSignature->removeChildLoopClosureId(*iter);
+					_lastSignature->setWeight(_savedLoopClosureInfo[1].second);
+					break;
+				}
+			}
+			_lastLoopClosureId = _savedLoopClosureInfo.begin()->first;
+		}
+		_savedLoopClosureInfo.clear();
 	}
 }
 
@@ -1439,10 +1475,23 @@ bool Memory::addLoopClosureLink(int oldId, int newId)
 			// During loop closure in WM
 			oldS->addLoopClosureId(newS->id());
 			newS->addChildLoopClosureId(oldS->id());
+
+			//save stat to be used if it is rejected after (see rejectLastLoopClosure())
+			_savedLoopClosureInfo.clear();
+			_savedLoopClosureInfo.push_back(std::pair<int, int>(_lastLoopClosureId, 0));
+			_savedLoopClosureInfo.push_back(std::pair<int, int>(newS->id(), newS->getWeight()));
+			_savedLoopClosureInfo.push_back(std::pair<int, int>(oldS->id(), oldS->getWeight()));
+
 			_lastLoopClosureId = newS->id();
 			newS->setWeight(newS->getWeight() + oldS->getWeight());
 			oldS->setWeight(0);
 			return true; // RETURN
+		}
+
+		//update loop closure info if the merged location had a loop closure...
+		if(_savedLoopClosureInfo.size() == 3 && _savedLoopClosureInfo[1].first == oldS->id())
+		{
+			_savedLoopClosureInfo.clear();
 		}
 
 		// During rehearsal in STM

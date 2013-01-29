@@ -71,9 +71,8 @@ Rtabmap::Rtabmap() :
 	_likelihoodNullValuesIgnored(Parameters::defaultRtabmapLikelihoodNullValuesIgnored()),
 	_statisticLogsBufferedInRAM(Parameters::defaultRtabmapStatisticLogsBufferedInRAM()),
 	_lcHypothesisId(0),
+	_lcHypothesisValue(0),
 	_retrievedId(0),
-	_lastLcHypothesisValue(0),
-	_lastLoopClosureId(0),
 	_lastProcessTime(0.0),
 	_epipolarGeometry(0),
 	_bayesFilter(0),
@@ -665,7 +664,9 @@ void Rtabmap::resetMemory(bool dbOverwritten)
 	}
 	this->clearBufferedSensors();
 	_retrievedId = 0;
-	_lastLcHypothesisValue = 0;
+	_lcHypothesisValue = 0;
+	_lcHypothesisId = 0;
+	_lastProcessTime = 0.0;
 	this->setupLogFiles(dbOverwritten);
 }
 
@@ -917,7 +918,7 @@ void Rtabmap::process()
 					// information (like the epipolar geometry or using the local map
 					// associated with the signature)
 					//============================================================
-					if(_lastLcHypothesisValue && hypothesis.second >= _loopRatio*_lastLcHypothesisValue &&
+					if(_lcHypothesisValue && hypothesis.second >= _loopRatio*_lcHypothesisValue &&
 					   (!_epipolarGeometry || _epipolarGeometry->check(signature, _memory->getSignature(hypothesis.first))))
 					{
 						_lcHypothesisId = hypothesis.first;
@@ -930,7 +931,7 @@ void Rtabmap::process()
 					timeHypothesesValidation = timer.ticks();
 					ULOGGER_INFO("timeHypothesesValidation=%fs",timeHypothesesValidation);
 				}
-				else if(hypothesis.second < _loopRatio*_lastLcHypothesisValue)
+				else if(hypothesis.second < _loopRatio*_lcHypothesisValue)
 				{
 					// Used for Precision-Recall computation.
 					// When analysing logs, it's convenient to know
@@ -944,8 +945,8 @@ void Rtabmap::process()
 				_retrievedId = hypothesis.first;
 
 				//for statistic...
-				hypothesisRatio = _lastLcHypothesisValue>0?hypothesis.second/_lastLcHypothesisValue:0;
-				_lastLcHypothesisValue = hypothesis.second;
+				hypothesisRatio = _lcHypothesisValue>0?hypothesis.second/_lcHypothesisValue:0;
+				_lcHypothesisValue = hypothesis.second;
 
 			}
 		} // if(_memory->getWorkingMemSize())
@@ -1338,7 +1339,7 @@ void Rtabmap::process()
 								timeHypothesesValidation,
 								timeRealTimeLimitReachedProcess,
 								timeStatsCreation,
-								_lastLcHypothesisValue,
+								_lcHypothesisValue,
 								0.0f,
 								maxLikelihood,
 								sumLikelihoods,
@@ -1505,6 +1506,25 @@ void Rtabmap::deleteLastLocation()
 	if(_memory)
 	{
 		_memory->deleteLastLocation();
+	}
+}
+
+void Rtabmap::rejectLastLoopClosure()
+{
+	UScopeMutex s(&_threadMutex);
+	UDEBUG("_lcHypothesisId=%d", _lcHypothesisId);
+	if(_lcHypothesisId)
+	{
+		_lcHypothesisId = 0;
+		if(_memory)
+		{
+			_memory->rejectLastLoopClosure();
+		}
+		if(uContains(statistics_.data(), rtabmap::Statistics::kLoopRejectedHypothesis()))
+		{
+			statistics_.addStatistic(rtabmap::Statistics::kLoopRejectedHypothesis(), 1.0f);
+		}
+		statistics_.setLoopClosureId(0);
 	}
 }
 

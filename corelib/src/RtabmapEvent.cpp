@@ -18,6 +18,7 @@
  */
 
 #include "rtabmap/core/RtabmapEvent.h"
+#include <utilite/UStl.h>
 
 namespace rtabmap {
 std::map<std::string, float> Statistics::_defaultData;
@@ -44,7 +45,7 @@ Statistics::~Statistics()
 // name format = "Grp/Name/unit"
 void Statistics::addStatistic(const std::string & name, float value)
 {
-	_data.insert(std::pair<std::string, float>(name, value));
+	uInsert(_data, std::pair<std::string, float>(name, value));
 }
 
 void Statistics::setRefImage(const cv::Mat & image)

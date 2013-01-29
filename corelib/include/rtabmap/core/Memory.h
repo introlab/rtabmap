@@ -76,6 +76,7 @@ public:
 			bool ignoreLoopIds = false,
 			double * dbAccessTime = 0) const;
 	void deleteLastLocation();
+	void rejectLastLoopClosure();
 
 	//getters
 	const std::set<int> & getWorkingMem() const {return _workingMem;}
@@ -172,6 +173,7 @@ private:
 	int _lastLoopClosureId;
 	bool _memoryChanged; // False by default, become true when Memory::update() is called.
 	int _signaturesAdded;
+	std::vector<std::pair<int, int> > _savedLoopClosureInfo; // size 3 or 0
 
 	std::map<int, Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
 	std::set<int> _stMem; // id
