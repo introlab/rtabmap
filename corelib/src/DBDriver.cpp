@@ -102,10 +102,6 @@ void DBDriver::mainLoop()
 	this->kill(); // Do it only once
 }
 
-void DBDriver::killCleanup()
-{
-}
-
 void DBDriver::beginTransaction() const
 {
 	_transactionMutex.lock();

@@ -137,7 +137,6 @@ private:
 
 	//thread stuff
 	virtual void mainLoop();
-	virtual void killCleanup();
 
 private:
 	UMutex _transactionMutex;
