@@ -68,6 +68,8 @@ Memory::Memory(const ParametersMap & parameters) :
 
 bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const ParametersMap & parameters)
 {
+	UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
+
 	ULOGGER_DEBUG("");
 	this->parseParameters(parameters);
 
@@ -188,6 +190,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	}
 	ULOGGER_DEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
 
+	UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
 	return success;
 }
 

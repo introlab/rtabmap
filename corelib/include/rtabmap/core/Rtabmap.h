@@ -22,14 +22,14 @@
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
-#include "utilite/UThreadNode.h"
-#include "utilite/UEventsHandler.h"
-#include "utilite/USemaphore.h"
-#include "utilite/UMutex.h"
-#include "utilite/UVariant.h"
-#include "rtabmap/core/RtabmapEvent.h"
+#include <utilite/USemaphore.h>
+#include <utilite/UMutex.h>
+#include <utilite/UVariant.h>
+
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/Image.h"
+#include "rtabmap/core/Statistics.h"
+
 #include <opencv2/core/core.hpp>
 #include <list>
 #include <stack>
@@ -42,26 +42,10 @@ class EpipolarGeometry;
 class Memory;
 class BayesFilter;
 
-class RTABMAP_EXP Rtabmap :
-	public UThreadNode,
-	public UEventsHandler
+class RTABMAP_EXP Rtabmap
 {
 public:
-	enum State {
-		kStateIdle,
-		kStateDetecting,
-		kStateReseting,
-		kStateChangingParameters,
-		kStateDumpingMemory,
-		kStateDumpingPrediction,
-		kStateGeneratingGraph,
-		kStateGeneratingLocalGraph,
-		kStateDeletingMemory,
-		kStateCleanSensorsBuffer
-	};
-
 	enum VhStrategy {kVhNone, kVhEpipolar, kVhUndef};
-
 	static const char * kDefaultDatabaseName;
 
 public:
@@ -78,34 +62,33 @@ public:
 
 	void init(const ParametersMap & param, bool deleteMemory = true);
 	void init(const std::string & configFile = "", bool deleteMemory = true);
-	void clearBufferedSensors();
 
 	void close();
 
 	const std::string & getWorkingDir() const {return _wDir;}
 	int getLoopClosureId() const;
 	int getRetrievedId() const;
-	int getLastLocationId();
+	int getLastLocationId() const;
 	float getLcHypValue() const {return _lcHypothesisValue;}
-	std::list<int> getWM(); // working memory
-	std::set<int> getSTM(); // short-term memory
-	int getWMSize(); // working memory size
-	int getSTMSize(); // short-term memory size
-	std::map<int, int> getWeights();
-	int getTotalMemSize();
+	std::list<int> getWM() const; // working memory
+	std::set<int> getSTM() const; // short-term memory
+	int getWMSize() const; // working memory size
+	int getSTMSize() const; // short-term memory size
+	std::map<int, int> getWeights() const;
+	int getTotalMemSize() const;
 	double getLastProcessTime() const {return _lastProcessTime;};
-	std::multimap<int, cv::KeyPoint> getWords(int locationId);
-	std::map<int, int> getNeighbors(int nodeId, int margin, bool lookInLTM = false);
-	bool isInSTM(int locationId);
-	Statistics getStatistics();
+	std::multimap<int, cv::KeyPoint> getWords(int locationId) const;
+	std::map<int, int> getNeighbors(int nodeId, int margin, bool lookInLTM = false) const;
+	bool isInSTM(int locationId) const;
+	const Statistics & getStatistics() const;
 
 	void setTimeThreshold(float maxTimeAllowed); // in ms
 
-	void generateGraph(const std::string & path);
+	void generateGraph(const std::string & path, int id=0, int margin=5);
 	void resetMemory(bool dbOverwritten = false);
-	void dumpPrediction();
-	void dumpData();
-	void updateParameters(const ParametersMap & parameters);
+	void dumpPrediction() const;
+	void dumpData() const;
+	void parseParameters(const ParametersMap & parameters);
 	void setWorkingDirectory(std::string path);
 	void deleteLastLocation();
 	void rejectLastLoopClosure();
@@ -114,23 +97,9 @@ public:
 	std::pair<int, float> selectHypothesis(const std::map<int, float> & posterior,
 											const std::map<int, float> & likelihood) const;
 
-protected:
-	virtual void handleEvent(UEvent * anEvent);
-
 private:
-	virtual void mainLoop();
-	virtual void mainLoopKill();
-	virtual void mainLoopBegin();
-	void process();
-	void addImage(const Image & image);
-	void getImage(Image & image);
 	void setupLogFiles(bool overwrite = false);
 	void flushStatisticLogs();
-	void releaseAllStrategies();
-	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
-	void generateLocalGraph(const std::string & path, int id, int margin);
-	void parseParameters(const ParametersMap & parameters);
-	void setDataBufferSize(int size);
 
 private:
 	// Modifiable parameters
@@ -141,7 +110,6 @@ private:
 	bool _publishKeypoints;
 	float _maxTimeAllowed; // in ms
 	unsigned int _maxMemoryAllowed; // signatures count in WM
-	int _imageBufferMaxSize;
 	float _loopThr;
 	float _loopRatio;
 	unsigned int _maxRetrieved;
@@ -152,16 +120,6 @@ private:
 	float _lcHypothesisValue;
 	int _retrievedId;
 	double _lastProcessTime;
-
-	UMutex _stateMutex;
-	std::stack<State> _state;
-	std::stack<ParametersMap> _stateParam;
-
-	std::list<Image> _imageBuffer;
-	UMutex _imageMutex;
-	USemaphore _imageAdded;
-
-	UMutex _threadMutex;
 
 	// Abstract classes containing all loop closure
 	// strategies for a type of signature or configuration.

@@ -1,7 +1,9 @@
 
 SET(SRC_FILES
 	Rtabmap.cpp
-	RtabmapEvent.cpp
+	RtabmapThread.cpp
+	
+	Statistics.cpp
 	
 	Memory.cpp
 	

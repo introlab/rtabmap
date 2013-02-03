@@ -20,6 +20,7 @@
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/Camera.h"
 #include <opencv2/core/core.hpp>
+#include <stdio.h>
 
 void showUsage()
 {

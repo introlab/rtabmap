@@ -17,7 +17,7 @@
  * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "rtabmap/core/RtabmapEvent.h"
+#include "rtabmap/core/Statistics.h"
 #include <utilite/UStl.h>
 
 namespace rtabmap {

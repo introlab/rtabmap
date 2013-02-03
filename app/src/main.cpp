@@ -20,7 +20,7 @@
 #include <QtGui/QApplication>
 #include <QtCore/QDir>
 #include "utilite/UEventsManager.h"
-#include "rtabmap/core/Rtabmap.h"
+#include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/gui/MainWindow.h"
 #include <QtGui/QMessageBox>
 #include "utilite/UObjDeletionThread.h"
@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
 	/* Start thread's task */
 	mainWindow->showNormal();
 
-	Rtabmap * rtabmap = new Rtabmap();
+	RtabmapThread * rtabmap = new RtabmapThread();
 	rtabmap->setWorkingDirectory(mainWindow->getWorkingDirectory().toStdString());
 	rtabmap->start(); // start it not initialized... will be initialized by event from the gui
 	UEventsManager::addHandler(rtabmap);
@@ -74,7 +74,7 @@ int main(int argc, char* argv[])
 	msg->setIconPixmap(QPixmap(":/images/RTAB-Map.ico"));
 	msg->setWindowIcon(QIcon(":/images/RTAB-Map.ico"));
 	msg->show();
-	UObjDeletionThread<Rtabmap> delThread(rtabmap);
+	UObjDeletionThread<RtabmapThread> delThread(rtabmap);
 	ObjDeletionHandler handler(delThread.id(), app, SLOT(quit()));
 	UEventsManager::addHandler(&handler);
 	delThread.startDeletion(1); // make sure that app-exec() is called before the deletion of the object

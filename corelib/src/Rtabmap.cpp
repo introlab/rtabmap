@@ -18,11 +18,9 @@
  */
 
 #include "rtabmap/core/Rtabmap.h"
-#include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/Version.h"
 #include "rtabmap/core/Features2d.h"
 
-#include "rtabmap/core/Camera.h"
 #include "Signature.h"
 
 #include "rtabmap/core/EpipolarGeometry.h"
@@ -30,7 +28,11 @@
 #include "rtabmap/core/Memory.h"
 #include "BayesFilter.h"
 
-#include <utilite/UtiLite.h>
+#include <utilite/ULogger.h>
+#include <utilite/UFile.h>
+#include <utilite/UTimer.h>
+#include <utilite/UConversion.h>
+#include <utilite/UMath.h>
 
 #include "SimpleIni.h"
 
@@ -64,7 +66,6 @@ Rtabmap::Rtabmap() :
 	_publishKeypoints(Parameters::defaultKpPublishKeypoints()),
 	_maxTimeAllowed(Parameters::defaultRtabmapTimeThr()), // 700 ms
 	_maxMemoryAllowed(Parameters::defaultRtabmapMemoryThr()), // 0=inf
-	_imageBufferMaxSize(Parameters::defaultRtabmapImageBufferSize()),
 	_loopThr(Parameters::defaultRtabmapLoopThr()),
 	_loopRatio(Parameters::defaultRtabmapLoopRatio()),
 	_maxRetrieved(Parameters::defaultRtabmapMaxRetrieved()),
@@ -200,9 +201,52 @@ void Rtabmap::flushStatisticLogs()
 	}
 }
 
-void Rtabmap::releaseAllStrategies()
+void Rtabmap::init(const ParametersMap & parameters, bool deleteMemory)
 {
-	ULOGGER_DEBUG("");
+	if(deleteMemory)
+	{
+		// Set the working directory before
+		ParametersMap::const_iterator iter;
+		if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
+		{
+			this->setWorkingDirectory(iter->second.c_str());
+		}
+		this->resetMemory(true);
+	}
+
+	this->parseParameters(parameters);
+
+	setupLogFiles();
+}
+
+void Rtabmap::init(const std::string & configFile, bool deleteMemory)
+{
+	// fill ctrl struct with values from the configuration file
+	ParametersMap param;// = Parameters::defaultParameters;
+
+	if(!configFile.empty())
+	{
+		ULOGGER_DEBUG("Read parameters from = %s", configFile.c_str());
+		this->readParameters(configFile, param);
+	}
+
+	this->init(param, deleteMemory);
+}
+
+void Rtabmap::close()
+{
+	flushStatisticLogs();
+	if(_foutFloat)
+	{
+		fclose(_foutFloat);
+		_foutFloat = 0;
+	}
+	if(_foutInt)
+	{
+		fclose(_foutInt);
+		_foutInt = 0;
+	}
+
 	if(_epipolarGeometry)
 	{
 		delete _epipolarGeometry;
@@ -218,86 +262,6 @@ void Rtabmap::releaseAllStrategies()
 		delete _bayesFilter;
 		_bayesFilter = 0;
 	}
-}
-
-void Rtabmap::pushNewState(State newState, const ParametersMap & parameters)
-{
-	ULOGGER_DEBUG("to %d", newState);
-
-	_stateMutex.lock();
-	{
-		_state.push(newState);
-		_stateParam.push(parameters);
-	}
-	_stateMutex.unlock();
-
-	_imageAdded.release();
-}
-
-void Rtabmap::init(const ParametersMap & parameters, bool deleteMemory)
-{
-	UScopeMutex s(&_threadMutex);
-	if(this->isRunning())
-	{
-		pushNewState(kStateChangingParameters, parameters);
-		if(deleteMemory)
-		{
-			pushNewState(kStateDeletingMemory);
-		}
-	}
-	else
-	{
-		if(deleteMemory)
-		{
-			// Set the working directory before
-			ParametersMap::const_iterator iter;
-			if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
-			{
-				this->setWorkingDirectory(iter->second.c_str());
-			}
-			this->resetMemory(true);
-		}
-
-		this->parseParameters(parameters);
-	}
-	setupLogFiles();
-}
-
-void Rtabmap::init(const std::string & configFile, bool deleteMemory)
-{
-	UScopeMutex s(&_threadMutex);
-	// fill ctrl struct with values from the configuration file
-	ParametersMap param;// = Parameters::defaultParameters;
-
-	if(!configFile.empty())
-	{
-		ULOGGER_DEBUG("Read parameters from = %s", configFile.c_str());
-		this->readParameters(configFile, param);
-	}
-
-	this->init(param, deleteMemory);
-}
-
-void Rtabmap::close()
-{
-	UEventsManager::removeHandler(this);
-
-	// Stop the thread first
-	join(true);
-
-	flushStatisticLogs();
-	if(_foutFloat)
-	{
-		fclose(_foutFloat);
-		_foutFloat = 0;
-	}
-	if(_foutInt)
-	{
-		fclose(_foutInt);
-		_foutInt = 0;
-	}
-
-	this->releaseAllStrategies();
 }
 
 void Rtabmap::parseParameters(const ParametersMap & parameters)
@@ -340,10 +304,6 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		_loopRatio = std::atof(iter->second.c_str());
 	}
-	if((iter=parameters.find(Parameters::kRtabmapImageBufferSize())) != parameters.end())
-	{
-		_imageBufferMaxSize = std::atoi(iter->second.c_str());
-	}
 	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
 	{
 		this->setWorkingDirectory(iter->second.c_str());
@@ -366,12 +326,8 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 
 	if(!_memory)
 	{
-		UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
-		UEventsManager::post(new RtabmapEventInit("Creating memory..."));
 		_memory = new Memory(parameters);
-		UEventsManager::post(new RtabmapEventInit("Creating memory, done!"));
 		_memory->init(_wDir + kDefaultDatabaseName, false, parameters);
-		UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
 	}
 	else
 	{
@@ -419,9 +375,8 @@ int Rtabmap::getRetrievedId() const
 	return _retrievedId;
 }
 
-int Rtabmap::getLastLocationId()
+int Rtabmap::getLastLocationId() const
 {
-	UScopeMutex s(&_threadMutex);
 	int id = 0;
 	if(_memory && _memory->getLastSignature())
 	{
@@ -430,9 +385,8 @@ int Rtabmap::getLastLocationId()
 	return id;
 }
 
-std::list<int> Rtabmap::getWM()
+std::list<int> Rtabmap::getWM() const
 {
-	UScopeMutex s(&_threadMutex);
 	std::list<int> mem;
 	if(_memory)
 	{
@@ -442,9 +396,8 @@ std::list<int> Rtabmap::getWM()
 	return mem;
 }
 
-int Rtabmap::getWMSize()
+int Rtabmap::getWMSize() const
 {
-	UScopeMutex s(&_threadMutex);
 	if(_memory)
 	{
 		return _memory->getWorkingMem().size()-1; // remove virtual place
@@ -452,9 +405,8 @@ int Rtabmap::getWMSize()
 	return 0;
 }
 
-std::map<int, int> Rtabmap::getWeights()
+std::map<int, int> Rtabmap::getWeights() const
 {
-	UScopeMutex s(&_threadMutex);
 	std::map<int, int> weights;
 	if(_memory)
 	{
@@ -464,9 +416,8 @@ std::map<int, int> Rtabmap::getWeights()
 	return weights;
 }
 
-std::set<int> Rtabmap::getSTM()
+std::set<int> Rtabmap::getSTM() const
 {
-	UScopeMutex s(&_threadMutex);
 	if(_memory)
 	{
 		return _memory->getStMem();
@@ -474,9 +425,8 @@ std::set<int> Rtabmap::getSTM()
 	return std::set<int>();
 }
 
-int Rtabmap::getSTMSize()
+int Rtabmap::getSTMSize() const
 {
-	UScopeMutex s(&_threadMutex);
 	if(_memory)
 	{
 		return _memory->getStMem().size();
@@ -484,9 +434,8 @@ int Rtabmap::getSTMSize()
 	return 0;
 }
 
-int Rtabmap::getTotalMemSize()
+int Rtabmap::getTotalMemSize() const
 {
-	UScopeMutex s(&_threadMutex);
 	if(_memory)
 	{
 		const Signature * s  =_memory->getLastSignature();
@@ -498,9 +447,8 @@ int Rtabmap::getTotalMemSize()
 	return 0;
 }
 
-std::multimap<int, cv::KeyPoint> Rtabmap::getWords(int locationId)
+std::multimap<int, cv::KeyPoint> Rtabmap::getWords(int locationId) const
 {
-	UScopeMutex s(&_threadMutex);
 	if(_memory)
 	{
 		const Signature * s = _memory->getSignature(locationId);
@@ -512,9 +460,8 @@ std::multimap<int, cv::KeyPoint> Rtabmap::getWords(int locationId)
 	return std::multimap<int, cv::KeyPoint>();
 }
 
-std::map<int, int> Rtabmap::getNeighbors(int nodeId, int margin, bool lookInLTM)
+std::map<int, int> Rtabmap::getNeighbors(int nodeId, int margin, bool lookInLTM) const
 {
-	UScopeMutex s(&_threadMutex);
 	if(_memory)
 	{
 		return _memory->getNeighborsId(nodeId, margin, lookInLTM?-1:0);
@@ -522,9 +469,8 @@ std::map<int, int> Rtabmap::getNeighbors(int nodeId, int margin, bool lookInLTM)
 	return std::map<int, int>();
 }
 
-bool Rtabmap::isInSTM(int locationId)
+bool Rtabmap::isInSTM(int locationId) const
 {
-	UScopeMutex s(&_threadMutex);
 	if(_memory)
 	{
 		return _memory->isInSTM(locationId);
@@ -532,125 +478,48 @@ bool Rtabmap::isInSTM(int locationId)
 	return false;
 }
 
-Statistics Rtabmap::getStatistics()
+const Statistics & Rtabmap::getStatistics() const
 {
-	UScopeMutex s(&_threadMutex);
 	return statistics_;
 }
 
-void Rtabmap::clearBufferedSensors()
+void Rtabmap::generateGraph(const std::string & path, int id, int margin)
 {
-	_imageMutex.lock();
-	{
-		_imageBuffer.clear();
-	}
-	_imageMutex.unlock();
-}
-
-
-void Rtabmap::mainLoopBegin()
-{
-	if(!_memory || !_bayesFilter)
-	{
-		ULOGGER_DEBUG("Rtabmap thread started without all strategies defined...");
-		//this->killSafely();
-	}
-}
-
-void Rtabmap::mainLoopKill()
-{
-	this->clearBufferedSensors();
-
-	// this will post the newData semaphore
-	_imageAdded.release();
-}
-
-void Rtabmap::mainLoop()
-{
-	UScopeMutex s(&_threadMutex);
-
-	State state = kStateDetecting;
-	ParametersMap parameters;
-
-	_stateMutex.lock();
-	{
-		if(!_state.empty() && !_stateParam.empty())
-		{
-			state = _state.top();
-			_state.pop();
-			parameters = _stateParam.top();
-			_stateParam.pop();
-		}
-	}
-	_stateMutex.unlock();
-
-	switch(state)
-	{
-	case kStateDetecting:
-		this->process();
-		break;
-	case kStateChangingParameters:
-		this->parseParameters(parameters);
-		break;
-	case kStateReseting:
-		this->resetMemory();
-		break;
-	case kStateDumpingMemory:
-		if(_memory)
-		{
-			_memory->dumpMemory(this->getWorkingDir());
-		}
-		break;
-	case kStateDumpingPrediction:
-		if(_memory && _bayesFilter)
-		{
-			this->dumpPrediction();
-		}
-		break;
-	case kStateGeneratingGraph:
-		if(_memory)
-		{
-			_memory->joinTrashThread(); // make sure the trash is flushed
-			_memory->generateGraph(parameters.at("path"));
-		}
-		break;
-	case kStateGeneratingLocalGraph:
-		if(_memory)
-		{
-			_memory->joinTrashThread(); // make sure the trash is flushed
-			this->generateLocalGraph(parameters.at("path"), atoi(parameters.at("id").c_str()), atoi(parameters.at("margin").c_str()));
-		}
-		break;
-	case kStateDeletingMemory:
-		this->resetMemory(true);
-		break;
-	case kStateCleanSensorsBuffer:
-		this->clearBufferedSensors();
-		break;
-	default:
-		UFATAL("Invalid state !?!?");
-		break;
-	}
-}
-
-void Rtabmap::generateGraph(const std::string & path)
-{
-	UScopeMutex s(&_threadMutex);
 	if(_memory)
 	{
 		_memory->joinTrashThread(); // make sure the trash is flushed
-		_memory->generateGraph(path);
+
+		if(id > 0)
+		{
+			std::map<int, int> ids = _memory->getNeighborsId(id, margin, -1, false);
+
+			if(ids.size() > 0)
+			{
+				ids.insert(std::pair<int,int>(id, 0));
+				std::set<int> idsSet;
+				for(std::map<int, int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
+				{
+					idsSet.insert(idsSet.end(), iter->first);
+				}
+				_memory->generateGraph(path, idsSet);
+			}
+			else
+			{
+				UERROR("No neighbors found for signature %d.", id);
+			}
+		}
+		else
+		{
+			_memory->generateGraph(path);
+		}
 	}
 }
 
 void Rtabmap::resetMemory(bool dbOverwritten)
 {
-	UScopeMutex s(&_threadMutex);
 	if(_memory)
 	{
-		UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
 		_memory->init(_wDir + kDefaultDatabaseName, dbOverwritten);
-		UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
 		if(_bayesFilter)
 		{
 			_bayesFilter->reset();
@@ -662,7 +531,6 @@ void Rtabmap::resetMemory(bool dbOverwritten)
 		// May be memory should be already created here, and use init above...
 		UFile::erase(_wDir + kDefaultDatabaseName);
 	}
-	this->clearBufferedSensors();
 	_retrievedId = 0;
 	_lcHypothesisValue = 0;
 	_lcHypothesisId = 0;
@@ -670,89 +538,10 @@ void Rtabmap::resetMemory(bool dbOverwritten)
 	this->setupLogFiles(dbOverwritten);
 }
 
-void Rtabmap::handleEvent(UEvent* event)
-{
-	if(this->isRunning() && event->getClassName().compare("CameraEvent") == 0)
-	{
-		CameraEvent * e = (CameraEvent*)event;
-		if(e->getCode() == CameraEvent::kCodeImage || e->getCode() == CameraEvent::kCodeFeatures)
-		{
-			this->addImage(e->image());
-		}
-	}
-	else if(event->getClassName().compare("RtabmapEventCmd") == 0)
-	{
-		RtabmapEventCmd * rtabmapEvent = (RtabmapEventCmd*)event;
-		RtabmapEventCmd::Cmd cmd = rtabmapEvent->getCmd();
-		if(cmd == RtabmapEventCmd::kCmdResetMemory)
-		{
-			if(_memory)
-			{
-				ULOGGER_DEBUG("CMD_RESET_MEMORY");
-				pushNewState(kStateReseting);
-			}
-		}
-		else if(cmd == RtabmapEventCmd::kCmdDumpMemory)
-		{
-			if(_memory)
-			{
-				ULOGGER_DEBUG("CMD_DUMP_MEMORY");
-				pushNewState(kStateDumpingMemory);
-			}
-		}
-		else if(cmd == RtabmapEventCmd::kCmdDumpPrediction)
-		{
-			if(_memory && _bayesFilter)
-			{
-				ULOGGER_DEBUG("CMD_DUMP_PREDICTION");
-				pushNewState(kStateDumpingPrediction);
-			}
-		}
-		else if(cmd == RtabmapEventCmd::kCmdGenerateGraph)
-		{
-			if(_memory && !rtabmapEvent->getStr().empty())
-			{
-				ULOGGER_DEBUG("CMD_GENERATE_GRAPH");
-				ParametersMap param;
-				param.insert(ParametersPair("path", rtabmapEvent->getStr()));
-				pushNewState(kStateGeneratingGraph, param);
-			}
-		}
-		else if(cmd == RtabmapEventCmd::kCmdGenerateLocalGraph)
-		{
-			std::list<std::string> values = uSplit(rtabmapEvent->getStr(), ';');
-			if(_memory && values.size() == 3)
-			{
-				ULOGGER_DEBUG("CMD_GENERATE_LOCAL_GRAPH");
-				ParametersMap param;
-				param.insert(ParametersPair("path", *values.begin()));
-				param.insert(ParametersPair("id", *(++values.begin())));
-				param.insert(ParametersPair("margin", *values.rbegin()));
-				pushNewState(kStateGeneratingLocalGraph, param);
-			}
-		}
-		else if(cmd == RtabmapEventCmd::kCmdDeleteMemory)
-		{
-			ULOGGER_DEBUG("CMD_DELETE_MEMORY");
-			pushNewState(kStateDeletingMemory);
-		}
-		else if(cmd == RtabmapEventCmd::kCmdCleanSensorsBuffer)
-		{
-			ULOGGER_DEBUG("CMD_CLEAN_SENSORS_BUFFER");
-			pushNewState(kStateCleanSensorsBuffer);
-		}
-	}
-	else if(event->getClassName().compare("ParamEvent") == 0)
-	{
-		ULOGGER_DEBUG("changing parameters");
-		pushNewState(kStateChangingParameters, ((ParamEvent*)event)->getParameters());
-	}
-}
-
 //============================================================
 // MAIN LOOP
 //============================================================
-void Rtabmap::process()
+void Rtabmap::process(const Image & image)
 {
 	UDEBUG("");
 
@@ -794,7 +583,6 @@ void Rtabmap::process()
 
 	const Signature * signature = 0;
 	const Signature * sLoop = 0;
-	Image image;
 
 	_lcHypothesisId = 0;
 
@@ -804,7 +592,6 @@ void Rtabmap::process()
 	// Wait for an image...
 	//============================================================
 	ULOGGER_INFO("getting data...");
-	this->getImage(image);
 	if(image.empty())
 	{
 		ULOGGER_INFO("image is null...");
@@ -859,11 +646,8 @@ void Rtabmap::process()
 			rawLikelihood = _memory->computeLikelihood(signature, signaturesToCompare);
 
 			// Adjust the likelihood (with mean and std dev)
-			adjustedLikelihood = rawLikelihood;
-			this->adjustLikelihood(adjustedLikelihood);
-
-			// Apply sensory attention
-			likelihood = adjustedLikelihood;
+			likelihood = rawLikelihood;
+			this->adjustLikelihood(likelihood);
 
 			timeLikelihoodCalculation = timer.ticks();
 			ULOGGER_INFO("timeLikelihoodCalculation=%fs",timeLikelihoodCalculation);
@@ -879,10 +663,7 @@ void Rtabmap::process()
 			timePosteriorCalculation = timer.ticks();
 			ULOGGER_INFO("timePosteriorCalculation=%fs",timePosteriorCalculation);
 
-			//for(std::map<int,float>::iterator iter=posterior.begin(); iter!=posterior.end(); ++iter)
-			//{
-			//	UDEBUG("posterior (%d) = %f", iter->first, iter->second);
-			//}
+
 			timer.start();
 			//============================================================
 			// Select the highest hypothesis
@@ -1179,7 +960,6 @@ void Rtabmap::process()
 			statistics_.addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMem().size());
 			statistics_.addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMem().size());
 			statistics_.addStatistic(Statistics::kMemorySignatures_retrieved(), (float)signaturesRetrieved.size());
-			statistics_.addStatistic(Statistics::kMemoryImages_buffered(), (float)_imageBuffer.size());
 
 			// timing...
 			statistics_.addStatistic(Statistics::kTimingMemory_update(), timeMemoryUpdate*1000);
@@ -1296,36 +1076,6 @@ void Rtabmap::process()
 		statistics_.addStatistic(Statistics::kTimingMemory_cleanup(), timeMemoryCleanup*1000);
 		statistics_.addStatistic(Statistics::kMemorySignatures_removed(), signaturesRemoved);
 	}
-	ULOGGER_DEBUG("posting statistics_ event...");
-	this->post(new RtabmapEvent(statistics_));
-
-	std::list<float> nonNulls;
-	float sumLikelihoods = 0.0f;
-	float maxLikelihood = 0.0f;
-	float mean = 0.0f;
-	float stddev = 0.0f;
-	std::map<int, float>::iterator iter=likelihood.begin();
-	if(iter->first == -1)
-	{
-		++iter;
-	}
-	for(; iter!=likelihood.end(); ++iter)
-	{
-		if(iter->second > 0)
-		{
-			sumLikelihoods += iter->second;
-			nonNulls.push_back(iter->second);
-		}
-		if(iter->second > maxLikelihood)
-		{
-			maxLikelihood = iter->second;
-		}
-	}
-	if(nonNulls.size())
-	{
-		mean = sumLikelihoods / float(nonNulls.size());
-		stddev = uStdDev(nonNulls, mean);
-	}
 
 	// Log info...
 	// TODO : use a specific class which will handle the RtabmapEvent
@@ -1341,10 +1091,10 @@ void Rtabmap::process()
 								timeStatsCreation,
 								_lcHypothesisValue,
 								0.0f,
-								maxLikelihood,
-								sumLikelihoods,
-								mean,
-								stddev,
+								0.0f,
+								0.0f,
+								0.0f,
+								0.0f,
 								vpHypothesis,
 								timeJoiningTrash,
 								rehearsalValue,
@@ -1366,7 +1116,7 @@ void Rtabmap::process()
 								lcHypothesisReactivated,
 								refUniqueWordsCount,
 								_retrievedId,
-								int(nonNulls.size()),
+								0.0f,
 								rehearsalMaxId,
 								rehearsalMaxId>0?1:0);
 	if(_statisticLogsBufferedInRAM)
@@ -1390,52 +1140,6 @@ void Rtabmap::process()
 
 }
 
-void Rtabmap::addImage(const Image & image)
-{
-	if(image.empty())
-	{
-		ULOGGER_ERROR("image empty !?");
-		return;
-	}
-
-	bool notify = true;
-	_imageMutex.lock();
-	{
-		_imageBuffer.push_back(image);
-		while(_imageBufferMaxSize > 0 && _imageBuffer.size() > (unsigned int)_imageBufferMaxSize)
-		{
-			ULOGGER_WARN("Data buffer is full, the oldest data is removed to add the new one.");
-			_imageBuffer.pop_front();
-			notify = false;
-		}
-	}
-	_imageMutex.unlock();
-
-	if(notify)
-	{
-		_imageAdded.release();
-	}
-}
-
-void Rtabmap::getImage(Image & image)
-{
-	ULOGGER_DEBUG("");
-
-	ULOGGER_INFO("waiting for data");
-	_imageAdded.acquire();
-	ULOGGER_INFO("wake-up");
-
-	_imageMutex.lock();
-	{
-		if(!_imageBuffer.empty())
-		{
-			image = _imageBuffer.front();
-			_imageBuffer.pop_front();
-		}
-	}
-	_imageMutex.unlock();
-}
-
 // SETTERS
 void Rtabmap::setTimeThreshold(float maxTimeAllowed)
 {
@@ -1452,22 +1156,8 @@ void Rtabmap::setTimeThreshold(float maxTimeAllowed)
 	}
 }
 
-void Rtabmap::setDataBufferSize(int size)
-{
-	if(size < 0)
-	{
-		ULOGGER_WARN("size < 0, then setting it to 0 (inf).");
-		_imageBufferMaxSize = 0;
-	}
-	else
-	{
-		_imageBufferMaxSize = size;
-	}
-}
-
 void Rtabmap::setWorkingDirectory(std::string path)
 {
-	UScopeMutex scopeMutex(&_threadMutex);
 	if(path.size() && (path.at(path.size()-1) != '\\' || path.at(path.size()-1) != '/' ))
 	{
 		path += UDirectory::separator();
@@ -1481,12 +1171,8 @@ void Rtabmap::setWorkingDirectory(std::string path)
 			_wDir = path;
 			if(_memory)
 			{
-				UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
 				_memory->init(_wDir + kDefaultDatabaseName);
-				UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
 				setupLogFiles();
-				//clear all buffered images
-				this->clearBufferedSensors();
 			}
 			else
 			{
@@ -1502,7 +1188,7 @@ void Rtabmap::setWorkingDirectory(std::string path)
 
 void Rtabmap::deleteLastLocation()
 {
-	UScopeMutex s(&_threadMutex);
+
 	if(_memory)
 	{
 		_memory->deleteLastLocation();
@@ -1511,7 +1197,6 @@ void Rtabmap::deleteLastLocation()
 
 void Rtabmap::rejectLastLoopClosure()
 {
-	UScopeMutex s(&_threadMutex);
 	UDEBUG("_lcHypothesisId=%d", _lcHypothesisId);
 	if(_lcHypothesisId)
 	{
@@ -1530,39 +1215,17 @@ void Rtabmap::rejectLastLoopClosure()
 
 void Rtabmap::process(const cv::Mat & image, int id)
 {
-	UScopeMutex s(&_threadMutex);
+
 	this->process(Image(image, id));
 }
 
-void Rtabmap::process(const Image & image)
+void Rtabmap::dumpData() const
 {
-	UScopeMutex s(&_threadMutex);
-	if(!this->isRunning())
-	{
-		this->addImage(image);
-		this->process();
-	}
-	else
-	{
-		UERROR("The rtabmap thread is running! Don't start rtabmap thread if you want to use this method directly.");
-	}
-}
-
-void Rtabmap::dumpData()
-{
-	UScopeMutex s(&_threadMutex);
 	if(_memory)
 	{
 		_memory->dumpMemory(this->getWorkingDir());
 	}
 }
-
-void Rtabmap::updateParameters(const ParametersMap & parameters)
-{
-	UScopeMutex s(&_threadMutex);
-	this->parseParameters(parameters);
-}
-
 
 void Rtabmap::adjustLikelihood(std::map<int, float> & likelihood) const
 {
@@ -1634,9 +1297,8 @@ void Rtabmap::adjustLikelihood(std::map<int, float> & likelihood) const
 	UDEBUG("mean=%f, stdDev=%f, max=%f, maxId=%d, time=%fs", mean, stdDev, max, maxId, time);
 }
 
-void Rtabmap::dumpPrediction()
+void Rtabmap::dumpPrediction() const
 {
-	UScopeMutex s(&_threadMutex);
 	if(_memory && _bayesFilter)
 	{
 		const std::set<int> & wm = _memory->getWorkingMem();
@@ -1666,31 +1328,6 @@ void Rtabmap::dumpPrediction()
 	else
 	{
 		UWARN("Memory and/or the Bayes filter are not created");
-	}
-}
-
-void Rtabmap::generateLocalGraph(const std::string & path, int id, int margin)
-{
-	if(_memory)
-	{
-		std::map<int, int> ids = _memory->getNeighborsId(id, margin, -1, false);
-
-		if(ids.size() > 0)
-		{
-			ids.insert(std::pair<int,int>(id, 0));
-			std::set<int> idsSet;
-			for(std::map<int, int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
-			{
-				idsSet.insert(idsSet.end(), iter->first);
-				UINFO("Node %d", iter->first);
-			}
-			UINFO("idsSet=%d", idsSet.size());
-			_memory->generateGraph(path, idsSet);
-		}
-		else
-		{
-			UERROR("No neighbors found for signature %d.", id);
-		}
 	}
 }
 
