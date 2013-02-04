@@ -13,7 +13,7 @@
 #include <utilite/UEventsManager.h>
 #include <utilite/UFile.h>
 
-#include "rtabmap/core/Camera.h"
+#include "rtabmap/core/CameraEvent.h"
 
 namespace rtabmap {
 

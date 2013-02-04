@@ -18,16 +18,27 @@
  */
 
 #include "rtabmap/gui/MainWindow.h"
+
 #include "ui_mainWindow.h"
+
 #include "rtabmap/core/Camera.h"
+#include "rtabmap/core/CameraThread.h"
+#include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/DBReader.h"
+#include "rtabmap/core/Parameters.h"
+#include "rtabmap/core/ParamEvent.h"
+
+#include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/qtipl.h"
 #include "rtabmap/gui/KeypointItem.h"
-#include "AboutDialog.h"
-#include <utilite/UtiLite.h>
+
+#include <utilite/UStl.h>
+#include <utilite/ULogger.h>
 #include <utilite/UPlot.h>
-#include "rtabmap/core/Parameters.h"
-#include "rtabmap/gui/ImageView.h"
+#include <utilite/UEventsManager.h>
+#include <utilite/UFile.h>
+
+#include "AboutDialog.h"
 #include "PdfPlot.h"
 #include "StatsToolBox.h"
 #include "DetailedProgressDialog.h"
@@ -1039,12 +1050,13 @@ void MainWindow::startDetection()
 	{
 		if(_preferencesDialog->isSourceImageUsed())
 		{
+			Camera * camera = 0;
 			// Change type of the camera...
 			//
 			int sourceType = _preferencesDialog->getSourceImageType();
 			if(sourceType == 1) //Images
 			{
-				_camera = new CameraImages(
+				camera = new CameraImages(
 						_preferencesDialog->getSourceImagesPath().append(QDir::separator()).toStdString(),
 						_preferencesDialog->getSourceImagesStartPos(),
 						_preferencesDialog->getSourceImagesRefreshDir(),
@@ -1057,7 +1069,7 @@ void MainWindow::startDetection()
 			}
 			else if(sourceType == 2)
 			{
-				_camera = new CameraVideo(
+				camera = new CameraVideo(
 						_preferencesDialog->getSourceVideoPath().toStdString(),
 						_preferencesDialog->getGeneralInputRate(),
 						_preferencesDialog->getGeneralAutoRestart(),
@@ -1067,7 +1079,7 @@ void MainWindow::startDetection()
 			}
 			else if(sourceType == 0)
 			{
-				_camera = new CameraVideo(
+				camera = new CameraVideo(
 						_preferencesDialog->getSourceUsbDeviceId(),
 						_preferencesDialog->getGeneralInputRate(),
 						_preferencesDialog->getGeneralAutoRestart(),
@@ -1087,22 +1099,23 @@ void MainWindow::startDetection()
 
 			if(_preferencesDialog->getGeneralCameraKeypoints())
 			{
-				_camera->setFeaturesExtracted(true);
-				_camera->parseParameters(_preferencesDialog->getAllParameters());
+				camera->setFeaturesExtracted(true);
+				camera->parseParameters(_preferencesDialog->getAllParameters());
 			}
 
-			if(!_camera->init())
+			if(!camera->init())
 			{
 				ULOGGER_WARN("init camera failed... ");
 				QMessageBox::warning(this,
 									   tr("RTAB-Map"),
 									   tr("Camera initialization failed..."));
 				emit stateChanged(kIdle);
-				delete _camera;
-				_camera = 0;
+				delete camera;
+				camera = 0;
 				return;
 			}
 
+			_camera = new CameraThread(camera);
 			UEventsManager::addHandler(_camera); //thread
 		}
 	}

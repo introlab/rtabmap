@@ -22,10 +22,6 @@
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
-#include <utilite/USemaphore.h>
-#include <utilite/UMutex.h>
-#include <utilite/UVariant.h>
-
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/Image.h"
 #include "rtabmap/core/Statistics.h"

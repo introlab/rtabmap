@@ -18,32 +18,33 @@
  */
 
 #include "rtabmap/core/Camera.h"
-#include "utilite/UEventsManager.h"
-#include "utilite/UConversion.h"
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/core/Features2d.h"
-#include "utilite/UStl.h"
-#include "utilite/UConversion.h"
-#include "utilite/UFile.h"
-#include "utilite/UDirectory.h"
-#include "utilite/UTimer.h"
+
+#include <utilite/UEventsManager.h>
+#include <utilite/UConversion.h>
+#include <utilite/UStl.h>
+#include <utilite/UConversion.h>
+#include <utilite/UFile.h>
+#include <utilite/UDirectory.h>
+#include <utilite/UTimer.h>
+
 #include <opencv2/imgproc/imgproc.hpp>
 
 namespace rtabmap
 {
 
 Camera::Camera(float imageRate,
-		bool autoRestart,
 		unsigned int imageWidth,
 		unsigned int imageHeight,
 		unsigned int framesDropped,
 		int id) :
 	_imageRate(imageRate),
 	_id(id),
-	_autoRestart(autoRestart),
 	_imageWidth(imageWidth),
 	_imageHeight(imageHeight),
 	_framesDropped(framesDropped),
+	_frameRateTimer(new UTimer()),
 	_featuresExtracted(false),
 	_keypointDetector(0),
 	_keypointDescriptor(0)
@@ -52,8 +53,6 @@ Camera::Camera(float imageRate,
 
 Camera::~Camera()
 {
-	UEventsManager::removeHandler(this);
-	join(true);
 	if(_keypointDetector)
 	{
 		delete _keypointDetector;
@@ -61,6 +60,10 @@ Camera::~Camera()
 	if(_keypointDescriptor)
 	{
 		delete _keypointDescriptor;
+	}
+	if(_frameRateTimer)
+	{
+		delete _frameRateTimer;
 	}
 }
 
@@ -78,22 +81,14 @@ void Camera::setFeaturesExtracted(bool featuresExtracted, KeypointDetector::Dete
 
 void Camera::setImageSize(unsigned int width, unsigned int height)
 {
-	_imageSizeMutex.lock();
-	{
-		_imageWidth = width;
-		_imageHeight = height;
-	}
-	_imageSizeMutex.unlock();
+	_imageWidth = width;
+	_imageHeight = height;
 }
 
 void Camera::getImageSize(unsigned int & width, unsigned int & height)
 {
-	_imageSizeMutex.lock();
-	{
-		width = _imageWidth;
-		height = _imageHeight;
-	}
-	_imageSizeMutex.unlock();
+	width = _imageWidth;
+	height = _imageHeight;
 }
 
 void Camera::parseParameters(const ParametersMap & parameters)
@@ -162,68 +157,6 @@ void Camera::parseParameters(const ParametersMap & parameters)
 	}
 }
 
-void Camera::mainLoopBegin()
-{
-	_frameRateTimer.start();
-}
-
-void Camera::mainLoop()
-{
-	State state = kStateCapturing;
-	ParametersMap parameters;
-
-	_stateMutex.lock();
-	{
-		if(!_state.empty() && !_stateParam.empty())
-		{
-			state = _state.top();
-			_state.pop();
-			parameters = _stateParam.top();
-			_stateParam.pop();
-		}
-	}
-	_stateMutex.unlock();
-
-	if(state == kStateCapturing)
-	{
-		process();
-	}
-	else if(state == kStateChangingParameters)
-	{
-		this->parseParameters(parameters);
-	}
-}
-
-void Camera::pushNewState(State newState, const ParametersMap & parameters)
-{
-	ULOGGER_DEBUG("to %d", newState);
-
-	_stateMutex.lock();
-	{
-		_state.push(newState);
-		_stateParam.push(parameters);
-	}
-	_stateMutex.unlock();
-}
-
-void Camera::handleEvent(UEvent* anEvent)
-{
-	if(anEvent->getClassName().compare("ParamEvent") == 0)
-	{
-		if(this->isIdle())
-		{
-			_stateMutex.lock();
-			this->parseParameters(((ParamEvent*)anEvent)->getParameters());
-			_stateMutex.unlock();
-		}
-		else
-		{
-			ULOGGER_DEBUG("changing parameters");
-			pushNewState(kStateChangingParameters, ((ParamEvent*)anEvent)->getParameters());
-		}
-	}
-}
-
 cv::Mat Camera::takeImage()
 {
 	cv::Mat descriptors;
@@ -242,103 +175,66 @@ cv::Mat Camera::takeImage(cv::Mat & descriptors, std::vector<cv::KeyPoint> & key
 	float imageRate = _imageRate;
 	if(imageRate>0)
 	{
-		int sleepTime = (1000.0f/imageRate - 1000.0f*_frameRateTimer.getElapsedTime());
+		int sleepTime = (1000.0f/imageRate - 1000.0f*_frameRateTimer->getElapsedTime());
 		if(sleepTime > 2)
 		{
 			uSleep(sleepTime-2);
 		}
 
 		// Add precision at the cost of a small overhead
-		while(_frameRateTimer.getElapsedTime() < 1.0/double(imageRate)-0.000001)
+		while(_frameRateTimer->getElapsedTime() < 1.0/double(imageRate)-0.000001)
 		{
 			//
 		}
 
-		double slept = _frameRateTimer.getElapsedTime();
-		_frameRateTimer.start();
+		double slept = _frameRateTimer->getElapsedTime();
+		_frameRateTimer->start();
 		UDEBUG("slept=%fs vs target=%fs", slept, 1.0/double(imageRate));
 	}
 
 	cv::Mat img;
-	if(!this->isKilled())
+	UTimer timer;
+	img = this->captureImage();
+	UDEBUG("Time capturing image = %fs", timer.ticks());
+
+	if(!img.empty())
 	{
-		UTimer timer;
-		img = this->captureImage();
-		UDEBUG("Time capturing image = %fs", timer.ticks());
-
-		if(!img.empty())
+		if(img.depth() != CV_8U)
 		{
-			if(img.depth() != CV_8U)
-			{
-				UWARN("Images should have already 8U depth !?");
-				cv::Mat tmp = img;
-				img = cv::Mat();
-				tmp.convertTo(img, CV_8U);
-				UDEBUG("Time converting image to 8U = %fs", timer.ticks());
-			}
+			UWARN("Images should have already 8U depth !?");
+			cv::Mat tmp = img;
+			img = cv::Mat();
+			tmp.convertTo(img, CV_8U);
+			UDEBUG("Time converting image to 8U = %fs", timer.ticks());
+		}
 
-			if(_featuresExtracted && _keypointDetector && _keypointDescriptor)
-			{
-				keypoints = _keypointDetector->generateKeypoints(img);
-				descriptors = _keypointDescriptor->generateDescriptors(img, keypoints);
-				UDEBUG("Post treatment time = %fs", timer.ticks());
-			}
+		if(_featuresExtracted && _keypointDetector && _keypointDescriptor)
+		{
+			keypoints = _keypointDetector->generateKeypoints(img);
+			descriptors = _keypointDescriptor->generateDescriptors(img, keypoints);
+			UDEBUG("Post treatment time = %fs", timer.ticks());
+		}
 
-			if(_framesDropped)
+		if(_framesDropped)
+		{
+			unsigned int count = 0;
+			while(count++ < _framesDropped)
 			{
-				unsigned int count = 0;
-				while(count++ < _framesDropped)
+				cv::Mat tmp = this->captureImage();
+				if(!tmp.empty())
 				{
-					cv::Mat tmp = this->captureImage();
-					if(!tmp.empty())
-					{
-						UDEBUG("frame dropped (%d/%d)", (int)count, (int)_framesDropped);
-					}
-					else
-					{
-						break;
-					}
+					UDEBUG("frame dropped (%d/%d)", (int)count, (int)_framesDropped);
 				}
-				UDEBUG("Frames dropped time = %fs", timer.ticks());
+				else
+				{
+					break;
+				}
 			}
+			UDEBUG("Frames dropped time = %fs", timer.ticks());
 		}
 	}
 	return img;
 }
-
-void Camera::process()
-{
-	UTimer timer;
-	ULOGGER_DEBUG("Camera::process()");
-	cv::Mat descriptors;
-	std::vector<cv::KeyPoint> keypoints;
-	cv::Mat img = this->takeImage(descriptors, keypoints);
-	if(!img.empty())
-	{
-		if(_featuresExtracted)
-		{
-			this->post(new CameraEvent(descriptors, keypoints, img, _id));
-		}
-		else
-		{
-			this->post(new CameraEvent(img, _id));
-		}
-	}
-	else if(!this->isKilled())
-	{
-		if(_autoRestart)
-		{
-			this->init();
-		}
-		else
-		{
-			ULOGGER_DEBUG("Camera::process() : no more images...");
-			this->kill();
-			this->post(new CameraEvent(_id));
-		}
-	}
-}
-
 
 /////////////////////////
 // CameraImages
@@ -347,57 +243,68 @@ CameraImages::CameraImages(const std::string & path,
 					 int startAt,
 					 bool refreshDir,
 					 float imageRate,
-					 bool autoRestart,
 					 unsigned int imageWidth,
 					 unsigned int imageHeight,
 					 unsigned int framesDropped,
 					 int id) :
-	Camera(imageRate, autoRestart, imageWidth, imageHeight, framesDropped, id),
+	Camera(imageRate, imageWidth, imageHeight, framesDropped, id),
 	_path(path),
 	_startAt(startAt),
 	_refreshDir(refreshDir),
-	_count(0)
+	_count(0),
+	_dir(0)
 {
+
 }
 
 CameraImages::~CameraImages(void)
 {
-	join(true);
+	if(_dir)
+	{
+		delete _dir;
+	}
 }
 
 bool CameraImages::init()
 {
 	UDEBUG("");
-	_dir = UDirectory(_path, "jpg ppm png bmp pnm");
+	if(_dir)
+	{
+		_dir->setPath(_path, "jpg ppm png bmp pnm");
+	}
+	else
+	{
+		_dir = new UDirectory(_path, "jpg ppm png bmp pnm");
+	}
 	_count = 0;
 	if(_path[_path.size()-1] != '\\' && _path[_path.size()-1] != '/')
 	{
 		_path.append("/");
 	}
-	if(!_dir.isValid())
+	if(!_dir->isValid())
 	{
 		ULOGGER_ERROR("Directory path is not valid \"%s\"", _path.c_str());
 	}
-	else if(_dir.getFileNames().size() == 0)
+	else if(_dir->getFileNames().size() == 0)
 	{
 		UWARN("Directory is empty \"%s\"", _path.c_str());
 	}
-	return _dir.isValid();
+	return _dir->isValid();
 }
 
 cv::Mat CameraImages::captureImage()
 {
 	UDEBUG("");
 	cv::Mat img;
-	if(_dir.isValid())
+	if(_dir->isValid())
 	{
 		if(_refreshDir)
 		{
-			_dir.update();
+			_dir->update();
 		}
 		if(_startAt == 0)
 		{
-			const std::list<std::string> & fileNames = _dir.getFileNames();
+			const std::list<std::string> & fileNames = _dir->getFileNames();
 			if(fileNames.size())
 			{
 				if(_lastFileName.empty() || uStrNumCmp(_lastFileName,*fileNames.rbegin()) < 0)
@@ -412,11 +319,11 @@ cv::Mat CameraImages::captureImage()
 		{
 			std::string fileName;
 			std::string fullPath;
-			fileName = _dir.getNextFileName();
+			fileName = _dir->getNextFileName();
 			if(fileName.size())
 			{
 				fullPath = _path + fileName;
-				while(++_count < _startAt && (fileName = _dir.getNextFileName()).size())
+				while(++_count < _startAt && (fileName = _dir->getNextFileName()).size())
 				{
 					fullPath = _path + fileName;
 				}
@@ -473,12 +380,11 @@ cv::Mat CameraImages::captureImage()
 /////////////////////////
 CameraVideo::CameraVideo(int usbDevice,
 						 float imageRate,
-						 bool autoRestart,
 						 unsigned int imageWidth,
 						 unsigned int imageHeight,
 						 unsigned int framesDropped,
 						 int id) :
-	Camera(imageRate, autoRestart, imageWidth, imageHeight, framesDropped, id),
+	Camera(imageRate, imageWidth, imageHeight, framesDropped, id),
 	_src(kUsbDevice),
 	_usbDevice(usbDevice)
 {
@@ -487,12 +393,11 @@ CameraVideo::CameraVideo(int usbDevice,
 
 CameraVideo::CameraVideo(const std::string & filePath,
 						   float imageRate,
-						   bool autoRestart,
 						   unsigned int imageWidth,
 						   unsigned int imageHeight,
 						   unsigned int framesDropped,
 						   int id) :
-	Camera(imageRate, autoRestart, imageWidth, imageHeight, framesDropped, id),
+	Camera(imageRate, imageWidth, imageHeight, framesDropped, id),
 	_filePath(filePath),
 	_src(kVideoFile),
 	_usbDevice(0)
@@ -501,7 +406,6 @@ CameraVideo::CameraVideo(const std::string & filePath,
 
 CameraVideo::~CameraVideo()
 {
-	join(true);
 	_capture.release();
 }
 

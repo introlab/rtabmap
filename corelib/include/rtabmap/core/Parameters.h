@@ -22,7 +22,6 @@
 
 // default parameters
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-#include "utilite/UEvent.h"
 #include <string>
 #include <map>
 
@@ -217,27 +216,6 @@ private:
 private:
 	static ParametersMap parameters_;
 	static Parameters instance_;
-};
-
-/**
- * The parameters event. This event is used to send
- * parameters across the threads.
- */
-class ParamEvent : public UEvent
-{
-public:
-	ParamEvent(const ParametersMap & parameters) : UEvent(0), parameters_(parameters) {}
-	ParamEvent(const std::string & parameterKey, const std::string & parameterValue) : UEvent(0)
-	{
-		parameters_.insert(std::pair<std::string, std::string>(parameterKey, parameterValue));
-	}
-	~ParamEvent() {}
-	virtual std::string getClassName() const {return "ParamEvent";}
-
-	const ParametersMap & getParameters() const {return parameters_;}
-
-private:
-	ParametersMap parameters_; /**< The parameters map (key,value). */
 };
 
 }

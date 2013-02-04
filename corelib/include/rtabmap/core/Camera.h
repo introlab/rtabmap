@@ -23,75 +23,29 @@
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
-#include <utilite/UThreadNode.h>
-#include <utilite/UEventsHandler.h>
-#include <utilite/UEvent.h>
-#include <utilite/UDirectory.h>
-#include <utilite/UTimer.h>
 #include "rtabmap/core/Parameters.h"
-#include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/Image.h"
+#include "rtabmap/core/Features2d.h"
 #include <set>
 #include <stack>
 #include <list>
 #include <vector>
 
+class UDirectory;
+class UTimer;
+
 namespace rtabmap
 {
 
-class CameraEvent :
-	public UEvent
-{
-public:
-	enum Code {
-		kCodeFeatures,
-		kCodeImage,
-		kCodeNoMoreImages
-	};
-
-public:
-	CameraEvent(const cv::Mat & image, int cameraId = 0) :
-		UEvent(kCodeImage),
-		_cameraId(cameraId),
-		_image(image)
-	{
-	}
-	CameraEvent(const cv::Mat & descriptors, const std::vector<cv::KeyPoint> & keypoints, const cv::Mat & image = cv::Mat(), int cameraId = 0) :
-		UEvent(kCodeFeatures),
-		_cameraId(cameraId),
-		_image(image, 0, descriptors, keypoints)
-	{
-	}
-	CameraEvent(int cameraId = 0) :
-		UEvent(kCodeNoMoreImages),
-		_cameraId(cameraId)
-	{
-	}
-
-	int cameraId() const {return _cameraId;}
-
-	// Image or descriptors
-	const Image & image() const {return _image;}
-
-	virtual ~CameraEvent() {}
-	virtual std::string getClassName() const {return std::string("CameraEvent");}
-
-private:
-	int _cameraId;
-	Image _image;
-};
+class KeypointDetector;
+class KeypointDescriptor;
 
 /**
  * Class Camera
  *
  */
-class RTABMAP_EXP Camera :
-	public UThreadNode,
-	public UEventsHandler
+class RTABMAP_EXP Camera
 {
-public:
-	enum State {kStateCapturing, kStateChangingParameters};
-
 public:
 	virtual ~Camera();
 	cv::Mat takeImage();
@@ -99,8 +53,6 @@ public:
 	virtual bool init() = 0;
 
 	//getters
-	bool isPaused() const {return !this->isRunning();}
-	bool isCapturing() const {return this->isRunning();}
 	void getImageSize(unsigned int & width, unsigned int & height);
 	float getImageRate() const {return _imageRate;}
 	bool isFeaturesExtracted() const {return _featuresExtracted;}
@@ -110,7 +62,6 @@ public:
 			KeypointDetector::DetectorType detector = KeypointDetector::kDetectorUndef,
 			KeypointDescriptor::DescriptorType descriptor = KeypointDescriptor::kDescriptorUndef);
 	void setImageRate(float imageRate) {_imageRate = imageRate;}
-	void setAutoRestart(bool autoRestart) {_autoRestart = autoRestart;}
 	void setImageSize(unsigned int width, unsigned int height);
 
 
@@ -123,36 +74,22 @@ protected:
 	 *
 	 * @param imageRate : image/second , 0 for fast as the camera can
 	 */
-	Camera(float imageRate = 0, bool autoRestart = false, unsigned int imageWidth = 0, unsigned int imageHeight = 0, unsigned int framesDropped = 0, int id = 0);
+	Camera(float imageRate = 0, unsigned int imageWidth = 0, unsigned int imageHeight = 0, unsigned int framesDropped = 0, int id = 0);
 
-	virtual void handleEvent(UEvent* anEvent);
 	virtual cv::Mat captureImage() = 0;
-
-private:
-	virtual void mainLoopBegin();
-	virtual void mainLoop();
-	void process();
-	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
 
 private:
 	float _imageRate;
 	int _id;
-	bool _autoRestart;
 	unsigned int _imageWidth;
 	unsigned int _imageHeight;
 	unsigned int _framesDropped;
-	UTimer _frameRateTimer;
-	UMutex _imageSizeMutex;
-
-	UMutex _stateMutex;
-	std::stack<State> _state;
-	std::stack<ParametersMap> _stateParam;
+	UTimer * _frameRateTimer;
 
 	bool _featuresExtracted;
 	KeypointDetector * _keypointDetector;
 	KeypointDescriptor * _keypointDescriptor;
 };
-
 
 
 /////////////////////////
@@ -166,7 +103,6 @@ public:
 			int startAt = 1,
 			bool refreshDir = false,
 			float imageRate = 0,
-			bool autoRestart = false,
 			unsigned int imageWidth = 0,
 			unsigned int imageHeight = 0,
 			unsigned int framesDropped = 0,
@@ -185,12 +121,9 @@ private:
 	// If the list of files in the directory is refreshed
 	// on each call of takeImage()
 	bool _refreshDir;
-	UDirectory _dir;
 	int _count;
+	UDirectory * _dir;
 	std::string _lastFileName;
-
-
-
 };
 
 
@@ -208,14 +141,12 @@ public:
 public:
 	CameraVideo(int usbDevice = 0,
 			float imageRate = 0,
-			bool autoRestart = false,
 			unsigned int imageWidth = 0,
 			unsigned int imageHeight = 0,
 			unsigned int framesDropped = 0,
 			int id = 0);
 	CameraVideo(const std::string & filePath,
 			float imageRate = 0,
-			bool autoRestart = false,
 			unsigned int imageWidth = 0,
 			unsigned int imageHeight = 0,
 			unsigned int framesDropped = 0,

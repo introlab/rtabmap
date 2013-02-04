@@ -12,6 +12,8 @@ SET(SRC_FILES
 	DBReader.cpp
 	
     Camera.cpp
+    CameraThread.cpp
+    
     EpipolarGeometry.cpp
 	VisualWord.cpp
 	VWDictionary.cpp

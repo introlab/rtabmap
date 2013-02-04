@@ -29,7 +29,7 @@
 #include "rtabmap/gui/PreferencesDialog.h"
 
 namespace rtabmap {
-class Camera;
+class CameraThread;
 class DBReader;
 }
 
@@ -147,7 +147,7 @@ private:
 	Ui_mainWindow * _ui;
 
 	State _state;
-	rtabmap::Camera * _camera;
+	rtabmap::CameraThread * _camera;
 	rtabmap::DBReader * _dbReader;
 
 	SrcType _srcType;

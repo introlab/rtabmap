@@ -21,6 +21,8 @@
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/Camera.h"
+#include "rtabmap/core/CameraEvent.h"
+#include "rtabmap/core/ParamEvent.h"
 
 #include <utilite/ULogger.h>
 #include <utilite/UEventsManager.h>

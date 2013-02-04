@@ -24,6 +24,8 @@
 
 #include <utilite/UThreadNode.h>
 #include <utilite/UEventsHandler.h>
+#include <utilite/USemaphore.h>
+#include <utilite/UMutex.h>
 
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/Image.h"
