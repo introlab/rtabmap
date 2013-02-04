@@ -324,6 +324,8 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 	//Set database optimizations
 	this->setCacheSize(_cacheSize); // this will call the SQL
 	this->setJournalMode(_journalMode); // this will call the SQL
+	this->setSynchronous(_synchronous); // this will call the SQL
+	this->setTempStore(_tempStore); // this will call the SQL
 
 	return true;
 }
