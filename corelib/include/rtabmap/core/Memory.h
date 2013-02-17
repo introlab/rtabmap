@@ -130,7 +130,7 @@ protected:
 	void preUpdate();
 	void addSignatureToStm(Signature * signature);
 	void clear();
-	void moveToTrash(Signature * s);
+	void moveToTrash(Signature * s, bool saveToDatabase = true);
 
 	void addSignatureToWm(Signature * signature);
 	Signature * _getSignature(int id) const;

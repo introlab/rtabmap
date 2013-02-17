@@ -1336,7 +1336,7 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 	return removableSignatures;
 }
 
-void Memory::moveToTrash(Signature * s)
+void Memory::moveToTrash(Signature * s, bool saveToDatabase)
 {
 	UINFO("id=%d", s?s->id():0);
 	if(s)
@@ -1369,7 +1369,8 @@ void Memory::moveToTrash(Signature * s)
 			s->removeNeighbors();
 		}
 
-		if(	_dbDriver &&
+		if(	saveToDatabase &&
+			_dbDriver &&
 			s->id()>0)
 		{
 			_dbDriver->asyncSave(s);
@@ -1390,7 +1391,7 @@ const Signature * Memory::getLastSignature() const
 void Memory::deleteLastLocation()
 {
 	Signature * lastSignature = _lastSignature;
-	if(_lastSignature)
+	if(lastSignature)
 	{
 		UDEBUG("deleting last location %d", lastSignature->id());
 		const std::set<int> & neighbors = lastSignature->getNeighbors();
@@ -1416,7 +1417,7 @@ void Memory::deleteLastLocation()
 		}
 		lastSignature->setWeight(0);
 
-		this->moveToTrash(lastSignature);
+		this->moveToTrash(lastSignature, false);
 	}
 }
 
