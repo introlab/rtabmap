@@ -71,6 +71,7 @@ Rtabmap::Rtabmap() :
 	_maxRetrieved(Parameters::defaultRtabmapMaxRetrieved()),
 	_likelihoodNullValuesIgnored(Parameters::defaultRtabmapLikelihoodNullValuesIgnored()),
 	_statisticLogsBufferedInRAM(Parameters::defaultRtabmapStatisticLogsBufferedInRAM()),
+	_statisticLogged(Parameters::defaultRtabmapStatisticLogged()),
 	_lcHypothesisId(0),
 	_lcHypothesisValue(0),
 	_retrievedId(0),
@@ -109,74 +110,81 @@ void Rtabmap::setupLogFiles(bool overwrite)
 		_foutInt = 0;
 	}
 
-	std::string attributes = "a+"; // append to log files
-	if(overwrite)
+	if(_statisticLogged)
 	{
-		// If a file with the same name already exists
-		// its content is erased and the file is treated
-		// as a new empty file.
-		attributes = "w";
+		std::string attributes = "a+"; // append to log files
+		if(overwrite)
+		{
+			// If a file with the same name already exists
+			// its content is erased and the file is treated
+			// as a new empty file.
+			attributes = "w";
+		}
+
+		bool addLogFHeader = overwrite || !UFile::exists(_wDir+LOG_F);
+		bool addLogIHeader = overwrite || !UFile::exists(_wDir+LOG_I);
+
+	#ifdef _MSC_VER
+		fopen_s(&_foutFloat, (_wDir+LOG_F).toStdString().c_str(), attributes.c_str());
+		fopen_s(&_foutInt, (_wDir+LOG_I).toStdString().c_str(), attributes.c_str());
+	#else
+		_foutFloat = fopen((_wDir+LOG_F).c_str(), attributes.c_str());
+		_foutInt = fopen((_wDir+LOG_I).c_str(), attributes.c_str());
+	#endif
+		// add header (column identification)
+		if(addLogFHeader && _foutFloat)
+		{
+			fprintf(_foutFloat, "Column headers:\n");
+			fprintf(_foutFloat, " 1-Total iteration time (s)\n");
+			fprintf(_foutFloat, " 2-Memory update time (s)\n");
+			fprintf(_foutFloat, " 3-Retrieval time (s)\n");
+			fprintf(_foutFloat, " 4-Likelihood time (s)\n");
+			fprintf(_foutFloat, " 5-Posterior time (s)\n");
+			fprintf(_foutFloat, " 6-Hypothesis selection time (s)\n");
+			fprintf(_foutFloat, " 7-Transfer time (s)\n");
+			fprintf(_foutFloat, " 8-Statistics creation time (s)\n");
+			fprintf(_foutFloat, " 9-Loop closure hypothesis value\n");
+			fprintf(_foutFloat, " 10-NAN\n");
+			fprintf(_foutFloat, " 11-Maximum likelihood\n");
+			fprintf(_foutFloat, " 12-Sum likelihood\n");
+			fprintf(_foutFloat, " 13-Mean likelihood\n");
+			fprintf(_foutFloat, " 14-Std dev likelihood\n");
+			fprintf(_foutFloat, " 15-Virtual place hypothesis\n");
+			fprintf(_foutFloat, " 16-Join trash time (s)\n");
+			fprintf(_foutFloat, " 17-Weight Update (rehearsal) similarity\n");
+			fprintf(_foutFloat, " 18-Empty trash time (s)\n");
+			fprintf(_foutFloat, " 19-Retrieval database access time (s)\n");
+			fprintf(_foutFloat, " 20-Add loop closure link time (s)\n");
+		}
+		if(addLogIHeader && _foutInt)
+		{
+			fprintf(_foutInt, "Column headers:\n");
+			fprintf(_foutInt, " 1-Loop closure ID\n");
+			fprintf(_foutInt, " 2-Highest loop closure hypothesis\n");
+			fprintf(_foutInt, " 3-Locations transferred\n");
+			fprintf(_foutInt, " 4-NAN\n");
+			fprintf(_foutInt, " 5-Words extracted from the last image\n");
+			fprintf(_foutInt, " 6-Vocabulary size\n");
+			fprintf(_foutInt, " 7-Working memory size\n");
+			fprintf(_foutInt, " 8-Is loop closure hypothesis rejected?\n");
+			fprintf(_foutInt, " 9-NAN\n");
+			fprintf(_foutInt, " 10-NAN\n");
+			fprintf(_foutInt, " 11-Locations retrieved\n");
+			fprintf(_foutInt, " 12-Retrieval location ID\n");
+			fprintf(_foutInt, " 13-Unique words extraced from last image\n");
+			fprintf(_foutInt, " 14-Retrieval ID\n");
+			fprintf(_foutInt, " 15-Non-null likelihood values\n");
+			fprintf(_foutInt, " 16-Weight Update ID\n");
+			fprintf(_foutInt, " 17-Is last location merged through Weight Update?\n");
+		}
+
+		ULOGGER_DEBUG("Log file (int)=%s", (_wDir+LOG_I).c_str());
+		ULOGGER_DEBUG("Log file (float)=%s", (_wDir+LOG_F).c_str());
 	}
-
-	bool addLogFHeader = overwrite || !UFile::exists(_wDir+LOG_F);
-	bool addLogIHeader = overwrite || !UFile::exists(_wDir+LOG_I);
-
-#ifdef _MSC_VER
-	fopen_s(&_foutFloat, (_wDir+LOG_F).toStdString().c_str(), attributes.c_str());
-	fopen_s(&_foutInt, (_wDir+LOG_I).toStdString().c_str(), attributes.c_str());
-#else
-	_foutFloat = fopen((_wDir+LOG_F).c_str(), attributes.c_str());
-	_foutInt = fopen((_wDir+LOG_I).c_str(), attributes.c_str());
-#endif
-	// add header (column identification)
-	if(addLogFHeader && _foutFloat)
+	else
 	{
-		fprintf(_foutFloat, "Column headers:\n");
-		fprintf(_foutFloat, " 1-Total iteration time (s)\n");
-		fprintf(_foutFloat, " 2-Memory update time (s)\n");
-		fprintf(_foutFloat, " 3-Retrieval time (s)\n");
-		fprintf(_foutFloat, " 4-Likelihood time (s)\n");
-		fprintf(_foutFloat, " 5-Posterior time (s)\n");
-		fprintf(_foutFloat, " 6-Hypothesis selection time (s)\n");
-		fprintf(_foutFloat, " 7-Transfer time (s)\n");
-		fprintf(_foutFloat, " 8-Statistics creation time (s)\n");
-		fprintf(_foutFloat, " 9-Loop closure hypothesis value\n");
-		fprintf(_foutFloat, " 10-NAN\n");
-		fprintf(_foutFloat, " 11-Maximum likelihood\n");
-		fprintf(_foutFloat, " 12-Sum likelihood\n");
-		fprintf(_foutFloat, " 13-Mean likelihood\n");
-		fprintf(_foutFloat, " 14-Std dev likelihood\n");
-		fprintf(_foutFloat, " 15-Virtual place hypothesis\n");
-		fprintf(_foutFloat, " 16-Join trash time (s)\n");
-		fprintf(_foutFloat, " 17-Weight Update (rehearsal) similarity\n");
-		fprintf(_foutFloat, " 18-Empty trash time (s)\n");
-		fprintf(_foutFloat, " 19-Retrieval database access time (s)\n");
-		fprintf(_foutFloat, " 20-Add loop closure link time (s)\n");
+		UDEBUG("Log disabled!");
 	}
-	if(addLogIHeader && _foutInt)
-	{
-		fprintf(_foutInt, "Column headers:\n");
-		fprintf(_foutInt, " 1-Loop closure ID\n");
-		fprintf(_foutInt, " 2-Highest loop closure hypothesis\n");
-		fprintf(_foutInt, " 3-Locations transferred\n");
-		fprintf(_foutInt, " 4-NAN\n");
-		fprintf(_foutInt, " 5-Words extracted from the last image\n");
-		fprintf(_foutInt, " 6-Vocabulary size\n");
-		fprintf(_foutInt, " 7-Working memory size\n");
-		fprintf(_foutInt, " 8-Is loop closure hypothesis rejected?\n");
-		fprintf(_foutInt, " 9-NAN\n");
-		fprintf(_foutInt, " 10-NAN\n");
-		fprintf(_foutInt, " 11-Locations retrieved\n");
-		fprintf(_foutInt, " 12-Retrieval location ID\n");
-		fprintf(_foutInt, " 13-Unique words extraced from last image\n");
-		fprintf(_foutInt, " 14-Retrieval ID\n");
-		fprintf(_foutInt, " 15-Non-null likelihood values\n");
-		fprintf(_foutInt, " 16-Weight Update ID\n");
-		fprintf(_foutInt, " 17-Is last location merged through Weight Update?\n");
-	}
-
-	ULOGGER_DEBUG("Log file (int)=%s", (_wDir+LOG_I).c_str());
-	ULOGGER_DEBUG("Log file (float)=%s", (_wDir+LOG_F).c_str());
 }
 
 void Rtabmap::flushStatisticLogs()
@@ -210,6 +218,10 @@ void Rtabmap::init(const ParametersMap & parameters, bool deleteMemory)
 		if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
 		{
 			this->setWorkingDirectory(iter->second.c_str());
+		}
+		if((iter=parameters.find(Parameters::kRtabmapStatisticLogged())) != parameters.end())
+		{
+			_statisticLogged = uStr2Bool(iter->second.c_str());
 		}
 		this->resetMemory(true);
 	}
@@ -319,6 +331,10 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	if((iter=parameters.find(Parameters::kRtabmapStatisticLogsBufferedInRAM())) != parameters.end())
 	{
 		_statisticLogsBufferedInRAM = uStr2Bool(iter->second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kRtabmapStatisticLogged())) != parameters.end())
+	{
+		_statisticLogged = uStr2Bool(iter->second.c_str());
 	}
 
 	// By default, we create our strategies if they are not already created.

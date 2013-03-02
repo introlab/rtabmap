@@ -60,7 +60,7 @@ public:
 	void addWordRef(int wordId, int signatureId);
 	void removeAllWordRef(int wordId, int signatureId);
 	const VisualWord * getWord(int id) const;
-	const VisualWord * getUnusedWord(int id) const;
+	VisualWord * getUnusedWord(int id) const;
 	void setLastWordId(int id) {_lastWordId = id;}
 	void getCommonWords(unsigned int nbCommonWords, int totalSign, std::list<int> & commonWords) const;
 	const std::map<int, VisualWord *> & getVisualWords() const {return _visualWords;}

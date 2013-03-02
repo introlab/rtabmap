@@ -131,6 +131,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Rtabmap, MaxRetrieved,                 unsigned int, 2); // Maximum locations retrieved at the same time from LTM
 	RTABMAP_PARAM(Rtabmap, LikelihoodNullValuesIgnored,  bool, true); // Ignore null values on likelihood normalization
 	RTABMAP_PARAM(Rtabmap, StatisticLogsBufferedInRAM,   bool, true); // Statistic logs buffered in RAM instead of written to hard drive after each iteration.
+	RTABMAP_PARAM(Rtabmap, StatisticLogged,   	         bool, true); // Logging enabled
 
 	// Hypotheses selection
 	RTABMAP_PARAM(Rtabmap, LoopThr,    	     float, 0.15); // Loop closing threshold
@@ -139,7 +140,8 @@ class RTABMAP_EXP Parameters
 	// Memory
 	RTABMAP_PARAM(Mem, RehearsalSimilarity,     float, 0.2); // Rehearsal mean for each sensor
 	RTABMAP_PARAM(Mem, RehearsalOnlyWithLast,   bool, true); // Only compare to the last signature in STM, otherwise it compares to all signatures in STM
-	RTABMAP_PARAM(Mem, ImageKept, 		        bool, true); // Keep image
+	RTABMAP_PARAM(Mem, ImageKept, 		        bool, true); // Keep images in db
+	RTABMAP_PARAM(Mem, RehearsedNodesKept, 	    bool, true); // Keep rehearsed ndoes in db
 	RTABMAP_PARAM(Mem, STMSize, 		        unsigned int, 30); // Short-term memory size
 	RTABMAP_PARAM(Mem, IncrementalMemory, 	    bool, true);
 	RTABMAP_PARAM(Mem, RecentWmRatio,           float, 0.2); // Ratio of locations after the last loop closure in WM that cannot be transferred

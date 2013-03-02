@@ -1012,7 +1012,7 @@ const VisualWord * VWDictionary::getWord(int id) const
 	return uValue(_visualWords, id, (VisualWord *)0);
 }
 
-const VisualWord * VWDictionary::getUnusedWord(int id) const
+VisualWord * VWDictionary::getUnusedWord(int id) const
 {
 	return uValue(_unusedWords, id, (VisualWord *)0);
 }

@@ -44,6 +44,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_similarityThreshold(Parameters::defaultMemRehearsalSimilarity()),
 	_rehearsalOnlyWithLast(Parameters::defaultMemRehearsalOnlyWithLast()),
 	_rawDataKept(Parameters::defaultMemImageKept()),
+	_keepRehearsedNodesInDb(Parameters::defaultMemRehearsedNodesKept()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
 	_maxStMemSize(Parameters::defaultMemSTMSize()),
 	_recentWmRatio(Parameters::defaultMemRecentWmRatio()),
@@ -250,6 +251,10 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	if((iter=parameters.find(Parameters::kMemImageKept())) != parameters.end())
 	{
 		_rawDataKept = uStr2Bool((*iter).second.c_str());
+	}
+	if((iter=parameters.find(Parameters::kMemRehearsedNodesKept())) != parameters.end())
+	{
+		_keepRehearsedNodesInDb = uStr2Bool((*iter).second.c_str());
 	}
 	if((iter=parameters.find(Parameters::kMemIncrementalMemory())) != parameters.end())
 	{
@@ -1341,7 +1346,7 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase)
 	UINFO("id=%d", s?s->id():0);
 	if(s)
 	{
-		this->disableWordsRef(s->id());
+		this->disableWordsRef(s->id(), saveToDatabase);
 
 		_workingMem.erase(s->id());
 		_stMem.erase(s->id());
@@ -1590,8 +1595,10 @@ bool Memory::addLoopClosureLink(int oldId, int newId)
 			this->copyData(newS, oldS);
 		}
 
+		bool saveToDb = !onRehearsal || _keepRehearsedNodesInDb;
+
 		// remove location
-		moveToTrash(_idUpdatedToNewOneRehearsal?oldS:newS);
+		moveToTrash(_idUpdatedToNewOneRehearsal?oldS:newS, saveToDb);
 
 		return true;
 	}
@@ -2327,7 +2334,7 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 	return ks;
 }
 
-void Memory::disableWordsRef(int signatureId)
+void Memory::disableWordsRef(int signatureId, bool saveToDatabase)
 {
 	ULOGGER_DEBUG("id=%d", signatureId);
 
@@ -2341,6 +2348,18 @@ void Memory::disableWordsRef(int signatureId)
 		for(std::list<int>::const_iterator i=keys.begin(); i!=keys.end(); ++i)
 		{
 			_vwd->removeAllWordRef(*i, signatureId);
+			if(!saveToDatabase)
+			{
+				// assume just removed word doesn't have any other references
+				VisualWord * w = _vwd->getUnusedWord(*i);
+				if(w)
+				{
+					std::vector<VisualWord*> wordToDelete;
+					wordToDelete.push_back(w);
+					_vwd->removeWords(wordToDelete);
+					delete w;
+				}
+			}
 		}
 
 		count -= _vwd->getTotalActiveReferences();

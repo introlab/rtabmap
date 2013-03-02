@@ -149,7 +149,7 @@ private:
 			bool keepRawData=false);
 
 	//keypoint stuff
-	void disableWordsRef(int signatureId);
+	void disableWordsRef(int signatureId, bool saveToDatabase = true);
 	void enableWordsRef(const std::list<int> & signatureIds);
 	void cleanUnusedWords();
 	int getNi(int signatureId) const;
@@ -162,6 +162,7 @@ private:
 	float _similarityThreshold;
 	bool _rehearsalOnlyWithLast;
 	bool _rawDataKept;
+	bool _keepRehearsedNodesInDb;
 	bool _incrementalMemory;
 	int _maxStMemSize;
 	float _recentWmRatio;

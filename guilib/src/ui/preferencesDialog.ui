@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>7</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1086,14 +1086,14 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                     <string>RTAB-Map settings</string>
                    </property>
                    <layout class="QGridLayout" name="gridLayout_4" columnstretch="0,0,1">
-                    <item row="12" column="0">
+                    <item row="13" column="0">
                      <widget class="QLineEdit" name="lineEdit_workingDirectory">
                       <property name="readOnly">
                        <bool>true</bool>
                       </property>
                      </widget>
                     </item>
-                    <item row="7" column="0">
+                    <item row="8" column="0">
                      <widget class="QSpinBox" name="general_spinBox_imagesBufferSize">
                       <property name="maximum">
                        <number>999</number>
@@ -1103,7 +1103,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="12" column="2">
+                    <item row="13" column="2">
                      <widget class="QLabel" name="label_87">
                       <property name="text">
                        <string>Working directory (where the database is saved/loaded).</string>
@@ -1133,7 +1133,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="5" column="2">
+                    <item row="6" column="2">
                      <widget class="QLabel" name="label_18">
                       <property name="text">
                        <string>T_time : Max time (ms) allowed (0 means inf).</string>
@@ -1143,7 +1143,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="7" column="2">
+                    <item row="8" column="2">
                      <widget class="QLabel" name="label_84">
                       <property name="text">
                        <string>Images buffer size (0 means inf).</string>
@@ -1153,7 +1153,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="8" column="0">
+                    <item row="9" column="0">
                      <widget class="QDoubleSpinBox" name="general_doubleSpinBox_hardThr">
                       <property name="maximum">
                        <double>1.000000000000000</double>
@@ -1166,7 +1166,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="8" column="2">
+                    <item row="9" column="2">
                      <widget class="QLabel" name="label_93">
                       <property name="text">
                        <string>T_loop : Loop closure threshold. Setting to 0 means that the new place hypothesis is used as threshold.</string>
@@ -1176,7 +1176,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="9" column="2">
+                    <item row="10" column="2">
                      <widget class="QLabel" name="label_96">
                       <property name="text">
                        <string>T_ratio : The loop closure hypothesis must be over T_ratio x lastHypothesisValue.</string>
@@ -1186,7 +1186,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="9" column="0">
+                    <item row="10" column="0">
                      <widget class="QDoubleSpinBox" name="general_doubleSpinBox_loopRatio">
                       <property name="maximum">
                        <double>1.000000000000000</double>
@@ -1199,14 +1199,14 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="12" column="1">
+                    <item row="13" column="1">
                      <widget class="QToolButton" name="toolButton_workingDirectory">
                       <property name="text">
                        <string>...</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="10" column="0">
+                    <item row="11" column="0">
                      <widget class="QSpinBox" name="general_spinBox_maxRetrieved">
                       <property name="maximum">
                        <number>999</number>
@@ -1219,7 +1219,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="10" column="2">
+                    <item row="11" column="2">
                      <widget class="QLabel" name="label_103">
                       <property name="text">
                        <string>Maximum locations retrieved at the same time from LTM to WM.</string>
@@ -1229,7 +1229,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="5" column="0">
+                    <item row="6" column="0">
                      <widget class="QDoubleSpinBox" name="general_doubleSpinBox_timeThr">
                       <property name="decimals">
                        <number>0</number>
@@ -1245,7 +1245,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="6" column="0">
+                    <item row="7" column="0">
                      <widget class="QSpinBox" name="general_spinBox_memoryThr">
                       <property name="maximum">
                        <number>99999</number>
@@ -1255,7 +1255,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="6" column="2">
+                    <item row="7" column="2">
                      <widget class="QLabel" name="label_111">
                       <property name="text">
                        <string>Maximum signatures allowed in Working Memory (0 means inf).</string>
@@ -1316,7 +1316,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="11" column="2">
+                    <item row="12" column="2">
                      <widget class="QLabel" name="label_132">
                       <property name="text">
                        <string>Ignore null values on likelihood normalization.</string>
@@ -1326,7 +1326,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="11" column="0">
+                    <item row="12" column="0">
                      <widget class="QCheckBox" name="general_checkBox_likelihoodNullValuesIgnored">
                       <property name="text">
                        <string/>
@@ -1339,7 +1339,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                     <item row="4" column="2">
                      <widget class="QLabel" name="label_143">
                       <property name="text">
-                       <string>Statistics logs buffered in RAM and written to hard drive on exit (otherwise logs are written at each iteration on hard drive)</string>
+                       <string>Statistics logs buffered in RAM and written to hard drive on exit (otherwise logs are written at each iteration on hard drive).</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -1348,6 +1348,26 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                     </item>
                     <item row="4" column="0">
                      <widget class="QCheckBox" name="general_checkBox_statisticLogsBufferedInRAM">
+                      <property name="text">
+                       <string/>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="2">
+                     <widget class="QLabel" name="label_144">
+                      <property name="text">
+                       <string>Log statistics (in LogI.txt and LogF.txt in the working directory).</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="0">
+                     <widget class="QCheckBox" name="general_checkBox_statisticLogged">
                       <property name="text">
                        <string/>
                       </property>
@@ -1660,14 +1680,14 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="2" column="0">
+                    <item row="3" column="0">
                      <widget class="QCheckBox" name="checkBox_dbInMemory">
                       <property name="text">
                        <string/>
                       </property>
                      </widget>
                     </item>
-                    <item row="3" column="0">
+                    <item row="4" column="0">
                      <widget class="QSpinBox" name="spinBox_dbCacheSize">
                       <property name="minimum">
                        <number>10</number>
@@ -1683,7 +1703,7 @@ when using the file type, logs are saved in Logrtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="3" column="1">
+                    <item row="4" column="1">
                      <widget class="QLabel" name="label_75">
                       <property name="text">
                        <string>Sqlite3 cache size,
@@ -1694,7 +1714,7 @@ see Sqlite3 doc 'PRAGMA cache_size'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="4" column="0">
+                    <item row="5" column="0">
                      <widget class="QComboBox" name="comboBox_dbJournalMode">
                       <item>
                        <property name="text">
@@ -1723,7 +1743,7 @@ see Sqlite3 doc 'PRAGMA cache_size'.</string>
                       </item>
                      </widget>
                     </item>
-                    <item row="4" column="1">
+                    <item row="5" column="1">
                      <widget class="QLabel" name="label_77">
                       <property name="text">
                        <string>Sqlite3 journal mode,
@@ -1734,7 +1754,7 @@ see Sqlite3 doc 'PRAGMA journal_mode'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="2" column="1">
+                    <item row="3" column="1">
                      <widget class="QLabel" name="label_74">
                       <property name="text">
                        <string>Using database in the memory instead of a file on the hard disk (this greatly improve database access performance but it requires more RAM memory).</string>
@@ -1744,7 +1764,7 @@ see Sqlite3 doc 'PRAGMA journal_mode'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="1" column="1">
+                    <item row="2" column="1">
                      <widget class="QLabel" name="label_110">
                       <property name="text">
                        <string>Compress images when saving to database.</string>
@@ -1754,7 +1774,7 @@ see Sqlite3 doc 'PRAGMA journal_mode'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="1" column="0">
+                    <item row="2" column="0">
                      <widget class="QCheckBox" name="general_checkBox_imagesCompressed">
                       <property name="text">
                        <string/>
@@ -1764,7 +1784,7 @@ see Sqlite3 doc 'PRAGMA journal_mode'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="5" column="1">
+                    <item row="6" column="1">
                      <widget class="QLabel" name="label_89">
                       <property name="text">
                        <string>Sqlite3 synchronous,
@@ -1775,7 +1795,7 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="6" column="1">
+                    <item row="7" column="1">
                      <widget class="QLabel" name="label_120">
                       <property name="text">
                        <string>Sqlite3 temp store,
@@ -1786,7 +1806,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="5" column="0">
+                    <item row="6" column="0">
                      <widget class="QComboBox" name="comboBox_dbSynchronous">
                       <property name="currentIndex">
                        <number>2</number>
@@ -1808,7 +1828,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       </item>
                      </widget>
                     </item>
-                    <item row="6" column="0">
+                    <item row="7" column="0">
                      <widget class="QComboBox" name="comboBox_dbTempStore">
                       <item>
                        <property name="text">
@@ -1825,6 +1845,26 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                         <string>MEMORY</string>
                        </property>
                       </item>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QLabel" name="label_86">
+                      <property name="text">
+                       <string>Keep rehearsed nodes.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QCheckBox" name="general_checkBox_keepRehearsedNodes">
+                      <property name="text">
+                       <string/>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
                      </widget>
                     </item>
                    </layout>

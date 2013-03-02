@@ -111,6 +111,7 @@ private:
 	unsigned int _maxRetrieved;
 	bool _likelihoodNullValuesIgnored;
 	bool _statisticLogsBufferedInRAM;
+	bool _statisticLogged;
 
 	int _lcHypothesisId;
 	float _lcHypothesisValue;
