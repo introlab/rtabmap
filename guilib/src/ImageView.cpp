@@ -49,7 +49,7 @@ ImageView::ImageView(QWidget * parent) :
 	_showFeatures->setChecked(true);
 	_showLines = _menu->addAction(tr("Show lines"));
 	_showLines->setCheckable(true);
-	_showLines->setChecked(false);
+	_showLines->setChecked(true);
 	_saveImage = _menu->addAction(tr("Save picture..."));
 }
 
