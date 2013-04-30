@@ -25,7 +25,7 @@
 #include "NearestNeighbor.h"
 #include "rtabmap/core/Parameters.h"
 
-#include "utilite/UtiLite.h"
+#include "rtabmap/utilite/UtiLite.h"
 
 #include <fstream>
 #include <string>

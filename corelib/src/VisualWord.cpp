@@ -18,8 +18,8 @@
  */
 
 #include "VisualWord.h"
-#include "utilite/ULogger.h"
-#include "utilite/UStl.h"
+#include "rtabmap/utilite/ULogger.h"
+#include "rtabmap/utilite/UStl.h"
 
 namespace rtabmap
 {

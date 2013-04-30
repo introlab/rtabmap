@@ -22,8 +22,8 @@
 #include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/ParamEvent.h"
 
-#include <utilite/UEventsManager.h>
-#include <utilite/UTimer.h>
+#include <rtabmap/utilite/UEventsManager.h>
+#include <rtabmap/utilite/UTimer.h>
 
 namespace rtabmap
 {

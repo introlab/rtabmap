@@ -25,16 +25,15 @@ SET(SRC_FILES
 )
 
 SET(INCLUDE_DIRS
+    ${PROJECT_SOURCE_DIR}/utilite/include
 	${CMAKE_CURRENT_SOURCE_DIR}/../include
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_CURRENT_BINARY_DIR}
-	${UTILITE_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
 	${SQLITE3_INCLUDE_DIR}
 )
 
 SET(LIBRARIES
-    ${UTILITE_LIBRARIES}
 	${OpenCV_LIBS} 
 	${SQLITE3_LIBRARY}
 )
@@ -57,9 +56,9 @@ SET(RESOURCES_HEADERS
 
 ADD_CUSTOM_COMMAND(
    OUTPUT ${RESOURCES_HEADERS}
-   COMMAND ${URESOURCEGENERATOR_EXEC} -n rtabmap -p ${CMAKE_CURRENT_BINARY_DIR} ${RESOURCES}
+   COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/uresourcegenerator -n rtabmap -p ${CMAKE_CURRENT_BINARY_DIR} ${RESOURCES}
    COMMENT "[Creating resources]"
-   DEPENDS ${R}
+   DEPENDS ${R} uresourcegenerator
 )
 
 ####################################
@@ -73,7 +72,7 @@ INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 # Add binary that is built from the source file "main.cpp".
 # The extension is automatically found.
 ADD_LIBRARY(rtabmap_corelib ${SRC_FILES} ${RESOURCES_HEADERS})
-TARGET_LINK_LIBRARIES(rtabmap_corelib ${LIBRARIES})
+TARGET_LINK_LIBRARIES(rtabmap_corelib rtabmap_utilite ${LIBRARIES})
 
 SET_TARGET_PROPERTIES(
 rtabmap_corelib 

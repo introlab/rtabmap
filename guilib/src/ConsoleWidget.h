@@ -20,7 +20,7 @@
 #ifndef CONSOLEWIDGET_H_
 #define CONSOLEWIDGET_H_
 
-#include <utilite/UEventsHandler.h>
+#include <rtabmap/utilite/UEventsHandler.h>
 #include <QtGui/QWidget>
 #include <QtCore/QMutex>
 #include <QtCore/QTimer>

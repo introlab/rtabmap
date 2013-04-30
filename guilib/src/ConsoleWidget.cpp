@@ -19,8 +19,8 @@
 
 #include "ConsoleWidget.h"
 #include "ui_consoleWidget.h"
-#include <utilite/ULogger.h>
-#include <utilite/UEventsManager.h>
+#include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UEventsManager.h>
 #include <QtGui/QMessageBox>
 #include <QtGui/QTextCursor>
 #include <QtCore/QTimer>

@@ -4,6 +4,7 @@ SET(SRC_FILES
 )
 
 SET(INCLUDE_DIRS
+	${PROJECT_SOURCE_DIR}/utilite/include
 	${PROJECT_SOURCE_DIR}/corelib/include
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${UTILITE_INCLUDE_DIRS}
@@ -18,7 +19,7 @@ SET(LIBRARIES
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 ADD_EXECUTABLE(imagesDbExtractor ${SRC_FILES})
-TARGET_LINK_LIBRARIES(imagesDbExtractor rtabmap_corelib ${LIBRARIES})
+TARGET_LINK_LIBRARIES(imagesDbExtractor rtabmap_corelib rtabmap_utilite ${LIBRARIES})
 
 SET_TARGET_PROPERTIES( imagesDbExtractor 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-imagesDbExtractor)

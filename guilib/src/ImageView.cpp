@@ -25,7 +25,7 @@
 #include <QtGui/QFileDialog>
 #include <QtCore/QDir>
 #include <QtGui/QAction>
-#include "utilite/ULogger.h"
+#include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/gui/KeypointItem.h"
 
 namespace rtabmap {

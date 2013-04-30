@@ -22,7 +22,7 @@
 #include "rtabmap/core/Memory.h"
 #include <opencv2/highgui/highgui.hpp>
 
-#include <utilite/UtiLite.h>
+#include <rtabmap/utilite/UtiLite.h>
 
 namespace rtabmap
 {

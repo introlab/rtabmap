@@ -18,7 +18,7 @@
  */
 
 #include "NearestNeighbor.h"
-#include "utilite/ULogger.h"
+#include "rtabmap/utilite/ULogger.h"
 #include <opencv2/core/core.hpp>
 
 namespace rtabmap

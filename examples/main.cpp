@@ -120,7 +120,7 @@ int main(int argc, char * argv[])
 	printf("Generated graph \"Graph.dot\", viewable with Graphiz using \"neato -Tpdf Graph.dot -o out.pdf\"\n");
 
 	// Cleanup... save database and logs
-	printf("Saving Long-Term Memory to \"LTM.db\"...\n");
+	printf("Saving Long-Term Memory to \"rtabmap.db\"...\n");
 	rtabmap.close();
 
 	return 0;

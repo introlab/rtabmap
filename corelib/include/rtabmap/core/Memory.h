@@ -22,14 +22,14 @@
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
-#include "utilite/UEventsHandler.h"
+#include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/Image.h"
 #include <typeinfo>
 #include <list>
 #include <map>
 #include <set>
-#include "utilite/UStl.h"
+#include "rtabmap/utilite/UStl.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 

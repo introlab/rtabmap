@@ -5,11 +5,11 @@
 #include <opencv2/flann/miniflann.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/nonfree/features2d.hpp>
-#include <utilite/ULogger.h>
-#include <utilite/UTimer.h>
-#include <utilite/UConversion.h>
-#include <utilite/UStl.h>
-#include <utilite/UMath.h>
+#include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UStl.h>
+#include <rtabmap/utilite/UMath.h>
 #include <fstream>
 #include <vector>
 #include <list>

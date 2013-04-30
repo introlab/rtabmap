@@ -26,7 +26,7 @@
 #include <QtGui/QCloseEvent>
 #include <QtGui/QCheckBox>
 #include <QtCore/QTimer>
-#include "utilite/ULogger.h"
+#include "rtabmap/utilite/ULogger.h"
 
 namespace rtabmap {
 

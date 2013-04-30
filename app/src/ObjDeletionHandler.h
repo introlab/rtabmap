@@ -20,8 +20,8 @@
 #ifndef OBJDELETIONHANDLER_H_
 #define OBJDELETIONHANDLER_H_
 
-#include "utilite/UEventsHandler.h"
-#include "utilite/UEvent.h"
+#include "rtabmap/utilite/UEventsHandler.h"
+#include "rtabmap/utilite/UEvent.h"
 #include <QtCore/QObject>
 
 class ObjDeletionHandler : public QObject, public UEventsHandler

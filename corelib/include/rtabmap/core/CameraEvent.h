@@ -21,7 +21,7 @@
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
-#include <utilite/UEvent.h>
+#include <rtabmap/utilite/UEvent.h>
 #include "rtabmap/core/Image.h"
 
 namespace rtabmap

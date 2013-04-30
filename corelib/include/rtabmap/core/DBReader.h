@@ -10,8 +10,8 @@
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
-#include <utilite/UThreadNode.h>
-#include <utilite/UTimer.h>
+#include <rtabmap/utilite/UThreadNode.h>
+#include <rtabmap/utilite/UTimer.h>
 
 #include <opencv2/core/core.hpp>
 

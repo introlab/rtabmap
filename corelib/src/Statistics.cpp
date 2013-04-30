@@ -18,7 +18,7 @@
  */
 
 #include "rtabmap/core/Statistics.h"
-#include <utilite/UStl.h>
+#include <rtabmap/utilite/UStl.h>
 
 namespace rtabmap {
 std::map<std::string, float> Statistics::_defaultData;

@@ -18,12 +18,12 @@
  */
 
 #include "rtabmap/core/Features2d.h"
-#include "utilite/UStl.h"
-#include "utilite/UConversion.h"
-#include "utilite/ULogger.h"
-#include "utilite/UMath.h"
-#include "utilite/ULogger.h"
-#include "utilite/UTimer.h"
+#include "rtabmap/utilite/UStl.h"
+#include "rtabmap/utilite/UConversion.h"
+#include "rtabmap/utilite/ULogger.h"
+#include "rtabmap/utilite/UMath.h"
+#include "rtabmap/utilite/ULogger.h"
+#include "rtabmap/utilite/UTimer.h"
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/gpu/gpu.hpp>
 #include <opencv2/core/version.hpp>

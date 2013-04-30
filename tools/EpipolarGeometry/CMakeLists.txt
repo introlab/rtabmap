@@ -4,6 +4,7 @@ SET(SRC_FILES
 )
 
 SET(INCLUDE_DIRS
+	${PROJECT_SOURCE_DIR}/utilite/include
 	${PROJECT_SOURCE_DIR}/corelib/include
 	${PROJECT_SOURCE_DIR}/guilib/include
     ${UTILITE_INCLUDE_DIRS}
@@ -21,7 +22,7 @@ SET(LIBRARIES
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 ADD_EXECUTABLE(epipolar_geometry WIN32 ${SRC_FILES})
-TARGET_LINK_LIBRARIES(epipolar_geometry rtabmap_corelib rtabmap_guilib ${LIBRARIES})
+TARGET_LINK_LIBRARIES(epipolar_geometry rtabmap_corelib rtabmap_guilib rtabmap_utilite ${LIBRARIES})
 
 SET_TARGET_PROPERTIES( epipolar_geometry 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-epipolar_geometry)

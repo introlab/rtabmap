@@ -17,12 +17,12 @@
  * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <utilite/UEventsManager.h>
-#include <utilite/ULogger.h>
-#include <utilite/UTimer.h>
-#include <utilite/UConversion.h>
-#include <utilite/UProcessInfo.h>
-#include <utilite/UMath.h>
+#include <rtabmap/utilite/UEventsManager.h>
+#include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UProcessInfo.h>
+#include <rtabmap/utilite/UMath.h>
 
 #include "rtabmap/core/Memory.h"
 #include "Signature.h"

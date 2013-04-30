@@ -18,7 +18,7 @@
  */
 
 #include "rtabmap/gui/qtipl.h"
-#include "utilite/ULogger.h"
+#include "rtabmap/utilite/ULogger.h"
 #include <opencv2/core/core_c.h>
 
 namespace rtabmap {

@@ -9,9 +9,9 @@
 #include "rtabmap/core/DBDriver.h"
 #include "DBDriverSqlite3.h"
 
-#include <utilite/ULogger.h>
-#include <utilite/UEventsManager.h>
-#include <utilite/UFile.h>
+#include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UEventsManager.h>
+#include <rtabmap/utilite/UFile.h>
 
 #include "rtabmap/core/CameraEvent.h"
 

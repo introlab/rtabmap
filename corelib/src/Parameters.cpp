@@ -18,8 +18,8 @@
  */
 
 #include "rtabmap/core/Parameters.h"
-#include <utilite/UDirectory.h>
-#include <utilite/ULogger.h>
+#include <rtabmap/utilite/UDirectory.h>
+#include <rtabmap/utilite/ULogger.h>
 
 namespace rtabmap
 {

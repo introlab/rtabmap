@@ -13,17 +13,16 @@ SET(SRC_FILES
 )
 
 SET(INCLUDE_DIRS
+	${PROJECT_SOURCE_DIR}/utilite/include
 	${PROJECT_SOURCE_DIR}/corelib/include
 	${PROJECT_SOURCE_DIR}/guilib/include
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${UTILITE_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
 )
 
 INCLUDE(${QT_USE_FILE})
 
 SET(LIBRARIES
-    ${UTILITE_LIBRARIES}
     ${QT_LIBRARIES} 
 	${OpenCV_LIBS} 
 )
@@ -60,7 +59,7 @@ IF(APPLE AND BUILD_AS_BUNDLE)
 ELSE()
   ADD_EXECUTABLE(main_app WIN32 ${SRC_FILES})
 ENDIF()
-TARGET_LINK_LIBRARIES(main_app rtabmap_corelib rtabmap_guilib ${LIBRARIES})
+TARGET_LINK_LIBRARIES(main_app rtabmap_corelib rtabmap_guilib rtabmap_utilite ${LIBRARIES})
 
 IF(APPLE AND BUILD_AS_BUNDLE)
   SET_TARGET_PROPERTIES(main_app PROPERTIES

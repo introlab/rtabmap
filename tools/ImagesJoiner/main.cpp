@@ -17,10 +17,10 @@
  * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "utilite/ULogger.h"
-#include "utilite/UTimer.h"
-#include "utilite/UDirectory.h"
-#include "utilite/UConversion.h"
+#include "rtabmap/utilite/ULogger.h"
+#include "rtabmap/utilite/UTimer.h"
+#include "rtabmap/utilite/UDirectory.h"
+#include "rtabmap/utilite/UConversion.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 

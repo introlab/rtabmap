@@ -3,10 +3,10 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
-#include <utilite/ULogger.h>
-#include <utilite/UTimer.h>
-#include <utilite/UConversion.h>
-#include <utilite/UDirectory.h>
+#include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UDirectory.h>
 #include "rtabmap/core/Memory.h"
 
 int main(int argc, char** argv)
@@ -14,7 +14,7 @@ int main(int argc, char** argv)
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kInfo);
 
-	std::string path = rtabmap::Parameters::defaultRtabmapWorkingDirectory() + "/LTM.db";
+	std::string path = rtabmap::Parameters::defaultRtabmapWorkingDirectory() + "/rtabmap.db";
 	if(argc > 1)
 	{
 		path = argv[1];

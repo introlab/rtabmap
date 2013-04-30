@@ -19,7 +19,7 @@
 
 #include <QtGui/QApplication>
 #include "rtabmap/gui/DatabaseViewer.h"
-#include "utilite/ULogger.h"
+#include "rtabmap/utilite/ULogger.h"
 
 int main(int argc, char * argv[])
 {

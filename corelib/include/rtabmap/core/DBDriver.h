@@ -27,8 +27,8 @@
 #include <map>
 #include <set>
 #include <opencv2/core/core.hpp>
-#include "utilite/UMutex.h"
-#include "utilite/UThreadNode.h"
+#include "rtabmap/utilite/UMutex.h"
+#include "rtabmap/utilite/UThreadNode.h"
 #include "rtabmap/core/Parameters.h"
 
 namespace rtabmap {

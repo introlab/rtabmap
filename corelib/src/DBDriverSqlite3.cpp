@@ -25,7 +25,7 @@
 #include "DatabaseSchema_sql.h"
 #include <set>
 
-#include "utilite/UtiLite.h"
+#include "rtabmap/utilite/UtiLite.h"
 
 namespace rtabmap {
 

@@ -22,7 +22,7 @@
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
-#include "utilite/UEventsHandler.h"
+#include "rtabmap/utilite/UEventsHandler.h"
 #include <QtGui/QMainWindow>
 #include <QtCore/QSet>
 #include "rtabmap/core/RtabmapEvent.h"

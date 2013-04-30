@@ -22,10 +22,10 @@
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
-#include <utilite/UThreadNode.h>
-#include <utilite/UEventsHandler.h>
-#include <utilite/USemaphore.h>
-#include <utilite/UMutex.h>
+#include <rtabmap/utilite/UThreadNode.h>
+#include <rtabmap/utilite/UEventsHandler.h>
+#include <rtabmap/utilite/USemaphore.h>
+#include <rtabmap/utilite/UMutex.h>
 
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/Image.h"

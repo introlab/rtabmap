@@ -25,7 +25,7 @@
 #include <opencv2/core/core.hpp>
 #include <list>
 #include <set>
-#include "utilite/UEventsHandler.h"
+#include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/core/Parameters.h"
 
 namespace rtabmap {

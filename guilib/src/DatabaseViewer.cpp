@@ -24,11 +24,11 @@
 #include <QtGui/QInputDialog>
 #include <QtCore/QBuffer>
 #include <QtCore/QTextStream>
-#include <utilite/ULogger.h>
-#include <utilite/UDirectory.h>
-#include <utilite/UConversion.h>
+#include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UDirectory.h>
+#include <rtabmap/utilite/UConversion.h>
 #include <opencv2/core/core_c.h>
-#include <utilite/UTimer.h>
+#include <rtabmap/utilite/UTimer.h>
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/gui/KeypointItem.h"

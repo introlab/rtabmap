@@ -23,7 +23,7 @@
 #include "rtabmap/core/Parameters.h"
 #include <iostream>
 
-#include "utilite/UtiLite.h"
+#include "rtabmap/utilite/UtiLite.h"
 
 namespace rtabmap {
 

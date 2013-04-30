@@ -32,11 +32,11 @@
 #include "rtabmap/gui/qtipl.h"
 #include "rtabmap/gui/KeypointItem.h"
 
-#include <utilite/UStl.h>
-#include <utilite/ULogger.h>
-#include <utilite/UPlot.h>
-#include <utilite/UEventsManager.h>
-#include <utilite/UFile.h>
+#include <rtabmap/utilite/UStl.h>
+#include <rtabmap/utilite/ULogger.h>
+#include "utilite/UPlot.h"
+#include <rtabmap/utilite/UEventsManager.h>
+#include <rtabmap/utilite/UFile.h>
 
 #include "AboutDialog.h"
 #include "PdfPlot.h"
@@ -451,8 +451,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
 
 		// get images
-		cv::Mat refImage = stat.refImage();
-		cv::Mat loopImage = stat.loopImage();
+		const cv::Mat & refImage = stat.refImage();
+		const cv::Mat & loopImage = stat.loopImage();
 
 		_ui->label_matchId->clear();
 		QPixmap refPixmap;
@@ -1325,7 +1325,7 @@ void MainWindow::generateLocalMap()
 void MainWindow::deleteMemory()
 {
 	QMessageBox::StandardButton button;
-	QString dbPath = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "LTM.db";
+	QString dbPath = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "rtabmap.db";
 	if(_state == kMonitoring)
 	{
 		button = QMessageBox::question(this,
@@ -1385,7 +1385,7 @@ void MainWindow::updateEditMenu()
 	// Update Memory delete database size
 	if(_state != kMonitoring)
 	{
-		QString dbPath = _preferencesDialog->getWorkingDirectory() + "/LTM.db";
+		QString dbPath = _preferencesDialog->getWorkingDirectory() + "/rtabmap.db";
 		_ui->actionDelete_memory->setText(tr("Delete memory (%1 MB)").arg(UFile::length(dbPath.toStdString())/1000000));
 	}
 }

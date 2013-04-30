@@ -21,7 +21,7 @@
 #define PARAMEVENT_H_
 
 #include "rtabmap/core/Parameters.h"
-#include <utilite/UEvent.h>
+#include <rtabmap/utilite/UEvent.h>
 
 namespace rtabmap
 {

@@ -18,7 +18,7 @@
  */
 
 #include "PdfPlot.h"
-#include <utilite/ULogger.h>
+#include <rtabmap/utilite/ULogger.h>
 
 namespace rtabmap {
 

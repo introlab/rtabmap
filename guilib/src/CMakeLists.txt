@@ -11,6 +11,7 @@ SET(headers_ui
 	./PdfPlot.h
 	./StatsToolBox.h
 	./DetailedProgressDialog.h
+	./utilite/UPlot.h
 )
 
 SET(uis
@@ -50,6 +51,7 @@ SET(SRC_FILES
 	./AboutDialog.cpp
 	./ConsoleWidget.cpp
 	./DatabaseViewer.cpp
+	./utilite/UPlot.cpp
 	${moc_srcs} 
 	${moc_uis} 
 	${srcs_qrc}
@@ -57,9 +59,9 @@ SET(SRC_FILES
 
 SET(INCLUDE_DIRS
 	${PROJECT_SOURCE_DIR}/corelib/include
+	${PROJECT_SOURCE_DIR}/utilite/include
 	${CMAKE_CURRENT_SOURCE_DIR}/../include
 	${CMAKE_CURRENT_SOURCE_DIR}
-	${UTILITE_INCLUDE_DIRS}
 	${OpenCV_INCLUDE_DIRS}
 	${CMAKE_CURRENT_BINARY_DIR} # for qt ui generated in binary dir
 )
@@ -67,7 +69,6 @@ SET(INCLUDE_DIRS
 INCLUDE(${QT_USE_FILE})
 
 SET(LIBRARIES
-    ${UTILITE_LIBRARIES}
     ${QT_LIBRARIES} 
 	${OpenCV_LIBS} 
 )
@@ -78,7 +79,7 @@ INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 # create a library from the source files
 ADD_LIBRARY(rtabmap_guilib ${SRC_FILES})
 # Linking with Qt libraries
-TARGET_LINK_LIBRARIES(rtabmap_guilib rtabmap_corelib ${LIBRARIES})
+TARGET_LINK_LIBRARIES(rtabmap_guilib rtabmap_corelib rtabmap_utilite ${LIBRARIES})
 
 SET_TARGET_PROPERTIES(
 rtabmap_guilib 

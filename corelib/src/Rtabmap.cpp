@@ -28,11 +28,11 @@
 #include "rtabmap/core/Memory.h"
 #include "BayesFilter.h"
 
-#include <utilite/ULogger.h>
-#include <utilite/UFile.h>
-#include <utilite/UTimer.h>
-#include <utilite/UConversion.h>
-#include <utilite/UMath.h>
+#include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UFile.h>
+#include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UMath.h>
 
 #include "SimpleIni.h"
 
@@ -56,7 +56,7 @@
 
 namespace rtabmap
 {
-const char * Rtabmap::kDefaultDatabaseName = "LTM.db";
+const char * Rtabmap::kDefaultDatabaseName = "rtabmap.db";
 
 Rtabmap::Rtabmap() :
 	_publishStats(Parameters::defaultRtabmapPublishStats()),

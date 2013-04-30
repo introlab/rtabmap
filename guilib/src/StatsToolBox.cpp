@@ -31,8 +31,8 @@
 #include <QtGui/QToolBox>
 #include <QtGui/QDialog>
 
-#include <utilite/UPlot.h>
-#include <utilite/ULogger.h>
+#include "utilite/UPlot.h"
+#include <rtabmap/utilite/ULogger.h>
 
 namespace rtabmap {
 

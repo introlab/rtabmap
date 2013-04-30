@@ -22,7 +22,7 @@
 #include <QtGui/QPen>
 #include <QtGui/QBrush>
 #include <QtGui/QGraphicsScene>
-#include "utilite/ULogger.h"
+#include "rtabmap/utilite/ULogger.h"
 
 namespace rtabmap {
 

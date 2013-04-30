@@ -19,10 +19,10 @@
 
 #include "rtabmap/core/EpipolarGeometry.h"
 #include "Signature.h"
-#include "utilite/ULogger.h"
-#include "utilite/UTimer.h"
-#include "utilite/UStl.h"
-#include "utilite/UMath.h"
+#include "rtabmap/utilite/ULogger.h"
+#include "rtabmap/utilite/UTimer.h"
+#include "rtabmap/utilite/UStl.h"
+#include "rtabmap/utilite/UMath.h"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/core_c.h>

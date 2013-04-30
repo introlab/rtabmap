@@ -31,10 +31,10 @@
 #include "ui_preferencesDialog.h"
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/Parameters.h"
-#include <utilite/ULogger.h>
-#include <utilite/UConversion.h>
-#include <utilite/UPlot.h>
-#include <utilite/UStl.h>
+#include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UConversion.h>
+#include "utilite/UPlot.h"
+#include <rtabmap/utilite/UStl.h>
 
 #define DEFAULT_GUI_IMAGES_KEPT true
 #define DEFAULT_LOGGER_LEVEL 2

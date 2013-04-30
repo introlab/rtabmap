@@ -21,13 +21,13 @@
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/core/Features2d.h"
 
-#include <utilite/UEventsManager.h>
-#include <utilite/UConversion.h>
-#include <utilite/UStl.h>
-#include <utilite/UConversion.h>
-#include <utilite/UFile.h>
-#include <utilite/UDirectory.h>
-#include <utilite/UTimer.h>
+#include <rtabmap/utilite/UEventsManager.h>
+#include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UStl.h>
+#include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UFile.h>
+#include <rtabmap/utilite/UDirectory.h>
+#include <rtabmap/utilite/UTimer.h>
 
 #include <opencv2/imgproc/imgproc.hpp>
 

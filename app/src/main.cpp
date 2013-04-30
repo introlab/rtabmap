@@ -19,11 +19,11 @@
 
 #include <QtGui/QApplication>
 #include <QtCore/QDir>
-#include "utilite/UEventsManager.h"
+#include "rtabmap/utilite/UEventsManager.h"
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/gui/MainWindow.h"
 #include <QtGui/QMessageBox>
-#include "utilite/UObjDeletionThread.h"
+#include "rtabmap/utilite/UObjDeletionThread.h"
 #include "ObjDeletionHandler.h"
 
 using namespace rtabmap;
