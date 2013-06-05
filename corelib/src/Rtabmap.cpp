@@ -1237,6 +1237,7 @@ void Rtabmap::process(const cv::Mat & image, int id)
 
 void Rtabmap::dumpData() const
 {
+	UDEBUG("");
 	if(_memory)
 	{
 		_memory->dumpMemory(this->getWorkingDir());

@@ -33,7 +33,8 @@ const std::map<std::string, float> & Statistics::defaultData()
 Statistics::Statistics() :
 	_extended(0),
 	_refImageId(0),
-	_loopClosureId(0)
+	_loopClosureId(0),
+	_localLoopClosureId(0)
 {
 	_defaultDataInitialized = true;
 }

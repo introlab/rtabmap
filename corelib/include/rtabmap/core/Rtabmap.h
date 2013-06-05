@@ -74,7 +74,7 @@ public:
 	int getTotalMemSize() const;
 	double getLastProcessTime() const {return _lastProcessTime;};
 	std::multimap<int, cv::KeyPoint> getWords(int locationId) const;
-	std::map<int, int> getNeighbors(int nodeId, int margin, bool lookInLTM = false) const;
+	std::map<int, int> getNeighbors(int nodeId, int margin, bool lookInLTM = false) const;// <Id,Margin> including nodeId
 	bool isInSTM(int locationId) const;
 	const Statistics & getStatistics() const;
 

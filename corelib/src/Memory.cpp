@@ -1618,7 +1618,7 @@ bool Memory::addLoopClosureLink(int oldId, int newId)
 
 void Memory::dumpMemory(std::string directory) const
 {
-	ULOGGER_DEBUG("");
+	UINFO("Dumping memory to directory \"%s\"", directory.c_str());
 	this->dumpDictionary((directory+"DumpMemoryWordRef.txt").c_str(), (directory+"DumpMemoryWordDesc.txt").c_str());
 	this->dumpSignatures((directory + "DumpMemorySign.txt").c_str());
 	this->dumpMemoryTree((directory + "DumpMemoryTree.txt").c_str());

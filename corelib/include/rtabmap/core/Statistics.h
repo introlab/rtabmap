@@ -89,6 +89,7 @@ public:
 	void setExtended(bool extended) {_extended = extended;}
 	void setRefImageId(int refImageId) {_refImageId = refImageId;}
 	void setLoopClosureId(int loopClosureId) {_loopClosureId = loopClosureId;}
+	void setLocalLoopClosureId(int localLoopClosureId) {_localLoopClosureId = localLoopClosureId;}
 	void setRefImage(const cv::Mat & image);
 	void setLoopImage(const cv::Mat & image);
 	void setWeights(const std::map<int, int> & weights) {_weights = weights;}
@@ -102,6 +103,7 @@ public:
 	bool extended() const {return _extended;}
 	int refImageId() const {return _refImageId;}
 	int loopClosureId() const {return _loopClosureId;}
+	int localLoopClosureId() const {return _localLoopClosureId;}
 	const cv::Mat & refImage() const {return _refImage;}
 	const cv::Mat & loopImage() const {return _loopImage;}
 	const std::map<int, int> & weights() const {return _weights;}
@@ -118,6 +120,7 @@ private:
 
 	int _refImageId;
 	int _loopClosureId;
+	int _localLoopClosureId; // Note: used by VSLAM
 
 	// extended data start here...
 	cv::Mat _refImage;
