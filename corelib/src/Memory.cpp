@@ -435,10 +435,13 @@ bool Memory::update(const Image & image, std::map<std::string, float> & stats)
 	// signature like a parent to the memory tree, otherwise add
 	// it as a child to the similar signature.
 	//============================================================
-	this->rehearsal(signature, stats);
-	t=timer.ticks()*1000;
-	stats.insert(std::pair<std::string, float>(std::string("TimingMem/Rehearsal/ms"), t));
-	ULOGGER_DEBUG("time rehearsal=%f ms", t);
+	if(_incrementalMemory)
+	{
+		this->rehearsal(signature, stats);
+		t=timer.ticks()*1000;
+		stats.insert(std::pair<std::string, float>(std::string("TimingMem/Rehearsal/ms"), t));
+		ULOGGER_DEBUG("time rehearsal=%f ms", t);
+	}
 
 	//============================================================
 	// Transfer the oldest signature of the short-term memory to the working memory
@@ -451,7 +454,7 @@ bool Memory::update(const Image & image, std::map<std::string, float> & stats)
 		++_signaturesAdded;
 	}
 
-	if(!_memoryChanged)
+	if(!_memoryChanged && _incrementalMemory)
 	{
 		_memoryChanged = true;
 	}
@@ -1138,7 +1141,7 @@ int Memory::cleanup(const std::list<int> & ignoredIds)
 	// bad signature
 	if(_lastSignature->isBadSignature() || !_incrementalMemory)
 	{
-		moveToTrash(_lastSignature);
+		moveToTrash(_lastSignature, _incrementalMemory);
 		++signaturesRemoved;
 	}
 
@@ -1359,7 +1362,7 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase)
 
 		// Remove neighbor links with bad signatures (assuming that is done in cleanup),
 		// the bad signatures are always the last signature added.
-		if(s->isBadSignature())
+		if(s->isBadSignature() || !saveToDatabase)
 		{
 			const std::set<int> & neighbors = s->getNeighbors();
 			for(std::set<int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
@@ -1466,7 +1469,7 @@ bool Memory::addLoopClosureLink(int oldId, int newId)
 	ULOGGER_INFO("old=%d, new=%d", oldId, newId);
 	Signature * oldS = _getSignature(oldId);
 	Signature * newS = _getSignature(newId);
-	if(oldS && newS)
+	if(oldS && newS && _incrementalMemory)
 	{
 		const std::set<int> & oldLoopclosureIds = oldS->getLoopClosureIds();
 		if(oldLoopclosureIds.size() && oldLoopclosureIds.find(newS->id()) != oldLoopclosureIds.end())
@@ -1611,6 +1614,11 @@ bool Memory::addLoopClosureLink(int oldId, int newId)
 		if(!oldS)
 		{
 			UERROR("newId=%d, oldId=%d, Signature %d not found in working/st memories", newId, oldId, oldId);
+		}
+		if(oldS && newS && !_incrementalMemory)
+		{
+			// Accept loop closure while we don't add a link
+			return true;
 		}
 	}
 	return false;

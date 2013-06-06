@@ -123,93 +123,97 @@ void VWDictionary::setIncrementalDictionary(bool incrementalDictionary, const st
 {
 	if(!incrementalDictionary)
 	{
-		if((!_incrementalDictionary && _dictionaryPath.compare(dictionaryPath) != 0) ||
-		   _visualWords.size() == 0)
+		if(!dictionaryPath.empty())
 		{
-			std::ifstream file;
-			if(!dictionaryPath.empty())
+			if((!_incrementalDictionary && _dictionaryPath.compare(dictionaryPath) != 0) ||
+			   _visualWords.size() == 0)
 			{
+				std::ifstream file;
 				file.open(dictionaryPath.c_str(), std::ifstream::in);
-			}
-			if(file.good())
-			{
-				UDEBUG("Deleting old dictionary and loading the new one from \"%s\"", dictionaryPath.c_str());
-				UTimer timer;
-
-				// first line is the header
-				std::string str;
-				std::list<std::string> strList;
-				std::getline(file, str);
-				strList = uSplitNumChar(str);
-				unsigned int dimension  = 0;
-				for(std::list<std::string>::iterator iter = strList.begin(); iter != strList.end(); ++iter)
+				if(file.good())
 				{
-					if(uIsDigit(iter->at(0)))
+					UDEBUG("Deleting old dictionary and loading the new one from \"%s\"", dictionaryPath.c_str());
+					UTimer timer;
+
+					// first line is the header
+					std::string str;
+					std::list<std::string> strList;
+					std::getline(file, str);
+					strList = uSplitNumChar(str);
+					unsigned int dimension  = 0;
+					for(std::list<std::string>::iterator iter = strList.begin(); iter != strList.end(); ++iter)
 					{
-						dimension = std::atoi(iter->c_str());
-						break;
+						if(uIsDigit(iter->at(0)))
+						{
+							dimension = std::atoi(iter->c_str());
+							break;
+						}
 					}
-				}
 
-				if(dimension == 0 || dimension > 1000)
-				{
-					UERROR("Invalid dictionary file, visual word dimension (%d) is not valid, \"%s\"", dimension, dictionaryPath.c_str());
+					if(dimension == 0 || dimension > 1000)
+					{
+						UERROR("Invalid dictionary file, visual word dimension (%d) is not valid, \"%s\"", dimension, dictionaryPath.c_str());
+					}
+					else
+					{
+						// Process all words
+						while(file.good())
+						{
+							std::getline(file, str);
+							strList = uSplit(str);
+							if(strList.size() == dimension+1)
+							{
+								//first one is the visual word id
+								std::list<std::string>::iterator iter = strList.begin();
+								int id = std::atoi(iter->c_str());
+								std::vector<float> descriptor(dimension);
+								++iter;
+								unsigned int i=0;
+
+								//get descriptor
+								for(;i<dimension && iter != strList.end(); ++i, ++iter)
+								{
+									descriptor[i] = std::atof(iter->c_str());
+								}
+								if(i != dimension)
+								{
+									UERROR("");
+								}
+
+								// laplacian not used
+								VisualWord * vw = new VisualWord(id, &(descriptor[0]), dimension, 0);
+								_visualWords.insert(_visualWords.end(), std::pair<int, VisualWord*>(id, vw));
+							}
+							else
+							{
+								UWARN("Cannot parse line \"%s\"", str.c_str());
+							}
+						}
+						this->update();
+						_incrementalDictionary = false;
+					}
+
+
+					UDEBUG("Time changing dictionary = %fs", timer.ticks());
 				}
 				else
 				{
-					// Process all words
-					while(file.good())
-					{
-						std::getline(file, str);
-						strList = uSplit(str);
-						if(strList.size() == dimension+1)
-						{
-							//first one is the visual word id
-							std::list<std::string>::iterator iter = strList.begin();
-							int id = std::atoi(iter->c_str());
-							std::vector<float> descriptor(dimension);
-							++iter;
-							unsigned int i=0;
-
-							//get descriptor
-							for(;i<dimension && iter != strList.end(); ++i, ++iter)
-							{
-								descriptor[i] = std::atof(iter->c_str());
-							}
-							if(i != dimension)
-							{
-								UERROR("");
-							}
-
-							// laplacian not used
-							VisualWord * vw = new VisualWord(id, &(descriptor[0]), dimension, 0);
-							_visualWords.insert(_visualWords.end(), std::pair<int, VisualWord*>(id, vw));
-						}
-						else
-						{
-							UWARN("Cannot parse line \"%s\"", str.c_str());
-						}
-					}
-					this->update();
-					_incrementalDictionary = false;
+					UERROR("Cannot open dictionary file \"%s\"", dictionaryPath.c_str());
 				}
-
-
-				UDEBUG("Time changing dictionary = %fs", timer.ticks());
+				file.close();
+			}
+			else if(!_incrementalDictionary)
+			{
+				UDEBUG("Dictionary \"%s\" already loaded...", dictionaryPath.c_str());
 			}
 			else
 			{
-				UERROR("Cannot open dictionary file \"%s\"", dictionaryPath.c_str());
+				UERROR("Cannot change to a fixed dictionary if there are already words (%d) in the incremental one.", _visualWords.size());
 			}
-			file.close();
 		}
-		else if(!_incrementalDictionary)
+		else if(_visualWords.size() == 0)
 		{
-			UDEBUG("Dictionary \"%s\" already loaded...", dictionaryPath.c_str());
-		}
-		else
-		{
-			UERROR("Cannot change to a fixed dictionary if there are already words (%d) in the incremental one.", _visualWords.size());
+			_incrementalDictionary = false;
 		}
 	}
 	else if(incrementalDictionary && !_incrementalDictionary)
@@ -358,7 +362,7 @@ void VWDictionary::update()
 
 void VWDictionary::clear()
 {
-	if(_visualWords.size())
+	if(_visualWords.size() && _incrementalDictionary)
 	{
 		UWARN("Visual dictionary would be already empty here (%d words still in dictionary).", _visualWords.size());
 	}

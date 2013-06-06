@@ -25,8 +25,10 @@
 void showUsage()
 {
 	printf("\nUsage:\n"
-			"rtabmap-example \"path\"\n"
-			"  path   Path to a directory of images\n ");
+			"rtabmap-example [options] \"path\"\n"
+			"  path       Path to a directory of images\n "
+			"  Options:"
+			"     -l   localization mode: use already built RTAB-Map database to localize\n ");
 	exit(1);
 }
 
@@ -35,11 +37,28 @@ int main(int argc, char * argv[])
 	//ULogger::setType(ULogger::kTypeConsole);
 	//ULogger::setLevel(ULogger::kDebug);
 
+	std::string path;
+	bool localizationMode = false;
+
 	if(argc < 2)
 	{
 		showUsage();
 	}
-	std::string path = argv[1];
+
+	for(int i=1; i<argc-1; ++i)
+	{
+		if(strcmp(argv[i], "-l") == 0)
+		{
+			localizationMode = true;
+		}
+		else
+		{
+			printf("Unrecognized option \"%s\"\n", argv[i]);
+			showUsage();
+		}
+	}
+
+	path = argv[argc-1];
 
 	// rtabmap::Camera is simply a convenience wrapper of OpenCV cv::VideoCapture and cv::imread
 	rtabmap::CameraImages camera(path);
@@ -66,8 +85,15 @@ int main(int argc, char * argv[])
 	// Or SURF hessian treshold:
 	//   parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFHessianThreshold(), "150"));
 
+	if(localizationMode)
+	{
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "false"));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpIncrementalDictionary(), "false"));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemSTMSize(), "1"));
+	}
+
 	// Initialize rtabmap: delete/create database...
-	rtabmap.init(parameters);
+	rtabmap.init(parameters, !localizationMode);
 
 	// Process each image of the directory...
 	printf("\nProcessing images... from directory \"%s\"\n", path.c_str());
@@ -75,10 +101,11 @@ int main(int argc, char * argv[])
 	int countLoopDetected=0;
 	int i=0;
 	cv::Mat img = camera.takeImage();
+	int nextIndex = rtabmap.getLastLocationId()+1;
 	while(!img.empty())
 	{
 		// Process image : Main loop of RTAB-Map
-		rtabmap.process(img);
+		rtabmap.process(img, nextIndex);
 
 		// Check if a loop closure is detected and print some info
 		if(rtabmap.getLoopClosureId())
@@ -91,11 +118,11 @@ int main(int argc, char * argv[])
 			printf(" #%d ptime(%fs) STM(%d) WM(%d) hyp(%d) value(%.2f) *LOOP %d->%d*\n",
 					i,
 					rtabmap.getLastProcessTime(),
-					rtabmap.getSTM().size(), // short-term memory
-					rtabmap.getWM().size(), // working memory
+					(int)rtabmap.getSTM().size(), // short-term memory
+					(int)rtabmap.getWM().size(), // working memory
 					rtabmap.getLoopClosureId(),
 					rtabmap.getLcHypValue(),
-					rtabmap.getLastLocationId(),
+					nextIndex,
 					rtabmap.getLoopClosureId());
 		}
 		else
@@ -103,11 +130,13 @@ int main(int argc, char * argv[])
 			printf(" #%d ptime(%fs) STM(%d) WM(%d) hyp(%d) value(%.2f)\n",
 					i,
 					rtabmap.getLastProcessTime(),
-					rtabmap.getSTM().size(), // short-term memory
-					rtabmap.getWM().size(), // working memory
+					(int)rtabmap.getSTM().size(), // short-term memory
+					(int)rtabmap.getWM().size(), // working memory
 					rtabmap.getRetrievedId(), // highest loop closure hypothesis
 					rtabmap.getLcHypValue());
 		}
+
+		++nextIndex;
 
 		//Get next image
 		img = camera.takeImage();

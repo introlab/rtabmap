@@ -487,7 +487,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			//means it will never used for a loop closure detection
 			if(_preferencesDialog->isImagesKept())
 			{
-				if(stat.loopClosureId()>0 || highestHypothesisId>0)
+				if(stat.loopClosureId()>0 || highestHypothesisId>0 || stat.localLoopClosureId()>0)
 				{
 					// order -> loop closure id -> local loop closure id -> highest loop closure hyp id
 					int id = stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId()>0?stat.localLoopClosureId():highestHypothesisId;
@@ -506,19 +506,12 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		int rejectedHyp = bool(uValue(stat.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
 		float highestHypothesisValue = uValue(stat.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f);
 		int matchId = 0;
-		if(highestHypothesisId > 0 || stat.localLoopClosureId())
+		if(highestHypothesisId > 0 || stat.localLoopClosureId()>0)
 		{
 			bool show = true;
 			if(stat.loopClosureId() > 0)
 			{
-				if(highestHypothesisId != stat.loopClosureId())
-				{
-					_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::yellow));
-				}
-				else
-				{
-					_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::green));
-				}
+				_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::green));
 				_ui->label_stats_loopClosuresDetected->setText(QString::number(_ui->label_stats_loopClosuresDetected->text().toInt() + 1));
 				if(highestHypothesisIsSaved)
 				{
@@ -531,7 +524,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::yellow));
 				_ui->label_matchId->setText(QString("Local match (%1)").arg(stat.localLoopClosureId()));
-
 			}
 			else if(rejectedHyp && highestHypothesisValue >= _preferencesDialog->getLoopThr())
 			{
