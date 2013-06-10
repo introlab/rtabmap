@@ -93,7 +93,8 @@ public:
 	float getSimilarityThreshold() const {return _similarityThreshold;}
 	std::map<int, int> getWeights() const;
 	float getSimilarityOnlyWithLast() const {return _rehearsalOnlyWithLast;}
-	const Signature * getLastSignature() const;
+	int getLastSignatureId() const;
+	const Signature * getLastWorkingSignature() const;
 	int getDatabaseMemoryUsed() const; // in bytes
 	double getDbSavingTime() const;
 	cv::Mat getImage(int signatureId) const;

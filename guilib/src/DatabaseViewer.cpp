@@ -315,9 +315,9 @@ void DatabaseViewer::update(int value,
 				img.loadFromData(iter.value(), "BMP");
 			}
 
-			if(memory_ && dynamic_cast<rtabmap::Memory*>(memory_))
+			if(memory_)
 			{
-				std::multimap<int, cv::KeyPoint> words = dynamic_cast<rtabmap::Memory*>(memory_)->getWords(id);
+				std::multimap<int, cv::KeyPoint> words = memory_->getWords(id);
 				if(words.size())
 				{
 					drawKeypoints(words, view->scene());

@@ -394,9 +394,9 @@ int Rtabmap::getRetrievedId() const
 int Rtabmap::getLastLocationId() const
 {
 	int id = 0;
-	if(_memory && _memory->getLastSignature())
+	if(_memory)
 	{
-		id = _memory->getLastSignature()->id();
+		id = _memory->getLastSignatureId();
 	}
 	return id;
 }
@@ -454,7 +454,7 @@ int Rtabmap::getTotalMemSize() const
 {
 	if(_memory)
 	{
-		const Signature * s  =_memory->getLastSignature();
+		const Signature * s  =_memory->getLastWorkingSignature();
 		if(s)
 		{
 			return s->id();
@@ -557,7 +557,7 @@ void Rtabmap::resetMemory(bool dbOverwritten)
 //============================================================
 // MAIN LOOP
 //============================================================
-void Rtabmap::process(const Image & image)
+void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * words)
 {
 	UDEBUG("");
 
@@ -630,7 +630,7 @@ void Rtabmap::process(const Image & image)
 	{
 		return;
 	}
-	signature = _memory->getLastSignature();
+	signature = _memory->getLastWorkingSignature();
 	if(!signature)
 	{
 		UFATAL("Not supposed to be here...last signature is null?!?");
@@ -639,6 +639,11 @@ void Rtabmap::process(const Image & image)
 	refId = signature->id();
 	timeMemoryUpdate = timer.ticks();
 	ULOGGER_INFO("timeMemoryUpdate=%fs", timeMemoryUpdate);
+
+	if(words)
+	{
+		*words = signature->getWords();
+	}
 
 	//============================================================
 	// Bayes filter update
@@ -1229,10 +1234,10 @@ void Rtabmap::rejectLastLoopClosure()
 	}
 }
 
-void Rtabmap::process(const cv::Mat & image, int id)
+void Rtabmap::process(const cv::Mat & image, int id, std::multimap<int, cv::KeyPoint> * words)
 {
 
-	this->process(Image(image, id));
+	this->process(Image(image, id), words);
 }
 
 void Rtabmap::dumpData() const

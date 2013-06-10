@@ -35,7 +35,7 @@
 
 namespace rtabmap {
 
-const int Memory::kIdStart = 1;
+const int Memory::kIdStart = 0;
 const int Memory::kIdVirtual = -1;
 const int Memory::kIdInvalid = 0;
 
@@ -115,14 +115,22 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 			_dbDriver->loadLastNodes(dbSignatures);
 			for(std::list<Signature*>::reverse_iterator iter=dbSignatures.rbegin(); iter!=dbSignatures.rend(); ++iter)
 			{
-				_signatures.insert(std::pair<int, Signature *>((*iter)->id(), *iter));
-				if((int)_stMem.size() <= _maxStMemSize)
+				// ignore bad signatures
+				if(!(*iter)->isBadSignature())
 				{
-					_stMem.insert((*iter)->id());
+					_signatures.insert(std::pair<int, Signature *>((*iter)->id(), *iter));
+					if((int)_stMem.size() <= _maxStMemSize)
+					{
+						_stMem.insert((*iter)->id());
+					}
+					else
+					{
+						_workingMem.insert((*iter)->id());
+					}
 				}
 				else
 				{
-					_workingMem.insert((*iter)->id());
+					delete *iter;
 				}
 			}
 			UEventsManager::post(new RtabmapEventInit(std::string("Loading last signatures, done! (") + uNumber2Str(int(_workingMem.size() + _stMem.size())) + " loaded)"));
@@ -135,7 +143,6 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 
 			// Last id
 			_dbDriver->getLastNodeId(_idCount);
-			_idCount += 1;
 		}
 		else
 		{
@@ -149,7 +156,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 
 	_workingMem.insert(kIdVirtual);
 
-	ULOGGER_DEBUG("ids start with %d", _idCount);
+	ULOGGER_DEBUG("ids start with %d", _idCount+1);
 
 
 	// Now load the dictionary if we have a connection
@@ -810,7 +817,7 @@ void Memory::getLoopClosureIds(int signatureId, std::set<int> & loopClosureIds, 
 
 int Memory::getNextId()
 {
-	return _idCount++;
+	return ++_idCount;
 }
 
 int Memory::getDatabaseMemoryUsed() const
@@ -1390,7 +1397,12 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase)
 	}
 }
 
-const Signature * Memory::getLastSignature() const
+int Memory::getLastSignatureId() const
+{
+	return _idCount;
+}
+
+const Signature * Memory::getLastWorkingSignature() const
 {
 	ULOGGER_DEBUG("");
 	return _lastSignature;
@@ -2228,6 +2240,10 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 	if(!id)
 	{
 		id = this->getNextId();
+	}
+	else
+	{
+		_idCount = id;
 	}
 
 	int treeSize= _workingMem.size() + _stMem.size();

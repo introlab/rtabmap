@@ -53,8 +53,8 @@ public:
 	Rtabmap();
 	virtual ~Rtabmap();
 
-	void process(const cv::Mat & image, int id=0); // for convenience, an id is automatically generated if id=0
-	void process(const Image & image); // for convenience
+	void process(const cv::Mat & image, int id=0, std::multimap<int, cv::KeyPoint> * words = 0); // for convenience, an id is automatically generated if id=0
+	void process(const Image & image, std::multimap<int, cv::KeyPoint> * words = 0); // for convenience
 
 	void init(const ParametersMap & param, bool deleteMemory = true);
 	void init(const std::string & configFile = "", bool deleteMemory = true);

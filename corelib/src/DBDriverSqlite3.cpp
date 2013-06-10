@@ -822,8 +822,19 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 			}
 			else
 			{
-				ULOGGER_ERROR("Node %d not found in database", *iter);
-				rc = sqlite3_finalize(ppStmt);
+				UWARN("Creating a empty signature for node %d", *iter);
+				Signature * ss = new Signature(*iter, visualWords);
+				if(ss)
+				{
+					ss->setWeight(weight);
+					ss->setSaved(true);
+					nodes.push_back(ss);
+				}
+				else
+				{
+					UFATAL("?Cannot allocate memory !!!");
+				}
+				++loaded;
 			}
 
 			//reset
