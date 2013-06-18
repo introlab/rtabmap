@@ -57,13 +57,13 @@ long UFile::length(const std::string &filePath)
 
 int UFile::erase(const std::string &filePath)
 {
-    return remove(filePath.c_str());
+    return std::remove(filePath.c_str());
 }
 
 int UFile::rename(const std::string &oldFilePath,
                      const std::string &newFilePath)
 {
-    return rename(oldFilePath.c_str(), newFilePath.c_str());
+    return std::rename(oldFilePath.c_str(), newFilePath.c_str());
 }
 
 std::string UFile::getName(const std::string & filePath)
@@ -92,4 +92,12 @@ std::string UFile::getExtension(const std::string &filePath)
 		return list.back();
 	}
 	return "";
+}
+
+void UFile::copy(const std::string & from, const std::string & to)
+{
+	std::ifstream src(from.c_str());
+	std::ofstream dst(to.c_str());
+
+	dst << src.rdbuf();
 }

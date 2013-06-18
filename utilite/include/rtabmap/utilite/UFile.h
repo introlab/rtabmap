@@ -72,6 +72,8 @@ public:
 
 	static std::string getExtension(const std::string &filePath);
 
+	static void copy(const std::string & from, const std::string & to);
+
 public:
 	/**
 	 * Create a UFile object with path initialized to an existing file .
@@ -127,6 +129,8 @@ public:
 	 * @return the file extension
 	 */
 	std::string getExtension() {return getExtension(path_);}
+
+	void copy(const std::string & to) {copy(path_, to);}
 
 private:
 	std::string path_;
