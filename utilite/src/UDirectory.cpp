@@ -49,11 +49,8 @@ bool sortCallback(const std::string & a, const std::string & b)
 	return uStrNumCmp(a,b) < 0;
 }
 #elif __APPLE__
-int sortCallback(const void * aa, const void * bb)
+int sortCallback(const struct dirent ** a, const struct dirent ** b)
 {
-	const struct dirent ** a = (const struct dirent **)aa;
-	const struct dirent ** b = (const struct dirent **)bb;
-
 	return uStrNumCmp((*a)->d_name, (*b)->d_name);
 }
 #else
