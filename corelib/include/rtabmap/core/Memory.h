@@ -76,6 +76,7 @@ public:
 			bool ignoreLoopIds = false,
 			double * dbAccessTime = 0) const;
 	void deleteLastLocation();
+	void deleteLocation(int locationId);
 	void rejectLastLoopClosure();
 
 	//getters

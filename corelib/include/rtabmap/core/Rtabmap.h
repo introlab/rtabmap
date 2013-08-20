@@ -87,6 +87,7 @@ public:
 	void parseParameters(const ParametersMap & parameters);
 	void setWorkingDirectory(std::string path);
 	void deleteLastLocation();
+	void deleteLocation(int locationId); // Only nodes in STM can be deleted
 	void rejectLastLoopClosure();
 
 	void adjustLikelihood(std::map<int, float> & likelihood) const;

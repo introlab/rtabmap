@@ -1209,10 +1209,17 @@ void Rtabmap::setWorkingDirectory(std::string path)
 
 void Rtabmap::deleteLastLocation()
 {
-
 	if(_memory)
 	{
 		_memory->deleteLastLocation();
+	}
+}
+
+void Rtabmap::deleteLocation(int locationId)
+{
+	if(_memory)
+	{
+		_memory->deleteLocation(locationId);
 	}
 }
 
@@ -1236,7 +1243,6 @@ void Rtabmap::rejectLastLoopClosure()
 
 void Rtabmap::process(const cv::Mat & image, int id, std::multimap<int, cv::KeyPoint> * words)
 {
-
 	this->process(Image(image, id), words);
 }
 

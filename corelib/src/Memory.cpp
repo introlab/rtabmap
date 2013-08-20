@@ -1413,31 +1413,44 @@ void Memory::deleteLastLocation()
 	Signature * lastSignature = _lastSignature;
 	if(lastSignature)
 	{
-		UDEBUG("deleting last location %d", lastSignature->id());
-		const std::set<int> & neighbors = lastSignature->getNeighbors();
+		this->deleteLocation(lastSignature->id());
+	}
+}
+
+void Memory::deleteLocation(int locationId)
+{
+	UASSERT_MSG(this->isInSTM(locationId), "Deleting location outside the STM is not implemented!");
+	Signature * location = _getSignature(locationId);
+	if(location)
+	{
+		UDEBUG("deleting location %d", location->id());
+		const std::set<int> & neighbors = location->getNeighbors();
 		for(std::set<int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
 		{
 			Signature * s = _getSignature(*iter);
 			if(s)
 			{
-				s->removeNeighbor(lastSignature->id());
-				_lastSignature = s;
+				s->removeNeighbor(location->id());
+				if(location == _lastSignature)
+				{
+					_lastSignature = s;
+				}
 			}
 		}
 
-		const std::set<int> & child = lastSignature->getChildLoopClosureIds();
+		const std::set<int> & child = location->getChildLoopClosureIds();
 		for(std::set<int>::const_iterator iter=child.begin(); iter!=child.end(); ++iter)
 		{
 			Signature * s = _getSignature(*iter);
 			if(s)
 			{
-				s->removeLoopClosureId(lastSignature->id());
-				s->setWeight(s->getWeight() + lastSignature->getWeight());
+				s->removeLoopClosureId(location->id());
+				s->setWeight(s->getWeight() + location->getWeight());
 			}
 		}
-		lastSignature->setWeight(0);
+		location->setWeight(0);
 
-		this->moveToTrash(lastSignature, false);
+		this->moveToTrash(location, false);
 	}
 }
 
