@@ -20,12 +20,13 @@
 #include "DetailedProgressDialog.h"
 #include <QtGui/QLayout>
 #include <QtGui/QProgressBar>
-#include <QtGui/QPlainTextEdit>
+#include <QtGui/QTextEdit>
 #include <QtGui/QLabel>
 #include <QtGui/QPushButton>
 #include <QtGui/QCloseEvent>
 #include <QtGui/QCheckBox>
 #include <QtCore/QTimer>
+#include <QtCore/QTime>
 #include "rtabmap/utilite/ULogger.h"
 
 namespace rtabmap {
@@ -39,9 +40,9 @@ DetailedProgressDialog::DetailedProgressDialog(QWidget *parent, Qt::WindowFlags 
 	_text->setWordWrap(true);
 	_progressBar = new QProgressBar(this);
 	_progressBar->setMaximum(1);
-	_detailedText  = new QPlainTextEdit(this);
+	_detailedText  = new QTextEdit(this);
 	_detailedText->setReadOnly(true);
-	_detailedText->setLineWrapMode(QPlainTextEdit::NoWrap);
+	_detailedText->setLineWrapMode(QTextEdit::NoWrap);
 	_closeButton = new QPushButton(this);
 	_closeButton->setText("Close");
 	_closeWhenDoneCheckBox = new QCheckBox(this);
@@ -76,7 +77,9 @@ void DetailedProgressDialog::setAutoClose(bool on, int delayedClosingTimeSec)
 void DetailedProgressDialog::appendText(const QString & text)
 {
 	_text->setText(text);
-	_detailedText->appendPlainText(text);
+	QString html = tr("<html><font color=\"#999999\">%1 </font>%2</html>").arg(QTime::currentTime().toString("HH:mm:ss")).arg(text);
+	_detailedText->append(html);
+	_detailedText->ensureCursorVisible();
 }
 void DetailedProgressDialog::setValue(int value)
 {
@@ -119,6 +122,12 @@ void DetailedProgressDialog::clear()
 	_text->clear();
 	_progressBar->reset();
 	_detailedText->clear();
+	_closeButton->setEnabled(false);
+}
+
+void DetailedProgressDialog::resetProgress()
+{
+	_progressBar->reset();
 	_closeButton->setEnabled(false);
 }
 

@@ -6,6 +6,7 @@
     <file>images/Play1Normal.png</file>
     <file>images/Pause.ico</file>
     <file>images/PauseOnLoop.ico</file>
+	<file>images/PauseOnLocalLoop.ico</file>
     <file>images/PauseLoopRejected.ico</file>
     <file>qss/default.qss</file>
     <file>images/Plot16.png</file>

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1056</width>
-    <height>642</height>
+    <width>809</width>
+    <height>661</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -101,8 +101,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1056</width>
-     <height>22</height>
+     <width>809</width>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -115,35 +115,25 @@
     <property name="title">
      <string>Edit</string>
     </property>
-    <widget class="QMenu" name="menuAspect_ratio">
-     <property name="title">
-      <string>Aspect ratio</string>
-     </property>
-     <addaction name="action16_9"/>
-     <addaction name="action16_10"/>
-     <addaction name="action4_3"/>
-     <addaction name="separator"/>
-     <addaction name="action1080p"/>
-     <addaction name="action720p"/>
-     <addaction name="action480p"/>
-     <addaction name="action360p"/>
-     <addaction name="action240p"/>
-    </widget>
     <addaction name="actionApply_settings_to_the_detector"/>
-    <addaction name="actionClear_cache"/>
+    <addaction name="actionDownload_all_clouds"/>
     <addaction name="separator"/>
     <addaction name="actionOpen_working_directory"/>
+    <addaction name="actionPrint_loop_closure_IDs_to_console"/>
+    <addaction name="separator"/>
+    <addaction name="actionReset_the_memory"/>
     <addaction name="actionDelete_memory"/>
+    <addaction name="actionClear_cache"/>
     <addaction name="separator"/>
     <addaction name="actionDump_the_memory"/>
     <addaction name="actionDump_the_prediction_matrix"/>
-    <addaction name="actionPrint_loop_closure_IDs_to_console"/>
     <addaction name="actionGenerate_map"/>
     <addaction name="actionGenerate_local_map"/>
-    <addaction name="actionReset_the_memory"/>
     <addaction name="separator"/>
-    <addaction name="actionAuto_screen_capture"/>
-    <addaction name="menuAspect_ratio"/>
+    <addaction name="actionView_high_res_point_cloud"/>
+    <addaction name="actionSave_point_cloud"/>
+    <addaction name="actionView_point_cloud_as_mesh"/>
+    <addaction name="actionSave_mesh_ply_vtk_stl"/>
    </widget>
    <widget class="QMenu" name="menu6">
     <property name="title">
@@ -171,6 +161,7 @@
      </widget>
      <addaction name="menuImage"/>
      <addaction name="actionDatabase"/>
+     <addaction name="actionOpenni_RGBD"/>
     </widget>
     <addaction name="menuSelect_source"/>
     <addaction name="separator"/>
@@ -180,6 +171,13 @@
     <addaction name="separator"/>
     <addaction name="actionPause_on_match"/>
     <addaction name="actionPause_when_a_loop_hypothesis_is_rejected"/>
+    <addaction name="actionPause_on_local_loop_detection"/>
+    <addaction name="separator"/>
+    <addaction name="actionSLAM_mode"/>
+    <addaction name="actionLocalization_mode"/>
+    <addaction name="separator"/>
+    <addaction name="actionReset_Odometry"/>
+    <addaction name="actionTrigger_a_new_map"/>
    </widget>
    <widget class="QMenu" name="menuWindow">
     <property name="title">
@@ -198,8 +196,24 @@
      <addaction name="actionSave_state"/>
      <addaction name="actionLoad_state"/>
     </widget>
+    <widget class="QMenu" name="menuAspect_ratio_2">
+     <property name="title">
+      <string>Aspect ratio</string>
+     </property>
+     <addaction name="action16_9"/>
+     <addaction name="action16_10"/>
+     <addaction name="action4_3"/>
+     <addaction name="separator"/>
+     <addaction name="action1080p"/>
+     <addaction name="action720p"/>
+     <addaction name="action480p"/>
+     <addaction name="action360p"/>
+     <addaction name="action240p"/>
+    </widget>
     <addaction name="menuShow_view"/>
     <addaction name="menuFigures"/>
+    <addaction name="actionAuto_screen_capture"/>
+    <addaction name="menuAspect_ratio_2"/>
     <addaction name="separator"/>
     <addaction name="actionPreferences"/>
    </widget>
@@ -250,6 +264,11 @@
    <addaction name="separator"/>
    <addaction name="actionPause_on_match"/>
    <addaction name="actionPause_when_a_loop_hypothesis_is_rejected"/>
+   <addaction name="actionPause_on_local_loop_detection"/>
+   <addaction name="separator"/>
+   <addaction name="actionSLAM_mode"/>
+   <addaction name="actionLocalization_mode"/>
+   <addaction name="separator"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget_statsV2">
    <property name="floating">
@@ -277,6 +296,28 @@
        <property name="verticalSpacing">
         <number>2</number>
        </property>
+       <item row="3" column="1">
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_stats_timeLimit">
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+         <property name="suffix">
+          <string> ms</string>
+         </property>
+         <property name="decimals">
+          <number>0</number>
+         </property>
+         <property name="maximum">
+          <double>99999.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>50.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>450.000000000000000</double>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="0">
         <widget class="QLabel" name="label_24">
          <property name="text">
@@ -316,7 +357,7 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="0">
+       <item row="4" column="0">
         <widget class="QLabel" name="label_45">
          <property name="text">
           <string>Elapsed time (hh:mm:ss)</string>
@@ -326,7 +367,7 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="1">
+       <item row="4" column="1">
         <widget class="QLabel" name="label_elapsedTime">
          <property name="text">
           <string>Unknown</string>
@@ -336,14 +377,14 @@
          </property>
         </widget>
        </item>
-       <item row="4" column="0">
+       <item row="5" column="0">
         <widget class="QLabel" name="label_20">
          <property name="text">
           <string>Current image id</string>
          </property>
         </widget>
        </item>
-       <item row="4" column="1">
+       <item row="5" column="1">
         <widget class="QLabel" name="label_stats_imageNumber">
          <property name="text">
           <string>Unknown</string>
@@ -353,14 +394,14 @@
          </property>
         </widget>
        </item>
-       <item row="5" column="0">
+       <item row="6" column="0">
         <widget class="QLabel" name="label_12">
          <property name="text">
           <string>Loop closures detected</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="1">
+       <item row="6" column="1">
         <widget class="QLabel" name="label_stats_loopClosuresDetected">
          <property name="text">
           <string>0</string>
@@ -370,7 +411,7 @@
          </property>
         </widget>
        </item>
-       <item row="6" column="0">
+       <item row="7" column="0">
         <widget class="QLabel" name="label_38">
          <property name="text">
           <string>Loop closures detected 
@@ -378,7 +419,7 @@
          </property>
         </widget>
        </item>
-       <item row="6" column="1">
+       <item row="7" column="1">
         <widget class="QLabel" name="label_stats_loopClosuresReactivatedDetected">
          <property name="text">
           <string>0</string>
@@ -388,14 +429,14 @@
          </property>
         </widget>
        </item>
-       <item row="7" column="0">
+       <item row="8" column="0">
         <widget class="QLabel" name="label_15">
          <property name="text">
           <string>Loop closures rejected</string>
          </property>
         </widget>
        </item>
-       <item row="7" column="1">
+       <item row="8" column="1">
         <widget class="QLabel" name="label_stats_loopClosuresRejected">
          <property name="text">
           <string>0</string>
@@ -406,14 +447,14 @@
         </widget>
        </item>
        <item row="1" column="0">
-        <widget class="QLabel" name="label">
+        <widget class="QLabel" name="doubleSpinBox_stats_imgRate_label">
          <property name="text">
           <string>Image rate</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_2">
+       <item row="3" column="0">
+        <widget class="QLabel" name="label_timeLimit">
          <property name="text">
           <string>Time limit processing</string>
          </property>
@@ -423,24 +464,31 @@
         </widget>
        </item>
        <item row="2" column="1">
-        <widget class="QDoubleSpinBox" name="doubleSpinBox_stats_timeLimit">
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_stats_detectionRate">
          <property name="alignment">
           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
          </property>
          <property name="suffix">
-          <string> ms</string>
+          <string> Hz</string>
          </property>
          <property name="decimals">
-          <number>0</number>
+          <number>1</number>
          </property>
          <property name="maximum">
-          <double>99999.000000000000000</double>
+          <double>100.000000000000000</double>
          </property>
          <property name="singleStep">
-          <double>50.000000000000000</double>
+          <double>0.100000000000000</double>
          </property>
          <property name="value">
-          <double>450.000000000000000</double>
+          <double>2.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="doubleSpinBox_stats_imgRate_label_2">
+         <property name="text">
+          <string>RTAB-Map update rate</string>
          </property>
         </widget>
        </item>
@@ -480,13 +528,7 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="topMargin">
-      <number>0</number>
-     </property>
-     <property name="rightMargin">
-      <number>0</number>
-     </property>
-     <property name="bottomMargin">
+     <property name="margin">
       <number>0</number>
      </property>
      <item>
@@ -533,6 +575,48 @@
      </property>
      <item>
       <widget class="UPlot" name="rawLikelihoodPlot" native="true"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget_cloudViewer">
+   <property name="windowTitle">
+    <string>3D Map</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>4</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_5">
+    <layout class="QVBoxLayout" name="verticalLayout_3">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="margin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="rtabmap::CloudViewer" name="widget_cloudViewer" native="true"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget_loopClosureViewer">
+   <property name="windowTitle">
+    <string>3D Loop closure</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_7">
+    <layout class="QVBoxLayout" name="verticalLayout_7">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="margin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="rtabmap::LoopClosureViewer" name="widget_loopClosureViewer" native="true"/>
      </item>
     </layout>
    </widget>
@@ -593,7 +677,7 @@
      <normaloff>:/images/PauseOnLoop.ico</normaloff>:/images/PauseOnLoop.ico</iconset>
    </property>
    <property name="text">
-    <string>Pause on match</string>
+    <string>Pause on loop closure detection</string>
    </property>
   </action>
   <action name="actionStop">
@@ -612,7 +696,7 @@
   </action>
   <action name="actionApply_settings_to_the_detector">
    <property name="text">
-    <string>Apply settings to the detector</string>
+    <string>Apply settings to detector</string>
    </property>
   </action>
   <action name="actionDump_the_memory">
@@ -629,7 +713,7 @@
      <normaloff>:/images/PauseLoopRejected.ico</normaloff>:/images/PauseLoopRejected.ico</iconset>
    </property>
    <property name="text">
-    <string>Pause when a loop hypothesis is rejected</string>
+    <string>Pause on loop closure rejection</string>
    </property>
   </action>
   <action name="actionClear_cache">
@@ -662,7 +746,7 @@
   </action>
   <action name="actionGenerate_map">
    <property name="text">
-    <string>Generate map...</string>
+    <string>Generate graph map (*.dot)...</string>
    </property>
   </action>
   <action name="actionDelete_memory">
@@ -749,12 +833,86 @@
   </action>
   <action name="actionGenerate_local_map">
    <property name="text">
-    <string>Generate local map...</string>
+    <string>Generate graph local map (*.dot)...</string>
    </property>
   </action>
   <action name="actionPrint_loop_closure_IDs_to_console">
    <property name="text">
     <string>Print loop closure IDs to console</string>
+   </property>
+  </action>
+  <action name="actionOpenni_RGBD">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Openni (RGBD)</string>
+   </property>
+  </action>
+  <action name="actionSave_point_cloud">
+   <property name="text">
+    <string>Save high-res point clouds (*.pcd *.ply *.vtk)...</string>
+   </property>
+  </action>
+  <action name="actionDownload_all_clouds">
+   <property name="text">
+    <string>Download all clouds (update cache)</string>
+   </property>
+  </action>
+  <action name="actionPause_on_local_loop_detection">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../GuiLib.qrc">
+     <normaloff>:/images/PauseOnLocalLoop.ico</normaloff>:/images/PauseOnLocalLoop.ico</iconset>
+   </property>
+   <property name="text">
+    <string>Pause on local loop closure detection</string>
+   </property>
+  </action>
+  <action name="actionSLAM_mode">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Mapping</string>
+   </property>
+   <property name="toolTip">
+    <string>Simultaneous Localization And Mapping (SLAM)</string>
+   </property>
+  </action>
+  <action name="actionLocalization_mode">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Localization</string>
+   </property>
+  </action>
+  <action name="actionReset_Odometry">
+   <property name="text">
+    <string>Reset Odometry</string>
+   </property>
+  </action>
+  <action name="actionView_high_res_point_cloud">
+   <property name="text">
+    <string>View high-res point clouds</string>
+   </property>
+  </action>
+  <action name="actionView_point_cloud_as_mesh">
+   <property name="text">
+    <string>View meshes</string>
+   </property>
+  </action>
+  <action name="actionSave_mesh_ply_vtk_stl">
+   <property name="text">
+    <string>Save meshes (*.ply *.vtk)...</string>
+   </property>
+  </action>
+  <action name="actionTrigger_a_new_map">
+   <property name="text">
+    <string>Trigger a new map</string>
    </property>
   </action>
  </widget>
@@ -780,6 +938,18 @@
    <class>rtabmap::ConsoleWidget</class>
    <extends>QWidget</extends>
    <header>ConsoleWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>rtabmap::CloudViewer</class>
+   <extends>QWidget</extends>
+   <header>../include/rtabmap/gui/CloudViewer.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>rtabmap::LoopClosureViewer</class>
+   <extends>QWidget</extends>
+   <header>../include/rtabmap/gui/LoopClosureViewer.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

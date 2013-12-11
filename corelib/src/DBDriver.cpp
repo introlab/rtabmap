@@ -19,7 +19,7 @@
 
 #include "rtabmap/core/DBDriver.h"
 
-#include "Signature.h"
+#include "rtabmap/core/Signature.h"
 #include "VisualWord.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UMath.h"
@@ -30,7 +30,6 @@
 namespace rtabmap {
 
 DBDriver::DBDriver(const ParametersMap & parameters) :
-	_imagesCompressed(Parameters::defaultDbImagesCompressed()),
 	_emptyTrashesTime(0)
 {
 	this->parseParameters(parameters);
@@ -44,11 +43,6 @@ DBDriver::~DBDriver()
 
 void DBDriver::parseParameters(const ParametersMap & parameters)
 {
-	ParametersMap::const_iterator iter;
-	if((iter=parameters.find(Parameters::kDbImagesCompressed())) != parameters.end())
-	{
-		_imagesCompressed = uStr2Bool((*iter).second.c_str());
-	}
 }
 
 void DBDriver::closeConnection()
@@ -286,6 +280,13 @@ void DBDriver::load(VWDictionary * dictionary) const
 	_dbSafeAccessMutex.unlock();
 }
 
+void DBDriver::load(std::map<int, std::map<int, Transform> > & mapTransforms) const
+{
+	_dbSafeAccessMutex.lock();
+	this->loadQuery(mapTransforms);
+	_dbSafeAccessMutex.unlock();
+}
+
 void DBDriver::loadLastNodes(std::list<Signature *> & signatures) const
 {
 	_dbSafeAccessMutex.lock();
@@ -386,23 +387,45 @@ void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> 
 }
 
 //TODO Check also in the trash ?
-void DBDriver::getImage(int signatureId, cv::Mat & rawData) const
+void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool loadMetricData) const
 {
 	_dbSafeAccessMutex.lock();
-	this->getImageQuery(signatureId, rawData);
+	this->loadNodeDataQuery(signatures, loadMetricData);
 	_dbSafeAccessMutex.unlock();
 }
 
 //TODO Check also in the trash ?
-void DBDriver::getNeighborIds(int signatureId, std::set<int> & neighbors, bool onlyWithActions) const
+void DBDriver::getNodeData(
+		int signatureId,
+		std::vector<unsigned char> & image,
+		std::vector<unsigned char> & depth,
+		std::vector<unsigned char> & depth2d,
+		float & depthConstant,
+		Transform & localTransform) const
 {
 	_dbSafeAccessMutex.lock();
-	this->getNeighborIdsQuery(signatureId, neighbors, onlyWithActions);
+	this->getNodeDataQuery(signatureId, image, depth, depth2d, depthConstant, localTransform);
 	_dbSafeAccessMutex.unlock();
 }
 
 //TODO Check also in the trash ?
-void DBDriver::loadNeighbors(int signatureId, std::set<int> & neighbors) const
+void DBDriver::getNodeData(int signatureId, std::vector<unsigned char> & image) const
+{
+	_dbSafeAccessMutex.lock();
+	this->getNodeDataQuery(signatureId, image);
+	_dbSafeAccessMutex.unlock();
+}
+
+//TODO Check also in the trash ?
+void DBDriver::getPose(int signatureId, Transform & pose, int & mapId) const
+{
+	_dbSafeAccessMutex.lock();
+	this->getPoseQuery(signatureId, pose, mapId);
+	_dbSafeAccessMutex.unlock();
+}
+
+//TODO Check also in the trash ?
+void DBDriver::loadNeighbors(int signatureId, std::map<int, Transform> & neighbors) const
 {
 	_dbSafeAccessMutex.lock();
 	this->loadNeighborsQuery(signatureId, neighbors);
@@ -418,10 +441,10 @@ void DBDriver::getWeight(int signatureId, int & weight) const
 }
 
 //TODO Check also in the trash ?
-void DBDriver::getLoopClosureIds(int signatureId, std::set<int> & loopIds, std::set<int> & childIds) const
+void DBDriver::loadLoopClosures(int signatureId, std::map<int, Transform> & loopIds, std::map<int, Transform> & childIds) const
 {
 	_dbSafeAccessMutex.lock();
-	this->getLoopClosureIdsQuery(signatureId, loopIds, childIds);
+	this->loadLoopClosuresQuery(signatureId, loopIds, childIds);
 	_dbSafeAccessMutex.unlock();
 }
 
@@ -457,29 +480,25 @@ void DBDriver::getInvertedIndexNi(int signatureId, int & ni) const
 	_dbSafeAccessMutex.unlock();
 }
 
-void DBDriver::addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed) const
+void DBDriver::save(const std::map<int, std::map<int, Transform> > & mapTransforms) const
+{
+	_dbSafeAccessMutex.lock();
+	saveQuery(mapTransforms);
+	_dbSafeAccessMutex.unlock();
+}
+
+void DBDriver::addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize) const
 {
 	ULOGGER_DEBUG("");
 	if(this->isConnected())
 	{
 		std::stringstream query;
-		query << "INSERT INTO Statistics(STM_size,last_sign_added,process_mem_used,database_mem_used) values("
+		query << "INSERT INTO Statistics(STM_size,last_sign_added,process_mem_used,database_mem_used,dictionary_size) values("
 			  << stMemSize << ","
 		      << lastSignAdded << ","
 		      << processMemUsed << ","
-			  << databaseMemUsed << ");";
-
-		this->executeNoResultQuery(query.str());
-	}
-}
-
-void DBDriver::addStatisticsAfterRunSurf(int dictionarySize) const
-{
-	ULOGGER_DEBUG("");
-	if(this->isConnected())
-	{
-		std::stringstream query;
-		query << "INSERT INTO StatisticsDictionary(dictionary_size) values(" << dictionarySize << ");";
+		      << databaseMemUsed << ","
+			  << dictionarySize << ");";
 
 		this->executeNoResultQuery(query.str());
 	}

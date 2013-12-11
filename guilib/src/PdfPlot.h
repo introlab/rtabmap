@@ -21,6 +21,7 @@
 #define PDFPLOT_H_
 
 #include <utilite/UPlot.h>
+#include "opencv2/opencv.hpp"
 
 namespace rtabmap {
 
@@ -31,7 +32,7 @@ public:
 	virtual ~PdfPlotItem();
 
 	void setLikelihood(int id, float value, int childCount);
-	void setImagesRef(const QMap<int, QByteArray> * imagesRef) {_imagesRef = imagesRef;}
+	void setImagesRef(const QMap<int, std::vector<unsigned char> > * imagesRef) {_imagesRef = imagesRef;}
 
 	float value() const {return this->data().y();}
 	int id() const {return this->data().x();}
@@ -42,7 +43,7 @@ protected:
 private:
 	QGraphicsPixmapItem * _img;
 	int _childCount;
-	const QMap<int, QByteArray> * _imagesRef;
+	const QMap<int, std::vector<unsigned char> > * _imagesRef;
 	QGraphicsTextItem * _text;
 
 };
@@ -52,14 +53,14 @@ class PdfPlotCurve : public UPlotCurve
 	Q_OBJECT
 
 public:
-	PdfPlotCurve(const QString & name, const QMap<int, QByteArray> * imagesMapRef, QObject * parent = 0);
+	PdfPlotCurve(const QString & name, const QMap<int, std::vector<unsigned char> > * imagesMapRef, QObject * parent = 0);
 	virtual ~PdfPlotCurve();
 
 	virtual void clear();
 	void setData(const QMap<int, float> & dataMap, const QMap<int, int> & weightsMap);
 
 private:
-	const QMap<int, QByteArray> * _imagesMapRef;
+	const QMap<int, std::vector<unsigned char> > * _imagesMapRef;
 };
 
 }

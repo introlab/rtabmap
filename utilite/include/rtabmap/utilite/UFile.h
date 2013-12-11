@@ -70,8 +70,17 @@ public:
 	 */
 	static std::string getName(const std::string & filePath);
 
+	/**
+	 * Get the file extension.
+	 * @return the file extension
+	 */
 	static std::string getExtension(const std::string &filePath);
 
+	/**
+	 * Copy a file.
+	 * @param from the file path
+	 * @param to destination file path
+	 */
 	static void copy(const std::string & from, const std::string & to);
 
 public:
@@ -130,6 +139,10 @@ public:
 	 */
 	std::string getExtension() {return getExtension(path_);}
 
+	/**
+	 * Copy a file.
+	 * @param to destination file path
+	 */
 	void copy(const std::string & to) {copy(path_, to);}
 
 private:

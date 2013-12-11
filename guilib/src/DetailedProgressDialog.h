@@ -23,7 +23,7 @@
 #include <QtGui/QDialog>
 
 class QLabel;
-class QPlainTextEdit;
+class QTextEdit;
 class QProgressBar;
 class QPushButton;
 class QCheckBox;
@@ -51,10 +51,11 @@ public slots:
 	void appendText(const QString & text);
 	void incrementStep();
 	void clear();
+	void resetProgress();
 
 private:
 	QLabel * _text;
-	QPlainTextEdit * _detailedText;
+	QTextEdit * _detailedText;
 	QProgressBar * _progressBar;
 	QPushButton * _closeButton;
 	QCheckBox * _closeWhenDoneCheckBox;

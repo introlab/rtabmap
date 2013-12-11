@@ -20,17 +20,21 @@
 #ifndef IMAGEVIEW_H_
 #define IMAGEVIEW_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
 #include <QtGui/QGraphicsView>
 #include <QtCore/QRectF>
+#include <opencv2/features2d/features2d.hpp>
+#include <map>
 
 class QAction;
 class QMenu;
 
 namespace rtabmap {
 
-class RTABMAP_EXP ImageView : public QGraphicsView {
+class KeypointItem;
+
+class RTABMAPGUI_EXP ImageView : public QGraphicsView {
 
 	Q_OBJECT
 
@@ -41,11 +45,20 @@ public:
 	void resetZoom();
 
 	bool isImageShown();
+	bool isImageDepthShown();
 	bool isFeaturesShown();
 	bool isLinesShown();
 
 	void setFeaturesShown(bool shown);
+	void setImageShown(bool shown);
+	void setImageDepthShown(bool shown);
 	void setLinesShown(bool shown);
+
+	void setFeatures(const std::multimap<int, cv::KeyPoint> & refWords);
+	void setImage(const QImage & image);
+	void setImageDepth(const QImage & image);
+
+	void clear();
 
 protected:
 	virtual void contextMenuEvent(QContextMenuEvent * e);
@@ -55,7 +68,7 @@ private slots:
 	void updateZoom();
 
 private:
-	void updateItemsShown();
+	void updateOpacity();
 
 private:
 	int _zoom;
@@ -64,9 +77,14 @@ private:
 
 	QMenu * _menu;
 	QAction * _showImage;
+	QAction * _showImageDepth;
 	QAction * _showFeatures;
 	QAction * _showLines;
 	QAction * _saveImage;
+
+	QList<rtabmap::KeypointItem *> _features;
+	QGraphicsPixmapItem * _image;
+	QGraphicsPixmapItem * _imageDepth;
 };
 
 }

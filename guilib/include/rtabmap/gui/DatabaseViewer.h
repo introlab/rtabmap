@@ -39,6 +39,7 @@ class QLabel;
 namespace rtabmap
 {
 class Memory;
+class ImageView;
 }
 
 class RTABMAP_EXP DatabaseViewer : public QMainWindow
@@ -54,6 +55,7 @@ private slots:
 	void openDatabase();
 	void generateGraph();
 	void generateLocalGraph();
+	void generate3DMap();
 	void sliderAValueChanged(int);
 	void sliderBValueChanged(int);
 	void sliderAMoved(int);
@@ -61,19 +63,18 @@ private slots:
 
 private:
 	void updateIds();
-	QImage ipl2QImage(const IplImage *newImage);
-	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, QGraphicsScene * scene);
 	void update(int value,
 				QLabel * labelIndex,
 				QLabel * labelActions,
 				QLabel * labelParents,
 				QLabel * labelChildren,
-				QGraphicsView * view,
+				rtabmap::ImageView * view,
 				QLabel * labelId);
 
 private:
 	Ui_DatabaseViewer * ui_;
 	QMap<int, QByteArray> imagesMap_;
+	QMap<int, QByteArray> depthImagesMap_;
 	QList<int> ids_;
 	rtabmap::Memory * memory_;
 	QString pathDatabase_;

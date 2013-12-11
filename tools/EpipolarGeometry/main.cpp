@@ -13,15 +13,17 @@
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/EpipolarGeometry.h"
 #include "rtabmap/core/VWDictionary.h"
+#include "rtabmap/gui/UCv2Qt.h"
 
 #include "rtabmap/gui/ImageView.h"
-#include "rtabmap/gui/qtipl.h"
 #include "rtabmap/gui/KeypointItem.h"
 #include <QtGui/QApplication>
 #include <QtGui/QGraphicsLineItem>
+#include <QtGui/QGraphicsPixmapItem>
 #include <QtGui/QVBoxLayout>
 #include <QtGui/QHBoxLayout>
 #include <QtCore/QTime>
+#include <QtGui/QGraphicsEffect>
 
 
 using namespace rtabmap;
@@ -47,13 +49,23 @@ public:
 		this->layout()->setSpacing(0);
 		this->layout()->setContentsMargins(0,0,0,0);
 		this->layout()->addWidget(view1_);
-		IplImage img1 = image1;
-		IplImage img2 = image2;
 		view1_->setSceneRect(0,0,(float)image1.cols, (float)image1.rows);
 		view1_->setLinesShown(true);
 		view1_->setFeaturesShown(false);
-		view1_->scene()->addPixmap(QPixmap::fromImage(Ipl2QImage(&img1,128)))->setVisible(view1_->isImageShown());
-		view1_->scene()->addPixmap(QPixmap::fromImage(Ipl2QImage(&img2,128)))->setVisible(view1_->isImageShown());
+
+		QGraphicsPixmapItem * item1 = view1_->scene()->addPixmap(QPixmap::fromImage(uCvMat2QImage(image1)));
+		QGraphicsPixmapItem * item2 = view1_->scene()->addPixmap(QPixmap::fromImage(uCvMat2QImage(image2)));
+
+		QGraphicsOpacityEffect * effect1 = new QGraphicsOpacityEffect();
+		QGraphicsOpacityEffect * effect2 = new QGraphicsOpacityEffect();
+		effect1->setOpacity(0.5);
+		effect2->setOpacity(0.5);
+		item1->setGraphicsEffect(effect1);
+		item2->setGraphicsEffect(effect2);
+
+		item1->setVisible(view1_->isImageShown());
+		item2->setVisible(view1_->isImageShown());
+
 		drawKeypoints(words1, words2, status);
 	}
 protected:

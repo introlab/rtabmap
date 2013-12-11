@@ -21,8 +21,13 @@ SET(LIBRARIES
 
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
-ADD_EXECUTABLE(databaseViewer WIN32 ${SRC_FILES})
-TARGET_LINK_LIBRARIES(databaseViewer rtabmap_corelib rtabmap_guilib rtabmap_utilite ${LIBRARIES})
+IF(MINGW)
+  ADD_EXECUTABLE(databaseViewer WIN32 ${SRC_FILES})
+ELSE()
+  ADD_EXECUTABLE(databaseViewer ${SRC_FILES})
+ENDIF()
+
+TARGET_LINK_LIBRARIES(databaseViewer rtabmap_core rtabmap_gui rtabmap_utilite ${LIBRARIES})
 
 SET_TARGET_PROPERTIES( databaseViewer 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-databaseViewer)

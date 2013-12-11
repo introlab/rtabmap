@@ -22,6 +22,7 @@
 
 #include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
 
+#include "rtabmap/utilite/UEventsSender.h"
 class UEvent;
 
 /**
@@ -124,8 +125,11 @@ class UEvent;
  * @see UThreadNode
  *
  */
-class UTILITE_EXP UEventsHandler{
+class UTILITE_EXP UEventsHandler : public UEventsSender {
 public:
+
+	void registerToEventsManager();
+	void unregisterFromEventsManager();
     
 
 protected:
@@ -171,11 +175,6 @@ protected:
      * is deleted.
      */
     virtual ~UEventsHandler();
-
-    /**
-     * For convenience to post an event. This is the same than calling UEventsManager::post().
-     */
-    void post(UEvent * event, bool async = true);
 
 private:
     

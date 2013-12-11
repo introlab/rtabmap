@@ -49,11 +49,13 @@ public:
 	CameraThread(Camera * camera, bool autoRestart = false);
 	virtual ~CameraThread();
 
+	bool init(); // call camera->init()
+
 	//getters
 	bool isPaused() const {return !this->isRunning();}
 	bool isCapturing() const {return this->isRunning();}
 	void setAutoRestart(bool autoRestart) {_autoRestart = autoRestart;}
-	void setImageRate(float imageRate);
+	Camera * getCamera() {return _camera;}
 
 protected:
 	virtual void handleEvent(UEvent* anEvent);
@@ -69,6 +71,7 @@ private:
 	std::stack<State> _state;
 	std::stack<ParametersMap> _stateParam;
 	bool _autoRestart;
+	int _seq;
 };
 
 } // namespace rtabmap

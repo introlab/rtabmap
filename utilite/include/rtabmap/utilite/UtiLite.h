@@ -49,7 +49,7 @@
   * \section logger ULogger
   * The ULogger can be used anywhere in the application to log messages (formated like a printf). The
   * logger can be set (ULogger::setType()) to print in a file or in the console (with colors depending on the severity). Convenient
-  * macros are given, working like a printf(), as UDEBUG(), UINFO(), UWARN(), UERROR(), UFATAL(). Small example:
+  * macros are given, working like a printf(), as UDEBUG(), UINFO(), UWARN(), UERROR(), UFATAL(), UASSERT(). Small example:
   * @code
   * ...
   * UINFO("A simple message with number %d", 42);
@@ -77,17 +77,17 @@
   * // The UEventsHandler::handleEvent() of "handler" will then be called by the UEventsManager's events dispatching thread.
   * ...
   * @endcode
-  * Look at the <b>full example</b> in page of UEventsHandler on how communication works with threads (UThreadNode).
+  * Look at the <b>full example</b> in page of UEventsHandler on how communication works with threads (UThread).
   *
-  * \section threadnode UThreadNode, UMutex, USemaphore
-  * The multi-threading framework use a UThreadNode as an abstract class to implement a
-  * thread in object-style. Reimplement UThreadNode::mainLoop() then call UThreadNode::start() to
-  * start the main loop of the thread. Threads can be joined by calling UThreadNode::join() and
-  * killed by calling UThreadNode::kill(). Classes UMutex and USemaphore provide blocking mechanisms to
+  * \section thread UThread, UMutex, USemaphore
+  * The multi-threading framework use a UThread as an abstract class to implement a
+  * thread in object-style. Reimplement UThread::mainLoop() then call UThread::start() to
+  * start the main loop of the thread. Threads can be joined by calling UThread::join() and
+  * killed by calling UThread::kill(). Classes UMutex and USemaphore provide blocking mechanisms to
   * protect data between threads.
   * @code
   * ...
-  * MyThread t; // MyThread is an implementation of UThreadNode
+  * MyThread t; // MyThread is an implementation of UThread
   * t.start();
   * t.join(); // Wait the thread to finish
   * ...
@@ -168,6 +168,9 @@
   * useful widgets is built. Use class UPlot to create a plot like MATLAB, and incrementally add
   * new values like a scope. USpectrogram is used to
   * show audio frequency frames.
+  * - UPlot,
+  * - USpectrogram,
+  * - UImageView.
   * @image html UPlot.gif
   * @image html USpectrogram.png
   *
@@ -175,13 +178,26 @@
   * If FMOD is found on the system, the UtiLite audio
   * library is built (libutilite_audio.so, libutilite_audio.dll). It is a wrapper
   * of FMOD methods with a convenient interface to extract audio frames.
-  * - UAudioRecorder,
-  * - UAudioRecorderFile,
-  * - UAudioRecorderMic
+  * - UAudioCapture,
+  * - UAudioCaptureFile,
+  * - UAudioCaptureMic,
+  * - UAudioCaptureFFT,
   * - UAudioPlayer,
   * - UAudioPlayerTone,
   * - UWav,
   * - UMp3Encoder (only if Lame is also found on the system).
+  *
+  * \section cvLib OpenCV stuff (libutilite_cv.so : OPTIONAL)
+  * If OpenCV is found on the system, the UtiLite cv
+  * library is built (libutilite_cv.so, libutilite_cv.dll). It provides
+  * image capture classes used to read from a webcam, a video file
+  * or a directory of images. If UtiLite is also built with Qt, a
+  * convenient function uCvMat2QImage() can be used to convert a cv::Mat
+  * image to a QImage.
+  * - UVideoCapture,
+  * - UImageFolderCapture,
+  * - UColorTable,
+  * - uCvMat2QImage() (only if Qt is also found on the system).
   */
 
 /*! \page uResourceGeneratorPage uResourceGenerator

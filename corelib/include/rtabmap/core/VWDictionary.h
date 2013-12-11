@@ -25,6 +25,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <list>
+#include <set>
 #include "rtabmap/core/Parameters.h"
 
 namespace rtabmap
@@ -64,16 +65,13 @@ public:
 	void setLastWordId(int id) {_lastWordId = id;}
 	void getCommonWords(unsigned int nbCommonWords, int totalSign, std::list<int> & commonWords) const;
 	const std::map<int, VisualWord *> & getVisualWords() const {return _visualWords;}
-	void setMinDist(float d);
 	float getMinDist() const {return _minDist;}
 	bool isMinDistUsed() const {return _minDistUsed;}
 	void setMinDistUsed(bool used) {_minDistUsed = used;}
 	void setNndrUsed(bool used) {_nndrUsed = used;}
 	bool isNndrUsed() const {return _nndrUsed;}
-	void setNndrRatio(float ratio);
 	float getNndrRatio() {return _nndrRatio;}
-	unsigned int getNotIndexedWordsCount() const {return _visualWords.size() - _mapIndexId.size();}
-	unsigned int getLastNewWordsAddedCount() const {return _lastNewWordsAddedCount;}
+	unsigned int getNotIndexedWordsCount() const {return _notIndexedWords.size();}
 	int getLastIndexedWordId() const;
 	int getTotalActiveReferences() const {return _totalActiveReferences;}
 	void setNNStrategy(NNStrategy strategy, const ParametersMap & parameters = ParametersMap());
@@ -93,7 +91,6 @@ protected:
 
 protected:
 	std::map<int, VisualWord *> _visualWords; //<id,VisualWord*>
-	unsigned int _lastNewWordsAddedCount;
 	int _totalActiveReferences; // keep track of all references for updating the common signature
 
 private:
@@ -110,6 +107,8 @@ private:
 	cv::Mat _dataTree;
 	std::map<int ,int> _mapIndexId;
 	std::map<int, VisualWord*> _unusedWords; //<id,VisualWord*>, note that these words stay in _visualWords
+	std::set<int> _notIndexedWords; // Words that are not indexed in the dictionary
+	std::set<int> _removedIndexedWords; // Words not anymore in the dictionary but still indexed in the dictionary
 };
 
 } // namespace rtabmap

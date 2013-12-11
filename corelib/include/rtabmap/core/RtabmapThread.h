@@ -33,6 +33,8 @@
 
 #include <stack>
 
+class UTimer;
+
 namespace rtabmap {
 
 class Rtabmap;
@@ -52,15 +54,16 @@ public:
 		kStateGeneratingGraph,
 		kStateGeneratingLocalGraph,
 		kStateDeletingMemory,
-		kStateCleanSensorsBuffer
+		kStateCleanDataBuffer,
+		kStatePublishingMap,
+		kStateTriggeringMap
 	};
 
 public:
 	RtabmapThread();
 	virtual ~RtabmapThread();
 
-	void setWorkingDirectory(const std::string & path);
-	void clearBufferedSensors();
+	void clearBufferedData();
 
 protected:
 	virtual void handleEvent(UEvent * anEvent);
@@ -73,6 +76,7 @@ private:
 	void getImage(Image & image);
 	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
 	void setDataBufferSize(int size);
+	void publishMap() const;
 
 private:
 	UMutex _stateMutex;
@@ -83,8 +87,11 @@ private:
 	UMutex _imageMutex;
 	USemaphore _imageAdded;
 	int _imageBufferMaxSize;
+	float _rate;
+	UTimer * _frameRateTimer;
 
 	Rtabmap * _rtabmap;
+	bool _paused;
 };
 
 } /* namespace rtabmap */

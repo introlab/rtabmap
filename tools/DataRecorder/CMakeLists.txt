@@ -1,0 +1,34 @@
+
+SET(SRC_FILES
+    main.cpp
+)
+
+SET(INCLUDE_DIRS
+	${PROJECT_SOURCE_DIR}/corelib/include
+	${PROJECT_SOURCE_DIR}/utilite/include
+	${PROJECT_SOURCE_DIR}/guilib/include
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${PCL_INCLUDE_DIRS}
+)
+
+INCLUDE(${QT_USE_FILE})
+
+SET(LIBRARIES
+	${PCL_LIBRARIES} 
+	${QT_LIBRARIES} 
+)
+
+add_definitions(${PCL_DEFINITIONS})
+
+INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
+
+IF(MINGW)
+  ADD_EXECUTABLE(dataRecorder WIN32 ${SRC_FILES})
+ELSE()
+  ADD_EXECUTABLE(dataRecorder ${SRC_FILES})
+ENDIF()
+TARGET_LINK_LIBRARIES(dataRecorder rtabmap_core rtabmap_gui rtabmap_utilite ${LIBRARIES})
+
+SET_TARGET_PROPERTIES( dataRecorder 
+  PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-dataRecorder)
+

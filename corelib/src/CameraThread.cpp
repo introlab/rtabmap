@@ -31,7 +31,8 @@ namespace rtabmap
 // ownership transferred
 CameraThread::CameraThread(Camera * camera, bool autoRestart) :
 		_camera(camera),
-		_autoRestart(autoRestart)
+		_autoRestart(autoRestart),
+		_seq(0)
 {
 	UASSERT(_camera != 0);
 }
@@ -41,6 +42,27 @@ CameraThread::~CameraThread()
 	UEventsManager::removeHandler(this);
 	join(true);
 	delete _camera;
+}
+
+bool CameraThread::init()
+{
+	if(!this->isRunning())
+	{
+		if(_camera)
+		{
+			_seq = 0;
+			return _camera->init();
+		}
+		else
+		{
+			UERROR("Cannot initialize the camera because the camera object is null...");
+		}
+	}
+	else
+	{
+		UERROR("Cannot initialize the camera because it is already running...");
+	}
+	return false;
 }
 
 void CameraThread::mainLoop()
@@ -82,11 +104,6 @@ void CameraThread::pushNewState(State newState, const ParametersMap & parameters
 	_stateMutex.unlock();
 }
 
-void CameraThread::setImageRate(float imageRate)
-{
-	_camera->setImageRate(imageRate);
-}
-
 void CameraThread::handleEvent(UEvent* anEvent)
 {
 	if(anEvent->getClassName().compare("ParamEvent") == 0)
@@ -116,11 +133,11 @@ void CameraThread::process()
 	{
 		if(_camera->isFeaturesExtracted())
 		{
-			this->post(new CameraEvent(descriptors, keypoints, img, _camera->id()));
+			this->post(new CameraEvent(descriptors, keypoints, img, ++_seq));
 		}
 		else
 		{
-			this->post(new CameraEvent(img, _camera->id()));
+			this->post(new CameraEvent(img, ++_seq));
 		}
 	}
 	else if(!this->isKilled())
@@ -133,7 +150,7 @@ void CameraThread::process()
 		{
 			ULOGGER_DEBUG("Camera::process() : no more images...");
 			this->kill();
-			this->post(new CameraEvent(_camera->id()));
+			this->post(new CameraEvent());
 		}
 	}
 }

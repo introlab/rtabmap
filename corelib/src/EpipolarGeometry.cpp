@@ -18,7 +18,7 @@
  */
 
 #include "rtabmap/core/EpipolarGeometry.h"
-#include "Signature.h"
+#include "rtabmap/core/Signature.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UStl.h"
@@ -427,7 +427,8 @@ int EpipolarGeometry::findPairs(const std::multimap<int, cv::KeyPoint> & wordsA,
  * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(2,2) (4,4)]
  * realPairsCount = 5
  */
-int EpipolarGeometry::findPairsUnique(const std::multimap<int, cv::KeyPoint> & wordsA,
+int EpipolarGeometry::findPairsUnique(
+		const std::multimap<int, cv::KeyPoint> & wordsA,
 		const std::multimap<int, cv::KeyPoint> & wordsB,
 		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs)
 {

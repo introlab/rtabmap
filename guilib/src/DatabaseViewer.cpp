@@ -32,6 +32,13 @@
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/gui/KeypointItem.h"
+#include "rtabmap/gui/UCv2Qt.h"
+#include "rtabmap/core/util3d.h"
+#include "rtabmap/core/Signature.h"
+
+#include <pcl/io/pcd_io.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/common/transforms.h>
 
 DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	QMainWindow(parent),
@@ -54,9 +61,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->actionOpen_database, SIGNAL(triggered()), this, SLOT(openDatabase()));
 	connect(ui_->actionGenerate_graph_dot, SIGNAL(triggered()), this, SLOT(generateGraph()));
 	connect(ui_->actionGenerate_local_graph_dot, SIGNAL(triggered()), this, SLOT(generateLocalGraph()));
-
-	ui_->graphicsView_A->setScene(new QGraphicsScene(this));
-	ui_->graphicsView_B->setScene(new QGraphicsScene(this));
+	connect(ui_->actionGenerate_3D_map_pcd, SIGNAL(triggered()), this, SLOT(generate3DMap()));
 
 	ui_->horizontalSlider_A->setTracking(false);
 	ui_->horizontalSlider_B->setTracking(false);
@@ -99,6 +104,7 @@ bool DatabaseViewer::openDatabase(const QString & path)
 			delete memory_;
 			memory_ = 0;
 			imagesMap_.clear();
+			depthImagesMap_.clear();
 			ids_.clear();
 		}
 
@@ -135,9 +141,8 @@ void DatabaseViewer::updateIds()
 
 	std::set<int> ids = memory_->getAllSignatureIds();
 	ids_ = QList<int>::fromStdList(std::list<int>(ids.begin(), ids.end()));
-	ids_.prepend(0);
 
-	UDEBUG("Loaded %d ids", ids_.size());
+	UINFO("Loaded %d ids", ids_.size());
 
 	if(ids_.size())
 	{
@@ -145,12 +150,12 @@ void DatabaseViewer::updateIds()
 		ui_->horizontalSlider_B->setMinimum(0);
 		ui_->horizontalSlider_A->setMaximum(ids_.size()-1);
 		ui_->horizontalSlider_B->setMaximum(ids_.size()-1);
-		ui_->horizontalSlider_A->setSliderPosition(0);
-		ui_->horizontalSlider_B->setSliderPosition(0);
 		ui_->horizontalSlider_A->setEnabled(true);
 		ui_->horizontalSlider_B->setEnabled(true);
-		ui_->label_idA->setText("0");
-		ui_->label_idB->setText("0");
+		ui_->horizontalSlider_A->setSliderPosition(0);
+		ui_->horizontalSlider_B->setSliderPosition(0);
+		sliderAValueChanged(0);
+		sliderBValueChanged(0);
 	}
 	else
 	{
@@ -217,31 +222,93 @@ void DatabaseViewer::generateLocalGraph()
 	}
 }
 
-void DatabaseViewer::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, QGraphicsScene * scene)
+void DatabaseViewer::generate3DMap()
 {
-	if(!scene)
+	if(!ids_.size() || !memory_)
 	{
+		QMessageBox::warning(this, tr("Cannot generate a graph"), tr("The database is empty..."));
 		return;
 	}
-	rtabmap::KeypointItem * item = 0;
-	int alpha = 70;
-	for(std::multimap<int, cv::KeyPoint>::const_iterator i = refWords.begin(); i != refWords.end(); ++i )
+	bool ok = false;
+	int id = QInputDialog::getInt(this, tr("Around which location?"), tr("Location ID"), ids_.first(), ids_.first(), ids_.last(), 1, &ok);
+
+	if(ok)
 	{
-		const cv::KeyPoint & r = (*i).second;
-		int id = (*i).first;
-		QString info = QString( "WordRef = %1\n"
-								"Laplacian = %2\n"
-								"Dir = %3\n"
-								"Hessian = %4\n"
-								"X = %5\n"
-								"Y = %6\n"
-								"Size = %7").arg(id).arg(1).arg(r.angle).arg(r.response).arg(r.pt.x).arg(r.pt.y).arg(r.size);
-		float radius = r.size*1.2/9.*2;
+		int margin = QInputDialog::getInt(this, tr("Depth around the location?"), tr("Margin"), 4, 1, 100, 1, &ok);
+		if(ok)
+		{
+			float voxelSize = QInputDialog::getDouble(this, tr("Voxel size?"), tr("Voxel Size"), 0.01, 0, 0.1, 3, &ok);
+			if(ok)
+			{
+				QString path = QFileDialog::getSaveFileName(this, tr("Save File"), pathDatabase_+"/Map" + QString::number(id) + ".pcd", tr("PCL file (*.pcd)"));
+				if(!path.isEmpty())
+				{
+					std::map<int, int> ids = memory_->getNeighborsId(id, margin, -1, false);
+					if(ids.size() > 0)
+					{
+						std::map<int, rtabmap::Transform> poses, optimizedPoses;
+						std::multimap<int, std::pair<int, rtabmap::Transform> > edgeConstraints;
+						memory_->getMetricConstraints(uKeys(ids), memory_->getSignature(id)->mapId(), poses, edgeConstraints, true);
 
-		item = new rtabmap::KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 255, 0, alpha));
+						UINFO("Poses=%d, constraints=%d", poses.size(), edgeConstraints.size());
 
-		scene->addItem(item);
-		item->setZValue(1);
+						rtabmap::util3d::saveTOROGraph("toro1.graph", poses, edgeConstraints);
+
+						rtabmap::Transform mapCorrection;
+						rtabmap::util3d::optimizeTOROGraph(poses, edgeConstraints, 100, optimizedPoses, mapCorrection);
+
+						rtabmap::util3d::saveTOROGraph("toro2.graph", optimizedPoses, edgeConstraints);
+
+						pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+						for(std::map<int, int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
+						{
+							rtabmap::Transform pose = uValue(optimizedPoses, iter->first, rtabmap::Transform());
+							if(!pose.isNull())
+							{
+								std::vector<unsigned char> image, depth, depth2d;
+								float depthConstant;
+								rtabmap::Transform localTransform;
+								memory_->getImageDepth(iter->first, image, depth, depth2d, depthConstant, localTransform);
+								pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+								cv::Mat imageMat = rtabmap::util3d::uncompressImage(image);
+								cv::Mat depthMat = rtabmap::util3d::uncompressImage(depth);
+								cloud = rtabmap::util3d::cloudFromDepthRGB(
+										imageMat,
+										depthMat,
+										depthMat.cols/2, depthMat.rows/2,
+										1.0f/depthConstant, 1.0f/depthConstant);
+
+								if(voxelSize > 0.0f)
+								{
+									cloud = rtabmap::util3d::voxelize(cloud, voxelSize);
+								}
+
+								cloud = rtabmap::util3d::transformPointCloud(cloud, pose);
+
+								*assembledCloud += *cloud;
+							}
+						}
+
+						if(voxelSize > 0.0f)
+						{
+							pcl::VoxelGrid<pcl::PointXYZRGB> filter;
+							filter.setLeafSize(voxelSize, voxelSize, voxelSize);
+							filter.setInputCloud(assembledCloud);
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp(new pcl::PointCloud<pcl::PointXYZRGB>);
+							filter.filter(*tmp);
+							assembledCloud = tmp;
+						}
+
+						pcl::io::savePCDFile(path.toStdString(), *assembledCloud, true);
+						QMessageBox::information(this, "Generated Map", tr("Map saved to %1!\n(%2 nodes, %3 points)").arg(path).arg(ids.size()).arg(assembledCloud->size()));
+					}
+					else
+					{
+						QMessageBox::critical(this, tr("Error"), tr("No neighbors found for signature %1.").arg(id));
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -272,7 +339,7 @@ void DatabaseViewer::update(int value,
 						QLabel * labelActions,
 						QLabel * labelParents,
 						QLabel * labelChildren,
-						QGraphicsView * view,
+						rtabmap::ImageView * view,
 						QLabel * labelId)
 {
 	UTimer timer;
@@ -282,23 +349,33 @@ void DatabaseViewer::update(int value,
 	labelChildren->clear();
 	if(value >= 0 && value < ids_.size())
 	{
-		view->scene()->clear();
+		view->clear();
 		int id = ids_.at(value);
 		labelId->setText(QString::number(id));
 		if(id>0)
 		{
 			//image
 			QImage img;
+			QImage imgDepth;
 			QMap<int, QByteArray>::iterator iter = imagesMap_.find(id);
+			QMap<int, QByteArray>::iterator iterDepth = depthImagesMap_.find(id);
 			if(iter == imagesMap_.end())
 			{
 				if(memory_)
 				{
-					cv::Mat image = memory_->getImage(id);
+					std::vector<unsigned char> image, depth, depth2d;
+					float depthConstant;
+					rtabmap::Transform localTransform;
+					memory_->getImageDepth(id, image, depth, depth2d, depthConstant, localTransform);
+					cv::Mat imageMat = rtabmap::util3d::uncompressImage(image);
+					cv::Mat depthMat = rtabmap::util3d::uncompressImage(depth);
+					UINFO("loaded image(%d/%d) depth(%d/%d) depthConstant(%f)",
+							imageMat.cols, imageMat.rows,
+							depthMat.cols, depthMat.rows,
+							depthConstant);
 					if(!image.empty())
 					{
-						IplImage iplImg = image;
-						img = ipl2QImage(&iplImg);
+						img = uCvMat2QImage(imageMat);
 						if(!img.isNull())
 						{
 							QByteArray ba;
@@ -308,11 +385,27 @@ void DatabaseViewer::update(int value,
 							imagesMap_.insert(id, ba);
 						}
 					}
+					if(!depth.empty())
+					{
+						imgDepth = uCvMat2QImage(depthMat);
+						if(!imgDepth.isNull())
+						{
+							QByteArray ba;
+							QBuffer buffer(&ba);
+							buffer.open(QIODevice::WriteOnly);
+							QPixmap::fromImage(imgDepth).save(&buffer, "PGM"); // writes image into ba in PGM format
+							depthImagesMap_.insert(id, ba);
+						}
+					}
 				}
 			}
 			else
 			{
 				img.loadFromData(iter.value(), "BMP");
+				if(iterDepth != depthImagesMap_.end())
+				{
+					imgDepth.loadFromData(iterDepth.value(), "PGM");
+				}
 			}
 
 			if(memory_)
@@ -320,38 +413,47 @@ void DatabaseViewer::update(int value,
 				std::multimap<int, cv::KeyPoint> words = memory_->getWords(id);
 				if(words.size())
 				{
-					drawKeypoints(words, view->scene());
+					view->setFeatures(words);
 				}
 			}
 
 			if(!img.isNull())
 			{
-				view->scene()->addPixmap(QPixmap::fromImage(img));
+				view->setImage(img);
 			}
 			else
 			{
 				ULOGGER_DEBUG("Image is empty");
 			}
+			if(!imgDepth.isNull())
+			{
+				view->setImageDepth(imgDepth);
+			}
+			else
+			{
+				ULOGGER_DEBUG("Image depth is empty");
+			}
+			view->fitInView(view->sceneRect(), Qt::KeepAspectRatio);
 
 			// loops
-			std::set<int> parents;
-			std::set<int> children;
+			std::map<int, rtabmap::Transform> parents;
+			std::map<int, rtabmap::Transform> children;
 			memory_->getLoopClosureIds(id, parents, children, true);
 			if(parents.size())
 			{
 				QString str;
-				for(std::set<int>::iterator iter=parents.begin(); iter!=parents.end(); ++iter)
+				for(std::map<int, rtabmap::Transform>::iterator iter=parents.begin(); iter!=parents.end(); ++iter)
 				{
-					str.append(QString("%1 ").arg(*iter));
+					str.append(QString("%1 ").arg(iter->first));
 				}
 				labelParents->setText(str);
 			}
 			if(children.size())
 			{
 				QString str;
-				for(std::set<int>::iterator iter=children.begin(); iter!=children.end(); ++iter)
+				for(std::map<int, rtabmap::Transform>::iterator iter=children.begin(); iter!=children.end(); ++iter)
 				{
-					str.append(QString("%1 ").arg(*iter));
+					str.append(QString("%1 ").arg(iter->first));
 				}
 				labelChildren->setText(str);
 			}
@@ -391,30 +493,4 @@ void DatabaseViewer::sliderBMoved(int value)
 	{
 		ULOGGER_ERROR("Slider index out of range ?");
 	}
-}
-
-QImage DatabaseViewer::ipl2QImage(const IplImage *newImage)
-{
-	QImage qtemp;
-	if (newImage && newImage->depth == IPL_DEPTH_8U && cvGetSize(newImage).width>0)
-	{
-		int x;
-		int y;
-		char* data = newImage->imageData;
-
-		qtemp= QImage(newImage->width, newImage->height,QImage::Format_RGB32 );
-		for( y = 0; y < newImage->height; y++, data +=newImage->widthStep )
-		{
-			for( x = 0; x < newImage->width; x++)
-			{
-				uint *p = (uint*)qtemp.scanLine (y) + x;
-				*p = qRgb(data[x * newImage->nChannels+2], data[x * newImage->nChannels+1],data[x * newImage->nChannels]);
-			}
-		}
-	}
-	else
-	{
-		ULOGGER_ERROR("Wrong IplImage format");
-	}
- return qtemp;
 }

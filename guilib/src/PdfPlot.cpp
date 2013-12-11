@@ -19,6 +19,8 @@
 
 #include "PdfPlot.h"
 #include <rtabmap/utilite/ULogger.h>
+#include "rtabmap/gui/UCv2Qt.h"
+#include "rtabmap/core/util3d.h"
 
 namespace rtabmap {
 
@@ -59,15 +61,13 @@ void PdfPlotItem::showDescription(bool shown)
 		if(!_img && _imagesRef)
 		{
 			QImage img;
-			QMap<int, QByteArray>::const_iterator iter = _imagesRef->find(int(this->data().x()));
+			QMap<int, std::vector<unsigned char> >::const_iterator iter = _imagesRef->find(int(this->data().x()));
 			if(iter != _imagesRef->constEnd())
 			{
-				if(img.loadFromData(iter.value(), "JPEG"))
-				{
-					QPixmap scaled = QPixmap::fromImage(img).scaledToWidth(128);
-					_img = new QGraphicsPixmapItem(scaled, this);
-					_img->setVisible(false);
-				}
+				img = uCvMat2QImage(util3d::uncompressImage(iter.value()));
+				QPixmap scaled = QPixmap::fromImage(img).scaledToWidth(128);
+				_img = new QGraphicsPixmapItem(scaled, this);
+				_img->setVisible(false);
 			}
 		}
 
@@ -103,7 +103,7 @@ void PdfPlotItem::showDescription(bool shown)
 
 
 
-PdfPlotCurve::PdfPlotCurve(const QString & name, const QMap<int, QByteArray> * imagesMapRef = 0, QObject * parent) :
+PdfPlotCurve::PdfPlotCurve(const QString & name, const QMap<int, std::vector<unsigned char> > * imagesMapRef = 0, QObject * parent) :
 	UPlotCurve(name, parent),
 	_imagesMapRef(imagesMapRef)
 {

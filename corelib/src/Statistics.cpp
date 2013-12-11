@@ -34,7 +34,9 @@ Statistics::Statistics() :
 	_extended(0),
 	_refImageId(0),
 	_loopClosureId(0),
-	_localLoopClosureId(0)
+	_localLoopClosureId(0),
+	_refDepthConstant(0),
+	_loopDepthConstant(0)
 {
 	_defaultDataInitialized = true;
 }
@@ -47,16 +49,6 @@ Statistics::~Statistics()
 void Statistics::addStatistic(const std::string & name, float value)
 {
 	uInsert(_data, std::pair<std::string, float>(name, value));
-}
-
-void Statistics::setRefImage(const cv::Mat & image)
-{
-	_refImage = image;
-}
-
-void Statistics::setLoopImage(const cv::Mat & image)
-{
-	_loopImage = image;
 }
 
 }

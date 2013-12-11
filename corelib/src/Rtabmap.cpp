@@ -21,7 +21,7 @@
 #include "rtabmap/core/Version.h"
 #include "rtabmap/core/Features2d.h"
 
-#include "Signature.h"
+#include "rtabmap/core/Signature.h"
 
 #include "rtabmap/core/EpipolarGeometry.h"
 
@@ -35,6 +35,12 @@
 #include <rtabmap/utilite/UMath.h>
 
 #include "SimpleIni.h"
+
+#include <pcl/search/kdtree.h>
+#include <pcl/filters/crop_box.h>
+#include <pcl/io/pcd_io.h>
+
+#include "rtabmap/core/util3d.h"
 
 #include <stdlib.h>
 #include <set>
@@ -56,7 +62,6 @@
 
 namespace rtabmap
 {
-const char * Rtabmap::kDefaultDatabaseName = "rtabmap.db";
 
 Rtabmap::Rtabmap() :
 	_publishStats(Parameters::defaultRtabmapPublishStats()),
@@ -69,9 +74,18 @@ Rtabmap::Rtabmap() :
 	_loopThr(Parameters::defaultRtabmapLoopThr()),
 	_loopRatio(Parameters::defaultRtabmapLoopRatio()),
 	_maxRetrieved(Parameters::defaultRtabmapMaxRetrieved()),
-	_likelihoodNullValuesIgnored(Parameters::defaultRtabmapLikelihoodNullValuesIgnored()),
 	_statisticLogsBufferedInRAM(Parameters::defaultRtabmapStatisticLogsBufferedInRAM()),
 	_statisticLogged(Parameters::defaultRtabmapStatisticLogged()),
+	_rgbdSlamMode(Parameters::defaultRGBDEnabled()),
+	_rgbdLinearUpdate(Parameters::defaultRGBDLinearUpdate()),
+	_rgbdAngularUpdate(Parameters::defaultRGBDAngularUpdate()),
+	_scanMatchingSize(Parameters::defaultRGBDScanMatchingSize()),
+	_localLoopClosureDetectionTime(Parameters::defaultRGBDLocalLoopDetectionTime()),
+	_localLoopClosureDetectionSpace(Parameters::defaultRGBDLocalLoopDetectionSpace()),
+	_localDetectRadius(Parameters::defaultRGBDLocalLoopDetectionRadius()),
+	_localDetectMaxNeighbors(Parameters::defaultRGBDLocalLoopDetectionNeighbors()),
+	_icpEnabled(Parameters::defaultLccIcpEnabled()),
+	_databasePath(""),
 	_lcHypothesisId(0),
 	_lcHypothesisValue(0),
 	_retrievedId(0),
@@ -80,7 +94,9 @@ Rtabmap::Rtabmap() :
 	_bayesFilter(0),
 	_memory(0),
 	_foutFloat(0),
-	_foutInt(0)
+	_foutInt(0),
+	_wDir(std::string(".")+UDirectory::separator()),
+	_mapCorrection(Transform::getIdentity())
 {
 }
 
@@ -213,11 +229,15 @@ void Rtabmap::init(const ParametersMap & parameters, bool deleteMemory)
 {
 	if(deleteMemory)
 	{
-		// Set the working directory before
+		// Set the working directory and database path before
 		ParametersMap::const_iterator iter;
 		if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
 		{
 			this->setWorkingDirectory(iter->second.c_str());
+		}
+		if((iter=parameters.find(Parameters::kRtabmapDatabasePath())) != parameters.end())
+		{
+			this->setDatabasePath(iter->second.c_str());
 		}
 		if((iter=parameters.find(Parameters::kRtabmapStatisticLogged())) != parameters.end())
 		{
@@ -280,62 +300,36 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 {
 	ULOGGER_DEBUG("");
 	ParametersMap::const_iterator iter;
-	if((iter=parameters.find(Parameters::kRtabmapPublishStats())) != parameters.end())
-	{
-		_publishStats = uStr2Bool(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kRtabmapPublishImage())) != parameters.end())
-	{
-		_publishImage = uStr2Bool(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kRtabmapPublishPdf())) != parameters.end())
-	{
-		_publishPdf = uStr2Bool(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kRtabmapPublishLikelihood())) != parameters.end())
-	{
-		_publishLikelihood = uStr2Bool(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kKpPublishKeypoints())) != parameters.end())
-	{
-		_publishKeypoints = uStr2Bool(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kRtabmapTimeThr())) != parameters.end())
-	{
-		_maxTimeAllowed = std::atof(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kRtabmapMemoryThr())) != parameters.end())
-	{
-		_maxMemoryAllowed = std::atoi(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kRtabmapLoopThr())) != parameters.end())
-	{
-		_loopThr = std::atof(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kRtabmapLoopRatio())) != parameters.end())
-	{
-		_loopRatio = std::atof(iter->second.c_str());
-	}
 	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
 	{
 		this->setWorkingDirectory(iter->second.c_str());
 	}
-	if((iter=parameters.find(Parameters::kRtabmapMaxRetrieved())) != parameters.end())
+	if((iter=parameters.find(Parameters::kRtabmapDatabasePath())) != parameters.end())
 	{
-		_maxRetrieved = std::atoi(iter->second.c_str());
+		this->setDatabasePath(iter->second.c_str());
 	}
-	if((iter=parameters.find(Parameters::kRtabmapLikelihoodNullValuesIgnored())) != parameters.end())
-	{
-		_likelihoodNullValuesIgnored = uStr2Bool(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kRtabmapStatisticLogsBufferedInRAM())) != parameters.end())
-	{
-		_statisticLogsBufferedInRAM = uStr2Bool(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kRtabmapStatisticLogged())) != parameters.end())
-	{
-		_statisticLogged = uStr2Bool(iter->second.c_str());
-	}
+
+	Parameters::parse(parameters, Parameters::kRtabmapPublishStats(), _publishStats);
+	Parameters::parse(parameters, Parameters::kRtabmapPublishImage(), _publishImage);
+	Parameters::parse(parameters, Parameters::kRtabmapPublishPdf(), _publishPdf);
+	Parameters::parse(parameters, Parameters::kRtabmapPublishLikelihood(), _publishLikelihood);
+	Parameters::parse(parameters, Parameters::kKpPublishKeypoints(), _publishKeypoints);
+	Parameters::parse(parameters, Parameters::kRtabmapTimeThr(), _maxTimeAllowed);
+	Parameters::parse(parameters, Parameters::kRtabmapMemoryThr(), _maxMemoryAllowed);
+	Parameters::parse(parameters, Parameters::kRtabmapLoopThr(), _loopThr);
+	Parameters::parse(parameters, Parameters::kRtabmapLoopRatio(), _loopRatio);
+	Parameters::parse(parameters, Parameters::kRtabmapMaxRetrieved(), _maxRetrieved);
+	Parameters::parse(parameters, Parameters::kRtabmapStatisticLogsBufferedInRAM(), _statisticLogsBufferedInRAM);
+	Parameters::parse(parameters, Parameters::kRtabmapStatisticLogged(), _statisticLogged);
+	Parameters::parse(parameters, Parameters::kRGBDEnabled(), _rgbdSlamMode);
+	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rgbdLinearUpdate);
+	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rgbdAngularUpdate);
+	Parameters::parse(parameters, Parameters::kRGBDScanMatchingSize(), _scanMatchingSize);
+	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionTime(), _localLoopClosureDetectionTime);
+	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionSpace(), _localLoopClosureDetectionSpace);
+	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionRadius(), _localDetectRadius);
+	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionNeighbors(), _localDetectMaxNeighbors);
+	Parameters::parse(parameters, Parameters::kLccIcpEnabled(), _icpEnabled);
 
 	// By default, we create our strategies if they are not already created.
 	// If they already exists, we check the parameters if a change is requested
@@ -343,7 +337,13 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	if(!_memory)
 	{
 		_memory = new Memory(parameters);
-		_memory->init(_wDir + kDefaultDatabaseName, false, parameters);
+		_memory->init(getDatabasePath(), false, parameters);
+
+		//generate map
+		if(_memory->getLastWorkingSignature())
+		{
+			optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), false, _optimizedPoses, _mapCorrection);
+		}
 	}
 	else
 	{
@@ -379,6 +379,11 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		_bayesFilter->parseParameters(parameters);
 	}
+}
+
+std::string Rtabmap::getDatabasePath() const
+{
+	return _databasePath.empty()?_wDir + Parameters::getDefaultDatabaseName():_databasePath;
 }
 
 int Rtabmap::getLoopClosureId() const
@@ -494,9 +499,58 @@ bool Rtabmap::isInSTM(int locationId) const
 	return false;
 }
 
+bool Rtabmap::isIDsGenerated() const
+{
+	if(_memory)
+	{
+		return _memory->isIDsGenerated();
+	}
+	return Parameters::defaultMemGenerateIds();
+}
+
 const Statistics & Rtabmap::getStatistics() const
 {
 	return statistics_;
+}
+/*
+bool Rtabmap::getMetricData(int locationId, cv::Mat & rgb, cv::Mat & depth, float & depthConstant, Transform & pose, Transform & localTransform) const
+{
+	if(_memory)
+	{
+		const Signature * s = _memory->getSignature(locationId);
+		if(s && _optimizedPoses.find(s->id()) != _optimizedPoses.end())
+		{
+			rgb = s->getImage();
+			depth = s->getDepth();
+			depthConstant = s->getDepthConstant();
+			pose = _optimizedPoses.at(s->id());
+			localTransform = s->getLocalTransform();
+			return true;
+		}
+	}
+	return false;
+}
+*/
+Transform Rtabmap::getPose(int locationId) const
+{
+	if(_memory)
+	{
+		const Signature * s = _memory->getSignature(locationId);
+		if(s && _optimizedPoses.find(s->id()) != _optimizedPoses.end())
+		{
+			return _optimizedPoses.at(s->id());
+		}
+	}
+	return Transform();
+}
+
+void Rtabmap::triggerNewMap()
+{
+	if(_memory)
+	{
+		int mapId = _memory->incrementMapId();
+		UINFO("New map triggerred, new map = %d", mapId);
+	}
 }
 
 void Rtabmap::generateGraph(const std::string & path, int id, int margin)
@@ -533,9 +587,20 @@ void Rtabmap::generateGraph(const std::string & path, int id, int margin)
 
 void Rtabmap::resetMemory(bool dbOverwritten)
 {
+	_retrievedId = 0;
+	_lcHypothesisValue = 0;
+	_lcHypothesisId = 0;
+	_lastProcessTime = 0.0;
+	_optimizedPoses.clear();
+	_mapCorrection.setIdentity();
+
 	if(_memory)
 	{
-		_memory->init(_wDir + kDefaultDatabaseName, dbOverwritten);
+		_memory->init(getDatabasePath(), dbOverwritten);
+		if(_memory->getLastWorkingSignature())
+		{
+			optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), false, _optimizedPoses, _mapCorrection);
+		}
 		if(_bayesFilter)
 		{
 			_bayesFilter->reset();
@@ -545,19 +610,15 @@ void Rtabmap::resetMemory(bool dbOverwritten)
 	{
 		// FIXME May be not work with other database type.
 		// May be memory should be already created here, and use init above...
-		UFile::erase(_wDir + kDefaultDatabaseName);
+		UFile::erase(getDatabasePath());
 	}
-	_retrievedId = 0;
-	_lcHypothesisValue = 0;
-	_lcHypothesisId = 0;
-	_lastProcessTime = 0.0;
 	this->setupLogFiles(dbOverwritten);
 }
 
 //============================================================
 // MAIN LOOP
 //============================================================
-void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * words)
+bool Rtabmap::process(const Image & image)
 {
 	UDEBUG("");
 
@@ -567,9 +628,13 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 	UTimer timer;
 	UTimer timerTotal;
 	double timeMemoryUpdate = 0;
+	double timeScanMatching = 0;
+	double timeLocalTimeDetection = 0;
+	double timeLocalSpaceDetection = 0;
 	double timeCleaningNeighbors = 0;
 	double timeReactivations = 0;
 	double timeAddLoopClosureLink = 0;
+	double timeMapOptimization = 0;
 	double timeRetrievalDbAccess = 0;
 	double timeLikelihoodCalculation = 0;
 	double timePosteriorCalculation = 0;
@@ -580,9 +645,7 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 	double timeEmptyingTrash = 0;
 	double timeJoiningTrash = 0;
 	double timeStatsCreation = 0;
-	std::map<std::string, float> memUpdateStats;
 
-	int refId = Memory::kIdInvalid;
 	float hypothesisRatio = 0.0f; // Only used for statistics
 	bool rejectedHypothesis = false;
 
@@ -596,6 +659,8 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 
 	std::map<int, int> childCount;
 	std::set<int> signaturesRetrieved;
+	int localLoopClosuresInTimeFound = 0;
+	bool scanMatchingSuccess = false;
 
 	const Signature * signature = 0;
 	const Signature * sLoop = 0;
@@ -604,6 +669,8 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 
 	std::set<int> immunizedLocations;
 
+	statistics_ = Statistics(); // reset
+
 	//============================================================
 	// Wait for an image...
 	//============================================================
@@ -611,7 +678,7 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 	if(image.empty())
 	{
 		ULOGGER_INFO("image is null...");
-		return;
+		return false;
 	}
 
 	timer.start();
@@ -623,27 +690,187 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 	}
 
 	//============================================================
+	// If RGBD SLAM is enabled, a pose must be set.
+	//============================================================
+	if(_rgbdSlamMode)
+	{
+		if(image.pose().isNull())
+		{
+			UERROR("RGB-D SLAM mode is enabled and no odometry is provided. "
+				   "Image %d is ignored!", image.id());
+			return false;
+		}
+		else
+		{
+			// Detect if the odometry is reset. If yes, trigger a new map.
+			if(_memory->getLastWorkingSignature())
+			{
+				Transform lastPose = _memory->getLastWorkingSignature()->getPose(); // use raw odometry
+				Transform lastPoseToNewPose = lastPose.inverse() * image.pose();
+				float x,y,z, roll,pitch,yaw;
+				lastPoseToNewPose.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+				if(!lastPose.isIdentity() && image.pose().isIdentity())
+				{
+					int mapId = _memory->incrementMapId();
+					UWARN("Odometry is reset (transform identity detected). A new map (%d) is created!", mapId);
+				}
+			}
+		}
+	}
+
+	//============================================================
 	// Memory Update : Location creation + Add to STM + Weight Update (Rehearsal)
 	//============================================================
 	ULOGGER_INFO("Updating memory...");
-	if(!_memory->update(image, memUpdateStats))
+	if(!_memory->update(image, &statistics_))
 	{
-		return;
+		return false;
 	}
+
 	signature = _memory->getLastWorkingSignature();
 	if(!signature)
 	{
 		UFATAL("Not supposed to be here...last signature is null?!?");
 	}
 	ULOGGER_INFO("Processing signature %d", signature->id());
-	refId = signature->id();
 	timeMemoryUpdate = timer.ticks();
 	ULOGGER_INFO("timeMemoryUpdate=%fs", timeMemoryUpdate);
 
-	if(words)
+	//============================================================
+	// Metric
+	//============================================================
+	if(_rgbdSlamMode)
 	{
-		*words = signature->getWords();
+		//Verify if there was a rehearsal
+		int rehearsedId = (int)uValue(statistics_.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
+		if(rehearsedId > 0)
+		{
+			_optimizedPoses.erase(rehearsedId);
+		}
+		else
+		{
+			//============================================================
+			// Minimum displacement required to add to Memory
+			//============================================================
+			const std::map<int, Transform> & neighbors = signature->getNeighbors();
+			if(neighbors.size() == 1)
+			{
+				float x,y,z, roll,pitch,yaw;
+				neighbors.begin()->second.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+				if(fabs(x) < _rgbdLinearUpdate &&
+					fabs(y) < _rgbdLinearUpdate &&
+					fabs(z) < _rgbdLinearUpdate &&
+					fabs(roll) < _rgbdAngularUpdate &&
+					fabs(pitch) < _rgbdAngularUpdate &&
+					fabs(yaw) < _rgbdAngularUpdate)
+				{
+					UWARN("Ignoring location %d because the displacement is too small!", signature->id());
+					_memory->deleteLocation(signature->id());
+					return true;
+				}
+			}
+		}
+
+		Transform newPose = _mapCorrection * signature->getPose();
+		_optimizedPoses.insert(std::make_pair(signature->id(), newPose));
+
+		//============================================================
+		// Scan matching
+		//============================================================
+		if(_scanMatchingSize>0 &&
+			signature->getNeighbors().size() == 1 &&
+			signature->getDepth2D().size() &&
+			rehearsedId == 0) // don't do it if rehearsal happened
+		{
+			UINFO("Scan matching...");
+			const std::set<int> & stm = _memory->getStMem();
+			std::map<int, Transform> poses;
+			int count = _scanMatchingSize;
+			for(std::set<int>::const_reverse_iterator iter = stm.rbegin(); iter!=stm.rend() && count>0; ++iter)
+			{
+				if(_memory->getSignature(*iter)->mapId() == signature->mapId())
+				{
+					std::map<int, Transform>::iterator jter = _optimizedPoses.find(*iter);
+					UASSERT(jter != _optimizedPoses.end());
+					poses.insert(*jter);
+					if(*iter != signature->id())
+					{
+						--count;
+					}
+				}
+			}
+
+			int oldId = signature->getNeighbors().begin()->first;
+			if(poses.size())
+			{
+				const Signature * oldS = _memory->getSignature(oldId);
+				UASSERT(oldS != 0);
+				Transform t = _memory->computeScanMatchingTransform(signature->id(), oldId, poses);
+				if(!t.isNull())
+				{
+					scanMatchingSuccess = true;
+					UDEBUG("Update neighbor link (%d->%d) from %s to %s",
+							signature->id(),
+							oldId,
+							signature->getNeighbors().at(oldId).prettyPrint().c_str(),
+							t.prettyPrint().c_str());
+					_memory->updateNeighborLink(signature->id(), oldId, t);
+				}
+			}
+			else
+			{
+				UERROR("Poses are empty?!?");
+			}
+		}
+		timeScanMatching = timer.ticks();
+		ULOGGER_INFO("timeScanMatching=%fs", timeScanMatching);
+
+		//============================================================
+		// Local loop closure in TIME
+		//============================================================
+		if(_localLoopClosureDetectionTime &&
+		   rehearsedId == 0 && // don't do it if rehearsal happened
+		   signature->getWords3().size())
+		{
+			const std::set<int> & stm = _memory->getStMem();
+			for(std::set<int>::const_reverse_iterator iter = stm.rbegin(); iter!=stm.rend(); ++iter)
+			{
+				if(*iter != signature->id() &&
+				   signature->getNeighbors().find(*iter) == signature->getNeighbors().end() &&
+				   _memory->getSignature(*iter)->mapId() == signature->mapId())
+				{
+					UDEBUG("Check local transform between %d and %d", signature->id(), *iter);
+					Transform transform = _memory->computeVisualTransform(*iter, signature->id());
+					if(!transform.isNull() && _icpEnabled)
+					{
+						transform = _memory->computeIcpTransform(*iter, signature->id(), transform);
+					}
+					if(!transform.isNull())
+					{
+						UDEBUG("Add local loop closure in TIME (%d->%d) %s",
+								signature->id(),
+								*iter,
+								transform.prettyPrint().c_str());
+						// Add a loop constraint
+						if(_memory->addLoopClosureLink(*iter, signature->id(), transform))
+						{
+							++localLoopClosuresInTimeFound;
+							UINFO("Local loop closure found between %d and %d with t=%s",
+									*iter, signature->id(), transform.prettyPrint().c_str());
+						}
+						else
+						{
+							UWARN("Cannot add local loop closure between %d and %d ?!?",
+									*iter, signature->id());
+						}
+					}
+				}
+			}
+		}
 	}
+
+	timeLocalTimeDetection = timer.ticks();
+	UINFO("timeLocalTimeDetection=%fs", timeLocalTimeDetection);
 
 	//============================================================
 	// Bayes filter update
@@ -727,6 +954,18 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 					}
 					else
 					{
+						if(_lcHypothesisValue == 0.0f)
+						{
+							UDEBUG("rejected hypothesis: last closure hypothesis is null");
+						}
+						else if(hypothesis.second < _loopRatio*_lcHypothesisValue)
+						{
+							UDEBUG("rejected hypothesis: not satisfying ratio");
+						}
+						else
+						{
+							UDEBUG("rejected hypothesis: by epipolar geometry");
+						}
 						rejectedHypothesis = true;
 					}
 
@@ -923,7 +1162,25 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 	// Make the new one the parent of the old one
 	if(_lcHypothesisId>0)
 	{
-		rejectedHypothesis = !_memory->addLoopClosureLink(_lcHypothesisId, signature->id());
+		//Compute transform if metric data are present
+		Transform transform;
+		if(_rgbdSlamMode)
+		{
+			transform = _memory->computeVisualTransform(_lcHypothesisId, signature->id());
+			if(!transform.isNull() && _icpEnabled)
+			{
+				transform  = _memory->computeIcpTransform(_lcHypothesisId, signature->id(), transform);
+			}
+			rejectedHypothesis = transform.isNull();
+			if(rejectedHypothesis)
+			{
+				UWARN("Cannot compute a loop closure transform between %d and %d", _lcHypothesisId, signature->id());
+			}
+		}
+		if(!rejectedHypothesis)
+		{
+			rejectedHypothesis = !_memory->addLoopClosureLink(_lcHypothesisId, signature->id(), transform);
+		}
 
 		if(rejectedHypothesis)
 		{
@@ -933,6 +1190,92 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 	timeAddLoopClosureLink = timer.ticks();
 	ULOGGER_INFO("timeAddLoopClosureLink=%fs", timeAddLoopClosureLink);
 
+	int localSpaceDetectionPosesCount = 0;
+	int localSpaceClosureId = 0;
+	if(_lcHypothesisId == 0 &&
+	   _localLoopClosureDetectionSpace &&
+	   signature->getDepth2D().size())
+	{
+		//============================================================
+		// Scan matching
+		//============================================================
+		// get all nodes in radius of the current node
+		std::map<int, Transform> poses;
+		int oldId = 0;
+		poses = this->getOptimizedWMPosesInRadius(signature->id(), _localDetectMaxNeighbors, _localDetectRadius, oldId);
+		localSpaceDetectionPosesCount = poses.size()-1;
+		//The nearest will be the reference for a loop closure transform
+		if(poses.size() &&
+			oldId &&
+			signature->getChildLoopClosureIds().find(oldId) == signature->getChildLoopClosureIds().end())
+		{
+			Transform t = _memory->computeScanMatchingTransform(signature->id(), oldId, poses);
+			if(!t.isNull())
+			{
+				localSpaceClosureId = oldId;
+				UDEBUG("Add local loop closure in SPACE (%d->%d) %s",
+						signature->id(),
+						oldId,
+						t.prettyPrint().c_str());
+				_memory->addLoopClosureLink(oldId, signature->id(), t);
+			}
+		}
+	}
+	timeLocalSpaceDetection = timer.ticks();
+	ULOGGER_INFO("timeLocalSpaceDetection=%fs", timeLocalSpaceDetection);
+
+	//============================================================
+	// Optimize map graph
+	//============================================================
+	if(_rgbdSlamMode &&
+		(_lcHypothesisId>0 ||				// can be different map of the current one
+		 localLoopClosuresInTimeFound>0 || 	// only same map of the current one
+		 scanMatchingSuccess || 			// only same map of the current one
+		 localSpaceClosureId>0 || 			// can be different map of the current one
+		 signaturesRetrieved.size()))  		// can be different map of the current one
+	{
+		if(_memory->isIncremental())
+		{
+			UINFO("Update map correction: SLAM mode");
+			// SLAM mode!
+			optimizeCurrentMap(signature->id(), false, _optimizedPoses, _mapCorrection);
+		}
+		else if(_lcHypothesisId > 0 || localSpaceClosureId > 0 || signaturesRetrieved.size())
+		{
+			UINFO("Update map correction: Localization mode");
+			int oldId = _lcHypothesisId>0?_lcHypothesisId:localSpaceClosureId?localSpaceClosureId:_retrievedId;
+			UASSERT(oldId != 0);
+			if(signaturesRetrieved.size() || _optimizedPoses.find(oldId) == _optimizedPoses.end())
+			{
+				// update optimized poses
+				optimizeCurrentMap(_retrievedId, false, _optimizedPoses, _mapCorrection);
+			}
+
+			if(_optimizedPoses.find(oldId) == _optimizedPoses.end())
+			{
+				UERROR("Cannot find optimized pose for %d!?!?", oldId);
+			}
+			else
+			{
+				// Localization mode! only update map correction
+				const Signature * oldS = _memory->getSignature(oldId);
+				UASSERT(oldS != 0);
+				Transform correction = _optimizedPoses.at(oldId) * oldS->getPose().inverse();
+				Transform mapTransform  = _memory->getMapTransform(signature->mapId(), oldS->mapId());
+				UASSERT(!mapTransform.isNull());
+				_mapCorrection = correction*mapTransform;
+			}
+		}
+		else
+		{
+			UERROR("Not supposed to be here!");
+		}
+	}
+	Transform currentRawOdomPose = signature->getPose();
+
+	timeMapOptimization = timer.ticks();
+	ULOGGER_INFO("timeMapOptimization=%fs", timeMapOptimization);
+
 	//============================================================
 	// Prepare statistics
 	//============================================================
@@ -941,9 +1284,9 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 	int refWordsCount = 0;
 	int refUniqueWordsCount = 0;
 	int lcHypothesisReactivated = 0;
-	float rehearsalValue = uValue(memUpdateStats, std::string("Memory/Rehearsal Max Value/"), 0.0f);
-	int rehearsalMaxId = (int)uValue(memUpdateStats, std::string("Memory/Rehearsal Max Id/"), 0.0f);
-	sLoop = _memory->getSignature(hypothesis.first);
+	float rehearsalValue = uValue(statistics_.data(), Statistics::kMemoryRehearsal_sim(), 0.0f);
+	int rehearsalMaxId = (int)uValue(statistics_.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
+	sLoop = _memory->getSignature(_lcHypothesisId?_lcHypothesisId:localSpaceClosureId?localSpaceClosureId:hypothesis.first);
 	if(sLoop)
 	{
 		lcHypothesisReactivated = sLoop->isSaved()?1.0f:0.0f;
@@ -956,27 +1299,38 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 	float vpHypothesis = posterior.size()?posterior.at(Memory::kIdVirtual):0.0f;
 
 	// prepare statistics
-	statistics_ = Statistics(); // reset
 	if(_lcHypothesisId || _publishStats)
 	{
 		ULOGGER_INFO("sending stats...");
-		statistics_.setRefImageId(refId);
+		statistics_.setRefImageId(signature->id());
+		statistics_.setRefImageMapId(signature->mapId());
 		if(_lcHypothesisId != Memory::kIdInvalid)
 		{
 			statistics_.setLoopClosureId(_lcHypothesisId);
+			statistics_.setLoopClosureMapId(_memory->getSignature(_lcHypothesisId)->mapId());
 			ULOGGER_INFO("Loop closure detected! With id=%d", _lcHypothesisId);
 		}
-		if(_publishStats && refId != Memory::kIdInvalid)
+		if(_publishStats)
 		{
 			ULOGGER_INFO("send all stats...");
 			statistics_.setExtended(1);
 
 			statistics_.addStatistic(Statistics::kLoopHighest_hypothesis_id(), hypothesis.first);
 			statistics_.addStatistic(Statistics::kLoopHighest_hypothesis_value(), hypothesis.second);
-			statistics_.addStatistic(Statistics::kHypothesis_reactivated(), lcHypothesisReactivated);
+			statistics_.addStatistic(Statistics::kLoopHypothesis_reactivated(), lcHypothesisReactivated);
 			statistics_.addStatistic(Statistics::kLoopVp_hypothesis(), vpHypothesis);
 			statistics_.addStatistic(Statistics::kLoopReactivateId(), _retrievedId);
 			statistics_.addStatistic(Statistics::kLoopHypothesis_ratio(), hypothesisRatio);
+
+			statistics_.addStatistic(Statistics::kLocalLoopScan_matching_success(), scanMatchingSuccess?1:0);
+			statistics_.addStatistic(Statistics::kLocalLoopTime_closures(), localLoopClosuresInTimeFound);
+			statistics_.addStatistic(Statistics::kLocalLoopSpace_neighbors(), localSpaceDetectionPosesCount);
+			statistics_.addStatistic(Statistics::kLocalLoopSpace_closure_id(), localSpaceClosureId);
+			if(localSpaceClosureId)
+			{
+				statistics_.setLocalLoopClosureId(localSpaceClosureId);
+				statistics_.setLocalLoopClosureMapId(_memory->getSignature(localSpaceClosureId)->mapId());
+			}
 
 			statistics_.addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMem().size());
 			statistics_.addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMem().size());
@@ -984,19 +1338,17 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 
 			// timing...
 			statistics_.addStatistic(Statistics::kTimingMemory_update(), timeMemoryUpdate*1000);
+			statistics_.addStatistic(Statistics::kTimingScan_matching(), timeScanMatching*1000);
+			statistics_.addStatistic(Statistics::kTimingLocal_detection_TIME(), timeLocalTimeDetection*1000);
+			statistics_.addStatistic(Statistics::kTimingLocal_detection_SPACE(), timeLocalSpaceDetection*1000);
 			statistics_.addStatistic(Statistics::kTimingReactivation(), timeReactivations*1000);
 			statistics_.addStatistic(Statistics::kTimingAdd_loop_closure_link(), timeAddLoopClosureLink*1000);
+			statistics_.addStatistic(Statistics::kTimingMap_optimization(), timeMapOptimization*1000);
 			statistics_.addStatistic(Statistics::kTimingLikelihood_computation(), timeLikelihoodCalculation*1000);
 			statistics_.addStatistic(Statistics::kTimingPosterior_computation(), timePosteriorCalculation*1000);
 			statistics_.addStatistic(Statistics::kTimingHypotheses_creation(), timeHypothesesCreation*1000);
 			statistics_.addStatistic(Statistics::kTimingHypotheses_validation(), timeHypothesesValidation*1000);
 			statistics_.addStatistic(Statistics::kTimingCleaning_neighbors(), timeCleaningNeighbors*1000);
-
-			// memory update timings
-			for(std::map<std::string, float>::iterator iter = memUpdateStats.begin(); iter!=memUpdateStats.end(); ++iter)
-			{
-				statistics_.addStatistic(iter->first, iter->second);
-			}
 
 			// Surf specific parameters
 			statistics_.addStatistic(Statistics::kKeypointDictionary_size(), dictionarySize);
@@ -1006,16 +1358,46 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 
 			if(_publishImage)
 			{
-				statistics_.setRefImage(image.image()); // raw data
+				statistics_.setRefImage(signature->getImage()); // raw data
+				if(_rgbdSlamMode)
+				{
+					statistics_.setRefDepth(signature->getDepth());
+					statistics_.setRefDepth2D(signature->getDepth2D());
+					statistics_.setRefDepthConstant(signature->getDepthConstant());
+					statistics_.setRefLocalTransform(signature->getLocalTransform());
+				}
 				if(sLoop)
 				{
 					UTimer tmpTimer;
-					cv::Mat im = _memory->getImage(sLoop->id());
-
-					if(tmpTimer.elapsed() > 0.03)
+					std::vector<unsigned char> im;
+					if(_rgbdSlamMode)
 					{
-						UWARN("getting image time = %fs", tmpTimer.ticks());
+						std::vector<unsigned char> depth, depth2d;
+						float depthConstant;
+						Transform localTransform;
+						_memory->getImageDepth(sLoop->id(), im, depth, depth2d, depthConstant, localTransform);
+
+						if(tmpTimer.elapsed() > 0.03)
+						{
+							UWARN("getting image time = %fs", tmpTimer.ticks());
+						}
+						statistics_.setLoopDepth(depth);
+						statistics_.setLoopDepth2D(depth2d);
+						statistics_.setLoopDepthConstant(depthConstant);
+						statistics_.setLoopLocalTransform(localTransform);
+
+						if(_lcHypothesisId || localSpaceClosureId)
+						{
+							UASSERT(uContains(sLoop->getLoopClosureIds(), signature->id()));
+							UINFO("Set loop closure transform = %s", sLoop->getLoopClosureIds().at(signature->id()).prettyPrint().c_str());
+							statistics_.setLoopClosureTransform(sLoop->getLoopClosureIds().at(signature->id()));
+						}
 					}
+					else
+					{
+						im = _memory->getImage(sLoop->id());
+					}
+
 					statistics_.setLoopImage(im);
 				}
 			}
@@ -1051,12 +1433,14 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 		ULOGGER_INFO("Time creating stats = %f...", timeStatsCreation);
 	}
 
+	// Pass this point signature should not be used, since it could be transferred...
+	signature = 0;
+
 	//By default, remove all signatures with a loop closure link if they are not in reactivateIds
 	//This will also remove rehearsed signatures
-	int signaturesRemoved = 0;
-	signaturesRemoved += _memory->cleanup();
+	std::list<int> signaturesRemoved = _memory->cleanup();
 	timeMemoryCleanup = timer.ticks();
-	ULOGGER_INFO("timeMemoryCleanup = %fs...", timeMemoryCleanup);
+	ULOGGER_INFO("timeMemoryCleanup = %fs... %d signatures removed", timeMemoryCleanup, (int)signaturesRemoved.size());
 
 	//============================================================
 	// TRANSFER
@@ -1073,16 +1457,23 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 		(_maxMemoryAllowed != 0 && _memory->getWorkingMem().size() > _maxMemoryAllowed))
 	{
 		ULOGGER_INFO("Removing old signatures because time limit is reached %f>%f or memory is reached %d>%d...", totalTime*1000, _maxTimeAllowed, _memory->getWorkingMem().size(), _maxMemoryAllowed);
-		signaturesRemoved = _memory->forget(immunizedLocations);
+		std::list<int> transferred = _memory->forget(immunizedLocations);
+		signaturesRemoved.insert(signaturesRemoved.end(), transferred.begin(), transferred.end());
 	}
 	_lastProcessTime = totalTime;
+
+	//Removed optimized poses from signatures transferred
+	for(std::list<int>::iterator iter = signaturesRemoved.begin(); iter!=signaturesRemoved.end(); ++iter)
+	{
+		UDEBUG("removing optimized pose %d...", *iter);
+		_optimizedPoses.erase(*iter);
+	}
 
 	timeRealTimeLimitReachedProcess = timer.ticks();
 	ULOGGER_INFO("Time limit reached processing = %f...", timeRealTimeLimitReachedProcess);
 
 	//Start trashing
 	_memory->emptyTrash();
-
 
 	//==============================================================
 	// Finalize statistics and log files
@@ -1095,7 +1486,16 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 		statistics_.addStatistic(Statistics::kTimingJoining_trash(), timeJoiningTrash*1000);
 		statistics_.addStatistic(Statistics::kTimingEmptying_trash(), timeEmptyingTrash*1000);
 		statistics_.addStatistic(Statistics::kTimingMemory_cleanup(), timeMemoryCleanup*1000);
-		statistics_.addStatistic(Statistics::kMemorySignatures_removed(), signaturesRemoved);
+		statistics_.addStatistic(Statistics::kMemorySignatures_removed(), signaturesRemoved.size());
+
+		//Poses, place this after Transfer! (_optimizedPoses may change)
+		if(_rgbdSlamMode)
+		{
+			statistics_.setPoses(_optimizedPoses);
+			statistics_.setMapCorrection(_mapCorrection);
+			statistics_.setCurrentPose(_mapCorrection * currentRawOdomPose);
+			UINFO("Set map correction = %s", _mapCorrection.prettyPrint().c_str());
+		}
 	}
 
 	// Log info...
@@ -1125,7 +1525,7 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 	std::string logI = uFormat("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
 								_lcHypothesisId,
 								hypothesis.first,
-								signaturesRemoved,
+								(int)signaturesRemoved.size(),
 								0,
 								refWordsCount,
 								dictionarySize,
@@ -1159,6 +1559,7 @@ void Rtabmap::process(const Image & image, std::multimap<int, cv::KeyPoint> * wo
 	UINFO("Time logging = %f...", timer.ticks());
 	//ULogger::flush();
 
+	return true;
 }
 
 // SETTERS
@@ -1186,14 +1587,13 @@ void Rtabmap::setWorkingDirectory(std::string path)
 
 	if(!path.empty() && UDirectory::exists(path))
 	{
-		ULOGGER_DEBUG("Comparing new path \"%s\" with \"%s\"", path.c_str(), _wDir.c_str());
+		ULOGGER_DEBUG("Comparing new working directory path \"%s\" with \"%s\"", path.c_str(), _wDir.c_str());
 		if(path.compare(_wDir) != 0)
 		{
 			_wDir = path;
 			if(_memory)
 			{
-				_memory->init(_wDir + kDefaultDatabaseName);
-				setupLogFiles();
+				this->resetMemory();
 			}
 			else
 			{
@@ -1207,11 +1607,23 @@ void Rtabmap::setWorkingDirectory(std::string path)
 	}
 }
 
-void Rtabmap::deleteLastLocation()
+void Rtabmap::setDatabasePath(const std::string & path)
 {
-	if(_memory)
+	if(!path.empty())
 	{
-		_memory->deleteLastLocation();
+		ULOGGER_DEBUG("Comparing new database path \"%s\" with \"%s\"", path.c_str(), _databasePath.c_str());
+		if(path.compare(_databasePath) != 0)
+		{
+			_databasePath = path;
+			if(_memory)
+			{
+				this->resetMemory();
+			}
+		}
+	}
+	else
+	{
+		ULOGGER_ERROR("Cannot set null database path!");
 	}
 }
 
@@ -1223,7 +1635,7 @@ void Rtabmap::deleteLocation(int locationId)
 	}
 }
 
-void Rtabmap::rejectLastLoopClosure()
+void Rtabmap::rejectLoopClosure(int oldId, int newId)
 {
 	UDEBUG("_lcHypothesisId=%d", _lcHypothesisId);
 	if(_lcHypothesisId)
@@ -1231,7 +1643,7 @@ void Rtabmap::rejectLastLoopClosure()
 		_lcHypothesisId = 0;
 		if(_memory)
 		{
-			_memory->rejectLastLoopClosure();
+			_memory->rejectLoopClosure(oldId, newId);
 		}
 		if(uContains(statistics_.data(), rtabmap::Statistics::kLoopRejectedHypothesis()))
 		{
@@ -1241,9 +1653,9 @@ void Rtabmap::rejectLastLoopClosure()
 	}
 }
 
-void Rtabmap::process(const cv::Mat & image, int id, std::multimap<int, cv::KeyPoint> * words)
+bool Rtabmap::process(const cv::Mat & image, int id)
 {
-	this->process(Image(image, id), words);
+	return this->process(Image(image, id));
 }
 
 void Rtabmap::dumpData() const
@@ -1252,6 +1664,123 @@ void Rtabmap::dumpData() const
 	if(_memory)
 	{
 		_memory->dumpMemory(this->getWorkingDir());
+	}
+}
+
+std::map<int, Transform> Rtabmap::getOptimizedWMPosesInRadius(
+		int fromId,
+		int maxNearestNeighbors,
+		float radius,
+		int & nearestId) const
+{
+	UDEBUG("");
+	const Signature * fromS = _memory->getSignature(fromId);
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	cloud->resize(_optimizedPoses.size());
+	std::vector<int> ids(_optimizedPoses.size());
+	int oi = 0;
+	const std::set<int> & stm = _memory->getStMem();
+	for(std::map<int, Transform>::const_iterator iter = _optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+	{
+		// Only locations in Working Memory and in the same map or a map link exist between them (only
+		// global loop closure detection can do loop closure between not joined maps).
+		if(stm.find(iter->first) == stm.end() && !_memory->getMapTransform(fromS->mapId(),  _memory->getSignature(iter->first)->mapId()).isNull())
+		{
+			(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+			ids[oi++] = iter->first;
+		}
+	}
+
+	cloud->resize(oi);
+	ids.resize(oi);
+
+	Transform fromT = _optimizedPoses.at(fromId);
+
+	nearestId = 0;
+	std::map<int, Transform> poses;
+	poses.insert(*_optimizedPoses.find(fromId)); // add fromId
+	float minDistance = -1;
+	if(cloud->size())
+	{
+		//filter poses in front of the fromId
+		//pcl::io::savePCDFile("radiusPoses.pcd", *cloud);
+
+		Transform t=Transform::getIdentity();
+		t.x() = radius*0.95f;
+		float x,y,z, roll,pitch,yaw;
+		(fromT*t).getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+
+		pcl::CropBox<pcl::PointXYZ> cropbox;
+		cropbox.setInputCloud(cloud);
+		cropbox.setMin(Eigen::Vector4f(-radius, -radius, -radius, 0));
+		cropbox.setMax(Eigen::Vector4f(radius, radius, radius, 0));
+		cropbox.setRotation(Eigen::Vector3f(roll, pitch, yaw));
+		cropbox.setTranslation(Eigen::Vector3f(x, y, z));
+		pcl::IndicesPtr indices(new std::vector<int>());
+		cropbox.filter(*indices);
+
+		//pcl::io::savePCDFile("radiusCrop.pcd", *cloud, *indices);
+
+		if(indices->size())
+		{
+			pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
+			kdTree->setInputCloud(cloud, indices);
+			std::vector<int> ind;
+			std::vector<float> dist;
+			pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
+			kdTree->radiusSearch(pt, radius, ind, dist, maxNearestNeighbors);
+			//pcl::PointCloud<pcl::PointXYZ> inliers;
+			for(unsigned int i=0; i<ind.size(); ++i)
+			{
+				if(ind[i] >=0)
+				{
+					Transform tmp = _optimizedPoses.find(ids[ind[i]])->second;
+					//inliers.push_back(pcl::PointXYZ(tmp.x(), tmp.y(), tmp.z()));
+					UDEBUG("Inlier %d: %s", ids[ind[i]], tmp.prettyPrint().c_str());
+					poses.insert(std::make_pair(ids[ind[i]], tmp));
+					if(fromS->getNeighbors().find(ids[ind[i]]) == fromS->getNeighbors().end() && // can't be a neighbor
+					   (minDistance == -1 || minDistance > dist[i]))
+					{
+						nearestId = ids[ind[i]];
+						minDistance = dist[i];
+					}
+				}
+			}
+			//if(inliers.size())
+			//{
+			//	pcl::io::savePCDFile("radiusInliers.pcd", inliers);
+			//}
+			//if(nearestId >0)
+			//{
+			//	pcl::PointCloud<pcl::PointXYZ> c;
+			//	Transform ct = _optimizedPoses.find(nearestId)->second;
+			//	c.push_back(pcl::PointXYZ(ct.x(), ct.y(), ct.z()));
+			//	pcl::io::savePCDFile("radiusNearestPt.pcd", c);
+			//}
+		}
+	}
+	UDEBUG("nearestId = %d, minDistance=%f poses=%d", nearestId, minDistance, (int)poses.size());
+	return poses;
+}
+
+void Rtabmap::optimizeCurrentMap(int id, bool lookInDatabase, std::map<int, Transform> & optimizedPoses, Transform & mapCorrection) const
+{
+	//Optimize the map
+	UDEBUG("Optimize map: around location %d", id);
+	if(_memory && id > 0)
+	{
+		std::map<int, int> ids = _memory->getNeighborsId(id, 999, lookInDatabase?-1:0);
+		std::map<int, Transform> poses;
+		std::multimap<int, std::pair<int, Transform> > edgeConstraints;
+		_memory->getMetricConstraints(uKeys(ids), _memory->getSignature(id)->mapId(), poses, edgeConstraints, false);
+		if(poses.size() > 1 && edgeConstraints.size() > 0)
+		{
+			util3d::optimizeTOROGraph(poses, edgeConstraints, 100, optimizedPoses, mapCorrection);
+
+			//util3d::saveTOROGraph("toro.graph", poses, edgeConstraints);
+			//util3d::saveTOROGraph("toroOptimized.graph", _optimizedPoses, edgeConstraints);
+		}
 	}
 }
 
@@ -1267,10 +1796,11 @@ void Rtabmap::adjustLikelihood(std::map<int, float> & likelihood) const
 
 	// Use only non-null values (ignore virtual place)
 	std::list<float> values;
+	bool likelihoodNullValuesIgnored = true;
 	for(std::map<int, float>::iterator iter = ++likelihood.begin(); iter!=likelihood.end(); ++iter)
 	{
-		if((iter->second >= 0 && !_likelihoodNullValuesIgnored) ||
-		   (iter->second > 0 && _likelihoodNullValuesIgnored))
+		if((iter->second >= 0 && !likelihoodNullValuesIgnored) ||
+		   (iter->second > 0 && likelihoodNullValuesIgnored))
 		{
 			values.push_back(iter->second);
 		}
@@ -1356,6 +1886,54 @@ void Rtabmap::dumpPrediction() const
 	else
 	{
 		UWARN("Memory and/or the Bayes filter are not created");
+	}
+}
+
+void Rtabmap::get3DMap(std::map<int, std::vector<unsigned char> > & images,
+		std::map<int, std::vector<unsigned char> > & depths,
+		std::map<int, std::vector<unsigned char> > & depths2d,
+		std::map<int, float> & depthConstants,
+		std::map<int, Transform> & localTransforms,
+		std::map<int, Transform> & optimizedPoses,
+		Transform & mapCorrection) const
+{
+	if(_memory)
+	{
+		//Optimize the map
+		UDEBUG("Optimize map");
+		optimizedPoses = _optimizedPoses;
+		mapCorrection = _mapCorrection;
+
+		std::set<int> ids = _memory->getAllSignatureIds();
+		for(std::set<int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
+		{
+			UDEBUG("Adding %d ... ", *iter);
+			std::vector<unsigned char> image, depth, depth2d;
+			float depthConstant;
+			Transform localTransform;
+			_memory->getImageDepth(*iter, image, depth, depth2d, depthConstant, localTransform);
+
+			if(image.size())
+			{
+				images.insert(std::make_pair(*iter, image));
+			}
+			if(depth.size())
+			{
+				depths.insert(std::make_pair(*iter, depth));
+			}
+			if(depth2d.size())
+			{
+				depths2d.insert(std::make_pair(*iter, depth2d));
+			}
+			if(depthConstant > 0)
+			{
+				depthConstants.insert(std::make_pair(*iter, depthConstant));
+			}
+			if(!localTransform.isNull())
+			{
+				localTransforms.insert(std::make_pair(*iter, localTransform));
+			}
+		}
 	}
 }
 

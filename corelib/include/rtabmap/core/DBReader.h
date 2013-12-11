@@ -12,6 +12,8 @@
 
 #include <rtabmap/utilite/UThreadNode.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UEventsSender.h>
+#include <rtabmap/core/Transform.h>
 
 #include <opencv2/core/core.hpp>
 
@@ -21,15 +23,16 @@ namespace rtabmap {
 
 class DBDriver;
 
-class RTABMAP_EXP DBReader : public UThreadNode {
+class RTABMAP_EXP DBReader : public UThreadNode, public UEventsSender {
 public:
 	DBReader(const std::string & databasePath,
-			 float frameRate = 0.0f);
+			 float frameRate = 0.0f,
+			 bool odometryIgnored = false);
 	virtual ~DBReader();
 
 	bool init(int startIndex=0);
 	void setFrameRate(float frameRate);
-	void getNextImage(cv::Mat & sensors);
+	void getNextImage(cv::Mat & image, cv::Mat & depth, cv::Mat & depth2d, float & depthConstant, Transform & localTransform, Transform & pose);
 
 protected:
 	virtual void mainLoopBegin();
@@ -38,6 +41,7 @@ protected:
 private:
 	std::string _path;
 	float _frameRate;
+	bool _odometryIgnored;
 
 	DBDriver * _dbDriver;
 	UTimer _timer;

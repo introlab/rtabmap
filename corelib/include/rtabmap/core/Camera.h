@@ -66,7 +66,6 @@ public:
 
 
 	virtual void parseParameters(const ParametersMap & parameters);
-	int id() const {return _id;}
 
 protected:
 	/**
@@ -74,13 +73,15 @@ protected:
 	 *
 	 * @param imageRate : image/second , 0 for fast as the camera can
 	 */
-	Camera(float imageRate = 0, unsigned int imageWidth = 0, unsigned int imageHeight = 0, unsigned int framesDropped = 0, int id = 0);
+	Camera(float imageRate = 0,
+			unsigned int imageWidth = 0,
+			unsigned int imageHeight = 0,
+			unsigned int framesDropped = 0);
 
 	virtual cv::Mat captureImage() = 0;
 
 private:
 	float _imageRate;
-	int _id;
 	unsigned int _imageWidth;
 	unsigned int _imageHeight;
 	unsigned int _framesDropped;
@@ -105,8 +106,7 @@ public:
 			float imageRate = 0,
 			unsigned int imageWidth = 0,
 			unsigned int imageHeight = 0,
-			unsigned int framesDropped = 0,
-			int id = 0);
+			unsigned int framesDropped = 0);
 	virtual ~CameraImages();
 
 	virtual bool init();
@@ -143,14 +143,12 @@ public:
 			float imageRate = 0,
 			unsigned int imageWidth = 0,
 			unsigned int imageHeight = 0,
-			unsigned int framesDropped = 0,
-			int id = 0);
+			unsigned int framesDropped = 0);
 	CameraVideo(const std::string & filePath,
 			float imageRate = 0,
 			unsigned int imageWidth = 0,
 			unsigned int imageHeight = 0,
-			unsigned int framesDropped = 0,
-			int id = 0);
+			unsigned int framesDropped = 0);
 	virtual ~CameraVideo();
 
 	virtual bool init();

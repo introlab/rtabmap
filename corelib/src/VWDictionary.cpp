@@ -20,7 +20,7 @@
 #include "rtabmap/core/VWDictionary.h"
 #include "VisualWord.h"
 
-#include "Signature.h"
+#include "rtabmap/core/Signature.h"
 #include "rtabmap/core/DBDriver.h"
 #include "NearestNeighbor.h"
 #include "rtabmap/core/Parameters.h"
@@ -37,7 +37,6 @@ const int VWDictionary::ID_START = 1;
 const int VWDictionary::ID_INVALID = 0;
 
 VWDictionary::VWDictionary(const ParametersMap & parameters) :
-	_lastNewWordsAddedCount(0),
 	_totalActiveReferences(0),
 	_incrementalDictionary(Parameters::defaultKpIncrementalDictionary()),
 	_minDistUsed(Parameters::defaultKpMinDistUsed()),
@@ -66,26 +65,14 @@ VWDictionary::~VWDictionary()
 void VWDictionary::parseParameters(const ParametersMap & parameters)
 {
 	ParametersMap::const_iterator iter;
-	if((iter=parameters.find(Parameters::kKpMinDistUsed())) != parameters.end())
-	{
-		_minDistUsed = uStr2Bool((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kKpMinDist())) != parameters.end())
-	{
-		this->setMinDist(std::atof((*iter).second.c_str()));
-	}
-	if((iter=parameters.find(Parameters::kKpNndrUsed())) != parameters.end())
-	{
-		_nndrUsed = uStr2Bool((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kKpNndrRatio())) != parameters.end())
-	{
-		this->setNndrRatio(std::atof((*iter).second.c_str()));
-	}
-	if((iter=parameters.find(Parameters::kKpMaxLeafs())) != parameters.end())
-	{
-		_maxLeafs = (unsigned int)std::atoi((*iter).second.c_str());
-	}
+	Parameters::parse(parameters, Parameters::kKpMinDistUsed(), _minDistUsed);
+	Parameters::parse(parameters, Parameters::kKpMinDist(), _minDist);
+	Parameters::parse(parameters, Parameters::kKpNndrUsed(), _nndrUsed);
+	Parameters::parse(parameters, Parameters::kKpNndrRatio(), _nndrRatio);
+	Parameters::parse(parameters, Parameters::kKpMaxLeafs(), _maxLeafs);
+
+	UASSERT(_minDist >= 0.0f);
+	UASSERT(_nndrRatio >= 0.0f);
 
 	std::string dictionaryPath = _dictionaryPath;
 	bool incrementalDictionary = _incrementalDictionary;
@@ -183,6 +170,7 @@ void VWDictionary::setIncrementalDictionary(bool incrementalDictionary, const st
 								// laplacian not used
 								VisualWord * vw = new VisualWord(id, &(descriptor[0]), dimension, 0);
 								_visualWords.insert(_visualWords.end(), std::pair<int, VisualWord*>(id, vw));
+								_notIndexedWords.insert(_notIndexedWords.end(), id);
 							}
 							else
 							{
@@ -272,30 +260,6 @@ VWDictionary::NNStrategy VWDictionary::nnStrategy() const
 	return strategy;
 }
 
-void VWDictionary::setMinDist(float d)
-{
-	if(d < 0)
-	{
-		ULOGGER_ERROR("Match threshold must be positive (%f)", d);
-	}
-	else
-	{
-		_minDist = d;
-	}
-
-}
-void VWDictionary::setNndrRatio(float ratio)
-{
-	if(ratio < 0)
-	{
-		ULOGGER_ERROR("Ratio must be positive (%f)", ratio);
-	}
-	else
-	{
-		_nndrRatio = ratio;
-	}
-}
-
 int VWDictionary::getLastIndexedWordId() const
 {
 	if(_mapIndexId.size())
@@ -311,7 +275,7 @@ int VWDictionary::getLastIndexedWordId() const
 void VWDictionary::update()
 {
 	ULOGGER_DEBUG("");
-	if(!_incrementalDictionary && !_dataTree.empty())
+	if(!_incrementalDictionary && !_notIndexedWords.size())
 	{
 		// No need to update the search index if we
 		// use a fixed dictionary and the index is
@@ -319,59 +283,74 @@ void VWDictionary::update()
 		return;
 	}
 
-	_mapIndexId.clear();
-
-	if(_nn && _visualWords.size())
+	if(_notIndexedWords.size() || _visualWords.size() == 0 || _removedIndexedWords.size())
 	{
-		UTimer timer;
-		timer.start();
+		_mapIndexId.clear();
+		_dataTree = cv::Mat();
 
-		if(!_dim)
+		if(_nn && _visualWords.size())
 		{
-			_dim = _visualWords.begin()->second->getDim();
-		}
+			UTimer timer;
+			timer.start();
 
-		// Create the kd-Tree
-		_dataTree = cv::Mat(_visualWords.size(), _dim, CV_32F); // SURF descriptors are CV_32F
-		std::map<int, VisualWord*>::const_iterator iter = _visualWords.begin();
-		for(unsigned int i=0; i < _visualWords.size(); ++i, ++iter)
-		{
-			float * rowFl = _dataTree.ptr<float>(i);
-			if(iter->second->getDim() == _dim)
+			if(!_dim)
 			{
-				memcpy(rowFl, iter->second->getDescriptor(), _dim*sizeof(float));
-				_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, iter->second->id()));
+				_dim = _visualWords.begin()->second->getDim();
 			}
-			else
+
+			// Create the kd-Tree
+			_dataTree = cv::Mat(_visualWords.size(), _dim, CV_32F); // SURF descriptors are CV_32F
+			std::map<int, VisualWord*>::const_iterator iter = _visualWords.begin();
+			for(unsigned int i=0; i < _visualWords.size(); ++i, ++iter)
 			{
-				ULOGGER_WARN("A word is not the same size than the dictionary, ignoring that word...");
-				_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, 0)); // set to INVALID
+				float * rowFl = _dataTree.ptr<float>(i);
+				if(iter->second->getDim() == _dim)
+				{
+					memcpy(rowFl, iter->second->getDescriptor(), _dim*sizeof(float));
+					_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, iter->second->id()));
+				}
+				else
+				{
+					ULOGGER_WARN("A word is not the same size than the dictionary, ignoring that word...");
+					_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, 0)); // set to INVALID
+				}
 			}
+
+			ULOGGER_DEBUG("_mapIndexId.size() = %d, words.size()=%d, _dim=%d",_mapIndexId.size(), _visualWords.size(), _dim);
+			ULOGGER_DEBUG("copying data = %f s", timer.ticks());
+
+			// Update the nearest neighbor algorithm
+			_nn->setData(_dataTree);
+
+			ULOGGER_DEBUG("Time to create kd tree = %f s", timer.ticks());
 		}
-
-		ULOGGER_DEBUG("_mapIndexId.size() = %d, words.size()=%d, _dim=%d",_mapIndexId.size(), _visualWords.size(), _dim);
-		ULOGGER_DEBUG("copying data = %f s", timer.ticks());
-
-		// Update the nearest neighbor algorithm
-		_nn->setData(_dataTree);
-
-		ULOGGER_DEBUG("Time to create kd tree = %f s", timer.ticks());
 	}
-	_lastNewWordsAddedCount = 0;
+	else
+	{
+		UINFO("Dictionary has not changed, so no need to update it!");
+	}
+	_notIndexedWords.clear();
+	_removedIndexedWords.clear();
 }
 
 void VWDictionary::clear()
 {
+	ULOGGER_DEBUG("");
 	if(_visualWords.size() && _incrementalDictionary)
 	{
-		UWARN("Visual dictionary would be already empty here (%d words still in dictionary).", _visualWords.size());
+		UWARN("Visual dictionary would be already empty here (%d words still in dictionary).", (int)_visualWords.size());
+	}
+	if(_notIndexedWords.size())
+	{
+		UWARN("Not indexed words should be empty here (%d words still not indexed)", (int)_notIndexedWords.size());
 	}
 	for(std::map<int, VisualWord *>::iterator i=_visualWords.begin(); i!=_visualWords.end(); ++i)
 	{
 		delete (*i).second;
 	}
 	_visualWords.clear();
-	_lastNewWordsAddedCount = 0;
+	_notIndexedWords.clear();
+	_removedIndexedWords.clear();
 	_totalActiveReferences = 0;
 	_lastWordId = 0;
 	_dataTree = cv::Mat();
@@ -390,19 +369,12 @@ void VWDictionary::addWordRef(int wordId, int signatureId)
 	{
 		VisualWord * vw = 0;
 		vw = uValue(_visualWords, wordId, vw);
-		if(!vw)
-		{
-			vw = uValue(_unusedWords, wordId, vw);
-			if(vw)
-			{
-				_visualWords.insert(std::pair<int, VisualWord*>(vw->id(), vw));
-				_unusedWords.erase(vw->id());
-			}
-		}
 		if(vw)
 		{
 			vw->addRef(signatureId);
 			_totalActiveReferences += 1;
+
+			_unusedWords.erase(vw->id());
 		}
 		else
 		{
@@ -447,7 +419,12 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 		return wordIds;
 	}
 
-	int newWordsCount= 0;
+	if(!_incrementalDictionary && _dataTree.empty())
+	{
+		UERROR("Dictionary mode is set to fixed but no words are in it!");
+		return wordIds;
+	}
+
 	int dupWordsCount= 0;
 
 	unsigned int k=1; // k nearest neighbors
@@ -537,10 +514,10 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 				{
 					VisualWord * vw = new VisualWord(getNextId(), newPts.ptr<float>(i), _dim, signatureId);
 					_visualWords.insert(_visualWords.end(), std::pair<int, VisualWord *>(vw->id(), vw));
+					_notIndexedWords.insert(_notIndexedWords.end(), vw->id());
 					newWords.push_back(vw);
 					wordIds.push_back(vw->id());
 					UASSERT(vw->id()>0);
-					++newWordsCount;
 				}
 				else
 				{
@@ -602,9 +579,9 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 
 				if(badDist)
 				{
-					++newWordsCount;
 					VisualWord * vw = new VisualWord(getNextId(), d, _dim, signatureId);
 					_visualWords.insert(_visualWords.end(), std::pair<int, VisualWord *>(vw->id(), vw));
+					_notIndexedWords.insert(_notIndexedWords.end(), vw->id());
 					wordIds.push_back(vw->id());
 					UASSERT(vw->id()>0);
 				}
@@ -628,12 +605,11 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 		ULOGGER_DEBUG("Naive search time = %fs", timer.ticks());
 	}
 
-	ULOGGER_DEBUG("%d new words added...", newWordsCount);
+	ULOGGER_DEBUG("%d new words added...", _notIndexedWords.size());
 	ULOGGER_DEBUG("%d duplicated words added...", dupWordsCount);
 	UDEBUG("total time %fs", timer.ticks());
 
-	_lastNewWordsAddedCount = newWordsCount;
-	_totalActiveReferences += newWordsCount;
+	_totalActiveReferences += _notIndexedWords.size();
 	return wordIds;
 }
 
@@ -835,9 +811,10 @@ void VWDictionary::addWord(VisualWord * vw)
 {
 	if(vw)
 	{
+		_visualWords.insert(std::pair<int, VisualWord *>(vw->id(), vw));
+		_notIndexedWords.insert(vw->id());
 		if(vw->getReferences().size())
 		{
-			_visualWords.insert(std::pair<int, VisualWord *>(vw->id(), vw));
 			_totalActiveReferences += uSum(uValues(vw->getReferences()));
 		}
 		else
@@ -1037,6 +1014,10 @@ void VWDictionary::removeWords(const std::vector<VisualWord*> & words)
 	{
 		_visualWords.erase(words[i]->id());
 		_unusedWords.erase(words[i]->id());
+		if(_notIndexedWords.erase(words[i]->id()) == 0)
+		{
+			_removedIndexedWords.insert(words[i]->id());
+		}
 	}
 }
 

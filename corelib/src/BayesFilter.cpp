@@ -19,7 +19,7 @@
 
 #include "BayesFilter.h"
 #include "rtabmap/core/Memory.h"
-#include "Signature.h"
+#include "rtabmap/core/Signature.h"
 #include "rtabmap/core/Parameters.h"
 #include <iostream>
 
@@ -42,37 +42,14 @@ BayesFilter::~BayesFilter() {
 void BayesFilter::parseParameters(const ParametersMap & parameters)
 {
 	ParametersMap::const_iterator iter;
-	if((iter=parameters.find(Parameters::kBayesVirtualPlacePriorThr())) != parameters.end())
-	{
-		this->setVirtualPlacePrior(std::atof((*iter).second.c_str()));
-	}
 	if((iter=parameters.find(Parameters::kBayesPredictionLC())) != parameters.end())
 	{
 		this->setPredictionLC((*iter).second);
 	}
-	if((iter=parameters.find(Parameters::kBayesFullPredictionUpdate())) != parameters.end())
-	{
-		_fullPredictionUpdate = uStr2Bool((*iter).second.c_str());
-	}
+	Parameters::parse(parameters, Parameters::kBayesVirtualPlacePriorThr(), _virtualPlacePrior);
+	Parameters::parse(parameters, Parameters::kBayesFullPredictionUpdate(), _fullPredictionUpdate);
 
-}
-
-void BayesFilter::setVirtualPlacePrior(float virtualPlacePrior)
-{
-	if(virtualPlacePrior < 0)
-	{
-		ULOGGER_WARN("virtualPlacePrior=%f, must be >=0 and <=1", virtualPlacePrior);
-		_virtualPlacePrior = 0;
-	}
-	else if(virtualPlacePrior > 1)
-	{
-		ULOGGER_WARN("virtualPlacePrior=%f, must be >=0 and <=1", virtualPlacePrior);
-		_virtualPlacePrior = 1;
-	}
-	else
-	{
-		_virtualPlacePrior = virtualPlacePrior;
-	}
+	UASSERT(_virtualPlacePrior >= 0 && _virtualPlacePrior <= 1.0f);
 }
 
 // format = {Virtual place, Loop closure, level1, level2, l3, l4...}

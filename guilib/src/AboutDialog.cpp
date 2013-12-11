@@ -21,6 +21,7 @@
 #include "rtabmap/core/Rtabmap.h"
 #include "ui_aboutDialog.h"
 #include <opencv2/core/version.hpp>
+#include <pcl/pcl_config.h>
 
 namespace rtabmap {
 
@@ -29,8 +30,13 @@ AboutDialog::AboutDialog(QWidget * parent) :
 {
 	_ui = new Ui_aboutDialog();
 	_ui->setupUi(this);
-	_ui->label_version->setText(Rtabmap::getVersion().c_str());
+	QString version = Rtabmap::getVersion().c_str();
+#if DEMO_BUILD
+	version.append(" [DEMO]");
+#endif
+	_ui->label_version->setText(version);
 	_ui->label_opencv_version->setText(CV_VERSION);
+	_ui->label_pcl_version->setText(PCL_VERSION_PRETTY);
 }
 
 AboutDialog::~AboutDialog()

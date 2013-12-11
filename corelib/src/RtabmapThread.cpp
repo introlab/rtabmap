@@ -23,16 +23,21 @@
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/ParamEvent.h"
+#include "rtabmap/core/OdometryEvent.h"
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UStl.h>
+#include <rtabmap/utilite/UTimer.h>
 
 namespace rtabmap {
 
 RtabmapThread::RtabmapThread() :
 		_imageBufferMaxSize(Parameters::defaultRtabmapImageBufferSize()),
-		_rtabmap(new Rtabmap())
+		_rate(Parameters::defaultRtabmapDetectionRate()),
+		_frameRateTimer(new UTimer()),
+		_rtabmap(new Rtabmap()),
+		_paused(false)
 
 {
 }
@@ -44,6 +49,7 @@ RtabmapThread::~RtabmapThread()
 	// Stop the thread first
 	join(true);
 
+	delete _frameRateTimer;
 	delete _rtabmap;
 }
 
@@ -61,12 +67,7 @@ void RtabmapThread::pushNewState(State newState, const ParametersMap & parameter
 	_imageAdded.release();
 }
 
-void RtabmapThread::setWorkingDirectory(const std::string & path)
-{
-	_rtabmap->setWorkingDirectory(path);
-}
-
-void RtabmapThread::clearBufferedSensors()
+void RtabmapThread::clearBufferedData()
 {
 	_imageMutex.lock();
 	{
@@ -75,9 +76,36 @@ void RtabmapThread::clearBufferedSensors()
 	_imageMutex.unlock();
 }
 
+void RtabmapThread::publishMap() const
+{
+	std::map<int, std::vector<unsigned char> > images;
+	std::map<int, std::vector<unsigned char> > depths;
+	std::map<int, std::vector<unsigned char> > depths2d;
+	std::map<int, float> depthConstants;
+	std::map<int, Transform> localTransforms;
+	std::map<int, Transform> poses;
+	Transform mapCorrection;
+
+	_rtabmap->get3DMap(images,
+			depths,
+			depths2d,
+			depthConstants,
+			localTransforms,
+			poses,
+			mapCorrection);
+
+	this->post(new RtabmapEvent3DMap(images,
+			depths,
+			depths2d,
+			depthConstants,
+			localTransforms,
+			poses,
+			mapCorrection));
+}
+
 void RtabmapThread::mainLoopKill()
 {
-	this->clearBufferedSensors();
+	this->clearBufferedData();
 
 	// this will post the newData semaphore
 	_imageAdded.release();
@@ -100,22 +128,21 @@ void RtabmapThread::mainLoop()
 	}
 	_stateMutex.unlock();
 
-	ParametersMap::iterator iter;
 	switch(state)
 	{
 	case kStateDetecting:
 		this->process();
 		break;
 	case kStateChangingParameters:
-		if((iter=parameters.find(Parameters::kRtabmapImageBufferSize())) != parameters.end())
-		{
-			_imageBufferMaxSize = std::atoi(iter->second.c_str());
-		}
+		Parameters::parse(parameters, Parameters::kRtabmapImageBufferSize(), _imageBufferMaxSize);
+		Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), _rate);
+		UASSERT(_imageBufferMaxSize >= 0);
+		UASSERT(_rate >= 0.0f);
 		_rtabmap->parseParameters(parameters);
 		break;
 	case kStateReseting:
 		_rtabmap->resetMemory();
-		this->clearBufferedSensors();
+		this->clearBufferedData();
 		break;
 	case kStateDumpingMemory:
 		_rtabmap->dumpData();
@@ -131,10 +158,16 @@ void RtabmapThread::mainLoop()
 		break;
 	case kStateDeletingMemory:
 		_rtabmap->resetMemory(true);
-		this->clearBufferedSensors();
+		this->clearBufferedData();
 		break;
-	case kStateCleanSensorsBuffer:
-		this->clearBufferedSensors();
+	case kStateCleanDataBuffer:
+		this->clearBufferedData();
+		break;
+	case kStatePublishingMap:
+		this->publishMap();
+		break;
+	case kStateTriggeringMap:
+		_rtabmap->triggerNewMap();
 		break;
 	default:
 		UFATAL("Invalid state !?!?");
@@ -147,10 +180,22 @@ void RtabmapThread::handleEvent(UEvent* event)
 {
 	if(this->isRunning() && event->getClassName().compare("CameraEvent") == 0)
 	{
+		UDEBUG("CameraEvent");
 		CameraEvent * e = (CameraEvent*)event;
-		if(e->getCode() == CameraEvent::kCodeImage || e->getCode() == CameraEvent::kCodeFeatures)
+		if(e->getCode() == CameraEvent::kCodeImage ||
+		   e->getCode() == CameraEvent::kCodeFeatures ||
+		   e->getCode() == CameraEvent::kCodeImageDepth)
 		{
 			this->addImage(e->image());
+		}
+	}
+	else if(event->getClassName().compare("OdometryEvent") == 0)
+	{
+		UDEBUG("OdometryEvent");
+		OdometryEvent * e = (OdometryEvent*)event;
+		if(e->isValid())
+		{
+			this->addImage(e->data());
 		}
 	}
 	else if(event->getClassName().compare("RtabmapEventCmd") == 0)
@@ -200,10 +245,29 @@ void RtabmapThread::handleEvent(UEvent* event)
 			ULOGGER_DEBUG("CMD_DELETE_MEMORY");
 			pushNewState(kStateDeletingMemory);
 		}
-		else if(cmd == RtabmapEventCmd::kCmdCleanSensorsBuffer)
+		else if(cmd == RtabmapEventCmd::kCmdCleanDataBuffer)
 		{
-			ULOGGER_DEBUG("CMD_CLEAN_SENSORS_BUFFER");
-			pushNewState(kStateCleanSensorsBuffer);
+			ULOGGER_DEBUG("CMD_CLEAN_DATA_BUFFER");
+			pushNewState(kStateCleanDataBuffer);
+		}
+		else if(cmd == RtabmapEventCmd::kCmdPublish3DMap)
+		{
+			ULOGGER_DEBUG("CMD_PUBLISH_MAP");
+			pushNewState(kStatePublishingMap);
+		}
+		else if(cmd == RtabmapEventCmd::kCmdTriggerNewMap)
+		{
+			ULOGGER_DEBUG("CMD_TRIGGER_NEW_MAP");
+			pushNewState(kStateTriggeringMap);
+		}
+		else if(cmd == RtabmapEventCmd::kCmdPause)
+		{
+			ULOGGER_DEBUG("CMD_PAUSE");
+			_paused = !_paused;
+		}
+		else
+		{
+			UWARN("Cmd %d unknown!", cmd);
 		}
 	}
 	else if(event->getClassName().compare("ParamEvent") == 0)
@@ -233,28 +297,40 @@ void RtabmapThread::process()
 
 void RtabmapThread::addImage(const Image & image)
 {
-	if(image.empty())
+	if(!_paused)
 	{
-		ULOGGER_ERROR("image empty !?");
-		return;
-	}
-
-	bool notify = true;
-	_imageMutex.lock();
-	{
-		_imageBuffer.push_back(image);
-		while(_imageBufferMaxSize > 0 && _imageBuffer.size() > (unsigned int)_imageBufferMaxSize)
+		if(image.empty())
 		{
-			ULOGGER_WARN("Data buffer is full, the oldest data is removed to add the new one.");
-			_imageBuffer.pop_front();
-			notify = false;
+			ULOGGER_ERROR("image empty !?");
+			return;
 		}
-	}
-	_imageMutex.unlock();
 
-	if(notify)
-	{
-		_imageAdded.release();
+		if(_rate>0.0f)
+		{
+			if(_frameRateTimer->getElapsedTime() < 1.0f/_rate)
+			{
+				return;
+			}
+		}
+		_frameRateTimer->start();
+
+		bool notify = true;
+		_imageMutex.lock();
+		{
+			_imageBuffer.push_back(image);
+			while(_imageBufferMaxSize > 0 && _imageBuffer.size() > (unsigned int)_imageBufferMaxSize)
+			{
+				ULOGGER_WARN("Data buffer is full, the oldest data is removed to add the new one.");
+				_imageBuffer.pop_front();
+				notify = false;
+			}
+		}
+		_imageMutex.unlock();
+
+		if(notify)
+		{
+			_imageAdded.release();
+		}
 	}
 }
 

@@ -15,18 +15,32 @@
 -- *******************************************************************
 CREATE TABLE Node (
 	id INTEGER NOT NULL,
+	map_id INTEGER NOT NULL,
 	weight INTEGER,
+	pose BLOB,
 	time_enter DATE,
 	PRIMARY KEY (id)
 );
 
+CREATE TABLE MapLink (
+	source_map_id INTEGER NOT NULL,
+	target_map_id INTEGER NOT NULL,
+	transform BLOB
+);
+
 CREATE TABLE Image (
 	id INTEGER NOT NULL,
-	raw_width INTEGER NOT NULL,
-	raw_height INTEGER NOT NULL,
-	raw_data_type INTEGER NOT NULL,
-	raw_compressed CHAR NOT NULL,
-	raw_data BLOB,
+	data BLOB,
+	time_enter DATE,
+	PRIMARY KEY (id)
+);
+
+CREATE TABLE Depth (
+	id INTEGER NOT NULL,
+	data BLOB,   -- CV_32FC1, width = Image/raw_width, height=Image/raw_height
+	constant FLOAT,
+	local_transform BLOB,
+	data2d BLOB,   -- CV_32FC2, Example: Laser scan
 	time_enter DATE,
 	PRIMARY KEY (id)
 );
@@ -35,6 +49,7 @@ CREATE TABLE Link (
 	from_id INTEGER NOT NULL,
 	to_id INTEGER NOT NULL,
 	type INTEGER NOT NULL, -- neighbor=0, loop=1, child=2
+	transform BLOB,
 	FOREIGN KEY (from_id) REFERENCES Node(id),
 	FOREIGN KEY (to_id) REFERENCES Node(id)
 );
@@ -56,6 +71,9 @@ CREATE TABLE Map_Node_Word (
 	size INTEGER NOT NULL,
 	dir FLOAT NOT NULL,
 	response FLOAT NOT NULL,
+	depth_x FLOAT,
+	depth_y FLOAT,
+	depth_z FLOAT,
 	FOREIGN KEY (node_id) REFERENCES Node(id),
 	FOREIGN KEY (word_id) REFERENCES Word(id)
 );
@@ -65,12 +83,8 @@ CREATE TABLE Statistics (
 	last_sign_added INTEGER,
 	process_mem_used INTEGER,
 	database_mem_used INTEGER,
+	dictionary_size INTEGER,
 	time_enter DATE
-);
-
-CREATE TABLE StatisticsDictionary (
-        dictionary_size INTEGER,
-        time_enter DATE
 );
 
 -- *******************************************************************

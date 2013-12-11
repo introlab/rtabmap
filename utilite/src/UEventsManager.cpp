@@ -51,7 +51,7 @@ void UEventsManager::removeHandler(UEventsHandler* handler)
 	}
 }
 
-void UEventsManager::post(UEvent * event, bool async)
+void UEventsManager::post(UEvent * event, bool async, const UEventsSender * sender)
 {
 	if(!event)
 	{
@@ -60,7 +60,65 @@ void UEventsManager::post(UEvent * event, bool async)
 	}
 	else
 	{
-		UEventsManager::getInstance()->_postEvent(event, async);
+		UEventsManager::getInstance()->_postEvent(event, async, sender);
+	}
+}
+
+void UEventsManager::createPipe(
+		const UEventsSender * sender,
+		const UEventsHandler * receiver,
+		const std::string & eventName)
+{
+	if(!sender || !receiver)
+	{
+		UERROR("Sender and/or receiver is null!");
+		return;
+	}
+	else
+	{
+		UEventsManager::getInstance()->_createPipe(sender, receiver, eventName);
+	}
+}
+
+void UEventsManager::removePipe(
+		const UEventsSender * sender,
+		const UEventsHandler * receiver,
+		const std::string & eventName)
+{
+	if(!sender || !receiver)
+	{
+		UERROR("Sender and/or receiver is null!");
+		return;
+	}
+	else
+	{
+		UEventsManager::getInstance()->_removePipe(sender, receiver, eventName);
+	}
+}
+
+void UEventsManager::removeAllPipes(const UEventsSender * sender)
+{
+	if(!sender)
+	{
+		UERROR("Sender is null!");
+		return;
+	}
+	else
+	{
+		UEventsManager::getInstance()->_removeAllPipes(sender);
+	}
+}
+
+void UEventsManager::removeNullPipes(const UEventsSender * sender)
+{
+	if(!sender)
+	{
+		UERROR("Sender is null!");
+		return;
+	}
+	else
+	{
+		UEventsManager::getInstance()->_removeNullPipes(sender);
 	}
 }
 
@@ -84,9 +142,9 @@ UEventsManager::~UEventsManager()
    	join(true);
 
     // Free memory
-    for(std::list<UEvent*>::iterator it=events_.begin(); it!=events_.end(); ++it)
+    for(std::list<std::pair<UEvent*, const UEventsSender*> >::iterator it=events_.begin(); it!=events_.end(); ++it)
     {
-        delete *it;
+        delete it->first;
     }
     events_.clear();
 
@@ -116,8 +174,8 @@ void UEventsManager::dispatchEvents()
         return;
     }
 
-    std::list<UEvent*>::iterator it;
-    std::list<UEvent*> eventsBuf;
+    std::list<std::pair<UEvent*, const UEventsSender*> >::iterator it;
+    std::list<std::pair<UEvent*, const UEventsSender*> > eventsBuf;
 
     // Copy events in a buffer :
     // Other threads can post events 
@@ -132,17 +190,29 @@ void UEventsManager::dispatchEvents()
 	// Past events to handlers
 	for(it=eventsBuf.begin(); it!=eventsBuf.end(); ++it)
 	{
-		dispatchEvent(*it);
-		delete *it;
+		dispatchEvent(it->first, it->second);
+		delete it->first;
 	}
     eventsBuf.clear();
 }
 
-void UEventsManager::dispatchEvent(UEvent * event)
+void UEventsManager::dispatchEvent(UEvent * event, const UEventsSender * sender)
 {
-	UEventsHandler * handler;
+	std::list<UEventsHandler*> handlers;
+
+	// Verify if there are pipes with the sender for his type of event
+	if(sender)
+	{
+		handlers = getPipes(sender, event->getClassName());
+	}
+
 	handlersMutex_.lock();
-	std::list<UEventsHandler*> handlers = handlers_;
+	if(handlers.size() == 0)
+	{
+		//No pipes, send to all handlers
+		handlers = handlers_;
+	}
+
 	for(std::list<UEventsHandler*>::iterator it=handlers.begin(); it!=handlers.end(); ++it)
 	{
 		// Check if the handler is still in the
@@ -150,7 +220,7 @@ void UEventsManager::dispatchEvent(UEvent * event)
 		// removeHandler() is called in EventsHandler::handleEvent())
 		if(std::find(handlers_.begin(), handlers_.end(), *it) != handlers_.end())
 		{
-			handler = *it;
+			UEventsHandler * handler = *it;
 			handlersMutex_.unlock();
 
 			// To be able to add/remove an handler in a handleEvent call (without a deadlock)
@@ -161,7 +231,6 @@ void UEventsManager::dispatchEvent(UEvent * event)
 		}
 	}
 	handlersMutex_.unlock();
-
 }
 
 void UEventsManager::_addHandler(UEventsHandler* handler)
@@ -204,10 +273,22 @@ void UEventsManager::_removeHandler(UEventsHandler* handler)
             }
         }
         handlersMutex_.unlock();
+
+        pipesMutex_.lock();
+        {
+        	for(std::list<Pipe>::iterator iter=pipes_.begin(); iter!= pipes_.end(); ++iter)
+			{
+				if(iter->receiver_ == handler)
+				{
+					iter->receiver_ = 0; // set to null
+				}
+			}
+        }
+        pipesMutex_.unlock();
     }
 }
 
-void UEventsManager::_postEvent(UEvent * event, bool async)
+void UEventsManager::_postEvent(UEvent * event, bool async, const UEventsSender * sender)
 {
     if(!this->isKilled())
     {
@@ -215,7 +296,7 @@ void UEventsManager::_postEvent(UEvent * event, bool async)
     	{
 			eventsMutex_.lock();
 			{
-				events_.push_back(event);
+				events_.push_back(std::make_pair(event, sender));
 			}
 			eventsMutex_.unlock();
 
@@ -224,7 +305,7 @@ void UEventsManager::_postEvent(UEvent * event, bool async)
     	}
     	else
     	{
-    		dispatchEvent(event);
+    		dispatchEvent(event, sender);
     		delete event;
     	}
     }
@@ -232,4 +313,153 @@ void UEventsManager::_postEvent(UEvent * event, bool async)
     {
     	delete event;
     }
+}
+
+std::list<UEventsHandler*> UEventsManager::getPipes(
+		const UEventsSender * sender,
+		const std::string & eventName)
+{
+	std::list<UEventsHandler*> pipes;
+	pipesMutex_.lock();
+
+	for(std::list<Pipe>::iterator iter=pipes_.begin(); iter!= pipes_.end(); ++iter)
+	{
+		if(iter->sender_ == sender && iter->eventName_.compare(eventName) == 0)
+		{
+			bool added = false;
+			if(iter->receiver_)
+			{
+				handlersMutex_.lock();
+				for(std::list<UEventsHandler*>::iterator jter=handlers_.begin(); jter!=handlers_.end(); ++jter)
+				{
+					if(*jter == iter->receiver_)
+					{
+						pipes.push_back(*jter);
+						added = true;
+						break;
+					}
+				}
+				handlersMutex_.unlock();
+			}
+			if(!added)
+			{
+				// Add nulls
+				pipes.push_back(0);
+			}
+		}
+	}
+
+	pipesMutex_.unlock();
+	return pipes;
+}
+
+void UEventsManager::_createPipe(
+		const UEventsSender * sender,
+		const UEventsHandler * receiver,
+		const std::string & eventName)
+{
+	pipesMutex_.lock();
+	bool exist = false;
+	for(std::list<Pipe>::iterator iter=pipes_.begin(); iter!= pipes_.end();++iter)
+	{
+		if(iter->sender_ == sender && iter->receiver_ == receiver && iter->eventName_.compare(eventName) == 0)
+		{
+			exist = true;
+			break;
+		}
+	}
+
+	if(!exist)
+	{
+		bool handlerFound = false;
+		handlersMutex_.lock();
+		for(std::list<UEventsHandler*>::iterator iter=handlers_.begin(); iter!=handlers_.end(); ++iter)
+		{
+			if(*iter == receiver)
+			{
+				handlerFound = true;
+				break;
+			}
+		}
+		handlersMutex_.unlock();
+		if(handlerFound)
+		{
+			pipes_.push_back(Pipe(sender, receiver, eventName));
+		}
+		else
+		{
+			UERROR("Cannot create the pipe because the receiver is not yet "
+				   "added to UEventsManager's handlers list.");
+		}
+	}
+	else
+	{
+		UWARN("Pipe between sender %p and receiver %p with event %s was already created.",
+				sender, receiver, eventName.c_str());
+	}
+	pipesMutex_.unlock();
+}
+
+void UEventsManager::_removePipe(
+		const UEventsSender * sender,
+		const UEventsHandler * receiver,
+		const std::string & eventName)
+{
+	pipesMutex_.lock();
+
+	bool removed = false;
+	for(std::list<Pipe>::iterator iter=pipes_.begin(); iter!= pipes_.end();)
+	{
+		if(iter->sender_ == sender && iter->receiver_ == receiver && iter->eventName_.compare(eventName) == 0)
+		{
+			iter = pipes_.erase(iter);
+			removed = true;
+		}
+		else
+		{
+			++iter;
+		}
+	}
+
+	if(!removed)
+	{
+		UWARN("Pipe between sender %p and receiver %p with event %s didn't exist.",
+				sender, receiver, eventName.c_str());
+	}
+
+	pipesMutex_.unlock();
+}
+
+void UEventsManager::_removeAllPipes(const UEventsSender * sender)
+{
+	pipesMutex_.lock();
+	for(std::list<Pipe>::iterator iter=pipes_.begin(); iter!=pipes_.end();)
+	{
+		if(iter->sender_ == sender)
+		{
+			iter = pipes_.erase(iter);
+		}
+		else
+		{
+			++iter;
+		}
+	}
+	pipesMutex_.unlock();
+}
+
+void UEventsManager::_removeNullPipes(const UEventsSender * sender)
+{
+	pipesMutex_.lock();
+	for(std::list<Pipe>::iterator iter=pipes_.begin(); iter!=pipes_.end();)
+	{
+		if(iter->receiver_ == 0)
+		{
+			iter = pipes_.erase(iter);
+		}
+		else
+		{
+			++iter;
+		}
+	}
+	pipesMutex_.unlock();
 }

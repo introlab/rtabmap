@@ -20,11 +20,15 @@
 #include "rtabmap/core/Parameters.h"
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UConversion.h>
+#include <math.h>
+#include <stdlib.h>
 
 namespace rtabmap
 {
 
 ParametersMap Parameters::parameters_;
+ParametersMap Parameters::descriptions_;
 Parameters Parameters::instance_;
 
 Parameters::Parameters()
@@ -37,18 +41,97 @@ Parameters::~Parameters()
 
 std::string Parameters::getDefaultWorkingDirectory()
 {
+#ifdef DEMO_BUILD
+	std::string path = "."; // current directory
+#else
 	std::string path = UDirectory::homeDir();
 	if(!path.empty())
 	{
 		UDirectory::makeDir(path += UDirectory::separator() + "Documents");
 		UDirectory::makeDir(path += UDirectory::separator() + "RTAB-Map");
-		path += UDirectory::separator(); // add trailing separator
+
 	}
 	else
 	{
 		UFATAL("Can't get the HOME variable environment!");
 	}
+#endif
+	path += UDirectory::separator(); // add trailing separator
 	return path;
+}
+
+std::string Parameters::getDefaultDatabasePath()
+{
+	return getDefaultWorkingDirectory() + getDefaultDatabaseName();
+}
+
+std::string Parameters::getDefaultDatabaseName()
+{
+	return "rtabmap.db";
+}
+
+std::string Parameters::getDescription(const std::string & paramKey)
+{
+	std::string description;
+	ParametersMap::iterator iter = descriptions_.find(paramKey);
+	if(iter != descriptions_.end())
+	{
+		description = iter->second;
+	}
+	else
+	{
+		UERROR("Parameters \"%s\" doesn't exist!", paramKey.c_str());
+	}
+	return description;
+}
+
+void Parameters::parse(const ParametersMap & parameters, const std::string & key, bool & value)
+{
+	ParametersMap::const_iterator iter = parameters.find(key);
+	if(iter != parameters.end())
+	{
+		value = uStr2Bool(iter->second.c_str());
+	}
+}
+void Parameters::parse(const ParametersMap & parameters, const std::string & key, int & value)
+{
+	ParametersMap::const_iterator iter = parameters.find(key);
+	if(iter != parameters.end())
+	{
+		value = atoi(iter->second.c_str());
+	}
+}
+void Parameters::parse(const ParametersMap & parameters, const std::string & key, unsigned int & value)
+{
+	ParametersMap::const_iterator iter = parameters.find(key);
+	if(iter != parameters.end())
+	{
+		value = atoi(iter->second.c_str());
+	}
+}
+void Parameters::parse(const ParametersMap & parameters, const std::string & key, float & value)
+{
+	ParametersMap::const_iterator iter = parameters.find(key);
+	if(iter != parameters.end())
+	{
+		value = atof(iter->second.c_str());
+	}
+}
+void Parameters::parse(const ParametersMap & parameters, const std::string & key, double & value)
+{
+	ParametersMap::const_iterator iter = parameters.find(key);
+	if(iter != parameters.end())
+	{
+		value = atof(iter->second.c_str());
+	}
+}
+void Parameters::parse(const ParametersMap & parameters, const std::string & key, std::string & value)
+{
+	ParametersMap::const_iterator iter = parameters.find(key);
+	if(iter != parameters.end())
+	{
+		value = iter->second;
+	}
 }
 
 }

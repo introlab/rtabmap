@@ -35,6 +35,55 @@
 
 namespace rtabmap {
 
+void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints)
+{
+	cv::Mat descriptors;
+	limitKeypoints(keypoints, descriptors, maxKeypoints);
+}
+
+void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints)
+{
+	UASSERT((int)keypoints.size() == descriptors.rows || descriptors.rows == 0);
+	if(maxKeypoints > 0 && (int)keypoints.size() > maxKeypoints)
+	{
+		UTimer timer;
+		ULOGGER_DEBUG("too much words (%d), removing words with the hessian threshold", keypoints.size());
+		// Remove words under the new hessian threshold
+
+		// Sort words by hessian
+		std::multimap<float, int> hessianMap; // <hessian,id>
+		for(unsigned int i = 0; i <keypoints.size(); ++i)
+		{
+			//Keep track of the data, to be easier to manage the data in the next step
+			hessianMap.insert(std::pair<float, int>(fabs(keypoints[i].response), i));
+		}
+
+		// Remove them from the signature
+		int removed = hessianMap.size()-maxKeypoints;
+		std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
+		std::vector<cv::KeyPoint> kptsTmp(maxKeypoints);
+		cv::Mat descriptorsTmp;
+		if(descriptors.rows)
+		{
+			descriptorsTmp = cv::Mat(maxKeypoints, descriptors.cols, descriptors.type());
+		}
+		for(unsigned int k=0; k < kptsTmp.size() && iter!=hessianMap.rend(); ++k, ++iter)
+		{
+			kptsTmp[k] = keypoints[iter->second];
+			if(descriptors.rows)
+			{
+				memcpy(descriptorsTmp.ptr<float>(k), descriptors.ptr<float>(iter->second), descriptors.cols*sizeof(float));
+			}
+		}
+		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, keypoints.size(), kptsTmp.size()?kptsTmp.back().response:0.0f);
+		ULOGGER_DEBUG("removing words time = %f s", timer.ticks());
+		keypoints = kptsTmp;
+		if(descriptors.rows)
+		{
+			descriptors = descriptorsTmp;
+		}
+	}
+}
 
 /////////////////////
 // KeypointDescriptor
@@ -73,35 +122,12 @@ SURFDescriptor::~SURFDescriptor()
 
 void SURFDescriptor::parseParameters(const ParametersMap & parameters)
 {
-	ParametersMap::const_iterator iter;
-	if((iter=parameters.find(Parameters::kSURFExtended())) != parameters.end())
-	{
-		_extended = uStr2Bool((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSURFHessianThreshold())) != parameters.end())
-	{
-		_hessianThreshold = std::atof((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSURFOctaveLayers())) != parameters.end())
-	{
-		_nOctaveLayers = std::atoi((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSURFOctaves())) != parameters.end())
-	{
-		_nOctaves = std::atoi((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSURFOctaves())) != parameters.end())
-	{
-		_nOctaves = std::atoi((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSURFUpright())) != parameters.end())
-	{
-		_upright = uStr2Bool((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSURFGpuVersion())) != parameters.end())
-	{
-		_gpuVersion = uStr2Bool((*iter).second.c_str());
-	}
+	Parameters::parse(parameters, Parameters::kSURFExtended(), _extended);
+	Parameters::parse(parameters, Parameters::kSURFHessianThreshold(), _hessianThreshold);
+	Parameters::parse(parameters, Parameters::kSURFOctaveLayers(), _nOctaveLayers);
+	Parameters::parse(parameters, Parameters::kSURFOctaves(), _nOctaves);
+	Parameters::parse(parameters, Parameters::kSURFUpright(), _upright);
+	Parameters::parse(parameters, Parameters::kSURFGpuVersion(), _gpuVersion);
 	KeypointDescriptor::parseParameters(parameters);
 }
 
@@ -186,26 +212,11 @@ SIFTDescriptor::~SIFTDescriptor()
 void SIFTDescriptor::parseParameters(const ParametersMap & parameters)
 {
 	ParametersMap::const_iterator iter;
-	if((iter=parameters.find(Parameters::kSIFTContrastThreshold())) != parameters.end())
-	{
-		_contrastThreshold = std::atof((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSIFTEdgeThreshold())) != parameters.end())
-	{
-		_edgeThreshold = std::atof((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSIFTNFeatures())) != parameters.end())
-	{
-		_nfeatures = std::atoi((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSIFTNOctaveLayers())) != parameters.end())
-	{
-		_nOctaveLayers = std::atoi((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSIFTSigma())) != parameters.end())
-	{
-		_sigma = std::atof((*iter).second.c_str());
-	}
+	Parameters::parse(parameters, Parameters::kSIFTContrastThreshold(), _contrastThreshold);
+	Parameters::parse(parameters, Parameters::kSIFTEdgeThreshold(), _edgeThreshold);
+	Parameters::parse(parameters, Parameters::kSIFTNFeatures(), _nfeatures);
+	Parameters::parse(parameters, Parameters::kSIFTNOctaveLayers(), _nOctaveLayers);
+	Parameters::parse(parameters, Parameters::kSIFTSigma(), _sigma);
 	KeypointDescriptor::parseParameters(parameters);
 }
 
@@ -253,90 +264,33 @@ cv::Mat SIFTDescriptor::generateDescriptors(const cv::Mat & image, std::vector<c
 /////////////////////
 // KeypointDetector
 /////////////////////
-KeypointDetector::KeypointDetector(const ParametersMap & parameters) :
-		_wordsPerImageTarget(Parameters::defaultKpWordsPerImage()),
-		_roiRatios(std::vector<float>(4, 0.0f))
+KeypointDetector::KeypointDetector(const ParametersMap & parameters)
 {
-	this->setRoi(Parameters::defaultKpRoiRatios());
 	this->parseParameters(parameters);
 }
 
 void KeypointDetector::parseParameters(const ParametersMap & parameters)
 {
-	ParametersMap::const_iterator iter;
-	if((iter=parameters.find(Parameters::kKpWordsPerImage())) != parameters.end())
-	{
-		_wordsPerImageTarget = std::atoi((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kKpRoiRatios())) != parameters.end())
-	{
-		this->setRoi((*iter).second);
-	}
 }
 
-std::vector<cv::KeyPoint> KeypointDetector::generateKeypoints(const cv::Mat & image)
+std::vector<cv::KeyPoint> KeypointDetector::generateKeypoints(
+		const cv::Mat & image,
+		int maxKeypoints,
+		const cv::Rect & roi)
 {
 	ULOGGER_DEBUG("");
 	std::vector<cv::KeyPoint> keypoints;
 	if(!image.empty())
 	{
 		UTimer timer;
-		timer.start();
-
-		cv::Rect roi = computeRoi(image);
 
 		// Get keypoints
-		keypoints = this->_generateKeypoints(image, roi);
+		keypoints = this->_generateKeypoints(image, roi.width && roi.height?roi:cv::Rect(0,0,image.cols, image.rows));
 		ULOGGER_DEBUG("Keypoints extraction time = %f s, keypoints extracted = %d", timer.ticks(), keypoints.size());
 
-		//clip the number of words... to _wordsPerImageTarget
-		// Variable hessian threshold
-		if(_wordsPerImageTarget > 0)
-		{
-			if(keypoints.size() > 0)
-			{
-				// 10% margin...
-				if(keypoints.size() > 1.1 * _wordsPerImageTarget)
-				{
-					ULOGGER_DEBUG("too much words (%d), removing words under the new hessian threshold", keypoints.size());
-					// Remove words under the new hessian threshold
+		limitKeypoints(keypoints, maxKeypoints);
 
-					// Sort words by hessian
-					std::multimap<float, std::vector<cv::KeyPoint>::iterator> hessianMap; // <hessian,id>
-					for(std::vector<cv::KeyPoint>::iterator itKey = keypoints.begin(); itKey != keypoints.end(); ++itKey)
-					{
-						//Keep track of the data, to be easier to manage the data in the next step
-						hessianMap.insert(std::pair<float, std::vector<cv::KeyPoint>::iterator>(fabs(itKey->response), itKey));
-					}
-
-					// Remove them from the signature
-					int removed = hessianMap.size()-_wordsPerImageTarget;
-					std::multimap<float, std::vector<cv::KeyPoint>::iterator>::reverse_iterator iter = hessianMap.rbegin();
-					std::vector<cv::KeyPoint> kptsTmp(_wordsPerImageTarget);
-					for(unsigned int k=0; k < kptsTmp.size() && iter!=hessianMap.rend(); ++k, ++iter)
-					{
-						kptsTmp[k] = *iter->second;
-						// Adjust keypoint position to raw image
-						kptsTmp[k].pt.x += roi.x;
-						kptsTmp[k].pt.y += roi.y;
-					}
-					keypoints = kptsTmp;
-					ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, keypoints.size(), kptsTmp.size()?kptsTmp.back().response:0.0f);
-				}
-				else if(roi.x || roi.y)
-				{
-					// Adjust keypoint position to raw image
-					for(std::vector<cv::KeyPoint>::iterator iter=keypoints.begin(); iter!=keypoints.end(); ++iter)
-					{
-						iter->pt.x += roi.x;
-						iter->pt.y += roi.y;
-					}
-				}
-			}
-
-			ULOGGER_DEBUG("removing words time = %f s", timer.ticks());
-		}
-		else if(roi.x || roi.y)
+		if(roi.x || roi.y)
 		{
 			// Adjust keypoint position to raw image
 			for(std::vector<cv::KeyPoint>::iterator iter=keypoints.begin(); iter!=keypoints.end(); ++iter)
@@ -353,71 +307,40 @@ std::vector<cv::KeyPoint> KeypointDetector::generateKeypoints(const cv::Mat & im
 	return keypoints;
 }
 
-void KeypointDetector::setRoi(const std::string & roi)
+cv::Rect KeypointDetector::computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios)
 {
-	std::list<std::string> strValues = uSplit(roi, ' ');
-	if(strValues.size() != 4)
-	{
-		ULOGGER_ERROR("The number of values must be 4 (roi=\"%s\")", roi.c_str());
-	}
-	else
-	{
-		std::vector<float> tmpValues(4);
-		unsigned int i=0;
-		for(std::list<std::string>::iterator iter = strValues.begin(); iter!=strValues.end(); ++iter)
-		{
-			tmpValues[i] = std::atof((*iter).c_str());
-			++i;
-		}
-
-		if(tmpValues[0] >= 0 && tmpValues[0] < 1 && tmpValues[0] < 1.0f-tmpValues[1] &&
-			tmpValues[1] >= 0 && tmpValues[1] < 1 && tmpValues[1] < 1.0f-tmpValues[0] &&
-			tmpValues[2] >= 0 && tmpValues[2] < 1 && tmpValues[2] < 1.0f-tmpValues[3] &&
-			tmpValues[3] >= 0 && tmpValues[3] < 1 && tmpValues[3] < 1.0f-tmpValues[2])
-		{
-			_roiRatios = tmpValues;
-		}
-		else
-		{
-			ULOGGER_ERROR("The roi ratios are not valid (roi=\"%s\")", roi.c_str());
-		}
-	}
-}
-
-cv::Rect KeypointDetector::computeRoi(const cv::Mat & image) const
-{
-	if(!image.empty() && _roiRatios.size() == 4)
+	if(!image.empty() && roiRatios.size() == 4)
 	{
 		float width = image.cols;
 		float height = image.rows;
 		cv::Rect roi(0, 0, width, height);
-		UDEBUG("roi ratios = %f, %f, %f, %f", _roiRatios[0],_roiRatios[1],_roiRatios[2],_roiRatios[3]);
+		UDEBUG("roi ratios = %f, %f, %f, %f", roiRatios[0],roiRatios[1],roiRatios[2],roiRatios[3]);
 		UDEBUG("roi = %d, %d, %d, %d", roi.x, roi.y, roi.width, roi.height);
 
 		//left roi
-		if(_roiRatios[0] > 0 && _roiRatios[0] < 1 - _roiRatios[1])
+		if(roiRatios[0] > 0 && roiRatios[0] < 1 - roiRatios[1])
 		{
-			roi.x = width * _roiRatios[0];
+			roi.x = width * roiRatios[0];
 		}
 
 		//right roi
 		roi.width = width - roi.x;
-		if(_roiRatios[1] > 0 && _roiRatios[1] < 1 - _roiRatios[0])
+		if(roiRatios[1] > 0 && roiRatios[1] < 1 - roiRatios[0])
 		{
-			roi.width -= width * _roiRatios[1];
+			roi.width -= width * roiRatios[1];
 		}
 
 		//top roi
-		if(_roiRatios[2] > 0 && _roiRatios[2] < 1 - _roiRatios[3])
+		if(roiRatios[2] > 0 && roiRatios[2] < 1 - roiRatios[3])
 		{
-			roi.y = height * _roiRatios[2];
+			roi.y = height * roiRatios[2];
 		}
 
 		//bottom roi
 		roi.height = height - roi.y;
-		if(_roiRatios[3] > 0 && _roiRatios[3] < 1 - _roiRatios[2])
+		if(roiRatios[3] > 0 && roiRatios[3] < 1 - roiRatios[2])
 		{
-			roi.height -= height * _roiRatios[3];
+			roi.height -= height * roiRatios[3];
 		}
 		UDEBUG("roi = %d, %d, %d, %d", roi.x, roi.y, roi.width, roi.height);
 
@@ -425,7 +348,7 @@ cv::Rect KeypointDetector::computeRoi(const cv::Mat & image) const
 	}
 	else
 	{
-		UERROR("Image is null or _roiRatios(=%d) != 4", _roiRatios.size());
+		UERROR("Image is null or _roiRatios(=%d) != 4", roiRatios.size());
 		return cv::Rect();
 	}
 }
@@ -452,35 +375,12 @@ SURFDetector::~SURFDetector()
 
 void SURFDetector::parseParameters(const ParametersMap & parameters)
 {
-	ParametersMap::const_iterator iter;
-	if((iter=parameters.find(Parameters::kSURFExtended())) != parameters.end())
-	{
-		_extended = uStr2Bool((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSURFHessianThreshold())) != parameters.end())
-	{
-		_hessianThreshold = std::atof((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSURFOctaveLayers())) != parameters.end())
-	{
-		_nOctaveLayers = std::atoi((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSURFOctaves())) != parameters.end())
-	{
-		_nOctaves = std::atoi((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSURFOctaves())) != parameters.end())
-	{
-		_nOctaves = std::atoi((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSURFUpright())) != parameters.end())
-	{
-		_upright = uStr2Bool((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSURFGpuVersion())) != parameters.end())
-	{
-		_gpuVersion = uStr2Bool((*iter).second.c_str());
-	}
+	Parameters::parse(parameters, Parameters::kSURFExtended(), _extended);
+	Parameters::parse(parameters, Parameters::kSURFHessianThreshold(), _hessianThreshold);
+	Parameters::parse(parameters, Parameters::kSURFOctaveLayers(), _nOctaveLayers);
+	Parameters::parse(parameters, Parameters::kSURFOctaves(), _nOctaves);
+	Parameters::parse(parameters, Parameters::kSURFUpright(), _upright);
+	Parameters::parse(parameters, Parameters::kSURFGpuVersion(), _gpuVersion);
 	KeypointDetector::parseParameters(parameters);
 }
 
@@ -497,6 +397,7 @@ std::vector<cv::KeyPoint> SURFDetector::_generateKeypoints(const cv::Mat & image
 	cv::Mat imageGrayScale;
 	if(image.channels() != 1 || image.depth() != CV_8U)
 	{
+		ULOGGER_DEBUG("");
 		cv::cvtColor(image, imageGrayScale, CV_BGR2GRAY);
 	}
 	cv::Mat img;
@@ -525,14 +426,17 @@ std::vector<cv::KeyPoint> SURFDetector::_generateKeypoints(const cv::Mat & image
 		detector.detect(imgRoi, keypoints);
 	}
 #else*/
+	ULOGGER_DEBUG("%f %d %d %d %d", _hessianThreshold, _nOctaves, _nOctaveLayers, _extended?1:0, _upright?1:0);
 	cv::SURF detector(_hessianThreshold, _nOctaves, _nOctaveLayers, _extended, _upright);
+	ULOGGER_DEBUG("");
 #if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
+	cv::imwrite("test.png", imgRoi);
 	detector.detect(imgRoi, keypoints);
 #else
 	detector(imgRoi, cv::Mat(), keypoints);
 #endif
 //#endif
-
+	ULOGGER_DEBUG("");
 	return keypoints;
 }
 
@@ -556,27 +460,11 @@ SIFTDetector::~SIFTDetector()
 
 void SIFTDetector::parseParameters(const ParametersMap & parameters)
 {
-	ParametersMap::const_iterator iter;
-	if((iter=parameters.find(Parameters::kSIFTContrastThreshold())) != parameters.end())
-	{
-		_contrastThreshold = std::atof((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSIFTEdgeThreshold())) != parameters.end())
-	{
-		_edgeThreshold = std::atof((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSIFTNFeatures())) != parameters.end())
-	{
-		_nfeatures = std::atoi((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSIFTNOctaveLayers())) != parameters.end())
-	{
-		_nOctaveLayers = std::atoi((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kSIFTSigma())) != parameters.end())
-	{
-		_sigma = std::atof((*iter).second.c_str());
-	}
+	Parameters::parse(parameters, Parameters::kSIFTContrastThreshold(), _contrastThreshold);
+	Parameters::parse(parameters, Parameters::kSIFTEdgeThreshold(), _edgeThreshold);
+	Parameters::parse(parameters, Parameters::kSIFTNFeatures(), _nfeatures);
+	Parameters::parse(parameters, Parameters::kSIFTNOctaveLayers(), _nOctaveLayers);
+	Parameters::parse(parameters, Parameters::kSIFTSigma(), _sigma);
 	KeypointDetector::parseParameters(parameters);
 }
 

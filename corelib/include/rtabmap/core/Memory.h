@@ -42,6 +42,7 @@ class VWDictionary;
 class VisualWord;
 class KeypointDetector;
 class KeypointDescriptor;
+class Statistics;
 
 class RTABMAP_EXP Memory
 {
@@ -55,64 +56,73 @@ public:
 	virtual ~Memory();
 
 	virtual void parseParameters(const ParametersMap & parameters);
-	bool update(const Image & image, std::map<std::string, float> & stats);
+	bool update(const Image & image, Statistics * stats = 0);
 	bool init(const std::string & dbUrl,
 			bool dbOverwritten = false,
-			const ParametersMap & parameters = ParametersMap());
+			const ParametersMap & parameters = ParametersMap(),
+			bool postInitEvents = true);
 	std::map<int, float> computeLikelihood(const Signature * signature,
 			const std::list<int> & ids);
+	int incrementMapId();
 
-	int forget(const std::set<int> & ignoredIds = std::set<int>());
+	std::list<int> forget(const std::set<int> & ignoredIds = std::set<int>());
 	std::set<int> reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, double & timeDbAccess);
 
-	int cleanup(const std::list<int> & ignoredIds = std::list<int>());
+	std::list<int> cleanup(const std::list<int> & ignoredIds = std::list<int>());
 	void emptyTrash();
 	void joinTrashThread();
-	bool addLoopClosureLink(int oldId, int newId);
+	bool addLoopClosureLink(int oldId, int newId, const Transform & transform);
+	void updateNeighborLink(int fromId, int toId, const Transform & transform);
 	std::map<int, int> getNeighborsId(int signatureId,
 			unsigned int margin,
 			int maxCheckedInDatabase = -1,
 			bool incrementMarginOnLoop = false,
 			bool ignoreLoopIds = false,
 			double * dbAccessTime = 0) const;
-	void deleteLastLocation();
 	void deleteLocation(int locationId);
-	void rejectLastLoopClosure();
+	void rejectLoopClosure(int oldId, int newId);
 
 	//getters
 	const std::set<int> & getWorkingMem() const {return _workingMem;}
 	const std::set<int> & getStMem() const {return _stMem;}
 	int getMaxStMemSize() const {return _maxStMemSize;}
-	std::set<int> getNeighborLinks(int signatureId,
+	Transform getMapTransform(int sourceMapId, int targetMapId) const;
+	void removeMapTransform(int soureId, int targetId);
+	void getPose(int locationId,
+			int targetMapId,
+			Transform & pose,
+			bool lookInDatabase = false) const;
+	std::map<int, Transform> getNeighborLinks(int signatureId,
 			bool ignoreNeighborByLoopClosure = false,
 			bool lookInDatabase = false) const;
 	void getLoopClosureIds(int signatureId,
-			std::set<int> & loopClosureIds,
-			std::set<int> & childLoopClosureIds,
+			std::map<int, Transform> & loopClosureIds,
+			std::map<int, Transform> & childLoopClosureIds,
 			bool lookInDatabase = false) const;
 	bool isRawDataKept() const {return _rawDataKept;}
 	float getSimilarityThreshold() const {return _similarityThreshold;}
 	std::map<int, int> getWeights() const;
-	float getSimilarityOnlyWithLast() const {return _rehearsalOnlyWithLast;}
 	int getLastSignatureId() const;
 	const Signature * getLastWorkingSignature() const;
 	int getDatabaseMemoryUsed() const; // in bytes
 	double getDbSavingTime() const;
-	cv::Mat getImage(int signatureId) const;
+	std::vector<unsigned char> getImage(int signatureId) const;
+	void getImageDepth(
+			int locationId, std::vector<unsigned char> & rgb,
+			std::vector<unsigned char> & depth,
+			std::vector<unsigned char> & depth2d,
+			float & depthConstant,
+			Transform & localTransform) const;
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}
+	bool isIncremental() const {return _incrementalMemory;}
 	const Signature * getSignature(int id) const;
 	bool isInSTM(int signatureId) const {return _stMem.find(signatureId) != _stMem.end();}
 	bool isInWM(int signatureId) const {return _workingMem.find(signatureId) != _workingMem.end();}
 	bool isInLTM(int signatureId) const {return !this->isInSTM(signatureId) && !this->isInWM(signatureId);}
+	bool isIDsGenerated() const {return _generateIds;}
 
-	//setters
-	void setSimilarityThreshold(float similarity);
-	void setSimilarityOnlyLast(int rehearsalOnlyWithLast) {_rehearsalOnlyWithLast = rehearsalOnlyWithLast;}
-	void setOldSignatureRatio(float oldSignatureRatio);
-	void setMaxStMemSize(unsigned int maxStMemSize);
-	void setRecentWmRatio(float recentWmRatio);
-	void setRawDataKept(bool rawDataKept) {_rawDataKept = rawDataKept;}
+	void setRoi(const std::string & roi);
 
 	void dumpMemoryTree(const char * fileNameTree) const;
 	virtual void dumpMemory(std::string directory) const;
@@ -127,8 +137,27 @@ public:
 	//keypoint stuff
 	int getVWDictionarySize() const;
 	std::multimap<int, cv::KeyPoint> getWords(int signatureId) const;
+	void extractKeypointsAndDescriptors(
+			const cv::Mat & image,
+			std::vector<cv::KeyPoint> & keypoints,
+			cv::Mat & descriptors);
 
-protected:
+	void getMetricConstraints(
+			const std::vector<int> & ids,
+			int targetMapId,
+			std::map<int, Transform> & poses,
+			std::multimap<int, std::pair<int, Transform> > & links,
+			bool lookInDatabase = false);
+	Transform computeVisualTransform(int oldId, int newId) const;
+	Transform computeVisualTransform(const Signature & oldS, const Signature & newS) const;
+	Transform computeIcpTransform(int oldId, int newId, Transform guess);
+	Transform computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess) const;
+	Transform computeScanMatchingTransform(
+			int newId,
+			int oldId,
+			const std::map<int, Transform> & poses);
+
+private:
 	void preUpdate();
 	void addSignatureToStm(Signature * signature);
 	void clear();
@@ -140,11 +169,11 @@ protected:
 			const std::set<int> & ignoredIds = std::set<int>());
 	int getNextId();
 	void initCountId();
-	void rehearsal(Signature * signature, std::map<std::string, float> & stats);
+	void rehearsal(Signature * signature, Statistics * stats = 0);
+	bool rehearsalMerge(int oldId, int newId);
 
 	const std::map<int, Signature*> & getSignatures() const {return _signatures;}
 
-private:
 	void copyData(const Signature * from, Signature * to);
 	Signature * createSignature(
 			const Image & image,
@@ -162,34 +191,53 @@ protected:
 private:
 	// parameters
 	float _similarityThreshold;
-	bool _rehearsalOnlyWithLast;
 	bool _rawDataKept;
 	bool _keepRehearsedNodesInDb;
 	bool _incrementalMemory;
 	int _maxStMemSize;
 	float _recentWmRatio;
-	bool _oldDataKeptOnRehearsal;
 	bool _idUpdatedToNewOneRehearsal;
+	bool _generateIds;
 
 	int _idCount;
+	int _idMapCount;
 	Signature * _lastSignature;
 	int _lastLoopClosureId;
 	bool _memoryChanged; // False by default, become true when Memory::update() is called.
 	int _signaturesAdded;
-	std::vector<std::pair<int, int> > _savedLoopClosureInfo; // size 3 or 0
 
 	std::map<int, Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
 	std::set<int> _stMem; // id
 	std::set<int> _workingMem; // id,age
+	std::map<int, std::map<int, Transform> > _mapTransforms; // Transform between maps <fromMapId, <toMapId, transform> >
 
-	//Heypoint stuff
+	//Keypoint stuff
 	VWDictionary * _vwd;
 	KeypointDetector * _keypointDetector;
 	KeypointDescriptor * _keypointDescriptor;
-	bool _reactivatedWordsComparedToNewWords;
 	float _badSignRatio;;
 	bool _tfIdfLikelihoodUsed;
 	bool _parallelized;
+	int _wordsPerImageTarget; // <0=none, 0=inf
+	std::vector<float> _roiRatios; // size 4
+
+	// RGBD-SLAM stuff
+	int _icpType;
+	int _bowMinInliers;
+	float _bowInlierDistance;
+	int _bowIterations;
+	float _bowMaxDepth;
+	int _icpDecimation;
+	float _icpMaxDepth;
+	float _icpVoxelSize;
+	int _icpSamples;
+	float _icpMaxCorrespondenceDistance;
+	int _icpMaxIterations;
+	float _icpMaxFitness;
+	float _icp2MaxCorrespondenceDistance;
+	int _icp2MaxIterations;
+	float _icp2MaxFitness;
+	float _icp2CorrespondenceRatio;
 };
 
 } // namespace rtabmap

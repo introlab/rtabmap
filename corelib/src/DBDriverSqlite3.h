@@ -24,6 +24,7 @@
 #include "rtabmap/core/DBDriver.h"
 #include <opencv2/features2d/features2d.hpp>
 #include <sqlite3.h>
+#include <pcl/point_types.h>
 
 namespace rtabmap {
 
@@ -47,40 +48,62 @@ private:
 
 	virtual void executeNoResultQuery(const std::string & sql) const;
 
-	virtual void getNeighborIdsQuery(int signatureId, std::set<int> & neighbors, bool onlyWithActions = false) const;
 	virtual void getWeightQuery(int signatureId, int & weight) const;
-	virtual void getLoopClosureIdsQuery(int signatureId, std::set<int> & loopIds, std::set<int> & childIds) const;
 
 	virtual void saveQuery(const std::list<Signature *> & signatures) const;
 	virtual void saveQuery(const std::list<VisualWord *> & words) const;
 	virtual void updateQuery(const std::list<Signature *> & signatures) const;
 	virtual void updateQuery(const std::list<VisualWord *> & words) const;
+	virtual void saveQuery(const std::map<int, std::map<int, Transform> > & mapTransforms) const;
 
 	// Load objects
 	virtual void loadQuery(VWDictionary * dictionary) const;
+	virtual void loadQuery(std::map<int, std::map<int, Transform> > & mapTransforms) const;
 	virtual void loadLastNodesQuery(std::list<Signature *> & signatures) const;
 	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const;
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const;
-	virtual void loadNeighborsQuery(int signatureId, std::set<int> & neighbors) const;
+	virtual void loadNeighborsQuery(int signatureId, std::map<int, Transform> & neighbors) const;
+	virtual void loadLoopClosuresQuery(
+			int signatureId,
+			std::map<int, Transform> & loopIds,
+			std::map<int, Transform> & childIds) const;
 
-	virtual void getImageQuery(int nodeId, cv::Mat & image) const;
+	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool loadMetricData) const;
+	virtual void getNodeDataQuery(
+			int signatureId,
+			std::vector<unsigned char> & image,
+			std::vector<unsigned char> & depth,
+			std::vector<unsigned char> & depth2d,
+			float & depthConstant,
+			Transform & localTransform) const;
+	virtual void getNodeDataQuery(int signatureId, std::vector<unsigned char> & image) const;
+	virtual void getPoseQuery(int signatureId, Transform & pose, int & mapId) const;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids) const;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const;
 
 private:
 	std::string queryStepNode() const;
-	std::string queryStepNodeToSensor() const;
 	std::string queryStepImage() const;
+	std::string queryStepDepth() const;
 	std::string queryStepLink() const;
 	std::string queryStepWordsChanged() const;
 	std::string queryStepKeypoint() const;
 	void stepNode(sqlite3_stmt * ppStmt, const Signature * s) const;
-	void stepNodeToSensor(sqlite3_stmt * ppStmt, int nodeId, int sensorId, int num) const;
-	void stepImage(sqlite3_stmt * ppStmt, int id, const cv::Mat & image) const;
-	void stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, int type) const;
+	void stepImage(
+			sqlite3_stmt * ppStmt,
+			int id,
+			const std::vector<unsigned char> & image) const;
+	void stepDepth(
+			sqlite3_stmt * ppStmt,
+			int id,
+			const std::vector<unsigned char> & depth,
+			const std::vector<unsigned char> & depth2d,
+			float depthConstant,
+			const Transform & localTransform) const;
+	void stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, int type, const Transform & transform) const;
 	void stepWordsChanged(sqlite3_stmt * ppStmt, int signatureId, int oldWordId, int newWordId) const;
-	void stepKeypoint(sqlite3_stmt * ppStmt, int signatureId, int wordId, const cv::KeyPoint & kp) const;
+	void stepKeypoint(sqlite3_stmt * ppStmt, int signatureId, int wordId, const cv::KeyPoint & kp, const pcl::PointXYZ & pt) const;
 
 private:
 	void loadLinksQuery(std::list<Signature *> & signatures) const;

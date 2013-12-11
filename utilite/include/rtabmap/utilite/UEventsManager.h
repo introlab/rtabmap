@@ -28,6 +28,7 @@
 #include "rtabmap/utilite/UDestroyer.h"
 
 #include <list>
+#include <map>
 
 // TODO Not implemented... for multithreading event handling
 class UEventDispatcher : public UThread
@@ -106,8 +107,21 @@ public:
      * @param event the event to be posted.
      * @param async if true, the event is dispatched by the UEventsManager thread, otherwise it's in the caller thread (synchronous).
      */
-    static void post(UEvent * event, bool async = true);
-    
+    static void post(UEvent * event, bool async = true, const UEventsSender * sender = 0);
+
+    static void createPipe(
+		const UEventsSender * sender,
+		const UEventsHandler * receiver,
+		const std::string & eventName);
+
+    static void removePipe(
+		const UEventsSender * sender,
+		const UEventsHandler * receiver,
+		const std::string & eventName);
+
+    static void removeAllPipes(const UEventsSender * sender);
+    static void removeNullPipes(const UEventsSender * sender);
+
 protected:
 
     /*
@@ -161,7 +175,7 @@ private:
     /*
 	 * This method dispatches an event to all handlers.
 	 */
-    virtual void dispatchEvent(UEvent * event);
+    virtual void dispatchEvent(UEvent * event, const UEventsSender * sender);
 
     /*
      * This method is used to add an events 
@@ -191,17 +205,49 @@ private:
      * @param event the event to be posted.
      * @param async if true, the event is dispatched by the UEventsManager thread, otherwise it's in the caller thread (synchronous).
      */
-    void _postEvent(UEvent * event, bool async = true);
-    
+    void _postEvent(UEvent * event, bool async = true, const UEventsSender * sender = 0);
+
+    std::list<UEventsHandler*> getPipes(
+    		const UEventsSender * sender,
+    		const std::string & eventName);
+
+    void _createPipe(
+		const UEventsSender * sender,
+		const UEventsHandler * receiver,
+		const std::string & eventName);
+
+    void _removePipe(
+		const UEventsSender * sender,
+		const UEventsHandler * receiver,
+		const std::string & eventName);
+
+    void _removeAllPipes(const UEventsSender * sender);
+    void _removeNullPipes(const UEventsSender * sender);
+
 private:
     
+    class Pipe
+    {
+    public:
+    	Pipe(const UEventsSender * sender, const UEventsHandler * receiver, const std::string & eventName) :
+    		sender_(sender),
+    		receiver_(receiver),
+    		eventName_(eventName)
+    	{}
+    	const UEventsSender * sender_;
+    	const UEventsHandler * receiver_;
+    	const std::string eventName_;
+    };
+
     static UEventsManager* instance_;            /* The EventsManager instance pointer. */
     static UDestroyer<UEventsManager> destroyer_; /* The EventsManager's destroyer. */
-    std::list<UEvent*> events_;                /* The events list. */
+    std::list<std::pair<UEvent*, const UEventsSender * > > events_; /* The events list. */
     std::list<UEventsHandler*> handlers_;      /* The handlers list. */
     UMutex eventsMutex_;                         /* The mutex of the events list, */
     UMutex handlersMutex_;                       /* The mutex of the handlers list. */
     USemaphore postEventSem_;                    /* Semaphore used to signal when an events is posted. */
+    std::list<Pipe> pipes_;
+    UMutex pipesMutex_;
 };
 
 #endif // UEVENTSMANAGER_H

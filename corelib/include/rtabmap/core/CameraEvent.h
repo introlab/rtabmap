@@ -34,29 +34,35 @@ public:
 	enum Code {
 		kCodeFeatures,
 		kCodeImage,
+		kCodeImageDepth,
 		kCodeNoMoreImages
 	};
 
 public:
-	CameraEvent(const cv::Mat & image, int cameraId = 0) :
+	CameraEvent(const cv::Mat & image, int seq=0) :
 		UEvent(kCodeImage),
-		_cameraId(cameraId),
-		_image(image)
+		_image(image, seq)
 	{
 	}
-	CameraEvent(const cv::Mat & descriptors, const std::vector<cv::KeyPoint> & keypoints, const cv::Mat & image = cv::Mat(), int cameraId = 0) :
+	CameraEvent(const cv::Mat & descriptors, const std::vector<cv::KeyPoint> & keypoints, const cv::Mat & image = cv::Mat(), int seq=0) :
 		UEvent(kCodeFeatures),
-		_cameraId(cameraId),
-		_image(image, 0, descriptors, keypoints)
+		_image(image, seq, descriptors, keypoints)
 	{
 	}
-	CameraEvent(int cameraId = 0) :
-		UEvent(kCodeNoMoreImages),
-		_cameraId(cameraId)
+	CameraEvent() :
+		UEvent(kCodeNoMoreImages)
 	{
 	}
-
-	int cameraId() const {return _cameraId;}
+	CameraEvent(const cv::Mat & image, const cv::Mat & depth, float depthConstant, const Transform & localTransform, int seq=0) :
+		UEvent(kCodeImageDepth),
+		_image(image, depth, depthConstant, Transform(), localTransform, seq)
+	{
+	}
+	CameraEvent(const cv::Mat & image, const cv::Mat & depth, const cv::Mat & depth2d, float depthConstant, const Transform & localTransform, int seq=0) :
+		UEvent(kCodeImageDepth),
+		_image(image, depth, depth2d, depthConstant, Transform(), localTransform, seq)
+	{
+	}
 
 	// Image or descriptors
 	const Image & image() const {return _image;}
@@ -65,7 +71,6 @@ public:
 	virtual std::string getClassName() const {return std::string("CameraEvent");}
 
 private:
-	int _cameraId;
 	Image _image;
 };
 

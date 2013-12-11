@@ -22,10 +22,15 @@
 
 UEventsHandler::~UEventsHandler()
 {
-	UEventsManager::removeHandler(this);
+	unregisterFromEventsManager();
 }
 
-void UEventsHandler::post(UEvent * event, bool async)
+
+void UEventsHandler::registerToEventsManager()
 {
-	UEventsManager::post(event, async);
+	UEventsManager::addHandler(this);
+}
+void UEventsHandler::unregisterFromEventsManager()
+{
+	UEventsManager::removeHandler(this);
 }

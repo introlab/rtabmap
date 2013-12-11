@@ -37,12 +37,12 @@ namespace rtabmap
 class EpipolarGeometry;
 class Memory;
 class BayesFilter;
+class Signature;
 
 class RTABMAP_EXP Rtabmap
 {
 public:
 	enum VhStrategy {kVhNone, kVhEpipolar, kVhUndef};
-	static const char * kDefaultDatabaseName;
 
 public:
 	static std::string getVersion();
@@ -53,8 +53,8 @@ public:
 	Rtabmap();
 	virtual ~Rtabmap();
 
-	void process(const cv::Mat & image, int id=0, std::multimap<int, cv::KeyPoint> * words = 0); // for convenience, an id is automatically generated if id=0
-	void process(const Image & image, std::multimap<int, cv::KeyPoint> * words = 0); // for convenience
+	bool process(const cv::Mat & image, int id=0); // for convenience, an id is automatically generated if id=0
+	bool process(const Image & image); // for convenience
 
 	void init(const ParametersMap & param, bool deleteMemory = true);
 	void init(const std::string & configFile = "", bool deleteMemory = true);
@@ -62,6 +62,7 @@ public:
 	void close();
 
 	const std::string & getWorkingDir() const {return _wDir;}
+	std::string getDatabasePath() const;
 	int getLoopClosureId() const;
 	int getRetrievedId() const;
 	int getLastLocationId() const;
@@ -76,25 +77,39 @@ public:
 	std::multimap<int, cv::KeyPoint> getWords(int locationId) const;
 	std::map<int, int> getNeighbors(int nodeId, int margin, bool lookInLTM = false) const;// <Id,Margin> including nodeId
 	bool isInSTM(int locationId) const;
+	bool isIDsGenerated() const;
 	const Statistics & getStatistics() const;
+	//bool getMetricData(int locationId, cv::Mat & rgb, cv::Mat & depth, float & depthConstant, Transform & pose, Transform & localTransform) const;
+	Transform getPose(int locationId) const;
+	Transform getMapCorrection() const {return _mapCorrection;}
 
 	void setTimeThreshold(float maxTimeAllowed); // in ms
 
+	void triggerNewMap();
 	void generateGraph(const std::string & path, int id=0, int margin=5);
 	void resetMemory(bool dbOverwritten = false);
 	void dumpPrediction() const;
 	void dumpData() const;
 	void parseParameters(const ParametersMap & parameters);
 	void setWorkingDirectory(std::string path);
-	void deleteLastLocation();
+	void setDatabasePath(const std::string & path);
 	void deleteLocation(int locationId); // Only nodes in STM can be deleted
-	void rejectLastLoopClosure();
+	void rejectLoopClosure(int oldId, int newId);
+	void get3DMap(std::map<int, std::vector<unsigned char> > & images,
+			std::map<int, std::vector<unsigned char> > & depths,
+			std::map<int, std::vector<unsigned char> > & depths2d,
+			std::map<int, float> & depthConstants,
+			std::map<int, Transform> & localTransforms,
+			std::map<int, Transform> & poses,
+			Transform & mapCorrection) const;
 
+	std::map<int, Transform> getOptimizedWMPosesInRadius(int fromId, int maxNearestNeighbors, float radius, int & nearestId) const;
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
 	std::pair<int, float> selectHypothesis(const std::map<int, float> & posterior,
 											const std::map<int, float> & likelihood) const;
 
 private:
+	void optimizeCurrentMap(int id, bool lookInDatabase, std::map<int, Transform> & optimizedPoses, Transform & mapCorrection) const;
 	void setupLogFiles(bool overwrite = false);
 	void flushStatisticLogs();
 
@@ -110,9 +125,18 @@ private:
 	float _loopThr;
 	float _loopRatio;
 	unsigned int _maxRetrieved;
-	bool _likelihoodNullValuesIgnored;
 	bool _statisticLogsBufferedInRAM;
 	bool _statisticLogged;
+	bool _rgbdSlamMode;
+	float _rgbdLinearUpdate;
+	float _rgbdAngularUpdate;
+	int _scanMatchingSize;
+	bool _localLoopClosureDetectionTime;
+	bool _localLoopClosureDetectionSpace;
+	float _localDetectRadius;
+	float _localDetectMaxNeighbors;
+	bool _icpEnabled;
+	std::string _databasePath;
 
 	int _lcHypothesisId;
 	float _lcHypothesisValue;
@@ -134,6 +158,9 @@ private:
 	Statistics statistics_;
 
 	std::string _wDir;
+
+	std::map<int, Transform> _optimizedPoses;
+	Transform _mapCorrection;
 };
 
 #endif /* RTABMAP_H_ */

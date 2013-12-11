@@ -8,6 +8,7 @@
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include "rtabmap/core/Memory.h"
+#include "rtabmap/core/util3d.h"
 
 int main(int argc, char** argv)
 {
@@ -41,7 +42,7 @@ int main(int argc, char** argv)
 		std::set<int> ids = memory->getAllSignatureIds();
 		for(std::set<int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
 		{
-			cv::Mat image = memory->getImage(*iter);
+			cv::Mat image = rtabmap::util3d::uncompressImage(memory->getImage(*iter));
 			std::string fileName = uFormat("%d.png", *iter);
 			cv::imwrite(saveDirectory+fileName, image);
 			UINFO("Saved %s", (saveDirectory+fileName).c_str());

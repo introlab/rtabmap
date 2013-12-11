@@ -43,7 +43,6 @@ public:
 	void reset();
 
 	//setters
-	void setVirtualPlacePrior(float virtualPlacePrior);
 	void setPredictionLC(const std::string & prediction);
 
 	//getters

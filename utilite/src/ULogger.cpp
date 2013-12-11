@@ -88,15 +88,12 @@ protected:
 private:
     virtual void _write(const char* msg, va_list arg)
     {
-    	if(arg != 0)
-		{
-			vprintf(msg, arg);
-		}
-		else
-		{
-			printf("%s", msg);
-		}
+		vprintf(msg, arg);
     }
+    virtual void _writeStr(const char* msg)
+	{
+		printf("%s", msg);
+	}
 };
 
 /**
@@ -158,16 +155,16 @@ private:
     {
     	if(fout_)
     	{
-			if(arg != 0)
-			{
-				vfprintf(fout_, msg, arg);
-			}
-			else
-			{
-				fprintf(fout_, "%s", msg);
-			}
+    		vfprintf(fout_, msg, arg);
     	}
     }
+    virtual void _writeStr(const char* msg)
+	{
+		if(fout_)
+		{
+			fprintf(fout_, "%s", msg);
+		}
+	}
 
 private:
     std::string fileName_; ///< the file name
@@ -243,7 +240,7 @@ void ULogger::flush()
 
 void ULogger::_flush()
 {
-	ULogger::getInstance()->_write(bufferedMsgs_.c_str(), 0);
+	ULogger::getInstance()->_writeStr(bufferedMsgs_.c_str());
 	bufferedMsgs_.clear();
 }
 
@@ -277,7 +274,7 @@ void ULogger::write(const char* msg, ...)
     	}
     	else
     	{
-    		ULogger::getInstance()->_write(time.c_str(), 0);
+    		ULogger::getInstance()->_writeStr(time.c_str());
     	}
     }
 
@@ -300,7 +297,7 @@ void ULogger::write(const char* msg, ...)
     	}
     	else
     	{
-    		ULogger::getInstance()->_write(endline.c_str(), 0);
+    		ULogger::getInstance()->_writeStr(endline.c_str());
     	}
     }
     loggerMutex_.unlock();
@@ -444,7 +441,7 @@ void ULogger::write(ULogger::Level level,
 				}
 				else
 				{
-					ULogger::getInstance()->_write(color, 0);
+					ULogger::getInstance()->_writeStr(color);
 				}
 #endif
 			}
@@ -458,9 +455,9 @@ void ULogger::write(ULogger::Level level,
 			}
 			else
 			{
-				ULogger::getInstance()->_write(levelStr.c_str(), 0);
-				ULogger::getInstance()->_write(time.c_str(), 0);
-				ULogger::getInstance()->_write(whereStr.c_str(), 0);
+				ULogger::getInstance()->_writeStr(levelStr.c_str());
+				ULogger::getInstance()->_writeStr(time.c_str());
+				ULogger::getInstance()->_writeStr(whereStr.c_str());
 				ULogger::getInstance()->_write(msg, args);
 			}
 			if(type_ == ULogger::kTypeConsole && printColored_)
@@ -474,7 +471,7 @@ void ULogger::write(ULogger::Level level,
 				}
 				else
 				{
-					ULogger::getInstance()->_write(COLOR_NORMAL, 0);
+					ULogger::getInstance()->_writeStr(COLOR_NORMAL);
 				}
 #endif
 			}
@@ -484,7 +481,7 @@ void ULogger::write(ULogger::Level level,
 			}
 			else
 			{
-				ULogger::getInstance()->_write(endline.c_str(), 0);
+				ULogger::getInstance()->_writeStr(endline.c_str());
 			}
 			va_end (args);
 		}
@@ -493,14 +490,7 @@ void ULogger::write(ULogger::Level level,
 		{
 			std::string fullMsg = uFormat("%s%s%s", levelStr.c_str(), time.c_str(), whereStr.c_str());
 			va_start(args, msg);
-			if(args != 0)
-			{
-				fullMsg.append(uFormatv(msg, args));
-			}
-			else
-			{
-				fullMsg.append(msg);
-			}
+			fullMsg.append(uFormatv(msg, args));
 			va_end(args);
 			if(level >= exitLevel_)
 			{
@@ -517,18 +507,14 @@ void ULogger::write(ULogger::Level level,
 
 		if(level >= exitLevel_)
 		{
-			printf("\n*******\n%s message occurred!\n", levelName_[level]);
-			printf("  %s%s%s", levelStr.c_str(), time.c_str(), whereStr.c_str());
-			va_start(args, msg);
-			if(args != 0)
+			printf("\n*******\n%s message occurred! Application will now exit.\n", levelName_[level]);
+			if(type_ != kTypeConsole)
 			{
+				printf("  %s%s%s", levelStr.c_str(), time.c_str(), whereStr.c_str());
+				va_start(args, msg);
 				vprintf(msg, args);
+				va_end(args);
 			}
-			else
-			{
-				printf("%s", msg);
-			}
-			va_end(args);
 			printf("\n*******\n");
 			destroyer_.setDoomed(0);
 			delete instance_; // If a FileLogger is used, this will close the file.

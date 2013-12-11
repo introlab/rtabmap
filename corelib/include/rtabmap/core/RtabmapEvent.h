@@ -55,21 +55,42 @@ public:
 			kCmdGenerateGraph,
 			kCmdGenerateLocalGraph,
 			kCmdDeleteMemory,
-			kCmdCleanSensorsBuffer};
+			kCmdCleanDataBuffer,
+			kCmdPublish3DMap,
+			kCmdTriggerNewMap,
+			kCmdPause};
 public:
 	RtabmapEventCmd(Cmd cmd) :
 		UEvent(0),
-		_cmd(cmd) {}
+		_cmd(cmd),
+		_strValue(""),
+		_intValue(0){}
+	RtabmapEventCmd(Cmd cmd, int value) :
+			UEvent(0),
+			_cmd(cmd),
+			_strValue(""),
+			_intValue(value){}
+	RtabmapEventCmd(Cmd cmd, const std::string & value) :
+			UEvent(0),
+			_cmd(cmd),
+			_strValue(value),
+			_intValue(0){}
 
 	virtual ~RtabmapEventCmd() {}
 	Cmd getCmd() const {return _cmd;}
-	void setStr(const std::string & str) {_str = str;}
-	const std::string & getStr() const {return _str;}
+
+	void setStr(const std::string & str) {_strValue = str;}
+	const std::string & getStr() const {return _strValue;}
+
+	void setInt(int v) {_intValue = v;}
+	int getInt() const {return _intValue;}
+
 	virtual std::string getClassName() const {return std::string("RtabmapEventCmd");}
 
 private:
 	Cmd _cmd;
-	std::string _str;
+	std::string _strValue;
+	int _intValue;
 };
 
 class RtabmapEventInit : public UEvent
@@ -105,6 +126,51 @@ public:
 private:
 	Status _status;
 	std::string _info; // "Loading signatures", "Loading words" ...
+};
+
+class RtabmapEvent3DMap : public UEvent
+{
+public:
+	RtabmapEvent3DMap(int codeError = 0):
+		UEvent(codeError){}
+	RtabmapEvent3DMap(
+			const std::map<int, std::vector<unsigned char> > & images,
+			const std::map<int, std::vector<unsigned char> > & depths,
+			const std::map<int, std::vector<unsigned char> > & depths2d,
+			const std::map<int, float> & depthConstants,
+			const std::map<int, Transform> & localTransforms,
+			const std::map<int, Transform> & poses,
+			const Transform & mapCorrection) :
+		UEvent(0),
+		_images(images),
+		_depths(depths),
+		_depths2d(depths2d),
+		_depthConstants(depthConstants),
+		_localTransforms(localTransforms),
+		_poses(poses),
+		_mapCorrection(mapCorrection)
+	{}
+
+	virtual ~RtabmapEvent3DMap() {}
+
+	const std::map<int, std::vector<unsigned char> > & getImages() const {return _images;}
+	const std::map<int, std::vector<unsigned char> > & getDepths() const {return _depths;}
+	const std::map<int, std::vector<unsigned char> > & getDepths2d() const {return _depths2d;}
+	const std::map<int, float> & getDepthConstants() const {return _depthConstants;}
+	const std::map<int, Transform> & getLocalTransforms() const {return _localTransforms;}
+	const std::map<int, Transform> & getPoses() const {return _poses;}
+	const Transform & getMapCorrection() const {return _mapCorrection;}
+
+	virtual std::string getClassName() const {return std::string("RtabmapEvent3DMap");}
+
+private:
+	std::map<int, std::vector<unsigned char> > _images;
+	std::map<int, std::vector<unsigned char> > _depths;
+	std::map<int, std::vector<unsigned char> > _depths2d;
+	std::map<int, float> _depthConstants;
+	std::map<int, Transform> _localTransforms;
+	std::map<int, Transform> _poses;
+	Transform _mapCorrection;
 };
 
 } // namespace rtabmap

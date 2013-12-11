@@ -31,6 +31,8 @@
 #include "rtabmap/utilite/UThreadNode.h"
 #include "rtabmap/core/Parameters.h"
 
+#include <rtabmap/core/Transform.h>
+
 namespace rtabmap {
 
 class Signature;
@@ -62,11 +64,9 @@ public:
 	void asyncSave(VisualWord * vw); //ownership transferred
 	void emptyTrashes(bool async = false);
 	double getEmptyTrashesTime() const {return _emptyTrashesTime;}
-	bool isImagesCompressed() const {return _imagesCompressed;}
 
 public:
-	void addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed) const;
-	void addStatisticsAfterRunSurf(int dictionarySize) const;
+	void addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize) const;
 
 public:
 	// Mutex-protected methods of abstract versions below
@@ -82,20 +82,24 @@ public:
 
 	// Load objects
 	void load(VWDictionary * dictionary) const;
+	void load(std::map<int, std::map<int, Transform> > & mapTransforms) const;
 	void loadLastNodes(std::list<Signature *> & signatures) const;
 	void loadSignatures(const std::list<int> & ids, std::list<Signature *> & signatures);
 	void loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws);
 
 	// Specific queries...
-	void getImage(int id, cv::Mat & image) const;
-	void getNeighborIds(int signatureId, std::set<int> & neighbors, bool onlyWithActions = false) const;
-	void loadNeighbors(int signatureId, std::set<int> & neighbors) const;
+	void loadNodeData(std::list<Signature *> & signatures, bool loadMetricData) const;
+	void getNodeData(int signatureId, std::vector<unsigned char> & image, std::vector<unsigned char> & depth, std::vector<unsigned char> & depth2d, float & depthConstant, Transform & localTransform) const;
+	void getNodeData(int signatureId, std::vector<unsigned char> & image) const;
+	void getPose(int signatureId, Transform & pose, int & mapId) const;
+	void loadNeighbors(int signatureId, std::map<int, Transform> & neighbors) const;
+	void loadLoopClosures(int signatureId, std::map<int, Transform> & loopIds, std::map<int, Transform> & childIds) const;
 	void getWeight(int signatureId, int & weight) const;
-	void getLoopClosureIds(int signatureId, std::set<int> & loopIds, std::set<int> & childIds) const;
 	void getAllNodeIds(std::set<int> & ids) const;
 	void getLastNodeId(int & id) const;
 	void getLastWordId(int & id) const;
 	void getInvertedIndexNi(int signatureId, int & ni) const;
+	void save(const std::map<int, std::map<int, Transform> > & mapTransforms) const;
 
 protected:
 	DBDriver(const ParametersMap & parameters = ParametersMap());
@@ -108,24 +112,28 @@ private:
 
 	virtual void executeNoResultQuery(const std::string & sql) const = 0;
 
-	virtual void getNeighborIdsQuery(int signatureId, std::set<int> & neighbors, bool onlyWithActions = false) const = 0;
 	virtual void getWeightQuery(int signatureId, int & weight) const = 0;
-	virtual void getLoopClosureIdsQuery(int signatureId, std::set<int> & loopIds, std::set<int> & childIds) const = 0;
 
 	virtual void saveQuery(const std::list<Signature *> & signatures) const = 0;
 	virtual void saveQuery(const std::list<VisualWord *> & words) const = 0;
 	virtual void updateQuery(const std::list<Signature *> & signatures) const = 0;
 	virtual void updateQuery(const std::list<VisualWord *> & words) const = 0;
+	virtual void saveQuery(const std::map<int, std::map<int, Transform> > & mapTransforms) const = 0;
 
 
 	// Load objects
 	virtual void loadQuery(VWDictionary * dictionary) const = 0;
+	virtual void loadQuery(std::map<int, std::map<int, Transform> > & mapTransforms) const = 0;
 	virtual void loadLastNodesQuery(std::list<Signature *> & signatures) const = 0;
 	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const = 0;
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const = 0;
-	virtual void loadNeighborsQuery(int signatureId, std::set<int> & neighbors) const = 0;
+	virtual void loadNeighborsQuery(int signatureId, std::map<int, Transform> & neighbors) const = 0;
+	virtual void loadLoopClosuresQuery(int signatureId, std::map<int, Transform> & loopIds, std::map<int, Transform> & childIds) const = 0;
 
-	virtual void getImageQuery(int id, cv::Mat & rawData) const = 0;
+	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool loadMetricData) const = 0;
+	virtual void getNodeDataQuery(int signatureId, std::vector<unsigned char> & image, std::vector<unsigned char> & depth, std::vector<unsigned char> & depth2d, float & depthConstant, Transform & localTransform) const = 0;
+	virtual void getNodeDataQuery(int signatureId, std::vector<unsigned char> & image) const = 0;
+	virtual void getPoseQuery(int signatureId, Transform & pose, int & mapId) const = 0;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids) const = 0;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const = 0;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const = 0;
@@ -145,7 +153,6 @@ private:
 	UMutex _trashesMutex;
 	UMutex _dbSafeAccessMutex;
 	USemaphore _addSem;
-	bool _imagesCompressed;
 	double _emptyTrashesTime;
 	std::string _url;
 };

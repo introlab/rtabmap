@@ -21,7 +21,7 @@
 #define RTABMAPEXP_H
 
 #if defined(_WIN32)
-  #if defined(rtabmap_corelib_EXPORTS) || defined(rtabmap_guilib_EXPORTS)
+  #if defined(rtabmap_core_EXPORTS)
     #define RTABMAP_EXP   __declspec( dllexport )
   #else
     #define RTABMAP_EXP   __declspec( dllimport )

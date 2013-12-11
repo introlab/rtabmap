@@ -18,6 +18,7 @@ SET(INCLUDE_DIRS
 	${PROJECT_SOURCE_DIR}/guilib/include
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${OpenCV_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRS}
 )
 
 INCLUDE(${QT_USE_FILE})
@@ -25,7 +26,11 @@ INCLUDE(${QT_USE_FILE})
 SET(LIBRARIES
     ${QT_LIBRARIES} 
 	${OpenCV_LIBS} 
+	${PCL_LIBRARIES}
 )
+
+# rc.exe has problems with these defintions... commented!
+#add_definitions(${PCL_DEFINITIONS})
 
 # Make sure the compiler can find include files from our library.
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
@@ -55,28 +60,31 @@ ENDIF(WIN32)
 
 # Add binary
 IF(APPLE AND BUILD_AS_BUNDLE)
-  ADD_EXECUTABLE(main_app MACOSX_BUNDLE ${SRC_FILES})
+  ADD_EXECUTABLE(rtabmap MACOSX_BUNDLE ${SRC_FILES})
+ELSEIF(MINGW)
+  ADD_EXECUTABLE(rtabmap WIN32 ${SRC_FILES})
 ELSE()
-  ADD_EXECUTABLE(main_app WIN32 ${SRC_FILES})
+  ADD_EXECUTABLE(rtabmap ${SRC_FILES})
 ENDIF()
-TARGET_LINK_LIBRARIES(main_app rtabmap_corelib rtabmap_guilib rtabmap_utilite ${LIBRARIES})
+TARGET_LINK_LIBRARIES(rtabmap rtabmap_core rtabmap_gui rtabmap_utilite ${LIBRARIES})
 
 IF(APPLE AND BUILD_AS_BUNDLE)
-  SET_TARGET_PROPERTIES(main_app PROPERTIES
+  SET_TARGET_PROPERTIES(rtabmap PROPERTIES
     OUTPUT_NAME ${CMAKE_BUNDLE_NAME})
 ELSEIF(WIN32)
-  SET_TARGET_PROPERTIES(main_app PROPERTIES
+  SET_TARGET_PROPERTIES(rtabmap PROPERTIES
     OUTPUT_NAME ${PROJECT_NAME})
 ELSE()
-  SET_TARGET_PROPERTIES(main_app PROPERTIES
+  SET_TARGET_PROPERTIES(rtabmap PROPERTIES
     OUTPUT_NAME ${PROJECT_PREFIX})
 ENDIF()
 
 #---------------------------
 # Installation stuff
 #--------------------------- 
-INSTALL(TARGETS main_app
-        RUNTIME DESTINATION bin COMPONENT runtime
+INSTALL(TARGETS rtabmap
+		EXPORT RTABMapTargets
+        RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT runtime
         BUNDLE DESTINATION "${CMAKE_BUNDLE_LOCATION}" COMPONENT runtime)
       
 IF(APPLE AND BUILD_AS_BUNDLE)

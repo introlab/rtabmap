@@ -17,9 +17,10 @@
  * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Signature.h"
+#include "rtabmap/core/Signature.h"
 #include "rtabmap/core/EpipolarGeometry.h"
 #include "rtabmap/core/Memory.h"
+#include "rtabmap/core/util3d.h"
 #include <opencv2/highgui/highgui.hpp>
 
 #include <rtabmap/utilite/UtiLite.h>
@@ -34,31 +35,45 @@ Signature::~Signature()
 
 Signature::Signature(
 		int id,
+		int mapId,
 		const std::multimap<int, cv::KeyPoint> & words,
-		const cv::Mat & image) :
+		const std::multimap<int, pcl::PointXYZ> & words3, // in base_link frame (localTransform applied)
+		const Transform & pose,
+		const std::vector<unsigned char> & depth2D, // in base_link frame
+		const std::vector<unsigned char> & image, // in camera_link frame
+		const std::vector<unsigned char> & depth, // in camera_link frame
+		float depthConstant,
+		const Transform & localTransform) :
 	_id(id),
+	_mapId(mapId),
 	_weight(0),
 	_saved(false),
 	_modified(true),
 	_neighborsModified(true),
 	_words(words),
 	_enabled(false),
-	_image(image)
+	_image(image),
+	_depth(depth),
+	_depth2D(depth2D),
+	_depthConstant(depthConstant),
+	_pose(pose),
+	_localTransform(localTransform),
+	_words3(words3)
 {
 }
 
-void Signature::addNeighbors(const std::set<int> & neighbors)
+void Signature::addNeighbors(const std::map<int, Transform> & neighbors)
 {
-	for(std::set<int>::const_iterator i=neighbors.begin(); i!=neighbors.end(); ++i)
+	for(std::map<int, Transform>::const_iterator i=neighbors.begin(); i!=neighbors.end(); ++i)
 	{
-		this->addNeighbor(*i);
+		this->addNeighbor(i->first, i->second);
 	}
 }
 
-void Signature::addNeighbor(int neighbor)
+void Signature::addNeighbor(int neighbor, const Transform & transform)
 {
 	UDEBUG("Add neighbor %d to %d", neighbor, this->id());
-	_neighbors.insert(neighbor);
+	_neighbors.insert(std::pair<int, Transform>(neighbor, transform));
 	_neighborsModified = true;
 }
 
@@ -80,14 +95,46 @@ void Signature::removeNeighbors()
 
 void Signature::changeNeighborIds(int idFrom, int idTo)
 {
-	if(_neighbors.find(idFrom) != _neighbors.end())
+	std::map<int, Transform>::iterator iter = _neighbors.find(idFrom);
+	if(iter != _neighbors.end())
 	{
-		_neighbors.erase(idFrom);
-		_neighbors.insert(idTo);
+		Transform t = iter->second;
+		_neighbors.erase(iter);
+		_neighbors.insert(std::pair<int, Transform>(idTo, t));
 		_neighborsModified = true;
 	}
 	UDEBUG("(%d) neighbor ids changed from %d to %d", _id, idFrom, idTo);
 }
+
+void Signature::addLoopClosureId(int loopClosureId, const Transform & transform)
+{
+	if(loopClosureId && _loopClosureIds.insert(std::pair<int, Transform>(loopClosureId, transform)).second)
+	{
+		_neighborsModified=true;
+	}
+}
+
+void Signature::addChildLoopClosureId(int childLoopClosureId, const Transform & transform)
+{
+	if(childLoopClosureId && _childLoopClosureIds.insert(std::pair<int, Transform>(childLoopClosureId, transform)).second)
+	{
+		_neighborsModified=true;
+	}
+}
+
+void Signature::changeLoopClosureId(int idFrom, int idTo)
+{
+	std::map<int, Transform>::iterator iter = _loopClosureIds.find(idFrom);
+	if(iter != _loopClosureIds.end())
+	{
+		Transform t = iter->second;
+		_loopClosureIds.erase(iter);
+		_loopClosureIds.insert(std::pair<int, Transform>(idTo, t));
+		_neighborsModified = true;
+	}
+	UDEBUG("(%d) loop closure ids changed from %d to %d", _id, idFrom, idTo);
+}
+
 
 float Signature::compareTo(const Signature * s) const
 {
@@ -109,11 +156,17 @@ void Signature::changeWordsRef(int oldWordId, int activeWordId)
 	std::list<cv::KeyPoint> kps = uValues(_words, oldWordId);
 	if(kps.size())
 	{
+		std::list<pcl::PointXYZ> pts = uValues(_words3, oldWordId);
 		_words.erase(oldWordId);
+		_words3.erase(oldWordId);
 		_wordsChanged.insert(std::make_pair(oldWordId, activeWordId));
 		for(std::list<cv::KeyPoint>::const_iterator iter=kps.begin(); iter!=kps.end(); ++iter)
 		{
 			_words.insert(std::pair<int, cv::KeyPoint>(activeWordId, (*iter)));
+		}
+		for(std::list<pcl::PointXYZ>::const_iterator iter=pts.begin(); iter!=pts.end(); ++iter)
+		{
+			_words3.insert(std::pair<int, pcl::PointXYZ>(activeWordId, (*iter)));
 		}
 	}
 }
@@ -126,11 +179,20 @@ bool Signature::isBadSignature() const
 void Signature::removeAllWords()
 {
 	_words.clear();
+	_words3.clear();
 }
 
 void Signature::removeWord(int wordId)
 {
 	_words.erase(wordId);
+	_words3.erase(wordId);
+}
+
+void Signature::setDepth(const std::vector<unsigned char> & depth, float depthConstant)
+{
+	UASSERT_MSG(depth.empty() || (!depth.empty() && depthConstant > 0.0f), uFormat("depthConstant=%f",depthConstant).c_str());
+	_depth = depth;
+	_depthConstant=depthConstant;
 }
 
 } //namespace rtabmap

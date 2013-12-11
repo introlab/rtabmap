@@ -29,7 +29,7 @@
          <number>0</number>
         </property>
         <item>
-         <widget class="QGraphicsView" name="graphicsView_A"/>
+         <widget class="rtabmap::ImageView" name="graphicsView_A"/>
         </item>
         <item>
          <widget class="QScrollArea" name="scrollArea_2">
@@ -153,7 +153,7 @@
          <number>0</number>
         </property>
         <item>
-         <widget class="QGraphicsView" name="graphicsView_B"/>
+         <widget class="rtabmap::ImageView" name="graphicsView_B"/>
         </item>
         <item>
          <widget class="QScrollArea" name="scrollArea">
@@ -288,7 +288,7 @@
      <x>0</x>
      <y>0</y>
      <width>736</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -309,7 +309,7 @@
     <addaction name="actionClean_database"/>
     <addaction name="actionClean_local_graph"/>
     <addaction name="separator"/>
-    <addaction name="actionUpdate_base_ids"/>
+    <addaction name="actionGenerate_3D_map_pcd"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
@@ -354,7 +354,19 @@
     <string>Update base ids</string>
    </property>
   </action>
+  <action name="actionGenerate_3D_map_pcd">
+   <property name="text">
+    <string>Generate 3D map (.pcd) ...</string>
+   </property>
+  </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>rtabmap::ImageView</class>
+   <extends>QGraphicsView</extends>
+   <header>rtabmap/gui/ImageView.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

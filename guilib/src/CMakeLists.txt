@@ -12,6 +12,10 @@ SET(headers_ui
 	./StatsToolBox.h
 	./DetailedProgressDialog.h
 	./utilite/UPlot.h
+	../include/${PROJECT_PREFIX}/gui/CloudViewer.h
+	../include/${PROJECT_PREFIX}/gui/OdometryViewer.h
+	../include/${PROJECT_PREFIX}/gui/LoopClosureViewer.h
+	../include/${PROJECT_PREFIX}/gui/DataRecorder.h
 )
 
 SET(uis
@@ -20,6 +24,7 @@ SET(uis
     ./ui/aboutDialog.ui
     ./ui/consoleWidget.ui
     ./ui/DatabaseViewer.ui
+    ./ui/loopClosureViewer.ui
 )
 
 SET(qrc 
@@ -43,7 +48,6 @@ SET(SRC_FILES
 	./MainWindow.cpp
 	./PreferencesDialog.cpp
 	./KeypointItem.cpp
-	./qtipl.cpp
 	./ImageView.cpp
 	./PdfPlot.cpp
 	./StatsToolBox.cpp
@@ -52,6 +56,10 @@ SET(SRC_FILES
 	./ConsoleWidget.cpp
 	./DatabaseViewer.cpp
 	./utilite/UPlot.cpp
+	./CloudViewer.cpp
+	./OdometryViewer.cpp
+	./LoopClosureViewer.cpp
+	./DataRecorder.cpp
 	${moc_srcs} 
 	${moc_uis} 
 	${srcs_qrc}
@@ -64,33 +72,42 @@ SET(INCLUDE_DIRS
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${OpenCV_INCLUDE_DIRS}
 	${CMAKE_CURRENT_BINARY_DIR} # for qt ui generated in binary dir
+	${PCL_INCLUDE_DIRS}
 )
 
 INCLUDE(${QT_USE_FILE})
 
+INCLUDE(${VTK_USE_FILE})
+
 SET(LIBRARIES
     ${QT_LIBRARIES} 
 	${OpenCV_LIBS} 
+	${PCL_LIBRARIES}
+	QVTK 
+	vtkHybrid
 )
 
 #include files
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
+add_definitions(${PCL_DEFINITIONS})
+
 # create a library from the source files
-ADD_LIBRARY(rtabmap_guilib ${SRC_FILES})
+ADD_LIBRARY(rtabmap_gui ${SRC_FILES})
 # Linking with Qt libraries
-TARGET_LINK_LIBRARIES(rtabmap_guilib rtabmap_corelib rtabmap_utilite ${LIBRARIES})
+TARGET_LINK_LIBRARIES(rtabmap_gui rtabmap_core rtabmap_utilite ${LIBRARIES})
 
 SET_TARGET_PROPERTIES(
-rtabmap_guilib 
+rtabmap_gui
 PROPERTIES
  OUTPUT_NAME ${PROJECT_PREFIX}_gui
  INSTALL_NAME_DIR ${CMAKE_INSTALL_PREFIX}/lib
 )
 
-INSTALL(TARGETS rtabmap_guilib
-        RUNTIME DESTINATION bin COMPONENT runtime
-        LIBRARY DESTINATION lib COMPONENT devel
-        ARCHIVE DESTINATION lib COMPONENT devel)
+INSTALL(TARGETS rtabmap_gui
+        EXPORT RTABMapTargets
+        RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT runtime
+        LIBRARY DESTINATION "${INSTALL_LIB_DIR}" COMPONENT devel
+        ARCHIVE DESTINATION "${INSTALL_LIB_DIR}" COMPONENT devel)
         
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../include/ DESTINATION include/ COMPONENT devel FILES_MATCHING PATTERN "*.h" PATTERN ".svn" EXCLUDE)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../include/ DESTINATION "${INSTALL_INCLUDE_DIR}" COMPONENT devel FILES_MATCHING PATTERN "*.h" PATTERN ".svn" EXCLUDE)

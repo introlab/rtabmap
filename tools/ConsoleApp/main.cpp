@@ -357,11 +357,11 @@ int main(int argc, char * argv[])
 	Camera * camera = 0;
 	if(UDirectory::exists(path))
 	{
-		camera = new CameraImages(path, startAt, false, 1/rate, false, imageWidth, imageHeight, framesDropped);
+		camera = new CameraImages(path, startAt, false, 1/rate, imageWidth, imageHeight, framesDropped);
 	}
 	else
 	{
-		camera = new CameraVideo(path, 1/rate, false, imageWidth, imageHeight, framesDropped);
+		camera = new CameraVideo(path, 1/rate, imageWidth, imageHeight, framesDropped);
 	}
 
 	if(!camera || !camera->init())
@@ -418,7 +418,7 @@ int main(int argc, char * argv[])
 	}
 	if(rtabmap.getWM().size() || rtabmap.getSTM().size())
 	{
-		printf("[Warning] RTAB-Map database is not empty (%s)\n", (rtabmap.getWorkingDir()+Rtabmap::kDefaultDatabaseName).c_str());
+		printf("[Warning] RTAB-Map database is not empty (%s)\n", (rtabmap.getWorkingDir()+Parameters::getDefaultDatabaseName()).c_str());
 	}
 	printf("\nProcessing images...\n");
 

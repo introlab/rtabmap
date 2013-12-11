@@ -10,17 +10,20 @@
 #include "DBDriverSqlite3.h"
 
 #include <rtabmap/utilite/ULogger.h>
-#include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UFile.h>
 
 #include "rtabmap/core/CameraEvent.h"
+#include "rtabmap/core/OdometryEvent.h"
+#include "rtabmap/core/util3d.h"
 
 namespace rtabmap {
 
 DBReader::DBReader(const std::string & databasePath,
-				   float frameRate) :
+				   float frameRate,
+				   bool odometryIgnored) :
 	_path(databasePath),
 	_frameRate(frameRate),
+	_odometryIgnored(odometryIgnored),
 	_dbDriver(0),
 	_currentId(_ids.end())
 {
@@ -102,22 +105,46 @@ void DBReader::mainLoopBegin()
 
 void DBReader::mainLoop()
 {
-	cv::Mat image;
-	this->getNextImage(image);
+	cv::Mat image, depth, depth2d;
+	float depthConstant;
+	Transform localTransform, pose;
+	this->getNextImage(image, depth, depth2d, depthConstant, localTransform, pose);
 	if(!image.empty())
 	{
-		UEventsManager::post(new CameraEvent(image));
+		if(depth.empty())
+		{
+			this->post(new CameraEvent(image));
+		}
+		else
+		{
+			if(!_odometryIgnored)
+			{
+				Image data(image, depth, depth2d, depthConstant, pose, localTransform);
+				this->post(new OdometryEvent(data));
+			}
+			else
+			{
+				// without odometry
+				this->post(new CameraEvent(image, depth, depth2d, depthConstant, localTransform));
+			}
+		}
 	}
 	else if(!this->isKilled())
 	{
-		UDEBUG("no more images...");
+		UINFO("no more images...");
 		this->kill();
-		UEventsManager::post(new CameraEvent());
+		this->post(new CameraEvent());
 	}
 
 }
 
-void DBReader::getNextImage(cv::Mat & image)
+void DBReader::getNextImage(
+		cv::Mat & image,
+		cv::Mat & depth,
+		cv::Mat & depth2d,
+		float & depthConstant,
+		Transform & localTransform,
+		Transform & pose)
 {
 	if(_dbDriver)
 	{
@@ -143,13 +170,30 @@ void DBReader::getNextImage(cv::Mat & image)
 
 		if(!this->isKilled() && _currentId != _ids.end())
 		{
-			//sensors
-			_dbDriver->getImage(*_currentId, image);
+			std::vector<unsigned char> imageBytes;
+			std::vector<unsigned char> depthBytes;
+			std::vector<unsigned char> depth2dBytes;
+			int mapId;
+			_dbDriver->getNodeData(*_currentId, imageBytes, depthBytes, depth2dBytes, depthConstant, localTransform);
+			_dbDriver->getPose(*_currentId, pose, mapId);
 			++_currentId;
-			if(image.empty())
+			if(imageBytes.empty())
 			{
-				UWARN("No image loaded from the database!");
+				UWARN("No image loaded from the database for id=%d!", *_currentId);
 			}
+
+			util3d::CompressionThread ctImage(imageBytes, true);
+			util3d::CompressionThread ctDepth(depthBytes, true);
+			util3d::CompressionThread ctDepth2D(depth2dBytes, false);
+			ctImage.start();
+			ctDepth.start();
+			ctDepth2D.start();
+			ctImage.join();
+			ctDepth.join();
+			ctDepth2D.join();
+			image = ctImage.getUncompressedData();
+			depth = ctDepth.getUncompressedData();
+			depth2d = ctDepth2D.getUncompressedData();
 		}
 	}
 	else

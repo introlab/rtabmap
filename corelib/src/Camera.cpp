@@ -37,10 +37,8 @@ namespace rtabmap
 Camera::Camera(float imageRate,
 		unsigned int imageWidth,
 		unsigned int imageHeight,
-		unsigned int framesDropped,
-		int id) :
+		unsigned int framesDropped) :
 	_imageRate(imageRate),
-	_id(id),
 	_imageWidth(imageWidth),
 	_imageHeight(imageHeight),
 	_framesDropped(framesDropped),
@@ -74,7 +72,6 @@ void Camera::setFeaturesExtracted(bool featuresExtracted, KeypointDetector::Dete
 	{
 		ParametersMap pm;
 		pm.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str((int)detector)));
-		pm.insert(ParametersPair(Parameters::kKpDescriptorStrategy(), uNumber2Str((int)detector)));
 		this->parseParameters(pm);
 	}
 }
@@ -101,12 +98,6 @@ void Camera::parseParameters(const ParametersMap & parameters)
 	{
 		detector = (KeypointDetector::DetectorType)std::atoi((*iter).second.c_str());
 	}
-	//Keypoint descriptor
-	KeypointDescriptor::DescriptorType descriptor = KeypointDescriptor::kDescriptorUndef;
-	if((iter=parameters.find(Parameters::kKpDescriptorStrategy())) != parameters.end())
-	{
-		descriptor = (KeypointDescriptor::DescriptorType)std::atoi((*iter).second.c_str());
-	}
 
 	if(detector!=KeypointDetector::kDetectorUndef)
 	{
@@ -116,44 +107,34 @@ void Camera::parseParameters(const ParametersMap & parameters)
 			delete _keypointDetector;
 			_keypointDetector = 0;
 		}
-		switch(detector)
-		{
-		case KeypointDetector::kDetectorSift:
-			_keypointDetector = new SIFTDetector(parameters);
-			break;
-		case KeypointDetector::kDetectorSurf:
-		default:
-			_keypointDetector = new SURFDetector(parameters);
-			break;
-		}
-	}
-	else if(_keypointDetector)
-	{
-		_keypointDetector->parseParameters(parameters);
-	}
-
-	if(descriptor!=KeypointDescriptor::kDescriptorUndef)
-	{
-		ULOGGER_DEBUG("new descriptor strategy %d", int(descriptor));
 		if(_keypointDescriptor)
 		{
 			delete _keypointDescriptor;
 			_keypointDescriptor = 0;
 		}
-		switch(descriptor)
+		switch(detector)
 		{
-		case KeypointDescriptor::kDescriptorSift:
+		case KeypointDetector::kDetectorSift:
+			_keypointDetector = new SIFTDetector(parameters);
 			_keypointDescriptor = new SIFTDescriptor(parameters);
 			break;
-		case KeypointDescriptor::kDescriptorSurf:
+		case KeypointDetector::kDetectorSurf:
 		default:
+			_keypointDetector = new SURFDetector(parameters);
 			_keypointDescriptor = new SURFDescriptor(parameters);
 			break;
 		}
 	}
-	else if(_keypointDescriptor)
+	else
 	{
-		_keypointDescriptor->parseParameters(parameters);
+		if(_keypointDetector)
+		{
+			_keypointDetector->parseParameters(parameters);
+		}
+		if(_keypointDescriptor)
+		{
+			_keypointDescriptor->parseParameters(parameters);
+		}
 	}
 }
 
@@ -172,7 +153,7 @@ cv::Mat Camera::takeImage(cv::Mat & descriptors, std::vector<cv::KeyPoint> & key
 {
 	descriptors = cv::Mat();
 	keypoints.clear();
-	float imageRate = _imageRate;
+	float imageRate = _imageRate==0.0f?33.0f:_imageRate; // limit to 33Hz if infinity
 	if(imageRate>0)
 	{
 		int sleepTime = (1000.0f/imageRate - 1000.0f*_frameRateTimer->getElapsedTime());
@@ -245,9 +226,8 @@ CameraImages::CameraImages(const std::string & path,
 					 float imageRate,
 					 unsigned int imageWidth,
 					 unsigned int imageHeight,
-					 unsigned int framesDropped,
-					 int id) :
-	Camera(imageRate, imageWidth, imageHeight, framesDropped, id),
+					 unsigned int framesDropped) :
+	Camera(imageRate, imageWidth, imageHeight, framesDropped),
 	_path(path),
 	_startAt(startAt),
 	_refreshDir(refreshDir),
@@ -382,9 +362,8 @@ CameraVideo::CameraVideo(int usbDevice,
 						 float imageRate,
 						 unsigned int imageWidth,
 						 unsigned int imageHeight,
-						 unsigned int framesDropped,
-						 int id) :
-	Camera(imageRate, imageWidth, imageHeight, framesDropped, id),
+						 unsigned int framesDropped) :
+	Camera(imageRate, imageWidth, imageHeight, framesDropped),
 	_src(kUsbDevice),
 	_usbDevice(usbDevice)
 {
@@ -395,9 +374,8 @@ CameraVideo::CameraVideo(const std::string & filePath,
 						   float imageRate,
 						   unsigned int imageWidth,
 						   unsigned int imageHeight,
-						   unsigned int framesDropped,
-						   int id) :
-	Camera(imageRate, imageWidth, imageHeight, framesDropped, id),
+						   unsigned int framesDropped) :
+	Camera(imageRate, imageWidth, imageHeight, framesDropped),
 	_filePath(filePath),
 	_src(kVideoFile),
 	_usbDevice(0)
@@ -454,7 +432,13 @@ cv::Mat CameraVideo::captureImage()
 	cv::Mat img;  // Null image
 	if(_capture.isOpened())
 	{
-		_capture.read(img);
+		if(!_capture.read(img))
+		{
+			if(_usbDevice)
+			{
+				UERROR("Camera has been disconnected!");
+			}
+		}
 	}
 	else
 	{

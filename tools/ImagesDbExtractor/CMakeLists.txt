@@ -9,17 +9,21 @@ SET(INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${UTILITE_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRS}
 )
 
 SET(LIBRARIES
     ${UTILITE_LIBRARIES}
 	${OpenCV_LIBRARIES}
+	${PCL_LIBRARIES}
 )
+
+add_definitions(${PCL_DEFINITIONS})
 
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 ADD_EXECUTABLE(imagesDbExtractor ${SRC_FILES})
-TARGET_LINK_LIBRARIES(imagesDbExtractor rtabmap_corelib rtabmap_utilite ${LIBRARIES})
+TARGET_LINK_LIBRARIES(imagesDbExtractor rtabmap_core rtabmap_utilite ${LIBRARIES})
 
 SET_TARGET_PROPERTIES( imagesDbExtractor 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-imagesDbExtractor)

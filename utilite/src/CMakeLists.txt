@@ -2,6 +2,7 @@
 SET(SRC_FILES
 	UEventsManager.cpp
     UEventsHandler.cpp
+    UEventsSender.cpp
     UFile.cpp
     UDirectory.cpp
     UConversion.cpp
@@ -34,9 +35,10 @@ PROPERTIES
 )
 
 INSTALL(TARGETS rtabmap_utilite
-        RUNTIME DESTINATION bin COMPONENT runtime
-        LIBRARY DESTINATION lib COMPONENT devel
-        ARCHIVE DESTINATION lib COMPONENT devel)
+		EXPORT RTABMapTargets
+        RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT runtime
+        LIBRARY DESTINATION "${INSTALL_LIB_DIR}" COMPONENT devel
+        ARCHIVE DESTINATION "${INSTALL_LIB_DIR}" COMPONENT devel)
 		
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../include/ DESTINATION include/ COMPONENT devel FILES_MATCHING PATTERN "*.h" PATTERN ".svn" EXCLUDE)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../include/ DESTINATION "${INSTALL_INCLUDE_DIR}" COMPONENT devel FILES_MATCHING PATTERN "*.h" PATTERN ".svn" EXCLUDE)
 

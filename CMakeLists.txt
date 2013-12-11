@@ -5,7 +5,7 @@ IF(APPLE OR WIN32)
 ELSE()
   cmake_minimum_required(VERSION 2.8.0)
 ENDIF()
-PROJECT( RTAB-Map )
+PROJECT( RTABMap )
 SET(PROJECT_PREFIX rtabmap)
 
 ####### local cmake modules #######
@@ -14,13 +14,17 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 #######################
 # VERSION
 #######################
-SET(PROJECT_VERSION "0.5.0")
+SET(RTABMAP_MAJOR_VERSION 0)
+SET(RTABMAP_MINOR_VERSION 6)
+SET(RTABMAP_PATCH_VERSION 1)
+SET(RTABMAP_VERSION
+  ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}.${RTABMAP_PATCH_VERSION})
+  
+SET(PROJECT_VERSION "${RTABMAP_VERSION}")
 
-STRING(REGEX MATCHALL "[0-9]" PROJECT_VERSION_PARTS "${PROJECT_VERSION}")
-
-LIST(GET PROJECT_VERSION_PARTS 0 PROJECT_VERSION_MAJOR)
-LIST(GET PROJECT_VERSION_PARTS 1 PROJECT_VERSION_MINOR)
-LIST(GET PROJECT_VERSION_PARTS 2 PROJECT_VERSION_PATCH)
+SET(PROJECT_VERSION_MAJOR ${RTABMAP_MAJOR_VERSION})
+SET(PROJECT_VERSION_MINOR ${RTABMAP_MINOR_VERSION})
+SET(PROJECT_VERSION_PATCH ${RTABMAP_PATCH_VERSION})
 
 SET(PROJECT_SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
 
@@ -36,10 +40,11 @@ ENDIF(${CMAKE_GENERATOR} MATCHES ".*Makefiles")
 
 SET(CMAKE_DEBUG_POSTFIX "d")
 
-ADD_DEFINITIONS( "-Wall" )
 IF(WIN32 AND NOT MINGW)
-    ADD_DEFINITIONS("-wd4100 -wd4512 -wd4548 -wd4619 -wd4625 -wd4626 -wd4668 -wd4710 -wd4820")
+  	ADD_DEFINITIONS("-DNOMINMAX")
+    ADD_DEFINITIONS("-wd4100 -wd4127 -wd4191 -wd4242 -wd4244 -wd4251 -wd4305 -wd4365 -wd4512 -wd4514 -wd4548 -wd4571 -wd4619 -wd4625 -wd4626 -wd4628 -wd4668 -wd4710 -wd4711 -wd4738 -wd4820 -wd4946 -wd4986")
 ELSE ()
+	ADD_DEFINITIONS( "-Wall" )
 	ADD_DEFINITIONS("-Wno-unknown-pragmas")
 ENDIF()
 
@@ -110,18 +115,49 @@ SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
+####### INSTALL DIR #######
+# Offer the user the choice of overriding the installation directories
+set(INSTALL_LIB_DIR lib/${PROJECT_PREFIX}-${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION} CACHE PATH "Installation directory for libraries")
+set(INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
+set(INSTALL_INCLUDE_DIR include/${PROJECT_PREFIX}-${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION} CACHE PATH
+  "Installation directory for header files")
+if(WIN32 AND NOT CYGWIN)
+  set(DEF_INSTALL_CMAKE_DIR CMake)
+else()
+  set(DEF_INSTALL_CMAKE_DIR lib/${PROJECT_PREFIX}-${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION})
+endif()
+set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
+  "Installation directory for CMake files")
+  
+######## for RTABMapConfig.cmake #########
+# Make relative paths absolute (needed later on)
+foreach(p LIB BIN INCLUDE CMAKE)
+  set(var INSTALL_${p}_DIR)
+  if(NOT IS_ABSOLUTE "${${var}}")
+    set(${var} "${CMAKE_INSTALL_PREFIX}/${${var}}")
+  endif()
+endforeach()
+
 ####### BUILD OPTIONS #######
 OPTION(BUILD_LIBS_ONLY "Set to ON to build only the libraries" OFF)
 IF(APPLE)
 	OPTION(BUILD_AS_BUNDLE "Set to ON to build as bundle (DragNDrop)" OFF)
 ENDIF(APPLE)
+OPTION(DEMO_BUILD "Set to ON to build DEMO version" OFF)
 
 ####### DEPENDENCIES #######
 FIND_PACKAGE(OpenCV REQUIRED)
 FIND_PACKAGE(Sqlite3 REQUIRED)
+FIND_PACKAGE(PCL 1.7 REQUIRED)
+FIND_PACKAGE(VTK REQUIRED)
+FIND_PACKAGE(ZLIB REQUIRED)
 
 # If Qt is here, the GUI will be built
 FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg) 
+
+IF(DEMO_BUILD)
+	ADD_DEFINITIONS(-DDEMO_BUILD)
+ENDIF(DEMO_BUILD)
 
 ####### OSX BUNDLE CMAKE_INSTALL_PREFIX #######
 IF(APPLE AND BUILD_AS_BUNDLE)
@@ -193,6 +229,47 @@ CONFIGURE_FILE(
 ADD_CUSTOM_TARGET(uninstall
   "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
 
+####
+# Setup RTABMapConfig.cmake
+####
+# Add all targets to the build-tree export set
+IF(BUILD_LIBS_ONLY)
+  export(TARGETS rtabmap_core rtabmap_gui rtabmap_utilite
+         FILE "${PROJECT_BINARY_DIR}/RTABMapTargets.cmake")
+ELSE()
+  export(TARGETS rtabmap rtabmap_core rtabmap_gui rtabmap_utilite
+         FILE "${PROJECT_BINARY_DIR}/RTABMapTargets.cmake")
+ENDIF()
+
+# Export the package for use from the build-tree
+# (this registers the build-tree with a global CMake-registry)
+export(PACKAGE RTABMap)
+
+# Create the RTABMapConfig.cmake and RTABMapConfigVersion files
+file(RELATIVE_PATH REL_INCLUDE_DIR "${INSTALL_CMAKE_DIR}"
+   "${INSTALL_INCLUDE_DIR}")
+# ... for the build tree
+set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
+configure_file(RTABMapConfig.cmake.in
+  "${PROJECT_BINARY_DIR}/RTABMapConfig.cmake" @ONLY)
+# ... for the install tree
+set(CONF_INCLUDE_DIRS "\${RTABMap_CMAKE_DIR}/${REL_INCLUDE_DIR}")
+configure_file(RTABMapConfig.cmake.in
+  "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/RTABMapConfig.cmake" @ONLY)
+# ... for both
+configure_file(RTABMapConfigVersion.cmake.in
+  "${PROJECT_BINARY_DIR}/RTABMapConfigVersion.cmake" @ONLY)
+
+# Install the RTABMapConfig.cmake and RTABMapConfigVersion.cmake
+install(FILES
+  "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/RTABMapConfig.cmake"
+  "${PROJECT_BINARY_DIR}/RTABMapConfigVersion.cmake"
+  DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT devel)
+
+# Install the export set for use with the install-tree
+install(EXPORT RTABMapTargets DESTINATION
+  "${INSTALL_CMAKE_DIR}" COMPONENT devel)
+####
 
 #######################
 # CPACK (Packaging)
@@ -222,17 +299,6 @@ set(CPACK_SOURCE_IGNORE_FILES
   "${PROJECT_SOURCE_DIR}/bin/.*[eE]xample"
   "\\\\.DS_Store"
 )
-
-# Share files
-INSTALL(FILES 
- ${PROJECT_SOURCE_DIR}/Matlab/ShowLogs/showlogs.m 
- ${PROJECT_SOURCE_DIR}/Matlab/ShowLogs/getPrecisionRecall.m 
- ${PROJECT_SOURCE_DIR}/Matlab/ShowLogs/importfile.m 
- DESTINATION share/${PROJECT_PREFIX} 
- COMPONENT runtime)
- 
-INSTALL(FILES ${PROJECT_SOURCE_DIR}/cmake_modules/FindRTABMap.cmake DESTINATION share/${PROJECT_PREFIX} COMPONENT devel)
-
 
 IF(WIN32)
   SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING.txt")
@@ -301,4 +367,5 @@ MESSAGE(STATUS "  BUILD_LIBS_ONLY = ${BUILD_LIBS_ONLY}")
 IF(APPLE)
 MESSAGE(STATUS "  BUILD_AS_BUNDLE = ${BUILD_AS_BUNDLE}")
 ENDIF(APPLE)
+MESSAGE(STATUS "  DEMO_BUILD = ${DEMO_BUILD}")
 MESSAGE(STATUS "--------------------------------------------")

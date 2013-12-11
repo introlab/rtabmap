@@ -28,6 +28,12 @@ int main(int argc, char * argv[])
 
 	QApplication * app = new QApplication(argc, argv);
 	DatabaseViewer * mainWindow = new DatabaseViewer();
+
+	if(argc == 2)
+	{
+		mainWindow->openDatabase(argv[1]);
+	}
+
 	mainWindow->showNormal();
 
 	// Now wait for application to finish

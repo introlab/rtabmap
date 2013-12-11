@@ -20,12 +20,14 @@
 #ifndef PREFERENCESDIALOG_H_
 #define PREFERENCESDIALOG_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
 #include <QtGui/QDialog>
 #include <QtCore/QModelIndex>
+#include <QtCore/QVector>
 #include <set>
 
+#include "rtabmap/core/Transform.h"
 #include "rtabmap/core/Parameters.h"
 
 class Ui_preferencesDialog;
@@ -40,22 +42,30 @@ class QLineEdit;
 class QSlider;
 class QProgressDialog;
 class UPlotCurve;
+class QStackedWidget;
+class QCheckBox;
+class QSpinBox;
+class QDoubleSpinBox;
 
 namespace rtabmap {
 
-class RTABMAP_EXP PreferencesDialog : public QDialog
+class CameraOpenni;
+class OdometryThread;
+class Signature;
+class LoopClosureViewer;
+
+class RTABMAPGUI_EXP PreferencesDialog : public QDialog
 {
 	Q_OBJECT
 
 public:
 	enum PanelFlag {
 		kPanelDummy = 0,
-		kPanelGeneralStrategy = 1,
-		kPanelGeneral = 2,
-		kPanelFourier = 4,
-		kPanelSurf = 8,
-		kPanelSource = 16,
-		kPanelAll = 31
+		kPanelGeneral = 1,
+		kPanelCloudRendering = 2,
+		kPanelLogging = 4,
+		kPanelSource = 8,
+		kPanelAll = 15
 	};
 	// TODO, tried to change the name of PANEL_FLAGS to PanelFlags... but signals/slots errors appeared...
 	Q_DECLARE_FLAGS(PANEL_FLAGS, PanelFlag);
@@ -67,11 +77,17 @@ public:
 		kSrcVideo
 	};
 
+	enum OdomTest {
+		kOdomBIN,
+		kOdomBOW,
+		kOdomICP
+	};
+
 public:
 	PreferencesDialog(QWidget * parent = 0);
 	virtual ~PreferencesDialog();
 
-	virtual QString getIniFilePath();
+	virtual QString getIniFilePath() const;
 	void init();
 
 	void saveWindowGeometry(const QString & windowName, const QWidget * window);
@@ -96,12 +112,28 @@ public:
 	bool imageHighestHypShown() const;
 	bool beepOnPause() const;
 	int getKeypointsOpacity() const;
-	QString getWorkingDirectory();
+
+	bool isCloudMeshing(int index) const;     // 0=map
+	bool isCloudsShown(int index) const;      // 0=map, 1=odom, 2=save
+	double getCloudVoxelSize(int index) const; // 0=map, 1=odom, 2=save
+	int getCloudDecimation(int index) const;   // 0=map, 1=odom, 2=save
+	double getCloudMaxDepth(int index) const;  // 0=map, 1=odom, 2=save
+	double getCloudOpacity(int index) const;   // 0=map, 1=odom, 2=save
+	int getCloudPointSize(int index) const;    // 0=map, 1=odom, 2=save
+
+	bool isScansShown(int index) const;       // 0=map, 1=odom, 2=save
+	double getScanOpacity(int index) const;    // 0=map, 1=odom, 2=save
+	int getScanPointSize(int index) const;     // 0=map, 1=odom, 2=save
+
+	QString getWorkingDirectory() const;
 
 	// source panel
 	double getGeneralInputRate() const;
 	bool isSourceImageUsed() const;
 	bool isSourceDatabaseUsed() const;
+	bool isSourceOpenniUsed() const;
+	bool isSourceOpenniOdometryBIN() const;
+	bool isSourceOpenniOdometryBOW() const;
 	bool getGeneralAutoRestart() const;
 	bool getGeneralCameraKeypoints() const;
 	int getSourceImageType() const;
@@ -117,13 +149,18 @@ public:
 	QString getSourceVideoPath() const;	//Video group
 	int getSourceUsbDeviceId() const;		//UsbDevice group
 	QString getSourceDatabasePath() const; //Database group
+	bool getSourceDatabaseOdometryIgnored() const; //Database group
 	int getSourceDatabaseStartPos() const; //Database group
+	QString getSourceOpenniDevice() const;            //Openni group
+	Transform getSourceOpenniLocalTransform() const;    //Openni group
 
 	int getIgnoredDCComponents() const;
 
 	//
 	bool isImagesKept() const;
 	float getTimeLimit() const;
+	float getDetectionRate() const;
+	bool isSLAMMode() const;
 
 	//specific
 	bool isStatisticsPublished() const;
@@ -132,7 +169,7 @@ public:
 	double getExpThr() const;
 
 	//
-	void disableGeneralCameraKeypoints();
+	void setMonitoringState(bool monitoringState) {_monitoringState = monitoringState;}
 
 signals:
 	void settingsChanged(PreferencesDialog::PANEL_FLAGS);
@@ -140,11 +177,14 @@ signals:
 
 public slots:
 	void setInputRate(double value);
+	void setDetectionRate(double value);
 	void setHardThr(int value);
 	void setAutoRestart(bool value);
 	void setTimeLimit(float value);
+	void setSLAMMode(bool enabled);
 	void selectSourceImage(Src src = kSrcUndef);
 	void selectSourceDatabase(bool user = false);
+	void selectSourceOpenni(bool user = false);
 
 private slots:
 	void closeDialog ( QAbstractButton * button );
@@ -153,22 +193,29 @@ private slots:
 	void loadConfigFrom();
 	void saveConfigTo();
 	void makeObsoleteGeneralPanel();
+	void makeObsoleteCloudRenderingPanel();
+	void makeObsoleteLoggingPanel();
 	void makeObsoleteSourcePanel();
 	void clicked(const QModelIndex &index);
 	void addParameter(int value);
+	void addParameter(bool value);
 	void addParameter(double value);
 	void addParameter(const QString & value);
 	void updatePredictionPlot();
 	void updateKpROI();
+	void changeDatabasePath();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();
 	void openDatabaseViewer();
+	void cleanOdometryTest();
+	void testSourceOdometry();
 
 protected:
 	virtual void showEvent ( QShowEvent * event );
+	virtual void closeEvent(QCloseEvent *event);
 
 	void setParameter(const std::string & key, const std::string & value);
 
@@ -189,12 +236,17 @@ private:
 	void setupSignals();
 	void setupKpRoiPanel();
 	bool parseModel(QList<QGroupBox*> & boxes, QStandardItem * parentItem, int currentLevel, int & absoluteIndex);
+	void resetSettings(QGroupBox * groupBox);
 	void addParameter(const QObject * object, int value);
+	void addParameter(const QObject * object, bool value);
 	void addParameter(const QObject * object, double value);
 	void addParameter(const QObject * object, const QString & value);
+	void addParameters(const QObjectList & children);
+	void addParameters(const QStackedWidget * stackedWidget);
 	void addParameters(const QGroupBox * box);
 	QList<QGroupBox*> getGroupBoxes();
 	void readSettingsBegin();
+	void testOdometry(OdomTest test);
 
 protected:
 	rtabmap::ParametersMap _parameters;
@@ -204,8 +256,24 @@ private:
 	Ui_preferencesDialog * _ui;
 	QStandardItemModel * _indexModel;
 	bool _initialized;
+	bool _monitoringState;
 
 	QProgressDialog * _progressDialog;
+
+	//Odometry test
+	CameraOpenni * _odomCamera;
+	OdometryThread * _odomThread;
+
+	QVector<QCheckBox*> _3dRenderingShowClouds;
+	QVector<QDoubleSpinBox*> _3dRenderingVoxelSize;
+	QVector<QSpinBox*> _3dRenderingDecimation;
+	QVector<QDoubleSpinBox*> _3dRenderingMaxDepth;
+	QVector<QDoubleSpinBox*> _3dRenderingOpacity;
+	QVector<QSpinBox*> _3dRenderingPtSize;
+	QVector<QCheckBox*> _3dRenderingShowScans;
+	QVector<QDoubleSpinBox*> _3dRenderingOpacityScan;
+	QVector<QSpinBox*> _3dRenderingPtSizeScan;
+	QVector<QCheckBox*> _3dRenderingMeshing;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(PreferencesDialog::PANEL_FLAGS)

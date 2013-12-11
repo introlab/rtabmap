@@ -30,6 +30,10 @@
 
 namespace rtabmap {
 
+
+void RTABMAP_EXP limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints);
+void RTABMAP_EXP limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints);
+
 /////////////////////
 // KeypointDescriptor
 /////////////////////
@@ -92,19 +96,21 @@ public:
 	enum DetectorType {kDetectorSurf, kDetectorSift, kDetectorUndef};
 
 public:
+	static cv::Rect computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios);
+
+public:
 	virtual ~KeypointDetector() {}
-	std::vector<cv::KeyPoint> generateKeypoints(const cv::Mat & image);
+	std::vector<cv::KeyPoint> generateKeypoints(
+			const cv::Mat & image,
+			int maxKeypoints = 0,
+			const cv::Rect & roi = cv::Rect());
 	virtual void parseParameters(const ParametersMap & parameters);
-	unsigned int getWordsPerImageTarget() const {return _wordsPerImageTarget;}
 	void setRoi(const std::string & roi);
-	cv::Rect computeRoi(const cv::Mat & image) const;
+
 protected:
 	KeypointDetector(const ParametersMap & parameters = ParametersMap());
 private:
 	virtual std::vector<cv::KeyPoint> _generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const = 0;
-private:
-	unsigned int _wordsPerImageTarget;
-	std::vector<float> _roiRatios; // size 4
 };
 
 //SURFDetector

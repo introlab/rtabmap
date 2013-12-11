@@ -1,0 +1,16 @@
+# - Config file for the RTABMap package
+# It defines the following variables
+#  RTABMap_INCLUDE_DIRS - include directories for RTABMap
+#  RTABMap_LIBRARIES    - libraries to link against
+#  RTABMap_EXECUTABLE   - the bar executable
+
+# Compute paths
+get_filename_component(RTABMap_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+set(RTABMap_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
+
+# Our library dependencies (contains definitions for IMPORTED targets)
+include("${RTABMap_CMAKE_DIR}/RTABMapTargets.cmake")
+
+# These are IMPORTED targets created by RTABMapTargets.cmake
+set(RTABMap_LIBRARIES rtabmap_core rtabmap_gui rtabmap_utilite)
+set(RTABMap_EXECUTABLE rtabmap)
