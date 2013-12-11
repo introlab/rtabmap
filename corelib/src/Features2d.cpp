@@ -430,7 +430,6 @@ std::vector<cv::KeyPoint> SURFDetector::_generateKeypoints(const cv::Mat & image
 	cv::SURF detector(_hessianThreshold, _nOctaves, _nOctaveLayers, _extended, _upright);
 	ULOGGER_DEBUG("");
 #if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
-	cv::imwrite("test.png", imgRoi);
 	detector.detect(imgRoi, keypoints);
 #else
 	detector(imgRoi, cv::Mat(), keypoints);
