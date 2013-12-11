@@ -297,6 +297,7 @@ set(CPACK_SOURCE_IGNORE_FILES
   "${PROJECT_SOURCE_DIR}/bin/.*${PROJECT_NAME}"
   "${PROJECT_SOURCE_DIR}/bin/.*[tT]est"
   "${PROJECT_SOURCE_DIR}/bin/.*[eE]xample"
+  "${PROJECT_SOURCE_DIR}/bin/.*uresourcegenerator"
   "\\\\.DS_Store"
 )
 
@@ -338,19 +339,8 @@ ELSEIF(APPLE)
 
 ELSE()
   SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING.txt")
-  SET(CPACK_GENERATOR "DEB;TBZ2")
-  SET(CPACK_SOURCE_GENERATOR "ZIP;TBZ2")
-  
-  # Extern : UtiLite (>= 0.2) http://code.google.com/p/utilite/, OpenCV (>= 2.2) http://opencv.willowgarage.com/wiki/
-  # ex. SET(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6 (>= 2.3.1-6), libgcc1 (>= 1:3.4.2-12)")
-  # have a look at GET_PROPERTY(result GLOBAL ENABLED_FEATURES), this returns the successful FIND_PACKAGE() calls, maybe this can help 
-  SET(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6 (>= 2.4), libstdc++6 (>= 4.4), libgcc1 (>= 4.0), libsqlite3-0 (>= 3.6)") # Most have
-  SET(CPACK_DEBIAN_PACKAGE_RECOMMENDS "libqt4-dev (>= 4.6)") #Qt
-  SET(CPACK_DEBIAN_PACKAGE_SUGGESTS "")
-  
-  SET(CPACK_DEBIAN_PACKAGE_SECTION "devel")
-  SET(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
-  
+  SET(CPACK_GENERATOR "TBZ2")
+  SET(CPACK_SOURCE_GENERATOR "TBZ2")
 ENDIF()
 
 INCLUDE(CPack)
