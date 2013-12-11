@@ -67,7 +67,7 @@ inline std::vector<K> uKeys(const std::multimap<K, V> & mm)
 {
 	std::vector<K> v(mm.size());
 	int i=0;
-	for(typename std::map<K, V>::const_iterator iter = mm.begin(); iter!=mm.end(); ++iter)
+	for(typename std::multimap<K, V>::const_iterator iter = mm.begin(); iter!=mm.end(); ++iter)
 	{
 		v[i++] = iter->first;
 	}
@@ -83,7 +83,7 @@ template<class K, class V>
 inline std::list<K> uKeysList(const std::multimap<K, V> & mm)
 {
 	std::list<K> l;
-	for(typename std::map<K, V>::const_iterator iter = mm.begin(); iter!=mm.end(); ++iter)
+	for(typename std::multimap<K, V>::const_iterator iter = mm.begin(); iter!=mm.end(); ++iter)
 	{
 		l.push_back(iter->first);
 	}
@@ -100,7 +100,7 @@ inline std::vector<V> uValues(const std::multimap<K, V> & mm)
 {
 	std::vector<V> v(mm.size());
 	int i=0;
-	for(typename std::map<K, V>::const_iterator iter = mm.begin(); iter!=mm.end(); ++iter)
+	for(typename std::multimap<K, V>::const_iterator iter = mm.begin(); iter!=mm.end(); ++iter)
 	{
 		v[i++] = iter->second;
 	}
@@ -116,7 +116,7 @@ template<class K, class V>
 inline std::list<V> uValuesList(const std::multimap<K, V> & mm)
 {
 	std::list<V> l;
-	for(typename std::map<K, V>::const_iterator iter = mm.begin(); iter!=mm.end(); ++iter)
+	for(typename std::multimap<K, V>::const_iterator iter = mm.begin(); iter!=mm.end(); ++iter)
 	{
 		l.push_back(iter->second);
 	}

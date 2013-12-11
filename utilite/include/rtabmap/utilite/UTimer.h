@@ -20,7 +20,7 @@
 #ifndef UTIMER_H
 #define UTIMER_H
 
-#include "UtiLiteExp.h" // DLL export/import defines
+#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
 
 #ifdef WIN32
 #include <windows.h>

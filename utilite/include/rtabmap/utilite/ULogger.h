@@ -456,6 +456,7 @@ private:
      * @param arg the variable arguments
      */
     virtual void _write(const char* msg, va_list arg) {} // Do nothing by default
+    virtual void _writeStr(const char* msg) {} // Do nothing by default
 
 private:
     /*

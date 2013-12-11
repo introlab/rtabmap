@@ -24,7 +24,7 @@
  * Used mainly on Windows for dynamic linked libraries (dll).
  */
 #if defined(_WIN32)
-  #if defined(utilite_EXPORTS) || defined(utilite_qt_EXPORTS) || defined(utilite_audio_EXPORTS) || defined(utilite_cv_EXPORTS) || defined(utilite_cvqt_EXPORTS)
+  #if defined(rtabmap_utilite_EXPORTS)
     #define UTILITE_EXP   __declspec( dllexport )
   #else
     #define UTILITE_EXP   __declspec( dllimport )
@@ -43,5 +43,4 @@
 #endif
 
 #endif
-
 

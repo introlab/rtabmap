@@ -17,18 +17,17 @@
  * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef QTIPL_H
-#define QTIPL_H
+#ifndef RTABMAPGUIEXP_H
+#define RTABMAPGUIEXP_H
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
-#include <QtGui/QImage>
-#include <opencv2/core/core.hpp>
-
-namespace rtabmap {
-
-QImage RTABMAP_EXP Ipl2QImage(const IplImage *newImage, int alpha = 255);
-
-}
-
+#if defined(_WIN32)
+  #if defined(rtabmap_gui_EXPORTS)
+    #define RTABMAPGUI_EXP   __declspec( dllexport )
+  #else
+    #define RTABMAPGUI_EXP   __declspec( dllimport )
+  #endif
+#else
+  #define RTABMAPGUI_EXP
 #endif
+
+#endif // RTABMAPGUIEXP_H
