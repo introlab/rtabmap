@@ -202,7 +202,7 @@ void ImageView::updateZoom()
 	{
 		scaleRatio = this->geometry().width()/this->sceneRect().width();
 	}
-	_minZoom = log(scaleRatio)/log(2)*50+250;
+	_minZoom = log(scaleRatio)/log(2.0)*50+250;
 }
 
 void ImageView::wheelEvent(QWheelEvent * e)

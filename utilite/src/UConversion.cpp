@@ -258,18 +258,14 @@ std::string uFormatv (const char *fmt, va_list args)
     va_list argsTmp;
 
     while (1) {
-    	va_copy(argsTmp, args);
+#if defined(WIN32) && !defined(__MINGW32__)
+	argsTmp = args;
+#else
+	va_copy(argsTmp, args);
+#endif
 
         // Try to vsnprintf into our buffer.
-    	int needed;
-    	if(argsTmp != 0)
-    	{
-        	needed = vsnprintf (buf, size, fmt, argsTmp);
-    	}
-    	else
-    	{
-    		needed = snprintf (buf, size, "%s", fmt);
-    	}
+    	int needed = vsnprintf (buf, size, fmt, argsTmp);
     	va_end(argsTmp);
         // NB. C99 (which modern Linux and OS X follow) says vsnprintf
         // failure returns the length it would have needed.  But older

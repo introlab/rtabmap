@@ -20,7 +20,7 @@
 #ifndef DATABASEVIEWER_H_
 #define DATABASEVIEWER_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
 #include <QtGui/QMainWindow>
 #include <QtCore/QByteArray>
@@ -42,7 +42,7 @@ class Memory;
 class ImageView;
 }
 
-class RTABMAP_EXP DatabaseViewer : public QMainWindow
+class RTABMAPGUI_EXP DatabaseViewer : public QMainWindow
 {
 	Q_OBJECT
 

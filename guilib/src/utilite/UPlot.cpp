@@ -17,7 +17,7 @@
 *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "utilite/UPlot.h"
+#include "UPlot.h"
 #include "rtabmap/utilite/ULogger.h"
 
 #include <QtGui/QGraphicsScene>

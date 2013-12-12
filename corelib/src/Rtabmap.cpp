@@ -141,8 +141,8 @@ void Rtabmap::setupLogFiles(bool overwrite)
 		bool addLogIHeader = overwrite || !UFile::exists(_wDir+LOG_I);
 
 	#ifdef _MSC_VER
-		fopen_s(&_foutFloat, (_wDir+LOG_F).toStdString().c_str(), attributes.c_str());
-		fopen_s(&_foutInt, (_wDir+LOG_I).toStdString().c_str(), attributes.c_str());
+		fopen_s(&_foutFloat, (_wDir+LOG_F).c_str(), attributes.c_str());
+		fopen_s(&_foutInt, (_wDir+LOG_I).c_str(), attributes.c_str());
 	#else
 		_foutFloat = fopen((_wDir+LOG_F).c_str(), attributes.c_str());
 		_foutInt = fopen((_wDir+LOG_I).c_str(), attributes.c_str());

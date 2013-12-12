@@ -50,26 +50,26 @@ public:
 
 	// STATIC STUFF
 	//epipolar geometry
-	static void RTABMAP_EXP findEpipolesFromF(
+	static void findEpipolesFromF(
 			const cv::Mat & fundamentalMatrix,
 			cv::Vec3d & e1,
 			cv::Vec3d & e2);
 
-	static cv::Mat RTABMAP_EXP findPFromF(
+	static cv::Mat findPFromF(
 			const cv::Mat & fundamentalMatrix,
 			const cv::Mat & x1,
 			const cv::Mat & x2);
 
 	// return fundamental matrix
 	// status -> inliers = 1, outliers = 0
-	static cv::Mat RTABMAP_EXP findFFromWords(
+	static cv::Mat findFFromWords(
 			const std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs, // id, kpt1, kpt2
 			std::vector<uchar> & status,
 			double ransacParam1 = 3.0,
 			double ransacParam2 = 0.99);
 
 	// assume a canonical camera (without K)
-	static void RTABMAP_EXP findRTFromP(
+	static void findRTFromP(
 			const cv::Mat & p,
 			cv::Mat & r,
 			cv::Mat & t);
@@ -78,7 +78,7 @@ public:
 	 * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (2,2) (4,4) (6a,6a) (6b,6b)]
 	 * realPairsCount = 5
 	 */
-	static int RTABMAP_EXP findPairs(
+	static int findPairs(
 			const std::multimap<int, cv::KeyPoint> & wordsA,
 			const std::multimap<int, cv::KeyPoint> & wordsB,
 			std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs);
@@ -87,7 +87,7 @@ public:
 	 * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(2,2) (4,4)]
 	 * realPairsCount = 5
 	 */
-	static int RTABMAP_EXP findPairsUnique(
+	static int findPairsUnique(
 			const std::multimap<int, cv::KeyPoint> & wordsA,
 			const std::multimap<int, cv::KeyPoint> & wordsB,
 			std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs);
@@ -96,7 +96,7 @@ public:
 	 * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (1,1b) (2,2) (4,4) (6a,6a) (6a,6b) (6b,6a) (6b,6b)]
 	 * realPairsCount = 5
 	 */
-	static int RTABMAP_EXP findPairsAll(
+	static int findPairsAll(
 			const std::multimap<int, cv::KeyPoint> & wordsA,
 			const std::multimap<int, cv::KeyPoint> & wordsB,
 			std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs);

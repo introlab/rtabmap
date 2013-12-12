@@ -20,7 +20,7 @@
 #ifndef MAINWINDOW_H_
 #define MAINWINDOW_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
 #include "rtabmap/utilite/UEventsHandler.h"
 #include <QtGui/QMainWindow>
@@ -55,7 +55,7 @@ class StatsToolBox;
 class DetailedProgressDialog;
 class TwistGridWidget;
 
-class RTABMAP_EXP MainWindow : public QMainWindow, public UEventsHandler
+class RTABMAPGUI_EXP MainWindow : public QMainWindow, public UEventsHandler
 {
 	Q_OBJECT
 

@@ -20,7 +20,7 @@
 #ifndef KEYPOINTITEM_H_
 #define KEYPOINTITEM_H_
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
 #include <QtGui/QGraphicsEllipseItem>
 #include <QtGui/QGraphicsTextItem>
@@ -29,7 +29,7 @@
 
 namespace rtabmap {
 
-class RTABMAP_EXP KeypointItem : public QGraphicsEllipseItem
+class RTABMAPGUI_EXP KeypointItem : public QGraphicsEllipseItem
 {
 public:
 	KeypointItem(qreal x, qreal y, int r, const QString & info, const QColor & color = Qt::green, QGraphicsItem * parent = 0);

@@ -21,10 +21,13 @@ SET(LIBRARIES
 
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
-ADD_EXECUTABLE(epipolar_geometry WIN32 ${SRC_FILES})
+IF(MINGW)
+  ADD_EXECUTABLE(epipolar_geometry WIN32 ${SRC_FILES})
+ELSE()
+  ADD_EXECUTABLE(epipolar_geometry ${SRC_FILES})
+ENDIF()
 TARGET_LINK_LIBRARIES(epipolar_geometry rtabmap_core rtabmap_gui rtabmap_utilite ${LIBRARIES})
 
 SET_TARGET_PROPERTIES( epipolar_geometry 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-epipolar_geometry)
-
 
