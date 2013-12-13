@@ -102,7 +102,7 @@
      <x>0</x>
      <y>0</y>
      <width>809</width>
-     <height>25</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -121,7 +121,6 @@
     <addaction name="actionOpen_working_directory"/>
     <addaction name="actionPrint_loop_closure_IDs_to_console"/>
     <addaction name="separator"/>
-    <addaction name="actionReset_the_memory"/>
     <addaction name="actionDelete_memory"/>
     <addaction name="actionClear_cache"/>
     <addaction name="separator"/>
@@ -687,11 +686,6 @@
    </property>
    <property name="text">
     <string>Stop</string>
-   </property>
-  </action>
-  <action name="actionReset_the_memory">
-   <property name="text">
-    <string>Save/reload the memory</string>
    </property>
   </action>
   <action name="actionApply_settings_to_the_detector">

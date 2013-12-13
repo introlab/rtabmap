@@ -7,7 +7,6 @@
 get_filename_component(RTABMap_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 set(RTABMap_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
 
-# These are IMPORTED targets created by RTABMapTargets.cmake
 find_library(CORE_LIB NAMES rtabmap_core NO_DEFAULT_PATH HINTS "@CONF_LIB_DIR@")
 find_library(GUI_LIB NAMES rtabmap_gui NO_DEFAULT_PATH HINTS "@CONF_LIB_DIR@")
 find_library(UTILITE_LIB NAMES rtabmap_utilite NO_DEFAULT_PATH HINTS "@CONF_LIB_DIR@")

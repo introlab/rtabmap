@@ -138,7 +138,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->menuImage->setEnabled(false);
 	_ui->doubleSpinBox_stats_timeLimit->setEnabled(false);
 	_ui->label_timeLimit->setEnabled(false);
-	_ui->actionReset_the_memory->setVisible(false);
 #endif
 	this->setWindowTitle(title);
 	this->setWindowIconText(tr("RTAB-Map"));
@@ -233,7 +232,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionStart, SIGNAL(triggered()), this, SLOT(startDetection()));
 	connect(_ui->actionPause, SIGNAL(triggered()), this, SLOT(pauseDetection()));
 	connect(_ui->actionStop, SIGNAL(triggered()), this, SLOT(stopDetection()));
-	connect(_ui->actionReset_the_memory, SIGNAL(triggered()), this, SLOT(resetTheMemory()));
 	connect(_ui->actionDump_the_memory, SIGNAL(triggered()), this, SLOT(dumpTheMemory()));
 	connect(_ui->actionDump_the_prediction_matrix, SIGNAL(triggered()), this, SLOT(dumpThePrediction()));
 	connect(_ui->actionClear_cache, SIGNAL(triggered()), this, SLOT(clearTheCache()));
@@ -263,6 +261,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->actionPause->setShortcut(Qt::Key_Space);
 	_ui->actionSave_point_cloud->setEnabled(false);
 	_ui->actionView_high_res_point_cloud->setEnabled(false);
+	_ui->actionSave_mesh_ply_vtk_stl->setEnabled(false);
+	_ui->actionView_point_cloud_as_mesh->setEnabled(false);
 	_ui->actionReset_Odometry->setEnabled(false);
 
 #if defined(Q_WS_MAC) or defined(Q_WS_WIN)
@@ -989,6 +989,8 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & poses, const Tr
 			//enable save cloud action
 			_ui->actionSave_point_cloud->setEnabled(true);
 			_ui->actionView_high_res_point_cloud->setEnabled(true);
+			_ui->actionSave_mesh_ply_vtk_stl->setEnabled(true);
+			_ui->actionView_point_cloud_as_mesh->setEnabled(true);
 		}
 	}
 
@@ -2236,13 +2238,6 @@ void MainWindow::selectOpenni()
 }
 
 
-void MainWindow::resetTheMemory()
-{
-	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdResetMemory));
-	_lastId = 0;
-	_lastIds.clear();
-}
-
 void MainWindow::dumpTheMemory()
 {
 	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdDumpMemory));
@@ -2278,6 +2273,8 @@ void MainWindow::clearTheCache()
 	//disable save cloud action
 	_ui->actionSave_point_cloud->setEnabled(false);
 	_ui->actionView_high_res_point_cloud->setEnabled(false);
+	_ui->actionSave_mesh_ply_vtk_stl->setEnabled(false);
+	_ui->actionView_point_cloud_as_mesh->setEnabled(false);
 	_likelihoodCurve->clear();
 	_rawLikelihoodCurve->clear();
 	_posteriorCurve->clear();
@@ -3122,7 +3119,6 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionPause_on_match->setEnabled(true);
 		_ui->actionPause_on_local_loop_detection->setEnabled(true);
 		_ui->actionPause_when_a_loop_hypothesis_is_rejected->setEnabled(true);
-		_ui->actionReset_the_memory->setEnabled(true);
 		_ui->actionDump_the_memory->setEnabled(true);
 		_ui->actionDump_the_prediction_matrix->setEnabled(true);
 		_ui->actionDelete_memory->setEnabled(true);
@@ -3151,7 +3147,6 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionPause_on_match->setEnabled(true);
 		_ui->actionPause_on_local_loop_detection->setEnabled(true);
 		_ui->actionPause_when_a_loop_hypothesis_is_rejected->setEnabled(true);
-		_ui->actionReset_the_memory->setEnabled(false);
 		_ui->actionDump_the_memory->setEnabled(false);
 		_ui->actionDump_the_prediction_matrix->setEnabled(false);
 		_ui->actionDelete_memory->setEnabled(false);
@@ -3190,7 +3185,6 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionPause->setToolTip(tr("Pause"));
 			_ui->actionPause->setChecked(false);
 			_ui->statusbar->showMessage(tr("Detecting..."));
-			_ui->actionReset_the_memory->setEnabled(false);
 			_ui->actionDump_the_memory->setEnabled(false);
 			_ui->actionDump_the_prediction_matrix->setEnabled(false);
 			_ui->actionDelete_memory->setEnabled(false);
@@ -3221,7 +3215,6 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionPause->setToolTip(tr("Continue (shift-click for step-by-step)"));
 			_ui->actionPause->setChecked(true);
 			_ui->statusbar->showMessage(tr("Paused..."));
-			_ui->actionReset_the_memory->setEnabled(true);
 			_ui->actionDump_the_memory->setEnabled(true);
 			_ui->actionDump_the_prediction_matrix->setEnabled(true);
 			_ui->actionDelete_memory->setEnabled(true);
@@ -3258,7 +3251,6 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionPause_on_local_loop_detection->setEnabled(true);
 		_ui->actionPause_when_a_loop_hypothesis_is_rejected->setEnabled(true);
 		_ui->actionReset_Odometry->setEnabled(true);
-		_ui->actionReset_the_memory->setVisible(false);
 		_ui->actionDump_the_memory->setVisible(false);
 		_ui->actionDump_the_prediction_matrix->setVisible(false);
 		_ui->actionDelete_memory->setEnabled(true);
@@ -3286,7 +3278,6 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionPause_on_local_loop_detection->setEnabled(true);
 		_ui->actionPause_when_a_loop_hypothesis_is_rejected->setEnabled(true);
 		_ui->actionReset_Odometry->setEnabled(true);
-		_ui->actionReset_the_memory->setVisible(false);
 		_ui->actionDump_the_memory->setVisible(false);
 		_ui->actionDump_the_prediction_matrix->setVisible(false);
 		_ui->actionDelete_memory->setEnabled(true);

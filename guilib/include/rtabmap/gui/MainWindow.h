@@ -112,7 +112,6 @@ private slots:
 	void selectStream();
 	void selectDatabase();
 	void selectOpenni();
-	void resetTheMemory();
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void downloadAllClouds();
