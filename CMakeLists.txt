@@ -129,15 +129,6 @@ endif()
 set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
   "Installation directory for CMake files")
   
-######## for RTABMapConfig.cmake #########
-# Make relative paths absolute (needed later on)
-foreach(p LIB BIN INCLUDE CMAKE)
-  set(var INSTALL_${p}_DIR)
-  if(NOT IS_ABSOLUTE "${${var}}")
-    set(${var} "${CMAKE_INSTALL_PREFIX}/${${var}}")
-  endif()
-endforeach()
-
 ####### BUILD OPTIONS #######
 OPTION(BUILD_LIBS_ONLY "Set to ON to build only the libraries" OFF)
 IF(APPLE)
@@ -232,30 +223,28 @@ ADD_CUSTOM_TARGET(uninstall
 ####
 # Setup RTABMapConfig.cmake
 ####
-# Add all targets to the build-tree export set
-IF(BUILD_LIBS_ONLY)
-  export(TARGETS rtabmap_core rtabmap_gui rtabmap_utilite
-         FILE "${PROJECT_BINARY_DIR}/RTABMapTargets.cmake")
-ELSE()
-  export(TARGETS rtabmap rtabmap_core rtabmap_gui rtabmap_utilite
-         FILE "${PROJECT_BINARY_DIR}/RTABMapTargets.cmake")
-ENDIF()
-
 # Export the package for use from the build-tree
 # (this registers the build-tree with a global CMake-registry)
 export(PACKAGE RTABMap)
 
 # Create the RTABMapConfig.cmake and RTABMapConfigVersion files
-file(RELATIVE_PATH REL_INCLUDE_DIR "${INSTALL_CMAKE_DIR}"
-   "${INSTALL_INCLUDE_DIR}")
+file(RELATIVE_PATH REL_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/${INSTALL_CMAKE_DIR}" "${CMAKE_INSTALL_PREFIX}/${INSTALL_INCLUDE_DIR}")
+file(RELATIVE_PATH REL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/${INSTALL_CMAKE_DIR}" "${CMAKE_INSTALL_PREFIX}/${INSTALL_LIB_DIR}")
+   
 # ... for the build tree
-set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
+set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/corelib/include" 
+					  "${PROJECT_SOURCE_DIR}/guilib/include" 
+					  "${PROJECT_SOURCE_DIR}/utilite/include")
+set(CONF_LIB_DIR "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
 configure_file(RTABMapConfig.cmake.in
   "${PROJECT_BINARY_DIR}/RTABMapConfig.cmake" @ONLY)
+  
 # ... for the install tree
 set(CONF_INCLUDE_DIRS "\${RTABMap_CMAKE_DIR}/${REL_INCLUDE_DIR}")
+set(CONF_LIB_DIR "\${RTABMap_CMAKE_DIR}/${REL_LIB_DIR}")
 configure_file(RTABMapConfig.cmake.in
   "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/RTABMapConfig.cmake" @ONLY)
+  
 # ... for both
 configure_file(RTABMapConfigVersion.cmake.in
   "${PROJECT_BINARY_DIR}/RTABMapConfigVersion.cmake" @ONLY)
@@ -265,10 +254,6 @@ install(FILES
   "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/RTABMapConfig.cmake"
   "${PROJECT_BINARY_DIR}/RTABMapConfigVersion.cmake"
   DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT devel)
-
-# Install the export set for use with the install-tree
-install(EXPORT RTABMapTargets DESTINATION
-  "${INSTALL_CMAKE_DIR}" COMPONENT devel)
 ####
 
 #######################

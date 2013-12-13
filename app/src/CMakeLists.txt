@@ -83,7 +83,6 @@ ENDIF()
 # Installation stuff
 #--------------------------- 
 INSTALL(TARGETS rtabmap
-		EXPORT RTABMapTargets
         RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT runtime
         BUNDLE DESTINATION "${CMAKE_BUNDLE_LOCATION}" COMPONENT runtime)
       
