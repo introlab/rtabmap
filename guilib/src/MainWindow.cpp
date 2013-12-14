@@ -831,15 +831,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		UDEBUG("time= %d ms", time.restart());
 
-		if(_ui->imageView_loopClosure->items().size() || stat.loopClosureId()>0)
-		{
-			this->drawKeypoints(stat.refWords(), stat.loopWords());
-		}
-		else
-		{
-			this->drawKeypoints(stat.refWords(), std::multimap<int, cv::KeyPoint>()); //empty loop keypoints...
-		}
-
 		// We use the reference image to resize the 2 views
 		_ui->imageView_source->resetZoom();
 		_ui->imageView_loopClosure->resetZoom();
@@ -850,6 +841,16 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		}
 		_ui->imageView_source->fitInView(_ui->imageView_source->sceneRect(), Qt::KeepAspectRatio);
 		_ui->imageView_loopClosure->fitInView(_ui->imageView_source->sceneRect(), Qt::KeepAspectRatio);
+
+		// do it after scaling
+		if(_ui->imageView_loopClosure->items().size() || stat.loopClosureId()>0)
+		{
+			this->drawKeypoints(stat.refWords(), stat.loopWords());
+		}
+		else
+		{
+			this->drawKeypoints(stat.refWords(), std::multimap<int, cv::KeyPoint>()); //empty loop keypoints...
+		}
 
 		if(_preferencesDialog->isImageFlipped())
 		{
@@ -1543,13 +1544,16 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	}
 
 	// Draw lines between corresponding features...
-	int deltaX = _ui->imageView_source->sceneRect().width();
+	float scaleX = _ui->imageView_source->transform().m11();
+	float scaleY = _ui->imageView_source->transform().m22();
+	UDEBUG("scaleX=%f scaleY=%f", scaleX, scaleY);
+	int deltaX = _ui->imageView_source->width()/scaleX;
 	int deltaY = 0;
 	if(_preferencesDialog->isVerticalLayoutUsed())
 	{
 		deltaX = 0;
-		deltaY = _ui->imageView_source->sceneRect().height();
-		deltaY += _ui->label_matchId->height()/_ui->imageView_source->transform().m22();
+		deltaY = _ui->imageView_source->height()/scaleY;
+		deltaY += _ui->label_matchId->height()/scaleY;
 	}
 	for(QList<QPair<KeypointItem*, KeypointItem*> >::iterator iter = uniqueCorrespondences.begin();
 		iter!=uniqueCorrespondences.end();
@@ -2147,7 +2151,7 @@ void MainWindow::generateLocalMap()
 void MainWindow::deleteMemory()
 {
 	QMessageBox::StandardButton button;
-	QString dbPath = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "rtabmap.db";
+	QString dbPath = _preferencesDialog->getDatabasePath();
 	if(_state == kMonitoring || _state == kMonitoringPaused)
 	{
 		button = QMessageBox::question(this,
@@ -2170,7 +2174,7 @@ void MainWindow::deleteMemory()
 		return;
 	}
 
-	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdDeleteMemory));
+	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdDeleteMemory, dbPath.toStdString()));
 	this->clearTheCache();
 }
 

@@ -49,6 +49,8 @@
 #include <rtabmap/utilite/UEventsManager.h>
 #include "utilite/UPlot.h"
 
+#include <opencv2/gpu/gpu.hpp>
+
 using namespace rtabmap;
 
 namespace rtabmap {
@@ -115,6 +117,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->label_space2->setEnabled(false);
 	_ui->label_space3->setEnabled(false);
 	_ui->loopClosure_icpType->setEnabled(false);
+	_ui->surf_checkBox_gpuVersion->setEnabled(false);
+	_ui->label_surf_checkBox_gpuVersion->setEnabled(false);
+#else
+	if(cv::gpu::getCudaEnabledDeviceCount() == 0)
+	{
+		_ui->surf_checkBox_gpuVersion->setEnabled(false);
+		_ui->label_surf_checkBox_gpuVersion->setEnabled(false);
+	}
 #endif
 	_ui->predictionPlot->showLegend(false);
 
@@ -822,6 +832,11 @@ void PreferencesDialog::resetSettings(int panelNumber)
 QString PreferencesDialog::getWorkingDirectory() const
 {
 	return _ui->lineEdit_workingDirectory->text();
+}
+
+QString PreferencesDialog::getDatabasePath() const
+{
+	return _ui->lineEdit_databasePath->text();
 }
 
 QString PreferencesDialog::getIniFilePath() const

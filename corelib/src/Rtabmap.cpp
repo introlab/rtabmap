@@ -610,6 +610,7 @@ void Rtabmap::resetMemory(bool dbOverwritten)
 	{
 		// FIXME May be not work with other database type.
 		// May be memory should be already created here, and use init above...
+		UINFO("Erasing file : \"%s\"", getDatabasePath().c_str());
 		UFile::erase(getDatabasePath());
 	}
 	this->setupLogFiles(dbOverwritten);
@@ -1614,9 +1615,11 @@ void Rtabmap::setDatabasePath(const std::string & path)
 		ULOGGER_DEBUG("Comparing new database path \"%s\" with \"%s\"", path.c_str(), _databasePath.c_str());
 		if(path.compare(_databasePath) != 0)
 		{
+			UDEBUG("Set new database path to \"%s\"", _databasePath.c_str());
 			_databasePath = path;
 			if(_memory)
 			{
+				UDEBUG("Reset memory!");
 				this->resetMemory();
 			}
 		}

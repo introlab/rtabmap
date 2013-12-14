@@ -126,6 +126,7 @@ public:
 	int getScanPointSize(int index) const;     // 0=map, 1=odom, 2=save
 
 	QString getWorkingDirectory() const;
+	QString getDatabasePath() const;
 
 	// source panel
 	double getGeneralInputRate() const;

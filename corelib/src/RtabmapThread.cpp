@@ -157,6 +157,10 @@ void RtabmapThread::mainLoop()
 		_rtabmap->generateGraph(parameters.at("path"), atoi(parameters.at("id").c_str()), atoi(parameters.at("margin").c_str()));
 		break;
 	case kStateDeletingMemory:
+		if(!parameters.at("path").empty())
+		{
+			_rtabmap->setDatabasePath(parameters.at("path"));
+		}
 		_rtabmap->resetMemory(true);
 		this->clearBufferedData();
 		break;
@@ -243,7 +247,9 @@ void RtabmapThread::handleEvent(UEvent* event)
 		else if(cmd == RtabmapEventCmd::kCmdDeleteMemory)
 		{
 			ULOGGER_DEBUG("CMD_DELETE_MEMORY");
-			pushNewState(kStateDeletingMemory);
+			ParametersMap param;
+			param.insert(ParametersPair("path", rtabmapEvent->getStr()));
+			pushNewState(kStateDeletingMemory, param);
 		}
 		else if(cmd == RtabmapEventCmd::kCmdCleanDataBuffer)
 		{

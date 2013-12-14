@@ -26,6 +26,7 @@
 #include "rtabmap/utilite/UTimer.h"
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/gpu/gpu.hpp>
+#include <opencv2/nonfree/gpu.hpp>
 #include <opencv2/core/version.hpp>
 #if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
 #include <opencv2/nonfree/features2d.hpp>
@@ -155,18 +156,17 @@ cv::Mat SURFDescriptor::generateDescriptors(const cv::Mat & image, std::vector<c
 	{
 		img =  image;
 	}
-/*#if OPENCV_SURF_GPU
-	if(_gpuVersion)
+	if(_gpuVersion && cv::gpu::getCudaEnabledDeviceCount())
 	{
 		std::vector<float> d;
 		cv::gpu::GpuMat imgGpu(img);
 		cv::gpu::GpuMat descriptorsGpu;
 		cv::gpu::GpuMat keypointsGpu;
-		cv::gpu::SURF_GPU surfGpu(_params.hessianThreshold, _params.nOctaves, _params.nOctaveLayers, _params.extended, 0.01f, _params.upright);
+		cv::gpu::SURF_GPU surfGpu(_hessianThreshold, _nOctaves, _nOctaveLayers, _extended, 0.01f, _upright);
 		surfGpu.uploadKeypoints(keypoints, keypointsGpu);
 		surfGpu(imgGpu, cv::gpu::GpuMat(), keypointsGpu, descriptorsGpu, true);
 		surfGpu.downloadDescriptors(descriptorsGpu, d);
-		unsigned int dim = _params.extended?128:64;
+		unsigned int dim = _extended?128:64;
 		descriptors = cv::Mat(d.size()/dim, dim, CV_32F);
 		for(int i=0; i<descriptors.rows; ++i)
 		{
@@ -176,18 +176,15 @@ cv::Mat SURFDescriptor::generateDescriptors(const cv::Mat & image, std::vector<c
 	}
 	else
 	{
-		cv::SurfDescriptorExtractor extractor(_params.nOctaves, _params.nOctaveLayers, _params.extended, _params.upright);
+		if(_gpuVersion)
+		{
+			UWARN("GPU version of SURF not available! Using CPU version instead...");
+		}
+
+		cv::SURF extractor(_hessianThreshold, _nOctaves, _nOctaveLayers, _extended, _upright);
 		extractor.compute(img, keypoints, descriptors);
 	}
-#else*/
-#if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
-	cv::SURF extractor(_hessianThreshold, _nOctaves, _nOctaveLayers, _extended, _upright);
-	extractor.compute(img, keypoints, descriptors);
-#else
-	cv::SurfDescriptorExtractor extractor(_nOctaves, _nOctaveLayers, _extended, _upright);
-	extractor.compute(img, keypoints, descriptors);
-#endif
-//#endif
+
 	return descriptors;
 }
 
@@ -244,17 +241,10 @@ cv::Mat SIFTDescriptor::generateDescriptors(const cv::Mat & image, std::vector<c
 	{
 		img =  image;
 	}
-#if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
+
 	cv::SIFT extractor(_nfeatures, _nOctaveLayers, _contrastThreshold, _edgeThreshold, _sigma);
 	extractor.compute(img, keypoints, descriptors);
-#else
-	cv::SIFT extractor(cv::SIFT::DescriptorParams::GET_DEFAULT_MAGNIFICATION(),
-			cv::SIFT::DescriptorParams::DEFAULT_IS_NORMALIZE,
-			true,
-			cv::SIFT::CommonParams::DEFAULT_NOCTAVES,
-			_nOctaveLayers);
-	extractor(img, cv::Mat(), keypoints, descriptors, true);
-#endif
+
 	return descriptors;
 }
 
@@ -411,30 +401,25 @@ std::vector<cv::KeyPoint> SURFDetector::_generateKeypoints(const cv::Mat & image
 	}
 
 	cv::Mat imgRoi(img, roi);
-/*#if OPENCV_SURF_GPU
-	if(_gpuVersion )
+	if(_gpuVersion && cv::gpu::getCudaEnabledDeviceCount())
 	{
 		cv::gpu::GpuMat imgGpu(imgRoi);
 		cv::gpu::GpuMat keypointsGpu;
-		cv::gpu::SURF_GPU surfGpu(params.hessianThreshold, params.nOctaves, params.nOctaveLayers, params.extended, 0.01f, params.upright);
+		cv::gpu::SURF_GPU surfGpu(_hessianThreshold, _nOctaves, _nOctaveLayers, _extended, 0.01f, _upright);
 		surfGpu(imgGpu, cv::gpu::GpuMat(), keypointsGpu);
 		surfGpu.downloadKeypoints(keypointsGpu, keypoints);
 	}
 	else
 	{
-		cv::SurfFeatureDetector detector(params.hessianThreshold, params.nOctaves, params.nOctaveLayers, params.upright);
+		if(_gpuVersion)
+		{
+			UWARN("GPU version of SURF not available! Using CPU version instead...");
+		}
+		ULOGGER_DEBUG("%f %d %d %d %d", _hessianThreshold, _nOctaves, _nOctaveLayers, _extended?1:0, _upright?1:0);
+		cv::SURF detector(_hessianThreshold, _nOctaves, _nOctaveLayers, _extended, _upright);
 		detector.detect(imgRoi, keypoints);
 	}
-#else*/
-	ULOGGER_DEBUG("%f %d %d %d %d", _hessianThreshold, _nOctaves, _nOctaveLayers, _extended?1:0, _upright?1:0);
-	cv::SURF detector(_hessianThreshold, _nOctaves, _nOctaveLayers, _extended, _upright);
-	ULOGGER_DEBUG("");
-#if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
-	detector.detect(imgRoi, keypoints);
-#else
-	detector(imgRoi, cv::Mat(), keypoints);
-#endif
-//#endif
+
 	ULOGGER_DEBUG("");
 	return keypoints;
 }
@@ -493,13 +478,8 @@ std::vector<cv::KeyPoint> SIFTDetector::_generateKeypoints(const cv::Mat & image
 	}
 
 	cv::Mat imgRoi(img, roi);
-#if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
 	cv::SIFT detector(_nfeatures, _nOctaveLayers, _contrastThreshold, _edgeThreshold, _sigma);
 	detector.detect(imgRoi, keypoints); // Opencv surf keypoints
-#else
-	cv::SIFT detector(_contrastThreshold, _edgeThreshold, cv::SIFT::CommonParams::DEFAULT_NOCTAVES, _nOctaveLayers);
-	detector(imgRoi, cv::Mat(), keypoints); // Opencv surf keypoints
-#endif
 	return keypoints;
 }
 

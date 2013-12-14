@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>939</width>
-            <height>724</height>
+            <width>955</width>
+            <height>685</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>9</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -3048,7 +3048,7 @@ generate the number of words requested.</string>
                            <item row="5" column="0">
                             <widget class="QCheckBox" name="surf_checkBox_gpuVersion">
                              <property name="enabled">
-                              <bool>false</bool>
+                              <bool>true</bool>
                              </property>
                              <property name="text">
                               <string/>
@@ -3056,12 +3056,12 @@ generate the number of words requested.</string>
                             </widget>
                            </item>
                            <item row="5" column="1">
-                            <widget class="QLabel" name="label_48">
+                            <widget class="QLabel" name="label_surf_checkBox_gpuVersion">
                              <property name="enabled">
-                              <bool>false</bool>
+                              <bool>true</bool>
                              </property>
                              <property name="text">
-                              <string>GPU version (as well for descriptor). Experimental.</string>
+                              <string>GPU version (as well for descriptor).</string>
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
