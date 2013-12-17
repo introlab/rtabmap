@@ -454,7 +454,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 		UTimer timerLocal;
 		timerLocal.start();
 
-		if(!_dataTree.empty())
+		if(!_dataTree.empty() && _dataTree.rows >= (int)k)
 		{
 			//Find nearest neighbors
 			UDEBUG("newPts.total()=%d ", newPts.total());
@@ -469,7 +469,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 			std::map<float, int> fullResults; // Contains results from the kd-tree search and the naive search in new words
 			this->naiveNNSearch(newWords, newPts.ptr<float>(i), _dim, fullResults, k);
 
-			if(!_dataTree.empty())
+			if(!_dataTree.empty() && _dataTree.rows >= (int)k)
 			{
 				for(unsigned int j=0; j<k; ++j)
 				{
@@ -653,7 +653,7 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws, bool 
 			}
 			ULOGGER_DEBUG("Preparation time = %fs", timer.ticks());
 
-			if(!_dataTree.empty())
+			if(!_dataTree.empty() && _dataTree.rows >= (int)k)
 			{
 				_nn->search(newPts, results, dists, k, _maxLeafs);
 			}
@@ -661,7 +661,7 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws, bool 
 
 			std::map<int, int> mapIndexIdNotIndexed;
 			unsigned int unreferencedWordsCount = _visualWords.size() - _mapIndexId.size();
-			if(searchInNewlyAddedWords && unreferencedWordsCount)
+			if(searchInNewlyAddedWords && unreferencedWordsCount && unreferencedWordsCount >= (int)k)
 			{
 				cv::Mat dataNotIndexed = cv::Mat::zeros(unreferencedWordsCount, _dim, CV_32F);
 				unsigned int index = 0;
@@ -697,7 +697,7 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws, bool 
 				for(unsigned int j=0; j<k; ++j)
 				{
 					float dist;
-					if(!_dataTree.empty())
+					if(!_dataTree.empty() && _dataTree.rows >= (int)k)
 					{
 						dist = dists.at<float>(i,j);
 						fullResults.insert(std::pair<float, int>(dist, uValue(_mapIndexId, results.at<int>(i,j))));
@@ -832,7 +832,7 @@ void VWDictionary::naiveNNSearch(const std::list<VisualWord *> & words, const fl
 	const float * dw = 0;
 	bool goodMatch;
 
-	if(!words.size() || k == 0)
+	if(!words.size() || k == 0 || words.size() < k)
 	{
 		return;
 	}
