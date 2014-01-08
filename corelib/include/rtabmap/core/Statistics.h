@@ -104,21 +104,16 @@ public:
 	// setters
 	void setExtended(bool extended) {_extended = extended;}
 	void setRefImageId(int refImageId) {_refImageId = refImageId;}
-	void setRefImageMapId(int refImageMapId) {_refImageMapId = refImageMapId;}
 	void setLoopClosureId(int loopClosureId) {_loopClosureId = loopClosureId;}
-	void setLoopClosureMapId(int loopClosureMapId) {_loopClosureMapId = loopClosureMapId;}
 	void setLocalLoopClosureId(int localLoopClosureId) {_localLoopClosureId = localLoopClosureId;}
-	void setLocalLoopClosureMapId(int localLoopClosureMapId) {_localLoopClosureMapId = localLoopClosureMapId;}
-	void setRefImage(const std::vector<unsigned char> & image) {_refImage = image;}
-	void setLoopImage(const std::vector<unsigned char> & image) {_loopImage = image;}
-	void setRefDepth(const std::vector<unsigned char> & depth) {_refDepth = depth;}
-	void setRefDepth2D(const std::vector<unsigned char> & depth2d) {_refDepth2d = depth2d;}
-	void setLoopDepth(const std::vector<unsigned char> & depth) {_loopDepth = depth;}
-	void setLoopDepth2D(const std::vector<unsigned char> & depth2d) {_loopDepth2d = depth2d;}
-	void setRefDepthConstant(float depthConstant) {_refDepthConstant = depthConstant;}
-	void setLoopDepthConstant(float depthConstant) {_loopDepthConstant = depthConstant;}
-	void setRefLocalTransform(const Transform & localTransform) {_refLocalTransform = localTransform;}
-	void setLoopLocalTransform(const Transform & localTransform) {_loopLocalTransform = localTransform;}
+
+	void setMapIds(const std::map<int, int> & mapIds) {_mapIds = mapIds;}
+	void setImages(const std::map<int, std::vector<unsigned char> > & images) {_images = images;}
+	void setDepths(const std::map<int, std::vector<unsigned char> > & depths) {_depths = depths;}
+	void setDepth2ds(const std::map<int, std::vector<unsigned char> > & depth2ds) {_depth2ds = depth2ds;}
+	void setDepthConstants(const std::map<int, float> & depthConstants) {_depthConstants = depthConstants;}
+	void setLocalTransforms(const std::map<int, Transform> & localTransforms) {_localTransforms = localTransforms;}
+
 	void setPoses(const std::map<int, Transform> & poses) {_poses = poses;}
 	void setCurrentPose(const Transform & pose) {_currentPose = pose;}
 	void setMapCorrection(const Transform & mapCorrection) {_mapCorrection = mapCorrection;}
@@ -133,21 +128,16 @@ public:
 	// getters
 	bool extended() const {return _extended;}
 	int refImageId() const {return _refImageId;}
-	int refImageMapId() const {return _refImageMapId;}
 	int loopClosureId() const {return _loopClosureId;}
-	int loopClosureMapId() const {return _loopClosureMapId;}
 	int localLoopClosureId() const {return _localLoopClosureId;}
-	int localLoopClosureMapId() const {return _localLoopClosureMapId;}
-	const std::vector<unsigned char> & refImage() const {return _refImage;}
-	const std::vector<unsigned char> & loopImage() const {return _loopImage;}
-	const std::vector<unsigned char> & refDepth() const {return _refDepth;}
-	const std::vector<unsigned char> & loopDepth() const {return _loopDepth;}
-	const std::vector<unsigned char> & refDepth2D() const {return _refDepth2d;}
-	const std::vector<unsigned char> & loopDepth2D() const {return _loopDepth2d;}
-	float refDepthConstant() const {return _refDepthConstant;}
-	float loopDepthConstant() const {return _loopDepthConstant;}
-	const Transform & refLocalTransform() const {return _refLocalTransform;}
-	const Transform & loopLocalTransform() const {return _loopLocalTransform;}
+
+	const std::map<int, int> & getMapIds() const {return _mapIds;}
+	const std::map<int, std::vector<unsigned char> > & getImages() const {return _images;}
+	const std::map<int, std::vector<unsigned char> > & getDepths() const {return _depths;}
+	const std::map<int, std::vector<unsigned char> > & getDepth2ds() const {return _depth2ds;}
+	const std::map<int, float> & getDepthConstants() const {return _depthConstants;}
+	const std::map<int, Transform> & getLocalTransforms() const {return _localTransforms;}
+
 	const std::map<int, Transform> & poses() const {return _poses;}
 	const Transform & currentPose() const {return _currentPose;}
 	const Transform & mapCorrection() const {return _mapCorrection;}
@@ -165,25 +155,18 @@ private:
 	bool _extended; // 0 -> only loop closure and last signature ID fields are filled
 
 	int _refImageId;
-	int _refImageMapId;
 	int _loopClosureId;
-	int _loopClosureMapId;
 	int _localLoopClosureId;
-	int _localLoopClosureMapId;
 
 	// extended data start here...
-	std::vector<unsigned char> _refImage;
-	std::vector<unsigned char> _loopImage;
+	std::map<int, int> _mapIds;
+	std::map<int, std::vector<unsigned char> > _images;
 
 	// Metric data
-	std::vector<unsigned char> _refDepth;
-	std::vector<unsigned char> _refDepth2d;
-	std::vector<unsigned char> _loopDepth;
-	std::vector<unsigned char> _loopDepth2d;
-	float _refDepthConstant;
-	float _loopDepthConstant;
-	Transform _refLocalTransform;
-	Transform _loopLocalTransform;
+	std::map<int, std::vector<unsigned char> > _depths;
+	std::map<int, std::vector<unsigned char> > _depth2ds;
+	std::map<int, float> _depthConstants;
+	std::map<int, Transform> _localTransforms;
 
 	std::map<int, Transform> _poses;
 	Transform _currentPose;

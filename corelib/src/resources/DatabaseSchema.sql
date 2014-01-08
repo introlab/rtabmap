@@ -22,12 +22,6 @@ CREATE TABLE Node (
 	PRIMARY KEY (id)
 );
 
-CREATE TABLE MapLink (
-	source_map_id INTEGER NOT NULL,
-	target_map_id INTEGER NOT NULL,
-	transform BLOB
-);
-
 CREATE TABLE Image (
 	id INTEGER NOT NULL,
 	data BLOB,

@@ -34,9 +34,7 @@ Statistics::Statistics() :
 	_extended(0),
 	_refImageId(0),
 	_loopClosureId(0),
-	_localLoopClosureId(0),
-	_refDepthConstant(0),
-	_loopDepthConstant(0)
+	_localLoopClosureId(0)
 {
 	_defaultDataInitialized = true;
 }

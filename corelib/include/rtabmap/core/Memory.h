@@ -86,8 +86,6 @@ public:
 	const std::set<int> & getWorkingMem() const {return _workingMem;}
 	const std::set<int> & getStMem() const {return _stMem;}
 	int getMaxStMemSize() const {return _maxStMemSize;}
-	Transform getMapTransform(int sourceMapId, int targetMapId) const;
-	void removeMapTransform(int soureId, int targetId);
 	void getPose(int locationId,
 			int targetMapId,
 			Transform & pose,
@@ -209,7 +207,6 @@ private:
 	std::map<int, Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
 	std::set<int> _stMem; // id
 	std::set<int> _workingMem; // id,age
-	std::map<int, std::map<int, Transform> > _mapTransforms; // Transform between maps <fromMapId, <toMapId, transform> >
 
 	//Keypoint stuff
 	VWDictionary * _vwd;

@@ -82,7 +82,6 @@ public:
 
 	// Load objects
 	void load(VWDictionary * dictionary) const;
-	void load(std::map<int, std::map<int, Transform> > & mapTransforms) const;
 	void loadLastNodes(std::list<Signature *> & signatures) const;
 	void loadSignatures(const std::list<int> & ids, std::list<Signature *> & signatures);
 	void loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws);
@@ -99,7 +98,6 @@ public:
 	void getLastNodeId(int & id) const;
 	void getLastWordId(int & id) const;
 	void getInvertedIndexNi(int signatureId, int & ni) const;
-	void save(const std::map<int, std::map<int, Transform> > & mapTransforms) const;
 
 protected:
 	DBDriver(const ParametersMap & parameters = ParametersMap());
@@ -118,12 +116,10 @@ private:
 	virtual void saveQuery(const std::list<VisualWord *> & words) const = 0;
 	virtual void updateQuery(const std::list<Signature *> & signatures) const = 0;
 	virtual void updateQuery(const std::list<VisualWord *> & words) const = 0;
-	virtual void saveQuery(const std::map<int, std::map<int, Transform> > & mapTransforms) const = 0;
 
 
 	// Load objects
 	virtual void loadQuery(VWDictionary * dictionary) const = 0;
-	virtual void loadQuery(std::map<int, std::map<int, Transform> > & mapTransforms) const = 0;
 	virtual void loadLastNodesQuery(std::list<Signature *> & signatures) const = 0;
 	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const = 0;
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const = 0;

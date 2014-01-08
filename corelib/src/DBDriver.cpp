@@ -280,13 +280,6 @@ void DBDriver::load(VWDictionary * dictionary) const
 	_dbSafeAccessMutex.unlock();
 }
 
-void DBDriver::load(std::map<int, std::map<int, Transform> > & mapTransforms) const
-{
-	_dbSafeAccessMutex.lock();
-	this->loadQuery(mapTransforms);
-	_dbSafeAccessMutex.unlock();
-}
-
 void DBDriver::loadLastNodes(std::list<Signature *> & signatures) const
 {
 	_dbSafeAccessMutex.lock();
@@ -477,13 +470,6 @@ void DBDriver::getInvertedIndexNi(int signatureId, int & ni) const
 {
 	_dbSafeAccessMutex.lock();
 	this->getInvertedIndexNiQuery(signatureId, ni);
-	_dbSafeAccessMutex.unlock();
-}
-
-void DBDriver::save(const std::map<int, std::map<int, Transform> > & mapTransforms) const
-{
-	_dbSafeAccessMutex.lock();
-	saveQuery(mapTransforms);
 	_dbSafeAccessMutex.unlock();
 }
 

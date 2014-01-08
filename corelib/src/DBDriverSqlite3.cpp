@@ -1178,71 +1178,6 @@ void DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
 	}
 }
 
-void DBDriverSqlite3::loadQuery(std::map<int, std::map<int, Transform> > & mapTransforms) const
-{
-	ULOGGER_DEBUG("");
-	if(_ppDb)
-	{
-		std::string type;
-		UTimer timer;
-		timer.start();
-		int rc = SQLITE_OK;
-		sqlite3_stmt * ppStmt = 0;
-		std::stringstream query;
-
-		query << "SELECT source_map_id, target_map_id, transform "
-				 "FROM MapLink;";
-
-		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-
-		int sourceId;
-		int targetId;
-		int dataSize;
-		const void * data;
-
-		// Process the result if one
-		rc = sqlite3_step(ppStmt);
-		while(rc == SQLITE_ROW)
-		{
-			int index = 0;
-			sourceId = sqlite3_column_int(ppStmt, index++);
-			targetId = sqlite3_column_int(ppStmt, index++);
-			data = sqlite3_column_blob(ppStmt, index);
-			dataSize = sqlite3_column_bytes(ppStmt, index++);
-
-			if(dataSize/int(sizeof(float)) != 12)
-			{
-				UERROR("Transform size (bytes=%d, length=%d) != 12 !?!", dataSize, dataSize/int(sizeof(float)));
-			}
-			else
-			{
-				const float * datafloat = (const float *)data;
-				Transform transform(datafloat[0], datafloat[1], datafloat[2], datafloat[3],
-									datafloat[4], datafloat[5], datafloat[6], datafloat[7],
-									datafloat[8], datafloat[9], datafloat[10], datafloat[11]);
-
-				if(!uContains(mapTransforms, sourceId))
-				{
-					mapTransforms.insert(std::make_pair(sourceId, std::map<int, Transform>()));
-				}
-				UASSERT(!uContains(mapTransforms.at(sourceId), targetId));
-				mapTransforms.at(sourceId).insert(std::make_pair(targetId, transform));
-			}
-
-			rc = sqlite3_step(ppStmt);
-		}
-
-		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-
-		// Finalize (delete) the statement
-		rc = sqlite3_finalize(ppStmt);
-		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
-	}
-}
-
 //may be slower than the previous version but don't have a limit of words that can be loaded at the same time
 void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const
 {
@@ -1785,57 +1720,6 @@ void DBDriverSqlite3::saveQuery(const std::list<VisualWord *> & words) const
 					rc = sqlite3_bind_int(ppStmt, 2, w->getDim());
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 					rc = sqlite3_bind_blob(ppStmt, 3, w->getDescriptor(), w->getDim()*sizeof(float), SQLITE_STATIC);
-					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-
-					//execute query
-					rc=sqlite3_step(ppStmt);
-					UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-
-					rc = sqlite3_reset(ppStmt);
-					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-				}
-			}
-			// Finalize (delete) the statement
-			rc = sqlite3_finalize(ppStmt);
-			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-		}
-
-		UDEBUG("Time=%fs", timer.ticks());
-	}
-}
-
-void DBDriverSqlite3::saveQuery(const std::map<int, std::map<int, Transform> > & mapTransforms) const
-{
-	UDEBUG("mapTransforms size=%d", mapTransforms.size());
-	if(_ppDb)
-	{
-
-		// First delete all transforms
-		this->executeNoResult("DELETE FROM MapLink;");
-
-		std::string type;
-		UTimer timer;
-		timer.start();
-		int rc = SQLITE_OK;
-		sqlite3_stmt * ppStmt = 0;
-		std::string query;
-
-		// Create new entries in table MapLink
-		if(mapTransforms.size()>0)
-		{
-			query = std::string("INSERT INTO MapLink(source_map_id, target_map_id, transform) VALUES(?,?,?);");
-			rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
-			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-			for(std::map<int, std::map<int, Transform> >::const_iterator iter=mapTransforms.begin(); iter!=mapTransforms.end(); ++iter)
-			{
-				for(std::map<int, Transform>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
-				{
-					int index=1;
-					rc = sqlite3_bind_int(ppStmt, index++, iter->first);
-					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-					rc = sqlite3_bind_int(ppStmt, index++, jter->first);
-					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-					rc = sqlite3_bind_blob(ppStmt, index++, jter->second.data(), jter->second.size()*sizeof(float), SQLITE_STATIC);
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 					//execute query

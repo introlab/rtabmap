@@ -614,6 +614,12 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	time.start();
 	totalTime.start();
 	//Affichage des stats et images
+
+	int refMapId = uValue(stat.getMapIds(), stat.refImageId(), -1);
+	int loopMapId = uValue(stat.getMapIds(), stat.loopClosureId(), -1);
+	_ui->label_refId->setText(QString("New ID = %1 [%2]").arg(stat.refImageId()).arg(refMapId));
+	_ui->label_matchId->clear();
+
 	if(stat.extended())
 	{
 		float totalTime = static_cast<float>(uValue(stat.data(), Statistics::kTimingTotal(), 0.0f));
@@ -623,7 +629,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		}
 
 		UDEBUG("");
-		_ui->label_refId->setText(QString("New ID = %1 [%2]").arg(stat.refImageId()).arg(stat.refImageMapId()));
 		int highestHypothesisId = static_cast<float>(uValue(stat.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
 		bool highestHypothesisIsSaved = (bool)uValue(stat.data(), Statistics::kLoopHypothesis_reactivated(), 0.0f);
 
@@ -635,53 +640,48 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		_ui->imageView_source->setBackgroundBrush(QBrush(Qt::black));
 		_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
 
-		// get images
-		std::vector<unsigned char> refImage = stat.refImage();
-		std::vector<unsigned char> refDepth = stat.refDepth();
-		const std::vector<unsigned char> & refDepth2D = stat.refDepth2D();
-		std::vector<unsigned char> loopImage = stat.loopImage();
-		std::vector<unsigned char> loopDepth = stat.loopDepth();
-		const std::vector<unsigned char> & loopDepth2D = stat.loopDepth2D();
-
-		//Added to cache
+		// update cache
 		if(_preferencesDialog->isImagesKept())
 		{
-			//ref
-			if(!refImage.empty())
+			// images
+			for(std::map<int, std::vector<unsigned char> >::const_iterator iter = stat.getImages().begin();
+				iter != stat.getImages().end();
+				++iter)
 			{
-				_imagesMap.insert(stat.refImageId(), refImage);
-			}
-			if(!refDepth.empty())
-			{
-				_depthsMap.insert(stat.refImageId(), refDepth);
-				_depthConstantsMap.insert(stat.refImageId(), stat.refDepthConstant());
-				_localTransformsMap.insert(stat.refImageId(), stat.refLocalTransform());
-			}
-			if(!refDepth2D.empty())
-			{
-				_depths2DMap.insert(stat.refImageId(), refDepth2D);
-			}
-
-			// loop
-			if(stat.loopClosureId()>0 || highestHypothesisId>0 || stat.localLoopClosureId()>0)
-			{
-				// order -> loop closure id -> local loop closure id -> highest loop closure hyp id
-				int id = stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId()>0?stat.localLoopClosureId():highestHypothesisId;
-				if(!_imagesMap.contains(id))
+				if(!iter->second.empty() && !_imagesMap.contains(iter->first))
 				{
-					_imagesMap.insert(id, loopImage);
+					_imagesMap.insert(iter->first, iter->second);
 				}
-
-				if(!_depthsMap.contains(id) && !loopDepth.empty())
+			}
+			// depths
+			for(std::map<int, std::vector<unsigned char> >::const_iterator iter = stat.getDepths().begin();
+				iter != stat.getDepths().end();
+				++iter)
+			{
+				if(!iter->second.empty() && !_depthsMap.contains(iter->first))
 				{
-					_depthsMap.insert(id, loopDepth);
-					_depthConstantsMap.insert(id, stat.loopDepthConstant());
-					_localTransformsMap.insert(id, stat.loopLocalTransform());
+					float constant = uValue(stat.getDepthConstants(), iter->first, 0.0f);
+					Transform transform = uValue(stat.getLocalTransforms(), iter->first, Transform());
+					if(constant != 0.0f && !transform.isNull())
+					{
+						_depthsMap.insert(iter->first, iter->second);
+						_depthConstantsMap.insert(iter->first, constant);
+						_localTransformsMap.insert(iter->first, transform);
+					}
+					else
+					{
+						UERROR("Invalid depth data for id=%d", iter->first);
+					}
 				}
-
-				if(!_depths2DMap.contains(id) && !loopDepth2D.empty())
+			}
+			// depths2d
+			for(std::map<int, std::vector<unsigned char> >::const_iterator iter = stat.getDepth2ds().begin();
+				iter != stat.getDepth2ds().end();
+				++iter)
+			{
+				if(!iter->second.empty() && !_depths2DMap.contains(iter->first))
 				{
-					_depths2DMap.insert(id, loopDepth2D);
+					_depths2DMap.insert(iter->first, iter->second);
 				}
 			}
 		}
@@ -690,7 +690,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		int localTimeClosures = (int)uValue(stat.data(), Statistics::kLocalLoopTime_closures(), 0.0f);
 		bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kLocalLoopScan_matching_success(), 0.0f);
 		_ui->label_matchId->clear();
-		_ui->label_stats_imageNumber->setText(QString("%1 [%2]").arg(stat.refImageId()).arg(stat.refImageMapId()));
+		_ui->label_stats_imageNumber->setText(QString("%1 [%2]").arg(stat.refImageId()).arg(refMapId));
 
 		if(rehearsed > 0)
 		{
@@ -707,6 +707,13 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		UDEBUG("time= %d ms", time.restart());
 
+		std::vector<unsigned char> refImage = uValue(stat.getImages(), stat.refImageId(), std::vector<unsigned char>());
+		std::vector<unsigned char> refDepth = uValue(stat.getDepths(), stat.refImageId(), std::vector<unsigned char>());
+		std::vector<unsigned char> refDepth2D = uValue(stat.getDepth2ds(), stat.refImageId(), std::vector<unsigned char>());
+		std::vector<unsigned char> loopImage = uValue(stat.getImages(), stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId(), std::vector<unsigned char>());
+		std::vector<unsigned char> loopDepth = uValue(stat.getDepths(), stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId(), std::vector<unsigned char>());
+		std::vector<unsigned char> loopDepth2D = uValue(stat.getDepth2ds(), stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId(), std::vector<unsigned char>());
+
 		int rejectedHyp = bool(uValue(stat.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
 		float highestHypothesisValue = uValue(stat.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f);
 		int matchId = 0;
@@ -721,13 +728,13 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				{
 					_ui->label_stats_loopClosuresReactivatedDetected->setText(QString::number(_ui->label_stats_loopClosuresReactivatedDetected->text().toInt() + 1));
 				}
-				_ui->label_matchId->setText(QString("Match ID = %1 [%2]").arg(stat.loopClosureId()).arg(stat.loopClosureMapId()));
+				_ui->label_matchId->setText(QString("Match ID = %1 [%2]").arg(stat.loopClosureId()).arg(loopMapId));
 				matchId = stat.loopClosureId();
 			}
 			else if(stat.localLoopClosureId())
 			{
 				_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::yellow));
-				_ui->label_matchId->setText(QString("Local match = %1 [%2]").arg(stat.localLoopClosureId()).arg(stat.localLoopClosureMapId()));
+				_ui->label_matchId->setText(QString("Local match = %1 [%2]").arg(stat.localLoopClosureId()).arg(loopMapId));
 				matchId = stat.localLoopClosureId();
 			}
 			else if(rejectedHyp && highestHypothesisValue >= _preferencesDialog->getLoopThr())
@@ -932,7 +939,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				// Add to loop closure viewer if all data is saved
 				Signature * loopOld = new Signature(
 						loopOldId,
-						stat.loopClosureMapId(),
+						loopMapId,
 						std::multimap<int, cv::KeyPoint>(),
 						std::multimap<int, pcl::PointXYZ>(),
 						Transform(),
@@ -944,7 +951,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 				Signature * loopNew = new Signature(
 						loopNewId,
-						stat.refImageMapId(),
+						refMapId,
 						std::multimap<int, cv::KeyPoint>(),
 						std::multimap<int, pcl::PointXYZ>(),
 						loopClosureTransform,
@@ -971,7 +978,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	else if(!stat.extended() && stat.loopClosureId()>0)
 	{
 		_ui->label_stats_loopClosuresDetected->setText(QString::number(_ui->label_stats_loopClosuresDetected->text().toInt() + 1));
-		_ui->label_matchId->setText(QString("Match ID = %1 [%2]").arg(stat.loopClosureId()).arg(stat.loopClosureMapId()));
+		_ui->label_matchId->setText(QString("Match ID = %1 [%2]").arg(stat.loopClosureId()).arg(loopMapId));
 	}
 	float elapsedTime = static_cast<float>(totalTime.elapsed());
 	UINFO("Processing statistics time = %fs", elapsedTime/1000.0f);
@@ -996,7 +1003,7 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & poses, const Tr
 	}
 
 	// Map updated! regenerate the assembled cloud, last pose is the new one
-	UDEBUG("Update map with %d locations", poses.size());
+	UDEBUG("Update map with %d locations (currentPose=%s)", poses.size(), currentPose.prettyPrint().c_str());
 	QMap<std::string, Transform> viewerClouds = _ui->widget_cloudViewer->getAddedClouds();
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{

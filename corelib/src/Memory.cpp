@@ -202,15 +202,6 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 		if(postInitEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Loading dictionary, done! (%d words)", (int)_vwd->getUnusedWordsSize())));
 	}
 
-	// Get map transforms
-	if(_dbDriver && _dbDriver->isConnected())
-	{
-		if(postInitEvents) UEventsManager::post(new RtabmapEventInit("Loading map transforms..."));
-		_dbDriver->load(_mapTransforms);
-		UDEBUG("%d map links loaded!", (int)_mapTransforms.size());
-		if(postInitEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Loading map transforms, done! (%d links)", (int)_mapTransforms.size())));
-	}
-
 	if(postInitEvents) UEventsManager::post(new RtabmapEventInit(std::string("Adding word references...")));
 	// Enable loaded signatures
 	Signature * ss;
@@ -642,42 +633,6 @@ int Memory::getVWDictionarySize() const
 	return _vwd->getVisualWords().size();
 }
 
-Transform Memory::getMapTransform(int sourceMapId, int targetMapId) const
-{
-	Transform t;
-	if(sourceMapId!=targetMapId)
-	{
-		std::map<int, std::map<int, Transform> >::const_iterator iter = _mapTransforms.find(sourceMapId);
-		if(iter != _mapTransforms.end())
-		{
-			std::map<int, Transform>::const_iterator jter = iter->second.find(targetMapId);
-			if(jter != iter->second.end())
-			{
-				t = jter->second;
-			}
-		}
-	}
-	else
-	{
-		t.setIdentity();
-	}
-	return t;
-}
-
-void Memory::removeMapTransform(int sourceId, int targetId)
-{
-	std::map<int, std::map<int, Transform> >::iterator iter = _mapTransforms.find(sourceId);
-	if(iter != _mapTransforms.end())
-	{
-		iter->second.erase(targetId);
-	}
-	iter = _mapTransforms.find(targetId);
-	if(iter != _mapTransforms.end())
-	{
-		iter->second.erase(sourceId);
-	}
-}
-
 void Memory::getPose(int locationId, int targetMapId, Transform & pose, bool lookInDatabase) const
 {
 	const Signature * s = getSignature(locationId);
@@ -690,31 +645,6 @@ void Memory::getPose(int locationId, int targetMapId, Transform & pose, bool loo
 	else if(lookInDatabase && _dbDriver)
 	{
 		_dbDriver->getPose(locationId, pose, mapId);
-	}
-
-	if(!pose.isNull() && mapId >= 0 && mapId != targetMapId)
-	{
-		std::map<int, std::map<int, Transform> >::const_iterator iter = _mapTransforms.find(mapId);
-		if(iter != _mapTransforms.end())
-		{
-			std::map<int, Transform>::const_iterator jter = iter->second.find(targetMapId);
-			if(jter != iter->second.end())
-			{
-				// transform pose to target map
-				pose = jter->second * pose;
-			}
-			else
-			{
-				pose.setNull();
-				UWARN("No map transforms from map %d to target map %d!", mapId, targetMapId);
-			}
-		}
-		else
-		{
-			pose.setNull();
-			UWARN("No map transforms for map %d!", mapId);
-		}
-
 	}
 }
 
@@ -1013,11 +943,6 @@ void Memory::clear()
 
 	if(_dbDriver)
 	{
-		_dbDriver->save(_mapTransforms);
-	}
-
-	if(_dbDriver)
-	{
 		_dbDriver->emptyTrashes();
 		_dbDriver->join();
 	}
@@ -1084,7 +1009,6 @@ void Memory::clear()
 	_idCount = kIdStart;
 	_idMapCount = kIdStart;
 	_memoryChanged = false;
-	_mapTransforms.clear();
 
 	if(_dbDriver)
 	{
@@ -1720,12 +1644,12 @@ Transform Memory::computeVisualTransform(const Signature & oldS, const Signature
 			}
 			else if(inliersCount < _bowMinInliers)
 			{
-				UWARN("Not enough inliers %d/%d", inliersCount, _bowMinInliers);
+				UINFO("Not enough inliers %d/%d between %d and %d", inliersCount, _bowMinInliers, oldS.id(), newS.id());
 			}
 		}
 		else
 		{
-			UWARN("Not enough inliers %d/%d", (int)inliersOld->size(), _bowMinInliers);
+			UDEBUG("Not enough inliers %d/%d between %d and %d", (int)inliersOld->size(), _bowMinInliers, oldS.id(), newS.id());
 		}
 	}
 	else if(!oldS.isBadSignature() && !newS.isBadSignature())
@@ -2087,37 +2011,6 @@ bool Memory::addLoopClosureLink(int oldId, int newId, const Transform & transfor
 		}
 
 		UDEBUG("Add loop closure link between %d and %d", oldS->id(), newS->id());
-
-		if(oldS->mapId() != newS->mapId())
-		{
-			Transform oldMapToNewMap = oldS->getPose() * transform.inverse() * newS->getPose().inverse();
-			oldMapToNewMap = oldMapToNewMap.inverse(); // FIXME: why ?!?
-
-			UINFO("Adding loop closure between %d and %d which don't belong to the same map (%d vs %d). "
-				  "Add map transform between map %d and %d (%s).",
-				  oldId, newId,
-				  oldS->mapId(), newS->mapId(),
-				  oldS->mapId(), newS->mapId(),
-				  oldMapToNewMap.prettyPrint().c_str());
-
-			//update to new transform if it is already set
-			removeMapTransform(oldS->mapId(), newS->mapId());
-
-			if(!uContains(_mapTransforms, oldS->mapId()))
-			{
-				_mapTransforms.insert(std::make_pair(oldS->mapId(), std::map<int, Transform>()));
-			}
-			if(!uContains(_mapTransforms, newS->mapId()))
-			{
-				_mapTransforms.insert(std::make_pair(newS->mapId(), std::map<int, Transform>()));
-			}
-
-			UASSERT(!uContains(_mapTransforms.at(oldS->mapId()), newS->mapId()));
-			UASSERT(!uContains(_mapTransforms.at(newS->mapId()), oldS->mapId()));
-
-			_mapTransforms.at(oldS->mapId()).insert(std::make_pair(newS->mapId(), oldMapToNewMap));
-			_mapTransforms.at(newS->mapId()).insert(std::make_pair(oldS->mapId(), oldMapToNewMap.inverse()));
-		}
 
 		oldS->addLoopClosureId(newS->id(), transform.inverse());
 		newS->addChildLoopClosureId(oldS->id(), transform);

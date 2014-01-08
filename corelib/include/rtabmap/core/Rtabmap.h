@@ -161,6 +161,7 @@ private:
 
 	std::map<int, Transform> _optimizedPoses;
 	Transform _mapCorrection;
+	Transform _mapTransform;
 };
 
 #endif /* RTABMAP_H_ */

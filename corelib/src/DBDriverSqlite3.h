@@ -54,11 +54,9 @@ private:
 	virtual void saveQuery(const std::list<VisualWord *> & words) const;
 	virtual void updateQuery(const std::list<Signature *> & signatures) const;
 	virtual void updateQuery(const std::list<VisualWord *> & words) const;
-	virtual void saveQuery(const std::map<int, std::map<int, Transform> > & mapTransforms) const;
 
 	// Load objects
 	virtual void loadQuery(VWDictionary * dictionary) const;
-	virtual void loadQuery(std::map<int, std::map<int, Transform> > & mapTransforms) const;
 	virtual void loadLastNodesQuery(std::list<Signature *> & signatures) const;
 	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const;
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const;

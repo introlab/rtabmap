@@ -96,7 +96,8 @@ Rtabmap::Rtabmap() :
 	_foutFloat(0),
 	_foutInt(0),
 	_wDir(std::string(".")+UDirectory::separator()),
-	_mapCorrection(Transform::getIdentity())
+	_mapCorrection(Transform::getIdentity()),
+	_mapTransform(Transform::getIdentity())
 {
 }
 
@@ -593,6 +594,7 @@ void Rtabmap::resetMemory(bool dbOverwritten)
 	_lastProcessTime = 0.0;
 	_optimizedPoses.clear();
 	_mapCorrection.setIdentity();
+	_mapTransform.setIdentity();
 
 	if(_memory)
 	{
@@ -1187,6 +1189,25 @@ bool Rtabmap::process(const Image & image)
 		{
 			_lcHypothesisId = 0;
 		}
+		else
+		{
+			// used for localization mode
+			_mapTransform.setIdentity();
+			const Signature * oldS = _memory->getSignature(_lcHypothesisId);
+			UASSERT(oldS != 0);
+			if(oldS->mapId() != signature->mapId())
+			{
+				// New map -> old map
+				_mapTransform = oldS->getPose() * transform.inverse() * signature->getPose().inverse();
+
+				UINFO("Adding loop closure between %d and %d which don't belong to the same map (%d vs %d). "
+					  "Add map transform between map %d and %d (%s).",
+					  oldS->id(), signature->id(),
+					  oldS->mapId(), signature->mapId(),
+					  oldS->mapId(), signature->mapId(),
+					  _mapTransform.prettyPrint().c_str());
+			}
+		}
 	}
 	timeAddLoopClosureLink = timer.ticks();
 	ULOGGER_INFO("timeAddLoopClosureLink=%fs", timeAddLoopClosureLink);
@@ -1262,9 +1283,7 @@ bool Rtabmap::process(const Image & image)
 				const Signature * oldS = _memory->getSignature(oldId);
 				UASSERT(oldS != 0);
 				Transform correction = _optimizedPoses.at(oldId) * oldS->getPose().inverse();
-				Transform mapTransform  = _memory->getMapTransform(signature->mapId(), oldS->mapId());
-				UASSERT(!mapTransform.isNull());
-				_mapCorrection = correction*mapTransform;
+				_mapCorrection = correction * _mapTransform;
 			}
 		}
 		else
@@ -1304,11 +1323,9 @@ bool Rtabmap::process(const Image & image)
 	{
 		ULOGGER_INFO("sending stats...");
 		statistics_.setRefImageId(signature->id());
-		statistics_.setRefImageMapId(signature->mapId());
 		if(_lcHypothesisId != Memory::kIdInvalid)
 		{
 			statistics_.setLoopClosureId(_lcHypothesisId);
-			statistics_.setLoopClosureMapId(_memory->getSignature(_lcHypothesisId)->mapId());
 			ULOGGER_INFO("Loop closure detected! With id=%d", _lcHypothesisId);
 		}
 		if(_publishStats)
@@ -1330,7 +1347,12 @@ bool Rtabmap::process(const Image & image)
 			if(localSpaceClosureId)
 			{
 				statistics_.setLocalLoopClosureId(localSpaceClosureId);
-				statistics_.setLocalLoopClosureMapId(_memory->getSignature(localSpaceClosureId)->mapId());
+			}
+			if(_lcHypothesisId || localSpaceClosureId)
+			{
+				UASSERT(uContains(sLoop->getLoopClosureIds(), signature->id()));
+				UINFO("Set loop closure transform = %s", sLoop->getLoopClosureIds().at(signature->id()).prettyPrint().c_str());
+				statistics_.setLoopClosureTransform(sLoop->getLoopClosureIds().at(signature->id()));
 			}
 
 			statistics_.addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMem().size());
@@ -1359,48 +1381,66 @@ bool Rtabmap::process(const Image & image)
 
 			if(_publishImage)
 			{
-				statistics_.setRefImage(signature->getImage()); // raw data
-				if(_rgbdSlamMode)
-				{
-					statistics_.setRefDepth(signature->getDepth());
-					statistics_.setRefDepth2D(signature->getDepth2D());
-					statistics_.setRefDepthConstant(signature->getDepthConstant());
-					statistics_.setRefLocalTransform(signature->getLocalTransform());
-				}
+				std::map<int, int> mapIds;
+				std::map<int, std::vector<unsigned char> > images;
+				std::map<int, std::vector<unsigned char> > depths;
+				std::map<int, std::vector<unsigned char> > depth2ds;
+				std::map<int, float> depthConstants;
+				std::map<int, Transform> localTransforms;
+
+				std::vector<int> ids(signaturesRetrieved.begin(), signaturesRetrieved.end());
+				ids.push_back(signature->id());
 				if(sLoop)
 				{
-					UTimer tmpTimer;
+					ids.push_back(sLoop->id());
+				}
+
+				UTimer tmpTimer;
+				for(unsigned int i=0; i<ids.size(); ++i)
+				{
+					// Add data
 					std::vector<unsigned char> im;
 					if(_rgbdSlamMode)
 					{
 						std::vector<unsigned char> depth, depth2d;
 						float depthConstant;
 						Transform localTransform;
-						_memory->getImageDepth(sLoop->id(), im, depth, depth2d, depthConstant, localTransform);
+						_memory->getImageDepth(ids[i], im, depth, depth2d, depthConstant, localTransform);
 
-						if(tmpTimer.elapsed() > 0.03)
+						if(!depth.empty())
 						{
-							UWARN("getting image time = %fs", tmpTimer.ticks());
+							depths.insert(std::make_pair(ids[i], depth));
+							depthConstants.insert(std::make_pair(ids[i], depthConstant));
+							localTransforms.insert(std::make_pair(ids[i], localTransform));
 						}
-						statistics_.setLoopDepth(depth);
-						statistics_.setLoopDepth2D(depth2d);
-						statistics_.setLoopDepthConstant(depthConstant);
-						statistics_.setLoopLocalTransform(localTransform);
-
-						if(_lcHypothesisId || localSpaceClosureId)
+						if(!depth2d.empty())
 						{
-							UASSERT(uContains(sLoop->getLoopClosureIds(), signature->id()));
-							UINFO("Set loop closure transform = %s", sLoop->getLoopClosureIds().at(signature->id()).prettyPrint().c_str());
-							statistics_.setLoopClosureTransform(sLoop->getLoopClosureIds().at(signature->id()));
+							depth2ds.insert(std::make_pair(ids[i], depth2d));
 						}
 					}
 					else
 					{
-						im = _memory->getImage(sLoop->id());
+						im = _memory->getImage(ids[i]);
 					}
-
-					statistics_.setLoopImage(im);
+					UASSERT(_memory->getSignature(ids[i]) != 0);
+					mapIds.insert(std::make_pair(ids[i], _memory->getSignature(ids[i])->mapId()));
+					if(!im.empty())
+					{
+						images.insert(std::make_pair(ids[i], im));
+					}
 				}
+
+				if(tmpTimer.elapsed() > 0.03)
+				{
+					UWARN("getting data[%d] time = %fs", (int)ids.size(), tmpTimer.ticks());
+				}
+
+				statistics_.setMapIds(mapIds);
+				statistics_.setImages(images);
+				statistics_.setDepths(depths);
+				statistics_.setDepth2ds(depth2ds);
+				statistics_.setDepthConstants(depthConstants);
+				statistics_.setLocalTransforms(localTransforms);
 			}
 
 			if(_publishLikelihood || _publishPdf)
@@ -1686,9 +1726,8 @@ std::map<int, Transform> Rtabmap::getOptimizedWMPosesInRadius(
 	const std::set<int> & stm = _memory->getStMem();
 	for(std::map<int, Transform>::const_iterator iter = _optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 	{
-		// Only locations in Working Memory and in the same map or a map link exist between them (only
-		// global loop closure detection can do loop closure between not joined maps).
-		if(stm.find(iter->first) == stm.end() && !_memory->getMapTransform(fromS->mapId(),  _memory->getSignature(iter->first)->mapId()).isNull())
+		// Only locations in Working Memory and in the same map.
+		if(stm.find(iter->first) == stm.end() && fromS->mapId() == _memory->getSignature(iter->first)->mapId())
 		{
 			(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
 			ids[oi++] = iter->first;
