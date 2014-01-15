@@ -103,8 +103,6 @@ bool DatabaseViewer::openDatabase(const QString & path)
 		{
 			delete memory_;
 			memory_ = 0;
-			imagesMap_.clear();
-			depthImagesMap_.clear();
 			ids_.clear();
 		}
 
@@ -112,9 +110,9 @@ bool DatabaseViewer::openDatabase(const QString & path)
 		rtabmap::ParametersMap parameters;
 		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), "false"));
 
-		memory_ = new rtabmap::Memory(parameters);
+		memory_ = new rtabmap::Memory();
 
-		if(!memory_->init(path.toStdString()))
+		if(!memory_->init(path.toStdString(), false, parameters))
 		{
 			QMessageBox::warning(this, "Database error", tr("Can't open database \"%1\"").arg(path));
 		}
@@ -357,54 +355,25 @@ void DatabaseViewer::update(int value,
 			//image
 			QImage img;
 			QImage imgDepth;
-			QMap<int, QByteArray>::iterator iter = imagesMap_.find(id);
-			QMap<int, QByteArray>::iterator iterDepth = depthImagesMap_.find(id);
-			if(iter == imagesMap_.end())
+			if(memory_)
 			{
-				if(memory_)
+				std::vector<unsigned char> image, depth, depth2d;
+				float depthConstant;
+				rtabmap::Transform localTransform;
+				memory_->getImageDepth(id, image, depth, depth2d, depthConstant, localTransform);
+				cv::Mat imageMat = rtabmap::util3d::uncompressImage(image);
+				cv::Mat depthMat = rtabmap::util3d::uncompressImage(depth);
+				UINFO("loaded image(%d/%d) depth(%d/%d) depthConstant(%f)",
+						imageMat.cols, imageMat.rows,
+						depthMat.cols, depthMat.rows,
+						depthConstant);
+				if(!image.empty())
 				{
-					std::vector<unsigned char> image, depth, depth2d;
-					float depthConstant;
-					rtabmap::Transform localTransform;
-					memory_->getImageDepth(id, image, depth, depth2d, depthConstant, localTransform);
-					cv::Mat imageMat = rtabmap::util3d::uncompressImage(image);
-					cv::Mat depthMat = rtabmap::util3d::uncompressImage(depth);
-					UINFO("loaded image(%d/%d) depth(%d/%d) depthConstant(%f)",
-							imageMat.cols, imageMat.rows,
-							depthMat.cols, depthMat.rows,
-							depthConstant);
-					if(!image.empty())
-					{
-						img = uCvMat2QImage(imageMat);
-						if(!img.isNull())
-						{
-							QByteArray ba;
-							QBuffer buffer(&ba);
-							buffer.open(QIODevice::WriteOnly);
-							img.save(&buffer, "BMP"); // writes image into ba in BMP format
-							imagesMap_.insert(id, ba);
-						}
-					}
-					if(!depth.empty())
-					{
-						imgDepth = uCvMat2QImage(depthMat);
-						if(!imgDepth.isNull())
-						{
-							QByteArray ba;
-							QBuffer buffer(&ba);
-							buffer.open(QIODevice::WriteOnly);
-							QPixmap::fromImage(imgDepth).save(&buffer, "PGM"); // writes image into ba in PGM format
-							depthImagesMap_.insert(id, ba);
-						}
-					}
+					img = uCvMat2QImage(imageMat);
 				}
-			}
-			else
-			{
-				img.loadFromData(iter.value(), "BMP");
-				if(iterDepth != depthImagesMap_.end())
+				if(!depth.empty())
 				{
-					imgDepth.loadFromData(iterDepth.value(), "PGM");
+					imgDepth = uCvMat2QImage(depthMat);
 				}
 			}
 

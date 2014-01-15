@@ -73,8 +73,6 @@ private:
 
 private:
 	Ui_DatabaseViewer * ui_;
-	QMap<int, QByteArray> imagesMap_;
-	QMap<int, QByteArray> depthImagesMap_;
 	QList<int> ids_;
 	rtabmap::Memory * memory_;
 	QString pathDatabase_;
