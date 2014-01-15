@@ -310,6 +310,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_doubleSpinBox_recentWmRatio->setObjectName(Parameters::kMemRecentWmRatio().c_str());
 	_ui->general_checkBox_RehearsalIdUpdatedToNewOne->setObjectName(Parameters::kMemRehearsalIdUpdatedToNewOne().c_str());
 	_ui->general_checkBox_generateIds->setObjectName(Parameters::kMemGenerateIds().c_str());
+	_ui->general_checkBox_badSignaturesIgnored->setObjectName(Parameters::kMemBadSignaturesIgnored().c_str());
 
 	// Database
 	_ui->checkBox_dbInMemory->setObjectName(Parameters::kDbSqlite3InMemory().c_str());
@@ -1800,6 +1801,25 @@ void PreferencesDialog::addParameter(const QObject * object, bool value)
 		{
 			// Add parameter
 			_parameters.insert(rtabmap::ParametersPair(object->objectName().toStdString(), uBool2Str(value)));
+
+			if(value && checkbox == _ui->general_checkBox_activateRGBD)
+			{
+				// add all RGBD parameters!
+				this->addParameter(_ui->rgdb_linearUpdate, _ui->rgdb_linearUpdate->value());
+				this->addParameter(_ui->rgdb_angularUpdate, _ui->rgdb_linearUpdate->value());
+				this->addParameter(_ui->odomScanHistory, _ui->odomScanHistory->value());
+				this->addParameters(_ui->groupBox_local_loop_closure);
+
+				this->addParameters(_ui->groupBox_lcc_bow);
+				if(_ui->loopClosure_icpEnabled->isChecked())
+				{
+					this->addParameter(_ui->loopClosure_icpType, _ui->loopClosure_icpType->currentIndex());
+				}
+			}
+			if(value && checkbox == _ui->loopClosure_icpEnabled)
+			{
+				this->addParameter(_ui->loopClosure_icpType, _ui->loopClosure_icpType->currentIndex());
+			}
 		}
 		else
 		{

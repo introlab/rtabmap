@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>955</width>
-            <height>685</height>
+            <width>939</width>
+            <height>724</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>9</number>
+                <number>12</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -2399,6 +2399,26 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
+                      <item row="4" column="1">
+                       <widget class="QLabel" name="label_retrieved_3">
+                        <property name="text">
+                         <string>Bad signatures are ignored.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_badSignaturesIgnored">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
                      </layout>
                     </item>
                     <item>
@@ -3644,7 +3664,7 @@ Rigid transformations between nodes are saved on the neighbor links of the RTAB-
                      </layout>
                     </item>
                     <item>
-                     <widget class="QGroupBox" name="groupBox_3">
+                     <widget class="QGroupBox" name="groupBox_local_loop_closure">
                       <property name="title">
                        <string>Local loop closure detection</string>
                       </property>
@@ -4416,7 +4436,7 @@ Rigid transformations between nodes are saved on the neighbor links of the RTAB-
                      </widget>
                     </item>
                     <item>
-                     <widget class="QGroupBox" name="groupBox">
+                     <widget class="QGroupBox" name="groupBox_lcc_bow">
                       <property name="title">
                        <string>Guess transform</string>
                       </property>
@@ -4563,7 +4583,7 @@ Rigid transformations between nodes are saved on the neighbor links of the RTAB-
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_loopClosureICP">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_17">
                        <layout class="QVBoxLayout" name="verticalLayout_37">

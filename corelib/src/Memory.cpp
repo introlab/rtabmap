@@ -54,6 +54,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_recentWmRatio(Parameters::defaultMemRecentWmRatio()),
 	_idUpdatedToNewOneRehearsal(Parameters::defaultMemRehearsalIdUpdatedToNewOne()),
 	_generateIds(Parameters::defaultMemGenerateIds()),
+	_badSignaturesIgnored(Parameters::defaultMemBadSignaturesIgnored()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -147,7 +148,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 			for(std::list<Signature*>::reverse_iterator iter=dbSignatures.rbegin(); iter!=dbSignatures.rend(); ++iter)
 			{
 				// ignore bad signatures
-				if(!(*iter)->isBadSignature())
+				if(!((*iter)->isBadSignature() && _badSignaturesIgnored))
 				{
 					_signatures.insert(std::pair<int, Signature *>((*iter)->id(), *iter));
 					if((int)_stMem.size() <= _maxStMemSize)
@@ -286,6 +287,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemRehearsedNodesKept(), _keepRehearsedNodesInDb);
 	Parameters::parse(parameters, Parameters::kMemRehearsalIdUpdatedToNewOne(), _idUpdatedToNewOneRehearsal);
 	Parameters::parse(parameters, Parameters::kMemGenerateIds(), _generateIds);
+	Parameters::parse(parameters, Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
 	Parameters::parse(parameters, Parameters::kMemRehearsalSimilarity(), _similarityThreshold);
 	Parameters::parse(parameters, Parameters::kMemRecentWmRatio(), _recentWmRatio);
 	Parameters::parse(parameters, Parameters::kMemSTMSize(), _maxStMemSize);
@@ -465,12 +467,6 @@ bool Memory::update(const Image & image, Statistics * stats)
 	this->addSignatureToStm(signature);
 
 	_lastSignature = signature;
-
-	if(_lastLoopClosureId == 0 && !signature->isBadSignature())
-	{
-		// If not set use the new one added
-		_lastLoopClosureId = signature->id();
-	}
 
 	//============================================================
 	// Rehearsal step...
@@ -1233,7 +1229,7 @@ std::list<int> Memory::cleanup(const std::list<int> & ignoredIds)
 	std::list<int> signaturesRemoved;
 
 	// bad signature
-	if(_lastSignature->isBadSignature() || !_incrementalMemory)
+	if((_lastSignature->isBadSignature() && _badSignaturesIgnored) || !_incrementalMemory)
 	{
 		if(_lastSignature->isBadSignature())
 		{
@@ -1448,7 +1444,7 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase)
 	if(s)
 	{
 		// If not saved to database or it is a bad signature, remove links!
-		if(!saveToDatabase || s->isBadSignature())
+		if(!saveToDatabase || (s->isBadSignature() && _badSignaturesIgnored))
 		{
 			UASSERT_MSG(this->isInSTM(s->id()),
 					uFormat("Deleting location (%d) outside the STM is not implemented!", s->id()).c_str());

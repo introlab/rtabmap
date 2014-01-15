@@ -196,6 +196,7 @@ private:
 	float _recentWmRatio;
 	bool _idUpdatedToNewOneRehearsal;
 	bool _generateIds;
+	bool _badSignaturesIgnored;
 
 	int _idCount;
 	int _idMapCount;
