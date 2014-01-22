@@ -1438,8 +1438,8 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase)
 	UDEBUG("id=%d", s?s->id():0);
 	if(s)
 	{
-		// If not saved to database or it is a bad signature, remove links!
-		if(!saveToDatabase || (s->isBadSignature() && _badSignaturesIgnored))
+		// If not saved to database or it is a bad signature (not saved), remove links!
+		if(!saveToDatabase || (!s->isSaved() && s->isBadSignature() && _badSignaturesIgnored))
 		{
 			UASSERT_MSG(this->isInSTM(s->id()),
 					uFormat("Deleting location (%d) outside the STM is not implemented!", s->id()).c_str());
