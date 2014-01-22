@@ -52,11 +52,14 @@ public:
 			kCmdResetMemory,
 			kCmdDumpMemory,
 			kCmdDumpPrediction,
-			kCmdGenerateGraph,
-			kCmdGenerateLocalGraph,
-			kCmdDeleteMemory,
+			kCmdGenerateGraph, // params: path
+			kCmdGenerateLocalGraph, // params: path, id, margin
+			kCmdGenerateTOROGraph, // params: path, optimized
+			kCmdGenerateTOROGraphFull, // params: path, optimized
+			kCmdDeleteMemory, // params: path [optional]
 			kCmdCleanDataBuffer,
 			kCmdPublish3DMap,
+			kCmdPublish3DMapFull,
 			kCmdTriggerNewMap,
 			kCmdPause};
 public:
@@ -75,6 +78,11 @@ public:
 			_cmd(cmd),
 			_strValue(value),
 			_intValue(0){}
+	RtabmapEventCmd(Cmd cmd, const std::string & strValue, int intValue) :
+			UEvent(0),
+			_cmd(cmd),
+			_strValue(strValue),
+			_intValue(intValue){}
 
 	virtual ~RtabmapEventCmd() {}
 	Cmd getCmd() const {return _cmd;}
@@ -139,16 +147,14 @@ public:
 			const std::map<int, std::vector<unsigned char> > & depths2d,
 			const std::map<int, float> & depthConstants,
 			const std::map<int, Transform> & localTransforms,
-			const std::map<int, Transform> & poses,
-			const Transform & mapCorrection) :
+			const std::map<int, Transform> & poses) :
 		UEvent(0),
 		_images(images),
 		_depths(depths),
 		_depths2d(depths2d),
 		_depthConstants(depthConstants),
 		_localTransforms(localTransforms),
-		_poses(poses),
-		_mapCorrection(mapCorrection)
+		_poses(poses)
 	{}
 
 	virtual ~RtabmapEvent3DMap() {}
@@ -159,7 +165,6 @@ public:
 	const std::map<int, float> & getDepthConstants() const {return _depthConstants;}
 	const std::map<int, Transform> & getLocalTransforms() const {return _localTransforms;}
 	const std::map<int, Transform> & getPoses() const {return _poses;}
-	const Transform & getMapCorrection() const {return _mapCorrection;}
 
 	virtual std::string getClassName() const {return std::string("RtabmapEvent3DMap");}
 
@@ -170,7 +175,6 @@ private:
 	std::map<int, float> _depthConstants;
 	std::map<int, Transform> _localTransforms;
 	std::map<int, Transform> _poses;
-	Transform _mapCorrection;
 };
 
 } // namespace rtabmap

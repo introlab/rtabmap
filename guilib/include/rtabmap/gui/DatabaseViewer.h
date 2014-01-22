@@ -54,6 +54,7 @@ public:
 private slots:
 	void openDatabase();
 	void generateGraph();
+	void exportDatabase();
 	void generateLocalGraph();
 	void generate3DMap();
 	void sliderAValueChanged(int);

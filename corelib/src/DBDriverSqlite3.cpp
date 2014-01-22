@@ -940,74 +940,110 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
-		std::multimap<int, cv::KeyPoint> visualWords;
-		std::multimap<int, pcl::PointXYZ> visualWords3;
 		unsigned int loaded = 0;
 
-		// Prepare the query... Get the map from signature and visual words
-		query << "SELECT id, map_id, weight, pose, word_id, pos_x, pos_y, size, dir, response, depth_x, depth_y, depth_z "
-				 "FROM Map_Node_Word "
-				 "INNER JOIN Node "
-				 "ON Node.id = node_id "
-				 "WHERE node_id = ? ";
-
-		query << " ORDER BY word_id"; // Needed for fast insertion below
-		query << ";";
+		// Load nodes information
+		query << "SELECT id, map_id, weight, pose "
+			  << "FROM Node "
+			  << "WHERE id=?;";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-		int id = 0;
-		int mapId = 0;
-		int weight = 0;
-		const void * data = 0;
-		int dataSize = 0;
-		Transform pose;
-		int visualWordId = 0;
-		cv::KeyPoint kpt;
-		pcl::PointXYZ depth;
-
-
 		for(std::list<int>::const_iterator iter=ids.begin(); iter!=ids.end(); ++iter)
 		{
-			ULOGGER_DEBUG("Loading %d...", *iter);
+			ULOGGER_DEBUG("Loading node %d...", *iter);
 			// bind id
 			rc = sqlite3_bind_int(ppStmt, 1, *iter);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-			id = 0;
-			mapId = 0;
-			weight = 0;
-			data = 0;
-			dataSize = 0;
-			pose = Transform();
-			visualWordId = 0;
-			kpt = cv::KeyPoint();
-			visualWords.clear();
-			depth = pcl::PointXYZ(0,0,0);
+			int id = 0;
+			int mapId = 0;
+			int weight = 0;
+			Transform pose;
+			const void * data = 0;
+			int dataSize = 0;
+
+			// Process the result if one
+			rc = sqlite3_step(ppStmt);
+			if(rc == SQLITE_ROW)
+			{
+				int index = 0;
+				id = sqlite3_column_int(ppStmt, index++); // Signature Id
+				mapId = sqlite3_column_int(ppStmt, index++); // Map Id
+				weight = sqlite3_column_int(ppStmt, index++); // weight
+
+				data = sqlite3_column_blob(ppStmt, index); // pose
+				dataSize = sqlite3_column_bytes(ppStmt, index++);
+				if((unsigned int)dataSize == pose.size()*sizeof(float) && data)
+				{
+					memcpy(pose.data(), data, dataSize);
+				}
+				rc = sqlite3_step(ppStmt);
+			}
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+			// create the node
+			if(id)
+			{
+				ULOGGER_DEBUG("Creating %d (map=%d)", *iter, mapId);
+				Signature * s = new Signature(
+						id,
+						mapId,
+						std::multimap<int, cv::KeyPoint>(),
+						std::multimap<int, pcl::PointXYZ>(),
+						pose);
+				s->setWeight(weight);
+				s->setSaved(true);
+				nodes.push_back(s);
+				++loaded;
+			}
+			else
+			{
+				UERROR("Signature %d not found in database!", *iter);
+			}
+
+			//reset
+			rc = sqlite3_reset(ppStmt);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		}
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		ULOGGER_DEBUG("Time=%fs", timer.ticks());
+
+		// Prepare the query... Get the map from signature and visual words
+		std::stringstream query2;
+		query2 << "SELECT word_id, pos_x, pos_y, size, dir, response, depth_x, depth_y, depth_z "
+				 "FROM Map_Node_Word "
+				 "WHERE node_id = ? ";
+
+		query2 << " ORDER BY word_id"; // Needed for fast insertion below
+		query2 << ";";
+
+		rc = sqlite3_prepare_v2(_ppDb, query2.str().c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		for(std::list<Signature*>::const_iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
+		{
+			ULOGGER_DEBUG("Loading words of %d...", (*iter)->id());
+			// bind id
+			rc = sqlite3_bind_int(ppStmt, 1, (*iter)->id());
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+			int visualWordId = 0;
+			cv::KeyPoint kpt;
+			std::multimap<int, cv::KeyPoint> visualWords;
+			std::multimap<int, pcl::PointXYZ> visualWords3;
+			pcl::PointXYZ depth(0,0,0);
 
 			// Process the result if one
 			rc = sqlite3_step(ppStmt);
 			while(rc == SQLITE_ROW)
 			{
 				int index = 0;
-				if(id==0)
-				{
-					id = sqlite3_column_int(ppStmt, index++); // Signature Id
-					mapId = sqlite3_column_int(ppStmt, index++); // Map Id
-					weight = sqlite3_column_int(ppStmt, index++); // weight
-
-					data = sqlite3_column_blob(ppStmt, index); // pose
-					dataSize = sqlite3_column_bytes(ppStmt, index++);
-					if((unsigned int)dataSize == pose.size()*sizeof(float) && data)
-					{
-						memcpy(pose.data(), data, dataSize);
-					}
-				}
-				else
-				{
-					index = 4;
-				}
 				visualWordId = sqlite3_column_int(ppStmt, index++);
 				kpt.pt.x = sqlite3_column_double(ppStmt, index++);
 				kpt.pt.y = sqlite3_column_double(ppStmt, index++);
@@ -1023,23 +1059,16 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 			}
 			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-			// create the node
-			if(id==0)
+			if(visualWords.size()==0)
 			{
-				UWARN("Empty signature detected! (id=%d)", *iter);
+				UWARN("Empty signature detected! (id=%d)", (*iter)->id());
 			}
-
-			ULOGGER_DEBUG("Creating %d (map=%d) with %d keypoints", *iter, mapId, visualWords.size());
-			Signature * s = new Signature(
-					*iter,
-					mapId,
-					visualWords,
-					visualWords3,
-					pose);
-			s->setWeight(weight);
-			s->setSaved(true);
-			nodes.push_back(s);
-			++loaded;
+			else
+			{
+				(*iter)->setWords(visualWords);
+				(*iter)->setWords3(visualWords3);
+				ULOGGER_DEBUG("Add %d keypoints and %d 3d points to node %d", visualWords.size(), visualWords3.size(), (*iter)->id());
+			}
 
 			//reset
 			rc = sqlite3_reset(ppStmt);
@@ -1079,7 +1108,6 @@ void DBDriverSqlite3::loadLastNodesQuery(std::list<Signature *> & nodes) const
 		std::string query;
 		std::list<int> ids;
 
-		// Get the map from signature and visual words
 		query = "SELECT n.id "
 				 "FROM Node AS n "
 				 "WHERE n.time_enter >= (SELECT MAX(time_enter) FROM Statistics) "
@@ -1412,6 +1440,7 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 
 void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes) const
 {
+	UDEBUG("nodes = %d", nodes.size());
 	if(_ppDb && nodes.size())
 	{
 		UTimer timer;

@@ -75,7 +75,6 @@ public:
 	int getTotalMemSize() const;
 	double getLastProcessTime() const {return _lastProcessTime;};
 	std::multimap<int, cv::KeyPoint> getWords(int locationId) const;
-	std::map<int, int> getNeighbors(int nodeId, int margin, bool lookInLTM = false) const;// <Id,Margin> including nodeId
 	bool isInSTM(int locationId) const;
 	bool isIDsGenerated() const;
 	const Statistics & getStatistics() const;
@@ -87,6 +86,7 @@ public:
 
 	void triggerNewMap();
 	void generateGraph(const std::string & path, int id=0, int margin=5);
+	void generateTOROGraph(const std::string & path, bool optimized, bool full);
 	void resetMemory(bool dbOverwritten = false);
 	void dumpPrediction() const;
 	void dumpData() const;
@@ -101,15 +101,20 @@ public:
 			std::map<int, float> & depthConstants,
 			std::map<int, Transform> & localTransforms,
 			std::map<int, Transform> & poses,
-			Transform & mapCorrection) const;
+			bool optimized,
+			bool full) const;
 
-	std::map<int, Transform> getOptimizedWMPosesInRadius(int fromId, int maxNearestNeighbors, float radius, int & nearestId) const;
+	std::map<int, Transform> getOptimizedWMPosesInRadius(int fromId, int maxNearestNeighbors, float radius, int maxDiffID, int & nearestId) const;
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
 	std::pair<int, float> selectHypothesis(const std::map<int, float> & posterior,
 											const std::map<int, float> & likelihood) const;
 
 private:
-	void optimizeCurrentMap(int id, bool lookInDatabase, std::map<int, Transform> & optimizedPoses, Transform & mapCorrection) const;
+	void optimizeCurrentMap(int id,
+			bool lookInDatabase,
+			std::map<int, Transform> & optimizedPoses,
+			std::multimap<int, std::pair<int, Transform> > * constraints = 0) const;
+
 	void setupLogFiles(bool overwrite = false);
 	void flushStatisticLogs();
 
@@ -130,11 +135,13 @@ private:
 	bool _rgbdSlamMode;
 	float _rgbdLinearUpdate;
 	float _rgbdAngularUpdate;
+	int _globalLoopClosureIcpType;
 	int _scanMatchingSize;
 	bool _localLoopClosureDetectionTime;
 	bool _localLoopClosureDetectionSpace;
 	float _localDetectRadius;
 	float _localDetectMaxNeighbors;
+	int _localDetectMaxDiffID;
 	bool _icpEnabled;
 	std::string _databasePath;
 
@@ -160,8 +167,8 @@ private:
 	std::string _wDir;
 
 	std::map<int, Transform> _optimizedPoses;
-	Transform _mapCorrection;
-	Transform _mapTransform;
+	Transform _mapCorrection; // for localization mode
+	Transform _mapTransform; // for localization mode
 };
 
 #endif /* RTABMAP_H_ */

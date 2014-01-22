@@ -210,6 +210,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionSpace,    bool, false, 	"Detection over locations (in Working Memory or STM) near in space.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionRadius,   float, 15, 		"Maximum radius for space detection.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionNeighbors,   int, 20, 	"Maximum nearest neighbor.");
+	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxDiffID,   int, 0,      "Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.")
 
 	// Odometry
 	RTABMAP_PARAM(Odom, Type,           		int, 0, 		"0=BOW 1=Binary.");
@@ -235,8 +236,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(OdomICP, MaxFitness,               float, 0.01, 	"");
 
 	// Loop closure constraint
-	RTABMAP_PARAM(LccIcp, Enabled,         bool, false, 	"Enable ICP");
-	RTABMAP_PARAM(LccIcp, Type,            int, 0, 			"0=ICP 3D, 1=ICP 2D");
+	RTABMAP_PARAM(LccIcp, Type,            int, 0, 			"0=No ICP, 0=ICP 3D, 1=ICP 2D");
 
 	RTABMAP_PARAM(LccBow, MinInliers,      int, 20, 		"Minimum visual word correspondences to compute geometry transform.");
 	RTABMAP_PARAM(LccBow, InlierDistance,  float, 0.01, 	"Maximum distance for visual word correspondences.");
@@ -255,7 +255,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccIcp2, Iterations,      int, 30, 				"ICP 2D: Max iterations.");
 	RTABMAP_PARAM(LccIcp2, MaxFitness,      float, 1.0, 			"ICP 2D: Maximum fitness to accept the computed transform.");
 	RTABMAP_PARAM(LccIcp2, CorrespondenceRatio, float, 0.7, 		"ICP 2D: Ratio of matching correspondences to accept the transform.");
-
+	RTABMAP_PARAM(LccIcp2, VoxelSize,       float, 0.005, 			"Voxel size to be used for ICP computation.");
 
 public:
 	virtual ~Parameters();

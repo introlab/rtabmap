@@ -16,6 +16,8 @@ SET(headers_ui
 	../include/${PROJECT_PREFIX}/gui/OdometryViewer.h
 	../include/${PROJECT_PREFIX}/gui/LoopClosureViewer.h
 	../include/${PROJECT_PREFIX}/gui/DataRecorder.h
+	./ExportDialog.h
+	./MapVisibilityWidget.h
 )
 
 SET(uis
@@ -25,6 +27,7 @@ SET(uis
     ./ui/consoleWidget.ui
     ./ui/DatabaseViewer.ui
     ./ui/loopClosureViewer.ui
+    ./ui/exportDialog.ui
 )
 
 SET(qrc 
@@ -60,6 +63,8 @@ SET(SRC_FILES
 	./OdometryViewer.cpp
 	./LoopClosureViewer.cpp
 	./DataRecorder.cpp
+	./ExportDialog.cpp
+	./MapVisibilityWidget.cpp
 	${moc_srcs} 
 	${moc_uis} 
 	${srcs_qrc}

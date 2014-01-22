@@ -17,32 +17,38 @@
  * along with RTAB-Map.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QtGui/QApplication>
-#include "rtabmap/gui/DatabaseViewer.h"
-#include "rtabmap/utilite/ULogger.h"
+#ifndef EXPORTDIALOG_H_
+#define EXPORTDIALOG_H_
 
-int main(int argc, char * argv[])
+#include <QtGui/QDialog>
+
+class Ui_ExportDialog;
+
+namespace rtabmap {
+
+class ExportDialog : public QDialog
 {
-	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kInfo);
+	Q_OBJECT
 
-	QApplication * app = new QApplication(argc, argv);
-	DatabaseViewer * mainWindow = new DatabaseViewer();
+public:
+	ExportDialog(QWidget * parent = 0);
 
-	mainWindow->showNormal();
+	virtual ~ExportDialog();
 
-	if(argc == 2)
-	{
-		mainWindow->openDatabase(argv[1]);
-	}
+	QString outputPath() const;
+	int framesIgnored() const;
+	bool isRgbExported() const;
+	bool isDepthExported() const;
+	bool isDepth2dExported() const;
+	bool isOdomExported() const;
 
-	// Now wait for application to finish
-	app->connect( app, SIGNAL( lastWindowClosed() ),
-				app, SLOT( quit() ) );
-	app->exec();// MUST be called by the Main Thread
+private slots:
+	void getPath();
 
-	delete mainWindow;
-	delete app;
+private:
+	Ui_ExportDialog * _ui;
+};
 
-	return 0;
 }
+
+#endif /* ABOUTDIALOG_H_ */

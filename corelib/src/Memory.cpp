@@ -58,7 +58,8 @@ Memory::Memory(const ParametersMap & parameters) :
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
-	_lastLoopClosureId(0),
+	_lastGlobalLoopClosureParentId(0),
+	_lastGlobalLoopClosureChildId(0),
 	_memoryChanged(false),
 	_signaturesAdded(0),
 
@@ -69,8 +70,6 @@ Memory::Memory(const ParametersMap & parameters) :
 	_parallelized(Parameters::defaultKpParallelized()),
 	_wordsPerImageTarget(Parameters::defaultKpWordsPerImage()),
 	_roiRatios(std::vector<float>(4, 0.0f)),
-
-	_icpType(Parameters::defaultLccIcpType()),
 
 	_bowMinInliers(Parameters::defaultLccBowMinInliers()),
 	_bowInlierDistance(Parameters::defaultLccBowInlierDistance()),
@@ -88,7 +87,8 @@ Memory::Memory(const ParametersMap & parameters) :
 	_icp2MaxCorrespondenceDistance(Parameters::defaultLccIcp2MaxCorrespondenceDistance()),
 	_icp2MaxIterations(Parameters::defaultLccIcp2Iterations()),
 	_icp2MaxFitness(Parameters::defaultLccIcp2MaxFitness()),
-	_icp2CorrespondenceRatio(Parameters::defaultLccIcp2CorrespondenceRatio())
+	_icp2CorrespondenceRatio(Parameters::defaultLccIcp2CorrespondenceRatio()),
+	_icp2VoxelSize(Parameters::defaultLccIcp2VoxelSize())
 {
 	_vwd = new VWDictionary(parameters);
 	this->parseParameters(parameters);
@@ -314,20 +314,6 @@ void Memory::parseParameters(const ParametersMap & parameters)
 		_dbDriver->parseParameters(parameters);
 	}
 
-	// RGB-D SLAM stuff
-	if((iter=parameters.find(Parameters::kLccIcpType())) != parameters.end())
-	{
-		int icpType = std::atoi((*iter).second.c_str());
-		if(icpType >= 0 && icpType <= 1)
-		{
-			_icpType = icpType;
-		}
-		else
-		{
-			UERROR("Icp type must be 0 or 1 (value=%d)", icpType);
-		}
-	}
-
 	Parameters::parse(parameters, Parameters::kLccBowMinInliers(), _bowMinInliers);
 	Parameters::parse(parameters, Parameters::kLccBowInlierDistance(), _bowInlierDistance);
 	Parameters::parse(parameters, Parameters::kLccBowIterations(), _bowIterations);
@@ -343,8 +329,9 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kLccIcp2Iterations(), _icp2MaxIterations);
 	Parameters::parse(parameters, Parameters::kLccIcp2MaxFitness(), _icp2MaxFitness);
 	Parameters::parse(parameters, Parameters::kLccIcp2CorrespondenceRatio(), _icp2CorrespondenceRatio);
+	Parameters::parse(parameters, Parameters::kLccIcp2VoxelSize(), _icp2VoxelSize);
 
-	UASSERT_MSG(_bowMinInliers >= 8, uFormat("value=%d", _bowMinInliers).c_str());
+	UASSERT_MSG(_bowMinInliers >= 1, uFormat("value=%d", _bowMinInliers).c_str());
 	UASSERT_MSG(_bowInlierDistance > 0.0f, uFormat("value=%f", _bowInlierDistance).c_str());
 	UASSERT_MSG(_bowIterations > 0, uFormat("value=%d", _bowIterations).c_str());
 	UASSERT_MSG(_bowMaxDepth >= 0.0f, uFormat("value=%f", _bowMaxDepth).c_str());
@@ -359,6 +346,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	UASSERT_MSG(_icp2MaxIterations > 0, uFormat("value=%d", _icp2MaxIterations).c_str());
 	UASSERT_MSG(_icp2MaxFitness > 0.0f, uFormat("value=%f", _icp2MaxFitness).c_str());
 	UASSERT_MSG(_icp2CorrespondenceRatio >=0.0f && _icp2CorrespondenceRatio <=1.0f, uFormat("value=%f", _icp2MaxFitness).c_str());
+	UASSERT_MSG(_icp2VoxelSize >= 0, uFormat("value=%d", _icp2VoxelSize).c_str());
 
 	// Keypoint stuff
 	if(_vwd)
@@ -511,7 +499,8 @@ bool Memory::update(const Image & image, Statistics * stats)
 
 	UDEBUG("totalTimer = %fs", totalTimer.ticks());
 
-	if(stats) stats->addStatistic(Statistics::kMemoryLast_loop_closure(), _lastLoopClosureId);
+	if(stats) stats->addStatistic(Statistics::kLoopLast_loop_closure_parent(), _lastGlobalLoopClosureParentId);
+	if(stats) stats->addStatistic(Statistics::kLoopLast_loop_closure_child(), _lastGlobalLoopClosureChildId);
 
 	return true;
 }
@@ -629,7 +618,7 @@ int Memory::getVWDictionarySize() const
 	return _vwd->getVisualWords().size();
 }
 
-void Memory::getPose(int locationId, int targetMapId, Transform & pose, bool lookInDatabase) const
+void Memory::getPose(int locationId, Transform & pose, bool lookInDatabase) const
 {
 	const Signature * s = getSignature(locationId);
 	int mapId = -1;
@@ -637,6 +626,11 @@ void Memory::getPose(int locationId, int targetMapId, Transform & pose, bool loo
 	{
 		pose = s->getPose();
 		mapId = s->mapId();
+
+		if(pose.isNull())
+		{
+			UERROR("Pose of %d is null?!?", locationId);
+		}
 	}
 	else if(lookInDatabase && _dbDriver)
 	{
@@ -722,7 +716,7 @@ std::map<int, Transform> Memory::getNeighborLinks(int signatureId, bool ignoreNe
 // maxCheckedInDatabase = -1 means no limit to check in database (default)
 // maxCheckedInDatabase = 0 means don't check in database
 std::map<int, int> Memory::getNeighborsId(int signatureId,
-		unsigned int margin,
+		unsigned int margin, // 0 means infinite margin
 		int maxCheckedInDatabase, // default -1 (no limit)
 		bool incrementMarginOnLoop, // default false
 		bool ignoreLoopIds, // default false
@@ -745,7 +739,7 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 	std::set<int> nextMargin;
 	nextMargin.insert(signatureId);
 	unsigned int m = 0;
-	while(m < margin && nextMargin.size())
+	while((margin == 0 || m < margin) && nextMargin.size())
 	{
 		curentMarginList = std::list<int>(nextMargin.begin(), nextMargin.end());
 		nextMargin.clear();
@@ -1001,7 +995,8 @@ void Memory::clear()
 	}
 	UDEBUG("");
 	_lastSignature = 0;
-	_lastLoopClosureId = 0;
+	_lastGlobalLoopClosureParentId = 0;
+	_lastGlobalLoopClosureChildId = 0;
 	_idCount = kIdStart;
 	_idMapCount = kIdStart;
 	_memoryChanged = false;
@@ -1299,10 +1294,10 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 		bool recentWmImmunized = false;
 		// look for the position of the lastLoopClosureId in WM
 		int currentRecentWmSize = 0;
-		if(_lastLoopClosureId > 0 && _stMem.find(_lastLoopClosureId) == _stMem.end())
+		if(_lastGlobalLoopClosureParentId > 0 && _stMem.find(_lastGlobalLoopClosureParentId) == _stMem.end())
 		{
 			// If set, it must be in WM
-			std::set<int>::const_iterator iter = _workingMem.find(_lastLoopClosureId);
+			std::set<int>::const_iterator iter = _workingMem.find(_lastGlobalLoopClosureParentId);
 			while(iter != _workingMem.end())
 			{
 				++currentRecentWmSize;
@@ -1314,9 +1309,9 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 			}
 			else if(currentRecentWmSize == 0 && _workingMem.size() > 1)
 			{
-				UERROR("Last loop closure id not found in WM (%d)", _lastLoopClosureId);
+				UERROR("Last loop closure id not found in WM (%d)", _lastGlobalLoopClosureParentId);
 			}
-			UDEBUG("currentRecentWmSize=%d, recentWmMaxSize=%d, _recentWmRatio=%f, end recent wM = %d", currentRecentWmSize, recentWmMaxSize, _recentWmRatio, _lastLoopClosureId);
+			UDEBUG("currentRecentWmSize=%d, recentWmMaxSize=%d, _recentWmRatio=%f, end recent wM = %d", currentRecentWmSize, recentWmMaxSize, _recentWmRatio, _lastGlobalLoopClosureParentId);
 		}
 
 		// Ignore neighbor of the last location in STM (for neighbor links redirection issue during Rehearsal).
@@ -1328,8 +1323,8 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 
 		for(std::set<int>::const_iterator memIter = wm.begin(); memIter != wm.end(); ++memIter)
 		{
-			if( (recentWmImmunized && *memIter > _lastLoopClosureId) ||
-				*memIter == _lastLoopClosureId)
+			if( (recentWmImmunized && *memIter > _lastGlobalLoopClosureParentId) ||
+				*memIter == _lastGlobalLoopClosureParentId)
 			{
 				// ignore recent memory
 			}
@@ -1403,7 +1398,7 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 					removableSignatures.push_back(iter->second);
 					addedSignatures.insert(iter->second->id());
 
-					if(iter->second->id() > _lastLoopClosureId)
+					if(iter->second->id() > _lastGlobalLoopClosureParentId)
 					{
 						++recentWmCount;
 						if(currentRecentWmSize - recentWmCount < recentWmMaxSize)
@@ -1413,7 +1408,7 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 						}
 					}
 				}
-				else if(iter->second->id() < _lastLoopClosureId)
+				else if(iter->second->id() < _lastGlobalLoopClosureParentId)
 				{
 					UDEBUG("weight=%d, id=%d, lcCount=%d, lcId=%d, childId=%d",
 							iter->first.weight,
@@ -1575,9 +1570,10 @@ void Memory::rejectLoopClosure(int oldId, int newId)
 				break;
 			}
 		}
-		if(newS->getChildLoopClosureIds().size() == 0 && newId == _lastLoopClosureId)
+		if(newS->getChildLoopClosureIds().size() == 0 && newId == _lastGlobalLoopClosureParentId)
 		{
-			_lastLoopClosureId = 0;
+			_lastGlobalLoopClosureParentId = 0;
+			_lastGlobalLoopClosureChildId = 0;
 		}
 	}
 	else
@@ -1627,6 +1623,7 @@ Transform Memory::computeVisualTransform(const Signature & oldS, const Signature
 		if((int)inliersOld->size() >= _bowMinInliers)
 		{
 			UDEBUG("Correspondences = %d", (int)inliersOld->size());
+
 			int inliersCount = 0;
 			Transform t = util3d::transformFromXYZCorrespondences(
 					inliersOld,
@@ -1656,7 +1653,7 @@ Transform Memory::computeVisualTransform(const Signature & oldS, const Signature
 }
 
 // compute transform newId -> oldId
-Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess)
+Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess, bool icp3D)
 {
 	Signature * oldS = this->_getSignature(oldId);
 	Signature * newS = this->_getSignature(newId);
@@ -1665,7 +1662,7 @@ Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess)
 	{
 		std::list<Signature*> depthToLoad;
 		std::set<int> added;
-		if(_icpType == 0)
+		if(icp3D)
 		{
 			//Depth required, if not in RAM, load it from LTM
 			if(oldS->getDepth().empty())
@@ -1679,7 +1676,7 @@ Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess)
 				added.insert(newS->id());
 			}
 		}
-		if(_icpType == 1)
+		else
 		{
 			//Depth required, if not in RAM, load it from LTM
 			if(oldS->getDepth2D().size() == 0 && added.find(oldS->id()) == added.end())
@@ -1699,13 +1696,13 @@ Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess)
 	Transform t;
 	if(oldS && newS)
 	{
-		t = computeIcpTransform(*oldS, *newS, guess);
+		t = computeIcpTransform(*oldS, *newS, guess, icp3D);
 	}
 	return t;
 }
 
 // get transform from the new to old node
-Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess) const
+Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess, bool icp3D) const
 {
 	if(guess.isNull())
 	{
@@ -1722,7 +1719,7 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 	Transform transform;
 
 	// ICP with guess transform
-	if(_icpType == 0)
+	if(icp3D)
 	{
 		UDEBUG("3D ICP");
 		util3d::CompressionThread ctOld(oldS.getDepth(), true);
@@ -1786,7 +1783,7 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 
 			if(hasConverged && (_icpMaxFitness == 0 || fitness < _icpMaxFitness))
 			{
-				transform = guess * icpT;
+				transform = icpT * guess;
 				transform = transform.inverse();
 			}
 			else
@@ -1800,7 +1797,7 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 			UERROR("Depths 3D empty?!?");
 		}
 	}
-	else //_icp2DEnabled
+	else // icp 2D
 	{
 		UDEBUG("2D ICP");
 
@@ -1826,6 +1823,14 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 			// 2D
 			pcl::PointCloud<pcl::PointXYZ>::Ptr oldCloud = util3d::cvMat2Cloud(oldDepth2D);
 			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud = util3d::cvMat2Cloud(newDepth2D, guess);
+
+			//voxelize
+			if(_icp2VoxelSize > 0.0f)
+			{
+				oldCloud = util3d::voxelize(oldCloud, _icp2VoxelSize);
+				newCloud = util3d::voxelize(newCloud, _icp2VoxelSize);
+			}
+
 			double fitness = 0.0f;
 			bool hasConverged = false;
 			Transform icpT;
@@ -1839,10 +1844,10 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 					   hasConverged,
 					   fitness);
 
-				//pcl::io::savePCDFile("old.pcd", *oldCloud);
-				//pcl::io::savePCDFile("newguess.pcd", *newCloud);
+				//pcl::io::savePCDFile("lccold.pcd", *oldCloud);
+				//pcl::io::savePCDFile("lccnewguess.pcd", *newCloud);
 				newCloud = util3d::transformPointCloud(newCloud, icpT);
-				//pcl::io::savePCDFile("newicp.pcd", *newCloud);
+				//pcl::io::savePCDFile("lccnewicp.pcd", *newCloud);
 
 				// verify if there are enough correspondences
 				int correspondences = util3d::getCorrespondencesCount(newCloud, oldCloud, _icp2MaxCorrespondenceDistance);
@@ -1864,7 +1869,7 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 			   (_icp2MaxFitness == 0 || fitness < _icp2MaxFitness) &&
 			   correspondencesRatio >= _icp2CorrespondenceRatio)
 			{
-				transform = guess * icpT;
+				transform = icpT * guess;
 				transform = transform.inverse();
 			}
 			else
@@ -1881,6 +1886,7 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 	return transform;
 }
 
+// poses of newId and oldId must be in "poses"
 Transform Memory::computeScanMatchingTransform(
 		int newId,
 		int oldId,
@@ -1920,9 +1926,9 @@ Transform Memory::computeScanMatchingTransform(
 	}
 
 	//voxelize
-	if(assembledOldClouds->size())
+	if(assembledOldClouds->size() && _icp2VoxelSize > 0.0f)
 	{
-		assembledOldClouds = util3d::voxelize(assembledOldClouds, 0.01);
+		assembledOldClouds = util3d::voxelize(assembledOldClouds, _icp2VoxelSize);
 	}
 
 	// get the new cloud
@@ -1932,9 +1938,9 @@ Transform Memory::computeScanMatchingTransform(
 	newCloud = util3d::cvMat2Cloud(util3d::uncompressData(newS->getDepth2D()), poses.at(newId));
 
 	//voxelize
-	if(newCloud->size())
+	if(newCloud->size() && _icp2VoxelSize > 0.0f)
 	{
-		newCloud = util3d::voxelize(newCloud, 0.01);
+		newCloud = util3d::voxelize(newCloud, _icp2VoxelSize);
 	}
 
 	//pcl::io::savePCDFile("old.pcd", *assembledOldClouds);
@@ -1991,7 +1997,7 @@ Transform Memory::computeScanMatchingTransform(
 }
 
 // Transform from new to old
-bool Memory::addLoopClosureLink(int oldId, int newId, const Transform & transform)
+bool Memory::addLoopClosureLink(int oldId, int newId, const Transform & transform, bool global)
 {
 	ULOGGER_INFO("old=%d, new=%d transform: %s", oldId, newId, transform.prettyPrint().c_str());
 	Signature * oldS = _getSignature(oldId);
@@ -2011,9 +2017,10 @@ bool Memory::addLoopClosureLink(int oldId, int newId, const Transform & transfor
 		oldS->addLoopClosureId(newS->id(), transform.inverse());
 		newS->addChildLoopClosureId(oldS->id(), transform);
 
-		if(_incrementalMemory)
+		if(_incrementalMemory && global)
 		{
-			_lastLoopClosureId = newS->id();
+			_lastGlobalLoopClosureParentId = newS->id();
+			_lastGlobalLoopClosureChildId = oldS->id();
 
 			// udpate weights only if the memory is incremental
 			newS->setWeight(newS->getWeight() + oldS->getWeight());
@@ -2058,7 +2065,8 @@ void Memory::dumpMemory(std::string directory) const
 {
 	UINFO("Dumping memory to directory \"%s\"", directory.c_str());
 	this->dumpDictionary((directory+"DumpMemoryWordRef.txt").c_str(), (directory+"DumpMemoryWordDesc.txt").c_str());
-	this->dumpSignatures((directory + "DumpMemorySign.txt").c_str());
+	this->dumpSignatures((directory + "DumpMemorySign.txt").c_str(), false);
+	this->dumpSignatures((directory + "DumpMemorySign3.txt").c_str(), true);
 	this->dumpMemoryTree((directory + "DumpMemoryTree.txt").c_str());
 }
 
@@ -2070,7 +2078,7 @@ void Memory::dumpDictionary(const char * fileNameRef, const char * fileNameDesc)
 	}
 }
 
-void Memory::dumpSignatures(const char * fileNameSign) const
+void Memory::dumpSignatures(const char * fileNameSign, bool words3D) const
 {
 	FILE* foutSign = 0;
 #ifdef _MSC_VER
@@ -2081,7 +2089,14 @@ void Memory::dumpSignatures(const char * fileNameSign) const
 
 	if(foutSign)
 	{
-		fprintf(foutSign, "SignatureID WordsID...\n");
+		if(words3D)
+		{
+			fprintf(foutSign, "SignatureID WordsID... (Max features depth=%f)\n", _bowMaxDepth);
+		}
+		else
+		{
+			fprintf(foutSign, "SignatureID WordsID...\n");
+		}
 		const std::map<int, Signature *> & signatures = this->getSignatures();
 		for(std::map<int, Signature *>::const_iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
 		{
@@ -2089,10 +2104,27 @@ void Memory::dumpSignatures(const char * fileNameSign) const
 			const Signature * ss = dynamic_cast<const Signature *>(iter->second);
 			if(ss)
 			{
-				const std::multimap<int, cv::KeyPoint> & ref = ss->getWords();
-				for(std::multimap<int, cv::KeyPoint>::const_iterator jter=ref.begin(); jter!=ref.end(); ++jter)
+				if(words3D)
 				{
-					fprintf(foutSign, "%d ", (*jter).first);
+					const std::multimap<int, pcl::PointXYZ> & ref = ss->getWords3();
+					for(std::multimap<int, pcl::PointXYZ>::const_iterator jter=ref.begin(); jter!=ref.end(); ++jter)
+					{
+						//show only valid point according to current parameters
+						if(pcl::isFinite(jter->second) &&
+						   (jter->second.x != 0 || jter->second.y != 0 || jter->second.z != 0) &&
+						   (_bowMaxDepth <= 0 || jter->second.x <= _bowMaxDepth))
+						{
+							fprintf(foutSign, "%d ", (*jter).first);
+						}
+					}
+				}
+				else
+				{
+					const std::multimap<int, cv::KeyPoint> & ref = ss->getWords();
+					for(std::multimap<int, cv::KeyPoint>::const_iterator jter=ref.begin(); jter!=ref.end(); ++jter)
+					{
+						fprintf(foutSign, "%d ", (*jter).first);
+					}
 				}
 			}
 			fprintf(foutSign, "\n");
@@ -2208,9 +2240,9 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 
 			oldS->addLoopClosureId(newS->id()); // to keep track of the merged location
 
-			if(_lastLoopClosureId == oldS->id())
+			if(_lastGlobalLoopClosureParentId == oldS->id())
 			{
-				_lastLoopClosureId = newS->id();
+				_lastGlobalLoopClosureParentId = newS->id();
 			}
 		}
 		else
@@ -2406,7 +2438,7 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 						 {
 							 weightNeighbor = _signatures.find(iter->first)->second->getWeight();
 						 }
-						 UDEBUG("Add neighbor link from %d to %d", id, iter->first);
+						 //UDEBUG("Add neighbor link from %d to %d", id, iter->first);
 						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\"\n",
 								 id,
 								 weight,
@@ -2427,7 +2459,7 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 					 {
 						 weightNeighbor = _signatures.find(iter->first)->second->getWeight();
 					 }
-					 UDEBUG("Add loop link from %d to %d", id, iter->first);
+					 //UDEBUG("Add loop link from %d to %d", id, iter->first);
 					 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
 							 id,
 							 weight,
@@ -2446,7 +2478,7 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 					 {
 						 weightNeighbor = _signatures.find(iter->first)->second->getWeight();
 					 }
-					 UDEBUG("Add child link from %d to %d", id, iter->first);
+					 //UDEBUG("Add child link from %d to %d", id, iter->first);
 					 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
 							 id,
 							 weight,
@@ -2481,7 +2513,7 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 							 {
 								 _dbDriver->getWeight(iter->first, weightNeighbor);
 							 }
-							 UDEBUG("Add neighbor link from %d to %d", id, iter->first);
+							 //UDEBUG("Add neighbor link from %d to %d", id, iter->first);
 							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\";\n",
 									 id,
 									 weight,
@@ -2502,7 +2534,7 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 						 {
 							 weightNeighbor = _signatures.find(iter->first)->second->getWeight();
 						 }
-						 UDEBUG("Add loop link from %d to %d", id, iter->first);
+						 //UDEBUG("Add loop link from %d to %d", id, iter->first);
 						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
 								 id,
 								 weight,
@@ -2524,7 +2556,7 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 						 {
 							 weightNeighbor = _signatures.find(iter->first)->second->getWeight();
 						 }
-						 UDEBUG("Add child link from %d to %d", id, iter->first);
+						 //UDEBUG("Add child link from %d to %d", id, iter->first);
 						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
 								 id,
 								 weight,
@@ -3165,16 +3197,14 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 
 void Memory::getMetricConstraints(
 		const std::vector<int> & ids,
-		int targetMapId,
 		std::map<int, Transform> & poses,
 		std::multimap<int, std::pair<int, Transform> > & links,
 		bool lookInDatabase)
 {
-	UDEBUG("targetMap = %d", targetMapId);
 	for(unsigned int i=0; i<ids.size(); ++i)
 	{
 		Transform pose;
-		this->getPose(ids[i], targetMapId, pose, lookInDatabase);
+		this->getPose(ids[i], pose, lookInDatabase);
 		if(!pose.isNull())
 		{
 			poses.insert(std::make_pair(ids[i], pose));
@@ -3190,9 +3220,23 @@ void Memory::getMetricConstraints(
 			{
 				if(!jter->second.isNull() && uContains(poses, jter->first))
 				{
-					links.insert(std::make_pair(ids[i], *jter));
+					bool edgeAlreadyAdded = false;
+					for(std::multimap<int, std::pair<int, Transform> >::iterator iter = links.lower_bound(jter->first);
+							iter != links.end() && iter->first == jter->first;
+							++iter)
+					{
+						if(iter->second.first == ids[i])
+						{
+							edgeAlreadyAdded = true;
+						}
+					}
+					if(!edgeAlreadyAdded)
+					{
+						links.insert(std::make_pair(ids[i], *jter));
+					}
 				}
 			}
+
 			std::map<int, Transform> loops, children;
 			this->getLoopClosureIds(ids[i], loops, children, lookInDatabase);
 			for(std::map<int, Transform>::iterator jter=children.begin(); jter!=children.end(); ++jter)

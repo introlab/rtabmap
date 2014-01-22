@@ -32,7 +32,7 @@ DataRecorder::DataRecorder(QWidget * parent) :
 	layout->addWidget(imageView_);
 	this->setLayout(layout);
 }
-bool DataRecorder::init(const QString & path)
+bool DataRecorder::init(const QString & path, bool recordInRAM)
 {
 	if(!memory_)
 	{
@@ -40,6 +40,10 @@ bool DataRecorder::init(const QString & path)
 		customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
 		customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "-1")); // desactivate keypoints extraction
 		customParameters.insert(ParametersPair(Parameters::kMemImageKept(), "true")); // to keep images
+		if(!recordInRAM)
+		{
+			customParameters.insert(ParametersPair(Parameters::kDbSqlite3InMemory(), "false")); // to keep images
+		}
 		memory_ = new Memory();
 		if(!memory_->init(path.toStdString(), true, customParameters, false))
 		{

@@ -137,6 +137,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->buttonBox_local, SIGNAL(clicked(QAbstractButton *)), this, SLOT(resetApply(QAbstractButton *)));
 	connect(_ui->pushButton_loadConfig, SIGNAL(clicked()), this, SLOT(loadConfigFrom()));
 	connect(_ui->pushButton_saveConfig, SIGNAL(clicked()), this, SLOT(saveConfigTo()));
+	connect(_ui->pushButton_resetConfig, SIGNAL(clicked()), this, SLOT(resetConfig()));
 	connect(_ui->radioButton_basic, SIGNAL(toggled(bool)), this, SLOT(setupTreeView()));
 	connect(_ui->pushButton_testSourceOdometry, SIGNAL(clicked()), this, SLOT(testSourceOdometry()));
 
@@ -374,18 +375,18 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->rgdb_angularUpdate->setObjectName(Parameters::kRGBDAngularUpdate().c_str());
 	_ui->odomScanHistory->setObjectName(Parameters::kRGBDScanMatchingSize().c_str());
 
-	_ui->localDetection_time->setObjectName(Parameters::kRGBDLocalLoopDetectionTime().c_str());
-	_ui->localDetection_space->setObjectName(Parameters::kRGBDLocalLoopDetectionSpace().c_str());
+	_ui->groupBox_localDetection_time->setObjectName(Parameters::kRGBDLocalLoopDetectionTime().c_str());
+	_ui->groupBox_localDetection_space->setObjectName(Parameters::kRGBDLocalLoopDetectionSpace().c_str());
 	_ui->localDetection_radius->setObjectName(Parameters::kRGBDLocalLoopDetectionRadius().c_str());
 	_ui->localDetection_maxNeighbors->setObjectName(Parameters::kRGBDLocalLoopDetectionNeighbors().c_str());
-
-	_ui->loopClosure_icpEnabled->setObjectName(Parameters::kLccIcpEnabled().c_str());
-	_ui->loopClosure_icpType->setObjectName(Parameters::kLccIcpType().c_str());
+	_ui->localDetection_maxDiffID->setObjectName(Parameters::kRGBDLocalLoopDetectionMaxDiffID().c_str());
 
 	_ui->loopClosure_bowMinInliers->setObjectName(Parameters::kLccBowMinInliers().c_str());
 	_ui->loopClosure_bowInlierDistance->setObjectName(Parameters::kLccBowInlierDistance().c_str());
 	_ui->loopClosure_bowIterations->setObjectName(Parameters::kLccBowIterations().c_str());
 	_ui->loopClosure_bowMaxDepth->setObjectName(Parameters::kLccBowMaxDepth().c_str());
+
+	_ui->globalDetection_icpType->setObjectName(Parameters::kLccIcpType().c_str());
 
 	_ui->loopClosure_icpDecimation->setObjectName(Parameters::kLccIcp3Decimation().c_str());
 	_ui->loopClosure_icpMaxDepth->setObjectName(Parameters::kLccIcp3MaxDepth().c_str());
@@ -399,6 +400,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_icp2Iterations->setObjectName(Parameters::kLccIcp2Iterations().c_str());
 	_ui->loopClosure_icp2MaxFitness->setObjectName(Parameters::kLccIcp2MaxFitness().c_str());
 	_ui->loopClosure_icp2Ratio->setObjectName(Parameters::kLccIcp2CorrespondenceRatio().c_str());
+	_ui->loopClosure_icp2Voxel->setObjectName(Parameters::kLccIcp2VoxelSize().c_str());
 
 	//Odometry
 	_ui->odom_type->setObjectName(Parameters::kOdomType().c_str());
@@ -589,6 +591,7 @@ void PreferencesDialog::setupSignals()
 			QCheckBox * check = qobject_cast<QCheckBox *>(obj);
 			QRadioButton * radio = qobject_cast<QRadioButton *>(obj);
 			QLineEdit * lineEdit = qobject_cast<QLineEdit *>(obj);
+			QGroupBox * groupBox = qobject_cast<QGroupBox *>(obj);
 			if(spin)
 			{
 				connect(spin, SIGNAL(valueChanged(int)), this, SLOT(addParameter(int)));
@@ -612,6 +615,10 @@ void PreferencesDialog::setupSignals()
 			else if(lineEdit)
 			{
 				connect(lineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(addParameter(const QString &)));
+			}
+			else if(groupBox)
+			{
+				connect(groupBox, SIGNAL(clicked(bool)), this, SLOT(addParameter(bool)));
 			}
 			else
 			{
@@ -823,6 +830,13 @@ void PreferencesDialog::resetSettings(int panelNumber)
 	{
 		this->resetSettings(boxes.at(panelNumber));
 	}
+	else if(panelNumber == -1)
+	{
+		for(QList<QGroupBox*>::iterator iter = boxes.begin(); iter!=boxes.end(); ++iter)
+		{
+			this->resetSettings(*iter);
+		}
+	}
 	else
 	{
 		ULOGGER_WARN("panel number and the number of stacked widget doesn't match");
@@ -856,7 +870,7 @@ QString PreferencesDialog::getIniFilePath() const
 
 void PreferencesDialog::loadConfigFrom()
 {
-	QString path = QFileDialog::getOpenFileName(this, tr("Load configurations..."), this->getWorkingDirectory(), "*.ini");
+	QString path = QFileDialog::getOpenFileName(this, tr("Load settings..."), this->getWorkingDirectory(), "*.ini");
 	if(!path.isEmpty())
 	{
 		this->readSettings(path);
@@ -1054,12 +1068,28 @@ bool PreferencesDialog::readCoreSettings(const QString & filePath)
 	return true;
 }
 
-void PreferencesDialog::saveConfigTo()
+bool PreferencesDialog::saveConfigTo()
 {
-	QString path = QFileDialog::getSaveFileName(this, tr("Save configurations..."), this->getWorkingDirectory()+"/config.ini", "*.ini");
+	QString path = QFileDialog::getSaveFileName(this, tr("Save settings..."), this->getWorkingDirectory()+"/config.ini", "*.ini");
 	if(!path.isEmpty())
 	{
 		this->writeSettings(path);
+		return true;
+	}
+	return false;
+}
+
+void PreferencesDialog::resetConfig()
+{
+	int button = QMessageBox::warning(this,
+			tr("Reset settings..."),
+			tr("This will reset all settings. Restore all settings to default without saving them first?"),
+			   QMessageBox::Cancel | QMessageBox::Yes | QMessageBox::Save,
+			   QMessageBox::Cancel);
+	if(button == QMessageBox::Yes ||
+	   (button == QMessageBox::Save && saveConfigTo()))
+	{
+		this->resetSettings(-1);
 	}
 }
 
@@ -1204,6 +1234,7 @@ void PreferencesDialog::writeCoreSettings(const QString & filePath)
 			QCheckBox * check = qobject_cast<QCheckBox *>(obj);
 			QRadioButton * radio = qobject_cast<QRadioButton *>(obj);
 			QLineEdit * lineEdit = qobject_cast<QLineEdit *>(obj);
+			QGroupBox * groupBox = qobject_cast<QGroupBox *>(obj);
 			if(spin)
 			{
 				settings.setValue(obj->objectName(), spin->value());
@@ -1227,6 +1258,10 @@ void PreferencesDialog::writeCoreSettings(const QString & filePath)
 			else if(lineEdit)
 			{
 				settings.setValue(obj->objectName(), lineEdit->text());
+			}
+			else if(groupBox)
+			{
+				settings.setValue(obj->objectName(), uBool2Str(groupBox->isChecked()).c_str());
 			}
 			else
 			{
@@ -1599,6 +1634,7 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 		QCheckBox * check = qobject_cast<QCheckBox *>(obj);
 		QRadioButton * radio = qobject_cast<QRadioButton *>(obj);
 		QLineEdit * lineEdit = qobject_cast<QLineEdit *>(obj);
+		QGroupBox * groupBox = qobject_cast<QGroupBox *>(obj);
 		bool ok;
 		if(spin)
 		{
@@ -1635,6 +1671,10 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 		else if(lineEdit)
 		{
 			lineEdit->setText(value.c_str());
+		}
+		else if(groupBox)
+		{
+			groupBox->setChecked(uStr2Bool(value.c_str()));
 		}
 		else
 		{
@@ -1755,17 +1795,15 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 						_ui->stackedWidget_odom->setCurrentIndex(2);
 					}
 				}
-				else if(comboBox == _ui->loopClosure_icpType)
+				else if(comboBox == _ui->globalDetection_icpType)
 				{
-					if(value == 0) // 0 icp3
+					if(value == 1) // 1 icp3
 					{
 						this->addParameters(_ui->groupBox_loopClosure_icp3);
-						_ui->stackedWidget_loopClosureICP->setCurrentIndex(0);
 					}
-					else if(value == 1) // 1 icp2
+					else if(value == 2) // 2 icp2
 					{
 						this->addParameters(_ui->groupBox_loopClosure_icp2);
-						_ui->stackedWidget_loopClosureICP->setCurrentIndex(1);
 					}
 				}
 			}
@@ -1797,28 +1835,38 @@ void PreferencesDialog::addParameter(const QObject * object, bool value)
 
 		const QCheckBox * checkbox = qobject_cast<const QCheckBox*>(object);
 		const QRadioButton * radio = qobject_cast<const QRadioButton*>(object);
-		if(checkbox || radio)
+		const QGroupBox * groupBox = qobject_cast<const QGroupBox*>(object);
+		if(checkbox || radio || groupBox)
 		{
 			// Add parameter
 			_parameters.insert(rtabmap::ParametersPair(object->objectName().toStdString(), uBool2Str(value)));
 
+			// RGBD panel
 			if(value && checkbox == _ui->general_checkBox_activateRGBD)
 			{
 				// add all RGBD parameters!
-				this->addParameter(_ui->rgdb_linearUpdate, _ui->rgdb_linearUpdate->value());
-				this->addParameter(_ui->rgdb_angularUpdate, _ui->rgdb_linearUpdate->value());
-				this->addParameter(_ui->odomScanHistory, _ui->odomScanHistory->value());
-				this->addParameters(_ui->groupBox_local_loop_closure);
-
-				this->addParameters(_ui->groupBox_lcc_bow);
-				if(_ui->loopClosure_icpEnabled->isChecked())
-				{
-					this->addParameter(_ui->loopClosure_icpType, _ui->loopClosure_icpType->currentIndex());
-				}
+				this->addParameters(_ui->groupBox_slam_update);
+				this->addParameters(_ui->groupBox_odom_correction);
+				this->addParameters(_ui->groupBox_localDetection_time);
+				this->addParameters(_ui->groupBox_localDetection_space);
+				this->addParameters(_ui->groupBox_globalConstraints);
+				this->addParameters(_ui->groupBox_visualTransform2);
 			}
-			if(value && checkbox == _ui->loopClosure_icpEnabled)
+
+			if(groupBox)
 			{
-				this->addParameter(_ui->loopClosure_icpType, _ui->loopClosure_icpType->currentIndex());
+				// RGBD panel
+				if(value && groupBox == _ui->groupBox_localDetection_time)
+				{
+					this->addParameters(_ui->groupBox_globalConstraints);
+					this->addParameters(_ui->groupBox_visualTransform2);
+				}
+				if(value && groupBox == _ui->groupBox_localDetection_space)
+				{
+					this->addParameters(_ui->groupBox_loopClosure_icp2);
+				}
+
+				this->addParameters(groupBox);
 			}
 		}
 		else
@@ -1910,7 +1958,14 @@ void PreferencesDialog::addParameters(const QObjectList & children)
 		}
 		else if(groupBox)
 		{
-			this->addParameters(groupBox);
+			if(groupBox->isCheckable())
+			{
+				this->addParameter(groupBox, groupBox->isChecked());
+			}
+			else
+			{
+				this->addParameters(groupBox);
+			}
 		}
 		else if(stackedWidget)
 		{

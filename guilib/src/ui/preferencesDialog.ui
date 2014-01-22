@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1237</width>
-    <height>765</height>
+    <width>1059</width>
+    <height>914</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>939</width>
-            <height>724</height>
+            <width>777</width>
+            <height>826</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>12</number>
+                <number>0</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -258,20 +258,27 @@
                     <item>
                      <widget class="QGroupBox" name="groupBox_2">
                       <property name="title">
-                       <string>Save/load configurations</string>
+                       <string>Save/load settings</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_9">
                        <item>
                         <widget class="QPushButton" name="pushButton_saveConfig">
                          <property name="text">
-                          <string>Save all configurations to ...</string>
+                          <string>Save settings (*.ini) ...</string>
                          </property>
                         </widget>
                        </item>
                        <item>
                         <widget class="QPushButton" name="pushButton_loadConfig">
                          <property name="text">
-                          <string>Load all configurations from ...</string>
+                          <string>Load settings (*.ini) ...</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="pushButton_resetConfig">
+                         <property name="text">
+                          <string>Reset all settings</string>
                          </property>
                         </widget>
                        </item>
@@ -2703,7 +2710,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                  <item>
                   <widget class="QGroupBox" name="groupBox_signature_keypoint1">
                    <property name="title">
-                    <string>Visual Word</string>
+                    <string>Visual word</string>
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_39">
                     <item>
@@ -3562,7 +3569,7 @@ Lower the ratio -&gt; higher the precision.</string>
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_25">
                     <item>
-                     <layout class="QHBoxLayout" name="horizontalLayout_7" stretch="0,1">
+                     <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="0,1">
                       <item>
                        <widget class="QCheckBox" name="general_checkBox_activateRGBD">
                         <property name="text">
@@ -3573,7 +3580,7 @@ Lower the ratio -&gt; higher the precision.</string>
                       <item>
                        <widget class="QLabel" name="label_activateRGBD">
                         <property name="text">
-                         <string>Activate metric RGB-D SLAM.
+                         <string>Activate metric RGB-D SLAM. This module enables 6d metric SLAM directly in RTAB-Map.
 If set to false, classic RTAB-Map loop closure detection is done using only images and without any metric information.</string>
                         </property>
                         <property name="wordWrap">
@@ -3586,8 +3593,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QLabel" name="label_83">
                       <property name="text">
-                       <string>This module enables 6d metric SLAM directly in RTAB-Map.
-Rigid transformations between nodes are saved on the neighbor links of the RTAB-Map's graph. On loop closures, a new constraint is added to the graph and TORO optimizes the graph. Loop closure constraints are computed using SIFT/SURF features extracted by RTAB-Map. RGB-D images must be sent to work (see Source-&gt;Openni).</string>
+                       <string>Rigid transformations between nodes are saved on the neighbor links of the RTAB-Map's graph. On loop closures, a new constraint is added to the graph and TORO optimizes the graph. RGB-D images must be sent to work (see Source-&gt;Openni).</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -3595,84 +3601,73 @@ Rigid transformations between nodes are saved on the neighbor links of the RTAB-
                      </widget>
                     </item>
                     <item>
-                     <layout class="QFormLayout" name="formLayout_13">
-                      <property name="fieldGrowthPolicy">
-                       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                     <widget class="QGroupBox" name="groupBox_slam_update">
+                      <property name="title">
+                       <string>Update</string>
                       </property>
-                      <item row="2" column="0">
-                       <widget class="QSpinBox" name="odomScanHistory"/>
-                      </item>
-                      <item row="2" column="1">
-                       <widget class="QLabel" name="label_scanMatching">
-                        <property name="text">
-                         <string>Laser scan matching history size for odometry correction (laser scans are required). Set to 0 to disable odometry correction.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QDoubleSpinBox" name="rgdb_angularUpdate">
-                        <property name="suffix">
-                         <string> rad</string>
-                        </property>
-                        <property name="decimals">
-                         <number>2</number>
-                        </property>
-                        <property name="maximum">
-                         <double>3.140000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.100000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="0">
-                       <widget class="QDoubleSpinBox" name="rgdb_linearUpdate">
-                        <property name="suffix">
-                         <string> m</string>
-                        </property>
-                        <property name="decimals">
-                         <number>2</number>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.100000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QLabel" name="label_152">
-                        <property name="text">
-                         <string>Angular update: Minimum angular displacement to update the map. Note that Weight Update is done prior to this, so weights are still updated.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="1">
-                       <widget class="QLabel" name="label_153">
-                        <property name="text">
-                         <string>Linear update: Minimum linear displacement to update the map. Note that Weight Update is done prior to this, so weights are still updated.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
+                      <layout class="QFormLayout" name="formLayout_20">
+                       <item row="0" column="0">
+                        <widget class="QDoubleSpinBox" name="rgdb_linearUpdate">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>2</number>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.100000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_153">
+                         <property name="text">
+                          <string>Linear update: Minimum linear displacement to update the map. Note that Weight Update is done prior to this, so weights are still updated.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QDoubleSpinBox" name="rgdb_angularUpdate">
+                         <property name="suffix">
+                          <string> rad</string>
+                         </property>
+                         <property name="decimals">
+                          <number>2</number>
+                         </property>
+                         <property name="maximum">
+                          <double>3.140000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.100000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_152">
+                         <property name="text">
+                          <string>Angular update: Minimum angular displacement to update the map. Note that Weight Update is done prior to this, so weights are still updated.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
                     </item>
                     <item>
-                     <widget class="QGroupBox" name="groupBox_local_loop_closure">
+                     <widget class="QGroupBox" name="groupBox_globalConstraints">
                       <property name="title">
-                       <string>Local loop closure detection</string>
+                       <string>Global loop closure constraints</string>
                       </property>
-                      <layout class="QVBoxLayout" name="verticalLayout_21">
+                      <layout class="QVBoxLayout" name="verticalLayout_20">
                        <item>
-                        <widget class="QLabel" name="label_17">
+                        <widget class="QLabel" name="label_55">
                          <property name="text">
-                          <string> Local detection is done using two modalities: Time and Space. In the two cases, if a transform can be computed using the loop closure constraints, a local loop closure is added. The Bayes filter is not used here, so it may result in more false detections.</string>
+                          <string>When a global loop closure is detected by the Bayes filter, a transform is computed between the current location and the old one. If a transform cannot be computed, the loop closure is rejected. The computation of the transform is done in 2 steps: </string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -3680,42 +3675,148 @@ Rigid transformations between nodes are saved on the neighbor links of the RTAB-
                         </widget>
                        </item>
                        <item>
-                        <layout class="QFormLayout" name="formLayout_6">
-                         <property name="fieldGrowthPolicy">
-                          <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                         </property>
-                         <item row="0" column="0">
-                          <widget class="QCheckBox" name="localDetection_time">
-                           <property name="text">
-                            <string>Time</string>
-                           </property>
-                          </widget>
-                         </item>
+                        <layout class="QGridLayout" name="gridLayout_10" columnstretch="0,1">
                          <item row="0" column="1">
-                          <widget class="QLabel" name="label_53">
+                          <widget class="QLabel" name="label_57">
                            <property name="text">
-                            <string>Activate local detection over all locations in STM.</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="0">
-                          <widget class="QCheckBox" name="localDetection_space">
-                           <property name="text">
-                            <string>Space</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="1">
-                          <widget class="QLabel" name="label_space1">
-                           <property name="text">
-                            <string>Activate local detection over locations (in Working Memory or STM) near in space. Laser scans required.</string>
+                            <string>A transformation is computed using the 3D visual word correspondences. See &quot;Visual transformation&quot; panel for parameters.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="0">
+                         <item row="0" column="0">
+                          <widget class="QLabel" name="label_17">
+                           <property name="text">
+                            <string>1)</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_64">
+                           <property name="text">
+                            <string>Then if enabled, the visual transform is used as a guess for ICP estimation (3D or 2D). See &quot;ICP&quot; panel for parameters.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QLabel" name="label_18">
+                           <property name="text">
+                            <string>2)</string>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_7" stretch="0,1">
+                         <item>
+                          <widget class="QComboBox" name="globalDetection_icpType">
+                           <property name="sizeAdjustPolicy">
+                            <enum>QComboBox::AdjustToContents</enum>
+                           </property>
+                           <item>
+                            <property name="text">
+                             <string>No ICP</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>ICP 3D (e.g. Kinect depth)</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>ICP 2D (e.g. Laser scan)</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLabel" name="label_19">
+                           <property name="text">
+                            <string>Use ICP estimation. If ICP 2D is selected, laser scans are required.</string>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_odom_correction">
+                      <property name="title">
+                       <string>Odometry correction (laser scans are required)</string>
+                      </property>
+                      <layout class="QFormLayout" name="formLayout_21">
+                       <property name="fieldGrowthPolicy">
+                        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                       </property>
+                       <item row="0" column="0">
+                        <widget class="QSpinBox" name="odomScanHistory"/>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_scanMatching">
+                         <property name="text">
+                          <string>Laser scan matching history size for odometry correction. Set to 0 to disable odometry correction. ICP 2D only is used here.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_localDetection_time">
+                      <property name="title">
+                       <string>Local loop closure detection in time</string>
+                      </property>
+                      <property name="checkable">
+                       <bool>true</bool>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_21">
+                       <item>
+                        <widget class="QLabel" name="label_54">
+                         <property name="text">
+                          <string>Activate local detection over all locations in STM. The Bayes filter is not used here, so it may results in more false detections. The same 2-steps technique as for global loop closure constraints is used here.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_localDetection_space">
+                      <property name="title">
+                       <string>Local loop closure detection in space (laser scans are required)</string>
+                      </property>
+                      <property name="checkable">
+                       <bool>true</bool>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_48">
+                       <item>
+                        <widget class="QLabel" name="label_space1_2">
+                         <property name="text">
+                          <string>Activate local detection over locations (in Working Memory) near in space. The Bayes filter is not used here, so it may results in more false detections. ICP 2D only is used here.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <layout class="QFormLayout" name="formLayout_13">
+                         <item row="0" column="0">
                           <widget class="QDoubleSpinBox" name="localDetection_radius">
                            <property name="suffix">
                             <string> m</string>
@@ -3725,24 +3826,50 @@ Rigid transformations between nodes are saved on the neighbor links of the RTAB-
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="1">
+                         <item row="0" column="1">
                           <widget class="QLabel" name="label_space2">
                            <property name="text">
                             <string>Maximum radius for space detection.</string>
                            </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
                           </widget>
                          </item>
-                         <item row="3" column="1">
+                         <item row="1" column="0">
+                          <widget class="QSpinBox" name="localDetection_maxNeighbors">
+                           <property name="value">
+                            <number>10</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
                           <widget class="QLabel" name="label_space3">
                            <property name="text">
                             <string>Maximum nearest neighbors for space detection.</string>
                            </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
                           </widget>
                          </item>
-                         <item row="3" column="0">
-                          <widget class="QSpinBox" name="localDetection_maxNeighbors">
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_space3_2">
+                           <property name="text">
+                            <string>Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QSpinBox" name="localDetection_maxDiffID">
+                           <property name="maximum">
+                            <number>999</number>
+                           </property>
                            <property name="value">
-                            <number>10</number>
+                            <number>0</number>
                            </property>
                           </widget>
                          </item>
@@ -3755,7 +3882,481 @@ Rigid transformations between nodes are saved on the neighbor links of the RTAB-
                   </widget>
                  </item>
                  <item>
-                  <spacer name="verticalSpacer_17">
+                  <spacer name="verticalSpacer_11">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="page_21">
+                <layout class="QVBoxLayout" name="verticalLayout_50">
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_visualTransform2">
+                   <property name="title">
+                    <string>Visual transformation</string>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_49">
+                    <item>
+                     <widget class="QLabel" name="label_16">
+                      <property name="text">
+                       <string>Parameters to compute a transform from 3D visual word correspondences.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QFormLayout" name="formLayout_6">
+                      <item row="0" column="0">
+                       <widget class="QSpinBox" name="loopClosure_bowMinInliers">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>1000</number>
+                        </property>
+                        <property name="value">
+                         <number>10</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLabel" name="label_2">
+                        <property name="text">
+                         <string>Minimum visual word correspondences to compute geometry transform.</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_14">
+                        <property name="text">
+                         <string>Maximum distance for visual word correspondences.</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QDoubleSpinBox" name="loopClosure_bowInlierDistance">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="decimals">
+                         <number>3</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.001000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.020000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QLabel" name="label_15">
+                        <property name="text">
+                         <string>Maximum iterations to compute the transform from visual words.</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QSpinBox" name="loopClosure_bowIterations">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>10000</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>1</number>
+                        </property>
+                        <property name="value">
+                         <number>100</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_146">
+                        <property name="text">
+                         <string>Max feature depth.</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QDoubleSpinBox" name="loopClosure_bowMaxDepth">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>5.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="verticalSpacer_20">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>40</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="page_27">
+                <layout class="QVBoxLayout" name="verticalLayout_52">
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_icp2">
+                   <property name="title">
+                    <string>ICP</string>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_51">
+                    <item>
+                     <widget class="QLabel" name="label_7">
+                      <property name="text">
+                       <string>Iterative closest point (ICP) parameters.</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_loopClosure_icp3">
+                      <property name="title">
+                       <string>ICP 3D - Point To Plane (e.g. Kinect depth)</string>
+                      </property>
+                      <layout class="QFormLayout" name="formLayout_3">
+                       <property name="fieldGrowthPolicy">
+                        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                       </property>
+                       <item row="0" column="0">
+                        <widget class="QSpinBox" name="loopClosure_icpDecimation">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <number>32</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_109">
+                         <property name="text">
+                          <string>Depth image decimation.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QDoubleSpinBox" name="loopClosure_icpMaxDepth">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="minimum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>5.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_115">
+                         <property name="text">
+                          <string>Max cloud depth.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QDoubleSpinBox" name="loopClosure_icpVoxelSize">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>3</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.005000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_125">
+                         <property name="text">
+                          <string>Voxel size to be used for ICP computation. Set to 0 to disable voxel filtering.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QSpinBox" name="loopClosure_icpSamples">
+                         <property name="minimum">
+                          <number>0</number>
+                         </property>
+                         <property name="maximum">
+                          <number>999999</number>
+                         </property>
+                         <property name="singleStep">
+                          <number>100</number>
+                         </property>
+                         <property name="value">
+                          <number>5000</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="label_118">
+                         <property name="text">
+                          <string>Random samples to be used for ICP computation. Not used if Voxel size is null.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="0">
+                        <widget class="QDoubleSpinBox" name="loopClosure_icpMaxCorrespondenceDistance">
+                         <property name="minimum">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.100000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="1">
+                        <widget class="QLabel" name="label_122">
+                         <property name="text">
+                          <string>Max distance for point correspondences.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="0">
+                        <widget class="QSpinBox" name="loopClosure_icpIterations">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <number>1000</number>
+                         </property>
+                         <property name="value">
+                          <number>10</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="1">
+                        <widget class="QLabel" name="label_124">
+                         <property name="text">
+                          <string>Max iterations.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="0">
+                        <widget class="QDoubleSpinBox" name="loopClosure_icpMaxFitness">
+                         <property name="minimum">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>30.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="1">
+                        <widget class="QLabel" name="label_133">
+                         <property name="text">
+                          <string>Maximum fitness to accept the computed transform.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_loopClosure_icp2">
+                      <property name="title">
+                       <string>ICP 2D (e.g. Laser scan)</string>
+                      </property>
+                      <layout class="QFormLayout" name="formLayout_4">
+                       <property name="fieldGrowthPolicy">
+                        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                       </property>
+                       <item row="0" column="0">
+                        <widget class="QDoubleSpinBox" name="loopClosure_icp2MaxCorrespondenceDistance">
+                         <property name="minimum">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.100000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_138">
+                         <property name="text">
+                          <string>Max distance for point correspondences.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QSpinBox" name="loopClosure_icp2Iterations">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <number>1000</number>
+                         </property>
+                         <property name="value">
+                          <number>10</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_139">
+                         <property name="text">
+                          <string>Max iterations.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QDoubleSpinBox" name="loopClosure_icp2MaxFitness">
+                         <property name="minimum">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>30.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_141">
+                         <property name="text">
+                          <string>Maximum fitness to accept the computed transform.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QDoubleSpinBox" name="loopClosure_icp2Ratio">
+                         <property name="minimum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.900000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="label_148">
+                         <property name="text">
+                          <string>Ratio of matching correspondences to accept the transform.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="1">
+                        <widget class="QLabel" name="label_150">
+                         <property name="text">
+                          <string>Voxel size. Set to 0 to disable voxel filtering.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="0">
+                        <widget class="QDoubleSpinBox" name="loopClosure_icp2Voxel">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>3</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>0.100000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.001000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="verticalSpacer_21">
                    <property name="orientation">
                     <enum>Qt::Vertical</enum>
                    </property>
@@ -4019,7 +4620,7 @@ Rigid transformations between nodes are saved on the neighbor links of the RTAB-
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odom">
                       <property name="currentIndex">
-                       <number>2</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_15">
                        <layout class="QVBoxLayout" name="verticalLayout_35">
@@ -4407,446 +5008,6 @@ Rigid transformations between nodes are saved on the neighbor links of the RTAB-
                  </item>
                  <item>
                   <spacer name="verticalSpacer_14">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>40</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                </layout>
-               </widget>
-               <widget class="QWidget" name="page_13">
-                <layout class="QVBoxLayout" name="verticalLayout_31">
-                 <item>
-                  <widget class="QGroupBox" name="groupBox_loopClosure2">
-                   <property name="title">
-                    <string>Loop closure constraints</string>
-                   </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_20">
-                    <item>
-                     <widget class="QLabel" name="label_55">
-                      <property name="text">
-                       <string>Step 1: Compute guess transform from 3D visual words.</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QGroupBox" name="groupBox_lcc_bow">
-                      <property name="title">
-                       <string>Guess transform</string>
-                      </property>
-                      <layout class="QFormLayout" name="formLayout_5">
-                       <property name="fieldGrowthPolicy">
-                        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                       </property>
-                       <item row="0" column="0">
-                        <widget class="QSpinBox" name="loopClosure_bowMinInliers">
-                         <property name="minimum">
-                          <number>8</number>
-                         </property>
-                         <property name="maximum">
-                          <number>1000</number>
-                         </property>
-                         <property name="value">
-                          <number>10</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="1">
-                        <widget class="QLabel" name="label_2">
-                         <property name="text">
-                          <string>Minimum visual word correspondences to compute geometry transform.</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="0">
-                        <widget class="QDoubleSpinBox" name="loopClosure_bowInlierDistance">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="decimals">
-                          <number>3</number>
-                         </property>
-                         <property name="minimum">
-                          <double>0.001000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.020000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_14">
-                         <property name="text">
-                          <string>Maximum distance for visual word correspondences.</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="0">
-                        <widget class="QSpinBox" name="loopClosure_bowIterations">
-                         <property name="minimum">
-                          <number>1</number>
-                         </property>
-                         <property name="maximum">
-                          <number>10000</number>
-                         </property>
-                         <property name="singleStep">
-                          <number>1</number>
-                         </property>
-                         <property name="value">
-                          <number>100</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_15">
-                         <property name="text">
-                          <string>Maximum iterations to compute the transform from visual words.</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="0">
-                        <widget class="QDoubleSpinBox" name="loopClosure_bowMaxDepth">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="minimum">
-                          <double>0.000000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>5.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="1">
-                        <widget class="QLabel" name="label_146">
-                         <property name="text">
-                          <string>Max feature depth.</string>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </widget>
-                    </item>
-                    <item>
-                     <layout class="QHBoxLayout" name="horizontalLayout_4">
-                      <item>
-                       <widget class="QCheckBox" name="loopClosure_icpEnabled">
-                        <property name="text">
-                         <string>Step 2: Optimize guess transform with ICP.</string>
-                        </property>
-                        <property name="checked">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QComboBox" name="loopClosure_icpType">
-                        <property name="sizeAdjustPolicy">
-                         <enum>QComboBox::AdjustToContents</enum>
-                        </property>
-                        <item>
-                         <property name="text">
-                          <string>3D (e.g. Kinect depth)</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>2D (e.g. Laser scan)</string>
-                         </property>
-                        </item>
-                       </widget>
-                      </item>
-                      <item>
-                       <spacer name="horizontalSpacer">
-                        <property name="orientation">
-                         <enum>Qt::Horizontal</enum>
-                        </property>
-                        <property name="sizeHint" stdset="0">
-                         <size>
-                          <width>40</width>
-                          <height>20</height>
-                         </size>
-                        </property>
-                       </spacer>
-                      </item>
-                     </layout>
-                    </item>
-                    <item>
-                     <widget class="QStackedWidget" name="stackedWidget_loopClosureICP">
-                      <property name="currentIndex">
-                       <number>1</number>
-                      </property>
-                      <widget class="QWidget" name="page_17">
-                       <layout class="QVBoxLayout" name="verticalLayout_37">
-                        <item>
-                         <widget class="QGroupBox" name="groupBox_loopClosure_icp3">
-                          <property name="title">
-                           <string>ICP 3D (e.g. Kinect depth)</string>
-                          </property>
-                          <layout class="QFormLayout" name="formLayout_3">
-                           <property name="fieldGrowthPolicy">
-                            <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                           </property>
-                           <item row="0" column="0">
-                            <widget class="QSpinBox" name="loopClosure_icpDecimation">
-                             <property name="minimum">
-                              <number>1</number>
-                             </property>
-                             <property name="maximum">
-                              <number>32</number>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="0" column="1">
-                            <widget class="QLabel" name="label_109">
-                             <property name="text">
-                              <string>Depth image decimation.</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="1" column="0">
-                            <widget class="QDoubleSpinBox" name="loopClosure_icpMaxDepth">
-                             <property name="suffix">
-                              <string> m</string>
-                             </property>
-                             <property name="minimum">
-                              <double>0.000000000000000</double>
-                             </property>
-                             <property name="value">
-                              <double>5.000000000000000</double>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="1" column="1">
-                            <widget class="QLabel" name="label_115">
-                             <property name="text">
-                              <string>Max cloud depth.</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="3" column="0">
-                            <widget class="QSpinBox" name="loopClosure_icpSamples">
-                             <property name="minimum">
-                              <number>0</number>
-                             </property>
-                             <property name="maximum">
-                              <number>999999</number>
-                             </property>
-                             <property name="singleStep">
-                              <number>100</number>
-                             </property>
-                             <property name="value">
-                              <number>5000</number>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="3" column="1">
-                            <widget class="QLabel" name="label_118">
-                             <property name="text">
-                              <string>Random samples to be used for ICP computation. Not used if Voxel size is null.</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="4" column="0">
-                            <widget class="QDoubleSpinBox" name="loopClosure_icpMaxCorrespondenceDistance">
-                             <property name="minimum">
-                              <double>0.010000000000000</double>
-                             </property>
-                             <property name="singleStep">
-                              <double>0.010000000000000</double>
-                             </property>
-                             <property name="value">
-                              <double>0.100000000000000</double>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="4" column="1">
-                            <widget class="QLabel" name="label_122">
-                             <property name="text">
-                              <string>Max distance for point correspondences.</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="5" column="0">
-                            <widget class="QSpinBox" name="loopClosure_icpIterations">
-                             <property name="minimum">
-                              <number>1</number>
-                             </property>
-                             <property name="maximum">
-                              <number>1000</number>
-                             </property>
-                             <property name="value">
-                              <number>10</number>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="5" column="1">
-                            <widget class="QLabel" name="label_124">
-                             <property name="text">
-                              <string>Max iterations.</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="6" column="0">
-                            <widget class="QDoubleSpinBox" name="loopClosure_icpMaxFitness">
-                             <property name="minimum">
-                              <double>0.010000000000000</double>
-                             </property>
-                             <property name="value">
-                              <double>30.000000000000000</double>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="6" column="1">
-                            <widget class="QLabel" name="label_133">
-                             <property name="text">
-                              <string>Maximum fitness to accept the computed transform.</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="2" column="1">
-                            <widget class="QLabel" name="label_125">
-                             <property name="text">
-                              <string>Voxel size to be used for ICP computation.</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="2" column="0">
-                            <widget class="QDoubleSpinBox" name="loopClosure_icpVoxelSize">
-                             <property name="suffix">
-                              <string> m</string>
-                             </property>
-                             <property name="decimals">
-                              <number>3</number>
-                             </property>
-                             <property name="minimum">
-                              <double>0.000000000000000</double>
-                             </property>
-                             <property name="singleStep">
-                              <double>0.010000000000000</double>
-                             </property>
-                             <property name="value">
-                              <double>0.005000000000000</double>
-                             </property>
-                            </widget>
-                           </item>
-                          </layout>
-                         </widget>
-                        </item>
-                       </layout>
-                      </widget>
-                      <widget class="QWidget" name="page_18">
-                       <layout class="QVBoxLayout" name="verticalLayout_38">
-                        <item>
-                         <widget class="QGroupBox" name="groupBox_loopClosure_icp2">
-                          <property name="title">
-                           <string>ICP 2P (e.g. Laser scan)</string>
-                          </property>
-                          <layout class="QFormLayout" name="formLayout_4">
-                           <property name="fieldGrowthPolicy">
-                            <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                           </property>
-                           <item row="0" column="0">
-                            <widget class="QDoubleSpinBox" name="loopClosure_icp2MaxCorrespondenceDistance">
-                             <property name="minimum">
-                              <double>0.010000000000000</double>
-                             </property>
-                             <property name="singleStep">
-                              <double>0.010000000000000</double>
-                             </property>
-                             <property name="value">
-                              <double>0.100000000000000</double>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="0" column="1">
-                            <widget class="QLabel" name="label_138">
-                             <property name="text">
-                              <string>Max distance for point correspondences.</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="1" column="0">
-                            <widget class="QSpinBox" name="loopClosure_icp2Iterations">
-                             <property name="minimum">
-                              <number>1</number>
-                             </property>
-                             <property name="maximum">
-                              <number>1000</number>
-                             </property>
-                             <property name="value">
-                              <number>10</number>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="1" column="1">
-                            <widget class="QLabel" name="label_139">
-                             <property name="text">
-                              <string>Max iterations.</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="2" column="0">
-                            <widget class="QDoubleSpinBox" name="loopClosure_icp2MaxFitness">
-                             <property name="minimum">
-                              <double>0.010000000000000</double>
-                             </property>
-                             <property name="value">
-                              <double>30.000000000000000</double>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="2" column="1">
-                            <widget class="QLabel" name="label_141">
-                             <property name="text">
-                              <string>Maximum fitness to accept the computed transform.</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="3" column="0">
-                            <widget class="QDoubleSpinBox" name="loopClosure_icp2Ratio">
-                             <property name="minimum">
-                              <double>0.000000000000000</double>
-                             </property>
-                             <property name="maximum">
-                              <double>1.000000000000000</double>
-                             </property>
-                             <property name="singleStep">
-                              <double>0.010000000000000</double>
-                             </property>
-                             <property name="value">
-                              <double>0.900000000000000</double>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="3" column="1">
-                            <widget class="QLabel" name="label_148">
-                             <property name="text">
-                              <string>Ratio of matching correspondences to accept the transform.</string>
-                             </property>
-                            </widget>
-                           </item>
-                          </layout>
-                         </widget>
-                        </item>
-                       </layout>
-                      </widget>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item>
-                  <spacer name="verticalSpacer_11">
                    <property name="orientation">
                     <enum>Qt::Vertical</enum>
                    </property>

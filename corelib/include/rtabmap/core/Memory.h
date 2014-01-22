@@ -71,7 +71,7 @@ public:
 	std::list<int> cleanup(const std::list<int> & ignoredIds = std::list<int>());
 	void emptyTrash();
 	void joinTrashThread();
-	bool addLoopClosureLink(int oldId, int newId, const Transform & transform);
+	bool addLoopClosureLink(int oldId, int newId, const Transform & transform, bool global);
 	void updateNeighborLink(int fromId, int toId, const Transform & transform);
 	std::map<int, int> getNeighborsId(int signatureId,
 			unsigned int margin,
@@ -87,7 +87,6 @@ public:
 	const std::set<int> & getStMem() const {return _stMem;}
 	int getMaxStMemSize() const {return _maxStMemSize;}
 	void getPose(int locationId,
-			int targetMapId,
 			Transform & pose,
 			bool lookInDatabase = false) const;
 	std::map<int, Transform> getNeighborLinks(int signatureId,
@@ -119,12 +118,14 @@ public:
 	bool isInWM(int signatureId) const {return _workingMem.find(signatureId) != _workingMem.end();}
 	bool isInLTM(int signatureId) const {return !this->isInSTM(signatureId) && !this->isInWM(signatureId);}
 	bool isIDsGenerated() const {return _generateIds;}
+	int getLastGlobalLoopClosureParentId() const {return _lastGlobalLoopClosureParentId;}
+	int getLastGlobalLoopClosureChildId() const {return _lastGlobalLoopClosureChildId;}
 
 	void setRoi(const std::string & roi);
 
 	void dumpMemoryTree(const char * fileNameTree) const;
 	virtual void dumpMemory(std::string directory) const;
-	virtual void dumpSignatures(const char * fileNameSign) const;
+	virtual void dumpSignatures(const char * fileNameSign, bool words3D) const;
 	void dumpDictionary(const char * fileNameRef, const char * fileNameDesc) const;
 
 	void generateGraph(const std::string & fileName, std::set<int> ids = std::set<int>());
@@ -142,14 +143,13 @@ public:
 
 	void getMetricConstraints(
 			const std::vector<int> & ids,
-			int targetMapId,
 			std::map<int, Transform> & poses,
 			std::multimap<int, std::pair<int, Transform> > & links,
 			bool lookInDatabase = false);
 	Transform computeVisualTransform(int oldId, int newId) const;
 	Transform computeVisualTransform(const Signature & oldS, const Signature & newS) const;
-	Transform computeIcpTransform(int oldId, int newId, Transform guess);
-	Transform computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess) const;
+	Transform computeIcpTransform(int oldId, int newId, Transform guess, bool icp3D);
+	Transform computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess, bool icp3D) const;
 	Transform computeScanMatchingTransform(
 			int newId,
 			int oldId,
@@ -201,7 +201,8 @@ private:
 	int _idCount;
 	int _idMapCount;
 	Signature * _lastSignature;
-	int _lastLoopClosureId;
+	int _lastGlobalLoopClosureParentId;
+	int _lastGlobalLoopClosureChildId;
 	bool _memoryChanged; // False by default, become true when Memory::update() is called.
 	int _signaturesAdded;
 
@@ -220,7 +221,6 @@ private:
 	std::vector<float> _roiRatios; // size 4
 
 	// RGBD-SLAM stuff
-	int _icpType;
 	int _bowMinInliers;
 	float _bowInlierDistance;
 	int _bowIterations;
@@ -236,6 +236,7 @@ private:
 	int _icp2MaxIterations;
 	float _icp2MaxFitness;
 	float _icp2CorrespondenceRatio;
+	float _icp2VoxelSize;
 };
 
 } // namespace rtabmap

@@ -102,7 +102,7 @@
      <x>0</x>
      <y>0</y>
      <width>809</width>
-     <height>21</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -128,6 +128,7 @@
     <addaction name="actionDump_the_prediction_matrix"/>
     <addaction name="actionGenerate_map"/>
     <addaction name="actionGenerate_local_map"/>
+    <addaction name="actionGenerate_TORO_graph_graph"/>
     <addaction name="separator"/>
     <addaction name="actionView_high_res_point_cloud"/>
     <addaction name="actionSave_point_cloud"/>
@@ -620,6 +621,27 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="dockWidget_mapVisibility">
+   <property name="windowTitle">
+    <string>Map visibility</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_8">
+    <layout class="QVBoxLayout" name="verticalLayout_9">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="margin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="rtabmap::MapVisibilityWidget" name="widget_mapVisibility" native="true"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
@@ -909,6 +931,11 @@
     <string>Trigger a new map</string>
    </property>
   </action>
+  <action name="actionGenerate_TORO_graph_graph">
+   <property name="text">
+    <string>Generate TORO graph (*.graph)...</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -944,6 +971,12 @@
    <class>rtabmap::LoopClosureViewer</class>
    <extends>QWidget</extends>
    <header>../include/rtabmap/gui/LoopClosureViewer.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>rtabmap::MapVisibilityWidget</class>
+   <extends>QWidget</extends>
+   <header>MapVisibilityWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -192,7 +192,8 @@ private slots:
 	void resetApply ( QAbstractButton * button );
 	void resetSettings(int panelNumber);
 	void loadConfigFrom();
-	void saveConfigTo();
+	bool saveConfigTo();
+	void resetConfig();
 	void makeObsoleteGeneralPanel();
 	void makeObsoleteCloudRenderingPanel();
 	void makeObsoleteLoggingPanel();

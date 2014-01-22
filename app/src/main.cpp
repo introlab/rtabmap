@@ -61,14 +61,16 @@ int main(int argc, char* argv[])
 	ULOGGER_INFO("Killing threads...");
 	rtabmap->join(true);
 
-	ULOGGER_INFO("Free memory...");
-
-	delete mainWindow;
+	ULOGGER_INFO("Closing RTAB-Map core...");
 
 	//Since we can't put the Rtabmap object in the MainWindow class,
 	//we pop up a message box indicating that the rtabmap object
 	// is being deleted (saving data to the database)
-	QMessageBox * msg = new QMessageBox(QMessageBox::Information, QObject::tr("RTAB-Map is closing..."), QObject::tr("The detector is saving the working memory to database (located in RTAB-Map's working directory)..."), QMessageBox::NoButton);
+	QMessageBox * msg = new QMessageBox(QMessageBox::Information,
+			QObject::tr("RTAB-Map is closing..."),
+			QObject::tr("The detector is saving the working memory to database (located in RTAB-Map's working directory)..."),
+			QMessageBox::NoButton,
+			mainWindow);
 	msg->setEnabled(false);
 	msg->setIconPixmap(QPixmap(":/images/RTAB-Map.ico"));
 	msg->setWindowIcon(QIcon(":/images/RTAB-Map.ico"));
@@ -78,7 +80,10 @@ int main(int argc, char* argv[])
 	UEventsManager::addHandler(&handler);
 	delThread.startDeletion(1); // make sure that app-exec() is called before the deletion of the object
 	app->exec();
-	delete msg;
+
+	ULOGGER_INFO("Closing RTAB-Map gui...");
+	delete mainWindow;
+
 	delete app;
 
 	ULOGGER_INFO("All done! Closing...");

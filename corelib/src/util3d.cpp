@@ -1266,12 +1266,12 @@ int getCorrespondencesCount(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & clo
 	pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
 	kdTree->setInputCloud(cloud_target);
 	int count = 0;
+	float sqrdMaxDistance = maxDistance * maxDistance;
 	for(unsigned int i=0; i<cloud_source->size(); ++i)
 	{
 		std::vector<int> ind(1);
 		std::vector<float> dist(1);
-		kdTree->nearestKSearch(cloud_source->at(i), 1, ind, dist);
-		if(dist[0] < maxDistance)
+		if(kdTree->nearestKSearch(cloud_source->at(i), 1, ind, dist) && dist[0] < sqrdMaxDistance)
 		{
 			++count;
 		}
@@ -1545,16 +1545,22 @@ void optimizeTOROGraph(
 				return;
 			}
 		}
+		pg.buildMST(pg.vertices.begin()->first); // pg.buildSimpleTree();
 
-		pg.buildMST(pg.vertices.begin()->first);
+		UDEBUG("Initial guess...");
+		pg.initializeOnTree(); // optional
 
 		pg.initializeTreeParameters();
+		UDEBUG("Building TORO tree... (if a crash happens just after this msg, "
+			   "TORO is not able to find the root of the graph!)");
 		pg.initializeOptimization();
 
+		UDEBUG("TORO iterate begin");
 		for (int i=0; i<toroIterations; i++)
 		{
 			pg.iterate();
 		}
+		UDEBUG("TORO iterate end");
 
 		optimizedPoses.clear();
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)

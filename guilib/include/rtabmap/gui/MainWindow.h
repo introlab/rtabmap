@@ -104,6 +104,7 @@ private slots:
 	void printLoopClosureIds();
 	void generateMap();
 	void generateLocalMap();
+	void generateTOROMap();
 	void deleteMemory();
 	void openWorkingDirectory();
 	void updateEditMenu();
@@ -147,6 +148,7 @@ private slots:
 	void viewMeshes();
 	void resetOdometry();
 	void triggerNewMap();
+	void updateNodeVisibility(int, bool);
 
 signals:
 	void statsReceived(const rtabmap::Statistics &);
@@ -231,6 +233,7 @@ private:
 	DetailedProgressDialog * _initProgressDialog;
 
 	QString _graphSavingFileName;
+	QString _toroSavingFileName;
 	QString _autoScreenCaptureFormat;
 
 	QVector<int> _refIds;

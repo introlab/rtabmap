@@ -151,6 +151,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 		_ui->dockWidget_statsV2->setVisible(false);
 		_ui->dockWidget_console->setVisible(false);
 		_ui->dockWidget_loopClosureViewer->setVisible(false);
+		_ui->dockWidget_mapVisibility->setVisible(false);
 		//_ui->dockWidget_cloudViewer->setVisible(false);
 	}
 
@@ -206,6 +207,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_initProgressDialog->setWindowTitle(tr("Progress dialog"));
 	_initProgressDialog->setMinimumWidth(800);
 
+	connect(_ui->widget_mapVisibility, SIGNAL(visibilityChanged(int, bool)), this, SLOT(updateNodeVisibility(int, bool)));
+
 	//connect stuff
 	connect(_ui->actionExit, SIGNAL(triggered()), this, SLOT(close()));
 	qRegisterMetaType<MainWindow::State>("MainWindow::State");
@@ -222,6 +225,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->menuShow_view->addAction(_ui->dockWidget_console->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_cloudViewer->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_loopClosureViewer->toggleViewAction());
+	_ui->menuShow_view->addAction(_ui->dockWidget_mapVisibility->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->toolBar->toggleViewAction());
 	_ui->toolBar->setWindowTitle(tr("Control toolbar"));
 	QAction * a = _ui->menuShow_view->addAction("Progress dialog");
@@ -239,6 +243,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionPrint_loop_closure_IDs_to_console, SIGNAL(triggered()), this, SLOT(printLoopClosureIds()));
 	connect(_ui->actionGenerate_map, SIGNAL(triggered()), this , SLOT(generateMap()));
 	connect(_ui->actionGenerate_local_map, SIGNAL(triggered()), this, SLOT(generateLocalMap()));
+	connect(_ui->actionGenerate_TORO_graph_graph, SIGNAL(triggered()), this , SLOT(generateTOROMap()));
 	connect(_ui->actionDelete_memory, SIGNAL(triggered()), this , SLOT(deleteMemory()));
 	connect(_ui->actionDownload_all_clouds, SIGNAL(triggered()), this , SLOT(downloadAllClouds()));
 	connect(_ui->menuEdit, SIGNAL(aboutToShow()), this, SLOT(updateEditMenu()));
@@ -391,6 +396,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
 		_ui->dockWidget_console->close();
 		_ui->dockWidget_cloudViewer->close();
 		_ui->dockWidget_loopClosureViewer->close();
+		_ui->dockWidget_mapVisibility->close();
 
 		if(_camera)
 		{
@@ -616,7 +622,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	//Affichage des stats et images
 
 	int refMapId = uValue(stat.getMapIds(), stat.refImageId(), -1);
-	int loopMapId = uValue(stat.getMapIds(), stat.loopClosureId(), -1);
+	int loopMapId = uValue(stat.getMapIds(), stat.loopClosureId(), uValue(stat.getMapIds(), stat.localLoopClosureId(), -1));
+
 	_ui->label_refId->setText(QString("New ID = %1 [%2]").arg(stat.refImageId()).arg(refMapId));
 	_ui->label_matchId->clear();
 
@@ -688,7 +695,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		int rehearsed = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
 		int localTimeClosures = (int)uValue(stat.data(), Statistics::kLocalLoopTime_closures(), 0.0f);
-		bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kLocalLoopScan_matching_success(), 0.0f);
+		bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kLocalLoopOdom_corrected(), 0.0f);
 		_ui->label_matchId->clear();
 		_ui->label_stats_imageNumber->setText(QString("%1 [%2]").arg(stat.refImageId()).arg(refMapId));
 
@@ -916,6 +923,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		{
 			// update pose only if a odometry is not received
 			updateMapCloud(stat.poses(), _odometryReceived?Transform():stat.currentPose());
+			_ui->widget_mapVisibility->setMap(stat.poses());
 			_odometryReceived = false;
 
 			_odometryCorrection = stat.mapCorrection();
@@ -1130,7 +1138,11 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & poses, const Tr
 			int id = std::atoi(splitted.back().c_str());
 			if(poses.find(id) == poses.end())
 			{
-				_ui->widget_cloudViewer->setCloudVisibility(iter.key(), false);
+				if(_ui->widget_cloudViewer->getCloudVisibility(iter.key()))
+				{
+					UDEBUG("Hide %s", iter.key().c_str());
+					_ui->widget_cloudViewer->setCloudVisibility(iter.key(), false);
+				}
 			}
 		}
 	}
@@ -1167,6 +1179,25 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & poses, const Tr
 		_ui->widget_cloudViewer->updateCameraPosition(currentPose);
 	}
 
+	_ui->widget_cloudViewer->render();
+}
+
+void MainWindow::updateNodeVisibility(int nodeId, bool visible)
+{
+	if(_currentPosesMap.find(nodeId) != _currentPosesMap.end())
+	{
+		if(_preferencesDialog->isCloudsShown(0))
+		{
+			std::string cloudName = uFormat("cloud%d", nodeId);
+			_ui->widget_cloudViewer->setCloudVisibility(cloudName, visible);
+		}
+
+		if(_preferencesDialog->isScansShown(0))
+		{
+			std::string scanName = uFormat("scan%d", nodeId);
+			_ui->widget_cloudViewer->setCloudVisibility(scanName, visible);
+		}
+	}
 	_ui->widget_cloudViewer->render();
 }
 
@@ -1220,7 +1251,6 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		UINFO(" depthConstants = %d", event.getDepthConstants().size());
 		UINFO(" localTransforms = %d", event.getLocalTransforms().size());
 		UINFO(" poses = %d", event.getPoses().size());
-		UINFO(" mapCorrection = %s", event.getMapCorrection().prettyPrint().c_str());
 
 		_initProgressDialog->appendText("Inserting data in the cache...");
 
@@ -1269,7 +1299,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		_initProgressDialog->appendText(tr("Inserted %1 local transforms.").arg(_localTransformsMap.size()));
 		_initProgressDialog->incrementStep();
 
-		_odometryCorrection = event.getMapCorrection();
+		_odometryCorrection.setIdentity();
 
 		_initProgressDialog->appendText("Inserting data in the cache... done.");
 
@@ -2155,6 +2185,66 @@ void MainWindow::generateLocalMap()
 	}
 }
 
+void MainWindow::generateTOROMap()
+{
+	if(_toroSavingFileName.isEmpty())
+	{
+		_toroSavingFileName = _preferencesDialog->getWorkingDirectory() + "/toro.graph";
+	}
+
+	QStringList items;
+	items.append("Current map optimized");
+	items.append("Current map not optimized");
+	items.append("Full map optimized");
+	items.append("Full map not optimized");
+	bool ok;
+	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, 0, false, &ok);
+	if(ok)
+	{
+		bool optimized=false, full=false;
+		if(item.compare("Current map optimized") == 0)
+		{
+			optimized = true;
+		}
+		else if(item.compare("Current map not optimized") == 0)
+		{
+
+		}
+		else if(item.compare("Full map optimized") == 0)
+		{
+			full=true;
+			optimized=true;
+		}
+		else if(item.compare("Full map not optimized") == 0)
+		{
+			full=true;
+		}
+		else
+		{
+			UFATAL("Item \"%s\" not found?!?", item.toStdString().c_str());
+		}
+
+		QString path = QFileDialog::getSaveFileName(this, tr("Save File"), _toroSavingFileName, tr("TORO file (*.graph)"));
+		if(!path.isEmpty())
+		{
+			_toroSavingFileName = path;
+			if(full)
+			{
+				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateTOROGraphFull, path.toStdString(), optimized?1:0));
+			}
+			else
+			{
+				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateTOROGraph, path.toStdString(), optimized?1:0));
+			}
+
+			_ui->dockWidget_console->show();
+			_ui->widget_console->appendMsg(QString("TORO Graph saved (full=%1, optimized=%2)... %3")
+					.arg(full?"true":"false").arg(optimized?"true":"false").arg(_toroSavingFileName));
+		}
+
+	}
+}
+
 void MainWindow::deleteMemory()
 {
 	QMessageBox::StandardButton button;
@@ -2261,12 +2351,61 @@ void MainWindow::dumpThePrediction()
 
 void MainWindow::downloadAllClouds()
 {
-	UINFO("Download clouds...");
-	_initProgressDialog->setAutoClose(true, 1);
-	_initProgressDialog->resetProgress();
-	_initProgressDialog->show();
-	_initProgressDialog->appendText("Downloading the map...");
-	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMap));
+	bool showAll = _state != kMonitoringPaused && _state != kMonitoring;
+
+	QStringList items;
+	items.append("Current map optimized");
+	if(showAll)
+	{
+		items.append("Current map not optimized");
+	}
+	items.append("Full map optimized");
+	if(showAll)
+	{
+		items.append("Full map not optimized");
+	}
+	bool ok;
+	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, showAll?2:1, false, &ok);
+	if(ok)
+	{
+		bool optimized=false, full=false;
+		if(item.compare("Current map optimized") == 0)
+		{
+			optimized = true;
+		}
+		else if(item.compare("Current map not optimized") == 0)
+		{
+
+		}
+		else if(item.compare("Full map optimized") == 0)
+		{
+			full=true;
+			optimized=true;
+		}
+		else if(item.compare("Full map not optimized") == 0)
+		{
+			full=true;
+		}
+		else
+		{
+			UFATAL("Item \"%s\" not found?!?", item.toStdString().c_str());
+		}
+
+		UINFO("Download clouds...");
+		_initProgressDialog->setAutoClose(true, 1);
+		_initProgressDialog->resetProgress();
+		_initProgressDialog->show();
+		_initProgressDialog->appendText(tr("Downloading the map (full=%1 ,optimized=%2)...")
+				.arg(full?"true":"false").arg(optimized?"true":"false"));
+		if(full)
+		{
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMapFull, optimized?1:0));
+		}
+		else
+		{
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMap, optimized?1:0));
+		}
+	}
 }
 
 void MainWindow::clearTheCache()
@@ -2470,6 +2609,7 @@ void MainWindow::savePointClouds()
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
+		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()+1);
 
 		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 		if(button == QMessageBox::No)
@@ -2497,6 +2637,7 @@ void MainWindow::saveMeshes()
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
+		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()+1);
 
 		std::map<int, pcl::PolygonMesh::Ptr> meshes;
 		if(button == QMessageBox::No)
@@ -2527,6 +2668,7 @@ void MainWindow::viewPointClouds()
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
+		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()+1);
 
 		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 		if(button == QMessageBox::No)
@@ -2586,6 +2728,7 @@ void MainWindow::viewMeshes()
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
+		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()+1);
 
 		std::map<int, pcl::PolygonMesh::Ptr> meshes;
 		if(button == QMessageBox::No)
@@ -3135,6 +3278,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDelete_memory->setEnabled(true);
 		_ui->actionGenerate_map->setEnabled(true);
 		_ui->actionGenerate_local_map->setEnabled(true);
+		_ui->actionGenerate_TORO_graph_graph->setEnabled(true);
 		_ui->actionOpen_working_directory->setEnabled(true);
 		_ui->actionApply_settings_to_the_detector->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(true);
@@ -3163,6 +3307,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDelete_memory->setEnabled(false);
 		_ui->actionGenerate_map->setEnabled(false);
 		_ui->actionGenerate_local_map->setEnabled(false);
+		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
 		_ui->actionOpen_working_directory->setEnabled(true);
 		_ui->actionApply_settings_to_the_detector->setEnabled(false);
 		_ui->actionDownload_all_clouds->setEnabled(false);
@@ -3201,6 +3346,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionDelete_memory->setEnabled(false);
 			_ui->actionGenerate_map->setEnabled(false);
 			_ui->actionGenerate_local_map->setEnabled(false);
+			_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
 			_ui->actionDownload_all_clouds->setEnabled(false);
 			_state = kDetecting;
 			_elapsedTime->start();
@@ -3231,6 +3377,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionDelete_memory->setEnabled(true);
 			_ui->actionGenerate_map->setEnabled(true);
 			_ui->actionGenerate_local_map->setEnabled(true);
+			_ui->actionGenerate_TORO_graph_graph->setEnabled(true);
 			_ui->actionDownload_all_clouds->setEnabled(true);
 			_state = kPaused;
 			_oneSecondTimer->stop();
@@ -3267,6 +3414,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDelete_memory->setEnabled(true);
 		_ui->actionGenerate_map->setVisible(false);
 		_ui->actionGenerate_local_map->setVisible(false);
+		_ui->actionGenerate_TORO_graph_graph->setVisible(false);
 		_ui->actionOpen_working_directory->setEnabled(false);
 		_ui->actionApply_settings_to_the_detector->setVisible(false);
 		_ui->actionDownload_all_clouds->setEnabled(true);
@@ -3294,6 +3442,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDelete_memory->setEnabled(true);
 		_ui->actionGenerate_map->setVisible(false);
 		_ui->actionGenerate_local_map->setVisible(false);
+		_ui->actionGenerate_TORO_graph_graph->setVisible(false);
 		_ui->actionOpen_working_directory->setEnabled(false);
 		_ui->actionApply_settings_to_the_detector->setVisible(false);
 		_ui->actionDownload_all_clouds->setEnabled(true);

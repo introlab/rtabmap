@@ -53,9 +53,12 @@ public:
 		kStateDumpingPrediction,
 		kStateGeneratingGraph,
 		kStateGeneratingLocalGraph,
+		kStateGeneratingTOROGraph,
+		kStateGeneratingTOROGraphFull,
 		kStateDeletingMemory,
 		kStateCleanDataBuffer,
 		kStatePublishingMap,
+		kStatePublishingMapFull,
 		kStateTriggeringMap
 	};
 
@@ -76,7 +79,7 @@ private:
 	void getImage(Image & image);
 	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
 	void setDataBufferSize(int size);
-	void publishMap() const;
+	void publishMap(bool optimized, bool full) const;
 
 private:
 	UMutex _stateMutex;

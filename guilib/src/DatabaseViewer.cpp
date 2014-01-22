@@ -35,6 +35,10 @@
 #include "rtabmap/gui/UCv2Qt.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Signature.h"
+#include "rtabmap/gui/DataRecorder.h"
+#include "rtabmap/core/Image.h"
+#include "ExportDialog.h"
+#include "DetailedProgressDialog.h"
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/filters/voxel_grid.h>
@@ -59,6 +63,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 
 	// connect actions with custom slots
 	connect(ui_->actionOpen_database, SIGNAL(triggered()), this, SLOT(openDatabase()));
+	connect(ui_->actionExport, SIGNAL(triggered()), this, SLOT(exportDatabase()));
 	connect(ui_->actionGenerate_graph_dot, SIGNAL(triggered()), this, SLOT(generateGraph()));
 	connect(ui_->actionGenerate_local_graph_dot, SIGNAL(triggered()), this, SLOT(generateLocalGraph()));
 	connect(ui_->actionGenerate_3D_map_pcd, SIGNAL(triggered()), this, SLOT(generate3DMap()));
@@ -128,6 +133,82 @@ bool DatabaseViewer::openDatabase(const QString & path)
 		QMessageBox::warning(this, "Database error", tr("Database \"%1\" does not exist.").arg(path));
 	}
 	return false;
+}
+
+void DatabaseViewer::exportDatabase()
+{
+	if(!memory_ || ids_.size() == 0)
+	{
+		return;
+	}
+
+	rtabmap::ExportDialog dialog;
+
+	if(dialog.exec())
+	{
+		if(!dialog.outputPath().isEmpty())
+		{
+			int framesIgnored = dialog.framesIgnored();
+			QString path = dialog.outputPath();
+			rtabmap::DataRecorder recorder;
+			if(recorder.init(path, false))
+			{
+				rtabmap::DetailedProgressDialog progressDialog(this);
+				progressDialog.setMaximumSteps(ids_.size() / (1+framesIgnored) + 1);
+				progressDialog.show();
+
+				for(int i=0; i<ids_.size(); i+=1+framesIgnored)
+				{
+					int id = ids_.at(i);
+					std::vector<unsigned char> compressedRgb, compressedDepth, compressedDepth2d;
+					float tmpDepthConstant;
+					rtabmap::Transform tmpLocalTransform, pose;
+
+					memory_->getImageDepth(id, compressedRgb, compressedDepth, compressedDepth2d, tmpDepthConstant, tmpLocalTransform);
+					if(dialog.isOdomExported())
+					{
+						memory_->getPose(id, pose, true);
+					}
+
+					cv::Mat rgb, depth, depth2d;
+					float depthConstant = 0;
+					rtabmap::Transform localTransform;
+
+					if(dialog.isRgbExported())
+					{
+						rgb = rtabmap::util3d::uncompressImage(compressedRgb);
+					}
+					if(dialog.isDepthExported())
+					{
+						depth = rtabmap::util3d::uncompressImage(compressedDepth);
+						depthConstant = tmpDepthConstant;
+						localTransform = tmpLocalTransform;
+					}
+					if(dialog.isDepth2dExported())
+					{
+						depth2d = rtabmap::util3d::uncompressData(compressedDepth2d);
+					}
+
+					rtabmap::Image data(rgb, depth, depth2d, depthConstant, pose, localTransform, id);
+					recorder.addData(data);
+
+					progressDialog.appendText(tr("Exported node %1").arg(id));
+					progressDialog.incrementStep();
+					QApplication::processEvents();
+				}
+				progressDialog.setValue(progressDialog.maximumSteps());
+				progressDialog.appendText("Export finished!");
+			}
+			else
+			{
+				UERROR("DataRecorder init failed?!");
+			}
+		}
+		else
+		{
+			QMessageBox::warning(this, tr("Cannot export database"), tr("An output path must be set!"));
+		}
+	}
 }
 
 void DatabaseViewer::updateIds()
@@ -246,7 +327,7 @@ void DatabaseViewer::generate3DMap()
 					{
 						std::map<int, rtabmap::Transform> poses, optimizedPoses;
 						std::multimap<int, std::pair<int, rtabmap::Transform> > edgeConstraints;
-						memory_->getMetricConstraints(uKeys(ids), memory_->getSignature(id)->mapId(), poses, edgeConstraints, true);
+						memory_->getMetricConstraints(uKeys(ids), poses, edgeConstraints, true);
 
 						UINFO("Poses=%d, constraints=%d", poses.size(), edgeConstraints.size());
 

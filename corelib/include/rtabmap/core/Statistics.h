@@ -50,11 +50,14 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, ReactivateId,);
 	RTABMAP_STATS(Loop, Hypothesis_ratio,);
 	RTABMAP_STATS(Loop, Hypothesis_reactivated,);
+	RTABMAP_STATS(Loop, Last_loop_closure_parent,);
+	RTABMAP_STATS(Loop, Last_loop_closure_child,);
 
-	RTABMAP_STATS(LocalLoop, Scan_matching_success,);
+	RTABMAP_STATS(LocalLoop, Odom_corrected,);
 	RTABMAP_STATS(LocalLoop, Time_closures,);
 	RTABMAP_STATS(LocalLoop, Space_closure_id,);
 	RTABMAP_STATS(LocalLoop, Space_neighbors,);
+	RTABMAP_STATS(LocalLoop, Space_diff_id,);
 
 	RTABMAP_STATS(Memory, Working_memory_size,);
 	RTABMAP_STATS(Memory, Short_time_memory_size,);
@@ -63,7 +66,6 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Memory, Images_buffered,);
 	RTABMAP_STATS(Memory, Rehearsal_sim,);
 	RTABMAP_STATS(Memory, Rehearsal_merged,);
-	RTABMAP_STATS(Memory, Last_loop_closure,);
 
 	RTABMAP_STATS(Timing, Memory_update, ms);
 	RTABMAP_STATS(Timing, Scan_matching, ms);

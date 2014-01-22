@@ -98,6 +98,7 @@ public:
 	bool removeCloud(const std::string & id); //including mesh
 
 	bool getPose(const std::string & id, Transform & pose); //including meshes
+	bool getCloudVisibility(const std::string & id);
 
 	const QMap<std::string, Transform> & getAddedClouds() {return _addedClouds;} //including meshes
 

@@ -288,7 +288,7 @@
      <x>0</x>
      <y>0</y>
      <width>736</width>
-     <height>21</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -296,6 +296,8 @@
      <string>File</string>
     </property>
     <addaction name="actionOpen_database"/>
+    <addaction name="separator"/>
+    <addaction name="actionExport"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
@@ -357,6 +359,11 @@
   <action name="actionGenerate_3D_map_pcd">
    <property name="text">
     <string>Generate 3D map (.pcd) ...</string>
+   </property>
+  </action>
+  <action name="actionExport">
+   <property name="text">
+    <string>Export...</string>
    </property>
   </action>
  </widget>

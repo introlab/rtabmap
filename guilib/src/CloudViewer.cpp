@@ -473,6 +473,21 @@ void CloudViewer::setCloudVisibility(const std::string & id, bool isVisible)
 	}
 }
 
+bool CloudViewer::getCloudVisibility(const std::string & id)
+{
+	pcl::visualization::CloudActorMapPtr cloudActorMap = _visualizer->getCloudActorMap();
+	pcl::visualization::CloudActorMap::iterator iter = cloudActorMap->find(id);
+	if(iter != cloudActorMap->end())
+	{
+		return iter->second.actor->GetVisibility() != 0;
+	}
+	else
+	{
+		UERROR("Cannot find actor named \"%s\".", id.c_str());
+	}
+	return false;
+}
+
 void CloudViewer::setCloudOpacity(const std::string & id, double opacity)
 {
 	_visualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, opacity, id);

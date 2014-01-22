@@ -25,7 +25,7 @@ class RTABMAPGUI_EXP DataRecorder : public QWidget, public UEventsHandler
 	Q_OBJECT
 public:
 	DataRecorder(QWidget * parent = 0);
-	bool init(const QString & path);
+	bool init(const QString & path, bool recordInRAM = true);
 
 	void close();
 
