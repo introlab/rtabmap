@@ -490,12 +490,22 @@ bool CloudViewer::getCloudVisibility(const std::string & id)
 
 void CloudViewer::setCloudOpacity(const std::string & id, double opacity)
 {
-	_visualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, opacity, id);
+	double lastOpacity;
+	_visualizer->getPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, lastOpacity, id);
+	if(lastOpacity != opacity)
+	{
+		_visualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, opacity, id);
+	}
 }
 
 void CloudViewer::setCloudPointSize(const std::string & id, int size)
 {
-	_visualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, (double)size, id);
+	double lastSize;
+	_visualizer->getPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, lastSize, id);
+	if((int)lastSize != size)
+	{
+		_visualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, (double)size, id);
+	}
 }
 
 void CloudViewer::contextMenuEvent(QContextMenuEvent * event)
