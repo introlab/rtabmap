@@ -31,6 +31,8 @@ SET(SRC_FILES
 	toro3d/posegraph3.cpp
 	toro3d/treeoptimizer3_iteration.cpp
 	toro3d/treeoptimizer3.cpp
+	
+	sqlite3/sqlite3.c
 )
 
 SET(INCLUDE_DIRS
@@ -39,10 +41,8 @@ SET(INCLUDE_DIRS
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_CURRENT_BINARY_DIR}
     ${OpenCV_INCLUDE_DIRS}
-	${SQLITE3_INCLUDE_DIR}
 	${PCL_INCLUDE_DIRS}
 	${ZLIB_INCLUDE_DIRS}
-	
 )
 
 ####################################
@@ -81,7 +81,7 @@ INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 # Add binary that is built from the source file "main.cpp".
 # The extension is automatically found.
 ADD_LIBRARY(rtabmap_core ${SRC_FILES} ${RESOURCES_HEADERS})
-TARGET_LINK_LIBRARIES(rtabmap_core rtabmap_utilite ${OpenCV_LIBS} ${SQLITE3_LIBRARY} ${PCL_LIBRARIES} ${ZLIB_LIBRARIES})
+TARGET_LINK_LIBRARIES(rtabmap_core rtabmap_utilite ${OpenCV_LIBS} ${PCL_LIBRARIES} ${ZLIB_LIBRARIES})
 
 INSTALL(TARGETS rtabmap_core
         RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT runtime

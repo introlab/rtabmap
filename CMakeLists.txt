@@ -76,11 +76,8 @@ ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 # [Eclipse] Automatic Discovery of Include directories (Optional, but handy) 
 #SET(CMAKE_VERBOSE_MAKEFILE ON)
 
-#Find libraries included with our project first
-IF(WIN32)
-   SET(CMAKE_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/3rdParty/include;${CMAKE_INCLUDE_PATH}")
-   SET(CMAKE_LIBRARY_PATH "${PROJECT_SOURCE_DIR}/3rdParty/lib;${CMAKE_LIBRARY_PATH}")
-ELSEIF(APPLE)
+#Other paths...
+IF(APPLE)
    # For Mac ports
    SET(CMAKE_INCLUDE_PATH "/opt/local/include;${CMAKE_INCLUDE_PATH}")
    SET(CMAKE_LIBRARY_PATH "/opt/local/lib;${CMAKE_LIBRARY_PATH}")
@@ -138,7 +135,6 @@ OPTION(DEMO_BUILD "Set to ON to build DEMO version" OFF)
 
 ####### DEPENDENCIES #######
 FIND_PACKAGE(OpenCV REQUIRED)
-FIND_PACKAGE(Sqlite3 REQUIRED)
 FIND_PACKAGE(PCL 1.7 REQUIRED)
 FIND_PACKAGE(VTK REQUIRED)
 FIND_PACKAGE(ZLIB REQUIRED)

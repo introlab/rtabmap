@@ -23,7 +23,7 @@
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 #include "rtabmap/core/DBDriver.h"
 #include <opencv2/features2d/features2d.hpp>
-#include <sqlite3.h>
+#include "sqlite3/sqlite3.h"
 #include <pcl/point_types.h>
 
 namespace rtabmap {
