@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>777</width>
-            <height>826</height>
+            <width>761</width>
+            <height>867</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>0</number>
+                <number>12</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -3713,8 +3713,8 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </layout>
                        </item>
                        <item>
-                        <layout class="QHBoxLayout" name="horizontalLayout_7" stretch="0,1">
-                         <item>
+                        <layout class="QFormLayout" name="formLayout_5">
+                         <item row="0" column="0">
                           <widget class="QComboBox" name="globalDetection_icpType">
                            <property name="sizeAdjustPolicy">
                             <enum>QComboBox::AdjustToContents</enum>
@@ -3736,10 +3736,30 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </item>
                           </widget>
                          </item>
-                         <item>
+                         <item row="0" column="1">
                           <widget class="QLabel" name="label_19">
                            <property name="text">
                             <string>Use ICP estimation. If ICP 2D is selected, laser scans are required.</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_31">
+                           <property name="text">
+                            <string>TORO graph optimization iterations</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QSpinBox" name="globalDetection_toroIterations">
+                           <property name="minimum">
+                            <number>1</number>
+                           </property>
+                           <property name="maximum">
+                            <number>10000</number>
+                           </property>
+                           <property name="value">
+                            <number>100</number>
                            </property>
                           </widget>
                          </item>

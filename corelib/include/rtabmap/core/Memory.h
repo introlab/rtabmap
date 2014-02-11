@@ -25,6 +25,7 @@
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/Image.h"
+#include "rtabmap/core/Link.h"
 #include <typeinfo>
 #include <list>
 #include <map>
@@ -144,7 +145,7 @@ public:
 	void getMetricConstraints(
 			const std::vector<int> & ids,
 			std::map<int, Transform> & poses,
-			std::multimap<int, std::pair<int, Transform> > & links,
+			std::multimap<int, Link> & links,
 			bool lookInDatabase = false);
 	Transform computeVisualTransform(int oldId, int newId) const;
 	Transform computeVisualTransform(const Signature & oldS, const Signature & newS) const;

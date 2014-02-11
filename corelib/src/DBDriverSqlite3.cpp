@@ -661,7 +661,6 @@ void DBDriverSqlite3::getPoseQuery(int signatureId, Transform & pose, int & mapI
 {
 	if(_ppDb && signatureId)
 	{
-		UTimer timer;
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
@@ -700,8 +699,6 @@ void DBDriverSqlite3::getPoseQuery(int signatureId, Transform & pose, int & mapI
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
 	}
 }
 
@@ -864,8 +861,6 @@ void DBDriverSqlite3::loadLoopClosuresQuery(int nodeId, std::map<int, Transform>
 	childIds.clear();
 	if(_ppDb)
 	{
-		UTimer timer;
-		timer.start();
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
@@ -923,8 +918,6 @@ void DBDriverSqlite3::loadLoopClosuresQuery(int nodeId, std::map<int, Transform>
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-
-		UDEBUG("time =%fs", timer.getElapsedTime());
 	}
 }
 
@@ -952,7 +945,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 
 		for(std::list<int>::const_iterator iter=ids.begin(); iter!=ids.end(); ++iter)
 		{
-			ULOGGER_DEBUG("Loading node %d...", *iter);
+			//ULOGGER_DEBUG("Loading node %d...", *iter);
 			// bind id
 			rc = sqlite3_bind_int(ppStmt, 1, *iter);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
@@ -1028,7 +1021,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 
 		for(std::list<Signature*>::const_iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
 		{
-			ULOGGER_DEBUG("Loading words of %d...", (*iter)->id());
+			//ULOGGER_DEBUG("Loading words of %d...", (*iter)->id());
 			// bind id
 			rc = sqlite3_bind_int(ppStmt, 1, (*iter)->id());
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
@@ -1428,7 +1421,7 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 			//reset
 			rc = sqlite3_reset(ppStmt);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-			UINFO("time=%fs, node=%d, neighbors.size=%d, loopIds=%d, childIds=%d", timer.ticks(), (*iter)->id(), neighbors.size(), loopIds.size(), childIds.size());
+			UDEBUG("time=%fs, node=%d, neighbors.size=%d, loopIds=%d, childIds=%d", timer.ticks(), (*iter)->id(), neighbors.size(), loopIds.size(), childIds.size());
 		}
 
 		// Finalize (delete) the statement

@@ -31,6 +31,8 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <set>
 
+#include <rtabmap/core/Link.h>
+
 class Ui_DatabaseViewer;
 class QGraphicsScene;
 class QGraphicsView;
@@ -55,12 +57,18 @@ private slots:
 	void openDatabase();
 	void generateGraph();
 	void exportDatabase();
+	void extractImages();
 	void generateLocalGraph();
+	void view3DMap();
 	void generate3DMap();
 	void sliderAValueChanged(int);
 	void sliderBValueChanged(int);
 	void sliderAMoved(int);
 	void sliderBMoved(int);
+	void sliderNeighborValueChanged(int);
+	void sliderLoopValueChanged(int);
+	void sliderIterationsValueChanged(int);
+	void updateGraphView();
 
 private:
 	void updateIds();
@@ -71,12 +79,20 @@ private:
 				QLabel * labelChildren,
 				rtabmap::ImageView * view,
 				QLabel * labelId);
+	void updateConstraintView(const rtabmap::Link & link);
 
 private:
 	Ui_DatabaseViewer * ui_;
 	QList<int> ids_;
+	QMap<int, int> idToIndex_;
+	QList<rtabmap::Link> neighborLinks_;
+	QList<rtabmap::Link> loopLinks_;
 	rtabmap::Memory * memory_;
 	QString pathDatabase_;
+	std::list<std::map<int, rtabmap::Transform> > graphes_;
+	std::map<int, rtabmap::Transform> poses_;
+	std::multimap<int, rtabmap::Link> links_;
+	std::map<int, std::vector<unsigned char> > scans_;
 };
 
 #endif /* DATABASEVIEWER_H_ */

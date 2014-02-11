@@ -27,7 +27,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <list>
 #include <vector>
-#include <rtabmap/core/Transform.h>
+#include <rtabmap/core/Link.h>
 
 namespace rtabmap {
 
@@ -56,6 +56,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(LocalLoop, Odom_corrected,);
 	RTABMAP_STATS(LocalLoop, Time_closures,);
 	RTABMAP_STATS(LocalLoop, Space_closure_id,);
+	RTABMAP_STATS(LocalLoop, Space_nearest_id,);
 	RTABMAP_STATS(LocalLoop, Space_neighbors,);
 	RTABMAP_STATS(LocalLoop, Space_diff_id,);
 
@@ -117,6 +118,7 @@ public:
 	void setLocalTransforms(const std::map<int, Transform> & localTransforms) {_localTransforms = localTransforms;}
 
 	void setPoses(const std::map<int, Transform> & poses) {_poses = poses;}
+	void setConstraints(const std::multimap<int, Link> & constraints) {_constraints = constraints;}
 	void setCurrentPose(const Transform & pose) {_currentPose = pose;}
 	void setMapCorrection(const Transform & mapCorrection) {_mapCorrection = mapCorrection;}
 	void setLoopClosureTransform(const Transform & loopClosureTransform) {_loopClosureTransform = loopClosureTransform;}
@@ -141,6 +143,7 @@ public:
 	const std::map<int, Transform> & getLocalTransforms() const {return _localTransforms;}
 
 	const std::map<int, Transform> & poses() const {return _poses;}
+	const std::multimap<int, Link> & constraints() const {return _constraints;}
 	const Transform & currentPose() const {return _currentPose;}
 	const Transform & mapCorrection() const {return _mapCorrection;}
 	const Transform & loopClosureTransform() const {return _loopClosureTransform;}
@@ -171,6 +174,7 @@ private:
 	std::map<int, Transform> _localTransforms;
 
 	std::map<int, Transform> _poses;
+	std::multimap<int, Link> _constraints;
 	Transform _currentPose;
 	Transform _mapCorrection;
 	Transform _loopClosureTransform;

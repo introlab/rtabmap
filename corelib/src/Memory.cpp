@@ -200,6 +200,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 		if(postInitEvents) UEventsManager::post(new RtabmapEventInit("Loading dictionary..."));
 		_dbDriver->load(_vwd);
 		UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
+		_vwd->update();
 		if(postInitEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Loading dictionary, done! (%d words)", (int)_vwd->getUnusedWordsSize())));
 	}
 
@@ -1851,7 +1852,7 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 
 				// verify if there are enough correspondences
 				int correspondences = util3d::getCorrespondencesCount(newCloud, oldCloud, _icp2MaxCorrespondenceDistance);
-				correspondencesRatio = float(correspondences)/float(oldCloud->size());
+				correspondencesRatio = float(correspondences)/float(oldCloud->size()>newCloud->size()?oldCloud->size():newCloud->size());
 
 				UDEBUG("hasConverged=%s, fitness=%f, correspondences=%d/%d (%f%%)",
 						hasConverged?"true":"false",
@@ -3198,7 +3199,7 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 void Memory::getMetricConstraints(
 		const std::vector<int> & ids,
 		std::map<int, Transform> & poses,
-		std::multimap<int, std::pair<int, Transform> > & links,
+		std::multimap<int, Link> & links,
 		bool lookInDatabase)
 {
 	for(unsigned int i=0; i<ids.size(); ++i)
@@ -3221,18 +3222,18 @@ void Memory::getMetricConstraints(
 				if(!jter->second.isNull() && uContains(poses, jter->first))
 				{
 					bool edgeAlreadyAdded = false;
-					for(std::multimap<int, std::pair<int, Transform> >::iterator iter = links.lower_bound(jter->first);
+					for(std::multimap<int, Link>::iterator iter = links.lower_bound(jter->first);
 							iter != links.end() && iter->first == jter->first;
 							++iter)
 					{
-						if(iter->second.first == ids[i])
+						if(iter->second.to() == ids[i])
 						{
 							edgeAlreadyAdded = true;
 						}
 					}
 					if(!edgeAlreadyAdded)
 					{
-						links.insert(std::make_pair(ids[i], *jter));
+						links.insert(std::make_pair(ids[i], Link(ids[i], jter->first, jter->second, Link::kNeighbor)));
 					}
 				}
 			}
@@ -3243,7 +3244,7 @@ void Memory::getMetricConstraints(
 			{
 				if(!jter->second.isNull() && uContains(poses, jter->first))
 				{
-					links.insert(std::make_pair(ids[i], *jter));
+					links.insert(std::make_pair(ids[i], Link(ids[i], jter->first, jter->second, Link::kGlobalClosure)));
 				}
 			}
 		}

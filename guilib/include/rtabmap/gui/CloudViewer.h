@@ -11,12 +11,16 @@
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
 #include <QVTKWidget.h>
+#include <pcl/pcl_base.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/PolygonMesh.h>
 #include "rtabmap/core/Transform.h"
 #include <QtCore/QMap>
+#include <QtCore/QSet>
+#include <QtCore/qnamespace.h>
 
+#include <pcl/visualization/mouse_event.h>
 #include <pcl/PCLPointCloud2.h>
 
 namespace pcl {
@@ -110,12 +114,17 @@ public slots:
 	void setCloudPointSize(const std::string & id, int size);
 
 protected:
+	virtual void keyReleaseEvent(QKeyEvent * event);
+	virtual void keyPressEvent(QKeyEvent * event);
 	virtual void contextMenuEvent(QContextMenuEvent * event);
 	virtual void handleAction(QAction * event);
 	QMenu * menu() {return _menu;}
 
 private:
 	void createMenu();
+	bool frustumCulling(const pcl::PointXYZ & cloud);
+	pcl::IndicesPtr frustumCulling(const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud);
+	void mouseEventOccurred (const pcl::visualization::MouseEvent &event, void* viewer_void);
 
 private:
     pcl::visualization::PCLVisualizer * _visualizer;
@@ -127,12 +136,16 @@ private:
     QAction * _aSetTrajectorySize;
     QAction * _aClearTrajectory;
     QAction * _aShowGrid;
+    QAction * _aSetBackgroundColor;
+    QAction * _setFarPlaneDistance;
     QMenu * _menu;
     pcl::PointCloud<pcl::PointXYZ>::Ptr _trajectory;
     unsigned int _maxTrajectorySize;
     QMap<std::string, Transform> _addedClouds; // include meshes
     Transform _lastPose;
     std::list<std::string> _gridLines;
+    float _farPlaneDistance;
+    QSet<Qt::Key> _keysPressed;
 };
 
 } /* namespace rtabmap */

@@ -18,6 +18,7 @@ SET(headers_ui
 	../include/${PROJECT_PREFIX}/gui/DataRecorder.h
 	./ExportDialog.h
 	./MapVisibilityWidget.h
+	./GraphViewer.h
 )
 
 SET(uis
@@ -65,6 +66,7 @@ SET(SRC_FILES
 	./DataRecorder.cpp
 	./ExportDialog.cpp
 	./MapVisibilityWidget.cpp
+	./GraphViewer.cpp
 	${moc_srcs} 
 	${moc_uis} 
 	${srcs_qrc}

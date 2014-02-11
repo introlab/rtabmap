@@ -116,11 +116,13 @@ private slots:
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void downloadAllClouds();
+	void downloadPoseGraph();
 	void clearTheCache();
 	void saveFigures();
 	void loadFigures();
 	void openPreferences();
 	void selectScreenCaptureFormat(bool checked);
+	void takeScreenshot();
 	void updateElapsedTime();
 	void processOdometry(const rtabmap::Image & data);
 	void applyAllPrefSettings();
@@ -214,7 +216,7 @@ private:
 
 	QMap<int, std::vector<unsigned char> > _imagesMap;
 	QMap<int, std::vector<unsigned char> > _depthsMap;
-	QMap<int, std::vector<unsigned char> > _depths2DMap;
+	std::map<int, std::vector<unsigned char> > _depths2DMap;
 	QMap<int, float> _depthConstantsMap;
 	QMap<int, Transform> _localTransformsMap;
 	std::map<int, Transform> _currentPosesMap;
@@ -234,7 +236,7 @@ private:
 
 	QString _graphSavingFileName;
 	QString _toroSavingFileName;
-	QString _autoScreenCaptureFormat;
+	bool _autoScreenCaptureOdomSync;
 
 	QVector<int> _refIds;
 	QVector<int> _loopClosureIds;

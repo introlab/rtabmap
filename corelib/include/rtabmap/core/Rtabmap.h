@@ -25,6 +25,7 @@
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/Image.h"
 #include "rtabmap/core/Statistics.h"
+#include "rtabmap/core/Link.h"
 
 #include <opencv2/core/core.hpp>
 #include <list>
@@ -101,8 +102,13 @@ public:
 			std::map<int, float> & depthConstants,
 			std::map<int, Transform> & localTransforms,
 			std::map<int, Transform> & poses,
+			std::multimap<int, Link> & constraints,
 			bool optimized,
 			bool full) const;
+	void getGraph(std::map<int, Transform> & poses,
+			std::multimap<int, Link> & constraints,
+			bool optimized,
+			bool full);
 
 	std::map<int, Transform> getOptimizedWMPosesInRadius(int fromId, int maxNearestNeighbors, float radius, int maxDiffID, int & nearestId) const;
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
@@ -113,7 +119,7 @@ private:
 	void optimizeCurrentMap(int id,
 			bool lookInDatabase,
 			std::map<int, Transform> & optimizedPoses,
-			std::multimap<int, std::pair<int, Transform> > * constraints = 0) const;
+			std::multimap<int, Link> * constraints = 0) const;
 
 	void setupLogFiles(bool overwrite = false);
 	void flushStatisticLogs();
@@ -142,7 +148,7 @@ private:
 	float _localDetectRadius;
 	float _localDetectMaxNeighbors;
 	int _localDetectMaxDiffID;
-	bool _icpEnabled;
+	int _toroIterations;
 	std::string _databasePath;
 
 	int _lcHypothesisId;
@@ -167,6 +173,7 @@ private:
 	std::string _wDir;
 
 	std::map<int, Transform> _optimizedPoses;
+	std::multimap<int, Link> _constraints;
 	Transform _mapCorrection; // for localization mode
 	Transform _mapTransform; // for localization mode
 };

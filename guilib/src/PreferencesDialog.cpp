@@ -374,6 +374,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->rgdb_linearUpdate->setObjectName(Parameters::kRGBDLinearUpdate().c_str());
 	_ui->rgdb_angularUpdate->setObjectName(Parameters::kRGBDAngularUpdate().c_str());
 	_ui->odomScanHistory->setObjectName(Parameters::kRGBDScanMatchingSize().c_str());
+	_ui->globalDetection_toroIterations->setObjectName(Parameters::kRGBDToroIterations().c_str());
 
 	_ui->groupBox_localDetection_time->setObjectName(Parameters::kRGBDLocalLoopDetectionTime().c_str());
 	_ui->groupBox_localDetection_space->setObjectName(Parameters::kRGBDLocalLoopDetectionSpace().c_str());
@@ -2236,13 +2237,12 @@ void PreferencesDialog::updateKpROI()
 
 void PreferencesDialog::changeDatabasePath()
 {
-	QString path = QFileDialog::getSaveFileName(
+	QString path = QFileDialog::getOpenFileName(
 			this,
 			tr("Select database file..."),
 			_ui->lineEdit_databasePath->text(),
 			tr("RTAB-Map database files (*.db)"),
-			0,
-			QFileDialog::DontConfirmOverwrite);
+			0);
 
 	if(!path.isEmpty())
 	{

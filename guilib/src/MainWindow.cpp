@@ -109,7 +109,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_posteriorCurve(0),
 	_likelihoodCurve(0),
 	_rawLikelihoodCurve(0),
-	_autoScreenCaptureFormat("png")
+	_autoScreenCaptureOdomSync(false)
 {
 	ULOGGER_DEBUG("");
 
@@ -152,8 +152,12 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 		_ui->dockWidget_console->setVisible(false);
 		_ui->dockWidget_loopClosureViewer->setVisible(false);
 		_ui->dockWidget_mapVisibility->setVisible(false);
+		_ui->dockWidget_graphViewer->setVisible(false);
 		//_ui->dockWidget_cloudViewer->setVisible(false);
+		//_ui->dockWidget_imageView->setVisible(false);
 	}
+
+	_ui->widget_mainWindow->setVisible(false);
 
 	if(prefDialog)
 	{
@@ -218,6 +222,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(this, SIGNAL(rtabmapEvent3DMapReceived(const rtabmap::RtabmapEvent3DMap &)), this, SLOT(processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap &)));
 
 	// Dock Widget view actions (Menu->Window)
+	_ui->menuShow_view->addAction(_ui->dockWidget_imageView->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_posterior->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_likelihood->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_rawlikelihood->toggleViewAction());
@@ -226,6 +231,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->menuShow_view->addAction(_ui->dockWidget_cloudViewer->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_loopClosureViewer->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_mapVisibility->toggleViewAction());
+	_ui->menuShow_view->addAction(_ui->dockWidget_graphViewer->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->toolBar->toggleViewAction());
 	_ui->toolBar->setWindowTitle(tr("Control toolbar"));
 	QAction * a = _ui->menuShow_view->addAction("Progress dialog");
@@ -246,8 +252,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionGenerate_TORO_graph_graph, SIGNAL(triggered()), this , SLOT(generateTOROMap()));
 	connect(_ui->actionDelete_memory, SIGNAL(triggered()), this , SLOT(deleteMemory()));
 	connect(_ui->actionDownload_all_clouds, SIGNAL(triggered()), this , SLOT(downloadAllClouds()));
+	connect(_ui->actionDownload_graph, SIGNAL(triggered()), this , SLOT(downloadPoseGraph()));
 	connect(_ui->menuEdit, SIGNAL(aboutToShow()), this, SLOT(updateEditMenu()));
 	connect(_ui->actionAuto_screen_capture, SIGNAL(triggered(bool)), this, SLOT(selectScreenCaptureFormat(bool)));
+	connect(_ui->actionScreenshot, SIGNAL(triggered()), this, SLOT(takeScreenshot()));
 	connect(_ui->action16_9, SIGNAL(triggered()), this, SLOT(setAspectRatio16_9()));
 	connect(_ui->action16_10, SIGNAL(triggered()), this, SLOT(setAspectRatio16_10()));
 	connect(_ui->action4_3, SIGNAL(triggered()), this, SLOT(setAspectRatio4_3()));
@@ -334,6 +342,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	this->applyPrefSettings(PreferencesDialog::kPanelAll);
 
 	_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
+	_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 
 	splash.close();
 }
@@ -353,11 +362,11 @@ void MainWindow::setupMainLayout(bool vertical)
 {
 	if(vertical)
 	{
-		qobject_cast<QHBoxLayout *>(_ui->centralwidget->layout())->setDirection(QBoxLayout::TopToBottom);
+		qobject_cast<QHBoxLayout *>(_ui->layout_imageview->layout())->setDirection(QBoxLayout::TopToBottom);
 	}
 	else if(!vertical)
 	{
-		qobject_cast<QHBoxLayout *>(_ui->centralwidget->layout())->setDirection(QBoxLayout::LeftToRight);
+		qobject_cast<QHBoxLayout *>(_ui->layout_imageview->layout())->setDirection(QBoxLayout::LeftToRight);
 	}
 }
 
@@ -389,6 +398,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
 		//write settings before quit?
 		_preferencesDialog->saveMainWindowState(this);
 
+		_ui->dockWidget_imageView->close();
 		_ui->dockWidget_likelihood->close();
 		_ui->dockWidget_rawlikelihood->close();
 		_ui->dockWidget_posterior->close();
@@ -397,6 +407,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
 		_ui->dockWidget_cloudViewer->close();
 		_ui->dockWidget_loopClosureViewer->close();
 		_ui->dockWidget_mapVisibility->close();
+		_ui->dockWidget_graphViewer->close();
 
 		if(_camera)
 		{
@@ -610,6 +621,11 @@ void MainWindow::processOdometry(const rtabmap::Image & data)
 	_ui->widget_cloudViewer->render();
 
 	_lastOdometryProcessed = true;
+
+	if(_ui->actionAuto_screen_capture->isChecked() && _autoScreenCaptureOdomSync)
+	{
+		this->captureScreen();
+	}
 }
 
 void MainWindow::processStats(const rtabmap::Statistics & stat)
@@ -686,9 +702,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				iter != stat.getDepth2ds().end();
 				++iter)
 			{
-				if(!iter->second.empty() && !_depths2DMap.contains(iter->first))
+				if(!iter->second.empty())
 				{
-					_depths2DMap.insert(iter->first, iter->second);
+					_depths2DMap.insert(std::make_pair(iter->first, iter->second));
 				}
 			}
 		}
@@ -923,7 +939,14 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		{
 			// update pose only if a odometry is not received
 			updateMapCloud(stat.poses(), _odometryReceived?Transform():stat.currentPose());
+
+			// update some widgets
 			_ui->widget_mapVisibility->setMap(stat.poses());
+			if(_ui->graphicsView_graphView->isVisible())
+			{
+				_ui->graphicsView_graphView->updateGraph(stat.poses(), stat.constraints(), _depths2DMap);
+			}
+
 			_odometryReceived = false;
 
 			_odometryCorrection = stat.mapCorrection();
@@ -951,7 +974,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						std::multimap<int, cv::KeyPoint>(),
 						std::multimap<int, pcl::PointXYZ>(),
 						Transform(),
-						_depths2DMap.value(loopOldId, std::vector<unsigned char>()),
+						uValue(_depths2DMap, loopOldId, std::vector<unsigned char>()),
 						_imagesMap.value(loopOldId, std::vector<unsigned char>()),
 						_depthsMap.value(loopOldId, std::vector<unsigned char>()),
 						_depthConstantsMap.value(loopOldId, 0.0f),
@@ -963,7 +986,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						std::multimap<int, cv::KeyPoint>(),
 						std::multimap<int, pcl::PointXYZ>(),
 						loopClosureTransform,
-						_depths2DMap.value(loopNewId, std::vector<unsigned char>()),
+						uValue(_depths2DMap, loopNewId, std::vector<unsigned char>()),
 						_imagesMap.value(loopNewId, std::vector<unsigned char>()),
 						_depthsMap.value(loopNewId, std::vector<unsigned char>()),
 						_depthConstantsMap.value(loopNewId, 0.0f),
@@ -991,7 +1014,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	float elapsedTime = static_cast<float>(totalTime.elapsed());
 	UINFO("Processing statistics time = %fs", elapsedTime/1000.0f);
 	_ui->statsToolBox->updateStat("/Gui refresh stats/ms", stat.refImageId(), elapsedTime);
-	this->captureScreen();
+	if(_ui->actionAuto_screen_capture->isChecked() && !_autoScreenCaptureOdomSync)
+	{
+		this->captureScreen();
+	}
 	_processingStatistics = false;
 }
 
@@ -1105,10 +1131,10 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & poses, const Tr
 					_ui->widget_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
 					_ui->widget_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 				}
-				else if(_depths2DMap.contains(iter->first))
+				else if(uContains(_depths2DMap, iter->first))
 				{
 					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-					cv::Mat depth2d = util3d::uncompressData(_depths2DMap.value(iter->first));
+					cv::Mat depth2d = util3d::uncompressData(_depths2DMap.at(iter->first));
 					cloud = util3d::depth2DToPointCloud(depth2d);
 					if(!_ui->widget_cloudViewer->addOrUpdateCloud(scanName, cloud, iter->second))
 					{
@@ -1251,6 +1277,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		UINFO(" depthConstants = %d", event.getDepthConstants().size());
 		UINFO(" localTransforms = %d", event.getLocalTransforms().size());
 		UINFO(" poses = %d", event.getPoses().size());
+		UINFO(" constraints = %d", event.getConstraints().size());
 
 		_initProgressDialog->appendText("Inserting data in the cache...");
 
@@ -1285,7 +1312,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			iter!=event.getDepths2d().end();
 			++iter)
 		{
-			_depths2DMap.insert(iter->first, iter->second);
+			_depths2DMap.insert(std::make_pair(iter->first, iter->second));
 		}
 		_initProgressDialog->appendText(tr("Inserted %1 laser scans.").arg(_depths2DMap.size()));
 		_initProgressDialog->incrementStep();
@@ -1307,8 +1334,20 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		{
 			_initProgressDialog->appendText("Updating the 3D map cloud...");
 			_initProgressDialog->incrementStep();
+			QApplication::processEvents();
 			this->updateMapCloud(event.getPoses(), Transform());
 			_initProgressDialog->appendText("Updating the 3D map cloud... done.");
+
+			if(_ui->graphicsView_graphView->isVisible())
+			{
+				_initProgressDialog->appendText("Updating the graph view...");
+				_initProgressDialog->incrementStep();
+				_ui->graphicsView_graphView->updateGraph(
+						event.getPoses(),
+						event.getConstraints(),
+						event.getDepths2d().size()?event.getDepths2d():_depths2DMap);
+				_initProgressDialog->appendText("Updating the graph view... done.");
+			}
 		}
 		else
 		{
@@ -1335,6 +1374,8 @@ void MainWindow::applyAllPrefSettings()
 			_ui->statsToolBox->updateStat(QString((*iter).first.c_str()).replace('_', ' '), 0, (*iter).second);
 		}
 	}
+
+	_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 
 	this->applyPrefSettings(PreferencesDialog::kPanelAll);
 	this->applyPrefSettings(_preferencesDialog->getAllParameters());
@@ -1684,10 +1725,6 @@ void MainWindow::changeMappingMode()
 
 void MainWindow::captureScreen()
 {
-	if(!_ui->actionAuto_screen_capture->isChecked())
-	{
-		return;
-	}
 	QString targetDir = _preferencesDialog->getWorkingDirectory() + "/ScreensCaptured";
 	QDir dir;
 	if(!dir.exists(targetDir))
@@ -1701,11 +1738,13 @@ void MainWindow::captureScreen()
 		dir.mkdir(targetDir);
 	}
 	targetDir += "/";
-	QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + ".") + _autoScreenCaptureFormat;
+	QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + ".png");
 	_ui->statusbar->clearMessage();
 	QPixmap figure = QPixmap::grabWidget(this);
 	figure.save(targetDir + name);
-	_ui->statusbar->showMessage(tr("Screen captured \"%1\"").arg(targetDir + name), _preferencesDialog->getTimeLimit()*500);
+	QString msg = tr("Screen captured \"%1\"").arg(targetDir + name);
+	_ui->statusbar->showMessage(msg, _preferencesDialog->getTimeLimit()*500);
+	_ui->widget_console->appendMsg(msg);
 }
 
 void MainWindow::beep()
@@ -2408,6 +2447,65 @@ void MainWindow::downloadAllClouds()
 	}
 }
 
+void MainWindow::downloadPoseGraph()
+{
+	bool showAll = _state != kMonitoringPaused && _state != kMonitoring;
+
+	QStringList items;
+	items.append("Current map optimized");
+	if(showAll)
+	{
+		items.append("Current map not optimized");
+	}
+	items.append("Full map optimized");
+	if(showAll)
+	{
+		items.append("Full map not optimized");
+	}
+	bool ok;
+	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, showAll?2:1, false, &ok);
+	if(ok)
+	{
+		bool optimized=false, full=false;
+		if(item.compare("Current map optimized") == 0)
+		{
+			optimized = true;
+		}
+		else if(item.compare("Current map not optimized") == 0)
+		{
+
+		}
+		else if(item.compare("Full map optimized") == 0)
+		{
+			full=true;
+			optimized=true;
+		}
+		else if(item.compare("Full map not optimized") == 0)
+		{
+			full=true;
+		}
+		else
+		{
+			UFATAL("Item \"%s\" not found?!?", item.toStdString().c_str());
+		}
+
+		UINFO("Download the graph...");
+		_initProgressDialog->setAutoClose(true, 1);
+		_initProgressDialog->resetProgress();
+		_initProgressDialog->show();
+		_initProgressDialog->appendText(tr("Downloading the graph (full=%1 ,optimized=%2)...")
+				.arg(full?"true":"false").arg(optimized?"true":"false"));
+		if(full)
+		{
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublishGraphFull, optimized?1:0));
+		}
+		else
+		{
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublishGraph, optimized?1:0));
+		}
+	}
+}
+
 void MainWindow::clearTheCache()
 {
 	_imagesMap.clear();
@@ -2435,6 +2533,7 @@ void MainWindow::clearTheCache()
 	_ui->label_stats_loopClosuresRejected->setText("0");
 	_refIds.clear();
 	_loopClosureIds.clear();
+	_ui->graphicsView_graphView->clearGraph();
 }
 
 void MainWindow::updateElapsedTime()
@@ -2520,15 +2619,26 @@ void MainWindow::selectScreenCaptureFormat(bool checked)
 	if(checked)
 	{
 		QStringList items;
-		items << QString("png") << QString("jpg");
+		items << QString("Synchronize with map update") << QString("Synchronize with odometry update");
 		bool ok;
-		QString item = QInputDialog::getItem(this, tr("Select format"), tr("Format:"), items, 0, false, &ok);
+		QString item = QInputDialog::getItem(this, tr("Select synchronization behavior"), tr("Sync:"), items, 0, false, &ok);
 		if(ok && !item.isEmpty())
 		{
-			_autoScreenCaptureFormat = item;
+			if(item.compare("Synchronize with map update") == 0)
+			{
+				_autoScreenCaptureOdomSync = false;
+			}
+			else
+			{
+				_autoScreenCaptureOdomSync = true;
+			}
 		}
-		this->captureScreen();
 	}
+}
+
+void MainWindow::takeScreenshot()
+{
+	this->captureScreen();
 }
 
 void MainWindow::setAspectRatio(int w, int h)
@@ -2609,7 +2719,7 @@ void MainWindow::savePointClouds()
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()+1);
+		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()*2+1);
 
 		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 		if(button == QMessageBox::No)
@@ -2637,7 +2747,7 @@ void MainWindow::saveMeshes()
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()+1);
+		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()*2+1);
 
 		std::map<int, pcl::PolygonMesh::Ptr> meshes;
 		if(button == QMessageBox::No)
@@ -3062,6 +3172,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createAssembledCloud()
 {
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 	int i=0;
+	int count = 0;
 	for(std::map<int, Transform>::const_iterator iter = _currentPosesMap.begin(); iter!=_currentPosesMap.end(); ++iter)
 	{
 		bool inserted = false;
@@ -3089,7 +3200,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createAssembledCloud()
 				if(cloud->size())
 				{
 					*assembledCloud += *cloud;
+
 					inserted = true;
+					++count;
 				}
 			}
 			else
@@ -3105,6 +3218,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createAssembledCloud()
 		if(inserted)
 		{
 			_initProgressDialog->appendText(tr("Generated cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(_currentPosesMap.size()));
+
+			if(count % 100 == 0)
+			{
+				if(assembledCloud->size() && _preferencesDialog->getCloudVoxelSize(2))
+				{
+					assembledCloud = util3d::voxelize(assembledCloud, _preferencesDialog->getCloudVoxelSize(2));
+				}
+			}
 		}
 		else
 		{
@@ -3116,13 +3237,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createAssembledCloud()
 
 	if(assembledCloud->size() && _preferencesDialog->getCloudVoxelSize(2))
 	{
-		_initProgressDialog->appendText(tr("Voxelize the assembled cloud (%1 points)...").arg(assembledCloud->size()));
-		_initProgressDialog->incrementStep();
-		_initProgressDialog->appendText(tr("Voxelize the assembled cloud (%1 points)... done.").arg(assembledCloud->size()));
-
-		UDEBUG("Voxelize the assembled cloud of %d points (%f m)", (int)assembledCloud->size(), _preferencesDialog->getCloudVoxelSize(2));
 		assembledCloud = util3d::voxelize(assembledCloud, _preferencesDialog->getCloudVoxelSize(2));
 	}
+
 	return assembledCloud;
 }
 

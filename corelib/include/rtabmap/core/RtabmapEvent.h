@@ -58,8 +58,10 @@ public:
 			kCmdGenerateTOROGraphFull, // params: path, optimized
 			kCmdDeleteMemory, // params: path [optional]
 			kCmdCleanDataBuffer,
-			kCmdPublish3DMap,
-			kCmdPublish3DMapFull,
+			kCmdPublish3DMap, // params: optimized
+			kCmdPublish3DMapFull, // params: optimized
+			kCmdPublishGraphFull, // params: optimized
+			kCmdPublishGraph, // params: optimized
 			kCmdTriggerNewMap,
 			kCmdPause};
 public:
@@ -147,14 +149,16 @@ public:
 			const std::map<int, std::vector<unsigned char> > & depths2d,
 			const std::map<int, float> & depthConstants,
 			const std::map<int, Transform> & localTransforms,
-			const std::map<int, Transform> & poses) :
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & constraints) :
 		UEvent(0),
 		_images(images),
 		_depths(depths),
 		_depths2d(depths2d),
 		_depthConstants(depthConstants),
 		_localTransforms(localTransforms),
-		_poses(poses)
+		_poses(poses),
+		_constraints(constraints)
 	{}
 
 	virtual ~RtabmapEvent3DMap() {}
@@ -165,6 +169,7 @@ public:
 	const std::map<int, float> & getDepthConstants() const {return _depthConstants;}
 	const std::map<int, Transform> & getLocalTransforms() const {return _localTransforms;}
 	const std::map<int, Transform> & getPoses() const {return _poses;}
+	const std::multimap<int, Link> & getConstraints() const {return _constraints;}
 
 	virtual std::string getClassName() const {return std::string("RtabmapEvent3DMap");}
 
@@ -175,6 +180,7 @@ private:
 	std::map<int, float> _depthConstants;
 	std::map<int, Transform> _localTransforms;
 	std::map<int, Transform> _poses;
+	std::multimap<int, Link> _constraints;
 };
 
 } // namespace rtabmap

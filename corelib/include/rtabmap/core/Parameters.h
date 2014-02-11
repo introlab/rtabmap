@@ -204,6 +204,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, ScanMatchingSize,  int, 0, 		"Laser scan matching history for odometry correction (laser scans are required). Set to 0 to disable odometry correction.");
 	RTABMAP_PARAM(RGBD, LinearUpdate,      float, 0.0, 	"Min linear displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
 	RTABMAP_PARAM(RGBD, AngularUpdate,     float, 0.0, 	"Min angular displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
+	RTABMAP_PARAM(RGBD, ToroIterations,    int, 100,    "TORO graph optimization iterations")
 
 	// Local loop closure detection
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionTime,     bool, true, 	"Detection over all locations in STM.");

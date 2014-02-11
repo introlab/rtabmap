@@ -85,6 +85,7 @@ void RtabmapThread::publishMap(bool optimized, bool full) const
 	std::map<int, float> depthConstants;
 	std::map<int, Transform> localTransforms;
 	std::map<int, Transform> poses;
+	std::multimap<int, Link> constraints;
 
 	_rtabmap->get3DMap(images,
 			depths,
@@ -92,6 +93,7 @@ void RtabmapThread::publishMap(bool optimized, bool full) const
 			depthConstants,
 			localTransforms,
 			poses,
+			constraints,
 			optimized,
 			full);
 
@@ -100,8 +102,34 @@ void RtabmapThread::publishMap(bool optimized, bool full) const
 			depths2d,
 			depthConstants,
 			localTransforms,
-			poses));
+			poses,
+			constraints));
 }
+
+void RtabmapThread::publishGraph(bool optimized, bool full) const
+{
+	std::map<int, std::vector<unsigned char> > images;
+	std::map<int, std::vector<unsigned char> > depths;
+	std::map<int, std::vector<unsigned char> > depths2d;
+	std::map<int, float> depthConstants;
+	std::map<int, Transform> localTransforms;
+	std::map<int, Transform> poses;
+	std::multimap<int, Link> constraints;
+
+	_rtabmap->getGraph(poses,
+			constraints,
+			optimized,
+			full);
+
+	this->post(new RtabmapEvent3DMap(images,
+			depths,
+			depths2d,
+			depthConstants,
+			localTransforms,
+			poses,
+			constraints));
+}
+
 
 void RtabmapThread::mainLoopKill()
 {
@@ -178,6 +206,12 @@ void RtabmapThread::mainLoop()
 		break;
 	case kStatePublishingMapFull:
 		this->publishMap(atoi(parameters.at("optimized").c_str())!=0, true);
+		break;
+	case kStatePublishingGraph:
+		this->publishGraph(atoi(parameters.at("optimized").c_str())!=0, false);
+		break;
+	case kStatePublishingGraphFull:
+		this->publishGraph(atoi(parameters.at("optimized").c_str())!=0, true);
 		break;
 	case kStateTriggeringMap:
 		_rtabmap->triggerNewMap();
@@ -299,6 +333,20 @@ void RtabmapThread::handleEvent(UEvent* event)
 			ParametersMap param;
 			param.insert(ParametersPair("optimized", uNumber2Str(rtabmapEvent->getInt())));
 			pushNewState(kStatePublishingMapFull, param);
+		}
+		else if(cmd == RtabmapEventCmd::kCmdPublishGraph)
+		{
+			ULOGGER_DEBUG("CMD_PUBLISH_GRAPH");
+			ParametersMap param;
+			param.insert(ParametersPair("optimized", uNumber2Str(rtabmapEvent->getInt())));
+			pushNewState(kStatePublishingGraph, param);
+		}
+		else if(cmd == RtabmapEventCmd::kCmdPublishGraphFull)
+		{
+			ULOGGER_DEBUG("CMD_PUBLISH_GRAPH_FULL");
+			ParametersMap param;
+			param.insert(ParametersPair("optimized", uNumber2Str(rtabmapEvent->getInt())));
+			pushNewState(kStatePublishingGraphFull, param);
 		}
 		else if(cmd == RtabmapEventCmd::kCmdTriggerNewMap)
 		{

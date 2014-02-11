@@ -1500,10 +1500,12 @@ pcl::PolygonMesh::Ptr createMesh(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & 
 //On success, optimizedPoses is cleared and new poses are inserted in
 void optimizeTOROGraph(
 		const std::map<int, Transform> & poses,
-		const std::multimap<int, std::pair<int, Transform> > & edgeConstraints,
-		int toroIterations,
+		const std::multimap<int, Link> & edgeConstraints,
 		std::map<int, Transform> & optimizedPoses,
-		Transform & mapCorrection)
+		Transform & mapCorrection,
+		int toroIterations,
+		bool toroInitialGuess,
+		std::list<std::map<int, Transform> > * intermediateGraphes) // contains poses after tree init to last one before the end
 {
 	if(edgeConstraints.size()>=1 && poses.size()>=2)
 	{
@@ -1526,12 +1528,12 @@ void optimizeTOROGraph(
 			}
 		}
 
-		for(std::multimap<int, std::pair<int, Transform> >::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
 			int id1 = iter->first;
-			int id2 = iter->second.first;
+			int id2 = iter->second.to();
 			float x,y,z, roll,pitch,yaw;
-			pcl::getTranslationAndEulerAngles(transformToEigen3f(iter->second.second), x,y,z, roll,pitch,yaw);
+			pcl::getTranslationAndEulerAngles(transformToEigen3f(iter->second.transform()), x,y,z, roll,pitch,yaw);
 			AISNavigation::TreePoseGraph3::Pose p(x, y, z, roll, pitch, yaw);
 			AISNavigation::TreePoseGraph3::InformationMatrix m;
 			m=DMatrix<double>::I(6);
@@ -1548,7 +1550,10 @@ void optimizeTOROGraph(
 		pg.buildMST(pg.vertices.begin()->first); // pg.buildSimpleTree();
 
 		UDEBUG("Initial guess...");
-		pg.initializeOnTree(); // optional
+		if(toroInitialGuess)
+		{
+			pg.initializeOnTree(); // optional
+		}
 
 		pg.initializeTreeParameters();
 		UDEBUG("Building TORO tree... (if a crash happens just after this msg, "
@@ -1558,6 +1563,20 @@ void optimizeTOROGraph(
 		UDEBUG("TORO iterate begin");
 		for (int i=0; i<toroIterations; i++)
 		{
+			if(intermediateGraphes && (toroInitialGuess || i>0))
+			{
+				std::map<int, Transform> tmpPoses;
+				for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+				{
+					AISNavigation::TreePoseGraph<AISNavigation::Operations3D<double> >::Vertex* v=pg.vertex(iter->first);
+					v->pose=v->transformation.toPoseType();
+					Transform newPose = transformFromEigen3f(pcl::getTransformation(v->pose.x(), v->pose.y(), v->pose.z(), v->pose.roll(), v->pose.pitch(), v->pose.yaw()));
+
+					tmpPoses.insert(std::pair<int, Transform>(iter->first, newPose));
+				}
+				intermediateGraphes->push_back(tmpPoses);
+			}
+
 			pg.iterate();
 		}
 		UDEBUG("TORO iterate end");
@@ -1587,7 +1606,7 @@ void optimizeTOROGraph(
 bool saveTOROGraph(
 		const std::string & fileName,
 		const std::map<int, Transform> & poses,
-		const std::multimap<int, std::pair<int, Transform> > & edgeConstraints)
+		const std::multimap<int, Link> & edgeConstraints)
 {
 	FILE * file = fopen(fileName.c_str(), "w");
 
@@ -1609,13 +1628,13 @@ bool saveTOROGraph(
 		}
 
 		//EDGE3 observed_vertex_id observing_vertex_id x y z roll pitch yaw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
-		for(std::multimap<int, std::pair<int, Transform> >::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+		for(std::multimap<int, Link>::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
 			float x,y,z, yaw,pitch,roll;
-			pcl::getTranslationAndEulerAngles(transformToEigen3f(iter->second.second), x,y,z, roll, pitch, yaw);
+			pcl::getTranslationAndEulerAngles(transformToEigen3f(iter->second.transform()), x,y,z, roll, pitch, yaw);
 			fprintf(file, "EDGE3 %d %d %f %f %f %f %f %f 1 0 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0 0 1 0 1\n",
 					iter->first,
-					iter->second.first,
+					iter->second.to(),
 					x,
 					y,
 					z,
@@ -1706,6 +1725,110 @@ bool loadTOROGraph(const std::string & fileName,
 	return true;
 }
 
+cv::Mat create2DMap(const std::map<int, Transform> & poses,
+		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans,
+		float delta,
+		float & xMin,
+		float & yMin)
+{
+	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > localScans;
+
+	pcl::PointCloud<pcl::PointXYZ> minMax;
+	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+	{
+		if(uContains(scans, iter->first))
+		{
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::transformPointCloud(scans.at(iter->first), iter->second);
+			pcl::PointXYZ min, max;
+			pcl::getMinMax3D(*cloud, min, max);
+			minMax.push_back(min);
+			minMax.push_back(max);
+			minMax.push_back(pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z()));
+			localScans.insert(std::make_pair(iter->first, cloud));
+		}
+	}
+
+	cv::Mat map;
+	if(minMax.size())
+	{
+		//Get map size
+		pcl::PointXYZ min, max;
+		pcl::getMinMax3D(minMax, min, max);
+
+		xMin = min.x-1.0f;
+		yMin = min.y-1.0f;
+		float xMax = max.x+1.0f;
+		float yMax = max.y+1.0f;
+
+		map = cv::Mat::ones((yMax - yMin) / delta, (xMax - xMin) / delta, CV_8S)*-1;
+		for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
+		{
+			for(unsigned int i=0; i<iter->second->size(); ++i)
+			{
+				const Transform & pose = poses.at(iter->first);
+				cv::Point2i start((pose.x()-xMin)/delta + 0.5f, (pose.y()-yMin)/delta + 0.5f);
+				cv::Point2i end((iter->second->points[i].x-xMin)/delta + 0.5f, (iter->second->points[i].y-yMin)/delta + 0.5f);
+
+				rayTrace(start, end, map); // trace free space
+
+				map.at<char>(end.y, end.x) = 100; // obstacle
+			}
+		}
+	}
+	return map;
+}
+
+void rayTrace(const cv::Point2i & start, const cv::Point2i & end, cv::Mat & grid)
+{
+	UASSERT_MSG(start.x >= 0 && start.x < grid.cols, uFormat("start.x=%d grid.cols=%d", start.x, grid.cols).c_str());
+	UASSERT_MSG(start.y >= 0 && start.y < grid.rows, uFormat("start.y=%d grid.rows=%d", start.y, grid.rows).c_str());
+	UASSERT_MSG(end.x >= 0 && end.x < grid.cols, uFormat("end.x=%d grid.cols=%d", end.x, grid.cols).c_str());
+	UASSERT_MSG(end.y >= 0 && end.y < grid.rows, uFormat("end.x=%d grid.cols=%d", end.y, grid.rows).c_str());
+
+	cv::Point2i ptA, ptB;
+	if(start.x > end.x)
+	{
+		ptA = end;
+		ptB = start;
+	}
+	else
+	{
+		ptA = start;
+		ptB = end;
+	}
+
+	float slope = float(ptB.y - ptA.y)/float(ptB.x - ptA.x);
+	float b = ptA.y - slope*ptA.x;
+
+
+	//ROS_WARN("start=%d,%d end=%d,%d", ptA.x, ptA.y, ptB.x, ptB.y);
+
+	//ROS_WARN("y = %f*x + %f", slope, b);
+
+	for(int x=ptA.x; x<ptB.x; ++x)
+	{
+		float lowerbound = float(x)*slope + b;
+		float upperbound = float(x+1)*slope + b;
+
+		if(lowerbound > upperbound)
+		{
+			float tmp = lowerbound;
+			lowerbound = upperbound;
+			upperbound = tmp;
+		}
+
+		//ROS_WARN("lowerbound=%f upperbound=%f", lowerbound, upperbound);
+		UASSERT_MSG(lowerbound >= 0 && lowerbound < grid.rows, uFormat("lowerbound=%f grid.cols=%d x=%d slope=%f b=%f", lowerbound, grid.cols, x, slope, b).c_str());
+		UASSERT_MSG(upperbound >= 0 && upperbound < grid.rows, uFormat("upperbound=%f grid.cols=%d x+1=%d slope=%f b=%f", upperbound, grid.cols, x+1, slope, b).c_str());
+		for(int y = lowerbound; y<=(int)upperbound; ++y)
+		{
+			//if(grid.at<char>(y, x) == -1)
+			{
+				grid.at<char>(y, x) = 0; // free space
+			}
+		}
+	}
+}
 
 }
 

@@ -8,18 +8,32 @@
 #include "rtabmap/gui/CloudViewer.h"
 
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/core/util3d.h>
 #include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/filters/frustum_culling.h>
 #include <QtGui/QMenu>
 #include <QtGui/QAction>
 #include <QtGui/QContextMenuEvent>
 #include <QtGui/QInputDialog>
 #include <QtGui/QWheelEvent>
+#include <QtGui/QKeyEvent>
+#include <QtGui/QColorDialog>
+#include <set>
 
 #include <vtkRenderWindow.h>
 
 namespace rtabmap {
+
+void CloudViewer::mouseEventOccurred (const pcl::visualization::MouseEvent &event, void* viewer_void)
+{
+	if (event.getButton () == pcl::visualization::MouseEvent::LeftButton ||
+	  event.getButton () == pcl::visualization::MouseEvent::MiddleButton)
+	{
+		this->render(); // this will apply frustum
+	}
+}
 
 CloudViewer::CloudViewer(QWidget *parent) :
 		QVTKWidget(parent),
@@ -36,10 +50,13 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_aSetTrajectorySize(0),
 		_aClearTrajectory(0),
 		_aShowGrid(0),
+		_aSetBackgroundColor(0),
+		_setFarPlaneDistance(0),
 		_menu(0),
 		_trajectory(new pcl::PointCloud<pcl::PointXYZ>),
 		_maxTrajectorySize(100),
-		_lastPose(Transform::getIdentity())
+		_lastPose(Transform::getIdentity()),
+		_farPlaneDistance(10000)
 {
 	this->setMinimumSize(200, 200);
 
@@ -49,6 +66,7 @@ CloudViewer::CloudViewer(QWidget *parent) :
 	_visualizer->setupInteractor(this->GetInteractor(), this->GetRenderWindow());
 #endif
 
+	_visualizer->registerMouseCallback (&CloudViewer::mouseEventOccurred, *this, (void*)_visualizer);
 	_visualizer->setCameraPosition(
 				-1, 0, 0,
 				0, 0, 0,
@@ -61,7 +79,7 @@ CloudViewer::CloudViewer(QWidget *parent) :
 CloudViewer::~CloudViewer()
 {
 	UDEBUG("");
-	//_visualizer->close();
+	this->removeAllClouds();
 	delete _visualizer;
 }
 
@@ -87,6 +105,8 @@ void CloudViewer::createMenu()
 	_aClearTrajectory = new QAction("Clear trajectory", this);
 	_aShowGrid = new QAction("Show grid", this);
 	_aShowGrid->setCheckable(true);
+	_aSetBackgroundColor = new QAction("Set background color...", this);
+	_setFarPlaneDistance = new QAction("Set far plane distance...", this);
 
 	QMenu * cameraMenu = new QMenu("Camera", this);
 	cameraMenu->addAction(_aLockCamera);
@@ -94,6 +114,7 @@ void CloudViewer::createMenu()
 	cameraMenu->addAction(freeCamera);
 	cameraMenu->addSeparator();
 	cameraMenu->addAction(_aLockViewZ);
+	cameraMenu->addAction(_setFarPlaneDistance);
 	cameraMenu->addAction(_aResetCamera);
 	QActionGroup * group = new QActionGroup(this);
 	group->addAction(_aLockCamera);
@@ -110,6 +131,7 @@ void CloudViewer::createMenu()
 	_menu->addMenu(cameraMenu);
 	_menu->addMenu(trajectoryMenu);
 	_menu->addAction(_aShowGrid);
+	_menu->addAction(_aSetBackgroundColor);
 }
 
 bool CloudViewer::updateCloudPose(
@@ -430,13 +452,6 @@ void CloudViewer::updateCameraPosition(const Transform & pose)
 				cameras.front().view[2] = Fp[10];
 			}
 
-			if(_aLockViewZ->isChecked())
-			{
-				cameras.front().view[0] = 0;
-				cameras.front().view[1] = 0;
-				cameras.front().view[2] = 1;
-			}
-
 			_visualizer->setCameraPosition(
 					cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2],
 					cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
@@ -451,7 +466,96 @@ void CloudViewer::updateCameraPosition(const Transform & pose)
 
 void CloudViewer::render()
 {
+	// camera view up z locked?
+	if(_aLockViewZ->isChecked())
+	{
+		std::vector<pcl::visualization::Camera> cameras;
+		_visualizer->getCameras(cameras);
+
+		cameras.front().view[0] = 0;
+		cameras.front().view[1] = 0;
+		cameras.front().view[2] = 1;
+
+		_visualizer->setCameraPosition(
+			cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2],
+			cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
+			cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
+
+	}
+
+	// frustum
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	cloud->resize(_addedClouds.size());
+	int i=0;
+	for(QMap<std::string, Transform>::iterator iter = _addedClouds.begin(); iter!=_addedClouds.end(); ++iter)
+	{
+		(*cloud)[i++] = pcl::PointXYZ(iter.value().x(), iter.value().y(), iter.value().z());
+	}
+
+	pcl::IndicesPtr indices = frustumCulling(cloud);
+	std::set<int> visibleClouds(indices->begin(), indices->end());
+	i=0;
+	for(QMap<std::string, Transform>::iterator iter = _addedClouds.begin(); iter!=_addedClouds.end(); ++iter)
+	{
+		this->setCloudVisibility(iter.key(), visibleClouds.find(i) != visibleClouds.end());
+		++i;
+	}
+
 	this->GetRenderWindow()->Render();
+}
+
+bool CloudViewer::frustumCulling(const pcl::PointXYZ & point)
+{
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	cloud->push_back(point);
+	pcl::IndicesPtr indices = frustumCulling(cloud);
+	return indices->size() != 0;
+}
+
+pcl::IndicesPtr CloudViewer::frustumCulling(const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud)
+{
+	pcl::IndicesPtr indices(new std::vector<int>());
+	if(cloud->size())
+	{
+		if(_farPlaneDistance)
+		{
+			std::vector<pcl::visualization::Camera> cameras;
+			_visualizer->getCameras(cameras);
+
+			Eigen::Vector3f vPosToFocal = Eigen::Vector3f(cameras.front().focal[0] - cameras.front().pos[0],
+														  cameras.front().focal[1] - cameras.front().pos[1],
+														  cameras.front().focal[2] - cameras.front().pos[2]).normalized();
+			Eigen::Vector3f zAxis(cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
+			Eigen::Vector3f yAxis = zAxis.cross(vPosToFocal);
+			Eigen::Vector3f xAxis = vPosToFocal.normalized();
+			zAxis = xAxis.cross(yAxis);
+			Transform PR(xAxis[0], yAxis[0], zAxis[0],0,
+						 xAxis[1], yAxis[1], zAxis[1],0,
+						 xAxis[2], yAxis[2], zAxis[2],0);
+			Transform P(PR[0], PR[1], PR[2], cameras.front().pos[0],
+						PR[4], PR[5], PR[6], cameras.front().pos[1],
+						PR[8], PR[9], PR[10], cameras.front().pos[2]);
+
+			pcl::FrustumCulling<pcl::PointXYZ> fc;
+			fc.setInputCloud (cloud);
+			fc.setNearPlaneDistance (0.0);
+			fc.setFarPlaneDistance (_farPlaneDistance);
+			//float fov = cameras.front().fovy*180.0f/3.14159265359;
+			fc.setVerticalFOV (52);
+			fc.setHorizontalFOV (52);
+			fc.setCameraPose (util3d::transformToEigen4f(P));
+			fc.filter (*indices);
+		}
+		else
+		{
+			indices->resize(cloud->size());
+			for(unsigned int i=0; i<indices->size(); ++i)
+			{
+				indices->at(i) = i;
+			}
+		}
+	}
+	return indices;
 }
 
 void CloudViewer::setBackgroundColor(const QColor & color)
@@ -508,6 +612,96 @@ void CloudViewer::setCloudPointSize(const std::string & id, int size)
 	}
 }
 
+
+
+void CloudViewer::keyReleaseEvent(QKeyEvent * event) {
+	if(event->key() == Qt::Key_Up ||
+		event->key() == Qt::Key_Down ||
+		event->key() == Qt::Key_Left ||
+		event->key() == Qt::Key_Right)
+	{
+		_keysPressed -= (Qt::Key)event->key();
+	}
+	else
+	{
+		QVTKWidget::keyPressEvent(event);
+	}
+}
+
+void CloudViewer::keyPressEvent(QKeyEvent * event)
+{
+	if(event->key() == Qt::Key_Up ||
+		event->key() == Qt::Key_Down ||
+		event->key() == Qt::Key_Left ||
+		event->key() == Qt::Key_Right)
+	{
+		_keysPressed += (Qt::Key)event->key();
+
+		std::vector<pcl::visualization::Camera> cameras;
+		_visualizer->getCameras(cameras);
+
+		//update camera position
+		Eigen::Vector3f pos(cameras.front().pos[0], cameras.front().pos[1], _aLockViewZ->isChecked()?0:cameras.front().pos[2]);
+		Eigen::Vector3f focal(cameras.front().focal[0], cameras.front().focal[1], _aLockViewZ->isChecked()?0:cameras.front().focal[2]);
+		Eigen::Vector3f viewUp(0, 0, 1);
+		Eigen::Vector3f cummulatedDir(0,0,0);
+		float step = 0.2f;
+		if(_keysPressed.contains(Qt::Key_Up))
+		{
+			Eigen::Vector3f dir;
+			if(event->modifiers() & Qt::ShiftModifier)
+			{
+				dir = viewUp * step;// up
+			}
+			else
+			{
+				dir = (focal-pos).normalized() * step; // forward
+			}
+			cummulatedDir += dir;
+		}
+		if(_keysPressed.contains(Qt::Key_Down))
+		{
+			Eigen::Vector3f dir;
+			if(event->modifiers() & Qt::ShiftModifier)
+			{
+				dir = viewUp * -step;// down
+			}
+			else
+			{
+				dir = (focal-pos).normalized() * -step; // backward
+			}
+			cummulatedDir += dir;
+		}
+		if(_keysPressed.contains(Qt::Key_Right))
+		{
+			Eigen::Vector3f dir = ((focal-pos).cross(viewUp)).normalized() * step; // strafing right
+			cummulatedDir += dir;
+		}
+		if(_keysPressed.contains(Qt::Key_Left))
+		{
+			Eigen::Vector3f dir = ((focal-pos).cross(viewUp)).normalized() * -step; // strafing left
+			cummulatedDir += dir;
+		}
+
+		cameras.front().pos[0] += cummulatedDir[0];
+		cameras.front().pos[1] += cummulatedDir[1];
+		cameras.front().pos[2] += cummulatedDir[2];
+		cameras.front().focal[0] += cummulatedDir[0];
+		cameras.front().focal[1] += cummulatedDir[1];
+		cameras.front().focal[2] += cummulatedDir[2];
+		_visualizer->setCameraPosition(
+			cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2],
+			cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
+			cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
+
+		render();
+	}
+	else
+	{
+		QVTKWidget::keyPressEvent(event);
+	}
+}
+
 void CloudViewer::contextMenuEvent(QContextMenuEvent * event)
 {
 	QAction * a = _menu->exec(event->globalPos());
@@ -540,6 +734,7 @@ void CloudViewer::handleAction(QAction * a)
 				-1, 0, 0,
 				0, 0, 0,
 				0, 0, 1);
+		_farPlaneDistance = 10000;
 		this->render();
 	}
 	else if(a == _aShowGrid)
@@ -577,6 +772,21 @@ void CloudViewer::handleAction(QAction * a)
 		}
 
 		this->render();
+	}
+	else if(a == _aSetBackgroundColor)
+	{
+		QColor color = Qt::black;
+		color = QColorDialog::getColor(color, this);
+		this->setBackgroundColor(color);
+	}
+	else if(a == _setFarPlaneDistance)
+	{
+		bool ok;
+		double distance = QInputDialog::getDouble(this, tr("Far plane distance"), tr("Clipping plane distance"), _farPlaneDistance, 1, 10000, 0, &ok);
+		if(ok)
+		{
+			_farPlaneDistance = distance;
+		}
 	}
 }
 

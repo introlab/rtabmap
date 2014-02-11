@@ -12,7 +12,7 @@
 #include <list>
 #include <string>
 
-#include <rtabmap/core/Transform.h>
+#include <rtabmap/core/Link.h>
 #include <rtabmap/utilite/UThread.h>
 #include <pcl/common/eigen.h>
 #include <pcl/point_types.h>
@@ -342,19 +342,31 @@ pcl::PolygonMesh::Ptr RTABMAP_EXP createMesh(const pcl::PointCloud<pcl::PointXYZ
 
 void RTABMAP_EXP optimizeTOROGraph(
 		const std::map<int, Transform> & poses,
-		const std::multimap<int, std::pair<int, Transform> > & edgeConstraints,
-		int toroIterations,
+		const std::multimap<int, Link> & edgeConstraints,
 		std::map<int, Transform> & optimizedPoses,
-		Transform & mapCorrection);
+		Transform & mapCorrection,
+		int toroIterations = 100,
+		bool toroInitialGuess = true,
+		std::list<std::map<int, Transform> > * intermediateGraphes = 0);
 
 bool RTABMAP_EXP saveTOROGraph(
 		const std::string & fileName,
 		const std::map<int, Transform> & poses,
-		const std::multimap<int, std::pair<int, Transform> > & edgeConstraints);
+		const std::multimap<int, Link> & edgeConstraints);
 
 bool RTABMAP_EXP loadTOROGraph(const std::string & fileName,
 		std::map<int, Transform> & poses,
 		std::multimap<int, std::pair<int, Transform> > & edgeConstraints);
+
+cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
+		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans,
+		float delta,
+		float & xMin,
+		float & yMin);
+
+void RTABMAP_EXP rayTrace(const cv::Point2i & start,
+		const cv::Point2i & end,
+		cv::Mat & grid);
 
 } // namespace util3d
 } // namespace rtabmap

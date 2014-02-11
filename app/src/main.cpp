@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
 {
 	/* Set logger type */
 	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kInfo); // Disable log with level
+	ULogger::setLevel(ULogger::kInfo);
 
 	ULOGGER_INFO("Program started...");
 
@@ -61,6 +61,8 @@ int main(int argc, char* argv[])
 	ULOGGER_INFO("Killing threads...");
 	rtabmap->join(true);
 
+	ULogger::setLevel(ULogger::kInfo);
+
 	ULOGGER_INFO("Closing RTAB-Map core...");
 
 	//Since we can't put the Rtabmap object in the MainWindow class,
@@ -86,7 +88,7 @@ int main(int argc, char* argv[])
 
 	delete app;
 
-	ULOGGER_INFO("All done! Closing...");
+	ULOGGER_INFO("All done!");
 
     return 0;
 }
