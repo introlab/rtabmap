@@ -122,8 +122,6 @@ protected:
 
 private:
 	void createMenu();
-	bool frustumCulling(const pcl::PointXYZ & cloud);
-	pcl::IndicesPtr frustumCulling(const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud);
 	void mouseEventOccurred (const pcl::visualization::MouseEvent &event, void* viewer_void);
 
 private:
@@ -137,14 +135,12 @@ private:
     QAction * _aClearTrajectory;
     QAction * _aShowGrid;
     QAction * _aSetBackgroundColor;
-    QAction * _setFarPlaneDistance;
     QMenu * _menu;
     pcl::PointCloud<pcl::PointXYZ>::Ptr _trajectory;
     unsigned int _maxTrajectorySize;
-    QMap<std::string, Transform> _addedClouds; // include meshes
+    QMap<std::string, Transform> _addedClouds; // include cloud, scan, meshes
     Transform _lastPose;
     std::list<std::string> _gridLines;
-    float _farPlaneDistance;
     QSet<Qt::Key> _keysPressed;
 };
 

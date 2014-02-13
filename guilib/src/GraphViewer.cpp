@@ -133,7 +133,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_loopClosureColor(Qt::red),
 		_root(0),
 		_nodeRadius(0.1),
-		_linkWidth(0.15),
+		_linkWidth(0),
 		_gridMap(0)
 {
 	this->setScene(new QGraphicsScene(this));

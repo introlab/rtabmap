@@ -69,63 +69,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui = new Ui_preferencesDialog();
 	_ui->setupUi(this);
 
-#ifdef DEMO_BUILD
-	_ui->groupBox_sourceImage->setEnabled(false);
-	_ui->general_checkBox_activateRGBD->setEnabled(false);
-	_ui->general_checkBox_activateRGBD_2->setEnabled(false);
-	_ui->label_activateRGBD->setEnabled(false);
-	_ui->label_activateRGBD_2->setEnabled(false);
-	_ui->general_doubleSpinBox_timeThr->setEnabled(false);
-	_ui->general_doubleSpinBox_timeThr_2->setEnabled(false);
-	_ui->label_timeLimit->setEnabled(false);
-	_ui->label_timeLimit_2->setEnabled(false);
-	_ui->doubleSpinBox_similarityThreshold->setEnabled(false);
-	_ui->doubleSpinBox_similarityThreshold_2->setEnabled(false);
-	_ui->label_similarity->setEnabled(false);
-	_ui->label_similarity_2->setEnabled(false);
-	_ui->general_checkBox_publishStats->setEnabled(false);
-	_ui->general_checkBox_publishStats_2->setEnabled(false);
-	_ui->label_publishStat->setEnabled(false);
-	_ui->general_spinBox_memoryThr->setEnabled(false);
-	_ui->label_maxWmSize->setEnabled(false);
-	_ui->groupBox_publishing->setEnabled(false);
-	_ui->groupBox_statistics->setEnabled(false);
-	_ui->general_doubleSpinBox_recentWmRatio->setEnabled(false);
-	_ui->label_ratioRecent->setEnabled(false);
-	_ui->general_spinBox_maxRetrieved->setEnabled(false);
-	_ui->label_retrieved->setEnabled(false);
-	_ui->general_checkBox_RehearsalIdUpdatedToNewOne->setEnabled(false);
-	_ui->label_rehearsalIdUpdate->setEnabled(false);
-	_ui->general_checkBox_keepRawData->setEnabled(false);
-	_ui->label_keepRawData->setEnabled(false);
-	_ui->general_checkBox_keepRehearsedNodes->setEnabled(false);
-	_ui->label_keepRehearsed->setEnabled(false);
-	_ui->checkBox_kp_publishKeypoints->setEnabled(false);
-	_ui->label_publishWords->setEnabled(false);
-	_ui->checkBox_dictionary_incremental->setEnabled(false);
-	_ui->label_incrementalDict->setEnabled(false);
-	_ui->label_dictionaryPath->setEnabled(false);
-	_ui->lineEdit_dictionaryPath->setEnabled(false);
-	_ui->toolButton_dictionaryPath->setEnabled(false);
-	_ui->groupBox_vh_strategy1->setEnabled(false);
-	_ui->odomScanHistory->setEnabled(false);
-	_ui->label_scanMatching->setEnabled(false);
-	_ui->localDetection_maxNeighbors->setEnabled(false);
-	_ui->localDetection_space->setEnabled(false);
-	_ui->localDetection_radius->setEnabled(false);
-	_ui->label_space1->setEnabled(false);
-	_ui->label_space2->setEnabled(false);
-	_ui->label_space3->setEnabled(false);
-	_ui->loopClosure_icpType->setEnabled(false);
-	_ui->surf_checkBox_gpuVersion->setEnabled(false);
-	_ui->label_surf_checkBox_gpuVersion->setEnabled(false);
-#else
 	if(cv::gpu::getCudaEnabledDeviceCount() == 0)
 	{
 		_ui->surf_checkBox_gpuVersion->setEnabled(false);
 		_ui->label_surf_checkBox_gpuVersion->setEnabled(false);
 	}
-#endif
+
 	_ui->predictionPlot->showLegend(false);
 
 	QButtonGroup * buttonGroup = new QButtonGroup(this);
@@ -216,6 +165,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 			connect(_3dRenderingMeshing[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		}
 	}
+
+	connect(_ui->groupBox_poseFiltering, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_cloudFilterRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_cloudFilterAngle, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	//Logging panel
 	connect(_ui->comboBox_loggerLevel, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteLoggingPanel()));
@@ -748,6 +701,10 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 				_3dRenderingMeshing[i]->setChecked(false);
 			}
 		}
+
+		_ui->groupBox_poseFiltering->setChecked(false);
+		_ui->doubleSpinBox_cloudFilterRadius->setValue(0.5);
+		_ui->doubleSpinBox_cloudFilterAngle->setValue(30);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_logging1->objectName())
 	{
@@ -857,15 +814,11 @@ QString PreferencesDialog::getDatabasePath() const
 
 QString PreferencesDialog::getIniFilePath() const
 {
-#ifdef DEMO_BUILD
-	QString privatePath = ".";
-#else
 	QString privatePath = QDir::homePath() + "/.rtabmap";
 	if(!QDir(privatePath).exists())
 	{
 		QDir::home().mkdir(".rtabmap");
 	}
-#endif
 	return privatePath + "/rtabmap.ini";
 }
 
@@ -960,6 +913,10 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 			_3dRenderingMeshing[i]->setChecked(settings.value(tr("meshing%1").arg(i), _3dRenderingMeshing[i]->isChecked()).toBool());
 		}
 	}
+
+	_ui->groupBox_poseFiltering->setChecked(settings.value("cloudFiltering", _ui->groupBox_poseFiltering->isChecked()).toBool());
+	_ui->doubleSpinBox_cloudFilterRadius->setValue(settings.value("cloudFilteringRadius", _ui->doubleSpinBox_cloudFilterRadius->value()).toDouble());
+	_ui->doubleSpinBox_cloudFilterAngle->setValue(settings.value("cloudFilteringAngle", _ui->doubleSpinBox_cloudFilterAngle->value()).toDouble());
 
 	settings.endGroup(); // General
 
@@ -1159,6 +1116,9 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath)
 			settings.setValue(tr("meshing%1").arg(i), _3dRenderingMeshing[i]->isChecked());
 		}
 	}
+	settings.setValue("cloudFiltering", _ui->groupBox_poseFiltering->isChecked());
+	settings.setValue("cloudFilteringRadius", _ui->doubleSpinBox_cloudFilterRadius->value());
+	settings.setValue("cloudFilteringAngle", _ui->doubleSpinBox_cloudFilterAngle->value());
 
 	settings.endGroup(); // General
 
@@ -1325,11 +1285,11 @@ void PreferencesDialog::showEvent ( QShowEvent * event )
 		_ui->lineEdit_workingDirectory->setEnabled(true);
 		_ui->toolButton_workingDirectory->setEnabled(true);
 		_ui->label_workingDirectory->setEnabled(true);
-#ifndef DEMO_BUILD
+
 		_ui->lineEdit_dictionaryPath->setEnabled(true);
 		_ui->toolButton_dictionaryPath->setEnabled(true);
 		_ui->label_dictionaryPath->setEnabled(true);
-#endif
+
 		_ui->groupBox_source0->setEnabled(true);
 		_ui->groupBox_odometry2->setEnabled(true);
 
@@ -2374,6 +2334,18 @@ int PreferencesDialog::getScanPointSize(int index) const
 {
 	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingPtSizeScan[index]->value();
+}
+bool PreferencesDialog::isCloudFiltering() const
+{
+	return _ui->groupBox_poseFiltering->isChecked();
+}
+double PreferencesDialog::getCloudFilteringRadius() const
+{
+	return _ui->doubleSpinBox_cloudFilterRadius->value();
+}
+double PreferencesDialog::getCloudFilteringAngle() const
+{
+	return _ui->doubleSpinBox_cloudFilterAngle->value();
 }
 
 // Source

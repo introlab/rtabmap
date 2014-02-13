@@ -170,6 +170,7 @@ signals:
 private:
 	void update3DMapVisibility(bool cloudsShown, bool scansShown);
 	void updateMapCloud(const std::map<int, Transform> & poses, const Transform & pose);
+	std::map<int, Transform> radiusPosesFiltering(const std::map<int, Transform> & poses) const;
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
 	void setupMainLayout(bool vertical);
 	void updateSelectSourceImageMenu(int type);

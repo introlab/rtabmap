@@ -125,6 +125,10 @@ public:
 	double getScanOpacity(int index) const;    // 0=map, 1=odom, 2=save
 	int getScanPointSize(int index) const;     // 0=map, 1=odom, 2=save
 
+	bool isCloudFiltering() const;
+	double getCloudFilteringRadius() const;
+	double getCloudFilteringAngle() const;
+
 	QString getWorkingDirectory() const;
 	QString getDatabasePath() const;
 

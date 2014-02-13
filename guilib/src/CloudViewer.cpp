@@ -51,12 +51,10 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_aClearTrajectory(0),
 		_aShowGrid(0),
 		_aSetBackgroundColor(0),
-		_setFarPlaneDistance(0),
 		_menu(0),
 		_trajectory(new pcl::PointCloud<pcl::PointXYZ>),
 		_maxTrajectorySize(100),
-		_lastPose(Transform::getIdentity()),
-		_farPlaneDistance(10000)
+		_lastPose(Transform::getIdentity())
 {
 	this->setMinimumSize(200, 200);
 
@@ -106,7 +104,6 @@ void CloudViewer::createMenu()
 	_aShowGrid = new QAction("Show grid", this);
 	_aShowGrid->setCheckable(true);
 	_aSetBackgroundColor = new QAction("Set background color...", this);
-	_setFarPlaneDistance = new QAction("Set far plane distance...", this);
 
 	QMenu * cameraMenu = new QMenu("Camera", this);
 	cameraMenu->addAction(_aLockCamera);
@@ -114,7 +111,6 @@ void CloudViewer::createMenu()
 	cameraMenu->addAction(freeCamera);
 	cameraMenu->addSeparator();
 	cameraMenu->addAction(_aLockViewZ);
-	cameraMenu->addAction(_setFarPlaneDistance);
 	cameraMenu->addAction(_aResetCamera);
 	QActionGroup * group = new QActionGroup(this);
 	group->addAction(_aLockCamera);
@@ -483,79 +479,7 @@ void CloudViewer::render()
 
 	}
 
-	// frustum
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-	cloud->resize(_addedClouds.size());
-	int i=0;
-	for(QMap<std::string, Transform>::iterator iter = _addedClouds.begin(); iter!=_addedClouds.end(); ++iter)
-	{
-		(*cloud)[i++] = pcl::PointXYZ(iter.value().x(), iter.value().y(), iter.value().z());
-	}
-
-	pcl::IndicesPtr indices = frustumCulling(cloud);
-	std::set<int> visibleClouds(indices->begin(), indices->end());
-	i=0;
-	for(QMap<std::string, Transform>::iterator iter = _addedClouds.begin(); iter!=_addedClouds.end(); ++iter)
-	{
-		this->setCloudVisibility(iter.key(), visibleClouds.find(i) != visibleClouds.end());
-		++i;
-	}
-
 	this->GetRenderWindow()->Render();
-}
-
-bool CloudViewer::frustumCulling(const pcl::PointXYZ & point)
-{
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-	cloud->push_back(point);
-	pcl::IndicesPtr indices = frustumCulling(cloud);
-	return indices->size() != 0;
-}
-
-pcl::IndicesPtr CloudViewer::frustumCulling(const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud)
-{
-	pcl::IndicesPtr indices(new std::vector<int>());
-	if(cloud->size())
-	{
-		if(_farPlaneDistance)
-		{
-			std::vector<pcl::visualization::Camera> cameras;
-			_visualizer->getCameras(cameras);
-
-			Eigen::Vector3f vPosToFocal = Eigen::Vector3f(cameras.front().focal[0] - cameras.front().pos[0],
-														  cameras.front().focal[1] - cameras.front().pos[1],
-														  cameras.front().focal[2] - cameras.front().pos[2]).normalized();
-			Eigen::Vector3f zAxis(cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
-			Eigen::Vector3f yAxis = zAxis.cross(vPosToFocal);
-			Eigen::Vector3f xAxis = vPosToFocal.normalized();
-			zAxis = xAxis.cross(yAxis);
-			Transform PR(xAxis[0], yAxis[0], zAxis[0],0,
-						 xAxis[1], yAxis[1], zAxis[1],0,
-						 xAxis[2], yAxis[2], zAxis[2],0);
-			Transform P(PR[0], PR[1], PR[2], cameras.front().pos[0],
-						PR[4], PR[5], PR[6], cameras.front().pos[1],
-						PR[8], PR[9], PR[10], cameras.front().pos[2]);
-
-			pcl::FrustumCulling<pcl::PointXYZ> fc;
-			fc.setInputCloud (cloud);
-			fc.setNearPlaneDistance (0.0);
-			fc.setFarPlaneDistance (_farPlaneDistance);
-			//float fov = cameras.front().fovy*180.0f/3.14159265359;
-			fc.setVerticalFOV (52);
-			fc.setHorizontalFOV (52);
-			fc.setCameraPose (util3d::transformToEigen4f(P));
-			fc.filter (*indices);
-		}
-		else
-		{
-			indices->resize(cloud->size());
-			for(unsigned int i=0; i<indices->size(); ++i)
-			{
-				indices->at(i) = i;
-			}
-		}
-	}
-	return indices;
 }
 
 void CloudViewer::setBackgroundColor(const QColor & color)
@@ -612,7 +536,40 @@ void CloudViewer::setCloudPointSize(const std::string & id, int size)
 	}
 }
 
+Eigen::Vector3f rotatePointAroundAxe(
+		const Eigen::Vector3f & point,
+		const Eigen::Vector3f & axis,
+		float angle)
+{
+	Eigen::Vector3f direction = point;
+	Eigen::Vector3f zAxis = axis;
+	float dotProdZ = zAxis.dot(direction);
+	Eigen::Vector3f ptOnZaxis = zAxis * dotProdZ;
+	direction -= ptOnZaxis;
+	Eigen::Vector3f xAxis = direction.normalized();
+	Eigen::Vector3f yAxis = zAxis.cross(xAxis);
 
+	Eigen::Matrix3f newFrame;
+	newFrame << xAxis[0], yAxis[0], zAxis[0],
+				  xAxis[1], yAxis[1], zAxis[1],
+				  xAxis[2], yAxis[2], zAxis[2];
+
+	// transform to axe frame
+	// transpose=inverse for orthogonal matrices
+	Eigen::Vector3f newDirection = newFrame.transpose() * direction;
+
+	// rotate about z
+	float cosTheta = cos(angle);
+	float sinTheta = sin(angle);
+	float magnitude = newDirection.norm();
+	newDirection[0] = ( magnitude * cosTheta );
+	newDirection[1] = ( magnitude * sinTheta );
+
+	// transform back to global frame
+	direction = newFrame * newDirection;
+
+	return direction + ptOnZaxis;
+}
 
 void CloudViewer::keyReleaseEvent(QKeyEvent * event) {
 	if(event->key() == Qt::Key_Up ||
@@ -643,9 +600,11 @@ void CloudViewer::keyPressEvent(QKeyEvent * event)
 		//update camera position
 		Eigen::Vector3f pos(cameras.front().pos[0], cameras.front().pos[1], _aLockViewZ->isChecked()?0:cameras.front().pos[2]);
 		Eigen::Vector3f focal(cameras.front().focal[0], cameras.front().focal[1], _aLockViewZ->isChecked()?0:cameras.front().focal[2]);
-		Eigen::Vector3f viewUp(0, 0, 1);
+		Eigen::Vector3f viewUp(cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
 		Eigen::Vector3f cummulatedDir(0,0,0);
+		Eigen::Vector3f cummulatedFocalDir(0,0,0);
 		float step = 0.2f;
+		float stepRot = 0.02f; // radian
 		if(_keysPressed.contains(Qt::Key_Up))
 		{
 			Eigen::Vector3f dir;
@@ -674,21 +633,43 @@ void CloudViewer::keyPressEvent(QKeyEvent * event)
 		}
 		if(_keysPressed.contains(Qt::Key_Right))
 		{
-			Eigen::Vector3f dir = ((focal-pos).cross(viewUp)).normalized() * step; // strafing right
-			cummulatedDir += dir;
+			if(event->modifiers() & Qt::ShiftModifier)
+			{
+				// rotate right
+				Eigen::Vector3f point = (focal-pos);
+				Eigen::Vector3f newPoint = rotatePointAroundAxe(point, viewUp, -stepRot);
+				Eigen::Vector3f diff = newPoint - point;
+				cummulatedFocalDir += diff;
+			}
+			else
+			{
+				Eigen::Vector3f dir = ((focal-pos).cross(viewUp)).normalized() * step; // strafing right
+				cummulatedDir += dir;
+			}
 		}
 		if(_keysPressed.contains(Qt::Key_Left))
 		{
-			Eigen::Vector3f dir = ((focal-pos).cross(viewUp)).normalized() * -step; // strafing left
-			cummulatedDir += dir;
+			if(event->modifiers() & Qt::ShiftModifier)
+			{
+				// rotate left
+				Eigen::Vector3f point = (focal-pos);
+				Eigen::Vector3f newPoint = rotatePointAroundAxe(point, viewUp, stepRot);
+				Eigen::Vector3f diff = newPoint - point;
+				cummulatedFocalDir += diff;
+			}
+			else
+			{
+				Eigen::Vector3f dir = ((focal-pos).cross(viewUp)).normalized() * -step; // strafing left
+				cummulatedDir += dir;
+			}
 		}
 
 		cameras.front().pos[0] += cummulatedDir[0];
 		cameras.front().pos[1] += cummulatedDir[1];
 		cameras.front().pos[2] += cummulatedDir[2];
-		cameras.front().focal[0] += cummulatedDir[0];
-		cameras.front().focal[1] += cummulatedDir[1];
-		cameras.front().focal[2] += cummulatedDir[2];
+		cameras.front().focal[0] += cummulatedDir[0] + cummulatedFocalDir[0];
+		cameras.front().focal[1] += cummulatedDir[1] + cummulatedFocalDir[1];
+		cameras.front().focal[2] += cummulatedDir[2] + cummulatedFocalDir[2];
 		_visualizer->setCameraPosition(
 			cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2],
 			cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
@@ -734,7 +715,6 @@ void CloudViewer::handleAction(QAction * a)
 				-1, 0, 0,
 				0, 0, 0,
 				0, 0, 1);
-		_farPlaneDistance = 10000;
 		this->render();
 	}
 	else if(a == _aShowGrid)
@@ -778,15 +758,6 @@ void CloudViewer::handleAction(QAction * a)
 		QColor color = Qt::black;
 		color = QColorDialog::getColor(color, this);
 		this->setBackgroundColor(color);
-	}
-	else if(a == _setFarPlaneDistance)
-	{
-		bool ok;
-		double distance = QInputDialog::getDouble(this, tr("Far plane distance"), tr("Clipping plane distance"), _farPlaneDistance, 1, 10000, 0, &ok);
-		if(ok)
-		{
-			_farPlaneDistance = distance;
-		}
 	}
 }
 

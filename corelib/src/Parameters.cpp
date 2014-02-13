@@ -41,9 +41,6 @@ Parameters::~Parameters()
 
 std::string Parameters::getDefaultWorkingDirectory()
 {
-#ifdef DEMO_BUILD
-	std::string path = "."; // current directory
-#else
 	std::string path = UDirectory::homeDir();
 	if(!path.empty())
 	{
@@ -55,7 +52,7 @@ std::string Parameters::getDefaultWorkingDirectory()
 	{
 		UFATAL("Can't get the HOME variable environment!");
 	}
-#endif
+
 	path += UDirectory::separator(); // add trailing separator
 	return path;
 }

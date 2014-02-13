@@ -71,10 +71,12 @@
 #include "rtabmap/core/util3d.h"
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/common/transforms.h>
+#include <pcl/common/common.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/io/vtk_io.h>
 #include <pcl/filters/filter.h>
+#include <pcl/search/kdtree.h>
 
 #define LOG_FILE_NAME "LogRtabmap.txt"
 #define SHARE_SHOW_LOG_FILE "share/rtabmap/showlogs.m"
@@ -128,17 +130,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->setupUi(this);
 
 	QString title("RTAB-Map: Real-Time Appearance-Based Mapping");
-#if DEMO_BUILD
-	title.append(" [DEMO]");
-	_ui->actionDump_the_prediction_matrix->setVisible(false);
-	_ui->actionDump_the_memory->setVisible(false);
-	_ui->actionGenerate_map->setVisible(false);
-	_ui->actionGenerate_local_map->setVisible(false);
-	_ui->actionPause_on_local_loop_detection->setVisible(false);
-	_ui->menuImage->setEnabled(false);
-	_ui->doubleSpinBox_stats_timeLimit->setEnabled(false);
-	_ui->label_timeLimit->setEnabled(false);
-#endif
 	this->setWindowTitle(title);
 	this->setWindowIconText(tr("RTAB-Map"));
 
@@ -1021,11 +1012,11 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	_processingStatistics = false;
 }
 
-void MainWindow::updateMapCloud(const std::map<int, Transform> & poses, const Transform & currentPose)
+void MainWindow::updateMapCloud(const std::map<int, Transform> & posesIn, const Transform & currentPose)
 {
-	if(poses.size())
+	if(posesIn.size())
 	{
-		_currentPosesMap = poses;
+		_currentPosesMap = posesIn;
 		if(_currentPosesMap.size() && !_ui->actionSave_point_cloud->isEnabled())
 		{
 			//enable save cloud action
@@ -1034,6 +1025,17 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & poses, const Tr
 			_ui->actionSave_mesh_ply_vtk_stl->setEnabled(true);
 			_ui->actionView_point_cloud_as_mesh->setEnabled(true);
 		}
+	}
+
+	// filter duplicated poses
+	std::map<int, Transform> poses;
+	if(_preferencesDialog->isCloudFiltering())
+	{
+		poses = radiusPosesFiltering(posesIn);
+	}
+	else
+	{
+		poses = posesIn;
 	}
 
 	// Map updated! regenerate the assembled cloud, last pose is the new one
@@ -1225,6 +1227,89 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 		}
 	}
 	_ui->widget_cloudViewer->render();
+}
+
+std::map<int, Transform> MainWindow::radiusPosesFiltering(const std::map<int, Transform> & poses) const
+{
+	float radius = _preferencesDialog->getCloudFilteringRadius();
+	float angle = _preferencesDialog->getCloudFilteringAngle()*3.14159265359/180.0; // convert to rad
+	if(poses.size() > 1 && radius > 0.0f && angle>0.0f)
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+		cloud->resize(poses.size());
+		int i=0;
+		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			(*cloud)[i++] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+		}
+
+		// radius filtering
+		std::vector<int> names = uKeys(poses);
+		std::vector<Transform> transforms = uValues(poses);
+
+		pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ> (false));
+		tree->setInputCloud(cloud);
+		std::set<int> indicesChecked;
+		std::set<int> indicesKept;
+
+		for(unsigned int i=0; i<cloud->size(); ++i)
+		{
+			// ignore scans
+			if(indicesChecked.find(i) == indicesChecked.end())
+			{
+				std::vector<int> kIndices;
+				std::vector<float> kDistances;
+				tree->radiusSearch(cloud->at(i), radius, kIndices, kDistances);
+
+				std::set<int> cloudIndices;
+				const Transform & currentT = transforms.at(i);
+				Eigen::Vector3f vA = util3d::transformToEigen3f(currentT).rotation()*Eigen::Vector3f(1,0,0);
+				for(unsigned int j=0; j<kIndices.size(); ++j)
+				{
+					if(indicesChecked.find(kIndices[j]) == indicesChecked.end())
+					{
+						const Transform & checkT = transforms.at(kIndices[j]);
+						// same orientation?
+						Eigen::Vector3f vB = util3d::transformToEigen3f(checkT).rotation()*Eigen::Vector3f(1,0,0);
+						double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
+						if(a <= angle)
+						{
+							cloudIndices.insert(kIndices[j]);
+						}
+					}
+				}
+
+				bool firstAdded = false;
+				for(std::set<int>::reverse_iterator iter = cloudIndices.rbegin(); iter!=cloudIndices.rend(); ++iter)
+				{
+					if(!firstAdded)
+					{
+						indicesKept.insert(*iter);
+						firstAdded = true;
+					}
+					indicesChecked.insert(*iter);
+				}
+			}
+		}
+
+		//pcl::IndicesPtr indicesOut(new std::vector<int>);
+		//indicesOut->insert(indicesOut->end(), indicesKept.begin(), indicesKept.end());
+		UINFO("Cloud filtered In = %d, Out = %d", cloud->size(), indicesKept.size());
+		//pcl::io::savePCDFile("duplicateIn.pcd", *cloud);
+		//pcl::io::savePCDFile("duplicateOut.pcd", *cloud, *indicesOut);
+
+		std::map<int, Transform> keptPoses;
+		for(std::set<int>::iterator iter = indicesKept.begin(); iter!=indicesKept.end(); ++iter)
+		{
+			keptPoses.insert(std::make_pair(names.at(*iter), transforms.at(*iter)));
+		}
+
+		return keptPoses;
+	}
+	else
+	{
+		return poses;
+	}
 }
 
 void MainWindow::processRtabmapEventInit(int status, const QString & info)
