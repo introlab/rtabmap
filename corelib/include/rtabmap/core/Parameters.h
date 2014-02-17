@@ -237,7 +237,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(OdomICP, MaxFitness,               float, 0.01, 	"");
 
 	// Loop closure constraint
-	RTABMAP_PARAM(LccIcp, Type,            int, 0, 			"0=No ICP, 0=ICP 3D, 1=ICP 2D");
+	RTABMAP_PARAM(LccIcp, Type,            int, 0, 			"0=No ICP, 1=ICP 3D, 2=ICP 2D");
 
 	RTABMAP_PARAM(LccBow, MinInliers,      int, 20, 		"Minimum visual word correspondences to compute geometry transform.");
 	RTABMAP_PARAM(LccBow, InlierDistance,  float, 0.01, 	"Maximum distance for visual word correspondences.");
