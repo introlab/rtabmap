@@ -51,16 +51,16 @@ public:
 		kStateChangingParameters,
 		kStateDumpingMemory,
 		kStateDumpingPrediction,
-		kStateGeneratingGraph,
-		kStateGeneratingLocalGraph,
-		kStateGeneratingTOROGraph,
-		kStateGeneratingTOROGraphFull,
+		kStateGeneratingDOTGraph,
+		kStateGeneratingDOTLocalGraph,
+		kStateGeneratingTOROGraphLocal,
+		kStateGeneratingTOROGraphGlobal,
 		kStateDeletingMemory,
 		kStateCleanDataBuffer,
-		kStatePublishingMap,
-		kStatePublishingMapFull,
-		kStatePublishingGraph,
-		kStatePublishingGraphFull,
+		kStatePublishingMapLocal,
+		kStatePublishingMapGlobal,
+		kStatePublishingTOROGraphLocal,
+		kStatePublishingTOROGraphGlobal,
 		Graph,
 		kStateTriggeringMap
 	};
@@ -83,7 +83,7 @@ private:
 	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
 	void setDataBufferSize(int size);
 	void publishMap(bool optimized, bool full) const;
-	void publishGraph(bool optimized, bool full) const;
+	void publishTOROGraph(bool optimized, bool full) const;
 
 private:
 	UMutex _stateMutex;

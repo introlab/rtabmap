@@ -86,8 +86,8 @@ public:
 	void setTimeThreshold(float maxTimeAllowed); // in ms
 
 	void triggerNewMap();
-	void generateGraph(const std::string & path, int id=0, int margin=5);
-	void generateTOROGraph(const std::string & path, bool optimized, bool full);
+	void generateDOTGraph(const std::string & path, int id=0, int margin=5);
+	void generateTOROGraph(const std::string & path, bool optimized, bool global);
 	void resetMemory(bool dbOverwritten = false);
 	void dumpPrediction() const;
 	void dumpData() const;
@@ -104,7 +104,7 @@ public:
 			std::map<int, Transform> & poses,
 			std::multimap<int, Link> & constraints,
 			bool optimized,
-			bool full) const;
+			bool global) const;
 	void getGraph(std::map<int, Transform> & poses,
 			std::multimap<int, Link> & constraints,
 			bool optimized,

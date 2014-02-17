@@ -52,16 +52,16 @@ public:
 			kCmdResetMemory,
 			kCmdDumpMemory,
 			kCmdDumpPrediction,
-			kCmdGenerateGraph, // params: path
-			kCmdGenerateLocalGraph, // params: path, id, margin
-			kCmdGenerateTOROGraph, // params: path, optimized
-			kCmdGenerateTOROGraphFull, // params: path, optimized
+			kCmdGenerateDOTGraph, // params: path
+			kCmdGenerateDOTLocalGraph, // params: path, id, margin
+			kCmdGenerateTOROGraphLocal, // params: path, optimized
+			kCmdGenerateTOROGraphGlobal, // params: path, optimized
 			kCmdDeleteMemory, // params: path [optional]
 			kCmdCleanDataBuffer,
-			kCmdPublish3DMap, // params: optimized
-			kCmdPublish3DMapFull, // params: optimized
-			kCmdPublishGraphFull, // params: optimized
-			kCmdPublishGraph, // params: optimized
+			kCmdPublish3DMapLocal, // params: optimized
+			kCmdPublish3DMapGlobal, // params: optimized
+			kCmdPublishTOROGraphGlobal, // params: optimized
+			kCmdPublishTOROGraphLocal, // params: optimized
 			kCmdTriggerNewMap,
 			kCmdPause};
 public:

@@ -564,7 +564,7 @@ void Rtabmap::triggerNewMap()
 	}
 }
 
-void Rtabmap::generateGraph(const std::string & path, int id, int margin)
+void Rtabmap::generateDOTGraph(const std::string & path, int id, int margin)
 {
 	if(_memory)
 	{
@@ -596,7 +596,7 @@ void Rtabmap::generateGraph(const std::string & path, int id, int margin)
 	}
 }
 
-void Rtabmap::generateTOROGraph(const std::string & path, bool optimized, bool full)
+void Rtabmap::generateTOROGraph(const std::string & path, bool optimized, bool global)
 {
 	if(_memory && _memory->getLastWorkingSignature())
 	{
@@ -605,12 +605,12 @@ void Rtabmap::generateTOROGraph(const std::string & path, bool optimized, bool f
 
 		if(optimized)
 		{
-			this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), full, poses, &constraints);
+			this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), global, poses, &constraints);
 		}
 		else
 		{
-			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, full?-1:0, true);
-			_memory->getMetricConstraints(uKeys(ids), poses, constraints, full);
+			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
+			_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
 		}
 
 		util3d::saveTOROGraph(path, poses, constraints);
@@ -2110,23 +2110,23 @@ void Rtabmap::get3DMap(std::map<int, std::vector<unsigned char> > & images,
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> & constraints,
 		bool optimized,
-		bool full) const
+		bool global) const
 {
 	if(_memory && _memory->getLastWorkingSignature())
 	{
 		if(optimized)
 		{
-			this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), full, poses, &constraints);
+			this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), global, poses, &constraints);
 		}
 		else
 		{
-			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, full?-1:0, true);
-			_memory->getMetricConstraints(uKeys(ids), poses, constraints, full);
+			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
+			_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
 		}
 
 		std::set<int> ids = _memory->getWorkingMem(); // STM + WM
 		ids.insert(_memory->getStMem().begin(), _memory->getStMem().end());
-		if(full)
+		if(global)
 		{
 			ids = _memory->getAllSignatureIds(); // STM + WM + LTM
 		}

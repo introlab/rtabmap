@@ -106,7 +106,7 @@ void RtabmapThread::publishMap(bool optimized, bool full) const
 			constraints));
 }
 
-void RtabmapThread::publishGraph(bool optimized, bool full) const
+void RtabmapThread::publishTOROGraph(bool optimized, bool full) const
 {
 	std::map<int, std::vector<unsigned char> > images;
 	std::map<int, std::vector<unsigned char> > depths;
@@ -178,16 +178,16 @@ void RtabmapThread::mainLoop()
 	case kStateDumpingPrediction:
 		_rtabmap->dumpPrediction();
 		break;
-	case kStateGeneratingGraph:
-		_rtabmap->generateGraph(parameters.at("path"));
+	case kStateGeneratingDOTGraph:
+		_rtabmap->generateDOTGraph(parameters.at("path"));
 		break;
-	case kStateGeneratingLocalGraph:
-		_rtabmap->generateGraph(parameters.at("path"), atoi(parameters.at("id").c_str()), atoi(parameters.at("margin").c_str()));
+	case kStateGeneratingDOTLocalGraph:
+		_rtabmap->generateDOTGraph(parameters.at("path"), atoi(parameters.at("id").c_str()), atoi(parameters.at("margin").c_str()));
 		break;
-	case kStateGeneratingTOROGraph:
+	case kStateGeneratingTOROGraphLocal:
 		_rtabmap->generateTOROGraph(parameters.at("path"), atoi(parameters.at("optimized").c_str())!=0, false);
 		break;
-	case kStateGeneratingTOROGraphFull:
+	case kStateGeneratingTOROGraphGlobal:
 		_rtabmap->generateTOROGraph(parameters.at("path"), atoi(parameters.at("optimized").c_str())!=0, true);
 		break;
 	case kStateDeletingMemory:
@@ -201,17 +201,17 @@ void RtabmapThread::mainLoop()
 	case kStateCleanDataBuffer:
 		this->clearBufferedData();
 		break;
-	case kStatePublishingMap:
+	case kStatePublishingMapLocal:
 		this->publishMap(atoi(parameters.at("optimized").c_str())!=0, false);
 		break;
-	case kStatePublishingMapFull:
+	case kStatePublishingMapGlobal:
 		this->publishMap(atoi(parameters.at("optimized").c_str())!=0, true);
 		break;
-	case kStatePublishingGraph:
-		this->publishGraph(atoi(parameters.at("optimized").c_str())!=0, false);
+	case kStatePublishingTOROGraphLocal:
+		this->publishTOROGraph(atoi(parameters.at("optimized").c_str())!=0, false);
 		break;
-	case kStatePublishingGraphFull:
-		this->publishGraph(atoi(parameters.at("optimized").c_str())!=0, true);
+	case kStatePublishingTOROGraphGlobal:
+		this->publishTOROGraph(atoi(parameters.at("optimized").c_str())!=0, true);
 		break;
 	case kStateTriggeringMap:
 		_rtabmap->triggerNewMap();
@@ -264,48 +264,48 @@ void RtabmapThread::handleEvent(UEvent* event)
 			ULOGGER_DEBUG("CMD_DUMP_PREDICTION");
 			pushNewState(kStateDumpingPrediction);
 		}
-		else if(cmd == RtabmapEventCmd::kCmdGenerateGraph)
+		else if(cmd == RtabmapEventCmd::kCmdGenerateDOTGraph)
 		{
 			UASSERT(!rtabmapEvent->getStr().empty());
 
-			ULOGGER_DEBUG("CMD_GENERATE_GRAPH");
+			ULOGGER_DEBUG("CMD_GENERATE_DOT_GRAPH");
 			ParametersMap param;
 			param.insert(ParametersPair("path", rtabmapEvent->getStr()));
-			pushNewState(kStateGeneratingGraph, param);
+			pushNewState(kStateGeneratingDOTGraph, param);
 		}
-		else if(cmd == RtabmapEventCmd::kCmdGenerateLocalGraph)
+		else if(cmd == RtabmapEventCmd::kCmdGenerateDOTLocalGraph)
 		{
 			std::list<std::string> values = uSplit(rtabmapEvent->getStr(), ';');
 			UASSERT(values.size() == 3);
 
-			ULOGGER_DEBUG("CMD_GENERATE_LOCAL_GRAPH");
+			ULOGGER_DEBUG("CMD_GENERATE_DOT_LOCAL_GRAPH");
 			ParametersMap param;
 			param.insert(ParametersPair("path", *values.begin()));
 			param.insert(ParametersPair("id", *(++values.begin())));
 			param.insert(ParametersPair("margin", *values.rbegin()));
-			pushNewState(kStateGeneratingLocalGraph, param);
+			pushNewState(kStateGeneratingDOTLocalGraph, param);
 
 		}
-		else if(cmd == RtabmapEventCmd::kCmdGenerateTOROGraph)
+		else if(cmd == RtabmapEventCmd::kCmdGenerateTOROGraphLocal)
 		{
 			UASSERT(!rtabmapEvent->getStr().empty());
 
-			ULOGGER_DEBUG("CMD_GENERATE_TORO_GRAPH");
+			ULOGGER_DEBUG("CMD_GENERATE_TORO_GRAPH_LOCAL");
 			ParametersMap param;
 			param.insert(ParametersPair("path", rtabmapEvent->getStr()));
 			param.insert(ParametersPair("optimized", uNumber2Str(rtabmapEvent->getInt())));
-			pushNewState(kStateGeneratingTOROGraph, param);
+			pushNewState(kStateGeneratingTOROGraphLocal, param);
 
 		}
-		else if(cmd == RtabmapEventCmd::kCmdGenerateTOROGraphFull)
+		else if(cmd == RtabmapEventCmd::kCmdGenerateTOROGraphGlobal)
 		{
 			UASSERT(!rtabmapEvent->getStr().empty());
 
-			ULOGGER_DEBUG("CMD_GENERATE_TORO_GRAPH_FULL");
+			ULOGGER_DEBUG("CMD_GENERATE_TORO_GRAPH_GLOBAL");
 			ParametersMap param;
 			param.insert(ParametersPair("path", rtabmapEvent->getStr()));
 			param.insert(ParametersPair("optimized", uNumber2Str(rtabmapEvent->getInt())));
-			pushNewState(kStateGeneratingTOROGraphFull, param);
+			pushNewState(kStateGeneratingTOROGraphGlobal, param);
 
 		}
 		else if(cmd == RtabmapEventCmd::kCmdDeleteMemory)
@@ -320,33 +320,33 @@ void RtabmapThread::handleEvent(UEvent* event)
 			ULOGGER_DEBUG("CMD_CLEAN_DATA_BUFFER");
 			pushNewState(kStateCleanDataBuffer);
 		}
-		else if(cmd == RtabmapEventCmd::kCmdPublish3DMap)
+		else if(cmd == RtabmapEventCmd::kCmdPublish3DMapLocal)
 		{
-			ULOGGER_DEBUG("CMD_PUBLISH_MAP");
+			ULOGGER_DEBUG("CMD_PUBLISH_MAP_LOCAL");
 			ParametersMap param;
 			param.insert(ParametersPair("optimized", uNumber2Str(rtabmapEvent->getInt())));
-			pushNewState(kStatePublishingMap, param);
+			pushNewState(kStatePublishingMapLocal, param);
 		}
-		else if(cmd == RtabmapEventCmd::kCmdPublish3DMapFull)
+		else if(cmd == RtabmapEventCmd::kCmdPublish3DMapGlobal)
 		{
-			ULOGGER_DEBUG("CMD_PUBLISH_MAP_FULL");
+			ULOGGER_DEBUG("CMD_PUBLISH_MAP_GLOBAL");
 			ParametersMap param;
 			param.insert(ParametersPair("optimized", uNumber2Str(rtabmapEvent->getInt())));
-			pushNewState(kStatePublishingMapFull, param);
+			pushNewState(kStatePublishingMapGlobal, param);
 		}
-		else if(cmd == RtabmapEventCmd::kCmdPublishGraph)
+		else if(cmd == RtabmapEventCmd::kCmdPublishTOROGraphLocal)
 		{
-			ULOGGER_DEBUG("CMD_PUBLISH_GRAPH");
+			ULOGGER_DEBUG("CMD_PUBLISH_TORO_GRAPH_LOCAL");
 			ParametersMap param;
 			param.insert(ParametersPair("optimized", uNumber2Str(rtabmapEvent->getInt())));
-			pushNewState(kStatePublishingGraph, param);
+			pushNewState(kStatePublishingTOROGraphLocal, param);
 		}
-		else if(cmd == RtabmapEventCmd::kCmdPublishGraphFull)
+		else if(cmd == RtabmapEventCmd::kCmdPublishTOROGraphGlobal)
 		{
-			ULOGGER_DEBUG("CMD_PUBLISH_GRAPH_FULL");
+			ULOGGER_DEBUG("CMD_PUBLISH_TORO_GRAPH_GLOBAL");
 			ParametersMap param;
 			param.insert(ParametersPair("optimized", uNumber2Str(rtabmapEvent->getInt())));
-			pushNewState(kStatePublishingGraphFull, param);
+			pushNewState(kStatePublishingTOROGraphGlobal, param);
 		}
 		else if(cmd == RtabmapEventCmd::kCmdTriggerNewMap)
 		{

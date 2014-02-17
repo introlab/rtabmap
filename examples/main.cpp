@@ -145,7 +145,7 @@ int main(int argc, char * argv[])
 	printf("Processing images completed. Loop closures found = %d\n", countLoopDetected);
 
 	// Generate a graph for visualization with Graphiz
-	rtabmap.generateGraph("Graph.dot");
+	rtabmap.generateDOTGraph("Graph.dot");
 	printf("Generated graph \"Graph.dot\", viewable with Graphiz using \"neato -Tpdf Graph.dot -o out.pdf\"\n");
 
 	// Cleanup... save database and logs

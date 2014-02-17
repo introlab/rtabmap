@@ -2260,7 +2260,7 @@ void MainWindow::generateMap()
 	if(!path.isEmpty())
 	{
 		_graphSavingFileName = path;
-		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateGraph, path.toStdString())); // The event is automatically deleted by the EventsManager...
+		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateDOTGraph, path.toStdString())); // The event is automatically deleted by the EventsManager...
 
 		_ui->dockWidget_console->show();
 		_ui->widget_console->appendMsg(QString("Graph saved... Tip:\nneato -Tpdf \"%1\" -o out.pdf").arg(_graphSavingFileName).arg(_graphSavingFileName));
@@ -2300,7 +2300,7 @@ void MainWindow::generateLocalMap()
 			{
 				_graphSavingFileName = path;
 				QString str = path + QString(";") + QString::number(id) + QString(";") + QString::number(margin);
-				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateLocalGraph, str.toStdString())); // The event is automatically deleted by the EventsManager...
+				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateDOTLocalGraph, str.toStdString())); // The event is automatically deleted by the EventsManager...
 
 				_ui->dockWidget_console->show();
 				_ui->widget_console->appendMsg(QString("Graph saved... Tip:\nneato -Tpdf \"%1\" -o out.pdf").arg(_graphSavingFileName).arg(_graphSavingFileName));
@@ -2317,31 +2317,31 @@ void MainWindow::generateTOROMap()
 	}
 
 	QStringList items;
-	items.append("Current map optimized");
-	items.append("Current map not optimized");
-	items.append("Full map optimized");
-	items.append("Full map not optimized");
+	items.append("Local map optimized");
+	items.append("Local map not optimized");
+	items.append("Global map optimized");
+	items.append("Global map not optimized");
 	bool ok;
 	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, 0, false, &ok);
 	if(ok)
 	{
-		bool optimized=false, full=false;
-		if(item.compare("Current map optimized") == 0)
+		bool optimized=false, global=false;
+		if(item.compare("Local map optimized") == 0)
 		{
 			optimized = true;
 		}
-		else if(item.compare("Current map not optimized") == 0)
+		else if(item.compare("Local map not optimized") == 0)
 		{
 
 		}
-		else if(item.compare("Full map optimized") == 0)
+		else if(item.compare("Global map optimized") == 0)
 		{
-			full=true;
+			global=true;
 			optimized=true;
 		}
-		else if(item.compare("Full map not optimized") == 0)
+		else if(item.compare("Global map not optimized") == 0)
 		{
-			full=true;
+			global=true;
 		}
 		else
 		{
@@ -2352,18 +2352,18 @@ void MainWindow::generateTOROMap()
 		if(!path.isEmpty())
 		{
 			_toroSavingFileName = path;
-			if(full)
+			if(global)
 			{
-				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateTOROGraphFull, path.toStdString(), optimized?1:0));
+				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateTOROGraphGlobal, path.toStdString(), optimized?1:0));
 			}
 			else
 			{
-				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateTOROGraph, path.toStdString(), optimized?1:0));
+				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateTOROGraphLocal, path.toStdString(), optimized?1:0));
 			}
 
 			_ui->dockWidget_console->show();
-			_ui->widget_console->appendMsg(QString("TORO Graph saved (full=%1, optimized=%2)... %3")
-					.arg(full?"true":"false").arg(optimized?"true":"false").arg(_toroSavingFileName));
+			_ui->widget_console->appendMsg(QString("TORO Graph saved (global=%1, optimized=%2)... %3")
+					.arg(global?"true":"false").arg(optimized?"true":"false").arg(_toroSavingFileName));
 		}
 
 	}
@@ -2478,37 +2478,37 @@ void MainWindow::downloadAllClouds()
 	bool showAll = _state != kMonitoringPaused && _state != kMonitoring;
 
 	QStringList items;
-	items.append("Current map optimized");
+	items.append("Local map optimized");
 	if(showAll)
 	{
-		items.append("Current map not optimized");
+		items.append("Local map not optimized");
 	}
-	items.append("Full map optimized");
+	items.append("Global map optimized");
 	if(showAll)
 	{
-		items.append("Full map not optimized");
+		items.append("Global map not optimized");
 	}
 	bool ok;
 	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, showAll?2:1, false, &ok);
 	if(ok)
 	{
-		bool optimized=false, full=false;
-		if(item.compare("Current map optimized") == 0)
+		bool optimized=false, global=false;
+		if(item.compare("Local map optimized") == 0)
 		{
 			optimized = true;
 		}
-		else if(item.compare("Current map not optimized") == 0)
+		else if(item.compare("Local map not optimized") == 0)
 		{
 
 		}
-		else if(item.compare("Full map optimized") == 0)
+		else if(item.compare("Global map optimized") == 0)
 		{
-			full=true;
+			global=true;
 			optimized=true;
 		}
-		else if(item.compare("Full map not optimized") == 0)
+		else if(item.compare("Global map not optimized") == 0)
 		{
-			full=true;
+			global=true;
 		}
 		else
 		{
@@ -2519,15 +2519,15 @@ void MainWindow::downloadAllClouds()
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
-		_initProgressDialog->appendText(tr("Downloading the map (full=%1 ,optimized=%2)...")
-				.arg(full?"true":"false").arg(optimized?"true":"false"));
-		if(full)
+		_initProgressDialog->appendText(tr("Downloading the map (global=%1 ,optimized=%2)...")
+				.arg(global?"true":"false").arg(optimized?"true":"false"));
+		if(global)
 		{
-			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMapFull, optimized?1:0));
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMapGlobal, optimized?1:0));
 		}
 		else
 		{
-			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMap, optimized?1:0));
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMapLocal, optimized?1:0));
 		}
 	}
 }
@@ -2537,37 +2537,37 @@ void MainWindow::downloadPoseGraph()
 	bool showAll = _state != kMonitoringPaused && _state != kMonitoring;
 
 	QStringList items;
-	items.append("Current map optimized");
+	items.append("Local map optimized");
 	if(showAll)
 	{
-		items.append("Current map not optimized");
+		items.append("Local map not optimized");
 	}
-	items.append("Full map optimized");
+	items.append("Global map optimized");
 	if(showAll)
 	{
-		items.append("Full map not optimized");
+		items.append("Global map not optimized");
 	}
 	bool ok;
 	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, showAll?2:1, false, &ok);
 	if(ok)
 	{
-		bool optimized=false, full=false;
-		if(item.compare("Current map optimized") == 0)
+		bool optimized=false, global=false;
+		if(item.compare("Local map optimized") == 0)
 		{
 			optimized = true;
 		}
-		else if(item.compare("Current map not optimized") == 0)
+		else if(item.compare("Local map not optimized") == 0)
 		{
 
 		}
-		else if(item.compare("Full map optimized") == 0)
+		else if(item.compare("Global map optimized") == 0)
 		{
-			full=true;
+			global=true;
 			optimized=true;
 		}
-		else if(item.compare("Full map not optimized") == 0)
+		else if(item.compare("Global map not optimized") == 0)
 		{
-			full=true;
+			global=true;
 		}
 		else
 		{
@@ -2578,15 +2578,15 @@ void MainWindow::downloadPoseGraph()
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
-		_initProgressDialog->appendText(tr("Downloading the graph (full=%1 ,optimized=%2)...")
-				.arg(full?"true":"false").arg(optimized?"true":"false"));
-		if(full)
+		_initProgressDialog->appendText(tr("Downloading the graph (global=%1 ,optimized=%2)...")
+				.arg(global?"true":"false").arg(optimized?"true":"false"));
+		if(global)
 		{
-			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublishGraphFull, optimized?1:0));
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublishTOROGraphGlobal, optimized?1:0));
 		}
 		else
 		{
-			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublishGraph, optimized?1:0));
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublishTOROGraphLocal, optimized?1:0));
 		}
 	}
 }
