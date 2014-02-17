@@ -4,7 +4,7 @@
 #include <rtabmap/core/Odometry.h>
 #include <rtabmap/gui/OdometryViewer.h>
 #include <rtabmap/core/CameraOpenni.h>
-#include <QtGui/QApplication.h>
+#include <QtGui/QApplication>
 
 void showUsage()
 {

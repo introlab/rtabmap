@@ -31,4 +31,8 @@ TARGET_LINK_LIBRARIES(odometryViewer rtabmap_core rtabmap_gui rtabmap_utilite ${
 
 SET_TARGET_PROPERTIES( odometryViewer 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-odometryViewer)
+  
+INSTALL(TARGETS odometryViewer
+		RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT runtime
+		BUNDLE DESTINATION "${CMAKE_BUNDLE_LOCATION}" COMPONENT runtime)
 

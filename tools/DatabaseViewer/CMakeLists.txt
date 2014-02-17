@@ -32,3 +32,4 @@ TARGET_LINK_LIBRARIES(databaseViewer rtabmap_core rtabmap_gui rtabmap_utilite ${
 SET_TARGET_PROPERTIES( databaseViewer 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-databaseViewer)
 
+

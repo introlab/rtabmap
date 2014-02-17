@@ -74,7 +74,6 @@ private:
 	void updateIds();
 	void update(int value,
 				QLabel * labelIndex,
-				QLabel * labelActions,
 				QLabel * labelParents,
 				QLabel * labelChildren,
 				rtabmap::ImageView * view,

@@ -127,7 +127,6 @@ set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
   "Installation directory for CMake files")
   
 ####### BUILD OPTIONS #######
-OPTION(BUILD_LIBS_ONLY "Set to ON to build only the libraries" OFF)
 IF(APPLE)
 	OPTION(BUILD_AS_BUNDLE "Set to ON to build as bundle (DragNDrop)" OFF)
 ENDIF(APPLE)
@@ -150,12 +149,6 @@ IF(APPLE AND BUILD_AS_BUNDLE)
     	MESSAGE(STATUS "As BUILD_AS_BUNDLE=ON, set BUILD_SHARED_LIBS=OFF")
     	SET( BUILD_SHARED_LIBS OFF )
     ENDIF(BUILD_SHARED_LIBS)
-    
-    #Must create app, so force to off BUILD_LIBS_ONLY
-    IF(BUILD_LIBS_ONLY)
-   		MESSAGE(STATUS "As BUILD_AS_BUNDLE=ON, set BUILD_LIBS_ONLY=OFF")
-   		SET( BUILD_LIBS_ONLY OFF )
-    ENDIF(BUILD_LIBS_ONLY)
     
     # Required when packaging, and set CMAKE_INSTALL_PREFIX to "/".
     SET(CMAKE_INSTALL_PREFIX "/")
@@ -188,17 +181,13 @@ ADD_SUBDIRECTORY( corelib )
 
 IF(QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND)
    ADD_SUBDIRECTORY( guilib )
-   IF(NOT BUILD_LIBS_ONLY)
-   	 ADD_SUBDIRECTORY( app )
-   ENDIF(NOT BUILD_LIBS_ONLY)
+   ADD_SUBDIRECTORY( app )
 ELSE()
    MESSAGE(STATUS "[WARNING] Qt4 not found, the GUI lib and the stand-alone application will not be compiled...")
 ENDIF()
 
-IF(NOT BUILD_LIBS_ONLY AND NOT BUILD_AS_BUNDLE)
-	ADD_SUBDIRECTORY( tools )
-	ADD_SUBDIRECTORY( examples )
-ENDIF(NOT BUILD_LIBS_ONLY AND NOT BUILD_AS_BUNDLE)
+ADD_SUBDIRECTORY( tools )
+ADD_SUBDIRECTORY( examples )
 
 #######################
 # Uninstall target, for "make uninstall"
@@ -325,7 +314,6 @@ IF(NOT WIN32)
 	# see comment above for the BUILD_SHARED_LIBS option on Windows
 	MESSAGE(STATUS "  BUILD_SHARED_LIBS = ${BUILD_SHARED_LIBS}")
 ENDIF(NOT WIN32)
-MESSAGE(STATUS "  BUILD_LIBS_ONLY = ${BUILD_LIBS_ONLY}")
 IF(APPLE)
 MESSAGE(STATUS "  BUILD_AS_BUNDLE = ${BUILD_AS_BUNDLE}")
 ENDIF(APPLE)

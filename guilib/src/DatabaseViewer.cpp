@@ -627,7 +627,6 @@ void DatabaseViewer::sliderAValueChanged(int value)
 {
 	this->update(value,
 			ui_->label_indexA,
-			ui_->label_actionsA,
 			ui_->label_parentsA,
 			ui_->label_childrenA,
 			ui_->graphicsView_A,
@@ -638,7 +637,6 @@ void DatabaseViewer::sliderBValueChanged(int value)
 {
 	this->update(value,
 			ui_->label_indexB,
-			ui_->label_actionsB,
 			ui_->label_parentsB,
 			ui_->label_childrenB,
 			ui_->graphicsView_B,
@@ -647,7 +645,6 @@ void DatabaseViewer::sliderBValueChanged(int value)
 
 void DatabaseViewer::update(int value,
 						QLabel * labelIndex,
-						QLabel * labelActions,
 						QLabel * labelParents,
 						QLabel * labelChildren,
 						rtabmap::ImageView * view,
@@ -655,7 +652,6 @@ void DatabaseViewer::update(int value,
 {
 	UTimer timer;
 	labelIndex->setText(QString::number(value));
-	labelActions->clear();
 	labelParents->clear();
 	labelChildren->clear();
 	if(value >= 0 && value < ids_.size())
