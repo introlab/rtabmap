@@ -1808,7 +1808,7 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 		guess = util3d::transformFromEigen3f(pcl::getTransformation(x,y,0, 0, 0, yaw));
 		if(r!=0 || p!=0)
 		{
-			UWARN("2D ICP: Dropping z (%f), roll (%f) and pitch (%f) rotation!", z, r, p);
+			UINFO("2D ICP: Dropping z (%f), roll (%f) and pitch (%f) rotation!", z, r, p);
 		}
 
 		util3d::CompressionThread ctOld(oldS.getDepth2D(), false);
