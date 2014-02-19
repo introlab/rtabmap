@@ -79,7 +79,9 @@ Rtabmap::Rtabmap() :
 	_rgbdSlamMode(Parameters::defaultRGBDEnabled()),
 	_rgbdLinearUpdate(Parameters::defaultRGBDLinearUpdate()),
 	_rgbdAngularUpdate(Parameters::defaultRGBDAngularUpdate()),
+	_newMapOdomChangeDistance(Parameters::defaultRGBDNewMapOdomChangeDistance()),
 	_globalLoopClosureIcpType(Parameters::defaultLccIcpType()),
+	_globalLoopClosureIcpMaxDistance(Parameters::defaultLccIcpMaxDistance()),
 	_scanMatchingSize(Parameters::defaultRGBDScanMatchingSize()),
 	_localLoopClosureDetectionTime(Parameters::defaultRGBDLocalLoopDetectionTime()),
 	_localLoopClosureDetectionSpace(Parameters::defaultRGBDLocalLoopDetectionSpace()),
@@ -327,7 +329,9 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), _rgbdSlamMode);
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rgbdLinearUpdate);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rgbdAngularUpdate);
+	Parameters::parse(parameters, Parameters::kRGBDNewMapOdomChangeDistance(), _newMapOdomChangeDistance);
 	Parameters::parse(parameters, Parameters::kRGBDScanMatchingSize(), _scanMatchingSize);
+	Parameters::parse(parameters, Parameters::kLccIcpMaxDistance(), _globalLoopClosureIcpMaxDistance);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionTime(), _localLoopClosureDetectionTime);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionSpace(), _localLoopClosureDetectionSpace);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionRadius(), _localDetectRadius);
@@ -739,17 +743,30 @@ bool Rtabmap::process(const Image & image)
 			// Detect if the odometry is reset. If yes, trigger a new map.
 			if(_memory->getLastWorkingSignature())
 			{
-				Transform lastPose = _memory->getLastWorkingSignature()->getPose(); // use raw odometry
-				Transform lastPoseToNewPose = lastPose.inverse() * image.pose();
-				float x,y,z, roll,pitch,yaw;
-				lastPoseToNewPose.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-				// TODO Increment map id also if there is a big position change
+				const Transform & lastPose = _memory->getLastWorkingSignature()->getPose(); // use raw odometry
 				if(!lastPose.isIdentity() && image.pose().isIdentity())
 				{
 					int mapId = _memory->incrementMapId();
 					UWARN("Odometry is reset (transform identity detected). A new map (%d) is created!", mapId);
 					_optimizedPoses.clear();
 					_constraints.clear();
+				}
+				else
+				{
+					Transform lastPoseToNewPose = lastPose.inverse() * image.pose();
+					float x,y,z, roll,pitch,yaw;
+					lastPoseToNewPose.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+					if(_newMapOdomChangeDistance > 0.0 && (x*x + y*y + z*z) > _newMapOdomChangeDistance*_newMapOdomChangeDistance)
+					{
+						int mapId = _memory->incrementMapId();
+						UWARN("Odometry is reset (large odometry change detected > %f). A new map (%d) is created! Last pose = %s, new pose = %s",
+								_newMapOdomChangeDistance,
+								mapId,
+								lastPose.prettyPrint().c_str(),
+								image.pose().prettyPrint().c_str());
+						_optimizedPoses.clear();
+						_constraints.clear();
+					}
 				}
 			}
 		}
@@ -892,7 +909,20 @@ bool Rtabmap::process(const Image & image)
 					Transform transform = _memory->computeVisualTransform(*iter, signature->id());
 					if(!transform.isNull() && _globalLoopClosureIcpType > 0)
 					{
-						transform = _memory->computeIcpTransform(*iter, signature->id(), transform, _globalLoopClosureIcpType==1);
+						Transform icpTransform = _memory->computeIcpTransform(*iter, signature->id(), transform, _globalLoopClosureIcpType==1);
+						float squaredNorm = (transform.inverse()*icpTransform).getNormSquared();
+						if(!icpTransform.isNull() &&
+							_globalLoopClosureIcpMaxDistance>0.0f &&
+							squaredNorm > _globalLoopClosureIcpMaxDistance*_globalLoopClosureIcpMaxDistance)
+						{
+							UWARN("Local loop closure rejected (%d->%d) (ICP correction too large %f > %f [squared norm])",
+									signature->id(),
+									*iter,
+									squaredNorm,
+									_globalLoopClosureIcpMaxDistance*_globalLoopClosureIcpMaxDistance);
+							icpTransform.setNull();
+						}
+						transform = icpTransform;
 					}
 					if(!transform.isNull())
 					{
@@ -1218,7 +1248,20 @@ bool Rtabmap::process(const Image & image)
 			transform = _memory->computeVisualTransform(_lcHypothesisId, signature->id());
 			if(!transform.isNull() && _globalLoopClosureIcpType > 0)
 			{
-				transform  = _memory->computeIcpTransform(_lcHypothesisId, signature->id(), transform, _globalLoopClosureIcpType == 1);
+				Transform icpTransform  = _memory->computeIcpTransform(_lcHypothesisId, signature->id(), transform, _globalLoopClosureIcpType == 1);
+				float squaredNorm = (transform.inverse()*icpTransform).getNormSquared();
+				if(!icpTransform.isNull() &&
+					_globalLoopClosureIcpMaxDistance>0.0f &&
+					squaredNorm > _globalLoopClosureIcpMaxDistance*_globalLoopClosureIcpMaxDistance)
+				{
+					UWARN("Global loop closure rejected (%d->%d) (ICP correction too large %f > %f [squared norm])",
+							signature->id(),
+							_lcHypothesisId,
+							squaredNorm,
+							_globalLoopClosureIcpMaxDistance*_globalLoopClosureIcpMaxDistance);
+					icpTransform.setNull();
+				}
+				transform = icpTransform;
 			}
 			rejectedHypothesis = transform.isNull();
 			if(rejectedHypothesis)

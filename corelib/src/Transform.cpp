@@ -143,6 +143,23 @@ void Transform::getTranslationAndEulerAngles(float & x, float & y, float & z, fl
 	pcl::getTranslationAndEulerAngles(util3d::transformToEigen3f(*this), x, y, z, roll, pitch, yaw);
 }
 
+void Transform::getTranslation(float & x, float & y, float & z) const
+{
+	x = this->x();
+	y = this->y();
+	z = this->z();
+}
+
+float Transform::getNorm() const
+{
+	return std::sqrt(this->getNorm());
+}
+
+float Transform::getNormSquared() const
+{
+	return this->x()*this->x() + this->y()*this->y() + this->z()*this->z();
+}
+
 std::string Transform::prettyPrint() const
 {
 	float x,y,z,roll,pitch,yaw;

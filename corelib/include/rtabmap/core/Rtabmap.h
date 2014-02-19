@@ -141,7 +141,9 @@ private:
 	bool _rgbdSlamMode;
 	float _rgbdLinearUpdate;
 	float _rgbdAngularUpdate;
+	float _newMapOdomChangeDistance;
 	int _globalLoopClosureIcpType;
+	float _globalLoopClosureIcpMaxDistance;
 	int _scanMatchingSize;
 	bool _localLoopClosureDetectionTime;
 	bool _localLoopClosureDetectionSpace;

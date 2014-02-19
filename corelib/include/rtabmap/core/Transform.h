@@ -52,6 +52,9 @@ public:
 	Transform translation() const;
 
 	void getTranslationAndEulerAngles(float & x, float & y, float & z, float & roll, float & pitch, float & yaw) const;
+	void getTranslation(float & x, float & y, float & z) const;
+	float getNorm() const;
+	float getNormSquared() const;
 	std::string prettyPrint() const;
 
 	Transform operator*(const Transform & t) const;

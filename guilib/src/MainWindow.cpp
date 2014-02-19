@@ -1003,7 +1003,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		_ui->label_matchId->setText(QString("Match ID = %1 [%2]").arg(stat.loopClosureId()).arg(loopMapId));
 	}
 	float elapsedTime = static_cast<float>(totalTime.elapsed());
-	UINFO("Processing statistics time = %fs", elapsedTime/1000.0f);
+	UINFO("Updating GUI time = %fs", elapsedTime/1000.0f);
 	_ui->statsToolBox->updateStat("/Gui refresh stats/ms", stat.refImageId(), elapsedTime);
 	if(_ui->actionAuto_screen_capture->isChecked() && !_autoScreenCaptureOdomSync)
 	{

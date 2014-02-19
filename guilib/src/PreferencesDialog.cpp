@@ -326,6 +326,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_checkBox_activateRGBD->setObjectName(Parameters::kRGBDEnabled().c_str());
 	_ui->rgdb_linearUpdate->setObjectName(Parameters::kRGBDLinearUpdate().c_str());
 	_ui->rgdb_angularUpdate->setObjectName(Parameters::kRGBDAngularUpdate().c_str());
+	_ui->rgdb_newMapOdomChange->setObjectName(Parameters::kRGBDNewMapOdomChangeDistance().c_str());
 	_ui->odomScanHistory->setObjectName(Parameters::kRGBDScanMatchingSize().c_str());
 	_ui->globalDetection_toroIterations->setObjectName(Parameters::kRGBDToroIterations().c_str());
 
@@ -341,6 +342,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_bowMaxDepth->setObjectName(Parameters::kLccBowMaxDepth().c_str());
 
 	_ui->globalDetection_icpType->setObjectName(Parameters::kLccIcpType().c_str());
+	_ui->globalDetection_icpMaxDistance->setObjectName(Parameters::kLccIcpMaxDistance().c_str());
 
 	_ui->loopClosure_icpDecimation->setObjectName(Parameters::kLccIcp3Decimation().c_str());
 	_ui->loopClosure_icpMaxDepth->setObjectName(Parameters::kLccIcp3MaxDepth().c_str());

@@ -204,6 +204,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, ScanMatchingSize,  int, 0, 		"Laser scan matching history for odometry correction (laser scans are required). Set to 0 to disable odometry correction.");
 	RTABMAP_PARAM(RGBD, LinearUpdate,      float, 0.0, 	"Min linear displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
 	RTABMAP_PARAM(RGBD, AngularUpdate,     float, 0.0, 	"Min angular displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
+	RTABMAP_PARAM(RGBD, NewMapOdomChangeDistance, float, 1, "A new map is created if a change of odometry translation greater than X m is detected (0 m = disabled).");
 	RTABMAP_PARAM(RGBD, ToroIterations,    int, 100,    "TORO graph optimization iterations")
 
 	// Local loop closure detection
@@ -238,6 +239,7 @@ class RTABMAP_EXP Parameters
 
 	// Loop closure constraint
 	RTABMAP_PARAM(LccIcp, Type,            int, 0, 			"0=No ICP, 1=ICP 3D, 2=ICP 2D");
+	RTABMAP_PARAM(LccIcp, MaxDistance,     float, 0.2,     "Maximum ICP correction distance accepted (m).");
 
 	RTABMAP_PARAM(LccBow, MinInliers,      int, 20, 		"Minimum visual word correspondences to compute geometry transform.");
 	RTABMAP_PARAM(LccBow, InlierDistance,  float, 0.01, 	"Maximum distance for visual word correspondences.");
