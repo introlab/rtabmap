@@ -362,7 +362,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 		_memory->init(getDatabasePath(), false, parameters);
 
 		//generate map
-		if(_memory->getLastWorkingSignature())
+		if(_rgbdSlamMode && _memory->getLastWorkingSignature())
 		{
 			optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), false, _optimizedPoses, &_constraints);
 		}
