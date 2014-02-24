@@ -57,7 +57,6 @@ int main(int argc, char * argv[])
 	Rtabmap * rtabmap = new Rtabmap();
 	rtabmap->init();
 	RtabmapThread rtabmapThread(rtabmap); // ownership is transfered
-	rtabmapThread.setDetectorRate(0.0f); // as fast as we can
 
 	// Setup handlers
 	odomThread.registerToEventsManager();
