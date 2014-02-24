@@ -66,10 +66,13 @@ public:
 	};
 
 public:
-	RtabmapThread();
+	// take ownership
+	RtabmapThread(Rtabmap * rtabmap);
 	virtual ~RtabmapThread();
 
 	void clearBufferedData();
+	void setDetectorRate(float rate);
+	void setBufferSize(int bufferSize);
 
 protected:
 	virtual void handleEvent(UEvent * anEvent);

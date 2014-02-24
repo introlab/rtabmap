@@ -1,26 +1,11 @@
 
-SET(SRC_FILES
-    main.cpp
-)
+ADD_SUBDIRECTORY( BOWMapping )
 
-SET(INCLUDE_DIRS
-	${PROJECT_SOURCE_DIR}/corelib/include
-    ${OpenCV_INCLUDE_DIRS}
-    ${PCL_INCLUDE_DIRS}
-)
+IF(TARGET rtabmap_gui)
+	ADD_SUBDIRECTORY( RGBDMapping )
+ELSE()
+   MESSAGE(STATUS "RTAB-Map GUI lib is not built, the RGBDMapping example will not be built...")
+ENDIF()
 
-SET(LIBRARIES
-	${OpenCV_LIBRARIES} 
-	${PCL_LIBRARIES}
-)
 
-add_definitions(${PCL_DEFINITIONS})
-
-INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
-
-ADD_EXECUTABLE(example ${SRC_FILES})
-TARGET_LINK_LIBRARIES(example rtabmap_core ${LIBRARIES})
-
-SET_TARGET_PROPERTIES( example 
-  PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-example)
 

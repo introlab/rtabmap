@@ -21,6 +21,7 @@
 #include <QtCore/QDir>
 #include "rtabmap/utilite/UEventsManager.h"
 #include "rtabmap/core/RtabmapThread.h"
+#include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/gui/MainWindow.h"
 #include <QtGui/QMessageBox>
 #include "rtabmap/utilite/UObjDeletionThread.h"
@@ -45,7 +46,7 @@ int main(int argc, char* argv[])
 	/* Start thread's task */
 	mainWindow->showNormal();
 
-	RtabmapThread * rtabmap = new RtabmapThread();
+	RtabmapThread * rtabmap = new RtabmapThread(new Rtabmap());
 	rtabmap->start(); // start it not initialized... will be initialized by event from the gui
 	UEventsManager::addHandler(rtabmap);
 

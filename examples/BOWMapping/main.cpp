@@ -25,7 +25,7 @@
 void showUsage()
 {
 	printf("\nUsage:\n"
-			"rtabmap-example [options] \"path\"\n"
+			"rtabmap-bow_mapping [options] \"path\"\n"
 			"  path       Path to a directory of images\n "
 			"  Options:"
 			"     -l   localization mode: use already built RTAB-Map database to localize\n ");

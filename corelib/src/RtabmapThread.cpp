@@ -33,14 +33,15 @@
 
 namespace rtabmap {
 
-RtabmapThread::RtabmapThread() :
+RtabmapThread::RtabmapThread(Rtabmap * rtabmap) :
 		_imageBufferMaxSize(Parameters::defaultRtabmapImageBufferSize()),
 		_rate(Parameters::defaultRtabmapDetectionRate()),
 		_frameRateTimer(new UTimer()),
-		_rtabmap(new Rtabmap()),
+		_rtabmap(rtabmap),
 		_paused(false)
 
 {
+	UASSERT(rtabmap != 0);
 }
 
 RtabmapThread::~RtabmapThread()
@@ -75,6 +76,18 @@ void RtabmapThread::clearBufferedData()
 		_imageBuffer.clear();
 	}
 	_imageMutex.unlock();
+}
+
+void RtabmapThread::setDetectorRate(float rate)
+{
+	UASSERT(rate >= 0.0f);
+	_rate = rate;
+}
+
+void RtabmapThread::setBufferSize(int bufferSize)
+{
+	UASSERT(bufferSize >= 0);
+	_imageBufferMaxSize = bufferSize;
 }
 
 void RtabmapThread::publishMap(bool optimized, bool full) const
