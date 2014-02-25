@@ -1512,7 +1512,10 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 	if(flags & PreferencesDialog::kPanelCloudRendering)
 	{
 		UDEBUG("Cloud rendering settings changed...");
-		this->updateMapCloud(_currentPosesMap, Transform());
+		if(_currentPosesMap.size())
+		{
+			this->updateMapCloud(_currentPosesMap, Transform());
+		}
 	}
 
 	if(flags & PreferencesDialog::kPanelLogging)

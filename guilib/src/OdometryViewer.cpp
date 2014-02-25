@@ -83,7 +83,7 @@ void OdometryViewer::processData()
 
 		clouds_.insert(std::make_pair(id_, cloud));
 
-		if((int)clouds_.size() > maxClouds_)
+		while(maxClouds_>0 && (int)clouds_.size() > maxClouds_)
 		{
 			this->removeCloud(uFormat("cloud%d", clouds_.begin()->first));
 			clouds_.erase(clouds_.begin());
@@ -163,7 +163,7 @@ void OdometryViewer::handleAction(QAction * a)
 	else if(a == _aSetDecimation)
 	{
 		bool ok;
-		int value = QInputDialog::getInt(this, tr("Set depth image decimation"), tr("Decimation (0=infinite)"), decimation_, 1, 8, 1, &ok);
+		int value = QInputDialog::getInt(this, tr("Set depth image decimation"), tr("Decimation"), decimation_, 1, 8, 1, &ok);
 		if(ok)
 		{
 			decimation_ = value;

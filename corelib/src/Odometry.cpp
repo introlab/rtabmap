@@ -722,7 +722,7 @@ void OdometryThread::getImage(Image & image)
 		if(!_imageBuffer.empty())
 		{
 			image = _imageBuffer;
-			_imageBuffer = cv::Mat();
+			_imageBuffer = Image();
 		}
 	}
 	_imageMutex.unlock();
