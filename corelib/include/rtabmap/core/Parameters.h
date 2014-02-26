@@ -141,7 +141,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Rtabmap, LoopRatio,    	 float, 0.9, 	"The loop closure hypothesis must be over LoopRatio x lastHypothesisValue.");
 
 	// Memory
-	RTABMAP_PARAM(Mem, RehearsalSimilarity,     float, 1.0, 	"Rehearsal similarity.");
+	RTABMAP_PARAM(Mem, RehearsalSimilarity,     float, 0.6, 	"Rehearsal similarity.");
 	RTABMAP_PARAM(Mem, ImageKept, 		        bool, true, 	"Keep images in db.");
 	RTABMAP_PARAM(Mem, RehearsedNodesKept, 	    bool, true, 	"Keep rehearsed ndoes in db.");
 	RTABMAP_PARAM(Mem, STMSize, 		        unsigned int, 10, "Short-term memory size.");
