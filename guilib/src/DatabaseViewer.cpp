@@ -75,8 +75,11 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->actionExtract_images, SIGNAL(triggered()), this, SLOT(extractImages()));
 	connect(ui_->actionGenerate_graph_dot, SIGNAL(triggered()), this, SLOT(generateGraph()));
 	connect(ui_->actionGenerate_local_graph_dot, SIGNAL(triggered()), this, SLOT(generateLocalGraph()));
+	connect(ui_->actionGenerate_TORO_graph_graph, SIGNAL(triggered()), this, SLOT(generateTOROGraph()));
 	connect(ui_->actionView_3D_map, SIGNAL(triggered()), this, SLOT(view3DMap()));
 	connect(ui_->actionGenerate_3D_map_pcd, SIGNAL(triggered()), this, SLOT(generate3DMap()));
+
+	ui_->actionGenerate_TORO_graph_graph->setEnabled(false);
 
 	ui_->horizontalSlider_A->setTracking(false);
 	ui_->horizontalSlider_B->setTracking(false);
@@ -290,6 +293,8 @@ void DatabaseViewer::updateIds()
 		ui_->spinBox_optimizationsFrom->setValue(memory_->getLastWorkingSignature()->id());
 	}
 
+	ui_->actionGenerate_TORO_graph_graph->setEnabled(false);
+	graphes_.clear();
 	neighborLinks_.clear();
 	loopLinks_.clear();
 	for(std::multimap<int, rtabmap::Link>::iterator iter = links_.begin(); iter!=links_.end(); ++iter)
@@ -409,6 +414,26 @@ void DatabaseViewer::generateLocalGraph()
 					QMessageBox::critical(this, tr("Error"), tr("No neighbors found for signature %1.").arg(id));
 				}
 			}
+		}
+	}
+}
+
+void DatabaseViewer::generateTOROGraph()
+{
+	if(!graphes_.size() || !links_.size())
+	{
+		QMessageBox::warning(this, tr("Cannot generate a TORO graph"), tr("No poses or no links..."));
+		return;
+	}
+	bool ok = false;
+	int id = QInputDialog::getInt(this, tr("Which iteration?"), tr("Iteration (0 -> %1)").arg(graphes_.size()-1), graphes_.size()-1, 0, graphes_.size()-1, 1, &ok);
+
+	if(ok)
+	{
+		QString path = QFileDialog::getSaveFileName(this, tr("Save File"), pathDatabase_+"/constraints" + QString::number(id) + ".graph", tr("TORO file (*.graph)"));
+		if(!path.isEmpty())
+		{
+			rtabmap::util3d::saveTOROGraph(path.toStdString(), uValueAt(graphes_, id), links_);
 		}
 	}
 }
@@ -899,6 +924,7 @@ void DatabaseViewer::updateGraphView()
 
 		std::map<int, rtabmap::Transform> finalPoses;
 		graphes_.push_back(poses_);
+		ui_->actionGenerate_TORO_graph_graph->setEnabled(true);
 
 		std::map<int, int> ids = memory_->getNeighborsId(ui_->spinBox_optimizationsFrom->value(), 0, -1, true);
 		// Modify IDs using the margin from the current signature (TORO root will be the last signature)

@@ -280,6 +280,7 @@
     </property>
     <addaction name="actionGenerate_graph_dot"/>
     <addaction name="actionGenerate_local_graph_dot"/>
+    <addaction name="actionGenerate_TORO_graph_graph"/>
     <addaction name="separator"/>
     <addaction name="actionClean_database"/>
     <addaction name="actionClean_local_graph"/>
@@ -458,7 +459,7 @@
   </action>
   <action name="actionGenerate_graph_dot">
    <property name="text">
-    <string>Generate graph (.dot) ...</string>
+    <string>Generate graph (*.dot) ...</string>
    </property>
   </action>
   <action name="actionGenerate_graph_only_weighted_locations">
@@ -488,7 +489,7 @@
   </action>
   <action name="actionGenerate_3D_map_pcd">
    <property name="text">
-    <string>Export 3D map (.pcd) ...</string>
+    <string>Export 3D map (*.pcd) ...</string>
    </property>
   </action>
   <action name="actionExport">
@@ -504,6 +505,11 @@
   <action name="actionView_3D_map">
    <property name="text">
     <string>View 3D map...</string>
+   </property>
+  </action>
+  <action name="actionGenerate_TORO_graph_graph">
+   <property name="text">
+    <string>Generate TORO graph (*.graph)...</string>
    </property>
   </action>
  </widget>

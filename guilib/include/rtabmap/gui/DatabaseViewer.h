@@ -59,6 +59,7 @@ private slots:
 	void exportDatabase();
 	void extractImages();
 	void generateLocalGraph();
+	void generateTOROGraph();
 	void view3DMap();
 	void generate3DMap();
 	void sliderAValueChanged(int);
