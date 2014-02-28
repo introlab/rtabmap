@@ -132,14 +132,19 @@ bool DatabaseViewer::openDatabase(const QString & path)
 	UDEBUG("Open database \"%s\"", path.toStdString().c_str());
 	if(QFile::exists(path))
 	{
-		QStringList types;
-		types << "Keypoint" << "Sensorimotor";
-
 		if(memory_)
 		{
 			delete memory_;
 			memory_ = 0;
 			ids_.clear();
+			idToIndex_.clear();
+			neighborLinks_.clear();
+			loopLinks_.clear();
+			graphes_.clear();
+			poses_.clear();
+			links_.clear();
+			scans_.clear();
+			ui_->actionGenerate_TORO_graph_graph->setEnabled(false);
 		}
 
 		std::string driverType = "sqlite3";

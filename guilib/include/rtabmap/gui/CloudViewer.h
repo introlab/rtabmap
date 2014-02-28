@@ -106,6 +106,9 @@ public:
 
 	const QMap<std::string, Transform> & getAddedClouds() {return _addedClouds;} //including meshes
 
+	void setCameraTargetLocked();
+	void setCameraTargetFollow();
+
 public slots:
 	void render();
 	void setBackgroundColor(const QColor & color);

@@ -1,9 +1,11 @@
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UEventsManager.h>
+#include <rtabmap/utilite/UFile.h>
 #include <rtabmap/core/Odometry.h>
 #include <rtabmap/gui/OdometryViewer.h>
 #include <rtabmap/core/CameraOpenni.h>
+#include <rtabmap/core/DBReader.h>
 #include <QtGui/QApplication>
 
 void showUsage()
@@ -15,7 +17,12 @@ void showUsage()
 			"  -bin                      Use binary odometry (FAST+BRIEF)\n"
 			"  -icp                      Use ICP odometry\n"
 			"\n"
-			"  -in #.#                   Inliers maximum distance (default 0.005 m)\n"
+			"  -hz #.#                   Camera rate (default 0, 0 means as fast as the camera can)\n"
+			"  -db \"input.db\"          Use database instead of camera (recorded with rtabmap-dataRecorder)\n"
+			"  -clouds #                 Maximum clouds shown (default 10, zero means inf)\n"
+			"  -sec #.#                  Delay (seconds) before reading the database (if set)\n"
+			"\n"
+			"  -in #.#                   Inliers maximum distance, features/ICP (default 0.005 m)\n"
 			"  -max #                    Max features used for matching (default 0=inf)\n"
 			"  -min #                    Minimum inliers to accept the transform (default 20)\n"
 			"  -depth #.#                Maximum features depth (default 5.0 m)\n"
@@ -23,16 +30,22 @@ void showUsage()
 			"  -lu #                     Linear update (default 0.0 m)\n"
 			"  -au #                     Angular update (default 0.0 radian)\n"
 			"  -reset #                  Reset countdown (default 0 = disabled)\n"
+			"\n"
+			"  -bin_brief_bytes #        BRIEF bytes (default 32)\n"
+			"  -bin_fast_thr #           FAST threshold (default 30)\n"
+			"  -bin_lsh                  Use nearest neighbor LSH (default brute force hamming)\n"
+			"\n"
 			"  -d #                      ICP decimation (default 4)\n"
 			"  -v #                      ICP voxel size (default 0.005)\n"
 			"  -s #                      ICP samples (default 0, not used if voxel is set.)\n"
 			"  -f #.#                    ICP fitness (default 0.01)\n"
+			"\n"
 			"  -debug                    Log debug messages\n"
 			"\n"
 			"Examples:\n"
 			"  odometryViewer -bow 0                                SURF example\n"
 			"  odometryViewer -bow 1                                SIFT example\n"
-			"  odometryViewer -bin                                  FAST/BRIEF example\n"
+			"  odometryViewer -bin -hz 10                           FAST/BRIEF example\n"
 			"  odometryViewer -icp -in 0.05 -i 30                   ICP example\n");
 	exit(1);
 }
@@ -43,6 +56,8 @@ int main (int argc, char * argv[])
 	ULogger::setLevel(ULogger::kInfo);
 
 	// parse arguments
+	float rate = 0.0;
+	std::string inputDatabase;
 	int odomType = 0; // 0=bow 1=bin 2=ICP
 	int bowType = 0;
 	float distance = 0.005;
@@ -57,6 +72,11 @@ int main (int argc, char * argv[])
 	float voxel = 0.005;
 	int samples = 10000;
 	float fitness = 0.01f;
+	int maxClouds = 10;
+	int briefBytes = 32;
+	int fastThr = 30;
+	bool useLSH = false;
+	float sec = 0.0f;
 
 	for(int i=1; i<argc; ++i)
 	{
@@ -68,6 +88,75 @@ int main (int argc, char * argv[])
 				bowType = std::atoi(argv[i]);
 				odomType = 0;
 				if(bowType < 0 || bowType > 1)
+				{
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
+		if(strcmp(argv[i], "-hz") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				rate = std::atof(argv[i]);
+				if(rate < 0)
+				{
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
+		if(strcmp(argv[i], "-db") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				inputDatabase = argv[i];
+				if(UFile::getExtension(inputDatabase).compare("db") != 0)
+				{
+					printf("Database path (%s) should end with \"db\" \n", inputDatabase.c_str());
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
+		if(strcmp(argv[i], "-clouds") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				maxClouds = std::atoi(argv[i]);
+				if(maxClouds < 0)
+				{
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
+		if(strcmp(argv[i], "-sec") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				sec = std::atof(argv[i]);
+				if(sec < 0.0f)
 				{
 					showUsage();
 				}
@@ -282,6 +371,45 @@ int main (int argc, char * argv[])
 			}
 			continue;
 		}
+		if(strcmp(argv[i], "-bin_brief_bytes") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				briefBytes = std::atoi(argv[i]);
+				if(briefBytes < 1)
+				{
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
+		if(strcmp(argv[i], "-bin_fast_thr") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				fastThr = std::atoi(argv[i]);
+				if(fastThr < 1)
+				{
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
+		if(strcmp(argv[i], "-bin_lsh") == 0)
+		{
+			useLSH = true;
+			continue;
+		}
 		if(strcmp(argv[i], "-bin") == 0)
 		{
 			odomType = 1;
@@ -302,6 +430,17 @@ int main (int argc, char * argv[])
 		showUsage();
 	}
 
+	if(inputDatabase.size())
+	{
+		UINFO("Using database input \"%s\"", inputDatabase.c_str());
+	}
+	else
+	{
+		UINFO("Using OpenNI camera");
+	}
+	UINFO("Camera rate = %f Hz", rate);
+	UINFO("Maximum clouds shown = %d", maxClouds);
+	UINFO("Delay = %f s", sec);
 	UINFO("Odometry used = %s", odomType==0?bowType==0?"Bag-of-words SURF":"Bag-of-words SIFT":odomType==1?"Binary (FAST+BRIEF)":"ICP");
 	UINFO("Inlier/ICP maximum correspondences distance = %f", distance);
 	UINFO("Max features = %d", maxWords);
@@ -315,10 +454,12 @@ int main (int argc, char * argv[])
 	UINFO("Cloud voxel size = %f", voxel);
 	UINFO("Cloud samples = %d", samples);
 	UINFO("Cloud fitness = %f", fitness);
+	UINFO("Binary BRIEF bytes = %d", briefBytes);
+	UINFO("Binary FAST threshold = %f", fastThr);
+	UINFO("Binary LSH = %f", useLSH?"true":"false");
 
 	QApplication app(argc, argv);
 
-	rtabmap::CameraOpenni camera("", 0, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0));
 	rtabmap::Odometry * odom = 0;
 
 	if(odomType == 0)
@@ -344,7 +485,11 @@ int main (int argc, char * argv[])
 				maxDepth,
 				linearUpdate,
 				angularUpdate,
-				resetCountdown);
+				resetCountdown,
+				briefBytes,
+				fastThr,
+				true,
+				!useLSH);
 	}
 	else // ICP
 	{
@@ -361,26 +506,44 @@ int main (int argc, char * argv[])
 				resetCountdown);
 	}
 	rtabmap::OdometryThread odomThread(odom);
-	rtabmap::OdometryViewer odomViewer(100, 2, 0.0);
+	rtabmap::OdometryViewer odomViewer(maxClouds, 2, 0.0);
 	UEventsManager::addHandler(&odomThread);
 	UEventsManager::addHandler(&odomViewer);
 
 	odomViewer.setWindowTitle("Odometry viewer");
-	odomViewer.setMinimumWidth(500);
-	odomViewer.setMinimumHeight(300);
-	odomViewer.showMaximized();
+	odomViewer.setMinimumWidth(800);
+	odomViewer.setMinimumHeight(500);
+	odomViewer.showNormal();
 
 	app.processEvents();
 
-	if(camera.init())
+	if(inputDatabase.size())
 	{
-		odomThread.start();
-		camera.start();
+		rtabmap::DBReader camera(inputDatabase, rate, true, sec);
+		if(camera.init())
+		{
+			odomThread.start();
+			camera.start();
 
-		app.exec();
+			app.exec();
 
-		camera.kill();
-		odomThread.join(true);
+			camera.kill();
+			odomThread.join(true);
+		}
+	}
+	else
+	{
+		rtabmap::CameraOpenni camera("", rate, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0));
+		if(camera.init())
+		{
+			odomThread.start();
+			camera.start();
+
+			app.exec();
+
+			camera.kill();
+			odomThread.join(true);
+		}
 	}
 
 	return 0;

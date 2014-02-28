@@ -27,7 +27,8 @@ class RTABMAP_EXP DBReader : public UThreadNode, public UEventsSender {
 public:
 	DBReader(const std::string & databasePath,
 			 float frameRate = 0.0f,
-			 bool odometryIgnored = false);
+			 bool odometryIgnored = false,
+			 float delayToStartSec = 0.0f);
 	virtual ~DBReader();
 
 	bool init(int startIndex=0);
@@ -42,6 +43,7 @@ private:
 	std::string _path;
 	float _frameRate;
 	bool _odometryIgnored;
+	float _delayToStartSec;
 
 	DBDriver * _dbDriver;
 	UTimer _timer;

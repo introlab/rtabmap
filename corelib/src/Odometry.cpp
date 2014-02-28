@@ -187,7 +187,7 @@ Transform OdometryBinary::computeTransform(Image & image)
 
 	if(_lastKeypoints.size())
 	{
-		if(newDescriptors.rows)
+		if(newDescriptors.rows && newDescriptors.rows > _lastKeypoints.size()/2) // at least 50% keypoints
 		{
 			cv::Mat results;
 			cv::Mat dists;
@@ -333,6 +333,11 @@ Transform OdometryBinary::computeTransform(Image & image)
 				UWARN("Not enough inliers %d < %d", oi, this->getMinInliers());
 			}
 		}
+		else if(newDescriptors.rows)
+		{
+			UWARN("At least 50%% keypoints of the last image required. New=%d last=%d",
+					newDescriptors.rows, _lastKeypoints.size());
+		}
 		else
 		{
 			UWARN("No feature extracted!");
@@ -437,7 +442,12 @@ Transform OdometryBOW::computeTransform(Image & image)
 		if(previousSignature && newSignature)
 		{
 			Transform transform;
-			if(!previousSignature->getWords3().empty() && !newSignature->getWords3().empty())
+			if(newSignature->getWords3().size() < previousSignature->getWords3().size()/2)
+			{
+				UWARN("At least 50%% keypoints of the last image required. New=%d last=%d",
+						newSignature->getWords3().size(), previousSignature->getWords3().size());
+			}
+			else if(!previousSignature->getWords3().empty() && !newSignature->getWords3().empty())
 			{
 				pcl::PointCloud<pcl::PointXYZ>::Ptr inliers1(new pcl::PointCloud<pcl::PointXYZ>); // previous
 				pcl::PointCloud<pcl::PointXYZ>::Ptr inliers2(new pcl::PointCloud<pcl::PointXYZ>); // new

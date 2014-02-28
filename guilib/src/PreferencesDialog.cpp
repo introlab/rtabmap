@@ -2658,7 +2658,7 @@ void PreferencesDialog::testOdometry(OdomTest test)
 		window->setMinimumHeight(600);
 		connect( window, SIGNAL(destroyed(QObject*)), this, SLOT(cleanOdometryTest()) );
 
-		OdometryViewer * odomViewer = new OdometryViewer(100, 2, 0.0, window);
+		OdometryViewer * odomViewer = new OdometryViewer(10, 2, 0.0, window);
 
 		QVBoxLayout *layout = new QVBoxLayout();
 		layout->addWidget(odomViewer);

@@ -223,9 +223,13 @@ void UEventsManager::dispatchEvent(UEvent * event, const UEventsSender * sender)
 			UEventsHandler * handler = *it;
 			handlersMutex_.unlock();
 
-			// To be able to add/remove an handler in a handleEvent call (without a deadlock)
-			// @see _addHandler(), _removeHandler()
-			handler->handleEvent(event);
+			// Don't process event if the handler is the same as the sender
+			if(handler != sender)
+			{
+				// To be able to add/remove an handler in a handleEvent call (without a deadlock)
+				// @see _addHandler(), _removeHandler()
+				handler->handleEvent(event);
+			}
 
 			handlersMutex_.lock();
 		}

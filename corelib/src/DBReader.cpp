@@ -20,10 +20,12 @@ namespace rtabmap {
 
 DBReader::DBReader(const std::string & databasePath,
 				   float frameRate,
-				   bool odometryIgnored) :
+				   bool odometryIgnored,
+				   float delayToStartSec) :
 	_path(databasePath),
 	_frameRate(frameRate),
 	_odometryIgnored(odometryIgnored),
+	_delayToStartSec(delayToStartSec),
 	_dbDriver(0),
 	_currentId(_ids.end())
 {
@@ -100,6 +102,10 @@ void DBReader::setFrameRate(float frameRate)
 
 void DBReader::mainLoopBegin()
 {
+	if(_delayToStartSec > 0.0f)
+	{
+		uSleep(_delayToStartSec*1000.0f);
+	}
 	_timer.start();
 }
 

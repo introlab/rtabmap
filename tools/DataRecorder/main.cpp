@@ -1,5 +1,6 @@
 
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UFile.h>
 #include <rtabmap/core/CameraOpenni.h>
 #include <rtabmap/core/Camera.h>
 #include <rtabmap/core/CameraThread.h>
@@ -96,6 +97,12 @@ int main (int argc, char * argv[])
 		showUsage();
 	}
 	fileName = argv[argc-1]; // the last is the output path
+
+	if(UFile::getExtension(fileName.toStdString()).compare("db") != 0)
+	{
+		printf("Database names must end with .db extension\n");
+		showUsage();
+	}
 
 	UINFO("Output = %s", fileName.toStdString().c_str());
 	UINFO("Show = %s", show?"true":"false");
