@@ -77,7 +77,7 @@ public:
 		kSrcVideo
 	};
 
-	enum OdomTest {
+	enum OdomType {
 		kOdomBIN,
 		kOdomBOW,
 		kOdomICP
@@ -137,8 +137,7 @@ public:
 	bool isSourceImageUsed() const;
 	bool isSourceDatabaseUsed() const;
 	bool isSourceOpenniUsed() const;
-	bool isSourceOpenniOdometryBIN() const;
-	bool isSourceOpenniOdometryBOW() const;
+	OdomType getOdometryType() const;
 	bool getGeneralAutoRestart() const;
 	bool getGeneralCameraKeypoints() const;
 	int getSourceImageType() const;
@@ -217,7 +216,7 @@ private slots:
 	void updateBasicParameter();
 	void openDatabaseViewer();
 	void cleanOdometryTest();
-	void testSourceOdometry();
+	void testOdometry();
 
 protected:
 	virtual void showEvent ( QShowEvent * event );
@@ -252,7 +251,7 @@ private:
 	void addParameters(const QGroupBox * box);
 	QList<QGroupBox*> getGroupBoxes();
 	void readSettingsBegin();
-	void testOdometry(OdomTest test);
+	void testOdometry(OdomType type);
 
 protected:
 	rtabmap::ParametersMap _parameters;

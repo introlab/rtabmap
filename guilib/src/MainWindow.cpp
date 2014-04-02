@@ -1948,13 +1948,20 @@ void MainWindow::startDetection()
 				delete _odomThread;
 			}
 			Odometry * odom;
-			if(_preferencesDialog->isSourceOpenniOdometryBIN())
+			if(_preferencesDialog->getOdometryType() == PreferencesDialog::kOdomBIN)
 			{
+				UINFO("Using odometry FAST/BRIEF");
 				odom = new OdometryBinary(parameters);
 			}
-			else //BOW
+			else if(_preferencesDialog->getOdometryType() == PreferencesDialog::kOdomBOW)
 			{
+				UINFO("Using odometry SIFT/SURF");
 				odom = new OdometryBOW(parameters);
+			}
+			else
+			{
+				UINFO("Using odometry ICP");
+				odom = new OdometryICP(parameters);
 			}
 			_odomThread = new OdometryThread(odom);
 
@@ -2005,13 +2012,20 @@ void MainWindow::startDetection()
 				delete _odomThread;
 			}
 			Odometry * odom;
-			if(_preferencesDialog->isSourceOpenniOdometryBIN())
+			if(_preferencesDialog->getOdometryType() == PreferencesDialog::kOdomBIN)
 			{
+				UINFO("Using odometry FAST/BRIEF");
 				odom = new OdometryBinary(parameters);
 			}
-			else //BOW
+			else if(_preferencesDialog->getOdometryType() == PreferencesDialog::kOdomBOW)
 			{
+				UINFO("Using odometry SIFT/SURF");
 				odom = new OdometryBOW(parameters);
+			}
+			else
+			{
+				UINFO("Using odometry ICP");
+				odom = new OdometryICP(parameters);
 			}
 			_odomThread = new OdometryThread(odom);
 

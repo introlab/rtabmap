@@ -88,7 +88,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->pushButton_saveConfig, SIGNAL(clicked()), this, SLOT(saveConfigTo()));
 	connect(_ui->pushButton_resetConfig, SIGNAL(clicked()), this, SLOT(resetConfig()));
 	connect(_ui->radioButton_basic, SIGNAL(toggled(bool)), this, SLOT(setupTreeView()));
-	connect(_ui->pushButton_testSourceOdometry, SIGNAL(clicked()), this, SLOT(testSourceOdometry()));
+	connect(_ui->pushButton_testOdometry, SIGNAL(clicked()), this, SLOT(testOdometry()));
 
 	// General panel
 	connect(_ui->general_checkBox_imagesKept, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
@@ -2367,13 +2367,18 @@ bool PreferencesDialog::isSourceOpenniUsed() const
 {
 	return _ui->groupBox_sourceOpenni->isChecked();
 }
-bool PreferencesDialog::isSourceOpenniOdometryBOW() const
+
+PreferencesDialog::OdomType PreferencesDialog::getOdometryType() const
 {
-	return _ui->odom_type->currentIndex() == 0;
-}
-bool PreferencesDialog::isSourceOpenniOdometryBIN() const
-{
-	return _ui->odom_type->currentIndex() == 1;
+	if(_ui->odom_type->currentIndex() == 0)
+	{
+		return kOdomBOW;
+	}
+	else if(_ui->odom_type->currentIndex() == 1)
+	{
+		return kOdomBIN;
+	}
+	return kOdomICP;
 }
 
 bool PreferencesDialog::getGeneralAutoRestart() const
@@ -2606,7 +2611,7 @@ void PreferencesDialog::setSLAMMode(bool enabled)
 	}
 }
 
-void PreferencesDialog::testSourceOdometry()
+void PreferencesDialog::testOdometry()
 {
 	if(_ui->odom_type->currentIndex() == 0)
 	{
@@ -2622,7 +2627,7 @@ void PreferencesDialog::testSourceOdometry()
 	}
 }
 
-void PreferencesDialog::testOdometry(OdomTest test)
+void PreferencesDialog::testOdometry(OdomType type)
 {
 	UASSERT(_odomCamera == 0 && _odomThread == 0);
 
@@ -2635,11 +2640,11 @@ void PreferencesDialog::testOdometry(OdomTest test)
 	{
 		Odometry * odometry;
 		ParametersMap parameters = this->getAllParameters();
-		if(test == kOdomBIN)
+		if(type == kOdomBIN)
 		{
 			odometry = new OdometryBinary(parameters);
 		}
-		else if(test == kOdomICP)
+		else if(type == kOdomICP)
 		{
 			odometry = new OdometryICP(parameters);
 		}
@@ -2653,7 +2658,7 @@ void PreferencesDialog::testOdometry(OdomTest test)
 		QWidget * window = new QWidget(this, Qt::Popup);
 		window->setAttribute(Qt::WA_DeleteOnClose);
 		window->setWindowFlags(Qt::Dialog);
-		window->setWindowTitle(tr("%1 Odometry viewer").arg(test==kOdomBIN?"Binary":"Bag-of-words"));
+		window->setWindowTitle(tr("%1 Odometry viewer").arg(type==kOdomBIN?"Binary":"Bag-of-words"));
 		window->setMinimumWidth(800);
 		window->setMinimumHeight(600);
 		connect( window, SIGNAL(destroyed(QObject*)), this, SLOT(cleanOdometryTest()) );

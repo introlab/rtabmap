@@ -30,4 +30,6 @@ TARGET_LINK_LIBRARIES(databaseViewer rtabmap_core rtabmap_gui rtabmap_utilite ${
 SET_TARGET_PROPERTIES( databaseViewer 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-databaseViewer)
 
-
+INSTALL(TARGETS databaseViewer
+		RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT runtime
+		BUNDLE DESTINATION "${CMAKE_BUNDLE_LOCATION}" COMPONENT runtime)

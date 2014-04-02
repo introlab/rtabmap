@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>761</width>
-            <height>981</height>
+            <width>777</width>
+            <height>826</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>12</number>
+                <number>15</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -4919,7 +4919,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <item row="3" column="1">
                               <widget class="QLabel" name="label_147">
                                <property name="text">
-                                <string>Brute force nerarest neighbor matching. If false, FLANN LSH index is used.</string>
+                                <string>Brute force nearest neighbor matching. If false, FLANN LSH index is used.</string>
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
@@ -5138,7 +5138,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <layout class="QHBoxLayout" name="horizontalLayout_5">
                       <item>
-                       <widget class="QPushButton" name="pushButton_testSourceOdometry">
+                       <widget class="QPushButton" name="pushButton_testOdometry">
                         <property name="text">
                          <string>Test selected odometry</string>
                         </property>
