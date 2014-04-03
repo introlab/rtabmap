@@ -220,8 +220,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, LinearUpdate,           float, 0.0, 	"Min linear displacement to update odometry.");
 	RTABMAP_PARAM(Odom, AngularUpdate,          float, 0.0, 	"Min angular displacement to update odometry.");
 	RTABMAP_PARAM(Odom, MaxWords,               int, 0, 		"0 no limits.");
-	RTABMAP_PARAM(Odom, InlierDistance,         float, 0.005, 	"Maximum distance for visual word correspondences.");
-	RTABMAP_PARAM(Odom, MinInliers,             int, 20, 		"Minimum visual word correspondences to compute geometry transform.");
+	RTABMAP_PARAM(Odom, InlierDistance,         float, 0.01, 	"Maximum distance for visual word correspondences.");
+	RTABMAP_PARAM(Odom, MinInliers,             int, 10, 		"Minimum visual word correspondences to compute geometry transform.");
 	RTABMAP_PARAM(Odom, Iterations,             int, 100, 		"Maximum iterations to compute the transform from visual words.");
 	RTABMAP_PARAM(Odom, MaxDepth,               float, 5.0, 	"Max depth of the words (0 means no limit).");
 	RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,         "Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).")
