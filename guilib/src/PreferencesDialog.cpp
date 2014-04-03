@@ -293,6 +293,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_dictionary_nndrUsed->setObjectName(Parameters::kKpNndrUsed().c_str());
 	_ui->surf_doubleSpinBox_nndrRatio->setObjectName(Parameters::kKpNndrRatio().c_str());
 	_ui->surf_spinBox_maxLeafs->setObjectName(Parameters::kKpMaxLeafs().c_str());
+	_ui->surf_doubleSpinBox_maxDepth->setObjectName(Parameters::kKpMaxDepth().c_str());
 	_ui->surf_spinBox_wordsPerImageTarget->setObjectName(Parameters::kKpWordsPerImage().c_str());
 	_ui->surf_doubleSpinBox_ratioBadSign->setObjectName(Parameters::kKpBadSignRatio().c_str());
 	_ui->checkBox_kp_tfIdfLikelihoodUsed->setObjectName(Parameters::kKpTfIdfLikelihoodUsed().c_str());

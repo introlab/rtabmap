@@ -405,6 +405,18 @@ void findCorrespondences(
 	inliers2.resize(oi);
 }
 
+pcl::PointXYZ getDepth(
+		const cv::Mat & depthImage,
+		int x, int y,
+		float depthConstant)
+{
+	return getDepth(depthImage, x, y,
+			(float)depthImage.cols/2,
+			(float)depthImage.rows/2,
+			1.0f/depthConstant,
+			1.0f/depthConstant);
+}
+
 pcl::PointXYZ getDepth(const cv::Mat & depthImage,
 					   int x, int y,
 			       float cx, float cy,

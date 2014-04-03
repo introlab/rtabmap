@@ -18,6 +18,7 @@
  */
 
 #include "rtabmap/core/Features2d.h"
+#include "rtabmap/core/util3d.h"
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/ULogger.h"
@@ -35,6 +36,63 @@
 #define OPENCV_SURF_GPU CV_MAJOR_VERSION >= 2 and CV_MINOR_VERSION >=2 and CV_SUBMINOR_VERSION>=1
 
 namespace rtabmap {
+
+void filterKeypointsByDepth(
+		std::vector<cv::KeyPoint> & keypoints,
+		const cv::Mat & depth,
+		float depthConstant,
+		float maxDepth)
+{
+	cv::Mat descriptors;
+	filterKeypointsByDepth(keypoints, descriptors, depth, depthConstant, maxDepth);
+}
+
+void filterKeypointsByDepth(
+		std::vector<cv::KeyPoint> & keypoints,
+		cv::Mat & descriptors,
+		const cv::Mat & depth,
+		float depthConstant,
+		float maxDepth)
+{
+	if(!depth.empty() && depthConstant > 0.0f && maxDepth > 0.0f && (descriptors.empty() || descriptors.rows == keypoints.size()))
+	{
+		std::vector<cv::KeyPoint> output(keypoints.size());
+		std::vector<int> indexes(keypoints.size(), 0);
+		int oi=0;
+		for(unsigned int i=0; i<keypoints.size(); ++i)
+		{
+			pcl::PointXYZ pt = util3d::getDepth(depth, keypoints[i].pt.x, keypoints[i].pt.y, depthConstant);
+			if(uIsFinite(pt.z) && pt.z < maxDepth)
+			{
+				output[oi++] = keypoints[i];
+				indexes[i] = 1;
+			}
+		}
+		output.resize(oi);
+		keypoints = output;
+
+		if(!descriptors.empty() && keypoints.size() != descriptors.rows)
+		{
+			if(keypoints.size() == 0)
+			{
+				descriptors = cv::Mat();
+			}
+			else
+			{
+				cv::Mat newDescriptors(keypoints.size(), descriptors.cols, descriptors.type());
+				int di = 0;
+				for(unsigned int i=0; i<indexes.size(); ++i)
+				{
+					if(indexes[i] == 1)
+					{
+						memcpy(newDescriptors.ptr<float>(di++), descriptors.ptr<float>(i), descriptors.cols*sizeof(float));
+					}
+				}
+				descriptors = newDescriptors;
+			}
+		}
+	}
+}
 
 void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints)
 {

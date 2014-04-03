@@ -68,6 +68,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
 	_parallelized(Parameters::defaultKpParallelized()),
+	_wordsMaxDepth(Parameters::defaultKpMaxDepth()),
 	_wordsPerImageTarget(Parameters::defaultKpWordsPerImage()),
 	_roiRatios(std::vector<float>(4, 0.0f)),
 
@@ -358,6 +359,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kKpTfIdfLikelihoodUsed(), _tfIdfLikelihoodUsed);
 	Parameters::parse(parameters, Parameters::kKpParallelized(), _parallelized);
 	Parameters::parse(parameters, Parameters::kKpBadSignRatio(), _badSignRatio);
+	Parameters::parse(parameters, Parameters::kKpMaxDepth(), _wordsMaxDepth);
 	Parameters::parse(parameters, Parameters::kKpWordsPerImage(), _wordsPerImageTarget);
 
 	if((iter=parameters.find(Parameters::kKpRoiRatios())) != parameters.end())
@@ -2771,6 +2773,8 @@ void Memory::copyData(const Signature * from, Signature * to)
 
 void Memory::extractKeypointsAndDescriptors(
 		const cv::Mat & image,
+		const cv::Mat & depth,
+		float depthConstant,
 		std::vector<cv::KeyPoint> & keypoints,
 		cv::Mat & descriptors)
 {
@@ -2780,8 +2784,11 @@ void Memory::extractKeypointsAndDescriptors(
 		if(_keypointDetector)
 		{
 			cv::Rect roi = KeypointDetector::computeRoi(image, _roiRatios);
-			keypoints = _keypointDetector->generateKeypoints(image, _wordsPerImageTarget, roi);
+			keypoints = _keypointDetector->generateKeypoints(image, 0, roi);
 			UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), timer.ticks());
+
+			filterKeypointsByDepth(keypoints, depth, depthConstant, _wordsMaxDepth);
+			limitKeypoints(keypoints, _wordsPerImageTarget);
 		}
 
 		if(keypoints.size())
@@ -2876,12 +2883,13 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 			descriptors = image.descriptors();
 			keypoints = image.keypoints();
 		}
+		filterKeypointsByDepth(keypoints, descriptors, image.depth(), image.depthConstant(), _wordsMaxDepth);
 		limitKeypoints(keypoints, descriptors, _wordsPerImageTarget);
 	}
 	else
 	{
 		// IMAGE RAW
-		this->extractKeypointsAndDescriptors(image.image(), keypoints, descriptors);
+		this->extractKeypointsAndDescriptors(image.image(), image.depth(), image.depthConstant(), keypoints, descriptors);
 
 		UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
 		if(descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))

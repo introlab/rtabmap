@@ -155,6 +155,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Kp, PublishKeypoints,      bool, true, 		"Publishing keypoints.");
 	RTABMAP_PARAM(Kp, NNStrategy,            int, 1, 	 		"Naive 0, kdForest 1.");
 	RTABMAP_PARAM(Kp, IncrementalDictionary, bool, true, 		"");
+	RTABMAP_PARAM(Kp, MaxDepth,              float, 0.0, 		"Filter extracted keypoints by depth (0=inf)");
 	RTABMAP_PARAM(Kp, WordsPerImage,         int, 400, 			"");
 	RTABMAP_PARAM(Kp, BadSignRatio,          float, 0.2, 		"Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
 	RTABMAP_PARAM(Kp, MinDistUsed,           bool, false, 		"The nearest neighbor must have a distance < minDist.");

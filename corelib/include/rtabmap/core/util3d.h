@@ -90,6 +90,11 @@ std::multimap<int, cv::KeyPoint> RTABMAP_EXP aggregate(
 		const std::list<int> & wordIds,
 		const std::vector<cv::KeyPoint> & keypoints);
 
+pcl::PointXYZ RTABMAP_EXP getDepth(
+		const cv::Mat & depthImage,
+		int x, int y,
+		float depthConstant);
+
 pcl::PointXYZ RTABMAP_EXP getDepth(const cv::Mat & depthImage,
 					   int x, int y,
 					   float cx, float cy,

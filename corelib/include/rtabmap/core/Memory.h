@@ -139,6 +139,8 @@ public:
 	std::multimap<int, cv::KeyPoint> getWords(int signatureId) const;
 	void extractKeypointsAndDescriptors(
 			const cv::Mat & image,
+			const cv::Mat & depth,
+			float depthConstant,
 			std::vector<cv::KeyPoint> & keypoints,
 			cv::Mat & descriptors);
 
@@ -218,6 +220,7 @@ private:
 	float _badSignRatio;;
 	bool _tfIdfLikelihoodUsed;
 	bool _parallelized;
+	float _wordsMaxDepth; // 0=inf
 	int _wordsPerImageTarget; // <0=none, 0=inf
 	std::vector<float> _roiRatios; // size 4
 

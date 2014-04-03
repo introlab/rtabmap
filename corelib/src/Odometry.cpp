@@ -187,7 +187,7 @@ Transform OdometryBinary::computeTransform(Image & image)
 
 	if(_lastKeypoints.size())
 	{
-		if(newDescriptors.rows && newDescriptors.rows > _lastKeypoints.size()/2) // at least 50% keypoints
+		if(newDescriptors.rows && newDescriptors.rows > (int)_lastKeypoints.size()/2) // at least 50% keypoints
 		{
 			cv::Mat results;
 			cv::Mat dists;
@@ -379,6 +379,7 @@ OdometryBOW::OdometryBOW(
 {
 	ParametersMap customParameters;
 	customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(maxWords)));
+	customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(maxDepth)));
 	customParameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(detectorType)));
 	customParameters.insert(ParametersPair(Parameters::kSURFHessianThreshold(), uNumber2Str(surfHessianThreshold)));
 	customParameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(nndr)));
@@ -396,6 +397,7 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 {
 	ParametersMap customParameters;
 	customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(this->getMaxFeatures()))); // hack
+	customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(this->getMaxDepth())));
 	customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
 	customParameters.insert(ParametersPair(Parameters::kMemImageKept(), "false"));
 	if(!_memory->init("", false, customParameters, false))
@@ -427,7 +429,7 @@ Transform OdometryBOW::computeTransform(Image & image)
 
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat descriptors;
-	_memory->extractKeypointsAndDescriptors(image.image(), keypoints, descriptors);
+	_memory->extractKeypointsAndDescriptors(image.image(), image.depth(), image.depthConstant(), keypoints, descriptors);
 
 	image.setDescriptors(descriptors);
 	image.setKeypoints(keypoints);

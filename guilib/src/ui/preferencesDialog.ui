@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>15</number>
+                <number>9</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -2790,12 +2790,9 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                    <property name="title">
                     <string>Visual word</string>
                    </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_39">
+                   <layout class="QVBoxLayout" name="verticalLayout_38">
                     <item>
                      <layout class="QFormLayout" name="formLayout_7">
-                      <property name="fieldGrowthPolicy">
-                       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                      </property>
                       <item row="0" column="0">
                        <widget class="QCheckBox" name="checkBox_kp_publishKeypoints">
                         <property name="text">
@@ -2817,6 +2814,44 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                        </widget>
                       </item>
                       <item row="1" column="0">
+                       <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_maxDepth">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>99.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_53">
+                        <property name="toolTip">
+                         <string>0 means that the response (hessian) threshold 
+used for the detector will not be adapted. 
+Otherwise, the threshold is modified to 
+generate the number of words requested.</string>
+                        </property>
+                        <property name="text">
+                         <string>Maximum words depth (0 means inf). Only used when a depth image is provided. Applied before &quot;Maximum words per image&quot;.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
                        <widget class="QSpinBox" name="surf_spinBox_wordsPerImageTarget">
                         <property name="minimum">
                          <number>0</number>
@@ -2829,7 +2864,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="1" column="1">
+                      <item row="2" column="1">
                        <widget class="QLabel" name="label_22">
                         <property name="toolTip">
                          <string>0 means that the response (hessian) threshold 
@@ -2845,7 +2880,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="0">
+                      <item row="3" column="0">
                        <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_ratioBadSign">
                         <property name="decimals">
                          <number>2</number>
@@ -2864,7 +2899,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="1">
+                      <item row="3" column="1">
                        <widget class="QLabel" name="label_81">
                         <property name="toolTip">
                          <string>0 means that the response (hessian) threshold 
@@ -2880,7 +2915,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="0">
+                      <item row="4" column="0">
                        <widget class="QCheckBox" name="checkBox_kp_tfIdfLikelihoodUsed">
                         <property name="text">
                          <string/>
@@ -2890,7 +2925,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="1">
+                      <item row="4" column="1">
                        <widget class="QLabel" name="label_82">
                         <property name="text">
                          <string>Use the tf-idf method to compute the likelihood.</string>
@@ -2900,7 +2935,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="0">
+                      <item row="5" column="0">
                        <widget class="QCheckBox" name="checkBox_kp_parallelized">
                         <property name="text">
                          <string/>
@@ -2910,7 +2945,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="1">
+                      <item row="5" column="1">
                        <widget class="QLabel" name="label_94">
                         <property name="text">
                          <string>If the dictionary update and signature creation were parallelized.</string>
@@ -2920,14 +2955,14 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="0">
+                      <item row="6" column="0">
                        <widget class="QLineEdit" name="lineEdit_kp_roi">
                         <property name="readOnly">
                          <bool>true</bool>
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="1">
+                      <item row="6" column="1">
                        <widget class="QLabel" name="label_101">
                         <property name="text">
                          <string>ROI ratios [left, right, top, bottom].</string>
@@ -2937,7 +2972,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
+                      <item row="7" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi0">
                         <property name="suffix">
                          <string> %</string>
@@ -2947,7 +2982,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="1">
+                      <item row="7" column="1">
                        <widget class="QLabel" name="label_97">
                         <property name="text">
                          <string>Left ROI ratio (0 = no change).</string>
@@ -2957,7 +2992,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
+                      <item row="8" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi1">
                         <property name="suffix">
                          <string> %</string>
@@ -2967,7 +3002,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="1">
+                      <item row="8" column="1">
                        <widget class="QLabel" name="label_98">
                         <property name="text">
                          <string>Right ROI ratio (0 = no change).</string>
@@ -2977,7 +3012,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="0">
+                      <item row="9" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi2">
                         <property name="suffix">
                          <string> %</string>
@@ -2987,7 +3022,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="1">
+                      <item row="9" column="1">
                        <widget class="QLabel" name="label_99">
                         <property name="text">
                          <string>Top ROI ratio (0 = no change).</string>
@@ -2997,7 +3032,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="0">
+                      <item row="10" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi3">
                         <property name="suffix">
                          <string> %</string>
@@ -3007,7 +3042,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="1">
+                      <item row="10" column="1">
                        <widget class="QLabel" name="label_100">
                         <property name="text">
                          <string>Bottom ROI ratio (0 = no change).</string>
@@ -3017,17 +3052,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="1">
-                       <widget class="QLabel" name="label_117">
-                        <property name="text">
-                         <string>Visual word type.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="10" column="0">
+                      <item row="11" column="0">
                        <widget class="QComboBox" name="comboBox_detector_strategy">
                         <item>
                          <property name="text">
@@ -3039,6 +3064,16 @@ generate the number of words requested.</string>
                           <string>SIFT</string>
                          </property>
                         </item>
+                       </widget>
+                      </item>
+                      <item row="11" column="1">
+                       <widget class="QLabel" name="label_117">
+                        <property name="text">
+                         <string>Visual word type.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
                        </widget>
                       </item>
                      </layout>
@@ -4144,7 +4179,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="3" column="1">
                        <widget class="QLabel" name="label_146">
                         <property name="text">
-                         <string>Max feature depth.</string>
+                         <string>Max feature depth. Note that parameter &quot;Visual Word&quot;-&gt;&quot;Max words depth&quot; is applied before this.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>
