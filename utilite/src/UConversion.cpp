@@ -21,7 +21,11 @@
 
 #include <sstream>
 #include <string.h>
-#include "rtabmap/utilite/ULogger.h"
+#include <stdio.h>
+
+#ifdef WIN32
+#include <windows.h>
+#endif
 
 std::string uReplaceChar(const std::string & str, char before, char after)
 {
