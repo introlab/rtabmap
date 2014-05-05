@@ -38,7 +38,7 @@ public:
 
 	const float * data() const {return data_.data();}
 	float * data() {return data_.data();}
-	int size() const {return data_.size();}
+	int size() const {return (int)data_.size();}
 
 	float & x() {return data_[3];}
 	float & y() {return data_[7];}

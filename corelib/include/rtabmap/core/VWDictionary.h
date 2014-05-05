@@ -71,7 +71,7 @@ public:
 	void setNndrUsed(bool used) {_nndrUsed = used;}
 	bool isNndrUsed() const {return _nndrUsed;}
 	float getNndrRatio() {return _nndrRatio;}
-	unsigned int getNotIndexedWordsCount() const {return _notIndexedWords.size();}
+	unsigned int getNotIndexedWordsCount() const {return (int)_notIndexedWords.size();}
 	int getLastIndexedWordId() const;
 	int getTotalActiveReferences() const {return _totalActiveReferences;}
 	void setNNStrategy(NNStrategy strategy, const ParametersMap & parameters = ParametersMap());
@@ -83,7 +83,7 @@ public:
 
 	void clear();
 	std::vector<VisualWord *> getUnusedWords() const;
-	unsigned int getUnusedWordsSize() const {return _unusedWords.size();}
+	unsigned int getUnusedWordsSize() const {return (int)_unusedWords.size();}
 	void removeWords(const std::vector<VisualWord*> & words); // caller must delete the words
 
 protected:

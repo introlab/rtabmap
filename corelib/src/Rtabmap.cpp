@@ -443,7 +443,7 @@ int Rtabmap::getWMSize() const
 {
 	if(_memory)
 	{
-		return _memory->getWorkingMem().size()-1; // remove virtual place
+		return (int)_memory->getWorkingMem().size()-1; // remove virtual place
 	}
 	return 0;
 }
@@ -472,7 +472,7 @@ int Rtabmap::getSTMSize() const
 {
 	if(_memory)
 	{
-		return _memory->getStMem().size();
+		return (int)_memory->getStMem().size();
 	}
 	return 0;
 }
@@ -1320,7 +1320,7 @@ bool Rtabmap::process(const Image & image)
 		UASSERT(_optimizedPoses.find(signature->id()) != _optimizedPoses.end());
 		poses.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
 
-		localSpaceDetectionPosesCount = poses.size()-1;
+		localSpaceDetectionPosesCount = (int)poses.size()-1;
 		//The nearest will be the reference for a loop closure transform
 		if(poses.size() &&
 				localSpaceNearestId &&
@@ -1407,8 +1407,8 @@ bool Rtabmap::process(const Image & image)
 		lcHypothesisReactivated = sLoop->isSaved()?1.0f:0.0f;
 	}
 	dictionarySize = _memory->getVWDictionarySize();
-	refWordsCount = signature->getWords().size();
-	refUniqueWordsCount = uUniqueKeys(signature->getWords()).size();
+	refWordsCount = (int)signature->getWords().size();
+	refUniqueWordsCount = (int)uUniqueKeys(signature->getWords()).size();
 
 	// Posterior is empty if a bad signature is detected
 	float vpHypothesis = posterior.size()?posterior.at(Memory::kIdVirtual):0.0f;
