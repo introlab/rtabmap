@@ -42,7 +42,7 @@ void MapVisibilityWidget::updateCheckBoxes()
 	QWidget * area = this->findChild<QWidget*>("area");
 	QVBoxLayout * layout = (QVBoxLayout *)area->layout();
 	QList<QCheckBox*> checkboxes = area->findChildren<QCheckBox*>();
-	while(checkboxes.size() && checkboxes.size() > _poses.size())
+	while(checkboxes.size() && checkboxes.size() > (int)_poses.size())
 	{
 		delete *checkboxes.begin();
 		checkboxes.erase(checkboxes.begin());

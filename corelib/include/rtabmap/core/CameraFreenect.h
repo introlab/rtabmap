@@ -14,10 +14,11 @@
 #include <rtabmap/utilite/UEventsSender.h>
 #include <rtabmap/utilite/UThread.h>
 
-#include <libfreenect.h>
 #include <opencv2/opencv.hpp>
 
 class UTimer;
+typedef struct _freenect_context freenect_context;
+typedef struct _freenect_device freenect_device;
 
 namespace rtabmap {
 
