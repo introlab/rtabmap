@@ -14,6 +14,7 @@ SET(SRC_FILES
     Camera.cpp
     CameraThread.cpp
     CameraOpenni.cpp
+    CameraFreenect.cpp
     
     EpipolarGeometry.cpp
 	VisualWord.cpp
@@ -43,6 +44,7 @@ SET(INCLUDE_DIRS
     ${OpenCV_INCLUDE_DIRS}
 	${PCL_INCLUDE_DIRS}
 	${ZLIB_INCLUDE_DIRS}
+	${Freenect_INCLUDE_DIRS}
 )
 
 ####################################
@@ -81,7 +83,7 @@ INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 # Add binary that is built from the source file "main.cpp".
 # The extension is automatically found.
 ADD_LIBRARY(rtabmap_core ${SRC_FILES} ${RESOURCES_HEADERS})
-TARGET_LINK_LIBRARIES(rtabmap_core rtabmap_utilite ${OpenCV_LIBS} ${PCL_LIBRARIES} ${ZLIB_LIBRARIES})
+TARGET_LINK_LIBRARIES(rtabmap_core rtabmap_utilite ${OpenCV_LIBS} ${PCL_LIBRARIES} ${ZLIB_LIBRARIES} ${Freenect_LIBRARIES})
 
 INSTALL(TARGETS rtabmap_core
         RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT runtime

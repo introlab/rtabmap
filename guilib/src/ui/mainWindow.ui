@@ -86,9 +86,16 @@
       <addaction name="actionImageFiles"/>
       <addaction name="actionVideo"/>
      </widget>
+     <widget class="QMenu" name="menuRGB_D_camera">
+      <property name="title">
+       <string>RGB-D camera</string>
+      </property>
+      <addaction name="actionOpenNI"/>
+      <addaction name="actionFreenect"/>
+     </widget>
      <addaction name="menuImage"/>
      <addaction name="actionDatabase"/>
-     <addaction name="actionOpenni_RGBD"/>
+     <addaction name="menuRGB_D_camera"/>
     </widget>
     <addaction name="menuSelect_source"/>
     <addaction name="separator"/>
@@ -890,14 +897,6 @@
     <string>Print loop closure IDs to console</string>
    </property>
   </action>
-  <action name="actionOpenni_RGBD">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Openni (RGBD)</string>
-   </property>
-  </action>
   <action name="actionSave_point_cloud">
    <property name="text">
     <string>Save high-res point clouds (*.pcd *.ply *.vtk)...</string>
@@ -977,6 +976,22 @@
   <action name="actionScreenshot">
    <property name="text">
     <string>Take a screenshot</string>
+   </property>
+  </action>
+  <action name="actionOpenNI">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>OpenNI</string>
+   </property>
+  </action>
+  <action name="actionFreenect">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Freenect</string>
    </property>
   </action>
  </widget>

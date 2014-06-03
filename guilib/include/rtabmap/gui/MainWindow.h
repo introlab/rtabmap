@@ -37,6 +37,7 @@ namespace rtabmap {
 class CameraThread;
 class DBReader;
 class CameraOpenni;
+class CameraFreenect;
 class OdometryThread;
 class CloudViewer;
 }
@@ -113,6 +114,7 @@ private slots:
 	void selectStream();
 	void selectDatabase();
 	void selectOpenni();
+	void selectFreenect();
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void downloadAllClouds();
@@ -175,7 +177,7 @@ private:
 	void setupMainLayout(bool vertical);
 	void updateSelectSourceImageMenu(int type);
 	void updateSelectSourceDatabase(bool used);
-	void updateSelectSourceOpenni(bool used);
+	void updateSelectSourceOpenniMenu(bool used, bool openni);
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr createAssembledCloud();
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr createCloud(
@@ -201,6 +203,7 @@ private:
 	rtabmap::CameraThread * _camera;
 	rtabmap::DBReader * _dbReader;
 	rtabmap::CameraOpenni * _cameraOpenni;
+	rtabmap::CameraFreenect * _cameraOpenKinect;
 	rtabmap::OdometryThread * _odomThread;
 
 	SrcType _srcType;

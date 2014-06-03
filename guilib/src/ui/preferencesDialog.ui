@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>859</width>
-    <height>390</height>
+    <width>1009</width>
+    <height>612</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>560</width>
-            <height>632</height>
+            <y>-271</y>
+            <width>711</width>
+            <height>795</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>9</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1521,7 +1521,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QGroupBox" name="groupBox_sourceOpenni">
                       <property name="title">
-                       <string>OpenNI camera (RGB-D)</string>
+                       <string>RGB-D camera</string>
                       </property>
                       <property name="checkable">
                        <bool>true</bool>
@@ -1533,12 +1533,43 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item>
                         <widget class="QLabel" name="label_40">
                          <property name="text">
-                          <string>Grabber for OpenNI devices (i.e., Primesense PSDK, Microsoft Kinect, Asus XTion Pro/Live).</string>
+                          <string>Grabber for RGB-D devices (i.e., Primesense PSDK, Microsoft Kinect, Asus XTion Pro/Live).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
                         </widget>
+                       </item>
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_7">
+                         <item>
+                          <widget class="QRadioButton" name="radioButton_openni">
+                           <property name="text">
+                            <string>OpenNI</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QRadioButton" name="radioButton_freenect">
+                           <property name="text">
+                            <string>Feeenect</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <spacer name="horizontalSpacer">
+                           <property name="orientation">
+                            <enum>Qt::Horizontal</enum>
+                           </property>
+                           <property name="sizeHint" stdset="0">
+                            <size>
+                             <width>40</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                          </spacer>
+                         </item>
+                        </layout>
                        </item>
                        <item>
                         <layout class="QFormLayout" name="formLayout">
@@ -1548,7 +1579,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          <item row="0" column="0">
                           <widget class="QLineEdit" name="lineEdit_openniDevice">
                            <property name="text">
-                            <string>#1</string>
+                            <string/>
                            </property>
                           </widget>
                          </item>

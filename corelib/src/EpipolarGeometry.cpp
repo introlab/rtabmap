@@ -49,19 +49,9 @@ EpipolarGeometry::~EpipolarGeometry() {
 
 void EpipolarGeometry::parseParameters(const ParametersMap & parameters)
 {
-	ParametersMap::const_iterator iter;
-	if((iter=parameters.find(Parameters::kVhEpMatchCountMin())) != parameters.end())
-	{
-		_matchCountMinAccepted = std::atoi((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kVhEpRansacParam1())) != parameters.end())
-	{
-		_ransacParam1 = std::atof((*iter).second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kVhEpRansacParam2())) != parameters.end())
-	{
-		_ransacParam2 = std::atof((*iter).second.c_str());
-	}
+	Parameters::parse(parameters, Parameters::kVhEpMatchCountMin(), _matchCountMinAccepted);
+	Parameters::parse(parameters, Parameters::kVhEpRansacParam1(), _ransacParam1);
+	Parameters::parse(parameters, Parameters::kVhEpRansacParam2(), _ransacParam2);
 }
 
 bool EpipolarGeometry::check(const Signature * ssA, const Signature * ssB)

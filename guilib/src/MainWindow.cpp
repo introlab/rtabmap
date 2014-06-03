@@ -66,6 +66,7 @@
 
 //RGB-D stuff
 #include "rtabmap/core/CameraOpenni.h"
+#include "rtabmap/core/CameraFreenect.h"
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/core/util3d.h"
@@ -97,6 +98,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_camera(0),
 	_dbReader(0),
 	_cameraOpenni(0),
+	_cameraOpenKinect(0),
 	_odomThread(0),
 	_srcType(kSrcUndefined),
 	_preferencesDialog(0),
@@ -280,15 +282,17 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	selectSourceImageGrp->addAction(_ui->actionUsbCamera);
 	selectSourceImageGrp->addAction(_ui->actionImageFiles);
 	selectSourceImageGrp->addAction(_ui->actionVideo);
-	selectSourceImageGrp->addAction(_ui->actionOpenni_RGBD);
+	selectSourceImageGrp->addAction(_ui->actionOpenNI);
+	selectSourceImageGrp->addAction(_ui->actionFreenect);
 	this->updateSelectSourceImageMenu(_preferencesDialog->getSourceImageType());
 	connect(_ui->actionImageFiles, SIGNAL(triggered()), this, SLOT(selectImages()));
 	connect(_ui->actionVideo, SIGNAL(triggered()), this, SLOT(selectVideo()));
 	connect(_ui->actionUsbCamera, SIGNAL(triggered()), this, SLOT(selectStream()));
 	this->updateSelectSourceDatabase(_preferencesDialog->isSourceDatabaseUsed());
 	connect(_ui->actionDatabase, SIGNAL(triggered()), this, SLOT(selectDatabase()));
-	this->updateSelectSourceOpenni(_preferencesDialog->isSourceOpenniUsed());
-	connect(_ui->actionOpenni_RGBD, SIGNAL(triggered()), this, SLOT(selectOpenni()));
+	this->updateSelectSourceOpenniMenu(_preferencesDialog->isSourceOpenniUsed(), !_preferencesDialog->getSourceFreenect());
+	connect(_ui->actionOpenNI, SIGNAL(triggered()), this, SLOT(selectOpenni()));
+	connect(_ui->actionFreenect, SIGNAL(triggered()), this, SLOT(selectFreenect()));
 
 	connect(_ui->actionSave_state, SIGNAL(triggered()), this, SLOT(saveFigures()));
 	connect(_ui->actionLoad_state, SIGNAL(triggered()), this, SLOT(loadFigures()));
@@ -417,6 +421,12 @@ void MainWindow::closeEvent(QCloseEvent* event)
 			UERROR("CameraOpenni must be already deleted here!");
 			delete _cameraOpenni;
 			_cameraOpenni = 0;
+		}
+		if(_cameraOpenKinect)
+		{
+			UERROR("CameraOpenKinect must be already deleted here!");
+			delete _cameraOpenKinect;
+			_cameraOpenKinect = 0;
 		}
 		if(_odomThread)
 		{
@@ -1475,7 +1485,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		_ui->doubleSpinBox_stats_imgRate->setValue(_preferencesDialog->getGeneralInputRate());
 		this->updateSelectSourceImageMenu(_preferencesDialog->getSourceImageType());
 		this->updateSelectSourceDatabase(_preferencesDialog->isSourceDatabaseUsed());
-		this->updateSelectSourceOpenni(_preferencesDialog->isSourceOpenniUsed());
+		this->updateSelectSourceOpenniMenu(_preferencesDialog->isSourceOpenniUsed(), !_preferencesDialog->getSourceFreenect());
 		QString src;
 		if(_preferencesDialog->isSourceImageUsed())
 		{
@@ -1500,6 +1510,11 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		if(_cameraOpenni)
 		{
 			_cameraOpenni->setFrameRate(_preferencesDialog->getGeneralInputRate());
+		}
+
+		if(_cameraOpenKinect)
+		{
+			_cameraOpenKinect->setFrameRate(_preferencesDialog->getGeneralInputRate());
 		}
 	}
 
@@ -1786,9 +1801,10 @@ void MainWindow::updateSelectSourceDatabase(bool used)
 	_ui->actionDatabase->setChecked(used);
 }
 
-void MainWindow::updateSelectSourceOpenni(bool used)
+void MainWindow::updateSelectSourceOpenniMenu(bool used, bool openni)
 {
-	_ui->actionOpenni_RGBD->setChecked(used);
+	_ui->actionOpenNI->setChecked(used && openni);
+	_ui->actionFreenect->setChecked(used && !openni);
 }
 
 void MainWindow::changeImgRateSetting()
@@ -1923,6 +1939,15 @@ void MainWindow::startDetection()
 		emit stateChanged(kIdle);
 		return;
 	}
+	if(_cameraOpenKinect != 0)
+	{
+		QMessageBox::warning(this,
+							 tr("RTAB-Map"),
+							 tr("A Freenect camera is running, stop it first."));
+		UWARN("_cameraOpenKinect is not null... it must be stopped first");
+		emit stateChanged(kIdle);
+		return;
+	}
 
 	// Adjust pre-requirements
 	if( !_preferencesDialog->isSourceImageUsed() &&
@@ -1969,31 +1994,61 @@ void MainWindow::startDetection()
 			_odomThread->start();
 		}
 
-		// With odomtry, go as fast as we can
-		_cameraOpenni = new CameraOpenni(
-			_preferencesDialog->getSourceOpenniDevice().toStdString(),
-			_preferencesDialog->getGeneralInputRate(),
-			_preferencesDialog->getSourceOpenniLocalTransform());
-
-		if(!_cameraOpenni->init())
+		if(_preferencesDialog->getSourceFreenect())
 		{
-			ULOGGER_WARN("init CameraOpenni failed... ");
-			QMessageBox::warning(this,
-								   tr("RTAB-Map"),
-								   tr("Openni camera initialization failed..."));
-			emit stateChanged(kIdle);
-			delete _cameraOpenni;
-			_cameraOpenni = 0;
+			_cameraOpenKinect = new CameraFreenect(
+				_preferencesDialog->getSourceOpenniDevice().isEmpty()?0:atoi(_preferencesDialog->getSourceOpenniDevice().toStdString().c_str()),
+				_preferencesDialog->getGeneralInputRate(),
+				_preferencesDialog->getSourceOpenniLocalTransform());
+
+			if(!_cameraOpenKinect->init())
+			{
+				ULOGGER_WARN("init CameraOpenKinect failed... ");
+				QMessageBox::warning(this,
+									   tr("RTAB-Map"),
+									   tr("OpenKinect camera initialization failed..."));
+				emit stateChanged(kIdle);
+				delete _cameraOpenKinect;
+				_cameraOpenKinect = 0;
+				if(_odomThread)
+				{
+					delete _odomThread;
+					_odomThread = 0;
+				}
+				return;
+			}
 			if(_odomThread)
 			{
-				delete _odomThread;
-				_odomThread = 0;
+				UEventsManager::createPipe(_cameraOpenKinect, _odomThread, "CameraEvent");
 			}
-			return;
 		}
-		if(_odomThread)
+		else
 		{
-			UEventsManager::createPipe(_cameraOpenni, _odomThread, "CameraEvent");
+			_cameraOpenni = new CameraOpenni(
+				_preferencesDialog->getSourceOpenniDevice().toStdString(),
+				_preferencesDialog->getGeneralInputRate(),
+				_preferencesDialog->getSourceOpenniLocalTransform());
+
+			if(!_cameraOpenni->init())
+			{
+				ULOGGER_WARN("init CameraOpenni failed... ");
+				QMessageBox::warning(this,
+									   tr("RTAB-Map"),
+									   tr("Openni camera initialization failed..."));
+				emit stateChanged(kIdle);
+				delete _cameraOpenni;
+				_cameraOpenni = 0;
+				if(_odomThread)
+				{
+					delete _odomThread;
+					_odomThread = 0;
+				}
+				return;
+			}
+			if(_odomThread)
+			{
+				UEventsManager::createPipe(_cameraOpenni, _odomThread, "CameraEvent");
+			}
 		}
 	}
 	else if(_preferencesDialog->isSourceDatabaseUsed())
@@ -2149,7 +2204,7 @@ void MainWindow::startDetection()
 // Could not be in the main thread here! (see handleEvents())
 void MainWindow::pauseDetection()
 {
-	if(_camera || _dbReader || _cameraOpenni)
+	if(_camera || _dbReader || _cameraOpenni || _cameraOpenKinect)
 	{
 		if(_state == kPaused && (QApplication::keyboardModifiers() & Qt::ShiftModifier))
 		{
@@ -2183,7 +2238,7 @@ void MainWindow::pauseDetection()
 
 void MainWindow::stopDetection()
 {
-	if(_state == kIdle || (!_camera && !_dbReader && !_cameraOpenni))
+	if(_state == kIdle || (!_camera && !_dbReader && !_cameraOpenni && !_cameraOpenKinect))
 	{
 		return;
 	}
@@ -2191,7 +2246,8 @@ void MainWindow::stopDetection()
 	if(_state == kDetecting &&
 			( (_camera && _camera->isRunning()) ||
 			  (_dbReader && _dbReader->isRunning()) ||
-			  (_cameraOpenni && _cameraOpenni->isRunning())) )
+			  (_cameraOpenni && _cameraOpenni->isRunning()) ||
+			  (_cameraOpenKinect && _cameraOpenKinect->isRunning()) ) )
 	{
 		QMessageBox::StandardButton button = QMessageBox::question(this, tr("Stopping process..."), tr("Are you sure you want to stop the process?"), QMessageBox::Yes|QMessageBox::No, QMessageBox::No);
 
@@ -2218,6 +2274,11 @@ void MainWindow::stopDetection()
 		_cameraOpenni->kill();
 	}
 
+	if(_cameraOpenKinect)
+	{
+		_cameraOpenKinect->join(true);
+	}
+
 	if(_odomThread)
 	{
 		_ui->actionReset_Odometry->setEnabled(false);
@@ -2239,6 +2300,11 @@ void MainWindow::stopDetection()
 	{
 		delete _cameraOpenni;
 		_cameraOpenni = 0;
+	}
+	if(_cameraOpenKinect)
+	{
+		delete _cameraOpenKinect;
+		_cameraOpenKinect = 0;
 	}
 	if(_odomThread)
 	{
@@ -2477,6 +2543,11 @@ void MainWindow::selectDatabase()
 void MainWindow::selectOpenni()
 {
 	_preferencesDialog->selectSourceOpenni(true);
+}
+
+void MainWindow::selectFreenect()
+{
+	_preferencesDialog->selectSourceOpenni(false);
 }
 
 
@@ -3552,6 +3623,11 @@ void MainWindow::changeState(MainWindow::State newState)
 		{
 			_cameraOpenni->start();
 		}
+
+		if(_cameraOpenKinect)
+		{
+			_cameraOpenKinect->start();
+		}
 		break;
 
 	case kPaused:
@@ -3585,6 +3661,11 @@ void MainWindow::changeState(MainWindow::State newState)
 			{
 				_cameraOpenni->start();
 			}
+
+			if(_cameraOpenKinect)
+			{
+				_cameraOpenKinect->start();
+			}
 		}
 		else if(_state == kDetecting)
 		{
@@ -3615,6 +3696,11 @@ void MainWindow::changeState(MainWindow::State newState)
 			if(_cameraOpenni)
 			{
 				_cameraOpenni->pause();
+			}
+
+			if(_cameraOpenKinect)
+			{
+				_cameraOpenKinect->join(true);
 			}
 		}
 		break;

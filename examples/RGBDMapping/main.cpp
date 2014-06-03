@@ -20,6 +20,7 @@
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/CameraOpenni.h"
+#include "rtabmap/core/CameraFreenect.h"
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/utilite/UEventsManager.h"
 #include <QtGui/QApplication>
@@ -43,6 +44,8 @@ int main(int argc, char * argv[])
 	// Create the OpenNI camera, it will send a CameraEvent at the rate specified.
 	// Set transform to camera so z is up, y is left and x going forward
 	CameraOpenni camera("", 10, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0));
+	//CameraOpenKinect camera(0, 10, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0));
+
 	if(!camera.init())
 	{
 		UERROR("Camera init failed!");
