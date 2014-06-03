@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1009</width>
-    <height>612</height>
+    <width>892</width>
+    <height>494</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-271</y>
-            <width>711</width>
-            <height>795</height>
+            <y>-215</y>
+            <width>707</width>
+            <height>853</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -320,6 +320,16 @@
                        <enum>QFrame::Raised</enum>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,0,0,1">
+                       <item row="3" column="3">
+                        <widget class="QLabel" name="label_108">
+                         <property name="text">
+                          <string>3D cloud decimation (1-2-4-8-...).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
                        <item row="0" column="0">
                         <widget class="QLabel" name="label_154">
                          <property name="text">
@@ -503,16 +513,6 @@ High-res view</string>
                          </property>
                          <property name="value">
                           <number>1</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="3">
-                        <widget class="QLabel" name="label_108">
-                         <property name="text">
-                          <string>3D cloud decimation (1-2-4-8-...).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
                          </property>
                         </widget>
                        </item>
@@ -720,6 +720,13 @@ High-res view</string>
                          </property>
                         </widget>
                        </item>
+                       <item row="10" column="0">
+                        <widget class="QCheckBox" name="checkBox_meshing">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
                        <item row="8" column="1">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity_odom_scan">
                          <property name="suffix">
@@ -779,13 +786,166 @@ High-res view</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="10" column="0">
-                        <widget class="QCheckBox" name="checkBox_meshing">
+                       <item row="12" column="3">
+                        <widget class="QLabel" name="label_168">
                          <property name="text">
-                          <string>Meshing</string>
+                          <string>Sphere radius that is to be used for determining the k-nearest neighbors used for triangulating (GP3). Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="14" column="3">
+                        <widget class="QLabel" name="label_85">
+                         <property name="text">
+                          <string>Mesh smoothing using Moving Least Squares algorithm (MLS).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="12" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_gp3Radius">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>3</number>
+                         </property>
+                         <property name="maximum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.040000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="12" column="2">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_gp3Radius_save">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>3</number>
+                         </property>
+                         <property name="maximum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.040000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="15" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_mlsRadius">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>3</number>
+                         </property>
+                         <property name="maximum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.040000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="10" column="3">
+                        <widget class="QLabel" name="label_169">
+                         <property name="text">
+                          <string>Online meshing using Greedy Projection Triangulation (GP3).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="15" column="3">
+                        <widget class="QLabel" name="label_87">
+                         <property name="text">
+                          <string>MLS search radius: Set the sphere radius that is to be used for determining the k-nearest neighbors used for fitting. Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="14" column="0">
+                        <widget class="QCheckBox" name="checkBox_mls">
+                         <property name="text">
+                          <string/>
                          </property>
                          <property name="checked">
-                          <bool>false</bool>
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="11" column="3">
+                        <widget class="QLabel" name="label_71">
+                         <property name="text">
+                          <string>Set the number of k nearest neighbors to use for the normal estimation to create the mesh. Not used when mesh smoothing below is used.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="11" column="0">
+                        <widget class="QSpinBox" name="spinBox_normalKSearch">
+                         <property name="value">
+                          <number>20</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="11" column="2">
+                        <widget class="QSpinBox" name="spinBox_normalKSearch_save">
+                         <property name="minimum">
+                          <number>0</number>
+                         </property>
+                         <property name="value">
+                          <number>20</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="14" column="2">
+                        <widget class="QCheckBox" name="checkBox_mls_save">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="15" column="2">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_mlsRadius_save">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>3</number>
+                         </property>
+                         <property name="maximum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.040000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -818,6 +978,9 @@ High-res view</string>
                         <layout class="QFormLayout" name="formLayout_22">
                          <item row="0" column="0">
                           <widget class="QDoubleSpinBox" name="doubleSpinBox_cloudFilterRadius">
+                           <property name="suffix">
+                            <string> m</string>
+                           </property>
                            <property name="minimum">
                             <double>0.010000000000000</double>
                            </property>
@@ -829,19 +992,22 @@ High-res view</string>
                          <item row="0" column="1">
                           <widget class="QLabel" name="label_37">
                            <property name="text">
-                            <string>Radius (m)</string>
+                            <string>Radius</string>
                            </property>
                           </widget>
                          </item>
                          <item row="1" column="1">
                           <widget class="QLabel" name="label_48">
                            <property name="text">
-                            <string>Angle (degrees)</string>
+                            <string>Angle</string>
                            </property>
                           </widget>
                          </item>
                          <item row="1" column="0">
                           <widget class="QDoubleSpinBox" name="doubleSpinBox_cloudFilterAngle">
+                           <property name="suffix">
+                            <string> degrees</string>
+                           </property>
                            <property name="decimals">
                             <number>0</number>
                            </property>

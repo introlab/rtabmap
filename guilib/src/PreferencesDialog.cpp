@@ -146,6 +146,22 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_3dRenderingMeshing.resize(1);
 	_3dRenderingMeshing[0] = _ui->checkBox_meshing;
 
+	_3dRenderingNormalKSearch.resize(2);
+	_3dRenderingNormalKSearch[0] = _ui->spinBox_normalKSearch;
+	_3dRenderingNormalKSearch[1] = _ui->spinBox_normalKSearch_save;
+
+	_3dRenderingGP3Radius.resize(2);
+	_3dRenderingGP3Radius[0] = _ui->doubleSpinBox_gp3Radius;
+	_3dRenderingGP3Radius[1] = _ui->doubleSpinBox_gp3Radius_save;
+
+	_3dRenderingSmoothing.resize(2);
+	_3dRenderingSmoothing[0] = _ui->checkBox_mls;
+	_3dRenderingSmoothing[1] = _ui->checkBox_mls_save;
+
+	_3dRenderingSmoothingRadius.resize(2);
+	_3dRenderingSmoothingRadius[0] = _ui->doubleSpinBox_mlsRadius;
+	_3dRenderingSmoothingRadius[1] = _ui->doubleSpinBox_mlsRadius_save;
+
 	for(int i=0; i<3; ++i)
 	{
 		connect(_3dRenderingShowClouds[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -160,6 +176,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 			connect(_3dRenderingPtSize[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 			connect(_3dRenderingOpacityScan[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 			connect(_3dRenderingPtSizeScan[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+
+			connect(_3dRenderingNormalKSearch[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+			connect(_3dRenderingGP3Radius[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+			connect(_3dRenderingSmoothing[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+			connect(_3dRenderingSmoothingRadius[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		}
 
 		if(i<1)
@@ -701,6 +722,11 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 				_3dRenderingPtSize[i]->setValue(i==0?1:2);
 				_3dRenderingOpacityScan[i]->setValue(1.0);
 				_3dRenderingPtSizeScan[i]->setValue(1);
+
+				_3dRenderingNormalKSearch[i]->setValue(20);
+				_3dRenderingGP3Radius[i]->setValue(0.04);
+				_3dRenderingSmoothing[i]->setChecked(true);
+				_3dRenderingSmoothingRadius[i]->setValue(0.04);
 			}
 
 			if(i<1)
@@ -915,6 +941,11 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 			_3dRenderingPtSize[i]->setValue(settings.value(tr("ptSize%1").arg(i), _3dRenderingPtSize[i]->value()).toInt());
 			_3dRenderingOpacityScan[i]->setValue(settings.value(tr("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value()).toDouble());
 			_3dRenderingPtSizeScan[i]->setValue(settings.value(tr("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value()).toInt());
+
+			_3dRenderingNormalKSearch[i]->setValue(settings.value(tr("meshNormalKSearch%1").arg(i), _3dRenderingNormalKSearch[i]->value()).toInt());
+			_3dRenderingGP3Radius[i]->setValue(settings.value(tr("meshGP3Radius%1").arg(i), _3dRenderingGP3Radius[i]->value()).toDouble());
+			_3dRenderingSmoothing[i]->setChecked(settings.value(tr("meshSmoothing%1").arg(i), _3dRenderingSmoothing[i]->isChecked()).toBool());
+			_3dRenderingSmoothingRadius[i]->setValue(settings.value(tr("meshSmoothingRadius%1").arg(i), _3dRenderingSmoothingRadius[i]->value()).toDouble());
 		}
 
 		if(i<1)
@@ -1120,6 +1151,11 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath)
 			settings.setValue(tr("ptSize%1").arg(i), _3dRenderingPtSize[i]->value());
 			settings.setValue(tr("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value());
 			settings.setValue(tr("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value());
+
+			settings.setValue(tr("meshNormalKSearch%1").arg(i), _3dRenderingNormalKSearch[i]->value());
+			settings.setValue(tr("meshGP3Radius%1").arg(i), _3dRenderingGP3Radius[i]->value());
+			settings.setValue(tr("meshSmoothing%1").arg(i), _3dRenderingSmoothing[i]->isChecked());
+			settings.setValue(tr("meshSmoothingRadius%1").arg(i), _3dRenderingSmoothingRadius[i]->value());
 		}
 
 		if(i<1)
@@ -2345,6 +2381,26 @@ int PreferencesDialog::getScanPointSize(int index) const
 {
 	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingPtSizeScan[index]->value();
+}
+int PreferencesDialog::getMeshNormalKSearch(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	return _3dRenderingNormalKSearch[index]->value();
+}
+double PreferencesDialog::getMeshGP3Radius(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	return _3dRenderingGP3Radius[index]->value();
+}
+bool PreferencesDialog::getMeshSmoothing(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	return _3dRenderingSmoothing[index]->isChecked();
+}
+double PreferencesDialog::getMeshSmoothingRadius(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	return _3dRenderingSmoothingRadius[index]->value();
 }
 bool PreferencesDialog::isCloudFiltering() const
 {

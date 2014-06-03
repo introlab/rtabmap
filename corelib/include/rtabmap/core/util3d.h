@@ -247,7 +247,17 @@ Transform RTABMAP_EXP icp2D(
 		double & fitnessScore);
 
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP computeNormals(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud);
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		int normalKSearch = 20);
+
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP computeNormals(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		int normalKSearch = 20);
+
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP computeNormalsSmoothed(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		float smoothingSearchRadius = 0.025,
+		bool smoothingPolynomialFit = true);
 
 int RTABMAP_EXP getCorrespondencesCount(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 							const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_target,
@@ -343,7 +353,15 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP get3DFASTKpts(
 		bool fastNonmaxSuppression=true,
 		float maxDepth = 5.0f);
 
-pcl::PolygonMesh::Ptr RTABMAP_EXP createMesh(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, float maxEdgeLength = 0.025, bool smoothing = true);
+pcl::PolygonMesh::Ptr RTABMAP_EXP createMesh(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloudWithNormals,
+		float gp3SearchRadius = 0.025,
+		float gp3Mu = 2.5,
+		int gp3MaximumNearestNeighbors = 100,
+		float gp3MaximumSurfaceAngle = M_PI/4,
+		float gp3MinimumAngle = M_PI/18,
+		float gp3MaximumAngle = 2*M_PI/3,
+		float gp3NormalConsistency = false);
 
 void RTABMAP_EXP optimizeTOROGraph(
 		const std::map<int, Transform> & poses,

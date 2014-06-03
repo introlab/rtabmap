@@ -1247,7 +1247,9 @@ Transform icp2D(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 	return transformFromEigen4f(icp.getFinalTransformation());
 }
 
-pcl::PointCloud<pcl::PointNormal>::Ptr computeNormals(const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud)
+pcl::PointCloud<pcl::PointNormal>::Ptr computeNormals(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		int normalKSearch)
 {
 	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
 	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
@@ -1258,13 +1260,63 @@ pcl::PointCloud<pcl::PointNormal>::Ptr computeNormals(const pcl::PointCloud<pcl:
 	pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
 	n.setInputCloud (cloud);
 	n.setSearchMethod (tree);
-	n.setKSearch (20);
+	n.setKSearch (normalKSearch);
 	n.compute (*normals);
 	//* normals should not contain the point normals + surface curvatures
 
 	// Concatenate the XYZ and normal fields*
 	pcl::concatenateFields (*cloud, *normals, *cloud_with_normals);
 	//* cloud_with_normals = cloud + normals*/
+
+	return cloud_with_normals;
+}
+
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr computeNormals(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		int normalKSearch)
+{
+	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>);
+	tree->setInputCloud (cloud);
+
+	// Normal estimation*
+	pcl::NormalEstimationOMP<pcl::PointXYZRGB, pcl::Normal> n;
+	pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
+	n.setInputCloud (cloud);
+	n.setSearchMethod (tree);
+	n.setKSearch (normalKSearch);
+	n.compute (*normals);
+	//* normals should not contain the point normals + surface curvatures
+
+	// Concatenate the XYZ and normal fields*
+	pcl::concatenateFields (*cloud, *normals, *cloud_with_normals);
+	//* cloud_with_normals = cloud + normals*/
+
+	return cloud_with_normals;
+}
+
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr computeNormalsSmoothed(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		float smoothingSearchRadius,
+		bool smoothingPolynomialFit)
+{
+	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>);
+	tree->setInputCloud (cloud);
+
+	// Init object (second point type is for the normals, even if unused)
+	pcl::MovingLeastSquares<pcl::PointXYZRGB, pcl::PointXYZRGBNormal> mls;
+
+	mls.setComputeNormals (true);
+
+	// Set parameters
+	mls.setInputCloud (cloud);
+	mls.setPolynomialFit (smoothingPolynomialFit);
+	mls.setSearchMethod (tree);
+	mls.setSearchRadius (smoothingSearchRadius);
+
+	// Reconstruct
+	mls.process (*cloud_with_normals);
 
 	return cloud_with_normals;
 }
@@ -1442,67 +1494,39 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr get3DFASTKpts(
 	return points;
 }
 
-pcl::PolygonMesh::Ptr createMesh(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, float maxEdgeLength, bool smoothing)
+pcl::PolygonMesh::Ptr createMesh(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloudWithNormals,
+		float gp3SearchRadius,
+		float gp3Mu,
+		int gp3MaximumNearestNeighbors,
+		float gp3MaximumSurfaceAngle,
+		float gp3MinimumAngle,
+		float gp3MaximumAngle,
+		float gp3NormalConsistency)
 {
-	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>);
-	tree->setInputCloud (cloud);
-
-	if(smoothing)
-	{
-		// Init object (second point type is for the normals, even if unused)
-		pcl::MovingLeastSquares<pcl::PointXYZRGB, pcl::PointXYZRGBNormal> mls;
-
-		mls.setComputeNormals (true);
-
-		// Set parameters
-		mls.setInputCloud (cloud);
-		mls.setPolynomialFit (true);
-		mls.setSearchMethod (tree);
-		mls.setSearchRadius (maxEdgeLength);
-
-		// Reconstruct
-		mls.process (*cloud_with_normals);
-	}
-	else
-	{
-		// Normal estimation*
-		pcl::NormalEstimationOMP<pcl::PointXYZRGB, pcl::Normal> n;
-		pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
-		n.setInputCloud (cloud);
-		n.setSearchMethod (tree);
-		n.setKSearch (20);
-		n.compute (*normals);
-		//* normals should not contain the point normals + surface curvatures
-
-		// Concatenate the XYZ and normal fields*
-		pcl::concatenateFields (*cloud, *normals, *cloud_with_normals);
-		//* cloud_with_normals = cloud + normals*/
-	}
-
-	cloud_with_normals = removeNaNNormalsFromPointCloud(cloud_with_normals);
+	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormalsNoNaN = removeNaNNormalsFromPointCloud(cloudWithNormals);
 
 	// Create search tree*
 	pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree2 (new pcl::search::KdTree<pcl::PointXYZRGBNormal>);
-	tree2->setInputCloud (cloud_with_normals);
+	tree2->setInputCloud (cloudWithNormalsNoNaN);
 
 	// Initialize objects
 	pcl::GreedyProjectionTriangulation<pcl::PointXYZRGBNormal> gp3;
 	pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
 
 	// Set the maximum distance between connected points (maximum edge length)
-	gp3.setSearchRadius (maxEdgeLength);
+	gp3.setSearchRadius (gp3SearchRadius);
 
 	// Set typical values for the parameters
-	gp3.setMu (2.5);
-	gp3.setMaximumNearestNeighbors (100);
-	gp3.setMaximumSurfaceAngle(M_PI/4); // 45 degrees
-	gp3.setMinimumAngle(M_PI/18); // 10 degrees
-	gp3.setMaximumAngle(2*M_PI/3); // 120 degrees
-	gp3.setNormalConsistency(false);
+	gp3.setMu (gp3Mu);
+	gp3.setMaximumNearestNeighbors (gp3MaximumNearestNeighbors);
+	gp3.setMaximumSurfaceAngle(gp3MaximumSurfaceAngle); // 45 degrees
+	gp3.setMinimumAngle(gp3MinimumAngle); // 10 degrees
+	gp3.setMaximumAngle(gp3MaximumAngle); // 120 degrees
+	gp3.setNormalConsistency(gp3NormalConsistency);
 
 	// Get result
-	gp3.setInputCloud (cloud_with_normals);
+	gp3.setInputCloud (cloudWithNormalsNoNaN);
 	gp3.setSearchMethod (tree2);
 	gp3.reconstruct (*mesh);
 

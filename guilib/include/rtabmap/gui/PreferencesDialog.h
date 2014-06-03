@@ -119,12 +119,17 @@ public:
 	double getCloudVoxelSize(int index) const; // 0=map, 1=odom, 2=save
 	int getCloudDecimation(int index) const;   // 0=map, 1=odom, 2=save
 	double getCloudMaxDepth(int index) const;  // 0=map, 1=odom, 2=save
-	double getCloudOpacity(int index) const;   // 0=map, 1=odom, 2=save
-	int getCloudPointSize(int index) const;    // 0=map, 1=odom, 2=save
+	double getCloudOpacity(int index) const;   // 0=map, 1=odom
+	int getCloudPointSize(int index) const;    // 0=map, 1=odom
 
 	bool isScansShown(int index) const;       // 0=map, 1=odom, 2=save
-	double getScanOpacity(int index) const;    // 0=map, 1=odom, 2=save
-	int getScanPointSize(int index) const;     // 0=map, 1=odom, 2=save
+	double getScanOpacity(int index) const;    // 0=map, 1=odom
+	int getScanPointSize(int index) const;     // 0=map, 1=odom
+
+	int getMeshNormalKSearch(int index) const; // 0=map, 1=save
+	double getMeshGP3Radius(int index) const; // 0=map, 1=save
+	bool getMeshSmoothing(int index) const; // 0=map, 1=save
+	double getMeshSmoothingRadius(int index) const; // 0=map, 1=save
 
 	bool isCloudFiltering() const;
 	double getCloudFilteringRadius() const;
@@ -282,6 +287,10 @@ private:
 	QVector<QDoubleSpinBox*> _3dRenderingOpacityScan;
 	QVector<QSpinBox*> _3dRenderingPtSizeScan;
 	QVector<QCheckBox*> _3dRenderingMeshing;
+	QVector<QSpinBox*> _3dRenderingNormalKSearch;
+	QVector<QDoubleSpinBox*> _3dRenderingGP3Radius;
+	QVector<QCheckBox*> _3dRenderingSmoothing;
+	QVector<QDoubleSpinBox*> _3dRenderingSmoothingRadius;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(PreferencesDialog::PANEL_FLAGS)

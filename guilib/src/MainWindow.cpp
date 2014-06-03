@@ -1094,7 +1094,16 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & posesIn, const 
 						pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
 						if(cloud->size())
 						{
-							mesh = util3d::createMesh(cloud, _preferencesDialog->getCloudVoxelSize(0)==0?0.025:_preferencesDialog->getCloudVoxelSize(0)*4);
+							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
+							if(_preferencesDialog->getMeshSmoothing(0))
+							{
+								cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(0));
+							}
+							else
+							{
+								cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(0));
+							}
+							mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(0));
 						}
 
 						if(mesh->polygons.size())
@@ -2926,7 +2935,17 @@ void MainWindow::saveMeshes()
 		if(button == QMessageBox::No)
 		{
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud();
-			meshes.insert(std::make_pair(0, util3d::createMesh(cloud)));
+			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
+			if(_preferencesDialog->getMeshSmoothing(1))
+			{
+				cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
+			}
+			else
+			{
+				cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(1));
+			}
+			pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(1));
+			meshes.insert(std::make_pair(0, mesh));
 		}
 		else
 		{
@@ -3019,7 +3038,19 @@ void MainWindow::viewMeshes()
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud();
 			_initProgressDialog->appendText(tr("Meshing the assembled cloud (%1 points)...").arg(cloud->size()));
 			_initProgressDialog->incrementStep();
-			meshes.insert(std::make_pair(0, util3d::createMesh(cloud, _preferencesDialog->getCloudVoxelSize(2)*4.0f)));
+			QApplication::processEvents();
+
+			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
+			if(_preferencesDialog->getMeshSmoothing(1))
+			{
+				cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
+			}
+			else
+			{
+				cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(1));
+			}
+			pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(1));
+			meshes.insert(std::make_pair(0, mesh));
 		}
 		else
 		{
@@ -3052,6 +3083,7 @@ void MainWindow::viewMeshes()
 				pcl::fromPCLPointCloud2(iter->second->cloud, *cloud);
 				viewer->addCloudMesh(uFormat("mesh%d",iter->first), cloud, iter->second->polygons, iter->first>0?_currentPosesMap.at(iter->first):Transform::getIdentity());
 				_initProgressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)... done.").arg(iter->first).arg(iter->second->polygons.size()));
+				QApplication::processEvents();
 			}
 		}
 		else
@@ -3518,7 +3550,16 @@ std::map<int, pcl::PolygonMesh::Ptr> MainWindow::createMeshes()
 				pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
 				if(cloud->size())
 				{
-					mesh = util3d::createMesh(cloud, _preferencesDialog->getCloudVoxelSize(2)==0?0.025:_preferencesDialog->getCloudVoxelSize(2)*4);
+					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
+					if(_preferencesDialog->getMeshSmoothing(1))
+					{
+						cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
+					}
+					else
+					{
+						cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(1));
+					}
+					mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(1));
 				}
 
 				if(mesh->polygons.size())
