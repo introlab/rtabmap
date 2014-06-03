@@ -3081,7 +3081,7 @@ void MainWindow::savePointClouds(const std::map<int, pcl::PointCloud<pcl::PointX
 {
 	if(clouds.size() == 1)
 	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), "", tr("Point cloud data (*.pcd *.ply *.vtk)"));
+		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), "cloud.ply", tr("Point cloud data (*.ply *.pcd *.vtk)"));
 		if(!path.isEmpty())
 		{
 			if(clouds.begin()->second->size())
@@ -3103,9 +3103,15 @@ void MainWindow::savePointClouds(const std::map<int, pcl::PointCloud<pcl::PointX
 					pcl::toPCLPointCloud2(*clouds.begin()->second, pt2);
 					success = pcl::io::saveVTKFile(path.toStdString(), pt2) == 0;
 				}
+				else if(QFileInfo(path).suffix() == "")
+				{
+					//use ply by default
+					path += ".ply";
+					success = pcl::io::savePCDFile(path.toStdString(), *clouds.begin()->second) == 0;
+				}
 				else
 				{
-					UERROR("Extension not recognized! (%s)", QFileInfo(path).suffix().toStdString().c_str());
+					UERROR("Extension not recognized! (%s) Should be one of (*.ply *.pcd *.vtk).", QFileInfo(path).suffix().toStdString().c_str());
 				}
 				if(success)
 				{
@@ -3127,13 +3133,13 @@ void MainWindow::savePointClouds(const std::map<int, pcl::PointCloud<pcl::PointX
 	}
 	else if(clouds.size())
 	{
-		QString path = QFileDialog::getExistingDirectory(this, tr("Save to (*.pcd *.ply *.vtk)..."), _preferencesDialog->getWorkingDirectory(), 0);
+		QString path = QFileDialog::getExistingDirectory(this, tr("Save to (*.ply *.pcd *.vtk)..."), _preferencesDialog->getWorkingDirectory(), 0);
 		if(!path.isEmpty())
 		{
 			bool ok = false;
 			QStringList items;
-			items.push_back("pcd");
 			items.push_back("ply");
+			items.push_back("pcd");
 			items.push_back("vtk");
 			QString suffix = QInputDialog::getItem(this, tr("File format"), tr("Which format?"), items, 0, false, &ok);
 
@@ -3191,7 +3197,7 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes)
 {
 	if(meshes.size() == 1)
 	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), "", tr("Mesh (*.ply *.vtk)"));
+		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), "mesh.ply", tr("Mesh (*.ply *.vtk)"));
 		if(!path.isEmpty())
 		{
 			if(meshes.begin()->second->polygons.size())
@@ -3208,9 +3214,15 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes)
 					success = pcl::io::saveVTKFile(path.toStdString(), *meshes.begin()->second) == 0;
 
 				}
+				else if(QFileInfo(path).suffix() == "")
+				{
+					//default ply
+					path += ".ply";
+					success = pcl::io::savePLYFile(path.toStdString(), *meshes.begin()->second) == 0;
+				}
 				else
 				{
-					UERROR("Extension not recognized! (%s)", QFileInfo(path).suffix().toStdString().c_str());
+					UERROR("Extension not recognized! (%s) Should be one of (*.ply *.vtk).", QFileInfo(path).suffix().toStdString().c_str());
 				}
 				if(success)
 				{
