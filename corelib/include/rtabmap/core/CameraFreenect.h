@@ -63,6 +63,9 @@ class RTABMAP_EXP FreenectDevice {
 class RTABMAP_EXP CameraFreenect : public UEventsSender, public UThread
 {
 public:
+	static bool available();
+
+public:
 	// default local transform z in, x right, y down));
 	CameraFreenect(int deviceId= 0,
 			float rate=0,

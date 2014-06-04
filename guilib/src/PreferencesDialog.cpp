@@ -2708,6 +2708,18 @@ void PreferencesDialog::testOdometry(OdomType type)
 				this->getSourceOpenniLocalTransform());
 		if(!_odomCameraFreenect->init())
 		{
+			if(!_odomCameraFreenect->available())
+			{
+				QMessageBox::warning(this,
+				   tr("RTAB-Map"),
+				   tr("Freenect camera unavailable! RTAB-Map is not built with Freenect support (libfreenect)."));
+			}
+			else
+			{
+				QMessageBox::warning(this,
+				   tr("RTAB-Map"),
+				   tr("Freenect camera initialization failed!"));
+			}
 			delete _odomCameraFreenect;
 			_odomCameraFreenect = 0;
 		}
@@ -2720,6 +2732,9 @@ void PreferencesDialog::testOdometry(OdomType type)
 				this->getSourceOpenniLocalTransform());
 		if(!_odomCameraOpenNI->init())
 		{
+			QMessageBox::warning(this,
+				   tr("RTAB-Map"),
+				   tr("OpenNI camera initialization failed!"));
 			delete _odomCameraOpenNI;
 			_odomCameraOpenNI = 0;
 		}
@@ -2786,10 +2801,6 @@ void PreferencesDialog::testOdometry(OdomType type)
 		{
 			_odomCameraOpenNI->start();
 		}
-	}
-	else
-	{
-		QMessageBox::warning(this, "Initialization failed!", tr("RGB-D camera initialization failed!"));
 	}
 }
 

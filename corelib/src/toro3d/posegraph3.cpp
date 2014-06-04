@@ -326,7 +326,7 @@ void TreePoseGraph3::collapseEdge(Edge* e){
   Transformation    T12=e->transformation;
   Pose              p12=T12.toPoseType();
 
-  Transformation iT12=T12.inv();
+  //Transformation iT12=T12.inv();
 
   //compute the marginal information of the nodes in the path v1-v2-v*
   for (EdgeList::iterator it2=v2->edges.begin(); it2!=v2->edges.end(); it2++){
@@ -339,7 +339,7 @@ void TreePoseGraph3::collapseEdge(Edge* e){
       
       //compute the estimate of the vertex based on the path v1-v2-vx
       
-      Transformation tr=iT12*T2x;
+      //Transformation tr=iT12*T2x;
       
       CovarianceMatrix CM=C2x;
       

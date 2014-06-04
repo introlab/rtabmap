@@ -98,7 +98,7 @@ void TreeOptimizer3::computePreconditioner(){
       DEBUG(1) << "m";
 
     Edge* e=*it;
-    Transformation t=e->transformation;
+    //Transformation t=e->transformation;
     InformationMatrix W=e->informationMatrix;
     
     Vertex* top=e->top;
@@ -189,8 +189,8 @@ void TreeOptimizer3::propagateErrors(bool usePreconditioner){
     }
 
     //store the transformations relative to the top node
-    Transformation topTransformation=top->transformation;
-    Transformation topParameters=top->parameters;
+    //Transformation topTransformation=top->transformation;
+    //Transformation topParameters=top->parameters;
 
     //END: Path and weight computation
     
@@ -258,7 +258,7 @@ void TreeOptimizer3::propagateErrors(bool usePreconditioner){
     recomputeTransformations(v2,top);
 
     //BEGIN: Translational Error
-    Translation topTranslation=top->transformation.translation();
+    //Translation topTranslation=top->transformation.translation();
    
     Transformation tr12=v1->transformation*e->transformation;
     Translation tR=tr12.translation()-v2->transformation.translation();

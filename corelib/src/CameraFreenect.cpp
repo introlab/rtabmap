@@ -13,7 +13,9 @@
 #include <rtabmap/utilite/UEventsManager.h>
 #include <opencv2/imgproc/imgproc.hpp>
 
+#ifdef WITH_FREENECT
 #include <libfreenect.h>
+#endif
 
 namespace rtabmap {
 
@@ -32,6 +34,7 @@ FreenectDevice::FreenectDevice(freenect_context * ctx, int index) :
 	UASSERT(ctx_ != 0);
 }
 
+#ifdef WITH_FREENECT
 FreenectDevice::~FreenectDevice() {
 	if(device_ && freenect_close_device(device_) < 0){} //FN_WARNING("Device did not shutdown in a clean fashion");
 }
@@ -71,6 +74,21 @@ void FreenectDevice::freenect_video_callback(freenect_device *dev, void *video, 
 	FreenectDevice* device = static_cast<FreenectDevice*>(freenect_get_user(dev));
 	device->VideoCallback(video, timestamp);
 }
+#else
+FreenectDevice::~FreenectDevice() {}
+void FreenectDevice::startVideo() {}
+void FreenectDevice::stopVideo() {}
+void FreenectDevice::startDepth() {}
+void FreenectDevice::stopDepth() {}
+
+bool FreenectDevice::init()
+{
+	UERROR("RTAB-Map is not built with Freenect support!");
+	return false;
+}
+void FreenectDevice::freenect_depth_callback(freenect_device *dev, void *depth, uint32_t timestamp) {}
+void FreenectDevice::freenect_video_callback(freenect_device *dev, void *video, uint32_t timestamp) {}
+#endif
 
 // Do not call directly even in child
 void FreenectDevice::VideoCallback(void* _rgb, uint32_t timestamp)
@@ -120,8 +138,17 @@ cv::Mat FreenectDevice::getDepth()
 
 
 //
-// CameraOpenKinect
+// CameraFreenect
 //
+bool CameraFreenect::available()
+{
+#ifdef WITH_FREENECT
+	return true;
+#else
+	return false;
+#endif
+}
+
 CameraFreenect::CameraFreenect(int deviceId, float inputRate, const Transform & localTransform) :
 		deviceId_(deviceId),
 		rate_(inputRate),
@@ -131,10 +158,12 @@ CameraFreenect::CameraFreenect(int deviceId, float inputRate, const Transform & 
 		ctx_(0),
 		freenectDevice_(0)
 {
+#ifdef WITH_FREENECT
 	if(freenect_init(&ctx_, NULL) < 0) UERROR("Cannot initialize freenect library");
 	// We claim both the motor and camera devices, since this class exposes both.
 	// It does not support audio, so we do not claim it.
 	freenect_select_subdevices(ctx_, static_cast<freenect_device_flags>(FREENECT_DEVICE_MOTOR | FREENECT_DEVICE_CAMERA));
+#endif
 }
 
 CameraFreenect::~CameraFreenect()
@@ -146,12 +175,15 @@ CameraFreenect::~CameraFreenect()
 		delete freenectDevice_;
 		freenectDevice_ = 0;
 	}
+#ifdef WITH_FREENECT
 	if(freenect_shutdown(ctx_) < 0){} //FN_WARNING("Freenect did not shutdown in a clean fashion");
+#endif
 	delete frameRateTimer_;
 }
 
 bool CameraFreenect::init()
 {
+#ifdef WITH_FREENECT
 	if(!this->isRunning())
 	{
 		if(freenectDevice_)
@@ -174,13 +206,16 @@ bool CameraFreenect::init()
 		}
 		else
 		{
-			UERROR("CameraOpenKinect: No devices connected!");
+			UERROR("CameraFreenect: No devices connected!");
 		}
 	}
 	else
 	{
-		UERROR("CameraOpenKinect: Cannot initialize the camera because it is already running...");
+		UERROR("CameraFreenect: Cannot initialize the camera because it is already running...");
 	}
+#else
+	UERROR("CameraFreenect: RTAB-Map is not built with Freenect support!");
+#endif
 	return false;
 }
 
@@ -200,12 +235,14 @@ void CameraFreenect::mainLoopBegin()
 	}
 	else
 	{
-		UERROR("CameraOpenKinect: init should be called before starting the camera.");
+		UERROR("CameraFreenect: init should be called before starting the camera.");
+		this->kill();
 	}
 }
 
 void CameraFreenect::mainLoop()
 {
+#ifdef WITH_FREENECT
 	timeval t;
 	t.tv_sec = 0;
 	t.tv_usec = 10000;
@@ -226,13 +263,13 @@ void CameraFreenect::mainLoop()
 
 			if(depth.empty())
 			{
-				UWARN("CameraOpenKinect: Depth not ready! Try to reduce the image rate to avoid this warning...");
+				UWARN("CameraFreenect: Depth not ready! Try to reduce the image rate to avoid this warning...");
 				return;
 			}
 
 			if(rgb.empty())
 			{
-				UWARN("CameraOpenKinect: Rgb not ready! Try to reduce the image rate to avoid this warning...");
+				UWARN("CameraFreenect: Rgb not ready! Try to reduce the image rate to avoid this warning...");
 				return;
 			}
 
@@ -240,6 +277,7 @@ void CameraFreenect::mainLoop()
 			this->post(new CameraEvent(rgb, depth, constant, localTransform_, ++seq_));
 		}
 	}
+#endif
 }
 
 void CameraFreenect::mainLoopEnd()

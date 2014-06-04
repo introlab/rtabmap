@@ -44,8 +44,25 @@ SET(INCLUDE_DIRS
     ${OpenCV_INCLUDE_DIRS}
 	${PCL_INCLUDE_DIRS}
 	${ZLIB_INCLUDE_DIRS}
-	${Freenect_INCLUDE_DIRS}
 )
+
+SET(LIBRARIES
+	${OpenCV_LIBS} 
+	${PCL_LIBRARIES} 
+	${ZLIB_LIBRARIES} 
+)
+
+IF(Freenect_FOUND)
+	ADD_DEFINITIONS("-DWITH_FREENECT")
+	SET(INCLUDE_DIRS
+		${INCLUDE_DIRS}
+		${Freenect_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${Freenect_LIBRARIES}
+	)
+ENDIF(Freenect_FOUND)
 
 ####################################
 # Generate resources files
@@ -83,7 +100,7 @@ INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 # Add binary that is built from the source file "main.cpp".
 # The extension is automatically found.
 ADD_LIBRARY(rtabmap_core ${SRC_FILES} ${RESOURCES_HEADERS})
-TARGET_LINK_LIBRARIES(rtabmap_core rtabmap_utilite ${OpenCV_LIBS} ${PCL_LIBRARIES} ${ZLIB_LIBRARIES} ${Freenect_LIBRARIES})
+TARGET_LINK_LIBRARIES(rtabmap_core rtabmap_utilite ${LIBRARIES})
 
 INSTALL(TARGETS rtabmap_core
         RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT runtime

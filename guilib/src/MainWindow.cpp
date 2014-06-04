@@ -2012,10 +2012,19 @@ void MainWindow::startDetection()
 
 			if(!_cameraOpenKinect->init())
 			{
-				ULOGGER_WARN("init CameraOpenKinect failed... ");
-				QMessageBox::warning(this,
-									   tr("RTAB-Map"),
-									   tr("OpenKinect camera initialization failed..."));
+				ULOGGER_WARN("init CameraFreenect failed... ");
+				if(!_cameraOpenKinect->available())
+				{
+					QMessageBox::warning(this,
+					   tr("RTAB-Map"),
+					   tr("Freenect camera unavailable! RTAB-Map is not built with Freenect support (libfreenect)."));
+				}
+				else
+				{
+					QMessageBox::warning(this,
+					   tr("RTAB-Map"),
+					   tr("Freenect camera initialization failed!"));
+				}
 				emit stateChanged(kIdle);
 				delete _cameraOpenKinect;
 				_cameraOpenKinect = 0;
@@ -2043,7 +2052,7 @@ void MainWindow::startDetection()
 				ULOGGER_WARN("init CameraOpenni failed... ");
 				QMessageBox::warning(this,
 									   tr("RTAB-Map"),
-									   tr("Openni camera initialization failed..."));
+									   tr("Openni camera initialization failed!"));
 				emit stateChanged(kIdle);
 				delete _cameraOpenni;
 				_cameraOpenni = 0;

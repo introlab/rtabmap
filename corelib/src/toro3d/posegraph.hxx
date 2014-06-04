@@ -63,7 +63,7 @@ template <class Ops>
 typename TreePoseGraph<Ops>::Edge* TreePoseGraph<Ops>::edge(int id1, int id2){
   Vertex* v1=vertex(id1);
   if (!v1)
-    return false;
+    return 0;
   typename EdgeList::iterator it=v1->edges.begin();
   while(it!=v1->edges.end()){
     if ((*it)->v1->id==id1 && (*it)->v2->id==id2)
@@ -117,7 +117,7 @@ typename TreePoseGraph<Ops>::Vertex* TreePoseGraph<Ops>::removeVertex (int id){
   Vertex* v=it->second;
 
   if (v==0)
-    return false;
+    return 0;
 
   typename TreePoseGraph<Ops>::EdgeList el=v->edges;
   for(typename EdgeList::iterator it=el.begin(); it!=el.end(); it++){
