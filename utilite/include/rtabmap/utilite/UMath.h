@@ -57,7 +57,7 @@ template<class T>
 inline bool uIsFinite(const T & value)
 {
 #if _MSC_VER
-	return _finite(value);
+	return (bool)_finite(value);
 #else
 	return std::isfinite(value);
 #endif

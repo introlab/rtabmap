@@ -15,6 +15,7 @@
 #include <rtabmap/utilite/UThread.h>
 
 #include <opencv2/opencv.hpp>
+#include <stdint.h>
 
 class UTimer;
 typedef struct _freenect_context freenect_context;
