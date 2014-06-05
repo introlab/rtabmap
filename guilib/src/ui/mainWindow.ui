@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>947</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -519,7 +519,7 @@
     <string>3D Map</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>4</number>
+    <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_5">
     <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -603,7 +603,7 @@
     <string>Loop closure detection</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>2</number>
+    <number>1</number>
    </attribute>
    <widget class="QWidget" name="layout_imageview">
     <layout class="QHBoxLayout" name="horizontalLayout_2">

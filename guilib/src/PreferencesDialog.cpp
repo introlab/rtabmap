@@ -700,7 +700,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 	{
 		_ui->general_checkBox_imagesKept->setChecked(true);
 		_ui->checkBox_beep->setChecked(false);
-		_ui->checkBox_verticalLayoutUsed->setChecked(false);
+		_ui->checkBox_verticalLayoutUsed->setChecked(true);
 		_ui->checkBox_imageFlipped->setChecked(false);
 		_ui->checkBox_imageRejectedShown->setChecked(true);
 		_ui->checkBox_imageHighestHypShown->setChecked(false);

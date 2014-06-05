@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1116</width>
+    <width>1027</width>
     <height>494</height>
    </rect>
   </property>
@@ -35,7 +35,7 @@
         <widget class="QTreeView" name="treeView">
          <property name="minimumSize">
           <size>
-           <width>180</width>
+           <width>160</width>
            <height>0</height>
           </size>
          </property>
@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>813</width>
-            <height>1044</height>
+            <width>724</width>
+            <height>1076</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>0</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -235,7 +235,7 @@
                        <item row="0" column="1">
                         <widget class="QLabel" name="label_70">
                          <property name="text">
-                          <string>Vertical layout used for the main window.</string>
+                          <string>Vertical layout used for the loop closure detection window.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>false</bool>
@@ -248,7 +248,7 @@
                           <string/>
                          </property>
                          <property name="checked">
-                          <bool>false</bool>
+                          <bool>true</bool>
                          </property>
                         </widget>
                        </item>
@@ -2990,6 +2990,9 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                    <layout class="QVBoxLayout" name="verticalLayout_38">
                     <item>
                      <layout class="QFormLayout" name="formLayout_7">
+                      <property name="fieldGrowthPolicy">
+                       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                      </property>
                       <item row="0" column="0">
                        <widget class="QCheckBox" name="checkBox_kp_publishKeypoints">
                         <property name="text">
