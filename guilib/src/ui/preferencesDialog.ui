@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1027</width>
-    <height>494</height>
+    <height>659</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>724</width>
-            <height>1076</height>
+            <width>729</width>
+            <height>823</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>0</number>
+                <number>15</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -143,12 +143,9 @@
                     <item>
                      <widget class="QGroupBox" name="groupBox_5">
                       <property name="title">
-                       <string>Image view</string>
+                       <string>Loop closure detection view</string>
                       </property>
                       <layout class="QFormLayout" name="formLayout_12">
-                       <property name="fieldGrowthPolicy">
-                        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                       </property>
                        <item row="1" column="0">
                         <widget class="QCheckBox" name="checkBox_imageFlipped">
                          <property name="text">
@@ -235,7 +232,7 @@
                        <item row="0" column="1">
                         <widget class="QLabel" name="label_70">
                          <property name="text">
-                          <string>Vertical layout used for the loop closure detection window.</string>
+                          <string>Vertical layout.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>false</bool>
@@ -248,6 +245,36 @@
                           <string/>
                          </property>
                          <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox">
+                      <property name="title">
+                       <string>3D Map view</string>
+                      </property>
+                      <layout class="QFormLayout" name="formLayout_23">
+                       <item row="0" column="0">
+                        <widget class="QSpinBox" name="spinBox_odomQualityWarnThr">
+                         <property name="maximum">
+                          <number>9999</number>
+                         </property>
+                         <property name="value">
+                          <number>50</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_86">
+                         <property name="text">
+                          <string>Odometry warning theshold:
+Show a yellow background when the number of odometry inliers goes under this threshold. If 0, it is ignored. You can see the current odometry inliers count under Statistics view -&gt; General -&gt; Odom inliers.</string>
+                         </property>
+                         <property name="wordWrap">
                           <bool>true</bool>
                          </property>
                         </widget>
@@ -598,7 +625,7 @@ High-res view</string>
                           <double>0.100000000000000</double>
                          </property>
                          <property name="value">
-                          <double>0.600000000000000</double>
+                          <double>1.000000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -4963,7 +4990,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="1">
+                      <item row="10" column="1">
                        <widget class="QLabel" name="label_104">
                         <property name="text">
                          <string>Max feature depth. For ICP, it is the max cloud depth.</string>
@@ -4973,7 +5000,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="0">
+                      <item row="10" column="0">
                        <widget class="QDoubleSpinBox" name="odom_maxDepth">
                         <property name="suffix">
                          <string> m</string>
@@ -5006,6 +5033,38 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <widget class="QSpinBox" name="odom_countdown">
                         <property name="maximum">
                          <number>999999</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="9" column="1">
+                       <widget class="QLabel" name="label_90">
+                        <property name="text">
+                         <string>Minmum ratio of keypoints between the current image and the last image to compute odometry.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="9" column="0">
+                       <widget class="QDoubleSpinBox" name="odom_ratio">
+                        <property name="suffix">
+                         <string/>
+                        </property>
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.500000000000000</double>
                         </property>
                        </widget>
                       </item>

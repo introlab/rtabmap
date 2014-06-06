@@ -27,6 +27,7 @@ void showUsage()
 			"  -min #                    Minimum inliers to accept the transform (default 20)\n"
 			"  -depth #.#                Maximum features depth (default 5.0 m)\n"
 			"  -i #                      RANSAC/ICP iterations (default 100)\n"
+			"  -r #.#                    Words ratio (default 0.5)\n"
 			"  -lu #                     Linear update (default 0.0 m)\n"
 			"  -au #                     Angular update (default 0.0 radian)\n"
 			"  -reset #                  Reset countdown (default 0 = disabled)\n"
@@ -63,6 +64,7 @@ int main (int argc, char * argv[])
 	float distance = 0.005;
 	int maxWords = 0;
 	int minInliers = 20;
+	float wordsRatio = 0.5;
 	float maxDepth = 5.0f;
 	int iterations = 100;
 	float linearUpdate = 0.0f;
@@ -242,6 +244,23 @@ int main (int argc, char * argv[])
 			{
 				iterations = std::atoi(argv[i]);
 				if(iterations <= 0)
+				{
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
+		if(strcmp(argv[i], "-r") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				wordsRatio = std::atof(argv[i]);
+				if(wordsRatio < 0.0f || wordsRatio > 1.0f)
 				{
 					showUsage();
 				}
@@ -446,6 +465,7 @@ int main (int argc, char * argv[])
 	UINFO("Max features = %d", maxWords);
 	UINFO("Min inliers = %d", minInliers);
 	UINFO("RANSAC/ICP iterations = %d", iterations);
+	UINFO("Words ratio = %f", wordsRatio);
 	UINFO("Max depth = %f", maxDepth);
 	UINFO("Linear update = %f", linearUpdate);
 	UINFO("Angular update = %f", angularUpdate);
@@ -470,6 +490,7 @@ int main (int argc, char * argv[])
 				maxWords,
 				minInliers,
 				iterations,
+				wordsRatio,
 				maxDepth,
 				linearUpdate,
 				angularUpdate,
@@ -482,6 +503,7 @@ int main (int argc, char * argv[])
 				maxWords,
 				minInliers,
 				iterations,
+				wordsRatio,
 				maxDepth,
 				linearUpdate,
 				angularUpdate,

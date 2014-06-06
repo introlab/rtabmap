@@ -394,6 +394,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_iterations->setObjectName(Parameters::kOdomIterations().c_str());
 	_ui->odom_maxDepth->setObjectName(Parameters::kOdomMaxDepth().c_str());
 	_ui->odom_minInliers->setObjectName(Parameters::kOdomMinInliers().c_str());
+	_ui->odom_ratio->setObjectName(Parameters::kOdomWordsRatio().c_str());
 	_ui->stackedWidget_odom->setCurrentIndex(_ui->odom_type->currentIndex());
 	connect(_ui->odom_type, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_odom, SLOT(setCurrentIndex(int)));
 
@@ -705,6 +706,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_imageRejectedShown->setChecked(true);
 		_ui->checkBox_imageHighestHypShown->setChecked(false);
 		_ui->horizontalSlider_keypointsOpacity->setSliderPosition(20);
+		_ui->spinBox_odomQualityWarnThr->setValue(50);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_cloudRendering1->objectName())
 	{
@@ -718,7 +720,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 			if(i<2)
 			{
-				_3dRenderingOpacity[i]->setValue(i==0?0.6:1.0);
+				_3dRenderingOpacity[i]->setValue(1.0);
 				_3dRenderingPtSize[i]->setValue(i==0?1:2);
 				_3dRenderingOpacityScan[i]->setValue(1.0);
 				_3dRenderingPtSizeScan[i]->setValue(1);
@@ -2330,6 +2332,10 @@ int PreferencesDialog::getKeypointsOpacity() const
 {
 	return _ui->horizontalSlider_keypointsOpacity->value();
 }
+int PreferencesDialog::getOdomQualityWarnThr() const
+{
+	return _ui->spinBox_odomQualityWarnThr->value();
+}
 
 bool PreferencesDialog::isCloudsShown(int index) const
 {
@@ -2767,7 +2773,7 @@ void PreferencesDialog::testOdometry(OdomType type)
 		window->setMinimumHeight(600);
 		connect( window, SIGNAL(destroyed(QObject*)), this, SLOT(cleanOdometryTest()) );
 
-		OdometryViewer * odomViewer = new OdometryViewer(10, 2, 0.0, window);
+		OdometryViewer * odomViewer = new OdometryViewer(10, 2, 0.0, this->getOdomQualityWarnThr(), window);
 
 		QVBoxLayout *layout = new QVBoxLayout();
 		layout->addWidget(odomViewer);

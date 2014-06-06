@@ -36,6 +36,7 @@ Odometry::Odometry(
 		int maxWords,
 		int minInliers,
 		int iterations,
+		float wordsRatio,
 		float maxDepth,
 		float linearUpdate,
 		float angularUpdate,
@@ -44,6 +45,7 @@ Odometry::Odometry(
 			_minInliers(minInliers),
 			_inlierDistance(inlierDistance),
 			_iterations(iterations),
+			_wordsRatio(wordsRatio),
 			_maxDepth(maxDepth),
 			_linearUpdate(linearUpdate),
 			_angularUpdate(angularUpdate),
@@ -59,6 +61,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_minInliers(Parameters::defaultOdomMinInliers()),
 		_inlierDistance(Parameters::defaultOdomInlierDistance()),
 		_iterations(Parameters::defaultOdomIterations()),
+		_wordsRatio(Parameters::defaultOdomWordsRatio()),
 		_maxDepth(Parameters::defaultOdomMaxDepth()),
 		_linearUpdate(Parameters::defaultOdomLinearUpdate()),
 		_angularUpdate(Parameters::defaultOdomAngularUpdate()),
@@ -72,6 +75,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomMinInliers(), _minInliers);
 	Parameters::parse(parameters, Parameters::kOdomInlierDistance(), _inlierDistance);
 	Parameters::parse(parameters, Parameters::kOdomIterations(), _iterations);
+	Parameters::parse(parameters, Parameters::kOdomWordsRatio(), _wordsRatio);
 	Parameters::parse(parameters, Parameters::kOdomMaxDepth(), _maxDepth);
 	Parameters::parse(parameters, Parameters::kOdomMaxWords(), _maxFeatures);
 }
@@ -89,9 +93,9 @@ bool Odometry::isLargeEnoughTransform(const Transform & transform)
 	       fabs(transform.z()) > _linearUpdate;
 }
 
-Transform Odometry::process(Image & image)
+Transform Odometry::process(Image & image, int * quality)
 {
-	Transform t = this->computeTransform(image);
+	Transform t = this->computeTransform(image, quality);
 	if(!t.isNull())
 	{
 		_resetCurrentCount = _resetCountdown;
@@ -117,6 +121,7 @@ OdometryBinary::OdometryBinary(
 		int maxWords,
 		int minInliers,
 		int iterations,
+		float wordsRatio,
 		float maxDepth,
 		float linearUpdate,
 		float angularUpdate,
@@ -125,7 +130,7 @@ OdometryBinary::OdometryBinary(
 		int fastThreshold,
 		bool fastNonmaxSuppression,
 		bool bruteForceMatching) :
-	Odometry(inlierDistance, maxWords, minInliers, iterations, maxDepth, linearUpdate, angularUpdate, resetCoutdown),
+	Odometry(inlierDistance, maxWords, minInliers, iterations, wordsRatio, maxDepth, linearUpdate, angularUpdate, resetCoutdown),
  	_briefBytes(briefBytes),
 	_fastThreshold(fastThreshold),
 	_fastNonmaxSuppression(fastNonmaxSuppression),
@@ -156,8 +161,8 @@ void OdometryBinary::reset()
 }
 
 
-// return true if odometry is correctly computed
-Transform OdometryBinary::computeTransform(Image & image)
+// return not null transform if odometry is correctly computed
+Transform OdometryBinary::computeTransform(Image & image, int * quality)
 {
 	UTimer timer;
 	cv::Mat imageMono;
@@ -187,7 +192,7 @@ Transform OdometryBinary::computeTransform(Image & image)
 
 	if(_lastKeypoints.size())
 	{
-		if(newDescriptors.rows && newDescriptors.rows > (int)_lastKeypoints.size()/2) // at least 50% keypoints
+		if(newDescriptors.rows && newDescriptors.rows > (int)(getWordsRatio() * float(_lastKeypoints.size()))) // at least 50% keypoints
 		{
 			cv::Mat results;
 			cv::Mat dists;
@@ -308,6 +313,11 @@ Transform OdometryBinary::computeTransform(Image & image)
 				float x,y,z, roll,pitch,yaw;
 				pcl::getTranslationAndEulerAngles(util3d::transformToEigen3f(t), x,y,z, roll,pitch,yaw);
 
+				if(quality)
+				{
+					*quality = inliers;
+				}
+
 				// Large transforms may be erroneous computed transforms, so keep under 1 m
 				if(inliers >= this->getMinInliers())
 				{
@@ -335,8 +345,8 @@ Transform OdometryBinary::computeTransform(Image & image)
 		}
 		else if(newDescriptors.rows)
 		{
-			UWARN("At least 50%% keypoints of the last image required. New=%d last=%d",
-					newDescriptors.rows, _lastKeypoints.size());
+			UWARN("At least %f%% keypoints of the last image required. New=%d last=%d",
+					getWordsRatio()*100.0f, newDescriptors.rows, _lastKeypoints.size());
 		}
 		else
 		{
@@ -368,13 +378,14 @@ OdometryBOW::OdometryBOW(
 		int maxWords,
 		int minInliers,
 		int iterations,
+		float wordsRatio,
 		float maxDepth,
 		float linearUpdate,
 		float angularUpdate,
 		int resetCoutdown,
 		float surfHessianThreshold,
 		float nndr) : // nearest neighbor distance ratio
-	Odometry(inlierDistance, maxWords, minInliers, iterations, maxDepth, linearUpdate, angularUpdate, resetCoutdown),
+	Odometry(inlierDistance, maxWords, minInliers, iterations, wordsRatio, maxDepth, linearUpdate, angularUpdate, resetCoutdown),
 	_memory(new Memory())
 {
 	ParametersMap customParameters;
@@ -421,8 +432,8 @@ void OdometryBOW::reset()
 }
 
 
-// return true if odometry is correctly computed
-Transform OdometryBOW::computeTransform(Image & image)
+// return not null transform if odometry is correctly computed
+Transform OdometryBOW::computeTransform(Image & image, int * quality)
 {
 	UTimer timer;
 	Transform output;
@@ -444,10 +455,10 @@ Transform OdometryBOW::computeTransform(Image & image)
 		if(previousSignature && newSignature)
 		{
 			Transform transform;
-			if(newSignature->getWords3().size() < previousSignature->getWords3().size()/2)
+			if(newSignature->getWords3().size() < (unsigned int)(getWordsRatio() * float(previousSignature->getWords3().size())))
 			{
-				UWARN("At least 50%% keypoints of the last image required. New=%d last=%d",
-						newSignature->getWords3().size(), previousSignature->getWords3().size());
+				UWARN("At least %f%% keypoints of the last image required. New=%d last=%d",
+						getWordsRatio()*100.0f, newSignature->getWords3().size(), previousSignature->getWords3().size());
 			}
 			else if(!previousSignature->getWords3().empty() && !newSignature->getWords3().empty())
 			{
@@ -471,6 +482,11 @@ Transform OdometryBOW::computeTransform(Image & image)
 							this->getInlierDistance(),
 							this->getIterations(),
 							&inliers);
+
+					if(quality)
+					{
+						*quality = inliers;
+					}
 
 					if(inliers < this->getMinInliers())
 					{
@@ -527,7 +543,7 @@ OdometryICP::OdometryICP(
 		float linearUpdate,
 		float angularUpdate,
 		int resetCoutdown) :
-	Odometry(0, 0, 0, 0, maxDepth, linearUpdate, angularUpdate, resetCoutdown),
+	Odometry(0, 0, 0, 0, 0, maxDepth, linearUpdate, angularUpdate, resetCoutdown),
 	_decimation(decimation),
 	_voxelSize(voxelSize),
 	_samples(samples),
@@ -563,8 +579,8 @@ void OdometryICP::reset()
 	_previousCloud.reset(new pcl::PointCloud<pcl::PointNormal>);
 }
 
-// return not null if odometry is correctly computed
-Transform OdometryICP::computeTransform(Image & image)
+// return not null transform if odometry is correctly computed
+Transform OdometryICP::computeTransform(Image & image, int * quality)
 {
 	UTimer timer;
 	Transform output;
@@ -698,9 +714,10 @@ void OdometryThread::mainLoop()
 	getImage(image);
 	if(!image.empty())
 	{
-		Transform pose = _odometry->process(image);
+		int quality = 0;
+		Transform pose = _odometry->process(image, &quality);
 		image.setPose(pose); // a null pose notify that odometry could not be computed
-		this->post(new OdometryEvent(image));
+		this->post(new OdometryEvent(image, quality));
 	}
 }
 

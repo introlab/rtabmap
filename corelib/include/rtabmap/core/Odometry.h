@@ -34,7 +34,7 @@ class RTABMAP_EXP Odometry
 {
 public:
 	virtual ~Odometry() {}
-	Transform process(Image & image);
+	Transform process(Image & image, int * quality = 0);
 	virtual void reset();
 
 	bool isLargeEnoughTransform(const Transform & transform);
@@ -44,18 +44,20 @@ public:
 	int getMinInliers() const {return _minInliers;}
 	float getInlierDistance() const {return _inlierDistance;}
 	int getIterations() const {return _iterations;}
+	float getWordsRatio() const {return _wordsRatio;}
 	float getMaxDepth() const {return _maxDepth;}
 	float geLinearUpdate() const {return _linearUpdate;}
 	float getAngularUpdate() const {return _angularUpdate;}
 
 private:
-	virtual Transform computeTransform(Image & image) = 0;
+	virtual Transform computeTransform(Image & image, int * quality = 0) = 0;
 
 private:
 	int _maxFeatures;
 	int _minInliers;
 	float _inlierDistance;
 	int _iterations;
+	float _wordsRatio;
 	float _maxDepth;
 	float _linearUpdate;
 	float _angularUpdate;
@@ -68,6 +70,7 @@ protected:
 			int maxWords = Parameters::defaultOdomMaxWords(),
 			int minInliers = Parameters::defaultOdomMinInliers(),
 			int iterations = Parameters::defaultOdomIterations(),
+			float wordsRatio = Parameters::defaultOdomWordsRatio(),
 			float maxDepth = Parameters::defaultOdomMaxDepth(),
 			float linearUpdate = Parameters::defaultOdomLinearUpdate(),
 			float angularUpdate = Parameters::defaultOdomAngularUpdate(),
@@ -83,6 +86,7 @@ public:
 			int maxWords = Parameters::defaultOdomMaxWords(),
 			int minInliers = Parameters::defaultOdomMinInliers(),
 			int iterations = Parameters::defaultOdomIterations(),
+			float wordsRatio = Parameters::defaultOdomWordsRatio(),
 			float maxDepth = Parameters::defaultOdomMaxDepth(),
 			float linearUpdate = Parameters::defaultOdomLinearUpdate(),
 			float angularUpdate = Parameters::defaultOdomAngularUpdate(),
@@ -96,7 +100,7 @@ public:
 	virtual void reset();
 
 private:
-	virtual Transform computeTransform(Image & image);
+	virtual Transform computeTransform(Image & image, int * quality = 0);
 
 private:
 	int _briefBytes;
@@ -120,6 +124,7 @@ public:
 			int maxWords = Parameters::defaultOdomMaxWords(),
 			int minInliers = Parameters::defaultOdomMinInliers(),
 			int iterations = Parameters::defaultOdomIterations(),
+			float wordsRatio = Parameters::defaultOdomWordsRatio(),
 			float maxDepth = Parameters::defaultOdomMaxDepth(),
 			float linearUpdate = Parameters::defaultOdomLinearUpdate(),
 			float angularUpdate = Parameters::defaultOdomAngularUpdate(),
@@ -132,7 +137,7 @@ public:
 	virtual void reset();
 
 private:
-	virtual Transform computeTransform(Image & image);
+	virtual Transform computeTransform(Image & image, int * quality = 0);
 
 private:
 	Memory * _memory;
@@ -156,7 +161,7 @@ public:
 	void reset();
 
 private:
-	virtual Transform computeTransform(Image & image);
+	virtual Transform computeTransform(Image & image, int * quality = 0);
 
 private:
 	int _decimation;

@@ -23,7 +23,7 @@ class RTABMAPGUI_EXP OdometryViewer : public CloudViewer, public UEventsHandler
 	Q_OBJECT
 
 public:
-	OdometryViewer(int maxClouds = 10, int decimation = 2, float voxelSize = 0.0f, QWidget * parent = 0);
+	OdometryViewer(int maxClouds = 10, int decimation = 2, float voxelSize = 0.0f, int qualityWarningThr=0, QWidget * parent = 0);
 	virtual ~OdometryViewer() {}
 
 protected:
@@ -35,11 +35,13 @@ private slots:
 
 private:
 	UMutex dataMutex_;
-	std::list<rtabmap::Image> buffer_;
+	std::list<rtabmap::Image> data_;
+	int dataQuality_;
 	UTimer timer_;
 	int maxClouds_;
 	float voxelSize_;
 	int decimation_;
+	int qualityWarningThr_;
 	int id_;
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > clouds_;
 	QAction * _aSetVoxelSize;

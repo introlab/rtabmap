@@ -21,11 +21,12 @@
 namespace rtabmap {
 
 
-OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, QWidget * parent) :
+OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, int qualityWarningThr, QWidget * parent) :
 		CloudViewer(parent),
 		maxClouds_(maxClouds),
 		voxelSize_(voxelSize),
 		decimation_(decimation),
+		qualityWarningThr_(qualityWarningThr),
 		id_(0),
 		_aSetVoxelSize(0),
 		_aSetDecimation(0),
@@ -48,11 +49,14 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, Q
 void OdometryViewer::processData()
 {
 	rtabmap::Image data;
+	int quality;
 	dataMutex_.lock();
-	if(buffer_.size())
+	if(data_.size())
 	{
-		data = buffer_.back();
-		buffer_.clear();
+		data = data_.back();
+		data_.clear();
+		quality = dataQuality_;
+		dataQuality_ = 0;
 	}
 	dataMutex_.unlock();
 
@@ -96,7 +100,14 @@ void OdometryViewer::processData()
 
 		this->updateCameraPosition(data.pose());
 
-		this->setBackgroundColor(Qt::black);
+		if(qualityWarningThr_ && quality && quality < qualityWarningThr_)
+		{
+			this->setBackgroundColor(Qt::darkYellow);
+		}
+		else
+		{
+			this->setBackgroundColor(Qt::black);
+		}
 
 		this->render();
 	}
@@ -114,15 +125,16 @@ void OdometryViewer::handleEvent(UEvent * event)
 			{
 				bool empty = false;
 				dataMutex_.lock();
-				if(buffer_.empty())
+				if(data_.empty())
 				{
-					buffer_.push_back(odomEvent->data());
+					data_.push_back(odomEvent->data());
 					empty= true;
 				}
 				else
 				{
-					buffer_.back() = odomEvent->data();
+					data_.back() = odomEvent->data();
 				}
+				dataQuality_ = odomEvent->quality();
 				dataMutex_.unlock();
 				if(empty)
 				{

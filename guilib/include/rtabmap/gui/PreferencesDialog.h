@@ -113,6 +113,7 @@ public:
 	bool imageHighestHypShown() const;
 	bool beepOnPause() const;
 	int getKeypointsOpacity() const;
+	int getOdomQualityWarnThr() const;
 
 	bool isCloudMeshing(int index) const;     // 0=map
 	bool isCloudsShown(int index) const;      // 0=map, 1=odom, 2=save

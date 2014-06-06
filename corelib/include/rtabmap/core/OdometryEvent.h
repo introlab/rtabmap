@@ -17,16 +17,19 @@ class OdometryEvent : public UEvent
 {
 public:
 	OdometryEvent(
-		const Image & data) :
-			_data(data) {}
+		const Image & data, int quality = 0) :
+			_data(data),
+			_quality(quality) {}
 	virtual ~OdometryEvent() {}
 	virtual std::string getClassName() const {return "OdometryEvent";}
 
 	bool isValid() const {return !_data.pose().isNull();}
 	const Image & data() const {return _data;}
+	int quality() const {return _quality;}
 
 private:
 	Image _data;
+	int _quality;
 };
 
 class OdometryResetEvent : public UEvent

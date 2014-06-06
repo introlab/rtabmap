@@ -328,7 +328,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(this, SIGNAL(statsReceived(rtabmap::Statistics)), this, SLOT(processStats(rtabmap::Statistics)));
 
 	qRegisterMetaType<rtabmap::Image>("rtabmap::Image");
-	connect(this, SIGNAL(odometryReceived(rtabmap::Image)), this, SLOT(processOdometry(rtabmap::Image)));
+	connect(this, SIGNAL(odometryReceived(rtabmap::Image, int)), this, SLOT(processOdometry(rtabmap::Image, int)));
 
 	connect(this, SIGNAL(noMoreImagesReceived()), this, SLOT(stopDetection()));
 
@@ -527,7 +527,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 		   !_processingStatistics)
 		{
 			_lastOdometryProcessed = false; // if we receive too many odometry events!
-			emit odometryReceived(odomEvent->data());
+			emit odometryReceived(odomEvent->data(), odomEvent->quality());
 		}
 	}
 	else if(anEvent->getClassName().compare("ULogEvent") == 0)
@@ -550,7 +550,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 	}
 }
 
-void MainWindow::processOdometry(const rtabmap::Image & data)
+void MainWindow::processOdometry(const rtabmap::Image & data, int quality)
 {
 	Transform pose = data.pose();
 	if(pose.isNull())
@@ -560,11 +560,19 @@ void MainWindow::processOdometry(const rtabmap::Image & data)
 
 		pose = _lastOdomPose;
 	}
+	else if(quality &&
+			_preferencesDialog->getOdomQualityWarnThr() &&
+			quality < _preferencesDialog->getOdomQualityWarnThr())
+	{
+		UDEBUG("odom warn, quality=%d thr=%d", quality, _preferencesDialog->getOdomQualityWarnThr());
+		_ui->widget_cloudViewer->setBackgroundColor(Qt::darkYellow);
+	}
 	else
 	{
 		UDEBUG("odom ok");
 		_ui->widget_cloudViewer->setBackgroundColor(Qt::black);
 	}
+	_ui->statsToolBox->updateStat("/Odom inliers/", (float)data.id(), (float)quality);
 	if(!pose.isNull())
 	{
 		_lastOdomPose = pose;
