@@ -493,6 +493,10 @@ Transform OdometryBOW::computeTransform(Image & image, int * quality)
 						transform.setNull();
 						UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
 					}
+					//else if(!transform.isNull() && true)
+					//{
+					//	transform = _memory->computeIcpTransform(*newSignature, *previousSignature, transform, true);
+					//}
 				}
 				else
 				{

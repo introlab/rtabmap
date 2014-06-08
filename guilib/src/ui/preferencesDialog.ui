@@ -65,7 +65,7 @@
             <x>0</x>
             <y>0</y>
             <width>729</width>
-            <height>823</height>
+            <height>836</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>15</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -490,7 +490,7 @@ High-res view</string>
                           <double>0.010000000000000</double>
                          </property>
                          <property name="value">
-                          <double>0.010000000000000</double>
+                          <double>0.005000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -916,7 +916,7 @@ High-res view</string>
                           <string/>
                          </property>
                          <property name="checked">
-                          <bool>true</bool>
+                          <bool>false</bool>
                          </property>
                         </widget>
                        </item>

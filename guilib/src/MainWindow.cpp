@@ -1125,9 +1125,19 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & posesIn, const 
 
 						}
 					}
-					else if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloud, iter->second))
+					else
 					{
-						UERROR("Adding cloud %d to viewer failed!", iter->first);
+						if(_preferencesDialog->getMeshSmoothing(0))
+						{
+							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
+							cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(0));
+							cloud->clear();
+							pcl::copyPointCloud(*cloudWithNormals, *cloud);
+						}
+						if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloud, iter->second))
+						{
+							UERROR("Adding cloud %d to viewer failed!", iter->first);
+						}
 					}
 
 					_ui->widget_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
@@ -2910,7 +2920,7 @@ void MainWindow::savePointClouds()
 {
 	int button = QMessageBox::question(this,
 			tr("One or multiple files?"),
-			tr("Save clouds separately?"),
+			tr("Merge all clouds together?"),
 			QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
 
 	if(button == QMessageBox::Yes || button == QMessageBox::No)
@@ -2921,9 +2931,21 @@ void MainWindow::savePointClouds()
 		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()*2+1);
 
 		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
-		if(button == QMessageBox::No)
+		if(button == QMessageBox::Yes)
 		{
-			clouds.insert(std::make_pair(0, this->createAssembledCloud()));
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud();
+			if(_preferencesDialog->getMeshSmoothing(1))
+			{
+				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
+				_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares algorithm..."));
+				_initProgressDialog->incrementStep();
+				QApplication::processEvents();
+
+				cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
+				cloud->clear();
+				pcl::copyPointCloud(*cloudWithNormals, *cloud);
+			}
+			clouds.insert(std::make_pair(0, cloud));
 		}
 		else
 		{
@@ -2938,7 +2960,9 @@ void MainWindow::saveMeshes()
 {
 	int button = QMessageBox::question(this,
 			tr("One or multiple files?"),
-			tr("Save meshes separately?"),
+			tr("Merge all clouds together before surface reconstruction?\n"
+			   " Yes: Output a single mesh for the merged clouds.\n"
+			   " No: Output a mesh for each cloud."),
 			QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
 
 	if(button == QMessageBox::Yes || button == QMessageBox::No)
@@ -2949,18 +2973,35 @@ void MainWindow::saveMeshes()
 		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()*2+1);
 
 		std::map<int, pcl::PolygonMesh::Ptr> meshes;
-		if(button == QMessageBox::No)
+		if(button == QMessageBox::Yes)
 		{
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud();
+			_initProgressDialog->appendText(tr("Meshing the assembled cloud (%1 points)...").arg(cloud->size()));
+			_initProgressDialog->incrementStep();
+			QApplication::processEvents();
+
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
 			if(_preferencesDialog->getMeshSmoothing(1))
 			{
+				_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares algorithm..."));
+				_initProgressDialog->incrementStep();
+				QApplication::processEvents();
+
 				cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
 			}
 			else
 			{
+				_initProgressDialog->appendText(tr("Computing surface normals (without smoothing)..."));
+				_initProgressDialog->incrementStep();
+				QApplication::processEvents();
+
 				cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(1));
 			}
+
+			_initProgressDialog->appendText(tr("Greedy projection triangulation..."));
+			_initProgressDialog->incrementStep();
+			QApplication::processEvents();
+
 			pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(1));
 			meshes.insert(std::make_pair(0, mesh));
 		}
@@ -2979,7 +3020,7 @@ void MainWindow::viewPointClouds()
 {
 	int button = QMessageBox::question(this,
 		tr("One or multiple clouds?"),
-		tr("View clouds separately?"),
+		tr("Merge all clouds together?"),
 		QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
 
 	if(button == QMessageBox::Yes || button == QMessageBox::No)
@@ -2990,9 +3031,23 @@ void MainWindow::viewPointClouds()
 		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()+1);
 
 		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
-		if(button == QMessageBox::No)
+		if(button == QMessageBox::Yes)
 		{
-			clouds.insert(std::make_pair(0, this->createAssembledCloud()));
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud();
+
+			if(_preferencesDialog->getMeshSmoothing(1))
+			{
+				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
+				_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares algorithm..."));
+				_initProgressDialog->incrementStep();
+				QApplication::processEvents();
+
+				cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
+				cloud->clear();
+				pcl::copyPointCloud(*cloudWithNormals, *cloud);
+			}
+
+			clouds.insert(std::make_pair(0, cloud));
 		}
 		else
 		{
@@ -3039,7 +3094,9 @@ void MainWindow::viewMeshes()
 {
 	int button = QMessageBox::question(this,
 		tr("One or multiple meshes?"),
-		tr("View meshes separately?"),
+		tr("Merge all clouds together before surface reconstruction?\n"
+		   " Yes: Output a single mesh for the merged clouds.\n"
+		   " No: Output a mesh for each cloud."),
 		QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
 
 	if(button == QMessageBox::Yes || button == QMessageBox::No)
@@ -3050,7 +3107,7 @@ void MainWindow::viewMeshes()
 		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()+1);
 
 		std::map<int, pcl::PolygonMesh::Ptr> meshes;
-		if(button == QMessageBox::No)
+		if(button == QMessageBox::Yes)
 		{
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud();
 			_initProgressDialog->appendText(tr("Meshing the assembled cloud (%1 points)...").arg(cloud->size()));
@@ -3060,12 +3117,25 @@ void MainWindow::viewMeshes()
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
 			if(_preferencesDialog->getMeshSmoothing(1))
 			{
+				_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares algorithm..."));
+				_initProgressDialog->incrementStep();
+				QApplication::processEvents();
+
 				cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
 			}
 			else
 			{
+				_initProgressDialog->appendText(tr("Computing surface normals (without smoothing)..."));
+				_initProgressDialog->incrementStep();
+				QApplication::processEvents();
+
 				cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(1));
 			}
+
+			_initProgressDialog->appendText(tr("Greedy projection triangulation..."));
+			_initProgressDialog->incrementStep();
+			QApplication::processEvents();
+
 			pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(1));
 			meshes.insert(std::make_pair(0, mesh));
 		}
@@ -3507,6 +3577,14 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::createPointCl
 
 				if(cloud->size())
 				{
+					if(_preferencesDialog->getMeshSmoothing(1))
+					{
+						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
+						cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
+						cloud->clear();
+						pcl::copyPointCloud(*cloudWithNormals, *cloud);
+					}
+
 					clouds.insert(std::make_pair(iter->first, cloud));
 					inserted = true;
 				}

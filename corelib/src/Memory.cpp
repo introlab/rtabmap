@@ -1777,10 +1777,10 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 				UWARN("Clouds empty ?!?");
 			}
 
-			//pcl::io::savePCDFile("old.pcd", *oldCloud);
-			//pcl::io::savePCDFile("newguess.pcd", *newCloud);
-			//newCloud = util3d::transformPointCloud(newCloud, icpT);
-			//pcl::io::savePCDFile("newicp.pcd", *newCloud);
+			//pcl::io::savePCDFile("old.pcd", *oldCloudXYZ);
+			//pcl::io::savePCDFile("newguess.pcd", *newCloudXYZ);
+			//newCloudXYZ = util3d::transformPointCloud(newCloudXYZ, icpT);
+			//pcl::io::savePCDFile("newicp.pcd", *newCloudXYZ);
 
 			UDEBUG("fitness=%f", fitness);
 
@@ -1886,6 +1886,8 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 			UERROR("Depths 2D empty?!?");
 		}
 	}
+
+	UDEBUG("New transform = %s", transform.prettyPrint().c_str());
 	return transform;
 }
 

@@ -713,7 +713,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		for(int i=0; i<3; ++i)
 		{
 			_3dRenderingShowClouds[i]->setChecked(true);
-			_3dRenderingVoxelSize[i]->setValue(i==2?0.01:0.00);
+			_3dRenderingVoxelSize[i]->setValue(i==2?0.005:0.00);
 			_3dRenderingDecimation[i]->setValue(i==0?4:i==1?2:1);
 			_3dRenderingMaxDepth[i]->setValue(i==1?0.0:4.0);
 			_3dRenderingShowScans[i]->setChecked(true);
@@ -727,7 +727,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 				_3dRenderingNormalKSearch[i]->setValue(20);
 				_3dRenderingGP3Radius[i]->setValue(0.04);
-				_3dRenderingSmoothing[i]->setChecked(true);
+				_3dRenderingSmoothing[i]->setChecked(i==0?false:true);
 				_3dRenderingSmoothingRadius[i]->setValue(0.04);
 			}
 
