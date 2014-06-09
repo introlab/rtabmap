@@ -365,6 +365,8 @@ void DatabaseViewer::updateIds()
 	{
 		ui_->horizontalSlider_loops->setEnabled(false);
 	}
+
+	updateGraphView();
 }
 
 void DatabaseViewer::generateGraph()
@@ -907,9 +909,30 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			}
 			UINFO("Update scans list... done");
 		}
-
-		ui_->graphViewer->updateGraph(uValueAt(graphes_, value), links_, scans_);
+		std::map<int, rtabmap::Transform> & graph = uValueAt(graphes_, value);
+		ui_->graphViewer->updateGraph(graph, links_, scans_);
 		ui_->label_iterations->setNum(value);
+
+		//compute total length (neighbor links)
+		float length = 0.0f;
+		for(std::multimap<int, rtabmap::Link>::const_iterator iter=links_.begin(); iter!=links_.end(); ++iter)
+		{
+			std::map<int, rtabmap::Transform>::const_iterator jterA = graph.find(iter->first);
+			std::map<int, rtabmap::Transform>::const_iterator jterB = graph.find(iter->second.to());
+			if(jterA != graph.end() && jterB != graph.end())
+			{
+				const rtabmap::Transform & poseA = jterA->second;
+				const rtabmap::Transform & poseB = jterB->second;
+				if(iter->second.type() == rtabmap::Link::kNeighbor)
+				{
+					Eigen::Vector3f vA, vB;
+					poseA.getTranslation(vA[0], vA[1], vA[2]);
+					poseB.getTranslation(vB[0], vB[1], vB[2]);
+					length += (vB - vA).norm();
+				}
+			}
+		}
+		ui_->label_pathLength->setNum(length);
 	}
 }
 void DatabaseViewer::updateGraphView()
