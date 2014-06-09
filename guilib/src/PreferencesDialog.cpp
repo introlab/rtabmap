@@ -2246,7 +2246,7 @@ void PreferencesDialog::updateKpROI()
 
 void PreferencesDialog::changeDatabasePath()
 {
-	QString path = QFileDialog::getOpenFileName(
+	QString path = QFileDialog::getSaveFileName(
 			this,
 			tr("Select database file..."),
 			_ui->lineEdit_databasePath->text(),
