@@ -134,8 +134,11 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_root(0),
 		_nodeRadius(0.1),
 		_linkWidth(0),
-		_gridMap(0)
+		_gridMap(0),
+		_gridCellSize(0.05f)
 {
+	Q_ASSERT(_gridCellSize > 0);
+
 	this->setScene(new QGraphicsScene(this));
 	this->setDragMode(QGraphicsView::ScrollHandDrag);
 	_workingDirectory = QDir::homePath();
@@ -152,7 +155,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	item->setParentItem(_root);
 
 	_gridMap = this->scene()->addPixmap(QPixmap());
-	_gridMap->scale(0.05, -0.05);
+	_gridMap->scale(_gridCellSize, -_gridCellSize);
 	_gridMap->setRotation(90);
 	_gridMap->setZValue(0);
 	_gridMap->setParentItem(_root);
@@ -309,7 +312,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	if(scanClouds.size())
 	{
 		float xMin=0.0f, yMin=0.0f;
-		cv::Mat map8S = util3d::create2DMap(poses, scanClouds, 0.05, xMin, yMin);
+		cv::Mat map8S = util3d::create2DMap(poses, scanClouds, _gridCellSize, xMin, yMin);
 		cv::Mat map8U(map8S.rows, map8S.cols, CV_8U);
 		//convert to gray scaled map
 		for (int i = 0; i < map8S.rows; ++i)
@@ -333,6 +336,9 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 			}
 		}
 		QImage image = uCvMat2QImage(map8U, false);
+		_gridMap->resetTransform();
+		_gridMap->scale(_gridCellSize, -_gridCellSize);
+		_gridMap->setRotation(90);
 		_gridMap->setPixmap(QPixmap::fromImage(image));
 		_gridMap->setPos(-yMin, -xMin);
 	}
@@ -383,6 +389,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aSetNodeSize = menu.addAction(tr("Set node radius..."));
 	QAction * aSetLinkSize = menu.addAction(tr("Set link width..."));
 	menu.addSeparator();
+	QAction * aSetGridCellSize = menu.addAction(tr("Set grid cell size..."));
 	QAction * aShowHideGridMap;
 	if(_gridMap->isVisible())
 	{
@@ -415,7 +422,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + (isPNG?".png":".svg"));
 
 			//_root->setScale(this->transform().m11()); // current view
-			_root->setScale(20); // grid map precision (5cm)
+			_root->setScale(1.0f/_gridCellSize); // grid map precision (for 5cm grid cell, x20 to have 1pix/5cm)
 
 			this->scene()->clearSelection();                                  // Selections would also render to the file
 			this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
@@ -540,6 +547,16 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 					line->setPen(pen);
 				}
 			}
+		}
+	}
+	else if(r == aSetGridCellSize)
+	{
+		bool ok;
+		double value = QInputDialog::getDouble(this, tr("Grid cell size"), tr("Width (m)"), _gridCellSize, 0.01, 10, 2, &ok);
+		if(ok)
+		{
+			_gridCellSize = value;
+
 		}
 	}
 	else if(r == aShowHideGridMap)

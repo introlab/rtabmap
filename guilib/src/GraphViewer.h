@@ -32,6 +32,7 @@ public:
 	void clearGraph();
 
 	void setWorkingDirectory(const QString & path) {_workingDirectory = path;}
+	void setGridCellSize(float size) {Q_ASSERT(_gridCellSize>0.0f); _gridCellSize= size;}
 
 protected:
 	virtual void wheelEvent ( QWheelEvent * event );
@@ -49,6 +50,7 @@ private:
 	float _nodeRadius;
 	float _linkWidth;
 	QGraphicsPixmapItem * _gridMap;
+	float _gridCellSize;
 };
 
 } /* namespace rtabmap */
