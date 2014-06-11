@@ -340,6 +340,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 
 	splash.close();
+
+	this->setFocus();
 }
 
 MainWindow::~MainWindow()
