@@ -253,6 +253,7 @@ SET(CPACK_PACKAGE_CONTACT "matlabbe@gmail.com")
 
 set(CPACK_SOURCE_IGNORE_FILES 
   "\\\\.svn/" 
+  "\\\\.settings/" 
   "${PROJECT_SOURCE_DIR}/build/[a-zA-Z0-9_]+" 
   "~$" 
   "${PROJECT_SOURCE_DIR}/bin/.*${PROJECT_PREFIX}"
