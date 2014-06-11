@@ -176,7 +176,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 
 			// Last id
 			_dbDriver->getLastNodeId(_idCount);
-			_idMapCount = _lastSignature?_lastSignature->mapId():kIdStart;
+			_idMapCount = _lastSignature?_lastSignature->mapId()+1:kIdStart;
 		}
 		else
 		{
