@@ -751,7 +751,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 	}
 	else if(groupBox->objectName() == _ui->groupBox_source0->objectName())
 	{
-		_ui->general_doubleSpinBox_imgRate->setValue(0.0);
+		_ui->general_doubleSpinBox_imgRate->setValue(10.0);
 
 		_ui->groupBox_sourceImage->setChecked(false);
 		_ui->source_spinBox_imgWidth->setValue(0);
