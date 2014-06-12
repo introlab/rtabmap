@@ -453,8 +453,8 @@ void CloudViewer::updateCameraPosition(const Transform & pose)
 					cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
 					cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
 		}
-		_visualizer->removeCoordinateSystem();
-		_visualizer->addCoordinateSystem(0.2, m);
+		_visualizer->removeCoordinateSystem(0);
+		_visualizer->addCoordinateSystem(0.2, m, 0);
 	}
 
 	_lastPose = pose;
