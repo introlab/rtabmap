@@ -94,6 +94,7 @@
       <addaction name="actionFreenect"/>
       <addaction name="actionOpenNI_CV"/>
       <addaction name="actionOpenNI_CV_ASUS"/>
+      <addaction name="actionOpenNI2"/>
      </widget>
      <addaction name="menuImage"/>
      <addaction name="actionDatabase"/>
@@ -1010,6 +1011,11 @@
    </property>
    <property name="text">
     <string>OpenNI-CV-ASUS</string>
+   </property>
+  </action>
+  <action name="actionOpenNI2">
+   <property name="text">
+    <string>OpenNI2</string>
    </property>
   </action>
  </widget>

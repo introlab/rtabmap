@@ -31,6 +31,12 @@
 class UDirectory;
 class UTimer;
 
+namespace openni
+{
+class Device;
+class VideoStream;
+}
+
 namespace rtabmap
 {
 
@@ -166,6 +172,9 @@ class RTABMAP_EXP CameraRGBD :
 {
 
 public:
+	static bool available();
+
+public:
 	CameraRGBD(float imageRate = 0,
 				bool asus = false);
 	virtual ~CameraRGBD();
@@ -178,6 +187,33 @@ protected:
 private:
 	bool _asus;
 	cv::VideoCapture _capture;
+	float _depthFocal;
+};
+
+/////////////////////////
+// CameraOpenNI2
+/////////////////////////
+class RTABMAP_EXP CameraOpenNI2 :
+	public Camera
+{
+
+public:
+	static bool available();
+
+public:
+	CameraOpenNI2(float imageRate = 0);
+	virtual ~CameraOpenNI2();
+
+	virtual bool init();
+
+protected:
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant);
+
+private:
+	openni::Device * _device;
+	openni::VideoStream * _color;
+	openni::VideoStream * _depth;
+	float _depthFocal;
 };
 
 

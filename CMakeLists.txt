@@ -137,6 +137,7 @@ FIND_PACKAGE(PCL 1.7 REQUIRED)
 FIND_PACKAGE(VTK REQUIRED)
 FIND_PACKAGE(ZLIB REQUIRED)
 FIND_PACKAGE(Freenect)
+FIND_PACKAGE(OpenNI2)
 
 # If Qt is here, the GUI will be built
 FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg) 
@@ -319,9 +320,17 @@ ENDIF(NOT WIN32)
 IF(APPLE)
 MESSAGE(STATUS "  BUILD_AS_BUNDLE = ${BUILD_AS_BUNDLE}")
 ENDIF(APPLE)
+
 IF(Freenect_FOUND)
-MESSAGE(STATUS "  Freenect found.")
+MESSAGE(STATUS "  With Freenect = YES")
 ELSE()
-MESSAGE(STATUS "  Freenect (libfreenect) not found.")
+MESSAGE(STATUS "  With Freenect = NO (libfreenect not found)")
 ENDIF()
+
+IF(OpenNI2_FOUND)
+MESSAGE(STATUS "  With OpenNI2  = YES")
+ELSE()
+MESSAGE(STATUS "  With OpenNI2  = NO (OpenNI2 not found)")
+ENDIF()
+
 MESSAGE(STATUS "--------------------------------------------")

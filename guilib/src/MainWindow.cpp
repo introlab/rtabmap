@@ -286,6 +286,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	selectSourceImageGrp->addAction(_ui->actionFreenect);
 	selectSourceImageGrp->addAction(_ui->actionOpenNI_CV);
 	selectSourceImageGrp->addAction(_ui->actionOpenNI_CV_ASUS);
+	selectSourceImageGrp->addAction(_ui->actionOpenNI2);
 	this->updateSelectSourceImageMenu(_preferencesDialog->getSourceImageType());
 	connect(_ui->actionImageFiles, SIGNAL(triggered()), this, SLOT(selectImages()));
 	connect(_ui->actionVideo, SIGNAL(triggered()), this, SLOT(selectVideo()));
@@ -298,6 +299,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->actionFreenect->setEnabled(CameraFreenect::available());
 	connect(_ui->actionOpenNI_CV, SIGNAL(triggered()), this, SLOT(selectOpenniCv()));
 	connect(_ui->actionOpenNI_CV_ASUS, SIGNAL(triggered()), this, SLOT(selectOpenniCvAsus()));
+	_ui->actionOpenNI_CV->setEnabled(CameraRGBD::available());
+	_ui->actionOpenNI_CV_ASUS->setEnabled(CameraRGBD::available());
+	connect(_ui->actionOpenNI2, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
+	_ui->actionOpenNI2->setEnabled(CameraOpenNI2::available());
 
 	connect(_ui->actionSave_state, SIGNAL(triggered()), this, SLOT(saveFigures()));
 	connect(_ui->actionLoad_state, SIGNAL(triggered()), this, SLOT(loadFigures()));
@@ -1841,6 +1846,7 @@ void MainWindow::updateSelectSourceRGBDMenu(bool used, PreferencesDialog::Src sr
 	_ui->actionFreenect->setChecked(used && src == PreferencesDialog::kSrcFreenect);
 	_ui->actionOpenNI_CV->setChecked(used && src == PreferencesDialog::kSrcOpenNI_CV);
 	_ui->actionOpenNI_CV_ASUS->setChecked(used && src == PreferencesDialog::kSrcOpenNI_CV_ASUS);
+	_ui->actionOpenNI2->setChecked(used && src == PreferencesDialog::kSrcOpenNI2);
 }
 
 void MainWindow::changeImgRateSetting()
@@ -2068,11 +2074,22 @@ void MainWindow::startDetection()
 			}
 		}
 		else if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV ||
-				_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS)
+				_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS ||
+				_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2)
 		{
-			Camera * camera = new CameraRGBD(
-					_preferencesDialog->getGeneralInputRate(),
-					_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS);
+			Camera * camera = 0;
+			if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2)
+			{
+				camera = new CameraOpenNI2(
+						_preferencesDialog->getGeneralInputRate());
+			}
+			else
+			{
+				camera = new CameraRGBD(
+						_preferencesDialog->getGeneralInputRate(),
+						_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS);
+			}
+
 			camera->setLocalTransform(_preferencesDialog->getSourceOpenniLocalTransform());
 
 			if(!camera->init())
@@ -2618,6 +2635,11 @@ void MainWindow::selectOpenniCv()
 void MainWindow::selectOpenniCvAsus()
 {
 	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV_ASUS);
+}
+
+void MainWindow::selectOpenni2()
+{
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI2);
 }
 
 

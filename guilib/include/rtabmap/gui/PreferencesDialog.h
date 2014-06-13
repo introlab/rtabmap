@@ -80,7 +80,8 @@ public:
 		kSrcOpenNI_PCL,
 		kSrcFreenect,
 		kSrcOpenNI_CV,
-		kSrcOpenNI_CV_ASUS
+		kSrcOpenNI_CV_ASUS,
+		kSrcOpenNI2
 	};
 
 	enum OdomType {

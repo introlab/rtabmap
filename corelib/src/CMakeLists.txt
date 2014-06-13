@@ -64,6 +64,18 @@ IF(Freenect_FOUND)
 	)
 ENDIF(Freenect_FOUND)
 
+IF(OpenNI2_FOUND)
+	ADD_DEFINITIONS("-DWITH_OPENNI2")
+	SET(INCLUDE_DIRS
+		${INCLUDE_DIRS}
+		${OpenNI2_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${OpenNI2_LIBRARIES}
+	)
+ENDIF(OpenNI2_FOUND)
+
 ####################################
 # Generate resources files
 ####################################

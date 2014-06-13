@@ -238,6 +238,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->radioButton_freenect->setEnabled(CameraFreenect::available());
 	connect(_ui->radioButton_opennicv, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->radioButton_opennicvasus, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
+	_ui->radioButton_opennicv->setEnabled(CameraRGBD::available());
+	_ui->radioButton_opennicvasus->setEnabled(CameraRGBD::available());
+	connect(_ui->radioButton_openni2, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
+	_ui->radioButton_openni2->setEnabled(CameraOpenNI2::available());
 	connect(_ui->lineEdit_openniDevice, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniLocalTransform, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 
@@ -1611,6 +1615,7 @@ void PreferencesDialog::selectSourceRGBD(Src src)
 	_ui->radioButton_freenect->setChecked(src == kSrcFreenect);
 	_ui->radioButton_opennicv->setChecked(src == kSrcOpenNI_CV);
 	_ui->radioButton_opennicvasus->setChecked(src == kSrcOpenNI_CV_ASUS);
+	_ui->radioButton_openni2->setChecked(src == kSrcOpenNI2);
 
 	if(_obsoletePanels)
 	{
@@ -2533,6 +2538,10 @@ PreferencesDialog::Src PreferencesDialog::getSourceRGBD() const
 	{
 		return kSrcOpenNI_CV_ASUS;
 	}
+	else if (_ui->radioButton_openni2->isChecked())
+	{
+		return kSrcOpenNI2;
+	}
 	else
 	{
 		return kSrcOpenNI_PCL;
@@ -2752,11 +2761,23 @@ void PreferencesDialog::testOdometry(OdomType type)
 			_odomCameraFreenect = 0;
 		}
 	}
-	else if(this->getSourceRGBD() == kSrcOpenNI_CV || this->getSourceRGBD() == kSrcOpenNI_CV_ASUS)
+	else if(this->getSourceRGBD() == kSrcOpenNI_CV ||
+			this->getSourceRGBD() == kSrcOpenNI_CV_ASUS ||
+			this->getSourceRGBD() == kSrcOpenNI2)
 	{
-		Camera * camera = new CameraRGBD(
+		Camera * camera = 0;
+		if(this->getSourceRGBD() == kSrcOpenNI2)
+		{
+			camera = new CameraOpenNI2(
+				this->getGeneralInputRate());
+
+		}
+		else
+		{
+			camera = new CameraRGBD(
 				this->getGeneralInputRate(),
 				this->getSourceRGBD() == kSrcOpenNI_CV_ASUS);
+		}
 		camera->setLocalTransform(this->getSourceOpenniLocalTransform());
 		_odomCameraOpenNICv = new CameraThread(camera);
 		if(!_odomCameraOpenNICv->init())

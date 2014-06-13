@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-331</y>
             <width>609</width>
-            <height>811</height>
+            <height>657</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -1760,6 +1760,13 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                           <widget class="QRadioButton" name="radioButton_opennicvasus">
                            <property name="text">
                             <string>OpenNI-CV-ASUS</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QRadioButton" name="radioButton_openni2">
+                           <property name="text">
+                            <string>OpenNI2</string>
                            </property>
                           </widget>
                          </item>

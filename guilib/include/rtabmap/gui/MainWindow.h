@@ -117,6 +117,7 @@ private slots:
 	void selectFreenect();
 	void selectOpenniCv();
 	void selectOpenniCvAsus();
+	void selectOpenni2();
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void downloadAllClouds();

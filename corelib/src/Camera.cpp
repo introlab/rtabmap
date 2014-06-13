@@ -31,6 +31,12 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include <iostream>
+#include <cmath>
+
+#ifdef WITH_OPENNI2
+
+#endif
+#include <OpenNI.h>
 
 namespace rtabmap
 {
@@ -382,9 +388,16 @@ void CameraVideo::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthCons
 /////////////////////////
 // CameraRGBD
 /////////////////////////
+bool CameraRGBD::available()
+{
+	printf("\nOpencV build: \n", cv::getBuildInformation().c_str());
+	return true;
+}
+
 CameraRGBD::CameraRGBD(float imageRate, bool asus) :
 	Camera(imageRate),
-	_asus(asus)
+	_asus(asus),
+	_depthFocal(0.0f)
 {
 
 }
@@ -406,12 +419,14 @@ bool CameraRGBD::init()
 	if(_capture.isOpened())
 	{
 		_capture.set( CV_CAP_OPENNI_IMAGE_GENERATOR_OUTPUT_MODE, CV_CAP_OPENNI_VGA_30HZ );
+		_depthFocal = _capture.get( CV_CAP_OPENNI_DEPTH_GENERATOR_FOCAL_LENGTH );
 		// Print some avalible device settings.
 		UINFO("Depth generator output mode:");
 		UINFO("FRAME_WIDTH        %f", _capture.get( CV_CAP_PROP_FRAME_WIDTH ));
 		UINFO("FRAME_HEIGHT       %f", _capture.get( CV_CAP_PROP_FRAME_HEIGHT ));
 		UINFO("FRAME_MAX_DEPTH    %f mm", _capture.get( CV_CAP_PROP_OPENNI_FRAME_MAX_DEPTH ));
 		UINFO("FPS                %f", _capture.get( CV_CAP_PROP_FPS ));
+		UINFO("Focal              %f", _depthFocal);
 		UINFO("REGISTRATION       %f", _capture.get( CV_CAP_PROP_OPENNI_REGISTRATION ));
 		if(_capture.get( CV_CAP_PROP_OPENNI_REGISTRATION ) == 0.0)
 		{
@@ -450,7 +465,202 @@ void CameraRGBD::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConst
 
 		depth = depth.clone();
 		rgb = rgb.clone();
-		depthConstant = 0.001905f;
+		UASSERT(_depthFocal > 0.0f);
+		depthConstant = 1.0f/_depthFocal;
+	}
+	else
+	{
+		ULOGGER_WARN("The camera must be initialized before requesting an image.");
+	}
+}
+
+
+/////////////////////////
+// CameraOpenNI2
+/////////////////////////
+bool CameraOpenNI2::available()
+{
+#ifdef WITH_OPENNI2
+	return true;
+#else
+	return false;
+#endif
+}
+
+CameraOpenNI2::CameraOpenNI2(float imageRate) :
+	Camera(imageRate),
+	_device(new openni::Device()),
+	_color(new openni::VideoStream()),
+	_depth(new openni::VideoStream()),
+	_depthFocal(0.0f)
+{
+}
+
+CameraOpenNI2::~CameraOpenNI2()
+{
+	_color->stop();
+	_color->destroy();
+	_depth->stop();
+	_depth->destroy();
+	_device->close();
+	openni::OpenNI::shutdown();
+
+	delete _device;
+	delete _color;
+	delete _depth;
+}
+
+bool CameraOpenNI2::init()
+{
+	openni::OpenNI::initialize();
+
+	if(_device->open(openni::ANY_DEVICE) != openni::STATUS_OK)
+	{
+		UERROR("CameraOpenNI2: Cannot open device.");
+		_device->close();
+		openni::OpenNI::shutdown();
+		return false;
+	}
+
+	if(!_device->isImageRegistrationModeSupported(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR))
+	{
+		UERROR("CameraOpenNI2: Device doesn't support depth/color registration.");
+		_device->close();
+		openni::OpenNI::shutdown();
+		return false;
+	}
+
+	if(_device->getSensorInfo(openni::SENSOR_DEPTH) == NULL ||
+	  _device->getSensorInfo(openni::SENSOR_COLOR) == NULL)
+	{
+		UERROR("CameraOpenNI2: Cannot get sensor info for depth and color.");
+		_device->close();
+		openni::OpenNI::shutdown();
+		return false;
+	}
+
+	if(_depth->create(*_device, openni::SENSOR_DEPTH) != openni::STATUS_OK)
+	{
+		UERROR("CameraOpenNI2: Cannot create depth stream.");
+		_device->close();
+		openni::OpenNI::shutdown();
+		return false;
+	}
+
+	if(_color->create(*_device, openni::SENSOR_COLOR) != openni::STATUS_OK)
+	{
+		UERROR("CameraOpenNI2: Cannot create color stream.");
+		_depth->destroy();
+		_device->close();
+		openni::OpenNI::shutdown();
+		return false;
+	}
+
+	if(_device->setImageRegistrationMode(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR ) != openni::STATUS_OK)
+	{
+		UERROR("CameraOpenNI2: Failed to set depth/color registration.");
+	}
+
+	_depth->setMirroringEnabled(false);
+	_color->setMirroringEnabled(false);
+
+	const openni::Array<openni::VideoMode>& depthVideoModes = _depth->getSensorInfo().getSupportedVideoModes();
+	for(int i=0; i<depthVideoModes.getSize(); ++i)
+	{
+		UINFO("CameraOpenNI2: Depth video mode %d: fps=%d, pixel=%d, w=%d, h=%d",
+				i,
+				depthVideoModes[i].getFps(),
+				depthVideoModes[i].getPixelFormat(),
+				depthVideoModes[i].getResolutionX(),
+				depthVideoModes[i].getResolutionY());
+	}
+
+	const openni::Array<openni::VideoMode>& colorVideoModes = _color->getSensorInfo().getSupportedVideoModes();
+	for(int i=0; i<colorVideoModes.getSize(); ++i)
+	{
+		UINFO("CameraOpenNI2: Color video mode %d: fps=%d, pixel=%d, w=%d, h=%d",
+				i,
+				colorVideoModes[i].getFps(),
+				colorVideoModes[i].getPixelFormat(),
+				colorVideoModes[i].getResolutionX(),
+				colorVideoModes[i].getResolutionY());
+	}
+
+	openni::VideoMode mMode;
+	mMode.setFps(30);
+	mMode.setResolution(640,480);
+	mMode.setPixelFormat(openni::PIXEL_FORMAT_DEPTH_1_MM);
+	_depth->setVideoMode(mMode);
+
+	openni::VideoMode mModeColor;
+	mModeColor.setFps(30);
+	mModeColor.setResolution(640,480);
+	mModeColor.setPixelFormat(openni::PIXEL_FORMAT_RGB888);
+	_color->setVideoMode(mModeColor);
+
+	UINFO("CameraOpenNI2: Using depth video mode: fps=%d, pixel=%d, w=%d, h=%d, H-FOV=%f rad, V-FOV=%f rad",
+			_depth->getVideoMode().getFps(),
+			_depth->getVideoMode().getPixelFormat(),
+			_depth->getVideoMode().getResolutionX(),
+			_depth->getVideoMode().getResolutionY(),
+			_depth->getHorizontalFieldOfView(),
+			_depth->getVerticalFieldOfView());
+
+	_depthFocal = float(_depth->getVideoMode().getResolutionX()/2) / std::tan(_depth->getHorizontalFieldOfView()/2.0f);
+	UINFO("depth focal = %f", _depthFocal);
+
+	UINFO("CameraOpenNI2: Using color video mode: fps=%d, pixel=%d, w=%d, h=%d, H-FOV=%f rad, V-FOV=%f rad",
+			_color->getVideoMode().getFps(),
+			_color->getVideoMode().getPixelFormat(),
+			_color->getVideoMode().getResolutionX(),
+			_color->getVideoMode().getResolutionY(),
+			_color->getHorizontalFieldOfView(),
+			_color->getVerticalFieldOfView());
+
+	if(_depth->start() != openni::STATUS_OK ||
+	   _color->start() != openni::STATUS_OK)
+	{
+		UERROR("CameraOpenNI2: Cannot start depth and/or color streams.");
+		_depth->stop();
+		_color->stop();
+		_depth->destroy();
+		_color->destroy();
+		_device->close();
+		openni::OpenNI::shutdown();
+		return false;
+	}
+
+	uSleep(1000); // just to make sure the sensor is correctly initialized
+
+	return true;
+}
+
+void CameraOpenNI2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant)
+{
+	if(_device->isValid() &&
+		_depth->isValid() &&
+		_color->isValid() &&
+		_device->getSensorInfo(openni::SENSOR_DEPTH) != NULL &&
+		_device->getSensorInfo(openni::SENSOR_COLOR) != NULL)
+	{
+		openni::VideoFrameRef depthFrame, colorFrame;
+
+		_depth->readFrame(&depthFrame);
+		_color->readFrame(&colorFrame);
+
+		if(depthFrame.isValid() && colorFrame.isValid())
+		{
+			int h=depthFrame.getHeight();
+			int w=depthFrame.getWidth();
+			depth = cv::Mat(h, w, CV_16U, (void*)depthFrame.getData()).clone();
+
+			h=colorFrame.getHeight();
+			w=colorFrame.getWidth();
+			cv::Mat tmp(h, w, CV_8UC3, (void *)colorFrame.getData());
+			cv::cvtColor(tmp, rgb, CV_RGB2BGR);
+		}
+		UASSERT(_depthFocal != 0.0f);
+		depthConstant = 1.0f/_depthFocal;
 	}
 	else
 	{
