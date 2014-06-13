@@ -408,17 +408,21 @@ bool CameraRGBD::init()
 		_capture.set( CV_CAP_OPENNI_IMAGE_GENERATOR_OUTPUT_MODE, CV_CAP_OPENNI_VGA_30HZ );
 		// Print some avalible device settings.
 		UINFO("Depth generator output mode:");
-		UINFO("FRAME_WIDTH        %d", _capture.get( CV_CAP_PROP_FRAME_WIDTH ));
-		UINFO("FRAME_HEIGHT       %d", _capture.get( CV_CAP_PROP_FRAME_HEIGHT ));
-		UINFO("FRAME_MAX_DEPTH    %d mm", _capture.get( CV_CAP_PROP_OPENNI_FRAME_MAX_DEPTH ));
-		UINFO("FPS                %d", _capture.get( CV_CAP_PROP_FPS ));
-		UINFO("REGISTRATION       %d", _capture.get( CV_CAP_PROP_OPENNI_REGISTRATION ));
+		UINFO("FRAME_WIDTH        %f", _capture.get( CV_CAP_PROP_FRAME_WIDTH ));
+		UINFO("FRAME_HEIGHT       %f", _capture.get( CV_CAP_PROP_FRAME_HEIGHT ));
+		UINFO("FRAME_MAX_DEPTH    %f mm", _capture.get( CV_CAP_PROP_OPENNI_FRAME_MAX_DEPTH ));
+		UINFO("FPS                %f", _capture.get( CV_CAP_PROP_FPS ));
+		UINFO("REGISTRATION       %f", _capture.get( CV_CAP_PROP_OPENNI_REGISTRATION ));
+		if(_capture.get( CV_CAP_PROP_OPENNI_REGISTRATION ) == 0.0)
+		{
+			UERROR("Depth registration is not activated on this device!");
+		}
 		if( _capture.get( CV_CAP_OPENNI_IMAGE_GENERATOR_PRESENT ) )
 		{
 			UINFO("Image generator output mode:");
-			UINFO("FRAME_WIDTH    %d", _capture.get( CV_CAP_OPENNI_IMAGE_GENERATOR+CV_CAP_PROP_FRAME_WIDTH ));
-			UINFO("FRAME_HEIGHT   %d", _capture.get( CV_CAP_OPENNI_IMAGE_GENERATOR+CV_CAP_PROP_FRAME_HEIGHT ));
-			UINFO("FPS            %d", _capture.get( CV_CAP_OPENNI_IMAGE_GENERATOR+CV_CAP_PROP_FPS ));
+			UINFO("FRAME_WIDTH    %f", _capture.get( CV_CAP_OPENNI_IMAGE_GENERATOR+CV_CAP_PROP_FRAME_WIDTH ));
+			UINFO("FRAME_HEIGHT   %f", _capture.get( CV_CAP_OPENNI_IMAGE_GENERATOR+CV_CAP_PROP_FRAME_HEIGHT ));
+			UINFO("FPS            %f", _capture.get( CV_CAP_OPENNI_IMAGE_GENERATOR+CV_CAP_PROP_FPS ));
 		}
 		else
 		{
