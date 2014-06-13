@@ -2753,9 +2753,11 @@ void PreferencesDialog::testOdometry(OdomType type)
 	}
 	else if(this->getSourceRGBD() == kSrcOpenNI_CV || this->getSourceRGBD() == kSrcOpenNI_CV_ASUS)
 	{
-		_odomCameraOpenNICv = new CameraThread(new CameraRGBD(
+		Camera * camera = new CameraRGBD(
 				this->getGeneralInputRate(),
-				this->getSourceRGBD() == kSrcOpenNI_CV_ASUS));
+				this->getSourceRGBD() == kSrcOpenNI_CV_ASUS);
+		camera->setLocalTransform(this->getSourceOpenniLocalTransform());
+		_odomCameraOpenNICv = new CameraThread(camera);
 		if(!_odomCameraOpenNICv->init())
 		{
 			QMessageBox::warning(this,
