@@ -284,6 +284,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	selectSourceImageGrp->addAction(_ui->actionVideo);
 	selectSourceImageGrp->addAction(_ui->actionOpenNI);
 	selectSourceImageGrp->addAction(_ui->actionFreenect);
+	selectSourceImageGrp->addAction(_ui->actionOpenNI_CV);
+	selectSourceImageGrp->addAction(_ui->actionOpenNI_CV_ASUS);
 	this->updateSelectSourceImageMenu(_preferencesDialog->getSourceImageType());
 	connect(_ui->actionImageFiles, SIGNAL(triggered()), this, SLOT(selectImages()));
 	connect(_ui->actionVideo, SIGNAL(triggered()), this, SLOT(selectVideo()));
@@ -293,6 +295,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	this->updateSelectSourceRGBDMenu(_preferencesDialog->isSourceOpenniUsed(), _preferencesDialog->getSourceRGBD());
 	connect(_ui->actionOpenNI, SIGNAL(triggered()), this, SLOT(selectOpenni()));
 	connect(_ui->actionFreenect, SIGNAL(triggered()), this, SLOT(selectFreenect()));
+	_ui->actionFreenect->setEnabled(CameraFreenect::available());
 	connect(_ui->actionOpenNI_CV, SIGNAL(triggered()), this, SLOT(selectOpenniCv()));
 	connect(_ui->actionOpenNI_CV_ASUS, SIGNAL(triggered()), this, SLOT(selectOpenniCvAsus()));
 

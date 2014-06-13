@@ -235,6 +235,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->groupBox_sourceOpenni, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->radioButton_opennipcl, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->radioButton_freenect, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
+	_ui->radioButton_freenect->setEnabled(CameraFreenect::available());
 	connect(_ui->radioButton_opennicv, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->radioButton_opennicvasus, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniDevice, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
