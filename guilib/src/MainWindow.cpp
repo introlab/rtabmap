@@ -290,9 +290,11 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionUsbCamera, SIGNAL(triggered()), this, SLOT(selectStream()));
 	this->updateSelectSourceDatabase(_preferencesDialog->isSourceDatabaseUsed());
 	connect(_ui->actionDatabase, SIGNAL(triggered()), this, SLOT(selectDatabase()));
-	this->updateSelectSourceOpenniMenu(_preferencesDialog->isSourceOpenniUsed(), !_preferencesDialog->getSourceFreenect());
+	this->updateSelectSourceRGBDMenu(_preferencesDialog->isSourceOpenniUsed(), _preferencesDialog->getSourceRGBD());
 	connect(_ui->actionOpenNI, SIGNAL(triggered()), this, SLOT(selectOpenni()));
 	connect(_ui->actionFreenect, SIGNAL(triggered()), this, SLOT(selectFreenect()));
+	connect(_ui->actionOpenNI_CV, SIGNAL(triggered()), this, SLOT(selectOpenniCv()));
+	connect(_ui->actionOpenNI_CV_ASUS, SIGNAL(triggered()), this, SLOT(selectOpenniCvAsus()));
 
 	connect(_ui->actionSave_state, SIGNAL(triggered()), this, SLOT(saveFigures()));
 	connect(_ui->actionLoad_state, SIGNAL(triggered()), this, SLOT(loadFigures()));
@@ -1514,7 +1516,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		_ui->doubleSpinBox_stats_imgRate->setValue(_preferencesDialog->getGeneralInputRate());
 		this->updateSelectSourceImageMenu(_preferencesDialog->getSourceImageType());
 		this->updateSelectSourceDatabase(_preferencesDialog->isSourceDatabaseUsed());
-		this->updateSelectSourceOpenniMenu(_preferencesDialog->isSourceOpenniUsed(), !_preferencesDialog->getSourceFreenect());
+		this->updateSelectSourceRGBDMenu(_preferencesDialog->isSourceOpenniUsed(), _preferencesDialog->getSourceRGBD());
 		QString src;
 		if(_preferencesDialog->isSourceImageUsed())
 		{
@@ -1830,10 +1832,12 @@ void MainWindow::updateSelectSourceDatabase(bool used)
 	_ui->actionDatabase->setChecked(used);
 }
 
-void MainWindow::updateSelectSourceOpenniMenu(bool used, bool openni)
+void MainWindow::updateSelectSourceRGBDMenu(bool used, PreferencesDialog::Src src)
 {
-	_ui->actionOpenNI->setChecked(used && openni);
-	_ui->actionFreenect->setChecked(used && !openni);
+	_ui->actionOpenNI->setChecked(used && src == PreferencesDialog::kSrcOpenNI_PCL);
+	_ui->actionFreenect->setChecked(used && src == PreferencesDialog::kSrcFreenect);
+	_ui->actionOpenNI_CV->setChecked(used && src == PreferencesDialog::kSrcOpenNI_CV);
+	_ui->actionOpenNI_CV_ASUS->setChecked(used && src == PreferencesDialog::kSrcOpenNI_CV_ASUS);
 }
 
 void MainWindow::changeImgRateSetting()
@@ -2023,7 +2027,7 @@ void MainWindow::startDetection()
 			_odomThread->start();
 		}
 
-		if(_preferencesDialog->getSourceFreenect())
+		if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcFreenect)
 		{
 			_cameraOpenKinect = new CameraFreenect(
 				_preferencesDialog->getSourceOpenniDevice().isEmpty()?0:atoi(_preferencesDialog->getSourceOpenniDevice().toStdString().c_str()),
@@ -2058,6 +2062,37 @@ void MainWindow::startDetection()
 			if(_odomThread)
 			{
 				UEventsManager::createPipe(_cameraOpenKinect, _odomThread, "CameraEvent");
+			}
+		}
+		else if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV ||
+				_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS)
+		{
+			Camera * camera = new CameraRGBD(
+					_preferencesDialog->getGeneralInputRate(),
+					_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS);
+			camera->setLocalTransform(_preferencesDialog->getSourceOpenniLocalTransform());
+
+			if(!camera->init())
+			{
+				ULOGGER_WARN("init camera failed... ");
+				QMessageBox::warning(this,
+									   tr("RTAB-Map"),
+									   tr("Camera initialization failed..."));
+				emit stateChanged(kIdle);
+				delete camera;
+				camera = 0;
+				if(_odomThread)
+				{
+					delete _odomThread;
+					_odomThread = 0;
+				}
+				return;
+			}
+
+			_camera = new CameraThread(camera);
+			if(_odomThread)
+			{
+				UEventsManager::createPipe(_camera, _odomThread, "CameraEvent");
 			}
 		}
 		else
@@ -2176,7 +2211,7 @@ void MainWindow::startDetection()
 						_preferencesDialog->getSourceHeight(),
 						_preferencesDialog->getFramesDropped());
 			}
-			else if(sourceType == 0)
+			else //if(sourceType == 0)
 			{
 				camera = new CameraVideo(
 						_preferencesDialog->getSourceUsbDeviceId(),
@@ -2184,21 +2219,6 @@ void MainWindow::startDetection()
 						_preferencesDialog->getSourceWidth(),
 						_preferencesDialog->getSourceHeight(),
 						_preferencesDialog->getFramesDropped());
-			}
-			else
-			{
-				QMessageBox::warning(this,
-										   tr("RTAB-Map"),
-										   tr("Source type is not supported..."));
-				ULOGGER_WARN("iSource type not supported...");
-				emit stateChanged(kIdle);
-				return;
-			}
-
-			if(_preferencesDialog->getGeneralCameraKeypoints())
-			{
-				camera->setFeaturesExtracted(true);
-				camera->parseParameters(_preferencesDialog->getAllParameters());
 			}
 
 			if(!camera->init())
@@ -2214,7 +2234,6 @@ void MainWindow::startDetection()
 			}
 
 			_camera = new CameraThread(camera);
-			UEventsManager::addHandler(_camera); //thread
 		}
 	}
 
@@ -2580,12 +2599,22 @@ void MainWindow::selectDatabase()
 
 void MainWindow::selectOpenni()
 {
-	_preferencesDialog->selectSourceOpenni(true);
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_PCL);
 }
 
 void MainWindow::selectFreenect()
 {
-	_preferencesDialog->selectSourceOpenni(false);
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcFreenect);
+}
+
+void MainWindow::selectOpenniCv()
+{
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV);
+}
+
+void MainWindow::selectOpenniCvAsus()
+{
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV_ASUS);
 }
 
 

@@ -40,6 +40,8 @@
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/CameraOpenni.h"
 #include "rtabmap/core/CameraFreenect.h"
+#include "rtabmap/core/CameraThread.h"
+#include "rtabmap/core/Camera.h"
 #include "rtabmap/core/Memory.h"
 
 #include "rtabmap/gui/LoopClosureViewer.h"
@@ -64,6 +66,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_initialized(false),
 	_odomCameraOpenNI(0),
 	_odomCameraFreenect(0),
+	_odomCameraOpenNICv(0),
 	_odomThread(0)
 {
 	ULOGGER_DEBUG("");
@@ -208,7 +211,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_comboBox_image_type, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_image, SLOT(setCurrentIndex(int)));
 	connect(_ui->source_comboBox_image_type, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->general_checkBox_autoRestart, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->general_checkBox_cameraKeypoints, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	//usbDevice group
 	connect(_ui->source_usbDevice_spinBox_id, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_imgWidth, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -231,8 +233,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_spinBox_databaseStartPos, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	//openni group
 	connect(_ui->groupBox_sourceOpenni, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->radioButton_openni, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->radioButton_opennipcl, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->radioButton_freenect, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->radioButton_opennicv, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->radioButton_opennicvasus, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniDevice, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniLocalTransform, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 
@@ -758,7 +762,6 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_spinBox_imgheight->setValue(0);
 		_ui->source_spinBox_framesDropped->setValue(0);
 		_ui->general_checkBox_autoRestart->setChecked(false);
-		_ui->general_checkBox_cameraKeypoints->setChecked(false);
 		_ui->source_images_spinBox_startPos->setValue(1);
 		_ui->source_images_refreshDir->setChecked(false);
 
@@ -767,8 +770,10 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_spinBox_databaseStartPos->setValue(0);
 
 		_ui->groupBox_sourceOpenni->setChecked(true);
-		_ui->radioButton_openni->setChecked(true);
+		_ui->radioButton_opennipcl->setChecked(true);
 		_ui->radioButton_freenect->setChecked(false);
+		_ui->radioButton_opennicv->setChecked(false);
+		_ui->radioButton_opennicvasus->setChecked(false);
 		_ui->lineEdit_openniDevice->setText("");
 		_ui->lineEdit_openniLocalTransform->setText("0 0 0 -PI_2 0 -PI_2");
 	}
@@ -978,7 +983,6 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->groupBox_sourceImage->setChecked(settings.value("imageUsed", _ui->groupBox_sourceImage->isChecked()).toBool());
 	_ui->general_doubleSpinBox_imgRate->setValue(settings.value("imgRate", _ui->general_doubleSpinBox_imgRate->value()).toDouble());
 	_ui->general_checkBox_autoRestart->setChecked(settings.value("autoRestart", _ui->general_checkBox_autoRestart->isChecked()).toBool());
-	_ui->general_checkBox_cameraKeypoints->setChecked(settings.value("cameraKeypoints", _ui->general_checkBox_cameraKeypoints->isChecked()).toBool());
 	_ui->source_comboBox_image_type->setCurrentIndex(settings.value("type", _ui->source_comboBox_image_type->currentIndex()).toInt());
 	_ui->source_spinBox_imgWidth->setValue(settings.value("imgWidth",_ui->source_spinBox_imgWidth->value()).toInt());
 	_ui->source_spinBox_imgheight->setValue(settings.value("imgHeight",_ui->source_spinBox_imgheight->value()).toInt());
@@ -1008,8 +1012,10 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 
 	settings.beginGroup("Openni");
 	_ui->groupBox_sourceOpenni->setChecked(settings.value("openniUsed", _ui->groupBox_sourceOpenni->isChecked()).toBool());
-	_ui->radioButton_openni->setChecked(settings.value("openniType", _ui->radioButton_openni->isChecked()).toBool());
+	_ui->radioButton_opennipcl->setChecked(settings.value("openniType", _ui->radioButton_opennipcl->isChecked()).toBool());
 	_ui->radioButton_freenect->setChecked(settings.value("freenectType", _ui->radioButton_freenect->isChecked()).toBool());
+	_ui->radioButton_opennicv->setChecked(settings.value("openniCvType", _ui->radioButton_opennicv->isChecked()).toBool());
+	_ui->radioButton_opennicvasus->setChecked(settings.value("openniCvAsusType", _ui->radioButton_opennicvasus->isChecked()).toBool());
 	_ui->lineEdit_openniDevice->setText(settings.value("device",_ui->lineEdit_openniDevice->text()).toString());
 	_ui->lineEdit_openniLocalTransform->setText(settings.value("localTransform",_ui->lineEdit_openniLocalTransform->text()).toString());
 	settings.endGroup(); // Openni
@@ -1186,7 +1192,6 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath)
 	settings.setValue("imageUsed", 		_ui->groupBox_sourceImage->isChecked());
 	settings.setValue("imgRate", 		_ui->general_doubleSpinBox_imgRate->value());
 	settings.setValue("autoRestart", 	_ui->general_checkBox_autoRestart->isChecked());
-	settings.setValue("cameraKeypoints", _ui->general_checkBox_cameraKeypoints->isChecked());
 	settings.setValue("type", 			_ui->source_comboBox_image_type->currentIndex());
 	settings.setValue("imgWidth", 		_ui->source_spinBox_imgWidth->value());
 	settings.setValue("imgHeight", 		_ui->source_spinBox_imgheight->value());
@@ -1217,8 +1222,10 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath)
 
 	settings.beginGroup("Openni");
 	settings.setValue("openniUsed", 	_ui->groupBox_sourceOpenni->isChecked());
-	settings.setValue("openniType", 	_ui->radioButton_openni->isChecked());
+	settings.setValue("openniType", 	_ui->radioButton_opennipcl->isChecked());
 	settings.setValue("freenectType", 	_ui->radioButton_freenect->isChecked());
+	settings.setValue("openniCvType", 	_ui->radioButton_opennicv->isChecked());
+	settings.setValue("openniCvAsusType", 	_ui->radioButton_opennicvasus->isChecked());
 	settings.setValue("device", 		_ui->lineEdit_openniDevice->text());
 	settings.setValue("localTransform", _ui->lineEdit_openniLocalTransform->text());
 	settings.endGroup();
@@ -1581,7 +1588,7 @@ void PreferencesDialog::selectSourceDatabase(bool user)
 	}
 }
 
-void PreferencesDialog::selectSourceOpenni(bool openni)
+void PreferencesDialog::selectSourceRGBD(Src src)
 {
 	ULOGGER_DEBUG("");
 
@@ -1589,8 +1596,8 @@ void PreferencesDialog::selectSourceOpenni(bool openni)
 	{
 		int button = QMessageBox::information(this,
 				tr("Activate RGB-D SLAM?"),
-				tr("You've selected %1 camera as source input, "
-				   "would you want to activate RGB-D SLAM mode?").arg(openni?"OpenNI":"Freenect"),
+				tr("You've selected RGB-D camera as source input, "
+				   "would you want to activate RGB-D SLAM mode?"),
 				QMessageBox::Yes | QMessageBox::No);
 		if(button & QMessageBox::Yes)
 		{
@@ -1599,8 +1606,10 @@ void PreferencesDialog::selectSourceOpenni(bool openni)
 	}
 
 	_ui->groupBox_sourceOpenni->setChecked(true);
-	_ui->radioButton_openni->setChecked(openni);
-	_ui->radioButton_freenect->setChecked(!openni);
+	_ui->radioButton_opennipcl->setChecked(src == kSrcOpenNI_PCL);
+	_ui->radioButton_freenect->setChecked(src == kSrcFreenect);
+	_ui->radioButton_opennicv->setChecked(src == kSrcOpenNI_CV);
+	_ui->radioButton_opennicvasus->setChecked(src == kSrcOpenNI_CV_ASUS);
 
 	if(_obsoletePanels)
 	{
@@ -2456,10 +2465,6 @@ bool PreferencesDialog::getGeneralAutoRestart() const
 {
 	return _ui->general_checkBox_autoRestart->isChecked();
 }
-bool PreferencesDialog::getGeneralCameraKeypoints() const
-{
-	return _ui->general_checkBox_cameraKeypoints->isChecked();
-}
 int PreferencesDialog::getSourceImageType() const
 {
 	return _ui->source_comboBox_image_type->currentIndex();
@@ -2512,9 +2517,25 @@ int PreferencesDialog::getSourceDatabaseStartPos() const
 {
 	return _ui->source_spinBox_databaseStartPos->value();
 }
-bool PreferencesDialog::getSourceFreenect() const
+
+PreferencesDialog::Src PreferencesDialog::getSourceRGBD() const
 {
-	return _ui->radioButton_freenect->isChecked();
+	if(_ui->radioButton_freenect->isChecked())
+	{
+		return kSrcFreenect;
+	}
+	else if(_ui->radioButton_opennicv->isChecked())
+	{
+		return kSrcOpenNI_CV;
+	}
+	else if (_ui->radioButton_opennicvasus->isChecked())
+	{
+		return kSrcOpenNI_CV_ASUS;
+	}
+	else
+	{
+		return kSrcOpenNI_PCL;
+	}
 }
 QString PreferencesDialog::getSourceOpenniDevice() const
 {
@@ -2704,9 +2725,9 @@ void PreferencesDialog::testOdometry()
 
 void PreferencesDialog::testOdometry(OdomType type)
 {
-	UASSERT(_odomCameraOpenNI == 0 && _odomCameraFreenect == 0 && _odomThread == 0);
+	UASSERT(_odomCameraOpenNI == 0 && _odomCameraFreenect == 0 && _odomThread == 0 && _odomCameraOpenNICv == 0);
 
-	if(this->getSourceFreenect())
+	if(this->getSourceRGBD() == kSrcFreenect)
 	{
 		_odomCameraFreenect = new CameraFreenect(
 				this->getSourceOpenniDevice().isEmpty()?0:atoi(this->getSourceOpenniDevice().toStdString().c_str()),
@@ -2730,6 +2751,20 @@ void PreferencesDialog::testOdometry(OdomType type)
 			_odomCameraFreenect = 0;
 		}
 	}
+	else if(this->getSourceRGBD() == kSrcOpenNI_CV || this->getSourceRGBD() == kSrcOpenNI_CV_ASUS)
+	{
+		_odomCameraOpenNICv = new CameraThread(new CameraRGBD(
+				this->getGeneralInputRate(),
+				this->getSourceRGBD() == kSrcOpenNI_CV_ASUS));
+		if(!_odomCameraOpenNICv->init())
+		{
+			QMessageBox::warning(this,
+				   tr("RTAB-Map"),
+				   tr("OpenNI-CV camera initialization failed!"));
+			delete _odomCameraOpenNICv;
+			_odomCameraOpenNICv = 0;
+		}
+	}
 	else
 	{
 		_odomCameraOpenNI = new CameraOpenni(
@@ -2746,7 +2781,7 @@ void PreferencesDialog::testOdometry(OdomType type)
 		}
 	}
 
-	if(_odomCameraOpenNI || _odomCameraFreenect)
+	if(_odomCameraOpenNI || _odomCameraFreenect || _odomCameraOpenNICv)
 	{
 		Odometry * odometry;
 		ParametersMap parameters = this->getAllParameters();
@@ -2786,6 +2821,10 @@ void PreferencesDialog::testOdometry(OdomType type)
 		{
 			UEventsManager::createPipe(_odomCameraFreenect, _odomThread, "CameraEvent");
 		}
+		else if(_odomCameraOpenNICv)
+		{
+			UEventsManager::createPipe(_odomCameraOpenNICv, _odomThread, "CameraEvent");
+		}
 		else
 		{
 			UEventsManager::createPipe(_odomCameraOpenNI, _odomThread, "CameraEvent");
@@ -2802,6 +2841,10 @@ void PreferencesDialog::testOdometry(OdomType type)
 		if(_odomCameraFreenect)
 		{
 			_odomCameraFreenect->start();
+		}
+		else if(_odomCameraOpenNICv)
+		{
+			_odomCameraOpenNICv->start();
 		}
 		else
 		{
@@ -2824,6 +2867,12 @@ void PreferencesDialog::cleanOdometryTest()
 		_odomCameraFreenect->join(true);
 		delete _odomCameraFreenect;
 		_odomCameraFreenect = 0;
+	}
+	if(_odomCameraOpenNICv)
+	{
+		_odomCameraOpenNICv->join(true);
+		delete _odomCameraOpenNICv;
+		_odomCameraOpenNICv = 0;
 	}
 	if(_odomThread)
 	{

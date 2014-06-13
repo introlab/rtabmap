@@ -52,6 +52,7 @@ namespace rtabmap {
 class CameraOpenni;
 class CameraFreenect;
 class OdometryThread;
+class CameraThread;
 class Signature;
 class LoopClosureViewer;
 
@@ -75,7 +76,11 @@ public:
 		kSrcUndef,
 		kSrcUsbDevice,
 		kSrcImages,
-		kSrcVideo
+		kSrcVideo,
+		kSrcOpenNI_PCL,
+		kSrcFreenect,
+		kSrcOpenNI_CV,
+		kSrcOpenNI_CV_ASUS
 	};
 
 	enum OdomType {
@@ -146,7 +151,6 @@ public:
 	bool isSourceOpenniUsed() const;
 	OdomType getOdometryType() const;
 	bool getGeneralAutoRestart() const;
-	bool getGeneralCameraKeypoints() const;
 	int getSourceImageType() const;
 	QString getSourceImageTypeStr() const;
 	int getSourceWidth() const;
@@ -162,7 +166,7 @@ public:
 	QString getSourceDatabasePath() const; //Database group
 	bool getSourceDatabaseOdometryIgnored() const; //Database group
 	int getSourceDatabaseStartPos() const; //Database group
-	bool getSourceFreenect() const; 			// Openni group
+	Src getSourceRGBD() const; 			// Openni group
 	QString getSourceOpenniDevice() const;            //Openni group
 	Transform getSourceOpenniLocalTransform() const;    //Openni group
 
@@ -196,7 +200,7 @@ public slots:
 	void setSLAMMode(bool enabled);
 	void selectSourceImage(Src src = kSrcUndef);
 	void selectSourceDatabase(bool user = false);
-	void selectSourceOpenni(bool openni);
+	void selectSourceRGBD(Src src = kSrcUndef);
 
 private slots:
 	void closeDialog ( QAbstractButton * button );
@@ -276,6 +280,7 @@ private:
 	//Odometry test
 	CameraOpenni * _odomCameraOpenNI;
 	CameraFreenect * _odomCameraFreenect;
+	CameraThread * _odomCameraOpenNICv;
 	OdometryThread * _odomThread;
 
 	QVector<QCheckBox*> _3dRenderingShowClouds;

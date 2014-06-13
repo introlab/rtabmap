@@ -115,6 +115,8 @@ private slots:
 	void selectDatabase();
 	void selectOpenni();
 	void selectFreenect();
+	void selectOpenniCv();
+	void selectOpenniCvAsus();
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void downloadAllClouds();
@@ -177,7 +179,7 @@ private:
 	void setupMainLayout(bool vertical);
 	void updateSelectSourceImageMenu(int type);
 	void updateSelectSourceDatabase(bool used);
-	void updateSelectSourceOpenniMenu(bool used, bool openni);
+	void updateSelectSourceRGBDMenu(bool used, PreferencesDialog::Src src);
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr createAssembledCloud();
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr createCloud(

@@ -22,10 +22,7 @@
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
 #include <opencv2/highgui/highgui.hpp>
-#include <opencv2/features2d/features2d.hpp>
-#include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/Image.h"
-#include "rtabmap/core/Features2d.h"
 #include <set>
 #include <stack>
 #include <list>
@@ -37,9 +34,6 @@ class UTimer;
 namespace rtabmap
 {
 
-class KeypointDetector;
-class KeypointDescriptor;
-
 /**
  * Class Camera
  *
@@ -48,24 +42,20 @@ class RTABMAP_EXP Camera
 {
 public:
 	virtual ~Camera();
-	cv::Mat takeImage();
-	cv::Mat takeImage(cv::Mat & descriptors, std::vector<cv::KeyPoint> & keypoints);
+	cv::Mat takeImage(); // backward compatibility
+	void takeImage(cv::Mat & rgb);
+	void takeImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant);
 	virtual bool init() = 0;
 
 	//getters
 	void getImageSize(unsigned int & width, unsigned int & height);
 	float getImageRate() const {return _imageRate;}
-	bool isFeaturesExtracted() const {return _featuresExtracted;}
+	const Transform & getLocalTransform() const {return _localTransform;}
 
 	//setters
-	void setFeaturesExtracted(bool featuresExtracted,
-			KeypointDetector::DetectorType detector = KeypointDetector::kDetectorUndef,
-			KeypointDescriptor::DescriptorType descriptor = KeypointDescriptor::kDescriptorUndef);
 	void setImageRate(float imageRate) {_imageRate = imageRate;}
 	void setImageSize(unsigned int width, unsigned int height);
-
-
-	virtual void parseParameters(const ParametersMap & parameters);
+	void setLocalTransform(const Transform & localTransform) {_localTransform= localTransform;}
 
 protected:
 	/**
@@ -78,18 +68,15 @@ protected:
 			unsigned int imageHeight = 0,
 			unsigned int framesDropped = 0);
 
-	virtual cv::Mat captureImage() = 0;
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant) = 0;
 
 private:
 	float _imageRate;
 	unsigned int _imageWidth;
 	unsigned int _imageHeight;
 	unsigned int _framesDropped;
+	Transform _localTransform;
 	UTimer * _frameRateTimer;
-
-	bool _featuresExtracted;
-	KeypointDetector * _keypointDetector;
-	KeypointDescriptor * _keypointDescriptor;
 };
 
 
@@ -113,7 +100,7 @@ public:
 	std::string getPath() const {return _path;}
 
 protected:
-	virtual cv::Mat captureImage();
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant);
 
 private:
 	std::string _path;
@@ -156,7 +143,7 @@ public:
 	const std::string & getFilePath() const {return _filePath;}
 
 protected:
-	virtual cv::Mat captureImage();
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant);
 
 private:
 	// File type
@@ -167,6 +154,30 @@ private:
 
 	// Usb camera
 	int _usbDevice;
+};
+
+
+
+/////////////////////////
+// CameraRGBD
+/////////////////////////
+class RTABMAP_EXP CameraRGBD :
+	public Camera
+{
+
+public:
+	CameraRGBD(float imageRate = 0,
+				bool asus = false);
+	virtual ~CameraRGBD();
+
+	virtual bool init();
+
+protected:
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant);
+
+private:
+	bool _asus;
+	cv::VideoCapture _capture;
 };
 
 

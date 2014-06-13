@@ -39,11 +39,8 @@ class Camera;
  */
 class RTABMAP_EXP CameraThread :
 	public UThreadNode,
-	public UEventsHandler
+	public UEventsSender
 {
-public:
-	enum State {kStateCapturing, kStateChangingParameters};
-
 public:
 	// ownership transferred
 	CameraThread(Camera * camera, bool autoRestart = false);
@@ -57,19 +54,11 @@ public:
 	void setAutoRestart(bool autoRestart) {_autoRestart = autoRestart;}
 	Camera * getCamera() {return _camera;}
 
-protected:
-	virtual void handleEvent(UEvent* anEvent);
-
 private:
 	virtual void mainLoop();
-	void process();
-	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
 
 private:
 	Camera * _camera;
-	UMutex _stateMutex;
-	std::stack<State> _state;
-	std::stack<ParametersMap> _stateParam;
 	bool _autoRestart;
 	int _seq;
 };

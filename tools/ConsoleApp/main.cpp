@@ -422,20 +422,14 @@ int main(int argc, char * argv[])
 	}
 	printf("\nProcessing images...\n");
 
-	//setup camera
-	camera->setFeaturesExtracted(true);
-	camera->parseParameters(pm);
-
 	UTimer iterationTimer;
 	UTimer rtabmapTimer;
 	int imagesProcessed = 0;
 	std::list<std::vector<float> > teleopActions;
 	while(loopDataset <= repeat && g_forever)
 	{
-		cv::Mat descriptors;
-		std::vector<cv::KeyPoint> keypoints;
-		cv::Mat cvImg = camera->takeImage(descriptors, keypoints);
-		Image img(cvImg, 0, descriptors, keypoints);
+		cv::Mat cvImg = camera->takeImage();
+		Image img(cvImg, 0);
 		int i=0;
 		double maxIterationTime = 0.0;
 		int maxIterationTimeId = 0;
@@ -451,8 +445,8 @@ int main(int argc, char * argv[])
 			{
 				++countLoopDetected;
 			}
-			cvImg = camera->takeImage(descriptors, keypoints);
-			img = Image(cvImg, 0, descriptors, keypoints);
+			cvImg = camera->takeImage();
+			img = Image(cvImg, 0);
 			if(++count % 100 == 0)
 			{
 				printf(" count = %d, loop closures = %d, max time (at %d) = %fs\n",

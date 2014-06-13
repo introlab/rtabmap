@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>729</width>
-            <height>836</height>
+            <y>-142</y>
+            <width>728</width>
+            <height>721</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1736,9 +1736,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item>
                         <layout class="QHBoxLayout" name="horizontalLayout_7">
                          <item>
-                          <widget class="QRadioButton" name="radioButton_openni">
+                          <widget class="QRadioButton" name="radioButton_opennipcl">
                            <property name="text">
-                            <string>OpenNI</string>
+                            <string>OpenNI-PCL</string>
                            </property>
                           </widget>
                          </item>
@@ -1746,6 +1746,20 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                           <widget class="QRadioButton" name="radioButton_freenect">
                            <property name="text">
                             <string>Feeenect</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QRadioButton" name="radioButton_opennicv">
+                           <property name="text">
+                            <string>OpenNI-CV</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QRadioButton" name="radioButton_opennicvasus">
+                           <property name="text">
+                            <string>OpenNI-CV-ASUS</string>
                            </property>
                           </widget>
                          </item>

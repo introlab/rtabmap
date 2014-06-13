@@ -19,7 +19,6 @@
 
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/DBDriver.h"
-#include "rtabmap/core/Features2d.h"
 
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -30,6 +29,8 @@
 #include <rtabmap/utilite/UTimer.h>
 
 #include <opencv2/imgproc/imgproc.hpp>
+
+#include <iostream>
 
 namespace rtabmap
 {
@@ -42,37 +43,16 @@ Camera::Camera(float imageRate,
 	_imageWidth(imageWidth),
 	_imageHeight(imageHeight),
 	_framesDropped(framesDropped),
-	_frameRateTimer(new UTimer()),
-	_featuresExtracted(false),
-	_keypointDetector(0),
-	_keypointDescriptor(0)
+	_localTransform(Transform::getIdentity()),
+	_frameRateTimer(new UTimer())
 {
 }
 
 Camera::~Camera()
 {
-	if(_keypointDetector)
-	{
-		delete _keypointDetector;
-	}
-	if(_keypointDescriptor)
-	{
-		delete _keypointDescriptor;
-	}
 	if(_frameRateTimer)
 	{
 		delete _frameRateTimer;
-	}
-}
-
-void Camera::setFeaturesExtracted(bool featuresExtracted, KeypointDetector::DetectorType detector, KeypointDescriptor::DescriptorType descriptor)
-{
-	_featuresExtracted = featuresExtracted;
-	if(detector != KeypointDetector::kDetectorUndef || descriptor != KeypointDescriptor::kDescriptorUndef)
-	{
-		ParametersMap pm;
-		pm.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str((int)detector)));
-		this->parseParameters(pm);
 	}
 }
 
@@ -88,71 +68,23 @@ void Camera::getImageSize(unsigned int & width, unsigned int & height)
 	height = _imageHeight;
 }
 
-void Camera::parseParameters(const ParametersMap & parameters)
-{
-	UDEBUG("");
-	ParametersMap::const_iterator iter;
-	//Keypoint detector
-	KeypointDetector::DetectorType detector = KeypointDetector::kDetectorUndef;
-	if((iter=parameters.find(Parameters::kKpDetectorStrategy())) != parameters.end())
-	{
-		detector = (KeypointDetector::DetectorType)std::atoi((*iter).second.c_str());
-	}
-
-	if(detector!=KeypointDetector::kDetectorUndef)
-	{
-		ULOGGER_DEBUG("new detector strategy %d", int(detector));
-		if(_keypointDetector)
-		{
-			delete _keypointDetector;
-			_keypointDetector = 0;
-		}
-		if(_keypointDescriptor)
-		{
-			delete _keypointDescriptor;
-			_keypointDescriptor = 0;
-		}
-		switch(detector)
-		{
-		case KeypointDetector::kDetectorSift:
-			_keypointDetector = new SIFTDetector(parameters);
-			_keypointDescriptor = new SIFTDescriptor(parameters);
-			break;
-		case KeypointDetector::kDetectorSurf:
-		default:
-			_keypointDetector = new SURFDetector(parameters);
-			_keypointDescriptor = new SURFDescriptor(parameters);
-			break;
-		}
-	}
-	else
-	{
-		if(_keypointDetector)
-		{
-			_keypointDetector->parseParameters(parameters);
-		}
-		if(_keypointDescriptor)
-		{
-			_keypointDescriptor->parseParameters(parameters);
-		}
-	}
-}
-
 cv::Mat Camera::takeImage()
 {
-	cv::Mat descriptors;
-	std::vector<cv::KeyPoint> keypoints;
-	bool tmp = _featuresExtracted;
-	_featuresExtracted = false; // no need to extract descriptors/keypoints in this function
-	cv::Mat img = takeImage(descriptors, keypoints);
-	_featuresExtracted = tmp;
-	return img;
+	cv::Mat rgb, depth;
+	float depthConstant = 0.0f;
+	takeImage(rgb, depth, depthConstant);
+	return rgb;
 }
 
-cv::Mat Camera::takeImage(cv::Mat & descriptors, std::vector<cv::KeyPoint> & keypoints)
+void Camera::takeImage(cv::Mat & rgb)
 {
-	descriptors = cv::Mat();
-	keypoints.clear();
+	cv::Mat depth;
+	float depthConstant = 0.0f;
+	takeImage(rgb, depth, depthConstant);
+}
+
+void Camera::takeImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant)
+{
 	float imageRate = _imageRate==0.0f?33.0f:_imageRate; // limit to 33Hz if infinity
 	if(imageRate>0)
 	{
@@ -173,35 +105,22 @@ cv::Mat Camera::takeImage(cv::Mat & descriptors, std::vector<cv::KeyPoint> & key
 		UDEBUG("slept=%fs vs target=%fs", slept, 1.0/double(imageRate));
 	}
 
-	cv::Mat img;
 	UTimer timer;
-	img = this->captureImage();
+	this->captureImage(rgb, depth, depthConstant);
 	UDEBUG("Time capturing image = %fs", timer.ticks());
 
-	if(!img.empty())
+	if(!rgb.empty())
 	{
-		if(img.depth() != CV_8U)
-		{
-			UWARN("Images should have already 8U depth !?");
-			cv::Mat tmp = img;
-			img = cv::Mat();
-			tmp.convertTo(img, CV_8U);
-			UDEBUG("Time converting image to 8U = %fs", timer.ticks());
-		}
-
-		if(_featuresExtracted && _keypointDetector && _keypointDescriptor)
-		{
-			keypoints = _keypointDetector->generateKeypoints(img);
-			descriptors = _keypointDescriptor->generateDescriptors(img, keypoints);
-			UDEBUG("Post treatment time = %fs", timer.ticks());
-		}
+		UASSERT(rgb.depth() == CV_8U);
 
 		if(_framesDropped)
 		{
 			unsigned int count = 0;
 			while(count++ < _framesDropped)
 			{
-				cv::Mat tmp = this->captureImage();
+				cv::Mat tmp,tmp2;
+				float tmpf;
+				this->captureImage(tmp, tmp2, tmpf);
 				if(!tmp.empty())
 				{
 					UDEBUG("frame dropped (%d/%d)", (int)count, (int)_framesDropped);
@@ -214,7 +133,6 @@ cv::Mat Camera::takeImage(cv::Mat & descriptors, std::vector<cv::KeyPoint> & key
 			UDEBUG("Frames dropped time = %fs", timer.ticks());
 		}
 	}
-	return img;
 }
 
 /////////////////////////
@@ -272,10 +190,9 @@ bool CameraImages::init()
 	return _dir->isValid();
 }
 
-cv::Mat CameraImages::captureImage()
+void CameraImages::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant)
 {
 	UDEBUG("");
-	cv::Mat img;
 	if(_dir->isValid())
 	{
 		if(_refreshDir)
@@ -291,7 +208,7 @@ cv::Mat CameraImages::captureImage()
 				{
 					_lastFileName = *fileNames.rbegin();
 					std::string fullPath = _path + _lastFileName;
-					img = cv::imread(fullPath.c_str());
+					rgb = cv::imread(fullPath.c_str());
 				}
 			}
 		}
@@ -311,19 +228,19 @@ cv::Mat CameraImages::captureImage()
 				{
 					ULOGGER_DEBUG("Loading image : %s", fullPath.c_str());
 #if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
-					img = cv::imread(fullPath.c_str(), cv::IMREAD_UNCHANGED);
+					rgb = cv::imread(fullPath.c_str(), cv::IMREAD_UNCHANGED);
 #else
-					img = cv::imread(fullPath.c_str(), -1);
+					rgb = cv::imread(fullPath.c_str(), -1);
 #endif
-					UDEBUG("width=%d, height=%d, channels=%d, elementSize=%d, total=%d", img.cols, img.rows, img.channels(), img.elemSize(), img.total());
+					UDEBUG("width=%d, height=%d, channels=%d, elementSize=%d, total=%d", rgb.cols, rgb.rows, rgb.channels(), rgb.elemSize(), rgb.total());
 
 					// FIXME : it seems that some png are incorrectly loaded with opencv c++ interface, where c interface works...
-					if(img.depth() != CV_8U)
+					if(rgb.depth() != CV_8U)
 					{
 						// The depth should be 8U
 						UWARN("Cannot read the image correctly, falling back to old OpenCV C interface...");
 						IplImage * i = cvLoadImage(fullPath.c_str());
-						img = cv::Mat(i, true);
+						rgb = cv::Mat(i, true);
 						cvReleaseImage(&i);
 					}
 				}
@@ -339,18 +256,16 @@ cv::Mat CameraImages::captureImage()
 	unsigned int h;
 	this->getImageSize(w, h);
 
-	if(!img.empty() &&
+	if(!rgb.empty() &&
 	   w &&
 	   h &&
-	   w != (unsigned int)img.cols &&
-	   h != (unsigned int)img.rows)
+	   w != (unsigned int)rgb.cols &&
+	   h != (unsigned int)rgb.rows)
 	{
 		cv::Mat resampled;
-		cv::resize(img, resampled, cv::Size(w, h));
-		img = resampled;
+		cv::resize(rgb, resampled, cv::Size(w, h));
+		rgb = resampled;
 	}
-
-	return img;
 }
 
 
@@ -427,42 +342,115 @@ bool CameraVideo::init()
 	return true;
 }
 
-cv::Mat CameraVideo::captureImage()
+void CameraVideo::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant)
 {
-	cv::Mat img;  // Null image
 	if(_capture.isOpened())
 	{
-		if(!_capture.read(img))
+		if(_capture.read(rgb))
 		{
-			if(_usbDevice)
+			unsigned int w;
+			unsigned int h;
+			this->getImageSize(w, h);
+
+			if(!rgb.empty() &&
+			   w &&
+			   h &&
+			   w != (unsigned int)rgb.cols &&
+			   h != (unsigned int)rgb.rows)
 			{
-				UERROR("Camera has been disconnected!");
+				cv::Mat resampled;
+				cv::resize(rgb, resampled, cv::Size(w, h));
+				rgb = resampled;
 			}
+			else
+			{
+				// clone required
+				rgb = rgb.clone();
+			}
+		}
+		else if(_usbDevice)
+		{
+			UERROR("Camera has been disconnected!");
 		}
 	}
 	else
 	{
 		ULOGGER_WARN("The camera must be initialized before requesting an image.");
 	}
+}
 
-	unsigned int w;
-	unsigned int h;
-	this->getImageSize(w, h);
+/////////////////////////
+// CameraRGBD
+/////////////////////////
+CameraRGBD::CameraRGBD(float imageRate, bool asus) :
+	Camera(imageRate),
+	_asus(asus)
+{
 
-	if(!img.empty() &&
-	   w &&
-	   h &&
-	   w != (unsigned int)img.cols &&
-	   h != (unsigned int)img.rows)
+}
+
+CameraRGBD::~CameraRGBD()
+{
+	_capture.release();
+}
+
+bool CameraRGBD::init()
+{
+	if(_capture.isOpened())
 	{
-		cv::Mat resampled;
-		cv::resize(img, resampled, cv::Size(w, h));
-		return resampled;
+		_capture.release();
+	}
+
+	ULOGGER_DEBUG("CameraRGBD::init()");
+	_capture.open( _asus?CV_CAP_OPENNI_ASUS:CV_CAP_OPENNI );
+	if(_capture.isOpened())
+	{
+		_capture.set( CV_CAP_OPENNI_IMAGE_GENERATOR_OUTPUT_MODE, CV_CAP_OPENNI_VGA_30HZ );
+		// Print some avalible device settings.
+		UINFO("Depth generator output mode:");
+		UINFO("FRAME_WIDTH        %d", _capture.get( CV_CAP_PROP_FRAME_WIDTH ));
+		UINFO("FRAME_HEIGHT       %d", _capture.get( CV_CAP_PROP_FRAME_HEIGHT ));
+		UINFO("FRAME_MAX_DEPTH    %d mm", _capture.get( CV_CAP_PROP_OPENNI_FRAME_MAX_DEPTH ));
+		UINFO("FPS                %d", _capture.get( CV_CAP_PROP_FPS ));
+		UINFO("REGISTRATION       %d", _capture.get( CV_CAP_PROP_OPENNI_REGISTRATION ));
+		if( _capture.get( CV_CAP_OPENNI_IMAGE_GENERATOR_PRESENT ) )
+		{
+			UINFO("Image generator output mode:");
+			UINFO("FRAME_WIDTH    %d", _capture.get( CV_CAP_OPENNI_IMAGE_GENERATOR+CV_CAP_PROP_FRAME_WIDTH ));
+			UINFO("FRAME_HEIGHT   %d", _capture.get( CV_CAP_OPENNI_IMAGE_GENERATOR+CV_CAP_PROP_FRAME_HEIGHT ));
+			UINFO("FPS            %d", _capture.get( CV_CAP_OPENNI_IMAGE_GENERATOR+CV_CAP_PROP_FPS ));
+		}
+		else
+		{
+			UERROR("CameraRGBD: Device doesn't contain image generator.");
+			_capture.release();
+			return false;
+		}
 	}
 	else
 	{
-		// clone required
-		return img.clone();
+		ULOGGER_ERROR("CameraRGBD: Failed to create a capture object!");
+		_capture.release();
+		return false;
+	}
+	return true;
+}
+
+void CameraRGBD::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant)
+{
+	if(_capture.isOpened())
+	{
+		_capture.grab();
+		_capture.retrieve( depth, CV_CAP_OPENNI_DEPTH_MAP );
+		_capture.retrieve( rgb, CV_CAP_OPENNI_BGR_IMAGE );
+
+		depth = depth.clone();
+		rgb = rgb.clone();
+		depthConstant = 0.001905f;
+	}
+	else
+	{
+		ULOGGER_WARN("The camera must be initialized before requesting an image.");
 	}
 }
 

@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>947</width>
-     <height>25</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -92,6 +92,8 @@
       </property>
       <addaction name="actionOpenNI"/>
       <addaction name="actionFreenect"/>
+      <addaction name="actionOpenNI_CV"/>
+      <addaction name="actionOpenNI_CV_ASUS"/>
      </widget>
      <addaction name="menuImage"/>
      <addaction name="actionDatabase"/>
@@ -983,7 +985,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>OpenNI</string>
+    <string>OpenNI-PCL</string>
    </property>
   </action>
   <action name="actionFreenect">
@@ -992,6 +994,22 @@
    </property>
    <property name="text">
     <string>Freenect</string>
+   </property>
+  </action>
+  <action name="actionOpenNI_CV">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>OpenNI-CV</string>
+   </property>
+  </action>
+  <action name="actionOpenNI_CV_ASUS">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>OpenNI-CV-ASUS</string>
    </property>
   </action>
  </widget>
