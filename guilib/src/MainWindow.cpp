@@ -278,15 +278,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 #endif
 
 	//Settings menu
-	QActionGroup * selectSourceImageGrp = new QActionGroup(this);
-	selectSourceImageGrp->addAction(_ui->actionUsbCamera);
-	selectSourceImageGrp->addAction(_ui->actionImageFiles);
-	selectSourceImageGrp->addAction(_ui->actionVideo);
-	selectSourceImageGrp->addAction(_ui->actionOpenNI);
-	selectSourceImageGrp->addAction(_ui->actionFreenect);
-	selectSourceImageGrp->addAction(_ui->actionOpenNI_CV);
-	selectSourceImageGrp->addAction(_ui->actionOpenNI_CV_ASUS);
-	selectSourceImageGrp->addAction(_ui->actionOpenNI2);
 	this->updateSelectSourceImageMenu(_preferencesDialog->getSourceImageType());
 	connect(_ui->actionImageFiles, SIGNAL(triggered()), this, SLOT(selectImages()));
 	connect(_ui->actionVideo, SIGNAL(triggered()), this, SLOT(selectVideo()));
@@ -294,7 +285,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	this->updateSelectSourceDatabase(_preferencesDialog->isSourceDatabaseUsed());
 	connect(_ui->actionDatabase, SIGNAL(triggered()), this, SLOT(selectDatabase()));
 	this->updateSelectSourceRGBDMenu(_preferencesDialog->isSourceOpenniUsed(), _preferencesDialog->getSourceRGBD());
-	connect(_ui->actionOpenNI, SIGNAL(triggered()), this, SLOT(selectOpenni()));
+	connect(_ui->actionOpenNI_PCL, SIGNAL(triggered()), this, SLOT(selectOpenni()));
+	connect(_ui->actionOpenNI_PCL_ASUS, SIGNAL(triggered()), this, SLOT(selectOpenni()));
 	connect(_ui->actionFreenect, SIGNAL(triggered()), this, SLOT(selectFreenect()));
 	_ui->actionFreenect->setEnabled(CameraFreenect::available());
 	connect(_ui->actionOpenNI_CV, SIGNAL(triggered()), this, SLOT(selectOpenniCv()));
@@ -1842,7 +1834,8 @@ void MainWindow::updateSelectSourceDatabase(bool used)
 
 void MainWindow::updateSelectSourceRGBDMenu(bool used, PreferencesDialog::Src src)
 {
-	_ui->actionOpenNI->setChecked(used && src == PreferencesDialog::kSrcOpenNI_PCL);
+	_ui->actionOpenNI_PCL->setChecked(used && src == PreferencesDialog::kSrcOpenNI_PCL);
+	_ui->actionOpenNI_PCL_ASUS->setChecked(used && src == PreferencesDialog::kSrcOpenNI_PCL);
 	_ui->actionFreenect->setChecked(used && src == PreferencesDialog::kSrcFreenect);
 	_ui->actionOpenNI_CV->setChecked(used && src == PreferencesDialog::kSrcOpenNI_CV);
 	_ui->actionOpenNI_CV_ASUS->setChecked(used && src == PreferencesDialog::kSrcOpenNI_CV_ASUS);

@@ -390,8 +390,7 @@ void CameraVideo::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthCons
 /////////////////////////
 bool CameraRGBD::available()
 {
-	printf("\nOpencV build: \n", cv::getBuildInformation().c_str());
-	return true;
+	return cv::getBuildInformation().find("OpenNI:                      YES") != std::string::npos;
 }
 
 CameraRGBD::CameraRGBD(float imageRate, bool asus) :
@@ -428,7 +427,6 @@ bool CameraRGBD::init()
 		UINFO("BASELINE           %f mm", _capture.get( CV_CAP_PROP_OPENNI_BASELINE ));
 		UINFO("FPS                %f", _capture.get( CV_CAP_PROP_FPS ));
 		UINFO("Focal              %f", _capture.get( CV_CAP_OPENNI_DEPTH_GENERATOR_FOCAL_LENGTH ));
-		UINFO("Focal2             %f", _capture.get( CV_CAP_PROP_OPENNI_FOCAL_LENGTH ));
 		UINFO("REGISTRATION       %f", _capture.get( CV_CAP_PROP_OPENNI_REGISTRATION ));
 		if(_capture.get( CV_CAP_PROP_OPENNI_REGISTRATION ) == 0.0)
 		{

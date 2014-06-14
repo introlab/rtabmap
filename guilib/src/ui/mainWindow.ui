@@ -80,7 +80,7 @@
      </property>
      <widget class="QMenu" name="menuImage">
       <property name="title">
-       <string>Image</string>
+       <string>Image-only</string>
       </property>
       <addaction name="actionUsbCamera"/>
       <addaction name="actionImageFiles"/>
@@ -90,15 +90,28 @@
       <property name="title">
        <string>RGB-D camera</string>
       </property>
-      <addaction name="actionOpenNI"/>
-      <addaction name="actionFreenect"/>
-      <addaction name="actionOpenNI_CV"/>
-      <addaction name="actionOpenNI_CV_ASUS"/>
-      <addaction name="actionOpenNI2"/>
+      <widget class="QMenu" name="menuKinect_for_Xbox_360">
+       <property name="title">
+        <string>Kinect for Xbox 360</string>
+       </property>
+       <addaction name="actionOpenNI_PCL"/>
+       <addaction name="actionFreenect"/>
+       <addaction name="actionOpenNI_CV"/>
+      </widget>
+      <widget class="QMenu" name="menuXtion_PRO_LIVE">
+       <property name="title">
+        <string>Xtion PRO LIVE</string>
+       </property>
+       <addaction name="actionOpenNI_PCL_ASUS"/>
+       <addaction name="actionOpenNI2"/>
+       <addaction name="actionOpenNI_CV_ASUS"/>
+      </widget>
+      <addaction name="menuKinect_for_Xbox_360"/>
+      <addaction name="menuXtion_PRO_LIVE"/>
      </widget>
+     <addaction name="menuRGB_D_camera"/>
      <addaction name="menuImage"/>
      <addaction name="actionDatabase"/>
-     <addaction name="menuRGB_D_camera"/>
     </widget>
     <addaction name="menuSelect_source"/>
     <addaction name="separator"/>
@@ -981,7 +994,7 @@
     <string>Take a screenshot</string>
    </property>
   </action>
-  <action name="actionOpenNI">
+  <action name="actionOpenNI_PCL">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -1014,8 +1027,19 @@
    </property>
   </action>
   <action name="actionOpenNI2">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>OpenNI2</string>
+   </property>
+  </action>
+  <action name="actionOpenNI_PCL_ASUS">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>OpenNI-PCL</string>
    </property>
   </action>
  </widget>
