@@ -64,6 +64,8 @@ void CameraOpenni::image_cb (
 	cv::Mat depthFrame(rgb->getHeight(), rgb->getWidth(), CV_16UC1);
 	depth->fillDepthImageRaw(rgb->getWidth(), rgb->getHeight(), (unsigned short*)depthFrame.data);
 
+	UINFO("constant=%f focal=%f", constant, 1.0f/constant);
+
 	this->post(new CameraEvent(bgrFrame, depthFrame, constant, localTransform_, ++seq_));
 }
 

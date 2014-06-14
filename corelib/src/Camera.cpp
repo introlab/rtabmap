@@ -425,8 +425,10 @@ bool CameraRGBD::init()
 		UINFO("FRAME_WIDTH        %f", _capture.get( CV_CAP_PROP_FRAME_WIDTH ));
 		UINFO("FRAME_HEIGHT       %f", _capture.get( CV_CAP_PROP_FRAME_HEIGHT ));
 		UINFO("FRAME_MAX_DEPTH    %f mm", _capture.get( CV_CAP_PROP_OPENNI_FRAME_MAX_DEPTH ));
+		UINFO("BASELINE           %f mm", _capture.get( CV_CAP_PROP_OPENNI_BASELINE ));
 		UINFO("FPS                %f", _capture.get( CV_CAP_PROP_FPS ));
-		UINFO("Focal              %f", _depthFocal);
+		UINFO("Focal              %f", _capture.get( CV_CAP_OPENNI_DEPTH_GENERATOR_FOCAL_LENGTH ));
+		UINFO("Focal2             %f", _capture.get( CV_CAP_PROP_OPENNI_FOCAL_LENGTH ));
 		UINFO("REGISTRATION       %f", _capture.get( CV_CAP_PROP_OPENNI_REGISTRATION ));
 		if(_capture.get( CV_CAP_PROP_OPENNI_REGISTRATION ) == 0.0)
 		{
@@ -606,7 +608,15 @@ bool CameraOpenNI2::init()
 			_depth->getHorizontalFieldOfView(),
 			_depth->getVerticalFieldOfView());
 
-	_depthFocal = float(_depth->getVideoMode().getResolutionX()/2) / std::tan(_depth->getHorizontalFieldOfView()/2.0f);
+	bool registered = true;
+	if(registered)
+	{
+		_depthFocal = float(_color->getVideoMode().getResolutionX()/2) / std::tan(_color->getHorizontalFieldOfView()/2.0f);
+	}
+	else
+	{
+		_depthFocal = float(_depth->getVideoMode().getResolutionX()/2) / std::tan(_depth->getHorizontalFieldOfView()/2.0f);
+	}
 	UINFO("depth focal = %f", _depthFocal);
 
 	UINFO("CameraOpenNI2: Using color video mode: fps=%d, pixel=%d, w=%d, h=%d, H-FOV=%f rad, V-FOV=%f rad",

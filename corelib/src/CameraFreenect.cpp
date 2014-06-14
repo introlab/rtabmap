@@ -15,6 +15,7 @@
 
 #ifdef WITH_FREENECT
 #include <libfreenect.h>
+#include <libfreenect-registration.h>
 #endif
 
 namespace rtabmap {
@@ -29,7 +30,8 @@ FreenectDevice::FreenectDevice(freenect_context * ctx, int index) :
 	depthMat_(cv::Size(640,480),CV_16UC1),
 	rgbMat_(cv::Size(640,480), CV_8UC3, cv::Scalar(0)),
 	depthReady_(false),
-	rgbReady_(false)
+	rgbReady_(false),
+	depthFocal_(0.0f)
 {
 	UASSERT(ctx_ != 0);
 }
@@ -55,7 +57,7 @@ bool FreenectDevice::init()
 {
 	if(freenect_open_device(ctx_, &device_, index_) < 0)
 	{
-		UERROR("Cannot open Kinect");
+		UERROR("FreenectDevice: Cannot open Kinect");
 		return false;
 	}
 	freenect_set_user(device_, this);
@@ -63,6 +65,28 @@ bool FreenectDevice::init()
 	freenect_set_depth_mode(device_, freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_REGISTERED));
 	freenect_set_depth_callback(device_, freenect_depth_callback);
 	freenect_set_video_callback(device_, freenect_video_callback);
+
+	bool registered = true;
+	float rgb_focal_length_sxga = 1050.0f;
+	float width_sxga = 1280.0f;
+	float width = freenect_get_current_depth_mode(device_).width;
+	float scale = width / width_sxga;
+	if(registered)
+	{
+		depthFocal_ =  rgb_focal_length_sxga * scale;
+	}
+	else
+	{
+		freenect_registration reg = freenect_copy_registration(device_);
+		float depth_focal_length_sxga = reg.zero_plane_info.reference_distance / reg.zero_plane_info.reference_pixel_size;
+		freenect_destroy_registration(&reg);
+
+		depthFocal_ =  depth_focal_length_sxga * scale;
+	}
+
+	UINFO("FreenectDevice: Depth focal = %f", depthFocal_);
+
+
 	return true;
 }
 
@@ -272,8 +296,8 @@ void CameraFreenect::mainLoop()
 				UWARN("CameraFreenect: Rgb not ready! Try to reduce the image rate to avoid this warning...");
 				return;
 			}
-
-			float constant = 0.001905f;
+			UASSERT(freenectDevice_->getDepthFocal() != 0.0f);
+			float constant = 1.0f/freenectDevice_->getDepthFocal();
 			this->post(new CameraEvent(rgb, depth, constant, localTransform_, ++seq_));
 		}
 	}

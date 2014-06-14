@@ -36,6 +36,7 @@ class RTABMAP_EXP FreenectDevice {
 
 	cv::Mat getRgb();
 	cv::Mat getDepth();
+	float getDepthFocal() const {return depthFocal_;}
 
 	// Do not call directly even in child
 	void VideoCallback(void *video, uint32_t timestamp);
@@ -59,6 +60,7 @@ class RTABMAP_EXP FreenectDevice {
 	UMutex rgbMutex_;
 	bool depthReady_;
 	bool rgbReady_;
+	float depthFocal_;
 };
 
 class RTABMAP_EXP CameraFreenect : public UEventsSender, public UThread

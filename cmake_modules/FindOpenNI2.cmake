@@ -6,9 +6,11 @@
 #  OpenNI2_INCLUDE_DIRS - The OpenNI2 include directory.
 #  OpenNI2_LIBRARIES     - The OpenNI2 library to link against.
 
-FIND_PATH(OpenNI2_INCLUDE_DIRS OpenNI.h HINTS $ENV{OPENNI2_INCLUDE64} $ENV{OPENNI2_INCLUDE})
+FIND_PATH(OpenNI2_INCLUDE_DIRS OpenNI.h HINTS $ENV{OPENNI2_INCLUDE64} $ENV{OPENNI2_INCLUDE} PATH_SUFFIXES openni2)
 
 FIND_LIBRARY(OpenNI2_LIBRARY NAMES OpenNI2 HINTS $ENV{OPENNI2_LIB64} $ENV{OPENNI2_LIB})
+
+MESSAGE(STATUS "OpenNI2_INCLUDE_DIRS=${OpenNI2_INCLUDE_DIRS} OpenNI2_LIBRARY=${OpenNI2_LIBRARY}")
 
 IF (OpenNI2_INCLUDE_DIRS AND OpenNI2_LIBRARY)
    SET(OpenNI2_FOUND TRUE)
@@ -23,7 +25,7 @@ IF (OpenNI2_FOUND)
 ELSE (OpenNI2_FOUND)
    # fatal error if OpenNI2 is required but not found
    IF (OpenNI2_FIND_REQUIRED)
-      MESSAGE(FATAL_ERROR "Could not find OpenNI2")
+      MESSAGE(FATAL_ERROR "Could not find OpenNI2. Environment variables OPENNI2_INCLUDE (directory containing OpenNI.h) and OPENNI2_LIB (directory containing OpenNI2 library) could bet set.")
    ENDIF (OpenNI2_FIND_REQUIRED)
 ENDIF (OpenNI2_FOUND)
 
