@@ -205,8 +205,6 @@ private:
 	State _state;
 	rtabmap::CameraThread * _camera;
 	rtabmap::DBReader * _dbReader;
-	rtabmap::CameraOpenni * _cameraOpenni;
-	rtabmap::CameraFreenect * _cameraOpenKinect;
 	rtabmap::OdometryThread * _odomThread;
 
 	SrcType _srcType;

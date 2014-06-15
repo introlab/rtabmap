@@ -50,7 +50,6 @@ void showUsage()
 			"                                   The height must be also specified if changed.\n"
 			"  -image_height #                 Force an image height (Default 0: original size used)\n"
 			"                                   The height must be also specified if changed.\n"
-			"  -frames_dropped #               Frames dropped from source (Default 0: no frames dropped)\n"
 			"  -start_at #                     When \"path\" is a directory of images, set this parameter\n"
 			"                                   to start processing at image # (default 1)."
 			"  -\"parameter name\" \"value\"       Overwrite a specific RTAB-Map's parameter :\n"
@@ -114,7 +113,6 @@ int main(int argc, char * argv[])
 	int imageWidth = 0;
 	int imageHeight = 0;
 	int startAt = 1;
-	int framesDropped = 0;
 	ParametersMap pm;
 	ULogger::Level logLevel = ULogger::kError;
 	ULogger::Level exitLevel = ULogger::kFatal;
@@ -239,23 +237,6 @@ int main(int argc, char * argv[])
 			}
 			continue;
 		}
-		if(strcmp(argv[i], "-frames_dropped") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				framesDropped = std::atoi(argv[i]);
-				if(framesDropped < 0)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
 		if(strcmp(argv[i], "-start_at") == 0)
 		{
 			++i;
@@ -357,11 +338,11 @@ int main(int argc, char * argv[])
 	Camera * camera = 0;
 	if(UDirectory::exists(path))
 	{
-		camera = new CameraImages(path, startAt, false, 1/rate, imageWidth, imageHeight, framesDropped);
+		camera = new CameraImages(path, startAt, false, 1/rate, imageWidth, imageHeight);
 	}
 	else
 	{
-		camera = new CameraVideo(path, 1/rate, imageWidth, imageHeight, framesDropped);
+		camera = new CameraVideo(path, 1/rate, imageWidth, imageHeight);
 	}
 
 	if(!camera || !camera->init())
@@ -402,7 +383,6 @@ int main(int argc, char * argv[])
 	printf(" Repeating data set = %s\n", repeat?"true":"false");
 	printf(" Camera width=%d, height=%d (0 is default)\n", imageWidth, imageHeight);
 	printf(" Camera starts at image %d (default 1)\n", startAt);
-	printf(" Camera frames dropped %d (default 0)\n", framesDropped);
 	if(createGT)
 	{
 		printf(" Creating the ground truth matrix.\n");

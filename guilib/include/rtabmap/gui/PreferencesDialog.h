@@ -49,8 +49,6 @@ class QDoubleSpinBox;
 
 namespace rtabmap {
 
-class CameraOpenni;
-class CameraFreenect;
 class OdometryThread;
 class CameraThread;
 class Signature;
@@ -151,12 +149,10 @@ public:
 	bool isSourceDatabaseUsed() const;
 	bool isSourceOpenniUsed() const;
 	OdomType getOdometryType() const;
-	bool getGeneralAutoRestart() const;
 	int getSourceImageType() const;
 	QString getSourceImageTypeStr() const;
 	int getSourceWidth() const;
 	int getSourceHeight() const;
-	int getFramesDropped() const;
 	QString getSourceImagesPath() const;	//Images group
 	QString getSourceImagesSuffix() const;	//Images group
 	int getSourceImagesSuffixIndex() const;	//Images group
@@ -196,7 +192,6 @@ public slots:
 	void setInputRate(double value);
 	void setDetectionRate(double value);
 	void setHardThr(int value);
-	void setAutoRestart(bool value);
 	void setTimeLimit(float value);
 	void setSLAMMode(bool enabled);
 	void selectSourceImage(Src src = kSrcUndef);
@@ -279,9 +274,7 @@ private:
 	QProgressDialog * _progressDialog;
 
 	//Odometry test
-	CameraOpenni * _odomCameraOpenNI;
-	CameraFreenect * _odomCameraFreenect;
-	CameraThread * _odomCameraOpenNICv;
+	CameraThread * _cameraThread;
 	OdometryThread * _odomThread;
 
 	QVector<QCheckBox*> _3dRenderingShowClouds;

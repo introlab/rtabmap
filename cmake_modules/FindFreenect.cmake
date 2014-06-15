@@ -6,7 +6,7 @@
 #  Freenect_INCLUDE_DIRS - The Freenect include directory.
 #  Freenect_LIBRARIES     - The Freenect library to link against.
 
-FIND_PATH(Freenect_INCLUDE_DIRS libfreenect.h PATH_SUFFIXES libfreenect)
+FIND_PATH(Freenect_INCLUDE_DIRS libfreenect-registration.h PATH_SUFFIXES libfreenect)
 
 FIND_LIBRARY(Freenect_LIBRARY NAMES freenect)
 FIND_LIBRARY(Freenect_sync_LIBRARY NAMES freenect_sync)

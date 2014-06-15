@@ -19,42 +19,70 @@
 
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/Camera.h"
+#include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraEvent.h"
-#include "rtabmap/core/ParamEvent.h"
 
-#include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/ULogger.h>
 
 namespace rtabmap
 {
 
 // ownership transferred
-CameraThread::CameraThread(Camera * camera, bool autoRestart) :
+CameraThread::CameraThread(Camera * camera) :
 		_camera(camera),
-		_autoRestart(autoRestart),
+		_cameraRGBD(0),
 		_seq(0)
 {
 	UASSERT(_camera != 0);
 }
 
+// ownership transferred
+CameraThread::CameraThread(CameraRGBD * camera) :
+		_camera(0),
+		_cameraRGBD(camera),
+		_seq(0)
+{
+	UASSERT(_cameraRGBD != 0);
+}
+
 CameraThread::~CameraThread()
 {
 	join(true);
-	delete _camera;
+	if(_camera)
+	{
+		delete _camera;
+	}
+	if(_cameraRGBD)
+	{
+		delete _cameraRGBD;
+	}
+}
+
+void CameraThread::setImageRate(float imageRate)
+{
+	if(_camera)
+	{
+		_camera->setImageRate(imageRate);
+	}
+	if(_cameraRGBD)
+	{
+		_cameraRGBD->setImageRate(imageRate);
+	}
 }
 
 bool CameraThread::init()
 {
 	if(!this->isRunning())
 	{
-		if(_camera)
+		_seq = 0;
+		if(_cameraRGBD)
 		{
-			_seq = 0;
-			return _camera->init();
+			return _cameraRGBD->init();
 		}
 		else
 		{
-			UERROR("Cannot initialize the camera because the camera object is null...");
+			return _camera->init();
 		}
 	}
 	else
@@ -67,28 +95,36 @@ bool CameraThread::init()
 void CameraThread::mainLoop()
 {
 	UTimer timer;
-	ULOGGER_DEBUG("Camera::process()");
+	UDEBUG("");
 	cv::Mat descriptors;
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat rgb, depth;
 	float depthConstant = 0.0f;
-	 _camera->takeImage(rgb, depth, depthConstant);
+	if(_cameraRGBD)
+	{
+		_cameraRGBD->takeImage(rgb, depth, depthConstant);
+	}
+	else
+	{
+		rgb = _camera->takeImage();
+	}
+
 	if(!rgb.empty() && !this->isKilled())
 	{
-		this->post(new CameraEvent(rgb, depth, depthConstant, _camera->getLocalTransform(), ++_seq));
-	}
-	else if(!this->isKilled())
-	{
-		if(_autoRestart)
+		if(_cameraRGBD)
 		{
-			_camera->init();
+			this->post(new CameraEvent(rgb, depth, depthConstant, _cameraRGBD->getLocalTransform(), ++_seq));
 		}
 		else
 		{
-			ULOGGER_DEBUG("Camera::process() : no more images...");
-			this->kill();
-			this->post(new CameraEvent());
+			this->post(new CameraEvent(rgb, ++_seq));
 		}
+	}
+	else if(!this->isKilled())
+	{
+		UDEBUG("no more images...");
+		this->kill();
+		this->post(new CameraEvent());
 	}
 }
 

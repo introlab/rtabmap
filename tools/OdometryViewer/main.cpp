@@ -4,7 +4,8 @@
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/core/Odometry.h>
 #include <rtabmap/gui/OdometryViewer.h>
-#include <rtabmap/core/CameraOpenni.h>
+#include <rtabmap/core/CameraThread.h>
+#include <rtabmap/core/CameraRGBD.h>
 #include <rtabmap/core/DBReader.h>
 #include <QtGui/QApplication>
 
@@ -555,7 +556,7 @@ int main (int argc, char * argv[])
 	}
 	else
 	{
-		rtabmap::CameraOpenni camera("", rate, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0));
+		rtabmap::CameraThread camera(new rtabmap::CameraOpenni("", rate, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0)));
 		if(camera.init())
 		{
 			odomThread.start();

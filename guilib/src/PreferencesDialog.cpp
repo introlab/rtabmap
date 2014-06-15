@@ -38,8 +38,7 @@
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/Odometry.h"
-#include "rtabmap/core/CameraOpenni.h"
-#include "rtabmap/core/CameraFreenect.h"
+#include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/Memory.h"
@@ -64,9 +63,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui(0),
 	_indexModel(0),
 	_initialized(false),
-	_odomCameraOpenNI(0),
-	_odomCameraFreenect(0),
-	_odomCameraOpenNICv(0),
+	_cameraThread(0),
 	_odomThread(0)
 {
 	ULOGGER_DEBUG("");
@@ -210,12 +207,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stackedWidget_image->setCurrentIndex(_ui->source_comboBox_image_type->currentIndex());
 	connect(_ui->source_comboBox_image_type, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_image, SLOT(setCurrentIndex(int)));
 	connect(_ui->source_comboBox_image_type, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->general_checkBox_autoRestart, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	//usbDevice group
 	connect(_ui->source_usbDevice_spinBox_id, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_imgWidth, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_imgheight, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->source_spinBox_framesDropped, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	//images group
 	connect(_ui->source_images_toolButton_selectSource, SIGNAL(clicked()), this, SLOT(selectSourceImage()));
 	connect(_ui->source_images_lineEdit_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -238,8 +233,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->radioButton_freenect->setEnabled(CameraFreenect::available());
 	connect(_ui->radioButton_opennicv, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->radioButton_opennicvasus, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
-	_ui->radioButton_opennicv->setEnabled(CameraRGBD::available());
-	_ui->radioButton_opennicvasus->setEnabled(CameraRGBD::available());
+	_ui->radioButton_opennicv->setEnabled(CameraOpenNICV::available());
+	_ui->radioButton_opennicvasus->setEnabled(CameraOpenNICV::available());
 	connect(_ui->radioButton_openni2, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	_ui->radioButton_openni2->setEnabled(CameraOpenNI2::available());
 	connect(_ui->lineEdit_openniDevice, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -765,8 +760,6 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->groupBox_sourceImage->setChecked(false);
 		_ui->source_spinBox_imgWidth->setValue(0);
 		_ui->source_spinBox_imgheight->setValue(0);
-		_ui->source_spinBox_framesDropped->setValue(0);
-		_ui->general_checkBox_autoRestart->setChecked(false);
 		_ui->source_images_spinBox_startPos->setValue(1);
 		_ui->source_images_refreshDir->setChecked(false);
 
@@ -987,11 +980,9 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.beginGroup("Camera");
 	_ui->groupBox_sourceImage->setChecked(settings.value("imageUsed", _ui->groupBox_sourceImage->isChecked()).toBool());
 	_ui->general_doubleSpinBox_imgRate->setValue(settings.value("imgRate", _ui->general_doubleSpinBox_imgRate->value()).toDouble());
-	_ui->general_checkBox_autoRestart->setChecked(settings.value("autoRestart", _ui->general_checkBox_autoRestart->isChecked()).toBool());
 	_ui->source_comboBox_image_type->setCurrentIndex(settings.value("type", _ui->source_comboBox_image_type->currentIndex()).toInt());
 	_ui->source_spinBox_imgWidth->setValue(settings.value("imgWidth",_ui->source_spinBox_imgWidth->value()).toInt());
 	_ui->source_spinBox_imgheight->setValue(settings.value("imgHeight",_ui->source_spinBox_imgheight->value()).toInt());
-	_ui->source_spinBox_framesDropped->setValue(settings.value("framesDropped",_ui->source_spinBox_framesDropped->value()).toInt());
 	//usbDevice group
 	settings.beginGroup("usbDevice");
 	_ui->source_usbDevice_spinBox_id->setValue(settings.value("id",_ui->source_usbDevice_spinBox_id->value()).toInt());
@@ -1196,11 +1187,9 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath)
 	settings.beginGroup("Camera");
 	settings.setValue("imageUsed", 		_ui->groupBox_sourceImage->isChecked());
 	settings.setValue("imgRate", 		_ui->general_doubleSpinBox_imgRate->value());
-	settings.setValue("autoRestart", 	_ui->general_checkBox_autoRestart->isChecked());
 	settings.setValue("type", 			_ui->source_comboBox_image_type->currentIndex());
 	settings.setValue("imgWidth", 		_ui->source_spinBox_imgWidth->value());
 	settings.setValue("imgHeight", 		_ui->source_spinBox_imgheight->value());
-	settings.setValue("framesDropped",  _ui->source_spinBox_framesDropped->value());
 	//usbDevice group
 	settings.beginGroup("usbDevice");
 	settings.setValue("id", 			_ui->source_usbDevice_spinBox_id->value());
@@ -2467,10 +2456,6 @@ PreferencesDialog::OdomType PreferencesDialog::getOdometryType() const
 	return kOdomICP;
 }
 
-bool PreferencesDialog::getGeneralAutoRestart() const
-{
-	return _ui->general_checkBox_autoRestart->isChecked();
-}
 int PreferencesDialog::getSourceImageType() const
 {
 	return _ui->source_comboBox_image_type->currentIndex();
@@ -2486,10 +2471,6 @@ int PreferencesDialog::getSourceWidth() const
 int PreferencesDialog::getSourceHeight() const
 {
 	return _ui->source_spinBox_imgheight->value();
-}
-int PreferencesDialog::getFramesDropped() const
-{
-	return _ui->source_spinBox_framesDropped->value();
 }
 QString PreferencesDialog::getSourceImagesPath() const
 {
@@ -2666,23 +2647,6 @@ void PreferencesDialog::setDetectionRate(double value)
 	}
 }
 
-void PreferencesDialog::setAutoRestart(bool value)
-{
-	ULOGGER_DEBUG("autoRestart=%d", value);
-	if(_ui->general_checkBox_autoRestart->isChecked() != value)
-	{
-		_ui->general_checkBox_autoRestart->setChecked(value);
-		if(validateForm())
-		{
-			this->writeSettings();
-		}
-		else
-		{
-			this->readSettingsBegin();
-		}
-	}
-}
-
 void PreferencesDialog::setTimeLimit(float value)
 {
 	ULOGGER_DEBUG("timeLimit=%fs", value);
@@ -2735,77 +2699,53 @@ void PreferencesDialog::testOdometry()
 
 void PreferencesDialog::testOdometry(OdomType type)
 {
-	UASSERT(_odomCameraOpenNI == 0 && _odomCameraFreenect == 0 && _odomThread == 0 && _odomCameraOpenNICv == 0);
+	UASSERT(_odomThread == 0 && _cameraThread == 0);
 
-	if(this->getSourceRGBD() == kSrcFreenect)
+	CameraRGBD * camera = 0;
+	if(this->getSourceRGBD() == kSrcOpenNI_PCL)
 	{
-		_odomCameraFreenect = new CameraFreenect(
-				this->getSourceOpenniDevice().isEmpty()?0:atoi(this->getSourceOpenniDevice().toStdString().c_str()),
-				this->getGeneralInputRate(),
-				this->getSourceOpenniLocalTransform());
-		if(!_odomCameraFreenect->init())
-		{
-			if(!_odomCameraFreenect->available())
-			{
-				QMessageBox::warning(this,
-				   tr("RTAB-Map"),
-				   tr("Freenect camera unavailable! RTAB-Map is not built with Freenect support (libfreenect)."));
-			}
-			else
-			{
-				QMessageBox::warning(this,
-				   tr("RTAB-Map"),
-				   tr("Freenect camera initialization failed!"));
-			}
-			delete _odomCameraFreenect;
-			_odomCameraFreenect = 0;
-		}
+		camera = new CameraOpenni(
+			this->getSourceOpenniDevice().toStdString(),
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform());
 	}
-	else if(this->getSourceRGBD() == kSrcOpenNI_CV ||
-			this->getSourceRGBD() == kSrcOpenNI_CV_ASUS ||
-			this->getSourceRGBD() == kSrcOpenNI2)
+	else if(this->getSourceRGBD() == kSrcOpenNI2)
 	{
-		Camera * camera = 0;
-		if(this->getSourceRGBD() == kSrcOpenNI2)
-		{
-			camera = new CameraOpenNI2(
-				this->getGeneralInputRate());
+		camera = new CameraOpenNI2(
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform());
 
-		}
-		else
-		{
-			camera = new CameraRGBD(
-				this->getGeneralInputRate(),
-				this->getSourceRGBD() == kSrcOpenNI_CV_ASUS);
-		}
-		camera->setLocalTransform(this->getSourceOpenniLocalTransform());
-		_odomCameraOpenNICv = new CameraThread(camera);
-		if(!_odomCameraOpenNICv->init())
-		{
-			QMessageBox::warning(this,
-				   tr("RTAB-Map"),
-				   tr("OpenNI-CV camera initialization failed!"));
-			delete _odomCameraOpenNICv;
-			_odomCameraOpenNICv = 0;
-		}
+	}
+	else if(this->getSourceRGBD() == kSrcFreenect)
+	{
+		camera = new CameraFreenect(
+			this->getSourceOpenniDevice().isEmpty()?0:atoi(this->getSourceOpenniDevice().toStdString().c_str()),
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform());
+	}
+	else if(this->getSourceRGBD() == kSrcOpenNI_CV || this->getSourceRGBD() == kSrcOpenNI_CV_ASUS)
+	{
+		camera = new CameraOpenNICV(
+			this->getSourceRGBD() == kSrcOpenNI_CV_ASUS,
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform());
 	}
 	else
 	{
-		_odomCameraOpenNI = new CameraOpenni(
-				this->getSourceOpenniDevice().toStdString(),
-				this->getGeneralInputRate(),
-				this->getSourceOpenniLocalTransform());
-		if(!_odomCameraOpenNI->init())
-		{
-			QMessageBox::warning(this,
-				   tr("RTAB-Map"),
-				   tr("OpenNI camera initialization failed!"));
-			delete _odomCameraOpenNI;
-			_odomCameraOpenNI = 0;
-		}
+		UFATAL("RGBD Source type undefined!");
 	}
 
-	if(_odomCameraOpenNI || _odomCameraFreenect || _odomCameraOpenNICv)
+	if(!camera->init())
+	{
+		QMessageBox::warning(this,
+			   tr("RTAB-Map"),
+			   tr("RGBD camera initialization failed!"));
+		delete camera;
+		camera = 0;
+	}
+
+
+	if(camera)
 	{
 		Odometry * odometry;
 		ParametersMap parameters = this->getAllParameters();
@@ -2841,18 +2781,8 @@ void PreferencesDialog::testOdometry(OdomType type)
 		UEventsManager::addHandler(_odomThread);
 		UEventsManager::addHandler(odomViewer);
 
-		if(_odomCameraFreenect)
-		{
-			UEventsManager::createPipe(_odomCameraFreenect, _odomThread, "CameraEvent");
-		}
-		else if(_odomCameraOpenNICv)
-		{
-			UEventsManager::createPipe(_odomCameraOpenNICv, _odomThread, "CameraEvent");
-		}
-		else
-		{
-			UEventsManager::createPipe(_odomCameraOpenNI, _odomThread, "CameraEvent");
-		}
+		_cameraThread = new CameraThread(camera);
+		UEventsManager::createPipe(_cameraThread, _odomThread, "CameraEvent");
 		UEventsManager::createPipe(_odomThread, odomViewer, "OdometryEvent");
 
 		window->showNormal();
@@ -2862,41 +2792,18 @@ void PreferencesDialog::testOdometry(OdomType type)
 		QApplication::processEvents();
 
 		_odomThread->start();
-		if(_odomCameraFreenect)
-		{
-			_odomCameraFreenect->start();
-		}
-		else if(_odomCameraOpenNICv)
-		{
-			_odomCameraOpenNICv->start();
-		}
-		else
-		{
-			_odomCameraOpenNI->start();
-		}
+		_cameraThread->start();
 	}
 }
 
 void PreferencesDialog::cleanOdometryTest()
 {
 	UDEBUG("");
-	if(_odomCameraOpenNI)
+	if(_cameraThread)
 	{
-		_odomCameraOpenNI->kill();
-		delete _odomCameraOpenNI;
-		_odomCameraOpenNI = 0;
-	}
-	if(_odomCameraFreenect)
-	{
-		_odomCameraFreenect->join(true);
-		delete _odomCameraFreenect;
-		_odomCameraFreenect = 0;
-	}
-	if(_odomCameraOpenNICv)
-	{
-		_odomCameraOpenNICv->join(true);
-		delete _odomCameraOpenNICv;
-		_odomCameraOpenNICv = 0;
+		_cameraThread->join(true);
+		delete _cameraThread;
+		_cameraThread = 0;
 	}
 	if(_odomThread)
 	{

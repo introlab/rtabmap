@@ -31,12 +31,6 @@
 class UDirectory;
 class UTimer;
 
-namespace openni
-{
-class Device;
-class VideoStream;
-}
-
 namespace rtabmap
 {
 
@@ -48,20 +42,16 @@ class RTABMAP_EXP Camera
 {
 public:
 	virtual ~Camera();
-	cv::Mat takeImage(); // backward compatibility
-	void takeImage(cv::Mat & rgb);
-	void takeImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant);
+	cv::Mat takeImage();
 	virtual bool init() = 0;
 
 	//getters
 	void getImageSize(unsigned int & width, unsigned int & height);
 	float getImageRate() const {return _imageRate;}
-	const Transform & getLocalTransform() const {return _localTransform;}
 
 	//setters
 	void setImageRate(float imageRate) {_imageRate = imageRate;}
 	void setImageSize(unsigned int width, unsigned int height);
-	void setLocalTransform(const Transform & localTransform) {_localTransform= localTransform;}
 
 protected:
 	/**
@@ -71,17 +61,14 @@ protected:
 	 */
 	Camera(float imageRate = 0,
 			unsigned int imageWidth = 0,
-			unsigned int imageHeight = 0,
-			unsigned int framesDropped = 0);
+			unsigned int imageHeight = 0);
 
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant) = 0;
+	virtual cv::Mat captureImage() = 0;
 
 private:
 	float _imageRate;
 	unsigned int _imageWidth;
 	unsigned int _imageHeight;
-	unsigned int _framesDropped;
-	Transform _localTransform;
 	UTimer * _frameRateTimer;
 };
 
@@ -98,15 +85,14 @@ public:
 			bool refreshDir = false,
 			float imageRate = 0,
 			unsigned int imageWidth = 0,
-			unsigned int imageHeight = 0,
-			unsigned int framesDropped = 0);
+			unsigned int imageHeight = 0);
 	virtual ~CameraImages();
 
 	virtual bool init();
 	std::string getPath() const {return _path;}
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant);
+	virtual cv::Mat captureImage();
 
 private:
 	std::string _path;
@@ -135,13 +121,11 @@ public:
 	CameraVideo(int usbDevice = 0,
 			float imageRate = 0,
 			unsigned int imageWidth = 0,
-			unsigned int imageHeight = 0,
-			unsigned int framesDropped = 0);
+			unsigned int imageHeight = 0);
 	CameraVideo(const std::string & filePath,
 			float imageRate = 0,
 			unsigned int imageWidth = 0,
-			unsigned int imageHeight = 0,
-			unsigned int framesDropped = 0);
+			unsigned int imageHeight = 0);
 	virtual ~CameraVideo();
 
 	virtual bool init();
@@ -149,7 +133,7 @@ public:
 	const std::string & getFilePath() const {return _filePath;}
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant);
+	virtual cv::Mat captureImage();
 
 private:
 	// File type
@@ -160,60 +144,6 @@ private:
 
 	// Usb camera
 	int _usbDevice;
-};
-
-
-
-/////////////////////////
-// CameraRGBD
-/////////////////////////
-class RTABMAP_EXP CameraRGBD :
-	public Camera
-{
-
-public:
-	static bool available();
-
-public:
-	CameraRGBD(float imageRate = 0,
-				bool asus = false);
-	virtual ~CameraRGBD();
-
-	virtual bool init();
-
-protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant);
-
-private:
-	bool _asus;
-	cv::VideoCapture _capture;
-	float _depthFocal;
-};
-
-/////////////////////////
-// CameraOpenNI2
-/////////////////////////
-class RTABMAP_EXP CameraOpenNI2 :
-	public Camera
-{
-
-public:
-	static bool available();
-
-public:
-	CameraOpenNI2(float imageRate = 0);
-	virtual ~CameraOpenNI2();
-
-	virtual bool init();
-
-protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant);
-
-private:
-	openni::Device * _device;
-	openni::VideoStream * _color;
-	openni::VideoStream * _depth;
-	float _depthFocal;
 };
 
 

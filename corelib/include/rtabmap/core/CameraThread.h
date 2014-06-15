@@ -21,29 +21,27 @@
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
-#include <rtabmap/utilite/UThreadNode.h>
-#include <rtabmap/utilite/UEventsHandler.h>
-
-#include "rtabmap/core/Parameters.h"
-
-#include <stack>
+#include <rtabmap/utilite/UThread.h>
+#include <rtabmap/utilite/UEventsSender.h>
 
 namespace rtabmap
 {
 
 class Camera;
+class CameraRGBD;
 
 /**
  * Class CameraThread
  *
  */
 class RTABMAP_EXP CameraThread :
-	public UThreadNode,
+	public UThread,
 	public UEventsSender
 {
 public:
 	// ownership transferred
-	CameraThread(Camera * camera, bool autoRestart = false);
+	CameraThread(Camera * camera);
+	CameraThread(CameraRGBD * camera);
 	virtual ~CameraThread();
 
 	bool init(); // call camera->init()
@@ -51,15 +49,14 @@ public:
 	//getters
 	bool isPaused() const {return !this->isRunning();}
 	bool isCapturing() const {return this->isRunning();}
-	void setAutoRestart(bool autoRestart) {_autoRestart = autoRestart;}
-	Camera * getCamera() {return _camera;}
+	void setImageRate(float imageRate);
 
 private:
 	virtual void mainLoop();
 
 private:
 	Camera * _camera;
-	bool _autoRestart;
+	CameraRGBD * _cameraRGBD;
 	int _seq;
 };
 

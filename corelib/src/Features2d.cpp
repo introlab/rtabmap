@@ -54,7 +54,7 @@ void filterKeypointsByDepth(
 		float depthConstant,
 		float maxDepth)
 {
-	if(!depth.empty() && depthConstant > 0.0f && maxDepth > 0.0f && (descriptors.empty() || descriptors.rows == keypoints.size()))
+	if(!depth.empty() && depthConstant > 0.0f && maxDepth > 0.0f && (descriptors.empty() || descriptors.rows == (int)keypoints.size()))
 	{
 		std::vector<cv::KeyPoint> output(keypoints.size());
 		std::vector<int> indexes(keypoints.size(), 0);
@@ -71,7 +71,7 @@ void filterKeypointsByDepth(
 		output.resize(oi);
 		keypoints = output;
 
-		if(!descriptors.empty() && keypoints.size() != descriptors.rows)
+		if(!descriptors.empty() && (int)keypoints.size() != descriptors.rows)
 		{
 			if(keypoints.size() == 0)
 			{

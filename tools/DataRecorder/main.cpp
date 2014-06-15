@@ -1,7 +1,8 @@
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UFile.h>
-#include <rtabmap/core/CameraOpenni.h>
+#include <rtabmap/core/CameraThread.h>
+#include <rtabmap/core/CameraRGBD.h>
 #include <rtabmap/core/Camera.h>
 #include <rtabmap/core/CameraThread.h>
 #include <rtabmap/gui/DataRecorder.h>
@@ -22,17 +23,12 @@ void showUsage()
 	exit(1);
 }
 
-rtabmap::CameraOpenni * openniCamera = 0;
 rtabmap::CameraThread * cam = 0;
 QApplication * app = 0;
 // catch ctrl-c
 void sighandler(int sig)
 {
 	printf("\nSignal %d caught...\n", sig);
-	if(openniCamera)
-	{
-		openniCamera->kill();
-	}
 	if(cam)
 	{
 		cam->join(true);
@@ -119,7 +115,7 @@ int main (int argc, char * argv[])
 
 	if(openni)
 	{
-		openniCamera = new rtabmap::CameraOpenni("", rate, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0));
+		cam = new rtabmap::CameraThread(new rtabmap::CameraOpenni("", rate, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0)));
 	}
 	else
 	{
@@ -140,9 +136,9 @@ int main (int argc, char * argv[])
 			app->processEvents();
 		}
 
-		if(openni?openniCamera->init():cam->init())
+		if(cam->init())
 		{
-			openni?openniCamera->start():cam->start();
+			cam->start();
 
 			app->exec();
 
@@ -160,10 +156,6 @@ int main (int argc, char * argv[])
 		UERROR("Cannot initialize the recorder! Maybe the path is wrong: \"%s\"", fileName.toStdString().c_str());
 	}
 
-	if(openniCamera)
-	{
-		delete openniCamera;
-	}
 	if(cam)
 	{
 		delete cam;

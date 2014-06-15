@@ -13,8 +13,7 @@ SET(SRC_FILES
 	
     Camera.cpp
     CameraThread.cpp
-    CameraOpenni.cpp
-    CameraFreenect.cpp
+    CameraRGBD.cpp
     
     EpipolarGeometry.cpp
 	VisualWord.cpp

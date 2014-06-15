@@ -7,8 +7,6 @@ SET(LIBRARIES
 	${OpenCV_LIBRARIES} 
 )
 
-add_definitions(${PCL_DEFINITIONS})
-
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 ADD_EXECUTABLE(bow_mapping main.cpp)
