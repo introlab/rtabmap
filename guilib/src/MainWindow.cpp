@@ -2856,7 +2856,7 @@ void MainWindow::savePointClouds()
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()*2+1);
+		_initProgressDialog->setMaximumSteps(int(_currentPosesMap.size())*2+1);
 
 		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 		if(button == QMessageBox::Yes)
@@ -2898,7 +2898,7 @@ void MainWindow::saveMeshes()
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()*2+1);
+		_initProgressDialog->setMaximumSteps(int(_currentPosesMap.size())*2+1);
 
 		std::map<int, pcl::PolygonMesh::Ptr> meshes;
 		if(button == QMessageBox::Yes)
@@ -2956,7 +2956,7 @@ void MainWindow::viewPointClouds()
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()+1);
+		_initProgressDialog->setMaximumSteps(int(_currentPosesMap.size())+1);
 
 		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 		if(button == QMessageBox::Yes)
@@ -3032,7 +3032,7 @@ void MainWindow::viewMeshes()
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(_currentPosesMap.size()+1);
+		_initProgressDialog->setMaximumSteps(int(_currentPosesMap.size())+1);
 
 		std::map<int, pcl::PolygonMesh::Ptr> meshes;
 		if(button == QMessageBox::Yes)

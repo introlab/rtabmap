@@ -94,7 +94,8 @@ void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant
 CameraOpenni::CameraOpenni(const std::string & deviceId, float imageRate, const Transform & localTransform) :
 		CameraRGBD(imageRate, localTransform),
 		interface_(0),
-		deviceId_(deviceId)
+		deviceId_(deviceId),
+		depthConstant_(0.0f)
 {
 }
 
@@ -122,6 +123,8 @@ void CameraOpenni::image_cb (
 {
 	UScopeMutex s(dataMutex_);
 
+	bool notify = rgb_.empty();
+
 	cv::Mat rgbFrame(rgb->getHeight(), rgb->getWidth(), CV_8UC3);
 	rgb->fillRGB(rgb->getWidth(), rgb->getHeight(), rgbFrame.data);
 	cv::cvtColor(rgbFrame, rgb_, CV_RGB2BGR);
@@ -131,7 +134,7 @@ void CameraOpenni::image_cb (
 
 	depthConstant_ = constant;
 
-	if(dataReady_.value() <= 0)
+	if(notify)
 	{
 		dataReady_.release();
 	}
@@ -184,7 +187,7 @@ void CameraOpenni::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthCon
 
 		depth_ = cv::Mat();
 		rgb_ = cv::Mat();
-		depthConstant_ = 0;
+		depthConstant_ = 0.0f;
 	}
 }
 

@@ -122,7 +122,14 @@ void CameraThread::mainLoop()
 	}
 	else if(!this->isKilled())
 	{
-		UDEBUG("no more images...");
+		if(_cameraRGBD)
+		{
+			UERROR("Retrieved data is empty! Stopping the camera...");
+		}
+		else
+		{
+			UWARN("no more images...");
+		}
 		this->kill();
 		this->post(new CameraEvent());
 	}
