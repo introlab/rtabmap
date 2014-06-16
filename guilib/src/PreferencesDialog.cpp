@@ -770,6 +770,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->groupBox_sourceOpenni->setChecked(true);
 		_ui->radioButton_opennipcl->setChecked(true);
 		_ui->radioButton_freenect->setChecked(false);
+		_ui->radioButton_openni2->setChecked(false);
 		_ui->radioButton_opennicv->setChecked(false);
 		_ui->radioButton_opennicvasus->setChecked(false);
 		_ui->lineEdit_openniDevice->setText("");
@@ -1010,6 +1011,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->groupBox_sourceOpenni->setChecked(settings.value("openniUsed", _ui->groupBox_sourceOpenni->isChecked()).toBool());
 	_ui->radioButton_opennipcl->setChecked(settings.value("openniType", _ui->radioButton_opennipcl->isChecked()).toBool());
 	_ui->radioButton_freenect->setChecked(settings.value("freenectType", _ui->radioButton_freenect->isChecked()).toBool());
+	_ui->radioButton_openni2->setChecked(settings.value("openni2", _ui->radioButton_openni2->isChecked()).toBool());
 	_ui->radioButton_opennicv->setChecked(settings.value("openniCvType", _ui->radioButton_opennicv->isChecked()).toBool());
 	_ui->radioButton_opennicvasus->setChecked(settings.value("openniCvAsusType", _ui->radioButton_opennicvasus->isChecked()).toBool());
 	_ui->lineEdit_openniDevice->setText(settings.value("device",_ui->lineEdit_openniDevice->text()).toString());
@@ -1218,6 +1220,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath)
 	settings.setValue("openniUsed", 	_ui->groupBox_sourceOpenni->isChecked());
 	settings.setValue("openniType", 	_ui->radioButton_opennipcl->isChecked());
 	settings.setValue("freenectType", 	_ui->radioButton_freenect->isChecked());
+	settings.setValue("openni2", 		_ui->radioButton_openni2->isChecked());
 	settings.setValue("openniCvType", 	_ui->radioButton_opennicv->isChecked());
 	settings.setValue("openniCvAsusType", 	_ui->radioButton_opennicvasus->isChecked());
 	settings.setValue("device", 		_ui->lineEdit_openniDevice->text());
