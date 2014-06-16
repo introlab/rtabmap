@@ -91,15 +91,31 @@ INSTALL(CODE "execute_process(COMMAND ln -s \"../MacOS/${CMAKE_BUNDLE_NAME}\" ${
         WORKING_DIRECTORY \$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin)")
 ENDIF(APPLE AND BUILD_AS_BUNDLE)
        
-SET(APPS "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/${PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX}")
 IF((APPLE AND BUILD_AS_BUNDLE) OR WIN32)
+  SET(APPS "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/${PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX}")
   SET(plugin_dest_dir bin)
   SET(qtconf_dest_dir bin)
+  SET(openni2_dest_dir bin)
+ 
   IF(APPLE)
     SET(plugin_dest_dir MacOS)
     SET(qtconf_dest_dir Resources)
     SET(APPS "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/MacOS/${CMAKE_BUNDLE_NAME}")
   ENDIF(APPLE)
+
+  IF(OpenNI2_FOUND)
+    # Install needed OpenNI sensor dll by copying directories from the OpenNI2 installation
+    IF(WIN32)
+      find_path(OpenNI2_BIN_DIR NAMES OpenNI2.dll)
+      IF(NOT OpenNI2_BIN_DIR)
+        MESSAGE(FATAL_ERROR "OpenNI2.dll not found! Verify your PATH.")
+      ENDIF(NOT OpenNI2_BIN_DIR)
+    ENDIF(WIN32)
+    INSTALL(DIRECTORY "${OpenNI2_BIN_DIR}/OpenNI2" 
+          DESTINATION ${openni2_dest_dir} 
+          COMPONENT runtime 
+          REGEX ".*pdb" EXCLUDE)
+  ENDIF(OpenNI2_FOUND)
 
   # Install needed Qt plugins by copying directories from the qt installation
   # One can cull what gets copied by using 'REGEX "..." EXCLUDE'
