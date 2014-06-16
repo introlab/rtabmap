@@ -568,22 +568,12 @@ class FreenectDevice : public UThread {
 		if(this->isRunning())
 		{
 			dataReady_.acquire();
-			{
-				UScopeMutex s1(rgbMutex_);
-				if(!rgbLastFrame_.empty())
-				{
-					rgb = rgbLastFrame_;
-					rgbLastFrame_ = cv::Mat();
-				}
-			}
-			{
-				UScopeMutex s2(depthMutex_);
-				if(!depthLastFrame_.empty())
-				{
-					depth = depthLastFrame_;
-					depthLastFrame_= cv::Mat();
-				}
-			}
+
+			UScopeMutex s(dataMutex_);
+			rgb = rgbLastFrame_;
+			depth = depthLastFrame_;
+			rgbLastFrame_ = cv::Mat();
+			depthLastFrame_= cv::Mat();
 		}
 	}
 
@@ -592,9 +582,10 @@ private:
 	void VideoCallback(void* rgb)
 	{
 		UASSERT(rgbBuffer_.data == rgb);
-		UScopeMutex s1(rgbMutex_);
+		UScopeMutex s(dataMutex_);
+		bool notify = rgbLastFrame_.empty();
 		cv::cvtColor(rgbBuffer_, rgbLastFrame_, CV_RGB2BGR);
-		if(!depthLastFrame_.empty() && dataReady_.value() <= 0)
+		if(!depthLastFrame_.empty() && notify)
 		{
 			dataReady_.release();
 		}
@@ -604,9 +595,10 @@ private:
 	void DepthCallback(void* depth)
 	{
 		UASSERT(depthBuffer_.data == depth);
-		UScopeMutex s2(depthMutex_);
+		UScopeMutex s(dataMutex_);
+		bool notify = depthLastFrame_.empty();
 		depthLastFrame_ = depthBuffer_.clone();
-		if(!rgbLastFrame_.empty() && dataReady_.value() <= 0)
+		if(!rgbLastFrame_.empty() && notify)
 		{
 			dataReady_.release();
 		}
@@ -669,8 +661,7 @@ private:
 	freenect_device * device_;
 	cv::Mat depthBuffer_;
 	cv::Mat rgbBuffer_;
-	UMutex depthMutex_;
-	UMutex rgbMutex_;
+	UMutex dataMutex_;
 	cv::Mat depthLastFrame_;
 	cv::Mat rgbLastFrame_;
 	float depthFocal_;
