@@ -100,6 +100,7 @@ IF((APPLE AND BUILD_AS_BUNDLE) OR WIN32)
   IF(APPLE)
     SET(plugin_dest_dir MacOS)
     SET(qtconf_dest_dir Resources)
+    SET(openni2_dest_dir MacOS)
     SET(APPS "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/MacOS/${CMAKE_BUNDLE_NAME}")
   ENDIF(APPLE)
 
@@ -110,11 +111,18 @@ IF((APPLE AND BUILD_AS_BUNDLE) OR WIN32)
       IF(NOT OpenNI2_BIN_DIR)
         MESSAGE(FATAL_ERROR "OpenNI2.dll not found! Verify your PATH.")
       ENDIF(NOT OpenNI2_BIN_DIR)
-    ENDIF(WIN32)
+    ELSE()
+      # Mac OS X
+      get_filename_component(OpenNI2_BIN_DIR "${OpenNI2_LIBRARY}" PATH)
+    ENDIF()
+    
     INSTALL(DIRECTORY "${OpenNI2_BIN_DIR}/OpenNI2" 
           DESTINATION ${openni2_dest_dir} 
           COMPONENT runtime 
           REGEX ".*pdb" EXCLUDE)
+    INSTALL(FILES "${OpenNI2_BIN_DIR}/OpenNI.ini" 
+          DESTINATION ${openni2_dest_dir} 
+          COMPONENT runtime)
   ENDIF(OpenNI2_FOUND)
 
   # Install needed Qt plugins by copying directories from the qt installation

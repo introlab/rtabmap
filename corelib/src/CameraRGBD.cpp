@@ -36,7 +36,11 @@
 
 #ifdef WITH_FREENECT
 #include <libfreenect.h>
+#ifdef FREENECT_DASH_INCLUDES
 #include <libfreenect-registration.h>
+#else
+#include <libfreenect_registration.h>
+#endif
 #endif
 
 #ifdef WITH_OPENNI2

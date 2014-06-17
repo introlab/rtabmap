@@ -18,7 +18,6 @@ SET(headers_ui
 	../include/${PROJECT_PREFIX}/gui/DataRecorder.h
 	./ExportDialog.h
 	./MapVisibilityWidget.h
-	./GraphViewer.h
 )
 
 SET(uis
