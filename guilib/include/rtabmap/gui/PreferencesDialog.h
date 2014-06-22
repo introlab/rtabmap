@@ -82,12 +82,6 @@ public:
 		kSrcOpenNI2
 	};
 
-	enum OdomType {
-		kOdomBIN,
-		kOdomBOW,
-		kOdomICP
-	};
-
 public:
 	PreferencesDialog(QWidget * parent = 0);
 	virtual ~PreferencesDialog();
@@ -148,7 +142,6 @@ public:
 	bool isSourceImageUsed() const;
 	bool isSourceDatabaseUsed() const;
 	bool isSourceOpenniUsed() const;
-	OdomType getOdometryType() const;
 	int getSourceImageType() const;
 	QString getSourceImageTypeStr() const;
 	int getSourceWidth() const;
@@ -259,7 +252,7 @@ private:
 	void addParameters(const QGroupBox * box);
 	QList<QGroupBox*> getGroupBoxes();
 	void readSettingsBegin();
-	void testOdometry(OdomType type);
+	void testOdometry(int type);
 
 protected:
 	rtabmap::ParametersMap _parameters;

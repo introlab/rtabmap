@@ -22,7 +22,6 @@ SET(SRC_FILES
 	Parameters.cpp
     Signature.cpp
 	Features2d.cpp
-	NearestNeighbor.cpp
 	Transform.cpp
 	
 	util3d.cpp

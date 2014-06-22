@@ -2,11 +2,13 @@
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UFile.h>
+#include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/core/Odometry.h>
 #include <rtabmap/gui/OdometryViewer.h>
 #include <rtabmap/core/CameraThread.h>
 #include <rtabmap/core/CameraRGBD.h>
 #include <rtabmap/core/DBReader.h>
+#include <rtabmap/core/VWDictionary.h>
 #include <QtGui/QApplication>
 
 void showUsage()
@@ -14,8 +16,9 @@ void showUsage()
 	printf("\nUsage:\n"
 			"odometryViewer [options]\n"
 			"Options:\n"
-			"  -bow #                    Use bag-of-words odometry (default 0): 0=SURF, 1=SIFT\n"
-			"  -bin                      Use binary odometry (FAST+BRIEF)\n"
+			"  -o #                      Odometry type (default 0): 0=SURF, 1=SIFT, 2=ORB, 3=FAST/FREAK, 4=FAST/BRIEF\n"
+			"  -nn #                     Nearest neighbor strategy (default 1): kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4\n"
+			"  -nndr #                   Nearest neighbor distance ratio (default 0.7)\n"
 			"  -icp                      Use ICP odometry\n"
 			"\n"
 			"  -hz #.#                   Camera rate (default 0, 0 means as fast as the camera can)\n"
@@ -32,10 +35,11 @@ void showUsage()
 			"  -lu #                     Linear update (default 0.0 m)\n"
 			"  -au #                     Angular update (default 0.0 radian)\n"
 			"  -reset #                  Reset countdown (default 0 = disabled)\n"
+			"  -gpu                      Use GPU\n"
+			"  -lh #                     Local history (default 1)\n"
 			"\n"
-			"  -bin_brief_bytes #        BRIEF bytes (default 32)\n"
-			"  -bin_fast_thr #           FAST threshold (default 30)\n"
-			"  -bin_lsh                  Use nearest neighbor LSH (default brute force hamming)\n"
+			"  -brief_bytes #        BRIEF bytes (default 32)\n"
+			"  -fast_thr #           FAST threshold (default 30)\n"
 			"\n"
 			"  -d #                      ICP decimation (default 4)\n"
 			"  -v #                      ICP voxel size (default 0.005)\n"
@@ -45,9 +49,9 @@ void showUsage()
 			"  -debug                    Log debug messages\n"
 			"\n"
 			"Examples:\n"
-			"  odometryViewer -bow 0                                SURF example\n"
-			"  odometryViewer -bow 1                                SIFT example\n"
-			"  odometryViewer -bin -hz 10                           FAST/BRIEF example\n"
+			"  odometryViewer -odom 0 -lh 5000                      SURF example\n"
+			"  odometryViewer -odom 1 -lh 10000                     SIFT example\n"
+			"  odometryViewer -odom 4 -nn 2 -lh 1000                FAST/BRIEF example\n"
 			"  odometryViewer -icp -in 0.05 -i 30                   ICP example\n");
 	exit(1);
 }
@@ -60,8 +64,10 @@ int main (int argc, char * argv[])
 	// parse arguments
 	float rate = 0.0;
 	std::string inputDatabase;
-	int odomType = 0; // 0=bow 1=bin 2=ICP
-	int bowType = 0;
+	int odomType = 0;
+	bool icp = false;
+	int nnType =1;
+	float nndr = 0.7f;
 	float distance = 0.005;
 	int maxWords = 0;
 	int minInliers = 20;
@@ -78,19 +84,53 @@ int main (int argc, char * argv[])
 	int maxClouds = 10;
 	int briefBytes = 32;
 	int fastThr = 30;
-	bool useLSH = false;
 	float sec = 0.0f;
+	bool gpu = false;
+	int localHistory = 0;
 
 	for(int i=1; i<argc; ++i)
 	{
-		if(strcmp(argv[i], "-bow") == 0)
+		if(strcmp(argv[i], "-o") == 0)
 		{
 			++i;
 			if(i < argc)
 			{
-				bowType = std::atoi(argv[i]);
-				odomType = 0;
-				if(bowType < 0 || bowType > 1)
+				odomType = std::atoi(argv[i]);
+				if(odomType < 0 || odomType > 4)
+				{
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
+		if(strcmp(argv[i], "-nn") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				nnType = std::atoi(argv[i]);
+				if(nnType < 0 || nnType > 4)
+				{
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
+		if(strcmp(argv[i], "-nndr") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				nndr = std::atof(argv[i]);
+				if(nndr < 0.0f)
 				{
 					showUsage();
 				}
@@ -391,7 +431,29 @@ int main (int argc, char * argv[])
 			}
 			continue;
 		}
-		if(strcmp(argv[i], "-bin_brief_bytes") == 0)
+		if(strcmp(argv[i], "-gpu") == 0)
+		{
+			gpu = true;
+			continue;
+		}
+		if(strcmp(argv[i], "-lh") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				localHistory = std::atoi(argv[i]);
+				if(fitness <= 0)
+				{
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
+		if(strcmp(argv[i], "-brief_bytes") == 0)
 		{
 			++i;
 			if(i < argc)
@@ -408,7 +470,7 @@ int main (int argc, char * argv[])
 			}
 			continue;
 		}
-		if(strcmp(argv[i], "-bin_fast_thr") == 0)
+		if(strcmp(argv[i], "-fast_thr") == 0)
 		{
 			++i;
 			if(i < argc)
@@ -425,19 +487,9 @@ int main (int argc, char * argv[])
 			}
 			continue;
 		}
-		if(strcmp(argv[i], "-bin_lsh") == 0)
-		{
-			useLSH = true;
-			continue;
-		}
-		if(strcmp(argv[i], "-bin") == 0)
-		{
-			odomType = 1;
-			continue;
-		}
 		if(strcmp(argv[i], "-icp") == 0)
 		{
-			odomType = 2;
+			icp = true;
 			continue;
 		}
 		if(strcmp(argv[i], "-debug") == 0)
@@ -450,6 +502,17 @@ int main (int argc, char * argv[])
 		showUsage();
 	}
 
+	if(odomType > 1 && nnType == rtabmap::VWDictionary::kNNFlannKdTree)
+	{
+		UERROR("You set \"-o %d\" (binary descriptor), you must use \"-nn 2\" (any \"-nn\" other than kNNFlannKdTree)", odomType);
+		showUsage();
+	}
+	else if(odomType <= 1 && nnType == rtabmap::VWDictionary::kNNFlannLSH)
+	{
+		UERROR("You set \"-o %d\" (float descriptor), you must use \"-nn 1\" (any \"-nn\" other than kNNFlannLSH)", odomType);
+		showUsage();
+	}
+
 	if(inputDatabase.size())
 	{
 		UINFO("Using database input \"%s\"", inputDatabase.c_str());
@@ -458,78 +521,131 @@ int main (int argc, char * argv[])
 	{
 		UINFO("Using OpenNI camera");
 	}
-	UINFO("Camera rate = %f Hz", rate);
-	UINFO("Maximum clouds shown = %d", maxClouds);
-	UINFO("Delay = %f s", sec);
-	UINFO("Odometry used = %s", odomType==0?bowType==0?"Bag-of-words SURF":"Bag-of-words SIFT":odomType==1?"Binary (FAST+BRIEF)":"ICP");
-	UINFO("Inlier/ICP maximum correspondences distance = %f", distance);
-	UINFO("Max features = %d", maxWords);
-	UINFO("Min inliers = %d", minInliers);
-	UINFO("RANSAC/ICP iterations = %d", iterations);
-	UINFO("Words ratio = %f", wordsRatio);
-	UINFO("Max depth = %f", maxDepth);
-	UINFO("Linear update = %f", linearUpdate);
-	UINFO("Angular update = %f", angularUpdate);
+
+	std::string odomName;
+	if(odomType == 0)
+	{
+		odomName = "SURF";
+	}
+	else if(odomType == 1)
+	{
+		odomName = "SIFT";
+	}
+	else if(odomType == 2)
+	{
+		odomName = "ORB";
+	}
+	else if(odomType == 3)
+	{
+		odomName = "FAST+FREAK";
+	}
+	else if(odomType == 4)
+	{
+		odomName = "FAST+BRIEF";
+	}
+
+	if(icp)
+	{
+		odomName= "ICP";
+	}
+
+	std::string nnName;
+	if(nnType == 0)
+	{
+		nnName = "kNNFlannLinear";
+	}
+	else if(nnType == 1)
+	{
+		nnName = "kNNFlannKdTree";
+	}
+	else if(nnType == 2)
+	{
+		nnName= "kNNFlannLSH";
+	}
+	else if(nnType == 3)
+	{
+		nnName= "kNNBruteForce";
+	}
+	else if(nnType == 4)
+	{
+		nnName= "kNNBruteForceGPU";
+	}
+
+	UINFO("Odometry used =           %s", odomName.c_str());
+	UINFO("Camera rate =             %f Hz", rate);
+	UINFO("Maximum clouds shown =    %d", maxClouds);
+	UINFO("Delay =                   %f s", sec);
+	UINFO("Max depth =               %f", maxDepth);
+	UINFO("Linear update =           %f", linearUpdate);
+	UINFO("Angular update =          %f", angularUpdate);
 	UINFO("Reset odometry coutdown = %d", resetCountdown);
-	UINFO("Cloud decimation = %d", decimation);
-	UINFO("Cloud voxel size = %f", voxel);
-	UINFO("Cloud samples = %d", samples);
-	UINFO("Cloud fitness = %f", fitness);
-	UINFO("Binary BRIEF bytes = %d", briefBytes);
-	UINFO("Binary FAST threshold = %f", fastThr);
-	UINFO("Binary LSH = %f", useLSH?"true":"false");
+	UINFO("Local history =           %d", localHistory);
 
 	QApplication app(argc, argv);
 
 	rtabmap::Odometry * odom = 0;
 
-	if(odomType == 0)
+	rtabmap::ParametersMap parameters;
+
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMaxDepth(), uNumber2Str(maxDepth)));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomLinearUpdate(), uNumber2Str(linearUpdate)));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomAngularUpdate(), uNumber2Str(angularUpdate)));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomResetCountdown(), uNumber2Str(resetCountdown)));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomLocalHistory(), uNumber2Str(localHistory)));
+
+	if(!icp)
 	{
-		odom = new rtabmap::OdometryBOW(
-				bowType,
-				distance,
-				maxWords,
-				minInliers,
-				iterations,
-				wordsRatio,
-				maxDepth,
-				linearUpdate,
-				angularUpdate,
-				resetCountdown);
-	}
-	else if(odomType == 1)
-	{
-		odom = new rtabmap::OdometryBinary(
-				distance,
-				maxWords,
-				minInliers,
-				iterations,
-				wordsRatio,
-				maxDepth,
-				linearUpdate,
-				angularUpdate,
-				resetCountdown,
-				briefBytes,
-				fastThr,
-				true,
-				!useLSH);
+		UINFO("Nearest neighbor =         %s", nnName.c_str());
+		UINFO("Nearest neighbor ratio =  %f", nndr);
+		UINFO("Max features =            %d", maxWords);
+		UINFO("Min inliers =             %d", minInliers);
+		UINFO("Words ratio =             %f", wordsRatio);
+		UINFO("Inlier maximum correspondences distance = %f", distance);
+		UINFO("RANSAC iterations =       %d", iterations);
+		UINFO("GPU =                     %s", gpu?"true":"false");
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMaxWords(), uNumber2Str(maxWords)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomWordsRatio(), uNumber2Str(wordsRatio)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomInlierDistance(), uNumber2Str(distance)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMinInliers(), uNumber2Str(minInliers)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomIterations(), uNumber2Str(iterations)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomNearestNeighbor(), uNumber2Str(nnType)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomNNDR(), uNumber2Str(nndr)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomType(), uNumber2Str(odomType)));
+		if(odomType == 0)
+		{
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), uBool2Str(gpu)));
+		}
+		if(odomType == 2)
+		{
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kORBGpu(), uBool2Str(gpu)));
+		}
+		if(odomType == 3 || odomType == 4)
+		{
+			UINFO("FAST threshold =          %d", fastThr);
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTThreshold(), uNumber2Str(fastThr)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTGpu(), uBool2Str(gpu)));
+		}
+		if(odomType == 4)
+		{
+			UINFO("BRIEF bytes =             %d", briefBytes);
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kBRIEFBytes(), uNumber2Str(briefBytes)));
+		}
+
+		odom = new rtabmap::OdometryBOW(parameters);
 	}
 	else // ICP
 	{
-		odom = new rtabmap::OdometryICP(
-				decimation,
-				voxel,
-				samples,
-				distance,
-				iterations,
-				fitness,
-				maxDepth,
-				linearUpdate,
-				angularUpdate,
-				resetCountdown);
+		UINFO("ICP maximum correspondences distance = %f", distance);
+		UINFO("ICP iterations =          %d", iterations);
+		UINFO("Cloud decimation =        %d", decimation);
+		UINFO("Cloud voxel size =        %f", voxel);
+		UINFO("Cloud samples =           %d", samples);
+		UINFO("Cloud fitness =           %f", fitness);
+
+		odom = new rtabmap::OdometryICP(decimation, voxel, samples, distance, iterations, fitness);
 	}
 	rtabmap::OdometryThread odomThread(odom);
-	rtabmap::OdometryViewer odomViewer(maxClouds, 2, 0.0);
+	rtabmap::OdometryViewer odomViewer(maxClouds, 2, 0.0, 50);
 	UEventsManager::addHandler(&odomThread);
 	UEventsManager::addHandler(&odomViewer);
 

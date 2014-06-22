@@ -41,8 +41,7 @@ class DBDriver;
 class GraphNode;
 class VWDictionary;
 class VisualWord;
-class KeypointDetector;
-class KeypointDescriptor;
+class Feature2D;
 class Statistics;
 
 class RTABMAP_EXP Memory
@@ -80,7 +79,7 @@ public:
 			bool incrementMarginOnLoop = false,
 			bool ignoreLoopIds = false,
 			double * dbAccessTime = 0) const;
-	void deleteLocation(int locationId);
+	void deleteLocation(int locationId, std::list<int> * deletedWords = 0);
 	void rejectLoopClosure(int oldId, int newId);
 
 	//getters
@@ -135,8 +134,9 @@ public:
 			const std::set<int> & endIds = std::set<int>());
 
 	//keypoint stuff
-	int getVWDictionarySize() const;
+	const VWDictionary * getVWDictionary() const;
 	std::multimap<int, cv::KeyPoint> getWords(int signatureId) const;
+	Feature2D::Type getFeatureType() const {return _featureType;}
 	void extractKeypointsAndDescriptors(
 			const cv::Mat & image,
 			const cv::Mat & depth,
@@ -144,6 +144,7 @@ public:
 			std::vector<cv::KeyPoint> & keypoints,
 			cv::Mat & descriptors);
 
+	// RGB-D stuff
 	void getMetricConstraints(
 			const std::vector<int> & ids,
 			std::map<int, Transform> & poses,
@@ -162,7 +163,7 @@ private:
 	void preUpdate();
 	void addSignatureToStm(Signature * signature);
 	void clear();
-	void moveToTrash(Signature * s, bool saveToDatabase = true);
+	void moveToTrash(Signature * s, bool saveToDatabase = true, std::list<int> * deletedWords = 0);
 
 	void addSignatureToWm(Signature * signature);
 	Signature * _getSignature(int id) const;
@@ -181,7 +182,7 @@ private:
 			bool keepRawData=false);
 
 	//keypoint stuff
-	void disableWordsRef(int signatureId, bool saveToDatabase = true);
+	void disableWordsRef(int signatureId);
 	void enableWordsRef(const std::list<int> & signatureIds);
 	void cleanUnusedWords();
 	int getNi(int signatureId) const;
@@ -215,8 +216,8 @@ private:
 
 	//Keypoint stuff
 	VWDictionary * _vwd;
-	KeypointDetector * _keypointDetector;
-	KeypointDescriptor * _keypointDescriptor;
+	Feature2D * _feature2D;
+	Feature2D::Type _featureType;
 	float _badSignRatio;;
 	bool _tfIdfLikelihoodUsed;
 	bool _parallelized;

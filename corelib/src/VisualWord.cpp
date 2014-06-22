@@ -24,22 +24,12 @@
 namespace rtabmap
 {
 
-VisualWord::VisualWord(int id, const float * descriptor, int dim, int signatureId) :
+VisualWord::VisualWord(int id, const cv::Mat & descriptor, int signatureId) :
 	_id(id),
+	_descriptor(descriptor),
 	_saved(false),
 	_totalReferences(0)
 {
-	_descriptor = new float[dim];
-	if(_descriptor && descriptor)
-	{
-		memcpy(_descriptor, descriptor, dim*sizeof(float));
-	}
-	else
-	{
-		ULOGGER_ERROR("not enough memory to create the descriptor...");
-	}
-	_dim = dim;
-
 	if(signatureId)
 	{
 		addRef(signatureId);
@@ -48,10 +38,6 @@ VisualWord::VisualWord(int id, const float * descriptor, int dim, int signatureI
 
 VisualWord::~VisualWord()
 {
-	if(_descriptor)
-	{
-		delete [] _descriptor;
-	}
 }
 
 void VisualWord::addRef(int signatureId)

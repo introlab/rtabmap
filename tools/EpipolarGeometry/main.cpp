@@ -192,12 +192,11 @@ int main(int argc, char** argv)
    ParametersMap param;
    param.insert(ParametersPair(Parameters::kSURFExtended(), "true"));
    param.insert(ParametersPair(Parameters::kSURFHessianThreshold(), "100"));
-   SURFDetector keypointDetector(param);
-   SURFDescriptor descriptorExtractor(param);
-   std::vector<cv::KeyPoint> kpts1 = keypointDetector.generateKeypoints(image1);
-   std::vector<cv::KeyPoint> kpts2 = keypointDetector.generateKeypoints(image2);
-   cv::Mat descriptors1 = descriptorExtractor.generateDescriptors(image1, kpts1);
-   cv::Mat descriptors2 = descriptorExtractor.generateDescriptors(image2, kpts2);
+   SURF detector(param);
+   std::vector<cv::KeyPoint> kpts1 = detector.generateKeypoints(image1);
+   std::vector<cv::KeyPoint> kpts2 = detector.generateKeypoints(image2);
+   cv::Mat descriptors1 = detector.generateDescriptors(image1, kpts1);
+   cv::Mat descriptors2 = detector.generateDescriptors(image2, kpts2);
    UINFO("detect/extract features = %d ms", timer.elapsed());
 
    timer.start();

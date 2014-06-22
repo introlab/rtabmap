@@ -31,14 +31,13 @@
 namespace rtabmap
 {
 
-class FlannNN;
 class DBDriver;
 class VisualWord;
 
 class RTABMAP_EXP VWDictionary
 {
 public:
-	enum NNStrategy{kNNNaive, kNNFlannKdTree, kNNUndef};
+	enum NNStrategy{kNNFlannNaive, kNNFlannKdTree, kNNFlannLSH, kNNBruteForce, kNNBruteForceGPU, kNNUndef};
 	static const int ID_START;
 	static const int ID_INVALID;
 
@@ -55,34 +54,28 @@ public:
 			int signatureId);
 	virtual void addWord(VisualWord * vw);
 
-	virtual std::vector<int> findNN(const std::list<VisualWord *> & vws, bool searchInNewlyAddedWords = true) const;
-	void naiveNNSearch(const std::list<VisualWord *> & words, const float * d, int length, std::map<float, int> & results, unsigned int k) const;
+	virtual std::vector<int> findNN(const std::list<VisualWord *> & vws) const;
 
 	void addWordRef(int wordId, int signatureId);
 	void removeAllWordRef(int wordId, int signatureId);
 	const VisualWord * getWord(int id) const;
 	VisualWord * getUnusedWord(int id) const;
 	void setLastWordId(int id) {_lastWordId = id;}
-	void getCommonWords(unsigned int nbCommonWords, int totalSign, std::list<int> & commonWords) const;
 	const std::map<int, VisualWord *> & getVisualWords() const {return _visualWords;}
-	float getMinDist() const {return _minDist;}
-	bool isMinDistUsed() const {return _minDistUsed;}
-	void setMinDistUsed(bool used) {_minDistUsed = used;}
-	void setNndrUsed(bool used) {_nndrUsed = used;}
-	bool isNndrUsed() const {return _nndrUsed;}
 	float getNndrRatio() {return _nndrRatio;}
 	unsigned int getNotIndexedWordsCount() const {return (int)_notIndexedWords.size();}
 	int getLastIndexedWordId() const;
 	int getTotalActiveReferences() const {return _totalActiveReferences;}
-	void setNNStrategy(NNStrategy strategy, const ParametersMap & parameters = ParametersMap());
-	NNStrategy nnStrategy() const;
+	void setNNStrategy(NNStrategy strategy);
 	bool isIncremental() const {return _incrementalDictionary;}
-	void setIncrementalDictionary(bool incrementalDictionary, const std::string & dictionaryPath);
+	void setIncrementalDictionary();
+	void setFixedDictionary(const std::string & dictionaryPath);
 
 	void exportDictionary(const char * fileNameReferences, const char * fileNameDescriptors) const;
 
 	void clear();
 	std::vector<VisualWord *> getUnusedWords() const;
+	std::vector<int> getUnusedWordIds() const;
 	unsigned int getUnusedWordsSize() const {return (int)_unusedWords.size();}
 	void removeWords(const std::vector<VisualWord*> & words); // caller must delete the words
 
@@ -95,16 +88,12 @@ protected:
 
 private:
 	bool _incrementalDictionary;
-	bool _minDistUsed;
-	float _minDist; //euclidean distance ^ 2
-	bool _nndrUsed;
 	float _nndrRatio;
-	unsigned int _maxLeafs;
 	std::string _dictionaryPath; // a pre-computed dictionary (.txt)
-	int _dim;
 	int _lastWordId;
-	FlannNN * _nn;
+	cv::flann::Index * _flannIndex;
 	cv::Mat _dataTree;
+	NNStrategy _strategy;
 	std::map<int ,int> _mapIndexId;
 	std::map<int, VisualWord*> _unusedWords; //<id,VisualWord*>, note that these words stay in _visualWords
 	std::set<int> _notIndexedWords; // Words that are not indexed in the dictionary

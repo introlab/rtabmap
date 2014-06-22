@@ -63,8 +63,8 @@ Memory::Memory(const ParametersMap & parameters) :
 	_memoryChanged(false),
 	_signaturesAdded(0),
 
-	_keypointDetector(0),
-	_keypointDescriptor(0),
+	_feature2D(0),
+	_featureType(Feature2D::kFeatureUndef),
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
 	_parallelized(Parameters::defaultKpParallelized()),
@@ -152,7 +152,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 				if(!((*iter)->isBadSignature() && _badSignaturesIgnored))
 				{
 					_signatures.insert(std::pair<int, Signature *>((*iter)->id(), *iter));
-					if((int)_stMem.size() <= _maxStMemSize)
+					if(_maxStMemSize == 0 || (int)_stMem.size() <= _maxStMemSize)
 					{
 						_stMem.insert((*iter)->id());
 					}
@@ -266,13 +266,9 @@ Memory::~Memory()
 		}
 	}
 
-	if(_keypointDetector)
+	if(_feature2D)
 	{
-		delete _keypointDetector;
-	}
-	if(_keypointDescriptor)
-	{
-		delete _keypointDescriptor;
+		delete _feature2D;
 	}
 	if(_vwd)
 	{
@@ -294,7 +290,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemRecentWmRatio(), _recentWmRatio);
 	Parameters::parse(parameters, Parameters::kMemSTMSize(), _maxStMemSize);
 
-	UASSERT_MSG(_maxStMemSize > 0, uFormat("value=%d", _maxStMemSize).c_str());
+	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
 	UASSERT_MSG(_recentWmRatio >= 0.0f && _recentWmRatio <= 1.0f, uFormat("value=%f", _recentWmRatio).c_str());
 
@@ -368,46 +364,43 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	}
 
 	//Keypoint detector
-	KeypointDetector::DetectorType detectorStrategy = KeypointDetector::kDetectorUndef;
+	Feature2D::Type detectorStrategy = Feature2D::kFeatureUndef;
 	if((iter=parameters.find(Parameters::kKpDetectorStrategy())) != parameters.end())
 	{
-		detectorStrategy = (KeypointDetector::DetectorType)std::atoi((*iter).second.c_str());
+		detectorStrategy = (Feature2D::Type)std::atoi((*iter).second.c_str());
 	}
-	if(!_keypointDetector ||  detectorStrategy!=KeypointDetector::kDetectorUndef)
+	if(detectorStrategy!=Feature2D::kFeatureUndef)
 	{
 		UDEBUG("new detector strategy %d", int(detectorStrategy));
-		if(_keypointDetector)
+		if(_feature2D)
 		{
-			delete _keypointDetector;
-			_keypointDetector = 0;
-		}
-		if(_keypointDescriptor)
-		{
-			delete _keypointDescriptor;
-			_keypointDescriptor = 0;
+			delete _feature2D;
+			_feature2D = 0;
+			_featureType = Feature2D::kFeatureUndef;
 		}
 		switch(detectorStrategy)
 		{
-		case KeypointDetector::kDetectorSift:
-			_keypointDetector = new SIFTDetector(parameters);
-			_keypointDescriptor = new SIFTDescriptor(parameters);
+		case Feature2D::kFeatureSift:
+			_feature2D = new SIFT(parameters);
+			_featureType = Feature2D::kFeatureSift;
 			break;
-		case KeypointDetector::kDetectorSurf:
+		case Feature2D::kFeatureFastBrief:
+			_feature2D = new FAST_BRIEF(parameters);
+			_featureType = Feature2D::kFeatureFastBrief;
+			break;
+		case Feature2D::kFeatureFastFreak:
+			_feature2D = new FAST_FREAK(parameters);
+			_featureType = Feature2D::kFeatureFastFreak;
+			break;
+		case Feature2D::kFeatureOrb:
+			_feature2D = new ORB(parameters);
+			_featureType = Feature2D::kFeatureOrb;
+			break;
+		case Feature2D::kFeatureSurf:
 		default:
-			_keypointDetector = new SURFDetector(parameters);
-			_keypointDescriptor = new SURFDescriptor(parameters);
+			_feature2D = new SURF(parameters);
+			_featureType = Feature2D::kFeatureSurf;
 			break;
-		}
-	}
-	else
-	{
-		if(_keypointDetector)
-		{
-			_keypointDetector->parseParameters(parameters);
-		}
-		if(_keypointDescriptor)
-		{
-			_keypointDescriptor->parseParameters(parameters);
 		}
 	}
 }
@@ -487,7 +480,7 @@ bool Memory::update(const Image & image, Statistics * stats)
 	//============================================================
 	// Transfer the oldest signature of the short-term memory to the working memory
 	//============================================================
-	while(_stMem.size() && (int)_stMem.size() > _maxStMemSize)
+	while(_stMem.size() && _maxStMemSize>0 && (int)_stMem.size() > _maxStMemSize)
 	{
 		UDEBUG("Inserting node %d from STM in WM...", *_stMem.begin());
 		_workingMem.insert(_workingMem.end(), *_stMem.begin());
@@ -616,9 +609,9 @@ Signature * Memory::_getSignature(int id) const
 	return uValue(_signatures, id, (Signature*)0);
 }
 
-int Memory::getVWDictionarySize() const
+const VWDictionary * Memory::getVWDictionary() const
 {
-	return _vwd->getVisualWords().size();
+	return _vwd;
 }
 
 void Memory::getPose(int locationId, Transform & pose, bool lookInDatabase) const
@@ -1436,7 +1429,10 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 	return removableSignatures;
 }
 
-void Memory::moveToTrash(Signature * s, bool saveToDatabase)
+/**
+ * If saveToDatabase=false, deleted words are filled in deletedWords.
+ */
+void Memory::moveToTrash(Signature * s, bool saveToDatabase, std::list<int> * deletedWords)
 {
 	UDEBUG("id=%d", s?s->id():0);
 	if(s)
@@ -1453,9 +1449,10 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase)
 				// neighbor to s
 				if(n)
 				{
-					if(iter->first > s->id() && (n->getNeighbors().size() > 1 || !n->hasNeighbor(s->id())))
+					if(iter->first > s->id() && (n->getNeighbors().size() > 2 || !n->hasNeighbor(s->id())))
 					{
-						UWARN("Neighbor %d of %d is newer, removing neighbor link may split the map!", iter->first, s->id());
+						UWARN("Neighbor %d of %d is newer, removing neighbor link may split the map!",
+								iter->first, s->id());
 					}
 
 					n->removeNeighbor(s->id());
@@ -1503,7 +1500,27 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase)
 			s->setWeight(0);
 		}
 
-		this->disableWordsRef(s->id(), saveToDatabase);
+		this->disableWordsRef(s->id());
+		if(!saveToDatabase)
+		{
+			std::list<int> keys = uUniqueKeys(s->getWords());
+			for(std::list<int>::const_iterator i=keys.begin(); i!=keys.end(); ++i)
+			{
+				// assume just removed word doesn't have any other references
+				VisualWord * w = _vwd->getUnusedWord(*i);
+				if(w)
+				{
+					std::vector<VisualWord*> wordToDelete;
+					wordToDelete.push_back(w);
+					_vwd->removeWords(wordToDelete);
+					if(deletedWords)
+					{
+						deletedWords->push_back(w->id());
+					}
+					delete w;
+				}
+			}
+		}
 
 		_workingMem.erase(s->id());
 		_stMem.erase(s->id());
@@ -1542,13 +1559,13 @@ const Signature * Memory::getLastWorkingSignature() const
 	return _lastSignature;
 }
 
-void Memory::deleteLocation(int locationId)
+void Memory::deleteLocation(int locationId, std::list<int> * deletedWords)
 {
-	UINFO("Deleting location %d", locationId);
+	UDEBUG("Deleting location %d", locationId);
 	Signature * location = _getSignature(locationId);
 	if(location)
 	{
-		this->moveToTrash(location, false);
+		this->moveToTrash(location, false, deletedWords);
 	}
 }
 
@@ -1640,12 +1657,12 @@ Transform Memory::computeVisualTransform(const Signature & oldS, const Signature
 			}
 			else if(inliersCount < _bowMinInliers)
 			{
-				UINFO("Not enough inliers %d/%d between %d and %d", inliersCount, _bowMinInliers, oldS.id(), newS.id());
+				UINFO("Not enough inliers (after RANSAC) %d/%d between %d and %d", inliersCount, _bowMinInliers, oldS.id(), newS.id());
 			}
 		}
 		else
 		{
-			UDEBUG("Not enough inliers %d/%d between %d and %d", (int)inliersOld->size(), _bowMinInliers, oldS.id(), newS.id());
+			UINFO("Not enough inliers %d/%d between %d and %d", (int)inliersOld->size(), _bowMinInliers, oldS.id(), newS.id());
 		}
 	}
 	else if(!oldS.isBadSignature() && !newS.isBadSignature())
@@ -2783,10 +2800,10 @@ void Memory::extractKeypointsAndDescriptors(
 	if(_wordsPerImageTarget >= 0)
 	{
 		UTimer timer;
-		if(_keypointDetector)
+		if(_feature2D)
 		{
-			cv::Rect roi = KeypointDetector::computeRoi(image, _roiRatios);
-			keypoints = _keypointDetector->generateKeypoints(image, 0, roi);
+			cv::Rect roi = computeRoi(image, _roiRatios);
+			keypoints = _feature2D->generateKeypoints(image, 0, roi);
 			UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), timer.ticks());
 
 			filterKeypointsByDepth(keypoints, depth, depthConstant, _wordsMaxDepth);
@@ -2795,7 +2812,7 @@ void Memory::extractKeypointsAndDescriptors(
 
 		if(keypoints.size())
 		{
-			descriptors = _keypointDescriptor->generateDescriptors(image, keypoints);
+			descriptors = _feature2D->generateDescriptors(image, keypoints);
 			UDEBUG("time descriptors (%d) = %fs", descriptors.rows, timer.ticks());
 		}
 	}
@@ -2876,12 +2893,12 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 		preUpdateThread.start();
 	}
 
-	if(!image.descriptors().empty())
+	if(!image.descriptors().empty() && image.featureType() == _featureType)
 	{
 		// DESCRIPTORS
 		if(image.descriptors().rows && image.descriptors().rows >= _badSignRatio * float(meanWordsPerLocation))
 		{
-			UASSERT(image.descriptors().type() == CV_32F);
+			UASSERT(image.descriptors().type() == CV_32F || image.descriptors().type() == CV_8U);
 			descriptors = image.descriptors();
 			keypoints = image.keypoints();
 		}
@@ -2891,7 +2908,18 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 	else
 	{
 		// IMAGE RAW
-		this->extractKeypointsAndDescriptors(image.image(), image.depth(), image.depthConstant(), keypoints, descriptors);
+		cv::Mat imageMono;
+		// convert to grayscale
+		if(image.image().channels() > 1)
+		{
+			cv::cvtColor(image.image(), imageMono, cv::COLOR_BGR2GRAY);
+		}
+		else
+		{
+			imageMono = image.image();
+		}
+
+		this->extractKeypointsAndDescriptors(imageMono, image.depth(), image.depthConstant(), keypoints, descriptors);
 
 		UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
 		if(descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))
@@ -2999,11 +3027,11 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 	return s;
 }
 
-void Memory::disableWordsRef(int signatureId, bool saveToDatabase)
+void Memory::disableWordsRef(int signatureId)
 {
 	UDEBUG("id=%d", signatureId);
 
-	Signature * ss = dynamic_cast<Signature *>(this->_getSignature(signatureId));
+	Signature * ss = this->_getSignature(signatureId);
 	if(ss && ss->isEnabled())
 	{
 		const std::multimap<int, cv::KeyPoint> & words = ss->getWords();
@@ -3013,18 +3041,6 @@ void Memory::disableWordsRef(int signatureId, bool saveToDatabase)
 		for(std::list<int>::const_iterator i=keys.begin(); i!=keys.end(); ++i)
 		{
 			_vwd->removeAllWordRef(*i, signatureId);
-			if(!saveToDatabase)
-			{
-				// assume just removed word doesn't have any other references
-				VisualWord * w = _vwd->getUnusedWord(*i);
-				if(w)
-				{
-					std::vector<VisualWord*> wordToDelete;
-					wordToDelete.push_back(w);
-					_vwd->removeWords(wordToDelete);
-					delete w;
-				}
-			}
 		}
 
 		count -= _vwd->getTotalActiveReferences();
@@ -3103,8 +3119,7 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 	if(vws.size())
 	{
 		//Search in the dictionary
-		bool reactivatedWordsComparedToNewWords = true;
-		std::vector<int> vwActiveIds = _vwd->findNN(vws, reactivatedWordsComparedToNewWords);
+		std::vector<int> vwActiveIds = _vwd->findNN(vws);
 		UDEBUG("find active ids (number=%d) time=%fs", vws.size(), timer.ticks());
 		int i=0;
 		for(std::list<VisualWord *>::iterator iterVws=vws.begin(); iterVws!=vws.end(); ++iterVws)

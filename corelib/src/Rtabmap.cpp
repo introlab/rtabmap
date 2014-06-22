@@ -26,6 +26,7 @@
 #include "rtabmap/core/EpipolarGeometry.h"
 
 #include "rtabmap/core/Memory.h"
+#include "rtabmap/core/VWDictionary.h"
 #include "BayesFilter.h"
 
 #include <rtabmap/utilite/ULogger.h>
@@ -1406,7 +1407,7 @@ bool Rtabmap::process(const Image & image)
 	{
 		lcHypothesisReactivated = sLoop->isSaved()?1.0f:0.0f;
 	}
-	dictionarySize = _memory->getVWDictionarySize();
+	dictionarySize = _memory->getVWDictionary()->getVisualWords().size();
 	refWordsCount = (int)signature->getWords().size();
 	refUniqueWordsCount = (int)uUniqueKeys(signature->getWords()).size();
 
@@ -1711,6 +1712,11 @@ bool Rtabmap::process(const Image & image)
 	return true;
 }
 
+bool Rtabmap::process(const cv::Mat & image, int id)
+{
+	return this->process(Image(image, id));
+}
+
 // SETTERS
 void Rtabmap::setTimeThreshold(float maxTimeAllowed)
 {
@@ -1802,11 +1808,6 @@ void Rtabmap::rejectLoopClosure(int oldId, int newId)
 		}
 		statistics_.setLoopClosureId(0);
 	}
-}
-
-bool Rtabmap::process(const cv::Mat & image, int id)
-{
-	return this->process(Image(image, id));
 }
 
 void Rtabmap::dumpData() const

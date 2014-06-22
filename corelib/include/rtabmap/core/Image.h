@@ -12,6 +12,7 @@
 #include <opencv2/features2d/features2d.hpp>
 
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/Features2d.h>
 
 namespace rtabmap
 {
@@ -25,10 +26,12 @@ public:
 	Image(const cv::Mat & image = cv::Mat(),
 		  int id = 0,
 		  const cv::Mat & descriptors = cv::Mat(),
+		  Feature2D::Type featureType = Feature2D::kFeatureUndef,
 		  const std::vector<cv::KeyPoint> & keypoints = std::vector<cv::KeyPoint>()) :
 		_image(image),
 		_id(id),
 		_descriptors(descriptors),
+		_featureType(featureType),
 		_keypoints(keypoints),
 		_depthConstant(0.0f),
 		_localTransform(Transform::getIdentity())
@@ -44,6 +47,7 @@ public:
 		  int id = 0) :
 		_image(image),
 		_id(id),
+		_featureType(Feature2D::kFeatureUndef),
 		_depth(depth),
 		_depthConstant(depthConstant),
 		_pose(pose),
@@ -61,6 +65,7 @@ public:
 		  int id = 0) :
 		_image(image),
 		_id(id),
+		_featureType(Feature2D::kFeatureUndef),
 		_depth(depth),
 		_depth2d(depth2d),
 		_depthConstant(depthConstant),
@@ -75,8 +80,9 @@ public:
 	const cv::Mat & image() const {return _image;}
 	int id() const {return _id;};
 	const cv::Mat & descriptors() const {return _descriptors;}
+	Feature2D::Type featureType() const {return _featureType;}
 	const std::vector<cv::KeyPoint> & keypoints() const {return _keypoints;}
-	void setDescriptors(const cv::Mat & descriptors) {_descriptors = descriptors;}
+	void setDescriptors(const cv::Mat & descriptors, Feature2D::Type featureType) {_descriptors = descriptors; _featureType=featureType;}
 	void setKeypoints(const std::vector<cv::KeyPoint> & keypoints) {_keypoints = keypoints;}
 
 	bool isMetric() const {return !_depth.empty() || _depthConstant != 0.0f || !_pose.isNull();}
@@ -91,6 +97,7 @@ private:
 	cv::Mat _image;
 	int _id;
 	cv::Mat _descriptors;
+	Feature2D::Type _featureType;
 	std::vector<cv::KeyPoint> _keypoints;
 
 	// Metric stuff

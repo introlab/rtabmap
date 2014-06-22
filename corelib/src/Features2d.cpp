@@ -144,218 +144,7 @@ void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors
 	}
 }
 
-/////////////////////
-// KeypointDescriptor
-/////////////////////
-KeypointDescriptor::KeypointDescriptor(const ParametersMap & parameters)
-{
-	this->parseParameters(parameters);
-}
-
-KeypointDescriptor::~KeypointDescriptor()
-{
-}
-
-void KeypointDescriptor::parseParameters(const ParametersMap & parameters)
-{
-}
-
-//////////////////////////
-//SURFDescriptor
-//////////////////////////
-SURFDescriptor::SURFDescriptor(const ParametersMap & parameters) :
-	KeypointDescriptor(parameters),
-	_hessianThreshold(Parameters::defaultSURFHessianThreshold()),
-	_nOctaves(Parameters::defaultSURFOctaves()),
-	_nOctaveLayers(Parameters::defaultSURFOctaveLayers()),
-	_extended(Parameters::defaultSURFExtended()),
-	_upright(Parameters::defaultSURFUpright()),
-	_gpuVersion(Parameters::defaultSURFGpuVersion())
-{
-	this->parseParameters(parameters);
-}
-
-SURFDescriptor::~SURFDescriptor()
-{
-}
-
-void SURFDescriptor::parseParameters(const ParametersMap & parameters)
-{
-	Parameters::parse(parameters, Parameters::kSURFExtended(), _extended);
-	Parameters::parse(parameters, Parameters::kSURFHessianThreshold(), _hessianThreshold);
-	Parameters::parse(parameters, Parameters::kSURFOctaveLayers(), _nOctaveLayers);
-	Parameters::parse(parameters, Parameters::kSURFOctaves(), _nOctaves);
-	Parameters::parse(parameters, Parameters::kSURFUpright(), _upright);
-	Parameters::parse(parameters, Parameters::kSURFGpuVersion(), _gpuVersion);
-	KeypointDescriptor::parseParameters(parameters);
-}
-
-cv::Mat SURFDescriptor::generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
-{
-	ULOGGER_DEBUG("");
-	cv::Mat descriptors;
-	if(image.empty())
-	{
-		ULOGGER_ERROR("Image is null ?!?");
-		return descriptors;
-	}
-	// SURF support only grayscale images
-	cv::Mat imageGrayScale;
-	if(image.channels() != 1 || image.depth() != CV_8U)
-	{
-		cv::cvtColor(image, imageGrayScale, CV_BGR2GRAY);
-	}
-	cv::Mat img;
-	if(!imageGrayScale.empty())
-	{
-		img = imageGrayScale;
-	}
-	else
-	{
-		img =  image;
-	}
-	if(_gpuVersion && cv::gpu::getCudaEnabledDeviceCount())
-	{
-		std::vector<float> d;
-		cv::gpu::GpuMat imgGpu(img);
-		cv::gpu::GpuMat descriptorsGpu;
-		cv::gpu::GpuMat keypointsGpu;
-		cv::gpu::SURF_GPU surfGpu(_hessianThreshold, _nOctaves, _nOctaveLayers, _extended, 0.01f, _upright);
-		surfGpu.uploadKeypoints(keypoints, keypointsGpu);
-		surfGpu(imgGpu, cv::gpu::GpuMat(), keypointsGpu, descriptorsGpu, true);
-		surfGpu.downloadDescriptors(descriptorsGpu, d);
-		unsigned int dim = _extended?128:64;
-		descriptors = cv::Mat(d.size()/dim, dim, CV_32F);
-		for(int i=0; i<descriptors.rows; ++i)
-		{
-			float * rowFl = descriptors.ptr<float>(i);
-			memcpy(rowFl, &d[i*dim], dim*sizeof(float));
-		}
-	}
-	else
-	{
-		if(_gpuVersion)
-		{
-			UWARN("GPU version of SURF not available! Using CPU version instead...");
-		}
-
-		cv::SURF extractor(_hessianThreshold, _nOctaves, _nOctaveLayers, _extended, _upright);
-		extractor.compute(img, keypoints, descriptors);
-	}
-
-	return descriptors;
-}
-
-//////////////////////////
-//SIFTDescriptor
-//////////////////////////
-SIFTDescriptor::SIFTDescriptor(const ParametersMap & parameters) :
-	KeypointDescriptor(parameters),
-	_nfeatures(Parameters::defaultSIFTNFeatures()),
-	_nOctaveLayers(Parameters::defaultSIFTNOctaveLayers()),
-	_contrastThreshold(Parameters::defaultSIFTContrastThreshold()),
-	_edgeThreshold(Parameters::defaultSIFTEdgeThreshold()),
-	_sigma(Parameters::defaultSIFTSigma())
-{
-	this->parseParameters(parameters);
-}
-
-SIFTDescriptor::~SIFTDescriptor()
-{
-}
-
-void SIFTDescriptor::parseParameters(const ParametersMap & parameters)
-{
-	ParametersMap::const_iterator iter;
-	Parameters::parse(parameters, Parameters::kSIFTContrastThreshold(), _contrastThreshold);
-	Parameters::parse(parameters, Parameters::kSIFTEdgeThreshold(), _edgeThreshold);
-	Parameters::parse(parameters, Parameters::kSIFTNFeatures(), _nfeatures);
-	Parameters::parse(parameters, Parameters::kSIFTNOctaveLayers(), _nOctaveLayers);
-	Parameters::parse(parameters, Parameters::kSIFTSigma(), _sigma);
-	KeypointDescriptor::parseParameters(parameters);
-}
-
-cv::Mat SIFTDescriptor::generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
-{
-	ULOGGER_DEBUG("");
-	cv::Mat descriptors;
-	if(image.empty())
-	{
-		ULOGGER_ERROR("Image is null ?!?");
-		return descriptors;
-	}
-	// SURF support only grayscale images
-	cv::Mat imageGrayScale;
-	if(image.channels() != 1 || image.depth() != CV_8U)
-	{
-		cv::cvtColor(image, imageGrayScale, CV_BGR2GRAY);
-	}
-	cv::Mat img;
-	if(!imageGrayScale.empty())
-	{
-		img = imageGrayScale;
-	}
-	else
-	{
-		img =  image;
-	}
-
-	cv::SIFT extractor(_nfeatures, _nOctaveLayers, _contrastThreshold, _edgeThreshold, _sigma);
-	extractor.compute(img, keypoints, descriptors);
-
-	return descriptors;
-}
-
-
-
-
-/////////////////////
-// KeypointDetector
-/////////////////////
-KeypointDetector::KeypointDetector(const ParametersMap & parameters)
-{
-	this->parseParameters(parameters);
-}
-
-void KeypointDetector::parseParameters(const ParametersMap & parameters)
-{
-}
-
-std::vector<cv::KeyPoint> KeypointDetector::generateKeypoints(
-		const cv::Mat & image,
-		int maxKeypoints,
-		const cv::Rect & roi)
-{
-	ULOGGER_DEBUG("");
-	std::vector<cv::KeyPoint> keypoints;
-	if(!image.empty())
-	{
-		UTimer timer;
-
-		// Get keypoints
-		keypoints = this->_generateKeypoints(image, roi.width && roi.height?roi:cv::Rect(0,0,image.cols, image.rows));
-		ULOGGER_DEBUG("Keypoints extraction time = %f s, keypoints extracted = %d", timer.ticks(), keypoints.size());
-
-		limitKeypoints(keypoints, maxKeypoints);
-
-		if(roi.x || roi.y)
-		{
-			// Adjust keypoint position to raw image
-			for(std::vector<cv::KeyPoint>::iterator iter=keypoints.begin(); iter!=keypoints.end(); ++iter)
-			{
-				iter->pt.x += roi.x;
-				iter->pt.y += roi.y;
-			}
-		}
-	}
-	else
-	{
-		ULOGGER_ERROR("Image is null!");
-	}
-	return keypoints;
-}
-
-cv::Rect KeypointDetector::computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios)
+cv::Rect computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios)
 {
 	if(!image.empty() && roiRatios.size() == 4)
 	{
@@ -401,144 +190,426 @@ cv::Rect KeypointDetector::computeRoi(const cv::Mat & image, const std::vector<f
 	}
 }
 
-
-//////////////////////////
-//SURFDetector
-//////////////////////////
-SURFDetector::SURFDetector(const ParametersMap & parameters) :
-		KeypointDetector(parameters),
-		_hessianThreshold(Parameters::defaultSURFHessianThreshold()),
-		_nOctaves(Parameters::defaultSURFOctaves()),
-		_nOctaveLayers(Parameters::defaultSURFOctaveLayers()),
-		_extended(Parameters::defaultSURFExtended()),
-		_upright(Parameters::defaultSURFUpright()),
-		_gpuVersion(Parameters::defaultSURFGpuVersion())
-{
-	this->parseParameters(parameters);
-}
-
-SURFDetector::~SURFDetector()
-{
-}
-
-void SURFDetector::parseParameters(const ParametersMap & parameters)
-{
-	Parameters::parse(parameters, Parameters::kSURFExtended(), _extended);
-	Parameters::parse(parameters, Parameters::kSURFHessianThreshold(), _hessianThreshold);
-	Parameters::parse(parameters, Parameters::kSURFOctaveLayers(), _nOctaveLayers);
-	Parameters::parse(parameters, Parameters::kSURFOctaves(), _nOctaves);
-	Parameters::parse(parameters, Parameters::kSURFUpright(), _upright);
-	Parameters::parse(parameters, Parameters::kSURFGpuVersion(), _gpuVersion);
-	KeypointDetector::parseParameters(parameters);
-}
-
-std::vector<cv::KeyPoint> SURFDetector::_generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const
+/////////////////////
+// Feature2D
+/////////////////////
+std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, int maxKeypoints, const cv::Rect & roi) const
 {
 	ULOGGER_DEBUG("");
 	std::vector<cv::KeyPoint> keypoints;
-	if(image.empty())
+	if(!image.empty() && image.channels() == 1 && image.type() == CV_8U)
 	{
-		ULOGGER_ERROR("Image is null ?!?");
-		return keypoints;
+		UTimer timer;
+
+		// Get keypoints
+		keypoints = this->generateKeypointsImpl(image, roi.width && roi.height?roi:cv::Rect(0,0,image.cols, image.rows));
+		ULOGGER_DEBUG("Keypoints extraction time = %f s, keypoints extracted = %d", timer.ticks(), keypoints.size());
+
+		limitKeypoints(keypoints, maxKeypoints);
+
+		if(roi.x || roi.y)
+		{
+			// Adjust keypoint position to raw image
+			for(std::vector<cv::KeyPoint>::iterator iter=keypoints.begin(); iter!=keypoints.end(); ++iter)
+			{
+				iter->pt.x += roi.x;
+				iter->pt.y += roi.y;
+			}
+		}
 	}
-	// SURF support only grayscale images
-	cv::Mat imageGrayScale;
-	if(image.channels() != 1 || image.depth() != CV_8U)
+	else if(image.empty())
 	{
-		ULOGGER_DEBUG("");
-		cv::cvtColor(image, imageGrayScale, CV_BGR2GRAY);
-	}
-	cv::Mat img;
-	if(!imageGrayScale.empty())
-	{
-		img = imageGrayScale;
+		UERROR("Image is null!");
 	}
 	else
 	{
-		img = image;
+		UERROR("Image format must be mono8. Current has %d channels and type = %d, size=%d,%d",
+				image.channels(), image.type(), image.cols, image.rows);
 	}
 
-	cv::Mat imgRoi(img, roi);
-	if(_gpuVersion && cv::gpu::getCudaEnabledDeviceCount())
+	return keypoints;
+}
+
+cv::Mat Feature2D::generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	return generateDescriptorsImpl(image, keypoints);
+}
+
+//////////////////////////
+//SURF
+//////////////////////////
+SURF::SURF(const ParametersMap & parameters) :
+		_surf(0),
+		_gpuSurf(0)
+{
+	double hessianThreshold = Parameters::defaultSURFHessianThreshold();
+	int nOctaves = Parameters::defaultSURFOctaves();
+	int nOctaveLayers = Parameters::defaultSURFOctaveLayers();
+	bool extended = Parameters::defaultSURFExtended();
+	bool upright = Parameters::defaultSURFUpright();
+	float gpuKeypointsRatio = Parameters::defaultSURFGpuKeypointsRatio();
+	bool gpuVersion = Parameters::defaultSURFGpuVersion();
+
+	Parameters::parse(parameters, Parameters::kSURFExtended(), extended);
+	Parameters::parse(parameters, Parameters::kSURFHessianThreshold(), hessianThreshold);
+	Parameters::parse(parameters, Parameters::kSURFOctaveLayers(), nOctaveLayers);
+	Parameters::parse(parameters, Parameters::kSURFOctaves(), nOctaves);
+	Parameters::parse(parameters, Parameters::kSURFUpright(), upright);
+	Parameters::parse(parameters, Parameters::kSURFGpuKeypointsRatio(), gpuKeypointsRatio);
+	Parameters::parse(parameters, Parameters::kSURFGpuVersion(), gpuVersion);
+
+	if(gpuVersion && cv::gpu::getCudaEnabledDeviceCount())
 	{
-		cv::gpu::GpuMat imgGpu(imgRoi);
-		cv::gpu::GpuMat keypointsGpu;
-		cv::gpu::SURF_GPU surfGpu(_hessianThreshold, _nOctaves, _nOctaveLayers, _extended, 0.01f, _upright);
-		surfGpu(imgGpu, cv::gpu::GpuMat(), keypointsGpu);
-		surfGpu.downloadKeypoints(keypointsGpu, keypoints);
+		_gpuSurf = new cv::gpu::SURF_GPU(hessianThreshold, nOctaves, nOctaveLayers, extended, gpuKeypointsRatio, upright);
 	}
 	else
 	{
-		if(_gpuVersion)
+		if(gpuVersion)
 		{
 			UWARN("GPU version of SURF not available! Using CPU version instead...");
 		}
-		ULOGGER_DEBUG("%f %d %d %d %d", _hessianThreshold, _nOctaves, _nOctaveLayers, _extended?1:0, _upright?1:0);
-		cv::SURF detector(_hessianThreshold, _nOctaves, _nOctaveLayers, _extended, _upright);
-		detector.detect(imgRoi, keypoints);
+
+		_surf = new cv::SURF (hessianThreshold, nOctaves, nOctaveLayers, extended, upright);
 	}
-
-	ULOGGER_DEBUG("");
-	return keypoints;
 }
 
-//////////////////////////
-//SIFTDetector
-//////////////////////////
-SIFTDetector::SIFTDetector(const ParametersMap & parameters) :
-		KeypointDetector(parameters),
-		_nfeatures(Parameters::defaultSIFTNFeatures()),
-		_nOctaveLayers(Parameters::defaultSIFTNOctaveLayers()),
-		_contrastThreshold(Parameters::defaultSIFTContrastThreshold()),
-		_edgeThreshold(Parameters::defaultSIFTEdgeThreshold()),
-		_sigma(Parameters::defaultSIFTSigma())
+SURF::~SURF()
 {
-	this->parseParameters(parameters);
+	if(_surf)
+	{
+		delete _surf;
+	}
+	if(_gpuSurf)
+	{
+		delete _gpuSurf;
+	}
 }
 
-SIFTDetector::~SIFTDetector()
+std::vector<cv::KeyPoint> SURF::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const
 {
-}
-
-void SIFTDetector::parseParameters(const ParametersMap & parameters)
-{
-	Parameters::parse(parameters, Parameters::kSIFTContrastThreshold(), _contrastThreshold);
-	Parameters::parse(parameters, Parameters::kSIFTEdgeThreshold(), _edgeThreshold);
-	Parameters::parse(parameters, Parameters::kSIFTNFeatures(), _nfeatures);
-	Parameters::parse(parameters, Parameters::kSIFTNOctaveLayers(), _nOctaveLayers);
-	Parameters::parse(parameters, Parameters::kSIFTSigma(), _sigma);
-	KeypointDetector::parseParameters(parameters);
-}
-
-std::vector<cv::KeyPoint> SIFTDetector::_generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const
-{
-	ULOGGER_DEBUG("");
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
-	if(image.empty())
+	cv::Mat imgRoi(image, roi);
+	if(_gpuSurf)
 	{
-		ULOGGER_ERROR("Image is null ?!?");
-		return keypoints;
-	}
-	// SURF support only grayscale images
-	cv::Mat imageGrayScale;
-	if(image.channels() != 1 || image.depth() != CV_8U)
-	{
-		cv::cvtColor(image, imageGrayScale, CV_BGR2GRAY);
-	}
-	cv::Mat img;
-	if(!imageGrayScale.empty())
-	{
-		img = imageGrayScale;
+		cv::gpu::GpuMat imgGpu(imgRoi);
+		(*_gpuSurf)(imgGpu, cv::gpu::GpuMat(), keypoints);
 	}
 	else
 	{
-		img = image;
+		_surf->detect(imgRoi, keypoints);
 	}
 
-	cv::Mat imgRoi(img, roi);
-	cv::SIFT detector(_nfeatures, _nOctaveLayers, _contrastThreshold, _edgeThreshold, _sigma);
-	detector.detect(imgRoi, keypoints); // Opencv surf keypoints
 	return keypoints;
+}
+
+cv::Mat SURF::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+	if(_gpuSurf)
+	{
+		cv::gpu::GpuMat imgGpu(image);
+		cv::gpu::GpuMat descriptorsGPU;
+		(*_gpuSurf)(imgGpu, cv::gpu::GpuMat(), keypoints, descriptorsGPU, true);
+
+		// Download descriptors
+		if (descriptorsGPU.empty())
+			descriptors = cv::Mat();
+		else
+		{
+			UASSERT(descriptorsGPU.type() == CV_32F);
+			descriptors = cv::Mat(descriptorsGPU.size(), CV_32F);
+			descriptorsGPU.download(descriptors);
+		}
+	}
+	else
+	{
+		_surf->compute(image, keypoints, descriptors);
+	}
+
+	return descriptors;
+}
+
+//////////////////////////
+//SIFT
+//////////////////////////
+SIFT::SIFT(const ParametersMap & parameters) :
+	_sift(0)
+{
+	int nfeatures = Parameters::defaultSIFTNFeatures();
+	int nOctaveLayers = Parameters::defaultSIFTNOctaveLayers();
+	double contrastThreshold = Parameters::defaultSIFTContrastThreshold();
+	double edgeThreshold = Parameters::defaultSIFTEdgeThreshold();
+	double sigma = Parameters::defaultSIFTSigma();
+
+	Parameters::parse(parameters, Parameters::kSIFTContrastThreshold(), contrastThreshold);
+	Parameters::parse(parameters, Parameters::kSIFTEdgeThreshold(), edgeThreshold);
+	Parameters::parse(parameters, Parameters::kSIFTNFeatures(), nfeatures);
+	Parameters::parse(parameters, Parameters::kSIFTNOctaveLayers(), nOctaveLayers);
+	Parameters::parse(parameters, Parameters::kSIFTSigma(), sigma);
+
+	_sift = new cv::SIFT(nfeatures, nOctaveLayers, contrastThreshold, edgeThreshold, sigma);
+}
+
+SIFT::~SIFT()
+{
+	if(_sift)
+	{
+		delete _sift;
+	}
+}
+
+std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	std::vector<cv::KeyPoint> keypoints;
+	cv::Mat imgRoi(image, roi);
+	_sift->detect(imgRoi, keypoints); // Opencv keypoints
+	return keypoints;
+}
+
+cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+	_sift->compute(image, keypoints, descriptors);
+	return descriptors;
+}
+
+//////////////////////////
+//ORB
+//////////////////////////
+ORB::ORB(const ParametersMap & parameters) :
+		_orb(0),
+		_gpuOrb(0)
+{
+	int nFeatures = Parameters::defaultORBNFeatures();
+	float scaleFactor = Parameters::defaultORBScaleFactor();
+	int nLevels = Parameters::defaultORBNLevels();
+	int edgeThreshold = Parameters::defaultORBEdgeThreshold();
+	int firstLevel = Parameters::defaultORBFirstLevel();
+	int WTA_K = Parameters::defaultORBWTA_K();
+	int scoreType = Parameters::defaultORBScoreType();
+	int patchSize = Parameters::defaultORBPatchSize();
+	bool gpu = Parameters::defaultORBGpu();
+
+	int fastThreshold = Parameters::defaultFASTThreshold();
+	bool nonmaxSuppresion = Parameters::defaultFASTNonmaxSuppression();
+
+	Parameters::parse(parameters, Parameters::kORBNFeatures(), nFeatures);
+	Parameters::parse(parameters, Parameters::kORBScaleFactor(), scaleFactor);
+	Parameters::parse(parameters, Parameters::kORBNLevels(), nLevels);
+	Parameters::parse(parameters, Parameters::kORBEdgeThreshold(), edgeThreshold);
+	Parameters::parse(parameters, Parameters::kORBFirstLevel(), firstLevel);
+	Parameters::parse(parameters, Parameters::kORBWTA_K(), WTA_K);
+	Parameters::parse(parameters, Parameters::kORBScoreType(), scoreType);
+	Parameters::parse(parameters, Parameters::kORBPatchSize(), patchSize);
+	Parameters::parse(parameters, Parameters::kORBGpu(), gpu);
+
+	Parameters::parse(parameters, Parameters::kFASTThreshold(), fastThreshold);
+	Parameters::parse(parameters, Parameters::kFASTNonmaxSuppression(), nonmaxSuppresion);
+
+	if(gpu && cv::gpu::getCudaEnabledDeviceCount())
+	{
+		_gpuOrb = new cv::gpu::ORB_GPU(nFeatures, scaleFactor, nLevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
+		_gpuOrb->setFastParams(fastThreshold, nonmaxSuppresion);
+	}
+	else
+	{
+		if(gpu)
+		{
+			UWARN("GPU version of ORB not available! Using CPU version instead...");
+		}
+		_orb = new cv::ORB(nFeatures, scaleFactor, nLevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
+	}
+}
+
+ORB::~ORB()
+{
+	if(_orb)
+	{
+		delete _orb;
+	}
+	if(_gpuOrb)
+	{
+		delete _gpuOrb;
+	}
+}
+
+std::vector<cv::KeyPoint> ORB::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	std::vector<cv::KeyPoint> keypoints;
+	cv::Mat imgRoi(image, roi);
+	if(_gpuOrb)
+	{
+		cv::gpu::GpuMat imgGpu(imgRoi);
+		(*_gpuOrb)(imgGpu, cv::gpu::GpuMat(), keypoints);
+	}
+	else
+	{
+		_orb->detect(imgRoi, keypoints);
+	}
+
+	return keypoints;
+}
+
+cv::Mat ORB::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+	if(image.empty())
+	{
+		ULOGGER_ERROR("Image is null ?!?");
+		return descriptors;
+	}
+	if(_gpuOrb)
+	{
+		cv::gpu::GpuMat imgGpu(image);
+		cv::gpu::GpuMat descriptorsGPU;
+		(*_gpuOrb)(imgGpu, cv::gpu::GpuMat(), keypoints, descriptorsGPU);
+
+		// Download descriptors
+		if (descriptorsGPU.empty())
+			descriptors = cv::Mat();
+		else
+		{
+			UASSERT(descriptorsGPU.type() == CV_32F);
+			descriptors = cv::Mat(descriptorsGPU.size(), CV_32F);
+			descriptorsGPU.download(descriptors);
+		}
+	}
+	else
+	{
+		_orb->compute(image, keypoints, descriptors);
+	}
+
+	return descriptors;
+}
+
+//////////////////////////
+//FAST
+//////////////////////////
+FAST::FAST(const ParametersMap & parameters) :
+		_fast(0),
+		_gpuFast(0)
+{
+	int threshold = Parameters::defaultFASTThreshold();
+	bool nonmaxSuppression = Parameters::defaultFASTNonmaxSuppression();
+	bool gpu = Parameters::defaultFASTGpu();
+	double gpuKeypointsRatio = Parameters::defaultFASTGpuKeypointsRatio();
+
+	Parameters::parse(parameters, Parameters::kFASTThreshold(), threshold);
+	Parameters::parse(parameters, Parameters::kFASTNonmaxSuppression(), nonmaxSuppression);
+	Parameters::parse(parameters, Parameters::kFASTGpu(), gpu);
+	Parameters::parse(parameters, Parameters::kFASTGpuKeypointsRatio(), gpuKeypointsRatio);
+
+	if(gpu && cv::gpu::getCudaEnabledDeviceCount())
+	{
+		_gpuFast = new cv::gpu::FAST_GPU(threshold, nonmaxSuppression, gpuKeypointsRatio);
+	}
+	else
+	{
+		if(gpu)
+		{
+			UWARN("GPU version of FAST not available! Using CPU version instead...");
+		}
+		_fast = new cv::FastFeatureDetector(threshold, nonmaxSuppression);
+	}
+}
+
+FAST::~FAST()
+{
+	if(_fast)
+	{
+		delete _fast;
+	}
+	if(_gpuFast)
+	{
+		delete _gpuFast;
+	}
+}
+
+std::vector<cv::KeyPoint> FAST::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	std::vector<cv::KeyPoint> keypoints;
+	cv::Mat imgRoi(image, roi);
+	if(_gpuFast)
+	{
+		cv::gpu::GpuMat imgGpu(imgRoi);
+		(*_gpuFast)(imgGpu, cv::gpu::GpuMat(), keypoints);
+	}
+	else
+	{
+		_fast->detect(imgRoi, keypoints); // Opencv keypoints
+	}
+	return keypoints;
+}
+
+//////////////////////////
+//FAST-BRIEF
+//////////////////////////
+FAST_BRIEF::FAST_BRIEF(const ParametersMap & parameters) :
+	FAST(parameters),
+	_brief(0)
+{
+	int bytes = Parameters::defaultBRIEFBytes();
+	Parameters::parse(parameters, Parameters::kBRIEFBytes(), bytes);
+	_brief = new cv::BriefDescriptorExtractor(bytes);
+}
+
+FAST_BRIEF::~FAST_BRIEF()
+{
+	if(_brief)
+	{
+		delete _brief;
+	}
+}
+
+cv::Mat FAST_BRIEF::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+	_brief->compute(image, keypoints, descriptors);
+	return descriptors;
+}
+
+//////////////////////////
+//FAST-FREAK
+//////////////////////////
+FAST_FREAK::FAST_FREAK(const ParametersMap & parameters) :
+	FAST(parameters),
+	_freak(0)
+{
+	bool orientationNormalized = Parameters::defaultFREAKOrientationNormalized();
+	bool scaleNormalized = Parameters::defaultFREAKScaleNormalized();
+	float patternScale = Parameters::defaultFREAKPatternScale();
+	int nOctaves = Parameters::defaultFREAKNOctaves();
+
+	Parameters::parse(parameters, Parameters::kFREAKOrientationNormalized(), orientationNormalized);
+	Parameters::parse(parameters, Parameters::kFREAKScaleNormalized(), scaleNormalized);
+	Parameters::parse(parameters, Parameters::kFREAKPatternScale(), patternScale);
+	Parameters::parse(parameters, Parameters::kFREAKNOctaves(), nOctaves);
+
+	_freak = new cv::FREAK(orientationNormalized, scaleNormalized, patternScale, nOctaves);
+}
+
+FAST_FREAK::~FAST_FREAK()
+{
+	if(_freak)
+	{
+		delete _freak;
+	}
+}
+
+cv::Mat FAST_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+	_freak->compute(image, keypoints, descriptors);
+	return descriptors;
 }
 
 }

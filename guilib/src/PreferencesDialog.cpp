@@ -42,6 +42,7 @@
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/Memory.h"
+#include "rtabmap/core/VWDictionary.h"
 
 #include "rtabmap/gui/LoopClosureViewer.h"
 
@@ -73,8 +74,25 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	if(cv::gpu::getCudaEnabledDeviceCount() == 0)
 	{
+		_ui->surf_checkBox_gpuVersion->setChecked(false);
 		_ui->surf_checkBox_gpuVersion->setEnabled(false);
 		_ui->label_surf_checkBox_gpuVersion->setEnabled(false);
+		_ui->surf_doubleSpinBox_gpuKeypointsRatio->setEnabled(false);
+		_ui->label_surf_checkBox_gpuKeypointsRatio->setEnabled(false);
+
+		_ui->fastGpu->setChecked(false);
+		_ui->fastGpu->setEnabled(false);
+		_ui->label_fastGPU->setEnabled(false);
+		_ui->fastKeypointRatio->setEnabled(false);
+		_ui->label_fastGPUKptRatio->setEnabled(false);
+
+		_ui->checkBox_ORBGpu->setChecked(false);
+		_ui->checkBox_ORBGpu->setEnabled(false);
+		_ui->label_orbGpu->setEnabled(false);
+
+		// remove BruteForceGPU option
+		_ui->comboBox_dictionary_strategy->removeItem(4);
+		_ui->odom_bin_nn->removeItem(4);
 	}
 
 	_ui->predictionPlot->showLegend(false);
@@ -317,11 +335,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_dictionary_strategy->setObjectName(Parameters::kKpNNStrategy().c_str());
 	_ui->checkBox_dictionary_incremental->setObjectName(Parameters::kKpIncrementalDictionary().c_str());
 	_ui->comboBox_detector_strategy->setObjectName(Parameters::kKpDetectorStrategy().c_str());
-	_ui->checkBox_dictionary_minDistUsed->setObjectName(Parameters::kKpMinDistUsed().c_str());
-	_ui->surf_doubleSpinBox_matchThr->setObjectName(Parameters::kKpMinDist().c_str());
-	_ui->checkBox_dictionary_nndrUsed->setObjectName(Parameters::kKpNndrUsed().c_str());
 	_ui->surf_doubleSpinBox_nndrRatio->setObjectName(Parameters::kKpNndrRatio().c_str());
-	_ui->surf_spinBox_maxLeafs->setObjectName(Parameters::kKpMaxLeafs().c_str());
 	_ui->surf_doubleSpinBox_maxDepth->setObjectName(Parameters::kKpMaxDepth().c_str());
 	_ui->surf_spinBox_wordsPerImageTarget->setObjectName(Parameters::kKpWordsPerImage().c_str());
 	_ui->surf_doubleSpinBox_ratioBadSign->setObjectName(Parameters::kKpBadSignRatio().c_str());
@@ -338,6 +352,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_surfExtended->setObjectName(Parameters::kSURFExtended().c_str());
 	_ui->surf_checkBox_upright->setObjectName(Parameters::kSURFUpright().c_str());
 	_ui->surf_checkBox_gpuVersion->setObjectName(Parameters::kSURFGpuVersion().c_str());
+	_ui->surf_doubleSpinBox_gpuKeypointsRatio->setObjectName(Parameters::kSURFGpuKeypointsRatio().c_str());
 
 	//SIFT detector
 	_ui->sift_spinBox_nFeatures->setObjectName(Parameters::kSIFTNFeatures().c_str());
@@ -345,6 +360,32 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->sift_doubleSpinBox_contrastThr->setObjectName(Parameters::kSIFTContrastThreshold().c_str());
 	_ui->sift_doubleSpinBox_edgeThr->setObjectName(Parameters::kSIFTEdgeThreshold().c_str());
 	_ui->sift_doubleSpinBox_sigma->setObjectName(Parameters::kSIFTSigma().c_str());
+
+	//BRIEF descriptor
+	_ui->briefBytes->setObjectName(Parameters::kBRIEFBytes().c_str());
+
+	//FAST detector
+	_ui->fastSuppressNonMax->setObjectName(Parameters::kFASTNonmaxSuppression().c_str());
+	_ui->fastThreshold->setObjectName(Parameters::kFASTThreshold().c_str());
+	_ui->fastGpu->setObjectName(Parameters::kFASTGpu().c_str());
+	_ui->fastKeypointRatio->setObjectName(Parameters::kFASTGpuKeypointsRatio().c_str());
+
+	//ORB detector
+	_ui->spinBox_ORBNFeatures->setObjectName(Parameters::kORBNFeatures().c_str());
+	_ui->doubleSpinBox_ORBScaleFactor->setObjectName(Parameters::kORBScaleFactor().c_str());
+	_ui->spinBox_ORBNLevels->setObjectName(Parameters::kORBNLevels().c_str());
+	_ui->spinBox_ORBEdgeThreshold->setObjectName(Parameters::kORBEdgeThreshold().c_str());
+	_ui->spinBox_ORBFirstLevel->setObjectName(Parameters::kORBFirstLevel().c_str());
+	_ui->spinBox_ORBWTA_K->setObjectName(Parameters::kORBWTA_K().c_str());
+	_ui->spinBox_ORBScoreType->setObjectName(Parameters::kORBScoreType().c_str());
+	_ui->spinBox_ORBPatchSize->setObjectName(Parameters::kORBPatchSize().c_str());
+	_ui->checkBox_ORBGpu->setObjectName(Parameters::kORBGpu().c_str());
+
+	//FREAK descriptor
+	_ui->checkBox_FREAKOrientationNormalized->setObjectName(Parameters::kFREAKOrientationNormalized().c_str());
+	_ui->checkBox_FREAKScaleNormalized->setObjectName(Parameters::kFREAKScaleNormalized().c_str());
+	_ui->doubleSpinBox_FREAKPatternScale->setObjectName(Parameters::kFREAKPatternScale().c_str());
+	_ui->spinBox_FREAKNOctaves->setObjectName(Parameters::kFREAKNOctaves().c_str());
 
 	// verifyHypotheses
 	_ui->comboBox_vh_strategy->setObjectName(Parameters::kRtabmapVhStrategy().c_str());
@@ -393,26 +434,15 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_linearUpdate->setObjectName(Parameters::kOdomLinearUpdate().c_str());
 	_ui->odom_angularUpdate->setObjectName(Parameters::kOdomAngularUpdate().c_str());
 	_ui->odom_countdown->setObjectName(Parameters::kOdomResetCountdown().c_str());
+	_ui->odom_localHistory->setObjectName(Parameters::kOdomLocalHistory().c_str());
 	_ui->odom_maxFeatures->setObjectName(Parameters::kOdomMaxWords().c_str());
 	_ui->odom_inlierDistance->setObjectName(Parameters::kOdomInlierDistance().c_str());
 	_ui->odom_iterations->setObjectName(Parameters::kOdomIterations().c_str());
 	_ui->odom_maxDepth->setObjectName(Parameters::kOdomMaxDepth().c_str());
 	_ui->odom_minInliers->setObjectName(Parameters::kOdomMinInliers().c_str());
 	_ui->odom_ratio->setObjectName(Parameters::kOdomWordsRatio().c_str());
-	_ui->stackedWidget_odom->setCurrentIndex(_ui->odom_type->currentIndex());
-	connect(_ui->odom_type, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_odom, SLOT(setCurrentIndex(int)));
-
-	_ui->odom_bin_briefBytes->setObjectName(Parameters::kOdomBinBriefBytes().c_str());
-	_ui->odom_bin_fastSuppressNonMax->setObjectName(Parameters::kOdomBinFastNonmaxSuppression().c_str());
-	_ui->odom_bin_fastThreshold->setObjectName(Parameters::kOdomBinFastThreshold().c_str());
-	_ui->odom_bin_bruteForceMatching->setObjectName(Parameters::kOdomBinBruteForceMatching().c_str());
-
-	_ui->odom_icpDecimation->setObjectName(Parameters::kOdomICPDecimation().c_str());
-	_ui->odom_icpVoxelSize->setObjectName(Parameters::kOdomICPVoxelSize().c_str());
-	_ui->odom_icpSamples->setObjectName(Parameters::kOdomICPSamples().c_str());
-	_ui->odom_icpMaxCorrespondenceDistance->setObjectName(Parameters::kOdomICPCorrespondencesDistance().c_str());
-	_ui->odom_icpIterations->setObjectName(Parameters::kOdomICPIterations().c_str());
-	_ui->odom_icpMaxFitness->setObjectName(Parameters::kOdomICPMaxFitness().c_str());
+	_ui->odom_bin_nn->setObjectName(Parameters::kOdomNearestNeighbor().c_str());
+	_ui->odom_bin_nndrRatio->setObjectName(Parameters::kOdomNNDR().c_str());
 
 	setupSignals();
 	// custom signals
@@ -791,7 +821,6 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		// match the advanced (spin and doubleSpin boxes)
 		_ui->general_doubleSpinBox_timeThr->setValue(Parameters::defaultRtabmapTimeThr());
 		_ui->general_doubleSpinBox_hardThr->setValue(Parameters::defaultRtabmapLoopThr());
-		_ui->surf_doubleSpinBox_hessianThr->setValue(Parameters::defaultSURFHessianThreshold());
 		_ui->doubleSpinBox_similarityThreshold->setValue(Parameters::defaultMemRehearsalSimilarity());
 		_ui->general_spinBox_imagesBufferSize->setValue(Parameters::defaultRtabmapImageBufferSize());
 		_ui->general_spinBox_maxStMemSize->setValue(Parameters::defaultMemSTMSize());
@@ -812,6 +841,21 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			else if(qobject_cast<const QGroupBox*>(children.at(i)))
 			{
 				this->resetSettings((QGroupBox*)children.at(i));
+			}
+			else if(qobject_cast<const QStackedWidget*>(children.at(i)))
+			{
+				QStackedWidget * stackedWidget = (QStackedWidget*)children.at(i);
+				for(int j=0; j<stackedWidget->count(); ++j)
+				{
+					const QObjectList & children2 = stackedWidget->widget(j)->children();
+					for(int k=0; k<children2.size(); ++k)
+					{
+						if(qobject_cast<QGroupBox *>(children2.at(k)))
+						{
+							this->resetSettings((QGroupBox*)children2.at(k));
+						}
+					}
+				}
 			}
 		}
 
@@ -1294,7 +1338,30 @@ void PreferencesDialog::writeCoreSettings(const QString & filePath)
 
 bool PreferencesDialog::validateForm()
 {
-	//TODO...
+	//verify odom type vs nearest neighbor approach
+	if(_ui->comboBox_dictionary_strategy->currentIndex() == VWDictionary::kNNFlannLSH)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("With the selected feature type (SURF or SIFT), parameter \"Visual Word->Nearest Neighbor\" "
+				   "cannot be LSH (used for binary descriptor). KD-tree is set instead."));
+		_ui->comboBox_dictionary_strategy->setCurrentIndex(VWDictionary::kNNFlannKdTree);
+	}
+
+	if(_ui->odom_bin_nn->currentIndex() == VWDictionary::kNNFlannLSH && _ui->odom_type->currentIndex() <= 1)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("With the selected feature type (SURF or SIFT), parameter \"Odometry->Nearest Neighbor\" "
+				   "cannot be LSH (used for binary descriptor). KD-tree is set instead."));
+		_ui->odom_bin_nn->setCurrentIndex(VWDictionary::kNNFlannKdTree);
+	}
+	else if(_ui->odom_bin_nn->currentIndex() == VWDictionary::kNNFlannKdTree && _ui->odom_type->currentIndex() >1)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("With the selected feature type (ORB, FAST, FREAK or BRIEF), parameter \"Odometry->Nearest Neighbor\" "
+				   "cannot be KD-Tree (used for float descriptor). LSH is set instead."));
+		_ui->odom_bin_nn->setCurrentIndex(VWDictionary::kNNFlannLSH);
+	}
+
 	return true;
 }
 
@@ -1642,60 +1709,67 @@ void PreferencesDialog::openDatabaseViewer()
 void PreferencesDialog::setParameter(const std::string & key, const std::string & value)
 {
 	UDEBUG("%s=%s", key.c_str(), value.c_str());
-	QObject * obj = _ui->stackedWidget->findChild<QObject*>(key.c_str());
+	QWidget * obj = _ui->stackedWidget->findChild<QWidget*>(key.c_str());
 	if(obj)
 	{
-		QSpinBox * spin = qobject_cast<QSpinBox *>(obj);
-		QDoubleSpinBox * doubleSpin = qobject_cast<QDoubleSpinBox *>(obj);
-		QComboBox * combo = qobject_cast<QComboBox *>(obj);
-		QCheckBox * check = qobject_cast<QCheckBox *>(obj);
-		QRadioButton * radio = qobject_cast<QRadioButton *>(obj);
-		QLineEdit * lineEdit = qobject_cast<QLineEdit *>(obj);
-		QGroupBox * groupBox = qobject_cast<QGroupBox *>(obj);
-		bool ok;
-		if(spin)
+		if(obj->isEnabled())
 		{
-			spin->setValue(QString(value.c_str()).toInt(&ok));
-			if(!ok)
+			QSpinBox * spin = qobject_cast<QSpinBox *>(obj);
+			QDoubleSpinBox * doubleSpin = qobject_cast<QDoubleSpinBox *>(obj);
+			QComboBox * combo = qobject_cast<QComboBox *>(obj);
+			QCheckBox * check = qobject_cast<QCheckBox *>(obj);
+			QRadioButton * radio = qobject_cast<QRadioButton *>(obj);
+			QLineEdit * lineEdit = qobject_cast<QLineEdit *>(obj);
+			QGroupBox * groupBox = qobject_cast<QGroupBox *>(obj);
+			bool ok;
+			if(spin)
 			{
-				UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
+				spin->setValue(QString(value.c_str()).toInt(&ok));
+				if(!ok)
+				{
+					UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
+				}
 			}
-		}
-		else if(doubleSpin)
-		{
-			doubleSpin->setValue(QString(value.c_str()).toDouble(&ok));
-			if(!ok)
+			else if(doubleSpin)
 			{
-				UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
+				doubleSpin->setValue(QString(value.c_str()).toDouble(&ok));
+				if(!ok)
+				{
+					UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
+				}
 			}
-		}
-		else if(combo)
-		{
-			combo->setCurrentIndex(QString(value.c_str()).toInt(&ok));
-			if(!ok)
+			else if(combo)
 			{
-				UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
+				combo->setCurrentIndex(QString(value.c_str()).toInt(&ok));
+				if(!ok)
+				{
+					UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
+				}
 			}
-		}
-		else if(check)
-		{
-			check->setChecked(uStr2Bool(value.c_str()));
-		}
-		else if(radio)
-		{
-			radio->setChecked(uStr2Bool(value.c_str()));
-		}
-		else if(lineEdit)
-		{
-			lineEdit->setText(value.c_str());
-		}
-		else if(groupBox)
-		{
-			groupBox->setChecked(uStr2Bool(value.c_str()));
+			else if(check)
+			{
+				check->setChecked(uStr2Bool(value.c_str()));
+			}
+			else if(radio)
+			{
+				radio->setChecked(uStr2Bool(value.c_str()));
+			}
+			else if(lineEdit)
+			{
+				lineEdit->setText(value.c_str());
+			}
+			else if(groupBox)
+			{
+				groupBox->setChecked(uStr2Bool(value.c_str()));
+			}
+			else
+			{
+				ULOGGER_WARN("QObject called %s can't be cast to a supported widget", key.c_str());
+			}
 		}
 		else
 		{
-			ULOGGER_WARN("QObject called %s can't be cast to a supported widget", key.c_str());
+			UDEBUG("Ignoring parameter %s because it is disabled.", key.c_str());
 		}
 	}
 	else
@@ -1781,35 +1855,29 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 						this->addParameters(_ui->groupBox_vh_epipolar2);
 					}
 				}
-				else if(comboBox == _ui->comboBox_detector_strategy)
+				else if(comboBox == _ui->comboBox_detector_strategy || comboBox == _ui->odom_type)
 				{
-					if(value == 0) // 0 surf
+					if(value == 0) //  surf
 					{
-						this->addParameters(_ui->groupBox_detector_surf);
-						_ui->stackedWidget_visualWord->setCurrentIndex(0);
+						this->addParameters(_ui->groupBox_detector_surf2);
 					}
-					else if(value == 1) // 1 sift
+					else if(value == 1) //  sift
 					{
-						this->addParameters(_ui->groupBox_detector_sift);
-						_ui->stackedWidget_visualWord->setCurrentIndex(1);
+						this->addParameters(_ui->groupBox_detector_sift2);
 					}
-				}
-				else if(comboBox == _ui->odom_type)
-				{
-					if(value == 0) // 0 bow
+					else if(value == 2) //  orb
 					{
-						this->addParameters(_ui->groupBox_odom_bow);
-						_ui->stackedWidget_odom->setCurrentIndex(0);
+						this->addParameters(_ui->groupBox_detector_orb2);
 					}
-					else if(value == 1) // 1 fast
+					else if(value == 3) //  fast+freak
 					{
-						this->addParameters(_ui->groupBox_odom_fast);
-						_ui->stackedWidget_odom->setCurrentIndex(1);
+						this->addParameters(_ui->groupBox_detector_fast2);
+						this->addParameters(_ui->groupBox_detector_freak2);
 					}
-					else if(value == 2) // 1 fast
+					else if(value == 4) //  fast+brief
 					{
-						this->addParameters(_ui->groupBox_odom_icp);
-						_ui->stackedWidget_odom->setCurrentIndex(2);
+						this->addParameters(_ui->groupBox_detector_fast2);
+						this->addParameters(_ui->groupBox_detector_brief2);
 					}
 				}
 				else if(comboBox == _ui->globalDetection_icpType)
@@ -2446,18 +2514,6 @@ bool PreferencesDialog::isSourceOpenniUsed() const
 	return _ui->groupBox_sourceOpenni->isChecked();
 }
 
-PreferencesDialog::OdomType PreferencesDialog::getOdometryType() const
-{
-	if(_ui->odom_type->currentIndex() == 0)
-	{
-		return kOdomBOW;
-	}
-	else if(_ui->odom_type->currentIndex() == 1)
-	{
-		return kOdomBIN;
-	}
-	return kOdomICP;
-}
 
 int PreferencesDialog::getSourceImageType() const
 {
@@ -2686,21 +2742,10 @@ void PreferencesDialog::setSLAMMode(bool enabled)
 
 void PreferencesDialog::testOdometry()
 {
-	if(_ui->odom_type->currentIndex() == 0)
-	{
-		testOdometry(kOdomBOW);
-	}
-	else if(_ui->odom_type->currentIndex() == 1)
-	{
-		testOdometry(kOdomBIN);
-	}
-	else // ICP
-	{
-		testOdometry(kOdomICP);
-	}
+	testOdometry(_ui->odom_type->currentIndex());
 }
 
-void PreferencesDialog::testOdometry(OdomType type)
+void PreferencesDialog::testOdometry(int type)
 {
 	UASSERT(_odomThread == 0 && _cameraThread == 0);
 
@@ -2750,27 +2795,15 @@ void PreferencesDialog::testOdometry(OdomType type)
 
 	if(camera)
 	{
-		Odometry * odometry;
 		ParametersMap parameters = this->getAllParameters();
-		if(type == kOdomBIN)
-		{
-			odometry = new OdometryBinary(parameters);
-		}
-		else if(type == kOdomICP)
-		{
-			odometry = new OdometryICP(parameters);
-		}
-		else // kOdomBOW
-		{
-			odometry = new OdometryBOW(parameters);
-		}
+		Odometry * odometry = new OdometryBOW(parameters);
 
 		_odomThread = new OdometryThread(odometry); // take ownership of odometry
 
 		QWidget * window = new QWidget(this, Qt::Popup);
 		window->setAttribute(Qt::WA_DeleteOnClose);
 		window->setWindowFlags(Qt::Dialog);
-		window->setWindowTitle(tr("%1 Odometry viewer").arg(type==kOdomBIN?"Binary":"Bag-of-words"));
+		window->setWindowTitle(tr("Odometry viewer"));
 		window->setMinimumWidth(800);
 		window->setMinimumHeight(600);
 		connect( window, SIGNAL(destroyed(QObject*)), this, SLOT(cleanOdometryTest()) );

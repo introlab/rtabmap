@@ -28,6 +28,16 @@
 #include <list>
 #include "rtabmap/core/Parameters.h"
 
+namespace cv{
+class SURF;
+class SIFT;
+namespace gpu {
+	class SURF_GPU;
+	class ORB_GPU;
+	class FAST_GPU;
+}
+}
+
 namespace rtabmap {
 
 void RTABMAP_EXP filterKeypointsByDepth(
@@ -45,119 +55,115 @@ void RTABMAP_EXP filterKeypointsByDepth(
 void RTABMAP_EXP limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints);
 void RTABMAP_EXP limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints);
 
-/////////////////////
-// KeypointDescriptor
-/////////////////////
-class RTABMAP_EXP KeypointDescriptor {
+cv::Rect RTABMAP_EXP computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios);
+
+// Feature2D
+class RTABMAP_EXP Feature2D {
 public:
-	enum DescriptorType {kDescriptorSurf, kDescriptorSift, kDescriptorUndef};
+	enum Type {kFeatureUndef=-1, kFeatureSurf=0, kFeatureSift=1, kFeatureOrb=2, kFeatureFastFreak=3, kFeatureFastBrief=4};
 
 public:
-	virtual ~KeypointDescriptor();
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual cv::Mat generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const = 0;
+	virtual ~Feature2D() {}
+
+	std::vector<cv::KeyPoint> generateKeypoints(const cv::Mat & image, int maxKeypoints=0, const cv::Rect & roi = cv::Rect()) const;
+	cv::Mat generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 protected:
-	KeypointDescriptor(const ParametersMap & parameters = ParametersMap());
+	Feature2D(const ParametersMap & parameters = ParametersMap()) {}
+
+private:
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const = 0;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const = 0;
 };
 
-//SURFDescriptor
-class RTABMAP_EXP SURFDescriptor : public KeypointDescriptor
+//SURF
+class RTABMAP_EXP SURF : public Feature2D
 {
 public:
-	SURFDescriptor(const ParametersMap & parameters = ParametersMap());
-	virtual ~SURFDescriptor();
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual cv::Mat generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	SURF(const ParametersMap & parameters = ParametersMap());
+	virtual ~SURF();
 
 private:
-	double _hessianThreshold;
-	int _nOctaves;
-	int _nOctaveLayers;
-	bool _extended;
-	bool _upright;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
-	bool _gpuVersion;
+private:
+	cv::SURF * _surf;
+	cv::gpu::SURF_GPU * _gpuSurf;
 };
 
-//SIFTDescriptor
-class RTABMAP_EXP SIFTDescriptor : public KeypointDescriptor
+//SIFT
+class RTABMAP_EXP SIFT : public Feature2D
 {
 public:
-	SIFTDescriptor(const ParametersMap & parameters = ParametersMap());
-	virtual ~SIFTDescriptor();
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual cv::Mat generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	SIFT(const ParametersMap & parameters = ParametersMap());
+	virtual ~SIFT();
 
 private:
-	int _nfeatures;
-	int _nOctaveLayers;
-	double _contrastThreshold;
-	double _edgeThreshold;
-	double _sigma;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+private:
+	cv::SIFT * _sift;
 };
 
-
-/////////////////////
-// KeypointDetector
-/////////////////////
-class RTABMAP_EXP KeypointDetector
+//ORB
+class RTABMAP_EXP ORB : public Feature2D
 {
 public:
-	enum DetectorType {kDetectorSurf, kDetectorSift, kDetectorUndef};
+	ORB(const ParametersMap & parameters = ParametersMap());
+	virtual ~ORB();
 
-public:
-	static cv::Rect computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios);
-
-public:
-	virtual ~KeypointDetector() {}
-	std::vector<cv::KeyPoint> generateKeypoints(
-			const cv::Mat & image,
-			int maxKeypoints = 0,
-			const cv::Rect & roi = cv::Rect());
-	virtual void parseParameters(const ParametersMap & parameters);
-	void setRoi(const std::string & roi);
-
-protected:
-	KeypointDetector(const ParametersMap & parameters = ParametersMap());
 private:
-	virtual std::vector<cv::KeyPoint> _generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const = 0;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+private:
+	cv::ORB * _orb;
+	cv::gpu::ORB_GPU * _gpuOrb;
 };
 
-//SURFDetector
-class RTABMAP_EXP SURFDetector : public KeypointDetector
+//FAST
+class RTABMAP_EXP FAST : public Feature2D
 {
 public:
-	SURFDetector(const ParametersMap & parameters = ParametersMap());
-	virtual ~SURFDetector();
-	virtual void parseParameters(const ParametersMap & parameters);
-private:
-	virtual std::vector<cv::KeyPoint> _generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const;
-private:
-	double _hessianThreshold;
-	int _nOctaves;
-	int _nOctaveLayers;
-	bool _extended;
-	bool _upright;
+	FAST(const ParametersMap & parameters = ParametersMap());
+	virtual ~FAST();
 
-	bool _gpuVersion;
+private:
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
+
+private:
+	cv::FastFeatureDetector * _fast;
+	cv::gpu::FAST_GPU * _gpuFast;
 };
 
-//SIFTDetector
-class RTABMAP_EXP SIFTDetector : public KeypointDetector
+//FAST_BRIEF
+class RTABMAP_EXP FAST_BRIEF : public FAST
 {
 public:
-	SIFTDetector(const ParametersMap & parameters = ParametersMap());
-	virtual ~SIFTDetector();
-	virtual void parseParameters(const ParametersMap & parameters);
+	FAST_BRIEF(const ParametersMap & parameters = ParametersMap());
+	virtual ~FAST_BRIEF();
+
 private:
-	virtual std::vector<cv::KeyPoint> _generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
 private:
-	int _nfeatures;
-	int _nOctaveLayers;
-	double _contrastThreshold;
-	double _edgeThreshold;
-	double _sigma;
+	cv::BriefDescriptorExtractor * _brief;
+};
+
+//FAST_FREAK
+class RTABMAP_EXP FAST_FREAK : public FAST
+{
+public:
+	FAST_FREAK(const ParametersMap & parameters = ParametersMap());
+	virtual ~FAST_FREAK();
+
+private:
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+private:
+	cv::FREAK * _freak;
 };
 
 }

@@ -153,17 +153,13 @@ class RTABMAP_EXP Parameters
 
 	// KeypointMemory (Keypoint-based)
 	RTABMAP_PARAM(Kp, PublishKeypoints,      bool, true, 		"Publishing keypoints.");
-	RTABMAP_PARAM(Kp, NNStrategy,            int, 1, 	 		"Naive 0, kdForest 1.");
+	RTABMAP_PARAM(Kp, NNStrategy,            int, 1, 	 		"kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
 	RTABMAP_PARAM(Kp, IncrementalDictionary, bool, true, 		"");
 	RTABMAP_PARAM(Kp, MaxDepth,              float, 0.0, 		"Filter extracted keypoints by depth (0=inf)");
 	RTABMAP_PARAM(Kp, WordsPerImage,         int, 400, 			"");
 	RTABMAP_PARAM(Kp, BadSignRatio,          float, 0.2, 		"Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
-	RTABMAP_PARAM(Kp, MinDistUsed,           bool, false, 		"The nearest neighbor must have a distance < minDist.");
-	RTABMAP_PARAM(Kp, MinDist, 	             float, 0.05, 		"Matching a descriptor with a word (euclidean distance ^ 2)");
-	RTABMAP_PARAM(Kp, NndrUsed, 	         bool, true, 		"If NNDR ratio is used.");
 	RTABMAP_PARAM(Kp, NndrRatio, 	         float, 0.8, 		"NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
-	RTABMAP_PARAM(Kp, MaxLeafs, 	         int, 64, 			"Maximum number of leafs checked (when using kd-trees).");
-	RTABMAP_PARAM(Kp, DetectorStrategy,      int, 0, 			"Surf detector 0, SIFT detector 1, undef 2.");
+	RTABMAP_PARAM(Kp, DetectorStrategy,      int, 0, 			"0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF.");
 	RTABMAP_PARAM(Kp, TfIdfLikelihoodUsed,   bool, false, 		"Use of the td-idf strategy to compute the likelihood.");
 	RTABMAP_PARAM(Kp, Parallelized,          bool, true, 		"If the dictionary update and signature creation were parallelized.");
 	RTABMAP_PARAM_STR(Kp, RoiRatios, "0.0 0.0 0.0 0.0", 		"Region of interest ratios [left, right, top, bottom].");
@@ -183,12 +179,35 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(SURF, OctaveLayers, 	  int, 2, 		"");
 	RTABMAP_PARAM(SURF, Upright, 	      bool, false, 	"U-SURF");
 	RTABMAP_PARAM(SURF, GpuVersion, 	  bool, false, 	"");
+	RTABMAP_PARAM(SURF, GpuKeypointsRatio, 	  float, 0.01, 	"");
 
 	RTABMAP_PARAM(SIFT, NFeatures,          int, 0,		"");
 	RTABMAP_PARAM(SIFT, NOctaveLayers,      int, 3, 	"");
 	RTABMAP_PARAM(SIFT, ContrastThreshold, 	double, 0.04, "");
 	RTABMAP_PARAM(SIFT, EdgeThreshold,      double, 10.0, "");
 	RTABMAP_PARAM(SIFT, Sigma,              double, 1.6, "");
+
+	RTABMAP_PARAM(BRIEF, Bytes,         	   int, 32, 	"Bytes is a length of descriptor in bytes. It can be equal 16, 32 or 64 bytes.");
+
+	RTABMAP_PARAM(FAST, Threshold,          int, 30, 	   "Threshold on difference between intensity of the central pixel and pixels of a circle around this pixel.");
+	RTABMAP_PARAM(FAST, NonmaxSuppression,  bool, true, 	"If true, non-maximum suppression is applied to detected corners (keypoints).");
+	RTABMAP_PARAM(FAST, Gpu,                bool, false, 	"GPU-FAST: Use GPU version of FAST. This option is enabled only if OpenCV is built with CUDA and GPUs are detected.");
+	RTABMAP_PARAM(FAST, GpuKeypointsRatio,  double, 0.05, 	"Used with FAST GPU.");
+
+	RTABMAP_PARAM(ORB, NFeatures,            int, 500,     "The maximum number of features to retain.");
+	RTABMAP_PARAM(ORB, ScaleFactor,          float,  1.2, "Pyramid decimation ratio, greater than 1. scaleFactor==2 means the classical pyramid, where each next level has 4x less pixels than the previous, but such a big scale factor will degrade feature matching scores dramatically. On the other hand, too close to 1 scale factor will mean that to cover certain scale range you will need more pyramid levels and so the speed will suffer.");
+	RTABMAP_PARAM(ORB, NLevels,              int, 8,       "The number of pyramid levels. The smallest level will have linear size equal to input_image_linear_size/pow(scaleFactor, nlevels).");
+	RTABMAP_PARAM(ORB, EdgeThreshold,        int, 31,      "This is size of the border where the features are not detected. It should roughly match the patchSize parameter.");
+	RTABMAP_PARAM(ORB, FirstLevel,           int, 0,       "It should be 0 in the current implementation.");
+	RTABMAP_PARAM(ORB, WTA_K,                int, 2,       "The number of points that produce each element of the oriented BRIEF descriptor. The default value 2 means the BRIEF where we take a random point pair and compare their brightnesses, so we get 0/1 response. Other possible values are 3 and 4. For example, 3 means that we take 3 random points (of course, those point coordinates are random, but they are generated from the pre-defined seed, so each element of BRIEF descriptor is computed deterministically from the pixel rectangle), find point of maximum brightness and output index of the winner (0, 1 or 2). Such output will occupy 2 bits, and therefore it will need a special variant of Hamming distance, denoted as NORM_HAMMING2 (2 bits per bin). When WTA_K=4, we take 4 random points to compute each bin (that will also occupy 2 bits with possible values 0, 1, 2 or 3).");
+	RTABMAP_PARAM(ORB, ScoreType,            int, 0,       "The default HARRIS_SCORE=0 means that Harris algorithm is used to rank features (the score is written to KeyPoint::score and is used to retain best nfeatures features); FAST_SCORE=1 is alternative value of the parameter that produces slightly less stable keypoints, but it is a little faster to compute.");
+	RTABMAP_PARAM(ORB, PatchSize,            int, 31,      "size of the patch used by the oriented BRIEF descriptor. Of course, on smaller pyramid layers the perceived image area covered by a feature will be larger.");
+	RTABMAP_PARAM(ORB, Gpu,                  bool, false, "GPU-ORB: Use GPU version of ORB. This option is enabled only if OpenCV is built with CUDA and GPUs are detected.");
+
+	RTABMAP_PARAM(FREAK, OrientationNormalized, bool, true,   "Enable orientation normalization.");
+	RTABMAP_PARAM(FREAK, ScaleNormalized,       bool, true,   "Enable scale normalization.");
+	RTABMAP_PARAM(FREAK, PatternScale,          float, 22.0,  "Scaling of the description pattern.");
+	RTABMAP_PARAM(FREAK, NOctaves,              int, 4,        "Number of octaves covered by the detected keypoints.");
 
 	// BayesFilter
 	RTABMAP_PARAM(Bayes, VirtualPlacePriorThr,           float, 0.9, "Virtual place prior");
@@ -216,7 +235,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxDiffID,   int, 0,      "Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.")
 
 	// Odometry
-	RTABMAP_PARAM(Odom, Type,           		int, 0, 		"0=BOW 1=Binary.");
+	RTABMAP_PARAM(Odom, Type,           		int, 0, 		"0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF.");
 	RTABMAP_PARAM(Odom, LinearUpdate,           float, 0.0, 	"Min linear displacement to update odometry.");
 	RTABMAP_PARAM(Odom, AngularUpdate,          float, 0.0, 	"Min angular displacement to update odometry.");
 	RTABMAP_PARAM(Odom, MaxWords,               int, 0, 		"0 no limits.");
@@ -225,19 +244,10 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, Iterations,             int, 100, 		"Maximum iterations to compute the transform from visual words.");
 	RTABMAP_PARAM(Odom, MaxDepth,               float, 5.0, 	"Max depth of the words (0 means no limit).");
 	RTABMAP_PARAM(Odom, WordsRatio,             float, 0.5, 	"Minmum ratio of keypoints between the current image and the last image to compute odometry.");
-	RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,         "Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).")
-
-	RTABMAP_PARAM(OdomBin, BriefBytes,         	   int, 32, 	"");
-	RTABMAP_PARAM(OdomBin, FastThreshold,          int, 30, 	"");
-	RTABMAP_PARAM(OdomBin, FastNonmaxSuppression,  bool, true, 	"");
-	RTABMAP_PARAM(OdomBin, BruteForceMatching,     bool, true, 	"If false, FLANN LSH is used.");
-
-	RTABMAP_PARAM(OdomICP, Decimation,               int, 4, 		"");
-	RTABMAP_PARAM(OdomICP, VoxelSize,                float, 0.005, 	"Voxel size to be used for ICP computation.");
-	RTABMAP_PARAM(OdomICP, Samples,                  int, 0, 		"not used if voxelSize is set.");
-	RTABMAP_PARAM(OdomICP, CorrespondencesDistance,  float, 0.05, 	"");
-	RTABMAP_PARAM(OdomICP, Iterations,               int, 30, 		"");
-	RTABMAP_PARAM(OdomICP, MaxFitness,               float, 0.01, 	"");
+	RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,         "Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).");
+	RTABMAP_PARAM(Odom, LocalHistory,           int, 0,         "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
+	RTABMAP_PARAM(Odom, NearestNeighbor,        int, 1, 	    "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
+	RTABMAP_PARAM(Odom, NNDR,                   float, 0.7,     "NNDR: nearest neighbor distance ratio.");
 
 	// Loop closure constraint
 	RTABMAP_PARAM(LccIcp, Type,            int, 0, 			"0=No ICP, 1=ICP 3D, 2=ICP 2D");

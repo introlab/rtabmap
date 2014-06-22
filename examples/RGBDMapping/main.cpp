@@ -53,7 +53,7 @@ int main(int argc, char * argv[])
 	}
 
 	// Create an odometry thread to process camera events, it will send OdometryEvent.
-	OdometryThread odomThread(new OdometryBOW(0)); // 0=SURF 1=SIFT
+	OdometryThread odomThread(new OdometryBOW()); // 0=SURF 1=SIFT
 
 
 	// Create RTAB-Map to process OdometryEvent

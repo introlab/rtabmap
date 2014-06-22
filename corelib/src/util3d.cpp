@@ -377,7 +377,8 @@ void findCorrespondences(
 		const std::multimap<int, pcl::PointXYZ> & words2,
 		pcl::PointCloud<pcl::PointXYZ> & inliers1,
 		pcl::PointCloud<pcl::PointXYZ> & inliers2,
-		float maxDepth)
+		float maxDepth,
+		std::set<int> * uniqueCorrespondences)
 {
 	std::list<int> ids = uUniqueKeys(words1);
 	// Find pairs
@@ -398,6 +399,10 @@ void findCorrespondences(
 			   (maxDepth <= 0 || (inliers1[oi].x <= maxDepth && inliers2[oi].x<=maxDepth)))
 			{
 				++oi;
+				if(uniqueCorrespondences)
+				{
+					uniqueCorrespondences->insert(*iter);
+				}
 			}
 		}
 	}
@@ -602,6 +607,20 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP transformPointCloud(
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
 	pcl::transformPointCloud(*cloud, *output, transformToEigen4f(transform));
 	return output;
+}
+
+pcl::PointXYZ RTABMAP_EXP transformPoint(
+		const pcl::PointXYZ & pt,
+		const Transform & transform)
+{
+	return pcl::transformPoint(pt, transformToEigen3f(transform));
+}
+
+pcl::PointXYZRGB RTABMAP_EXP transformPoint(
+		const pcl::PointXYZRGB & pt,
+		const Transform & transform)
+{
+	return pcl::transformPoint(pt, transformToEigen3f(transform));
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(

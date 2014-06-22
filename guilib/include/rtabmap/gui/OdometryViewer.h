@@ -37,6 +37,7 @@ private:
 	UMutex dataMutex_;
 	std::list<rtabmap::Image> data_;
 	int dataQuality_;
+	Transform lastOdomPose_;
 	UTimer timer_;
 	int maxClouds_;
 	float voxelSize_;

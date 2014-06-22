@@ -1172,7 +1172,9 @@ void DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
 				{
 					UERROR("Saved buffer size (%d) is not the same as descriptor size (%d)", dRealSize/sizeof(float), descriptorSize);
 				}
-				VisualWord * vw = new VisualWord(id, &((const float *)descriptor)[0], descriptorSize, 0);
+				cv::Mat d(1, descriptorSize, CV_32F);
+				memcpy(d.data, descriptor, dRealSize);
+				VisualWord * vw = new VisualWord(id, d);
 				vw->setSaved(true);
 				dictionary->addWord(vw);
 			}
@@ -1244,7 +1246,9 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 					UERROR("Saved buffer size (%d) is not the same as descriptor size (%d)", dRealSize/sizeof(float), descriptorSize);
 				}
 
-				VisualWord * vw = new VisualWord(*iter, &((const float *)descriptor)[0], descriptorSize);
+				cv::Mat d(1, descriptorSize, CV_32F);
+				memcpy(d.data, descriptor, dRealSize);
+				VisualWord * vw = new VisualWord(*iter, d);
 				if(vw)
 				{
 					vw->setSaved(true);
@@ -1739,9 +1743,9 @@ void DBDriverSqlite3::saveQuery(const std::list<VisualWord *> & words) const
 				{
 					rc = sqlite3_bind_int(ppStmt, 1, w->id());
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-					rc = sqlite3_bind_int(ppStmt, 2, w->getDim());
+					rc = sqlite3_bind_int(ppStmt, 2, w->getDescriptor().cols);
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-					rc = sqlite3_bind_blob(ppStmt, 3, w->getDescriptor(), w->getDim()*sizeof(float), SQLITE_STATIC);
+					rc = sqlite3_bind_blob(ppStmt, 3, w->getDescriptor().data, w->getDescriptor().cols*sizeof(float), SQLITE_STATIC);
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 					//execute query

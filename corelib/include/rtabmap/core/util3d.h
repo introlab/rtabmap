@@ -11,6 +11,7 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <list>
 #include <string>
+#include <set>
 
 #include <rtabmap/core/Link.h>
 #include <rtabmap/utilite/UThread.h>
@@ -140,6 +141,13 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP transformPointCloud(
 		const Transform & transform);
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const Transform & transform);
+
+pcl::PointXYZ RTABMAP_EXP transformPoint(
+		const pcl::PointXYZ & pt,
+		const Transform & transform);
+pcl::PointXYZRGB RTABMAP_EXP transformPoint(
+		const pcl::PointXYZRGB & pt,
 		const Transform & transform);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromDepth(
@@ -273,7 +281,8 @@ void RTABMAP_EXP findCorrespondences(
 		const std::multimap<int, pcl::PointXYZ> & words2,
 		pcl::PointCloud<pcl::PointXYZ> & inliers1,
 		pcl::PointCloud<pcl::PointXYZ> & inliers2,
-		float maxDepth);
+		float maxDepth,
+		std::set<int> * uniqueCorrespondences = 0);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cvMat2Cloud(
 		const cv::Mat & matrix,

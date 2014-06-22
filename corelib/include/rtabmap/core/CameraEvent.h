@@ -44,9 +44,9 @@ public:
 		_image(image, seq)
 	{
 	}
-	CameraEvent(const cv::Mat & descriptors, const std::vector<cv::KeyPoint> & keypoints, const cv::Mat & image = cv::Mat(), int seq=0) :
+	CameraEvent(const cv::Mat & descriptors, Feature2D::Type featureType, const std::vector<cv::KeyPoint> & keypoints, const cv::Mat & image = cv::Mat(), int seq=0) :
 		UEvent(kCodeFeatures),
-		_image(image, seq, descriptors, keypoints)
+		_image(image, seq, descriptors, featureType, keypoints)
 	{
 	}
 	CameraEvent() :

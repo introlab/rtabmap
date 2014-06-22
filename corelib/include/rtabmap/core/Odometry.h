@@ -40,6 +40,7 @@ public:
 	bool isLargeEnoughTransform(const Transform & transform);
 
 	//getters
+	const Transform & getPose() const {return _pose;}
 	int getMaxFeatures() const  {return _maxFeatures;}
 	int getMinInliers() const {return _minInliers;}
 	float getInlierDistance() const {return _inlierDistance;}
@@ -48,6 +49,7 @@ public:
 	float getMaxDepth() const {return _maxDepth;}
 	float geLinearUpdate() const {return _linearUpdate;}
 	float getAngularUpdate() const {return _angularUpdate;}
+	int getLocalHistory() const {return _localHistory;}
 
 private:
 	virtual Transform computeTransform(Image & image, int * quality = 0) = 0;
@@ -62,55 +64,12 @@ private:
 	float _linearUpdate;
 	float _angularUpdate;
 	int _resetCountdown;
+	int _localHistory;
 	Transform _pose;
 	int _resetCurrentCount;
 
 protected:
-	Odometry(float inlierDistance = Parameters::defaultOdomInlierDistance(),
-			int maxWords = Parameters::defaultOdomMaxWords(),
-			int minInliers = Parameters::defaultOdomMinInliers(),
-			int iterations = Parameters::defaultOdomIterations(),
-			float wordsRatio = Parameters::defaultOdomWordsRatio(),
-			float maxDepth = Parameters::defaultOdomMaxDepth(),
-			float linearUpdate = Parameters::defaultOdomLinearUpdate(),
-			float angularUpdate = Parameters::defaultOdomAngularUpdate(),
-			int resetCountDown = Parameters::defaultOdomResetCountdown());
 	Odometry(const rtabmap::ParametersMap & parameters);
-};
-
-class RTABMAP_EXP OdometryBinary : public Odometry
-{
-public:
-	OdometryBinary(
-			float inlierDistance = Parameters::defaultOdomInlierDistance(),
-			int maxWords = Parameters::defaultOdomMaxWords(),
-			int minInliers = Parameters::defaultOdomMinInliers(),
-			int iterations = Parameters::defaultOdomIterations(),
-			float wordsRatio = Parameters::defaultOdomWordsRatio(),
-			float maxDepth = Parameters::defaultOdomMaxDepth(),
-			float linearUpdate = Parameters::defaultOdomLinearUpdate(),
-			float angularUpdate = Parameters::defaultOdomAngularUpdate(),
-			int resetCountdown = Parameters::defaultOdomResetCountdown(),
-			int briefBytes = Parameters::defaultOdomBinBriefBytes(),
-			int fastThreshold = Parameters::defaultOdomBinFastThreshold(),
-			bool fastNonmaxSuppression = Parameters::defaultOdomBinFastNonmaxSuppression(),
-			bool bruteForceMatching = Parameters::defaultOdomBinBruteForceMatching());
-	OdometryBinary(const rtabmap::ParametersMap & parameters);
-	virtual ~OdometryBinary() {}
-	virtual void reset();
-
-private:
-	virtual Transform computeTransform(Image & image, int * quality = 0);
-
-private:
-	int _briefBytes;
-	int _fastThreshold;
-	bool _fastNonmaxSuppression;
-	bool _bruteForceMatching;
-
-	std::vector<cv::KeyPoint> _lastKeypoints;
-	cv::Mat _lastDescriptors;
-	cv::Mat _lastDepth;
 };
 
 class Memory;
@@ -118,20 +77,7 @@ class Memory;
 class RTABMAP_EXP OdometryBOW : public Odometry
 {
 public:
-	OdometryBOW(
-			int detectorType = Parameters::defaultKpDetectorStrategy(), // 0=SURF or 1=SIFT
-			float inlierDistance = Parameters::defaultOdomInlierDistance(),
-			int maxWords = Parameters::defaultOdomMaxWords(),
-			int minInliers = Parameters::defaultOdomMinInliers(),
-			int iterations = Parameters::defaultOdomIterations(),
-			float wordsRatio = Parameters::defaultOdomWordsRatio(),
-			float maxDepth = Parameters::defaultOdomMaxDepth(),
-			float linearUpdate = Parameters::defaultOdomLinearUpdate(),
-			float angularUpdate = Parameters::defaultOdomAngularUpdate(),
-			int resetCoutdown = Parameters::defaultOdomResetCountdown(),
-			float surfHessianThreshold = Parameters::defaultSURFHessianThreshold(),
-			float nndr = Parameters::defaultKpNndrRatio()); // nearest neighbor distance ratio
-	OdometryBOW(const rtabmap::ParametersMap & parameters);
+	OdometryBOW(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
 	virtual ~OdometryBOW();
 
 	virtual void reset();
@@ -141,23 +87,19 @@ private:
 
 private:
 	Memory * _memory;
+	std::multimap<int, pcl::PointXYZ> localMap_;
 };
 
 class RTABMAP_EXP OdometryICP : public Odometry
 {
 public:
-	OdometryICP(
-			int decimation = Parameters::defaultOdomICPDecimation(),
-			float voxelSize = Parameters::defaultOdomICPVoxelSize(),
-			float samples = Parameters::defaultOdomICPSamples(),
-			float maxCorrespondenceDistance = Parameters::defaultOdomICPCorrespondencesDistance(),
-			int	maxIterations = Parameters::defaultOdomICPIterations(),
-			float maxFitness = Parameters::defaultOdomICPMaxFitness(),
-			float maxDepth = Parameters::defaultOdomMaxDepth(),
-			float linearUpdate = Parameters::defaultOdomLinearUpdate(),
-			float angularUpdate = Parameters::defaultOdomAngularUpdate(),
-			int resetCoutdown = Parameters::defaultOdomResetCountdown());
-	OdometryICP(const ParametersMap & parameters);
+	OdometryICP(int decimation = 4,
+			float voxelSize = 0.005f,
+			int samples = 0,
+			float maxCorrespondenceDistance = 0.05f,
+			int maxIterations = 30,
+			float maxFitness = 0.01f,
+			const ParametersMap & odometryParameter = rtabmap::ParametersMap());
 	void reset();
 
 private:

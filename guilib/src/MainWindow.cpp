@@ -1963,22 +1963,7 @@ void MainWindow::startDetection()
 				UERROR("OdomThread must be already deleted here?!");
 				delete _odomThread;
 			}
-			Odometry * odom;
-			if(_preferencesDialog->getOdometryType() == PreferencesDialog::kOdomBIN)
-			{
-				UINFO("Using odometry FAST/BRIEF");
-				odom = new OdometryBinary(parameters);
-			}
-			else if(_preferencesDialog->getOdometryType() == PreferencesDialog::kOdomBOW)
-			{
-				UINFO("Using odometry SIFT/SURF");
-				odom = new OdometryBOW(parameters);
-			}
-			else
-			{
-				UINFO("Using odometry ICP");
-				odom = new OdometryICP(parameters);
-			}
+			Odometry * odom = new OdometryBOW(parameters);
 			_odomThread = new OdometryThread(odom);
 
 			UEventsManager::addHandler(_odomThread);
@@ -2057,22 +2042,7 @@ void MainWindow::startDetection()
 				UERROR("OdomThread must be already deleted here?!");
 				delete _odomThread;
 			}
-			Odometry * odom;
-			if(_preferencesDialog->getOdometryType() == PreferencesDialog::kOdomBIN)
-			{
-				UINFO("Using odometry FAST/BRIEF");
-				odom = new OdometryBinary(parameters);
-			}
-			else if(_preferencesDialog->getOdometryType() == PreferencesDialog::kOdomBOW)
-			{
-				UINFO("Using odometry SIFT/SURF");
-				odom = new OdometryBOW(parameters);
-			}
-			else
-			{
-				UINFO("Using odometry ICP");
-				odom = new OdometryICP(parameters);
-			}
+			Odometry * odom = new OdometryBOW(parameters);
 			_odomThread = new OdometryThread(odom);
 
 			UEventsManager::addHandler(_odomThread);

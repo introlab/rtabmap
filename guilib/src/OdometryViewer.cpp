@@ -23,6 +23,7 @@ namespace rtabmap {
 
 OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, int qualityWarningThr, QWidget * parent) :
 		CloudViewer(parent),
+		lastOdomPose_(Transform::getIdentity()),
 		maxClouds_(maxClouds),
 		voxelSize_(voxelSize),
 		decimation_(decimation),
@@ -60,9 +61,9 @@ void OdometryViewer::processData()
 	}
 	dataMutex_.unlock();
 
-	if(!data.empty() && this->isVisible())
+	if(!data.image().empty() && !data.depth().empty() && data.depthConstant()>0.0f && this->isVisible())
 	{
-		UINFO("New pose = %s", data.pose().prettyPrint().c_str());
+		UDEBUG("New pose = %s, quality=%d", data.pose().prettyPrint().c_str(), quality);
 
 		// visualization: buffering the clouds
 		// Create the new cloud
@@ -83,30 +84,44 @@ void OdometryViewer::processData()
 
 		cloud = util3d::transformPointCloud(cloud, data.localTransform());
 
-		data.id()?id_=data.id():++id_;
-
-		clouds_.insert(std::make_pair(id_, cloud));
-
-		while(maxClouds_>0 && (int)clouds_.size() > maxClouds_)
+		if(!data.pose().isNull())
 		{
-			this->removeCloud(uFormat("cloud%d", clouds_.begin()->first));
-			clouds_.erase(clouds_.begin());
-		}
+			lastOdomPose_ = data.pose();
+			if(this->getAddedClouds().contains("cloudtmp"))
+			{
+				this->removeCloud("cloudtmp");
+			}
 
-		if(clouds_.size())
-		{
-			this->addCloud(uFormat("cloud%d", clouds_.rbegin()->first), clouds_.rbegin()->second, data.pose());
-		}
+			data.id()?id_=data.id():++id_;
 
-		this->updateCameraPosition(data.pose());
+			clouds_.insert(std::make_pair(id_, cloud));
 
-		if(qualityWarningThr_ && quality && quality < qualityWarningThr_)
-		{
-			this->setBackgroundColor(Qt::darkYellow);
+			while(maxClouds_>0 && (int)clouds_.size() > maxClouds_)
+			{
+				this->removeCloud(uFormat("cloud%d", clouds_.begin()->first));
+				clouds_.erase(clouds_.begin());
+			}
+
+			if(clouds_.size())
+			{
+				this->addCloud(uFormat("cloud%d", clouds_.rbegin()->first), clouds_.rbegin()->second, data.pose());
+			}
+
+			this->updateCameraPosition(data.pose());
+
+			if(qualityWarningThr_ && quality && quality < qualityWarningThr_)
+			{
+				this->setBackgroundColor(Qt::darkYellow);
+			}
+			else
+			{
+				this->setBackgroundColor(Qt::black);
+			}
 		}
 		else
 		{
-			this->setBackgroundColor(Qt::black);
+			this->addOrUpdateCloud("cloudtmp", cloud, lastOdomPose_);
+			this->setBackgroundColor(Qt::darkRed);
 		}
 
 		this->render();
@@ -121,31 +136,22 @@ void OdometryViewer::handleEvent(UEvent * event)
 		{
 			rtabmap::OdometryEvent * odomEvent = (rtabmap::OdometryEvent*)event;
 
-			if(odomEvent->isValid())
+			bool empty = false;
+			dataMutex_.lock();
+			if(data_.empty())
 			{
-				bool empty = false;
-				dataMutex_.lock();
-				if(data_.empty())
-				{
-					data_.push_back(odomEvent->data());
-					empty= true;
-				}
-				else
-				{
-					data_.back() = odomEvent->data();
-				}
-				dataQuality_ = odomEvent->quality();
-				dataMutex_.unlock();
-				if(empty)
-				{
-					QMetaObject::invokeMethod(this, "processData");
-				}
+				data_.push_back(odomEvent->data());
+				empty= true;
 			}
 			else
 			{
-				//UWARN("odom=%fs, Cannot compute odometry!!!", timer_.restart());
-				QMetaObject::invokeMethod(this, "setBackgroundColor", Q_ARG(QColor, Qt::darkRed));
-				QMetaObject::invokeMethod(this, "render");
+				data_.back() = odomEvent->data();
+			}
+			dataQuality_ = odomEvent->quality();
+			dataMutex_.unlock();
+			if(empty)
+			{
+				QMetaObject::invokeMethod(this, "processData");
 			}
 		}
 	}
