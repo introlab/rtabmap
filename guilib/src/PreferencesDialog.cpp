@@ -1623,31 +1623,34 @@ void PreferencesDialog::selectSourceDatabase(bool user)
 {
 	ULOGGER_DEBUG("");
 
-	if(user)
-	{
-		// from user
-		_ui->groupBox_sourceDatabase->setChecked(true);
-	}
-
 	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->source_database_lineEdit_path->text(), tr("RTAB-Map database files (*.db)"));
 	QFile file(path);
 	if(!path.isEmpty() && file.exists())
 	{
+		int r = QMessageBox::question(this, tr("Odometry in database..."), tr("Use odometry saved in database (if some saved)?"), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+
+		if(user)
+		{
+			// from user
+			_ui->groupBox_sourceDatabase->setChecked(true);
+		}
+
+		_ui->source_checkBox_ignoreOdometry->setChecked(r != QMessageBox::Yes);
 		_ui->source_database_lineEdit_path->setText(path);
 		_ui->source_spinBox_databaseStartPos->setValue(0);
-	}
 
-	if(user && _obsoletePanels)
-	{
-		_ui->groupBox_sourceImage->setChecked(false);
-		_ui->groupBox_sourceOpenni->setChecked(false);
-		if(validateForm())
+		if(user && _obsoletePanels)
 		{
-			this->writeSettings();
-		}
-		else
-		{
-			this->readSettingsBegin();
+			_ui->groupBox_sourceImage->setChecked(false);
+			_ui->groupBox_sourceOpenni->setChecked(false);
+			if(validateForm())
+			{
+				this->writeSettings();
+			}
+			else
+			{
+				this->readSettingsBegin();
+			}
 		}
 	}
 }
