@@ -152,7 +152,7 @@ void Transform::getTranslation(float & x, float & y, float & z) const
 
 float Transform::getNorm() const
 {
-	return std::sqrt(this->getNorm());
+	return std::sqrt(this->getNormSquared());
 }
 
 float Transform::getNormSquared() const

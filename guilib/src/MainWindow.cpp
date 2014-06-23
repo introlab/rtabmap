@@ -270,7 +270,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->actionView_point_cloud_as_mesh->setEnabled(false);
 	_ui->actionReset_Odometry->setEnabled(false);
 
-#if defined(Q_WS_MAC) or defined(Q_WS_WIN)
+#if defined(Q_WS_MAC) || defined(Q_WS_WIN)
 	connect(_ui->actionOpen_working_directory, SIGNAL(triggered()), SLOT(openWorkingDirectory()));
 #else
 	_ui->menuEdit->removeAction(_ui->actionOpen_working_directory);

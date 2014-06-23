@@ -38,7 +38,7 @@ int main(int argc, char * argv[])
 	std::list<std::vector<float> > objectDescriptors;
 	//std::list<std::vector<float> > descriptors;
 	std::map<int, std::vector<float> > descriptors;
-	unsigned int dimension  = 0;
+	int dimension  = 0;
 	UTimer timer;
 	int objectDescriptorsSize= 400;
 
@@ -85,7 +85,7 @@ int main(int argc, char * argv[])
 					++iter;
 
 					std::vector<float> descriptor(dimension);
-					unsigned int i=0;
+					int i=0;
 
 					//get descriptor
 					for(;i<dimension && iter != strList.end(); ++i, ++iter)
@@ -129,7 +129,7 @@ int main(int argc, char * argv[])
 
 		UDEBUG("Creating data structures...");
 		// Create the data structure
-		dataTree = cv::Mat(descriptors.size(), dimension, CV_32F); // SURF descriptors are CV_32F
+		dataTree = cv::Mat((int)descriptors.size(), dimension, CV_32F); // SURF descriptors are CV_32F
 		{//scope
 			//std::list<std::vector<float> >::const_iterator iter = descriptors.begin();
 			std::map<int, std::vector<float> >::const_iterator iter = descriptors.begin();
@@ -143,7 +143,7 @@ int main(int argc, char * argv[])
 			}
 		}
 
-		queries = cv::Mat(objectDescriptors.size(), dimension, CV_32F); // SURF descriptors are CV_32F
+		queries = cv::Mat((int)objectDescriptors.size(), dimension, CV_32F); // SURF descriptors are CV_32F
 		{//scope
 			std::list<std::vector<float> >::const_iterator iter = objectDescriptors.begin();
 			for(unsigned int i=0; i < objectDescriptors.size(); ++i, ++iter)

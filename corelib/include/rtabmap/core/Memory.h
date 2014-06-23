@@ -74,7 +74,7 @@ public:
 	bool addLoopClosureLink(int oldId, int newId, const Transform & transform, bool global);
 	void updateNeighborLink(int fromId, int toId, const Transform & transform);
 	std::map<int, int> getNeighborsId(int signatureId,
-			unsigned int margin,
+			int margin,
 			int maxCheckedInDatabase = -1,
 			bool incrementMarginOnLoop = false,
 			bool ignoreLoopIds = false,

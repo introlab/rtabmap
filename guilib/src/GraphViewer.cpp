@@ -319,7 +319,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		{
 			for (int j = 0; j < map8S.cols; ++j)
 			{
-				char gray = map8S.at<char>(i, j);
+				unsigned char gray = map8S.at<unsigned char>(i, j);
 				if(gray == -1)
 				{
 					gray = 89;
@@ -332,7 +332,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				{
 					gray = 0;
 				}
-				map8U.at<char>(i, j) = gray;
+				map8U.at<unsigned char>(i, j) = gray;
 			}
 		}
 		QImage image = uCvMat2QImage(map8U, false);

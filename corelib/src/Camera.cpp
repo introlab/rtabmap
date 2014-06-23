@@ -187,7 +187,8 @@ cv::Mat CameraImages::captureImage()
 				if(fileName.size())
 				{
 					ULOGGER_DEBUG("Loading image : %s", fullPath.c_str());
-#if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
+
+#if CV_MAJOR_VERSION >=2 && CV_MINOR_VERSION >=4
 					img = cv::imread(fullPath.c_str(), cv::IMREAD_UNCHANGED);
 #else
 					img = cv::imread(fullPath.c_str(), -1);

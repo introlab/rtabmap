@@ -1094,8 +1094,9 @@ bool Rtabmap::process(const Image & image)
 	{
 		//Load neighbors
 		ULOGGER_INFO("Retrieving locations... around id=%d", _retrievedId);
-		unsigned int neighborhoodSize = _bayesFilter->getPredictionLC().size()-1;
-		unsigned int margin = neighborhoodSize;
+		int neighborhoodSize = (int)_bayesFilter->getPredictionLC().size()-1;
+		UASSERT(neighborhoodSize >= 0);
+		int margin = neighborhoodSize;
 
 		UTimer timeGetN;
 		unsigned int nbLoadedFromDb = 0;
@@ -1105,7 +1106,7 @@ bool Rtabmap::process(const Image & image)
 		double timeGetNeighborsSpaceDb = 0.0;
 		std::map<int, int> neighbors;
 		bool firstPassDone = false;
-		unsigned int m = 0;
+		int m = 0;
 		int nbDirectNeighborsInDb = 0;
 
 		// priority in time
@@ -1127,7 +1128,7 @@ bool Rtabmap::process(const Image & image)
 				{
 					neighbors.erase(iter++);
 				}
-				else if((unsigned int)iter->second == m)
+				else if(iter->second == m)
 				{
 					if(reactivatedIdsSet.find(iter->first) == reactivatedIdsSet.end())
 					{
@@ -1178,7 +1179,7 @@ bool Rtabmap::process(const Image & image)
 				{
 					neighbors.erase(iter++);
 				}
-				else if((unsigned int)iter->second == m)
+				else if(iter->second == m)
 				{
 					if(reactivatedIdsSet.find(iter->first) == reactivatedIdsSet.end())
 					{
@@ -1407,7 +1408,7 @@ bool Rtabmap::process(const Image & image)
 	{
 		lcHypothesisReactivated = sLoop->isSaved()?1.0f:0.0f;
 	}
-	dictionarySize = _memory->getVWDictionary()->getVisualWords().size();
+	dictionarySize = (int)_memory->getVWDictionary()->getVisualWords().size();
 	refWordsCount = (int)signature->getWords().size();
 	refUniqueWordsCount = (int)uUniqueKeys(signature->getWords()).size();
 

@@ -712,13 +712,14 @@ std::map<int, Transform> Memory::getNeighborLinks(int signatureId, bool ignoreNe
 // maxCheckedInDatabase = -1 means no limit to check in database (default)
 // maxCheckedInDatabase = 0 means don't check in database
 std::map<int, int> Memory::getNeighborsId(int signatureId,
-		unsigned int margin, // 0 means infinite margin
+		int margin, // 0 means infinite margin
 		int maxCheckedInDatabase, // default -1 (no limit)
 		bool incrementMarginOnLoop, // default false
 		bool ignoreLoopIds, // default false
 		double * dbAccessTime
 		) const
 {
+	UASSERT(margin >= 0);
 	//UDEBUG("signatureId=%d, neighborsMargin=%d", signatureId, margin);
 	if(dbAccessTime)
 	{
@@ -734,7 +735,7 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 	std::set<int> currentMargin;
 	std::set<int> nextMargin;
 	nextMargin.insert(signatureId);
-	unsigned int m = 0;
+	int m = 0;
 	while((margin == 0 || m < margin) && nextMargin.size())
 	{
 		curentMarginList = std::list<int>(nextMargin.begin(), nextMargin.end());

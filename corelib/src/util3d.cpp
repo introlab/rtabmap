@@ -752,7 +752,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 
 cv::Mat depth2DFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud)
 {
-	cv::Mat depth2d(1, cloud.size(), CV_32FC2);
+	cv::Mat depth2d(1, (int)cloud.size(), CV_32FC2);
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
 		depth2d.at<cv::Vec2f>(i)[0] = cloud.at(i).x;
@@ -791,7 +791,7 @@ cv::Mat uncompressImage(const std::vector<unsigned char> & bytes)
 	 cv::Mat image;
 	if(bytes.size())
 	{
-#if CV_MAJOR_VERSION >=2 and CV_MINOR_VERSION >=4
+#if CV_MAJOR_VERSION >=2 && CV_MINOR_VERSION >=4
 		image = cv::imdecode(bytes, cv::IMREAD_UNCHANGED);
 #else
 		image = cv::imdecode(bytes, -1);
@@ -805,7 +805,7 @@ std::vector<unsigned char> compressData(const cv::Mat & data)
 	std::vector<unsigned char> bytes;
 	if(!data.empty())
 	{
-		uLong sourceLen = data.total()*data.elemSize();
+		uLong sourceLen = uLong(data.total())*uLong(data.elemSize());
 		uLong destLen = compressBound(sourceLen);
 		bytes.resize(destLen);
 		int errCode = compress(
@@ -847,13 +847,13 @@ cv::Mat uncompressData(const std::vector<unsigned char> & bytes)
 				    uFormat("size=%d, height=%d width=%d type=%d", bytes.size(), height, width, type).c_str());
 
 		data = cv::Mat(height, width, type);
-		uLongf totalUncompressed = data.total()*data.elemSize();
+		uLongf totalUncompressed = uLongf(data.total())*uLongf(data.elemSize());
 
 		int errCode = uncompress(
 						(Bytef*)data.data,
 						&totalUncompressed,
 						(const Bytef*)bytes.data(),
-						bytes.size());
+						uLong(bytes.size()));
 
 		if(errCode == Z_MEM_ERROR)
 		{
@@ -918,8 +918,8 @@ void extractXYZCorrespondencesRANSAC(const std::multimap<int, pcl::PointXYZ> & w
 		std::vector<uchar> status(pairs.size(), 0);
 		//Convert Keypoints to a structure that OpenCV understands
 		//3 dimensions (Homogeneous vectors)
-		cv::Mat points1(1, pairs.size(), CV_32FC2);
-		cv::Mat points2(1, pairs.size(), CV_32FC2);
+		cv::Mat points1(1, (int)pairs.size(), CV_32FC2);
+		cv::Mat points2(1, (int)pairs.size(), CV_32FC2);
 
 		float * points1data = points1.ptr<float>(0);
 		float * points2data = points2.ptr<float>(0);
@@ -1147,7 +1147,7 @@ Transform transformFromXYZCorrespondences(
 		}
 		else if(inliers)
 		{
-			*inliers = correspondencesInliers.size();
+			*inliers = (int)correspondencesInliers.size();
 		}
 
 		//std::cout << "transformMatrix: " << transformMatrix << std::endl;
@@ -1521,7 +1521,7 @@ pcl::PolygonMesh::Ptr createMesh(
 		float gp3MaximumSurfaceAngle,
 		float gp3MinimumAngle,
 		float gp3MaximumAngle,
-		float gp3NormalConsistency)
+		bool gp3NormalConsistency)
 {
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormalsNoNaN = removeNaNNormalsFromPointCloud(cloudWithNormals);
 
@@ -1663,7 +1663,13 @@ bool saveTOROGraph(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & edgeConstraints)
 {
-	FILE * file = fopen(fileName.c_str(), "w");
+	FILE * file = 0;
+
+#ifdef _MSC_VER
+	fopen_s(&file, fileName.c_str(), "w");
+#else
+	file = fopen(fileName.c_str(), "w");
+#endif
 
 	if(file)
 	{
@@ -1712,7 +1718,12 @@ bool loadTOROGraph(const std::string & fileName,
 		std::map<int, Transform> & poses,
 		std::multimap<int, std::pair<int, Transform> > & edgeConstraints)
 {
-	FILE * file = fopen(fileName.c_str(), "r");
+	FILE * file = 0;
+#ifdef _MSC_VER
+	fopen_s(&file, fileName.c_str(), "r");
+#else
+	file = fopen(fileName.c_str(), "r");
+#endif
 
 	if(file)
 	{

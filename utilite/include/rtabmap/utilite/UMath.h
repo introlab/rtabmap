@@ -44,7 +44,7 @@ inline bool uIsNan(const T & value)
 #ifdef __APPLE__
 	return std::isnan(value);
 #elif _MSC_VER
-	return _isnan(value);
+	return _isnan(value) != 0;
 #else
 	return isnan(value);
 #endif
@@ -57,7 +57,7 @@ template<class T>
 inline bool uIsFinite(const T & value)
 {
 #if _MSC_VER
-	return (bool)_finite(value);
+	return _finite(value) != 0;
 #else
 	return std::isfinite(value);
 #endif
@@ -335,7 +335,7 @@ inline T uSum(const T * v, unsigned int size)
 template<class T>
 inline T uSum(const std::vector<T> & v)
 {
-	return uSum(v.data(), v.size());
+	return uSum(v.data(), (int)v.size());
 }
 
 /**

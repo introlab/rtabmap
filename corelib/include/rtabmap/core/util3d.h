@@ -370,7 +370,7 @@ pcl::PolygonMesh::Ptr RTABMAP_EXP createMesh(
 		float gp3MaximumSurfaceAngle = M_PI/4,
 		float gp3MinimumAngle = M_PI/18,
 		float gp3MaximumAngle = 2*M_PI/3,
-		float gp3NormalConsistency = false);
+		bool gp3NormalConsistency = false);
 
 void RTABMAP_EXP optimizeTOROGraph(
 		const std::map<int, Transform> & poses,
