@@ -19,7 +19,8 @@ void showUsage()
 			"  -hide                    Don't display the current cloud recorded.\n"
 			"  -debug                   Set debug level for the logger.\n"
 			"  -rate #.#                Input rate Hz (default 0=inf)\n"
-			"  -openni                  Use openni camera instead of the usb camera.\n");
+			"  -openni                  Use openni camera instead of the usb camera.\n"
+			"  -openni2                 Use openni2 camera instead of the usb camera.\n");
 	exit(1);
 }
 
@@ -48,6 +49,7 @@ int main (int argc, char * argv[])
 	QString fileName;
 	bool show = true;
 	bool openni = false;
+	bool openni2 = false;
 	float rate = 0.0f;
 
 	if(argc < 2)
@@ -88,6 +90,11 @@ int main (int argc, char * argv[])
 			openni = true;
 			continue;
 		}
+		if(strcmp(argv[i], "-openni2") == 0)
+		{
+			openni2 = true;
+			continue;
+		}
 
 		printf("Unrecognized option : %s\n", argv[i]);
 		showUsage();
@@ -113,7 +120,11 @@ int main (int argc, char * argv[])
 	signal(SIGTERM, &sighandler);
 	signal(SIGINT, &sighandler);
 
-	if(openni)
+	if(openni2)
+	{
+		cam = new rtabmap::CameraThread(new rtabmap::CameraOpenNI2(rate, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0)));
+	}
+	else if(openni)
 	{
 		cam = new rtabmap::CameraThread(new rtabmap::CameraOpenni("", rate, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0)));
 	}
