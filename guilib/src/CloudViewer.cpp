@@ -536,14 +536,25 @@ void CloudViewer::setCloudPointSize(const std::string & id, int size)
 	}
 }
 
-void CloudViewer::setCameraTargetLocked()
+void CloudViewer::setCameraTargetLocked(bool enabled)
 {
-	_aLockCamera->setChecked(true);
+	_aLockCamera->setChecked(enabled);
 }
 
-void CloudViewer::setCameraTargetFollow()
+void CloudViewer::setCameraTargetFollow(bool enabled)
 {
-	_aFollowCamera->setChecked(true);
+	_aFollowCamera->setChecked(enabled);
+}
+
+void CloudViewer::setCameraFree()
+{
+	_aLockCamera->setChecked(false);
+	_aFollowCamera->setChecked(false);
+}
+
+void CloudViewer::setCameraLockZ(bool enabled)
+{
+	_aLockViewZ->setChecked(enabled);
 }
 
 Eigen::Vector3f rotatePointAroundAxe(

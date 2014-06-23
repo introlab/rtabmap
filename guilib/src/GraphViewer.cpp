@@ -132,7 +132,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_neighborColor(Qt::blue),
 		_loopClosureColor(Qt::red),
 		_root(0),
-		_nodeRadius(0.1),
+		_nodeRadius(0.01),
 		_linkWidth(0),
 		_gridMap(0),
 		_gridCellSize(0.05f)
@@ -167,7 +167,7 @@ GraphViewer::~GraphViewer()
 
 void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				 const std::multimap<int, Link> & constraints,
-				 const std::map<int, std::vector<unsigned char> > & scans)
+				 const QMap<int, std::vector<unsigned char> > & scans)
 {
 	//Hide nodes and links
 	for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
@@ -191,9 +191,9 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		if(itemIter != _nodeItems.end())
 		{
 			itemIter.value()->setPose(iter->second);
-			if(itemIter.value()->getScan().empty() && uContains(scans, iter->first))
+			if(itemIter.value()->getScan().empty() && scans.contains(iter->first))
 			{
-				cv::Mat depth2d = util3d::uncompressData(scans.at(iter->first));
+				cv::Mat depth2d = util3d::uncompressData(scans.value(iter->first));
 				itemIter.value()->setScan(depth2d);
 			}
 			if(!itemIter.value()->getScan().empty() && _gridMap->isVisible())
@@ -205,11 +205,11 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		else
 		{
 			// create node item
-			std::map<int, std::vector<unsigned char> >::const_iterator jter = scans.find(iter->first);
+			QMap<int, std::vector<unsigned char> >::const_iterator jter = scans.find(iter->first);
 			cv::Mat depth2d;
 			if(jter != scans.end())
 			{
-				depth2d = util3d::uncompressData(jter->second);
+				depth2d = util3d::uncompressData(jter.value());
 				if(_gridMap->isVisible())
 				{
 					scanClouds.insert(std::make_pair(iter->first, util3d::depth2DToPointCloud(depth2d)));
@@ -319,18 +319,19 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		{
 			for (int j = 0; j < map8S.cols; ++j)
 			{
-				unsigned char gray = map8S.at<unsigned char>(i, j);
-				if(gray == -1)
-				{
-					gray = 89;
-				}
-				else if(gray == 0)
+				char v = map8S.at<char>(i, j);
+				unsigned char gray;
+				if(v == 0)
 				{
 					gray = 178;
 				}
-				else if(gray == 100)
+				else if(v == 100)
 				{
 					gray = 0;
+				}
+				else // -1
+				{
+					gray = 89;
 				}
 				map8U.at<unsigned char>(i, j) = gray;
 			}

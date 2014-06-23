@@ -176,6 +176,8 @@ signals:
 private:
 	void update3DMapVisibility(bool cloudsShown, bool scansShown);
 	void updateMapCloud(const std::map<int, Transform> & poses, const Transform & pose);
+	void createAndAddCloudToMap(int nodeId, const Transform & pose);
+	void createAndAddScanToMap(int nodeId, const Transform & pose);
 	std::map<int, Transform> radiusPosesFiltering(const std::map<int, Transform> & poses) const;
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
 	void setupMainLayout(bool vertical);
@@ -183,7 +185,7 @@ private:
 	void updateSelectSourceDatabase(bool used);
 	void updateSelectSourceRGBDMenu(bool used, PreferencesDialog::Src src);
 
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr createAssembledCloud();
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr createAssembledCloud(const std::map<int, Transform> & poses) const;
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr createCloud(
 			int id,
 			const cv::Mat & rgb,
@@ -193,9 +195,9 @@ private:
 			const Transform & pose,
 			float voxelSize,
 			int decimation,
-			float maxDepth);
-	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > createPointClouds();
-	std::map<int, pcl::PolygonMesh::Ptr> createMeshes();
+			float maxDepth) const;
+	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > createPointClouds(const std::map<int, Transform> & poses) const;
+	std::map<int, pcl::PolygonMesh::Ptr> createMeshes(const std::map<int, Transform> & poses) const;
 
 	void savePointClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds);
 	void saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes);
@@ -222,7 +224,7 @@ private:
 
 	QMap<int, std::vector<unsigned char> > _imagesMap;
 	QMap<int, std::vector<unsigned char> > _depthsMap;
-	std::map<int, std::vector<unsigned char> > _depths2DMap;
+	QMap<int, std::vector<unsigned char> > _depths2DMap;
 	QMap<int, float> _depthConstantsMap;
 	QMap<int, Transform> _localTransformsMap;
 	std::map<int, Transform> _currentPosesMap;

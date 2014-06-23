@@ -2324,12 +2324,21 @@ void PreferencesDialog::updateKpROI()
 
 void PreferencesDialog::changeDatabasePath()
 {
-	QString path = QFileDialog::getSaveFileName(
-			this,
-			tr("Select database file..."),
-			_ui->lineEdit_databasePath->text(),
-			tr("RTAB-Map database files (*.db)"),
-			0);
+	QFileDialog fileDialog;
+	fileDialog.setFileMode(QFileDialog::AnyFile);
+	fileDialog.setNameFilter(tr("RTAB-Map database files (*.db)"));
+	fileDialog.setDefaultSuffix("db");
+	fileDialog.setDirectory(QFileInfo(_ui->lineEdit_databasePath->text()).dir());
+	fileDialog.selectFile (_ui->lineEdit_databasePath->text());
+	QStringList fileNames;
+	QString path;
+	if(fileDialog.exec())
+	{
+		if(!fileDialog.selectedFiles().empty())
+		{
+			path = fileDialog.selectedFiles().first();
+		}
+	}
 
 	if(!path.isEmpty())
 	{

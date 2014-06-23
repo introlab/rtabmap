@@ -20,7 +20,8 @@ public:
 	MapVisibilityWidget(QWidget * parent = 0);
 	virtual ~MapVisibilityWidget();
 
-	void setMap(const std::map<int, Transform> & poses);
+	void setMap(const std::map<int, Transform> & poses, const std::map<int, bool> & mask);
+	std::map<int, Transform> getVisiblePoses() const;
 
 protected:
 	virtual void showEvent(QShowEvent * event);
@@ -36,6 +37,7 @@ signals:
 
 private:
 	std::map<int, Transform> _poses;
+	std::map<int, bool> _mask;
 };
 
 } /* namespace rtabmap */

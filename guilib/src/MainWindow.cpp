@@ -704,7 +704,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				if(!iter->second.empty())
 				{
-					_depths2DMap.insert(std::make_pair(iter->first, iter->second));
+					_depths2DMap.insert(iter->first, iter->second);
 				}
 			}
 		}
@@ -941,7 +941,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			updateMapCloud(stat.poses(), _odometryReceived?Transform():stat.currentPose());
 
 			// update some widgets
-			_ui->widget_mapVisibility->setMap(stat.poses());
 			if(_ui->graphicsView_graphView->isVisible())
 			{
 				_ui->graphicsView_graphView->updateGraph(stat.poses(), stat.constraints(), _depths2DMap);
@@ -974,7 +973,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						std::multimap<int, cv::KeyPoint>(),
 						std::multimap<int, pcl::PointXYZ>(),
 						Transform(),
-						uValue(_depths2DMap, loopOldId, std::vector<unsigned char>()),
+						_depths2DMap.value(loopOldId, std::vector<unsigned char>()),
 						_imagesMap.value(loopOldId, std::vector<unsigned char>()),
 						_depthsMap.value(loopOldId, std::vector<unsigned char>()),
 						_depthConstantsMap.value(loopOldId, 0.0f),
@@ -986,7 +985,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						std::multimap<int, cv::KeyPoint>(),
 						std::multimap<int, pcl::PointXYZ>(),
 						loopClosureTransform,
-						uValue(_depths2DMap, loopNewId, std::vector<unsigned char>()),
+						_depths2DMap.value(loopNewId, std::vector<unsigned char>()),
 						_imagesMap.value(loopNewId, std::vector<unsigned char>()),
 						_depthsMap.value(loopNewId, std::vector<unsigned char>()),
 						_depthConstantsMap.value(loopNewId, 0.0f),
@@ -1046,6 +1045,12 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & posesIn, const 
 	{
 		poses = posesIn;
 	}
+	std::map<int, bool> posesMask;
+	for(std::map<int, Transform>::const_iterator iter = posesIn.begin(); iter!=posesIn.end(); ++iter)
+	{
+		posesMask.insert(posesMask.end(), std::make_pair(iter->first, poses.find(iter->first) != poses.end()));
+	}
+	_ui->widget_mapVisibility->setMap(posesIn, posesMask);
 
 	// Map updated! regenerate the assembled cloud, last pose is the new one
 	UDEBUG("Update map with %d locations (currentPose=%s)", poses.size(), currentPose.prettyPrint().c_str());
@@ -1077,62 +1082,7 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & posesIn, const 
 				}
 				else if(_imagesMap.contains(iter->first) && _depthsMap.contains(iter->first))
 				{
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-					cloud = createCloud(iter->first,
-							util3d::uncompressImage(_imagesMap.value(iter->first)),
-							util3d::uncompressImage(_depthsMap.value(iter->first)),
-							_depthConstantsMap.value(iter->first),
-							_localTransformsMap.value(iter->first),
-							Transform::getIdentity(),
-							_preferencesDialog->getCloudVoxelSize(0),
-							_preferencesDialog->getCloudDecimation(0),
-							_preferencesDialog->getCloudMaxDepth(0));
-
-					if(_preferencesDialog->isCloudMeshing(0))
-					{
-						pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
-						if(cloud->size())
-						{
-							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-							if(_preferencesDialog->getMeshSmoothing(0))
-							{
-								cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(0));
-							}
-							else
-							{
-								cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(0));
-							}
-							mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(0));
-						}
-
-						if(mesh->polygons.size())
-						{
-							pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp(new pcl::PointCloud<pcl::PointXYZRGB>);
-							pcl::fromPCLPointCloud2(mesh->cloud, *tmp);
-							if(!_ui->widget_cloudViewer->addCloudMesh(cloudName, tmp, mesh->polygons, iter->second))
-							{
-								UERROR("Adding mesh cloud %d to viewer failed!", iter->first);
-							}
-
-						}
-					}
-					else
-					{
-						if(_preferencesDialog->getMeshSmoothing(0))
-						{
-							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-							cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(0));
-							cloud->clear();
-							pcl::copyPointCloud(*cloudWithNormals, *cloud);
-						}
-						if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloud, iter->second))
-						{
-							UERROR("Adding cloud %d to viewer failed!", iter->first);
-						}
-					}
-
-					_ui->widget_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
-					_ui->widget_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
+					this->createAndAddCloudToMap(iter->first, iter->second);
 				}
 			}
 			else if(viewerClouds.contains(cloudName))
@@ -1161,17 +1111,9 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & posesIn, const 
 					_ui->widget_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
 					_ui->widget_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 				}
-				else if(uContains(_depths2DMap, iter->first))
+				else if(_depths2DMap.contains(iter->first))
 				{
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-					cv::Mat depth2d = util3d::uncompressData(_depths2DMap.at(iter->first));
-					cloud = util3d::depth2DToPointCloud(depth2d);
-					if(!_ui->widget_cloudViewer->addOrUpdateCloud(scanName, cloud, iter->second))
-					{
-						UERROR("Adding cloud %d to viewer failed!", iter->first);
-					}
-					_ui->widget_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
-					_ui->widget_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
+					this->createAndAddScanToMap(iter->first, iter->second);
 				}
 			}
 			else if(viewerClouds.contains(scanName))
@@ -1238,20 +1180,120 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & posesIn, const 
 	_ui->widget_cloudViewer->render();
 }
 
+void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
+{
+	std::string cloudName = uFormat("cloud%d", nodeId);
+	if(_ui->widget_cloudViewer->getAddedClouds().contains(cloudName))
+	{
+		UERROR("Cloud %d already added to map.", nodeId);
+		return;
+	}
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+	cloud = createCloud(nodeId,
+			util3d::uncompressImage(_imagesMap.value(nodeId)),
+			util3d::uncompressImage(_depthsMap.value(nodeId)),
+			_depthConstantsMap.value(nodeId),
+			_localTransformsMap.value(nodeId),
+			Transform::getIdentity(),
+			_preferencesDialog->getCloudVoxelSize(0),
+			_preferencesDialog->getCloudDecimation(0),
+			_preferencesDialog->getCloudMaxDepth(0));
+
+	if(_preferencesDialog->isCloudMeshing(0))
+	{
+		pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
+		if(cloud->size())
+		{
+			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
+			if(_preferencesDialog->getMeshSmoothing(0))
+			{
+				cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(0));
+			}
+			else
+			{
+				cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(0));
+			}
+			mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(0));
+		}
+
+		if(mesh->polygons.size())
+		{
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp(new pcl::PointCloud<pcl::PointXYZRGB>);
+			pcl::fromPCLPointCloud2(mesh->cloud, *tmp);
+			if(!_ui->widget_cloudViewer->addCloudMesh(cloudName, tmp, mesh->polygons, pose))
+			{
+				UERROR("Adding mesh cloud %d to viewer failed!", nodeId);
+			}
+
+		}
+	}
+	else
+	{
+		if(_preferencesDialog->getMeshSmoothing(0))
+		{
+			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
+			cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(0));
+			cloud->clear();
+			pcl::copyPointCloud(*cloudWithNormals, *cloud);
+		}
+		if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloud, pose))
+		{
+			UERROR("Adding cloud %d to viewer failed!", nodeId);
+		}
+	}
+
+	_ui->widget_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
+	_ui->widget_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
+}
+
+void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose)
+{
+	std::string scanName = uFormat("scan%d", nodeId);
+	if(_ui->widget_cloudViewer->getAddedClouds().contains(scanName))
+	{
+		UERROR("Scan %d already added to map.", nodeId);
+		return;
+	}
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+	cv::Mat depth2d = util3d::uncompressData(_depths2DMap.value(nodeId));
+	cloud = util3d::depth2DToPointCloud(depth2d);
+	if(!_ui->widget_cloudViewer->addOrUpdateCloud(scanName, cloud, pose))
+	{
+		UERROR("Adding cloud %d to viewer failed!", nodeId);
+	}
+	_ui->widget_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
+	_ui->widget_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
+}
+
 void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 {
 	if(_currentPosesMap.find(nodeId) != _currentPosesMap.end())
 	{
-		if(_preferencesDialog->isCloudsShown(0))
+		QMap<std::string, Transform> viewerClouds = _ui->widget_cloudViewer->getAddedClouds();
+		if(_preferencesDialog->isCloudsShown(0) && _depthsMap.contains(nodeId))
 		{
 			std::string cloudName = uFormat("cloud%d", nodeId);
-			_ui->widget_cloudViewer->setCloudVisibility(cloudName, visible);
+			if(visible && !viewerClouds.contains(cloudName))
+			{
+				createAndAddCloudToMap(nodeId, _currentPosesMap.find(nodeId)->second);
+			}
+			else if(viewerClouds.contains(cloudName))
+			{
+				_ui->widget_cloudViewer->setCloudVisibility(cloudName, visible);
+			}
 		}
 
-		if(_preferencesDialog->isScansShown(0))
+		if(_preferencesDialog->isScansShown(0) && _depths2DMap.contains(nodeId))
 		{
 			std::string scanName = uFormat("scan%d", nodeId);
-			_ui->widget_cloudViewer->setCloudVisibility(scanName, visible);
+			if(visible && !viewerClouds.contains(scanName))
+			{
+				createAndAddScanToMap(nodeId, _currentPosesMap.find(nodeId)->second);
+			}
+			else if(viewerClouds.contains(scanName))
+			{
+				_ui->widget_cloudViewer->setCloudVisibility(scanName, visible);
+			}
 		}
 	}
 	_ui->widget_cloudViewer->render();
@@ -1425,7 +1467,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			iter!=event.getDepths2d().end();
 			++iter)
 		{
-			_depths2DMap.insert(std::make_pair(iter->first, iter->second));
+			_depths2DMap.insert(iter->first, iter->second);
 		}
 		_initProgressDialog->appendText(tr("Inserted %1 laser scans.").arg(_depths2DMap.size()));
 		_initProgressDialog->incrementStep();
@@ -1458,7 +1500,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 				_ui->graphicsView_graphView->updateGraph(
 						event.getPoses(),
 						event.getConstraints(),
-						event.getDepths2d().size()?event.getDepths2d():_depths2DMap);
+						_depths2DMap);
 				_initProgressDialog->appendText("Updating the graph view... done.");
 			}
 		}
@@ -2825,15 +2867,17 @@ void MainWindow::savePointClouds()
 
 	if(button == QMessageBox::Yes || button == QMessageBox::No)
 	{
+		std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
+
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(int(_currentPosesMap.size())*2+1);
+		_initProgressDialog->setMaximumSteps(int(poses.size())*2+1);
 
 		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 		if(button == QMessageBox::Yes)
 		{
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud();
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud(poses);
 			if(_preferencesDialog->getMeshSmoothing(1))
 			{
 				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
@@ -2849,7 +2893,7 @@ void MainWindow::savePointClouds()
 		}
 		else
 		{
-			clouds = this->createPointClouds();
+			clouds = this->createPointClouds(poses);
 		}
 		savePointClouds(clouds);
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
@@ -2867,15 +2911,17 @@ void MainWindow::saveMeshes()
 
 	if(button == QMessageBox::Yes || button == QMessageBox::No)
 	{
+		std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
+
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(int(_currentPosesMap.size())*2+1);
+		_initProgressDialog->setMaximumSteps(int(poses.size())*2+1);
 
 		std::map<int, pcl::PolygonMesh::Ptr> meshes;
 		if(button == QMessageBox::Yes)
 		{
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud();
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud(poses);
 			_initProgressDialog->appendText(tr("Meshing the assembled cloud (%1 points)...").arg(cloud->size()));
 			_initProgressDialog->incrementStep();
 			QApplication::processEvents();
@@ -2907,7 +2953,7 @@ void MainWindow::saveMeshes()
 		}
 		else
 		{
-			meshes = this->createMeshes();
+			meshes = this->createMeshes(poses);
 		}
 		saveMeshes(meshes);
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
@@ -2925,15 +2971,17 @@ void MainWindow::viewPointClouds()
 
 	if(button == QMessageBox::Yes || button == QMessageBox::No)
 	{
+		std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
+
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(int(_currentPosesMap.size())+1);
+		_initProgressDialog->setMaximumSteps(int(poses.size())+1);
 
 		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 		if(button == QMessageBox::Yes)
 		{
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud();
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud(poses);
 
 			if(_preferencesDialog->getMeshSmoothing(1))
 			{
@@ -2951,7 +2999,7 @@ void MainWindow::viewPointClouds()
 		}
 		else
 		{
-			clouds = this->createPointClouds();
+			clouds = this->createPointClouds(poses);
 		}
 
 		if(clouds.size())
@@ -2964,6 +3012,7 @@ void MainWindow::viewPointClouds()
 			window->setMinimumHeight(600);
 
 			CloudViewer * viewer = new CloudViewer(window);
+			viewer->setCameraLockZ(false);
 
 			QVBoxLayout *layout = new QVBoxLayout();
 			layout->addWidget(viewer);
@@ -3001,15 +3050,17 @@ void MainWindow::viewMeshes()
 
 	if(button == QMessageBox::Yes || button == QMessageBox::No)
 	{
+		std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
+
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(int(_currentPosesMap.size())+1);
+		_initProgressDialog->setMaximumSteps(int(poses.size())+1);
 
 		std::map<int, pcl::PolygonMesh::Ptr> meshes;
 		if(button == QMessageBox::Yes)
 		{
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud();
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud(poses);
 			_initProgressDialog->appendText(tr("Meshing the assembled cloud (%1 points)...").arg(cloud->size()));
 			_initProgressDialog->incrementStep();
 			QApplication::processEvents();
@@ -3041,7 +3092,7 @@ void MainWindow::viewMeshes()
 		}
 		else
 		{
-			meshes = this->createMeshes();
+			meshes = this->createMeshes(poses);
 		}
 
 		if(meshes.size())
@@ -3053,6 +3104,7 @@ void MainWindow::viewMeshes()
 			window->setMinimumHeight(600);
 
 			CloudViewer * viewer = new CloudViewer(window);
+			viewer->setCameraLockZ(false);
 
 			QVBoxLayout *layout = new QVBoxLayout();
 			layout->addWidget(viewer);
@@ -3375,7 +3427,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createCloud(
 		const Transform & pose,
 		float voxelSize,
 		int decimation,
-		float maxDepth)
+		float maxDepth) const
 {
 	UTimer timer;
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
@@ -3416,12 +3468,12 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createCloud(
 	return cloud;
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createAssembledCloud()
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createAssembledCloud(const std::map<int, Transform> & poses) const
 {
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 	int i=0;
 	int count = 0;
-	for(std::map<int, Transform>::const_iterator iter = _currentPosesMap.begin(); iter!=_currentPosesMap.end(); ++iter)
+	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
 		bool inserted = false;
 		if(!iter->second.isNull())
@@ -3465,7 +3517,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createAssembledCloud()
 
 		if(inserted)
 		{
-			_initProgressDialog->appendText(tr("Generated cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(_currentPosesMap.size()));
+			_initProgressDialog->appendText(tr("Generated cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
 
 			if(count % 100 == 0)
 			{
@@ -3477,7 +3529,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createAssembledCloud()
 		}
 		else
 		{
-			_initProgressDialog->appendText(tr("Ignored cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(_currentPosesMap.size()));
+			_initProgressDialog->appendText(tr("Ignored cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
 		}
 		_initProgressDialog->incrementStep();
 		QApplication::processEvents();
@@ -3491,11 +3543,11 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createAssembledCloud()
 	return assembledCloud;
 }
 
-std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::createPointClouds()
+std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::createPointClouds(const std::map<int, Transform> & poses) const
 {
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 	int i=0;
-	for(std::map<int, Transform>::const_iterator iter = _currentPosesMap.begin(); iter!=_currentPosesMap.end(); ++iter)
+	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
 		bool inserted = false;
 		if(!iter->second.isNull())
@@ -3545,11 +3597,11 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::createPointCl
 
 		if(inserted)
 		{
-			_initProgressDialog->appendText(tr("Generated cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(_currentPosesMap.size()));
+			_initProgressDialog->appendText(tr("Generated cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
 		}
 		else
 		{
-			_initProgressDialog->appendText(tr("Ignored cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(_currentPosesMap.size()));
+			_initProgressDialog->appendText(tr("Ignored cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
 		}
 		_initProgressDialog->incrementStep();
 		QApplication::processEvents();
@@ -3558,11 +3610,11 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::createPointCl
 	return clouds;
 }
 
-std::map<int, pcl::PolygonMesh::Ptr> MainWindow::createMeshes()
+std::map<int, pcl::PolygonMesh::Ptr> MainWindow::createMeshes(const std::map<int, Transform> & poses) const
 {
 	std::map<int, pcl::PolygonMesh::Ptr> meshes;
 	int i=0;
-	for(std::map<int, Transform>::const_iterator iter = _currentPosesMap.begin(); iter!=_currentPosesMap.end(); ++iter)
+	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
 		bool inserted = false;
 		if(!iter->second.isNull())
@@ -3619,11 +3671,11 @@ std::map<int, pcl::PolygonMesh::Ptr> MainWindow::createMeshes()
 
 		if(inserted)
 		{
-			_initProgressDialog->appendText(tr("Generated mesh %1 (%2/%3).").arg(iter->first).arg(++i).arg(_currentPosesMap.size()));
+			_initProgressDialog->appendText(tr("Generated mesh %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
 		}
 		else
 		{
-			_initProgressDialog->appendText(tr("Ignored mesh %1 (%2/%3).").arg(iter->first).arg(++i).arg(_currentPosesMap.size()));
+			_initProgressDialog->appendText(tr("Ignored mesh %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
 		}
 		_initProgressDialog->incrementStep();
 		QApplication::processEvents();

@@ -904,7 +904,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				memory_->getImageDepth(ids_.at(i), imageBytesA, depthBytesA, depth2dBytesA, depthConstantA, localTransformA);
 				if(depth2dBytesA.size())
 				{
-					scans_.insert(std::make_pair(ids_.at(i), depth2dBytesA));
+					scans_.insert(ids_.at(i), depth2dBytesA);
 				}
 			}
 			UINFO("Update scans list... done");

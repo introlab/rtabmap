@@ -166,7 +166,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM_STR(Kp, DictionaryPath,    "", 				"Path of the pre-computed dictionary");
 
 	//Database
-	RTABMAP_PARAM(DbSqlite3, InMemory, 	   bool, true, 			"Using database in the memory instead of a file on the hard disk.");
+	RTABMAP_PARAM(DbSqlite3, InMemory, 	   bool, false, 		"Using database in the memory instead of a file on the hard disk.");
 	RTABMAP_PARAM(DbSqlite3, CacheSize,    unsigned int, 10000, "Sqlite cache size (default is 2000).");
 	RTABMAP_PARAM(DbSqlite3, JournalMode,  int, 3, 				"0=DELETE, 1=TRUNCATE, 2=PERSIST, 3=MEMORY, 4=OFF (see sqlite3 doc : \"PRAGMA journal_mode\")");
 	RTABMAP_PARAM(DbSqlite3, Synchronous,  int, 0, 				"0=OFF, 1=NORMAL, 2=FULL (see sqlite3 doc : \"PRAGMA synchronous\")");

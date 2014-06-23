@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1007</width>
-    <height>494</height>
+    <width>876</width>
+    <height>526</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>709</width>
-            <height>752</height>
+            <width>577</width>
+            <height>632</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>9</number>
+                <number>0</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -338,6 +338,78 @@ Show a yellow background when the number of odometry inliers goes under this thr
                     <string>3D Rendering</string>
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_31">
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_poseFiltering">
+                      <property name="title">
+                       <string>Cloud filtering</string>
+                      </property>
+                      <property name="checkable">
+                       <bool>true</bool>
+                      </property>
+                      <property name="checked">
+                       <bool>false</bool>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_37">
+                       <item>
+                        <widget class="QLabel" name="label_33">
+                         <property name="text">
+                          <string>For visualization, superposed clouds are not shown. By comparing poses in the same area, only one cloud in a fixed radius and angle is kept.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <layout class="QFormLayout" name="formLayout_22">
+                         <item row="0" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_cloudFilterRadius">
+                           <property name="suffix">
+                            <string> m</string>
+                           </property>
+                           <property name="minimum">
+                            <double>0.010000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>0.500000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_37">
+                           <property name="text">
+                            <string>Radius</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_48">
+                           <property name="text">
+                            <string>Angle</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_cloudFilterAngle">
+                           <property name="suffix">
+                            <string> degrees</string>
+                           </property>
+                           <property name="decimals">
+                            <number>0</number>
+                           </property>
+                           <property name="maximum">
+                            <double>180.000000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>30.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
                     <item>
                      <widget class="QFrame" name="frame">
                       <property name="frameShape">
@@ -975,78 +1047,6 @@ High-res view</string>
                           <double>0.040000000000000</double>
                          </property>
                         </widget>
-                       </item>
-                      </layout>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QGroupBox" name="groupBox_poseFiltering">
-                      <property name="title">
-                       <string>Cloud filtering</string>
-                      </property>
-                      <property name="checkable">
-                       <bool>true</bool>
-                      </property>
-                      <property name="checked">
-                       <bool>false</bool>
-                      </property>
-                      <layout class="QVBoxLayout" name="verticalLayout_37">
-                       <item>
-                        <widget class="QLabel" name="label_33">
-                         <property name="text">
-                          <string>For visualization, superposed clouds are not shown. By comparing poses in the same area, only one cloud in a fixed radius and angle is kept.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <layout class="QFormLayout" name="formLayout_22">
-                         <item row="0" column="0">
-                          <widget class="QDoubleSpinBox" name="doubleSpinBox_cloudFilterRadius">
-                           <property name="suffix">
-                            <string> m</string>
-                           </property>
-                           <property name="minimum">
-                            <double>0.010000000000000</double>
-                           </property>
-                           <property name="value">
-                            <double>0.500000000000000</double>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="0" column="1">
-                          <widget class="QLabel" name="label_37">
-                           <property name="text">
-                            <string>Radius</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="1">
-                          <widget class="QLabel" name="label_48">
-                           <property name="text">
-                            <string>Angle</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="0">
-                          <widget class="QDoubleSpinBox" name="doubleSpinBox_cloudFilterAngle">
-                           <property name="suffix">
-                            <string> degrees</string>
-                           </property>
-                           <property name="decimals">
-                            <number>0</number>
-                           </property>
-                           <property name="maximum">
-                            <double>180.000000000000000</double>
-                           </property>
-                           <property name="value">
-                            <double>30.000000000000000</double>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
                        </item>
                       </layout>
                      </widget>

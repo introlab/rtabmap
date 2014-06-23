@@ -92,7 +92,7 @@ private:
 	std::list<std::map<int, rtabmap::Transform> > graphes_;
 	std::map<int, rtabmap::Transform> poses_;
 	std::multimap<int, rtabmap::Link> links_;
-	std::map<int, std::vector<unsigned char> > scans_;
+	QMap<int, std::vector<unsigned char> > scans_;
 };
 
 #endif /* DATABASEVIEWER_H_ */

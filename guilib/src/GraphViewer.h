@@ -28,7 +28,7 @@ public:
 
 	void updateGraph(const std::map<int, Transform> & poses,
 					 const std::multimap<int, Link> & constraints,
-					 const std::map<int, std::vector<unsigned char> > & scans);
+					 const QMap<int, std::vector<unsigned char> > & scans);
 	void clearGraph();
 
 	void setWorkingDirectory(const QString & path) {_workingDirectory = path;}

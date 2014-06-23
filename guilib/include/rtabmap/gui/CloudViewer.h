@@ -106,8 +106,10 @@ public:
 
 	const QMap<std::string, Transform> & getAddedClouds() {return _addedClouds;} //including meshes
 
-	void setCameraTargetLocked();
-	void setCameraTargetFollow();
+	void setCameraTargetLocked(bool enabled = true);
+	void setCameraTargetFollow(bool enabled = true);
+	void setCameraFree();
+	void setCameraLockZ(bool enabled = true);
 
 public slots:
 	void render();

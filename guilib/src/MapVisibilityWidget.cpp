@@ -57,7 +57,7 @@ void MapVisibilityWidget::updateCheckBoxes()
 			added = true;
 		}
 		checkboxes[i]->setText(QString("%1 (%2)").arg(iter->first).arg(iter->second.prettyPrint().c_str()));
-		checkboxes[i]->setChecked(true);
+		checkboxes[i]->setChecked(_mask.at(iter->first));
 		if(added)
 		{
 			connect(checkboxes[i], SIGNAL(stateChanged(int)), this, SLOT(signalVisibility()));
@@ -68,18 +68,34 @@ void MapVisibilityWidget::updateCheckBoxes()
 	}
 }
 
-void MapVisibilityWidget::setMap(const std::map<int, Transform> & poses)
+void MapVisibilityWidget::setMap(const std::map<int, Transform> & poses, const std::map<int, bool> & mask)
 {
+	UASSERT(poses.size() == mask.size());
 	_poses = poses;
+	_mask = mask;
 	if(this->isVisible())
 	{
 		updateCheckBoxes();
 	}
 }
 
+std::map<int, Transform> MapVisibilityWidget::getVisiblePoses() const
+{
+	std::map<int, Transform> poses;
+	for(std::map<int, Transform>::const_iterator iter=_poses.begin(); iter!=_poses.end(); ++iter)
+	{
+		if(_mask.at(iter->first))
+		{
+			poses.insert(*iter);
+		}
+	}
+	return poses;
+}
+
 void MapVisibilityWidget::signalVisibility()
 {
 	QCheckBox * check = qobject_cast<QCheckBox*>(sender());
+	_mask.at(check->text().split('(').first().toInt()) = check->isChecked();
 	emit visibilityChanged(check->text().split('(').first().toInt(), check->isChecked());
 }
 
