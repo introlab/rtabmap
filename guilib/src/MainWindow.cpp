@@ -1350,7 +1350,7 @@ std::map<int, Transform> MainWindow::radiusPosesFiltering(const std::map<int, Tr
 				}
 
 				bool firstAdded = false;
-				for(std::set<int>::reverse_iterator iter = cloudIndices.rbegin(); iter!=cloudIndices.rend(); ++iter)
+				for(std::set<int>::iterator iter = cloudIndices.begin(); iter!=cloudIndices.end(); ++iter)
 				{
 					if(!firstAdded)
 					{
