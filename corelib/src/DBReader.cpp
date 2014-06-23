@@ -127,6 +127,12 @@ void DBReader::mainLoop()
 			{
 				Image data(image, depth, depth2d, depthConstant, pose, localTransform);
 				this->post(new OdometryEvent(data));
+				if(pose.isNull())
+				{
+					UWARN("Reading the database: odometry is null! "
+						  "Please set \"Ignore odometry = true\" if there is "
+						  "no odometry in the database.");
+				}
 			}
 			else
 			{

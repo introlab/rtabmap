@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -56,6 +56,8 @@
     <addaction name="actionGenerate_map"/>
     <addaction name="actionGenerate_local_map"/>
     <addaction name="actionGenerate_TORO_graph_graph"/>
+    <addaction name="separator"/>
+    <addaction name="actionData_recorder"/>
     <addaction name="separator"/>
     <addaction name="actionView_high_res_point_cloud"/>
     <addaction name="actionSave_point_cloud"/>
@@ -1040,6 +1042,11 @@
    </property>
    <property name="text">
     <string>OpenNI-PCL</string>
+   </property>
+  </action>
+  <action name="actionData_recorder">
+   <property name="text">
+    <string>Data recorder...</string>
    </property>
   </action>
  </widget>

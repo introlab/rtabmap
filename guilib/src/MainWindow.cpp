@@ -31,6 +31,7 @@
 
 #include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/KeypointItem.h"
+#include "rtabmap/gui/DataRecorder.h"
 
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/ULogger.h>
@@ -260,6 +261,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionView_point_cloud_as_mesh, SIGNAL(triggered()), this, SLOT(viewMeshes()));
 	connect(_ui->actionReset_Odometry, SIGNAL(triggered()), this, SLOT(resetOdometry()));
 	connect(_ui->actionTrigger_a_new_map, SIGNAL(triggered()), this, SLOT(triggerNewMap()));
+	connect(_ui->actionData_recorder, SIGNAL(triggered()), this, SLOT(dataRecorder()));
 
 	_ui->actionPause->setShortcut(Qt::Key_Space);
 	_ui->actionSave_point_cloud->setEnabled(false);
@@ -3092,6 +3094,50 @@ void MainWindow::triggerNewMap()
 	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdTriggerNewMap));
 }
 
+void MainWindow::dataRecorder()
+{
+	if(_camera)
+	{
+		QString path = QFileDialog::getSaveFileName(this, tr("Save to..."), "output.db", "RTAB-Map database (*.db)");
+		if(!path.isEmpty())
+		{
+			int r = QMessageBox::question(this, tr("Hard drive or RAM?"), tr("Save in RAM?"), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+
+			if(r == QMessageBox::No || r == QMessageBox::Yes)
+			{
+				bool recordInRAM = r == QMessageBox::Yes;
+				QWidget * window = new QWidget(this, Qt::Popup);
+				window->setAttribute(Qt::WA_DeleteOnClose);
+				window->setWindowFlags(Qt::Dialog);
+				window->setWindowTitle(tr("Data recorder (%1)").arg(path));
+
+				DataRecorder * recorder = new DataRecorder(window);
+
+				QVBoxLayout *layout = new QVBoxLayout();
+				layout->addWidget(recorder);
+				window->setLayout(layout);
+
+				if(recorder->init(path, recordInRAM))
+				{
+					window->show();
+					recorder->registerToEventsManager();
+					UEventsManager::createPipe(_camera, recorder, "CameraEvent");
+				}
+				else
+				{
+					QMessageBox::warning(this, tr(""), tr("Cannot initialize the data recorder!"));
+					UERROR("Cannot initialize the data recorder!");
+					delete window;
+				}
+			}
+		}
+	}
+	else
+	{
+		UERROR("Camera should be already created.");
+	}
+}
+
 //END ACTIONS
 
 void MainWindow::savePointClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds)
@@ -3615,6 +3661,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setEnabled(true);
 		_ui->actionGenerate_local_map->setEnabled(true);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(true);
+		_ui->actionData_recorder->setEnabled(false);
 		_ui->actionOpen_working_directory->setEnabled(true);
 		_ui->actionApply_settings_to_the_detector->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(true);
@@ -3644,6 +3691,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setEnabled(false);
 		_ui->actionGenerate_local_map->setEnabled(false);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
+		_ui->actionData_recorder->setEnabled(true);
 		_ui->actionOpen_working_directory->setEnabled(true);
 		_ui->actionApply_settings_to_the_detector->setEnabled(false);
 		_ui->actionDownload_all_clouds->setEnabled(false);
@@ -3736,6 +3784,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setVisible(false);
 		_ui->actionGenerate_local_map->setVisible(false);
 		_ui->actionGenerate_TORO_graph_graph->setVisible(false);
+		_ui->actionData_recorder->setVisible(false);
 		_ui->actionOpen_working_directory->setEnabled(false);
 		_ui->actionApply_settings_to_the_detector->setVisible(false);
 		_ui->actionDownload_all_clouds->setEnabled(true);
@@ -3764,6 +3813,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setVisible(false);
 		_ui->actionGenerate_local_map->setVisible(false);
 		_ui->actionGenerate_TORO_graph_graph->setVisible(false);
+		_ui->actionData_recorder->setVisible(false);
 		_ui->actionOpen_working_directory->setEnabled(false);
 		_ui->actionApply_settings_to_the_detector->setVisible(false);
 		_ui->actionDownload_all_clouds->setEnabled(true);

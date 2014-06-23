@@ -155,6 +155,7 @@ private slots:
 	void viewMeshes();
 	void resetOdometry();
 	void triggerNewMap();
+	void dataRecorder();
 	void updateNodeVisibility(int, bool);
 
 signals:

@@ -49,7 +49,7 @@ int main(int argc, char * argv[])
 	}
 	UINFO("Using driver %d", driver);
 
-	rtabmap::CameraRGBD * camera;
+	rtabmap::CameraRGBD * camera = 0;
 	if(driver == 0)
 	{
 		camera = new rtabmap::CameraOpenni("", 0);
