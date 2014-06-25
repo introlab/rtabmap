@@ -110,6 +110,7 @@ public:
 	void setCameraTargetFollow(bool enabled = true);
 	void setCameraFree();
 	void setCameraLockZ(bool enabled = true);
+	void setGridShown(bool shown);
 
 public slots:
 	void render();
@@ -128,6 +129,8 @@ protected:
 private:
 	void createMenu();
 	void mouseEventOccurred (const pcl::visualization::MouseEvent &event, void* viewer_void);
+	void addGrid();
+	void removeGrid();
 
 private:
     pcl::visualization::PCLVisualizer * _visualizer;

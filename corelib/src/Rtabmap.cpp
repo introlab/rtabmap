@@ -91,6 +91,7 @@ Rtabmap::Rtabmap() :
 	_localDetectMaxDiffID(Parameters::defaultRGBDLocalLoopDetectionMaxDiffID()),
 	_toroIterations(Parameters::defaultRGBDToroIterations()),
 	_databasePath(""),
+	_optimizeFromGraphEnd(Parameters::defaultRGBDOptimizeFromGraphEnd()),
 	_lcHypothesisId(0),
 	_lcHypothesisValue(0),
 	_retrievedId(0),
@@ -339,6 +340,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionNeighbors(), _localDetectMaxNeighbors);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionMaxDiffID(), _localDetectMaxDiffID);
 	Parameters::parse(parameters, Parameters::kRGBDToroIterations(), _toroIterations);
+	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
 
 	// RGB-D SLAM stuff
 	if((iter=parameters.find(Parameters::kLccIcpType())) != parameters.end())
@@ -824,13 +826,6 @@ bool Rtabmap::process(const Image & image)
 					return true;
 				}
 			}
-		}
-
-		// Reset map correction if we are mapping!
-		if(_memory->isIncremental() && !_mapCorrection.isIdentity())
-		{
-			UWARN("Reset map correction because we are now mapping!");
-			_mapCorrection.setIdentity();
 		}
 
 		Transform newPose = _mapCorrection * signature->getPose();
@@ -1358,6 +1353,13 @@ bool Rtabmap::process(const Image & image)
 			UINFO("Update map correction: SLAM mode");
 			// SLAM mode!
 			optimizeCurrentMap(signature->id(), false, _optimizedPoses, &_constraints);
+
+			// Update map correction, it should be identify when optimizing from the last node
+			_mapCorrection = _optimizedPoses.at(signature->id()) * signature->getPose().inverse();
+			if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
+			{
+				UERROR("Map correction should be identity when optimizing from the last node. T=%s", _mapCorrection.prettyPrint().c_str());
+			}
 		}
 		else if(_lcHypothesisId > 0 || localSpaceClosureId > 0 || signaturesRetrieved.size())
 		{
@@ -1957,6 +1959,21 @@ void Rtabmap::optimizeCurrentMap(
 
 		std::map<int, int> ids = _memory->getNeighborsId(id, 0, lookInDatabase?-1:0, true);
 		UDEBUG("ids=%d", (int)ids.size());
+		if(!_optimizeFromGraphEnd && ids.size() > 1)
+		{
+			UTimer timer;
+			UDEBUG("Optimize from the first location (%d) instead of the last (%d) "
+				   "in the local graph. Recomputing neighbors depth...");
+
+			int first = ids.begin()->first;
+			ids = _memory->getNeighborsId(first, 0, lookInDatabase?-1:0, true);
+
+			UDEBUG("Optimize from the first location (%d) instead of the last (%d) "
+				   "in the local graph. Recomputing neighbors depth... time=%fs",
+				   first,
+				   id,
+				   timer.ticks());
+		}
 
 		std::map<int, Transform> poses;
 		std::multimap<int, Link> edgeConstraints;

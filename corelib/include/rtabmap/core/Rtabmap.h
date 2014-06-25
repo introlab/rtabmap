@@ -152,6 +152,7 @@ private:
 	int _localDetectMaxDiffID;
 	int _toroIterations;
 	std::string _databasePath;
+	bool _optimizeFromGraphEnd;
 
 	int _lcHypothesisId;
 	float _lcHypothesisValue;

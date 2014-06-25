@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>876</width>
-    <height>526</height>
+    <width>1007</width>
+    <height>628</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>577</width>
-            <height>632</height>
+            <y>-210</y>
+            <width>709</width>
+            <height>1089</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>0</number>
+                <number>17</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -4311,7 +4311,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QLabel" name="label_83">
                       <property name="text">
-                       <string>Rigid transformations between nodes are saved on the neighbor links of the RTAB-Map's graph. On loop closures, a new constraint is added to the graph and TORO optimizes the graph. RGB-D images must be sent to work (see Source-&gt;Openni).</string>
+                       <string>Rigid transformations between nodes are saved on the neighbor links of the RTAB-Map's graph. On loop closures, a new constraint is added to the graph and TORO optimizes the graph. RGB-D images must be sent to work (see Source-&gt;RGB-D Camera).</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -4321,7 +4321,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QGroupBox" name="groupBox_slam_update">
                       <property name="title">
-                       <string>Update</string>
+                       <string>Map update</string>
                       </property>
                       <layout class="QFormLayout" name="formLayout_20">
                        <item row="0" column="0">
@@ -4402,6 +4402,19 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="label_scanMatching">
+                         <property name="text">
+                          <string>Laser scan matching history size for odometry correction. Set to 0 to disable odometry correction. ICP 2D only is used here.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QSpinBox" name="odomScanHistory"/>
+                       </item>
                       </layout>
                      </widget>
                     </item>
@@ -4461,6 +4474,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </item>
                        <item>
                         <layout class="QFormLayout" name="formLayout_5">
+                         <property name="fieldGrowthPolicy">
+                          <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                         </property>
                          <item row="0" column="0">
                           <widget class="QComboBox" name="globalDetection_icpType">
                            <property name="sizeAdjustPolicy">
@@ -4490,36 +4506,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="1">
-                          <widget class="QLabel" name="label_31">
-                           <property name="text">
-                            <string>TORO graph optimization iterations</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="0">
-                          <widget class="QSpinBox" name="globalDetection_toroIterations">
-                           <property name="minimum">
-                            <number>1</number>
-                           </property>
-                           <property name="maximum">
-                            <number>10000</number>
-                           </property>
-                           <property name="value">
-                            <number>100</number>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="1">
-                          <widget class="QLabel" name="label_51">
-                           <property name="text">
-                            <string>Maximum ICP correction distance accepted. A large translation difference between the visual transformation and ICP transformation results in wrong transformations in most cases.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
                          <item row="1" column="0">
                           <widget class="QDoubleSpinBox" name="globalDetection_icpMaxDistance">
                            <property name="suffix">
@@ -4539,30 +4525,61 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_51">
+                           <property name="text">
+                            <string>Maximum ICP correction distance accepted. A large translation difference between the visual transformation and ICP transformation results in wrong transformations in most cases.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
                         </layout>
                        </item>
                       </layout>
                      </widget>
                     </item>
                     <item>
-                     <widget class="QGroupBox" name="groupBox_odom_correction">
+                     <widget class="QGroupBox" name="groupBox_graphOptimization">
                       <property name="title">
-                       <string>Odometry correction (laser scans are required)</string>
+                       <string>Graph optimization</string>
                       </property>
-                      <layout class="QFormLayout" name="formLayout_21">
-                       <property name="fieldGrowthPolicy">
-                        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                       </property>
+                      <layout class="QFormLayout" name="formLayout_19">
                        <item row="0" column="0">
-                        <widget class="QSpinBox" name="odomScanHistory"/>
+                        <widget class="QSpinBox" name="globalDetection_toroIterations">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <number>10000</number>
+                         </property>
+                         <property name="value">
+                          <number>100</number>
+                         </property>
+                        </widget>
                        </item>
                        <item row="0" column="1">
-                        <widget class="QLabel" name="label_scanMatching">
+                        <widget class="QLabel" name="label_31">
                          <property name="text">
-                          <string>Laser scan matching history size for odometry correction. Set to 0 to disable odometry correction. ICP 2D only is used here.</string>
+                          <string>TORO graph optimization iterations</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_151">
+                         <property name="text">
+                          <string>Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QCheckBox" name="globalDetection_optimizeFromGraphEnd">
+                         <property name="text">
+                          <string/>
                          </property>
                         </widget>
                        </item>
@@ -5218,7 +5235,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="2" column="1">
                        <widget class="QLabel" name="label_111">
                         <property name="text">
-                         <string>Local history size: If &gt; 0 (example 5000), the odometry will maintain a local map of X maximum words.</string>
+                         <string>Local history size: If &gt; 0 (example 5000), the odometry will maintain a local map of X maximum words. This will decrease odometry drifting when the camera is not moving.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -5333,7 +5350,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="7" column="1">
                        <widget class="QLabel" name="label_149">
                         <property name="text">
-                         <string>Maximum distance for visual word correspondences. </string>
+                         <string>Maximum distance for visual word correspondences. Lower the value, higher the precision but higher the chance of RED screens (odometry lost).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -5443,7 +5460,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="11" column="1">
                        <widget class="QLabel" name="label_104">
                         <property name="text">
-                         <string>Max feature depth. For ICP, it is the max cloud depth.</string>
+                         <string>Max feature depth.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>

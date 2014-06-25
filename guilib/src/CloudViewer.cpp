@@ -557,6 +557,55 @@ void CloudViewer::setCameraLockZ(bool enabled)
 	_aLockViewZ->setChecked(enabled);
 }
 
+void CloudViewer::setGridShown(bool shown)
+{
+	_aShowGrid->setChecked(shown);
+	if(shown)
+	{
+		this->addGrid();
+	}
+	else
+	{
+		this->removeGrid();
+	}
+}
+
+void CloudViewer::addGrid()
+{
+	if(_gridLines.empty())
+	{
+		float cellSize = 1.0f;
+		int cellCount = 50;
+		double r=0.5;
+		double g=0.5;
+		double b=0.5;
+		int id = 0;
+		float min = -float(cellCount/2) * cellSize;
+		float max = float(cellCount/2) * cellSize;
+		std::string name;
+		for(float i=min; i<=max; i += cellSize)
+		{
+			//over x
+			name = uFormat("line%d", ++id);
+			_visualizer->addLine(pcl::PointXYZ(i, min, 0.0f), pcl::PointXYZ(i, max, 0.0f), r, g, b, name);
+			_gridLines.push_back(name);
+			//over y
+			name = uFormat("line%d", ++id);
+			_visualizer->addLine(pcl::PointXYZ(min, i, 0.0f), pcl::PointXYZ(max, i, 0.0f), r, g, b, name);
+			_gridLines.push_back(name);
+		}
+	}
+}
+
+void CloudViewer::removeGrid()
+{
+	for(std::list<std::string>::iterator iter = _gridLines.begin(); iter!=_gridLines.end(); ++iter)
+	{
+		_visualizer->removeShape(*iter);
+	}
+	_gridLines.clear();
+}
+
 Eigen::Vector3f rotatePointAroundAxe(
 		const Eigen::Vector3f & point,
 		const Eigen::Vector3f & axis,
@@ -742,34 +791,11 @@ void CloudViewer::handleAction(QAction * a)
 	{
 		if(_aShowGrid->isChecked())
 		{
-			float cellSize = 1.0f;
-			int cellCount = 50;
-			double r=0.5;
-			double g=0.5;
-			double b=0.5;
-			int id = 0;
-			float min = -float(cellCount/2) * cellSize;
-			float max = float(cellCount/2) * cellSize;
-			std::string name;
-			for(float i=min; i<=max; i += cellSize)
-			{
-				//over x
-				name = uFormat("line%d", ++id);
-				_visualizer->addLine(pcl::PointXYZ(i, min, 0.0f), pcl::PointXYZ(i, max, 0.0f), r, g, b, name);
-				_gridLines.push_back(name);
-				//over y
-				name = uFormat("line%d", ++id);
-				_visualizer->addLine(pcl::PointXYZ(min, i, 0.0f), pcl::PointXYZ(max, i, 0.0f), r, g, b, name);
-				_gridLines.push_back(name);
-			}
+			this->addGrid();
 		}
 		else
 		{
-			for(std::list<std::string>::iterator iter = _gridLines.begin(); iter!=_gridLines.end(); ++iter)
-			{
-				_visualizer->removeShape(*iter);
-			}
-			_gridLines.clear();
+			this->removeGrid();
 		}
 
 		this->render();

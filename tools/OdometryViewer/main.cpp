@@ -36,7 +36,7 @@ void showUsage()
 			"  -au #                     Angular update (default 0.0 radian)\n"
 			"  -reset #                  Reset countdown (default 0 = disabled)\n"
 			"  -gpu                      Use GPU\n"
-			"  -lh #                     Local history (default 1)\n"
+			"  -lh #                     Local history (default 0)\n"
 			"\n"
 			"  -brief_bytes #        BRIEF bytes (default 32)\n"
 			"  -fast_thr #           FAST threshold (default 30)\n"
@@ -52,6 +52,7 @@ void showUsage()
 			"  odometryViewer -odom 0 -lh 5000                      SURF example\n"
 			"  odometryViewer -odom 1 -lh 10000                     SIFT example\n"
 			"  odometryViewer -odom 4 -nn 2 -lh 1000                FAST/BRIEF example\n"
+			"  odometryViewer -odom 3 -nn 2 -lh 1000                FAST/FREAK example\n"
 			"  odometryViewer -icp -in 0.05 -i 30                   ICP example\n");
 	exit(1);
 }
@@ -648,6 +649,9 @@ int main (int argc, char * argv[])
 	rtabmap::OdometryViewer odomViewer(maxClouds, 2, 0.0, 50);
 	UEventsManager::addHandler(&odomThread);
 	UEventsManager::addHandler(&odomViewer);
+
+	odomViewer.setCameraFree();
+	odomViewer.setGridShown(true);
 
 	odomViewer.setWindowTitle("Odometry viewer");
 	odomViewer.setMinimumWidth(800);

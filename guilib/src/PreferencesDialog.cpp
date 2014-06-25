@@ -400,6 +400,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->rgdb_newMapOdomChange->setObjectName(Parameters::kRGBDNewMapOdomChangeDistance().c_str());
 	_ui->odomScanHistory->setObjectName(Parameters::kRGBDScanMatchingSize().c_str());
 	_ui->globalDetection_toroIterations->setObjectName(Parameters::kRGBDToroIterations().c_str());
+	_ui->globalDetection_optimizeFromGraphEnd->setObjectName(Parameters::kRGBDOptimizeFromGraphEnd().c_str());
 
 	_ui->groupBox_localDetection_time->setObjectName(Parameters::kRGBDLocalLoopDetectionTime().c_str());
 	_ui->groupBox_localDetection_space->setObjectName(Parameters::kRGBDLocalLoopDetectionSpace().c_str());
@@ -1934,7 +1935,7 @@ void PreferencesDialog::addParameter(const QObject * object, bool value)
 			{
 				// add all RGBD parameters!
 				this->addParameters(_ui->groupBox_slam_update);
-				this->addParameters(_ui->groupBox_odom_correction);
+				this->addParameters(_ui->groupBox_graphOptimization);
 				this->addParameters(_ui->groupBox_localDetection_time);
 				this->addParameters(_ui->groupBox_localDetection_space);
 				this->addParameters(_ui->groupBox_globalConstraints);
@@ -2822,6 +2823,9 @@ void PreferencesDialog::testOdometry(int type)
 
 		OdometryViewer * odomViewer = new OdometryViewer(10, 2, 0.0, this->getOdomQualityWarnThr(), window);
 
+		odomViewer->setCameraFree();
+		odomViewer->setGridShown(true);
+
 		QVBoxLayout *layout = new QVBoxLayout();
 		layout->addWidget(odomViewer);
 		window->setLayout(layout);
@@ -2834,6 +2838,8 @@ void PreferencesDialog::testOdometry(int type)
 		UEventsManager::createPipe(_odomThread, odomViewer, "OdometryEvent");
 
 		window->showNormal();
+
+		_ui->pushButton_testOdometry->setEnabled(false);
 
 		QApplication::processEvents();
 		uSleep(500);
@@ -2859,6 +2865,7 @@ void PreferencesDialog::cleanOdometryTest()
 		delete _odomThread;
 		_odomThread = 0;
 	}
+	_ui->pushButton_testOdometry->setEnabled(true);
 }
 
 }

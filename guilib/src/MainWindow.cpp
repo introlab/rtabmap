@@ -513,7 +513,6 @@ void MainWindow::handleEvent(UEvent* anEvent)
 	{
 		OdometryEvent * odomEvent = (OdometryEvent*)anEvent;
 		if(_ui->dockWidget_cloudViewer->isVisible() &&
-		   _preferencesDialog->isCloudsShown(1) &&
 		   _lastOdometryProcessed &&
 		   !_processingStatistics)
 		{
@@ -1279,6 +1278,11 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 			}
 			else if(viewerClouds.contains(cloudName))
 			{
+				if(visible)
+				{
+					//make sure the transformation was done
+					_ui->widget_cloudViewer->updateCloudPose(cloudName, _currentPosesMap.find(nodeId)->second);
+				}
 				_ui->widget_cloudViewer->setCloudVisibility(cloudName, visible);
 			}
 		}
@@ -1292,6 +1296,11 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 			}
 			else if(viewerClouds.contains(scanName))
 			{
+				if(visible)
+				{
+					//make sure the transformation was done
+					_ui->widget_cloudViewer->updateCloudPose(scanName, _currentPosesMap.find(nodeId)->second);
+				}
 				_ui->widget_cloudViewer->setCloudVisibility(scanName, visible);
 			}
 		}
@@ -1480,8 +1489,6 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		}
 		_initProgressDialog->appendText(tr("Inserted %1 local transforms.").arg(_localTransformsMap.size()));
 		_initProgressDialog->incrementStep();
-
-		_odometryCorrection.setIdentity();
 
 		_initProgressDialog->appendText("Inserting data in the cache... done.");
 
