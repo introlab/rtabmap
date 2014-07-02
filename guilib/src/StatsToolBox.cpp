@@ -509,7 +509,9 @@ void StatsToolBox::setWorkingDirectory(const QString & workingDirectory)
 	}
 	else
 	{
-		ULOGGER_ERROR("The directory \"%s\" doesn't exist", workingDirectory.toStdString().c_str());
+		UWARN("The directory \"%s\" doesn't exist, using \"%s\" instead...",
+				workingDirectory.toStdString().c_str(),
+				_workingDirectory.toStdString().c_str());
 	}
 }
 
