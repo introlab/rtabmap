@@ -15,6 +15,7 @@
 
 class QGraphicsItem;
 class QGraphicsPixmapItem;
+class QGraphicsItemGroup;
 
 namespace rtabmap {
 
@@ -50,7 +51,9 @@ private:
 	float _nodeRadius;
 	float _linkWidth;
 	QGraphicsPixmapItem * _gridMap;
+	QGraphicsItemGroup * _lastReferential;
 	float _gridCellSize;
+	bool _gridUnknownSpaceFilled;
 };
 
 } /* namespace rtabmap */

@@ -135,7 +135,9 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_nodeRadius(0.01),
 		_linkWidth(0),
 		_gridMap(0),
-		_gridCellSize(0.05f)
+		_lastReferential(0),
+		_gridCellSize(0.05f),
+		_gridUnknownSpaceFilled(true)
 {
 	Q_ASSERT(_gridCellSize > 0);
 
@@ -153,6 +155,19 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	item = this->scene()->addLine(0,0,-1,0, QPen(QBrush(Qt::green), _linkWidth));
 	item->setZValue(100);
 	item->setParentItem(_root);
+
+	// current pose
+	_lastReferential = new QGraphicsItemGroup();
+	this->scene()->addItem(_lastReferential);
+	item = this->scene()->addLine(0,0,0,-0.5, QPen(QBrush(Qt::red), _linkWidth));
+	item->setZValue(100);
+	item->setParentItem(_root);
+	_lastReferential->addToGroup(item);
+	item = this->scene()->addLine(0,0,-0.5,0, QPen(QBrush(Qt::green), _linkWidth));
+	item->setZValue(100);
+	item->setParentItem(_root);
+	_lastReferential->addToGroup(item);
+
 
 	_gridMap = this->scene()->addPixmap(QPixmap());
 	_gridMap->scale(_gridCellSize, -_gridCellSize);
@@ -312,7 +327,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	if(scanClouds.size())
 	{
 		float xMin=0.0f, yMin=0.0f;
-		cv::Mat map8S = util3d::create2DMap(poses, scanClouds, _gridCellSize, xMin, yMin);
+		cv::Mat map8S = util3d::create2DMap(poses, scanClouds, _gridCellSize, _gridUnknownSpaceFilled, xMin, yMin);
 		cv::Mat map8U(map8S.rows, map8S.cols, CV_8U);
 		//convert to gray scaled map
 		for (int i = 0; i < map8S.rows; ++i)
@@ -346,7 +361,13 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 
 	if(_nodeItems.size())
 	{
-		(--_nodeItems.end()).value()->setColor(Qt::gray);
+		(--_nodeItems.end()).value()->setColor(Qt::green);
+	}
+	if(poses.size())
+	{
+		Transform t = poses.rbegin()->second;
+		QTransform qt(t.r11(), t.r12(), t.r21(), t.r22(), -t.o24(), -t.o14());
+		_lastReferential->setTransform(qt);
 	}
 
 	this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
@@ -362,6 +383,7 @@ void GraphViewer::clearGraph()
 	qDeleteAll(_loopLinkItems);
 	_loopLinkItems.clear();
 	_gridMap->setPixmap(QPixmap());
+	_lastReferential->resetTransform();
 	this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
 }
 
@@ -391,6 +413,9 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aSetLinkSize = menu.addAction(tr("Set link width..."));
 	menu.addSeparator();
 	QAction * aSetGridCellSize = menu.addAction(tr("Set grid cell size..."));
+	QAction * aSetGridUnknownSpaceFilled = menu.addAction(tr("Unknown grid space filled"));
+	aSetGridUnknownSpaceFilled->setCheckable(true);
+	aSetGridUnknownSpaceFilled->setChecked(_gridUnknownSpaceFilled);
 	QAction * aShowHideGridMap;
 	if(_gridMap->isVisible())
 	{
@@ -557,8 +582,11 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		if(ok)
 		{
 			_gridCellSize = value;
-
 		}
+	}
+	else if(r == aSetGridUnknownSpaceFilled)
+	{
+		_gridUnknownSpaceFilled = aSetGridUnknownSpaceFilled->isChecked();
 	}
 	else if(r == aShowHideGridMap)
 	{

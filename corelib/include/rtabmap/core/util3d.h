@@ -390,15 +390,22 @@ bool RTABMAP_EXP loadTOROGraph(const std::string & fileName,
 		std::map<int, Transform> & poses,
 		std::multimap<int, std::pair<int, Transform> > & edgeConstraints);
 
+std::map<int, Transform> RTABMAP_EXP radiusPosesFiltering(
+		const std::map<int, Transform> & poses,
+		float radius,
+		float angle);
+
 cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans,
-		float delta,
+		float cellSize,
+		bool unknownSpaceFilled,
 		float & xMin,
 		float & yMin);
 
 void RTABMAP_EXP rayTrace(const cv::Point2i & start,
 		const cv::Point2i & end,
-		cv::Mat & grid);
+		cv::Mat & grid,
+		bool stopOnObstacle);
 
 } // namespace util3d
 } // namespace rtabmap

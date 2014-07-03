@@ -942,7 +942,21 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			// update some widgets
 			if(_ui->graphicsView_graphView->isVisible())
 			{
-				_ui->graphicsView_graphView->updateGraph(stat.poses(), stat.constraints(), _depths2DMap);
+				std::map<int, Transform> poses;
+				if(_preferencesDialog->isCloudFiltering() && stat.poses().size())
+				{
+					float radius = _preferencesDialog->getCloudFilteringRadius();
+					float angle = _preferencesDialog->getCloudFilteringAngle()*CV_PI/180.0; // convert to rad
+					poses = util3d::radiusPosesFiltering(stat.poses(), radius, angle);
+					// make sure the last is here
+					poses.insert(*stat.poses().rbegin());
+				}
+				else
+				{
+					poses = stat.poses();
+				}
+
+				_ui->graphicsView_graphView->updateGraph(poses, stat.constraints(), _depths2DMap);
 			}
 
 			_odometryReceived = false;
@@ -1036,9 +1050,13 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & posesIn, const 
 
 	// filter duplicated poses
 	std::map<int, Transform> poses;
-	if(_preferencesDialog->isCloudFiltering())
+	if(_preferencesDialog->isCloudFiltering() && posesIn.size())
 	{
-		poses = radiusPosesFiltering(posesIn);
+		float radius = _preferencesDialog->getCloudFilteringRadius();
+		float angle = _preferencesDialog->getCloudFilteringAngle()*CV_PI/180.0; // convert to rad
+		poses = util3d::radiusPosesFiltering(posesIn, radius, angle);
+		// make sure the last is here
+		poses.insert(*posesIn.rbegin());
 	}
 	else
 	{
@@ -1306,89 +1324,6 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 		}
 	}
 	_ui->widget_cloudViewer->render();
-}
-
-std::map<int, Transform> MainWindow::radiusPosesFiltering(const std::map<int, Transform> & poses) const
-{
-	float radius = _preferencesDialog->getCloudFilteringRadius();
-	float angle = _preferencesDialog->getCloudFilteringAngle()*3.14159265359/180.0; // convert to rad
-	if(poses.size() > 1 && radius > 0.0f && angle>0.0f)
-	{
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		cloud->resize(poses.size());
-		int i=0;
-		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-		{
-			(*cloud)[i++] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-		}
-
-		// radius filtering
-		std::vector<int> names = uKeys(poses);
-		std::vector<Transform> transforms = uValues(poses);
-
-		pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ> (false));
-		tree->setInputCloud(cloud);
-		std::set<int> indicesChecked;
-		std::set<int> indicesKept;
-
-		for(unsigned int i=0; i<cloud->size(); ++i)
-		{
-			// ignore scans
-			if(indicesChecked.find(i) == indicesChecked.end())
-			{
-				std::vector<int> kIndices;
-				std::vector<float> kDistances;
-				tree->radiusSearch(cloud->at(i), radius, kIndices, kDistances);
-
-				std::set<int> cloudIndices;
-				const Transform & currentT = transforms.at(i);
-				Eigen::Vector3f vA = util3d::transformToEigen3f(currentT).rotation()*Eigen::Vector3f(1,0,0);
-				for(unsigned int j=0; j<kIndices.size(); ++j)
-				{
-					if(indicesChecked.find(kIndices[j]) == indicesChecked.end())
-					{
-						const Transform & checkT = transforms.at(kIndices[j]);
-						// same orientation?
-						Eigen::Vector3f vB = util3d::transformToEigen3f(checkT).rotation()*Eigen::Vector3f(1,0,0);
-						double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
-						if(a <= angle)
-						{
-							cloudIndices.insert(kIndices[j]);
-						}
-					}
-				}
-
-				bool firstAdded = false;
-				for(std::set<int>::iterator iter = cloudIndices.begin(); iter!=cloudIndices.end(); ++iter)
-				{
-					if(!firstAdded)
-					{
-						indicesKept.insert(*iter);
-						firstAdded = true;
-					}
-					indicesChecked.insert(*iter);
-				}
-			}
-		}
-
-		//pcl::IndicesPtr indicesOut(new std::vector<int>);
-		//indicesOut->insert(indicesOut->end(), indicesKept.begin(), indicesKept.end());
-		UINFO("Cloud filtered In = %d, Out = %d", cloud->size(), indicesKept.size());
-		//pcl::io::savePCDFile("duplicateIn.pcd", *cloud);
-		//pcl::io::savePCDFile("duplicateOut.pcd", *cloud, *indicesOut);
-
-		std::map<int, Transform> keptPoses;
-		for(std::set<int>::iterator iter = indicesKept.begin(); iter!=indicesKept.end(); ++iter)
-		{
-			keptPoses.insert(std::make_pair(names.at(*iter), transforms.at(*iter)));
-		}
-
-		return keptPoses;
-	}
-	else
-	{
-		return poses;
-	}
 }
 
 void MainWindow::processRtabmapEventInit(int status, const QString & info)

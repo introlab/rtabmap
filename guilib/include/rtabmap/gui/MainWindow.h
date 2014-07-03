@@ -178,7 +178,6 @@ private:
 	void updateMapCloud(const std::map<int, Transform> & poses, const Transform & pose);
 	void createAndAddCloudToMap(int nodeId, const Transform & pose);
 	void createAndAddScanToMap(int nodeId, const Transform & pose);
-	std::map<int, Transform> radiusPosesFiltering(const std::map<int, Transform> & poses) const;
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
 	void setupMainLayout(bool vertical);
 	void updateSelectSourceImageMenu(int type);

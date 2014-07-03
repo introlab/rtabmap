@@ -31,6 +31,7 @@
 #include <zlib.h>
 
 #include "rtabmap/utilite/UConversion.h"
+#include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Signature.h"
 #include "toro3d/treeoptimizer3.hh"
@@ -1791,9 +1792,104 @@ bool loadTOROGraph(const std::string & fileName,
 	return true;
 }
 
+
+std::map<int, Transform> radiusPosesFiltering(const std::map<int, Transform> & poses, float radius, float angle)
+{
+	if(poses.size() > 1 && radius > 0.0f && angle>0.0f)
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+		cloud->resize(poses.size());
+		int i=0;
+		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			(*cloud)[i++] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+		}
+
+		// radius filtering
+		std::vector<int> names = uKeys(poses);
+		std::vector<Transform> transforms = uValues(poses);
+
+		pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ> (false));
+		tree->setInputCloud(cloud);
+		std::set<int> indicesChecked;
+		std::set<int> indicesKept;
+
+		for(unsigned int i=0; i<cloud->size(); ++i)
+		{
+			// ignore scans
+			if(indicesChecked.find(i) == indicesChecked.end())
+			{
+				std::vector<int> kIndices;
+				std::vector<float> kDistances;
+				tree->radiusSearch(cloud->at(i), radius, kIndices, kDistances);
+
+				std::set<int> cloudIndices;
+				const Transform & currentT = transforms.at(i);
+				Eigen::Vector3f vA = util3d::transformToEigen3f(currentT).rotation()*Eigen::Vector3f(1,0,0);
+				for(unsigned int j=0; j<kIndices.size(); ++j)
+				{
+					if(indicesChecked.find(kIndices[j]) == indicesChecked.end())
+					{
+						const Transform & checkT = transforms.at(kIndices[j]);
+						// same orientation?
+						Eigen::Vector3f vB = util3d::transformToEigen3f(checkT).rotation()*Eigen::Vector3f(1,0,0);
+						double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
+						if(a <= angle)
+						{
+							cloudIndices.insert(kIndices[j]);
+						}
+					}
+				}
+
+				bool firstAdded = false;
+				for(std::set<int>::iterator iter = cloudIndices.begin(); iter!=cloudIndices.end(); ++iter)
+				{
+					if(!firstAdded)
+					{
+						indicesKept.insert(*iter);
+						firstAdded = true;
+					}
+					indicesChecked.insert(*iter);
+				}
+			}
+		}
+
+		//pcl::IndicesPtr indicesOut(new std::vector<int>);
+		//indicesOut->insert(indicesOut->end(), indicesKept.begin(), indicesKept.end());
+		UINFO("Cloud filtered In = %d, Out = %d", cloud->size(), indicesKept.size());
+		//pcl::io::savePCDFile("duplicateIn.pcd", *cloud);
+		//pcl::io::savePCDFile("duplicateOut.pcd", *cloud, *indicesOut);
+
+		std::map<int, Transform> keptPoses;
+		for(std::set<int>::iterator iter = indicesKept.begin(); iter!=indicesKept.end(); ++iter)
+		{
+			keptPoses.insert(std::make_pair(names.at(*iter), transforms.at(*iter)));
+		}
+
+		return keptPoses;
+	}
+	else
+	{
+		return poses;
+	}
+}
+
+/**
+ * Create 2d Occupancy grid (CV_8S)
+ * -1 = unknown
+ * 0 = empty space
+ * 100 = obstacle
+ * @param poses
+ * @param scans
+ * @param cellSize m
+ * @param unknownSpaceFilled if false no fill, otherwise a virtual laser sweeps the unknown space from each pose (stopping on detected obstacle)
+ * @param xMin
+ * @param yMin
+ */
 cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans,
-		float delta,
+		float cellSize,
+		bool unknownSpaceFilled,
 		float & xMin,
 		float & yMin)
 {
@@ -1826,25 +1922,103 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		float xMax = max.x+1.0f;
 		float yMax = max.y+1.0f;
 
-		map = cv::Mat::ones((yMax - yMin) / delta, (xMax - xMin) / delta, CV_8S)*-1;
+		//UTimer timer;
+
+		map = cv::Mat::ones((yMax - yMin) / cellSize, (xMax - xMin) / cellSize, CV_8S)*-1;
+		std::vector<float> maxSquaredLength(localScans.size(), 0.0f);
+		int j=0;
 		for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
 		{
+			const Transform & pose = poses.at(iter->first);
+			cv::Point2i start((pose.x()-xMin)/cellSize + 0.5f, (pose.y()-yMin)/cellSize + 0.5f);
 			for(unsigned int i=0; i<iter->second->size(); ++i)
 			{
-				const Transform & pose = poses.at(iter->first);
-				cv::Point2i start((pose.x()-xMin)/delta + 0.5f, (pose.y()-yMin)/delta + 0.5f);
-				cv::Point2i end((iter->second->points[i].x-xMin)/delta + 0.5f, (iter->second->points[i].y-yMin)/delta + 0.5f);
-
-				rayTrace(start, end, map); // trace free space
-
+				cv::Point2i end((iter->second->points[i].x-xMin)/cellSize + 0.5f, (iter->second->points[i].y-yMin)/cellSize + 0.5f);
 				map.at<char>(end.y, end.x) = 100; // obstacle
+				rayTrace(start, end, map, true); // trace free space
+
+				float dx = iter->second->points[i].x - pose.x();
+				float dy = iter->second->points[i].y - pose.y();
+				float l = dx*dx + dy*dy;
+				if(l > maxSquaredLength[j])
+				{
+					maxSquaredLength[j] = l;
+				}
+			}
+			++j;
+		}
+		//UWARN("timer=%fs", timer.ticks());
+
+		// now fill unknown spaces
+		if(unknownSpaceFilled)
+		{
+			j=0;
+			for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
+			{
+				if(iter->second->size() > 1 && maxSquaredLength[j] > 0.0f)
+				{
+					float maxLength = sqrt(maxSquaredLength[j]);
+					if(maxLength > cellSize)
+					{
+						// compute angle
+						float a = (CV_PI/2.0f) /  (maxLength / cellSize);
+						//UWARN("a=%f PI/256=%f", a, CV_PI/256.0f);
+						UASSERT_MSG(a >= 0 && a < 5.0f*CV_PI/8.0f, uFormat("a=%f length=%f cell=%f", a, maxLength, cellSize).c_str());
+
+						const Transform & pose = poses.at(iter->first);
+						cv::Point2i start((pose.x()-xMin)/cellSize + 0.5f, (pose.y()-yMin)/cellSize + 0.5f);
+
+						//UWARN("maxLength = %f", maxLength);
+						//rotate counterclockwise from the first point until we pass the last point
+						cv::Mat rotation = (cv::Mat_<float>(2,2) << cos(a), -sin(a),
+																	 sin(a), cos(a));
+						cv::Mat origin(2,1,CV_32F), endFirst(2,1,CV_32F), endLast(2,1,CV_32F);
+						origin.at<float>(0) = pose.x();
+						origin.at<float>(1) = pose.y();
+						endFirst.at<float>(0) = iter->second->points[0].x;
+						endFirst.at<float>(1) = iter->second->points[0].y;
+						endLast.at<float>(0) = iter->second->points[iter->second->points.size()-1].x;
+						endLast.at<float>(1) = iter->second->points[iter->second->points.size()-1].y;
+						//UWARN("origin = %f %f", origin.at<float>(0), origin.at<float>(1));
+						//UWARN("endFirst = %f %f", endFirst.at<float>(0), endFirst.at<float>(1));
+						//UWARN("endLast = %f %f", endLast.at<float>(0), endLast.at<float>(1));
+						cv::Mat tmp = (endFirst - origin);
+						cv::Mat endRotated = rotation*((tmp/cv::norm(tmp))*maxLength) + origin;
+						cv::Mat endLastVector(3,1,CV_32F), endRotatedVector(3,1,CV_32F);
+						endLastVector.at<float>(0) = endLast.at<float>(0) - origin.at<float>(0);
+						endLastVector.at<float>(1) = endLast.at<float>(1) - origin.at<float>(1);
+						endLastVector.at<float>(2) = 0.0f;
+						endRotatedVector.at<float>(0) = endRotated.at<float>(0) - origin.at<float>(0);
+						endRotatedVector.at<float>(1) = endRotated.at<float>(1) - origin.at<float>(1);
+						endRotatedVector.at<float>(2) = 0.0f;
+						//UWARN("endRotated = %f %f", endRotated.at<float>(0), endRotated.at<float>(1));
+						while(endRotatedVector.cross(endLastVector).at<float>(2) > 0.0f)
+						{
+							cv::Point2i end((endRotated.at<float>(0)-xMin)/cellSize + 0.5f, (endRotated.at<float>(1)-yMin)/cellSize + 0.5f);
+							//end must be inside the grid
+							end.x = end.x < 0?0:end.x;
+							end.x = end.x >= map.cols?map.cols-1:end.x;
+							end.y = end.y < 0?0:end.y;
+							end.y = end.y >= map.rows?map.rows-1:end.y;
+							rayTrace(start, end, map, true); // trace free space
+
+							// next point
+							endRotated = rotation*(endRotated - origin) + origin;
+							endRotatedVector.at<float>(0) = endRotated.at<float>(0) - origin.at<float>(0);
+							endRotatedVector.at<float>(1) = endRotated.at<float>(1) - origin.at<float>(1);
+							//UWARN("endRotated = %f %f", endRotated.at<float>(0), endRotated.at<float>(1));
+						}
+					}
+				}
+				++j;
+				//UWARN("timer=%fs", timer.ticks());
 			}
 		}
 	}
 	return map;
 }
 
-void rayTrace(const cv::Point2i & start, const cv::Point2i & end, cv::Mat & grid)
+void rayTrace(const cv::Point2i & start, const cv::Point2i & end, cv::Mat & grid, bool stopOnObstacle)
 {
 	UASSERT_MSG(start.x >= 0 && start.x < grid.cols, uFormat("start.x=%d grid.cols=%d", start.x, grid.cols).c_str());
 	UASSERT_MSG(start.y >= 0 && start.y < grid.rows, uFormat("start.y=%d grid.rows=%d", start.y, grid.rows).c_str());
@@ -1852,46 +2026,50 @@ void rayTrace(const cv::Point2i & start, const cv::Point2i & end, cv::Mat & grid
 	UASSERT_MSG(end.y >= 0 && end.y < grid.rows, uFormat("end.x=%d grid.cols=%d", end.y, grid.rows).c_str());
 
 	cv::Point2i ptA, ptB;
-	if(start.x > end.x)
-	{
-		ptA = end;
-		ptB = start;
-	}
-	else
-	{
-		ptA = start;
-		ptB = end;
-	}
+	ptA = start;
+	ptB = end;
 
 	float slope = float(ptB.y - ptA.y)/float(ptB.x - ptA.x);
 	float b = ptA.y - slope*ptA.x;
 
-
-	//ROS_WARN("start=%d,%d end=%d,%d", ptA.x, ptA.y, ptB.x, ptB.y);
+	//UWARN("start=%d,%d end=%d,%d", ptA.x, ptA.y, ptB.x, ptB.y);
 
 	//ROS_WARN("y = %f*x + %f", slope, b);
-
-	for(int x=ptA.x; x<ptB.x; ++x)
+	for(int x=ptA.x; ptA.x<ptB.x?x<ptB.x:x>ptB.x; ptA.x<ptB.x?++x:--x)
 	{
-		float lowerbound = float(x)*slope + b;
-		float upperbound = float(x+1)*slope + b;
+		int lowerbound = float(x)*slope + b;
+		int upperbound = float(ptA.x<ptB.x?x+1:x-1)*slope + b;
 
 		if(lowerbound > upperbound)
 		{
-			float tmp = lowerbound;
+			int tmp = lowerbound;
 			lowerbound = upperbound;
 			upperbound = tmp;
 		}
 
 		//ROS_WARN("lowerbound=%f upperbound=%f", lowerbound, upperbound);
-		UASSERT_MSG(lowerbound >= 0 && lowerbound < grid.rows, uFormat("lowerbound=%f grid.cols=%d x=%d slope=%f b=%f", lowerbound, grid.cols, x, slope, b).c_str());
-		UASSERT_MSG(upperbound >= 0 && upperbound < grid.rows, uFormat("upperbound=%f grid.cols=%d x+1=%d slope=%f b=%f", upperbound, grid.cols, x+1, slope, b).c_str());
+		UASSERT_MSG(lowerbound >= 0 && lowerbound < grid.rows, uFormat("lowerbound=%f grid.rows=%d x=%d slope=%f b=%f x=%f", lowerbound, grid.rows, x, slope, b, x).c_str());
+		UASSERT_MSG(upperbound >= 0 && upperbound < grid.rows, uFormat("upperbound=%f grid.rows=%d x+1=%d slope=%f b=%f x=%f", upperbound, grid.rows, x+1, slope, b, x).c_str());
+		// verify if there is no obstacle
+		bool stopped = false;
+		if(stopOnObstacle)
+		{
+			for(int y = lowerbound; y<=(int)upperbound; ++y)
+			{
+				if(grid.at<char>(y, x) == 100)
+				{
+					stopped = true;
+					break;
+				}
+			}
+		}
+		if(stopped)
+		{
+			break;
+		}
 		for(int y = lowerbound; y<=(int)upperbound; ++y)
 		{
-			//if(grid.at<char>(y, x) == -1)
-			{
-				grid.at<char>(y, x) = 0; // free space
-			}
+			grid.at<char>(y, x) = 0; // free space
 		}
 	}
 }
