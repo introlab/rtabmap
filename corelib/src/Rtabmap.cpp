@@ -2228,18 +2228,18 @@ void Rtabmap::getGraph(
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> & constraints,
 		bool optimized,
-		bool full)
+		bool global)
 {
 	if(_memory && _memory->getLastWorkingSignature())
 	{
 		if(optimized)
 		{
-			this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), full, poses, &constraints);
+			this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), global, poses, &constraints);
 		}
 		else
 		{
-			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, full?-1:0, true);
-			_memory->getMetricConstraints(uKeys(ids), poses, constraints, full);
+			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
+			_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
 		}
 	}
 }

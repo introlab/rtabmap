@@ -108,7 +108,7 @@ public:
 	void getGraph(std::map<int, Transform> & poses,
 			std::multimap<int, Link> & constraints,
 			bool optimized,
-			bool full);
+			bool global);
 
 	std::map<int, Transform> getOptimizedWMPosesInRadius(int fromId, int maxNearestNeighbors, float radius, int maxDiffID, int & nearestId) const;
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
