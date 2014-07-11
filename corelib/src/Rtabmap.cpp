@@ -1962,8 +1962,6 @@ void Rtabmap::optimizeCurrentMap(
 		if(!_optimizeFromGraphEnd && ids.size() > 1)
 		{
 			UTimer timer;
-			UDEBUG("Optimize from the first location (%d) instead of the last (%d) "
-				   "in the local graph. Recomputing neighbors depth...");
 
 			int first = ids.begin()->first;
 			ids = _memory->getNeighborsId(first, 0, lookInDatabase?-1:0, true);

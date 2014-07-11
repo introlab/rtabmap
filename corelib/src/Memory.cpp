@@ -755,7 +755,7 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 
 		for(std::list<int>::iterator jter = curentMarginList.begin(); jter!=curentMarginList.end(); ++jter)
 		{
-			if(ids.insert(std::pair<int, int>(*jter, m)).second)
+			if(ids.find(*jter) == ids.end())
 			{
 				//UDEBUG("Added %d with margin %d", *jter, m);
 				// Look up in STM/WM if all ids are here, if not... load them from the database
@@ -768,6 +768,8 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 				const std::map<int, Transform> * childLoopClosureIds = &tmpChildLoopClosureIds;
 				if(s)
 				{
+					ids.insert(std::pair<int, int>(*jter, m));
+
 					neighborIds = &s->getNeighbors();
 
 					if(!ignoreLoopIds)
@@ -778,6 +780,8 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 				}
 				else if(maxCheckedInDatabase == -1 || (maxCheckedInDatabase > 0 && _dbDriver && nbLoadedFromDb < maxCheckedInDatabase))
 				{
+					ids.insert(std::pair<int, int>(*jter, m));
+
 					UTimer timer;
 					_dbDriver->loadNeighbors(*jter, tmpNeighborIds);
 					if(!ignoreLoopIds)
