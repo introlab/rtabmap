@@ -393,7 +393,8 @@ bool RTABMAP_EXP loadTOROGraph(const std::string & fileName,
 std::map<int, Transform> RTABMAP_EXP radiusPosesFiltering(
 		const std::map<int, Transform> & poses,
 		float radius,
-		float angle);
+		float angle,
+		bool keepLatest = true);
 
 cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans,

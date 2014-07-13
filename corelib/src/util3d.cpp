@@ -1793,7 +1793,7 @@ bool loadTOROGraph(const std::string & fileName,
 }
 
 
-std::map<int, Transform> radiusPosesFiltering(const std::map<int, Transform> & poses, float radius, float angle)
+std::map<int, Transform> radiusPosesFiltering(const std::map<int, Transform> & poses, float radius, float angle, bool keepLatest)
 {
 	if(poses.size() > 1 && radius > 0.0f && angle>0.0f)
 	{
@@ -1841,15 +1841,31 @@ std::map<int, Transform> radiusPosesFiltering(const std::map<int, Transform> & p
 					}
 				}
 
-				bool firstAdded = false;
-				for(std::set<int>::iterator iter = cloudIndices.begin(); iter!=cloudIndices.end(); ++iter)
+				if(keepLatest)
 				{
-					if(!firstAdded)
+					bool lastAdded = false;
+					for(std::set<int>::reverse_iterator iter = cloudIndices.rbegin(); iter!=cloudIndices.rend(); ++iter)
 					{
-						indicesKept.insert(*iter);
-						firstAdded = true;
+						if(!lastAdded)
+						{
+							indicesKept.insert(*iter);
+							lastAdded = true;
+						}
+						indicesChecked.insert(*iter);
 					}
-					indicesChecked.insert(*iter);
+				}
+				else
+				{
+					bool firstAdded = false;
+					for(std::set<int>::iterator iter = cloudIndices.begin(); iter!=cloudIndices.end(); ++iter)
+					{
+						if(!firstAdded)
+						{
+							indicesKept.insert(*iter);
+							firstAdded = true;
+						}
+						indicesChecked.insert(*iter);
+					}
 				}
 			}
 		}

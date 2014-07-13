@@ -773,7 +773,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		}
 
 		_ui->groupBox_poseFiltering->setChecked(false);
-		_ui->doubleSpinBox_cloudFilterRadius->setValue(0.5);
+		_ui->doubleSpinBox_cloudFilterRadius->setValue(0.1);
 		_ui->doubleSpinBox_cloudFilterAngle->setValue(30);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_logging1->objectName())
