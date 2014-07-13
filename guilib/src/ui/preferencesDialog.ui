@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-457</y>
             <width>709</width>
-            <height>853</height>
+            <height>1140</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>17</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -4570,7 +4570,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <widget class="QLabel" name="label_151">
                          <property name="text">
                           <string>Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). 
-Warning when set to false: when some nodes are transfered, the first referential of the local may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).</string>
+Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
