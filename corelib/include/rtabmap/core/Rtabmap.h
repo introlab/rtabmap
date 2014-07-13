@@ -178,7 +178,7 @@ private:
 
 	std::map<int, Transform> _optimizedPoses;
 	std::multimap<int, Link> _constraints;
-	Transform _mapCorrection; // for localization mode
+	Transform _mapCorrection;
 	Transform _mapTransform; // for localization mode
 };
 

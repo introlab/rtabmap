@@ -1235,7 +1235,6 @@ bool Rtabmap::process(const Image & image)
 	// Update loop closure links
 	// (updated: place this after retrieval to be sure that neighbors of the loop closure are in RAM)
 	//=============================================================
-	// Make the new one the parent of the old one
 	if(_lcHypothesisId>0)
 	{
 		//Compute transform if metric data are present
@@ -1268,6 +1267,7 @@ bool Rtabmap::process(const Image & image)
 		}
 		if(!rejectedHypothesis)
 		{
+			// Make the new one the parent of the old one
 			rejectedHypothesis = !_memory->addLoopClosureLink(_lcHypothesisId, signature->id(), transform, true);
 		}
 
@@ -1277,22 +1277,10 @@ bool Rtabmap::process(const Image & image)
 		}
 		else
 		{
-			// used for localization mode
-			_mapTransform.setIdentity();
 			const Signature * oldS = _memory->getSignature(_lcHypothesisId);
 			UASSERT(oldS != 0);
-			if(oldS->mapId() != signature->mapId())
-			{
-				// New map -> old map
-				_mapTransform = oldS->getPose() * transform.inverse() * signature->getPose().inverse();
-
-				UINFO("Adding loop closure between %d and %d which don't belong to the same map (%d vs %d). "
-					  "Add map transform between map %d and %d (%s).",
-					  oldS->id(), signature->id(),
-					  oldS->mapId(), signature->mapId(),
-					  oldS->mapId(), signature->mapId(),
-					  _mapTransform.prettyPrint().c_str());
-			}
+			// Old map -> new map, used for localization correction on loop closure
+			_mapTransform = oldS->getPose() * transform.inverse() * signature->getPose().inverse();
 		}
 	}
 	timeAddLoopClosureLink = timer.ticks();
@@ -1332,6 +1320,11 @@ bool Rtabmap::process(const Image & image)
 						localSpaceNearestId,
 						t.prettyPrint().c_str());
 				_memory->addLoopClosureLink(localSpaceNearestId, signature->id(), t, false);
+
+				// Old map -> new map, used for localization correction on loop closure
+				const Signature * oldS = _memory->getSignature(localSpaceNearestId);
+				UASSERT(oldS != 0);
+				_mapTransform = oldS->getPose() * t.inverse() * signature->getPose().inverse();
 			}
 		}
 	}
@@ -1356,6 +1349,7 @@ bool Rtabmap::process(const Image & image)
 
 			// Update map correction, it should be identify when optimizing from the last node
 			_mapCorrection = _optimizedPoses.at(signature->id()) * signature->getPose().inverse();
+			_mapTransform.setIdentity(); // reset mapTransform (used for localization only)
 			if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
 			{
 				UERROR("Map correction should be identity when optimizing from the last node. T=%s", _mapCorrection.prettyPrint().c_str());
@@ -1369,21 +1363,15 @@ bool Rtabmap::process(const Image & image)
 			if(signaturesRetrieved.size() || _optimizedPoses.find(oldId) == _optimizedPoses.end())
 			{
 				// update optimized poses
-				optimizeCurrentMap(_retrievedId, false, _optimizedPoses, &_constraints);
+				optimizeCurrentMap(oldId, false, _optimizedPoses, &_constraints);
 			}
+			UASSERT(_optimizedPoses.find(oldId) != _optimizedPoses.end());
 
-			if(_optimizedPoses.find(oldId) == _optimizedPoses.end())
-			{
-				UERROR("Cannot find optimized pose for %d!?!?", oldId);
-			}
-			else
-			{
-				// Localization mode! only update map correction
-				const Signature * oldS = _memory->getSignature(oldId);
-				UASSERT(oldS != 0);
-				Transform correction = _optimizedPoses.at(oldId) * oldS->getPose().inverse();
-				_mapCorrection = correction * _mapTransform;
-			}
+			// Localization mode! only update map correction
+			const Signature * oldS = _memory->getSignature(oldId);
+			UASSERT(oldS != 0);
+			Transform correction = _optimizedPoses.at(oldId) * oldS->getPose().inverse();
+			_mapCorrection = correction * _mapTransform;
 		}
 		else
 		{
