@@ -2809,8 +2809,8 @@ void MainWindow::savePointClouds()
 	int button = QMessageBox::question(this,
 			tr("One or multiple files?"),
 			tr("Merge all clouds together?"
-			   "\n\nNote that all saving parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
-			   "Preferences -> GUI -> 3D Rendering under Saving column.")
+			   "\n\nNote that all cloud generation parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
+			   "Preferences -> GUI -> 3D Rendering under Exporting column.")
 			   .arg(_preferencesDialog->getCloudDecimation(2))
 			   .arg(_preferencesDialog->getCloudVoxelSize(2))
 			   .arg(_preferencesDialog->getCloudMaxDepth(2)),
@@ -2882,8 +2882,8 @@ void MainWindow::saveMeshes()
 			tr("Merge all clouds together before surface reconstruction?\n"
 			   " Yes: Output a single mesh for the merged clouds.\n"
 			   " No: Output a mesh for each cloud."
-			   "\n\nNote that all saving parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
-			   "Preferences -> GUI -> 3D Rendering under Saving column.")
+			   "\n\nNote that all cloud generation parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
+			   "Preferences -> GUI -> 3D Rendering under Exporting column.")
 			   .arg(_preferencesDialog->getCloudDecimation(2))
 			   .arg(_preferencesDialog->getCloudVoxelSize(2))
 			   .arg(_preferencesDialog->getCloudMaxDepth(2)),
@@ -2972,7 +2972,7 @@ void MainWindow::viewPointClouds()
 	int button = QMessageBox::question(this,
 		tr("One or multiple clouds?"),
 		tr("Merge all clouds together?"
-		   "\n\nNote that all saving parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
+		   "\n\nNote that all cloud generation parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
 		   "Preferences -> GUI -> 3D Rendering under High res view column.")
 		   .arg(_preferencesDialog->getCloudDecimation(2))
 		   .arg(_preferencesDialog->getCloudVoxelSize(2))
@@ -3076,7 +3076,7 @@ void MainWindow::viewMeshes()
 		tr("Merge all clouds together before surface reconstruction?\n"
 		   " Yes: Output a single mesh for the merged clouds.\n"
 		   " No: Output a mesh for each cloud."
-		   "\n\nNote that all saving parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
+		   "\n\nNote that all cloud generation parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
 		   "Preferences -> GUI -> 3D Rendering under High res view column.")
 		   .arg(_preferencesDialog->getCloudDecimation(2))
 		   .arg(_preferencesDialog->getCloudVoxelSize(2))

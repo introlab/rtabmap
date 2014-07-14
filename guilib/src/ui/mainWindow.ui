@@ -27,13 +27,16 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>22</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>File</string>
     </property>
+    <addaction name="actionSave_point_cloud"/>
+    <addaction name="actionSave_mesh_ply_vtk_stl"/>
+    <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
@@ -60,9 +63,7 @@
     <addaction name="actionData_recorder"/>
     <addaction name="separator"/>
     <addaction name="actionView_high_res_point_cloud"/>
-    <addaction name="actionSave_point_cloud"/>
     <addaction name="actionView_point_cloud_as_mesh"/>
-    <addaction name="actionSave_mesh_ply_vtk_stl"/>
    </widget>
    <widget class="QMenu" name="menu6">
     <property name="title">
@@ -917,7 +918,7 @@
   </action>
   <action name="actionSave_point_cloud">
    <property name="text">
-    <string>Save high-res point clouds (*.pcd *.ply *.vtk)...</string>
+    <string>Export point clouds (*.pcd *.ply *.vtk)...</string>
    </property>
   </action>
   <action name="actionDownload_all_clouds">
@@ -973,7 +974,7 @@
   </action>
   <action name="actionSave_mesh_ply_vtk_stl">
    <property name="text">
-    <string>Save meshes (*.ply *.vtk)...</string>
+    <string>Export meshes (*.ply *.vtk)...</string>
    </property>
   </action>
   <action name="actionTrigger_a_new_map">

@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-313</y>
+            <y>0</y>
             <width>709</width>
             <height>853</height>
            </rect>
@@ -458,7 +458,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                        <item row="0" column="2">
                         <widget class="QLabel" name="label_159">
                          <property name="text">
-                          <string>Saving/
+                          <string>Exporting/
 High-res view</string>
                          </property>
                          <property name="alignment">
