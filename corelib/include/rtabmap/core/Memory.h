@@ -103,6 +103,7 @@ public:
 	const Signature * getLastWorkingSignature() const;
 	int getDatabaseMemoryUsed() const; // in bytes
 	double getDbSavingTime() const;
+	int getMapId(int signatureId) const;
 	std::vector<unsigned char> getImage(int signatureId) const;
 	void getImageDepth(
 			int locationId, std::vector<unsigned char> & rgb,

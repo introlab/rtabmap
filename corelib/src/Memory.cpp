@@ -2364,6 +2364,22 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 	return false;
 }
 
+int Memory::getMapId(int signatureId) const
+{
+	int mapId = 0;
+	const Signature * s = this->getSignature(signatureId);
+	if(s)
+	{
+		mapId = s->mapId();
+	}
+	else if(_dbDriver)
+	{
+		Transform pose;
+		_dbDriver->getPose(signatureId, pose, mapId);
+	}
+	return mapId;
+}
+
 std::vector<unsigned char> Memory::getImage(int signatureId) const
 {
 	std::vector<unsigned char> image;

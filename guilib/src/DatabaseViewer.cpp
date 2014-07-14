@@ -690,6 +690,7 @@ void DatabaseViewer::update(int value,
 	{
 		view->clear();
 		int id = ids_.at(value);
+		int mapId = -1;
 		labelId->setText(QString::number(id));
 		if(id>0)
 		{
@@ -712,15 +713,14 @@ void DatabaseViewer::update(int value,
 				{
 					imgDepth = uCvMat2QImage(depthMat);
 				}
-			}
 
-			if(memory_)
-			{
 				std::multimap<int, cv::KeyPoint> words = memory_->getWords(id);
 				if(words.size())
 				{
 					view->setFeatures(words);
 				}
+
+				mapId = memory_->getMapId(id);
 			}
 
 			if(!img.isNull())
@@ -765,7 +765,14 @@ void DatabaseViewer::update(int value,
 			}
 		}
 
-		labelId->setText(QString::number(id));
+		if(mapId>=0)
+		{
+			labelId->setText(QString("%1 [%2]").arg(id).arg(mapId));
+		}
+		else
+		{
+			labelId->setText(QString::number(id));
+		}
 		view->fitInView(view->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
 	}
 	else
