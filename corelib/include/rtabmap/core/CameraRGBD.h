@@ -69,10 +69,12 @@ public:
 	//getters
 	float getImageRate() const {return _imageRate;}
 	const Transform & getLocalTransform() const {return _localTransform;}
+	float getFocalLength() const {return _focalLength;}
 
 	//setters
 	void setImageRate(float imageRate) {_imageRate = imageRate;}
 	void setLocalTransform(const Transform & localTransform) {_localTransform= localTransform;}
+	void setFocalLength(float focalLength) {_focalLength = focalLength;}
 
 protected:
 	/**
@@ -81,7 +83,8 @@ protected:
 	 * @param imageRate : image/second , 0 for fast as the camera can
 	 */
 	CameraRGBD(float imageRate = 0,
-				const Transform & localTransform = Transform::getIdentity());
+				const Transform & localTransform = Transform::getIdentity(),
+				float focalLength = 0.0f);
 
 	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant) = 0;
 
@@ -89,6 +92,7 @@ private:
 	float _imageRate;
 	Transform _localTransform;
 	UTimer * _frameRateTimer;
+	float _focalLength;
 };
 
 /////////////////////////
@@ -104,7 +108,8 @@ public:
 	// default local transform z in, x right, y down));
 	CameraOpenni(const std::string & deviceId="",
 			float imageRate = 0,
-			const Transform & localTransform = Transform::getIdentity());
+			const Transform & localTransform = Transform::getIdentity(),
+			float focalLength = 0.0f);
 	virtual ~CameraOpenni();
 
     void image_cb (
@@ -141,7 +146,8 @@ public:
 public:
 	CameraOpenNICV(bool asus = false,
 					float imageRate = 0,
-					const Transform & localTransform = Transform::getIdentity());
+					const Transform & localTransform = Transform::getIdentity(),
+					float focalLength = 0.0f);
 	virtual ~CameraOpenNICV();
 
 	virtual bool init();
@@ -167,7 +173,8 @@ public:
 
 public:
 	CameraOpenNI2(float imageRate = 0,
-					const Transform & localTransform = Transform::getIdentity());
+					const Transform & localTransform = Transform::getIdentity(),
+					float focalLength = 0.0f);
 	virtual ~CameraOpenNI2();
 
 	virtual bool init();
@@ -198,7 +205,8 @@ public:
 	// default local transform z in, x right, y down));
 	CameraFreenect(int deviceId= 0,
 					float imageRate=0.0f,
-					const Transform & localTransform = Transform::getIdentity());
+					const Transform & localTransform = Transform::getIdentity(),
+					float focalLength = 0.0f);
 	virtual ~CameraFreenect();
 
 	bool init();

@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-457</y>
+            <y>-313</y>
             <width>709</width>
-            <height>1140</height>
+            <height>853</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>17</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1019,16 +1019,6 @@ High-res view</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="14" column="2">
-                        <widget class="QCheckBox" name="checkBox_mls_save">
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="15" column="2">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_mlsRadius_save">
                          <property name="suffix">
@@ -1686,6 +1676,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <property name="text">
                             <string>OpenNI-PCL</string>
                            </property>
+                           <property name="checked">
+                            <bool>true</bool>
+                           </property>
                           </widget>
                          </item>
                          <item>
@@ -1764,6 +1757,23 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                           <widget class="QLabel" name="label_42">
                            <property name="text">
                             <string>Local transform from /base_link to /camera_link. Format (6 values): x y z roll pitch yaw.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_openniFocal">
+                           <property name="maximum">
+                            <double>1000.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_160">
+                           <property name="text">
+                            <string>Intrinsic focal length (fx=fy, K[4]). Set 0 to use the default from the camera. Examples:  ~525 for Kinect, ~545 for Xtion Pro Live.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>

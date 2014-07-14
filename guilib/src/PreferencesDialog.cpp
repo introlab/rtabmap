@@ -174,7 +174,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	_3dRenderingSmoothing.resize(2);
 	_3dRenderingSmoothing[0] = _ui->checkBox_mls;
-	_3dRenderingSmoothing[1] = _ui->checkBox_mls_save;
 
 	_3dRenderingSmoothingRadius.resize(2);
 	_3dRenderingSmoothingRadius[0] = _ui->doubleSpinBox_mlsRadius;
@@ -197,13 +196,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 			connect(_3dRenderingNormalKSearch[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 			connect(_3dRenderingGP3Radius[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-			connect(_3dRenderingSmoothing[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 			connect(_3dRenderingSmoothingRadius[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		}
 
 		if(i<1)
 		{
 			connect(_3dRenderingMeshing[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+			connect(_3dRenderingSmoothing[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		}
 	}
 
@@ -257,6 +256,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->radioButton_openni2->setEnabled(CameraOpenNI2::available());
 	connect(_ui->lineEdit_openniDevice, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniLocalTransform, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_openniFocal, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+
 
 	//Rtabmap basic
 	connect(_ui->general_doubleSpinBox_timeThr, SIGNAL(valueChanged(double)), _ui->general_doubleSpinBox_timeThr_2, SLOT(setValue(double)));
@@ -762,13 +763,13 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 				_3dRenderingNormalKSearch[i]->setValue(20);
 				_3dRenderingGP3Radius[i]->setValue(0.04);
-				_3dRenderingSmoothing[i]->setChecked(i==0?false:true);
 				_3dRenderingSmoothingRadius[i]->setValue(0.04);
 			}
 
 			if(i<1)
 			{
 				_3dRenderingMeshing[i]->setChecked(false);
+				_3dRenderingSmoothing[i]->setChecked(false);
 			}
 		}
 
@@ -806,6 +807,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->radioButton_opennicvasus->setChecked(false);
 		_ui->lineEdit_openniDevice->setText("");
 		_ui->lineEdit_openniLocalTransform->setText("0 0 0 -PI_2 0 -PI_2");
+		_ui->doubleSpinBox_openniFocal->setValue(0.0);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_rtabmap_basic0->objectName())
 	{
@@ -995,13 +997,13 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 
 			_3dRenderingNormalKSearch[i]->setValue(settings.value(tr("meshNormalKSearch%1").arg(i), _3dRenderingNormalKSearch[i]->value()).toInt());
 			_3dRenderingGP3Radius[i]->setValue(settings.value(tr("meshGP3Radius%1").arg(i), _3dRenderingGP3Radius[i]->value()).toDouble());
-			_3dRenderingSmoothing[i]->setChecked(settings.value(tr("meshSmoothing%1").arg(i), _3dRenderingSmoothing[i]->isChecked()).toBool());
 			_3dRenderingSmoothingRadius[i]->setValue(settings.value(tr("meshSmoothingRadius%1").arg(i), _3dRenderingSmoothingRadius[i]->value()).toDouble());
 		}
 
 		if(i<1)
 		{
 			_3dRenderingMeshing[i]->setChecked(settings.value(tr("meshing%1").arg(i), _3dRenderingMeshing[i]->isChecked()).toBool());
+			_3dRenderingSmoothing[i]->setChecked(settings.value(tr("meshSmoothing%1").arg(i), _3dRenderingSmoothing[i]->isChecked()).toBool());
 		}
 	}
 
@@ -1061,6 +1063,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->radioButton_opennicvasus->setChecked(settings.value("openniCvAsusType", _ui->radioButton_opennicvasus->isChecked()).toBool());
 	_ui->lineEdit_openniDevice->setText(settings.value("device",_ui->lineEdit_openniDevice->text()).toString());
 	_ui->lineEdit_openniLocalTransform->setText(settings.value("localTransform",_ui->lineEdit_openniLocalTransform->text()).toString());
+	_ui->doubleSpinBox_openniFocal->setValue(settings.value("focalLength", _ui->doubleSpinBox_openniFocal->value()).toDouble());
 	settings.endGroup(); // Openni
 }
 
@@ -1205,13 +1208,13 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath)
 
 			settings.setValue(tr("meshNormalKSearch%1").arg(i), _3dRenderingNormalKSearch[i]->value());
 			settings.setValue(tr("meshGP3Radius%1").arg(i), _3dRenderingGP3Radius[i]->value());
-			settings.setValue(tr("meshSmoothing%1").arg(i), _3dRenderingSmoothing[i]->isChecked());
 			settings.setValue(tr("meshSmoothingRadius%1").arg(i), _3dRenderingSmoothingRadius[i]->value());
 		}
 
 		if(i<1)
 		{
 			settings.setValue(tr("meshing%1").arg(i), _3dRenderingMeshing[i]->isChecked());
+			settings.setValue(tr("meshSmoothing%1").arg(i), _3dRenderingSmoothing[i]->isChecked());
 		}
 	}
 	settings.setValue("cloudFiltering", _ui->groupBox_poseFiltering->isChecked());
@@ -1270,6 +1273,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath)
 	settings.setValue("openniCvAsusType", 	_ui->radioButton_opennicvasus->isChecked());
 	settings.setValue("device", 		_ui->lineEdit_openniDevice->text());
 	settings.setValue("localTransform", _ui->lineEdit_openniLocalTransform->text());
+	settings.setValue("focalLength", _ui->doubleSpinBox_openniFocal->value());
 	settings.endGroup();
 }
 
@@ -2432,7 +2436,7 @@ bool PreferencesDialog::isCloudsShown(int index) const
 }
 bool PreferencesDialog::isCloudMeshing(int index) const
 {
-	UASSERT(index >= 0 && index <= 1);
+	UASSERT(index == 0);
 	return _3dRenderingMeshing[index]->isChecked();
 }
 double PreferencesDialog::getCloudVoxelSize(int index) const
@@ -2488,7 +2492,7 @@ double PreferencesDialog::getMeshGP3Radius(int index) const
 }
 bool PreferencesDialog::getMeshSmoothing(int index) const
 {
-	UASSERT(index >= 0 && index <= 1);
+	UASSERT(index == 0);
 	return _3dRenderingSmoothing[index]->isChecked();
 }
 double PreferencesDialog::getMeshSmoothingRadius(int index) const
@@ -2636,6 +2640,11 @@ Transform PreferencesDialog::getSourceOpenniLocalTransform() const
 	return t;
 }
 
+float PreferencesDialog::getSourceOpenniFocalLength() const
+{
+	return _ui->doubleSpinBox_openniFocal->value();
+}
+
 bool PreferencesDialog::isStatisticsPublished() const
 {
 	return _ui->general_checkBox_publishStats->isChecked();
@@ -2768,13 +2777,15 @@ void PreferencesDialog::testOdometry(int type)
 		camera = new CameraOpenni(
 			this->getSourceOpenniDevice().toStdString(),
 			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform());
+			this->getSourceOpenniLocalTransform(),
+			this->getSourceOpenniFocalLength());
 	}
 	else if(this->getSourceRGBD() == kSrcOpenNI2)
 	{
 		camera = new CameraOpenNI2(
 			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform());
+			this->getSourceOpenniLocalTransform(),
+			this->getSourceOpenniFocalLength());
 
 	}
 	else if(this->getSourceRGBD() == kSrcFreenect)
@@ -2782,14 +2793,16 @@ void PreferencesDialog::testOdometry(int type)
 		camera = new CameraFreenect(
 			this->getSourceOpenniDevice().isEmpty()?0:atoi(this->getSourceOpenniDevice().toStdString().c_str()),
 			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform());
+			this->getSourceOpenniLocalTransform(),
+			this->getSourceOpenniFocalLength());
 	}
 	else if(this->getSourceRGBD() == kSrcOpenNI_CV || this->getSourceRGBD() == kSrcOpenNI_CV_ASUS)
 	{
 		camera = new CameraOpenNICV(
 			this->getSourceRGBD() == kSrcOpenNI_CV_ASUS,
 			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform());
+			this->getSourceOpenniLocalTransform(),
+			this->getSourceOpenniFocalLength());
 	}
 	else
 	{

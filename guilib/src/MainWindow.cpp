@@ -1962,20 +1962,23 @@ void MainWindow::startDetection()
 			camera = new CameraOpenni(
 					_preferencesDialog->getSourceOpenniDevice().toStdString(),
 					_preferencesDialog->getGeneralInputRate(),
-					_preferencesDialog->getSourceOpenniLocalTransform());
+					_preferencesDialog->getSourceOpenniLocalTransform(),
+					_preferencesDialog->getSourceOpenniFocalLength());
 		}
 		else if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2)
 		{
 			camera = new CameraOpenNI2(
 					_preferencesDialog->getGeneralInputRate(),
-					_preferencesDialog->getSourceOpenniLocalTransform());
+					_preferencesDialog->getSourceOpenniLocalTransform(),
+					_preferencesDialog->getSourceOpenniFocalLength());
 		}
 		else if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcFreenect)
 		{
 			camera = new CameraFreenect(
 					_preferencesDialog->getSourceOpenniDevice().isEmpty()?0:atoi(_preferencesDialog->getSourceOpenniDevice().toStdString().c_str()),
 					_preferencesDialog->getGeneralInputRate(),
-					_preferencesDialog->getSourceOpenniLocalTransform());
+					_preferencesDialog->getSourceOpenniLocalTransform(),
+					_preferencesDialog->getSourceOpenniFocalLength());
 		}
 		else if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV ||
 				_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS)
@@ -1983,7 +1986,8 @@ void MainWindow::startDetection()
 			camera = new CameraOpenNICV(
 					_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS,
 					_preferencesDialog->getGeneralInputRate(),
-					_preferencesDialog->getSourceOpenniLocalTransform());
+					_preferencesDialog->getSourceOpenniLocalTransform(),
+					_preferencesDialog->getSourceOpenniFocalLength());
 		}
 		else
 		{
@@ -2804,8 +2808,14 @@ void MainWindow::savePointClouds()
 {
 	int button = QMessageBox::question(this,
 			tr("One or multiple files?"),
-			tr("Merge all clouds together?"),
-			QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+			tr("Merge all clouds together?"
+			   "\n\nNote that all saving parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
+			   "Preferences -> GUI -> 3D Rendering under Saving column.")
+			   .arg(_preferencesDialog->getCloudDecimation(2))
+			   .arg(_preferencesDialog->getCloudVoxelSize(2))
+			   .arg(_preferencesDialog->getCloudMaxDepth(2)),
+			QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+			QMessageBox::Yes);
 
 	if(button == QMessageBox::Yes || button == QMessageBox::No)
 	{
@@ -2820,22 +2830,45 @@ void MainWindow::savePointClouds()
 		if(button == QMessageBox::Yes)
 		{
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud(poses);
-			if(_preferencesDialog->getMeshSmoothing(1))
+			button = QMessageBox::question(
+					this,
+					tr("Smoothing..."),
+					tr("Would you want to smooth the surface using Moving "
+					   "Least Squares algorithm? (The cloud has %1 points, this "
+					   "may take a while to process!)").arg(cloud->size()),
+					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+					   QMessageBox::No);
+			if(button == QMessageBox::Yes || button == QMessageBox::No)
 			{
-				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-				_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares algorithm..."));
-				_initProgressDialog->incrementStep();
-				QApplication::processEvents();
+				if(button == QMessageBox::Yes)
+				{
+					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
+					_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
+							"[search radius=%1m]").arg(_preferencesDialog->getMeshSmoothingRadius(1)));
+					_initProgressDialog->incrementStep();
+					QApplication::processEvents();
 
-				cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
-				cloud->clear();
-				pcl::copyPointCloud(*cloudWithNormals, *cloud);
+					cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
+					cloud->clear();
+					pcl::copyPointCloud(*cloudWithNormals, *cloud);
+				}
+				clouds.insert(std::make_pair(0, cloud));
 			}
-			clouds.insert(std::make_pair(0, cloud));
 		}
 		else
 		{
-			clouds = this->createPointClouds(poses);
+			button = QMessageBox::question(
+					this,
+					tr("Smoothing..."),
+					tr("Would you want to smooth the surface using Moving "
+					   "Least Squares algorithm? (This "
+					   "may take a while to process!)"),
+					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+					   QMessageBox::No);
+			if(button == QMessageBox::Yes || button == QMessageBox::No)
+			{
+				clouds = this->createPointClouds(poses, button == QMessageBox::Yes);
+			}
 		}
 		savePointClouds(clouds);
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
@@ -2848,8 +2881,14 @@ void MainWindow::saveMeshes()
 			tr("One or multiple files?"),
 			tr("Merge all clouds together before surface reconstruction?\n"
 			   " Yes: Output a single mesh for the merged clouds.\n"
-			   " No: Output a mesh for each cloud."),
-			QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+			   " No: Output a mesh for each cloud."
+			   "\n\nNote that all saving parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
+			   "Preferences -> GUI -> 3D Rendering under Saving column.")
+			   .arg(_preferencesDialog->getCloudDecimation(2))
+			   .arg(_preferencesDialog->getCloudVoxelSize(2))
+			   .arg(_preferencesDialog->getCloudMaxDepth(2)),
+			QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+			QMessageBox::Yes);
 
 	if(button == QMessageBox::Yes || button == QMessageBox::No)
 	{
@@ -2869,33 +2908,57 @@ void MainWindow::saveMeshes()
 			QApplication::processEvents();
 
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-			if(_preferencesDialog->getMeshSmoothing(1))
+			button = QMessageBox::question(
+					this,
+					tr("Smoothing..."),
+					tr("Would you want to smooth the surface using Moving "
+					   "Least Squares algorithm? (The cloud has %1 points, this "
+					   "may take a while to process!)").arg(cloud->size()),
+					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+					   QMessageBox::No);
+			if(button == QMessageBox::Yes || button == QMessageBox::No)
 			{
-				_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares algorithm..."));
+				if(button == QMessageBox::Yes)
+				{
+					_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
+													   "[search radius=%1m]").arg(_preferencesDialog->getMeshSmoothingRadius(1)));
+					_initProgressDialog->incrementStep();
+					QApplication::processEvents();
+
+					cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
+				}
+				else
+				{
+					_initProgressDialog->appendText(tr("Computing surface normals (without smoothing)... "
+													   "[K neighbors=%1]").arg(_preferencesDialog->getMeshNormalKSearch(1)));
+					_initProgressDialog->incrementStep();
+					QApplication::processEvents();
+
+					cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(1));
+				}
+
+				_initProgressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(_preferencesDialog->getMeshGP3Radius(1)));
 				_initProgressDialog->incrementStep();
 				QApplication::processEvents();
 
-				cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
+				pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(1));
+				meshes.insert(std::make_pair(0, mesh));
 			}
-			else
-			{
-				_initProgressDialog->appendText(tr("Computing surface normals (without smoothing)..."));
-				_initProgressDialog->incrementStep();
-				QApplication::processEvents();
-
-				cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(1));
-			}
-
-			_initProgressDialog->appendText(tr("Greedy projection triangulation..."));
-			_initProgressDialog->incrementStep();
-			QApplication::processEvents();
-
-			pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(1));
-			meshes.insert(std::make_pair(0, mesh));
 		}
 		else
 		{
-			meshes = this->createMeshes(poses);
+			button = QMessageBox::question(
+					this,
+					tr("Smoothing..."),
+					tr("Would you want to smooth the surface using Moving "
+					   "Least Squares algorithm? (This "
+					   "may take a while to process!)"),
+					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+					   QMessageBox::No);
+			if(button == QMessageBox::Yes || button == QMessageBox::No)
+			{
+				meshes = this->createMeshes(poses, button == QMessageBox::Yes);
+			}
 		}
 		saveMeshes(meshes);
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
@@ -2908,8 +2971,14 @@ void MainWindow::viewPointClouds()
 {
 	int button = QMessageBox::question(this,
 		tr("One or multiple clouds?"),
-		tr("Merge all clouds together?"),
-		QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+		tr("Merge all clouds together?"
+		   "\n\nNote that all saving parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
+		   "Preferences -> GUI -> 3D Rendering under High res view column.")
+		   .arg(_preferencesDialog->getCloudDecimation(2))
+		   .arg(_preferencesDialog->getCloudVoxelSize(2))
+		   .arg(_preferencesDialog->getCloudMaxDepth(2)),
+		QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+		QMessageBox::Yes);
 
 	if(button == QMessageBox::Yes || button == QMessageBox::No)
 	{
@@ -2925,23 +2994,46 @@ void MainWindow::viewPointClouds()
 		{
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud(poses);
 
-			if(_preferencesDialog->getMeshSmoothing(1))
+			button = QMessageBox::question(
+					this,
+					tr("Smoothing..."),
+					tr("Would you want to smooth the surface using Moving "
+					   "Least Squares algorithm? (The cloud has %1 points, this "
+					   "may take a while to process!)").arg(cloud->size()),
+					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+					   QMessageBox::No);
+			if(button == QMessageBox::Yes || button == QMessageBox::No)
 			{
-				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-				_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares algorithm..."));
-				_initProgressDialog->incrementStep();
-				QApplication::processEvents();
+				if(button == QMessageBox::Yes)
+				{
+					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
+					_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
+													   "[search radius=%1m]").arg(_preferencesDialog->getMeshSmoothingRadius(1)));
+					_initProgressDialog->incrementStep();
+					QApplication::processEvents();
 
-				cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
-				cloud->clear();
-				pcl::copyPointCloud(*cloudWithNormals, *cloud);
+					cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
+					cloud->clear();
+					pcl::copyPointCloud(*cloudWithNormals, *cloud);
+				}
+
+				clouds.insert(std::make_pair(0, cloud));
 			}
-
-			clouds.insert(std::make_pair(0, cloud));
 		}
 		else
 		{
-			clouds = this->createPointClouds(poses);
+			button = QMessageBox::question(
+					this,
+					tr("Smoothing..."),
+					tr("Would you want to smooth the surface using Moving "
+					   "Least Squares algorithm? (This "
+					   "may take a while to process!)"),
+					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+					   QMessageBox::No);
+			if(button == QMessageBox::Yes || button == QMessageBox::No)
+			{
+				clouds = this->createPointClouds(poses, button == QMessageBox::Yes);
+			}
 		}
 
 		if(clouds.size())
@@ -2972,10 +3064,6 @@ void MainWindow::viewPointClouds()
 				_initProgressDialog->appendText(tr("Viewing the cloud %1 (%2 points)... done.").arg(iter->first).arg(iter->second->size()));
 			}
 		}
-		else
-		{
-			QMessageBox::warning(this, tr("Viewing clouds failed!"), tr("Clouds are empty..."));
-		}
 
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
 	}
@@ -2987,8 +3075,14 @@ void MainWindow::viewMeshes()
 		tr("One or multiple meshes?"),
 		tr("Merge all clouds together before surface reconstruction?\n"
 		   " Yes: Output a single mesh for the merged clouds.\n"
-		   " No: Output a mesh for each cloud."),
-		QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+		   " No: Output a mesh for each cloud."
+		   "\n\nNote that all saving parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
+		   "Preferences -> GUI -> 3D Rendering under High res view column.")
+		   .arg(_preferencesDialog->getCloudDecimation(2))
+		   .arg(_preferencesDialog->getCloudVoxelSize(2))
+		   .arg(_preferencesDialog->getCloudMaxDepth(2)),
+		QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+		QMessageBox::Yes);
 
 	if(button == QMessageBox::Yes || button == QMessageBox::No)
 	{
@@ -3008,33 +3102,57 @@ void MainWindow::viewMeshes()
 			QApplication::processEvents();
 
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-			if(_preferencesDialog->getMeshSmoothing(1))
+			button = QMessageBox::question(
+					this,
+					tr("Smoothing..."),
+					tr("Would you want to smooth the surface using Moving "
+					   "Least Squares algorithm? (The cloud has %1 points, this "
+					   "may take a while to process!)").arg(cloud->size()),
+					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+					   QMessageBox::No);
+			if(button == QMessageBox::Yes || button == QMessageBox::No)
 			{
-				_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares algorithm..."));
+				if(button == QMessageBox::Yes)
+				{
+					_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
+													   "[search radius=%1m]").arg(_preferencesDialog->getMeshSmoothingRadius(1)));
+					_initProgressDialog->incrementStep();
+					QApplication::processEvents();
+
+					cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
+				}
+				else
+				{
+					_initProgressDialog->appendText(tr("Computing surface normals (without smoothing)... "
+													   "[K neighbors=%1]").arg(_preferencesDialog->getMeshNormalKSearch(1)));
+					_initProgressDialog->incrementStep();
+					QApplication::processEvents();
+
+					cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(1));
+				}
+
+				_initProgressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(_preferencesDialog->getMeshGP3Radius(1)));
 				_initProgressDialog->incrementStep();
 				QApplication::processEvents();
 
-				cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
+				pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(1));
+				meshes.insert(std::make_pair(0, mesh));
 			}
-			else
-			{
-				_initProgressDialog->appendText(tr("Computing surface normals (without smoothing)..."));
-				_initProgressDialog->incrementStep();
-				QApplication::processEvents();
-
-				cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(1));
-			}
-
-			_initProgressDialog->appendText(tr("Greedy projection triangulation..."));
-			_initProgressDialog->incrementStep();
-			QApplication::processEvents();
-
-			pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(1));
-			meshes.insert(std::make_pair(0, mesh));
 		}
 		else
 		{
-			meshes = this->createMeshes(poses);
+			button = QMessageBox::question(
+					this,
+					tr("Smoothing..."),
+					tr("Would you want to smooth the surface using Moving "
+					   "Least Squares algorithm? (This "
+					   "may take a while to process!)"),
+					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+					   QMessageBox::No);
+			if(button == QMessageBox::Yes || button == QMessageBox::No)
+			{
+				meshes = this->createMeshes(poses, button == QMessageBox::Yes);
+			}
 		}
 
 		if(meshes.size())
@@ -3066,10 +3184,6 @@ void MainWindow::viewMeshes()
 				_initProgressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)... done.").arg(iter->first).arg(iter->second->polygons.size()));
 				QApplication::processEvents();
 			}
-		}
-		else
-		{
-			QMessageBox::warning(this, tr("Viewing meshes failed!"), tr("Meshes are empty..."));
 		}
 
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
@@ -3485,7 +3599,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createAssembledCloud(const st
 	return assembledCloud;
 }
 
-std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::createPointClouds(const std::map<int, Transform> & poses) const
+std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::createPointClouds(
+		const std::map<int, Transform> & poses,
+		bool applyMLS) const
 {
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 	int i=0;
@@ -3515,7 +3631,7 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::createPointCl
 
 				if(cloud->size())
 				{
-					if(_preferencesDialog->getMeshSmoothing(1))
+					if(applyMLS)
 					{
 						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
 						cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
@@ -3552,7 +3668,7 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::createPointCl
 	return clouds;
 }
 
-std::map<int, pcl::PolygonMesh::Ptr> MainWindow::createMeshes(const std::map<int, Transform> & poses) const
+std::map<int, pcl::PolygonMesh::Ptr> MainWindow::createMeshes(const std::map<int, Transform> & poses, bool applyMLS) const
 {
 	std::map<int, pcl::PolygonMesh::Ptr> meshes;
 	int i=0;
@@ -3584,7 +3700,7 @@ std::map<int, pcl::PolygonMesh::Ptr> MainWindow::createMeshes(const std::map<int
 				if(cloud->size())
 				{
 					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-					if(_preferencesDialog->getMeshSmoothing(1))
+					if(applyMLS)
 					{
 						cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
 					}

@@ -195,8 +195,8 @@ private:
 			float voxelSize,
 			int decimation,
 			float maxDepth) const;
-	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > createPointClouds(const std::map<int, Transform> & poses) const;
-	std::map<int, pcl::PolygonMesh::Ptr> createMeshes(const std::map<int, Transform> & poses) const;
+	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > createPointClouds(const std::map<int, Transform> & poses, bool applyMLS) const;
+	std::map<int, pcl::PolygonMesh::Ptr> createMeshes(const std::map<int, Transform> & poses, bool applyMLS) const;
 
 	void savePointClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds);
 	void saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes);

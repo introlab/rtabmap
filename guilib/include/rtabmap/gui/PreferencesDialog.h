@@ -159,6 +159,7 @@ public:
 	Src getSourceRGBD() const; 			// Openni group
 	QString getSourceOpenniDevice() const;            //Openni group
 	Transform getSourceOpenniLocalTransform() const;    //Openni group
+	float getSourceOpenniFocalLength() const; // Openni group
 
 	int getIgnoredDCComponents() const;
 

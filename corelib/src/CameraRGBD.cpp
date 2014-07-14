@@ -50,10 +50,11 @@
 namespace rtabmap
 {
 
-CameraRGBD::CameraRGBD(float imageRate, const Transform & localTransform) :
+CameraRGBD::CameraRGBD(float imageRate, const Transform & localTransform, float focalLength) :
 	_imageRate(imageRate),
 	_localTransform(localTransform),
-	_frameRateTimer(new UTimer())
+	_frameRateTimer(new UTimer()),
+	_focalLength(focalLength)
 {
 }
 
@@ -89,14 +90,18 @@ void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant
 
 	UTimer timer;
 	this->captureImage(rgb, depth, depthConstant);
+	if(_focalLength)
+	{
+		depthConstant = 1.0f/_focalLength; // override if set
+	}
 	UDEBUG("Time capturing image = %fs", timer.ticks());
 }
 
 /////////////////////////
 // CameraOpenNIPCL
 /////////////////////////
-CameraOpenni::CameraOpenni(const std::string & deviceId, float imageRate, const Transform & localTransform) :
-		CameraRGBD(imageRate, localTransform),
+CameraOpenni::CameraOpenni(const std::string & deviceId, float imageRate, const Transform & localTransform, float focalLength) :
+		CameraRGBD(imageRate, localTransform, focalLength),
 		interface_(0),
 		deviceId_(deviceId),
 		depthConstant_(0.0f)
@@ -205,8 +210,8 @@ bool CameraOpenNICV::available()
 	return cv::getBuildInformation().find("OpenNI:                      YES") != std::string::npos;
 }
 
-CameraOpenNICV::CameraOpenNICV(bool asus, float imageRate, const rtabmap::Transform & localTransform) :
-	CameraRGBD(imageRate, localTransform),
+CameraOpenNICV::CameraOpenNICV(bool asus, float imageRate, const rtabmap::Transform & localTransform, float focalLength) :
+	CameraRGBD(imageRate, localTransform, focalLength),
 	_asus(asus),
 	_depthFocal(0.0f)
 {
@@ -299,8 +304,8 @@ bool CameraOpenNI2::available()
 #endif
 }
 
-CameraOpenNI2::CameraOpenNI2(float imageRate, const rtabmap::Transform & localTransform) :
-	CameraRGBD(imageRate, localTransform),
+CameraOpenNI2::CameraOpenNI2(float imageRate, const rtabmap::Transform & localTransform, float focalLength) :
+	CameraRGBD(imageRate, localTransform, focalLength),
 #ifdef WITH_OPENNI2
 	_device(new openni::Device()),
 	_color(new openni::VideoStream()),
@@ -685,8 +690,8 @@ bool CameraFreenect::available()
 #endif
 }
 
-CameraFreenect::CameraFreenect(int deviceId, float imageRate, const Transform & localTransform) :
-		CameraRGBD(imageRate, localTransform),
+CameraFreenect::CameraFreenect(int deviceId, float imageRate, const Transform & localTransform, float focalLength) :
+		CameraRGBD(imageRate, localTransform, focalLength),
 		deviceId_(deviceId),
 		ctx_(0),
 		freenectDevice_(0)
