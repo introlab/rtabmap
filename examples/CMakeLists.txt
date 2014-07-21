@@ -7,6 +7,4 @@ ELSE()
    MESSAGE(STATUS "RTAB-Map GUI lib is not built, the RGBDMapping example will not be built...")
 ENDIF()
 
-ADD_SUBDIRECTORY( CameraRGBD )
-
 

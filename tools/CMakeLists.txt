@@ -5,6 +5,7 @@ ADD_SUBDIRECTORY( VocabularyComparison )
 ADD_SUBDIRECTORY( OdometryViewer )
 ADD_SUBDIRECTORY( DataRecorder )
 ADD_SUBDIRECTORY( ExtractObject )
+ADD_SUBDIRECTORY( CameraRGBD )
 
 IF(TARGET rtabmap_gui)
 	ADD_SUBDIRECTORY( DatabaseViewer )
