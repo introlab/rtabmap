@@ -38,9 +38,13 @@ int main(int argc, char * argv[])
 	ULogger::setLevel(ULogger::kInfo);
 
 	int driver = 0;
-	if(argc > 1)
+	if(argc < 2)
 	{
-		driver = atoi(argv[1]);
+		showUsage();
+	}
+	else
+	{
+		driver = atoi(argv[argc-1]);
 		if(driver < 0 || driver > 4)
 		{
 			UERROR("driver should be between 0 and 4.");
