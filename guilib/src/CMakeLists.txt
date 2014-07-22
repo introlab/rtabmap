@@ -12,10 +12,12 @@ SET(headers_ui
 	./StatsToolBox.h
 	./DetailedProgressDialog.h
 	./utilite/UPlot.h
+	./utilite/UImageView.h
 	../include/${PROJECT_PREFIX}/gui/CloudViewer.h
 	../include/${PROJECT_PREFIX}/gui/OdometryViewer.h
 	../include/${PROJECT_PREFIX}/gui/LoopClosureViewer.h
 	../include/${PROJECT_PREFIX}/gui/DataRecorder.h
+	../include/${PROJECT_PREFIX}/gui/CalibrationDialog.h
 	./ExportDialog.h
 	./MapVisibilityWidget.h
 )
@@ -28,6 +30,7 @@ SET(uis
     ./ui/DatabaseViewer.ui
     ./ui/loopClosureViewer.ui
     ./ui/exportDialog.ui
+    ./ui/calibrationDialog.ui
 )
 
 SET(qrc 
@@ -63,6 +66,7 @@ SET(SRC_FILES
 	./OdometryViewer.cpp
 	./LoopClosureViewer.cpp
 	./DataRecorder.cpp
+	./CalibrationDialog.cpp
 	./ExportDialog.cpp
 	./MapVisibilityWidget.cpp
 	./GraphViewer.cpp
