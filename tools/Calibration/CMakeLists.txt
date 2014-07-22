@@ -1,0 +1,29 @@
+SET(INCLUDE_DIRS
+	${PROJECT_SOURCE_DIR}/corelib/include
+	${PROJECT_SOURCE_DIR}/guilib/include
+	${PROJECT_SOURCE_DIR}/utilite/include
+    ${OpenCV_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRS}
+)
+
+INCLUDE(${QT_USE_FILE})
+
+SET(LIBRARIES
+	${OpenCV_LIBRARIES} 
+	${PCL_LIBRARIES}
+	${QT_LIBRARIES} 
+)
+
+add_definitions(${PCL_DEFINITIONS})
+
+INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
+
+ADD_EXECUTABLE(calibration main.cpp)
+TARGET_LINK_LIBRARIES(calibration rtabmap_core rtabmap_gui rtabmap_utilite ${LIBRARIES})
+
+SET_TARGET_PROPERTIES( calibration 
+  PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-calibration)
+  
+INSTALL(TARGETS calibration
+		RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT runtime
+		BUNDLE DESTINATION "${CMAKE_BUNDLE_LOCATION}" COMPONENT runtime)
