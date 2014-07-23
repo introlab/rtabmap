@@ -1183,7 +1183,7 @@ Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 	//icp.setTransformationEpsilon (transformationEpsilon);
 	// Set the euclidean distance difference epsilon (criterion 3)
 	//icp.setEuclideanFitnessEpsilon (1);
-	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
+	icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
 
 	// Perform the alignment
 	pcl::PointCloud<pcl::PointXYZ> cloud_source_registered;
@@ -1220,7 +1220,7 @@ Transform icpPointToPlane(
 	//icp.setTransformationEpsilon (transformationEpsilon);
 	// Set the euclidean distance difference epsilon (criterion 3)
 	//icp.setEuclideanFitnessEpsilon (1);
-	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
+	icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
 
 	// Perform the alignment
 	pcl::PointCloud<pcl::PointNormal> cloud_source_registered;
@@ -1256,7 +1256,7 @@ Transform icp2D(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 	//icp.setTransformationEpsilon (transformationEpsilon);
 	// Set the euclidean distance difference epsilon (criterion 3)
 	//icp.setEuclideanFitnessEpsilon (1);
-	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
+	icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
 
 	// Perform the alignment
 	pcl::PointCloud<pcl::PointXYZ> cloud_source_registered;
