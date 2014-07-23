@@ -107,6 +107,8 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_initGuess, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 
+	ui_->constraintsViewer->setCameraLockZ(false);
+
 }
 
 DatabaseViewer::~DatabaseViewer()
@@ -505,6 +507,7 @@ void DatabaseViewer::view3DMap()
 
 						QVBoxLayout *layout = new QVBoxLayout();
 						layout->addWidget(viewer);
+						viewer->setCameraLockZ(false);
 						window->setLayout(layout);
 
 						window->showNormal();
