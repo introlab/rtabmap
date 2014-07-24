@@ -17,7 +17,7 @@ class OdometryEvent : public UEvent
 {
 public:
 	OdometryEvent(
-		const Image & data, int quality = 0) :
+		const Image & data, int quality = -1) :
 			_data(data),
 			_quality(quality) {}
 	virtual ~OdometryEvent() {}

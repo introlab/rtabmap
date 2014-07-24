@@ -550,7 +550,7 @@ void MainWindow::processOdometry(const rtabmap::Image & data, int quality)
 
 		pose = _lastOdomPose;
 	}
-	else if(quality &&
+	else if(quality>=0 &&
 			_preferencesDialog->getOdomQualityWarnThr() &&
 			quality < _preferencesDialog->getOdomQualityWarnThr())
 	{
@@ -562,7 +562,10 @@ void MainWindow::processOdometry(const rtabmap::Image & data, int quality)
 		UDEBUG("odom ok");
 		_ui->widget_cloudViewer->setBackgroundColor(Qt::black);
 	}
-	_ui->statsToolBox->updateStat("/Odom inliers/", (float)data.id(), (float)quality);
+	if(quality >= 0)
+	{
+		_ui->statsToolBox->updateStat("/Odom inliers/", (float)data.id(), (float)quality);
+	}
 	if(!pose.isNull())
 	{
 		_lastOdomPose = pose;

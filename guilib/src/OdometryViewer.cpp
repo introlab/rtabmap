@@ -23,6 +23,7 @@ namespace rtabmap {
 
 OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, int qualityWarningThr, QWidget * parent) :
 		CloudViewer(parent),
+		dataQuality_(-1),
 		lastOdomPose_(Transform::getIdentity()),
 		maxClouds_(maxClouds),
 		voxelSize_(voxelSize),
@@ -50,14 +51,14 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, i
 void OdometryViewer::processData()
 {
 	rtabmap::Image data;
-	int quality = 0;
+	int quality = -1;
 	dataMutex_.lock();
 	if(data_.size())
 	{
 		data = data_.back();
 		data_.clear();
 		quality = dataQuality_;
-		dataQuality_ = 0;
+		dataQuality_ = -1;
 	}
 	dataMutex_.unlock();
 
@@ -109,7 +110,7 @@ void OdometryViewer::processData()
 
 			this->updateCameraPosition(data.pose());
 
-			if(qualityWarningThr_ && quality && quality < qualityWarningThr_)
+			if(qualityWarningThr_ && quality>=0 && quality < qualityWarningThr_)
 			{
 				this->setBackgroundColor(Qt::darkYellow);
 			}
