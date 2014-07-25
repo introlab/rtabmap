@@ -24,6 +24,7 @@
 #include <opencv2/core/core.hpp>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UThread.h>
+#include <stdio.h>
 
 /**
  * Convert a cv::Mat image to a QImage. Support 
