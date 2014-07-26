@@ -37,7 +37,15 @@ CalibrationDialog::CalibrationDialog(QWidget * parent) :
 
 	connect(ui_->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
 	connect(ui_->pushButton_restart, SIGNAL(clicked()), this, SLOT(restart()));
-	connect(ui_->pushButton_exit, SIGNAL(clicked()), this, SLOT(exit()));
+
+	connect(ui_->spinBox_boardWidth, SIGNAL(valueChanged(int)), this, SLOT(setBoardWidth(int)));
+	connect(ui_->spinBox_boardHeight, SIGNAL(valueChanged(int)), this, SLOT(setBoardHeight(int)));
+	connect(ui_->doubleSpinBox_squareSize, SIGNAL(valueChanged(double)), this, SLOT(setSquareSize(double)));
+
+	connect(ui_->buttonBox, SIGNAL(rejected()), this, SLOT(reject()));
+	connect(ui_->buttonBox, SIGNAL(accepted()), this, SLOT(accept()));
+
+	ui_->image_view->setFocus();
 
 	ui_->progressBar_count->setMaximum(COUNT_MIN);
 	ui_->progressBar_count->setFormat("%v");
@@ -49,6 +57,33 @@ CalibrationDialog::~CalibrationDialog()
 {
 	this->unregisterFromEventsManager();
 	delete ui_;
+}
+
+void CalibrationDialog::setBoardWidth(int width)
+{
+	if(width != boardSize_.width)
+	{
+		boardSize_.width = width;
+		this->restart();
+	}
+}
+
+void CalibrationDialog::setBoardHeight(int height)
+{
+	if(height != boardSize_.height)
+	{
+		boardSize_.height = height;
+		this->restart();
+	}
+}
+
+void CalibrationDialog::setSquareSize(double size)
+{
+	if(size != squareSize_)
+	{
+		squareSize_ = size;
+		this->restart();
+	}
 }
 
 void CalibrationDialog::closeEvent(QCloseEvent* event)
@@ -197,7 +232,7 @@ void CalibrationDialog::restart()
 	imageParams_.clear();
 
 	ui_->pushButton_calibrate->setEnabled(false);
-	ui_->pushButton_save->setEnabled(false);
+	ui_->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
 	ui_->checkBox_rectified->setEnabled(false);
 
 	ui_->progressBar_count->reset();
@@ -286,12 +321,9 @@ void CalibrationDialog::calibrate()
 
 		ui_->checkBox_rectified->setEnabled(true);
 		ui_->checkBox_rectified->setChecked(true);
-	}
-}
 
-void CalibrationDialog::exit()
-{
-	this->close();
+		ui_->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(true);
+	}
 }
 
 float CalibrationDialog::getArea(const std::vector<cv::Point2f> & corners, const cv::Size & boardSize)

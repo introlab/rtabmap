@@ -50,11 +50,14 @@
 namespace rtabmap
 {
 
-CameraRGBD::CameraRGBD(float imageRate, const Transform & localTransform, float focalLength) :
+CameraRGBD::CameraRGBD(float imageRate, const Transform & localTransform, float fx, float fy, float cx, float cy) :
 	_imageRate(imageRate),
 	_localTransform(localTransform),
 	_frameRateTimer(new UTimer()),
-	_focalLength(focalLength)
+	_fx(fx),
+	_fy(fy),
+	_cx(cx),
+	_cy(cy)
 {
 }
 
@@ -66,7 +69,7 @@ CameraRGBD::~CameraRGBD()
 	}
 }
 
-void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant)
+void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
 {
 	float imageRate = _imageRate==0.0f?33.0f:_imageRate; // limit to 33Hz if infinity
 	if(imageRate>0)
@@ -89,10 +92,22 @@ void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant
 	}
 
 	UTimer timer;
-	this->captureImage(rgb, depth, depthConstant);
-	if(_focalLength)
+	this->captureImage(rgb, depth, fx, fy, cx, cy);
+	if(_fx)
 	{
-		depthConstant = 1.0f/_focalLength; // override if set
+		fx = _fx; // override if set
+	}
+	if(_fy)
+	{
+		fy = _fy; // override if set
+	}
+	if(_cx)
+	{
+		cx = _cx; // override if set
+	}
+	if(_cy)
+	{
+		cy = _cy; // override if set
 	}
 	UDEBUG("Time capturing image = %fs", timer.ticks());
 }
@@ -100,8 +115,8 @@ void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant
 /////////////////////////
 // CameraOpenNIPCL
 /////////////////////////
-CameraOpenni::CameraOpenni(const std::string & deviceId, float imageRate, const Transform & localTransform, float focalLength) :
-		CameraRGBD(imageRate, localTransform, focalLength),
+CameraOpenni::CameraOpenni(const std::string & deviceId, float imageRate, const Transform & localTransform, float fx, float fy, float cx, float cy) :
+		CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
 		interface_(0),
 		deviceId_(deviceId),
 		depthConstant_(0.0f)
@@ -184,15 +199,21 @@ bool CameraOpenni::init()
 	return true;
 }
 
-void CameraOpenni::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant)
+void CameraOpenni::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
 {
 	if(interface_ && interface_->isRunning())
 	{
 		dataReady_.acquire();
 		UScopeMutex s(dataMutex_);
-		depth = depth_;
-		rgb = rgb_;
-		depthConstant = depthConstant_;
+		if(depthConstant_)
+		{
+			depth = depth_;
+			rgb = rgb_;
+			fx = 1.0f/depthConstant_;
+			fy = 1.0f/depthConstant_;
+			cx = float(depth_.cols/2) - 0.5f;
+			cy = float(depth_.rows/2) - 0.5f;
+		}
 
 		depth_ = cv::Mat();
 		rgb_ = cv::Mat();
@@ -210,8 +231,8 @@ bool CameraOpenNICV::available()
 	return cv::getBuildInformation().find("OpenNI:                      YES") != std::string::npos;
 }
 
-CameraOpenNICV::CameraOpenNICV(bool asus, float imageRate, const rtabmap::Transform & localTransform, float focalLength) :
-	CameraRGBD(imageRate, localTransform, focalLength),
+CameraOpenNICV::CameraOpenNICV(bool asus, float imageRate, const rtabmap::Transform & localTransform, float fx, float fy, float cx, float cy) :
+	CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
 	_asus(asus),
 	_depthFocal(0.0f)
 {
@@ -272,7 +293,7 @@ bool CameraOpenNICV::init()
 	return true;
 }
 
-void CameraOpenNICV::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant)
+void CameraOpenNICV::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
 {
 	if(_capture.isOpened())
 	{
@@ -283,7 +304,10 @@ void CameraOpenNICV::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthC
 		depth = depth.clone();
 		rgb = rgb.clone();
 		UASSERT(_depthFocal > 0.0f);
-		depthConstant = 1.0f/_depthFocal;
+		fx = _depthFocal;
+		fy = _depthFocal;
+		cx = float(depth.cols/2) - 0.5f;
+		cy = float(depth.rows/2) - 0.5f;
 	}
 	else
 	{
@@ -304,8 +328,8 @@ bool CameraOpenNI2::available()
 #endif
 }
 
-CameraOpenNI2::CameraOpenNI2(float imageRate, const rtabmap::Transform & localTransform, float focalLength) :
-	CameraRGBD(imageRate, localTransform, focalLength),
+CameraOpenNI2::CameraOpenNI2(float imageRate, const rtabmap::Transform & localTransform, float fx, float fy, float cx, float cy) :
+	CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
 #ifdef WITH_OPENNI2
 	_device(new openni::Device()),
 	_color(new openni::VideoStream()),
@@ -315,7 +339,8 @@ CameraOpenNI2::CameraOpenNI2(float imageRate, const rtabmap::Transform & localTr
 	_color(0),
 	_depth(0),
 #endif
-	_depthFocal(0.0f)
+	_depthFx(0.0f),
+	_depthFy(0.0f)
 {
 }
 
@@ -435,13 +460,15 @@ bool CameraOpenNI2::init()
 	bool registered = true;
 	if(registered)
 	{
-		_depthFocal = float(_color->getVideoMode().getResolutionX()/2) / std::tan(_color->getHorizontalFieldOfView()/2.0f);
+		_depthFx = float(_color->getVideoMode().getResolutionX()/2) / std::tan(_color->getHorizontalFieldOfView()/2.0f);
+		_depthFy = float(_color->getVideoMode().getResolutionY()/2) / std::tan(_color->getVerticalFieldOfView()/2.0f);
 	}
 	else
 	{
-		_depthFocal = float(_depth->getVideoMode().getResolutionX()/2) / std::tan(_depth->getHorizontalFieldOfView()/2.0f);
+		_depthFx = float(_depth->getVideoMode().getResolutionX()/2) / std::tan(_depth->getHorizontalFieldOfView()/2.0f);
+		_depthFy = float(_depth->getVideoMode().getResolutionY()/2) / std::tan(_depth->getVerticalFieldOfView()/2.0f);
 	}
-	UINFO("depth focal = %f", _depthFocal);
+	UINFO("depth fx=%f fy=%f", _depthFx, _depthFy);
 
 	UINFO("CameraOpenNI2: Using color video mode: fps=%d, pixel=%d, w=%d, h=%d, H-FOV=%f rad, V-FOV=%f rad",
 			_color->getVideoMode().getFps(),
@@ -473,7 +500,7 @@ bool CameraOpenNI2::init()
 #endif
 }
 
-void CameraOpenNI2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant)
+void CameraOpenNI2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
 {
 #ifdef WITH_OPENNI2
 	if(_device->isValid() &&
@@ -498,8 +525,11 @@ void CameraOpenNI2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthCo
 			cv::Mat tmp(h, w, CV_8UC3, (void *)colorFrame.getData());
 			cv::cvtColor(tmp, rgb, CV_RGB2BGR);
 		}
-		UASSERT(_depthFocal != 0.0f);
-		depthConstant = 1.0f/_depthFocal;
+		UASSERT(_depthFx != 0.0f && _depthFy != 0.0f);
+		fx = _depthFx;
+		fy = _depthFy;
+		cx = float(depth.cols/2) - 0.5f;
+		cy = float(depth.rows/2) - 0.5f;
 	}
 	else
 	{
@@ -690,8 +720,8 @@ bool CameraFreenect::available()
 #endif
 }
 
-CameraFreenect::CameraFreenect(int deviceId, float imageRate, const Transform & localTransform, float focalLength) :
-		CameraRGBD(imageRate, localTransform, focalLength),
+CameraFreenect::CameraFreenect(int deviceId, float imageRate, const Transform & localTransform, float fx, float fy, float cx, float cy) :
+		CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
 		deviceId_(deviceId),
 		ctx_(0),
 		freenectDevice_(0)
@@ -756,7 +786,7 @@ bool CameraFreenect::init()
 	return false;
 }
 
-void CameraFreenect::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant)
+void CameraFreenect::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
 {
 #ifdef WITH_FREENECT
 	if(ctx_ && freenectDevice_)
@@ -765,7 +795,10 @@ void CameraFreenect::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthC
 		{
 			freenectDevice_->getData(rgb, depth);
 			UASSERT(freenectDevice_->getDepthFocal() != 0.0f);
-			depthConstant = 1.0f/freenectDevice_->getDepthFocal();
+			fx = freenectDevice_->getDepthFocal();
+			fy = freenectDevice_->getDepthFocal();
+			cx = float(depth.cols/2) - 0.5f;
+			cy = float(depth.rows/2) - 0.5f;
 
 			if(depth.empty())
 			{
@@ -783,7 +816,10 @@ void CameraFreenect::captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthC
 		{
 			rgb = cv::Mat();
 			depth = cv::Mat();
-			depthConstant = 0.0f;
+			fx = 0.0f;
+			fy = 0.0f;
+			cx = 0.0f;
+			cy = 0.0f;
 		}
 	}
 #else

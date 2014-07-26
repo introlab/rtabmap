@@ -575,14 +575,18 @@ void MainWindow::processOdometry(const rtabmap::Image & data, int quality)
 		if(data.depth().cols == data.image().cols &&
 		   data.depth().rows == data.image().rows &&
 		   !data.depth().empty() &&
-		   data.depthConstant() > 0.0f &&
+		   data.depthFx() > 0.0f &&
+		   data.depthFy() > 0.0f &&
 		   _preferencesDialog->isCloudsShown(1))
 		{
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 			cloud = createCloud(0,
 					data.image(),
 					data.depth(),
-					data.depthConstant(),
+					data.depthFx(),
+					data.depthFy(),
+					data.depthCx(),
+					data.depthCy(),
 					data.localTransform(),
 					pose,
 					_preferencesDialog->getCloudVoxelSize(1),
@@ -685,12 +689,18 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				if(!iter->second.empty() && !_depthsMap.contains(iter->first))
 				{
-					float constant = uValue(stat.getDepthConstants(), iter->first, 0.0f);
+					float fx = uValue(stat.getDepthFxs(), iter->first, 0.0f);
+					float fy = uValue(stat.getDepthFys(), iter->first, 0.0f);
+					float cx = uValue(stat.getDepthCxs(), iter->first, 0.0f);
+					float cy = uValue(stat.getDepthCys(), iter->first, 0.0f);
 					Transform transform = uValue(stat.getLocalTransforms(), iter->first, Transform());
-					if(constant != 0.0f && !transform.isNull())
+					if(fx > 0.0f && fy > 0.0f && !transform.isNull())
 					{
 						_depthsMap.insert(iter->first, iter->second);
-						_depthConstantsMap.insert(iter->first, constant);
+						_depthFxsMap.insert(iter->first, fx);
+						_depthFysMap.insert(iter->first, fy);
+						_depthCxsMap.insert(iter->first, cx);
+						_depthCysMap.insert(iter->first, cy);
 						_localTransformsMap.insert(iter->first, transform);
 					}
 					else
@@ -992,7 +1002,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						_depths2DMap.value(loopOldId, std::vector<unsigned char>()),
 						_imagesMap.value(loopOldId, std::vector<unsigned char>()),
 						_depthsMap.value(loopOldId, std::vector<unsigned char>()),
-						_depthConstantsMap.value(loopOldId, 0.0f),
+						_depthFxsMap.value(loopOldId, 0.0f),
+						_depthFysMap.value(loopOldId, 0.0f),
+						_depthCxsMap.value(loopOldId, 0.0f),
+						_depthCysMap.value(loopOldId, 0.0f),
 						_localTransformsMap.value(loopOldId, Transform()));
 
 				Signature * loopNew = new Signature(
@@ -1004,7 +1017,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						_depths2DMap.value(loopNewId, std::vector<unsigned char>()),
 						_imagesMap.value(loopNewId, std::vector<unsigned char>()),
 						_depthsMap.value(loopNewId, std::vector<unsigned char>()),
-						_depthConstantsMap.value(loopNewId, 0.0f),
+						_depthFxsMap.value(loopNewId, 0.0f),
+						_depthFysMap.value(loopNewId, 0.0f),
+						_depthCxsMap.value(loopNewId, 0.0f),
+						_depthCysMap.value(loopNewId, 0.0f),
 						_localTransformsMap.value(loopNewId, Transform()));
 
 				_ui->widget_loopClosureViewer->setData(loopOld, loopNew);
@@ -1212,7 +1228,10 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
 	cloud = createCloud(nodeId,
 			util3d::uncompressImage(_imagesMap.value(nodeId)),
 			util3d::uncompressImage(_depthsMap.value(nodeId)),
-			_depthConstantsMap.value(nodeId),
+			_depthFxsMap.value(nodeId),
+			_depthFysMap.value(nodeId),
+			_depthCxsMap.value(nodeId),
+			_depthCysMap.value(nodeId),
 			_localTransformsMap.value(nodeId),
 			Transform::getIdentity(),
 			_preferencesDialog->getCloudVoxelSize(0),
@@ -1376,7 +1395,10 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		UINFO(" images = %d", event.getImages().size());
 		UINFO(" depths = %d", event.getDepths().size());
 		UINFO(" depths2d = %d", event.getDepths2d().size());
-		UINFO(" depthConstants = %d", event.getDepthConstants().size());
+		UINFO(" depthFxs = %d", event.getDepthFxs().size());
+		UINFO(" depthFys = %d", event.getDepthFys().size());
+		UINFO(" depthCxs = %d", event.getDepthCxs().size());
+		UINFO(" depthCys = %d", event.getDepthCys().size());
 		UINFO(" localTransforms = %d", event.getLocalTransforms().size());
 		UINFO(" poses = %d", event.getPoses().size());
 		UINFO(" constraints = %d", event.getConstraints().size());
@@ -1401,13 +1423,40 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		_initProgressDialog->appendText(tr("Inserted %1 depth images.").arg(_depthsMap.size()));
 		_initProgressDialog->incrementStep();
 
-		for(std::map<int, float>::const_iterator iter = event.getDepthConstants().begin();
-			iter!=event.getDepthConstants().end();
+		for(std::map<int, float>::const_iterator iter = event.getDepthFxs().begin();
+			iter!=event.getDepthFxs().end();
 			++iter)
 		{
-			_depthConstantsMap.insert(iter->first, iter->second);
+			_depthFxsMap.insert(iter->first, iter->second);
 		}
-		_initProgressDialog->appendText(tr("Inserted %1 depth constants.").arg(_depthConstantsMap.size()));
+		_initProgressDialog->appendText(tr("Inserted %1 depth fx parameters.").arg(_depthFxsMap.size()));
+		_initProgressDialog->incrementStep();
+
+		for(std::map<int, float>::const_iterator iter = event.getDepthFys().begin();
+			iter!=event.getDepthFys().end();
+			++iter)
+		{
+			_depthFysMap.insert(iter->first, iter->second);
+		}
+		_initProgressDialog->appendText(tr("Inserted %1 depth fy parameters.").arg(_depthFysMap.size()));
+		_initProgressDialog->incrementStep();
+
+		for(std::map<int, float>::const_iterator iter = event.getDepthCxs().begin();
+			iter!=event.getDepthCxs().end();
+			++iter)
+		{
+			_depthCxsMap.insert(iter->first, iter->second);
+		}
+		_initProgressDialog->appendText(tr("Inserted %1 depth cx parameters.").arg(_depthCxsMap.size()));
+		_initProgressDialog->incrementStep();
+
+		for(std::map<int, float>::const_iterator iter = event.getDepthCys().begin();
+			iter!=event.getDepthCys().end();
+			++iter)
+		{
+			_depthCysMap.insert(iter->first, iter->second);
+		}
+		_initProgressDialog->appendText(tr("Inserted %1 depth cy parameters.").arg(_depthCysMap.size()));
 		_initProgressDialog->incrementStep();
 
 		for(std::map<int, std::vector<unsigned char> >::const_iterator iter = event.getDepths2d().begin();
@@ -1966,14 +2015,20 @@ void MainWindow::startDetection()
 					_preferencesDialog->getSourceOpenniDevice().toStdString(),
 					_preferencesDialog->getGeneralInputRate(),
 					_preferencesDialog->getSourceOpenniLocalTransform(),
-					_preferencesDialog->getSourceOpenniFocalLength());
+					_preferencesDialog->getSourceOpenniFx(),
+					_preferencesDialog->getSourceOpenniFy(),
+					_preferencesDialog->getSourceOpenniCx(),
+					_preferencesDialog->getSourceOpenniCy());
 		}
 		else if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2)
 		{
 			camera = new CameraOpenNI2(
 					_preferencesDialog->getGeneralInputRate(),
 					_preferencesDialog->getSourceOpenniLocalTransform(),
-					_preferencesDialog->getSourceOpenniFocalLength());
+					_preferencesDialog->getSourceOpenniFx(),
+					_preferencesDialog->getSourceOpenniFy(),
+					_preferencesDialog->getSourceOpenniCx(),
+					_preferencesDialog->getSourceOpenniCy());
 		}
 		else if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcFreenect)
 		{
@@ -1981,7 +2036,10 @@ void MainWindow::startDetection()
 					_preferencesDialog->getSourceOpenniDevice().isEmpty()?0:atoi(_preferencesDialog->getSourceOpenniDevice().toStdString().c_str()),
 					_preferencesDialog->getGeneralInputRate(),
 					_preferencesDialog->getSourceOpenniLocalTransform(),
-					_preferencesDialog->getSourceOpenniFocalLength());
+					_preferencesDialog->getSourceOpenniFx(),
+					_preferencesDialog->getSourceOpenniFy(),
+					_preferencesDialog->getSourceOpenniCx(),
+					_preferencesDialog->getSourceOpenniCy());
 		}
 		else if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV ||
 				_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS)
@@ -1990,7 +2048,10 @@ void MainWindow::startDetection()
 					_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS,
 					_preferencesDialog->getGeneralInputRate(),
 					_preferencesDialog->getSourceOpenniLocalTransform(),
-					_preferencesDialog->getSourceOpenniFocalLength());
+					_preferencesDialog->getSourceOpenniFx(),
+					_preferencesDialog->getSourceOpenniFy(),
+					_preferencesDialog->getSourceOpenniCx(),
+					_preferencesDialog->getSourceOpenniCy());
 		}
 		else
 		{
@@ -2611,7 +2672,10 @@ void MainWindow::clearTheCache()
 	_imagesMap.clear();
 	_depthsMap.clear();
 	_depths2DMap.clear();
-	_depthConstantsMap.clear();
+	_depthFxsMap.clear();
+	_depthFysMap.clear();
+	_depthCxsMap.clear();
+	_depthCysMap.clear();
 	_localTransformsMap.clear();
 	_ui->widget_cloudViewer->removeAllClouds();
 	_ui->widget_cloudViewer->render();
@@ -3481,7 +3545,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createCloud(
 		int id,
 		const cv::Mat & rgb,
 		const cv::Mat & depth,
-		float depthConstant,
+		float fx,
+		float fy,
+		float cx,
+		float cy,
 		const Transform & localTransform,
 		const Transform & pose,
 		float voxelSize,
@@ -3492,11 +3559,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createCloud(
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
 			rgb,
 			depth,
-		   float(depth.cols/2),
-		   float(depth.rows/2),
-		   1.0f/depthConstant,
-		   1.0f/depthConstant,
-		   decimation);
+		    cx, cy,
+		    fx, fy,
+		    decimation);
 
 	if(cloud->size())
 	{
@@ -3543,7 +3608,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createAssembledCloud(const st
 				cloud = createCloud(iter->first,
 						util3d::uncompressImage(_imagesMap.value(iter->first)),
 						util3d::uncompressImage(_depthsMap.value(iter->first)),
-						_depthConstantsMap.value(iter->first),
+						_depthFxsMap.value(iter->first),
+						_depthFysMap.value(iter->first),
+						_depthCxsMap.value(iter->first),
+						_depthCysMap.value(iter->first),
 						_localTransformsMap.value(iter->first),
 						iter->second,
 						_preferencesDialog->getCloudVoxelSize(2),
@@ -3619,7 +3687,10 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::createPointCl
 				cloud = createCloud(iter->first,
 						util3d::uncompressImage(_imagesMap.value(iter->first)),
 						util3d::uncompressImage(_depthsMap.value(iter->first)),
-						_depthConstantsMap.value(iter->first),
+						_depthFxsMap.value(iter->first),
+						_depthFysMap.value(iter->first),
+						_depthCxsMap.value(iter->first),
+						_depthCysMap.value(iter->first),
 						_localTransformsMap.value(iter->first),
 						Transform::getIdentity(),
 						_preferencesDialog->getCloudVoxelSize(2),
@@ -3686,7 +3757,10 @@ std::map<int, pcl::PolygonMesh::Ptr> MainWindow::createMeshes(const std::map<int
 				cloud = createCloud(iter->first,
 						util3d::uncompressImage(_imagesMap.value(iter->first)),
 						util3d::uncompressImage(_depthsMap.value(iter->first)),
-						_depthConstantsMap.value(iter->first),
+						_depthFxsMap.value(iter->first),
+						_depthFysMap.value(iter->first),
+						_depthCxsMap.value(iter->first),
+						_depthCysMap.value(iter->first),
 						_localTransformsMap.value(iter->first),
 						Transform::getIdentity(),
 						_preferencesDialog->getCloudVoxelSize(2),

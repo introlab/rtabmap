@@ -33,7 +33,10 @@ public:
 		_descriptors(descriptors),
 		_featureType(featureType),
 		_keypoints(keypoints),
-		_depthConstant(0.0f),
+		_fx(0.0f),
+		_fy(0.0f),
+		_cx(0.0f),
+		_cy(0.0f),
 		_localTransform(Transform::getIdentity())
 	{
 	}
@@ -41,7 +44,10 @@ public:
 	// Metric constructor
 	Image(const cv::Mat & image,
 		  const cv::Mat & depth,
-		  float depthConstant,
+		  float fx,
+		  float fy,
+		  float cx,
+		  float cy,
 		  const Transform & pose,
 		  const Transform & localTransform,
 		  int id = 0) :
@@ -49,7 +55,10 @@ public:
 		_id(id),
 		_featureType(Feature2D::kFeatureUndef),
 		_depth(depth),
-		_depthConstant(depthConstant),
+		_fx(fx),
+		_fy(fy),
+		_cx(cx),
+		_cy(cy),
 		_pose(pose),
 		_localTransform(localTransform)
 	{
@@ -59,7 +68,10 @@ public:
 	Image(const cv::Mat & image,
 		  const cv::Mat & depth,
 		  const cv::Mat & depth2d,
-		  float depthConstant,
+		  float fx,
+		  float fy,
+		  float cx,
+		  float cy,
 		  const Transform & pose,
 		  const Transform & localTransform,
 		  int id = 0) :
@@ -68,7 +80,10 @@ public:
 		_featureType(Feature2D::kFeatureUndef),
 		_depth(depth),
 		_depth2d(depth2d),
-		_depthConstant(depthConstant),
+		_fx(fx),
+		_fy(fy),
+		_cx(cx),
+		_cy(cy),
 		_pose(pose),
 		_localTransform(localTransform)
 	{
@@ -85,11 +100,14 @@ public:
 	void setDescriptors(const cv::Mat & descriptors, Feature2D::Type featureType) {_descriptors = descriptors; _featureType=featureType;}
 	void setKeypoints(const std::vector<cv::KeyPoint> & keypoints) {_keypoints = keypoints;}
 
-	bool isMetric() const {return !_depth.empty() || _depthConstant != 0.0f || !_pose.isNull();}
+	bool isMetric() const {return !_depth.empty() || _fx != 0.0f || _fy != 0.0f || !_pose.isNull();}
 	void setPose(const Transform & pose) {_pose = pose;}
 	const cv::Mat & depth() const {return _depth;}
 	const cv::Mat & depth2d() const {return _depth2d;}
-	float depthConstant() const {return _depthConstant;}
+	float depthFx() const {return _fx;}
+	float depthFy() const {return _fy;}
+	float depthCx() const {return _cx;}
+	float depthCy() const {return _cy;}
 	const Transform & pose() const {return _pose;}
 	const Transform & localTransform() const {return _localTransform;}
 
@@ -103,7 +121,10 @@ private:
 	// Metric stuff
 	cv::Mat _depth;
 	cv::Mat _depth2d;
-	float _depthConstant;
+	float _fx;
+	float _fy;
+	float _cx;
+	float _cy;
 	Transform _pose;
 	Transform _localTransform;
 };

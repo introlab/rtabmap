@@ -1482,7 +1482,10 @@ bool Rtabmap::process(const Image & image)
 				std::map<int, std::vector<unsigned char> > images;
 				std::map<int, std::vector<unsigned char> > depths;
 				std::map<int, std::vector<unsigned char> > depth2ds;
-				std::map<int, float> depthConstants;
+				std::map<int, float> depthFxs;
+				std::map<int, float> depthFys;
+				std::map<int, float> depthCxs;
+				std::map<int, float> depthCys;
 				std::map<int, Transform> localTransforms;
 
 				std::vector<int> ids(signaturesRetrieved.begin(), signaturesRetrieved.end());
@@ -1500,14 +1503,17 @@ bool Rtabmap::process(const Image & image)
 					if(_rgbdSlamMode)
 					{
 						std::vector<unsigned char> depth, depth2d;
-						float depthConstant;
+						float fx, fy, cx, cy;
 						Transform localTransform;
-						_memory->getImageDepth(ids[i], im, depth, depth2d, depthConstant, localTransform);
+						_memory->getImageDepth(ids[i], im, depth, depth2d, fx, fy, cx, cy, localTransform);
 
 						if(!depth.empty())
 						{
 							depths.insert(std::make_pair(ids[i], depth));
-							depthConstants.insert(std::make_pair(ids[i], depthConstant));
+							depthFxs.insert(std::make_pair(ids[i], fx));
+							depthFys.insert(std::make_pair(ids[i], fy));
+							depthCxs.insert(std::make_pair(ids[i], cx));
+							depthCys.insert(std::make_pair(ids[i], cy));
 							localTransforms.insert(std::make_pair(ids[i], localTransform));
 						}
 						if(!depth2d.empty())
@@ -1536,7 +1542,10 @@ bool Rtabmap::process(const Image & image)
 				statistics_.setImages(images);
 				statistics_.setDepths(depths);
 				statistics_.setDepth2ds(depth2ds);
-				statistics_.setDepthConstants(depthConstants);
+				statistics_.setDepthFxs(depthFxs);
+				statistics_.setDepthFys(depthFys);
+				statistics_.setDepthCxs(depthCxs);
+				statistics_.setDepthCys(depthCys);
 				statistics_.setLocalTransforms(localTransforms);
 			}
 
@@ -2153,7 +2162,10 @@ void Rtabmap::dumpPrediction() const
 void Rtabmap::get3DMap(std::map<int, std::vector<unsigned char> > & images,
 		std::map<int, std::vector<unsigned char> > & depths,
 		std::map<int, std::vector<unsigned char> > & depths2d,
-		std::map<int, float> & depthConstants,
+		std::map<int, float> & depthFxs,
+		std::map<int, float> & depthFys,
+		std::map<int, float> & depthCxs,
+		std::map<int, float> & depthCys,
 		std::map<int, Transform> & localTransforms,
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> & constraints,
@@ -2182,9 +2194,9 @@ void Rtabmap::get3DMap(std::map<int, std::vector<unsigned char> > & images,
 		for(std::set<int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
 		{
 			std::vector<unsigned char> image, depth, depth2d;
-			float depthConstant;
+			float fx, fy, cx, cy;
 			Transform localTransform;
-			_memory->getImageDepth(*iter, image, depth, depth2d, depthConstant, localTransform);
+			_memory->getImageDepth(*iter, image, depth, depth2d, fx, fy, cx, cy, localTransform);
 
 			if(image.size())
 			{
@@ -2198,9 +2210,12 @@ void Rtabmap::get3DMap(std::map<int, std::vector<unsigned char> > & images,
 			{
 				depths2d.insert(std::make_pair(*iter, depth2d));
 			}
-			if(depthConstant > 0)
+			if(fx > 0 && fy > 0)
 			{
-				depthConstants.insert(std::make_pair(*iter, depthConstant));
+				depthFxs.insert(std::make_pair(*iter, fx));
+				depthFys.insert(std::make_pair(*iter, fy));
+				depthCxs.insert(std::make_pair(*iter, cx));
+				depthCys.insert(std::make_pair(*iter, cy));
 			}
 			if(!localTransform.isNull())
 			{

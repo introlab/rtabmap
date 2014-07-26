@@ -109,7 +109,10 @@ public:
 			int locationId, std::vector<unsigned char> & rgb,
 			std::vector<unsigned char> & depth,
 			std::vector<unsigned char> & depth2d,
-			float & depthConstant,
+			float & fx,
+			float & fy,
+			float & cx,
+			float & cy,
 			Transform & localTransform) const;
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}
@@ -141,7 +144,10 @@ public:
 	void extractKeypointsAndDescriptors(
 			const cv::Mat & image,
 			const cv::Mat & depth,
-			float depthConstant,
+			float fx,
+			float fy,
+			float cx,
+			float cy,
 			std::vector<cv::KeyPoint> & keypoints,
 			cv::Mat & descriptors);
 

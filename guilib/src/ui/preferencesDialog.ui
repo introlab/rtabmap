@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1007</width>
+    <width>1035</width>
     <height>628</height>
    </rect>
   </property>
@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>709</width>
-            <height>853</height>
+            <y>-617</y>
+            <width>732</width>
+            <height>1198</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1763,24 +1763,96 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="0">
-                          <widget class="QDoubleSpinBox" name="doubleSpinBox_openniFocal">
-                           <property name="maximum">
-                            <double>1000.000000000000000</double>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="1">
-                          <widget class="QLabel" name="label_160">
-                           <property name="text">
-                            <string>Intrinsic focal length (fx=fy, K[4]). Set 0 to use the default from the camera. Examples:  ~525 for Kinect, ~545 for Xtion Pro Live.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
                         </layout>
+                       </item>
+                       <item>
+                        <widget class="QGroupBox" name="groupBox_3">
+                         <property name="title">
+                          <string>Calibration</string>
+                         </property>
+                         <layout class="QVBoxLayout" name="verticalLayout_41">
+                          <item>
+                           <widget class="QLabel" name="label_160">
+                            <property name="text">
+                             <string>Camera intrinsic parameters. While the default values are good, a calibration is recommended to increase the precision of the 3D clouds. Set values to 0 to use the default parameters from the camera. For example, the focal length is ~525 for Kinect and ~545 for Xtion Pro Live. The button &quot;Calibrate&quot; below can be used to calibrate the camera with a chessboard pattern.</string>
+                            </property>
+                            <property name="wordWrap">
+                             <bool>true</bool>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <layout class="QFormLayout" name="formLayout_21">
+                            <property name="fieldGrowthPolicy">
+                             <enum>QFormLayout::ExpandingFieldsGrow</enum>
+                            </property>
+                            <item row="0" column="0">
+                             <widget class="QDoubleSpinBox" name="doubleSpinBox_openniFx">
+                              <property name="maximum">
+                               <double>1000.000000000000000</double>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="0" column="1">
+                             <widget class="QLabel" name="label_161">
+                              <property name="text">
+                               <string>fx=K[0]</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="1" column="0">
+                             <widget class="QDoubleSpinBox" name="doubleSpinBox_openniFy">
+                              <property name="maximum">
+                               <double>1000.000000000000000</double>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="1" column="1">
+                             <widget class="QLabel" name="label_162">
+                              <property name="text">
+                               <string>fy=K[4]</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="2" column="0">
+                             <widget class="QDoubleSpinBox" name="doubleSpinBox_openniCx">
+                              <property name="maximum">
+                               <double>1000.000000000000000</double>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="2" column="1">
+                             <widget class="QLabel" name="label_166">
+                              <property name="text">
+                               <string>cx=K[2]</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="3" column="0">
+                             <widget class="QDoubleSpinBox" name="doubleSpinBox_openniCy">
+                              <property name="maximum">
+                               <double>1000.000000000000000</double>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="3" column="1">
+                             <widget class="QLabel" name="label_165">
+                              <property name="text">
+                               <string>cy=K[5]</string>
+                              </property>
+                             </widget>
+                            </item>
+                           </layout>
+                          </item>
+                          <item>
+                           <widget class="QPushButton" name="pushButton_calibrate">
+                            <property name="text">
+                             <string>Calibrate</string>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </widget>
                        </item>
                       </layout>
                      </widget>

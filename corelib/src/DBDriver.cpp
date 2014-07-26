@@ -393,11 +393,14 @@ void DBDriver::getNodeData(
 		std::vector<unsigned char> & image,
 		std::vector<unsigned char> & depth,
 		std::vector<unsigned char> & depth2d,
-		float & depthConstant,
+		float & fx,
+		float & fy,
+		float & cx,
+		float & cy,
 		Transform & localTransform) const
 {
 	_dbSafeAccessMutex.lock();
-	this->getNodeDataQuery(signatureId, image, depth, depth2d, depthConstant, localTransform);
+	this->getNodeDataQuery(signatureId, image, depth, depth2d, fx, fy, cx, cy, localTransform);
 	_dbSafeAccessMutex.unlock();
 }
 

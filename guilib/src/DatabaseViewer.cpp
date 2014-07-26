@@ -200,17 +200,17 @@ void DatabaseViewer::exportDatabase()
 				{
 					int id = ids_.at(i);
 					std::vector<unsigned char> compressedRgb, compressedDepth, compressedDepth2d;
-					float tmpDepthConstant;
+					float tmpFx, tmpFy, tmpCx, tmpCy;
 					rtabmap::Transform tmpLocalTransform, pose;
 
-					memory_->getImageDepth(id, compressedRgb, compressedDepth, compressedDepth2d, tmpDepthConstant, tmpLocalTransform);
+					memory_->getImageDepth(id, compressedRgb, compressedDepth, compressedDepth2d, tmpFx, tmpFy, tmpCx, tmpCy, tmpLocalTransform);
 					if(dialog.isOdomExported())
 					{
 						memory_->getPose(id, pose, true);
 					}
 
 					cv::Mat rgb, depth, depth2d;
-					float depthConstant = 0;
+					float fx = 0, fy = 0, cx = 0, cy = 0;
 					rtabmap::Transform localTransform;
 
 					if(dialog.isRgbExported())
@@ -220,7 +220,10 @@ void DatabaseViewer::exportDatabase()
 					if(dialog.isDepthExported())
 					{
 						depth = rtabmap::util3d::uncompressImage(compressedDepth);
-						depthConstant = tmpDepthConstant;
+						fx = tmpFx;
+						fy = tmpFy;
+						cx = tmpCx;
+						cy = tmpCy;
 						localTransform = tmpLocalTransform;
 					}
 					if(dialog.isDepth2dExported())
@@ -228,7 +231,7 @@ void DatabaseViewer::exportDatabase()
 						depth2d = rtabmap::util3d::uncompressData(compressedDepth2d);
 					}
 
-					rtabmap::Image data(rgb, depth, depth2d, depthConstant, pose, localTransform, id);
+					rtabmap::Image data(rgb, depth, depth2d, fx, fy, cx, cy, pose, localTransform, id);
 					recorder.addData(data);
 
 					progressDialog.appendText(tr("Exported node %1").arg(id));
@@ -518,17 +521,17 @@ void DatabaseViewer::view3DMap()
 							if(!pose.isNull())
 							{
 								std::vector<unsigned char> image, depth, depth2d;
-								float depthConstant;
+								float fx, fy, cx, cy;
 								rtabmap::Transform localTransform;
-								memory_->getImageDepth(iter->first, image, depth, depth2d, depthConstant, localTransform);
+								memory_->getImageDepth(iter->first, image, depth, depth2d, fx, fy, cx, cy, localTransform);
 								pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 								cv::Mat imageMat = rtabmap::util3d::uncompressImage(image);
 								cv::Mat depthMat = rtabmap::util3d::uncompressImage(depth);
 								cloud = rtabmap::util3d::cloudFromDepthRGB(
 										imageMat,
 										depthMat,
-										depthMat.cols/2, depthMat.rows/2,
-										1.0f/depthConstant, 1.0f/depthConstant,
+										cx, cy,
+										fx, fy,
 										decimation);
 
 								if(maxDepth)
@@ -616,17 +619,17 @@ void DatabaseViewer::generate3DMap()
 								if(!pose.isNull())
 								{
 									std::vector<unsigned char> image, depth, depth2d;
-									float depthConstant;
+									float fx, fy, cx, cy;
 									rtabmap::Transform localTransform;
-									memory_->getImageDepth(iter->first, image, depth, depth2d, depthConstant, localTransform);
+									memory_->getImageDepth(iter->first, image, depth, depth2d, fx, fy, cx, cy, localTransform);
 									pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 									cv::Mat imageMat = rtabmap::util3d::uncompressImage(image);
 									cv::Mat depthMat = rtabmap::util3d::uncompressImage(depth);
 									cloud = rtabmap::util3d::cloudFromDepthRGB(
 											imageMat,
 											depthMat,
-											depthMat.cols/2, depthMat.rows/2,
-											1.0f/depthConstant, 1.0f/depthConstant,
+											cx, cy,
+											fx, fy,
 											decimation);
 
 									if(maxDepth)
@@ -703,9 +706,9 @@ void DatabaseViewer::update(int value,
 			if(memory_)
 			{
 				std::vector<unsigned char> image, depth, depth2d;
-				float depthConstant;
+				float fx, fy, cx, cy;
 				rtabmap::Transform localTransform;
-				memory_->getImageDepth(id, image, depth, depth2d, depthConstant, localTransform);
+				memory_->getImageDepth(id, image, depth, depth2d, fx, fy, cx, cy, localTransform);
 				cv::Mat imageMat = rtabmap::util3d::uncompressImage(image);
 				cv::Mat depthMat = rtabmap::util3d::uncompressImage(depth);
 				if(!image.empty())
@@ -830,17 +833,18 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link)
 		ui_->horizontalSlider_A->setValue(idToIndex_.value(link.from()));
 		ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
 
-		float depthConstantA, depthConstantB;
+		float fxA, fyA, cxA, cyA;
+		float fxB, fyB, cxB, cyB;
 		rtabmap::Transform localTransformA, localTransformB;
 
 		std::vector<unsigned char> imageBytesA, depthBytesA, depth2dBytesA;
-		memory_->getImageDepth(link.from(), imageBytesA, depthBytesA, depth2dBytesA, depthConstantA, localTransformA);
+		memory_->getImageDepth(link.from(), imageBytesA, depthBytesA, depth2dBytesA, fxA, fyA, cxA, cyA, localTransformA);
 		cv::Mat imageA = rtabmap::util3d::uncompressImage(imageBytesA);
 		cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
 		cv::Mat depth2dA = rtabmap::util3d::uncompressData(depth2dBytesA);
 
 		std::vector<unsigned char> imageBytesB, depthBytesB, depth2dBytesB;
-		memory_->getImageDepth(link.to(), imageBytesB, depthBytesB, depth2dBytesB, depthConstantB, localTransformB);
+		memory_->getImageDepth(link.to(), imageBytesB, depthBytesB, depth2dBytesB, fxB, fyB, cxB, cyB, localTransformB);
 		cv::Mat imageB = rtabmap::util3d::uncompressImage(imageBytesB);
 		cv::Mat depthB = rtabmap::util3d::uncompressImage(depthBytesB);
 		cv::Mat depth2dB = rtabmap::util3d::uncompressData(depth2dBytesB);
@@ -850,10 +854,8 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link)
 		cloudA = rtabmap::util3d::cloudFromDepthRGB(
 				imageA,
 				depthA,
-				depthA.cols/2,
-				depthA.rows/2,
-				1.0f/depthConstantA,
-				1.0f/depthConstantA,
+				cxA, cyA,
+				fxA, fyA,
 				1);
 
 		cloudA = rtabmap::util3d::removeNaNFromPointCloud(cloudA);
@@ -863,10 +865,8 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link)
 		cloudB = rtabmap::util3d::cloudFromDepthRGB(
 				imageB,
 				depthB,
-				depthB.cols/2,
-				depthB.rows/2,
-				1.0f/depthConstantB,
-				1.0f/depthConstantB,
+				cxB, cyB,
+				fxB, fyB,
 				1);
 
 		cloudB = rtabmap::util3d::removeNaNFromPointCloud(cloudB);
@@ -908,13 +908,13 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			UINFO("Update scans list...");
 			for(int i=0; i<ids_.size(); ++i)
 			{
-				std::vector<unsigned char> imageBytesA, depthBytesA, depth2dBytesA;
-				float depthConstantA;
-				rtabmap::Transform localTransformA;
-				memory_->getImageDepth(ids_.at(i), imageBytesA, depthBytesA, depth2dBytesA, depthConstantA, localTransformA);
-				if(depth2dBytesA.size())
+				std::vector<unsigned char> imageBytes, depthBytes, depth2dBytes;
+				float fx, fy, cx, cy;
+				rtabmap::Transform localTransform;
+				memory_->getImageDepth(ids_.at(i), imageBytes, depthBytes, depth2dBytes, fx, fy, cx, cy, localTransform);
+				if(depth2dBytes.size())
 				{
-					scans_.insert(ids_.at(i), depth2dBytesA);
+					scans_.insert(ids_.at(i), depth2dBytes);
 				}
 			}
 			UINFO("Update scans list... done");

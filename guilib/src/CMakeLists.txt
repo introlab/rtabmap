@@ -93,8 +93,6 @@ SET(LIBRARIES
     ${QT_LIBRARIES} 
 	${OpenCV_LIBS} 
 	${PCL_LIBRARIES}
-	QVTK 
-	vtkHybrid
 )
 
 #include files

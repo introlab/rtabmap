@@ -76,15 +76,16 @@ private slots:
 			if(data.depth().cols == data.image().cols &&
 			   data.depth().rows == data.image().rows &&
 			   !data.depth().empty() &&
-			   data.depthConstant() > 0.0f)
+			   data.depthFx() > 0.0f &&
+			   data.depthFy() > 0.0f)
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
 					data.image(),
 					data.depth(),
-					float(data.depth().cols/2),
-					float(data.depth().rows/2),
-					1.0f/data.depthConstant(),
-					1.0f/data.depthConstant(),
+					data.depthCx(),
+					data.depthCy(),
+					data.depthFx(),
+					data.depthFy(),
 					2); // decimation // high definition
 				if(cloud->size())
 				{
@@ -143,21 +144,21 @@ private slots:
 				else if(iter->first == stats.refImageId() &&
 						uContains(stats.getImages(), iter->first) &&
 						uContains(stats.getDepths(), iter->first) &&
-						uContains(stats.getDepthConstants(), iter->first) &&
+						uContains(stats.getDepthFxs(), iter->first) &&
+						uContains(stats.getDepthFys(), iter->first) &&
 						uContains(stats.getLocalTransforms(), iter->first))
 				{
 					// Add the new cloud
 					cv::Mat rgb = util3d::uncompressImage(stats.getImages().at(iter->first));
 					cv::Mat depth = util3d::uncompressImage(stats.getDepths().at(iter->first));
-					float depthConstant = stats.getDepthConstants().at(iter->first);
 					Transform localTransform = stats.getLocalTransforms().at(iter->first);
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
 							rgb,
 							depth,
-						   float(depth.cols/2),
-						   float(depth.rows/2),
-						   1.0f/depthConstant,
-						   1.0f/depthConstant,
+							stats.getDepthCxs().at(iter->first),
+							stats.getDepthCys().at(iter->first),
+							stats.getDepthFxs().at(iter->first),
+							stats.getDepthFys().at(iter->first),
 						   8); // decimation
 
 					if(cloud->size())

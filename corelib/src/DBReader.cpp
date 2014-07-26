@@ -112,9 +112,9 @@ void DBReader::mainLoopBegin()
 void DBReader::mainLoop()
 {
 	cv::Mat image, depth, depth2d;
-	float depthConstant;
+	float fx,fy,cx,cy;
 	Transform localTransform, pose;
-	this->getNextImage(image, depth, depth2d, depthConstant, localTransform, pose);
+	this->getNextImage(image, depth, depth2d, fx, fy, cx, cy, localTransform, pose);
 	if(!image.empty())
 	{
 		if(depth.empty())
@@ -125,7 +125,7 @@ void DBReader::mainLoop()
 		{
 			if(!_odometryIgnored)
 			{
-				Image data(image, depth, depth2d, depthConstant, pose, localTransform);
+				Image data(image, depth, depth2d, fx, fy, cx, cy, pose, localTransform);
 				this->post(new OdometryEvent(data));
 				if(pose.isNull())
 				{
@@ -137,7 +137,7 @@ void DBReader::mainLoop()
 			else
 			{
 				// without odometry
-				this->post(new CameraEvent(image, depth, depth2d, depthConstant, localTransform));
+				this->post(new CameraEvent(image, depth, depth2d, fx, fy, cx, cy, localTransform));
 			}
 		}
 	}
@@ -154,7 +154,10 @@ void DBReader::getNextImage(
 		cv::Mat & image,
 		cv::Mat & depth,
 		cv::Mat & depth2d,
-		float & depthConstant,
+		float & fx,
+		float & fy,
+		float & cx,
+		float & cy,
 		Transform & localTransform,
 		Transform & pose)
 {
@@ -186,7 +189,7 @@ void DBReader::getNextImage(
 			std::vector<unsigned char> depthBytes;
 			std::vector<unsigned char> depth2dBytes;
 			int mapId;
-			_dbDriver->getNodeData(*_currentId, imageBytes, depthBytes, depth2dBytes, depthConstant, localTransform);
+			_dbDriver->getNodeData(*_currentId, imageBytes, depthBytes, depth2dBytes, fx, fy, cx, cy, localTransform);
 			_dbDriver->getPose(*_currentId, pose, mapId);
 			++_currentId;
 			if(imageBytes.empty())

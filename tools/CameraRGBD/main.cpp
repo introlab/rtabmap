@@ -107,8 +107,8 @@ int main(int argc, char * argv[])
 	}
 
 	cv::Mat rgb, depth;
-	float constant;
-	camera->takeImage(rgb, depth, constant);
+	float fx, fy, cx, cy;
+	camera->takeImage(rgb, depth, fx, fy, cx, cy);
 	cv::namedWindow("Video", CV_WINDOW_AUTOSIZE); // create window
 	cv::namedWindow("Depth", CV_WINDOW_AUTOSIZE); // create window
 	pcl::visualization::CloudViewer viewer("cloud");
@@ -120,7 +120,7 @@ int main(int argc, char * argv[])
 		cv::imshow("Video", rgb); // show frame
 		cv::imshow("Depth",tmp);
 
-		viewer.showCloud(rtabmap::util3d::cloudFromDepthRGB(rgb, depth, constant), "cloud");
+		viewer.showCloud(rtabmap::util3d::cloudFromDepthRGB(rgb, depth, cx, cy, fx, fy), "cloud");
 
 		int c = cv::waitKey(10); // wait 10 ms or for key stroke
 		if(c == 27)
@@ -128,7 +128,7 @@ int main(int argc, char * argv[])
 
 		rgb = cv::Mat();
 		depth = cv::Mat();
-		camera->takeImage(rgb, depth, constant);
+		camera->takeImage(rgb, depth, fx, fy, cx, cy);
 	}
 	cv::destroyWindow("Video");
 	cv::destroyWindow("Depth");

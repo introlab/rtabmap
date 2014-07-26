@@ -41,28 +41,34 @@ namespace rtabmap {
 void filterKeypointsByDepth(
 		std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & depth,
-		float depthConstant,
+		float fx,
+		float fy,
+		float cx,
+		float cy,
 		float maxDepth)
 {
 	cv::Mat descriptors;
-	filterKeypointsByDepth(keypoints, descriptors, depth, depthConstant, maxDepth);
+	filterKeypointsByDepth(keypoints, descriptors, depth, fx, fy, cx, cy, maxDepth);
 }
 
 void filterKeypointsByDepth(
 		std::vector<cv::KeyPoint> & keypoints,
 		cv::Mat & descriptors,
 		const cv::Mat & depth,
-		float depthConstant,
+		float fx,
+		float fy,
+		float cx,
+		float cy,
 		float maxDepth)
 {
-	if(!depth.empty() && depthConstant > 0.0f && maxDepth > 0.0f && (descriptors.empty() || descriptors.rows == (int)keypoints.size()))
+	if(!depth.empty() && fx > 0.0f && fy > 0.0f && maxDepth > 0.0f && (descriptors.empty() || descriptors.rows == (int)keypoints.size()))
 	{
 		std::vector<cv::KeyPoint> output(keypoints.size());
 		std::vector<int> indexes(keypoints.size(), 0);
 		int oi=0;
 		for(unsigned int i=0; i<keypoints.size(); ++i)
 		{
-			pcl::PointXYZ pt = util3d::getDepth(depth, keypoints[i].pt.x, keypoints[i].pt.y, depthConstant);
+			pcl::PointXYZ pt = util3d::getDepth(depth, keypoints[i].pt.x, keypoints[i].pt.y, cx, cy, fx, fy);
 			if(uIsFinite(pt.z) && pt.z < maxDepth)
 			{
 				output[oi++] = keypoints[i];

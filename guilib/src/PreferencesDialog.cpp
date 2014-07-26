@@ -20,6 +20,7 @@
 #include "rtabmap/gui/PreferencesDialog.h"
 #include "rtabmap/gui/DatabaseViewer.h"
 #include "rtabmap/gui/OdometryViewer.h"
+#include "rtabmap/gui/CalibrationDialog.h"
 
 #include <QtCore/QSettings>
 #include <QtCore/QDir>
@@ -256,7 +257,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->radioButton_openni2->setEnabled(CameraOpenNI2::available());
 	connect(_ui->lineEdit_openniDevice, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniLocalTransform, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->doubleSpinBox_openniFocal, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_openniFx, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_openniFy, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_openniCx, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_openniCy, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
 
 
 	//Rtabmap basic
@@ -807,7 +812,10 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->radioButton_opennicvasus->setChecked(false);
 		_ui->lineEdit_openniDevice->setText("");
 		_ui->lineEdit_openniLocalTransform->setText("0 0 0 -PI_2 0 -PI_2");
-		_ui->doubleSpinBox_openniFocal->setValue(0.0);
+		_ui->doubleSpinBox_openniFx->setValue(0.0);
+		_ui->doubleSpinBox_openniFy->setValue(0.0);
+		_ui->doubleSpinBox_openniCx->setValue(0.0);
+		_ui->doubleSpinBox_openniCy->setValue(0.0);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_rtabmap_basic0->objectName())
 	{
@@ -1063,7 +1071,10 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->radioButton_opennicvasus->setChecked(settings.value("openniCvAsusType", _ui->radioButton_opennicvasus->isChecked()).toBool());
 	_ui->lineEdit_openniDevice->setText(settings.value("device",_ui->lineEdit_openniDevice->text()).toString());
 	_ui->lineEdit_openniLocalTransform->setText(settings.value("localTransform",_ui->lineEdit_openniLocalTransform->text()).toString());
-	_ui->doubleSpinBox_openniFocal->setValue(settings.value("focalLength", _ui->doubleSpinBox_openniFocal->value()).toDouble());
+	_ui->doubleSpinBox_openniFx->setValue(settings.value("fx", _ui->doubleSpinBox_openniFx->value()).toDouble());
+	_ui->doubleSpinBox_openniFy->setValue(settings.value("fy", _ui->doubleSpinBox_openniFy->value()).toDouble());
+	_ui->doubleSpinBox_openniCx->setValue(settings.value("cx", _ui->doubleSpinBox_openniCx->value()).toDouble());
+	_ui->doubleSpinBox_openniCy->setValue(settings.value("cy", _ui->doubleSpinBox_openniCy->value()).toDouble());
 	settings.endGroup(); // Openni
 }
 
@@ -1273,7 +1284,10 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath)
 	settings.setValue("openniCvAsusType", 	_ui->radioButton_opennicvasus->isChecked());
 	settings.setValue("device", 		_ui->lineEdit_openniDevice->text());
 	settings.setValue("localTransform", _ui->lineEdit_openniLocalTransform->text());
-	settings.setValue("focalLength", _ui->doubleSpinBox_openniFocal->value());
+	settings.setValue("fx", _ui->doubleSpinBox_openniFx->value());
+	settings.setValue("fy", _ui->doubleSpinBox_openniFy->value());
+	settings.setValue("cx", _ui->doubleSpinBox_openniCx->value());
+	settings.setValue("cy", _ui->doubleSpinBox_openniCy->value());
 	settings.endGroup();
 }
 
@@ -2640,9 +2654,21 @@ Transform PreferencesDialog::getSourceOpenniLocalTransform() const
 	return t;
 }
 
-float PreferencesDialog::getSourceOpenniFocalLength() const
+float PreferencesDialog::getSourceOpenniFx() const
 {
-	return _ui->doubleSpinBox_openniFocal->value();
+	return _ui->doubleSpinBox_openniFx->value();
+}
+float PreferencesDialog::getSourceOpenniFy() const
+{
+	return _ui->doubleSpinBox_openniFy->value();
+}
+float PreferencesDialog::getSourceOpenniCx() const
+{
+	return _ui->doubleSpinBox_openniCx->value();
+}
+float PreferencesDialog::getSourceOpenniCy() const
+{
+	return _ui->doubleSpinBox_openniCy->value();
 }
 
 bool PreferencesDialog::isStatisticsPublished() const
@@ -2778,14 +2804,20 @@ void PreferencesDialog::testOdometry(int type)
 			this->getSourceOpenniDevice().toStdString(),
 			this->getGeneralInputRate(),
 			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFocalLength());
+			this->getSourceOpenniFx(),
+			this->getSourceOpenniFy(),
+			this->getSourceOpenniCx(),
+			this->getSourceOpenniCy());
 	}
 	else if(this->getSourceRGBD() == kSrcOpenNI2)
 	{
 		camera = new CameraOpenNI2(
 			this->getGeneralInputRate(),
 			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFocalLength());
+			this->getSourceOpenniFx(),
+			this->getSourceOpenniFy(),
+			this->getSourceOpenniCx(),
+			this->getSourceOpenniCy());
 
 	}
 	else if(this->getSourceRGBD() == kSrcFreenect)
@@ -2794,7 +2826,10 @@ void PreferencesDialog::testOdometry(int type)
 			this->getSourceOpenniDevice().isEmpty()?0:atoi(this->getSourceOpenniDevice().toStdString().c_str()),
 			this->getGeneralInputRate(),
 			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFocalLength());
+			this->getSourceOpenniFx(),
+			this->getSourceOpenniFy(),
+			this->getSourceOpenniCx(),
+			this->getSourceOpenniCy());
 	}
 	else if(this->getSourceRGBD() == kSrcOpenNI_CV || this->getSourceRGBD() == kSrcOpenNI_CV_ASUS)
 	{
@@ -2802,7 +2837,10 @@ void PreferencesDialog::testOdometry(int type)
 			this->getSourceRGBD() == kSrcOpenNI_CV_ASUS,
 			this->getGeneralInputRate(),
 			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFocalLength());
+			this->getSourceOpenniFx(),
+			this->getSourceOpenniFy(),
+			this->getSourceOpenniCx(),
+			this->getSourceOpenniCy());
 	}
 	else
 	{
@@ -2879,6 +2917,92 @@ void PreferencesDialog::cleanOdometryTest()
 		_odomThread = 0;
 	}
 	_ui->pushButton_testOdometry->setEnabled(true);
+}
+
+
+void PreferencesDialog::calibrate()
+{
+	CameraRGBD * camera = 0;
+	if(this->getSourceRGBD() == kSrcOpenNI_PCL)
+	{
+		camera = new CameraOpenni(
+			this->getSourceOpenniDevice().toStdString(),
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform(),
+			this->getSourceOpenniFx(),
+			this->getSourceOpenniFy(),
+			this->getSourceOpenniCx(),
+			this->getSourceOpenniCy());
+	}
+	else if(this->getSourceRGBD() == kSrcOpenNI2)
+	{
+		camera = new CameraOpenNI2(
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform(),
+			this->getSourceOpenniFx(),
+			this->getSourceOpenniFy(),
+			this->getSourceOpenniCx(),
+			this->getSourceOpenniCy());
+
+	}
+	else if(this->getSourceRGBD() == kSrcFreenect)
+	{
+		camera = new CameraFreenect(
+			this->getSourceOpenniDevice().isEmpty()?0:atoi(this->getSourceOpenniDevice().toStdString().c_str()),
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform(),
+			this->getSourceOpenniFx(),
+			this->getSourceOpenniFy(),
+			this->getSourceOpenniCx(),
+			this->getSourceOpenniCy());
+	}
+	else if(this->getSourceRGBD() == kSrcOpenNI_CV || this->getSourceRGBD() == kSrcOpenNI_CV_ASUS)
+	{
+		camera = new CameraOpenNICV(
+			this->getSourceRGBD() == kSrcOpenNI_CV_ASUS,
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform(),
+			this->getSourceOpenniFx(),
+			this->getSourceOpenniFy(),
+			this->getSourceOpenniCx(),
+			this->getSourceOpenniCy());
+	}
+	else
+	{
+		UFATAL("RGBD Source type undefined!");
+	}
+
+	if(!camera->init())
+	{
+		QMessageBox::warning(this,
+			   tr("RTAB-Map"),
+			   tr("RGBD camera initialization failed!"));
+		delete camera;
+		camera = 0;
+	}
+
+
+	if(camera)
+	{
+		CalibrationDialog * dialog = new CalibrationDialog(this);
+		dialog->registerToEventsManager();
+
+		CameraThread cameraThread(camera);
+		UEventsManager::createPipe(&cameraThread, dialog, "CameraEvent");
+
+		cameraThread.start();
+
+		if(dialog->exec() == QDialog::Accepted)
+		{
+			_ui->doubleSpinBox_openniFx->setValue(dialog->fx());
+			_ui->doubleSpinBox_openniFy->setValue(dialog->fy());
+			_ui->doubleSpinBox_openniCx->setValue(dialog->cx());
+			_ui->doubleSpinBox_openniCy->setValue(dialog->cy());
+		}
+
+		cameraThread.join(true);
+		delete dialog;
+	}
 }
 
 }

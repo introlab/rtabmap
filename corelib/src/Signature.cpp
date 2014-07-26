@@ -42,7 +42,10 @@ Signature::Signature(
 		const std::vector<unsigned char> & depth2D, // in base_link frame
 		const std::vector<unsigned char> & image, // in camera_link frame
 		const std::vector<unsigned char> & depth, // in camera_link frame
-		float depthConstant,
+		float fx,
+		float fy,
+		float cx,
+		float cy,
 		const Transform & localTransform) :
 	_id(id),
 	_mapId(mapId),
@@ -55,7 +58,10 @@ Signature::Signature(
 	_image(image),
 	_depth(depth),
 	_depth2D(depth2D),
-	_depthConstant(depthConstant),
+	_fx(fx),
+	_fy(fy),
+	_cx(cx),
+	_cy(cy),
 	_pose(pose),
 	_localTransform(localTransform),
 	_words3(words3)
@@ -188,11 +194,14 @@ void Signature::removeWord(int wordId)
 	_words3.erase(wordId);
 }
 
-void Signature::setDepth(const std::vector<unsigned char> & depth, float depthConstant)
+void Signature::setDepth(const std::vector<unsigned char> & depth, float fx, float fy, float cx, float cy)
 {
-	UASSERT_MSG(depth.empty() || (!depth.empty() && depthConstant > 0.0f), uFormat("depthConstant=%f",depthConstant).c_str());
+	UASSERT_MSG(depth.empty() || (!depth.empty() && fx > 0.0f && fy > 0.0f && cx >= 0.0f && cy >= 0.0f), uFormat("fx=%f fy=%f cx=%f cy=%f",fx,fy,cx,cy).c_str());
 	_depth = depth;
-	_depthConstant=depthConstant;
+	_fx=fx;
+	_fy=fy;
+	_cx=cx;
+	_cy=cy;
 }
 
 } //namespace rtabmap

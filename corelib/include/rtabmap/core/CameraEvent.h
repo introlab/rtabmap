@@ -53,14 +53,14 @@ public:
 		UEvent(kCodeNoMoreImages)
 	{
 	}
-	CameraEvent(const cv::Mat & image, const cv::Mat & depth, float depthConstant, const Transform & localTransform, int seq=0) :
+	CameraEvent(const cv::Mat & image, const cv::Mat & depth, float fx, float fy, float cx, float cy, const Transform & localTransform, int seq=0) :
 		UEvent(kCodeImageDepth),
-		_image(image, depth, depthConstant, Transform(), localTransform, seq)
+		_image(image, depth, fx, fy, cx, cy, Transform(), localTransform, seq)
 	{
 	}
-	CameraEvent(const cv::Mat & image, const cv::Mat & depth, const cv::Mat & depth2d, float depthConstant, const Transform & localTransform, int seq=0) :
+	CameraEvent(const cv::Mat & image, const cv::Mat & depth, const cv::Mat & depth2d, float fx, float fy, float cx, float cy, const Transform & localTransform, int seq=0) :
 		UEvent(kCodeImageDepth),
-		_image(image, depth, depth2d, depthConstant, Transform(), localTransform, seq)
+		_image(image, depth, depth2d, fx, fy, cx, cy, Transform(), localTransform, seq)
 	{
 	}
 

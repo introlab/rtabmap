@@ -27,11 +27,23 @@ public:
 	CalibrationDialog(QWidget * parent = 0);
 	virtual ~CalibrationDialog();
 
+	bool isCalibrated() const {return calibrated_;}
+	const cv::Mat & cameraMatrix() const {return cameraMatrix_;} // Matrix K
+	const cv::Mat & distCoeffs() const {return distCoeffs_;} // Matrix D
+	float fx() const {return cameraMatrix_.at<double>(0,0);} // K(0)
+	float fy() const {return cameraMatrix_.at<double>(1,1);} // K(4)
+	float cx() const {return cameraMatrix_.at<double>(0,2);} // K(2)
+	float cy() const {return cameraMatrix_.at<double>(1,2);} // K(5)
+
+public slots:
+	void setBoardWidth(int width);
+	void setBoardHeight(int height);
+	void setSquareSize(double size);
+
 private slots:
 	void processImage(const cv::Mat & image);
 	void restart();
 	void calibrate();
-	void exit();
 
 protected:
 	virtual void closeEvent(QCloseEvent* event);

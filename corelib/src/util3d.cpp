@@ -301,7 +301,10 @@ cv::Mat cvtDepthToFloat(const cv::Mat & depth16U)
 std::multimap<int, pcl::PointXYZ> generateWords3(
 		const std::multimap<int, cv::KeyPoint> & words,
 		const cv::Mat & depth,
-		float depthConstant,
+		float fx,
+		float fy,
+		float cx,
+		float cy,
 		const Transform & transform)
 {
 	std::multimap<int, pcl::PointXYZ> words3;
@@ -311,10 +314,10 @@ std::multimap<int, pcl::PointXYZ> generateWords3(
 				depth,
 				iter->second.pt.x+0.5f,
 				iter->second.pt.y+0.5f,
-				depth.cols/2,
-				depth.rows/2,
-				1.0f/depthConstant,
-				1.0f/depthConstant);
+				cx,
+				cy,
+				fx,
+				fy);
 
 		if(!transform.isNull() && !transform.isIdentity())
 		{
@@ -411,18 +414,6 @@ void findCorrespondences(
 	inliers2.resize(oi);
 }
 
-pcl::PointXYZ getDepth(
-		const cv::Mat & depthImage,
-		int x, int y,
-		float depthConstant)
-{
-	return getDepth(depthImage, x, y,
-			(float)depthImage.cols/2,
-			(float)depthImage.rows/2,
-			1.0f/depthConstant,
-			1.0f/depthConstant);
-}
-
 pcl::PointXYZ getDepth(const cv::Mat & depthImage,
 					   int x, int y,
 			       float cx, float cy,
@@ -433,8 +424,8 @@ pcl::PointXYZ getDepth(const cv::Mat & depthImage,
 	pcl::PointXYZ pt;
 
 	// Use correct principal point from calibration
-	float center_x = cx; //cameraInfo.K.at(2)
-	float center_y = cy; //cameraInfo.K.at(5)
+	float center_x = cx > 0.0f ? cx : float(depthImage.cols/2) - 0.5f; //cameraInfo.K.at(2)
+	float center_y = cy > 0.0f ? cy : float(depthImage.rows/2) - 0.5f; //cameraInfo.K.at(5)
 
 	bool isInMM = depthImage.type() == CV_16UC1; // is in mm?
 
@@ -626,19 +617,6 @@ pcl::PointXYZRGB RTABMAP_EXP transformPoint(
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		const cv::Mat & imageDepth,
-		float depthConstant,
-		int decimation)
-{
-	return cloudFromDepth(
-			imageDepth,
-			float(imageDepth.cols/2),
-			float(imageDepth.rows/2),
-			1.0f/depthConstant,
-			1.0f/depthConstant,
-			decimation);
-}
-pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
-		const cv::Mat & imageDepth,
 		float cx, float cy,
 		float fx, float fy,
 		int decimation)
@@ -675,21 +653,6 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 	return cloud;
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
-		const cv::Mat & imageRgb,
-		const cv::Mat & imageDepth,
-		float depthConstant,
-		int decimation)
-{
-	return cloudFromDepthRGB(
-			imageRgb,
-			imageDepth,
-			float(imageDepth.cols/2),
-			float(imageDepth.rows/2),
-			1.0f/depthConstant,
-			1.0f/depthConstant,
-			decimation);
-}
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 		const cv::Mat & imageRgb,
 		const cv::Mat & imageDepth,
@@ -1421,7 +1384,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cvMat2Cloud(
 // If "voxel" > 0, "samples" is ignored
 pcl::PointCloud<pcl::PointXYZ>::Ptr getICPReadyCloud(
 		const cv::Mat & depth,
-		float depthConstant,
+		float fx,
+		float fy,
+		float cx,
+		float cy,
 		int decimation,
 		double maxDepth,
 		float voxel,
@@ -1431,10 +1397,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr getICPReadyCloud(
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 	cloud = cloudFromDepth(
 			depth,
-			depth.cols/2,
-			depth.rows/2,
-			1.0f/depthConstant,
-			1.0f/depthConstant,
+			cx,
+			cy,
+			fx,
+			fy,
 			decimation);
 
 	if(cloud->size())

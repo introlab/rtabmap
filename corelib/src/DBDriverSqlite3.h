@@ -72,7 +72,10 @@ private:
 			std::vector<unsigned char> & image,
 			std::vector<unsigned char> & depth,
 			std::vector<unsigned char> & depth2d,
-			float & depthConstant,
+			float & fx,
+			float & fy,
+			float & cx,
+			float & cy,
 			Transform & localTransform) const;
 	virtual void getNodeDataQuery(int signatureId, std::vector<unsigned char> & image) const;
 	virtual void getPoseQuery(int signatureId, Transform & pose, int & mapId) const;
@@ -97,7 +100,10 @@ private:
 			int id,
 			const std::vector<unsigned char> & depth,
 			const std::vector<unsigned char> & depth2d,
-			float depthConstant,
+			float fx,
+			float fy,
+			float cx,
+			float cy,
 			const Transform & localTransform) const;
 	void stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, int type, const Transform & transform) const;
 	void stepWordsChanged(sqlite3_stmt * ppStmt, int signatureId, int oldWordId, int newWordId) const;
@@ -106,9 +112,11 @@ private:
 private:
 	void loadLinksQuery(std::list<Signature *> & signatures) const;
 	int loadOrSaveDb(sqlite3 *pInMemory, const std::string & fileName, int isSave) const;
+	bool getVersion(std::string &) const;
 
 private:
 	sqlite3 * _ppDb;
+	std::string _version;
 	bool _dbInMemory;
 	unsigned int _cacheSize;
 	int _journalMode;

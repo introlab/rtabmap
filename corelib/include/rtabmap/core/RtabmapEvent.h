@@ -147,7 +147,10 @@ public:
 			const std::map<int, std::vector<unsigned char> > & images,
 			const std::map<int, std::vector<unsigned char> > & depths,
 			const std::map<int, std::vector<unsigned char> > & depths2d,
-			const std::map<int, float> & depthConstants,
+			const std::map<int, float> & depthFxs,
+			const std::map<int, float> & depthFys,
+			const std::map<int, float> & depthCxs,
+			const std::map<int, float> & depthCys,
 			const std::map<int, Transform> & localTransforms,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & constraints) :
@@ -155,7 +158,10 @@ public:
 		_images(images),
 		_depths(depths),
 		_depths2d(depths2d),
-		_depthConstants(depthConstants),
+		_depthFxs(depthFxs),
+		_depthFys(depthFys),
+		_depthCxs(depthCxs),
+		_depthCys(depthCys),
 		_localTransforms(localTransforms),
 		_poses(poses),
 		_constraints(constraints)
@@ -166,7 +172,10 @@ public:
 	const std::map<int, std::vector<unsigned char> > & getImages() const {return _images;}
 	const std::map<int, std::vector<unsigned char> > & getDepths() const {return _depths;}
 	const std::map<int, std::vector<unsigned char> > & getDepths2d() const {return _depths2d;}
-	const std::map<int, float> & getDepthConstants() const {return _depthConstants;}
+	const std::map<int, float> & getDepthFxs() const {return _depthFxs;}
+	const std::map<int, float> & getDepthFys() const {return _depthFys;}
+	const std::map<int, float> & getDepthCxs() const {return _depthCxs;}
+	const std::map<int, float> & getDepthCys() const {return _depthCys;}
 	const std::map<int, Transform> & getLocalTransforms() const {return _localTransforms;}
 	const std::map<int, Transform> & getPoses() const {return _poses;}
 	const std::multimap<int, Link> & getConstraints() const {return _constraints;}
@@ -177,7 +186,10 @@ private:
 	std::map<int, std::vector<unsigned char> > _images;
 	std::map<int, std::vector<unsigned char> > _depths;
 	std::map<int, std::vector<unsigned char> > _depths2d;
-	std::map<int, float> _depthConstants;
+	std::map<int, float> _depthFxs;
+	std::map<int, float> _depthFys;
+	std::map<int, float> _depthCxs;
+	std::map<int, float> _depthCys;
 	std::map<int, Transform> _localTransforms;
 	std::map<int, Transform> _poses;
 	std::multimap<int, Link> _constraints;

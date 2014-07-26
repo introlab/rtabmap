@@ -1759,7 +1759,10 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 		{
 			pcl::PointCloud<pcl::PointXYZ>::Ptr oldCloudXYZ = util3d::getICPReadyCloud(
 					oldDepth,
-					oldS.getDepthConstant(),
+					oldS.getDepthFx(),
+					oldS.getDepthFy(),
+					oldS.getDepthCx(),
+					oldS.getDepthCy(),
 					_icpDecimation,
 					_icpMaxDepth,
 					_icpVoxelSize,
@@ -1767,7 +1770,10 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 					oldS.getLocalTransform());
 			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudXYZ = util3d::getICPReadyCloud(
 					newDepth,
-					newS.getDepthConstant(),
+					newS.getDepthFx(),
+					newS.getDepthFy(),
+					newS.getDepthCx(),
+					newS.getDepthCy(),
 					_icpDecimation,
 					_icpMaxDepth,
 					_icpVoxelSize,
@@ -2400,7 +2406,10 @@ void Memory::getImageDepth(
 		std::vector<unsigned char> & rgb,
 		std::vector<unsigned char> & depth,
 		std::vector<unsigned char> & depth2d,
-		float & depthConstant,
+		float & fx,
+		float & fy,
+		float & cx,
+		float & cy,
 		Transform & localTransform) const
 {
 	const Signature * s = this->getSignature(locationId);
@@ -2409,12 +2418,15 @@ void Memory::getImageDepth(
 		rgb = s->getImage();
 		depth = s->getDepth();
 		depth2d = s->getDepth2D();
-		depthConstant = s->getDepthConstant();
+		fx = s->getDepthFx();
+		fy = s->getDepthFy();
+		cx = s->getDepthCx();
+		cy = s->getDepthCy();
 		localTransform = s->getLocalTransform();
 	}
 	if(rgb.empty() && this->isRawDataKept() && _dbDriver)
 	{
-		_dbDriver->getNodeData(locationId, rgb, depth, depth2d, depthConstant, localTransform);
+		_dbDriver->getNodeData(locationId, rgb, depth, depth2d, fx, fy, cx, cy, localTransform);
 	}
 }
 
@@ -2782,12 +2794,12 @@ void Memory::copyData(const Signature * from, Signature * to)
 			std::vector<unsigned char> image;
 			std::vector<unsigned char> depth;
 			std::vector<unsigned char> depth2d;
-			float depthConstant;
+			float fx, fy, cx, cy;
 			Transform localTransform;
-			_dbDriver->getNodeData(from->id(), image, depth, depth2d, depthConstant, localTransform);
+			_dbDriver->getNodeData(from->id(), image, depth, depth2d, fx, fy, cx, cy, localTransform);
 
 			to->setImage(image);
-			to->setDepth(depth, depthConstant);
+			to->setDepth(depth, fx, fy, cx, cy);
 			to->setDepth2D(depth2d);
 			to->setLocalTransform(localTransform);
 
@@ -2796,7 +2808,7 @@ void Memory::copyData(const Signature * from, Signature * to)
 		else
 		{
 			to->setImage(from->getImage());
-			to->setDepth(from->getDepth(), from->getDepthConstant());
+			to->setDepth(from->getDepth(), from->getDepthFx(), from->getDepthFy(), from->getDepthCx(), from->getDepthCy());
 			to->setDepth2D(from->getDepth2D());
 			to->setLocalTransform(from->getLocalTransform());
 		}
@@ -2814,7 +2826,10 @@ void Memory::copyData(const Signature * from, Signature * to)
 void Memory::extractKeypointsAndDescriptors(
 		const cv::Mat & image,
 		const cv::Mat & depth,
-		float depthConstant,
+		float fx,
+		float fy,
+		float cx,
+		float cy,
 		std::vector<cv::KeyPoint> & keypoints,
 		cv::Mat & descriptors)
 {
@@ -2827,7 +2842,7 @@ void Memory::extractKeypointsAndDescriptors(
 			keypoints = _feature2D->generateKeypoints(image, 0, roi);
 			UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), timer.ticks());
 
-			filterKeypointsByDepth(keypoints, depth, depthConstant, _wordsMaxDepth);
+			filterKeypointsByDepth(keypoints, depth, fx, fy, cx, cy, _wordsMaxDepth);
 			limitKeypoints(keypoints, _wordsPerImageTarget);
 		}
 
@@ -2923,7 +2938,7 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 			descriptors = image.descriptors();
 			keypoints = image.keypoints();
 		}
-		filterKeypointsByDepth(keypoints, descriptors, image.depth(), image.depthConstant(), _wordsMaxDepth);
+		filterKeypointsByDepth(keypoints, descriptors, image.depth(), image.depthFx(), image.depthFy(), image.depthCx(), image.depthCy(), _wordsMaxDepth);
 		limitKeypoints(keypoints, descriptors, _wordsPerImageTarget);
 	}
 	else
@@ -2940,7 +2955,7 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 			imageMono = image.image();
 		}
 
-		this->extractKeypointsAndDescriptors(imageMono, image.depth(), image.depthConstant(), keypoints, descriptors);
+		this->extractKeypointsAndDescriptors(imageMono, image.depth(), image.depthFx(), image.depthFy(), image.depthCx(), image.depthCy(), keypoints, descriptors);
 
 		UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
 		if(descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))
@@ -2998,9 +3013,9 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 
 	//3d words
 	std::multimap<int, pcl::PointXYZ> words3;
-	if(!image.depth().empty() && image.depthConstant())
+	if(!image.depth().empty() && image.depthFx() && image.depthFy())
 	{
-		words3 = util3d::generateWords3(words, image.depth(), image.depthConstant(), image.localTransform());
+		words3 = util3d::generateWords3(words, image.depth(), image.depthFx(), image.depthFy(), image.depthCx(), image.depthCy(), image.localTransform());
 	}
 
 	Signature * s;
@@ -3025,7 +3040,10 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 			util3d::compressData(image.depth2d()),
 			imageBytes,
 			depthBytes,
-			image.depthConstant(),
+			image.depthFx(),
+			image.depthFy(),
+			image.depthCx(),
+			image.depthCy(),
 			image.localTransform());
 	}
 	else

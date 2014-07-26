@@ -84,17 +84,15 @@ cv::Mat RTABMAP_EXP cvtDepthToFloat(const cv::Mat & depth16U);
 std::multimap<int, pcl::PointXYZ> RTABMAP_EXP generateWords3(
 		const std::multimap<int, cv::KeyPoint> & words,
 		const cv::Mat & depth,
-		float depthConstant,
+		float fx,
+		float fy,
+		float cx,
+		float cy,
 		const Transform & transform);
 
 std::multimap<int, cv::KeyPoint> RTABMAP_EXP aggregate(
 		const std::list<int> & wordIds,
 		const std::vector<cv::KeyPoint> & keypoints);
-
-pcl::PointXYZ RTABMAP_EXP getDepth(
-		const cv::Mat & depthImage,
-		int x, int y,
-		float depthConstant);
 
 pcl::PointXYZ RTABMAP_EXP getDepth(const cv::Mat & depthImage,
 					   int x, int y,
@@ -152,19 +150,10 @@ pcl::PointXYZRGB RTABMAP_EXP transformPoint(
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromDepth(
 		const cv::Mat & imageDepth,
-		float depthConstant,
-		int decimation);
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromDepth(
-		const cv::Mat & imageDepth,
 		float cx, float cy,
 		float fx, float fy,
 		int decimation = 1);
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDepthRGB(
-		const cv::Mat & imageRgb,
-		const cv::Mat & imageDepth,
-		float depthConstant,
-		int decimation = 1);
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDepthRGB(
 		const cv::Mat & imageRgb,
 		const cv::Mat & imageDepth,
@@ -290,7 +279,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cvMat2Cloud(
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP getICPReadyCloud(
 		const cv::Mat & depth,
-		float depthConstant,
+		float fx,
+		float fy,
+		float cx,
+		float cy,
 		int decimation,
 		double maxDepth,
 		float voxel,

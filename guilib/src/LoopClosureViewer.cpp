@@ -129,10 +129,8 @@ void LoopClosureViewer::updateView(const Transform & transform)
 			cloudA = util3d::cloudFromDepthRGB(
 					imageA,
 					depthA,
-					depthA.cols/2,
-					depthA.rows/2,
-					1.0f/sA_->getDepthConstant(),
-					1.0f/sA_->getDepthConstant(),
+					sA_->getDepthCx(), sA_->getDepthCy(),
+					sA_->getDepthFx(), sA_->getDepthFy(),
 					decimation);
 
 			cloudA = util3d::removeNaNFromPointCloud(cloudA);
@@ -151,10 +149,8 @@ void LoopClosureViewer::updateView(const Transform & transform)
 			cloudB = util3d::cloudFromDepthRGB(
 					imageB,
 					depthB,
-					depthB.cols/2,
-					depthB.rows/2,
-					1.0f/sB_->getDepthConstant(),
-					1.0f/sB_->getDepthConstant(),
+					sB_->getDepthCx(), sB_->getDepthCy(),
+					sB_->getDepthFx(), sB_->getDepthFy(),
 					decimation);
 
 			cloudB = util3d::removeNaNFromPointCloud(cloudB);

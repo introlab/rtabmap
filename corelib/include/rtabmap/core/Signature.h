@@ -50,7 +50,10 @@ public:
 			const std::vector<unsigned char> & depth2D = std::vector<unsigned char>(),
 			const std::vector<unsigned char> & image = std::vector<unsigned char>(),
 			const std::vector<unsigned char> & depth = std::vector<unsigned char>(),
-			float depthConstant = 0.0f,
+			float fx = 0.0f,
+			float fy = 0.0f,
+			float cx = 0.0f,
+			float cy = 0.0f,
 			const Transform & localTransform =Transform::getIdentity());
 	virtual ~Signature();
 
@@ -106,14 +109,17 @@ public:
 
 	//metric stuff
 	void setWords3(const std::multimap<int, pcl::PointXYZ> & words3) {_words3 = words3;}
-	void setDepth(const std::vector<unsigned char> & depth, float depthConstant);
+	void setDepth(const std::vector<unsigned char> & depth, float fx, float fy, float cx, float cy);
 	void setDepth2D(const std::vector<unsigned char> & depth2D) {_depth2D = depth2D;}
 	void setLocalTransform(const Transform & t) {_localTransform = t;}
 	void setPose(const Transform & pose) {_pose = pose;}
 	const std::multimap<int, pcl::PointXYZ> & getWords3() const {return _words3;}
 	const std::vector<unsigned char> & getDepth() const {return _depth;}
 	const std::vector<unsigned char> & getDepth2D() const {return _depth2D;}
-	float getDepthConstant() const {return _depthConstant;}
+	float getDepthFx() const {return _fx;}
+	float getDepthFy() const {return _fy;}
+	float getDepthCx() const {return _cx;}
+	float getDepthCy() const {return _cy;}
 	const Transform & getPose() const {return _pose;}
 	const Transform & getLocalTransform() const {return _localTransform;}
 
@@ -138,7 +144,10 @@ private:
 
 	std::vector<unsigned char> _depth; // compressed image CV_16UC1
 	std::vector<unsigned char> _depth2D; // compressed data CV_32FC2
-	float _depthConstant;
+	float _fx;
+	float _fy;
+	float _cx;
+	float _cy;
 	Transform _pose;
 	Transform _localTransform; // camera_link -> base_link
 	std::multimap<int, pcl::PointXYZ> _words3; // word <id, keypoint>

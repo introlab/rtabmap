@@ -33,6 +33,7 @@ namespace rtabmap {
 DBDriverSqlite3::DBDriverSqlite3(const ParametersMap & parameters) :
 	DBDriver(parameters),
 	_ppDb(0),
+	_version("0.0.0"),
 	_dbInMemory(Parameters::defaultDbSqlite3InMemory()),
 	_cacheSize(Parameters::defaultDbSqlite3CacheSize()),
 	_journalMode(Parameters::defaultDbSqlite3JournalMode()),
@@ -259,6 +260,44 @@ int DBDriverSqlite3::loadOrSaveDb(sqlite3 *pInMemory, const std::string & fileNa
   return rc;
 }
 
+bool DBDriverSqlite3::getVersion(std::string & version) const
+{
+	version = "0.0.0";
+	if(_ppDb)
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::stringstream query;
+
+		query << "SELECT version FROM Admin;";
+
+		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+		if(rc == SQLITE_OK)
+		{
+			// Process the result if one
+			rc = sqlite3_step(ppStmt);
+			if(rc == SQLITE_ROW)
+			{
+				version = reinterpret_cast<const char*>(sqlite3_column_text(ppStmt, 0));
+				rc = sqlite3_step(ppStmt);
+			}
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+			// Finalize (delete) the statement
+			rc = sqlite3_finalize(ppStmt);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		}
+		//else
+		//{
+			// old version detected
+		//}
+		return true;
+	}
+	return false;
+}
+
 
 bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwritten)
 {
@@ -322,6 +361,8 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 		schema = uHex2Str(schema);
 		this->executeNoResultQuery(schema.c_str());
 	}
+	UASSERT(this->getVersion(_version)); // must be true!
+	UINFO("Database version = %s", _version.c_str());
 
 	//Set database optimizations
 	this->setCacheSize(_cacheSize); // this will call the SQL
@@ -409,13 +450,26 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 
 		if(loadMetricData)
 		{
-			query << "SELECT Image.data, "
-					 "Depth.data, Depth.constant, Depth.local_transform, Depth.data2d "
-				  << "FROM Image "
-				  << "LEFT OUTER JOIN Depth " // returns all images even if there are no metric data
-				  << "ON Image.id = Depth.id "
-				  << "WHERE Image.id = ?"
-				  <<";";
+			if(uStrNumCmp(_version, "0.7.0") < 0)
+			{
+				query << "SELECT Image.data, "
+						 "Depth.data, Depth.constant, Depth.local_transform, Depth.data2d "
+					  << "FROM Image "
+					  << "LEFT OUTER JOIN Depth " // returns all images even if there are no metric data
+					  << "ON Image.id = Depth.id "
+					  << "WHERE Image.id = ?"
+					  <<";";
+			}
+			else
+			{
+				query << "SELECT Image.data, "
+						 "Depth.data, Depth.fx, Depth.fy, Depth.cx, Depth.cy, Depth.local_transform, Depth.data2d "
+					  << "FROM Image "
+					  << "LEFT OUTER JOIN Depth " // returns all images even if there are no metric data
+					  << "ON Image.id = Depth.id "
+					  << "WHERE Image.id = ?"
+					  <<";";
+			}
 		}
 		else
 		{
@@ -471,8 +525,19 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 						memcpy(depth.data(), data, dataSize);
 					}
 
-					float depthConstant = sqlite3_column_double(ppStmt, index++);
-					(*iter)->setDepth(depth, depthConstant); // depth constant
+					if(uStrNumCmp(_version, "0.7.0") < 0)
+					{
+						float depthConstant = sqlite3_column_double(ppStmt, index++);
+						(*iter)->setDepth(depth, 1.0f/depthConstant, 1.0f/depthConstant, 0, 0);
+					}
+					else
+					{
+						float fx = sqlite3_column_double(ppStmt, index++);
+						float fy = sqlite3_column_double(ppStmt, index++);
+						float cx = sqlite3_column_double(ppStmt, index++);
+						float cy = sqlite3_column_double(ppStmt, index++);
+						(*iter)->setDepth(depth, fx, fy, cx, cy);
+					}
 
 					data = sqlite3_column_blob(ppStmt, index); // local transform
 					dataSize = sqlite3_column_bytes(ppStmt, index++);
@@ -516,7 +581,10 @@ void DBDriverSqlite3::getNodeDataQuery(
 		std::vector<unsigned char> & image,
 		std::vector<unsigned char> & depth,
 		std::vector<unsigned char> & depth2d,
-		float & depthConstant,
+		float & fx,
+		float & fy,
+		float & cx,
+		float & cy,
 		Transform & localTransform) const
 {
 	if(_ppDb)
@@ -527,13 +595,26 @@ void DBDriverSqlite3::getNodeDataQuery(
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		query << "SELECT Image.data, "
-				 "Depth.data, Depth.constant, Depth.local_transform, Depth.data2d "
-			  << "FROM Image "
-			  << "LEFT OUTER JOIN Depth " // returns all images even if there are no metric data
-			  << "ON Image.id = Depth.id "
-			  << "WHERE Image.id = " << signatureId
-			  <<";";
+		if(uStrNumCmp(_version, "0.7.0") < 0)
+		{
+			query << "SELECT Image.data, "
+					 "Depth.data, Depth.constant, Depth.local_transform, Depth.data2d "
+				  << "FROM Image "
+				  << "LEFT OUTER JOIN Depth " // returns all images even if there are no metric data
+				  << "ON Image.id = Depth.id "
+				  << "WHERE Image.id = " << signatureId
+				  <<";";
+		}
+		else
+		{
+			query << "SELECT Image.data, "
+					 "Depth.data, Depth.fx, Depth.fy, Depth.cx, Depth.cy, Depth.local_transform, Depth.data2d "
+				  << "FROM Image "
+				  << "LEFT OUTER JOIN Depth " // returns all images even if there are no metric data
+				  << "ON Image.id = Depth.id "
+				  << "WHERE Image.id = " << signatureId
+				  <<";";
+		}
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
@@ -570,7 +651,21 @@ void DBDriverSqlite3::getNodeDataQuery(
 				memcpy(depth.data(), data, dataSize);
 			}
 
-			depthConstant = sqlite3_column_double(ppStmt, index++);
+			if(uStrNumCmp(_version, "0.7.0") < 0)
+			{
+				float depthConstant = sqlite3_column_double(ppStmt, index++);
+				fx = 1.0f/depthConstant;
+				fy = 1.0f/depthConstant;
+				cx = 0.0f;
+				cy = 0.0f;
+			}
+			else
+			{
+				fx = sqlite3_column_double(ppStmt, index++);
+				fy = sqlite3_column_double(ppStmt, index++);
+				cx = sqlite3_column_double(ppStmt, index++);
+				cy = sqlite3_column_double(ppStmt, index++);
+			}
 
 			data = sqlite3_column_blob(ppStmt, index); // local transform
 			dataSize = sqlite3_column_bytes(ppStmt, index++);
@@ -588,7 +683,7 @@ void DBDriverSqlite3::getNodeDataQuery(
 				memcpy(depth2d.data(), data, dataSize);
 			}
 
-			if(depth.empty() || depthConstant <= 0)
+			if(depth.empty() || fx <= 0 || fy <= 0 || cx < 0 || cy < 0)
 			{
 				UWARN("No metric data loaded!? Consider using getNodeDataQuery() with image only.");
 			}
@@ -1707,7 +1802,7 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 			//metric
 			if((*i)->getDepth().size() || (*i)->getDepth2D().size())
 			{
-				stepDepth(ppStmt, (*i)->id(), (*i)->getDepth(), (*i)->getDepth2D(), (*i)->getDepthConstant(), (*i)->getLocalTransform());
+				stepDepth(ppStmt, (*i)->id(), (*i)->getDepth(), (*i)->getDepth2D(), (*i)->getDepthFx(), (*i)->getDepthFy(), (*i)->getDepthCx(), (*i)->getDepthCy(), (*i)->getLocalTransform());
 			}
 		}
 		// Finalize (delete) the statement
@@ -1836,13 +1931,23 @@ void DBDriverSqlite3::stepImage(sqlite3_stmt * ppStmt,
 
 std::string DBDriverSqlite3::queryStepDepth() const
 {
-	return "INSERT INTO Depth(id, data, constant, local_transform, data2d) VALUES(?,?,?,?,?);";
+	if(uStrNumCmp(_version, "0.7.0") < 0)
+	{
+		return "INSERT INTO Depth(id, data, constant, local_transform, data2d) VALUES(?,?,?,?,?);";
+	}
+	else
+	{
+		return "INSERT INTO Depth(id, data, fx, fy, cx, cy, local_transform, data2d) VALUES(?,?,?,?,?,?,?,?);";
+	}
 }
 void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt,
 		int id,
 		const std::vector<unsigned char> & depth,
 		const std::vector<unsigned char> & depth2d,
-		float depthConstant,
+		float fx,
+		float fy,
+		float cx,
+		float cy,
 		const Transform & localTransform) const
 {
 	UDEBUG("Save depth %d (size=%d) depth2d = %d", id, (int)depth.size(), (int)depth2d.size());
@@ -1867,8 +1972,22 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt,
 	}
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-	rc = sqlite3_bind_double(ppStmt, index++, depthConstant);
-	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	if(uStrNumCmp(_version, "0.7.0") < 0)
+	{
+		rc = sqlite3_bind_double(ppStmt, index++, 1.0f/fy);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+	else
+	{
+		rc = sqlite3_bind_double(ppStmt, index++, fx);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_bind_double(ppStmt, index++, fy);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_bind_double(ppStmt, index++, cx);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_bind_double(ppStmt, index++, cy);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
 
 	rc = sqlite3_bind_blob(ppStmt, index++, localTransform.data(), localTransform.size()*sizeof(float), SQLITE_STATIC);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());

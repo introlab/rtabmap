@@ -173,7 +173,7 @@ Transform OdometryBOW::computeTransform(Image & image, int * quality)
 
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat descriptors;
-	_memory->extractKeypointsAndDescriptors(imageMono, image.depth(), image.depthConstant(), keypoints, descriptors);
+	_memory->extractKeypointsAndDescriptors(imageMono, image.depth(), image.depthFx(), image.depthFy(), image.depthCx(), image.depthCy(), keypoints, descriptors);
 
 	image.setDescriptors(descriptors, _memory->getFeatureType());
 	image.setKeypoints(keypoints);
@@ -389,7 +389,10 @@ Transform OdometryICP::computeTransform(Image & image, int * quality)
 	{
 		pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudXYZ = util3d::getICPReadyCloud(
 						image.depth(),
-						image.depthConstant(),
+						image.depthFx(),
+						image.depthFy(),
+						image.depthCx(),
+						image.depthCy(),
 						_decimation,
 						this->getMaxDepth(),
 						_voxelSize,
@@ -520,7 +523,7 @@ void OdometryThread::mainLoop()
 
 void OdometryThread::addImage(const Image & image)
 {
-	if(image.empty() || image.depth().empty() || image.depthConstant() == 0.0f)
+	if(image.empty() || image.depth().empty() || image.depthFx() == 0.0f || image.depthFy() == 0.0f)
 	{
 		ULOGGER_ERROR("image empty !?");
 		return;

@@ -159,7 +159,10 @@ public:
 	Src getSourceRGBD() const; 			// Openni group
 	QString getSourceOpenniDevice() const;            //Openni group
 	Transform getSourceOpenniLocalTransform() const;    //Openni group
-	float getSourceOpenniFocalLength() const; // Openni group
+	float getSourceOpenniFx() const; // Openni group
+	float getSourceOpenniFy() const; // Openni group
+	float getSourceOpenniCx() const; // Openni group
+	float getSourceOpenniCy() const; // Openni group
 
 	int getIgnoredDCComponents() const;
 
@@ -219,6 +222,7 @@ private slots:
 	void openDatabaseViewer();
 	void cleanOdometryTest();
 	void testOdometry();
+	void calibrate();
 
 protected:
 	virtual void showEvent ( QShowEvent * event );

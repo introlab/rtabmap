@@ -99,10 +99,13 @@ void CameraThread::mainLoop()
 	cv::Mat descriptors;
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat rgb, depth;
-	float depthConstant = 0.0f;
+	float fx = 0.0f;
+	float fy = 0.0f;
+	float cx = 0.0f;
+	float cy = 0.0f;
 	if(_cameraRGBD)
 	{
-		_cameraRGBD->takeImage(rgb, depth, depthConstant);
+		_cameraRGBD->takeImage(rgb, depth, fx, fy, cx, cy);
 	}
 	else
 	{
@@ -113,7 +116,7 @@ void CameraThread::mainLoop()
 	{
 		if(_cameraRGBD)
 		{
-			this->post(new CameraEvent(rgb, depth, depthConstant, _cameraRGBD->getLocalTransform(), ++_seq));
+			this->post(new CameraEvent(rgb, depth, fx, fy, cx, cy, _cameraRGBD->getLocalTransform(), ++_seq));
 		}
 		else
 		{

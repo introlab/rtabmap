@@ -63,18 +63,24 @@ class RTABMAP_EXP CameraRGBD
 {
 public:
 	virtual ~CameraRGBD();
-	void takeImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant);
+	void takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
 	virtual bool init() = 0;
 
 	//getters
 	float getImageRate() const {return _imageRate;}
 	const Transform & getLocalTransform() const {return _localTransform;}
-	float getFocalLength() const {return _focalLength;}
+	float getFx() const {return _fx;}
+	float getFy() const {return _fy;}
+	float getCx() const {return _cx;}
+	float getCy() const {return _cy;}
 
 	//setters
 	void setImageRate(float imageRate) {_imageRate = imageRate;}
 	void setLocalTransform(const Transform & localTransform) {_localTransform= localTransform;}
-	void setFocalLength(float focalLength) {_focalLength = focalLength;}
+	void setFx(float fx) {_fx = fx;}
+	void setFy(float fy) {_fy = fy;}
+	void setCx(float cx) {_cx = cx;}
+	void setCy(float cy) {_cy = cy;}
 
 protected:
 	/**
@@ -84,15 +90,21 @@ protected:
 	 */
 	CameraRGBD(float imageRate = 0,
 				const Transform & localTransform = Transform::getIdentity(),
-				float focalLength = 0.0f);
+				float fx = 0.0f,
+				float fy = 0.0f,
+				float cx = 0.0f,
+				float cy = 0.0f);
 
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant) = 0;
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy) = 0;
 
 private:
 	float _imageRate;
 	Transform _localTransform;
 	UTimer * _frameRateTimer;
-	float _focalLength;
+	float _fx;
+	float _fy;
+	float _cx;
+	float _cy;
 };
 
 /////////////////////////
@@ -109,7 +121,10 @@ public:
 	CameraOpenni(const std::string & deviceId="",
 			float imageRate = 0,
 			const Transform & localTransform = Transform::getIdentity(),
-			float focalLength = 0.0f);
+			float fx = 0.0f,
+			float fy = 0.0f,
+			float cx = 0.0f,
+			float cy = 0.0f);
 	virtual ~CameraOpenni();
 
     void image_cb (
@@ -120,7 +135,7 @@ public:
     bool init();
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant);
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
 
 private:
     pcl::Grabber* interface_;
@@ -147,13 +162,16 @@ public:
 	CameraOpenNICV(bool asus = false,
 					float imageRate = 0,
 					const Transform & localTransform = Transform::getIdentity(),
-					float focalLength = 0.0f);
+					float fx = 0.0f,
+					float fy = 0.0f,
+					float cx = 0.0f,
+					float cy = 0.0f);
 	virtual ~CameraOpenNICV();
 
 	virtual bool init();
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant);
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
 
 private:
 	bool _asus;
@@ -174,19 +192,23 @@ public:
 public:
 	CameraOpenNI2(float imageRate = 0,
 					const Transform & localTransform = Transform::getIdentity(),
-					float focalLength = 0.0f);
+					float fx = 0.0f,
+					float fy = 0.0f,
+					float cx = 0.0f,
+					float cy = 0.0f);
 	virtual ~CameraOpenNI2();
 
 	virtual bool init();
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant);
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
 
 private:
 	openni::Device * _device;
 	openni::VideoStream * _color;
 	openni::VideoStream * _depth;
-	float _depthFocal;
+	float _depthFx;
+	float _depthFy;
 };
 
 
@@ -206,13 +228,16 @@ public:
 	CameraFreenect(int deviceId= 0,
 					float imageRate=0.0f,
 					const Transform & localTransform = Transform::getIdentity(),
-					float focalLength = 0.0f);
+					float fx = 0.0f,
+					float fy = 0.0f,
+					float cx = 0.0f,
+					float cy = 0.0f);
 	virtual ~CameraFreenect();
 
 	bool init();
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & depthConstant);
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
 
 private:
 	int deviceId_;

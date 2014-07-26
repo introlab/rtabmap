@@ -95,7 +95,10 @@ void RtabmapThread::publishMap(bool optimized, bool full) const
 	std::map<int, std::vector<unsigned char> > images;
 	std::map<int, std::vector<unsigned char> > depths;
 	std::map<int, std::vector<unsigned char> > depths2d;
-	std::map<int, float> depthConstants;
+	std::map<int, float> depthFxs;
+	std::map<int, float> depthFys;
+	std::map<int, float> depthCxs;
+	std::map<int, float> depthCys;
 	std::map<int, Transform> localTransforms;
 	std::map<int, Transform> poses;
 	std::multimap<int, Link> constraints;
@@ -103,7 +106,10 @@ void RtabmapThread::publishMap(bool optimized, bool full) const
 	_rtabmap->get3DMap(images,
 			depths,
 			depths2d,
-			depthConstants,
+			depthFxs,
+			depthFys,
+			depthCxs,
+			depthCys,
 			localTransforms,
 			poses,
 			constraints,
@@ -113,7 +119,10 @@ void RtabmapThread::publishMap(bool optimized, bool full) const
 	this->post(new RtabmapEvent3DMap(images,
 			depths,
 			depths2d,
-			depthConstants,
+			depthFxs,
+			depthFys,
+			depthCxs,
+			depthCys,
 			localTransforms,
 			poses,
 			constraints));
@@ -124,7 +133,10 @@ void RtabmapThread::publishTOROGraph(bool optimized, bool full) const
 	std::map<int, std::vector<unsigned char> > images;
 	std::map<int, std::vector<unsigned char> > depths;
 	std::map<int, std::vector<unsigned char> > depths2d;
-	std::map<int, float> depthConstants;
+	std::map<int, float> depthFxs;
+	std::map<int, float> depthFys;
+	std::map<int, float> depthCxs;
+	std::map<int, float> depthCys;
 	std::map<int, Transform> localTransforms;
 	std::map<int, Transform> poses;
 	std::multimap<int, Link> constraints;
@@ -137,7 +149,10 @@ void RtabmapThread::publishTOROGraph(bool optimized, bool full) const
 	this->post(new RtabmapEvent3DMap(images,
 			depths,
 			depths2d,
-			depthConstants,
+			depthFxs,
+			depthFys,
+			depthCxs,
+			depthCys,
 			localTransforms,
 			poses,
 			constraints));

@@ -80,6 +80,8 @@ ENDIF(OpenNI2_FOUND)
 ####################################
 # Generate resources files
 ####################################
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/resources/DatabaseSchema.sql.in ${CMAKE_CURRENT_SOURCE_DIR}/resources/DatabaseSchema.sql)
+
 SET(R
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/DatabaseSchema.sql
 )

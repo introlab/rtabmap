@@ -43,13 +43,19 @@ namespace rtabmap {
 void RTABMAP_EXP filterKeypointsByDepth(
 			std::vector<cv::KeyPoint> & keypoints,
 			const cv::Mat & depth,
-			float depthConstant,
+			float fx,
+			float fy,
+			float cx,
+			float cy,
 			float maxDepth);
 void RTABMAP_EXP filterKeypointsByDepth(
 		std::vector<cv::KeyPoint> & keypoints,
 		cv::Mat & descriptors,
 		const cv::Mat & depth,
-		float depthConstant,
+		float fx,
+		float fy,
+		float cx,
+		float cy,
 		float maxDepth);
 
 void RTABMAP_EXP limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints);

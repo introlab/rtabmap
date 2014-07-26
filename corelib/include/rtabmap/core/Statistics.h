@@ -114,7 +114,10 @@ public:
 	void setImages(const std::map<int, std::vector<unsigned char> > & images) {_images = images;}
 	void setDepths(const std::map<int, std::vector<unsigned char> > & depths) {_depths = depths;}
 	void setDepth2ds(const std::map<int, std::vector<unsigned char> > & depth2ds) {_depth2ds = depth2ds;}
-	void setDepthConstants(const std::map<int, float> & depthConstants) {_depthConstants = depthConstants;}
+	void setDepthFxs(const std::map<int, float> & fxs) {_depthFxs = fxs;}
+	void setDepthFys(const std::map<int, float> & fys) {_depthFys = fys;}
+	void setDepthCxs(const std::map<int, float> & cxs) {_depthCxs = cxs;}
+	void setDepthCys(const std::map<int, float> & cys) {_depthCys = cys;}
 	void setLocalTransforms(const std::map<int, Transform> & localTransforms) {_localTransforms = localTransforms;}
 
 	void setPoses(const std::map<int, Transform> & poses) {_poses = poses;}
@@ -139,7 +142,10 @@ public:
 	const std::map<int, std::vector<unsigned char> > & getImages() const {return _images;}
 	const std::map<int, std::vector<unsigned char> > & getDepths() const {return _depths;}
 	const std::map<int, std::vector<unsigned char> > & getDepth2ds() const {return _depth2ds;}
-	const std::map<int, float> & getDepthConstants() const {return _depthConstants;}
+	const std::map<int, float> & getDepthFxs() const {return _depthFxs;}
+	const std::map<int, float> & getDepthFys() const {return _depthFys;}
+	const std::map<int, float> & getDepthCxs() const {return _depthCxs;}
+	const std::map<int, float> & getDepthCys() const {return _depthCys;}
 	const std::map<int, Transform> & getLocalTransforms() const {return _localTransforms;}
 
 	const std::map<int, Transform> & poses() const {return _poses;}
@@ -170,7 +176,10 @@ private:
 	// Metric data
 	std::map<int, std::vector<unsigned char> > _depths;
 	std::map<int, std::vector<unsigned char> > _depth2ds;
-	std::map<int, float> _depthConstants;
+	std::map<int, float> _depthFxs;
+	std::map<int, float> _depthFys;
+	std::map<int, float> _depthCxs;
+	std::map<int, float> _depthCys;
 	std::map<int, Transform> _localTransforms;
 
 	std::map<int, Transform> _poses;

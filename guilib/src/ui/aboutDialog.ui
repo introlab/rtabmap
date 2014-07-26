@@ -222,7 +222,7 @@ p, li { white-space: pre-wrap; }
         <item>
          <widget class="QLabel" name="label_5">
           <property name="text">
-           <string>Copyright (C) 2011 IntRoLab - Université de Sherbrooke</string>
+           <string>Copyright (C) 2010-2014 IntRoLab - Université de Sherbrooke</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignCenter</set>

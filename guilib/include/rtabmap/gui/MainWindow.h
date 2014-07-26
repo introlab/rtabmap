@@ -189,7 +189,10 @@ private:
 			int id,
 			const cv::Mat & rgb,
 			const cv::Mat & depth,
-			float depthConstant,
+			float fx,
+			float fy,
+			float cx,
+			float cy,
 			const Transform & localTransform,
 			const Transform & pose,
 			float voxelSize,
@@ -224,7 +227,10 @@ private:
 	QMap<int, std::vector<unsigned char> > _imagesMap;
 	QMap<int, std::vector<unsigned char> > _depthsMap;
 	QMap<int, std::vector<unsigned char> > _depths2DMap;
-	QMap<int, float> _depthConstantsMap;
+	QMap<int, float> _depthFxsMap;
+	QMap<int, float> _depthFysMap;
+	QMap<int, float> _depthCxsMap;
+	QMap<int, float> _depthCysMap;
 	QMap<int, Transform> _localTransformsMap;
 	std::map<int, Transform> _currentPosesMap;
 	Transform _odometryCorrection;
