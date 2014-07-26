@@ -83,16 +83,16 @@ SET(INCLUDE_DIRS
 	${OpenCV_INCLUDE_DIRS}
 	${CMAKE_CURRENT_BINARY_DIR} # for qt ui generated in binary dir
 	${PCL_INCLUDE_DIRS}
+	${QVTK_INCLUDE_DIR}
 )
 
 INCLUDE(${QT_USE_FILE})
-
-INCLUDE(${VTK_USE_FILE})
 
 SET(LIBRARIES
     ${QT_LIBRARIES} 
 	${OpenCV_LIBS} 
 	${PCL_LIBRARIES}
+	${QVTK_LIBRARY}
 )
 
 #include files
