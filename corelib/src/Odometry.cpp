@@ -205,12 +205,15 @@ Transform OdometryBOW::computeTransform(Image & image, int * quality)
 				pcl::PointCloud<pcl::PointXYZ>::Ptr inliers1(new pcl::PointCloud<pcl::PointXYZ>); // previous
 				pcl::PointCloud<pcl::PointXYZ>::Ptr inliers2(new pcl::PointCloud<pcl::PointXYZ>); // new
 
+				// No need to set max depth here, it is already applied in extractKeypointsAndDescriptors() above.
+				// Also! the localMap_ have points not in camera frame anymore (in local map frame), so filtering
+				// by depth here is wrong!
 				util3d::findCorrespondences(
 						localMap_,
 						newSignature->getWords3(),
 						*inliers1,
 						*inliers2,
-						this->getMaxDepth(),
+						0,
 						&uniqueCorrespondences);
 
 				if((int)inliers1->size() >= this->getMinInliers())
@@ -266,9 +269,7 @@ Transform OdometryBOW::computeTransform(Image & image, int * quality)
 							if(newSignature->getWords3().count(*iter) == 1)
 							{
 								const pcl::PointXYZ & pt = newSignature->getWords3().find(*iter)->second;
-								if(pcl::isFinite(pt) &&
-								   (pt.x != 0 || pt.y != 0 || pt.z != 0) &&
-								   (this->getMaxDepth() <= 0 || (pt.x <= this->getMaxDepth())))
+								if(pcl::isFinite(pt))
 								{
 									pcl::PointXYZ pt2 = util3d::transformPoint(pt, transform);
 									localMap_.insert(std::make_pair<int, pcl::PointXYZ>(*iter, pt2));
@@ -291,9 +292,7 @@ Transform OdometryBOW::computeTransform(Image & image, int * quality)
 							   uniqueCorrespondences.find(*iter) == uniqueCorrespondences.end())
 							{
 								const pcl::PointXYZ & pt = newSignature->getWords3().find(*iter)->second;
-								if(pcl::isFinite(pt) &&
-								   (pt.x != 0 || pt.y != 0 || pt.z != 0) &&
-								   (this->getMaxDepth() <= 0 || (pt.x <= this->getMaxDepth())))
+								if(pcl::isFinite(pt))
 								{
 									pcl::PointXYZ pt2 = util3d::transformPoint(pt, transform);
 									localMap_.insert(std::make_pair<int, pcl::PointXYZ>(*iter, pt2));
@@ -328,9 +327,7 @@ Transform OdometryBOW::computeTransform(Image & image, int * quality)
 				if(newSignature->getWords3().count(*iter) == 1)
 				{
 					const pcl::PointXYZ & pt = newSignature->getWords3().find(*iter)->second;
-					if(pcl::isFinite(pt) &&
-					   (pt.x != 0 || pt.y != 0 || pt.z != 0) &&
-					   (this->getMaxDepth() <= 0 || (pt.x <= this->getMaxDepth())))
+					if(pcl::isFinite(pt))
 					{
 						localMap_.insert(std::make_pair<int, pcl::PointXYZ>(*iter, pt));
 					}
