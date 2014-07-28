@@ -2551,21 +2551,14 @@ void MainWindow::dumpThePrediction()
 
 void MainWindow::downloadAllClouds()
 {
-	bool showAll = _state != kMonitoringPaused && _state != kMonitoring;
-
 	QStringList items;
 	items.append("Local map optimized");
-	if(showAll)
-	{
-		items.append("Local map not optimized");
-	}
+	items.append("Local map not optimized");
 	items.append("Global map optimized");
-	if(showAll)
-	{
-		items.append("Global map not optimized");
-	}
+	items.append("Global map not optimized");
+
 	bool ok;
-	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, showAll?2:1, false, &ok);
+	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, 2, false, &ok);
 	if(ok)
 	{
 		bool optimized=false, global=false;
@@ -2610,21 +2603,14 @@ void MainWindow::downloadAllClouds()
 
 void MainWindow::downloadPoseGraph()
 {
-	bool showAll = _state != kMonitoringPaused && _state != kMonitoring;
-
 	QStringList items;
 	items.append("Local map optimized");
-	if(showAll)
-	{
-		items.append("Local map not optimized");
-	}
+	items.append("Local map not optimized");
 	items.append("Global map optimized");
-	if(showAll)
-	{
-		items.append("Global map not optimized");
-	}
+	items.append("Global map not optimized");
+
 	bool ok;
-	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, showAll?2:1, false, &ok);
+	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, 2, false, &ok);
 	if(ok)
 	{
 		bool optimized=false, global=false;
