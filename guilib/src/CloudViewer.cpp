@@ -391,10 +391,12 @@ bool CloudViewer::addOccupancyGridMap(
 
 void CloudViewer::removeOccupancyGridMap()
 {
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 	if(_visualizer->getShapeActorMap()->find("map") == _visualizer->getShapeActorMap()->end())
 	{
 		_visualizer->removeShape("map");
 	}
+#endif
 }
 
 void CloudViewer::setTrajectoryShown(bool shown)
