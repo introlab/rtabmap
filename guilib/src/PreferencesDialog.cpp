@@ -121,25 +121,21 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->horizontalSlider_keypointsOpacity, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 
 	// Cloud rendering panel
-	_3dRenderingShowClouds.resize(3);
+	_3dRenderingShowClouds.resize(2);
 	_3dRenderingShowClouds[0] = _ui->checkBox_showClouds;
 	_3dRenderingShowClouds[1] = _ui->checkBox_showOdomClouds;
-	_3dRenderingShowClouds[2] = _ui->checkBox_showSaveClouds;
 
-	_3dRenderingVoxelSize.resize(3);
+	_3dRenderingVoxelSize.resize(2);
 	_3dRenderingVoxelSize[0] = _ui->doubleSpinBox_voxelSize;
 	_3dRenderingVoxelSize[1] = _ui->doubleSpinBox_voxelSize_odom;
-	_3dRenderingVoxelSize[2] = _ui->doubleSpinBox_voxelSize_save;
 
-	_3dRenderingDecimation.resize(3);
+	_3dRenderingDecimation.resize(2);
 	_3dRenderingDecimation[0] = _ui->spinBox_decimation;
 	_3dRenderingDecimation[1] = _ui->spinBox_decimation_odom;
-	_3dRenderingDecimation[2] = _ui->spinBox_decimation_save;
 
-	_3dRenderingMaxDepth.resize(3);
+	_3dRenderingMaxDepth.resize(2);
 	_3dRenderingMaxDepth[0] = _ui->doubleSpinBox_maxDepth;
 	_3dRenderingMaxDepth[1] = _ui->doubleSpinBox_maxDepth_odom;
-	_3dRenderingMaxDepth[2] = _ui->doubleSpinBox_maxDepth_save;
 
 	_3dRenderingOpacity.resize(2);
 	_3dRenderingOpacity[0] = _ui->doubleSpinBox_opacity;
@@ -149,10 +145,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_3dRenderingPtSize[0] = _ui->spinBox_ptsize;
 	_3dRenderingPtSize[1] = _ui->spinBox_ptsize_odom;
 
-	_3dRenderingShowScans.resize(3);
+	_3dRenderingShowScans.resize(2);
 	_3dRenderingShowScans[0] = _ui->checkBox_showScans;
 	_3dRenderingShowScans[1] = _ui->checkBox_showOdomScans;
-	_3dRenderingShowScans[2] = _ui->checkBox_showSaveScans;
 
 	_3dRenderingOpacityScan.resize(2);
 	_3dRenderingOpacityScan[0] = _ui->doubleSpinBox_opacity_scan;
@@ -162,25 +157,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_3dRenderingPtSizeScan[0] = _ui->spinBox_ptsize_scan;
 	_3dRenderingPtSizeScan[1] = _ui->spinBox_ptsize_odom_scan;
 
-	_3dRenderingMeshing.resize(1);
-	_3dRenderingMeshing[0] = _ui->checkBox_meshing;
-
-	_3dRenderingNormalKSearch.resize(2);
-	_3dRenderingNormalKSearch[0] = _ui->spinBox_normalKSearch;
-	_3dRenderingNormalKSearch[1] = _ui->spinBox_normalKSearch_save;
-
-	_3dRenderingGP3Radius.resize(2);
-	_3dRenderingGP3Radius[0] = _ui->doubleSpinBox_gp3Radius;
-	_3dRenderingGP3Radius[1] = _ui->doubleSpinBox_gp3Radius_save;
-
-	_3dRenderingSmoothing.resize(2);
-	_3dRenderingSmoothing[0] = _ui->checkBox_mls;
-
-	_3dRenderingSmoothingRadius.resize(2);
-	_3dRenderingSmoothingRadius[0] = _ui->doubleSpinBox_mlsRadius;
-	_3dRenderingSmoothingRadius[1] = _ui->doubleSpinBox_mlsRadius_save;
-
-	for(int i=0; i<3; ++i)
+	for(int i=0; i<2; ++i)
 	{
 		connect(_3dRenderingShowClouds[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingVoxelSize[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -188,24 +165,16 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		connect(_3dRenderingMaxDepth[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingShowScans[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
-		if(i<2)
-		{
-			connect(_3dRenderingOpacity[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-			connect(_3dRenderingPtSize[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-			connect(_3dRenderingOpacityScan[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-			connect(_3dRenderingPtSizeScan[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-
-			connect(_3dRenderingNormalKSearch[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-			connect(_3dRenderingGP3Radius[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-			connect(_3dRenderingSmoothingRadius[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-		}
-
-		if(i<1)
-		{
-			connect(_3dRenderingMeshing[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-			connect(_3dRenderingSmoothing[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-		}
+		connect(_3dRenderingOpacity[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+		connect(_3dRenderingPtSize[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+		connect(_3dRenderingOpacityScan[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+		connect(_3dRenderingPtSizeScan[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	}
+	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->spinBox_normalKSearch, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_mls, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_mlsRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->groupBox_poseFiltering, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_cloudFilterRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -751,7 +720,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 	}
 	else if(groupBox->objectName() == _ui->groupBox_cloudRendering1->objectName())
 	{
-		for(int i=0; i<3; ++i)
+		for(int i=0; i<2; ++i)
 		{
 			_3dRenderingShowClouds[i]->setChecked(true);
 			_3dRenderingVoxelSize[i]->setValue(i==2?0.005:0.00);
@@ -759,24 +728,16 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			_3dRenderingMaxDepth[i]->setValue(i==1?0.0:4.0);
 			_3dRenderingShowScans[i]->setChecked(true);
 
-			if(i<2)
-			{
-				_3dRenderingOpacity[i]->setValue(1.0);
-				_3dRenderingPtSize[i]->setValue(i==0?1:2);
-				_3dRenderingOpacityScan[i]->setValue(1.0);
-				_3dRenderingPtSizeScan[i]->setValue(1);
-
-				_3dRenderingNormalKSearch[i]->setValue(20);
-				_3dRenderingGP3Radius[i]->setValue(0.04);
-				_3dRenderingSmoothingRadius[i]->setValue(0.04);
-			}
-
-			if(i<1)
-			{
-				_3dRenderingMeshing[i]->setChecked(false);
-				_3dRenderingSmoothing[i]->setChecked(false);
-			}
+			_3dRenderingOpacity[i]->setValue(1.0);
+			_3dRenderingPtSize[i]->setValue(i==0?1:2);
+			_3dRenderingOpacityScan[i]->setValue(1.0);
+			_3dRenderingPtSizeScan[i]->setValue(1);
 		}
+		_ui->checkBox_meshing->setChecked(false);
+		_ui->doubleSpinBox_gp3Radius->setValue(0.04);
+		_ui->spinBox_normalKSearch->setValue(20);
+		_ui->checkBox_mls->setChecked(false);
+		_ui->doubleSpinBox_mlsRadius->setValue(0.04);
 
 		_ui->groupBox_poseFiltering->setChecked(false);
 		_ui->doubleSpinBox_cloudFilterRadius->setValue(0.1);
@@ -988,32 +949,24 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_beep->setChecked(settings.value("beep", _ui->checkBox_beep->isChecked()).toBool());
 	_ui->horizontalSlider_keypointsOpacity->setValue(settings.value("keypointsOpacity", _ui->horizontalSlider_keypointsOpacity->value()).toInt());
 
-	for(int i=0; i<3; ++i)
+	for(int i=0; i<2; ++i)
 	{
-		_3dRenderingShowClouds[i]->setChecked(settings.value(tr("showClouds%1").arg(i), _3dRenderingShowClouds[i]->isChecked()).toBool());
-		_3dRenderingVoxelSize[i]->setValue(settings.value(tr("voxelSize%1").arg(i), _3dRenderingVoxelSize[i]->value()).toDouble());
-		_3dRenderingDecimation[i]->setValue(settings.value(tr("decimation%1").arg(i), _3dRenderingDecimation[i]->value()).toInt());
-		_3dRenderingMaxDepth[i]->setValue(settings.value(tr("maxDepth%1").arg(i), _3dRenderingMaxDepth[i]->value()).toDouble());
-		_3dRenderingShowScans[i]->setChecked(settings.value(tr("showScans%1").arg(i), _3dRenderingShowScans[i]->isChecked()).toBool());
+		_3dRenderingShowClouds[i]->setChecked(settings.value(QString("showClouds%1").arg(i), _3dRenderingShowClouds[i]->isChecked()).toBool());
+		_3dRenderingVoxelSize[i]->setValue(settings.value(QString("voxelSize%1").arg(i), _3dRenderingVoxelSize[i]->value()).toDouble());
+		_3dRenderingDecimation[i]->setValue(settings.value(QString("decimation%1").arg(i), _3dRenderingDecimation[i]->value()).toInt());
+		_3dRenderingMaxDepth[i]->setValue(settings.value(QString("maxDepth%1").arg(i), _3dRenderingMaxDepth[i]->value()).toDouble());
+		_3dRenderingShowScans[i]->setChecked(settings.value(QString("showScans%1").arg(i), _3dRenderingShowScans[i]->isChecked()).toBool());
 
-		if(i<2)
-		{
-			_3dRenderingOpacity[i]->setValue(settings.value(tr("opacity%1").arg(i), _3dRenderingOpacity[i]->value()).toDouble());
-			_3dRenderingPtSize[i]->setValue(settings.value(tr("ptSize%1").arg(i), _3dRenderingPtSize[i]->value()).toInt());
-			_3dRenderingOpacityScan[i]->setValue(settings.value(tr("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value()).toDouble());
-			_3dRenderingPtSizeScan[i]->setValue(settings.value(tr("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value()).toInt());
-
-			_3dRenderingNormalKSearch[i]->setValue(settings.value(tr("meshNormalKSearch%1").arg(i), _3dRenderingNormalKSearch[i]->value()).toInt());
-			_3dRenderingGP3Radius[i]->setValue(settings.value(tr("meshGP3Radius%1").arg(i), _3dRenderingGP3Radius[i]->value()).toDouble());
-			_3dRenderingSmoothingRadius[i]->setValue(settings.value(tr("meshSmoothingRadius%1").arg(i), _3dRenderingSmoothingRadius[i]->value()).toDouble());
-		}
-
-		if(i<1)
-		{
-			_3dRenderingMeshing[i]->setChecked(settings.value(tr("meshing%1").arg(i), _3dRenderingMeshing[i]->isChecked()).toBool());
-			_3dRenderingSmoothing[i]->setChecked(settings.value(tr("meshSmoothing%1").arg(i), _3dRenderingSmoothing[i]->isChecked()).toBool());
-		}
+		_3dRenderingOpacity[i]->setValue(settings.value(QString("opacity%1").arg(i), _3dRenderingOpacity[i]->value()).toDouble());
+		_3dRenderingPtSize[i]->setValue(settings.value(QString("ptSize%1").arg(i), _3dRenderingPtSize[i]->value()).toInt());
+		_3dRenderingOpacityScan[i]->setValue(settings.value(QString("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value()).toDouble());
+		_3dRenderingPtSizeScan[i]->setValue(settings.value(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value()).toInt());
 	}
+	_ui->checkBox_meshing->setChecked(settings.value("meshing", _ui->checkBox_meshing->isChecked()).toBool());
+	_ui->doubleSpinBox_gp3Radius->setValue(settings.value("meshGP3Radius", _ui->doubleSpinBox_gp3Radius->value()).toDouble());
+	_ui->spinBox_normalKSearch->setValue(settings.value("meshNormalKSearch", _ui->spinBox_normalKSearch->value()).toInt());
+	_ui->checkBox_mls->setChecked(settings.value("meshSmoothing", _ui->checkBox_mls->isChecked()).toBool());
+	_ui->doubleSpinBox_mlsRadius->setValue(settings.value("meshSmoothingRadius", _ui->doubleSpinBox_mlsRadius->value()).toDouble());
 
 	_ui->groupBox_poseFiltering->setChecked(settings.value("cloudFiltering", _ui->groupBox_poseFiltering->isChecked()).toBool());
 	_ui->doubleSpinBox_cloudFilterRadius->setValue(settings.value("cloudFilteringRadius", _ui->doubleSpinBox_cloudFilterRadius->value()).toDouble());
@@ -1202,32 +1155,25 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath)
 	settings.setValue("beep", _ui->checkBox_beep->isChecked());
 	settings.setValue("keypointsOpacity", _ui->horizontalSlider_keypointsOpacity->value());
 
-	for(int i=0; i<3; ++i)
+	for(int i=0; i<2; ++i)
 	{
-		settings.setValue(tr("showClouds%1").arg(i), _3dRenderingShowClouds[i]->isChecked());
-		settings.setValue(tr("voxelSize%1").arg(i), _3dRenderingVoxelSize[i]->value());
-		settings.setValue(tr("decimation%1").arg(i), _3dRenderingDecimation[i]->value());
-		settings.setValue(tr("maxDepth%1").arg(i), _3dRenderingMaxDepth[i]->value());
-		settings.setValue(tr("showScans%1").arg(i), _3dRenderingShowScans[i]->isChecked());
+		settings.setValue(QString("showClouds%1").arg(i), _3dRenderingShowClouds[i]->isChecked());
+		settings.setValue(QString("voxelSize%1").arg(i), _3dRenderingVoxelSize[i]->value());
+		settings.setValue(QString("decimation%1").arg(i), _3dRenderingDecimation[i]->value());
+		settings.setValue(QString("maxDepth%1").arg(i), _3dRenderingMaxDepth[i]->value());
+		settings.setValue(QString("showScans%1").arg(i), _3dRenderingShowScans[i]->isChecked());
 
-		if(i<2)
-		{
-			settings.setValue(tr("opacity%1").arg(i), _3dRenderingOpacity[i]->value());
-			settings.setValue(tr("ptSize%1").arg(i), _3dRenderingPtSize[i]->value());
-			settings.setValue(tr("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value());
-			settings.setValue(tr("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value());
-
-			settings.setValue(tr("meshNormalKSearch%1").arg(i), _3dRenderingNormalKSearch[i]->value());
-			settings.setValue(tr("meshGP3Radius%1").arg(i), _3dRenderingGP3Radius[i]->value());
-			settings.setValue(tr("meshSmoothingRadius%1").arg(i), _3dRenderingSmoothingRadius[i]->value());
-		}
-
-		if(i<1)
-		{
-			settings.setValue(tr("meshing%1").arg(i), _3dRenderingMeshing[i]->isChecked());
-			settings.setValue(tr("meshSmoothing%1").arg(i), _3dRenderingSmoothing[i]->isChecked());
-		}
+		settings.setValue(QString("opacity%1").arg(i), _3dRenderingOpacity[i]->value());
+		settings.setValue(QString("ptSize%1").arg(i), _3dRenderingPtSize[i]->value());
+		settings.setValue(QString("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value());
+		settings.setValue(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value());
 	}
+	settings.setValue("meshing", _ui->checkBox_meshing->isChecked());
+	settings.setValue("meshGP3Radius", _ui->doubleSpinBox_gp3Radius->value());
+	settings.setValue("meshNormalKSearch", _ui->spinBox_normalKSearch->value());
+	settings.setValue("meshSmoothing", _ui->checkBox_mls->isChecked());
+	settings.setValue("meshSmoothingRadius", _ui->doubleSpinBox_mlsRadius->value());
+
 	settings.setValue("cloudFiltering", _ui->groupBox_poseFiltering->isChecked());
 	settings.setValue("cloudFilteringRadius", _ui->doubleSpinBox_cloudFilterRadius->value());
 	settings.setValue("cloudFilteringAngle", _ui->doubleSpinBox_cloudFilterAngle->value());
@@ -2445,27 +2391,26 @@ int PreferencesDialog::getOdomQualityWarnThr() const
 
 bool PreferencesDialog::isCloudsShown(int index) const
 {
-	UASSERT(index >= 0 && index <= 2);
+	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingShowClouds[index]->isChecked();
 }
-bool PreferencesDialog::isCloudMeshing(int index) const
+bool PreferencesDialog::isCloudMeshing() const
 {
-	UASSERT(index == 0);
-	return _3dRenderingMeshing[index]->isChecked();
+	return _ui->checkBox_meshing->isChecked();
 }
 double PreferencesDialog::getCloudVoxelSize(int index) const
 {
-	UASSERT(index >= 0 && index <= 2);
+	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingVoxelSize[index]->value();
 }
 int PreferencesDialog::getCloudDecimation(int index) const
 {
-	UASSERT(index >= 0 && index <= 2);
+	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingDecimation[index]->value();
 }
 double PreferencesDialog::getCloudMaxDepth(int index) const
 {
-	UASSERT(index >= 0 && index <= 2);
+	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingMaxDepth[index]->value();
 }
 double PreferencesDialog::getCloudOpacity(int index) const
@@ -2481,7 +2426,7 @@ int PreferencesDialog::getCloudPointSize(int index) const
 
 bool PreferencesDialog::isScansShown(int index) const
 {
-	UASSERT(index >= 0 && index <= 2);
+	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingShowScans[index]->isChecked();
 }
 double PreferencesDialog::getScanOpacity(int index) const
@@ -2494,25 +2439,21 @@ int PreferencesDialog::getScanPointSize(int index) const
 	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingPtSizeScan[index]->value();
 }
-int PreferencesDialog::getMeshNormalKSearch(int index) const
+int PreferencesDialog::getMeshNormalKSearch() const
 {
-	UASSERT(index >= 0 && index <= 1);
-	return _3dRenderingNormalKSearch[index]->value();
+	return _ui->spinBox_normalKSearch->value();
 }
-double PreferencesDialog::getMeshGP3Radius(int index) const
+double PreferencesDialog::getMeshGP3Radius() const
 {
-	UASSERT(index >= 0 && index <= 1);
-	return _3dRenderingGP3Radius[index]->value();
+	return _ui->doubleSpinBox_gp3Radius->value();
 }
-bool PreferencesDialog::getMeshSmoothing(int index) const
+bool PreferencesDialog::getMeshSmoothing() const
 {
-	UASSERT(index == 0);
-	return _3dRenderingSmoothing[index]->isChecked();
+	return _ui->checkBox_mls->isChecked();
 }
-double PreferencesDialog::getMeshSmoothingRadius(int index) const
+double PreferencesDialog::getMeshSmoothingRadius() const
 {
-	UASSERT(index >= 0 && index <= 1);
-	return _3dRenderingSmoothingRadius[index]->value();
+	return _ui->doubleSpinBox_mlsRadius->value();
 }
 bool PreferencesDialog::isCloudFiltering() const
 {

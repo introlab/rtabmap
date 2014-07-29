@@ -35,7 +35,7 @@
      <string>File</string>
     </property>
     <addaction name="actionSave_point_cloud"/>
-    <addaction name="actionSave_mesh_ply_vtk_stl"/>
+    <addaction name="actionExport_2D_Grid_map_bmp_png"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
@@ -63,7 +63,6 @@
     <addaction name="actionData_recorder"/>
     <addaction name="separator"/>
     <addaction name="actionView_high_res_point_cloud"/>
-    <addaction name="actionView_point_cloud_as_mesh"/>
    </widget>
    <widget class="QMenu" name="menu6">
     <property name="title">
@@ -918,7 +917,7 @@
   </action>
   <action name="actionSave_point_cloud">
    <property name="text">
-    <string>Export point clouds (*.pcd *.ply *.vtk)...</string>
+    <string>Export 3D clouds (*.pcd *.ply)...</string>
    </property>
   </action>
   <action name="actionDownload_all_clouds">
@@ -964,17 +963,7 @@
   </action>
   <action name="actionView_high_res_point_cloud">
    <property name="text">
-    <string>View high-res point clouds</string>
-   </property>
-  </action>
-  <action name="actionView_point_cloud_as_mesh">
-   <property name="text">
-    <string>View meshes</string>
-   </property>
-  </action>
-  <action name="actionSave_mesh_ply_vtk_stl">
-   <property name="text">
-    <string>Export meshes (*.ply *.vtk)...</string>
+    <string>View high-res point clouds...</string>
    </property>
   </action>
   <action name="actionTrigger_a_new_map">
@@ -1048,6 +1037,11 @@
   <action name="actionData_recorder">
    <property name="text">
     <string>Data recorder...</string>
+   </property>
+  </action>
+  <action name="actionExport_2D_Grid_map_bmp_png">
+   <property name="text">
+    <string>Export 2D grid map (*.bmp *.png)...</string>
    </property>
   </action>
  </widget>

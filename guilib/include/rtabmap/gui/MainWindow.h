@@ -149,10 +149,9 @@ private slots:
 	void setAspectRatio480p();
 	void setAspectRatio720p();
 	void setAspectRatio1080p();
-	void savePointClouds();
-	void saveMeshes();
-	void viewPointClouds();
-	void viewMeshes();
+	void exportGridMap();
+	void exportPointClouds();
+	void viewClouds();
 	void resetOdometry();
 	void triggerNewMap();
 	void dataRecorder();
@@ -184,7 +183,13 @@ private:
 	void updateSelectSourceDatabase(bool used);
 	void updateSelectSourceRGBDMenu(bool used, PreferencesDialog::Src src);
 
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr createAssembledCloud(const std::map<int, Transform> & poses) const;
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getAssembledCloud(
+			const std::map<int, Transform> & poses,
+			float assembledVoxelSize,
+			bool regenerateClouds,
+			int regenerateDecimation,
+			float regenerateVoxelSize,
+			float regenerateMaxDepth) const;
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr createCloud(
 			int id,
 			const cv::Mat & rgb,
@@ -198,10 +203,15 @@ private:
 			float voxelSize,
 			int decimation,
 			float maxDepth) const;
-	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > createPointClouds(const std::map<int, Transform> & poses, bool applyMLS) const;
-	std::map<int, pcl::PolygonMesh::Ptr> createMeshes(const std::map<int, Transform> & poses, bool applyMLS) const;
+	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > getClouds(
+			const std::map<int, Transform> & poses,
+			bool regenerateClouds,
+			int regenerateDecimation,
+			float regenerateVoxelSize,
+			float regenerateMaxDepth) const;
 
-	void savePointClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds);
+	bool getExportedClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds, std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool toSave);
+	void saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds);
 	void saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes);
 
 private:
@@ -233,6 +243,7 @@ private:
 	QMap<int, float> _depthCysMap;
 	QMap<int, Transform> _localTransformsMap;
 	std::map<int, Transform> _currentPosesMap;
+	QMap<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > _createdClouds;
 	Transform _odometryCorrection;
 	Transform _lastOdomPose;
 	bool _lastOdometryProcessed;

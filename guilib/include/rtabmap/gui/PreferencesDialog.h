@@ -113,22 +113,22 @@ public:
 	int getKeypointsOpacity() const;
 	int getOdomQualityWarnThr() const;
 
-	bool isCloudMeshing(int index) const;     // 0=map
-	bool isCloudsShown(int index) const;      // 0=map, 1=odom, 2=save
-	double getCloudVoxelSize(int index) const; // 0=map, 1=odom, 2=save
-	int getCloudDecimation(int index) const;   // 0=map, 1=odom, 2=save
-	double getCloudMaxDepth(int index) const;  // 0=map, 1=odom, 2=save
+	bool isCloudMeshing() const;
+	bool isCloudsShown(int index) const;      // 0=map, 1=odom
+	double getCloudVoxelSize(int index) const; // 0=map, 1=odom
+	int getCloudDecimation(int index) const;   // 0=map, 1=odom
+	double getCloudMaxDepth(int index) const;  // 0=map, 1=odom
 	double getCloudOpacity(int index) const;   // 0=map, 1=odom
 	int getCloudPointSize(int index) const;    // 0=map, 1=odom
 
-	bool isScansShown(int index) const;       // 0=map, 1=odom, 2=save
+	bool isScansShown(int index) const;       // 0=map, 1=odom
 	double getScanOpacity(int index) const;    // 0=map, 1=odom
 	int getScanPointSize(int index) const;     // 0=map, 1=odom
 
-	int getMeshNormalKSearch(int index) const; // 0=map, 1=save
-	double getMeshGP3Radius(int index) const; // 0=map, 1=save
-	bool getMeshSmoothing(int index) const; // 0=map, 1=save
-	double getMeshSmoothingRadius(int index) const; // 0=map, 1=save
+	int getMeshNormalKSearch() const;
+	double getMeshGP3Radius() const;
+	bool getMeshSmoothing() const;
+	double getMeshSmoothingRadius() const;
 
 	bool isCloudFiltering() const;
 	double getCloudFilteringRadius() const;
@@ -284,11 +284,6 @@ private:
 	QVector<QCheckBox*> _3dRenderingShowScans;
 	QVector<QDoubleSpinBox*> _3dRenderingOpacityScan;
 	QVector<QSpinBox*> _3dRenderingPtSizeScan;
-	QVector<QCheckBox*> _3dRenderingMeshing;
-	QVector<QSpinBox*> _3dRenderingNormalKSearch;
-	QVector<QDoubleSpinBox*> _3dRenderingGP3Radius;
-	QVector<QCheckBox*> _3dRenderingSmoothing;
-	QVector<QDoubleSpinBox*> _3dRenderingSmoothingRadius;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(PreferencesDialog::PANEL_FLAGS)

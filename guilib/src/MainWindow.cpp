@@ -41,6 +41,7 @@
 #include "utilite/UPlot.h"
 #include "rtabmap/gui/UCv2Qt.h"
 
+#include "ExportCloudsDialog.h"
 #include "AboutDialog.h"
 #include "PdfPlot.h"
 #include "StatsToolBox.h"
@@ -255,19 +256,17 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->action480p, SIGNAL(triggered()), this, SLOT(setAspectRatio480p()));
 	connect(_ui->action720p, SIGNAL(triggered()), this, SLOT(setAspectRatio720p()));
 	connect(_ui->action1080p, SIGNAL(triggered()), this, SLOT(setAspectRatio1080p()));
-	connect(_ui->actionSave_point_cloud, SIGNAL(triggered()), this, SLOT(savePointClouds()));
-	connect(_ui->actionSave_mesh_ply_vtk_stl, SIGNAL(triggered()), this, SLOT(saveMeshes()));
-	connect(_ui->actionView_high_res_point_cloud, SIGNAL(triggered()), this, SLOT(viewPointClouds()));
-	connect(_ui->actionView_point_cloud_as_mesh, SIGNAL(triggered()), this, SLOT(viewMeshes()));
+	connect(_ui->actionSave_point_cloud, SIGNAL(triggered()), this, SLOT(exportPointClouds()));
+	connect(_ui->actionExport_2D_Grid_map_bmp_png, SIGNAL(triggered()), this, SLOT(exportGridMap()));
+	connect(_ui->actionView_high_res_point_cloud, SIGNAL(triggered()), this, SLOT(viewClouds()));
 	connect(_ui->actionReset_Odometry, SIGNAL(triggered()), this, SLOT(resetOdometry()));
 	connect(_ui->actionTrigger_a_new_map, SIGNAL(triggered()), this, SLOT(triggerNewMap()));
 	connect(_ui->actionData_recorder, SIGNAL(triggered()), this, SLOT(dataRecorder()));
 
 	_ui->actionPause->setShortcut(Qt::Key_Space);
 	_ui->actionSave_point_cloud->setEnabled(false);
+	_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
 	_ui->actionView_high_res_point_cloud->setEnabled(false);
-	_ui->actionSave_mesh_ply_vtk_stl->setEnabled(false);
-	_ui->actionView_point_cloud_as_mesh->setEnabled(false);
 	_ui->actionReset_Odometry->setEnabled(false);
 
 #if defined(Q_WS_MAC) || defined(Q_WS_WIN)
@@ -1057,13 +1056,19 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & posesIn, const 
 	if(posesIn.size())
 	{
 		_currentPosesMap = posesIn;
-		if(_currentPosesMap.size() && !_ui->actionSave_point_cloud->isEnabled())
+		if(_currentPosesMap.size())
 		{
-			//enable save cloud action
-			_ui->actionSave_point_cloud->setEnabled(true);
-			_ui->actionView_high_res_point_cloud->setEnabled(true);
-			_ui->actionSave_mesh_ply_vtk_stl->setEnabled(true);
-			_ui->actionView_point_cloud_as_mesh->setEnabled(true);
+			if(_depthsMap.size() && !_ui->actionSave_point_cloud->isEnabled())
+			{
+				//enable save cloud action
+				_ui->actionSave_point_cloud->setEnabled(true);
+				_ui->actionView_high_res_point_cloud->setEnabled(true);
+			}
+
+			if(_depths2DMap.size() && !_ui->actionExport_2D_Grid_map_bmp_png->isEnabled())
+			{
+				_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(true);
+			}
 		}
 	}
 
@@ -1238,21 +1243,21 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
 			_preferencesDialog->getCloudDecimation(0),
 			_preferencesDialog->getCloudMaxDepth(0));
 
-	if(_preferencesDialog->isCloudMeshing(0))
+	if(_preferencesDialog->isCloudMeshing())
 	{
 		pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
 		if(cloud->size())
 		{
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-			if(_preferencesDialog->getMeshSmoothing(0))
+			if(_preferencesDialog->getMeshSmoothing())
 			{
-				cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(0));
+				cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius());
 			}
 			else
 			{
-				cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(0));
+				cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch());
 			}
-			mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(0));
+			mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius());
 		}
 
 		if(mesh->polygons.size())
@@ -1263,21 +1268,28 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
 			{
 				UERROR("Adding mesh cloud %d to viewer failed!", nodeId);
 			}
-
+			else
+			{
+				_createdClouds.insert(nodeId, tmp);
+			}
 		}
 	}
 	else
 	{
-		if(_preferencesDialog->getMeshSmoothing(0))
+		if(_preferencesDialog->getMeshSmoothing())
 		{
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-			cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(0));
+			cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius());
 			cloud->clear();
 			pcl::copyPointCloud(*cloudWithNormals, *cloud);
 		}
 		if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloud, pose))
 		{
 			UERROR("Adding cloud %d to viewer failed!", nodeId);
+		}
+		else
+		{
+			_createdClouds.insert(nodeId, cloud);
 		}
 	}
 
@@ -2663,6 +2675,7 @@ void MainWindow::clearTheCache()
 	_depthCxsMap.clear();
 	_depthCysMap.clear();
 	_localTransformsMap.clear();
+	_createdClouds.clear();
 	_ui->widget_cloudViewer->removeAllClouds();
 	_ui->widget_cloudViewer->render();
 	_currentPosesMap.clear();
@@ -2671,8 +2684,6 @@ void MainWindow::clearTheCache()
 	//disable save cloud action
 	_ui->actionSave_point_cloud->setEnabled(false);
 	_ui->actionView_high_res_point_cloud->setEnabled(false);
-	_ui->actionSave_mesh_ply_vtk_stl->setEnabled(false);
-	_ui->actionView_point_cloud_as_mesh->setEnabled(false);
 	_likelihoodCurve->clear();
 	_rawLikelihoodCurve->clear();
 	_posteriorCurve->clear();
@@ -2857,258 +2868,147 @@ void MainWindow::setAspectRatio1080p()
 	this->setAspectRatio((1080*16)/9, 1080);
 }
 
-void MainWindow::savePointClouds()
+void MainWindow::exportGridMap()
 {
-	int button = QMessageBox::question(this,
-			tr("One or multiple files?"),
-			tr("Merge all clouds together?"
-			   "\n\nNote that all cloud generation parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
-			   "Preferences -> GUI -> 3D Rendering under Exporting column.")
-			   .arg(_preferencesDialog->getCloudDecimation(2))
-			   .arg(_preferencesDialog->getCloudVoxelSize(2))
-			   .arg(_preferencesDialog->getCloudMaxDepth(2)),
-			QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+	double gridCellSize = 0.05;
+	bool gridUnknownSpaceFilled = true;
+	bool ok;
+	QInputDialog::getDouble(this, tr("Grid cell size"), tr("Size (m):"), gridCellSize, 0.01, 1, 2, &ok);
+	if(!ok)
+	{
+		return;
+	}
+
+	QMessageBox::StandardButton b = QMessageBox::question(this,
+			tr("Fill empty space?"),
+			tr("Do you want to fill empty space?"),
+			QMessageBox::No | QMessageBox::Yes,
 			QMessageBox::Yes);
 
-	if(button == QMessageBox::Yes || button == QMessageBox::No)
+	if(b != QMessageBox::Yes && b != QMessageBox::No)
 	{
-		std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
+		return;
+	}
+	gridUnknownSpaceFilled = b == QMessageBox::Yes;
 
-		_initProgressDialog->setAutoClose(true, 1);
-		_initProgressDialog->resetProgress();
-		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(int(poses.size())*2+1);
-
-		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
-		if(button == QMessageBox::Yes)
+	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > scans;
+	std::map<int, Transform> posesIn = _ui->widget_mapVisibility->getVisiblePoses();
+	std::map<int, Transform> poses;
+	for(std::map<int, Transform>::const_iterator iter = posesIn.begin(); iter!=posesIn.end(); ++iter)
+	{
+		if(_depths2DMap.contains(iter->first))
 		{
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud(poses);
-			button = QMessageBox::question(
-					this,
-					tr("Smoothing..."),
-					tr("Would you want to smooth the surface using Moving "
-					   "Least Squares algorithm? (The cloud has %1 points, this "
-					   "may take a while to process!)").arg(cloud->size()),
-					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-					   QMessageBox::No);
-			if(button == QMessageBox::Yes || button == QMessageBox::No)
-			{
-				if(button == QMessageBox::Yes)
-				{
-					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-					_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
-							"[search radius=%1m]").arg(_preferencesDialog->getMeshSmoothingRadius(1)));
-					_initProgressDialog->incrementStep();
-					QApplication::processEvents();
+			cv::Mat depth2d = util3d::uncompressData(_depths2DMap.value(iter->first));
+			scans.insert(std::make_pair(iter->first, util3d::depth2DToPointCloud(depth2d)));
+			poses.insert(*iter);
+		}
+	}
 
-					cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
-					cloud->clear();
-					pcl::copyPointCloud(*cloudWithNormals, *cloud);
+	// create the map
+	float xMin=0.0f, yMin=0.0f;
+	cv::Mat pixels = util3d::create2DMap(poses, scans, gridCellSize, gridUnknownSpaceFilled, xMin, yMin);
+
+	if(!pixels.empty())
+	{
+		cv::Mat map8U(pixels.rows, pixels.cols, CV_8U);
+		//convert to gray scaled map
+		for (int i = 0; i < pixels.rows; ++i)
+		{
+			for (int j = 0; j < pixels.cols; ++j)
+			{
+				char v = pixels.at<char>(i, j);
+				unsigned char gray;
+				if(v == 0)
+				{
+					gray = 178;
 				}
-				clouds.insert(std::make_pair(0, cloud));
+				else if(v == 100)
+				{
+					gray = 0;
+				}
+				else // -1
+				{
+					gray = 89;
+				}
+				map8U.at<unsigned char>(i, j) = gray;
 			}
+		}
+		QImage image = uCvMat2QImage(map8U, false);
+
+		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), "grid.png", tr("Image (*.bmp *.png)"));
+		if(!path.isEmpty())
+		{
+			QPixmap::fromImage(image.mirrored(false, true).transformed(QTransform().rotate(-90))).save(path);
+		}
+	}
+}
+
+void MainWindow::exportPointClouds()
+{
+	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
+	std::map<int, pcl::PolygonMesh::Ptr> meshes;
+
+	if(getExportedClouds(clouds, meshes, true))
+	{
+		if(meshes.size())
+		{
+			saveMeshes(meshes);
 		}
 		else
 		{
-			button = QMessageBox::question(
-					this,
-					tr("Smoothing..."),
-					tr("Would you want to smooth the surface using Moving "
-					   "Least Squares algorithm? (This "
-					   "may take a while to process!)"),
-					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-					   QMessageBox::No);
-			if(button == QMessageBox::Yes || button == QMessageBox::No)
-			{
-				clouds = this->createPointClouds(poses, button == QMessageBox::Yes);
-			}
+			saveClouds(clouds);
 		}
-		savePointClouds(clouds);
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
 	}
 }
 
-void MainWindow::saveMeshes()
+void MainWindow::viewClouds()
 {
-	int button = QMessageBox::question(this,
-			tr("One or multiple files?"),
-			tr("Merge all clouds together before surface reconstruction?\n"
-			   " Yes: Output a single mesh for the merged clouds.\n"
-			   " No: Output a mesh for each cloud."
-			   "\n\nNote that all cloud generation parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
-			   "Preferences -> GUI -> 3D Rendering under Exporting column.")
-			   .arg(_preferencesDialog->getCloudDecimation(2))
-			   .arg(_preferencesDialog->getCloudVoxelSize(2))
-			   .arg(_preferencesDialog->getCloudMaxDepth(2)),
-			QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-			QMessageBox::Yes);
+	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
+	std::map<int, pcl::PolygonMesh::Ptr> meshes;
 
-	if(button == QMessageBox::Yes || button == QMessageBox::No)
+	if(getExportedClouds(clouds, meshes, false))
 	{
-		std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
-
-		_initProgressDialog->setAutoClose(true, 1);
-		_initProgressDialog->resetProgress();
-		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(int(poses.size())*2+1);
-
-		std::map<int, pcl::PolygonMesh::Ptr> meshes;
-		if(button == QMessageBox::Yes)
+		QWidget * window = new QWidget(this, Qt::Window);
+		window->setAttribute(Qt::WA_DeleteOnClose);
+		window->setWindowFlags(Qt::Dialog);
+		if(meshes.size())
 		{
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud(poses);
-			_initProgressDialog->appendText(tr("Meshing the assembled cloud (%1 points)...").arg(cloud->size()));
-			_initProgressDialog->incrementStep();
-			QApplication::processEvents();
-
-			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-			button = QMessageBox::question(
-					this,
-					tr("Smoothing..."),
-					tr("Would you want to smooth the surface using Moving "
-					   "Least Squares algorithm? (The cloud has %1 points, this "
-					   "may take a while to process!)").arg(cloud->size()),
-					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-					   QMessageBox::No);
-			if(button == QMessageBox::Yes || button == QMessageBox::No)
-			{
-				if(button == QMessageBox::Yes)
-				{
-					_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
-													   "[search radius=%1m]").arg(_preferencesDialog->getMeshSmoothingRadius(1)));
-					_initProgressDialog->incrementStep();
-					QApplication::processEvents();
-
-					cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
-				}
-				else
-				{
-					_initProgressDialog->appendText(tr("Computing surface normals (without smoothing)... "
-													   "[K neighbors=%1]").arg(_preferencesDialog->getMeshNormalKSearch(1)));
-					_initProgressDialog->incrementStep();
-					QApplication::processEvents();
-
-					cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(1));
-				}
-
-				_initProgressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(_preferencesDialog->getMeshGP3Radius(1)));
-				_initProgressDialog->incrementStep();
-				QApplication::processEvents();
-
-				pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(1));
-				meshes.insert(std::make_pair(0, mesh));
-			}
+			window->setWindowTitle(tr("Meshes (%1 nodes)").arg(meshes.size()));
 		}
 		else
 		{
-			button = QMessageBox::question(
-					this,
-					tr("Smoothing..."),
-					tr("Would you want to smooth the surface using Moving "
-					   "Least Squares algorithm? (This "
-					   "may take a while to process!)"),
-					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-					   QMessageBox::No);
-			if(button == QMessageBox::Yes || button == QMessageBox::No)
-			{
-				meshes = this->createMeshes(poses, button == QMessageBox::Yes);
-			}
-		}
-		saveMeshes(meshes);
-		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
-	}
-}
-
-
-
-void MainWindow::viewPointClouds()
-{
-	int button = QMessageBox::question(this,
-		tr("One or multiple clouds?"),
-		tr("Merge all clouds together?"
-		   "\n\nNote that all cloud generation parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
-		   "Preferences -> GUI -> 3D Rendering under High res view column.")
-		   .arg(_preferencesDialog->getCloudDecimation(2))
-		   .arg(_preferencesDialog->getCloudVoxelSize(2))
-		   .arg(_preferencesDialog->getCloudMaxDepth(2)),
-		QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-		QMessageBox::Yes);
-
-	if(button == QMessageBox::Yes || button == QMessageBox::No)
-	{
-		std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
-
-		_initProgressDialog->setAutoClose(true, 1);
-		_initProgressDialog->resetProgress();
-		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(int(poses.size())+1);
-
-		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
-		if(button == QMessageBox::Yes)
-		{
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud(poses);
-
-			button = QMessageBox::question(
-					this,
-					tr("Smoothing..."),
-					tr("Would you want to smooth the surface using Moving "
-					   "Least Squares algorithm? (The cloud has %1 points, this "
-					   "may take a while to process!)").arg(cloud->size()),
-					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-					   QMessageBox::No);
-			if(button == QMessageBox::Yes || button == QMessageBox::No)
-			{
-				if(button == QMessageBox::Yes)
-				{
-					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-					_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
-													   "[search radius=%1m]").arg(_preferencesDialog->getMeshSmoothingRadius(1)));
-					_initProgressDialog->incrementStep();
-					QApplication::processEvents();
-
-					cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
-					cloud->clear();
-					pcl::copyPointCloud(*cloudWithNormals, *cloud);
-				}
-
-				clouds.insert(std::make_pair(0, cloud));
-			}
-		}
-		else
-		{
-			button = QMessageBox::question(
-					this,
-					tr("Smoothing..."),
-					tr("Would you want to smooth the surface using Moving "
-					   "Least Squares algorithm? (This "
-					   "may take a while to process!)"),
-					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-					   QMessageBox::No);
-			if(button == QMessageBox::Yes || button == QMessageBox::No)
-			{
-				clouds = this->createPointClouds(poses, button == QMessageBox::Yes);
-			}
-		}
-
-		if(clouds.size())
-		{
-			QWidget * window = new QWidget(this, Qt::Window);
-			window->setAttribute(Qt::WA_DeleteOnClose);
-			window->setWindowFlags(Qt::Dialog);
 			window->setWindowTitle(tr("Clouds (%1 nodes)").arg(clouds.size()));
-			window->setMinimumWidth(800);
-			window->setMinimumHeight(600);
+		}
+		window->setMinimumWidth(800);
+		window->setMinimumHeight(600);
 
-			CloudViewer * viewer = new CloudViewer(window);
-			viewer->setCameraLockZ(false);
+		CloudViewer * viewer = new CloudViewer(window);
+		viewer->setCameraLockZ(false);
 
-			QVBoxLayout *layout = new QVBoxLayout();
-			layout->addWidget(viewer);
-			window->setLayout(layout);
+		QVBoxLayout *layout = new QVBoxLayout();
+		layout->addWidget(viewer);
+		window->setLayout(layout);
 
-			window->show();
+		window->show();
 
-			uSleep(500);
+		uSleep(500);
 
+		if(meshes.size())
+		{
+			for(std::map<int, pcl::PolygonMesh::Ptr>::iterator iter = meshes.begin(); iter!=meshes.end(); ++iter)
+			{
+				_initProgressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)...").arg(iter->first).arg(iter->second->polygons.size()));
+				_initProgressDialog->incrementStep();
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+				pcl::fromPCLPointCloud2(iter->second->cloud, *cloud);
+				viewer->addCloudMesh(uFormat("mesh%d",iter->first), cloud, iter->second->polygons, iter->first>0?_currentPosesMap.at(iter->first):Transform::getIdentity());
+				_initProgressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)... done.").arg(iter->first).arg(iter->second->polygons.size()));
+				QApplication::processEvents();
+			}
+		}
+		else if(clouds.size())
+		{
 			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::iterator iter = clouds.begin(); iter!=clouds.end(); ++iter)
 			{
 				_initProgressDialog->appendText(tr("Viewing the cloud %1 (%2 points)...").arg(iter->first).arg(iter->second->size()));
@@ -3122,125 +3022,89 @@ void MainWindow::viewPointClouds()
 	}
 }
 
-void MainWindow::viewMeshes()
+bool MainWindow::getExportedClouds(
+		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds,
+		std::map<int, pcl::PolygonMesh::Ptr> & meshes,
+		bool toSave)
 {
-	int button = QMessageBox::question(this,
-		tr("One or multiple meshes?"),
-		tr("Merge all clouds together before surface reconstruction?\n"
-		   " Yes: Output a single mesh for the merged clouds.\n"
-		   " No: Output a mesh for each cloud."
-		   "\n\nNote that all cloud generation parameters [decimation=%1, voxel=%2m, max depth=%3m] can be found in "
-		   "Preferences -> GUI -> 3D Rendering under High res view column.")
-		   .arg(_preferencesDialog->getCloudDecimation(2))
-		   .arg(_preferencesDialog->getCloudVoxelSize(2))
-		   .arg(_preferencesDialog->getCloudMaxDepth(2)),
-		QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-		QMessageBox::Yes);
+	ExportCloudsDialog * dialog = new ExportCloudsDialog(this, toSave);
 
-	if(button == QMessageBox::Yes || button == QMessageBox::No)
+	if(dialog->exec() == QDialog::Accepted)
 	{
 		std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
 
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(int(poses.size())+1);
+		int mul = dialog->getMesh()&&!dialog->getGenerate()?3:dialog->getMLS()&&!dialog->getGenerate()?2:1;
+		_initProgressDialog->setMaximumSteps(int(poses.size())*mul+1);
 
-		std::map<int, pcl::PolygonMesh::Ptr> meshes;
-		if(button == QMessageBox::Yes)
+		if(dialog->getAssemble())
 		{
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->createAssembledCloud(poses);
-			_initProgressDialog->appendText(tr("Meshing the assembled cloud (%1 points)...").arg(cloud->size()));
-			_initProgressDialog->incrementStep();
-			QApplication::processEvents();
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->getAssembledCloud(
+					poses,
+					dialog->getAssembleVoxel(),
+					dialog->getGenerate(),
+					dialog->getGenerateDecimation(),
+					dialog->getGenerateVoxel(),
+					dialog->getGenerateMaxDepth());
 
-			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-			button = QMessageBox::question(
-					this,
-					tr("Smoothing..."),
-					tr("Would you want to smooth the surface using Moving "
-					   "Least Squares algorithm? (The cloud has %1 points, this "
-					   "may take a while to process!)").arg(cloud->size()),
-					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-					   QMessageBox::No);
-			if(button == QMessageBox::Yes || button == QMessageBox::No)
-			{
-				if(button == QMessageBox::Yes)
-				{
-					_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
-													   "[search radius=%1m]").arg(_preferencesDialog->getMeshSmoothingRadius(1)));
-					_initProgressDialog->incrementStep();
-					QApplication::processEvents();
-
-					cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
-				}
-				else
-				{
-					_initProgressDialog->appendText(tr("Computing surface normals (without smoothing)... "
-													   "[K neighbors=%1]").arg(_preferencesDialog->getMeshNormalKSearch(1)));
-					_initProgressDialog->incrementStep();
-					QApplication::processEvents();
-
-					cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(1));
-				}
-
-				_initProgressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(_preferencesDialog->getMeshGP3Radius(1)));
-				_initProgressDialog->incrementStep();
-				QApplication::processEvents();
-
-				pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(1));
-				meshes.insert(std::make_pair(0, mesh));
-			}
+			clouds.insert(std::make_pair(0, cloud));
 		}
 		else
 		{
-			button = QMessageBox::question(
-					this,
-					tr("Smoothing..."),
-					tr("Would you want to smooth the surface using Moving "
-					   "Least Squares algorithm? (This "
-					   "may take a while to process!)"),
-					   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-					   QMessageBox::No);
-			if(button == QMessageBox::Yes || button == QMessageBox::No)
-			{
-				meshes = this->createMeshes(poses, button == QMessageBox::Yes);
-			}
+			clouds = this->getClouds(
+					poses,
+					dialog->getGenerate(),
+					dialog->getGenerateDecimation(),
+					dialog->getGenerateVoxel(),
+					dialog->getGenerateMaxDepth());
 		}
 
-		if(meshes.size())
+		if(dialog->getMLS() || dialog->getMesh())
 		{
-			QWidget * window = new QWidget(this, Qt::Window);
-			window->setAttribute(Qt::WA_DeleteOnClose);
-			window->setWindowTitle(tr("Meshes (%1 nodes)").arg(meshes.size()));
-			window->setMinimumWidth(800);
-			window->setMinimumHeight(600);
-
-			CloudViewer * viewer = new CloudViewer(window);
-			viewer->setCameraLockZ(false);
-
-			QVBoxLayout *layout = new QVBoxLayout();
-			layout->addWidget(viewer);
-			window->setLayout(layout);
-
-			window->show();
-
-			uSleep(500);
-
-			for(std::map<int, pcl::PolygonMesh::Ptr>::iterator iter = meshes.begin(); iter!=meshes.end(); ++iter)
+			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::iterator iter=clouds.begin();
+				iter!= clouds.end();
+				++iter)
 			{
-				_initProgressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)...").arg(iter->first).arg(iter->second->polygons.size()));
-				_initProgressDialog->incrementStep();
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-				pcl::fromPCLPointCloud2(iter->second->cloud, *cloud);
-				viewer->addCloudMesh(uFormat("mesh%d",iter->first), cloud, iter->second->polygons, iter->first>0?_currentPosesMap.at(iter->first):Transform::getIdentity());
-				_initProgressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)... done.").arg(iter->first).arg(iter->second->polygons.size()));
-				QApplication::processEvents();
+				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
+				if(dialog->getMLS())
+				{
+					_initProgressDialog->appendText(tr("Smoothing the surface of cloud %1 using Moving Least Squares (MLS) algorithm... "
+							"[search radius=%2m]").arg(iter->first).arg(dialog->getMLSRadius()));
+					_initProgressDialog->incrementStep();
+					QApplication::processEvents();
+
+					cloudWithNormals = util3d::computeNormalsSmoothed(iter->second, (float)dialog->getMLSRadius());
+
+					iter->second->clear();
+					pcl::copyPointCloud(*cloudWithNormals, *iter->second);
+				}
+				else if(dialog->getMesh())
+				{
+					_initProgressDialog->appendText(tr("Computing surface normals of cloud %1 (without smoothing)... "
+								"[K neighbors=%2]").arg(iter->first).arg(dialog->getMeshNormalKSearch()));
+					_initProgressDialog->incrementStep();
+					QApplication::processEvents();
+
+					cloudWithNormals = util3d::computeNormals(iter->second, dialog->getMeshNormalKSearch());
+				}
+
+				if(dialog->getMesh())
+				{
+					_initProgressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(dialog->getMeshGp3Radius()));
+					_initProgressDialog->incrementStep();
+					QApplication::processEvents();
+
+					pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals,	dialog->getMeshGp3Radius());
+					meshes.insert(std::make_pair(iter->first, mesh));
+				}
 			}
 		}
 
-		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
+		return true;
 	}
+	return false;
 }
 
 void MainWindow::resetOdometry()
@@ -3301,11 +3165,11 @@ void MainWindow::dataRecorder()
 
 //END ACTIONS
 
-void MainWindow::savePointClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds)
+void MainWindow::saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds)
 {
 	if(clouds.size() == 1)
 	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), "cloud.ply", tr("Point cloud data (*.ply *.pcd *.vtk)"));
+		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), "cloud.ply", tr("Point cloud data (*.ply *.pcd)"));
 		if(!path.isEmpty())
 		{
 			if(clouds.begin()->second->size())
@@ -3321,12 +3185,6 @@ void MainWindow::savePointClouds(const std::map<int, pcl::PointCloud<pcl::PointX
 				{
 					success = pcl::io::savePLYFile(path.toStdString(), *clouds.begin()->second) == 0;
 				}
-				else if(QFileInfo(path).suffix() == "vtk")
-				{
-					pcl::PCLPointCloud2 pt2;
-					pcl::toPCLPointCloud2(*clouds.begin()->second, pt2);
-					success = pcl::io::saveVTKFile(path.toStdString(), pt2) == 0;
-				}
 				else if(QFileInfo(path).suffix() == "")
 				{
 					//use ply by default
@@ -3335,7 +3193,7 @@ void MainWindow::savePointClouds(const std::map<int, pcl::PointCloud<pcl::PointX
 				}
 				else
 				{
-					UERROR("Extension not recognized! (%s) Should be one of (*.ply *.pcd *.vtk).", QFileInfo(path).suffix().toStdString().c_str());
+					UERROR("Extension not recognized! (%s) Should be one of (*.ply *.pcd).", QFileInfo(path).suffix().toStdString().c_str());
 				}
 				if(success)
 				{
@@ -3357,60 +3215,58 @@ void MainWindow::savePointClouds(const std::map<int, pcl::PointCloud<pcl::PointX
 	}
 	else if(clouds.size())
 	{
-		QString path = QFileDialog::getExistingDirectory(this, tr("Save to (*.ply *.pcd *.vtk)..."), _preferencesDialog->getWorkingDirectory(), 0);
+		QString path = QFileDialog::getExistingDirectory(this, tr("Save to (*.ply *.pcd)..."), _preferencesDialog->getWorkingDirectory(), 0);
 		if(!path.isEmpty())
 		{
 			bool ok = false;
 			QStringList items;
 			items.push_back("ply");
 			items.push_back("pcd");
-			items.push_back("vtk");
 			QString suffix = QInputDialog::getItem(this, tr("File format"), tr("Which format?"), items, 0, false, &ok);
 
 			if(ok)
 			{
-				for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr >::const_iterator iter=clouds.begin(); iter!=clouds.end(); ++iter)
-				{
-					if(iter->second->size())
-					{
-						pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformedCloud;
-						transformedCloud = util3d::transformPointCloud(iter->second, _currentPosesMap.at(iter->first));
+				QString prefix = QInputDialog::getText(this, tr("File prefix"), tr("Prefix:"), QLineEdit::Normal, "cloud", &ok);
 
-						QString pathFile = path+QDir::separator()+QString("cloud%1.%2").arg(iter->first).arg(suffix);
-						bool success =false;
-						if(suffix == "pcd")
-						{
-							success = pcl::io::savePCDFile(pathFile.toStdString(), *transformedCloud) == 0;
-						}
-						else if(suffix == "ply")
-						{
-							success = pcl::io::savePLYFile(pathFile.toStdString(), *transformedCloud) == 0;
-						}
-						else if(suffix == "vtk")
-						{
-							pcl::PCLPointCloud2 pt2;
-							pcl::toPCLPointCloud2(*transformedCloud, pt2);
-							success = pcl::io::saveVTKFile(pathFile.toStdString(), pt2) == 0;
-						}
-						else
-						{
-							UFATAL("Extension not recognized! (%s)", suffix.toStdString().c_str());
-						}
-						if(success)
-						{
-							_initProgressDialog->appendText(tr("Saved cloud %1 (%2 points) to %3.").arg(iter->first).arg(iter->second->size()).arg(pathFile));
-						}
-						else
-						{
-							_initProgressDialog->appendText(tr("Failed saving cloud %1 (%2 points) to %3.").arg(iter->first).arg(iter->second->size()).arg(pathFile));
-						}
-					}
-					else
+				if(ok)
+				{
+					for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr >::const_iterator iter=clouds.begin(); iter!=clouds.end(); ++iter)
 					{
-						_initProgressDialog->appendText(tr("Cloud %1 is empty!").arg(iter->first));
+						if(iter->second->size())
+						{
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformedCloud;
+							transformedCloud = util3d::transformPointCloud(iter->second, _currentPosesMap.at(iter->first));
+
+							QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
+							bool success =false;
+							if(suffix == "pcd")
+							{
+								success = pcl::io::savePCDFile(pathFile.toStdString(), *transformedCloud) == 0;
+							}
+							else if(suffix == "ply")
+							{
+								success = pcl::io::savePLYFile(pathFile.toStdString(), *transformedCloud) == 0;
+							}
+							else
+							{
+								UFATAL("Extension not recognized! (%s)", suffix.toStdString().c_str());
+							}
+							if(success)
+							{
+								_initProgressDialog->appendText(tr("Saved cloud %1 (%2 points) to %3.").arg(iter->first).arg(iter->second->size()).arg(pathFile));
+							}
+							else
+							{
+								_initProgressDialog->appendText(tr("Failed saving cloud %1 (%2 points) to %3.").arg(iter->first).arg(iter->second->size()).arg(pathFile));
+							}
+						}
+						else
+						{
+							_initProgressDialog->appendText(tr("Cloud %1 is empty!").arg(iter->first));
+						}
+						_initProgressDialog->incrementStep();
+						QApplication::processEvents();
 					}
-					_initProgressDialog->incrementStep();
-					QApplication::processEvents();
 				}
 			}
 		}
@@ -3421,7 +3277,7 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes)
 {
 	if(meshes.size() == 1)
 	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), "mesh.ply", tr("Mesh (*.ply *.vtk)"));
+		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), "mesh.ply", tr("Mesh (*.ply)"));
 		if(!path.isEmpty())
 		{
 			if(meshes.begin()->second->polygons.size())
@@ -3433,11 +3289,6 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes)
 				{
 					success = pcl::io::savePLYFile(path.toStdString(), *meshes.begin()->second) == 0;
 				}
-				else if(QFileInfo(path).suffix() == "vtk")
-				{
-					success = pcl::io::saveVTKFile(path.toStdString(), *meshes.begin()->second) == 0;
-
-				}
 				else if(QFileInfo(path).suffix() == "")
 				{
 					//default ply
@@ -3446,7 +3297,7 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes)
 				}
 				else
 				{
-					UERROR("Extension not recognized! (%s) Should be one of (*.ply *.vtk).", QFileInfo(path).suffix().toStdString().c_str());
+					UERROR("Extension not recognized! (%s) Should be (*.ply).", QFileInfo(path).suffix().toStdString().c_str());
 				}
 				if(success)
 				{
@@ -3468,14 +3319,12 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes)
 	}
 	else if(meshes.size())
 	{
-		QString path = QFileDialog::getExistingDirectory(this, tr("Save to (*.ply, *.vtk)..."), _preferencesDialog->getWorkingDirectory(), 0);
+		QString path = QFileDialog::getExistingDirectory(this, tr("Save to (*.ply)..."), _preferencesDialog->getWorkingDirectory(), 0);
 		if(!path.isEmpty())
 		{
 			bool ok = false;
-			QStringList items;
-			items.push_back("ply");
-			items.push_back("vtk");
-			QString suffix = QInputDialog::getItem(this, tr("File format"), tr("Which format?"), items, 0, false, &ok);
+			QString prefix = QInputDialog::getText(this, tr("File prefix"), tr("Prefix:"), QLineEdit::Normal, "mesh", &ok);
+			QString suffix = "ply";
 
 			if(ok)
 			{
@@ -3490,15 +3339,11 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes)
 						tmp = util3d::transformPointCloud(tmp, _currentPosesMap.at(iter->first));
 						pcl::toPCLPointCloud2(*tmp, mesh.cloud);
 
-						QString pathFile = path+QDir::separator()+QString("mesh%1.%2").arg(iter->first).arg(suffix);
+						QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
 						bool success =false;
 						if(suffix == "ply")
 						{
 							success = pcl::io::savePLYFile(pathFile.toStdString(), mesh) == 0;
-						}
-						else if(suffix == "vtk")
-						{
-							success = pcl::io::saveVTKFile(pathFile.toStdString(), mesh) == 0;
 						}
 						else
 						{
@@ -3578,7 +3423,13 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createCloud(
 	return cloud;
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createAssembledCloud(const std::map<int, Transform> & poses) const
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::getAssembledCloud(
+		const std::map<int, Transform> & poses,
+		float assembledVoxelSize,
+		bool regenerateClouds,
+		int regenerateDecimation,
+		float regenerateVoxelSize,
+		float regenerateMaxDepth) const
 {
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 	int i=0;
@@ -3591,23 +3442,24 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createAssembledCloud(const st
 			if(_imagesMap.contains(iter->first) && _depthsMap.contains(iter->first))
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-				cloud = createCloud(iter->first,
-						util3d::uncompressImage(_imagesMap.value(iter->first)),
-						util3d::uncompressImage(_depthsMap.value(iter->first)),
-						_depthFxsMap.value(iter->first),
-						_depthFysMap.value(iter->first),
-						_depthCxsMap.value(iter->first),
-						_depthCysMap.value(iter->first),
-						_localTransformsMap.value(iter->first),
-						iter->second,
-						_preferencesDialog->getCloudVoxelSize(2),
-						_preferencesDialog->getCloudDecimation(2),
-						_preferencesDialog->getCloudMaxDepth(2));
-
-				if(cloud->size() && _preferencesDialog->getCloudVoxelSize(2))
+				if(regenerateClouds)
 				{
-					UDEBUG("Voxelize the cloud %d (%d points, voxel %f m)", iter->first, (int)cloud->size(), _preferencesDialog->getCloudVoxelSize(2));
-					cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSize(2));
+					cloud = createCloud(iter->first,
+							util3d::uncompressImage(_imagesMap.value(iter->first)),
+							util3d::uncompressImage(_depthsMap.value(iter->first)),
+							_depthFxsMap.value(iter->first),
+							_depthFysMap.value(iter->first),
+							_depthCxsMap.value(iter->first),
+							_depthCysMap.value(iter->first),
+							_localTransformsMap.value(iter->first),
+							iter->second,
+							regenerateVoxelSize,
+							regenerateDecimation,
+							regenerateMaxDepth);
+				}
+				else if(_createdClouds.contains(iter->first))
+				{
+					cloud = util3d::transformPointCloud(_createdClouds.value(iter->first), iter->second);
 				}
 
 				if(cloud->size())
@@ -3634,9 +3486,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createAssembledCloud(const st
 
 			if(count % 100 == 0)
 			{
-				if(assembledCloud->size() && _preferencesDialog->getCloudVoxelSize(2))
+				if(assembledCloud->size() && assembledVoxelSize)
 				{
-					assembledCloud = util3d::voxelize(assembledCloud, _preferencesDialog->getCloudVoxelSize(2));
+					assembledCloud = util3d::voxelize(assembledCloud, assembledVoxelSize);
 				}
 			}
 		}
@@ -3648,17 +3500,20 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createAssembledCloud(const st
 		QApplication::processEvents();
 	}
 
-	if(assembledCloud->size() && _preferencesDialog->getCloudVoxelSize(2))
+	if(assembledCloud->size() && assembledVoxelSize)
 	{
-		assembledCloud = util3d::voxelize(assembledCloud, _preferencesDialog->getCloudVoxelSize(2));
+		assembledCloud = util3d::voxelize(assembledCloud, assembledVoxelSize);
 	}
 
 	return assembledCloud;
 }
 
-std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::createPointClouds(
+std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
 		const std::map<int, Transform> & poses,
-		bool applyMLS) const
+		bool regenerateClouds,
+		int regenerateDecimation,
+		float regenerateVoxelSize,
+		float regenerateMaxDepth) const
 {
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 	int i=0;
@@ -3670,35 +3525,28 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::createPointCl
 			if(_imagesMap.contains(iter->first) && _depthsMap.contains(iter->first))
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-				cloud = createCloud(iter->first,
-						util3d::uncompressImage(_imagesMap.value(iter->first)),
-						util3d::uncompressImage(_depthsMap.value(iter->first)),
-						_depthFxsMap.value(iter->first),
-						_depthFysMap.value(iter->first),
-						_depthCxsMap.value(iter->first),
-						_depthCysMap.value(iter->first),
-						_localTransformsMap.value(iter->first),
-						Transform::getIdentity(),
-						_preferencesDialog->getCloudVoxelSize(2),
-						_preferencesDialog->getCloudDecimation(2),
-						_preferencesDialog->getCloudMaxDepth(2));
-
-				if(cloud->size() && _preferencesDialog->getCloudVoxelSize(2))
+				if(regenerateClouds)
 				{
-					UDEBUG("Voxelize the cloud of %d points (%f m)", (int)cloud->size(), _preferencesDialog->getCloudVoxelSize(2));
-					cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSize(2));
+					cloud = createCloud(iter->first,
+							util3d::uncompressImage(_imagesMap.value(iter->first)),
+							util3d::uncompressImage(_depthsMap.value(iter->first)),
+							_depthFxsMap.value(iter->first),
+							_depthFysMap.value(iter->first),
+							_depthCxsMap.value(iter->first),
+							_depthCysMap.value(iter->first),
+							_localTransformsMap.value(iter->first),
+							Transform::getIdentity(),
+							regenerateVoxelSize,
+							regenerateDecimation,
+							regenerateMaxDepth);
+				}
+				else if(_createdClouds.contains(iter->first))
+				{
+					cloud = _createdClouds.value(iter->first);
 				}
 
 				if(cloud->size())
 				{
-					if(applyMLS)
-					{
-						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-						cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
-						cloud->clear();
-						pcl::copyPointCloud(*cloudWithNormals, *cloud);
-					}
-
 					clouds.insert(std::make_pair(iter->first, cloud));
 					inserted = true;
 				}
@@ -3726,83 +3574,6 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::createPointCl
 	}
 
 	return clouds;
-}
-
-std::map<int, pcl::PolygonMesh::Ptr> MainWindow::createMeshes(const std::map<int, Transform> & poses, bool applyMLS) const
-{
-	std::map<int, pcl::PolygonMesh::Ptr> meshes;
-	int i=0;
-	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-	{
-		bool inserted = false;
-		if(!iter->second.isNull())
-		{
-			if(_imagesMap.contains(iter->first) && _depthsMap.contains(iter->first))
-			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-				cloud = createCloud(iter->first,
-						util3d::uncompressImage(_imagesMap.value(iter->first)),
-						util3d::uncompressImage(_depthsMap.value(iter->first)),
-						_depthFxsMap.value(iter->first),
-						_depthFysMap.value(iter->first),
-						_depthCxsMap.value(iter->first),
-						_depthCysMap.value(iter->first),
-						_localTransformsMap.value(iter->first),
-						Transform::getIdentity(),
-						_preferencesDialog->getCloudVoxelSize(2),
-						_preferencesDialog->getCloudDecimation(2),
-						_preferencesDialog->getCloudMaxDepth(2));
-
-				if(cloud->size() && _preferencesDialog->getCloudVoxelSize(2))
-				{
-					UDEBUG("Voxelize the cloud of %d points (%f m)", (int)cloud->size(), _preferencesDialog->getCloudVoxelSize(2));
-					cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSize(2));
-				}
-
-				pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
-				if(cloud->size())
-				{
-					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-					if(applyMLS)
-					{
-						cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius(1));
-					}
-					else
-					{
-						cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch(1));
-					}
-					mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(1));
-				}
-
-				if(mesh->polygons.size())
-				{
-					meshes.insert(std::make_pair(iter->first, mesh));
-					inserted = true;
-				}
-			}
-			else
-			{
-				UERROR("Cloud %d not found?!?", iter->first);
-			}
-		}
-		else
-		{
-			UERROR("transform is null!?");
-		}
-
-		if(inserted)
-		{
-			_initProgressDialog->appendText(tr("Generated mesh %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
-		}
-		else
-		{
-			_initProgressDialog->appendText(tr("Ignored mesh %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
-		}
-		_initProgressDialog->incrementStep();
-		QApplication::processEvents();
-	}
-
-	return meshes;
 }
 
 // STATES

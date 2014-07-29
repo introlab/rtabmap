@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-617</y>
-            <width>732</width>
-            <height>1198</height>
+            <y>-185</y>
+            <width>737</width>
+            <height>893</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -418,8 +418,18 @@ Show a yellow background when the number of odometry inliers goes under this thr
                       <property name="frameShadow">
                        <enum>QFrame::Raised</enum>
                       </property>
-                      <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,0,0,1">
-                       <item row="3" column="3">
+                      <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,0,1">
+                       <item row="9" column="0">
+                        <widget class="QSpinBox" name="spinBox_ptsize_scan">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <number>64</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="2">
                         <widget class="QLabel" name="label_108">
                          <property name="text">
                           <string>3D cloud decimation (1-2-4-8-...).</string>
@@ -455,20 +465,6 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="0" column="2">
-                        <widget class="QLabel" name="label_159">
-                         <property name="text">
-                          <string>Exporting/
-High-res view</string>
-                         </property>
-                         <property name="alignment">
-                          <set>Qt::AlignCenter</set>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="1" column="0">
                         <widget class="QCheckBox" name="checkBox_showClouds">
                          <property name="text">
@@ -490,16 +486,6 @@ High-res view</string>
                         </widget>
                        </item>
                        <item row="1" column="2">
-                        <widget class="QCheckBox" name="checkBox_showSaveClouds">
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="3">
                         <widget class="QLabel" name="label_119">
                          <property name="text">
                           <string>Show 3D clouds.</string>
@@ -548,25 +534,6 @@ High-res view</string>
                         </widget>
                        </item>
                        <item row="2" column="2">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSize_save">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="decimals">
-                          <number>3</number>
-                         </property>
-                         <property name="maximum">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.005000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="3">
                         <widget class="QLabel" name="label_107">
                          <property name="text">
                           <string>3D cloud voxel size.</string>
@@ -599,19 +566,6 @@ High-res view</string>
                          </property>
                          <property name="value">
                           <number>2</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="2">
-                        <widget class="QSpinBox" name="spinBox_decimation_save">
-                         <property name="minimum">
-                          <number>1</number>
-                         </property>
-                         <property name="maximum">
-                          <number>32</number>
-                         </property>
-                         <property name="value">
-                          <number>1</number>
                          </property>
                         </widget>
                        </item>
@@ -654,25 +608,6 @@ High-res view</string>
                         </widget>
                        </item>
                        <item row="4" column="2">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_maxDepth_save">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="decimals">
-                          <number>1</number>
-                         </property>
-                         <property name="maximum">
-                          <double>100.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.100000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>4.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="3">
                         <widget class="QLabel" name="label_132">
                          <property name="text">
                           <string>3D cloud maximum depth (0 means no limit).</string>
@@ -720,7 +655,7 @@ High-res view</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="5" column="3">
+                       <item row="5" column="2">
                         <widget class="QLabel" name="label_155">
                          <property name="text">
                           <string>3D cloud opacity.</string>
@@ -750,7 +685,7 @@ High-res view</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="3">
+                       <item row="6" column="2">
                         <widget class="QLabel" name="label_157">
                          <property name="text">
                           <string>3D cloud point size (1..64).</string>
@@ -781,16 +716,6 @@ High-res view</string>
                         </widget>
                        </item>
                        <item row="7" column="2">
-                        <widget class="QCheckBox" name="checkBox_showSaveScans">
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="7" column="3">
                         <widget class="QLabel" name="label_110">
                          <property name="text">
                           <string>Show 2D scans.</string>
@@ -845,23 +770,13 @@ High-res view</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="3">
+                       <item row="8" column="2">
                         <widget class="QLabel" name="label_156">
                          <property name="text">
                           <string>2D scan opacity.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="9" column="0">
-                        <widget class="QSpinBox" name="spinBox_ptsize_scan">
-                         <property name="minimum">
-                          <number>1</number>
-                         </property>
-                         <property name="maximum">
-                          <number>64</number>
                          </property>
                         </widget>
                        </item>
@@ -875,7 +790,7 @@ High-res view</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="9" column="3">
+                       <item row="9" column="2">
                         <widget class="QLabel" name="label_158">
                          <property name="text">
                           <string>2D scan point size (1..64).</string>
@@ -885,7 +800,7 @@ High-res view</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="12" column="3">
+                       <item row="12" column="2">
                         <widget class="QLabel" name="label_168">
                          <property name="text">
                           <string>Sphere radius that is to be used for determining the k-nearest neighbors used for triangulating (GP3). Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
@@ -895,7 +810,7 @@ High-res view</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="14" column="3">
+                       <item row="14" column="2">
                         <widget class="QLabel" name="label_85">
                          <property name="text">
                           <string>Mesh smoothing using Moving Least Squares algorithm (MLS).</string>
@@ -907,25 +822,6 @@ High-res view</string>
                        </item>
                        <item row="12" column="0">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_gp3Radius">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="decimals">
-                          <number>3</number>
-                         </property>
-                         <property name="maximum">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.040000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="12" column="2">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_gp3Radius_save">
                          <property name="suffix">
                           <string> m</string>
                          </property>
@@ -962,7 +858,7 @@ High-res view</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="10" column="3">
+                       <item row="10" column="2">
                         <widget class="QLabel" name="label_169">
                          <property name="text">
                           <string>Online meshing using Greedy Projection Triangulation (GP3).</string>
@@ -972,7 +868,7 @@ High-res view</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="15" column="3">
+                       <item row="15" column="2">
                         <widget class="QLabel" name="label_87">
                          <property name="text">
                           <string>MLS search radius: Set the sphere radius that is to be used for determining the k-nearest neighbors used for fitting. Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
@@ -992,7 +888,7 @@ High-res view</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="11" column="3">
+                       <item row="11" column="2">
                         <widget class="QLabel" name="label_71">
                          <property name="text">
                           <string>Set the number of k nearest neighbors to use for the normal estimation to create the mesh. Not used when mesh smoothing below is used.</string>
@@ -1006,35 +902,6 @@ High-res view</string>
                         <widget class="QSpinBox" name="spinBox_normalKSearch">
                          <property name="value">
                           <number>20</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="11" column="2">
-                        <widget class="QSpinBox" name="spinBox_normalKSearch_save">
-                         <property name="minimum">
-                          <number>0</number>
-                         </property>
-                         <property name="value">
-                          <number>20</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="15" column="2">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_mlsRadius_save">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="decimals">
-                          <number>3</number>
-                         </property>
-                         <property name="maximum">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.040000000000000</double>
                          </property>
                         </widget>
                        </item>
