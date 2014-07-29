@@ -150,7 +150,9 @@ private slots:
 	void setAspectRatio720p();
 	void setAspectRatio1080p();
 	void exportGridMap();
-	void exportPointClouds();
+	void exportScans();
+	void exportClouds();
+	void viewScans();
 	void viewClouds();
 	void resetOdometry();
 	void triggerNewMap();
@@ -210,9 +212,11 @@ private:
 			float regenerateVoxelSize,
 			float regenerateMaxDepth) const;
 
+	bool getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans);
 	bool getExportedClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds, std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool toSave);
 	void saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds);
 	void saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes);
+	void saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> & clouds);
 
 private:
 	Ui_mainWindow * _ui;

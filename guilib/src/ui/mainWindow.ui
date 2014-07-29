@@ -35,6 +35,7 @@
      <string>File</string>
     </property>
     <addaction name="actionSave_point_cloud"/>
+    <addaction name="actionExport_2D_scans_ply_bmp"/>
     <addaction name="actionExport_2D_Grid_map_bmp_png"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
@@ -63,6 +64,7 @@
     <addaction name="actionData_recorder"/>
     <addaction name="separator"/>
     <addaction name="actionView_high_res_point_cloud"/>
+    <addaction name="actionView_scans"/>
    </widget>
    <widget class="QMenu" name="menu6">
     <property name="title">
@@ -917,7 +919,7 @@
   </action>
   <action name="actionSave_point_cloud">
    <property name="text">
-    <string>Export 3D clouds (*.pcd *.ply)...</string>
+    <string>Export 3D clouds (*.ply *.pcd)...</string>
    </property>
   </action>
   <action name="actionDownload_all_clouds">
@@ -1041,7 +1043,17 @@
   </action>
   <action name="actionExport_2D_Grid_map_bmp_png">
    <property name="text">
-    <string>Export 2D grid map (*.bmp *.png)...</string>
+    <string>Export 2D grid map (*.png *.bmp)...</string>
+   </property>
+  </action>
+  <action name="actionExport_2D_scans_ply_bmp">
+   <property name="text">
+    <string>Export 2D scans (*.ply *.pcd)...</string>
+   </property>
+  </action>
+  <action name="actionView_scans">
+   <property name="text">
+    <string>View scans...</string>
    </property>
   </action>
  </widget>

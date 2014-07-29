@@ -256,8 +256,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->action480p, SIGNAL(triggered()), this, SLOT(setAspectRatio480p()));
 	connect(_ui->action720p, SIGNAL(triggered()), this, SLOT(setAspectRatio720p()));
 	connect(_ui->action1080p, SIGNAL(triggered()), this, SLOT(setAspectRatio1080p()));
-	connect(_ui->actionSave_point_cloud, SIGNAL(triggered()), this, SLOT(exportPointClouds()));
+	connect(_ui->actionSave_point_cloud, SIGNAL(triggered()), this, SLOT(exportClouds()));
+	connect(_ui->actionExport_2D_scans_ply_bmp, SIGNAL(triggered()), this, SLOT(exportScans()));
 	connect(_ui->actionExport_2D_Grid_map_bmp_png, SIGNAL(triggered()), this, SLOT(exportGridMap()));
+	connect(_ui->actionView_scans, SIGNAL(triggered()), this, SLOT(viewScans()));
 	connect(_ui->actionView_high_res_point_cloud, SIGNAL(triggered()), this, SLOT(viewClouds()));
 	connect(_ui->actionReset_Odometry, SIGNAL(triggered()), this, SLOT(resetOdometry()));
 	connect(_ui->actionTrigger_a_new_map, SIGNAL(triggered()), this, SLOT(triggerNewMap()));
@@ -265,7 +267,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 
 	_ui->actionPause->setShortcut(Qt::Key_Space);
 	_ui->actionSave_point_cloud->setEnabled(false);
+	_ui->actionExport_2D_scans_ply_bmp->setEnabled(false);
 	_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
+	_ui->actionView_scans->setEnabled(false);
 	_ui->actionView_high_res_point_cloud->setEnabled(false);
 	_ui->actionReset_Odometry->setEnabled(false);
 
@@ -1058,16 +1062,18 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & posesIn, const 
 		_currentPosesMap = posesIn;
 		if(_currentPosesMap.size())
 		{
-			if(_depthsMap.size() && !_ui->actionSave_point_cloud->isEnabled())
+			if(_depthsMap.size())
 			{
 				//enable save cloud action
 				_ui->actionSave_point_cloud->setEnabled(true);
 				_ui->actionView_high_res_point_cloud->setEnabled(true);
 			}
 
-			if(_depths2DMap.size() && !_ui->actionExport_2D_Grid_map_bmp_png->isEnabled())
+			if(_depths2DMap.size())
 			{
+				_ui->actionExport_2D_scans_ply_bmp->setEnabled(true);
 				_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(true);
+				_ui->actionView_scans->setEnabled(true);
 			}
 		}
 	}
@@ -2682,7 +2688,10 @@ void MainWindow::clearTheCache()
 	_odometryCorrection = Transform::getIdentity();
 	_lastOdomPose.setNull();
 	//disable save cloud action
+	_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
+	_ui->actionExport_2D_scans_ply_bmp->setEnabled(false);
 	_ui->actionSave_point_cloud->setEnabled(false);
+	_ui->actionView_scans->setEnabled(false);
 	_ui->actionView_high_res_point_cloud->setEnabled(false);
 	_likelihoodCurve->clear();
 	_rawLikelihoodCurve->clear();
@@ -2873,7 +2882,7 @@ void MainWindow::exportGridMap()
 	double gridCellSize = 0.05;
 	bool gridUnknownSpaceFilled = true;
 	bool ok;
-	QInputDialog::getDouble(this, tr("Grid cell size"), tr("Size (m):"), gridCellSize, 0.01, 1, 2, &ok);
+	gridCellSize = QInputDialog::getDouble(this, tr("Grid cell size"), tr("Size (m):"), gridCellSize, 0.01, 1, 2, &ok);
 	if(!ok)
 	{
 		return;
@@ -2943,7 +2952,145 @@ void MainWindow::exportGridMap()
 	}
 }
 
-void MainWindow::exportPointClouds()
+void MainWindow::exportScans()
+{
+	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> scans;
+	if(getExportedScans(scans))
+	{
+		if(scans.size())
+		{
+			this->saveScans(scans);
+		}
+		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
+	}
+}
+
+void MainWindow::viewScans()
+{
+	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> scans;
+	if(getExportedScans(scans))
+	{
+		QWidget * window = new QWidget(this, Qt::Window);
+		window->setAttribute(Qt::WA_DeleteOnClose);
+		window->setWindowFlags(Qt::Dialog);
+		window->setWindowTitle(tr("Scans (%1 nodes)").arg(scans.size()));
+		window->setMinimumWidth(800);
+		window->setMinimumHeight(600);
+
+		CloudViewer * viewer = new CloudViewer(window);
+		viewer->setCameraLockZ(false);
+
+		QVBoxLayout *layout = new QVBoxLayout();
+		layout->addWidget(viewer);
+		window->setLayout(layout);
+
+		window->show();
+
+		uSleep(500);
+
+		for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr>::iterator iter = scans.begin(); iter!=scans.end(); ++iter)
+		{
+			_initProgressDialog->appendText(tr("Viewing the scan %1 (%2 points)...").arg(iter->first).arg(iter->second->size()));
+			_initProgressDialog->incrementStep();
+			viewer->addCloud(uFormat("cloud%d",iter->first), iter->second, iter->first>0?_currentPosesMap.at(iter->first):Transform::getIdentity());
+			_initProgressDialog->appendText(tr("Viewing the scan %1 (%2 points)... done.").arg(iter->first).arg(iter->second->size()));
+		}
+
+		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
+	}
+}
+
+bool MainWindow::getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans)
+{
+	QMessageBox::StandardButton b = QMessageBox::question(this,
+				tr("Assemble scans?"),
+				tr("Do you want to assemble the scans in only one cloud?"),
+				QMessageBox::No | QMessageBox::Yes,
+				QMessageBox::Yes);
+
+	if(b != QMessageBox::No && b != QMessageBox::Yes)
+	{
+		return false;
+	}
+
+	double voxel = 0.01;
+	bool assemble = b == QMessageBox::Yes;
+
+	if(assemble)
+	{
+		bool ok;
+		voxel = QInputDialog::getDouble(this, tr("Voxel size"), tr("Voxel size (m):"), voxel, 0.00, 0.1, 2, &ok);
+		if(!ok)
+		{
+			return false;
+		}
+	}
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr assembledScans(new pcl::PointCloud<pcl::PointXYZ>());
+	std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
+
+	_initProgressDialog->setAutoClose(true, 1);
+	_initProgressDialog->resetProgress();
+	_initProgressDialog->show();
+	_initProgressDialog->setMaximumSteps(int(poses.size())*assemble?1:2+1);
+
+	int count = 1;
+	int i = 0;
+	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+	{
+		bool inserted = false;
+		if(_depths2DMap.contains(iter->first))
+		{
+			cv::Mat depth2d = util3d::uncompressData(_depths2DMap.value(iter->first));
+			pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::depth2DToPointCloud(depth2d);
+			if(scan->size())
+			{
+				if(assemble)
+				{
+					*assembledScans += *util3d::transformPointCloud(scan, iter->second);;
+
+					if(count++ % 100 == 0)
+					{
+						if(assembledScans->size() && voxel)
+						{
+							assembledScans = util3d::voxelize(assembledScans, voxel);
+						}
+					}
+				}
+				else
+				{
+					scans.insert(std::make_pair(iter->first, scan));
+				}
+				inserted = true;
+			}
+		}
+		if(inserted)
+		{
+			_initProgressDialog->appendText(tr("Generated scan %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
+		}
+		else
+		{
+			_initProgressDialog->appendText(tr("Ignored scan %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
+		}
+		_initProgressDialog->incrementStep();
+		QApplication::processEvents();
+	}
+
+	if(assemble)
+	{
+		if(voxel && assembledScans->size())
+		{
+			assembledScans = util3d::voxelize(assembledScans, voxel);
+		}
+		if(assembledScans->size())
+		{
+			scans.insert(std::make_pair(0, assembledScans));
+		}
+	}
+	return true;
+}
+
+void MainWindow::exportClouds()
 {
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 	std::map<int, pcl::PolygonMesh::Ptr> meshes;
@@ -3366,6 +3513,114 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes)
 					}
 					_initProgressDialog->incrementStep();
 					QApplication::processEvents();
+				}
+			}
+		}
+	}
+}
+
+void MainWindow::saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> & scans)
+{
+	if(scans.size() == 1)
+	{
+		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), "scan.ply", tr("Point cloud data (*.ply *.pcd)"));
+		if(!path.isEmpty())
+		{
+			if(scans.begin()->second->size())
+			{
+				_initProgressDialog->appendText(tr("Saving the scan (%1 points)...").arg(scans.begin()->second->size()));
+
+				bool success =false;
+				if(QFileInfo(path).suffix() == "pcd")
+				{
+					success = pcl::io::savePCDFile(path.toStdString(), *scans.begin()->second) == 0;
+				}
+				else if(QFileInfo(path).suffix() == "ply")
+				{
+					success = pcl::io::savePLYFile(path.toStdString(), *scans.begin()->second) == 0;
+				}
+				else if(QFileInfo(path).suffix() == "")
+				{
+					//use ply by default
+					path += ".ply";
+					success = pcl::io::savePCDFile(path.toStdString(), *scans.begin()->second) == 0;
+				}
+				else
+				{
+					UERROR("Extension not recognized! (%s) Should be one of (*.ply *.pcd).", QFileInfo(path).suffix().toStdString().c_str());
+				}
+				if(success)
+				{
+					_initProgressDialog->incrementStep();
+					_initProgressDialog->appendText(tr("Saving the scan (%1 points)... done.").arg(scans.begin()->second->size()));
+
+					QMessageBox::information(this, tr("Save successful!"), tr("Scan saved to \"%1\"").arg(path));
+				}
+				else
+				{
+					QMessageBox::warning(this, tr("Save failed!"), tr("Failed to save to \"%1\"").arg(path));
+				}
+			}
+			else
+			{
+				QMessageBox::warning(this, tr("Save failed!"), tr("Scan is empty..."));
+			}
+		}
+	}
+	else if(scans.size())
+	{
+		QString path = QFileDialog::getExistingDirectory(this, tr("Save to (*.ply *.pcd)..."), _preferencesDialog->getWorkingDirectory(), 0);
+		if(!path.isEmpty())
+		{
+			bool ok = false;
+			QStringList items;
+			items.push_back("ply");
+			items.push_back("pcd");
+			QString suffix = QInputDialog::getItem(this, tr("File format"), tr("Which format?"), items, 0, false, &ok);
+
+			if(ok)
+			{
+				QString prefix = QInputDialog::getText(this, tr("File prefix"), tr("Prefix:"), QLineEdit::Normal, "scan", &ok);
+
+				if(ok)
+				{
+					for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::const_iterator iter=scans.begin(); iter!=scans.end(); ++iter)
+					{
+						if(iter->second->size())
+						{
+							pcl::PointCloud<pcl::PointXYZ>::Ptr transformedCloud;
+							transformedCloud = util3d::transformPointCloud(iter->second, _currentPosesMap.at(iter->first));
+
+							QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
+							bool success =false;
+							if(suffix == "pcd")
+							{
+								success = pcl::io::savePCDFile(pathFile.toStdString(), *transformedCloud) == 0;
+							}
+							else if(suffix == "ply")
+							{
+								success = pcl::io::savePLYFile(pathFile.toStdString(), *transformedCloud) == 0;
+							}
+							else
+							{
+								UFATAL("Extension not recognized! (%s)", suffix.toStdString().c_str());
+							}
+							if(success)
+							{
+								_initProgressDialog->appendText(tr("Saved scan %1 (%2 points) to %3.").arg(iter->first).arg(iter->second->size()).arg(pathFile));
+							}
+							else
+							{
+								_initProgressDialog->appendText(tr("Failed saving scan %1 (%2 points) to %3.").arg(iter->first).arg(iter->second->size()).arg(pathFile));
+							}
+						}
+						else
+						{
+							_initProgressDialog->appendText(tr("Scan %1 is empty!").arg(iter->first));
+						}
+						_initProgressDialog->incrementStep();
+						QApplication::processEvents();
+					}
 				}
 			}
 		}
