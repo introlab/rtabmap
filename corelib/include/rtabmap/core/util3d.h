@@ -400,6 +400,8 @@ void RTABMAP_EXP rayTrace(const cv::Point2i & start,
 		cv::Mat & grid,
 		bool stopOnObstacle);
 
+cv::Mat RTABMAP_EXP convertMap2Image8U(const cv::Mat & map8S);
+
 } // namespace util3d
 } // namespace rtabmap
 

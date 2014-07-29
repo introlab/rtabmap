@@ -27,6 +27,7 @@
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/gui/UCv2Qt.h>
 #include <rtabmap/utilite/UStl.h>
+#include <rtabmap/utilite/ULogger.h>
 
 namespace rtabmap {
 
@@ -34,11 +35,10 @@ class NodeItem: public QGraphicsEllipseItem
 {
 public:
 	// in meter
-	NodeItem(int id, const Transform & pose, float radius, const cv::Mat & scan) :
+	NodeItem(int id, const Transform & pose, float radius) :
 		QGraphicsEllipseItem(QRectF(-radius,-radius,radius*2.0f,radius*2.0f)),
 		_id(id),
-		_pose(pose),
-		_scan(scan)
+		_pose(pose)
 	{
 		this->setPos(-pose.y(),-pose.x());
 		this->setBrush(pen().color());
@@ -56,8 +56,6 @@ public:
 	}
 
 	void setPose(const Transform & pose) {this->setPos(-pose.y(),-pose.x()); _pose=pose;}
-	void setScan(const cv::Mat & scan) {_scan = scan;}
-	const cv::Mat & getScan() const {return _scan;}
 
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event )
@@ -77,7 +75,6 @@ protected:
 private:
 	int _id;
 	Transform _pose;
-	cv::Mat _scan;
 };
 
 class LinkItem: public QGraphicsLineItem
@@ -136,11 +133,8 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_linkWidth(0),
 		_gridMap(0),
 		_lastReferential(0),
-		_gridCellSize(0.05f),
-		_gridUnknownSpaceFilled(true)
+		_gridCellSize(0.0f)
 {
-	Q_ASSERT(_gridCellSize > 0);
-
 	this->setScene(new QGraphicsScene(this));
 	this->setDragMode(QGraphicsView::ScrollHandDrag);
 	_workingDirectory = QDir::homePath();
@@ -170,8 +164,6 @@ GraphViewer::GraphViewer(QWidget * parent) :
 
 
 	_gridMap = this->scene()->addPixmap(QPixmap());
-	_gridMap->scale(_gridCellSize, -_gridCellSize);
-	_gridMap->setRotation(90);
 	_gridMap->setZValue(0);
 	_gridMap->setParentItem(_root);
 }
@@ -181,8 +173,7 @@ GraphViewer::~GraphViewer()
 }
 
 void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
-				 const std::multimap<int, Link> & constraints,
-				 const QMap<int, std::vector<unsigned char> > & scans)
+				 const std::multimap<int, Link> & constraints)
 {
 	//Hide nodes and links
 	for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
@@ -199,40 +190,19 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		iter.value()->hide();
 	}
 
-	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > scanClouds;
 	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 	{
 		QMap<int, NodeItem*>::iterator itemIter = _nodeItems.find(iter->first);
 		if(itemIter != _nodeItems.end())
 		{
 			itemIter.value()->setPose(iter->second);
-			if(itemIter.value()->getScan().empty() && scans.contains(iter->first))
-			{
-				cv::Mat depth2d = util3d::uncompressData(scans.value(iter->first));
-				itemIter.value()->setScan(depth2d);
-			}
-			if(!itemIter.value()->getScan().empty() && _gridMap->isVisible())
-			{
-				scanClouds.insert(std::make_pair(iter->first, util3d::depth2DToPointCloud(itemIter.value()->getScan())));
-			}
 			itemIter.value()->show();
 		}
 		else
 		{
 			// create node item
-			QMap<int, std::vector<unsigned char> >::const_iterator jter = scans.find(iter->first);
-			cv::Mat depth2d;
-			if(jter != scans.end())
-			{
-				depth2d = util3d::uncompressData(jter.value());
-				if(_gridMap->isVisible())
-				{
-					scanClouds.insert(std::make_pair(iter->first, util3d::depth2DToPointCloud(depth2d)));
-				}
-			}
-
 			const Transform & pose = iter->second;
-			NodeItem * item = new NodeItem(iter->first, pose, _nodeRadius, depth2d);
+			NodeItem * item = new NodeItem(iter->first, pose, _nodeRadius);
 			this->scene()->addItem(item);
 			item->setZValue(2);
 			item->setColor(_nodeColor);
@@ -324,41 +294,6 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		}
 	}
 
-	if(scanClouds.size())
-	{
-		float xMin=0.0f, yMin=0.0f;
-		cv::Mat map8S = util3d::create2DMap(poses, scanClouds, _gridCellSize, _gridUnknownSpaceFilled, xMin, yMin);
-		cv::Mat map8U(map8S.rows, map8S.cols, CV_8U);
-		//convert to gray scaled map
-		for (int i = 0; i < map8S.rows; ++i)
-		{
-			for (int j = 0; j < map8S.cols; ++j)
-			{
-				char v = map8S.at<char>(i, j);
-				unsigned char gray;
-				if(v == 0)
-				{
-					gray = 178;
-				}
-				else if(v == 100)
-				{
-					gray = 0;
-				}
-				else // -1
-				{
-					gray = 89;
-				}
-				map8U.at<unsigned char>(i, j) = gray;
-			}
-		}
-		QImage image = uCvMat2QImage(map8U, false);
-		_gridMap->resetTransform();
-		_gridMap->scale(_gridCellSize, -_gridCellSize);
-		_gridMap->setRotation(90);
-		_gridMap->setPixmap(QPixmap::fromImage(image));
-		_gridMap->setPos(-yMin, -xMin);
-	}
-
 	if(_nodeItems.size())
 	{
 		(--_nodeItems.end()).value()->setColor(Qt::green);
@@ -374,6 +309,25 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	this->fitInView(this->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
 }
 
+void GraphViewer::updateMap(const cv::Mat & map8U, float resolution, float xMin, float yMin)
+{
+	UASSERT(map8U.empty() || (!map8U.empty() && resolution > 0.0f));
+	if(!map8U.empty())
+	{
+		_gridCellSize = resolution;
+		QImage image = uCvMat2QImage(map8U, false);
+		_gridMap->resetTransform();
+		_gridMap->scale(resolution, -resolution);
+		_gridMap->setRotation(90);
+		_gridMap->setPixmap(QPixmap::fromImage(image));
+		_gridMap->setPos(-yMin, -xMin);
+	}
+	else
+	{
+		this->clearMap();
+	}
+}
+
 void GraphViewer::clearGraph()
 {
 	qDeleteAll(_nodeItems);
@@ -382,9 +336,19 @@ void GraphViewer::clearGraph()
 	_neighborLinkItems.clear();
 	qDeleteAll(_loopLinkItems);
 	_loopLinkItems.clear();
-	_gridMap->setPixmap(QPixmap());
 	_lastReferential->resetTransform();
 	this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
+}
+
+void GraphViewer::clearMap()
+{
+	_gridMap->setPixmap(QPixmap());
+}
+
+void GraphViewer::clearAll()
+{
+	clearMap();
+	clearGraph();
 }
 
 void GraphViewer::wheelEvent ( QWheelEvent * event )
@@ -412,10 +376,6 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aSetNodeSize = menu.addAction(tr("Set node radius..."));
 	QAction * aSetLinkSize = menu.addAction(tr("Set link width..."));
 	menu.addSeparator();
-	QAction * aSetGridCellSize = menu.addAction(tr("Set grid cell size..."));
-	QAction * aSetGridUnknownSpaceFilled = menu.addAction(tr("Unknown grid space filled"));
-	aSetGridUnknownSpaceFilled->setCheckable(true);
-	aSetGridUnknownSpaceFilled->setChecked(_gridUnknownSpaceFilled);
 	QAction * aShowHideGridMap;
 	if(_gridMap->isVisible())
 	{
@@ -448,7 +408,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + (isPNG?".png":".svg"));
 
 			//_root->setScale(this->transform().m11()); // current view
-			_root->setScale(1.0f/_gridCellSize); // grid map precision (for 5cm grid cell, x20 to have 1pix/5cm)
+			if(_gridCellSize)
+			{
+				_root->setScale(1.0f/_gridCellSize); // grid map precision (for 5cm grid cell, x20 to have 1pix/5cm)
+			}
 
 			this->scene()->clearSelection();                                  // Selections would also render to the file
 			this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
@@ -574,19 +537,6 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 				}
 			}
 		}
-	}
-	else if(r == aSetGridCellSize)
-	{
-		bool ok;
-		double value = QInputDialog::getDouble(this, tr("Grid cell size"), tr("Width (m)"), _gridCellSize, 0.01, 10, 2, &ok);
-		if(ok)
-		{
-			_gridCellSize = value;
-		}
-	}
-	else if(r == aSetGridUnknownSpaceFilled)
-	{
-		_gridUnknownSpaceFilled = aSetGridUnknownSpaceFilled->isChecked();
 	}
 	else if(r == aShowHideGridMap)
 	{

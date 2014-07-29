@@ -96,6 +96,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->odom_bin_nn->removeItem(4);
 	}
 
+#if PCL_VERSION_COMPARE(<, 1, 7, 2)
+	_ui->checkBox_map_shown->setChecked(false);
+	_ui->checkBox_map_shown->setEnabled(false);
+	_ui->label_map_shown->setText(_ui->label_map_shown->text() + " (Disabled, PCL >=1.7.2 required)");
+#endif
+
 	_ui->predictionPlot->showLegend(false);
 
 	QButtonGroup * buttonGroup = new QButtonGroup(this);
@@ -179,6 +185,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->groupBox_poseFiltering, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_cloudFilterRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_cloudFilterAngle, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+
+	connect(_ui->checkBox_map_shown, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_map_resolution, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_map_fillEmptySpace, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_map_opacity, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	//Logging panel
 	connect(_ui->comboBox_loggerLevel, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteLoggingPanel()));
@@ -742,6 +753,11 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->groupBox_poseFiltering->setChecked(false);
 		_ui->doubleSpinBox_cloudFilterRadius->setValue(0.1);
 		_ui->doubleSpinBox_cloudFilterAngle->setValue(30);
+
+		_ui->checkBox_map_shown->setChecked(false);
+		_ui->doubleSpinBox_map_resolution->setValue(0.05);
+		_ui->checkBox_map_fillEmptySpace->setChecked(true);
+		_ui->doubleSpinBox_map_opacity->setValue(0.75);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_logging1->objectName())
 	{
@@ -972,6 +988,11 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->doubleSpinBox_cloudFilterRadius->setValue(settings.value("cloudFilteringRadius", _ui->doubleSpinBox_cloudFilterRadius->value()).toDouble());
 	_ui->doubleSpinBox_cloudFilterAngle->setValue(settings.value("cloudFilteringAngle", _ui->doubleSpinBox_cloudFilterAngle->value()).toDouble());
 
+	_ui->checkBox_map_shown->setChecked(settings.value("gridMapShown", _ui->checkBox_map_shown->isChecked()).toBool());
+	_ui->doubleSpinBox_map_resolution->setValue(settings.value("gridMapResolution", _ui->doubleSpinBox_map_resolution->value()).toDouble());
+	_ui->checkBox_map_fillEmptySpace->setChecked(settings.value("gridMapFillEmptySpace", _ui->checkBox_map_fillEmptySpace->isChecked()).toBool());
+	_ui->doubleSpinBox_map_opacity->setValue(settings.value("gridMapOpacity", _ui->doubleSpinBox_map_opacity->value()).toDouble());
+
 	settings.endGroup(); // General
 
 	settings.endGroup(); // rtabmap
@@ -1178,6 +1199,10 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath)
 	settings.setValue("cloudFilteringRadius", _ui->doubleSpinBox_cloudFilterRadius->value());
 	settings.setValue("cloudFilteringAngle", _ui->doubleSpinBox_cloudFilterAngle->value());
 
+	settings.setValue("gridMapShown", _ui->checkBox_map_shown->isChecked());
+	settings.setValue("gridMapResolution", _ui->doubleSpinBox_map_resolution->value());
+	settings.setValue("gridMapFillEmptySpace", _ui->checkBox_map_fillEmptySpace->isChecked());
+	settings.setValue("gridMapOpacity", _ui->doubleSpinBox_map_opacity->value());
 	settings.endGroup(); // General
 
 	settings.endGroup(); // rtabmap
@@ -2467,6 +2492,23 @@ double PreferencesDialog::getCloudFilteringAngle() const
 {
 	return _ui->doubleSpinBox_cloudFilterAngle->value();
 }
+bool PreferencesDialog::getGridMapShown() const
+{
+	return _ui->checkBox_map_shown->isChecked();
+}
+double PreferencesDialog::getGridMapResolution() const
+{
+	return _ui->doubleSpinBox_map_resolution->value();
+}
+bool PreferencesDialog::getGridMapFillEmptySpace() const
+{
+	return _ui->checkBox_map_fillEmptySpace->isChecked();
+}
+double PreferencesDialog::getGridMapOpacity() const
+{
+	return _ui->doubleSpinBox_map_opacity->value();
+}
+
 
 // Source
 double PreferencesDialog::getGeneralInputRate() const

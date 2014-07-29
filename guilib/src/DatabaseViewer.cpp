@@ -914,13 +914,23 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				memory_->getImageDepth(ids_.at(i), imageBytes, depthBytes, depth2dBytes, fx, fy, cx, cy, localTransform);
 				if(depth2dBytes.size())
 				{
-					scans_.insert(ids_.at(i), depth2dBytes);
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+					cv::Mat depth2d = rtabmap::util3d::uncompressData(depth2dBytes);
+					cloud = rtabmap::util3d::depth2DToPointCloud(depth2d);
+					scans_.insert(std::make_pair(ids_.at(i), cloud));
 				}
 			}
 			UINFO("Update scans list... done");
 		}
 		std::map<int, rtabmap::Transform> & graph = uValueAt(graphes_, value);
-		ui_->graphViewer->updateGraph(graph, links_, scans_);
+		ui_->graphViewer->updateGraph(graph, links_);
+		if(graph.size() && scans_.size())
+		{
+			float xMin, yMin;
+			float cell = 0.05;
+			cv::Mat map = rtabmap::util3d::convertMap2Image8U(rtabmap::util3d::create2DMap(graph, scans_, cell, true, xMin, yMin));
+			ui_->graphViewer->updateMap(map, cell, xMin, yMin);
+		}
 		ui_->label_iterations->setNum(value);
 
 		//compute total length (neighbor links)

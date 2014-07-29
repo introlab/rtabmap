@@ -30,6 +30,8 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <set>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 #include <rtabmap/core/Link.h>
 
@@ -92,7 +94,7 @@ private:
 	std::list<std::map<int, rtabmap::Transform> > graphes_;
 	std::map<int, rtabmap::Transform> poses_;
 	std::multimap<int, rtabmap::Link> links_;
-	QMap<int, std::vector<unsigned char> > scans_;
+	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > scans_;
 };
 
 #endif /* DATABASEVIEWER_H_ */

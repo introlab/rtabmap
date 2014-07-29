@@ -2056,6 +2056,35 @@ void rayTrace(const cv::Point2i & start, const cv::Point2i & end, cv::Mat & grid
 	}
 }
 
+//convert to gray scaled map
+cv::Mat convertMap2Image8U(const cv::Mat & map8S)
+{
+	UASSERT(map8S.channels() == 1 && map8S.type() == CV_8S);
+	cv::Mat map8U = cv::Mat(map8S.rows, map8S.cols, CV_8U);
+	for (int i = 0; i < map8S.rows; ++i)
+	{
+		for (int j = 0; j < map8S.cols; ++j)
+		{
+			char v = map8S.at<char>(i, j);
+			unsigned char gray;
+			if(v == 0)
+			{
+				gray = 178;
+			}
+			else if(v == 100)
+			{
+				gray = 0;
+			}
+			else // -1
+			{
+				gray = 89;
+			}
+			map8U.at<unsigned char>(i, j) = gray;
+		}
+	}
+	return map8U;
+}
+
 }
 
 }

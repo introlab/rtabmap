@@ -342,6 +342,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 
 	_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
+	_ui->widget_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 
 	splash.close();
 
@@ -953,27 +954,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		if(stat.poses().size())
 		{
 			// update pose only if a odometry is not received
-			updateMapCloud(stat.poses(), _odometryReceived?Transform():stat.currentPose());
-
-			// update some widgets
-			if(_ui->graphicsView_graphView->isVisible())
-			{
-				std::map<int, Transform> poses;
-				if(_preferencesDialog->isCloudFiltering() && stat.poses().size())
-				{
-					float radius = _preferencesDialog->getCloudFilteringRadius();
-					float angle = _preferencesDialog->getCloudFilteringAngle()*CV_PI/180.0; // convert to rad
-					poses = util3d::radiusPosesFiltering(stat.poses(), radius, angle);
-					// make sure the last is here
-					poses.insert(*stat.poses().rbegin());
-				}
-				else
-				{
-					poses = stat.poses();
-				}
-
-				_ui->graphicsView_graphView->updateGraph(poses, stat.constraints(), _depths2DMap);
-			}
+			updateMapCloud(stat.poses(), _odometryReceived?Transform():stat.currentPose(), stat.constraints());
 
 			_odometryReceived = false;
 
@@ -1055,7 +1036,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	_processingStatistics = false;
 }
 
-void MainWindow::updateMapCloud(const std::map<int, Transform> & posesIn, const Transform & currentPose)
+void MainWindow::updateMapCloud(
+		const std::map<int, Transform> & posesIn,
+		const Transform & currentPose,
+		const std::multimap<int, Link> & constraints)
 {
 	if(posesIn.size())
 	{
@@ -1140,7 +1124,7 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & posesIn, const 
 
 			// 2d point cloud
 			std::string scanName = uFormat("scan%d", iter->first);
-			if(_preferencesDialog->isScansShown(0))
+			if(_preferencesDialog->isScansShown(0) || _ui->graphicsView_graphView->isVisible() || _preferencesDialog->getGridMapShown())
 			{
 				if(viewerClouds.contains(scanName))
 				{
@@ -1161,6 +1145,11 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & posesIn, const 
 				else if(_depths2DMap.contains(iter->first))
 				{
 					this->createAndAddScanToMap(iter->first, iter->second);
+				}
+				if(!_preferencesDialog->isScansShown(0))
+				{
+					UDEBUG("Hide scan %s", scanName.c_str());
+					_ui->widget_cloudViewer->setCloudVisibility(scanName.c_str(), false);
 				}
 			}
 			else if(viewerClouds.contains(scanName))
@@ -1190,6 +1179,39 @@ void MainWindow::updateMapCloud(const std::map<int, Transform> & posesIn, const 
 				}
 			}
 		}
+	}
+
+	// Update occupancy grid map in 3D map view and graph view
+	if(_ui->graphicsView_graphView->isVisible() && constraints.size())
+	{
+		_ui->graphicsView_graphView->updateGraph(poses, constraints);
+	}
+	cv::Mat map8U;
+	if((_ui->graphicsView_graphView->isVisible() || _preferencesDialog->getGridMapShown()) && _depths2DMap.size())
+	{
+		float xMin, yMin;
+		float resolution = _preferencesDialog->getGridMapResolution();
+		bool fillEmptySpace = _preferencesDialog->getGridMapFillEmptySpace();
+		cv::Mat map8S = util3d::create2DMap(poses, _createdScans, resolution, fillEmptySpace, xMin, yMin);
+		if(!map8S.empty())
+		{
+			//convert to gray scaled map
+			map8U = util3d::convertMap2Image8U(map8S);
+
+			if(_preferencesDialog->getGridMapShown())
+			{
+				float opacity = _preferencesDialog->getGridMapOpacity();
+				_ui->widget_cloudViewer->addOccupancyGridMap(map8U, resolution, xMin, yMin, opacity);
+			}
+			if(_ui->graphicsView_graphView->isVisible())
+			{
+				_ui->graphicsView_graphView->updateMap(map8U, resolution, xMin, yMin);
+			}
+		}
+	}
+	if(!_preferencesDialog->getGridMapShown())
+	{
+		_ui->widget_cloudViewer->removeOccupancyGridMap();
 	}
 
 	if(viewerClouds.contains("cloudOdom"))
@@ -1317,6 +1339,10 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose)
 	if(!_ui->widget_cloudViewer->addOrUpdateCloud(scanName, cloud, pose))
 	{
 		UERROR("Adding cloud %d to viewer failed!", nodeId);
+	}
+	else
+	{
+		_createdScans.insert(std::make_pair(nodeId, cloud));
 	}
 	_ui->widget_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
 	_ui->widget_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
@@ -1502,19 +1528,8 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			_initProgressDialog->appendText("Updating the 3D map cloud...");
 			_initProgressDialog->incrementStep();
 			QApplication::processEvents();
-			this->updateMapCloud(event.getPoses(), Transform());
+			this->updateMapCloud(event.getPoses(), Transform(), event.getConstraints());
 			_initProgressDialog->appendText("Updating the 3D map cloud... done.");
-
-			if(_ui->graphicsView_graphView->isVisible())
-			{
-				_initProgressDialog->appendText("Updating the graph view...");
-				_initProgressDialog->incrementStep();
-				_ui->graphicsView_graphView->updateGraph(
-						event.getPoses(),
-						event.getConstraints(),
-						_depths2DMap);
-				_initProgressDialog->appendText("Updating the graph view... done.");
-			}
 		}
 		else
 		{
@@ -1590,7 +1605,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		UDEBUG("Cloud rendering settings changed...");
 		if(_currentPosesMap.size())
 		{
-			this->updateMapCloud(_currentPosesMap, Transform());
+			this->updateMapCloud(std::map<int, Transform>(_currentPosesMap), Transform(), std::multimap<int, Link>());
 		}
 	}
 
@@ -2682,6 +2697,7 @@ void MainWindow::clearTheCache()
 	_depthCysMap.clear();
 	_localTransformsMap.clear();
 	_createdClouds.clear();
+	_createdScans.clear();
 	_ui->widget_cloudViewer->removeAllClouds();
 	_ui->widget_cloudViewer->render();
 	_currentPosesMap.clear();
@@ -2703,7 +2719,7 @@ void MainWindow::clearTheCache()
 	_ui->label_stats_loopClosuresRejected->setText("0");
 	_refIds.clear();
 	_loopClosureIds.clear();
-	_ui->graphicsView_graphView->clearGraph();
+	_ui->graphicsView_graphView->clearAll();
 }
 
 void MainWindow::updateElapsedTime()
@@ -2942,12 +2958,22 @@ void MainWindow::exportGridMap()
 				map8U.at<unsigned char>(i, j) = gray;
 			}
 		}
+
 		QImage image = uCvMat2QImage(map8U, false);
 
-		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), "grid.png", tr("Image (*.bmp *.png)"));
+		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), "grid.png", tr("Image (*.png *.bmp)"));
 		if(!path.isEmpty())
 		{
-			QPixmap::fromImage(image.mirrored(false, true).transformed(QTransform().rotate(-90))).save(path);
+			if(QFileInfo(path).suffix() != "png" && QFileInfo(path).suffix() != "bmp")
+			{
+				//use png by default
+				path += ".png";
+			}
+
+			QImage img = image.mirrored(false, true).transformed(QTransform().rotate(-90));
+			QPixmap::fromImage(img).save(path);
+
+			QDesktopServices::openUrl(QUrl::fromLocalFile(path));
 		}
 	}
 }
@@ -3032,17 +3058,16 @@ bool MainWindow::getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::
 	_initProgressDialog->setAutoClose(true, 1);
 	_initProgressDialog->resetProgress();
 	_initProgressDialog->show();
-	_initProgressDialog->setMaximumSteps(int(poses.size())*assemble?1:2+1);
+	_initProgressDialog->setMaximumSteps(int(poses.size())*(assemble?1:2)+1);
 
 	int count = 1;
 	int i = 0;
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
 		bool inserted = false;
-		if(_depths2DMap.contains(iter->first))
+		if(_createdScans.find(iter->first) != _createdScans.end())
 		{
-			cv::Mat depth2d = util3d::uncompressData(_depths2DMap.value(iter->first));
-			pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::depth2DToPointCloud(depth2d);
+			pcl::PointCloud<pcl::PointXYZ>::Ptr scan = _createdScans.at(iter->first);
 			if(scan->size())
 			{
 				if(assemble)
@@ -3316,7 +3341,7 @@ void MainWindow::saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB
 {
 	if(clouds.size() == 1)
 	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), "cloud.ply", tr("Point cloud data (*.ply *.pcd)"));
+		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), _preferencesDialog->getWorkingDirectory()+"/cloud.ply", tr("Point cloud data (*.ply *.pcd)"));
 		if(!path.isEmpty())
 		{
 			if(clouds.begin()->second->size())
@@ -3424,7 +3449,7 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes)
 {
 	if(meshes.size() == 1)
 	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), "mesh.ply", tr("Mesh (*.ply)"));
+		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), _preferencesDialog->getWorkingDirectory()+"/mesh.ply", tr("Mesh (*.ply)"));
 		if(!path.isEmpty())
 		{
 			if(meshes.begin()->second->polygons.size())
@@ -3523,7 +3548,7 @@ void MainWindow::saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::P
 {
 	if(scans.size() == 1)
 	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), "scan.ply", tr("Point cloud data (*.ply *.pcd)"));
+		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), _preferencesDialog->getWorkingDirectory()+"/scan.ply", tr("Point cloud data (*.ply *.pcd)"));
 		if(!path.isEmpty())
 		{
 			if(scans.begin()->second->size())

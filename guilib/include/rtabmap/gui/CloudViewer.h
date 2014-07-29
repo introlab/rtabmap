@@ -20,6 +20,8 @@
 #include <QtCore/QSet>
 #include <QtCore/qnamespace.h>
 
+#include <opencv2/opencv.hpp>
+
 #include <pcl/visualization/mouse_event.h>
 #include <pcl/PCLPointCloud2.h>
 
@@ -92,6 +94,14 @@ public:
 		const pcl::PolygonMesh::Ptr & mesh,
 		const Transform & pose = Transform::getIdentity());
 
+	bool addOccupancyGridMap(
+			const cv::Mat & map8U,
+			float resolution, // cell size
+			float xMin,
+			float yMin,
+			float opacity);
+	void removeOccupancyGridMap();
+
 	void updateCameraPosition(
 		const Transform & pose);
 
@@ -111,6 +121,7 @@ public:
 	void setCameraFree();
 	void setCameraLockZ(bool enabled = true);
 	void setGridShown(bool shown);
+	void setWorkingDirectory(const QString & path) {_workingDirectory = path;}
 
 public slots:
 	void render();
@@ -150,6 +161,7 @@ private:
     Transform _lastPose;
     std::list<std::string> _gridLines;
     QSet<Qt::Key> _keysPressed;
+    QString _workingDirectory;
 };
 
 } /* namespace rtabmap */

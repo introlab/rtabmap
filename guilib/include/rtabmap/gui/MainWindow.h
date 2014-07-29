@@ -176,7 +176,7 @@ signals:
 
 private:
 	void update3DMapVisibility(bool cloudsShown, bool scansShown);
-	void updateMapCloud(const std::map<int, Transform> & poses, const Transform & pose);
+	void updateMapCloud(const std::map<int, Transform> & poses, const Transform & pose, const std::multimap<int, Link> & constraints);
 	void createAndAddCloudToMap(int nodeId, const Transform & pose);
 	void createAndAddScanToMap(int nodeId, const Transform & pose);
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
@@ -248,6 +248,7 @@ private:
 	QMap<int, Transform> _localTransformsMap;
 	std::map<int, Transform> _currentPosesMap;
 	QMap<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > _createdClouds;
+	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > _createdScans;
 	Transform _odometryCorrection;
 	Transform _lastOdomPose;
 	bool _lastOdometryProcessed;

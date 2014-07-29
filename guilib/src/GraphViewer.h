@@ -11,6 +11,7 @@
 #include <QtGui/QGraphicsView>
 #include <QtCore/QMap>
 #include <rtabmap/core/Link.h>
+#include <opencv2/opencv.hpp>
 #include <map>
 
 class QGraphicsItem;
@@ -28,12 +29,13 @@ public:
 	virtual ~GraphViewer();
 
 	void updateGraph(const std::map<int, Transform> & poses,
-					 const std::multimap<int, Link> & constraints,
-					 const QMap<int, std::vector<unsigned char> > & scans);
+					 const std::multimap<int, Link> & constraints);
+	void updateMap(const cv::Mat & map8U, float resolution, float xMin, float yMin);
 	void clearGraph();
+	void clearMap();
+	void clearAll();
 
 	void setWorkingDirectory(const QString & path) {_workingDirectory = path;}
-	void setGridCellSize(float size) {Q_ASSERT(_gridCellSize>0.0f); _gridCellSize= size;}
 
 protected:
 	virtual void wheelEvent ( QWheelEvent * event );
@@ -53,7 +55,6 @@ private:
 	QGraphicsPixmapItem * _gridMap;
 	QGraphicsItemGroup * _lastReferential;
 	float _gridCellSize;
-	bool _gridUnknownSpaceFilled;
 };
 
 } /* namespace rtabmap */

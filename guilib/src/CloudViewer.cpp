@@ -54,7 +54,8 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_menu(0),
 		_trajectory(new pcl::PointCloud<pcl::PointXYZ>),
 		_maxTrajectorySize(100),
-		_lastPose(Transform::getIdentity())
+		_lastPose(Transform::getIdentity()),
+		_workingDirectory(".")
 {
 	this->setMinimumSize(200, 200);
 
@@ -322,6 +323,80 @@ bool CloudViewer::addCloudMesh(
 	return false;
 }
 
+bool CloudViewer::addOccupancyGridMap(
+		const cv::Mat & map8U,
+		float resolution, // cell size
+		float xMin,
+		float yMin,
+		float opacity)
+{
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
+	UASSERT(map8U.channels() == 1 && map8U.type() == CV_8U);
+
+	float xSize = float(map8U.cols) * resolution;
+	float ySize = float(map8U.rows) * resolution;
+
+	UDEBUG("resolution=%f, xSize=%f, ySize=%f, xMin=%f, yMin=%f", resolution, xSize, ySize, xMin, yMin);
+	if(_visualizer->getShapeActorMap()->find("map") == _visualizer->getShapeActorMap()->end())
+	{
+		_visualizer->removeShape("map");
+	}
+
+	if(xSize > 0.0f && ySize > 0.0f)
+	{
+		pcl::TextureMeshPtr mesh(new pcl::TextureMesh());
+		pcl::PointCloud<pcl::PointXYZ> cloud;
+		cloud.push_back(pcl::PointXYZ(xMin,       yMin,       0));
+		cloud.push_back(pcl::PointXYZ(xSize+xMin, yMin,       0));
+		cloud.push_back(pcl::PointXYZ(xSize+xMin, ySize+yMin, 0));
+		cloud.push_back(pcl::PointXYZ(xMin,       ySize+yMin, 0));
+		pcl::toPCLPointCloud2(cloud, mesh->cloud);
+
+		std::vector<pcl::Vertices> polygons(1);
+		polygons[0].vertices.push_back(0);
+		polygons[0].vertices.push_back(1);
+		polygons[0].vertices.push_back(2);
+		polygons[0].vertices.push_back(3);
+		polygons[0].vertices.push_back(0);
+		mesh->tex_polygons.push_back(polygons);
+
+		// default texture materials parameters
+		pcl::TexMaterial material;
+		// hack, can we read from memory?
+		std::string tmpPath = (_workingDirectory+"/.tmp_map.png").toStdString();
+		cv::imwrite(tmpPath, map8U);
+		material.tex_file = tmpPath;
+		mesh->tex_materials.push_back(material);
+
+		std::vector<Eigen::Vector2f> coordinates;
+		coordinates.push_back(Eigen::Vector2f(0,1));
+		coordinates.push_back(Eigen::Vector2f(1,1));
+		coordinates.push_back(Eigen::Vector2f(1,0));
+		coordinates.push_back(Eigen::Vector2f(0,0));
+		mesh->tex_coordinates.push_back(coordinates);
+
+		_visualizer->addTextureMesh(*mesh, "map");
+		_visualizer->getCloudActorMap()->find("map")->second.actor->GetProperty()->LightingOff();
+		setCloudOpacity("map", 0.7);
+
+		//removed tmp texture file
+		QFile::remove(tmpPath.c_str());
+	}
+	return true;
+#else
+	// not implemented on lower version of PCL
+	return false;
+#endif
+}
+
+void CloudViewer::removeOccupancyGridMap()
+{
+	if(_visualizer->getShapeActorMap()->find("map") == _visualizer->getShapeActorMap()->end())
+	{
+		_visualizer->removeShape("map");
+	}
+}
+
 void CloudViewer::setTrajectoryShown(bool shown)
 {
 	_aShowTrajectory->setChecked(shown);
@@ -448,8 +523,13 @@ void CloudViewer::updateCameraPosition(const Transform & pose)
 				cameras.front().view[2] = Fp[10];
 			}
 
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
+			_visualizer->removeCoordinateSystem("reference", 0);
+			_visualizer->addCoordinateSystem(0.2, m, "reference", 0);
+#else
 			_visualizer->removeCoordinateSystem(0);
 			_visualizer->addCoordinateSystem(0.2, m, 0);
+#endif
 			_visualizer->setCameraPosition(
 					cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2],
 					cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],

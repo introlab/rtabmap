@@ -134,6 +134,11 @@ public:
 	double getCloudFilteringRadius() const;
 	double getCloudFilteringAngle() const;
 
+	bool getGridMapShown() const;
+	double getGridMapResolution() const;
+	bool getGridMapFillEmptySpace() const;
+	double getGridMapOpacity() const;
+
 	QString getWorkingDirectory() const;
 	QString getDatabasePath() const;
 

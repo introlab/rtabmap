@@ -65,6 +65,9 @@ inline QImage uCvMat2QImage(const cv::Mat & image, bool isBgr = true)
 		{
 			// mono grayscale
 			qtemp = QImage(image.data, image.cols, image.rows, image.cols, QImage::Format_Indexed8).copy();
+			QVector<QRgb> my_table;
+			for(int i = 0; i < 256; i++) my_table.push_back(qRgb(i,i,i));
+			qtemp.setColorTable(my_table);
 		}
 		else
 		{
