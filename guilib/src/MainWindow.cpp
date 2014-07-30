@@ -297,6 +297,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->actionOpenNI_CV_ASUS->setEnabled(CameraOpenNICV::available());
 	connect(_ui->actionOpenNI2, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
 	_ui->actionOpenNI2->setEnabled(CameraOpenNI2::available());
+	connect(_ui->actionOpenNI2_Sense, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
+	_ui->actionOpenNI2_Sense->setEnabled(CameraOpenNI2::available());
 
 	connect(_ui->actionSave_state, SIGNAL(triggered()), this, SLOT(saveFigures()));
 	connect(_ui->actionLoad_state, SIGNAL(triggered()), this, SLOT(loadFigures()));

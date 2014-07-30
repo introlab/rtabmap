@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>732</width>
-            <height>1198</height>
+            <width>736</width>
+            <height>751</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>0</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -287,18 +287,18 @@ Show a yellow background when the number of odometry inliers goes under this thr
                       <property name="title">
                        <string>Save/load settings</string>
                       </property>
-                      <layout class="QVBoxLayout" name="verticalLayout_9">
-                       <item>
-                        <widget class="QPushButton" name="pushButton_saveConfig">
-                         <property name="text">
-                          <string>Save settings (*.ini) ...</string>
-                         </property>
-                        </widget>
-                       </item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_9">
                        <item>
                         <widget class="QPushButton" name="pushButton_loadConfig">
                          <property name="text">
                           <string>Load settings (*.ini) ...</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="pushButton_saveConfig">
+                         <property name="text">
+                          <string>Save settings (*.ini) ...</string>
                          </property>
                         </widget>
                        </item>
@@ -308,6 +308,19 @@ Show a yellow background when the number of odometry inliers goes under this thr
                           <string>Reset all settings</string>
                          </property>
                         </widget>
+                       </item>
+                       <item>
+                        <spacer name="horizontalSpacer_4">
+                         <property name="orientation">
+                          <enum>Qt::Horizontal</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>40</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </spacer>
                        </item>
                       </layout>
                      </widget>
@@ -1821,11 +1834,35 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </layout>
                           </item>
                           <item>
-                           <widget class="QPushButton" name="pushButton_calibrate">
-                            <property name="text">
-                             <string>Calibrate</string>
-                            </property>
-                           </widget>
+                           <layout class="QHBoxLayout" name="horizontalLayout_8">
+                            <item>
+                             <widget class="QPushButton" name="pushButton_calibrate">
+                              <property name="text">
+                               <string>Calibrate</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QPushButton" name="pushButton_calibrate_reset">
+                              <property name="text">
+                               <string>Reset</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <spacer name="horizontalSpacer_3">
+                              <property name="orientation">
+                               <enum>Qt::Horizontal</enum>
+                              </property>
+                              <property name="sizeHint" stdset="0">
+                               <size>
+                                <width>40</width>
+                                <height>20</height>
+                               </size>
+                              </property>
+                             </spacer>
+                            </item>
+                           </layout>
                           </item>
                          </layout>
                         </widget>

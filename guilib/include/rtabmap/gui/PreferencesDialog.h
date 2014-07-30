@@ -228,6 +228,7 @@ private slots:
 	void cleanOdometryTest();
 	void testOdometry();
 	void calibrate();
+	void resetCalibration();
 
 protected:
 	virtual void showEvent ( QShowEvent * event );

@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>25</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -110,8 +110,15 @@
        <addaction name="actionOpenNI2"/>
        <addaction name="actionOpenNI_CV_ASUS"/>
       </widget>
+      <widget class="QMenu" name="menuSense_3D_scanner">
+       <property name="title">
+        <string>Sense 3D scanner</string>
+       </property>
+       <addaction name="actionOpenNI2_Sense"/>
+      </widget>
       <addaction name="menuKinect_for_Xbox_360"/>
       <addaction name="menuXtion_PRO_LIVE"/>
+      <addaction name="menuSense_3D_scanner"/>
      </widget>
      <addaction name="menuRGB_D_camera"/>
      <addaction name="menuImage"/>
@@ -1054,6 +1061,11 @@
   <action name="actionView_scans">
    <property name="text">
     <string>View scans...</string>
+   </property>
+  </action>
+  <action name="actionOpenNI2_Sense">
+   <property name="text">
+    <string>OpenNI2</string>
    </property>
   </action>
  </widget>

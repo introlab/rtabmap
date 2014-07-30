@@ -312,12 +312,13 @@ std::multimap<int, pcl::PointXYZ> generateWords3(
 	{
 		pcl::PointXYZ pt = util3d::getDepth(
 				depth,
-				iter->second.pt.x+0.5f,
-				iter->second.pt.y+0.5f,
+				iter->second.pt.x,
+				iter->second.pt.y,
 				cx,
 				cy,
 				fx,
-				fy);
+				fy,
+				true);
 
 		if(!transform.isNull() && !transform.isIdentity())
 		{
@@ -414,14 +415,23 @@ void findCorrespondences(
 	inliers2.resize(oi);
 }
 
-pcl::PointXYZ getDepth(const cv::Mat & depthImage,
-					   int x, int y,
-			       float cx, float cy,
-			       float fx, float fy)
+pcl::PointXYZ getDepth(
+		const cv::Mat & depthImage,
+		float x, float y,
+		float cx, float cy,
+		float fx, float fy,
+		bool interpolate)
 {
-	UASSERT(x >=0 && x<depthImage.cols && y >=0 && y<depthImage.rows);
-
 	pcl::PointXYZ pt;
+	float bad_point = std::numeric_limits<float>::quiet_NaN ();
+
+	if(!(int(x) >=0 && int(x)<depthImage.cols && int(y) >=0 && int(y)<depthImage.rows))
+	{
+		UERROR("!(x >=0 && x<depthImage.cols && y >=0 && y<depthImage.rows) cond failed! returning bad point. (x=%f, y=%f, cols=%d, rows=%d)",
+				x,y,depthImage.cols, depthImage.rows);
+		pt.x = pt.y = pt.z = bad_point;
+		return pt;
+	}
 
 	// Use correct principal point from calibration
 	float center_x = cx > 0.0f ? cx : float(depthImage.cols/2) - 0.5f; //cameraInfo.K.at(2)
@@ -433,31 +443,88 @@ pcl::PointXYZ getDepth(const cv::Mat & depthImage,
 	float unit_scaling = isInMM?0.001f:1.0f;
 	float constant_x = unit_scaling / fx; //cameraInfo.K.at(0)
 	float constant_y = unit_scaling / fy; //cameraInfo.K.at(4)
-	float bad_point = std::numeric_limits<float>::quiet_NaN ();
 
-	float depth;
-	bool isValid;
-	if(isInMM)
+	float depth = 0.0f;
+	if(!interpolate || (int(x) < 1 || int(y) < 1 || int(x) >= depthImage.cols-1 || int(y) >= depthImage.rows-1))
 	{
-		depth = (float)depthImage.at<uint16_t>(y,x);
-		isValid = depth != 0.0f;
+		if(interpolate)
+		{
+			UERROR("Cannot interpolate for points on the image side. Falling back to no interpolation.");
+		}
+
+		// select directly to corresponding pixel
+		depth = isInMM?(float)depthImage.at<uint16_t>(int(y),int(x)):depthImage.at<float>(int(y),int(x));
 	}
 	else
 	{
-		depth = depthImage.at<float>(y,x);
-		isValid = uIsFinite(depth);
+		// Interpolate x axis
+		float depthX;
+		float first;
+		float second;
+		if(int(x) == int(x+0.5f))
+		{
+			first = isInMM?(float)depthImage.at<uint16_t>(int(y),int(x)-1):depthImage.at<float>(int(y),int(x)-1);
+			second = isInMM?(float)depthImage.at<uint16_t>(int(y),int(x)):depthImage.at<float>(int(y),int(x));
+		}
+		else
+		{
+			first = isInMM?(float)depthImage.at<uint16_t>(int(y),int(x)):depthImage.at<float>(int(y),int(x));
+			second = isInMM?(float)depthImage.at<uint16_t>(int(y),int(x)+1):depthImage.at<float>(int(y),int(x)+1);
+		}
+
+		if(first != 0.0f && uIsFinite(first) && second != 0.0f && uIsFinite(second))
+		{
+			// y = ax + b...
+			float a = second-first;
+			float b = first - a*(float(int(x))-0.5f);
+			depthX = a*(x) + b;
+			//UDEBUG("x=%f, y=%f, first=%f, second=%f, a=%f, b=%f, depth=%f", x,y, first,second, a,b, depthX);
+		}
+
+		if(depthX != 0.0f)
+		{
+			depth = depthX;
+		}
+		else
+		{
+			// Interpolate y axis
+			float depthY;
+			if(int(y) == int(y+0.5f))
+			{
+				first = isInMM?(float)depthImage.at<uint16_t>(int(y)-1,int(x)):depthImage.at<float>(int(y)-1,int(x));
+				second = isInMM?(float)depthImage.at<uint16_t>(int(y),int(x)):depthImage.at<float>(int(y),int(x));
+			}
+			else
+			{
+				first = isInMM?(float)depthImage.at<uint16_t>(int(y),int(x)):depthImage.at<float>(int(y),int(x));
+				second = isInMM?(float)depthImage.at<uint16_t>(int(y)+1,int(x)):depthImage.at<float>(int(y)+1,int(x));
+			}
+
+			if(first != 0.0f && uIsFinite(first) && second != 0.0f && uIsFinite(second))
+			{
+				// y = ax + b...
+				float a = second-first;
+				float b = first - a*(float(int(y))-0.5f);
+				depthY = a*(y) + b;
+				//UWARN("x=%f, y=%f, first=%f, second=%f, a=%f, b=%f, depth=%f", x,y, first,second, a,b, depthY);
+			}
+			if(depthY != 0.0f)
+			{
+				depth = depthY;
+			}
+		}
 	}
 
 	// Check for invalid measurements
-	if (!isValid)
+	if (depth==0.0f || !uIsFinite(depth))
 	{
 		pt.x = pt.y = pt.z = bad_point;
 	}
 	else
 	{
 		// Fill in XYZ
-		pt.x = (float(x) - center_x) * depth * constant_x;
-		pt.y = (float(y) - center_y) * depth * constant_y;
+		pt.x = (x - center_x) * depth * constant_x;
+		pt.y = (y - center_y) * depth * constant_y;
 		pt.z = depth*unit_scaling;
 	}
 	return pt;
@@ -642,7 +709,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		{
 			pcl::PointXYZ & pt = cloud->at((h/decimation)*cloud->width + (w/decimation));
 
-			pcl::PointXYZ ptXYZ = getDepth(imageDepth, w, h, cx, cy, fx, fy);
+			pcl::PointXYZ ptXYZ = getDepth(imageDepth, w, h, cx, cy, fx, fy, false);
 			pt.x = ptXYZ.x;
 			pt.y = ptXYZ.y;
 			pt.z = ptXYZ.z;
@@ -705,7 +772,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 				pt.r = v;
 			}
 
-			pcl::PointXYZ ptXYZ = getDepth(imageDepth, w, h, cx, cy, fx, fy);
+			pcl::PointXYZ ptXYZ = getDepth(imageDepth, w, h, cx, cy, fx, fy, false);
 			pt.x = ptXYZ.x;
 			pt.y = ptXYZ.y;
 			pt.z = ptXYZ.z;
@@ -944,8 +1011,8 @@ void extractXYZCorrespondences(const std::list<std::pair<cv::Point2f, cv::Point2
 		iter!=correspondences.end();
 		++iter)
 	{
-		pcl::PointXYZ pt1 = getDepth(depthImage1, int(iter->first.x+0.5f), int(iter->first.y+0.5f), cx, cy, fx, fy);
-		pcl::PointXYZ pt2 = getDepth(depthImage2, int(iter->second.x+0.5f), int(iter->second.y+0.5f), cx, cy, fx, fy);
+		pcl::PointXYZ pt1 = getDepth(depthImage1, iter->first.x, iter->first.y, cx, cy, fx, fy, true);
+		pcl::PointXYZ pt2 = getDepth(depthImage2, iter->second.x, iter->second.y, cx, cy, fx, fy, true);
 		if(pcl::isFinite(pt1) && pcl::isFinite(pt2) &&
 		   (maxDepth <= 0 || (pt1.z <= maxDepth && pt2.z<=maxDepth)))
 		{
@@ -1470,7 +1537,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr get3DFASTKpts(
 	pcl::PointCloud<pcl::PointXYZ>::Ptr points(new pcl::PointCloud<pcl::PointXYZ>);
 	for(unsigned int i=0; i<kpts.size(); ++i)
 	{
-		pcl::PointXYZ pt = getDepth(imageDepth, int(kpts[i].pt.x+0.5f), int(kpts[i].pt.y+0.5f), (float)image.cols/2, (float)image.rows/2, 1.0f/constant, 1.0f/constant);
+		pcl::PointXYZ pt = getDepth(imageDepth, kpts[i].pt.x, kpts[i].pt.y, 0, 0, 1.0f/constant, 1.0f/constant, true);
 		if(uIsFinite(pt.z) && (maxDepth <= 0 || pt.z <= maxDepth))
 		{
 			points->push_back(pt);

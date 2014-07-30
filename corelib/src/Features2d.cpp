@@ -68,7 +68,7 @@ void filterKeypointsByDepth(
 		int oi=0;
 		for(unsigned int i=0; i<keypoints.size(); ++i)
 		{
-			pcl::PointXYZ pt = util3d::getDepth(depth, keypoints[i].pt.x, keypoints[i].pt.y, cx, cy, fx, fy);
+			pcl::PointXYZ pt = util3d::getDepth(depth, keypoints[i].pt.x, keypoints[i].pt.y, cx, cy, fx, fy, true);
 			if(uIsFinite(pt.z) && pt.z < maxDepth)
 			{
 				output[oi++] = keypoints[i];

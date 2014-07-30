@@ -242,6 +242,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_openniCx, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_openniCy, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
+	connect(_ui->pushButton_calibrate_reset, SIGNAL(clicked()), this, SLOT(resetCalibration()));
 
 
 	//Rtabmap basic
@@ -1655,7 +1656,7 @@ void PreferencesDialog::selectSourceRGBD(Src src)
 				tr("Activate RGB-D SLAM?"),
 				tr("You've selected RGB-D camera as source input, "
 				   "would you want to activate RGB-D SLAM mode?"),
-				QMessageBox::Yes | QMessageBox::No);
+				QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
 		if(button & QMessageBox::Yes)
 		{
 			_ui->general_checkBox_activateRGBD->setChecked(true);
@@ -1673,6 +1674,27 @@ void PreferencesDialog::selectSourceRGBD(Src src)
 	{
 		_ui->groupBox_sourceImage->setChecked(false);
 		_ui->groupBox_sourceDatabase->setChecked(false);
+
+		if(_ui->doubleSpinBox_openniFx->value() != 0 ||
+			_ui->doubleSpinBox_openniFy->value() != 0 ||
+			_ui->doubleSpinBox_openniCx->value() != 0 ||
+			_ui->doubleSpinBox_openniCy->value() != 0 )
+		{
+			int button = QMessageBox::information(this,
+					tr("Calibration detected"),
+					tr("Some calibration values (fx=%1, fy=%2, cx=%3, cy=%4) are set.\n"
+					   "Do you want to reset them to factory defaults?")
+					   .arg(_ui->doubleSpinBox_openniFx->value())
+					   .arg(_ui->doubleSpinBox_openniFy->value())
+					   .arg(_ui->doubleSpinBox_openniCx->value())
+					   .arg(_ui->doubleSpinBox_openniCy->value()),
+					QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+			if(button & QMessageBox::Yes)
+			{
+				this->resetCalibration();
+			}
+		}
+
 		if(validateForm())
 		{
 			this->writeSettings();
@@ -2986,6 +3008,14 @@ void PreferencesDialog::calibrate()
 		cameraThread.join(true);
 		delete dialog;
 	}
+}
+
+void PreferencesDialog::resetCalibration()
+{
+	_ui->doubleSpinBox_openniFx->setValue(0);
+	_ui->doubleSpinBox_openniFy->setValue(0);
+	_ui->doubleSpinBox_openniCx->setValue(0);
+	_ui->doubleSpinBox_openniCy->setValue(0);
 }
 
 }
