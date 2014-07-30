@@ -458,7 +458,7 @@ pcl::PointXYZ getDepth(
 	else
 	{
 		// Interpolate x axis
-		float depthX;
+		float depthX = 0.0f;
 		float first;
 		float second;
 		if(int(x) == int(x+0.5f))
@@ -488,7 +488,7 @@ pcl::PointXYZ getDepth(
 		else
 		{
 			// Interpolate y axis
-			float depthY;
+			float depthY = 0.0f;
 			if(int(y) == int(y+0.5f))
 			{
 				first = isInMM?(float)depthImage.at<uint16_t>(int(y)-1,int(x)):depthImage.at<float>(int(y)-1,int(x));
@@ -511,6 +511,10 @@ pcl::PointXYZ getDepth(
 			if(depthY != 0.0f)
 			{
 				depth = depthY;
+			}
+			else
+			{
+				//UWARN("Could not compute depth for x=%f, y=%f", x,y);
 			}
 		}
 	}
