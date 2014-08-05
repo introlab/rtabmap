@@ -99,6 +99,7 @@ public:
 			float maxCorrespondenceDistance = 0.05f,
 			int maxIterations = 30,
 			float maxFitness = 0.01f,
+			bool pointToPlane = true,
 			const ParametersMap & odometryParameter = rtabmap::ParametersMap());
 	void reset();
 
@@ -112,8 +113,10 @@ private:
 	float _maxCorrespondenceDistance;
 	int	_maxIterations;
 	float _maxFitness;
+	bool _pointToPlane;
 
-	pcl::PointCloud<pcl::PointNormal>::Ptr _previousCloud;
+	pcl::PointCloud<pcl::PointNormal>::Ptr _previousCloudNormal; // for point ot plane
+	pcl::PointCloud<pcl::PointXYZ>::Ptr _previousCloud; // for point to point
 };
 
 // return true if odometry is correctly computed

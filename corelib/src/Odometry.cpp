@@ -355,6 +355,7 @@ OdometryICP::OdometryICP(int decimation,
 		float maxCorrespondenceDistance,
 		int maxIterations,
 		float maxFitness,
+		bool pointToPlane,
 		const ParametersMap & odometryParameter) :
 	Odometry(odometryParameter),
 	_decimation(decimation),
@@ -363,14 +364,17 @@ OdometryICP::OdometryICP(int decimation,
 	_maxCorrespondenceDistance(maxCorrespondenceDistance),
 	_maxIterations(maxIterations),
 	_maxFitness(maxFitness),
-	_previousCloud(new pcl::PointCloud<pcl::PointNormal>)
+	_pointToPlane(pointToPlane),
+	_previousCloudNormal(new pcl::PointCloud<pcl::PointNormal>),
+	_previousCloud(new pcl::PointCloud<pcl::PointXYZ>)
 {
 }
 
 void OdometryICP::reset()
 {
 	Odometry::reset();
-	_previousCloud.reset(new pcl::PointCloud<pcl::PointNormal>);
+	_previousCloudNormal.reset(new pcl::PointCloud<pcl::PointNormal>);
+	_previousCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
 }
 
 // return not null transform if odometry is correctly computed
@@ -396,44 +400,81 @@ Transform OdometryICP::computeTransform(Image & image, int * quality)
 						_samples,
 						image.localTransform());
 
-		pcl::PointCloud<pcl::PointNormal>::Ptr newCloud = util3d::computeNormals(newCloudXYZ);
-
-		std::vector<int> indices;
-		newCloud = util3d::removeNaNNormalsFromPointCloud(newCloud);
-		if(newCloudXYZ->size() != newCloud->size())
+		if(_pointToPlane)
 		{
-			UWARN("removed nan normals...");
-		}
+			pcl::PointCloud<pcl::PointNormal>::Ptr newCloud = util3d::computeNormals(newCloudXYZ);
 
-		if(_previousCloud->size() > minPoints && newCloud->size() > minPoints)
-		{
-			Transform transform = util3d::icpPointToPlane(newCloud,
-					_previousCloud,
-					_maxCorrespondenceDistance,
-					_maxIterations,
-					hasConverged,
-				    fitness);
-
-			//pcl::io::savePCDFile("old.pcd", *_previousCloud);
-			//pcl::io::savePCDFile("new.pcd", *newCloud);
-			//pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudTransformed = util3d::transformPointCloud(newCloud, transform);
-			//pcl::io::savePCDFile("newicp.pcd", *newCloudTransformed);
-
-			if(hasConverged && (_maxFitness == 0 || fitness < _maxFitness))
+			std::vector<int> indices;
+			newCloud = util3d::removeNaNNormalsFromPointCloud(newCloud);
+			if(newCloudXYZ->size() != newCloud->size())
 			{
-				output = transform;
-				_previousCloud = newCloud;
+				UWARN("removed nan normals...");
 			}
-			else
+
+			if(_previousCloudNormal->size() > minPoints && newCloud->size() > minPoints)
 			{
-				UWARN("Transform not valid (hasConverged=%s fitness = %f < %f)",
-						hasConverged?"true":"false", fitness, _maxFitness);
+				Transform transform = util3d::icpPointToPlane(newCloud,
+						_previousCloudNormal,
+						_maxCorrespondenceDistance,
+						_maxIterations,
+						hasConverged,
+						fitness);
+
+				//pcl::io::savePCDFile("old.pcd", *_previousCloud);
+				//pcl::io::savePCDFile("new.pcd", *newCloud);
+				//pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudTransformed = util3d::transformPointCloud(newCloud, transform);
+				//pcl::io::savePCDFile("newicp.pcd", *newCloudTransformed);
+
+				if(hasConverged && (_maxFitness == 0 || fitness < _maxFitness))
+				{
+					output = transform;
+					_previousCloudNormal = newCloud;
+				}
+				else
+				{
+					UWARN("Transform not valid (hasConverged=%s fitness = %f < %f)",
+							hasConverged?"true":"false", fitness, _maxFitness);
+				}
+			}
+			else if(newCloud->size() > minPoints)
+			{
+				output.setIdentity();
+				_previousCloudNormal = newCloud;
 			}
 		}
-		else if(newCloud->size() > minPoints)
+		else
 		{
-			output.setIdentity();
-			_previousCloud = newCloud;
+			//point to point
+			if(_previousCloud->size() > minPoints && newCloudXYZ->size() > minPoints)
+			{
+				Transform transform = util3d::icp(newCloudXYZ,
+						_previousCloud,
+						_maxCorrespondenceDistance,
+						_maxIterations,
+						hasConverged,
+						fitness);
+
+				//pcl::io::savePCDFile("old.pcd", *_previousCloudNormal);
+				//pcl::io::savePCDFile("new.pcd", *newCloud);
+				//pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudTransformed = util3d::transformPointCloud(newCloud, transform);
+				//pcl::io::savePCDFile("newicp.pcd", *newCloudTransformed);
+
+				if(hasConverged && (_maxFitness == 0 || fitness < _maxFitness))
+				{
+					output = transform;
+					_previousCloud = newCloudXYZ;
+				}
+				else
+				{
+					UWARN("Transform not valid (hasConverged=%s fitness = %f < %f)",
+							hasConverged?"true":"false", fitness, _maxFitness);
+				}
+			}
+			else if(newCloudXYZ->size() > minPoints)
+			{
+				output.setIdentity();
+				_previousCloud = newCloudXYZ;
+			}
 		}
 	}
 	else
@@ -445,7 +486,7 @@ Transform OdometryICP::computeTransform(Image & image, int * quality)
 			timer.elapsed(),
 			hasConverged?"true":"false",
 			fitness,
-			(int)_previousCloud->size());
+			(int)(_pointToPlane?_previousCloudNormal->size():_previousCloud->size()));
 
 	return output;
 }
@@ -511,7 +552,7 @@ void OdometryThread::mainLoop()
 	getImage(image);
 	if(!image.empty())
 	{
-		int quality = 0;
+		int quality = -1;
 		Transform pose = _odometry->process(image, &quality);
 		image.setPose(pose); // a null pose notify that odometry could not be computed
 		this->post(new OdometryEvent(image, quality));

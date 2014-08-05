@@ -45,6 +45,7 @@ void showUsage()
 			"  -v #                      ICP voxel size (default 0.005)\n"
 			"  -s #                      ICP samples (default 0, not used if voxel is set.)\n"
 			"  -f #.#                    ICP fitness (default 0.01)\n"
+			"  -p2p                      ICP point to point (default point to plane)"
 			"\n"
 			"  -debug                    Log debug messages\n"
 			"\n"
@@ -88,6 +89,7 @@ int main (int argc, char * argv[])
 	float sec = 0.0f;
 	bool gpu = false;
 	int localHistory = 0;
+	bool p2p = false;
 
 	for(int i=1; i<argc; ++i)
 	{
@@ -493,6 +495,11 @@ int main (int argc, char * argv[])
 			icp = true;
 			continue;
 		}
+		if(strcmp(argv[i], "-p2p") == 0)
+		{
+			p2p = true;
+			continue;
+		}
 		if(strcmp(argv[i], "-debug") == 0)
 		{
 			ULogger::setLevel(ULogger::kDebug);
@@ -642,8 +649,9 @@ int main (int argc, char * argv[])
 		UINFO("Cloud voxel size =        %f", voxel);
 		UINFO("Cloud samples =           %d", samples);
 		UINFO("Cloud fitness =           %f", fitness);
+		UINFO("Cloud point to plane =    %s", p2p?"false":"true");
 
-		odom = new rtabmap::OdometryICP(decimation, voxel, samples, distance, iterations, fitness);
+		odom = new rtabmap::OdometryICP(decimation, voxel, samples, distance, iterations, fitness, !p2p);
 	}
 	rtabmap::OdometryThread odomThread(odom);
 	rtabmap::OdometryViewer odomViewer(maxClouds, 2, 0.0, 50);
