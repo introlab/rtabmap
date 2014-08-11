@@ -360,19 +360,8 @@
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 		<project id="CTAB-Map.null.2089313587" name="CTAB-Map"/>
 	</storageModule>
-	<storageModule moduleId="refreshScope" versionNumber="2">
-		<configuration configurationName="Unix">
-			<resource resourceType="PROJECT" workspacePath="/rtabmap"/>
-		</configuration>
-		<configuration configurationName="NMake">
-			<resource resourceType="PROJECT" workspacePath="/rtabmap"/>
-		</configuration>
-		<configuration configurationName="MinGW">
-			<resource resourceType="PROJECT" workspacePath="/rtabmap"/>
-		</configuration>
-		<configuration configurationName="NMake JOM">
-			<resource resourceType="PROJECT" workspacePath="/rtabmap"/>
-		</configuration>
+	<storageModule moduleId="refreshScope" versionNumber="1">
+		<resource resourceType="PROJECT" workspacePath="/rtabmap"/>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
