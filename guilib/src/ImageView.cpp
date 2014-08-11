@@ -87,9 +87,9 @@ bool ImageView::isFeaturesShown()
 void ImageView::setFeaturesShown(bool shown)
 {
 	_showFeatures->setChecked(shown);
-	for(int i=0; i<_features.size(); ++i)
+	for(QMultiMap<int, KeypointItem*>::iterator iter=_features.begin(); iter!=_features.end(); ++iter)
 	{
-		_features[i]->setVisible(_showFeatures->isChecked());
+		iter.value()->setVisible(_showFeatures->isChecked());
 	}
 }
 
@@ -236,11 +236,7 @@ void ImageView::wheelEvent(QWheelEvent * e)
 
 void ImageView::setFeatures(const std::multimap<int, cv::KeyPoint> & refWords)
 {
-	for(int i=0; i<_features.size(); ++i)
-	{
-		scene()->removeItem(_features[i]);
-		delete _features[i];
-	}
+	qDeleteAll(_features);
 	_features.clear();
 
 	rtabmap::KeypointItem * item = 0;
@@ -261,7 +257,7 @@ void ImageView::setFeatures(const std::multimap<int, cv::KeyPoint> & refWords)
 		item = new rtabmap::KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 255, 0, alpha));
 
 		scene()->addItem(item);
-		_features.append(item);
+		_features.insert(id, item);
 		item->setVisible(_showFeatures->isChecked());
 		item->setZValue(1);
 	}
@@ -297,13 +293,51 @@ void ImageView::setImageDepth(const QImage & imageDepth)
 	}
 }
 
+void ImageView::setFeatureColor(int id, const QColor & color)
+{
+	QList<KeypointItem*> items = _features.values(id);
+	if(items.size())
+	{
+		for(int i=0; i<items.size(); ++i)
+		{
+			items[i]->setPen(QPen(color));
+			items[i]->setBrush(QBrush(color));
+		}
+	}
+	else
+	{
+		UWARN("Not found feature %d", id);
+	}
+}
+
+void ImageView::setFeaturesColor(const QColor & color)
+{
+	for(QMultiMap<int, KeypointItem*>::iterator iter=_features.begin(); iter!=_features.end(); ++iter)
+	{
+		iter.value()->setPen(QPen(color));
+		iter.value()->setBrush(QBrush(color));
+	}
+}
+
+void ImageView::clearLines()
+{
+	if(this->scene())
+	{
+		QList<QGraphicsItem*> items = this->scene()->items();
+		for(int i=0; i<items.size(); ++i)
+		{
+			QGraphicsLineItem * line = qgraphicsitem_cast<QGraphicsLineItem*>(items[i]);
+			if(line)
+			{
+				delete line;
+			}
+		}
+	}
+}
+
 void ImageView::clear()
 {
-	for(int i=0; i<_features.size(); ++i)
-	{
-		scene()->removeItem(_features[i]);
-		delete _features[i];
-	}
+	qDeleteAll(_features);
 	_features.clear();
 
 	if(_image)

@@ -23,6 +23,7 @@
 #include <QtGui/QMessageBox>
 #include <QtGui/QFileDialog>
 #include <QtGui/QInputDialog>
+#include <QtGui/QGraphicsLineItem>
 #include <QtCore/QBuffer>
 #include <QtCore/QTextStream>
 #include <rtabmap/utilite/ULogger.h>
@@ -46,6 +47,8 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/common/transforms.h>
 
+namespace rtabmap {
+
 DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	QMainWindow(parent),
 	memory_(0)
@@ -61,9 +64,15 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	ui_->setupUi(this);
 
 	ui_->dockWidget_constraints->setVisible(false);
-	ui_->menuView->addAction(ui_->dockWidget_constraints->toggleViewAction());
 	ui_->dockWidget_graphView->setVisible(false);
+	ui_->dockWidget_icp->setVisible(false);
+	ui_->dockWidget_visual->setVisible(false);
+	ui_->dockWidget_icp->setFloating(true);
+	ui_->dockWidget_visual->setFloating(true);
+	ui_->menuView->addAction(ui_->dockWidget_constraints->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_graphView->toggleViewAction());
+	ui_->menuView->addAction(ui_->dockWidget_icp->toggleViewAction());
+	ui_->menuView->addAction(ui_->dockWidget_visual->toggleViewAction());
 	connect(ui_->dockWidget_graphView->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateGraphView()));
 
 	connect(ui_->actionQuit, SIGNAL(triggered()), this, SLOT(close()));
@@ -78,6 +87,19 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->actionGenerate_TORO_graph_graph, SIGNAL(triggered()), this, SLOT(generateTOROGraph()));
 	connect(ui_->actionView_3D_map, SIGNAL(triggered()), this, SLOT(view3DMap()));
 	connect(ui_->actionGenerate_3D_map_pcd, SIGNAL(triggered()), this, SLOT(generate3DMap()));
+	connect(ui_->actionDetect_more_loop_closures, SIGNAL(triggered()), this, SLOT(detectMoreLoopClosures()));
+	connect(ui_->actionRefine_all_neighbor_links, SIGNAL(triggered()), this, SLOT(refineAllNeighborLinks()));
+	connect(ui_->actionRefine_all_loop_closure_links, SIGNAL(triggered()), this, SLOT(refineAllLoopClosureLinks()));
+
+	//ICP buttons
+	connect(ui_->pushButton_refine, SIGNAL(clicked()), this, SLOT(refineConstraint()));
+	connect(ui_->pushButton_add, SIGNAL(clicked()), this, SLOT(addConstraint()));
+	connect(ui_->pushButton_reset, SIGNAL(clicked()), this, SLOT(resetConstraint()));
+	connect(ui_->pushButton_reject, SIGNAL(clicked()), this, SLOT(rejectConstraint()));
+	ui_->pushButton_refine->setEnabled(false);
+	ui_->pushButton_add->setEnabled(false);
+	ui_->pushButton_reset->setEnabled(false);
+	ui_->pushButton_reject->setEnabled(false);
 
 	ui_->actionGenerate_TORO_graph_graph->setEnabled(false);
 
@@ -145,6 +167,9 @@ bool DatabaseViewer::openDatabase(const QString & path)
 			graphes_.clear();
 			poses_.clear();
 			links_.clear();
+			linksAdded_.clear();
+			linksRefined_.clear();
+			linksRemoved_.clear();
 			scans_.clear();
 			ui_->actionGenerate_TORO_graph_graph->setEnabled(false);
 		}
@@ -173,6 +198,15 @@ bool DatabaseViewer::openDatabase(const QString & path)
 	}
 	return false;
 }
+
+void DatabaseViewer::resizeEvent(QResizeEvent* anEvent)
+{
+	ui_->graphicsView_A->fitInView(ui_->graphicsView_A->sceneRect(), Qt::KeepAspectRatio);
+	ui_->graphicsView_B->fitInView(ui_->graphicsView_B->sceneRect(), Qt::KeepAspectRatio);
+	ui_->graphicsView_A->resetZoom();
+	ui_->graphicsView_B->resetZoom();
+}
+
 
 void DatabaseViewer::exportDatabase()
 {
@@ -294,6 +328,9 @@ void DatabaseViewer::updateIds()
 
 	poses_.clear();
 	links_.clear();
+	linksAdded_.clear();
+	linksRefined_.clear();
+	linksRemoved_.clear();
 	if(memory_->getLastWorkingSignature())
 	{
 		std::map<int, int> nids = memory_->getNeighborsId(memory_->getLastWorkingSignature()->id(), 0, -1, true);
@@ -348,6 +385,7 @@ void DatabaseViewer::updateIds()
 		ui_->label_idA->setText("NaN");
 		ui_->label_idB->setText("NaN");
 	}
+
 	if(neighborLinks_.size())
 	{
 		ui_->horizontalSlider_neighbors->setMinimum(0);
@@ -359,17 +397,8 @@ void DatabaseViewer::updateIds()
 	{
 		ui_->horizontalSlider_neighbors->setEnabled(false);
 	}
-	if(loopLinks_.size())
-	{
-		ui_->horizontalSlider_loops->setMinimum(0);
-		ui_->horizontalSlider_loops->setMaximum(loopLinks_.size()-1);
-		ui_->horizontalSlider_loops->setEnabled(true);
-		ui_->horizontalSlider_loops->setSliderPosition(0);
-	}
-	else
-	{
-		ui_->horizontalSlider_loops->setEnabled(false);
-	}
+
+	updateLoopClosuresSlider();
 
 	updateGraphView();
 }
@@ -432,7 +461,8 @@ void DatabaseViewer::generateLocalGraph()
 
 void DatabaseViewer::generateTOROGraph()
 {
-	if(!graphes_.size() || !links_.size())
+	std::multimap<int, Link> links = updateLinksWithModifications(links_);
+	if(!graphes_.size() || !links.size())
 	{
 		QMessageBox::warning(this, tr("Cannot generate a TORO graph"), tr("No poses or no links..."));
 		return;
@@ -445,9 +475,159 @@ void DatabaseViewer::generateTOROGraph()
 		QString path = QFileDialog::getSaveFileName(this, tr("Save File"), pathDatabase_+"/constraints" + QString::number(id) + ".graph", tr("TORO file (*.graph)"));
 		if(!path.isEmpty())
 		{
-			rtabmap::util3d::saveTOROGraph(path.toStdString(), uValueAt(graphes_, id), links_);
+			rtabmap::util3d::saveTOROGraph(path.toStdString(), uValueAt(graphes_, id), links);
 		}
 	}
+}
+
+// margin=0 means infinite margin
+std::map<int, int> DatabaseViewer::generateGraph(int fromNode, int margin)
+{
+	UASSERT(margin >= 0);
+	//UDEBUG("signatureId=%d, neighborsMargin=%d", signatureId, margin);
+	std::map<int, int> ids;
+	if(fromNode<=0)
+	{
+		return ids;
+	}
+
+	std::list<int> curentMarginList;
+	std::set<int> currentMargin;
+	std::set<int> nextMargin;
+	nextMargin.insert(fromNode);
+	int m = 0;
+	while((margin == 0 || m < margin) && nextMargin.size())
+	{
+		curentMarginList = std::list<int>(nextMargin.begin(), nextMargin.end());
+		nextMargin.clear();
+
+		for(std::list<int>::iterator jter = curentMarginList.begin(); jter!=curentMarginList.end(); ++jter)
+		{
+			if(ids.find(*jter) == ids.end())
+			{
+				std::set<int> marginIds;
+
+				ids.insert(std::pair<int, int>(*jter, m));
+
+				for(int i=0; i<neighborLinks_.size(); ++i)
+				{
+					if(neighborLinks_[i].from() == *jter)
+					{
+						marginIds.insert(neighborLinks_[i].to());
+					}
+					else if(neighborLinks_[i].to() == *jter)
+					{
+						marginIds.insert(neighborLinks_[i].from());
+					}
+				}
+				for(int i=0; i<loopLinks_.size(); ++i)
+				{
+					if(loopLinks_[i].from() == *jter)
+					{
+						marginIds.insert(loopLinks_[i].to());
+					}
+					else if(loopLinks_[i].to() == *jter)
+					{
+						marginIds.insert(loopLinks_[i].from());
+					}
+				}
+
+				// Margin links
+				for(std::set<int>::const_iterator iter=marginIds.begin(); iter!=marginIds.end(); ++iter)
+				{
+					if( !uContains(ids, *iter) && nextMargin.find(*iter) == nextMargin.end())
+					{
+						nextMargin.insert(*iter);
+					}
+				}
+			}
+		}
+		++m;
+	}
+	return ids;
+}
+
+std::map<int, Transform> DatabaseViewer::optimizeGraph(
+		const std::map<int, int> & ids,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		std::list<std::map<int, rtabmap::Transform> > * graphes)
+{
+	std::map<int, rtabmap::Transform> optimizedPoses;
+	if(ids.size() && poses.size())
+	{
+		// Modify IDs using the margin from the current signature (TORO root will be the last signature)
+		int m = 0;
+		int toroId = 1;
+		std::map<int, int> rtabmapToToro; // <RTAB-Map ID, TORO ID>
+		std::map<int, int> toroToRtabmap; // <TORO ID, RTAB-Map ID>
+		std::map<int, int> idsTmp = ids;
+		while(idsTmp.size())
+		{
+			for(std::map<int, int>::iterator iter = idsTmp.begin(); iter!=idsTmp.end();)
+			{
+				if(m == iter->second)
+				{
+					rtabmapToToro.insert(std::make_pair(iter->first, toroId));
+					toroToRtabmap.insert(std::make_pair(toroId, iter->first));
+					++toroId;
+					idsTmp.erase(iter++);
+				}
+				else
+				{
+					++iter;
+				}
+			}
+			++m;
+		}
+
+		std::map<int, rtabmap::Transform> posesToro;
+		std::multimap<int, rtabmap::Link> edgeConstraintsToro;
+		for(std::map<int, rtabmap::Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			if(uContains(ids, iter->first))
+			{
+				posesToro.insert(std::make_pair(rtabmapToToro.at(iter->first), iter->second));
+			}
+		}
+		for(std::multimap<int, rtabmap::Link>::const_iterator iter = links.begin();
+			iter!=links.end();
+			++iter)
+		{
+			if(uContains(ids, iter->second.from()) && uContains(ids, iter->second.to()))
+			{
+				edgeConstraintsToro.insert(std::make_pair(rtabmapToToro.at(iter->first), rtabmap::Link(rtabmapToToro.at(iter->first), rtabmapToToro.at(iter->second.to()), iter->second.transform(), iter->second.type())));
+			}
+		}
+
+		std::map<int, rtabmap::Transform> optimizedPosesToro;
+		rtabmap::Transform mapCorrectionToro;
+
+		// Optimize!
+		if(posesToro.size() && edgeConstraintsToro.size())
+		{
+			std::list<std::map<int, rtabmap::Transform> > graphesToro;
+			rtabmap::util3d::optimizeTOROGraph(posesToro, edgeConstraintsToro, optimizedPosesToro, mapCorrectionToro, ui_->spinBox_iterations->value(), ui_->checkBox_initGuess->isChecked(), &graphesToro);
+			for(std::map<int, rtabmap::Transform>::iterator iter=optimizedPosesToro.begin(); iter!=optimizedPosesToro.end(); ++iter)
+			{
+				optimizedPoses.insert(std::make_pair(toroToRtabmap.at(iter->first), iter->second));
+			}
+
+			if(graphes)
+			{
+				for(std::list<std::map<int, rtabmap::Transform> >::iterator iter = graphesToro.begin(); iter!=graphesToro.end(); ++iter)
+				{
+					std::map<int, rtabmap::Transform> tmp;
+					for(std::map<int, rtabmap::Transform>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+					{
+						tmp.insert(std::make_pair(toroToRtabmap.at(jter->first), jter->second));
+					}
+					graphes->push_back(tmp);
+				}
+			}
+		}
+	}
+	return optimizedPoses;
 }
 
 void DatabaseViewer::view3DMap()
@@ -458,109 +638,96 @@ void DatabaseViewer::view3DMap()
 		return;
 	}
 	bool ok = false;
-	int id = QInputDialog::getInt(this, tr("Around which location?"), tr("Location ID"), ids_.first(), ids_.first(), ids_.last(), 1, &ok);
-
+	int margin = QInputDialog::getInt(this, tr("Depth around the location?"), tr("Margin (0=no limit)"), 0, 0, 100, 1, &ok);
 	if(ok)
 	{
-		int margin = QInputDialog::getInt(this, tr("Depth around the location?"), tr("Margin (0=no limit)"), 0, 0, 100, 1, &ok);
+		QStringList items;
+		items.append("1");
+		items.append("2");
+		items.append("4");
+		items.append("8");
+		items.append("16");
+		QString item = QInputDialog::getItem(this, tr("Decimation?"), tr("Image decimation"), items, 2, false, &ok);
 		if(ok)
 		{
-			QStringList items;
-			items.append("1");
-			items.append("2");
-			items.append("4");
-			items.append("8");
-			items.append("16");
-			QString item = QInputDialog::getItem(this, tr("Decimation?"), tr("Image decimation"), items, 2, false, &ok);
+			int decimation = item.toInt();
+			double maxDepth = QInputDialog::getDouble(this, tr("Camera depth?"), tr("Maximum depth (m, 0=no max):"), 4.0, 0, 10, 2, &ok);
 			if(ok)
 			{
-				int decimation = item.toInt();
-				double maxDepth = QInputDialog::getDouble(this, tr("Camera depth?"), tr("Maximum depth (m, 0=no max):"), 4.0, 0, 10, 2, &ok);
-				if(ok)
+				// <id, depth>
+				std::map<int, int> ids = generateGraph(ui_->spinBox_optimizationsFrom->value(), margin);
+				if(ids.size() > 0)
 				{
-					std::map<int, int> ids = memory_->getNeighborsId(id, margin, -1, false);
-					if(ids.size() > 0)
+					rtabmap::DetailedProgressDialog progressDialog(this);
+					progressDialog.setMaximumSteps(ids.size()+2);
+					progressDialog.show();
+
+					progressDialog.appendText("Graph optimization...");
+					std::multimap<int, Link> links = updateLinksWithModifications(links_);
+					std::map<int, Transform> optimizedPoses = optimizeGraph(ids, poses_, links);
+					progressDialog.appendText("Graph optimization... done!");
+					progressDialog.incrementStep();
+
+					// create a window
+					QWidget * window = new QWidget(this, Qt::Window);
+					window->setAttribute(Qt::WA_DeleteOnClose);
+					window->setWindowTitle(tr("3D Map"));
+					window->setMinimumWidth(800);
+					window->setMinimumHeight(600);
+
+					rtabmap::CloudViewer * viewer = new rtabmap::CloudViewer(window);
+
+					QVBoxLayout *layout = new QVBoxLayout();
+					layout->addWidget(viewer);
+					viewer->setCameraLockZ(false);
+					window->setLayout(layout);
+
+					window->showNormal();
+
+					for(std::map<int, Transform>::iterator iter = optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
 					{
-						rtabmap::DetailedProgressDialog progressDialog(this);
-						progressDialog.setMaximumSteps(ids.size()+2);
-						progressDialog.show();
-
-						progressDialog.appendText("Graph generation...");
-						std::map<int, rtabmap::Transform> poses, optimizedPoses;
-						std::multimap<int, rtabmap::Link> edgeConstraints;
-						memory_->getMetricConstraints(uKeys(ids), poses, edgeConstraints, true);
-						progressDialog.appendText("Graph generation... done!");
-						progressDialog.incrementStep();
-
-						progressDialog.appendText("Graph optimization...");
-						rtabmap::Transform mapCorrection;
-						rtabmap::util3d::optimizeTOROGraph(poses, edgeConstraints, optimizedPoses, mapCorrection, 100, true);
-						progressDialog.appendText("Graph optimization... done!");
-						progressDialog.incrementStep();
-
-						// create a window
-						QWidget * window = new QWidget(this, Qt::Popup);
-						window->setAttribute(Qt::WA_DeleteOnClose);
-						window->setWindowFlags(Qt::Dialog);
-						window->setWindowTitle(tr("3D Map"));
-						window->setMinimumWidth(800);
-						window->setMinimumHeight(600);
-
-						rtabmap::CloudViewer * viewer = new rtabmap::CloudViewer(window);
-
-						QVBoxLayout *layout = new QVBoxLayout();
-						layout->addWidget(viewer);
-						viewer->setCameraLockZ(false);
-						window->setLayout(layout);
-
-						window->showNormal();
-
-						for(std::map<int, int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
+						rtabmap::Transform pose = iter->second;
+						if(!pose.isNull())
 						{
-							rtabmap::Transform pose = uValue(optimizedPoses, iter->first, rtabmap::Transform());
-							if(!pose.isNull())
+							std::vector<unsigned char> image, depth, depth2d;
+							float fx, fy, cx, cy;
+							rtabmap::Transform localTransform;
+							memory_->getImageDepth(iter->first, image, depth, depth2d, fx, fy, cx, cy, localTransform);
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+							cv::Mat imageMat = rtabmap::util3d::uncompressImage(image);
+							cv::Mat depthMat = rtabmap::util3d::uncompressImage(depth);
+							cloud = rtabmap::util3d::cloudFromDepthRGB(
+									imageMat,
+									depthMat,
+									cx, cy,
+									fx, fy,
+									decimation);
+
+							if(maxDepth)
 							{
-								std::vector<unsigned char> image, depth, depth2d;
-								float fx, fy, cx, cy;
-								rtabmap::Transform localTransform;
-								memory_->getImageDepth(iter->first, image, depth, depth2d, fx, fy, cx, cy, localTransform);
-								pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-								cv::Mat imageMat = rtabmap::util3d::uncompressImage(image);
-								cv::Mat depthMat = rtabmap::util3d::uncompressImage(depth);
-								cloud = rtabmap::util3d::cloudFromDepthRGB(
-										imageMat,
-										depthMat,
-										cx, cy,
-										fx, fy,
-										decimation);
-
-								if(maxDepth)
-								{
-									cloud = rtabmap::util3d::passThrough(cloud, "z", 0, maxDepth);
-								}
-
-								cloud = rtabmap::util3d::transformPointCloud(cloud, localTransform);
-
-								viewer->addCloud(uFormat("cloud%d", iter->first), cloud, pose);
-
-								UINFO("Generated %d (%d points)", iter->first, cloud->size());
-								progressDialog.appendText(QString("Generated %1 (%2 points)").arg(iter->first).arg(cloud->size()));
-								progressDialog.incrementStep();
-								QApplication::processEvents();
+								cloud = rtabmap::util3d::passThrough(cloud, "z", 0, maxDepth);
 							}
+
+							cloud = rtabmap::util3d::transformPointCloud(cloud, localTransform);
+
+							viewer->addCloud(uFormat("cloud%d", iter->first), cloud, pose);
+
+							UINFO("Generated %d (%d points)", iter->first, cloud->size());
+							progressDialog.appendText(QString("Generated %1 (%2 points)").arg(iter->first).arg(cloud->size()));
+							progressDialog.incrementStep();
+							QApplication::processEvents();
 						}
-						progressDialog.setValue(progressDialog.maximumSteps());
 					}
-					else
-					{
-						QMessageBox::critical(this, tr("Error"), tr("No neighbors found for node %1.").arg(id));
-					}
+					progressDialog.setValue(progressDialog.maximumSteps());
+				}
+				else
+				{
+					QMessageBox::critical(this, tr("Error"), tr("No neighbors found for node %1.").arg(ui_->spinBox_optimizationsFrom->value()));
 				}
 			}
 		}
 	}
 }
-
 
 void DatabaseViewer::generate3DMap()
 {
@@ -593,7 +760,7 @@ void DatabaseViewer::generate3DMap()
 					QString path = QFileDialog::getExistingDirectory(this, tr("Save directory"), pathDatabase_);
 					if(!path.isEmpty())
 					{
-						std::map<int, int> ids = memory_->getNeighborsId(id, margin, -1, false);
+						std::map<int, int> ids = this->generateGraph(id, margin);
 						if(ids.size() > 0)
 						{
 							rtabmap::DetailedProgressDialog progressDialog;
@@ -604,6 +771,7 @@ void DatabaseViewer::generate3DMap()
 							std::map<int, rtabmap::Transform> poses, optimizedPoses;
 							std::multimap<int, rtabmap::Link> edgeConstraints;
 							memory_->getMetricConstraints(uKeys(ids), poses, edgeConstraints, true);
+							edgeConstraints = updateLinksWithModifications(edgeConstraints);
 							progressDialog.appendText("Graph generation... done!");
 							progressDialog.incrementStep();
 
@@ -661,6 +829,77 @@ void DatabaseViewer::generate3DMap()
 	}
 }
 
+void DatabaseViewer::detectMoreLoopClosures()
+{
+	std::map<int, rtabmap::Transform> optimizedPoses;
+	std::map<int, int> ids = this->generateGraph(ui_->spinBox_optimizationsFrom->value(), 0);
+	std::multimap<int, rtabmap::Link> links = updateLinksWithModifications(links_);
+	optimizedPoses = optimizeGraph(ids, poses_, links);
+
+	std::multimap<int, int> clusters = util3d::radiusPosesClustering(optimizedPoses, 0.1, 0.1);
+	int added = 0;
+	for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!= clusters.end(); ++iter)
+	{
+		int from = iter->first;
+		int to = iter->second;
+		if(!findActiveLink(from, to).isValid() && !containsLink(linksRemoved_, from, to))
+		{
+			if(addConstraint(from, to, true))
+			{
+				UINFO("Added new loop closure between %d and %d.", from, to);
+				++added;
+			}
+		}
+	}
+	UINFO("Added %d loop closures.", added);
+}
+
+void DatabaseViewer::refineAllNeighborLinks()
+{
+	if(neighborLinks_.size())
+	{
+		rtabmap::DetailedProgressDialog progressDialog(this);
+		progressDialog.setMaximumSteps(neighborLinks_.size());
+		progressDialog.show();
+
+		for(int i=0; i<neighborLinks_.size(); ++i)
+		{
+			int from = neighborLinks_[i].from();
+			int to = neighborLinks_[i].to();
+			this->refineConstraint(neighborLinks_[i].from(), neighborLinks_[i].to());
+
+			progressDialog.appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(neighborLinks_.size()));
+			progressDialog.incrementStep();
+			QApplication::processEvents();
+		}
+		progressDialog.setValue(progressDialog.maximumSteps());
+		progressDialog.appendText("Refining links finished!");
+	}
+}
+
+void DatabaseViewer::refineAllLoopClosureLinks()
+{
+	if(loopLinks_.size())
+	{
+		rtabmap::DetailedProgressDialog progressDialog(this);
+		progressDialog.setMaximumSteps(loopLinks_.size());
+		progressDialog.show();
+
+		for(int i=0; i<loopLinks_.size(); ++i)
+		{
+			int from = loopLinks_[i].from();
+			int to = loopLinks_[i].to();
+			this->refineConstraint(loopLinks_[i].from(), loopLinks_[i].to());
+
+			progressDialog.appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(loopLinks_.size()));
+			progressDialog.incrementStep();
+			QApplication::processEvents();
+		}
+		progressDialog.setValue(progressDialog.maximumSteps());
+		progressDialog.appendText("Refining links finished!");
+	}
+}
+
 void DatabaseViewer::sliderAValueChanged(int value)
 {
 	this->update(value,
@@ -692,9 +931,11 @@ void DatabaseViewer::update(int value,
 	labelIndex->setText(QString::number(value));
 	labelParents->clear();
 	labelChildren->clear();
+	QRectF rect;
 	if(value >= 0 && value < ids_.size())
 	{
 		view->clear();
+		view->resetTransform();
 		int id = ids_.at(value);
 		int mapId = -1;
 		labelId->setText(QString::number(id));
@@ -729,23 +970,24 @@ void DatabaseViewer::update(int value,
 				mapId = memory_->getMapId(id);
 			}
 
-			if(!img.isNull())
-			{
-				view->setImage(img);
-			}
-			else
-			{
-				ULOGGER_DEBUG("Image is empty");
-			}
 			if(!imgDepth.isNull())
 			{
 				view->setImageDepth(imgDepth);
+				rect = imgDepth.rect();
 			}
 			else
 			{
 				ULOGGER_DEBUG("Image depth is empty");
 			}
-			view->fitInView(view->sceneRect(), Qt::KeepAspectRatio);
+			if(!img.isNull())
+			{
+				view->setImage(img);
+				rect = img.rect();
+			}
+			else
+			{
+				ULOGGER_DEBUG("Image is empty");
+			}
 
 			// loops
 			std::map<int, rtabmap::Transform> parents;
@@ -779,11 +1021,129 @@ void DatabaseViewer::update(int value,
 		{
 			labelId->setText(QString::number(id));
 		}
-		view->fitInView(view->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
 	}
 	else
 	{
 		ULOGGER_ERROR("Slider index out of range ?");
+	}
+
+	updateConstraintButtons();
+	updateWordsMatching();
+
+	// update constraint view
+	int from = ids_.at(ui_->horizontalSlider_A->value());
+	int to = ids_.at(ui_->horizontalSlider_B->value());
+	bool set = false;
+	for(int i=0; i<loopLinks_.size() || i<neighborLinks_.size(); ++i)
+	{
+		if(i < loopLinks_.size())
+		{
+			if((loopLinks_[i].from() == from && loopLinks_[i].to() == to) ||
+			   (loopLinks_[i].from() == to && loopLinks_[i].to() == from))
+			{
+				if(i != ui_->horizontalSlider_loops->value())
+				{
+					ui_->horizontalSlider_loops->setValue(i);
+				}
+				ui_->horizontalSlider_neighbors->blockSignals(true);
+				ui_->horizontalSlider_neighbors->setValue(0);
+				ui_->horizontalSlider_neighbors->blockSignals(false);
+				set = true;
+				break;
+			}
+		}
+		if(i < neighborLinks_.size())
+		{
+			if((neighborLinks_[i].from() == from && neighborLinks_[i].to() == to) ||
+			   (neighborLinks_[i].from() == to && neighborLinks_[i].to() == from))
+			{
+				if(i != ui_->horizontalSlider_neighbors->value())
+				{
+					ui_->horizontalSlider_neighbors->setValue(i);
+				}
+				ui_->horizontalSlider_loops->blockSignals(true);
+				ui_->horizontalSlider_loops->setValue(0);
+				ui_->horizontalSlider_loops->blockSignals(false);
+				set = true;
+				break;
+			}
+		}
+	}
+	if(!set)
+	{
+		ui_->horizontalSlider_loops->blockSignals(true);
+		ui_->horizontalSlider_neighbors->blockSignals(true);
+		ui_->horizontalSlider_loops->setValue(0);
+		ui_->horizontalSlider_neighbors->setValue(0);
+		ui_->constraintsViewer->removeAllClouds();
+		ui_->constraintsViewer->render();
+		ui_->horizontalSlider_loops->blockSignals(false);
+		ui_->horizontalSlider_neighbors->blockSignals(false);
+	}
+
+	if(rect.isValid())
+	{
+		view->setSceneRect(rect);
+	}
+	else
+	{
+		view->setSceneRect(view->scene()->itemsBoundingRect());
+	}
+	view->fitInView(view->sceneRect(), Qt::KeepAspectRatio);
+}
+
+void DatabaseViewer::updateWordsMatching()
+{
+	int from = ids_.at(ui_->horizontalSlider_A->value());
+	int to = ids_.at(ui_->horizontalSlider_B->value());
+	if(from && to)
+	{
+		int alpha = 70;
+		ui_->graphicsView_A->clearLines();
+		ui_->graphicsView_A->setFeaturesColor(QColor(255, 255, 0, alpha)); // yellow
+		ui_->graphicsView_B->clearLines();
+		ui_->graphicsView_B->setFeaturesColor(QColor(255, 255, 0, alpha)); // yellow
+
+		const QMultiMap<int, KeypointItem*> & wordsA = ui_->graphicsView_A->getFeatures();
+		const QMultiMap<int, KeypointItem*> & wordsB = ui_->graphicsView_B->getFeatures();
+		if(wordsA.size() && wordsB.size())
+		{
+			QList<int> ids =  wordsA.uniqueKeys();
+			for(int i=0; i<ids.size(); ++i)
+			{
+				if(wordsA.count(ids[i]) == 1 && wordsB.count(ids[i]) == 1)
+				{
+					// PINK features
+					ui_->graphicsView_A->setFeatureColor(ids[i], QColor(255, 0, 255, alpha));
+					ui_->graphicsView_B->setFeatureColor(ids[i], QColor(255, 0, 255, alpha));
+
+					// Add lines
+					// Draw lines between corresponding features...
+					float deltaX = ui_->graphicsView_A->sceneRect().width();
+					float deltaY = 0;
+
+					const KeypointItem * kptA = wordsA.value(ids[i]);
+					const KeypointItem * kptB = wordsB.value(ids[i]);
+					QGraphicsLineItem * item = ui_->graphicsView_A->scene()->addLine(
+							kptA->rect().x()+kptA->rect().width()/2,
+							kptA->rect().y()+kptA->rect().height()/2,
+							kptB->rect().x()+kptB->rect().width()/2+deltaX,
+							kptB->rect().y()+kptB->rect().height()/2+deltaY,
+							QPen(QColor(0, 255, 255, alpha)));
+					item->setVisible(ui_->graphicsView_A->isLinesShown());
+					item->setZValue(1);
+
+					item = ui_->graphicsView_B->scene()->addLine(
+							kptA->rect().x()+kptA->rect().width()/2-deltaX,
+							kptA->rect().y()+kptA->rect().height()/2-deltaY,
+							kptB->rect().x()+kptB->rect().width()/2,
+							kptB->rect().y()+kptB->rect().height()/2,
+							QPen(QColor(0, 255, 255, alpha)));
+					item->setVisible(ui_->graphicsView_B->isLinesShown());
+					item->setZValue(1);
+				}
+			}
+		}
 	}
 }
 
@@ -825,77 +1185,156 @@ void DatabaseViewer::sliderLoopValueChanged(int value)
 
 void DatabaseViewer::updateConstraintView(const rtabmap::Link & link)
 {
+	std::multimap<int, Link>::iterator iter = findLink(linksRefined_, link.from(), link.to());
 	rtabmap::Transform t = link.transform();
-	ui_->label_constraint->clear();
-	if(!t.isNull() && memory_)
+	if(iter != linksRefined_.end())
 	{
-		ui_->label_constraint->setText(t.prettyPrint().c_str());
+		t = iter->second.transform();
+	}
+
+	ui_->label_constraint->clear();
+	UASSERT(!t.isNull() && memory_);
+
+	ui_->label_constraint->setText(t.prettyPrint().c_str());
+
+	if(ui_->horizontalSlider_A->value() == idToIndex_.value(link.from()))
+	{
+		ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
+	}
+	else if(ui_->horizontalSlider_A->value() == idToIndex_.value(link.to()))
+	{
+		ui_->horizontalSlider_B->setValue(idToIndex_.value(link.from()));
+	}
+	else if(ui_->horizontalSlider_B->value() == idToIndex_.value(link.from()))
+	{
+		ui_->horizontalSlider_A->setValue(idToIndex_.value(link.to()));
+	}
+	else if(ui_->horizontalSlider_B->value() == idToIndex_.value(link.to()))
+	{
+		ui_->horizontalSlider_A->setValue(idToIndex_.value(link.from()));
+	}
+	else
+	{
+		ui_->horizontalSlider_A->blockSignals(true);
+		ui_->horizontalSlider_B->blockSignals(true);
 		ui_->horizontalSlider_A->setValue(idToIndex_.value(link.from()));
 		ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
+		ui_->horizontalSlider_A->blockSignals(false);
+		ui_->horizontalSlider_B->blockSignals(false);
+		sliderAValueChanged(idToIndex_.value(link.from()));
+		sliderBValueChanged(idToIndex_.value(link.to()));
+	}
 
-		float fxA, fyA, cxA, cyA;
-		float fxB, fyB, cxB, cyB;
-		rtabmap::Transform localTransformA, localTransformB;
+	float fxA, fyA, cxA, cyA;
+	float fxB, fyB, cxB, cyB;
+	rtabmap::Transform localTransformA, localTransformB;
 
-		std::vector<unsigned char> imageBytesA, depthBytesA, depth2dBytesA;
-		memory_->getImageDepth(link.from(), imageBytesA, depthBytesA, depth2dBytesA, fxA, fyA, cxA, cyA, localTransformA);
-		cv::Mat imageA = rtabmap::util3d::uncompressImage(imageBytesA);
-		cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
-		cv::Mat depth2dA = rtabmap::util3d::uncompressData(depth2dBytesA);
+	std::vector<unsigned char> imageBytesA, depthBytesA, depth2dBytesA;
+	memory_->getImageDepth(link.from(), imageBytesA, depthBytesA, depth2dBytesA, fxA, fyA, cxA, cyA, localTransformA);
+	cv::Mat imageA = rtabmap::util3d::uncompressImage(imageBytesA);
+	cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
+	cv::Mat depth2dA = rtabmap::util3d::uncompressData(depth2dBytesA);
 
-		std::vector<unsigned char> imageBytesB, depthBytesB, depth2dBytesB;
-		memory_->getImageDepth(link.to(), imageBytesB, depthBytesB, depth2dBytesB, fxB, fyB, cxB, cyB, localTransformB);
-		cv::Mat imageB = rtabmap::util3d::uncompressImage(imageBytesB);
-		cv::Mat depthB = rtabmap::util3d::uncompressImage(depthBytesB);
-		cv::Mat depth2dB = rtabmap::util3d::uncompressData(depth2dBytesB);
+	std::vector<unsigned char> imageBytesB, depthBytesB, depth2dBytesB;
+	memory_->getImageDepth(link.to(), imageBytesB, depthBytesB, depth2dBytesB, fxB, fyB, cxB, cyB, localTransformB);
+	cv::Mat imageB = rtabmap::util3d::uncompressImage(imageBytesB);
+	cv::Mat depthB = rtabmap::util3d::uncompressImage(depthBytesB);
+	cv::Mat depth2dB = rtabmap::util3d::uncompressData(depth2dBytesB);
 
-		//cloud 3d
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudA;
-		cloudA = rtabmap::util3d::cloudFromDepthRGB(
-				imageA,
-				depthA,
-				cxA, cyA,
-				fxA, fyA,
-				1);
+	//cloud 3d
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudA;
+	cloudA = rtabmap::util3d::cloudFromDepthRGB(
+			imageA,
+			depthA,
+			cxA, cyA,
+			fxA, fyA,
+			1);
 
-		cloudA = rtabmap::util3d::removeNaNFromPointCloud(cloudA);
-		cloudA = rtabmap::util3d::transformPointCloud(cloudA, localTransformA);
+	cloudA = rtabmap::util3d::removeNaNFromPointCloud(cloudA);
+	cloudA = rtabmap::util3d::transformPointCloud(cloudA, localTransformA);
 
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudB;
-		cloudB = rtabmap::util3d::cloudFromDepthRGB(
-				imageB,
-				depthB,
-				cxB, cyB,
-				fxB, fyB,
-				1);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudB;
+	cloudB = rtabmap::util3d::cloudFromDepthRGB(
+			imageB,
+			depthB,
+			cxB, cyB,
+			fxB, fyB,
+			1);
 
-		cloudB = rtabmap::util3d::removeNaNFromPointCloud(cloudB);
-		cloudB = rtabmap::util3d::transformPointCloud(cloudB, t*localTransformB);
+	cloudB = rtabmap::util3d::removeNaNFromPointCloud(cloudB);
+	cloudB = rtabmap::util3d::transformPointCloud(cloudB, t*localTransformB);
 
-		//cloud 2d
-		pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
-		scanA = rtabmap::util3d::depth2DToPointCloud(depth2dA);
-		scanB = rtabmap::util3d::depth2DToPointCloud(depth2dB);
-		scanB = rtabmap::util3d::transformPointCloud(scanB, t);
+	//cloud 2d
+	pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
+	scanA = rtabmap::util3d::depth2DToPointCloud(depth2dA);
+	scanB = rtabmap::util3d::depth2DToPointCloud(depth2dB);
+	scanB = rtabmap::util3d::transformPointCloud(scanB, t);
 
-		if(cloudA->size())
-		{
-			ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudA);
-		}
-		if(cloudB->size())
-		{
-			ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudB);
-		}
-		if(scanA->size())
-		{
-			ui_->constraintsViewer->addOrUpdateCloud("scan0", scanA);
-		}
-		if(scanB->size())
-		{
-			ui_->constraintsViewer->addOrUpdateCloud("scan1", scanB);
-		}
+	if(cloudA->size())
+	{
+		ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudA);
+	}
+	if(cloudB->size())
+	{
+		ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudB);
+	}
+	if(scanA->size())
+	{
+		ui_->constraintsViewer->addOrUpdateCloud("scan0", scanA);
+	}
+	if(scanB->size())
+	{
+		ui_->constraintsViewer->addOrUpdateCloud("scan1", scanB);
 	}
 	ui_->constraintsViewer->render();
+
+	// update buttons
+	updateConstraintButtons();
+}
+
+void DatabaseViewer::updateConstraintButtons()
+{
+	ui_->pushButton_refine->setEnabled(false);
+	ui_->pushButton_reset->setEnabled(false);
+	ui_->pushButton_add->setEnabled(false);
+	ui_->pushButton_reject->setEnabled(false);
+
+	int from = ids_.at(ui_->horizontalSlider_A->value());
+	int to = ids_.at(ui_->horizontalSlider_B->value());
+	if(from!=to && from && to)
+	{
+		if((!containsLink(links_, from ,to) && !containsLink(linksAdded_, from ,to)) ||
+			containsLink(linksRemoved_, from ,to))
+		{
+			ui_->pushButton_add->setEnabled(true);
+		}
+	}
+
+	Link currentLink = findActiveLink(from ,to);
+
+	if(currentLink.isValid() &&
+		((currentLink.from() == from && currentLink.to() == to) || (currentLink.from() == to && currentLink.to() == from)))
+	{
+		if(!containsLink(linksRemoved_, from ,to))
+		{
+			ui_->pushButton_reject->setEnabled(currentLink.type() != Link::kNeighbor);
+		}
+
+		//check for modified link
+		bool modified = false;
+		std::multimap<int, Link>::iterator iter = findLink(linksRefined_, currentLink.from(), currentLink.to());
+		if(iter != linksRefined_.end())
+		{
+			currentLink = iter->second;
+			ui_->pushButton_reset->setEnabled(true);
+			modified = true;
+		}
+		if(!modified)
+		{
+			ui_->pushButton_reset->setEnabled(false);
+		}
+		ui_->pushButton_refine->setEnabled(true);
+	}
 }
 
 void DatabaseViewer::sliderIterationsValueChanged(int value)
@@ -923,7 +1362,8 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			UINFO("Update scans list... done");
 		}
 		std::map<int, rtabmap::Transform> & graph = uValueAt(graphes_, value);
-		ui_->graphViewer->updateGraph(graph, links_);
+		std::multimap<int, Link> links = updateLinksWithModifications(links_);
+		ui_->graphViewer->updateGraph(graph, links);
 		if(graph.size() && scans_.size())
 		{
 			float xMin, yMin;
@@ -935,7 +1375,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 
 		//compute total length (neighbor links)
 		float length = 0.0f;
-		for(std::multimap<int, rtabmap::Link>::const_iterator iter=links_.begin(); iter!=links_.end(); ++iter)
+		for(std::multimap<int, rtabmap::Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 		{
 			std::map<int, rtabmap::Transform>::const_iterator jterA = graph.find(iter->first);
 			std::map<int, rtabmap::Transform>::const_iterator jterB = graph.find(iter->second.to());
@@ -973,68 +1413,9 @@ void DatabaseViewer::updateGraphView()
 		std::map<int, rtabmap::Transform> finalPoses;
 		graphes_.push_back(poses_);
 		ui_->actionGenerate_TORO_graph_graph->setEnabled(true);
-
-		std::map<int, int> ids = memory_->getNeighborsId(ui_->spinBox_optimizationsFrom->value(), 0, -1, true);
-		// Modify IDs using the margin from the current signature (TORO root will be the last signature)
-		int m = 0;
-		int toroId = 1;
-		std::map<int, int> rtabmapToToro; // <RTAB-Map ID, TORO ID>
-		std::map<int, int> toroToRtabmap; // <TORO ID, RTAB-Map ID>
-		while(ids.size())
-		{
-			for(std::map<int, int>::iterator iter = ids.begin(); iter!=ids.end();)
-			{
-				if(m == iter->second)
-				{
-					rtabmapToToro.insert(std::make_pair(iter->first, toroId));
-					toroToRtabmap.insert(std::make_pair(toroId, iter->first));
-					++toroId;
-					ids.erase(iter++);
-				}
-				else
-				{
-					++iter;
-				}
-			}
-			++m;
-		}
-
-		std::map<int, rtabmap::Transform> posesToro;
-		std::multimap<int, rtabmap::Link> edgeConstraintsToro;
-		for(std::map<int, rtabmap::Transform>::iterator iter = poses_.begin(); iter!=poses_.end(); ++iter)
-		{
-			posesToro.insert(std::make_pair(rtabmapToToro.at(iter->first), iter->second));
-		}
-		for(std::multimap<int, rtabmap::Link>::iterator iter = links_.begin();
-			iter!=links_.end();
-			++iter)
-		{
-			edgeConstraintsToro.insert(std::make_pair(rtabmapToToro.at(iter->first), rtabmap::Link(rtabmapToToro.at(iter->first), rtabmapToToro.at(iter->second.to()), iter->second.transform(), iter->second.type())));
-		}
-
-		std::map<int, rtabmap::Transform> optimizedPosesToro;
-		rtabmap::Transform mapCorrectionToro;
-		std::list<std::map<int, rtabmap::Transform> > graphesToro;
-
-		// Optimize!
-		rtabmap::util3d::optimizeTOROGraph(posesToro, edgeConstraintsToro, optimizedPosesToro, mapCorrectionToro, ui_->spinBox_iterations->value(), ui_->checkBox_initGuess->isChecked(), &graphesToro);
-
-		for(std::list<std::map<int, rtabmap::Transform> >::iterator iter = graphesToro.begin(); iter!=graphesToro.end(); ++iter)
-		{
-			std::map<int, rtabmap::Transform> tmp;
-			for(std::map<int, rtabmap::Transform>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
-			{
-				tmp.insert(std::make_pair(toroToRtabmap.at(jter->first), jter->second));
-			}
-			graphes_.push_back(tmp);
-		}
-
-		for(std::map<int, rtabmap::Transform>::iterator iter=optimizedPosesToro.begin(); iter!=optimizedPosesToro.end(); ++iter)
-		{
-			finalPoses.insert(std::make_pair(toroToRtabmap.at(iter->first), iter->second));
-		}
-
-
+		std::map<int, int> ids = this->generateGraph(ui_->spinBox_optimizationsFrom->value(), 0);
+		std::multimap<int, rtabmap::Link> links = updateLinksWithModifications(links_);
+		finalPoses = optimizeGraph(ids, poses_, links, &graphes_);
 		graphes_.push_back(finalPoses);
 	}
 	if(graphes_.size())
@@ -1048,5 +1429,476 @@ void DatabaseViewer::updateGraphView()
 	{
 		ui_->dockWidget_graphView->setEnabled(false);
 	}
-
 }
+
+std::multimap<int, Link>::iterator DatabaseViewer::findLink(
+		std::multimap<int, Link> & links,
+		int from,
+		int to)
+{
+	std::multimap<int, Link>::iterator iter = links.find(from);
+	while(iter != links.end() && iter->first == from)
+	{
+		if(iter->second.to() == to)
+		{
+			return iter;
+		}
+		++iter;
+	}
+
+	// let's try to -> from
+	iter = links.find(to);
+	while(iter != links.end() && iter->first == to)
+	{
+		if(iter->second.to() == from)
+		{
+			return iter;
+		}
+		++iter;
+	}
+	return links.end();
+}
+
+Link DatabaseViewer::findActiveLink(int from, int to)
+{
+	Link link;
+	std::multimap<int, Link>::iterator findIter = findLink(linksRefined_, from ,to);
+	if(findIter != linksRefined_.end())
+	{
+		link = findIter->second;
+	}
+	else
+	{
+		findIter = findLink(linksAdded_, from ,to);
+		if(findIter != linksAdded_.end())
+		{
+			link = findIter->second;
+		}
+		else if(!containsLink(linksRemoved_, from ,to))
+		{
+			findIter = findLink(links_, from ,to);
+			if(findIter != links_.end())
+			{
+				link = findIter->second;
+			}
+		}
+	}
+	return link;
+}
+
+bool DatabaseViewer::containsLink(std::multimap<int, Link> & links, int from, int to)
+{
+	return findLink(links, from, to) != links.end();
+}
+
+void DatabaseViewer::refineConstraint()
+{
+	int from = ids_.at(ui_->horizontalSlider_A->value());
+	int to = ids_.at(ui_->horizontalSlider_B->value());
+	refineConstraint(from, to);
+}
+
+void DatabaseViewer::refineConstraint(int from, int to)
+{
+	if(from == to)
+	{
+		UWARN("Cannot refine link to same node");
+		return;
+	}
+
+	Link currentLink =  findActiveLink(from, to);
+	if(!currentLink.isValid())
+	{
+		UERROR("Not found link! (%d->%d)", from, to);
+		return;
+	}
+
+	float fxA, fyA, cxA, cyA;
+	float fxB, fyB, cxB, cyB;
+	rtabmap::Transform localTransformA, localTransformB;
+
+	std::vector<unsigned char> imageBytesA, depthBytesA, depth2dBytesA;
+	memory_->getImageDepth(currentLink.from(), imageBytesA, depthBytesA, depth2dBytesA, fxA, fyA, cxA, cyA, localTransformA);
+	cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
+
+	std::vector<unsigned char> imageBytesB, depthBytesB, depth2dBytesB;
+	memory_->getImageDepth(currentLink.to(), imageBytesB, depthBytesB, depth2dBytesB, fxB, fyB, cxB, cyB, localTransformB);
+	cv::Mat depthB = rtabmap::util3d::uncompressImage(depthBytesB);
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA = util3d::getICPReadyCloud(depthA,
+					fxA, fyA, cxA, cyA,
+					ui_->spinBox_icp_decimation->value(),
+					ui_->doubleSpinBox_icp_maxDepth->value(),
+					ui_->doubleSpinBox_icp_voxel->value(),
+					0, // no sampling
+					localTransformA);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB = util3d::getICPReadyCloud(depthB,
+					fxB, fyB, cxB, cyB,
+					ui_->spinBox_icp_decimation->value(),
+					ui_->doubleSpinBox_icp_maxDepth->value(),
+					ui_->doubleSpinBox_icp_voxel->value(),
+					0, // no sampling
+					currentLink.transform() * localTransformB);
+
+	bool hasConverged = false;
+	double fitness;
+	Transform transform;
+	if(ui_->checkBox_icp_p2plane->isChecked())
+	{
+		pcl::PointCloud<pcl::PointNormal>::Ptr cloudANormals = util3d::computeNormals(cloudA, ui_->spinBox_icp_normalKSearch->value());
+		pcl::PointCloud<pcl::PointNormal>::Ptr cloudBNormals = util3d::computeNormals(cloudB, ui_->spinBox_icp_normalKSearch->value());
+
+		cloudANormals = util3d::removeNaNNormalsFromPointCloud(cloudANormals);
+		if(cloudA->size() != cloudANormals->size())
+		{
+			UWARN("removed nan normals...");
+		}
+
+		cloudBNormals = util3d::removeNaNNormalsFromPointCloud(cloudBNormals);
+		if(cloudB->size() != cloudBNormals->size())
+		{
+			UWARN("removed nan normals...");
+		}
+
+		transform = util3d::icpPointToPlane(cloudBNormals,
+				cloudANormals,
+				ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
+				ui_->spinBox_icp_decimation->value(),
+				hasConverged,
+				fitness);
+	}
+	else
+	{
+		transform = util3d::icp(cloudB,
+				cloudA,
+				ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
+				ui_->spinBox_icp_decimation->value(),
+				hasConverged,
+				fitness);
+	}
+
+	if(hasConverged && !transform.isNull())
+	{
+		ui_->label_fitness->setNum(fitness);
+		Link newLink(currentLink.from(), currentLink.to(), transform*currentLink.transform(), currentLink.type());
+
+		bool updated = false;
+		std::multimap<int, Link>::iterator iter = linksRefined_.find(currentLink.from());
+		while(iter != linksRefined_.end() && iter->first == currentLink.from())
+		{
+			if(iter->second.to() == currentLink.to() &&
+			   iter->second.type() == currentLink.type())
+			{
+				iter->second = newLink;
+				updated = true;
+				break;
+			}
+			++iter;
+		}
+		if(!updated)
+		{
+			linksRefined_.insert(std::make_pair<int, Link>(newLink.from(), newLink));
+		}
+		this->updateConstraintView(newLink);
+	}
+	else
+	{
+		ui_->label_fitness->setText("not converged");
+	}
+}
+
+void DatabaseViewer::addConstraint()
+{
+	int from = ids_.at(ui_->horizontalSlider_A->value());
+	int to = ids_.at(ui_->horizontalSlider_B->value());
+	addConstraint(from, to, false);
+}
+
+bool DatabaseViewer::addConstraint(int from, int to, bool silent)
+{
+	if(from < to)
+	{
+		int tmp = to;
+		to = from;
+		from = tmp;
+	}
+
+	if(from == to)
+	{
+		UWARN("Cannot add link to same node");
+		return false;
+	}
+
+	bool updateSlider = false;
+	if(!containsLink(linksAdded_, from, to) &&
+	   !containsLink(links_, from, to))
+	{
+		UASSERT(!containsLink(linksRemoved_, from, to));
+		UASSERT(!containsLink(linksRefined_, from, to));
+
+		Transform t;
+		if(ui_->checkBox_visual_recomputeFeatures->isChecked())
+		{
+			// create a fake memory to regenerate features
+			ParametersMap parameters;
+			parameters.insert(ParametersPair(Parameters::kSURFHessianThreshold(), uNumber2Str(ui_->doubleSpinBox_visual_hessian->value())));
+			parameters.insert(ParametersPair(Parameters::kLccBowInlierDistance(), uNumber2Str(ui_->doubleSpinBox_visual_maxCorrespDistance->value())));
+			parameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(ui_->doubleSpinBox_visual_maxDepth->value())));
+			parameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(ui_->doubleSpinBox_visual_nndr->value())));
+			parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
+			parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
+			parameters.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
+			parameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0"));
+			parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "0"));
+			Memory tmpMemory(parameters);
+
+			// Add signatures
+			float fxA, fyA, cxA, cyA;
+			float fxB, fyB, cxB, cyB;
+			rtabmap::Transform localTransformA, localTransformB;
+
+			std::vector<unsigned char> imageBytesA, depthBytesA, depth2dBytesA;
+			memory_->getImageDepth(from, imageBytesA, depthBytesA, depth2dBytesA, fxA, fyA, cxA, cyA, localTransformA);
+			cv::Mat imageA = rtabmap::util3d::uncompressImage(imageBytesA);
+			cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
+			Image imageFrom(imageA, depthA, fxA, fyA, cxA, cyA, Transform::getIdentity(), localTransformA, 1);
+
+			std::vector<unsigned char> imageBytesB, depthBytesB, depth2dBytesB;
+			memory_->getImageDepth(to, imageBytesB, depthBytesB, depth2dBytesB, fxB, fyB, cxB, cyB, localTransformB);
+			cv::Mat imageB = rtabmap::util3d::uncompressImage(imageBytesB);
+			cv::Mat depthB = rtabmap::util3d::uncompressImage(depthBytesB);
+			Image imageTo(imageB, depthB, fxB, fyB, cxB, cyB, Transform::getIdentity(), localTransformB, 2);
+
+			tmpMemory.update(imageFrom);
+			tmpMemory.update(imageTo);
+
+			t = tmpMemory.computeVisualTransform(2, 1);
+		}
+		else
+		{
+			ParametersMap parameters;
+			parameters.insert(ParametersPair(Parameters::kLccBowInlierDistance(), uNumber2Str(ui_->doubleSpinBox_visual_maxCorrespDistance->value())));
+			parameters.insert(ParametersPair(Parameters::kLccBowMaxDepth(), uNumber2Str(ui_->doubleSpinBox_visual_maxDepth->value())));
+			parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
+			parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
+			memory_->parseParameters(parameters);
+			t = memory_->computeVisualTransform(to, from);
+		}
+
+		if(t.isNull())
+		{
+			if(!silent)
+			{
+				QMessageBox::warning(this,
+						tr("Add link"),
+						tr("Cannot find a transformation between nodes %1 and %2").arg(from).arg(to));
+			}
+		}
+		else
+		{
+			// transform is valid, make a link
+			linksAdded_.insert(std::make_pair(from, Link(from, to, t, Link::kUserClosure)));
+			updateSlider = true;
+		}
+	}
+	else if(containsLink(linksRemoved_, from, to))
+	{
+		//simply remove from linksRemoved
+		linksRemoved_.erase(findLink(linksRemoved_, from, to));
+		updateSlider = true;
+	}
+
+	if(updateSlider)
+	{
+		updateLoopClosuresSlider(from, to);
+	}
+	return updateSlider;
+}
+
+void DatabaseViewer::resetConstraint()
+{
+	int from = ids_.at(ui_->horizontalSlider_A->value());
+	int to = ids_.at(ui_->horizontalSlider_B->value());
+	if(from < to)
+	{
+		int tmp = to;
+		to = from;
+		from = tmp;
+	}
+
+	if(from == to)
+	{
+		UWARN("Cannot reset link to same node");
+		return;
+	}
+
+
+	std::multimap<int, Link>::iterator iter = findLink(linksRefined_, from, to);
+	if(iter != linksRefined_.end())
+	{
+		linksRefined_.erase(iter);
+	}
+
+	iter = findLink(links_, from, to);
+	if(iter != links_.end())
+	{
+		this->updateConstraintView(iter->second);
+	}
+}
+
+void DatabaseViewer::rejectConstraint()
+{
+	int from = ids_.at(ui_->horizontalSlider_A->value());
+	int to = ids_.at(ui_->horizontalSlider_B->value());
+	if(from < to)
+	{
+		int tmp = to;
+		to = from;
+		from = tmp;
+	}
+
+	if(from == to)
+	{
+		UWARN("Cannot reject link to same node");
+		return;
+	}
+
+	// find the original one
+	std::multimap<int, Link>::iterator iter;
+	iter = findLink(links_, from, to);
+	if(iter != links_.end())
+	{
+		if(iter->second.type() == Link::kNeighbor)
+		{
+			UWARN("Cannot reject neighbor links (%d->%d)", from, to);
+			return;
+		}
+		linksRemoved_.insert(*iter);
+	}
+
+	// remove from refined and added
+	iter = findLink(linksRefined_, from, to);
+	if(iter != linksRefined_.end())
+	{
+		linksRefined_.erase(iter);
+	}
+	iter = findLink(linksAdded_, from, to);
+	if(iter != linksAdded_.end())
+	{
+		linksAdded_.erase(iter);
+	}
+	updateLoopClosuresSlider();
+}
+
+std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
+		const std::multimap<int, rtabmap::Link> & edgeConstraints)
+{
+	std::multimap<int, rtabmap::Link> links;
+	for(std::multimap<int, rtabmap::Link>::const_iterator iter=edgeConstraints.begin();
+		iter!=edgeConstraints.end();
+		++iter)
+	{
+		std::multimap<int, rtabmap::Link>::iterator findIter;
+
+		findIter = findLink(linksRemoved_, iter->second.from(), iter->second.to());
+		if(findIter != linksRemoved_.end())
+		{
+			if(!(iter->second.from() == findIter->second.from() &&
+			   iter->second.to() == findIter->second.to() &&
+			   iter->second.type() == findIter->second.type()))
+			{
+				UWARN("Links (%d->%d,%d) and (%d->%d,%d) are not equal!?",
+						iter->second.from(), iter->second.to(), iter->second.type(),
+						findIter->second.from(), findIter->second.to(), findIter->second.type());
+			}
+			else
+			{
+				//UINFO("Removed link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+				continue; // don't add this link
+			}
+		}
+
+		findIter = findLink(linksRefined_, iter->second.from(), iter->second.to());
+		if(findIter!=linksRefined_.end())
+		{
+			if(iter->second.from() == findIter->second.from() &&
+			   iter->second.to() == findIter->second.to() &&
+			   iter->second.type() == findIter->second.type())
+			{
+				links.insert(*findIter); // add the refined link
+				//UINFO("Updated link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+				continue;
+			}
+			else
+			{
+				UWARN("Links (%d->%d,%d) and (%d->%d,%d) are not equal!?",
+						iter->second.from(), iter->second.to(), iter->second.type(),
+						findIter->second.from(), findIter->second.to(), findIter->second.type());
+			}
+		}
+
+		links.insert(*iter); // add original link
+	}
+
+	//look for added links
+	for(std::multimap<int, rtabmap::Link>::const_iterator iter=linksAdded_.begin();
+		iter!=linksAdded_.end();
+		++iter)
+	{
+		//UINFO("Added link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+		links.insert(*iter);
+	}
+
+	return links;
+}
+
+void DatabaseViewer::updateLoopClosuresSlider(int from, int to)
+{
+	int size = loopLinks_.size();
+	loopLinks_.clear();
+	std::multimap<int, Link> links = updateLinksWithModifications(links_);
+	int position = ui_->horizontalSlider_loops->value();
+	for(std::multimap<int, rtabmap::Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
+	{
+		if(!iter->second.transform().isNull())
+		{
+			if(iter->second.type() != rtabmap::Link::kNeighbor)
+			{
+				if((iter->second.from() == from && iter->second.to() == to) ||
+				   (iter->second.to() == from && iter->second.from() == to))
+				{
+					position = loopLinks_.size();
+				}
+				loopLinks_.append(iter->second);
+			}
+		}
+		else
+		{
+			UERROR("Transform null for link from %d to %d", iter->first, iter->second.to());
+		}
+	}
+
+	if(loopLinks_.size())
+	{
+		ui_->horizontalSlider_loops->setMinimum(0);
+		ui_->horizontalSlider_loops->setMaximum(loopLinks_.size()-1);
+		ui_->horizontalSlider_loops->setEnabled(true);
+		if(position != ui_->horizontalSlider_loops->value())
+		{
+			ui_->horizontalSlider_loops->setValue(position);
+		}
+		else if(size != loopLinks_.size())
+		{
+			this->updateConstraintView(loopLinks_.at(position));
+		}
+	}
+	else
+	{
+		ui_->horizontalSlider_loops->setEnabled(false);
+		ui_->constraintsViewer->removeAllClouds();
+		ui_->constraintsViewer->render();
+		updateConstraintButtons();
+	}
+}
+
+} // namespace rtabmap

@@ -15,7 +15,13 @@ namespace rtabmap {
 class Link
 {
 public:
-	enum Type {kNeighbor, kGlobalClosure, kLocalSpaceClosure, kLocalTimeClosure};
+	enum Type {kNeighbor, kGlobalClosure, kLocalSpaceClosure, kLocalTimeClosure, kUserClosure, kUndef};
+	Link() :
+		from_(0),
+		to_(0),
+		type_(kUndef)
+	{
+	}
 	Link(int from, int to, const Transform & transform, Type type) :
 		from_(from),
 		to_(to),
@@ -23,6 +29,8 @@ public:
 		type_(type)
 	{
 	}
+
+	bool isValid() const {return from_ > 0 && to_ > 0 && !transform_.isNull() && type_!=kUndef;}
 
 	int from() const {return from_;}
 	int to() const {return to_;}

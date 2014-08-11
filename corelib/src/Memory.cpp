@@ -63,8 +63,8 @@ Memory::Memory(const ParametersMap & parameters) :
 	_memoryChanged(false),
 	_signaturesAdded(0),
 
-	_feature2D(0),
-	_featureType(Feature2D::kFeatureUndef),
+	_feature2D(new SURF(parameters)),
+	_featureType(Feature2D::kFeatureSurf),
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
 	_parallelized(Parameters::defaultKpParallelized()),
@@ -364,6 +364,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	}
 
 	//Keypoint detector
+	UASSERT(_feature2D != 0);
 	Feature2D::Type detectorStrategy = Feature2D::kFeatureUndef;
 	if((iter=parameters.find(Parameters::kKpDetectorStrategy())) != parameters.end())
 	{
@@ -402,6 +403,10 @@ void Memory::parseParameters(const ParametersMap & parameters)
 			_featureType = Feature2D::kFeatureSurf;
 			break;
 		}
+	}
+	else if(_feature2D)
+	{
+		_feature2D->parseParameters(parameters);
 	}
 }
 
@@ -1626,6 +1631,10 @@ Transform Memory::computeVisualTransform(int oldId, int newId) const
 	{
 		return computeVisualTransform(*oldS, *newS);
 	}
+	else
+	{
+		UWARN("Did not find nodes %d and/or %d", oldId, newId);
+	}
 	return Transform();
 }
 
@@ -2844,6 +2853,10 @@ void Memory::extractKeypointsAndDescriptors(
 
 			filterKeypointsByDepth(keypoints, depth, fx, fy, cx, cy, _wordsMaxDepth);
 			limitKeypoints(keypoints, _wordsPerImageTarget);
+		}
+		else
+		{
+			UWARN("feature2D not set!");
 		}
 
 		if(keypoints.size())

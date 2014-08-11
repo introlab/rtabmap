@@ -24,6 +24,7 @@
 
 #include <QtGui/QGraphicsView>
 #include <QtCore/QRectF>
+#include <QtCore/QMultiMap>
 #include <opencv2/features2d/features2d.hpp>
 #include <map>
 
@@ -57,7 +58,12 @@ public:
 	void setFeatures(const std::multimap<int, cv::KeyPoint> & refWords);
 	void setImage(const QImage & image);
 	void setImageDepth(const QImage & image);
+	void setFeatureColor(int id, const QColor & color);
+	void setFeaturesColor(const QColor & color);
 
+	const QMultiMap<int, rtabmap::KeypointItem *> & getFeatures() const {return _features;}
+
+	void clearLines();
 	void clear();
 
 protected:
@@ -82,7 +88,7 @@ private:
 	QAction * _showLines;
 	QAction * _saveImage;
 
-	QList<rtabmap::KeypointItem *> _features;
+	QMultiMap<int, rtabmap::KeypointItem *> _features;
 	QGraphicsPixmapItem * _image;
 	QGraphicsPixmapItem * _imageDepth;
 };

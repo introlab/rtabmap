@@ -246,38 +246,17 @@ cv::Mat Feature2D::generateDescriptors(const cv::Mat & image, std::vector<cv::Ke
 //SURF
 //////////////////////////
 SURF::SURF(const ParametersMap & parameters) :
+		hessianThreshold_(Parameters::defaultSURFHessianThreshold()),
+		nOctaves_(Parameters::defaultSURFOctaves()),
+		nOctaveLayers_(Parameters::defaultSURFOctaveLayers()),
+		extended_(Parameters::defaultSURFExtended()),
+		upright_(Parameters::defaultSURFUpright()),
+		gpuKeypointsRatio_(Parameters::defaultSURFGpuKeypointsRatio()),
+		gpuVersion_(Parameters::defaultSURFGpuVersion()),
 		_surf(0),
 		_gpuSurf(0)
 {
-	double hessianThreshold = Parameters::defaultSURFHessianThreshold();
-	int nOctaves = Parameters::defaultSURFOctaves();
-	int nOctaveLayers = Parameters::defaultSURFOctaveLayers();
-	bool extended = Parameters::defaultSURFExtended();
-	bool upright = Parameters::defaultSURFUpright();
-	float gpuKeypointsRatio = Parameters::defaultSURFGpuKeypointsRatio();
-	bool gpuVersion = Parameters::defaultSURFGpuVersion();
-
-	Parameters::parse(parameters, Parameters::kSURFExtended(), extended);
-	Parameters::parse(parameters, Parameters::kSURFHessianThreshold(), hessianThreshold);
-	Parameters::parse(parameters, Parameters::kSURFOctaveLayers(), nOctaveLayers);
-	Parameters::parse(parameters, Parameters::kSURFOctaves(), nOctaves);
-	Parameters::parse(parameters, Parameters::kSURFUpright(), upright);
-	Parameters::parse(parameters, Parameters::kSURFGpuKeypointsRatio(), gpuKeypointsRatio);
-	Parameters::parse(parameters, Parameters::kSURFGpuVersion(), gpuVersion);
-
-	if(gpuVersion && cv::gpu::getCudaEnabledDeviceCount())
-	{
-		_gpuSurf = new cv::gpu::SURF_GPU(hessianThreshold, nOctaves, nOctaveLayers, extended, gpuKeypointsRatio, upright);
-	}
-	else
-	{
-		if(gpuVersion)
-		{
-			UWARN("GPU version of SURF not available! Using CPU version instead...");
-		}
-
-		_surf = new cv::SURF (hessianThreshold, nOctaves, nOctaveLayers, extended, upright);
-	}
+	parseParameters(parameters);
 }
 
 SURF::~SURF()
@@ -289,6 +268,42 @@ SURF::~SURF()
 	if(_gpuSurf)
 	{
 		delete _gpuSurf;
+	}
+}
+
+void SURF::parseParameters(const ParametersMap & parameters)
+{
+	Parameters::parse(parameters, Parameters::kSURFExtended(), extended_);
+	Parameters::parse(parameters, Parameters::kSURFHessianThreshold(), hessianThreshold_);
+	Parameters::parse(parameters, Parameters::kSURFOctaveLayers(), nOctaveLayers_);
+	Parameters::parse(parameters, Parameters::kSURFOctaves(), nOctaves_);
+	Parameters::parse(parameters, Parameters::kSURFUpright(), upright_);
+	Parameters::parse(parameters, Parameters::kSURFGpuKeypointsRatio(), gpuKeypointsRatio_);
+	Parameters::parse(parameters, Parameters::kSURFGpuVersion(), gpuVersion_);
+
+	if(_gpuSurf)
+	{
+		delete _gpuSurf;
+		_gpuSurf = 0;
+	}
+	if(_surf)
+	{
+		delete _surf;
+		_surf = 0;
+	}
+
+	if(gpuVersion_ && cv::gpu::getCudaEnabledDeviceCount())
+	{
+		_gpuSurf = new cv::gpu::SURF_GPU(hessianThreshold_, nOctaves_, nOctaveLayers_, extended_, gpuKeypointsRatio_, upright_);
+	}
+	else
+	{
+		if(gpuVersion_)
+		{
+			UWARN("GPU version of SURF not available! Using CPU version instead...");
+		}
+
+		_surf = new cv::SURF(hessianThreshold_, nOctaves_, nOctaveLayers_, extended_, upright_);
 	}
 }
 
@@ -342,21 +357,14 @@ cv::Mat SURF::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 //SIFT
 //////////////////////////
 SIFT::SIFT(const ParametersMap & parameters) :
+	nfeatures_(Parameters::defaultSIFTNFeatures()),
+	nOctaveLayers_(Parameters::defaultSIFTNOctaveLayers()),
+	contrastThreshold_(Parameters::defaultSIFTContrastThreshold()),
+	edgeThreshold_(Parameters::defaultSIFTEdgeThreshold()),
+	sigma_(Parameters::defaultSIFTSigma()),
 	_sift(0)
 {
-	int nfeatures = Parameters::defaultSIFTNFeatures();
-	int nOctaveLayers = Parameters::defaultSIFTNOctaveLayers();
-	double contrastThreshold = Parameters::defaultSIFTContrastThreshold();
-	double edgeThreshold = Parameters::defaultSIFTEdgeThreshold();
-	double sigma = Parameters::defaultSIFTSigma();
-
-	Parameters::parse(parameters, Parameters::kSIFTContrastThreshold(), contrastThreshold);
-	Parameters::parse(parameters, Parameters::kSIFTEdgeThreshold(), edgeThreshold);
-	Parameters::parse(parameters, Parameters::kSIFTNFeatures(), nfeatures);
-	Parameters::parse(parameters, Parameters::kSIFTNOctaveLayers(), nOctaveLayers);
-	Parameters::parse(parameters, Parameters::kSIFTSigma(), sigma);
-
-	_sift = new cv::SIFT(nfeatures, nOctaveLayers, contrastThreshold, edgeThreshold, sigma);
+	parseParameters(parameters);
 }
 
 SIFT::~SIFT()
@@ -365,6 +373,23 @@ SIFT::~SIFT()
 	{
 		delete _sift;
 	}
+}
+
+void SIFT::parseParameters(const ParametersMap & parameters)
+{
+	Parameters::parse(parameters, Parameters::kSIFTContrastThreshold(), contrastThreshold_);
+	Parameters::parse(parameters, Parameters::kSIFTEdgeThreshold(), edgeThreshold_);
+	Parameters::parse(parameters, Parameters::kSIFTNFeatures(), nfeatures_);
+	Parameters::parse(parameters, Parameters::kSIFTNOctaveLayers(), nOctaveLayers_);
+	Parameters::parse(parameters, Parameters::kSIFTSigma(), sigma_);
+
+	if(_sift)
+	{
+		delete _sift;
+		_sift = 0;
+	}
+
+	_sift = new cv::SIFT(nfeatures_, nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_);
 }
 
 std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const
@@ -388,48 +413,21 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 //ORB
 //////////////////////////
 ORB::ORB(const ParametersMap & parameters) :
+		nFeatures_(Parameters::defaultORBNFeatures()),
+		scaleFactor_(Parameters::defaultORBScaleFactor()),
+		nLevels_(Parameters::defaultORBNLevels()),
+		edgeThreshold_(Parameters::defaultORBEdgeThreshold()),
+		firstLevel_(Parameters::defaultORBFirstLevel()),
+		WTA_K_(Parameters::defaultORBWTA_K()),
+		scoreType_(Parameters::defaultORBScoreType()),
+		patchSize_(Parameters::defaultORBPatchSize()),
+		gpu_(Parameters::defaultORBGpu()),
+		fastThreshold_(Parameters::defaultFASTThreshold()),
+		nonmaxSuppresion_(Parameters::defaultFASTNonmaxSuppression()),
 		_orb(0),
 		_gpuOrb(0)
 {
-	int nFeatures = Parameters::defaultORBNFeatures();
-	float scaleFactor = Parameters::defaultORBScaleFactor();
-	int nLevels = Parameters::defaultORBNLevels();
-	int edgeThreshold = Parameters::defaultORBEdgeThreshold();
-	int firstLevel = Parameters::defaultORBFirstLevel();
-	int WTA_K = Parameters::defaultORBWTA_K();
-	int scoreType = Parameters::defaultORBScoreType();
-	int patchSize = Parameters::defaultORBPatchSize();
-	bool gpu = Parameters::defaultORBGpu();
-
-	int fastThreshold = Parameters::defaultFASTThreshold();
-	bool nonmaxSuppresion = Parameters::defaultFASTNonmaxSuppression();
-
-	Parameters::parse(parameters, Parameters::kORBNFeatures(), nFeatures);
-	Parameters::parse(parameters, Parameters::kORBScaleFactor(), scaleFactor);
-	Parameters::parse(parameters, Parameters::kORBNLevels(), nLevels);
-	Parameters::parse(parameters, Parameters::kORBEdgeThreshold(), edgeThreshold);
-	Parameters::parse(parameters, Parameters::kORBFirstLevel(), firstLevel);
-	Parameters::parse(parameters, Parameters::kORBWTA_K(), WTA_K);
-	Parameters::parse(parameters, Parameters::kORBScoreType(), scoreType);
-	Parameters::parse(parameters, Parameters::kORBPatchSize(), patchSize);
-	Parameters::parse(parameters, Parameters::kORBGpu(), gpu);
-
-	Parameters::parse(parameters, Parameters::kFASTThreshold(), fastThreshold);
-	Parameters::parse(parameters, Parameters::kFASTNonmaxSuppression(), nonmaxSuppresion);
-
-	if(gpu && cv::gpu::getCudaEnabledDeviceCount())
-	{
-		_gpuOrb = new cv::gpu::ORB_GPU(nFeatures, scaleFactor, nLevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
-		_gpuOrb->setFastParams(fastThreshold, nonmaxSuppresion);
-	}
-	else
-	{
-		if(gpu)
-		{
-			UWARN("GPU version of ORB not available! Using CPU version instead...");
-		}
-		_orb = new cv::ORB(nFeatures, scaleFactor, nLevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
-	}
+	parseParameters(parameters);
 }
 
 ORB::~ORB()
@@ -441,6 +439,47 @@ ORB::~ORB()
 	if(_gpuOrb)
 	{
 		delete _gpuOrb;
+	}
+}
+
+void ORB::parseParameters(const ParametersMap & parameters)
+{
+	Parameters::parse(parameters, Parameters::kORBNFeatures(), nFeatures_);
+	Parameters::parse(parameters, Parameters::kORBScaleFactor(), scaleFactor_);
+	Parameters::parse(parameters, Parameters::kORBNLevels(), nLevels_);
+	Parameters::parse(parameters, Parameters::kORBEdgeThreshold(), edgeThreshold_);
+	Parameters::parse(parameters, Parameters::kORBFirstLevel(), firstLevel_);
+	Parameters::parse(parameters, Parameters::kORBWTA_K(), WTA_K_);
+	Parameters::parse(parameters, Parameters::kORBScoreType(), scoreType_);
+	Parameters::parse(parameters, Parameters::kORBPatchSize(), patchSize_);
+	Parameters::parse(parameters, Parameters::kORBGpu(), gpu_);
+
+	Parameters::parse(parameters, Parameters::kFASTThreshold(), fastThreshold_);
+	Parameters::parse(parameters, Parameters::kFASTNonmaxSuppression(), nonmaxSuppresion_);
+
+	if(_gpuOrb)
+	{
+		delete _gpuOrb;
+		_gpuOrb = 0;
+	}
+	if(_orb)
+	{
+		delete _orb;
+		_orb = 0;
+	}
+
+	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount())
+	{
+		_gpuOrb = new cv::gpu::ORB_GPU(nFeatures_, scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_);
+		_gpuOrb->setFastParams(fastThreshold_, nonmaxSuppresion_);
+	}
+	else
+	{
+		if(gpu_)
+		{
+			UWARN("GPU version of ORB not available! Using CPU version instead...");
+		}
+		_orb = new cv::ORB(nFeatures_, scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_);
 	}
 }
 
@@ -499,31 +538,14 @@ cv::Mat ORB::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyP
 //FAST
 //////////////////////////
 FAST::FAST(const ParametersMap & parameters) :
+		threshold_(Parameters::defaultFASTThreshold()),
+		nonmaxSuppression_(Parameters::defaultFASTNonmaxSuppression()),
+		gpu_(Parameters::defaultFASTGpu()),
+		gpuKeypointsRatio_(Parameters::defaultFASTGpuKeypointsRatio()),
 		_fast(0),
 		_gpuFast(0)
 {
-	int threshold = Parameters::defaultFASTThreshold();
-	bool nonmaxSuppression = Parameters::defaultFASTNonmaxSuppression();
-	bool gpu = Parameters::defaultFASTGpu();
-	double gpuKeypointsRatio = Parameters::defaultFASTGpuKeypointsRatio();
-
-	Parameters::parse(parameters, Parameters::kFASTThreshold(), threshold);
-	Parameters::parse(parameters, Parameters::kFASTNonmaxSuppression(), nonmaxSuppression);
-	Parameters::parse(parameters, Parameters::kFASTGpu(), gpu);
-	Parameters::parse(parameters, Parameters::kFASTGpuKeypointsRatio(), gpuKeypointsRatio);
-
-	if(gpu && cv::gpu::getCudaEnabledDeviceCount())
-	{
-		_gpuFast = new cv::gpu::FAST_GPU(threshold, nonmaxSuppression, gpuKeypointsRatio);
-	}
-	else
-	{
-		if(gpu)
-		{
-			UWARN("GPU version of FAST not available! Using CPU version instead...");
-		}
-		_fast = new cv::FastFeatureDetector(threshold, nonmaxSuppression);
-	}
+	parseParameters(parameters);
 }
 
 FAST::~FAST()
@@ -535,6 +557,38 @@ FAST::~FAST()
 	if(_gpuFast)
 	{
 		delete _gpuFast;
+	}
+}
+
+void FAST::parseParameters(const ParametersMap & parameters)
+{
+	Parameters::parse(parameters, Parameters::kFASTThreshold(), threshold_);
+	Parameters::parse(parameters, Parameters::kFASTNonmaxSuppression(), nonmaxSuppression_);
+	Parameters::parse(parameters, Parameters::kFASTGpu(), gpu_);
+	Parameters::parse(parameters, Parameters::kFASTGpuKeypointsRatio(), gpuKeypointsRatio_);
+
+	if(_gpuFast)
+	{
+		delete _gpuFast;
+		_gpuFast = 0;
+	}
+	if(_fast)
+	{
+		delete _fast;
+		_fast = 0;
+	}
+
+	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount())
+	{
+		_gpuFast = new cv::gpu::FAST_GPU(threshold_, nonmaxSuppression_, gpuKeypointsRatio_);
+	}
+	else
+	{
+		if(gpu_)
+		{
+			UWARN("GPU version of FAST not available! Using CPU version instead...");
+		}
+		_fast = new cv::FastFeatureDetector(threshold_, nonmaxSuppression_);
 	}
 }
 
@@ -560,11 +614,10 @@ std::vector<cv::KeyPoint> FAST::generateKeypointsImpl(const cv::Mat & image, con
 //////////////////////////
 FAST_BRIEF::FAST_BRIEF(const ParametersMap & parameters) :
 	FAST(parameters),
+	bytes_(Parameters::defaultBRIEFBytes()),
 	_brief(0)
 {
-	int bytes = Parameters::defaultBRIEFBytes();
-	Parameters::parse(parameters, Parameters::kBRIEFBytes(), bytes);
-	_brief = new cv::BriefDescriptorExtractor(bytes);
+	parseParameters(parameters);
 }
 
 FAST_BRIEF::~FAST_BRIEF()
@@ -573,6 +626,19 @@ FAST_BRIEF::~FAST_BRIEF()
 	{
 		delete _brief;
 	}
+}
+
+void FAST_BRIEF::parseParameters(const ParametersMap & parameters)
+{
+	FAST::parseParameters(parameters);
+
+	Parameters::parse(parameters, Parameters::kBRIEFBytes(), bytes_);
+	if(_brief)
+	{
+		delete _brief;
+		_brief = 0;
+	}
+	_brief = new cv::BriefDescriptorExtractor(bytes_);
 }
 
 cv::Mat FAST_BRIEF::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
@@ -588,19 +654,13 @@ cv::Mat FAST_BRIEF::generateDescriptorsImpl(const cv::Mat & image, std::vector<c
 //////////////////////////
 FAST_FREAK::FAST_FREAK(const ParametersMap & parameters) :
 	FAST(parameters),
+	orientationNormalized_(Parameters::defaultFREAKOrientationNormalized()),
+	scaleNormalized_(Parameters::defaultFREAKScaleNormalized()),
+	patternScale_(Parameters::defaultFREAKPatternScale()),
+	nOctaves_(Parameters::defaultFREAKNOctaves()),
 	_freak(0)
 {
-	bool orientationNormalized = Parameters::defaultFREAKOrientationNormalized();
-	bool scaleNormalized = Parameters::defaultFREAKScaleNormalized();
-	float patternScale = Parameters::defaultFREAKPatternScale();
-	int nOctaves = Parameters::defaultFREAKNOctaves();
-
-	Parameters::parse(parameters, Parameters::kFREAKOrientationNormalized(), orientationNormalized);
-	Parameters::parse(parameters, Parameters::kFREAKScaleNormalized(), scaleNormalized);
-	Parameters::parse(parameters, Parameters::kFREAKPatternScale(), patternScale);
-	Parameters::parse(parameters, Parameters::kFREAKNOctaves(), nOctaves);
-
-	_freak = new cv::FREAK(orientationNormalized, scaleNormalized, patternScale, nOctaves);
+	parseParameters(parameters);
 }
 
 FAST_FREAK::~FAST_FREAK()
@@ -609,6 +669,24 @@ FAST_FREAK::~FAST_FREAK()
 	{
 		delete _freak;
 	}
+}
+
+void FAST_FREAK::parseParameters(const ParametersMap & parameters)
+{
+	FAST::parseParameters(parameters);
+
+	Parameters::parse(parameters, Parameters::kFREAKOrientationNormalized(), orientationNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKScaleNormalized(), scaleNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKPatternScale(), patternScale_);
+	Parameters::parse(parameters, Parameters::kFREAKNOctaves(), nOctaves_);
+
+	if(_freak)
+	{
+		delete _freak;
+		_freak = 0;
+	}
+
+	_freak = new cv::FREAK(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_);
 }
 
 cv::Mat FAST_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const

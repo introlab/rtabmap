@@ -74,6 +74,8 @@ public:
 	std::vector<cv::KeyPoint> generateKeypoints(const cv::Mat & image, int maxKeypoints=0, const cv::Rect & roi = cv::Rect()) const;
 	cv::Mat generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
+	virtual void parseParameters(const ParametersMap & parameters) {}
+
 protected:
 	Feature2D(const ParametersMap & parameters = ParametersMap()) {}
 
@@ -89,11 +91,21 @@ public:
 	SURF(const ParametersMap & parameters = ParametersMap());
 	virtual ~SURF();
 
+	virtual void parseParameters(const ParametersMap & parameters);
+
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
+	double hessianThreshold_;
+	int nOctaves_;
+	int nOctaveLayers_;
+	bool extended_;
+	bool upright_;
+	float gpuKeypointsRatio_;
+	bool gpuVersion_;
+
 	cv::SURF * _surf;
 	cv::gpu::SURF_GPU * _gpuSurf;
 };
@@ -105,11 +117,19 @@ public:
 	SIFT(const ParametersMap & parameters = ParametersMap());
 	virtual ~SIFT();
 
+	virtual void parseParameters(const ParametersMap & parameters);
+
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
+	int nfeatures_;
+	int nOctaveLayers_;
+	double contrastThreshold_;
+	double edgeThreshold_;
+	double sigma_;
+
 	cv::SIFT * _sift;
 };
 
@@ -120,11 +140,26 @@ public:
 	ORB(const ParametersMap & parameters = ParametersMap());
 	virtual ~ORB();
 
+	virtual void parseParameters(const ParametersMap & parameters);
+
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
+	int nFeatures_;
+	float scaleFactor_;
+	int nLevels_;
+	int edgeThreshold_;
+	int firstLevel_;
+	int WTA_K_;
+	int scoreType_;
+	int patchSize_;
+	bool gpu_;
+
+	int fastThreshold_;
+	bool nonmaxSuppresion_;
+
 	cv::ORB * _orb;
 	cv::gpu::ORB_GPU * _gpuOrb;
 };
@@ -136,10 +171,17 @@ public:
 	FAST(const ParametersMap & parameters = ParametersMap());
 	virtual ~FAST();
 
+	virtual void parseParameters(const ParametersMap & parameters);
+
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
 
 private:
+	int threshold_;
+	bool nonmaxSuppression_;
+	bool gpu_;
+	double gpuKeypointsRatio_;
+
 	cv::FastFeatureDetector * _fast;
 	cv::gpu::FAST_GPU * _gpuFast;
 };
@@ -151,10 +193,14 @@ public:
 	FAST_BRIEF(const ParametersMap & parameters = ParametersMap());
 	virtual ~FAST_BRIEF();
 
+	virtual void parseParameters(const ParametersMap & parameters);
+
 private:
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
+	int bytes_;
+
 	cv::BriefDescriptorExtractor * _brief;
 };
 
@@ -165,10 +211,17 @@ public:
 	FAST_FREAK(const ParametersMap & parameters = ParametersMap());
 	virtual ~FAST_FREAK();
 
+	virtual void parseParameters(const ParametersMap & parameters);
+
 private:
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
+	bool orientationNormalized_;
+	bool scaleNormalized_;
+	float patternScale_;
+	int nOctaves_;
+
 	cv::FREAK * _freak;
 };
 

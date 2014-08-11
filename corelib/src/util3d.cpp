@@ -1173,7 +1173,7 @@ Transform transformFromXYZCorrespondences(
 		if(correspondencesInliers.size() == correspondences->size() && transform.isIdentity())
 		{
 			//Wrong transform
-			UDEBUG("Wrong transform: identity");
+			UINFO("Wrong transform: identity");
 			transform.setNull();
 			if(inliers)
 			{
@@ -1925,6 +1925,54 @@ std::map<int, Transform> radiusPosesFiltering(const std::map<int, Transform> & p
 	{
 		return poses;
 	}
+}
+
+std::multimap<int, int> radiusPosesClustering(const std::map<int, Transform> & poses, float radius, float angle)
+{
+	std::multimap<int, int> clusters;
+	if(poses.size() > 1 && radius > 0.0f && angle>0.0f)
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+		cloud->resize(poses.size());
+		int i=0;
+		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			(*cloud)[i++] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+		}
+
+		// radius clustering (nearest neighbors)
+		std::vector<int> ids = uKeys(poses);
+		std::vector<Transform> transforms = uValues(poses);
+
+		pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ> (false));
+		tree->setInputCloud(cloud);
+
+		for(unsigned int i=0; i<cloud->size(); ++i)
+		{
+			std::vector<int> kIndices;
+			std::vector<float> kDistances;
+			tree->radiusSearch(cloud->at(i), radius, kIndices, kDistances);
+
+			std::set<int> cloudIndices;
+			const Transform & currentT = transforms.at(i);
+			Eigen::Vector3f vA = util3d::transformToEigen3f(currentT).rotation()*Eigen::Vector3f(1,0,0);
+			for(unsigned int j=0; j<kIndices.size(); ++j)
+			{
+				if(i != kIndices[j])
+				{
+					const Transform & checkT = transforms.at(kIndices[j]);
+					// same orientation?
+					Eigen::Vector3f vB = util3d::transformToEigen3f(checkT).rotation()*Eigen::Vector3f(1,0,0);
+					double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
+					if(a <= angle)
+					{
+						clusters.insert(std::make_pair(ids[i], ids[kIndices[j]]));
+					}
+				}
+			}
+		}
+	}
+	return clusters;
 }
 
 /**

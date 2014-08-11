@@ -390,6 +390,11 @@ std::map<int, Transform> RTABMAP_EXP radiusPosesFiltering(
 		float angle,
 		bool keepLatest = true);
 
+std::multimap<int, int> RTABMAP_EXP radiusPosesClustering(
+		const std::map<int, Transform> & poses,
+		float radius,
+		float angle);
+
 cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans,
 		float cellSize,

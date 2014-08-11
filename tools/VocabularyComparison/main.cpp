@@ -77,7 +77,7 @@ int main(int argc, char * argv[])
 			{
 				std::getline(file, str);
 				strList = uSplit(str);
-				if(strList.size() == dimension+1)
+				if((int)strList.size() == dimension+1)
 				{
 					//first one is the visual word id
 					std::list<std::string>::iterator iter = strList.begin();

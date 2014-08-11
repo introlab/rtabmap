@@ -27,7 +27,7 @@ int main(int argc, char * argv[])
 	ULogger::setLevel(ULogger::kInfo);
 
 	QApplication * app = new QApplication(argc, argv);
-	DatabaseViewer * mainWindow = new DatabaseViewer();
+	rtabmap::DatabaseViewer * mainWindow = new rtabmap::DatabaseViewer();
 
 	mainWindow->showNormal();
 
