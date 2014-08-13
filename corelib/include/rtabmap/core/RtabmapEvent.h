@@ -161,7 +161,8 @@ public:
 			const std::map<int, float> & depthCys,
 			const std::map<int, Transform> & localTransforms,
 			const std::map<int, Transform> & poses,
-			const std::multimap<int, Link> & constraints) :
+			const std::multimap<int, Link> & constraints,
+			const std::map<int, int> & mapIds) :
 		UEvent(0),
 		_images(images),
 		_depths(depths),
@@ -172,7 +173,8 @@ public:
 		_depthCys(depthCys),
 		_localTransforms(localTransforms),
 		_poses(poses),
-		_constraints(constraints)
+		_constraints(constraints),
+		_mapIds(mapIds)
 	{}
 
 	virtual ~RtabmapEvent3DMap() {}
@@ -187,6 +189,7 @@ public:
 	const std::map<int, Transform> & getLocalTransforms() const {return _localTransforms;}
 	const std::map<int, Transform> & getPoses() const {return _poses;}
 	const std::multimap<int, Link> & getConstraints() const {return _constraints;}
+	const std::map<int, int> & getMapIds() const {return _mapIds;}
 
 	virtual std::string getClassName() const {return std::string("RtabmapEvent3DMap");}
 
@@ -201,6 +204,7 @@ private:
 	std::map<int, Transform> _localTransforms;
 	std::map<int, Transform> _poses;
 	std::multimap<int, Link> _constraints;
+	std::map<int, int> _mapIds;
 };
 
 } // namespace rtabmap

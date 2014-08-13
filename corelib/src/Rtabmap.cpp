@@ -2177,6 +2177,7 @@ void Rtabmap::get3DMap(std::map<int, std::vector<unsigned char> > & images,
 		std::map<int, Transform> & localTransforms,
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> & constraints,
+		std::map<int, int> & mapIds,
 		bool optimized,
 		bool global) const
 {
@@ -2229,6 +2230,8 @@ void Rtabmap::get3DMap(std::map<int, std::vector<unsigned char> > & images,
 			{
 				localTransforms.insert(std::make_pair(*iter, localTransform));
 			}
+
+			mapIds.insert(std::make_pair(*iter, _memory->getMapId(*iter)));
 		}
 	}
 }
