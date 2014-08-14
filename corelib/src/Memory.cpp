@@ -2906,6 +2906,7 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 	UTimer timer;
 	timer.start();
 	std::vector<cv::KeyPoint> keypoints;
+	std::vector<cv::Point3f> keypoints3;
 	cv::Mat descriptors;
 	int id = image.id();
 	if(_generateIds)
@@ -2958,9 +2959,18 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 			UASSERT(image.descriptors().type() == CV_32F || image.descriptors().type() == CV_8U);
 			descriptors = image.descriptors();
 			keypoints = image.keypoints();
+			keypoints3 = image.keypoints3();
 		}
-		filterKeypointsByDepth(keypoints, descriptors, image.depth(), image.depthFx(), image.depthFy(), image.depthCx(), image.depthCy(), _wordsMaxDepth);
-		limitKeypoints(keypoints, descriptors, _wordsPerImageTarget);
+		if(keypoints3.size())
+		{
+			filterKeypointsByDepth(keypoints, keypoints3, descriptors, _wordsMaxDepth);
+			limitKeypoints(keypoints, keypoints3, descriptors, _wordsPerImageTarget);
+		}
+		else
+		{
+			filterKeypointsByDepth(keypoints, descriptors, image.depth(), image.depthFx(), image.depthFy(), image.depthCx(), image.depthCy(), _wordsMaxDepth);
+			limitKeypoints(keypoints, descriptors, _wordsPerImageTarget);
+		}
 	}
 	else
 	{
@@ -3011,30 +3021,24 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 	}
 
 	std::multimap<int, cv::KeyPoint> words;
+	std::multimap<int, pcl::PointXYZ> words3;
 	if(wordIds.size() > 0)
 	{
-		std::vector<cv::KeyPoint>::iterator kpIter = keypoints.begin();
-		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end(); ++iter)
+		UASSERT(wordIds.size() == keypoints.size());
+		unsigned int i=0;
+		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end() && i < keypoints.size(); ++iter, ++i)
 		{
-			if(kpIter != keypoints.end())
+			words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
+			if(i < keypoints3.size())
 			{
-				words.insert(std::pair<int, cv::KeyPoint >(*iter, *kpIter));
-				++kpIter;
-			}
-			else
-			{
-				if(keypoints.size())
-				{
-					UWARN("Words (%d) and keypoints(%d) are not the same size ?!?", (int)wordIds.size(), (int)keypoints.size());
-				}
-				words.insert(std::pair<int, cv::KeyPoint >(*iter, cv::KeyPoint()));
+				words3.insert(std::pair<int, pcl::PointXYZ>(*iter, pcl::PointXYZ(keypoints3[i].x, keypoints3[i].y, keypoints3[i].z)));
 			}
 		}
 	}
+	UASSERT(keypoints3.size() == 0 || words3.size() == words.size());
 
 	//3d words
-	std::multimap<int, pcl::PointXYZ> words3;
-	if(!image.depth().empty() && image.depthFx() && image.depthFy())
+	if(words3.size() == 0 && !image.depth().empty() && image.depthFx() && image.depthFy())
 	{
 		words3 = util3d::generateWords3(words, image.depth(), image.depthFx(), image.depthFy(), image.depthCx(), image.depthCy(), image.localTransform());
 	}

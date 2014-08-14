@@ -47,19 +47,7 @@ public:
 		  int id = 0,
 		  const cv::Mat & descriptors = cv::Mat(),
 		  Feature2D::Type featureType = Feature2D::kFeatureUndef,
-		  const std::vector<cv::KeyPoint> & keypoints = std::vector<cv::KeyPoint>()) :
-		_image(image),
-		_id(id),
-		_descriptors(descriptors),
-		_featureType(featureType),
-		_keypoints(keypoints),
-		_fx(0.0f),
-		_fy(0.0f),
-		_cx(0.0f),
-		_cy(0.0f),
-		_localTransform(Transform::getIdentity())
-	{
-	}
+		  const std::vector<cv::KeyPoint> & keypoints = std::vector<cv::KeyPoint>());
 
 	// Metric constructor
 	Image(const cv::Mat & image,
@@ -70,19 +58,7 @@ public:
 		  float cy,
 		  const Transform & pose,
 		  const Transform & localTransform,
-		  int id = 0) :
-		_image(image),
-		_id(id),
-		_featureType(Feature2D::kFeatureUndef),
-		_depth(depth),
-		_fx(fx),
-		_fy(fy),
-		_cx(cx),
-		_cy(cy),
-		_pose(pose),
-		_localTransform(localTransform)
-	{
-	}
+		  int id = 0);
 
 	// Metric constructor + 2d depth
 	Image(const cv::Mat & image,
@@ -94,20 +70,7 @@ public:
 		  float cy,
 		  const Transform & pose,
 		  const Transform & localTransform,
-		  int id = 0) :
-		_image(image),
-		_id(id),
-		_featureType(Feature2D::kFeatureUndef),
-		_depth(depth),
-		_depth2d(depth2d),
-		_fx(fx),
-		_fy(fy),
-		_cx(cx),
-		_cy(cy),
-		_pose(pose),
-		_localTransform(localTransform)
-	{
-	}
+		  int id = 0);
 
 	virtual ~Image() {}
 
@@ -117,8 +80,9 @@ public:
 	const cv::Mat & descriptors() const {return _descriptors;}
 	Feature2D::Type featureType() const {return _featureType;}
 	const std::vector<cv::KeyPoint> & keypoints() const {return _keypoints;}
+	const std::vector<cv::Point3f> & keypoints3() const {return _keypoints3;}
 	void setDescriptors(const cv::Mat & descriptors, Feature2D::Type featureType) {_descriptors = descriptors; _featureType=featureType;}
-	void setKeypoints(const std::vector<cv::KeyPoint> & keypoints) {_keypoints = keypoints;}
+	void setKeypoints(const std::vector<cv::KeyPoint> & keypoints, const std::vector<cv::Point3f> * keypoints3 = 0);
 
 	bool isMetric() const {return !_depth.empty() || _fx != 0.0f || _fy != 0.0f || !_pose.isNull();}
 	void setPose(const Transform & pose) {_pose = pose;}
@@ -137,6 +101,7 @@ private:
 	cv::Mat _descriptors;
 	Feature2D::Type _featureType;
 	std::vector<cv::KeyPoint> _keypoints;
+	std::vector<cv::Point3f> _keypoints3;
 
 	// Metric stuff
 	cv::Mat _depth;

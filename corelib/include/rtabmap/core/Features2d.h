@@ -66,8 +66,21 @@ void RTABMAP_EXP filterKeypointsByDepth(
 		float cy,
 		float maxDepth);
 
+void RTABMAP_EXP filterKeypointsByDepth(
+		std::vector<cv::KeyPoint> & keypoints,
+		std::vector<cv::Point3f> & keypoints3,
+		float maxDepth);
+
+void RTABMAP_EXP filterKeypointsByDepth(
+		std::vector<cv::KeyPoint> & keypoints,
+		std::vector<cv::Point3f> & keypoints3,
+		cv::Mat & descriptors,
+		float maxDepth);
+
 void RTABMAP_EXP limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints);
 void RTABMAP_EXP limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints);
+void RTABMAP_EXP limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> keypoints3, int maxKeypoints);
+void RTABMAP_EXP limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> keypoints3, cv::Mat & descriptors, int maxKeypoints);
 
 cv::Rect RTABMAP_EXP computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios);
 
