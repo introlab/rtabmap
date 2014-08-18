@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
 #include "rtabmap/core/Parameters.h"
-#include "rtabmap/core/Image.h"
+#include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/Statistics.h"
 #include "rtabmap/core/Link.h"
 
@@ -63,7 +63,7 @@ public:
 	virtual ~Rtabmap();
 
 	bool process(const cv::Mat & image, int id=0); // for convenience, an id is automatically generated if id=0
-	bool process(const Image & image); // for convenience
+	bool process(const SensorData & data); // for convenience
 
 	void init(const ParametersMap & param, bool deleteMemory = true);
 	void init(const std::string & configFile = "", bool deleteMemory = true);
@@ -90,6 +90,7 @@ public:
 	//bool getMetricData(int locationId, cv::Mat & rgb, cv::Mat & depth, float & depthConstant, Transform & pose, Transform & localTransform) const;
 	Transform getPose(int locationId) const;
 	Transform getMapCorrection() const {return _mapCorrection;}
+	const Memory * getMemory() const {return _memory;}
 
 	float getTimeThreshold() const {return _maxTimeAllowed;} // in ms
 	void setTimeThreshold(float maxTimeAllowed); // in ms

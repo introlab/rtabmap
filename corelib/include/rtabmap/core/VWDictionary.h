@@ -70,7 +70,7 @@ public:
 	VisualWord * getUnusedWord(int id) const;
 	void setLastWordId(int id) {_lastWordId = id;}
 	const std::map<int, VisualWord *> & getVisualWords() const {return _visualWords;}
-	float getNndrRatio() {return _nndrRatio;}
+	float getNndrRatio() const {return _nndrRatio;}
 	unsigned int getNotIndexedWordsCount() const {return (int)_notIndexedWords.size();}
 	int getLastIndexedWordId() const;
 	int getTotalActiveReferences() const {return _totalActiveReferences;}

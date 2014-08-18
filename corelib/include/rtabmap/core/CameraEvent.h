@@ -27,10 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/features2d/features2d.hpp>
 #include <rtabmap/utilite/UEvent.h>
-#include "rtabmap/core/Image.h"
+#include "rtabmap/core/SensorData.h"
 
 namespace rtabmap
 {
@@ -40,7 +38,6 @@ class CameraEvent :
 {
 public:
 	enum Code {
-		kCodeFeatures,
 		kCodeImage,
 		kCodeImageDepth,
 		kCodeNoMoreImages
@@ -49,12 +46,7 @@ public:
 public:
 	CameraEvent(const cv::Mat & image, int seq=0) :
 		UEvent(kCodeImage),
-		_image(image, seq)
-	{
-	}
-	CameraEvent(const cv::Mat & descriptors, Feature2D::Type featureType, const std::vector<cv::KeyPoint> & keypoints, const cv::Mat & image = cv::Mat(), int seq=0) :
-		UEvent(kCodeFeatures),
-		_image(image, seq, descriptors, featureType, keypoints)
+		data_(image, seq)
 	{
 	}
 	CameraEvent() :
@@ -63,23 +55,23 @@ public:
 	}
 	CameraEvent(const cv::Mat & image, const cv::Mat & depth, float fx, float fy, float cx, float cy, const Transform & localTransform, int seq=0) :
 		UEvent(kCodeImageDepth),
-		_image(image, depth, fx, fy, cx, cy, Transform(), localTransform, seq)
+		data_(image, depth, fx, fy, cx, cy, Transform(), localTransform, seq)
 	{
 	}
 	CameraEvent(const cv::Mat & image, const cv::Mat & depth, const cv::Mat & depth2d, float fx, float fy, float cx, float cy, const Transform & localTransform, int seq=0) :
 		UEvent(kCodeImageDepth),
-		_image(image, depth, depth2d, fx, fy, cx, cy, Transform(), localTransform, seq)
+		data_(image, depth, depth2d, fx, fy, cx, cy, Transform(), localTransform, seq)
 	{
 	}
 
 	// Image or descriptors
-	const Image & image() const {return _image;}
+	const SensorData & data() const {return data_;}
 
 	virtual ~CameraEvent() {}
 	virtual std::string getClassName() const {return std::string("CameraEvent");}
 
 private:
-	Image _image;
+	SensorData data_;
 };
 
 } // namespace rtabmap

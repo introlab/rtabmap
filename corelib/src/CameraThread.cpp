@@ -104,8 +104,6 @@ void CameraThread::mainLoop()
 {
 	UTimer timer;
 	UDEBUG("");
-	cv::Mat descriptors;
-	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat rgb, depth;
 	float fx = 0.0f;
 	float fy = 0.0f;

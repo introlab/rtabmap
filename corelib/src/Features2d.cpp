@@ -109,66 +109,6 @@ void filterKeypointsByDepth(
 	}
 }
 
-void filterKeypointsByDepth(
-		std::vector<cv::KeyPoint> & keypoints,
-		std::vector<cv::Point3f> & keypoints3,
-		float maxDepth)
-{
-	cv::Mat descriptors;
-	filterKeypointsByDepth(keypoints, keypoints3, descriptors, maxDepth);
-}
-
-void filterKeypointsByDepth(
-		std::vector<cv::KeyPoint> & keypoints,
-		std::vector<cv::Point3f> & keypoints3,
-		cv::Mat & descriptors,
-		float maxDepth)
-{
-	UASSERT(keypoints.size() == keypoints3.size());
-	UASSERT(descriptors.empty() || descriptors.rows == (int)keypoints.size());
-	if(keypoints.size())
-	{
-		std::vector<cv::KeyPoint> output(keypoints.size());
-		std::vector<cv::Point3f> output3(keypoints3.size());
-		std::vector<int> indexes(keypoints.size(), 0);
-		int oi=0;
-		for(unsigned int i=0; i<keypoints.size(); ++i)
-		{
-			if(uIsFinite(keypoints3[i].z) && keypoints3[i].z < maxDepth)
-			{
-				output3[oi] = keypoints3[i];
-				output[oi++] = keypoints[i];
-				indexes[i] = 1;
-			}
-		}
-		output.resize(oi);
-		output3.resize(oi);
-		keypoints = output;
-		keypoints3 = output3;
-
-		if(!descriptors.empty() && (int)keypoints.size() != descriptors.rows)
-		{
-			if(keypoints.size() == 0)
-			{
-				descriptors = cv::Mat();
-			}
-			else
-			{
-				cv::Mat newDescriptors(keypoints.size(), descriptors.cols, descriptors.type());
-				int di = 0;
-				for(unsigned int i=0; i<indexes.size(); ++i)
-				{
-					if(indexes[i] == 1)
-					{
-						memcpy(newDescriptors.ptr<float>(di++), descriptors.ptr<float>(i), descriptors.cols*sizeof(float));
-					}
-				}
-				descriptors = newDescriptors;
-			}
-		}
-	}
-}
-
 void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints)
 {
 	cv::Mat descriptors;
@@ -212,59 +152,6 @@ void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors
 		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, keypoints.size(), kptsTmp.size()?kptsTmp.back().response:0.0f);
 		ULOGGER_DEBUG("removing words time = %f s", timer.ticks());
 		keypoints = kptsTmp;
-		if(descriptors.rows)
-		{
-			descriptors = descriptorsTmp;
-		}
-	}
-}
-
-void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> keypoints3, int maxKeypoints)
-{
-	cv::Mat descriptors;
-	limitKeypoints(keypoints, keypoints3, descriptors, maxKeypoints);
-}
-
-void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> keypoints3, cv::Mat & descriptors, int maxKeypoints)
-{
-	UASSERT(((int)keypoints.size() == descriptors.rows && keypoints.size() == keypoints3.size()) || descriptors.rows == 0);
-	if(maxKeypoints > 0 && (int)keypoints.size() > maxKeypoints)
-	{
-		UTimer timer;
-		ULOGGER_DEBUG("too much words (%d), removing words with the hessian threshold", keypoints.size());
-		// Remove words under the new hessian threshold
-
-		// Sort words by hessian
-		std::multimap<float, int> hessianMap; // <hessian,id>
-		for(unsigned int i = 0; i <keypoints.size(); ++i)
-		{
-			//Keep track of the data, to be easier to manage the data in the next step
-			hessianMap.insert(std::pair<float, int>(fabs(keypoints[i].response), i));
-		}
-
-		// Remove them from the signature
-		int removed = hessianMap.size()-maxKeypoints;
-		std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
-		std::vector<cv::KeyPoint> kptsTmp(maxKeypoints);
-		std::vector<cv::Point3f> kpts3Tmp(maxKeypoints);
-		cv::Mat descriptorsTmp;
-		if(descriptors.rows)
-		{
-			descriptorsTmp = cv::Mat(maxKeypoints, descriptors.cols, descriptors.type());
-		}
-		for(unsigned int k=0; k < kptsTmp.size() && iter!=hessianMap.rend(); ++k, ++iter)
-		{
-			kptsTmp[k] = keypoints[iter->second];
-			kpts3Tmp[k] = keypoints3[iter->second];
-			if(descriptors.rows)
-			{
-				memcpy(descriptorsTmp.ptr<float>(k), descriptors.ptr<float>(iter->second), descriptors.cols*sizeof(float));
-			}
-		}
-		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, keypoints.size(), kptsTmp.size()?kptsTmp.back().response:0.0f);
-		ULOGGER_DEBUG("removing words time = %f s", timer.ticks());
-		keypoints = kptsTmp;
-		keypoints3 = kpts3Tmp;
 		if(descriptors.rows)
 		{
 			descriptors = descriptorsTmp;

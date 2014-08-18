@@ -26,7 +26,7 @@ SET(SRC_FILES
 	
 	util3d.cpp
 	Odometry.cpp
-	Image.cpp
+	SensorData.cpp
 	
 	toro3d/posegraph3.cpp
 	toro3d/treeoptimizer3_iteration.cpp

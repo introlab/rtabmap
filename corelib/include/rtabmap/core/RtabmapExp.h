@@ -38,4 +38,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   #define RTABMAP_EXP
 #endif
 
+#ifdef __GNUC__
+#define RTABMAP_DEPRECATED(func, msg) func __attribute__ ((deprecated(msg)))
+#elif defined(_MSC_VER)
+#define RTABMAP_DEPRECATED(func, msg) __declspec(deprecated(msg)) func
+#else
+#pragma message("WARNING: You need to implement DEPRECATED for this compiler")
+#define RTABMAP_DEPRECATED(func, msg) func
+#endif
+
 #endif // RTABMAPEXP_H

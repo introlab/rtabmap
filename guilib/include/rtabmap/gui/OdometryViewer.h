@@ -30,7 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
-#include "rtabmap/core/Image.h"
+#include "rtabmap/core/SensorData.h"
 #include "rtabmap/gui/CloudViewer.h"
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/utilite/UTimer.h"
@@ -55,7 +55,7 @@ private slots:
 
 private:
 	UMutex dataMutex_;
-	std::list<rtabmap::Image> data_;
+	std::list<rtabmap::SensorData> data_;
 	int dataQuality_;
 	Transform lastOdomPose_;
 	UTimer timer_;

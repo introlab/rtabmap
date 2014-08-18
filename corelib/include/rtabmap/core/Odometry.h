@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/Parameters.h>
 
-#include <rtabmap/core/Image.h>
+#include <rtabmap/core/SensorData.h>
 
 #include <opencv2/opencv.hpp>
 
@@ -54,7 +54,7 @@ class RTABMAP_EXP Odometry
 {
 public:
 	virtual ~Odometry() {}
-	Transform process(Image & image, int * quality = 0);
+	Transform process(SensorData & data, int * quality = 0);
 	virtual void reset();
 
 	bool isLargeEnoughTransform(const Transform & transform);
@@ -72,7 +72,7 @@ public:
 	int getLocalHistory() const {return _localHistory;}
 
 private:
-	virtual Transform computeTransform(Image & image, int * quality = 0) = 0;
+	virtual Transform computeTransform(const SensorData & image, int * quality = 0) = 0;
 
 private:
 	int _maxFeatures;
@@ -103,7 +103,7 @@ public:
 	virtual void reset();
 
 private:
-	virtual Transform computeTransform(Image & image, int * quality = 0);
+	virtual Transform computeTransform(const SensorData & image, int * quality = 0);
 
 private:
 	Memory * _memory;
@@ -124,7 +124,7 @@ public:
 	void reset();
 
 private:
-	virtual Transform computeTransform(Image & image, int * quality = 0);
+	virtual Transform computeTransform(const SensorData & image, int * quality = 0);
 
 private:
 	int _decimation;
@@ -138,9 +138,6 @@ private:
 	pcl::PointCloud<pcl::PointNormal>::Ptr _previousCloudNormal; // for point ot plane
 	pcl::PointCloud<pcl::PointXYZ>::Ptr _previousCloud; // for point to point
 };
-
-// return true if odometry is correctly computed
-Transform computeTransform(Image & image);
 
 class RTABMAP_EXP OdometryThread : public UThread, public UEventsHandler {
 public:
@@ -158,13 +155,13 @@ private:
 	// MAIN LOOP
 	//============================================================
 	void mainLoop();
-	void addImage(const Image & image);
-	void getImage(Image & image);
+	void addData(const SensorData & data);
+	void getData(SensorData & data);
 
 private:
-	USemaphore _imageAdded;
-	UMutex _imageMutex;
-	Image _imageBuffer;
+	USemaphore _dataAdded;
+	UMutex _dataMutex;
+	SensorData _dataBuffer;
 	Odometry * _odometry;
 	bool _resetOdometry;
 };

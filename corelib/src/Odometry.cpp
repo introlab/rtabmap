@@ -93,9 +93,9 @@ bool Odometry::isLargeEnoughTransform(const Transform & transform)
 	       fabs(transform.z()) > _linearUpdate;
 }
 
-Transform Odometry::process(Image & image, int * quality)
+Transform Odometry::process(SensorData & data, int * quality)
 {
-	Transform t = this->computeTransform(image, quality);
+	Transform t = this->computeTransform(data, quality);
 	if(!t.isNull())
 	{
 		_resetCurrentCount = _resetCountdown;
@@ -175,42 +175,35 @@ void OdometryBOW::reset()
 
 
 // return not null transform if odometry is correctly computed
-Transform OdometryBOW::computeTransform(Image & image, int * quality)
+Transform OdometryBOW::computeTransform(const SensorData & data, int * quality)
 {
 	UTimer timer;
 	Transform output;
 
 	cv::Mat imageMono;
 	// convert to grayscale
-	if(image.image().channels() > 1)
+	if(data.image().channels() > 1)
 	{
-		cv::cvtColor(image.image(), imageMono, cv::COLOR_BGR2GRAY);
+		cv::cvtColor(data.image(), imageMono, cv::COLOR_BGR2GRAY);
 	}
 	else
 	{
-		imageMono = image.image();
-	}
-
-	std::vector<cv::KeyPoint> keypoints;
-	cv::Mat descriptors;
-	_memory->extractKeypointsAndDescriptors(imageMono, image.depth(), image.depthFx(), image.depthFy(), image.depthCx(), image.depthCy(), keypoints, descriptors);
-
-	image.setDescriptors(descriptors, _memory->getFeatureType());
-	image.setKeypoints(keypoints);
-
-	if(this->getLocalHistory() && this->getLocalHistory() < descriptors.rows)
-	{
-		UWARN("Local history words size (%d) is smaller than extracted features from the current frame (%d).",
-				this->getLocalHistory(), descriptors.rows);
+		imageMono = data.image();
 	}
 
 	int inliers = 0;
 	int correspondences = 0;
+	int nFeatures = 0;
 
 	const Signature * previousSignature = _memory->getLastWorkingSignature();
-	if(_memory->update(image))
+	if(_memory->update(data))
 	{
 		const Signature * newSignature = _memory->getLastWorkingSignature();
+		if(newSignature)
+		{
+			nFeatures = newSignature->getWords().size();
+		}
+
 		if(previousSignature && newSignature)
 		{
 			Transform transform;
@@ -360,7 +353,7 @@ Transform OdometryBOW::computeTransform(Image & image, int * quality)
 
 	UINFO("Odom update time = %fs features=%d inliers=%d/%d dict=%d nodes=%d",
 			timer.elapsed(),
-			descriptors.rows,
+			nFeatures,
 			inliers,
 			correspondences,
 			(int)_memory->getVWDictionary()->getVisualWords().size(),
@@ -398,7 +391,7 @@ void OdometryICP::reset()
 }
 
 // return not null transform if odometry is correctly computed
-Transform OdometryICP::computeTransform(Image & image, int * quality)
+Transform OdometryICP::computeTransform(const SensorData & data, int * quality)
 {
 	UTimer timer;
 	Transform output;
@@ -406,19 +399,19 @@ Transform OdometryICP::computeTransform(Image & image, int * quality)
 	bool hasConverged = false;
 	double fitness = 0;
 	unsigned int minPoints = 100;
-	if(!image.depth().empty())
+	if(!data.depth().empty())
 	{
 		pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudXYZ = util3d::getICPReadyCloud(
-						image.depth(),
-						image.depthFx(),
-						image.depthFy(),
-						image.depthCx(),
-						image.depthCy(),
+						data.depth(),
+						data.depthFx(),
+						data.depthFy(),
+						data.depthCx(),
+						data.depthCy(),
 						_decimation,
 						this->getMaxDepth(),
 						_voxelSize,
 						_samples,
-						image.localTransform());
+						data.localTransform());
 
 		if(_pointToPlane)
 		{
@@ -538,7 +531,7 @@ void OdometryThread::handleEvent(UEvent * event)
 			CameraEvent * cameraEvent = (CameraEvent*)event;
 			if(cameraEvent->getCode() == CameraEvent::kCodeImageDepth)
 			{
-				this->addImage(cameraEvent->image());
+				this->addData(cameraEvent->data());
 			}
 			else if(cameraEvent->getCode() == CameraEvent::kCodeNoMoreImages)
 			{
@@ -554,7 +547,7 @@ void OdometryThread::handleEvent(UEvent * event)
 
 void OdometryThread::mainLoopKill()
 {
-	_imageAdded.release();
+	_dataAdded.release();
 }
 
 //============================================================
@@ -568,51 +561,51 @@ void OdometryThread::mainLoop()
 		_resetOdometry = false;
 	}
 
-	Image image;
-	getImage(image);
-	if(!image.empty())
+	SensorData data;
+	getData(data);
+	if(data.isValid())
 	{
 		int quality = -1;
-		Transform pose = _odometry->process(image, &quality);
-		image.setPose(pose); // a null pose notify that odometry could not be computed
-		this->post(new OdometryEvent(image, quality));
+		Transform pose = _odometry->process(data, &quality);
+		data.setPose(pose); // a null pose notify that odometry could not be computed
+		this->post(new OdometryEvent(data, quality));
 	}
 }
 
-void OdometryThread::addImage(const Image & image)
+void OdometryThread::addData(const SensorData & data)
 {
-	if(image.empty() || image.depth().empty() || image.depthFx() == 0.0f || image.depthFy() == 0.0f)
+	if(data.image().empty() || data.depth().empty() || data.depthFx() == 0.0f || data.depthFy() == 0.0f)
 	{
 		ULOGGER_ERROR("image empty !?");
 		return;
 	}
 
 	bool notify = true;
-	_imageMutex.lock();
+	_dataMutex.lock();
 	{
-		notify = _imageBuffer.empty();
-		_imageBuffer = image;
+		notify = !_dataBuffer.isValid();
+		_dataBuffer = data;
 	}
-	_imageMutex.unlock();
+	_dataMutex.unlock();
 
 	if(notify)
 	{
-		_imageAdded.release();
+		_dataAdded.release();
 	}
 }
 
-void OdometryThread::getImage(Image & image)
+void OdometryThread::getData(SensorData & data)
 {
-	_imageAdded.acquire();
-	_imageMutex.lock();
+	_dataAdded.acquire();
+	_dataMutex.lock();
 	{
-		if(!_imageBuffer.empty())
+		if(_dataBuffer.isValid())
 		{
-			image = _imageBuffer;
-			_imageBuffer = Image();
+			data = _dataBuffer;
+			_dataBuffer = SensorData();
 		}
 	}
-	_imageMutex.unlock();
+	_dataMutex.unlock();
 }
 
 } /* namespace rtabmap */

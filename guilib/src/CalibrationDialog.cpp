@@ -119,7 +119,7 @@ void CalibrationDialog::handleEvent(UEvent * event)
 		if(e->getCode() == rtabmap::CameraEvent::kCodeImage ||
 		   e->getCode() == rtabmap::CameraEvent::kCodeImageDepth)
 		{
-			QMetaObject::invokeMethod(this, "processImage", Q_ARG(cv::Mat, e->image().image()));
+			QMetaObject::invokeMethod(this, "processImage", Q_ARG(cv::Mat, e->data().image()));
 		}
 	}
 }

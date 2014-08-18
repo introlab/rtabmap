@@ -47,7 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/gui/DataRecorder.h"
-#include "rtabmap/core/Image.h"
+#include "rtabmap/core/SensorData.h"
 #include "ExportDialog.h"
 #include "DetailedProgressDialog.h"
 
@@ -273,7 +273,7 @@ void DatabaseViewer::exportDatabase()
 						depth2d = rtabmap::util3d::uncompressData(compressedDepth2d);
 					}
 
-					rtabmap::Image data(rgb, depth, depth2d, fx, fy, cx, cy, pose, localTransform, id);
+					rtabmap::SensorData data(rgb, depth, depth2d, fx, fy, cx, cy, pose, localTransform, id);
 					recorder.addData(data);
 
 					progressDialog.appendText(tr("Exported node %1").arg(id));
@@ -1645,6 +1645,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		UASSERT(!containsLink(linksRefined_, from, to));
 
 		Transform t;
+		std::string rejectedMsg;
 		if(ui_->checkBox_visual_recomputeFeatures->isChecked())
 		{
 			// create a fake memory to regenerate features
@@ -1669,18 +1670,18 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 			memory_->getImageDepth(from, imageBytesA, depthBytesA, depth2dBytesA, fxA, fyA, cxA, cyA, localTransformA);
 			cv::Mat imageA = rtabmap::util3d::uncompressImage(imageBytesA);
 			cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
-			Image imageFrom(imageA, depthA, fxA, fyA, cxA, cyA, Transform::getIdentity(), localTransformA, 1);
+			SensorData dataFrom(imageA, depthA, fxA, fyA, cxA, cyA, Transform::getIdentity(), localTransformA, 1);
 
 			std::vector<unsigned char> imageBytesB, depthBytesB, depth2dBytesB;
 			memory_->getImageDepth(to, imageBytesB, depthBytesB, depth2dBytesB, fxB, fyB, cxB, cyB, localTransformB);
 			cv::Mat imageB = rtabmap::util3d::uncompressImage(imageBytesB);
 			cv::Mat depthB = rtabmap::util3d::uncompressImage(depthBytesB);
-			Image imageTo(imageB, depthB, fxB, fyB, cxB, cyB, Transform::getIdentity(), localTransformB, 2);
+			SensorData dataTo(imageB, depthB, fxB, fyB, cxB, cyB, Transform::getIdentity(), localTransformB, 2);
 
-			tmpMemory.update(imageFrom);
-			tmpMemory.update(imageTo);
+			tmpMemory.update(dataFrom);
+			tmpMemory.update(dataTo);
 
-			t = tmpMemory.computeVisualTransform(2, 1);
+			t = tmpMemory.computeVisualTransform(2, 1, &rejectedMsg);
 		}
 		else
 		{
@@ -1690,7 +1691,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 			parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
 			parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
 			memory_->parseParameters(parameters);
-			t = memory_->computeVisualTransform(to, from);
+			t = memory_->computeVisualTransform(to, from, &rejectedMsg);
 		}
 
 		if(t.isNull())
@@ -1699,7 +1700,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 			{
 				QMessageBox::warning(this,
 						tr("Add link"),
-						tr("Cannot find a transformation between nodes %1 and %2").arg(from).arg(to));
+						tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(rejectedMsg.c_str()));
 			}
 		}
 		else

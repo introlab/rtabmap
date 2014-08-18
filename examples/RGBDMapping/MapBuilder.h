@@ -60,7 +60,7 @@ public:
 		this->setLayout(layout);
 
 		qRegisterMetaType<rtabmap::Statistics>("rtabmap::Statistics");
-		qRegisterMetaType<rtabmap::Image>("rtabmap::Image");
+		qRegisterMetaType<rtabmap::SensorData>("rtabmap::Image");
 	}
 
 	virtual ~MapBuilder()
@@ -69,7 +69,7 @@ public:
 	}
 
 private slots:
-	void processOdometry(const rtabmap::Image & data)
+	void processOdometry(const rtabmap::SensorData & data)
 	{
 		if(!this->isVisible())
 		{
@@ -214,7 +214,7 @@ protected:
 		{
 			OdometryEvent * odomEvent = (OdometryEvent *)event;
 			// Odometry must be processed in the Qt thread
-			QMetaObject::invokeMethod(this, "processOdometry", Q_ARG(rtabmap::Image, odomEvent->data()));
+			QMetaObject::invokeMethod(this, "processOdometry", Q_ARG(rtabmap::SensorData, odomEvent->data()));
 		}
 	}
 

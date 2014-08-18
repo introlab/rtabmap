@@ -28,92 +28,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef IMAGE_H_
 #define IMAGE_H_
 
-#include <opencv2/core/core.hpp>
-#include <opencv2/features2d/features2d.hpp>
+#include <rtabmap/core/SensorData.h>
 
-#include <rtabmap/core/Transform.h>
-#include <rtabmap/core/Features2d.h>
-
-namespace rtabmap
-{
-
-/**
- * An id is automatically generated if id=0.
- */
-class Image
-{
-public:
-	Image(const cv::Mat & image = cv::Mat(),
-		  int id = 0,
-		  const cv::Mat & descriptors = cv::Mat(),
-		  Feature2D::Type featureType = Feature2D::kFeatureUndef,
-		  const std::vector<cv::KeyPoint> & keypoints = std::vector<cv::KeyPoint>());
-
-	// Metric constructor
-	Image(const cv::Mat & image,
-		  const cv::Mat & depth,
-		  float fx,
-		  float fy,
-		  float cx,
-		  float cy,
-		  const Transform & pose,
-		  const Transform & localTransform,
-		  int id = 0);
-
-	// Metric constructor + 2d depth
-	Image(const cv::Mat & image,
-		  const cv::Mat & depth,
-		  const cv::Mat & depth2d,
-		  float fx,
-		  float fy,
-		  float cx,
-		  float cy,
-		  const Transform & pose,
-		  const Transform & localTransform,
-		  int id = 0);
-
-	virtual ~Image() {}
-
-	bool empty() const {return _image.empty() && _descriptors.empty() && _keypoints.size() == 0;}
-	const cv::Mat & image() const {return _image;}
-	int id() const {return _id;};
-	const cv::Mat & descriptors() const {return _descriptors;}
-	Feature2D::Type featureType() const {return _featureType;}
-	const std::vector<cv::KeyPoint> & keypoints() const {return _keypoints;}
-	const std::vector<cv::Point3f> & keypoints3() const {return _keypoints3;}
-	void setDescriptors(const cv::Mat & descriptors, Feature2D::Type featureType) {_descriptors = descriptors; _featureType=featureType;}
-	void setKeypoints(const std::vector<cv::KeyPoint> & keypoints, const std::vector<cv::Point3f> * keypoints3 = 0);
-
-	bool isMetric() const {return !_depth.empty() || _fx != 0.0f || _fy != 0.0f || !_pose.isNull();}
-	void setPose(const Transform & pose) {_pose = pose;}
-	const cv::Mat & depth() const {return _depth;}
-	const cv::Mat & depth2d() const {return _depth2d;}
-	float depthFx() const {return _fx;}
-	float depthFy() const {return _fy;}
-	float depthCx() const {return _cx;}
-	float depthCy() const {return _cy;}
-	const Transform & pose() const {return _pose;}
-	const Transform & localTransform() const {return _localTransform;}
-
-private:
-	cv::Mat _image;
-	int _id;
-	cv::Mat _descriptors;
-	Feature2D::Type _featureType;
-	std::vector<cv::KeyPoint> _keypoints;
-	std::vector<cv::Point3f> _keypoints3;
-
-	// Metric stuff
-	cv::Mat _depth;
-	cv::Mat _depth2d;
-	float _fx;
-	float _fy;
-	float _cx;
-	float _cy;
-	Transform _pose;
-	Transform _localTransform;
-};
-
+namespace rtabmap {
+RTABMAP_DEPRECATED(typedef SensorData Image, "rtabmap::Image class is renamed to rtabmap::SensorData, use the last one instead.");
 }
 
 

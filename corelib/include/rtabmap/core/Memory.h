@@ -32,8 +32,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/core/Parameters.h"
-#include "rtabmap/core/Image.h"
+#include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/Link.h"
+#include "rtabmap/core/Features2d.h"
 #include <typeinfo>
 #include <list>
 #include <map>
@@ -64,7 +65,7 @@ public:
 	virtual ~Memory();
 
 	virtual void parseParameters(const ParametersMap & parameters);
-	bool update(const Image & image, Statistics * stats = 0);
+	bool update(const SensorData & data, Statistics * stats = 0);
 	bool init(const std::string & dbUrl,
 			bool dbOverwritten = false,
 			const ParametersMap & parameters = ParametersMap(),
@@ -132,6 +133,7 @@ public:
 	bool isIDsGenerated() const {return _generateIds;}
 	int getLastGlobalLoopClosureParentId() const {return _lastGlobalLoopClosureParentId;}
 	int getLastGlobalLoopClosureChildId() const {return _lastGlobalLoopClosureChildId;}
+	const Feature2D * getFeature2D() const {return _feature2D;}
 
 	void setRoi(const std::string & roi);
 
@@ -151,13 +153,17 @@ public:
 	Feature2D::Type getFeatureType() const {return _featureType;}
 	void extractKeypointsAndDescriptors(
 			const cv::Mat & image,
+			std::vector<cv::KeyPoint> & keypoints,
+			cv::Mat & descriptors) const;
+	void extractKeypointsAndDescriptors(
+			const cv::Mat & image,
 			const cv::Mat & depth,
 			float fx,
 			float fy,
 			float cx,
 			float cy,
 			std::vector<cv::KeyPoint> & keypoints,
-			cv::Mat & descriptors);
+			cv::Mat & descriptors) const;
 
 	// RGB-D stuff
 	void getMetricConstraints(
@@ -165,14 +171,15 @@ public:
 			std::map<int, Transform> & poses,
 			std::multimap<int, Link> & links,
 			bool lookInDatabase = false);
-	Transform computeVisualTransform(int oldId, int newId) const;
-	Transform computeVisualTransform(const Signature & oldS, const Signature & newS) const;
-	Transform computeIcpTransform(int oldId, int newId, Transform guess, bool icp3D);
-	Transform computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess, bool icp3D) const;
+	Transform computeVisualTransform(int oldId, int newId, std::string * rejectedMsg = 0) const;
+	Transform computeVisualTransform(const Signature & oldS, const Signature & newS, std::string * rejectedMsg = 0) const;
+	Transform computeIcpTransform(int oldId, int newId, Transform guess, bool icp3D, std::string * rejectedMsg = 0);
+	Transform computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess, bool icp3D, std::string * rejectedMsg = 0) const;
 	Transform computeScanMatchingTransform(
 			int newId,
 			int oldId,
-			const std::map<int, Transform> & poses);
+			const std::map<int, Transform> & poses,
+			std::string * rejectedMsg = 0);
 
 private:
 	void preUpdate();
@@ -193,7 +200,7 @@ private:
 
 	void copyData(const Signature * from, Signature * to);
 	Signature * createSignature(
-			const Image & image,
+			const SensorData & data,
 			bool keepRawData=false);
 
 	//keypoint stuff

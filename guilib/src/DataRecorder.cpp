@@ -46,7 +46,7 @@ DataRecorder::DataRecorder(QWidget * parent) :
 	imageView_(new ImageView(this)),
 	dataQueue_(0)
 {
-	qRegisterMetaType<rtabmap::Image>("rtabmap::Image");
+	qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
 
 	QHBoxLayout * layout = new QHBoxLayout(this);
 	layout->addWidget(imageView_);
@@ -95,16 +95,16 @@ DataRecorder::~DataRecorder()
 	this->close();
 }
 
-void DataRecorder::addData(const rtabmap::Image & image)
+void DataRecorder::addData(const rtabmap::SensorData & data)
 {
 	if(memory_)
 	{
 		//save to database
 		UTimer time;
-		memory_->update(image);
+		memory_->update(data);
 		memory_->cleanup();
 
-		if(image.id() % 30)
+		if(data.id() % 30)
 		{
 			memory_->emptyTrash();
 		}
@@ -118,12 +118,12 @@ void DataRecorder::addData(const rtabmap::Image & image)
 	--dataQueue_;
 }
 
-void DataRecorder::showImage(const rtabmap::Image & image)
+void DataRecorder::showImage(const rtabmap::SensorData & data)
 {
-	if(this->isVisible() && !image.empty())
+	if(this->isVisible() && data.isValid())
 	{
-		imageView_->setImage(uCvMat2QImage(image.image()));
-		imageView_->setImageDepth(uCvMat2QImage(image.depth()));
+		imageView_->setImage(uCvMat2QImage(data.image()));
+		imageView_->setImageDepth(uCvMat2QImage(data.depth()));
 		imageView_->fitInView(imageView_->sceneRect(), Qt::KeepAspectRatio);
 	}
 }
@@ -136,15 +136,15 @@ void DataRecorder::handleEvent(UEvent * event)
 		if(camEvent->getCode() == CameraEvent::kCodeImageDepth ||
 		   camEvent->getCode() == CameraEvent::kCodeImage)
 		{
-			if(!camEvent->image().empty())
+			if(camEvent->data().isValid())
 			{
 				UINFO("Receiving rate = %f Hz", 1.0f/timer_.ticks());
-				QMetaObject::invokeMethod(this, "addData", Q_ARG(rtabmap::Image, camEvent->image()));
+				QMetaObject::invokeMethod(this, "addData", Q_ARG(rtabmap::SensorData, camEvent->data()));
 				++dataQueue_;
 
 				if(dataQueue_ < 2 && this->isVisible())
 				{
-					QMetaObject::invokeMethod(this, "showImage", Q_ARG(rtabmap::Image, camEvent->image()));
+					QMetaObject::invokeMethod(this, "showImage", Q_ARG(rtabmap::SensorData, camEvent->data()));
 				}
 			}
 		}

@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/utilite/UEventsHandler.h>
 #include <QtGui/QWidget>
-#include <rtabmap/core/Image.h>
+#include <rtabmap/core/SensorData.h>
 #include <rtabmap/utilite/UTimer.h>
 
 namespace rtabmap {
@@ -52,8 +52,8 @@ public:
 	virtual ~DataRecorder();
 
 public slots:
-	void addData(const rtabmap::Image & image);
-	void showImage(const rtabmap::Image & image);
+	void addData(const rtabmap::SensorData & data);
+	void showImage(const rtabmap::SensorData & data);
 protected:
 	void handleEvent(UEvent * event);
 

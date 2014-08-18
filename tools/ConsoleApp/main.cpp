@@ -416,8 +416,7 @@ int main(int argc, char * argv[])
 	std::list<std::vector<float> > teleopActions;
 	while(loopDataset <= repeat && g_forever)
 	{
-		cv::Mat cvImg = camera->takeImage();
-		Image img(cvImg, 0);
+		cv::Mat img = camera->takeImage();
 		int i=0;
 		double maxIterationTime = 0.0;
 		int maxIterationTimeId = 0;
@@ -433,8 +432,7 @@ int main(int argc, char * argv[])
 			{
 				++countLoopDetected;
 			}
-			cvImg = camera->takeImage();
-			img = Image(cvImg, 0);
+			img = camera->takeImage();
 			if(++count % 100 == 0)
 			{
 				printf(" count = %d, loop closures = %d, max time (at %d) = %fs\n",

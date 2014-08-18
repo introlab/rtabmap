@@ -341,8 +341,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	qRegisterMetaType<rtabmap::Statistics>("rtabmap::Statistics");
 	connect(this, SIGNAL(statsReceived(rtabmap::Statistics)), this, SLOT(processStats(rtabmap::Statistics)));
 
-	qRegisterMetaType<rtabmap::Image>("rtabmap::Image");
-	connect(this, SIGNAL(odometryReceived(rtabmap::Image, int)), this, SLOT(processOdometry(rtabmap::Image, int)));
+	qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
+	connect(this, SIGNAL(odometryReceived(rtabmap::SensorData, int)), this, SLOT(processOdometry(rtabmap::SensorData, int)));
 
 	connect(this, SIGNAL(noMoreImagesReceived()), this, SLOT(stopDetection()));
 
@@ -554,7 +554,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 	}
 }
 
-void MainWindow::processOdometry(const rtabmap::Image & data, int quality)
+void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality)
 {
 	Transform pose = data.pose();
 	if(pose.isNull())

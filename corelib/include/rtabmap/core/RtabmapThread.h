@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMutex.h>
 
 #include "rtabmap/core/RtabmapEvent.h"
-#include "rtabmap/core/Image.h"
+#include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/Parameters.h"
 
 #include <stack>
@@ -89,8 +89,8 @@ private:
 	virtual void mainLoop();
 	virtual void mainLoopKill();
 	void process();
-	void addImage(const Image & image);
-	void getImage(Image & image);
+	void addData(const SensorData & data);
+	void getData(SensorData & data);
 	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
 	void setDataBufferSize(int size);
 	void publishMap(bool optimized, bool full) const;
@@ -101,10 +101,10 @@ private:
 	std::stack<State> _state;
 	std::stack<ParametersMap> _stateParam;
 
-	std::list<Image> _imageBuffer;
-	UMutex _imageMutex;
-	USemaphore _imageAdded;
-	int _imageBufferMaxSize;
+	std::list<SensorData> _dataBuffer;
+	UMutex _dataMutex;
+	USemaphore _dataAdded;
+	int _dataBufferMaxSize;
 	float _rate;
 	UTimer * _frameRateTimer;
 

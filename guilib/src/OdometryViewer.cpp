@@ -70,7 +70,7 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, i
 
 void OdometryViewer::processData()
 {
-	rtabmap::Image data;
+	rtabmap::SensorData data;
 	int quality = -1;
 	dataMutex_.lock();
 	if(data_.size())

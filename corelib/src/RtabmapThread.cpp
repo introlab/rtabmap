@@ -42,7 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 RtabmapThread::RtabmapThread(Rtabmap * rtabmap) :
-		_imageBufferMaxSize(Parameters::defaultRtabmapImageBufferSize()),
+		_dataBufferMaxSize(Parameters::defaultRtabmapImageBufferSize()),
 		_rate(Parameters::defaultRtabmapDetectionRate()),
 		_frameRateTimer(new UTimer()),
 		_rtabmap(rtabmap),
@@ -74,16 +74,16 @@ void RtabmapThread::pushNewState(State newState, const ParametersMap & parameter
 	}
 	_stateMutex.unlock();
 
-	_imageAdded.release();
+	_dataAdded.release();
 }
 
 void RtabmapThread::clearBufferedData()
 {
-	_imageMutex.lock();
+	_dataMutex.lock();
 	{
-		_imageBuffer.clear();
+		_dataBuffer.clear();
 	}
-	_imageMutex.unlock();
+	_dataMutex.unlock();
 }
 
 void RtabmapThread::setDetectorRate(float rate)
@@ -95,7 +95,7 @@ void RtabmapThread::setDetectorRate(float rate)
 void RtabmapThread::setBufferSize(int bufferSize)
 {
 	UASSERT(bufferSize >= 0);
-	_imageBufferMaxSize = bufferSize;
+	_dataBufferMaxSize = bufferSize;
 }
 
 void RtabmapThread::publishMap(bool optimized, bool full) const
@@ -177,7 +177,7 @@ void RtabmapThread::mainLoopKill()
 	this->clearBufferedData();
 
 	// this will post the newData semaphore
-	_imageAdded.release();
+	_dataAdded.release();
 }
 
 void RtabmapThread::mainLoop()
@@ -203,9 +203,9 @@ void RtabmapThread::mainLoop()
 		this->process();
 		break;
 	case kStateChangingParameters:
-		Parameters::parse(parameters, Parameters::kRtabmapImageBufferSize(), _imageBufferMaxSize);
+		Parameters::parse(parameters, Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
 		Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), _rate);
-		UASSERT(_imageBufferMaxSize >= 0);
+		UASSERT(_dataBufferMaxSize >= 0);
 		UASSERT(_rate >= 0.0f);
 		_rtabmap->parseParameters(parameters);
 		break;
@@ -270,11 +270,9 @@ void RtabmapThread::handleEvent(UEvent* event)
 	{
 		UDEBUG("CameraEvent");
 		CameraEvent * e = (CameraEvent*)event;
-		if(e->getCode() == CameraEvent::kCodeImage ||
-		   e->getCode() == CameraEvent::kCodeFeatures ||
-		   e->getCode() == CameraEvent::kCodeImageDepth)
+		if(e->getCode() == CameraEvent::kCodeImage || e->getCode() == CameraEvent::kCodeImageDepth)
 		{
-			this->addImage(e->image());
+			this->addData(e->data());
 		}
 	}
 	else if(event->getClassName().compare("OdometryEvent") == 0)
@@ -283,7 +281,7 @@ void RtabmapThread::handleEvent(UEvent* event)
 		OdometryEvent * e = (OdometryEvent*)event;
 		if(e->isValid())
 		{
-			this->addImage(e->data());
+			this->addData(e->data());
 		}
 	}
 	else if(event->getClassName().compare("RtabmapEventCmd") == 0)
@@ -416,26 +414,26 @@ void RtabmapThread::handleEvent(UEvent* event)
 //============================================================
 void RtabmapThread::process()
 {
-	Image image;
-	getImage(image);
-	if(!image.empty())
+	SensorData data;
+	getData(data);
+	if(data.isValid())
 	{
-		_rtabmap->process(image);
+		_rtabmap->process(data);
 
 		Statistics stats = _rtabmap->getStatistics();
-		stats.addStatistic(Statistics::kMemoryImages_buffered(), (float)_imageBuffer.size());
+		stats.addStatistic(Statistics::kMemoryImages_buffered(), (float)_dataBuffer.size());
 		ULOGGER_DEBUG("posting statistics_ event...");
 		this->post(new RtabmapEvent(stats));
 	}
 }
 
-void RtabmapThread::addImage(const Image & image)
+void RtabmapThread::addData(const SensorData & sensorData)
 {
 	if(!_paused)
 	{
-		if(image.empty())
+		if(!sensorData.isValid())
 		{
-			ULOGGER_ERROR("image empty !?");
+			ULOGGER_ERROR("data not valid !?");
 			return;
 		}
 
@@ -449,42 +447,42 @@ void RtabmapThread::addImage(const Image & image)
 		_frameRateTimer->start();
 
 		bool notify = true;
-		_imageMutex.lock();
+		_dataMutex.lock();
 		{
-			_imageBuffer.push_back(image);
-			while(_imageBufferMaxSize > 0 && _imageBuffer.size() > (unsigned int)_imageBufferMaxSize)
+			_dataBuffer.push_back(sensorData);
+			while(_dataBufferMaxSize > 0 && _dataBuffer.size() > (unsigned int)_dataBufferMaxSize)
 			{
 				ULOGGER_WARN("Data buffer is full, the oldest data is removed to add the new one.");
-				_imageBuffer.pop_front();
+				_dataBuffer.pop_front();
 				notify = false;
 			}
 		}
-		_imageMutex.unlock();
+		_dataMutex.unlock();
 
 		if(notify)
 		{
-			_imageAdded.release();
+			_dataAdded.release();
 		}
 	}
 }
 
-void RtabmapThread::getImage(Image & image)
+void RtabmapThread::getData(SensorData & image)
 {
 	ULOGGER_DEBUG("");
 
 	ULOGGER_INFO("waiting for data");
-	_imageAdded.acquire();
+	_dataAdded.acquire();
 	ULOGGER_INFO("wake-up");
 
-	_imageMutex.lock();
+	_dataMutex.lock();
 	{
-		if(!_imageBuffer.empty())
+		if(!_dataBuffer.empty())
 		{
-			image = _imageBuffer.front();
-			_imageBuffer.pop_front();
+			image = _dataBuffer.front();
+			_dataBuffer.pop_front();
 		}
 	}
-	_imageMutex.unlock();
+	_dataMutex.unlock();
 }
 
 void RtabmapThread::setDataBufferSize(int size)
@@ -492,11 +490,11 @@ void RtabmapThread::setDataBufferSize(int size)
 	if(size < 0)
 	{
 		ULOGGER_WARN("size < 0, then setting it to 0 (inf).");
-		_imageBufferMaxSize = 0;
+		_dataBufferMaxSize = 0;
 	}
 	else
 	{
-		_imageBufferMaxSize = size;
+		_dataBufferMaxSize = size;
 	}
 }
 

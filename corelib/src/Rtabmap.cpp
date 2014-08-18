@@ -667,7 +667,7 @@ void Rtabmap::resetMemory(bool dbOverwritten)
 //============================================================
 // MAIN LOOP
 //============================================================
-bool Rtabmap::process(const Image & image)
+bool Rtabmap::process(const SensorData & data)
 {
 	UDEBUG("");
 
@@ -724,9 +724,9 @@ bool Rtabmap::process(const Image & image)
 	// Wait for an image...
 	//============================================================
 	ULOGGER_INFO("getting data...");
-	if(image.empty())
+	if(!data.isValid())
 	{
-		ULOGGER_INFO("image is null...");
+		ULOGGER_INFO("image is not valid...");
 		return false;
 	}
 
@@ -743,10 +743,10 @@ bool Rtabmap::process(const Image & image)
 	//============================================================
 	if(_rgbdSlamMode)
 	{
-		if(image.pose().isNull())
+		if(data.pose().isNull())
 		{
 			UERROR("RGB-D SLAM mode is enabled and no odometry is provided. "
-				   "Image %d is ignored!", image.id());
+				   "Image %d is ignored!", data.id());
 			return false;
 		}
 		else
@@ -755,7 +755,7 @@ bool Rtabmap::process(const Image & image)
 			if(_memory->getLastWorkingSignature())
 			{
 				const Transform & lastPose = _memory->getLastWorkingSignature()->getPose(); // use raw odometry
-				if(!lastPose.isIdentity() && image.pose().isIdentity())
+				if(!lastPose.isIdentity() && data.pose().isIdentity())
 				{
 					int mapId = _memory->incrementMapId();
 					UWARN("Odometry is reset (transform identity detected). A new map (%d) is created!", mapId);
@@ -764,7 +764,7 @@ bool Rtabmap::process(const Image & image)
 				}
 				else
 				{
-					Transform lastPoseToNewPose = lastPose.inverse() * image.pose();
+					Transform lastPoseToNewPose = lastPose.inverse() * data.pose();
 					float x,y,z, roll,pitch,yaw;
 					lastPoseToNewPose.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
 					if(_newMapOdomChangeDistance > 0.0 && (x*x + y*y + z*z) > _newMapOdomChangeDistance*_newMapOdomChangeDistance)
@@ -774,7 +774,7 @@ bool Rtabmap::process(const Image & image)
 								_newMapOdomChangeDistance,
 								mapId,
 								lastPose.prettyPrint().c_str(),
-								image.pose().prettyPrint().c_str());
+								data.pose().prettyPrint().c_str());
 						_optimizedPoses.clear();
 						_constraints.clear();
 					}
@@ -787,7 +787,7 @@ bool Rtabmap::process(const Image & image)
 	// Memory Update : Location creation + Add to STM + Weight Update (Rehearsal)
 	//============================================================
 	ULOGGER_INFO("Updating memory...");
-	if(!_memory->update(image, &statistics_))
+	if(!_memory->update(data, &statistics_))
 	{
 		return false;
 	}
@@ -870,16 +870,21 @@ bool Rtabmap::process(const Image & image)
 			{
 				const Signature * oldS = _memory->getSignature(oldId);
 				UASSERT(oldS != 0);
-				Transform t = _memory->computeScanMatchingTransform(signature->id(), oldId, poses);
+				std::string rejectedMsg;
+				Transform t = _memory->computeScanMatchingTransform(signature->id(), oldId, poses, &rejectedMsg);
 				if(!t.isNull())
 				{
 					scanMatchingSuccess = true;
-					UDEBUG("Update neighbor link (%d->%d) from %s to %s",
+					UINFO("Scan matching: update neighbor link (%d->%d) from %s to %s",
 							signature->id(),
 							oldId,
 							signature->getNeighbors().at(oldId).prettyPrint().c_str(),
 							t.prettyPrint().c_str());
 					_memory->updateNeighborLink(signature->id(), oldId, t);
+				}
+				else
+				{
+					UWARN("Scan matching rejected: %s", rejectedMsg.c_str());
 				}
 			}
 			else
@@ -909,11 +914,12 @@ bool Rtabmap::process(const Image & image)
 				   signature->getNeighbors().find(*iter) == signature->getNeighbors().end() &&
 				   _memory->getSignature(*iter)->mapId() == signature->mapId())
 				{
+					std::string rejectedMsg;
 					UDEBUG("Check local transform between %d and %d", signature->id(), *iter);
-					Transform transform = _memory->computeVisualTransform(*iter, signature->id());
+					Transform transform = _memory->computeVisualTransform(*iter, signature->id(), &rejectedMsg);
 					if(!transform.isNull() && _globalLoopClosureIcpType > 0)
 					{
-						Transform icpTransform = _memory->computeIcpTransform(*iter, signature->id(), transform, _globalLoopClosureIcpType==1);
+						Transform icpTransform = _memory->computeIcpTransform(*iter, signature->id(), transform, _globalLoopClosureIcpType==1, &rejectedMsg);
 						float squaredNorm = (transform.inverse()*icpTransform).getNormSquared();
 						if(!icpTransform.isNull() &&
 							_globalLoopClosureIcpMaxDistance>0.0f &&
@@ -946,6 +952,11 @@ bool Rtabmap::process(const Image & image)
 							UWARN("Cannot add local loop closure between %d and %d ?!?",
 									*iter, signature->id());
 						}
+					}
+					else
+					{
+						UINFO("Local loop closure (time) between %d and %d rejected: %s",
+								*iter, signature->id(), rejectedMsg.c_str());
 					}
 				}
 			}
@@ -1249,10 +1260,11 @@ bool Rtabmap::process(const Image & image)
 		Transform transform;
 		if(_rgbdSlamMode)
 		{
-			transform = _memory->computeVisualTransform(_lcHypothesisId, signature->id());
+			std::string rejectedMsg;
+			transform = _memory->computeVisualTransform(_lcHypothesisId, signature->id(), &rejectedMsg);
 			if(!transform.isNull() && _globalLoopClosureIcpType > 0)
 			{
-				Transform icpTransform  = _memory->computeIcpTransform(_lcHypothesisId, signature->id(), transform, _globalLoopClosureIcpType == 1);
+				Transform icpTransform  = _memory->computeIcpTransform(_lcHypothesisId, signature->id(), transform, _globalLoopClosureIcpType == 1, &rejectedMsg);
 				float squaredNorm = (transform.inverse()*icpTransform).getNormSquared();
 				if(!icpTransform.isNull() &&
 					_globalLoopClosureIcpMaxDistance>0.0f &&
@@ -1270,7 +1282,7 @@ bool Rtabmap::process(const Image & image)
 			rejectedHypothesis = transform.isNull();
 			if(rejectedHypothesis)
 			{
-				UWARN("Cannot compute a loop closure transform between %d and %d", _lcHypothesisId, signature->id());
+				UWARN("Cannot compute a loop closure transform between %d and %d: %s", _lcHypothesisId, signature->id(), rejectedMsg.c_str());
 			}
 		}
 		if(!rejectedHypothesis)
@@ -1316,14 +1328,15 @@ bool Rtabmap::process(const Image & image)
 		localSpaceDetectionPosesCount = (int)poses.size()-1;
 		//The nearest will be the reference for a loop closure transform
 		if(poses.size() &&
-				localSpaceNearestId &&
+			localSpaceNearestId &&
 			signature->getChildLoopClosureIds().find(localSpaceNearestId) == signature->getChildLoopClosureIds().end())
 		{
-			Transform t = _memory->computeScanMatchingTransform(signature->id(), localSpaceNearestId, poses);
+			std::string rejectedMsg;
+			Transform t = _memory->computeScanMatchingTransform(signature->id(), localSpaceNearestId, poses, &rejectedMsg);
 			if(!t.isNull())
 			{
 				localSpaceClosureId = localSpaceNearestId;
-				UDEBUG("Add local loop closure in SPACE (%d->%d) %s",
+				UINFO("Add local loop closure in SPACE (%d->%d) %s",
 						signature->id(),
 						localSpaceNearestId,
 						t.prettyPrint().c_str());
@@ -1333,6 +1346,10 @@ bool Rtabmap::process(const Image & image)
 				const Signature * oldS = _memory->getSignature(localSpaceNearestId);
 				UASSERT(oldS != 0);
 				_mapTransform = oldS->getPose() * t.inverse() * signature->getPose().inverse();
+			}
+			else
+			{
+				UINFO("Local loop closure (space) rejected: %s", rejectedMsg.c_str());
 			}
 		}
 	}
@@ -1720,9 +1737,9 @@ bool Rtabmap::process(const Image & image)
 	return true;
 }
 
-bool Rtabmap::process(const cv::Mat & image, int id)
+bool Rtabmap::process(const cv::Mat & sensorData, int id)
 {
-	return this->process(Image(image, id));
+	return this->process(SensorData(sensorData, id));
 }
 
 // SETTERS

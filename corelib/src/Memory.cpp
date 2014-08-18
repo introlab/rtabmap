@@ -429,7 +429,7 @@ void Memory::preUpdate()
 	}
 }
 
-bool Memory::update(const Image & image, Statistics * stats)
+bool Memory::update(const SensorData & data, Statistics * stats)
 {
 	UDEBUG("");
 	UTimer timer;
@@ -449,7 +449,7 @@ bool Memory::update(const Image & image, Statistics * stats)
 	//============================================================
 	// Create a signature with the image received.
 	//============================================================
-	Signature * signature = this->createSignature(image, this->isRawDataKept());
+	Signature * signature = this->createSignature(data, this->isRawDataKept());
 	if (signature == 0)
 	{
 		UERROR("Failed to create a signature...");
@@ -1628,7 +1628,7 @@ void Memory::rejectLoopClosure(int oldId, int newId)
 }
 
 // compute transform newId -> oldId
-Transform Memory::computeVisualTransform(int oldId, int newId) const
+Transform Memory::computeVisualTransform(int oldId, int newId, std::string * rejectedMsg) const
 {
 	const Signature * oldS = this->getSignature(oldId);
 	const Signature * newS = this->getSignature(newId);
@@ -1637,19 +1637,25 @@ Transform Memory::computeVisualTransform(int oldId, int newId) const
 
 	if(oldS && newId)
 	{
-		return computeVisualTransform(*oldS, *newS);
+		return computeVisualTransform(*oldS, *newS, rejectedMsg);
 	}
 	else
 	{
-		UWARN("Did not find nodes %d and/or %d", oldId, newId);
+		std::string msg = uFormat("Did not find nodes %d and/or %d", oldId, newId);
+		if(rejectedMsg)
+		{
+			*rejectedMsg = msg;
+		}
+		UWARN(msg.c_str());
 	}
 	return Transform();
 }
 
 // compute transform newId -> oldId
-Transform Memory::computeVisualTransform(const Signature & oldS, const Signature & newS) const
+Transform Memory::computeVisualTransform(const Signature & oldS, const Signature & newS, std::string * rejectedMsg) const
 {
 	Transform transform;
+	std::string msg;
 	// Guess transform from visual words
 	if(!oldS.getWords3().empty() && !newS.getWords3().empty())
 	{
@@ -1679,23 +1685,37 @@ Transform Memory::computeVisualTransform(const Signature & oldS, const Signature
 			}
 			else if(inliersCount < _bowMinInliers)
 			{
-				UINFO("Not enough inliers (after RANSAC) %d/%d between %d and %d", inliersCount, _bowMinInliers, oldS.id(), newS.id());
+				msg = uFormat("Not enough inliers (after RANSAC) %d/%d between %d and %d", inliersCount, _bowMinInliers, oldS.id(), newS.id());
+				UINFO(msg.c_str());
+			}
+			else if(inliersCount == (int)inliersOld->size())
+			{
+				msg = uFormat("Rejected identity with full inliers.");
+				UINFO(msg.c_str());
 			}
 		}
 		else
 		{
-			UINFO("Not enough inliers %d/%d between %d and %d", (int)inliersOld->size(), _bowMinInliers, oldS.id(), newS.id());
+			msg = uFormat("Not enough inliers %d/%d between %d and %d", (int)inliersOld->size(), _bowMinInliers, oldS.id(), newS.id());
+			UINFO(msg.c_str());
 		}
 	}
 	else if(!oldS.isBadSignature() && !newS.isBadSignature())
 	{
-		UERROR("Words 3D empty?!?");
+		msg = "Words 3D empty?!?";
+		UERROR(msg.c_str());
 	}
+
+	if(rejectedMsg)
+	{
+		*rejectedMsg = msg;
+	}
+
 	return transform;
 }
 
 // compute transform newId -> oldId
-Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess, bool icp3D)
+Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess, bool icp3D, std::string * rejectedMsg)
 {
 	Signature * oldS = this->_getSignature(oldId);
 	Signature * newS = this->_getSignature(newId);
@@ -1738,13 +1758,22 @@ Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess, boo
 	Transform t;
 	if(oldS && newS)
 	{
-		t = computeIcpTransform(*oldS, *newS, guess, icp3D);
+		t = computeIcpTransform(*oldS, *newS, guess, icp3D, rejectedMsg);
+	}
+	else
+	{
+		std::string msg = uFormat("Did not find nodes %d and/or %d", oldId, newId);
+		if(rejectedMsg)
+		{
+			*rejectedMsg = msg;
+		}
+		UWARN(msg.c_str());
 	}
 	return t;
 }
 
 // get transform from the new to old node
-Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess, bool icp3D) const
+Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess, bool icp3D, std::string * rejectedMsg) const
 {
 	if(guess.isNull())
 	{
@@ -1758,6 +1787,7 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 	}
 	UDEBUG("Guess transform = %s", guess.prettyPrint().c_str());
 
+	std::string msg;
 	Transform transform;
 
 	// ICP with guess transform
@@ -1816,33 +1846,36 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 					   _icpMaxIterations,
 					   hasConverged,
 					   fitness);
+
+				//pcl::io::savePCDFile("old.pcd", *oldCloudXYZ);
+				//pcl::io::savePCDFile("newguess.pcd", *newCloudXYZ);
+				//newCloudXYZ = util3d::transformPointCloud(newCloudXYZ, icpT);
+				//pcl::io::savePCDFile("newicp.pcd", *newCloudXYZ);
+
+				UDEBUG("fitness=%f", fitness);
+
+				if(!icpT.isNull() && hasConverged && (_icpMaxFitness == 0 || fitness < _icpMaxFitness))
+				{
+					transform = icpT * guess;
+					transform = transform.inverse();
+				}
+				else
+				{
+					msg = uFormat("Cannot compute transform (hasConverged=%s fitness=%f/%f)",
+							hasConverged?"true":"false", fitness, _icpMaxFitness);
+					UINFO(msg.c_str());
+				}
 			}
 			else
 			{
-				UWARN("Clouds empty ?!?");
-			}
-
-			//pcl::io::savePCDFile("old.pcd", *oldCloudXYZ);
-			//pcl::io::savePCDFile("newguess.pcd", *newCloudXYZ);
-			//newCloudXYZ = util3d::transformPointCloud(newCloudXYZ, icpT);
-			//pcl::io::savePCDFile("newicp.pcd", *newCloudXYZ);
-
-			UDEBUG("fitness=%f", fitness);
-
-			if(hasConverged && (_icpMaxFitness == 0 || fitness < _icpMaxFitness))
-			{
-				transform = icpT * guess;
-				transform = transform.inverse();
-			}
-			else
-			{
-				UWARN("Cannot compute transform (hasConverged=%s fitness=%f/%f)",
-						hasConverged?"true":"false", fitness, _icpMaxFitness);
+				msg = "Clouds empty ?!?";
+				UWARN(msg.c_str());
 			}
 		}
 		else
 		{
-			UERROR("Depths 3D empty?!?");
+			msg = "Depths 3D empty?!?";
+			UERROR(msg.c_str());
 		}
 	}
 	else // icp 2D
@@ -1907,29 +1940,37 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 						correspondences,
 						(int)oldCloud->size(),
 						correspondencesRatio*100.0f);
-			}
-			else
-			{
-				UWARN("Clouds empty ?!?");
-			}
 
-			if(hasConverged &&
-			   (_icp2MaxFitness == 0 || fitness < _icp2MaxFitness) &&
-			   correspondencesRatio >= _icp2CorrespondenceRatio)
-			{
-				transform = icpT * guess;
-				transform = transform.inverse();
+				if(!icpT.isNull() && hasConverged &&
+				   (_icp2MaxFitness == 0 || fitness < _icp2MaxFitness) &&
+				   correspondencesRatio >= _icp2CorrespondenceRatio)
+				{
+					transform = icpT * guess;
+					transform = transform.inverse();
+				}
+				else
+				{
+					msg = uFormat("Cannot compute transform (hasConverged=%s fitness=%f/%f correspondencesRatio=%f/%f)",
+							hasConverged?"true":"false", fitness, _icpMaxFitness, correspondencesRatio, _icp2CorrespondenceRatio);
+					UINFO(msg.c_str());
+				}
 			}
 			else
 			{
-				UWARN("Cannot compute transform (hasConverged=%s fitness=%f/%f correspondencesRatio=%f/%f)",
-						hasConverged?"true":"false", fitness, _icpMaxFitness, correspondencesRatio, _icp2CorrespondenceRatio);
+				msg = "Clouds 2D empty ?!?";
+				UWARN(msg.c_str());
 			}
 		}
 		else
 		{
-			UERROR("Depths 2D empty?!?");
+			msg = "Depths 2D empty?!?";
+			UERROR(msg.c_str());
 		}
+	}
+
+	if(rejectedMsg)
+	{
+		*rejectedMsg = msg;
 	}
 
 	UDEBUG("New transform = %s", transform.prettyPrint().c_str());
@@ -1940,7 +1981,8 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 Transform Memory::computeScanMatchingTransform(
 		int newId,
 		int oldId,
-		const std::map<int, Transform> & poses)
+		const std::map<int, Transform> & poses,
+		std::string * rejectedMsg)
 {
 	// make sure that all depth2D are loaded
 	std::list<Signature*> depthToLoad;
@@ -1958,6 +2000,7 @@ Transform Memory::computeScanMatchingTransform(
 		_dbDriver->loadNodeData(depthToLoad, true);
 	}
 
+	std::string msg;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr assembledOldClouds(new pcl::PointCloud<pcl::PointXYZ>);
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
@@ -2023,7 +2066,7 @@ Transform Memory::computeScanMatchingTransform(
 				(int)newCloud->size(),
 				correspondencesRatio);
 
-		if(hasConverged &&
+		if(!icpT.isNull() && hasConverged &&
 		   (_icp2MaxFitness == 0 || fitness < _icp2MaxFitness) &&
 		   correspondencesRatio >= _icp2CorrespondenceRatio)
 		{
@@ -2034,13 +2077,24 @@ Transform Memory::computeScanMatchingTransform(
 		}
 		else
 		{
-			UWARN("Constraints failed... hasConverged=%s, fitness=%f, correspondences=%d/%d (%f%%)",
+			msg = uFormat("Constraints failed... hasConverged=%s, fitness=%f, correspondences=%d/%d (%f%%)",
 				hasConverged?"true":"false",
 				fitness,
 				correspondences,
 				(int)newCloud->size(),
 				correspondencesRatio);
+			UINFO(msg.c_str());
 		}
+	}
+	else
+	{
+		msg = "Empty data ?!?";
+		UWARN(msg.c_str());
+	}
+
+	if(rejectedMsg)
+	{
+		*rejectedMsg = msg;
 	}
 
 	return transform;
@@ -2842,13 +2896,21 @@ void Memory::copyData(const Signature * from, Signature * to)
 
 void Memory::extractKeypointsAndDescriptors(
 		const cv::Mat & image,
+		std::vector<cv::KeyPoint> & keypoints,
+		cv::Mat & descriptors) const
+{
+	extractKeypointsAndDescriptors(image, cv::Mat(), 0,0,0,0, keypoints, descriptors);
+}
+
+void Memory::extractKeypointsAndDescriptors(
+		const cv::Mat & image,
 		const cv::Mat & depth,
 		float fx,
 		float fy,
 		float cx,
 		float cy,
 		std::vector<cv::KeyPoint> & keypoints,
-		cv::Mat & descriptors)
+		cv::Mat & descriptors) const
 {
 	if(_wordsPerImageTarget >= 0)
 	{
@@ -2895,20 +2957,19 @@ private:
 	VWDictionary * _vwp;
 };
 
-Signature * Memory::createSignature(const Image & image, bool keepRawData)
+Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 {
-	UASSERT(image.image().empty() || image.image().type() == CV_8UC1 || image.image().type() == CV_8UC3);
-	UASSERT(image.depth().empty() || image.depth().type() == CV_16UC1);
-	UASSERT(image.depth2d().empty() || image.depth2d().type() == CV_32FC2);
+	UASSERT(data.image().empty() || data.image().type() == CV_8UC1 || data.image().type() == CV_8UC3);
+	UASSERT(data.depth().empty() || data.depth().type() == CV_16UC1);
+	UASSERT(data.depth2d().empty() || data.depth2d().type() == CV_32FC2);
 
 	PreUpdateThread preUpdateThread(_vwd);
 
 	UTimer timer;
 	timer.start();
 	std::vector<cv::KeyPoint> keypoints;
-	std::vector<cv::Point3f> keypoints3;
 	cv::Mat descriptors;
-	int id = image.id();
+	int id = data.id();
 	if(_generateIds)
 	{
 		id = this->getNextId();
@@ -2951,48 +3012,24 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 		preUpdateThread.start();
 	}
 
-	if(!image.descriptors().empty() && image.featureType() == _featureType)
+	// Extract features
+	cv::Mat imageMono;
+	// convert to grayscale
+	if(data.image().channels() > 1)
 	{
-		// DESCRIPTORS
-		if(image.descriptors().rows && image.descriptors().rows >= _badSignRatio * float(meanWordsPerLocation))
-		{
-			UASSERT(image.descriptors().type() == CV_32F || image.descriptors().type() == CV_8U);
-			descriptors = image.descriptors();
-			keypoints = image.keypoints();
-			keypoints3 = image.keypoints3();
-		}
-		if(keypoints3.size())
-		{
-			filterKeypointsByDepth(keypoints, keypoints3, descriptors, _wordsMaxDepth);
-			limitKeypoints(keypoints, keypoints3, descriptors, _wordsPerImageTarget);
-		}
-		else
-		{
-			filterKeypointsByDepth(keypoints, descriptors, image.depth(), image.depthFx(), image.depthFy(), image.depthCx(), image.depthCy(), _wordsMaxDepth);
-			limitKeypoints(keypoints, descriptors, _wordsPerImageTarget);
-		}
+		cv::cvtColor(data.image(), imageMono, cv::COLOR_BGR2GRAY);
 	}
 	else
 	{
-		// IMAGE RAW
-		cv::Mat imageMono;
-		// convert to grayscale
-		if(image.image().channels() > 1)
-		{
-			cv::cvtColor(image.image(), imageMono, cv::COLOR_BGR2GRAY);
-		}
-		else
-		{
-			imageMono = image.image();
-		}
+		imageMono = data.image();
+	}
 
-		this->extractKeypointsAndDescriptors(imageMono, image.depth(), image.depthFx(), image.depthFy(), image.depthCx(), image.depthCy(), keypoints, descriptors);
+	this->extractKeypointsAndDescriptors(imageMono, data.depth(), data.depthFx(), data.depthFy(), data.depthCx(), data.depthCy(), keypoints, descriptors);
 
-		UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
-		if(descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))
-		{
-			descriptors = cv::Mat();
-		}
+	UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
+	if(descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))
+	{
+		descriptors = cv::Mat();
 	}
 
 	if(_parallelized)
@@ -3021,7 +3058,6 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 	}
 
 	std::multimap<int, cv::KeyPoint> words;
-	std::multimap<int, pcl::PointXYZ> words3;
 	if(wordIds.size() > 0)
 	{
 		UASSERT(wordIds.size() == keypoints.size());
@@ -3029,18 +3065,14 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end() && i < keypoints.size(); ++iter, ++i)
 		{
 			words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
-			if(i < keypoints3.size())
-			{
-				words3.insert(std::pair<int, pcl::PointXYZ>(*iter, pcl::PointXYZ(keypoints3[i].x, keypoints3[i].y, keypoints3[i].z)));
-			}
 		}
 	}
-	UASSERT(keypoints3.size() == 0 || words3.size() == words.size());
 
 	//3d words
-	if(words3.size() == 0 && !image.depth().empty() && image.depthFx() && image.depthFy())
+	std::multimap<int, pcl::PointXYZ> words3;
+	if(!data.depth().empty() && data.depthFx() && data.depthFy())
 	{
-		words3 = util3d::generateWords3(words, image.depth(), image.depthFx(), image.depthFy(), image.depthCx(), image.depthCy(), image.localTransform());
+		words3 = util3d::generateWords3(words, data.depth(), data.depthFx(), data.depthFy(), data.depthCx(), data.depthCy(), data.localTransform());
 	}
 
 	Signature * s;
@@ -3048,8 +3080,8 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 	{
 		std::vector<unsigned char> imageBytes;
 		std::vector<unsigned char> depthBytes;
-		util3d::CompressionThread ctImage(image.image(), std::string(".jpg"));
-		util3d::CompressionThread ctDepth(image.depth(), std::string(".png"));
+		util3d::CompressionThread ctImage(data.image(), std::string(".jpg"));
+		util3d::CompressionThread ctDepth(data.depth(), std::string(".png"));
 		ctImage.start();
 		ctDepth.start();
 		ctImage.join();
@@ -3061,15 +3093,15 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 			_idMapCount,
 			words,
 			words3,
-			image.pose(),
-			util3d::compressData(image.depth2d()),
+			data.pose(),
+			util3d::compressData(data.depth2d()),
 			imageBytes,
 			depthBytes,
-			image.depthFx(),
-			image.depthFy(),
-			image.depthCx(),
-			image.depthCy(),
-			image.localTransform());
+			data.depthFx(),
+			data.depthFy(),
+			data.depthCx(),
+			data.depthCy(),
+			data.localTransform());
 	}
 	else
 	{
@@ -3077,8 +3109,8 @@ Signature * Memory::createSignature(const Image & image, bool keepRawData)
 			_idMapCount,
 			words,
 			words3,
-			image.pose(),
-			util3d::compressData(image.depth2d()));
+			data.pose(),
+			util3d::compressData(data.depth2d()));
 	}
 
 

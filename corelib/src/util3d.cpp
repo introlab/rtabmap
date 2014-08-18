@@ -1193,14 +1193,11 @@ Transform transformFromXYZCorrespondences(
 		if(correspondencesInliers.size() == correspondences->size() && transform.isIdentity())
 		{
 			//Wrong transform
-			UINFO("Wrong transform: identity");
+			UDEBUG("Wrong transform: identity with full inliers");
 			transform.setNull();
-			if(inliers)
-			{
-				*inliers = 0;
-			}
 		}
-		else if(inliers)
+
+		if(inliers)
 		{
 			*inliers = (int)correspondencesInliers.size();
 		}

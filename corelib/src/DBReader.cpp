@@ -145,7 +145,7 @@ void DBReader::mainLoop()
 		{
 			if(!_odometryIgnored)
 			{
-				Image data(image, depth, depth2d, fx, fy, cx, cy, pose, localTransform);
+				SensorData data(image, depth, depth2d, fx, fy, cx, cy, pose, localTransform);
 				this->post(new OdometryEvent(data));
 				if(pose.isNull())
 				{

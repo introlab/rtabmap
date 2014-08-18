@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ODOMETRYEVENT_H_
 
 #include "rtabmap/utilite/UEvent.h"
-#include "rtabmap/core/Image.h"
+#include "rtabmap/core/SensorData.h"
 
 namespace rtabmap {
 
@@ -37,18 +37,18 @@ class OdometryEvent : public UEvent
 {
 public:
 	OdometryEvent(
-		const Image & data, int quality = -1) :
+		const SensorData & data, int quality = -1) :
 			_data(data),
 			_quality(quality) {}
 	virtual ~OdometryEvent() {}
 	virtual std::string getClassName() const {return "OdometryEvent";}
 
 	bool isValid() const {return !_data.pose().isNull();}
-	const Image & data() const {return _data;}
+	const SensorData & data() const {return _data;}
 	int quality() const {return _quality;}
 
 private:
-	Image _data;
+	SensorData _data;
 	int _quality;
 };
 

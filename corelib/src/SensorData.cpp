@@ -26,9 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 
-#include "rtabmap/core/Image.h"
-
-#include <rtabmap/utilite/ULogger.h>
+#include "rtabmap/core/SensorData.h"
 
 namespace rtabmap
 {
@@ -36,16 +34,21 @@ namespace rtabmap
 /**
  * An id is automatically generated if id=0.
  */
-Image::Image(const cv::Mat & image,
-	  int id,
-	  const cv::Mat & descriptors,
-	  Feature2D::Type featureType,
-	  const std::vector<cv::KeyPoint> & keypoints) :
+SensorData::SensorData() :
+	_image(cv::Mat()),
+	_id(0),
+	_fx(0.0f),
+	_fy(0.0f),
+	_cx(0.0f),
+	_cy(0.0f),
+	_localTransform(Transform::getIdentity())
+{
+}
+
+SensorData::SensorData(const cv::Mat & image,
+	  int id) :
 	_image(image),
 	_id(id),
-	_descriptors(descriptors),
-	_featureType(featureType),
-	_keypoints(keypoints),
 	_fx(0.0f),
 	_fy(0.0f),
 	_cx(0.0f),
@@ -55,7 +58,7 @@ Image::Image(const cv::Mat & image,
 }
 
 	// Metric constructor
-Image::Image(const cv::Mat & image,
+SensorData::SensorData(const cv::Mat & image,
 		  const cv::Mat & depth,
 		  float fx,
 		  float fy,
@@ -66,7 +69,6 @@ Image::Image(const cv::Mat & image,
 		  int id) :
 	_image(image),
 	_id(id),
-	_featureType(Feature2D::kFeatureUndef),
 	_depth(depth),
 	_fx(fx),
 	_fy(fy),
@@ -78,7 +80,7 @@ Image::Image(const cv::Mat & image,
 }
 
 	// Metric constructor + 2d depth
-Image::Image(const cv::Mat & image,
+SensorData::SensorData(const cv::Mat & image,
 		  const cv::Mat & depth,
 		  const cv::Mat & depth2d,
 		  float fx,
@@ -90,7 +92,6 @@ Image::Image(const cv::Mat & image,
 		  int id) :
 	_image(image),
 	_id(id),
-	_featureType(Feature2D::kFeatureUndef),
 	_depth(depth),
 	_depth2d(depth2d),
 	_fx(fx),
@@ -102,16 +103,9 @@ Image::Image(const cv::Mat & image,
 {
 }
 
-void Image::setKeypoints(
-		const std::vector<cv::KeyPoint> & keypoints,
-		const std::vector<cv::Point3f> * keypoints3)
+bool SensorData::empty() const
 {
-	_keypoints = keypoints;
-	if(keypoints3 && keypoints3->size())
-	{
-		UASSERT(_keypoints.size() == keypoints3->size());
-		_keypoints3 = *keypoints3;
-	}
+	return _image.empty();
 }
 
 } // namespace rtabmap

@@ -48,6 +48,7 @@ LoopClosureViewer::LoopClosureViewer(QWidget * parent) :
 {
 	ui_ = new Ui_loopClosureViewer();
 	ui_->setupUi(this);
+	ui_->cloudViewerTransform->setCameraLockZ(false);
 
 	connect(ui_->checkBox_rawCloud, SIGNAL(clicked()), this, SLOT(updateView()));
 }

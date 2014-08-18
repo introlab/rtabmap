@@ -66,21 +66,8 @@ void RTABMAP_EXP filterKeypointsByDepth(
 		float cy,
 		float maxDepth);
 
-void RTABMAP_EXP filterKeypointsByDepth(
-		std::vector<cv::KeyPoint> & keypoints,
-		std::vector<cv::Point3f> & keypoints3,
-		float maxDepth);
-
-void RTABMAP_EXP filterKeypointsByDepth(
-		std::vector<cv::KeyPoint> & keypoints,
-		std::vector<cv::Point3f> & keypoints3,
-		cv::Mat & descriptors,
-		float maxDepth);
-
 void RTABMAP_EXP limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints);
 void RTABMAP_EXP limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints);
-void RTABMAP_EXP limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> keypoints3, int maxKeypoints);
-void RTABMAP_EXP limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> keypoints3, cv::Mat & descriptors, int maxKeypoints);
 
 cv::Rect RTABMAP_EXP computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios);
 
@@ -96,6 +83,7 @@ public:
 	cv::Mat generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 	virtual void parseParameters(const ParametersMap & parameters) {}
+	virtual Feature2D::Type getType() const = 0;
 
 protected:
 	Feature2D(const ParametersMap & parameters = ParametersMap()) {}
@@ -113,6 +101,7 @@ public:
 	virtual ~SURF();
 
 	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureSurf;}
 
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
@@ -139,6 +128,7 @@ public:
 	virtual ~SIFT();
 
 	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureSift;}
 
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
@@ -162,6 +152,7 @@ public:
 	virtual ~ORB();
 
 	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureOrb;}
 
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
@@ -215,6 +206,7 @@ public:
 	virtual ~FAST_BRIEF();
 
 	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureFastBrief;}
 
 private:
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
@@ -233,6 +225,7 @@ public:
 	virtual ~FAST_FREAK();
 
 	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureFastFreak;}
 
 private:
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
