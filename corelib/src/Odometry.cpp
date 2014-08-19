@@ -180,17 +180,6 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality)
 	UTimer timer;
 	Transform output;
 
-	cv::Mat imageMono;
-	// convert to grayscale
-	if(data.image().channels() > 1)
-	{
-		cv::cvtColor(data.image(), imageMono, cv::COLOR_BGR2GRAY);
-	}
-	else
-	{
-		imageMono = data.image();
-	}
-
 	int inliers = 0;
 	int correspondences = 0;
 	int nFeatures = 0;
