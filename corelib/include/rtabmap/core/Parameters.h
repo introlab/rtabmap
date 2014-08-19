@@ -181,19 +181,19 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(DbSqlite3, TempStore,    int, 2, 				"0=DEFAULT, 1=FILE, 2=MEMORY (see sqlite3 doc : \"PRAGMA temp_store\")");
 
 	// Keypoints descriptors/detectors
-	RTABMAP_PARAM(SURF, Extended, 		  bool, false, 	"true=128, false=64.");
-	RTABMAP_PARAM(SURF, HessianThreshold, float, 150.0,	"");
-	RTABMAP_PARAM(SURF, Octaves, 		  int, 4, 		"");
-	RTABMAP_PARAM(SURF, OctaveLayers, 	  int, 2, 		"");
-	RTABMAP_PARAM(SURF, Upright, 	      bool, false, 	"U-SURF");
-	RTABMAP_PARAM(SURF, GpuVersion, 	  bool, false, 	"");
-	RTABMAP_PARAM(SURF, GpuKeypointsRatio, 	  float, 0.01, 	"");
+	RTABMAP_PARAM(SURF, Extended, 		  bool, false, 	"Extended descriptor flag (true - use extended 128-element descriptors; false - use 64-element descriptors).");
+	RTABMAP_PARAM(SURF, HessianThreshold, float, 150.0,		"Threshold for hessian keypoint detector used in SURF.");
+	RTABMAP_PARAM(SURF, Octaves, 		  int, 4, 			"Number of pyramid octaves the keypoint detector will use.");
+	RTABMAP_PARAM(SURF, OctaveLayers, 	  int, 2, 			"Number of octave layers within each octave.");
+	RTABMAP_PARAM(SURF, Upright, 	      bool, false, 	"Up-right or rotated features flag (true - do not compute orientation of features; false - compute orientation).");
+	RTABMAP_PARAM(SURF, GpuVersion, 	  bool, false, 	"GPU-SURF: Use GPU version of SURF. This option is enabled only if OpenCV is built with CUDA and GPUs are detected.");
+	RTABMAP_PARAM(SURF, GpuKeypointsRatio, 	  float, 0.01, 	"Used with SURF GPU.");
 
-	RTABMAP_PARAM(SIFT, NFeatures,          int, 0,		"");
-	RTABMAP_PARAM(SIFT, NOctaveLayers,      int, 3, 	"");
-	RTABMAP_PARAM(SIFT, ContrastThreshold, 	double, 0.04, "");
-	RTABMAP_PARAM(SIFT, EdgeThreshold,      double, 10.0, "");
-	RTABMAP_PARAM(SIFT, Sigma,              double, 1.6, "");
+	RTABMAP_PARAM(SIFT, NFeatures,          int, 0,			"The number of best features to retain. The features are ranked by their scores (measured in SIFT algorithm as the local contrast).");
+	RTABMAP_PARAM(SIFT, NOctaveLayers,      int, 3, 		"The number of layers in each octave. 3 is the value used in D. Lowe paper. The number of octaves is computed automatically from the image resolution.");
+	RTABMAP_PARAM(SIFT, ContrastThreshold, 	double, 0.04, 	"The contrast threshold used to filter out weak features in semi-uniform (low-contrast) regions. The larger the threshold, the less features are produced by the detector.");
+	RTABMAP_PARAM(SIFT, EdgeThreshold,      double, 10.0, 	"The threshold used to filter out edge-like features. Note that the its meaning is different from the contrastThreshold, i.e. the larger the edgeThreshold, the less features are filtered out (more features are retained).");
+	RTABMAP_PARAM(SIFT, Sigma,              double, 1.6, 	"The sigma of the Gaussian applied to the input image at the octave #0. If your image is captured with a weak camera with soft lenses, you might want to reduce the number.");
 
 	RTABMAP_PARAM(BRIEF, Bytes,         	   int, 32, 	"Bytes is a length of descriptor in bytes. It can be equal 16, 32 or 64 bytes.");
 
