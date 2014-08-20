@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>736</width>
-            <height>751</height>
+            <width>737</width>
+            <height>895</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>0</number>
+                <number>21</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -4226,6 +4226,155 @@ When set to false, no new words are added to dictionary, so no more updates are 
                  </item>
                 </layout>
                </widget>
+               <widget class="QWidget" name="page_16">
+                <layout class="QVBoxLayout" name="verticalLayout_9">
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_detector_gftt2">
+                   <property name="title">
+                    <string>GFTT</string>
+                   </property>
+                   <layout class="QGridLayout" name="gridLayout_21" columnstretch="0,1">
+                    <item row="1" column="0">
+                     <widget class="QDoubleSpinBox" name="doubleSpinBox_GFTT_qualityLevel">
+                      <property name="maximum">
+                       <double>1.000000000000000</double>
+                      </property>
+                      <property name="singleStep">
+                       <double>0.010000000000000</double>
+                      </property>
+                      <property name="value">
+                       <double>0.010000000000000</double>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="0">
+                     <widget class="QDoubleSpinBox" name="doubleSpinBox_GFTT_minDistance">
+                      <property name="decimals">
+                       <number>1</number>
+                      </property>
+                      <property name="value">
+                       <double>1.000000000000000</double>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="0">
+                     <widget class="QCheckBox" name="checkBox_GFTT_useHarrisDetector">
+                      <property name="text">
+                       <string/>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="1">
+                     <widget class="QLabel" name="label_172">
+                      <property name="text">
+                       <string>Use Harris detector.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="0">
+                     <widget class="QDoubleSpinBox" name="doubleSpinBox_GFTT_k">
+                      <property name="maximum">
+                       <double>1.000000000000000</double>
+                      </property>
+                      <property name="singleStep">
+                       <double>0.010000000000000</double>
+                      </property>
+                      <property name="value">
+                       <double>0.040000000000000</double>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="1">
+                     <widget class="QLabel" name="label_173">
+                      <property name="text">
+                       <string>K.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="0">
+                     <widget class="QSpinBox" name="spinBox_GFTT_blockSize">
+                      <property name="value">
+                       <number>3</number>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="0">
+                     <widget class="QSpinBox" name="spinBox_GFTT_maxCorners">
+                      <property name="maximum">
+                       <number>100000</number>
+                      </property>
+                      <property name="value">
+                       <number>1000</number>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QLabel" name="label_174">
+                      <property name="text">
+                       <string>Maximum corners.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QLabel" name="label_175">
+                      <property name="text">
+                       <string>Quality level.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLabel" name="label_176">
+                      <property name="text">
+                       <string>Mininum distance.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="1">
+                     <widget class="QLabel" name="label_177">
+                      <property name="text">
+                       <string>Block size.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="verticalSpacer_25">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>644</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
                <widget class="QWidget" name="page_19">
                 <layout class="QVBoxLayout" name="verticalLayout_13">
                  <item>
@@ -5633,6 +5782,16 @@ Warning when set to false: when some nodes are transferred, the first referentia
                         <item>
                          <property name="text">
                           <string>FAST+BRIEF</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>GFTT+FREAK</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>GFTT+BRIEF</string>
                          </property>
                         </item>
                        </widget>

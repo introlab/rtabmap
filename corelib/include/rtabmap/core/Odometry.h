@@ -101,13 +101,16 @@ public:
 	virtual ~OdometryBOW();
 
 	virtual void reset();
+	const std::multimap<int, std::pair<int, pcl::PointXYZ> > & getLocalMap() const {return localMap_;}
+	std::multimap<int,pcl::PointXYZ> getLocalMeansMap() const;
+	const Memory * getMemory() const {return _memory;}
 
 private:
 	virtual Transform computeTransform(const SensorData & image, int * quality = 0);
 
 private:
 	Memory * _memory;
-	std::multimap<int, pcl::PointXYZ> localMap_;
+	std::multimap<int, std::pair<int, pcl::PointXYZ> > localMap_;
 };
 
 class RTABMAP_EXP OdometryICP : public Odometry

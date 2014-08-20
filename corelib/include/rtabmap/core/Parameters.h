@@ -167,7 +167,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Kp, WordsPerImage,         int, 400, 			"");
 	RTABMAP_PARAM(Kp, BadSignRatio,          float, 0.2, 		"Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
 	RTABMAP_PARAM(Kp, NndrRatio, 	         float, 0.8, 		"NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
-	RTABMAP_PARAM(Kp, DetectorStrategy,      int, 0, 			"0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF.");
+	RTABMAP_PARAM(Kp, DetectorStrategy,      int, 0, 			"0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/BRIEF 6=GFTT/BRIEF.");
 	RTABMAP_PARAM(Kp, TfIdfLikelihoodUsed,   bool, false, 		"Use of the td-idf strategy to compute the likelihood.");
 	RTABMAP_PARAM(Kp, Parallelized,          bool, true, 		"If the dictionary update and signature creation were parallelized.");
 	RTABMAP_PARAM_STR(Kp, RoiRatios, "0.0 0.0 0.0 0.0", 		"Region of interest ratios [left, right, top, bottom].");
@@ -201,6 +201,13 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(FAST, NonmaxSuppression,  bool, true, 	"If true, non-maximum suppression is applied to detected corners (keypoints).");
 	RTABMAP_PARAM(FAST, Gpu,                bool, false, 	"GPU-FAST: Use GPU version of FAST. This option is enabled only if OpenCV is built with CUDA and GPUs are detected.");
 	RTABMAP_PARAM(FAST, GpuKeypointsRatio,  double, 0.05, 	"Used with FAST GPU.");
+
+	RTABMAP_PARAM(GFTT, MaxCorners, int, 1000, "");
+	RTABMAP_PARAM(GFTT, QualityLevel, double, 0.01, "");
+	RTABMAP_PARAM(GFTT, MinDistance, double, 1, "");
+	RTABMAP_PARAM(GFTT, BlockSize, int, 3, "");
+	RTABMAP_PARAM(GFTT, UseHarrisDetector, bool, false, "");
+	RTABMAP_PARAM(GFTT, K, double, 0.04, "");
 
 	RTABMAP_PARAM(ORB, NFeatures,            int, 500,     "The maximum number of features to retain.");
 	RTABMAP_PARAM(ORB, ScaleFactor,          float,  1.2, "Pyramid decimation ratio, greater than 1. scaleFactor==2 means the classical pyramid, where each next level has 4x less pixels than the previous, but such a big scale factor will degrade feature matching scores dramatically. On the other hand, too close to 1 scale factor will mean that to cover certain scale range you will need more pyramid levels and so the speed will suffer.");

@@ -382,6 +382,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_FREAKPatternScale->setObjectName(Parameters::kFREAKPatternScale().c_str());
 	_ui->spinBox_FREAKNOctaves->setObjectName(Parameters::kFREAKNOctaves().c_str());
 
+	//GFTT detector
+	_ui->spinBox_GFTT_maxCorners->setObjectName(Parameters::kGFTTMaxCorners().c_str());
+	_ui->doubleSpinBox_GFTT_qualityLevel->setObjectName(Parameters::kGFTTQualityLevel().c_str());
+	_ui->doubleSpinBox_GFTT_minDistance->setObjectName(Parameters::kGFTTMinDistance().c_str());
+	_ui->spinBox_GFTT_blockSize->setObjectName(Parameters::kGFTTBlockSize().c_str());
+	_ui->checkBox_GFTT_useHarrisDetector->setObjectName(Parameters::kGFTTUseHarrisDetector().c_str());
+	_ui->doubleSpinBox_GFTT_k->setObjectName(Parameters::kGFTTK().c_str());
+
 	// verifyHypotheses
 	_ui->comboBox_vh_strategy->setObjectName(Parameters::kRtabmapVhStrategy().c_str());
 	_ui->surf_spinBox_matchCountMinAccepted->setObjectName(Parameters::kVhEpMatchCountMin().c_str());
@@ -1900,6 +1908,16 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 					else if(value == 4) //  fast+brief
 					{
 						this->addParameters(_ui->groupBox_detector_fast2);
+						this->addParameters(_ui->groupBox_detector_brief2);
+					}
+					else if(value == 5) //  gftt+freak
+					{
+						this->addParameters(_ui->groupBox_detector_gftt2);
+						this->addParameters(_ui->groupBox_detector_freak2);
+					}
+					else if(value == 6) //  gftt+brief
+					{
+						this->addParameters(_ui->groupBox_detector_gftt2);
 						this->addParameters(_ui->groupBox_detector_brief2);
 					}
 				}

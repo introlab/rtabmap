@@ -705,4 +705,141 @@ cv::Mat FAST_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<c
 	return descriptors;
 }
 
+//////////////////////////
+//GFTT
+//////////////////////////
+GFTT::GFTT(const ParametersMap & parameters) :
+		_maxCorners(Parameters::defaultGFTTMaxCorners()),
+		_qualityLevel(Parameters::defaultGFTTQualityLevel()),
+		_minDistance(Parameters::defaultGFTTMinDistance()),
+		_blockSize(Parameters::defaultGFTTBlockSize()),
+		_useHarrisDetector(Parameters::defaultGFTTUseHarrisDetector()),
+		_k(Parameters::defaultGFTTK()),
+		_gftt(0)
+{
+	parseParameters(parameters);
+}
+
+GFTT::~GFTT()
+{
+	if(_gftt)
+	{
+		delete _gftt;
+	}
+}
+
+void GFTT::parseParameters(const ParametersMap & parameters)
+{
+	Parameters::parse(parameters, Parameters::kGFTTMaxCorners(), _maxCorners);
+	Parameters::parse(parameters, Parameters::kGFTTQualityLevel(), _qualityLevel);
+	Parameters::parse(parameters, Parameters::kGFTTMinDistance(), _minDistance);
+	Parameters::parse(parameters, Parameters::kGFTTBlockSize(), _blockSize);
+	Parameters::parse(parameters, Parameters::kGFTTUseHarrisDetector(), _useHarrisDetector);
+	Parameters::parse(parameters, Parameters::kGFTTK(), _k);
+
+	if(_gftt)
+	{
+		delete _gftt;
+		_gftt = 0;
+	}
+	_gftt = new cv::GFTTDetector(_maxCorners, _qualityLevel, _minDistance, _blockSize, _useHarrisDetector ,_k);
+}
+
+std::vector<cv::KeyPoint> GFTT::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	std::vector<cv::KeyPoint> keypoints;
+	cv::Mat imgRoi(image, roi);
+	_gftt->detect(imgRoi, keypoints); // Opencv keypoints
+	return keypoints;
+}
+
+//////////////////////////
+//FAST-BRIEF
+//////////////////////////
+GFTT_BRIEF::GFTT_BRIEF(const ParametersMap & parameters) :
+	GFTT(parameters),
+	bytes_(Parameters::defaultBRIEFBytes()),
+	_brief(0)
+{
+	parseParameters(parameters);
+}
+
+GFTT_BRIEF::~GFTT_BRIEF()
+{
+	if(_brief)
+	{
+		delete _brief;
+	}
+}
+
+void GFTT_BRIEF::parseParameters(const ParametersMap & parameters)
+{
+	GFTT::parseParameters(parameters);
+
+	Parameters::parse(parameters, Parameters::kBRIEFBytes(), bytes_);
+	if(_brief)
+	{
+		delete _brief;
+		_brief = 0;
+	}
+	_brief = new cv::BriefDescriptorExtractor(bytes_);
+}
+
+cv::Mat GFTT_BRIEF::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+	_brief->compute(image, keypoints, descriptors);
+	return descriptors;
+}
+
+//////////////////////////
+//FAST-FREAK
+//////////////////////////
+GFTT_FREAK::GFTT_FREAK(const ParametersMap & parameters) :
+	GFTT(parameters),
+	orientationNormalized_(Parameters::defaultFREAKOrientationNormalized()),
+	scaleNormalized_(Parameters::defaultFREAKScaleNormalized()),
+	patternScale_(Parameters::defaultFREAKPatternScale()),
+	nOctaves_(Parameters::defaultFREAKNOctaves()),
+	_freak(0)
+{
+	parseParameters(parameters);
+}
+
+GFTT_FREAK::~GFTT_FREAK()
+{
+	if(_freak)
+	{
+		delete _freak;
+	}
+}
+
+void GFTT_FREAK::parseParameters(const ParametersMap & parameters)
+{
+	GFTT::parseParameters(parameters);
+
+	Parameters::parse(parameters, Parameters::kFREAKOrientationNormalized(), orientationNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKScaleNormalized(), scaleNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKPatternScale(), patternScale_);
+	Parameters::parse(parameters, Parameters::kFREAKNOctaves(), nOctaves_);
+
+	if(_freak)
+	{
+		delete _freak;
+		_freak = 0;
+	}
+
+	_freak = new cv::FREAK(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_);
+}
+
+cv::Mat GFTT_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+	_freak->compute(image, keypoints, descriptors);
+	return descriptors;
+}
+
 }

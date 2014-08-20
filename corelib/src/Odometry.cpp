@@ -88,9 +88,15 @@ void Odometry::reset()
 
 bool Odometry::isLargeEnoughTransform(const Transform & transform)
 {
-	return fabs(transform.x()) > _linearUpdate ||
-		   fabs(transform.y()) > _linearUpdate ||
-	       fabs(transform.z()) > _linearUpdate;
+	float x,y,z, roll,pitch,yaw;
+	transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+	return (_linearUpdate == 0.0f && _angularUpdate == 0.0f) ||
+			fabs(x) > _linearUpdate ||
+		   fabs(y) > _linearUpdate ||
+	       fabs(z) > _linearUpdate ||
+	       fabs(roll) > _angularUpdate ||
+			fabs(pitch) > _angularUpdate ||
+			fabs(yaw) > _angularUpdate;
 }
 
 Transform Odometry::process(SensorData & data, int * quality)
@@ -147,7 +153,8 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 			group.compare("BRIEF") == 0 ||
 			group.compare("FAST") == 0 ||
 			group.compare("ORB") == 0 ||
-			group.compare("FREAK") == 0)
+			group.compare("FREAK") == 0 ||
+			group.compare("GFTT") == 0)
 		{
 			customParameters.insert(*iter);
 		}
@@ -173,6 +180,34 @@ void OdometryBOW::reset()
 	localMap_.clear();
 }
 
+std::multimap<int,pcl::PointXYZ> OdometryBOW::getLocalMeansMap() const
+{
+	std::multimap<int,pcl::PointXYZ> localMeansMap;
+	for(std::multimap<int, std::pair<int, pcl::PointXYZ> >::const_iterator iter=localMap_.begin();
+		iter!= localMap_.end();)
+	{
+		int id = iter->first;
+		pcl::PointXYZ sumPt = iter->second.second;
+		int count = 1;
+		++iter;
+		std::multimap<int, std::pair<int, pcl::PointXYZ> >::const_iterator jter=iter;
+		while(jter->first == id && jter!= localMap_.end())
+		{
+			sumPt.x += jter->second.second.x;
+			sumPt.y += jter->second.second.y;
+			sumPt.z += jter->second.second.z;
+			++count;
+			++jter;
+		}
+		iter = jter;
+
+		sumPt.x /= float(count);
+		sumPt.y /= float(count);
+		sumPt.z /= float(count);
+		localMeansMap.insert(std::make_pair(id, sumPt));
+	}
+	return localMeansMap;
+}
 
 // return not null transform if odometry is correctly computed
 Transform OdometryBOW::computeTransform(const SensorData & data, int * quality)
@@ -207,11 +242,14 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality)
 				pcl::PointCloud<pcl::PointXYZ>::Ptr inliers1(new pcl::PointCloud<pcl::PointXYZ>); // previous
 				pcl::PointCloud<pcl::PointXYZ>::Ptr inliers2(new pcl::PointCloud<pcl::PointXYZ>); // new
 
+				//Create the local map with mean of all features
+				std::multimap<int, pcl::PointXYZ> localMeansMap = getLocalMeansMap();
+
 				// No need to set max depth here, it is already applied in extractKeypointsAndDescriptors() above.
 				// Also! the localMap_ have points not in camera frame anymore (in local map frame), so filtering
 				// by depth here is wrong!
 				util3d::findCorrespondences(
-						localMap_,
+						localMeansMap,
 						newSignature->getWords3(),
 						*inliers1,
 						*inliers2,
@@ -274,7 +312,7 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality)
 								if(pcl::isFinite(pt))
 								{
 									pcl::PointXYZ pt2 = util3d::transformPoint(pt, transform);
-									localMap_.insert(std::make_pair<int, pcl::PointXYZ>(*iter, pt2));
+									localMap_.insert(std::make_pair(*iter, std::make_pair(newSignature->id(), pt2)));
 								}
 							}
 						}
@@ -290,25 +328,35 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality)
 						std::list<int> uniques = uUniqueKeys(newSignature->getWords3());
 						for(std::list<int>::iterator iter = uniques.begin(); iter!=uniques.end(); ++iter)
 						{
-							if(newSignature->getWords3().count(*iter) == 1 &&
-							   uniqueCorrespondences.find(*iter) == uniqueCorrespondences.end())
+							if(newSignature->getWords3().count(*iter) == 1)
 							{
 								const pcl::PointXYZ & pt = newSignature->getWords3().find(*iter)->second;
 								if(pcl::isFinite(pt))
 								{
 									pcl::PointXYZ pt2 = util3d::transformPoint(pt, transform);
-									localMap_.insert(std::make_pair<int, pcl::PointXYZ>(*iter, pt2));
+									localMap_.insert(std::make_pair(*iter, std::make_pair(newSignature->id(), pt2)));
 								}
 							}
 						}
-						while(localMap_.size() && (int)localMap_.size() > this->getLocalHistory() && _memory->getStMem().size()>1)
+						while(localMap_.size() && (int)uUniqueKeys(localMap_).size() > this->getLocalHistory() && _memory->getStMem().size()>1)
 						{
-							std::list<int> deletedWords;
-							_memory->deleteLocation(*_memory->getStMem().begin(), &deletedWords);
-							for(std::list<int>::iterator iter = deletedWords.begin(); iter!=deletedWords.end(); ++iter)
+							int nodeId = *_memory->getStMem().begin();
+							std::list<int> removedPts = uUniqueKeys(_memory->getSignature(nodeId)->getWords3());
+							for(std::list<int>::iterator iter = removedPts.begin(); iter!=removedPts.end(); ++iter)
 							{
-								localMap_.erase(*iter);
+								bool removed = false;
+								for(std::multimap<int, std::pair<int, pcl::PointXYZ> >::iterator jter=localMap_.lower_bound(*iter);
+									jter->first == *iter && !removed;
+									++jter)
+								{
+									if(jter->second.first == nodeId)
+									{
+										localMap_.erase(jter);
+										removed = true;
+									}
+								}
 							}
+							_memory->deleteLocation(*_memory->getStMem().begin());
 						}
 					}
 					else
@@ -331,7 +379,7 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality)
 					const pcl::PointXYZ & pt = newSignature->getWords3().find(*iter)->second;
 					if(pcl::isFinite(pt))
 					{
-						localMap_.insert(std::make_pair<int, pcl::PointXYZ>(*iter, pt));
+						localMap_.insert(std::make_pair(*iter, std::make_pair(newSignature->id(), pt)));
 					}
 				}
 			}
@@ -340,11 +388,13 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality)
 		_memory->emptyTrash();
 	}
 
-	UINFO("Odom update time = %fs features=%d inliers=%d/%d dict=%d nodes=%d",
+	UINFO("Odom update time = %fs features=%d inliers=%d/%d local_map=%d[%d] dict=%d nodes=%d",
 			timer.elapsed(),
 			nFeatures,
 			inliers,
 			correspondences,
+			(int)uUniqueKeys(localMap_).size(),
+			(int)localMap_.size(),
 			(int)_memory->getVWDictionary()->getVisualWords().size(),
 			(int)_memory->getStMem().size());
 	return output;

@@ -121,7 +121,8 @@ pcl::PointXYZ RTABMAP_EXP getDepth(
 		float x, float y,
 		float cx, float cy,
 		float fx, float fy,
-		bool interpolate);
+		bool smoothing,
+		float maxZError = 0.03f);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP voxelize(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,

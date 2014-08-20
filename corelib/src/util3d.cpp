@@ -440,7 +440,8 @@ pcl::PointXYZ getDepth(
 		float x, float y,
 		float cx, float cy,
 		float fx, float fy,
-		bool interpolate)
+		bool smoothing,
+		float maxZError)
 {
 	pcl::PointXYZ pt;
 	float bad_point = std::numeric_limits<float>::quiet_NaN ();
@@ -453,103 +454,72 @@ pcl::PointXYZ getDepth(
 		return pt;
 	}
 
-	// Use correct principal point from calibration
-	float center_x = cx > 0.0f ? cx : float(depthImage.cols/2) - 0.5f; //cameraInfo.K.at(2)
-	float center_y = cy > 0.0f ? cy : float(depthImage.rows/2) - 0.5f; //cameraInfo.K.at(5)
-
 	bool isInMM = depthImage.type() == CV_16UC1; // is in mm?
 
-	// Combine unit conversion (if necessary) with scaling by focal length for computing (X,Y)
-	float unit_scaling = isInMM?0.001f:1.0f;
-	float constant_x = unit_scaling / fx; //cameraInfo.K.at(0)
-	float constant_y = unit_scaling / fy; //cameraInfo.K.at(4)
+	// Inspired from RGBDFrame::getGaussianMixtureDistribution() method from
+	// https://github.com/ccny-ros-pkg/rgbdtools/blob/master/src/rgbd_frame.cpp
+	// Window weights:
+	//  | 1 | 2 | 1 |
+	//  | 2 | 4 | 2 |
+	//  | 1 | 2 | 1 |
+	int u = int(x+0.5f);
+	int v = int(y+0.5f);
+	int u_start = std::max(u-1, 0);
+	int v_start = std::max(v-1, 0);
+	int u_end = std::min(u+1, depthImage.cols-1);
+	int v_end = std::min(v+1, depthImage.rows-1);
 
-	float depth = 0.0f;
-	if(!interpolate || (int(x) < 1 || int(y) < 1 || int(x) >= depthImage.cols-1 || int(y) >= depthImage.rows-1))
+	float depth = isInMM?(float)depthImage.at<uint16_t>(v,u)*0.001f:depthImage.at<float>(v,u);
+	if(depth!=0.0f && uIsFinite(depth))
 	{
-		if(interpolate)
+		if(smoothing)
 		{
-			UERROR("Cannot interpolate for points on the image side. Falling back to no interpolation.");
+			float sumWeights = 0.0f;
+			float sumDepths = 0.0f;
+			for(int uu = u_start; uu <= u_end; ++uu)
+			{
+				for(int vv = v_start; vv <= v_end; ++vv)
+				{
+					if(!(uu == u && vv == v))
+					{
+						float d = isInMM?(float)depthImage.at<uint16_t>(vv,uu)*0.001f:depthImage.at<float>(vv,uu);
+						// ignore if not valid or depth difference is too high
+						if(d != 0.0f && uIsFinite(d) && fabs(d - depth) < maxZError)
+						{
+							if(uu == u || vv == v)
+							{
+								sumWeights+=2.0f;
+								d*=2.0f;
+							}
+							else
+							{
+								sumWeights+=1.0f;
+							}
+							sumDepths += d;
+						}
+					}
+				}
+			}
+			// set window weight to center point
+			depth *= 4.0f;
+			sumWeights += 4.0f;
+
+			// mean
+			depth = (depth+sumDepths)/sumWeights;
 		}
 
-		// select directly to corresponding pixel
-		depth = isInMM?(float)depthImage.at<uint16_t>(int(y),int(x)):depthImage.at<float>(int(y),int(x));
+		// Use correct principal point from calibration
+		cx = cx > 0.0f ? cx : float(depthImage.cols/2) - 0.5f; //cameraInfo.K.at(2)
+		cy = cy > 0.0f ? cy : float(depthImage.rows/2) - 0.5f; //cameraInfo.K.at(5)
+
+		// Fill in XYZ
+		pt.x = (x - cx) * depth / fx;
+		pt.y = (y - cy) * depth / fy;
+		pt.z = depth;
 	}
 	else
-	{
-		// Interpolate x axis
-		float depthX = 0.0f;
-		float first;
-		float second;
-		if(int(x) == int(x+0.5f))
-		{
-			first = isInMM?(float)depthImage.at<uint16_t>(int(y),int(x)-1):depthImage.at<float>(int(y),int(x)-1);
-			second = isInMM?(float)depthImage.at<uint16_t>(int(y),int(x)):depthImage.at<float>(int(y),int(x));
-		}
-		else
-		{
-			first = isInMM?(float)depthImage.at<uint16_t>(int(y),int(x)):depthImage.at<float>(int(y),int(x));
-			second = isInMM?(float)depthImage.at<uint16_t>(int(y),int(x)+1):depthImage.at<float>(int(y),int(x)+1);
-		}
-
-		if(first != 0.0f && uIsFinite(first) && second != 0.0f && uIsFinite(second))
-		{
-			// y = ax + b...
-			float a = second-first;
-			float b = first - a*(float(int(x))-0.5f);
-			depthX = a*(x) + b;
-			//UDEBUG("x=%f, y=%f, first=%f, second=%f, a=%f, b=%f, depth=%f", x,y, first,second, a,b, depthX);
-		}
-
-		if(depthX != 0.0f)
-		{
-			depth = depthX;
-		}
-		else
-		{
-			// Interpolate y axis
-			float depthY = 0.0f;
-			if(int(y) == int(y+0.5f))
-			{
-				first = isInMM?(float)depthImage.at<uint16_t>(int(y)-1,int(x)):depthImage.at<float>(int(y)-1,int(x));
-				second = isInMM?(float)depthImage.at<uint16_t>(int(y),int(x)):depthImage.at<float>(int(y),int(x));
-			}
-			else
-			{
-				first = isInMM?(float)depthImage.at<uint16_t>(int(y),int(x)):depthImage.at<float>(int(y),int(x));
-				second = isInMM?(float)depthImage.at<uint16_t>(int(y)+1,int(x)):depthImage.at<float>(int(y)+1,int(x));
-			}
-
-			if(first != 0.0f && uIsFinite(first) && second != 0.0f && uIsFinite(second))
-			{
-				// y = ax + b...
-				float a = second-first;
-				float b = first - a*(float(int(y))-0.5f);
-				depthY = a*(y) + b;
-				//UWARN("x=%f, y=%f, first=%f, second=%f, a=%f, b=%f, depth=%f", x,y, first,second, a,b, depthY);
-			}
-			if(depthY != 0.0f)
-			{
-				depth = depthY;
-			}
-			else
-			{
-				//UWARN("Could not compute depth for x=%f, y=%f", x,y);
-			}
-		}
-	}
-
-	// Check for invalid measurements
-	if (depth==0.0f || !uIsFinite(depth))
 	{
 		pt.x = pt.y = pt.z = bad_point;
-	}
-	else
-	{
-		// Fill in XYZ
-		pt.x = (x - center_x) * depth * constant_x;
-		pt.y = (y - center_y) * depth * constant_y;
-		pt.z = depth*unit_scaling;
 	}
 	return pt;
 }

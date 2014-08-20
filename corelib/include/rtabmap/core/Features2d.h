@@ -74,7 +74,14 @@ cv::Rect RTABMAP_EXP computeRoi(const cv::Mat & image, const std::vector<float> 
 // Feature2D
 class RTABMAP_EXP Feature2D {
 public:
-	enum Type {kFeatureUndef=-1, kFeatureSurf=0, kFeatureSift=1, kFeatureOrb=2, kFeatureFastFreak=3, kFeatureFastBrief=4};
+	enum Type {kFeatureUndef=-1,
+		kFeatureSurf=0,
+		kFeatureSift=1,
+		kFeatureOrb=2,
+		kFeatureFastFreak=3,
+		kFeatureFastBrief=4,
+		kFeatureGfttFreak=5,
+		kFeatureGfttBrief=6};
 
 public:
 	virtual ~Feature2D() {}
@@ -238,6 +245,71 @@ private:
 
 	cv::FREAK * _freak;
 };
+
+//GFTT
+class RTABMAP_EXP GFTT : public Feature2D
+{
+public:
+	GFTT(const ParametersMap & parameters = ParametersMap());
+	virtual ~GFTT();
+
+	virtual void parseParameters(const ParametersMap & parameters);
+
+private:
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
+
+private:
+	int _maxCorners;
+	double _qualityLevel;
+	double _minDistance;
+	int _blockSize;
+	bool _useHarrisDetector;
+	double _k;
+
+	cv::GFTTDetector * _gftt;
+};
+
+//GFTT_BRIEF
+class RTABMAP_EXP GFTT_BRIEF : public GFTT
+{
+public:
+	GFTT_BRIEF(const ParametersMap & parameters = ParametersMap());
+	virtual ~GFTT_BRIEF();
+
+	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureGfttBrief;}
+
+private:
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+private:
+	int bytes_;
+
+	cv::BriefDescriptorExtractor * _brief;
+};
+
+//GFTT_FREAK
+class RTABMAP_EXP GFTT_FREAK : public GFTT
+{
+public:
+	GFTT_FREAK(const ParametersMap & parameters = ParametersMap());
+	virtual ~GFTT_FREAK();
+
+	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureGfttFreak;}
+
+private:
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+private:
+	bool orientationNormalized_;
+	bool scaleNormalized_;
+	float patternScale_;
+	int nOctaves_;
+
+	cv::FREAK * _freak;
+};
+
 
 }
 

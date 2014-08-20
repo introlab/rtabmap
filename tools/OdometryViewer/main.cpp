@@ -42,7 +42,7 @@ void showUsage()
 	printf("\nUsage:\n"
 			"odometryViewer [options]\n"
 			"Options:\n"
-			"  -o #                      Odometry type (default 0): 0=SURF, 1=SIFT, 2=ORB, 3=FAST/FREAK, 4=FAST/BRIEF\n"
+			"  -o #                      Odometry type (default 0): 0=SURF, 1=SIFT, 2=ORB, 3=FAST/FREAK, 4=FAST/BRIEF, 5=GFTT/FREAK, 6=GFTT/BRIEF\n"
 			"  -nn #                     Nearest neighbor strategy (default 1): kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4\n"
 			"  -nndr #                   Nearest neighbor distance ratio (default 0.7)\n"
 			"  -icp                      Use ICP odometry\n"
@@ -125,7 +125,7 @@ int main (int argc, char * argv[])
 			if(i < argc)
 			{
 				odomType = std::atoi(argv[i]);
-				if(odomType < 0 || odomType > 4)
+				if(odomType < 0 || odomType > 6)
 				{
 					showUsage();
 				}
@@ -577,6 +577,14 @@ int main (int argc, char * argv[])
 	{
 		odomName = "FAST+BRIEF";
 	}
+	else if(odomType == 5)
+	{
+		odomName = "GFTT+FREAK";
+	}
+	else if(odomType == 6)
+	{
+		odomName = "GFTT+BRIEF";
+	}
 
 	if(icp)
 	{
@@ -659,7 +667,7 @@ int main (int argc, char * argv[])
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTThreshold(), uNumber2Str(fastThr)));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTGpu(), uBool2Str(gpu)));
 		}
-		if(odomType == 4)
+		if(odomType == 4 || odomType == 6)
 		{
 			UINFO("BRIEF bytes =             %d", briefBytes);
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kBRIEFBytes(), uNumber2Str(briefBytes)));

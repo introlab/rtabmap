@@ -405,6 +405,14 @@ void Memory::parseParameters(const ParametersMap & parameters)
 			_feature2D = new ORB(parameters);
 			_featureType = Feature2D::kFeatureOrb;
 			break;
+		case Feature2D::kFeatureGfttFreak:
+			_feature2D = new GFTT_FREAK(parameters);
+			_featureType = Feature2D::kFeatureGfttFreak;
+			break;
+		case Feature2D::kFeatureGfttBrief:
+			_feature2D = new GFTT_BRIEF(parameters);
+			_featureType = Feature2D::kFeatureGfttBrief;
+			break;
 		case Feature2D::kFeatureSurf:
 		default:
 			_feature2D = new SURF(parameters);
