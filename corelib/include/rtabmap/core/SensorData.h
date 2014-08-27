@@ -38,7 +38,7 @@ namespace rtabmap
 /**
  * An id is automatically generated if id=0.
  */
-class SensorData
+class RTABMAP_EXP SensorData
 {
 public:
 	SensorData(); // empty constructor
