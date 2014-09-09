@@ -342,7 +342,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(this, SIGNAL(statsReceived(rtabmap::Statistics)), this, SLOT(processStats(rtabmap::Statistics)));
 
 	qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
-	connect(this, SIGNAL(odometryReceived(rtabmap::SensorData, int)), this, SLOT(processOdometry(rtabmap::SensorData, int)));
+	connect(this, SIGNAL(odometryReceived(rtabmap::SensorData, int, float)), this, SLOT(processOdometry(rtabmap::SensorData, int, float)));
 
 	connect(this, SIGNAL(noMoreImagesReceived()), this, SLOT(stopDetection()));
 
@@ -531,7 +531,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 		   !_processingStatistics)
 		{
 			_lastOdometryProcessed = false; // if we receive too many odometry events!
-			emit odometryReceived(odomEvent->data(), odomEvent->quality());
+			emit odometryReceived(odomEvent->data(), odomEvent->quality(), odomEvent->time());
 		}
 	}
 	else if(anEvent->getClassName().compare("ULogEvent") == 0)
@@ -554,7 +554,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 	}
 }
 
-void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality)
+void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality, float time)
 {
 	Transform pose = data.pose();
 	if(pose.isNull())
@@ -578,7 +578,11 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality)
 	}
 	if(quality >= 0)
 	{
-		_ui->statsToolBox->updateStat("/Odom inliers/", (float)data.id(), (float)quality);
+		_ui->statsToolBox->updateStat("Odometry/Inliers/", (float)data.id(), (float)quality);
+	}
+	if(time > 0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/Time/ms", (float)data.id(), (float)time*1000.0f);
 	}
 	if(!pose.isNull())
 	{
@@ -1406,10 +1410,6 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 {
 	if((RtabmapEventInit::Status)status == RtabmapEventInit::kInitializing)
 	{
-		if(_state == kDetecting)
-		{
-			this->pauseDetection();
-		}
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();

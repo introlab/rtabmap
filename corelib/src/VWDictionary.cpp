@@ -286,11 +286,11 @@ void VWDictionary::update()
 				_flannIndex->build(_dataTree, cv::flann::LinearIndexParams(), type == CV_32F?cvflann::FLANN_DIST_L2:cvflann::FLANN_DIST_HAMMING);
 				break;
 			case kNNFlannKdTree:
-				UASSERT(type == CV_32F);
+				UASSERT_MSG(type == CV_32F, "To use KdTree dictionary, float descriptors are required!");
 				_flannIndex->build(_dataTree, cv::flann::KDTreeIndexParams(), cvflann::FLANN_DIST_L2);
 				break;
 			case kNNFlannLSH:
-				UASSERT(type == CV_8U);
+				UASSERT_MSG(type == CV_8U, "To use LSH dictionary, binary descriptors are required!");
 				_flannIndex->build(_dataTree, cv::flann::LshIndexParams(12, 20, 2), cvflann::FLANN_DIST_HAMMING);
 				break;
 			default:

@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>21</number>
+                <number>9</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -3341,6 +3341,31 @@ generate the number of words requested.</string>
                         <item>
                          <property name="text">
                           <string>SIFT</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>ORB</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>FAST+FREAK</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>FAST+BRIEF</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>GFTT+FREAK</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>GFTT+BRIEF</string>
                          </property>
                         </item>
                        </widget>

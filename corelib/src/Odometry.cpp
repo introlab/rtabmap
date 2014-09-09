@@ -605,9 +605,10 @@ void OdometryThread::mainLoop()
 	if(data.isValid())
 	{
 		int quality = -1;
+		UTimer time;
 		Transform pose = _odometry->process(data, &quality);
 		data.setPose(pose); // a null pose notify that odometry could not be computed
-		this->post(new OdometryEvent(data, quality));
+		this->post(new OdometryEvent(data, quality, time.elapsed()));
 	}
 }
 

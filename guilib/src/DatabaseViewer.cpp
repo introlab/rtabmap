@@ -186,6 +186,8 @@ bool DatabaseViewer::openDatabase(const QString & path)
 		rtabmap::ParametersMap parameters;
 		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), "false"));
 		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "false"));
+		// use BruteForce dictionary because we don't know which type of descriptors are saved in database
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNNStrategy(), "3"));
 
 		memory_ = new rtabmap::Memory();
 

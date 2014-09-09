@@ -1271,11 +1271,22 @@ void DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
 				descriptor = sqlite3_column_blob(ppStmt, index); 	// VisualWord descriptor array
 				dRealSize = sqlite3_column_bytes(ppStmt, index++);
 
-				if(dRealSize/int(sizeof(float)) != descriptorSize)
+				cv::Mat d;
+				if(dRealSize == descriptorSize)
 				{
-					UERROR("Saved buffer size (%d) is not the same as descriptor size (%d)", dRealSize/sizeof(float), descriptorSize);
+					// CV_8U binary descriptors
+					d = cv::Mat(1, descriptorSize, CV_8U);
 				}
-				cv::Mat d(1, descriptorSize, CV_32F);
+				else if(dRealSize/int(sizeof(float)) == descriptorSize)
+				{
+					// CV_32F
+					d = cv::Mat(1, descriptorSize, CV_32F);
+				}
+				else
+				{
+					UFATAL("Saved buffer size (%d bytes) is not the same as descriptor size (%d)", dRealSize, descriptorSize);
+				}
+
 				memcpy(d.data, descriptor, dRealSize);
 				VisualWord * vw = new VisualWord(id, d);
 				vw->setSaved(true);
@@ -1344,12 +1355,22 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 				descriptor = sqlite3_column_blob(ppStmt, index); 	// VisualWord descriptor array
 				dRealSize = sqlite3_column_bytes(ppStmt, index++);
 
-				if(dRealSize/int(sizeof(float)) != descriptorSize)
+				cv::Mat d;
+				if(dRealSize == descriptorSize)
 				{
-					UERROR("Saved buffer size (%d) is not the same as descriptor size (%d)", dRealSize/sizeof(float), descriptorSize);
+					// CV_8U binary descriptors
+					d = cv::Mat(1, descriptorSize, CV_8U);
+				}
+				else if(dRealSize/int(sizeof(float)) == descriptorSize)
+				{
+					// CV_32F
+					d = cv::Mat(1, descriptorSize, CV_32F);
+				}
+				else
+				{
+					UFATAL("Saved buffer size (%d bytes) is not the same as descriptor size (%d)", dRealSize, descriptorSize);
 				}
 
-				cv::Mat d(1, descriptorSize, CV_32F);
 				memcpy(d.data, descriptor, dRealSize);
 				VisualWord * vw = new VisualWord(*iter, d);
 				if(vw)
@@ -1848,7 +1869,17 @@ void DBDriverSqlite3::saveQuery(const std::list<VisualWord *> & words) const
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 					rc = sqlite3_bind_int(ppStmt, 2, w->getDescriptor().cols);
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-					rc = sqlite3_bind_blob(ppStmt, 3, w->getDescriptor().data, w->getDescriptor().cols*sizeof(float), SQLITE_STATIC);
+					UASSERT(w->getDescriptor().type() == CV_32F || w->getDescriptor().type() == CV_8U);
+					if(w->getDescriptor().type() == CV_32F)
+					{
+						// CV_32F
+						rc = sqlite3_bind_blob(ppStmt, 3, w->getDescriptor().data, w->getDescriptor().cols*sizeof(float), SQLITE_STATIC);
+					}
+					else
+					{
+						// CV_8U
+						rc = sqlite3_bind_blob(ppStmt, 3, w->getDescriptor().data, w->getDescriptor().cols*sizeof(char), SQLITE_STATIC);
+					}
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 					//execute query

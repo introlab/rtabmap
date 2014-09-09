@@ -1345,15 +1345,25 @@ void PreferencesDialog::writeCoreSettings(const QString & filePath)
 
 bool PreferencesDialog::validateForm()
 {
-	//verify odom type vs nearest neighbor approach
-	if(_ui->comboBox_dictionary_strategy->currentIndex() == VWDictionary::kNNFlannLSH)
+	//verify binary featrues and nearest neighbor
+
+	// BOW dictionary type
+	if(_ui->comboBox_dictionary_strategy->currentIndex() == VWDictionary::kNNFlannLSH && _ui->comboBox_detector_strategy->currentIndex() <= 1)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
-				tr("With the selected feature type (SURF or SIFT), parameter \"Visual Word->Nearest Neighbor\" "
+				tr("With the selected feature type (SURF or SIFT), parameter \"Visual word->Nearest Neighbor\" "
 				   "cannot be LSH (used for binary descriptor). KD-tree is set instead."));
 		_ui->comboBox_dictionary_strategy->setCurrentIndex(VWDictionary::kNNFlannKdTree);
 	}
+	else if(_ui->comboBox_dictionary_strategy->currentIndex() == VWDictionary::kNNFlannKdTree && _ui->comboBox_detector_strategy->currentIndex() >1)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("With the selected feature type (ORB, FAST, FREAK or BRIEF), parameter \"Visual word->Nearest Neighbor\" "
+				   "cannot be KD-Tree (used for float descriptor). BruteForce matching is set instead."));
+		_ui->comboBox_dictionary_strategy->setCurrentIndex(VWDictionary::kNNBruteForce);
+	}
 
+	// odom type
 	if(_ui->odom_bin_nn->currentIndex() == VWDictionary::kNNFlannLSH && _ui->odom_type->currentIndex() <= 1)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
@@ -1365,8 +1375,8 @@ bool PreferencesDialog::validateForm()
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("With the selected feature type (ORB, FAST, FREAK or BRIEF), parameter \"Odometry->Nearest Neighbor\" "
-				   "cannot be KD-Tree (used for float descriptor). LSH is set instead."));
-		_ui->odom_bin_nn->setCurrentIndex(VWDictionary::kNNFlannLSH);
+				   "cannot be KD-Tree (used for float descriptor). BruteForce matching is set instead."));
+		_ui->odom_bin_nn->setCurrentIndex(VWDictionary::kNNBruteForce);
 	}
 
 	return true;
