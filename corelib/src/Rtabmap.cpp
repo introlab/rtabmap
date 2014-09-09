@@ -1525,7 +1525,7 @@ bool Rtabmap::process(const SensorData & data)
 				{
 					// Add data
 					std::vector<unsigned char> im;
-					if(_rgbdSlamMode)
+					if(_rgbdSlamMode && _memory->isIncremental())
 					{
 						std::vector<unsigned char> depth, depth2d;
 						float fx, fy, cx, cy;
