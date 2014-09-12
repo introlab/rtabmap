@@ -736,9 +736,8 @@ CameraFreenect::CameraFreenect(int deviceId, float imageRate, const Transform & 
 {
 #ifdef WITH_FREENECT
 	if(freenect_init(&ctx_, NULL) < 0) UERROR("Cannot initialize freenect library");
-	// We claim both the motor and camera devices, since this class exposes both.
-	// It does not support audio, so we do not claim it.
-	freenect_select_subdevices(ctx_, static_cast<freenect_device_flags>(FREENECT_DEVICE_MOTOR | FREENECT_DEVICE_CAMERA));
+	// claim camera
+	freenect_select_subdevices(ctx_, static_cast<freenect_device_flags>(FREENECT_DEVICE_CAMERA));
 #endif
 }
 
