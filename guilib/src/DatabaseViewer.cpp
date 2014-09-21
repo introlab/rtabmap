@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QFileDialog>
 #include <QtGui/QInputDialog>
 #include <QtGui/QGraphicsLineItem>
+#include <QtGui/QCloseEvent>
 #include <QtCore/QBuffer>
 #include <QtCore/QTextStream>
 #include <rtabmap/utilite/ULogger.h>
@@ -186,6 +187,7 @@ bool DatabaseViewer::openDatabase(const QString & path)
 		rtabmap::ParametersMap parameters;
 		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), "false"));
 		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "false"));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemInitWMWithAllNodes(), "true"));
 		// use BruteForce dictionary because we don't know which type of descriptors are saved in database
 		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNNStrategy(), "3"));
 
@@ -207,6 +209,65 @@ bool DatabaseViewer::openDatabase(const QString & path)
 		QMessageBox::warning(this, "Database error", tr("Database \"%1\" does not exist.").arg(path));
 	}
 	return false;
+}
+
+void DatabaseViewer::closeEvent(QCloseEvent* event)
+{
+	if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size())
+	{
+		QMessageBox::StandardButton button = QMessageBox::question(this,
+				tr("Links modified"),
+				tr("Some links are modified (%1 added, %2 refined, %3 removed), do you want to save them?")
+				.arg(linksAdded_.size()).arg(linksRefined_.size()).arg(linksRemoved_.size()),
+				QMessageBox::Cancel | QMessageBox::Yes | QMessageBox::No,
+				QMessageBox::Cancel);
+
+		if(button == QMessageBox::Yes)
+		{
+			// Added links
+			for(std::multimap<int, rtabmap::Link>::iterator iter=linksAdded_.begin(); iter!=linksAdded_.end(); ++iter)
+			{
+				std::multimap<int, rtabmap::Link>::iterator refinedIter = this->findLink(linksRefined_, iter->second.from(), iter->second.to());
+				if(refinedIter != linksRefined_.end())
+				{
+					memory_->addLoopClosureLink(refinedIter->second.to(), refinedIter->second.from(), refinedIter->second.transform(), true);
+				}
+				else
+				{
+					memory_->addLoopClosureLink(iter->second.to(), iter->second.from(), iter->second.transform(), true);
+				}
+			}
+
+			//Refined links
+			for(std::multimap<int, rtabmap::Link>::iterator iter=linksRefined_.begin(); iter!=linksRefined_.end(); ++iter)
+			{
+				if(!containsLink(linksAdded_, iter->second.from(), iter->second.to()))
+				{
+					memory_->rejectLoopClosure(iter->second.to(), iter->second.from());
+					memory_->addLoopClosureLink(iter->second.to(), iter->second.from(), iter->second.transform(), true);
+				}
+			}
+
+			// Rejected links
+			for(std::multimap<int, rtabmap::Link>::iterator iter=linksRemoved_.begin(); iter!=linksRemoved_.end(); ++iter)
+			{
+				memory_->rejectLoopClosure(iter->second.to(), iter->second.from());
+			}
+		}
+
+		if(button == QMessageBox::Yes || button == QMessageBox::No)
+		{
+			event->accept();
+		}
+		else
+		{
+			event->ignore();
+		}
+	}
+	else
+	{
+		event->accept();
+	}
 }
 
 void DatabaseViewer::resizeEvent(QResizeEvent* anEvent)
@@ -1523,68 +1584,105 @@ void DatabaseViewer::refineConstraint(int from, int to)
 		return;
 	}
 
+
+	bool hasConverged = false;
+	double fitness = 0.0f;
+	Transform transform;
+
 	float fxA, fyA, cxA, cyA;
 	float fxB, fyB, cxB, cyB;
 	rtabmap::Transform localTransformA, localTransformB;
 
 	std::vector<unsigned char> imageBytesA, depthBytesA, depth2dBytesA;
 	memory_->getImageDepth(currentLink.from(), imageBytesA, depthBytesA, depth2dBytesA, fxA, fyA, cxA, cyA, localTransformA);
-	cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
 
 	std::vector<unsigned char> imageBytesB, depthBytesB, depth2dBytesB;
 	memory_->getImageDepth(currentLink.to(), imageBytesB, depthBytesB, depth2dBytesB, fxB, fyB, cxB, cyB, localTransformB);
-	cv::Mat depthB = rtabmap::util3d::uncompressImage(depthBytesB);
 
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA = util3d::getICPReadyCloud(depthA,
-					fxA, fyA, cxA, cyA,
-					ui_->spinBox_icp_decimation->value(),
-					ui_->doubleSpinBox_icp_maxDepth->value(),
-					ui_->doubleSpinBox_icp_voxel->value(),
-					0, // no sampling
-					localTransformA);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB = util3d::getICPReadyCloud(depthB,
-					fxB, fyB, cxB, cyB,
-					ui_->spinBox_icp_decimation->value(),
-					ui_->doubleSpinBox_icp_maxDepth->value(),
-					ui_->doubleSpinBox_icp_voxel->value(),
-					0, // no sampling
-					currentLink.transform() * localTransformB);
-
-	bool hasConverged = false;
-	double fitness;
-	Transform transform;
-	if(ui_->checkBox_icp_p2plane->isChecked())
+	if(ui_->checkBox_icp_2d->isChecked())
 	{
-		pcl::PointCloud<pcl::PointNormal>::Ptr cloudANormals = util3d::computeNormals(cloudA, ui_->spinBox_icp_normalKSearch->value());
-		pcl::PointCloud<pcl::PointNormal>::Ptr cloudBNormals = util3d::computeNormals(cloudB, ui_->spinBox_icp_normalKSearch->value());
+		//2D
+		cv::Mat oldDepth2D = util3d::uncompressData(depth2dBytesA);
+		cv::Mat newDepth2D = util3d::uncompressData(depth2dBytesB);
 
-		cloudANormals = util3d::removeNaNNormalsFromPointCloud(cloudANormals);
-		if(cloudA->size() != cloudANormals->size())
+		if(!oldDepth2D.empty() && !newDepth2D.empty())
 		{
-			UWARN("removed nan normals...");
-		}
+			// 2D
+			pcl::PointCloud<pcl::PointXYZ>::Ptr oldCloud = util3d::cvMat2Cloud(oldDepth2D);
+			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud = util3d::cvMat2Cloud(newDepth2D, currentLink.transform());
 
-		cloudBNormals = util3d::removeNaNNormalsFromPointCloud(cloudBNormals);
-		if(cloudB->size() != cloudBNormals->size())
-		{
-			UWARN("removed nan normals...");
-		}
+			//voxelize
+			if(ui_->doubleSpinBox_icp_voxel->value() > 0.0f)
+			{
+				oldCloud = util3d::voxelize(oldCloud, ui_->doubleSpinBox_icp_voxel->value());
+				newCloud = util3d::voxelize(newCloud, ui_->doubleSpinBox_icp_voxel->value());
+			}
 
-		transform = util3d::icpPointToPlane(cloudBNormals,
-				cloudANormals,
-				ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
-				ui_->spinBox_icp_decimation->value(),
-				hasConverged,
-				fitness);
+			if(newCloud->size() && oldCloud->size())
+			{
+				transform = util3d::icp2D(newCloud,
+						oldCloud,
+						ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
+						ui_->spinBox_icp_iteration->value(),
+					   hasConverged,
+					   fitness);
+			}
+		}
 	}
 	else
 	{
-		transform = util3d::icp(cloudB,
-				cloudA,
-				ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
-				ui_->spinBox_icp_decimation->value(),
-				hasConverged,
-				fitness);
+		//3D
+		cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
+		cv::Mat depthB = rtabmap::util3d::uncompressImage(depthBytesB);
+
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA = util3d::getICPReadyCloud(depthA,
+						fxA, fyA, cxA, cyA,
+						ui_->spinBox_icp_decimation->value(),
+						ui_->doubleSpinBox_icp_maxDepth->value(),
+						ui_->doubleSpinBox_icp_voxel->value(),
+						0, // no sampling
+						localTransformA);
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB = util3d::getICPReadyCloud(depthB,
+						fxB, fyB, cxB, cyB,
+						ui_->spinBox_icp_decimation->value(),
+						ui_->doubleSpinBox_icp_maxDepth->value(),
+						ui_->doubleSpinBox_icp_voxel->value(),
+						0, // no sampling
+						currentLink.transform() * localTransformB);
+
+		if(ui_->checkBox_icp_p2plane->isChecked())
+		{
+			pcl::PointCloud<pcl::PointNormal>::Ptr cloudANormals = util3d::computeNormals(cloudA, ui_->spinBox_icp_normalKSearch->value());
+			pcl::PointCloud<pcl::PointNormal>::Ptr cloudBNormals = util3d::computeNormals(cloudB, ui_->spinBox_icp_normalKSearch->value());
+
+			cloudANormals = util3d::removeNaNNormalsFromPointCloud(cloudANormals);
+			if(cloudA->size() != cloudANormals->size())
+			{
+				UWARN("removed nan normals...");
+			}
+
+			cloudBNormals = util3d::removeNaNNormalsFromPointCloud(cloudBNormals);
+			if(cloudB->size() != cloudBNormals->size())
+			{
+				UWARN("removed nan normals...");
+			}
+
+			transform = util3d::icpPointToPlane(cloudBNormals,
+					cloudANormals,
+					ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
+					ui_->spinBox_icp_iteration->value(),
+					hasConverged,
+					fitness);
+		}
+		else
+		{
+			transform = util3d::icp(cloudB,
+					cloudA,
+					ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
+					ui_->spinBox_icp_iteration->value(),
+					hasConverged,
+					fitness);
+		}
 	}
 
 	if(hasConverged && !transform.isNull())
@@ -1707,6 +1805,14 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		}
 		else
 		{
+			if(ui_->checkBox_visual_2d->isChecked())
+			{
+				// We are 2D here, make sure the guess has only YAW rotation
+				float x,y,z,r,p,yaw;
+				t.getTranslationAndEulerAngles(x,y,z, r,p,yaw);
+				t = util3d::transformFromEigen3f(pcl::getTransformation(x,y,0, 0, 0, yaw));
+			}
+
 			// transform is valid, make a link
 			linksAdded_.insert(std::make_pair(from, Link(from, to, t, Link::kUserClosure)));
 			updateSlider = true;
@@ -1752,6 +1858,11 @@ void DatabaseViewer::resetConstraint()
 
 	iter = findLink(links_, from, to);
 	if(iter != links_.end())
+	{
+		this->updateConstraintView(iter->second);
+	}
+	iter = findLink(linksAdded_, from, to);
+	if(iter != linksAdded_.end())
 	{
 		this->updateConstraintView(iter->second);
 	}

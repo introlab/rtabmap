@@ -110,6 +110,8 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 
 	UDEBUG("");
 	this->parseParameters(parameters);
+	bool loadAllNodesInWM = Parameters::defaultMemInitWMWithAllNodes();
+	Parameters::parse(parameters, Parameters::kMemInitWMWithAllNodes(), loadAllNodesInWM);
 
 	if(postInitEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory..."));
 	DBDriver * tmpDriver = 0;
@@ -152,9 +154,21 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 			if(postInitEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database ") + dbUrl + ", done!"));
 
 			// Load the last working memory...
-			if(postInitEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading last signatures...")));
 			std::list<Signature*> dbSignatures;
-			_dbDriver->loadLastNodes(dbSignatures);
+
+			if(loadAllNodesInWM)
+			{
+				if(postInitEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading all nodes to WM...")));
+				std::set<int> ids;
+				_dbDriver->getAllNodeIds(ids);
+				_dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures);
+			}
+			else
+			{
+				// load previous session working memory
+				if(postInitEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading last nodes to WM...")));
+				_dbDriver->loadLastNodes(dbSignatures);
+			}
 			for(std::list<Signature*>::reverse_iterator iter=dbSignatures.rbegin(); iter!=dbSignatures.rend(); ++iter)
 			{
 				// ignore bad signatures
@@ -175,7 +189,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 					delete *iter;
 				}
 			}
-			if(postInitEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading last signatures, done! (") + uNumber2Str(int(_workingMem.size() + _stMem.size())) + " loaded)"));
+			if(postInitEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading nodes to WM, done! (") + uNumber2Str(int(_workingMem.size() + _stMem.size())) + " loaded)"));
 
 			// Assign the last signature
 			if(_stMem.size()>0)
@@ -2130,6 +2144,7 @@ bool Memory::addLoopClosureLink(int oldId, int newId, const Transform & transfor
 	Signature * newS = _getSignature(newId);
 	if(oldS && newS)
 	{
+		_memoryChanged = true;
 		const std::map<int, Transform> & oldLoopclosureIds = oldS->getLoopClosureIds();
 		if(oldLoopclosureIds.size() && oldLoopclosureIds.find(newS->id()) != oldLoopclosureIds.end())
 		{

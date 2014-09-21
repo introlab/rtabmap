@@ -64,6 +64,7 @@ public:
 
 protected:
 	virtual void resizeEvent(QResizeEvent* anEvent);
+	virtual void closeEvent(QCloseEvent* event);
 
 private slots:
 	void openDatabase();

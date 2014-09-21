@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>19</number>
+                <number>7</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -2790,6 +2790,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
+                      <item row="4" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_badSignaturesIgnored">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="4" column="1">
                        <widget class="QLabel" name="label_retrieved_3">
                         <property name="text">
@@ -2800,13 +2810,23 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="0">
-                       <widget class="QCheckBox" name="general_checkBox_badSignaturesIgnored">
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_retrieved_4">
+                        <property name="text">
+                         <string>Initialize the Woking Memory with all nodes from Long-Term memory, instead of only nodes of the last session. This may be useful in localization mode, where less processing time is required than in SLAM mode, so more nodes can be kept in Working Memory.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_initWMWithAllNodes">
                         <property name="text">
                          <string/>
                         </property>
                         <property name="checked">
-                         <bool>true</bool>
+                         <bool>false</bool>
                         </property>
                        </widget>
                       </item>

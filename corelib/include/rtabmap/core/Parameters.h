@@ -157,7 +157,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, RecentWmRatio,           float, 0.2, 	"Ratio of locations after the last loop closure in WM that cannot be transferred.");
 	RTABMAP_PARAM(Mem, RehearsalIdUpdatedToNewOne, bool, false, "On merge, update to new id. When false, no copy.");
 	RTABMAP_PARAM(Mem, GenerateIds,             bool, true,     "True=Generate location Ids, False=use input image ids.");
-	RTABMAP_PARAM(Mem, BadSignaturesIgnored,    bool, false,     "Bad signatures are ignored.")
+	RTABMAP_PARAM(Mem, BadSignaturesIgnored,    bool, false,     "Bad signatures are ignored.");
+	RTABMAP_PARAM(Mem, InitWMWithAllNodes,      bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.")
 
 	// KeypointMemory (Keypoint-based)
 	RTABMAP_PARAM(Kp, PublishKeypoints,      bool, true, 		"Publishing keypoints.");

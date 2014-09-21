@@ -102,6 +102,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		// remove BruteForceGPU option
 		_ui->comboBox_dictionary_strategy->removeItem(4);
 		_ui->odom_bin_nn->removeItem(4);
+		_ui->reextract_nn->removeItem(4);
 	}
 
 #if PCL_VERSION_COMPARE(<, 1, 7, 2)
@@ -307,6 +308,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_checkBox_RehearsalIdUpdatedToNewOne->setObjectName(Parameters::kMemRehearsalIdUpdatedToNewOne().c_str());
 	_ui->general_checkBox_generateIds->setObjectName(Parameters::kMemGenerateIds().c_str());
 	_ui->general_checkBox_badSignaturesIgnored->setObjectName(Parameters::kMemBadSignaturesIgnored().c_str());
+	_ui->general_checkBox_initWMWithAllNodes->setObjectName(Parameters::kMemInitWMWithAllNodes().c_str());
 
 	// Database
 	_ui->checkBox_dbInMemory->setObjectName(Parameters::kDbSqlite3InMemory().c_str());
