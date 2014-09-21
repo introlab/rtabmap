@@ -58,6 +58,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, ReactivateId,);
 	RTABMAP_STATS(Loop, Hypothesis_ratio,);
 	RTABMAP_STATS(Loop, Hypothesis_reactivated,);
+	RTABMAP_STATS(Loop, VisualInliers,);
 	RTABMAP_STATS(Loop, Last_loop_closure_parent,);
 	RTABMAP_STATS(Loop, Last_loop_closure_child,);
 

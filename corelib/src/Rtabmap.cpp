@@ -100,6 +100,11 @@ Rtabmap::Rtabmap() :
 	_toroIterations(Parameters::defaultRGBDToroIterations()),
 	_databasePath(""),
 	_optimizeFromGraphEnd(Parameters::defaultRGBDOptimizeFromGraphEnd()),
+	_reextractLoopClosureFeatures(Parameters::defaultLccReextractLoopClosureFeatures()),
+	_reextractNNType(Parameters::defaultLccReextractNNType()),
+	_reextractNNDR(Parameters::defaultLccReextractNNDR()),
+	_reextractFeatureType(Parameters::defaultLccReextractFeatureType()),
+	_reextractMaxWords(Parameters::defaultLccReextractMaxWords()),
 	_lcHypothesisId(0),
 	_lcHypothesisValue(0),
 	_retrievedId(0),
@@ -349,6 +354,11 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionMaxDiffID(), _localDetectMaxDiffID);
 	Parameters::parse(parameters, Parameters::kRGBDToroIterations(), _toroIterations);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
+	Parameters::parse(parameters, Parameters::kLccReextractLoopClosureFeatures(), _reextractLoopClosureFeatures);
+	Parameters::parse(parameters, Parameters::kLccReextractNNType(), _reextractNNType);
+	Parameters::parse(parameters, Parameters::kLccReextractNNDR(), _reextractNNDR);
+	Parameters::parse(parameters, Parameters::kLccReextractFeatureType(), _reextractFeatureType);
+	Parameters::parse(parameters, Parameters::kLccReextractMaxWords(), _reextractMaxWords);
 
 	// RGB-D SLAM stuff
 	if((iter=parameters.find(Parameters::kLccIcpType())) != parameters.end())
@@ -1254,6 +1264,7 @@ bool Rtabmap::process(const SensorData & data)
 	// Update loop closure links
 	// (updated: place this after retrieval to be sure that neighbors of the loop closure are in RAM)
 	//=============================================================
+	int loopClosureVisualInliers = 0; // for statistics
 	if(_lcHypothesisId>0)
 	{
 		//Compute transform if metric data are present
@@ -1261,7 +1272,65 @@ bool Rtabmap::process(const SensorData & data)
 		if(_rgbdSlamMode)
 		{
 			std::string rejectedMsg;
-			transform = _memory->computeVisualTransform(_lcHypothesisId, signature->id(), &rejectedMsg);
+			if(_reextractLoopClosureFeatures)
+			{
+				ParametersMap customParameters;
+				customParameters.insert(ParametersPair(Parameters::kLccBowInlierDistance(), uNumber2Str(_memory->getBowInlierDistance())));
+				customParameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(_memory->getBowIterations())));
+				customParameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(_memory->getBowMinInliers())));
+				customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(_memory->getBowMaxDepth())));
+				customParameters.insert(ParametersPair(Parameters::kLccBowForce2D(), uNumber2Str(_memory->getBowForce2D())));
+				customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
+				customParameters.insert(ParametersPair(Parameters::kMemImageKept(), "false"));
+				customParameters.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
+				customParameters.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(_reextractNNType))); // bruteforce
+				customParameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(_reextractNNDR)));
+				customParameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(_reextractFeatureType))); // FAST/BRIEF
+				customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(_reextractMaxWords)));
+
+				Memory memory(customParameters);
+
+				UTimer timeT;
+
+				// Add signatures
+				float fxA, fyA, cxA, cyA;
+				float fxB, fyB, cxB, cyB;
+				rtabmap::Transform localTransformA, localTransformB;
+
+				cv::Mat imageA, depthA;
+				_memory->getImageDepthRaw(signature->id(), imageA, depthA, fxA, fyA, cxA, cyA, localTransformA);
+				SensorData dataFrom(imageA, depthA, fxA, fyA, cxA, cyA, Transform::getIdentity(), localTransformA, 1);
+
+				UDEBUG("timeA = %fs", timeT.ticks());
+
+				cv::Mat imageB, depthB;
+				_memory->getImageDepthRaw(_lcHypothesisId, imageB, depthB, fxB, fyB, cxB, cyB, localTransformB);
+				SensorData dataTo(imageB, depthB, fxB, fyB, cxB, cyB, Transform::getIdentity(), localTransformB, 2);
+
+				UDEBUG("timeB = %fs", timeT.ticks());
+
+				if(dataFrom.isValid() && dataFrom.isMetric() && dataTo.isValid() && dataTo.isMetric())
+				{
+					memory.update(dataFrom);
+					UDEBUG("timeUpA = %fs", timeT.ticks());
+					memory.update(dataTo);
+					UDEBUG("timeUpB = %fs", timeT.ticks());
+
+					transform = memory.computeVisualTransform(2, 1, &rejectedMsg, &loopClosureVisualInliers);
+					UDEBUG("timeTransform = %fs", timeT.ticks());
+				}
+				else
+				{
+					// Fallback to normal way (raw data not kept in database...)
+					UWARN("Loop closure: Some images not found in memory for re-extracting "
+						  "features, is Mem/RawDataKept=false? Falling back with already extracted 3D features.");
+					transform = _memory->computeVisualTransform(_lcHypothesisId, signature->id(), &rejectedMsg, &loopClosureVisualInliers);
+				}
+			}
+			else
+			{
+				transform = _memory->computeVisualTransform(_lcHypothesisId, signature->id(), &rejectedMsg, &loopClosureVisualInliers);
+			}
 			if(!transform.isNull() && _globalLoopClosureIcpType > 0)
 			{
 				Transform icpTransform  = _memory->computeIcpTransform(_lcHypothesisId, signature->id(), transform, _globalLoopClosureIcpType == 1, &rejectedMsg);
@@ -1451,6 +1520,7 @@ bool Rtabmap::process(const SensorData & data)
 			statistics_.addStatistic(Statistics::kLoopVp_hypothesis(), vpHypothesis);
 			statistics_.addStatistic(Statistics::kLoopReactivateId(), _retrievedId);
 			statistics_.addStatistic(Statistics::kLoopHypothesis_ratio(), hypothesisRatio);
+			statistics_.addStatistic(Statistics::kLoopVisualInliers(), loopClosureVisualInliers);
 
 			statistics_.addStatistic(Statistics::kLocalLoopOdom_corrected(), scanMatchingSuccess?1:0);
 			statistics_.addStatistic(Statistics::kLocalLoopTime_closures(), localLoopClosuresInTimeFound);

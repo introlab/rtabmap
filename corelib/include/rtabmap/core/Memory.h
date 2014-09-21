@@ -115,14 +115,24 @@ public:
 	int getMapId(int signatureId) const;
 	std::vector<unsigned char> getImage(int signatureId) const;
 	void getImageDepth(
-			int locationId, std::vector<unsigned char> & rgb,
+			int locationId,
+			std::vector<unsigned char> & rgb,
 			std::vector<unsigned char> & depth,
 			std::vector<unsigned char> & depth2d,
 			float & fx,
 			float & fy,
 			float & cx,
 			float & cy,
-			Transform & localTransform) const;
+			Transform & localTransform);
+	void getImageDepthRaw(
+				int locationId,
+				cv::Mat & rgb,
+				cv::Mat & depth,
+				float & fx,
+				float & fy,
+				float & cx,
+				float & cy,
+				Transform & localTransform);
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}
 	bool isIncremental() const {return _incrementalMemory;}
@@ -171,8 +181,13 @@ public:
 			std::map<int, Transform> & poses,
 			std::multimap<int, Link> & links,
 			bool lookInDatabase = false);
-	Transform computeVisualTransform(int oldId, int newId, std::string * rejectedMsg = 0) const;
-	Transform computeVisualTransform(const Signature & oldS, const Signature & newS, std::string * rejectedMsg = 0) const;
+	float getBowInlierDistance() const {return _bowInlierDistance;}
+	int getBowIterations() const {return _bowIterations;}
+	int getBowMinInliers() const {return _bowMinInliers;}
+	float getBowMaxDepth() const {return _bowMaxDepth;}
+	bool getBowForce2D() const {return _bowForce2D;}
+	Transform computeVisualTransform(int oldId, int newId, std::string * rejectedMsg = 0, int * inliers = 0) const;
+	Transform computeVisualTransform(const Signature & oldS, const Signature & newS, std::string * rejectedMsg = 0, int * inliers = 0) const;
 	Transform computeIcpTransform(int oldId, int newId, Transform guess, bool icp3D, std::string * rejectedMsg = 0);
 	Transform computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess, bool icp3D, std::string * rejectedMsg = 0) const;
 	Transform computeScanMatchingTransform(
@@ -252,6 +267,7 @@ private:
 	float _bowInlierDistance;
 	int _bowIterations;
 	float _bowMaxDepth;
+	bool _bowForce2D;
 	int _icpDecimation;
 	float _icpMaxDepth;
 	float _icpVoxelSize;

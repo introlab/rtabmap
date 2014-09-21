@@ -167,6 +167,11 @@ private:
 	int _toroIterations;
 	std::string _databasePath;
 	bool _optimizeFromGraphEnd;
+	bool _reextractLoopClosureFeatures;
+	int _reextractNNType;
+	float _reextractNNDR;
+	int _reextractFeatureType;
+	int _reextractMaxWords;
 
 	int _lcHypothesisId;
 	float _lcHypothesisValue;

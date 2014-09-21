@@ -3153,7 +3153,6 @@ void MainWindow::viewClouds()
 	{
 		QWidget * window = new QWidget(this, Qt::Window);
 		window->setAttribute(Qt::WA_DeleteOnClose);
-		window->setWindowFlags(Qt::Dialog);
 		if(meshes.size())
 		{
 			window->setWindowTitle(tr("Meshes (%1 nodes)").arg(meshes.size()));

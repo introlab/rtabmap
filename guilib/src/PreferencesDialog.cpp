@@ -415,6 +415,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_bowInlierDistance->setObjectName(Parameters::kLccBowInlierDistance().c_str());
 	_ui->loopClosure_bowIterations->setObjectName(Parameters::kLccBowIterations().c_str());
 	_ui->loopClosure_bowMaxDepth->setObjectName(Parameters::kLccBowMaxDepth().c_str());
+	_ui->loopClosure_bowForce2D->setObjectName(Parameters::kLccBowForce2D().c_str());
+
+	_ui->groupBox_reextract->setObjectName(Parameters::kLccReextractLoopClosureFeatures().c_str());
+	_ui->reextract_nn->setObjectName(Parameters::kLccReextractNNType().c_str());
+	_ui->reextract_nndrRatio->setObjectName(Parameters::kLccReextractNNDR().c_str());
+	_ui->reextract_type->setObjectName(Parameters::kLccReextractFeatureType().c_str());
+	_ui->reextract_maxFeatures->setObjectName(Parameters::kLccReextractMaxWords().c_str());
 
 	_ui->globalDetection_icpType->setObjectName(Parameters::kLccIcpType().c_str());
 	_ui->globalDetection_icpMaxDistance->setObjectName(Parameters::kLccIcpMaxDistance().c_str());
@@ -1363,6 +1370,22 @@ bool PreferencesDialog::validateForm()
 		_ui->comboBox_dictionary_strategy->setCurrentIndex(VWDictionary::kNNBruteForce);
 	}
 
+	// BOW Reextract features type
+	if(_ui->reextract_nn->currentIndex() == VWDictionary::kNNFlannLSH && _ui->reextract_type->currentIndex() <= 1)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("With the selected feature type (SURF or SIFT), parameter \"Visual word->Nearest Neighbor\" "
+				   "cannot be LSH (used for binary descriptor). KD-tree is set instead."));
+		_ui->reextract_nn->setCurrentIndex(VWDictionary::kNNFlannKdTree);
+	}
+	else if(_ui->reextract_nn->currentIndex() == VWDictionary::kNNFlannKdTree && _ui->reextract_type->currentIndex() >1)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("With the selected feature type (ORB, FAST, FREAK or BRIEF), parameter \"Visual word->Nearest Neighbor\" "
+				   "cannot be KD-Tree (used for float descriptor). BruteForce matching is set instead."));
+		_ui->reextract_nn->setCurrentIndex(VWDictionary::kNNBruteForce);
+	}
+
 	// odom type
 	if(_ui->odom_bin_nn->currentIndex() == VWDictionary::kNNFlannLSH && _ui->odom_type->currentIndex() <= 1)
 	{
@@ -1896,7 +1919,9 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 						this->addParameters(_ui->groupBox_vh_epipolar2);
 					}
 				}
-				else if(comboBox == _ui->comboBox_detector_strategy || comboBox == _ui->odom_type)
+				else if(comboBox == _ui->comboBox_detector_strategy ||
+						comboBox == _ui->odom_type ||
+						comboBox == _ui->reextract_type)
 				{
 					if(value == 0) //  surf
 					{

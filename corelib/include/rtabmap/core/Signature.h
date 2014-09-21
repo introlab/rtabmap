@@ -114,6 +114,8 @@ public:
 	const std::map<int, int> & getWordsChanged() const {return _wordsChanged;}
 	void setImage(const std::vector<unsigned char> & image) {_image = image;}
 	const std::vector<unsigned char> & getImage() const {return _image;}
+	void setImageRaw(const cv::Mat & image) {_imageRaw = image;}
+	const cv::Mat & getImageRaw() const {return _imageRaw;}
 
 	//metric stuff
 	void setWords3(const std::multimap<int, pcl::PointXYZ> & words3) {_words3 = words3;}
@@ -130,6 +132,8 @@ public:
 	float getDepthCy() const {return _cy;}
 	const Transform & getPose() const {return _pose;}
 	const Transform & getLocalTransform() const {return _localTransform;}
+	void setDepthRaw(const cv::Mat & depth) {_depthRaw = depth;}
+	const cv::Mat & getDepthRaw() const {return _depthRaw;}
 
 private:
 	int _id;
@@ -159,6 +163,9 @@ private:
 	Transform _pose;
 	Transform _localTransform; // camera_link -> base_link
 	std::multimap<int, pcl::PointXYZ> _words3; // word <id, keypoint>
+
+	cv::Mat _imageRaw;
+	cv::Mat _depthRaw;
 };
 
 } // namespace rtabmap

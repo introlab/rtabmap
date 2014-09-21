@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1035</width>
-    <height>628</height>
+    <height>789</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>737</width>
-            <height>895</height>
+            <width>732</width>
+            <height>1198</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>9</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -4984,7 +4984,7 @@ Warning when set to false: when some nodes are transferred, the first referentia
                  <item>
                   <widget class="QGroupBox" name="groupBox_visualTransform2">
                    <property name="title">
-                    <string>Visual transformation</string>
+                    <string>Loop closure constraint</string>
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_49">
                     <item>
@@ -4998,7 +4998,7 @@ Warning when set to false: when some nodes are transferred, the first referentia
                      </widget>
                     </item>
                     <item>
-                     <layout class="QFormLayout" name="formLayout_6">
+                     <layout class="QGridLayout" name="gridLayout_23" columnstretch="0,1">
                       <item row="0" column="0">
                        <widget class="QSpinBox" name="loopClosure_bowMinInliers">
                         <property name="minimum">
@@ -5016,13 +5016,6 @@ Warning when set to false: when some nodes are transferred, the first referentia
                        <widget class="QLabel" name="label_2">
                         <property name="text">
                          <string>Minimum visual word correspondences to compute geometry transform.</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QLabel" name="label_14">
-                        <property name="text">
-                         <string>Maximum distance for visual word correspondences.</string>
                         </property>
                        </widget>
                       </item>
@@ -5045,10 +5038,10 @@ Warning when set to false: when some nodes are transferred, the first referentia
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="1">
-                       <widget class="QLabel" name="label_15">
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_14">
                         <property name="text">
-                         <string>Maximum iterations to compute the transform from visual words.</string>
+                         <string>Maximum distance for visual word correspondences.</string>
                         </property>
                        </widget>
                       </item>
@@ -5068,13 +5061,10 @@ Warning when set to false: when some nodes are transferred, the first referentia
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="1">
-                       <widget class="QLabel" name="label_146">
+                      <item row="2" column="1">
+                       <widget class="QLabel" name="label_15">
                         <property name="text">
-                         <string>Max feature depth. Note that parameter &quot;Visual Word&quot;-&gt;&quot;Max words depth&quot; is applied before this.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
+                         <string>Maximum iterations to compute the transform from visual words.</string>
                         </property>
                        </widget>
                       </item>
@@ -5091,7 +5081,228 @@ Warning when set to false: when some nodes are transferred, the first referentia
                         </property>
                        </widget>
                       </item>
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_146">
+                        <property name="text">
+                         <string>Max feature depth. Note that parameter &quot;Visual Word&quot;-&gt;&quot;Max words depth&quot; is applied before this.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QCheckBox" name="loopClosure_bowForce2D">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QLabel" name="label_184">
+                        <property name="text">
+                         <string>Force 2D transform (3DoF: x,y and yaw).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
                      </layout>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_reextract">
+                      <property name="title">
+                       <string>Re-extract features</string>
+                      </property>
+                      <property name="checkable">
+                       <bool>true</bool>
+                      </property>
+                      <property name="checked">
+                       <bool>false</bool>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_46">
+                       <item>
+                        <widget class="QLabel" name="label_171">
+                         <property name="text">
+                          <string>If not activated, when a loop closure constraint must be computed, the words already extracted for the loop closure detector are used. These words are limited (see Visual Word-&gt;Words Per Image) and matched to the loop closure detection vocabulary. When the vocabulary is large, there maybe less corresponding words on a loop closure.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLabel" name="label_182">
+                         <property name="text">
+                          <string>By activating the re-extraction of the features, the features from the two images will be re-extracted using the settings below, and matched directly instead of using the big vocabulary. This adds an overhead processing time but it will mostly produce more corresponding words between the images, so better transformation computed. We recommend to use binary features for fast extraction and matching.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLabel" name="label_183">
+                         <property name="text">
+                          <string>Note that this is used only for global loop closure, so not for local loop closure in time.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_25" columnstretch="0,1">
+                         <item row="3" column="0">
+                          <widget class="QComboBox" name="reextract_nn">
+                           <property name="currentIndex">
+                            <number>3</number>
+                           </property>
+                           <property name="sizeAdjustPolicy">
+                            <enum>QComboBox::AdjustToContents</enum>
+                           </property>
+                           <item>
+                            <property name="text">
+                             <string>FLANN Linear</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>FLANN KdTree</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>FLANN LSH</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Brute Force</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Brute Force GPU</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
+                         <item row="4" column="0">
+                          <widget class="QDoubleSpinBox" name="reextract_nndrRatio">
+                           <property name="decimals">
+                            <number>1</number>
+                           </property>
+                           <property name="minimum">
+                            <double>0.100000000000000</double>
+                           </property>
+                           <property name="maximum">
+                            <double>1.000000000000000</double>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.100000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>0.700000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QSpinBox" name="reextract_maxFeatures">
+                           <property name="maximum">
+                            <number>999999</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_180">
+                           <property name="text">
+                            <string>Max features extracted from the images (0 means inf).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="1">
+                          <widget class="QLabel" name="label_179">
+                           <property name="text">
+                            <string>Nearest neighbor strategy. FLANN KdTree must be used only with SURF/SIFT. FLANN LSH must be used only with binary feature detector.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="4" column="1">
+                          <widget class="QLabel" name="label_181">
+                           <property name="text">
+                            <string>NNDR ratio
+(A matching pair is accepted, if its distance is closer than X times the distance of the second nearest neighbor)
+Lower the ratio -&gt; higher the precision. 0 means disabled, matching the nearest.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QComboBox" name="reextract_type">
+                           <property name="currentIndex">
+                            <number>4</number>
+                           </property>
+                           <property name="sizeAdjustPolicy">
+                            <enum>QComboBox::AdjustToContents</enum>
+                           </property>
+                           <item>
+                            <property name="text">
+                             <string>SURF</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>SIFT</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>ORB</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>FAST+FREAK</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>FAST+BRIEF</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>GFTT+FREAK</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>GFTT+BRIEF</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_178">
+                           <property name="text">
+                            <string>Feature detector </string>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                      </layout>
+                     </widget>
                     </item>
                    </layout>
                   </widget>

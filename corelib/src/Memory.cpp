@@ -84,6 +84,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_bowInlierDistance(Parameters::defaultLccBowInlierDistance()),
 	_bowIterations(Parameters::defaultLccBowIterations()),
 	_bowMaxDepth(Parameters::defaultLccBowMaxDepth()),
+	_bowForce2D(Parameters::defaultLccBowForce2D()),
 
 	_icpDecimation(Parameters::defaultLccIcp3Decimation()),
 	_icpMaxDepth(Parameters::defaultLccIcp3MaxDepth()),
@@ -324,6 +325,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kLccBowInlierDistance(), _bowInlierDistance);
 	Parameters::parse(parameters, Parameters::kLccBowIterations(), _bowIterations);
 	Parameters::parse(parameters, Parameters::kLccBowMaxDepth(), _bowMaxDepth);
+	Parameters::parse(parameters, Parameters::kLccBowForce2D(), _bowForce2D);
 	Parameters::parse(parameters, Parameters::kLccIcp3Decimation(), _icpDecimation);
 	Parameters::parse(parameters, Parameters::kLccIcp3MaxDepth(), _icpMaxDepth);
 	Parameters::parse(parameters, Parameters::kLccIcp3VoxelSize(), _icpVoxelSize);
@@ -1636,7 +1638,7 @@ void Memory::rejectLoopClosure(int oldId, int newId)
 }
 
 // compute transform newId -> oldId
-Transform Memory::computeVisualTransform(int oldId, int newId, std::string * rejectedMsg) const
+Transform Memory::computeVisualTransform(int oldId, int newId, std::string * rejectedMsg, int * inliers) const
 {
 	const Signature * oldS = this->getSignature(oldId);
 	const Signature * newS = this->getSignature(newId);
@@ -1645,7 +1647,7 @@ Transform Memory::computeVisualTransform(int oldId, int newId, std::string * rej
 
 	if(oldS && newId)
 	{
-		return computeVisualTransform(*oldS, *newS, rejectedMsg);
+		return computeVisualTransform(*oldS, *newS, rejectedMsg, inliers);
 	}
 	else
 	{
@@ -1660,7 +1662,7 @@ Transform Memory::computeVisualTransform(int oldId, int newId, std::string * rej
 }
 
 // compute transform newId -> oldId
-Transform Memory::computeVisualTransform(const Signature & oldS, const Signature & newS, std::string * rejectedMsg) const
+Transform Memory::computeVisualTransform(const Signature & oldS, const Signature & newS, std::string * rejectedMsg, int * inliers) const
 {
 	Transform transform;
 	std::string msg;
@@ -1690,6 +1692,13 @@ Transform Memory::computeVisualTransform(const Signature & oldS, const Signature
 			if(!t.isNull() && inliersCount >= _bowMinInliers)
 			{
 				transform = t;
+				if(_bowForce2D)
+				{
+					UDEBUG("Forcing 2D...");
+					float x,y,z,r,p,yaw;
+					transform.getTranslationAndEulerAngles(x,y,z, r,p,yaw);
+					transform = util3d::transformFromEigen3f(pcl::getTransformation(x,y,0, 0, 0, yaw));
+				}
 			}
 			else if(inliersCount < _bowMinInliers)
 			{
@@ -1700,6 +1709,11 @@ Transform Memory::computeVisualTransform(const Signature & oldS, const Signature
 			{
 				msg = uFormat("Rejected identity with full inliers.");
 				UINFO(msg.c_str());
+			}
+
+			if(inliers)
+			{
+				*inliers = inliersCount;
 			}
 		}
 		else
@@ -2489,9 +2503,9 @@ void Memory::getImageDepth(
 		float & fy,
 		float & cx,
 		float & cy,
-		Transform & localTransform) const
+		Transform & localTransform)
 {
-	const Signature * s = this->getSignature(locationId);
+	Signature * s = this->_getSignature(locationId);
 	if(s)
 	{
 		rgb = s->getImage();
@@ -2506,6 +2520,79 @@ void Memory::getImageDepth(
 	if(rgb.empty() && this->isRawDataKept() && _dbDriver)
 	{
 		_dbDriver->getNodeData(locationId, rgb, depth, depth2d, fx, fy, cx, cy, localTransform);
+
+		if(s)
+		{
+			// keep in cache
+			if(!rgb.empty())
+			{
+				s->setImage(rgb);
+			}
+			if(!depth.empty())
+			{
+				s->setDepth(depth, fx, fy, cx, cy);
+			}
+			if(!depth2d.empty())
+			{
+				s->setDepth2D(depth2d);
+			}
+			if(!localTransform.isNull())
+			{
+				s->setLocalTransform(localTransform);
+			}
+		}
+	}
+}
+
+void Memory::getImageDepthRaw(
+		int locationId,
+		cv::Mat & rgb,
+		cv::Mat & depth,
+		float & fx,
+		float & fy,
+		float & cx,
+		float & cy,
+		Transform & localTransform)
+{
+	Signature * s = this->_getSignature(locationId);
+	if(s)
+	{
+		rgb = s->getImageRaw();
+		depth = s->getDepthRaw();
+		fx = s->getDepthFx();
+		fy = s->getDepthFy();
+		cx = s->getDepthCx();
+		cy = s->getDepthCy();
+		localTransform = s->getLocalTransform();
+	}
+	if(rgb.empty())
+	{
+		std::vector<unsigned char> compressedRgb;
+		std::vector<unsigned char> compressedDepth;
+		std::vector<unsigned char> comressedDepth2d;
+		getImageDepth(locationId, compressedRgb, compressedDepth, comressedDepth2d, fx, fy, cx, cy, localTransform);
+
+		//uncomressed data
+		util3d::CompressionThread ctImage(compressedRgb, true);
+		util3d::CompressionThread ctDepth(compressedDepth, true);
+		ctImage.start();
+		ctDepth.start();
+		ctImage.join();
+		ctDepth.join();
+		rgb = ctImage.getUncompressedData();
+		depth = ctDepth.getUncompressedData();
+		if(s)
+		{
+			//save it uncompressed in the signature
+			if(!rgb.empty())
+			{
+				s->setImageRaw(rgb);
+			}
+			if(!depth.empty())
+			{
+				s->setDepthRaw(depth);
+			}
+		}
 	}
 }
 
@@ -3110,6 +3197,8 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 			data.depthCx(),
 			data.depthCy(),
 			data.localTransform());
+		s->setImageRaw(data.image());
+		s->setDepthRaw(data.depth());
 	}
 	else
 	{
