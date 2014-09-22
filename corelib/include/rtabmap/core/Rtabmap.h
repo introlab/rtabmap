@@ -121,6 +121,7 @@ public:
 			bool global) const;
 	void getGraph(std::map<int, Transform> & poses,
 			std::multimap<int, Link> & constraints,
+			std::map<int, int> & mapIds,
 			bool optimized,
 			bool global);
 

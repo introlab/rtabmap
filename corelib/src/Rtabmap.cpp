@@ -2326,6 +2326,7 @@ void Rtabmap::get3DMap(std::map<int, std::vector<unsigned char> > & images,
 void Rtabmap::getGraph(
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> & constraints,
+		std::map<int, int> & mapIds,
 		bool optimized,
 		bool global)
 {
@@ -2339,6 +2340,18 @@ void Rtabmap::getGraph(
 		{
 			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
 			_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
+		}
+
+		std::set<int> ids = _memory->getWorkingMem(); // STM + WM
+		ids.insert(_memory->getStMem().begin(), _memory->getStMem().end());
+		if(global)
+		{
+			ids = _memory->getAllSignatureIds(); // STM + WM + LTM
+		}
+
+		for(std::set<int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
+		{
+			mapIds.insert(std::make_pair(*iter, _memory->getMapId(*iter)));
 		}
 	}
 }

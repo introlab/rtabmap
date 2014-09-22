@@ -155,6 +155,7 @@ void RtabmapThread::publishTOROGraph(bool optimized, bool full) const
 
 	_rtabmap->getGraph(poses,
 			constraints,
+			mapIds,
 			optimized,
 			full);
 
