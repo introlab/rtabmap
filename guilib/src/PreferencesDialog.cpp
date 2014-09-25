@@ -134,6 +134,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_imageHighestHypShown, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_beep, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->horizontalSlider_keypointsOpacity, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->spinBox_odomQualityWarnThr, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 
 	// Cloud rendering panel
 	_3dRenderingShowClouds.resize(2);
@@ -990,6 +991,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_imageHighestHypShown->setChecked(settings.value("imageHighestHypShown", _ui->checkBox_imageHighestHypShown->isChecked()).toBool());
 	_ui->checkBox_beep->setChecked(settings.value("beep", _ui->checkBox_beep->isChecked()).toBool());
 	_ui->horizontalSlider_keypointsOpacity->setValue(settings.value("keypointsOpacity", _ui->horizontalSlider_keypointsOpacity->value()).toInt());
+	_ui->spinBox_odomQualityWarnThr->setValue(settings.value("odomQualityThr", _ui->spinBox_odomQualityWarnThr->value()).toInt());
 
 	for(int i=0; i<2; ++i)
 	{
@@ -1201,6 +1203,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath)
 	settings.setValue("imageHighestHypShown", _ui->checkBox_imageHighestHypShown->isChecked());
 	settings.setValue("beep", _ui->checkBox_beep->isChecked());
 	settings.setValue("keypointsOpacity", _ui->horizontalSlider_keypointsOpacity->value());
+	settings.setValue("odomQualityThr", _ui->spinBox_odomQualityWarnThr->value());
 
 	for(int i=0; i<2; ++i)
 	{
