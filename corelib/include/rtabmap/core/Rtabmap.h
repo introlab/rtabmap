@@ -183,6 +183,7 @@ private:
 	// strategies for a type of signature or configuration.
 	EpipolarGeometry * _epipolarGeometry;
 	BayesFilter * _bayesFilter;
+	ParametersMap _lastParameters;
 
 	Memory * _memory;
 

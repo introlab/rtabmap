@@ -54,7 +54,7 @@ class RTABMAP_EXP Odometry
 {
 public:
 	virtual ~Odometry() {}
-	Transform process(SensorData & data, int * quality = 0);
+	Transform process(SensorData & data, int * quality = 0, int * features = 0, int * localMapSize = 0);
 	virtual void reset();
 
 	bool isLargeEnoughTransform(const Transform & transform);
@@ -72,7 +72,7 @@ public:
 	int getLocalHistory() const {return _localHistory;}
 
 private:
-	virtual Transform computeTransform(const SensorData & image, int * quality = 0) = 0;
+	virtual Transform computeTransform(const SensorData & image, int * quality = 0, int * features = 0, int * localMapSize = 0) = 0;
 
 private:
 	int _maxFeatures;
@@ -106,7 +106,7 @@ public:
 	const Memory * getMemory() const {return _memory;}
 
 private:
-	virtual Transform computeTransform(const SensorData & image, int * quality = 0);
+	virtual Transform computeTransform(const SensorData & image, int * quality = 0, int * features = 0, int * localMapSize = 0);
 
 private:
 	Memory * _memory;
@@ -127,7 +127,7 @@ public:
 	void reset();
 
 private:
-	virtual Transform computeTransform(const SensorData & image, int * quality = 0);
+	virtual Transform computeTransform(const SensorData & image, int * quality = 0, int * features = 0, int * localMapSize = 0);
 
 private:
 	int _decimation;

@@ -342,7 +342,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(this, SIGNAL(statsReceived(rtabmap::Statistics)), this, SLOT(processStats(rtabmap::Statistics)));
 
 	qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
-	connect(this, SIGNAL(odometryReceived(rtabmap::SensorData, int, float)), this, SLOT(processOdometry(rtabmap::SensorData, int, float)));
+	connect(this, SIGNAL(odometryReceived(rtabmap::SensorData, int, float, int, int)), this, SLOT(processOdometry(rtabmap::SensorData, int, float, int, int)));
 
 	connect(this, SIGNAL(noMoreImagesReceived()), this, SLOT(stopDetection()));
 
@@ -531,7 +531,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 		   !_processingStatistics)
 		{
 			_lastOdometryProcessed = false; // if we receive too many odometry events!
-			emit odometryReceived(odomEvent->data(), odomEvent->quality(), odomEvent->time());
+			emit odometryReceived(odomEvent->data(), odomEvent->quality(), odomEvent->time(), odomEvent->features(), odomEvent->localMapSize());
 		}
 	}
 	else if(anEvent->getClassName().compare("ULogEvent") == 0)
@@ -554,7 +554,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 	}
 }
 
-void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality, float time)
+void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality, float time, int features, int localMapSize)
 {
 	Transform pose = data.pose();
 	if(pose.isNull())
@@ -583,6 +583,14 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality, 
 	if(time > 0)
 	{
 		_ui->statsToolBox->updateStat("Odometry/Time/ms", (float)data.id(), (float)time*1000.0f);
+	}
+	if(features >=0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/Features/", (float)data.id(), (float)features);
+	}
+	if(localMapSize >=0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/LocalMapSize/", (float)data.id(), (float)localMapSize);
 	}
 	if(!pose.isNull())
 	{

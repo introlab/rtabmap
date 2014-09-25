@@ -99,9 +99,9 @@ bool Odometry::isLargeEnoughTransform(const Transform & transform)
 			fabs(yaw) > _angularUpdate;
 }
 
-Transform Odometry::process(SensorData & data, int * quality)
+Transform Odometry::process(SensorData & data, int * quality, int * features, int * localMapSize)
 {
-	Transform t = this->computeTransform(data, quality);
+	Transform t = this->computeTransform(data, quality, features, localMapSize);
 	if(!t.isNull())
 	{
 		_resetCurrentCount = _resetCountdown;
@@ -210,7 +210,7 @@ std::multimap<int,pcl::PointXYZ> OdometryBOW::getLocalMeansMap() const
 }
 
 // return not null transform if odometry is correctly computed
-Transform OdometryBOW::computeTransform(const SensorData & data, int * quality)
+Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, int * features, int * localMapSize)
 {
 	UTimer timer;
 	Transform output;
@@ -388,6 +388,15 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality)
 		_memory->emptyTrash();
 	}
 
+	if(features)
+	{
+		*features = nFeatures;
+	}
+	if(localMapSize)
+	{
+		*localMapSize = (int)localMap_.size();
+	}
+
 	UINFO("Odom update time = %fs features=%d inliers=%d/%d local_map=%d[%d] dict=%d nodes=%d",
 			timer.elapsed(),
 			nFeatures,
@@ -430,7 +439,7 @@ void OdometryICP::reset()
 }
 
 // return not null transform if odometry is correctly computed
-Transform OdometryICP::computeTransform(const SensorData & data, int * quality)
+Transform OdometryICP::computeTransform(const SensorData & data, int * quality, int * features, int * localMapSize)
 {
 	UTimer timer;
 	Transform output;
@@ -605,10 +614,12 @@ void OdometryThread::mainLoop()
 	if(data.isValid())
 	{
 		int quality = -1;
+		int features = -1;
+		int localMapSize = -1;
 		UTimer time;
-		Transform pose = _odometry->process(data, &quality);
+		Transform pose = _odometry->process(data, &quality, &features, &localMapSize);
 		data.setPose(pose); // a null pose notify that odometry could not be computed
-		this->post(new OdometryEvent(data, quality, time.elapsed()));
+		this->post(new OdometryEvent(data, quality, time.elapsed(), features, localMapSize));
 	}
 }
 

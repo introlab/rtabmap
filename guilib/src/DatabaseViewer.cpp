@@ -907,7 +907,10 @@ void DatabaseViewer::detectMoreLoopClosures()
 	std::multimap<int, rtabmap::Link> links = updateLinksWithModifications(links_);
 	optimizedPoses = optimizeGraph(ids, poses_, links);
 
-	std::multimap<int, int> clusters = util3d::radiusPosesClustering(optimizedPoses, 0.1, 0.1);
+	std::multimap<int, int> clusters = util3d::radiusPosesClustering(
+			optimizedPoses,
+			ui_->doubleSpinBox_detectMore_radius->value(),
+			ui_->doubleSpinBox_detectMore_angle->value());
 	int added = 0;
 	for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!= clusters.end(); ++iter)
 	{

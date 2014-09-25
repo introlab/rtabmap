@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1076</width>
-    <height>582</height>
+    <height>665</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -909,6 +909,58 @@
         <widget class="QCheckBox" name="checkBox_visual_2d">
          <property name="text">
           <string/>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="0">
+        <widget class="QLabel" name="label_29">
+         <property name="text">
+          <string>Detect more LCs: radius</string>
+         </property>
+        </widget>
+       </item>
+       <item row="9" column="0">
+        <widget class="QLabel" name="label_30">
+         <property name="text">
+          <string>Detect more LCs: angle</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="1">
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_detectMore_radius">
+         <property name="suffix">
+          <string> m</string>
+         </property>
+         <property name="decimals">
+          <number>2</number>
+         </property>
+         <property name="maximum">
+          <double>10.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.300000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="9" column="1">
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_detectMore_angle">
+         <property name="suffix">
+          <string> rad</string>
+         </property>
+         <property name="decimals">
+          <number>2</number>
+         </property>
+         <property name="maximum">
+          <double>3.140000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.300000000000000</double>
          </property>
         </widget>
        </item>

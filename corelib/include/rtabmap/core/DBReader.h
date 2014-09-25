@@ -53,7 +53,14 @@ public:
 
 	bool init(int startIndex=0);
 	void setFrameRate(float frameRate);
-	void getNextImage(cv::Mat & image, cv::Mat & depth, cv::Mat & depth2d, float & fx, float & fy, float & cx, float & cy, Transform & localTransform, Transform & pose);
+	void getNextImage(cv::Mat & image,
+			cv::Mat & depth,
+			cv::Mat & depth2d,
+			float & fx, float & fy,
+			float & cx, float & cy,
+			Transform & localTransform,
+			Transform & pose,
+			int & seq);
 
 protected:
 	virtual void mainLoopBegin();

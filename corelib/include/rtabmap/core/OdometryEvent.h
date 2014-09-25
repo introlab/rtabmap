@@ -37,10 +37,13 @@ class OdometryEvent : public UEvent
 {
 public:
 	OdometryEvent(
-		const SensorData & data, int quality = -1, float time = 0.0f) :
+		const SensorData & data, int quality = -1, float time = 0.0f, int features = 0, int localMapSize = 0) :
 			_data(data),
 			_quality(quality),
-			_time(time){}
+			_time(time),
+			_features(features),
+			_localMapSize(localMapSize)
+	{}
 	virtual ~OdometryEvent() {}
 	virtual std::string getClassName() const {return "OdometryEvent";}
 
@@ -48,11 +51,15 @@ public:
 	const SensorData & data() const {return _data;}
 	int quality() const {return _quality;}
 	float time() const {return _time;} // seconds
+	int features() const {return _features;}
+	int localMapSize() const {return _localMapSize;}
 
 private:
 	SensorData _data;
 	int _quality;
 	float _time; // seconds
+	int _features;
+	int _localMapSize;
 };
 
 class OdometryResetEvent : public UEvent

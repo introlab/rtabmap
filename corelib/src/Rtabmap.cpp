@@ -422,6 +422,11 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		_bayesFilter->parseParameters(parameters);
 	}
+
+	for(ParametersMap::const_iterator iter = parameters.begin(); iter!=parameters.end(); ++iter)
+	{
+		uInsert(_lastParameters, ParametersPair(iter->first, iter->second));
+	}
 }
 
 std::string Rtabmap::getDatabasePath() const
@@ -1274,19 +1279,20 @@ bool Rtabmap::process(const SensorData & data)
 			std::string rejectedMsg;
 			if(_reextractLoopClosureFeatures)
 			{
-				ParametersMap customParameters;
-				customParameters.insert(ParametersPair(Parameters::kLccBowInlierDistance(), uNumber2Str(_memory->getBowInlierDistance())));
-				customParameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(_memory->getBowIterations())));
-				customParameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(_memory->getBowMinInliers())));
-				customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(_memory->getBowMaxDepth())));
-				customParameters.insert(ParametersPair(Parameters::kLccBowForce2D(), uNumber2Str(_memory->getBowForce2D())));
-				customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-				customParameters.insert(ParametersPair(Parameters::kMemImageKept(), "false"));
-				customParameters.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
-				customParameters.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(_reextractNNType))); // bruteforce
-				customParameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(_reextractNNDR)));
-				customParameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(_reextractFeatureType))); // FAST/BRIEF
-				customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(_reextractMaxWords)));
+				ParametersMap customParameters = _lastParameters;
+				// override some parameters
+				uInsert(customParameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
+				uInsert(customParameters, ParametersPair(Parameters::kMemImageKept(), "false"));
+				uInsert(customParameters, ParametersPair(Parameters::kMemSTMSize(), "0"));
+				uInsert(customParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(_reextractNNType))); // bruteforce
+				uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(_reextractNNDR)));
+				uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(_reextractFeatureType))); // FAST/BRIEF
+				uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(_reextractMaxWords)));
+
+				for(ParametersMap::iterator iter = customParameters.begin(); iter!=customParameters.end(); ++iter)
+				{
+					UINFO("%s=%s", iter->first.c_str(), iter->second.c_str());
+				}
 
 				Memory memory(customParameters);
 
