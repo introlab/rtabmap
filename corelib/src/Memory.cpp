@@ -1262,7 +1262,7 @@ std::list<int> Memory::cleanup(const std::list<int> & ignoredIds)
 	std::list<int> signaturesRemoved;
 
 	// bad signature
-	if((_lastSignature->isBadSignature() && _badSignaturesIgnored) || !_incrementalMemory)
+	if(_lastSignature && ((_lastSignature->isBadSignature() && _badSignaturesIgnored) || !_incrementalMemory))
 	{
 		if(_lastSignature->isBadSignature())
 		{
@@ -2373,7 +2373,6 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 
 		UDEBUG("Rehearsal merge %d and %d", oldS->id(), newS->id());
 
-		// During rehearsal in STM
 		if(_idUpdatedToNewOneRehearsal)
 		{
 			// update weight

@@ -105,6 +105,7 @@ Rtabmap::Rtabmap() :
 	_reextractNNDR(Parameters::defaultLccReextractNNDR()),
 	_reextractFeatureType(Parameters::defaultLccReextractFeatureType()),
 	_reextractMaxWords(Parameters::defaultLccReextractMaxWords()),
+	_startNewMapOnLoopClosure(Parameters::defaultRtabmapStartNewMapOnLoopClosure()),
 	_lcHypothesisId(0),
 	_lcHypothesisValue(0),
 	_retrievedId(0),
@@ -359,6 +360,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kLccReextractNNDR(), _reextractNNDR);
 	Parameters::parse(parameters, Parameters::kLccReextractFeatureType(), _reextractFeatureType);
 	Parameters::parse(parameters, Parameters::kLccReextractMaxWords(), _reextractMaxWords);
+	Parameters::parse(parameters, Parameters::kRtabmapStartNewMapOnLoopClosure(), _startNewMapOnLoopClosure);
 
 	// RGB-D SLAM stuff
 	if((iter=parameters.find(Parameters::kLccIcpType())) != parameters.end())
@@ -1681,6 +1683,19 @@ bool Rtabmap::process(const SensorData & data)
 		ULOGGER_INFO("Time creating stats = %f...", timeStatsCreation);
 	}
 
+	// If this option activated, add new nodes only if there are linked with a previous map.
+	// Used when rtabmap is first started, it will wait a
+	// global loop closure detection before starting the new map,
+	// otherwise it deletes the current node.
+	if(_startNewMapOnLoopClosure &&
+		_memory->isIncremental() &&                        // only in mapping mode
+		signature->getChildLoopClosureIds().size() == 0 && // no loop closure
+		signature->getNeighbors().size() == 0 &&           // no neighbors, alone in the current map
+		_memory->getWorkingMem().size()>1)                 // The working memory should not be empty
+	{
+		_memory->deleteLocation(signature->id());
+	}
+
 	// Pass this point signature should not be used, since it could be transferred...
 	signature = 0;
 
@@ -1751,64 +1766,67 @@ bool Rtabmap::process(const SensorData & data)
 
 	// Log info...
 	// TODO : use a specific class which will handle the RtabmapEvent
-	std::string logF = uFormat("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
-								totalTime,
-								timeMemoryUpdate,
-								timeReactivations,
-								timeLikelihoodCalculation,
-								timePosteriorCalculation,
-								timeHypothesesCreation,
-								timeHypothesesValidation,
-								timeRealTimeLimitReachedProcess,
-								timeStatsCreation,
-								_lcHypothesisValue,
-								0.0f,
-								0.0f,
-								0.0f,
-								0.0f,
-								0.0f,
-								vpHypothesis,
-								timeJoiningTrash,
-								rehearsalValue,
-								timeEmptyingTrash,
-								timeRetrievalDbAccess,
-								timeAddLoopClosureLink);
-	std::string logI = uFormat("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
-								_lcHypothesisId,
-								hypothesis.first,
-								(int)signaturesRemoved.size(),
-								0,
-								refWordsCount,
-								dictionarySize,
-								int(_memory->getWorkingMem().size()),
-								rejectedHypothesis?1:0,
-								0,
-								0,
-								int(signaturesRetrieved.size()),
-								lcHypothesisReactivated,
-								refUniqueWordsCount,
-								_retrievedId,
-								0.0f,
-								rehearsalMaxId,
-								rehearsalMaxId>0?1:0);
-	if(_statisticLogsBufferedInRAM)
+	if(_foutFloat && _foutInt)
 	{
-		_bufferedLogsF.push_back(logF);
-		_bufferedLogsI.push_back(logI);
-	}
-	else
-	{
-		if(_foutFloat)
+		std::string logF = uFormat("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+									totalTime,
+									timeMemoryUpdate,
+									timeReactivations,
+									timeLikelihoodCalculation,
+									timePosteriorCalculation,
+									timeHypothesesCreation,
+									timeHypothesesValidation,
+									timeRealTimeLimitReachedProcess,
+									timeStatsCreation,
+									_lcHypothesisValue,
+									0.0f,
+									0.0f,
+									0.0f,
+									0.0f,
+									0.0f,
+									vpHypothesis,
+									timeJoiningTrash,
+									rehearsalValue,
+									timeEmptyingTrash,
+									timeRetrievalDbAccess,
+									timeAddLoopClosureLink);
+		std::string logI = uFormat("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
+									_lcHypothesisId,
+									hypothesis.first,
+									(int)signaturesRemoved.size(),
+									0,
+									refWordsCount,
+									dictionarySize,
+									int(_memory->getWorkingMem().size()),
+									rejectedHypothesis?1:0,
+									0,
+									0,
+									int(signaturesRetrieved.size()),
+									lcHypothesisReactivated,
+									refUniqueWordsCount,
+									_retrievedId,
+									0.0f,
+									rehearsalMaxId,
+									rehearsalMaxId>0?1:0);
+		if(_statisticLogsBufferedInRAM)
 		{
-			fprintf(_foutFloat, "%s", logF.c_str());
+			_bufferedLogsF.push_back(logF);
+			_bufferedLogsI.push_back(logI);
 		}
-		if(_foutInt)
+		else
 		{
-			fprintf(_foutInt, "%s", logI.c_str());
+			if(_foutFloat)
+			{
+				fprintf(_foutFloat, "%s", logF.c_str());
+			}
+			if(_foutInt)
+			{
+				fprintf(_foutInt, "%s", logI.c_str());
+			}
 		}
+		UINFO("Time logging = %f...", timer.ticks());
+		//ULogger::flush();
 	}
-	UINFO("Time logging = %f...", timer.ticks());
-	//ULogger::flush();
 
 	return true;
 }

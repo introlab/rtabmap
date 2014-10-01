@@ -173,6 +173,7 @@ private:
 	float _reextractNNDR;
 	int _reextractFeatureType;
 	int _reextractMaxWords;
+	bool _startNewMapOnLoopClosure;
 
 	int _lcHypothesisId;
 	float _lcHypothesisValue;
