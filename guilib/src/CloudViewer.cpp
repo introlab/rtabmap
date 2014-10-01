@@ -209,11 +209,12 @@ bool CloudViewer::updateCloud(
 bool CloudViewer::addOrUpdateCloud(
 		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const Transform & pose)
+		const Transform & pose,
+		const QColor & color)
 {
 	if(!updateCloud(id, cloud, pose))
 	{
-		return addCloud(id, cloud, pose);
+		return addCloud(id, cloud, pose, color);
 	}
 	return true;
 }
@@ -221,11 +222,12 @@ bool CloudViewer::addOrUpdateCloud(
 bool CloudViewer::addOrUpdateCloud(
 		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const Transform & pose)
+		const Transform & pose,
+		const QColor & color)
 {
 	if(!updateCloud(id, cloud, pose))
 	{
-		return addCloud(id, cloud, pose);
+		return addCloud(id, cloud, pose, color);
 	}
 	return true;
 }
@@ -234,7 +236,8 @@ bool CloudViewer::addCloud(
 		const std::string & id,
 		const pcl::PCLPointCloud2Ptr & binaryCloud,
 		const Transform & pose,
-		bool rgb)
+		bool rgb,
+		const QColor & color)
 {
 	if(!_addedClouds.contains(id))
 	{
@@ -247,7 +250,7 @@ bool CloudViewer::addCloud(
 		 if(_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id))
 		{
 			 // white
-			colorHandler.reset (new pcl::visualization::PointCloudColorHandlerCustom<pcl::PCLPointCloud2> (binaryCloud, 255, 255, 255));
+			colorHandler.reset (new pcl::visualization::PointCloudColorHandlerCustom<pcl::PCLPointCloud2> (binaryCloud, color.red(), color.green(), color.blue()));
 			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id);
 
 			// x,y,z
@@ -277,7 +280,8 @@ bool CloudViewer::addCloud(
 bool CloudViewer::addCloud(
 		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const Transform & pose)
+		const Transform & pose,
+		const QColor & color)
 {
 	if(!_addedClouds.contains(id))
 	{
@@ -285,7 +289,7 @@ bool CloudViewer::addCloud(
 
 		pcl::PCLPointCloud2Ptr binaryCloud(new pcl::PCLPointCloud2);
 		pcl::toPCLPointCloud2(*cloud, *binaryCloud);
-		return addCloud(id, binaryCloud, pose, true);
+		return addCloud(id, binaryCloud, pose, true, color);
 	}
 	return false;
 }
@@ -293,7 +297,8 @@ bool CloudViewer::addCloud(
 bool CloudViewer::addCloud(
 		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const Transform & pose)
+		const Transform & pose,
+		const QColor & color)
 {
 	if(!_addedClouds.contains(id))
 	{
@@ -301,7 +306,7 @@ bool CloudViewer::addCloud(
 
 		pcl::PCLPointCloud2Ptr binaryCloud(new pcl::PCLPointCloud2);
 		pcl::toPCLPointCloud2(*cloud, *binaryCloud);
-		return addCloud(id, binaryCloud, pose, false);
+		return addCloud(id, binaryCloud, pose, false, color);
 	}
 	return false;
 }

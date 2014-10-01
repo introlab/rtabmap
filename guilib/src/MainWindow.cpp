@@ -747,6 +747,14 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					_depths2DMap.insert(iter->first, iter->second);
 				}
 			}
+
+			// map ids
+			for(std::map<int, int>::const_iterator iter = stat.getMapIds().begin();
+				iter != stat.getMapIds().end();
+				++iter)
+			{
+				_mapIds.insert(iter->first, iter->second);
+			}
 		}
 
 		int rehearsed = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
@@ -1335,7 +1343,13 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
 			cloud->clear();
 			pcl::copyPointCloud(*cloudWithNormals, *cloud);
 		}
-		if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloud, pose))
+		QColor color = Qt::gray;
+		int mapId = _mapIds.value(nodeId, -1);
+		if(mapId >= 0)
+		{
+			color = (Qt::GlobalColor)(mapId % 12 + 7 );
+		}
+		if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloud, pose, color))
 		{
 			UERROR("Adding cloud %d to viewer failed!", nodeId);
 		}
@@ -1360,6 +1374,12 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose)
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 	cv::Mat depth2d = util3d::uncompressData(_depths2DMap.value(nodeId));
 	cloud = util3d::depth2DToPointCloud(depth2d);
+	QColor color = Qt::red;
+	int mapId = _mapIds.value(nodeId, -1);
+	if(mapId >= 0)
+	{
+		color = (Qt::GlobalColor)(mapId % 12 + 7 );
+	}
 	if(!_ui->widget_cloudViewer->addOrUpdateCloud(scanName, cloud, pose))
 	{
 		UERROR("Adding cloud %d to viewer failed!", nodeId);
@@ -1463,6 +1483,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		UINFO(" depthFys = %d", event.getDepthFys().size());
 		UINFO(" depthCxs = %d", event.getDepthCxs().size());
 		UINFO(" depthCys = %d", event.getDepthCys().size());
+		UINFO(" map ids = %d", event.getMapIds().size());
 		UINFO(" localTransforms = %d", event.getLocalTransforms().size());
 		UINFO(" poses = %d", event.getPoses().size());
 		UINFO(" constraints = %d", event.getConstraints().size());
@@ -1521,6 +1542,15 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			_depthCysMap.insert(iter->first, iter->second);
 		}
 		_initProgressDialog->appendText(tr("Inserted %1 depth cy parameters.").arg(_depthCysMap.size()));
+		_initProgressDialog->incrementStep();
+
+		for(std::map<int, int>::const_iterator iter = event.getMapIds().begin();
+			iter!=event.getMapIds().end();
+			++iter)
+		{
+			_mapIds.insert(iter->first, iter->second);
+		}
+		_initProgressDialog->appendText(tr("Inserted %1 map ids").arg(_mapIds.size()));
 		_initProgressDialog->incrementStep();
 
 		for(std::map<int, std::vector<unsigned char> >::const_iterator iter = event.getDepths2d().begin();
@@ -2715,6 +2745,7 @@ void MainWindow::clearTheCache()
 	_depthFysMap.clear();
 	_depthCxsMap.clear();
 	_depthCysMap.clear();
+	_mapIds.clear();
 	_localTransformsMap.clear();
 	_createdClouds.clear();
 	_createdScans.clear();
@@ -3047,6 +3078,13 @@ void MainWindow::viewScans()
 		{
 			_initProgressDialog->appendText(tr("Viewing the scan %1 (%2 points)...").arg(iter->first).arg(iter->second->size()));
 			_initProgressDialog->incrementStep();
+
+			QColor color = Qt::red;
+			int mapId = _mapIds.value(iter->first, -1);
+			if(mapId >= 0)
+			{
+				color = (Qt::GlobalColor)(mapId % 12 + 7 );
+			}
 			viewer->addCloud(uFormat("cloud%d",iter->first), iter->second, iter->first>0?_currentPosesMap.at(iter->first):Transform::getIdentity());
 			_initProgressDialog->appendText(tr("Viewing the scan %1 (%2 points)... done.").arg(iter->first).arg(iter->second->size()));
 		}
@@ -3213,6 +3251,13 @@ void MainWindow::viewClouds()
 			{
 				_initProgressDialog->appendText(tr("Viewing the cloud %1 (%2 points)...").arg(iter->first).arg(iter->second->size()));
 				_initProgressDialog->incrementStep();
+
+				QColor color = Qt::gray;
+				int mapId = _mapIds.value(iter->first, -1);
+				if(mapId >= 0)
+				{
+					color = (Qt::GlobalColor)(mapId % 12 + 7 );
+				}
 				viewer->addCloud(uFormat("cloud%d",iter->first), iter->second, iter->first>0?_currentPosesMap.at(iter->first):Transform::getIdentity());
 				_initProgressDialog->appendText(tr("Viewing the cloud %1 (%2 points)... done.").arg(iter->first).arg(iter->second->size()));
 			}

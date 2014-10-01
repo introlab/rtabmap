@@ -781,7 +781,13 @@ void DatabaseViewer::view3DMap()
 
 							cloud = rtabmap::util3d::transformPointCloud(cloud, localTransform);
 
-							viewer->addCloud(uFormat("cloud%d", iter->first), cloud, pose);
+							QColor color = Qt::red;
+							int mapId = memory_->getMapId(iter->first);
+							if(mapId >= 0)
+							{
+								color = (Qt::GlobalColor)(mapId % 12 + 7 );
+							}
+							viewer->addCloud(uFormat("cloud%d", iter->first), cloud, pose, color);
 
 							UINFO("Generated %d (%d points)", iter->first, cloud->size());
 							progressDialog.appendText(QString("Generated %1 (%2 points)").arg(iter->first).arg(cloud->size()));

@@ -102,7 +102,7 @@ public:
 	void loadNeighbors(int signatureId, std::map<int, Transform> & neighbors) const;
 	void loadLoopClosures(int signatureId, std::map<int, Transform> & loopIds, std::map<int, Transform> & childIds) const;
 	void getWeight(int signatureId, int & weight) const;
-	void getAllNodeIds(std::set<int> & ids) const;
+	void getAllNodeIds(std::set<int> & ids, bool ignoreChildren = false) const;
 	void getLastNodeId(int & id) const;
 	void getLastWordId(int & id) const;
 	void getInvertedIndexNi(int signatureId, int & ni) const;
@@ -138,7 +138,7 @@ private:
 	virtual void getNodeDataQuery(int signatureId, std::vector<unsigned char> & image, std::vector<unsigned char> & depth, std::vector<unsigned char> & depth2d, float & fx, float & fy, float & cx, float & cy, Transform & localTransform) const = 0;
 	virtual void getNodeDataQuery(int signatureId, std::vector<unsigned char> & image) const = 0;
 	virtual void getPoseQuery(int signatureId, Transform & pose, int & mapId) const = 0;
-	virtual void getAllNodeIdsQuery(std::set<int> & ids) const = 0;
+	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const = 0;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const = 0;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const = 0;
 

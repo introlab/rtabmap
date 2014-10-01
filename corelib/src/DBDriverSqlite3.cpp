@@ -806,7 +806,7 @@ void DBDriverSqlite3::getPoseQuery(int signatureId, Transform & pose, int & mapI
 }
 
 
-void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids) const
+void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const
 {
 	if(_ppDb)
 	{
@@ -816,9 +816,21 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids) const
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		query << "SELECT id "
-			  << "FROM Node "
-			  << "ORDER BY id";
+		if(!ignoreChildren)
+		{
+			query << "SELECT id "
+				  << "FROM Node "
+				  << "ORDER BY id";
+		}
+		else
+		{
+			query << "SELECT id "
+				  << "FROM Node "
+				  << "LEFT OUTER JOIN Link "
+				  << "ON id = from_id "
+				  << "WHERE type!=1 "
+				  << "ORDER BY id";
+		}
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());

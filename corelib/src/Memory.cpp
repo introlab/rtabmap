@@ -160,7 +160,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 			{
 				if(postInitEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading all nodes to WM...")));
 				std::set<int> ids;
-				_dbDriver->getAllNodeIds(ids);
+				_dbDriver->getAllNodeIds(ids, true);
 				_dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures);
 			}
 			else

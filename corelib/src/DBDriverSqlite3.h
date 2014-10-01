@@ -87,7 +87,7 @@ private:
 			Transform & localTransform) const;
 	virtual void getNodeDataQuery(int signatureId, std::vector<unsigned char> & image) const;
 	virtual void getPoseQuery(int signatureId, Transform & pose, int & mapId) const;
-	virtual void getAllNodeIdsQuery(std::set<int> & ids) const;
+	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const;
 

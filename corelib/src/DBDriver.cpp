@@ -453,10 +453,10 @@ void DBDriver::loadLoopClosures(int signatureId, std::map<int, Transform> & loop
 }
 
 //TODO Check also in the trash ?
-void DBDriver::getAllNodeIds(std::set<int> & ids) const
+void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren) const
 {
 	_dbSafeAccessMutex.lock();
-	this->getAllNodeIdsQuery(ids);
+	this->getAllNodeIdsQuery(ids, ignoreChildren);
 	_dbSafeAccessMutex.unlock();
 }
 

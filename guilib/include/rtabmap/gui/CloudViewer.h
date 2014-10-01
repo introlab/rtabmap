@@ -80,28 +80,33 @@ public:
 	bool addOrUpdateCloud(
 		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const Transform & pose = Transform::getIdentity());
+		const Transform & pose = Transform::getIdentity(),
+		const QColor & color = Qt::gray);
 
 	bool addOrUpdateCloud(
 			const std::string & id,
 			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-			const Transform & pose = Transform::getIdentity());
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = Qt::gray);
 
 	bool addCloud(
 			const std::string & id,
 			const pcl::PCLPointCloud2Ptr & binaryCloud,
 			const Transform & pose,
-			bool rgb);
+			bool rgb,
+			const QColor & color = Qt::gray);
 
 	bool addCloud(
 		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const Transform & pose = Transform::getIdentity());
+		const Transform & pose = Transform::getIdentity(),
+		const QColor & color = Qt::gray);
 
 	bool addCloud(
 		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const Transform & pose = Transform::getIdentity());
+		const Transform & pose = Transform::getIdentity(),
+		const QColor & color = Qt::gray);
 
 	bool addCloudMesh(
 		const std::string & id,

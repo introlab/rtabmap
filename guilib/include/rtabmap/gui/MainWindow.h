@@ -255,6 +255,7 @@ private:
 	QMap<int, float> _depthFysMap;
 	QMap<int, float> _depthCxsMap;
 	QMap<int, float> _depthCysMap;
+	QMap<int, int> _mapIds;
 	QMap<int, Transform> _localTransformsMap;
 	std::map<int, Transform> _currentPosesMap;
 	QMap<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > _createdClouds;
