@@ -54,6 +54,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/VWDictionary.h"
 
 #include "rtabmap/gui/LoopClosureViewer.h"
+#include "rtabmap/gui/DataRecorder.h"
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -125,6 +126,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->pushButton_resetConfig, SIGNAL(clicked()), this, SLOT(resetConfig()));
 	connect(_ui->radioButton_basic, SIGNAL(toggled(bool)), this, SLOT(setupTreeView()));
 	connect(_ui->pushButton_testOdometry, SIGNAL(clicked()), this, SLOT(testOdometry()));
+	connect(_ui->pushButton_test_rgbd_camera, SIGNAL(clicked()), this, SLOT(testRGBDCamera()));
 
 	// General panel
 	connect(_ui->general_checkBox_imagesKept, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
@@ -2866,6 +2868,14 @@ void PreferencesDialog::testOdometry()
 
 void PreferencesDialog::testOdometry(int type)
 {
+	if(_cameraThread)
+	{
+		QMessageBox::warning(this,
+			   tr("RTAB-Map"),
+			   tr("A camera is already running!"));
+		return;
+	}
+
 	UASSERT(_odomThread == 0 && _cameraThread == 0);
 
 	CameraRGBD * camera = 0;
@@ -2936,6 +2946,7 @@ void PreferencesDialog::testOdometry(int type)
 		_odomThread = new OdometryThread(odometry); // take ownership of odometry
 
 		QWidget * window = new QWidget(this, Qt::Popup);
+		window->setWindowModality(Qt::WindowModal);
 		window->setAttribute(Qt::WA_DeleteOnClose);
 		window->setWindowFlags(Qt::Dialog);
 		window->setWindowTitle(tr("Odometry viewer"));
@@ -2990,6 +3001,110 @@ void PreferencesDialog::cleanOdometryTest()
 	_ui->pushButton_testOdometry->setEnabled(true);
 }
 
+void PreferencesDialog::cleanRGBDCameraTest()
+{
+	UDEBUG("");
+	if(_cameraThread)
+	{
+		_cameraThread->join(true);
+		delete _cameraThread;
+		_cameraThread = 0;
+	}
+	_ui->pushButton_test_rgbd_camera->setEnabled(true);
+}
+
+void PreferencesDialog::testRGBDCamera()
+{
+	if(_cameraThread)
+	{
+		QMessageBox::warning(this,
+			   tr("RTAB-Map"),
+			   tr("A camera is already running!"));
+	}
+
+	CameraRGBD * camera = 0;
+	if(this->getSourceRGBD() == kSrcOpenNI_PCL)
+	{
+		camera = new CameraOpenni(
+			this->getSourceOpenniDevice().toStdString(),
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform(),
+			this->getSourceOpenniFx(),
+			this->getSourceOpenniFy(),
+			this->getSourceOpenniCx(),
+			this->getSourceOpenniCy());
+	}
+	else if(this->getSourceRGBD() == kSrcOpenNI2)
+	{
+		camera = new CameraOpenNI2(
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform(),
+			this->getSourceOpenniFx(),
+			this->getSourceOpenniFy(),
+			this->getSourceOpenniCx(),
+			this->getSourceOpenniCy());
+
+	}
+	else if(this->getSourceRGBD() == kSrcFreenect)
+	{
+		camera = new CameraFreenect(
+			this->getSourceOpenniDevice().isEmpty()?0:atoi(this->getSourceOpenniDevice().toStdString().c_str()),
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform(),
+			this->getSourceOpenniFx(),
+			this->getSourceOpenniFy(),
+			this->getSourceOpenniCx(),
+			this->getSourceOpenniCy());
+	}
+	else if(this->getSourceRGBD() == kSrcOpenNI_CV || this->getSourceRGBD() == kSrcOpenNI_CV_ASUS)
+	{
+		camera = new CameraOpenNICV(
+			this->getSourceRGBD() == kSrcOpenNI_CV_ASUS,
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform(),
+			this->getSourceOpenniFx(),
+			this->getSourceOpenniFy(),
+			this->getSourceOpenniCx(),
+			this->getSourceOpenniCy());
+	}
+	else
+	{
+		UFATAL("RGBD Source type undefined!");
+	}
+
+	if(!camera->init())
+	{
+		QMessageBox::warning(this,
+			   tr("RTAB-Map"),
+			   tr("RGBD camera initialization failed!"));
+		delete camera;
+		camera = 0;
+	}
+
+
+	if(camera)
+	{
+		_ui->pushButton_test_rgbd_camera->setEnabled(false);
+
+		// Create DataRecorder without init it, just to show images...
+		DataRecorder * window = new DataRecorder(this);
+		window->setWindowModality(Qt::WindowModal);
+		window->setAttribute(Qt::WA_DeleteOnClose);
+		window->setWindowFlags(Qt::Dialog);
+		window->setWindowTitle(tr("RGBD camera viewer"));
+		window->setMinimumWidth(800);
+		window->setMinimumHeight(600);
+		connect( window, SIGNAL(destroyed(QObject*)), this, SLOT(cleanRGBDCameraTest()) );
+		window->registerToEventsManager();
+
+		_cameraThread = new CameraThread(camera);
+		UEventsManager::createPipe(_cameraThread, window, "CameraEvent");
+
+		window->showNormal();
+
+		_cameraThread->start();
+	}
+}
 
 void PreferencesDialog::calibrate()
 {

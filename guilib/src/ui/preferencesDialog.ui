@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>732</width>
-            <height>1198</height>
+            <y>-293</y>
+            <width>744</width>
+            <height>978</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>7</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1710,6 +1710,13 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             </size>
                            </property>
                           </spacer>
+                         </item>
+                         <item>
+                          <widget class="QPushButton" name="pushButton_test_rgbd_camera">
+                           <property name="text">
+                            <string>Test</string>
+                           </property>
+                          </widget>
                          </item>
                         </layout>
                        </item>

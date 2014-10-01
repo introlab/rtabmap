@@ -48,6 +48,7 @@ DataRecorder::DataRecorder(QWidget * parent) :
 {
 	qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
 
+	imageView_->setImageDepthShown(true);
 	QHBoxLayout * layout = new QHBoxLayout(this);
 	layout->addWidget(imageView_);
 	this->setLayout(layout);
@@ -111,10 +112,6 @@ void DataRecorder::addData(const rtabmap::SensorData & data)
 
 		UDEBUG("Time to process a message = %f s", time.ticks());
 	}
-	else
-	{
-		UWARN("CloudRecorder not initialized!");
-	}
 	--dataQueue_;
 }
 
@@ -139,8 +136,11 @@ void DataRecorder::handleEvent(UEvent * event)
 			if(camEvent->data().isValid())
 			{
 				UINFO("Receiving rate = %f Hz", 1.0f/timer_.ticks());
-				QMetaObject::invokeMethod(this, "addData", Q_ARG(rtabmap::SensorData, camEvent->data()));
-				++dataQueue_;
+				if(memory_)
+				{
+					QMetaObject::invokeMethod(this, "addData", Q_ARG(rtabmap::SensorData, camEvent->data()));
+					++dataQueue_;
+				}
 
 				if(dataQueue_ < 2 && this->isVisible())
 				{

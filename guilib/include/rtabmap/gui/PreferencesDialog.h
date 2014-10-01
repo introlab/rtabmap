@@ -235,6 +235,8 @@ private slots:
 	void openDatabaseViewer();
 	void cleanOdometryTest();
 	void testOdometry();
+	void cleanRGBDCameraTest();
+	void testRGBDCamera();
 	void calibrate();
 	void resetCalibration();
 
