@@ -32,20 +32,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-ExportCloudsDialog::ExportCloudsDialog(QWidget *parent, bool toSave) :
+ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	QDialog(parent)
 {
 	_ui = new Ui_ExportCloudsDialog();
 	_ui->setupUi(this);
-	if(toSave)
-	{
-		_ui->buttonBox->setStandardButtons(QDialogButtonBox::Cancel|QDialogButtonBox::Save);
-	}
 }
 
 ExportCloudsDialog::~ExportCloudsDialog()
 {
 	delete _ui;
+}
+
+void ExportCloudsDialog::setSaveButton()
+{
+	_ui->buttonBox->setStandardButtons(QDialogButtonBox::Cancel|QDialogButtonBox::Save);
+}
+
+void ExportCloudsDialog::setOkButton()
+{
+	_ui->buttonBox->setStandardButtons(QDialogButtonBox::Cancel|QDialogButtonBox::Ok);
 }
 
 bool ExportCloudsDialog::getAssemble() const

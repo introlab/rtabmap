@@ -127,6 +127,7 @@ public:
 
 	void setTrajectoryShown(bool shown);
 	void setTrajectorySize(int value);
+	void clearTrajectory();
 
 	void removeAllClouds(); //including meshes
 	bool removeCloud(const std::string & id); //including mesh

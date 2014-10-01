@@ -63,6 +63,7 @@ class PdfPlotCurve;
 class StatsToolBox;
 class DetailedProgressDialog;
 class TwistGridWidget;
+class ExportCloudsDialog;
 
 class RTABMAPGUI_EXP MainWindow : public QMainWindow, public UEventsHandler
 {
@@ -240,6 +241,7 @@ private:
 	//Dialogs
 	PreferencesDialog * _preferencesDialog;
 	AboutDialog * _aboutDialog;
+	ExportCloudsDialog * _exportDialog;
 
 	QSet<int> _lastIds;
 	int _lastId;

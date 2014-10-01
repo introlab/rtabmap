@@ -429,6 +429,13 @@ void CloudViewer::setTrajectorySize(int value)
 	_maxTrajectorySize = value;
 }
 
+void CloudViewer::clearTrajectory()
+{
+	_trajectory->clear();
+	_visualizer->removeShape("trajectory");
+	this->render();
+}
+
 void CloudViewer::removeAllClouds()
 {
 	_addedClouds.clear();
@@ -877,9 +884,7 @@ void CloudViewer::handleAction(QAction * a)
 	}
 	else if(a == _aClearTrajectory)
 	{
-		_trajectory->clear();
-		_visualizer->removeShape("trajectory");
-		this->render();
+		this->clearTrajectory();
 	}
 	else if(a == _aResetCamera)
 	{

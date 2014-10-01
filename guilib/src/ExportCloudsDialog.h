@@ -39,9 +39,12 @@ class ExportCloudsDialog : public QDialog
 	Q_OBJECT
 
 public:
-	ExportCloudsDialog(QWidget *parent = 0, bool toSave = false);
+	ExportCloudsDialog(QWidget *parent = 0);
 
 	virtual ~ExportCloudsDialog();
+
+	void setSaveButton();
+	void setOkButton();
 
 	bool getAssemble() const;
 	double getAssembleVoxel() const;

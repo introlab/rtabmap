@@ -110,6 +110,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_srcType(kSrcUndefined),
 	_preferencesDialog(0),
 	_aboutDialog(0),
+	_exportDialog(0),
 	_lastId(0),
 	_processingStatistics(false),
 	_odometryReceived(false),
@@ -134,6 +135,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 
 	// Create dialogs
 	_aboutDialog = new AboutDialog(this);
+	_exportDialog = new ExportCloudsDialog(this);
 
 	_ui = new Ui_mainWindow();
 	_ui->setupUi(this);
@@ -2717,7 +2719,8 @@ void MainWindow::clearTheCache()
 	_createdClouds.clear();
 	_createdScans.clear();
 	_ui->widget_cloudViewer->removeAllClouds();
-	_ui->widget_cloudViewer->render();
+	_ui->widget_cloudViewer->setBackgroundColor(Qt::black);
+	_ui->widget_cloudViewer->clearTrajectory();
 	_currentPosesMap.clear();
 	_odometryCorrection = Transform::getIdentity();
 	_lastOdomPose.setNull();
@@ -2737,7 +2740,15 @@ void MainWindow::clearTheCache()
 	_ui->label_stats_loopClosuresRejected->setText("0");
 	_refIds.clear();
 	_loopClosureIds.clear();
+	_ui->label_refId->clear();
+	_ui->label_matchId->clear();
 	_ui->graphicsView_graphView->clearAll();
+	_ui->imageView_source->clear();
+	_ui->imageView_loopClosure->clear();
+	_ui->imageView_source->resetTransform();
+	_ui->imageView_loopClosure->resetTransform();
+	_ui->imageView_source->setBackgroundBrush(QBrush(Qt::black));
+	_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
 }
 
 void MainWindow::updateElapsedTime()
@@ -3216,27 +3227,37 @@ bool MainWindow::getExportedClouds(
 		std::map<int, pcl::PolygonMesh::Ptr> & meshes,
 		bool toSave)
 {
-	ExportCloudsDialog * dialog = new ExportCloudsDialog(this, toSave);
-
-	if(dialog->exec() == QDialog::Accepted)
+	if(_exportDialog->isVisible())
+	{
+		return false;
+	}
+	if(toSave)
+	{
+		_exportDialog->setSaveButton();
+	}
+	else
+	{
+		_exportDialog->setOkButton();
+	}
+	if(_exportDialog->exec() == QDialog::Accepted)
 	{
 		std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
 
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
-		int mul = dialog->getMesh()&&!dialog->getGenerate()?3:dialog->getMLS()&&!dialog->getGenerate()?2:1;
+		int mul = _exportDialog->getMesh()&&!_exportDialog->getGenerate()?3:_exportDialog->getMLS()&&!_exportDialog->getGenerate()?2:1;
 		_initProgressDialog->setMaximumSteps(int(poses.size())*mul+1);
 
-		if(dialog->getAssemble())
+		if(_exportDialog->getAssemble())
 		{
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->getAssembledCloud(
 					poses,
-					dialog->getAssembleVoxel(),
-					dialog->getGenerate(),
-					dialog->getGenerateDecimation(),
-					dialog->getGenerateVoxel(),
-					dialog->getGenerateMaxDepth());
+					_exportDialog->getAssembleVoxel(),
+					_exportDialog->getGenerate(),
+					_exportDialog->getGenerateDecimation(),
+					_exportDialog->getGenerateVoxel(),
+					_exportDialog->getGenerateMaxDepth());
 
 			clouds.insert(std::make_pair(0, cloud));
 		}
@@ -3244,48 +3265,48 @@ bool MainWindow::getExportedClouds(
 		{
 			clouds = this->getClouds(
 					poses,
-					dialog->getGenerate(),
-					dialog->getGenerateDecimation(),
-					dialog->getGenerateVoxel(),
-					dialog->getGenerateMaxDepth());
+					_exportDialog->getGenerate(),
+					_exportDialog->getGenerateDecimation(),
+					_exportDialog->getGenerateVoxel(),
+					_exportDialog->getGenerateMaxDepth());
 		}
 
-		if(dialog->getMLS() || dialog->getMesh())
+		if(_exportDialog->getMLS() || _exportDialog->getMesh())
 		{
 			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::iterator iter=clouds.begin();
 				iter!= clouds.end();
 				++iter)
 			{
 				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-				if(dialog->getMLS())
+				if(_exportDialog->getMLS())
 				{
 					_initProgressDialog->appendText(tr("Smoothing the surface of cloud %1 using Moving Least Squares (MLS) algorithm... "
-							"[search radius=%2m]").arg(iter->first).arg(dialog->getMLSRadius()));
+							"[search radius=%2m]").arg(iter->first).arg(_exportDialog->getMLSRadius()));
 					_initProgressDialog->incrementStep();
 					QApplication::processEvents();
 
-					cloudWithNormals = util3d::computeNormalsSmoothed(iter->second, (float)dialog->getMLSRadius());
+					cloudWithNormals = util3d::computeNormalsSmoothed(iter->second, (float)_exportDialog->getMLSRadius());
 
 					iter->second->clear();
 					pcl::copyPointCloud(*cloudWithNormals, *iter->second);
 				}
-				else if(dialog->getMesh())
+				else if(_exportDialog->getMesh())
 				{
 					_initProgressDialog->appendText(tr("Computing surface normals of cloud %1 (without smoothing)... "
-								"[K neighbors=%2]").arg(iter->first).arg(dialog->getMeshNormalKSearch()));
+								"[K neighbors=%2]").arg(iter->first).arg(_exportDialog->getMeshNormalKSearch()));
 					_initProgressDialog->incrementStep();
 					QApplication::processEvents();
 
-					cloudWithNormals = util3d::computeNormals(iter->second, dialog->getMeshNormalKSearch());
+					cloudWithNormals = util3d::computeNormals(iter->second, _exportDialog->getMeshNormalKSearch());
 				}
 
-				if(dialog->getMesh())
+				if(_exportDialog->getMesh())
 				{
-					_initProgressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(dialog->getMeshGp3Radius()));
+					_initProgressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(_exportDialog->getMeshGp3Radius()));
 					_initProgressDialog->incrementStep();
 					QApplication::processEvents();
 
-					pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals,	dialog->getMeshGp3Radius());
+					pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals, _exportDialog->getMeshGp3Radius());
 					meshes.insert(std::make_pair(iter->first, mesh));
 				}
 			}
