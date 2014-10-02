@@ -407,8 +407,9 @@ void DatabaseViewer::updateIds()
 		std::map<int, int> nids = memory_->getNeighborsId(memory_->getLastWorkingSignature()->id(), 0, -1, true);
 		memory_->getMetricConstraints(uKeys(nids), poses_, links_, true);
 
-		ui_->spinBox_optimizationsFrom->setRange(1, memory_->getLastWorkingSignature()->id());
-		ui_->spinBox_optimizationsFrom->setValue(memory_->getLastWorkingSignature()->id());
+		int first = nids.begin()->first;
+		ui_->spinBox_optimizationsFrom->setRange(first, memory_->getLastWorkingSignature()->id());
+		ui_->spinBox_optimizationsFrom->setValue(first);
 	}
 
 	ui_->actionGenerate_TORO_graph_graph->setEnabled(false);
@@ -740,8 +741,8 @@ void DatabaseViewer::view3DMap()
 					progressDialog.incrementStep();
 
 					// create a window
-					QWidget * window = new QWidget(this, Qt::Window);
-					window->setAttribute(Qt::WA_DeleteOnClose);
+					QDialog * window = new QDialog(this, Qt::Window);
+					window->setModal(this->isModal());
 					window->setWindowTitle(tr("3D Map"));
 					window->setMinimumWidth(800);
 					window->setMinimumHeight(600);
@@ -752,8 +753,9 @@ void DatabaseViewer::view3DMap()
 					layout->addWidget(viewer);
 					viewer->setCameraLockZ(false);
 					window->setLayout(layout);
+					connect(window, SIGNAL(finished(int)), viewer, SLOT(clear()));
 
-					window->showNormal();
+					window->show();
 
 					for(std::map<int, Transform>::iterator iter = optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
 					{

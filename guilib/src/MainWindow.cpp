@@ -3056,8 +3056,7 @@ void MainWindow::viewScans()
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> scans;
 	if(getExportedScans(scans))
 	{
-		QWidget * window = new QWidget(this, Qt::Window);
-		window->setAttribute(Qt::WA_DeleteOnClose);
+		QDialog * window = new QDialog(this, Qt::Window);
 		window->setWindowFlags(Qt::Dialog);
 		window->setWindowTitle(tr("Scans (%1 nodes)").arg(scans.size()));
 		window->setMinimumWidth(800);
@@ -3069,6 +3068,7 @@ void MainWindow::viewScans()
 		QVBoxLayout *layout = new QVBoxLayout();
 		layout->addWidget(viewer);
 		window->setLayout(layout);
+		connect(window, SIGNAL(finished(int)), viewer, SLOT(clear()));
 
 		window->show();
 
@@ -3208,8 +3208,7 @@ void MainWindow::viewClouds()
 
 	if(getExportedClouds(clouds, meshes, false))
 	{
-		QWidget * window = new QWidget(this, Qt::Window);
-		window->setAttribute(Qt::WA_DeleteOnClose);
+		QDialog * window = new QDialog(this, Qt::Window);
 		if(meshes.size())
 		{
 			window->setWindowTitle(tr("Meshes (%1 nodes)").arg(meshes.size()));
@@ -3227,6 +3226,7 @@ void MainWindow::viewClouds()
 		QVBoxLayout *layout = new QVBoxLayout();
 		layout->addWidget(viewer);
 		window->setLayout(layout);
+		connect(window, SIGNAL(finished(int)), viewer, SLOT(clear()));
 
 		window->show();
 

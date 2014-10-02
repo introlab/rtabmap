@@ -1798,7 +1798,6 @@ void PreferencesDialog::selectSourceRGBD(Src src)
 void PreferencesDialog::openDatabaseViewer()
 {
 	DatabaseViewer * viewer = new DatabaseViewer(this);
-	viewer->setAttribute(Qt::WA_DeleteOnClose, true);
 	viewer->setWindowModality(Qt::WindowModal);
 	if(viewer->openDatabase(_ui->source_database_lineEdit_path->text()))
 	{
@@ -2978,16 +2977,19 @@ void PreferencesDialog::testOdometry(int type)
 
 		_odomThread = new OdometryThread(odometry); // take ownership of odometry
 
-		QWidget * window = new QWidget(this, Qt::Popup);
+		QDialog * window = new QDialog(this);
 		window->setWindowModality(Qt::WindowModal);
-		window->setAttribute(Qt::WA_DeleteOnClose);
-		window->setWindowFlags(Qt::Dialog);
 		window->setWindowTitle(tr("Odometry viewer"));
 		window->setMinimumWidth(800);
 		window->setMinimumHeight(600);
-		connect( window, SIGNAL(destroyed(QObject*)), this, SLOT(cleanOdometryTest()) );
+		connect( window, SIGNAL(finished(int)), this, SLOT(cleanOdometryTest()) );
 
-		OdometryViewer * odomViewer = new OdometryViewer(10, 2, 0.0, this->getOdomQualityWarnThr(), window);
+		OdometryViewer * odomViewer = new OdometryViewer(10,
+				_ui->spinBox_decimation_odom->value(),
+				_ui->doubleSpinBox_voxelSize_odom->value(),
+				this->getOdomQualityWarnThr(),
+				window);
+		connect( window, SIGNAL(finished(int)), odomViewer, SLOT(clear()) );
 
 		odomViewer->setCameraFree();
 		odomViewer->setGridShown(true);

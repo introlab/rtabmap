@@ -155,6 +155,7 @@ public slots:
 	void setCloudVisibility(const std::string & id, bool isVisible);
 	void setCloudOpacity(const std::string & id, double opacity = 1.0);
 	void setCloudPointSize(const std::string & id, int size);
+	virtual void clear() {removeAllClouds(); clearTrajectory();}
 
 protected:
 	virtual void keyReleaseEvent(QKeyEvent * event);

@@ -46,6 +46,9 @@ public:
 	OdometryViewer(int maxClouds = 10, int decimation = 2, float voxelSize = 0.0f, int qualityWarningThr=0, QWidget * parent = 0);
 	virtual ~OdometryViewer() {}
 
+public slots:
+	virtual void clear();
+
 protected:
 	void handleAction(QAction * a);
 	virtual void handleEvent(UEvent * event);

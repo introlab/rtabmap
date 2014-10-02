@@ -68,6 +68,15 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, i
 	menu()->addAction(_aPause);
 }
 
+void OdometryViewer::clear()
+{
+	dataMutex_.lock();
+	data_.clear();
+	dataMutex_.unlock();
+	clouds_.clear();
+	CloudViewer::clear();
+}
+
 void OdometryViewer::processData()
 {
 	rtabmap::SensorData data;
