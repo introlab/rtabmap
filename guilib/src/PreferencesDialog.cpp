@@ -44,6 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ui_preferencesDialog.h"
 
+#include "rtabmap/core/Version.h"
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/Odometry.h"
@@ -1101,6 +1102,34 @@ bool PreferencesDialog::readCoreSettings(const QString & filePath)
 
 
 	settings.beginGroup("Core");
+
+	// Compare version in ini with the current RTAB-Map version
+	QStringList version = settings.value("Version", "").toString().split('.');
+	if(version.size() == 3)
+	{
+		if(!RTABMAP_VERSION_COMPARE(version[0].toInt(), version[1].toInt(), version[2].toInt()))
+		{
+			if(path.contains(".rtabmap"))
+			{
+				UWARN("Version in the config file \"%s\" is more recent (\"%s\") than "
+					   "current RTAB-Map version used (\"%s\"). The config file will be upgraded "
+					   "to new version.",
+					   path.toStdString().c_str(),
+					   settings.value("Version", "").toString().toStdString().c_str(),
+					   RTABMAP_VERSION);
+			}
+			else
+			{
+				UERROR("Version in the config file \"%s\" is more recent (\"%s\") than "
+					   "current RTAB-Map version used (\"%s\"). New parameters (if there are some) will "
+					   "be ignored.",
+					   path.toStdString().c_str(),
+					   settings.value("Version", "").toString().toStdString().c_str(),
+					   RTABMAP_VERSION);
+			}
+		}
+	}
+
 	QStringList keys = settings.allKeys();
 	// Get profile
 	const rtabmap::ParametersMap & parameters = Parameters::getDefaultParameters();
@@ -1303,6 +1332,9 @@ void PreferencesDialog::writeCoreSettings(const QString & filePath)
 	}
 	QSettings settings(path, QSettings::IniFormat);
 	settings.beginGroup("Core");
+
+	// save current RTAB-Map version
+	settings.setValue("Version", QString(RTABMAP_VERSION));
 
 	const rtabmap::ParametersMap & parameters = Parameters::getDefaultParameters();
 	for(rtabmap::ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)

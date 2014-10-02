@@ -370,9 +370,10 @@ int main(int argc, char * argv[])
 	// Create tasks : memory is deleted
 	Rtabmap rtabmap;
 	// Disable statistics (we don't need them)
-	pm.insert(ParametersPair(Parameters::kRtabmapPublishStats(), uBool2Str(false)));
+	pm.insert(ParametersPair(Parameters::kRtabmapPublishStats(), "false"));
 	// use default working directory
 	pm.insert(ParametersPair(Parameters::kRtabmapWorkingDirectory(), Parameters::defaultRtabmapWorkingDirectory()));
+	pm.insert(ParametersPair(Parameters::kRGBDEnabled(), "false"));
 
 	rtabmap.init(pm);
 	rtabmap.setTimeThreshold(timeThreshold); // in ms

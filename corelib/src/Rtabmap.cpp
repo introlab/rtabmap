@@ -2390,13 +2390,45 @@ void Rtabmap::readParameters(const std::string & configFile, ParametersMap & par
 		for(CSimpleIniA::TKeyVal::const_iterator iter=keyValMap->begin(); iter!=keyValMap->end(); ++iter)
 		{
 			std::string key = (*iter).first.pItem;
-			key = uReplaceChar(key, '\\', '/'); // Ini files use \ by default for separators, so replace them
-			ParametersMap::iterator jter = parameters.find(key);
-			if(jter != parameters.end())
+			if(key.compare("Version") == 0)
 			{
-				parameters.erase(jter);
+				// Compare version in ini with the current RTAB-Map version
+				std::vector<std::string> version = uListToVector(uSplit((*iter).second, '.'));
+				if(version.size() == 3)
+				{
+					if(!RTABMAP_VERSION_COMPARE(std::atoi(version[0].c_str()), std::atoi(version[1].c_str()), std::atoi(version[2].c_str())))
+					{
+						if(configFile.find(".rtabmap") != std::string::npos)
+						{
+							UWARN("Version in the config file \"%s\" is more recent (\"%s\") than "
+								   "current RTAB-Map version used (\"%s\"). The config file will be upgraded "
+								   "to new version.",
+								   configFile.c_str(),
+								   (*iter).second,
+								   RTABMAP_VERSION);
+						}
+						else
+						{
+							UERROR("Version in the config file \"%s\" is more recent (\"%s\") than "
+								   "current RTAB-Map version used (\"%s\"). New parameters (if there are some) will "
+								   "be ignored.",
+								   configFile.c_str(),
+								   (*iter).second,
+								   RTABMAP_VERSION);
+						}
+					}
+				}
 			}
-			parameters.insert(ParametersPair(key, (*iter).second));
+			else
+			{
+				key = uReplaceChar(key, '\\', '/'); // Ini files use \ by default for separators, so replace them
+				ParametersMap::iterator jter = parameters.find(key);
+				if(jter != parameters.end())
+				{
+					parameters.erase(jter);
+				}
+				parameters.insert(ParametersPair(key, (*iter).second));
+			}
 		}
 	}
 	else
@@ -2411,6 +2443,9 @@ void Rtabmap::writeParameters(const std::string & configFile, const ParametersMa
 {
 	CSimpleIniA ini;
 	ini.LoadFile(configFile.c_str());
+
+	// Save current version
+	ini.SetValue("Core", "Version", RTABMAP_VERSION, NULL, true);
 
 	for(ParametersMap::const_iterator i=parameters.begin(); i!=parameters.end(); ++i)
 	{
