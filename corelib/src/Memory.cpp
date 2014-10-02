@@ -222,7 +222,36 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	if(_dbDriver && _dbDriver->isConnected())
 	{
 		if(postInitEvents) UEventsManager::post(new RtabmapEventInit("Loading dictionary..."));
-		_dbDriver->load(_vwd);
+		if(loadAllNodesInWM)
+		{
+			// load all referenced words in working memory
+			std::set<int> wordIds;
+			const std::map<int, Signature *> & signatures = this->getSignatures();
+			for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
+			{
+				const std::multimap<int, cv::KeyPoint> & words = i->second->getWords();
+				std::list<int> keys = uUniqueKeys(words);
+				wordIds.insert(keys.begin(), keys.end());
+			}
+			if(wordIds.size())
+			{
+				std::list<VisualWord*> words;
+				_dbDriver->loadWords(wordIds, words);
+				for(std::list<VisualWord*>::iterator iter = words.begin(); iter!=words.end(); ++iter)
+				{
+					_vwd->addWord(*iter);
+				}
+				// Get Last word id
+				int id = 0;
+				_dbDriver->getLastWordId(id);
+				_vwd->setLastWordId(id);
+			}
+		}
+		else
+		{
+			// load the last dictionary
+			_dbDriver->load(_vwd);
+		}
 		UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
 		_vwd->update();
 		if(postInitEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Loading dictionary, done! (%d words)", (int)_vwd->getUnusedWordsSize())));
@@ -230,26 +259,23 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 
 	if(postInitEvents) UEventsManager::post(new RtabmapEventInit(std::string("Adding word references...")));
 	// Enable loaded signatures
-	Signature * ss;
 	const std::map<int, Signature *> & signatures = this->getSignatures();
 	for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 	{
-		ss = this->_getSignature(i->first);
-		if(ss)
+		Signature * s = this->_getSignature(i->first);
+		UASSERT(s != 0);
+
+		const std::multimap<int, cv::KeyPoint> & words = s->getWords();
+		if(words.size())
 		{
-			const std::multimap<int, cv::KeyPoint> & words = ss->getWords();
-			if(words.size())
+			UDEBUG("node=%d, word references=%d", s->id(), words.size());
+			for(std::multimap<int, cv::KeyPoint>::const_iterator iter = words.begin(); iter!=words.end(); ++iter)
 			{
-				UDEBUG("node=%d, word references=%d", ss->id(), words.size());
-				for(std::multimap<int, cv::KeyPoint>::const_iterator iter = words.begin(); iter!=words.end(); ++iter)
-				{
-					_vwd->addWordRef(iter->first, i->first);
-				}
-				ss->setEnabled(true);
+				_vwd->addWordRef(iter->first, i->first);
 			}
+			s->setEnabled(true);
 		}
 	}
-
 	if(postInitEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Adding word references, done! (%d)", _vwd->getTotalActiveReferences())));
 
 	if(_vwd->getUnusedWordsSize())
