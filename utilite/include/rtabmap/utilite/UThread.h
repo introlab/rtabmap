@@ -255,7 +255,7 @@ private:
     State state_; 			/* The thread state. */
     Priority priority_; 	/* The thread priority. */
     Handle handle_; 	/* The thread handle. */
-#ifdef WIN32
+#ifdef _WIN32
     int threadId_; 			/* The thread id. */
 #else
     unsigned long threadId_; /* The thread id. */

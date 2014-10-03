@@ -23,7 +23,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #endif
 
@@ -262,7 +262,7 @@ std::string uFormatv (const char *fmt, va_list args)
     va_list argsTmp;
 
     while (1) {
-#if defined(WIN32) && !defined(__MINGW32__)
+#if defined(_WIN32) && !defined(__MINGW32__)
 	argsTmp = args;
 #else
 	va_copy(argsTmp, args);
@@ -299,7 +299,7 @@ std::string uFormat (const char *fmt, ...)
     return buf;
 }
 
-#ifdef WIN32
+#ifdef _WIN32
 // returned whar_t * must be deleted : delete [] wText;
 wchar_t * createWCharFromChar(const char * text)
 {

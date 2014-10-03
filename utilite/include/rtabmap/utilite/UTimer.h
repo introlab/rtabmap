@@ -22,7 +22,7 @@
 
 #include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #else
 #include <sys/time.h>
@@ -95,7 +95,7 @@ public:
     double ticks();
 
 private:
-#ifdef WIN32
+#ifdef _WIN32
     LARGE_INTEGER startTimeRecorded_; /* When we start the timer, timeRecorded is copied over lastTimeRecorded.*/
     LARGE_INTEGER stopTimeRecorded_;  /* When we stop the timer. */
 

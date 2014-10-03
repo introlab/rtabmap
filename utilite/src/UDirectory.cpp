@@ -19,7 +19,7 @@
 
 #include "rtabmap/utilite/UDirectory.h"
 
-#ifdef WIN32
+#ifdef _WIN32
   #include <Windows.h>
   #include <direct.h>
   #include <algorithm>
@@ -42,7 +42,7 @@
 
 #include "rtabmap/utilite/ULogger.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 
 bool sortCallback(const std::string & a, const std::string & b)
 {
@@ -118,7 +118,7 @@ void UDirectory::update()
 			endOfDir = true;
 		}
 		fileNames_.clear();
-#ifdef WIN32
+#ifdef _WIN32
 		WIN32_FIND_DATA fileInformation;
 	#ifdef UNICODE
 		wchar_t * pathAll = createWCharFromChar((path_+"\\*").c_str());
@@ -300,7 +300,7 @@ std::string UDirectory::currentDir(bool trailingSeparator)
 	std::string dir;
 	char * buffer;
 
-#ifdef WIN32
+#ifdef _WIN32
 	buffer = _getcwd(NULL, 0);
 #else
 	buffer = getcwd(NULL, MAXPATHLEN);
@@ -364,7 +364,7 @@ std::string UDirectory::homeDir()
 
 std::string UDirectory::separator()
 {
-#ifdef WIN32
+#ifdef _WIN32
 	return "\\";
 #else
 	return "/";

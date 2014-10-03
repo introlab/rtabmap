@@ -19,7 +19,7 @@
 
 #include "rtabmap/utilite/UProcessInfo.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 #include "Windows.h"
 #include "Psapi.h"
 #elif __APPLE__
@@ -39,7 +39,7 @@ long int UProcessInfo::getMemoryUsage()
 {
 	long int memoryUsage = -1;
 
-#ifdef WIN32
+#ifdef _WIN32
 		HANDLE hProc = GetCurrentProcess();
 		PROCESS_MEMORY_COUNTERS info;
 		BOOL okay = GetProcessMemoryInfo(hProc, &info, sizeof(info));

@@ -27,7 +27,7 @@
 
 #include <errno.h>
 
-#ifdef WIN32
+#ifdef _WIN32
 #include "rtabmap/utilite/Win32/UWin32.h"
 #define SEM_VALUE_MAX ((int) ((~0u) >> 1))
 #else
@@ -59,7 +59,7 @@ public:
 	 */
 	USemaphore( int initValue = 0 )
 	{
-#ifdef WIN32
+#ifdef _WIN32
 		S = CreateSemaphore(0,initValue,SEM_VALUE_MAX,0);
 #else
 		_available = initValue;
@@ -70,7 +70,7 @@ public:
 
 	virtual ~USemaphore()
 	{
-#ifdef WIN32
+#ifdef _WIN32
 		CloseHandle(S);
 #else
 		pthread_cond_destroy(&_cond);
@@ -84,7 +84,7 @@ public:
 	 * @see release()
 	 * @param n number to acquire
 	 */
-#ifdef WIN32
+#ifdef _WIN32
 	void acquire(int n = 1) const
 	{
 		while(n-- > 0)
@@ -112,7 +112,7 @@ public:
 	 * Try to acquire the semaphore, not a blocking call.
 	 * @return false if the semaphore can't be taken without waiting (value <= 0), true otherwise
 	 */
-#ifdef WIN32
+#ifdef _WIN32
 	int acquireTry() const
 	{
 		return ((WaitForSingleObject((HANDLE)S,INFINITE)==WAIT_OBJECT_0)?0:EAGAIN);
@@ -135,7 +135,7 @@ public:
 	 * Release the semaphore, increasing its value by 1 and
 	 * signaling waiting threads (which called acquire()).
 	 */
-#ifdef WIN32
+#ifdef _WIN32
 	int release(int n = 1) const
 	{
 		return (ReleaseSemaphore((HANDLE)S,n,0)?0:ERANGE);
@@ -153,7 +153,7 @@ public:
 	 * Get the USempahore's value.
 	 * @return the semaphore's value
 	 */
-#ifdef WIN32
+#ifdef _WIN32
 	int value() const
 	{
 		LONG V = -1; ReleaseSemaphore((HANDLE)S,0,&V); return V;
@@ -168,7 +168,7 @@ public:
 #endif
 	}
 
-#ifdef WIN32
+#ifdef _WIN32
 	/*
 	 * Reset the semaphore count.
 	 * @param init the initial value
@@ -182,7 +182,7 @@ public:
 #endif
 
 private:
-#ifdef WIN32
+#ifdef _WIN32
 	HANDLE S;
 #else
 	pthread_mutex_t _waitMutex;

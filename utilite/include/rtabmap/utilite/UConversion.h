@@ -236,7 +236,7 @@ std::string UTILITE_EXP uFormatv (const char *fmt, va_list ap);
  */
 std::string UTILITE_EXP uFormat (const char *fmt, ...);
 
-#ifdef WIN32
+#ifdef _WIN32
 /**
  * Convert multi-byte string to unicode (wide-char) string.
  * Note that returned whar_t * must be deleted : delete [] wText;

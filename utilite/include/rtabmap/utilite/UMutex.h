@@ -22,7 +22,7 @@
 
 #include <errno.h>
 
-#ifdef WIN32
+#ifdef _WIN32
   #include "rtabmap/utilite/Win32/UWin32.h"
 #else
   #include <pthread.h>
@@ -61,7 +61,7 @@ public:
 	 */
 	UMutex()
 	{
-#ifdef WIN32
+#ifdef _WIN32
 		InitializeCriticalSection(&C);
 #else
 		pthread_mutexattr_t attr;
@@ -74,7 +74,7 @@ public:
 
 	virtual ~UMutex()
 	{
-#ifdef WIN32
+#ifdef _WIN32
 		DeleteCriticalSection(&C);
 #else
 		pthread_mutex_unlock(&M); pthread_mutex_destroy(&M);
@@ -86,14 +86,14 @@ public:
 	 */
 	int lock() const
 	{
-#ifdef WIN32
+#ifdef _WIN32
 		EnterCriticalSection(&C); return 0;
 #else
 		return pthread_mutex_lock(&M);
 #endif
 	}
 
-#ifdef WIN32
+#ifdef _WIN32
 	#if(_WIN32_WINNT >= 0x0400)
 	int lockTry() const
 	{
@@ -112,7 +112,7 @@ public:
 	 */
 	int unlock() const
 	{
-#ifdef WIN32
+#ifdef _WIN32
 		LeaveCriticalSection(&C); return 0;
 #else
 		return pthread_mutex_unlock(&M);
@@ -120,7 +120,7 @@ public:
 	}
 
 	private:
-#ifdef WIN32
+#ifdef _WIN32
 		mutable CRITICAL_SECTION C;
 #else
 		mutable pthread_mutex_t M;

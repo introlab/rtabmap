@@ -163,7 +163,7 @@ void UThread::applyPriority()
 {
     if(handle_)
     {
-#ifdef WIN32
+#ifdef _WIN32
         int p = THREAD_PRIORITY_NORMAL;
         switch(priority_)
         {
@@ -209,7 +209,7 @@ void UThread::applyAffinity()
 {
 	if(cpuAffinity_>0)
 	{
-#ifdef WIN32
+#ifdef _WIN32
 #elif __APPLE__
 		thread_affinity_policy_data_t affPolicy;
 		affPolicy.affinity_tag = cpuAffinity_;

@@ -27,7 +27,7 @@
  * base form is not supported.
  * @see StateThread
  */
-#ifdef WIN32
+#ifdef _WIN32
   #include "rtabmap/utilite/Win32/UThreadC.h"
 #else
   #include "rtabmap/utilite/Posix/UThreadC.h"

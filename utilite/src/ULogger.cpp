@@ -26,11 +26,11 @@
 #include <string>
 #include <string.h>
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <sys/time.h>
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <Windows.h>
 #define COLOR_NORMAL FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED
 #define COLOR_RED FOREGROUND_RED | FOREGROUND_INTENSITY
@@ -331,7 +331,7 @@ void ULogger::write(ULogger::Level level,
 
     if(level >= level_)
     {
-#ifdef WIN32
+#ifdef _WIN32
     	int color = 0;
 #else
     	const char* color = NULL;
@@ -427,12 +427,12 @@ void ULogger::write(ULogger::Level level,
 		if(type_ != kTypeNoLog)
 		{
 			va_start(args, msg);
-#ifdef WIN32
+#ifdef _WIN32
 			HANDLE H = GetStdHandle(STD_OUTPUT_HANDLE);
 #endif
 			if(type_ == ULogger::kTypeConsole && printColored_)
 			{
-#ifdef WIN32
+#ifdef _WIN32
 				SetConsoleTextAttribute(H,color);
 #else
 				if(buffered_)
@@ -462,7 +462,7 @@ void ULogger::write(ULogger::Level level,
 			}
 			if(type_ == ULogger::kTypeConsole && printColored_)
 			{
-#ifdef WIN32
+#ifdef _WIN32
 				SetConsoleTextAttribute(H,COLOR_NORMAL);
 #else
 				if(buffered_)

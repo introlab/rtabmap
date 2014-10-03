@@ -57,7 +57,7 @@ void CloudViewer::mouseEventOccurred (const pcl::visualization::MouseEvent &even
 
 CloudViewer::CloudViewer(QWidget *parent) :
 		QVTKWidget(parent),
-#if defined(WIN32) || defined(__APPLE__)
+#if defined(_WIN32) || defined(__APPLE__)
 		_visualizer(new pcl::visualization::PCLVisualizer("PCLVisualizer")),
 #else
 		_visualizer(new pcl::visualization::PCLVisualizer("PCLVisualizer", false)),
@@ -81,7 +81,7 @@ CloudViewer::CloudViewer(QWidget *parent) :
 
 	this->SetRenderWindow(_visualizer->getRenderWindow());
 
-#if !defined(WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32) && !defined(__APPLE__)
 	_visualizer->setupInteractor(this->GetInteractor(), this->GetRenderWindow());
 #endif
 

@@ -1127,7 +1127,7 @@ UPlotAxis::UPlotAxis(Qt::Orientation orientation, float min, float max, QWidget 
 	{
 		_reversed = true; // default bottom->up
 	}
-#ifdef WIN32
+#ifdef _WIN32
 	this->setMinimumSize(15, 25);
 #else
 	this->setMinimumSize(15, 25);

@@ -25,7 +25,7 @@
 ///////////////////////
 UTimer::UTimer()
 {
-#ifdef WIN32
+#ifdef _WIN32
     QueryPerformanceFrequency(&frequency_);
 #endif
     start(); // This will initialize the private counters
@@ -33,7 +33,7 @@ UTimer::UTimer()
 
 UTimer::~UTimer() {}
 
-#ifdef WIN32
+#ifdef _WIN32
 double UTimer::now()
 {
     LARGE_INTEGER count, freq;
