@@ -397,6 +397,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_GFTT_useHarrisDetector->setObjectName(Parameters::kGFTTUseHarrisDetector().c_str());
 	_ui->doubleSpinBox_GFTT_k->setObjectName(Parameters::kGFTTK().c_str());
 
+	//BRISK
+	_ui->spinBox_BRISK_thresh->setObjectName(Parameters::kBRISKThresh().c_str());
+	_ui->spinBox_BRISK_octaves->setObjectName(Parameters::kBRISKOctaves().c_str());
+	_ui->doubleSpinBox_BRISK_patterScale->setObjectName(Parameters::kBRISKPatternScale().c_str());
+
 	// verifyHypotheses
 	_ui->comboBox_vh_strategy->setObjectName(Parameters::kRtabmapVhStrategy().c_str());
 	_ui->surf_spinBox_matchCountMinAccepted->setObjectName(Parameters::kVhEpMatchCountMin().c_str());
@@ -1993,6 +1998,10 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 					{
 						this->addParameters(_ui->groupBox_detector_gftt2);
 						this->addParameters(_ui->groupBox_detector_brief2);
+					}
+					else if(value == 7) //  brisk
+					{
+						this->addParameters(_ui->groupBox_detector_brisk2);
 					}
 				}
 				else if(comboBox == _ui->globalDetection_icpType)

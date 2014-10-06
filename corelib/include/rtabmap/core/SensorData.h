@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/RtabmapExp.h>
 #include <rtabmap/core/Transform.h>
 #include <opencv2/core/core.hpp>
+#include <opencv2/features2d/features2d.hpp>
 
 namespace rtabmap
 {
@@ -88,6 +89,14 @@ public:
 	const Transform & pose() const {return _pose;}
 	const Transform & localTransform() const {return _localTransform;}
 
+	void setFeatures(const std::vector<cv::KeyPoint> & keypoints, const cv::Mat & descriptors)
+	{
+		_keypoints = keypoints;
+		_descriptors = descriptors;
+	}
+	const std::vector<cv::KeyPoint> & keypoints() const {return _keypoints;}
+	const cv::Mat & descriptors() const {return _descriptors;}
+
 private:
 	cv::Mat _image;
 	int _id;
@@ -101,6 +110,10 @@ private:
 	float _cy;
 	Transform _pose;
 	Transform _localTransform;
+
+	// features
+	std::vector<cv::KeyPoint> _keypoints;
+	cv::Mat _descriptors;
 };
 
 }

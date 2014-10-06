@@ -226,6 +226,10 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(FREAK, PatternScale,          float, 22.0,  "Scaling of the description pattern.");
 	RTABMAP_PARAM(FREAK, NOctaves,              int, 4,        "Number of octaves covered by the detected keypoints.");
 
+	RTABMAP_PARAM(BRISK, Thresh,                int, 30,      "FAST/AGAST detection threshold score.");
+	RTABMAP_PARAM(BRISK, Octaves,               int, 3,       "Detection octaves. Use 0 to do single scale.");
+	RTABMAP_PARAM(BRISK, PatternScale,          float, 1.0,  "Apply this scale to the pattern used for sampling the neighbourhood of a keypoint.");
+
 	// BayesFilter
 	RTABMAP_PARAM(Bayes, VirtualPlacePriorThr,           float, 0.9, "Virtual place prior");
 	RTABMAP_PARAM_STR(Bayes, PredictionLC, "0.1 0.36 0.30 0.16 0.062 0.0151 0.00255 0.000324 2.5e-05 1.3e-06 4.8e-08 1.2e-09 1.9e-11 2.2e-13 1.7e-15 8.5e-18 2.9e-20 6.9e-23", "Prediction of loop closures (Gaussian-like, here with sigma=1.6) - Format: {VirtualPlaceProb, LoopClosureProb, NeighborLvl1, NeighborLvl2, ...}.");

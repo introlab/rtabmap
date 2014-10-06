@@ -81,7 +81,8 @@ public:
 		kFeatureFastFreak=3,
 		kFeatureFastBrief=4,
 		kFeatureGfttFreak=5,
-		kFeatureGfttBrief=6};
+		kFeatureGfttBrief=6,
+		kFeatureBrisk=7};
 
 public:
 	virtual ~Feature2D() {}
@@ -308,6 +309,28 @@ private:
 	int nOctaves_;
 
 	cv::FREAK * _freak;
+};
+
+//BRISK
+class RTABMAP_EXP BRISK : public Feature2D
+{
+public:
+	BRISK(const ParametersMap & parameters = ParametersMap());
+	virtual ~BRISK();
+
+	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureBrisk;}
+
+private:
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+private:
+	int thresh_;
+	int octaves_;
+	float patternScale_;
+
+	cv::BRISK * brisk_;
 };
 
 

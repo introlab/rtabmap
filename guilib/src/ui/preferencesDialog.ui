@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>17</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -3415,6 +3415,11 @@ generate the number of words requested.</string>
                           <string>GFTT+BRIEF</string>
                          </property>
                         </item>
+                        <item>
+                         <property name="text">
+                          <string>BRISK</string>
+                         </property>
+                        </item>
                        </widget>
                       </item>
                      </layout>
@@ -4447,6 +4452,95 @@ When set to false, no new words are added to dictionary, so no more updates are 
                  </item>
                 </layout>
                </widget>
+               <widget class="QWidget" name="page_25">
+                <layout class="QVBoxLayout" name="verticalLayout_47">
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_detector_brisk2">
+                   <property name="title">
+                    <string>BRISK</string>
+                   </property>
+                   <layout class="QGridLayout" name="gridLayout_26" columnstretch="0,1">
+                    <item row="0" column="1">
+                     <widget class="QLabel" name="label_191">
+                      <property name="text">
+                       <string>FAST/AGAST detection threshold score.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="0">
+                     <widget class="QDoubleSpinBox" name="doubleSpinBox_BRISK_patterScale">
+                      <property name="maximum">
+                       <double>10.000000000000000</double>
+                      </property>
+                      <property name="singleStep">
+                       <double>0.100000000000000</double>
+                      </property>
+                      <property name="value">
+                       <double>1.000000000000000</double>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QLabel" name="label_188">
+                      <property name="text">
+                       <string>Detection octaves. Use 0 to do single scale.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QSpinBox" name="spinBox_BRISK_octaves">
+                      <property name="maximum">
+                       <number>10</number>
+                      </property>
+                      <property name="value">
+                       <number>3</number>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLabel" name="label_189">
+                      <property name="text">
+                       <string>Apply this scale to the pattern used for sampling the neighbourhood of a keypoint.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="0">
+                     <widget class="QSpinBox" name="spinBox_BRISK_thresh">
+                      <property name="maximum">
+                       <number>9999</number>
+                      </property>
+                      <property name="value">
+                       <number>30</number>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="verticalSpacer_26">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>742</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
                <widget class="QWidget" name="page_19">
                 <layout class="QVBoxLayout" name="verticalLayout_13">
                  <item>
@@ -5297,7 +5391,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <item row="1" column="0">
                           <widget class="QComboBox" name="reextract_type">
                            <property name="currentIndex">
-                            <number>4</number>
+                            <number>0</number>
                            </property>
                            <property name="sizeAdjustPolicy">
                             <enum>QComboBox::AdjustToContents</enum>
@@ -5335,6 +5429,11 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            <item>
                             <property name="text">
                              <string>GFTT+BRIEF</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>BRISK</string>
                             </property>
                            </item>
                           </widget>
@@ -6075,6 +6174,11 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <item>
                          <property name="text">
                           <string>GFTT+BRIEF</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>BRISK</string>
                          </property>
                         </item>
                        </widget>

@@ -378,7 +378,7 @@ void VWDictionary::removeAllWordRef(int wordId, int signatureId)
 std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 							   int signatureId)
 {
-	UDEBUG("");
+	UDEBUG("id=%d descriptors=%d", signatureId, descriptors.rows);
 	UTimer timer;
 	std::list<int> wordIds;
 	if(descriptors.rows == 0 || descriptors.cols == 0)

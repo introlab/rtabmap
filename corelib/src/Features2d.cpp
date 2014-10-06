@@ -100,7 +100,14 @@ void filterKeypointsByDepth(
 				{
 					if(indexes[i] == 1)
 					{
-						memcpy(newDescriptors.ptr<float>(di++), descriptors.ptr<float>(i), descriptors.cols*sizeof(float));
+						if(descriptors.type() == CV_32FC1)
+						{
+							memcpy(newDescriptors.ptr<float>(di++), descriptors.ptr<float>(i), descriptors.cols*sizeof(float));
+						}
+						else // CV_8UC1
+						{
+							memcpy(newDescriptors.ptr<char>(di++), descriptors.ptr<char>(i), descriptors.cols*sizeof(char));
+						}
 					}
 				}
 				descriptors = newDescriptors;
@@ -146,7 +153,14 @@ void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors
 			kptsTmp[k] = keypoints[iter->second];
 			if(descriptors.rows)
 			{
-				memcpy(descriptorsTmp.ptr<float>(k), descriptors.ptr<float>(iter->second), descriptors.cols*sizeof(float));
+				if(descriptors.type() == CV_32FC1)
+				{
+					memcpy(descriptorsTmp.ptr<float>(k), descriptors.ptr<float>(iter->second), descriptors.cols*sizeof(float));
+				}
+				else
+				{
+					memcpy(descriptorsTmp.ptr<char>(k), descriptors.ptr<char>(iter->second), descriptors.cols*sizeof(char));
+				}
 			}
 		}
 		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, keypoints.size(), kptsTmp.size()?kptsTmp.back().response:0.0f);
@@ -839,6 +853,58 @@ cv::Mat GFTT_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<c
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
 	_freak->compute(image, keypoints, descriptors);
+	return descriptors;
+}
+
+//////////////////////////
+//BRISK
+//////////////////////////
+BRISK::BRISK(const ParametersMap & parameters) :
+	thresh_(Parameters::defaultBRISKThresh()),
+	octaves_(Parameters::defaultBRISKOctaves()),
+	patternScale_(Parameters::defaultBRISKPatternScale()),
+	brisk_(0)
+{
+	parseParameters(parameters);
+}
+
+BRISK::~BRISK()
+{
+	if(brisk_)
+	{
+		delete brisk_;
+	}
+}
+
+void BRISK::parseParameters(const ParametersMap & parameters)
+{
+	Parameters::parse(parameters, Parameters::kBRISKThresh(), thresh_);
+	Parameters::parse(parameters, Parameters::kBRISKOctaves(), octaves_);
+	Parameters::parse(parameters, Parameters::kBRISKPatternScale(), patternScale_);
+
+	if(brisk_)
+	{
+		delete brisk_;
+		brisk_ = 0;
+	}
+
+	brisk_ = new cv::BRISK(thresh_, octaves_, patternScale_);
+}
+
+std::vector<cv::KeyPoint> BRISK::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	std::vector<cv::KeyPoint> keypoints;
+	cv::Mat imgRoi(image, roi);
+	brisk_->detect(imgRoi, keypoints); // Opencv keypoints
+	return keypoints;
+}
+
+cv::Mat BRISK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+	brisk_->compute(image, keypoints, descriptors);
 	return descriptors;
 }
 

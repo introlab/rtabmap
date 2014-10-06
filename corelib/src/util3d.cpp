@@ -1136,11 +1136,6 @@ Transform transformFromXYZCorrespondences(
 	Transform transform;
 	if(cloud1->size() && cloud1->size() == cloud2->size())
 	{
-		// Not robust to outliers...
-		//Eigen::Matrix4f transformMatrix;
-		//pcl::registration::TransformationEstimationSVD<pcl::PointXYZ, pcl::PointXYZ> trans_est;
-		//trans_est.estimateRigidTransformation (*cloud2, *cloud1, transformMatrix);
-
 		// Robust to outliers RANSAC
 		pcl::CorrespondencesPtr correspondences(new pcl::Correspondences);
 		for(unsigned int i = 0; i<cloud1->size(); ++i)
@@ -1159,6 +1154,14 @@ Transform transformFromXYZCorrespondences(
 
 		UDEBUG("RANSAC inliers=%d outliers=%d", (int)correspondencesInliers.size(), (int)correspondences->size()-(int)correspondencesInliers.size());
 		transform = util3d::transformFromEigen4f(crsc.getBestTransformation());
+		
+		/*UDEBUG("RANSAC=%s", transform.prettyPrint().c_str());
+
+		pcl::registration::TransformationEstimationSVD<pcl::PointXYZ, pcl::PointXYZ> trans_est;
+		Eigen::Matrix4f transform_svd;
+		trans_est.estimateRigidTransformation (*cloud2, *cloud1, correspondencesInliers, transform_svd);
+		transform = util3d::transformFromEigen4f(transform_svd);
+		UDEBUG("SVD=%s", transform.prettyPrint().c_str());*/
 
 		if(correspondencesInliers.size() == correspondences->size() && transform.isIdentity())
 		{

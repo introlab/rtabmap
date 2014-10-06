@@ -154,7 +154,8 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 			group.compare("FAST") == 0 ||
 			group.compare("ORB") == 0 ||
 			group.compare("FREAK") == 0 ||
-			group.compare("GFTT") == 0)
+			group.compare("GFTT") == 0 ||
+			group.compare("BRISK") == 0)
 		{
 			customParameters.insert(*iter);
 		}
@@ -256,6 +257,8 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 						0,
 						&uniqueCorrespondences);
 
+				UDEBUG("localMap=%d, new=%d, unique correspondences=%d", (int)localMeansMap.size(), (int)newSignature->getWords3().size(), (int)uniqueCorrespondences.size());
+
 				if((int)inliers1->size() >= this->getMinInliers())
 				{
 					correspondences = inliers1->size();
@@ -266,6 +269,22 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 							this->getInlierDistance(),
 							this->getIterations(),
 							&inliers);
+
+
+					/*
+					//refine ICP test
+					bool hasConverged;
+					double fitness;
+					inliers2 = util3d::transformPointCloud(inliers2, transform);
+					Transform icpT = util3d::icp(inliers1,
+						inliers2,
+						0.02,
+						100,
+						hasConverged,
+						fitness);
+
+					transform = transform * icpT;
+					*/
 
 					if(quality)
 					{
@@ -371,6 +390,7 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 			localMap_.clear();
 			output.setIdentity();
 
+			int count = 0;
 			std::list<int> uniques = uUniqueKeys(newSignature->getWords3());
 			for(std::list<int>::iterator iter = uniques.begin(); iter!=uniques.end(); ++iter)
 			{
@@ -381,8 +401,13 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 					{
 						localMap_.insert(std::make_pair(*iter, std::make_pair(newSignature->id(), pt)));
 					}
+					else
+					{
+						++count;
+					}
 				}
 			}
+			UDEBUG("uniques=%d, pt not finite = %d", (int)uniques.size(),count);
 		}
 
 		_memory->emptyTrash();

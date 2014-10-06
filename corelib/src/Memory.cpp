@@ -455,6 +455,10 @@ void Memory::parseParameters(const ParametersMap & parameters)
 			_feature2D = new GFTT_BRIEF(parameters);
 			_featureType = Feature2D::kFeatureGfttBrief;
 			break;
+		case Feature2D::kFeatureBrisk:
+			_feature2D = new BRISK(parameters);
+			_featureType = Feature2D::kFeatureBrisk;
+			break;
 		case Feature2D::kFeatureSurf:
 		default:
 			_feature2D = new SURF(parameters);
@@ -3095,7 +3099,7 @@ private:
 Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 {
 	UASSERT(data.image().empty() || data.image().type() == CV_8UC1 || data.image().type() == CV_8UC3);
-	UASSERT(data.depth().empty() || data.depth().type() == CV_16UC1);
+	UASSERT(data.depth().empty() || data.depth().type() == CV_16UC1 || data.depth().type() == CV_32FC1);
 	UASSERT(data.depth2d().empty() || data.depth2d().type() == CV_32FC2);
 
 	PreUpdateThread preUpdateThread(_vwd);
@@ -3147,24 +3151,44 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 		preUpdateThread.start();
 	}
 
-	// Extract features
-	cv::Mat imageMono;
-	// convert to grayscale
-	if(data.image().channels() > 1)
+	if(data.keypoints().size() == 0)
 	{
-		cv::cvtColor(data.image(), imageMono, cv::COLOR_BGR2GRAY);
+		// Extract features
+		cv::Mat imageMono;
+		// convert to grayscale
+		if(data.image().channels() > 1)
+		{
+			cv::cvtColor(data.image(), imageMono, cv::COLOR_BGR2GRAY);
+		}
+		else
+		{
+			imageMono = data.image();
+		}
+
+		this->extractKeypointsAndDescriptors(imageMono,
+				data.depth(),
+				data.depthFx(), data.depthFy(),
+				data.depthCx(), data.depthCy(),
+				keypoints,
+				descriptors);
+
+		UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
+		if(descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))
+		{
+			descriptors = cv::Mat();
+		}
 	}
 	else
 	{
-		imageMono = data.image();
-	}
+		keypoints = data.keypoints();
+		descriptors = data.descriptors().clone();
 
-	this->extractKeypointsAndDescriptors(imageMono, data.depth(), data.depthFx(), data.depthFy(), data.depthCx(), data.depthCy(), keypoints, descriptors);
-
-	UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
-	if(descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))
-	{
-		descriptors = cv::Mat();
+		filterKeypointsByDepth(keypoints, descriptors,
+				data.depth(),
+				data.depthFx(), data.depthFy(),
+				data.depthCx(), data.depthCy(),
+				_wordsMaxDepth);
+		limitKeypoints(keypoints, descriptors, _wordsPerImageTarget);
 	}
 
 	if(_parallelized)
@@ -3215,8 +3239,13 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 	{
 		std::vector<unsigned char> imageBytes;
 		std::vector<unsigned char> depthBytes;
+		if(data.depth().type() == CV_32FC1)
+		{
+			UWARN("Keeping raw data in database: depth type is 32FC1, use 16UC1 depth format to avoid a conversion.");
+		}
+		cv::Mat depthMM = data.depth().type() == CV_32FC1?util3d::cvtDepthFromFloat(data.depth()):data.depth();
 		util3d::CompressionThread ctImage(data.image(), std::string(".jpg"));
-		util3d::CompressionThread ctDepth(data.depth(), std::string(".png"));
+		util3d::CompressionThread ctDepth(depthMM, std::string(".png"));
 		ctImage.start();
 		ctDepth.start();
 		ctImage.join();
