@@ -93,6 +93,9 @@ int main(int argc, char * argv[])
 	// Or SURF hessian treshold:
 	//   parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFHessianThreshold(), "150"));
 
+	// Appearance-based only, disable RGB-D mode
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDEnabled(), "false"));
+
 	if(localizationMode)
 	{
 		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "false"));
