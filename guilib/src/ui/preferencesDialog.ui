@@ -65,7 +65,7 @@
             <x>0</x>
             <y>0</y>
             <width>744</width>
-            <height>900</height>
+            <height>974</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>17</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -5260,7 +5260,7 @@ Warning when set to false: when some nodes are transferred, the first referentia
                        <bool>true</bool>
                       </property>
                       <property name="checked">
-                       <bool>false</bool>
+                       <bool>true</bool>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_46">
                        <item>
