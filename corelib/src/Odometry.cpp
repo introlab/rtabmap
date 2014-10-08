@@ -64,7 +64,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_linearUpdate(Parameters::defaultOdomLinearUpdate()),
 		_angularUpdate(Parameters::defaultOdomAngularUpdate()),
 		_resetCountdown(Parameters::defaultOdomResetCountdown()),
-		_localHistory(Parameters::defaultOdomLocalHistory()),
+		_localHistoryMaxSize(Parameters::defaultOdomLocalHistory()),
 		_pose(Transform::getIdentity()),
 		_resetCurrentCount(0)
 {
@@ -77,7 +77,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomWordsRatio(), _wordsRatio);
 	Parameters::parse(parameters, Parameters::kOdomMaxDepth(), _maxDepth);
 	Parameters::parse(parameters, Parameters::kOdomMaxWords(), _maxFeatures);
-	Parameters::parse(parameters, Parameters::kOdomLocalHistory(), _localHistory);
+	Parameters::parse(parameters, Parameters::kOdomLocalHistory(), _localHistoryMaxSize);
 }
 
 void Odometry::reset()
@@ -181,35 +181,6 @@ void OdometryBOW::reset()
 	localMap_.clear();
 }
 
-std::multimap<int,pcl::PointXYZ> OdometryBOW::getLocalMeansMap() const
-{
-	std::multimap<int,pcl::PointXYZ> localMeansMap;
-	for(std::multimap<int, std::pair<int, pcl::PointXYZ> >::const_iterator iter=localMap_.begin();
-		iter!= localMap_.end();)
-	{
-		int id = iter->first;
-		pcl::PointXYZ sumPt = iter->second.second;
-		int count = 1;
-		++iter;
-		std::multimap<int, std::pair<int, pcl::PointXYZ> >::const_iterator jter=iter;
-		while(jter->first == id && jter!= localMap_.end())
-		{
-			sumPt.x += jter->second.second.x;
-			sumPt.y += jter->second.second.y;
-			sumPt.z += jter->second.second.z;
-			++count;
-			++jter;
-		}
-		iter = jter;
-
-		sumPt.x /= float(count);
-		sumPt.y /= float(count);
-		sumPt.z /= float(count);
-		localMeansMap.insert(std::make_pair(id, sumPt));
-	}
-	return localMeansMap;
-}
-
 // return not null transform if odometry is correctly computed
 Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, int * features, int * localMapSize)
 {
@@ -243,26 +214,24 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 				pcl::PointCloud<pcl::PointXYZ>::Ptr inliers1(new pcl::PointCloud<pcl::PointXYZ>); // previous
 				pcl::PointCloud<pcl::PointXYZ>::Ptr inliers2(new pcl::PointCloud<pcl::PointXYZ>); // new
 
-				//Create the local map with mean of all features
-				std::multimap<int, pcl::PointXYZ> localMeansMap = getLocalMeansMap();
-
 				// No need to set max depth here, it is already applied in extractKeypointsAndDescriptors() above.
 				// Also! the localMap_ have points not in camera frame anymore (in local map frame), so filtering
 				// by depth here is wrong!
 				util3d::findCorrespondences(
-						localMeansMap,
+						localMap_,
 						newSignature->getWords3(),
 						*inliers1,
 						*inliers2,
 						0,
 						&uniqueCorrespondences);
 
-				UDEBUG("localMap=%d, new=%d, unique correspondences=%d", (int)localMeansMap.size(), (int)newSignature->getWords3().size(), (int)uniqueCorrespondences.size());
+				UDEBUG("localMap=%d, new=%d, unique correspondences=%d", (int)localMap_.size(), (int)newSignature->getWords3().size(), (int)uniqueCorrespondences.size());
 
 				if((int)inliers1->size() >= this->getMinInliers())
 				{
 					correspondences = inliers1->size();
 
+					// the transform returned is global odometry pose, not incremental one
 					transform = util3d::transformFromXYZCorrespondences(
 							inliers2,
 							inliers1,
@@ -270,13 +239,34 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 							this->getIterations(),
 							&inliers);
 
+					if(!transform.isNull())
+					{
+						// make it incremental
+						transform = this->getPose().inverse() * transform;
+
+						UDEBUG("Odom transform = %s", transform.prettyPrint().c_str());
+					}
+					else
+					{
+						UDEBUG("Odom transform null");
+						//pcl::io::savePCDFile("from.pcd", *inliers1);
+						//inliers2 = util3d::transformPointCloud(inliers2, this->getPose());
+						//pcl::io::savePCDFile("to.pcd", *inliers2);
+						//inliers2 = util3d::transformPointCloud(inliers2, transform);
+						//pcl::io::savePCDFile("to_t.pcd", *inliers2);
+					}
+					/*pcl::io::savePCDFile("from.pcd", *inliers1);
+					inliers2 = util3d::transformPointCloud(inliers2, this->getPose());
+					pcl::io::savePCDFile("to.pcd", *inliers2);
+					inliers2 = util3d::transformPointCloud(inliers2, transform);
+					pcl::io::savePCDFile("to_t.pcd", *inliers2);*/
 
 					/*
 					//refine ICP test
 					bool hasConverged;
 					double fitness;
 					inliers2 = util3d::transformPointCloud(inliers2, transform);
-					Transform icpT = util3d::icp(inliers1,
+					Transform icpT = util3d::icp(inliers1, <-- must be all correspondences, not only unique
 						inliers2,
 						0.02,
 						100,
@@ -309,78 +299,55 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 			}
 			else
 			{
-				if(this->getLocalHistory()<=0)
+				output = transform;
+				if(!isLargeEnoughTransform(transform))
 				{
-					output = this->getPose().inverse() * transform; // make it incremental
-					if(!isLargeEnoughTransform(transform))
-					{
-						// Transform not large enough, keep the old signature
-						_memory->deleteLocation(newSignature->id());
-					}
-					else
-					{
-						_memory->deleteLocation(previousSignature->id());
-						localMap_.clear();
-						// update local map
-						std::list<int> uniques = uUniqueKeys(newSignature->getWords3());
-						for(std::list<int>::iterator iter = uniques.begin(); iter!=uniques.end(); ++iter)
-						{
-							if(newSignature->getWords3().count(*iter) == 1)
-							{
-								const pcl::PointXYZ & pt = newSignature->getWords3().find(*iter)->second;
-								if(pcl::isFinite(pt))
-								{
-									pcl::PointXYZ pt2 = util3d::transformPoint(pt, transform);
-									localMap_.insert(std::make_pair(*iter, std::make_pair(newSignature->id(), pt2)));
-								}
-							}
-						}
-					}
+					// Transform not large enough, keep the old signature
+					_memory->deleteLocation(newSignature->id());
 				}
 				else
 				{
-					output = this->getPose().inverse() * transform; // make it incremental
-
-					if(isLargeEnoughTransform(transform))
+					// remove words if history max size is reached
+					while(localMap_.size() && (int)localMap_.size() > this->getLocalHistoryMaxSize() && _memory->getStMem().size()>1)
 					{
-						// update local map only if transform is large enough
-						std::list<int> uniques = uUniqueKeys(newSignature->getWords3());
-						for(std::list<int>::iterator iter = uniques.begin(); iter!=uniques.end(); ++iter)
+						int nodeId = *_memory->getStMem().begin();
+						std::list<int> removedPts;
+						_memory->deleteLocation(nodeId, &removedPts);
+						for(std::list<int>::iterator iter = removedPts.begin(); iter!=removedPts.end(); ++iter)
 						{
-							if(newSignature->getWords3().count(*iter) == 1)
+							localMap_.erase(*iter);
+						}
+					}
+
+					if(this->getLocalHistoryMaxSize() == 0 && localMap_.size() > 0 && localMap_.size() > newSignature->getWords3().size())
+					{
+						UERROR("Local map should have only words of the last added signature here! (size=%d, max history size=%d, newWords=%d)",
+								(int)localMap_.size(), this->getLocalHistoryMaxSize(), (int)newSignature->getWords3().size());
+					}
+
+					// update local map
+					std::list<int> uniques = uUniqueKeys(newSignature->getWords3());
+					Transform t = this->getPose()*output;
+					for(std::list<int>::iterator iter = uniques.begin(); iter!=uniques.end(); ++iter)
+					{
+						// Only add unique words not in local map
+						if(newSignature->getWords3().count(*iter) == 1)
+						{
+							// keep old word
+							if(localMap_.find(*iter) == localMap_.end())
 							{
 								const pcl::PointXYZ & pt = newSignature->getWords3().find(*iter)->second;
 								if(pcl::isFinite(pt))
 								{
-									pcl::PointXYZ pt2 = util3d::transformPoint(pt, transform);
-									localMap_.insert(std::make_pair(*iter, std::make_pair(newSignature->id(), pt2)));
+									pcl::PointXYZ pt2 = util3d::transformPoint(pt, t);
+									localMap_.insert(std::make_pair(*iter, pt2));
 								}
 							}
 						}
-						while(localMap_.size() && (int)uUniqueKeys(localMap_).size() > this->getLocalHistory() && _memory->getStMem().size()>1)
+						else
 						{
-							int nodeId = *_memory->getStMem().begin();
-							std::list<int> removedPts = uUniqueKeys(_memory->getSignature(nodeId)->getWords3());
-							for(std::list<int>::iterator iter = removedPts.begin(); iter!=removedPts.end(); ++iter)
-							{
-								bool removed = false;
-								for(std::multimap<int, std::pair<int, pcl::PointXYZ> >::iterator jter=localMap_.lower_bound(*iter);
-									jter->first == *iter && !removed;
-									++jter)
-								{
-									if(jter->second.first == nodeId)
-									{
-										localMap_.erase(jter);
-										removed = true;
-									}
-								}
-							}
-							_memory->deleteLocation(*_memory->getStMem().begin());
+							localMap_.erase(*iter);
 						}
-					}
-					else
-					{
-						_memory->deleteLocation(newSignature->id());
 					}
 				}
 			}
@@ -394,12 +361,13 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 			std::list<int> uniques = uUniqueKeys(newSignature->getWords3());
 			for(std::list<int>::iterator iter = uniques.begin(); iter!=uniques.end(); ++iter)
 			{
+				// Only add unique words
 				if(newSignature->getWords3().count(*iter) == 1)
 				{
 					const pcl::PointXYZ & pt = newSignature->getWords3().find(*iter)->second;
 					if(pcl::isFinite(pt))
 					{
-						localMap_.insert(std::make_pair(*iter, std::make_pair(newSignature->id(), pt)));
+						localMap_.insert(std::make_pair(*iter, pt));
 					}
 					else
 					{

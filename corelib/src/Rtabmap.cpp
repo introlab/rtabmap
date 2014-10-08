@@ -1291,10 +1291,10 @@ bool Rtabmap::process(const SensorData & data)
 				uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(_reextractFeatureType))); // FAST/BRIEF
 				uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(_reextractMaxWords)));
 
-				for(ParametersMap::iterator iter = customParameters.begin(); iter!=customParameters.end(); ++iter)
-				{
-					UINFO("%s=%s", iter->first.c_str(), iter->second.c_str());
-				}
+				//for(ParametersMap::iterator iter = customParameters.begin(); iter!=customParameters.end(); ++iter)
+				//{
+				//	UDEBUG("%s=%s", iter->first.c_str(), iter->second.c_str());
+				//}
 
 				Memory memory(customParameters);
 

@@ -1149,12 +1149,12 @@ Transform transformFromXYZCorrespondences(
 		crsc.setInputTarget(cloud1);
 		crsc.setMaximumIterations(iterations);
 		crsc.setInlierThreshold(inlierThreshold);
+		crsc.setRefineModel(true);
 		pcl::Correspondences correspondencesInliers;
 		crsc.getCorrespondences(correspondencesInliers);
-
 		UDEBUG("RANSAC inliers=%d outliers=%d", (int)correspondencesInliers.size(), (int)correspondences->size()-(int)correspondencesInliers.size());
 		transform = util3d::transformFromEigen4f(crsc.getBestTransformation());
-		
+
 		/*UDEBUG("RANSAC=%s", transform.prettyPrint().c_str());
 
 		pcl::registration::TransformationEstimationSVD<pcl::PointXYZ, pcl::PointXYZ> trans_est;

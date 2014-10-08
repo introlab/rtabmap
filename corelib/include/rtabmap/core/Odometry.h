@@ -69,7 +69,7 @@ public:
 	float getMaxDepth() const {return _maxDepth;}
 	float geLinearUpdate() const {return _linearUpdate;}
 	float getAngularUpdate() const {return _angularUpdate;}
-	int getLocalHistory() const {return _localHistory;}
+	int getLocalHistoryMaxSize() const {return _localHistoryMaxSize;}
 
 private:
 	virtual Transform computeTransform(const SensorData & image, int * quality = 0, int * features = 0, int * localMapSize = 0) = 0;
@@ -84,7 +84,7 @@ private:
 	float _linearUpdate;
 	float _angularUpdate;
 	int _resetCountdown;
-	int _localHistory;
+	int _localHistoryMaxSize;
 	Transform _pose;
 	int _resetCurrentCount;
 
@@ -101,8 +101,7 @@ public:
 	virtual ~OdometryBOW();
 
 	virtual void reset();
-	const std::multimap<int, std::pair<int, pcl::PointXYZ> > & getLocalMap() const {return localMap_;}
-	std::multimap<int,pcl::PointXYZ> getLocalMeansMap() const;
+	const std::multimap<int, pcl::PointXYZ> & getLocalMap() const {return localMap_;}
 	const Memory * getMemory() const {return _memory;}
 
 private:
@@ -110,7 +109,7 @@ private:
 
 private:
 	Memory * _memory;
-	std::multimap<int, std::pair<int, pcl::PointXYZ> > localMap_;
+	std::multimap<int, pcl::PointXYZ> localMap_;
 };
 
 class RTABMAP_EXP OdometryICP : public Odometry
