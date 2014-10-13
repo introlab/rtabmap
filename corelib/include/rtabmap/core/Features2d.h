@@ -48,29 +48,6 @@ namespace gpu {
 
 namespace rtabmap {
 
-void RTABMAP_EXP filterKeypointsByDepth(
-			std::vector<cv::KeyPoint> & keypoints,
-			const cv::Mat & depth,
-			float fx,
-			float fy,
-			float cx,
-			float cy,
-			float maxDepth);
-void RTABMAP_EXP filterKeypointsByDepth(
-		std::vector<cv::KeyPoint> & keypoints,
-		cv::Mat & descriptors,
-		const cv::Mat & depth,
-		float fx,
-		float fy,
-		float cx,
-		float cy,
-		float maxDepth);
-
-void RTABMAP_EXP limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints);
-void RTABMAP_EXP limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints);
-
-cv::Rect RTABMAP_EXP computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios);
-
 // Feature2D
 class RTABMAP_EXP Feature2D {
 public:
@@ -83,6 +60,23 @@ public:
 		kFeatureGfttFreak=5,
 		kFeatureGfttBrief=6,
 		kFeatureBrisk=7};
+
+	static Feature2D * create(Feature2D::Type & type, const ParametersMap & parameters);
+	static void filterKeypointsByDepth(
+				std::vector<cv::KeyPoint> & keypoints,
+				const cv::Mat & depth,
+				float maxDepth);
+	static void filterKeypointsByDepth(
+			std::vector<cv::KeyPoint> & keypoints,
+			cv::Mat & descriptors,
+			const cv::Mat & depth,
+			float maxDepth);
+
+	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints);
+	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints);
+
+	static cv::Rect computeRoi(const cv::Mat & image, const std::string & roiRatios);
+	static cv::Rect computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios);
 
 public:
 	virtual ~Feature2D() {}

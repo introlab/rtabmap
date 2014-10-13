@@ -168,10 +168,6 @@ public:
 	void extractKeypointsAndDescriptors(
 			const cv::Mat & image,
 			const cv::Mat & depth,
-			float fx,
-			float fy,
-			float cx,
-			float cy,
 			std::vector<cv::KeyPoint> & keypoints,
 			cv::Mat & descriptors) const;
 

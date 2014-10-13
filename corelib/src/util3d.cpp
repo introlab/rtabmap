@@ -443,13 +443,18 @@ pcl::PointXYZ getDepth(
 		bool smoothing,
 		float maxZError)
 {
+	UASSERT(depthImage.type() == CV_16UC1 || depthImage.type() == CV_32FC1);
+
 	pcl::PointXYZ pt;
 	float bad_point = std::numeric_limits<float>::quiet_NaN ();
 
-	if(!(int(x) >=0 && int(x)<depthImage.cols && int(y) >=0 && int(y)<depthImage.rows))
+	int u = int(x+0.5f);
+	int v = int(y+0.5f);
+
+	if(!(u >=0 && u<depthImage.cols && v >=0 && v<depthImage.rows))
 	{
-		UERROR("!(x >=0 && x<depthImage.cols && y >=0 && y<depthImage.rows) cond failed! returning bad point. (x=%f, y=%f, cols=%d, rows=%d)",
-				x,y,depthImage.cols, depthImage.rows);
+		UERROR("!(x >=0 && x<depthImage.cols && y >=0 && y<depthImage.rows) cond failed! returning bad point. (x=%f (u=%d), y=%f (v=%d), cols=%d, rows=%d)",
+				x,u,y,v,depthImage.cols, depthImage.rows);
 		pt.x = pt.y = pt.z = bad_point;
 		return pt;
 	}
@@ -462,8 +467,6 @@ pcl::PointXYZ getDepth(
 	//  | 1 | 2 | 1 |
 	//  | 2 | 4 | 2 |
 	//  | 1 | 2 | 1 |
-	int u = int(x+0.5f);
-	int v = int(y+0.5f);
 	int u_start = std::max(u-1, 0);
 	int v_start = std::max(v-1, 0);
 	int u_end = std::min(u+1, depthImage.cols-1);
@@ -721,6 +724,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 		float fx, float fy,
 		int decimation)
 {
+	UASSERT(imageRgb.rows == imageDepth.rows && imageRgb.cols == imageDepth.cols);
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 	if(decimation < 1)
 	{
@@ -773,6 +777,129 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 		}
 	}
 	return cloud;
+}
+
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDisparityRGB(
+		const cv::Mat & imageRgb,
+		const cv::Mat & imageDisparity,
+		float cx, float cy,
+		float fx, float baseline,
+		int decimation)
+{
+	UASSERT(imageRgb.rows == imageDisparity.rows &&
+			imageRgb.cols == imageDisparity.cols &&
+			(imageDisparity.type() == CV_32FC1 || imageDisparity.type()==CV_16SC1));
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+	if(decimation < 1)
+	{
+		return cloud;
+	}
+
+	bool mono;
+	if(imageRgb.channels() == 3) // BGR
+	{
+		mono = false;
+	}
+	else if(imageRgb.channels() == 1) // Mono
+	{
+		mono = true;
+	}
+	else
+	{
+		return cloud;
+	}
+
+	//cloud.header = cameraInfo.header;
+	cloud->height = imageRgb.rows/decimation;
+	cloud->width  = imageRgb.cols/decimation;
+	cloud->is_dense = false;
+	cloud->resize(cloud->height * cloud->width);
+
+	for(int h = 0; h < imageRgb.rows && h/decimation < (int)cloud->height; h+=decimation)
+	{
+		for(int w = 0; w < imageRgb.cols && w/decimation < (int)cloud->width; w+=decimation)
+		{
+			pcl::PointXYZRGB & pt = cloud->at((h/decimation)*cloud->width + (w/decimation));
+			if(!mono)
+			{
+				pt.b = imageRgb.at<cv::Vec3b>(h,w)[0];
+				pt.g = imageRgb.at<cv::Vec3b>(h,w)[1];
+				pt.r = imageRgb.at<cv::Vec3b>(h,w)[2];
+			}
+			else
+			{
+				unsigned char v = imageRgb.at<unsigned char>(h,w);
+				pt.b = v;
+				pt.g = v;
+				pt.r = v;
+			}
+
+			float disp = imageDisparity.type()==CV_16SC1?float(imageDisparity.at<short>(h,w))/16.0f:imageDisparity.at<float>(h,w);
+			pcl::PointXYZ ptXYZ = projectDisparityTo3d(cv::Point2f(w, h), disp, cx, cy, fx, baseline);
+			pt.x = ptXYZ.x;
+			pt.y = ptXYZ.y;
+			pt.z = ptXYZ.z;
+		}
+	}
+	return cloud;
+}
+
+cv::Mat disparityFromStereoImages(const cv::Mat & leftImage, const cv::Mat & rightImage)
+{
+	UASSERT(!leftImage.empty() && !rightImage.empty() &&
+			leftImage.type() == CV_8UC1 && rightImage.type() == CV_8UC1 &&
+			leftImage.cols == rightImage.cols &&
+			leftImage.rows == rightImage.rows);
+	cv::StereoBM stereo(cv::StereoBM::BASIC_PRESET, 160, 15);
+	cv::Mat disparity;
+	stereo(leftImage, rightImage, disparity, CV_16S);
+	cv::filterSpeckles(disparity, 0, 1000, 16);
+	return disparity;
+}
+
+// inspired from ROS image_geometry/src/stereo_camera_model.cpp
+pcl::PointXYZ projectDisparityTo3d(
+		const cv::Point2f & pt,
+		float disparity,
+		float cx, float cy, float fx, float baseline)
+{
+	if(disparity > 0.0f && baseline > 0.0f && fx > 0.0f)
+	{
+		float W = disparity/baseline;// + (right_.cx() - left_.cx()) / Tx;
+		return pcl::PointXYZ((pt.x - cx)/W, (pt.y - cy)/W, fx/W);
+	}
+	float bad_point = std::numeric_limits<float>::quiet_NaN ();
+	return pcl::PointXYZ(bad_point, bad_point, bad_point);
+}
+
+cv::Mat depthFromDisparity(const cv::Mat & disparity,
+		float cx, float cy, float fx, float baseline,
+		int type)
+{
+	UASSERT(disparity.type() == CV_32FC1 || disparity.type() == CV_16S);
+	UASSERT(type == CV_32FC1 || type == CV_16U);
+	cv::Mat depth = cv::Mat::zeros(disparity.rows, disparity.cols, type);
+	for (int i = 0; i < disparity.rows; i++)
+	{
+		for (int j = 0; j < disparity.cols; j++)
+		{
+			float disparity_value = disparity.type() == CV_16S?float(disparity.at<short>(i,j))/16.0f:disparity.at<float>(i,j);
+			if (disparity_value > 0.0f)
+			{
+				// baseline * focal / disparity
+				float d = baseline * fx / disparity_value;
+				if(depth.type() == CV_32FC1)
+				{
+					depth.at<float>(i,j) = d;
+				}
+				else
+				{
+					depth.at<unsigned short>(i,j) = (unsigned short)(d*1000.0f);
+				}
+			}
+		}
+	}
+	return depth;
 }
 
 cv::Mat depth2DFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud)
@@ -1131,59 +1258,168 @@ Transform transformFromXYZCorrespondences(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud2,
 		double inlierThreshold,
 		int iterations,
-		int * inliers)
+		bool refineModel,
+		double refineModelSigma,
+		int refineModelIterations,
+		std::vector<int> * inliersOut)
 {
+	//NOTE: this method is a mix of two methods:
+	//  - getRemainingCorrespondences() in pcl/registration/impl/correspondence_rejection_sample_consensus.hpp
+	//  - refineModel() in pcl/sample_consensus/sac.h
+
 	Transform transform;
-	if(cloud1->size() && cloud1->size() == cloud2->size())
+	if(cloud1->size() >=3 && cloud1->size() == cloud2->size())
 	{
-		// Robust to outliers RANSAC
-		pcl::CorrespondencesPtr correspondences(new pcl::Correspondences);
-		for(unsigned int i = 0; i<cloud1->size(); ++i)
+		// RANSAC
+		UDEBUG("iterations=%d inlierThreshold=%f", iterations, inlierThreshold);
+		std::vector<int> source_indices (cloud2->size());
+		std::vector<int> target_indices (cloud1->size());
+
+		// Copy the query-match indices
+		for (size_t i = 0; i < cloud1->size(); ++i)
 		{
-			correspondences->push_back(pcl::Correspondence(i, i, pcl::euclideanDistance(cloud2->at(i), cloud1->at(i))));
+			source_indices[i] = i;
+			target_indices[i] = i;
 		}
 
-		pcl::registration::CorrespondenceRejectorSampleConsensus<pcl::PointXYZ> crsc;
-		crsc.setInputCorrespondences(correspondences);
-		crsc.setInputSource(cloud2);
-		crsc.setInputTarget(cloud1);
-		crsc.setMaximumIterations(iterations);
-		crsc.setInlierThreshold(inlierThreshold);
-		crsc.setRefineModel(true);
-		pcl::Correspondences correspondencesInliers;
-		crsc.getCorrespondences(correspondencesInliers);
-		UDEBUG("RANSAC inliers=%d outliers=%d", (int)correspondencesInliers.size(), (int)correspondences->size()-(int)correspondencesInliers.size());
-		transform = util3d::transformFromEigen4f(crsc.getBestTransformation());
+		// From the set of correspondences found, attempt to remove outliers
+		// Create the registration model
+		pcl::SampleConsensusModelRegistration<pcl::PointXYZ>::Ptr model;
+		model.reset(new pcl::SampleConsensusModelRegistration<pcl::PointXYZ>(cloud2, source_indices));
+		// Pass the target_indices
+		model->setInputTarget (cloud1, target_indices);
+		// Create a RANSAC model
+		pcl::RandomSampleConsensus<pcl::PointXYZ> sac (model, inlierThreshold);
+		sac.setMaxIterations(iterations);
 
-		/*UDEBUG("RANSAC=%s", transform.prettyPrint().c_str());
-
-		pcl::registration::TransformationEstimationSVD<pcl::PointXYZ, pcl::PointXYZ> trans_est;
-		Eigen::Matrix4f transform_svd;
-		trans_est.estimateRigidTransformation (*cloud2, *cloud1, correspondencesInliers, transform_svd);
-		transform = util3d::transformFromEigen4f(transform_svd);
-		UDEBUG("SVD=%s", transform.prettyPrint().c_str());*/
-
-		if(correspondencesInliers.size() == correspondences->size() && transform.isIdentity())
+		// Compute the set of inliers
+		if(sac.computeModel())
 		{
-			//Wrong transform
-			UDEBUG("Wrong transform: identity with full inliers");
-			transform.setNull();
-		}
+			std::vector<int> inliers;
+			Eigen::VectorXf model_coefficients;
 
-		if(inliers)
+			sac.getInliers(inliers);
+			sac.getModelCoefficients (model_coefficients);
+
+			if (refineModel)
+			{
+				double inlier_distance_threshold_sqr = inlierThreshold * inlierThreshold;
+				double error_threshold = inlierThreshold;
+				double sigma_sqr = refineModelSigma * refineModelSigma;
+				int refine_iterations = 0;
+				bool inlier_changed = false, oscillating = false;
+				std::vector<int> new_inliers, prev_inliers = inliers;
+				std::vector<size_t> inliers_sizes;
+				Eigen::VectorXf new_model_coefficients = model_coefficients;
+				do
+				{
+					// Optimize the model coefficients
+					model->optimizeModelCoefficients (prev_inliers, new_model_coefficients, new_model_coefficients);
+					inliers_sizes.push_back (prev_inliers.size ());
+
+					// Select the new inliers based on the optimized coefficients and new threshold
+					model->selectWithinDistance (new_model_coefficients, error_threshold, new_inliers);
+					UDEBUG("RANSAC refineModel: Number of inliers found (before/after): %zu/%zu, with an error threshold of %g.",
+							prev_inliers.size (), new_inliers.size (), error_threshold);
+
+					if (new_inliers.empty ())
+					{
+						++refine_iterations;
+						if (refine_iterations >= refineModelIterations)
+						{
+							break;
+						}
+						continue;
+					}
+
+					// Estimate the variance and the new threshold
+					double variance = model->computeVariance ();
+					error_threshold = sqrt (std::min (inlier_distance_threshold_sqr, sigma_sqr * variance));
+
+					UDEBUG ("RANSAC refineModel: New estimated error threshold: %g on iteration %d out of %d.",
+						  error_threshold, refine_iterations, refineModelIterations);
+					inlier_changed = false;
+					std::swap (prev_inliers, new_inliers);
+
+					// If the number of inliers changed, then we are still optimizing
+					if (new_inliers.size () != prev_inliers.size ())
+					{
+						// Check if the number of inliers is oscillating in between two values
+						if (inliers_sizes.size () >= 4)
+						{
+							if (inliers_sizes[inliers_sizes.size () - 1] == inliers_sizes[inliers_sizes.size () - 3] &&
+							inliers_sizes[inliers_sizes.size () - 2] == inliers_sizes[inliers_sizes.size () - 4])
+							{
+								oscillating = true;
+								break;
+							}
+						}
+						inlier_changed = true;
+						continue;
+					}
+
+					// Check the values of the inlier set
+					for (size_t i = 0; i < prev_inliers.size (); ++i)
+					{
+						// If the value of the inliers changed, then we are still optimizing
+						if (prev_inliers[i] != new_inliers[i])
+						{
+							inlier_changed = true;
+							break;
+						}
+					}
+				}
+				while (inlier_changed && ++refine_iterations < refineModelIterations);
+
+				// If the new set of inliers is empty, we didn't do a good job refining
+				if (new_inliers.empty ())
+				{
+					UWARN ("RANSAC refineModel: Refinement failed: got an empty set of inliers!");
+				}
+
+				if (oscillating)
+				{
+					UDEBUG("RANSAC refineModel: Detected oscillations in the model refinement.");
+				}
+
+				std::swap (inliers, new_inliers);
+				model_coefficients = new_model_coefficients;
+			}
+
+			if (inliers.size() >= 3)
+			{
+				if(inliersOut)
+				{
+					*inliersOut = inliers;
+				}
+
+				// get best transformation
+				Eigen::Matrix4f bestTransformation;
+				bestTransformation.row (0) = model_coefficients.segment<4>(0);
+				bestTransformation.row (1) = model_coefficients.segment<4>(4);
+				bestTransformation.row (2) = model_coefficients.segment<4>(8);
+				bestTransformation.row (3) = model_coefficients.segment<4>(12);
+
+				transform = util3d::transformFromEigen4f(bestTransformation);
+				UDEBUG("RANSAC inliers=%zu/%zu tf=%s", inliers.size(), cloud1->size(), transform.prettyPrint().c_str());
+
+				return transform.inverse(); // inverse to get actual pose transform (not correspondences transform)
+			}
+			else
+			{
+				UDEBUG("RANSAC: Model with inliers < 3");
+			}
+		}
+		else
 		{
-			*inliers = (int)correspondencesInliers.size();
+			UDEBUG("RANSAC: Failed to find model");
 		}
-
-		//std::cout << "transformMatrix: " << transformMatrix << std::endl;
-
-		//std::cout << "quality: " << float(correspondencesRej.size()) / float(correspondences->size());
 	}
 	else
 	{
-		UDEBUG("not enough points to compute the transform");
+		UDEBUG("Not enough points to compute the transform");
 	}
-	return transform.inverse(); // inverse to get actual pose transform (not correspondences transform)
+	return Transform();
 }
 
 // return transform from source to target (All points must be finite!!!)

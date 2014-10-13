@@ -40,9 +40,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Memory.h>
 #include <rtabmap/core/VWDictionary.h>
 #include "rtabmap/core/Signature.h"
+#include "rtabmap/core/Features2d.h"
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/transforms.h>
+#include <pcl/common/distances.h>
 
 #include <opencv2/gpu/gpu.hpp>
 
@@ -55,16 +57,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
-		_maxFeatures(Parameters::defaultOdomMaxWords()),
+		_maxFeatures(Parameters::defaultOdomMaxFeatures()),
+		_roiRatios(Parameters::defaultOdomRoiRatios()),
 		_minInliers(Parameters::defaultOdomMinInliers()),
 		_inlierDistance(Parameters::defaultOdomInlierDistance()),
 		_iterations(Parameters::defaultOdomIterations()),
-		_wordsRatio(Parameters::defaultOdomWordsRatio()),
+		_refineIterations(Parameters::defaultOdomRefineIterations()),
+		_featuresRatio(Parameters::defaultOdomFeaturesRatio()),
 		_maxDepth(Parameters::defaultOdomMaxDepth()),
 		_linearUpdate(Parameters::defaultOdomLinearUpdate()),
 		_angularUpdate(Parameters::defaultOdomAngularUpdate()),
 		_resetCountdown(Parameters::defaultOdomResetCountdown()),
-		_localHistoryMaxSize(Parameters::defaultOdomLocalHistory()),
 		_pose(Transform::getIdentity()),
 		_resetCurrentCount(0)
 {
@@ -74,10 +77,11 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomMinInliers(), _minInliers);
 	Parameters::parse(parameters, Parameters::kOdomInlierDistance(), _inlierDistance);
 	Parameters::parse(parameters, Parameters::kOdomIterations(), _iterations);
-	Parameters::parse(parameters, Parameters::kOdomWordsRatio(), _wordsRatio);
+	Parameters::parse(parameters, Parameters::kOdomRefineIterations(), _refineIterations);
+	Parameters::parse(parameters, Parameters::kOdomFeaturesRatio(), _featuresRatio);
 	Parameters::parse(parameters, Parameters::kOdomMaxDepth(), _maxDepth);
-	Parameters::parse(parameters, Parameters::kOdomMaxWords(), _maxFeatures);
-	Parameters::parse(parameters, Parameters::kOdomLocalHistory(), _localHistoryMaxSize);
+	Parameters::parse(parameters, Parameters::kOdomMaxFeatures(), _maxFeatures);
+	Parameters::parse(parameters, Parameters::kOdomRoiRatios(), _roiRatios);
 }
 
 void Odometry::reset()
@@ -126,23 +130,27 @@ Transform Odometry::process(SensorData & data, int * quality, int * features, in
 //OdometryBOW
 OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 	Odometry(parameters),
+	_localHistoryMaxSize(Parameters::defaultOdomBowLocalHistorySize()),
 	_memory(0)
 {
+	Parameters::parse(parameters, Parameters::kOdomBowLocalHistorySize(), _localHistoryMaxSize);
+
 	ParametersMap customParameters;
 	customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(this->getMaxFeatures()))); // hack
 	customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(this->getMaxDepth())));
+	customParameters.insert(ParametersPair(Parameters::kKpRoiRatios(), this->getRoiRatios()));
 	customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
 	customParameters.insert(ParametersPair(Parameters::kMemImageKept(), "false"));
 	customParameters.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
-	int nn = Parameters::defaultOdomNearestNeighbor();
-	float nndr = Parameters::defaultOdomNNDR();
-	int odomType = Parameters::defaultOdomType();
-	Parameters::parse(parameters, Parameters::kOdomNearestNeighbor(), nn);
-	Parameters::parse(parameters, Parameters::kOdomNNDR(), nndr);
-	Parameters::parse(parameters, Parameters::kOdomType(), odomType);
+	int nn = Parameters::defaultOdomBowNNType();
+	float nndr = Parameters::defaultOdomBowNNDR();
+	int featureType = Parameters::defaultOdomFeatureType();
+	Parameters::parse(parameters, Parameters::kOdomBowNNType(), nn);
+	Parameters::parse(parameters, Parameters::kOdomBowNNDR(), nndr);
+	Parameters::parse(parameters, Parameters::kOdomFeatureType(), featureType);
 	customParameters.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(nn)));
 	customParameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(nndr)));
-	customParameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(odomType)));
+	customParameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(featureType)));
 
 	// add only feature stuff
 	for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
@@ -204,10 +212,10 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 		{
 			Transform transform;
 			std::set<int> uniqueCorrespondences;
-			if(newSignature->getWords3().size() < (unsigned int)(getWordsRatio() * float(previousSignature->getWords3().size())))
+			if(newSignature->getWords3().size() < (unsigned int)(this->getFeaturesRatio() * float(previousSignature->getWords3().size())))
 			{
 				UWARN("At least %f%% keypoints of the last image required. New=%d last=%d",
-						getWordsRatio()*100.0f, newSignature->getWords3().size(), previousSignature->getWords3().size());
+						this->getFeaturesRatio()*100.0f, newSignature->getWords3().size(), previousSignature->getWords3().size());
 			}
 			else if(!localMap_.empty() && !newSignature->getWords3().empty())
 			{
@@ -232,13 +240,16 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 					correspondences = inliers1->size();
 
 					// the transform returned is global odometry pose, not incremental one
+					std::vector<int> inliersV;
 					transform = util3d::transformFromXYZCorrespondences(
 							inliers2,
 							inliers1,
 							this->getInlierDistance(),
 							this->getIterations(),
-							&inliers);
+							this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
+							&inliersV);
 
+					inliers = inliersV.size();
 					if(!transform.isNull())
 					{
 						// make it incremental
@@ -308,7 +319,7 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 				else
 				{
 					// remove words if history max size is reached
-					while(localMap_.size() && (int)localMap_.size() > this->getLocalHistoryMaxSize() && _memory->getStMem().size()>1)
+					while(localMap_.size() && (int)localMap_.size() > _localHistoryMaxSize && _memory->getStMem().size()>1)
 					{
 						int nodeId = *_memory->getStMem().begin();
 						std::list<int> removedPts;
@@ -319,10 +330,10 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 						}
 					}
 
-					if(this->getLocalHistoryMaxSize() == 0 && localMap_.size() > 0 && localMap_.size() > newSignature->getWords3().size())
+					if(_localHistoryMaxSize == 0 && localMap_.size() > 0 && localMap_.size() > newSignature->getWords3().size())
 					{
 						UERROR("Local map should have only words of the last added signature here! (size=%d, max history size=%d, newWords=%d)",
-								(int)localMap_.size(), this->getLocalHistoryMaxSize(), (int)newSignature->getWords3().size());
+								(int)localMap_.size(), _localHistoryMaxSize, (int)newSignature->getWords3().size());
 					}
 
 					// update local map
@@ -402,6 +413,612 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 	return output;
 }
 
+//OdometryOpticalFlow
+OdometryOpticalFlow::OdometryOpticalFlow(const ParametersMap & parameters) :
+	Odometry(parameters),
+	flowWinSize_(Parameters::defaultOdomFlowWinSize()),
+	flowIterations_(Parameters::defaultOdomFlowIterations()),
+	flowEps_(Parameters::defaultOdomFlowEps()),
+	flowMaxLevel_(Parameters::defaultOdomFlowMaxLevel()),
+	subPixWinSize_(Parameters::defaultOdomFlowSubPixWinSize()),
+	subPixIterations_(Parameters::defaultOdomFlowSubPixIterations()),
+	subPixEps_(Parameters::defaultOdomFlowSubPixEps()),
+	lastCorners3D_(new pcl::PointCloud<pcl::PointXYZ>)
+{
+	Parameters::parse(parameters, Parameters::kOdomFlowWinSize(), flowWinSize_);
+	Parameters::parse(parameters, Parameters::kOdomFlowIterations(), flowIterations_);
+	Parameters::parse(parameters, Parameters::kOdomFlowEps(), flowEps_);
+	Parameters::parse(parameters, Parameters::kOdomFlowMaxLevel(), flowMaxLevel_);
+	Parameters::parse(parameters, Parameters::kOdomFlowSubPixWinSize(), subPixWinSize_);
+	Parameters::parse(parameters, Parameters::kOdomFlowSubPixIterations(), subPixIterations_);
+	Parameters::parse(parameters, Parameters::kOdomFlowSubPixEps(), subPixEps_);
+
+	ParametersMap::const_iterator iter;
+	Feature2D::Type detectorStrategy = Feature2D::kFeatureUndef;
+	if((iter=parameters.find(Parameters::kOdomFeatureType())) != parameters.end())
+	{
+		detectorStrategy = (Feature2D::Type)std::atoi((*iter).second.c_str());
+	}
+	feature2D_ = Feature2D::create(detectorStrategy, parameters);
+}
+
+OdometryOpticalFlow::~OdometryOpticalFlow()
+{
+	delete feature2D_;
+}
+
+
+void OdometryOpticalFlow::reset()
+{
+	Odometry::reset();
+	lastFrame_ = cv::Mat();
+	lastCorners_.clear();
+	lastCorners3D_->clear();
+}
+
+// return not null transform if odometry is correctly computed
+Transform OdometryOpticalFlow::computeTransform(
+		const SensorData & data,
+		int * quality,
+		int * features,
+		int * localMapSize)
+{
+	UDEBUG("");
+
+	if(!data.rightImage().empty())
+	{
+		//stereo
+		return computeTransformStereo(data, quality, features);
+	}
+	else
+	{
+		//rgbd
+		return computeTransformRGBD(data, quality, features);
+	}
+}
+
+Transform OdometryOpticalFlow::computeTransformStereo(
+		const SensorData & data,
+		int * quality,
+		int * features)
+{
+	UTimer timer;
+	Transform output;
+
+	int inliers = 0;
+	int correspondences = 0;
+	imgMatches_ = cv::Mat();
+
+	cv::Mat newLeftFrame;
+	// convert to grayscale
+	if(data.image().channels() > 1)
+	{
+		cv::cvtColor(data.image(), newLeftFrame, cv::COLOR_BGR2GRAY);
+	}
+	else
+	{
+		newLeftFrame = data.image().clone();
+	}
+	cv::Mat newRightFrame = data.rightImage().clone();
+
+	std::vector<cv::Point2f> newCorners;
+	UDEBUG("lastCorners_.size()=%d lastFrame_=%d lastRightFrame_=%d", (int)lastCorners_.size(), lastFrame_.empty()?0:1, lastRightFrame_.empty()?0:1);
+	if(!lastFrame_.empty() && !lastRightFrame_.empty() && lastCorners_.size())
+	{
+		UDEBUG("");
+		// Find features in the new left image
+		std::vector<unsigned char> status;
+		std::vector<float> err;
+		UDEBUG("cv::calcOpticalFlowPyrLK() begin");
+		cv::calcOpticalFlowPyrLK(
+				lastFrame_,
+				newLeftFrame,
+				lastCorners_,
+				newCorners,
+				status,
+				err,
+				cv::Size(flowWinSize_, flowWinSize_), flowMaxLevel_,
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, flowIterations_, flowEps_),
+				cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
+		UDEBUG("cv::calcOpticalFlowPyrLK() end");
+
+		std::vector<cv::Point2f> lastCornersKept(status.size());
+		std::vector<cv::Point2f> newCornersKept(status.size());
+		int ki = 0;
+		for(unsigned int i=0; i<status.size(); ++i)
+		{
+			if(status[i])
+			{
+				lastCornersKept[ki] = lastCorners_[i];
+				newCornersKept[ki] = newCorners[i];
+				cv::Point2f pt = lastCorners_[i] - newCorners[i];
+				++ki;
+			}
+		}
+		lastCornersKept.resize(ki);
+		newCornersKept.resize(ki);
+
+		if(ki && ki >= this->getMinInliers())
+		{
+
+			std::vector<unsigned char> statusLast;
+			std::vector<float> errLast;
+			std::vector<cv::Point2f> lastCornersKeptRight;
+			cv::calcOpticalFlowPyrLK(
+						lastFrame_,
+						lastRightFrame_,
+						lastCornersKept,
+						lastCornersKeptRight,
+						statusLast,
+						errLast,
+						cv::Size(flowWinSize_, flowWinSize_), flowMaxLevel_,
+						cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, flowIterations_, flowEps_),
+						cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
+
+			UDEBUG("");
+			std::vector<cv::KeyPoint> lastKpts, newKpts;
+			/*cv::KeyPoint::convert(lastCornersKept, lastKpts);
+			cv::KeyPoint::convert(newCornersKept, newKpts);
+			std::vector<cv::DMatch> good_matches(lastKpts.size());
+			for(unsigned int i=0; i<good_matches.size(); ++i)
+			{
+				good_matches[i].trainIdx = i;
+				good_matches[i].queryIdx = i;
+			}
+
+			cv::drawMatches( lastFrame_, lastKpts, newLeftFrame, newKpts,
+						   good_matches, imgMatches_, cv::Scalar::all(-1), cv::Scalar::all(-1),
+						   std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+			UDEBUG("");*/
+
+			std::vector<unsigned char> statusNew;
+			std::vector<float> errNew;
+			std::vector<cv::Point2f> newCornersKeptRight;
+			cv::calcOpticalFlowPyrLK(
+						newLeftFrame,
+						newRightFrame,
+						newCornersKept,
+						newCornersKeptRight,
+						statusNew,
+						errNew,
+						cv::Size(flowWinSize_, flowWinSize_), flowMaxLevel_,
+						cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, flowIterations_, flowEps_),
+						cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
+
+			UDEBUG("Getting correspondences begin");
+			// Get 3D correspondences
+			pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesLast(new pcl::PointCloud<pcl::PointXYZ>);
+			pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesNew(new pcl::PointCloud<pcl::PointXYZ>);
+			correspondencesLast->resize(statusLast.size());
+			correspondencesNew->resize(statusLast.size());
+			int oi = 0;
+			lastKpts.resize(statusLast.size());
+			newKpts.resize(statusLast.size());
+			for(unsigned int i=0; i<statusLast.size(); ++i)
+			{
+				if(statusLast[i] && statusNew[i])
+				{
+					float lastDisparity = lastCornersKept[i].x - lastCornersKeptRight[i].x;
+					float newDisparity = newCornersKept[i].x - newCornersKeptRight[i].x;
+					if(lastDisparity > 0.0f && newDisparity > 0.0f)
+					{
+						pcl::PointXYZ lastPt3D = util3d::projectDisparityTo3d(
+								lastCornersKept[i],
+								lastDisparity,
+								data.cx(), data.cy(), data.fx(), data.baseline());
+						pcl::PointXYZ newPt3D = util3d::projectDisparityTo3d(
+								newCornersKept[i],
+								newDisparity,
+								data.cx(), data.cy(), data.fx(), data.baseline());
+
+						if(pcl::isFinite(lastPt3D) && uIsInBounds(lastPt3D.z, 0.0f, this->getMaxDepth()) &&
+						   pcl::isFinite(newPt3D) && uIsInBounds(newPt3D.z, 0.0f, this->getMaxDepth()))
+						{
+							//Add 3D correspondences!
+							lastPt3D = util3d::transformPoint(lastPt3D, data.localTransform());
+							newPt3D = util3d::transformPoint(newPt3D, data.localTransform());
+							correspondencesLast->at(oi) = lastPt3D;
+							correspondencesNew->at(oi) = newPt3D;
+							lastKpts[oi].pt = lastCornersKept[i];
+							newKpts[oi].pt = newCornersKept[i];
+							++oi;
+						}
+					}
+				}
+			}// end loop
+			correspondencesLast->resize(oi);
+			correspondencesNew->resize(oi);
+			lastKpts.resize(oi);
+			newKpts.resize(oi);
+			correspondences = oi;
+			lastCorners3D_ = correspondencesNew;
+			UDEBUG("Getting correspondences end, kept %d/%d", correspondences, (int)statusLast.size());
+
+			/*good_matches.resize(lastKpts.size());
+			for(unsigned int i=0; i<good_matches.size(); ++i)
+			{
+				good_matches[i].trainIdx = i;
+				good_matches[i].queryIdx = i;
+			}
+
+			cv::Mat imgInliers;
+			cv::drawMatches( lastFrame_, lastKpts, newLeftFrame, newKpts,
+						   good_matches, imgInliers, cv::Scalar::all(-1), cv::Scalar::all(-1),
+						   std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+			imgMatches_.push_back(imgInliers);
+			UDEBUG("");*/
+
+			if(correspondences >= this->getMinInliers())
+			{
+				std::vector<int> inliersV;
+				UTimer timerRANSAC;
+				output = util3d::transformFromXYZCorrespondences(
+						correspondencesNew,
+						correspondencesLast,
+						this->getInlierDistance(),
+						this->getIterations(),
+						this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
+						&inliersV);
+				UDEBUG("time RANSAC = %fs", timerRANSAC.ticks());
+
+				inliers = (int)inliersV.size();
+				if(quality)
+				{
+					*quality = inliers;
+				}
+
+				if(inliers < this->getMinInliers())
+				{
+					output.setNull();
+					UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
+				}
+
+				/*if(correspondencesLast->size() >= 6)
+				{
+					UWARN("saved pcd");
+					pcl::io::savePCDFile("last.pcd", *correspondencesLast);
+					pcl::io::savePCDFile("new.pcd", *correspondencesNew);
+					correspondencesNew = util3d::transformPointCloud(correspondencesNew, output);
+					pcl::io::savePCDFile("new2.pcd", *correspondencesNew);
+				}*/
+			}
+			else
+			{
+				UWARN("Not enough correspondences (%d)", correspondences);
+			}
+		}
+	}
+	else
+	{
+		//return Identity
+		output = Transform::getIdentity();
+	}
+
+	newCorners.clear();
+	if(!output.isNull())
+	{
+		// Update frame, reset saved last transform
+		savedLastRefFrameTransform_.setNull();
+
+		// Copy or generate new keypoints
+		if(data.keypoints().size())
+		{
+			newCorners.resize(data.keypoints().size());
+			for(unsigned int i=0; i<data.keypoints().size(); ++i)
+			{
+				newCorners[i] = data.keypoints().at(i).pt;
+			}
+		}
+		else
+		{
+			// generate kpts
+			std::vector<cv::KeyPoint> newKtps;
+			cv::Rect roi = Feature2D::computeRoi(newLeftFrame, this->getRoiRatios());
+			newKtps = feature2D_->generateKeypoints(newLeftFrame, this->getMaxFeatures(), roi);
+			Feature2D::limitKeypoints(newKtps, this->getMaxFeatures());
+
+			if(newKtps.size())
+			{
+				cv::KeyPoint::convert(newKtps, newCorners);
+
+				if(subPixWinSize_ > 0 && subPixIterations_ > 0)
+				{
+					UDEBUG("cv::cornerSubPix() begin");
+					cv::cornerSubPix(newLeftFrame, newCorners,
+						cv::Size( subPixWinSize_, subPixWinSize_ ),
+						cv::Size( -1, -1 ),
+						cv::TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, subPixIterations_, subPixEps_ ) );
+					UDEBUG("cv::cornerSubPix() end");
+				}
+			}
+		}
+
+		if(lastCorners_.size() && newCorners.size() < (unsigned int)(this->getFeaturesRatio() * float(lastCorners_.size())))
+		{
+			UWARN("At least %f%% keypoints of the last image required. New=%d last=%d",
+					this->getFeaturesRatio()*100.0f, newCorners.size(), lastCorners_.size());
+		}
+		else if((int)newCorners.size() > this->getMinInliers())
+		{
+			lastFrame_ = newLeftFrame;
+			lastRightFrame_ = newRightFrame;
+			lastCorners_ = newCorners;
+		}
+		else
+		{
+			UWARN("Too low 2D corners (%d), ignoring new frame...",
+					(int)newCorners.size());
+		}
+	}
+	else if(!output.isNull())
+	{
+		output.setNull();
+	}
+
+	UINFO("Odom update time = %fs inliers=%d/%d, new corners=%d, transform accepted=%s",
+			timer.elapsed(),
+			inliers,
+			correspondences,
+			(int)newCorners.size(),
+			!output.isNull()?"true":"false");
+
+	return output;
+}
+
+Transform OdometryOpticalFlow::computeTransformRGBD(
+		const SensorData & data,
+		int * quality,
+		int * features)
+{
+	UTimer timer;
+	Transform output;
+
+	int inliers = 0;
+	int correspondences = 0;
+	imgMatches_ = cv::Mat();
+
+	cv::Mat newFrame;
+	// convert to grayscale
+	if(data.image().channels() > 1)
+	{
+		cv::cvtColor(data.image(), newFrame, cv::COLOR_BGR2GRAY);
+	}
+	else
+	{
+		newFrame = data.image().clone();
+	}
+
+	float updatePixels = 0.0f;
+	bool updateFrame = false;
+
+	std::vector<cv::Point2f> newCorners;
+	if(!lastFrame_.empty() && lastCorners_.size() && lastCorners3D_->size())
+	{
+		std::vector<unsigned char> status;
+		std::vector<float> err;
+		UDEBUG("cv::calcOpticalFlowPyrLK() begin");
+		cv::calcOpticalFlowPyrLK(
+				lastFrame_,
+				newFrame,
+				lastCorners_,
+				newCorners,
+				status,
+				err,
+				cv::Size(flowWinSize_, flowWinSize_), flowMaxLevel_,
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, flowIterations_, flowEps_),
+				cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
+		UDEBUG("cv::calcOpticalFlowPyrLK() end");
+
+		pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesLast(new pcl::PointCloud<pcl::PointXYZ>);
+		pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesNew(new pcl::PointCloud<pcl::PointXYZ>);
+		correspondencesLast->resize(lastCorners_.size());
+		correspondencesNew->resize(lastCorners_.size());
+		int oi=0;
+
+		std::vector<cv::KeyPoint> lastKpts(lastCorners_.size());
+		std::vector<cv::KeyPoint> newKpts(lastCorners_.size());
+
+		UASSERT(lastCorners_.size() == lastCorners3D_->size());
+		UDEBUG("lastCorners3D_ = %d", lastCorners3D_->size());
+		float sumSqrdDistance = 0.0f;
+		int flowInliers = 0;
+		for(unsigned int i=0; i<status.size(); ++i)
+		{
+			if(status[i] && pcl::isFinite(lastCorners3D_->at(i)) &&
+				uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols-1)) &&
+				uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows-1)))
+			{
+				pcl::PointXYZ pt = util3d::getDepth(data.depth(), newCorners[i].x, newCorners[i].y,
+						data.cx(), data.cy(), data.fx(), data.fy(), true);
+				if(pcl::isFinite(pt) &&
+					uIsInBounds(pt.x, -this->getMaxDepth(), this->getMaxDepth()) &&
+					uIsInBounds(pt.y, -this->getMaxDepth(), this->getMaxDepth()) &&
+					uIsInBounds(pt.z, 0.0f, this->getMaxDepth()))
+				{
+					pt = util3d::transformPoint(pt, data.localTransform());
+					correspondencesLast->at(oi) = lastCorners3D_->at(i);
+					correspondencesNew->at(oi) = pt;
+
+					cv::Point2f diff = newCorners[i]-lastCorners_[i];
+					sumSqrdDistance += diff.x*diff.x + diff.y*diff.y;
+
+					lastKpts[oi].pt = lastCorners_[i];
+					newKpts[oi].pt = newCorners[i];
+
+					++oi;
+				}
+				++flowInliers;
+			}
+			else if(status[i])
+			{
+				++flowInliers;
+			}
+		}
+		UDEBUG("Flow inliers = %d, added inliers=%d", flowInliers, oi);
+		float meanPixel = -1;
+		if(oi)
+		{
+			float meanPixel = sumSqrdDistance/(float)oi;
+			if(meanPixel >= updatePixels*updatePixels)
+			{
+				updateFrame = true;
+			}
+		}
+		UDEBUG("mean pixel distance = %f", meanPixel);
+
+		lastKpts.resize(oi);
+		newKpts.resize(oi);
+		correspondencesLast->resize(oi);
+		correspondencesNew->resize(oi);
+		correspondences = oi;
+		if(correspondences >= this->getMinInliers())
+		{
+			std::vector<int> inliersV;
+			UTimer timerRANSAC;
+			output = util3d::transformFromXYZCorrespondences(
+					correspondencesNew,
+					correspondencesLast,
+					this->getInlierDistance(),
+					this->getIterations(),
+					this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
+					&inliersV);
+			UDEBUG("time RANSAC = %fs", timerRANSAC.ticks());
+
+			inliers = (int)inliersV.size();
+			if(quality)
+			{
+				*quality = inliers;
+			}
+
+			if(inliers < this->getMinInliers())
+			{
+				output.setNull();
+				UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
+			}
+
+			/*std::vector<cv::DMatch> good_matches(lastKpts.size());
+			for(unsigned int i=0; i<good_matches.size(); ++i)
+			{
+				good_matches[i].trainIdx = i;
+				good_matches[i].queryIdx = i;
+			}
+
+			cv::drawMatches( lastFrame_, lastKpts, newFrame, newKpts,
+						   good_matches, imgMatches_, cv::Scalar::all(-1), cv::Scalar::all(-1),
+						   std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );*/
+		}
+		else
+		{
+			UWARN("Not enough correspondences (%d)", correspondences);
+		}
+	}
+	else
+	{
+		//return Identity
+		output = Transform::getIdentity();
+		updateFrame = true;
+	}
+
+	newCorners.clear();
+	if(!output.isNull() && updateFrame)
+	{
+		// Copy or generate new keypoints
+		if(data.keypoints().size())
+		{
+			newCorners.resize(data.keypoints().size());
+			for(unsigned int i=0; i<data.keypoints().size(); ++i)
+			{
+				newCorners[i] = data.keypoints().at(i).pt;
+			}
+		}
+		else
+		{
+			// generate kpts
+			std::vector<cv::KeyPoint> newKtps;
+			cv::Rect roi = Feature2D::computeRoi(newFrame, this->getRoiRatios());
+			newKtps = feature2D_->generateKeypoints(newFrame, this->getMaxFeatures(), roi);
+			Feature2D::filterKeypointsByDepth(newKtps, data.depth(), this->getMaxDepth());
+			Feature2D::limitKeypoints(newKtps, this->getMaxFeatures());
+
+			if(newKtps.size())
+			{
+				cv::KeyPoint::convert(newKtps, newCorners);
+
+				if(subPixWinSize_ > 0 && subPixIterations_ > 0)
+				{
+					cv::cornerSubPix(newFrame, newCorners,
+						cv::Size( subPixWinSize_, subPixWinSize_ ),
+						cv::Size( -1, -1 ),
+						cv::TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, subPixIterations_, subPixEps_ ) );
+				}
+			}
+		}
+
+		if(lastCorners_.size() && newCorners.size() < (unsigned int)(this->getFeaturesRatio() * float(lastCorners_.size())))
+		{
+			UWARN("At least %f%% keypoints of the last image required. New=%d last=%d",
+					this->getFeaturesRatio()*100.0f, newCorners.size(), lastCorners_.size());
+		}
+		else if((int)newCorners.size() > this->getMinInliers())
+		{
+			// get 3D corners for the extracted 2D corners (not the ones refined by Optical Flow)
+			pcl::PointCloud<pcl::PointXYZ>::Ptr newCorners3D(new pcl::PointCloud<pcl::PointXYZ>);
+			newCorners3D->resize(newCorners.size());
+			std::vector<cv::Point2f> newCornersFiltered(newCorners.size());
+			int oi=0;
+			for(unsigned int i=0; i<newCorners.size(); ++i)
+			{
+				if(uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols)-1.0f) &&
+				   uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows)-1.0f))
+				{
+					pcl::PointXYZ pt = util3d::getDepth(data.depth(), newCorners[i].x, newCorners[i].y,
+							data.cx(), data.cy(), data.fx(), data.fy(), true);
+					if(pcl::isFinite(pt) &&
+						uIsInBounds(pt.x, -this->getMaxDepth(), this->getMaxDepth()) &&
+						uIsInBounds(pt.y, -this->getMaxDepth(), this->getMaxDepth()) &&
+						uIsInBounds(pt.z, 0.0f, this->getMaxDepth()))
+					{
+						pt = util3d::transformPoint(pt, data.localTransform());
+						newCorners3D->at(oi) = pt;
+						newCornersFiltered[oi] = newCorners[i];
+						++oi;
+					}
+				}
+			}
+			newCornersFiltered.resize(oi);
+			newCorners3D->resize(oi);
+			if((int)newCornersFiltered.size() > this->getMinInliers())
+			{
+				lastFrame_ = newFrame;
+				lastCorners_ = newCornersFiltered;
+				lastCorners3D_ = newCorners3D;
+			}
+			else
+			{
+				UWARN("Too low 3D corners (%d/%d, minCorners=%d), ignoring new frame...",
+						(int)newCornersFiltered.size(), (int)lastCorners3D_->size(), this->getMinInliers());
+			}
+		}
+		else
+		{
+			UWARN("Too low 2D corners (%d), ignoring new frame...",
+					(int)newCorners.size());
+		}
+	}
+	else if(!output.isNull())
+	{
+		output = Transform::getIdentity();
+	}
+
+	UINFO("Odom update time = %fs inliers=%d/%d, new corners=%d, transform accepted=%s",
+			timer.elapsed(),
+			inliers,
+			correspondences,
+			(int)newCorners.size(),
+			updateFrame||output.isNull()?"true":"false");
+	return output;
+}
+
 // OdometryICP
 OdometryICP::OdometryICP(int decimation,
 		float voxelSize,
@@ -444,10 +1061,10 @@ Transform OdometryICP::computeTransform(const SensorData & data, int * quality, 
 	{
 		pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudXYZ = util3d::getICPReadyCloud(
 						data.depth(),
-						data.depthFx(),
-						data.depthFy(),
-						data.depthCx(),
-						data.depthCy(),
+						data.fx(),
+						data.fy(),
+						data.cx(),
+						data.cy(),
 						_decimation,
 						this->getMaxDepth(),
 						_voxelSize,
@@ -618,7 +1235,7 @@ void OdometryThread::mainLoop()
 
 void OdometryThread::addData(const SensorData & data)
 {
-	if(data.image().empty() || data.depth().empty() || data.depthFx() == 0.0f || data.depthFy() == 0.0f)
+	if(data.image().empty() || data.depth().empty() || data.fx() == 0.0f || data.fy() == 0.0f)
 	{
 		ULOGGER_ERROR("image empty !?");
 		return;

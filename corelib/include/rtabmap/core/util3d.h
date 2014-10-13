@@ -186,6 +186,26 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDepthRGB(
 		float fx, float fy,
 		int decimation = 1);
 
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDisparityRGB(
+		const cv::Mat & imageRgb,
+		const cv::Mat & imageDisparity,
+		float cx, float cy,
+		float fx, float baseline,
+		int decimation);
+
+cv::Mat RTABMAP_EXP disparityFromStereoImages(
+		const cv::Mat & leftImage,
+		const cv::Mat & rightImage);
+
+pcl::PointXYZ RTABMAP_EXP projectDisparityTo3d(
+		const cv::Point2f & pt,
+		float disparity,
+		float cx, float cy, float fx, float baseline);
+
+cv::Mat RTABMAP_EXP depthFromDisparity(const cv::Mat & disparity,
+		float cx, float cy, float fx, float baseline,
+		int type = CV_32FC1);
+
 cv::Mat RTABMAP_EXP depth2DFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud);
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP depth2DToPointCloud(const cv::Mat & depth2D);
 
@@ -242,7 +262,10 @@ Transform RTABMAP_EXP transformFromXYZCorrespondences(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud2,
 		double inlierThreshold = 0.02,
 		int iterations = 100,
-		int * inliers = 0);
+		bool refineModel = false,
+		double refineModelSigma = 3.0,
+		int refineModelIterations = 10,
+		std::vector<int> * inliers = 0);
 
 Transform RTABMAP_EXP icp(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,

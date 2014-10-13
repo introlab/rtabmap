@@ -189,7 +189,7 @@ public:
 	bool isStatisticsPublished() const;
 	double getLoopThr() const;
 	double getVpThr() const;
-	double getExpThr() const;
+	int getOdomStrategy() const;
 
 	//
 	void setMonitoringState(bool monitoringState) {_monitoringState = monitoringState;}

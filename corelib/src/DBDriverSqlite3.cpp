@@ -2025,7 +2025,7 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt,
 
 	if(uStrNumCmp(_version, "0.7.0") < 0)
 	{
-		rc = sqlite3_bind_double(ppStmt, index++, 1.0f/fy);
+		rc = sqlite3_bind_double(ppStmt, index++, 1.0f/fx);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	}
 	else

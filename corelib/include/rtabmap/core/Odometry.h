@@ -50,6 +50,8 @@ class UTimer;
 
 namespace rtabmap {
 
+class Feature2D;
+
 class RTABMAP_EXP Odometry
 {
 public:
@@ -62,29 +64,31 @@ public:
 	//getters
 	const Transform & getPose() const {return _pose;}
 	int getMaxFeatures() const  {return _maxFeatures;}
+	const std::string & getRoiRatios() const {return _roiRatios;}
 	int getMinInliers() const {return _minInliers;}
 	float getInlierDistance() const {return _inlierDistance;}
 	int getIterations() const {return _iterations;}
-	float getWordsRatio() const {return _wordsRatio;}
+	int getRefineIterations() const {return _refineIterations;}
+	float getFeaturesRatio() const {return _featuresRatio;}
 	float getMaxDepth() const {return _maxDepth;}
 	float geLinearUpdate() const {return _linearUpdate;}
 	float getAngularUpdate() const {return _angularUpdate;}
-	int getLocalHistoryMaxSize() const {return _localHistoryMaxSize;}
 
 private:
 	virtual Transform computeTransform(const SensorData & image, int * quality = 0, int * features = 0, int * localMapSize = 0) = 0;
 
 private:
 	int _maxFeatures;
+	std::string _roiRatios;
 	int _minInliers;
 	float _inlierDistance;
 	int _iterations;
-	float _wordsRatio;
+	int _refineIterations;
+	float _featuresRatio;
 	float _maxDepth;
 	float _linearUpdate;
 	float _angularUpdate;
 	int _resetCountdown;
-	int _localHistoryMaxSize;
 	Transform _pose;
 	int _resetCurrentCount;
 
@@ -108,8 +112,49 @@ private:
 	virtual Transform computeTransform(const SensorData & image, int * quality = 0, int * features = 0, int * localMapSize = 0);
 
 private:
+	//Parameters
+	int _localHistoryMaxSize;
+
 	Memory * _memory;
 	std::multimap<int, pcl::PointXYZ> localMap_;
+};
+
+class RTABMAP_EXP OdometryOpticalFlow : public Odometry
+{
+public:
+	OdometryOpticalFlow(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
+	virtual ~OdometryOpticalFlow();
+
+	virtual void reset();
+
+	const cv::Mat & getLastFrame() const {return lastFrame_;}
+	const std::vector<cv::Point2f> & getLastCorners() const {return lastCorners_;}
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr & getLastCorners3D() const {return lastCorners3D_;}
+
+	cv::Mat imgMatches_;
+
+private:
+	virtual Transform computeTransform(const SensorData & image, int * quality = 0, int * features = 0, int * localMapSize = 0);
+	Transform computeTransformStereo(const SensorData & image, int * quality, int * features);
+	Transform computeTransformRGBD(const SensorData & image, int * quality, int * features);
+private:
+	//Parameters:
+	int flowWinSize_;
+	int flowIterations_;
+	double flowEps_;
+	int flowMaxLevel_;
+
+	int subPixWinSize_;
+	int subPixIterations_;
+	double subPixEps_;
+
+	Feature2D * feature2D_;
+
+	cv::Mat lastFrame_;
+	cv::Mat lastRightFrame_;
+	std::vector<cv::Point2f> lastCorners_;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr lastCorners3D_;
+	Transform savedLastRefFrameTransform_;
 };
 
 class RTABMAP_EXP OdometryICP : public Odometry

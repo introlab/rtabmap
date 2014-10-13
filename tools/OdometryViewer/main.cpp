@@ -36,16 +36,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/DBReader.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <QtGui/QApplication>
+#include <pcl/console/print.h>
 
 void showUsage()
 {
 	printf("\nUsage:\n"
 			"odometryViewer [options]\n"
 			"Options:\n"
-			"  -o #                      Odometry type (default 0): 0=SURF, 1=SIFT, 2=ORB, 3=FAST/FREAK, 4=FAST/BRIEF, 5=GFTT/FREAK, 6=GFTT/BRIEF\n"
+			"  -driver #                 Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS\n"
+			"  -o #                      Odometry type (default 0): 0=SURF, 1=SIFT, 2=ORB, 3=FAST/FREAK, 4=FAST/BRIEF, 5=GFTT/FREAK, 6=GFTT/BRIEF, 7=BRISK\n"
 			"  -nn #                     Nearest neighbor strategy (default 1): kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4\n"
 			"  -nndr #                   Nearest neighbor distance ratio (default 0.7)\n"
 			"  -icp                      Use ICP odometry\n"
+			"  -flow                     Use optical flow odometry.\n"
 			"\n"
 			"  -hz #.#                   Camera rate (default 0, 0 means as fast as the camera can)\n"
 			"  -db \"input.db\"          Use database instead of camera (recorded with rtabmap-dataRecorder)\n"
@@ -80,7 +83,8 @@ void showUsage()
 			"  odometryViewer -odom 1 -lh 10000                     SIFT example\n"
 			"  odometryViewer -odom 4 -nn 2 -lh 1000                FAST/BRIEF example\n"
 			"  odometryViewer -odom 3 -nn 2 -lh 1000                FAST/FREAK example\n"
-			"  odometryViewer -icp -in 0.05 -i 30                   ICP example\n");
+			"  odometryViewer -icp -in 0.05 -i 30                   ICP example\n"
+			"  odometryViewer -flow                                 Optical flow example\n");
 	exit(1);
 }
 
@@ -92,8 +96,10 @@ int main (int argc, char * argv[])
 	// parse arguments
 	float rate = 0.0;
 	std::string inputDatabase;
+	int driver = 0;
 	int odomType = 0;
 	bool icp = false;
+	bool flow = false;
 	int nnType =1;
 	float nndr = 0.7f;
 	float distance = 0.005;
@@ -119,6 +125,23 @@ int main (int argc, char * argv[])
 
 	for(int i=1; i<argc; ++i)
 	{
+		if(strcmp(argv[i], "-driver") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				driver = std::atoi(argv[i]);
+				if(driver < 0 || driver > 4)
+				{
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
 		if(strcmp(argv[i], "-o") == 0)
 		{
 			++i;
@@ -521,6 +544,11 @@ int main (int argc, char * argv[])
 			icp = true;
 			continue;
 		}
+		if(strcmp(argv[i], "-flow") == 0)
+		{
+			flow = true;
+			continue;
+		}
 		if(strcmp(argv[i], "-p2p") == 0)
 		{
 			p2p = true;
@@ -585,10 +613,19 @@ int main (int argc, char * argv[])
 	{
 		odomName = "GFTT+BRIEF";
 	}
+	else if(odomType == 7)
+	{
+		odomName = "BRISK";
+	}
 
 	if(icp)
 	{
 		odomName= "ICP";
+	}
+
+	if(flow)
+	{
+		odomName= "Optical Flow";
 	}
 
 	std::string nnName;
@@ -633,47 +670,62 @@ int main (int argc, char * argv[])
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomLinearUpdate(), uNumber2Str(linearUpdate)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomAngularUpdate(), uNumber2Str(angularUpdate)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomResetCountdown(), uNumber2Str(resetCountdown)));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomLocalHistory(), uNumber2Str(localHistory)));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomBowLocalHistorySize(), uNumber2Str(localHistory)));
 
 	if(!icp)
 	{
-		UINFO("Nearest neighbor =         %s", nnName.c_str());
-		UINFO("Nearest neighbor ratio =  %f", nndr);
-		UINFO("Max features =            %d", maxWords);
-		UINFO("Min inliers =             %d", minInliers);
-		UINFO("Words ratio =             %f", wordsRatio);
-		UINFO("Inlier maximum correspondences distance = %f", distance);
-		UINFO("RANSAC iterations =       %d", iterations);
-		UINFO("GPU =                     %s", gpu?"true":"false");
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMaxWords(), uNumber2Str(maxWords)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomWordsRatio(), uNumber2Str(wordsRatio)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomInlierDistance(), uNumber2Str(distance)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMinInliers(), uNumber2Str(minInliers)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomIterations(), uNumber2Str(iterations)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomNearestNeighbor(), uNumber2Str(nnType)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomNNDR(), uNumber2Str(nndr)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomType(), uNumber2Str(odomType)));
-		if(odomType == 0)
+		if(flow)
 		{
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), uBool2Str(gpu)));
+			// Optical Flow
+			UINFO("Min inliers =             %d", minInliers);
+			UINFO("Inlier maximum correspondences distance = %f", distance);
+			UINFO("RANSAC iterations =       %d", iterations);
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomInlierDistance(), uNumber2Str(distance)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMinInliers(), uNumber2Str(minInliers)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomIterations(), uNumber2Str(iterations)));
+			odom = new rtabmap::OdometryOpticalFlow(parameters);
 		}
-		if(odomType == 2)
+		else
 		{
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kORBGpu(), uBool2Str(gpu)));
-		}
-		if(odomType == 3 || odomType == 4)
-		{
-			UINFO("FAST threshold =          %d", fastThr);
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTThreshold(), uNumber2Str(fastThr)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTGpu(), uBool2Str(gpu)));
-		}
-		if(odomType == 4 || odomType == 6)
-		{
-			UINFO("BRIEF bytes =             %d", briefBytes);
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kBRIEFBytes(), uNumber2Str(briefBytes)));
-		}
+			//BOW
+			UINFO("Nearest neighbor =         %s", nnName.c_str());
+			UINFO("Nearest neighbor ratio =  %f", nndr);
+			UINFO("Max features =            %d", maxWords);
+			UINFO("Min inliers =             %d", minInliers);
+			UINFO("Words ratio =             %f", wordsRatio);
+			UINFO("Inlier maximum correspondences distance = %f", distance);
+			UINFO("RANSAC iterations =       %d", iterations);
+			UINFO("GPU =                     %s", gpu?"true":"false");
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMaxFeatures(), uNumber2Str(maxWords)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomInlierDistance(), uNumber2Str(distance)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMinInliers(), uNumber2Str(minInliers)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomIterations(), uNumber2Str(iterations)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomFeatureType(), uNumber2Str(odomType)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomFeaturesRatio(), uNumber2Str(wordsRatio)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomBowNNType(), uNumber2Str(nnType)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomBowNNDR(), uNumber2Str(nndr)));
+			if(odomType == 0)
+			{
+				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), uBool2Str(gpu)));
+			}
+			if(odomType == 2)
+			{
+				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kORBGpu(), uBool2Str(gpu)));
+			}
+			if(odomType == 3 || odomType == 4)
+			{
+				UINFO("FAST threshold =          %d", fastThr);
+				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTThreshold(), uNumber2Str(fastThr)));
+				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTGpu(), uBool2Str(gpu)));
+			}
+			if(odomType == 4 || odomType == 6)
+			{
+				UINFO("BRIEF bytes =             %d", briefBytes);
+				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kBRIEFBytes(), uNumber2Str(briefBytes)));
+			}
 
-		odom = new rtabmap::OdometryBOW(parameters);
+			odom = new rtabmap::OdometryBOW(parameters);
+		}
 	}
 	else // ICP
 	{
@@ -718,15 +770,64 @@ int main (int argc, char * argv[])
 	}
 	else
 	{
-		rtabmap::CameraThread camera(new rtabmap::CameraOpenni("", rate, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0)));
-		if(camera.init())
+		rtabmap::CameraRGBD * camera = 0;
+		rtabmap::Transform t=rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0);
+		if(driver == 0)
+		{
+			camera = new rtabmap::CameraOpenni("", rate, t);
+		}
+		else if(driver == 1)
+		{
+			if(!rtabmap::CameraOpenNI2::available())
+			{
+				UERROR("Not built with OpenNI2 support...");
+				exit(-1);
+			}
+			camera = new rtabmap::CameraOpenNI2(rate, t);
+		}
+		else if(driver == 2)
+		{
+			if(!rtabmap::CameraFreenect::available())
+			{
+				UERROR("Not built with Freenect support...");
+				exit(-1);
+			}
+			camera = new rtabmap::CameraFreenect(0, rate, t);
+		}
+		else if(driver == 3)
+		{
+			if(!rtabmap::CameraOpenNICV::available())
+			{
+				UERROR("Not built with OpenNI from OpenCV support...");
+				exit(-1);
+			}
+			camera = new rtabmap::CameraOpenNICV(false, rate, t);
+		}
+		else if(driver == 4)
+		{
+			if(!rtabmap::CameraOpenNICV::available())
+			{
+				UERROR("Not built with OpenNI from OpenCV support...");
+				exit(-1);
+			}
+			camera = new rtabmap::CameraOpenNICV(true, rate, t);
+		}
+		else
+		{
+			UFATAL("Camera driver (%d) not found!", driver);
+		}
+
+		//pcl::console::setVerbosityLevel(pcl::console::L_DEBUG);
+
+		rtabmap::CameraThread cameraThread(camera);
+		if(cameraThread.init())
 		{
 			odomThread.start();
-			camera.start();
+			cameraThread.start();
 
 			app.exec();
 
-			camera.kill();
+			cameraThread.kill();
 			odomThread.join(true);
 		}
 	}

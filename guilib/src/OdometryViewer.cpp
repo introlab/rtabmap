@@ -91,7 +91,7 @@ void OdometryViewer::processData()
 	}
 	dataMutex_.unlock();
 
-	if(!data.image().empty() && !data.depth().empty() && data.depthFx()>0.0f && data.depthFy()>0.0f && this->isVisible())
+	if(!data.image().empty() && !data.depth().empty() && data.fx()>0.0f && data.fy()>0.0f && this->isVisible())
 	{
 		UDEBUG("New pose = %s, quality=%d", data.pose().prettyPrint().c_str(), quality);
 
@@ -101,8 +101,8 @@ void OdometryViewer::processData()
 		cloud = util3d::cloudFromDepthRGB(
 				data.image(),
 				data.depth(),
-				data.depthCx(), data.depthCy(),
-			    data.depthFx(), data.depthFy(),
+				data.cx(), data.cy(),
+			    data.fx(), data.fy(),
 			    decimation_);
 
 		if(voxelSize_ > 0.0f)

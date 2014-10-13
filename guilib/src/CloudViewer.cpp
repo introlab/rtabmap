@@ -74,7 +74,6 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_menu(0),
 		_trajectory(new pcl::PointCloud<pcl::PointXYZ>),
 		_maxTrajectorySize(100),
-		_lastPose(Transform::getIdentity()),
 		_workingDirectory(".")
 {
 	this->setMinimumSize(200, 200);
@@ -438,6 +437,7 @@ void CloudViewer::clearTrajectory()
 {
 	_trajectory->clear();
 	_visualizer->removeShape("trajectory");
+	_lastPose.setNull();
 	this->render();
 }
 
@@ -502,8 +502,13 @@ void CloudViewer::updateCameraPosition(const Transform & pose)
 			_visualizer->addPolylineFromPolygonMesh(mesh, "trajectory");
 		}
 
-		if(pose != _lastPose)
+		if(pose != _lastPose || _lastPose.isNull())
 		{
+			if(_lastPose.isNull())
+			{
+				_lastPose.setIdentity();
+			}
+
 			std::vector<pcl::visualization::Camera> cameras;
 			_visualizer->getCameras(cameras);
 

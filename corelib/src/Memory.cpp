@@ -196,6 +196,10 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 			{
 				_lastSignature = uValue(_signatures, *_stMem.rbegin(), (Signature*)0);
 			}
+			else if(_workingMem.size()>0)
+			{
+				_lastSignature = uValue(_signatures, *_workingMem.rbegin(), (Signature*)0);
+			}
 
 			// Last id
 			_dbDriver->getLastNodeId(_idCount);
@@ -429,42 +433,9 @@ void Memory::parseParameters(const ParametersMap & parameters)
 			_feature2D = 0;
 			_featureType = Feature2D::kFeatureUndef;
 		}
-		switch(detectorStrategy)
-		{
-		case Feature2D::kFeatureSift:
-			_feature2D = new SIFT(parameters);
-			_featureType = Feature2D::kFeatureSift;
-			break;
-		case Feature2D::kFeatureFastBrief:
-			_feature2D = new FAST_BRIEF(parameters);
-			_featureType = Feature2D::kFeatureFastBrief;
-			break;
-		case Feature2D::kFeatureFastFreak:
-			_feature2D = new FAST_FREAK(parameters);
-			_featureType = Feature2D::kFeatureFastFreak;
-			break;
-		case Feature2D::kFeatureOrb:
-			_feature2D = new ORB(parameters);
-			_featureType = Feature2D::kFeatureOrb;
-			break;
-		case Feature2D::kFeatureGfttFreak:
-			_feature2D = new GFTT_FREAK(parameters);
-			_featureType = Feature2D::kFeatureGfttFreak;
-			break;
-		case Feature2D::kFeatureGfttBrief:
-			_feature2D = new GFTT_BRIEF(parameters);
-			_featureType = Feature2D::kFeatureGfttBrief;
-			break;
-		case Feature2D::kFeatureBrisk:
-			_feature2D = new BRISK(parameters);
-			_featureType = Feature2D::kFeatureBrisk;
-			break;
-		case Feature2D::kFeatureSurf:
-		default:
-			_feature2D = new SURF(parameters);
-			_featureType = Feature2D::kFeatureSurf;
-			break;
-		}
+
+		_feature2D = Feature2D::create(detectorStrategy, parameters);
+		_featureType = detectorStrategy;
 	}
 	else if(_feature2D)
 	{
@@ -1605,6 +1576,10 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase, std::list<int> * de
 			{
 				_lastSignature = this->_getSignature(*_stMem.rbegin());
 			}
+			else if(_workingMem.size())
+			{
+				_lastSignature = this->_getSignature(*_workingMem.rbegin());
+			}
 		}
 
 		if(	saveToDatabase &&
@@ -1727,12 +1702,15 @@ Transform Memory::computeVisualTransform(const Signature & oldS, const Signature
 			UDEBUG("Correspondences = %d", (int)inliersOld->size());
 
 			int inliersCount = 0;
+			std::vector<int> inliersV;
 			Transform t = util3d::transformFromXYZCorrespondences(
 					inliersOld,
 					inliersNew,
 					_bowInlierDistance,
 					_bowIterations,
-					&inliersCount);
+					true, 3.0, 10,
+					&inliersV);
+			inliersCount = inliersV.size();
 			if(!t.isNull() && inliersCount >= _bowMinInliers)
 			{
 				transform = t;
@@ -3038,16 +3016,12 @@ void Memory::extractKeypointsAndDescriptors(
 		std::vector<cv::KeyPoint> & keypoints,
 		cv::Mat & descriptors) const
 {
-	extractKeypointsAndDescriptors(image, cv::Mat(), 0,0,0,0, keypoints, descriptors);
+	extractKeypointsAndDescriptors(image, cv::Mat(), keypoints, descriptors);
 }
 
 void Memory::extractKeypointsAndDescriptors(
 		const cv::Mat & image,
 		const cv::Mat & depth,
-		float fx,
-		float fy,
-		float cx,
-		float cy,
 		std::vector<cv::KeyPoint> & keypoints,
 		cv::Mat & descriptors) const
 {
@@ -3056,12 +3030,12 @@ void Memory::extractKeypointsAndDescriptors(
 		UTimer timer;
 		if(_feature2D)
 		{
-			cv::Rect roi = computeRoi(image, _roiRatios);
+			cv::Rect roi = Feature2D::computeRoi(image, _roiRatios);
 			keypoints = _feature2D->generateKeypoints(image, 0, roi);
 			UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), timer.ticks());
 
-			filterKeypointsByDepth(keypoints, depth, fx, fy, cx, cy, _wordsMaxDepth);
-			limitKeypoints(keypoints, _wordsPerImageTarget);
+			Feature2D::filterKeypointsByDepth(keypoints, depth, _wordsMaxDepth);
+			Feature2D::limitKeypoints(keypoints, _wordsPerImageTarget);
 		}
 		else
 		{
@@ -3100,6 +3074,7 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 {
 	UASSERT(data.image().empty() || data.image().type() == CV_8UC1 || data.image().type() == CV_8UC3);
 	UASSERT(data.depth().empty() || data.depth().type() == CV_16UC1 || data.depth().type() == CV_32FC1);
+	UASSERT(data.rightImage().empty() || data.rightImage().type() == CV_8UC1);
 	UASSERT(data.depth2d().empty() || data.depth2d().type() == CV_32FC2);
 
 	PreUpdateThread preUpdateThread(_vwd);
@@ -3167,8 +3142,6 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 
 		this->extractKeypointsAndDescriptors(imageMono,
 				data.depth(),
-				data.depthFx(), data.depthFy(),
-				data.depthCx(), data.depthCy(),
 				keypoints,
 				descriptors);
 
@@ -3183,12 +3156,10 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 		keypoints = data.keypoints();
 		descriptors = data.descriptors().clone();
 
-		filterKeypointsByDepth(keypoints, descriptors,
+		Feature2D::filterKeypointsByDepth(keypoints, descriptors,
 				data.depth(),
-				data.depthFx(), data.depthFy(),
-				data.depthCx(), data.depthCy(),
 				_wordsMaxDepth);
-		limitKeypoints(keypoints, descriptors, _wordsPerImageTarget);
+		Feature2D::limitKeypoints(keypoints, descriptors, _wordsPerImageTarget);
 	}
 
 	if(_parallelized)
@@ -3229,9 +3200,9 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 
 	//3d words
 	std::multimap<int, pcl::PointXYZ> words3;
-	if(!data.depth().empty() && data.depthFx() && data.depthFy())
+	if(!data.depth().empty() && data.fx() && data.fy())
 	{
-		words3 = util3d::generateWords3(words, data.depth(), data.depthFx(), data.depthFy(), data.depthCx(), data.depthCy(), data.localTransform());
+		words3 = util3d::generateWords3(words, data.depth(), data.fx(), data.fy(), data.cx(), data.cy(), data.localTransform());
 	}
 
 	Signature * s;
@@ -3243,9 +3214,17 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 		{
 			UWARN("Keeping raw data in database: depth type is 32FC1, use 16UC1 depth format to avoid a conversion.");
 		}
-		cv::Mat depthMM = data.depth().type() == CV_32FC1?util3d::cvtDepthFromFloat(data.depth()):data.depth();
+		cv::Mat depthOrRightImage;
+		if(!data.depth().empty())
+		{
+			depthOrRightImage = data.depth().type() == CV_32FC1?util3d::cvtDepthFromFloat(data.depth()):data.depth();
+		}
+		else if(!data.rightImage().empty())
+		{
+			depthOrRightImage = data.rightImage();
+		}
 		util3d::CompressionThread ctImage(data.image(), std::string(".jpg"));
-		util3d::CompressionThread ctDepth(depthMM, std::string(".png"));
+		util3d::CompressionThread ctDepth(depthOrRightImage, std::string(".png"));
 		ctImage.start();
 		ctDepth.start();
 		ctImage.join();
@@ -3261,10 +3240,10 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 			util3d::compressData(data.depth2d()),
 			imageBytes,
 			depthBytes,
-			data.depthFx(),
-			data.depthFy(),
-			data.depthCx(),
-			data.depthCy(),
+			data.fx(),
+			data.fy()>0.0f?data.fy():data.baseline(),
+			data.cx(),
+			data.cy(),
 			data.localTransform());
 		s->setImageRaw(data.image());
 		s->setDepthRaw(data.depth());

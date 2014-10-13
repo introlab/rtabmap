@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include "rtabmap/core/SensorData.h"
+#include "rtabmap/utilite/ULogger.h"
 
 namespace rtabmap
 {
@@ -38,7 +39,7 @@ SensorData::SensorData() :
 	_image(cv::Mat()),
 	_id(0),
 	_fx(0.0f),
-	_fy(0.0f),
+	_fyOrBaseline(0.0f),
 	_cx(0.0f),
 	_cy(0.0f),
 	_localTransform(Transform::getIdentity())
@@ -50,18 +51,20 @@ SensorData::SensorData(const cv::Mat & image,
 	_image(image),
 	_id(id),
 	_fx(0.0f),
-	_fy(0.0f),
+	_fyOrBaseline(0.0f),
 	_cx(0.0f),
 	_cy(0.0f),
 	_localTransform(Transform::getIdentity())
 {
+	UASSERT(image.type() == CV_8UC1 || // Mono
+			image.type() == CV_8UC3);  // RGB
 }
 
 	// Metric constructor
 SensorData::SensorData(const cv::Mat & image,
-		  const cv::Mat & depth,
+		  const cv::Mat & depthOrRightImage,
 		  float fx,
-		  float fy,
+		  float fyOrBaseline,
 		  float cx,
 		  float cy,
 		  const Transform & pose,
@@ -69,22 +72,29 @@ SensorData::SensorData(const cv::Mat & image,
 		  int id) :
 	_image(image),
 	_id(id),
-	_depth(depth),
+	_depthOrRightImage(depthOrRightImage),
 	_fx(fx),
-	_fy(fy),
+	_fyOrBaseline(fyOrBaseline),
 	_cx(cx),
 	_cy(cy),
 	_pose(pose),
 	_localTransform(localTransform)
 {
+	UASSERT(image.type() == CV_8UC1 || // Mono
+			image.type() == CV_8UC3);  // RGB
+	UASSERT(depthOrRightImage.type() == CV_32FC1 || // Depth in meter
+			depthOrRightImage.type() == CV_16UC1 || // Depth in millimetre
+			depthOrRightImage.type() == CV_8U);     // Right stereo image
+	UASSERT(!depthOrRightImage.empty() && _fx>0.0f && _fyOrBaseline>0.0f && _cx>=0.0f && _cy>=0.0f);
+	UASSERT(!_localTransform.isNull());
 }
 
 	// Metric constructor + 2d depth
 SensorData::SensorData(const cv::Mat & image,
-		  const cv::Mat & depth,
+		  const cv::Mat & depthOrRightImage,
 		  const cv::Mat & depth2d,
 		  float fx,
-		  float fy,
+		  float fyOrBaseline,
 		  float cx,
 		  float cy,
 		  const Transform & pose,
@@ -92,15 +102,22 @@ SensorData::SensorData(const cv::Mat & image,
 		  int id) :
 	_image(image),
 	_id(id),
-	_depth(depth),
+	_depthOrRightImage(depthOrRightImage),
 	_depth2d(depth2d),
 	_fx(fx),
-	_fy(fy),
+	_fyOrBaseline(fyOrBaseline),
 	_cx(cx),
 	_cy(cy),
 	_pose(pose),
 	_localTransform(localTransform)
 {
+	UASSERT(image.type() == CV_8UC1 || // Mono
+			image.type() == CV_8UC3);  // RGB
+	UASSERT(depthOrRightImage.type() == CV_32FC1 || // Depth in meter
+			depthOrRightImage.type() == CV_16UC1 || // Depth in millimetre
+			depthOrRightImage.type() == CV_8U);     // Right stereo image
+	UASSERT(!depthOrRightImage.empty() && _fx>0.0f && _fyOrBaseline>0.0f && _cx>=0.0f && _cy>=0.0f);
+	UASSERT(!_localTransform.isNull());
 }
 
 bool SensorData::empty() const

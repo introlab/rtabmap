@@ -204,7 +204,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(FAST, Gpu,                bool, false, 	"GPU-FAST: Use GPU version of FAST. This option is enabled only if OpenCV is built with CUDA and GPUs are detected.");
 	RTABMAP_PARAM(FAST, GpuKeypointsRatio,  double, 0.05, 	"Used with FAST GPU.");
 
-	RTABMAP_PARAM(GFTT, MaxCorners, int, 1000, "");
+	RTABMAP_PARAM(GFTT, MaxCorners, int, 400, "");
 	RTABMAP_PARAM(GFTT, QualityLevel, double, 0.01, "");
 	RTABMAP_PARAM(GFTT, MinDistance, double, 1, "");
 	RTABMAP_PARAM(GFTT, BlockSize, int, 3, "");
@@ -247,29 +247,43 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, AngularUpdate,     float, 0.0, 	"Min angular displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
 	RTABMAP_PARAM(RGBD, NewMapOdomChangeDistance, float, 0, "A new map is created if a change of odometry translation greater than X m is detected (0 m = disabled).");
 	RTABMAP_PARAM(RGBD, ToroIterations,    int, 100,    "TORO graph optimization iterations");
-	RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd, bool, true,    "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
+	RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd, bool, false,    "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
 
 	// Local loop closure detection
-	RTABMAP_PARAM(RGBD, LocalLoopDetectionTime,     bool, true, 	"Detection over all locations in STM.");
+	RTABMAP_PARAM(RGBD, LocalLoopDetectionTime,     bool, false, 	"Detection over all locations in STM.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionSpace,    bool, false, 	"Detection over locations (in Working Memory or STM) near in space.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionRadius,   float, 15, 		"Maximum radius for space detection.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionNeighbors,   int, 20, 	"Maximum nearest neighbor.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxDiffID,   int, 0,      "Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.")
 
 	// Odometry
-	RTABMAP_PARAM(Odom, Type,           		int, 0, 		"0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
+	RTABMAP_PARAM(Odom, Strategy,           	int, 0, 		"0=Bag-of-words 1=Optical Flow");
+	RTABMAP_PARAM(Odom, FeatureType,            int, 6, 	    "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
 	RTABMAP_PARAM(Odom, LinearUpdate,           float, 0.0, 	"Min linear displacement to update odometry.");
 	RTABMAP_PARAM(Odom, AngularUpdate,          float, 0.0, 	"Min angular displacement to update odometry.");
-	RTABMAP_PARAM(Odom, MaxWords,               int, 0, 		"0 no limits.");
+	RTABMAP_PARAM(Odom, MaxFeatures,            int, 0, 		"0 no limits.");
 	RTABMAP_PARAM(Odom, InlierDistance,         float, 0.01, 	"Maximum distance for visual word correspondences.");
-	RTABMAP_PARAM(Odom, MinInliers,             int, 10, 		"Minimum visual word correspondences to compute geometry transform.");
-	RTABMAP_PARAM(Odom, Iterations,             int, 100, 		"Maximum iterations to compute the transform from visual words.");
-	RTABMAP_PARAM(Odom, MaxDepth,               float, 5.0, 	"Max depth of the words (0 means no limit).");
-	RTABMAP_PARAM(Odom, WordsRatio,             float, 0.5, 	"Minmum ratio of keypoints between the current image and the last image to compute odometry.");
+	RTABMAP_PARAM(Odom, MinInliers,             int, 20, 		"Minimum visual word correspondences to compute geometry transform.");
+	RTABMAP_PARAM(Odom, Iterations,             int, 30, 		"Maximum iterations to compute the transform from visual words.");
+	RTABMAP_PARAM(Odom, MaxDepth,               float, 4.0, 	"Max depth of the words (0 means no limit).");
 	RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,         "Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).");
-	RTABMAP_PARAM(Odom, LocalHistory,           int, 0,         "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
-	RTABMAP_PARAM(Odom, NearestNeighbor,        int, 1, 	    "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
-	RTABMAP_PARAM(Odom, NNDR,                   float, 0.7,     "NNDR: nearest neighbor distance ratio.");
+	RTABMAP_PARAM_STR(Odom, RoiRatios,          "0.0 0.0 0.0 0.0", "Region of interest ratios [left, right, top, bottom].");
+	RTABMAP_PARAM(Odom, RefineIterations,       int, 10,        "Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
+	RTABMAP_PARAM(Odom, FeaturesRatio,          float, 0.5, 	"Minimum ratio of keypoints between the current image and the last image to compute odometry.");
+
+	// Odometry Bag-of-words
+	RTABMAP_PARAM(OdomBow, LocalHistorySize,       int, 1000,      "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
+	RTABMAP_PARAM(OdomBow, NNType,                 int, 3, 	    "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
+	RTABMAP_PARAM(OdomBow, NNDR,                   float, 0.8,  "NNDR: nearest neighbor distance ratio.");
+
+	// Odometry Optical Flow
+	RTABMAP_PARAM(OdomFlow, WinSize,               int, 9,       "See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, Iterations,            int, 20,       "See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, Eps,                   double, 0.02,  "See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, MaxLevel,              int, 4,        "See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, SubPixWinSize,         int, 3,        "See cv::cornerSubPix().");
+	RTABMAP_PARAM(OdomFlow, SubPixIterations,      int, 0,       "See cv::cornerSubPix(). 0 disables sub pixel refining.");
+	RTABMAP_PARAM(OdomFlow, SubPixEps,             double, 0.02,  "See cv::cornerSubPix().");
 
 	// Loop closure constraint
 	RTABMAP_PARAM(LccIcp, Type,            int, 0, 			"0=No ICP, 1=ICP 3D, 2=ICP 2D");

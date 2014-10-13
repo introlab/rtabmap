@@ -603,18 +603,18 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality, 
 		if(data.depth().cols == data.image().cols &&
 		   data.depth().rows == data.image().rows &&
 		   !data.depth().empty() &&
-		   data.depthFx() > 0.0f &&
-		   data.depthFy() > 0.0f &&
+		   data.fx() > 0.0f &&
+		   data.fy() > 0.0f &&
 		   _preferencesDialog->isCloudsShown(1))
 		{
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 			cloud = createCloud(0,
 					data.image(),
 					data.depth(),
-					data.depthFx(),
-					data.depthFy(),
-					data.depthCx(),
-					data.depthCy(),
+					data.fx(),
+					data.fy(),
+					data.cx(),
+					data.cy(),
 					data.localTransform(),
 					pose,
 					_preferencesDialog->getCloudVoxelSize(1),
@@ -2084,7 +2084,15 @@ void MainWindow::startDetection()
 				UERROR("OdomThread must be already deleted here?!");
 				delete _odomThread;
 			}
-			Odometry * odom = new OdometryBOW(parameters);
+			Odometry * odom;
+			if(_preferencesDialog->getOdomStrategy() == 1)
+			{
+				odom = new OdometryOpticalFlow(parameters);
+			}
+			else
+			{
+				odom = new OdometryBOW(parameters);
+			}
 			_odomThread = new OdometryThread(odom);
 
 			UEventsManager::addHandler(_odomThread);
@@ -2179,7 +2187,15 @@ void MainWindow::startDetection()
 				UERROR("OdomThread must be already deleted here?!");
 				delete _odomThread;
 			}
-			Odometry * odom = new OdometryBOW(parameters);
+			Odometry * odom;
+			if(_preferencesDialog->getOdomStrategy() == 1)
+			{
+				odom = new OdometryOpticalFlow(parameters);
+			}
+			else
+			{
+				odom = new OdometryBOW(parameters);
+			}
 			_odomThread = new OdometryThread(odom);
 
 			UEventsManager::addHandler(_odomThread);

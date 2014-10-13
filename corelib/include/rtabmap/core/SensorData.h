@@ -47,9 +47,9 @@ public:
 
 	// Metric constructor
 	SensorData(const cv::Mat & image,
-		  const cv::Mat & depth,
+		  const cv::Mat & depthOrRightImage,
 		  float fx,
-		  float fy,
+		  float fyOrBaseline,
 		  float cx,
 		  float cy,
 		  const Transform & pose,
@@ -58,10 +58,10 @@ public:
 
 	// Metric constructor + 2d depth
 	SensorData(const cv::Mat & image,
-		  const cv::Mat & depth,
+		  const cv::Mat & depthOrRightImage,
 		  const cv::Mat & depth2d,
 		  float fx,
-		  float fy,
+		  float fyOrBaseline,
 		  float cx,
 		  float cy,
 		  const Transform & pose,
@@ -78,14 +78,18 @@ public:
 	const cv::Mat & image() const {return _image;}
 	int id() const {return _id;};
 
-	bool isMetric() const {return !_depth.empty() || _fx != 0.0f || _fy != 0.0f || !_pose.isNull();}
+	bool isMetric() const {return !_depthOrRightImage.empty() || _fx != 0.0f || _fyOrBaseline != 0.0f || !_pose.isNull();}
 	void setPose(const Transform & pose) {_pose = pose;}
-	const cv::Mat & depth() const {return _depth;}
+	cv::Mat depth() const {return (_depthOrRightImage.type()==CV_32FC1 || _depthOrRightImage.type()==CV_16UC1)?_depthOrRightImage:cv::Mat();}
+	cv::Mat rightImage() const {return _depthOrRightImage.type()==CV_8UC1?_depthOrRightImage:cv::Mat();}
+	const cv::Mat & depthOrRightImage() const {return _depthOrRightImage;}
 	const cv::Mat & depth2d() const {return _depth2d;}
-	float depthFx() const {return _fx;}
-	float depthFy() const {return _fy;}
-	float depthCx() const {return _cx;}
-	float depthCy() const {return _cy;}
+	float fx() const {return _fx;}
+	float fy() const {return (_depthOrRightImage.type()==CV_32FC1 || _depthOrRightImage.type()==CV_16UC1)?_fyOrBaseline:0;}
+	float cx() const {return _cx;}
+	float cy() const {return _cy;}
+	float baseline() const {return _depthOrRightImage.type()==CV_8UC1?_fyOrBaseline:0;}
+	float fyOrBaseline() const {return _fyOrBaseline;}
 	const Transform & pose() const {return _pose;}
 	const Transform & localTransform() const {return _localTransform;}
 
@@ -102,10 +106,10 @@ private:
 	int _id;
 
 	// Metric stuff
-	cv::Mat _depth;
+	cv::Mat _depthOrRightImage;
 	cv::Mat _depth2d;
 	float _fx;
-	float _fy;
+	float _fyOrBaseline;
 	float _cx;
 	float _cy;
 	Transform _pose;

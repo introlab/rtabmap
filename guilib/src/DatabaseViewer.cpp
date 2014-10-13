@@ -139,7 +139,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->checkBox_initGuess, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 
 	ui_->constraintsViewer->setCameraLockZ(false);
-
+	ui_->constraintsViewer->updateCameraPosition(Transform::getIdentity());
 }
 
 DatabaseViewer::~DatabaseViewer()
@@ -470,9 +470,11 @@ void DatabaseViewer::updateIds()
 		ui_->horizontalSlider_neighbors->setEnabled(false);
 	}
 
-	updateLoopClosuresSlider();
-
-	updateGraphView();
+	if(ids_.size())
+	{
+		updateLoopClosuresSlider();
+		updateGraphView();
+	}
 }
 
 void DatabaseViewer::generateGraph()
@@ -769,12 +771,35 @@ void DatabaseViewer::view3DMap()
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 							cv::Mat imageMat = rtabmap::util3d::uncompressImage(image);
 							cv::Mat depthMat = rtabmap::util3d::uncompressImage(depth);
-							cloud = rtabmap::util3d::cloudFromDepthRGB(
+							UASSERT(imageMat.empty() || imageMat.type()==CV_8UC3 || imageMat.type() == CV_8UC1);
+							UASSERT(depthMat.empty() || depthMat.type()==CV_8UC1 || depthMat.type() == CV_16UC1 || depthMat.type() == CV_32FC1);
+							if(depthMat.type() == CV_8UC1)
+							{
+								cv::Mat leftImg;
+								if(imageMat.channels() == 3)
+								{
+									cv::cvtColor(imageMat, leftImg, CV_BGR2GRAY);
+								}
+								else
+								{
+									leftImg = imageMat;
+								}
+								cloud = rtabmap::util3d::cloudFromDisparityRGB(
 									imageMat,
-									depthMat,
+									util3d::disparityFromStereoImages(leftImg, depthMat),
 									cx, cy,
 									fx, fy,
 									decimation);
+							}
+							else
+							{
+								cloud = rtabmap::util3d::cloudFromDepthRGB(
+										imageMat,
+										depthMat,
+										cx, cy,
+										fx, fy,
+										decimation);
+							}
 
 							if(maxDepth)
 							{
@@ -872,12 +897,35 @@ void DatabaseViewer::generate3DMap()
 									pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 									cv::Mat imageMat = rtabmap::util3d::uncompressImage(image);
 									cv::Mat depthMat = rtabmap::util3d::uncompressImage(depth);
-									cloud = rtabmap::util3d::cloudFromDepthRGB(
+									UASSERT(imageMat.empty() || imageMat.type()==CV_8UC3 || imageMat.type() == CV_8UC1);
+									UASSERT(depthMat.empty() || depthMat.type()==CV_8UC1 || depthMat.type() == CV_16UC1 || depthMat.type() == CV_32FC1);
+									if(depthMat.type() == CV_8UC1)
+									{
+										cv::Mat leftImg;
+										if(imageMat.channels() == 3)
+										{
+											cv::cvtColor(imageMat, leftImg, CV_BGR2GRAY);
+										}
+										else
+										{
+											leftImg = imageMat;
+										}
+										cloud = rtabmap::util3d::cloudFromDisparityRGB(
 											imageMat,
-											depthMat,
+											util3d::disparityFromStereoImages(leftImg, depthMat),
 											cx, cy,
 											fx, fy,
 											decimation);
+									}
+									else
+									{
+										cloud = rtabmap::util3d::cloudFromDepthRGB(
+												imageMat,
+												depthMat,
+												cx, cy,
+												fx, fy,
+												decimation);
+									}
 
 									if(maxDepth)
 									{
@@ -1316,6 +1364,8 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link)
 	cv::Mat imageA = rtabmap::util3d::uncompressImage(imageBytesA);
 	cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
 	cv::Mat depth2dA = rtabmap::util3d::uncompressData(depth2dBytesA);
+	UASSERT(imageA.empty() || imageA.type()==CV_8UC3 || imageA.type() == CV_8UC1);
+	UASSERT(depthA.empty() || depthA.type()==CV_8UC1 || depthA.type() == CV_16UC1 || depthA.type() == CV_32FC1);
 
 	std::vector<unsigned char> imageBytesB, depthBytesB, depth2dBytesB;
 	memory_->getImageDepth(link.to(), imageBytesB, depthBytesB, depth2dBytesB, fxB, fyB, cxB, cyB, localTransformB);
@@ -1325,23 +1375,66 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link)
 
 	//cloud 3d
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudA;
-	cloudA = rtabmap::util3d::cloudFromDepthRGB(
-			imageA,
-			depthA,
-			cxA, cyA,
-			fxA, fyA,
-			1);
+	if(depthA.type() == CV_8UC1)
+	{
+		cv::Mat leftImg;
+		if(imageA.channels() == 3)
+		{
+			cv::cvtColor(imageA, leftImg, CV_BGR2GRAY);
+		}
+		else
+		{
+			leftImg = imageA;
+		}
+		cv::Mat disparity = util3d::disparityFromStereoImages(leftImg, depthA);
+		cloudA = rtabmap::util3d::cloudFromDisparityRGB(
+				imageA,
+				disparity,
+				cxA, cyA,
+				fxA, fyA,
+				1);
+	}
+	else
+	{
+		cloudA = rtabmap::util3d::cloudFromDepthRGB(
+				imageA,
+				depthA,
+				cxA, cyA,
+				fxA, fyA,
+				1);
+	}
 
 	cloudA = rtabmap::util3d::removeNaNFromPointCloud(cloudA);
 	cloudA = rtabmap::util3d::transformPointCloud(cloudA, localTransformA);
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudB;
-	cloudB = rtabmap::util3d::cloudFromDepthRGB(
-			imageB,
-			depthB,
-			cxB, cyB,
-			fxB, fyB,
-			1);
+	if(depthB.type() == CV_8UC1)
+	{
+		cv::Mat leftImg;
+		if(imageB.channels() == 3)
+		{
+			cv::cvtColor(imageB, leftImg, CV_BGR2GRAY);
+		}
+		else
+		{
+			leftImg = imageB;
+		}
+		cloudB = rtabmap::util3d::cloudFromDisparityRGB(
+				imageB,
+				util3d::disparityFromStereoImages(leftImg, depthB),
+				cxB, cyB,
+				fxB, fyB,
+				1);
+	}
+	else
+	{
+		cloudB = rtabmap::util3d::cloudFromDepthRGB(
+				imageB,
+				depthB,
+				cxB, cyB,
+				fxB, fyB,
+				1);
+	}
 
 	cloudB = rtabmap::util3d::removeNaNFromPointCloud(cloudB);
 	cloudB = rtabmap::util3d::transformPointCloud(cloudB, t*localTransformB);

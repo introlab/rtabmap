@@ -96,16 +96,16 @@ private slots:
 			if(data.depth().cols == data.image().cols &&
 			   data.depth().rows == data.image().rows &&
 			   !data.depth().empty() &&
-			   data.depthFx() > 0.0f &&
-			   data.depthFy() > 0.0f)
+			   data.fx() > 0.0f &&
+			   data.fy() > 0.0f)
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
 					data.image(),
 					data.depth(),
-					data.depthCx(),
-					data.depthCy(),
-					data.depthFx(),
-					data.depthFy(),
+					data.cx(),
+					data.cy(),
+					data.fx(),
+					data.fy(),
 					2); // decimation // high definition
 				if(cloud->size())
 				{

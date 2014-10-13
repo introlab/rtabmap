@@ -92,6 +92,9 @@ bool CameraThread::init()
 		{
 			return _camera->init();
 		}
+
+		// Added sleep time to ignore first frames (which are darker)
+		uSleep(1000);
 	}
 	else
 	{

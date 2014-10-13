@@ -453,19 +453,33 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_icp2Voxel->setObjectName(Parameters::kLccIcp2VoxelSize().c_str());
 
 	//Odometry
-	_ui->odom_type->setObjectName(Parameters::kOdomType().c_str());
+	_ui->odom_strategy->setObjectName(Parameters::kOdomStrategy().c_str());
+	_ui->odom_type->setObjectName(Parameters::kOdomFeatureType().c_str());
 	_ui->odom_linearUpdate->setObjectName(Parameters::kOdomLinearUpdate().c_str());
 	_ui->odom_angularUpdate->setObjectName(Parameters::kOdomAngularUpdate().c_str());
 	_ui->odom_countdown->setObjectName(Parameters::kOdomResetCountdown().c_str());
-	_ui->odom_localHistory->setObjectName(Parameters::kOdomLocalHistory().c_str());
-	_ui->odom_maxFeatures->setObjectName(Parameters::kOdomMaxWords().c_str());
+	_ui->odom_maxFeatures->setObjectName(Parameters::kOdomMaxFeatures().c_str());
+	_ui->odom_ratio->setObjectName(Parameters::kOdomFeaturesRatio().c_str());
 	_ui->odom_inlierDistance->setObjectName(Parameters::kOdomInlierDistance().c_str());
 	_ui->odom_iterations->setObjectName(Parameters::kOdomIterations().c_str());
 	_ui->odom_maxDepth->setObjectName(Parameters::kOdomMaxDepth().c_str());
 	_ui->odom_minInliers->setObjectName(Parameters::kOdomMinInliers().c_str());
-	_ui->odom_ratio->setObjectName(Parameters::kOdomWordsRatio().c_str());
-	_ui->odom_bin_nn->setObjectName(Parameters::kOdomNearestNeighbor().c_str());
-	_ui->odom_bin_nndrRatio->setObjectName(Parameters::kOdomNNDR().c_str());
+	_ui->odom_refine_iterations->setObjectName(Parameters::kOdomRefineIterations().c_str());
+	_ui->lineEdit_odom_roi->setObjectName(Parameters::kOdomRoiRatios().c_str());
+
+	//Odometry BOW
+	_ui->odom_localHistory->setObjectName(Parameters::kOdomBowLocalHistorySize().c_str());
+	_ui->odom_bin_nn->setObjectName(Parameters::kOdomBowNNType().c_str());
+	_ui->odom_bin_nndrRatio->setObjectName(Parameters::kOdomBowNNDR().c_str());
+
+	//Odometry Optical Flow
+	_ui->odom_flow_winSize->setObjectName(Parameters::kOdomFlowWinSize().c_str());
+	_ui->odom_flow_maxLevel->setObjectName(Parameters::kOdomFlowMaxLevel().c_str());
+	_ui->odom_flow_iterations->setObjectName(Parameters::kOdomFlowIterations().c_str());
+	_ui->odom_flow_eps->setObjectName(Parameters::kOdomFlowEps().c_str());
+	_ui->odom_flow_subpix_winSize->setObjectName(Parameters::kOdomFlowSubPixWinSize().c_str());
+	_ui->odom_flow_subpix_iterations->setObjectName(Parameters::kOdomFlowSubPixIterations().c_str());
+	_ui->odom_flow_subpix_eps->setObjectName(Parameters::kOdomFlowSubPixEps().c_str());
 
 	setupSignals();
 	// custom signals
@@ -2797,6 +2811,10 @@ double PreferencesDialog::getVpThr() const
 {
 	return _ui->general_doubleSpinBox_vp->value();
 }
+int PreferencesDialog::getOdomStrategy() const
+{
+	return _ui->odom_strategy->currentIndex();
+}
 
 bool PreferencesDialog::isImagesKept() const
 {
@@ -2982,7 +3000,15 @@ void PreferencesDialog::testOdometry(int type)
 	if(camera)
 	{
 		ParametersMap parameters = this->getAllParameters();
-		Odometry * odometry = new OdometryBOW(parameters);
+		Odometry * odometry;
+		if(this->getOdomStrategy() == 1)
+		{
+			odometry = new OdometryOpticalFlow(parameters);
+		}
+		else
+		{
+			odometry = new OdometryBOW(parameters);
+		}
 
 		_odomThread = new OdometryThread(odometry); // take ownership of odometry
 

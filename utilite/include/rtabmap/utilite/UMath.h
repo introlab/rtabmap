@@ -860,4 +860,10 @@ inline std::vector<float> uHamming(unsigned int L)
 	return w;
 }
 
+template <typename T>
+bool uIsInBounds(const T& value, const T& low, const T& high)
+{
+	return !(value < low) && !(value > high);
+}
+
 #endif // UMATH_H

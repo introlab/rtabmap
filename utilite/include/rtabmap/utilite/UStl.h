@@ -622,4 +622,12 @@ inline int uStrNumCmp(const std::string & a, const std::string & b)
 	return result;
 }
 
+/**
+ * Check if a string contains a specified substring.
+ */
+inline bool uStrContains(const std::string & string, const std::string & substring)
+{
+	return string.find(substring) != std::string::npos;
+}
+
 #endif /* USTL_H */

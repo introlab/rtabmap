@@ -1581,7 +1581,6 @@ bool Rtabmap::process(const SensorData & data)
 
 			if(_publishImage)
 			{
-				std::map<int, int> mapIds;
 				std::map<int, std::vector<unsigned char> > images;
 				std::map<int, std::vector<unsigned char> > depths;
 				std::map<int, std::vector<unsigned char> > depth2ds;
@@ -1629,7 +1628,6 @@ bool Rtabmap::process(const SensorData & data)
 						im = _memory->getImage(ids[i]);
 					}
 					UASSERT(_memory->getSignature(ids[i]) != 0);
-					mapIds.insert(std::make_pair(ids[i], _memory->getSignature(ids[i])->mapId()));
 					if(!im.empty())
 					{
 						images.insert(std::make_pair(ids[i], im));
@@ -1641,7 +1639,6 @@ bool Rtabmap::process(const SensorData & data)
 					UWARN("getting data[%d] time = %fs", (int)ids.size(), tmpTimer.ticks());
 				}
 
-				statistics_.setMapIds(mapIds);
 				statistics_.setImages(images);
 				statistics_.setDepths(depths);
 				statistics_.setDepth2ds(depth2ds);
@@ -1756,6 +1753,13 @@ bool Rtabmap::process(const SensorData & data)
 		//Poses, place this after Transfer! (_optimizedPoses may change)
 		if(_rgbdSlamMode)
 		{
+			std::map<int, int> mapIds;
+			for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+			{
+				mapIds.insert(std::make_pair(iter->first, _memory->getMapId(iter->first)));
+			}
+
+			statistics_.setMapIds(mapIds);
 			statistics_.setPoses(_optimizedPoses);
 			statistics_.setConstraints(_constraints);
 			statistics_.setMapCorrection(_mapCorrection);
@@ -2345,6 +2349,10 @@ void Rtabmap::get3DMap(std::map<int, std::vector<unsigned char> > & images,
 			mapIds.insert(std::make_pair(*iter, _memory->getMapId(*iter)));
 		}
 	}
+	else if(_memory->getStMem().size() || _memory->getWorkingMem().size())
+	{
+		UERROR("Last working signature is null!?");
+	}
 }
 
 void Rtabmap::getGraph(
@@ -2377,6 +2385,10 @@ void Rtabmap::getGraph(
 		{
 			mapIds.insert(std::make_pair(*iter, _memory->getMapId(*iter)));
 		}
+	}
+	else if(_memory->getStMem().size() || _memory->getWorkingMem().size())
+	{
+		UERROR("Last working signature is null!?");
 	}
 }
 

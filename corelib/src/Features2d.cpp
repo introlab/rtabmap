@@ -46,41 +46,39 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-void filterKeypointsByDepth(
+void Feature2D::filterKeypointsByDepth(
 		std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & depth,
-		float fx,
-		float fy,
-		float cx,
-		float cy,
 		float maxDepth)
 {
 	cv::Mat descriptors;
-	filterKeypointsByDepth(keypoints, descriptors, depth, fx, fy, cx, cy, maxDepth);
+	filterKeypointsByDepth(keypoints, descriptors, depth, maxDepth);
 }
 
-void filterKeypointsByDepth(
+void Feature2D::filterKeypointsByDepth(
 		std::vector<cv::KeyPoint> & keypoints,
 		cv::Mat & descriptors,
 		const cv::Mat & depth,
-		float fx,
-		float fy,
-		float cx,
-		float cy,
 		float maxDepth)
 {
-	if(!depth.empty() && fx > 0.0f && fy > 0.0f && maxDepth > 0.0f && (descriptors.empty() || descriptors.rows == (int)keypoints.size()))
+	if(!depth.empty() && maxDepth > 0.0f && (descriptors.empty() || descriptors.rows == (int)keypoints.size()))
 	{
 		std::vector<cv::KeyPoint> output(keypoints.size());
 		std::vector<int> indexes(keypoints.size(), 0);
 		int oi=0;
+		bool isInMM = depth.type() == CV_16UC1;
 		for(unsigned int i=0; i<keypoints.size(); ++i)
 		{
-			pcl::PointXYZ pt = util3d::getDepth(depth, keypoints[i].pt.x, keypoints[i].pt.y, cx, cy, fx, fy, true);
-			if(uIsFinite(pt.z) && pt.z < maxDepth)
+			int u = int(keypoints[i].pt.x+0.5f);
+			int v = int(keypoints[i].pt.y+0.5f);
+			if(u >=0 && u<depth.cols && v >=0 && v<depth.rows)
 			{
-				output[oi++] = keypoints[i];
-				indexes[i] = 1;
+				float d = isInMM?(float)depth.at<uint16_t>(v,u)*0.001f:depth.at<float>(v,u);
+				if(d!=0.0f && uIsFinite(d) && d < maxDepth)
+				{
+					output[oi++] = keypoints[i];
+					indexes[i] = 1;
+				}
 			}
 		}
 		output.resize(oi);
@@ -116,15 +114,15 @@ void filterKeypointsByDepth(
 	}
 }
 
-void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints)
+void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints)
 {
 	cv::Mat descriptors;
 	limitKeypoints(keypoints, descriptors, maxKeypoints);
 }
 
-void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints)
+void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints)
 {
-	UASSERT((int)keypoints.size() == descriptors.rows || descriptors.rows == 0);
+	UASSERT_MSG((int)keypoints.size() == descriptors.rows || descriptors.rows == 0, uFormat("keypoints=%d descriptors=%d", (int)keypoints.size(), descriptors.rows).c_str());
 	if(maxKeypoints > 0 && (int)keypoints.size() > maxKeypoints)
 	{
 		UTimer timer;
@@ -173,7 +171,39 @@ void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors
 	}
 }
 
-cv::Rect computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios)
+cv::Rect Feature2D::computeRoi(const cv::Mat & image, const std::string & roiRatios)
+{
+	std::list<std::string> strValues = uSplit(roiRatios, ' ');
+	if(strValues.size() != 4)
+	{
+		UERROR("The number of values must be 4 (roi=\"%s\")", roiRatios.c_str());
+	}
+	else
+	{
+		std::vector<float> values(4);
+		unsigned int i=0;
+		for(std::list<std::string>::iterator iter = strValues.begin(); iter!=strValues.end(); ++iter)
+		{
+			values[i] = std::atof((*iter).c_str());
+			++i;
+		}
+
+		if(values[0] >= 0 && values[0] < 1 && values[0] < 1.0f-values[1] &&
+			values[1] >= 0 && values[1] < 1 && values[1] < 1.0f-values[0] &&
+			values[2] >= 0 && values[2] < 1 && values[2] < 1.0f-values[3] &&
+			values[3] >= 0 && values[3] < 1 && values[3] < 1.0f-values[2])
+		{
+			return computeRoi(image, values);
+		}
+		else
+		{
+			UERROR("The roi ratios are not valid (roi=\"%s\")", roiRatios.c_str());
+		}
+	}
+	return cv::Rect();
+}
+
+cv::Rect Feature2D::computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios)
 {
 	if(!image.empty() && roiRatios.size() == 4)
 	{
@@ -222,6 +252,40 @@ cv::Rect computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios)
 /////////////////////
 // Feature2D
 /////////////////////
+Feature2D * Feature2D::create(Feature2D::Type & type, const ParametersMap & parameters)
+{
+	Feature2D * feature2D = 0;
+	switch(type)
+	{
+	case Feature2D::kFeatureSift:
+		feature2D = new SIFT(parameters);
+		break;
+	case Feature2D::kFeatureFastBrief:
+		feature2D = new FAST_BRIEF(parameters);
+		break;
+	case Feature2D::kFeatureFastFreak:
+		feature2D = new FAST_FREAK(parameters);
+		break;
+	case Feature2D::kFeatureOrb:
+		feature2D = new ORB(parameters);
+		break;
+	case Feature2D::kFeatureGfttFreak:
+		feature2D = new GFTT_FREAK(parameters);
+		break;
+	case Feature2D::kFeatureGfttBrief:
+		feature2D = new GFTT_BRIEF(parameters);
+		break;
+	case Feature2D::kFeatureBrisk:
+		feature2D = new BRISK(parameters);
+		break;
+	case Feature2D::kFeatureSurf:
+	default:
+		feature2D = new SURF(parameters);
+		type = Feature2D::kFeatureSurf;
+		break;
+	}
+	return feature2D;
+}
 std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, int maxKeypoints, const cv::Rect & roi) const
 {
 	ULOGGER_DEBUG("");
@@ -261,7 +325,10 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, in
 
 cv::Mat Feature2D::generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
-	return generateDescriptorsImpl(image, keypoints);
+	cv::Mat descriptors = generateDescriptorsImpl(image, keypoints);
+	UASSERT_MSG(descriptors.rows == (int)keypoints.size(), uFormat("descriptors=%d, keypoints=%d", descriptors.rows, (int)keypoints.size()).c_str());
+	UDEBUG("Descriptors extracted = %d, remaining kpts=%d", descriptors.rows, (int)keypoints.size());
+	return descriptors;
 }
 
 //////////////////////////
