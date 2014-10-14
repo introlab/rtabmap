@@ -98,9 +98,12 @@ private:
 				QLabel * labelParents,
 				QLabel * labelChildren,
 				rtabmap::ImageView * view,
-				QLabel * labelId);
+				QLabel * labelId,
+				bool updateConstraintView = true);
 	void updateWordsMatching();
-	void updateConstraintView(const rtabmap::Link & link);
+	void updateConstraintView(const rtabmap::Link & link,
+			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudFrom = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>),
+			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudTo = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>));
 	void updateConstraintButtons();
 	std::multimap<int, Link>::iterator findLink(
 				std::multimap<int, Link> & links,
