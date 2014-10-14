@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1076</width>
-    <height>665</height>
+    <height>675</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -565,10 +565,10 @@
           <number>1</number>
          </property>
          <property name="maximum">
-          <number>8</number>
+          <number>16</number>
          </property>
          <property name="value">
-          <number>4</number>
+          <number>8</number>
          </property>
         </widget>
        </item>
@@ -614,7 +614,7 @@
           <double>1.000000000000000</double>
          </property>
          <property name="value">
-          <double>0.005000000000000</double>
+          <double>0.010000000000000</double>
          </property>
         </widget>
        </item>
@@ -670,7 +670,7 @@
           <string/>
          </property>
          <property name="checked">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
         </widget>
        </item>

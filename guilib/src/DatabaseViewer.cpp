@@ -1055,7 +1055,8 @@ void DatabaseViewer::update(int value,
 						QLabel * labelParents,
 						QLabel * labelChildren,
 						rtabmap::ImageView * view,
-						QLabel * labelId)
+						QLabel * labelId,
+						bool updateConstraintView)
 {
 	UTimer timer;
 	labelIndex->setText(QString::number(value));
@@ -1160,55 +1161,58 @@ void DatabaseViewer::update(int value,
 	updateConstraintButtons();
 	updateWordsMatching();
 
-	// update constraint view
-	int from = ids_.at(ui_->horizontalSlider_A->value());
-	int to = ids_.at(ui_->horizontalSlider_B->value());
-	bool set = false;
-	for(int i=0; i<loopLinks_.size() || i<neighborLinks_.size(); ++i)
+	if(updateConstraintView)
 	{
-		if(i < loopLinks_.size())
+		// update constraint view
+		int from = ids_.at(ui_->horizontalSlider_A->value());
+		int to = ids_.at(ui_->horizontalSlider_B->value());
+		bool set = false;
+		for(int i=0; i<loopLinks_.size() || i<neighborLinks_.size(); ++i)
 		{
-			if((loopLinks_[i].from() == from && loopLinks_[i].to() == to) ||
-			   (loopLinks_[i].from() == to && loopLinks_[i].to() == from))
+			if(i < loopLinks_.size())
 			{
-				if(i != ui_->horizontalSlider_loops->value())
+				if((loopLinks_[i].from() == from && loopLinks_[i].to() == to) ||
+				   (loopLinks_[i].from() == to && loopLinks_[i].to() == from))
 				{
-					ui_->horizontalSlider_loops->setValue(i);
+					if(i != ui_->horizontalSlider_loops->value())
+					{
+						ui_->horizontalSlider_loops->setValue(i);
+					}
+					ui_->horizontalSlider_neighbors->blockSignals(true);
+					ui_->horizontalSlider_neighbors->setValue(0);
+					ui_->horizontalSlider_neighbors->blockSignals(false);
+					set = true;
+					break;
 				}
-				ui_->horizontalSlider_neighbors->blockSignals(true);
-				ui_->horizontalSlider_neighbors->setValue(0);
-				ui_->horizontalSlider_neighbors->blockSignals(false);
-				set = true;
-				break;
+			}
+			if(i < neighborLinks_.size())
+			{
+				if((neighborLinks_[i].from() == from && neighborLinks_[i].to() == to) ||
+				   (neighborLinks_[i].from() == to && neighborLinks_[i].to() == from))
+				{
+					if(i != ui_->horizontalSlider_neighbors->value())
+					{
+						ui_->horizontalSlider_neighbors->setValue(i);
+					}
+					ui_->horizontalSlider_loops->blockSignals(true);
+					ui_->horizontalSlider_loops->setValue(0);
+					ui_->horizontalSlider_loops->blockSignals(false);
+					set = true;
+					break;
+				}
 			}
 		}
-		if(i < neighborLinks_.size())
+		if(!set)
 		{
-			if((neighborLinks_[i].from() == from && neighborLinks_[i].to() == to) ||
-			   (neighborLinks_[i].from() == to && neighborLinks_[i].to() == from))
-			{
-				if(i != ui_->horizontalSlider_neighbors->value())
-				{
-					ui_->horizontalSlider_neighbors->setValue(i);
-				}
-				ui_->horizontalSlider_loops->blockSignals(true);
-				ui_->horizontalSlider_loops->setValue(0);
-				ui_->horizontalSlider_loops->blockSignals(false);
-				set = true;
-				break;
-			}
+			ui_->horizontalSlider_loops->blockSignals(true);
+			ui_->horizontalSlider_neighbors->blockSignals(true);
+			ui_->horizontalSlider_loops->setValue(0);
+			ui_->horizontalSlider_neighbors->setValue(0);
+			ui_->constraintsViewer->removeAllClouds();
+			ui_->constraintsViewer->render();
+			ui_->horizontalSlider_loops->blockSignals(false);
+			ui_->horizontalSlider_neighbors->blockSignals(false);
 		}
-	}
-	if(!set)
-	{
-		ui_->horizontalSlider_loops->blockSignals(true);
-		ui_->horizontalSlider_neighbors->blockSignals(true);
-		ui_->horizontalSlider_loops->setValue(0);
-		ui_->horizontalSlider_neighbors->setValue(0);
-		ui_->constraintsViewer->removeAllClouds();
-		ui_->constraintsViewer->render();
-		ui_->horizontalSlider_loops->blockSignals(false);
-		ui_->horizontalSlider_neighbors->blockSignals(false);
 	}
 
 	if(rect.isValid())
@@ -1313,7 +1317,9 @@ void DatabaseViewer::sliderLoopValueChanged(int value)
 	this->updateConstraintView(loopLinks_.at(value));
 }
 
-void DatabaseViewer::updateConstraintView(const rtabmap::Link & link)
+void DatabaseViewer::updateConstraintView(const rtabmap::Link & link,
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudFrom,
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudTo)
 {
 	std::multimap<int, Link>::iterator iter = findLink(linksRefined_, link.from(), link.to());
 	rtabmap::Transform t = link.transform();
@@ -1327,139 +1333,178 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link)
 
 	ui_->label_constraint->setText(t.prettyPrint().c_str());
 
+	bool updateA = false;
+	bool updateB = false;
+	ui_->horizontalSlider_A->blockSignals(true);
+	ui_->horizontalSlider_B->blockSignals(true);
 	if(ui_->horizontalSlider_A->value() == idToIndex_.value(link.from()))
 	{
 		ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
+		updateB=true;
 	}
 	else if(ui_->horizontalSlider_A->value() == idToIndex_.value(link.to()))
 	{
 		ui_->horizontalSlider_B->setValue(idToIndex_.value(link.from()));
+		updateB=true;
 	}
 	else if(ui_->horizontalSlider_B->value() == idToIndex_.value(link.from()))
 	{
 		ui_->horizontalSlider_A->setValue(idToIndex_.value(link.to()));
+		updateA = true;
 	}
 	else if(ui_->horizontalSlider_B->value() == idToIndex_.value(link.to()))
 	{
 		ui_->horizontalSlider_A->setValue(idToIndex_.value(link.from()));
+		updateA=true;
 	}
 	else
 	{
-		ui_->horizontalSlider_A->blockSignals(true);
-		ui_->horizontalSlider_B->blockSignals(true);
 		ui_->horizontalSlider_A->setValue(idToIndex_.value(link.from()));
 		ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
-		ui_->horizontalSlider_A->blockSignals(false);
-		ui_->horizontalSlider_B->blockSignals(false);
-		sliderAValueChanged(idToIndex_.value(link.from()));
-		sliderBValueChanged(idToIndex_.value(link.to()));
+		updateA=updateB=true;
+	}
+	ui_->horizontalSlider_A->blockSignals(false);
+	ui_->horizontalSlider_B->blockSignals(false);
+	if(updateA)
+	{
+		this->update(idToIndex_.value(link.from()),
+					ui_->label_indexA,
+					ui_->label_parentsA,
+					ui_->label_childrenA,
+					ui_->graphicsView_A,
+					ui_->label_idA,
+					false); // don't update constraints view!
+	}
+	if(updateB)
+	{
+		this->update(idToIndex_.value(link.to()),
+					ui_->label_indexB,
+					ui_->label_parentsB,
+					ui_->label_childrenB,
+					ui_->graphicsView_B,
+					ui_->label_idB,
+					false); // don't update constraints view!
 	}
 
-	float fxA, fyA, cxA, cyA;
-	float fxB, fyB, cxB, cyB;
-	rtabmap::Transform localTransformA, localTransformB;
-
-	std::vector<unsigned char> imageBytesA, depthBytesA, depth2dBytesA;
-	memory_->getImageDepth(link.from(), imageBytesA, depthBytesA, depth2dBytesA, fxA, fyA, cxA, cyA, localTransformA);
-	cv::Mat imageA = rtabmap::util3d::uncompressImage(imageBytesA);
-	cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
-	cv::Mat depth2dA = rtabmap::util3d::uncompressData(depth2dBytesA);
-	UASSERT(imageA.empty() || imageA.type()==CV_8UC3 || imageA.type() == CV_8UC1);
-	UASSERT(depthA.empty() || depthA.type()==CV_8UC1 || depthA.type() == CV_16UC1 || depthA.type() == CV_32FC1);
-
-	std::vector<unsigned char> imageBytesB, depthBytesB, depth2dBytesB;
-	memory_->getImageDepth(link.to(), imageBytesB, depthBytesB, depth2dBytesB, fxB, fyB, cxB, cyB, localTransformB);
-	cv::Mat imageB = rtabmap::util3d::uncompressImage(imageBytesB);
-	cv::Mat depthB = rtabmap::util3d::uncompressImage(depthBytesB);
-	cv::Mat depth2dB = rtabmap::util3d::uncompressData(depth2dBytesB);
-
-	//cloud 3d
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudA;
-	if(depthA.type() == CV_8UC1)
+	if(cloudFrom->size() == 0 && cloudTo->size() == 0)
 	{
-		cv::Mat leftImg;
-		if(imageA.channels() == 3)
+		float fxA, fyA, cxA, cyA;
+		float fxB, fyB, cxB, cyB;
+		rtabmap::Transform localTransformA, localTransformB;
+
+		std::vector<unsigned char> imageBytesA, depthBytesA, depth2dBytesA;
+		memory_->getImageDepth(link.from(), imageBytesA, depthBytesA, depth2dBytesA, fxA, fyA, cxA, cyA, localTransformA);
+		cv::Mat imageA = rtabmap::util3d::uncompressImage(imageBytesA);
+		cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
+		cv::Mat depth2dA = rtabmap::util3d::uncompressData(depth2dBytesA);
+		UASSERT(imageA.empty() || imageA.type()==CV_8UC3 || imageA.type() == CV_8UC1);
+		UASSERT(depthA.empty() || depthA.type()==CV_8UC1 || depthA.type() == CV_16UC1 || depthA.type() == CV_32FC1);
+
+		std::vector<unsigned char> imageBytesB, depthBytesB, depth2dBytesB;
+		memory_->getImageDepth(link.to(), imageBytesB, depthBytesB, depth2dBytesB, fxB, fyB, cxB, cyB, localTransformB);
+		cv::Mat imageB = rtabmap::util3d::uncompressImage(imageBytesB);
+		cv::Mat depthB = rtabmap::util3d::uncompressImage(depthBytesB);
+		cv::Mat depth2dB = rtabmap::util3d::uncompressData(depth2dBytesB);
+
+		//cloud 3d
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudA;
+		if(depthA.type() == CV_8UC1)
 		{
-			cv::cvtColor(imageA, leftImg, CV_BGR2GRAY);
+			cv::Mat leftImg;
+			if(imageA.channels() == 3)
+			{
+				cv::cvtColor(imageA, leftImg, CV_BGR2GRAY);
+			}
+			else
+			{
+				leftImg = imageA;
+			}
+			cv::Mat disparity = util3d::disparityFromStereoImages(leftImg, depthA);
+			cloudA = rtabmap::util3d::cloudFromDisparityRGB(
+					imageA,
+					disparity,
+					cxA, cyA,
+					fxA, fyA,
+					1);
 		}
 		else
 		{
-			leftImg = imageA;
+			cloudA = rtabmap::util3d::cloudFromDepthRGB(
+					imageA,
+					depthA,
+					cxA, cyA,
+					fxA, fyA,
+					1);
 		}
-		cv::Mat disparity = util3d::disparityFromStereoImages(leftImg, depthA);
-		cloudA = rtabmap::util3d::cloudFromDisparityRGB(
-				imageA,
-				disparity,
-				cxA, cyA,
-				fxA, fyA,
-				1);
-	}
-	else
-	{
-		cloudA = rtabmap::util3d::cloudFromDepthRGB(
-				imageA,
-				depthA,
-				cxA, cyA,
-				fxA, fyA,
-				1);
-	}
 
-	cloudA = rtabmap::util3d::removeNaNFromPointCloud(cloudA);
-	cloudA = rtabmap::util3d::transformPointCloud(cloudA, localTransformA);
+		cloudA = rtabmap::util3d::removeNaNFromPointCloud(cloudA);
+		cloudA = rtabmap::util3d::transformPointCloud(cloudA, localTransformA);
 
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudB;
-	if(depthB.type() == CV_8UC1)
-	{
-		cv::Mat leftImg;
-		if(imageB.channels() == 3)
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudB;
+		if(depthB.type() == CV_8UC1)
 		{
-			cv::cvtColor(imageB, leftImg, CV_BGR2GRAY);
+			cv::Mat leftImg;
+			if(imageB.channels() == 3)
+			{
+				cv::cvtColor(imageB, leftImg, CV_BGR2GRAY);
+			}
+			else
+			{
+				leftImg = imageB;
+			}
+			cloudB = rtabmap::util3d::cloudFromDisparityRGB(
+					imageB,
+					util3d::disparityFromStereoImages(leftImg, depthB),
+					cxB, cyB,
+					fxB, fyB,
+					1);
 		}
 		else
 		{
-			leftImg = imageB;
+			cloudB = rtabmap::util3d::cloudFromDepthRGB(
+					imageB,
+					depthB,
+					cxB, cyB,
+					fxB, fyB,
+					1);
 		}
-		cloudB = rtabmap::util3d::cloudFromDisparityRGB(
-				imageB,
-				util3d::disparityFromStereoImages(leftImg, depthB),
-				cxB, cyB,
-				fxB, fyB,
-				1);
+
+		cloudB = rtabmap::util3d::removeNaNFromPointCloud(cloudB);
+		cloudB = rtabmap::util3d::transformPointCloud(cloudB, t*localTransformB);
+
+		//cloud 2d
+		pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
+		scanA = rtabmap::util3d::depth2DToPointCloud(depth2dA);
+		scanB = rtabmap::util3d::depth2DToPointCloud(depth2dB);
+		scanB = rtabmap::util3d::transformPointCloud(scanB, t);
+
+		if(cloudA->size())
+		{
+			ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudA);
+		}
+		if(cloudB->size())
+		{
+			ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudB);
+		}
+		if(scanA->size())
+		{
+			ui_->constraintsViewer->addOrUpdateCloud("scan0", scanA);
+		}
+		if(scanB->size())
+		{
+			ui_->constraintsViewer->addOrUpdateCloud("scan1", scanB);
+		}
 	}
 	else
 	{
-		cloudB = rtabmap::util3d::cloudFromDepthRGB(
-				imageB,
-				depthB,
-				cxB, cyB,
-				fxB, fyB,
-				1);
-	}
-
-	cloudB = rtabmap::util3d::removeNaNFromPointCloud(cloudB);
-	cloudB = rtabmap::util3d::transformPointCloud(cloudB, t*localTransformB);
-
-	//cloud 2d
-	pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
-	scanA = rtabmap::util3d::depth2DToPointCloud(depth2dA);
-	scanB = rtabmap::util3d::depth2DToPointCloud(depth2dB);
-	scanB = rtabmap::util3d::transformPointCloud(scanB, t);
-
-	if(cloudA->size())
-	{
-		ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudA);
-	}
-	if(cloudB->size())
-	{
-		ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudB);
-	}
-	if(scanA->size())
-	{
-		ui_->constraintsViewer->addOrUpdateCloud("scan0", scanA);
-	}
-	if(scanB->size())
-	{
-		ui_->constraintsViewer->addOrUpdateCloud("scan1", scanB);
+		if(cloudFrom->size())
+		{
+			ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom);
+		}
+		if(cloudTo->size())
+		{
+			ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo);
+		}
 	}
 	ui_->constraintsViewer->render();
 
@@ -1703,6 +1748,8 @@ void DatabaseViewer::refineConstraint(int from, int to)
 	std::vector<unsigned char> imageBytesB, depthBytesB, depth2dBytesB;
 	memory_->getImageDepth(currentLink.to(), imageBytesB, depthBytesB, depth2dBytesB, fxB, fyB, cxB, cyB, localTransformB);
 
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB(new pcl::PointCloud<pcl::PointXYZ>);
 	if(ui_->checkBox_icp_2d->isChecked())
 	{
 		//2D
@@ -1739,14 +1786,14 @@ void DatabaseViewer::refineConstraint(int from, int to)
 		cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
 		cv::Mat depthB = rtabmap::util3d::uncompressImage(depthBytesB);
 
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA = util3d::getICPReadyCloud(depthA,
+		cloudA = util3d::getICPReadyCloud(depthA,
 						fxA, fyA, cxA, cyA,
 						ui_->spinBox_icp_decimation->value(),
 						ui_->doubleSpinBox_icp_maxDepth->value(),
 						ui_->doubleSpinBox_icp_voxel->value(),
 						0, // no sampling
 						localTransformA);
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB = util3d::getICPReadyCloud(depthB,
+		cloudB = util3d::getICPReadyCloud(depthB,
 						fxB, fyB, cxB, cyB,
 						ui_->spinBox_icp_decimation->value(),
 						ui_->doubleSpinBox_icp_maxDepth->value(),
@@ -1811,7 +1858,11 @@ void DatabaseViewer::refineConstraint(int from, int to)
 		{
 			linksRefined_.insert(std::make_pair<int, Link>(newLink.from(), newLink));
 		}
-		this->updateConstraintView(newLink);
+		if(ui_->dockWidget_constraints->isVisible())
+		{
+			cloudB = util3d::transformPointCloud(cloudB, transform);
+			this->updateConstraintView(newLink, cloudA, cloudB);
+		}
 	}
 	else
 	{
