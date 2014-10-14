@@ -98,6 +98,7 @@ private:
 	bool _incrementalDictionary;
 	float _nndrRatio;
 	std::string _dictionaryPath; // a pre-computed dictionary (.txt)
+	bool _newWordsComparedTogether;
 	int _lastWordId;
 	cv::flann::Index * _flannIndex;
 	cv::Mat _dataTree;

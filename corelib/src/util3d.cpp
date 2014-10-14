@@ -1879,7 +1879,7 @@ void optimizeTOROGraph(
 			   "TORO is not able to find the root of the graph!)");
 		pg.initializeOptimization();
 
-		UDEBUG("TORO iterate begin");
+		UDEBUG("TORO iterate begin (iterations=%d)", toroIterations);
 		for (int i=0; i<toroIterations; i++)
 		{
 			if(intermediateGraphes && (toroInitialGuess || i>0))

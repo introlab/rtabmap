@@ -174,6 +174,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Kp, Parallelized,          bool, true, 		"If the dictionary update and signature creation were parallelized.");
 	RTABMAP_PARAM_STR(Kp, RoiRatios, "0.0 0.0 0.0 0.0", 		"Region of interest ratios [left, right, top, bottom].");
 	RTABMAP_PARAM_STR(Kp, DictionaryPath,    "", 				"Path of the pre-computed dictionary");
+	RTABMAP_PARAM(Kp, NewWordsComparedTogether, bool, true,	"When adding new words to dictionary, they are compared also with each other (to detect same words in the same signature).");
 
 	//Database
 	RTABMAP_PARAM(DbSqlite3, InMemory, 	   bool, false, 		"Using database in the memory instead of a file on the hard disk.");
@@ -294,7 +295,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccBow, Iterations,      int, 100, 		"Maximum iterations to compute the transform from visual words.");
 	RTABMAP_PARAM(LccBow, MaxDepth,        float, 5.0, 		"Max depth of the words (0 means no limit).");
 	RTABMAP_PARAM(LccBow, Force2D, 		   bool, false,     "Force 2D transform (3Dof: x,y and yaw).")
-	RTABMAP_PARAM(LccReextract, LoopClosureFeatures, bool, false, 	"Re-extract features on global loop closure.");
+	RTABMAP_PARAM(LccReextract, Activated, bool, false, 	"Activate re-extracting features on global loop closure.");
 	RTABMAP_PARAM(LccReextract, NNType, 	int, 3, 		"kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4.");
 	RTABMAP_PARAM(LccReextract, NNDR, 		float, 0.7, 	"NNDR: nearest neighbor distance ratio.");
 	RTABMAP_PARAM(LccReextract, FeatureType, int, 4, 		"0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");

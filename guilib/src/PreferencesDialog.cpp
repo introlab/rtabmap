@@ -346,6 +346,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->lineEdit_kp_roi->setObjectName(Parameters::kKpRoiRatios().c_str());
 	_ui->lineEdit_dictionaryPath->setObjectName(Parameters::kKpDictionaryPath().c_str());
 	connect(_ui->toolButton_dictionaryPath, SIGNAL(clicked()), this, SLOT(changeDictionaryPath()));
+	_ui->checkBox_kp_newWordsComparedTogether->setObjectName(Parameters::kKpNewWordsComparedTogether().c_str());
 
 	//SURF detector
 	_ui->surf_doubleSpinBox_hessianThr->setObjectName(Parameters::kSURFHessianThreshold().c_str());
@@ -429,7 +430,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_bowMaxDepth->setObjectName(Parameters::kLccBowMaxDepth().c_str());
 	_ui->loopClosure_bowForce2D->setObjectName(Parameters::kLccBowForce2D().c_str());
 
-	_ui->groupBox_reextract->setObjectName(Parameters::kLccReextractLoopClosureFeatures().c_str());
+	_ui->groupBox_reextract->setObjectName(Parameters::kLccReextractActivated().c_str());
 	_ui->reextract_nn->setObjectName(Parameters::kLccReextractNNType().c_str());
 	_ui->reextract_nndrRatio->setObjectName(Parameters::kLccReextractNNDR().c_str());
 	_ui->reextract_type->setObjectName(Parameters::kLccReextractFeatureType().c_str());
@@ -1834,64 +1835,57 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 	QWidget * obj = _ui->stackedWidget->findChild<QWidget*>(key.c_str());
 	if(obj)
 	{
-		if(obj->isEnabled())
+		QSpinBox * spin = qobject_cast<QSpinBox *>(obj);
+		QDoubleSpinBox * doubleSpin = qobject_cast<QDoubleSpinBox *>(obj);
+		QComboBox * combo = qobject_cast<QComboBox *>(obj);
+		QCheckBox * check = qobject_cast<QCheckBox *>(obj);
+		QRadioButton * radio = qobject_cast<QRadioButton *>(obj);
+		QLineEdit * lineEdit = qobject_cast<QLineEdit *>(obj);
+		QGroupBox * groupBox = qobject_cast<QGroupBox *>(obj);
+		bool ok;
+		if(spin)
 		{
-			QSpinBox * spin = qobject_cast<QSpinBox *>(obj);
-			QDoubleSpinBox * doubleSpin = qobject_cast<QDoubleSpinBox *>(obj);
-			QComboBox * combo = qobject_cast<QComboBox *>(obj);
-			QCheckBox * check = qobject_cast<QCheckBox *>(obj);
-			QRadioButton * radio = qobject_cast<QRadioButton *>(obj);
-			QLineEdit * lineEdit = qobject_cast<QLineEdit *>(obj);
-			QGroupBox * groupBox = qobject_cast<QGroupBox *>(obj);
-			bool ok;
-			if(spin)
+			spin->setValue(QString(value.c_str()).toInt(&ok));
+			if(!ok)
 			{
-				spin->setValue(QString(value.c_str()).toInt(&ok));
-				if(!ok)
-				{
-					UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
-				}
+				UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
 			}
-			else if(doubleSpin)
+		}
+		else if(doubleSpin)
+		{
+			doubleSpin->setValue(QString(value.c_str()).toDouble(&ok));
+			if(!ok)
 			{
-				doubleSpin->setValue(QString(value.c_str()).toDouble(&ok));
-				if(!ok)
-				{
-					UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
-				}
+				UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
 			}
-			else if(combo)
+		}
+		else if(combo)
+		{
+			combo->setCurrentIndex(QString(value.c_str()).toInt(&ok));
+			if(!ok)
 			{
-				combo->setCurrentIndex(QString(value.c_str()).toInt(&ok));
-				if(!ok)
-				{
-					UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
-				}
+				UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
 			}
-			else if(check)
-			{
-				check->setChecked(uStr2Bool(value.c_str()));
-			}
-			else if(radio)
-			{
-				radio->setChecked(uStr2Bool(value.c_str()));
-			}
-			else if(lineEdit)
-			{
-				lineEdit->setText(value.c_str());
-			}
-			else if(groupBox)
-			{
-				groupBox->setChecked(uStr2Bool(value.c_str()));
-			}
-			else
-			{
-				ULOGGER_WARN("QObject called %s can't be cast to a supported widget", key.c_str());
-			}
+		}
+		else if(check)
+		{
+			check->setChecked(uStr2Bool(value.c_str()));
+		}
+		else if(radio)
+		{
+			radio->setChecked(uStr2Bool(value.c_str()));
+		}
+		else if(lineEdit)
+		{
+			lineEdit->setText(value.c_str());
+		}
+		else if(groupBox)
+		{
+			groupBox->setChecked(uStr2Bool(value.c_str()));
 		}
 		else
 		{
-			UDEBUG("Ignoring parameter %s because it is disabled.", key.c_str());
+			ULOGGER_WARN("QObject called %s can't be cast to a supported widget", key.c_str());
 		}
 	}
 	else

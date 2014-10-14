@@ -100,7 +100,7 @@ Rtabmap::Rtabmap() :
 	_toroIterations(Parameters::defaultRGBDToroIterations()),
 	_databasePath(""),
 	_optimizeFromGraphEnd(Parameters::defaultRGBDOptimizeFromGraphEnd()),
-	_reextractLoopClosureFeatures(Parameters::defaultLccReextractLoopClosureFeatures()),
+	_reextractLoopClosureFeatures(Parameters::defaultLccReextractActivated()),
 	_reextractNNType(Parameters::defaultLccReextractNNType()),
 	_reextractNNDR(Parameters::defaultLccReextractNNDR()),
 	_reextractFeatureType(Parameters::defaultLccReextractFeatureType()),
@@ -355,7 +355,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionMaxDiffID(), _localDetectMaxDiffID);
 	Parameters::parse(parameters, Parameters::kRGBDToroIterations(), _toroIterations);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
-	Parameters::parse(parameters, Parameters::kLccReextractLoopClosureFeatures(), _reextractLoopClosureFeatures);
+	Parameters::parse(parameters, Parameters::kLccReextractActivated(), _reextractLoopClosureFeatures);
 	Parameters::parse(parameters, Parameters::kLccReextractNNType(), _reextractNNType);
 	Parameters::parse(parameters, Parameters::kLccReextractNNDR(), _reextractNNDR);
 	Parameters::parse(parameters, Parameters::kLccReextractFeatureType(), _reextractFeatureType);
@@ -1286,6 +1286,7 @@ bool Rtabmap::process(const SensorData & data)
 				uInsert(customParameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
 				uInsert(customParameters, ParametersPair(Parameters::kMemImageKept(), "false"));
 				uInsert(customParameters, ParametersPair(Parameters::kMemSTMSize(), "0"));
+				uInsert(customParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
 				uInsert(customParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(_reextractNNType))); // bruteforce
 				uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(_reextractNNDR)));
 				uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(_reextractFeatureType))); // FAST/BRIEF
@@ -2296,6 +2297,7 @@ void Rtabmap::get3DMap(std::map<int, std::vector<unsigned char> > & images,
 		bool optimized,
 		bool global) const
 {
+	UDEBUG("");
 	if(_memory && _memory->getLastWorkingSignature())
 	{
 		if(optimized)
@@ -2349,9 +2351,13 @@ void Rtabmap::get3DMap(std::map<int, std::vector<unsigned char> > & images,
 			mapIds.insert(std::make_pair(*iter, _memory->getMapId(*iter)));
 		}
 	}
-	else if(_memory->getStMem().size() || _memory->getWorkingMem().size())
+	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size()))
 	{
 		UERROR("Last working signature is null!?");
+	}
+	else if(_memory == 0)
+	{
+		UWARN("Memory not initialized...");
 	}
 }
 
@@ -2386,9 +2392,13 @@ void Rtabmap::getGraph(
 			mapIds.insert(std::make_pair(*iter, _memory->getMapId(*iter)));
 		}
 	}
-	else if(_memory->getStMem().size() || _memory->getWorkingMem().size())
+	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size()))
 	{
 		UERROR("Last working signature is null!?");
+	}
+	else if(_memory == 0)
+	{
+		UWARN("Memory not initialized...");
 	}
 }
 

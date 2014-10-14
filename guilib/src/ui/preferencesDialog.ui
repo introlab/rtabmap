@@ -65,7 +65,7 @@
             <x>0</x>
             <y>0</y>
             <width>744</width>
-            <height>1019</height>
+            <height>900</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>24</number>
+                <number>9</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -3557,6 +3557,26 @@ When set to false, no new words are added to dictionary, so no more updates are 
                           <string/>
                          </property>
                          <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="0">
+                        <widget class="QCheckBox" name="checkBox_kp_newWordsComparedTogether">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="2">
+                        <widget class="QLabel" name="label_186">
+                         <property name="text">
+                          <string>When adding new words to dictionary, they are compared also with each other (to detect same words in the same signature).</string>
+                         </property>
+                         <property name="wordWrap">
                           <bool>true</bool>
                          </property>
                         </widget>

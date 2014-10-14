@@ -50,6 +50,7 @@ VWDictionary::VWDictionary(const ParametersMap & parameters) :
 	_incrementalDictionary(Parameters::defaultKpIncrementalDictionary()),
 	_nndrRatio(Parameters::defaultKpNndrRatio()),
 	_dictionaryPath(Parameters::defaultKpDictionaryPath()),
+	_newWordsComparedTogether(Parameters::defaultKpNewWordsComparedTogether()),
 	_lastWordId(0),
 	_flannIndex(new cv::flann::Index()),
 	_strategy(kNNUndef)
@@ -68,6 +69,7 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 {
 	ParametersMap::const_iterator iter;
 	Parameters::parse(parameters, Parameters::kKpNndrRatio(), _nndrRatio);
+	Parameters::parse(parameters, Parameters::kKpNewWordsComparedTogether(), _newWordsComparedTogether);
 
 	UASSERT(_nndrRatio > 0.0f);
 
@@ -505,7 +507,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 		}
 
 		// Check if this descriptor matches with a word from the last signature (a word not already added to the tree)
-		if(newWords.rows)
+		if(_newWordsComparedTogether && newWords.rows)
 		{
 			cv::flann::Index linearSeach;
 			linearSeach.build(newWords, cv::flann::LinearIndexParams(), type == CV_32F?cvflann::FLANN_DIST_L2:cvflann::FLANN_DIST_HAMMING);
