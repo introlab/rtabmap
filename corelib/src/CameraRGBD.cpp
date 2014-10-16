@@ -420,6 +420,11 @@ bool CameraOpenNI2::init()
 		UERROR("CameraOpenNI2: Failed to set depth/color registration.");
 	}
 
+	if (_device->setDepthColorSyncEnabled(true) != openni::STATUS_OK)
+	{
+		UERROR("CameraOpenNI2: Failed to set depth color sync");
+	}
+
 	_depth->setMirroringEnabled(false);
 	_color->setMirroringEnabled(false);
 
