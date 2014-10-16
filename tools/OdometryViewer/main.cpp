@@ -44,8 +44,8 @@ void showUsage()
 			"odometryViewer [options]\n"
 			"Options:\n"
 			"  -driver #                 Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS\n"
-			"  -o #                      Odometry type (default 0): 0=SURF, 1=SIFT, 2=ORB, 3=FAST/FREAK, 4=FAST/BRIEF, 5=GFTT/FREAK, 6=GFTT/BRIEF, 7=BRISK\n"
-			"  -nn #                     Nearest neighbor strategy (default 1): kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4\n"
+			"  -o #                      Odometry type (default 6): 0=SURF, 1=SIFT, 2=ORB, 3=FAST/FREAK, 4=FAST/BRIEF, 5=GFTT/FREAK, 6=GFTT/BRIEF, 7=BRISK\n"
+			"  -nn #                     Nearest neighbor strategy (default 3): kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4\n"
 			"  -nndr #                   Nearest neighbor distance ratio (default 0.7)\n"
 			"  -icp                      Use ICP odometry\n"
 			"  -flow                     Use optical flow odometry.\n"
@@ -55,17 +55,17 @@ void showUsage()
 			"  -clouds #                 Maximum clouds shown (default 10, zero means inf)\n"
 			"  -sec #.#                  Delay (seconds) before reading the database (if set)\n"
 			"\n"
-			"  -in #.#                   Inliers maximum distance, features/ICP (default 0.005 m)\n"
+			"  -in #.#                   Inliers maximum distance, features/ICP (default 0.01 m)\n"
 			"  -max #                    Max features used for matching (default 0=inf)\n"
 			"  -min #                    Minimum inliers to accept the transform (default 20)\n"
 			"  -depth #.#                Maximum features depth (default 5.0 m)\n"
-			"  -i #                      RANSAC/ICP iterations (default 100)\n"
+			"  -i #                      RANSAC/ICP iterations (default 30)\n"
 			"  -r #.#                    Words ratio (default 0.5)\n"
 			"  -lu #                     Linear update (default 0.0 m)\n"
 			"  -au #                     Angular update (default 0.0 radian)\n"
 			"  -reset #                  Reset countdown (default 0 = disabled)\n"
 			"  -gpu                      Use GPU\n"
-			"  -lh #                     Local history (default 0)\n"
+			"  -lh #                     Local history (default 1000)\n"
 			"\n"
 			"  -brief_bytes #        BRIEF bytes (default 32)\n"
 			"  -fast_thr #           FAST threshold (default 30)\n"
@@ -84,7 +84,7 @@ void showUsage()
 			"  odometryViewer -odom 4 -nn 2 -lh 1000                FAST/BRIEF example\n"
 			"  odometryViewer -odom 3 -nn 2 -lh 1000                FAST/FREAK example\n"
 			"  odometryViewer -icp -in 0.05 -i 30                   ICP example\n"
-			"  odometryViewer -flow                                 Optical flow example\n");
+			"  odometryViewer -flow -in 0.02                        Optical flow example\n");
 	exit(1);
 }
 
@@ -97,17 +97,17 @@ int main (int argc, char * argv[])
 	float rate = 0.0;
 	std::string inputDatabase;
 	int driver = 0;
-	int odomType = 0;
+	int odomType = 6;
 	bool icp = false;
 	bool flow = false;
-	int nnType =1;
+	int nnType =3;
 	float nndr = 0.7f;
-	float distance = 0.005;
+	float distance = 0.01;
 	int maxWords = 0;
 	int minInliers = 20;
 	float wordsRatio = 0.5;
 	float maxDepth = 5.0f;
-	int iterations = 100;
+	int iterations = 30;
 	float linearUpdate = 0.0f;
 	float angularUpdate = 0.0f;
 	int resetCountdown = 0;
@@ -120,7 +120,7 @@ int main (int argc, char * argv[])
 	int fastThr = 30;
 	float sec = 0.0f;
 	bool gpu = false;
-	int localHistory = 0;
+	int localHistory = 1000;
 	bool p2p = false;
 
 	for(int i=1; i<argc; ++i)
@@ -683,6 +683,7 @@ int main (int argc, char * argv[])
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomInlierDistance(), uNumber2Str(distance)));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMinInliers(), uNumber2Str(minInliers)));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomIterations(), uNumber2Str(iterations)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomFeatureType(), uNumber2Str(odomType)));
 			odom = new rtabmap::OdometryOpticalFlow(parameters);
 		}
 		else

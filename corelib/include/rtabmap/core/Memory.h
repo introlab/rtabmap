@@ -161,15 +161,6 @@ public:
 	const VWDictionary * getVWDictionary() const;
 	std::multimap<int, cv::KeyPoint> getWords(int signatureId) const;
 	Feature2D::Type getFeatureType() const {return _featureType;}
-	void extractKeypointsAndDescriptors(
-			const cv::Mat & image,
-			std::vector<cv::KeyPoint> & keypoints,
-			cv::Mat & descriptors) const;
-	void extractKeypointsAndDescriptors(
-			const cv::Mat & image,
-			const cv::Mat & depth,
-			std::vector<cv::KeyPoint> & keypoints,
-			cv::Mat & descriptors) const;
 
 	// RGB-D stuff
 	void getMetricConstraints(
@@ -276,6 +267,16 @@ private:
 	float _icp2MaxFitness;
 	float _icp2CorrespondenceRatio;
 	float _icp2VoxelSize;
+
+	// Stereo stuff
+	int _stereoFlowWinSize;
+	int _stereoFlowIterations;
+	double _stereoFlowEpsilon;
+	int _stereoFlowMaxLevel;
+
+	int _stereoSubPixWinSize;
+	int _stereoSubPixIterations;
+	double _stereoSubPixEps;
 };
 
 } // namespace rtabmap

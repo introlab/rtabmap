@@ -147,12 +147,24 @@ void LoopClosureViewer::updateView(const Transform & transform)
 
 			//cloud 3d
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudA;
-			cloudA = util3d::cloudFromDepthRGB(
-					imageA,
-					depthA,
-					sA_->getDepthCx(), sA_->getDepthCy(),
-					sA_->getDepthFx(), sA_->getDepthFy(),
-					decimation);
+			if(depthA.type() == CV_8UC1)
+			{
+				cloudA = util3d::cloudFromStereoImages(
+						imageA,
+						depthA,
+						sA_->getDepthCx(), sA_->getDepthCy(),
+						sA_->getDepthFx(), sA_->getDepthFy(),
+						decimation);
+			}
+			else
+			{
+				cloudA = util3d::cloudFromDepthRGB(
+						imageA,
+						depthA,
+						sA_->getDepthCx(), sA_->getDepthCy(),
+						sA_->getDepthFx(), sA_->getDepthFy(),
+						decimation);
+			}
 
 			cloudA = util3d::removeNaNFromPointCloud(cloudA);
 
@@ -167,12 +179,24 @@ void LoopClosureViewer::updateView(const Transform & transform)
 			cloudA = util3d::transformPointCloud(cloudA, sA_->getLocalTransform());
 
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudB;
-			cloudB = util3d::cloudFromDepthRGB(
-					imageB,
-					depthB,
-					sB_->getDepthCx(), sB_->getDepthCy(),
-					sB_->getDepthFx(), sB_->getDepthFy(),
-					decimation);
+			if(depthB.type() == CV_8UC1)
+			{
+				cloudB = util3d::cloudFromStereoImages(
+						imageB,
+						depthB,
+						sB_->getDepthCx(), sB_->getDepthCy(),
+						sB_->getDepthFx(), sB_->getDepthFy(),
+						decimation);
+			}
+			else
+			{
+				cloudB = util3d::cloudFromDepthRGB(
+						imageB,
+						depthB,
+						sB_->getDepthCx(), sB_->getDepthCy(),
+						sB_->getDepthFx(), sB_->getDepthFy(),
+						decimation);
+			}
 
 			cloudB = util3d::removeNaNFromPointCloud(cloudB);
 

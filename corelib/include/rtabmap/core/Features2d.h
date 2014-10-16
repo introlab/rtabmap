@@ -62,6 +62,7 @@ public:
 		kFeatureBrisk=7};
 
 	static Feature2D * create(Feature2D::Type & type, const ParametersMap & parameters);
+
 	static void filterKeypointsByDepth(
 				std::vector<cv::KeyPoint> & keypoints,
 				const cv::Mat & depth,
@@ -71,6 +72,16 @@ public:
 			cv::Mat & descriptors,
 			const cv::Mat & depth,
 			float maxDepth);
+
+	static void filterKeypointsByDisparity(
+				std::vector<cv::KeyPoint> & keypoints,
+				const cv::Mat & disparity,
+				float minDisparity);
+	static void filterKeypointsByDisparity(
+			std::vector<cv::KeyPoint> & keypoints,
+			cv::Mat & descriptors,
+			const cv::Mat & disparity,
+			float minDisparity);
 
 	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints);
 	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints);

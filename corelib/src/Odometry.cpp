@@ -152,6 +152,29 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 	customParameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(nndr)));
 	customParameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(featureType)));
 
+	// Memory's stereo parameters, copy from Odometry
+	int flowWinSize = Parameters::defaultOdomFlowWinSize();
+	int flowIterations_ = Parameters::defaultOdomFlowIterations();
+	double flowEps_ = Parameters::defaultOdomFlowEps();
+	int flowMaxLevel_ = Parameters::defaultOdomFlowMaxLevel();
+	int subPixWinSize_ = Parameters::defaultOdomFlowSubPixWinSize();
+	int subPixIterations_ = Parameters::defaultOdomFlowSubPixIterations();
+	double subPixEps_ = Parameters::defaultOdomFlowSubPixEps();
+	Parameters::parse(parameters, Parameters::kOdomFlowWinSize(), flowWinSize);
+	Parameters::parse(parameters, Parameters::kOdomFlowIterations(), flowIterations_);
+	Parameters::parse(parameters, Parameters::kOdomFlowEps(), flowEps_);
+	Parameters::parse(parameters, Parameters::kOdomFlowMaxLevel(), flowMaxLevel_);
+	Parameters::parse(parameters, Parameters::kOdomFlowSubPixWinSize(), subPixWinSize_);
+	Parameters::parse(parameters, Parameters::kOdomFlowSubPixIterations(), subPixIterations_);
+	Parameters::parse(parameters, Parameters::kOdomFlowSubPixEps(), subPixEps_);
+	customParameters.insert(ParametersPair(Parameters::kStereoWinSize(), uNumber2Str(flowWinSize)));
+	customParameters.insert(ParametersPair(Parameters::kStereoIterations(), uNumber2Str(flowIterations_)));
+	customParameters.insert(ParametersPair(Parameters::kStereoEps(), uNumber2Str(flowEps_)));
+	customParameters.insert(ParametersPair(Parameters::kStereoMaxLevel(), uNumber2Str(flowMaxLevel_)));
+	customParameters.insert(ParametersPair(Parameters::kStereoSubPixWinSize(), uNumber2Str(subPixWinSize_)));
+	customParameters.insert(ParametersPair(Parameters::kStereoSubPixIterations(), uNumber2Str(subPixIterations_)));
+	customParameters.insert(ParametersPair(Parameters::kStereoSubPixEps(), uNumber2Str(subPixEps_)));
+
 	// add only feature stuff
 	for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
@@ -434,7 +457,7 @@ OdometryOpticalFlow::OdometryOpticalFlow(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomFlowSubPixEps(), subPixEps_);
 
 	ParametersMap::const_iterator iter;
-	Feature2D::Type detectorStrategy = Feature2D::kFeatureUndef;
+	Feature2D::Type detectorStrategy = (Feature2D::Type)Parameters::defaultOdomFeatureType();
 	if((iter=parameters.find(Parameters::kOdomFeatureType())) != parameters.end())
 	{
 		detectorStrategy = (Feature2D::Type)std::atoi((*iter).second.c_str());
@@ -531,7 +554,6 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 			{
 				lastCornersKept[ki] = lastCorners_[i];
 				newCornersKept[ki] = newCorners[i];
-				cv::Point2f pt = lastCorners_[i] - newCorners[i];
 				++ki;
 			}
 		}
@@ -602,11 +624,11 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 					float newDisparity = newCornersKept[i].x - newCornersKeptRight[i].x;
 					if(lastDisparity > 0.0f && newDisparity > 0.0f)
 					{
-						pcl::PointXYZ lastPt3D = util3d::projectDisparityTo3d(
+						pcl::PointXYZ lastPt3D = util3d::projectDisparityTo3D(
 								lastCornersKept[i],
 								lastDisparity,
 								data.cx(), data.cy(), data.fx(), data.baseline());
-						pcl::PointXYZ newPt3D = util3d::projectDisparityTo3d(
+						pcl::PointXYZ newPt3D = util3d::projectDisparityTo3D(
 								newCornersKept[i],
 								newDisparity,
 								data.cx(), data.cy(), data.fx(), data.baseline());
@@ -828,7 +850,7 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 				uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols-1)) &&
 				uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows-1)))
 			{
-				pcl::PointXYZ pt = util3d::getDepth(data.depth(), newCorners[i].x, newCorners[i].y,
+				pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depth(), newCorners[i].x, newCorners[i].y,
 						data.cx(), data.cy(), data.fx(), data.fy(), true);
 				if(pcl::isFinite(pt) &&
 					uIsInBounds(pt.x, -this->getMaxDepth(), this->getMaxDepth()) &&
@@ -971,7 +993,7 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 				if(uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols)-1.0f) &&
 				   uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows)-1.0f))
 				{
-					pcl::PointXYZ pt = util3d::getDepth(data.depth(), newCorners[i].x, newCorners[i].y,
+					pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depth(), newCorners[i].x, newCorners[i].y,
 							data.cx(), data.cy(), data.fx(), data.fy(), true);
 					if(pcl::isFinite(pt) &&
 						uIsInBounds(pt.x, -this->getMaxDepth(), this->getMaxDepth()) &&
@@ -1059,6 +1081,12 @@ Transform OdometryICP::computeTransform(const SensorData & data, int * quality, 
 	unsigned int minPoints = 100;
 	if(!data.depth().empty())
 	{
+		if(data.depth().type() == CV_8UC1)
+		{
+			UERROR("ICP 3D cannot be done on stereo images!");
+			return output;
+		}
+
 		pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudXYZ = util3d::getICPReadyCloud(
 						data.depth(),
 						data.fx(),

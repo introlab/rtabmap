@@ -114,6 +114,73 @@ void Feature2D::filterKeypointsByDepth(
 	}
 }
 
+void Feature2D::filterKeypointsByDisparity(
+		std::vector<cv::KeyPoint> & keypoints,
+		const cv::Mat & disparity,
+		float minDisparity)
+{
+	cv::Mat descriptors;
+	filterKeypointsByDisparity(keypoints, descriptors, disparity, minDisparity);
+}
+
+void Feature2D::filterKeypointsByDisparity(
+		std::vector<cv::KeyPoint> & keypoints,
+		cv::Mat & descriptors,
+		const cv::Mat & disparity,
+		float minDisparity)
+{
+	if(!disparity.empty() && minDisparity > 0.0f && (descriptors.empty() || descriptors.rows == (int)keypoints.size()))
+	{
+		std::vector<cv::KeyPoint> output(keypoints.size());
+		std::vector<int> indexes(keypoints.size(), 0);
+		int oi=0;
+		for(unsigned int i=0; i<keypoints.size(); ++i)
+		{
+			int u = int(keypoints[i].pt.x+0.5f);
+			int v = int(keypoints[i].pt.y+0.5f);
+			if(u >=0 && u<disparity.cols && v >=0 && v<disparity.rows)
+			{
+				float d = disparity.type() == CV_16SC1?float(disparity.at<short>(v,u))/16.0f:disparity.at<float>(v,u);
+				if(d!=0.0f && uIsFinite(d) && d >= minDisparity)
+				{
+					output[oi++] = keypoints[i];
+					indexes[i] = 1;
+				}
+			}
+		}
+		output.resize(oi);
+		keypoints = output;
+
+		if(!descriptors.empty() && (int)keypoints.size() != descriptors.rows)
+		{
+			if(keypoints.size() == 0)
+			{
+				descriptors = cv::Mat();
+			}
+			else
+			{
+				cv::Mat newDescriptors(keypoints.size(), descriptors.cols, descriptors.type());
+				int di = 0;
+				for(unsigned int i=0; i<indexes.size(); ++i)
+				{
+					if(indexes[i] == 1)
+					{
+						if(descriptors.type() == CV_32FC1)
+						{
+							memcpy(newDescriptors.ptr<float>(di++), descriptors.ptr<float>(i), descriptors.cols*sizeof(float));
+						}
+						else // CV_8UC1
+						{
+							memcpy(newDescriptors.ptr<char>(di++), descriptors.ptr<char>(i), descriptors.cols*sizeof(char));
+						}
+					}
+				}
+				descriptors = newDescriptors;
+			}
+		}
+	}
+}
+
 void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints)
 {
 	cv::Mat descriptors;

@@ -36,11 +36,34 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "MapBuilder.h"
 
+void showUsage()
+{
+	printf("\nUsage:\n"
+			"rtabmap-rgbd_mapping driver\n"
+			"  driver       Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS\n\n");
+	exit(1);
+}
+
 using namespace rtabmap;
 int main(int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kWarning);
+
+	int driver = 0;
+	if(argc < 2)
+	{
+		showUsage();
+	}
+	else
+	{
+		driver = atoi(argv[argc-1]);
+		if(driver < 0 || driver > 4)
+		{
+			UERROR("driver should be between 0 and 4.");
+			showUsage();
+		}
+	}
 
 	// GUI stuff, there the handler will receive RtabmapEvent and construct the map
 	QApplication app(argc, argv);
@@ -51,8 +74,49 @@ int main(int argc, char * argv[])
 
 	// Create the OpenNI camera, it will send a CameraEvent at the rate specified.
 	// Set transform to camera so z is up, y is left and x going forward
-	CameraRGBD * camera = new CameraOpenni("", 10, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0));
-	//CameraRGBD * camera = new CameraFreenect(0, 10, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0));
+	CameraRGBD * camera = 0;
+	Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
+	if(driver == 1)
+	{
+		if(!CameraOpenNI2::available())
+		{
+			UERROR("Not built with OpenNI2 support...");
+			exit(-1);
+		}
+		camera = new CameraOpenNI2(0, opticalRotation);
+	}
+	else if(driver == 2)
+	{
+		if(!CameraFreenect::available())
+		{
+			UERROR("Not built with Freenect support...");
+			exit(-1);
+		}
+		camera = new CameraFreenect(0, 0, opticalRotation);
+	}
+	else if(driver == 3)
+	{
+		if(!CameraOpenNICV::available())
+		{
+			UERROR("Not built with OpenNI from OpenCV support...");
+			exit(-1);
+		}
+		camera = new CameraOpenNICV(false, 0, opticalRotation);
+	}
+	else if(driver == 4)
+	{
+		if(!CameraOpenNICV::available())
+		{
+			UERROR("Not built with OpenNI from OpenCV support...");
+			exit(-1);
+		}
+		camera = new CameraOpenNICV(true, 0, opticalRotation);
+	}
+	else
+	{
+		camera = new rtabmap::CameraOpenni("", 0, opticalRotation);
+	}
+
 	CameraThread cameraThread(camera);
 	if(!cameraThread.init())
 	{
@@ -61,7 +125,7 @@ int main(int argc, char * argv[])
 	}
 
 	// Create an odometry thread to process camera events, it will send OdometryEvent.
-	OdometryThread odomThread(new OdometryBOW()); // 0=SURF 1=SIFT
+	OdometryThread odomThread(new OdometryBOW());
 
 
 	// Create RTAB-Map to process OdometryEvent

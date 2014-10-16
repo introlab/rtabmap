@@ -103,8 +103,8 @@ void RTABMAP_EXP rgbdFromCloud(
 cv::Mat RTABMAP_EXP cvtDepthFromFloat(const cv::Mat & depth32F);
 cv::Mat RTABMAP_EXP cvtDepthToFloat(const cv::Mat & depth16U);
 
-std::multimap<int, pcl::PointXYZ> RTABMAP_EXP generateWords3(
-		const std::multimap<int, cv::KeyPoint> & words,
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP generateKeypoints3DDepth(
+		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & depth,
 		float fx,
 		float fy,
@@ -112,11 +112,34 @@ std::multimap<int, pcl::PointXYZ> RTABMAP_EXP generateWords3(
 		float cy,
 		const Transform & transform);
 
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP generateKeypoints3DDisparity(
+		const std::vector<cv::KeyPoint> & keypoints,
+		const cv::Mat & disparity,
+		float fx,
+		float baseline,
+		float cx,
+		float cy,
+		const Transform & transform);
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP generateKeypoints3DStereo(
+		const std::vector<cv::KeyPoint> & keypoints,
+		const cv::Mat & leftImage,
+		const cv::Mat & rightImage,
+		float fx,
+		float baseline,
+		float cx,
+		float cy,
+		const Transform & transform = Transform::getIdentity(),
+		int flowWinSize = 9,
+		int flowMaxLevel = 4,
+		int flowIterations = 20,
+		double flowEps = 0.02);
+
 std::multimap<int, cv::KeyPoint> RTABMAP_EXP aggregate(
 		const std::list<int> & wordIds,
 		const std::vector<cv::KeyPoint> & keypoints);
 
-pcl::PointXYZ RTABMAP_EXP getDepth(
+pcl::PointXYZ RTABMAP_EXP projectDepthTo3D(
 		const cv::Mat & depthImage,
 		float x, float y,
 		float cx, float cy,
@@ -193,17 +216,62 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDisparityRGB(
 		float fx, float baseline,
 		int decimation);
 
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromStereoImages(
+		const cv::Mat & imageLeft,
+		const cv::Mat & imageRight,
+		float cx, float cy,
+		float fx, float fy,
+		int decimation);
+
 cv::Mat RTABMAP_EXP disparityFromStereoImages(
 		const cv::Mat & leftImage,
 		const cv::Mat & rightImage);
 
-pcl::PointXYZ RTABMAP_EXP projectDisparityTo3d(
+cv::Mat RTABMAP_EXP disparityFromStereoImages(
+		const cv::Mat & leftImage,
+		const cv::Mat & rightImage,
+		const std::vector<cv::Point2f> & leftCorners,
+		int flowWinSize = 9,
+		int flowMaxLevel = 4,
+		int flowIterations = 20,
+		double flowEps = 0.02);
+
+cv::Mat RTABMAP_EXP depthFromStereoImages(
+		const cv::Mat & leftImage,
+		const cv::Mat & rightImage,
+		const std::vector<cv::Point2f> & leftCorners,
+		float fx,
+		float baseline,
+		int flowWinSize = 9,
+		int flowMaxLevel = 4,
+		int flowIterations = 20,
+		double flowEps = 0.02);
+
+cv::Mat RTABMAP_EXP disparityFromStereoCorrespondences(
+		const cv::Mat & leftImage,
+		const std::vector<cv::Point2f> & leftCorners,
+		const std::vector<cv::Point2f> & rightCorners,
+		const std::vector<unsigned char> & mask);
+
+cv::Mat RTABMAP_EXP depthFromStereoCorrespondences(
+		const cv::Mat & leftImage,
+		const std::vector<cv::Point2f> & leftCorners,
+		const std::vector<cv::Point2f> & rightCorners,
+		const std::vector<unsigned char> & mask,
+		float fx, float baseline);
+
+pcl::PointXYZ RTABMAP_EXP projectDisparityTo3D(
 		const cv::Point2f & pt,
 		float disparity,
 		float cx, float cy, float fx, float baseline);
 
+pcl::PointXYZ RTABMAP_EXP projectDisparityTo3D(
+		const cv::Point2f & pt,
+		const cv::Mat & disparity,
+		float cx, float cy, float fx, float baseline);
+
 cv::Mat RTABMAP_EXP depthFromDisparity(const cv::Mat & disparity,
-		float cx, float cy, float fx, float baseline,
+		float fx, float baseline,
 		int type = CV_32FC1);
 
 cv::Mat RTABMAP_EXP depth2DFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud);

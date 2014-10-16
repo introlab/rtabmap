@@ -98,7 +98,16 @@ Memory::Memory(const ParametersMap & parameters) :
 	_icp2MaxIterations(Parameters::defaultLccIcp2Iterations()),
 	_icp2MaxFitness(Parameters::defaultLccIcp2MaxFitness()),
 	_icp2CorrespondenceRatio(Parameters::defaultLccIcp2CorrespondenceRatio()),
-	_icp2VoxelSize(Parameters::defaultLccIcp2VoxelSize())
+	_icp2VoxelSize(Parameters::defaultLccIcp2VoxelSize()),
+
+	_stereoFlowWinSize(Parameters::defaultStereoWinSize()),
+	_stereoFlowIterations(Parameters::defaultStereoIterations()),
+	_stereoFlowEpsilon(Parameters::defaultStereoEps()),
+	_stereoFlowMaxLevel(Parameters::defaultStereoMaxLevel()),
+
+	_stereoSubPixWinSize(Parameters::defaultStereoSubPixWinSize()),
+	_stereoSubPixIterations(Parameters::defaultStereoSubPixIterations()),
+	_stereoSubPixEps(Parameters::defaultStereoSubPixEps())
 {
 	_vwd = new VWDictionary(parameters);
 	this->parseParameters(parameters);
@@ -383,6 +392,15 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kLccIcp2CorrespondenceRatio(), _icp2CorrespondenceRatio);
 	Parameters::parse(parameters, Parameters::kLccIcp2VoxelSize(), _icp2VoxelSize);
 
+	//stereo
+	Parameters::parse(parameters, Parameters::kStereoWinSize(), _stereoFlowWinSize);
+	Parameters::parse(parameters, Parameters::kStereoIterations(), _stereoFlowIterations);
+	Parameters::parse(parameters, Parameters::kStereoEps(), _stereoFlowEpsilon);
+	Parameters::parse(parameters, Parameters::kStereoMaxLevel(), _stereoFlowMaxLevel);
+	Parameters::parse(parameters, Parameters::kStereoSubPixWinSize(), _stereoSubPixWinSize);
+	Parameters::parse(parameters, Parameters::kStereoSubPixIterations(), _stereoSubPixIterations);
+	Parameters::parse(parameters, Parameters::kStereoSubPixEps(), _stereoSubPixEps);
+
 	UASSERT_MSG(_bowMinInliers >= 1, uFormat("value=%d", _bowMinInliers).c_str());
 	UASSERT_MSG(_bowInlierDistance > 0.0f, uFormat("value=%f", _bowInlierDistance).c_str());
 	UASSERT_MSG(_bowIterations > 0, uFormat("value=%d", _bowIterations).c_str());
@@ -498,7 +516,10 @@ bool Memory::update(const SensorData & data, Statistics * stats)
 	//============================================================
 	if(_incrementalMemory)
 	{
-		this->rehearsal(signature, stats);
+		if(_similarityThreshold < 1.0f)
+		{
+			this->rehearsal(signature, stats);
+		}
 		t=timer.ticks()*1000;
 		if(stats) stats->addStatistic(Statistics::kTimingMemRehearsal(), t);
 		UDEBUG("time rehearsal=%f ms", t);
@@ -1848,72 +1869,79 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 		cv::Mat newDepth = ctNew.getUncompressedData();
 		if(!oldDepth.empty() && !newDepth.empty())
 		{
-			pcl::PointCloud<pcl::PointXYZ>::Ptr oldCloudXYZ = util3d::getICPReadyCloud(
-					oldDepth,
-					oldS.getDepthFx(),
-					oldS.getDepthFy(),
-					oldS.getDepthCx(),
-					oldS.getDepthCy(),
-					_icpDecimation,
-					_icpMaxDepth,
-					_icpVoxelSize,
-					_icpSamples,
-					oldS.getLocalTransform());
-			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudXYZ = util3d::getICPReadyCloud(
-					newDepth,
-					newS.getDepthFx(),
-					newS.getDepthFy(),
-					newS.getDepthCx(),
-					newS.getDepthCy(),
-					_icpDecimation,
-					_icpMaxDepth,
-					_icpVoxelSize,
-					_icpSamples,
-					guess * newS.getLocalTransform());
-
-			pcl::PointCloud<pcl::PointNormal>::Ptr oldCloud = util3d::computeNormals(oldCloudXYZ);
-			pcl::PointCloud<pcl::PointNormal>::Ptr newCloud = util3d::computeNormals(newCloudXYZ);
-
-			std::vector<int> indices;
-			newCloud = util3d::removeNaNNormalsFromPointCloud(newCloud);
-			oldCloud = util3d::removeNaNNormalsFromPointCloud(oldCloud);
-
-			// 3D
-			double fitness = 0;
-			bool hasConverged = false;
-			Transform icpT;
-			if(newCloud->size() && oldCloud->size())
+			if(oldDepth.type() == CV_8UC1 || newDepth.type() == CV_8UC1)
 			{
-				icpT = util3d::icpPointToPlane(newCloud,
-						oldCloud,
-					   _icpMaxCorrespondenceDistance,
-					   _icpMaxIterations,
-					   hasConverged,
-					   fitness);
-
-				//pcl::io::savePCDFile("old.pcd", *oldCloudXYZ);
-				//pcl::io::savePCDFile("newguess.pcd", *newCloudXYZ);
-				//newCloudXYZ = util3d::transformPointCloud(newCloudXYZ, icpT);
-				//pcl::io::savePCDFile("newicp.pcd", *newCloudXYZ);
-
-				UDEBUG("fitness=%f", fitness);
-
-				if(!icpT.isNull() && hasConverged && (_icpMaxFitness == 0 || fitness < _icpMaxFitness))
-				{
-					transform = icpT * guess;
-					transform = transform.inverse();
-				}
-				else
-				{
-					msg = uFormat("Cannot compute transform (hasConverged=%s fitness=%f/%f)",
-							hasConverged?"true":"false", fitness, _icpMaxFitness);
-					UINFO(msg.c_str());
-				}
+				UERROR("ICP 3D cannot be done on stereo images!");
 			}
 			else
 			{
-				msg = "Clouds empty ?!?";
-				UWARN(msg.c_str());
+				pcl::PointCloud<pcl::PointXYZ>::Ptr oldCloudXYZ = util3d::getICPReadyCloud(
+						oldDepth,
+						oldS.getDepthFx(),
+						oldS.getDepthFy(),
+						oldS.getDepthCx(),
+						oldS.getDepthCy(),
+						_icpDecimation,
+						_icpMaxDepth,
+						_icpVoxelSize,
+						_icpSamples,
+						oldS.getLocalTransform());
+				pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudXYZ = util3d::getICPReadyCloud(
+						newDepth,
+						newS.getDepthFx(),
+						newS.getDepthFy(),
+						newS.getDepthCx(),
+						newS.getDepthCy(),
+						_icpDecimation,
+						_icpMaxDepth,
+						_icpVoxelSize,
+						_icpSamples,
+						guess * newS.getLocalTransform());
+
+				pcl::PointCloud<pcl::PointNormal>::Ptr oldCloud = util3d::computeNormals(oldCloudXYZ);
+				pcl::PointCloud<pcl::PointNormal>::Ptr newCloud = util3d::computeNormals(newCloudXYZ);
+
+				std::vector<int> indices;
+				newCloud = util3d::removeNaNNormalsFromPointCloud(newCloud);
+				oldCloud = util3d::removeNaNNormalsFromPointCloud(oldCloud);
+
+				// 3D
+				double fitness = 0;
+				bool hasConverged = false;
+				Transform icpT;
+				if(newCloud->size() && oldCloud->size())
+				{
+					icpT = util3d::icpPointToPlane(newCloud,
+							oldCloud,
+						   _icpMaxCorrespondenceDistance,
+						   _icpMaxIterations,
+						   hasConverged,
+						   fitness);
+
+					//pcl::io::savePCDFile("old.pcd", *oldCloudXYZ);
+					//pcl::io::savePCDFile("newguess.pcd", *newCloudXYZ);
+					//newCloudXYZ = util3d::transformPointCloud(newCloudXYZ, icpT);
+					//pcl::io::savePCDFile("newicp.pcd", *newCloudXYZ);
+
+					UDEBUG("fitness=%f", fitness);
+
+					if(!icpT.isNull() && hasConverged && (_icpMaxFitness == 0 || fitness < _icpMaxFitness))
+					{
+						transform = icpT * guess;
+						transform = transform.inverse();
+					}
+					else
+					{
+						msg = uFormat("Cannot compute transform (hasConverged=%s fitness=%f/%f)",
+								hasConverged?"true":"false", fitness, _icpMaxFitness);
+						UINFO(msg.c_str());
+					}
+				}
+				else
+				{
+					msg = "Clouds empty ?!?";
+					UWARN(msg.c_str());
+				}
 			}
 		}
 		else
@@ -3011,49 +3039,6 @@ void Memory::copyData(const Signature * from, Signature * to)
 	UDEBUG("Merging time = %fs", timer.ticks());
 }
 
-void Memory::extractKeypointsAndDescriptors(
-		const cv::Mat & image,
-		std::vector<cv::KeyPoint> & keypoints,
-		cv::Mat & descriptors) const
-{
-	extractKeypointsAndDescriptors(image, cv::Mat(), keypoints, descriptors);
-}
-
-void Memory::extractKeypointsAndDescriptors(
-		const cv::Mat & image,
-		const cv::Mat & depth,
-		std::vector<cv::KeyPoint> & keypoints,
-		cv::Mat & descriptors) const
-{
-	if(_wordsPerImageTarget >= 0)
-	{
-		UTimer timer;
-		if(_feature2D)
-		{
-			cv::Rect roi = Feature2D::computeRoi(image, _roiRatios);
-			keypoints = _feature2D->generateKeypoints(image, 0, roi);
-			UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), timer.ticks());
-
-			Feature2D::filterKeypointsByDepth(keypoints, depth, _wordsMaxDepth);
-			Feature2D::limitKeypoints(keypoints, _wordsPerImageTarget);
-		}
-		else
-		{
-			UWARN("feature2D not set!");
-		}
-
-		if(keypoints.size())
-		{
-			descriptors = _feature2D->generateDescriptors(image, keypoints);
-			UDEBUG("time descriptors (%d) = %fs", descriptors.rows, timer.ticks());
-		}
-	}
-	else
-	{
-		UDEBUG("_wordsPerImageTarget(%d)<0 so don't extract any descriptors...", _wordsPerImageTarget);
-	}
-}
-
 class PreUpdateThread : public UThreadNode
 {
 public:
@@ -3076,6 +3061,7 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 	UASSERT(data.depth().empty() || data.depth().type() == CV_16UC1 || data.depth().type() == CV_32FC1);
 	UASSERT(data.rightImage().empty() || data.rightImage().type() == CV_8UC1);
 	UASSERT(data.depth2d().empty() || data.depth2d().type() == CV_32FC2);
+	UASSERT(_feature2D != 0);
 
 	PreUpdateThread preUpdateThread(_vwd);
 
@@ -3126,29 +3112,125 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 		preUpdateThread.start();
 	}
 
+	pcl::PointCloud<pcl::PointXYZ>::Ptr keypoints3D(new pcl::PointCloud<pcl::PointXYZ>);
 	if(data.keypoints().size() == 0)
 	{
-		// Extract features
-		cv::Mat imageMono;
-		// convert to grayscale
-		if(data.image().channels() > 1)
+		if(_wordsPerImageTarget >= 0)
 		{
-			cv::cvtColor(data.image(), imageMono, cv::COLOR_BGR2GRAY);
+			// Extract features
+			cv::Mat imageMono;
+			// convert to grayscale
+			if(data.image().channels() > 1)
+			{
+				cv::cvtColor(data.image(), imageMono, cv::COLOR_BGR2GRAY);
+			}
+			else
+			{
+				imageMono = data.image();
+			}
+			cv::Rect roi = Feature2D::computeRoi(imageMono, _roiRatios);
+
+			if(!data.rightImage().empty())
+			{
+				//stereo
+				cv::Mat disparity;
+				keypoints = _feature2D->generateKeypoints(imageMono, 0, roi);
+				UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), timer.ticks());
+
+				std::vector<cv::Point2f> leftCorners;
+				cv::KeyPoint::convert(keypoints, leftCorners);
+				if(_stereoSubPixWinSize > 0 && _stereoSubPixIterations > 0)
+				{
+					cv::cornerSubPix( imageMono, leftCorners,
+							cv::Size( _stereoSubPixWinSize, _stereoSubPixWinSize ),
+							cv::Size( -1, -1 ),
+							cv::TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, _stereoSubPixIterations, _stereoSubPixEps ) );
+					UDEBUG("time subpix left kpts=%fs", timer.ticks());
+				}
+
+				//generate a disparity map
+				disparity = util3d::disparityFromStereoImages(
+						imageMono,
+						data.rightImage(),
+						leftCorners,
+						_stereoFlowWinSize,
+						_stereoFlowMaxLevel,
+						_stereoFlowIterations,
+						_stereoFlowEpsilon);
+				UDEBUG("generate disparity = %fs", timer.ticks());
+
+				if(_wordsMaxDepth > 0.0f)
+				{
+					// disparity = baseline * fx / depth;
+					float minDisparity = data.baseline() * data.fx() / _wordsMaxDepth;
+					Feature2D::filterKeypointsByDisparity(keypoints, disparity, minDisparity);
+					UDEBUG("time filter keypoints by disparity (%d) = %fs", (int)keypoints.size(), timer.ticks());
+				}
+
+				if(_wordsPerImageTarget && (int)keypoints.size() > _wordsPerImageTarget)
+				{
+					Feature2D::limitKeypoints(keypoints, _wordsPerImageTarget);
+					UDEBUG("time limit keypoints max (%d) = %fs", _wordsPerImageTarget, timer.ticks());
+				}
+
+				if(keypoints.size())
+				{
+					descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
+					UDEBUG("time descriptors (%d) = %fs", descriptors.rows, timer.ticks());
+
+					keypoints3D = util3d::generateKeypoints3DDisparity(keypoints, disparity, data.fx(), data.baseline(), data.cx(), data.cy(), data.localTransform());
+					UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), timer.ticks());
+				}
+			}
+			else if(!data.depth().empty())
+			{
+				//depth
+				keypoints = _feature2D->generateKeypoints(imageMono, 0, roi);
+				UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), timer.ticks());
+
+				if(_wordsMaxDepth > 0.0f)
+				{
+					Feature2D::filterKeypointsByDepth(keypoints, data.depth(), _wordsMaxDepth);
+					UDEBUG("time filter keypoints by depth (%d) = %fs", (int)keypoints.size(), timer.ticks());
+				}
+
+				if(_wordsPerImageTarget && (int)keypoints.size() > _wordsPerImageTarget)
+				{
+					Feature2D::limitKeypoints(keypoints, _wordsPerImageTarget);
+					UDEBUG("time limit keypoints max (%d) = %fs", _wordsPerImageTarget, timer.ticks());
+				}
+
+				if(keypoints.size())
+				{
+					descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
+					UDEBUG("time descriptors (%d) = %fs", descriptors.rows, timer.ticks());
+
+					keypoints3D = util3d::generateKeypoints3DDepth(keypoints, data.depth(), data.fx(), data.fy(), data.cx(), data.cy(), data.localTransform());
+					UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), timer.ticks());
+				}
+			}
+			else
+			{
+				//RGB only
+				keypoints = _feature2D->generateKeypoints(imageMono, _wordsPerImageTarget, roi);
+				UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), timer.ticks());
+
+				if(keypoints.size())
+				{
+					descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
+					UDEBUG("time descriptors (%d) = %fs", descriptors.rows, timer.ticks());
+				}
+			}
+
+			UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
+			if(descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))
+			{
+				descriptors = cv::Mat();
+			}
 		}
 		else
 		{
-			imageMono = data.image();
-		}
-
-		this->extractKeypointsAndDescriptors(imageMono,
-				data.depth(),
-				keypoints,
-				descriptors);
-
-		UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
-		if(descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))
-		{
-			descriptors = cv::Mat();
+			UDEBUG("_wordsPerImageTarget(%d)<0 so don't extract any descriptors...", _wordsPerImageTarget);
 		}
 	}
 	else
@@ -3156,10 +3238,72 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 		keypoints = data.keypoints();
 		descriptors = data.descriptors().clone();
 
-		Feature2D::filterKeypointsByDepth(keypoints, descriptors,
-				data.depth(),
-				_wordsMaxDepth);
-		Feature2D::limitKeypoints(keypoints, descriptors, _wordsPerImageTarget);
+		// filter by depth
+		if(!data.rightImage().empty())
+		{
+			//stereo
+			cv::Mat imageMono;
+			// convert to grayscale
+			if(data.image().channels() > 1)
+			{
+				cv::cvtColor(data.image(), imageMono, cv::COLOR_BGR2GRAY);
+			}
+			else
+			{
+				imageMono = data.image();
+			}
+			//generate a disparity map
+			std::vector<cv::Point2f> leftCorners;
+			cv::KeyPoint::convert(keypoints, leftCorners);
+			cv::Mat disparity = util3d::disparityFromStereoImages(
+					imageMono,
+					data.rightImage(),
+					leftCorners,
+					_stereoFlowWinSize,
+					_stereoFlowMaxLevel,
+					_stereoFlowIterations,
+					_stereoFlowEpsilon);
+			UDEBUG("generate disparity = %fs", timer.ticks());
+
+			if(_wordsMaxDepth)
+			{
+				// disparity = baseline * fx / depth;
+				float minDisparity = data.baseline() * data.fx() / _wordsMaxDepth;
+				Feature2D::filterKeypointsByDisparity(keypoints, descriptors, disparity, minDisparity);
+			}
+
+			if(_wordsPerImageTarget && (int)keypoints.size() > _wordsPerImageTarget)
+			{
+				Feature2D::limitKeypoints(keypoints, _wordsPerImageTarget);
+				UDEBUG("time limit keypoints max (%d) = %fs", _wordsPerImageTarget, timer.ticks());
+			}
+
+			keypoints3D = util3d::generateKeypoints3DDisparity(keypoints, disparity, data.fx(), data.baseline(), data.cx(), data.cy(), data.localTransform());
+			UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), timer.ticks());
+		}
+		else if(!data.depth().empty())
+		{
+			//depth
+			if(_wordsMaxDepth)
+			{
+				Feature2D::filterKeypointsByDepth(keypoints, descriptors, _wordsMaxDepth);
+				UDEBUG("time filter keypoints by depth (%d) = %fs", (int)keypoints.size(), timer.ticks());
+			}
+
+			if(_wordsPerImageTarget && (int)keypoints.size() > _wordsPerImageTarget)
+			{
+				Feature2D::limitKeypoints(keypoints, _wordsPerImageTarget);
+				UDEBUG("time limit keypoints max (%d) = %fs", _wordsPerImageTarget, timer.ticks());
+			}
+
+			keypoints3D = util3d::generateKeypoints3DDepth(keypoints, data.depth(), data.fx(), data.fy(), data.cx(), data.cy(), data.localTransform());
+			UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), timer.ticks());
+		}
+		else
+		{
+			// RGB only
+			Feature2D::limitKeypoints(keypoints, descriptors, _wordsPerImageTarget);
+		}
 	}
 
 	if(_parallelized)
@@ -3188,21 +3332,20 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 	}
 
 	std::multimap<int, cv::KeyPoint> words;
+	std::multimap<int, pcl::PointXYZ> words3D;
 	if(wordIds.size() > 0)
 	{
 		UASSERT(wordIds.size() == keypoints.size());
+		UASSERT(keypoints3D->size() == 0 || keypoints3D->size() == wordIds.size());
 		unsigned int i=0;
 		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end() && i < keypoints.size(); ++iter, ++i)
 		{
 			words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
+			if(keypoints3D->size())
+			{
+				words3D.insert(std::pair<int, pcl::PointXYZ>(*iter, keypoints3D->at(i)));
+			}
 		}
-	}
-
-	//3d words
-	std::multimap<int, pcl::PointXYZ> words3;
-	if(!data.depth().empty() && data.fx() && data.fy())
-	{
-		words3 = util3d::generateWords3(words, data.depth(), data.fx(), data.fy(), data.cx(), data.cy(), data.localTransform());
 	}
 
 	Signature * s;
@@ -3235,7 +3378,7 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 		s = new Signature(id,
 			_idMapCount,
 			words,
-			words3,
+			words3D,
 			data.pose(),
 			util3d::compressData(data.depth2d()),
 			imageBytes,
@@ -3246,14 +3389,14 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 			data.cy(),
 			data.localTransform());
 		s->setImageRaw(data.image());
-		s->setDepthRaw(data.depth());
+		s->setDepthRaw(depthOrRightImage);
 	}
 	else
 	{
 		s = new Signature(id,
 			_idMapCount,
 			words,
-			words3,
+			words3D,
 			data.pose(),
 			util3d::compressData(data.depth2d()));
 	}

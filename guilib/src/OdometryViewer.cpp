@@ -98,12 +98,24 @@ void OdometryViewer::processData()
 		// visualization: buffering the clouds
 		// Create the new cloud
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-		cloud = util3d::cloudFromDepthRGB(
-				data.image(),
-				data.depth(),
-				data.cx(), data.cy(),
-			    data.fx(), data.fy(),
-			    decimation_);
+		if(data.depth().type() == CV_8UC1)
+		{
+			cloud = util3d::cloudFromStereoImages(
+					data.image(),
+					data.depth(),
+					data.cx(), data.cy(),
+					data.fx(), data.fy(),
+					decimation_);
+		}
+		else
+		{
+			cloud = util3d::cloudFromDepthRGB(
+					data.image(),
+					data.depth(),
+					data.cx(), data.cy(),
+					data.fx(), data.fy(),
+					decimation_);
+		}
 
 		if(voxelSize_ > 0.0f)
 		{

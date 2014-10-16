@@ -269,7 +269,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, MaxDepth,               float, 4.0, 	"Max depth of the words (0 means no limit).");
 	RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,         "Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).");
 	RTABMAP_PARAM_STR(Odom, RoiRatios,          "0.0 0.0 0.0 0.0", "Region of interest ratios [left, right, top, bottom].");
-	RTABMAP_PARAM(Odom, RefineIterations,       int, 10,        "Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
+	RTABMAP_PARAM(Odom, RefineIterations,       int, 5,        "Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
 	RTABMAP_PARAM(Odom, FeaturesRatio,          float, 0.5, 	"Minimum ratio of keypoints between the current image and the last image to compute odometry.");
 
 	// Odometry Bag-of-words
@@ -314,6 +314,15 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccIcp2, MaxFitness,      float, 1.0, 			"ICP 2D: Maximum fitness to accept the computed transform.");
 	RTABMAP_PARAM(LccIcp2, CorrespondenceRatio, float, 0.7, 		"ICP 2D: Ratio of matching correspondences to accept the transform.");
 	RTABMAP_PARAM(LccIcp2, VoxelSize,       float, 0.005, 			"Voxel size to be used for ICP computation.");
+
+	// Stereo disparity
+	RTABMAP_PARAM(Stereo, WinSize,               int, 9,        "See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(Stereo, Iterations,            int, 20,       "See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(Stereo, Eps,                   double, 0.02,  "See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(Stereo, MaxLevel,              int, 4,        "See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(Stereo, SubPixWinSize,         int, 3,        "See cv::cornerSubPix().");
+	RTABMAP_PARAM(Stereo, SubPixIterations,      int, 0,        "See cv::cornerSubPix(). 0 disables sub pixel refining.");
+	RTABMAP_PARAM(Stereo, SubPixEps,             double, 0.02,  "See cv::cornerSubPix().");
 
 public:
 	virtual ~Parameters();

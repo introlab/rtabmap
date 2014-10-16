@@ -44,6 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/nonfree/features2d.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/video/tracking.hpp>
 #include <rtabmap/core/VWDictionary.h>
 #include <cmath>
 #include <stdio.h>
@@ -318,8 +319,8 @@ cv::Mat cvtDepthToFloat(const cv::Mat & depth16U)
 	return depth32F;
 }
 
-std::multimap<int, pcl::PointXYZ> generateWords3(
-		const std::multimap<int, cv::KeyPoint> & words,
+pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DDepth(
+		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & depth,
 		float fx,
 		float fy,
@@ -327,26 +328,133 @@ std::multimap<int, pcl::PointXYZ> generateWords3(
 		float cy,
 		const Transform & transform)
 {
-	std::multimap<int, pcl::PointXYZ> words3;
-	for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+	UASSERT(!depth.empty() && (depth.type() == CV_32FC1 || depth.type() == CV_16UC1));
+	pcl::PointCloud<pcl::PointXYZ>::Ptr keypoints3d(new pcl::PointCloud<pcl::PointXYZ>);
+	if(!depth.empty())
 	{
-		pcl::PointXYZ pt = util3d::getDepth(
-				depth,
-				iter->second.pt.x,
-				iter->second.pt.y,
+		keypoints3d->resize(keypoints.size());
+		for(unsigned int i=0; i!=keypoints.size(); ++i)
+		{
+			pcl::PointXYZ pt = util3d::projectDepthTo3D(
+					depth,
+					keypoints[i].pt.x,
+					keypoints[i].pt.y,
+					cx,
+					cy,
+					fx,
+					fy,
+					true);
+
+			if(!transform.isNull() && !transform.isIdentity())
+			{
+				pt = pcl::transformPoint(pt, util3d::transformToEigen3f(transform));
+			}
+			keypoints3d->at(i) = pt;
+		}
+	}
+	return keypoints3d;
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DDisparity(
+		const std::vector<cv::KeyPoint> & keypoints,
+		const cv::Mat & disparity,
+		float fx,
+		float baseline,
+		float cx,
+		float cy,
+		const Transform & transform)
+{
+	UASSERT(!disparity.empty() && (disparity.type() == CV_16SC1 || disparity.type() == CV_32F));
+	pcl::PointCloud<pcl::PointXYZ>::Ptr keypoints3d(new pcl::PointCloud<pcl::PointXYZ>);
+	keypoints3d->resize(keypoints.size());
+	for(unsigned int i=0; i!=keypoints.size(); ++i)
+	{
+		pcl::PointXYZ pt = util3d::projectDisparityTo3D(
+				keypoints[i].pt,
+				disparity,
 				cx,
 				cy,
 				fx,
-				fy,
-				true);
+				baseline);
 
-		if(!transform.isNull() && !transform.isIdentity())
+		if(pcl::isFinite(pt) && !transform.isNull() && !transform.isIdentity())
 		{
 			pt = pcl::transformPoint(pt, util3d::transformToEigen3f(transform));
 		}
-		words3.insert(std::make_pair(iter->first, pt));
+		keypoints3d->at(i) = pt;
 	}
-	return words3;
+	return keypoints3d;
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DStereo(
+		const std::vector<cv::KeyPoint> & keypoints,
+		const cv::Mat & leftImage,
+		const cv::Mat & rightImage,
+		float fx,
+		float baseline,
+		float cx,
+		float cy,
+		const Transform & transform,
+		int flowWinSize,
+		int flowMaxLevel,
+		int flowIterations,
+		double flowEps)
+{
+	UASSERT(!leftImage.empty() && !rightImage.empty() &&
+			leftImage.type() == CV_8UC1 && rightImage.type() == CV_8UC1 &&
+			leftImage.rows == rightImage.rows && leftImage.cols == rightImage.cols);
+
+	std::vector<cv::Point2f> leftCorners;
+	cv::KeyPoint::convert(keypoints, leftCorners);
+
+	// Find features in the new left image
+	std::vector<unsigned char> status;
+	std::vector<float> err;
+	std::vector<cv::Point2f> rightCorners;
+	UDEBUG("cv::calcOpticalFlowPyrLK() begin");
+	cv::calcOpticalFlowPyrLK(
+			leftImage,
+			rightImage,
+			leftCorners,
+			rightCorners,
+			status,
+			err,
+			cv::Size(flowWinSize, flowWinSize), flowMaxLevel,
+			cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, flowIterations, flowEps),
+			cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
+	UDEBUG("cv::calcOpticalFlowPyrLK() end");
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr keypoints3d(new pcl::PointCloud<pcl::PointXYZ>);
+	keypoints3d->resize(keypoints.size());
+	float bad_point = std::numeric_limits<float>::quiet_NaN ();
+	UASSERT(status.size() == keypoints.size());
+	for(unsigned int i=0; i<status.size(); ++i)
+	{
+		pcl::PointXYZ pt(bad_point, bad_point, bad_point);
+		if(status[i])
+		{
+			float disparity = leftCorners[i].x - rightCorners[i].x;
+			if(disparity > 0.0f)
+			{
+				pcl::PointXYZ tmpPt = util3d::projectDisparityTo3D(
+						leftCorners[i],
+						disparity,
+						cx, cy, fx, baseline);
+
+				if(pcl::isFinite(tmpPt))
+				{
+					pt = tmpPt;
+					if(!transform.isNull() && !transform.isIdentity())
+					{
+						pt = pcl::transformPoint(pt, util3d::transformToEigen3f(transform));
+					}
+				}
+			}
+		}
+
+		keypoints3d->at(i) = pt;
+	}
+	return keypoints3d;
 }
 
 std::multimap<int, cv::KeyPoint> aggregate(
@@ -435,7 +543,7 @@ void findCorrespondences(
 	inliers2.resize(oi);
 }
 
-pcl::PointXYZ getDepth(
+pcl::PointXYZ projectDepthTo3D(
 		const cv::Mat & depthImage,
 		float x, float y,
 		float cx, float cy,
@@ -685,6 +793,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		float fx, float fy,
 		int decimation)
 {
+	UASSERT(!imageDepth.empty() && (imageDepth.type() == CV_16UC1 || imageDepth.type() == CV_32FC1));
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 	if(decimation < 1)
 	{
@@ -706,7 +815,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		{
 			pcl::PointXYZ & pt = cloud->at((h/decimation)*cloud->width + (w/decimation));
 
-			pcl::PointXYZ ptXYZ = getDepth(imageDepth, w, h, cx, cy, fx, fy, false);
+			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, cx, cy, fx, fy, false);
 			pt.x = ptXYZ.x;
 			pt.y = ptXYZ.y;
 			pt.z = ptXYZ.z;
@@ -725,6 +834,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 		int decimation)
 {
 	UASSERT(imageRgb.rows == imageDepth.rows && imageRgb.cols == imageDepth.cols);
+	UASSERT(!imageDepth.empty() && (imageDepth.type() == CV_16UC1 || imageDepth.type() == CV_32FC1));
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 	if(decimation < 1)
 	{
@@ -770,7 +880,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 				pt.r = v;
 			}
 
-			pcl::PointXYZ ptXYZ = getDepth(imageDepth, w, h, cx, cy, fx, fy, false);
+			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, cx, cy, fx, fy, false);
 			pt.x = ptXYZ.x;
 			pt.y = ptXYZ.y;
 			pt.z = ptXYZ.z;
@@ -835,7 +945,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDisparityRGB(
 			}
 
 			float disp = imageDisparity.type()==CV_16SC1?float(imageDisparity.at<short>(h,w))/16.0f:imageDisparity.at<float>(h,w);
-			pcl::PointXYZ ptXYZ = projectDisparityTo3d(cv::Point2f(w, h), disp, cx, cy, fx, baseline);
+			pcl::PointXYZ ptXYZ = projectDisparityTo3D(cv::Point2f(w, h), disp, cx, cy, fx, baseline);
 			pt.x = ptXYZ.x;
 			pt.y = ptXYZ.y;
 			pt.z = ptXYZ.z;
@@ -844,7 +954,35 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDisparityRGB(
 	return cloud;
 }
 
-cv::Mat disparityFromStereoImages(const cv::Mat & leftImage, const cv::Mat & rightImage)
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
+		const cv::Mat & imageLeft,
+		const cv::Mat & imageRight,
+		float cx, float cy,
+		float fx, float fy,
+		int decimation)
+{
+	UASSERT(imageRight.type() == CV_8UC1);
+
+	cv::Mat leftMono;
+	if(imageLeft.channels() == 3)
+	{
+		cv::cvtColor(imageLeft, leftMono, CV_BGR2GRAY);
+	}
+	else
+	{
+		leftMono = imageLeft;
+	}
+	return rtabmap::util3d::cloudFromDisparityRGB(
+			imageLeft,
+			util3d::disparityFromStereoImages(leftMono, imageRight),
+			cx, cy,
+			fx, fy,
+			decimation);
+}
+
+cv::Mat disparityFromStereoImages(
+		const cv::Mat & leftImage,
+		const cv::Mat & rightImage)
 {
 	UASSERT(!leftImage.empty() && !rightImage.empty() &&
 			leftImage.type() == CV_8UC1 && rightImage.type() == CV_8UC1 &&
@@ -852,13 +990,132 @@ cv::Mat disparityFromStereoImages(const cv::Mat & leftImage, const cv::Mat & rig
 			leftImage.rows == rightImage.rows);
 	cv::StereoBM stereo(cv::StereoBM::BASIC_PRESET, 160, 15);
 	cv::Mat disparity;
-	stereo(leftImage, rightImage, disparity, CV_16S);
+	stereo(leftImage, rightImage, disparity, CV_16SC1);
 	cv::filterSpeckles(disparity, 0, 1000, 16);
 	return disparity;
 }
 
+cv::Mat disparityFromStereoImages(
+		const cv::Mat & leftImage,
+		const cv::Mat & rightImage,
+		const std::vector<cv::Point2f> & leftCorners,
+		int flowWinSize,
+		int flowMaxLevel,
+		int flowIterations,
+		double flowEps)
+{
+	UASSERT(!leftImage.empty() && !rightImage.empty() &&
+			leftImage.type() == CV_8UC1 && rightImage.type() == CV_8UC1 &&
+			leftImage.cols == rightImage.cols &&
+			leftImage.rows == rightImage.rows);
+
+	// Find features in the new left image
+	std::vector<unsigned char> status;
+	std::vector<float> err;
+	std::vector<cv::Point2f> rightCorners;
+	UDEBUG("cv::calcOpticalFlowPyrLK() begin");
+	cv::calcOpticalFlowPyrLK(
+			leftImage,
+			rightImage,
+			leftCorners,
+			rightCorners,
+			status,
+			err,
+			cv::Size(flowWinSize, flowWinSize), flowMaxLevel,
+			cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, flowIterations, flowEps),
+			cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
+	UDEBUG("cv::calcOpticalFlowPyrLK() end");
+
+	return disparityFromStereoCorrespondences(leftImage, leftCorners, rightCorners, status);
+}
+
+cv::Mat depthFromStereoImages(
+		const cv::Mat & leftImage,
+		const cv::Mat & rightImage,
+		const std::vector<cv::Point2f> & leftCorners,
+		float fx,
+		float baseline,
+		int flowWinSize,
+		int flowMaxLevel,
+		int flowIterations,
+		double flowEps)
+{
+	UASSERT(!leftImage.empty() && !rightImage.empty() &&
+			leftImage.type() == CV_8UC1 && rightImage.type() == CV_8UC1 &&
+			leftImage.cols == rightImage.cols &&
+			leftImage.rows == rightImage.rows);
+	UASSERT(fx > 0.0f && baseline > 0.0f);
+
+	// Find features in the new left image
+	std::vector<unsigned char> status;
+	std::vector<float> err;
+	std::vector<cv::Point2f> rightCorners;
+	UDEBUG("cv::calcOpticalFlowPyrLK() begin");
+	cv::calcOpticalFlowPyrLK(
+			leftImage,
+			rightImage,
+			leftCorners,
+			rightCorners,
+			status,
+			err,
+			cv::Size(flowWinSize, flowWinSize), flowMaxLevel,
+			cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, flowIterations, flowEps),
+			cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
+	UDEBUG("cv::calcOpticalFlowPyrLK() end");
+
+	return depthFromStereoCorrespondences(leftImage, leftCorners, rightCorners, status, fx, baseline);
+}
+
+cv::Mat disparityFromStereoCorrespondences(
+		const cv::Mat & leftImage,
+		const std::vector<cv::Point2f> & leftCorners,
+		const std::vector<cv::Point2f> & rightCorners,
+		const std::vector<unsigned char> & mask)
+{
+	UASSERT(!leftImage.empty() && leftCorners.size() == rightCorners.size());
+	UASSERT(mask.size() == 0 || mask.size() == leftCorners.size());
+	cv::Mat disparity = cv::Mat::zeros(leftImage.rows, leftImage.cols, CV_32FC1);
+	for(unsigned int i=0; i<leftCorners.size(); ++i)
+	{
+		if(mask.size() == 0 || mask[i])
+		{
+			float d = leftCorners[i].x - rightCorners[i].x;
+			if(d > 0.0f)
+			{
+				disparity.at<float>(int(leftCorners[i].y+0.5f), int(leftCorners[i].x+0.5f)) = d;
+			}
+		}
+	}
+	return disparity;
+}
+
+cv::Mat depthFromStereoCorrespondences(
+		const cv::Mat & leftImage,
+		const std::vector<cv::Point2f> & leftCorners,
+		const std::vector<cv::Point2f> & rightCorners,
+		const std::vector<unsigned char> & mask,
+		float fx, float baseline)
+{
+	UASSERT(!leftImage.empty() && leftCorners.size() == rightCorners.size());
+	UASSERT(mask.size() == 0 || mask.size() == leftCorners.size());
+	cv::Mat depth = cv::Mat::zeros(leftImage.rows, leftImage.cols, CV_32FC1);
+	for(unsigned int i=0; i<leftCorners.size(); ++i)
+	{
+		if(mask.size() == 0 || mask[i])
+		{
+			float disparity = leftCorners[i].x - rightCorners[i].x;
+			if(disparity > 0.0f)
+			{
+				float d = baseline * fx / disparity;
+				depth.at<float>(int(leftCorners[i].y+0.5f), int(leftCorners[i].x+0.5f)) = d;
+			}
+		}
+	}
+	return depth;
+}
+
 // inspired from ROS image_geometry/src/stereo_camera_model.cpp
-pcl::PointXYZ projectDisparityTo3d(
+pcl::PointXYZ projectDisparityTo3D(
 		const cv::Point2f & pt,
 		float disparity,
 		float cx, float cy, float fx, float baseline)
@@ -872,18 +1129,36 @@ pcl::PointXYZ projectDisparityTo3d(
 	return pcl::PointXYZ(bad_point, bad_point, bad_point);
 }
 
+pcl::PointXYZ projectDisparityTo3D(
+		const cv::Point2f & pt,
+		const cv::Mat & disparity,
+		float cx, float cy, float fx, float baseline)
+{
+	UASSERT(!disparity.empty() && (disparity.type() == CV_32FC1 || disparity.type() == CV_16SC1));
+	int u = int(pt.x+0.5f);
+	int v = int(pt.y+0.5f);
+	float bad_point = std::numeric_limits<float>::quiet_NaN ();
+	if(uIsInBounds(u, 0, disparity.cols-1) &&
+	   uIsInBounds(v, 0, disparity.rows-1))
+	{
+		float d = disparity.type() == CV_16SC1?float(disparity.at<short>(v,u))/16.0f:disparity.at<float>(v,u);
+		return projectDisparityTo3D(pt, d, cx, cy, fx, baseline);
+	}
+	return pcl::PointXYZ(bad_point, bad_point, bad_point);
+}
+
 cv::Mat depthFromDisparity(const cv::Mat & disparity,
-		float cx, float cy, float fx, float baseline,
+		float fx, float baseline,
 		int type)
 {
-	UASSERT(disparity.type() == CV_32FC1 || disparity.type() == CV_16S);
+	UASSERT(!disparity.empty() && (disparity.type() == CV_32FC1 || disparity.type() == CV_16SC1));
 	UASSERT(type == CV_32FC1 || type == CV_16U);
 	cv::Mat depth = cv::Mat::zeros(disparity.rows, disparity.cols, type);
 	for (int i = 0; i < disparity.rows; i++)
 	{
 		for (int j = 0; j < disparity.cols; j++)
 		{
-			float disparity_value = disparity.type() == CV_16S?float(disparity.at<short>(i,j))/16.0f:disparity.at<float>(i,j);
+			float disparity_value = disparity.type() == CV_16SC1?float(disparity.at<short>(i,j))/16.0f:disparity.at<float>(i,j);
 			if (disparity_value > 0.0f)
 			{
 				// baseline * focal / disparity
@@ -1132,8 +1407,8 @@ void extractXYZCorrespondences(const std::list<std::pair<cv::Point2f, cv::Point2
 		iter!=correspondences.end();
 		++iter)
 	{
-		pcl::PointXYZ pt1 = getDepth(depthImage1, iter->first.x, iter->first.y, cx, cy, fx, fy, true);
-		pcl::PointXYZ pt2 = getDepth(depthImage2, iter->second.x, iter->second.y, cx, cy, fx, fy, true);
+		pcl::PointXYZ pt1 = projectDepthTo3D(depthImage1, iter->first.x, iter->first.y, cx, cy, fx, fy, true);
+		pcl::PointXYZ pt2 = projectDepthTo3D(depthImage2, iter->second.x, iter->second.y, cx, cy, fx, fy, true);
 		if(pcl::isFinite(pt1) && pcl::isFinite(pt2) &&
 		   (maxDepth <= 0 || (pt1.z <= maxDepth && pt2.z<=maxDepth)))
 		{
@@ -1691,6 +1966,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr getICPReadyCloud(
 		int samples,
 		const Transform & transform)
 {
+	UASSERT(!depth.empty() && (depth.type() == CV_16UC1 || depth.type() == CV_32FC1));
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 	cloud = cloudFromDepth(
 			depth,
@@ -1767,7 +2043,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr get3DFASTKpts(
 	pcl::PointCloud<pcl::PointXYZ>::Ptr points(new pcl::PointCloud<pcl::PointXYZ>);
 	for(unsigned int i=0; i<kpts.size(); ++i)
 	{
-		pcl::PointXYZ pt = getDepth(imageDepth, kpts[i].pt.x, kpts[i].pt.y, 0, 0, 1.0f/constant, 1.0f/constant, true);
+		pcl::PointXYZ pt = projectDepthTo3D(imageDepth, kpts[i].pt.x, kpts[i].pt.y, 0, 0, 1.0f/constant, 1.0f/constant, true);
 		if(uIsFinite(pt.z) && (maxDepth <= 0 || pt.z <= maxDepth))
 		{
 			points->push_back(pt);

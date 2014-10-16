@@ -1410,19 +1410,9 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link,
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudA;
 		if(depthA.type() == CV_8UC1)
 		{
-			cv::Mat leftImg;
-			if(imageA.channels() == 3)
-			{
-				cv::cvtColor(imageA, leftImg, CV_BGR2GRAY);
-			}
-			else
-			{
-				leftImg = imageA;
-			}
-			cv::Mat disparity = util3d::disparityFromStereoImages(leftImg, depthA);
-			cloudA = rtabmap::util3d::cloudFromDisparityRGB(
+			cloudA = rtabmap::util3d::cloudFromStereoImages(
 					imageA,
-					disparity,
+					depthA,
 					cxA, cyA,
 					fxA, fyA,
 					1);
@@ -1443,18 +1433,9 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link,
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudB;
 		if(depthB.type() == CV_8UC1)
 		{
-			cv::Mat leftImg;
-			if(imageB.channels() == 3)
-			{
-				cv::cvtColor(imageB, leftImg, CV_BGR2GRAY);
-			}
-			else
-			{
-				leftImg = imageB;
-			}
-			cloudB = rtabmap::util3d::cloudFromDisparityRGB(
+			cloudB = rtabmap::util3d::cloudFromStereoImages(
 					imageB,
-					util3d::disparityFromStereoImages(leftImg, depthB),
+					depthB,
 					cxB, cyB,
 					fxB, fyB,
 					1);
@@ -1785,6 +1766,13 @@ void DatabaseViewer::refineConstraint(int from, int to)
 		//3D
 		cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
 		cv::Mat depthB = rtabmap::util3d::uncompressImage(depthBytesB);
+
+		if(depthA.type() == CV_8UC1 || depthB.type() == CV_8UC1)
+		{
+			QMessageBox::critical(this, tr("ICP failed"), tr("ICP cannot be done on stereo images!"));
+			UERROR("ICP 3D cannot be done on stereo images!");
+			return;
+		}
 
 		cloudA = util3d::getICPReadyCloud(depthA,
 						fxA, fyA, cxA, cyA,

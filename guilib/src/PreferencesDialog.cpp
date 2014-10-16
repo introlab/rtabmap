@@ -482,6 +482,15 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_flow_subpix_iterations->setObjectName(Parameters::kOdomFlowSubPixIterations().c_str());
 	_ui->odom_flow_subpix_eps->setObjectName(Parameters::kOdomFlowSubPixEps().c_str());
 
+	//Stereo
+	_ui->stereo_winSize->setObjectName(Parameters::kStereoWinSize().c_str());
+	_ui->stereo_maxLevel->setObjectName(Parameters::kStereoMaxLevel().c_str());
+	_ui->stereo_iterations->setObjectName(Parameters::kStereoIterations().c_str());
+	_ui->stereo_eps->setObjectName(Parameters::kStereoEps().c_str());
+	_ui->stereo_subpix_winSize->setObjectName(Parameters::kStereoSubPixWinSize().c_str());
+	_ui->stereo_subpix_iterations->setObjectName(Parameters::kStereoSubPixIterations().c_str());
+	_ui->stereo_subpix_eps->setObjectName(Parameters::kStereoSubPixEps().c_str());
+
 	setupSignals();
 	// custom signals
 	connect(_ui->doubleSpinBox_kp_roi0, SIGNAL(valueChanged(double)), this, SLOT(updateKpROI()));

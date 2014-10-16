@@ -216,7 +216,7 @@ inline Vector3<T> Quaternion<T>::toAngles() const{
 	T n = this->norm();
 	T s = n > 0?2./(n*n):0.;
 	
-	T m00, m01, m02, m10, m11, m12, m20, m21, m22;
+	T m00, m10, m20, m21, m22;
 	T phi,theta,psi;
 	
 	
@@ -238,17 +238,17 @@ inline Vector3<T> Quaternion<T>::toAngles() const{
 	T zz = this->z*zs;
 	
 	m00 = 1.0 - (yy + zz);
-	m11 = 1.0 - (xx + zz);
+	//m11 = 1.0 - (xx + zz);
 	m22 = 1.0 - (xx + yy);
 	
 	
 	m10 = xy + wz;
-	m01 = xy - wz;
+	//m01 = xy - wz;
 	
 	m20 = xz - wy;
-	m02 = xz + wy;
+	//m02 = xz + wy;
 	m21 = yz + wx;
-	m12 = yz - wx;
+	//m12 = yz - wx;
 	
 	phi   = atan2(m21,m22);
 	theta = atan2(-m20,sqrt(m21*m21 + m22*m22));

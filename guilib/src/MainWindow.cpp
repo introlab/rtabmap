@@ -3766,12 +3766,25 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createCloud(
 		float maxDepth) const
 {
 	UTimer timer;
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
-			rgb,
-			depth,
-		    cx, cy,
-		    fx, fy,
-		    decimation);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+	if(depth.type() == CV_8UC1)
+	{
+		cloud = util3d::cloudFromStereoImages(
+				rgb,
+				depth,
+				cx, cy,
+				fx, fy,
+				decimation);
+	}
+	else
+	{
+		cloud = util3d::cloudFromDepthRGB(
+				rgb,
+				depth,
+				cx, cy,
+				fx, fy,
+				decimation);
+	}
 
 	if(cloud->size())
 	{

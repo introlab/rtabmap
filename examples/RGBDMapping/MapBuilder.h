@@ -46,7 +46,9 @@ class MapBuilder : public QWidget, public UEventsHandler
 {
 	Q_OBJECT
 public:
-	MapBuilder()
+	MapBuilder() :
+		_processingStatistics(false),
+		_lastOdometryProcessed(true)
 	{
 		this->setWindowFlags(Qt::Dialog);
 		this->setWindowTitle(tr("3D Map"));
@@ -60,7 +62,7 @@ public:
 		this->setLayout(layout);
 
 		qRegisterMetaType<rtabmap::Statistics>("rtabmap::Statistics");
-		qRegisterMetaType<rtabmap::SensorData>("rtabmap::Image");
+		qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
 	}
 
 	virtual ~MapBuilder()
@@ -128,15 +130,14 @@ private slots:
 			}
 		}
 		cloudViewer_->render();
+
+		_lastOdometryProcessed = true;
 	}
 
 
 	void processStatistics(const rtabmap::Statistics & stats)
 	{
-		if(!this->isVisible())
-		{
-			return;
-		}
+		_processingStatistics = true;
 
 		const std::map<int, Transform> & poses = stats.poses();
 		QMap<std::string, Transform> clouds = cloudViewer_->getAddedClouds();
@@ -198,6 +199,8 @@ private slots:
 		}
 
 		cloudViewer_->render();
+
+		_processingStatistics = false;
 	}
 
 protected:
@@ -208,19 +211,30 @@ protected:
 			RtabmapEvent * rtabmapEvent = (RtabmapEvent *)event;
 			const Statistics & stats = rtabmapEvent->getStats();
 			// Statistics must be processed in the Qt thread
-			QMetaObject::invokeMethod(this, "processStatistics", Q_ARG(rtabmap::Statistics, stats));
+			if(this->isVisible())
+			{
+				QMetaObject::invokeMethod(this, "processStatistics", Q_ARG(rtabmap::Statistics, stats));
+			}
 		}
 		else if(event->getClassName().compare("OdometryEvent") == 0)
 		{
 			OdometryEvent * odomEvent = (OdometryEvent *)event;
 			// Odometry must be processed in the Qt thread
-			QMetaObject::invokeMethod(this, "processOdometry", Q_ARG(rtabmap::SensorData, odomEvent->data()));
+			if(this->isVisible() &&
+			   _lastOdometryProcessed &&
+			   !_processingStatistics)
+			{
+				_lastOdometryProcessed = false; // if we receive too many odometry events!
+				QMetaObject::invokeMethod(this, "processOdometry", Q_ARG(rtabmap::SensorData, odomEvent->data()));
+			}
 		}
 	}
 
 private:
 	CloudViewer * cloudViewer_;
 	Transform lastOdomPose_;
+	bool _processingStatistics;
+	bool _lastOdometryProcessed;
 };
 
 
