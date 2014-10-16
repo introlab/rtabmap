@@ -153,6 +153,7 @@ private:
 	unsigned int _maxRetrieved;
 	bool _statisticLogsBufferedInRAM;
 	bool _statisticLogged;
+	bool _statisticLoggedHeaders;
 	bool _rgbdSlamMode;
 	float _rgbdLinearUpdate;
 	float _rgbdAngularUpdate;

@@ -143,6 +143,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Rtabmap, MaxRetrieved,                 unsigned int, 2, "Maximum locations retrieved at the same time from LTM.");
 	RTABMAP_PARAM(Rtabmap, StatisticLogsBufferedInRAM,   bool, true, "Statistic logs buffered in RAM instead of written to hard drive after each iteration.");
 	RTABMAP_PARAM(Rtabmap, StatisticLogged,   	         bool, false, "Logging enabled.");
+	RTABMAP_PARAM(Rtabmap, StatisticLoggedHeaders,   	 bool, true, "Add column header description to log files.");
 	RTABMAP_PARAM(Rtabmap, StartNewMapOnLoopClosure,     bool, false, "Start a new map only if there is a global loop closure with a previous map.")
 
 	// Hypotheses selection

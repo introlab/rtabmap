@@ -85,6 +85,7 @@ Rtabmap::Rtabmap() :
 	_maxRetrieved(Parameters::defaultRtabmapMaxRetrieved()),
 	_statisticLogsBufferedInRAM(Parameters::defaultRtabmapStatisticLogsBufferedInRAM()),
 	_statisticLogged(Parameters::defaultRtabmapStatisticLogged()),
+	_statisticLoggedHeaders(Parameters::defaultRtabmapStatisticLoggedHeaders()),
 	_rgbdSlamMode(Parameters::defaultRGBDEnabled()),
 	_rgbdLinearUpdate(Parameters::defaultRGBDLinearUpdate()),
 	_rgbdAngularUpdate(Parameters::defaultRGBDAngularUpdate()),
@@ -169,7 +170,7 @@ void Rtabmap::setupLogFiles(bool overwrite)
 		_foutInt = fopen((_wDir+LOG_I).c_str(), attributes.c_str());
 	#endif
 		// add header (column identification)
-		if(addLogFHeader && _foutFloat)
+		if(_statisticLoggedHeaders && addLogFHeader && _foutFloat)
 		{
 			fprintf(_foutFloat, "Column headers:\n");
 			fprintf(_foutFloat, " 1-Total iteration time (s)\n");
@@ -193,7 +194,7 @@ void Rtabmap::setupLogFiles(bool overwrite)
 			fprintf(_foutFloat, " 19-Retrieval database access time (s)\n");
 			fprintf(_foutFloat, " 20-Add loop closure link time (s)\n");
 		}
-		if(addLogIHeader && _foutInt)
+		if(_statisticLoggedHeaders && addLogIHeader && _foutInt)
 		{
 			fprintf(_foutInt, "Column headers:\n");
 			fprintf(_foutInt, " 1-Loop closure ID\n");
@@ -260,10 +261,8 @@ void Rtabmap::init(const ParametersMap & parameters, bool deleteMemory)
 		{
 			this->setDatabasePath(iter->second.c_str());
 		}
-		if((iter=parameters.find(Parameters::kRtabmapStatisticLogged())) != parameters.end())
-		{
-			_statisticLogged = uStr2Bool(iter->second.c_str());
-		}
+		Parameters::parse(parameters, Parameters::kRtabmapStatisticLogged(), _statisticLogged);
+		Parameters::parse(parameters, Parameters::kRtabmapStatisticLoggedHeaders(), _statisticLoggedHeaders);
 		this->resetMemory(true);
 	}
 
@@ -342,6 +341,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRtabmapMaxRetrieved(), _maxRetrieved);
 	Parameters::parse(parameters, Parameters::kRtabmapStatisticLogsBufferedInRAM(), _statisticLogsBufferedInRAM);
 	Parameters::parse(parameters, Parameters::kRtabmapStatisticLogged(), _statisticLogged);
+	Parameters::parse(parameters, Parameters::kRtabmapStatisticLoggedHeaders(), _statisticLoggedHeaders);
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), _rgbdSlamMode);
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rgbdLinearUpdate);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rgbdAngularUpdate);
