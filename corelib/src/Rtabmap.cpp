@@ -2104,76 +2104,85 @@ void Rtabmap::optimizeCurrentMap(
 			*constraints = edgeConstraints;
 		}
 
-		// Modify IDs using the margin from the current signature (TORO root will be the last signature)
-		int m = 0;
-		int toroId = 1;
-		std::map<int, int> rtabmapToToro; // <RTAB-Map ID, TORO ID>
-		std::map<int, int> toroToRtabmap; // <TORO ID, RTAB-Map ID>
-		while(ids.size())
+		if(_toroIterations == 0)
 		{
-			for(std::map<int, int>::iterator iter = ids.begin(); iter!=ids.end();)
-			{
-				if(m == iter->second)
-				{
-					rtabmapToToro.insert(std::make_pair(iter->first, toroId));
-					toroToRtabmap.insert(std::make_pair(toroId, iter->first));
-					++toroId;
-					ids.erase(iter++);
-				}
-				else
-				{
-					++iter;
-				}
-			}
-			++m;
-		}
-
-		//
-		std::map<int, Transform> posesToro;
-		std::multimap<int, Link> edgeConstraintsToro;
-		for(std::map<int, Transform>::iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-		{
-			posesToro.insert(std::make_pair(rtabmapToToro.at(iter->first), iter->second));
-		}
-		for(std::multimap<int, Link>::iterator iter = edgeConstraints.begin();
-			iter!=edgeConstraints.end();
-			++iter)
-		{
-			edgeConstraintsToro.insert(std::make_pair(rtabmapToToro.at(iter->first), Link(rtabmapToToro.at(iter->first), rtabmapToToro.at(iter->second.to()), iter->second.transform(), iter->second.type())));
-		}
-
-		if(posesToro.size() > 1 && edgeConstraintsToro.size() > 0)
-		{
-			///UDEBUG("TORO optimize begin");
-			//util3d::saveTOROGraph("toroIdRtabmap.graph", poses, edgeConstraints);
-			//util3d::saveTOROGraph("toroIdToro.graph", posesToro, edgeConstraintsToro);
-			//UDEBUG("graph saved");
-
-			std::map<int, Transform> optimizedPosesToro;
-			Transform mapCorrectionToro;
-			util3d::optimizeTOROGraph(posesToro, edgeConstraintsToro, optimizedPosesToro, mapCorrectionToro, _toroIterations, true);
-
-			//UDEBUG("saving optimized graph...");
-			//util3d::saveTOROGraph("toroOptimized.graph", optimizedPosesToro, edgeConstraintsToro);
-			//UDEBUG("TORO optimize end");
-
-			for(std::map<int, Transform>::iterator iter=optimizedPosesToro.begin(); iter!=optimizedPosesToro.end(); ++iter)
-			{
-				optimizedPoses.insert(std::make_pair(toroToRtabmap.at(iter->first), iter->second));
-			}
-
-			//util3d::saveTOROGraph("toro.graph", poses, edgeConstraints);
-			//util3d::saveTOROGraph("toroOptimized.graph", _optimizedPoses, edgeConstraints);
-		}
-		else if(poses.size() == 1 && edgeConstraints.size() == 0)
-		{
+			// Optimization desactivated! Return not optimized poses.
 			optimizedPoses = poses;
 		}
-		else if(poses.size() || edgeConstraints.size())
+		else
 		{
-			UFATAL("Poses=%d and edges=%d (poses must "
-				   "not be null if there are edges, and edges must be null if poses <= 1)",
-				   poses.size(), edgeConstraints.size());
+
+			// Modify IDs using the margin from the current signature (TORO root will be the last signature)
+			int m = 0;
+			int toroId = 1;
+			std::map<int, int> rtabmapToToro; // <RTAB-Map ID, TORO ID>
+			std::map<int, int> toroToRtabmap; // <TORO ID, RTAB-Map ID>
+			while(ids.size())
+			{
+				for(std::map<int, int>::iterator iter = ids.begin(); iter!=ids.end();)
+				{
+					if(m == iter->second)
+					{
+						rtabmapToToro.insert(std::make_pair(iter->first, toroId));
+						toroToRtabmap.insert(std::make_pair(toroId, iter->first));
+						++toroId;
+						ids.erase(iter++);
+					}
+					else
+					{
+						++iter;
+					}
+				}
+				++m;
+			}
+
+			//
+			std::map<int, Transform> posesToro;
+			std::multimap<int, Link> edgeConstraintsToro;
+			for(std::map<int, Transform>::iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+			{
+				posesToro.insert(std::make_pair(rtabmapToToro.at(iter->first), iter->second));
+			}
+			for(std::multimap<int, Link>::iterator iter = edgeConstraints.begin();
+				iter!=edgeConstraints.end();
+				++iter)
+			{
+				edgeConstraintsToro.insert(std::make_pair(rtabmapToToro.at(iter->first), Link(rtabmapToToro.at(iter->first), rtabmapToToro.at(iter->second.to()), iter->second.transform(), iter->second.type())));
+			}
+
+			if(posesToro.size() > 1 && edgeConstraintsToro.size() > 0)
+			{
+				///UDEBUG("TORO optimize begin");
+				//util3d::saveTOROGraph("toroIdRtabmap.graph", poses, edgeConstraints);
+				//util3d::saveTOROGraph("toroIdToro.graph", posesToro, edgeConstraintsToro);
+				//UDEBUG("graph saved");
+
+				std::map<int, Transform> optimizedPosesToro;
+				Transform mapCorrectionToro;
+				util3d::optimizeTOROGraph(posesToro, edgeConstraintsToro, optimizedPosesToro, mapCorrectionToro, _toroIterations, true);
+
+				//UDEBUG("saving optimized graph...");
+				//util3d::saveTOROGraph("toroOptimized.graph", optimizedPosesToro, edgeConstraintsToro);
+				//UDEBUG("TORO optimize end");
+
+				for(std::map<int, Transform>::iterator iter=optimizedPosesToro.begin(); iter!=optimizedPosesToro.end(); ++iter)
+				{
+					optimizedPoses.insert(std::make_pair(toroToRtabmap.at(iter->first), iter->second));
+				}
+
+				//util3d::saveTOROGraph("toro.graph", poses, edgeConstraints);
+				//util3d::saveTOROGraph("toroOptimized.graph", _optimizedPoses, edgeConstraints);
+			}
+			else if(poses.size() == 1 && edgeConstraints.size() == 0)
+			{
+				optimizedPoses = poses;
+			}
+			else if(poses.size() || edgeConstraints.size())
+			{
+				UFATAL("Poses=%d and edges=%d (poses must "
+					   "not be null if there are edges, and edges must be null if poses <= 1)",
+					   poses.size(), edgeConstraints.size());
+			}
 		}
 	}
 }
