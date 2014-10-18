@@ -274,7 +274,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->general_doubleSpinBox_detectionRate_2, SIGNAL(editingFinished()), this, SLOT(updateBasicParameter()));
 	connect(_ui->general_spinBox_imagesBufferSize_2, SIGNAL(editingFinished()), this, SLOT(updateBasicParameter()));
 	connect(_ui->general_spinBox_maxStMemSize_2, SIGNAL(editingFinished()), this, SLOT(updateBasicParameter()));
-	connect(_ui->general_checkBox_publishStats, SIGNAL(stateChanged(int)), this, SLOT(updateBasicParameter()));
+	connect(_ui->groupBox_publishing, SIGNAL(clicked(bool)), this, SLOT(updateBasicParameter()));
 	connect(_ui->general_checkBox_publishStats_2, SIGNAL(stateChanged(int)), this, SLOT(updateBasicParameter()));
 	connect(_ui->general_checkBox_activateRGBD, SIGNAL(stateChanged(int)), this, SLOT(updateBasicParameter()));
 	connect(_ui->general_checkBox_activateRGBD_2, SIGNAL(stateChanged(int)), this, SLOT(updateBasicParameter()));
@@ -286,12 +286,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	// Map objects name with the corresponding parameter key, needed for the addParameter() slots
 	//Rtabmap
-	_ui->general_checkBox_publishStats->setObjectName(Parameters::kRtabmapPublishStats().c_str());
+	_ui->groupBox_publishing->setObjectName(Parameters::kRtabmapPublishStats().c_str());
 	_ui->general_checkBox_publishRawData->setObjectName(Parameters::kRtabmapPublishImage().c_str());
 	_ui->general_checkBox_publishPdf->setObjectName(Parameters::kRtabmapPublishPdf().c_str());
 	_ui->general_checkBox_publishLikelihood->setObjectName(Parameters::kRtabmapPublishLikelihood().c_str());
 	_ui->general_checkBox_statisticLogsBufferedInRAM->setObjectName(Parameters::kRtabmapStatisticLogsBufferedInRAM().c_str());
-	_ui->general_checkBox_statisticLogged->setObjectName(Parameters::kRtabmapStatisticLogged().c_str());
+	_ui->groupBox_statistics->setObjectName(Parameters::kRtabmapStatisticLogged().c_str());
+	_ui->general_checkBox_statisticLoggedHeaders->setObjectName(Parameters::kRtabmapStatisticLoggedHeaders().c_str());
 	_ui->general_doubleSpinBox_timeThr->setObjectName(Parameters::kRtabmapTimeThr().c_str());
 	_ui->general_spinBox_memoryThr->setObjectName(Parameters::kRtabmapMemoryThr().c_str());
 	_ui->general_doubleSpinBox_detectionRate->setObjectName(Parameters::kRtabmapDetectionRate().c_str());
@@ -2246,13 +2247,13 @@ void PreferencesDialog::updateBasicParameter()
 	{
 		_ui->general_spinBox_maxStMemSize->setValue(_ui->general_spinBox_maxStMemSize_2->value());
 	}
-	else if(sender() == _ui->general_checkBox_publishStats)
+	else if(sender() == _ui->groupBox_publishing)
 	{
-		_ui->general_checkBox_publishStats_2->setChecked(_ui->general_checkBox_publishStats->isChecked());
+		_ui->general_checkBox_publishStats_2->setChecked(_ui->groupBox_publishing->isChecked());
 	}
 	else if(sender() == _ui->general_checkBox_publishStats_2)
 	{
-		_ui->general_checkBox_publishStats->setChecked(_ui->general_checkBox_publishStats_2->isChecked());
+		_ui->groupBox_publishing->setChecked(_ui->general_checkBox_publishStats_2->isChecked());
 	}
 	else if(sender() == _ui->doubleSpinBox_similarityThreshold_2)
 	{
@@ -2804,7 +2805,7 @@ float PreferencesDialog::getSourceOpenniCy() const
 
 bool PreferencesDialog::isStatisticsPublished() const
 {
-	return _ui->general_checkBox_publishStats->isChecked();
+	return _ui->groupBox_publishing->isChecked();
 }
 double PreferencesDialog::getLoopThr() const
 {
