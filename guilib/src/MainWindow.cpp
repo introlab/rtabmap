@@ -1220,7 +1220,7 @@ void MainWindow::updateMapCloud(
 	// Update occupancy grid map in 3D map view and graph view
 	if(_ui->graphicsView_graphView->isVisible() && constraints.size())
 	{
-		_ui->graphicsView_graphView->updateGraph(poses, constraints);
+		_ui->graphicsView_graphView->updateGraph(posesIn, constraints);
 	}
 	cv::Mat map8U;
 	if((_ui->graphicsView_graphView->isVisible() || _preferencesDialog->getGridMapShown()) && (_createdScans.size() || _preferencesDialog->isGridMapFrom3DCloud()))
