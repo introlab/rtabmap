@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>21</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -35,7 +35,7 @@
      <string>File</string>
     </property>
     <addaction name="actionSave_point_cloud"/>
-    <addaction name="actionExport_2D_scans_ply_bmp"/>
+    <addaction name="actionExport_2D_scans_ply_pcd"/>
     <addaction name="actionExport_2D_Grid_map_bmp_png"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
@@ -1053,7 +1053,7 @@
     <string>Export 2D grid map (*.png *.bmp)...</string>
    </property>
   </action>
-  <action name="actionExport_2D_scans_ply_bmp">
+  <action name="actionExport_2D_scans_ply_pcd">
    <property name="text">
     <string>Export 2D scans (*.ply *.pcd)...</string>
    </property>

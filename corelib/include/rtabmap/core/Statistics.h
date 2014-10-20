@@ -99,6 +99,15 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(TimingMem, Pre_update, ms);
 	RTABMAP_STATS(TimingMem, Signature_creation, ms);
 	RTABMAP_STATS(TimingMem, Rehearsal, ms);
+	RTABMAP_STATS(TimingMem, Keypoints_detection, ms);
+	RTABMAP_STATS(TimingMem, Stereo_subpixel, ms);
+	RTABMAP_STATS(TimingMem, Stereo_correspondences, ms);
+	RTABMAP_STATS(TimingMem, Keypoints_filtering, ms);
+	RTABMAP_STATS(TimingMem, Descriptors_extraction, ms);
+	RTABMAP_STATS(TimingMem, Keypoints_3D, ms);
+	RTABMAP_STATS(TimingMem, Joining_dictionary_update, ms);
+	RTABMAP_STATS(TimingMem, Add_new_words, ms);
+	RTABMAP_STATS(TimingMem, Compressing_data, ms);
 
 	RTABMAP_STATS(Keypoint, Dictionary_size, words);
 	RTABMAP_STATS(Keypoint, Response_threshold,);

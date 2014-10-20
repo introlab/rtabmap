@@ -145,6 +145,8 @@ public:
 	bool getGridMapShown() const;
 	double getGridMapResolution() const;
 	bool getGridMapFillEmptySpace() const;
+	bool isGridMapFrom3DCloud() const;
+	int getGridMapFillEmptyRadius() const;
 	double getGridMapOpacity() const;
 
 	QString getWorkingDirectory() const;

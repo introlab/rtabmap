@@ -45,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Statistics.h"
 
 #include <pcl/io/pcd_io.h>
+#include <pcl/common/common.h>
 
 namespace rtabmap {
 
@@ -492,7 +493,7 @@ bool Memory::update(const SensorData & data, Statistics * stats)
 	//============================================================
 	// Create a signature with the image received.
 	//============================================================
-	Signature * signature = this->createSignature(data, this->isRawDataKept());
+	Signature * signature = this->createSignature(data, this->isRawDataKept(), stats);
 	if (signature == 0)
 	{
 		UERROR("Failed to create a signature...");
@@ -3055,7 +3056,7 @@ private:
 	VWDictionary * _vwp;
 };
 
-Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
+Signature * Memory::createSignature(const SensorData & data, bool keepRawData, Statistics * stats)
 {
 	UASSERT(data.image().empty() || data.image().type() == CV_8UC1 || data.image().type() == CV_8UC3);
 	UASSERT(data.depth().empty() || data.depth().type() == CV_16UC1 || data.depth().type() == CV_32FC1);
@@ -3067,6 +3068,7 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 
 	UTimer timer;
 	timer.start();
+	float t;
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat descriptors;
 	int id = data.id();
@@ -3135,7 +3137,9 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 				//stereo
 				cv::Mat disparity;
 				keypoints = _feature2D->generateKeypoints(imageMono, 0, roi);
-				UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), timer.ticks());
+				t = timer.ticks();
+				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
+				UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
 
 				std::vector<cv::Point2f> leftCorners;
 				cv::KeyPoint::convert(keypoints, leftCorners);
@@ -3145,7 +3149,9 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 							cv::Size( _stereoSubPixWinSize, _stereoSubPixWinSize ),
 							cv::Size( -1, -1 ),
 							cv::TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, _stereoSubPixIterations, _stereoSubPixEps ) );
-					UDEBUG("time subpix left kpts=%fs", timer.ticks());
+					t = timer.ticks();
+					if(stats) stats->addStatistic(Statistics::kTimingMemStereo_subpixel(), t*1000.0f);
+					UDEBUG("time subpix left kpts=%fs", t);
 				}
 
 				//generate a disparity map
@@ -3157,68 +3163,90 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 						_stereoFlowMaxLevel,
 						_stereoFlowIterations,
 						_stereoFlowEpsilon);
-				UDEBUG("generate disparity = %fs", timer.ticks());
+				t = timer.ticks();
+				if(stats) stats->addStatistic(Statistics::kTimingMemStereo_correspondences(), t*1000.0f);
+				UDEBUG("generate disparity = %fs", t);
 
 				if(_wordsMaxDepth > 0.0f)
 				{
 					// disparity = baseline * fx / depth;
 					float minDisparity = data.baseline() * data.fx() / _wordsMaxDepth;
 					Feature2D::filterKeypointsByDisparity(keypoints, disparity, minDisparity);
-					UDEBUG("time filter keypoints by disparity (%d) = %fs", (int)keypoints.size(), timer.ticks());
+					UDEBUG("filter keypoints by disparity (%d)", (int)keypoints.size());
 				}
 
 				if(_wordsPerImageTarget && (int)keypoints.size() > _wordsPerImageTarget)
 				{
 					Feature2D::limitKeypoints(keypoints, _wordsPerImageTarget);
-					UDEBUG("time limit keypoints max (%d) = %fs", _wordsPerImageTarget, timer.ticks());
+					UDEBUG("limit keypoints max (%d)", _wordsPerImageTarget);
 				}
+				t = timer.ticks();
+				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_filtering(), t*1000.0f);
+				UDEBUG("time keypoints filtering = %fs", _wordsPerImageTarget);
 
 				if(keypoints.size())
 				{
 					descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-					UDEBUG("time descriptors (%d) = %fs", descriptors.rows, timer.ticks());
+					t = timer.ticks();
+					if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
+					UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
 
 					keypoints3D = util3d::generateKeypoints3DDisparity(keypoints, disparity, data.fx(), data.baseline(), data.cx(), data.cy(), data.localTransform());
-					UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), timer.ticks());
+					t = timer.ticks();
+					if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
+					UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), t);
 				}
 			}
 			else if(!data.depth().empty())
 			{
 				//depth
 				keypoints = _feature2D->generateKeypoints(imageMono, 0, roi);
-				UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), timer.ticks());
+				t = timer.ticks();
+				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
+				UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
 
 				if(_wordsMaxDepth > 0.0f)
 				{
 					Feature2D::filterKeypointsByDepth(keypoints, data.depth(), _wordsMaxDepth);
-					UDEBUG("time filter keypoints by depth (%d) = %fs", (int)keypoints.size(), timer.ticks());
+					UDEBUG("filter keypoints by depth (%d)", (int)keypoints.size());
 				}
 
 				if(_wordsPerImageTarget && (int)keypoints.size() > _wordsPerImageTarget)
 				{
 					Feature2D::limitKeypoints(keypoints, _wordsPerImageTarget);
-					UDEBUG("time limit keypoints max (%d) = %fs", _wordsPerImageTarget, timer.ticks());
+					UDEBUG("limit keypoints max (%d)", _wordsPerImageTarget);
 				}
+				t = timer.ticks();
+				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_filtering(), t*1000.0f);
+				UDEBUG("time keypoints filtering = %fs", _wordsPerImageTarget);
 
 				if(keypoints.size())
 				{
 					descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-					UDEBUG("time descriptors (%d) = %fs", descriptors.rows, timer.ticks());
+					t = timer.ticks();
+					if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
+					UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
 
 					keypoints3D = util3d::generateKeypoints3DDepth(keypoints, data.depth(), data.fx(), data.fy(), data.cx(), data.cy(), data.localTransform());
-					UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), timer.ticks());
+					t = timer.ticks();
+					if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
+					UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), t);
 				}
 			}
 			else
 			{
 				//RGB only
 				keypoints = _feature2D->generateKeypoints(imageMono, _wordsPerImageTarget, roi);
-				UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), timer.ticks());
+				t = timer.ticks();
+				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
+				UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
 
 				if(keypoints.size())
 				{
 					descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-					UDEBUG("time descriptors (%d) = %fs", descriptors.rows, timer.ticks());
+					t = timer.ticks();
+					if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
+					UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
 				}
 			}
 
@@ -3263,7 +3291,9 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 					_stereoFlowMaxLevel,
 					_stereoFlowIterations,
 					_stereoFlowEpsilon);
-			UDEBUG("generate disparity = %fs", timer.ticks());
+			t = timer.ticks();
+			if(stats) stats->addStatistic(Statistics::kTimingMemStereo_correspondences(), t*1000.0f);
+			UDEBUG("generate disparity = %fs", t);
 
 			if(_wordsMaxDepth)
 			{
@@ -3275,11 +3305,16 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 			if(_wordsPerImageTarget && (int)keypoints.size() > _wordsPerImageTarget)
 			{
 				Feature2D::limitKeypoints(keypoints, _wordsPerImageTarget);
-				UDEBUG("time limit keypoints max (%d) = %fs", _wordsPerImageTarget, timer.ticks());
+				UDEBUG("limit keypoints max (%d)", _wordsPerImageTarget);
 			}
+			t = timer.ticks();
+			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_filtering(), t*1000.0f);
+			UDEBUG("time keypoints filtering=%fs", t);
 
 			keypoints3D = util3d::generateKeypoints3DDisparity(keypoints, disparity, data.fx(), data.baseline(), data.cx(), data.cy(), data.localTransform());
-			UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), timer.ticks());
+			t = timer.ticks();
+			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
+			UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), t);
 		}
 		else if(!data.depth().empty())
 		{
@@ -3287,22 +3322,30 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 			if(_wordsMaxDepth)
 			{
 				Feature2D::filterKeypointsByDepth(keypoints, descriptors, _wordsMaxDepth);
-				UDEBUG("time filter keypoints by depth (%d) = %fs", (int)keypoints.size(), timer.ticks());
+				UDEBUG("filter keypoints by depth (%d)", (int)keypoints.size());
 			}
 
 			if(_wordsPerImageTarget && (int)keypoints.size() > _wordsPerImageTarget)
 			{
 				Feature2D::limitKeypoints(keypoints, _wordsPerImageTarget);
-				UDEBUG("time limit keypoints max (%d) = %fs", _wordsPerImageTarget, timer.ticks());
+				UDEBUG("limit keypoints max (%d)", _wordsPerImageTarget);
 			}
+			t = timer.ticks();
+			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_filtering(), t*1000.0f);
+			UDEBUG("time keypoints filtering=%fs", t);
 
 			keypoints3D = util3d::generateKeypoints3DDepth(keypoints, data.depth(), data.fx(), data.fy(), data.cx(), data.cy(), data.localTransform());
-			UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), timer.ticks());
+			t = timer.ticks();
+			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
+			UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), t);
 		}
 		else
 		{
 			// RGB only
 			Feature2D::limitKeypoints(keypoints, descriptors, _wordsPerImageTarget);
+			t = timer.ticks();
+			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_filtering(), t*1000.0f);
+			UDEBUG("time keypoints filtering=%fs", t);
 		}
 	}
 
@@ -3314,17 +3357,21 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 	std::list<int> wordIds;
 	if(descriptors.rows)
 	{
+		t = timer.ticks();
+		if(stats) stats->addStatistic(Statistics::kTimingMemJoining_dictionary_update(), t*1000.0f);
 		if(_parallelized)
 		{
-			UDEBUG("time descriptor and memory update (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, timer.ticks());
+			UDEBUG("time descriptor and memory update (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, t);
 		}
 		else
 		{
-			UDEBUG("time descriptor (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, timer.ticks());
+			UDEBUG("time descriptor (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, t);
 		}
 
 		wordIds = _vwd->addNewWords(descriptors, id);
-		UDEBUG("time addNewWords %fs", timer.ticks());
+		t = timer.ticks();
+		if(stats) stats->addStatistic(Statistics::kTimingMemAdd_new_words(), t*1000.0f);
+		UDEBUG("time addNewWords %fs", t);
 	}
 	else if(id>0)
 	{
@@ -3402,8 +3449,9 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData)
 	}
 
 
-
-	UDEBUG("time new signature (id=%d) %fs", id, timer.ticks());
+	t = timer.ticks();
+	if(stats) stats->addStatistic(Statistics::kTimingMemCompressing_data(), t*1000.0f);
+	UDEBUG("time compressing data (id=%d) %fs", id, t);
 	if(words.size())
 	{
 		s->setEnabled(true); // All references are already activated in the dictionary at this point (see _vwd->addNewWords())

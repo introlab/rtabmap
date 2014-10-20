@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/PolygonMesh.h>
+#include <pcl/pcl_base.h>
 
 namespace rtabmap
 {
@@ -509,6 +510,22 @@ std::multimap<int, int> RTABMAP_EXP radiusPosesClustering(
 		float radius,
 		float angle);
 
+bool RTABMAP_EXP occupancy2DFromCloud3D(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		cv::Mat & ground,
+		cv::Mat & obstacles,
+		float cellSize = 0.05f,
+		float groundNormalAngle = M_PI_4,
+		int minClusterSize = 20);
+
+cv::Mat RTABMAP_EXP create2DMapFromOccupancyLocalMaps(
+		const std::map<int, Transform> & poses,
+		const std::map<int, std::pair<cv::Mat, cv::Mat> > & occupancy,
+		float cellSize,
+		float & xMin,
+		float & yMin,
+		int fillEmptyRadius = 0);
+
 cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans,
 		float cellSize,
@@ -522,6 +539,128 @@ void RTABMAP_EXP rayTrace(const cv::Point2i & start,
 		bool stopOnObstacle);
 
 cv::Mat RTABMAP_EXP convertMap2Image8U(const cv::Mat & map8S);
+
+void RTABMAP_EXP projectCloudOnXYPlane(
+		pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud);
+
+/**
+ * For convenience.
+ */
+pcl::IndicesPtr radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		float radiusSearch,
+		int minNeighborsInRadius);
+
+/**
+ * @brief Wrapper of the pcl::RadiusOutlierRemoval class.
+ *
+ * Points in the cloud which have less than a minimum of neighbors in the
+ * specified radius are filtered.
+ * @param cloud the input cloud.
+ * @param indices the input indices of the cloud to check, if empty, all points in the cloud are checked.
+ * @param radiusSearch the radius in meter.
+ * @param minNeighborsInRadius the minimum of neighbors to keep the point.
+ * @return the indices of the points satisfying the parameters.
+ */
+pcl::IndicesPtr radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float radiusSearch,
+		int minNeighborsInRadius);
+
+/**
+ * For convenience.
+ */
+pcl::IndicesPtr RTABMAP_EXP normalFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		float angleMax,
+		const Eigen::Vector4f & normal,
+		float radiusSearch,
+		const Eigen::Vector4f & viewpoint);
+
+/**
+ * @brief Given a normal and a maximum angle error, keep all points of the cloud
+ * respecting this normal.
+ *
+ * The normals are computed using the radius search parameter (pcl::NormalEstimation class is used for this), then
+ * for each normal, the corresponding point is filtered if the
+ * angle (using pcl::getAngle3D()) with the normal specified by the user is larger than the maximum
+ * angle specified by the user.
+ * @param cloud the input cloud.
+ * @param indices the input indices of the cloud to process, if empty, all points in the cloud are processed.
+ * @param angleMax the maximum angle.
+ * @param normal the normal to which each point's normal is compared.
+ * @param radiusSearch radius parameter used for normal estimation (see pcl::NormalEstimation).
+ * @param viewpoint from which viewpoint the normals should be estimated (see pcl::NormalEstimation).
+ * @return the indices of the points which respect the normal constraint.
+ */
+pcl::IndicesPtr RTABMAP_EXP normalFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float angleMax,
+		const Eigen::Vector4f & normal,
+		float radiusSearch,
+		const Eigen::Vector4f & viewpoint);
+
+/**
+ * For convenience.
+ */
+std::vector<pcl::IndicesPtr> RTABMAP_EXP extractClusters(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		float clusterTolerance,
+		int minClusterSize,
+		int maxClusterSize = std::numeric_limits<int>::max(),
+		int * biggestClusterIndex = 0);
+
+/**
+ * @brief Wrapper of the pcl::EuclideanClusterExtraction class.
+ *
+ * Extract all clusters from a point cloud given a maximum cluster distance tolerance.
+ * @param cloud the input cloud.
+ * @param indices the input indices of the cloud to process, if empty, all points in the cloud are processed.
+ * @param clusterTolerance the cluster distance tolerance (see pcl::EuclideanClusterExtraction).
+ * @param minClusterSize minimum size of the clusters to return (see pcl::EuclideanClusterExtraction).
+ * @param maxClusterSize maximum size of the clusters to return (see pcl::EuclideanClusterExtraction).
+ * @param biggestClusterIndex the index of the biggest cluster, if the clusters are empty, a negative index is set.
+ * @return the indices of each cluster found.
+ */
+std::vector<pcl::IndicesPtr> RTABMAP_EXP extractClusters(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float clusterTolerance,
+		int minClusterSize,
+		int maxClusterSize = std::numeric_limits<int>::max(),
+		int * biggestClusterIndex = 0);
+
+/**
+ * @brief Concatenate a vector of indices to a single vector.
+ *
+ * @param indices the vector of indices to concatenate.
+ * @note This methods doesn't check if indices exist in the two set and doesn't
+ * sort the output indices. If we are not sure if the the
+ * two set of indices set are disjoint and/or you need sorted indices, the use of mergeIndices().
+ * @return the indices concatenated.
+ */
+pcl::IndicesPtr RTABMAP_EXP concatenate(
+		const std::vector<pcl::IndicesPtr> & indices);
+
+/**
+ * @brief Concatenate two vector of indices to a single vector.
+ *
+ * @param indicesA the first vector of indices to concatenate.
+ * @param indicesB the second vector of indices to concatenate.
+ * @note This methods doesn't check if indices exist in the two set and doesn't
+ * sort the output indices. If we are not sure if the the
+ * two set of indices set are disjoint and/or you need sorted indices, the use of mergeIndices().
+ * @return the indices concatenated.
+ */
+pcl::IndicesPtr RTABMAP_EXP concatenate(
+		const pcl::IndicesPtr & indicesA,
+		const pcl::IndicesPtr & indicesB);
+
+pcl::IndicesPtr RTABMAP_EXP extractNegativeIndices(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices);
 
 } // namespace util3d
 } // namespace rtabmap

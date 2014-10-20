@@ -267,7 +267,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->action720p, SIGNAL(triggered()), this, SLOT(setAspectRatio720p()));
 	connect(_ui->action1080p, SIGNAL(triggered()), this, SLOT(setAspectRatio1080p()));
 	connect(_ui->actionSave_point_cloud, SIGNAL(triggered()), this, SLOT(exportClouds()));
-	connect(_ui->actionExport_2D_scans_ply_bmp, SIGNAL(triggered()), this, SLOT(exportScans()));
+	connect(_ui->actionExport_2D_scans_ply_pcd, SIGNAL(triggered()), this, SLOT(exportScans()));
 	connect(_ui->actionExport_2D_Grid_map_bmp_png, SIGNAL(triggered()), this, SLOT(exportGridMap()));
 	connect(_ui->actionView_scans, SIGNAL(triggered()), this, SLOT(viewScans()));
 	connect(_ui->actionView_high_res_point_cloud, SIGNAL(triggered()), this, SLOT(viewClouds()));
@@ -277,7 +277,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 
 	_ui->actionPause->setShortcut(Qt::Key_Space);
 	_ui->actionSave_point_cloud->setEnabled(false);
-	_ui->actionExport_2D_scans_ply_bmp->setEnabled(false);
+	_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
 	_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
 	_ui->actionView_scans->setEnabled(false);
 	_ui->actionView_high_res_point_cloud->setEnabled(false);
@@ -1087,9 +1087,13 @@ void MainWindow::updateMapCloud(
 
 			if(_depths2DMap.size())
 			{
-				_ui->actionExport_2D_scans_ply_bmp->setEnabled(true);
+				_ui->actionExport_2D_scans_ply_pcd->setEnabled(true);
 				_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(true);
 				_ui->actionView_scans->setEnabled(true);
+			}
+			else if(_preferencesDialog->isGridMapFrom3DCloud() && _occupancyLocalMaps.size())
+			{
+				_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(true);
 			}
 		}
 	}
@@ -1219,12 +1223,21 @@ void MainWindow::updateMapCloud(
 		_ui->graphicsView_graphView->updateGraph(poses, constraints);
 	}
 	cv::Mat map8U;
-	if((_ui->graphicsView_graphView->isVisible() || _preferencesDialog->getGridMapShown()) && _depths2DMap.size())
+	if((_ui->graphicsView_graphView->isVisible() || _preferencesDialog->getGridMapShown()) && (_createdScans.size() || _preferencesDialog->isGridMapFrom3DCloud()))
 	{
 		float xMin, yMin;
 		float resolution = _preferencesDialog->getGridMapResolution();
-		bool fillEmptySpace = _preferencesDialog->getGridMapFillEmptySpace();
-		cv::Mat map8S = util3d::create2DMap(poses, _createdScans, resolution, fillEmptySpace, xMin, yMin);
+		cv::Mat map8S;
+		if(_preferencesDialog->isGridMapFrom3DCloud())
+		{
+			int fillEmptyRadius = _preferencesDialog->getGridMapFillEmptyRadius();
+			map8S = util3d::create2DMapFromOccupancyLocalMaps(poses, _occupancyLocalMaps, resolution, xMin, yMin, fillEmptyRadius);
+		}
+		else
+		{
+			bool fillEmptySpace = _preferencesDialog->getGridMapFillEmptySpace();
+			map8S = util3d::create2DMap(poses, _createdScans, resolution, fillEmptySpace, xMin, yMin);
+		}
 		if(!map8S.empty())
 		{
 			//convert to gray scaled map
@@ -1303,6 +1316,18 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
 			_preferencesDialog->getCloudDecimation(0),
 			_preferencesDialog->getCloudMaxDepth(0));
 
+	if(cloud->size() && _preferencesDialog->isGridMapFrom3DCloud())
+	{
+		float cellSize = _preferencesDialog->getGridMapResolution();
+		float groundNormalMaxAngle = M_PI_4;
+		int minClusterSize = 20;
+		cv::Mat ground, obstacles;
+		if(util3d::occupancy2DFromCloud3D(cloud, ground, obstacles, cellSize, groundNormalMaxAngle, minClusterSize))
+		{
+			_occupancyLocalMaps.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
+		}
+	}
+
 	if(_preferencesDialog->isCloudMeshing())
 	{
 		pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
@@ -1330,7 +1355,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
 			}
 			else
 			{
-				_createdClouds.insert(nodeId, tmp);
+				_createdClouds.insert(std::make_pair(nodeId, tmp));
 			}
 		}
 	}
@@ -1355,7 +1380,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
 		}
 		else
 		{
-			_createdClouds.insert(nodeId, cloud);
+			_createdClouds.insert(std::make_pair(nodeId, cloud));
 		}
 	}
 
@@ -2765,6 +2790,7 @@ void MainWindow::clearTheCache()
 	_localTransformsMap.clear();
 	_createdClouds.clear();
 	_createdScans.clear();
+	_occupancyLocalMaps.clear();
 	_ui->widget_cloudViewer->removeAllClouds();
 	_ui->widget_cloudViewer->setBackgroundColor(Qt::black);
 	_ui->widget_cloudViewer->clearTrajectory();
@@ -2773,7 +2799,7 @@ void MainWindow::clearTheCache()
 	_lastOdomPose.setNull();
 	//disable save cloud action
 	_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
-	_ui->actionExport_2D_scans_ply_bmp->setEnabled(false);
+	_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
 	_ui->actionSave_point_cloud->setEnabled(false);
 	_ui->actionView_scans->setEnabled(false);
 	_ui->actionView_high_res_point_cloud->setEnabled(false);
@@ -2992,22 +3018,19 @@ void MainWindow::exportGridMap()
 	}
 	gridUnknownSpaceFilled = b == QMessageBox::Yes;
 
-	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > scans;
-	std::map<int, Transform> posesIn = _ui->widget_mapVisibility->getVisiblePoses();
-	std::map<int, Transform> poses;
-	for(std::map<int, Transform>::const_iterator iter = posesIn.begin(); iter!=posesIn.end(); ++iter)
-	{
-		if(_depths2DMap.contains(iter->first))
-		{
-			cv::Mat depth2d = util3d::uncompressData(_depths2DMap.value(iter->first));
-			scans.insert(std::make_pair(iter->first, util3d::depth2DToPointCloud(depth2d)));
-			poses.insert(*iter);
-		}
-	}
+	std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
 
 	// create the map
 	float xMin=0.0f, yMin=0.0f;
-	cv::Mat pixels = util3d::create2DMap(poses, scans, gridCellSize, gridUnknownSpaceFilled, xMin, yMin);
+	cv::Mat pixels;
+	if(_preferencesDialog->isGridMapFrom3DCloud())
+	{
+		pixels = util3d::create2DMapFromOccupancyLocalMaps(poses, _occupancyLocalMaps, gridCellSize, xMin, yMin, gridUnknownSpaceFilled?1:0);
+	}
+	else
+	{
+		pixels = util3d::create2DMap(poses, _createdScans, gridCellSize, gridUnknownSpaceFilled, xMin, yMin);
+	}
 
 	if(!pixels.empty())
 	{
@@ -3849,9 +3872,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::getAssembledCloud(
 							regenerateDecimation,
 							regenerateMaxDepth);
 				}
-				else if(_createdClouds.contains(iter->first))
+				else if(uContains(_createdClouds, iter->first))
 				{
-					cloud = util3d::transformPointCloud(_createdClouds.value(iter->first), iter->second);
+					cloud = util3d::transformPointCloud(_createdClouds.at(iter->first), iter->second);
 				}
 
 				if(cloud->size())
@@ -3932,9 +3955,9 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
 							regenerateDecimation,
 							regenerateMaxDepth);
 				}
-				else if(_createdClouds.contains(iter->first))
+				else if(uContains(_createdClouds, iter->first))
 				{
-					cloud = _createdClouds.value(iter->first);
+					cloud = _createdClouds.at(iter->first);
 				}
 
 				if(cloud->size())

@@ -818,6 +818,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_map_shown->setChecked(false);
 		_ui->doubleSpinBox_map_resolution->setValue(0.05);
 		_ui->checkBox_map_fillEmptySpace->setChecked(true);
+		_ui->checkBox_map_occupancyFrom3DCloud->setChecked(false);
+		_ui->checkBox_map_fillEmptyRadius->setValue(0);
 		_ui->doubleSpinBox_map_opacity->setValue(0.75);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_logging1->objectName())
@@ -1053,6 +1055,8 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_map_shown->setChecked(settings.value("gridMapShown", _ui->checkBox_map_shown->isChecked()).toBool());
 	_ui->doubleSpinBox_map_resolution->setValue(settings.value("gridMapResolution", _ui->doubleSpinBox_map_resolution->value()).toDouble());
 	_ui->checkBox_map_fillEmptySpace->setChecked(settings.value("gridMapFillEmptySpace", _ui->checkBox_map_fillEmptySpace->isChecked()).toBool());
+	_ui->checkBox_map_occupancyFrom3DCloud->setChecked(settings.value("gridMapOccupancyFrom3DCloud", _ui->checkBox_map_occupancyFrom3DCloud->isChecked()).toBool());
+	_ui->checkBox_map_fillEmptyRadius->setValue(settings.value("gridMapFillEmptyRadius", _ui->checkBox_map_fillEmptyRadius->value()).toInt());
 	_ui->doubleSpinBox_map_opacity->setValue(settings.value("gridMapOpacity", _ui->doubleSpinBox_map_opacity->value()).toDouble());
 
 	settings.endGroup(); // General
@@ -1293,6 +1297,8 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath)
 	settings.setValue("gridMapShown", _ui->checkBox_map_shown->isChecked());
 	settings.setValue("gridMapResolution", _ui->doubleSpinBox_map_resolution->value());
 	settings.setValue("gridMapFillEmptySpace", _ui->checkBox_map_fillEmptySpace->isChecked());
+	settings.setValue("gridMapOccupancyFrom3DCloud", _ui->checkBox_map_occupancyFrom3DCloud->isChecked());
+	settings.setValue("gridMapFillEmptyRadius", _ui->checkBox_map_fillEmptyRadius->value());
 	settings.setValue("gridMapOpacity", _ui->doubleSpinBox_map_opacity->value());
 	settings.endGroup(); // General
 
@@ -2652,6 +2658,14 @@ double PreferencesDialog::getGridMapResolution() const
 bool PreferencesDialog::getGridMapFillEmptySpace() const
 {
 	return _ui->checkBox_map_fillEmptySpace->isChecked();
+}
+bool PreferencesDialog::isGridMapFrom3DCloud() const
+{
+	return _ui->checkBox_map_occupancyFrom3DCloud->isChecked();
+}
+int PreferencesDialog::getGridMapFillEmptyRadius() const
+{
+	return _ui->checkBox_map_fillEmptyRadius->value();
 }
 double PreferencesDialog::getGridMapOpacity() const
 {

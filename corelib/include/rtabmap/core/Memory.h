@@ -203,7 +203,8 @@ private:
 	void copyData(const Signature * from, Signature * to);
 	Signature * createSignature(
 			const SensorData & data,
-			bool keepRawData=false);
+			bool keepRawData=false,
+			Statistics * stats = 0);
 
 	//keypoint stuff
 	void disableWordsRef(int signatureId);

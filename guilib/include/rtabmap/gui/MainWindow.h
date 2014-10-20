@@ -258,8 +258,9 @@ private:
 	QMap<int, int> _mapIds;
 	QMap<int, Transform> _localTransformsMap;
 	std::map<int, Transform> _currentPosesMap;
-	QMap<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > _createdClouds;
+	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > _createdClouds;
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > _createdScans;
+	std::map<int, std::pair<cv::Mat, cv::Mat> > _occupancyLocalMaps; // <ground, obstacles>
 	Transform _odometryCorrection;
 	Transform _lastOdomPose;
 	bool _lastOdometryProcessed;

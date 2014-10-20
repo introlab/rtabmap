@@ -41,6 +41,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/surface/gp3.h>
 #include <pcl/features/normal_3d_omp.h>
 #include <pcl/surface/mls.h>
+#include <pcl/ModelCoefficients.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/filters/crop_box.h>
+#include <pcl/segmentation/extract_clusters.h>
+#include <pcl/filters/extract_indices.h>
 
 #include <opencv2/nonfree/features2d.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
@@ -2477,6 +2482,299 @@ std::multimap<int, int> radiusPosesClustering(const std::map<int, Transform> & p
 	return clusters;
 }
 
+bool occupancy2DFromCloud3D(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		cv::Mat & ground,
+		cv::Mat & obstacles,
+		float cellSize,
+		float groundNormalAngle,
+		int minClusterSize)
+{
+	pcl::PointCloud<pcl::PointXYZ>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+	//voxelize
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelizedCloud = util3d::voxelize(cloud, cellSize);
+
+	//convert to XYZ
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudXYZ(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::copyPointCloud(*voxelizedCloud, *cloudXYZ);
+
+	pcl::IndicesPtr groundIndices, obstaclesIndices;
+
+	// Find the ground
+	pcl::IndicesPtr flatSurfaces = util3d::normalFiltering(
+			cloudXYZ,
+			groundNormalAngle,
+			Eigen::Vector4f(0,0,1,0),
+			cellSize*2.0f,
+			Eigen::Vector4f(0,0,100,0));
+
+	int biggestFlatSurfaceIndex;
+	std::vector<pcl::IndicesPtr> clusteredFlatSurfaces = util3d::extractClusters(
+			cloudXYZ,
+			flatSurfaces,
+			cellSize*2.0f,
+			minClusterSize,
+			std::numeric_limits<int>::max(),
+			&biggestFlatSurfaceIndex);
+
+
+	// cluster all surfaces for which the centroid is in the Z-range of the bigger surface
+	groundIndices = clusteredFlatSurfaces.at(biggestFlatSurfaceIndex);
+	Eigen::Vector4f min,max;
+	pcl::getMinMax3D(*cloudXYZ, *clusteredFlatSurfaces.at(biggestFlatSurfaceIndex), min, max);
+
+	for(unsigned int i=0; i<clusteredFlatSurfaces.size(); ++i)
+	{
+		if((int)i!=biggestFlatSurfaceIndex)
+		{
+			Eigen::Vector4f centroid;
+			pcl::compute3DCentroid(*cloudXYZ, *clusteredFlatSurfaces.at(i), centroid);
+			if(centroid[2] >= min[2] && centroid[2] <= max[2])
+			{
+				groundIndices = util3d::concatenate(groundIndices, clusteredFlatSurfaces.at(i));
+			}
+		}
+	}
+
+	pcl::copyPointCloud(*cloudXYZ, *groundIndices, *groundCloud);
+
+	if(groundIndices->size() != cloudXYZ->size())
+	{
+		// Remove ground
+		pcl::IndicesPtr otherStuffIndices = util3d::extractNegativeIndices(cloudXYZ, groundIndices);
+
+		//Cluster remaining stuff (obstacles)
+		std::vector<pcl::IndicesPtr> clusteredObstaclesSurfaces = util3d::extractClusters(
+				cloudXYZ,
+				otherStuffIndices,
+				cellSize*2.0f,
+				minClusterSize);
+
+		// merge indices
+		obstaclesIndices = util3d::concatenate(clusteredObstaclesSurfaces);
+		if(obstaclesIndices->size())
+		{
+			pcl::copyPointCloud(*cloudXYZ, *obstaclesIndices, *obstaclesCloud);
+		}
+	}
+
+	//project on XY plane
+	util3d::projectCloudOnXYPlane(groundCloud);
+	util3d::projectCloudOnXYPlane(obstaclesCloud);
+
+	//voxelize to grid cell size
+	groundCloud = util3d::voxelize(groundCloud, cellSize);
+	obstaclesCloud = util3d::voxelize(obstaclesCloud, cellSize);
+
+	ground = cv::Mat();
+	if(groundCloud->size())
+	{
+		ground = cv::Mat(groundCloud->size(), 1, CV_32FC2);
+		for(unsigned int i=0;i<groundCloud->size(); ++i)
+		{
+			ground.at<cv::Vec2f>(i)[0] = groundCloud->at(i).x;
+			ground.at<cv::Vec2f>(i)[1] = groundCloud->at(i).y;
+		}
+	}
+
+	obstacles = cv::Mat();
+	if(obstaclesCloud->size())
+	{
+		obstacles = cv::Mat(obstaclesCloud->size(), 1, CV_32FC2);
+		for(unsigned int i=0;i<obstaclesCloud->size(); ++i)
+		{
+			obstacles.at<cv::Vec2f>(i)[0] = obstaclesCloud->at(i).x;
+			obstacles.at<cv::Vec2f>(i)[1] = obstaclesCloud->at(i).y;
+		}
+	}
+	/*
+	if(cloud->size())
+	{
+		UWARN("saving cloud");
+		pcl::io::savePCDFile("cloud.pcd", *cloud);
+		pcl::io::savePCDFile("cloudXYZ.pcd", *cloudXYZ);
+	}
+	if(groundCloud->size())
+	{
+		UWARN("saving ground");
+		pcl::io::savePCDFile("ground.pcd", *groundCloud);
+		pcl::io::savePCDFile("ground_indices.pcd", *cloudXYZ, *groundIndices);
+	}
+	if(obstaclesCloud->size())
+	{
+		UWARN("saving obstacles");
+		pcl::io::savePCDFile("obstacles.pcd", *obstaclesCloud);
+		pcl::io::savePCDFile("obstacles_indices.pcd", *cloudXYZ, *obstaclesIndices);
+	}
+	*/
+	return !ground.empty();
+}
+
+/**
+ * Create 2d Occupancy grid (CV_8S) from 2d occupancy
+ * -1 = unknown
+ * 0 = empty space
+ * 100 = obstacle
+ * @param poses
+ * @param occupancy <empty, occupied>
+ * @param cellSize m
+ * @param xMin
+ * @param yMin
+ * @param fillEmptyRadius fill neighbors of empty space if there're no obstacles.
+ */
+cv::Mat create2DMapFromOccupancyLocalMaps(
+		const std::map<int, Transform> & poses,
+		const std::map<int, std::pair<cv::Mat, cv::Mat> > & occupancy,
+		float cellSize,
+		float & xMin,
+		float & yMin,
+		int fillEmptyRadius)
+{
+	UASSERT(fillEmptyRadius >= 0);
+	UDEBUG("");
+	UTimer timer;
+
+	std::map<int, cv::Mat> emptyLocalMaps;
+	std::map<int, cv::Mat> occupiedLocalMaps;
+
+	float minX=0.0f, minY=0.0f, maxX=0.0f, maxY=0.0f;
+	bool undefinedSize = true;
+	float x,y,z,toll,pitch,yaw,cosT,sinT;
+	cv::Mat affineTransform(2,3,CV_32FC1);
+	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+	{
+		if(uContains(occupancy, iter->first))
+		{
+			const std::pair<cv::Mat, cv::Mat> & pair = occupancy.at(iter->first);
+
+			iter->second.getTranslationAndEulerAngles(x,y,z,toll,pitch,yaw);
+			cosT = cos(yaw);
+			sinT = sin(yaw);
+			affineTransform.at<float>(0,0) = cosT;
+			affineTransform.at<float>(0,1) = -sinT;
+			affineTransform.at<float>(1,0) = sinT;
+			affineTransform.at<float>(1,1) = cosT;
+			affineTransform.at<float>(0,2) = x;
+			affineTransform.at<float>(1,2) = y;
+
+			if(undefinedSize)
+			{
+				minX = maxX = x;
+				minY = maxY = y;
+				undefinedSize = false;
+			}
+			else
+			{
+				if(minX > x)
+					minX = x;
+				else if(maxX < x)
+					maxX = x;
+
+				if(minY > y)
+					minY = y;
+				else if(maxY < y)
+					maxY = y;
+			}
+
+			//ground
+			if(pair.first.rows)
+			{
+				UASSERT(pair.first.type() == CV_32FC2);
+				cv::Mat ground(pair.first.rows, pair.first.cols, pair.first.type());
+				cv::transform(pair.first, ground, affineTransform);
+				for(int i=0; i<ground.rows; ++i)
+				{
+					if(minX > ground.at<float>(i,0))
+						minX = ground.at<float>(i,0);
+					else if(maxX < ground.at<float>(i,0))
+						maxX = ground.at<float>(i,0);
+
+					if(minY > ground.at<float>(i,1))
+						minY = ground.at<float>(i,1);
+					else if(maxY < ground.at<float>(i,1))
+						maxY = ground.at<float>(i,1);
+				}
+				emptyLocalMaps.insert(std::make_pair(iter->first, ground));
+			}
+
+			//obstacles
+			if(pair.second.rows)
+			{
+				UASSERT(pair.second.type() == CV_32FC2);
+				cv::Mat obstacles(pair.second.rows, pair.second.cols, pair.second.type());
+				cv::transform(pair.second, obstacles, affineTransform);
+				for(int i=0; i<obstacles.rows; ++i)
+				{
+					if(minX > obstacles.at<float>(i,0))
+						minX = obstacles.at<float>(i,0);
+					else if(maxX < obstacles.at<float>(i,0))
+						maxX = obstacles.at<float>(i,0);
+
+					if(minY > obstacles.at<float>(i,1))
+						minY = obstacles.at<float>(i,1);
+					else if(maxY < obstacles.at<float>(i,1))
+						maxY = obstacles.at<float>(i,1);
+				}
+				occupiedLocalMaps.insert(std::make_pair(iter->first, obstacles));
+			}
+		}
+	}
+	UDEBUG("timer=%fs", timer.ticks());
+
+	cv::Mat map;
+	if(minX != maxX && minY != maxY)
+	{
+		//Get map size
+		float margin = fillEmptyRadius + 1;
+		xMin = minX-margin;
+		yMin = minY-margin;
+		float xMax = maxX+margin;
+		float yMax = maxY+margin;
+		UDEBUG("map min=(%f, %f) max=(%f,%f)", xMin, yMin, xMax, yMax);
+
+		map = cv::Mat::ones((yMax - yMin) / cellSize, (xMax - xMin) / cellSize, CV_8S)*-1;
+		for(std::map<int, Transform>::const_iterator kter = poses.begin(); kter!=poses.end(); ++kter)
+		{
+			std::map<int, cv::Mat >::iterator iter = emptyLocalMaps.find(kter->first);
+			std::map<int, cv::Mat >::iterator jter = occupiedLocalMaps.find(kter->first);
+			if(iter!=emptyLocalMaps.end())
+			{
+				for(int i=0; i<iter->second.rows; ++i)
+				{
+					cv::Point2i pt((iter->second.at<float>(i,0)-xMin)/cellSize + 0.5f, (iter->second.at<float>(i,1)-yMin)/cellSize + 0.5f);
+					map.at<char>(pt.y, pt.x) = 0; // free space
+					if(fillEmptyRadius>0)
+					{
+						for(int j=pt.y-fillEmptyRadius; j<=pt.y+fillEmptyRadius; ++j)
+						{
+							for(int k=pt.x-fillEmptyRadius; k<=pt.x+fillEmptyRadius; ++k)
+							{
+								if(map.at<char>(j, k) == -1)
+								{
+									map.at<char>(j, k) = 0;
+								}
+							}
+						}
+					}
+				}
+			}
+			if(jter!=occupiedLocalMaps.end())
+			{
+				for(int i=0; i<jter->second.rows; ++i)
+				{
+					cv::Point2i pt((jter->second.at<float>(i,0)-xMin)/cellSize + 0.5f, (jter->second.at<float>(i,1)-yMin)/cellSize + 0.5f);
+					map.at<char>(pt.y, pt.x) = 100; // obstacles
+				}
+			}
+			//UDEBUG("empty=%d occupied=%d", empty, occupied);
+		}
+	}
+	UDEBUG("timer=%fs", timer.ticks());
+	return map;
+}
+
 /**
  * Create 2d Occupancy grid (CV_8S)
  * -1 = unknown
@@ -2496,6 +2794,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		float & xMin,
 		float & yMin)
 {
+	UDEBUG("");
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > localScans;
 
 	pcl::PointCloud<pcl::PointXYZ> minMax;
@@ -2540,12 +2839,15 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 				map.at<char>(end.y, end.x) = 100; // obstacle
 				rayTrace(start, end, map, true); // trace free space
 
-				float dx = iter->second->points[i].x - pose.x();
-				float dy = iter->second->points[i].y - pose.y();
-				float l = dx*dx + dy*dy;
-				if(l > maxSquaredLength[j])
+				if(unknownSpaceFilled)
 				{
-					maxSquaredLength[j] = l;
+					float dx = iter->second->points[i].x - pose.x();
+					float dy = iter->second->points[i].y - pose.y();
+					float l = dx*dx + dy*dy;
+					if(l > maxSquaredLength[j])
+					{
+						maxSquaredLength[j] = l;
+					}
 				}
 			}
 			++j;
@@ -2704,6 +3006,240 @@ cv::Mat convertMap2Image8U(const cv::Mat & map8S)
 		}
 	}
 	return map8U;
+}
+
+void projectCloudOnXYPlane(
+		pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud)
+{
+	for(unsigned int i=0; i<cloud->size(); ++i)
+	{
+		cloud->at(i).z = 0;
+	}
+}
+
+pcl::IndicesPtr radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		float radiusSearch,
+		int minNeighborsInRadius)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return radiusFiltering(cloud, indices, radiusSearch, minNeighborsInRadius);
+}
+
+pcl::IndicesPtr radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float radiusSearch,
+		int minNeighborsInRadius)
+{
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ> (false));
+
+	if(indices->size())
+	{
+		pcl::IndicesPtr output(new std::vector<int>(indices->size()));
+		int oi = 0; // output iterator
+		tree->setInputCloud(cloud, indices);
+		for(unsigned int i=0; i<indices->size(); ++i)
+		{
+			std::vector<int> kIndices;
+			std::vector<float> kDistances;
+			int k = tree->radiusSearch(cloud->at(indices->at(i)), radiusSearch, kIndices, kDistances);
+			if(k > minNeighborsInRadius)
+			{
+				output->at(oi++) = indices->at(i);
+			}
+		}
+		output->resize(oi);
+		return output;
+	}
+	else
+	{
+		pcl::IndicesPtr output(new std::vector<int>(cloud->size()));
+		int oi = 0; // output iterator
+		tree->setInputCloud(cloud);
+		for(unsigned int i=0; i<cloud->size(); ++i)
+		{
+			std::vector<int> kIndices;
+			std::vector<float> kDistances;
+			int k = tree->radiusSearch(cloud->at(i), radiusSearch, kIndices, kDistances);
+			if(k > minNeighborsInRadius)
+			{
+				output->at(oi++) = i;
+			}
+		}
+		output->resize(oi);
+		return output;
+	}
+}
+
+pcl::IndicesPtr normalFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		float angleMax,
+		const Eigen::Vector4f & normal,
+		float radiusSearch,
+		const Eigen::Vector4f & viewpoint)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return normalFiltering(cloud, indices, angleMax, normal, radiusSearch, viewpoint);
+}
+
+pcl::IndicesPtr normalFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float angleMax,
+		const Eigen::Vector4f & normal,
+		float radiusSearch,
+		const Eigen::Vector4f & viewpoint)
+{
+	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
+	ne.setInputCloud (cloud);
+	if(indices->size())
+	{
+		ne.setIndices(indices);
+	}
+
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ> ());
+	if(indices->size())
+	{
+		tree->setInputCloud(cloud, indices);
+	}
+	else
+	{
+		tree->setInputCloud(cloud);
+	}
+	ne.setSearchMethod (tree);
+
+	pcl::PointCloud<pcl::Normal>::Ptr cloud_normals (new pcl::PointCloud<pcl::Normal>);
+
+	ne.setRadiusSearch (radiusSearch);
+	if(viewpoint[0] != 0 || viewpoint[1] != 0 || viewpoint[2] != 0)
+	{
+		ne.setViewPoint(viewpoint[0], viewpoint[1], viewpoint[2]);
+	}
+
+	ne.compute (*cloud_normals);
+
+	pcl::IndicesPtr output(new std::vector<int>(cloud_normals->size()));
+	int oi = 0; // output iterator
+	Eigen::Vector3f n(normal[0], normal[1], normal[2]);
+	for(unsigned int i=0; i<cloud_normals->size(); ++i)
+	{
+		Eigen::Vector4f v(cloud_normals->at(i).normal_x, cloud_normals->at(i).normal_y, cloud_normals->at(i).normal_z, 0.0f);
+		float angle = pcl::getAngle3D(normal, v);
+		if(angle < angleMax)
+		{
+			output->at(oi++) = indices->size()!=0?indices->at(i):i;
+		}
+	}
+	output->resize(oi);
+
+	return output;
+}
+
+std::vector<pcl::IndicesPtr> extractClusters(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		float clusterTolerance,
+		int minClusterSize,
+		int maxClusterSize,
+		int * biggestClusterIndex)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return extractClusters(cloud, indices, clusterTolerance, minClusterSize, maxClusterSize, biggestClusterIndex);
+}
+
+std::vector<pcl::IndicesPtr> extractClusters(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float clusterTolerance,
+		int minClusterSize,
+		int maxClusterSize,
+		int * biggestClusterIndex)
+{
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
+	pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+	ec.setClusterTolerance (clusterTolerance);
+	ec.setMinClusterSize (minClusterSize);
+	ec.setMaxClusterSize (maxClusterSize);
+	ec.setInputCloud (cloud);
+
+	if(indices->size())
+	{
+		ec.setIndices(indices);
+		kdTree->setInputCloud(cloud, indices);
+	}
+	else
+	{
+		kdTree->setInputCloud(cloud);
+	}
+	ec.setSearchMethod (kdTree);
+
+	std::vector<pcl::PointIndices> cluster_indices;
+	ec.extract (cluster_indices);
+
+	int maxIndex=-1;
+	unsigned int maxSize = 0;
+	std::vector<pcl::IndicesPtr> output(cluster_indices.size());
+	for(unsigned int i=0; i<cluster_indices.size(); ++i)
+	{
+		output[i] = pcl::IndicesPtr(new std::vector<int>(cluster_indices[i].indices));
+
+		if(maxSize < cluster_indices[i].indices.size())
+		{
+			maxSize = cluster_indices[i].indices.size();
+			maxIndex = i;
+		}
+	}
+	if(biggestClusterIndex)
+	{
+		*biggestClusterIndex = maxIndex;
+	}
+
+	return output;
+}
+
+pcl::IndicesPtr concatenate(const std::vector<pcl::IndicesPtr> & indices)
+{
+	//compute total size
+	unsigned int totalSize = 0;
+	for(unsigned int i=0; i<indices.size(); ++i)
+	{
+		totalSize += indices[i]->size();
+	}
+	pcl::IndicesPtr ind(new std::vector<int>(totalSize));
+	unsigned int io = 0;
+	for(unsigned int i=0; i<indices.size(); ++i)
+	{
+		for(unsigned int j=0; j<indices[i]->size(); ++j)
+		{
+			ind->at(io++) = indices[i]->at(j);
+		}
+	}
+	return ind;
+}
+
+pcl::IndicesPtr concatenate(const pcl::IndicesPtr & indicesA, const pcl::IndicesPtr & indicesB)
+{
+	pcl::IndicesPtr ind(new std::vector<int>(*indicesA));
+	ind->resize(ind->size()+indicesB->size());
+	unsigned int oi = indicesA->size();
+	for(unsigned int i=0; i<indicesB->size(); ++i)
+	{
+		ind->at(oi++) = indicesB->at(i);
+	}
+	return ind;
+}
+
+pcl::IndicesPtr extractNegativeIndices(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices)
+{
+	pcl::IndicesPtr output(new std::vector<int>);
+	pcl::ExtractIndices<pcl::PointXYZ> extract;
+	extract.setInputCloud (cloud);
+	extract.setIndices(indices);
+	extract.setNegative(true);
+	extract.filter(*output);
+	return output;
 }
 
 }
