@@ -894,6 +894,50 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 	return cloud;
 }
 
+pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDisparity(
+		const cv::Mat & imageDisparity,
+		float cx, float cy,
+		float fx, float baseline,
+		int decimation)
+{
+	UASSERT(imageDisparity.type() == CV_32FC1 || imageDisparity.type()==CV_16SC1);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	if(decimation < 1)
+	{
+		return cloud;
+	}
+
+	//cloud.header = cameraInfo.header;
+	cloud->height = imageDisparity.rows/decimation;
+	cloud->width  = imageDisparity.cols/decimation;
+	cloud->is_dense = false;
+	cloud->resize(cloud->height * cloud->width);
+
+	if(imageDisparity.type()==CV_16SC1)
+	{
+		for(int h = 0; h < imageDisparity.rows && h/decimation < (int)cloud->height; h+=decimation)
+		{
+			for(int w = 0; w < imageDisparity.cols && w/decimation < (int)cloud->width; w+=decimation)
+			{
+				float disp = float(imageDisparity.at<short>(h,w))/16.0f;
+				cloud->at((h/decimation)*cloud->width + (w/decimation)) = projectDisparityTo3D(cv::Point2f(w, h), disp, cx, cy, fx, baseline);
+			}
+		}
+	}
+	else
+	{
+		for(int h = 0; h < imageDisparity.rows && h/decimation < (int)cloud->height; h+=decimation)
+		{
+			for(int w = 0; w < imageDisparity.cols && w/decimation < (int)cloud->width; w+=decimation)
+			{
+				float disp = imageDisparity.at<float>(h,w);
+				cloud->at((h/decimation)*cloud->width + (w/decimation)) = projectDisparityTo3D(cv::Point2f(w, h), disp, cx, cy, fx, baseline);
+			}
+		}
+	}
+	return cloud;
+}
+
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDisparityRGB(
 		const cv::Mat & imageRgb,
 		const cv::Mat & imageDisparity,

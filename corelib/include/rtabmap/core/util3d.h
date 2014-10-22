@@ -210,6 +210,12 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDepthRGB(
 		float fx, float fy,
 		int decimation = 1);
 
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromDisparity(
+		const cv::Mat & imageDisparity,
+		float cx, float cy,
+		float fx, float baseline,
+		int decimation);
+
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDisparityRGB(
 		const cv::Mat & imageRgb,
 		const cv::Mat & imageDisparity,
