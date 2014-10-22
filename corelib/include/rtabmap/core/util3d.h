@@ -221,7 +221,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromStereoImages(
 		const cv::Mat & imageLeft,
 		const cv::Mat & imageRight,
 		float cx, float cy,
-		float fx, float fy,
+		float fx, float baseline,
 		int decimation);
 
 cv::Mat RTABMAP_EXP disparityFromStereoImages(

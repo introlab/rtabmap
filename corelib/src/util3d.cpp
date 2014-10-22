@@ -963,7 +963,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 		const cv::Mat & imageLeft,
 		const cv::Mat & imageRight,
 		float cx, float cy,
-		float fx, float fy,
+		float fx, float baseline,
 		int decimation)
 {
 	UASSERT(imageRight.type() == CV_8UC1);
@@ -981,7 +981,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 			imageLeft,
 			util3d::disparityFromStereoImages(leftMono, imageRight),
 			cx, cy,
-			fx, fy,
+			fx, baseline,
 			decimation);
 }
 
