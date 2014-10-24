@@ -33,9 +33,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/registration/transformation_estimation_2D.h>
 #include <pcl/registration/correspondence_rejection_sample_consensus.h>
 #include <pcl/registration/icp_nl.h>
-#include <pcl/search/kdtree.h>
-#include <pcl/filters/passthrough.h>
-#include <pcl/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/distances.h>
 #include <pcl/surface/gp3.h>
@@ -43,9 +40,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/surface/mls.h>
 #include <pcl/ModelCoefficients.h>
 #include <pcl/segmentation/sac_segmentation.h>
-#include <pcl/filters/crop_box.h>
-#include <pcl/segmentation/extract_clusters.h>
-#include <pcl/filters/extract_indices.h>
 
 #include <opencv2/nonfree/features2d.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
@@ -638,158 +632,6 @@ pcl::PointXYZ projectDepthTo3D(
 		pt.x = pt.y = pt.z = bad_point;
 	}
 	return pt;
-}
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr voxelize(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud, float voxelSize)
-{
-	UASSERT(voxelSize > 0.0f);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::VoxelGrid<pcl::PointXYZ> filter;
-	filter.setLeafSize(voxelSize, voxelSize, voxelSize);
-	filter.setInputCloud(cloud);
-	filter.filter(*output);
-	return output;
-}
-
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelize(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, float voxelSize)
-{
-	UASSERT(voxelSize > 0.0f);
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
-	pcl::VoxelGrid<pcl::PointXYZRGB> filter;
-	filter.setLeafSize(voxelSize, voxelSize, voxelSize);
-	filter.setInputCloud(cloud);
-	filter.filter(*output);
-	return output;
-}
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr sampling(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud, int samples)
-{
-	UASSERT(samples > 0);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::RandomSample<pcl::PointXYZ> filter;
-	filter.setSample(samples);
-	filter.setInputCloud(cloud);
-	filter.filter(*output);
-	return output;
-}
-
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr sampling(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, int samples)
-{
-	UASSERT(samples > 0);
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
-	pcl::RandomSample<pcl::PointXYZRGB> filter;
-	filter.setSample(samples);
-	filter.setInputCloud(cloud);
-	filter.filter(*output);
-	return output;
-}
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr passThrough(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const std::string & axis,
-		float min,
-		float max)
-{
-	UASSERT(max > min);
-	UASSERT(axis.compare("x") == 0 || axis.compare("y") == 0 || axis.compare("z") == 0);
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PassThrough<pcl::PointXYZ> filter;
-	filter.setFilterFieldName(axis);
-	filter.setFilterLimits(min, max);
-	filter.setInputCloud(cloud);
-	filter.filter(*output);
-	return output;
-}
-
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr passThrough(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const std::string & axis,
-		float min,
-		float max)
-{
-	UASSERT(max > min);
-	UASSERT(axis.compare("x") == 0 || axis.compare("y") == 0 || axis.compare("z") == 0);
-
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
-	pcl::PassThrough<pcl::PointXYZRGB> filter;
-	filter.setFilterFieldName(axis);
-	filter.setFilterLimits(min, max);
-	filter.setInputCloud(cloud);
-	filter.filter(*output);
-	return output;
-}
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP removeNaNFromPointCloud(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud)
-{
-	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
-	std::vector<int> indices;
-	pcl::removeNaNFromPointCloud (*cloud, *output, indices);
-	return output;
-}
-
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP removeNaNFromPointCloud(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud)
-{
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
-	std::vector<int> indices;
-	pcl::removeNaNFromPointCloud (*cloud, *output, indices);
-	return output;
-}
-
-pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP removeNaNNormalsFromPointCloud(
-		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud)
-{
-	pcl::PointCloud<pcl::PointNormal>::Ptr output(new pcl::PointCloud<pcl::PointNormal>);
-	std::vector<int> indices;
-	pcl::removeNaNNormalsFromPointCloud (*cloud, *output, indices);
-	return output;
-}
-
-pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP removeNaNNormalsFromPointCloud(
-		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud)
-{
-	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-	std::vector<int> indices;
-	pcl::removeNaNNormalsFromPointCloud(*cloud, *output, indices);
-	return output;
-}
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP transformPointCloud(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const Transform & transform)
-{
-	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::transformPointCloud(*cloud, *output, transformToEigen4f(transform));
-	return output;
-}
-
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP transformPointCloud(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const Transform & transform)
-{
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
-	pcl::transformPointCloud(*cloud, *output, transformToEigen4f(transform));
-	return output;
-}
-
-pcl::PointXYZ RTABMAP_EXP transformPoint(
-		const pcl::PointXYZ & pt,
-		const Transform & transform)
-{
-	return pcl::transformPoint(pt, transformToEigen3f(transform));
-}
-
-pcl::PointXYZRGB RTABMAP_EXP transformPoint(
-		const pcl::PointXYZRGB & pt,
-		const Transform & transform)
-{
-	return pcl::transformPoint(pt, transformToEigen3f(transform));
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
@@ -2029,25 +1871,25 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr getICPReadyCloud(
 	{
 		if(maxDepth>0.0)
 		{
-			cloud = passThrough(cloud, "z", 0, maxDepth);
+			cloud = passThrough<pcl::PointXYZ>(cloud, "z", 0, maxDepth);
 		}
 
 		if(cloud->size())
 		{
 			if(voxel>0)
 			{
-				cloud = voxelize(cloud, voxel);
+				cloud = voxelize<pcl::PointXYZ>(cloud, voxel);
 			}
 			else if(samples>0 && (int)cloud->size() > samples)
 			{
-				cloud = sampling(cloud, samples);
+				cloud = sampling<pcl::PointXYZ>(cloud, samples);
 			}
 
 			if(cloud->size())
 			{
 				if(!transform.isNull() && !transform.isIdentity())
 				{
-					cloud = transformPointCloud(cloud, transform);
+					cloud = transformPointCloud<pcl::PointXYZ>(cloud, transform);
 				}
 			}
 		}
@@ -2112,7 +1954,7 @@ pcl::PolygonMesh::Ptr createMesh(
 		float gp3MaximumAngle,
 		bool gp3NormalConsistency)
 {
-	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormalsNoNaN = removeNaNNormalsFromPointCloud(cloudWithNormals);
+	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormalsNoNaN = removeNaNNormalsFromPointCloud<pcl::PointXYZRGBNormal>(cloudWithNormals);
 
 	// Create search tree*
 	pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree2 (new pcl::search::KdTree<pcl::PointXYZRGBNormal>);
@@ -2538,79 +2380,34 @@ bool occupancy2DFromCloud3D(
 	pcl::PointCloud<pcl::PointXYZ>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZ>);
 
 	//voxelize
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelizedCloud = util3d::voxelize(cloud, cellSize);
-
-	//convert to XYZ
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudXYZ(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::copyPointCloud(*voxelizedCloud, *cloudXYZ);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelizedCloud = util3d::voxelize<pcl::PointXYZRGB>(cloud, cellSize);
 
 	pcl::IndicesPtr groundIndices, obstaclesIndices;
 
-	// Find the ground
-	pcl::IndicesPtr flatSurfaces = util3d::normalFiltering(
-			cloudXYZ,
+	segmentObstaclesFromGround<pcl::PointXYZRGB>(cloud,
+			groundIndices,
+			obstaclesIndices,
+			cellSize,
 			groundNormalAngle,
-			Eigen::Vector4f(0,0,1,0),
-			cellSize*2.0f,
-			Eigen::Vector4f(0,0,100,0));
+			minClusterSize);
 
-	int biggestFlatSurfaceIndex;
-	std::vector<pcl::IndicesPtr> clusteredFlatSurfaces = util3d::extractClusters(
-			cloudXYZ,
-			flatSurfaces,
-			cellSize*2.0f,
-			minClusterSize,
-			std::numeric_limits<int>::max(),
-			&biggestFlatSurfaceIndex);
-
-
-	// cluster all surfaces for which the centroid is in the Z-range of the bigger surface
-	groundIndices = clusteredFlatSurfaces.at(biggestFlatSurfaceIndex);
-	Eigen::Vector4f min,max;
-	pcl::getMinMax3D(*cloudXYZ, *clusteredFlatSurfaces.at(biggestFlatSurfaceIndex), min, max);
-
-	for(unsigned int i=0; i<clusteredFlatSurfaces.size(); ++i)
+	if(groundIndices->size())
 	{
-		if((int)i!=biggestFlatSurfaceIndex)
-		{
-			Eigen::Vector4f centroid;
-			pcl::compute3DCentroid(*cloudXYZ, *clusteredFlatSurfaces.at(i), centroid);
-			if(centroid[2] >= min[2] && centroid[2] <= max[2])
-			{
-				groundIndices = util3d::concatenate(groundIndices, clusteredFlatSurfaces.at(i));
-			}
-		}
+		pcl::copyPointCloud(*cloud, *groundIndices, *groundCloud);
+		//project on XY plane
+		util3d::projectCloudOnXYPlane<pcl::PointXYZ>(groundCloud);
+		//voxelize to grid cell size
+		groundCloud = util3d::voxelize<pcl::PointXYZ>(groundCloud, cellSize);
 	}
 
-	pcl::copyPointCloud(*cloudXYZ, *groundIndices, *groundCloud);
-
-	if(groundIndices->size() != cloudXYZ->size())
+	if(obstaclesIndices->size())
 	{
-		// Remove ground
-		pcl::IndicesPtr otherStuffIndices = util3d::extractNegativeIndices(cloudXYZ, groundIndices);
-
-		//Cluster remaining stuff (obstacles)
-		std::vector<pcl::IndicesPtr> clusteredObstaclesSurfaces = util3d::extractClusters(
-				cloudXYZ,
-				otherStuffIndices,
-				cellSize*2.0f,
-				minClusterSize);
-
-		// merge indices
-		obstaclesIndices = util3d::concatenate(clusteredObstaclesSurfaces);
-		if(obstaclesIndices->size())
-		{
-			pcl::copyPointCloud(*cloudXYZ, *obstaclesIndices, *obstaclesCloud);
-		}
+		pcl::copyPointCloud(*cloud, *obstaclesIndices, *obstaclesCloud);
+		//project on XY plane
+		util3d::projectCloudOnXYPlane<pcl::PointXYZ>(obstaclesCloud);
+		//voxelize to grid cell size
+		obstaclesCloud = util3d::voxelize<pcl::PointXYZ>(obstaclesCloud, cellSize);
 	}
-
-	//project on XY plane
-	util3d::projectCloudOnXYPlane(groundCloud);
-	util3d::projectCloudOnXYPlane(obstaclesCloud);
-
-	//voxelize to grid cell size
-	groundCloud = util3d::voxelize(groundCloud, cellSize);
-	obstaclesCloud = util3d::voxelize(obstaclesCloud, cellSize);
 
 	ground = cv::Mat();
 	if(groundCloud->size())
@@ -2846,7 +2643,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 	{
 		if(uContains(scans, iter->first))
 		{
-			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::transformPointCloud(scans.at(iter->first), iter->second);
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = transformPointCloud<pcl::PointXYZ>(scans.at(iter->first), iter->second);
 			pcl::PointXYZ min, max;
 			pcl::getMinMax3D(*cloud, min, max);
 			minMax.push_back(min);
@@ -3052,195 +2849,6 @@ cv::Mat convertMap2Image8U(const cv::Mat & map8S)
 	return map8U;
 }
 
-void projectCloudOnXYPlane(
-		pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud)
-{
-	for(unsigned int i=0; i<cloud->size(); ++i)
-	{
-		cloud->at(i).z = 0;
-	}
-}
-
-pcl::IndicesPtr radiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		float radiusSearch,
-		int minNeighborsInRadius)
-{
-	pcl::IndicesPtr indices(new std::vector<int>);
-	return radiusFiltering(cloud, indices, radiusSearch, minNeighborsInRadius);
-}
-
-pcl::IndicesPtr radiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float radiusSearch,
-		int minNeighborsInRadius)
-{
-	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ> (false));
-
-	if(indices->size())
-	{
-		pcl::IndicesPtr output(new std::vector<int>(indices->size()));
-		int oi = 0; // output iterator
-		tree->setInputCloud(cloud, indices);
-		for(unsigned int i=0; i<indices->size(); ++i)
-		{
-			std::vector<int> kIndices;
-			std::vector<float> kDistances;
-			int k = tree->radiusSearch(cloud->at(indices->at(i)), radiusSearch, kIndices, kDistances);
-			if(k > minNeighborsInRadius)
-			{
-				output->at(oi++) = indices->at(i);
-			}
-		}
-		output->resize(oi);
-		return output;
-	}
-	else
-	{
-		pcl::IndicesPtr output(new std::vector<int>(cloud->size()));
-		int oi = 0; // output iterator
-		tree->setInputCloud(cloud);
-		for(unsigned int i=0; i<cloud->size(); ++i)
-		{
-			std::vector<int> kIndices;
-			std::vector<float> kDistances;
-			int k = tree->radiusSearch(cloud->at(i), radiusSearch, kIndices, kDistances);
-			if(k > minNeighborsInRadius)
-			{
-				output->at(oi++) = i;
-			}
-		}
-		output->resize(oi);
-		return output;
-	}
-}
-
-pcl::IndicesPtr normalFiltering(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		float angleMax,
-		const Eigen::Vector4f & normal,
-		float radiusSearch,
-		const Eigen::Vector4f & viewpoint)
-{
-	pcl::IndicesPtr indices(new std::vector<int>);
-	return normalFiltering(cloud, indices, angleMax, normal, radiusSearch, viewpoint);
-}
-
-pcl::IndicesPtr normalFiltering(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float angleMax,
-		const Eigen::Vector4f & normal,
-		float radiusSearch,
-		const Eigen::Vector4f & viewpoint)
-{
-	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-	ne.setInputCloud (cloud);
-	if(indices->size())
-	{
-		ne.setIndices(indices);
-	}
-
-	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ> ());
-	if(indices->size())
-	{
-		tree->setInputCloud(cloud, indices);
-	}
-	else
-	{
-		tree->setInputCloud(cloud);
-	}
-	ne.setSearchMethod (tree);
-
-	pcl::PointCloud<pcl::Normal>::Ptr cloud_normals (new pcl::PointCloud<pcl::Normal>);
-
-	ne.setRadiusSearch (radiusSearch);
-	if(viewpoint[0] != 0 || viewpoint[1] != 0 || viewpoint[2] != 0)
-	{
-		ne.setViewPoint(viewpoint[0], viewpoint[1], viewpoint[2]);
-	}
-
-	ne.compute (*cloud_normals);
-
-	pcl::IndicesPtr output(new std::vector<int>(cloud_normals->size()));
-	int oi = 0; // output iterator
-	Eigen::Vector3f n(normal[0], normal[1], normal[2]);
-	for(unsigned int i=0; i<cloud_normals->size(); ++i)
-	{
-		Eigen::Vector4f v(cloud_normals->at(i).normal_x, cloud_normals->at(i).normal_y, cloud_normals->at(i).normal_z, 0.0f);
-		float angle = pcl::getAngle3D(normal, v);
-		if(angle < angleMax)
-		{
-			output->at(oi++) = indices->size()!=0?indices->at(i):i;
-		}
-	}
-	output->resize(oi);
-
-	return output;
-}
-
-std::vector<pcl::IndicesPtr> extractClusters(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		float clusterTolerance,
-		int minClusterSize,
-		int maxClusterSize,
-		int * biggestClusterIndex)
-{
-	pcl::IndicesPtr indices(new std::vector<int>);
-	return extractClusters(cloud, indices, clusterTolerance, minClusterSize, maxClusterSize, biggestClusterIndex);
-}
-
-std::vector<pcl::IndicesPtr> extractClusters(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float clusterTolerance,
-		int minClusterSize,
-		int maxClusterSize,
-		int * biggestClusterIndex)
-{
-	pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
-	pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-	ec.setClusterTolerance (clusterTolerance);
-	ec.setMinClusterSize (minClusterSize);
-	ec.setMaxClusterSize (maxClusterSize);
-	ec.setInputCloud (cloud);
-
-	if(indices->size())
-	{
-		ec.setIndices(indices);
-		kdTree->setInputCloud(cloud, indices);
-	}
-	else
-	{
-		kdTree->setInputCloud(cloud);
-	}
-	ec.setSearchMethod (kdTree);
-
-	std::vector<pcl::PointIndices> cluster_indices;
-	ec.extract (cluster_indices);
-
-	int maxIndex=-1;
-	unsigned int maxSize = 0;
-	std::vector<pcl::IndicesPtr> output(cluster_indices.size());
-	for(unsigned int i=0; i<cluster_indices.size(); ++i)
-	{
-		output[i] = pcl::IndicesPtr(new std::vector<int>(cluster_indices[i].indices));
-
-		if(maxSize < cluster_indices[i].indices.size())
-		{
-			maxSize = cluster_indices[i].indices.size();
-			maxIndex = i;
-		}
-	}
-	if(biggestClusterIndex)
-	{
-		*biggestClusterIndex = maxIndex;
-	}
-
-	return output;
-}
-
 pcl::IndicesPtr concatenate(const std::vector<pcl::IndicesPtr> & indices)
 {
 	//compute total size
@@ -3271,19 +2879,6 @@ pcl::IndicesPtr concatenate(const pcl::IndicesPtr & indicesA, const pcl::Indices
 		ind->at(oi++) = indicesB->at(i);
 	}
 	return ind;
-}
-
-pcl::IndicesPtr extractNegativeIndices(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const pcl::IndicesPtr & indices)
-{
-	pcl::IndicesPtr output(new std::vector<int>);
-	pcl::ExtractIndices<pcl::PointXYZ> extract;
-	extract.setInputCloud (cloud);
-	extract.setIndices(indices);
-	extract.setNegative(true);
-	extract.filter(*output);
-	return output;
 }
 
 }

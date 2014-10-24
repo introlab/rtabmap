@@ -803,10 +803,10 @@ void DatabaseViewer::view3DMap()
 
 							if(maxDepth)
 							{
-								cloud = rtabmap::util3d::passThrough(cloud, "z", 0, maxDepth);
+								cloud = rtabmap::util3d::passThrough<pcl::PointXYZRGB>(cloud, "z", 0, maxDepth);
 							}
 
-							cloud = rtabmap::util3d::transformPointCloud(cloud, localTransform);
+							cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, localTransform);
 
 							QColor color = Qt::red;
 							int mapId = memory_->getMapId(iter->first);
@@ -929,10 +929,10 @@ void DatabaseViewer::generate3DMap()
 
 									if(maxDepth)
 									{
-										cloud = rtabmap::util3d::passThrough(cloud, "z", 0, maxDepth);
+										cloud = rtabmap::util3d::passThrough<pcl::PointXYZRGB>(cloud, "z", 0, maxDepth);
 									}
 
-									cloud = rtabmap::util3d::transformPointCloud(cloud, pose*localTransform);
+									cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, pose*localTransform);
 									std::string name = uFormat("%s/node%d.pcd", path.toStdString().c_str(), iter->first);
 									pcl::io::savePCDFile(name, *cloud);
 									UINFO("Saved %s (%d points)", name.c_str(), cloud->size());
@@ -1427,8 +1427,8 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link,
 					1);
 		}
 
-		cloudA = rtabmap::util3d::removeNaNFromPointCloud(cloudA);
-		cloudA = rtabmap::util3d::transformPointCloud(cloudA, localTransformA);
+		cloudA = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudA);
+		cloudA = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudA, localTransformA);
 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudB;
 		if(depthB.type() == CV_8UC1)
@@ -1450,14 +1450,14 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link,
 					1);
 		}
 
-		cloudB = rtabmap::util3d::removeNaNFromPointCloud(cloudB);
-		cloudB = rtabmap::util3d::transformPointCloud(cloudB, t*localTransformB);
+		cloudB = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudB);
+		cloudB = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudB, t*localTransformB);
 
 		//cloud 2d
 		pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
 		scanA = rtabmap::util3d::depth2DToPointCloud(depth2dA);
 		scanB = rtabmap::util3d::depth2DToPointCloud(depth2dB);
-		scanB = rtabmap::util3d::transformPointCloud(scanB, t);
+		scanB = rtabmap::util3d::transformPointCloud<pcl::PointXYZ>(scanB, t);
 
 		if(cloudA->size())
 		{
@@ -1746,8 +1746,8 @@ void DatabaseViewer::refineConstraint(int from, int to)
 			//voxelize
 			if(ui_->doubleSpinBox_icp_voxel->value() > 0.0f)
 			{
-				oldCloud = util3d::voxelize(oldCloud, ui_->doubleSpinBox_icp_voxel->value());
-				newCloud = util3d::voxelize(newCloud, ui_->doubleSpinBox_icp_voxel->value());
+				oldCloud = util3d::voxelize<pcl::PointXYZ>(oldCloud, ui_->doubleSpinBox_icp_voxel->value());
+				newCloud = util3d::voxelize<pcl::PointXYZ>(newCloud, ui_->doubleSpinBox_icp_voxel->value());
 			}
 
 			if(newCloud->size() && oldCloud->size())
@@ -1794,13 +1794,13 @@ void DatabaseViewer::refineConstraint(int from, int to)
 			pcl::PointCloud<pcl::PointNormal>::Ptr cloudANormals = util3d::computeNormals(cloudA, ui_->spinBox_icp_normalKSearch->value());
 			pcl::PointCloud<pcl::PointNormal>::Ptr cloudBNormals = util3d::computeNormals(cloudB, ui_->spinBox_icp_normalKSearch->value());
 
-			cloudANormals = util3d::removeNaNNormalsFromPointCloud(cloudANormals);
+			cloudANormals = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(cloudANormals);
 			if(cloudA->size() != cloudANormals->size())
 			{
 				UWARN("removed nan normals...");
 			}
 
-			cloudBNormals = util3d::removeNaNNormalsFromPointCloud(cloudBNormals);
+			cloudBNormals = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(cloudBNormals);
 			if(cloudB->size() != cloudBNormals->size())
 			{
 				UWARN("removed nan normals...");
@@ -1848,7 +1848,7 @@ void DatabaseViewer::refineConstraint(int from, int to)
 		}
 		if(ui_->dockWidget_constraints->isVisible())
 		{
-			cloudB = util3d::transformPointCloud(cloudB, transform);
+			cloudB = util3d::transformPointCloud<pcl::PointXYZ>(cloudB, transform);
 			this->updateConstraintView(newLink, cloudA, cloudB);
 		}
 	}

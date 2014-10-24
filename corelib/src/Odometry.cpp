@@ -1104,7 +1104,7 @@ Transform OdometryICP::computeTransform(const SensorData & data, int * quality, 
 			pcl::PointCloud<pcl::PointNormal>::Ptr newCloud = util3d::computeNormals(newCloudXYZ);
 
 			std::vector<int> indices;
-			newCloud = util3d::removeNaNNormalsFromPointCloud(newCloud);
+			newCloud = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(newCloud);
 			if(newCloudXYZ->size() != newCloud->size())
 			{
 				UWARN("removed nan normals...");

@@ -111,10 +111,10 @@ private slots:
 					2); // decimation // high definition
 				if(cloud->size())
 				{
-					cloud = util3d::passThrough(cloud, "z", 0, 4.0f);
+					cloud = util3d::passThrough<pcl::PointXYZRGB>(cloud, "z", 0, 4.0f);
 					if(cloud->size())
 					{
-						cloud = util3d::transformPointCloud(cloud, data.localTransform());
+						cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, data.localTransform());
 					}
 				}
 				if(!cloudViewer_->addOrUpdateCloud("cloudOdom", cloud, pose))
@@ -184,10 +184,10 @@ private slots:
 
 					if(cloud->size())
 					{
-						cloud = util3d::passThrough(cloud, "z", 0, 4.0f);
+						cloud = util3d::passThrough<pcl::PointXYZRGB>(cloud, "z", 0, 4.0f);
 						if(cloud->size())
 						{
-							cloud = util3d::transformPointCloud(cloud, localTransform);
+							cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, localTransform);
 						}
 					}
 					if(!cloudViewer_->addOrUpdateCloud(cloudName, cloud, iter->second))

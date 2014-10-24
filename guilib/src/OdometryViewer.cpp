@@ -119,10 +119,10 @@ void OdometryViewer::processData()
 
 		if(voxelSize_ > 0.0f)
 		{
-			cloud = util3d::voxelize(cloud, voxelSize_);
+			cloud = util3d::voxelize<pcl::PointXYZRGB>(cloud, voxelSize_);
 		}
 
-		cloud = util3d::transformPointCloud(cloud, data.localTransform());
+		cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, data.localTransform());
 
 		if(!data.pose().isNull())
 		{

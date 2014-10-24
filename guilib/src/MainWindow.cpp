@@ -636,7 +636,7 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality, 
 		{
 			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 			cloud = util3d::depth2DToPointCloud(data.depth2d());
-			cloud = util3d::transformPointCloud(cloud, pose);
+			cloud = util3d::transformPointCloud<pcl::PointXYZ>(cloud, pose);
 			if(!_ui->widget_cloudViewer->addOrUpdateCloud("scanOdom", cloud, _odometryCorrection))
 			{
 				UERROR("Adding scanOdom to viewer failed!");
@@ -3178,13 +3178,13 @@ bool MainWindow::getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::
 			{
 				if(assemble)
 				{
-					*assembledScans += *util3d::transformPointCloud(scan, iter->second);;
+					*assembledScans += *util3d::transformPointCloud<pcl::PointXYZ>(scan, iter->second);;
 
 					if(count++ % 100 == 0)
 					{
 						if(assembledScans->size() && voxel)
 						{
-							assembledScans = util3d::voxelize(assembledScans, voxel);
+							assembledScans = util3d::voxelize<pcl::PointXYZ>(assembledScans, voxel);
 						}
 					}
 				}
@@ -3211,7 +3211,7 @@ bool MainWindow::getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::
 	{
 		if(voxel && assembledScans->size())
 		{
-			assembledScans = util3d::voxelize(assembledScans, voxel);
+			assembledScans = util3d::voxelize<pcl::PointXYZ>(assembledScans, voxel);
 		}
 		if(assembledScans->size())
 		{
@@ -3529,7 +3529,7 @@ void MainWindow::saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB
 						if(iter->second->size())
 						{
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformedCloud;
-							transformedCloud = util3d::transformPointCloud(iter->second, _currentPosesMap.at(iter->first));
+							transformedCloud = util3d::transformPointCloud<pcl::PointXYZRGB>(iter->second, _currentPosesMap.at(iter->first));
 
 							QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
 							bool success =false;
@@ -3630,7 +3630,7 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes)
 						mesh.polygons = iter->second->polygons;
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp(new pcl::PointCloud<pcl::PointXYZRGB>);
 						pcl::fromPCLPointCloud2(iter->second->cloud, *tmp);
-						tmp = util3d::transformPointCloud(tmp, _currentPosesMap.at(iter->first));
+						tmp = util3d::transformPointCloud<pcl::PointXYZRGB>(tmp, _currentPosesMap.at(iter->first));
 						pcl::toPCLPointCloud2(*tmp, mesh.cloud);
 
 						QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
@@ -3736,7 +3736,7 @@ void MainWindow::saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::P
 						if(iter->second->size())
 						{
 							pcl::PointCloud<pcl::PointXYZ>::Ptr transformedCloud;
-							transformedCloud = util3d::transformPointCloud(iter->second, _currentPosesMap.at(iter->first));
+							transformedCloud = util3d::transformPointCloud<pcl::PointXYZ>(iter->second, _currentPosesMap.at(iter->first));
 
 							QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
 							bool success =false;
@@ -3814,24 +3814,24 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createCloud(
 		bool filtered = false;
 		if(cloud->size() && maxDepth)
 		{
-			cloud = util3d::passThrough(cloud, "z", 0, maxDepth);
+			cloud = util3d::passThrough<pcl::PointXYZRGB>(cloud, "z", 0, maxDepth);
 			filtered = true;
 		}
 
 		if(cloud->size() && voxelSize)
 		{
-			cloud = util3d::voxelize(cloud, voxelSize);
+			cloud = util3d::voxelize<pcl::PointXYZRGB>(cloud, voxelSize);
 			filtered = true;
 		}
 
 		if(cloud->size() && !filtered)
 		{
-			cloud = util3d::removeNaNFromPointCloud (cloud);
+			cloud = util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloud);
 		}
 
 		if(cloud->size())
 		{
-			cloud = util3d::transformPointCloud(cloud, pose * localTransform);
+			cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, pose * localTransform);
 		}
 	}
 	UDEBUG("Generated cloud %d (pts=%d) time=%fs", id, (int)cloud->size(), timer.ticks());
@@ -3874,7 +3874,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::getAssembledCloud(
 				}
 				else if(uContains(_createdClouds, iter->first))
 				{
-					cloud = util3d::transformPointCloud(_createdClouds.at(iter->first), iter->second);
+					cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(_createdClouds.at(iter->first), iter->second);
 				}
 
 				if(cloud->size())
@@ -3903,7 +3903,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::getAssembledCloud(
 			{
 				if(assembledCloud->size() && assembledVoxelSize)
 				{
-					assembledCloud = util3d::voxelize(assembledCloud, assembledVoxelSize);
+					assembledCloud = util3d::voxelize<pcl::PointXYZRGB>(assembledCloud, assembledVoxelSize);
 				}
 			}
 		}
@@ -3917,7 +3917,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::getAssembledCloud(
 
 	if(assembledCloud->size() && assembledVoxelSize)
 	{
-		assembledCloud = util3d::voxelize(assembledCloud, assembledVoxelSize);
+		assembledCloud = util3d::voxelize<pcl::PointXYZRGB>(assembledCloud, assembledVoxelSize);
 	}
 
 	return assembledCloud;

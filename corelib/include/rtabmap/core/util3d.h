@@ -148,55 +148,6 @@ pcl::PointXYZ RTABMAP_EXP projectDepthTo3D(
 		bool smoothing,
 		float maxZError = 0.03f);
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP voxelize(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		float voxelSize);
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP voxelize(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		float voxelSize);
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP sampling(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		int samples);
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP sampling(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		int samples);
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP passThrough(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const std::string & axis,
-		float min,
-		float max);
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP passThrough(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const std::string & axis,
-		float min,
-		float max);
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP removeNaNFromPointCloud(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud);
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP removeNaNFromPointCloud(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud);
-
-pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP removeNaNNormalsFromPointCloud(
-		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud);
-pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP removeNaNNormalsFromPointCloud(
-		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud);
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP transformPointCloud(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const Transform & transform);
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP transformPointCloud(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const Transform & transform);
-
-pcl::PointXYZ RTABMAP_EXP transformPoint(
-		const pcl::PointXYZ & pt,
-		const Transform & transform);
-pcl::PointXYZRGB RTABMAP_EXP transformPoint(
-		const pcl::PointXYZRGB & pt,
-		const Transform & transform);
-
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromDepth(
 		const cv::Mat & imageDepth,
 		float cx, float cy,
@@ -546,98 +497,6 @@ void RTABMAP_EXP rayTrace(const cv::Point2i & start,
 
 cv::Mat RTABMAP_EXP convertMap2Image8U(const cv::Mat & map8S);
 
-void RTABMAP_EXP projectCloudOnXYPlane(
-		pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud);
-
-/**
- * For convenience.
- */
-pcl::IndicesPtr radiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		float radiusSearch,
-		int minNeighborsInRadius);
-
-/**
- * @brief Wrapper of the pcl::RadiusOutlierRemoval class.
- *
- * Points in the cloud which have less than a minimum of neighbors in the
- * specified radius are filtered.
- * @param cloud the input cloud.
- * @param indices the input indices of the cloud to check, if empty, all points in the cloud are checked.
- * @param radiusSearch the radius in meter.
- * @param minNeighborsInRadius the minimum of neighbors to keep the point.
- * @return the indices of the points satisfying the parameters.
- */
-pcl::IndicesPtr radiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float radiusSearch,
-		int minNeighborsInRadius);
-
-/**
- * For convenience.
- */
-pcl::IndicesPtr RTABMAP_EXP normalFiltering(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		float angleMax,
-		const Eigen::Vector4f & normal,
-		float radiusSearch,
-		const Eigen::Vector4f & viewpoint);
-
-/**
- * @brief Given a normal and a maximum angle error, keep all points of the cloud
- * respecting this normal.
- *
- * The normals are computed using the radius search parameter (pcl::NormalEstimation class is used for this), then
- * for each normal, the corresponding point is filtered if the
- * angle (using pcl::getAngle3D()) with the normal specified by the user is larger than the maximum
- * angle specified by the user.
- * @param cloud the input cloud.
- * @param indices the input indices of the cloud to process, if empty, all points in the cloud are processed.
- * @param angleMax the maximum angle.
- * @param normal the normal to which each point's normal is compared.
- * @param radiusSearch radius parameter used for normal estimation (see pcl::NormalEstimation).
- * @param viewpoint from which viewpoint the normals should be estimated (see pcl::NormalEstimation).
- * @return the indices of the points which respect the normal constraint.
- */
-pcl::IndicesPtr RTABMAP_EXP normalFiltering(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float angleMax,
-		const Eigen::Vector4f & normal,
-		float radiusSearch,
-		const Eigen::Vector4f & viewpoint);
-
-/**
- * For convenience.
- */
-std::vector<pcl::IndicesPtr> RTABMAP_EXP extractClusters(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		float clusterTolerance,
-		int minClusterSize,
-		int maxClusterSize = std::numeric_limits<int>::max(),
-		int * biggestClusterIndex = 0);
-
-/**
- * @brief Wrapper of the pcl::EuclideanClusterExtraction class.
- *
- * Extract all clusters from a point cloud given a maximum cluster distance tolerance.
- * @param cloud the input cloud.
- * @param indices the input indices of the cloud to process, if empty, all points in the cloud are processed.
- * @param clusterTolerance the cluster distance tolerance (see pcl::EuclideanClusterExtraction).
- * @param minClusterSize minimum size of the clusters to return (see pcl::EuclideanClusterExtraction).
- * @param maxClusterSize maximum size of the clusters to return (see pcl::EuclideanClusterExtraction).
- * @param biggestClusterIndex the index of the biggest cluster, if the clusters are empty, a negative index is set.
- * @return the indices of each cluster found.
- */
-std::vector<pcl::IndicesPtr> RTABMAP_EXP extractClusters(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float clusterTolerance,
-		int minClusterSize,
-		int maxClusterSize = std::numeric_limits<int>::max(),
-		int * biggestClusterIndex = 0);
-
 /**
  * @brief Concatenate a vector of indices to a single vector.
  *
@@ -664,11 +523,161 @@ pcl::IndicesPtr RTABMAP_EXP concatenate(
 		const pcl::IndicesPtr & indicesA,
 		const pcl::IndicesPtr & indicesB);
 
-pcl::IndicesPtr RTABMAP_EXP extractNegativeIndices(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+///////////////////
+// Templated PCL methods
+///////////////////
+
+template<typename PointT>
+typename pcl::PointCloud<PointT>::Ptr voxelize(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		float voxelSize);
+
+template<typename PointT>
+typename pcl::PointCloud<PointT>::Ptr sampling(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		int samples);
+
+template<typename PointT>
+typename pcl::PointCloud<PointT>::Ptr passThrough(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const std::string & axis,
+		float min,
+		float max);
+
+template<typename PointT>
+typename pcl::PointCloud<PointT>::Ptr removeNaNFromPointCloud(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud);
+
+template<typename PointT>
+typename pcl::PointCloud<PointT>::Ptr removeNaNNormalsFromPointCloud(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud);
+
+template<typename PointT>
+typename pcl::PointCloud<PointT>::Ptr transformPointCloud(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const Transform & transform);
+
+template<typename PointT>
+PointT transformPoint(
+		const PointT & pt,
+		const Transform & transform);
+
+template<typename PointT>
+void segmentObstaclesFromGround(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		pcl::IndicesPtr & ground,
+		pcl::IndicesPtr & obstacles,
+		float normalRadiusSearch,
+		float groundNormalAngle,
+		int minClusterSize);
+
+template<typename PointT>
+void projectCloudOnXYPlane(
+		typename pcl::PointCloud<PointT>::Ptr & cloud);
+
+/**
+ * For convenience.
+ */
+template<typename PointT>
+pcl::IndicesPtr radiusFiltering(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		float radiusSearch,
+		int minNeighborsInRadius);
+
+/**
+ * @brief Wrapper of the pcl::RadiusOutlierRemoval class.
+ *
+ * Points in the cloud which have less than a minimum of neighbors in the
+ * specified radius are filtered.
+ * @param cloud the input cloud.
+ * @param indices the input indices of the cloud to check, if empty, all points in the cloud are checked.
+ * @param radiusSearch the radius in meter.
+ * @param minNeighborsInRadius the minimum of neighbors to keep the point.
+ * @return the indices of the points satisfying the parameters.
+ */
+template<typename PointT>
+pcl::IndicesPtr radiusFiltering(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float radiusSearch,
+		int minNeighborsInRadius);
+
+/**
+ * For convenience.
+ */
+template<typename PointT>
+pcl::IndicesPtr normalFiltering(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		float angleMax,
+		const Eigen::Vector4f & normal,
+		float radiusSearch,
+		const Eigen::Vector4f & viewpoint);
+
+/**
+ * @brief Given a normal and a maximum angle error, keep all points of the cloud
+ * respecting this normal.
+ *
+ * The normals are computed using the radius search parameter (pcl::NormalEstimation class is used for this), then
+ * for each normal, the corresponding point is filtered if the
+ * angle (using pcl::getAngle3D()) with the normal specified by the user is larger than the maximum
+ * angle specified by the user.
+ * @param cloud the input cloud.
+ * @param indices the input indices of the cloud to process, if empty, all points in the cloud are processed.
+ * @param angleMax the maximum angle.
+ * @param normal the normal to which each point's normal is compared.
+ * @param radiusSearch radius parameter used for normal estimation (see pcl::NormalEstimation).
+ * @param viewpoint from which viewpoint the normals should be estimated (see pcl::NormalEstimation).
+ * @return the indices of the points which respect the normal constraint.
+ */
+template<typename PointT>
+pcl::IndicesPtr normalFiltering(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float angleMax,
+		const Eigen::Vector4f & normal,
+		float radiusSearch,
+		const Eigen::Vector4f & viewpoint);
+
+/**
+ * For convenience.
+ */
+template<typename PointT>
+std::vector<pcl::IndicesPtr> extractClusters(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		float clusterTolerance,
+		int minClusterSize,
+		int maxClusterSize = std::numeric_limits<int>::max(),
+		int * biggestClusterIndex = 0);
+
+/**
+ * @brief Wrapper of the pcl::EuclideanClusterExtraction class.
+ *
+ * Extract all clusters from a point cloud given a maximum cluster distance tolerance.
+ * @param cloud the input cloud.
+ * @param indices the input indices of the cloud to process, if empty, all points in the cloud are processed.
+ * @param clusterTolerance the cluster distance tolerance (see pcl::EuclideanClusterExtraction).
+ * @param minClusterSize minimum size of the clusters to return (see pcl::EuclideanClusterExtraction).
+ * @param maxClusterSize maximum size of the clusters to return (see pcl::EuclideanClusterExtraction).
+ * @param biggestClusterIndex the index of the biggest cluster, if the clusters are empty, a negative index is set.
+ * @return the indices of each cluster found.
+ */
+template<typename PointT>
+std::vector<pcl::IndicesPtr> extractClusters(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float clusterTolerance,
+		int minClusterSize,
+		int maxClusterSize = std::numeric_limits<int>::max(),
+		int * biggestClusterIndex = 0);
+
+template<typename PointT>
+pcl::IndicesPtr extractNegativeIndices(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
 		const pcl::IndicesPtr & indices);
 
 } // namespace util3d
 } // namespace rtabmap
+
+#include "rtabmap/core/impl/util3d.hpp"
 
 #endif /* UTIL3D_H_ */

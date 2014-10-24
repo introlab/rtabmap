@@ -166,17 +166,17 @@ void LoopClosureViewer::updateView(const Transform & transform)
 						decimation);
 			}
 
-			cloudA = util3d::removeNaNFromPointCloud(cloudA);
+			cloudA = util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudA);
 
 			if(maxDepth>0.0)
 			{
-				cloudA = util3d::passThrough(cloudA, "z", 0, maxDepth);
+				cloudA = util3d::passThrough<pcl::PointXYZRGB>(cloudA, "z", 0, maxDepth);
 			}
 			if(samples>0 && (int)cloudA->size() > samples)
 			{
-				cloudA = util3d::sampling(cloudA, samples);
+				cloudA = util3d::sampling<pcl::PointXYZRGB>(cloudA, samples);
 			}
-			cloudA = util3d::transformPointCloud(cloudA, sA_->getLocalTransform());
+			cloudA = util3d::transformPointCloud<pcl::PointXYZRGB>(cloudA, sA_->getLocalTransform());
 
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudB;
 			if(depthB.type() == CV_8UC1)
@@ -198,23 +198,23 @@ void LoopClosureViewer::updateView(const Transform & transform)
 						decimation);
 			}
 
-			cloudB = util3d::removeNaNFromPointCloud(cloudB);
+			cloudB = util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudB);
 
 			if(maxDepth>0.0)
 			{
-				cloudB = util3d::passThrough(cloudB, "z", 0, maxDepth);
+				cloudB = util3d::passThrough<pcl::PointXYZRGB>(cloudB, "z", 0, maxDepth);
 			}
 			if(samples>0 && (int)cloudB->size() > samples)
 			{
-				cloudB = util3d::sampling(cloudB, samples);
+				cloudB = util3d::sampling<pcl::PointXYZRGB>(cloudB, samples);
 			}
-			cloudB = util3d::transformPointCloud(cloudB, t*sB_->getLocalTransform());
+			cloudB = util3d::transformPointCloud<pcl::PointXYZRGB>(cloudB, t*sB_->getLocalTransform());
 
 			//cloud 2d
 			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
 			scanA = util3d::depth2DToPointCloud(depth2dA);
 			scanB = util3d::depth2DToPointCloud(depth2dB);
-			scanB = util3d::transformPointCloud(scanB, t);
+			scanB = util3d::transformPointCloud<pcl::PointXYZ>(scanB, t);
 
 			ui_->label_idA->setText(QString("[%1 (%2) -> %3 (%4)]").arg(sB_->id()).arg(cloudB->size()).arg(sA_->id()).arg(cloudA->size()));
 

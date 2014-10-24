@@ -1903,8 +1903,8 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 				pcl::PointCloud<pcl::PointNormal>::Ptr newCloud = util3d::computeNormals(newCloudXYZ);
 
 				std::vector<int> indices;
-				newCloud = util3d::removeNaNNormalsFromPointCloud(newCloud);
-				oldCloud = util3d::removeNaNNormalsFromPointCloud(oldCloud);
+				newCloud = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(newCloud);
+				oldCloud = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(oldCloud);
 
 				// 3D
 				double fitness = 0;
@@ -1981,8 +1981,8 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 			//voxelize
 			if(_icp2VoxelSize > 0.0f)
 			{
-				oldCloud = util3d::voxelize(oldCloud, _icp2VoxelSize);
-				newCloud = util3d::voxelize(newCloud, _icp2VoxelSize);
+				oldCloud = util3d::voxelize<pcl::PointXYZ>(oldCloud, _icp2VoxelSize);
+				newCloud = util3d::voxelize<pcl::PointXYZ>(newCloud, _icp2VoxelSize);
 			}
 
 			double fitness = 0.0f;
@@ -2000,7 +2000,7 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 
 				//pcl::io::savePCDFile("lccold.pcd", *oldCloud);
 				//pcl::io::savePCDFile("lccnewguess.pcd", *newCloud);
-				newCloud = util3d::transformPointCloud(newCloud, icpT);
+				newCloud = util3d::transformPointCloud<pcl::PointXYZ>(newCloud, icpT);
 				//pcl::io::savePCDFile("lccnewicp.pcd", *newCloud);
 
 				// verify if there are enough correspondences
@@ -2094,7 +2094,7 @@ Transform Memory::computeScanMatchingTransform(
 	//voxelize
 	if(assembledOldClouds->size() && _icp2VoxelSize > 0.0f)
 	{
-		assembledOldClouds = util3d::voxelize(assembledOldClouds, _icp2VoxelSize);
+		assembledOldClouds = util3d::voxelize<pcl::PointXYZ>(assembledOldClouds, _icp2VoxelSize);
 	}
 
 	// get the new cloud
@@ -2106,7 +2106,7 @@ Transform Memory::computeScanMatchingTransform(
 	//voxelize
 	if(newCloud->size() && _icp2VoxelSize > 0.0f)
 	{
-		newCloud = util3d::voxelize(newCloud, _icp2VoxelSize);
+		newCloud = util3d::voxelize<pcl::PointXYZ>(newCloud, _icp2VoxelSize);
 	}
 
 	//pcl::io::savePCDFile("old.pcd", *assembledOldClouds);
@@ -2126,7 +2126,7 @@ Transform Memory::computeScanMatchingTransform(
 
 		UDEBUG("icpT=%s", icpT.prettyPrint().c_str());
 
-		newCloud = util3d::transformPointCloud(newCloud, icpT);
+		newCloud = util3d::transformPointCloud<pcl::PointXYZ>(newCloud, icpT);
 		//pcl::io::savePCDFile("newCorrected.pcd", *newCloud);
 
 		// verify if there enough correspondences
