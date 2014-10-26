@@ -74,10 +74,9 @@ namespace rtabmap
 
 Rtabmap::Rtabmap() :
 	_publishStats(Parameters::defaultRtabmapPublishStats()),
-	_publishImage(Parameters::defaultRtabmapPublishImage()),
+	_publishLastSignature(Parameters::defaultRtabmapPublishLastSignature()),
 	_publishPdf(Parameters::defaultRtabmapPublishPdf()),
 	_publishLikelihood(Parameters::defaultRtabmapPublishLikelihood()),
-	_publishKeypoints(Parameters::defaultKpPublishKeypoints()),
 	_maxTimeAllowed(Parameters::defaultRtabmapTimeThr()), // 700 ms
 	_maxMemoryAllowed(Parameters::defaultRtabmapMemoryThr()), // 0=inf
 	_loopThr(Parameters::defaultRtabmapLoopThr()),
@@ -330,10 +329,9 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	}
 
 	Parameters::parse(parameters, Parameters::kRtabmapPublishStats(), _publishStats);
-	Parameters::parse(parameters, Parameters::kRtabmapPublishImage(), _publishImage);
+	Parameters::parse(parameters, Parameters::kRtabmapPublishLastSignature(), _publishLastSignature);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishPdf(), _publishPdf);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishLikelihood(), _publishLikelihood);
-	Parameters::parse(parameters, Parameters::kKpPublishKeypoints(), _publishKeypoints);
 	Parameters::parse(parameters, Parameters::kRtabmapTimeThr(), _maxTimeAllowed);
 	Parameters::parse(parameters, Parameters::kRtabmapMemoryThr(), _maxMemoryAllowed);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopThr(), _loopThr);
@@ -1291,6 +1289,7 @@ bool Rtabmap::process(const SensorData & data)
 				uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(_reextractNNDR)));
 				uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(_reextractFeatureType))); // FAST/BRIEF
 				uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(_reextractMaxWords)));
+				uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
 
 				//for(ParametersMap::iterator iter = customParameters.begin(); iter!=customParameters.end(); ++iter)
 				//{
@@ -1302,30 +1301,25 @@ bool Rtabmap::process(const SensorData & data)
 				UTimer timeT;
 
 				// Add signatures
-				float fxA, fyA, cxA, cyA;
-				float fxB, fyB, cxB, cyB;
-				rtabmap::Transform localTransformA, localTransformB;
+				SensorData dataFrom = data;
+				dataFrom.setId(signature->id());
+				Signature tmpTo = _memory->getSignatureData(_lcHypothesisId, true);
+				SensorData dataTo = tmpTo.toSensorData();
+				UDEBUG("timeTo = %fs", timeT.ticks());
 
-				cv::Mat imageA, depthA;
-				_memory->getImageDepthRaw(signature->id(), imageA, depthA, fxA, fyA, cxA, cyA, localTransformA);
-				SensorData dataFrom(imageA, depthA, fxA, fyA, cxA, cyA, Transform::getIdentity(), localTransformA, 1);
-
-				UDEBUG("timeA = %fs", timeT.ticks());
-
-				cv::Mat imageB, depthB;
-				_memory->getImageDepthRaw(_lcHypothesisId, imageB, depthB, fxB, fyB, cxB, cyB, localTransformB);
-				SensorData dataTo(imageB, depthB, fxB, fyB, cxB, cyB, Transform::getIdentity(), localTransformB, 2);
-
-				UDEBUG("timeB = %fs", timeT.ticks());
-
-				if(dataFrom.isValid() && dataFrom.isMetric() && dataTo.isValid() && dataTo.isMetric())
+				if(dataFrom.isValid() &&
+				   dataFrom.isMetric() &&
+				   dataTo.isValid() &&
+				   dataTo.isMetric() &&
+				   dataFrom.id() != Memory::kIdInvalid &&
+				   tmpTo.id() != Memory::kIdInvalid)
 				{
-					memory.update(dataFrom);
-					UDEBUG("timeUpA = %fs", timeT.ticks());
 					memory.update(dataTo);
-					UDEBUG("timeUpB = %fs", timeT.ticks());
+					UDEBUG("timeUpTo = %fs", timeT.ticks());
+					memory.update(dataFrom);
+					UDEBUG("timeUpFrom = %fs", timeT.ticks());
 
-					transform = memory.computeVisualTransform(2, 1, &rejectedMsg, &loopClosureVisualInliers);
+					transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &loopClosureVisualInliers);
 					UDEBUG("timeTransform = %fs", timeT.ticks());
 				}
 				else
@@ -1580,74 +1574,9 @@ bool Rtabmap::process(const SensorData & data)
 			//Epipolar geometry constraint
 			statistics_.addStatistic(Statistics::kLoopRejectedHypothesis(), rejectedHypothesis?1.0f:0);
 
-			if(_publishImage)
+			if(_publishLastSignature)
 			{
-				std::map<int, std::vector<unsigned char> > images;
-				std::map<int, std::vector<unsigned char> > depths;
-				std::map<int, std::vector<unsigned char> > depth2ds;
-				std::map<int, float> depthFxs;
-				std::map<int, float> depthFys;
-				std::map<int, float> depthCxs;
-				std::map<int, float> depthCys;
-				std::map<int, Transform> localTransforms;
-
-				std::vector<int> ids(signaturesRetrieved.begin(), signaturesRetrieved.end());
-				ids.push_back(signature->id());
-				if(sLoop)
-				{
-					ids.push_back(sLoop->id());
-				}
-
-				UTimer tmpTimer;
-				for(unsigned int i=0; i<ids.size(); ++i)
-				{
-					// Add data
-					std::vector<unsigned char> im;
-					if(_rgbdSlamMode && _memory->isIncremental())
-					{
-						std::vector<unsigned char> depth, depth2d;
-						float fx, fy, cx, cy;
-						Transform localTransform;
-						_memory->getImageDepth(ids[i], im, depth, depth2d, fx, fy, cx, cy, localTransform);
-
-						if(!depth.empty())
-						{
-							depths.insert(std::make_pair(ids[i], depth));
-							depthFxs.insert(std::make_pair(ids[i], fx));
-							depthFys.insert(std::make_pair(ids[i], fy));
-							depthCxs.insert(std::make_pair(ids[i], cx));
-							depthCys.insert(std::make_pair(ids[i], cy));
-							localTransforms.insert(std::make_pair(ids[i], localTransform));
-						}
-						if(!depth2d.empty())
-						{
-							depth2ds.insert(std::make_pair(ids[i], depth2d));
-						}
-					}
-					else
-					{
-						im = _memory->getImage(ids[i]);
-					}
-					UASSERT(_memory->getSignature(ids[i]) != 0);
-					if(!im.empty())
-					{
-						images.insert(std::make_pair(ids[i], im));
-					}
-				}
-
-				if(tmpTimer.elapsed() > 0.03)
-				{
-					UWARN("getting data[%d] time = %fs", (int)ids.size(), tmpTimer.ticks());
-				}
-
-				statistics_.setImages(images);
-				statistics_.setDepths(depths);
-				statistics_.setDepth2ds(depth2ds);
-				statistics_.setDepthFxs(depthFxs);
-				statistics_.setDepthFys(depthFys);
-				statistics_.setDepthCxs(depthCxs);
-				statistics_.setDepthCys(depthCys);
-				statistics_.setLocalTransforms(localTransforms);
+				statistics_.setSignature(*signature);
 			}
 
 			if(_publishLikelihood || _publishPdf)
@@ -1662,17 +1591,6 @@ bool Rtabmap::process(const SensorData & data)
 				{
 					statistics_.setLikelihood(likelihood);
 					statistics_.setRawLikelihood(rawLikelihood);
-				}
-			}
-
-			if(_publishKeypoints)
-			{
-				//Copy keypoints
-				statistics_.setRefWords(signature->getWords());
-				if(sLoop)
-				{
-					//Copy keypoints
-					statistics_.setLoopWords(sLoop->getWords());
 				}
 			}
 		}
@@ -1764,7 +1682,6 @@ bool Rtabmap::process(const SensorData & data)
 			statistics_.setPoses(_optimizedPoses);
 			statistics_.setConstraints(_constraints);
 			statistics_.setMapCorrection(_mapCorrection);
-			statistics_.setCurrentPose(_mapCorrection * currentRawOdomPose);
 			UINFO("Set map correction = %s", _mapCorrection.prettyPrint().c_str());
 		}
 	}
@@ -2292,14 +2209,7 @@ void Rtabmap::dumpPrediction() const
 	}
 }
 
-void Rtabmap::get3DMap(std::map<int, std::vector<unsigned char> > & images,
-		std::map<int, std::vector<unsigned char> > & depths,
-		std::map<int, std::vector<unsigned char> > & depths2d,
-		std::map<int, float> & depthFxs,
-		std::map<int, float> & depthFys,
-		std::map<int, float> & depthCxs,
-		std::map<int, float> & depthCys,
-		std::map<int, Transform> & localTransforms,
+void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> & constraints,
 		std::map<int, int> & mapIds,
@@ -2328,36 +2238,12 @@ void Rtabmap::get3DMap(std::map<int, std::vector<unsigned char> > & images,
 
 		for(std::set<int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
 		{
-			std::vector<unsigned char> image, depth, depth2d;
-			float fx, fy, cx, cy;
-			Transform localTransform;
-			_memory->getImageDepth(*iter, image, depth, depth2d, fx, fy, cx, cy, localTransform);
-
-			if(image.size())
+			Signature data = _memory->getSignatureData(*iter);
+			if(data.id() != Memory::kIdInvalid)
 			{
-				images.insert(std::make_pair(*iter, image));
+				signatures.insert(std::make_pair(*iter, data));
+				mapIds.insert(std::make_pair(*iter, _memory->getMapId(*iter)));
 			}
-			if(depth.size())
-			{
-				depths.insert(std::make_pair(*iter, depth));
-			}
-			if(depth2d.size())
-			{
-				depths2d.insert(std::make_pair(*iter, depth2d));
-			}
-			if(fx > 0 && fy > 0)
-			{
-				depthFxs.insert(std::make_pair(*iter, fx));
-				depthFys.insert(std::make_pair(*iter, fy));
-				depthCxs.insert(std::make_pair(*iter, cx));
-				depthCys.insert(std::make_pair(*iter, cy));
-			}
-			if(!localTransform.isNull())
-			{
-				localTransforms.insert(std::make_pair(*iter, localTransform));
-			}
-
-			mapIds.insert(std::make_pair(*iter, _memory->getMapId(*iter)));
 		}
 	}
 	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size()))

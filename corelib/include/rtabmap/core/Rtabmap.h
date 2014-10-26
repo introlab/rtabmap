@@ -106,14 +106,7 @@ public:
 	void setDatabasePath(const std::string & path);
 	void deleteLocation(int locationId); // Only nodes in STM can be deleted
 	void rejectLoopClosure(int oldId, int newId);
-	void get3DMap(std::map<int, std::vector<unsigned char> > & images,
-			std::map<int, std::vector<unsigned char> > & depths,
-			std::map<int, std::vector<unsigned char> > & depths2d,
-			std::map<int, float> & depthFxs,
-			std::map<int, float> & depthFys,
-			std::map<int, float> & depthCxs,
-			std::map<int, float> & depthCys,
-			std::map<int, Transform> & localTransforms,
+	void get3DMap(std::map<int, Signature> & signatures,
 			std::map<int, Transform> & poses,
 			std::multimap<int, Link> & constraints,
 			std::map<int, int> & mapIds,
@@ -142,10 +135,9 @@ private:
 private:
 	// Modifiable parameters
 	bool _publishStats;
-	bool _publishImage;
+	bool _publishLastSignature;
 	bool _publishPdf;
 	bool _publishLikelihood;
-	bool _publishKeypoints;
 	float _maxTimeAllowed; // in ms
 	unsigned int _maxMemoryAllowed; // signatures count in WM
 	float _loopThr;

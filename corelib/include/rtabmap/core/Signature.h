@@ -29,7 +29,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
-#include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
@@ -40,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <set>
 
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/SensorData.h>
 
 namespace rtabmap
 {
@@ -50,6 +50,7 @@ class RTABMAP_EXP Signature
 {
 
 public:
+	Signature();
 	Signature(int id,
 			int mapId,
 			const std::multimap<int, cv::KeyPoint> & words,
@@ -134,6 +135,11 @@ public:
 	const Transform & getLocalTransform() const {return _localTransform;}
 	void setDepthRaw(const cv::Mat & depth) {_depthRaw = depth;}
 	const cv::Mat & getDepthRaw() const {return _depthRaw;}
+	void setDepth2DRaw(const cv::Mat & depth2D) {_depth2DRaw = depth2D;}
+	const cv::Mat & getDepth2DRaw() const {return _depth2DRaw;}
+
+	SensorData toSensorData();
+	void uncompressData();
 
 private:
 	int _id;
@@ -166,6 +172,7 @@ private:
 
 	cv::Mat _imageRaw;
 	cv::Mat _depthRaw;
+	cv::Mat _depth2DRaw;
 };
 
 } // namespace rtabmap

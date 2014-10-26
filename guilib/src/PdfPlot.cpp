@@ -35,7 +35,7 @@ namespace rtabmap {
 PdfPlotItem::PdfPlotItem(float dataX, float dataY, float width, int childCount) :
 	UPlotItem(dataX, dataY, width),
 	_img(0),
-	_imagesRef(0),
+	_signaturesRef(0),
 	_text(0)
 {
 	setLikelihood(dataX, dataY, childCount);
@@ -66,13 +66,13 @@ void PdfPlotItem::showDescription(bool shown)
 	}
 	if(shown)
 	{
-		if(!_img && _imagesRef)
+		if(!_img && _signaturesRef)
 		{
 			QImage img;
-			QMap<int, std::vector<unsigned char> >::const_iterator iter = _imagesRef->find(int(this->data().x()));
-			if(iter != _imagesRef->constEnd())
+			QMap<int, Signature>::const_iterator iter = _signaturesRef->find(int(this->data().x()));
+			if(iter != _signaturesRef->constEnd() && !iter.value().getImageRaw().empty())
 			{
-				img = uCvMat2QImage(util3d::uncompressImage(iter.value()));
+				img = uCvMat2QImage(iter.value().getImageRaw());
 				QPixmap scaled = QPixmap::fromImage(img).scaledToWidth(128);
 				_img = new QGraphicsPixmapItem(scaled, this);
 				_img->setVisible(false);
@@ -111,9 +111,9 @@ void PdfPlotItem::showDescription(bool shown)
 
 
 
-PdfPlotCurve::PdfPlotCurve(const QString & name, const QMap<int, std::vector<unsigned char> > * imagesMapRef = 0, QObject * parent) :
+PdfPlotCurve::PdfPlotCurve(const QString & name, const QMap<int, Signature> * signaturesMapRef = 0, QObject * parent) :
 	UPlotCurve(name, parent),
-	_imagesMapRef(imagesMapRef)
+	_signaturesMapRef(signaturesMapRef)
 {
 
 }
@@ -139,7 +139,7 @@ void PdfPlotCurve::setData(const QMap<int, float> & dataMap, const QMap<int, int
 		while(margin < 0)
 		{
 			PdfPlotItem * newItem = new PdfPlotItem(0, 0, 2, 0);
-			newItem->setImagesRef(_imagesMapRef);
+			newItem->setSignaturesRef(_signaturesMapRef);
 			this->_addValue(newItem);
 			++margin;
 		}

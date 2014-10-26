@@ -114,25 +114,7 @@ public:
 	double getDbSavingTime() const;
 	int getMapId(int signatureId) const;
 	std::vector<unsigned char> getImage(int signatureId) const;
-	void getImageDepth(
-			int locationId,
-			std::vector<unsigned char> & rgb,
-			std::vector<unsigned char> & depth,
-			std::vector<unsigned char> & depth2d,
-			float & fx,
-			float & fy,
-			float & cx,
-			float & cy,
-			Transform & localTransform);
-	void getImageDepthRaw(
-				int locationId,
-				cv::Mat & rgb,
-				cv::Mat & depth,
-				float & fx,
-				float & fy,
-				float & cx,
-				float & cy,
-				Transform & localTransform);
+	Signature getSignatureData(int locationId, bool uncompressedData = false);
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}
 	bool isIncremental() const {return _incrementalMemory;}
@@ -159,7 +141,6 @@ public:
 
 	//keypoint stuff
 	const VWDictionary * getVWDictionary() const;
-	std::multimap<int, cv::KeyPoint> getWords(int signatureId) const;
 	Feature2D::Type getFeatureType() const {return _featureType;}
 
 	// RGB-D stuff

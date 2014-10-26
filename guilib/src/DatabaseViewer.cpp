@@ -304,40 +304,10 @@ void DatabaseViewer::exportDatabase()
 				for(int i=0; i<ids_.size(); i+=1+framesIgnored)
 				{
 					int id = ids_.at(i);
-					std::vector<unsigned char> compressedRgb, compressedDepth, compressedDepth2d;
-					float tmpFx, tmpFy, tmpCx, tmpCy;
-					rtabmap::Transform tmpLocalTransform, pose;
 
-					memory_->getImageDepth(id, compressedRgb, compressedDepth, compressedDepth2d, tmpFx, tmpFy, tmpCx, tmpCy, tmpLocalTransform);
-					if(dialog.isOdomExported())
-					{
-						memory_->getPose(id, pose, true);
-					}
-
-					cv::Mat rgb, depth, depth2d;
-					float fx = 0, fy = 0, cx = 0, cy = 0;
-					rtabmap::Transform localTransform;
-
-					if(dialog.isRgbExported())
-					{
-						rgb = rtabmap::util3d::uncompressImage(compressedRgb);
-					}
-					if(dialog.isDepthExported())
-					{
-						depth = rtabmap::util3d::uncompressImage(compressedDepth);
-						fx = tmpFx;
-						fy = tmpFy;
-						cx = tmpCx;
-						cy = tmpCy;
-						localTransform = tmpLocalTransform;
-					}
-					if(dialog.isDepth2dExported())
-					{
-						depth2d = rtabmap::util3d::uncompressData(compressedDepth2d);
-					}
-
-					rtabmap::SensorData data(rgb, depth, depth2d, fx, fy, cx, cy, pose, localTransform, id);
-					recorder.addData(data);
+					Signature data = memory_->getSignatureData(id, true);
+					rtabmap::SensorData sensorData = data.toSensorData();
+					recorder.addData(sensorData);
 
 					progressDialog.appendText(tr("Exported node %1").arg(id));
 					progressDialog.incrementStep();
@@ -764,40 +734,35 @@ void DatabaseViewer::view3DMap()
 						rtabmap::Transform pose = iter->second;
 						if(!pose.isNull())
 						{
-							std::vector<unsigned char> image, depth, depth2d;
-							float fx, fy, cx, cy;
-							rtabmap::Transform localTransform;
-							memory_->getImageDepth(iter->first, image, depth, depth2d, fx, fy, cx, cy, localTransform);
+							Signature data = memory_->getSignatureData(iter->first, true);
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-							cv::Mat imageMat = rtabmap::util3d::uncompressImage(image);
-							cv::Mat depthMat = rtabmap::util3d::uncompressImage(depth);
-							UASSERT(imageMat.empty() || imageMat.type()==CV_8UC3 || imageMat.type() == CV_8UC1);
-							UASSERT(depthMat.empty() || depthMat.type()==CV_8UC1 || depthMat.type() == CV_16UC1 || depthMat.type() == CV_32FC1);
-							if(depthMat.type() == CV_8UC1)
+							UASSERT(data.getImageRaw().empty() || data.getImageRaw().type()==CV_8UC3 || data.getImageRaw().type() == CV_8UC1);
+							UASSERT(data.getDepthRaw().empty() || data.getDepthRaw().type()==CV_8UC1 || data.getDepthRaw().type() == CV_16UC1 || data.getDepthRaw().type() == CV_32FC1);
+							if(data.getDepthRaw().type() == CV_8UC1)
 							{
 								cv::Mat leftImg;
-								if(imageMat.channels() == 3)
+								if(data.getImageRaw().channels() == 3)
 								{
-									cv::cvtColor(imageMat, leftImg, CV_BGR2GRAY);
+									cv::cvtColor(data.getImageRaw(), leftImg, CV_BGR2GRAY);
 								}
 								else
 								{
-									leftImg = imageMat;
+									leftImg = data.getImageRaw();
 								}
 								cloud = rtabmap::util3d::cloudFromDisparityRGB(
-									imageMat,
-									util3d::disparityFromStereoImages(leftImg, depthMat),
-									cx, cy,
-									fx, fy,
+										data.getImageRaw(),
+									util3d::disparityFromStereoImages(leftImg, data.getDepthRaw()),
+									data.getDepthCx(), data.getDepthCy(),
+									data.getDepthFx(), data.getDepthFy(),
 									decimation);
 							}
 							else
 							{
 								cloud = rtabmap::util3d::cloudFromDepthRGB(
-										imageMat,
-										depthMat,
-										cx, cy,
-										fx, fy,
+										data.getImageRaw(),
+										data.getDepthRaw(),
+										data.getDepthCx(), data.getDepthCy(),
+										data.getDepthFx(), data.getDepthFy(),
 										decimation);
 							}
 
@@ -806,7 +771,7 @@ void DatabaseViewer::view3DMap()
 								cloud = rtabmap::util3d::passThrough<pcl::PointXYZRGB>(cloud, "z", 0, maxDepth);
 							}
 
-							cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, localTransform);
+							cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, data.getLocalTransform());
 
 							QColor color = Qt::red;
 							int mapId = memory_->getMapId(iter->first);
@@ -890,40 +855,35 @@ void DatabaseViewer::generate3DMap()
 								rtabmap::Transform pose = uValue(optimizedPoses, iter->first, rtabmap::Transform());
 								if(!pose.isNull())
 								{
-									std::vector<unsigned char> image, depth, depth2d;
-									float fx, fy, cx, cy;
-									rtabmap::Transform localTransform;
-									memory_->getImageDepth(iter->first, image, depth, depth2d, fx, fy, cx, cy, localTransform);
+									Signature data = memory_->getSignatureData(iter->first, true);
 									pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-									cv::Mat imageMat = rtabmap::util3d::uncompressImage(image);
-									cv::Mat depthMat = rtabmap::util3d::uncompressImage(depth);
-									UASSERT(imageMat.empty() || imageMat.type()==CV_8UC3 || imageMat.type() == CV_8UC1);
-									UASSERT(depthMat.empty() || depthMat.type()==CV_8UC1 || depthMat.type() == CV_16UC1 || depthMat.type() == CV_32FC1);
-									if(depthMat.type() == CV_8UC1)
+									UASSERT(data.getImageRaw().empty() || data.getImageRaw().type()==CV_8UC3 || data.getImageRaw().type() == CV_8UC1);
+									UASSERT(data.getDepthRaw().empty() || data.getDepthRaw().type()==CV_8UC1 || data.getDepthRaw().type() == CV_16UC1 || data.getDepthRaw().type() == CV_32FC1);
+									if(data.getDepthRaw().type() == CV_8UC1)
 									{
 										cv::Mat leftImg;
-										if(imageMat.channels() == 3)
+										if(data.getImageRaw().channels() == 3)
 										{
-											cv::cvtColor(imageMat, leftImg, CV_BGR2GRAY);
+											cv::cvtColor(data.getImageRaw(), leftImg, CV_BGR2GRAY);
 										}
 										else
 										{
-											leftImg = imageMat;
+											leftImg = data.getImageRaw();
 										}
 										cloud = rtabmap::util3d::cloudFromDisparityRGB(
-											imageMat,
-											util3d::disparityFromStereoImages(leftImg, depthMat),
-											cx, cy,
-											fx, fy,
+												data.getImageRaw(),
+											util3d::disparityFromStereoImages(leftImg, data.getDepthRaw()),
+											data.getDepthCx(), data.getDepthCy(),
+											data.getDepthFx(), data.getDepthFy(),
 											decimation);
 									}
 									else
 									{
 										cloud = rtabmap::util3d::cloudFromDepthRGB(
-												imageMat,
-												depthMat,
-												cx, cy,
-												fx, fy,
+												data.getImageRaw(),
+												data.getDepthRaw(),
+												data.getDepthCx(), data.getDepthCy(),
+												data.getDepthFx(), data.getDepthFy(),
 												decimation);
 									}
 
@@ -932,7 +892,7 @@ void DatabaseViewer::generate3DMap()
 										cloud = rtabmap::util3d::passThrough<pcl::PointXYZRGB>(cloud, "z", 0, maxDepth);
 									}
 
-									cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, pose*localTransform);
+									cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, pose*data.getLocalTransform());
 									std::string name = uFormat("%s/node%d.pcd", path.toStdString().c_str(), iter->first);
 									pcl::io::savePCDFile(name, *cloud);
 									UINFO("Saved %s (%d points)", name.c_str(), cloud->size());
@@ -1077,25 +1037,19 @@ void DatabaseViewer::update(int value,
 			QImage imgDepth;
 			if(memory_)
 			{
-				std::vector<unsigned char> image, depth, depth2d;
-				float fx, fy, cx, cy;
-				rtabmap::Transform localTransform;
-				memory_->getImageDepth(id, image, depth, depth2d, fx, fy, cx, cy, localTransform);
-				cv::Mat imageMat = rtabmap::util3d::uncompressImage(image);
-				cv::Mat depthMat = rtabmap::util3d::uncompressImage(depth);
-				if(!image.empty())
+				Signature data = memory_->getSignatureData(id, true);
+				if(!data.getImageRaw().empty())
 				{
-					img = uCvMat2QImage(imageMat);
+					img = uCvMat2QImage(data.getImageRaw());
 				}
-				if(!depth.empty())
+				if(!data.getDepthRaw().empty())
 				{
-					imgDepth = uCvMat2QImage(depthMat);
+					imgDepth = uCvMat2QImage(data.getDepthRaw());
 				}
 
-				std::multimap<int, cv::KeyPoint> words = memory_->getWords(id);
-				if(words.size())
+				if(data.getWords().size())
 				{
-					view->setFeatures(words);
+					view->setFeatures(data.getWords());
 				}
 
 				mapId = memory_->getMapId(id);
@@ -1388,84 +1342,77 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link,
 
 	if(cloudFrom->size() == 0 && cloudTo->size() == 0)
 	{
-		float fxA, fyA, cxA, cyA;
-		float fxB, fyB, cxB, cyB;
-		rtabmap::Transform localTransformA, localTransformB;
+		Signature dataFrom, dataTo;
 
-		std::vector<unsigned char> imageBytesA, depthBytesA, depth2dBytesA;
-		memory_->getImageDepth(link.from(), imageBytesA, depthBytesA, depth2dBytesA, fxA, fyA, cxA, cyA, localTransformA);
-		cv::Mat imageA = rtabmap::util3d::uncompressImage(imageBytesA);
-		cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
-		cv::Mat depth2dA = rtabmap::util3d::uncompressData(depth2dBytesA);
-		UASSERT(imageA.empty() || imageA.type()==CV_8UC3 || imageA.type() == CV_8UC1);
-		UASSERT(depthA.empty() || depthA.type()==CV_8UC1 || depthA.type() == CV_16UC1 || depthA.type() == CV_32FC1);
+		dataFrom = memory_->getSignatureData(link.from(), true);
+		UASSERT(dataFrom.getImageRaw().empty() || dataFrom.getImageRaw().type()==CV_8UC3 || dataFrom.getImageRaw().type() == CV_8UC1);
+		UASSERT(dataFrom.getDepthRaw().empty() || dataFrom.getDepthRaw().type()==CV_8UC1 || dataFrom.getDepthRaw().type() == CV_16UC1 || dataFrom.getDepthRaw().type() == CV_32FC1);
 
-		std::vector<unsigned char> imageBytesB, depthBytesB, depth2dBytesB;
-		memory_->getImageDepth(link.to(), imageBytesB, depthBytesB, depth2dBytesB, fxB, fyB, cxB, cyB, localTransformB);
-		cv::Mat imageB = rtabmap::util3d::uncompressImage(imageBytesB);
-		cv::Mat depthB = rtabmap::util3d::uncompressImage(depthBytesB);
-		cv::Mat depth2dB = rtabmap::util3d::uncompressData(depth2dBytesB);
+		dataTo = memory_->getSignatureData(link.to(), true);
+		UASSERT(dataTo.getImageRaw().empty() || dataTo.getImageRaw().type()==CV_8UC3 || dataTo.getImageRaw().type() == CV_8UC1);
+		UASSERT(dataTo.getDepthRaw().empty() || dataTo.getDepthRaw().type()==CV_8UC1 || dataTo.getDepthRaw().type() == CV_16UC1 || dataTo.getDepthRaw().type() == CV_32FC1);
+
 
 		//cloud 3d
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudA;
-		if(depthA.type() == CV_8UC1)
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFrom;
+		if(dataFrom.getDepthRaw().type() == CV_8UC1)
 		{
-			cloudA = rtabmap::util3d::cloudFromStereoImages(
-					imageA,
-					depthA,
-					cxA, cyA,
-					fxA, fyA,
+			cloudFrom = rtabmap::util3d::cloudFromStereoImages(
+					dataFrom.getImageRaw(),
+					dataFrom.getDepthRaw(),
+					dataFrom.getDepthCx(), dataFrom.getDepthCy(),
+					dataFrom.getDepthFx(), dataFrom.getDepthFy(),
 					1);
 		}
 		else
 		{
-			cloudA = rtabmap::util3d::cloudFromDepthRGB(
-					imageA,
-					depthA,
-					cxA, cyA,
-					fxA, fyA,
+			cloudFrom = rtabmap::util3d::cloudFromDepthRGB(
+					dataFrom.getImageRaw(),
+					dataFrom.getDepthRaw(),
+					dataFrom.getDepthCx(), dataFrom.getDepthCy(),
+					dataFrom.getDepthFx(), dataFrom.getDepthFy(),
 					1);
 		}
 
-		cloudA = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudA);
-		cloudA = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudA, localTransformA);
+		cloudFrom = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudFrom);
+		cloudFrom = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudFrom, dataFrom.getLocalTransform());
 
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudB;
-		if(depthB.type() == CV_8UC1)
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudTo;
+		if(dataTo.getDepthRaw().type() == CV_8UC1)
 		{
-			cloudB = rtabmap::util3d::cloudFromStereoImages(
-					imageB,
-					depthB,
-					cxB, cyB,
-					fxB, fyB,
+			cloudTo = rtabmap::util3d::cloudFromStereoImages(
+					dataTo.getImageRaw(),
+					dataTo.getDepthRaw(),
+					dataTo.getDepthCx(), dataTo.getDepthCy(),
+					dataTo.getDepthFx(), dataTo.getDepthFy(),
 					1);
 		}
 		else
 		{
-			cloudB = rtabmap::util3d::cloudFromDepthRGB(
-					imageB,
-					depthB,
-					cxB, cyB,
-					fxB, fyB,
+			cloudTo = rtabmap::util3d::cloudFromDepthRGB(
+					dataTo.getImageRaw(),
+					dataTo.getDepthRaw(),
+					dataTo.getDepthCx(), dataTo.getDepthCy(),
+					dataTo.getDepthFx(), dataTo.getDepthFy(),
 					1);
 		}
 
-		cloudB = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudB);
-		cloudB = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudB, t*localTransformB);
+		cloudTo = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudTo);
+		cloudTo = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudTo, t*dataTo.getLocalTransform());
 
 		//cloud 2d
 		pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
-		scanA = rtabmap::util3d::depth2DToPointCloud(depth2dA);
-		scanB = rtabmap::util3d::depth2DToPointCloud(depth2dB);
+		scanA = rtabmap::util3d::depth2DToPointCloud(dataFrom.getDepth2DRaw());
+		scanB = rtabmap::util3d::depth2DToPointCloud(dataTo.getDepth2DRaw());
 		scanB = rtabmap::util3d::transformPointCloud<pcl::PointXYZ>(scanB, t);
 
-		if(cloudA->size())
+		if(cloudFrom->size())
 		{
-			ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudA);
+			ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom);
 		}
-		if(cloudB->size())
+		if(cloudTo->size())
 		{
-			ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudB);
+			ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo);
 		}
 		if(scanA->size())
 		{
@@ -1548,14 +1495,11 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			UINFO("Update scans list...");
 			for(int i=0; i<ids_.size(); ++i)
 			{
-				std::vector<unsigned char> imageBytes, depthBytes, depth2dBytes;
-				float fx, fy, cx, cy;
-				rtabmap::Transform localTransform;
-				memory_->getImageDepth(ids_.at(i), imageBytes, depthBytes, depth2dBytes, fx, fy, cx, cy, localTransform);
-				if(depth2dBytes.size())
+				Signature data = memory_->getSignatureData(ids_.at(i), false);
+				if(data.getDepth2D().size())
 				{
 					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-					cv::Mat depth2d = rtabmap::util3d::uncompressData(depth2dBytes);
+					cv::Mat depth2d = rtabmap::util3d::uncompressData(data.getDepth2D());
 					cloud = rtabmap::util3d::depth2DToPointCloud(depth2d);
 					scans_.insert(std::make_pair(ids_.at(i), cloud));
 				}
@@ -1719,23 +1663,17 @@ void DatabaseViewer::refineConstraint(int from, int to)
 	double fitness = 0.0f;
 	Transform transform;
 
-	float fxA, fyA, cxA, cyA;
-	float fxB, fyB, cxB, cyB;
-	rtabmap::Transform localTransformA, localTransformB;
-
-	std::vector<unsigned char> imageBytesA, depthBytesA, depth2dBytesA;
-	memory_->getImageDepth(currentLink.from(), imageBytesA, depthBytesA, depth2dBytesA, fxA, fyA, cxA, cyA, localTransformA);
-
-	std::vector<unsigned char> imageBytesB, depthBytesB, depth2dBytesB;
-	memory_->getImageDepth(currentLink.to(), imageBytesB, depthBytesB, depth2dBytesB, fxB, fyB, cxB, cyB, localTransformB);
+	Signature dataFrom, dataTo;
+	dataFrom = memory_->getSignatureData(currentLink.from(), false);
+	dataTo = memory_->getSignatureData(currentLink.to(), false);
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB(new pcl::PointCloud<pcl::PointXYZ>);
 	if(ui_->checkBox_icp_2d->isChecked())
 	{
 		//2D
-		cv::Mat oldDepth2D = util3d::uncompressData(depth2dBytesA);
-		cv::Mat newDepth2D = util3d::uncompressData(depth2dBytesB);
+		cv::Mat oldDepth2D = util3d::uncompressData(dataFrom.getDepth2D());
+		cv::Mat newDepth2D = util3d::uncompressData(dataTo.getDepth2D());
 
 		if(!oldDepth2D.empty() && !newDepth2D.empty())
 		{
@@ -1764,8 +1702,8 @@ void DatabaseViewer::refineConstraint(int from, int to)
 	else
 	{
 		//3D
-		cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
-		cv::Mat depthB = rtabmap::util3d::uncompressImage(depthBytesB);
+		cv::Mat depthA = rtabmap::util3d::uncompressImage(dataFrom.getDepth());
+		cv::Mat depthB = rtabmap::util3d::uncompressImage(dataTo.getDepth());
 
 		if(depthA.type() == CV_8UC1 || depthB.type() == CV_8UC1)
 		{
@@ -1775,19 +1713,19 @@ void DatabaseViewer::refineConstraint(int from, int to)
 		}
 
 		cloudA = util3d::getICPReadyCloud(depthA,
-						fxA, fyA, cxA, cyA,
-						ui_->spinBox_icp_decimation->value(),
-						ui_->doubleSpinBox_icp_maxDepth->value(),
-						ui_->doubleSpinBox_icp_voxel->value(),
-						0, // no sampling
-						localTransformA);
+				dataFrom.getDepthFx(), dataFrom.getDepthFy(), dataFrom.getDepthCx(), dataFrom.getDepthCy(),
+				ui_->spinBox_icp_decimation->value(),
+				ui_->doubleSpinBox_icp_maxDepth->value(),
+				ui_->doubleSpinBox_icp_voxel->value(),
+				0, // no sampling
+				dataFrom.getLocalTransform());
 		cloudB = util3d::getICPReadyCloud(depthB,
-						fxB, fyB, cxB, cyB,
-						ui_->spinBox_icp_decimation->value(),
-						ui_->doubleSpinBox_icp_maxDepth->value(),
-						ui_->doubleSpinBox_icp_voxel->value(),
-						0, // no sampling
-						currentLink.transform() * localTransformB);
+				dataTo.getDepthFx(), dataTo.getDepthFy(), dataTo.getDepthCx(), dataTo.getDepthCy(),
+				ui_->spinBox_icp_decimation->value(),
+				ui_->doubleSpinBox_icp_maxDepth->value(),
+				ui_->doubleSpinBox_icp_voxel->value(),
+				0, // no sampling
+				currentLink.transform() * dataTo.getLocalTransform());
 
 		if(ui_->checkBox_icp_p2plane->isChecked())
 		{
@@ -1905,26 +1843,22 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 			Memory tmpMemory(parameters);
 
 			// Add signatures
-			float fxA, fyA, cxA, cyA;
-			float fxB, fyB, cxB, cyB;
-			rtabmap::Transform localTransformA, localTransformB;
+			SensorData dataFrom = memory_->getSignatureData(from, true).toSensorData();
+			SensorData dataTo = memory_->getSignatureData(to, true).toSensorData();
 
-			std::vector<unsigned char> imageBytesA, depthBytesA, depth2dBytesA;
-			memory_->getImageDepth(from, imageBytesA, depthBytesA, depth2dBytesA, fxA, fyA, cxA, cyA, localTransformA);
-			cv::Mat imageA = rtabmap::util3d::uncompressImage(imageBytesA);
-			cv::Mat depthA = rtabmap::util3d::uncompressImage(depthBytesA);
-			SensorData dataFrom(imageA, depthA, fxA, fyA, cxA, cyA, Transform::getIdentity(), localTransformA, 1);
+			if(from > to)
+			{
+				tmpMemory.update(dataTo);
+				tmpMemory.update(dataFrom);
+			}
+			else
+			{
+				tmpMemory.update(dataFrom);
+				tmpMemory.update(dataTo);
+			}
 
-			std::vector<unsigned char> imageBytesB, depthBytesB, depth2dBytesB;
-			memory_->getImageDepth(to, imageBytesB, depthBytesB, depth2dBytesB, fxB, fyB, cxB, cyB, localTransformB);
-			cv::Mat imageB = rtabmap::util3d::uncompressImage(imageBytesB);
-			cv::Mat depthB = rtabmap::util3d::uncompressImage(depthBytesB);
-			SensorData dataTo(imageB, depthB, fxB, fyB, cxB, cyB, Transform::getIdentity(), localTransformB, 2);
 
-			tmpMemory.update(dataFrom);
-			tmpMemory.update(dataTo);
-
-			t = tmpMemory.computeVisualTransform(2, 1, &rejectedMsg);
+			t = tmpMemory.computeVisualTransform(to, from, &rejectedMsg);
 		}
 		else
 		{

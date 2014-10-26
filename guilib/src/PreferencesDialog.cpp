@@ -203,6 +203,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_map_resolution, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_map_fillEmptySpace, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_map_opacity, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->spinbox_map_fillEmptyRadius, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_map_occupancyFrom3DCloud, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	//Logging panel
 	connect(_ui->comboBox_loggerLevel, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteLoggingPanel()));
@@ -287,7 +289,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	// Map objects name with the corresponding parameter key, needed for the addParameter() slots
 	//Rtabmap
 	_ui->groupBox_publishing->setObjectName(Parameters::kRtabmapPublishStats().c_str());
-	_ui->general_checkBox_publishRawData->setObjectName(Parameters::kRtabmapPublishImage().c_str());
+	_ui->general_checkBox_publishRawData->setObjectName(Parameters::kRtabmapPublishLastSignature().c_str());
 	_ui->general_checkBox_publishPdf->setObjectName(Parameters::kRtabmapPublishPdf().c_str());
 	_ui->general_checkBox_publishLikelihood->setObjectName(Parameters::kRtabmapPublishLikelihood().c_str());
 	_ui->general_checkBox_statisticLogsBufferedInRAM->setObjectName(Parameters::kRtabmapStatisticLogsBufferedInRAM().c_str());
@@ -334,7 +336,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->lineEdit_bayes_predictionLC, SIGNAL(textChanged(const QString &)), this, SLOT(updatePredictionPlot()));
 
 	//Keypoint-based
-	_ui->checkBox_kp_publishKeypoints->setObjectName(Parameters::kKpPublishKeypoints().c_str());
 	_ui->comboBox_dictionary_strategy->setObjectName(Parameters::kKpNNStrategy().c_str());
 	_ui->checkBox_dictionary_incremental->setObjectName(Parameters::kKpIncrementalDictionary().c_str());
 	_ui->comboBox_detector_strategy->setObjectName(Parameters::kKpDetectorStrategy().c_str());
@@ -819,7 +820,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_map_resolution->setValue(0.05);
 		_ui->checkBox_map_fillEmptySpace->setChecked(true);
 		_ui->checkBox_map_occupancyFrom3DCloud->setChecked(false);
-		_ui->checkBox_map_fillEmptyRadius->setValue(0);
+		_ui->spinbox_map_fillEmptyRadius->setValue(0);
 		_ui->doubleSpinBox_map_opacity->setValue(0.75);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_logging1->objectName())
@@ -1056,7 +1057,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->doubleSpinBox_map_resolution->setValue(settings.value("gridMapResolution", _ui->doubleSpinBox_map_resolution->value()).toDouble());
 	_ui->checkBox_map_fillEmptySpace->setChecked(settings.value("gridMapFillEmptySpace", _ui->checkBox_map_fillEmptySpace->isChecked()).toBool());
 	_ui->checkBox_map_occupancyFrom3DCloud->setChecked(settings.value("gridMapOccupancyFrom3DCloud", _ui->checkBox_map_occupancyFrom3DCloud->isChecked()).toBool());
-	_ui->checkBox_map_fillEmptyRadius->setValue(settings.value("gridMapFillEmptyRadius", _ui->checkBox_map_fillEmptyRadius->value()).toInt());
+	_ui->spinbox_map_fillEmptyRadius->setValue(settings.value("gridMapFillEmptyRadius", _ui->spinbox_map_fillEmptyRadius->value()).toInt());
 	_ui->doubleSpinBox_map_opacity->setValue(settings.value("gridMapOpacity", _ui->doubleSpinBox_map_opacity->value()).toDouble());
 
 	settings.endGroup(); // General
@@ -1298,7 +1299,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath)
 	settings.setValue("gridMapResolution", _ui->doubleSpinBox_map_resolution->value());
 	settings.setValue("gridMapFillEmptySpace", _ui->checkBox_map_fillEmptySpace->isChecked());
 	settings.setValue("gridMapOccupancyFrom3DCloud", _ui->checkBox_map_occupancyFrom3DCloud->isChecked());
-	settings.setValue("gridMapFillEmptyRadius", _ui->checkBox_map_fillEmptyRadius->value());
+	settings.setValue("gridMapFillEmptyRadius", _ui->spinbox_map_fillEmptyRadius->value());
 	settings.setValue("gridMapOpacity", _ui->doubleSpinBox_map_opacity->value());
 	settings.endGroup(); // General
 
@@ -2665,7 +2666,7 @@ bool PreferencesDialog::isGridMapFrom3DCloud() const
 }
 int PreferencesDialog::getGridMapFillEmptyRadius() const
 {
-	return _ui->checkBox_map_fillEmptyRadius->value();
+	return _ui->spinbox_map_fillEmptyRadius->value();
 }
 double PreferencesDialog::getGridMapOpacity() const
 {

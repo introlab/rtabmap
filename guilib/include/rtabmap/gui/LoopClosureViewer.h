@@ -32,14 +32,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/Signature.h>
 #include <opencv2/opencv.hpp>
 #include <QtGui/QWidget>
 
 class Ui_loopClosureViewer;
 
 namespace rtabmap {
-
-class Signature;
 
 class RTABMAPGUI_EXP LoopClosureViewer : public QWidget {
 
@@ -49,11 +48,10 @@ public:
 	LoopClosureViewer(QWidget * parent);
 	virtual ~LoopClosureViewer();
 
-	// take ownership
-	void setData(Signature * sA, Signature * sB); // sB contains loop transform as pose() from sA
+	void setData(const Signature & sA, const Signature & sB); // sB contains loop transform as pose() from sA
 
-	const Signature * sA() const {return sA_;}
-	const Signature * sB() const {return sB_;}
+	const Signature & sA() const {return sA_;}
+	const Signature & sB() const {return sB_;}
 
 public slots:
 	void setDecimation(int decimation) {decimation_ = decimation;}
@@ -67,8 +65,8 @@ protected:
 private:
 	Ui_loopClosureViewer * ui_;
 
-	Signature * sA_;
-	Signature * sB_;
+	Signature sA_;
+	Signature sB_;
 	Transform transform_;
 
 	int decimation_;

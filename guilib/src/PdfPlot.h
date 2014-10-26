@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <utilite/UPlot.h>
 #include "opencv2/opencv.hpp"
+#include "rtabmap/core/Signature.h"
 
 namespace rtabmap {
 
@@ -40,7 +41,7 @@ public:
 	virtual ~PdfPlotItem();
 
 	void setLikelihood(int id, float value, int childCount);
-	void setImagesRef(const QMap<int, std::vector<unsigned char> > * imagesRef) {_imagesRef = imagesRef;}
+	void setSignaturesRef(const QMap<int, Signature> * signaturesRef) {_signaturesRef = signaturesRef;}
 
 	float value() const {return this->data().y();}
 	int id() const {return this->data().x();}
@@ -51,7 +52,7 @@ protected:
 private:
 	QGraphicsPixmapItem * _img;
 	int _childCount;
-	const QMap<int, std::vector<unsigned char> > * _imagesRef;
+	const QMap<int, Signature> * _signaturesRef;
 	QGraphicsTextItem * _text;
 
 };
@@ -61,14 +62,14 @@ class PdfPlotCurve : public UPlotCurve
 	Q_OBJECT
 
 public:
-	PdfPlotCurve(const QString & name, const QMap<int, std::vector<unsigned char> > * imagesMapRef, QObject * parent = 0);
+	PdfPlotCurve(const QString & name, const QMap<int, Signature> * signaturesMapRef, QObject * parent = 0);
 	virtual ~PdfPlotCurve();
 
 	virtual void clear();
 	void setData(const QMap<int, float> & dataMap, const QMap<int, int> & weightsMap);
 
 private:
-	const QMap<int, std::vector<unsigned char> > * _imagesMapRef;
+	const QMap<int, Signature> * _signaturesMapRef;
 };
 
 }

@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/imgproc/imgproc.hpp>
 #include <list>
 #include <vector>
+#include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Link.h>
 
 namespace rtabmap {
@@ -129,26 +130,16 @@ public:
 	void setLocalLoopClosureId(int localLoopClosureId) {_localLoopClosureId = localLoopClosureId;}
 
 	void setMapIds(const std::map<int, int> & mapIds) {_mapIds = mapIds;}
-	void setImages(const std::map<int, std::vector<unsigned char> > & images) {_images = images;}
-	void setDepths(const std::map<int, std::vector<unsigned char> > & depths) {_depths = depths;}
-	void setDepth2ds(const std::map<int, std::vector<unsigned char> > & depth2ds) {_depth2ds = depth2ds;}
-	void setDepthFxs(const std::map<int, float> & fxs) {_depthFxs = fxs;}
-	void setDepthFys(const std::map<int, float> & fys) {_depthFys = fys;}
-	void setDepthCxs(const std::map<int, float> & cxs) {_depthCxs = cxs;}
-	void setDepthCys(const std::map<int, float> & cys) {_depthCys = cys;}
-	void setLocalTransforms(const std::map<int, Transform> & localTransforms) {_localTransforms = localTransforms;}
+	void setSignature(const Signature & s) {_signature = s;}
 
 	void setPoses(const std::map<int, Transform> & poses) {_poses = poses;}
 	void setConstraints(const std::multimap<int, Link> & constraints) {_constraints = constraints;}
-	void setCurrentPose(const Transform & pose) {_currentPose = pose;}
 	void setMapCorrection(const Transform & mapCorrection) {_mapCorrection = mapCorrection;}
 	void setLoopClosureTransform(const Transform & loopClosureTransform) {_loopClosureTransform = loopClosureTransform;}
 	void setWeights(const std::map<int, int> & weights) {_weights = weights;}
 	void setPosterior(const std::map<int, float> & posterior) {_posterior = posterior;}
 	void setLikelihood(const std::map<int, float> & likelihood) {_likelihood = likelihood;}
 	void setRawLikelihood(const std::map<int, float> & rawLikelihood) {_rawLikelihood = rawLikelihood;}
-	void setRefWords(const std::multimap<int, cv::KeyPoint> & refWords) {_refWords = refWords;}
-	void setLoopWords(const std::multimap<int, cv::KeyPoint> & loopWords) {_loopWords = loopWords;}
 
 	// getters
 	bool extended() const {return _extended;}
@@ -157,26 +148,16 @@ public:
 	int localLoopClosureId() const {return _localLoopClosureId;}
 
 	const std::map<int, int> & getMapIds() const {return _mapIds;}
-	const std::map<int, std::vector<unsigned char> > & getImages() const {return _images;}
-	const std::map<int, std::vector<unsigned char> > & getDepths() const {return _depths;}
-	const std::map<int, std::vector<unsigned char> > & getDepth2ds() const {return _depth2ds;}
-	const std::map<int, float> & getDepthFxs() const {return _depthFxs;}
-	const std::map<int, float> & getDepthFys() const {return _depthFys;}
-	const std::map<int, float> & getDepthCxs() const {return _depthCxs;}
-	const std::map<int, float> & getDepthCys() const {return _depthCys;}
-	const std::map<int, Transform> & getLocalTransforms() const {return _localTransforms;}
+	const Signature & getSignature() const {return _signature;}
 
 	const std::map<int, Transform> & poses() const {return _poses;}
 	const std::multimap<int, Link> & constraints() const {return _constraints;}
-	const Transform & currentPose() const {return _currentPose;}
 	const Transform & mapCorrection() const {return _mapCorrection;}
 	const Transform & loopClosureTransform() const {return _loopClosureTransform;}
 	const std::map<int, int> & weights() const {return _weights;}
 	const std::map<int, float> & posterior() const {return _posterior;}
 	const std::map<int, float> & likelihood() const {return _likelihood;}
 	const std::map<int, float> & rawLikelihood() const {return _rawLikelihood;}
-	const std::multimap<int, cv::KeyPoint> & refWords() const {return _refWords;}
-	const std::multimap<int, cv::KeyPoint> & loopWords() const {return _loopWords;}
 
 	const std::map<std::string, float> & data() const {return _data;}
 
@@ -189,20 +170,12 @@ private:
 
 	// extended data start here...
 	std::map<int, int> _mapIds;
-	std::map<int, std::vector<unsigned char> > _images;
 
-	// Metric data
-	std::map<int, std::vector<unsigned char> > _depths;
-	std::map<int, std::vector<unsigned char> > _depth2ds;
-	std::map<int, float> _depthFxs;
-	std::map<int, float> _depthFys;
-	std::map<int, float> _depthCxs;
-	std::map<int, float> _depthCys;
-	std::map<int, Transform> _localTransforms;
+	// Signature data
+	Signature _signature;
 
 	std::map<int, Transform> _poses;
 	std::multimap<int, Link> _constraints;
-	Transform _currentPose;
 	Transform _mapCorrection;
 	Transform _loopClosureTransform;
 
@@ -210,10 +183,6 @@ private:
 	std::map<int, float> _posterior;
 	std::map<int, float> _likelihood;
 	std::map<int, float> _rawLikelihood;
-
-	//keypoint memory
-	std::multimap<int, cv::KeyPoint> _refWords;
-	std::multimap<int, cv::KeyPoint> _loopWords;
 
 	// Format for statistics (Plottable statistics must go in that map) :
 	// {"Group/Name/Unit", value}

@@ -76,7 +76,8 @@ public:
 	RTABMAP_DEPRECATED(bool empty() const, "Use !isValid() instead.");
 
 	const cv::Mat & image() const {return _image;}
-	int id() const {return _id;};
+	int id() const {return _id;}
+	void setId(int id) {_id = id;}
 
 	bool isMetric() const {return !_depthOrRightImage.empty() || _fx != 0.0f || _fyOrBaseline != 0.0f || !_pose.isNull();}
 	void setPose(const Transform & pose) {_pose = pose;}

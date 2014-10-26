@@ -46,8 +46,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
-class Signature;
-
 namespace util3d
 {
 

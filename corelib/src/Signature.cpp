@@ -36,9 +36,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
-Signature::~Signature()
+Signature::Signature() :
+	_id(0), // invalid id
+	_mapId(-1),
+	_weight(-1),
+	_saved(false),
+	_modified(true),
+	_neighborsModified(true),
+	_enabled(false),
+	_fx(0.0f),
+	_fy(0.0f),
+	_cx(0.0f),
+	_cy(0.0f)
 {
-	ULOGGER_DEBUG("id=%d", _id);
 }
 
 Signature::Signature(
@@ -74,6 +84,11 @@ Signature::Signature(
 	_localTransform(localTransform),
 	_words3(words3)
 {
+}
+
+Signature::~Signature()
+{
+	ULOGGER_DEBUG("id=%d", _id);
 }
 
 void Signature::addNeighbors(const std::map<int, Transform> & neighbors)
@@ -210,6 +225,41 @@ void Signature::setDepth(const std::vector<unsigned char> & depth, float fx, flo
 	_fy=fy;
 	_cx=cx;
 	_cy=cy;
+}
+
+SensorData Signature::toSensorData()
+{
+	this->uncompressData();
+	return SensorData(_imageRaw,
+			_depthRaw,
+			_depth2DRaw,
+			_fx,
+			_fy,
+			_cx,
+			_cy,
+			_pose,
+			_localTransform,
+			_id);
+}
+
+void Signature::uncompressData()
+{
+	if(_imageRaw.empty() && _image.size())
+	{
+		//uncompress data
+		util3d::CompressionThread ctImage(_image, true);
+		util3d::CompressionThread ctDepth(_depth, true);
+		util3d::CompressionThread ctDepth2D(_depth2D, false);
+		ctImage.start();
+		ctDepth.start();
+		ctDepth2D.start();
+		ctImage.join();
+		ctDepth.join();
+		ctDepth2D.join();
+		_imageRaw = ctImage.getUncompressedData();
+		_depthRaw = ctDepth.getUncompressedData();
+		_depth2DRaw = ctDepth2D.getUncompressedData();
+	}
 }
 
 } //namespace rtabmap

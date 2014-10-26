@@ -163,23 +163,16 @@ private slots:
 					cloudViewer_->setCloudVisibility(cloudName, true);
 				}
 				else if(iter->first == stats.refImageId() &&
-						uContains(stats.getImages(), iter->first) &&
-						uContains(stats.getDepths(), iter->first) &&
-						uContains(stats.getDepthFxs(), iter->first) &&
-						uContains(stats.getDepthFys(), iter->first) &&
-						uContains(stats.getLocalTransforms(), iter->first))
+						stats.getSignature().id() == iter->first)
 				{
 					// Add the new cloud
-					cv::Mat rgb = util3d::uncompressImage(stats.getImages().at(iter->first));
-					cv::Mat depth = util3d::uncompressImage(stats.getDepths().at(iter->first));
-					Transform localTransform = stats.getLocalTransforms().at(iter->first);
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
-							rgb,
-							depth,
-							stats.getDepthCxs().at(iter->first),
-							stats.getDepthCys().at(iter->first),
-							stats.getDepthFxs().at(iter->first),
-							stats.getDepthFys().at(iter->first),
+							stats.getSignature().getImageRaw(),
+							stats.getSignature().getDepthRaw(),
+							stats.getSignature().getDepthCx(),
+							stats.getSignature().getDepthCy(),
+							stats.getSignature().getDepthFx(),
+							stats.getSignature().getDepthFy(),
 						   8); // decimation
 
 					if(cloud->size())
@@ -187,7 +180,7 @@ private slots:
 						cloud = util3d::passThrough<pcl::PointXYZRGB>(cloud, "z", 0, 4.0f);
 						if(cloud->size())
 						{
-							cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, localTransform);
+							cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, stats.getSignature().getLocalTransform());
 						}
 					}
 					if(!cloudViewer_->addOrUpdateCloud(cloudName, cloud, iter->second))

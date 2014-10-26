@@ -189,7 +189,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->imageView_source->setBackgroundBrush(QBrush(Qt::black));
 	_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
 
-	_posteriorCurve = new PdfPlotCurve("Posterior", &_imagesMap, this);
+	_posteriorCurve = new PdfPlotCurve("Posterior", &_cachedSignatures, this);
 	_ui->posteriorPlot->addCurve(_posteriorCurve, false);
 	_ui->posteriorPlot->showLegend(false);
 	_ui->posteriorPlot->setFixedYAxis(0,1);
@@ -197,11 +197,11 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	tc = _ui->posteriorPlot->addThreshold("Loop closure thr", float(_preferencesDialog->getLoopThr()));
 	connect(this, SIGNAL(loopClosureThrChanged(float)), tc, SLOT(setThreshold(float)));
 
-	_likelihoodCurve = new PdfPlotCurve("Likelihood", &_imagesMap, this);
+	_likelihoodCurve = new PdfPlotCurve("Likelihood", &_cachedSignatures, this);
 	_ui->likelihoodPlot->addCurve(_likelihoodCurve, false);
 	_ui->likelihoodPlot->showLegend(false);
 
-	_rawLikelihoodCurve = new PdfPlotCurve("Likelihood", &_imagesMap, this);
+	_rawLikelihoodCurve = new PdfPlotCurve("Likelihood", &_cachedSignatures, this);
 	_ui->rawLikelihoodPlot->addCurve(_rawLikelihoodCurve, false);
 	_ui->rawLikelihoodPlot->showLegend(false);
 
@@ -698,63 +698,16 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
 
 		// update cache
-		if(_preferencesDialog->isImagesKept())
-		{
-			// images
-			for(std::map<int, std::vector<unsigned char> >::const_iterator iter = stat.getImages().begin();
-				iter != stat.getImages().end();
-				++iter)
-			{
-				if(!iter->second.empty() && !_imagesMap.contains(iter->first))
-				{
-					_imagesMap.insert(iter->first, iter->second);
-				}
-			}
-			// depths
-			for(std::map<int, std::vector<unsigned char> >::const_iterator iter = stat.getDepths().begin();
-				iter != stat.getDepths().end();
-				++iter)
-			{
-				if(!iter->second.empty() && !_depthsMap.contains(iter->first))
-				{
-					float fx = uValue(stat.getDepthFxs(), iter->first, 0.0f);
-					float fy = uValue(stat.getDepthFys(), iter->first, 0.0f);
-					float cx = uValue(stat.getDepthCxs(), iter->first, 0.0f);
-					float cy = uValue(stat.getDepthCys(), iter->first, 0.0f);
-					Transform transform = uValue(stat.getLocalTransforms(), iter->first, Transform());
-					if(fx > 0.0f && fy > 0.0f && !transform.isNull())
-					{
-						_depthsMap.insert(iter->first, iter->second);
-						_depthFxsMap.insert(iter->first, fx);
-						_depthFysMap.insert(iter->first, fy);
-						_depthCxsMap.insert(iter->first, cx);
-						_depthCysMap.insert(iter->first, cy);
-						_localTransformsMap.insert(iter->first, transform);
-					}
-					else
-					{
-						UERROR("Invalid depth data for id=%d", iter->first);
-					}
-				}
-			}
-			// depths2d
-			for(std::map<int, std::vector<unsigned char> >::const_iterator iter = stat.getDepth2ds().begin();
-				iter != stat.getDepth2ds().end();
-				++iter)
-			{
-				if(!iter->second.empty())
-				{
-					_depths2DMap.insert(iter->first, iter->second);
-				}
-			}
+		Signature & signature = *_cachedSignatures.insert(stat.getSignature().id(), stat.getSignature());
+		signature.uncompressData(); // make sure data are already uncompressed
+		UDEBUG("");
 
-			// map ids
-			for(std::map<int, int>::const_iterator iter = stat.getMapIds().begin();
-				iter != stat.getMapIds().end();
-				++iter)
-			{
-				_mapIds.insert(iter->first, iter->second);
-			}
+		// map ids
+		for(std::map<int, int>::const_iterator iter = stat.getMapIds().begin();
+			iter != stat.getMapIds().end();
+			++iter)
+		{
+			_mapIds.insert(iter->first, iter->second);
 		}
 
 		int rehearsed = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
@@ -778,16 +731,12 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		UDEBUG("time= %d ms", time.restart());
 
-		std::vector<unsigned char> refImage = uValue(stat.getImages(), stat.refImageId(), std::vector<unsigned char>());
-		std::vector<unsigned char> refDepth = uValue(stat.getDepths(), stat.refImageId(), std::vector<unsigned char>());
-		std::vector<unsigned char> refDepth2D = uValue(stat.getDepth2ds(), stat.refImageId(), std::vector<unsigned char>());
-		std::vector<unsigned char> loopImage = uValue(stat.getImages(), stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId(), std::vector<unsigned char>());
-		std::vector<unsigned char> loopDepth = uValue(stat.getDepths(), stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId(), std::vector<unsigned char>());
-		std::vector<unsigned char> loopDepth2D = uValue(stat.getDepth2ds(), stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId(), std::vector<unsigned char>());
-
 		int rejectedHyp = bool(uValue(stat.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
 		float highestHypothesisValue = uValue(stat.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f);
 		int matchId = 0;
+		cv::Mat loopImage;
+		cv::Mat loopDepth;
+		int shownLoopId = 0;
 		if(highestHypothesisId > 0 || stat.localLoopClosureId()>0)
 		{
 			bool show = true;
@@ -829,23 +778,12 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			if(show)
 			{
-				if(loopImage.empty())
+				shownLoopId = stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId()>0?stat.localLoopClosureId():highestHypothesisId;
+				QMap<int, Signature>::iterator iter = _cachedSignatures.find(shownLoopId);
+				if(iter != _cachedSignatures.end())
 				{
-					int id = stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId()>0?stat.localLoopClosureId():highestHypothesisId;
-					QMap<int, std::vector<unsigned char> >::iterator iter = _imagesMap.find(id);
-					if(iter != _imagesMap.end())
-					{
-						loopImage = iter.value();
-					}
-				}
-				if(loopDepth.empty())
-				{
-					int id = stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId()>0?stat.localLoopClosureId():highestHypothesisId;
-					QMap<int, std::vector<unsigned char> >::iterator iter = _depthsMap.find(id);
-					if(iter != _depthsMap.end())
-					{
-						loopDepth = iter.value();
-					}
+					loopImage = iter.value().getImageRaw();
+					loopDepth = iter.value().getDepthRaw();
 				}
 			}
 		}
@@ -854,24 +792,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		//update image views
 		{
-			util3d::CompressionThread imageThread(refImage, true);
-			util3d::CompressionThread imageLoopThread(loopImage, true);
-			util3d::CompressionThread depthThread(refDepth, true);
-			util3d::CompressionThread depthLoopThread(loopDepth, true);
-			imageThread.start();
-			depthThread.start();
-			imageLoopThread.start();
-			depthLoopThread.start();
-			imageThread.join();
-			depthThread.join();
-			imageLoopThread.join();
-			depthLoopThread.join();
-			UDEBUG("time= %d ms", time.restart());
-
-			UCvMat2QImageThread qimageThread(imageThread.getUncompressedData());
-			UCvMat2QImageThread qimageLoopThread(imageLoopThread.getUncompressedData());
-			UCvMat2QImageThread qdepthThread(depthThread.getUncompressedData());
-			UCvMat2QImageThread qdepthLoopThread(depthLoopThread.getUncompressedData());
+			UCvMat2QImageThread qimageThread(signature.getImageRaw());
+			UCvMat2QImageThread qimageLoopThread(loopImage);
+			UCvMat2QImageThread qdepthThread(signature.getDepthRaw());
+			UCvMat2QImageThread qdepthLoopThread(loopDepth);
 			qimageThread.start();
 			qdepthThread.start();
 			qimageLoopThread.start();
@@ -912,7 +836,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		// We use the reference image to resize the 2 views
 		_ui->imageView_source->resetZoom();
 		_ui->imageView_loopClosure->resetZoom();
-		if(refImage.empty())
+		if(signature.getImageRaw().empty())
 		{
 			_ui->imageView_source->setSceneRect(_ui->imageView_source->scene()->itemsBoundingRect());
 			_ui->imageView_loopClosure->setSceneRect(_ui->imageView_source->scene()->itemsBoundingRect());
@@ -921,14 +845,16 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		_ui->imageView_loopClosure->fitInView(_ui->imageView_source->sceneRect(), Qt::KeepAspectRatio);
 
 		// do it after scaling
-		if(_ui->imageView_loopClosure->items().size() || stat.loopClosureId()>0)
+		std::multimap<int, cv::KeyPoint> loopWords;
+		if(shownLoopId)
 		{
-			this->drawKeypoints(stat.refWords(), stat.loopWords());
+			QMap<int, Signature>::iterator iter = _cachedSignatures.find(shownLoopId);
+			if(iter!=_cachedSignatures.end())
+			{
+				loopWords = iter->getWords();
+			}
 		}
-		else
-		{
-			this->drawKeypoints(stat.refWords(), std::multimap<int, cv::KeyPoint>()); //empty loop keypoints...
-		}
+		this->drawKeypoints(signature.getWords(), loopWords);
 
 		if(_preferencesDialog->isImageFlipped())
 		{
@@ -938,9 +864,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		UDEBUG("time= %d ms", time.restart());
 
-		_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the last signature/", stat.refImageId(), stat.refWords().size());
-		_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the loop signature/", stat.refImageId(), stat.loopWords().size());
-		ULOGGER_DEBUG("");
+		_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the last signature/", stat.refImageId(), signature.getWords().size());
+		_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the loop signature/", stat.refImageId(), loopWords.size());
 
 		// PDF AND LIKELIHOOD
 		if(!stat.posterior().empty() && _ui->dockWidget_posterior->isVisible())
@@ -986,7 +911,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		if(stat.poses().size())
 		{
 			// update pose only if a odometry is not received
-			updateMapCloud(stat.poses(), _odometryReceived?Transform():stat.currentPose(), stat.constraints());
+			updateMapCloud(stat.poses(),
+					_odometryReceived||stat.poses().size()==0?Transform():stat.poses().rbegin()->second,
+					stat.constraints());
 
 			_odometryReceived = false;
 
@@ -1008,44 +935,19 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				}
 				int loopNewId = stat.refImageId();
 
-				// Add to loop closure viewer if all data is saved
-				Signature * loopOld = new Signature(
-						loopOldId,
-						loopMapId,
-						std::multimap<int, cv::KeyPoint>(),
-						std::multimap<int, pcl::PointXYZ>(),
-						Transform(),
-						_depths2DMap.value(loopOldId, std::vector<unsigned char>()),
-						_imagesMap.value(loopOldId, std::vector<unsigned char>()),
-						_depthsMap.value(loopOldId, std::vector<unsigned char>()),
-						_depthFxsMap.value(loopOldId, 0.0f),
-						_depthFysMap.value(loopOldId, 0.0f),
-						_depthCxsMap.value(loopOldId, 0.0f),
-						_depthCysMap.value(loopOldId, 0.0f),
-						_localTransformsMap.value(loopOldId, Transform()));
+				QMap<int, Signature>::iterator newIter = _cachedSignatures.find(loopNewId);
+				QMap<int, Signature>::iterator oldIter = _cachedSignatures.find(loopOldId);
 
-				Signature * loopNew = new Signature(
-						loopNewId,
-						refMapId,
-						std::multimap<int, cv::KeyPoint>(),
-						std::multimap<int, pcl::PointXYZ>(),
-						loopClosureTransform,
-						_depths2DMap.value(loopNewId, std::vector<unsigned char>()),
-						_imagesMap.value(loopNewId, std::vector<unsigned char>()),
-						_depthsMap.value(loopNewId, std::vector<unsigned char>()),
-						_depthFxsMap.value(loopNewId, 0.0f),
-						_depthFysMap.value(loopNewId, 0.0f),
-						_depthCxsMap.value(loopNewId, 0.0f),
-						_depthCysMap.value(loopNewId, 0.0f),
-						_localTransformsMap.value(loopNewId, Transform()));
-
-				_ui->widget_loopClosureViewer->setData(loopOld, loopNew);
-				if(_ui->dockWidget_loopClosureViewer->isVisible())
+				if(newIter!=_cachedSignatures.end() && oldIter!=_cachedSignatures.end())
 				{
-					UTimer loopTimer;
-					_ui->widget_loopClosureViewer->updateView();
-					UINFO("Updating loop closure cloud view time=%fs", loopTimer.elapsed());
-					_ui->statsToolBox->updateStat("/Gui RGB-D closure view/ms", stat.refImageId(), int(loopTimer.elapsed()*1000.0f));
+					_ui->widget_loopClosureViewer->setData(*oldIter, *newIter);
+					if(_ui->dockWidget_loopClosureViewer->isVisible())
+					{
+						UTimer loopTimer;
+						_ui->widget_loopClosureViewer->updateView();
+						UINFO("Updating loop closure cloud view time=%fs", loopTimer.elapsed());
+						_ui->statsToolBox->updateStat("/Gui RGB-D closure view/ms", stat.refImageId(), int(loopTimer.elapsed()*1000.0f));
+					}
 				}
 
 				UDEBUG("time= %d ms", time.restart());
@@ -1078,14 +980,18 @@ void MainWindow::updateMapCloud(
 		_currentPosesMap = posesIn;
 		if(_currentPosesMap.size())
 		{
-			if(_depthsMap.size())
+			if(!_ui->actionSave_point_cloud->isEnabled() &&
+				_cachedSignatures.size() &&
+				(--_cachedSignatures.end())->getDepth().size())
 			{
 				//enable save cloud action
 				_ui->actionSave_point_cloud->setEnabled(true);
 				_ui->actionView_high_res_point_cloud->setEnabled(true);
 			}
 
-			if(_depths2DMap.size())
+			if(!_ui->actionView_scans->isEnabled() &&
+				_cachedSignatures.size() &&
+				(--_cachedSignatures.end())->getDepth2D().size())
 			{
 				_ui->actionExport_2D_scans_ply_pcd->setEnabled(true);
 				_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(true);
@@ -1147,9 +1053,13 @@ void MainWindow::updateMapCloud(
 					_ui->widget_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
 					_ui->widget_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
 				}
-				else if(_imagesMap.contains(iter->first) && _depthsMap.contains(iter->first))
+				else if(_cachedSignatures.contains(iter->first))
 				{
-					this->createAndAddCloudToMap(iter->first, iter->second);
+					QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
+					if(!jter->getImageRaw().empty() && !jter->getDepthRaw().empty())
+					{
+						this->createAndAddCloudToMap(iter->first, iter->second);
+					}
 				}
 			}
 			else if(viewerClouds.contains(cloudName))
@@ -1178,9 +1088,13 @@ void MainWindow::updateMapCloud(
 					_ui->widget_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
 					_ui->widget_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 				}
-				else if(_depths2DMap.contains(iter->first))
+				else if(_cachedSignatures.contains(iter->first))
 				{
-					this->createAndAddScanToMap(iter->first, iter->second);
+					QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
+					if(!jter->getDepth2DRaw().empty())
+					{
+						this->createAndAddScanToMap(iter->first, iter->second);
+					}
 				}
 				if(!_preferencesDialog->isScansShown(0))
 				{
@@ -1302,15 +1216,23 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
 		UERROR("Cloud %d already added to map.", nodeId);
 		return;
 	}
+
+	QMap<int, Signature>::iterator iter = _cachedSignatures.find(nodeId);
+	if(iter == _cachedSignatures.end())
+	{
+		UERROR("Node %d is not in the cache.", nodeId);
+		return;
+	}
+
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 	cloud = createCloud(nodeId,
-			util3d::uncompressImage(_imagesMap.value(nodeId)),
-			util3d::uncompressImage(_depthsMap.value(nodeId)),
-			_depthFxsMap.value(nodeId),
-			_depthFysMap.value(nodeId),
-			_depthCxsMap.value(nodeId),
-			_depthCysMap.value(nodeId),
-			_localTransformsMap.value(nodeId),
+			iter->getImageRaw(),
+			iter->getDepthRaw(),
+			iter->getDepthFx(),
+			iter->getDepthFy(),
+			iter->getDepthCx(),
+			iter->getDepthCy(),
+			iter->getLocalTransform(),
 			Transform::getIdentity(),
 			_preferencesDialog->getCloudVoxelSize(0),
 			_preferencesDialog->getCloudDecimation(0),
@@ -1318,6 +1240,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
 
 	if(cloud->size() && _preferencesDialog->isGridMapFrom3DCloud())
 	{
+		UTimer timer;
 		float cellSize = _preferencesDialog->getGridMapResolution();
 		float groundNormalMaxAngle = M_PI_4;
 		int minClusterSize = 20;
@@ -1326,6 +1249,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
 		{
 			_occupancyLocalMaps.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
 		}
+		UDEBUG("time gridMapFrom2DCloud = %f s", timer.ticks());
 	}
 
 	if(_preferencesDialog->isCloudMeshing())
@@ -1396,9 +1320,16 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose)
 		UERROR("Scan %d already added to map.", nodeId);
 		return;
 	}
+
+	QMap<int, Signature>::iterator iter = _cachedSignatures.find(nodeId);
+	if(iter == _cachedSignatures.end())
+	{
+		UERROR("Node %d is not in the cache.", nodeId);
+		return;
+	}
+
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-	cv::Mat depth2d = util3d::uncompressData(_depths2DMap.value(nodeId));
-	cloud = util3d::depth2DToPointCloud(depth2d);
+	cloud = util3d::depth2DToPointCloud(iter->getDepth2DRaw());
 	QColor color = Qt::red;
 	int mapId = _mapIds.value(nodeId, -1);
 	if(mapId >= 0)
@@ -1422,7 +1353,7 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 	if(_currentPosesMap.find(nodeId) != _currentPosesMap.end())
 	{
 		QMap<std::string, Transform> viewerClouds = _ui->widget_cloudViewer->getAddedClouds();
-		if(_preferencesDialog->isCloudsShown(0) && _depthsMap.contains(nodeId))
+		if(_preferencesDialog->isCloudsShown(0) && _cachedSignatures.contains(nodeId))
 		{
 			std::string cloudName = uFormat("cloud%d", nodeId);
 			if(visible && !viewerClouds.contains(cloudName))
@@ -1440,7 +1371,7 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 			}
 		}
 
-		if(_preferencesDialog->isScansShown(0) && _depths2DMap.contains(nodeId))
+		if(_preferencesDialog->isScansShown(0) && _cachedSignatures.contains(nodeId))
 		{
 			std::string scanName = uFormat("scan%d", nodeId);
 			if(visible && !viewerClouds.contains(scanName))
@@ -1501,72 +1432,31 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 	{
 
 		UINFO("Received map!");
-		UINFO(" images = %d", event.getImages().size());
-		UINFO(" depths = %d", event.getDepths().size());
-		UINFO(" depths2d = %d", event.getDepths2d().size());
-		UINFO(" depthFxs = %d", event.getDepthFxs().size());
-		UINFO(" depthFys = %d", event.getDepthFys().size());
-		UINFO(" depthCxs = %d", event.getDepthCxs().size());
-		UINFO(" depthCys = %d", event.getDepthCys().size());
+		UINFO(" signatures = %d", event.getSignatures().size());
 		UINFO(" map ids = %d", event.getMapIds().size());
-		UINFO(" localTransforms = %d", event.getLocalTransforms().size());
 		UINFO(" poses = %d", event.getPoses().size());
 		UINFO(" constraints = %d", event.getConstraints().size());
 
-		_initProgressDialog->appendText("Inserting data in the cache...");
+		_initProgressDialog->setMaximumSteps(event.getSignatures().size());
+		_initProgressDialog->appendText(QString("Inserting data in the cache (%1 signatures downloaded)...").arg(event.getSignatures().size()));
 
-		for(std::map<int, std::vector<unsigned char> >::const_iterator iter = event.getImages().begin();
-			iter!=event.getImages().end();
+		int addedSignatures = 0;
+		for(std::map<int, Signature>::const_iterator iter = event.getSignatures().begin();
+			iter!=event.getSignatures().end();
 			++iter)
 		{
-			_imagesMap.insert(iter->first, iter->second);
+			if(!_cachedSignatures.contains(iter->first))
+			{
+				QMap<int, Signature>::iterator inserted = _cachedSignatures.insert(iter->first, iter->second);
+				//uncompress data if required
+				if(inserted->getImageRaw().empty() && inserted->getImage().size())
+				{
+					inserted->uncompressData();
+					++addedSignatures;
+				}
+			}
 		}
-		_initProgressDialog->appendText(tr("Inserted %1 images.").arg(_imagesMap.size()));
-		_initProgressDialog->incrementStep();
-
-		for(std::map<int, std::vector<unsigned char> >::const_iterator iter = event.getDepths().begin();
-			iter!=event.getDepths().end();
-			++iter)
-		{
-			_depthsMap.insert(iter->first, iter->second);
-		}
-		_initProgressDialog->appendText(tr("Inserted %1 depth images.").arg(_depthsMap.size()));
-		_initProgressDialog->incrementStep();
-
-		for(std::map<int, float>::const_iterator iter = event.getDepthFxs().begin();
-			iter!=event.getDepthFxs().end();
-			++iter)
-		{
-			_depthFxsMap.insert(iter->first, iter->second);
-		}
-		_initProgressDialog->appendText(tr("Inserted %1 depth fx parameters.").arg(_depthFxsMap.size()));
-		_initProgressDialog->incrementStep();
-
-		for(std::map<int, float>::const_iterator iter = event.getDepthFys().begin();
-			iter!=event.getDepthFys().end();
-			++iter)
-		{
-			_depthFysMap.insert(iter->first, iter->second);
-		}
-		_initProgressDialog->appendText(tr("Inserted %1 depth fy parameters.").arg(_depthFysMap.size()));
-		_initProgressDialog->incrementStep();
-
-		for(std::map<int, float>::const_iterator iter = event.getDepthCxs().begin();
-			iter!=event.getDepthCxs().end();
-			++iter)
-		{
-			_depthCxsMap.insert(iter->first, iter->second);
-		}
-		_initProgressDialog->appendText(tr("Inserted %1 depth cx parameters.").arg(_depthCxsMap.size()));
-		_initProgressDialog->incrementStep();
-
-		for(std::map<int, float>::const_iterator iter = event.getDepthCys().begin();
-			iter!=event.getDepthCys().end();
-			++iter)
-		{
-			_depthCysMap.insert(iter->first, iter->second);
-		}
-		_initProgressDialog->appendText(tr("Inserted %1 depth cy parameters.").arg(_depthCysMap.size()));
+		_initProgressDialog->appendText(tr("Inserted %1 new signatures.").arg(addedSignatures));
 		_initProgressDialog->incrementStep();
 
 		for(std::map<int, int>::const_iterator iter = event.getMapIds().begin();
@@ -1576,24 +1466,6 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			_mapIds.insert(iter->first, iter->second);
 		}
 		_initProgressDialog->appendText(tr("Inserted %1 map ids").arg(_mapIds.size()));
-		_initProgressDialog->incrementStep();
-
-		for(std::map<int, std::vector<unsigned char> >::const_iterator iter = event.getDepths2d().begin();
-			iter!=event.getDepths2d().end();
-			++iter)
-		{
-			_depths2DMap.insert(iter->first, iter->second);
-		}
-		_initProgressDialog->appendText(tr("Inserted %1 laser scans.").arg(_depths2DMap.size()));
-		_initProgressDialog->incrementStep();
-
-		for(std::map<int, Transform>::const_iterator iter = event.getLocalTransforms().begin();
-			iter!=event.getLocalTransforms().end();
-			++iter)
-		{
-			_localTransformsMap.insert(iter->first, iter->second);
-		}
-		_initProgressDialog->appendText(tr("Inserted %1 local transforms.").arg(_localTransformsMap.size()));
 		_initProgressDialog->incrementStep();
 
 		_initProgressDialog->appendText("Inserting data in the cache... done.");
@@ -2779,15 +2651,8 @@ void MainWindow::downloadPoseGraph()
 
 void MainWindow::clearTheCache()
 {
-	_imagesMap.clear();
-	_depthsMap.clear();
-	_depths2DMap.clear();
-	_depthFxsMap.clear();
-	_depthFysMap.clear();
-	_depthCxsMap.clear();
-	_depthCysMap.clear();
+	_cachedSignatures.clear();
 	_mapIds.clear();
-	_localTransformsMap.clear();
 	_createdClouds.clear();
 	_createdScans.clear();
 	_occupancyLocalMaps.clear();
@@ -3854,19 +3719,20 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::getAssembledCloud(
 		bool inserted = false;
 		if(!iter->second.isNull())
 		{
-			if(_imagesMap.contains(iter->first) && _depthsMap.contains(iter->first))
+			if(_cachedSignatures.contains(iter->first))
 			{
+				QMap<int, Signature>::const_iterator jter = _cachedSignatures.find(iter->first);
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 				if(regenerateClouds)
 				{
 					cloud = createCloud(iter->first,
-							util3d::uncompressImage(_imagesMap.value(iter->first)),
-							util3d::uncompressImage(_depthsMap.value(iter->first)),
-							_depthFxsMap.value(iter->first),
-							_depthFysMap.value(iter->first),
-							_depthCxsMap.value(iter->first),
-							_depthCysMap.value(iter->first),
-							_localTransformsMap.value(iter->first),
+							jter->getImageRaw(),
+							jter->getDepthRaw(),
+							jter->getDepthFx(),
+							jter->getDepthFy(),
+							jter->getDepthCx(),
+							jter->getDepthCy(),
+							jter->getLocalTransform(),
 							iter->second,
 							regenerateVoxelSize,
 							regenerateDecimation,
@@ -3937,19 +3803,20 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
 		bool inserted = false;
 		if(!iter->second.isNull())
 		{
-			if(_imagesMap.contains(iter->first) && _depthsMap.contains(iter->first))
+			if(_cachedSignatures.contains(iter->first))
 			{
+				QMap<int, Signature>::const_iterator jter = _cachedSignatures.find(iter->first);
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 				if(regenerateClouds)
 				{
 					cloud = createCloud(iter->first,
-							util3d::uncompressImage(_imagesMap.value(iter->first)),
-							util3d::uncompressImage(_depthsMap.value(iter->first)),
-							_depthFxsMap.value(iter->first),
-							_depthFysMap.value(iter->first),
-							_depthCxsMap.value(iter->first),
-							_depthCysMap.value(iter->first),
-							_localTransformsMap.value(iter->first),
+							jter->getImageRaw(),
+							jter->getDepthRaw(),
+							jter->getDepthFx(),
+							jter->getDepthFy(),
+							jter->getDepthCx(),
+							jter->getDepthCy(),
+							jter->getLocalTransform(),
 							Transform::getIdentity(),
 							regenerateVoxelSize,
 							regenerateDecimation,

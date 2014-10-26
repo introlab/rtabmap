@@ -65,7 +65,7 @@
             <x>0</x>
             <y>0</y>
             <width>744</width>
-            <height>978</height>
+            <height>1047</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -558,7 +558,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                           </widget>
                          </item>
                          <item row="5" column="0">
-                          <widget class="QSpinBox" name="checkBox_map_fillEmptyRadius">
+                          <widget class="QSpinBox" name="spinbox_map_fillEmptyRadius">
                            <property name="suffix">
                             <string> cells</string>
                            </property>
@@ -2422,7 +2422,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="0" column="1">
                         <widget class="QLabel" name="label_91">
                          <property name="text">
-                          <string>Publish raw sensor data.</string>
+                          <string>Publish signature data.</string>
                          </property>
                         </widget>
                        </item>
@@ -2457,23 +2457,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <widget class="QLabel" name="label_116">
                          <property name="text">
                           <string>Publish loop closure likelihood.</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="1">
-                        <widget class="QLabel" name="label_144">
-                         <property name="text">
-                          <string>Publish visual words.</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="0">
-                        <widget class="QCheckBox" name="checkBox_kp_publishKeypoints">
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
                          </property>
                         </widget>
                        </item>

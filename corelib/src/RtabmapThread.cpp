@@ -100,40 +100,19 @@ void RtabmapThread::setBufferSize(int bufferSize)
 
 void RtabmapThread::publishMap(bool optimized, bool full) const
 {
-	std::map<int, std::vector<unsigned char> > images;
-	std::map<int, std::vector<unsigned char> > depths;
-	std::map<int, std::vector<unsigned char> > depths2d;
-	std::map<int, float> depthFxs;
-	std::map<int, float> depthFys;
-	std::map<int, float> depthCxs;
-	std::map<int, float> depthCys;
-	std::map<int, Transform> localTransforms;
+	std::map<int, Signature> signatures;
 	std::map<int, Transform> poses;
 	std::multimap<int, Link> constraints;
 	std::map<int, int> mapIds;
 
-	_rtabmap->get3DMap(images,
-			depths,
-			depths2d,
-			depthFxs,
-			depthFys,
-			depthCxs,
-			depthCys,
-			localTransforms,
+	_rtabmap->get3DMap(signatures,
 			poses,
 			constraints,
 			mapIds,
 			optimized,
 			full);
 
-	this->post(new RtabmapEvent3DMap(images,
-			depths,
-			depths2d,
-			depthFxs,
-			depthFys,
-			depthCxs,
-			depthCys,
-			localTransforms,
+	this->post(new RtabmapEvent3DMap(signatures,
 			poses,
 			constraints,
 			mapIds));
@@ -141,14 +120,7 @@ void RtabmapThread::publishMap(bool optimized, bool full) const
 
 void RtabmapThread::publishTOROGraph(bool optimized, bool full) const
 {
-	std::map<int, std::vector<unsigned char> > images;
-	std::map<int, std::vector<unsigned char> > depths;
-	std::map<int, std::vector<unsigned char> > depths2d;
-	std::map<int, float> depthFxs;
-	std::map<int, float> depthFys;
-	std::map<int, float> depthCxs;
-	std::map<int, float> depthCys;
-	std::map<int, Transform> localTransforms;
+	std::map<int, Signature> signatures;
 	std::map<int, Transform> poses;
 	std::multimap<int, Link> constraints;
 	std::map<int, int> mapIds;
@@ -159,14 +131,7 @@ void RtabmapThread::publishTOROGraph(bool optimized, bool full) const
 			optimized,
 			full);
 
-	this->post(new RtabmapEvent3DMap(images,
-			depths,
-			depths2d,
-			depthFxs,
-			depthFys,
-			depthCxs,
-			depthCys,
-			localTransforms,
+	this->post(new RtabmapEvent3DMap(signatures,
 			poses,
 			constraints,
 			mapIds));

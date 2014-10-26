@@ -131,7 +131,7 @@ class RTABMAP_EXP Parameters
 	// Rtabmap parameters
 	RTABMAP_PARAM(Rtabmap, VhStrategy, 	                 int, 0,     "None 0, Similarity 1, Epipolar 2.");
 	RTABMAP_PARAM(Rtabmap, PublishStats, 	             bool, true, "Publishing statistics.");
-	RTABMAP_PARAM(Rtabmap, PublishImage, 	             bool, true, "Publishing image.");
+	RTABMAP_PARAM(Rtabmap, PublishLastSignature, 	     bool, true, "Publishing last signature.");
 	RTABMAP_PARAM(Rtabmap, PublishPdf, 	                 bool, true, "Publishing pdf.");
 	RTABMAP_PARAM(Rtabmap, PublishLikelihood, 	         bool, true, "Publishing likelihood.");
 	RTABMAP_PARAM(Rtabmap, TimeThr, 		             float, 0.0, "Maximum time allowed for the detector (ms) (0 means infinity).");
@@ -163,7 +163,6 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, InitWMWithAllNodes,      bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.")
 
 	// KeypointMemory (Keypoint-based)
-	RTABMAP_PARAM(Kp, PublishKeypoints,      bool, true, 		"Publishing keypoints.");
 	RTABMAP_PARAM(Kp, NNStrategy,            int, 1, 	 		"kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
 	RTABMAP_PARAM(Kp, IncrementalDictionary, bool, true, 		"");
 	RTABMAP_PARAM(Kp, MaxDepth,              float, 0.0, 		"Filter extracted keypoints by depth (0=inf)");

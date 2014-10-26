@@ -1821,9 +1821,35 @@ Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess, boo
 			_dbDriver->loadNodeData(depthToLoad, true);
 		}
 	}
+
 	Transform t;
 	if(oldS && newS)
 	{
+		//make sure data are uncompressed
+		if(icp3D)
+		{
+			if(oldS->getDepthRaw().empty())
+			{
+				oldS->setDepthRaw(util3d::uncompressImage(oldS->getDepth()));
+			}
+			if(newS->getDepthRaw().empty())
+			{
+				newS->setDepthRaw(util3d::uncompressImage(newS->getDepth()));
+			}
+		}
+		else
+		{
+			if(oldS->getDepth2DRaw().empty())
+			{
+				oldS->setDepth2DRaw(util3d::uncompressData(oldS->getDepth2D()));
+			}
+			if(newS->getDepth2DRaw().empty())
+			{
+				newS->setDepth2DRaw(util3d::uncompressData(newS->getDepth2D()));
+			}
+		}
+
+
 		t = computeIcpTransform(*oldS, *newS, guess, icp3D, rejectedMsg);
 	}
 	else
@@ -1860,24 +1886,16 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 	if(icp3D)
 	{
 		UDEBUG("3D ICP");
-		util3d::CompressionThread ctOld(oldS.getDepth(), true);
-		util3d::CompressionThread ctNew(newS.getDepth(), true);
-		ctOld.start();
-		ctNew.start();
-		ctOld.join();
-		ctNew.join();
-		cv::Mat oldDepth = ctOld.getUncompressedData();
-		cv::Mat newDepth = ctNew.getUncompressedData();
-		if(!oldDepth.empty() && !newDepth.empty())
+		if(!oldS.getDepthRaw().empty() && !newS.getDepthRaw().empty())
 		{
-			if(oldDepth.type() == CV_8UC1 || newDepth.type() == CV_8UC1)
+			if(oldS.getDepthRaw().type() == CV_8UC1 || newS.getDepthRaw().type() == CV_8UC1)
 			{
 				UERROR("ICP 3D cannot be done on stereo images!");
 			}
 			else
 			{
 				pcl::PointCloud<pcl::PointXYZ>::Ptr oldCloudXYZ = util3d::getICPReadyCloud(
-						oldDepth,
+						oldS.getDepthRaw(),
 						oldS.getDepthFx(),
 						oldS.getDepthFy(),
 						oldS.getDepthCx(),
@@ -1888,7 +1906,7 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 						_icpSamples,
 						oldS.getLocalTransform());
 				pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudXYZ = util3d::getICPReadyCloud(
-						newDepth,
+						newS.getDepthRaw(),
 						newS.getDepthFx(),
 						newS.getDepthFy(),
 						newS.getDepthCx(),
@@ -1964,19 +1982,11 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 			UINFO("2D ICP: Dropping z (%f), roll (%f) and pitch (%f) rotation!", z, r, p);
 		}
 
-		util3d::CompressionThread ctOld(oldS.getDepth2D(), false);
-		util3d::CompressionThread ctNew(newS.getDepth2D(), false);
-		ctOld.start();
-		ctNew.start();
-		ctOld.join();
-		ctNew.join();
-		cv::Mat oldDepth2D = ctOld.getUncompressedData();
-		cv::Mat newDepth2D = ctNew.getUncompressedData();
-		if(!oldDepth2D.empty() && !newDepth2D.empty())
+		if(!oldS.getDepth2DRaw().empty() && !newS.getDepth2DRaw().empty())
 		{
 			// 2D
-			pcl::PointCloud<pcl::PointXYZ>::Ptr oldCloud = util3d::cvMat2Cloud(oldDepth2D);
-			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud = util3d::cvMat2Cloud(newDepth2D, guess);
+			pcl::PointCloud<pcl::PointXYZ>::Ptr oldCloud = util3d::cvMat2Cloud(oldS.getDepth2DRaw());
+			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud = util3d::cvMat2Cloud(newS.getDepth2DRaw(), guess);
 
 			//voxelize
 			if(_icp2VoxelSize > 0.0f)
@@ -2545,106 +2555,71 @@ std::vector<unsigned char> Memory::getImage(int signatureId) const
 	return image;
 }
 
-void Memory::getImageDepth(
-		int locationId,
-		std::vector<unsigned char> & rgb,
-		std::vector<unsigned char> & depth,
-		std::vector<unsigned char> & depth2d,
-		float & fx,
-		float & fy,
-		float & cx,
-		float & cy,
-		Transform & localTransform)
+Signature Memory::getSignatureData(int locationId, bool uncompressedData)
 {
+	Signature r;
 	Signature * s = this->_getSignature(locationId);
-	if(s)
+	if(s && s->getImage().size())
 	{
-		rgb = s->getImage();
-		depth = s->getDepth();
-		depth2d = s->getDepth2D();
-		fx = s->getDepthFx();
-		fy = s->getDepthFy();
-		cx = s->getDepthCx();
-		cy = s->getDepthCy();
-		localTransform = s->getLocalTransform();
+		r = *s;
 	}
-	if(rgb.empty() && this->isRawDataKept() && _dbDriver)
+	else if(_dbDriver)
 	{
-		_dbDriver->getNodeData(locationId, rgb, depth, depth2d, fx, fy, cx, cy, localTransform);
-
+		// load from database
 		if(s)
 		{
-			// keep in cache
-			if(!rgb.empty())
+			std::list<Signature*> signatures;
+			signatures.push_back(s);
+			_dbDriver->loadNodeData(signatures, !s->getPose().isNull());
+			r = *s;
+		}
+		else
+		{
+			std::list<int> ids;
+			ids.push_back(locationId);
+			std::list<Signature*> signatures;
+			_dbDriver->loadSignatures(ids, signatures);
+			if(signatures.size())
 			{
-				s->setImage(rgb);
-			}
-			if(!depth.empty())
-			{
-				s->setDepth(depth, fx, fy, cx, cy);
-			}
-			if(!depth2d.empty())
-			{
-				s->setDepth2D(depth2d);
-			}
-			if(!localTransform.isNull())
-			{
-				s->setLocalTransform(localTransform);
+				Signature * sTmp = signatures.front();
+				if(sTmp->getImage().size() == 0)
+				{
+					_dbDriver->loadNodeData(signatures, !sTmp->getPose().isNull());
+				}
+				r = *sTmp;
+				this->moveToTrash(s);
 			}
 		}
 	}
-}
 
-void Memory::getImageDepthRaw(
-		int locationId,
-		cv::Mat & rgb,
-		cv::Mat & depth,
-		float & fx,
-		float & fy,
-		float & cx,
-		float & cy,
-		Transform & localTransform)
-{
-	Signature * s = this->_getSignature(locationId);
-	if(s)
+	if(uncompressedData && r.getImageRaw().empty() && r.getImage().size())
 	{
-		rgb = s->getImageRaw();
-		depth = s->getDepthRaw();
-		fx = s->getDepthFx();
-		fy = s->getDepthFy();
-		cx = s->getDepthCx();
-		cy = s->getDepthCy();
-		localTransform = s->getLocalTransform();
-	}
-	if(rgb.empty())
-	{
-		std::vector<unsigned char> compressedRgb;
-		std::vector<unsigned char> compressedDepth;
-		std::vector<unsigned char> comressedDepth2d;
-		getImageDepth(locationId, compressedRgb, compressedDepth, comressedDepth2d, fx, fy, cx, cy, localTransform);
-
-		//uncomressed data
-		util3d::CompressionThread ctImage(compressedRgb, true);
-		util3d::CompressionThread ctDepth(compressedDepth, true);
-		ctImage.start();
-		ctDepth.start();
-		ctImage.join();
-		ctDepth.join();
-		rgb = ctImage.getUncompressedData();
-		depth = ctDepth.getUncompressedData();
+		//uncompress data
 		if(s)
 		{
-			//save it uncompressed in the signature
-			if(!rgb.empty())
-			{
-				s->setImageRaw(rgb);
-			}
-			if(!depth.empty())
-			{
-				s->setDepthRaw(depth);
-			}
+			s->uncompressData();
+			r.setImageRaw(s->getImageRaw());
+			r.setDepthRaw(s->getDepthRaw());
+			r.setDepth2DRaw(s->getDepth2DRaw());
+		}
+		else
+		{
+			util3d::CompressionThread ctImage(r.getImage(), true);
+			util3d::CompressionThread ctDepth(r.getDepth(), true);
+			util3d::CompressionThread ctDepth2D(r.getDepth2D(), false);
+			ctImage.start();
+			ctDepth.start();
+			ctDepth2D.start();
+			ctImage.join();
+			ctDepth.join();
+			ctDepth2D.join();
+			r.setImageRaw(ctImage.getUncompressedData());
+			r.setDepthRaw(ctDepth.getUncompressedData());
+			r.setDepth2DRaw(ctDepth2D.getUncompressedData());
 		}
 	}
+
+	return r;
 }
 
 void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
@@ -2938,49 +2913,11 @@ void Memory::createGraph(GraphNode * parent, unsigned int maxDepth, const std::s
 	}
 }
 
-// Keypoint stuff
-std::multimap<int, cv::KeyPoint> Memory::getWords(int signatureId) const
-{
-	std::multimap<int, cv::KeyPoint> words;
-	if(signatureId>0)
-	{
-		const Signature * s = this->getSignature(signatureId);
-		if(s)
-		{
-			const Signature * ks = dynamic_cast<const Signature*>(s);
-			if(ks)
-			{
-				words = ks->getWords();
-			}
-		}
-		else if(_dbDriver)
-		{
-			std::list<int> ids;
-			ids.push_back(signatureId);
-			std::list<Signature *> signatures;
-			_dbDriver->loadSignatures(ids, signatures);
-			if(signatures.size())
-			{
-				const Signature * ks = dynamic_cast<const Signature*>(signatures.front());
-				if(ks)
-				{
-					words = ks->getWords();
-				}
-			}
-			for(std::list<Signature *>::iterator iter = signatures.begin(); iter!=signatures.end(); ++iter)
-			{
-				delete *iter;
-			}
-		}
-	}
-	return words;
-}
-
 int Memory::getNi(int signatureId) const
 {
 	int ni = 0;
 	const Signature * s = this->getSignature(signatureId);
-	if(s) // Must be a SurfSignature
+	if(s)
 	{
 		ni = ((Signature *)s)->getWords().size();
 	}
@@ -2994,7 +2931,6 @@ int Memory::getNi(int signatureId) const
 
 void Memory::copyData(const Signature * from, Signature * to)
 {
-	// The signatures must be KeypointSignature
 	UTimer timer;
 	timer.start();
 	if(from && to)
@@ -3415,21 +3351,22 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData, S
 		}
 		util3d::CompressionThread ctImage(data.image(), std::string(".jpg"));
 		util3d::CompressionThread ctDepth(depthOrRightImage, std::string(".png"));
+		util3d::CompressionThread ctDepth2d(data.depth2d());
 		ctImage.start();
 		ctDepth.start();
+		ctDepth2d.start();
 		ctImage.join();
 		ctDepth.join();
-		imageBytes = ctImage.getCompressedData();
-		depthBytes = ctDepth.getCompressedData();
+		ctDepth2d.join();
 
 		s = new Signature(id,
 			_idMapCount,
 			words,
 			words3D,
 			data.pose(),
-			util3d::compressData(data.depth2d()),
-			imageBytes,
-			depthBytes,
+			ctDepth2d.getCompressedData(),
+			ctImage.getCompressedData(),
+			ctDepth.getCompressedData(),
 			data.fx(),
 			data.fy()>0.0f?data.fy():data.baseline(),
 			data.cx(),
@@ -3437,6 +3374,7 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData, S
 			data.localTransform());
 		s->setImageRaw(data.image());
 		s->setDepthRaw(depthOrRightImage);
+		s->setDepth2DRaw(data.depth2d());
 	}
 	else
 	{

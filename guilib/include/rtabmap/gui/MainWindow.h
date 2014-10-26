@@ -248,15 +248,8 @@ private:
 	bool _processingStatistics;
 	bool _odometryReceived;
 
-	QMap<int, std::vector<unsigned char> > _imagesMap;
-	QMap<int, std::vector<unsigned char> > _depthsMap;
-	QMap<int, std::vector<unsigned char> > _depths2DMap;
-	QMap<int, float> _depthFxsMap;
-	QMap<int, float> _depthFysMap;
-	QMap<int, float> _depthCxsMap;
-	QMap<int, float> _depthCysMap;
+	QMap<int, Signature> _cachedSignatures;
 	QMap<int, int> _mapIds;
-	QMap<int, Transform> _localTransformsMap;
 	std::map<int, Transform> _currentPosesMap;
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > _createdClouds;
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > _createdScans;

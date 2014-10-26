@@ -40,8 +40,6 @@ namespace rtabmap {
 
 LoopClosureViewer::LoopClosureViewer(QWidget * parent) :
 	QWidget(parent),
-	sA_(0),
-	sB_(0),
 	decimation_(1),
 	maxDepth_(0),
 	samples_(0)
@@ -55,37 +53,21 @@ LoopClosureViewer::LoopClosureViewer(QWidget * parent) :
 
 LoopClosureViewer::~LoopClosureViewer() {
 	delete ui_;
-	if(sA_)
-	{
-		delete sA_;
-	}
-	if(sB_)
-	{
-		delete sB_;
-	}
 }
 
-void LoopClosureViewer::setData(Signature * sA, Signature * sB)
+void LoopClosureViewer::setData(const Signature & sA, const Signature & sB)
 {
-	if(sA_)
-	{
-		delete sA_;
-	}
-	if(sB_)
-	{
-		delete sB_;
-	}
 	sA_ = sA;
 	sB_ = sB;
-	if(sA_ && sB_)
+	if(sA_.id()>0 && sB_.id()>0)
 	{
-		ui_->label_idA->setText(QString("[%1-%2]").arg(sA->id()).arg(sB->id()));
+		ui_->label_idA->setText(QString("[%1-%2]").arg(sA.id()).arg(sB.id()));
 	}
 }
 
 void LoopClosureViewer::updateView(const Transform & transform)
 {
-	if(sA_ && sB_)
+	if(sA_.id()>0 && sB_.id()>0)
 	{
 		int decimation = 1;
 		float maxDepth = 0;
@@ -113,56 +95,31 @@ void LoopClosureViewer::updateView(const Transform & transform)
 		}
 		else
 		{
-			t = sB_->getPose();
+			t = sB_.getPose();
 		}
 
 		UDEBUG("t= %s", t.prettyPrint().c_str());
 		ui_->label_transform->setText(QString("(%1)").arg(t.prettyPrint().c_str()));
 		if(!t.isNull())
 		{
-			util3d::CompressionThread ctiA(sA_->getImage(), true);
-			util3d::CompressionThread ctdA(sA_->getDepth(), true);
-			util3d::CompressionThread ctiB(sB_->getImage(), true);
-			util3d::CompressionThread ctdB(sB_->getDepth(), true);
-			util3d::CompressionThread ct2dA(sA_->getDepth2D(), false);
-			util3d::CompressionThread ct2dB(sB_->getDepth2D(), false);
-			ctiA.start();
-			ctdA.start();
-			ctiB.start();
-			ctdB.start();
-			ct2dA.start();
-			ct2dB.start();
-			ctiA.join();
-			ctdA.join();
-			ctiB.join();
-			ctdB.join();
-			ct2dA.join();
-			ct2dB.join();
-			cv::Mat imageA = ctiA.getUncompressedData();
-			cv::Mat depthA = ctdA.getUncompressedData();
-			cv::Mat imageB = ctiB.getUncompressedData();
-			cv::Mat depthB = ctdB.getUncompressedData();
-			cv::Mat depth2dA = ct2dA.getUncompressedData();
-			cv::Mat depth2dB = ct2dB.getUncompressedData();
-
 			//cloud 3d
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudA;
-			if(depthA.type() == CV_8UC1)
+			if(sA_.getDepthRaw().type() == CV_8UC1)
 			{
 				cloudA = util3d::cloudFromStereoImages(
-						imageA,
-						depthA,
-						sA_->getDepthCx(), sA_->getDepthCy(),
-						sA_->getDepthFx(), sA_->getDepthFy(),
+						sA_.getImageRaw(),
+						sA_.getDepthRaw(),
+						sA_.getDepthCx(), sA_.getDepthCy(),
+						sA_.getDepthFx(), sA_.getDepthFy(),
 						decimation);
 			}
 			else
 			{
 				cloudA = util3d::cloudFromDepthRGB(
-						imageA,
-						depthA,
-						sA_->getDepthCx(), sA_->getDepthCy(),
-						sA_->getDepthFx(), sA_->getDepthFy(),
+						sA_.getImageRaw(),
+						sA_.getDepthRaw(),
+						sA_.getDepthCx(), sA_.getDepthCy(),
+						sA_.getDepthFx(), sA_.getDepthFy(),
 						decimation);
 			}
 
@@ -176,25 +133,25 @@ void LoopClosureViewer::updateView(const Transform & transform)
 			{
 				cloudA = util3d::sampling<pcl::PointXYZRGB>(cloudA, samples);
 			}
-			cloudA = util3d::transformPointCloud<pcl::PointXYZRGB>(cloudA, sA_->getLocalTransform());
+			cloudA = util3d::transformPointCloud<pcl::PointXYZRGB>(cloudA, sA_.getLocalTransform());
 
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudB;
-			if(depthB.type() == CV_8UC1)
+			if(sB_.getDepthRaw().type() == CV_8UC1)
 			{
 				cloudB = util3d::cloudFromStereoImages(
-						imageB,
-						depthB,
-						sB_->getDepthCx(), sB_->getDepthCy(),
-						sB_->getDepthFx(), sB_->getDepthFy(),
+						sB_.getImageRaw(),
+						sB_.getDepthRaw(),
+						sB_.getDepthCx(), sB_.getDepthCy(),
+						sB_.getDepthFx(), sB_.getDepthFy(),
 						decimation);
 			}
 			else
 			{
 				cloudB = util3d::cloudFromDepthRGB(
-						imageB,
-						depthB,
-						sB_->getDepthCx(), sB_->getDepthCy(),
-						sB_->getDepthFx(), sB_->getDepthFy(),
+						sB_.getImageRaw(),
+						sB_.getDepthRaw(),
+						sB_.getDepthCx(), sB_.getDepthCy(),
+						sB_.getDepthFx(), sB_.getDepthFy(),
 						decimation);
 			}
 
@@ -208,15 +165,15 @@ void LoopClosureViewer::updateView(const Transform & transform)
 			{
 				cloudB = util3d::sampling<pcl::PointXYZRGB>(cloudB, samples);
 			}
-			cloudB = util3d::transformPointCloud<pcl::PointXYZRGB>(cloudB, t*sB_->getLocalTransform());
+			cloudB = util3d::transformPointCloud<pcl::PointXYZRGB>(cloudB, t*sB_.getLocalTransform());
 
 			//cloud 2d
 			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
-			scanA = util3d::depth2DToPointCloud(depth2dA);
-			scanB = util3d::depth2DToPointCloud(depth2dB);
+			scanA = util3d::depth2DToPointCloud(sA_.getDepth2DRaw());
+			scanB = util3d::depth2DToPointCloud(sB_.getDepth2DRaw());
 			scanB = util3d::transformPointCloud<pcl::PointXYZ>(scanB, t);
 
-			ui_->label_idA->setText(QString("[%1 (%2) -> %3 (%4)]").arg(sB_->id()).arg(cloudB->size()).arg(sA_->id()).arg(cloudA->size()));
+			ui_->label_idA->setText(QString("[%1 (%2) -> %3 (%4)]").arg(sB_.id()).arg(cloudB->size()).arg(sA_.id()).arg(cloudA->size()));
 
 			if(cloudA->size())
 			{
