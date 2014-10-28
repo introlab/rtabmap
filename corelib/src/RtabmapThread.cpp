@@ -168,6 +168,10 @@ void RtabmapThread::mainLoop()
 	case kStateDetecting:
 		this->process();
 		break;
+	case kStateInit:
+		UASSERT(!parameters.at("RtabmapThread/DatabasePath").empty());
+		_rtabmap->init(parameters, parameters.at("RtabmapThread/DatabasePath"));
+		break;
 	case kStateChangingParameters:
 		Parameters::parse(parameters, Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
 		Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), _rate);
@@ -178,6 +182,14 @@ void RtabmapThread::mainLoop()
 	case kStateReseting:
 		_rtabmap->resetMemory();
 		this->clearBufferedData();
+		break;
+	case kStateClose:
+		if(_dataBuffer.size())
+		{
+			UWARN("Closing... %d data still buffered! They will be cleared.", (int)_dataBuffer.size());
+			this->clearBufferedData();
+		}
+		_rtabmap->close();
 		break;
 	case kStateDumpingMemory:
 		_rtabmap->dumpData();
@@ -196,14 +208,6 @@ void RtabmapThread::mainLoop()
 		break;
 	case kStateGeneratingTOROGraphGlobal:
 		_rtabmap->generateTOROGraph(parameters.at("path"), atoi(parameters.at("optimized").c_str())!=0, true);
-		break;
-	case kStateDeletingMemory:
-		if(!parameters.at("path").empty())
-		{
-			_rtabmap->setDatabasePath(parameters.at("path"));
-		}
-		_rtabmap->resetMemory(true);
-		this->clearBufferedData();
 		break;
 	case kStateCleanDataBuffer:
 		this->clearBufferedData();
@@ -254,7 +258,20 @@ void RtabmapThread::handleEvent(UEvent* event)
 	{
 		RtabmapEventCmd * rtabmapEvent = (RtabmapEventCmd*)event;
 		RtabmapEventCmd::Cmd cmd = rtabmapEvent->getCmd();
-		if(cmd == RtabmapEventCmd::kCmdResetMemory)
+		if(cmd == RtabmapEventCmd::kCmdInit)
+		{
+			ULOGGER_DEBUG("CMD_INIT");
+			ParametersMap parameters = ((RtabmapEventCmd*)event)->getParameters();
+			UASSERT(!rtabmapEvent->getStr().empty());
+			UASSERT(parameters.insert(ParametersPair("RtabmapThread/DatabasePath", rtabmapEvent->getStr())).second);
+			pushNewState(kStateInit, parameters);
+		}
+		else if(cmd == RtabmapEventCmd::kCmdClose)
+		{
+			ULOGGER_DEBUG("CMD_CLOSE");
+			pushNewState(kStateClose);
+		}
+		else if(cmd == RtabmapEventCmd::kCmdResetMemory)
 		{
 			ULOGGER_DEBUG("CMD_RESET_MEMORY");
 			pushNewState(kStateReseting);
@@ -312,13 +329,6 @@ void RtabmapThread::handleEvent(UEvent* event)
 			param.insert(ParametersPair("optimized", uNumber2Str(rtabmapEvent->getInt())));
 			pushNewState(kStateGeneratingTOROGraphGlobal, param);
 
-		}
-		else if(cmd == RtabmapEventCmd::kCmdDeleteMemory)
-		{
-			ULOGGER_DEBUG("CMD_DELETE_MEMORY");
-			ParametersMap param;
-			param.insert(ParametersPair("path", rtabmapEvent->getStr()));
-			pushNewState(kStateDeletingMemory, param);
 		}
 		else if(cmd == RtabmapEventCmd::kCmdCleanDataBuffer)
 		{
@@ -384,12 +394,19 @@ void RtabmapThread::process()
 	getData(data);
 	if(data.isValid())
 	{
-		_rtabmap->process(data);
+		if(_rtabmap->getMemory())
+		{
+			_rtabmap->process(data);
 
-		Statistics stats = _rtabmap->getStatistics();
-		stats.addStatistic(Statistics::kMemoryImages_buffered(), (float)_dataBuffer.size());
-		ULOGGER_DEBUG("posting statistics_ event...");
-		this->post(new RtabmapEvent(stats));
+			Statistics stats = _rtabmap->getStatistics();
+			stats.addStatistic(Statistics::kMemoryImages_buffered(), (float)_dataBuffer.size());
+			ULOGGER_DEBUG("posting statistics_ event...");
+			this->post(new RtabmapEvent(stats));
+		}
+		else
+		{
+			UERROR("RTAB-Map is not initialized! Ignoring received data...");
+		}
 	}
 }
 

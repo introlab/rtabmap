@@ -65,11 +65,6 @@ std::string Parameters::getDefaultWorkingDirectory()
 	return path;
 }
 
-std::string Parameters::getDefaultDatabasePath()
-{
-	return getDefaultWorkingDirectory() + getDefaultDatabaseName();
-}
-
 std::string Parameters::getDefaultDatabaseName()
 {
 	return "rtabmap.db";

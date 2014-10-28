@@ -57,7 +57,7 @@ class RTABMAP_EXP Odometry
 public:
 	virtual ~Odometry() {}
 	Transform process(SensorData & data, int * quality = 0, int * features = 0, int * localMapSize = 0);
-	virtual void reset();
+	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 
 	bool isLargeEnoughTransform(const Transform & transform);
 
@@ -104,7 +104,7 @@ public:
 	OdometryBOW(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
 	virtual ~OdometryBOW();
 
-	virtual void reset();
+	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 	const std::multimap<int, pcl::PointXYZ> & getLocalMap() const {return localMap_;}
 	const Memory * getMemory() const {return _memory;}
 
@@ -125,7 +125,7 @@ public:
 	OdometryOpticalFlow(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
 	virtual ~OdometryOpticalFlow();
 
-	virtual void reset();
+	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 
 	const cv::Mat & getLastFrame() const {return lastFrame_;}
 	const std::vector<cv::Point2f> & getLastCorners() const {return lastCorners_;}
@@ -168,7 +168,7 @@ public:
 			float maxFitness = 0.01f,
 			bool pointToPlane = true,
 			const ParametersMap & odometryParameter = rtabmap::ParametersMap());
-	void reset();
+	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 
 private:
 	virtual Transform computeTransform(const SensorData & image, int * quality = 0, int * features = 0, int * localMapSize = 0);

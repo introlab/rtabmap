@@ -53,9 +53,10 @@ class RTABMAP_EXP RtabmapThread :
 {
 public:
 	enum State {
-		kStateIdle,
+		kStateInit,
 		kStateDetecting,
 		kStateReseting,
+		kStateClose,
 		kStateChangingParameters,
 		kStateDumpingMemory,
 		kStateDumpingPrediction,
@@ -63,13 +64,11 @@ public:
 		kStateGeneratingDOTLocalGraph,
 		kStateGeneratingTOROGraphLocal,
 		kStateGeneratingTOROGraphGlobal,
-		kStateDeletingMemory,
 		kStateCleanDataBuffer,
 		kStatePublishingMapLocal,
 		kStatePublishingMapGlobal,
 		kStatePublishingTOROGraphLocal,
 		kStatePublishingTOROGraphGlobal,
-		Graph,
 		kStateTriggeringMap
 	};
 

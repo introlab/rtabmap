@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/utilite/UEvent.h>
 #include "rtabmap/core/Statistics.h"
+#include "rtabmap/core/Parameters.h"
 
 namespace rtabmap
 {
@@ -57,14 +58,15 @@ class RtabmapEventCmd : public UEvent
 public:
 	enum dummy {d}; // Hack, to fix Eclipse complaining about not defined Cmd enum ?!
 	enum Cmd {
+			kCmdInit,
 			kCmdResetMemory,
+			kCmdClose,
 			kCmdDumpMemory,
 			kCmdDumpPrediction,
 			kCmdGenerateDOTGraph, // params: path
 			kCmdGenerateDOTLocalGraph, // params: path, id, margin
 			kCmdGenerateTOROGraphLocal, // params: path, optimized
 			kCmdGenerateTOROGraphGlobal, // params: path, optimized
-			kCmdDeleteMemory, // params: path [optional]
 			kCmdCleanDataBuffer,
 			kCmdPublish3DMapLocal, // params: optimized
 			kCmdPublish3DMapGlobal, // params: optimized
@@ -73,26 +75,12 @@ public:
 			kCmdTriggerNewMap,
 			kCmdPause};
 public:
-	RtabmapEventCmd(Cmd cmd) :
-		UEvent(0),
-		_cmd(cmd),
-		_strValue(""),
-		_intValue(0){}
-	RtabmapEventCmd(Cmd cmd, int value) :
-			UEvent(0),
-			_cmd(cmd),
-			_strValue(""),
-			_intValue(value){}
-	RtabmapEventCmd(Cmd cmd, const std::string & value) :
-			UEvent(0),
-			_cmd(cmd),
-			_strValue(value),
-			_intValue(0){}
-	RtabmapEventCmd(Cmd cmd, const std::string & strValue, int intValue) :
+	RtabmapEventCmd(Cmd cmd, const std::string & strValue = "", int intValue = 0, const ParametersMap & parameters = ParametersMap()) :
 			UEvent(0),
 			_cmd(cmd),
 			_strValue(strValue),
-			_intValue(intValue){}
+			_intValue(intValue),
+			_parameters(parameters){}
 
 	virtual ~RtabmapEventCmd() {}
 	Cmd getCmd() const {return _cmd;}
@@ -103,12 +91,15 @@ public:
 	void setInt(int v) {_intValue = v;}
 	int getInt() const {return _intValue;}
 
+	const ParametersMap & getParameters() const {return _parameters;}
+
 	virtual std::string getClassName() const {return std::string("RtabmapEventCmd");}
 
 private:
 	Cmd _cmd;
 	std::string _strValue;
 	int _intValue;
+	ParametersMap _parameters;
 };
 
 class RtabmapEventInit : public UEvent
@@ -118,6 +109,8 @@ public:
 	enum Status {
 		kInitializing,
 		kInitialized,
+		kClosing,
+		kClosed,
 		kInfo,
 		kError
 	};

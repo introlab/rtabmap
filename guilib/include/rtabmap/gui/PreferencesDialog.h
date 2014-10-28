@@ -150,7 +150,6 @@ public:
 	double getGridMapOpacity() const;
 
 	QString getWorkingDirectory() const;
-	QString getDatabasePath() const;
 
 	// source panel
 	double getGeneralInputRate() const;
@@ -228,7 +227,6 @@ private slots:
 	void addParameter(const QString & value);
 	void updatePredictionPlot();
 	void updateKpROI();
-	void changeDatabasePath();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
 	void readSettingsEnd();

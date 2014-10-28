@@ -80,7 +80,7 @@ void LoopClosureViewer::updateView(const Transform & transform)
 		}
 
 		UDEBUG("decimation = %d", decimation);
-		UDEBUG("maxDepth = %d", maxDepth);
+		UDEBUG("maxDepth = %f", maxDepth);
 		UDEBUG("samples = %d", samples);
 
 		Transform t;
@@ -194,6 +194,7 @@ void LoopClosureViewer::updateView(const Transform & transform)
 		}
 		else
 		{
+			UERROR("loop transform is null !?!?");
 			ui_->cloudViewerTransform->removeAllClouds();
 		}
 		ui_->cloudViewerTransform->render();

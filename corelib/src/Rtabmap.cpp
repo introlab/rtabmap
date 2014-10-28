@@ -246,31 +246,25 @@ void Rtabmap::flushStatisticLogs()
 	}
 }
 
-void Rtabmap::init(const ParametersMap & parameters, bool deleteMemory)
+void Rtabmap::init(const ParametersMap & parameters, const std::string & databasePath)
 {
-	if(deleteMemory)
+	ParametersMap::const_iterator iter;
+	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
 	{
-		// Set the working directory and database path before
-		ParametersMap::const_iterator iter;
-		if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
-		{
-			this->setWorkingDirectory(iter->second.c_str());
-		}
-		if((iter=parameters.find(Parameters::kRtabmapDatabasePath())) != parameters.end())
-		{
-			this->setDatabasePath(iter->second.c_str());
-		}
-		Parameters::parse(parameters, Parameters::kRtabmapStatisticLogged(), _statisticLogged);
-		Parameters::parse(parameters, Parameters::kRtabmapStatisticLoggedHeaders(), _statisticLoggedHeaders);
-		this->resetMemory(true);
+		this->setWorkingDirectory(iter->second.c_str());
 	}
 
+	_databasePath = databasePath;
+	if(_databasePath.empty())
+	{
+		_databasePath = _wDir + Parameters::getDefaultDatabaseName();
+	}
+	UINFO("Using database \"%s\".", _databasePath.c_str());
 	this->parseParameters(parameters);
-
 	setupLogFiles();
 }
 
-void Rtabmap::init(const std::string & configFile, bool deleteMemory)
+void Rtabmap::init(const std::string & configFile, const std::string & databasePath)
 {
 	// fill ctrl struct with values from the configuration file
 	ParametersMap param;// = Parameters::defaultParameters;
@@ -281,7 +275,7 @@ void Rtabmap::init(const std::string & configFile, bool deleteMemory)
 		this->readParameters(configFile, param);
 	}
 
-	this->init(param, deleteMemory);
+	this->init(param, databasePath);
 }
 
 void Rtabmap::close()
@@ -313,19 +307,22 @@ void Rtabmap::close()
 		delete _bayesFilter;
 		_bayesFilter = 0;
 	}
+	_databasePath.clear();
 }
 
 void Rtabmap::parseParameters(const ParametersMap & parameters)
 {
+	if(_databasePath.empty())
+	{
+		UERROR("RTAB-Map is not initialized. Call rtabmap::init() instead.");
+		return;
+	}
+
 	ULOGGER_DEBUG("");
 	ParametersMap::const_iterator iter;
 	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
 	{
 		this->setWorkingDirectory(iter->second.c_str());
-	}
-	if((iter=parameters.find(Parameters::kRtabmapDatabasePath())) != parameters.end())
-	{
-		this->setDatabasePath(iter->second.c_str());
 	}
 
 	Parameters::parse(parameters, Parameters::kRtabmapPublishStats(), _publishStats);
@@ -380,7 +377,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	if(!_memory)
 	{
 		_memory = new Memory(parameters);
-		_memory->init(getDatabasePath(), false, parameters);
+		_memory->init(_databasePath, false, parameters, true);
 
 		//generate map
 		if(_rgbdSlamMode && _memory->getLastWorkingSignature())
@@ -427,11 +424,6 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		uInsert(_lastParameters, ParametersPair(iter->first, iter->second));
 	}
-}
-
-std::string Rtabmap::getDatabasePath() const
-{
-	return _databasePath.empty()?_wDir + Parameters::getDefaultDatabaseName():_databasePath;
 }
 
 int Rtabmap::getLoopClosureId() const
@@ -647,7 +639,7 @@ void Rtabmap::generateTOROGraph(const std::string & path, bool optimized, bool g
 	}
 }
 
-void Rtabmap::resetMemory(bool dbOverwritten)
+void Rtabmap::resetMemory()
 {
 	_retrievedId = 0;
 	_lcHypothesisValue = 0;
@@ -660,7 +652,7 @@ void Rtabmap::resetMemory(bool dbOverwritten)
 
 	if(_memory)
 	{
-		_memory->init(getDatabasePath(), dbOverwritten);
+		_memory->init(_databasePath, true, ParametersMap(), true);
 		if(_memory->getLastWorkingSignature())
 		{
 			optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), false, _optimizedPoses, &_constraints);
@@ -670,13 +662,11 @@ void Rtabmap::resetMemory(bool dbOverwritten)
 			_bayesFilter->reset();
 		}
 	}
-	else if(dbOverwritten)
+	else
 	{
-		// May be memory should be already created here, and use init above...
-		UINFO("Erasing file : \"%s\"", getDatabasePath().c_str());
-		UFile::erase(getDatabasePath());
+		UERROR("RTAB-Map is not initialized. No memory to reset...");
 	}
-	this->setupLogFiles(dbOverwritten);
+	this->setupLogFiles(true);
 }
 
 //============================================================
@@ -1803,27 +1793,7 @@ void Rtabmap::setWorkingDirectory(std::string path)
 	}
 }
 
-void Rtabmap::setDatabasePath(const std::string & path)
-{
-	if(!path.empty())
-	{
-		ULOGGER_DEBUG("Comparing new database path \"%s\" with \"%s\"", path.c_str(), _databasePath.c_str());
-		if(path.compare(_databasePath) != 0)
-		{
-			UDEBUG("Set new database path to \"%s\"", _databasePath.c_str());
-			_databasePath = path;
-			if(_memory)
-			{
-				UDEBUG("Reset memory!");
-				this->resetMemory();
-			}
-		}
-	}
-	else
-	{
-		ULOGGER_ERROR("Cannot set null database path!");
-	}
-}
+
 
 void Rtabmap::deleteLocation(int locationId)
 {
@@ -2238,10 +2208,12 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 
 		for(std::set<int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
 		{
+			UDEBUG("");
 			Signature data = _memory->getSignatureData(*iter);
+			UDEBUG("");
 			if(data.id() != Memory::kIdInvalid)
 			{
-				signatures.insert(std::make_pair(*iter, data));
+				signatures.insert(std::make_pair(*iter, Signature())).first->second = data;
 				mapIds.insert(std::make_pair(*iter, _memory->getMapId(*iter)));
 			}
 		}

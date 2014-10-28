@@ -268,6 +268,15 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 	{
 		event->accept();
 	}
+
+	if(event->isAccepted())
+	{
+		if(memory_)
+		{
+			delete memory_;
+			memory_ = 0;
+		}
+	}
 }
 
 void DatabaseViewer::resizeEvent(QResizeEvent* anEvent)

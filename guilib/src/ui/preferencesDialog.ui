@@ -65,7 +65,7 @@
             <x>0</x>
             <y>0</y>
             <width>744</width>
-            <height>1047</height>
+            <height>905</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1948,7 +1948,20 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                    <property name="title">
                     <string>RTAB-Map settings</string>
                    </property>
-                   <layout class="QGridLayout" name="gridLayout_3" columnstretch="0,0,1">
+                   <layout class="QGridLayout" name="gridLayout_3" columnstretch="0,1">
+                    <item row="3" column="0">
+                     <widget class="QDoubleSpinBox" name="general_doubleSpinBox_detectionRate_2">
+                      <property name="suffix">
+                       <string> Hz</string>
+                      </property>
+                      <property name="decimals">
+                       <number>1</number>
+                      </property>
+                      <property name="value">
+                       <double>1.000000000000000</double>
+                      </property>
+                     </widget>
+                    </item>
                     <item row="0" column="0">
                      <widget class="QCheckBox" name="general_checkBox_SLAM_mode_2">
                       <property name="text">
@@ -1959,7 +1972,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="0" column="2">
+                    <item row="0" column="1">
                      <widget class="QLabel" name="label_79">
                       <property name="text">
                        <string>SLAM mode.
@@ -1980,7 +1993,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                       </property>
                      </widget>
                     </item>
-                    <item row="1" column="2">
+                    <item row="1" column="1">
                      <widget class="QLabel" name="label_activateRGBD_2">
                       <property name="text">
                        <string>Activate metric RGB-D SLAM.
@@ -2001,7 +2014,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="2" column="2">
+                    <item row="2" column="1">
                      <widget class="QLabel" name="label_publishStat">
                       <property name="text">
                        <string>Publish statistics.</string>
@@ -2011,20 +2024,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="3" column="0">
-                     <widget class="QDoubleSpinBox" name="general_doubleSpinBox_detectionRate_2">
-                      <property name="suffix">
-                       <string> Hz</string>
-                      </property>
-                      <property name="decimals">
-                       <number>1</number>
-                      </property>
-                      <property name="value">
-                       <double>1.000000000000000</double>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="3" column="2">
+                    <item row="3" column="1">
                      <widget class="QLabel" name="label_134">
                       <property name="text">
                        <string>Detection rate (0 means inf). RTAB-Map will filter input images to satisfy this rate.</string>
@@ -2044,7 +2044,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="4" column="2">
+                    <item row="4" column="1">
                      <widget class="QLabel" name="label_112">
                       <property name="text">
                        <string>Images buffer size (0 means inf).</string>
@@ -2073,7 +2073,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="5" column="2">
+                    <item row="5" column="1">
                      <widget class="QLabel" name="label_timeLimit_2">
                       <property name="text">
                        <string>T_time : Max time (ms) allowed (0 means inf).</string>
@@ -2096,7 +2096,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="6" column="2">
+                    <item row="6" column="1">
                      <widget class="QLabel" name="label_121">
                       <property name="text">
                        <string>T_loop : Loop closure threshold.</string>
@@ -2116,7 +2116,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="7" column="2">
+                    <item row="7" column="1">
                      <widget class="QLabel" name="label_similarity_2">
                       <property name="text">
                        <string>T_similarity : Similarity threshold (for Rehearsal/Weight Update).</string>
@@ -2139,36 +2139,12 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="8" column="2">
+                    <item row="8" column="1">
                      <widget class="QLabel" name="label_126">
                       <property name="text">
                        <string>STM size : Short-term memory size.</string>
                       </property>
                       <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="9" column="0">
-                     <widget class="QLabel" name="label_databasePath_2">
-                      <property name="text">
-                       <string>Database path.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="9" column="1">
-                     <widget class="QToolButton" name="toolButton_databasePath_2">
-                      <property name="text">
-                       <string>...</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="9" column="2">
-                     <widget class="QLineEdit" name="lineEdit_databasePath_2">
-                      <property name="readOnly">
                        <bool>true</bool>
                       </property>
                      </widget>
@@ -2519,32 +2495,8 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                      </widget>
                     </item>
                     <item>
-                     <layout class="QGridLayout" name="gridLayout_4" columnstretch="0,0,1">
+                     <layout class="QGridLayout" name="gridLayout_4" columnstretch="0,0,0">
                       <item row="0" column="0">
-                       <widget class="QLabel" name="label_databasePath">
-                        <property name="text">
-                         <string>Database path.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="1">
-                       <widget class="QToolButton" name="toolButton_databasePath">
-                        <property name="text">
-                         <string>...</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="2">
-                       <widget class="QLineEdit" name="lineEdit_databasePath">
-                        <property name="readOnly">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="0">
                        <widget class="QLabel" name="label_workingDirectory">
                         <property name="text">
                          <string>Working directory (where to put logs/dump stuff).</string>
@@ -2554,14 +2506,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="1" column="1">
+                      <item row="0" column="1">
                        <widget class="QToolButton" name="toolButton_workingDirectory">
                         <property name="text">
                          <string>...</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="1" column="2">
+                      <item row="0" column="2">
                        <widget class="QLineEdit" name="lineEdit_workingDirectory">
                         <property name="readOnly">
                          <bool>true</bool>

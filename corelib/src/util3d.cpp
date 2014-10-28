@@ -66,6 +66,7 @@ namespace util3d
 
 // format : ".png" ".jpg" "" (empty is general)
 CompressionThread::CompressionThread(const cv::Mat & mat, const std::string & format) :
+	constCompressedData_(0),
 	uncompressedData_(mat),
 	format_(format),
 	image_(!format.empty()),
@@ -74,8 +75,8 @@ CompressionThread::CompressionThread(const cv::Mat & mat, const std::string & fo
 	UASSERT(format.empty() || format.compare(".png") == 0 || format.compare(".jpg") == 0);
 }
 // assume image
-CompressionThread::CompressionThread(const std::vector<unsigned char> & bytes, bool isImage) :
-	compressedData_(bytes),
+CompressionThread::CompressionThread(const std::vector<unsigned char> * bytes, bool isImage) :
+	constCompressedData_(bytes),
 	image_(isImage),
 	compressMode_(false)
 {}
@@ -97,15 +98,15 @@ void CompressionThread::mainLoop()
 	}
 	else // uncompress
 	{
-		if(!compressedData_.empty())
+		if(constCompressedData_ && constCompressedData_->size())
 		{
 			if(image_)
 			{
-				uncompressedData_ = uncompressImage(compressedData_);
+				uncompressedData_ = uncompressImage(*constCompressedData_);
 			}
 			else
 			{
-				uncompressedData_ = uncompressData(compressedData_);
+				uncompressedData_ = uncompressData(*constCompressedData_);
 			}
 		}
 	}

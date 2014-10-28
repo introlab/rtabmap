@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/Camera.h"
 #include <opencv2/core/core.hpp>
+#include "rtabmap/utilite/UFile.h"
 #include <stdio.h>
 
 void showUsage()
@@ -96,15 +97,21 @@ int main(int argc, char * argv[])
 	// Appearance-based only, disable RGB-D mode
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDEnabled(), "false"));
 
+	std::string databasePath = rtabmap::Parameters::defaultRtabmapWorkingDirectory()+rtabmap::Parameters::getDefaultDatabaseName();
 	if(localizationMode)
 	{
 		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "false"));
 		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpIncrementalDictionary(), "false"));
 		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemSTMSize(), "1"));
 	}
+	else
+	{
+		// delete previous database if there's one...
+		UFile::erase(databasePath);
+	}
 
 	// Initialize rtabmap: delete/create database...
-	rtabmap.init(parameters, !localizationMode);
+	rtabmap.init(parameters, databasePath);
 
 	// Process each image of the directory...
 	printf("\nProcessing images... from directory \"%s\"\n", path.c_str());

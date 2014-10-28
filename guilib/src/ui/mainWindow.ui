@@ -34,9 +34,16 @@
     <property name="title">
      <string>File</string>
     </property>
+    <addaction name="actionNew_database"/>
+    <addaction name="actionOpen_database"/>
+    <addaction name="separator"/>
     <addaction name="actionSave_point_cloud"/>
     <addaction name="actionExport_2D_scans_ply_pcd"/>
     <addaction name="actionExport_2D_Grid_map_bmp_png"/>
+    <addaction name="separator"/>
+    <addaction name="actionClose_database"/>
+    <addaction name="separator"/>
+    <addaction name="actionEdit_database"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
@@ -44,22 +51,20 @@
     <property name="title">
      <string>Edit</string>
     </property>
-    <addaction name="actionApply_settings_to_the_detector"/>
-    <addaction name="separator"/>
     <addaction name="actionDownload_all_clouds"/>
     <addaction name="actionDownload_graph"/>
+    <addaction name="actionClear_cache"/>
     <addaction name="separator"/>
     <addaction name="actionOpen_working_directory"/>
-    <addaction name="actionPrint_loop_closure_IDs_to_console"/>
     <addaction name="separator"/>
     <addaction name="actionDelete_memory"/>
-    <addaction name="actionClear_cache"/>
     <addaction name="separator"/>
     <addaction name="actionDump_the_memory"/>
     <addaction name="actionDump_the_prediction_matrix"/>
     <addaction name="actionGenerate_map"/>
     <addaction name="actionGenerate_local_map"/>
     <addaction name="actionGenerate_TORO_graph_graph"/>
+    <addaction name="actionPrint_loop_closure_IDs_to_console"/>
     <addaction name="separator"/>
     <addaction name="actionData_recorder"/>
     <addaction name="separator"/>
@@ -777,11 +782,6 @@
     <string>Stop</string>
    </property>
   </action>
-  <action name="actionApply_settings_to_the_detector">
-   <property name="text">
-    <string>Apply settings to detector</string>
-   </property>
-  </action>
   <action name="actionDump_the_memory">
    <property name="text">
     <string>Dump the memory</string>
@@ -1066,6 +1066,26 @@
   <action name="actionOpenNI2_Sense">
    <property name="text">
     <string>OpenNI2</string>
+   </property>
+  </action>
+  <action name="actionOpen_database">
+   <property name="text">
+    <string>Open database...</string>
+   </property>
+  </action>
+  <action name="actionNew_database">
+   <property name="text">
+    <string>New database...</string>
+   </property>
+  </action>
+  <action name="actionClose_database">
+   <property name="text">
+    <string>Close database</string>
+   </property>
+  </action>
+  <action name="actionEdit_database">
+   <property name="text">
+    <string>Edit database...</string>
    </property>
   </action>
  </widget>

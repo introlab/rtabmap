@@ -70,8 +70,10 @@ void PdfPlotItem::showDescription(bool shown)
 		{
 			QImage img;
 			QMap<int, Signature>::const_iterator iter = _signaturesRef->find(int(this->data().x()));
-			if(iter != _signaturesRef->constEnd() && !iter.value().getImageRaw().empty())
+			if(iter != _signaturesRef->constEnd() && !iter.value().getImage().empty())
 			{
+				cv::Mat image;
+				iter.value().uncompressData(&image, 0, 0);
 				img = uCvMat2QImage(iter.value().getImageRaw());
 				QPixmap scaled = QPixmap::fromImage(img).scaledToWidth(128);
 				_img = new QGraphicsPixmapItem(scaled, this);

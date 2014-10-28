@@ -140,6 +140,7 @@ public:
 
 	SensorData toSensorData();
 	void uncompressData();
+	void uncompressData(cv::Mat * image, cv::Mat * depth, cv::Mat * depth2D) const;
 
 private:
 	int _id;

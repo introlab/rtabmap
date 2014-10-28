@@ -139,7 +139,6 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Rtabmap, DetectionRate,                float, 1.0, "Detection rate. RTAB-Map will filter input images to satisfy this rate.");
 	RTABMAP_PARAM(Rtabmap, ImageBufferSize,              int, 1, 	 "Data buffer size (0 min inf).");
 	RTABMAP_PARAM_STR(Rtabmap, WorkingDirectory, Parameters::getDefaultWorkingDirectory(), "Working directory.");
-	RTABMAP_PARAM_STR(Rtabmap, DatabasePath,     Parameters::getDefaultDatabasePath(), "Database path.");
 	RTABMAP_PARAM(Rtabmap, MaxRetrieved,                 unsigned int, 2, "Maximum locations retrieved at the same time from LTM.");
 	RTABMAP_PARAM(Rtabmap, StatisticLogsBufferedInRAM,   bool, true, "Statistic logs buffered in RAM instead of written to hard drive after each iteration.");
 	RTABMAP_PARAM(Rtabmap, StatisticLogged,   	         bool, false, "Logging enabled.");
@@ -354,7 +353,6 @@ public:
 private:
 	Parameters();
 	static std::string getDefaultWorkingDirectory();
-	static std::string getDefaultDatabasePath();
 
 private:
 	static ParametersMap parameters_;

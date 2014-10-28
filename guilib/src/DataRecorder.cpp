@@ -66,7 +66,7 @@ bool DataRecorder::init(const QString & path, bool recordInRAM)
 			customParameters.insert(ParametersPair(Parameters::kDbSqlite3InMemory(), "false")); // to keep images
 		}
 		memory_ = new Memory();
-		if(!memory_->init(path.toStdString(), true, customParameters, false))
+		if(!memory_->init(path.toStdString(), true, customParameters))
 		{
 			delete memory_;
 			memory_ = 0;

@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/KeypointItem.h"
 #include "rtabmap/gui/DataRecorder.h"
+#include "rtabmap/gui/DatabaseViewer.h"
 
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/ULogger.h>
@@ -114,6 +115,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_lastId(0),
 	_processingStatistics(false),
 	_odometryReceived(false),
+	_openedDatabasePath(""),
 	_odometryCorrection(Transform::getIdentity()),
 	_lastOdometryProcessed(true),
 	_oneSecondTimer(0),
@@ -241,6 +243,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(a, SIGNAL(triggered(bool)), _initProgressDialog, SLOT(show()));
 
 	// connect actions with custom slots
+	connect(_ui->actionNew_database, SIGNAL(triggered()), this, SLOT(newDatabase()));
+	connect(_ui->actionOpen_database, SIGNAL(triggered()), this, SLOT(openDatabase()));
+	connect(_ui->actionClose_database, SIGNAL(triggered()), this, SLOT(closeDatabase()));
+	connect(_ui->actionEdit_database, SIGNAL(triggered()), this, SLOT(editDatabase()));
 	connect(_ui->actionStart, SIGNAL(triggered()), this, SLOT(startDetection()));
 	connect(_ui->actionPause, SIGNAL(triggered()), this, SLOT(pauseDetection()));
 	connect(_ui->actionStop, SIGNAL(triggered()), this, SLOT(stopDetection()));
@@ -329,7 +335,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_preferencesDialog, SIGNAL(settingsChanged(PreferencesDialog::PANEL_FLAGS)), this, SLOT(applyPrefSettings(PreferencesDialog::PANEL_FLAGS)));
 	qRegisterMetaType<rtabmap::ParametersMap>("rtabmap::ParametersMap");
 	connect(_preferencesDialog, SIGNAL(settingsChanged(rtabmap::ParametersMap)), this, SLOT(applyPrefSettings(rtabmap::ParametersMap)));
-	connect(_ui->actionApply_settings_to_the_detector, SIGNAL(triggered()), this, SLOT(applyAllPrefSettings()));
 
 	// more connects...
 	connect(_ui->doubleSpinBox_stats_imgRate, SIGNAL(editingFinished()), this, SLOT(changeImgRateSetting()));
@@ -356,6 +361,26 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_ui->widget_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 
+	if(_ui->statsToolBox->findChildren<StatItem*>().size() == 0)
+	{
+		const std::map<std::string, float> & statistics = Statistics::defaultData();
+		for(std::map<std::string, float>::const_iterator iter = statistics.begin(); iter != statistics.end(); ++iter)
+		{
+			_ui->statsToolBox->updateStat(QString((*iter).first.c_str()).replace('_', ' '), 0, (*iter).second);
+		}
+	}
+
+	// update loop closure viewer parameters
+	ParametersMap parameters = _preferencesDialog->getAllParameters();
+	_ui->widget_loopClosureViewer->setDecimation(atoi(parameters.at(Parameters::kLccIcp3Decimation()).c_str()));
+	_ui->widget_loopClosureViewer->setMaxDepth(atof(parameters.at(Parameters::kLccIcp3MaxDepth()).c_str()));
+	_ui->widget_loopClosureViewer->setSamples(atoi(parameters.at(Parameters::kLccIcp3Samples()).c_str()));
+
+	//update ui
+	_ui->doubleSpinBox_stats_detectionRate->setValue(_preferencesDialog->getDetectionRate());
+	_ui->doubleSpinBox_stats_timeLimit->setValue(_preferencesDialog->getTimeLimit());
+	_ui->actionSLAM_mode->setChecked(_preferencesDialog->isSLAMMode());
+
 	splash.close();
 
 	this->setFocus();
@@ -364,10 +389,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 MainWindow::~MainWindow()
 {
 	UDEBUG("");
-	if(_state != kIdle)
-	{
-		this->stopDetection();
-	}
+	this->stopDetection();
 	delete _ui;
 	delete _elapsedTime;
 }
@@ -399,6 +421,11 @@ void MainWindow::closeEvent(QCloseEvent* event)
 	if(_state != kIdle && _state != kMonitoring && _state != kMonitoringPaused)
 	{
 		this->stopDetection();
+		if(_state == kInitialized)
+		{
+			this->closeDatabase();
+			this->changeState(kApplicationClosing);
+		}
 		if(_state != kIdle)
 		{
 			processStopped = false;
@@ -698,8 +725,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
 
 		// update cache
-		Signature & signature = *_cachedSignatures.insert(stat.getSignature().id(), stat.getSignature());
-		signature.uncompressData(); // make sure data are already uncompressed
+		Signature signature = stat.getSignature();
+		signature.uncompressData(); // make sure data are uncompressed
+		_cachedSignatures.insert(stat.getSignature().id(), signature);
 		UDEBUG("");
 
 		// map ids
@@ -736,6 +764,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		int matchId = 0;
 		cv::Mat loopImage;
 		cv::Mat loopDepth;
+		cv::Mat loopDepth2D;
 		int shownLoopId = 0;
 		if(highestHypothesisId > 0 || stat.localLoopClosureId()>0)
 		{
@@ -782,8 +811,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				QMap<int, Signature>::iterator iter = _cachedSignatures.find(shownLoopId);
 				if(iter != _cachedSignatures.end())
 				{
-					loopImage = iter.value().getImageRaw();
-					loopDepth = iter.value().getDepthRaw();
+					iter.value().uncompressData(&loopImage, &loopDepth, &loopDepth2D);
 				}
 			}
 		}
@@ -933,14 +961,20 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				{
 					loopOldId = stat.localLoopClosureId();
 				}
-				int loopNewId = stat.refImageId();
 
-				QMap<int, Signature>::iterator newIter = _cachedSignatures.find(loopNewId);
 				QMap<int, Signature>::iterator oldIter = _cachedSignatures.find(loopOldId);
 
-				if(newIter!=_cachedSignatures.end() && oldIter!=_cachedSignatures.end())
+				if(oldIter!=_cachedSignatures.end())
 				{
-					_ui->widget_loopClosureViewer->setData(*oldIter, *newIter);
+					Signature old = oldIter.value();
+					if(old.getImageRaw().empty())
+					{
+						old.setImageRaw(loopImage);
+						old.setDepthRaw(loopDepth);
+						old.setDepth2DRaw(loopDepth2D);
+					}
+					signature.setPose(loopClosureTransform);
+					_ui->widget_loopClosureViewer->setData(*oldIter, signature);
 					if(_ui->dockWidget_loopClosureViewer->isVisible())
 					{
 						UTimer loopTimer;
@@ -973,7 +1007,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 void MainWindow::updateMapCloud(
 		const std::map<int, Transform> & posesIn,
 		const Transform & currentPose,
-		const std::multimap<int, Link> & constraints)
+		const std::multimap<int, Link> & constraints,
+		bool verboseProgress)
 {
 	if(posesIn.size())
 	{
@@ -1028,6 +1063,7 @@ void MainWindow::updateMapCloud(
 	// Map updated! regenerate the assembled cloud, last pose is the new one
 	UDEBUG("Update map with %d locations (currentPose=%s)", poses.size(), currentPose.prettyPrint().c_str());
 	QMap<std::string, Transform> viewerClouds = _ui->widget_cloudViewer->getAddedClouds();
+	int i=1;
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
 		if(!iter->second.isNull())
@@ -1056,7 +1092,7 @@ void MainWindow::updateMapCloud(
 				else if(_cachedSignatures.contains(iter->first))
 				{
 					QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
-					if(!jter->getImageRaw().empty() && !jter->getDepthRaw().empty())
+					if(jter->getImage().size() && jter->getDepth().size())
 					{
 						this->createAndAddCloudToMap(iter->first, iter->second);
 					}
@@ -1091,7 +1127,7 @@ void MainWindow::updateMapCloud(
 				else if(_cachedSignatures.contains(iter->first))
 				{
 					QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
-					if(!jter->getDepth2DRaw().empty())
+					if(jter->getDepth2D().size())
 					{
 						this->createAndAddScanToMap(iter->first, iter->second);
 					}
@@ -1107,11 +1143,20 @@ void MainWindow::updateMapCloud(
 				UDEBUG("Hide scan %s", scanName.c_str());
 				_ui->widget_cloudViewer->setCloudVisibility(scanName.c_str(), false);
 			}
+
+			if(verboseProgress)
+			{
+				_initProgressDialog->appendText(tr("Updated cloud %1 (%2/%3)").arg(iter->first).arg(i).arg(poses.size()));
+				_initProgressDialog->incrementStep();
+				QApplication::processEvents();
+			}
 		}
 		else
 		{
 			UERROR("transform is null!?");
 		}
+
+		++i;
 	}
 	//remove not used clouds
 	for(QMap<std::string, Transform>::iterator iter = viewerClouds.begin(); iter!=viewerClouds.end(); ++iter)
@@ -1224,10 +1269,13 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
 		return;
 	}
 
+	cv::Mat image, depth;
+	iter->uncompressData(&image, &depth, 0);
+
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 	cloud = createCloud(nodeId,
-			iter->getImageRaw(),
-			iter->getDepthRaw(),
+			image,
+			depth,
 			iter->getDepthFx(),
 			iter->getDepthFy(),
 			iter->getDepthCx(),
@@ -1327,9 +1375,11 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose)
 		UERROR("Node %d is not in the cache.", nodeId);
 		return;
 	}
+	cv::Mat depth2D;
+	iter->uncompressData(0, 0, &depth2D);
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-	cloud = util3d::depth2DToPointCloud(iter->getDepth2DRaw());
+	cloud = util3d::depth2DToPointCloud(depth2D);
 	QColor color = Qt::red;
 	int mapId = _mapIds.value(nodeId, -1);
 	if(mapId >= 0)
@@ -1399,10 +1449,50 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
+		this->changeState(MainWindow::kInitializing);
 	}
 	else if((RtabmapEventInit::Status)status == RtabmapEventInit::kInitialized)
 	{
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
+		this->changeState(MainWindow::kInitialized);
+	}
+	else if((RtabmapEventInit::Status)status == RtabmapEventInit::kClosing)
+	{
+		_initProgressDialog->setAutoClose(true, 1);
+		_initProgressDialog->resetProgress();
+		_initProgressDialog->show();
+		if(_state!=kApplicationClosing)
+		{
+			this->changeState(MainWindow::kClosing);
+		}
+	}
+	else if((RtabmapEventInit::Status)status == RtabmapEventInit::kClosed)
+	{
+		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
+		if(_openedDatabasePath.compare(_preferencesDialog->getWorkingDirectory()+"/"+Parameters::getDefaultDatabaseName().c_str()) == 0)
+		{
+			// Temp database used, automatically backup with unique name (timestamp)
+			QString newName = _preferencesDialog->getWorkingDirectory()+(QString("/rtabmap_%1.db").arg(QDateTime::currentDateTime().toString("yyMMddhhmmss")));
+			if(QFile::rename(_openedDatabasePath, newName))
+			{
+				std::string msg = uFormat("Database saved to \"%s\".", newName.toStdString().c_str());
+				UINFO(msg.c_str());
+				QMessageBox::information(this, tr("Database saved!"), QString(msg.c_str()));
+			}
+			else
+			{
+				std::string msg = uFormat("Failed to rename temporary database from \"%s\" to \"%s\".", _openedDatabasePath.toStdString().c_str(), newName.toStdString().c_str());
+				UERROR(msg.c_str());
+				QMessageBox::critical(this, tr("Closing failed!"), QString(msg.c_str()));
+			}
+		}
+		_openedDatabasePath.clear();
+		bool applicationClosing = _state == kApplicationClosing;
+		this->changeState(MainWindow::kIdle);
+		if(applicationClosing)
+		{
+			this->close();
+		}
 	}
 	else
 	{
@@ -1410,10 +1500,16 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 		QString msg(info);
 		if((RtabmapEventInit::Status)status == RtabmapEventInit::kError)
 		{
+			_openedDatabasePath.clear();
 			_initProgressDialog->setAutoClose(false);
 			msg.prepend(tr("[ERROR] "));
+			_initProgressDialog->appendText(msg);
+			this->changeState(MainWindow::kIdle);
 		}
-		_initProgressDialog->appendText(msg);
+		else
+		{
+			_initProgressDialog->appendText(msg);
+		}
 	}
 }
 
@@ -1437,8 +1533,9 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		UINFO(" poses = %d", event.getPoses().size());
 		UINFO(" constraints = %d", event.getConstraints().size());
 
-		_initProgressDialog->setMaximumSteps(event.getSignatures().size());
+		_initProgressDialog->setMaximumSteps(event.getSignatures().size()+event.getPoses().size()+1);
 		_initProgressDialog->appendText(QString("Inserting data in the cache (%1 signatures downloaded)...").arg(event.getSignatures().size()));
+		QApplication::processEvents();
 
 		int addedSignatures = 0;
 		for(std::map<int, Signature>::const_iterator iter = event.getSignatures().begin();
@@ -1447,17 +1544,15 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		{
 			if(!_cachedSignatures.contains(iter->first))
 			{
-				QMap<int, Signature>::iterator inserted = _cachedSignatures.insert(iter->first, iter->second);
-				//uncompress data if required
-				if(inserted->getImageRaw().empty() && inserted->getImage().size())
-				{
-					inserted->uncompressData();
-					++addedSignatures;
-				}
+				_cachedSignatures.insert(iter->first, iter->second);
+				++addedSignatures;
 			}
+			_initProgressDialog->incrementStep();
+			QApplication::processEvents();
 		}
 		_initProgressDialog->appendText(tr("Inserted %1 new signatures.").arg(addedSignatures));
 		_initProgressDialog->incrementStep();
+		QApplication::processEvents();
 
 		for(std::map<int, int>::const_iterator iter = event.getMapIds().begin();
 			iter!=event.getMapIds().end();
@@ -1467,6 +1562,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		}
 		_initProgressDialog->appendText(tr("Inserted %1 map ids").arg(_mapIds.size()));
 		_initProgressDialog->incrementStep();
+		QApplication::processEvents();
 
 		_initProgressDialog->appendText("Inserting data in the cache... done.");
 
@@ -1475,7 +1571,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			_initProgressDialog->appendText("Updating the 3D map cloud...");
 			_initProgressDialog->incrementStep();
 			QApplication::processEvents();
-			this->updateMapCloud(event.getPoses(), Transform(), event.getConstraints());
+			this->updateMapCloud(event.getPoses(), Transform(), event.getConstraints(), true);
 			_initProgressDialog->appendText("Updating the 3D map cloud... done.");
 		}
 		else
@@ -1487,27 +1583,6 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		_initProgressDialog->appendText(tr("%1 locations are updated to/inserted in the cache.").arg(event.getPoses().size()));
 	}
 	_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
-}
-
-void MainWindow::applyAllPrefSettings()
-{
-	ULOGGER_DEBUG("");
-
-	//This will update the statistics toolbox
-	_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
-	if(_ui->statsToolBox->findChildren<StatItem*>().size() == 0)
-	{
-		const std::map<std::string, float> & statistics = Statistics::defaultData();
-		for(std::map<std::string, float>::const_iterator iter = statistics.begin(); iter != statistics.end(); ++iter)
-		{
-			_ui->statsToolBox->updateStat(QString((*iter).first.c_str()).replace('_', ' '), 0, (*iter).second);
-		}
-	}
-
-	_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
-
-	this->applyPrefSettings(PreferencesDialog::kPanelAll);
-	this->applyPrefSettings(_preferencesDialog->getAllParameters());
 }
 
 void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
@@ -1539,7 +1614,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		{
 			_dbReader->setFrameRate(_preferencesDialog->getGeneralInputRate());
 		}
-	}
+	}//This will update the statistics toolbox
 
 	if(flags & PreferencesDialog::kPanelGeneral)
 	{
@@ -1579,7 +1654,7 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters)
 
 		rtabmap::ParametersMap parametersModified = parameters;
 
-		if(_state != kIdle)
+		if(_state != kIdle && parametersModified.size())
 		{
 			if(parametersModified.erase(Parameters::kRtabmapWorkingDirectory()))
 			{
@@ -1592,23 +1667,15 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters)
 					QMessageBox::information(this, tr("Working memory changed"), tr("The working directory can't be changed while the detector is running. This will be applied when the detector will stop."));
 				}
 			}
-			if(parametersModified.erase(Parameters::kRtabmapDatabasePath()))
-			{
-				if(_state == kMonitoring || _state == kMonitoringPaused)
-				{
-					QMessageBox::information(this, tr("Database path changed"), tr("The remote database path can't be changed while the interface is in monitoring mode."));
-				}
-				else
-				{
-					QMessageBox::information(this, tr("Database path changed"), tr("The database path can't be changed while the detector is running. This will be applied when the detector will stop."));
-				}
-			}
 			this->post(new ParamEvent(parametersModified));
 		}
-		else if(parametersModified.size() == _preferencesDialog->getAllParameters().size())
+
+		if(_state != kMonitoring && _state != kMonitoringPaused &&
+		   uContains(parameters, Parameters::kRtabmapWorkingDirectory()))
 		{
-			// Send only if all parameters are sent
-			this->post(new ParamEvent(parametersModified));
+			_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
+			_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
+			_ui->widget_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 		}
 
 		// update loop closure viewer parameters
@@ -1884,6 +1951,83 @@ void MainWindow::beep()
 }
 
 //ACTIONS
+void MainWindow::newDatabase()
+{
+	if(_state != MainWindow::kIdle)
+	{
+		UERROR("This method can be called only in IDLE state.");
+		return;
+	}
+	_openedDatabasePath.clear();
+	ULOGGER_DEBUG("");
+	this->clearTheCache();
+	std::string databasePath = _preferencesDialog->getWorkingDirectory().toStdString()+"/"+Parameters::getDefaultDatabaseName();
+	if(QFile::exists(databasePath.c_str()))
+	{
+		if(QFile::remove(databasePath.c_str()))
+		{
+			UINFO("Deleted database \"%s\".", databasePath.c_str());
+		}
+		else
+		{
+			UERROR("Cannot create a new database because the temporary database \"%s\" cannot be deleted.", databasePath.c_str());
+			return;
+		}
+	}
+	_openedDatabasePath = databasePath.c_str();
+	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdInit, databasePath, 0, _preferencesDialog->getAllParameters()));
+}
+
+void MainWindow::openDatabase()
+{
+	if(_state != MainWindow::kIdle)
+	{
+		UERROR("This method can be called only in IDLE state.");
+		return;
+	}
+	_openedDatabasePath.clear();
+	QString path = QFileDialog::getOpenFileName(this, tr("Open database..."), _preferencesDialog->getWorkingDirectory(), tr("RTAB-Map database files (*.db)"));
+	if(!path.isEmpty())
+	{
+		this->clearTheCache();
+		_openedDatabasePath = path;
+		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdInit, path.toStdString(), 0, _preferencesDialog->getAllParameters()));
+	}
+}
+
+void MainWindow::closeDatabase()
+{
+	if(_state != MainWindow::kInitialized)
+	{
+		UERROR("This method can be called only in INITIALIZED state.");
+		return;
+	}
+	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdClose));
+}
+
+void MainWindow::editDatabase()
+{
+	if(_state != MainWindow::kIdle)
+	{
+		UERROR("This method can be called only in IDLE state.");
+		return;
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Edit database..."), _preferencesDialog->getWorkingDirectory(), tr("RTAB-Map database files (*.db)"));
+	if(!path.isEmpty())
+	{
+		DatabaseViewer * viewer = new DatabaseViewer(this);
+		viewer->setWindowModality(Qt::WindowModal);
+		if(viewer->openDatabase(path))
+		{
+			viewer->show();
+		}
+		else
+		{
+			delete viewer;
+		}
+	}
+}
+
 void MainWindow::startDetection()
 {
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
@@ -1945,7 +2089,7 @@ void MainWindow::startDetection()
 						     tr("RTAB-Map"),
 						     tr("A camera is running, stop it first."));
 		UWARN("_camera is not null... it must be stopped first");
-		emit stateChanged(kIdle);
+		emit stateChanged(kInitialized);
 		return;
 	}
 	if(_dbReader != 0)
@@ -1954,7 +2098,7 @@ void MainWindow::startDetection()
 							 tr("RTAB-Map"),
 							 tr("A database reader is running, stop it first."));
 		UWARN("_dbReader is not null... it must be stopped first");
-		emit stateChanged(kIdle);
+		emit stateChanged(kInitialized);
 		return;
 	}
 
@@ -1967,7 +2111,7 @@ void MainWindow::startDetection()
 				 tr("RTAB-Map"),
 				 tr("No sources are selected. See Preferences->Source panel."));
 		UWARN("No sources are selected. See Preferences->Source panel.");
-		emit stateChanged(kIdle);
+		emit stateChanged(kInitialized);
 		return;
 	}
 
@@ -2052,7 +2196,7 @@ void MainWindow::startDetection()
 			QMessageBox::warning(this,
 								   tr("RTAB-Map"),
 								   tr("Camera initialization failed..."));
-			emit stateChanged(kIdle);
+			emit stateChanged(kInitialized);
 			delete camera;
 			camera = 0;
 			if(_odomThread)
@@ -2105,7 +2249,7 @@ void MainWindow::startDetection()
 			QMessageBox::warning(this,
 								   tr("RTAB-Map"),
 								   tr("Database reader initialization failed..."));
-			emit stateChanged(kIdle);
+			emit stateChanged(kInitialized);
 			delete _dbReader;
 			_dbReader = 0;
 			if(_odomThread)
@@ -2161,7 +2305,7 @@ void MainWindow::startDetection()
 				QMessageBox::warning(this,
 									   tr("RTAB-Map"),
 									   tr("Camera initialization failed..."));
-				emit stateChanged(kIdle);
+				emit stateChanged(kInitialized);
 				delete camera;
 				camera = 0;
 				return;
@@ -2174,7 +2318,6 @@ void MainWindow::startDetection()
 	_lastOdomPose.setNull();
 	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdCleanDataBuffer)); // clean sensors buffer
 	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdTriggerNewMap)); // Trigger a new map
-	this->applyAllPrefSettings();
 
 	if(_odomThread)
 	{
@@ -2229,7 +2372,7 @@ void MainWindow::pauseDetection()
 
 void MainWindow::stopDetection()
 {
-	if(_state == kIdle || (!_camera && !_dbReader))
+	if(!_camera && !_dbReader && !_odomThread)
 	{
 		return;
 	}
@@ -2280,7 +2423,7 @@ void MainWindow::stopDetection()
 		delete _odomThread;
 		_odomThread = 0;
 	}
-	emit stateChanged(kIdle);
+	emit stateChanged(kInitialized);
 }
 
 void MainWindow::printLoopClosureIds()
@@ -2424,12 +2567,11 @@ void MainWindow::generateTOROMap()
 void MainWindow::deleteMemory()
 {
 	QMessageBox::StandardButton button;
-	QString dbPath = _preferencesDialog->getDatabasePath();
 	if(_state == kMonitoring || _state == kMonitoringPaused)
 	{
 		button = QMessageBox::question(this,
 				tr("Deleting memory..."),
-				tr("The remote database file \"%1\" and log files will be deleted. Are you sure you want to continue? (This cannot be reverted)").arg(dbPath),
+				tr("The remote database and log files will be deleted. Are you sure you want to continue? (This cannot be reverted)"),
 				QMessageBox::Yes|QMessageBox::No,
 				QMessageBox::No);
 	}
@@ -2437,7 +2579,7 @@ void MainWindow::deleteMemory()
 	{
 		button = QMessageBox::question(this,
 				tr("Deleting memory..."),
-				tr("The database file \"%1\" (%2 MB) and log files will be deleted. Are you sure you want to continue? (This cannot be reverted)").arg(dbPath).arg(UFile::length(dbPath.toStdString())/1000000),
+				tr("The current database and log files will be deleted. Are you sure you want to continue? (This cannot be reverted)"),
 				QMessageBox::Yes|QMessageBox::No,
 				QMessageBox::No);
 	}
@@ -2447,7 +2589,7 @@ void MainWindow::deleteMemory()
 		return;
 	}
 
-	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdDeleteMemory, dbPath.toStdString()));
+	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdResetMemory));
 	this->clearTheCache();
 }
 
@@ -2588,11 +2730,11 @@ void MainWindow::downloadAllClouds()
 				.arg(global?"true":"false").arg(optimized?"true":"false"));
 		if(global)
 		{
-			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMapGlobal, optimized?1:0));
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMapGlobal, "", optimized?1:0));
 		}
 		else
 		{
-			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMapLocal, optimized?1:0));
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMapLocal, "", optimized?1:0));
 		}
 	}
 }
@@ -2640,11 +2782,11 @@ void MainWindow::downloadPoseGraph()
 				.arg(global?"true":"false").arg(optimized?"true":"false"));
 		if(global)
 		{
-			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublishTOROGraphGlobal, optimized?1:0));
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublishTOROGraphGlobal, "", optimized?1:0));
 		}
 		else
 		{
-			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublishTOROGraphLocal, optimized?1:0));
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublishTOROGraphLocal, "", optimized?1:0));
 		}
 	}
 }
@@ -3721,18 +3863,20 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::getAssembledCloud(
 		{
 			if(_cachedSignatures.contains(iter->first))
 			{
-				QMap<int, Signature>::const_iterator jter = _cachedSignatures.find(iter->first);
+				const Signature & s = _cachedSignatures.find(iter->first).value();
+				cv::Mat image, depth;
+				s.uncompressData(&image, &depth, 0);
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 				if(regenerateClouds)
 				{
 					cloud = createCloud(iter->first,
-							jter->getImageRaw(),
-							jter->getDepthRaw(),
-							jter->getDepthFx(),
-							jter->getDepthFy(),
-							jter->getDepthCx(),
-							jter->getDepthCy(),
-							jter->getLocalTransform(),
+							image,
+							depth,
+							s.getDepthFx(),
+							s.getDepthFy(),
+							s.getDepthCx(),
+							s.getDepthCy(),
+							s.getLocalTransform(),
 							iter->second,
 							regenerateVoxelSize,
 							regenerateDecimation,
@@ -3805,18 +3949,20 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
 		{
 			if(_cachedSignatures.contains(iter->first))
 			{
-				QMap<int, Signature>::const_iterator jter = _cachedSignatures.find(iter->first);
+				const Signature & s = _cachedSignatures.find(iter->first).value();
+				cv::Mat image, depth;
+				s.uncompressData(&image, &depth, 0);
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 				if(regenerateClouds)
 				{
 					cloud = createCloud(iter->first,
-							jter->getImageRaw(),
-							jter->getDepthRaw(),
-							jter->getDepthFx(),
-							jter->getDepthFy(),
-							jter->getDepthCx(),
-							jter->getDepthCy(),
-							jter->getLocalTransform(),
+							image,
+							depth,
+							s.getDepthFx(),
+							s.getDepthFy(),
+							s.getDepthCx(),
+							s.getDepthCy(),
+							s.getLocalTransform(),
 							Transform::getIdentity(),
 							regenerateVoxelSize,
 							regenerateDecimation,
@@ -3872,7 +4018,57 @@ void MainWindow::changeState(MainWindow::State newState)
 	// TODO : To protect with mutex ?
 	switch (newState)
 	{
-	case kIdle:
+	case kIdle: // RTAB-Map is not initialized yet
+		_ui->actionNew_database->setEnabled(true);
+		_ui->actionOpen_database->setEnabled(true);
+		_ui->actionClose_database->setEnabled(false);
+		_ui->actionEdit_database->setEnabled(true);
+		_ui->actionStart->setEnabled(false);
+		_ui->actionPause->setEnabled(false);
+		_ui->actionPause->setChecked(false);
+		_ui->actionPause->setToolTip(tr("Pause"));
+		_ui->actionStop->setEnabled(false);
+		_ui->actionPause_on_match->setEnabled(true);
+		_ui->actionPause_on_local_loop_detection->setEnabled(true);
+		_ui->actionPause_when_a_loop_hypothesis_is_rejected->setEnabled(true);
+		_ui->actionDump_the_memory->setEnabled(false);
+		_ui->actionDump_the_prediction_matrix->setEnabled(false);
+		_ui->actionDelete_memory->setEnabled(false);
+		_ui->actionGenerate_map->setEnabled(false);
+		_ui->actionGenerate_local_map->setEnabled(false);
+		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
+		_ui->actionData_recorder->setEnabled(false);
+		_ui->actionOpen_working_directory->setEnabled(true);
+		_ui->actionDownload_all_clouds->setEnabled(false);
+		_ui->actionDownload_graph->setEnabled(false);
+		_ui->menuSelect_source->setEnabled(false);
+		_ui->actionTrigger_a_new_map->setEnabled(false);
+		_ui->doubleSpinBox_stats_imgRate->setEnabled(true);
+		_ui->statusbar->clearMessage();
+		_state = newState;
+		_oneSecondTimer->stop();
+		break;
+
+	case kApplicationClosing:
+	case kClosing:
+		_ui->actionStart->setEnabled(false);
+		_ui->actionPause->setEnabled(false);
+		_ui->actionStop->setEnabled(false);
+		_state = newState;
+		break;
+
+	case kInitializing:
+		_ui->actionNew_database->setEnabled(false);
+		_ui->actionOpen_database->setEnabled(false);
+		_ui->actionEdit_database->setEnabled(false);
+		_state = newState;
+		break;
+
+	case kInitialized:
+		_ui->actionNew_database->setEnabled(false);
+		_ui->actionOpen_database->setEnabled(false);
+		_ui->actionClose_database->setEnabled(true);
+		_ui->actionEdit_database->setEnabled(false);
 		_ui->actionStart->setEnabled(true);
 		_ui->actionPause->setEnabled(false);
 		_ui->actionPause->setChecked(false);
@@ -3889,9 +4085,10 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(true);
 		_ui->actionData_recorder->setEnabled(false);
 		_ui->actionOpen_working_directory->setEnabled(true);
-		_ui->actionApply_settings_to_the_detector->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(true);
+		_ui->actionDownload_graph->setEnabled(true);
 		_ui->menuSelect_source->setEnabled(true);
+		_ui->actionTrigger_a_new_map->setEnabled(true);
 		_ui->doubleSpinBox_stats_imgRate->setEnabled(true);
 		_ui->statusbar->clearMessage();
 		_state = newState;
@@ -3900,6 +4097,7 @@ void MainWindow::changeState(MainWindow::State newState)
 
 	case kStartingDetection:
 		_ui->actionStart->setEnabled(false);
+		_state = newState;
 		break;
 
 	case kDetecting:
@@ -3919,9 +4117,10 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
 		_ui->actionData_recorder->setEnabled(true);
 		_ui->actionOpen_working_directory->setEnabled(true);
-		_ui->actionApply_settings_to_the_detector->setEnabled(false);
 		_ui->actionDownload_all_clouds->setEnabled(false);
+		_ui->actionDownload_graph->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
+		_ui->actionTrigger_a_new_map->setEnabled(true);
 		_ui->doubleSpinBox_stats_imgRate->setEnabled(true);
 		_ui->statusbar->showMessage(tr("Detecting..."));
 		_state = newState;
@@ -3953,6 +4152,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionGenerate_local_map->setEnabled(false);
 			_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
 			_ui->actionDownload_all_clouds->setEnabled(false);
+			_ui->actionDownload_graph->setEnabled(false);
 			_state = kDetecting;
 			_elapsedTime->start();
 			_oneSecondTimer->start();
@@ -3979,6 +4179,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionGenerate_local_map->setEnabled(true);
 			_ui->actionGenerate_TORO_graph_graph->setEnabled(true);
 			_ui->actionDownload_all_clouds->setEnabled(true);
+			_ui->actionDownload_graph->setEnabled(true);
 			_state = kPaused;
 			_oneSecondTimer->stop();
 
@@ -3995,6 +4196,10 @@ void MainWindow::changeState(MainWindow::State newState)
 		}
 		break;
 	case kMonitoring:
+		_ui->actionNew_database->setVisible(false);
+		_ui->actionOpen_database->setVisible(false);
+		_ui->actionClose_database->setVisible(false);
+		_ui->actionEdit_database->setVisible(false);
 		_ui->actionStart->setVisible(false);
 		_ui->actionPause->setEnabled(true);
 		_ui->actionPause->setChecked(false);
@@ -4012,18 +4217,23 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_TORO_graph_graph->setVisible(false);
 		_ui->actionData_recorder->setVisible(false);
 		_ui->actionOpen_working_directory->setEnabled(false);
-		_ui->actionApply_settings_to_the_detector->setVisible(false);
 		_ui->actionDownload_all_clouds->setEnabled(true);
+		_ui->actionDownload_graph->setEnabled(true);
 		_ui->menuSelect_source->setVisible(false);
+		_ui->actionTrigger_a_new_map->setEnabled(true);
 		_ui->doubleSpinBox_stats_imgRate->setVisible(false);
 		_ui->doubleSpinBox_stats_imgRate_label->setVisible(false);
 		_ui->statusbar->showMessage(tr("Monitoring..."));
 		_state = newState;
 		_elapsedTime->start();
 		_oneSecondTimer->start();
-		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPause, 0));
+		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPause, "", 0));
 		break;
 	case kMonitoringPaused:
+		_ui->actionNew_database->setVisible(false);
+		_ui->actionOpen_database->setVisible(false);
+		_ui->actionClose_database->setVisible(false);
+		_ui->actionEdit_database->setVisible(false);
 		_ui->actionStart->setVisible(false);
 		_ui->actionPause->setToolTip(tr("Continue"));
 		_ui->actionPause->setChecked(true);
@@ -4041,15 +4251,16 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_TORO_graph_graph->setVisible(false);
 		_ui->actionData_recorder->setVisible(false);
 		_ui->actionOpen_working_directory->setEnabled(false);
-		_ui->actionApply_settings_to_the_detector->setVisible(false);
 		_ui->actionDownload_all_clouds->setEnabled(true);
+		_ui->actionDownload_graph->setEnabled(true);
 		_ui->menuSelect_source->setVisible(false);
+		_ui->actionTrigger_a_new_map->setEnabled(true);
 		_ui->doubleSpinBox_stats_imgRate->setVisible(false);
 		_ui->doubleSpinBox_stats_imgRate_label->setVisible(false);
 		_ui->statusbar->showMessage(tr("Monitoring paused..."));
 		_state = newState;
 		_oneSecondTimer->stop();
-		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPause, 1));
+		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPause, "", 1));
 		break;
 	default:
 		break;

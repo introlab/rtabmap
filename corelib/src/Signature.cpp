@@ -88,7 +88,7 @@ Signature::Signature(
 
 Signature::~Signature()
 {
-	ULOGGER_DEBUG("id=%d", _id);
+	//ULOGGER_DEBUG("id=%d", _id);
 }
 
 void Signature::addNeighbors(const std::map<int, Transform> & neighbors)
@@ -247,9 +247,9 @@ void Signature::uncompressData()
 	if(_imageRaw.empty() && _image.size())
 	{
 		//uncompress data
-		util3d::CompressionThread ctImage(_image, true);
-		util3d::CompressionThread ctDepth(_depth, true);
-		util3d::CompressionThread ctDepth2D(_depth2D, false);
+		util3d::CompressionThread ctImage(&_image, true);
+		util3d::CompressionThread ctDepth(&_depth, true);
+		util3d::CompressionThread ctDepth2D(&_depth2D, false);
 		ctImage.start();
 		ctDepth.start();
 		ctDepth2D.start();
@@ -259,6 +259,57 @@ void Signature::uncompressData()
 		_imageRaw = ctImage.getUncompressedData();
 		_depthRaw = ctDepth.getUncompressedData();
 		_depth2DRaw = ctDepth2D.getUncompressedData();
+	}
+}
+
+void Signature::uncompressData(cv::Mat * image, cv::Mat * depth, cv::Mat * depth2D) const
+{
+	if(image)
+	{
+		*image = _imageRaw;
+	}
+	if(depth)
+	{
+		*depth = _depthRaw;
+	}
+	if(depth2D)
+	{
+		*depth2D = _depth2DRaw;
+	}
+	if( (image && image->empty()) ||
+		(depth && depth->empty()) ||
+		(depth2D && depth2D->empty()))
+	{
+		util3d::CompressionThread ctImage(&_image, true);
+		util3d::CompressionThread ctDepth(&_depth, true);
+		util3d::CompressionThread ctDepth2D(&_depth2D, false);
+		if(image && image->empty())
+		{
+			ctImage.start();
+		}
+		if(depth && depth->empty())
+		{
+			ctDepth.start();
+		}
+		if(depth2D && depth2D->empty())
+		{
+			ctDepth2D.start();
+		}
+		ctImage.join();
+		ctDepth.join();
+		ctDepth2D.join();
+		if(image)
+		{
+			*image = ctImage.getUncompressedData();
+		}
+		if(depth)
+		{
+			*depth = ctDepth.getUncompressedData();
+		}
+		if(depth2D)
+		{
+			*depth2D = ctDepth2D.getUncompressedData();
+		}
 	}
 }
 

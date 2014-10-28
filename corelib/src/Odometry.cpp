@@ -84,10 +84,10 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomRoiRatios(), _roiRatios);
 }
 
-void Odometry::reset()
+void Odometry::reset(const Transform & initialPose)
 {
 	_resetCurrentCount = 0;
-	_pose = Transform::getIdentity();
+	_pose = initialPose;
 }
 
 bool Odometry::isLargeEnoughTransform(const Transform & transform)
@@ -193,7 +193,7 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 	}
 
 	_memory = new Memory(customParameters);
-	if(!_memory->init("", false, ParametersMap(), false))
+	if(!_memory->init("", false, ParametersMap()))
 	{
 		UERROR("Error initializing the memory for BOW Odometry.");
 	}
@@ -205,10 +205,10 @@ OdometryBOW::~OdometryBOW()
 }
 
 
-void OdometryBOW::reset()
+void OdometryBOW::reset(const Transform & initialPose)
 {
-	Odometry::reset();
-	_memory->init("", false, ParametersMap(), false);
+	Odometry::reset(initialPose);
+	_memory->init("", false, ParametersMap());
 	localMap_.clear();
 }
 
@@ -471,9 +471,9 @@ OdometryOpticalFlow::~OdometryOpticalFlow()
 }
 
 
-void OdometryOpticalFlow::reset()
+void OdometryOpticalFlow::reset(const Transform & initialPose)
 {
-	Odometry::reset();
+	Odometry::reset(initialPose);
 	lastFrame_ = cv::Mat();
 	lastCorners_.clear();
 	lastCorners3D_->clear();
@@ -1063,9 +1063,9 @@ OdometryICP::OdometryICP(int decimation,
 {
 }
 
-void OdometryICP::reset()
+void OdometryICP::reset(const Transform & initialPose)
 {
-	Odometry::reset();
+	Odometry::reset(initialPose);
 	_previousCloudNormal.reset(new pcl::PointCloud<pcl::PointNormal>);
 	_previousCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
 }

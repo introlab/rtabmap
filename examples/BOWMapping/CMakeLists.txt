@@ -1,5 +1,6 @@
 SET(INCLUDE_DIRS
 	${PROJECT_SOURCE_DIR}/corelib/include
+	${PROJECT_SOURCE_DIR}/utilite/include
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
 )
@@ -12,7 +13,7 @@ SET(LIBRARIES
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 ADD_EXECUTABLE(bow_mapping main.cpp)
-TARGET_LINK_LIBRARIES(bow_mapping rtabmap_core ${LIBRARIES})
+TARGET_LINK_LIBRARIES(bow_mapping rtabmap_core rtabmap_utilite ${LIBRARIES})
 
 SET_TARGET_PROPERTIES( bow_mapping 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-bow_mapping)

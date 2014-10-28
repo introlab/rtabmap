@@ -69,7 +69,7 @@ public:
 	bool init(const std::string & dbUrl,
 			bool dbOverwritten = false,
 			const ParametersMap & parameters = ParametersMap(),
-			bool postInitEvents = true);
+			bool postInitClosingEvents = false);
 	std::map<int, float> computeLikelihood(const Signature * signature,
 			const std::list<int> & ids);
 	int incrementMapId();
@@ -215,6 +215,7 @@ private:
 	int _lastGlobalLoopClosureChildId;
 	bool _memoryChanged; // False by default, become true when Memory::update() is called.
 	int _signaturesAdded;
+	bool _postInitClosingEvents;
 
 	std::map<int, Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
 	std::set<int> _stMem; // id

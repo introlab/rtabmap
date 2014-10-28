@@ -220,9 +220,9 @@ void DBReader::getNextImage(
 				UWARN("No image loaded from the database for id=%d!", *_currentId);
 			}
 
-			util3d::CompressionThread ctImage(imageBytes, true);
-			util3d::CompressionThread ctDepth(depthBytes, true);
-			util3d::CompressionThread ctDepth2D(depth2dBytes, false);
+			util3d::CompressionThread ctImage(&imageBytes, true);
+			util3d::CompressionThread ctDepth(&depthBytes, true);
+			util3d::CompressionThread ctDepth2D(&depth2dBytes, false);
 			ctImage.start();
 			ctDepth.start();
 			ctDepth2D.start();

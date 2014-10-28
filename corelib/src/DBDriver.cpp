@@ -295,7 +295,9 @@ void DBDriver::loadLastNodes(std::list<Signature *> & signatures) const
 	_dbSafeAccessMutex.unlock();
 }
 
-void DBDriver::loadSignatures(const std::list<int> & signIds, std::list<Signature *> & signatures)
+void DBDriver::loadSignatures(const std::list<int> & signIds,
+		std::list<Signature *> & signatures,
+		std::set<int> * loadedFromTrash)
 {
 	UDEBUG("");
 	// look up in the trash before the database
@@ -326,6 +328,10 @@ void DBDriver::loadSignatures(const std::list<int> & signIds, std::list<Signatur
 			}
 			if(valueFound)
 			{
+				if(loadedFromTrash)
+				{
+					loadedFromTrash->insert(*iter);
+				}
 				iter = ids.erase(iter);
 			}
 			else

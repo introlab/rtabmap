@@ -91,7 +91,7 @@ public:
 	// Load objects
 	void load(VWDictionary * dictionary) const;
 	void loadLastNodes(std::list<Signature *> & signatures) const;
-	void loadSignatures(const std::list<int> & ids, std::list<Signature *> & signatures);
+	void loadSignatures(const std::list<int> & ids, std::list<Signature *> & signatures, std::set<int> * loadedFromTrash = 0);
 	void loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws);
 
 	// Specific queries...

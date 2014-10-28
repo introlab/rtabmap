@@ -65,13 +65,12 @@ public:
 	bool process(const cv::Mat & image, int id=0); // for convenience, an id is automatically generated if id=0
 	bool process(const SensorData & data); // for convenience
 
-	void init(const ParametersMap & param, bool deleteMemory = true);
-	void init(const std::string & configFile = "", bool deleteMemory = true);
+	void init(const ParametersMap & parameters, const std::string & databasePath = "");
+	void init(const std::string & configFile = "", const std::string & databasePath = "");
 
 	void close();
 
 	const std::string & getWorkingDir() const {return _wDir;}
-	std::string getDatabasePath() const;
 	int getLoopClosureId() const;
 	int getRetrievedId() const;
 	int getLastLocationId() const;
@@ -98,12 +97,11 @@ public:
 	void triggerNewMap();
 	void generateDOTGraph(const std::string & path, int id=0, int margin=5);
 	void generateTOROGraph(const std::string & path, bool optimized, bool global);
-	void resetMemory(bool dbOverwritten = false);
+	void resetMemory();
 	void dumpPrediction() const;
 	void dumpData() const;
 	void parseParameters(const ParametersMap & parameters);
 	void setWorkingDirectory(std::string path);
-	void setDatabasePath(const std::string & path);
 	void deleteLocation(int locationId); // Only nodes in STM can be deleted
 	void rejectLoopClosure(int oldId, int newId);
 	void get3DMap(std::map<int, Signature> & signatures,

@@ -71,12 +71,13 @@ class RTABMAP_EXP CompressionThread : public UThread
 public:
 	// format : ".png" ".jpg" "" (empty is general)
 	CompressionThread(const cv::Mat & mat, const std::string & format = "");
-	CompressionThread(const std::vector<unsigned char> & bytes, bool isImage);
+	CompressionThread(const std::vector<unsigned char> * bytes, bool isImage);
 	const std::vector<unsigned char> & getCompressedData() const {return compressedData_;}
 	cv::Mat & getUncompressedData() {return uncompressedData_;}
 protected:
 	virtual void mainLoop();
 private:
+	const std::vector<unsigned char> * constCompressedData_;
 	std::vector<unsigned char> compressedData_;
 	cv::Mat uncompressedData_;
 	std::string format_;

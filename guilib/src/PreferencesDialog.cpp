@@ -268,8 +268,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->general_spinBox_imagesBufferSize, SIGNAL(valueChanged(int)), _ui->general_spinBox_imagesBufferSize_2, SLOT(setValue(int)));
 	connect(_ui->general_spinBox_maxStMemSize, SIGNAL(valueChanged(int)), _ui->general_spinBox_maxStMemSize_2, SLOT(setValue(int)));
 
-	connect(_ui->lineEdit_databasePath, SIGNAL(textChanged(const QString &)), _ui->lineEdit_databasePath_2, SLOT(setText(const QString &)));
-
 	connect(_ui->general_doubleSpinBox_timeThr_2, SIGNAL(editingFinished()), this, SLOT(updateBasicParameter()));
 	connect(_ui->general_doubleSpinBox_hardThr_2, SIGNAL(editingFinished()), this, SLOT(updateBasicParameter()));
 	connect(_ui->doubleSpinBox_similarityThreshold_2, SIGNAL(editingFinished()), this, SLOT(updateBasicParameter()));
@@ -282,9 +280,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->general_checkBox_activateRGBD_2, SIGNAL(stateChanged(int)), this, SLOT(updateBasicParameter()));
 	connect(_ui->general_checkBox_SLAM_mode, SIGNAL(stateChanged(int)), this, SLOT(updateBasicParameter()));
 	connect(_ui->general_checkBox_SLAM_mode_2, SIGNAL(stateChanged(int)), this, SLOT(updateBasicParameter()));
-
-	connect(_ui->lineEdit_databasePath_2, SIGNAL(textChanged(const QString &)), _ui->lineEdit_databasePath, SLOT(setText(const QString &)));
-	connect(_ui->toolButton_databasePath_2, SIGNAL(clicked()), this, SLOT(changeDatabasePath()));
 
 	// Map objects name with the corresponding parameter key, needed for the addParameter() slots
 	//Rtabmap
@@ -301,9 +296,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_spinBox_imagesBufferSize->setObjectName(Parameters::kRtabmapImageBufferSize().c_str());
 	_ui->general_spinBox_maxRetrieved->setObjectName(Parameters::kRtabmapMaxRetrieved().c_str());
 	_ui->general_checkBox_startNewMapOnLoopClosure->setObjectName(Parameters::kRtabmapStartNewMapOnLoopClosure().c_str());
-	_ui->lineEdit_databasePath->setObjectName(Parameters::kRtabmapDatabasePath().c_str());
 	_ui->lineEdit_workingDirectory->setObjectName(Parameters::kRtabmapWorkingDirectory().c_str());
-	connect(_ui->toolButton_databasePath, SIGNAL(clicked()), this, SLOT(changeDatabasePath()));
 	connect(_ui->toolButton_workingDirectory, SIGNAL(clicked()), this, SLOT(changeWorkingDirectory()));
 
 	// Memory
@@ -868,7 +861,6 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->general_checkBox_publishStats_2->setChecked(Parameters::defaultRtabmapPublishStats());
 		_ui->general_checkBox_activateRGBD_2->setChecked(Parameters::defaultRGBDEnabled());
 		_ui->general_checkBox_SLAM_mode_2->setChecked(Parameters::defaultMemIncrementalMemory());
-		_ui->lineEdit_databasePath_2->setText(Parameters::defaultRtabmapDatabasePath().c_str());
 		_ui->general_doubleSpinBox_detectionRate_2->setValue(Parameters::defaultRtabmapDetectionRate());
 		// match the advanced (spin and doubleSpin boxes)
 		_ui->general_doubleSpinBox_timeThr->setValue(Parameters::defaultRtabmapTimeThr());
@@ -942,11 +934,6 @@ void PreferencesDialog::resetSettings(int panelNumber)
 QString PreferencesDialog::getWorkingDirectory() const
 {
 	return _ui->lineEdit_workingDirectory->text();
-}
-
-QString PreferencesDialog::getDatabasePath() const
-{
-	return _ui->lineEdit_databasePath->text();
 }
 
 QString PreferencesDialog::getIniFilePath() const
@@ -1492,13 +1479,6 @@ void PreferencesDialog::showEvent ( QShowEvent * event )
 	if(_monitoringState)
 	{
 		// In monitoring state, you cannot change remote paths
-		_ui->lineEdit_databasePath->setEnabled(false);
-		_ui->lineEdit_databasePath_2->setEnabled(false);
-		_ui->toolButton_databasePath->setEnabled(false);
-		_ui->toolButton_databasePath_2->setEnabled(false);
-		_ui->label_databasePath->setEnabled(false);
-		_ui->label_databasePath_2->setEnabled(false);
-
 		_ui->lineEdit_workingDirectory->setEnabled(false);
 		_ui->toolButton_workingDirectory->setEnabled(false);
 		_ui->label_workingDirectory->setEnabled(false);
@@ -1514,13 +1494,6 @@ void PreferencesDialog::showEvent ( QShowEvent * event )
 	}
 	else
 	{
-		_ui->lineEdit_databasePath->setEnabled(true);
-		_ui->lineEdit_databasePath_2->setEnabled(true);
-		_ui->toolButton_databasePath->setEnabled(true);
-		_ui->toolButton_databasePath_2->setEnabled(true);
-		_ui->label_databasePath->setEnabled(true);
-		_ui->label_databasePath_2->setEnabled(true);
-
 		_ui->lineEdit_workingDirectory->setEnabled(true);
 		_ui->toolButton_workingDirectory->setEnabled(true);
 		_ui->label_workingDirectory->setEnabled(true);
@@ -2466,30 +2439,6 @@ void PreferencesDialog::updateKpROI()
 	strings.append(QString::number(_ui->doubleSpinBox_kp_roi2->value()/100.0));
 	strings.append(QString::number(_ui->doubleSpinBox_kp_roi3->value()/100.0));
 	_ui->lineEdit_kp_roi->setText(strings.join(" "));
-}
-
-void PreferencesDialog::changeDatabasePath()
-{
-	QFileDialog fileDialog;
-	fileDialog.setFileMode(QFileDialog::AnyFile);
-	fileDialog.setNameFilter(tr("RTAB-Map database files (*.db)"));
-	fileDialog.setDefaultSuffix("db");
-	fileDialog.setDirectory(QFileInfo(_ui->lineEdit_databasePath->text()).dir());
-	fileDialog.selectFile (_ui->lineEdit_databasePath->text());
-	QStringList fileNames;
-	QString path;
-	if(fileDialog.exec())
-	{
-		if(!fileDialog.selectedFiles().empty())
-		{
-			path = fileDialog.selectedFiles().first();
-		}
-	}
-
-	if(!path.isEmpty())
-	{
-		_ui->lineEdit_databasePath->setText(path);
-	}
 }
 
 void PreferencesDialog::changeWorkingDirectory()

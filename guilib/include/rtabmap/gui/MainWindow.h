@@ -72,6 +72,10 @@ class RTABMAPGUI_EXP MainWindow : public QMainWindow, public UEventsHandler
 public:
 	enum State {
 		kIdle,
+		kInitializing,
+		kInitialized,
+		kApplicationClosing,
+		kClosing,
 		kStartingDetection,
 		kDetecting,
 		kPaused,
@@ -108,6 +112,10 @@ protected:
 private slots:
 	void changeState(MainWindow::State state);
 	void beep();
+	void newDatabase();
+	void openDatabase();
+	void closeDatabase();
+	void editDatabase();
 	void startDetection();
 	void pauseDetection();
 	void stopDetection();
@@ -139,7 +147,6 @@ private slots:
 	void takeScreenshot();
 	void updateElapsedTime();
 	void processOdometry(const rtabmap::SensorData & data, int quality, float time, int features, int localMapSize);
-	void applyAllPrefSettings();
 	void applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags);
 	void applyPrefSettings(const rtabmap::ParametersMap & parameters);
 	void processRtabmapEventInit(int status, const QString & info);
@@ -185,7 +192,7 @@ signals:
 
 private:
 	void update3DMapVisibility(bool cloudsShown, bool scansShown);
-	void updateMapCloud(const std::map<int, Transform> & poses, const Transform & pose, const std::multimap<int, Link> & constraints);
+	void updateMapCloud(const std::map<int, Transform> & poses, const Transform & pose, const std::multimap<int, Link> & constraints, bool verboseProgress = false);
 	void createAndAddCloudToMap(int nodeId, const Transform & pose);
 	void createAndAddScanToMap(int nodeId, const Transform & pose);
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
@@ -247,6 +254,7 @@ private:
 	int _lastId;
 	bool _processingStatistics;
 	bool _odometryReceived;
+	QString _openedDatabasePath;
 
 	QMap<int, Signature> _cachedSignatures;
 	QMap<int, int> _mapIds;

@@ -71,6 +71,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_lastGlobalLoopClosureChildId(0),
 	_memoryChanged(false),
 	_signaturesAdded(0),
+	_postInitClosingEvents(false),
 
 	_feature2D(new SURF(parameters)),
 	_featureType(Feature2D::kFeatureSurf),
@@ -114,16 +115,17 @@ Memory::Memory(const ParametersMap & parameters) :
 	this->parseParameters(parameters);
 }
 
-bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const ParametersMap & parameters, bool postInitEvents)
+bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const ParametersMap & parameters, bool postInitClosingEvents)
 {
-	if(postInitEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
+	_postInitClosingEvents = postInitClosingEvents;
+	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
 
 	UDEBUG("");
 	this->parseParameters(parameters);
 	bool loadAllNodesInWM = Parameters::defaultMemInitWMWithAllNodes();
 	Parameters::parse(parameters, Parameters::kMemInitWMWithAllNodes(), loadAllNodesInWM);
 
-	if(postInitEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory..."));
+	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory..."));
 	DBDriver * tmpDriver = 0;
 	if(!_memoryChanged)
 	{
@@ -134,7 +136,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 		}
 	}
 	this->clear();
-	if(postInitEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory, done!"));
+	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory, done!"));
 
 	if(tmpDriver)
 	{
@@ -143,9 +145,9 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 
 	if(_dbDriver)
 	{
-		if(postInitEvents) UEventsManager::post(new RtabmapEventInit("Closing database connection..."));
+		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database connection..."));
 		_dbDriver->closeConnection();
-		if(postInitEvents) UEventsManager::post(new RtabmapEventInit("Closing database connection, done!"));
+		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database connection, done!"));
 	}
 
 	if(_dbDriver == 0 && !dbUrl.empty())
@@ -157,18 +159,18 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	if(_dbDriver)
 	{
 		success = false;
-		if(postInitEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database ") + dbUrl + "..."));
+		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database ") + dbUrl + "..."));
 		if(_dbDriver->openConnection(dbUrl, dbOverwritten))
 		{
 			success = true;
-			if(postInitEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database ") + dbUrl + ", done!"));
+			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database ") + dbUrl + ", done!"));
 
 			// Load the last working memory...
 			std::list<Signature*> dbSignatures;
 
 			if(loadAllNodesInWM)
 			{
-				if(postInitEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading all nodes to WM...")));
+				if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading all nodes to WM...")));
 				std::set<int> ids;
 				_dbDriver->getAllNodeIds(ids, true);
 				_dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures);
@@ -176,7 +178,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 			else
 			{
 				// load previous session working memory
-				if(postInitEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading last nodes to WM...")));
+				if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading last nodes to WM...")));
 				_dbDriver->loadLastNodes(dbSignatures);
 			}
 			for(std::list<Signature*>::reverse_iterator iter=dbSignatures.rbegin(); iter!=dbSignatures.rend(); ++iter)
@@ -199,7 +201,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 					delete *iter;
 				}
 			}
-			if(postInitEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading nodes to WM, done! (") + uNumber2Str(int(_workingMem.size() + _stMem.size())) + " loaded)"));
+			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading nodes to WM, done! (") + uNumber2Str(int(_workingMem.size() + _stMem.size())) + " loaded)"));
 
 			// Assign the last signature
 			if(_stMem.size()>0)
@@ -217,7 +219,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 		}
 		else
 		{
-			if(postInitEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kError, std::string("Connecting to database ") + dbUrl + ", path is invalid!"));
+			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kError, std::string("Connecting to database ") + dbUrl + ", path is invalid!"));
 		}
 	}
 	else
@@ -235,7 +237,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	// Now load the dictionary if we have a connection
 	if(_dbDriver && _dbDriver->isConnected())
 	{
-		if(postInitEvents) UEventsManager::post(new RtabmapEventInit("Loading dictionary..."));
+		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Loading dictionary..."));
 		if(loadAllNodesInWM)
 		{
 			// load all referenced words in working memory
@@ -268,10 +270,10 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 		}
 		UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
 		_vwd->update();
-		if(postInitEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Loading dictionary, done! (%d words)", (int)_vwd->getUnusedWordsSize())));
+		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Loading dictionary, done! (%d words)", (int)_vwd->getUnusedWordsSize())));
 	}
 
-	if(postInitEvents) UEventsManager::post(new RtabmapEventInit(std::string("Adding word references...")));
+	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Adding word references...")));
 	// Enable loaded signatures
 	const std::map<int, Signature *> & signatures = this->getSignatures();
 	for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
@@ -290,7 +292,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 			s->setEnabled(true);
 		}
 	}
-	if(postInitEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Adding word references, done! (%d)", _vwd->getTotalActiveReferences())));
+	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Adding word references, done! (%d)", _vwd->getTotalActiveReferences())));
 
 	if(_vwd->getUnusedWordsSize())
 	{
@@ -298,34 +300,47 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	}
 	UDEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
 
-	if(postInitEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
+	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
 	return success;
 }
 
 Memory::~Memory()
 {
+	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosing));
 	UDEBUG("");
 	if(!_memoryChanged)
 	{
 		UDEBUG("");
 		if(_dbDriver)
 		{
+			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
 			_dbDriver->closeConnection();
 			delete _dbDriver;
 			_dbDriver = 0;
+			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database, done!"));
 		}
+		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory..."));
 		this->clear();
+		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory, done!"));
 	}
 	else
 	{
 		UDEBUG("");
+		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving memory..."));
 		this->clear();
 		if(_dbDriver)
 		{
 			_dbDriver->emptyTrashes();
+			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving memory, done!"));
+			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
 			_dbDriver->closeConnection();
 			delete _dbDriver;
 			_dbDriver = 0;
+			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database, done!"));
+		}
+		else
+		{
+			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving memory, done!"));
 		}
 	}
 
@@ -337,6 +352,7 @@ Memory::~Memory()
 	{
 		delete _vwd;
 	}
+	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosed));
 }
 
 void Memory::parseParameters(const ParametersMap & parameters)
@@ -2557,6 +2573,7 @@ std::vector<unsigned char> Memory::getImage(int signatureId) const
 
 Signature Memory::getSignatureData(int locationId, bool uncompressedData)
 {
+	UDEBUG("");
 	Signature r;
 	Signature * s = this->_getSignature(locationId);
 	if(s && s->getImage().size())
@@ -2578,7 +2595,8 @@ Signature Memory::getSignatureData(int locationId, bool uncompressedData)
 			std::list<int> ids;
 			ids.push_back(locationId);
 			std::list<Signature*> signatures;
-			_dbDriver->loadSignatures(ids, signatures);
+			std::set<int> loadedFromTrash;
+			_dbDriver->loadSignatures(ids, signatures, &loadedFromTrash);
 			if(signatures.size())
 			{
 				Signature * sTmp = signatures.front();
@@ -2587,10 +2605,19 @@ Signature Memory::getSignatureData(int locationId, bool uncompressedData)
 					_dbDriver->loadNodeData(signatures, !sTmp->getPose().isNull());
 				}
 				r = *sTmp;
-				this->moveToTrash(s);
+				if(loadedFromTrash.size())
+				{
+					//put it back to trash
+					_dbDriver->asyncSave(sTmp);
+				}
+				else
+				{
+					delete sTmp;
+				}
 			}
 		}
 	}
+	UDEBUG("");
 
 	if(uncompressedData && r.getImageRaw().empty() && r.getImage().size())
 	{
@@ -2604,20 +2631,10 @@ Signature Memory::getSignatureData(int locationId, bool uncompressedData)
 		}
 		else
 		{
-			util3d::CompressionThread ctImage(r.getImage(), true);
-			util3d::CompressionThread ctDepth(r.getDepth(), true);
-			util3d::CompressionThread ctDepth2D(r.getDepth2D(), false);
-			ctImage.start();
-			ctDepth.start();
-			ctDepth2D.start();
-			ctImage.join();
-			ctDepth.join();
-			ctDepth2D.join();
-			r.setImageRaw(ctImage.getUncompressedData());
-			r.setDepthRaw(ctDepth.getUncompressedData());
-			r.setDepth2DRaw(ctDepth2D.getUncompressedData());
+			r.uncompressData();
 		}
 	}
+	UDEBUG("");
 
 	return r;
 }
