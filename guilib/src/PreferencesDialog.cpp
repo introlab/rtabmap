@@ -1713,7 +1713,12 @@ void PreferencesDialog::selectSourceDatabase(bool user)
 {
 	ULOGGER_DEBUG("");
 
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->source_database_lineEdit_path->text(), tr("RTAB-Map database files (*.db)"));
+	QString dir = _ui->source_database_lineEdit_path->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("RTAB-Map database files (*.db)"));
 	QFile file(path);
 	if(!path.isEmpty() && file.exists())
 	{
