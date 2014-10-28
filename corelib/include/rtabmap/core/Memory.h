@@ -113,7 +113,7 @@ public:
 	int getDatabaseMemoryUsed() const; // in bytes
 	double getDbSavingTime() const;
 	int getMapId(int signatureId) const;
-	std::vector<unsigned char> getImage(int signatureId) const;
+	cv::Mat getImageCompressed(int signatureId) const;
 	Signature getSignatureData(int locationId, bool uncompressedData = false);
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}

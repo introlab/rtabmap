@@ -77,15 +77,15 @@ private:
 	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool loadMetricData) const;
 	virtual void getNodeDataQuery(
 			int signatureId,
-			std::vector<unsigned char> & image,
-			std::vector<unsigned char> & depth,
-			std::vector<unsigned char> & depth2d,
+			cv::Mat & imageCompressed,
+			cv::Mat & depthCompressed,
+			cv::Mat & depth2dCompressed,
 			float & fx,
 			float & fy,
 			float & cx,
 			float & cy,
 			Transform & localTransform) const;
-	virtual void getNodeDataQuery(int signatureId, std::vector<unsigned char> & image) const;
+	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed) const;
 	virtual void getPoseQuery(int signatureId, Transform & pose, int & mapId) const;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const;
@@ -102,12 +102,12 @@ private:
 	void stepImage(
 			sqlite3_stmt * ppStmt,
 			int id,
-			const std::vector<unsigned char> & image) const;
+			const cv::Mat & imageBytes) const;
 	void stepDepth(
 			sqlite3_stmt * ppStmt,
 			int id,
-			const std::vector<unsigned char> & depth,
-			const std::vector<unsigned char> & depth2d,
+			const cv::Mat & depthBytes,
+			const cv::Mat & depth2dBytes,
 			float fx,
 			float fy,
 			float cx,

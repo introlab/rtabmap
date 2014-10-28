@@ -858,7 +858,7 @@ bool Rtabmap::process(const SensorData & data)
 		//============================================================
 		if(_scanMatchingSize>0 &&
 			signature->getNeighbors().size() == 1 &&
-			signature->getDepth2D().size() &&
+			!signature->getDepth2DCompressed().empty() &&
 			rehearsedId == 0) // don't do it if rehearsal happened
 		{
 			UINFO("Odometry correction by scan matching (size=%d)...", _scanMatchingSize);
@@ -1382,7 +1382,7 @@ bool Rtabmap::process(const SensorData & data)
 	int localSpaceNearestId = 0;
 	if(_lcHypothesisId == 0 &&
 	   _localLoopClosureDetectionSpace &&
-	   signature->getDepth2D().size())
+	   !signature->getDepth2DCompressed().empty())
 	{
 		//============================================================
 		// Scan matching LOCAL LOOP CLOSURE SPACE

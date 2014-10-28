@@ -70,7 +70,7 @@ void PdfPlotItem::showDescription(bool shown)
 		{
 			QImage img;
 			QMap<int, Signature>::const_iterator iter = _signaturesRef->find(int(this->data().x()));
-			if(iter != _signaturesRef->constEnd() && !iter.value().getImage().empty())
+			if(iter != _signaturesRef->constEnd() && !iter.value().getImageCompressed().empty())
 			{
 				cv::Mat image;
 				iter.value().uncompressData(&image, 0, 0);

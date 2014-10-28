@@ -404,9 +404,9 @@ void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool loadMetric
 //TODO Check also in the trash ?
 void DBDriver::getNodeData(
 		int signatureId,
-		std::vector<unsigned char> & image,
-		std::vector<unsigned char> & depth,
-		std::vector<unsigned char> & depth2d,
+		cv::Mat & imageCompressed,
+		cv::Mat & depthCompressed,
+		cv::Mat & depth2dCompressed,
 		float & fx,
 		float & fy,
 		float & cx,
@@ -414,15 +414,15 @@ void DBDriver::getNodeData(
 		Transform & localTransform) const
 {
 	_dbSafeAccessMutex.lock();
-	this->getNodeDataQuery(signatureId, image, depth, depth2d, fx, fy, cx, cy, localTransform);
+	this->getNodeDataQuery(signatureId, imageCompressed, depthCompressed, depth2dCompressed, fx, fy, cx, cy, localTransform);
 	_dbSafeAccessMutex.unlock();
 }
 
 //TODO Check also in the trash ?
-void DBDriver::getNodeData(int signatureId, std::vector<unsigned char> & image) const
+void DBDriver::getNodeData(int signatureId, cv::Mat & imageCompressed) const
 {
 	_dbSafeAccessMutex.lock();
-	this->getNodeDataQuery(signatureId, image);
+	this->getNodeDataQuery(signatureId, imageCompressed);
 	_dbSafeAccessMutex.unlock();
 }
 

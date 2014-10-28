@@ -207,9 +207,9 @@ void DBReader::getNextImage(
 
 		if(!this->isKilled() && _currentId != _ids.end())
 		{
-			std::vector<unsigned char> imageBytes;
-			std::vector<unsigned char> depthBytes;
-			std::vector<unsigned char> depth2dBytes;
+			cv::Mat imageBytes;
+			cv::Mat depthBytes;
+			cv::Mat depth2dBytes;
 			int mapId;
 			_dbDriver->getNodeData(*_currentId, imageBytes, depthBytes, depth2dBytes, fx, fy, cx, cy, localTransform);
 			_dbDriver->getPose(*_currentId, pose, mapId);
@@ -220,9 +220,9 @@ void DBReader::getNextImage(
 				UWARN("No image loaded from the database for id=%d!", *_currentId);
 			}
 
-			util3d::CompressionThread ctImage(&imageBytes, true);
-			util3d::CompressionThread ctDepth(&depthBytes, true);
-			util3d::CompressionThread ctDepth2D(&depth2dBytes, false);
+			util3d::CompressionThread ctImage(imageBytes, true);
+			util3d::CompressionThread ctDepth(depthBytes, true);
+			util3d::CompressionThread ctDepth2D(depth2dBytes, false);
 			ctImage.start();
 			ctDepth.start();
 			ctDepth2D.start();

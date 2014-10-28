@@ -928,7 +928,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		// update clouds
 		if(stat.poses().size())
 		{
-			// update pose only if a odometry is not received
+			// update pose only if odometry is not received
 			updateMapCloud(stat.poses(),
 					_odometryReceived||stat.poses().size()==0?Transform():stat.poses().rbegin()->second,
 					stat.constraints());
@@ -986,11 +986,12 @@ void MainWindow::updateMapCloud(
 	if(posesIn.size())
 	{
 		_currentPosesMap = posesIn;
+		_currentLinksMap = constraints;
 		if(_currentPosesMap.size())
 		{
 			if(!_ui->actionSave_point_cloud->isEnabled() &&
 				_cachedSignatures.size() &&
-				(--_cachedSignatures.end())->getDepth().size())
+				!(--_cachedSignatures.end())->getDepthCompressed().empty())
 			{
 				//enable save cloud action
 				_ui->actionSave_point_cloud->setEnabled(true);
@@ -999,7 +1000,7 @@ void MainWindow::updateMapCloud(
 
 			if(!_ui->actionView_scans->isEnabled() &&
 				_cachedSignatures.size() &&
-				(--_cachedSignatures.end())->getDepth2D().size())
+				!(--_cachedSignatures.end())->getDepth2DCompressed().empty())
 			{
 				_ui->actionExport_2D_scans_ply_pcd->setEnabled(true);
 				_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(true);
@@ -1065,7 +1066,7 @@ void MainWindow::updateMapCloud(
 				else if(_cachedSignatures.contains(iter->first))
 				{
 					QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
-					if(jter->getImage().size() && jter->getDepth().size())
+					if(!jter->getImageCompressed().empty() && !jter->getDepthCompressed().empty())
 					{
 						this->createAndAddCloudToMap(iter->first, iter->second);
 					}
@@ -1100,7 +1101,7 @@ void MainWindow::updateMapCloud(
 				else if(_cachedSignatures.contains(iter->first))
 				{
 					QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
-					if(jter->getDepth2D().size())
+					if(!jter->getDepth2DCompressed().empty())
 					{
 						this->createAndAddScanToMap(iter->first, iter->second);
 					}

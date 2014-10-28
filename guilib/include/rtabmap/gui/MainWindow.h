@@ -260,6 +260,7 @@ private:
 	QMap<int, Signature> _cachedSignatures;
 	QMap<int, int> _mapIds;
 	std::map<int, Transform> _currentPosesMap;
+	std::multimap<int, Link> _currentLinksMap;
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > _createdClouds;
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > _createdScans;
 	std::map<int, std::pair<cv::Mat, cv::Mat> > _occupancyLocalMaps; // <ground, obstacles>

@@ -515,9 +515,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 				//Create the image
 				if(dataSize>4 && data)
 				{
-					std::vector<unsigned char> image(dataSize);
-					memcpy(image.data(), data, dataSize);
-					(*iter)->setImage(image);
+					(*iter)->setImageCompressed(cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone());
 				}
 
 				if(loadMetricData)
@@ -526,17 +524,16 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 					dataSize = sqlite3_column_bytes(ppStmt, index++);
 
 					//Create the depth image
-					std::vector<unsigned char> depth;
+					cv::Mat depthCompressed;
 					if(dataSize>4 && data)
 					{
-						depth.resize(dataSize);
-						memcpy(depth.data(), data, dataSize);
+						depthCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone();
 					}
 
 					if(uStrNumCmp(_version, "0.7.0") < 0)
 					{
 						float depthConstant = sqlite3_column_double(ppStmt, index++);
-						(*iter)->setDepth(depth, 1.0f/depthConstant, 1.0f/depthConstant, 0, 0);
+						(*iter)->setDepthCompressed(depthCompressed, 1.0f/depthConstant, 1.0f/depthConstant, 0, 0);
 					}
 					else
 					{
@@ -544,7 +541,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 						float fy = sqlite3_column_double(ppStmt, index++);
 						float cx = sqlite3_column_double(ppStmt, index++);
 						float cy = sqlite3_column_double(ppStmt, index++);
-						(*iter)->setDepth(depth, fx, fy, cx, cy);
+						(*iter)->setDepthCompressed(depthCompressed, fx, fy, cx, cy);
 					}
 
 					data = sqlite3_column_blob(ppStmt, index); // local transform
@@ -559,13 +556,12 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 					data = sqlite3_column_blob(ppStmt, index);
 					dataSize = sqlite3_column_bytes(ppStmt, index++);
 					//Create the depth2d
-					std::vector<unsigned char> depth2d;
+					cv::Mat depth2dCompressed;
 					if(dataSize>4 && data)
 					{
-						depth2d.resize(dataSize);
-						memcpy(depth2d.data(), data, dataSize);
+						(*iter)->setDepth2DCompressed(cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone()); // depth2d
 					}
-					(*iter)->setDepth2D(depth2d); // depth2d
+
 				}
 
 				rc = sqlite3_step(ppStmt); // next result...
@@ -586,9 +582,9 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 
 void DBDriverSqlite3::getNodeDataQuery(
 		int signatureId,
-		std::vector<unsigned char> & image,
-		std::vector<unsigned char> & depth,
-		std::vector<unsigned char> & depth2d,
+		cv::Mat & imageCompressed,
+		cv::Mat & depthCompressed,
+		cv::Mat & depth2dCompressed,
 		float & fx,
 		float & fy,
 		float & cx,
@@ -645,8 +641,7 @@ void DBDriverSqlite3::getNodeDataQuery(
 			//Create the image
 			if(dataSize>4 && data)
 			{
-				image.resize(dataSize);
-				memcpy(image.data(), data, dataSize);
+				imageCompressed = cv::Mat(1, dataSize, CV_8UC1).clone();
 			}
 
 			data = sqlite3_column_blob(ppStmt, index);
@@ -655,8 +650,7 @@ void DBDriverSqlite3::getNodeDataQuery(
 			//Create the depth image
 			if(dataSize>4 && data)
 			{
-				depth.resize(dataSize);
-				memcpy(depth.data(), data, dataSize);
+				depthCompressed = cv::Mat(1, dataSize, CV_8UC1).clone();
 			}
 
 			if(uStrNumCmp(_version, "0.7.0") < 0)
@@ -687,11 +681,10 @@ void DBDriverSqlite3::getNodeDataQuery(
 			//Create the depth2d
 			if(dataSize>4 && data)
 			{
-				depth2d.resize(dataSize);
-				memcpy(depth2d.data(), data, dataSize);
+				depth2dCompressed = cv::Mat(1, dataSize, CV_8UC1).clone();
 			}
 
-			if(depth.empty() || fx <= 0 || fy <= 0 || cx < 0 || cy < 0)
+			if(depthCompressed.empty() || fx <= 0 || fy <= 0 || cx < 0 || cy < 0)
 			{
 				UWARN("No metric data loaded!? Consider using getNodeDataQuery() with image only.");
 			}
@@ -708,7 +701,7 @@ void DBDriverSqlite3::getNodeDataQuery(
 	}
 }
 
-void DBDriverSqlite3::getNodeDataQuery(int signatureId, std::vector<unsigned char> & image) const
+void DBDriverSqlite3::getNodeDataQuery(int signatureId, cv::Mat & imageCompressed) const
 {
 	if(_ppDb)
 	{
@@ -744,8 +737,7 @@ void DBDriverSqlite3::getNodeDataQuery(int signatureId, std::vector<unsigned cha
 			//Create the image
 			if(dataSize>4 && data)
 			{
-				image.resize(dataSize);
-				memcpy(image.data(), data, dataSize);
+				imageCompressed = cv::Mat(1, dataSize, CV_8UC1).clone();
 			}
 
 			rc = sqlite3_step(ppStmt); // next result...
@@ -1823,9 +1815,9 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 
 		for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 		{
-			if((*i)->getImage().size())
+			if(!(*i)->getImageCompressed().empty())
 			{
-				stepImage(ppStmt, (*i)->id(), (*i)->getImage());
+				stepImage(ppStmt, (*i)->id(), (*i)->getImageCompressed());
 			}
 		}
 
@@ -1841,9 +1833,9 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 		for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 		{
 			//metric
-			if((*i)->getDepth().size() || (*i)->getDepth2D().size())
+			if(!(*i)->getDepthCompressed().empty() || !(*i)->getDepth2DCompressed().empty())
 			{
-				stepDepth(ppStmt, (*i)->id(), (*i)->getDepth(), (*i)->getDepth2D(), (*i)->getDepthFx(), (*i)->getDepthFy(), (*i)->getDepthCx(), (*i)->getDepthCy(), (*i)->getLocalTransform());
+				stepDepth(ppStmt, (*i)->id(), (*i)->getDepthCompressed(), (*i)->getDepth2DCompressed(), (*i)->getDepthFx(), (*i)->getDepthFy(), (*i)->getDepthCx(), (*i)->getDepthCy(), (*i)->getLocalTransform());
 			}
 		}
 		// Finalize (delete) the statement
@@ -1948,9 +1940,9 @@ std::string DBDriverSqlite3::queryStepImage() const
 }
 void DBDriverSqlite3::stepImage(sqlite3_stmt * ppStmt,
 		int id,
-		const std::vector<unsigned char> & image) const
+		const cv::Mat & imageBytes) const
 {
-	UDEBUG("Save image %d (size=%d)", id, (int)image.size());
+	UDEBUG("Save image %d (size=%d)", id, (int)imageBytes.cols);
 	if(!ppStmt)
 	{
 		UFATAL("");
@@ -1962,9 +1954,9 @@ void DBDriverSqlite3::stepImage(sqlite3_stmt * ppStmt,
 	rc = sqlite3_bind_int(ppStmt, index++, id);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-	if(image.size())
+	if(!imageBytes.empty())
 	{
-		rc = sqlite3_bind_blob(ppStmt, index++, image.data(), (int)image.size(), SQLITE_STATIC);
+		rc = sqlite3_bind_blob(ppStmt, index++, imageBytes.data, (int)imageBytes.cols, SQLITE_STATIC);
 	}
 	else
 	{
@@ -1993,15 +1985,15 @@ std::string DBDriverSqlite3::queryStepDepth() const
 }
 void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt,
 		int id,
-		const std::vector<unsigned char> & depth,
-		const std::vector<unsigned char> & depth2d,
+		const cv::Mat & depthBytes,
+		const cv::Mat & depth2dBytes,
 		float fx,
 		float fy,
 		float cx,
 		float cy,
 		const Transform & localTransform) const
 {
-	UDEBUG("Save depth %d (size=%d) depth2d = %d", id, (int)depth.size(), (int)depth2d.size());
+	UDEBUG("Save depth %d (size=%d) depth2d = %d", id, (int)depthBytes.cols, (int)depth2dBytes.cols);
 	if(!ppStmt)
 	{
 		UFATAL("");
@@ -2013,9 +2005,9 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt,
 	rc = sqlite3_bind_int(ppStmt, index++, id);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-	if(depth.size())
+	if(!depthBytes.empty())
 	{
-		rc = sqlite3_bind_blob(ppStmt, index++, depth.data(), (int)depth.size(), SQLITE_STATIC);
+		rc = sqlite3_bind_blob(ppStmt, index++, depthBytes.data, (int)depthBytes.cols, SQLITE_STATIC);
 	}
 	else
 	{
@@ -2043,9 +2035,9 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt,
 	rc = sqlite3_bind_blob(ppStmt, index++, localTransform.data(), localTransform.size()*sizeof(float), SQLITE_STATIC);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-	if(depth2d.size())
+	if(!depth2dBytes.empty())
 	{
-		rc = sqlite3_bind_blob(ppStmt, index++, depth2d.data(), (int)depth2d.size(), SQLITE_STATIC);
+		rc = sqlite3_bind_blob(ppStmt, index++, depth2dBytes.data, (int)depth2dBytes.cols, SQLITE_STATIC);
 	}
 	else
 	{

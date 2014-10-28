@@ -57,9 +57,9 @@ Signature::Signature(
 		const std::multimap<int, cv::KeyPoint> & words,
 		const std::multimap<int, pcl::PointXYZ> & words3, // in base_link frame (localTransform applied)
 		const Transform & pose,
-		const std::vector<unsigned char> & depth2D, // in base_link frame
-		const std::vector<unsigned char> & image, // in camera_link frame
-		const std::vector<unsigned char> & depth, // in camera_link frame
+		const cv::Mat & depth2DCompressed, // in base_link frame
+		const cv::Mat & imageCompressed, // in camera_link frame
+		const cv::Mat & depthCompressed, // in camera_link frame
 		float fx,
 		float fy,
 		float cx,
@@ -73,9 +73,9 @@ Signature::Signature(
 	_neighborsModified(true),
 	_words(words),
 	_enabled(false),
-	_image(image),
-	_depth(depth),
-	_depth2D(depth2D),
+	_imageCompressed(imageCompressed),
+	_depthCompressed(depthCompressed),
+	_depth2DCompressed(depth2DCompressed),
 	_fx(fx),
 	_fy(fy),
 	_cx(cx),
@@ -88,7 +88,7 @@ Signature::Signature(
 
 Signature::~Signature()
 {
-	//ULOGGER_DEBUG("id=%d", _id);
+	//UDEBUG("id=%d", _id);
 }
 
 void Signature::addNeighbors(const std::map<int, Transform> & neighbors)
@@ -165,10 +165,10 @@ void Signature::changeLoopClosureId(int idFrom, int idTo)
 }
 
 
-float Signature::compareTo(const Signature * s) const
+float Signature::compareTo(const Signature & s) const
 {
 	float similarity = 0.0f;
-	const std::multimap<int, cv::KeyPoint> & words = s->getWords();
+	const std::multimap<int, cv::KeyPoint> & words = s.getWords();
 	if(words.size() != 0 && _words.size() != 0)
 	{
 		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
@@ -217,10 +217,10 @@ void Signature::removeWord(int wordId)
 	_words3.erase(wordId);
 }
 
-void Signature::setDepth(const std::vector<unsigned char> & depth, float fx, float fy, float cx, float cy)
+void Signature::setDepthCompressed(const cv::Mat & bytes, float fx, float fy, float cx, float cy)
 {
-	UASSERT_MSG(depth.empty() || (!depth.empty() && fx > 0.0f && fy > 0.0f && cx >= 0.0f && cy >= 0.0f), uFormat("fx=%f fy=%f cx=%f cy=%f",fx,fy,cx,cy).c_str());
-	_depth = depth;
+	UASSERT_MSG(bytes.empty() || (!bytes.empty() && fx > 0.0f && fy > 0.0f && cx >= 0.0f && cy >= 0.0f), uFormat("fx=%f fy=%f cx=%f cy=%f",fx,fy,cx,cy).c_str());
+	_depthCompressed = bytes;
 	_fx=fx;
 	_fy=fy;
 	_cx=cx;
@@ -247,53 +247,53 @@ void Signature::uncompressData()
 	uncompressData(&_imageRaw, &_depthRaw, &_depth2DRaw);
 }
 
-void Signature::uncompressData(cv::Mat * image, cv::Mat * depth, cv::Mat * depth2D) const
+void Signature::uncompressData(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * depth2DRaw) const
 {
-	if(image)
+	if(imageRaw)
 	{
-		*image = _imageRaw;
+		*imageRaw = _imageRaw;
 	}
-	if(depth)
+	if(depthRaw)
 	{
-		*depth = _depthRaw;
+		*depthRaw = _depthRaw;
 	}
-	if(depth2D)
+	if(depth2DRaw)
 	{
-		*depth2D = _depth2DRaw;
+		*depth2DRaw = _depth2DRaw;
 	}
-	if( (image && image->empty()) ||
-		(depth && depth->empty()) ||
-		(depth2D && depth2D->empty()))
+	if( (imageRaw && imageRaw->empty()) ||
+		(depthRaw && depthRaw->empty()) ||
+		(depth2DRaw && depth2DRaw->empty()))
 	{
-		util3d::CompressionThread ctImage(&_image, true);
-		util3d::CompressionThread ctDepth(&_depth, true);
-		util3d::CompressionThread ctDepth2D(&_depth2D, false);
-		if(image && image->empty())
+		util3d::CompressionThread ctImage(_imageCompressed, true);
+		util3d::CompressionThread ctDepth(_depthCompressed, true);
+		util3d::CompressionThread ctDepth2D(_depth2DCompressed, false);
+		if(imageRaw && imageRaw->empty())
 		{
 			ctImage.start();
 		}
-		if(depth && depth->empty())
+		if(depthRaw && depthRaw->empty())
 		{
 			ctDepth.start();
 		}
-		if(depth2D && depth2D->empty())
+		if(depth2DRaw && depth2DRaw->empty())
 		{
 			ctDepth2D.start();
 		}
 		ctImage.join();
 		ctDepth.join();
 		ctDepth2D.join();
-		if(image && image->empty())
+		if(imageRaw && imageRaw->empty())
 		{
-			*image = ctImage.getUncompressedData();
+			*imageRaw = ctImage.getUncompressedData();
 		}
-		if(depth && depth->empty())
+		if(depthRaw && depthRaw->empty())
 		{
-			*depth = ctDepth.getUncompressedData();
+			*depthRaw = ctDepth.getUncompressedData();
 		}
-		if(depth2D && depth2D->empty())
+		if(depth2DRaw && depth2DRaw->empty())
 		{
-			*depth2D = ctDepth2D.getUncompressedData();
+			*depth2DRaw = ctDepth2D.getUncompressedData();
 		}
 	}
 }

@@ -71,14 +71,13 @@ class RTABMAP_EXP CompressionThread : public UThread
 public:
 	// format : ".png" ".jpg" "" (empty is general)
 	CompressionThread(const cv::Mat & mat, const std::string & format = "");
-	CompressionThread(const std::vector<unsigned char> * bytes, bool isImage);
-	const std::vector<unsigned char> & getCompressedData() const {return compressedData_;}
+	CompressionThread(const cv::Mat & bytes, bool isImage);
+	const cv::Mat & getCompressedData() const {return compressedData_;}
 	cv::Mat & getUncompressedData() {return uncompressedData_;}
 protected:
 	virtual void mainLoop();
 private:
-	const std::vector<unsigned char> * constCompressedData_;
-	std::vector<unsigned char> compressedData_;
+	cv::Mat compressedData_;
 	cv::Mat uncompressedData_;
 	std::string format_;
 	bool image_;
@@ -235,10 +234,17 @@ cv::Mat RTABMAP_EXP depth2DFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> &
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP depth2DToPointCloud(const cv::Mat & depth2D);
 
 std::vector<unsigned char> RTABMAP_EXP compressImage(const cv::Mat & image, const std::string & format = ".png");
+cv::Mat RTABMAP_EXP compressImage2(const cv::Mat & image, const std::string & format = ".png");
+
+cv::Mat RTABMAP_EXP uncompressImage(const cv::Mat & bytes);
 cv::Mat RTABMAP_EXP uncompressImage(const std::vector<unsigned char> & bytes);
 
 std::vector<unsigned char> RTABMAP_EXP compressData(const cv::Mat & data);
+cv::Mat RTABMAP_EXP compressData2(const cv::Mat & data);
+
+cv::Mat RTABMAP_EXP uncompressData(const cv::Mat & bytes);
 cv::Mat RTABMAP_EXP uncompressData(const std::vector<unsigned char> & bytes);
+cv::Mat RTABMAP_EXP uncompressData(const unsigned char * bytes, unsigned long size);
 
 // remove depth by z axis
 void RTABMAP_EXP extractXYZCorrespondences(const std::multimap<int, pcl::PointXYZ> & words1,

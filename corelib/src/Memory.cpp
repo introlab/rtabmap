@@ -1129,7 +1129,7 @@ std::map<int, float> Memory::computeLikelihood(const Signature * signature, cons
 				{
 					UFATAL("Signature %d not found in WM ?!?", *iter);
 				}
-				sim = signature->compareTo(sB);
+				sim = signature->compareTo(*sB);
 			}
 
 			likelihood.insert(likelihood.end(), std::pair<int, float>(*iter, sim));
@@ -1809,12 +1809,12 @@ Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess, boo
 		if(icp3D)
 		{
 			//Depth required, if not in RAM, load it from LTM
-			if(oldS->getDepth().empty())
+			if(oldS->getDepthCompressed().empty())
 			{
 				depthToLoad.push_back(oldS);
 				added.insert(oldS->id());
 			}
-			if(newS->getDepth().empty())
+			if(newS->getDepthCompressed().empty())
 			{
 				depthToLoad.push_back(newS);
 				added.insert(newS->id());
@@ -1823,11 +1823,11 @@ Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess, boo
 		else
 		{
 			//Depth required, if not in RAM, load it from LTM
-			if(oldS->getDepth2D().size() == 0 && added.find(oldS->id()) == added.end())
+			if(oldS->getDepth2DCompressed().empty() && added.find(oldS->id()) == added.end())
 			{
 				depthToLoad.push_back(oldS);
 			}
-			if(newS->getDepth2D().size() == 0 && added.find(newS->id()) == added.end())
+			if(newS->getDepth2DCompressed().empty() && added.find(newS->id()) == added.end())
 			{
 				depthToLoad.push_back(newS);
 			}
@@ -1846,22 +1846,22 @@ Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess, boo
 		{
 			if(oldS->getDepthRaw().empty())
 			{
-				oldS->setDepthRaw(util3d::uncompressImage(oldS->getDepth()));
+				oldS->setDepthRaw(util3d::uncompressImage(oldS->getDepthCompressed()));
 			}
 			if(newS->getDepthRaw().empty())
 			{
-				newS->setDepthRaw(util3d::uncompressImage(newS->getDepth()));
+				newS->setDepthRaw(util3d::uncompressImage(newS->getDepthCompressed()));
 			}
 		}
 		else
 		{
 			if(oldS->getDepth2DRaw().empty())
 			{
-				oldS->setDepth2DRaw(util3d::uncompressData(oldS->getDepth2D()));
+				oldS->setDepth2DRaw(util3d::uncompressData(oldS->getDepth2DCompressed()));
 			}
 			if(newS->getDepth2DRaw().empty())
 			{
-				newS->setDepth2DRaw(util3d::uncompressData(newS->getDepth2D()));
+				newS->setDepth2DRaw(util3d::uncompressData(newS->getDepth2DCompressed()));
 			}
 		}
 
@@ -2089,7 +2089,7 @@ Transform Memory::computeScanMatchingTransform(
 	{
 		Signature * s = _getSignature(iter->first);
 		UASSERT(s != 0);
-		if(s->getDepth2D().size() == 0)
+		if(s->getDepth2DCompressed().empty())
 		{
 			depthToLoad.push_back(s);
 		}
@@ -2106,9 +2106,9 @@ Transform Memory::computeScanMatchingTransform(
 		if(iter->first != newId)
 		{
 			const Signature * s = this->getSignature(iter->first);
-			if(s->getDepth2D().size())
+			if(!s->getDepth2DCompressed().empty())
 			{
-				*assembledOldClouds += *util3d::cvMat2Cloud(util3d::uncompressData(s->getDepth2D()), iter->second);
+				*assembledOldClouds += *util3d::cvMat2Cloud(util3d::uncompressData(s->getDepth2DCompressed()), iter->second);
 			}
 			else
 			{
@@ -2127,7 +2127,7 @@ Transform Memory::computeScanMatchingTransform(
 	const Signature * newS = getSignature(newId);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud;
 	UASSERT(uContains(poses, newId));
-	newCloud = util3d::cvMat2Cloud(util3d::uncompressData(newS->getDepth2D()), poses.at(newId));
+	newCloud = util3d::cvMat2Cloud(util3d::uncompressData(newS->getDepth2DCompressed()), poses.at(newId));
 
 	//voxelize
 	if(newCloud->size() && _icp2VoxelSize > 0.0f)
@@ -2394,7 +2394,7 @@ void Memory::rehearsal(Signature * signature, Statistics * stats)
 	{
 		UFATAL("Signature %d null?!?", id);
 	}
-	float sim = signature->compareTo(sB);
+	float sim = signature->compareTo(*sB);
 
 	int merged = 0;
 	if(sim >= _similarityThreshold)
@@ -2556,13 +2556,13 @@ int Memory::getMapId(int signatureId) const
 	return mapId;
 }
 
-std::vector<unsigned char> Memory::getImage(int signatureId) const
+cv::Mat Memory::getImageCompressed(int signatureId) const
 {
-	std::vector<unsigned char> image;
+	cv::Mat image;
 	const Signature * s = this->getSignature(signatureId);
 	if(s)
 	{
-		image = s->getImage();
+		image = s->getImageCompressed();
 	}
 	if(image.empty() && this->isRawDataKept() && _dbDriver)
 	{
@@ -2576,7 +2576,7 @@ Signature Memory::getSignatureData(int locationId, bool uncompressedData)
 	UDEBUG("");
 	Signature r;
 	Signature * s = this->_getSignature(locationId);
-	if(s && s->getImage().size())
+	if(s && !s->getImageCompressed().empty())
 	{
 		r = *s;
 	}
@@ -2600,7 +2600,7 @@ Signature Memory::getSignatureData(int locationId, bool uncompressedData)
 			if(signatures.size())
 			{
 				Signature * sTmp = signatures.front();
-				if(sTmp->getImage().size() == 0)
+				if(sTmp->getImageCompressed().empty())
 				{
 					_dbDriver->loadNodeData(signatures, !sTmp->getPose().isNull());
 				}
@@ -2619,7 +2619,7 @@ Signature Memory::getSignatureData(int locationId, bool uncompressedData)
 	}
 	UDEBUG("");
 
-	if(uncompressedData && r.getImageRaw().empty() && r.getImage().size())
+	if(uncompressedData && r.getImageRaw().empty() && !r.getImageCompressed().empty())
 	{
 		//uncompress data
 		if(s)
@@ -2961,25 +2961,25 @@ void Memory::copyData(const Signature * from, Signature * to)
 
 		if(from->isSaved() && _dbDriver)
 		{
-			std::vector<unsigned char> image;
-			std::vector<unsigned char> depth;
-			std::vector<unsigned char> depth2d;
+			cv::Mat image;
+			cv::Mat depth;
+			cv::Mat depth2d;
 			float fx, fy, cx, cy;
 			Transform localTransform;
 			_dbDriver->getNodeData(from->id(), image, depth, depth2d, fx, fy, cx, cy, localTransform);
 
-			to->setImage(image);
-			to->setDepth(depth, fx, fy, cx, cy);
-			to->setDepth2D(depth2d);
+			to->setImageCompressed(image);
+			to->setDepthCompressed(depth, fx, fy, cx, cy);
+			to->setDepth2DCompressed(depth2d);
 			to->setLocalTransform(localTransform);
 
 			UDEBUG("Loaded image data from database");
 		}
 		else
 		{
-			to->setImage(from->getImage());
-			to->setDepth(from->getDepth(), from->getDepthFx(), from->getDepthFy(), from->getDepthCx(), from->getDepthCy());
-			to->setDepth2D(from->getDepth2D());
+			to->setImageCompressed(from->getImageCompressed());
+			to->setDepthCompressed(from->getDepthCompressed(), from->getDepthFx(), from->getDepthFy(), from->getDepthCx(), from->getDepthCy());
+			to->setDepth2DCompressed(from->getDepth2DCompressed());
 			to->setLocalTransform(from->getLocalTransform());
 		}
 
@@ -3400,7 +3400,7 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData, S
 			words,
 			words3D,
 			data.pose(),
-			util3d::compressData(data.depth2d()));
+			util3d::compressData2(data.depth2d()));
 	}
 
 

@@ -63,6 +63,7 @@ public:
 	bool openDatabase(const QString & path);
 
 protected:
+	virtual void showEvent(QShowEvent* anEvent);
 	virtual void resizeEvent(QResizeEvent* anEvent);
 	virtual void closeEvent(QCloseEvent* event);
 

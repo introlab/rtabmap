@@ -96,8 +96,8 @@ public:
 
 	// Specific queries...
 	void loadNodeData(std::list<Signature *> & signatures, bool loadMetricData) const;
-	void getNodeData(int signatureId, std::vector<unsigned char> & image, std::vector<unsigned char> & depth, std::vector<unsigned char> & depth2d, float & fx, float & fy, float & cx, float & cy, Transform & localTransform) const;
-	void getNodeData(int signatureId, std::vector<unsigned char> & image) const;
+	void getNodeData(int signatureId, cv::Mat & imageCompressed, cv::Mat & depthCompressed, cv::Mat & depth2dCompressed, float & fx, float & fy, float & cx, float & cy, Transform & localTransform) const;
+	void getNodeData(int signatureId, cv::Mat & imageCompressed) const;
 	void getPose(int signatureId, Transform & pose, int & mapId) const;
 	void loadNeighbors(int signatureId, std::map<int, Transform> & neighbors) const;
 	void loadLoopClosures(int signatureId, std::map<int, Transform> & loopIds, std::map<int, Transform> & childIds) const;
@@ -135,8 +135,8 @@ private:
 	virtual void loadLoopClosuresQuery(int signatureId, std::map<int, Transform> & loopIds, std::map<int, Transform> & childIds) const = 0;
 
 	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool loadMetricData) const = 0;
-	virtual void getNodeDataQuery(int signatureId, std::vector<unsigned char> & image, std::vector<unsigned char> & depth, std::vector<unsigned char> & depth2d, float & fx, float & fy, float & cx, float & cy, Transform & localTransform) const = 0;
-	virtual void getNodeDataQuery(int signatureId, std::vector<unsigned char> & image) const = 0;
+	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed, cv::Mat & depthCompressed, cv::Mat & depth2dCompressed, float & fx, float & fy, float & cx, float & cy, Transform & localTransform) const = 0;
+	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed) const = 0;
 	virtual void getPoseQuery(int signatureId, Transform & pose, int & mapId) const = 0;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const = 0;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const = 0;

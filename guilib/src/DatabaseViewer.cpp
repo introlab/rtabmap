@@ -279,6 +279,14 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 	}
 }
 
+void DatabaseViewer::showEvent(QShowEvent* anEvent)
+{
+	ui_->graphicsView_A->fitInView(ui_->graphicsView_A->sceneRect(), Qt::KeepAspectRatio);
+	ui_->graphicsView_B->fitInView(ui_->graphicsView_B->sceneRect(), Qt::KeepAspectRatio);
+	ui_->graphicsView_A->resetZoom();
+	ui_->graphicsView_B->resetZoom();
+}
+
 void DatabaseViewer::resizeEvent(QResizeEvent* anEvent)
 {
 	ui_->graphicsView_A->fitInView(ui_->graphicsView_A->sceneRect(), Qt::KeepAspectRatio);
@@ -350,8 +358,8 @@ void DatabaseViewer::extractImages()
 		for(int i=0; i<ids_.size(); i+=1)
 		{
 			int id = ids_.at(i);
-			std::vector<unsigned char> compressedRgb = memory_->getImage(id);
-			if(compressedRgb.size())
+			cv::Mat compressedRgb = memory_->getImageCompressed(id);
+			if(!compressedRgb.empty())
 			{
 				cv::Mat imageMat = rtabmap::util3d::uncompressImage(compressedRgb);
 				cv::imwrite(QString("%1/%2.png").arg(path).arg(id).toStdString(), imageMat);
@@ -1300,31 +1308,16 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link,
 	bool updateB = false;
 	ui_->horizontalSlider_A->blockSignals(true);
 	ui_->horizontalSlider_B->blockSignals(true);
-	if(ui_->horizontalSlider_A->value() == idToIndex_.value(link.from()))
-	{
-		ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
-		updateB=true;
-	}
-	else if(ui_->horizontalSlider_A->value() == idToIndex_.value(link.to()))
-	{
-		ui_->horizontalSlider_B->setValue(idToIndex_.value(link.from()));
-		updateB=true;
-	}
-	else if(ui_->horizontalSlider_B->value() == idToIndex_.value(link.from()))
-	{
-		ui_->horizontalSlider_A->setValue(idToIndex_.value(link.to()));
-		updateA = true;
-	}
-	else if(ui_->horizontalSlider_B->value() == idToIndex_.value(link.to()))
+	// set from on left and to on right
+	if(ui_->horizontalSlider_A->value() != idToIndex_.value(link.from()))
 	{
 		ui_->horizontalSlider_A->setValue(idToIndex_.value(link.from()));
 		updateA=true;
 	}
-	else
+	if(ui_->horizontalSlider_B->value() != idToIndex_.value(link.to()))
 	{
-		ui_->horizontalSlider_A->setValue(idToIndex_.value(link.from()));
 		ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
-		updateA=updateB=true;
+		updateB=true;
 	}
 	ui_->horizontalSlider_A->blockSignals(false);
 	ui_->horizontalSlider_B->blockSignals(false);
@@ -1505,10 +1498,10 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			for(int i=0; i<ids_.size(); ++i)
 			{
 				Signature data = memory_->getSignatureData(ids_.at(i), false);
-				if(data.getDepth2D().size())
+				if(!data.getDepth2DCompressed().empty())
 				{
 					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-					cv::Mat depth2d = rtabmap::util3d::uncompressData(data.getDepth2D());
+					cv::Mat depth2d = rtabmap::util3d::uncompressData(data.getDepth2DCompressed());
 					cloud = rtabmap::util3d::depth2DToPointCloud(depth2d);
 					scans_.insert(std::make_pair(ids_.at(i), cloud));
 				}
@@ -1681,8 +1674,8 @@ void DatabaseViewer::refineConstraint(int from, int to)
 	if(ui_->checkBox_icp_2d->isChecked())
 	{
 		//2D
-		cv::Mat oldDepth2D = util3d::uncompressData(dataFrom.getDepth2D());
-		cv::Mat newDepth2D = util3d::uncompressData(dataTo.getDepth2D());
+		cv::Mat oldDepth2D = util3d::uncompressData(dataFrom.getDepth2DCompressed());
+		cv::Mat newDepth2D = util3d::uncompressData(dataTo.getDepth2DCompressed());
 
 		if(!oldDepth2D.empty() && !newDepth2D.empty())
 		{
@@ -1711,8 +1704,8 @@ void DatabaseViewer::refineConstraint(int from, int to)
 	else
 	{
 		//3D
-		cv::Mat depthA = rtabmap::util3d::uncompressImage(dataFrom.getDepth());
-		cv::Mat depthB = rtabmap::util3d::uncompressImage(dataTo.getDepth());
+		cv::Mat depthA = rtabmap::util3d::uncompressImage(dataFrom.getDepthCompressed());
+		cv::Mat depthB = rtabmap::util3d::uncompressImage(dataTo.getDepthCompressed());
 
 		if(depthA.type() == CV_8UC1 || depthB.type() == CV_8UC1)
 		{

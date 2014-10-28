@@ -56,9 +56,9 @@ public:
 			const std::multimap<int, cv::KeyPoint> & words,
 			const std::multimap<int, pcl::PointXYZ> & words3,
 			const Transform & pose = Transform(),
-			const std::vector<unsigned char> & depth2D = std::vector<unsigned char>(),
-			const std::vector<unsigned char> & image = std::vector<unsigned char>(),
-			const std::vector<unsigned char> & depth = std::vector<unsigned char>(),
+			const cv::Mat & depth2D = cv::Mat(),
+			const cv::Mat & image = cv::Mat(),
+			const cv::Mat & depth = cv::Mat(),
 			float fx = 0.0f,
 			float fy = 0.0f,
 			float cx = 0.0f,
@@ -69,7 +69,7 @@ public:
 	/**
 	 * Must return a value between >=0 and <=1 (1 means 100% similarity).
 	 */
-	float compareTo(const Signature * signature) const;
+	float compareTo(const Signature & signature) const;
 	bool isBadSignature() const;
 
 	int id() const {return _id;}
@@ -113,20 +113,20 @@ public:
 	void setEnabled(bool enabled) {_enabled = enabled;}
 	const std::multimap<int, cv::KeyPoint> & getWords() const {return _words;}
 	const std::map<int, int> & getWordsChanged() const {return _wordsChanged;}
-	void setImage(const std::vector<unsigned char> & image) {_image = image;}
-	const std::vector<unsigned char> & getImage() const {return _image;}
+	void setImageCompressed(const cv::Mat & bytes) {_imageCompressed = bytes;}
+	const cv::Mat & getImageCompressed() const {return _imageCompressed;}
 	void setImageRaw(const cv::Mat & image) {_imageRaw = image;}
 	const cv::Mat & getImageRaw() const {return _imageRaw;}
 
 	//metric stuff
 	void setWords3(const std::multimap<int, pcl::PointXYZ> & words3) {_words3 = words3;}
-	void setDepth(const std::vector<unsigned char> & depth, float fx, float fy, float cx, float cy);
-	void setDepth2D(const std::vector<unsigned char> & depth2D) {_depth2D = depth2D;}
+	void setDepthCompressed(const cv::Mat & bytes, float fx, float fy, float cx, float cy);
+	void setDepth2DCompressed(const cv::Mat & bytes) {_depth2DCompressed = bytes;}
 	void setLocalTransform(const Transform & t) {_localTransform = t;}
 	void setPose(const Transform & pose) {_pose = pose;}
 	const std::multimap<int, pcl::PointXYZ> & getWords3() const {return _words3;}
-	const std::vector<unsigned char> & getDepth() const {return _depth;}
-	const std::vector<unsigned char> & getDepth2D() const {return _depth2D;}
+	const cv::Mat & getDepthCompressed() const {return _depthCompressed;}
+	const cv::Mat & getDepth2DCompressed() const {return _depth2DCompressed;}
 	float getDepthFx() const {return _fx;}
 	float getDepthFy() const {return _fy;}
 	float getDepthCx() const {return _cx;}
@@ -140,7 +140,7 @@ public:
 
 	SensorData toSensorData();
 	void uncompressData();
-	void uncompressData(cv::Mat * image, cv::Mat * depth, cv::Mat * depth2D) const;
+	void uncompressData(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * depth2DRaw) const;
 
 private:
 	int _id;
@@ -159,10 +159,10 @@ private:
 	std::multimap<int, cv::KeyPoint> _words; // word <id, keypoint>
 	std::map<int, int> _wordsChanged; // <oldId, newId>
 	bool _enabled;
-	std::vector<unsigned char> _image; //compressed image CV_8UC1 or CV_8UC3
+	cv::Mat _imageCompressed; // compressed image
 
-	std::vector<unsigned char> _depth; // compressed image CV_16UC1
-	std::vector<unsigned char> _depth2D; // compressed data CV_32FC2
+	cv::Mat _depthCompressed; // compressed image
+	cv::Mat _depth2DCompressed; // compressed data
 	float _fx;
 	float _fy;
 	float _cx;
@@ -171,9 +171,9 @@ private:
 	Transform _localTransform; // camera_link -> base_link
 	std::multimap<int, pcl::PointXYZ> _words3; // word <id, keypoint>
 
-	cv::Mat _imageRaw;
-	cv::Mat _depthRaw;
-	cv::Mat _depth2DRaw;
+	cv::Mat _imageRaw; // CV_8UC1 or CV_8UC3
+	cv::Mat _depthRaw; // depth CV_16UC1 or CV_32FC1, right image CV_8UC1
+	cv::Mat _depth2DRaw; // CV_32FC2
 };
 
 } // namespace rtabmap
