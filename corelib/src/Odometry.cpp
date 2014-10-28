@@ -393,6 +393,7 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 
 			int count = 0;
 			std::list<int> uniques = uUniqueKeys(newSignature->getWords3());
+			Transform t = this->getPose(); // initial pose maybe not identity...
 			for(std::list<int>::iterator iter = uniques.begin(); iter!=uniques.end(); ++iter)
 			{
 				// Only add unique words
@@ -401,7 +402,8 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 					const pcl::PointXYZ & pt = newSignature->getWords3().find(*iter)->second;
 					if(pcl::isFinite(pt))
 					{
-						localMap_.insert(std::make_pair(*iter, pt));
+						pcl::PointXYZ pt2 = util3d::transformPoint(pt, t);
+						localMap_.insert(std::make_pair(*iter, pt2));
 					}
 					else
 					{
