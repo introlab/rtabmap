@@ -1033,7 +1033,7 @@ void Memory::clear()
 				_lastSignature?_lastSignature->id():0,
 				UProcessInfo::getMemoryUsage(),
 				_dbDriver->getMemoryUsed(),
-				_vwd->getVisualWords().size());
+				(int)_vwd->getVisualWords().size());
 	}
 	UDEBUG("");
 
@@ -2936,7 +2936,7 @@ int Memory::getNi(int signatureId) const
 	const Signature * s = this->getSignature(signatureId);
 	if(s)
 	{
-		ni = ((Signature *)s)->getWords().size();
+		ni = (int)((Signature *)s)->getWords().size();
 	}
 	else
 	{
@@ -3055,7 +3055,7 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData, S
 		}
 	}
 
-	int treeSize= _workingMem.size() + _stMem.size();
+	int treeSize= int(_workingMem.size() + _stMem.size());
 	int meanWordsPerLocation = 0;
 	if(treeSize > 0)
 	{

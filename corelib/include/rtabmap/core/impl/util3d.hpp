@@ -96,7 +96,7 @@ typename pcl::PointCloud<PointT>::Ptr passThrough(
 }
 
 template<typename PointT>
-typename pcl::PointCloud<PointT>::Ptr RTABMAP_EXP removeNaNFromPointCloud(
+typename pcl::PointCloud<PointT>::Ptr removeNaNFromPointCloud(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud)
 {
 	typedef typename pcl::PointCloud<PointT> PointCloud;
@@ -108,7 +108,7 @@ typename pcl::PointCloud<PointT>::Ptr RTABMAP_EXP removeNaNFromPointCloud(
 }
 
 template<typename PointT>
-typename pcl::PointCloud<PointT>::Ptr RTABMAP_EXP removeNaNNormalsFromPointCloud(
+typename pcl::PointCloud<PointT>::Ptr removeNaNNormalsFromPointCloud(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud)
 {
 	typedef typename pcl::PointCloud<PointT> PointCloud;
@@ -120,7 +120,7 @@ typename pcl::PointCloud<PointT>::Ptr RTABMAP_EXP removeNaNNormalsFromPointCloud
 }
 
 template<typename PointT>
-typename pcl::PointCloud<PointT>::Ptr RTABMAP_EXP transformPointCloud(
+typename pcl::PointCloud<PointT>::Ptr transformPointCloud(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
 		const Transform & transform)
 {

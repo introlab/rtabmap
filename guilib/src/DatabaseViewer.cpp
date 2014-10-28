@@ -521,7 +521,7 @@ void DatabaseViewer::generateTOROGraph()
 		return;
 	}
 	bool ok = false;
-	int id = QInputDialog::getInt(this, tr("Which iteration?"), tr("Iteration (0 -> %1)").arg(graphes_.size()-1), graphes_.size()-1, 0, graphes_.size()-1, 1, &ok);
+	int id = QInputDialog::getInt(this, tr("Which iteration?"), tr("Iteration (0 -> %1)").arg((int)graphes_.size()-1), (int)graphes_.size()-1, 0, graphes_.size()-1, 1, &ok);
 
 	if(ok)
 	{
@@ -842,7 +842,7 @@ void DatabaseViewer::generate3DMap()
 						if(ids.size() > 0)
 						{
 							rtabmap::DetailedProgressDialog progressDialog;
-							progressDialog.setMaximumSteps(ids.size()+2);
+							progressDialog.setMaximumSteps((int)ids.size()+2);
 							progressDialog.show();
 
 							progressDialog.appendText("Graph generation...");

@@ -1443,7 +1443,7 @@ Transform transformFromXYZCorrespondences(
 		std::vector<int> target_indices (cloud1->size());
 
 		// Copy the query-match indices
-		for (size_t i = 0; i < cloud1->size(); ++i)
+		for (int i = 0; i < (int)cloud1->size(); ++i)
 		{
 			source_indices[i] = i;
 			target_indices[i] = i;
@@ -1486,8 +1486,8 @@ Transform transformFromXYZCorrespondences(
 
 					// Select the new inliers based on the optimized coefficients and new threshold
 					model->selectWithinDistance (new_model_coefficients, error_threshold, new_inliers);
-					UDEBUG("RANSAC refineModel: Number of inliers found (before/after): %zu/%zu, with an error threshold of %g.",
-							prev_inliers.size (), new_inliers.size (), error_threshold);
+					UDEBUG("RANSAC refineModel: Number of inliers found (before/after): %d/%d, with an error threshold of %f.",
+							(int)prev_inliers.size (), (int)new_inliers.size (), error_threshold);
 
 					if (new_inliers.empty ())
 					{
@@ -1503,7 +1503,7 @@ Transform transformFromXYZCorrespondences(
 					double variance = model->computeVariance ();
 					error_threshold = sqrt (std::min (inlier_distance_threshold_sqr, sigma_sqr * variance));
 
-					UDEBUG ("RANSAC refineModel: New estimated error threshold: %g on iteration %d out of %d.",
+					UDEBUG ("RANSAC refineModel: New estimated error threshold: %f on iteration %d out of %d.",
 						  error_threshold, refine_iterations, refineModelIterations);
 					inlier_changed = false;
 					std::swap (prev_inliers, new_inliers);
@@ -1568,7 +1568,7 @@ Transform transformFromXYZCorrespondences(
 				bestTransformation.row (3) = model_coefficients.segment<4>(12);
 
 				transform = util3d::transformFromEigen4f(bestTransformation);
-				UDEBUG("RANSAC inliers=%zu/%zu tf=%s", inliers.size(), cloud1->size(), transform.prettyPrint().c_str());
+				UDEBUG("RANSAC inliers=%d/%d tf=%s", (int)inliers.size(), (int)cloud1->size(), transform.prettyPrint().c_str());
 
 				return transform.inverse(); // inverse to get actual pose transform (not correspondences transform)
 			}

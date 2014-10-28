@@ -92,7 +92,7 @@ void Feature2D::filterKeypointsByDepth(
 			}
 			else
 			{
-				cv::Mat newDescriptors(keypoints.size(), descriptors.cols, descriptors.type());
+				cv::Mat newDescriptors((int)keypoints.size(), descriptors.cols, descriptors.type());
 				int di = 0;
 				for(unsigned int i=0; i<indexes.size(); ++i)
 				{
@@ -159,7 +159,7 @@ void Feature2D::filterKeypointsByDisparity(
 			}
 			else
 			{
-				cv::Mat newDescriptors(keypoints.size(), descriptors.cols, descriptors.type());
+				cv::Mat newDescriptors((int)keypoints.size(), descriptors.cols, descriptors.type());
 				int di = 0;
 				for(unsigned int i=0; i<indexes.size(); ++i)
 				{
@@ -205,7 +205,7 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & 
 		}
 
 		// Remove them from the signature
-		int removed = hessianMap.size()-maxKeypoints;
+		int removed = (int)hessianMap.size()-maxKeypoints;
 		std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
 		std::vector<cv::KeyPoint> kptsTmp(maxKeypoints);
 		cv::Mat descriptorsTmp;
@@ -228,7 +228,7 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & 
 				}
 			}
 		}
-		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, keypoints.size(), kptsTmp.size()?kptsTmp.back().response:0.0f);
+		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, (int)keypoints.size(), kptsTmp.size()?kptsTmp.back().response:0.0f);
 		ULOGGER_DEBUG("removing words time = %f s", timer.ticks());
 		keypoints = kptsTmp;
 		if(descriptors.rows)

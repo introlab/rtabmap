@@ -1964,7 +1964,7 @@ void DBDriverSqlite3::stepImage(sqlite3_stmt * ppStmt,
 
 	if(image.size())
 	{
-		rc = sqlite3_bind_blob(ppStmt, index++, image.data(), image.size(), SQLITE_STATIC);
+		rc = sqlite3_bind_blob(ppStmt, index++, image.data(), (int)image.size(), SQLITE_STATIC);
 	}
 	else
 	{
@@ -2015,7 +2015,7 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt,
 
 	if(depth.size())
 	{
-		rc = sqlite3_bind_blob(ppStmt, index++, depth.data(), depth.size(), SQLITE_STATIC);
+		rc = sqlite3_bind_blob(ppStmt, index++, depth.data(), (int)depth.size(), SQLITE_STATIC);
 	}
 	else
 	{
@@ -2045,7 +2045,7 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt,
 
 	if(depth2d.size())
 	{
-		rc = sqlite3_bind_blob(ppStmt, index++, depth2d.data(), depth2d.size(), SQLITE_STATIC);
+		rc = sqlite3_bind_blob(ppStmt, index++, depth2d.data(), (int)depth2d.size(), SQLITE_STATIC);
 	}
 	else
 	{

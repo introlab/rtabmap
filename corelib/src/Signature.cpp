@@ -108,7 +108,7 @@ void Signature::addNeighbor(int neighbor, const Transform & transform)
 
 void Signature::removeNeighbor(int neighborId)
 {
-	int count = _neighbors.erase(neighborId);
+	int count = (int)_neighbors.erase(neighborId);
 	if(count)
 	{
 		_neighborsModified = true;
@@ -172,7 +172,7 @@ float Signature::compareTo(const Signature * s) const
 	if(words.size() != 0 && _words.size() != 0)
 	{
 		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
-		int totalWords = _words.size()>words.size()?_words.size():words.size();
+		unsigned int totalWords = _words.size()>words.size()?_words.size():words.size();
 		EpipolarGeometry::findPairs(words, _words, pairs);
 
 		similarity = float(pairs.size()) / float(totalWords);
@@ -244,22 +244,7 @@ SensorData Signature::toSensorData()
 
 void Signature::uncompressData()
 {
-	if(_imageRaw.empty() && _image.size())
-	{
-		//uncompress data
-		util3d::CompressionThread ctImage(&_image, true);
-		util3d::CompressionThread ctDepth(&_depth, true);
-		util3d::CompressionThread ctDepth2D(&_depth2D, false);
-		ctImage.start();
-		ctDepth.start();
-		ctDepth2D.start();
-		ctImage.join();
-		ctDepth.join();
-		ctDepth2D.join();
-		_imageRaw = ctImage.getUncompressedData();
-		_depthRaw = ctDepth.getUncompressedData();
-		_depth2DRaw = ctDepth2D.getUncompressedData();
-	}
+	uncompressData(&_imageRaw, &_depthRaw, &_depth2DRaw);
 }
 
 void Signature::uncompressData(cv::Mat * image, cv::Mat * depth, cv::Mat * depth2D) const
@@ -298,15 +283,15 @@ void Signature::uncompressData(cv::Mat * image, cv::Mat * depth, cv::Mat * depth
 		ctImage.join();
 		ctDepth.join();
 		ctDepth2D.join();
-		if(image)
+		if(image && image->empty())
 		{
 			*image = ctImage.getUncompressedData();
 		}
-		if(depth)
+		if(depth && depth->empty())
 		{
 			*depth = ctDepth.getUncompressedData();
 		}
-		if(depth2D)
+		if(depth2D && depth2D->empty())
 		{
 			*depth2D = ctDepth2D.getUncompressedData();
 		}

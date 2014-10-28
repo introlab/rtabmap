@@ -280,6 +280,15 @@ void Rtabmap::init(const std::string & configFile, const std::string & databaseP
 
 void Rtabmap::close()
 {
+	_retrievedId = 0;
+	_lcHypothesisValue = 0;
+	_lcHypothesisId = 0;
+	_lastProcessTime = 0.0;
+	_optimizedPoses.clear();
+	_constraints.clear();
+	_mapCorrection.setIdentity();
+	_mapTransform.setIdentity();
+
 	flushStatisticLogs();
 	if(_foutFloat)
 	{

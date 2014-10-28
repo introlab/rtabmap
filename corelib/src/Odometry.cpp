@@ -228,7 +228,7 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 		const Signature * newSignature = _memory->getLastWorkingSignature();
 		if(newSignature)
 		{
-			nFeatures = newSignature->getWords().size();
+			nFeatures = (int)newSignature->getWords().size();
 		}
 
 		if(previousSignature && newSignature)
@@ -260,7 +260,7 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 
 				if((int)inliers1->size() >= this->getMinInliers())
 				{
-					correspondences = inliers1->size();
+					correspondences = (int)inliers1->size();
 
 					// the transform returned is global odometry pose, not incremental one
 					std::vector<int> inliersV;
@@ -272,7 +272,7 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 							this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
 							&inliersV);
 
-					inliers = inliersV.size();
+					inliers = (int)inliersV.size();
 					if(!transform.isNull())
 					{
 						// make it incremental

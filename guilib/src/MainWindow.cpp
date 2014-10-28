@@ -728,7 +728,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		Signature signature = stat.getSignature();
 		signature.uncompressData(); // make sure data are uncompressed
 		_cachedSignatures.insert(stat.getSignature().id(), signature);
-		UDEBUG("");
 
 		// map ids
 		for(std::map<int, int>::const_iterator iter = stat.getMapIds().begin();
@@ -762,9 +761,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		int rejectedHyp = bool(uValue(stat.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
 		float highestHypothesisValue = uValue(stat.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f);
 		int matchId = 0;
-		cv::Mat loopImage;
-		cv::Mat loopDepth;
-		cv::Mat loopDepth2D;
+		Signature loopSignature;
 		int shownLoopId = 0;
 		if(highestHypothesisId > 0 || stat.localLoopClosureId()>0)
 		{
@@ -811,7 +808,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				QMap<int, Signature>::iterator iter = _cachedSignatures.find(shownLoopId);
 				if(iter != _cachedSignatures.end())
 				{
-					iter.value().uncompressData(&loopImage, &loopDepth, &loopDepth2D);
+					iter.value().uncompressData();
+					loopSignature = iter.value();
 				}
 			}
 		}
@@ -821,9 +819,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		//update image views
 		{
 			UCvMat2QImageThread qimageThread(signature.getImageRaw());
-			UCvMat2QImageThread qimageLoopThread(loopImage);
+			UCvMat2QImageThread qimageLoopThread(loopSignature.getImageRaw());
 			UCvMat2QImageThread qdepthThread(signature.getDepthRaw());
-			UCvMat2QImageThread qdepthLoopThread(loopDepth);
+			UCvMat2QImageThread qdepthLoopThread(loopSignature.getDepthRaw());
 			qimageThread.start();
 			qdepthThread.start();
 			qimageLoopThread.start();
@@ -873,16 +871,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		_ui->imageView_loopClosure->fitInView(_ui->imageView_source->sceneRect(), Qt::KeepAspectRatio);
 
 		// do it after scaling
-		std::multimap<int, cv::KeyPoint> loopWords;
-		if(shownLoopId)
-		{
-			QMap<int, Signature>::iterator iter = _cachedSignatures.find(shownLoopId);
-			if(iter!=_cachedSignatures.end())
-			{
-				loopWords = iter->getWords();
-			}
-		}
-		this->drawKeypoints(signature.getWords(), loopWords);
+		this->drawKeypoints(signature.getWords(), loopSignature.getWords());
 
 		if(_preferencesDialog->isImageFlipped())
 		{
@@ -893,7 +882,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		UDEBUG("time= %d ms", time.restart());
 
 		_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the last signature/", stat.refImageId(), signature.getWords().size());
-		_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the loop signature/", stat.refImageId(), loopWords.size());
+		_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the loop signature/", stat.refImageId(), loopSignature.getWords().size());
 
 		// PDF AND LIKELIHOOD
 		if(!stat.posterior().empty() && _ui->dockWidget_posterior->isVisible())
@@ -952,36 +941,19 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			// loop closure view
 			if((stat.loopClosureId() > 0 || stat.localLoopClosureId() > 0)  &&
-			   !stat.loopClosureTransform().isNull())
+			   !stat.loopClosureTransform().isNull() &&
+			   !loopSignature.getImageRaw().empty())
 			{
 				// the last loop closure data
 				Transform loopClosureTransform = stat.loopClosureTransform();
-				int loopOldId = stat.loopClosureId();
-				if(!loopOldId)
+				signature.setPose(loopClosureTransform);
+				_ui->widget_loopClosureViewer->setData(loopSignature, signature);
+				if(_ui->dockWidget_loopClosureViewer->isVisible())
 				{
-					loopOldId = stat.localLoopClosureId();
-				}
-
-				QMap<int, Signature>::iterator oldIter = _cachedSignatures.find(loopOldId);
-
-				if(oldIter!=_cachedSignatures.end())
-				{
-					Signature old = oldIter.value();
-					if(old.getImageRaw().empty())
-					{
-						old.setImageRaw(loopImage);
-						old.setDepthRaw(loopDepth);
-						old.setDepth2DRaw(loopDepth2D);
-					}
-					signature.setPose(loopClosureTransform);
-					_ui->widget_loopClosureViewer->setData(*oldIter, signature);
-					if(_ui->dockWidget_loopClosureViewer->isVisible())
-					{
-						UTimer loopTimer;
-						_ui->widget_loopClosureViewer->updateView();
-						UINFO("Updating loop closure cloud view time=%fs", loopTimer.elapsed());
-						_ui->statsToolBox->updateStat("/Gui RGB-D closure view/ms", stat.refImageId(), int(loopTimer.elapsed()*1000.0f));
-					}
+					UTimer loopTimer;
+					_ui->widget_loopClosureViewer->updateView();
+					UINFO("Updating loop closure cloud view time=%fs", loopTimer.elapsed());
+					_ui->statsToolBox->updateStat("/Gui RGB-D closure view/ms", stat.refImageId(), int(loopTimer.elapsed()*1000.0f));
 				}
 
 				UDEBUG("time= %d ms", time.restart());
@@ -1533,7 +1505,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		UINFO(" poses = %d", event.getPoses().size());
 		UINFO(" constraints = %d", event.getConstraints().size());
 
-		_initProgressDialog->setMaximumSteps(event.getSignatures().size()+event.getPoses().size()+1);
+		_initProgressDialog->setMaximumSteps(int(event.getSignatures().size()+event.getPoses().size()+1));
 		_initProgressDialog->appendText(QString("Inserting data in the cache (%1 signatures downloaded)...").arg(event.getSignatures().size()));
 		QApplication::processEvents();
 
@@ -4060,6 +4032,7 @@ void MainWindow::changeState(MainWindow::State newState)
 	case kInitializing:
 		_ui->actionNew_database->setEnabled(false);
 		_ui->actionOpen_database->setEnabled(false);
+		_ui->actionClose_database->setEnabled(false);
 		_ui->actionEdit_database->setEnabled(false);
 		_state = newState;
 		break;
@@ -4101,6 +4074,10 @@ void MainWindow::changeState(MainWindow::State newState)
 		break;
 
 	case kDetecting:
+		_ui->actionNew_database->setEnabled(false);
+		_ui->actionOpen_database->setEnabled(false);
+		_ui->actionClose_database->setEnabled(false);
+		_ui->actionEdit_database->setEnabled(false);
 		_ui->actionStart->setEnabled(false);
 		_ui->actionPause->setEnabled(true);
 		_ui->actionPause->setChecked(false);
