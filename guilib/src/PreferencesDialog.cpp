@@ -1191,7 +1191,7 @@ bool PreferencesDialog::readCoreSettings(const QString & filePath)
 
 bool PreferencesDialog::saveConfigTo()
 {
-	QString path = QFileDialog::getSaveFileName(this, tr("Save settings..."), this->getWorkingDirectory()+"/config.ini", "*.ini");
+	QString path = QFileDialog::getSaveFileName(this, tr("Save settings..."), this->getWorkingDirectory()+QDir::separator()+"config.ini", "*.ini");
 	if(!path.isEmpty())
 	{
 		this->writeSettings(path);

@@ -115,7 +115,7 @@ Rtabmap::Rtabmap() :
 	_memory(0),
 	_foutFloat(0),
 	_foutInt(0),
-	_wDir(std::string(".")+UDirectory::separator()),
+	_wDir("."),
 	_mapCorrection(Transform::getIdentity()),
 	_mapTransform(Transform::getIdentity())
 {
@@ -158,15 +158,15 @@ void Rtabmap::setupLogFiles(bool overwrite)
 			attributes = "w";
 		}
 
-		bool addLogFHeader = overwrite || !UFile::exists(_wDir+LOG_F);
-		bool addLogIHeader = overwrite || !UFile::exists(_wDir+LOG_I);
+		bool addLogFHeader = overwrite || !UFile::exists(_wDir+"/"+LOG_F);
+		bool addLogIHeader = overwrite || !UFile::exists(_wDir+"/"+LOG_I);
 
 	#ifdef _MSC_VER
-		fopen_s(&_foutFloat, (_wDir+LOG_F).c_str(), attributes.c_str());
-		fopen_s(&_foutInt, (_wDir+LOG_I).c_str(), attributes.c_str());
+		fopen_s(&_foutFloat, (_wDir+"/"+LOG_F).c_str(), attributes.c_str());
+		fopen_s(&_foutInt, (_wDir+"/"+LOG_I).c_str(), attributes.c_str());
 	#else
-		_foutFloat = fopen((_wDir+LOG_F).c_str(), attributes.c_str());
-		_foutInt = fopen((_wDir+LOG_I).c_str(), attributes.c_str());
+		_foutFloat = fopen((_wDir+"/"+LOG_F).c_str(), attributes.c_str());
+		_foutInt = fopen((_wDir+"/"+LOG_I).c_str(), attributes.c_str());
 	#endif
 		// add header (column identification)
 		if(_statisticLoggedHeaders && addLogFHeader && _foutFloat)
@@ -215,8 +215,8 @@ void Rtabmap::setupLogFiles(bool overwrite)
 			fprintf(_foutInt, " 17-Is last location merged through Weight Update?\n");
 		}
 
-		ULOGGER_DEBUG("Log file (int)=%s", (_wDir+LOG_I).c_str());
-		ULOGGER_DEBUG("Log file (float)=%s", (_wDir+LOG_F).c_str());
+		ULOGGER_DEBUG("Log file (int)=%s", (_wDir+"/"+LOG_I).c_str());
+		ULOGGER_DEBUG("Log file (float)=%s", (_wDir+"/"+LOG_F).c_str());
 	}
 	else
 	{
@@ -257,7 +257,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	_databasePath = databasePath;
 	if(_databasePath.empty())
 	{
-		_databasePath = _wDir + Parameters::getDefaultDatabaseName();
+		_databasePath = _wDir + "/" + Parameters::getDefaultDatabaseName();
 	}
 	UINFO("Using database \"%s\".", _databasePath.c_str());
 	this->parseParameters(parameters);
@@ -1775,11 +1775,6 @@ void Rtabmap::setTimeThreshold(float maxTimeAllowed)
 
 void Rtabmap::setWorkingDirectory(std::string path)
 {
-	if(path.size() && (path.at(path.size()-1) != '\\' || path.at(path.size()-1) != '/' ))
-	{
-		path += UDirectory::separator();
-	}
-
 	if(!path.empty() && UDirectory::exists(path))
 	{
 		ULOGGER_DEBUG("Comparing new working directory path \"%s\" with \"%s\"", path.c_str(), _wDir.c_str());

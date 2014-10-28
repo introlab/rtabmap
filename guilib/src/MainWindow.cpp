@@ -1441,10 +1441,10 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 	else if((RtabmapEventInit::Status)status == RtabmapEventInit::kClosed)
 	{
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
-		if(_openedDatabasePath.compare(_preferencesDialog->getWorkingDirectory()+"/"+Parameters::getDefaultDatabaseName().c_str()) == 0)
+		if(_openedDatabasePath.compare(_preferencesDialog->getWorkingDirectory()+QDir::separator()+Parameters::getDefaultDatabaseName().c_str()) == 0)
 		{
 			// Temp database used, automatically backup with unique name (timestamp)
-			QString newName = _preferencesDialog->getWorkingDirectory()+(QString("/rtabmap_%1.db").arg(QDateTime::currentDateTime().toString("yyMMddhhmmss")));
+			QString newName = _preferencesDialog->getWorkingDirectory()+QDir::separator()+(QString("rtabmap_%1.db").arg(QDateTime::currentDateTime().toString("yyMMdd-hhmmsszzz")));
 			if(QFile::rename(_openedDatabasePath, newName))
 			{
 				std::string msg = uFormat("Database saved to \"%s\".", newName.toStdString().c_str());
@@ -1609,7 +1609,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		ULogger::setLevel((ULogger::Level)_preferencesDialog->getGeneralLoggerLevel());
 		ULogger::setEventLevel((ULogger::Level)_preferencesDialog->getGeneralLoggerEventLevel());
 		ULogger::setType((ULogger::Type)_preferencesDialog->getGeneralLoggerType(),
-						 ((_preferencesDialog->getWorkingDirectory()+"/")+LOG_FILE_NAME).toStdString(), true);
+						 (_preferencesDialog->getWorkingDirectory()+QDir::separator()+LOG_FILE_NAME).toStdString(), true);
 		ULogger::setPrintTime(_preferencesDialog->getGeneralLoggerPrintTime());
 	}
 }
@@ -1895,19 +1895,19 @@ void MainWindow::changeMappingMode()
 
 void MainWindow::captureScreen()
 {
-	QString targetDir = _preferencesDialog->getWorkingDirectory() + "/ScreensCaptured";
+	QString targetDir = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "ScreensCaptured";
 	QDir dir;
 	if(!dir.exists(targetDir))
 	{
 		dir.mkdir(targetDir);
 	}
-	targetDir += "/";
+	targetDir += QDir::separator();
 	targetDir += "Main_window";
 	if(!dir.exists(targetDir))
 	{
 		dir.mkdir(targetDir);
 	}
-	targetDir += "/";
+	targetDir += QDir::separator();
 	QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + ".png");
 	_ui->statusbar->clearMessage();
 	QPixmap figure = QPixmap::grabWidget(this);
@@ -1933,7 +1933,7 @@ void MainWindow::newDatabase()
 	_openedDatabasePath.clear();
 	ULOGGER_DEBUG("");
 	this->clearTheCache();
-	std::string databasePath = _preferencesDialog->getWorkingDirectory().toStdString()+"/"+Parameters::getDefaultDatabaseName();
+	std::string databasePath = (_preferencesDialog->getWorkingDirectory()+QDir::separator()+Parameters::getDefaultDatabaseName().c_str()).toStdString();
 	if(QFile::exists(databasePath.c_str()))
 	{
 		if(QFile::remove(databasePath.c_str()))
@@ -2421,7 +2421,7 @@ void MainWindow::generateMap()
 {
 	if(_graphSavingFileName.isEmpty())
 	{
-		_graphSavingFileName = _preferencesDialog->getWorkingDirectory() + "/Graph.dot";
+		_graphSavingFileName = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "Graph.dot";
 	}
 	QString path = QFileDialog::getSaveFileName(this, tr("Save File"), _graphSavingFileName, tr("Graphiz file (*.dot)"));
 	if(!path.isEmpty())
@@ -2438,7 +2438,7 @@ void MainWindow::generateLocalMap()
 {
 	if(_graphSavingFileName.isEmpty())
 	{
-		_graphSavingFileName = _preferencesDialog->getWorkingDirectory() + "/Graph.dot";
+		_graphSavingFileName = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "Graph.dot";
 	}
 
 	bool ok = false;
@@ -2480,7 +2480,7 @@ void MainWindow::generateTOROMap()
 {
 	if(_toroSavingFileName.isEmpty())
 	{
-		_toroSavingFileName = _preferencesDialog->getWorkingDirectory() + "/toro.graph";
+		_toroSavingFileName = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "toro.graph";
 	}
 
 	QStringList items;
@@ -2596,10 +2596,9 @@ void MainWindow::openWorkingDirectory()
 void MainWindow::updateEditMenu()
 {
 	// Update Memory delete database size
-	if(_state != kMonitoring && _state != kMonitoringPaused)
+	if(_state != kMonitoring && _state != kMonitoringPaused && !_openedDatabasePath.isEmpty())
 	{
-		QString dbPath = _preferencesDialog->getWorkingDirectory() + "/rtabmap.db";
-		_ui->actionDelete_memory->setText(tr("Delete memory (%1 MB)").arg(UFile::length(dbPath.toStdString())/1000000));
+		_ui->actionDelete_memory->setText(tr("Delete memory (%1 MB)").arg(UFile::length(_openedDatabasePath.toStdString())/1000000));
 	}
 }
 
@@ -3442,7 +3441,7 @@ void MainWindow::saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB
 {
 	if(clouds.size() == 1)
 	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), _preferencesDialog->getWorkingDirectory()+"/cloud.ply", tr("Point cloud data (*.ply *.pcd)"));
+		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), _preferencesDialog->getWorkingDirectory()+QDir::separator()+"cloud.ply", tr("Point cloud data (*.ply *.pcd)"));
 		if(!path.isEmpty())
 		{
 			if(clouds.begin()->second->size())
@@ -3550,7 +3549,7 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes)
 {
 	if(meshes.size() == 1)
 	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), _preferencesDialog->getWorkingDirectory()+"/mesh.ply", tr("Mesh (*.ply)"));
+		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), _preferencesDialog->getWorkingDirectory()+QDir::separator()+"mesh.ply", tr("Mesh (*.ply)"));
 		if(!path.isEmpty())
 		{
 			if(meshes.begin()->second->polygons.size())
@@ -3649,7 +3648,7 @@ void MainWindow::saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::P
 {
 	if(scans.size() == 1)
 	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), _preferencesDialog->getWorkingDirectory()+"/scan.ply", tr("Point cloud data (*.ply *.pcd)"));
+		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), _preferencesDialog->getWorkingDirectory()+QDir::separator()+"scan.ply", tr("Point cloud data (*.ply *.pcd)"));
 		if(!path.isEmpty())
 		{
 			if(scans.begin()->second->size())

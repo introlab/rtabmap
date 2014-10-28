@@ -60,8 +60,6 @@ std::string Parameters::getDefaultWorkingDirectory()
 	{
 		UFATAL("Can't get the HOME variable environment!");
 	}
-
-	path += UDirectory::separator(); // add trailing separator
 	return path;
 }
 
