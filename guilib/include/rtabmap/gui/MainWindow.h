@@ -255,6 +255,7 @@ private:
 	bool _processingStatistics;
 	bool _odometryReceived;
 	QString _openedDatabasePath;
+	bool _emptyNewDatabase;
 
 	QMap<int, Signature> _cachedSignatures;
 	QMap<int, int> _mapIds;

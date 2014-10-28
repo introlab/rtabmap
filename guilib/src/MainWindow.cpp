@@ -116,6 +116,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_processingStatistics(false),
 	_odometryReceived(false),
 	_openedDatabasePath(""),
+	_emptyNewDatabase(true),
 	_odometryCorrection(Transform::getIdentity()),
 	_lastOdometryProcessed(true),
 	_oneSecondTimer(0),
@@ -1441,7 +1442,8 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 	else if((RtabmapEventInit::Status)status == RtabmapEventInit::kClosed)
 	{
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
-		if(_openedDatabasePath.compare(_preferencesDialog->getWorkingDirectory()+QDir::separator()+Parameters::getDefaultDatabaseName().c_str()) == 0)
+		if(_openedDatabasePath.compare(_preferencesDialog->getWorkingDirectory()+QDir::separator()+Parameters::getDefaultDatabaseName().c_str()) == 0 &&
+		   !_emptyNewDatabase)
 		{
 			// Temp database used, automatically backup with unique name (timestamp)
 			QString newName = _preferencesDialog->getWorkingDirectory()+QDir::separator()+(QString("rtabmap_%1.db").arg(QDateTime::currentDateTime().toString("yyMMdd-hhmmsszzz")));
@@ -1947,6 +1949,7 @@ void MainWindow::newDatabase()
 		}
 	}
 	_openedDatabasePath = databasePath.c_str();
+	_emptyNewDatabase = true;
 	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdInit, databasePath, 0, _preferencesDialog->getAllParameters()));
 }
 
@@ -2303,6 +2306,8 @@ void MainWindow::startDetection()
 				tr("Note that publishing statistics is disabled, "
 				   "progress will not be shown in the GUI."));
 	}
+
+	_emptyNewDatabase = false; // if a new database is used, it won't be empty anymore...
 
 	emit stateChanged(kDetecting);
 }
