@@ -98,6 +98,7 @@ CloudViewer::~CloudViewer()
 {
 	UDEBUG("");
 	this->removeAllClouds();
+	this->removeAllGraphs();
 	delete _visualizer;
 }
 
@@ -421,6 +422,61 @@ void CloudViewer::removeOccupancyGridMap()
 		_visualizer->removeShape("map");
 	}
 #endif
+}
+
+void CloudViewer::addOrUpdateGraph(
+		const std::string & id,
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & graph,
+		const QColor & color)
+{
+	if(id.empty())
+	{
+		UERROR("id should not be empty!");
+		return;
+	}
+
+	removeGraph(id);
+
+	if(graph->size())
+	{
+		_graphes.insert(std::make_pair(id, graph));
+
+		pcl::PolygonMesh mesh;
+		pcl::Vertices vertices;
+		vertices.vertices.resize(graph->size());
+		for(unsigned int i=0; i<vertices.vertices.size(); ++i)
+		{
+			vertices.vertices[i] = i;
+		}
+		pcl::toPCLPointCloud2(*graph, mesh.cloud);
+		mesh.polygons.push_back(vertices);
+		_visualizer->addPolylineFromPolygonMesh(mesh, id);
+		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, color.redF(), color.greenF(), color.blueF(), id);
+	}
+}
+
+void CloudViewer::removeGraph(const std::string & id)
+{
+	if(id.empty())
+	{
+		UERROR("id should not be empty!");
+		return;
+	}
+
+	if(_graphes.find(id) != _graphes.end())
+	{
+		_visualizer->removeShape(id);
+		_graphes.erase(id);
+	}
+}
+
+void CloudViewer::removeAllGraphs()
+{
+	for(std::map<std::string, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator iter = _graphes.begin(); iter!=_graphes.end(); ++iter)
+	{
+		_visualizer->removeShape(iter->first);
+	}
+	_graphes.clear();
 }
 
 void CloudViewer::setTrajectoryShown(bool shown)

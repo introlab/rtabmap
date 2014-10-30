@@ -194,9 +194,9 @@ signals:
 
 private:
 	void update3DMapVisibility(bool cloudsShown, bool scansShown);
-	void updateMapCloud(const std::map<int, Transform> & poses, const Transform & pose, const std::multimap<int, Link> & constraints, bool verboseProgress = false);
-	void createAndAddCloudToMap(int nodeId, const Transform & pose);
-	void createAndAddScanToMap(int nodeId, const Transform & pose);
+	void updateMapCloud(const std::map<int, Transform> & poses, const Transform & pose, const std::multimap<int, Link> & constraints, const std::map<int, int> & mapIds, bool verboseProgress = false);
+	void createAndAddCloudToMap(int nodeId, const Transform & pose, int mapId);
+	void createAndAddScanToMap(int nodeId, const Transform & pose, int mapId);
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
 	void setupMainLayout(bool vertical);
 	void updateSelectSourceImageMenu(int type);
@@ -261,9 +261,9 @@ private:
 	bool _emptyNewDatabase;
 
 	QMap<int, Signature> _cachedSignatures;
-	QMap<int, int> _mapIds;
-	std::map<int, Transform> _currentPosesMap;
-	std::multimap<int, Link> _currentLinksMap;
+	std::map<int, Transform> _currentPosesMap; // <nodeId, pose>
+	std::multimap<int, Link> _currentLinksMap; // <nodeFromId, link>
+	std::map<int, int> _currentMapIds;   // <nodeId, mapId>
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > _createdClouds;
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > _createdScans;
 	std::map<int, std::pair<cv::Mat, cv::Mat> > _occupancyLocalMaps; // <ground, obstacles>

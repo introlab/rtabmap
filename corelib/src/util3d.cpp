@@ -2889,13 +2889,13 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		float & xMin,
 		float & yMin)
 {
-	UDEBUG("");
+	UDEBUG("poses=%d, scans = %d", poses.size(), scans.size());
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > localScans;
 
 	pcl::PointCloud<pcl::PointXYZ> minMax;
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
-		if(uContains(scans, iter->first) && scans.size())
+		if(uContains(scans, iter->first) && scans.at(iter->first)->size())
 		{
 			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = transformPointCloud<pcl::PointXYZ>(scans.at(iter->first), iter->second);
 			pcl::PointXYZ min, max;

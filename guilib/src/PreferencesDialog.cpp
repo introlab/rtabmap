@@ -189,6 +189,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		connect(_3dRenderingOpacityScan[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingPtSizeScan[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	}
+
+	connect(_ui->checkBox_showGraphs, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+
 	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->spinBox_normalKSearch, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -801,6 +804,9 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			_3dRenderingOpacityScan[i]->setValue(1.0);
 			_3dRenderingPtSizeScan[i]->setValue(1);
 		}
+
+		_ui->checkBox_showGraphs->setChecked(true);
+
 		_ui->checkBox_meshing->setChecked(false);
 		_ui->doubleSpinBox_gp3Radius->setValue(0.04);
 		_ui->spinBox_normalKSearch->setValue(20);
@@ -1032,6 +1038,8 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 		_3dRenderingOpacityScan[i]->setValue(settings.value(QString("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value()).toDouble());
 		_3dRenderingPtSizeScan[i]->setValue(settings.value(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value()).toInt());
 	}
+	_ui->checkBox_showGraphs->setChecked(settings.value("showGraphs", _ui->checkBox_showGraphs->isChecked()).toBool());
+
 	_ui->checkBox_meshing->setChecked(settings.value("meshing", _ui->checkBox_meshing->isChecked()).toBool());
 	_ui->doubleSpinBox_gp3Radius->setValue(settings.value("meshGP3Radius", _ui->doubleSpinBox_gp3Radius->value()).toDouble());
 	_ui->spinBox_normalKSearch->setValue(settings.value("meshNormalKSearch", _ui->spinBox_normalKSearch->value()).toInt());
@@ -1274,6 +1282,8 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath)
 		settings.setValue(QString("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value());
 		settings.setValue(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value());
 	}
+	settings.setValue("showGraphs", _ui->checkBox_showGraphs->isChecked());
+
 	settings.setValue("meshing", _ui->checkBox_meshing->isChecked());
 	settings.setValue("meshGP3Radius", _ui->doubleSpinBox_gp3Radius->value());
 	settings.setValue("meshNormalKSearch", _ui->spinBox_normalKSearch->value());
@@ -2530,6 +2540,10 @@ bool PreferencesDialog::isCloudsShown(int index) const
 {
 	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingShowClouds[index]->isChecked();
+}
+bool PreferencesDialog::isGraphsShown() const
+{
+	return _ui->checkBox_showGraphs->isChecked();
 }
 bool PreferencesDialog::isCloudMeshing() const
 {

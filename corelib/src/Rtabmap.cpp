@@ -2145,9 +2145,7 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 
 		for(std::set<int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
 		{
-			UDEBUG("");
 			Signature data = _memory->getSignatureData(*iter);
-			UDEBUG("");
 			if(data.id() != Memory::kIdInvalid)
 			{
 				signatures.insert(std::make_pair(*iter, Signature())).first->second = data;
@@ -2155,7 +2153,7 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 			}
 		}
 	}
-	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size()))
+	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size() > 1))
 	{
 		UERROR("Last working signature is null!?");
 	}

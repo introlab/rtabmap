@@ -121,6 +121,7 @@ public:
 	int getKeypointsOpacity() const;
 	int getOdomQualityWarnThr() const;
 
+	bool isGraphsShown() const;
 	bool isCloudMeshing() const;
 	bool isCloudsShown(int index) const;      // 0=map, 1=odom
 	double getCloudVoxelSize(int index) const; // 0=map, 1=odom

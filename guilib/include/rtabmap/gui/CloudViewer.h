@@ -130,6 +130,13 @@ public:
 	void updateCameraPosition(
 		const Transform & pose);
 
+	void addOrUpdateGraph(
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZ>::Ptr & graph,
+			const QColor & color = Qt::gray);
+	void removeGraph(const std::string & id);
+	void removeAllGraphs();
+
 	void setTrajectoryShown(bool shown);
 	void setTrajectorySize(int value);
 	void clearTrajectory();
@@ -182,6 +189,7 @@ private:
     QAction * _aShowGrid;
     QAction * _aSetBackgroundColor;
     QMenu * _menu;
+    std::map<std::string, pcl::PointCloud<pcl::PointXYZ>::Ptr > _graphes;
     pcl::PointCloud<pcl::PointXYZ>::Ptr _trajectory;
     unsigned int _maxTrajectorySize;
     QMap<std::string, Transform> _addedClouds; // include cloud, scan, meshes

@@ -735,14 +735,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		signature.uncompressData(); // make sure data are uncompressed
 		_cachedSignatures.insert(stat.getSignature().id(), signature);
 
-		// map ids
-		for(std::map<int, int>::const_iterator iter = stat.getMapIds().begin();
-			iter != stat.getMapIds().end();
-			++iter)
-		{
-			_mapIds.insert(iter->first, iter->second);
-		}
-
 		int rehearsed = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
 		int localTimeClosures = (int)uValue(stat.data(), Statistics::kLocalLoopTime_closures(), 0.0f);
 		bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kLocalLoopOdom_corrected(), 0.0f);
@@ -936,7 +928,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			// update pose only if odometry is not received
 			updateMapCloud(stat.poses(),
 					_odometryReceived||stat.poses().size()==0?Transform():stat.poses().rbegin()->second,
-					stat.constraints());
+					stat.constraints(),
+					stat.getMapIds());
 
 			_odometryReceived = false;
 
@@ -986,12 +979,14 @@ void MainWindow::updateMapCloud(
 		const std::map<int, Transform> & posesIn,
 		const Transform & currentPose,
 		const std::multimap<int, Link> & constraints,
+		const std::map<int, int> & mapIdsIn,
 		bool verboseProgress)
 {
 	if(posesIn.size())
 	{
 		_currentPosesMap = posesIn;
 		_currentLinksMap = constraints;
+		_currentMapIds = mapIdsIn;
 		if(_currentPosesMap.size())
 		{
 			if(!_ui->actionSave_point_cloud->isEnabled() &&
@@ -1022,6 +1017,7 @@ void MainWindow::updateMapCloud(
 
 	// filter duplicated poses
 	std::map<int, Transform> poses;
+	std::map<int, int> mapIds;
 	if(_preferencesDialog->isCloudFiltering() && posesIn.size())
 	{
 		float radius = _preferencesDialog->getCloudFilteringRadius();
@@ -1029,11 +1025,26 @@ void MainWindow::updateMapCloud(
 		poses = util3d::radiusPosesFiltering(posesIn, radius, angle);
 		// make sure the last is here
 		poses.insert(*posesIn.rbegin());
+		for(std::map<int, Transform>::iterator iter= poses.begin(); iter!=poses.end(); ++iter)
+		{
+			std::map<int, int>::const_iterator jter = mapIdsIn.find(iter->first);
+			if(jter!=mapIdsIn.end())
+			{
+				mapIds.insert(*jter);
+			}
+			else
+			{
+				UERROR("map id of node %d not found!", iter->first);
+			}
+
+		}
 	}
 	else
 	{
 		poses = posesIn;
+		mapIds = mapIdsIn;
 	}
+
 	std::map<int, bool> posesMask;
 	for(std::map<int, Transform>::const_iterator iter = posesIn.begin(); iter!=posesIn.end(); ++iter)
 	{
@@ -1075,7 +1086,7 @@ void MainWindow::updateMapCloud(
 					QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
 					if(!jter->getImageCompressed().empty() && !jter->getDepthCompressed().empty())
 					{
-						this->createAndAddCloudToMap(iter->first, iter->second);
+						this->createAndAddCloudToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
 					}
 				}
 			}
@@ -1110,7 +1121,7 @@ void MainWindow::updateMapCloud(
 					QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
 					if(!jter->getDepth2DCompressed().empty())
 					{
-						this->createAndAddScanToMap(iter->first, iter->second);
+						this->createAndAddScanToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
 					}
 				}
 				if(!_preferencesDialog->isScansShown(0))
@@ -1139,6 +1150,7 @@ void MainWindow::updateMapCloud(
 
 		++i;
 	}
+
 	//remove not used clouds
 	for(QMap<std::string, Transform>::iterator iter = viewerClouds.begin(); iter!=viewerClouds.end(); ++iter)
 	{
@@ -1154,6 +1166,35 @@ void MainWindow::updateMapCloud(
 					_ui->widget_cloudViewer->setCloudVisibility(iter.key(), false);
 				}
 			}
+		}
+	}
+
+	// update 3D graphes (show all poses)
+	_ui->widget_cloudViewer->removeAllGraphs();
+	if(_preferencesDialog->isGraphsShown() && _currentPosesMap.size())
+	{
+		// Find all graphs
+		std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > graphs;
+		for(std::map<int, Transform>::iterator iter=_currentPosesMap.begin(); iter!=_currentPosesMap.end(); ++iter)
+		{
+			int mapId = uValue(_currentMapIds, iter->first, -1);
+			std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator kter = graphs.find(mapId);
+			if(kter == graphs.end())
+			{
+				kter = graphs.insert(std::make_pair(mapId, pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>))).first;
+			}
+			kter->second->push_back(pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z()));
+		}
+
+		// add graphs
+		for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator iter=graphs.begin(); iter!=graphs.end(); ++iter)
+		{
+			QColor color = Qt::gray;
+			if(iter->first >= 0)
+			{
+				color = (Qt::GlobalColor)(iter->first % 12 + 7 );
+			}
+			_ui->widget_cloudViewer->addOrUpdateGraph(uFormat("graph_%d", iter->first), iter->second, color);
 		}
 	}
 
@@ -1234,7 +1275,7 @@ void MainWindow::updateMapCloud(
 	_ui->widget_cloudViewer->render();
 }
 
-void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
+void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int mapId)
 {
 	std::string cloudName = uFormat("cloud%d", nodeId);
 	if(_ui->widget_cloudViewer->getAddedClouds().contains(cloudName))
@@ -1247,6 +1288,11 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
 	if(iter == _cachedSignatures.end())
 	{
 		UERROR("Node %d is not in the cache.", nodeId);
+		return;
+	}
+
+	if(iter->getImageCompressed().empty() || iter->getDepthCompressed().empty())
+	{
 		return;
 	}
 
@@ -1322,7 +1368,6 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
 			pcl::copyPointCloud(*cloudWithNormals, *cloud);
 		}
 		QColor color = Qt::gray;
-		int mapId = _mapIds.value(nodeId, -1);
 		if(mapId >= 0)
 		{
 			color = (Qt::GlobalColor)(mapId % 12 + 7 );
@@ -1341,7 +1386,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose)
 	_ui->widget_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
 }
 
-void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose)
+void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int mapId)
 {
 	std::string scanName = uFormat("scan%d", nodeId);
 	if(_ui->widget_cloudViewer->getAddedClouds().contains(scanName))
@@ -1356,27 +1401,30 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose)
 		UERROR("Node %d is not in the cache.", nodeId);
 		return;
 	}
-	cv::Mat depth2D;
-	iter->uncompressData(0, 0, &depth2D);
 
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-	cloud = util3d::depth2DToPointCloud(depth2D);
-	QColor color = Qt::red;
-	int mapId = _mapIds.value(nodeId, -1);
-	if(mapId >= 0)
+	if(!iter->getDepth2DCompressed().empty())
 	{
-		color = (Qt::GlobalColor)(mapId % 12 + 7 );
+		cv::Mat depth2D;
+		iter->uncompressData(0, 0, &depth2D);
+
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+		cloud = util3d::depth2DToPointCloud(depth2D);
+		QColor color = Qt::red;
+		if(mapId >= 0)
+		{
+			color = (Qt::GlobalColor)(mapId % 12 + 7 );
+		}
+		if(!_ui->widget_cloudViewer->addOrUpdateCloud(scanName, cloud, pose))
+		{
+			UERROR("Adding cloud %d to viewer failed!", nodeId);
+		}
+		else
+		{
+			_createdScans.insert(std::make_pair(nodeId, cloud));
+		}
+		_ui->widget_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
+		_ui->widget_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 	}
-	if(!_ui->widget_cloudViewer->addOrUpdateCloud(scanName, cloud, pose))
-	{
-		UERROR("Adding cloud %d to viewer failed!", nodeId);
-	}
-	else
-	{
-		_createdScans.insert(std::make_pair(nodeId, cloud));
-	}
-	_ui->widget_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
-	_ui->widget_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 }
 
 void MainWindow::updateNodeVisibility(int nodeId, bool visible)
@@ -1389,7 +1437,7 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 			std::string cloudName = uFormat("cloud%d", nodeId);
 			if(visible && !viewerClouds.contains(cloudName))
 			{
-				createAndAddCloudToMap(nodeId, _currentPosesMap.find(nodeId)->second);
+				createAndAddCloudToMap(nodeId, _currentPosesMap.find(nodeId)->second, uValue(_currentMapIds, nodeId, -1));
 			}
 			else if(viewerClouds.contains(cloudName))
 			{
@@ -1407,7 +1455,7 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 			std::string scanName = uFormat("scan%d", nodeId);
 			if(visible && !viewerClouds.contains(scanName))
 			{
-				createAndAddScanToMap(nodeId, _currentPosesMap.find(nodeId)->second);
+				createAndAddScanToMap(nodeId, _currentPosesMap.find(nodeId)->second, uValue(_currentMapIds, nodeId, -1));
 			}
 			else if(viewerClouds.contains(scanName))
 			{
@@ -1536,16 +1584,6 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		_initProgressDialog->incrementStep();
 		QApplication::processEvents();
 
-		for(std::map<int, int>::const_iterator iter = event.getMapIds().begin();
-			iter!=event.getMapIds().end();
-			++iter)
-		{
-			_mapIds.insert(iter->first, iter->second);
-		}
-		_initProgressDialog->appendText(tr("Inserted %1 map ids").arg(_mapIds.size()));
-		_initProgressDialog->incrementStep();
-		QApplication::processEvents();
-
 		_initProgressDialog->appendText("Inserting data in the cache... done.");
 
 		if(event.getPoses().size())
@@ -1553,7 +1591,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			_initProgressDialog->appendText("Updating the 3D map cloud...");
 			_initProgressDialog->incrementStep();
 			QApplication::processEvents();
-			this->updateMapCloud(event.getPoses(), Transform(), event.getConstraints(), true);
+			this->updateMapCloud(event.getPoses(), Transform(), event.getConstraints(), event.getMapIds(), true);
 			_initProgressDialog->appendText("Updating the 3D map cloud... done.");
 		}
 		else
@@ -1609,7 +1647,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		UDEBUG("Cloud rendering settings changed...");
 		if(_currentPosesMap.size())
 		{
-			this->updateMapCloud(std::map<int, Transform>(_currentPosesMap), Transform(), std::multimap<int, Link>(_currentLinksMap));
+			this->updateMapCloud(_currentPosesMap, Transform(), _currentLinksMap, _currentMapIds);
 		}
 	}
 
@@ -2936,7 +2974,7 @@ void MainWindow::postProcessing()
 	_initProgressDialog->incrementStep();
 
 	_initProgressDialog->appendText(tr("Updating map..."));
-	this->updateMapCloud(optimizedPoses, Transform(), _currentLinksMap, false);
+	this->updateMapCloud(optimizedPoses, Transform(), _currentLinksMap, _currentMapIds, false);
 	_initProgressDialog->appendText(tr("Updating map... done!"));
 
 	_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
@@ -3172,15 +3210,17 @@ void MainWindow::downloadPoseGraph()
 void MainWindow::clearTheCache()
 {
 	_cachedSignatures.clear();
-	_mapIds.clear();
 	_createdClouds.clear();
 	_createdScans.clear();
 	_occupancyLocalMaps.clear();
 	_ui->widget_cloudViewer->removeAllClouds();
+	_ui->widget_cloudViewer->removeAllGraphs();
 	_ui->widget_cloudViewer->setBackgroundColor(Qt::black);
 	_ui->widget_cloudViewer->clearTrajectory();
 	_ui->widget_mapVisibility->clear();
 	_currentPosesMap.clear();
+	_currentLinksMap.clear();
+	_currentMapIds.clear();
 	_odometryCorrection = Transform::getIdentity();
 	_lastOdomPose.setNull();
 	//disable save cloud action
@@ -3506,7 +3546,7 @@ void MainWindow::viewScans()
 			_initProgressDialog->incrementStep();
 
 			QColor color = Qt::red;
-			int mapId = _mapIds.value(iter->first, -1);
+			int mapId = uValue(_currentMapIds, iter->first, -1);
 			if(mapId >= 0)
 			{
 				color = (Qt::GlobalColor)(mapId % 12 + 7 );
@@ -3679,7 +3719,7 @@ void MainWindow::viewClouds()
 				_initProgressDialog->incrementStep();
 
 				QColor color = Qt::gray;
-				int mapId = _mapIds.value(iter->first, -1);
+				int mapId = uValue(_currentMapIds, iter->first, -1);
 				if(mapId >= 0)
 				{
 					color = (Qt::GlobalColor)(mapId % 12 + 7 );
