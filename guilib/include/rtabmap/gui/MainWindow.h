@@ -64,6 +64,7 @@ class StatsToolBox;
 class DetailedProgressDialog;
 class TwistGridWidget;
 class ExportCloudsDialog;
+class PostProcessingDialog;
 
 class RTABMAPGUI_EXP MainWindow : public QMainWindow, public UEventsHandler
 {
@@ -123,6 +124,7 @@ private slots:
 	void generateMap();
 	void generateLocalMap();
 	void generateTOROMap();
+	void postProcessing();
 	void deleteMemory();
 	void openWorkingDirectory();
 	void updateEditMenu();
@@ -249,6 +251,7 @@ private:
 	PreferencesDialog * _preferencesDialog;
 	AboutDialog * _aboutDialog;
 	ExportCloudsDialog * _exportDialog;
+	PostProcessingDialog * _postProcessingDialog;
 
 	QSet<int> _lastIds;
 	int _lastId;

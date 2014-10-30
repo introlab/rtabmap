@@ -227,7 +227,7 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 			// Added links
 			for(std::multimap<int, rtabmap::Link>::iterator iter=linksAdded_.begin(); iter!=linksAdded_.end(); ++iter)
 			{
-				std::multimap<int, rtabmap::Link>::iterator refinedIter = this->findLink(linksRefined_, iter->second.from(), iter->second.to());
+				std::multimap<int, rtabmap::Link>::iterator refinedIter = util3d::findLink(linksRefined_, iter->second.from(), iter->second.to());
 				if(refinedIter != linksRefined_.end())
 				{
 					memory_->addLoopClosureLink(refinedIter->second.to(), refinedIter->second.from(), refinedIter->second.transform(), true);
@@ -541,156 +541,6 @@ void DatabaseViewer::generateTOROGraph()
 	}
 }
 
-// margin=0 means infinite margin
-std::map<int, int> DatabaseViewer::generateGraph(int fromNode, int margin)
-{
-	UASSERT(margin >= 0);
-	//UDEBUG("signatureId=%d, neighborsMargin=%d", signatureId, margin);
-	std::map<int, int> ids;
-	if(fromNode<=0)
-	{
-		return ids;
-	}
-
-	std::list<int> curentMarginList;
-	std::set<int> currentMargin;
-	std::set<int> nextMargin;
-	nextMargin.insert(fromNode);
-	int m = 0;
-	while((margin == 0 || m < margin) && nextMargin.size())
-	{
-		curentMarginList = std::list<int>(nextMargin.begin(), nextMargin.end());
-		nextMargin.clear();
-
-		for(std::list<int>::iterator jter = curentMarginList.begin(); jter!=curentMarginList.end(); ++jter)
-		{
-			if(ids.find(*jter) == ids.end())
-			{
-				std::set<int> marginIds;
-
-				ids.insert(std::pair<int, int>(*jter, m));
-
-				for(int i=0; i<neighborLinks_.size(); ++i)
-				{
-					if(neighborLinks_[i].from() == *jter)
-					{
-						marginIds.insert(neighborLinks_[i].to());
-					}
-					else if(neighborLinks_[i].to() == *jter)
-					{
-						marginIds.insert(neighborLinks_[i].from());
-					}
-				}
-				for(int i=0; i<loopLinks_.size(); ++i)
-				{
-					if(loopLinks_[i].from() == *jter)
-					{
-						marginIds.insert(loopLinks_[i].to());
-					}
-					else if(loopLinks_[i].to() == *jter)
-					{
-						marginIds.insert(loopLinks_[i].from());
-					}
-				}
-
-				// Margin links
-				for(std::set<int>::const_iterator iter=marginIds.begin(); iter!=marginIds.end(); ++iter)
-				{
-					if( !uContains(ids, *iter) && nextMargin.find(*iter) == nextMargin.end())
-					{
-						nextMargin.insert(*iter);
-					}
-				}
-			}
-		}
-		++m;
-	}
-	return ids;
-}
-
-std::map<int, Transform> DatabaseViewer::optimizeGraph(
-		const std::map<int, int> & ids,
-		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & links,
-		std::list<std::map<int, rtabmap::Transform> > * graphes)
-{
-	std::map<int, rtabmap::Transform> optimizedPoses;
-	if(ids.size() && poses.size())
-	{
-		// Modify IDs using the margin from the current signature (TORO root will be the last signature)
-		int m = 0;
-		int toroId = 1;
-		std::map<int, int> rtabmapToToro; // <RTAB-Map ID, TORO ID>
-		std::map<int, int> toroToRtabmap; // <TORO ID, RTAB-Map ID>
-		std::map<int, int> idsTmp = ids;
-		while(idsTmp.size())
-		{
-			for(std::map<int, int>::iterator iter = idsTmp.begin(); iter!=idsTmp.end();)
-			{
-				if(m == iter->second)
-				{
-					rtabmapToToro.insert(std::make_pair(iter->first, toroId));
-					toroToRtabmap.insert(std::make_pair(toroId, iter->first));
-					++toroId;
-					idsTmp.erase(iter++);
-				}
-				else
-				{
-					++iter;
-				}
-			}
-			++m;
-		}
-
-		std::map<int, rtabmap::Transform> posesToro;
-		std::multimap<int, rtabmap::Link> edgeConstraintsToro;
-		for(std::map<int, rtabmap::Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-		{
-			if(uContains(ids, iter->first))
-			{
-				posesToro.insert(std::make_pair(rtabmapToToro.at(iter->first), iter->second));
-			}
-		}
-		for(std::multimap<int, rtabmap::Link>::const_iterator iter = links.begin();
-			iter!=links.end();
-			++iter)
-		{
-			if(uContains(ids, iter->second.from()) && uContains(ids, iter->second.to()))
-			{
-				edgeConstraintsToro.insert(std::make_pair(rtabmapToToro.at(iter->first), rtabmap::Link(rtabmapToToro.at(iter->first), rtabmapToToro.at(iter->second.to()), iter->second.transform(), iter->second.type())));
-			}
-		}
-
-		std::map<int, rtabmap::Transform> optimizedPosesToro;
-		rtabmap::Transform mapCorrectionToro;
-
-		// Optimize!
-		if(posesToro.size() && edgeConstraintsToro.size())
-		{
-			std::list<std::map<int, rtabmap::Transform> > graphesToro;
-			rtabmap::util3d::optimizeTOROGraph(posesToro, edgeConstraintsToro, optimizedPosesToro, mapCorrectionToro, ui_->spinBox_iterations->value(), ui_->checkBox_initGuess->isChecked(), &graphesToro);
-			for(std::map<int, rtabmap::Transform>::iterator iter=optimizedPosesToro.begin(); iter!=optimizedPosesToro.end(); ++iter)
-			{
-				optimizedPoses.insert(std::make_pair(toroToRtabmap.at(iter->first), iter->second));
-			}
-
-			if(graphes)
-			{
-				for(std::list<std::map<int, rtabmap::Transform> >::iterator iter = graphesToro.begin(); iter!=graphesToro.end(); ++iter)
-				{
-					std::map<int, rtabmap::Transform> tmp;
-					for(std::map<int, rtabmap::Transform>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
-					{
-						tmp.insert(std::make_pair(toroToRtabmap.at(jter->first), jter->second));
-					}
-					graphes->push_back(tmp);
-				}
-			}
-		}
-	}
-	return optimizedPoses;
-}
-
 void DatabaseViewer::view3DMap()
 {
 	if(!ids_.size() || !memory_)
@@ -715,17 +565,19 @@ void DatabaseViewer::view3DMap()
 			double maxDepth = QInputDialog::getDouble(this, tr("Camera depth?"), tr("Maximum depth (m, 0=no max):"), 4.0, 0, 10, 2, &ok);
 			if(ok)
 			{
+				std::multimap<int, rtabmap::Link> links = updateLinksWithModifications(links_);
 				// <id, depth>
-				std::map<int, int> ids = generateGraph(ui_->spinBox_optimizationsFrom->value(), margin);
-				if(ids.size() > 0)
+				std::map<int, int> depthGraph = util3d::generateDepthGraph(links, ui_->spinBox_optimizationsFrom->value(), margin);
+				if(depthGraph.size() > 0)
 				{
 					rtabmap::DetailedProgressDialog progressDialog(this);
-					progressDialog.setMaximumSteps(ids.size()+2);
+					progressDialog.setMaximumSteps(depthGraph.size()+2);
 					progressDialog.show();
 
 					progressDialog.appendText("Graph optimization...");
 					std::multimap<int, Link> links = updateLinksWithModifications(links_);
-					std::map<int, Transform> optimizedPoses = optimizeGraph(ids, poses_, links);
+					std::map<int, Transform> optimizedPoses;
+					util3d::optimizeTOROGraph(depthGraph, poses_, links, optimizedPoses, ui_->spinBox_iterations->value(), ui_->checkBox_initGuess->isChecked());
 					progressDialog.appendText("Graph optimization... done!");
 					progressDialog.incrementStep();
 
@@ -846,28 +698,29 @@ void DatabaseViewer::generate3DMap()
 					QString path = QFileDialog::getExistingDirectory(this, tr("Save directory"), pathDatabase_);
 					if(!path.isEmpty())
 					{
-						std::map<int, int> ids = this->generateGraph(id, margin);
-						if(ids.size() > 0)
+						std::multimap<int, rtabmap::Link> links = updateLinksWithModifications(links_);
+						// <id, depth>
+						std::map<int, int> depthGraph = util3d::generateDepthGraph(links, id, margin);
+						if(depthGraph.size() > 0)
 						{
 							rtabmap::DetailedProgressDialog progressDialog;
-							progressDialog.setMaximumSteps((int)ids.size()+2);
+							progressDialog.setMaximumSteps((int)depthGraph.size()+2);
 							progressDialog.show();
 
 							progressDialog.appendText("Graph generation...");
 							std::map<int, rtabmap::Transform> poses, optimizedPoses;
 							std::multimap<int, rtabmap::Link> edgeConstraints;
-							memory_->getMetricConstraints(uKeys(ids), poses, edgeConstraints, true);
+							memory_->getMetricConstraints(uKeys(depthGraph), poses, edgeConstraints, true);
 							edgeConstraints = updateLinksWithModifications(edgeConstraints);
 							progressDialog.appendText("Graph generation... done!");
 							progressDialog.incrementStep();
 
 							progressDialog.appendText("Graph optimization...");
-							rtabmap::Transform mapCorrection;
-							rtabmap::util3d::optimizeTOROGraph(poses, edgeConstraints, optimizedPoses, mapCorrection, 100, true);
+							rtabmap::util3d::optimizeTOROGraph(poses, edgeConstraints, optimizedPoses, ui_->spinBox_iterations->value(), ui_->checkBox_initGuess->isChecked());
 							progressDialog.appendText("Graph optimization... done!");
 							progressDialog.incrementStep();
 
-							for(std::map<int, int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
+							for(std::map<int, int>::iterator iter = depthGraph.begin(); iter!=depthGraph.end(); ++iter)
 							{
 								rtabmap::Transform pose = uValue(optimizedPoses, iter->first, rtabmap::Transform());
 								if(!pose.isNull())
@@ -920,7 +773,7 @@ void DatabaseViewer::generate3DMap()
 							}
 							progressDialog.setValue(progressDialog.maximumSteps());
 
-							QMessageBox::information(this, tr("Finished"), tr("%1 clouds generated to %2.").arg(ids.size()).arg(path));
+							QMessageBox::information(this, tr("Finished"), tr("%1 clouds generated to %2.").arg(depthGraph.size()).arg(path));
 						}
 						else
 						{
@@ -936,29 +789,50 @@ void DatabaseViewer::generate3DMap()
 void DatabaseViewer::detectMoreLoopClosures()
 {
 	std::map<int, rtabmap::Transform> optimizedPoses;
-	std::map<int, int> ids = this->generateGraph(ui_->spinBox_optimizationsFrom->value(), 0);
-	std::multimap<int, rtabmap::Link> links = updateLinksWithModifications(links_);
-	optimizedPoses = optimizeGraph(ids, poses_, links);
 
-	std::multimap<int, int> clusters = util3d::radiusPosesClustering(
-			optimizedPoses,
-			ui_->doubleSpinBox_detectMore_radius->value(),
-			ui_->doubleSpinBox_detectMore_angle->value());
+	std::multimap<int, rtabmap::Link> links = updateLinksWithModifications(links_);
+	std::map<int, int> depthGraph = util3d::generateDepthGraph(links, ui_->spinBox_optimizationsFrom->value());
+	util3d::optimizeTOROGraph(depthGraph, poses_, links, optimizedPoses, ui_->spinBox_iterations->value(), ui_->checkBox_initGuess->isChecked());
+
+	int iterations = ui_->doubleSpinBox_detectMore_iterations->value();
+	UASSERT(iterations > 0);
 	int added = 0;
-	for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!= clusters.end(); ++iter)
+	for(int n=0; n<iterations; ++n)
 	{
-		int from = iter->first;
-		int to = iter->second;
-		if(!findActiveLink(from, to).isValid() && !containsLink(linksRemoved_, from, to))
+		UINFO("iteration %d/%d", n+1, iterations);
+		std::multimap<int, int> clusters = util3d::radiusPosesClustering(
+				optimizedPoses,
+				ui_->doubleSpinBox_detectMore_radius->value(),
+				ui_->doubleSpinBox_detectMore_angle->value()*CV_PI/180.0);
+		std::set<int> addedLinks;
+		for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!= clusters.end(); ++iter)
 		{
-			if(addConstraint(from, to, true))
+			int from = iter->first;
+			int to = iter->second;
+			if(from < to)
 			{
-				UINFO("Added new loop closure between %d and %d.", from, to);
-				++added;
+				from = iter->second;
+				to = iter->first;
+			}
+			if(!findActiveLink(from, to).isValid() && !containsLink(linksRemoved_, from, to) &&
+				addedLinks.find(from) == addedLinks.end() && addedLinks.find(to) == addedLinks.end())
+			{
+				if(addConstraint(from, to, true))
+				{
+					UINFO("Added new loop closure between %d and %d.", from, to);
+					++added;
+					addedLinks.insert(from);
+					addedLinks.insert(to);
+				}
 			}
 		}
+		UINFO("Iteration %d/%d: added %d loop closures.", n+1, iterations, (int)addedLinks.size()/2);
+		if(addedLinks.size() == 0)
+		{
+			break;
+		}
 	}
-	UINFO("Added %d loop closures.", added);
+	UINFO("Total added %d loop closures.", added);
 }
 
 void DatabaseViewer::refineAllNeighborLinks()
@@ -1292,7 +1166,7 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudFrom,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudTo)
 {
-	std::multimap<int, Link>::iterator iter = findLink(linksRefined_, link.from(), link.to());
+	std::multimap<int, Link>::iterator iter = util3d::findLink(linksRefined_, link.from(), link.to());
 	rtabmap::Transform t = link.transform();
 	if(iter != linksRefined_.end())
 	{
@@ -1342,101 +1216,104 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link,
 					false); // don't update constraints view!
 	}
 
-	if(cloudFrom->size() == 0 && cloudTo->size() == 0)
+	if(ui_->constraintsViewer->isVisible())
 	{
-		Signature dataFrom, dataTo;
-
-		dataFrom = memory_->getSignatureData(link.from(), true);
-		UASSERT(dataFrom.getImageRaw().empty() || dataFrom.getImageRaw().type()==CV_8UC3 || dataFrom.getImageRaw().type() == CV_8UC1);
-		UASSERT(dataFrom.getDepthRaw().empty() || dataFrom.getDepthRaw().type()==CV_8UC1 || dataFrom.getDepthRaw().type() == CV_16UC1 || dataFrom.getDepthRaw().type() == CV_32FC1);
-
-		dataTo = memory_->getSignatureData(link.to(), true);
-		UASSERT(dataTo.getImageRaw().empty() || dataTo.getImageRaw().type()==CV_8UC3 || dataTo.getImageRaw().type() == CV_8UC1);
-		UASSERT(dataTo.getDepthRaw().empty() || dataTo.getDepthRaw().type()==CV_8UC1 || dataTo.getDepthRaw().type() == CV_16UC1 || dataTo.getDepthRaw().type() == CV_32FC1);
-
-
-		//cloud 3d
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFrom;
-		if(dataFrom.getDepthRaw().type() == CV_8UC1)
+		if(cloudFrom->size() == 0 && cloudTo->size() == 0)
 		{
-			cloudFrom = rtabmap::util3d::cloudFromStereoImages(
-					dataFrom.getImageRaw(),
-					dataFrom.getDepthRaw(),
-					dataFrom.getDepthCx(), dataFrom.getDepthCy(),
-					dataFrom.getDepthFx(), dataFrom.getDepthFy(),
-					1);
+			Signature dataFrom, dataTo;
+
+			dataFrom = memory_->getSignatureData(link.from(), true);
+			UASSERT(dataFrom.getImageRaw().empty() || dataFrom.getImageRaw().type()==CV_8UC3 || dataFrom.getImageRaw().type() == CV_8UC1);
+			UASSERT(dataFrom.getDepthRaw().empty() || dataFrom.getDepthRaw().type()==CV_8UC1 || dataFrom.getDepthRaw().type() == CV_16UC1 || dataFrom.getDepthRaw().type() == CV_32FC1);
+
+			dataTo = memory_->getSignatureData(link.to(), true);
+			UASSERT(dataTo.getImageRaw().empty() || dataTo.getImageRaw().type()==CV_8UC3 || dataTo.getImageRaw().type() == CV_8UC1);
+			UASSERT(dataTo.getDepthRaw().empty() || dataTo.getDepthRaw().type()==CV_8UC1 || dataTo.getDepthRaw().type() == CV_16UC1 || dataTo.getDepthRaw().type() == CV_32FC1);
+
+
+			//cloud 3d
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFrom;
+			if(dataFrom.getDepthRaw().type() == CV_8UC1)
+			{
+				cloudFrom = rtabmap::util3d::cloudFromStereoImages(
+						dataFrom.getImageRaw(),
+						dataFrom.getDepthRaw(),
+						dataFrom.getDepthCx(), dataFrom.getDepthCy(),
+						dataFrom.getDepthFx(), dataFrom.getDepthFy(),
+						1);
+			}
+			else
+			{
+				cloudFrom = rtabmap::util3d::cloudFromDepthRGB(
+						dataFrom.getImageRaw(),
+						dataFrom.getDepthRaw(),
+						dataFrom.getDepthCx(), dataFrom.getDepthCy(),
+						dataFrom.getDepthFx(), dataFrom.getDepthFy(),
+						1);
+			}
+
+			cloudFrom = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudFrom);
+			cloudFrom = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudFrom, dataFrom.getLocalTransform());
+
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudTo;
+			if(dataTo.getDepthRaw().type() == CV_8UC1)
+			{
+				cloudTo = rtabmap::util3d::cloudFromStereoImages(
+						dataTo.getImageRaw(),
+						dataTo.getDepthRaw(),
+						dataTo.getDepthCx(), dataTo.getDepthCy(),
+						dataTo.getDepthFx(), dataTo.getDepthFy(),
+						1);
+			}
+			else
+			{
+				cloudTo = rtabmap::util3d::cloudFromDepthRGB(
+						dataTo.getImageRaw(),
+						dataTo.getDepthRaw(),
+						dataTo.getDepthCx(), dataTo.getDepthCy(),
+						dataTo.getDepthFx(), dataTo.getDepthFy(),
+						1);
+			}
+
+			cloudTo = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudTo);
+			cloudTo = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudTo, t*dataTo.getLocalTransform());
+
+			//cloud 2d
+			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
+			scanA = rtabmap::util3d::depth2DToPointCloud(dataFrom.getDepth2DRaw());
+			scanB = rtabmap::util3d::depth2DToPointCloud(dataTo.getDepth2DRaw());
+			scanB = rtabmap::util3d::transformPointCloud<pcl::PointXYZ>(scanB, t);
+
+			if(cloudFrom->size())
+			{
+				ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom);
+			}
+			if(cloudTo->size())
+			{
+				ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo);
+			}
+			if(scanA->size())
+			{
+				ui_->constraintsViewer->addOrUpdateCloud("scan0", scanA);
+			}
+			if(scanB->size())
+			{
+				ui_->constraintsViewer->addOrUpdateCloud("scan1", scanB);
+			}
 		}
 		else
 		{
-			cloudFrom = rtabmap::util3d::cloudFromDepthRGB(
-					dataFrom.getImageRaw(),
-					dataFrom.getDepthRaw(),
-					dataFrom.getDepthCx(), dataFrom.getDepthCy(),
-					dataFrom.getDepthFx(), dataFrom.getDepthFy(),
-					1);
+			if(cloudFrom->size())
+			{
+				ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom);
+			}
+			if(cloudTo->size())
+			{
+				ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo);
+			}
 		}
-
-		cloudFrom = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudFrom);
-		cloudFrom = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudFrom, dataFrom.getLocalTransform());
-
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudTo;
-		if(dataTo.getDepthRaw().type() == CV_8UC1)
-		{
-			cloudTo = rtabmap::util3d::cloudFromStereoImages(
-					dataTo.getImageRaw(),
-					dataTo.getDepthRaw(),
-					dataTo.getDepthCx(), dataTo.getDepthCy(),
-					dataTo.getDepthFx(), dataTo.getDepthFy(),
-					1);
-		}
-		else
-		{
-			cloudTo = rtabmap::util3d::cloudFromDepthRGB(
-					dataTo.getImageRaw(),
-					dataTo.getDepthRaw(),
-					dataTo.getDepthCx(), dataTo.getDepthCy(),
-					dataTo.getDepthFx(), dataTo.getDepthFy(),
-					1);
-		}
-
-		cloudTo = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudTo);
-		cloudTo = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudTo, t*dataTo.getLocalTransform());
-
-		//cloud 2d
-		pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
-		scanA = rtabmap::util3d::depth2DToPointCloud(dataFrom.getDepth2DRaw());
-		scanB = rtabmap::util3d::depth2DToPointCloud(dataTo.getDepth2DRaw());
-		scanB = rtabmap::util3d::transformPointCloud<pcl::PointXYZ>(scanB, t);
-
-		if(cloudFrom->size())
-		{
-			ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom);
-		}
-		if(cloudTo->size())
-		{
-			ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo);
-		}
-		if(scanA->size())
-		{
-			ui_->constraintsViewer->addOrUpdateCloud("scan0", scanA);
-		}
-		if(scanB->size())
-		{
-			ui_->constraintsViewer->addOrUpdateCloud("scan1", scanB);
-		}
+		ui_->constraintsViewer->render();
 	}
-	else
-	{
-		if(cloudFrom->size())
-		{
-			ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom);
-		}
-		if(cloudTo->size())
-		{
-			ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo);
-		}
-	}
-	ui_->constraintsViewer->render();
 
 	// update buttons
 	updateConstraintButtons();
@@ -1472,7 +1349,7 @@ void DatabaseViewer::updateConstraintButtons()
 
 		//check for modified link
 		bool modified = false;
-		std::multimap<int, Link>::iterator iter = findLink(linksRefined_, currentLink.from(), currentLink.to());
+		std::multimap<int, Link>::iterator iter = util3d::findLink(linksRefined_, currentLink.from(), currentLink.to());
 		if(iter != linksRefined_.end())
 		{
 			currentLink = iter->second;
@@ -1560,9 +1437,9 @@ void DatabaseViewer::updateGraphView()
 		std::map<int, rtabmap::Transform> finalPoses;
 		graphes_.push_back(poses_);
 		ui_->actionGenerate_TORO_graph_graph->setEnabled(true);
-		std::map<int, int> ids = this->generateGraph(ui_->spinBox_optimizationsFrom->value(), 0);
 		std::multimap<int, rtabmap::Link> links = updateLinksWithModifications(links_);
-		finalPoses = optimizeGraph(ids, poses_, links, &graphes_);
+		std::map<int, int> depthGraph = util3d::generateDepthGraph(links, ui_->spinBox_optimizationsFrom->value(), 0);
+		util3d::optimizeTOROGraph(depthGraph, poses_, links, finalPoses, ui_->spinBox_iterations->value(), ui_->checkBox_initGuess->isChecked(), &graphes_);
 		graphes_.push_back(finalPoses);
 	}
 	if(graphes_.size())
@@ -1578,52 +1455,24 @@ void DatabaseViewer::updateGraphView()
 	}
 }
 
-std::multimap<int, Link>::iterator DatabaseViewer::findLink(
-		std::multimap<int, Link> & links,
-		int from,
-		int to)
-{
-	std::multimap<int, Link>::iterator iter = links.find(from);
-	while(iter != links.end() && iter->first == from)
-	{
-		if(iter->second.to() == to)
-		{
-			return iter;
-		}
-		++iter;
-	}
-
-	// let's try to -> from
-	iter = links.find(to);
-	while(iter != links.end() && iter->first == to)
-	{
-		if(iter->second.to() == from)
-		{
-			return iter;
-		}
-		++iter;
-	}
-	return links.end();
-}
-
 Link DatabaseViewer::findActiveLink(int from, int to)
 {
 	Link link;
-	std::multimap<int, Link>::iterator findIter = findLink(linksRefined_, from ,to);
+	std::multimap<int, Link>::iterator findIter = util3d::findLink(linksRefined_, from ,to);
 	if(findIter != linksRefined_.end())
 	{
 		link = findIter->second;
 	}
 	else
 	{
-		findIter = findLink(linksAdded_, from ,to);
+		findIter = util3d::findLink(linksAdded_, from ,to);
 		if(findIter != linksAdded_.end())
 		{
 			link = findIter->second;
 		}
 		else if(!containsLink(linksRemoved_, from ,to))
 		{
-			findIter = findLink(links_, from ,to);
+			findIter = util3d::findLink(links_, from ,to);
 			if(findIter != links_.end())
 			{
 				link = findIter->second;
@@ -1635,7 +1484,7 @@ Link DatabaseViewer::findActiveLink(int from, int to)
 
 bool DatabaseViewer::containsLink(std::multimap<int, Link> & links, int from, int to)
 {
-	return findLink(links, from, to) != links.end();
+	return util3d::findLink(links, from, to) != links.end();
 }
 
 void DatabaseViewer::refineConstraint()
@@ -1900,7 +1749,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 	else if(containsLink(linksRemoved_, from, to))
 	{
 		//simply remove from linksRemoved
-		linksRemoved_.erase(findLink(linksRemoved_, from, to));
+		linksRemoved_.erase(util3d::findLink(linksRemoved_, from, to));
 		updateSlider = true;
 	}
 
@@ -1929,18 +1778,18 @@ void DatabaseViewer::resetConstraint()
 	}
 
 
-	std::multimap<int, Link>::iterator iter = findLink(linksRefined_, from, to);
+	std::multimap<int, Link>::iterator iter = util3d::findLink(linksRefined_, from, to);
 	if(iter != linksRefined_.end())
 	{
 		linksRefined_.erase(iter);
 	}
 
-	iter = findLink(links_, from, to);
+	iter = util3d::findLink(links_, from, to);
 	if(iter != links_.end())
 	{
 		this->updateConstraintView(iter->second);
 	}
-	iter = findLink(linksAdded_, from, to);
+	iter = util3d::findLink(linksAdded_, from, to);
 	if(iter != linksAdded_.end())
 	{
 		this->updateConstraintView(iter->second);
@@ -1966,7 +1815,7 @@ void DatabaseViewer::rejectConstraint()
 
 	// find the original one
 	std::multimap<int, Link>::iterator iter;
-	iter = findLink(links_, from, to);
+	iter = util3d::findLink(links_, from, to);
 	if(iter != links_.end())
 	{
 		if(iter->second.type() == Link::kNeighbor)
@@ -1978,12 +1827,12 @@ void DatabaseViewer::rejectConstraint()
 	}
 
 	// remove from refined and added
-	iter = findLink(linksRefined_, from, to);
+	iter = util3d::findLink(linksRefined_, from, to);
 	if(iter != linksRefined_.end())
 	{
 		linksRefined_.erase(iter);
 	}
-	iter = findLink(linksAdded_, from, to);
+	iter = util3d::findLink(linksAdded_, from, to);
 	if(iter != linksAdded_.end())
 	{
 		linksAdded_.erase(iter);
@@ -2001,7 +1850,7 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 	{
 		std::multimap<int, rtabmap::Link>::iterator findIter;
 
-		findIter = findLink(linksRemoved_, iter->second.from(), iter->second.to());
+		findIter = util3d::findLink(linksRemoved_, iter->second.from(), iter->second.to());
 		if(findIter != linksRemoved_.end())
 		{
 			if(!(iter->second.from() == findIter->second.from() &&
@@ -2019,7 +1868,7 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 			}
 		}
 
-		findIter = findLink(linksRefined_, iter->second.from(), iter->second.to());
+		findIter = util3d::findLink(linksRefined_, iter->second.from(), iter->second.to());
 		if(findIter!=linksRefined_.end())
 		{
 			if(iter->second.from() == findIter->second.from() &&

@@ -441,6 +441,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_icpMaxCorrespondenceDistance->setObjectName(Parameters::kLccIcp3MaxCorrespondenceDistance().c_str());
 	_ui->loopClosure_icpIterations->setObjectName(Parameters::kLccIcp3Iterations().c_str());
 	_ui->loopClosure_icpMaxFitness->setObjectName(Parameters::kLccIcp3MaxFitness().c_str());
+	_ui->loopClosure_icpPointToPlane->setObjectName(Parameters::kLccIcp3PointToPlane().c_str());
+	_ui->loopClosure_icpPointToPlaneNormals->setObjectName(Parameters::kLccIcp3PointToPlaneNormalNeighbors().c_str());
 
 	_ui->loopClosure_icp2MaxCorrespondenceDistance->setObjectName(Parameters::kLccIcp2MaxCorrespondenceDistance().c_str());
 	_ui->loopClosure_icp2Iterations->setObjectName(Parameters::kLccIcp2Iterations().c_str());

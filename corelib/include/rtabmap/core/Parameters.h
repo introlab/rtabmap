@@ -302,11 +302,13 @@ class RTABMAP_EXP Parameters
 
 	RTABMAP_PARAM(LccIcp3, Decimation,      int, 8, 		"Depth image decimation.");
 	RTABMAP_PARAM(LccIcp3, MaxDepth,        float, 4.0, 	"Max cloud depth.");
-	RTABMAP_PARAM(LccIcp3, VoxelSize,       float, 0.005, 	"Voxel size to be used for ICP computation.");
+	RTABMAP_PARAM(LccIcp3, VoxelSize,       float, 0.01, 	"Voxel size to be used for ICP computation.");
 	RTABMAP_PARAM(LccIcp3, Samples,         int, 0, 		"Random samples to be used for ICP computation. Not used if voxelSize is set.");
 	RTABMAP_PARAM(LccIcp3, MaxCorrespondenceDistance, float, 0.05, "ICP 3D: Max distance for point correspondences.");
 	RTABMAP_PARAM(LccIcp3, Iterations,      int, 30, 		"ICP 3D: Max iterations.");
 	RTABMAP_PARAM(LccIcp3, MaxFitness,      float, 1.0, 	"ICP 3D: Maximum fitness to accept the computed transform.");
+	RTABMAP_PARAM(LccIcp3, PointToPlane,      bool, false, 	"ICP 3D: Use point to plane ICP.");
+	RTABMAP_PARAM(LccIcp3, PointToPlaneNormalNeighbors,      int, 20, 	"ICP 3D: Number of neighbors to compute normals for point to plane.");
 
 	RTABMAP_PARAM(LccIcp2, MaxCorrespondenceDistance, float, 0.1, 	"ICP 2D: Max distance for point correspondences.");
 	RTABMAP_PARAM(LccIcp2, Iterations,      int, 30, 				"ICP 2D: Max iterations.");

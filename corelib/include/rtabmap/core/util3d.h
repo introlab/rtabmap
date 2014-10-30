@@ -443,11 +443,30 @@ pcl::PolygonMesh::Ptr RTABMAP_EXP createMesh(
 		float gp3MaximumAngle = 2*M_PI/3,
 		bool gp3NormalConsistency = false);
 
+std::multimap<int, Link>::iterator RTABMAP_EXP findLink(
+		std::multimap<int, Link> & links,
+		int from,
+		int to);
+
+// <int, depth> depth=0 means infinite depth
+std::map<int, int> RTABMAP_EXP generateDepthGraph(
+		const std::multimap<int, Link> & links,
+		int fromId,
+		int depth = 0);
+
+void RTABMAP_EXP optimizeTOROGraph(
+		const std::map<int, int> & depthGraph,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		std::map<int, Transform> & optimizedPoses,
+		int toroIterations = 100,
+		bool toroInitialGuess = true,
+		std::list<std::map<int, Transform> > * intermediateGraphes = 0);
+
 void RTABMAP_EXP optimizeTOROGraph(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & edgeConstraints,
 		std::map<int, Transform> & optimizedPoses,
-		Transform & mapCorrection,
 		int toroIterations = 100,
 		bool toroInitialGuess = true,
 		std::list<std::map<int, Transform> > * intermediateGraphes = 0);

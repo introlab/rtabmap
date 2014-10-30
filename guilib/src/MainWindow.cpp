@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/ParamEvent.h"
 #include "rtabmap/core/Signature.h"
+#include "rtabmap/core/Memory.h"
 
 #include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/KeypointItem.h"
@@ -55,6 +56,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "PdfPlot.h"
 #include "StatsToolBox.h"
 #include "DetailedProgressDialog.h"
+#include "PostProcessingDialog.h"
 
 #include <QtGui/QCloseEvent>
 #include <QtGui/QPixmap>
@@ -139,6 +141,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	// Create dialogs
 	_aboutDialog = new AboutDialog(this);
 	_exportDialog = new ExportCloudsDialog(this);
+	_postProcessingDialog = new PostProcessingDialog(this);
 
 	_ui = new Ui_mainWindow();
 	_ui->setupUi(this);
@@ -281,6 +284,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionReset_Odometry, SIGNAL(triggered()), this, SLOT(resetOdometry()));
 	connect(_ui->actionTrigger_a_new_map, SIGNAL(triggered()), this, SLOT(triggerNewMap()));
 	connect(_ui->actionData_recorder, SIGNAL(triggered()), this, SLOT(dataRecorder()));
+	connect(_ui->actionPost_processing, SIGNAL(triggered()), this, SLOT(postProcessing()));
 
 	_ui->actionPause->setShortcut(Qt::Key_Space);
 	_ui->actionSave_point_cloud->setEnabled(false);
@@ -289,6 +293,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->actionView_scans->setEnabled(false);
 	_ui->actionView_high_res_point_cloud->setEnabled(false);
 	_ui->actionReset_Odometry->setEnabled(false);
+	_ui->actionPost_processing->setEnabled(false);
 
 #if defined(Q_WS_MAC) || defined(Q_WS_WIN)
 	connect(_ui->actionOpen_working_directory, SIGNAL(triggered()), SLOT(openWorkingDirectory()));
@@ -1011,6 +1016,8 @@ void MainWindow::updateMapCloud(
 				_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(true);
 			}
 		}
+
+		_ui->actionPost_processing->setEnabled(_currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
 	}
 
 	// filter duplicated poses
@@ -1166,7 +1173,7 @@ void MainWindow::updateMapCloud(
 			int fillEmptyRadius = _preferencesDialog->getGridMapFillEmptyRadius();
 			map8S = util3d::create2DMapFromOccupancyLocalMaps(poses, _occupancyLocalMaps, resolution, xMin, yMin, fillEmptyRadius);
 		}
-		else
+		else if(_createdScans.size())
 		{
 			bool fillEmptySpace = _preferencesDialog->getGridMapFillEmptySpace();
 			map8S = util3d::create2DMap(poses, _createdScans, resolution, fillEmptySpace, xMin, yMin);
@@ -1602,7 +1609,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		UDEBUG("Cloud rendering settings changed...");
 		if(_currentPosesMap.size())
 		{
-			this->updateMapCloud(std::map<int, Transform>(_currentPosesMap), Transform(), std::multimap<int, Link>());
+			this->updateMapCloud(std::map<int, Transform>(_currentPosesMap), Transform(), std::multimap<int, Link>(_currentLinksMap));
 		}
 	}
 
@@ -2542,6 +2549,400 @@ void MainWindow::generateTOROMap()
 	}
 }
 
+void MainWindow::postProcessing()
+{
+	if(_postProcessingDialog->exec() != QDialog::Accepted)
+	{
+		return;
+	}
+
+	bool detectMoreLoopClosures = _postProcessingDialog->isDetectMoreLoopClosures();
+	bool reextractFeatures = _postProcessingDialog->isReextractFeatures();
+	bool refineNeighborLinks = _postProcessingDialog->isRefineNeighborLinks();
+	bool refineLoopClosureLinks = _postProcessingDialog->isRefineLoopClosureLinks();
+	double clusterRadius = _postProcessingDialog->clusterRadius();
+	double clusterAngle = _postProcessingDialog->clusterAngle();
+	int detectLoopClosureIterations = _postProcessingDialog->iterations();
+
+	if(!detectMoreLoopClosures && !refineNeighborLinks && !refineLoopClosureLinks)
+	{
+		UWARN("No post-processing selection...");
+		return;
+	}
+
+	// First, verify that we have all data required in the GUI
+	bool allDataAvailable = true;
+	std::map<int, Transform> odomPoses;
+	for(std::map<int, Transform>::iterator iter = _currentPosesMap.begin();
+			iter!=_currentPosesMap.end() && allDataAvailable;
+			++iter)
+	{
+		QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
+		if(jter != _cachedSignatures.end())
+		{
+			if(jter->getPose().isNull())
+			{
+				UWARN("Odometry pose of %d is null.", iter->first);
+				allDataAvailable = false;
+			}
+			else
+			{
+				odomPoses.insert(*iter); // fill raw poses
+			}
+			if(jter->getLocalTransform().isNull())
+			{
+				UWARN("Local transform of %d is null.", iter->first);
+				allDataAvailable = false;
+			}
+			if(refineNeighborLinks || refineLoopClosureLinks || reextractFeatures)
+			{
+				// depth data required
+				if(jter->getDepthCompressed().empty() || jter->getDepthFx() <= 0.0f || jter->getDepthFy() <= 0.0f)
+				{
+					UWARN("Depth data of %d missing.", iter->first);
+					allDataAvailable = false;
+				}
+
+				if(reextractFeatures)
+				{
+					// rgb required
+					if(jter->getImageCompressed().empty())
+					{
+						UWARN("Rgb of %d missing.", iter->first);
+						allDataAvailable = false;
+					}
+				}
+			}
+		}
+		else
+		{
+			UWARN("Node %d missing.", iter->first);
+			allDataAvailable = false;
+		}
+	}
+
+	if(!allDataAvailable)
+	{
+		QMessageBox::warning(this, tr("Not all data available in the GUI..."),
+				tr("Some data missing in the cache to respect the constraints chosen. "
+				   "Try \"Edit->Download all clouds\" to update the cache and try again."));
+		return;
+	}
+
+	_initProgressDialog->setAutoClose(false, 1);
+	_initProgressDialog->resetProgress();
+	_initProgressDialog->clear();
+	_initProgressDialog->show();
+	_initProgressDialog->appendText("Post-processing beginning!");
+
+	int totalSteps = 0;
+	if(refineNeighborLinks)
+	{
+		totalSteps+=odomPoses.size();
+	}
+	if(refineLoopClosureLinks)
+	{
+		totalSteps+=_currentLinksMap.size() - odomPoses.size();
+	}
+	_initProgressDialog->setMaximumSteps(totalSteps);
+	_initProgressDialog->show();
+
+	ParametersMap parameters = _preferencesDialog->getAllParameters();
+	int toroIterations = 100;
+	bool toroOptimizeFromGraphEnd = false;
+	Parameters::parse(parameters, Parameters::kRGBDToroIterations(), toroIterations);
+	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), toroOptimizeFromGraphEnd);
+
+	int loopClosuresAdded = 0;
+	if(detectMoreLoopClosures)
+	{
+		Memory memory(parameters);
+		if(reextractFeatures)
+		{
+			ParametersMap customParameters;
+			// override some parameters
+			customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
+			customParameters.insert(ParametersPair(Parameters::kMemImageKept(), "false"));
+			customParameters.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
+			customParameters.insert(ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
+			customParameters.insert(ParametersPair(Parameters::kKpNNStrategy(), parameters.at(Parameters::kLccReextractNNType())));
+			customParameters.insert(ParametersPair(Parameters::kKpNndrRatio(), parameters.at(Parameters::kLccReextractNNDR())));
+			customParameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), parameters.at(Parameters::kLccReextractFeatureType())));
+			customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), parameters.at(Parameters::kLccReextractMaxWords())));
+			customParameters.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
+			memory.parseParameters(customParameters);
+		}
+
+		UASSERT(detectLoopClosureIterations>0);
+		for(int n=0; n<detectLoopClosureIterations; ++n)
+		{
+			_initProgressDialog->appendText(tr("Looking for more loop closures, clustering poses... (iteration=%1/%2, radius=%3 m angle=%4 degrees)")
+					.arg(n+1).arg(detectLoopClosureIterations).arg(clusterRadius).arg(clusterAngle));
+
+			std::multimap<int, int> clusters = util3d::radiusPosesClustering(
+					_currentPosesMap,
+					clusterRadius,
+					clusterAngle*CV_PI/180.0);
+
+			_initProgressDialog->setMaximumSteps(_initProgressDialog->maximumSteps()+clusters.size());
+			_initProgressDialog->appendText(tr("Looking for more loop closures, clustering poses... found %1 clusters.").arg(clusters.size()));
+
+			int i=0;
+			std::set<int> addedLinks;
+			for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!= clusters.end(); ++iter, ++i)
+			{
+				int from = iter->first;
+				int to = iter->second;
+				if(iter->first < iter->second)
+				{
+					from = iter->second;
+					to = iter->first;
+				}
+
+				// only add new links and one per cluster per iteration
+				if(addedLinks.find(from) == addedLinks.end() && addedLinks.find(to) == addedLinks.end() &&
+				   util3d::findLink(_currentLinksMap, from, to) == _currentLinksMap.end())
+				{
+					if(!_cachedSignatures.contains(from))
+					{
+						UERROR("Didn't find signature %d", from);
+					}
+					else if(!_cachedSignatures.contains(to))
+					{
+						UERROR("Didn't find signature %d", to);
+					}
+					else
+					{
+						_initProgressDialog->incrementStep();
+						QApplication::processEvents();
+
+						Signature & signatureFrom = _cachedSignatures[from];
+						Signature & signatureTo = _cachedSignatures[to];
+
+						Transform transform;
+						std::string rejectedMsg;
+						int inliers;
+						if(reextractFeatures)
+						{
+							memory.init("", true); // clear previously added signatures
+
+							// Add signatures
+							SensorData dataFrom = signatureFrom.toSensorData();
+							SensorData dataTo = signatureTo.toSensorData();
+
+							if(dataFrom.isValid() &&
+							   dataFrom.isMetric() &&
+							   dataTo.isValid() &&
+							   dataTo.isMetric() &&
+							   dataFrom.id() != Memory::kIdInvalid &&
+							   signatureFrom.id() != Memory::kIdInvalid)
+							{
+								if(from > to)
+								{
+									memory.update(dataTo);
+									memory.update(dataFrom);
+								}
+								else
+								{
+									memory.update(dataFrom);
+									memory.update(dataTo);
+								}
+
+								transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &inliers);
+							}
+							else
+							{
+								UERROR("not supposed to be here!");
+							}
+						}
+						else
+						{
+							transform = memory.computeVisualTransform(signatureTo, signatureFrom, &rejectedMsg, &inliers);
+						}
+						if(!transform.isNull())
+						{
+							UINFO("Added new loop closure between %d and %d.", from, to);
+							addedLinks.insert(from);
+							addedLinks.insert(to);
+							_currentLinksMap.insert(std::make_pair(from, Link(from, to, transform, Link::kUserClosure)));
+							++loopClosuresAdded;
+							_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
+						}
+					}
+				}
+			}
+			_initProgressDialog->appendText(tr("Iteration %1/%2: Detected %3 loop closures!")
+					.arg(n+1).arg(detectLoopClosureIterations).arg(addedLinks.size()/2));
+			if(addedLinks.size() == 0)
+			{
+				break;
+			}
+
+			if(n+1 < detectLoopClosureIterations)
+			{
+				_initProgressDialog->appendText(tr("Optimizing graph with new links (%1 nodes, %2 constraints)...")
+						.arg(odomPoses.size()).arg(_currentLinksMap.size()));
+				std::map<int, rtabmap::Transform> optimizedPoses;
+				std::map<int, int> depthGraph = util3d::generateDepthGraph(_currentLinksMap, toroOptimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first);
+				util3d::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations);
+				_currentPosesMap = optimizedPoses;
+				_initProgressDialog->appendText(tr("Optimizing graph with new links... done!"));
+			}
+		}
+		UINFO("Added %d loop closures.", loopClosuresAdded);
+		_initProgressDialog->appendText(tr("Total new loop closures detected=%1").arg(loopClosuresAdded));
+	}
+
+	if(refineNeighborLinks || refineLoopClosureLinks)
+	{
+		if(refineLoopClosureLinks)
+		{
+			_initProgressDialog->setMaximumSteps(_initProgressDialog->maximumSteps()+loopClosuresAdded);
+		}
+		_initProgressDialog->appendText(tr("Refining links..."));
+
+		int decimation=8;
+		float maxDepth=2.0f;
+		float voxelSize=0.01f;
+		int samples = 0;
+		float minFitness = 1.0f;
+		float maxCorrespondences = 0.05f;
+		float icpIterations = 30;
+		Parameters::parse(parameters, Parameters::kLccIcp3Decimation(), decimation);
+		Parameters::parse(parameters, Parameters::kLccIcp3MaxDepth(), maxDepth);
+		Parameters::parse(parameters, Parameters::kLccIcp3VoxelSize(), voxelSize);
+		Parameters::parse(parameters, Parameters::kLccIcp3Samples(), samples);
+		Parameters::parse(parameters, Parameters::kLccIcp3MaxFitness(), minFitness);
+		Parameters::parse(parameters, Parameters::kLccIcp3MaxCorrespondenceDistance(), maxCorrespondences);
+		Parameters::parse(parameters, Parameters::kLccIcp3Iterations(), icpIterations);
+		bool pointToPlane = false;
+		int pointToPlaneNormalNeighbors = 20;
+		Parameters::parse(parameters, Parameters::kLccIcp3PointToPlane(), pointToPlane);
+		Parameters::parse(parameters, Parameters::kLccIcp3PointToPlaneNormalNeighbors(), pointToPlaneNormalNeighbors);
+
+		int i=0;
+		for(std::multimap<int, Link>::iterator iter = _currentLinksMap.begin(); iter!=_currentLinksMap.end(); ++iter, ++i)
+		{
+			int type = iter->second.type();
+
+			if((refineNeighborLinks && type==Link::kNeighbor) ||
+			   (refineLoopClosureLinks && type!=Link::kNeighbor))
+			{
+				int from = iter->second.from();
+				int to = iter->second.to();
+
+				_initProgressDialog->appendText(tr("Refining link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(_currentLinksMap.size()));
+				_initProgressDialog->incrementStep();
+				QApplication::processEvents();
+
+				if(!_cachedSignatures.contains(from))
+				{
+					UERROR("Didn't find signature %d",from);
+				}
+				else if(!_cachedSignatures.contains(to))
+				{
+					UERROR("Didn't find signature %d", to);
+				}
+				else
+				{
+					Signature & signatureFrom = _cachedSignatures[from];
+					Signature & signatureTo = _cachedSignatures[to];
+
+					//3D
+					cv::Mat depthA, depthB;
+					signatureFrom.uncompressData(0, &depthA, 0);
+					signatureTo.uncompressData(0, &depthB, 0);
+
+					if(depthA.type() == CV_8UC1 || depthB.type() == CV_8UC1)
+					{
+						QMessageBox::critical(this, tr("ICP failed"), tr("ICP cannot be done on stereo images!"));
+						UERROR("ICP 3D cannot be done on stereo images! Aborting refining links with ICP...");
+						break;
+					}
+
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA = util3d::getICPReadyCloud(depthA,
+							signatureFrom.getDepthFx(), signatureFrom.getDepthFy(), signatureFrom.getDepthCx(), signatureFrom.getDepthCy(),
+							decimation,
+							maxDepth,
+							voxelSize,
+							samples,
+							signatureFrom.getLocalTransform());
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB = util3d::getICPReadyCloud(depthB,
+							signatureTo.getDepthFx(), signatureTo.getDepthFy(), signatureTo.getDepthCx(), signatureTo.getDepthCy(),
+							decimation,
+							maxDepth,
+							voxelSize,
+							samples,
+							iter->second.transform() * signatureTo.getLocalTransform());
+
+					bool hasConverged = false;
+					double fitness = -1;
+					Transform transform;
+					if(pointToPlane)
+					{
+						pcl::PointCloud<pcl::PointNormal>::Ptr cloudANormals = util3d::computeNormals(cloudA, pointToPlaneNormalNeighbors);
+						pcl::PointCloud<pcl::PointNormal>::Ptr cloudBNormals = util3d::computeNormals(cloudB, pointToPlaneNormalNeighbors);
+
+						cloudANormals = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(cloudANormals);
+						if(cloudA->size() != cloudANormals->size())
+						{
+							UWARN("removed nan normals...");
+						}
+
+						cloudBNormals = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(cloudBNormals);
+						if(cloudB->size() != cloudBNormals->size())
+						{
+							UWARN("removed nan normals...");
+						}
+
+						transform = util3d::icpPointToPlane(cloudBNormals,
+								cloudANormals,
+								maxCorrespondences,
+								icpIterations,
+								hasConverged,
+								fitness);
+					}
+					else
+					{
+						transform = util3d::icp(cloudB,
+								cloudA,
+								maxCorrespondences,
+								icpIterations,
+								hasConverged,
+								fitness);
+					}
+
+					if(hasConverged && !transform.isNull() && fitness>=0.0f && fitness <= minFitness)
+					{
+						Link newLink(from, to, transform*iter->second.transform(), iter->second.type());
+						iter->second = newLink;
+					}
+					else
+					{
+						UWARN("Cannot refine link %d->%d (converged=%s fitness=%f)", from, to, hasConverged?"true":"false", fitness);
+					}
+				}
+			}
+		}
+		_initProgressDialog->appendText(tr("Refining links...done!"));
+	}
+
+	_initProgressDialog->appendText(tr("Optimizing graph with updated links (%1 nodes, %2 constraints)...")
+			.arg(odomPoses.size()).arg(_currentLinksMap.size()));
+	std::map<int, rtabmap::Transform> optimizedPoses;
+	std::map<int, int> depthGraph = util3d::generateDepthGraph(_currentLinksMap, toroOptimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first);
+	util3d::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations);
+	_initProgressDialog->appendText(tr("Optimizing graph with updated links... done!"));
+	_initProgressDialog->incrementStep();
+
+	_initProgressDialog->appendText(tr("Updating map..."));
+	this->updateMapCloud(optimizedPoses, Transform(), _currentLinksMap, false);
+	_initProgressDialog->appendText(tr("Updating map... done!"));
+
+	_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
+	_initProgressDialog->appendText("Post-processing finished!");
+}
+
 void MainWindow::deleteMemory()
 {
 	QMessageBox::StandardButton button;
@@ -2778,12 +3179,14 @@ void MainWindow::clearTheCache()
 	_ui->widget_cloudViewer->removeAllClouds();
 	_ui->widget_cloudViewer->setBackgroundColor(Qt::black);
 	_ui->widget_cloudViewer->clearTrajectory();
+	_ui->widget_mapVisibility->clear();
 	_currentPosesMap.clear();
 	_odometryCorrection = Transform::getIdentity();
 	_lastOdomPose.setNull();
 	//disable save cloud action
 	_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
 	_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
+	_ui->actionPost_processing->setEnabled(false);
 	_ui->actionSave_point_cloud->setEnabled(false);
 	_ui->actionView_scans->setEnabled(false);
 	_ui->actionView_high_res_point_cloud->setEnabled(false);

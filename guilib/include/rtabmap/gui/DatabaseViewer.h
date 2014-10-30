@@ -106,10 +106,6 @@ private:
 			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudFrom = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>),
 			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudTo = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>));
 	void updateConstraintButtons();
-	std::multimap<int, Link>::iterator findLink(
-				std::multimap<int, Link> & links,
-				int from,
-				int to);
 	Link findActiveLink(int from, int to);
 	bool containsLink(
 			std::multimap<int, Link> & links,
@@ -120,12 +116,6 @@ private:
 	void updateLoopClosuresSlider(int from = 0, int to = 0);
 	void refineConstraint(int from, int to);
 	bool addConstraint(int from, int to, bool silent);
-	std::map<int, int> generateGraph(int fromNode, int margin);
-	std::map<int, Transform> optimizeGraph(
-			const std::map<int, int> & ids,
-			const std::map<int, Transform> & poses,
-			const std::multimap<int, Link> & links,
-			std::list<std::map<int, rtabmap::Transform> > * graphes = 0);
 
 private:
 	Ui_DatabaseViewer * ui_;

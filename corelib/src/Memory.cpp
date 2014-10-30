@@ -95,6 +95,8 @@ Memory::Memory(const ParametersMap & parameters) :
 	_icpMaxCorrespondenceDistance(Parameters::defaultLccIcp3MaxCorrespondenceDistance()),
 	_icpMaxIterations(Parameters::defaultLccIcp3Iterations()),
 	_icpMaxFitness(Parameters::defaultLccIcp3MaxFitness()),
+	_icpPointToPlane(Parameters::defaultLccIcp3PointToPlane()),
+	_icpPointToPlaneNormalNeighbors(Parameters::defaultLccIcp3PointToPlaneNormalNeighbors()),
 
 	_icp2MaxCorrespondenceDistance(Parameters::defaultLccIcp2MaxCorrespondenceDistance()),
 	_icp2MaxIterations(Parameters::defaultLccIcp2Iterations()),
@@ -403,6 +405,8 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kLccIcp3MaxCorrespondenceDistance(), _icpMaxCorrespondenceDistance);
 	Parameters::parse(parameters, Parameters::kLccIcp3Iterations(), _icpMaxIterations);
 	Parameters::parse(parameters, Parameters::kLccIcp3MaxFitness(), _icpMaxFitness);
+	Parameters::parse(parameters, Parameters::kLccIcp3PointToPlane(), _icpPointToPlane);
+	Parameters::parse(parameters, Parameters::kLccIcp3PointToPlaneNormalNeighbors(), _icpPointToPlaneNormalNeighbors);
 	Parameters::parse(parameters, Parameters::kLccIcp2MaxCorrespondenceDistance(), _icp2MaxCorrespondenceDistance);
 	Parameters::parse(parameters, Parameters::kLccIcp2Iterations(), _icp2MaxIterations);
 	Parameters::parse(parameters, Parameters::kLccIcp2MaxFitness(), _icp2MaxFitness);
@@ -429,6 +433,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	UASSERT_MSG(_icpMaxCorrespondenceDistance > 0.0f, uFormat("value=%f", _icpMaxCorrespondenceDistance).c_str());
 	UASSERT_MSG(_icpMaxIterations > 0, uFormat("value=%d", _icpMaxIterations).c_str());
 	UASSERT_MSG(_icpMaxFitness > 0.0f, uFormat("value=%f", _icpMaxFitness).c_str());
+	UASSERT_MSG(_icpPointToPlaneNormalNeighbors > 0, uFormat("value=%d", _icpPointToPlaneNormalNeighbors).c_str());
 	UASSERT_MSG(_icp2MaxCorrespondenceDistance > 0.0f, uFormat("value=%f", _icp2MaxCorrespondenceDistance).c_str());
 	UASSERT_MSG(_icp2MaxIterations > 0, uFormat("value=%d", _icp2MaxIterations).c_str());
 	UASSERT_MSG(_icp2MaxFitness > 0.0f, uFormat("value=%f", _icp2MaxFitness).c_str());
@@ -1844,27 +1849,16 @@ Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess, boo
 		//make sure data are uncompressed
 		if(icp3D)
 		{
-			if(oldS->getDepthRaw().empty())
-			{
-				oldS->setDepthRaw(util3d::uncompressImage(oldS->getDepthCompressed()));
-			}
-			if(newS->getDepthRaw().empty())
-			{
-				newS->setDepthRaw(util3d::uncompressImage(newS->getDepthCompressed()));
-			}
+			cv::Mat tmp1, tmp2;
+			oldS->uncompressData(0, &tmp1, 0);
+			newS->uncompressData(0, &tmp2, 0);
 		}
 		else
 		{
-			if(oldS->getDepth2DRaw().empty())
-			{
-				oldS->setDepth2DRaw(util3d::uncompressData(oldS->getDepth2DCompressed()));
-			}
-			if(newS->getDepth2DRaw().empty())
-			{
-				newS->setDepth2DRaw(util3d::uncompressData(newS->getDepth2DCompressed()));
-			}
+			cv::Mat tmp1, tmp2;
+			oldS->uncompressData(0, 0, &tmp1);
+			newS->uncompressData(0, 0, &tmp2);
 		}
-
 
 		t = computeIcpTransform(*oldS, *newS, guess, icp3D, rejectedMsg);
 	}
@@ -1933,25 +1927,40 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 						_icpSamples,
 						guess * newS.getLocalTransform());
 
-				pcl::PointCloud<pcl::PointNormal>::Ptr oldCloud = util3d::computeNormals(oldCloudXYZ);
-				pcl::PointCloud<pcl::PointNormal>::Ptr newCloud = util3d::computeNormals(newCloudXYZ);
-
-				std::vector<int> indices;
-				newCloud = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(newCloud);
-				oldCloud = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(oldCloud);
-
 				// 3D
 				double fitness = 0;
 				bool hasConverged = false;
 				Transform icpT;
-				if(newCloud->size() && oldCloud->size())
+				if(newCloudXYZ->size() && oldCloudXYZ->size())
 				{
-					icpT = util3d::icpPointToPlane(newCloud,
-							oldCloud,
-						   _icpMaxCorrespondenceDistance,
-						   _icpMaxIterations,
-						   hasConverged,
-						   fitness);
+					if(_icpPointToPlane)
+					{
+						pcl::PointCloud<pcl::PointNormal>::Ptr oldCloud = util3d::computeNormals(oldCloudXYZ, _icpPointToPlaneNormalNeighbors);
+						pcl::PointCloud<pcl::PointNormal>::Ptr newCloud = util3d::computeNormals(newCloudXYZ, _icpPointToPlaneNormalNeighbors);
+
+						std::vector<int> indices;
+						newCloud = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(newCloud);
+						oldCloud = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(oldCloud);
+
+						if(newCloud->size() && oldCloud->size())
+						{
+							icpT = util3d::icpPointToPlane(newCloud,
+									oldCloud,
+								   _icpMaxCorrespondenceDistance,
+								   _icpMaxIterations,
+								   hasConverged,
+								   fitness);
+						}
+					}
+					else
+					{
+						transform = util3d::icp(newCloudXYZ,
+								oldCloudXYZ,
+								_icpMaxCorrespondenceDistance,
+								_icpMaxIterations,
+								hasConverged,
+								fitness);
+					}
 
 					//pcl::io::savePCDFile("old.pcd", *oldCloudXYZ);
 					//pcl::io::savePCDFile("newguess.pcd", *newCloudXYZ);

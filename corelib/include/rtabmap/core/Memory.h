@@ -245,6 +245,8 @@ private:
 	float _icpMaxCorrespondenceDistance;
 	int _icpMaxIterations;
 	float _icpMaxFitness;
+	bool _icpPointToPlane;
+	int _icpPointToPlaneNormalNeighbors;
 	float _icp2MaxCorrespondenceDistance;
 	int _icp2MaxIterations;
 	float _icp2MaxFitness;

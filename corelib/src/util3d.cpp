@@ -2049,16 +2049,201 @@ pcl::PolygonMesh::Ptr createMesh(
 	return mesh;
 }
 
+std::multimap<int, Link>::iterator findLink(
+		std::multimap<int, Link> & links,
+		int from,
+		int to)
+{
+	std::multimap<int, Link>::iterator iter = links.find(from);
+	while(iter != links.end() && iter->first == from)
+	{
+		if(iter->second.to() == to)
+		{
+			return iter;
+		}
+		++iter;
+	}
+
+	// let's try to -> from
+	iter = links.find(to);
+	while(iter != links.end() && iter->first == to)
+	{
+		if(iter->second.to() == from)
+		{
+			return iter;
+		}
+		++iter;
+	}
+	return links.end();
+}
+
+
+// <int, depth> margin=0 means infinite margin
+std::map<int, int> generateDepthGraph(
+		const std::multimap<int, Link> & links,
+		int fromId,
+		int depth)
+{
+	UASSERT(depth >= 0);
+	//UDEBUG("signatureId=%d, neighborsMargin=%d", signatureId, margin);
+	std::map<int, int> ids;
+	if(fromId<=0)
+	{
+		return ids;
+	}
+
+	std::list<int> curentDepthList;
+	std::set<int> nextDepth;
+	nextDepth.insert(fromId);
+	int d = 0;
+	while((depth == 0 || d < depth) && nextDepth.size())
+	{
+		curentDepthList = std::list<int>(nextDepth.begin(), nextDepth.end());
+		nextDepth.clear();
+
+		for(std::list<int>::iterator jter = curentDepthList.begin(); jter!=curentDepthList.end(); ++jter)
+		{
+			if(ids.find(*jter) == ids.end())
+			{
+				std::set<int> marginIds;
+
+				ids.insert(std::pair<int, int>(*jter, d));
+
+				for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+				{
+					if(iter->second.from() == *jter)
+					{
+						marginIds.insert(iter->second.to());
+					}
+					else if(iter->second.to() == *jter)
+					{
+						marginIds.insert(iter->second.from());
+					}
+				}
+
+				// Margin links
+				for(std::set<int>::const_iterator iter=marginIds.begin(); iter!=marginIds.end(); ++iter)
+				{
+					if( !uContains(ids, *iter) && nextDepth.find(*iter) == nextDepth.end())
+					{
+						nextDepth.insert(*iter);
+					}
+				}
+			}
+		}
+		++d;
+	}
+	return ids;
+}
+
+void optimizeTOROGraph(
+		const std::map<int, int> & depthGraph,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		std::map<int, Transform> & optimizedPoses,
+		int toroIterations,
+		bool toroInitialGuess,
+		std::list<std::map<int, Transform> > * intermediateGraphes)
+{
+	optimizedPoses.clear();
+	if(depthGraph.size() && poses.size()>=2 && links.size()>=1)
+	{
+		// Modify IDs using the margin from the current signature (TORO root will be the last signature)
+		int m = 0;
+		int toroId = 1;
+		std::map<int, int> rtabmapToToro; // <RTAB-Map ID, TORO ID>
+		std::map<int, int> toroToRtabmap; // <TORO ID, RTAB-Map ID>
+		std::map<int, int> idsTmp = depthGraph;
+		while(idsTmp.size())
+		{
+			for(std::map<int, int>::iterator iter = idsTmp.begin(); iter!=idsTmp.end();)
+			{
+				if(m == iter->second)
+				{
+					rtabmapToToro.insert(std::make_pair(iter->first, toroId));
+					toroToRtabmap.insert(std::make_pair(toroId, iter->first));
+					++toroId;
+					idsTmp.erase(iter++);
+				}
+				else
+				{
+					++iter;
+				}
+			}
+			++m;
+		}
+
+		std::map<int, rtabmap::Transform> posesToro;
+		std::multimap<int, rtabmap::Link> edgeConstraintsToro;
+		for(std::map<int, rtabmap::Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			if(uContains(depthGraph, iter->first))
+			{
+				posesToro.insert(std::make_pair(rtabmapToToro.at(iter->first), iter->second));
+			}
+		}
+		for(std::multimap<int, rtabmap::Link>::const_iterator iter = links.begin();
+			iter!=links.end();
+			++iter)
+		{
+			if(uContains(depthGraph, iter->second.from()) && uContains(depthGraph, iter->second.to()))
+			{
+				edgeConstraintsToro.insert(std::make_pair(rtabmapToToro.at(iter->first), rtabmap::Link(rtabmapToToro.at(iter->first), rtabmapToToro.at(iter->second.to()), iter->second.transform(), iter->second.type())));
+			}
+		}
+
+		std::map<int, rtabmap::Transform> optimizedPosesToro;
+
+		// Optimize!
+		if(posesToro.size() && edgeConstraintsToro.size())
+		{
+			std::list<std::map<int, rtabmap::Transform> > graphesToro;
+			rtabmap::util3d::optimizeTOROGraph(posesToro, edgeConstraintsToro, optimizedPosesToro, toroIterations, toroInitialGuess, &graphesToro);
+			for(std::map<int, rtabmap::Transform>::iterator iter=optimizedPosesToro.begin(); iter!=optimizedPosesToro.end(); ++iter)
+			{
+				optimizedPoses.insert(std::make_pair(toroToRtabmap.at(iter->first), iter->second));
+			}
+
+			if(intermediateGraphes)
+			{
+				for(std::list<std::map<int, rtabmap::Transform> >::iterator iter = graphesToro.begin(); iter!=graphesToro.end(); ++iter)
+				{
+					std::map<int, rtabmap::Transform> tmp;
+					for(std::map<int, rtabmap::Transform>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+					{
+						tmp.insert(std::make_pair(toroToRtabmap.at(jter->first), jter->second));
+					}
+					intermediateGraphes->push_back(tmp);
+				}
+			}
+		}
+		else
+		{
+			UERROR("No TORO poses and constraints!?");
+		}
+	}
+	else if(links.size() == 0 && poses.size() == 1)
+	{
+		optimizedPoses = poses;
+	}
+	else
+	{
+		UERROR("Wrong inputs! depthGraph=%d poses=%d links=%d",
+				(int)depthGraph.size(), (int)poses.size(), (int)links.size());
+	}
+}
+
 //On success, optimizedPoses is cleared and new poses are inserted in
 void optimizeTOROGraph(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & edgeConstraints,
 		std::map<int, Transform> & optimizedPoses,
-		Transform & mapCorrection,
 		int toroIterations,
 		bool toroInitialGuess,
 		std::list<std::map<int, Transform> > * intermediateGraphes) // contains poses after tree init to last one before the end
 {
+	UASSERT(toroIterations>0);
+	optimizedPoses.clear();
 	if(edgeConstraints.size()>=1 && poses.size()>=2)
 	{
 		// Apply TORO optimization
@@ -2133,7 +2318,6 @@ void optimizeTOROGraph(
 		}
 		UDEBUG("TORO iterate end");
 
-		optimizedPoses.clear();
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			AISNavigation::TreePoseGraph<AISNavigation::Operations3D<double> >::Vertex* v=pg.vertex(iter->first);
@@ -2143,15 +2327,19 @@ void optimizeTOROGraph(
 			optimizedPoses.insert(std::pair<int, Transform>(iter->first, newPose));
 		}
 
-		Eigen::Matrix4f newPose = transformToEigen4f(optimizedPoses.at(poses.rbegin()->first));
-		Eigen::Matrix4f oldPose = transformToEigen4f(poses.rbegin()->second);
-		Eigen::Matrix4f poseCorrection = oldPose.inverse() * newPose; // transform from odom to correct odom
-		Eigen::Matrix4f result = oldPose*poseCorrection*oldPose.inverse();
-		mapCorrection = transformFromEigen4f(result);
+		//Eigen::Matrix4f newPose = transformToEigen4f(optimizedPoses.at(poses.rbegin()->first));
+		//Eigen::Matrix4f oldPose = transformToEigen4f(poses.rbegin()->second);
+		//Eigen::Matrix4f poseCorrection = oldPose.inverse() * newPose; // transform from odom to correct odom
+		//Eigen::Matrix4f result = oldPose*poseCorrection*oldPose.inverse();
+		//mapCorrection = transformFromEigen4f(result);
+	}
+	else if(edgeConstraints.size() == 0 && poses.size() == 1)
+	{
+		optimizedPoses = poses;
 	}
 	else
 	{
-		UWARN("This method should be called at least with 2 poses and one link!");
+		UWARN("This method should be called at least with 1 pose!");
 	}
 }
 
@@ -2707,7 +2895,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 	pcl::PointCloud<pcl::PointXYZ> minMax;
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
-		if(uContains(scans, iter->first))
+		if(uContains(scans, iter->first) && scans.size())
 		{
 			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = transformPointCloud<pcl::PointXYZ>(scans.at(iter->first), iter->second);
 			pcl::PointXYZ min, max;

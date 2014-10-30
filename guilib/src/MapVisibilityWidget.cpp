@@ -57,6 +57,13 @@ void MapVisibilityWidget::showEvent(QShowEvent * event)
 	updateCheckBoxes();
 }
 
+void MapVisibilityWidget::clear()
+{
+	_poses.clear();
+	_mask.clear();
+	updateCheckBoxes();
+}
+
 void MapVisibilityWidget::updateCheckBoxes()
 {
 	QWidget * area = this->findChild<QWidget*>("area");

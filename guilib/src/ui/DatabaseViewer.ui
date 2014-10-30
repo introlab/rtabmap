@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1076</width>
-    <height>675</height>
+    <height>711</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -825,7 +825,7 @@
           <number>1000</number>
          </property>
          <property name="value">
-          <number>3</number>
+          <number>10</number>
          </property>
         </widget>
        </item>
@@ -851,7 +851,7 @@
           <double>1.000000000000000</double>
          </property>
          <property name="value">
-          <double>0.010000000000000</double>
+          <double>0.020000000000000</double>
          </property>
         </widget>
        </item>
@@ -948,19 +948,39 @@
        <item row="9" column="1">
         <widget class="QDoubleSpinBox" name="doubleSpinBox_detectMore_angle">
          <property name="suffix">
-          <string> rad</string>
+          <string> degrees</string>
          </property>
          <property name="decimals">
-          <number>2</number>
+          <number>0</number>
          </property>
          <property name="maximum">
-          <double>3.140000000000000</double>
+          <double>180.000000000000000</double>
          </property>
          <property name="singleStep">
-          <double>0.100000000000000</double>
+          <double>1.000000000000000</double>
          </property>
          <property name="value">
-          <double>0.300000000000000</double>
+          <double>30.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="10" column="0">
+        <widget class="QLabel" name="label_31">
+         <property name="text">
+          <string>Detect more LCs: iterations</string>
+         </property>
+        </widget>
+       </item>
+       <item row="10" column="1">
+        <widget class="QSpinBox" name="doubleSpinBox_detectMore_iterations">
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>100</number>
+         </property>
+         <property name="value">
+          <number>1</number>
          </property>
         </widget>
        </item>

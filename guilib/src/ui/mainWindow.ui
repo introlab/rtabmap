@@ -68,6 +68,8 @@
     <addaction name="separator"/>
     <addaction name="actionData_recorder"/>
     <addaction name="separator"/>
+    <addaction name="actionPost_processing"/>
+    <addaction name="separator"/>
     <addaction name="actionView_high_res_point_cloud"/>
     <addaction name="actionView_scans"/>
    </widget>
@@ -1086,6 +1088,11 @@
   <action name="actionEdit_database">
    <property name="text">
     <string>Edit database...</string>
+   </property>
+  </action>
+  <action name="actionPost_processing">
+   <property name="text">
+    <string>Post-processing...</string>
    </property>
   </action>
  </widget>

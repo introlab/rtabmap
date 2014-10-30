@@ -43,6 +43,8 @@ public:
 	void setMap(const std::map<int, Transform> & poses, const std::map<int, bool> & mask);
 	std::map<int, Transform> getVisiblePoses() const;
 
+	void clear();
+
 protected:
 	virtual void showEvent(QShowEvent * event);
 

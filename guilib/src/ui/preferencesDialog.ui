@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>21</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -5636,6 +5636,46 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <widget class="QLabel" name="label_133">
                          <property name="text">
                           <string>Maximum fitness to accept the computed transform.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="7" column="1">
+                        <widget class="QLabel" name="label_144">
+                         <property name="text">
+                          <string>Point to plane ICP.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="7" column="0">
+                        <widget class="QCheckBox" name="loopClosure_icpPointToPlane">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="8" column="0">
+                        <widget class="QSpinBox" name="loopClosure_icpPointToPlaneNormals">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <number>1000</number>
+                         </property>
+                         <property name="value">
+                          <number>20</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="8" column="1">
+                        <widget class="QLabel" name="label_212">
+                         <property name="text">
+                          <string>Number of neighbors to compute normals for point to plane.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
