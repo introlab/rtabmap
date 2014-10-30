@@ -2133,6 +2133,10 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 		}
 
 		std::set<int> ids = _memory->getWorkingMem(); // STM + WM
+
+		//remove virtual signature
+		ids.erase(Memory::kIdVirtual);
+
 		ids.insert(_memory->getStMem().begin(), _memory->getStMem().end());
 		if(global)
 		{
