@@ -641,7 +641,7 @@ void DBDriverSqlite3::getNodeDataQuery(
 			//Create the image
 			if(dataSize>4 && data)
 			{
-				imageCompressed = cv::Mat(1, dataSize, CV_8UC1).clone();
+				imageCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone();
 			}
 
 			data = sqlite3_column_blob(ppStmt, index);
@@ -650,7 +650,7 @@ void DBDriverSqlite3::getNodeDataQuery(
 			//Create the depth image
 			if(dataSize>4 && data)
 			{
-				depthCompressed = cv::Mat(1, dataSize, CV_8UC1).clone();
+				depthCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone();
 			}
 
 			if(uStrNumCmp(_version, "0.7.0") < 0)
@@ -681,7 +681,7 @@ void DBDriverSqlite3::getNodeDataQuery(
 			//Create the depth2d
 			if(dataSize>4 && data)
 			{
-				depth2dCompressed = cv::Mat(1, dataSize, CV_8UC1).clone();
+				depth2dCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone();
 			}
 
 			if(depthCompressed.empty() || fx <= 0 || fy <= 0 || cx < 0 || cy < 0)
@@ -737,7 +737,7 @@ void DBDriverSqlite3::getNodeDataQuery(int signatureId, cv::Mat & imageCompresse
 			//Create the image
 			if(dataSize>4 && data)
 			{
-				imageCompressed = cv::Mat(1, dataSize, CV_8UC1).clone();
+				imageCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone();
 			}
 
 			rc = sqlite3_step(ppStmt); // next result...
