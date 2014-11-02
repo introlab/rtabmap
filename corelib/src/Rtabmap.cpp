@@ -1278,11 +1278,13 @@ bool Rtabmap::process(const SensorData & data)
 			std::string rejectedMsg;
 			if(_reextractLoopClosureFeatures)
 			{
-				ParametersMap customParameters = _lastParameters;
+				ParametersMap customParameters = _lastParameters; // get BOW LCC parameters
 				// override some parameters
+				uInsert(customParameters, ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
 				uInsert(customParameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
 				uInsert(customParameters, ParametersPair(Parameters::kMemImageKept(), "false"));
 				uInsert(customParameters, ParametersPair(Parameters::kMemSTMSize(), "0"));
+				uInsert(customParameters, ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
 				uInsert(customParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
 				uInsert(customParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(_reextractNNType))); // bruteforce
 				uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(_reextractNNDR)));
