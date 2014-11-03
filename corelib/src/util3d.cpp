@@ -2736,7 +2736,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 	std::map<int, cv::Mat> emptyLocalMaps;
 	std::map<int, cv::Mat> occupiedLocalMaps;
 
-	float minX=-minMapSize, minY=-minMapSize, maxX=minMapSize, maxY=minMapSize;
+	float minX=-minMapSize/2.0, minY=-minMapSize/2.0, maxX=minMapSize/2.0, maxY=minMapSize/2.0;
 	bool undefinedSize = minMapSize == 0.0f;
 	float x,y,z,toll,pitch,yaw,cosT,sinT;
 	cv::Mat affineTransform(2,3,CV_32FC1);
@@ -2824,7 +2824,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 	if(minX != maxX && minY != maxY)
 	{
 		//Get map size
-		float margin = fillEmptyRadius + 1;
+		float margin = (fillEmptyRadius + 1)*cellSize;
 		xMin = minX-margin;
 		yMin = minY-margin;
 		float xMax = maxX+margin;
@@ -2898,8 +2898,8 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 	pcl::PointCloud<pcl::PointXYZ> minMax;
 	if(minMapSize > 0.0f)
 	{
-		minMax.push_back(pcl::PointXYZ(-minMapSize, -minMapSize, 0));
-		minMax.push_back(pcl::PointXYZ(minMapSize, minMapSize, 0));
+		minMax.push_back(pcl::PointXYZ(-minMapSize/2.0, -minMapSize/2.0, 0));
+		minMax.push_back(pcl::PointXYZ(minMapSize/2.0, minMapSize/2.0, 0));
 	}
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
@@ -2922,10 +2922,10 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		pcl::PointXYZ min, max;
 		pcl::getMinMax3D(minMax, min, max);
 
-		xMin = min.x-1.0f;
-		yMin = min.y-1.0f;
-		float xMax = max.x+1.0f;
-		float yMax = max.y+1.0f;
+		xMin = min.x-cellSize;
+		yMin = min.y-cellSize;
+		float xMax = max.x+cellSize;
+		float yMax = max.y+cellSize;
 
 		//UTimer timer;
 
