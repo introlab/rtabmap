@@ -1814,7 +1814,7 @@ void DatabaseViewer::refineConstraintVisually(int from, int to)
 
 	if(!t.isNull())
 	{
-		Link newLink(currentLink.from(), currentLink.to(), t*currentLink.transform(), currentLink.type());
+		Link newLink(currentLink.from(), currentLink.to(), t, currentLink.type());
 
 		bool updated = false;
 		std::multimap<int, Link>::iterator iter = linksRefined_.find(currentLink.from());

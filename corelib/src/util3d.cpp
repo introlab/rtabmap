@@ -2725,16 +2725,18 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 		float cellSize,
 		float & xMin,
 		float & yMin,
-		int fillEmptyRadius)
+		int fillEmptyRadius,
+		float minMapSize)
 {
 	UASSERT(fillEmptyRadius >= 0);
+	UASSERT(minMapSize >= 0.0f);
 	UDEBUG("");
 	UTimer timer;
 
 	std::map<int, cv::Mat> emptyLocalMaps;
 	std::map<int, cv::Mat> occupiedLocalMaps;
 
-	float minX=0.0f, minY=0.0f, maxX=0.0f, maxY=0.0f;
+	float minX=-minMapSize, minY=-minMapSize, maxX=minMapSize, maxY=minMapSize;
 	bool undefinedSize = true;
 	float x,y,z,toll,pitch,yaw,cosT,sinT;
 	cv::Mat affineTransform(2,3,CV_32FC1);
@@ -2887,12 +2889,18 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		float cellSize,
 		bool unknownSpaceFilled,
 		float & xMin,
-		float & yMin)
+		float & yMin,
+		float minMapSize)
 {
 	UDEBUG("poses=%d, scans = %d", poses.size(), scans.size());
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > localScans;
 
 	pcl::PointCloud<pcl::PointXYZ> minMax;
+	if(minMapSize > 0.0f)
+	{
+		minMax.push_back(pcl::PointXYZ(-minMapSize, -minMapSize, 0));
+		minMax.push_back(pcl::PointXYZ(minMapSize, minMapSize, 0));
+	}
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
 		if(uContains(scans, iter->first) && scans.at(iter->first)->size())

@@ -505,14 +505,16 @@ cv::Mat RTABMAP_EXP create2DMapFromOccupancyLocalMaps(
 		float cellSize,
 		float & xMin,
 		float & yMin,
-		int fillEmptyRadius = 0);
+		int fillEmptyRadius = 0,
+		float minMapSize = 0.0f);
 
 cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans,
 		float cellSize,
 		bool unknownSpaceFilled,
 		float & xMin,
-		float & yMin);
+		float & yMin,
+		float minMapSize = 0.0f);
 
 void RTABMAP_EXP rayTrace(const cv::Point2i & start,
 		const cv::Point2i & end,
