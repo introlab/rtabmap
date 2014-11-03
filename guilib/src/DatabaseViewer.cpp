@@ -99,13 +99,17 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->actionDetect_more_loop_closures, SIGNAL(triggered()), this, SLOT(detectMoreLoopClosures()));
 	connect(ui_->actionRefine_all_neighbor_links, SIGNAL(triggered()), this, SLOT(refineAllNeighborLinks()));
 	connect(ui_->actionRefine_all_loop_closure_links, SIGNAL(triggered()), this, SLOT(refineAllLoopClosureLinks()));
+	connect(ui_->actionVisual_Refine_all_neighbor_links, SIGNAL(triggered()), this, SLOT(refineVisuallyAllNeighborLinks()));
+	connect(ui_->actionVisual_Refine_all_loop_closure_links, SIGNAL(triggered()), this, SLOT(refineVisuallyAllLoopClosureLinks()));
 
 	//ICP buttons
 	connect(ui_->pushButton_refine, SIGNAL(clicked()), this, SLOT(refineConstraint()));
+	connect(ui_->pushButton_refineVisually, SIGNAL(clicked()), this, SLOT(refineConstraintVisually()));
 	connect(ui_->pushButton_add, SIGNAL(clicked()), this, SLOT(addConstraint()));
 	connect(ui_->pushButton_reset, SIGNAL(clicked()), this, SLOT(resetConstraint()));
 	connect(ui_->pushButton_reject, SIGNAL(clicked()), this, SLOT(rejectConstraint()));
 	ui_->pushButton_refine->setEnabled(false);
+	ui_->pushButton_refineVisually->setEnabled(false);
 	ui_->pushButton_add->setEnabled(false);
 	ui_->pushButton_reset->setEnabled(false);
 	ui_->pushButton_reject->setEnabled(false);
@@ -881,6 +885,52 @@ void DatabaseViewer::refineAllLoopClosureLinks()
 	}
 }
 
+void DatabaseViewer::refineVisuallyAllNeighborLinks()
+{
+	if(neighborLinks_.size())
+	{
+		rtabmap::DetailedProgressDialog progressDialog(this);
+		progressDialog.setMaximumSteps(neighborLinks_.size());
+		progressDialog.show();
+
+		for(int i=0; i<neighborLinks_.size(); ++i)
+		{
+			int from = neighborLinks_[i].from();
+			int to = neighborLinks_[i].to();
+			this->refineConstraintVisually(neighborLinks_[i].from(), neighborLinks_[i].to());
+
+			progressDialog.appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(neighborLinks_.size()));
+			progressDialog.incrementStep();
+			QApplication::processEvents();
+		}
+		progressDialog.setValue(progressDialog.maximumSteps());
+		progressDialog.appendText("Refining links finished!");
+	}
+}
+
+void DatabaseViewer::refineVisuallyAllLoopClosureLinks()
+{
+	if(loopLinks_.size())
+	{
+		rtabmap::DetailedProgressDialog progressDialog(this);
+		progressDialog.setMaximumSteps(loopLinks_.size());
+		progressDialog.show();
+
+		for(int i=0; i<loopLinks_.size(); ++i)
+		{
+			int from = loopLinks_[i].from();
+			int to = loopLinks_[i].to();
+			this->refineConstraintVisually(loopLinks_[i].from(), loopLinks_[i].to());
+
+			progressDialog.appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(loopLinks_.size()));
+			progressDialog.incrementStep();
+			QApplication::processEvents();
+		}
+		progressDialog.setValue(progressDialog.maximumSteps());
+		progressDialog.appendText("Refining links finished!");
+	}
+}
+
 void DatabaseViewer::sliderAValueChanged(int value)
 {
 	this->update(value,
@@ -1322,6 +1372,7 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link,
 void DatabaseViewer::updateConstraintButtons()
 {
 	ui_->pushButton_refine->setEnabled(false);
+	ui_->pushButton_refineVisually->setEnabled(false);
 	ui_->pushButton_reset->setEnabled(false);
 	ui_->pushButton_add->setEnabled(false);
 	ui_->pushButton_reject->setEnabled(false);
@@ -1361,6 +1412,7 @@ void DatabaseViewer::updateConstraintButtons()
 			ui_->pushButton_reset->setEnabled(false);
 		}
 		ui_->pushButton_refine->setEnabled(true);
+		ui_->pushButton_refineVisually->setEnabled(true);
 	}
 }
 
@@ -1689,6 +1741,102 @@ void DatabaseViewer::refineConstraint(int from, int to)
 	else
 	{
 		ui_->label_fitness->setText("not converged");
+	}
+}
+
+void DatabaseViewer::refineConstraintVisually()
+{
+	int from = ids_.at(ui_->horizontalSlider_A->value());
+	int to = ids_.at(ui_->horizontalSlider_B->value());
+	refineConstraintVisually(from, to);
+}
+
+void DatabaseViewer::refineConstraintVisually(int from, int to)
+{
+	if(from == to)
+	{
+		UWARN("Cannot refine link to same node");
+		return;
+	}
+
+	Link currentLink =  findActiveLink(from, to);
+	if(!currentLink.isValid())
+	{
+		UERROR("Not found link! (%d->%d)", from, to);
+		return;
+	}
+
+	Transform t;
+	std::string rejectedMsg;
+	if(ui_->checkBox_visual_recomputeFeatures->isChecked())
+	{
+		// create a fake memory to regenerate features
+		ParametersMap parameters;
+		parameters.insert(ParametersPair(Parameters::kSURFHessianThreshold(), uNumber2Str(ui_->doubleSpinBox_visual_hessian->value())));
+		parameters.insert(ParametersPair(Parameters::kLccBowInlierDistance(), uNumber2Str(ui_->doubleSpinBox_visual_maxCorrespDistance->value())));
+		parameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(ui_->doubleSpinBox_visual_maxDepth->value())));
+		parameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(ui_->doubleSpinBox_visual_nndr->value())));
+		parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
+		parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
+		parameters.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
+		parameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0"));
+		parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "0"));
+		Memory tmpMemory(parameters);
+
+		// Add signatures
+		SensorData dataFrom = memory_->getSignatureData(from, true).toSensorData();
+		SensorData dataTo = memory_->getSignatureData(to, true).toSensorData();
+
+		if(from > to)
+		{
+			tmpMemory.update(dataTo);
+			tmpMemory.update(dataFrom);
+		}
+		else
+		{
+			tmpMemory.update(dataFrom);
+			tmpMemory.update(dataTo);
+		}
+
+
+		t = tmpMemory.computeVisualTransform(to, from, &rejectedMsg);
+	}
+	else
+	{
+		ParametersMap parameters;
+		parameters.insert(ParametersPair(Parameters::kLccBowInlierDistance(), uNumber2Str(ui_->doubleSpinBox_visual_maxCorrespDistance->value())));
+		parameters.insert(ParametersPair(Parameters::kLccBowMaxDepth(), uNumber2Str(ui_->doubleSpinBox_visual_maxDepth->value())));
+		parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
+		parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
+		memory_->parseParameters(parameters);
+		t = memory_->computeVisualTransform(to, from, &rejectedMsg);
+	}
+
+	if(!t.isNull())
+	{
+		Link newLink(currentLink.from(), currentLink.to(), t*currentLink.transform(), currentLink.type());
+
+		bool updated = false;
+		std::multimap<int, Link>::iterator iter = linksRefined_.find(currentLink.from());
+		while(iter != linksRefined_.end() && iter->first == currentLink.from())
+		{
+			if(iter->second.to() == currentLink.to() &&
+			   iter->second.type() == currentLink.type())
+			{
+				iter->second = newLink;
+				updated = true;
+				break;
+			}
+			++iter;
+		}
+		if(!updated)
+		{
+			linksRefined_.insert(std::make_pair<int, Link>(newLink.from(), newLink));
+		}
+		if(ui_->dockWidget_constraints->isVisible())
+		{
+			this->updateConstraintView(newLink);
+		}
 	}
 }
 

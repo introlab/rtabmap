@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1076</width>
+    <width>1187</width>
     <height>711</height>
    </rect>
   </property>
@@ -259,7 +259,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1076</width>
+     <width>1187</width>
      <height>25</height>
     </rect>
    </property>
@@ -283,7 +283,9 @@
     <addaction name="actionGenerate_TORO_graph_graph"/>
     <addaction name="separator"/>
     <addaction name="actionDetect_more_loop_closures"/>
+    <addaction name="actionVisual_Refine_all_neighbor_links"/>
     <addaction name="actionRefine_all_neighbor_links"/>
+    <addaction name="actionVisual_Refine_all_loop_closure_links"/>
     <addaction name="actionRefine_all_loop_closure_links"/>
     <addaction name="separator"/>
     <addaction name="actionClean_database"/>
@@ -384,6 +386,13 @@
      </item>
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_5">
+       <item>
+        <widget class="QPushButton" name="pushButton_refineVisually">
+         <property name="text">
+          <string>Refine (Visual)</string>
+         </property>
+        </widget>
+       </item>
        <item>
         <widget class="QPushButton" name="pushButton_refine">
          <property name="text">
@@ -1069,17 +1078,27 @@
   </action>
   <action name="actionRefine_all_neighbor_links">
    <property name="text">
-    <string>Refine all neighbor links...</string>
+    <string>ICP: Refine all neighbor links...</string>
    </property>
   </action>
   <action name="actionRefine_all_loop_closure_links">
    <property name="text">
-    <string>Refine all loop closure links...</string>
+    <string>ICP: Refine all loop closure links...</string>
    </property>
   </action>
   <action name="actionDetect_more_loop_closures">
    <property name="text">
     <string>Detect more loop closures...</string>
+   </property>
+  </action>
+  <action name="actionVisual_Refine_all_neighbor_links">
+   <property name="text">
+    <string>Visual: Refine all neighbor links...</string>
+   </property>
+  </action>
+  <action name="actionVisual_Refine_all_loop_closure_links">
+   <property name="text">
+    <string>Visual: Refine all loop closure links...</string>
    </property>
   </action>
  </widget>
