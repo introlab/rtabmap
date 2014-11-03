@@ -2737,7 +2737,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 	std::map<int, cv::Mat> occupiedLocalMaps;
 
 	float minX=-minMapSize, minY=-minMapSize, maxX=minMapSize, maxY=minMapSize;
-	bool undefinedSize = true;
+	bool undefinedSize = minMapSize == 0.0f;
 	float x,y,z,toll,pitch,yaw,cosT,sinT;
 	cv::Mat affineTransform(2,3,CV_32FC1);
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
