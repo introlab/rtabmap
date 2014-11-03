@@ -1556,27 +1556,72 @@ void DatabaseViewer::refineConstraint(int from, int to)
 		cv::Mat depthA = rtabmap::util3d::uncompressImage(dataFrom.getDepthCompressed());
 		cv::Mat depthB = rtabmap::util3d::uncompressImage(dataTo.getDepthCompressed());
 
-		if(depthA.type() == CV_8UC1 || depthB.type() == CV_8UC1)
+		if(depthA.type() == CV_8UC1)
 		{
-			QMessageBox::critical(this, tr("ICP failed"), tr("ICP cannot be done on stereo images!"));
-			UERROR("ICP 3D cannot be done on stereo images!");
-			return;
+			cv::Mat leftMono;
+			cv::Mat left = rtabmap::util3d::uncompressImage(dataFrom.getImageCompressed());
+			if(left.channels() > 1)
+			{
+				cv::cvtColor(left, leftMono, CV_BGR2GRAY);
+			}
+			else
+			{
+				leftMono = left;
+			}
+			cloudA = util3d::cloudFromDisparity(util3d::disparityFromStereoImages(leftMono, depthA), dataFrom.getDepthCx(), dataFrom.getDepthCy(), dataFrom.getDepthFx(), dataFrom.getDepthFy(), ui_->spinBox_icp_decimation->value());
+			if(ui_->doubleSpinBox_icp_maxDepth->value() > 0)
+			{
+				cloudA = util3d::passThrough<pcl::PointXYZ>(cloudA, "z", 0, ui_->doubleSpinBox_icp_maxDepth->value());
+			}
+			if(ui_->doubleSpinBox_icp_voxel->value() > 0)
+			{
+				cloudA = util3d::voxelize<pcl::PointXYZ>(cloudA, ui_->doubleSpinBox_icp_voxel->value());
+			}
+			cloudA = util3d::transformPointCloud<pcl::PointXYZ>(cloudA, dataFrom.getLocalTransform());
 		}
-
-		cloudA = util3d::getICPReadyCloud(depthA,
-				dataFrom.getDepthFx(), dataFrom.getDepthFy(), dataFrom.getDepthCx(), dataFrom.getDepthCy(),
-				ui_->spinBox_icp_decimation->value(),
-				ui_->doubleSpinBox_icp_maxDepth->value(),
-				ui_->doubleSpinBox_icp_voxel->value(),
-				0, // no sampling
-				dataFrom.getLocalTransform());
-		cloudB = util3d::getICPReadyCloud(depthB,
-				dataTo.getDepthFx(), dataTo.getDepthFy(), dataTo.getDepthCx(), dataTo.getDepthCy(),
-				ui_->spinBox_icp_decimation->value(),
-				ui_->doubleSpinBox_icp_maxDepth->value(),
-				ui_->doubleSpinBox_icp_voxel->value(),
-				0, // no sampling
-				currentLink.transform() * dataTo.getLocalTransform());
+		else
+		{
+			cloudA = util3d::getICPReadyCloud(depthA,
+					dataFrom.getDepthFx(), dataFrom.getDepthFy(), dataFrom.getDepthCx(), dataFrom.getDepthCy(),
+					ui_->spinBox_icp_decimation->value(),
+					ui_->doubleSpinBox_icp_maxDepth->value(),
+					ui_->doubleSpinBox_icp_voxel->value(),
+					0, // no sampling
+					dataFrom.getLocalTransform());
+		}
+		if(depthB.type() == CV_8UC1)
+		{
+			cv::Mat leftMono;
+			cv::Mat left = rtabmap::util3d::uncompressImage(dataTo.getImageCompressed());
+			if(left.channels() > 1)
+			{
+				cv::cvtColor(left, leftMono, CV_BGR2GRAY);
+			}
+			else
+			{
+				leftMono = left;
+			}
+			cloudB = util3d::cloudFromDisparity(util3d::disparityFromStereoImages(leftMono, depthB), dataTo.getDepthCx(), dataTo.getDepthCy(), dataTo.getDepthFx(), dataTo.getDepthFy(), ui_->spinBox_icp_decimation->value());
+			if(ui_->doubleSpinBox_icp_maxDepth->value() > 0)
+			{
+				cloudB = util3d::passThrough<pcl::PointXYZ>(cloudB, "z", 0, ui_->doubleSpinBox_icp_maxDepth->value());
+			}
+			if(ui_->doubleSpinBox_icp_voxel->value() > 0)
+			{
+				cloudB = util3d::voxelize<pcl::PointXYZ>(cloudB, ui_->doubleSpinBox_icp_voxel->value());
+			}
+			cloudB = util3d::transformPointCloud<pcl::PointXYZ>(cloudB, currentLink.transform() * dataTo.getLocalTransform());
+		}
+		else
+		{
+			cloudB = util3d::getICPReadyCloud(depthB,
+					dataTo.getDepthFx(), dataTo.getDepthFy(), dataTo.getDepthCx(), dataTo.getDepthCy(),
+					ui_->spinBox_icp_decimation->value(),
+					ui_->doubleSpinBox_icp_maxDepth->value(),
+					ui_->doubleSpinBox_icp_voxel->value(),
+					0, // no sampling
+					currentLink.transform() * dataTo.getLocalTransform());
+		}
 
 		if(ui_->checkBox_icp_p2plane->isChecked())
 		{
