@@ -292,7 +292,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccBow, MinInliers,      int, 20, 		"Minimum visual word correspondences to compute geometry transform.");
 	RTABMAP_PARAM(LccBow, InlierDistance,  float, 0.01, 	"Maximum distance for visual word correspondences.");
 	RTABMAP_PARAM(LccBow, Iterations,      int, 100, 		"Maximum iterations to compute the transform from visual words.");
-	RTABMAP_PARAM(LccBow, MaxDepth,        float, 5.0, 		"Max depth of the words (0 means no limit).");
+	RTABMAP_PARAM(LccBow, MaxDepth,        float, 4.0, 		"Max depth of the words (0 means no limit).");
 	RTABMAP_PARAM(LccBow, Force2D, 		   bool, false,     "Force 2D transform (3Dof: x,y and yaw).")
 	RTABMAP_PARAM(LccReextract, Activated, bool, false, 	"Activate re-extracting features on global loop closure.");
 	RTABMAP_PARAM(LccReextract, NNType, 	int, 3, 		"kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4.");
