@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-316</y>
-            <width>744</width>
-            <height>1074</height>
+            <y>-346</y>
+            <width>732</width>
+            <height>1246</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>23</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -6304,7 +6304,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       <item row="12" column="1">
                        <widget class="QLabel" name="label_104">
                         <property name="text">
-                         <string>Max feature depth.</string>
+                         <string>Maximum feature depth.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
