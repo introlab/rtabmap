@@ -635,8 +635,8 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 								newDisparity,
 								data.cx(), data.cy(), data.fx(), data.baseline());
 
-						if(pcl::isFinite(lastPt3D) && uIsInBounds(lastPt3D.z, 0.0f, this->getMaxDepth()) &&
-						   pcl::isFinite(newPt3D) && uIsInBounds(newPt3D.z, 0.0f, this->getMaxDepth()))
+						if(pcl::isFinite(lastPt3D) && (this->getMaxDepth() == 0.0f || uIsInBounds(lastPt3D.z, 0.0f, this->getMaxDepth())) &&
+						   pcl::isFinite(newPt3D) && (this->getMaxDepth() == 0.0f || uIsInBounds(newPt3D.z, 0.0f, this->getMaxDepth())))
 						{
 							//Add 3D correspondences!
 							lastPt3D = util3d::transformPoint(lastPt3D, data.localTransform());
@@ -855,9 +855,10 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 				pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depth(), newCorners[i].x, newCorners[i].y,
 						data.cx(), data.cy(), data.fx(), data.fy(), true);
 				if(pcl::isFinite(pt) &&
+					(this->getMaxDepth() == 0.0f || (
 					uIsInBounds(pt.x, -this->getMaxDepth(), this->getMaxDepth()) &&
 					uIsInBounds(pt.y, -this->getMaxDepth(), this->getMaxDepth()) &&
-					uIsInBounds(pt.z, 0.0f, this->getMaxDepth()))
+					uIsInBounds(pt.z, 0.0f, this->getMaxDepth()))))
 				{
 					pt = util3d::transformPoint(pt, data.localTransform());
 					correspondencesLast->at(oi) = lastCorners3D_->at(i);
@@ -998,9 +999,10 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 					pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depth(), newCorners[i].x, newCorners[i].y,
 							data.cx(), data.cy(), data.fx(), data.fy(), true);
 					if(pcl::isFinite(pt) &&
+						(this->getMaxDepth() == 0.0f || (
 						uIsInBounds(pt.x, -this->getMaxDepth(), this->getMaxDepth()) &&
 						uIsInBounds(pt.y, -this->getMaxDepth(), this->getMaxDepth()) &&
-						uIsInBounds(pt.z, 0.0f, this->getMaxDepth()))
+						uIsInBounds(pt.z, 0.0f, this->getMaxDepth()))))
 					{
 						pt = util3d::transformPoint(pt, data.localTransform());
 						newCorners3D->at(oi) = pt;
