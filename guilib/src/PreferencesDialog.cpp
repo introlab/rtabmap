@@ -346,6 +346,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->toolButton_dictionaryPath, SIGNAL(clicked()), this, SLOT(changeDictionaryPath()));
 	_ui->checkBox_kp_newWordsComparedTogether->setObjectName(Parameters::kKpNewWordsComparedTogether().c_str());
 
+	_ui->subpix_winSize->setObjectName(Parameters::kKpSubPixWinSize().c_str());
+	_ui->subpix_iterations->setObjectName(Parameters::kKpSubPixIterations().c_str());
+	_ui->subpix_eps->setObjectName(Parameters::kKpSubPixEps().c_str());
+
 	//SURF detector
 	_ui->surf_doubleSpinBox_hessianThr->setObjectName(Parameters::kSURFHessianThreshold().c_str());
 	_ui->surf_spinBox_octaves->setObjectName(Parameters::kSURFOctaves().c_str());
@@ -478,18 +482,18 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_flow_maxLevel->setObjectName(Parameters::kOdomFlowMaxLevel().c_str());
 	_ui->odom_flow_iterations->setObjectName(Parameters::kOdomFlowIterations().c_str());
 	_ui->odom_flow_eps->setObjectName(Parameters::kOdomFlowEps().c_str());
-	_ui->odom_flow_subpix_winSize->setObjectName(Parameters::kOdomFlowSubPixWinSize().c_str());
-	_ui->odom_flow_subpix_iterations->setObjectName(Parameters::kOdomFlowSubPixIterations().c_str());
-	_ui->odom_flow_subpix_eps->setObjectName(Parameters::kOdomFlowSubPixEps().c_str());
+	_ui->odom_stereo_maxSlope->setObjectName(Parameters::kOdomStereoMaxSlope().c_str());
+	_ui->odom_subpix_winSize->setObjectName(Parameters::kOdomSubPixWinSize().c_str());
+	_ui->odom_subpix_iterations->setObjectName(Parameters::kOdomSubPixIterations().c_str());
+	_ui->odom_subpix_eps->setObjectName(Parameters::kOdomSubPixEps().c_str());
 
 	//Stereo
-	_ui->stereo_winSize->setObjectName(Parameters::kStereoWinSize().c_str());
-	_ui->stereo_maxLevel->setObjectName(Parameters::kStereoMaxLevel().c_str());
-	_ui->stereo_iterations->setObjectName(Parameters::kStereoIterations().c_str());
-	_ui->stereo_eps->setObjectName(Parameters::kStereoEps().c_str());
-	_ui->stereo_subpix_winSize->setObjectName(Parameters::kStereoSubPixWinSize().c_str());
-	_ui->stereo_subpix_iterations->setObjectName(Parameters::kStereoSubPixIterations().c_str());
-	_ui->stereo_subpix_eps->setObjectName(Parameters::kStereoSubPixEps().c_str());
+	_ui->stereo_flow_winSize->setObjectName(Parameters::kStereoWinSize().c_str());
+	_ui->stereo_flow_maxLevel->setObjectName(Parameters::kStereoMaxLevel().c_str());
+	_ui->stereo_flow_iterations->setObjectName(Parameters::kStereoIterations().c_str());
+	_ui->stereo_flow_eps->setObjectName(Parameters::kStereoEps().c_str());
+	_ui->stereo_maxSlope->setObjectName(Parameters::kStereoMaxSlope().c_str());
+
 
 	setupSignals();
 	// custom signals
@@ -813,8 +817,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_mls->setChecked(false);
 		_ui->doubleSpinBox_mlsRadius->setValue(0.04);
 
-		_ui->groupBox_poseFiltering->setChecked(false);
-		_ui->doubleSpinBox_cloudFilterRadius->setValue(0.1);
+		_ui->groupBox_poseFiltering->setChecked(true);
+		_ui->doubleSpinBox_cloudFilterRadius->setValue(0.3);
 		_ui->doubleSpinBox_cloudFilterAngle->setValue(30);
 
 		_ui->checkBox_map_shown->setChecked(false);

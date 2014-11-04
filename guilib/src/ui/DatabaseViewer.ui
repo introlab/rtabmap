@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1187</width>
-    <height>711</height>
+    <height>851</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -1011,6 +1011,24 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="dockWidget_stereoView">
+   <property name="windowTitle">
+    <string>Stereo view</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>4</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_5">
+    <layout class="QHBoxLayout" name="horizontalLayout_6">
+     <item>
+      <widget class="rtabmap::ImageView" name="graphicsView_stereo"/>
+     </item>
+     <item>
+      <widget class="rtabmap::CloudViewer" name="stereoViewer" native="true"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="actionOpen_database">
    <property name="text">
     <string>Open database</string>
@@ -1104,15 +1122,15 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>rtabmap::ImageView</class>
-   <extends>QGraphicsView</extends>
-   <header>rtabmap/gui/ImageView.h</header>
-  </customwidget>
-  <customwidget>
    <class>rtabmap::CloudViewer</class>
    <extends>QWidget</extends>
    <header>rtabmap/gui/CloudViewer.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>rtabmap::ImageView</class>
+   <extends>QGraphicsView</extends>
+   <header>rtabmap/gui/ImageView.h</header>
   </customwidget>
   <customwidget>
    <class>rtabmap::GraphViewer</class>

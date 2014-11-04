@@ -157,23 +157,25 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 	int flowIterations_ = Parameters::defaultOdomFlowIterations();
 	double flowEps_ = Parameters::defaultOdomFlowEps();
 	int flowMaxLevel_ = Parameters::defaultOdomFlowMaxLevel();
-	int subPixWinSize_ = Parameters::defaultOdomFlowSubPixWinSize();
-	int subPixIterations_ = Parameters::defaultOdomFlowSubPixIterations();
-	double subPixEps_ = Parameters::defaultOdomFlowSubPixEps();
+	float stereoMaxSlope_ = Parameters::defaultOdomStereoMaxSlope();
+	int subPixWinSize_ = Parameters::defaultOdomSubPixWinSize();
+	int subPixIterations_ = Parameters::defaultOdomSubPixIterations();
+	double subPixEps_ = Parameters::defaultOdomSubPixEps();
 	Parameters::parse(parameters, Parameters::kOdomFlowWinSize(), flowWinSize);
 	Parameters::parse(parameters, Parameters::kOdomFlowIterations(), flowIterations_);
 	Parameters::parse(parameters, Parameters::kOdomFlowEps(), flowEps_);
 	Parameters::parse(parameters, Parameters::kOdomFlowMaxLevel(), flowMaxLevel_);
-	Parameters::parse(parameters, Parameters::kOdomFlowSubPixWinSize(), subPixWinSize_);
-	Parameters::parse(parameters, Parameters::kOdomFlowSubPixIterations(), subPixIterations_);
-	Parameters::parse(parameters, Parameters::kOdomFlowSubPixEps(), subPixEps_);
+	Parameters::parse(parameters, Parameters::kOdomSubPixWinSize(), subPixWinSize_);
+	Parameters::parse(parameters, Parameters::kOdomSubPixIterations(), subPixIterations_);
+	Parameters::parse(parameters, Parameters::kOdomSubPixEps(), subPixEps_);
 	customParameters.insert(ParametersPair(Parameters::kStereoWinSize(), uNumber2Str(flowWinSize)));
 	customParameters.insert(ParametersPair(Parameters::kStereoIterations(), uNumber2Str(flowIterations_)));
 	customParameters.insert(ParametersPair(Parameters::kStereoEps(), uNumber2Str(flowEps_)));
 	customParameters.insert(ParametersPair(Parameters::kStereoMaxLevel(), uNumber2Str(flowMaxLevel_)));
-	customParameters.insert(ParametersPair(Parameters::kStereoSubPixWinSize(), uNumber2Str(subPixWinSize_)));
-	customParameters.insert(ParametersPair(Parameters::kStereoSubPixIterations(), uNumber2Str(subPixIterations_)));
-	customParameters.insert(ParametersPair(Parameters::kStereoSubPixEps(), uNumber2Str(subPixEps_)));
+	customParameters.insert(ParametersPair(Parameters::kStereoMaxSlope(), uNumber2Str(stereoMaxSlope_)));
+	customParameters.insert(ParametersPair(Parameters::kKpSubPixWinSize(), uNumber2Str(subPixWinSize_)));
+	customParameters.insert(ParametersPair(Parameters::kKpSubPixIterations(), uNumber2Str(subPixIterations_)));
+	customParameters.insert(ParametersPair(Parameters::kKpSubPixEps(), uNumber2Str(subPixEps_)));
 
 	// add only feature stuff
 	for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
@@ -445,18 +447,20 @@ OdometryOpticalFlow::OdometryOpticalFlow(const ParametersMap & parameters) :
 	flowIterations_(Parameters::defaultOdomFlowIterations()),
 	flowEps_(Parameters::defaultOdomFlowEps()),
 	flowMaxLevel_(Parameters::defaultOdomFlowMaxLevel()),
-	subPixWinSize_(Parameters::defaultOdomFlowSubPixWinSize()),
-	subPixIterations_(Parameters::defaultOdomFlowSubPixIterations()),
-	subPixEps_(Parameters::defaultOdomFlowSubPixEps()),
+	stereoMaxSlope_(Parameters::defaultOdomStereoMaxSlope()),
+	subPixWinSize_(Parameters::defaultOdomSubPixWinSize()),
+	subPixIterations_(Parameters::defaultOdomSubPixIterations()),
+	subPixEps_(Parameters::defaultOdomSubPixEps()),
 	lastCorners3D_(new pcl::PointCloud<pcl::PointXYZ>)
 {
 	Parameters::parse(parameters, Parameters::kOdomFlowWinSize(), flowWinSize_);
 	Parameters::parse(parameters, Parameters::kOdomFlowIterations(), flowIterations_);
 	Parameters::parse(parameters, Parameters::kOdomFlowEps(), flowEps_);
 	Parameters::parse(parameters, Parameters::kOdomFlowMaxLevel(), flowMaxLevel_);
-	Parameters::parse(parameters, Parameters::kOdomFlowSubPixWinSize(), subPixWinSize_);
-	Parameters::parse(parameters, Parameters::kOdomFlowSubPixIterations(), subPixIterations_);
-	Parameters::parse(parameters, Parameters::kOdomFlowSubPixEps(), subPixEps_);
+	Parameters::parse(parameters, Parameters::kOdomStereoMaxSlope(), stereoMaxSlope_);
+	Parameters::parse(parameters, Parameters::kOdomSubPixWinSize(), subPixWinSize_);
+	Parameters::parse(parameters, Parameters::kOdomSubPixIterations(), subPixIterations_);
+	Parameters::parse(parameters, Parameters::kOdomSubPixEps(), subPixEps_);
 
 	ParametersMap::const_iterator iter;
 	Feature2D::Type detectorStrategy = (Feature2D::Type)Parameters::defaultOdomFeatureType();
@@ -624,7 +628,10 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 				{
 					float lastDisparity = lastCornersKept[i].x - lastCornersKeptRight[i].x;
 					float newDisparity = newCornersKept[i].x - newCornersKeptRight[i].x;
-					if(lastDisparity > 0.0f && newDisparity > 0.0f)
+					float lastSlope = fabs((lastCornersKept[i].y-lastCornersKeptRight[i].y) / (lastCornersKept[i].x-lastCornersKeptRight[i].x));
+					float newSlope = fabs((newCornersKept[i].y-newCornersKeptRight[i].y) / (newCornersKept[i].x-newCornersKeptRight[i].x));
+					if(lastDisparity > 0.0f && newDisparity > 0.0f &&
+						lastSlope < stereoMaxSlope_ && newSlope < stereoMaxSlope_)
 					{
 						pcl::PointXYZ lastPt3D = util3d::projectDisparityTo3D(
 								lastCornersKept[i],
@@ -697,14 +704,14 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 					UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
 				}
 
-				/*if(correspondencesLast->size() >= 6)
-				{
-					UWARN("saved pcd");
-					pcl::io::savePCDFile("last.pcd", *correspondencesLast);
-					pcl::io::savePCDFile("new.pcd", *correspondencesNew);
-					correspondencesNew = util3d::transformPointCloud(correspondencesNew, output);
-					pcl::io::savePCDFile("new2.pcd", *correspondencesNew);
-				}*/
+				//if(correspondencesLast->size() >= 6)
+				//{
+				//	UWARN("saved pcd");
+				//	pcl::io::savePCDFile("last.pcd", *correspondencesLast);
+				//	pcl::io::savePCDFile("new.pcd", *correspondencesNew);
+					//correspondencesNew = util3d::transformPointCloud(correspondencesNew, output);
+					//pcl::io::savePCDFile("new2.pcd", *correspondencesNew);
+				//}
 			}
 			else
 			{

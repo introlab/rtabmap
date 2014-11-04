@@ -258,10 +258,11 @@ private:
 	int _stereoFlowIterations;
 	double _stereoFlowEpsilon;
 	int _stereoFlowMaxLevel;
+	float _stereoMaxSlope;
 
-	int _stereoSubPixWinSize;
-	int _stereoSubPixIterations;
-	double _stereoSubPixEps;
+	int _subPixWinSize;
+	int _subPixIterations;
+	double _subPixEps;
 };
 
 } // namespace rtabmap

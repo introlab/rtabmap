@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-346</y>
-            <width>732</width>
-            <height>1246</height>
+            <y>0</y>
+            <width>744</width>
+            <height>932</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>23</number>
+                <number>22</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -3568,6 +3568,110 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </layout>
                      </widget>
                     </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_9">
+                      <property name="title">
+                       <string>Sub pixel keypoints</string>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_59">
+                       <item>
+                        <widget class="QLabel" name="label_35">
+                         <property name="text">
+                          <string>Refining corners to sub pixel. Only useful in RGB-D SLAM mode. Sub pixel corners may not be needed for features like SURF/SIFT, which are already sub pixel.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_32" columnstretch="0,1">
+                         <item row="0" column="0">
+                          <widget class="QSpinBox" name="subpix_winSize">
+                           <property name="minimum">
+                            <number>0</number>
+                           </property>
+                           <property name="maximum">
+                            <number>999999</number>
+                           </property>
+                           <property name="singleStep">
+                            <number>1</number>
+                           </property>
+                           <property name="value">
+                            <number>5</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_200">
+                           <property name="text">
+                            <string>Window size.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QSpinBox" name="subpix_iterations">
+                           <property name="minimum">
+                            <number>0</number>
+                           </property>
+                           <property name="maximum">
+                            <number>999999</number>
+                           </property>
+                           <property name="singleStep">
+                            <number>1</number>
+                           </property>
+                           <property name="value">
+                            <number>20</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_203">
+                           <property name="text">
+                            <string>Iterations. 0 disables sub pixel refining.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QDoubleSpinBox" name="subpix_eps">
+                           <property name="decimals">
+                            <number>3</number>
+                           </property>
+                           <property name="minimum">
+                            <double>0.001000000000000</double>
+                           </property>
+                           <property name="maximum">
+                            <double>0.100000000000000</double>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.010000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>0.030000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_204">
+                           <property name="text">
+                            <string>Epsilon.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
                    </layout>
                   </widget>
                  </item>
@@ -5870,7 +5974,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                     <item>
                      <widget class="QLabel" name="label_187">
                       <property name="text">
-                       <string>These parameters are used to find the 3D positions of visual words using disparity between the left and right images. Optical flow is used to find corresponding corners in the right image of words extracted from the left image. Sub pixel corners may not be used for features like SURF/SIFT, which are already sub pixel.</string>
+                       <string>These parameters are used to find the 3D positions of visual words using disparity between the left and right images. Optical flow is used to find corresponding corners in the right image of words extracted from the left image.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -5884,7 +5988,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </property>
                       <layout class="QGridLayout" name="gridLayout_33" columnstretch="0,1">
                        <item row="0" column="0">
-                        <widget class="QSpinBox" name="stereo_winSize">
+                        <widget class="QSpinBox" name="stereo_flow_winSize">
                          <property name="minimum">
                           <number>1</number>
                          </property>
@@ -5910,7 +6014,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </widget>
                        </item>
                        <item row="1" column="0">
-                        <widget class="QSpinBox" name="stereo_iterations">
+                        <widget class="QSpinBox" name="stereo_flow_iterations">
                          <property name="minimum">
                           <number>1</number>
                          </property>
@@ -5936,7 +6040,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </widget>
                        </item>
                        <item row="2" column="0">
-                        <widget class="QDoubleSpinBox" name="stereo_eps">
+                        <widget class="QDoubleSpinBox" name="stereo_flow_eps">
                          <property name="decimals">
                           <number>3</number>
                          </property>
@@ -5975,7 +6079,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </widget>
                        </item>
                        <item row="3" column="0">
-                        <widget class="QSpinBox" name="stereo_maxLevel">
+                        <widget class="QSpinBox" name="stereo_flow_maxLevel">
                          <property name="minimum">
                           <number>0</number>
                          </property>
@@ -5994,94 +6098,37 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                      </widget>
                     </item>
                     <item>
-                     <widget class="QGroupBox" name="groupBox_9">
-                      <property name="title">
-                       <string>cornerSubPix()</string>
-                      </property>
-                      <layout class="QGridLayout" name="gridLayout_32" columnstretch="0,1">
-                       <item row="0" column="0">
-                        <widget class="QSpinBox" name="stereo_subpix_winSize">
-                         <property name="minimum">
-                          <number>0</number>
-                         </property>
-                         <property name="maximum">
-                          <number>999999</number>
-                         </property>
-                         <property name="singleStep">
-                          <number>1</number>
-                         </property>
-                         <property name="value">
-                          <number>5</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="1">
-                        <widget class="QLabel" name="label_200">
-                         <property name="text">
-                          <string>Window size for sub pixel estimation.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="0">
-                        <widget class="QSpinBox" name="stereo_subpix_iterations">
-                         <property name="minimum">
-                          <number>0</number>
-                         </property>
-                         <property name="maximum">
-                          <number>999999</number>
-                         </property>
-                         <property name="singleStep">
-                          <number>1</number>
-                         </property>
-                         <property name="value">
-                          <number>20</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_203">
-                         <property name="text">
-                          <string>Iterations for sub pixel estimation. 0 disables sub pixel refining.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="0">
-                        <widget class="QDoubleSpinBox" name="stereo_subpix_eps">
-                         <property name="decimals">
-                          <number>3</number>
-                         </property>
-                         <property name="minimum">
-                          <double>0.001000000000000</double>
-                         </property>
-                         <property name="maximum">
-                          <double>0.100000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.030000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_204">
-                         <property name="text">
-                          <string>Epsilon for sub pixel estimation.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </widget>
+                     <layout class="QGridLayout" name="gridLayout_35" columnstretch="0,1">
+                      <item row="0" column="0">
+                       <widget class="QDoubleSpinBox" name="stereo_maxSlope">
+                        <property name="decimals">
+                         <number>3</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.001000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.100000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLabel" name="label_215">
+                        <property name="text">
+                         <string>The maximum slope for each stereo pairs. This will filter bad matches from calcOpticalFlowPyrLK().</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
                     </item>
                    </layout>
                   </widget>
@@ -6120,7 +6167,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                      </widget>
                     </item>
                     <item>
-                     <layout class="QGridLayout" name="gridLayout_27" columnstretch="0,1">
+                     <layout class="QGridLayout" name="gridLayout_27" columnstretch="0,0">
                       <item row="4" column="1">
                        <widget class="QLabel" name="label_47">
                         <property name="text">
@@ -6158,49 +6205,6 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="0">
-                       <widget class="QSpinBox" name="odom_refine_iterations">
-                        <property name="minimum">
-                         <number>0</number>
-                        </property>
-                        <property name="maximum">
-                         <number>10000</number>
-                        </property>
-                        <property name="singleStep">
-                         <number>1</number>
-                        </property>
-                        <property name="value">
-                         <number>10</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="10" column="1">
-                       <widget class="QLabel" name="label_111">
-                        <property name="text">
-                         <string>Refine iterations of the resulting transformation computed by RANSAC. 0 means no refining.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="0">
-                       <widget class="QSpinBox" name="odom_maxFeatures">
-                        <property name="maximum">
-                         <number>999999</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="1">
-                       <widget class="QLabel" name="label_136">
-                        <property name="text">
-                         <string>Max features extracted from the images (0 means inf).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="3" column="0">
                        <widget class="QDoubleSpinBox" name="odom_angularUpdate">
                         <property name="suffix">
@@ -6217,130 +6221,10 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="1">
-                       <widget class="QLabel" name="label_149">
-                        <property name="text">
-                         <string>RANSAC: Maximum distance for 3D feature correspondences. Lower the value, higher the precision but higher the chance of RED screens (odometry lost).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="9" column="0">
-                       <widget class="QSpinBox" name="odom_iterations">
-                        <property name="minimum">
-                         <number>1</number>
-                        </property>
-                        <property name="maximum">
-                         <number>10000</number>
-                        </property>
-                        <property name="singleStep">
-                         <number>1</number>
-                        </property>
-                        <property name="value">
-                         <number>100</number>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="4" column="0">
                        <widget class="QSpinBox" name="odom_countdown">
                         <property name="maximum">
                          <number>999999</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="11" column="0">
-                       <widget class="QDoubleSpinBox" name="odom_ratio">
-                        <property name="suffix">
-                         <string/>
-                        </property>
-                        <property name="decimals">
-                         <number>2</number>
-                        </property>
-                        <property name="minimum">
-                         <double>0.000000000000000</double>
-                        </property>
-                        <property name="maximum">
-                         <double>1.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.010000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.500000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="11" column="1">
-                       <widget class="QLabel" name="label_90">
-                        <property name="text">
-                         <string>Minmum ratio of keypoints between the current image and the last image to compute odometry.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="12" column="0">
-                       <widget class="QDoubleSpinBox" name="odom_maxDepth">
-                        <property name="suffix">
-                         <string> m</string>
-                        </property>
-                        <property name="decimals">
-                         <number>2</number>
-                        </property>
-                        <property name="minimum">
-                         <double>0.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>1.000000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>5.000000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="12" column="1">
-                       <widget class="QLabel" name="label_104">
-                        <property name="text">
-                         <string>Maximum feature depth.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="7" column="1">
-                       <widget class="QLabel" name="label_145">
-                        <property name="text">
-                         <string>Minimum feature correspondences to compute geometry transform.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="9" column="1">
-                       <widget class="QLabel" name="label_36">
-                        <property name="text">
-                         <string>RANSAC: Maximum iterations to compute the transform from 3D features.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="7" column="0">
-                       <widget class="QSpinBox" name="odom_minInliers">
-                        <property name="minimum">
-                         <number>8</number>
-                        </property>
-                        <property name="maximum">
-                         <number>1000</number>
-                        </property>
-                        <property name="value">
-                         <number>10</number>
                         </property>
                        </widget>
                       </item>
@@ -6357,25 +6241,6 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="value">
                          <double>0.015000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="8" column="0">
-                       <widget class="QDoubleSpinBox" name="odom_inlierDistance">
-                        <property name="suffix">
-                         <string> m</string>
-                        </property>
-                        <property name="decimals">
-                         <number>3</number>
-                        </property>
-                        <property name="minimum">
-                         <double>0.001000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.010000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.005000000000000</double>
                         </property>
                        </widget>
                       </item>
@@ -6458,27 +6323,331 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
-                       <widget class="QLineEdit" name="lineEdit_odom_roi">
-                        <property name="text">
-                         <string>0.0 0.0 0.0 0.0</string>
-                        </property>
-                        <property name="readOnly">
-                         <bool>false</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="6" column="1">
-                       <widget class="QLabel" name="label_123">
-                        <property name="text">
-                         <string>ROI ratios [left, right, top, bottom] between 0 and 1.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
                      </layout>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_11">
+                      <property name="title">
+                       <string>Transformation estimation (RANSAC)</string>
+                      </property>
+                      <layout class="QGridLayout" name="gridLayout_37" columnstretch="0,1">
+                       <item row="0" column="0">
+                        <widget class="QSpinBox" name="odom_minInliers">
+                         <property name="minimum">
+                          <number>8</number>
+                         </property>
+                         <property name="maximum">
+                          <number>1000</number>
+                         </property>
+                         <property name="value">
+                          <number>10</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_145">
+                         <property name="text">
+                          <string>Minimum feature correspondences to compute geometry transform.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QDoubleSpinBox" name="odom_inlierDistance">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>3</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.001000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.005000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_149">
+                         <property name="text">
+                          <string>RANSAC: Maximum distance for 3D feature correspondences. Lower the value, higher the precision but higher the chance of RED screens (odometry lost).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QSpinBox" name="odom_iterations">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <number>10000</number>
+                         </property>
+                         <property name="singleStep">
+                          <number>1</number>
+                         </property>
+                         <property name="value">
+                          <number>100</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_36">
+                         <property name="text">
+                          <string>RANSAC: Maximum iterations to compute the transform from 3D features.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QSpinBox" name="odom_refine_iterations">
+                         <property name="minimum">
+                          <number>0</number>
+                         </property>
+                         <property name="maximum">
+                          <number>10000</number>
+                         </property>
+                         <property name="singleStep">
+                          <number>1</number>
+                         </property>
+                         <property name="value">
+                          <number>10</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="label_111">
+                         <property name="text">
+                          <string>Refine iterations of the resulting transformation computed by RANSAC. 0 means no refining.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="0">
+                        <widget class="QDoubleSpinBox" name="odom_ratio">
+                         <property name="suffix">
+                          <string/>
+                         </property>
+                         <property name="decimals">
+                          <number>2</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.500000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="1">
+                        <widget class="QLabel" name="label_90">
+                         <property name="text">
+                          <string>Minimum ratio of keypoints between the current image and the last image to compute odometry.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_8">
+                      <property name="title">
+                       <string>Features filtering</string>
+                      </property>
+                      <layout class="QGridLayout" name="gridLayout_36" columnstretch="0,1">
+                       <item row="0" column="0">
+                        <widget class="QSpinBox" name="odom_maxFeatures">
+                         <property name="maximum">
+                          <number>999999</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_123">
+                         <property name="text">
+                          <string>ROI ratios [left, right, top, bottom] between 0 and 1.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QLineEdit" name="lineEdit_odom_roi">
+                         <property name="text">
+                          <string>0.0 0.0 0.0 0.0</string>
+                         </property>
+                         <property name="readOnly">
+                          <bool>false</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_136">
+                         <property name="text">
+                          <string>Max features extracted from the images (0 means inf).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_104">
+                         <property name="text">
+                          <string>Maximum feature depth.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QDoubleSpinBox" name="odom_maxDepth">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>2</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>5.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_7">
+                      <property name="title">
+                       <string>Sub pixel corners</string>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_60">
+                       <item>
+                        <widget class="QLabel" name="label_216">
+                         <property name="text">
+                          <string>Refining corners to sub pixel. Sub pixel corners may not be needed for features like SURF/SIFT, which are already sub pixel.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_34" columnstretch="0,1">
+                         <item row="0" column="0">
+                          <widget class="QSpinBox" name="odom_subpix_winSize">
+                           <property name="minimum">
+                            <number>0</number>
+                           </property>
+                           <property name="maximum">
+                            <number>999999</number>
+                           </property>
+                           <property name="singleStep">
+                            <number>1</number>
+                           </property>
+                           <property name="value">
+                            <number>5</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_197">
+                           <property name="text">
+                            <string>Window size.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QSpinBox" name="odom_subpix_iterations">
+                           <property name="minimum">
+                            <number>0</number>
+                           </property>
+                           <property name="maximum">
+                            <number>999999</number>
+                           </property>
+                           <property name="singleStep">
+                            <number>1</number>
+                           </property>
+                           <property name="value">
+                            <number>20</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_198">
+                           <property name="text">
+                            <string>Iterations. 0 disables sub pixel refining.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QDoubleSpinBox" name="odom_subpix_eps">
+                           <property name="decimals">
+                            <number>3</number>
+                           </property>
+                           <property name="minimum">
+                            <double>0.001000000000000</double>
+                           </property>
+                           <property name="maximum">
+                            <double>0.100000000000000</double>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.010000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>0.030000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_214">
+                           <property name="text">
+                            <string>Epsilon.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                      </layout>
+                     </widget>
                     </item>
                     <item>
                      <layout class="QHBoxLayout" name="horizontalLayout_5">
@@ -6652,7 +6821,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                  <item>
                   <widget class="QGroupBox" name="groupBox_odometryFlow3">
                    <property name="title">
-                    <string>Optical Flow</string>
+                    <string>Optical Flow / Stereo</string>
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_53">
                     <item>
@@ -6728,39 +6897,10 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="0">
-                        <widget class="QDoubleSpinBox" name="odom_flow_eps">
-                         <property name="decimals">
-                          <number>3</number>
-                         </property>
-                         <property name="minimum">
-                          <double>0.001000000000000</double>
-                         </property>
-                         <property name="maximum">
-                          <double>0.100000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.010000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="2" column="1">
                         <widget class="QLabel" name="label_194">
                          <property name="text">
                           <string>Epsilon.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="1">
-                        <widget class="QLabel" name="label_195">
-                         <property name="text">
-                          <string>Max level.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -6783,61 +6923,10 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                         </widget>
                        </item>
-                      </layout>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QGroupBox" name="groupBox_7">
-                      <property name="title">
-                       <string>cornerSubPix()</string>
-                      </property>
-                      <layout class="QGridLayout" name="gridLayout_31" columnstretch="0,1">
-                       <item row="0" column="0">
-                        <widget class="QSpinBox" name="odom_flow_subpix_winSize">
-                         <property name="minimum">
-                          <number>0</number>
-                         </property>
-                         <property name="maximum">
-                          <number>999999</number>
-                         </property>
-                         <property name="singleStep">
-                          <number>1</number>
-                         </property>
-                         <property name="value">
-                          <number>5</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="1">
-                        <widget class="QLabel" name="label_196">
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="label_195">
                          <property name="text">
-                          <string>Window size for sub pixel estimation.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="0">
-                        <widget class="QSpinBox" name="odom_flow_subpix_iterations">
-                         <property name="minimum">
-                          <number>0</number>
-                         </property>
-                         <property name="maximum">
-                          <number>999999</number>
-                         </property>
-                         <property name="singleStep">
-                          <number>1</number>
-                         </property>
-                         <property name="value">
-                          <number>20</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_197">
-                         <property name="text">
-                          <string>Iterations for sub pixel estimation. 0 disables sub pixel refining.</string>
+                          <string>Max level.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -6845,7 +6934,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </widget>
                        </item>
                        <item row="2" column="0">
-                        <widget class="QDoubleSpinBox" name="odom_flow_subpix_eps">
+                        <widget class="QDoubleSpinBox" name="odom_flow_eps">
                          <property name="decimals">
                           <number>3</number>
                          </property>
@@ -6853,25 +6942,67 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                           <double>0.001000000000000</double>
                          </property>
                          <property name="maximum">
-                          <double>0.100000000000000</double>
+                          <double>1.000000000000000</double>
                          </property>
                          <property name="singleStep">
                           <double>0.010000000000000</double>
                          </property>
                          <property name="value">
-                          <double>0.030000000000000</double>
+                          <double>0.010000000000000</double>
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_198">
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_12">
+                      <property name="title">
+                       <string>Stereo</string>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_61">
+                       <item>
+                        <widget class="QLabel" name="label_217">
                          <property name="text">
-                          <string>Epsilon for sub pixel estimation.</string>
+                          <string>Note that when stereo images are used, the same optical flow parameters above are used to estimate the stereo pairs.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
                         </widget>
+                       </item>
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_31" columnstretch="0,1">
+                         <item row="0" column="0">
+                          <widget class="QDoubleSpinBox" name="odom_stereo_maxSlope">
+                           <property name="decimals">
+                            <number>3</number>
+                           </property>
+                           <property name="minimum">
+                            <double>0.001000000000000</double>
+                           </property>
+                           <property name="maximum">
+                            <double>1.000000000000000</double>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.010000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>0.100000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_196">
+                           <property name="text">
+                            <string>The maximum slope for each stereo pairs. This will filter bad matches from calcOpticalFlowPyrLK().</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
                        </item>
                       </layout>
                      </widget>

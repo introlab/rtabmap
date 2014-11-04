@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QInputDialog>
 #include <QtGui/QGraphicsLineItem>
 #include <QtGui/QCloseEvent>
+#include <QtGui/QGraphicsOpacityEffect>
 #include <QtCore/QBuffer>
 #include <QtCore/QTextStream>
 #include <rtabmap/utilite/ULogger.h>
@@ -47,6 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/UCv2Qt.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Signature.h"
+#include "rtabmap/core/Features2d.h"
 #include "rtabmap/gui/DataRecorder.h"
 #include "rtabmap/core/SensorData.h"
 #include "ExportDialog.h"
@@ -76,12 +78,14 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	ui_->dockWidget_graphView->setVisible(false);
 	ui_->dockWidget_icp->setVisible(false);
 	ui_->dockWidget_visual->setVisible(false);
+	ui_->dockWidget_stereoView->setVisible(false);
 	ui_->dockWidget_icp->setFloating(true);
 	ui_->dockWidget_visual->setFloating(true);
 	ui_->menuView->addAction(ui_->dockWidget_constraints->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_graphView->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_icp->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_visual->toggleViewAction());
+	ui_->menuView->addAction(ui_->dockWidget_stereoView->toggleViewAction());
 	connect(ui_->dockWidget_graphView->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateGraphView()));
 
 	connect(ui_->actionQuit, SIGNAL(triggered()), this, SLOT(close()));
@@ -994,6 +998,12 @@ void DatabaseViewer::update(int value,
 				}
 
 				mapId = memory_->getMapId(id);
+
+				//stereo
+				if(!data.getDepthRaw().empty() && data.getDepthRaw().type() == CV_8UC1)
+				{
+					this->updateStereo(&data);
+				}
 			}
 
 			if(!imgDepth.isNull())
@@ -1119,6 +1129,168 @@ void DatabaseViewer::update(int value,
 		view->setSceneRect(view->scene()->itemsBoundingRect());
 	}
 	view->fitInView(view->sceneRect(), Qt::KeepAspectRatio);
+}
+
+void DatabaseViewer::updateStereo(const Signature * data)
+{
+	if(ui_->dockWidget_stereoView->isVisible() && !data->getImageRaw().empty() && !data->getDepthRaw().empty() && data->getDepthRaw().type() == CV_8UC1)
+	{
+		cv::Mat leftMono;
+		if(data->getImageRaw().channels() == 3)
+		{
+			cv::cvtColor(data->getImageRaw(), leftMono, CV_BGR2GRAY);
+		}
+		else
+		{
+			leftMono = data->getImageRaw();
+		}
+
+		UTimer timer;
+
+		// generate kpts
+		std::vector<cv::KeyPoint> kpts;
+		cv::Rect roi = Feature2D::computeRoi(leftMono, "0.03 0.03 0.04 0.04");
+		ParametersMap parameters;
+		parameters.insert(ParametersPair(Parameters::kGFTTMaxCorners(), "1000"));
+		parameters.insert(ParametersPair(Parameters::kGFTTMinDistance(), "10"));
+		Feature2D::Type type = Feature2D::kFeatureGfttBrief;
+		Feature2D * kptDetector = Feature2D::create(type, parameters);
+		kpts = kptDetector->generateKeypoints(leftMono, 0, roi);
+		delete kptDetector;
+
+		float timeKpt = timer.ticks();
+
+		std::vector<cv::Point2f> leftCorners;
+		cv::KeyPoint::convert(kpts, leftCorners);
+
+		// Find features in the new left image
+		std::vector<unsigned char> status;
+		std::vector<float> err;
+		std::vector<cv::Point2f> rightCorners;
+		cv::calcOpticalFlowPyrLK(
+				leftMono,
+				data->getDepthRaw(),
+				leftCorners,
+				rightCorners,
+				status,
+				err,
+				cv::Size(21, 21), 4,
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 20, 0.02));
+
+		float timeFlow = timer.ticks();
+
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+		cloud->resize(kpts.size());
+		float bad_point = std::numeric_limits<float>::quiet_NaN ();
+		UASSERT(status.size() == kpts.size());
+		int oi = 0;
+		for(unsigned int i=0; i<status.size(); ++i)
+		{
+			pcl::PointXYZ pt(bad_point, bad_point, bad_point);
+			if(status[i])
+			{
+				float disparity = leftCorners[i].x - rightCorners[i].x;
+				if(disparity > 0.0f)
+				{
+					if(fabs((leftCorners[i].y-rightCorners[i].y) / (leftCorners[i].x-rightCorners[i].x)) < 0.1)
+					{
+						pcl::PointXYZ tmpPt = util3d::projectDisparityTo3D(
+								leftCorners[i],
+								disparity,
+								data->getDepthCx(), data->getDepthCy(), data->getDepthFx(), data->getDepthFy());
+
+						if(pcl::isFinite(tmpPt))
+						{
+							pt = pcl::transformPoint(tmpPt, util3d::transformToEigen3f(data->getLocalTransform()));
+							if(fabs(pt.x) > 2 || fabs(pt.y) > 2 || fabs(pt.z) > 2)
+							{
+								status[i] = 100; //blue
+							}
+							cloud->at(oi++) = pt;
+						}
+					}
+					else
+					{
+						status[i] = 101; //yellow
+					}
+				}
+				else
+				{
+					status[i] = 102; //magenta
+				}
+			}
+		}
+		cloud->resize(oi);
+
+		UINFO("correspondences = %d/%d (%f) (time kpt=%fs flow=%fs)",
+				(int)cloud->size(), (int)leftCorners.size(), float(cloud->size())/float(leftCorners.size()), timeKpt, timeFlow);
+
+		ui_->stereoViewer->updateCameraPosition(Transform::getIdentity());
+		ui_->stereoViewer->addOrUpdateCloud("stereo", cloud);
+		ui_->stereoViewer->render();
+
+		std::vector<cv::KeyPoint> rightKpts;
+		cv::KeyPoint::convert(rightCorners, rightKpts);
+		std::vector<cv::DMatch> good_matches(kpts.size());
+		for(unsigned int i=0; i<good_matches.size(); ++i)
+		{
+			good_matches[i].trainIdx = i;
+			good_matches[i].queryIdx = i;
+		}
+
+
+		//
+		//cv::Mat imageMatches;
+		//cv::drawMatches( leftMono, kpts, data->getDepthRaw(), rightKpts,
+		//			   good_matches, imageMatches, cv::Scalar::all(-1), cv::Scalar::all(-1),
+		//			   std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+
+		//ui_->graphicsView_stereo->setImage(uCvMat2QImage(imageMatches));
+
+		ui_->graphicsView_stereo->scene()->clear();
+		ui_->graphicsView_stereo->setSceneRect(0,0,(float)leftMono.cols, (float)leftMono.rows);
+		ui_->graphicsView_stereo->setLinesShown(true);
+		ui_->graphicsView_stereo->setFeaturesShown(false);
+
+		QGraphicsPixmapItem * item1 = ui_->graphicsView_stereo->scene()->addPixmap(QPixmap::fromImage(uCvMat2QImage(data->getImageRaw())));
+		QGraphicsPixmapItem * item2 = ui_->graphicsView_stereo->scene()->addPixmap(QPixmap::fromImage(uCvMat2QImage(data->getDepthRaw())));
+
+		QGraphicsOpacityEffect * effect1 = new QGraphicsOpacityEffect();
+		QGraphicsOpacityEffect * effect2 = new QGraphicsOpacityEffect();
+		effect1->setOpacity(0.5);
+		effect2->setOpacity(0.5);
+		item1->setGraphicsEffect(effect1);
+		item2->setGraphicsEffect(effect2);
+
+		// Draw lines between corresponding features...
+		for(unsigned int i=0; i<kpts.size(); ++i)
+		{
+			QColor c = Qt::green;
+			if(status[i] == 0)
+			{
+				c = Qt::red;
+			}
+			else if(status[i] == 100)
+			{
+				c = Qt::blue;
+			}
+			else if(status[i] == 101)
+			{
+				c = Qt::yellow;
+			}
+			else if(status[i] == 102)
+			{
+				c = Qt::magenta;
+			}
+			QGraphicsLineItem * item = ui_->graphicsView_stereo->scene()->addLine(
+					kpts[i].pt.x,
+					kpts[i].pt.y,
+					rightKpts[i].pt.x,
+					rightKpts[i].pt.y,
+					QPen(c));
+			item->setZValue(1);
+		}
+	}
 }
 
 void DatabaseViewer::updateWordsMatching()

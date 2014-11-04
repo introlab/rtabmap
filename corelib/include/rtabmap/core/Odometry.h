@@ -143,6 +143,7 @@ private:
 	int flowIterations_;
 	double flowEps_;
 	int flowMaxLevel_;
+	float stereoMaxSlope_;
 
 	int subPixWinSize_;
 	int subPixIterations_;

@@ -175,6 +175,10 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM_STR(Kp, DictionaryPath,    "", 				"Path of the pre-computed dictionary");
 	RTABMAP_PARAM(Kp, NewWordsComparedTogether, bool, true,	"When adding new words to dictionary, they are compared also with each other (to detect same words in the same signature).");
 
+	RTABMAP_PARAM(Kp, SubPixWinSize,         int, 3,        "See cv::cornerSubPix().");
+	RTABMAP_PARAM(Kp, SubPixIterations,      int, 0,        "See cv::cornerSubPix(). 0 disables sub pixel refining.");
+	RTABMAP_PARAM(Kp, SubPixEps,             double, 0.02,  "See cv::cornerSubPix().");
+
 	//Database
 	RTABMAP_PARAM(DbSqlite3, InMemory, 	   bool, false, 		"Using database in the memory instead of a file on the hard disk.");
 	RTABMAP_PARAM(DbSqlite3, CacheSize,    unsigned int, 10000, "Sqlite cache size (default is 2000).");
@@ -276,14 +280,17 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(OdomBow, NNType,                 int, 3, 	    "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
 	RTABMAP_PARAM(OdomBow, NNDR,                   float, 0.8,  "NNDR: nearest neighbor distance ratio.");
 
-	// Odometry Optical Flow
-	RTABMAP_PARAM(OdomFlow, WinSize,               int, 9,       "See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(OdomFlow, Iterations,            int, 20,       "See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(OdomFlow, Eps,                   double, 0.02,  "See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(OdomFlow, MaxLevel,              int, 4,        "See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(OdomFlow, SubPixWinSize,         int, 3,        "See cv::cornerSubPix().");
-	RTABMAP_PARAM(OdomFlow, SubPixIterations,      int, 0,       "See cv::cornerSubPix(). 0 disables sub pixel refining.");
-	RTABMAP_PARAM(OdomFlow, SubPixEps,             double, 0.02,  "See cv::cornerSubPix().");
+	// Odometry common stuff between BOW and Optical Flow approaches
+	RTABMAP_PARAM(OdomFlow, WinSize,               int, 9,       "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, Iterations,            int, 20,       "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, Eps,                   double, 0.02,  "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, MaxLevel,              int, 4,        "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
+
+	RTABMAP_PARAM(OdomSubPix, WinSize,         int, 3,        "Can be used with BOW and optical flow approaches. See cv::cornerSubPix().");
+	RTABMAP_PARAM(OdomSubPix, Iterations,      int, 0,       "Can be used with BOW and optical flow approaches. See cv::cornerSubPix(). 0 disables sub pixel refining.");
+	RTABMAP_PARAM(OdomSubPix, Eps,             double, 0.02,  "Can be used with BOW and optical flow approaches. See cv::cornerSubPix().");
+
+	RTABMAP_PARAM(OdomStereo, MaxSlope,              float, 0.1,    "The maximum slope for each stereo pairs.");
 
 	// Loop closure constraint
 	RTABMAP_PARAM(LccIcp, Type,            int, 0, 			"0=No ICP, 1=ICP 3D, 2=ICP 2D");
@@ -321,9 +328,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Stereo, Iterations,            int, 20,       "See cv::calcOpticalFlowPyrLK().");
 	RTABMAP_PARAM(Stereo, Eps,                   double, 0.02,  "See cv::calcOpticalFlowPyrLK().");
 	RTABMAP_PARAM(Stereo, MaxLevel,              int, 4,        "See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(Stereo, SubPixWinSize,         int, 3,        "See cv::cornerSubPix().");
-	RTABMAP_PARAM(Stereo, SubPixIterations,      int, 0,        "See cv::cornerSubPix(). 0 disables sub pixel refining.");
-	RTABMAP_PARAM(Stereo, SubPixEps,             double, 0.02,  "See cv::cornerSubPix().");
+	RTABMAP_PARAM(Stereo, MaxSlope,              float, 0.1,    "The maximum slope for each stereo pairs.");
 
 public:
 	virtual ~Parameters();

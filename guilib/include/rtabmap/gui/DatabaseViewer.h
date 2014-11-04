@@ -52,6 +52,7 @@ namespace rtabmap
 {
 class Memory;
 class ImageView;
+class Signature;
 
 class RTABMAPGUI_EXP DatabaseViewer : public QMainWindow
 {
@@ -104,6 +105,7 @@ private:
 				rtabmap::ImageView * view,
 				QLabel * labelId,
 				bool updateConstraintView = true);
+	void updateStereo(const Signature * data);
 	void updateWordsMatching();
 	void updateConstraintView(const rtabmap::Link & link,
 			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudFrom = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>),

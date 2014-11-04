@@ -190,7 +190,8 @@ cv::Mat RTABMAP_EXP disparityFromStereoImages(
 		int flowWinSize = 9,
 		int flowMaxLevel = 4,
 		int flowIterations = 20,
-		double flowEps = 0.02);
+		double flowEps = 0.02,
+		float maxCorrespondencesSlope = 0.1f);
 
 cv::Mat RTABMAP_EXP depthFromStereoImages(
 		const cv::Mat & leftImage,
@@ -207,7 +208,8 @@ cv::Mat RTABMAP_EXP disparityFromStereoCorrespondences(
 		const cv::Mat & leftImage,
 		const std::vector<cv::Point2f> & leftCorners,
 		const std::vector<cv::Point2f> & rightCorners,
-		const std::vector<unsigned char> & mask);
+		const std::vector<unsigned char> & mask,
+		float maxSlope = 0.1f);
 
 cv::Mat RTABMAP_EXP depthFromStereoCorrespondences(
 		const cv::Mat & leftImage,

@@ -893,7 +893,8 @@ cv::Mat disparityFromStereoImages(
 		int flowWinSize,
 		int flowMaxLevel,
 		int flowIterations,
-		double flowEps)
+		double flowEps,
+		float maxCorrespondencesSlope)
 {
 	UASSERT(!leftImage.empty() && !rightImage.empty() &&
 			leftImage.type() == CV_8UC1 && rightImage.type() == CV_8UC1 &&
@@ -917,7 +918,7 @@ cv::Mat disparityFromStereoImages(
 			cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
 	UDEBUG("cv::calcOpticalFlowPyrLK() end");
 
-	return disparityFromStereoCorrespondences(leftImage, leftCorners, rightCorners, status);
+	return disparityFromStereoCorrespondences(leftImage, leftCorners, rightCorners, status, maxCorrespondencesSlope);
 }
 
 cv::Mat depthFromStereoImages(
@@ -961,7 +962,8 @@ cv::Mat disparityFromStereoCorrespondences(
 		const cv::Mat & leftImage,
 		const std::vector<cv::Point2f> & leftCorners,
 		const std::vector<cv::Point2f> & rightCorners,
-		const std::vector<unsigned char> & mask)
+		const std::vector<unsigned char> & mask,
+		float maxSlope)
 {
 	UASSERT(!leftImage.empty() && leftCorners.size() == rightCorners.size());
 	UASSERT(mask.size() == 0 || mask.size() == leftCorners.size());
@@ -971,7 +973,8 @@ cv::Mat disparityFromStereoCorrespondences(
 		if(mask.size() == 0 || mask[i])
 		{
 			float d = leftCorners[i].x - rightCorners[i].x;
-			if(d > 0.0f)
+			float slope = fabs((leftCorners[i].y - rightCorners[i].y) / (leftCorners[i].x - rightCorners[i].x));
+			if(d > 0.0f && slope < maxSlope)
 			{
 				disparity.at<float>(int(leftCorners[i].y+0.5f), int(leftCorners[i].x+0.5f)) = d;
 			}
