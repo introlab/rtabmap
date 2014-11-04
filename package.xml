@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<package>
+  <name>rtabmaplib</name>
+  <version>:{version}</version>
+  <description>The rtabmap standalone library</description>
+  <maintainer email="matlabbe@gmail.com">Mathieu Labbe</maintainer>
+  <license>BSD</license>
+  <url type="website">http://rtabmap.googlecode.com</url>
+  <author email="matlabbe@gmail.com">Mathieu Labbe</author>
+
+  <buildtool_depend>cmake</buildtool_depend>
+  
+  <build_depend>libpcl-1.7-all-dev</build_depend>
+  <build_depend>libqt4-dev</build_depend>
+  <build_depend>libsqlite3-dev</build_depend>
+  <build_depend>zlib</build_depend>
+  
+  <run_depend>libpcl-1.7-all-dev</run_depend>
+  <run_depend>libqt4-dev</run_depend>
+  <run_depend>libsqlite3-dev</run_depend>
+  <run_depend>zlib</run_depend>
+  <run_depend>catkin</run_depend>
+
+  <export>
+	 <build_type>cmake</build_type>
+  </export>
+</package>
