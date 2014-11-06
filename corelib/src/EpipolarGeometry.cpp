@@ -400,12 +400,12 @@ cv::Mat EpipolarGeometry::findFFromCalibratedStereoCameras(double fx, double fy,
 	double Bx = Tx/-fx;
 	double By = Ty/-fy;
 
-	cv::Mat tx = (cv::Mat_<double> <<
+	cv::Mat tx = (cv::Mat_<double>(3,3) <<
 			0, 0, By,
 			0, 0, -Bx,
 			-By, Bx, 0);
 
-	cv::Mat K = (cv::Mat_<double> <<
+	cv::Mat K = (cv::Mat_<double>(3,3) <<
 			fx, 0, cx,
 			0, fy, cy,
 			0, 0, 0);
