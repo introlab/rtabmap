@@ -82,6 +82,8 @@ public:
 			cv::Mat & r,
 			cv::Mat & t);
 
+	static cv::Mat findFFromCalibratedStereoCameras(double fx, double fy, double cx, double cy, double Tx, double Ty);
+
 	/**
 	 * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (2,2) (4,4) (6a,6a) (6b,6b)]
 	 * realPairsCount = 5

@@ -393,6 +393,28 @@ void EpipolarGeometry::findRTFromP(
 	UDEBUG("");
 }
 
+cv::Mat EpipolarGeometry::findFFromCalibratedStereoCameras(double fx, double fy, double cx, double cy, double Tx, double Ty)
+{
+	cv::Mat R = cv::Mat::ones(3, 3, CV_64FC1);
+
+	double Bx = Tx/-fx;
+	double By = Ty/-fy;
+
+	cv::Mat tx = (cv::Mat_<double> <<
+			0, 0, By,
+			0, 0, -Bx,
+			-By, Bx, 0);
+
+	cv::Mat K = (cv::Mat_<double> <<
+			fx, 0, cx,
+			0, fy, cy,
+			0, 0, 0);
+
+	cv::Mat E = tx*R;
+
+	return K.t().inv()*E*K.inv();
+}
+
 /**
  * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (2,2) (4,4) (6a,6a) (6b,6b)]
  * realPairsCount = 5
