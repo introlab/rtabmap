@@ -31,6 +31,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Parameters.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 #include <list>
 #include <vector>
 
@@ -110,6 +112,26 @@ public:
 			const std::multimap<int, cv::KeyPoint> & wordsA,
 			const std::multimap<int, cv::KeyPoint> & wordsB,
 			std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs);
+
+	static cv::Mat linearLSTriangulation(
+			cv::Point3d u,    //homogenous image point (u,v,1)
+			cv::Matx34d P,        //camera 1 matrix 3x4 double
+			cv::Point3d u1,   //homogenous image point in 2nd camera
+			cv::Matx34d P1);       //camera 2 matrix 3x4 double
+
+	static cv::Mat iterativeLinearLSTriangulation(
+			cv::Point3d u,        //homogenous image point (u,v,1)
+			const cv::Matx34d & P,    //camera 1 matrix 3x4 double
+			cv::Point3d u1,        //homogenous image point in 2nd camera
+			const cv::Matx34d & P1);  //camera 2 matrix 3x4 double
+
+	static double triangulatePoints(
+			const std::vector<cv::Point2f>& pt_set1,
+			const std::vector<cv::Point2f>& pt_set2,
+			const cv::Mat& P, // 3x4 double
+			const cv::Mat& P1, // 3x4 double
+			pcl::PointCloud<pcl::PointXYZ>::Ptr & pointcloud,
+			std::vector<double> & reproj_errors);
 
 private:
 	int _matchCountMinAccepted;

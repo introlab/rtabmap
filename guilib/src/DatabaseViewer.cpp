@@ -1454,51 +1454,120 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link,
 
 
 			//cloud 3d
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFrom;
-			if(dataFrom.getDepthRaw().type() == CV_8UC1)
+			if(!ui_->checkBox_show3DWords->isChecked())
 			{
-				cloudFrom = rtabmap::util3d::cloudFromStereoImages(
-						dataFrom.getImageRaw(),
-						dataFrom.getDepthRaw(),
-						dataFrom.getDepthCx(), dataFrom.getDepthCy(),
-						dataFrom.getDepthFx(), dataFrom.getDepthFy(),
-						1);
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFrom;
+				if(dataFrom.getDepthRaw().type() == CV_8UC1)
+				{
+					cloudFrom = rtabmap::util3d::cloudFromStereoImages(
+							dataFrom.getImageRaw(),
+							dataFrom.getDepthRaw(),
+							dataFrom.getDepthCx(), dataFrom.getDepthCy(),
+							dataFrom.getDepthFx(), dataFrom.getDepthFy(),
+							1);
+				}
+				else
+				{
+					cloudFrom = rtabmap::util3d::cloudFromDepthRGB(
+							dataFrom.getImageRaw(),
+							dataFrom.getDepthRaw(),
+							dataFrom.getDepthCx(), dataFrom.getDepthCy(),
+							dataFrom.getDepthFx(), dataFrom.getDepthFy(),
+							1);
+				}
+
+				cloudFrom = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudFrom);
+				cloudFrom = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudFrom, dataFrom.getLocalTransform());
+
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudTo;
+				if(dataTo.getDepthRaw().type() == CV_8UC1)
+				{
+					cloudTo = rtabmap::util3d::cloudFromStereoImages(
+							dataTo.getImageRaw(),
+							dataTo.getDepthRaw(),
+							dataTo.getDepthCx(), dataTo.getDepthCy(),
+							dataTo.getDepthFx(), dataTo.getDepthFy(),
+							1);
+				}
+				else
+				{
+					cloudTo = rtabmap::util3d::cloudFromDepthRGB(
+							dataTo.getImageRaw(),
+							dataTo.getDepthRaw(),
+							dataTo.getDepthCx(), dataTo.getDepthCy(),
+							dataTo.getDepthFx(), dataTo.getDepthFy(),
+							1);
+				}
+
+				cloudTo = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudTo);
+				cloudTo = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudTo, t*dataTo.getLocalTransform());
+
+				if(cloudFrom->size())
+				{
+					ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom);
+				}
+				if(cloudTo->size())
+				{
+					ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo);
+				}
 			}
 			else
 			{
-				cloudFrom = rtabmap::util3d::cloudFromDepthRGB(
-						dataFrom.getImageRaw(),
-						dataFrom.getDepthRaw(),
-						dataFrom.getDepthCx(), dataFrom.getDepthCy(),
-						dataFrom.getDepthFx(), dataFrom.getDepthFy(),
-						1);
-			}
+				const Signature * sFrom = memory_->getSignature(link.from());
+				const Signature * sTo = memory_->getSignature(link.to());
+				if(sFrom && sTo)
+				{
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFrom(new pcl::PointCloud<pcl::PointXYZ>);
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudTo(new pcl::PointCloud<pcl::PointXYZ>);
+					cloudFrom->resize(sFrom->getWords3().size());
+					cloudTo->resize(sTo->getWords3().size());
+					int i=0;
+					for(std::multimap<int, pcl::PointXYZ>::const_iterator iter=sFrom->getWords3().begin();
+						iter!=sFrom->getWords3().end();
+						++iter)
+					{
+						cloudFrom->at(i++) = iter->second;
+					}
+					i=0;
+					for(std::multimap<int, pcl::PointXYZ>::const_iterator iter=sTo->getWords3().begin();
+						iter!=sTo->getWords3().end();
+						++iter)
+					{
+						cloudTo->at(i++) = iter->second;
+					}
 
-			cloudFrom = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudFrom);
-			cloudFrom = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudFrom, dataFrom.getLocalTransform());
+					if(cloudFrom->size())
+					{
+						cloudFrom = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZ>(cloudFrom);
+					}
+					if(cloudTo->size())
+					{
+						cloudTo = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZ>(cloudTo);
+						cloudTo = rtabmap::util3d::transformPointCloud<pcl::PointXYZ>(cloudTo, t);
+					}
 
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudTo;
-			if(dataTo.getDepthRaw().type() == CV_8UC1)
-			{
-				cloudTo = rtabmap::util3d::cloudFromStereoImages(
-						dataTo.getImageRaw(),
-						dataTo.getDepthRaw(),
-						dataTo.getDepthCx(), dataTo.getDepthCy(),
-						dataTo.getDepthFx(), dataTo.getDepthFy(),
-						1);
+					if(cloudFrom->size())
+					{
+						ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom);
+					}
+					else
+					{
+						UWARN("Empty 3D words for node %d", link.from());
+					}
+					if(cloudTo->size())
+					{
+						ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo);
+					}
+					else
+					{
+						UWARN("Empty 3D words for node %d", link.to());
+					}
+				}
+				else
+				{
+					UERROR("Not found signature %d or %d in RAM", link.from(), link.to());
+				}
 			}
-			else
-			{
-				cloudTo = rtabmap::util3d::cloudFromDepthRGB(
-						dataTo.getImageRaw(),
-						dataTo.getDepthRaw(),
-						dataTo.getDepthCx(), dataTo.getDepthCy(),
-						dataTo.getDepthFx(), dataTo.getDepthFy(),
-						1);
-			}
-
-			cloudTo = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudTo);
-			cloudTo = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudTo, t*dataTo.getLocalTransform());
 
 			//cloud 2d
 			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
@@ -1506,14 +1575,6 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link,
 			scanB = rtabmap::util3d::depth2DToPointCloud(dataTo.getDepth2DRaw());
 			scanB = rtabmap::util3d::transformPointCloud<pcl::PointXYZ>(scanB, t);
 
-			if(cloudFrom->size())
-			{
-				ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom);
-			}
-			if(cloudTo->size())
-			{
-				ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo);
-			}
 			if(scanA->size())
 			{
 				ui_->constraintsViewer->addOrUpdateCloud("scan0", scanA);

@@ -264,6 +264,9 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 				{
 					correspondences = (int)inliers1->size();
 
+					// transform new words in local map referential
+					//inliers2 = util3d::transformPointCloud<pcl::PointXYZ>(inliers2, this->getPose());
+
 					// the transform returned is global odometry pose, not incremental one
 					std::vector<int> inliersV;
 					transform = util3d::transformFromXYZCorrespondences(
@@ -291,11 +294,42 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 						//inliers2 = util3d::transformPointCloud(inliers2, transform);
 						//pcl::io::savePCDFile("to_t.pcd", *inliers2);
 					}
+
+					if(ULogger::level() == ULogger::kDebug)
+					{
+						float error3D = 0;
+					//	pcl::PointCloud<pcl::PointXYZ>::Ptr inliers1Cloud(new pcl::PointCloud<pcl::PointXYZ>), inliers2Cloud(new pcl::PointCloud<pcl::PointXYZ>);
+						for(unsigned int i=0; i<inliersV.size(); ++i)
+						{
+							pcl::PointXYZ pt = util3d::transformPoint(inliers2->at(inliersV[i]), this->getPose()*transform);
+							error3D+=pcl::euclideanDistance(inliers1->at(inliersV[i]), pt);
+						//	inliers1Cloud->push_back(inliers1->at(inliersV[i]));
+						//	inliers2Cloud->push_back(pt);
+						}
+						error3D/=float(inliersV.size());
+						UDEBUG("3D error = %f", error3D);
+					}
+
+					/*if(inliersV.size() < 30 || fabs(transform.x()) > 0.3 || fabs(transform.y()) > 0.3 || fabs(transform.z()) > 0.3)
+					{
+						UWARN("Saved from.pcd, to.pcd and to_t.pcd");
+						pcl::io::savePCDFile("from.pcd", *inliers1);
+						pcl::io::savePCDFile("to.pcd", *inliers2);
+						inliers2 = util3d::transformPointCloud<pcl::PointXYZ>(inliers2, transform);
+						pcl::io::savePCDFile("to_t.pcd", *inliers2);
+
+						pcl::io::savePCDFile("inliersFrom.pcd", *inliers1Cloud);
+						pcl::io::savePCDFile("inliersTo.pcd", *inliers2Cloud);
+						inliers2Cloud = util3d::transformPointCloud<pcl::PointXYZ>(inliers2Cloud, transform);
+						pcl::io::savePCDFile("inliersTo_t.pcd", *inliers2Cloud);
+						exit(-1);
+					}*/
 					/*pcl::io::savePCDFile("from.pcd", *inliers1);
 					inliers2 = util3d::transformPointCloud(inliers2, this->getPose());
 					pcl::io::savePCDFile("to.pcd", *inliers2);
 					inliers2 = util3d::transformPointCloud(inliers2, transform);
 					pcl::io::savePCDFile("to_t.pcd", *inliers2);*/
+
 
 					/*
 					//refine ICP test
@@ -428,8 +462,9 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 		*localMapSize = (int)localMap_.size();
 	}
 
-	UINFO("Odom update time = %fs features=%d inliers=%d/%d local_map=%d[%d] dict=%d nodes=%d",
+	UINFO("Odom update time = %fs out=[%s] features=%d inliers=%d/%d local_map=%d[%d] dict=%d nodes=%d",
 			timer.elapsed(),
+			output.prettyPrint().c_str(),
 			nFeatures,
 			inliers,
 			correspondences,

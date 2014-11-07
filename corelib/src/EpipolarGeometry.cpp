@@ -395,7 +395,7 @@ void EpipolarGeometry::findRTFromP(
 
 cv::Mat EpipolarGeometry::findFFromCalibratedStereoCameras(double fx, double fy, double cx, double cy, double Tx, double Ty)
 {
-	cv::Mat R = cv::Mat::ones(3, 3, CV_64FC1);
+	cv::Mat R = cv::Mat::eye(3, 3, CV_64FC1);
 
 	double Bx = Tx/-fx;
 	double By = Ty/-fy;
@@ -408,11 +408,11 @@ cv::Mat EpipolarGeometry::findFFromCalibratedStereoCameras(double fx, double fy,
 	cv::Mat K = (cv::Mat_<double>(3,3) <<
 			fx, 0, cx,
 			0, fy, cy,
-			0, 0, 0);
+			0, 0, 1);
 
 	cv::Mat E = tx*R;
 
-	return K.t().inv()*E*K.inv();
+	return K.inv().t()*E*K.inv();
 }
 
 /**
@@ -503,6 +503,123 @@ int EpipolarGeometry::findPairsAll(const std::multimap<int, cv::KeyPoint> & word
 	}
 	ULOGGER_DEBUG("time = %f", timer.ticks());
 	return realPairsCount;
+}
+
+
+
+/**
+ source = SfM toy library: https://github.com/royshil/SfM-Toy-Library
+ From "Triangulation", Hartley, R.I. and Sturm, P., Computer vision and image understanding, 1997
+ */
+cv::Mat EpipolarGeometry::linearLSTriangulation(
+		cv::Point3d u,   //homogenous image point (u,v,1)
+		cv::Matx34d P,       //camera 1 matrix 3x4 double
+		cv::Point3d u1,  //homogenous image point in 2nd camera
+		cv::Matx34d P1       //camera 2 matrix 3x4 double
+                                   )
+{
+    //build matrix A for homogenous equation system Ax = 0
+    //assume X = (x,y,z,1), for Linear-LS method
+    //which turns it into a AX = B system, where A is 4x3, X is 3x1 and B is 4x1
+    cv::Mat A = (cv::Mat_<double>(4,3) <<
+    		u.x*P(2,0)-P(0,0),    u.x*P(2,1)-P(0,1),      u.x*P(2,2)-P(0,2),
+			u.y*P(2,0)-P(1,0),    u.y*P(2,1)-P(1,1),      u.y*P(2,2)-P(1,2),
+			u1.x*P1(2,0)-P1(0,0), u1.x*P1(2,1)-P1(0,1),   u1.x*P1(2,2)-P1(0,2),
+			u1.y*P1(2,0)-P1(1,0), u1.y*P1(2,1)-P1(1,1),   u1.y*P1(2,2)-P1(1,2)
+              );
+    cv::Mat B = (cv::Mat_<double>(4,1) <<
+			-(u.x*P(2,3)    -P(0,3)),
+			-(u.y*P(2,3)  -P(1,3)),
+			-(u1.x*P1(2,3)    -P1(0,3)),
+			-(u1.y*P1(2,3)    -P1(1,3)));
+
+    cv::Mat X;
+    solve(A,B,X,cv::DECOMP_SVD);
+
+    return X;
+}
+
+ /**
+ source = SfM toy library: https://github.com/royshil/SfM-Toy-Library
+ From "Triangulation", Hartley, R.I. and Sturm, P., Computer vision and image understanding, 1997
+ */
+cv::Mat EpipolarGeometry::iterativeLinearLSTriangulation(
+		cv::Point3d u,            //homogenous image point (u,v,1)
+		const cv::Matx34d & P,   //camera 1 matrix 3x4 double
+		cv::Point3d u1,           //homogenous image point in 2nd camera
+		const cv::Matx34d & P1)   //camera 2 matrix 3x4 double
+{
+    double wi = 1, wi1 = 1;
+	double EPSILON = 0.0001;
+
+	cv::Mat_<double> X(4,1);
+	cv::Mat_<double> X_ = linearLSTriangulation(u,P,u1,P1);
+	X(0) = X_(0); X(1) = X_(1); X(2) = X_(2); X_(3) = 1.0;
+	for (int i=0; i<10; i++)  //Hartley suggests 10 iterations at most
+	{
+        //recalculate weights
+    	double p2x = cv::Mat(cv::Mat(P).row(2)*cv::Mat(X)).at<double>(0);
+    	double p2x1 = cv::Mat(cv::Mat(P1).row(2)*cv::Mat(X)).at<double>(0);
+
+        //breaking point
+        if(fabs(wi - p2x) <= EPSILON && fabs(wi1 - p2x1) <= EPSILON) break;
+
+        wi = p2x;
+        wi1 = p2x1;
+
+        //reweight equations and solve
+        cv::Mat A = (cv::Mat_<double>(4,3) <<
+        		(u.x*P(2,0)-P(0,0))/wi,       (u.x*P(2,1)-P(0,1))/wi,         (u.x*P(2,2)-P(0,2))/wi,
+				(u.y*P(2,0)-P(1,0))/wi,       (u.y*P(2,1)-P(1,1))/wi,         (u.y*P(2,2)-P(1,2))/wi,
+				(u1.x*P1(2,0)-P1(0,0))/wi1,   (u1.x*P1(2,1)-P1(0,1))/wi1,     (u1.x*P1(2,2)-P1(0,2))/wi1,
+				(u1.y*P1(2,0)-P1(1,0))/wi1,   (u1.y*P1(2,1)-P1(1,1))/wi1,     (u1.y*P1(2,2)-P1(1,2))/wi1);
+        cv::Mat B = (cv::Mat_<double>(4,1) <<
+        		-(u.x*P(2,3)    -P(0,3))/wi,
+				-(u.y*P(2,3)  -P(1,3))/wi,
+				-(u1.x*P1(2,3)    -P1(0,3))/wi1,
+				-(u1.y*P1(2,3)    -P1(1,3))/wi1);
+
+        solve(A,B,X_,cv::DECOMP_SVD);
+        X(0) = X_(0); X(1) = X_(1); X(2) = X_(2); X_(3) = 1.0;
+    }
+    return X;
+}
+
+/**
+ source = SfM toy library: https://github.com/royshil/SfM-Toy-Library
+ */
+//Triagulate points
+double EpipolarGeometry::triangulatePoints(
+		const std::vector<cv::Point2f>& pt_set1,
+		const std::vector<cv::Point2f>& pt_set2,
+		const cv::Mat& P, // 3x4 double
+		const cv::Mat& P1, // 3x4 double
+		pcl::PointCloud<pcl::PointXYZ>::Ptr & pointcloud,
+		std::vector<double> & reproj_errors)
+{
+	pointcloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
+
+	unsigned int pts_size = pt_set1.size();
+
+	pointcloud->resize(pts_size);
+	reproj_errors.resize(pts_size);
+
+	for(unsigned int i=0; i<pts_size; i++)
+	{
+		cv::Point3d u(pt_set1[i].x,pt_set1[i].y,1.0);
+		cv::Point3d u1(pt_set2[i].x,pt_set2[i].y,1.0);
+
+		cv::Mat_<double> X = iterativeLinearLSTriangulation(u,P,u1,P1);
+
+		cv::Mat_<double> xPt_img = P1 * X;				//reproject
+		cv::Point2f xPt_img_(xPt_img(0)/xPt_img(2),xPt_img(1)/xPt_img(2));
+
+		double reprj_err = norm(xPt_img_-pt_set1[i]);
+		reproj_errors[i] = reprj_err;
+		pointcloud->at(i) = pcl::PointXYZ(X(0),X(1),X(2));
+	}
+
+	return cv::mean(reproj_errors)[0]; // mean reproj error
 }
 
 } // namespace rtabmap
