@@ -396,12 +396,13 @@ void RtabmapThread::process()
 	{
 		if(_rtabmap->getMemory())
 		{
-			_rtabmap->process(data);
-
-			Statistics stats = _rtabmap->getStatistics();
-			stats.addStatistic(Statistics::kMemoryImages_buffered(), (float)_dataBuffer.size());
-			ULOGGER_DEBUG("posting statistics_ event...");
-			this->post(new RtabmapEvent(stats));
+			if(_rtabmap->process(data))
+			{
+				Statistics stats = _rtabmap->getStatistics();
+				stats.addStatistic(Statistics::kMemoryImages_buffered(), (float)_dataBuffer.size());
+				ULOGGER_DEBUG("posting statistics_ event...");
+				this->post(new RtabmapEvent(stats));
+			}
 		}
 		else
 		{

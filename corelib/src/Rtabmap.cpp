@@ -845,7 +845,7 @@ bool Rtabmap::process(const SensorData & data)
 				{
 					UWARN("Ignoring location %d because the displacement is too small!", signature->id());
 					_memory->deleteLocation(signature->id());
-					return true;
+					return false;
 				}
 			}
 		}
