@@ -146,7 +146,8 @@ void segmentObstaclesFromGround(
 		pcl::IndicesPtr & obstacles,
 		float normalRadiusSearch,
 		float groundNormalAngle,
-		int minClusterSize)
+		int minClusterSize,
+		bool segmentFlatObstacles)
 {
 	ground.reset(new std::vector<int>);
 	obstacles.reset(new std::vector<int>);
@@ -159,32 +160,39 @@ void segmentObstaclesFromGround(
 			normalRadiusSearch*2.0f,
 			Eigen::Vector4f(0,0,100,0));
 
-	int biggestFlatSurfaceIndex;
-	std::vector<pcl::IndicesPtr> clusteredFlatSurfaces = util3d::extractClusters<PointT>(
-			cloud,
-			flatSurfaces,
-			normalRadiusSearch*2.0f,
-			minClusterSize,
-			std::numeric_limits<int>::max(),
-			&biggestFlatSurfaceIndex);
-
-
-	// cluster all surfaces for which the centroid is in the Z-range of the bigger surface
-	ground = clusteredFlatSurfaces.at(biggestFlatSurfaceIndex);
-	Eigen::Vector4f min,max;
-	pcl::getMinMax3D<PointT>(*cloud, *clusteredFlatSurfaces.at(biggestFlatSurfaceIndex), min, max);
-
-	for(unsigned int i=0; i<clusteredFlatSurfaces.size(); ++i)
+	if(segmentFlatObstacles)
 	{
-		if((int)i!=biggestFlatSurfaceIndex)
+		int biggestFlatSurfaceIndex;
+		std::vector<pcl::IndicesPtr> clusteredFlatSurfaces = util3d::extractClusters<PointT>(
+				cloud,
+				flatSurfaces,
+				normalRadiusSearch*2.0f,
+				minClusterSize,
+				std::numeric_limits<int>::max(),
+				&biggestFlatSurfaceIndex);
+
+
+		// cluster all surfaces for which the centroid is in the Z-range of the bigger surface
+		ground = clusteredFlatSurfaces.at(biggestFlatSurfaceIndex);
+		Eigen::Vector4f min,max;
+		pcl::getMinMax3D<PointT>(*cloud, *clusteredFlatSurfaces.at(biggestFlatSurfaceIndex), min, max);
+
+		for(unsigned int i=0; i<clusteredFlatSurfaces.size(); ++i)
 		{
-			Eigen::Vector4f centroid;
-			pcl::compute3DCentroid<PointT>(*cloud, *clusteredFlatSurfaces.at(i), centroid);
-			if(centroid[2] >= min[2] && centroid[2] <= max[2])
+			if((int)i!=biggestFlatSurfaceIndex)
 			{
-				ground = util3d::concatenate(ground, clusteredFlatSurfaces.at(i));
+				Eigen::Vector4f centroid;
+				pcl::compute3DCentroid<PointT>(*cloud, *clusteredFlatSurfaces.at(i), centroid);
+				if(centroid[2] >= min[2] && centroid[2] <= max[2])
+				{
+					ground = util3d::concatenate(ground, clusteredFlatSurfaces.at(i));
+				}
 			}
 		}
+	}
+	else
+	{
+		ground = flatSurfaces;
 	}
 
 	if(ground->size() != cloud->size())

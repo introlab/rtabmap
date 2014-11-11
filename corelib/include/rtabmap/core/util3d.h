@@ -597,7 +597,8 @@ void segmentObstaclesFromGround(
 		pcl::IndicesPtr & obstacles,
 		float normalRadiusSearch,
 		float groundNormalAngle,
-		int minClusterSize);
+		int minClusterSize,
+		bool segmentFlatObstacles = false);
 
 template<typename PointT>
 void projectCloudOnXYPlane(
