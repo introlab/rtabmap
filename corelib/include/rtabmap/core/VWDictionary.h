@@ -86,6 +86,7 @@ public:
 	std::vector<int> getUnusedWordIds() const;
 	unsigned int getUnusedWordsSize() const {return (int)_unusedWords.size();}
 	void removeWords(const std::vector<VisualWord*> & words); // caller must delete the words
+	void deleteUnusedWords();
 
 protected:
 	int getNextId();

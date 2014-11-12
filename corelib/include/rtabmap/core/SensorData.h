@@ -86,7 +86,7 @@ public:
 	const cv::Mat & depthOrRightImage() const {return _depthOrRightImage;}
 	const cv::Mat & depth2d() const {return _depth2d;}
 	float fx() const {return _fx;}
-	float fy() const {return (_depthOrRightImage.type()==CV_32FC1 || _depthOrRightImage.type()==CV_16UC1)?_fyOrBaseline:0;}
+	float fy() const {return (_depthOrRightImage.type()==CV_8UC1)?0:_fyOrBaseline;}
 	float cx() const {return _cx;}
 	float cy() const {return _cy;}
 	float baseline() const {return _depthOrRightImage.type()==CV_8UC1?_fyOrBaseline:0;}

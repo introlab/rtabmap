@@ -129,170 +129,159 @@ void EpipolarGeometry::findEpipolesFromF(const cv::Mat & fundamentalMatrix, cv::
 	e2[2] = u.at<double>(2,2);// /u->data.db[2*3+2];
 }
 
-//Assuming P0 = [eye(3) zeros(3,1)]
-// x1 and x2 are 2D points
-// return camera matrix P (3x4) matrix
-cv::Mat EpipolarGeometry::findPFromF(const cv::Mat & fundamentalMatrix, const cv::Mat & x1, const cv::Mat & x2)
+int inFrontOfBothCameras(const cv::Mat & x, const cv::Mat & xp, const cv::Mat & R, const cv::Mat & T)
 {
-
-	if(fundamentalMatrix.rows != 3 || fundamentalMatrix.cols != 3)
-	{
-		ULOGGER_ERROR("Matrices are not the good size... ");
-		return cv::Mat();
-	}
-
-	if(fundamentalMatrix.type() != CV_64FC1)
-	{
-		ULOGGER_ERROR("Matrices are not the good type...");
-		return cv::Mat();
-	}
-
-	// P matrix 3x4
-	cv::Mat p = cv::Mat::zeros(3, 4, CV_64FC1);
-
 	// P0 matrix 3X4
 	cv::Mat p0 = cv::Mat::zeros(3, 4, CV_64FC1);
 	p0.at<double>(0,0) = 1;
 	p0.at<double>(1,1) = 1;
 	p0.at<double>(2,2) = 1;
+	cv::Mat p = cv::Mat::zeros(3, 4, CV_64FC1);
+	p.at<double>(0,0) = R.at<double>(0,0);
+	p.at<double>(0,1) = R.at<double>(0,1);
+	p.at<double>(0,2) = R.at<double>(0,2);
+	p.at<double>(1,0) = R.at<double>(1,0);
+	p.at<double>(1,1) = R.at<double>(1,1);
+	p.at<double>(1,2) = R.at<double>(1,2);
+	p.at<double>(2,0) = R.at<double>(2,0);
+	p.at<double>(2,1) = R.at<double>(2,1);
+	p.at<double>(2,2) = R.at<double>(2,2);
+	p.at<double>(0,3) = T.at<double>(0,0);
+	p.at<double>(1,3) = T.at<double>(1,0);
+	p.at<double>(2,3) = T.at<double>(2,0);
 
-	// cv::SVD doesn't five same results as cvSVD ?!? cvSVD return same values as in MatLab
-	/*cv::SVD svd(fundamentalMatrix);
-	cv::Mat u = svd.u;
-	cv::Mat v = svd.vt;
-	cv::Mat s = svd.w;
-	cv::Mat e = u.col(2);*/
+	cv::Mat pts4D;
+	cv::triangulatePoints(p0, p, x, xp, pts4D);
 
-	CvMat F  = fundamentalMatrix;
-	cv::Mat u(3,3,CV_64F);
-	cv::Mat v(3,3,CV_64F);
-	cv::Mat s(3,3,CV_64F);
-	CvMat U  = u;
-	CvMat S  = s;
-	CvMat V  = v;
-	cvSVD(&F, &S, &U, &V, CV_SVD_U_T|CV_SVD_V_T); // F = U D V^T
-	u = u.t();
-	//
-	// INFO: may be required to multiply by -1 the last column of U
-	// TODO: Is any way to detect when it is required to do that ? When
-	//       it is wrong, triangulated points have their Z value below 1 (between 0 and 1)...
-	//
-	/*u.at<double>(0,2) = -u.at<double>(0,2);
-	u.at<double>(1,2) = -u.at<double>(1,2);
-	u.at<double>(2,2) = -u.at<double>(2,2);*/
-	v = v.t();
-	cv::Mat e = u.col(2);
+    //http://en.wikipedia.org/wiki/Essential_matrix#3D_points_from_corresponding_image_points
+	int nValid = 0;
+    for(int i=0; i<x.cols; ++i)
+    {
+        if(pts4D.at<double>(2,i)/pts4D.at<double>(3,i) > 5)
+        {
+        	++nValid;
+        }
+    }
+    UDEBUG("nValid=%d/%d", nValid,  x.cols);
 
-	//std::cout << "u=" << u << std::endl;
-	//std::cout << "v=" << v << std::endl;
-	//std::cout << "s=" << s << std::endl;
+    return nValid;
+}
+
+//Assuming P0 = [eye(3) zeros(3,1)]
+// x1 and x2 are 2D points
+// return camera matrix P (3x4) matrix
+//http://www.robots.ox.ac.uk/~vgg/hzbook/hzbook2/HZepipolar.pdf
+cv::Mat EpipolarGeometry::findPFromE(const cv::Mat & E,
+		const cv::Mat & x,
+		const cv::Mat & xp)
+{
+	UDEBUG("begin");
+	UASSERT(E.rows == 3 && E.cols == 3);
+	UASSERT(E.type() == CV_64FC1);
+	UASSERT(x.rows == 2 && x.cols>0 && x.type() == CV_64FC1);
+	UASSERT(xp.rows == 2 && xp.cols>0 && x.type() == CV_64FC1);
 
 	// skew matrix 3X3
-	cv::Mat skew = cv::Mat::zeros( 3, 3, CV_64FC1);
-	skew.at<double>(0,1) = -1;
-	skew.at<double>(1,0) = 1;
-	skew.at<double>(2,2) = 1;
+	cv::Mat w = cv::Mat::zeros( 3, 3, CV_64FC1);
+	w.at<double>(0,1) = -1;
+	w.at<double>(1,0) = 1;
+	w.at<double>(2,2) = 1;
+	//std::cout << "W=" << w << std::endl;
 
-	cv::Mat r;
-	cv::Mat x4d;
+	cv::Mat e = E;
+	cv::SVD svd(e,cv::SVD::MODIFY_A);
+	cv::Mat u = svd.u;
+	cv::Mat vt = svd.vt;
+	cv::Mat s = svd.w;
 
-	cv::Mat x = x1.col(0); // just take one point
-	cv::Mat xp = x2.col(0); // just take one point
+	//std::cout << "u=" << u << std::endl;
+	//std::cout << "vt=" << vt << std::endl;
+	//std::cout << "s=" << s << std::endl;
 
-	// INFO: There 4 cases of P, only one have the points in
+	// E = u*diag(1,1,0)*vt
+	cv::Mat diag = cv::Mat::eye(3,3,CV_64FC1);
+	diag.at<double>(2,2) = 0;
+	e = u*diag*vt;
+	svd(e,cv::SVD::MODIFY_A);
+	u = svd.u;
+	vt = svd.vt;
+	s = svd.w;
+
+	cv::Mat r = u*w*vt;
+	if(cv::determinant(r)+1.0 < 1e-09) {
+		//according to http://en.wikipedia.org/wiki/Essential_matrix#Showing_that_it_is_valid
+		UWARN("det(R) == -1 [%f]: flip E's sign", cv::determinant(r));
+		e = -E;
+		svd(e,cv::SVD::MODIFY_A);
+		u = svd.u;
+		vt = svd.vt;
+		s = svd.w;
+	}
+	cv::Mat wt = w.t();
+
+	// INFO: There 4 cases of P, only one have all the points in
 	// front of the two cameras (positive z).
 
-	// Case 1 : P = [U*W*V' e];
-	r = u*skew*v.t();
-	p.at<double>(0,0) = r.at<double>(0,0);
-	p.at<double>(0,1) = r.at<double>(0,1);
-	p.at<double>(0,2) = r.at<double>(0,2);
-	p.at<double>(1,0) = r.at<double>(1,0);
-	p.at<double>(1,1) = r.at<double>(1,1);
-	p.at<double>(1,2) = r.at<double>(1,2);
-	p.at<double>(2,0) = r.at<double>(2,0);
-	p.at<double>(2,1) = r.at<double>(2,1);
-	p.at<double>(2,2) = r.at<double>(2,2);
-	p.at<double>(0,3) = e.at<double>(0,0);
-	p.at<double>(1,3) = e.at<double>(1,0);
-	p.at<double>(2,3) = e.at<double>(2,0);
+	cv::Mat r1 = u*w*vt;
+	cv::Mat r2 = u*wt*vt;
 
-	cv::triangulatePoints(p0, p, x, xp, x4d);
-	x4d.at<double>(0) = x4d.at<double>(0)/x4d.at<double>(3);
-	x4d.at<double>(1) = x4d.at<double>(1)/x4d.at<double>(3);
-	x4d.at<double>(2) = x4d.at<double>(2)/x4d.at<double>(3);
-	x4d.at<double>(3) = x4d.at<double>(3)/x4d.at<double>(3);
+	cv::Mat t1 = u.col(2);
+	cv::Mat t2 = u.col(2)*-1;
 
-	cv::Mat xt1 = p0*x4d;
-	cv::Mat xt2 = p*x4d;
+	int max = 0;
+	int maxIndex = 1;
+	int maxTmp;
+	cv::Mat R=r1,T=t1;
 
-	if(xt1.at<double>(2,0) < 0 || xt2.at<double>(2,0) < 0)
+	// Case 1 : P = [U*W*V' t];
+	max = inFrontOfBothCameras(x, xp, r1, t1);
+	// Case 2 : P = [U*W*V' -t];
+	maxTmp = inFrontOfBothCameras(x, xp, r1, t2);
+	if(maxTmp > max)
 	{
-		// Case 2 : P = [U*W*V' -e];
-		p.at<double>(0,3) = -e.at<double>(0,0);
-		p.at<double>(1,3) = -e.at<double>(1,0);
-		p.at<double>(2,3) = -e.at<double>(2,0);
-		cv::triangulatePoints(p0, p, x, xp, x4d);
-		x4d.at<double>(0) = x4d.at<double>(0)/x4d.at<double>(3);
-		x4d.at<double>(1) = x4d.at<double>(1)/x4d.at<double>(3);
-		x4d.at<double>(2) = x4d.at<double>(2)/x4d.at<double>(3);
-		x4d.at<double>(3) = x4d.at<double>(3)/x4d.at<double>(3);
-		xt1 = p0*x4d;
-		xt2 = p*x4d;
-		if(xt1.at<double>(2,0) < 0 || xt2.at<double>(2,0) < 0)
-		{
-			// Case 3 : P = [U*W'*V' e];
-			r = u*skew.t()*v.t();
-			p.at<double>(0,0) = r.at<double>(0,0);
-			p.at<double>(0,1) = r.at<double>(0,1);
-			p.at<double>(0,2) = r.at<double>(0,2);
-			p.at<double>(1,0) = r.at<double>(1,0);
-			p.at<double>(1,1) = r.at<double>(1,1);
-			p.at<double>(1,2) = r.at<double>(1,2);
-			p.at<double>(2,0) = r.at<double>(2,0);
-			p.at<double>(2,1) = r.at<double>(2,1);
-			p.at<double>(2,2) = r.at<double>(2,2);
-			p.at<double>(0,3) = e.at<double>(0,0);
-			p.at<double>(1,3) = e.at<double>(1,0);
-			p.at<double>(2,3) = e.at<double>(2,0);
-			p.col(3) = e;
-			cv::triangulatePoints(p0, p, x, xp, x4d);
-			x4d.at<double>(0) = x4d.at<double>(0)/x4d.at<double>(3);
-			x4d.at<double>(1) = x4d.at<double>(1)/x4d.at<double>(3);
-			x4d.at<double>(2) = x4d.at<double>(2)/x4d.at<double>(3);
-			x4d.at<double>(3) = x4d.at<double>(3)/x4d.at<double>(3);
-			xt1 = p0*x4d;
-			xt2 = p*x4d;
-			if(xt1.at<double>(2,0) < 0 || xt2.at<double>(2,0) < 0)
-			{
-				// Case 4 : P = [U*W'*V' -e];
-				p.at<double>(0,3) = -e.at<double>(0,0);
-				p.at<double>(1,3) = -e.at<double>(1,0);
-				p.at<double>(2,3) = -e.at<double>(2,0);
-				cv::triangulatePoints(p0, p, x, xp, x4d);
-				x4d.at<double>(0) = x4d.at<double>(0)/x4d.at<double>(3);
-				x4d.at<double>(1) = x4d.at<double>(1)/x4d.at<double>(3);
-				x4d.at<double>(2) = x4d.at<double>(2)/x4d.at<double>(3);
-				x4d.at<double>(3) = x4d.at<double>(3)/x4d.at<double>(3);
-				xt1 = p0*x4d;
-				xt2 = p*x4d;
-				UDEBUG("Case 4");
-			}
-			else
-			{
-				UDEBUG("Case 3");
-			}
-		}
-		else
-		{
-			UDEBUG("Case 2");
-		}
+		maxIndex = 2;
+		max = maxTmp;
+		R=r1,T=t2;
 	}
-	else
+	// Case 3 : P = [U*W'*V' t];
+	maxTmp = inFrontOfBothCameras(x, xp, r2, t1);
+	if(maxTmp > max)
 	{
-		UDEBUG("Case 1");
+		maxIndex = 3;
+		max = maxTmp;
+		R=r2,T=t1;
 	}
-	return p;
+	// Case 4 : P = [U*W'*V' -t];
+	maxTmp = inFrontOfBothCameras(x, xp, r2, t2);
+	if(maxTmp > max)
+	{
+		maxIndex = 4;
+		max = maxTmp;
+		R=r2,T=t2;
+	}
+
+	if(max > 0)
+	{
+		UDEBUG("Case %d", maxIndex);
+
+		// P matrix 3x4
+		cv::Mat p = cv::Mat::zeros(3, 4, CV_64FC1);
+		p.at<double>(0,0) = R.at<double>(0,0);
+		p.at<double>(0,1) = R.at<double>(0,1);
+		p.at<double>(0,2) = R.at<double>(0,2);
+		p.at<double>(1,0) = R.at<double>(1,0);
+		p.at<double>(1,1) = R.at<double>(1,1);
+		p.at<double>(1,2) = R.at<double>(1,2);
+		p.at<double>(2,0) = R.at<double>(2,0);
+		p.at<double>(2,1) = R.at<double>(2,1);
+		p.at<double>(2,2) = R.at<double>(2,2);
+		p.at<double>(0,3) = T.at<double>(0);
+		p.at<double>(1,3) = T.at<double>(1);
+		p.at<double>(2,3) = T.at<double>(2);
+		return p;
+	}
+
+	return cv::Mat();
 }
 
 cv::Mat EpipolarGeometry::findFFromWords(
@@ -387,9 +376,10 @@ void EpipolarGeometry::findRTFromP(
 	UDEBUG("");
 	r = cv::Mat(p, cv::Range(0,3), cv::Range(0,3));
 	UDEBUG("");
-	r = -r.inv();
+	//r = -r.inv();
 	UDEBUG("r=%d %d, t=%d", r.cols, r.rows, p.col(3).rows);
-	t = r*p.col(3);
+	//t = r*p.col(3);
+	t = p.col(3);
 	UDEBUG("");
 }
 
@@ -510,6 +500,7 @@ int EpipolarGeometry::findPairsAll(const std::multimap<int, cv::KeyPoint> & word
 /**
  source = SfM toy library: https://github.com/royshil/SfM-Toy-Library
  From "Triangulation", Hartley, R.I. and Sturm, P., Computer vision and image understanding, 1997
+ return 1x3 double
  */
 cv::Mat EpipolarGeometry::linearLSTriangulation(
 		cv::Point3d u,   //homogenous image point (u,v,1)
@@ -536,12 +527,13 @@ cv::Mat EpipolarGeometry::linearLSTriangulation(
     cv::Mat X;
     solve(A,B,X,cv::DECOMP_SVD);
 
-    return X;
+    return X; // return 1x3 double
 }
 
  /**
  source = SfM toy library: https://github.com/royshil/SfM-Toy-Library
  From "Triangulation", Hartley, R.I. and Sturm, P., Computer vision and image understanding, 1997
+ return 4x1 double
  */
 cv::Mat EpipolarGeometry::iterativeLinearLSTriangulation(
 		cv::Point3d u,            //homogenous image point (u,v,1)
@@ -552,14 +544,17 @@ cv::Mat EpipolarGeometry::iterativeLinearLSTriangulation(
     double wi = 1, wi1 = 1;
 	double EPSILON = 0.0001;
 
-	cv::Mat_<double> X(4,1);
-	cv::Mat_<double> X_ = linearLSTriangulation(u,P,u1,P1);
-	X(0) = X_(0); X(1) = X_(1); X(2) = X_(2); X_(3) = 1.0;
+	cv::Mat X(4,1,CV_64FC1);
+	cv::Mat X_ = linearLSTriangulation(u,P,u1,P1);
+	X.at<double>(0) = X_.at<double>(0);
+	X.at<double>(1) = X_.at<double>(1);
+	X.at<double>(2) = X_.at<double>(2);
+	X.at<double>(3) = 1.0;
 	for (int i=0; i<10; i++)  //Hartley suggests 10 iterations at most
 	{
         //recalculate weights
-    	double p2x = cv::Mat(cv::Mat(P).row(2)*cv::Mat(X)).at<double>(0);
-    	double p2x1 = cv::Mat(cv::Mat(P1).row(2)*cv::Mat(X)).at<double>(0);
+    	double p2x = cv::Mat(cv::Mat(P).row(2)*X).at<double>(0);
+    	double p2x1 = cv::Mat(cv::Mat(P1).row(2)*X).at<double>(0);
 
         //breaking point
         if(fabs(wi - p2x) <= EPSILON && fabs(wi1 - p2x1) <= EPSILON) break;
@@ -580,9 +575,12 @@ cv::Mat EpipolarGeometry::iterativeLinearLSTriangulation(
 				-(u1.y*P1(2,3)    -P1(1,3))/wi1);
 
         solve(A,B,X_,cv::DECOMP_SVD);
-        X(0) = X_(0); X(1) = X_(1); X(2) = X_(2); X_(3) = 1.0;
+        X.at<double>(0) = X_.at<double>(0);
+		X.at<double>(1) = X_.at<double>(1);
+		X.at<double>(2) = X_.at<double>(2);
+		X.at<double>(3) = 1.0;
     }
-    return X;
+    return X; //  return 4x1 double
 }
 
 /**
@@ -590,8 +588,8 @@ cv::Mat EpipolarGeometry::iterativeLinearLSTriangulation(
  */
 //Triagulate points
 double EpipolarGeometry::triangulatePoints(
-		const std::vector<cv::Point2f>& pt_set1,
-		const std::vector<cv::Point2f>& pt_set2,
+		const cv::Mat& pt_set, //2xN double
+		const cv::Mat& pt_set1, //2xN double
 		const cv::Mat& P, // 3x4 double
 		const cv::Mat& P1, // 3x4 double
 		pcl::PointCloud<pcl::PointXYZ>::Ptr & pointcloud,
@@ -599,24 +597,25 @@ double EpipolarGeometry::triangulatePoints(
 {
 	pointcloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
 
-	unsigned int pts_size = pt_set1.size();
+	unsigned int pts_size = pt_set.cols;
 
 	pointcloud->resize(pts_size);
 	reproj_errors.resize(pts_size);
 
 	for(unsigned int i=0; i<pts_size; i++)
 	{
-		cv::Point3d u(pt_set1[i].x,pt_set1[i].y,1.0);
-		cv::Point3d u1(pt_set2[i].x,pt_set2[i].y,1.0);
+		cv::Point3d u(pt_set.at<double>(0,i),pt_set.at<double>(1,i),1.0);
+		cv::Point3d u1(pt_set1.at<double>(0,i),pt_set1.at<double>(1,i),1.0);
 
-		cv::Mat_<double> X = iterativeLinearLSTriangulation(u,P,u1,P1);
+		cv::Mat X = iterativeLinearLSTriangulation(u,P,u1,P1);
 
-		cv::Mat_<double> xPt_img = P1 * X;				//reproject
-		cv::Point2f xPt_img_(xPt_img(0)/xPt_img(2),xPt_img(1)/xPt_img(2));
+		cv::Mat x_proj = P * X;				//reproject
+		x_proj = x_proj / x_proj.at<double>(2);
+		cv::Point3d xPt_img_(x_proj.at<double>(0), x_proj.at<double>(1), 1.0);
 
-		double reprj_err = norm(xPt_img_-pt_set1[i]);
+		double reprj_err = norm(xPt_img_ - u);
 		reproj_errors[i] = reprj_err;
-		pointcloud->at(i) = pcl::PointXYZ(X(0),X(1),X(2));
+		pointcloud->at(i) = pcl::PointXYZ(X.at<double>(0),X.at<double>(1),X.at<double>(2));
 	}
 
 	return cv::mean(reproj_errors)[0]; // mean reproj error

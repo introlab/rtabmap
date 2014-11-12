@@ -127,16 +127,15 @@ public:
 
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 
-	const cv::Mat & getLastFrame() const {return lastFrame_;}
-	const std::vector<cv::Point2f> & getLastCorners() const {return lastCorners_;}
-	const pcl::PointCloud<pcl::PointXYZ>::Ptr & getLastCorners3D() const {return lastCorners3D_;}
-
-	cv::Mat imgMatches_;
+	const cv::Mat & getLastFrame() const {return refFrame_;}
+	const std::vector<cv::Point2f> & getLastCorners() const {return refCorners_;}
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr & getLastCorners3D() const {return refCorners3D_;}
 
 private:
 	virtual Transform computeTransform(const SensorData & image, int * quality = 0, int * features = 0, int * localMapSize = 0);
 	Transform computeTransformStereo(const SensorData & image, int * quality, int * features);
 	Transform computeTransformRGBD(const SensorData & image, int * quality, int * features);
+	Transform computeTransformMono(const SensorData & image, int * quality, int * features);
 private:
 	//Parameters:
 	int flowWinSize_;
@@ -151,11 +150,10 @@ private:
 
 	Feature2D * feature2D_;
 
-	cv::Mat lastFrame_;
-	cv::Mat lastRightFrame_;
-	std::vector<cv::Point2f> lastCorners_;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr lastCorners3D_;
-	Transform savedLastRefFrameTransform_;
+	cv::Mat refFrame_;
+	cv::Mat refRightFrame_;
+	std::vector<cv::Point2f> refCorners_;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr refCorners3D_;
 };
 
 class RTABMAP_EXP OdometryICP : public Odometry

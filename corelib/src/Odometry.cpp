@@ -486,7 +486,7 @@ OdometryOpticalFlow::OdometryOpticalFlow(const ParametersMap & parameters) :
 	subPixWinSize_(Parameters::defaultOdomSubPixWinSize()),
 	subPixIterations_(Parameters::defaultOdomSubPixIterations()),
 	subPixEps_(Parameters::defaultOdomSubPixEps()),
-	lastCorners3D_(new pcl::PointCloud<pcl::PointXYZ>)
+	refCorners3D_(new pcl::PointCloud<pcl::PointXYZ>)
 {
 	Parameters::parse(parameters, Parameters::kOdomFlowWinSize(), flowWinSize_);
 	Parameters::parse(parameters, Parameters::kOdomFlowIterations(), flowIterations_);
@@ -515,9 +515,9 @@ OdometryOpticalFlow::~OdometryOpticalFlow()
 void OdometryOpticalFlow::reset(const Transform & initialPose)
 {
 	Odometry::reset(initialPose);
-	lastFrame_ = cv::Mat();
-	lastCorners_.clear();
-	lastCorners3D_->clear();
+	refFrame_ = cv::Mat();
+	refCorners_.clear();
+	refCorners3D_->clear();
 }
 
 // return not null transform if odometry is correctly computed
@@ -551,7 +551,6 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 
 	int inliers = 0;
 	int correspondences = 0;
-	imgMatches_ = cv::Mat();
 
 	cv::Mat newLeftFrame;
 	// convert to grayscale
@@ -566,8 +565,8 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 	cv::Mat newRightFrame = data.rightImage().clone();
 
 	std::vector<cv::Point2f> newCorners;
-	UDEBUG("lastCorners_.size()=%d lastFrame_=%d lastRightFrame_=%d", (int)lastCorners_.size(), lastFrame_.empty()?0:1, lastRightFrame_.empty()?0:1);
-	if(!lastFrame_.empty() && !lastRightFrame_.empty() && lastCorners_.size())
+	UDEBUG("lastCorners_.size()=%d lastFrame_=%d lastRightFrame_=%d", (int)refCorners_.size(), refFrame_.empty()?0:1, refRightFrame_.empty()?0:1);
+	if(!refFrame_.empty() && !refRightFrame_.empty() && refCorners_.size())
 	{
 		UDEBUG("");
 		// Find features in the new left image
@@ -575,9 +574,9 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 		std::vector<float> err;
 		UDEBUG("cv::calcOpticalFlowPyrLK() begin");
 		cv::calcOpticalFlowPyrLK(
-				lastFrame_,
+				refFrame_,
 				newLeftFrame,
-				lastCorners_,
+				refCorners_,
 				newCorners,
 				status,
 				err,
@@ -593,7 +592,7 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 		{
 			if(status[i])
 			{
-				lastCornersKept[ki] = lastCorners_[i];
+				lastCornersKept[ki] = refCorners_[i];
 				newCornersKept[ki] = newCorners[i];
 				++ki;
 			}
@@ -608,8 +607,8 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 			std::vector<float> errLast;
 			std::vector<cv::Point2f> lastCornersKeptRight;
 			cv::calcOpticalFlowPyrLK(
-						lastFrame_,
-						lastRightFrame_,
+						refFrame_,
+						refRightFrame_,
 						lastCornersKept,
 						lastCornersKeptRight,
 						statusLast,
@@ -697,7 +696,7 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 			lastKpts.resize(oi);
 			newKpts.resize(oi);
 			correspondences = oi;
-			lastCorners3D_ = correspondencesNew;
+			refCorners3D_ = correspondencesNew;
 			UDEBUG("Getting correspondences end, kept %d/%d", correspondences, (int)statusLast.size());
 
 			/*good_matches.resize(lastKpts.size());
@@ -763,9 +762,6 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 	newCorners.clear();
 	if(!output.isNull())
 	{
-		// Update frame, reset saved last transform
-		savedLastRefFrameTransform_.setNull();
-
 		// Copy or generate new keypoints
 		if(data.keypoints().size())
 		{
@@ -799,16 +795,16 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 			}
 		}
 
-		if(lastCorners_.size() && newCorners.size() < (unsigned int)(this->getFeaturesRatio() * float(lastCorners_.size())))
+		if(refCorners_.size() && newCorners.size() < (unsigned int)(this->getFeaturesRatio() * float(refCorners_.size())))
 		{
 			UWARN("At least %f%% keypoints of the last image required. New=%d last=%d",
-					this->getFeaturesRatio()*100.0f, newCorners.size(), lastCorners_.size());
+					this->getFeaturesRatio()*100.0f, newCorners.size(), refCorners_.size());
 		}
 		else if((int)newCorners.size() > this->getMinInliers())
 		{
-			lastFrame_ = newLeftFrame;
-			lastRightFrame_ = newRightFrame;
-			lastCorners_ = newCorners;
+			refFrame_ = newLeftFrame;
+			refRightFrame_ = newRightFrame;
+			refCorners_ = newCorners;
 		}
 		else
 		{
@@ -841,7 +837,6 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 
 	int inliers = 0;
 	int correspondences = 0;
-	imgMatches_ = cv::Mat();
 
 	cv::Mat newFrame;
 	// convert to grayscale
@@ -858,15 +853,15 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 	bool updateFrame = false;
 
 	std::vector<cv::Point2f> newCorners;
-	if(!lastFrame_.empty() && lastCorners_.size() && lastCorners3D_->size())
+	if(!refFrame_.empty() && refCorners_.size() && refCorners3D_->size())
 	{
 		std::vector<unsigned char> status;
 		std::vector<float> err;
 		UDEBUG("cv::calcOpticalFlowPyrLK() begin");
 		cv::calcOpticalFlowPyrLK(
-				lastFrame_,
+				refFrame_,
 				newFrame,
-				lastCorners_,
+				refCorners_,
 				newCorners,
 				status,
 				err,
@@ -877,20 +872,20 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 
 		pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesLast(new pcl::PointCloud<pcl::PointXYZ>);
 		pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesNew(new pcl::PointCloud<pcl::PointXYZ>);
-		correspondencesLast->resize(lastCorners_.size());
-		correspondencesNew->resize(lastCorners_.size());
+		correspondencesLast->resize(refCorners_.size());
+		correspondencesNew->resize(refCorners_.size());
 		int oi=0;
 
-		std::vector<cv::KeyPoint> lastKpts(lastCorners_.size());
-		std::vector<cv::KeyPoint> newKpts(lastCorners_.size());
+		std::vector<cv::KeyPoint> lastKpts(refCorners_.size());
+		std::vector<cv::KeyPoint> newKpts(refCorners_.size());
 
-		UASSERT(lastCorners_.size() == lastCorners3D_->size());
-		UDEBUG("lastCorners3D_ = %d", lastCorners3D_->size());
+		UASSERT(refCorners_.size() == refCorners3D_->size());
+		UDEBUG("lastCorners3D_ = %d", refCorners3D_->size());
 		float sumSqrdDistance = 0.0f;
 		int flowInliers = 0;
 		for(unsigned int i=0; i<status.size(); ++i)
 		{
-			if(status[i] && pcl::isFinite(lastCorners3D_->at(i)) &&
+			if(status[i] && pcl::isFinite(refCorners3D_->at(i)) &&
 				uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols-1)) &&
 				uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows-1)))
 			{
@@ -903,13 +898,13 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 					uIsInBounds(pt.z, 0.0f, this->getMaxDepth()))))
 				{
 					pt = util3d::transformPoint(pt, data.localTransform());
-					correspondencesLast->at(oi) = lastCorners3D_->at(i);
+					correspondencesLast->at(oi) = refCorners3D_->at(i);
 					correspondencesNew->at(oi) = pt;
 
-					cv::Point2f diff = newCorners[i]-lastCorners_[i];
+					cv::Point2f diff = newCorners[i]-refCorners_[i];
 					sumSqrdDistance += diff.x*diff.x + diff.y*diff.y;
 
-					lastKpts[oi].pt = lastCorners_[i];
+					lastKpts[oi].pt = refCorners_[i];
 					newKpts[oi].pt = newCorners[i];
 
 					++oi;
@@ -1021,10 +1016,10 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 			}
 		}
 
-		if(lastCorners_.size() && newCorners.size() < (unsigned int)(this->getFeaturesRatio() * float(lastCorners_.size())))
+		if(refCorners_.size() && newCorners.size() < (unsigned int)(this->getFeaturesRatio() * float(refCorners_.size())))
 		{
 			UWARN("At least %f%% keypoints of the last image required. New=%d last=%d",
-					this->getFeaturesRatio()*100.0f, newCorners.size(), lastCorners_.size());
+					this->getFeaturesRatio()*100.0f, newCorners.size(), refCorners_.size());
 		}
 		else if((int)newCorners.size() > this->getMinInliers())
 		{
@@ -1057,14 +1052,14 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 			newCorners3D->resize(oi);
 			if((int)newCornersFiltered.size() > this->getMinInliers())
 			{
-				lastFrame_ = newFrame;
-				lastCorners_ = newCornersFiltered;
-				lastCorners3D_ = newCorners3D;
+				refFrame_ = newFrame;
+				refCorners_ = newCornersFiltered;
+				refCorners3D_ = newCorners3D;
 			}
 			else
 			{
 				UWARN("Too low 3D corners (%d/%d, minCorners=%d), ignoring new frame...",
-						(int)newCornersFiltered.size(), (int)lastCorners3D_->size(), this->getMinInliers());
+						(int)newCornersFiltered.size(), (int)refCorners3D_->size(), this->getMinInliers());
 			}
 		}
 		else

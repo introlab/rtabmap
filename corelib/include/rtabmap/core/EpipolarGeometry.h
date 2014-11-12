@@ -65,10 +65,10 @@ public:
 			cv::Vec3d & e1,
 			cv::Vec3d & e2);
 
-	static cv::Mat findPFromF(
-			const cv::Mat & fundamentalMatrix,
-			const cv::Mat & x1,
-			const cv::Mat & x2);
+	static cv::Mat findPFromE(
+			const cv::Mat & E,
+			const cv::Mat & x,
+			const cv::Mat & xp);
 
 	// return fundamental matrix
 	// status -> inliers = 1, outliers = 0
@@ -126,8 +126,8 @@ public:
 			const cv::Matx34d & P1);  //camera 2 matrix 3x4 double
 
 	static double triangulatePoints(
-			const std::vector<cv::Point2f>& pt_set1,
-			const std::vector<cv::Point2f>& pt_set2,
+			const cv::Mat& pt_set1, //2xN double
+			const cv::Mat& pt_set2, //2xN double
 			const cv::Mat& P, // 3x4 double
 			const cv::Mat& P1, // 3x4 double
 			pcl::PointCloud<pcl::PointXYZ>::Ptr & pointcloud,

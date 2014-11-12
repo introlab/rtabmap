@@ -380,6 +380,8 @@ void VWDictionary::removeAllWordRef(int wordId, int signatureId)
 std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 							   int signatureId)
 {
+	UASSERT(signatureId > 0);
+
 	UDEBUG("id=%d descriptors=%d", signatureId, descriptors.rows);
 	UTimer timer;
 	std::list<int> wordIds;
@@ -389,11 +391,12 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 		return wordIds;
 	}
 	int dim = 0;
-	int type = 0;
+	int type = -1;
 	if(_visualWords.size())
 	{
 		dim = _visualWords.begin()->second->getDescriptor().cols;
 		type = _visualWords.begin()->second->getDescriptor().type();
+		UASSERT(type == CV_32F || type == CV_8U);
 	}
 
 	if(dim && dim != descriptors.cols)
@@ -403,7 +406,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 	}
 	dim = descriptors.cols;
 
-	if(type && type != descriptors.type())
+	if(type>=0 && type != descriptors.type())
 	{
 		UERROR("Descriptors (type=%d) are not the same type as already added words in dictionary(type=%d)", descriptors.type(), type);
 		return wordIds;
@@ -856,6 +859,16 @@ void VWDictionary::removeWords(const std::vector<VisualWord*> & words)
 		{
 			_removedIndexedWords.insert(words[i]->id());
 		}
+	}
+}
+
+void VWDictionary::deleteUnusedWords()
+{
+	std::vector<VisualWord*> unusedWords = uValues(_unusedWords);
+	removeWords(unusedWords);
+	for(unsigned int i=0; i<unusedWords.size(); ++i)
+	{
+		delete unusedWords[i];
 	}
 }
 

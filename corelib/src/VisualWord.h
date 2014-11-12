@@ -34,8 +34,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
-class SignatureSurf;
-
 class RTABMAP_EXP VisualWord
 {
 public:
