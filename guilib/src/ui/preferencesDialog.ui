@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>744</width>
-            <height>932</height>
+            <width>736</width>
+            <height>754</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>22</number>
+                <number>23</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -6167,7 +6167,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                      </widget>
                     </item>
                     <item>
-                     <layout class="QGridLayout" name="gridLayout_27" columnstretch="0,0">
+                     <layout class="QGridLayout" name="gridLayout_27" columnstretch="0,1">
                       <item row="4" column="1">
                        <widget class="QLabel" name="label_47">
                         <property name="text">
@@ -6316,7 +6316,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="text">
                          <string>Odometry strategy:
 1-BOW matches features extracted from both frames using nearest neighbor with descriptors, then computes RANSAC transformation estimation with corresponding 3D features.
-2-Optical flow estimate the location of 2D features from last frame to new frame, then computes RANSAC transformation with corresponding 3D features.</string>
+2-Optical flow estimates the location of 2D features from last frame to new frame, then computes RANSAC transformation with corresponding 3D features.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
