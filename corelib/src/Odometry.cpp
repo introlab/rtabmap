@@ -153,26 +153,12 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 	customParameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(featureType)));
 
 	// Memory's stereo parameters, copy from Odometry
-	int flowWinSize = Parameters::defaultOdomFlowWinSize();
-	int flowIterations_ = Parameters::defaultOdomFlowIterations();
-	double flowEps_ = Parameters::defaultOdomFlowEps();
-	int flowMaxLevel_ = Parameters::defaultOdomFlowMaxLevel();
-	float stereoMaxSlope_ = Parameters::defaultOdomStereoMaxSlope();
 	int subPixWinSize_ = Parameters::defaultOdomSubPixWinSize();
 	int subPixIterations_ = Parameters::defaultOdomSubPixIterations();
 	double subPixEps_ = Parameters::defaultOdomSubPixEps();
-	Parameters::parse(parameters, Parameters::kOdomFlowWinSize(), flowWinSize);
-	Parameters::parse(parameters, Parameters::kOdomFlowIterations(), flowIterations_);
-	Parameters::parse(parameters, Parameters::kOdomFlowEps(), flowEps_);
-	Parameters::parse(parameters, Parameters::kOdomFlowMaxLevel(), flowMaxLevel_);
 	Parameters::parse(parameters, Parameters::kOdomSubPixWinSize(), subPixWinSize_);
 	Parameters::parse(parameters, Parameters::kOdomSubPixIterations(), subPixIterations_);
 	Parameters::parse(parameters, Parameters::kOdomSubPixEps(), subPixEps_);
-	customParameters.insert(ParametersPair(Parameters::kStereoWinSize(), uNumber2Str(flowWinSize)));
-	customParameters.insert(ParametersPair(Parameters::kStereoIterations(), uNumber2Str(flowIterations_)));
-	customParameters.insert(ParametersPair(Parameters::kStereoEps(), uNumber2Str(flowEps_)));
-	customParameters.insert(ParametersPair(Parameters::kStereoMaxLevel(), uNumber2Str(flowMaxLevel_)));
-	customParameters.insert(ParametersPair(Parameters::kStereoMaxSlope(), uNumber2Str(stereoMaxSlope_)));
 	customParameters.insert(ParametersPair(Parameters::kKpSubPixWinSize(), uNumber2Str(subPixWinSize_)));
 	customParameters.insert(ParametersPair(Parameters::kKpSubPixIterations(), uNumber2Str(subPixIterations_)));
 	customParameters.insert(ParametersPair(Parameters::kKpSubPixEps(), uNumber2Str(subPixEps_)));
@@ -482,7 +468,11 @@ OdometryOpticalFlow::OdometryOpticalFlow(const ParametersMap & parameters) :
 	flowIterations_(Parameters::defaultOdomFlowIterations()),
 	flowEps_(Parameters::defaultOdomFlowEps()),
 	flowMaxLevel_(Parameters::defaultOdomFlowMaxLevel()),
-	stereoMaxSlope_(Parameters::defaultOdomStereoMaxSlope()),
+	stereoWinSize_(Parameters::defaultStereoWinSize()),
+	stereoIterations_(Parameters::defaultStereoIterations()),
+	stereoEps_(Parameters::defaultStereoEps()),
+	stereoMaxLevel_(Parameters::defaultStereoMaxLevel()),
+	stereoMaxSlope_(Parameters::defaultStereoMaxSlope()),
 	subPixWinSize_(Parameters::defaultOdomSubPixWinSize()),
 	subPixIterations_(Parameters::defaultOdomSubPixIterations()),
 	subPixEps_(Parameters::defaultOdomSubPixEps()),
@@ -492,7 +482,11 @@ OdometryOpticalFlow::OdometryOpticalFlow(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomFlowIterations(), flowIterations_);
 	Parameters::parse(parameters, Parameters::kOdomFlowEps(), flowEps_);
 	Parameters::parse(parameters, Parameters::kOdomFlowMaxLevel(), flowMaxLevel_);
-	Parameters::parse(parameters, Parameters::kOdomStereoMaxSlope(), stereoMaxSlope_);
+	Parameters::parse(parameters, Parameters::kStereoWinSize(), stereoWinSize_);
+	Parameters::parse(parameters, Parameters::kStereoIterations(), stereoIterations_);
+	Parameters::parse(parameters, Parameters::kStereoEps(), stereoEps_);
+	Parameters::parse(parameters, Parameters::kStereoMaxLevel(), stereoMaxLevel_);
+	Parameters::parse(parameters, Parameters::kStereoMaxSlope(), stereoMaxSlope_);
 	Parameters::parse(parameters, Parameters::kOdomSubPixWinSize(), subPixWinSize_);
 	Parameters::parse(parameters, Parameters::kOdomSubPixIterations(), subPixIterations_);
 	Parameters::parse(parameters, Parameters::kOdomSubPixEps(), subPixEps_);
@@ -613,8 +607,8 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 						lastCornersKeptRight,
 						statusLast,
 						errLast,
-						cv::Size(flowWinSize_, flowWinSize_), flowMaxLevel_,
-						cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, flowIterations_, flowEps_),
+						cv::Size(stereoWinSize_, stereoWinSize_), stereoMaxLevel_,
+						cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, stereoIterations_, stereoEps_),
 						cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
 
 			UDEBUG("");
@@ -643,8 +637,8 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 						newCornersKeptRight,
 						statusNew,
 						errNew,
-						cv::Size(flowWinSize_, flowWinSize_), flowMaxLevel_,
-						cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, flowIterations_, flowEps_),
+						cv::Size(stereoWinSize_, stereoWinSize_), stereoMaxLevel_,
+						cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, stereoIterations_, stereoEps_),
 						cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
 
 			UDEBUG("Getting correspondences begin");

@@ -482,7 +482,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_flow_maxLevel->setObjectName(Parameters::kOdomFlowMaxLevel().c_str());
 	_ui->odom_flow_iterations->setObjectName(Parameters::kOdomFlowIterations().c_str());
 	_ui->odom_flow_eps->setObjectName(Parameters::kOdomFlowEps().c_str());
-	_ui->odom_stereo_maxSlope->setObjectName(Parameters::kOdomStereoMaxSlope().c_str());
 	_ui->odom_subpix_winSize->setObjectName(Parameters::kOdomSubPixWinSize().c_str());
 	_ui->odom_subpix_iterations->setObjectName(Parameters::kOdomSubPixIterations().c_str());
 	_ui->odom_subpix_eps->setObjectName(Parameters::kOdomSubPixEps().c_str());

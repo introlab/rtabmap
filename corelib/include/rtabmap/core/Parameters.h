@@ -169,7 +169,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Kp, BadSignRatio,          float, 0.2, 		"Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
 	RTABMAP_PARAM(Kp, NndrRatio, 	         float, 0.8, 		"NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
 	RTABMAP_PARAM(Kp, DetectorStrategy,      int, 0, 			"0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
-	RTABMAP_PARAM(Kp, TfIdfLikelihoodUsed,   bool, false, 		"Use of the td-idf strategy to compute the likelihood.");
+	RTABMAP_PARAM(Kp, TfIdfLikelihoodUsed,   bool, true, 		"Use of the td-idf strategy to compute the likelihood.");
 	RTABMAP_PARAM(Kp, Parallelized,          bool, true, 		"If the dictionary update and signature creation were parallelized.");
 	RTABMAP_PARAM_STR(Kp, RoiRatios, "0.0 0.0 0.0 0.0", 		"Region of interest ratios [left, right, top, bottom].");
 	RTABMAP_PARAM_STR(Kp, DictionaryPath,    "", 				"Path of the pre-computed dictionary");
@@ -237,7 +237,7 @@ class RTABMAP_EXP Parameters
 	// BayesFilter
 	RTABMAP_PARAM(Bayes, VirtualPlacePriorThr,           float, 0.9, "Virtual place prior");
 	RTABMAP_PARAM_STR(Bayes, PredictionLC, "0.1 0.36 0.30 0.16 0.062 0.0151 0.00255 0.000324 2.5e-05 1.3e-06 4.8e-08 1.2e-09 1.9e-11 2.2e-13 1.7e-15 8.5e-18 2.9e-20 6.9e-23", "Prediction of loop closures (Gaussian-like, here with sigma=1.6) - Format: {VirtualPlaceProb, LoopClosureProb, NeighborLvl1, NeighborLvl2, ...}.");
-	RTABMAP_PARAM(Bayes, FullPredictionUpdate,           bool, true, "Regenerate all the prediction matrix on each iteration (otherwise only removed/added ids are updated).");
+	RTABMAP_PARAM(Bayes, FullPredictionUpdate,           bool, false, "Regenerate all the prediction matrix on each iteration (otherwise only removed/added ids are updated).");
 
 	// Verify hypotheses
 	RTABMAP_PARAM(VhEp, MatchCountMin, int, 8, 		"Minimum of matching visual words pairs to accept the loop hypothesis.");
@@ -266,14 +266,14 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, LinearUpdate,           float, 0.0, 	"Min linear displacement to update odometry.");
 	RTABMAP_PARAM(Odom, AngularUpdate,          float, 0.0, 	"Min angular displacement to update odometry.");
 	RTABMAP_PARAM(Odom, MaxFeatures,            int, 0, 		"0 no limits.");
-	RTABMAP_PARAM(Odom, InlierDistance,         float, 0.01, 	"Maximum distance for visual word correspondences.");
+	RTABMAP_PARAM(Odom, InlierDistance,         float, 0.02, 	"Maximum distance for visual word correspondences.");
 	RTABMAP_PARAM(Odom, MinInliers,             int, 20, 		"Minimum visual word correspondences to compute geometry transform.");
 	RTABMAP_PARAM(Odom, Iterations,             int, 30, 		"Maximum iterations to compute the transform from visual words.");
+	RTABMAP_PARAM(Odom, RefineIterations,       int, 5,        "Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
 	RTABMAP_PARAM(Odom, MaxDepth,               float, 4.0, 	"Max depth of the words (0 means no limit).");
 	RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,         "Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).");
 	RTABMAP_PARAM_STR(Odom, RoiRatios,          "0.0 0.0 0.0 0.0", "Region of interest ratios [left, right, top, bottom].");
-	RTABMAP_PARAM(Odom, RefineIterations,       int, 5,        "Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
-	RTABMAP_PARAM(Odom, FeaturesRatio,          float, 0.5, 	"Minimum ratio of keypoints between the current image and the last image to compute odometry.");
+	RTABMAP_PARAM(Odom, FeaturesRatio,          float, 0.0, 	"Minimum ratio of keypoints between the current image and the last image to compute odometry.");
 
 	// Odometry Bag-of-words
 	RTABMAP_PARAM(OdomBow, LocalHistorySize,       int, 1000,      "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
@@ -281,23 +281,21 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(OdomBow, NNDR,                   float, 0.8,  "NNDR: nearest neighbor distance ratio.");
 
 	// Odometry common stuff between BOW and Optical Flow approaches
-	RTABMAP_PARAM(OdomFlow, WinSize,               int, 9,       "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(OdomFlow, Iterations,            int, 20,       "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(OdomFlow, Eps,                   double, 0.02,  "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(OdomFlow, MaxLevel,              int, 4,        "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, WinSize,               int, 16,       "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, Iterations,            int, 30,       "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, Eps,                   double, 0.01,  "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, MaxLevel,              int, 3,        "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
 
 	RTABMAP_PARAM(OdomSubPix, WinSize,         int, 3,        "Can be used with BOW and optical flow approaches. See cv::cornerSubPix().");
 	RTABMAP_PARAM(OdomSubPix, Iterations,      int, 0,       "Can be used with BOW and optical flow approaches. See cv::cornerSubPix(). 0 disables sub pixel refining.");
 	RTABMAP_PARAM(OdomSubPix, Eps,             double, 0.02,  "Can be used with BOW and optical flow approaches. See cv::cornerSubPix().");
-
-	RTABMAP_PARAM(OdomStereo, MaxSlope,              float, 0.1,    "The maximum slope for each stereo pairs.");
 
 	// Loop closure constraint
 	RTABMAP_PARAM(LccIcp, Type,            int, 0, 			"0=No ICP, 1=ICP 3D, 2=ICP 2D");
 	RTABMAP_PARAM(LccIcp, MaxDistance,     float, 0.2,     "Maximum ICP correction distance accepted (m).");
 
 	RTABMAP_PARAM(LccBow, MinInliers,      int, 20, 		"Minimum visual word correspondences to compute geometry transform.");
-	RTABMAP_PARAM(LccBow, InlierDistance,  float, 0.01, 	"Maximum distance for visual word correspondences.");
+	RTABMAP_PARAM(LccBow, InlierDistance,  float, 0.02, 	"Maximum distance for visual word correspondences.");
 	RTABMAP_PARAM(LccBow, Iterations,      int, 100, 		"Maximum iterations to compute the transform from visual words.");
 	RTABMAP_PARAM(LccBow, MaxDepth,        float, 4.0, 		"Max depth of the words (0 means no limit).");
 	RTABMAP_PARAM(LccBow, Force2D, 		   bool, false,     "Force 2D transform (3Dof: x,y and yaw).")
@@ -324,10 +322,10 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccIcp2, VoxelSize,       float, 0.005, 			"Voxel size to be used for ICP computation.");
 
 	// Stereo disparity
-	RTABMAP_PARAM(Stereo, WinSize,               int, 9,        "See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(Stereo, Iterations,            int, 20,       "See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(Stereo, Eps,                   double, 0.02,  "See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(Stereo, MaxLevel,              int, 4,        "See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(Stereo, WinSize,               int, 16,        "See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(Stereo, Iterations,            int, 30,       "See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(Stereo, Eps,                   double, 0.01,  "See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(Stereo, MaxLevel,              int, 3,        "See cv::calcOpticalFlowPyrLK().");
 	RTABMAP_PARAM(Stereo, MaxSlope,              float, 0.1,    "The maximum slope for each stereo pairs.");
 
 public:

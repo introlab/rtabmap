@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>736</width>
-            <height>754</height>
+            <width>744</width>
+            <height>932</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -6167,7 +6167,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                      </widget>
                     </item>
                     <item>
-                     <layout class="QGridLayout" name="gridLayout_27" columnstretch="0,1">
+                     <layout class="QGridLayout" name="gridLayout_27" columnstretch="0,0">
                       <item row="4" column="1">
                        <widget class="QLabel" name="label_47">
                         <property name="text">
@@ -6316,7 +6316,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="text">
                          <string>Odometry strategy:
 1-BOW matches features extracted from both frames using nearest neighbor with descriptors, then computes RANSAC transformation estimation with corresponding 3D features.
-2-Optical flow estimates the location of 2D features from last frame to new frame, then computes RANSAC transformation with corresponding 3D features.</string>
+2-Optical flow estimate the location of 2D features from last frame to new frame, then computes RANSAC transformation with corresponding 3D features.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -6821,7 +6821,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                  <item>
                   <widget class="QGroupBox" name="groupBox_odometryFlow3">
                    <property name="title">
-                    <string>Optical Flow / Stereo</string>
+                    <string>Optical Flow</string>
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_53">
                     <item>
@@ -6951,58 +6951,6 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                           <double>0.010000000000000</double>
                          </property>
                         </widget>
-                       </item>
-                      </layout>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QGroupBox" name="groupBox_12">
-                      <property name="title">
-                       <string>Stereo</string>
-                      </property>
-                      <layout class="QVBoxLayout" name="verticalLayout_61">
-                       <item>
-                        <widget class="QLabel" name="label_217">
-                         <property name="text">
-                          <string>Note that when stereo images are used, the same optical flow parameters above are used to estimate the stereo pairs.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <layout class="QGridLayout" name="gridLayout_31" columnstretch="0,1">
-                         <item row="0" column="0">
-                          <widget class="QDoubleSpinBox" name="odom_stereo_maxSlope">
-                           <property name="decimals">
-                            <number>3</number>
-                           </property>
-                           <property name="minimum">
-                            <double>0.001000000000000</double>
-                           </property>
-                           <property name="maximum">
-                            <double>1.000000000000000</double>
-                           </property>
-                           <property name="singleStep">
-                            <double>0.010000000000000</double>
-                           </property>
-                           <property name="value">
-                            <double>0.100000000000000</double>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="0" column="1">
-                          <widget class="QLabel" name="label_196">
-                           <property name="text">
-                            <string>The maximum slope for each stereo pairs. This will filter bad matches from calcOpticalFlowPyrLK().</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
                        </item>
                       </layout>
                      </widget>
