@@ -1133,7 +1133,7 @@ void DatabaseViewer::update(int value,
 
 void DatabaseViewer::updateStereo(const Signature * data)
 {
-	if(ui_->dockWidget_stereoView->isVisible() && !data->getImageRaw().empty() && !data->getDepthRaw().empty() && data->getDepthRaw().type() == CV_8UC1)
+	if(data && ui_->dockWidget_stereoView->isVisible() && !data->getImageRaw().empty() && !data->getDepthRaw().empty() && data->getDepthRaw().type() == CV_8UC1)
 	{
 		cv::Mat leftMono;
 		if(data->getImageRaw().channels() == 3)
@@ -1152,7 +1152,7 @@ void DatabaseViewer::updateStereo(const Signature * data)
 		cv::Rect roi = Feature2D::computeRoi(leftMono, "0.03 0.03 0.04 0.04");
 		ParametersMap parameters;
 		parameters.insert(ParametersPair(Parameters::kGFTTMaxCorners(), "1000"));
-		parameters.insert(ParametersPair(Parameters::kGFTTMinDistance(), "10"));
+		parameters.insert(ParametersPair(Parameters::kGFTTMinDistance(), "5"));
 		Feature2D::Type type = Feature2D::kFeatureGfttBrief;
 		Feature2D * kptDetector = Feature2D::create(type, parameters);
 		kpts = kptDetector->generateKeypoints(leftMono, 0, roi);
@@ -1174,8 +1174,8 @@ void DatabaseViewer::updateStereo(const Signature * data)
 				rightCorners,
 				status,
 				err,
-				cv::Size(21, 21), 4,
-				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 20, 0.02));
+				cv::Size(Parameters::defaultStereoWinSize(), Parameters::defaultStereoWinSize()), Parameters::defaultStereoMaxLevel(),
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, Parameters::defaultStereoIterations(), Parameters::defaultStereoEps()));
 
 		float timeFlow = timer.ticks();
 
@@ -1192,7 +1192,7 @@ void DatabaseViewer::updateStereo(const Signature * data)
 				float disparity = leftCorners[i].x - rightCorners[i].x;
 				if(disparity > 0.0f)
 				{
-					if(fabs((leftCorners[i].y-rightCorners[i].y) / (leftCorners[i].x-rightCorners[i].x)) < 0.1)
+					if(fabs((leftCorners[i].y-rightCorners[i].y) / (leftCorners[i].x-rightCorners[i].x)) < Parameters::defaultStereoMaxSlope())
 					{
 						pcl::PointXYZ tmpPt = util3d::projectDisparityTo3D(
 								leftCorners[i],
