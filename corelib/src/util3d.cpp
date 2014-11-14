@@ -2834,7 +2834,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 		float yMax = maxY+margin;
 		UDEBUG("map min=(%f, %f) max=(%f,%f)", xMin, yMin, xMax, yMax);
 
-		map = cv::Mat::ones((yMax - yMin) / cellSize, (xMax - xMin) / cellSize, CV_8S)*-1;
+		map = cv::Mat::ones((yMax - yMin) / cellSize + 0.5f, (xMax - xMin) / cellSize + 0.5f, CV_8S)*-1;
 		for(std::map<int, Transform>::const_iterator kter = poses.begin(); kter!=poses.end(); ++kter)
 		{
 			std::map<int, cv::Mat >::iterator iter = emptyLocalMaps.find(kter->first);
@@ -2930,9 +2930,11 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		float xMax = max.x+cellSize;
 		float yMax = max.y+cellSize;
 
+		UDEBUG("map min=(%f, %f) max=(%f,%f)", xMin, yMin, xMax, yMax);
+
 		//UTimer timer;
 
-		map = cv::Mat::ones((yMax - yMin) / cellSize, (xMax - xMin) / cellSize, CV_8S)*-1;
+		map = cv::Mat::ones((yMax - yMin) / cellSize + 0.5f, (xMax - xMin) / cellSize + 0.5f, CV_8S)*-1;
 		std::vector<float> maxSquaredLength(localScans.size(), 0.0f);
 		int j=0;
 		for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
