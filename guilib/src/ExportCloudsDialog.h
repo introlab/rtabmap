@@ -52,6 +52,7 @@ public:
 	int getGenerateDecimation() const;
 	double getGenerateVoxel() const;
 	double getGenerateMaxDepth() const;
+	bool getBinaryFile() const;
 	bool getMLS() const;
 	double getMLSRadius() const;
 	bool getMesh() const;

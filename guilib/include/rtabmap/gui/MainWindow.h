@@ -232,9 +232,9 @@ private:
 
 	bool getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans);
 	bool getExportedClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds, std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool toSave);
-	void saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds);
-	void saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes);
-	void saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> & clouds);
+	void saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds, bool binaryMode = true);
+	void saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool binaryMode = true);
+	void saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> & clouds, bool binaryMode = true);
 
 private:
 	Ui_mainWindow * _ui;

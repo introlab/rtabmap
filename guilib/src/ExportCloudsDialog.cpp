@@ -47,11 +47,13 @@ ExportCloudsDialog::~ExportCloudsDialog()
 void ExportCloudsDialog::setSaveButton()
 {
 	_ui->buttonBox->setStandardButtons(QDialogButtonBox::Cancel|QDialogButtonBox::Save);
+	_ui->checkBox_binary->setVisible(true);
 }
 
 void ExportCloudsDialog::setOkButton()
 {
 	_ui->buttonBox->setStandardButtons(QDialogButtonBox::Cancel|QDialogButtonBox::Ok);
+	_ui->checkBox_binary->setVisible(false);
 }
 
 bool ExportCloudsDialog::getAssemble() const
@@ -82,6 +84,11 @@ double ExportCloudsDialog::getGenerateVoxel() const
 double ExportCloudsDialog::getGenerateMaxDepth() const
 {
 	return _ui->doubleSpinBox_maxDepth->value();
+}
+
+bool ExportCloudsDialog::getBinaryFile() const
+{
+	return _ui->checkBox_binary->isChecked();
 }
 
 bool ExportCloudsDialog::getMLS() const

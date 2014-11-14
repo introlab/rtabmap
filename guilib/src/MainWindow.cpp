@@ -3511,7 +3511,16 @@ void MainWindow::exportScans()
 	{
 		if(scans.size())
 		{
-			this->saveScans(scans);
+			QMessageBox::StandardButton b = QMessageBox::question(this,
+						tr("Binary file?"),
+						tr("Do you want to save in binary mode?"),
+						QMessageBox::No | QMessageBox::Yes,
+						QMessageBox::Yes);
+
+			if(b == QMessageBox::No || b == QMessageBox::Yes)
+			{
+				this->saveScans(scans, b == QMessageBox::Yes);
+			}
 		}
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
 	}
@@ -3657,11 +3666,11 @@ void MainWindow::exportClouds()
 	{
 		if(meshes.size())
 		{
-			saveMeshes(meshes);
+			saveMeshes(meshes, _exportDialog->getBinaryFile());
 		}
 		else
 		{
-			saveClouds(clouds);
+			saveClouds(clouds, _exportDialog->getBinaryFile());
 		}
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
 	}
@@ -3886,7 +3895,7 @@ void MainWindow::dataRecorder()
 
 //END ACTIONS
 
-void MainWindow::saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds)
+void MainWindow::saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds, bool binaryMode)
 {
 	if(clouds.size() == 1)
 	{
@@ -3900,17 +3909,17 @@ void MainWindow::saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB
 				bool success =false;
 				if(QFileInfo(path).suffix() == "pcd")
 				{
-					success = pcl::io::savePCDFile(path.toStdString(), *clouds.begin()->second) == 0;
+					success = pcl::io::savePCDFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
 				}
 				else if(QFileInfo(path).suffix() == "ply")
 				{
-					success = pcl::io::savePLYFile(path.toStdString(), *clouds.begin()->second) == 0;
+					success = pcl::io::savePLYFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
 				}
 				else if(QFileInfo(path).suffix() == "")
 				{
 					//use ply by default
 					path += ".ply";
-					success = pcl::io::savePCDFile(path.toStdString(), *clouds.begin()->second) == 0;
+					success = pcl::io::savePLYFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
 				}
 				else
 				{
@@ -3962,11 +3971,11 @@ void MainWindow::saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB
 							bool success =false;
 							if(suffix == "pcd")
 							{
-								success = pcl::io::savePCDFile(pathFile.toStdString(), *transformedCloud) == 0;
+								success = pcl::io::savePCDFile(pathFile.toStdString(), *transformedCloud, binaryMode) == 0;
 							}
 							else if(suffix == "ply")
 							{
-								success = pcl::io::savePLYFile(pathFile.toStdString(), *transformedCloud) == 0;
+								success = pcl::io::savePLYFile(pathFile.toStdString(), *transformedCloud, binaryMode) == 0;
 							}
 							else
 							{
@@ -3994,7 +4003,7 @@ void MainWindow::saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB
 	}
 }
 
-void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes)
+void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool binaryMode)
 {
 	if(meshes.size() == 1)
 	{
@@ -4008,13 +4017,13 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes)
 				bool success =false;
 				if(QFileInfo(path).suffix() == "ply")
 				{
-					success = pcl::io::savePLYFile(path.toStdString(), *meshes.begin()->second) == 0;
+					success = pcl::io::savePLYFile(path.toStdString(), *meshes.begin()->second, binaryMode) == 0;
 				}
 				else if(QFileInfo(path).suffix() == "")
 				{
 					//default ply
 					path += ".ply";
-					success = pcl::io::savePLYFile(path.toStdString(), *meshes.begin()->second) == 0;
+					success = pcl::io::savePLYFile(path.toStdString(), *meshes.begin()->second, binaryMode) == 0;
 				}
 				else
 				{
@@ -4064,7 +4073,7 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes)
 						bool success =false;
 						if(suffix == "ply")
 						{
-							success = pcl::io::savePLYFile(pathFile.toStdString(), mesh) == 0;
+							success = pcl::io::savePLYFile(pathFile.toStdString(), mesh, binaryMode) == 0;
 						}
 						else
 						{
@@ -4093,7 +4102,7 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes)
 	}
 }
 
-void MainWindow::saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> & scans)
+void MainWindow::saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> & scans, bool binaryMode)
 {
 	if(scans.size() == 1)
 	{
@@ -4107,17 +4116,17 @@ void MainWindow::saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::P
 				bool success =false;
 				if(QFileInfo(path).suffix() == "pcd")
 				{
-					success = pcl::io::savePCDFile(path.toStdString(), *scans.begin()->second) == 0;
+					success = pcl::io::savePCDFile(path.toStdString(), *scans.begin()->second, binaryMode) == 0;
 				}
 				else if(QFileInfo(path).suffix() == "ply")
 				{
-					success = pcl::io::savePLYFile(path.toStdString(), *scans.begin()->second) == 0;
+					success = pcl::io::savePLYFile(path.toStdString(), *scans.begin()->second, binaryMode) == 0;
 				}
 				else if(QFileInfo(path).suffix() == "")
 				{
 					//use ply by default
 					path += ".ply";
-					success = pcl::io::savePCDFile(path.toStdString(), *scans.begin()->second) == 0;
+					success = pcl::io::savePLYFile(path.toStdString(), *scans.begin()->second, binaryMode) == 0;
 				}
 				else
 				{
@@ -4169,11 +4178,11 @@ void MainWindow::saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::P
 							bool success =false;
 							if(suffix == "pcd")
 							{
-								success = pcl::io::savePCDFile(pathFile.toStdString(), *transformedCloud) == 0;
+								success = pcl::io::savePCDFile(pathFile.toStdString(), *transformedCloud, binaryMode) == 0;
 							}
 							else if(suffix == "ply")
 							{
-								success = pcl::io::savePLYFile(pathFile.toStdString(), *transformedCloud) == 0;
+								success = pcl::io::savePLYFile(pathFile.toStdString(), *transformedCloud, binaryMode) == 0;
 							}
 							else
 							{

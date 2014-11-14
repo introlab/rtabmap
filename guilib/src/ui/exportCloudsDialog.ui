@@ -149,6 +149,16 @@
     </widget>
    </item>
    <item>
+    <widget class="QCheckBox" name="checkBox_binary">
+     <property name="text">
+      <string>Binary file</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QGroupBox" name="groupBox_mls">
      <property name="title">
       <string>Mesh smoothing using Moving Least Squares algorithm (MLS)</string>
