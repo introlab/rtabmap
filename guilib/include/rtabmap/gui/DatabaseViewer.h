@@ -109,7 +109,8 @@ private:
 	void updateWordsMatching();
 	void updateConstraintView(const rtabmap::Link & link,
 			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudFrom = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>),
-			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudTo = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>));
+			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudTo = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>),
+			bool updateImageSliders = true);
 	void updateConstraintButtons();
 	Link findActiveLink(int from, int to);
 	bool containsLink(

@@ -1081,7 +1081,13 @@ void DatabaseViewer::update(int value,
 				{
 					if(i != ui_->horizontalSlider_loops->value())
 					{
+						ui_->horizontalSlider_loops->blockSignals(true);
 						ui_->horizontalSlider_loops->setValue(i);
+						ui_->horizontalSlider_loops->blockSignals(false);
+						this->updateConstraintView(loopLinks_.at(i),
+								pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>),
+								pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>),
+								false);
 					}
 					ui_->horizontalSlider_neighbors->blockSignals(true);
 					ui_->horizontalSlider_neighbors->setValue(0);
@@ -1097,7 +1103,13 @@ void DatabaseViewer::update(int value,
 				{
 					if(i != ui_->horizontalSlider_neighbors->value())
 					{
+						ui_->horizontalSlider_neighbors->blockSignals(true);
 						ui_->horizontalSlider_neighbors->setValue(i);
+						ui_->horizontalSlider_neighbors->blockSignals(false);
+						this->updateConstraintView(neighborLinks_.at(i),
+								pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>),
+								pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>),
+								false);
 					}
 					ui_->horizontalSlider_loops->blockSignals(true);
 					ui_->horizontalSlider_loops->setValue(0);
@@ -1386,7 +1398,8 @@ void DatabaseViewer::sliderLoopValueChanged(int value)
 
 void DatabaseViewer::updateConstraintView(const rtabmap::Link & link,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudFrom,
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudTo)
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudTo,
+		bool updateImageSliders)
 {
 	std::multimap<int, Link>::iterator iter = util3d::findLink(linksRefined_, link.from(), link.to());
 	rtabmap::Transform t = link.transform();
@@ -1400,42 +1413,45 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & link,
 
 	ui_->label_constraint->setText(t.prettyPrint().c_str());
 
-	bool updateA = false;
-	bool updateB = false;
-	ui_->horizontalSlider_A->blockSignals(true);
-	ui_->horizontalSlider_B->blockSignals(true);
-	// set from on left and to on right
-	if(ui_->horizontalSlider_A->value() != idToIndex_.value(link.from()))
+	if(updateImageSliders)
 	{
-		ui_->horizontalSlider_A->setValue(idToIndex_.value(link.from()));
-		updateA=true;
-	}
-	if(ui_->horizontalSlider_B->value() != idToIndex_.value(link.to()))
-	{
-		ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
-		updateB=true;
-	}
-	ui_->horizontalSlider_A->blockSignals(false);
-	ui_->horizontalSlider_B->blockSignals(false);
-	if(updateA)
-	{
-		this->update(idToIndex_.value(link.from()),
-					ui_->label_indexA,
-					ui_->label_parentsA,
-					ui_->label_childrenA,
-					ui_->graphicsView_A,
-					ui_->label_idA,
-					false); // don't update constraints view!
-	}
-	if(updateB)
-	{
-		this->update(idToIndex_.value(link.to()),
-					ui_->label_indexB,
-					ui_->label_parentsB,
-					ui_->label_childrenB,
-					ui_->graphicsView_B,
-					ui_->label_idB,
-					false); // don't update constraints view!
+		bool updateA = false;
+		bool updateB = false;
+		ui_->horizontalSlider_A->blockSignals(true);
+		ui_->horizontalSlider_B->blockSignals(true);
+		// set from on left and to on right
+		if(ui_->horizontalSlider_A->value() != idToIndex_.value(link.from()))
+		{
+			ui_->horizontalSlider_A->setValue(idToIndex_.value(link.from()));
+			updateA=true;
+		}
+		if(ui_->horizontalSlider_B->value() != idToIndex_.value(link.to()))
+		{
+			ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
+			updateB=true;
+		}
+		ui_->horizontalSlider_A->blockSignals(false);
+		ui_->horizontalSlider_B->blockSignals(false);
+		if(updateA)
+		{
+			this->update(idToIndex_.value(link.from()),
+						ui_->label_indexA,
+						ui_->label_parentsA,
+						ui_->label_childrenA,
+						ui_->graphicsView_A,
+						ui_->label_idA,
+						false); // don't update constraints view!
+		}
+		if(updateB)
+		{
+			this->update(idToIndex_.value(link.to()),
+						ui_->label_indexB,
+						ui_->label_parentsB,
+						ui_->label_childrenB,
+						ui_->graphicsView_B,
+						ui_->label_idB,
+						false); // don't update constraints view!
+		}
 	}
 
 	if(ui_->constraintsViewer->isVisible())
