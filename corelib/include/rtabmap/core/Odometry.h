@@ -89,6 +89,7 @@ private:
 	float _linearUpdate;
 	float _angularUpdate;
 	int _resetCountdown;
+	bool _force2D;
 	Transform _pose;
 	int _resetCurrentCount;
 

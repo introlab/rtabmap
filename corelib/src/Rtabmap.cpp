@@ -91,7 +91,7 @@ Rtabmap::Rtabmap() :
 	_newMapOdomChangeDistance(Parameters::defaultRGBDNewMapOdomChangeDistance()),
 	_globalLoopClosureIcpType(Parameters::defaultLccIcpType()),
 	_globalLoopClosureIcpMaxDistance(Parameters::defaultLccIcpMaxDistance()),
-	_scanMatchingSize(Parameters::defaultRGBDScanMatchingSize()),
+	_poseScanMatching(Parameters::defaultRGBDPoseScanMatching()),
 	_localLoopClosureDetectionTime(Parameters::defaultRGBDLocalLoopDetectionTime()),
 	_localLoopClosureDetectionSpace(Parameters::defaultRGBDLocalLoopDetectionSpace()),
 	_localDetectRadius(Parameters::defaultRGBDLocalLoopDetectionRadius()),
@@ -350,7 +350,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rgbdLinearUpdate);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rgbdAngularUpdate);
 	Parameters::parse(parameters, Parameters::kRGBDNewMapOdomChangeDistance(), _newMapOdomChangeDistance);
-	Parameters::parse(parameters, Parameters::kRGBDScanMatchingSize(), _scanMatchingSize);
+	Parameters::parse(parameters, Parameters::kRGBDPoseScanMatching(), _poseScanMatching);
 	Parameters::parse(parameters, Parameters::kLccIcpMaxDistance(), _globalLoopClosureIcpMaxDistance);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionTime(), _localLoopClosureDetectionTime);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionSpace(), _localLoopClosureDetectionSpace);
@@ -856,54 +856,31 @@ bool Rtabmap::process(const SensorData & data)
 		//============================================================
 		// Scan matching
 		//============================================================
-		if(_scanMatchingSize>0 &&
+		if(_poseScanMatching &&
 			signature->getNeighbors().size() == 1 &&
 			!signature->getDepth2DCompressed().empty() &&
 			rehearsedId == 0) // don't do it if rehearsal happened
 		{
-			UINFO("Odometry correction by scan matching (size=%d)...", _scanMatchingSize);
-			const std::set<int> & stm = _memory->getStMem();
-			std::map<int, Transform> poses;
-			int count = _scanMatchingSize;
-			for(std::set<int>::const_reverse_iterator iter = stm.rbegin(); iter!=stm.rend() && count>0; ++iter)
-			{
-				if(_memory->getSignature(*iter)->mapId() == signature->mapId())
-				{
-					std::map<int, Transform>::iterator jter = _optimizedPoses.find(*iter);
-					UASSERT_MSG(jter != _optimizedPoses.end(), uFormat("%d not found in optimized poses!", *iter).c_str());
-					poses.insert(*jter);
-					if(*iter != signature->id())
-					{
-						--count;
-					}
-				}
-			}
-
+			UINFO("Odometry correction by scan matching");
 			int oldId = signature->getNeighbors().begin()->first;
-			if(poses.size())
+			const Signature * oldS = _memory->getSignature(oldId);
+			UASSERT(oldS != 0);
+			std::string rejectedMsg;
+			Transform guess = signature->getNeighbors().begin()->second;
+			Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, false, &rejectedMsg);
+			if(!t.isNull())
 			{
-				const Signature * oldS = _memory->getSignature(oldId);
-				UASSERT(oldS != 0);
-				std::string rejectedMsg;
-				Transform t = _memory->computeScanMatchingTransform(signature->id(), oldId, poses, &rejectedMsg);
-				if(!t.isNull())
-				{
-					scanMatchingSuccess = true;
-					UINFO("Scan matching: update neighbor link (%d->%d) from %s to %s",
-							signature->id(),
-							oldId,
-							signature->getNeighbors().at(oldId).prettyPrint().c_str(),
-							t.prettyPrint().c_str());
-					_memory->updateNeighborLink(signature->id(), oldId, t);
-				}
-				else
-				{
-					UWARN("Scan matching rejected: %s", rejectedMsg.c_str());
-				}
+				scanMatchingSuccess = true;
+				UINFO("Scan matching: update neighbor link (%d->%d) from %s to %s",
+						signature->id(),
+						oldId,
+						signature->getNeighbors().at(oldId).prettyPrint().c_str(),
+						t.prettyPrint().c_str());
+				_memory->updateNeighborLink(signature->id(), oldId, t);
 			}
 			else
 			{
-				UERROR("Poses are empty?!?");
+				UWARN("Scan matching rejected: %s", rejectedMsg.c_str());
 			}
 		}
 		timeScanMatching = timer.ticks();
@@ -1386,43 +1363,50 @@ bool Rtabmap::process(const SensorData & data)
 	   _localLoopClosureDetectionSpace &&
 	   !signature->getDepth2DCompressed().empty())
 	{
-		//============================================================
-		// Scan matching LOCAL LOOP CLOSURE SPACE
-		//============================================================
-		// get all nodes in radius of the current node
-		std::map<int, Transform> poses;
-		localSpaceNearestId = 0;
-		poses = this->getOptimizedWMPosesInRadius(signature->id(), _localDetectMaxNeighbors, _localDetectRadius, _localDetectMaxDiffID, localSpaceNearestId);
-
-		// add current node to poses
-		UASSERT(_optimizedPoses.find(signature->id()) != _optimizedPoses.end());
-		poses.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
-
-		localSpaceDetectionPosesCount = (int)poses.size()-1;
-		//The nearest will be the reference for a loop closure transform
-		if(poses.size() &&
-			localSpaceNearestId &&
-			signature->getChildLoopClosureIds().find(localSpaceNearestId) == signature->getChildLoopClosureIds().end())
+		if(_toroIterations == 0)
 		{
-			std::string rejectedMsg;
-			Transform t = _memory->computeScanMatchingTransform(signature->id(), localSpaceNearestId, poses, &rejectedMsg);
-			if(!t.isNull())
-			{
-				localSpaceClosureId = localSpaceNearestId;
-				UINFO("Add local loop closure in SPACE (%d->%d) %s",
-						signature->id(),
-						localSpaceNearestId,
-						t.prettyPrint().c_str());
-				_memory->addLoopClosureLink(localSpaceNearestId, signature->id(), t, false);
+			UWARN("Cannot do local loop closure detection in space if graph optimization is disabled!");
+		}
+		else
+		{
+			//============================================================
+			// Scan matching LOCAL LOOP CLOSURE SPACE
+			//============================================================
+			// get all nodes in radius of the current node
+			std::map<int, Transform> poses;
+			localSpaceNearestId = 0;
+			poses = this->getOptimizedWMPosesInRadius(signature->id(), _localDetectMaxNeighbors, _localDetectRadius, _localDetectMaxDiffID, localSpaceNearestId);
 
-				// Old map -> new map, used for localization correction on loop closure
-				const Signature * oldS = _memory->getSignature(localSpaceNearestId);
-				UASSERT(oldS != 0);
-				_mapTransform = oldS->getPose() * t.inverse() * signature->getPose().inverse();
-			}
-			else
+			// add current node to poses
+			UASSERT(_optimizedPoses.find(signature->id()) != _optimizedPoses.end());
+			poses.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
+
+			localSpaceDetectionPosesCount = (int)poses.size()-1;
+			//The nearest will be the reference for a loop closure transform
+			if(poses.size() &&
+				localSpaceNearestId &&
+				signature->getChildLoopClosureIds().find(localSpaceNearestId) == signature->getChildLoopClosureIds().end())
 			{
-				UINFO("Local loop closure (space) rejected: %s", rejectedMsg.c_str());
+				std::string rejectedMsg;
+				Transform t = _memory->computeScanMatchingTransform(signature->id(), localSpaceNearestId, poses, &rejectedMsg);
+				if(!t.isNull())
+				{
+					localSpaceClosureId = localSpaceNearestId;
+					UINFO("Add local loop closure in SPACE (%d->%d) %s",
+							signature->id(),
+							localSpaceNearestId,
+							t.prettyPrint().c_str());
+					_memory->addLoopClosureLink(localSpaceNearestId, signature->id(), t, false);
+
+					// Old map -> new map, used for localization correction on loop closure
+					//const Signature * oldS = _memory->getSignature(localSpaceNearestId);
+					//UASSERT(oldS != 0);
+					_mapTransform = poses.at(localSpaceNearestId) * t.inverse() * poses.at(signature->id()).inverse();
+				}
+				else
+				{
+					UINFO("Local loop closure (space) rejected: %s", rejectedMsg.c_str());
+				}
 			}
 		}
 	}

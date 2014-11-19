@@ -2036,6 +2036,7 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 					   hasConverged,
 					   fitness);
 
+				//UWARN("saving ICP2D clouds!");
 				//pcl::io::savePCDFile("lccold.pcd", *oldCloud);
 				//pcl::io::savePCDFile("lccnewguess.pcd", *newCloud);
 				newCloud = util3d::transformPointCloud<pcl::PointXYZ>(newCloud, icpT);
@@ -2147,6 +2148,7 @@ Transform Memory::computeScanMatchingTransform(
 		newCloud = util3d::voxelize<pcl::PointXYZ>(newCloud, _icp2VoxelSize);
 	}
 
+	//UWARN("local scan matching pcd saved!");
 	//pcl::io::savePCDFile("old.pcd", *assembledOldClouds);
 	//pcl::io::savePCDFile("new.pcd", *newCloud);
 
@@ -2183,7 +2185,7 @@ Transform Memory::computeScanMatchingTransform(
 		{
 			transform = poses.at(newId).inverse()*icpT.inverse() * poses.at(oldId);
 
-			//newCloud = util3d::cvMat2Cloud(util3d::uncompressData(newS->getDepth2D()), poses.at(oldId)*transform.inverse());
+			//newCloud = util3d::cvMat2Cloud(util3d::uncompressData(newS->getDepth2DCompressed()), poses.at(oldId)*transform.inverse());
 			//pcl::io::savePCDFile("newFinal.pcd", *newCloud);
 		}
 		else

@@ -68,6 +68,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_linearUpdate(Parameters::defaultOdomLinearUpdate()),
 		_angularUpdate(Parameters::defaultOdomAngularUpdate()),
 		_resetCountdown(Parameters::defaultOdomResetCountdown()),
+		_force2D(Parameters::defaultOdomForce2D()),
 		_pose(Transform::getIdentity()),
 		_resetCurrentCount(0)
 {
@@ -82,12 +83,27 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomMaxDepth(), _maxDepth);
 	Parameters::parse(parameters, Parameters::kOdomMaxFeatures(), _maxFeatures);
 	Parameters::parse(parameters, Parameters::kOdomRoiRatios(), _roiRatios);
+	Parameters::parse(parameters, Parameters::kOdomForce2D(), _force2D);
 }
 
 void Odometry::reset(const Transform & initialPose)
 {
 	_resetCurrentCount = 0;
-	_pose = initialPose;
+	if(_force2D)
+	{
+		float x,y,z, roll,pitch,yaw;
+		initialPose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+		if(z != 0.0f || roll != 0.0f || yaw != 0.0f)
+		{
+			UWARN("Force2D=true and the initial pose contains z, roll or pitch values (%s). They are set to null.", initialPose.prettyPrint().c_str());
+		}
+		Transform pose(x, y, 0, 0, 0, yaw);
+		_pose = pose;
+	}
+	else
+	{
+		_pose = initialPose;
+	}
 }
 
 bool Odometry::isLargeEnoughTransform(const Transform & transform)
@@ -110,7 +126,17 @@ Transform Odometry::process(SensorData & data, int * quality, int * features, in
 	{
 		_resetCurrentCount = _resetCountdown;
 
-		_pose *= t;
+		if(_force2D)
+		{
+			float x,y,z, roll,pitch,yaw;
+			t.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+			_pose *= Transform(x,y,0,0,0,yaw);
+		}
+		else
+		{
+			_pose *= t;
+		}
+
 		return _pose;
 	}
 	else if(_resetCurrentCount > 0)

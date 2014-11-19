@@ -246,7 +246,7 @@ class RTABMAP_EXP Parameters
 
 	// RGB-D SLAM
 	RTABMAP_PARAM(RGBD, Enabled,           bool, true, 	"");
-	RTABMAP_PARAM(RGBD, ScanMatchingSize,  int, 0, 		"Laser scan matching history for odometry correction (laser scans are required). Set to 0 to disable odometry correction.");
+	RTABMAP_PARAM(RGBD, PoseScanMatching,  bool, false, "Laser scan matching for odometry pose correction (laser scans are required).");
 	RTABMAP_PARAM(RGBD, LinearUpdate,      float, 0.0, 	"Min linear displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
 	RTABMAP_PARAM(RGBD, AngularUpdate,     float, 0.0, 	"Min angular displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
 	RTABMAP_PARAM(RGBD, NewMapOdomChangeDistance, float, 0, "A new map is created if a change of odometry translation greater than X m is detected (0 m = disabled).");
@@ -274,6 +274,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,         "Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).");
 	RTABMAP_PARAM_STR(Odom, RoiRatios,          "0.0 0.0 0.0 0.0", "Region of interest ratios [left, right, top, bottom].");
 	RTABMAP_PARAM(Odom, FeaturesRatio,          float, 0.0, 	"Minimum ratio of keypoints between the current image and the last image to compute odometry.");
+	RTABMAP_PARAM(Odom, Force2D, 		        bool, false,     "Force 2D transform (3Dof: x,y and yaw).");
 
 	// Odometry Bag-of-words
 	RTABMAP_PARAM(OdomBow, LocalHistorySize,       int, 1000,      "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
@@ -298,7 +299,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccBow, InlierDistance,  float, 0.02, 	"Maximum distance for visual word correspondences.");
 	RTABMAP_PARAM(LccBow, Iterations,      int, 100, 		"Maximum iterations to compute the transform from visual words.");
 	RTABMAP_PARAM(LccBow, MaxDepth,        float, 4.0, 		"Max depth of the words (0 means no limit).");
-	RTABMAP_PARAM(LccBow, Force2D, 		   bool, false,     "Force 2D transform (3Dof: x,y and yaw).")
+	RTABMAP_PARAM(LccBow, Force2D, 		   bool, false,     "Force 2D transform (3Dof: x,y and yaw).");
 	RTABMAP_PARAM(LccReextract, Activated, bool, false, 	"Activate re-extracting features on global loop closure.");
 	RTABMAP_PARAM(LccReextract, NNType, 	int, 3, 		"kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4.");
 	RTABMAP_PARAM(LccReextract, NNDR, 		float, 0.7, 	"NNDR: nearest neighbor distance ratio.");

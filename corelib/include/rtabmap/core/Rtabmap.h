@@ -150,7 +150,7 @@ private:
 	float _newMapOdomChangeDistance;
 	int _globalLoopClosureIcpType;
 	float _globalLoopClosureIcpMaxDistance;
-	int _scanMatchingSize;
+	bool _poseScanMatching;
 	bool _localLoopClosureDetectionTime;
 	bool _localLoopClosureDetectionSpace;
 	float _localDetectRadius;

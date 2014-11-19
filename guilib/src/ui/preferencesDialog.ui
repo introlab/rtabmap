@@ -65,7 +65,7 @@
             <x>0</x>
             <y>0</y>
             <width>744</width>
-            <height>932</height>
+            <height>1161</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>23</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -4923,7 +4923,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="3" column="1">
                         <widget class="QLabel" name="label_scanMatching">
                          <property name="text">
-                          <string>Laser scan matching history size for odometry correction. Set to 0 to disable odometry correction. ICP 2D only is used here.</string>
+                          <string>Laser scan matching for odometry pose correction. ICP 2D only is used here.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -4931,7 +4931,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </widget>
                        </item>
                        <item row="3" column="0">
-                        <widget class="QSpinBox" name="odomScanHistory"/>
+                        <widget class="QCheckBox" name="odomScanHistory">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
                        </item>
                       </layout>
                      </widget>
@@ -5067,7 +5071,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="0" column="0">
                         <widget class="QSpinBox" name="globalDetection_toroIterations">
                          <property name="minimum">
-                          <number>1</number>
+                          <number>0</number>
                          </property>
                          <property name="maximum">
                           <number>10000</number>
@@ -6317,6 +6321,23 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <string>Odometry strategy:
 1-BOW matches features extracted from both frames using nearest neighbor with descriptors, then computes RANSAC transformation estimation with corresponding 3D features.
 2-Optical flow estimate the location of 2D features from last frame to new frame, then computes RANSAC transformation with corresponding 3D features.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QCheckBox" name="odom_force2D">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_196">
+                        <property name="text">
+                         <string>Force 2D transform (3DoF: x,y and yaw).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>

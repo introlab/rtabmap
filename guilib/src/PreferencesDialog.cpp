@@ -416,7 +416,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->rgdb_linearUpdate->setObjectName(Parameters::kRGBDLinearUpdate().c_str());
 	_ui->rgdb_angularUpdate->setObjectName(Parameters::kRGBDAngularUpdate().c_str());
 	_ui->rgdb_newMapOdomChange->setObjectName(Parameters::kRGBDNewMapOdomChangeDistance().c_str());
-	_ui->odomScanHistory->setObjectName(Parameters::kRGBDScanMatchingSize().c_str());
+	_ui->odomScanHistory->setObjectName(Parameters::kRGBDPoseScanMatching().c_str());
 	_ui->globalDetection_toroIterations->setObjectName(Parameters::kRGBDToroIterations().c_str());
 	_ui->globalDetection_optimizeFromGraphEnd->setObjectName(Parameters::kRGBDOptimizeFromGraphEnd().c_str());
 
@@ -470,6 +470,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_maxDepth->setObjectName(Parameters::kOdomMaxDepth().c_str());
 	_ui->odom_minInliers->setObjectName(Parameters::kOdomMinInliers().c_str());
 	_ui->odom_refine_iterations->setObjectName(Parameters::kOdomRefineIterations().c_str());
+	_ui->odom_force2D->setObjectName(Parameters::kOdomForce2D().c_str());
 	_ui->lineEdit_odom_roi->setObjectName(Parameters::kOdomRoiRatios().c_str());
 
 	//Odometry BOW
