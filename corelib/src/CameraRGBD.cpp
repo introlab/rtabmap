@@ -542,8 +542,8 @@ bool CameraOpenNI2::init()
 
 	if(_color->getCameraSettings())
 	{
-		UINFO("CameraOpenNI2: AutoWhiteBalanceEnabled = %d", _color->getCameraSettings()->getAutoWhiteBalanceEnabled());
-		UINFO("CameraOpenNI2: AutoExposureEnabled = %d", _color->getCameraSettings()->getAutoExposureEnabled());
+		UINFO("CameraOpenNI2: AutoWhiteBalanceEnabled = %d", _color->getCameraSettings()->getAutoWhiteBalanceEnabled()?1:0);
+		UINFO("CameraOpenNI2: AutoExposureEnabled = %d", _color->getCameraSettings()->getAutoExposureEnabled()?1:0);
 #if ONI_VERSION_MAJOR > 2 || (ONI_VERSION_MAJOR==2 && ONI_VERSION_MINOR >= 2)
 		UINFO("CameraOpenNI2: Exposure = %d", _color->getCameraSettings()->getExposure());
 		UINFO("CameraOpenNI2: GAIN = %d", _color->getCameraSettings()->getGain());
