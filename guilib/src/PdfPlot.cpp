@@ -73,11 +73,14 @@ void PdfPlotItem::showDescription(bool shown)
 			if(iter != _signaturesRef->constEnd() && !iter.value().getImageCompressed().empty())
 			{
 				cv::Mat image;
-				iter.value().uncompressData(&image, 0, 0);
-				img = uCvMat2QImage(iter.value().getImageRaw());
-				QPixmap scaled = QPixmap::fromImage(img).scaledToWidth(128);
-				_img = new QGraphicsPixmapItem(scaled, this);
-				_img->setVisible(false);
+				iter.value().uncompressDataConst(&image, 0, 0);
+				if(!image.empty())
+				{
+					img = uCvMat2QImage(image);
+					QPixmap scaled = QPixmap::fromImage(img).scaledToWidth(128);
+					_img = new QGraphicsPixmapItem(scaled, this);
+					_img->setVisible(false);
+				}
 			}
 		}
 

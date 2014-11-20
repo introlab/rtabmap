@@ -4294,7 +4294,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::getAssembledCloud(
 			{
 				const Signature & s = _cachedSignatures.find(iter->first).value();
 				cv::Mat image, depth;
-				s.uncompressData(&image, &depth, 0);
+				s.uncompressDataConst(&image, &depth, 0);
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 				if(regenerateClouds)
 				{
@@ -4380,7 +4380,7 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
 			{
 				const Signature & s = _cachedSignatures.find(iter->first).value();
 				cv::Mat image, depth;
-				s.uncompressData(&image, &depth, 0);
+				s.uncompressDataConst(&image, &depth, 0);
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 				if(regenerateClouds)
 				{

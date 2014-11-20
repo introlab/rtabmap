@@ -247,7 +247,24 @@ void Signature::uncompressData()
 	uncompressData(&_imageRaw, &_depthRaw, &_depth2DRaw);
 }
 
-void Signature::uncompressData(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * depth2DRaw) const
+void Signature::uncompressData(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * depth2DRaw)
+{
+	uncompressDataConst(imageRaw, depthRaw, depth2DRaw);
+	if(imageRaw && !imageRaw->empty() && _imageRaw.empty())
+	{
+		_imageRaw = *imageRaw;
+	}
+	if(depthRaw && !depthRaw->empty() && _depthRaw.empty())
+	{
+		_depthRaw = *depthRaw;
+	}
+	if(depth2DRaw && !depth2DRaw->empty() && _depth2DRaw.empty())
+	{
+		_depth2DRaw = *depth2DRaw;
+	}
+}
+
+void Signature::uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * depth2DRaw) const
 {
 	if(imageRaw)
 	{
