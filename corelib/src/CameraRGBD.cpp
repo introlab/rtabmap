@@ -52,6 +52,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #ifdef WITH_OPENNI2
+#include <OniVersion.h>
 #include <OpenNI.h>
 #endif
 
@@ -336,6 +337,15 @@ bool CameraOpenNI2::available()
 #endif
 }
 
+bool CameraOpenNI2::exposureGainAvailable()
+{
+#if ONI_VERSION_MAJOR > 2 || (ONI_VERSION_MAJOR==2 && ONI_VERSION_MINOR >= 2)
+	return true;
+#else
+	return false;
+#endif
+}
+
 CameraOpenNI2::CameraOpenNI2(float imageRate, const rtabmap::Transform & localTransform, float fx, float fy, float cx, float cy) :
 	CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
 #ifdef WITH_OPENNI2
@@ -366,6 +376,66 @@ CameraOpenNI2::~CameraOpenNI2()
 	delete _color;
 	delete _depth;
 #endif
+}
+
+bool CameraOpenNI2::setAutoWhiteBalance(bool enabled)
+{
+#ifdef WITH_OPENNI2
+	if(_color && _color->getCameraSettings())
+	{
+		return _color->getCameraSettings()->setAutoWhiteBalanceEnabled(enabled) == openni::STATUS_OK;
+	}
+#else
+	UERROR("CameraOpenNI2: RTAB-Map is not built with OpenNI2 support!");
+#endif
+	return false;
+}
+
+bool CameraOpenNI2::setAutoExposure(bool enabled)
+{
+#ifdef WITH_OPENNI2
+	if(_color && _color->getCameraSettings())
+	{
+		return _color->getCameraSettings()->setAutoExposureEnabled(enabled) == openni::STATUS_OK;
+	}
+#else
+	UERROR("CameraOpenNI2: RTAB-Map is not built with OpenNI2 support!");
+#endif
+	return false;
+}
+
+bool CameraOpenNI2::setExposure(int value)
+{
+#ifdef WITH_OPENNI2
+#if ONI_VERSION_MAJOR > 2 || (ONI_VERSION_MAJOR==2 && ONI_VERSION_MINOR >= 2)
+	if(_color && _color->getCameraSettings())
+	{
+		return _color->getCameraSettings()->setExposure(value) == openni::STATUS_OK;
+	}
+#else
+	UERROR("CameraOpenNI2: OpenNI >= 2.2 required to use this method.");
+#endif
+#else
+	UERROR("CameraOpenNI2: RTAB-Map is not built with OpenNI2 support!");
+#endif
+	return false;
+}
+
+bool CameraOpenNI2::setGain(int value)
+{
+#ifdef WITH_OPENNI2
+#if ONI_VERSION_MAJOR > 2 || (ONI_VERSION_MAJOR==2 && ONI_VERSION_MINOR >= 2)
+	if(_color && _color->getCameraSettings())
+	{
+		return _color->getCameraSettings()->setGain(value) == openni::STATUS_OK;
+	}
+#else
+	UERROR("CameraOpenNI2: OpenNI >= 2.2 required to use this method.");
+#endif
+#else
+	UERROR("CameraOpenNI2: RTAB-Map is not built with OpenNI2 support!");
+#endif
+	return false;
 }
 
 bool CameraOpenNI2::init()
@@ -469,6 +539,16 @@ bool CameraOpenNI2::init()
 			_depth->getVideoMode().getResolutionY(),
 			_depth->getHorizontalFieldOfView(),
 			_depth->getVerticalFieldOfView());
+
+	if(_color->getCameraSettings())
+	{
+		UINFO("CameraOpenNI2: AutoWhiteBalanceEnabled = %d", _color->getCameraSettings()->getAutoWhiteBalanceEnabled());
+		UINFO("CameraOpenNI2: AutoExposureEnabled = %d", _color->getCameraSettings()->getAutoExposureEnabled());
+#if ONI_VERSION_MAJOR > 2 || (ONI_VERSION_MAJOR==2 && ONI_VERSION_MINOR >= 2)
+		UINFO("CameraOpenNI2: Exposure = %d", _color->getCameraSettings()->getExposure());
+		UINFO("CameraOpenNI2: GAIN = %d", _color->getCameraSettings()->getGain());
+#endif
+	}
 
 	bool registered = true;
 	if(registered)

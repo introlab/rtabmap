@@ -114,6 +114,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #endif
 
 	_ui->predictionPlot->showLegend(false);
+	_ui->groupBox_openni2->setVisible(false);
 
 	QButtonGroup * buttonGroup = new QButtonGroup(this);
 	buttonGroup->addButton(_ui->radioButton_basic);
@@ -252,7 +253,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->radioButton_opennicv->setEnabled(CameraOpenNICV::available());
 	_ui->radioButton_opennicvasus->setEnabled(CameraOpenNICV::available());
 	connect(_ui->radioButton_openni2, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->radioButton_openni2, SIGNAL(toggled(bool)), this, SLOT(showOpenNI2GroupBox(bool)));
 	_ui->radioButton_openni2->setEnabled(CameraOpenNI2::available());
+	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
+	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
+	connect(_ui->openni2_autoWhiteBalance, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->openni2_autoExposure, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->openni2_exposure, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->openni2_gain, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniDevice, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniLocalTransform, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_openniFx, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
@@ -856,6 +864,10 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->radioButton_openni2->setChecked(false);
 		_ui->radioButton_opennicv->setChecked(false);
 		_ui->radioButton_opennicvasus->setChecked(false);
+		_ui->openni2_autoWhiteBalance->setChecked(true);
+		_ui->openni2_autoExposure->setChecked(true);
+		_ui->openni2_exposure->setValue(0);
+		_ui->openni2_gain->setValue(100);
 		_ui->lineEdit_openniDevice->setText("");
 		_ui->lineEdit_openniLocalTransform->setText("0 0 0 -PI_2 0 -PI_2");
 		_ui->doubleSpinBox_openniFx->setValue(0.0);
@@ -1111,6 +1123,10 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->radioButton_openni2->setChecked(settings.value("openni2", _ui->radioButton_openni2->isChecked()).toBool());
 	_ui->radioButton_opennicv->setChecked(settings.value("openniCvType", _ui->radioButton_opennicv->isChecked()).toBool());
 	_ui->radioButton_opennicvasus->setChecked(settings.value("openniCvAsusType", _ui->radioButton_opennicvasus->isChecked()).toBool());
+	_ui->openni2_autoWhiteBalance->setChecked(settings.value("openni2AutoWhiteBalance", _ui->openni2_autoWhiteBalance->isChecked()).toBool());
+	_ui->openni2_autoExposure->setChecked(settings.value("openni2AutoExposure", _ui->openni2_autoExposure->isChecked()).toBool());
+	_ui->openni2_exposure->setValue(settings.value("openni2Exposure", _ui->openni2_exposure->value()).toInt());
+	_ui->openni2_gain->setValue(settings.value("openni2Gain", _ui->openni2_gain->value()).toInt());
 	_ui->lineEdit_openniDevice->setText(settings.value("device",_ui->lineEdit_openniDevice->text()).toString());
 	_ui->lineEdit_openniLocalTransform->setText(settings.value("localTransform",_ui->lineEdit_openniLocalTransform->text()).toString());
 	_ui->doubleSpinBox_openniFx->setValue(settings.value("fx", _ui->doubleSpinBox_openniFx->value()).toDouble());
@@ -1354,6 +1370,10 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath)
 	settings.setValue("openni2", 		_ui->radioButton_openni2->isChecked());
 	settings.setValue("openniCvType", 	_ui->radioButton_opennicv->isChecked());
 	settings.setValue("openniCvAsusType", 	_ui->radioButton_opennicvasus->isChecked());
+	settings.setValue("openni2AutoWhiteBalance", _ui->openni2_autoWhiteBalance->isChecked());
+	settings.setValue("openni2AutoExposure", 	_ui->openni2_autoExposure->isChecked());
+	settings.setValue("openni2Exposure", 		_ui->openni2_exposure->value());
+	settings.setValue("openni2Gain", 			_ui->openni2_gain->value());
 	settings.setValue("device", 		_ui->lineEdit_openniDevice->text());
 	settings.setValue("localTransform", _ui->lineEdit_openniLocalTransform->text());
 	settings.setValue("fx", _ui->doubleSpinBox_openniFx->value());
@@ -2489,6 +2509,11 @@ void PreferencesDialog::changeDictionaryPath()
 	}
 }
 
+void PreferencesDialog::showOpenNI2GroupBox(bool shown)
+{
+	_ui->groupBox_openni2->setVisible(shown);
+}
+
 /*** GETTERS ***/
 //General
 int PreferencesDialog::getGeneralLoggerLevel() const
@@ -2739,6 +2764,22 @@ PreferencesDialog::Src PreferencesDialog::getSourceRGBD() const
 		return kSrcOpenNI_PCL;
 	}
 }
+bool PreferencesDialog::getSourceOpenni2AutoWhiteBalance() const
+{
+	return _ui->openni2_autoWhiteBalance->isChecked();
+}
+bool PreferencesDialog::getSourceOpenni2AutoExposure() const
+{
+	return _ui->openni2_autoExposure->isChecked();
+}
+int PreferencesDialog::getSourceOpenni2Exposure() const
+{
+	return _ui->openni2_exposure->value();
+}
+int PreferencesDialog::getSourceOpenni2Gain() const
+{
+	return _ui->openni2_gain->value();
+}
 QString PreferencesDialog::getSourceOpenniDevice() const
 {
 	return _ui->lineEdit_openniDevice->text();
@@ -2988,6 +3029,16 @@ void PreferencesDialog::testOdometry(int type)
 		delete camera;
 		camera = 0;
 	}
+	else if(this->getSourceRGBD() == kSrcOpenNI2)
+	{
+		((CameraOpenNI2*)camera)->setAutoWhiteBalance(getSourceOpenni2AutoWhiteBalance());
+		((CameraOpenNI2*)camera)->setAutoExposure(getSourceOpenni2AutoExposure());
+		if(CameraOpenNI2::exposureGainAvailable())
+		{
+			((CameraOpenNI2*)camera)->setExposure(getSourceOpenni2Exposure());
+			((CameraOpenNI2*)camera)->setGain(getSourceOpenni2Gain());
+		}
+	}
 
 
 	if(camera)
@@ -3143,6 +3194,16 @@ void PreferencesDialog::testRGBDCamera()
 		delete camera;
 		camera = 0;
 	}
+	else if(this->getSourceRGBD() == kSrcOpenNI2)
+	{
+		((CameraOpenNI2*)camera)->setAutoWhiteBalance(getSourceOpenni2AutoWhiteBalance());
+		((CameraOpenNI2*)camera)->setAutoExposure(getSourceOpenni2AutoExposure());
+		if(CameraOpenNI2::exposureGainAvailable())
+		{
+			((CameraOpenNI2*)camera)->setExposure(getSourceOpenni2Exposure());
+			((CameraOpenNI2*)camera)->setGain(getSourceOpenni2Gain());
+		}
+	}
 
 
 	if(camera)
@@ -3228,6 +3289,16 @@ void PreferencesDialog::calibrate()
 			   tr("RGBD camera initialization failed!"));
 		delete camera;
 		camera = 0;
+	}
+	else if(this->getSourceRGBD() == kSrcOpenNI2)
+	{
+		((CameraOpenNI2*)camera)->setAutoWhiteBalance(getSourceOpenni2AutoWhiteBalance());
+		((CameraOpenNI2*)camera)->setAutoExposure(getSourceOpenni2AutoExposure());
+		if(CameraOpenNI2::exposureGainAvailable())
+		{
+			((CameraOpenNI2*)camera)->setExposure(getSourceOpenni2Exposure());
+			((CameraOpenNI2*)camera)->setGain(getSourceOpenni2Gain());
+		}
 	}
 
 

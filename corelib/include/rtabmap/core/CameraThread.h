@@ -59,6 +59,9 @@ public:
 	bool isCapturing() const {return this->isRunning();}
 	void setImageRate(float imageRate);
 
+	Camera * camera() {return _camera;} // return null if not set, valid until CameraThread is deleted
+	CameraRGBD * cameraRGBD() {return _cameraRGBD;} // return null if not set, valid until CameraThread is deleted
+
 private:
 	virtual void mainLoop();
 

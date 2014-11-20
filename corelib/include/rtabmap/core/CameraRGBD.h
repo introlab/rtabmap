@@ -196,6 +196,7 @@ class RTABMAP_EXP CameraOpenNI2 :
 
 public:
 	static bool available();
+	static bool exposureGainAvailable();
 
 public:
 	CameraOpenNI2(float imageRate = 0,
@@ -207,6 +208,11 @@ public:
 	virtual ~CameraOpenNI2();
 
 	virtual bool init();
+
+	bool setAutoWhiteBalance(bool enabled);
+	bool setAutoExposure(bool enabled);
+	bool setExposure(int value);
+	bool setGain(int value);
 
 protected:
 	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);

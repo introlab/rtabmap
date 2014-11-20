@@ -1629,6 +1629,17 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		if(_camera)
 		{
 			_camera->setImageRate(_preferencesDialog->getGeneralInputRate());
+
+			if(_camera->cameraRGBD() && dynamic_cast<CameraOpenNI2*>(_camera->cameraRGBD()) != 0)
+			{
+				((CameraOpenNI2*)_camera->cameraRGBD())->setAutoWhiteBalance(_preferencesDialog->getSourceOpenni2AutoWhiteBalance());
+				((CameraOpenNI2*)_camera->cameraRGBD())->setAutoExposure(_preferencesDialog->getSourceOpenni2AutoExposure());
+				if(CameraOpenNI2::exposureGainAvailable())
+				{
+					((CameraOpenNI2*)_camera->cameraRGBD())->setExposure(_preferencesDialog->getSourceOpenni2Exposure());
+					((CameraOpenNI2*)_camera->cameraRGBD())->setGain(_preferencesDialog->getSourceOpenni2Gain());
+				}
+			}
 		}
 		if(_dbReader)
 		{
@@ -2226,6 +2237,13 @@ void MainWindow::startDetection()
 				_odomThread = 0;
 			}
 			return;
+		}
+		else if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2)
+		{
+			((CameraOpenNI2*)camera)->setAutoWhiteBalance(_preferencesDialog->getSourceOpenni2AutoWhiteBalance());
+			((CameraOpenNI2*)camera)->setAutoExposure(_preferencesDialog->getSourceOpenni2AutoExposure());
+			((CameraOpenNI2*)camera)->setExposure(_preferencesDialog->getSourceOpenni2Exposure());
+			((CameraOpenNI2*)camera)->setGain(_preferencesDialog->getSourceOpenni2Gain());
 		}
 
 		_camera = new CameraThread(camera);

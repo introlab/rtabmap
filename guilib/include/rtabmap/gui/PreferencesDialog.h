@@ -172,6 +172,10 @@ public:
 	bool getSourceDatabaseOdometryIgnored() const; //Database group
 	int getSourceDatabaseStartPos() const; //Database group
 	Src getSourceRGBD() const; 			// Openni group
+	bool getSourceOpenni2AutoWhiteBalance() const;  //Openni group
+	bool getSourceOpenni2AutoExposure() const;  //Openni group
+	int getSourceOpenni2Exposure() const;  //Openni group
+	int getSourceOpenni2Gain() const;   //Openni group
 	QString getSourceOpenniDevice() const;            //Openni group
 	Transform getSourceOpenniLocalTransform() const;    //Openni group
 	float getSourceOpenniFx() const; // Openni group
@@ -234,6 +238,7 @@ private slots:
 	void setupTreeView();
 	void updateBasicParameter();
 	void openDatabaseViewer();
+	void showOpenNI2GroupBox(bool);
 	void cleanOdometryTest();
 	void testOdometry();
 	void cleanRGBDCameraTest();
