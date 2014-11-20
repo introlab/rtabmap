@@ -1399,9 +1399,9 @@ bool Rtabmap::process(const SensorData & data)
 					_memory->addLoopClosureLink(localSpaceNearestId, signature->id(), t, false);
 
 					// Old map -> new map, used for localization correction on loop closure
-					//const Signature * oldS = _memory->getSignature(localSpaceNearestId);
-					//UASSERT(oldS != 0);
-					_mapTransform = poses.at(localSpaceNearestId) * t.inverse() * poses.at(signature->id()).inverse();
+					const Signature * oldS = _memory->getSignature(localSpaceNearestId);
+					UASSERT(oldS != 0);
+					_mapTransform = oldS->getPose() * t.inverse() * signature->getPose().inverse();
 				}
 				else
 				{
