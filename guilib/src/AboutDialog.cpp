@@ -42,8 +42,14 @@ AboutDialog::AboutDialog(QWidget * parent) :
 #if DEMO_BUILD
 	version.append(" [DEMO]");
 #endif
+	QString cv_version = CV_VERSION;
+#if WITH_NONFREE
+	cv_version.append(" [With nonfree]");
+#else
+	cv_version.append(" [Without nonfree]");
+#endif
 	_ui->label_version->setText(version);
-	_ui->label_opencv_version->setText(CV_VERSION);
+	_ui->label_opencv_version->setText(cv_version);
 	_ui->label_pcl_version->setText(PCL_VERSION_PRETTY);
 }
 

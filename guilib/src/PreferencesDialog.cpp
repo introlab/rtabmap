@@ -113,6 +113,20 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->label_map_shown->setText(_ui->label_map_shown->text() + " (Disabled, PCL >=1.7.2 required)");
 #endif
 
+	if(RTABMAP_NONFREE == 0)
+	{
+		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
+		_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
+		_ui->reextract_type->setItemData(0, 0, Qt::UserRole - 1);
+		_ui->reextract_type->setItemData(1, 0, Qt::UserRole - 1);
+		_ui->odom_type->setItemData(0, 0, Qt::UserRole - 1);
+		_ui->odom_type->setItemData(1, 0, Qt::UserRole - 1);
+
+		_ui->comboBox_dictionary_strategy->setItemData(1, 0, Qt::UserRole - 1);
+		_ui->reextract_nn->setItemData(1, 0, Qt::UserRole - 1);
+		_ui->odom_bin_nn->setItemData(1, 0, Qt::UserRole - 1);
+	}
+
 	_ui->predictionPlot->showLegend(false);
 	_ui->groupBox_openni2->setVisible(false);
 
@@ -530,6 +544,13 @@ PreferencesDialog::~PreferencesDialog() {
 
 void PreferencesDialog::init()
 {
+	//First set all default values
+	const ParametersMap & defaults = Parameters::getDefaultParameters();
+	for(ParametersMap::const_iterator iter=defaults.begin(); iter!=defaults.end(); ++iter)
+	{
+		this->setParameter(iter->first, iter->second);
+	}
+
 	this->readSettings();
 	this->writeSettings();// This will create the ini file if not exist
 
@@ -1452,21 +1473,50 @@ void PreferencesDialog::writeCoreSettings(const QString & filePath)
 
 bool PreferencesDialog::validateForm()
 {
-	//verify binary featrues and nearest neighbor
+	if(RTABMAP_NONFREE == 0)
+	{
+		// verify that SURF/SIFT cannot be selected if not built with OpenCV nonfree module
+		// BOW dictionary type
+		if(_ui->comboBox_detector_strategy->currentIndex() <= 1)
+		{
+			QMessageBox::warning(this, tr("Parameter warning"),
+					tr("Selected feature type (SURF/SIFT) is not available. RTAB-Map is not built "
+					   "with the nonfree module from OpenCV. ORB is set instead for the bag-of-words dictionary."));
+			_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureOrb);
+		}
+		// BOW Reextract features type
+		if(_ui->reextract_type->currentIndex() <= 1)
+		{
+			QMessageBox::warning(this, tr("Parameter warning"),
+					tr("Selected feature type (SURF/SIFT) is not available. RTAB-Map is not built "
+					   "with the nonfree module from OpenCV. Fast/Brief is set instead for the re-extraction "
+					   "of features on loop closure."));
+			_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureFastBrief);
+		}
+		// odom type
+		if(_ui->odom_type->currentIndex() <= 1)
+		{
+			QMessageBox::warning(this, tr("Parameter warning"),
+					tr("Selected feature type (SURF/SIFT) is not available. RTAB-Map is not built "
+					   "with the nonfree module from OpenCV. GFTT/Brief is set instead for odometry."));
+			_ui->odom_type->setCurrentIndex(Feature2D::kFeatureGfttBrief);
+		}
+	}
 
+	//verify binary features and nearest neighbor
 	// BOW dictionary type
 	if(_ui->comboBox_dictionary_strategy->currentIndex() == VWDictionary::kNNFlannLSH && _ui->comboBox_detector_strategy->currentIndex() <= 1)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("With the selected feature type (SURF or SIFT), parameter \"Visual word->Nearest Neighbor\" "
-				   "cannot be LSH (used for binary descriptor). KD-tree is set instead."));
+				   "cannot be LSH (used for binary descriptor). KD-tree is set instead for the bag-of-words dictionary."));
 		_ui->comboBox_dictionary_strategy->setCurrentIndex(VWDictionary::kNNFlannKdTree);
 	}
 	else if(_ui->comboBox_dictionary_strategy->currentIndex() == VWDictionary::kNNFlannKdTree && _ui->comboBox_detector_strategy->currentIndex() >1)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("With the selected feature type (ORB, FAST, FREAK or BRIEF), parameter \"Visual word->Nearest Neighbor\" "
-				   "cannot be KD-Tree (used for float descriptor). BruteForce matching is set instead."));
+				   "cannot be KD-Tree (used for float descriptor). BruteForce matching is set instead for the bag-of-words dictionary."));
 		_ui->comboBox_dictionary_strategy->setCurrentIndex(VWDictionary::kNNBruteForce);
 	}
 
@@ -1475,14 +1525,16 @@ bool PreferencesDialog::validateForm()
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("With the selected feature type (SURF or SIFT), parameter \"Visual word->Nearest Neighbor\" "
-				   "cannot be LSH (used for binary descriptor). KD-tree is set instead."));
+				   "cannot be LSH (used for binary descriptor). KD-tree is set instead for the re-extraction "
+					   "of features on loop closure."));
 		_ui->reextract_nn->setCurrentIndex(VWDictionary::kNNFlannKdTree);
 	}
 	else if(_ui->reextract_nn->currentIndex() == VWDictionary::kNNFlannKdTree && _ui->reextract_type->currentIndex() >1)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("With the selected feature type (ORB, FAST, FREAK or BRIEF), parameter \"Visual word->Nearest Neighbor\" "
-				   "cannot be KD-Tree (used for float descriptor). BruteForce matching is set instead."));
+				   "cannot be KD-Tree (used for float descriptor). BruteForce matching is set instead for the re-extraction "
+					   "of features on loop closure."));
 		_ui->reextract_nn->setCurrentIndex(VWDictionary::kNNBruteForce);
 	}
 
@@ -1491,14 +1543,14 @@ bool PreferencesDialog::validateForm()
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("With the selected feature type (SURF or SIFT), parameter \"Odometry->Nearest Neighbor\" "
-				   "cannot be LSH (used for binary descriptor). KD-tree is set instead."));
+				   "cannot be LSH (used for binary descriptor). KD-tree is set instead for odometry."));
 		_ui->odom_bin_nn->setCurrentIndex(VWDictionary::kNNFlannKdTree);
 	}
 	else if(_ui->odom_bin_nn->currentIndex() == VWDictionary::kNNFlannKdTree && _ui->odom_type->currentIndex() >1)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("With the selected feature type (ORB, FAST, FREAK or BRIEF), parameter \"Odometry->Nearest Neighbor\" "
-				   "cannot be KD-Tree (used for float descriptor). BruteForce matching is set instead."));
+				   "cannot be KD-Tree (used for float descriptor). BruteForce matching is set instead for odometry."));
 		_ui->odom_bin_nn->setCurrentIndex(VWDictionary::kNNBruteForce);
 	}
 
@@ -1892,11 +1944,48 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 		}
 		else if(combo)
 		{
-			combo->setCurrentIndex(QString(value.c_str()).toInt(&ok));
+			int valueInt = QString(value.c_str()).toInt(&ok);
 			if(!ok)
 			{
 				UERROR("Conversion failed from \"%s\" for parameter %s", value.c_str(), key.c_str());
 			}
+			else
+			{
+				if(RTABMAP_NONFREE == 0)
+				{
+					if(valueInt <= 1 &&
+							(combo->objectName().toStdString().compare(Parameters::kKpDetectorStrategy()) == 0 ||
+							combo->objectName().toStdString().compare(Parameters::kLccReextractFeatureType()) == 0 ||
+							combo->objectName().toStdString().compare(Parameters::kOdomFeatureType()) == 0))
+					{
+						UWARN("Trying to set \"%s\" to SIFT/SURF but RTAB-Map isn't built "
+							  "with the nonfree module from OpenCV. Keeping default combo value: %s.",
+							  combo->objectName().toStdString().c_str(),
+							  combo->currentText().toStdString().c_str());
+					}
+					else if(valueInt==1 &&
+							(combo->objectName().toStdString().compare(Parameters::kKpNNStrategy()) == 0 ||
+							combo->objectName().toStdString().compare(Parameters::kLccReextractNNType()) == 0 ||
+							combo->objectName().toStdString().compare(Parameters::kOdomBowNNType()) == 0))
+
+					{
+						UWARN("Trying to set \"%s\" to KdTree but RTAB-Map isn't built "
+							  "with the nonfree module from OpenCV and kdTree cannot be used "
+							  "with binary descriptors. Keeping default combo value: %s.",
+							  combo->objectName().toStdString().c_str(),
+							  combo->currentText().toStdString().c_str());
+					}
+					else
+					{
+						combo->setCurrentIndex(valueInt);
+					}
+				}
+				else
+				{
+					combo->setCurrentIndex(valueInt);
+				}
+			}
+
 		}
 		else if(check)
 		{

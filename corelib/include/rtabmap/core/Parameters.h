@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // default parameters
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/Version.h" // DLL export/import defines
 #include <string>
 #include <map>
 
@@ -103,6 +104,37 @@ typedef std::pair<std::string, std::string> ParametersPair;
 // end define PARAM
 
 /**
+ * Macro used to create parameter's key and default value.
+ * This macro must be used only in the Parameters class definition (in this file).
+ * They are automatically added to the default parameters map of the class Parameters.
+ * Example:
+ * @code
+ * 		//for PARAM(Video, ImageWidth, int, 640), the output will be :
+ * 		public:
+ * 			static std::string kVideoImageWidth() {return std::string("Video/ImageWidth");}
+ * 			static int defaultVideoImageWidth() {return 640;}
+ * 		private:
+ * 			class DummyVideoImageWidth {
+ * 			public:
+ * 				DummyVideoImageWidth() {parameters_.insert(ParametersPair("Video/ImageWidth", "640"));}
+ * 			};
+ * 			DummyVideoImageWidth dummyVideoImageWidth;
+ * @endcode
+ */
+#define RTABMAP_PARAM_COND(PREFIX, NAME, TYPE, COND, DEFAULT_VALUE1, DEFAULT_VALUE2, DESCRIPTION) \
+	public: \
+		static std::string k##PREFIX##NAME() {return std::string(#PREFIX "/" #NAME);} \
+		static TYPE default##PREFIX##NAME() {return COND?DEFAULT_VALUE1:DEFAULT_VALUE2;} \
+	private: \
+		class Dummy##PREFIX##NAME { \
+		public: \
+			Dummy##PREFIX##NAME() {parameters_.insert(ParametersPair(#PREFIX "/" #NAME, COND?#DEFAULT_VALUE1:#DEFAULT_VALUE2)); \
+								   descriptions_.insert(ParametersPair(#PREFIX "/" #NAME, DESCRIPTION));} \
+		}; \
+		Dummy##PREFIX##NAME dummy##PREFIX##NAME;
+// end define PARAM
+
+/**
  * Class Parameters.
  * This class is used to manage all custom parameters
  * we want in the application. It was designed to be very easy to add
@@ -162,13 +194,13 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, InitWMWithAllNodes,      bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.")
 
 	// KeypointMemory (Keypoint-based)
-	RTABMAP_PARAM(Kp, NNStrategy,            int, 1, 	 		"kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
+	RTABMAP_PARAM_COND(Kp, NNStrategy,       int, RTABMAP_NONFREE, 1, 3, "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
 	RTABMAP_PARAM(Kp, IncrementalDictionary, bool, true, 		"");
 	RTABMAP_PARAM(Kp, MaxDepth,              float, 0.0, 		"Filter extracted keypoints by depth (0=inf)");
 	RTABMAP_PARAM(Kp, WordsPerImage,         int, 400, 			"");
 	RTABMAP_PARAM(Kp, BadSignRatio,          float, 0.2, 		"Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
 	RTABMAP_PARAM(Kp, NndrRatio, 	         float, 0.8, 		"NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
-	RTABMAP_PARAM(Kp, DetectorStrategy,      int, 0, 			"0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
+	RTABMAP_PARAM_COND(Kp, DetectorStrategy, int, RTABMAP_NONFREE, 0, 2, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
 	RTABMAP_PARAM(Kp, TfIdfLikelihoodUsed,   bool, true, 		"Use of the td-idf strategy to compute the likelihood.");
 	RTABMAP_PARAM(Kp, Parallelized,          bool, true, 		"If the dictionary update and signature creation were parallelized.");
 	RTABMAP_PARAM_STR(Kp, RoiRatios, "0.0 0.0 0.0 0.0", 		"Region of interest ratios [left, right, top, bottom].");
@@ -210,14 +242,14 @@ class RTABMAP_EXP Parameters
 
 	RTABMAP_PARAM(GFTT, MaxCorners, int, 400, "");
 	RTABMAP_PARAM(GFTT, QualityLevel, double, 0.01, "");
-	RTABMAP_PARAM(GFTT, MinDistance, double, 1, "");
+	RTABMAP_PARAM(GFTT, MinDistance, double, 5, "");
 	RTABMAP_PARAM(GFTT, BlockSize, int, 3, "");
 	RTABMAP_PARAM(GFTT, UseHarrisDetector, bool, false, "");
 	RTABMAP_PARAM(GFTT, K, double, 0.04, "");
 
-	RTABMAP_PARAM(ORB, NFeatures,            int, 500,     "The maximum number of features to retain.");
+	RTABMAP_PARAM(ORB, NFeatures,            int, 400,     "The maximum number of features to retain.");
 	RTABMAP_PARAM(ORB, ScaleFactor,          float,  1.2, "Pyramid decimation ratio, greater than 1. scaleFactor==2 means the classical pyramid, where each next level has 4x less pixels than the previous, but such a big scale factor will degrade feature matching scores dramatically. On the other hand, too close to 1 scale factor will mean that to cover certain scale range you will need more pyramid levels and so the speed will suffer.");
-	RTABMAP_PARAM(ORB, NLevels,              int, 8,       "The number of pyramid levels. The smallest level will have linear size equal to input_image_linear_size/pow(scaleFactor, nlevels).");
+	RTABMAP_PARAM(ORB, NLevels,              int, 1,       "The number of pyramid levels. The smallest level will have linear size equal to input_image_linear_size/pow(scaleFactor, nlevels).");
 	RTABMAP_PARAM(ORB, EdgeThreshold,        int, 31,      "This is size of the border where the features are not detected. It should roughly match the patchSize parameter.");
 	RTABMAP_PARAM(ORB, FirstLevel,           int, 0,       "It should be 0 in the current implementation.");
 	RTABMAP_PARAM(ORB, WTA_K,                int, 2,       "The number of points that produce each element of the oriented BRIEF descriptor. The default value 2 means the BRIEF where we take a random point pair and compare their brightnesses, so we get 0/1 response. Other possible values are 3 and 4. For example, 3 means that we take 3 random points (of course, those point coordinates are random, but they are generated from the pre-defined seed, so each element of BRIEF descriptor is computed deterministically from the pixel rectangle), find point of maximum brightness and output index of the winner (0, 1 or 2). Such output will occupy 2 bits, and therefore it will need a special variant of Hamming distance, denoted as NORM_HAMMING2 (2 bits per bin). When WTA_K=4, we take 4 random points to compute each bin (that will also occupy 2 bits with possible values 0, 1, 2 or 3).");
@@ -300,7 +332,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccBow, Iterations,      int, 100, 		"Maximum iterations to compute the transform from visual words.");
 	RTABMAP_PARAM(LccBow, MaxDepth,        float, 4.0, 		"Max depth of the words (0 means no limit).");
 	RTABMAP_PARAM(LccBow, Force2D, 		   bool, false,     "Force 2D transform (3Dof: x,y and yaw).");
-	RTABMAP_PARAM(LccReextract, Activated, bool, false, 	"Activate re-extracting features on global loop closure.");
+	RTABMAP_PARAM_COND(LccReextract, Activated, bool, RTABMAP_NONFREE, false, true, "Activate re-extracting features on global loop closure.");
 	RTABMAP_PARAM(LccReextract, NNType, 	int, 3, 		"kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4.");
 	RTABMAP_PARAM(LccReextract, NNDR, 		float, 0.7, 	"NNDR: nearest neighbor distance ratio.");
 	RTABMAP_PARAM(LccReextract, FeatureType, int, 4, 		"0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");

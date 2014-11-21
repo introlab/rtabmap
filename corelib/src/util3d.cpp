@@ -41,7 +41,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/ModelCoefficients.h>
 #include <pcl/segmentation/sac_segmentation.h>
 
+#ifdef WITH_NONFREE
 #include <opencv2/nonfree/features2d.hpp>
+#endif
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/video/tracking.hpp>
 #include <rtabmap/core/VWDictionary.h>
@@ -1123,7 +1125,7 @@ cv::Mat uncompressImage(const cv::Mat & bytes)
 	 cv::Mat image;
 	if(!bytes.empty())
 	{
-#if CV_MAJOR_VERSION >=2 && CV_MINOR_VERSION >=4
+#if CV_MAJOR_VERSION>2 || (CV_MAJOR_VERSION >=2 && CV_MINOR_VERSION >=4)
 		image = cv::imdecode(bytes, cv::IMREAD_UNCHANGED);
 #else
 		image = cv::imdecode(bytes, -1);
@@ -1137,7 +1139,7 @@ cv::Mat uncompressImage(const std::vector<unsigned char> & bytes)
 	 cv::Mat image;
 	if(bytes.size())
 	{
-#if CV_MAJOR_VERSION >=2 && CV_MINOR_VERSION >=4
+#if CV_MAJOR_VERSION>2 || (CV_MAJOR_VERSION >=2 && CV_MINOR_VERSION >=4)
 		image = cv::imdecode(bytes, cv::IMREAD_UNCHANGED);
 #else
 		image = cv::imdecode(bytes, -1);

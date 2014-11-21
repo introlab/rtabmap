@@ -37,12 +37,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/gpu/gpu.hpp>
 #include <opencv2/core/version.hpp>
 
-#if CV_MAJOR_VERSION >=2 && CV_MINOR_VERSION >=4
+#ifdef WITH_NONFREE
+#if CV_MAJOR_VERSION > 2 || (CV_MAJOR_VERSION >=2 && CV_MINOR_VERSION >=4)
 #include <opencv2/nonfree/gpu.hpp>
 #include <opencv2/nonfree/features2d.hpp>
 #endif
-
-#define OPENCV_SURF_GPU CV_MAJOR_VERSION >= 2 and CV_MINOR_VERSION >=2 and CV_SUBMINOR_VERSION>=1
+#endif
 
 namespace rtabmap {
 
@@ -321,20 +321,29 @@ cv::Rect Feature2D::computeRoi(const cv::Mat & image, const std::vector<float> &
 /////////////////////
 Feature2D * Feature2D::create(Feature2D::Type & type, const ParametersMap & parameters)
 {
+	if(RTABMAP_NONFREE == 0 &&
+	   (type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSift))
+	{
+		UERROR("SURF/SIFT features cannot be used because OpenCV was not built with nonfree module. ORB is used instead.");
+		type = Feature2D::kFeatureOrb;
+	}
 	Feature2D * feature2D = 0;
 	switch(type)
 	{
+	case Feature2D::kFeatureSurf:
+		feature2D = new SURF(parameters);
+		break;
 	case Feature2D::kFeatureSift:
 		feature2D = new SIFT(parameters);
+		break;
+	case Feature2D::kFeatureOrb:
+		feature2D = new ORB(parameters);
 		break;
 	case Feature2D::kFeatureFastBrief:
 		feature2D = new FAST_BRIEF(parameters);
 		break;
 	case Feature2D::kFeatureFastFreak:
 		feature2D = new FAST_FREAK(parameters);
-		break;
-	case Feature2D::kFeatureOrb:
-		feature2D = new ORB(parameters);
 		break;
 	case Feature2D::kFeatureGfttFreak:
 		feature2D = new GFTT_FREAK(parameters);
@@ -345,11 +354,18 @@ Feature2D * Feature2D::create(Feature2D::Type & type, const ParametersMap & para
 	case Feature2D::kFeatureBrisk:
 		feature2D = new BRISK(parameters);
 		break;
-	case Feature2D::kFeatureSurf:
+#ifdef WITH_NONFREE
 	default:
 		feature2D = new SURF(parameters);
 		type = Feature2D::kFeatureSurf;
 		break;
+#else
+	default:
+		feature2D = new ORB(parameters);
+		type = Feature2D::kFeatureOrb;
+		break;
+#endif
+
 	}
 	return feature2D;
 }
@@ -417,6 +433,7 @@ SURF::SURF(const ParametersMap & parameters) :
 
 SURF::~SURF()
 {
+#ifdef WITH_NONFREE
 	if(_surf)
 	{
 		delete _surf;
@@ -425,6 +442,7 @@ SURF::~SURF()
 	{
 		delete _gpuSurf;
 	}
+#endif
 }
 
 void SURF::parseParameters(const ParametersMap & parameters)
@@ -437,6 +455,7 @@ void SURF::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSURFGpuKeypointsRatio(), gpuKeypointsRatio_);
 	Parameters::parse(parameters, Parameters::kSURFGpuVersion(), gpuVersion_);
 
+#ifdef WITH_NONFREE
 	if(_gpuSurf)
 	{
 		delete _gpuSurf;
@@ -461,12 +480,17 @@ void SURF::parseParameters(const ParametersMap & parameters)
 
 		_surf = new cv::SURF(hessianThreshold_, nOctaves_, nOctaveLayers_, extended_, upright_);
 	}
+#else
+	UERROR("RTAB-Map is not built with OpenCV nonfree module so SURF cannot be used!");
+#endif
 }
 
 std::vector<cv::KeyPoint> SURF::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
+
+#ifdef WITH_NONFREE
 	cv::Mat imgRoi(image, roi);
 	if(_gpuSurf)
 	{
@@ -477,7 +501,9 @@ std::vector<cv::KeyPoint> SURF::generateKeypointsImpl(const cv::Mat & image, con
 	{
 		_surf->detect(imgRoi, keypoints);
 	}
-
+#else
+	UERROR("RTAB-Map is not built with OpenCV nonfree module so SURF cannot be used!");
+#endif
 	return keypoints;
 }
 
@@ -485,6 +511,7 @@ cv::Mat SURF::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
+#ifdef WITH_NONFREE
 	if(_gpuSurf)
 	{
 		cv::gpu::GpuMat imgGpu(image);
@@ -505,6 +532,9 @@ cv::Mat SURF::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 	{
 		_surf->compute(image, keypoints, descriptors);
 	}
+#else
+	UERROR("RTAB-Map is not built with OpenCV nonfree module so SURF cannot be used!");
+#endif
 
 	return descriptors;
 }
@@ -525,10 +555,14 @@ SIFT::SIFT(const ParametersMap & parameters) :
 
 SIFT::~SIFT()
 {
+#ifdef WITH_NONFREE
 	if(_sift)
 	{
 		delete _sift;
 	}
+#else
+	UERROR("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
+#endif
 }
 
 void SIFT::parseParameters(const ParametersMap & parameters)
@@ -539,6 +573,7 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSIFTNOctaveLayers(), nOctaveLayers_);
 	Parameters::parse(parameters, Parameters::kSIFTSigma(), sigma_);
 
+#ifdef WITH_NONFREE
 	if(_sift)
 	{
 		delete _sift;
@@ -546,14 +581,21 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 	}
 
 	_sift = new cv::SIFT(nfeatures_, nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_);
+#else
+	UERROR("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
+#endif
 }
 
 std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
+#ifdef WITH_NONFREE
 	cv::Mat imgRoi(image, roi);
 	_sift->detect(imgRoi, keypoints); // Opencv keypoints
+#else
+	UERROR("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
+#endif
 	return keypoints;
 }
 
@@ -561,7 +603,11 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
+#ifdef WITH_NONFREE
 	_sift->compute(image, keypoints, descriptors);
+#else
+	UERROR("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
+#endif
 	return descriptors;
 }
 

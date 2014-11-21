@@ -73,8 +73,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_signaturesAdded(0),
 	_postInitClosingEvents(false),
 
-	_feature2D(new SURF(parameters)),
-	_featureType(Feature2D::kFeatureSurf),
+	_featureType((Feature2D::Type)Parameters::defaultKpDetectorStrategy()),
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
 	_parallelized(Parameters::defaultKpParallelized()),
@@ -114,6 +113,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_subPixIterations(Parameters::defaultKpSubPixIterations()),
 	_subPixEps(Parameters::defaultKpSubPixEps())
 {
+	_feature2D = Feature2D::create(_featureType, parameters);
 	_vwd = new VWDictionary(parameters);
 	this->parseParameters(parameters);
 }
