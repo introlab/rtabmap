@@ -2242,8 +2242,11 @@ void MainWindow::startDetection()
 		{
 			((CameraOpenNI2*)camera)->setAutoWhiteBalance(_preferencesDialog->getSourceOpenni2AutoWhiteBalance());
 			((CameraOpenNI2*)camera)->setAutoExposure(_preferencesDialog->getSourceOpenni2AutoExposure());
-			((CameraOpenNI2*)camera)->setExposure(_preferencesDialog->getSourceOpenni2Exposure());
-			((CameraOpenNI2*)camera)->setGain(_preferencesDialog->getSourceOpenni2Gain());
+			if(CameraOpenNI2::exposureGainAvailable())
+			{
+				((CameraOpenNI2*)camera)->setExposure(_preferencesDialog->getSourceOpenni2Exposure());
+				((CameraOpenNI2*)camera)->setGain(_preferencesDialog->getSourceOpenni2Gain());
+			}
 		}
 
 		_camera = new CameraThread(camera);
