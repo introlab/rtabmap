@@ -53,7 +53,7 @@ VWDictionary::VWDictionary(const ParametersMap & parameters) :
 	_newWordsComparedTogether(Parameters::defaultKpNewWordsComparedTogether()),
 	_lastWordId(0),
 	_flannIndex(new cv::flann::Index()),
-	_strategy(kNNUndef)
+	_strategy(kNNBruteForce)
 {
 	this->setNNStrategy((NNStrategy)Parameters::defaultKpNNStrategy());
 	this->parseParameters(parameters);
@@ -222,7 +222,16 @@ void VWDictionary::setNNStrategy(NNStrategy strategy)
 			strategy = kNNBruteForce;
 		}
 
-		_strategy = strategy;
+		if(RTABMAP_NONFREE == 0 && strategy == kNNFlannKdTree)
+		{
+			UWARN("KdTree (%d) nearest neighbor is not available because RTAB-Map isn't built "
+				  "with OpenCV nonfree module (KdTree only used for SURF/SIFT features). "
+				  "NN strategy is not modified (current=%d).", (int)kNNFlannKdTree, (int)_strategy);
+		}
+		else
+		{
+			_strategy = strategy;
+		}
 	}
 }
 
