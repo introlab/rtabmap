@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
 <package>
   <name>rtabmaplib</name>
-  <version>:{version}</version>
+  <version>0.7.1</version>
   <description>The rtabmap standalone library</description>
   <maintainer email="matlabbe@gmail.com">Mathieu Labbe</maintainer>
   <license>BSD</license>
-  <url type="website">http://rtabmap.googlecode.com</url>
+  <url type="website">http://introlab.github.io/rtabmap</url>
   <author email="matlabbe@gmail.com">Mathieu Labbe</author>
 
   <buildtool_depend>cmake</buildtool_depend>
