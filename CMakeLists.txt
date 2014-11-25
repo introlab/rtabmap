@@ -236,6 +236,9 @@ install(FILES
   DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT devel)
 ####
 
+### Install package.xml for catkin
+install(FILES package.xml DESTINATION "share/${PROJECT_PREFIX}")
+
 #######################
 # CPACK (Packaging)
 #######################
