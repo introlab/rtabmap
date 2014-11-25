@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>rtabmaplib</name>
+  <name>rtabmap</name>
   <version>0.7.1</version>
   <description>The rtabmap standalone library</description>
   <maintainer email="matlabbe@gmail.com">Mathieu Labbe</maintainer>
