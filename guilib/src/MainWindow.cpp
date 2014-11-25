@@ -4038,13 +4038,27 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes,
 				bool success =false;
 				if(QFileInfo(path).suffix() == "ply")
 				{
-					success = pcl::io::savePLYFile(path.toStdString(), *meshes.begin()->second, binaryMode) == 0;
+					if(binaryMode)
+					{
+						success = pcl::io::savePLYFileBinary(path.toStdString(), *meshes.begin()->second) == 0;
+					}
+					else
+					{
+						success = pcl::io::savePLYFile(path.toStdString(), *meshes.begin()->second) == 0;
+					}
 				}
 				else if(QFileInfo(path).suffix() == "")
 				{
 					//default ply
 					path += ".ply";
-					success = pcl::io::savePLYFile(path.toStdString(), *meshes.begin()->second, binaryMode) == 0;
+					if(binaryMode)
+					{
+						success = pcl::io::savePLYFileBinary(path.toStdString(), *meshes.begin()->second) == 0;
+					}
+					else
+					{
+						success = pcl::io::savePLYFile(path.toStdString(), *meshes.begin()->second) == 0;
+					}
 				}
 				else
 				{
@@ -4094,7 +4108,14 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes,
 						bool success =false;
 						if(suffix == "ply")
 						{
-							success = pcl::io::savePLYFile(pathFile.toStdString(), mesh, binaryMode) == 0;
+							if(binaryMode)
+							{
+								success = pcl::io::savePLYFileBinary(pathFile.toStdString(), mesh) == 0;
+							}
+							else
+							{
+								success = pcl::io::savePLYFile(pathFile.toStdString(), mesh) == 0;
+							}
 						}
 						else
 						{
