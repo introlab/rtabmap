@@ -1,6 +1,10 @@
 rtabmap
 =======
 
-RTAB-Map library and standalone application
+RTAB-Map library and standalone application.
 
-For more information, visit the [home page](http://introlab.github.io/rtabmap) or the [wiki](https://github.com/introlab/rtabmap/wiki).
+For more information, visit the [RTAB-Map's home page](http://introlab.github.io/rtabmap) or the [RTAB-Map's wiki](https://github.com/introlab/rtabmap/wiki).
+
+To use RTAB-Map under ROS, visit the [rtabmap_ros](http://wiki.ros.org/rtabmap) page on the ROS wiki.
+
+
