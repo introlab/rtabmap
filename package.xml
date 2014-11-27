@@ -2,8 +2,9 @@
 <package>
   <name>rtabmap</name>
   <version>0.7.1</version>
-  <description>The rtabmap standalone library</description>
+  <description>RTAB-Map's standalone library. RTAB-Map is an RGB-D SLAM approach with real-time constraints.</description>
   <maintainer email="matlabbe@gmail.com">Mathieu Labbe</maintainer>
+  <author>Mathieu Labbe</author>
   <license>BSD</license>
   <url type="website">http://introlab.github.io/rtabmap</url>
   <url type="repository">https://github.com/introlab/rtabmap</url>
