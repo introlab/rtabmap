@@ -7,6 +7,7 @@
   <author>Mathieu Labbe</author>
   <license>BSD</license>
   <url type="website">http://introlab.github.io/rtabmap</url>
+  <url type="bugtracker">https://github.com/introlab/rtabmap/issues</url>
   <url type="repository">https://github.com/introlab/rtabmap</url>
 
   <buildtool_depend>cmake</buildtool_depend>
