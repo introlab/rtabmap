@@ -1,0 +1,12 @@
+/**
+
+@mainpage
+
+@htmlinclude manifest.html
+
+@b rtabmap contains RTAB-Map libraries and standalone application.
+See http://www.ros.org/wiki/rtabmap for documentation.
+
+Currently this package has no public code API.
+
+*/
