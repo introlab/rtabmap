@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/gpu/gpu.hpp>
 #include <opencv2/core/version.hpp>
 
-#ifdef WITH_NONFREE
+#if RTABMAP_NONFREE == 1
 #if CV_MAJOR_VERSION > 2 || (CV_MAJOR_VERSION >=2 && CV_MINOR_VERSION >=4)
 #include <opencv2/nonfree/gpu.hpp>
 #include <opencv2/nonfree/features2d.hpp>
@@ -354,7 +354,7 @@ Feature2D * Feature2D::create(Feature2D::Type & type, const ParametersMap & para
 	case Feature2D::kFeatureBrisk:
 		feature2D = new BRISK(parameters);
 		break;
-#ifdef WITH_NONFREE
+#if RTABMAP_NONFREE == 1
 	default:
 		feature2D = new SURF(parameters);
 		type = Feature2D::kFeatureSurf;
@@ -433,7 +433,7 @@ SURF::SURF(const ParametersMap & parameters) :
 
 SURF::~SURF()
 {
-#ifdef WITH_NONFREE
+#if RTABMAP_NONFREE == 1
 	if(_surf)
 	{
 		delete _surf;
@@ -455,7 +455,7 @@ void SURF::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSURFGpuKeypointsRatio(), gpuKeypointsRatio_);
 	Parameters::parse(parameters, Parameters::kSURFGpuVersion(), gpuVersion_);
 
-#ifdef WITH_NONFREE
+#if RTABMAP_NONFREE == 1
 	if(_gpuSurf)
 	{
 		delete _gpuSurf;
@@ -490,7 +490,7 @@ std::vector<cv::KeyPoint> SURF::generateKeypointsImpl(const cv::Mat & image, con
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
 
-#ifdef WITH_NONFREE
+#if RTABMAP_NONFREE == 1
 	cv::Mat imgRoi(image, roi);
 	if(_gpuSurf)
 	{
@@ -511,7 +511,7 @@ cv::Mat SURF::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
-#ifdef WITH_NONFREE
+#if RTABMAP_NONFREE == 1
 	if(_gpuSurf)
 	{
 		cv::gpu::GpuMat imgGpu(image);
@@ -555,7 +555,7 @@ SIFT::SIFT(const ParametersMap & parameters) :
 
 SIFT::~SIFT()
 {
-#ifdef WITH_NONFREE
+#if RTABMAP_NONFREE == 1
 	if(_sift)
 	{
 		delete _sift;
@@ -573,7 +573,7 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSIFTNOctaveLayers(), nOctaveLayers_);
 	Parameters::parse(parameters, Parameters::kSIFTSigma(), sigma_);
 
-#ifdef WITH_NONFREE
+#if RTABMAP_NONFREE == 1
 	if(_sift)
 	{
 		delete _sift;
@@ -590,7 +590,7 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
-#ifdef WITH_NONFREE
+#if RTABMAP_NONFREE == 1
 	cv::Mat imgRoi(image, roi);
 	_sift->detect(imgRoi, keypoints); // Opencv keypoints
 #else
@@ -603,7 +603,7 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
-#ifdef WITH_NONFREE
+#if RTABMAP_NONFREE == 1
 	_sift->compute(image, keypoints, descriptors);
 #else
 	UERROR("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
