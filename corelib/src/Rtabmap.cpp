@@ -1535,6 +1535,18 @@ bool Rtabmap::process(const SensorData & data)
 				statistics_.setLoopClosureTransform(sLoop->getLoopClosureIds().at(signature->id()));
 			}
 
+			if(!_rgbdSlamMode)
+			{
+				std::map<int, int> mapIds;
+				mapIds.insert(std::make_pair(signature->id(), _memory->getMapId(signature->id())));
+				if(_lcHypothesisId)
+				{
+					mapIds.insert(std::make_pair(_lcHypothesisId, _memory->getMapId(_lcHypothesisId)));
+				}
+				statistics_.setMapIds(mapIds);
+			}//else... see finalize statistics below
+
+
 			statistics_.addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMem().size());
 			statistics_.addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMem().size());
 			statistics_.addStatistic(Statistics::kMemorySignatures_retrieved(), (float)signaturesRetrieved.size());
@@ -2108,14 +2120,17 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 	UDEBUG("");
 	if(_memory && _memory->getLastWorkingSignature())
 	{
-		if(optimized)
+		if(_rgbdSlamMode)
 		{
-			this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), global, poses, &constraints);
-		}
-		else
-		{
-			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
-			_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
+			if(optimized)
+			{
+				this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), global, poses, &constraints);
+			}
+			else
+			{
+				std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
+				_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
+			}
 		}
 
 		std::set<int> ids = _memory->getWorkingMem(); // STM + WM
@@ -2158,14 +2173,21 @@ void Rtabmap::getGraph(
 {
 	if(_memory && _memory->getLastWorkingSignature())
 	{
-		if(optimized)
+		if(_rgbdSlamMode)
 		{
-			this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), global, poses, &constraints);
+			if(optimized)
+			{
+				this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), global, poses, &constraints);
+			}
+			else
+			{
+				std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
+				_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
+			}
 		}
 		else
 		{
-			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
-			_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
+			UWARN("Getting graph while not in RGB-D SLAM mode makes no sense... only map ids are set.");
 		}
 
 		std::set<int> ids = _memory->getWorkingMem(); // STM + WM
