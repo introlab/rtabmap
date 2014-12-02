@@ -481,7 +481,7 @@ void SURF::parseParameters(const ParametersMap & parameters)
 		_surf = new cv::SURF(hessianThreshold_, nOctaves_, nOctaveLayers_, extended_, upright_);
 	}
 #else
-	UERROR("RTAB-Map is not built with OpenCV nonfree module so SURF cannot be used!");
+	UWARN("RTAB-Map is not built with OpenCV nonfree module so SURF cannot be used!");
 #endif
 }
 
@@ -502,7 +502,7 @@ std::vector<cv::KeyPoint> SURF::generateKeypointsImpl(const cv::Mat & image, con
 		_surf->detect(imgRoi, keypoints);
 	}
 #else
-	UERROR("RTAB-Map is not built with OpenCV nonfree module so SURF cannot be used!");
+	UWARN("RTAB-Map is not built with OpenCV nonfree module so SURF cannot be used!");
 #endif
 	return keypoints;
 }
@@ -533,7 +533,7 @@ cv::Mat SURF::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 		_surf->compute(image, keypoints, descriptors);
 	}
 #else
-	UERROR("RTAB-Map is not built with OpenCV nonfree module so SURF cannot be used!");
+	UWARN("RTAB-Map is not built with OpenCV nonfree module so SURF cannot be used!");
 #endif
 
 	return descriptors;
@@ -561,7 +561,7 @@ SIFT::~SIFT()
 		delete _sift;
 	}
 #else
-	UERROR("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
+	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
 #endif
 }
 
@@ -582,7 +582,7 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 
 	_sift = new cv::SIFT(nfeatures_, nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_);
 #else
-	UERROR("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
+	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
 #endif
 }
 
@@ -594,7 +594,7 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 	cv::Mat imgRoi(image, roi);
 	_sift->detect(imgRoi, keypoints); // Opencv keypoints
 #else
-	UERROR("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
+	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
 #endif
 	return keypoints;
 }
@@ -606,7 +606,7 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 #if RTABMAP_NONFREE == 1
 	_sift->compute(image, keypoints, descriptors);
 #else
-	UERROR("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
+	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
 #endif
 	return descriptors;
 }

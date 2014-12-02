@@ -74,7 +74,8 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_menu(0),
 		_trajectory(new pcl::PointCloud<pcl::PointXYZ>),
 		_maxTrajectorySize(100),
-		_workingDirectory(".")
+		_workingDirectory("."),
+		_backgroundColor(Qt::black)
 {
 	this->setMinimumSize(200, 200);
 
@@ -657,8 +658,14 @@ void CloudViewer::render()
 	this->GetRenderWindow()->Render();
 }
 
+const QColor & CloudViewer::getBackgroundColor() const
+{
+	return _backgroundColor;
+}
+
 void CloudViewer::setBackgroundColor(const QColor & color)
 {
+	_backgroundColor = color;
 	_visualizer->setBackgroundColor(color.redF(), color.greenF(), color.blueF());
 }
 

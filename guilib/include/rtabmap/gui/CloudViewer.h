@@ -147,7 +147,8 @@ public:
 	bool getPose(const std::string & id, Transform & pose); //including meshes
 	bool getCloudVisibility(const std::string & id);
 
-	const QMap<std::string, Transform> & getAddedClouds() {return _addedClouds;} //including meshes
+	const QMap<std::string, Transform> & getAddedClouds() const {return _addedClouds;} //including meshes
+	const QColor & getBackgroundColor() const;
 
 	void setCameraTargetLocked(bool enabled = true);
 	void setCameraTargetFollow(bool enabled = true);
@@ -197,6 +198,7 @@ private:
     std::list<std::string> _gridLines;
     QSet<Qt::Key> _keysPressed;
     QString _workingDirectory;
+    QColor _backgroundColor;
 };
 
 } /* namespace rtabmap */

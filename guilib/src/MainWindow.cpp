@@ -161,6 +161,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 		_ui->dockWidget_loopClosureViewer->setVisible(false);
 		_ui->dockWidget_mapVisibility->setVisible(false);
 		_ui->dockWidget_graphViewer->setVisible(false);
+		_ui->dockWidget_odometry->setVisible(false);
 		//_ui->dockWidget_cloudViewer->setVisible(false);
 		//_ui->dockWidget_imageView->setVisible(false);
 	}
@@ -194,6 +195,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	//Graphics scenes
 	_ui->imageView_source->setBackgroundBrush(QBrush(Qt::black));
 	_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
+	_ui->imageView_odometry->setBackgroundBrush(QBrush(Qt::black));
 
 	_posteriorCurve = new PdfPlotCurve("Posterior", &_cachedSignatures, this);
 	_ui->posteriorPlot->addCurve(_posteriorCurve, false);
@@ -240,6 +242,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->menuShow_view->addAction(_ui->dockWidget_loopClosureViewer->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_mapVisibility->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_graphViewer->toggleViewAction());
+	_ui->menuShow_view->addAction(_ui->dockWidget_odometry->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->toolBar->toggleViewAction());
 	_ui->toolBar->setWindowTitle(tr("Control toolbar"));
 	QAction * a = _ui->menuShow_view->addAction("Progress dialog");
@@ -455,6 +458,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
 		_ui->dockWidget_loopClosureViewer->close();
 		_ui->dockWidget_mapVisibility->close();
 		_ui->dockWidget_graphViewer->close();
+		_ui->dockWidget_odometry->close();
 
 		if(_camera)
 		{
@@ -561,7 +565,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 	else if(anEvent->getClassName().compare("OdometryEvent") == 0)
 	{
 		OdometryEvent * odomEvent = (OdometryEvent*)anEvent;
-		if(_ui->dockWidget_cloudViewer->isVisible() &&
+		if((_ui->dockWidget_cloudViewer->isVisible() || _ui->dockWidget_odometry->isVisible()) &&
 		   _lastOdometryProcessed &&
 		   !_processingStatistics)
 		{
@@ -592,12 +596,16 @@ void MainWindow::handleEvent(UEvent* anEvent)
 void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality, float time, int features, int localMapSize)
 {
 	Transform pose = data.pose();
+	bool lost = false;
+	_ui->imageView_odometry->resetTransform();
 	if(pose.isNull())
 	{
 		UDEBUG("odom lost"); // use last pose
 		_ui->widget_cloudViewer->setBackgroundColor(Qt::darkRed);
+		_ui->imageView_odometry->setBackgroundBrush(QBrush(Qt::darkRed));
 
 		pose = _lastOdomPose;
+		lost = true;
 	}
 	else if(quality>=0 &&
 			_preferencesDialog->getOdomQualityWarnThr() &&
@@ -605,11 +613,13 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality, 
 	{
 		UDEBUG("odom warn, quality=%d thr=%d", quality, _preferencesDialog->getOdomQualityWarnThr());
 		_ui->widget_cloudViewer->setBackgroundColor(Qt::darkYellow);
+		_ui->imageView_odometry->setBackgroundBrush(QBrush(Qt::darkYellow));
 	}
 	else
 	{
 		UDEBUG("odom ok");
 		_ui->widget_cloudViewer->setBackgroundColor(Qt::black);
+		_ui->imageView_odometry->setBackgroundBrush(QBrush(Qt::black));
 	}
 	if(quality >= 0)
 	{
@@ -627,65 +637,94 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality, 
 	{
 		_ui->statsToolBox->updateStat("Odometry/LocalMapSize/", (float)data.id(), (float)localMapSize);
 	}
-	if(!pose.isNull())
+
+	if(_ui->dockWidget_cloudViewer->isVisible())
 	{
-		_lastOdomPose = pose;
-		_odometryReceived = true;
-
-		// 3d cloud
-		if(data.depth().cols == data.image().cols &&
-		   data.depth().rows == data.image().rows &&
-		   !data.depth().empty() &&
-		   data.fx() > 0.0f &&
-		   data.fy() > 0.0f &&
-		   _preferencesDialog->isCloudsShown(1))
+		if(!pose.isNull())
 		{
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-			cloud = createCloud(0,
-					data.image(),
-					data.depth(),
-					data.fx(),
-					data.fy(),
-					data.cx(),
-					data.cy(),
-					data.localTransform(),
-					pose,
-					_preferencesDialog->getCloudVoxelSize(1),
-					_preferencesDialog->getCloudDecimation(1),
-					_preferencesDialog->getCloudMaxDepth(1));
+			_lastOdomPose = pose;
+			_odometryReceived = true;
 
-			if(!_ui->widget_cloudViewer->addOrUpdateCloud("cloudOdom", cloud, _odometryCorrection))
+			// 3d cloud
+			if(data.depth().cols == data.image().cols &&
+			   data.depth().rows == data.image().rows &&
+			   !data.depth().empty() &&
+			   data.fx() > 0.0f &&
+			   data.fy() > 0.0f &&
+			   _preferencesDialog->isCloudsShown(1))
 			{
-				UERROR("Adding cloudOdom to viewer failed!");
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+				cloud = createCloud(0,
+						data.image(),
+						data.depth(),
+						data.fx(),
+						data.fy(),
+						data.cx(),
+						data.cy(),
+						data.localTransform(),
+						pose,
+						_preferencesDialog->getCloudVoxelSize(1),
+						_preferencesDialog->getCloudDecimation(1),
+						_preferencesDialog->getCloudMaxDepth(1));
+
+				if(!_ui->widget_cloudViewer->addOrUpdateCloud("cloudOdom", cloud, _odometryCorrection))
+				{
+					UERROR("Adding cloudOdom to viewer failed!");
+				}
+				_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", true);
+				_ui->widget_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
+				_ui->widget_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
 			}
-			_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", true);
-			_ui->widget_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
-			_ui->widget_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
+
+			// 2d cloud
+			if(!data.depth2d().empty() &&
+				_preferencesDialog->isScansShown(1))
+			{
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+				cloud = util3d::depth2DToPointCloud(data.depth2d());
+				cloud = util3d::transformPointCloud<pcl::PointXYZ>(cloud, pose);
+				if(!_ui->widget_cloudViewer->addOrUpdateCloud("scanOdom", cloud, _odometryCorrection))
+				{
+					UERROR("Adding scanOdom to viewer failed!");
+				}
+				_ui->widget_cloudViewer->setCloudVisibility("scanOdom", true);
+				_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
+				_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
+			}
+
+			if(!data.pose().isNull())
+			{
+				// update camera position
+				_ui->widget_cloudViewer->updateCameraPosition(_odometryCorrection*data.pose());
+			}
+		}
+		_ui->widget_cloudViewer->render();
+	}
+
+	if(_ui->dockWidget_odometry->isVisible() &&
+	   !data.image().empty())
+	{
+		if(lost)
+		{
+			_ui->imageView_odometry->setImageDepth(uCvMat2QImage(data.image()));
+			_ui->imageView_odometry->setImageShown(true);
+			_ui->imageView_odometry->setImageDepthShown(true);
+		}
+		else
+		{
+			_ui->imageView_odometry->setImage(uCvMat2QImage(data.image()));
+			_ui->imageView_odometry->setImageShown(true);
+			_ui->imageView_odometry->setImageDepthShown(false);
 		}
 
-		// 2d cloud
-		if(!data.depth2d().empty() &&
-			_preferencesDialog->isScansShown(1))
+		_ui->imageView_odometry->resetZoom();
+		_ui->imageView_odometry->setSceneRect(_ui->imageView_odometry->scene()->itemsBoundingRect());
+		_ui->imageView_odometry->fitInView(_ui->imageView_odometry->sceneRect(), Qt::KeepAspectRatio);
+		if(_preferencesDialog->isImageFlipped())
 		{
-			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-			cloud = util3d::depth2DToPointCloud(data.depth2d());
-			cloud = util3d::transformPointCloud<pcl::PointXYZ>(cloud, pose);
-			if(!_ui->widget_cloudViewer->addOrUpdateCloud("scanOdom", cloud, _odometryCorrection))
-			{
-				UERROR("Adding scanOdom to viewer failed!");
-			}
-			_ui->widget_cloudViewer->setCloudVisibility("scanOdom", true);
-			_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
-			_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
-		}
-
-		if(!data.pose().isNull())
-		{
-			// update camera position
-			_ui->widget_cloudViewer->updateCameraPosition(_odometryCorrection*data.pose());
+			_ui->imageView_odometry->scale(-1.0, 1.0);
 		}
 	}
-	_ui->widget_cloudViewer->render();
 
 	_lastOdometryProcessed = true;
 
@@ -1885,8 +1924,10 @@ void MainWindow::resizeEvent(QResizeEvent* anEvent)
 {
 	_ui->imageView_source->fitInView(_ui->imageView_source->sceneRect(), Qt::KeepAspectRatio);
 	_ui->imageView_loopClosure->fitInView(_ui->imageView_source->sceneRect(), Qt::KeepAspectRatio);
+	_ui->imageView_source->fitInView(_ui->imageView_odometry->sceneRect(), Qt::KeepAspectRatio);
 	_ui->imageView_source->resetZoom();
 	_ui->imageView_loopClosure->resetZoom();
+	_ui->imageView_odometry->resetZoom();
 }
 
 void MainWindow::updateSelectSourceImageMenu(int type)
@@ -3266,10 +3307,13 @@ void MainWindow::clearTheCache()
 	_ui->graphicsView_graphView->clearAll();
 	_ui->imageView_source->clear();
 	_ui->imageView_loopClosure->clear();
+	_ui->imageView_odometry->clear();
 	_ui->imageView_source->resetTransform();
 	_ui->imageView_loopClosure->resetTransform();
+	_ui->imageView_odometry->resetTransform();
 	_ui->imageView_source->setBackgroundBrush(QBrush(Qt::black));
 	_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
+	_ui->imageView_odometry->setBackgroundBrush(QBrush(Qt::black));
 }
 
 void MainWindow::updateElapsedTime()
