@@ -16,6 +16,9 @@ if exist(GT_file, 'file')
     display('--- getPrecisionRecall ---');
     display(['Loading GroundTruth ''' GT_file ''' ...']);
     GroundTruth = imread(GT_file);
+    if max(max(GroundTruth)) == 1
+        GroundTruth*=255;
+    end
 else
     error(['The ground truth ''' GT_file '''doesn''t exist.'])
 end
@@ -56,8 +59,11 @@ if ~isempty(GroundTruth)
     end
     
     lc = sortrows(lc, -1);
-    
+
     GT_total_positives = sum(sum(GroundTruth == 255, 2) > 0)
+    if GT_total_positives == 0
+        error(['The ground truth ''' GT_file '''doesn''t have any white pixels!?'])
+    end
     
     %figure
     %plot(sum(GroundTruth > 0, 2)>0)
@@ -76,7 +82,7 @@ if ~isempty(GroundTruth)
         if id && sum(GroundTruth(lc(i,6), id)) > 0
             lc(i,5) = 1;
         end
-        
+       
         %Recall = Loop closures detected / GT loop closures
         PR(i,2) = sum(lc(1:i,5) & ~lc(1:i,7) & lc(1:i,2)) / GT_total_positives;
         
@@ -91,7 +97,11 @@ if ~isempty(GroundTruth)
         PR(i,4) = sum(lc(i,4) & lc(1:i,5) & ~lc(1:i,7) & lc(1:i,2)) / GT_total_positives;
         
         %Precision = Good loop closures / total loop closure detected
-        PR(i,3) = sum(lc(i,4) & lc(1:i,5) & ~lc(1:i,7) & lc(1:i,2)) / sum(~lc(1:i, 7) & lc(1:i,2) & lc(i,4));
+        if sum(~lc(1:i, 7) & lc(1:i,2) & lc(i,4)) > 0
+            PR(i,3) = sum(lc(i,4) & lc(1:i,5) & ~lc(1:i,7) & lc(1:i,2)) / sum(~lc(1:i, 7) & lc(1:i,2) & lc(i,4));
+        else
+            PR(i,3) = 0;
+        end
         
         if lc(i,4) && ~lc(i,5) && ~lc(i,7) && id && lc(i,1) >= LoopThr
             display(['False positive accepted! id=' num2str(lc(i,6)) ' with old=' num2str(id) ' (p=' num2str(lc(i,1)) ')'] )
