@@ -16,3 +16,6 @@
 /rtabmap-vocabularyComparison
 /uresourcegenerator
 /uresourcegenerator-0.3.0
+/librtabmap_cored.so
+/librtabmap_guid.so
+/librtabmap_utilited.so

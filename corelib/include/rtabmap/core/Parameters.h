@@ -179,7 +179,7 @@ class RTABMAP_EXP Parameters
 
 	// Hypotheses selection
 	RTABMAP_PARAM(Rtabmap, LoopThr,    	     float, 0.11, 	"Loop closing threshold.");
-	RTABMAP_PARAM(Rtabmap, LoopRatio,    	 float, 0.9, 	"The loop closure hypothesis must be over LoopRatio x lastHypothesisValue.");
+	RTABMAP_PARAM(Rtabmap, LoopRatio,    	 float, 0.0, 	"The loop closure hypothesis must be over LoopRatio x lastHypothesisValue.");
 
 	// Memory
 	RTABMAP_PARAM(Mem, RehearsalSimilarity,     float, 0.6, 	"Rehearsal similarity.");
@@ -199,7 +199,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Kp, MaxDepth,              float, 0.0, 		"Filter extracted keypoints by depth (0=inf)");
 	RTABMAP_PARAM(Kp, WordsPerImage,         int, 400, 			"");
 	RTABMAP_PARAM(Kp, BadSignRatio,          float, 0.2, 		"Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
-	RTABMAP_PARAM(Kp, NndrRatio, 	         float, 0.8, 		"NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
+	RTABMAP_PARAM_COND(Kp, NndrRatio, 	     float, RTABMAP_NONFREE, 0.8, 0.9,		"NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
 	RTABMAP_PARAM_COND(Kp, DetectorStrategy, int, RTABMAP_NONFREE, 0, 2, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
 	RTABMAP_PARAM(Kp, TfIdfLikelihoodUsed,   bool, true, 		"Use of the td-idf strategy to compute the likelihood.");
 	RTABMAP_PARAM(Kp, Parallelized,          bool, true, 		"If the dictionary update and signature creation were parallelized.");
@@ -311,7 +311,7 @@ class RTABMAP_EXP Parameters
 	// Odometry Bag-of-words
 	RTABMAP_PARAM(OdomBow, LocalHistorySize,       int, 1000,      "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
 	RTABMAP_PARAM(OdomBow, NNType,                 int, 3, 	    "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
-	RTABMAP_PARAM(OdomBow, NNDR,                   float, 0.8,  "NNDR: nearest neighbor distance ratio.");
+	RTABMAP_PARAM(OdomBow, NNDR,                   float, 0.9,  "NNDR: nearest neighbor distance ratio.");
 
 	// Odometry common stuff between BOW and Optical Flow approaches
 	RTABMAP_PARAM(OdomFlow, WinSize,               int, 16,       "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");

@@ -261,7 +261,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	}
 	UINFO("Using database \"%s\".", _databasePath.c_str());
 	this->parseParameters(parameters);
-	setupLogFiles();
+	setupLogFiles(!UFile::exists(_databasePath));
 }
 
 void Rtabmap::init(const std::string & configFile, const std::string & databasePath)
