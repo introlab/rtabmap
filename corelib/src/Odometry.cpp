@@ -69,7 +69,6 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_angularUpdate(Parameters::defaultOdomAngularUpdate()),
 		_resetCountdown(Parameters::defaultOdomResetCountdown()),
 		_force2D(Parameters::defaultOdomForce2D()),
-		_pose(Transform::getIdentity()),
 		_resetCurrentCount(0)
 {
 	Parameters::parse(parameters, Parameters::kOdomLinearUpdate(), _linearUpdate);
@@ -121,6 +120,11 @@ bool Odometry::isLargeEnoughTransform(const Transform & transform)
 
 Transform Odometry::process(SensorData & data, int * quality, int * features, int * localMapSize)
 {
+	if(_pose.isNull())
+	{
+		_pose.setIdentity(); // initialized
+	}
+
 	Transform t = this->computeTransform(data, quality, features, localMapSize);
 	if(!t.isNull())
 	{

@@ -847,7 +847,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_mlsRadius->setValue(0.04);
 
 		_ui->groupBox_poseFiltering->setChecked(true);
-		_ui->doubleSpinBox_cloudFilterRadius->setValue(0.3);
+		_ui->doubleSpinBox_cloudFilterRadius->setValue(0.1);
 		_ui->doubleSpinBox_cloudFilterAngle->setValue(30);
 
 		_ui->checkBox_map_shown->setChecked(false);

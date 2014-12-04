@@ -1045,11 +1045,12 @@ bool Rtabmap::process(const SensorData & data)
 						}
 						else if(hypothesis.second < _loopRatio*_lcHypothesisValue)
 						{
-							UDEBUG("rejected hypothesis: not satisfying ratio");
+							UWARN("rejected hypothesis: not satisfying hypothesis ratio (%f < %f * %f)",
+									hypothesis.second, _loopRatio, _lcHypothesisValue);
 						}
 						else
 						{
-							UDEBUG("rejected hypothesis: by epipolar geometry");
+							UWARN("rejected hypothesis: by epipolar geometry");
 						}
 						rejectedHypothesis = true;
 					}

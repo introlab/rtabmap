@@ -2415,8 +2415,6 @@ void MainWindow::startDetection()
 				   "progress will not be shown in the GUI."));
 	}
 
-	_emptyNewDatabase = false; // if a new database is used, it won't be empty anymore...
-
 	emit stateChanged(kDetecting);
 }
 
@@ -3069,6 +3067,10 @@ void MainWindow::deleteMemory()
 	}
 
 	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdResetMemory));
+	if(_state!=kDetecting)
+	{
+		_emptyNewDatabase = true;
+	}
 	this->clearTheCache();
 }
 
@@ -4647,6 +4649,8 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->label_elapsedTime->setText("00:00:00");
 		_elapsedTime->start();
 		_oneSecondTimer->start();
+
+		_emptyNewDatabase = false; // if a new database is used, it won't be empty anymore...
 
 		if(_camera)
 		{
