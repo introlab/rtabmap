@@ -334,7 +334,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccBow, Force2D, 		   bool, false,     "Force 2D transform (3Dof: x,y and yaw).");
 	RTABMAP_PARAM_COND(LccReextract, Activated, bool, RTABMAP_NONFREE, false, true, "Activate re-extracting features on global loop closure.");
 	RTABMAP_PARAM(LccReextract, NNType, 	int, 3, 		"kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4.");
-	RTABMAP_PARAM(LccReextract, NNDR, 		float, 0.7, 	"NNDR: nearest neighbor distance ratio.");
+	RTABMAP_PARAM(LccReextract, NNDR, 		float, 0.9, 	"NNDR: nearest neighbor distance ratio.");
 	RTABMAP_PARAM(LccReextract, FeatureType, int, 4, 		"0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
 	RTABMAP_PARAM(LccReextract, MaxWords, 	int, 600, 		"0 no limits.");
 
