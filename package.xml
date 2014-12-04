@@ -16,12 +16,18 @@
   <build_depend>libqt4-dev</build_depend>
   <build_depend>libsqlite3-dev</build_depend>
   <build_depend>zlib</build_depend>
+  <build_depend>libfreenect-dev</build_depend>
+  <build_depend>libopenni-dev</build_depend>
+  <build_depend>libopenni2-dev</build_depend>
   <build_depend>cv_bridge</build_depend>
   
   <run_depend>libpcl-all-dev</run_depend>
   <run_depend>libqt4-dev</run_depend>
   <run_depend>libsqlite3-dev</run_depend>
   <run_depend>zlib</run_depend>
+  <run_depend>libfreenect-dev</run_depend>
+  <run_depend>libopenni-dev</run_depend>
+  <run_depend>libopenni2-dev</run_depend>
   <run_depend>cv_bridge</run_depend>
 
   <export>
