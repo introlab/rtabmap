@@ -456,7 +456,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 		else if(_strategy == kNNBruteForce)
 		{
 			bruteForce = true;
-			cv::BFMatcher matcher(type==CV_8U?cv::NORM_HAMMING:cv::NORM_L2);
+			cv::BFMatcher matcher(type==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
 			matcher.knnMatch(descriptors, _dataTree, matches, k);
 		}
 		else if(_strategy == kNNBruteForceGPU)
@@ -671,7 +671,7 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 			else if(_strategy == kNNBruteForce)
 			{
 				bruteForce = true;
-				cv::BFMatcher matcher(type==CV_8U?cv::NORM_HAMMING:cv::NORM_L2);
+				cv::BFMatcher matcher(type==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
 				matcher.knnMatch(query, _dataTree, matches, k);
 			}
 			else if(_strategy == kNNBruteForceGPU)

@@ -70,7 +70,8 @@ void showUsage()
 			"  -warn                           Set Log level to Warning (Default Error)\n"
 			"  -exit_warn                      Set exit level to Warning (Default Fatal)\n"
 			"  -exit_error                     Set exit level to Error (Default Fatal)\n"
-			"  -v                              Get version of RTAB-Map\n");
+			"  -v                              Get version of RTAB-Map\n"
+			"  -input \"path\"                 Load previous database if it exists.\n");
 	exit(1);
 }
 
@@ -118,6 +119,7 @@ int main(int argc, char * argv[])
 	int loopDataset = 0;
 	int repeat = 0;
 	bool createGT = false;
+	std::string inputDbPath;
 	int imageWidth = 0;
 	int imageHeight = 0;
 	int startAt = 1;
@@ -267,6 +269,19 @@ int main(int argc, char * argv[])
 			createGT = true;
 			continue;
 		}
+		if(strcmp(argv[i], "-input") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				inputDbPath = argv[i];
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
 		if(strcmp(argv[i], "-debug") == 0)
 		{
 			logLevel = ULogger::kDebug;
@@ -367,15 +382,25 @@ int main(int argc, char * argv[])
 	ULogger::setLevel(logLevel);
 	ULogger::setExitLevel(exitLevel);
 
-	// Create tasks : memory is deleted
+	// Create tasks
 	Rtabmap rtabmap;
+	if(inputDbPath.empty())
+	{
+		inputDbPath = "rtabmapconsole.db";
+		if(UFile::erase(inputDbPath) == 0)
+		{
+			printf("Deleted database \"%s\".\n", inputDbPath.c_str());
+		}
+	}
+	else
+	{
+		printf("Loading database \"%s\".\n", inputDbPath.c_str());
+	}
 	// Disable statistics (we don't need them)
 	pm.insert(ParametersPair(Parameters::kRtabmapPublishStats(), "false"));
-	// use default working directory
-	pm.insert(ParametersPair(Parameters::kRtabmapWorkingDirectory(), Parameters::defaultRtabmapWorkingDirectory()));
 	pm.insert(ParametersPair(Parameters::kRGBDEnabled(), "false"));
 
-	rtabmap.init(pm);
+	rtabmap.init(pm, inputDbPath);
 	rtabmap.setTimeThreshold(timeThreshold); // in ms
 
 	printf("Avpd init time = %fs\n", timer.ticks());
@@ -407,7 +432,7 @@ int main(int argc, char * argv[])
 	}
 	if(rtabmap.getWM().size() || rtabmap.getSTM().size())
 	{
-		printf("[Warning] RTAB-Map database is not empty (%s)\n", (rtabmap.getWorkingDir()+Parameters::getDefaultDatabaseName()).c_str());
+		printf("[Warning] RTAB-Map database is not empty (%s)\n", inputDbPath.c_str());
 	}
 	printf("\nProcessing images...\n");
 
@@ -530,6 +555,8 @@ int main(int argc, char * argv[])
 	rtabmap.close();
 
 	printf(" Cleanup time = %fs\n", timer.ticks());
+
+	printf("Database (\"%s\") and log files saved to current directory.\n", inputDbPath.c_str());
 
 	return 0;
 }
