@@ -283,6 +283,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, AngularUpdate,     float, 0.0, 	"Min angular displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
 	RTABMAP_PARAM(RGBD, NewMapOdomChangeDistance, float, 0, "A new map is created if a change of odometry translation greater than X m is detected (0 m = disabled).");
 	RTABMAP_PARAM(RGBD, ToroIterations,    int, 100,    "TORO graph optimization iterations");
+	RTABMAP_PARAM(RGBD, ToroIgnoreVariance,   bool, false,    "Ignore constraints' variance. If checked, identity information matrix is used for each constraint in TORO. Otherwise, an information matrix is generated from the variance saved in the links.");
 	RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd, bool, false,    "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
 
 	// Local loop closure detection
@@ -344,13 +345,12 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccIcp3, Samples,         int, 0, 		"Random samples to be used for ICP computation. Not used if voxelSize is set.");
 	RTABMAP_PARAM(LccIcp3, MaxCorrespondenceDistance, float, 0.05, "ICP 3D: Max distance for point correspondences.");
 	RTABMAP_PARAM(LccIcp3, Iterations,      int, 30, 		"ICP 3D: Max iterations.");
-	RTABMAP_PARAM(LccIcp3, MaxFitness,      float, 1.0, 	"ICP 3D: Maximum fitness to accept the computed transform.");
+	RTABMAP_PARAM(LccIcp3, CorrespondenceRatio, float, 0.7, 	"ICP 3D: Ratio of matching correspondences to accept the transform.");
 	RTABMAP_PARAM(LccIcp3, PointToPlane,      bool, false, 	"ICP 3D: Use point to plane ICP.");
 	RTABMAP_PARAM(LccIcp3, PointToPlaneNormalNeighbors,      int, 20, 	"ICP 3D: Number of neighbors to compute normals for point to plane.");
 
 	RTABMAP_PARAM(LccIcp2, MaxCorrespondenceDistance, float, 0.1, 	"ICP 2D: Max distance for point correspondences.");
 	RTABMAP_PARAM(LccIcp2, Iterations,      int, 30, 				"ICP 2D: Max iterations.");
-	RTABMAP_PARAM(LccIcp2, MaxFitness,      float, 1.0, 			"ICP 2D: Maximum fitness to accept the computed transform.");
 	RTABMAP_PARAM(LccIcp2, CorrespondenceRatio, float, 0.7, 		"ICP 2D: Ratio of matching correspondences to accept the transform.");
 	RTABMAP_PARAM(LccIcp2, VoxelSize,       float, 0.005, 			"Voxel size to be used for ICP computation.");
 

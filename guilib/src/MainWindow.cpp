@@ -358,7 +358,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(this, SIGNAL(statsReceived(rtabmap::Statistics)), this, SLOT(processStats(rtabmap::Statistics)));
 
 	qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
-	connect(this, SIGNAL(odometryReceived(rtabmap::SensorData, int, float, int, int)), this, SLOT(processOdometry(rtabmap::SensorData, int, float, int, int)));
+	qRegisterMetaType<rtabmap::OdometryInfo>("rtabmap::OdometryInfo");
+	connect(this, SIGNAL(odometryReceived(rtabmap::SensorData, rtabmap::OdometryInfo)), this, SLOT(processOdometry(rtabmap::SensorData, rtabmap::OdometryInfo)));
 
 	connect(this, SIGNAL(noMoreImagesReceived()), this, SLOT(stopDetection()));
 
@@ -570,7 +571,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 		   !_processingStatistics)
 		{
 			_lastOdometryProcessed = false; // if we receive too many odometry events!
-			emit odometryReceived(odomEvent->data(), odomEvent->quality(), odomEvent->time(), odomEvent->features(), odomEvent->localMapSize());
+			emit odometryReceived(odomEvent->data(), odomEvent->info());
 		}
 	}
 	else if(anEvent->getClassName().compare("ULogEvent") == 0)
@@ -580,7 +581,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 		{
 			QMetaObject::invokeMethod(_ui->dockWidget_console, "show");
 			// The timer prevents multiple calls to pauseDetection() before the state can be changed
-			if(_state != kPaused && _logEventTime->elapsed() > 1000)
+			if(_state != kPaused && _state != kMonitoringPaused && _logEventTime->elapsed() > 1000)
 			{
 				_logEventTime->start();
 				if(_preferencesDialog->beepOnPause())
@@ -593,7 +594,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 	}
 }
 
-void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality, float time, int features, int localMapSize)
+void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap::OdometryInfo & info)
 {
 	Transform pose = data.pose();
 	bool lost = false;
@@ -607,11 +608,11 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality, 
 		pose = _lastOdomPose;
 		lost = true;
 	}
-	else if(quality>=0 &&
+	else if(info.inliers>=0 &&
 			_preferencesDialog->getOdomQualityWarnThr() &&
-			quality < _preferencesDialog->getOdomQualityWarnThr())
+			info.inliers < _preferencesDialog->getOdomQualityWarnThr())
 	{
-		UDEBUG("odom warn, quality=%d thr=%d", quality, _preferencesDialog->getOdomQualityWarnThr());
+		UDEBUG("odom warn, quality(inliers)=%d thr=%d", info.inliers, _preferencesDialog->getOdomQualityWarnThr());
 		_ui->widget_cloudViewer->setBackgroundColor(Qt::darkYellow);
 		_ui->imageView_odometry->setBackgroundBrush(QBrush(Qt::darkYellow));
 	}
@@ -621,22 +622,42 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality, 
 		_ui->widget_cloudViewer->setBackgroundColor(Qt::black);
 		_ui->imageView_odometry->setBackgroundBrush(QBrush(Qt::black));
 	}
-	if(quality >= 0)
+	if(info.inliers >= 0)
 	{
-		_ui->statsToolBox->updateStat("Odometry/Inliers/", (float)data.id(), (float)quality);
+		_ui->statsToolBox->updateStat("Odometry/Inliers/", (float)data.id(), (float)info.inliers);
 	}
-	if(time > 0)
+	if(info.matches >= 0)
 	{
-		_ui->statsToolBox->updateStat("Odometry/Time/ms", (float)data.id(), (float)time*1000.0f);
+		_ui->statsToolBox->updateStat("Odometry/Matches/", (float)data.id(), (float)info.matches);
 	}
-	if(features >=0)
+	if(info.variance >= 0)
 	{
-		_ui->statsToolBox->updateStat("Odometry/Features/", (float)data.id(), (float)features);
+		_ui->statsToolBox->updateStat("Odometry/StdDev/", (float)data.id(), sqrt((float)info.variance));
 	}
-	if(localMapSize >=0)
+	if(info.variance >= 0)
 	{
-		_ui->statsToolBox->updateStat("Odometry/LocalMapSize/", (float)data.id(), (float)localMapSize);
+		_ui->statsToolBox->updateStat("Odometry/Variance/", (float)data.id(), (float)info.variance);
 	}
+	if(info.time > 0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/Time/ms", (float)data.id(), (float)info.time*1000.0f);
+	}
+	if(info.features >=0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/Features/", (float)data.id(), (float)info.features);
+	}
+	if(info.localMapSize >=0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/Local_map_size/", (float)data.id(), (float)info.localMapSize);
+	}
+	float x,y,z, roll,pitch,yaw;
+	pose.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+	_ui->statsToolBox->updateStat("Odometry/T_x/m", (float)data.id(), x);
+	_ui->statsToolBox->updateStat("Odometry/T_y/m", (float)data.id(), y);
+	_ui->statsToolBox->updateStat("Odometry/T_z/m", (float)data.id(), z);
+	_ui->statsToolBox->updateStat("Odometry/T_roll/deg", (float)data.id(), roll*180.0/CV_PI);
+	_ui->statsToolBox->updateStat("Odometry/T_pitch/deg", (float)data.id(), pitch*180.0/CV_PI);
+	_ui->statsToolBox->updateStat("Odometry/T_yaw/deg", (float)data.id(), yaw*180.0/CV_PI);
 
 	if(_ui->dockWidget_cloudViewer->isVisible())
 	{
@@ -677,11 +698,11 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, int quality, 
 			}
 
 			// 2d cloud
-			if(!data.depth2d().empty() &&
+			if(!data.laserScan().empty() &&
 				_preferencesDialog->isScansShown(1))
 			{
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-				cloud = util3d::depth2DToPointCloud(data.depth2d());
+				cloud = util3d::laserScanToPointCloud(data.laserScan());
 				cloud = util3d::transformPointCloud<pcl::PointXYZ>(cloud, pose);
 				if(!_ui->widget_cloudViewer->addOrUpdateCloud("scanOdom", cloud, _odometryCorrection))
 				{
@@ -1039,7 +1060,7 @@ void MainWindow::updateMapCloud(
 
 			if(!_ui->actionView_scans->isEnabled() &&
 				_cachedSignatures.size() &&
-				!(--_cachedSignatures.end())->getDepth2DCompressed().empty())
+				!(--_cachedSignatures.end())->getLaserScanCompressed().empty())
 			{
 				_ui->actionExport_2D_scans_ply_pcd->setEnabled(true);
 				_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(true);
@@ -1158,7 +1179,7 @@ void MainWindow::updateMapCloud(
 				else if(_cachedSignatures.contains(iter->first))
 				{
 					QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
-					if(!jter->getDepth2DCompressed().empty())
+					if(!jter->getLaserScanCompressed().empty())
 					{
 						this->createAndAddScanToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
 					}
@@ -1441,13 +1462,13 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		return;
 	}
 
-	if(!iter->getDepth2DCompressed().empty())
+	if(!iter->getLaserScanCompressed().empty())
 	{
 		cv::Mat depth2D;
 		iter->uncompressData(0, 0, &depth2D);
 
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-		cloud = util3d::depth2DToPointCloud(depth2D);
+		cloud = util3d::laserScanToPointCloud(depth2D);
 		QColor color = Qt::red;
 		if(mapId >= 0)
 		{
@@ -2342,6 +2363,7 @@ void MainWindow::startDetection()
 			}
 			return;
 		}
+
 		if(_odomThread)
 		{
 			UEventsManager::createPipe(_dbReader, _odomThread, "CameraEvent");
@@ -2746,9 +2768,11 @@ void MainWindow::postProcessing()
 	_initProgressDialog->show();
 
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
-	int toroIterations = 100;
-	bool toroOptimizeFromGraphEnd = false;
+	int toroIterations = Parameters::defaultRGBDToroIterations();
+	bool ignoreVariance =  Parameters::defaultRGBDToroIgnoreVariance();
+	bool toroOptimizeFromGraphEnd =  Parameters::defaultRGBDOptimizeFromGraphEnd();
 	Parameters::parse(parameters, Parameters::kRGBDToroIterations(), toroIterations);
+	Parameters::parse(parameters, Parameters::kRGBDToroIgnoreVariance(), ignoreVariance);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), toroOptimizeFromGraphEnd);
 
 	int loopClosuresAdded = 0;
@@ -2819,7 +2843,8 @@ void MainWindow::postProcessing()
 
 						Transform transform;
 						std::string rejectedMsg;
-						int inliers;
+						int inliers = -1;
+						double variance = -1.0;
 						if(reextractFeatures)
 						{
 							memory.init("", true); // clear previously added signatures
@@ -2846,7 +2871,7 @@ void MainWindow::postProcessing()
 									memory.update(dataTo);
 								}
 
-								transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &inliers);
+								transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &inliers, &variance);
 							}
 							else
 							{
@@ -2855,14 +2880,14 @@ void MainWindow::postProcessing()
 						}
 						else
 						{
-							transform = memory.computeVisualTransform(signatureTo, signatureFrom, &rejectedMsg, &inliers);
+							transform = memory.computeVisualTransform(signatureTo, signatureFrom, &rejectedMsg, &inliers, &variance);
 						}
 						if(!transform.isNull())
 						{
 							UINFO("Added new loop closure between %d and %d.", from, to);
 							addedLinks.insert(from);
 							addedLinks.insert(to);
-							_currentLinksMap.insert(std::make_pair(from, Link(from, to, transform, Link::kUserClosure)));
+							_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, variance)));
 							++loopClosuresAdded;
 							_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
 						}
@@ -2882,7 +2907,7 @@ void MainWindow::postProcessing()
 						.arg(odomPoses.size()).arg(_currentLinksMap.size()));
 				std::map<int, rtabmap::Transform> optimizedPoses;
 				std::map<int, int> depthGraph = util3d::generateDepthGraph(_currentLinksMap, toroOptimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first);
-				util3d::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations);
+				util3d::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations, true, ignoreVariance);
 				_currentPosesMap = optimizedPoses;
 				_initProgressDialog->appendText(tr("Optimizing graph with new links... done!"));
 			}
@@ -2903,14 +2928,14 @@ void MainWindow::postProcessing()
 		float maxDepth=2.0f;
 		float voxelSize=0.01f;
 		int samples = 0;
-		float minFitness = 1.0f;
 		float maxCorrespondences = 0.05f;
+		float correspondenceRatio = 0.7f;
 		float icpIterations = 30;
 		Parameters::parse(parameters, Parameters::kLccIcp3Decimation(), decimation);
 		Parameters::parse(parameters, Parameters::kLccIcp3MaxDepth(), maxDepth);
 		Parameters::parse(parameters, Parameters::kLccIcp3VoxelSize(), voxelSize);
 		Parameters::parse(parameters, Parameters::kLccIcp3Samples(), samples);
-		Parameters::parse(parameters, Parameters::kLccIcp3MaxFitness(), minFitness);
+		Parameters::parse(parameters, Parameters::kLccIcp3CorrespondenceRatio(), correspondenceRatio);
 		Parameters::parse(parameters, Parameters::kLccIcp3MaxCorrespondenceDistance(), maxCorrespondences);
 		Parameters::parse(parameters, Parameters::kLccIcp3Iterations(), icpIterations);
 		bool pointToPlane = false;
@@ -2974,7 +2999,8 @@ void MainWindow::postProcessing()
 							iter->second.transform() * signatureTo.getLocalTransform());
 
 					bool hasConverged = false;
-					double fitness = -1;
+					double variance = -1;
+					int correspondences = 0;
 					Transform transform;
 					if(pointToPlane)
 					{
@@ -2997,8 +3023,9 @@ void MainWindow::postProcessing()
 								cloudANormals,
 								maxCorrespondences,
 								icpIterations,
-								hasConverged,
-								fitness);
+								&hasConverged,
+								&variance,
+								&correspondences);
 					}
 					else
 					{
@@ -3006,18 +3033,22 @@ void MainWindow::postProcessing()
 								cloudA,
 								maxCorrespondences,
 								icpIterations,
-								hasConverged,
-								fitness);
+								&hasConverged,
+								&variance,
+								&correspondences);
 					}
 
-					if(hasConverged && !transform.isNull() && fitness>=0.0f && fitness <= minFitness)
+					float correspondencesRatio = float(correspondences)/float(cloudB->size()>cloudA->size()?cloudB->size():cloudA->size());
+
+					if(!transform.isNull() && hasConverged &&
+					   correspondencesRatio >= correspondenceRatio)
 					{
-						Link newLink(from, to, transform*iter->second.transform(), iter->second.type());
+						Link newLink(from, to, iter->second.type(), transform*iter->second.transform(), variance);
 						iter->second = newLink;
 					}
 					else
 					{
-						UWARN("Cannot refine link %d->%d (converged=%s fitness=%f)", from, to, hasConverged?"true":"false", fitness);
+						UWARN("Cannot refine link %d->%d (converged=%s variance=%f)", from, to, hasConverged?"true":"false", variance);
 					}
 				}
 			}
@@ -3029,7 +3060,7 @@ void MainWindow::postProcessing()
 			.arg(odomPoses.size()).arg(_currentLinksMap.size()));
 	std::map<int, rtabmap::Transform> optimizedPoses;
 	std::map<int, int> depthGraph = util3d::generateDepthGraph(_currentLinksMap, toroOptimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first);
-	util3d::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations);
+	util3d::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations, true, ignoreVariance);
 	_initProgressDialog->appendText(tr("Optimizing graph with updated links... done!"));
 	_initProgressDialog->incrementStep();
 
@@ -4698,7 +4729,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->statusbar->showMessage(tr("Paused..."));
 			_ui->actionDump_the_memory->setEnabled(true);
 			_ui->actionDump_the_prediction_matrix->setEnabled(true);
-			_ui->actionDelete_memory->setEnabled(true);
+			_ui->actionDelete_memory->setEnabled(false);
 			_ui->actionGenerate_map->setEnabled(true);
 			_ui->actionGenerate_local_map->setEnabled(true);
 			_ui->actionGenerate_TORO_graph_graph->setEnabled(true);

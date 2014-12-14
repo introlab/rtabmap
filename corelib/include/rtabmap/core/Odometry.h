@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Parameters.h>
 
 #include <rtabmap/core/SensorData.h>
+#include <rtabmap/core/OdometryInfo.h>
 
 #include <opencv2/opencv.hpp>
 
@@ -56,7 +57,7 @@ class RTABMAP_EXP Odometry
 {
 public:
 	virtual ~Odometry() {}
-	Transform process(SensorData & data, int * quality = 0, int * features = 0, int * localMapSize = 0);
+	Transform process(const SensorData & data, OdometryInfo * info = 0);
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 
 	bool isLargeEnoughTransform(const Transform & transform);
@@ -75,7 +76,7 @@ public:
 	float getAngularUpdate() const {return _angularUpdate;}
 
 private:
-	virtual Transform computeTransform(const SensorData & image, int * quality = 0, int * features = 0, int * localMapSize = 0) = 0;
+	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0) = 0;
 
 private:
 	int _maxFeatures;
@@ -110,7 +111,7 @@ public:
 	const Memory * getMemory() const {return _memory;}
 
 private:
-	virtual Transform computeTransform(const SensorData & image, int * quality = 0, int * features = 0, int * localMapSize = 0);
+	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0);
 
 private:
 	//Parameters
@@ -133,10 +134,10 @@ public:
 	const pcl::PointCloud<pcl::PointXYZ>::Ptr & getLastCorners3D() const {return refCorners3D_;}
 
 private:
-	virtual Transform computeTransform(const SensorData & image, int * quality = 0, int * features = 0, int * localMapSize = 0);
-	Transform computeTransformStereo(const SensorData & image, int * quality, int * features);
-	Transform computeTransformRGBD(const SensorData & image, int * quality, int * features);
-	Transform computeTransformMono(const SensorData & image, int * quality, int * features);
+	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0);
+	Transform computeTransformStereo(const SensorData & image, OdometryInfo * info);
+	Transform computeTransformRGBD(const SensorData & image, OdometryInfo * info);
+	Transform computeTransformMono(const SensorData & image, OdometryInfo * info);
 private:
 	//Parameters:
 	int flowWinSize_;
@@ -170,13 +171,13 @@ public:
 			int samples = 0,
 			float maxCorrespondenceDistance = 0.05f,
 			int maxIterations = 30,
-			float maxFitness = 0.01f,
+			float correspondenceRatio = 0.7f,
 			bool pointToPlane = true,
 			const ParametersMap & odometryParameter = rtabmap::ParametersMap());
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 
 private:
-	virtual Transform computeTransform(const SensorData & image, int * quality = 0, int * features = 0, int * localMapSize = 0);
+	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0);
 
 private:
 	int _decimation;
@@ -184,7 +185,7 @@ private:
 	float _samples;
 	float _maxCorrespondenceDistance;
 	int	_maxIterations;
-	float _maxFitness;
+	float _correspondenceRatio;
 	bool _pointToPlane;
 
 	pcl::PointCloud<pcl::PointNormal>::Ptr _previousCloudNormal; // for point ot plane

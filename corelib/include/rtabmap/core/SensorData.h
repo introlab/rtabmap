@@ -52,20 +52,22 @@ public:
 		  float fyOrBaseline,
 		  float cx,
 		  float cy,
-		  const Transform & pose,
 		  const Transform & localTransform,
+		  const Transform & pose,
+		  float poseVariance,
 		  int id = 0);
 
-	// Metric constructor + 2d depth
-	SensorData(const cv::Mat & image,
+	// Metric constructor + 2d laser scan
+	SensorData(const cv::Mat & laserScan,
+		  const cv::Mat & image,
 		  const cv::Mat & depthOrRightImage,
-		  const cv::Mat & depth2d,
 		  float fx,
 		  float fyOrBaseline,
 		  float cx,
 		  float cy,
-		  const Transform & pose,
 		  const Transform & localTransform,
+		  const Transform & pose,
+		  float poseVariance,
 		  int id = 0);
 
 	virtual ~SensorData() {}
@@ -80,11 +82,11 @@ public:
 	void setId(int id) {_id = id;}
 
 	bool isMetric() const {return !_depthOrRightImage.empty() || _fx != 0.0f || _fyOrBaseline != 0.0f || !_pose.isNull();}
-	void setPose(const Transform & pose) {_pose = pose;}
+	void setPose(const Transform & pose, float variance) {_pose = pose; _poseVariance=variance;}
 	cv::Mat depth() const {return (_depthOrRightImage.type()==CV_32FC1 || _depthOrRightImage.type()==CV_16UC1)?_depthOrRightImage:cv::Mat();}
 	cv::Mat rightImage() const {return _depthOrRightImage.type()==CV_8UC1?_depthOrRightImage:cv::Mat();}
 	const cv::Mat & depthOrRightImage() const {return _depthOrRightImage;}
-	const cv::Mat & depth2d() const {return _depth2d;}
+	const cv::Mat & laserScan() const {return _laserScan;}
 	float fx() const {return _fx;}
 	float fy() const {return (_depthOrRightImage.type()==CV_8UC1)?0:_fyOrBaseline;}
 	float cx() const {return _cx;}
@@ -93,6 +95,7 @@ public:
 	float fyOrBaseline() const {return _fyOrBaseline;}
 	const Transform & pose() const {return _pose;}
 	const Transform & localTransform() const {return _localTransform;}
+	float poseVariance() const {return _poseVariance;}
 
 	void setFeatures(const std::vector<cv::KeyPoint> & keypoints, const cv::Mat & descriptors)
 	{
@@ -108,13 +111,14 @@ private:
 
 	// Metric stuff
 	cv::Mat _depthOrRightImage;
-	cv::Mat _depth2d;
+	cv::Mat _laserScan;
 	float _fx;
 	float _fyOrBaseline;
 	float _cx;
 	float _cy;
 	Transform _pose;
 	Transform _localTransform;
+	float _poseVariance;
 
 	// features
 	std::vector<cv::KeyPoint> _keypoints;

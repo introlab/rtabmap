@@ -95,6 +95,7 @@ private slots:
 	void addConstraint();
 	void resetConstraint();
 	void rejectConstraint();
+	void updateConstraintView();
 
 private:
 	void updateIds();
@@ -120,9 +121,9 @@ private:
 	std::multimap<int, rtabmap::Link> updateLinksWithModifications(
 			const std::multimap<int, rtabmap::Link> & edgeConstraints);
 	void updateLoopClosuresSlider(int from = 0, int to = 0);
-	void refineConstraint(int from, int to);
-	void refineConstraintVisually(int from, int to);
-	bool addConstraint(int from, int to, bool silent);
+	void refineConstraint(int from, int to, bool updateGraph);
+	void refineConstraintVisually(int from, int to, bool updateGraph);
+	bool addConstraint(int from, int to, bool silent, bool updateGraph);
 
 private:
 	Ui_DatabaseViewer * ui_;

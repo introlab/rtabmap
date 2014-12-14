@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/utilite/UEvent.h"
 #include "rtabmap/core/SensorData.h"
+#include "rtabmap/core/OdometryInfo.h"
 
 namespace rtabmap {
 
@@ -37,29 +38,20 @@ class OdometryEvent : public UEvent
 {
 public:
 	OdometryEvent(
-		const SensorData & data, int quality = -1, float time = 0.0f, int features = 0, int localMapSize = 0) :
+		const SensorData & data, const OdometryInfo & info = OdometryInfo()) :
 			_data(data),
-			_quality(quality),
-			_time(time),
-			_features(features),
-			_localMapSize(localMapSize)
+			_info(info)
 	{}
 	virtual ~OdometryEvent() {}
 	virtual std::string getClassName() const {return "OdometryEvent";}
 
 	bool isValid() const {return !_data.pose().isNull();}
 	const SensorData & data() const {return _data;}
-	int quality() const {return _quality;}
-	float time() const {return _time;} // seconds
-	int features() const {return _features;}
-	int localMapSize() const {return _localMapSize;}
+	const OdometryInfo & info() const {return _info;}
 
 private:
 	SensorData _data;
-	int _quality;
-	float _time; // seconds
-	int _features;
-	int _localMapSize;
+	OdometryInfo _info;
 };
 
 class OdometryResetEvent : public UEvent

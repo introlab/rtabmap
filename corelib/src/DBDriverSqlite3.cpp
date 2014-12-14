@@ -555,11 +555,10 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 
 					data = sqlite3_column_blob(ppStmt, index);
 					dataSize = sqlite3_column_bytes(ppStmt, index++);
-					//Create the depth2d
-					cv::Mat depth2dCompressed;
+					//Create the laserScan
 					if(dataSize>4 && data)
 					{
-						(*iter)->setDepth2DCompressed(cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone()); // depth2d
+						(*iter)->setLaserScanCompressed(cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone()); // depth2d
 					}
 
 				}
@@ -584,7 +583,7 @@ void DBDriverSqlite3::getNodeDataQuery(
 		int signatureId,
 		cv::Mat & imageCompressed,
 		cv::Mat & depthCompressed,
-		cv::Mat & depth2dCompressed,
+		cv::Mat & laserScanCompressed,
 		float & fx,
 		float & fy,
 		float & cx,
@@ -681,7 +680,7 @@ void DBDriverSqlite3::getNodeDataQuery(
 			//Create the depth2d
 			if(dataSize>4 && data)
 			{
-				depth2dCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone();
+				laserScanCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone();
 			}
 
 			if(depthCompressed.empty() || fx <= 0 || fy <= 0 || cx < 0 || cy < 0)
@@ -820,7 +819,7 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 				  << "FROM Node "
 				  << "LEFT OUTER JOIN Link "
 				  << "ON id = from_id "
-				  << "WHERE type!=1 "
+				  << "WHERE type==0 " // select only nodes with neighor links, ignore merged nodes
 				  << "ORDER BY id";
 		}
 
@@ -840,7 +839,7 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-		ULOGGER_DEBUG("Time=%f", timer.ticks());
+		ULOGGER_DEBUG("Time=%f ids=%d", timer.ticks(), (int)ids.size());
 	}
 }
 
@@ -952,72 +951,6 @@ void DBDriverSqlite3::getWeightQuery(int nodeId, int & weight) const
 		if(rc == SQLITE_ROW)
 		{
 			weight= sqlite3_column_int(ppStmt, 0); // weight
-			rc = sqlite3_step(ppStmt);
-		}
-		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-
-		// Finalize (delete) the statement
-		rc = sqlite3_finalize(ppStmt);
-		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-	}
-}
-
-void DBDriverSqlite3::loadLoopClosuresQuery(int nodeId, std::map<int, Transform> & loopIds, std::map<int, Transform> & childIds) const
-{
-	loopIds.clear();
-	childIds.clear();
-	if(_ppDb)
-	{
-		int rc = SQLITE_OK;
-		sqlite3_stmt * ppStmt = 0;
-		std::stringstream query;
-
-		query << "SELECT to_id, type, transform FROM Link WHERE from_id =  "
-			  << nodeId
-			  << " AND type > 0"
-			  << ";";
-
-		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
-		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-
-		int toId = 0;
-		int type;
-		const void * data = 0;
-		int dataSize = 0;
-
-		// Process the result if one
-		rc = sqlite3_step(ppStmt);
-		while(rc == SQLITE_ROW)
-		{
-			int index = 0;
-			toId = sqlite3_column_int(ppStmt, index++);
-			type = sqlite3_column_int(ppStmt, index++);
-
-			data = sqlite3_column_blob(ppStmt, index);
-			dataSize = sqlite3_column_bytes(ppStmt, index++);
-
-			Transform transform;
-			if((unsigned int)dataSize == transform.size()*sizeof(float) && data)
-			{
-				memcpy(transform.data(), data, dataSize);
-			}
-
-			if(nodeId == toId)
-			{
-				UERROR("Loop links cannot be auto-reference links (node=%d)", toId);
-			}
-			else if(type == 1)
-			{
-				UDEBUG("Load link from %d to %d, type=%d", nodeId, toId, 1);
-				//loop id
-				loopIds.insert(std::pair<int, Transform>(toId, transform));
-			}
-			else if(type == 2)
-			{
-				UDEBUG("Load link from %d to %d, type=%d", nodeId, toId, 2);
-				//loop id
-				childIds.insert(std::pair<int, Transform>(toId, transform));
-			}
 			rc = sqlite3_step(ppStmt);
 		}
 		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
@@ -1413,7 +1346,10 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 	}
 }
 
-void DBDriverSqlite3::loadNeighborsQuery(int signatureId, std::map<int, Transform> & neighbors) const
+void DBDriverSqlite3::loadLinksQuery(
+		int signatureId,
+		std::map<int, Link> & neighbors,
+		Link::Type typeIn) const
 {
 	neighbors.clear();
 	if(_ppDb)
@@ -1424,15 +1360,38 @@ void DBDriverSqlite3::loadNeighborsQuery(int signatureId, std::map<int, Transfor
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		query << "SELECT to_id, transform FROM Link "
-		      << "WHERE from_id = " << signatureId
-		      << " AND type = 0"
-			  << " ORDER BY to_id";
+		if(uStrNumCmp(_version, "0.7.4") >= 0)
+		{
+			query << "SELECT to_id, type, transform, variance FROM Link ";
+		}
+		else
+		{
+			query << "SELECT to_id, type, transform FROM Link ";
+		}
+		query << "WHERE from_id = " << signatureId;
+		if(typeIn != Link::kUndef)
+		{
+			if(uStrNumCmp(_version, "0.7.4") >= 0)
+			{
+				query << " AND type = " << typeIn;
+			}
+			else if(typeIn == Link::kNeighbor)
+			{
+				query << " AND type = 0";
+			}
+			else if(typeIn > Link::kNeighbor)
+			{
+				query << " AND type > 0";
+			}
+		}
+		query << " ORDER BY to_id";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 		int toId = -1;
+		int type = Link::kUndef;
+		float variance = 1.0f;
 		const void * data = 0;
 		int dataSize = 0;
 
@@ -1443,6 +1402,7 @@ void DBDriverSqlite3::loadNeighborsQuery(int signatureId, std::map<int, Transfor
 			int index = 0;
 
 			toId = sqlite3_column_int(ppStmt, index++);
+			type = sqlite3_column_int(ppStmt, index++);
 
 			data = sqlite3_column_blob(ppStmt, index);
 			dataSize = sqlite3_column_bytes(ppStmt, index++);
@@ -1453,7 +1413,17 @@ void DBDriverSqlite3::loadNeighborsQuery(int signatureId, std::map<int, Transfor
 				memcpy(transform.data(), data, dataSize);
 			}
 
-			neighbors.insert(neighbors.end(), std::pair<int, Transform>(toId, transform));
+			if(uStrNumCmp(_version, "0.7.4") >= 0)
+			{
+				variance = sqlite3_column_double(ppStmt, index++);
+				neighbors.insert(neighbors.end(), std::make_pair(toId, Link(signatureId, toId, (Link::Type)type, transform, variance)));
+			}
+			else
+			{
+				// neighbor is 0, loop closures are 1 and 2 (child)
+				neighbors.insert(neighbors.end(), std::make_pair(toId, Link(signatureId, toId, type==0?Link::kNeighbor:Link::kGlobalClosure, transform, variance)));
+			}
+
 			rc = sqlite3_step(ppStmt);
 		}
 
@@ -1481,9 +1451,18 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 		std::stringstream query;
 		int totalLinksLoaded = 0;
 
-		query << "SELECT to_id, type, transform FROM Link "
-			  << "WHERE from_id = ? "
-			  << "ORDER BY to_id";
+		if(uStrNumCmp(_version, "0.7.4") >= 0)
+		{
+			query << "SELECT to_id, type, variance, transform FROM Link "
+				  << "WHERE from_id = ? "
+				  << "ORDER BY to_id";
+		}
+		else
+		{
+			query << "SELECT to_id, type, transform FROM Link "
+				  << "WHERE from_id = ? "
+				  << "ORDER BY to_id";
+		}
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
@@ -1496,9 +1475,8 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 
 			int toId = -1;
 			int linkType = -1;
-			std::map<int, Transform> neighbors;
-			std::map<int, Transform> loopIds;
-			std::map<int, Transform> childIds;
+			float variance = 1.0f;
+			std::list<Link> links;
 			const void * data = 0;
 			int dataSize = 0;
 
@@ -1510,34 +1488,33 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 
 				toId = sqlite3_column_int(ppStmt, index++);
 				linkType = sqlite3_column_int(ppStmt, index++);
+				if(uStrNumCmp(_version, "0.7.4") >= 0)
+				{
+					variance = sqlite3_column_double(ppStmt, index++);
+				}
 
 				//transform
 				data = sqlite3_column_blob(ppStmt, index);
 				dataSize = sqlite3_column_bytes(ppStmt, index++);
 				Transform transform;
-				if((unsigned int)dataSize == transform.size()*sizeof(float) && data)
+				UASSERT((unsigned int)dataSize == transform.size()*sizeof(float) && data);
+				memcpy(transform.data(), data, dataSize);
+
+				if(linkType >= 0 && linkType != Link::kUndef)
 				{
-					memcpy(transform.data(), data, dataSize);
+					if(uStrNumCmp(_version, "0.7.4") >= 0)
+					{
+						links.push_back(Link((*iter)->id(), toId, (Link::Type)linkType, transform, variance));
+					}
+					else // neighbor is 0, loop closures are 1 and 2 (child)
+					{
+						links.push_back(Link((*iter)->id(), toId, linkType == 0?Link::kNeighbor:Link::kGlobalClosure, transform, variance));
+					}
 				}
 				else
 				{
-					UFATAL("");
-				}
-
-				if(linkType == 1)
-				{
-					UDEBUG("Load link from %d to %d, type=%d", (*iter)->id(), toId, 1);
-					loopIds.insert(std::pair<int, Transform>(toId, transform));
-				}
-				else if(linkType == 2)
-				{
-					UDEBUG("Load link from %d to %d, type=%d", (*iter)->id(), toId, 2);
-					childIds.insert(std::pair<int, Transform>(toId, transform));
-				}
-				else if(linkType == 0)
-				{
-					UDEBUG("Load link from %d to %d, type=%d", (*iter)->id(), toId, 0);
-					neighbors.insert(neighbors.end(), std::pair<int, Transform>(toId, transform));
+					UFATAL("Not supported link type %d ! (fromId=%d, toId=%d)",
+							linkType, (*iter)->id(), toId);
 				}
 
 				++totalLinksLoaded;
@@ -1546,14 +1523,12 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 			// add links
-			(*iter)->addNeighbors(neighbors);
-			(*iter)->setLoopClosureIds(loopIds);
-			(*iter)->setChildLoopClosureIds(childIds);
+			(*iter)->addLinks(links);
 
 			//reset
 			rc = sqlite3_reset(ppStmt);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-			UDEBUG("time=%fs, node=%d, neighbors.size=%d, loopIds=%d, childIds=%d", timer.ticks(), (*iter)->id(), neighbors.size(), loopIds.size(), childIds.size());
+			UDEBUG("time=%fs, node=%d, links.size=%d", timer.ticks(), (*iter)->id(), links.size());
 		}
 
 		// Finalize (delete) the statement
@@ -1610,7 +1585,7 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes) const
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		for(std::list<Signature *>::const_iterator j=nodes.begin(); j!=nodes.end(); ++j)
 		{
-			if((*j)->isNeighborsModified())
+			if((*j)->isLinksModified())
 			{
 				rc = sqlite3_bind_int(ppStmt, 1, (*j)->id());
 				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
@@ -1632,24 +1607,13 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes) const
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		for(std::list<Signature *>::const_iterator j=nodes.begin(); j!=nodes.end(); ++j)
 		{
-			if((*j)->isNeighborsModified())
+			if((*j)->isLinksModified())
 			{
-				// Save neighbor links
-				const std::map<int, Transform> & neighbors = (*j)->getNeighbors();
-				for(std::map<int, Transform>::const_iterator i=neighbors.begin(); i!=neighbors.end(); ++i)
+				// Save links
+				const std::map<int, Link> & links = (*j)->getLinks();
+				for(std::map<int, Link>::const_iterator i=links.begin(); i!=links.end(); ++i)
 				{
-					stepLink(ppStmt, (*j)->id(), i->first, 0, i->second);
-				}
-				// save loop closure links
-				const std::map<int, Transform> & loopIds = (*j)->getLoopClosureIds();
-				for(std::map<int, Transform>::const_iterator i=loopIds.begin(); i!=loopIds.end(); ++i)
-				{
-					stepLink(ppStmt, (*j)->id(), i->first, 1, i->second);
-				}
-				const std::map<int, Transform> & childIds = (*j)->getChildLoopClosureIds();
-				for(std::map<int, Transform>::const_iterator i=childIds.begin(); i!=childIds.end(); ++i)
-				{
-					stepLink(ppStmt, (*j)->id(), i->first, 2, i->second);
+					stepLink(ppStmt, (*j)->id(), i->first, i->second.type(), i->second.variance(), i->second.transform());
 				}
 			}
 		}
@@ -1752,22 +1716,11 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		for(std::list<Signature *>::const_iterator jter=signatures.begin(); jter!=signatures.end(); ++jter)
 		{
-			// Save neighbor links
-			const std::map<int, Transform> & neighbors = (*jter)->getNeighbors();
-			for(std::map<int, Transform>::const_iterator i=neighbors.begin(); i!=neighbors.end(); ++i)
+			// Save links
+			const std::map<int, Link> & links = (*jter)->getLinks();
+			for(std::map<int, Link>::const_iterator i=links.begin(); i!=links.end(); ++i)
 			{
-				stepLink(ppStmt, (*jter)->id(), i->first, 0, i->second);
-			}
-			// save loop closure links
-			const std::map<int, Transform> & loopIds = (*jter)->getLoopClosureIds();
-			for(std::map<int, Transform>::const_iterator i=loopIds.begin(); i!=loopIds.end(); ++i)
-			{
-				stepLink(ppStmt, (*jter)->id(), i->first, 1, i->second);
-			}
-			const std::map<int, Transform> & childIds = (*jter)->getChildLoopClosureIds();
-			for(std::map<int, Transform>::const_iterator i=childIds.begin(); i!=childIds.end(); ++i)
-			{
-				stepLink(ppStmt, (*jter)->id(), i->first, 2, i->second);
+				stepLink(ppStmt, (*jter)->id(), i->first, i->second.type(), i->second.variance(), i->second.transform());
 			}
 		}
 		// Finalize (delete) the statement
@@ -1833,9 +1786,9 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 		for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 		{
 			//metric
-			if(!(*i)->getDepthCompressed().empty() || !(*i)->getDepth2DCompressed().empty())
+			if(!(*i)->getDepthCompressed().empty() || !(*i)->getLaserScanCompressed().empty())
 			{
-				stepDepth(ppStmt, (*i)->id(), (*i)->getDepthCompressed(), (*i)->getDepth2DCompressed(), (*i)->getDepthFx(), (*i)->getDepthFy(), (*i)->getDepthCx(), (*i)->getDepthCy(), (*i)->getLocalTransform());
+				stepDepth(ppStmt, (*i)->id(), (*i)->getDepthCompressed(), (*i)->getLaserScanCompressed(), (*i)->getDepthFx(), (*i)->getDepthFy(), (*i)->getDepthCx(), (*i)->getDepthCy(), (*i)->getLocalTransform());
 			}
 		}
 		// Finalize (delete) the statement
@@ -2055,9 +2008,16 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt,
 
 std::string DBDriverSqlite3::queryStepLink() const
 {
-	return "INSERT INTO Link(from_id, to_id, type, transform) VALUES(?,?,?,?);";
+	if(uStrNumCmp(_version, "0.7.4") >= 0)
+	{
+		return "INSERT INTO Link(from_id, to_id, type, variance, transform) VALUES(?,?,?,?,?);";
+	}
+	else
+	{
+		return "INSERT INTO Link(from_id, to_id, type, transform) VALUES(?,?,?,?);";
+	}
 }
-void DBDriverSqlite3::stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, int type, const Transform & transform) const
+void DBDriverSqlite3::stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, int type, float variance, const Transform & transform) const
 {
 	if(!ppStmt)
 	{
@@ -2072,6 +2032,13 @@ void DBDriverSqlite3::stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, int 
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_int(ppStmt, index++, type);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+	if(uStrNumCmp(_version, "0.7.4") >= 0)
+	{
+		rc = sqlite3_bind_double(ppStmt, index++, variance);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+
 	rc = sqlite3_bind_blob(ppStmt, index++, transform.data(), transform.size()*sizeof(float), SQLITE_STATIC);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 

@@ -46,7 +46,8 @@ void showUsage()
 			"  -debug                   Set debug level for the logger.\n"
 			"  -rate #.#                Input rate Hz (default 0=inf)\n"
 			"  -openni                  Use openni camera instead of the usb camera.\n"
-			"  -openni2                 Use openni2 camera instead of the usb camera.\n");
+			"  -openni2                 Use openni2 camera instead of the usb camera.\n"
+			"  -freenect                Use freenect camera instead of the usb camera.\n");
 	exit(1);
 }
 
@@ -76,6 +77,7 @@ int main (int argc, char * argv[])
 	bool show = true;
 	bool openni = false;
 	bool openni2 = false;
+	bool freenect = false;
 	float rate = 0.0f;
 
 	if(argc < 2)
@@ -121,6 +123,11 @@ int main (int argc, char * argv[])
 			openni2 = true;
 			continue;
 		}
+		if(strcmp(argv[i], "-freenect") == 0)
+		{
+			freenect = true;
+			continue;
+		}
 
 		printf("Unrecognized option : %s\n", argv[i]);
 		showUsage();
@@ -135,7 +142,33 @@ int main (int argc, char * argv[])
 
 	UINFO("Output = %s", fileName.toStdString().c_str());
 	UINFO("Show = %s", show?"true":"false");
-	UINFO("Openni = %s", openni?"true":"false");
+	if(openni)
+	{
+		UINFO("Openni = true");
+		if(!CameraOpenni::available())
+		{
+			UERROR("Openni is not available. Please select another driver.");
+			return -1;
+		}
+	}
+	else if(openni2)
+	{
+		UINFO("Openni2 = true");
+		if(!CameraOpenNI2::available())
+		{
+			UERROR("Openni2 is not available. Please select another driver.");
+			return -1;
+		}
+	}
+	else if(freenect)
+	{
+		UINFO("Freenect = true");
+		if(!CameraFreenect::available())
+		{
+			UERROR("Freenect is not available. Please select another driver.");
+			return -1;
+		}
+	}
 	UINFO("Rate =%f Hz", rate);
 
 	app = new QApplication(argc, argv);
@@ -153,6 +186,10 @@ int main (int argc, char * argv[])
 	else if(openni)
 	{
 		cam = new rtabmap::CameraThread(new rtabmap::CameraOpenni("", rate, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0)));
+	}
+	else if(freenect)
+	{
+		cam = new rtabmap::CameraThread(new rtabmap::CameraFreenect(0, rate, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0)));
 	}
 	else
 	{

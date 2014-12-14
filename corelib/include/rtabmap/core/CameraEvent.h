@@ -49,18 +49,21 @@ public:
 		data_(image, seq)
 	{
 	}
+
 	CameraEvent() :
 		UEvent(kCodeNoMoreImages)
 	{
 	}
-	CameraEvent(const cv::Mat & image, const cv::Mat & depth, float fx, float fy, float cx, float cy, const Transform & localTransform, int seq=0) :
+
+	CameraEvent(const cv::Mat & rgb, const cv::Mat & depth, float fx, float fy, float cx, float cy, const Transform & localTransform, int id) :
 		UEvent(kCodeImageDepth),
-		data_(image, depth, fx, fy, cx, cy, Transform(), localTransform, seq)
+		data_(rgb, depth, fx, fy, cx, cy, localTransform, Transform(), 1.0f, id)
 	{
 	}
-	CameraEvent(const cv::Mat & image, const cv::Mat & depth, const cv::Mat & depth2d, float fx, float fy, float cx, float cy, const Transform & localTransform, int seq=0) :
+
+	CameraEvent(const SensorData & data) :
 		UEvent(kCodeImageDepth),
-		data_(image, depth, depth2d, fx, fy, cx, cy, Transform(), localTransform, seq)
+		data_(data)
 	{
 	}
 

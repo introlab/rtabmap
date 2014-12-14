@@ -42,7 +42,8 @@ SensorData::SensorData() :
 	_fyOrBaseline(0.0f),
 	_cx(0.0f),
 	_cy(0.0f),
-	_localTransform(Transform::getIdentity())
+	_localTransform(Transform::getIdentity()),
+	_poseVariance(1.0f)
 {
 }
 
@@ -54,7 +55,8 @@ SensorData::SensorData(const cv::Mat & image,
 	_fyOrBaseline(0.0f),
 	_cx(0.0f),
 	_cy(0.0f),
-	_localTransform(Transform::getIdentity())
+	_localTransform(Transform::getIdentity()),
+	_poseVariance(1.0f)
 {
 	UASSERT(image.type() == CV_8UC1 || // Mono
 			image.type() == CV_8UC3);  // RGB
@@ -67,8 +69,9 @@ SensorData::SensorData(const cv::Mat & image,
 		  float fyOrBaseline,
 		  float cx,
 		  float cy,
-		  const Transform & pose,
 		  const Transform & localTransform,
+		  const Transform & pose,
+		  float poseVariance,
 		  int id) :
 	_image(image),
 	_id(id),
@@ -78,7 +81,8 @@ SensorData::SensorData(const cv::Mat & image,
 	_cx(cx),
 	_cy(cy),
 	_pose(pose),
-	_localTransform(localTransform)
+	_localTransform(localTransform),
+	_poseVariance(poseVariance)
 {
 	UASSERT(image.type() == CV_8UC1 || // Mono
 			image.type() == CV_8UC3);  // RGB
@@ -90,27 +94,30 @@ SensorData::SensorData(const cv::Mat & image,
 }
 
 	// Metric constructor + 2d depth
-SensorData::SensorData(const cv::Mat & image,
+SensorData::SensorData(const cv::Mat & laserScan,
+		  const cv::Mat & image,
 		  const cv::Mat & depthOrRightImage,
-		  const cv::Mat & depth2d,
 		  float fx,
 		  float fyOrBaseline,
 		  float cx,
 		  float cy,
-		  const Transform & pose,
 		  const Transform & localTransform,
+		  const Transform & pose,
+		  float poseVariance,
 		  int id) :
 	_image(image),
 	_id(id),
 	_depthOrRightImage(depthOrRightImage),
-	_depth2d(depth2d),
+	_laserScan(laserScan),
 	_fx(fx),
 	_fyOrBaseline(fyOrBaseline),
 	_cx(cx),
 	_cy(cy),
 	_pose(pose),
-	_localTransform(localTransform)
+	_localTransform(localTransform),
+	_poseVariance(poseVariance)
 {
+	UASSERT(_laserScan.empty() || _laserScan.type() == CV_32FC2);
 	UASSERT(image.type() == CV_8UC1 || // Mono
 			image.type() == CV_8UC3);  // RGB
 	UASSERT(depthOrRightImage.type() == CV_32FC1 || // Depth in meter

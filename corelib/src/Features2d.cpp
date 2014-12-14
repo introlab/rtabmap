@@ -324,7 +324,7 @@ Feature2D * Feature2D::create(Feature2D::Type & type, const ParametersMap & para
 	if(RTABMAP_NONFREE == 0 &&
 	   (type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSift))
 	{
-		UERROR("SURF/SIFT features cannot be used because OpenCV was not built with nonfree module. ORB is used instead.");
+		UWARN("SURF/SIFT features cannot be used because OpenCV was not built with nonfree module. ORB is used instead.");
 		type = Feature2D::kFeatureOrb;
 	}
 	Feature2D * feature2D = 0;

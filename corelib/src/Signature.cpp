@@ -42,7 +42,7 @@ Signature::Signature() :
 	_weight(-1),
 	_saved(false),
 	_modified(true),
-	_neighborsModified(true),
+	_linksModified(true),
 	_enabled(false),
 	_fx(0.0f),
 	_fy(0.0f),
@@ -57,7 +57,7 @@ Signature::Signature(
 		const std::multimap<int, cv::KeyPoint> & words,
 		const std::multimap<int, pcl::PointXYZ> & words3, // in base_link frame (localTransform applied)
 		const Transform & pose,
-		const cv::Mat & depth2DCompressed, // in base_link frame
+		const cv::Mat & laserScanCompressed, // in base_link frame
 		const cv::Mat & imageCompressed, // in camera_link frame
 		const cv::Mat & depthCompressed, // in camera_link frame
 		float fx,
@@ -70,12 +70,12 @@ Signature::Signature(
 	_weight(0),
 	_saved(false),
 	_modified(true),
-	_neighborsModified(true),
+	_linksModified(true),
 	_words(words),
 	_enabled(false),
 	_imageCompressed(imageCompressed),
 	_depthCompressed(depthCompressed),
-	_depth2DCompressed(depth2DCompressed),
+	_laserScanCompressed(laserScanCompressed),
 	_fx(fx),
 	_fy(fy),
 	_cx(cx),
@@ -91,79 +91,63 @@ Signature::~Signature()
 	//UDEBUG("id=%d", _id);
 }
 
-void Signature::addNeighbors(const std::map<int, Transform> & neighbors)
+void Signature::addLinks(const std::list<Link> & links)
 {
-	for(std::map<int, Transform>::const_iterator i=neighbors.begin(); i!=neighbors.end(); ++i)
+	for(std::list<Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
 	{
-		this->addNeighbor(i->first, i->second);
+		addLink(*iter);
+	}
+}
+void Signature::addLinks(const std::map<int, Link> & links)
+{
+	for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
+	{
+		addLink(iter->second);
+	}
+}
+void Signature::addLink(const Link & link)
+{
+	UDEBUG("Add link %d to %d (type=%d)", link.to(), this->id(), (int)link.type());
+	UASSERT(link.from() == this->id());
+	std::pair<std::map<int, Link>::iterator, bool> pair = _links.insert(std::make_pair(link.to(), link));
+	UASSERT_MSG(pair.second, uFormat("Link %d (type=%d) already added to signature %d!", link.to(), link.type(), this->id()).c_str());
+	_linksModified = true;
+}
+
+bool Signature::hasLink(int idTo) const
+{
+	return _links.find(idTo) != _links.end();
+}
+
+void Signature::changeLinkIds(int idFrom, int idTo)
+{
+	std::map<int, Link>::iterator iter = _links.find(idFrom);
+	if(iter != _links.end())
+	{
+		Link link = iter->second;
+		_links.erase(iter);
+		link.setTo(idTo);
+		_links.insert(std::make_pair(idTo, link));
+		_linksModified = true;
+		UDEBUG("(%d) neighbor ids changed from %d to %d", _id, idFrom, idTo);
 	}
 }
 
-void Signature::addNeighbor(int neighbor, const Transform & transform)
+void Signature::removeLinks()
 {
-	UDEBUG("Add neighbor %d to %d", neighbor, this->id());
-	_neighbors.insert(std::pair<int, Transform>(neighbor, transform));
-	_neighborsModified = true;
+	if(_links.size())
+		_linksModified = true;
+	_links.clear();
 }
 
-void Signature::removeNeighbor(int neighborId)
+void Signature::removeLink(int idTo)
 {
-	int count = (int)_neighbors.erase(neighborId);
+	int count = (int)_links.erase(idTo);
 	if(count)
 	{
-		_neighborsModified = true;
+		_linksModified = true;
 	}
 }
-
-void Signature::removeNeighbors()
-{
-	if(_neighbors.size())
-		_neighborsModified = true;
-	_neighbors.clear();
-}
-
-void Signature::changeNeighborIds(int idFrom, int idTo)
-{
-	std::map<int, Transform>::iterator iter = _neighbors.find(idFrom);
-	if(iter != _neighbors.end())
-	{
-		Transform t = iter->second;
-		_neighbors.erase(iter);
-		_neighbors.insert(std::pair<int, Transform>(idTo, t));
-		_neighborsModified = true;
-	}
-	UDEBUG("(%d) neighbor ids changed from %d to %d", _id, idFrom, idTo);
-}
-
-void Signature::addLoopClosureId(int loopClosureId, const Transform & transform)
-{
-	if(loopClosureId && _loopClosureIds.insert(std::pair<int, Transform>(loopClosureId, transform)).second)
-	{
-		_neighborsModified=true;
-	}
-}
-
-void Signature::addChildLoopClosureId(int childLoopClosureId, const Transform & transform)
-{
-	if(childLoopClosureId && _childLoopClosureIds.insert(std::pair<int, Transform>(childLoopClosureId, transform)).second)
-	{
-		_neighborsModified=true;
-	}
-}
-
-void Signature::changeLoopClosureId(int idFrom, int idTo)
-{
-	std::map<int, Transform>::iterator iter = _loopClosureIds.find(idFrom);
-	if(iter != _loopClosureIds.end())
-	{
-		Transform t = iter->second;
-		_loopClosureIds.erase(iter);
-		_loopClosureIds.insert(std::pair<int, Transform>(idTo, t));
-		_neighborsModified = true;
-	}
-	UDEBUG("(%d) loop closure ids changed from %d to %d", _id, idFrom, idTo);
-}
-
 
 float Signature::compareTo(const Signature & s) const
 {
@@ -230,26 +214,43 @@ void Signature::setDepthCompressed(const cv::Mat & bytes, float fx, float fy, fl
 SensorData Signature::toSensorData()
 {
 	this->uncompressData();
-	return SensorData(_imageRaw,
+	float variance = 1.0f;
+	if(_links.size())
+	{
+		for(std::map<int, Link>::iterator iter = _links.begin(); iter!=_links.end(); ++iter)
+		{
+			if(iter->second.kNeighbor)
+			{
+				//Assume the first neighbor to be the backward neighbor link
+				if(iter->second.to() < iter->second.from())
+				{
+					variance = iter->second.variance();
+					break;
+				}
+			}
+		}
+	}
+	return SensorData(_laserScanRaw,
+			_imageRaw,
 			_depthRaw,
-			_depth2DRaw,
 			_fx,
 			_fy,
 			_cx,
 			_cy,
-			_pose,
 			_localTransform,
+			_pose,
+			variance,
 			_id);
 }
 
 void Signature::uncompressData()
 {
-	uncompressData(&_imageRaw, &_depthRaw, &_depth2DRaw);
+	uncompressData(&_imageRaw, &_depthRaw, &_laserScanRaw);
 }
 
-void Signature::uncompressData(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * depth2DRaw)
+void Signature::uncompressData(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw)
 {
-	uncompressDataConst(imageRaw, depthRaw, depth2DRaw);
+	uncompressDataConst(imageRaw, depthRaw, laserScanRaw);
 	if(imageRaw && !imageRaw->empty() && _imageRaw.empty())
 	{
 		_imageRaw = *imageRaw;
@@ -258,13 +259,13 @@ void Signature::uncompressData(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat *
 	{
 		_depthRaw = *depthRaw;
 	}
-	if(depth2DRaw && !depth2DRaw->empty() && _depth2DRaw.empty())
+	if(laserScanRaw && !laserScanRaw->empty() && _laserScanRaw.empty())
 	{
-		_depth2DRaw = *depth2DRaw;
+		_laserScanRaw = *laserScanRaw;
 	}
 }
 
-void Signature::uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * depth2DRaw) const
+void Signature::uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw) const
 {
 	if(imageRaw)
 	{
@@ -274,17 +275,17 @@ void Signature::uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::
 	{
 		*depthRaw = _depthRaw;
 	}
-	if(depth2DRaw)
+	if(laserScanRaw)
 	{
-		*depth2DRaw = _depth2DRaw;
+		*laserScanRaw = _laserScanRaw;
 	}
 	if( (imageRaw && imageRaw->empty()) ||
 		(depthRaw && depthRaw->empty()) ||
-		(depth2DRaw && depth2DRaw->empty()))
+		(laserScanRaw && laserScanRaw->empty()))
 	{
 		util3d::CompressionThread ctImage(_imageCompressed, true);
 		util3d::CompressionThread ctDepth(_depthCompressed, true);
-		util3d::CompressionThread ctDepth2D(_depth2DCompressed, false);
+		util3d::CompressionThread ctLaserScan(_laserScanCompressed, false);
 		if(imageRaw && imageRaw->empty())
 		{
 			ctImage.start();
@@ -293,13 +294,13 @@ void Signature::uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::
 		{
 			ctDepth.start();
 		}
-		if(depth2DRaw && depth2DRaw->empty())
+		if(laserScanRaw && laserScanRaw->empty())
 		{
-			ctDepth2D.start();
+			ctLaserScan.start();
 		}
 		ctImage.join();
 		ctDepth.join();
-		ctDepth2D.join();
+		ctLaserScan.join();
 		if(imageRaw && imageRaw->empty())
 		{
 			*imageRaw = ctImage.getUncompressedData();
@@ -308,9 +309,9 @@ void Signature::uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::
 		{
 			*depthRaw = ctDepth.getUncompressedData();
 		}
-		if(depth2DRaw && depth2DRaw->empty())
+		if(laserScanRaw && laserScanRaw->empty())
 		{
-			*depth2DRaw = ctDepth2D.getUncompressedData();
+			*laserScanRaw = ctLaserScan.getUncompressedData();
 		}
 	}
 }

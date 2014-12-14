@@ -98,6 +98,7 @@ Rtabmap::Rtabmap() :
 	_localDetectMaxNeighbors(Parameters::defaultRGBDLocalLoopDetectionNeighbors()),
 	_localDetectMaxDiffID(Parameters::defaultRGBDLocalLoopDetectionMaxDiffID()),
 	_toroIterations(Parameters::defaultRGBDToroIterations()),
+	_toroIgnoreVariance(Parameters::defaultRGBDToroIgnoreVariance()),
 	_databasePath(""),
 	_optimizeFromGraphEnd(Parameters::defaultRGBDOptimizeFromGraphEnd()),
 	_reextractLoopClosureFeatures(Parameters::defaultLccReextractActivated()),
@@ -358,6 +359,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionNeighbors(), _localDetectMaxNeighbors);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionMaxDiffID(), _localDetectMaxDiffID);
 	Parameters::parse(parameters, Parameters::kRGBDToroIterations(), _toroIterations);
+	Parameters::parse(parameters, Parameters::kRGBDToroIgnoreVariance(), _toroIgnoreVariance);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
 	Parameters::parse(parameters, Parameters::kLccReextractActivated(), _reextractLoopClosureFeatures);
 	Parameters::parse(parameters, Parameters::kLccReextractNNType(), _reextractNNType);
@@ -831,11 +833,11 @@ bool Rtabmap::process(const SensorData & data)
 			//============================================================
 			// Minimum displacement required to add to Memory
 			//============================================================
-			const std::map<int, Transform> & neighbors = signature->getNeighbors();
-			if(neighbors.size() == 1)
+			const std::map<int, Link> & links = signature->getLinks();
+			if(links.size() == 1)
 			{
 				float x,y,z, roll,pitch,yaw;
-				neighbors.begin()->second.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+				links.begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
 				if(fabs(x) < _rgbdLinearUpdate &&
 					fabs(y) < _rgbdLinearUpdate &&
 					fabs(z) < _rgbdLinearUpdate &&
@@ -857,26 +859,27 @@ bool Rtabmap::process(const SensorData & data)
 		// Scan matching
 		//============================================================
 		if(_poseScanMatching &&
-			signature->getNeighbors().size() == 1 &&
-			!signature->getDepth2DCompressed().empty() &&
+			signature->getLinks().size() == 1 &&
+			!signature->getLaserScanCompressed().empty() &&
 			rehearsedId == 0) // don't do it if rehearsal happened
 		{
 			UINFO("Odometry correction by scan matching");
-			int oldId = signature->getNeighbors().begin()->first;
+			int oldId = signature->getLinks().begin()->first;
 			const Signature * oldS = _memory->getSignature(oldId);
 			UASSERT(oldS != 0);
 			std::string rejectedMsg;
-			Transform guess = signature->getNeighbors().begin()->second;
-			Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, false, &rejectedMsg);
+			Transform guess = signature->getLinks().begin()->second.transform();
+			double variance = -1.0;
+			Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, false, &rejectedMsg, 0, &variance);
 			if(!t.isNull())
 			{
 				scanMatchingSuccess = true;
 				UINFO("Scan matching: update neighbor link (%d->%d) from %s to %s",
 						signature->id(),
 						oldId,
-						signature->getNeighbors().at(oldId).prettyPrint().c_str(),
+						signature->getLinks().at(oldId).transform().prettyPrint().c_str(),
 						t.prettyPrint().c_str());
-				_memory->updateNeighborLink(signature->id(), oldId, t);
+				_memory->updateNeighborLink(signature->id(), oldId, t, variance);
 			}
 			else
 			{
@@ -886,9 +889,9 @@ bool Rtabmap::process(const SensorData & data)
 		timeScanMatching = timer.ticks();
 		ULOGGER_INFO("timeScanMatching=%fs", timeScanMatching);
 
-		if(signature->getNeighbors().size() == 1)
+		if(signature->getLinks().size() == 1)
 		{
-			_constraints.insert(std::make_pair(signature->id(), Link(signature->id(), signature->getNeighbors().begin()->first, signature->getNeighbors().begin()->second, Link::kNeighbor)));
+			_constraints.insert(std::make_pair(signature->id(), signature->getLinks().begin()->second));
 		}
 
 		//============================================================
@@ -902,15 +905,17 @@ bool Rtabmap::process(const SensorData & data)
 			for(std::set<int>::const_reverse_iterator iter = stm.rbegin(); iter!=stm.rend(); ++iter)
 			{
 				if(*iter != signature->id() &&
-				   signature->getNeighbors().find(*iter) == signature->getNeighbors().end() &&
+				   signature->getLinks().find(*iter) == signature->getLinks().end() &&
 				   _memory->getSignature(*iter)->mapId() == signature->mapId())
 				{
 					std::string rejectedMsg;
 					UDEBUG("Check local transform between %d and %d", signature->id(), *iter);
-					Transform transform = _memory->computeVisualTransform(*iter, signature->id(), &rejectedMsg);
+					double variance = -1.0;
+					int inliers = -1;
+					Transform transform = _memory->computeVisualTransform(*iter, signature->id(), &rejectedMsg, &inliers, &variance);
 					if(!transform.isNull() && _globalLoopClosureIcpType > 0)
 					{
-						Transform icpTransform = _memory->computeIcpTransform(*iter, signature->id(), transform, _globalLoopClosureIcpType==1, &rejectedMsg);
+						Transform icpTransform = _memory->computeIcpTransform(*iter, signature->id(), transform, _globalLoopClosureIcpType==1, &rejectedMsg, 0, &variance);
 						float squaredNorm = (transform.inverse()*icpTransform).getNormSquared();
 						if(!icpTransform.isNull() &&
 							_globalLoopClosureIcpMaxDistance>0.0f &&
@@ -932,7 +937,7 @@ bool Rtabmap::process(const SensorData & data)
 								*iter,
 								transform.prettyPrint().c_str());
 						// Add a loop constraint
-						if(_memory->addLoopClosureLink(*iter, signature->id(), transform, false))
+						if(_memory->addLoopClosureLink(*iter, signature->id(), transform, Link::kLocalTimeClosure, variance))
 						{
 							++localLoopClosuresInTimeFound;
 							UINFO("Local loop closure found between %d and %d with t=%s",
@@ -1251,6 +1256,7 @@ bool Rtabmap::process(const SensorData & data)
 	{
 		//Compute transform if metric data are present
 		Transform transform;
+		double variance = -1;
 		if(_rgbdSlamMode)
 		{
 			std::string rejectedMsg;
@@ -1298,7 +1304,7 @@ bool Rtabmap::process(const SensorData & data)
 					memory.update(dataFrom);
 					UDEBUG("timeUpFrom = %fs", timeT.ticks());
 
-					transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &loopClosureVisualInliers);
+					transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
 					UDEBUG("timeTransform = %fs", timeT.ticks());
 				}
 				else
@@ -1306,16 +1312,16 @@ bool Rtabmap::process(const SensorData & data)
 					// Fallback to normal way (raw data not kept in database...)
 					UWARN("Loop closure: Some images not found in memory for re-extracting "
 						  "features, is Mem/RawDataKept=false? Falling back with already extracted 3D features.");
-					transform = _memory->computeVisualTransform(_lcHypothesisId, signature->id(), &rejectedMsg, &loopClosureVisualInliers);
+					transform = _memory->computeVisualTransform(_lcHypothesisId, signature->id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
 				}
 			}
 			else
 			{
-				transform = _memory->computeVisualTransform(_lcHypothesisId, signature->id(), &rejectedMsg, &loopClosureVisualInliers);
+				transform = _memory->computeVisualTransform(_lcHypothesisId, signature->id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
 			}
 			if(!transform.isNull() && _globalLoopClosureIcpType > 0)
 			{
-				Transform icpTransform  = _memory->computeIcpTransform(_lcHypothesisId, signature->id(), transform, _globalLoopClosureIcpType == 1, &rejectedMsg);
+				Transform icpTransform  = _memory->computeIcpTransform(_lcHypothesisId, signature->id(), transform, _globalLoopClosureIcpType == 1, &rejectedMsg, 0, &variance);
 				float squaredNorm = (transform.inverse()*icpTransform).getNormSquared();
 				if(!icpTransform.isNull() &&
 					_globalLoopClosureIcpMaxDistance>0.0f &&
@@ -1339,7 +1345,7 @@ bool Rtabmap::process(const SensorData & data)
 		if(!rejectedHypothesis)
 		{
 			// Make the new one the parent of the old one
-			rejectedHypothesis = !_memory->addLoopClosureLink(_lcHypothesisId, signature->id(), transform, true);
+			rejectedHypothesis = !_memory->addLoopClosureLink(_lcHypothesisId, signature->id(), transform, Link::kGlobalClosure, variance);
 		}
 
 		if(rejectedHypothesis)
@@ -1362,7 +1368,7 @@ bool Rtabmap::process(const SensorData & data)
 	int localSpaceNearestId = 0;
 	if(_lcHypothesisId == 0 &&
 	   _localLoopClosureDetectionSpace &&
-	   !signature->getDepth2DCompressed().empty())
+	   !signature->getLaserScanCompressed().empty())
 	{
 		if(_toroIterations == 0)
 		{
@@ -1386,10 +1392,11 @@ bool Rtabmap::process(const SensorData & data)
 			//The nearest will be the reference for a loop closure transform
 			if(poses.size() &&
 				localSpaceNearestId &&
-				signature->getChildLoopClosureIds().find(localSpaceNearestId) == signature->getChildLoopClosureIds().end())
+				signature->getLinks().find(localSpaceNearestId) == signature->getLinks().end())
 			{
+				double variance = 1.0;
 				std::string rejectedMsg;
-				Transform t = _memory->computeScanMatchingTransform(signature->id(), localSpaceNearestId, poses, &rejectedMsg);
+				Transform t = _memory->computeScanMatchingTransform(signature->id(), localSpaceNearestId, poses, &rejectedMsg, 0, &variance);
 				if(!t.isNull())
 				{
 					localSpaceClosureId = localSpaceNearestId;
@@ -1397,7 +1404,7 @@ bool Rtabmap::process(const SensorData & data)
 							signature->id(),
 							localSpaceNearestId,
 							t.prettyPrint().c_str());
-					_memory->addLoopClosureLink(localSpaceNearestId, signature->id(), t, false);
+					_memory->addLoopClosureLink(localSpaceNearestId, signature->id(), t, Link::kLocalSpaceClosure, variance);
 
 					// Old map -> new map, used for localization correction on loop closure
 					const Signature * oldS = _memory->getSignature(localSpaceNearestId);
@@ -1531,9 +1538,9 @@ bool Rtabmap::process(const SensorData & data)
 			}
 			if(_lcHypothesisId || localSpaceClosureId)
 			{
-				UASSERT(uContains(sLoop->getLoopClosureIds(), signature->id()));
-				UINFO("Set loop closure transform = %s", sLoop->getLoopClosureIds().at(signature->id()).prettyPrint().c_str());
-				statistics_.setLoopClosureTransform(sLoop->getLoopClosureIds().at(signature->id()));
+				UASSERT(uContains(sLoop->getLinks(), signature->id()));
+				UINFO("Set loop closure transform = %s", sLoop->getLinks().at(signature->id()).transform().prettyPrint().c_str());
+				statistics_.setLoopClosureTransform(sLoop->getLinks().at(signature->id()).transform());
 			}
 
 			if(!_rgbdSlamMode)
@@ -1602,10 +1609,9 @@ bool Rtabmap::process(const SensorData & data)
 	// global loop closure detection before starting the new map,
 	// otherwise it deletes the current node.
 	if(_startNewMapOnLoopClosure &&
-		_memory->isIncremental() &&                        // only in mapping mode
-		signature->getChildLoopClosureIds().size() == 0 && // no loop closure
-		signature->getNeighbors().size() == 0 &&           // no neighbors, alone in the current map
-		_memory->getWorkingMem().size()>1)                 // The working memory should not be empty
+		_memory->isIncremental() &&              // only in mapping mode
+		signature->getLinks().size() == 0 &&     // alone in the current map
+		_memory->getWorkingMem().size()>1)       // The working memory should not be empty
 	{
 		_memory->deleteLocation(signature->id());
 	}
@@ -1751,9 +1757,9 @@ bool Rtabmap::process(const SensorData & data)
 	return true;
 }
 
-bool Rtabmap::process(const cv::Mat & sensorData, int id)
+bool Rtabmap::process(const cv::Mat & image, int id)
 {
-	return this->process(SensorData(sensorData, id));
+	return this->process(SensorData(image, id));
 }
 
 // SETTERS
@@ -1908,7 +1914,7 @@ std::map<int, Transform> Rtabmap::getOptimizedWMPosesInRadius(
 					//inliers.push_back(pcl::PointXYZ(tmp.x(), tmp.y(), tmp.z()));
 					UDEBUG("Inlier %d: %s", ids[ind[i]], tmp.prettyPrint().c_str());
 					poses.insert(std::make_pair(ids[ind[i]], tmp));
-					if(fromS->getNeighbors().find(ids[ind[i]]) == fromS->getNeighbors().end() && // can't be a neighbor
+					if(fromS->getLinks().find(ids[ind[i]]) == fromS->getLinks().end() && // can't be a neighbor
 					   (minDistance == -1 || minDistance > dist[i]))
 					{
 						nearestId = ids[ind[i]];
@@ -2001,7 +2007,7 @@ void Rtabmap::optimizeCurrentMap(
 		}
 		else
 		{
-			util3d::optimizeTOROGraph(ids, poses, edgeConstraints, optimizedPoses, _toroIterations, true);
+			util3d::optimizeTOROGraph(ids, poses, edgeConstraints, optimizedPoses, _toroIterations, true, _toroIgnoreVariance);
 		}
 	}
 }
@@ -2030,7 +2036,7 @@ void Rtabmap::adjustLikelihood(std::map<int, float> & likelihood) const
 	UDEBUG("values.size=%d", values.size());
 
 	float mean = uMean(values);
-	float stdDev = uStdDev(values, mean);
+	float stdDev = std::sqrt(uVariance(values, mean));
 
 
 	//Adjust likelihood with mean and standard deviation (see Angeli phd)
@@ -2132,8 +2138,15 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 				std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
 				_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
 			}
+
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				mapIds.insert(std::make_pair(iter->first, _memory->getMapId(iter->first)));
+			}
 		}
 
+
+		// Get data
 		std::set<int> ids = _memory->getWorkingMem(); // STM + WM
 
 		//remove virtual signature
@@ -2151,7 +2164,6 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 			if(data.id() != Memory::kIdInvalid)
 			{
 				signatures.insert(std::make_pair(*iter, Signature())).first->second = data;
-				mapIds.insert(std::make_pair(*iter, _memory->getMapId(*iter)));
 			}
 		}
 	}
@@ -2185,6 +2197,11 @@ void Rtabmap::getGraph(
 				std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
 				_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
 			}
+
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				mapIds.insert(std::make_pair(iter->first, _memory->getMapId(iter->first)));
+			}
 		}
 		else
 		{
@@ -2196,11 +2213,6 @@ void Rtabmap::getGraph(
 		if(global)
 		{
 			ids = _memory->getAllSignatureIds(); // STM + WM + LTM
-		}
-
-		for(std::set<int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
-		{
-			mapIds.insert(std::make_pair(*iter, _memory->getMapId(*iter)));
 		}
 	}
 	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size()))

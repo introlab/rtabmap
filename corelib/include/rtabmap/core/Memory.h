@@ -80,8 +80,8 @@ public:
 	std::list<int> cleanup(const std::list<int> & ignoredIds = std::list<int>());
 	void emptyTrash();
 	void joinTrashThread();
-	bool addLoopClosureLink(int oldId, int newId, const Transform & transform, bool global);
-	void updateNeighborLink(int fromId, int toId, const Transform & transform);
+	bool addLoopClosureLink(int oldId, int newId, const Transform & transform, Link::Type type, float variance);
+	void updateNeighborLink(int fromId, int toId, const Transform & transform, float variance);
 	std::map<int, int> getNeighborsId(int signatureId,
 			int margin,
 			int maxCheckedInDatabase = -1,
@@ -98,12 +98,9 @@ public:
 	void getPose(int locationId,
 			Transform & pose,
 			bool lookInDatabase = false) const;
-	std::map<int, Transform> getNeighborLinks(int signatureId,
-			bool ignoreNeighborByLoopClosure = false,
+	std::map<int, Link> getNeighborLinks(int signatureId,
 			bool lookInDatabase = false) const;
-	void getLoopClosureIds(int signatureId,
-			std::map<int, Transform> & loopClosureIds,
-			std::map<int, Transform> & childLoopClosureIds,
+	std::map<int, Link> getLoopClosureLinks(int signatureId,
 			bool lookInDatabase = false) const;
 	bool isRawDataKept() const {return _rawDataKept;}
 	float getSimilarityThreshold() const {return _similarityThreshold;}
@@ -154,19 +151,21 @@ public:
 	int getBowMinInliers() const {return _bowMinInliers;}
 	float getBowMaxDepth() const {return _bowMaxDepth;}
 	bool getBowForce2D() const {return _bowForce2D;}
-	Transform computeVisualTransform(int oldId, int newId, std::string * rejectedMsg = 0, int * inliers = 0) const;
-	Transform computeVisualTransform(const Signature & oldS, const Signature & newS, std::string * rejectedMsg = 0, int * inliers = 0) const;
-	Transform computeIcpTransform(int oldId, int newId, Transform guess, bool icp3D, std::string * rejectedMsg = 0);
-	Transform computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess, bool icp3D, std::string * rejectedMsg = 0) const;
+	Transform computeVisualTransform(int oldId, int newId, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
+	Transform computeVisualTransform(const Signature & oldS, const Signature & newS, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
+	Transform computeIcpTransform(int oldId, int newId, Transform guess, bool icp3D, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0);
+	Transform computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess, bool icp3D, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
 	Transform computeScanMatchingTransform(
 			int newId,
 			int oldId,
 			const std::map<int, Transform> & poses,
-			std::string * rejectedMsg = 0);
+			std::string * rejectedMsg = 0,
+			int * inliers = 0,
+			double * variance = 0);
 
 private:
 	void preUpdate();
-	void addSignatureToStm(Signature * signature);
+	void addSignatureToStm(Signature * signature, float odomVariance);
 	void clear();
 	void moveToTrash(Signature * s, bool saveToDatabase = true, std::list<int> * deletedWords = 0);
 
@@ -244,12 +243,11 @@ private:
 	int _icpSamples;
 	float _icpMaxCorrespondenceDistance;
 	int _icpMaxIterations;
-	float _icpMaxFitness;
+	float _icpCorrespondenceRatio;
 	bool _icpPointToPlane;
 	int _icpPointToPlaneNormalNeighbors;
 	float _icp2MaxCorrespondenceDistance;
 	int _icp2MaxIterations;
-	float _icp2MaxFitness;
 	float _icp2CorrespondenceRatio;
 	float _icp2VoxelSize;
 

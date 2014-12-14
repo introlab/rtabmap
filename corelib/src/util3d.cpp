@@ -1070,27 +1070,27 @@ cv::Mat depthFromDisparity(const cv::Mat & disparity,
 	return depth;
 }
 
-cv::Mat depth2DFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud)
+cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud)
 {
-	cv::Mat depth2d(1, (int)cloud.size(), CV_32FC2);
+	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC2);
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
-		depth2d.at<cv::Vec2f>(i)[0] = cloud.at(i).x;
-		depth2d.at<cv::Vec2f>(i)[1] = cloud.at(i).y;
+		laserScan.at<cv::Vec2f>(i)[0] = cloud.at(i).x;
+		laserScan.at<cv::Vec2f>(i)[1] = cloud.at(i).y;
 	}
-	return depth2d;
+	return laserScan;
 }
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr depth2DToPointCloud(const cv::Mat & depth2D)
+pcl::PointCloud<pcl::PointXYZ>::Ptr laserScanToPointCloud(const cv::Mat & laserScan)
 {
-	UASSERT(depth2D.empty() || depth2D.type() == CV_32FC2);
+	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2);
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
-	output->resize(depth2D.cols);
-	for(int i=0; i<depth2D.cols; ++i)
+	output->resize(laserScan.cols);
+	for(int i=0; i<laserScan.cols; ++i)
 	{
-		output->at(i).x = depth2D.at<cv::Vec2f>(i)[0];
-		output->at(i).y = depth2D.at<cv::Vec2f>(i)[1];
+		output->at(i).x = laserScan.at<cv::Vec2f>(i)[0];
+		output->at(i).y = laserScan.at<cv::Vec2f>(i)[1];
 	}
 	return output;
 }
@@ -1495,12 +1495,17 @@ Transform transformFromXYZCorrespondences(
 		bool refineModel,
 		double refineModelSigma,
 		int refineModelIterations,
-		std::vector<int> * inliersOut)
+		std::vector<int> * inliersOut,
+		double * varianceOut)
 {
 	//NOTE: this method is a mix of two methods:
 	//  - getRemainingCorrespondences() in pcl/registration/impl/correspondence_rejection_sample_consensus.hpp
 	//  - refineModel() in pcl/sample_consensus/sac.h
 
+	if(varianceOut)
+	{
+		*varianceOut = 1.0f;
+	}
 	Transform transform;
 	if(cloud1->size() >=3 && cloud1->size() == cloud2->size())
 	{
@@ -1626,6 +1631,10 @@ Transform transformFromXYZCorrespondences(
 				{
 					*inliersOut = inliers;
 				}
+				if(varianceOut)
+				{
+					*varianceOut = model->computeVariance();
+				}
 
 				// get best transformation
 				Eigen::Matrix4f bestTransformation;
@@ -1661,8 +1670,9 @@ Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 			  const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_target,
 			  double maxCorrespondenceDistance,
 			  int maximumIterations,
-			  bool & hasConverged,
-			  double & fitnessScore)
+			  bool * hasConvergedOut,
+			  double * variance,
+			  int * inliers)
 {
 	pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
 	// Set the input source and target
@@ -1677,13 +1687,65 @@ Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 	//icp.setTransformationEpsilon (transformationEpsilon);
 	// Set the euclidean distance difference epsilon (criterion 3)
 	//icp.setEuclideanFitnessEpsilon (1);
-	icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
+	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
 
 	// Perform the alignment
-	pcl::PointCloud<pcl::PointXYZ> cloud_source_registered;
-	icp.align (cloud_source_registered);
-	fitnessScore = icp.getFitnessScore();
-	hasConverged = icp.hasConverged();
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source_registered(new pcl::PointCloud<pcl::PointXYZ>);
+	icp.align (*cloud_source_registered);
+	bool hasConverged = icp.hasConverged();
+
+	// compute variance
+	if((inliers || variance) && hasConverged)
+	{
+		pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>::Ptr est;
+		est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>);
+		est->setInputTarget(cloud_target);
+		est->setInputSource(cloud_source_registered);
+		pcl::Correspondences correspondences;
+		est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
+		if(variance)
+		{
+			if(correspondences.size()>=3)
+			{
+				std::vector<double> distances(correspondences.size());
+				for(unsigned int i=0; i<correspondences.size(); ++i)
+				{
+					distances[i] = correspondences[i].distance;
+				}
+
+				//variance
+				std::sort(distances.begin (), distances.end ());
+				double median_error_sqr = distances[distances.size () >> 1];
+				*variance = (2.1981 * median_error_sqr);
+			}
+			else
+			{
+				hasConverged = false;
+				*variance = -1.0;
+			}
+		}
+
+		if(inliers)
+		{
+			*inliers = correspondences.size();
+		}
+	}
+	else
+	{
+		if(inliers)
+		{
+			*inliers = 0;
+		}
+		if(variance)
+		{
+			*variance = -1;
+		}
+	}
+
+	if(hasConvergedOut)
+	{
+		*hasConvergedOut = hasConverged;
+	}
 
 	return transformFromEigen4f(icp.getFinalTransformation());
 }
@@ -1694,8 +1756,9 @@ Transform icpPointToPlane(
 		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloud_target,
 		double maxCorrespondenceDistance,
 		int maximumIterations,
-		bool & hasConverged,
-		double & fitnessScore)
+		bool * hasConvergedOut,
+		double * variance,
+		int * inliers)
 {
 	pcl::IterativeClosestPoint<pcl::PointNormal, pcl::PointNormal> icp;
 	// Set the input source and target
@@ -1714,13 +1777,65 @@ Transform icpPointToPlane(
 	//icp.setTransformationEpsilon (transformationEpsilon);
 	// Set the euclidean distance difference epsilon (criterion 3)
 	//icp.setEuclideanFitnessEpsilon (1);
-	icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
+	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
 
 	// Perform the alignment
-	pcl::PointCloud<pcl::PointNormal> cloud_source_registered;
-	icp.align (cloud_source_registered);
-	fitnessScore = icp.getFitnessScore();
-	hasConverged = icp.hasConverged();
+	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_source_registered(new pcl::PointCloud<pcl::PointNormal>);
+	icp.align (*cloud_source_registered);
+	bool hasConverged = icp.hasConverged();
+
+	// compute variance
+	if((inliers || variance) && hasConverged)
+	{
+		pcl::registration::CorrespondenceEstimation<pcl::PointNormal, pcl::PointNormal>::Ptr est;
+		est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointNormal, pcl::PointNormal>);
+		est->setInputTarget(cloud_target);
+		est->setInputSource(cloud_source_registered);
+		pcl::Correspondences correspondences;
+		est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
+		if(variance)
+		{
+			if(correspondences.size()>=3)
+			{
+				std::vector<double> distances(correspondences.size());
+				for(unsigned int i=0; i<correspondences.size(); ++i)
+				{
+					distances[i] = correspondences[i].distance;
+				}
+
+				//variance
+				std::sort(distances.begin (), distances.end ());
+				double median_error_sqr = distances[distances.size () >> 1];
+				*variance = (2.1981 * median_error_sqr);
+			}
+			else
+			{
+				hasConverged = false;
+				*variance = -1.0;
+			}
+		}
+
+		if(inliers)
+		{
+			*inliers = correspondences.size();
+		}
+	}
+	else
+	{
+		if(inliers)
+		{
+			*inliers = 0;
+		}
+		if(variance)
+		{
+			*variance = -1;
+		}
+	}
+
+	if(hasConvergedOut)
+	{
+		*hasConvergedOut = hasConverged;
+	}
 
 	return transformFromEigen4f(icp.getFinalTransformation());
 }
@@ -1730,8 +1845,9 @@ Transform icp2D(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 			  const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_target,
 			  double maxCorrespondenceDistance,
 			  int maximumIterations,
-			  bool & hasConverged,
-			  double & fitnessScore)
+			  bool * hasConvergedOut,
+			  double * variance,
+			  int * inliers)
 {
 	pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
 	// Set the input source and target
@@ -1750,13 +1866,65 @@ Transform icp2D(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 	//icp.setTransformationEpsilon (transformationEpsilon);
 	// Set the euclidean distance difference epsilon (criterion 3)
 	//icp.setEuclideanFitnessEpsilon (1);
-	icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
+	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
 
 	// Perform the alignment
-	pcl::PointCloud<pcl::PointXYZ> cloud_source_registered;
-	icp.align (cloud_source_registered);
-	fitnessScore = icp.getFitnessScore();
-	hasConverged = icp.hasConverged();
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source_registered(new pcl::PointCloud<pcl::PointXYZ>);
+	icp.align (*cloud_source_registered);
+	bool hasConverged = icp.hasConverged();
+
+	// compute variance
+	if((inliers || variance) && hasConverged)
+	{
+		pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>::Ptr est;
+		est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>);
+		est->setInputTarget(cloud_target);
+		est->setInputSource(cloud_source_registered);
+		pcl::Correspondences correspondences;
+		est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
+		if(variance)
+		{
+			if(correspondences.size()>=3)
+			{
+				std::vector<double> distances(correspondences.size());
+				for(unsigned int i=0; i<correspondences.size(); ++i)
+				{
+					distances[i] = correspondences[i].distance;
+				}
+
+				//variance
+				std::sort(distances.begin (), distances.end ());
+				double median_error_sqr = distances[distances.size () >> 1];
+				*variance = (2.1981 * median_error_sqr);
+			}
+			else
+			{
+				hasConverged = false;
+				*variance = -1.0;
+			}
+		}
+
+		if(inliers)
+		{
+			*inliers = correspondences.size();
+		}
+	}
+	else
+	{
+		if(inliers)
+		{
+			*inliers = 0;
+		}
+		if(variance)
+		{
+			*variance = -1;
+		}
+	}
+
+	if(hasConvergedOut)
+	{
+		*hasConvergedOut = hasConverged;
+	}
 
 	return transformFromEigen4f(icp.getFinalTransformation());
 }
@@ -2145,6 +2313,7 @@ void optimizeTOROGraph(
 		std::map<int, Transform> & optimizedPoses,
 		int toroIterations,
 		bool toroInitialGuess,
+		bool ignoreCovariance,
 		std::list<std::map<int, Transform> > * intermediateGraphes)
 {
 	optimizedPoses.clear();
@@ -2190,17 +2359,26 @@ void optimizeTOROGraph(
 		{
 			if(uContains(depthGraph, iter->second.from()) && uContains(depthGraph, iter->second.to()))
 			{
-				edgeConstraintsToro.insert(std::make_pair(rtabmapToToro.at(iter->first), rtabmap::Link(rtabmapToToro.at(iter->first), rtabmapToToro.at(iter->second.to()), iter->second.transform(), iter->second.type())));
+				edgeConstraintsToro.insert(std::make_pair(rtabmapToToro.at(iter->first), Link(rtabmapToToro.at(iter->first), rtabmapToToro.at(iter->second.to()), iter->second.type(), iter->second.transform(), iter->second.variance())));
 			}
 		}
 
 		std::map<int, rtabmap::Transform> optimizedPosesToro;
 
-		// Optimize!
 		if(posesToro.size() && edgeConstraintsToro.size())
 		{
 			std::list<std::map<int, rtabmap::Transform> > graphesToro;
-			rtabmap::util3d::optimizeTOROGraph(posesToro, edgeConstraintsToro, optimizedPosesToro, toroIterations, toroInitialGuess, &graphesToro);
+
+			// Optimize!
+			rtabmap::util3d::optimizeTOROGraph(
+					posesToro,
+					edgeConstraintsToro,
+					optimizedPosesToro,
+					toroIterations,
+					toroInitialGuess,
+					ignoreCovariance,
+					&graphesToro);
+
 			for(std::map<int, rtabmap::Transform>::iterator iter=optimizedPosesToro.begin(); iter!=optimizedPosesToro.end(); ++iter)
 			{
 				optimizedPoses.insert(std::make_pair(toroToRtabmap.at(iter->first), iter->second));
@@ -2242,6 +2420,7 @@ void optimizeTOROGraph(
 		std::map<int, Transform> & optimizedPoses,
 		int toroIterations,
 		bool toroInitialGuess,
+		bool ignoreCovariance,
 		std::list<std::map<int, Transform> > * intermediateGraphes) // contains poses after tree init to last one before the end
 {
 	UASSERT(toroIterations>0);
@@ -2274,13 +2453,21 @@ void optimizeTOROGraph(
 			float x,y,z, roll,pitch,yaw;
 			pcl::getTranslationAndEulerAngles(transformToEigen3f(iter->second.transform()), x,y,z, roll,pitch,yaw);
 			AISNavigation::TreePoseGraph3::Pose p(x, y, z, roll, pitch, yaw);
-			AISNavigation::TreePoseGraph3::InformationMatrix m;
-			m=DMatrix<double>::I(6);
+			AISNavigation::TreePoseGraph3::InformationMatrix inf = DMatrix<double>::I(6);
+			if(!ignoreCovariance && iter->second.variance()>0)
+			{
+				inf[0][0] = 1.0f/iter->second.variance(); // x
+				inf[1][1] = 1.0f/iter->second.variance(); // y
+				inf[2][2] = 1.0f/iter->second.variance(); // z
+				inf[3][3] = 1.0f/iter->second.variance(); // roll
+				inf[4][4] = 1.0f/iter->second.variance(); // pitch
+				inf[5][5] = 1.0f/iter->second.variance(); // yaw
+			}
 
 			AISNavigation::TreePoseGraph<AISNavigation::Operations3D<double> >::Vertex* v1=pg.vertex(id1);
 			AISNavigation::TreePoseGraph<AISNavigation::Operations3D<double> >::Vertex* v2=pg.vertex(id2);
 			AISNavigation::TreePoseGraph3::Transformation t(p);
-			if (!pg.addEdge(v1, v2,t ,m))
+			if (!pg.addEdge(v1, v2, t, inf))
 			{
 				UERROR("Map: Edge already exits between nodes %d and %d, skipping", id1, id2);
 				return;
@@ -2380,7 +2567,7 @@ bool saveTOROGraph(
 		{
 			float x,y,z, yaw,pitch,roll;
 			pcl::getTranslationAndEulerAngles(transformToEigen3f(iter->second.transform()), x,y,z, roll, pitch, yaw);
-			fprintf(file, "EDGE3 %d %d %f %f %f %f %f %f 1 0 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0 0 1 0 1\n",
+			fprintf(file, "EDGE3 %d %d %f %f %f %f %f %f %f 0 0 0 0 0 %f 0 0 0 0 %f 0 0 0 %f 0 0 %f 0 %f\n",
 					iter->first,
 					iter->second.to(),
 					x,
@@ -2388,7 +2575,13 @@ bool saveTOROGraph(
 					z,
 					roll,
 					pitch,
-					yaw);
+					yaw,
+					1.0f/iter->second.variance(),
+					1.0f/iter->second.variance(),
+					1.0f/iter->second.variance(),
+					1.0f/iter->second.variance(),
+					1.0f/iter->second.variance(),
+					1.0f/iter->second.variance());
 		}
 		UINFO("Graph saved to %s", fileName.c_str());
 		fclose(file);

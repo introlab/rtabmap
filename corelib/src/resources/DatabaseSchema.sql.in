@@ -46,6 +46,7 @@ CREATE TABLE Link (
 	from_id INTEGER NOT NULL,
 	to_id INTEGER NOT NULL,
 	type INTEGER NOT NULL, -- neighbor=0, loop=1, child=2
+	variance FLOAT NOT NULL,
 	transform BLOB,
 	FOREIGN KEY (from_id) REFERENCES Node(id),
 	FOREIGN KEY (to_id) REFERENCES Node(id)

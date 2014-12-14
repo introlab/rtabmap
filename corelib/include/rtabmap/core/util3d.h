@@ -232,8 +232,8 @@ cv::Mat RTABMAP_EXP depthFromDisparity(const cv::Mat & disparity,
 		float fx, float baseline,
 		int type = CV_32FC1);
 
-cv::Mat RTABMAP_EXP depth2DFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud);
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP depth2DToPointCloud(const cv::Mat & depth2D);
+cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud);
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const cv::Mat & laserScan);
 
 std::vector<unsigned char> RTABMAP_EXP compressImage(const cv::Mat & image, const std::string & format = ".png");
 cv::Mat RTABMAP_EXP compressImage2(const cv::Mat & image, const std::string & format = ".png");
@@ -298,31 +298,35 @@ Transform RTABMAP_EXP transformFromXYZCorrespondences(
 		bool refineModel = false,
 		double refineModelSigma = 3.0,
 		int refineModelIterations = 10,
-		std::vector<int> * inliers = 0);
+		std::vector<int> * inliers = 0,
+		double * variance = 0);
 
 Transform RTABMAP_EXP icp(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_target,
 		double maxCorrespondenceDistance,
 		int maximumIterations,
-		bool & hasConverged,
-		double & fitnessScore);
+		bool * hasConverged = 0,
+		double * variance = 0,
+		int * inliers = 0);
 
 Transform RTABMAP_EXP icpPointToPlane(
 		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloud_source,
 		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloud_target,
 		double maxCorrespondenceDistance,
 		int maximumIterations,
-		bool & hasConverged,
-		double & fitnessScore);
+		bool * hasConverged = 0,
+		double * variance = 0,
+		int * inliers = 0);
 
 Transform RTABMAP_EXP icp2D(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_target,
 		double maxCorrespondenceDistance,
 		int maximumIterations,
-		bool & hasConverged,
-		double & fitnessScore);
+		bool * hasConverged = 0,
+		double * variance = 0,
+		int * inliers = 0);
 
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
@@ -463,6 +467,7 @@ void RTABMAP_EXP optimizeTOROGraph(
 		std::map<int, Transform> & optimizedPoses,
 		int toroIterations = 100,
 		bool toroInitialGuess = true,
+		bool ignoreCovariance = false,
 		std::list<std::map<int, Transform> > * intermediateGraphes = 0);
 
 void RTABMAP_EXP optimizeTOROGraph(
@@ -471,6 +476,7 @@ void RTABMAP_EXP optimizeTOROGraph(
 		std::map<int, Transform> & optimizedPoses,
 		int toroIterations = 100,
 		bool toroInitialGuess = true,
+		bool ignoreCovariance = false,
 		std::list<std::map<int, Transform> > * intermediateGraphes = 0);
 
 bool RTABMAP_EXP saveTOROGraph(

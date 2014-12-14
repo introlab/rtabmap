@@ -118,14 +118,22 @@ bool Odometry::isLargeEnoughTransform(const Transform & transform)
 			fabs(yaw) > _angularUpdate;
 }
 
-Transform Odometry::process(SensorData & data, int * quality, int * features, int * localMapSize)
+Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 {
+	UTimer time;
 	if(_pose.isNull())
 	{
 		_pose.setIdentity(); // initialized
 	}
 
-	Transform t = this->computeTransform(data, quality, features, localMapSize);
+	Transform t = this->computeTransform(data, info);
+
+	if(info)
+	{
+		info->time = time.elapsed();
+		info->lost = t.isNull();
+	}
+
 	if(!t.isNull())
 	{
 		_resetCurrentCount = _resetCountdown;
@@ -134,14 +142,10 @@ Transform Odometry::process(SensorData & data, int * quality, int * features, in
 		{
 			float x,y,z, roll,pitch,yaw;
 			t.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-			_pose *= Transform(x,y,0,0,0,yaw);
-		}
-		else
-		{
-			_pose *= t;
+			t = Transform(x,y,0, 0,0,yaw);
 		}
 
-		return _pose;
+		return _pose *= t;
 	}
 	else if(_resetCurrentCount > 0)
 	{
@@ -231,11 +235,14 @@ void OdometryBOW::reset(const Transform & initialPose)
 }
 
 // return not null transform if odometry is correctly computed
-Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, int * features, int * localMapSize)
+Transform OdometryBOW::computeTransform(
+		const SensorData & data,
+		OdometryInfo * info)
 {
 	UTimer timer;
 	Transform output;
 
+	double variance = -1;
 	int inliers = 0;
 	int correspondences = 0;
 	int nFeatures = 0;
@@ -276,10 +283,9 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 
 				UDEBUG("localMap=%d, new=%d, unique correspondences=%d", (int)localMap_.size(), (int)newSignature->getWords3().size(), (int)uniqueCorrespondences.size());
 
+				correspondences = (int)inliers1->size();
 				if((int)inliers1->size() >= this->getMinInliers())
 				{
-					correspondences = (int)inliers1->size();
-
 					// transform new words in local map referential
 					//inliers2 = util3d::transformPointCloud<pcl::PointXYZ>(inliers2, this->getPose());
 
@@ -291,7 +297,8 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 							this->getInlierDistance(),
 							this->getIterations(),
 							this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
-							&inliersV);
+							&inliersV,
+							&variance);
 
 					inliers = (int)inliersV.size();
 					if(!transform.isNull())
@@ -361,11 +368,6 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 
 					transform = transform * icpT;
 					*/
-
-					if(quality)
-					{
-						*quality = inliers;
-					}
 
 					if(inliers < this->getMinInliers())
 					{
@@ -469,13 +471,13 @@ Transform OdometryBOW::computeTransform(const SensorData & data, int * quality, 
 		_memory->emptyTrash();
 	}
 
-	if(features)
+	if(info)
 	{
-		*features = nFeatures;
-	}
-	if(localMapSize)
-	{
-		*localMapSize = (int)localMap_.size();
+		info->variance = variance;
+		info->inliers = inliers;
+		info->matches = correspondences;
+		info->features = nFeatures;
+		info->localMapSize = (int)localMap_.size();
 	}
 
 	UINFO("Odom update time = %fs out=[%s] features=%d inliers=%d/%d local_map=%d[%d] dict=%d nodes=%d",
@@ -547,32 +549,30 @@ void OdometryOpticalFlow::reset(const Transform & initialPose)
 // return not null transform if odometry is correctly computed
 Transform OdometryOpticalFlow::computeTransform(
 		const SensorData & data,
-		int * quality,
-		int * features,
-		int * localMapSize)
+		OdometryInfo * info)
 {
 	UDEBUG("");
 
 	if(!data.rightImage().empty())
 	{
 		//stereo
-		return computeTransformStereo(data, quality, features);
+		return computeTransformStereo(data, info);
 	}
 	else
 	{
 		//rgbd
-		return computeTransformRGBD(data, quality, features);
+		return computeTransformRGBD(data, info);
 	}
 }
 
 Transform OdometryOpticalFlow::computeTransformStereo(
 		const SensorData & data,
-		int * quality,
-		int * features)
+		OdometryInfo * info)
 {
 	UTimer timer;
 	Transform output;
 
+	double variance = -1;
 	int inliers = 0;
 	int correspondences = 0;
 
@@ -747,15 +747,11 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 						this->getInlierDistance(),
 						this->getIterations(),
 						this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
-						&inliersV);
+						&inliersV,
+						&variance);
 				UDEBUG("time RANSAC = %fs", timerRANSAC.ticks());
 
 				inliers = (int)inliersV.size();
-				if(quality)
-				{
-					*quality = inliers;
-				}
-
 				if(inliers < this->getMinInliers())
 				{
 					output.setNull();
@@ -841,6 +837,14 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 		output.setNull();
 	}
 
+	if(info)
+	{
+		info->variance = variance;
+		info->inliers = inliers;
+		info->features = (int)newCorners.size();
+		info->matches = correspondences;
+	}
+
 	UINFO("Odom update time = %fs inliers=%d/%d, new corners=%d, transform accepted=%s",
 			timer.elapsed(),
 			inliers,
@@ -853,12 +857,12 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 
 Transform OdometryOpticalFlow::computeTransformRGBD(
 		const SensorData & data,
-		int * quality,
-		int * features)
+		OdometryInfo * info)
 {
 	UTimer timer;
 	Transform output;
 
+	double variance = -1;
 	int inliers = 0;
 	int correspondences = 0;
 
@@ -967,15 +971,11 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 					this->getInlierDistance(),
 					this->getIterations(),
 					this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
-					&inliersV);
+					&inliersV,
+					&variance);
 			UDEBUG("time RANSAC = %fs", timerRANSAC.ticks());
 
 			inliers = (int)inliersV.size();
-			if(quality)
-			{
-				*quality = inliers;
-			}
-
 			if(inliers < this->getMinInliers())
 			{
 				output.setNull();
@@ -1097,6 +1097,14 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 		output = Transform::getIdentity();
 	}
 
+	if(info)
+	{
+		info->variance = variance;
+		info->inliers = inliers;
+		info->features = (int)newCorners.size();
+		info->matches = correspondences;
+	}
+
 	UINFO("Odom update time = %fs inliers=%d/%d, new corners=%d, transform accepted=%s",
 			timer.elapsed(),
 			inliers,
@@ -1112,7 +1120,7 @@ OdometryICP::OdometryICP(int decimation,
 		int samples,
 		float maxCorrespondenceDistance,
 		int maxIterations,
-		float maxFitness,
+		float correspondenceRatio,
 		bool pointToPlane,
 		const ParametersMap & odometryParameter) :
 	Odometry(odometryParameter),
@@ -1121,7 +1129,7 @@ OdometryICP::OdometryICP(int decimation,
 	_samples(samples),
 	_maxCorrespondenceDistance(maxCorrespondenceDistance),
 	_maxIterations(maxIterations),
-	_maxFitness(maxFitness),
+	_correspondenceRatio(correspondenceRatio),
 	_pointToPlane(pointToPlane),
 	_previousCloudNormal(new pcl::PointCloud<pcl::PointNormal>),
 	_previousCloud(new pcl::PointCloud<pcl::PointXYZ>)
@@ -1136,13 +1144,13 @@ void OdometryICP::reset(const Transform & initialPose)
 }
 
 // return not null transform if odometry is correctly computed
-Transform OdometryICP::computeTransform(const SensorData & data, int * quality, int * features, int * localMapSize)
+Transform OdometryICP::computeTransform(const SensorData & data, OdometryInfo * info)
 {
 	UTimer timer;
 	Transform output;
 
 	bool hasConverged = false;
-	double fitness = 0;
+	double variance = -1;
 	unsigned int minPoints = 100;
 	if(!data.depth().empty())
 	{
@@ -1177,27 +1185,28 @@ Transform OdometryICP::computeTransform(const SensorData & data, int * quality, 
 
 			if(_previousCloudNormal->size() > minPoints && newCloud->size() > minPoints)
 			{
+				int correspondences = 0;
 				Transform transform = util3d::icpPointToPlane(newCloud,
 						_previousCloudNormal,
 						_maxCorrespondenceDistance,
 						_maxIterations,
-						hasConverged,
-						fitness);
+						&hasConverged,
+						&variance,
+						&correspondences);
 
-				//pcl::io::savePCDFile("old.pcd", *_previousCloud);
-				//pcl::io::savePCDFile("new.pcd", *newCloud);
-				//pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudTransformed = util3d::transformPointCloud(newCloud, transform);
-				//pcl::io::savePCDFile("newicp.pcd", *newCloudTransformed);
+				// verify if there are enough correspondences
+				float correspondencesRatio = float(correspondences)/float(_previousCloudNormal->size()>newCloud->size()?_previousCloudNormal->size():newCloud->size());
 
-				if(hasConverged && (_maxFitness == 0 || fitness < _maxFitness))
+				if(!transform.isNull() && hasConverged &&
+		   	   	   correspondencesRatio >= _correspondenceRatio)
 				{
 					output = transform;
 					_previousCloudNormal = newCloud;
 				}
 				else
 				{
-					UWARN("Transform not valid (hasConverged=%s fitness = %f < %f)",
-							hasConverged?"true":"false", fitness, _maxFitness);
+					UWARN("Transform not valid (hasConverged=%s variance = %f)",
+							hasConverged?"true":"false", variance);
 				}
 			}
 			else if(newCloud->size() > minPoints)
@@ -1211,27 +1220,28 @@ Transform OdometryICP::computeTransform(const SensorData & data, int * quality, 
 			//point to point
 			if(_previousCloud->size() > minPoints && newCloudXYZ->size() > minPoints)
 			{
+				int correspondences = 0;
 				Transform transform = util3d::icp(newCloudXYZ,
 						_previousCloud,
 						_maxCorrespondenceDistance,
 						_maxIterations,
-						hasConverged,
-						fitness);
+						&hasConverged,
+						&variance,
+						&correspondences);
 
-				//pcl::io::savePCDFile("old.pcd", *_previousCloudNormal);
-				//pcl::io::savePCDFile("new.pcd", *newCloud);
-				//pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudTransformed = util3d::transformPointCloud(newCloud, transform);
-				//pcl::io::savePCDFile("newicp.pcd", *newCloudTransformed);
+				// verify if there are enough correspondences
+				float correspondencesRatio = float(correspondences)/float(_previousCloud->size()>newCloudXYZ->size()?_previousCloud->size():newCloudXYZ->size());
 
-				if(hasConverged && (_maxFitness == 0 || fitness < _maxFitness))
+				if(!transform.isNull() && hasConverged &&
+				   correspondencesRatio >= _correspondenceRatio)
 				{
 					output = transform;
 					_previousCloud = newCloudXYZ;
 				}
 				else
 				{
-					UWARN("Transform not valid (hasConverged=%s fitness = %f < %f)",
-							hasConverged?"true":"false", fitness, _maxFitness);
+					UWARN("Transform not valid (hasConverged=%s variance = %f)",
+							hasConverged?"true":"false", variance);
 				}
 			}
 			else if(newCloudXYZ->size() > minPoints)
@@ -1246,10 +1256,15 @@ Transform OdometryICP::computeTransform(const SensorData & data, int * quality, 
 		UERROR("Depth is empty?!?");
 	}
 
-	UINFO("Odom update time = %fs hasConverged=%s fitness=%f cloud=%d",
+	if(info)
+	{
+		info->variance = variance;
+	}
+
+	UINFO("Odom update time = %fs hasConverged=%s variance=%f cloud=%d",
 			timer.elapsed(),
 			hasConverged?"true":"false",
-			fitness,
+			variance,
 			(int)(_pointToPlane?_previousCloudNormal->size():_previousCloud->size()));
 
 	return output;
@@ -1316,13 +1331,10 @@ void OdometryThread::mainLoop()
 	getData(data);
 	if(data.isValid())
 	{
-		int quality = -1;
-		int features = -1;
-		int localMapSize = -1;
-		UTimer time;
-		Transform pose = _odometry->process(data, &quality, &features, &localMapSize);
-		data.setPose(pose); // a null pose notify that odometry could not be computed
-		this->post(new OdometryEvent(data, quality, time.elapsed(), features, localMapSize));
+		OdometryInfo info;
+		Transform pose = _odometry->process(data, &info);
+		data.setPose(pose, info.variance); // a null pose notify that odometry could not be computed
+		this->post(new OdometryEvent(data, info));
 	}
 }
 

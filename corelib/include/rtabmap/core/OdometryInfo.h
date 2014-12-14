@@ -25,56 +25,32 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef LINK_H_
-#define LINK_H_
-
-#include <rtabmap/core/Transform.h>
+#ifndef ODOMETRYINFO_H_
+#define ODOMETRYINFO_H_
 
 namespace rtabmap {
 
-class Link
+class OdometryInfo
 {
 public:
-	enum Type {kNeighbor, kGlobalClosure, kLocalSpaceClosure, kLocalTimeClosure, kUserClosure, kUndef};
-	Link() :
-		from_(0),
-		to_(0),
-		type_(kUndef),
-		variance_(1.0f)
-	{
-	}
-	Link(int from, int to, Type type, const Transform & transform, float variance) :
-		from_(from),
-		to_(to),
-		transform_(transform),
-		type_(type),
-		variance_(variance)
-	{
-	}
-
-	bool isValid() const {return from_ > 0 && to_ > 0 && !transform_.isNull() && type_!=kUndef;}
-
-	int from() const {return from_;}
-	int to() const {return to_;}
-	const Transform & transform() const {return transform_;}
-	Type type() const {return type_;}
-	float variance() const {return variance_;}
-
-	void setFrom(int from) {from_ = from;}
-	void setTo(int to) {to_ = to;}
-	void setTransform(const Transform & transform) {transform_ = transform;}
-	void setType(Type type) {type_ = type;}
-	void setVariance(float variance) {variance_ = variance;}
-
-private:
-	int from_;
-	int to_;
-	Transform transform_;
-	Type type_;
-	float variance_;
+	OdometryInfo() :
+		lost(true),
+		matches(-1),
+		inliers(-1),
+		variance(-1),
+		features(-1),
+		localMapSize(-1),
+		time(0.0f)
+	{}
+	bool lost;
+	int matches;
+	int inliers;
+	float variance;
+	int features;
+	int localMapSize;
+	float time;
 };
 
 }
 
-
-#endif /* LINK_H_ */
+#endif /* ODOMETRYINFO_H_ */

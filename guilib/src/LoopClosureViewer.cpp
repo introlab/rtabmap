@@ -169,8 +169,8 @@ void LoopClosureViewer::updateView(const Transform & transform)
 
 			//cloud 2d
 			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
-			scanA = util3d::depth2DToPointCloud(sA_.getDepth2DRaw());
-			scanB = util3d::depth2DToPointCloud(sB_.getDepth2DRaw());
+			scanA = util3d::laserScanToPointCloud(sA_.getLaserScanRaw());
+			scanB = util3d::laserScanToPointCloud(sB_.getLaserScanRaw());
 			scanB = util3d::transformPointCloud<pcl::PointXYZ>(scanB, t);
 
 			ui_->label_idA->setText(QString("[%1 (%2) -> %3 (%4)]").arg(sB_.id()).arg(cloudB->size()).arg(sA_.id()).arg(cloudA->size()));

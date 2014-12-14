@@ -93,13 +93,12 @@ Memory::Memory(const ParametersMap & parameters) :
 	_icpSamples(Parameters::defaultLccIcp3Samples()),
 	_icpMaxCorrespondenceDistance(Parameters::defaultLccIcp3MaxCorrespondenceDistance()),
 	_icpMaxIterations(Parameters::defaultLccIcp3Iterations()),
-	_icpMaxFitness(Parameters::defaultLccIcp3MaxFitness()),
+	_icpCorrespondenceRatio(Parameters::defaultLccIcp3CorrespondenceRatio()),
 	_icpPointToPlane(Parameters::defaultLccIcp3PointToPlane()),
 	_icpPointToPlaneNormalNeighbors(Parameters::defaultLccIcp3PointToPlaneNormalNeighbors()),
 
 	_icp2MaxCorrespondenceDistance(Parameters::defaultLccIcp2MaxCorrespondenceDistance()),
 	_icp2MaxIterations(Parameters::defaultLccIcp2Iterations()),
-	_icp2MaxFitness(Parameters::defaultLccIcp2MaxFitness()),
 	_icp2CorrespondenceRatio(Parameters::defaultLccIcp2CorrespondenceRatio()),
 	_icp2VoxelSize(Parameters::defaultLccIcp2VoxelSize()),
 
@@ -405,12 +404,11 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kLccIcp3Samples(), _icpSamples);
 	Parameters::parse(parameters, Parameters::kLccIcp3MaxCorrespondenceDistance(), _icpMaxCorrespondenceDistance);
 	Parameters::parse(parameters, Parameters::kLccIcp3Iterations(), _icpMaxIterations);
-	Parameters::parse(parameters, Parameters::kLccIcp3MaxFitness(), _icpMaxFitness);
+	Parameters::parse(parameters, Parameters::kLccIcp3CorrespondenceRatio(), _icpCorrespondenceRatio);
 	Parameters::parse(parameters, Parameters::kLccIcp3PointToPlane(), _icpPointToPlane);
 	Parameters::parse(parameters, Parameters::kLccIcp3PointToPlaneNormalNeighbors(), _icpPointToPlaneNormalNeighbors);
 	Parameters::parse(parameters, Parameters::kLccIcp2MaxCorrespondenceDistance(), _icp2MaxCorrespondenceDistance);
 	Parameters::parse(parameters, Parameters::kLccIcp2Iterations(), _icp2MaxIterations);
-	Parameters::parse(parameters, Parameters::kLccIcp2MaxFitness(), _icp2MaxFitness);
 	Parameters::parse(parameters, Parameters::kLccIcp2CorrespondenceRatio(), _icp2CorrespondenceRatio);
 	Parameters::parse(parameters, Parameters::kLccIcp2VoxelSize(), _icp2VoxelSize);
 
@@ -431,12 +429,11 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	UASSERT_MSG(_icpSamples >= 0, uFormat("value=%d", _icpSamples).c_str());
 	UASSERT_MSG(_icpMaxCorrespondenceDistance > 0.0f, uFormat("value=%f", _icpMaxCorrespondenceDistance).c_str());
 	UASSERT_MSG(_icpMaxIterations > 0, uFormat("value=%d", _icpMaxIterations).c_str());
-	UASSERT_MSG(_icpMaxFitness > 0.0f, uFormat("value=%f", _icpMaxFitness).c_str());
+	UASSERT_MSG(_icpCorrespondenceRatio >=0.0f && _icpCorrespondenceRatio <=1.0f, uFormat("value=%f", _icpCorrespondenceRatio).c_str());
 	UASSERT_MSG(_icpPointToPlaneNormalNeighbors > 0, uFormat("value=%d", _icpPointToPlaneNormalNeighbors).c_str());
 	UASSERT_MSG(_icp2MaxCorrespondenceDistance > 0.0f, uFormat("value=%f", _icp2MaxCorrespondenceDistance).c_str());
 	UASSERT_MSG(_icp2MaxIterations > 0, uFormat("value=%d", _icp2MaxIterations).c_str());
-	UASSERT_MSG(_icp2MaxFitness > 0.0f, uFormat("value=%f", _icp2MaxFitness).c_str());
-	UASSERT_MSG(_icp2CorrespondenceRatio >=0.0f && _icp2CorrespondenceRatio <=1.0f, uFormat("value=%f", _icp2MaxFitness).c_str());
+	UASSERT_MSG(_icp2CorrespondenceRatio >=0.0f && _icp2CorrespondenceRatio <=1.0f, uFormat("value=%f", _icp2CorrespondenceRatio).c_str());
 	UASSERT_MSG(_icp2VoxelSize >= 0, uFormat("value=%d", _icp2VoxelSize).c_str());
 
 	// Keypoint stuff
@@ -529,7 +526,7 @@ bool Memory::update(const SensorData & data, Statistics * stats)
 	UDEBUG("time creating signature=%f ms", t);
 
 	// It will be added to the short-term memory, no need to delete it...
-	this->addSignatureToStm(signature);
+	this->addSignatureToStm(signature, data.poseVariance());
 
 	_lastSignature = signature;
 
@@ -618,7 +615,7 @@ void Memory::setRoi(const std::string & roi)
 	}
 }
 
-void Memory::addSignatureToStm(Signature * signature)
+void Memory::addSignatureToStm(Signature * signature, float poseVariance)
 {
 	UTimer timer;
 	// add signature on top of the short-term memory
@@ -635,13 +632,14 @@ void Memory::addSignatureToStm(Signature * signature)
 				   !_signatures.at(*_stMem.rbegin())->getPose().isNull())
 				{
 					motionEstimate = _signatures.at(*_stMem.rbegin())->getPose().inverse() * signature->getPose();
-					_signatures.at(*_stMem.rbegin())->addNeighbor(signature->id(), motionEstimate);
+					_signatures.at(*_stMem.rbegin())->addLink(Link(*_stMem.rbegin(), signature->id(), Link::kNeighbor, motionEstimate, poseVariance));
+					signature->addLink(Link(signature->id(), *_stMem.rbegin(), Link::kNeighbor, motionEstimate.inverse(), poseVariance));
 				}
 				else
 				{
-					_signatures.at(*_stMem.rbegin())->addNeighbor(signature->id());
+					_signatures.at(*_stMem.rbegin())->addLink(Link(*_stMem.rbegin(), signature->id(), Link::kNeighbor, Transform(), 1.0f));
+					signature->addLink(Link(signature->id(), *_stMem.rbegin(), Link::kNeighbor, Transform(), 1.0f));
 				}
-				signature->addNeighbor(*_stMem.rbegin(), motionEstimate.isNull()?Transform():motionEstimate.inverse());
 				UDEBUG("Min STM id = %d", *_stMem.begin());
 			}
 			else
@@ -718,71 +716,27 @@ void Memory::getPose(int locationId, Transform & pose, bool lookInDatabase) cons
 	}
 }
 
-std::map<int, Transform> Memory::getNeighborLinks(int signatureId, bool ignoreNeighborByLoopClosure, bool lookInDatabase) const
+std::map<int, Link> Memory::getNeighborLinks(
+		int signatureId,
+		bool lookInDatabase) const
 {
-	std::map<int, Transform> links;
-	Signature * sTop = uValue(_signatures, signatureId, (Signature*)0);
-	if(sTop)
+	std::map<int, Link> links;
+	Signature * s = uValue(_signatures, signatureId, (Signature*)0);
+	if(s)
 	{
-		std::list<Signature *> loops;
-		loops.push_back(sTop);
-		while(loops.size())
+		const std::map<int, Link> & allLinks = s->getLinks();
+		for(std::map<int, Link>::const_iterator iter = allLinks.begin(); iter!=allLinks.end(); ++iter)
 		{
-			Signature * s = *loops.begin();
-			loops.pop_front();
-			if(s)
+			if(iter->second.type() == Link::kNeighbor)
 			{
-				const std::map<int, Transform> & neighbors = s->getNeighbors();
-				links.insert(neighbors.begin(), neighbors.end());
-				if(!ignoreNeighborByLoopClosure)
-				{
-					const std::map<int, Transform> & loopIds = s->getLoopClosureIds();
-					for(std::map<int, Transform>::const_iterator iter = loopIds.begin(); iter!=loopIds.end(); ++iter)
-					{
-						if(iter->first > 0 && _stMem.find(iter->first) == _stMem.end())
-						{
-							loops.push_back(uValue(_signatures, iter->first, (Signature*)0));
-						}
-					}
-				}
-			}
-		}
-
-		if(!ignoreNeighborByLoopClosure)
-		{
-			// Check for child loop closure ids
-			const std::map<int, Transform> & childTopIds = sTop->getChildLoopClosureIds();
-			for(std::map<int, Transform>::const_iterator iter = childTopIds.begin(); iter!=childTopIds.end(); ++iter)
-			{
-				if(iter->first > 0 && _stMem.find(iter->first) == _stMem.end())
-				{
-					loops.push_back(uValue(_signatures, iter->first, (Signature*)0));
-				}
-			}
-			while(loops.size())
-			{
-				Signature * s = *loops.begin();
-				loops.pop_front();
-				if(s)
-				{
-					const std::map<int, Transform> & neighbors = s->getNeighbors();
-					links.insert(neighbors.begin(), neighbors.end());
-					const std::map<int, Transform> & childIds = s->getChildLoopClosureIds();
-					for(std::map<int, Transform>::const_iterator iter = childIds.begin(); iter!=childIds.end(); ++iter)
-					{
-						if(iter->first > 0 && _stMem.find(iter->first) == _stMem.end())
-						{
-							loops.push_back(uValue(_signatures, iter->first, (Signature*)0));
-						}
-					}
-				}
+				links.insert(*iter);
 			}
 		}
 	}
 	else if(lookInDatabase && _dbDriver)
 	{
-		std::map<int, Transform> neighbors;
-		_dbDriver->loadNeighbors(signatureId, neighbors);
+		std::map<int, Link> neighbors;
+		_dbDriver->loadLinks(signatureId, neighbors, Link::kNeighbor);
 		links.insert(neighbors.begin(), neighbors.end());
 	}
 	else
@@ -790,6 +744,42 @@ std::map<int, Transform> Memory::getNeighborLinks(int signatureId, bool ignoreNe
 		UWARN("Cannot find signature %d in memory", signatureId);
 	}
 	return links;
+}
+
+std::map<int, Link> Memory::getLoopClosureLinks(
+		int signatureId,
+		bool lookInDatabase) const
+{
+	const Signature * s = this->getSignature(signatureId);
+	std::map<int, Link> loopClosures;
+	if(s)
+	{
+		const std::map<int, Link> & allLinks = s->getLinks();
+		for(std::map<int, Link>::const_iterator iter = allLinks.begin(); iter!=allLinks.end(); ++iter)
+		{
+			if(iter->second.type() > Link::kNeighbor &&
+			   iter->second.type() != Link::kUndef)
+			{
+				loopClosures.insert(*iter);
+			}
+		}
+	}
+	else if(lookInDatabase && _dbDriver)
+	{
+		_dbDriver->loadLinks(signatureId, loopClosures);
+		for(std::map<int, Link>::iterator iter=loopClosures.begin(); iter!=loopClosures.end();)
+		{
+			if(iter->second.type() == Link::kNeighbor)
+			{
+				loopClosures.erase(iter++);
+			}
+			else
+			{
+				++iter;
+			}
+		}
+	}
+	return loopClosures;
 }
 
 // return map<Id,Margin>, including signatureId
@@ -844,100 +834,54 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 				//UDEBUG("Added %d with margin %d", *jter, m);
 				// Look up in STM/WM if all ids are here, if not... load them from the database
 				const Signature * s = this->getSignature(*jter);
-				std::map<int, Transform> tmpNeighborIds;
-				std::map<int, Transform> tmpLoopClosureIds;
-				std::map<int, Transform> tmpChildLoopClosureIds;
-				const std::map<int, Transform> * neighborIds = &tmpNeighborIds;
-				const std::map<int, Transform> * loopClosureIds = &tmpLoopClosureIds;
-				const std::map<int, Transform> * childLoopClosureIds = &tmpChildLoopClosureIds;
+				std::map<int, Link> tmpLinks;
+				const std::map<int, Link> * links = &tmpLinks;
 				if(s)
 				{
 					ids.insert(std::pair<int, int>(*jter, m));
 
-					neighborIds = &s->getNeighbors();
-
-					if(!ignoreLoopIds)
-					{
-						loopClosureIds = &s->getLoopClosureIds();
-						childLoopClosureIds = &s->getChildLoopClosureIds();
-					}
+					links = &s->getLinks();
 				}
 				else if(maxCheckedInDatabase == -1 || (maxCheckedInDatabase > 0 && _dbDriver && nbLoadedFromDb < maxCheckedInDatabase))
 				{
 					ids.insert(std::pair<int, int>(*jter, m));
 
 					UTimer timer;
-					_dbDriver->loadNeighbors(*jter, tmpNeighborIds);
-					if(!ignoreLoopIds)
-					{
-						_dbDriver->loadLoopClosures(*jter, tmpLoopClosureIds, tmpChildLoopClosureIds);
-					}
+					_dbDriver->loadLinks(*jter, tmpLinks);
 					if(dbAccessTime)
 					{
 						*dbAccessTime += timer.getElapsedTime();
 					}
 				}
 
-				// Neighbor links
-				for(std::map<int, Transform>::const_iterator iter=neighborIds->begin(); iter!=neighborIds->end(); ++iter)
+				// links
+				for(std::map<int, Link>::const_iterator iter=links->begin(); iter!=links->end(); ++iter)
 				{
-					if( (ignoreLoopIds || (loopClosureIds->find(iter->first) == loopClosureIds->end() && childLoopClosureIds->find(iter->first) == childLoopClosureIds->end())) &&
-						!uContains(ids, iter->first) &&
-						nextMargin.find(iter->first) == nextMargin.end())
+					if( !uContains(ids, iter->first))
 					{
-						nextMargin.insert(iter->first);
-					}
-				}
-
-				// Parent links
-				for(std::map<int, Transform>::const_iterator iter=loopClosureIds->begin(); iter!=loopClosureIds->end(); ++iter)
-				{
-					if( iter->first && !uContains(ids, iter->first)/* && isInNeighborLimits(iter->first, limits)*/)
-					{
-						if(incrementMarginOnLoop)
+						UASSERT(iter->second.type() != Link::kUndef);
+						if(iter->second.type() == Link::kNeighbor)
 						{
 							nextMargin.insert(iter->first);
-							//UDEBUG("next of %d + %d", *jter, iter->first);
 						}
-						else
+						else if(!ignoreLoopIds)
 						{
-							if(currentMargin.insert(iter->first).second)
+							if(incrementMarginOnLoop)
 							{
-								const Signature * s = this->getSignature(iter->first);
-								if(!s)
-								{
-									// update db count because it's on current margin
-									++nbLoadedFromDb;
-								}
-								curentMarginList.push_back(iter->first);
-								//UDEBUG("current of %d + %d", *jter, iter->first);
+								nextMargin.insert(iter->first);
 							}
-						}
-					}
-				}
-
-				//Child links
-				for(std::map<int, Transform>::const_iterator iter=childLoopClosureIds->begin(); iter!=childLoopClosureIds->end(); ++iter)
-				{
-					if( iter->first && !uContains(ids, iter->first)/* && isInNeighborLimits(iter->first, limits)*/)
-					{
-						if(incrementMarginOnLoop)
-						{
-							nextMargin.insert(iter->first);
-							//UDEBUG("next of %d + %d", *jter, iter->first);
-						}
-						else
-						{
-							if(currentMargin.insert(iter->first).second)
+							else
 							{
-								const Signature * s = this->getSignature(iter->first);
-								if(!s)
+								if(currentMargin.insert(iter->first).second)
 								{
-									// update db count because it's on current margin
-									++nbLoadedFromDb;
+									const Signature * s = this->getSignature(iter->first);
+									if(!s)
+									{
+										// update db count because it's on current margin
+										++nbLoadedFromDb;
+									}
+									curentMarginList.push_back(iter->first);
 								}
-								curentMarginList.push_back(iter->first);
-								//UDEBUG("current of %d + %d", *jter, iter->first);
 							}
 						}
 					}
@@ -947,22 +891,6 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 		++m;
 	}
 	return ids;
-}
-
-void Memory::getLoopClosureIds(int signatureId, std::map<int, Transform> & loopClosureIds, std::map<int, Transform> & childLoopClosureIds, bool lookInDatabase) const
-{
-	const Signature * s = this->getSignature(signatureId);
-	loopClosureIds.clear();
-	childLoopClosureIds.clear();
-	if(s)
-	{
-		loopClosureIds = s->getLoopClosureIds();
-		childLoopClosureIds = s->getChildLoopClosureIds();
-	}
-	else if(lookInDatabase && _dbDriver)
-	{
-		_dbDriver->loadLoopClosures(signatureId, loopClosureIds, childLoopClosureIds);
-	}
 }
 
 int Memory::getNextId()
@@ -1413,33 +1341,20 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 			{
 				// ignore recent memory
 			}
-			else if(*memIter > 0 && ignoredIds.find(*memIter) == ignoredIds.end() && (!lastInSTM || !lastInSTM->hasNeighbor(*memIter)))
+			else if(*memIter > 0 && ignoredIds.find(*memIter) == ignoredIds.end() && (!lastInSTM || !lastInSTM->hasLink(*memIter)))
 			{
 				Signature * s = this->_getSignature(*memIter);
 				if(s)
 				{
-					// Its loop closures must not be in STM to be removable, rehearsal issue
+					// Links must not be in STM to be removable, rehearsal issue
 					bool foundInSTM = false;
-					for(std::map<int, Transform>::const_iterator iter = s->getLoopClosureIds().begin(); iter!=s->getLoopClosureIds().end(); ++iter)
+					for(std::map<int, Link>::const_iterator iter = s->getLinks().begin(); iter!=s->getLinks().end(); ++iter)
 					{
 						if(_stMem.find(iter->first) != _stMem.end())
 						{
-							UDEBUG("Ignored %d because it has a parent (%d) in STM", s->id(), iter->first);
+							UDEBUG("Ignored %d because it has a link (%d) to STM", s->id(), iter->first);
 							foundInSTM = true;
 							break;
-						}
-					}
-					// Its neighbors must not be in STM to be removable, rehearsal issue
-					if(!foundInSTM)
-					{
-						for(std::set<int>::iterator iter = _stMem.begin(); iter!=_stMem.end(); ++iter)
-						{
-							if(s->hasNeighbor(*iter))
-							{
-								UDEBUG("Ignored %d because it has a neighbor (%d) in STM", s->id(), *iter);
-								foundInSTM = true;
-								break;
-							}
 						}
 					}
 					if(!foundInSTM)
@@ -1473,13 +1388,9 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 			{
 				if(!recentWmImmunized)
 				{
-
-					UDEBUG("weight=%d, id=%d, lcCount=%d, lcId=%d, childId=%d",
+					UDEBUG("weight=%d, id=%d",
 							iter->first.weight,
-							iter->second->id(),
-							int(iter->second->getLoopClosureIds().size()),
-							iter->second->getLoopClosureIds().size()?iter->second->getLoopClosureIds().rbegin()->first:0,
-							iter->second->getChildLoopClosureIds().size()?iter->second->getChildLoopClosureIds().rbegin()->first:0);
+							iter->second->id());
 					removableSignatures.push_back(iter->second);
 					addedSignatures.insert(iter->second->id());
 
@@ -1495,12 +1406,9 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 				}
 				else if(iter->second->id() < _lastGlobalLoopClosureParentId)
 				{
-					UDEBUG("weight=%d, id=%d, lcCount=%d, lcId=%d, childId=%d",
+					UDEBUG("weight=%d, id=%d",
 							iter->first.weight,
-							iter->second->id(),
-							int(iter->second->getLoopClosureIds().size()),
-							iter->second->getLoopClosureIds().size()?iter->second->getLoopClosureIds().rbegin()->first:0,
-							iter->second->getChildLoopClosureIds().size()?iter->second->getChildLoopClosureIds().rbegin()->first:0);
+							iter->second->id());
 					removableSignatures.push_back(iter->second);
 					addedSignatures.insert(iter->second->id());
 				}
@@ -1531,61 +1439,37 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase, std::list<int> * de
 		{
 			UASSERT_MSG(this->isInSTM(s->id()),
 					uFormat("Deleting location (%d) outside the STM is not implemented!", s->id()).c_str());
-			const std::map<int, Transform> & neighbors = s->getNeighbors();
-			for(std::map<int, Transform>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
+			const std::map<int, Link> & links = s->getLinks();
+			for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
-				Signature * n = this->_getSignature(iter->first);
+				Signature * sTo = this->_getSignature(iter->first);
 				// neighbor to s
-				if(n)
+				if(sTo)
 				{
-					if(iter->first > s->id() && (n->getNeighbors().size() > 2 || !n->hasNeighbor(s->id())))
+					if(iter->first > s->id() && (sTo->getLinks().size() == 1 || !sTo->hasLink(s->id())))
 					{
-						UWARN("Neighbor %d of %d is newer, removing neighbor link may split the map!",
+						UWARN("Link %d of %d is newer, removing neighbor link may split the map!",
 								iter->first, s->id());
 					}
 
-					n->removeNeighbor(s->id());
+					// child
+					if(iter->second.type() > Link::kNeighbor && s->id() > sTo->id())
+					{
+						sTo->setWeight(sTo->getWeight() + s->getWeight()); // copy weight
+					}
+
+					sTo->removeLink(s->id());
 					if(s == _lastSignature)
 					{
-						_lastSignature = n;
+						_lastSignature = sTo;
 					}
 				}
 				else
 				{
-					UERROR("neighbor %d of %d not in WM/STM?!?", iter->first, s->id());
+					UERROR("Link %d of %d not in WM/STM?!?", iter->first, s->id());
 				}
 			}
-			s->removeNeighbors();
-
-			std::map<int, Transform> children = s->getChildLoopClosureIds();
-			for(std::map<int, Transform>::const_iterator iter=children.begin(); iter!=children.end(); ++iter)
-			{
-				Signature * child = _getSignature(iter->first);
-				if(child)
-				{
-					child->removeLoopClosureId(s->id());
-					child->setWeight(child->getWeight() + s->getWeight()); // copy weight
-				}
-				else
-				{
-					UERROR("loop child %d of %d not in WM/STM?!?", iter->first, s->id());
-				}
-				s->removeChildLoopClosureId(iter->first);
-			}
-			std::map<int, Transform> parents = s->getLoopClosureIds();
-			for(std::map<int, Transform>::const_iterator iter=parents.begin(); iter!=parents.end(); ++iter)
-			{
-				Signature * p = _getSignature(iter->first);
-				if(p)
-				{
-					p->removeChildLoopClosureId(s->id());
-				}
-				else
-				{
-					UERROR("loop parent %d of %d not in WM/STM?!?", iter->first, s->id());
-				}
-				s->removeLoopClosureId(iter->first);
-			}
+			s->removeLinks(); // remove all links
 			s->setWeight(0);
 		}
 
@@ -1669,21 +1553,22 @@ void Memory::rejectLoopClosure(int oldId, int newId)
 	if(oldS && newS)
 	{
 		UDEBUG("removing loop closure from location %d", newS->id());
+		oldS->removeLink(newS->id());
+		oldS->setWeight(oldS->getWeight()+1);
 
-		const std::map<int, Transform> & children = newS->getChildLoopClosureIds();
-		for(std::map<int, Transform>::const_iterator iter=children.begin(); iter!=children.end(); ++iter)
+		newS->removeLink(oldS->id());
+		newS->setWeight(newS->getWeight()>0?newS->getWeight()-1:0);
+
+		bool noChildrenAnymore = true;
+		for(std::map<int, Link>::const_iterator iter=newS->getLinks().begin(); iter!=newS->getLinks().end(); ++iter)
 		{
-			if(iter->first == oldId)
+			if(iter->second.type() > Link::kNeighbor && iter->first < newS->id())
 			{
-				oldS->removeLoopClosureId(newS->id());
-				oldS->setWeight(oldS->getWeight()+1);
-
-				newS->removeChildLoopClosureId(iter->first);
-				newS->setWeight(newS->getWeight()>0?newS->getWeight()-1:0);
+				noChildrenAnymore = false;
 				break;
 			}
 		}
-		if(newS->getChildLoopClosureIds().size() == 0 && newId == _lastGlobalLoopClosureParentId)
+		if(noChildrenAnymore && newId == _lastGlobalLoopClosureParentId)
 		{
 			_lastGlobalLoopClosureParentId = 0;
 			_lastGlobalLoopClosureChildId = 0;
@@ -1703,7 +1588,12 @@ void Memory::rejectLoopClosure(int oldId, int newId)
 }
 
 // compute transform newId -> oldId
-Transform Memory::computeVisualTransform(int oldId, int newId, std::string * rejectedMsg, int * inliers) const
+Transform Memory::computeVisualTransform(
+		int oldId,
+		int newId,
+		std::string * rejectedMsg,
+		int * inliers,
+		double * variance) const
 {
 	const Signature * oldS = this->getSignature(oldId);
 	const Signature * newS = this->getSignature(newId);
@@ -1712,7 +1602,7 @@ Transform Memory::computeVisualTransform(int oldId, int newId, std::string * rej
 
 	if(oldS && newId)
 	{
-		return computeVisualTransform(*oldS, *newS, rejectedMsg, inliers);
+		return computeVisualTransform(*oldS, *newS, rejectedMsg, inliers, variance);
 	}
 	else
 	{
@@ -1727,7 +1617,12 @@ Transform Memory::computeVisualTransform(int oldId, int newId, std::string * rej
 }
 
 // compute transform newId -> oldId
-Transform Memory::computeVisualTransform(const Signature & oldS, const Signature & newS, std::string * rejectedMsg, int * inliers) const
+Transform Memory::computeVisualTransform(
+		const Signature & oldS,
+		const Signature & newS,
+		std::string * rejectedMsg,
+		int * inliers,
+		double * variance) const
 {
 	Transform transform;
 	std::string msg;
@@ -1755,7 +1650,8 @@ Transform Memory::computeVisualTransform(const Signature & oldS, const Signature
 					_bowInlierDistance,
 					_bowIterations,
 					true, 3.0, 10,
-					&inliersV);
+					&inliersV,
+					variance);
 			inliersCount = inliersV.size();
 			if(!t.isNull() && inliersCount >= _bowMinInliers)
 			{
@@ -1805,7 +1701,14 @@ Transform Memory::computeVisualTransform(const Signature & oldS, const Signature
 }
 
 // compute transform newId -> oldId
-Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess, bool icp3D, std::string * rejectedMsg)
+Transform Memory::computeIcpTransform(
+		int oldId,
+		int newId,
+		Transform guess,
+		bool icp3D,
+		std::string * rejectedMsg,
+		int * inliers,
+		double * variance)
 {
 	Signature * oldS = this->_getSignature(oldId);
 	Signature * newS = this->_getSignature(newId);
@@ -1831,11 +1734,11 @@ Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess, boo
 		else
 		{
 			//Depth required, if not in RAM, load it from LTM
-			if(oldS->getDepth2DCompressed().empty() && added.find(oldS->id()) == added.end())
+			if(oldS->getLaserScanCompressed().empty() && added.find(oldS->id()) == added.end())
 			{
 				depthToLoad.push_back(oldS);
 			}
-			if(newS->getDepth2DCompressed().empty() && added.find(newS->id()) == added.end())
+			if(newS->getLaserScanCompressed().empty() && added.find(newS->id()) == added.end())
 			{
 				depthToLoad.push_back(newS);
 			}
@@ -1863,7 +1766,7 @@ Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess, boo
 			newS->uncompressData(0, 0, &tmp2);
 		}
 
-		t = computeIcpTransform(*oldS, *newS, guess, icp3D, rejectedMsg);
+		t = computeIcpTransform(*oldS, *newS, guess, icp3D, rejectedMsg, inliers, variance);
 	}
 	else
 	{
@@ -1878,7 +1781,14 @@ Transform Memory::computeIcpTransform(int oldId, int newId, Transform guess, boo
 }
 
 // get transform from the new to old node
-Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess, bool icp3D, std::string * rejectedMsg) const
+Transform Memory::computeIcpTransform(
+		const Signature & oldS,
+		const Signature & newS,
+		Transform guess,
+		bool icp3D,
+		std::string * rejectedMsg,
+		int * inliers,
+		double * variance) const
 {
 	if(guess.isNull())
 	{
@@ -1931,11 +1841,12 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 						guess * newS.getLocalTransform());
 
 				// 3D
-				double fitness = 0;
-				bool hasConverged = false;
-				Transform icpT;
 				if(newCloudXYZ->size() && oldCloudXYZ->size())
 				{
+					bool hasConverged = false;
+					Transform icpT;
+					int correspondences = 0;
+					float correspondencesRatio = -1.0f;
 					if(_icpPointToPlane)
 					{
 						pcl::PointCloud<pcl::PointNormal>::Ptr oldCloud = util3d::computeNormals(oldCloudXYZ, _icpPointToPlaneNormalNeighbors);
@@ -1951,36 +1862,47 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 									oldCloud,
 								   _icpMaxCorrespondenceDistance,
 								   _icpMaxIterations,
-								   hasConverged,
-								   fitness);
+								   &hasConverged,
+								   variance,
+								   &correspondences);
 						}
 					}
 					else
 					{
-						transform = util3d::icp(newCloudXYZ,
+						icpT = util3d::icp(newCloudXYZ,
 								oldCloudXYZ,
 								_icpMaxCorrespondenceDistance,
 								_icpMaxIterations,
-								hasConverged,
-								fitness);
+								&hasConverged,
+								variance,
+								&correspondences);
 					}
 
-					//pcl::io::savePCDFile("old.pcd", *oldCloudXYZ);
-					//pcl::io::savePCDFile("newguess.pcd", *newCloudXYZ);
-					//newCloudXYZ = util3d::transformPointCloud(newCloudXYZ, icpT);
-					//pcl::io::savePCDFile("newicp.pcd", *newCloudXYZ);
+					// verify if there are enough correspondences
+					correspondencesRatio = float(correspondences)/float(oldCloudXYZ->size()>newCloudXYZ->size()?oldCloudXYZ->size():newCloudXYZ->size());
 
-					UDEBUG("fitness=%f", fitness);
+					UDEBUG("hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
+							hasConverged?"true":"false",
+							variance?*variance:-1,
+							correspondences,
+							(int)oldCloudXYZ->size(),
+							correspondencesRatio*100.0f);
 
-					if(!icpT.isNull() && hasConverged && (_icpMaxFitness == 0 || fitness < _icpMaxFitness))
+					if(inliers)
+					{
+						*inliers = correspondences;
+					}
+
+					if(!icpT.isNull() && hasConverged &&
+					   correspondencesRatio >= _icpCorrespondenceRatio)
 					{
 						transform = icpT * guess;
 						transform = transform.inverse();
 					}
 					else
 					{
-						msg = uFormat("Cannot compute transform (hasConverged=%s fitness=%f/%f)",
-								hasConverged?"true":"false", fitness, _icpMaxFitness);
+						msg = uFormat("Cannot compute transform (hasConverged=%s variance=%f correspondencesRatio=%f/%f)",
+								hasConverged?"true":"false", variance?*variance:-1, correspondencesRatio, _icpCorrespondenceRatio);
 						UINFO(msg.c_str());
 					}
 				}
@@ -2010,11 +1932,11 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 			UINFO("2D ICP: Dropping z (%f), roll (%f) and pitch (%f) rotation!", z, r, p);
 		}
 
-		if(!oldS.getDepth2DRaw().empty() && !newS.getDepth2DRaw().empty())
+		if(!oldS.getLaserScanRaw().empty() && !newS.getLaserScanRaw().empty())
 		{
 			// 2D
-			pcl::PointCloud<pcl::PointXYZ>::Ptr oldCloud = util3d::cvMat2Cloud(oldS.getDepth2DRaw());
-			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud = util3d::cvMat2Cloud(newS.getDepth2DRaw(), guess);
+			pcl::PointCloud<pcl::PointXYZ>::Ptr oldCloud = util3d::cvMat2Cloud(oldS.getLaserScanRaw());
+			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud = util3d::cvMat2Cloud(newS.getLaserScanRaw(), guess);
 
 			//voxelize
 			if(_icp2VoxelSize > 0.0f)
@@ -2023,38 +1945,36 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 				newCloud = util3d::voxelize<pcl::PointXYZ>(newCloud, _icp2VoxelSize);
 			}
 
-			double fitness = 0.0f;
-			bool hasConverged = false;
-			Transform icpT;
-			float correspondencesRatio = -1.0f;
 			if(newCloud->size() && oldCloud->size())
 			{
+				Transform icpT;
+				bool hasConverged = false;
+				float correspondencesRatio = -1.0f;
+				int correspondences = 0;
 				icpT = util3d::icp2D(newCloud,
 						oldCloud,
 					   _icp2MaxCorrespondenceDistance,
 					   _icp2MaxIterations,
-					   hasConverged,
-					   fitness);
-
-				//UWARN("saving ICP2D clouds!");
-				//pcl::io::savePCDFile("lccold.pcd", *oldCloud);
-				//pcl::io::savePCDFile("lccnewguess.pcd", *newCloud);
-				newCloud = util3d::transformPointCloud<pcl::PointXYZ>(newCloud, icpT);
-				//pcl::io::savePCDFile("lccnewicp.pcd", *newCloud);
+					   &hasConverged,
+					   variance,
+					   &correspondences);
 
 				// verify if there are enough correspondences
-				int correspondences = util3d::getCorrespondencesCount(newCloud, oldCloud, _icp2MaxCorrespondenceDistance);
 				correspondencesRatio = float(correspondences)/float(oldCloud->size()>newCloud->size()?oldCloud->size():newCloud->size());
 
-				UDEBUG("hasConverged=%s, fitness=%f, correspondences=%d/%d (%f%%)",
+				UDEBUG("hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
 						hasConverged?"true":"false",
-						fitness,
+						variance?*variance:-1,
 						correspondences,
 						(int)oldCloud->size(),
 						correspondencesRatio*100.0f);
 
+				if(inliers)
+				{
+					*inliers = correspondences;
+				}
+
 				if(!icpT.isNull() && hasConverged &&
-				   (_icp2MaxFitness == 0 || fitness < _icp2MaxFitness) &&
 				   correspondencesRatio >= _icp2CorrespondenceRatio)
 				{
 					transform = icpT * guess;
@@ -2062,8 +1982,8 @@ Transform Memory::computeIcpTransform(const Signature & oldS, const Signature & 
 				}
 				else
 				{
-					msg = uFormat("Cannot compute transform (hasConverged=%s fitness=%f/%f correspondencesRatio=%f/%f)",
-							hasConverged?"true":"false", fitness, _icpMaxFitness, correspondencesRatio, _icp2CorrespondenceRatio);
+					msg = uFormat("Cannot compute transform (hasConverged=%s variance=%f correspondencesRatio=%f/%f)",
+							hasConverged?"true":"false", variance?*variance:-1, correspondencesRatio, _icp2CorrespondenceRatio);
 					UINFO(msg.c_str());
 				}
 			}
@@ -2094,7 +2014,9 @@ Transform Memory::computeScanMatchingTransform(
 		int newId,
 		int oldId,
 		const std::map<int, Transform> & poses,
-		std::string * rejectedMsg)
+		std::string * rejectedMsg,
+		int * inliers,
+		double * variance)
 {
 	// make sure that all depth2D are loaded
 	std::list<Signature*> depthToLoad;
@@ -2102,7 +2024,7 @@ Transform Memory::computeScanMatchingTransform(
 	{
 		Signature * s = _getSignature(iter->first);
 		UASSERT(s != 0);
-		if(s->getDepth2DCompressed().empty())
+		if(s->getLaserScanCompressed().empty())
 		{
 			depthToLoad.push_back(s);
 		}
@@ -2119,9 +2041,9 @@ Transform Memory::computeScanMatchingTransform(
 		if(iter->first != newId)
 		{
 			const Signature * s = this->getSignature(iter->first);
-			if(!s->getDepth2DCompressed().empty())
+			if(!s->getLaserScanCompressed().empty())
 			{
-				*assembledOldClouds += *util3d::cvMat2Cloud(util3d::uncompressData(s->getDepth2DCompressed()), iter->second);
+				*assembledOldClouds += *util3d::cvMat2Cloud(util3d::uncompressData(s->getLaserScanCompressed()), iter->second);
 			}
 			else
 			{
@@ -2140,7 +2062,7 @@ Transform Memory::computeScanMatchingTransform(
 	const Signature * newS = getSignature(newId);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud;
 	UASSERT(uContains(poses, newId));
-	newCloud = util3d::cvMat2Cloud(util3d::uncompressData(newS->getDepth2DCompressed()), poses.at(newId));
+	newCloud = util3d::cvMat2Cloud(util3d::uncompressData(newS->getLaserScanCompressed()), poses.at(newId));
 
 	//voxelize
 	if(newCloud->size() && _icp2VoxelSize > 0.0f)
@@ -2155,32 +2077,33 @@ Transform Memory::computeScanMatchingTransform(
 	Transform transform;
 	if(assembledOldClouds->size() && newCloud->size())
 	{
-		double fitness = 0.0f;
+		int correspondences = 0;
 		bool hasConverged = false;
 		Transform icpT = util3d::icp2D(newCloud,
 				assembledOldClouds,
 			   _icp2MaxCorrespondenceDistance,
 			   _icp2MaxIterations,
-			   hasConverged,
-			   fitness);
+			   &hasConverged,
+			   variance,
+			   &correspondences);
 
 		UDEBUG("icpT=%s", icpT.prettyPrint().c_str());
 
-		newCloud = util3d::transformPointCloud<pcl::PointXYZ>(newCloud, icpT);
-		//pcl::io::savePCDFile("newCorrected.pcd", *newCloud);
-
 		// verify if there enough correspondences
-		int correspondences = util3d::getCorrespondencesCount(newCloud, assembledOldClouds, _icp2MaxCorrespondenceDistance);
 		float correspondencesRatio = float(correspondences)/float(newCloud->size());
 
-		UDEBUG("fitness=%f, correspondences=%d/%d (%f%%)",
-				fitness,
+		UDEBUG("variance=%f, correspondences=%d/%d (%f%%)",
+				variance?*variance:-1,
 				correspondences,
 				(int)newCloud->size(),
 				correspondencesRatio);
 
+		if(inliers)
+		{
+			*inliers = correspondences;
+		}
+
 		if(!icpT.isNull() && hasConverged &&
-		   (_icp2MaxFitness == 0 || fitness < _icp2MaxFitness) &&
 		   correspondencesRatio >= _icp2CorrespondenceRatio)
 		{
 			transform = poses.at(newId).inverse()*icpT.inverse() * poses.at(oldId);
@@ -2190,9 +2113,9 @@ Transform Memory::computeScanMatchingTransform(
 		}
 		else
 		{
-			msg = uFormat("Constraints failed... hasConverged=%s, fitness=%f, correspondences=%d/%d (%f%%)",
+			msg = uFormat("Constraints failed... hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
 				hasConverged?"true":"false",
-				fitness,
+				variance?*variance:-1,
 				correspondences,
 				(int)newCloud->size(),
 				correspondencesRatio);
@@ -2214,28 +2137,29 @@ Transform Memory::computeScanMatchingTransform(
 }
 
 // Transform from new to old
-bool Memory::addLoopClosureLink(int oldId, int newId, const Transform & transform, bool global)
+bool Memory::addLoopClosureLink(int oldId, int newId, const Transform & transform, Link::Type type, float variance)
 {
+	UASSERT(type > Link::kNeighbor && type != Link::kUndef);
+
 	ULOGGER_INFO("old=%d, new=%d transform: %s", oldId, newId, transform.prettyPrint().c_str());
 	Signature * oldS = _getSignature(oldId);
 	Signature * newS = _getSignature(newId);
 	if(oldS && newS)
 	{
-		_memoryChanged = true;
-		const std::map<int, Transform> & oldLoopclosureIds = oldS->getLoopClosureIds();
-		if(oldLoopclosureIds.size() && oldLoopclosureIds.find(newS->id()) != oldLoopclosureIds.end())
+		if(oldS->hasLink(newId))
 		{
 			// do nothing, already merged
-			UDEBUG("already merged, old=%d, new=%d", oldId, newId);
+			UINFO("already linked! old=%d, new=%d", oldId, newId);
 			return true;
 		}
 
+		_memoryChanged = true;
 		UDEBUG("Add loop closure link between %d and %d", oldS->id(), newS->id());
 
-		oldS->addLoopClosureId(newS->id(), transform.inverse());
-		newS->addChildLoopClosureId(oldS->id(), transform);
+		oldS->addLink(Link(oldS->id(), newS->id(), type, transform.inverse(), variance));
+		newS->addLink(Link(newS->id(), oldS->id(), type, transform, variance));
 
-		if(_incrementalMemory && global)
+		if(_incrementalMemory && type == Link::kGlobalClosure)
 		{
 			_lastGlobalLoopClosureParentId = newS->id();
 			_lastGlobalLoopClosureChildId = oldS->id();
@@ -2260,18 +2184,18 @@ bool Memory::addLoopClosureLink(int oldId, int newId, const Transform & transfor
 	return false;
 }
 
-void Memory::updateNeighborLink(int fromId, int toId, const Transform & transform)
+void Memory::updateNeighborLink(int fromId, int toId, const Transform & transform, float variance)
 {
 	Signature * fromS = this->_getSignature(fromId);
 	Signature * toS = this->_getSignature(toId);
 
-	if(fromS->hasNeighbor(toId) && toS->hasNeighbor(fromId))
+	if(fromS->hasLink(toId) && toS->hasLink(fromId))
 	{
-		fromS->removeNeighbor(toId);
-		toS->removeNeighbor(fromId);
+		fromS->removeLink(toId);
+		toS->removeLink(fromId);
 
-		fromS->addNeighbor(toId, transform);
-		toS->addNeighbor(fromId, transform.inverse());
+		fromS->addLink(Link(fromId, toId, Link::kNeighbor, transform, variance));
+		toS->addLink(Link(toId, fromId, Link::kNeighbor, transform.inverse(), variance));
 	}
 	else
 	{
@@ -2368,16 +2292,33 @@ void Memory::dumpMemoryTree(const char * fileNameTree) const
 		{
 			fprintf(foutTree, "%d %d", i->first, i->second->getWeight());
 
-			const std::map<int, Transform> & loopIds = i->second->getLoopClosureIds();
+			std::map<int, Link> loopIds, childIds;
+
+			for(std::map<int, Link>::const_iterator iter = i->second->getLinks().begin();
+					iter!=i->second->getLinks().end();
+					++iter)
+			{
+				if(iter->second.type() > Link::kNeighbor)
+				{
+					if(iter->first < i->first)
+					{
+						childIds.insert(*iter);
+					}
+					else
+					{
+						loopIds.insert(*iter);
+					}
+				}
+			}
+
 			fprintf(foutTree, " %d", (int)loopIds.size());
-			for(std::map<int, Transform>::const_iterator j=loopIds.begin(); j!=loopIds.end(); ++j)
+			for(std::map<int, Link>::const_iterator j=loopIds.begin(); j!=loopIds.end(); ++j)
 			{
 				fprintf(foutTree, " %d", j->first);
 			}
 
-			const std::map<int, Transform> & childIds = i->second->getChildLoopClosureIds();
 			fprintf(foutTree, " %d", (int)childIds.size());
-			for(std::map<int, Transform>::const_iterator j=childIds.begin(); j!=childIds.end(); ++j)
+			for(std::map<int, Link>::const_iterator j=childIds.begin(); j!=childIds.end(); ++j)
 			{
 				fprintf(foutTree, " %d", j->first);
 			}
@@ -2393,7 +2334,7 @@ void Memory::dumpMemoryTree(const char * fileNameTree) const
 void Memory::rehearsal(Signature * signature, Statistics * stats)
 {
 	UTimer timer;
-	if(signature->getNeighbors().size() != 1)
+	if(signature->getLinks().size() != 1)
 	{
 		return;
 	}
@@ -2401,7 +2342,7 @@ void Memory::rehearsal(Signature * signature, Statistics * stats)
 	//============================================================
 	// Compare with the last
 	//============================================================
-	int id = signature->getNeighbors().begin()->first;
+	int id = signature->getLinks().begin()->first;
 	UDEBUG("Comparing with last signature (%d)...", id);
 	const Signature * sB = this->getSignature(id);
 	if(!sB)
@@ -2439,8 +2380,8 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 	Signature * newS = _getSignature(newId);
 	if(oldS && newS && _incrementalMemory)
 	{
-		const std::map<int, Transform> & oldLoopclosureIds = oldS->getLoopClosureIds();
-		if(oldLoopclosureIds.size() && oldLoopclosureIds.find(newS->id()) != oldLoopclosureIds.end())
+		std::map<int, Link>::const_iterator iter = oldS->getLinks().find(newS->id());
+		if(iter != oldS->getLinks().end() && iter->second.type() > Link::kNeighbor)
 		{
 			// do nothing, already merged
 			UWARN("already merged, old=%d, new=%d", oldId, newId);
@@ -2450,12 +2391,41 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 
 		UDEBUG("Rehearsal merge %d and %d", oldS->id(), newS->id());
 
+		//remove mutual links
+		oldS->removeLink(newId);
+		newS->removeLink(oldId);
+
 		if(_idUpdatedToNewOneRehearsal)
 		{
+			// redirect neighbor links
+			const std::map<int, Link> & links = oldS->getLinks();
+			for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
+			{
+				Link link = iter->second;
+				link.setFrom(newS->id());
+
+				Signature * s = this->_getSignature(link.to());
+				if(s)
+				{
+					// modify neighbor "from"
+					s->changeLinkIds(oldS->id(), newS->id());
+
+					newS->addLink(link);
+				}
+				else
+				{
+					UERROR("Didn't find neighbor %d of %d in RAM...", link.to(), oldS->id());
+				}
+			}
+
+			oldS->removeLinks(); // remove all links
+			oldS->addLink(Link(oldS->id(), newS->id(), Link::kGlobalClosure, Transform(), 1.0f)); // to keep track of the merged location
+
+			// Set old image to new signature
+			this->copyData(oldS, newS);
+
 			// update weight
 			newS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
-
-			oldS->addLoopClosureId(newS->id()); // to keep track of the merged location
 
 			if(_lastGlobalLoopClosureParentId == oldS->id())
 			{
@@ -2464,75 +2434,16 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 		}
 		else
 		{
+			newS->addLink(Link(newS->id(), oldS->id(), Link::kGlobalClosure, Transform(), 1.0f)); // to keep track of the merged location
+
 			// update weight
 			oldS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
-
-			newS->addLoopClosureId(oldS->id()); // to keep track of the merged location
 
 			if(_lastSignature == newS)
 			{
 				_lastSignature = oldS;
 			}
 		}
-
-		if(_idUpdatedToNewOneRehearsal)
-		{
-			// redirect neighbor links
-			const std::map<int, Transform> & neighbors = oldS->getNeighbors();
-			for(std::map<int, Transform>::const_iterator iter = neighbors.begin(); iter!=neighbors.end(); ++iter)
-			{
-				int link = iter->first;
-				Transform t = iter->second;
-				if(link != newS->id() && link != oldS->id())
-				{
-					Signature * s = this->_getSignature(link);
-					if(s)
-					{
-						// modify neighbor "from"
-						s->changeNeighborIds(oldS->id(), newS->id());
-
-						if(!newS->hasNeighbor(link))
-						{
-							newS->addNeighbor(link, t);
-						}
-					}
-					else
-					{
-						UERROR("Didn't find neighbor %d of %d in RAM...", link, oldS->id());
-					}
-				}
-			}
-			oldS->removeNeighbors();
-
-			// redirect child loop closure links
-			std::map<int, Transform> childIds = oldS->getChildLoopClosureIds();
-			for(std::map<int, Transform>::const_iterator iter = childIds.begin(); iter!=childIds.end(); ++iter)
-			{
-				if(iter->first == newS->id())
-				{
-					UERROR("");
-				}
-				newS->addChildLoopClosureId(iter->first, iter->second);
-				Signature * s = _getSignature(iter->first);
-				if(s)
-				{
-					UDEBUG("changed child Loop closure %d from %d to %d", iter->first, oldS->id(), newS->id());
-					s->changeLoopClosureId(oldS->id(), newS->id());
-				}
-				else
-				{
-					UERROR("A location (%d, child of %d) in WM/STM cannot be transferred if its loop closure id is in STM", iter->first, oldS->id());
-				}
-				oldS->removeChildLoopClosureId(iter->first);
-			}
-
-			// Set old image to new signature
-			this->copyData(oldS, newS);
-		}
-
-		//remove mutual links
-		oldS->removeNeighbor(newId);
-		newS->removeNeighbor(oldId);
 
 		// remove location
 		bool saveToDb = _keepRehearsedNodesInDb;
@@ -2601,7 +2512,7 @@ Signature Memory::getSignatureData(int locationId, bool uncompressedData)
 		{
 			std::list<Signature*> signatures;
 			signatures.push_back(s);
-			_dbDriver->loadNodeData(signatures, !s->getPose().isNull());
+			_dbDriver->loadNodeData(signatures, true);
 			r = *s;
 		}
 		else
@@ -2641,7 +2552,7 @@ Signature Memory::getSignatureData(int locationId, bool uncompressedData)
 			s->uncompressData();
 			r.setImageRaw(s->getImageRaw());
 			r.setDepthRaw(s->getDepthRaw());
-			r.setDepth2DRaw(s->getDepth2DRaw());
+			r.setLaserScanRaw(s->getLaserScanRaw());
 		}
 		else
 		{
@@ -2695,74 +2606,50 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 			 if(_signatures.find(*i) == _signatures.end())
 			 {
 				 int id = *i;
-				 std::map<int, Transform> loopIds;
-				 std::map<int, Transform> childIds;
-				 _dbDriver->loadLoopClosures(id, loopIds, childIds);
-
-				 std::map<int, Transform> neighbors;
-				 _dbDriver->loadNeighbors(id, neighbors);
+				 std::map<int, Link> links;
+				 _dbDriver->loadLinks(id, links);
 				 int weight = 0;
 				 _dbDriver->getWeight(id, weight);
-				 for(std::map<int, Transform>::iterator iter = neighbors.begin(); iter!=neighbors.end(); ++iter)
+				 for(std::map<int, Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
 				 {
-					 if(id!=iter->first)
+					 int weightNeighbor = 0;
+					 if(_signatures.find(iter->first) == _signatures.end())
 					 {
-						 int weightNeighbor = 0;
-						 if(_signatures.find(iter->first) == _signatures.end())
-						 {
-							 _dbDriver->getWeight(iter->first, weightNeighbor);
-						 }
-						 else
-						 {
-							 weightNeighbor = _signatures.find(iter->first)->second->getWeight();
-						 }
-						 //UDEBUG("Add neighbor link from %d to %d", id, iter->first);
+						 _dbDriver->getWeight(iter->first, weightNeighbor);
+					 }
+					 else
+					 {
+						 weightNeighbor = _signatures.find(iter->first)->second->getWeight();
+					 }
+					 //UDEBUG("Add neighbor link from %d to %d", id, iter->first);
+					 if(iter->second.type() == Link::kNeighbor)
+					 {
 						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\"\n",
 								 id,
 								 weight,
 								 iter->first,
 								 weightNeighbor);
 					 }
-				 }
-
-				 // loop closure links...
-				 for(std::map<int, Transform>::iterator iter = loopIds.begin(); iter!=loopIds.end(); ++iter)
-				 {
-					 int weightNeighbor = 0;
-					 if(_signatures.find(iter->first) == _signatures.end())
+					 else if(iter->first > id)
 					 {
-						 _dbDriver->getWeight(iter->first, weightNeighbor);
+						 //loop
+						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
+								 id,
+								 weight,
+								 iter->first,
+								 weightNeighbor,
+								 colorG);
 					 }
 					 else
 					 {
-						 weightNeighbor = _signatures.find(iter->first)->second->getWeight();
+						 //child
+						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
+								 id,
+								 weight,
+								 iter->first,
+								 weightNeighbor,
+								 colorP);
 					 }
-					 //UDEBUG("Add loop link from %d to %d", id, iter->first);
-					 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
-							 id,
-							 weight,
-							 iter->first,
-							 weightNeighbor,
-							 colorG);
-				 }
-				 for(std::map<int, Transform>::iterator iter = childIds.begin(); iter!=childIds.end(); ++iter)
-				 {
-					 int weightNeighbor = 0;
-					 if(_signatures.find(iter->first) == _signatures.end())
-					 {
-						 _dbDriver->getWeight(iter->first, weightNeighbor);
-					 }
-					 else
-					 {
-						 weightNeighbor = _signatures.find(iter->first)->second->getWeight();
-					 }
-					 //UDEBUG("Add child link from %d to %d", id, iter->first);
-					 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
-							 id,
-							 weight,
-							 iter->first,
-							 weightNeighbor,
-							 colorP);
 				 }
 			 }
 		 }
@@ -2771,48 +2658,32 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 			 if(ids.find(i->first) != ids.end())
 			 {
 				 int id = i->second->id();
-				 const std::map<int, Transform> & loopIds = i->second->getLoopClosureIds();
-				 //don't show children when _loopClosuresMerged is on
-				 //if(!_loopClosuresMerged || (loopIds.size() == 0))
+				 const std::map<int, Link> & links = i->second->getLinks();
+				 int weight = i->second->getWeight();
+				 for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
 				 {
-					 const std::map<int, Transform> & neighbors = i->second->getNeighbors();
-					 int weight = i->second->getWeight();
-					 for(std::map<int, Transform>::const_iterator iter = neighbors.begin(); iter!=neighbors.end(); ++iter)
+					 int weightNeighbor = 0;
+					 const Signature * s = this->getSignature(iter->first);
+					 if(s)
 					 {
-						 if(id != iter->first)
-						 {
-							 int weightNeighbor = 0;
-							 const Signature * s = this->getSignature(iter->first);
-							 if(s)
-							 {
-								 weightNeighbor = s->getWeight();
-							 }
-							 else
-							 {
-								 _dbDriver->getWeight(iter->first, weightNeighbor);
-							 }
-							 //UDEBUG("Add neighbor link from %d to %d", id, iter->first);
-							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\";\n",
-									 id,
-									 weight,
-									 iter->first,
-									 weightNeighbor);
-						 }
+						 weightNeighbor = s->getWeight();
 					 }
-
-					 // loop closure link
-					 for(std::map<int, Transform>::const_iterator iter = loopIds.begin(); iter!=loopIds.end(); ++iter)
+					 else
 					 {
-						 int weightNeighbor = 0;
-						 if(_signatures.find(iter->first) == _signatures.end())
-						 {
-							 _dbDriver->getWeight(iter->first, weightNeighbor);
-						 }
-						 else
-						 {
-							 weightNeighbor = _signatures.find(iter->first)->second->getWeight();
-						 }
-						 //UDEBUG("Add loop link from %d to %d", id, iter->first);
+						 _dbDriver->getWeight(iter->first, weightNeighbor);
+					 }
+					 //UDEBUG("Add neighbor link from %d to %d", id, iter->first);
+					 if(iter->second.type() == Link::kNeighbor)
+					 {
+						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\"\n",
+								 id,
+								 weight,
+								 iter->first,
+								 weightNeighbor);
+					 }
+					 else if(iter->first > id)
+					 {
+						 //loop
 						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
 								 id,
 								 weight,
@@ -2820,21 +2691,9 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 								 weightNeighbor,
 								 colorG);
 					 }
-
-					 // child loop closure link
-					 const std::map<int, Transform> & childIds = i->second->getChildLoopClosureIds();
-					 for(std::map<int, Transform>::const_iterator iter = childIds.begin(); iter!=childIds.end(); ++iter)
+					 else
 					 {
-						 int weightNeighbor = 0;
-						 if(_signatures.find(iter->first) == _signatures.end())
-						 {
-							 _dbDriver->getWeight(iter->first, weightNeighbor);
-						 }
-						 else
-						 {
-							 weightNeighbor = _signatures.find(iter->first)->second->getWeight();
-						 }
-						 //UDEBUG("Add child link from %d to %d", id, iter->first);
+						 //child
 						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
 								 id,
 								 weight,
@@ -2977,14 +2836,14 @@ void Memory::copyData(const Signature * from, Signature * to)
 		{
 			cv::Mat image;
 			cv::Mat depth;
-			cv::Mat depth2d;
+			cv::Mat laserScan;
 			float fx, fy, cx, cy;
 			Transform localTransform;
-			_dbDriver->getNodeData(from->id(), image, depth, depth2d, fx, fy, cx, cy, localTransform);
+			_dbDriver->getNodeData(from->id(), image, depth, laserScan, fx, fy, cx, cy, localTransform);
 
 			to->setImageCompressed(image);
 			to->setDepthCompressed(depth, fx, fy, cx, cy);
-			to->setDepth2DCompressed(depth2d);
+			to->setLaserScanCompressed(laserScan);
 			to->setLocalTransform(localTransform);
 
 			UDEBUG("Loaded image data from database");
@@ -2993,7 +2852,7 @@ void Memory::copyData(const Signature * from, Signature * to)
 		{
 			to->setImageCompressed(from->getImageCompressed());
 			to->setDepthCompressed(from->getDepthCompressed(), from->getDepthFx(), from->getDepthFy(), from->getDepthCx(), from->getDepthCy());
-			to->setDepth2DCompressed(from->getDepth2DCompressed());
+			to->setLaserScanCompressed(from->getLaserScanCompressed());
 			to->setLocalTransform(from->getLocalTransform());
 		}
 
@@ -3028,7 +2887,7 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData, S
 	UASSERT(data.image().empty() || data.image().type() == CV_8UC1 || data.image().type() == CV_8UC3);
 	UASSERT(data.depth().empty() || data.depth().type() == CV_16UC1 || data.depth().type() == CV_32FC1);
 	UASSERT(data.rightImage().empty() || data.rightImage().type() == CV_8UC1);
-	UASSERT(data.depth2d().empty() || data.depth2d().type() == CV_32FC2);
+	UASSERT(data.laserScan().empty() || data.laserScan().type() == CV_32FC2);
 	UASSERT(_feature2D != 0);
 
 	PreUpdateThread preUpdateThread(_vwd);
@@ -3448,7 +3307,7 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData, S
 		}
 		util3d::CompressionThread ctImage(data.image(), std::string(".jpg"));
 		util3d::CompressionThread ctDepth(depthOrRightImage, std::string(".png"));
-		util3d::CompressionThread ctDepth2d(data.depth2d());
+		util3d::CompressionThread ctDepth2d(data.laserScan());
 		ctImage.start();
 		ctDepth.start();
 		ctDepth2d.start();
@@ -3471,7 +3330,7 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData, S
 			data.localTransform());
 		s->setImageRaw(data.image());
 		s->setDepthRaw(depthOrRightImage);
-		s->setDepth2DRaw(data.depth2d());
+		s->setLaserScanRaw(data.laserScan());
 	}
 	else
 	{
@@ -3480,7 +3339,7 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData, S
 			words,
 			words3D,
 			data.pose(),
-			util3d::compressData2(data.depth2d()));
+			util3d::compressData2(data.laserScan()));
 	}
 
 
@@ -3694,6 +3553,7 @@ void Memory::getMetricConstraints(
 		std::multimap<int, Link> & links,
 		bool lookInDatabase)
 {
+	UDEBUG("");
 	for(unsigned int i=0; i<ids.size(); ++i)
 	{
 		Transform pose;
@@ -3708,10 +3568,10 @@ void Memory::getMetricConstraints(
 	{
 		if(uContains(poses, ids[i]))
 		{
-			std::map<int, Transform> neighbors = this->getNeighborLinks(ids[i], true, lookInDatabase); // only direct neighbors
-			for(std::map<int, Transform>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
+			std::map<int, Link> neighbors = this->getNeighborLinks(ids[i], lookInDatabase); // only direct neighbors
+			for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
 			{
-				if(!jter->second.isNull() && uContains(poses, jter->first))
+				if(!jter->second.transform().isNull() && uContains(poses, jter->first))
 				{
 					bool edgeAlreadyAdded = false;
 					for(std::multimap<int, Link>::iterator iter = links.lower_bound(jter->first);
@@ -3725,18 +3585,19 @@ void Memory::getMetricConstraints(
 					}
 					if(!edgeAlreadyAdded)
 					{
-						links.insert(std::make_pair(ids[i], Link(ids[i], jter->first, jter->second, Link::kNeighbor)));
+						links.insert(std::make_pair(ids[i], jter->second));
 					}
 				}
 			}
 
-			std::map<int, Transform> loops, children;
-			this->getLoopClosureIds(ids[i], loops, children, lookInDatabase);
-			for(std::map<int, Transform>::iterator jter=children.begin(); jter!=children.end(); ++jter)
+			std::map<int, Link> loops = this->getLoopClosureLinks(ids[i], lookInDatabase);
+			for(std::map<int, Link>::iterator jter=loops.begin(); jter!=loops.end(); ++jter)
 			{
-				if(!jter->second.isNull() && uContains(poses, jter->first))
+				if(jter->first < ids[i] &&
+					!jter->second.transform().isNull() &&
+					uContains(poses, jter->first))
 				{
-					links.insert(std::make_pair(ids[i], Link(ids[i], jter->first, jter->second, Link::kGlobalClosure)));
+					links.insert(std::make_pair(ids[i],jter->second));
 				}
 			}
 		}

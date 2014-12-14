@@ -40,11 +40,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Parameters.h"
 
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/Link.h>
 
 namespace rtabmap {
 
 class Signature;
-class SMSignature;
 class VWDictionary;
 class VisualWord;
 
@@ -96,11 +96,10 @@ public:
 
 	// Specific queries...
 	void loadNodeData(std::list<Signature *> & signatures, bool loadMetricData) const;
-	void getNodeData(int signatureId, cv::Mat & imageCompressed, cv::Mat & depthCompressed, cv::Mat & depth2dCompressed, float & fx, float & fy, float & cx, float & cy, Transform & localTransform) const;
+	void getNodeData(int signatureId, cv::Mat & imageCompressed, cv::Mat & depthCompressed, cv::Mat & laserScanCompressed, float & fx, float & fy, float & cx, float & cy, Transform & localTransform) const;
 	void getNodeData(int signatureId, cv::Mat & imageCompressed) const;
 	void getPose(int signatureId, Transform & pose, int & mapId) const;
-	void loadNeighbors(int signatureId, std::map<int, Transform> & neighbors) const;
-	void loadLoopClosures(int signatureId, std::map<int, Transform> & loopIds, std::map<int, Transform> & childIds) const;
+	void loadLinks(int signatureId, std::map<int, Link> & links, Link::Type type = Link::kUndef) const;
 	void getWeight(int signatureId, int & weight) const;
 	void getAllNodeIds(std::set<int> & ids, bool ignoreChildren = false) const;
 	void getLastNodeId(int & id) const;
@@ -131,11 +130,10 @@ private:
 	virtual void loadLastNodesQuery(std::list<Signature *> & signatures) const = 0;
 	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const = 0;
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const = 0;
-	virtual void loadNeighborsQuery(int signatureId, std::map<int, Transform> & neighbors) const = 0;
-	virtual void loadLoopClosuresQuery(int signatureId, std::map<int, Transform> & loopIds, std::map<int, Transform> & childIds) const = 0;
+	virtual void loadLinksQuery(int signatureId, std::map<int, Link> & links, Link::Type type = Link::kUndef) const = 0;
 
 	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool loadMetricData) const = 0;
-	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed, cv::Mat & depthCompressed, cv::Mat & depth2dCompressed, float & fx, float & fy, float & cx, float & cy, Transform & localTransform) const = 0;
+	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed, cv::Mat & depthCompressed, cv::Mat & laserScanCompressed, float & fx, float & fy, float & cx, float & cy, Transform & localTransform) const = 0;
 	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed) const = 0;
 	virtual void getPoseQuery(int signatureId, Transform & pose, int & mapId) const = 0;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const = 0;

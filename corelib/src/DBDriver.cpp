@@ -406,7 +406,7 @@ void DBDriver::getNodeData(
 		int signatureId,
 		cv::Mat & imageCompressed,
 		cv::Mat & depthCompressed,
-		cv::Mat & depth2dCompressed,
+		cv::Mat & laserScanCompressed,
 		float & fx,
 		float & fy,
 		float & cx,
@@ -414,7 +414,7 @@ void DBDriver::getNodeData(
 		Transform & localTransform) const
 {
 	_dbSafeAccessMutex.lock();
-	this->getNodeDataQuery(signatureId, imageCompressed, depthCompressed, depth2dCompressed, fx, fy, cx, cy, localTransform);
+	this->getNodeDataQuery(signatureId, imageCompressed, depthCompressed, laserScanCompressed, fx, fy, cx, cy, localTransform);
 	_dbSafeAccessMutex.unlock();
 }
 
@@ -435,10 +435,10 @@ void DBDriver::getPose(int signatureId, Transform & pose, int & mapId) const
 }
 
 //TODO Check also in the trash ?
-void DBDriver::loadNeighbors(int signatureId, std::map<int, Transform> & neighbors) const
+void DBDriver::loadLinks(int signatureId, std::map<int, Link> & links, Link::Type type) const
 {
 	_dbSafeAccessMutex.lock();
-	this->loadNeighborsQuery(signatureId, neighbors);
+	this->loadLinksQuery(signatureId, links, type);
 	_dbSafeAccessMutex.unlock();
 }
 
@@ -447,14 +447,6 @@ void DBDriver::getWeight(int signatureId, int & weight) const
 {
 	_dbSafeAccessMutex.lock();
 	this->getWeightQuery(signatureId, weight);
-	_dbSafeAccessMutex.unlock();
-}
-
-//TODO Check also in the trash ?
-void DBDriver::loadLoopClosures(int signatureId, std::map<int, Transform> & loopIds, std::map<int, Transform> & childIds) const
-{
-	_dbSafeAccessMutex.lock();
-	this->loadLoopClosuresQuery(signatureId, loopIds, childIds);
 	_dbSafeAccessMutex.unlock();
 }
 

@@ -460,15 +460,15 @@ inline T uMeanSquaredError(const std::vector<T> & x, const std::vector<T> & y)
 }
 
 /**
- * Compute the standard deviation of an array.
+ * Compute the variance of an array.
  * @param v the array
  * @param size the size of the array
  * @param meanV the mean of the array
- * @return the std dev
+ * @return the variance
  * @see mean()
  */
 template<class T>
-inline T uStdDev(const T * v, unsigned int size, T meanV)
+inline T uVariance(const T * v, unsigned int size, T meanV)
 {
 	T buf = 0;
 	if(v && size>1)
@@ -478,20 +478,20 @@ inline T uStdDev(const T * v, unsigned int size, T meanV)
 		{
 			sum += (v[i]-meanV)*(v[i]-meanV);
 		}
-		buf = sqrt(sum/(size-1));
+		buf = sum/(size-1);
 	}
 	return buf;
 }
 
 /**
- * Get the standard deviation of a list. Provided for convenience.
+ * Get the variance of a list. Provided for convenience.
  * @param list the list
  * @param m the mean of the list
- * @return the std dev
+ * @return the variance
  * @see mean()
  */
 template<class T>
-inline T uStdDev(const std::list<T> & list, const T & m)
+inline T uVariance(const std::list<T> & list, const T & m)
 {
 	T buf = 0;
 	if(list.size()>1)
@@ -501,35 +501,35 @@ inline T uStdDev(const std::list<T> & list, const T & m)
 		{
 			sum += (*i-m)*(*i-m);
 		}
-		buf = sqrt(sum/(list.size()-1));
+		buf = sum/(list.size()-1);
 	}
 	return buf;
 }
 
 /**
- * Compute the standard deviation of an array.
+ * Compute the variance of an array.
  * @param v the array
  * @param size the size of the array
- * @return the std dev
+ * @return the variance
  */
 template<class T>
-inline T uStdDev(const T * v, unsigned int size)
+inline T uVariance(const T * v, unsigned int size)
 {
 	T m = uMean(v, size);
-	return uStdDev(v, size, m);
+	return uVariance(v, size, m);
 }
 
 /**
- * Get the standard deviation of a vector. Provided for convenience.
+ * Get the variance of a vector. Provided for convenience.
  * @param v the vector
  * @param m the mean of the vector
- * @return the std dev
+ * @return the variance
  * @see mean()
  */
 template<class T>
-inline T uStdDev(const std::vector<T> & v, const T & m)
+inline T uVariance(const std::vector<T> & v, const T & m)
 {
-	return uStdDev(v.data(), v.size(), m);
+	return uVariance(v.data(), v.size(), m);
 }
 
 /**

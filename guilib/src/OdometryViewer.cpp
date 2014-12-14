@@ -187,7 +187,7 @@ void OdometryViewer::handleEvent(UEvent * event)
 			{
 				data_.back() = odomEvent->data();
 			}
-			dataQuality_ = odomEvent->quality();
+			dataQuality_ = odomEvent->info().inliers;
 			dataMutex_.unlock();
 			if(empty)
 			{

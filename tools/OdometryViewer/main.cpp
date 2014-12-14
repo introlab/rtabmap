@@ -73,7 +73,7 @@ void showUsage()
 			"  -d #                      ICP decimation (default 4)\n"
 			"  -v #                      ICP voxel size (default 0.005)\n"
 			"  -s #                      ICP samples (default 0, not used if voxel is set.)\n"
-			"  -f #.#                    ICP fitness (default 0.01)\n"
+			"  -cr #.#                   ICP correspondence ratio (default 0.7)\n"
 			"  -p2p                      ICP point to point (default point to plane)"
 			"\n"
 			"  -debug                    Log debug messages\n"
@@ -114,7 +114,7 @@ int main (int argc, char * argv[])
 	int decimation = 4;
 	float voxel = 0.005;
 	int samples = 10000;
-	float fitness = 0.01f;
+	float ratio = 0.7f;
 	int maxClouds = 10;
 	int briefBytes = 32;
 	int fastThr = 30;
@@ -466,13 +466,13 @@ int main (int argc, char * argv[])
 			}
 			continue;
 		}
-		if(strcmp(argv[i], "-f") == 0)
+		if(strcmp(argv[i], "-cr") == 0)
 		{
 			++i;
 			if(i < argc)
 			{
-				fitness = std::atof(argv[i]);
-				if(fitness < 0.0f)
+				ratio = std::atof(argv[i]);
+				if(ratio < 0.0f)
 				{
 					showUsage();
 				}
@@ -494,7 +494,7 @@ int main (int argc, char * argv[])
 			if(i < argc)
 			{
 				localHistory = std::atoi(argv[i]);
-				if(fitness <= 0)
+				if(localHistory < 0)
 				{
 					showUsage();
 				}
@@ -735,10 +735,10 @@ int main (int argc, char * argv[])
 		UINFO("Cloud decimation =        %d", decimation);
 		UINFO("Cloud voxel size =        %f", voxel);
 		UINFO("Cloud samples =           %d", samples);
-		UINFO("Cloud fitness =           %f", fitness);
+		UINFO("Cloud correspondence ratio = %f", ratio);
 		UINFO("Cloud point to plane =    %s", p2p?"false":"true");
 
-		odom = new rtabmap::OdometryICP(decimation, voxel, samples, distance, iterations, fitness, !p2p);
+		odom = new rtabmap::OdometryICP(decimation, voxel, samples, distance, iterations, ratio, !p2p);
 	}
 	rtabmap::OdometryThread odomThread(odom);
 	rtabmap::OdometryViewer odomViewer(maxClouds, 2, 0.0, 50);

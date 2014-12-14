@@ -19,6 +19,7 @@
 
 #include "UPlot.h"
 #include "rtabmap/utilite/ULogger.h"
+#include "rtabmap/utilite/UMath.h"
 
 #include <QtGui/QGraphicsScene>
 #include <QtGui/QGraphicsView>
@@ -1341,6 +1342,8 @@ UPlotLegendItem::UPlotLegendItem(UPlotCurve * curve, QWidget * parent) :
 	_aResetText = new QAction(tr("Reset text..."), this);
 	_aChangeColor = new QAction(tr("Change color..."), this);
 	_aCopyToClipboard = new QAction(tr("Copy curve data to the clipboard"), this);
+	_aShowStdDev = new QAction(tr("Show std deviation"), this);
+	_aShowStdDev->setCheckable(true);
 	_aMoveUp = new QAction(tr("Move up"), this);
 	_aMoveDown = new QAction(tr("Move down"), this);
 	_aRemoveCurve = new QAction(tr("Remove this curve"), this);
@@ -1349,6 +1352,7 @@ UPlotLegendItem::UPlotLegendItem(UPlotCurve * curve, QWidget * parent) :
 	_menu->addAction(_aResetText);
 	_menu->addAction(_aChangeColor);
 	_menu->addAction(_aCopyToClipboard);
+	_menu->addAction(_aShowStdDev);
 	_menu->addSeparator();
 	_menu->addAction(_aMoveUp);
 	_menu->addAction(_aMoveDown);
@@ -1416,6 +1420,20 @@ void UPlotLegendItem::contextMenuEvent(QContextMenuEvent * event)
 			clipboard->setText((textX+"\n")+textY);
 		}
 	}
+	else if(action == _aShowStdDev)
+	{
+		if(_aShowStdDev->isChecked())
+		{
+			connect(_curve, SIGNAL(dataChanged(const UPlotCurve *)), this, SLOT(updateStdDev()));
+		}
+		else
+		{
+			disconnect(_curve, SIGNAL(dataChanged(const UPlotCurve *)), this, SLOT(updateStdDev()));
+			QString nameSpaced = _curve->name();
+			nameSpaced.replace('_', ' ');
+			this->setText(nameSpaced);
+		}
+	}
 	else if(action == _aRemoveCurve)
 	{
 		emit legendItemRemoved(_curve);
@@ -1440,6 +1458,17 @@ QPixmap UPlotLegendItem::createSymbol(const QPen & pen, const QBrush & brush)
 	painter.setPen(p);
 	painter.drawLine(0.0, 25.0, 50.0, 25.0);
 	return pixmap;
+}
+
+void UPlotLegendItem::updateStdDev()
+{
+	QVector<float> x, y;
+	_curve->getData(x, y);
+	float stdDev = std::sqrt(uVariance(y.data(), y.size()));
+	QString nameSpaced = _curve->name();
+	nameSpaced.replace('_', ' ');
+	nameSpaced += QString(" (%1=%2)").arg(QChar(0xc3, 0x03)).arg(stdDev);
+	this->setText(nameSpaced);
 }
 
 

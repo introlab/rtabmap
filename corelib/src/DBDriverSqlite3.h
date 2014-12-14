@@ -68,18 +68,14 @@ private:
 	virtual void loadLastNodesQuery(std::list<Signature *> & signatures) const;
 	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const;
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const;
-	virtual void loadNeighborsQuery(int signatureId, std::map<int, Transform> & neighbors) const;
-	virtual void loadLoopClosuresQuery(
-			int signatureId,
-			std::map<int, Transform> & loopIds,
-			std::map<int, Transform> & childIds) const;
+	virtual void loadLinksQuery(int signatureId, std::map<int, Link> & links, Link::Type type = Link::kUndef) const;
 
 	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool loadMetricData) const;
 	virtual void getNodeDataQuery(
 			int signatureId,
 			cv::Mat & imageCompressed,
 			cv::Mat & depthCompressed,
-			cv::Mat & depth2dCompressed,
+			cv::Mat & laserScanCompressed,
 			float & fx,
 			float & fy,
 			float & cx,
@@ -113,7 +109,7 @@ private:
 			float cx,
 			float cy,
 			const Transform & localTransform) const;
-	void stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, int type, const Transform & transform) const;
+	void stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, int type, float variance, const Transform & transform) const;
 	void stepWordsChanged(sqlite3_stmt * ppStmt, int signatureId, int oldWordId, int newWordId) const;
 	void stepKeypoint(sqlite3_stmt * ppStmt, int signatureId, int wordId, const cv::KeyPoint & kp, const pcl::PointXYZ & pt) const;
 

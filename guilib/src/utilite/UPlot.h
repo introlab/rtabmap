@@ -356,6 +356,9 @@ signals:
 	void moveUpRequest(UPlotLegendItem *);
 	void moveDownRequest(UPlotLegendItem *);
 
+private slots:
+	void updateStdDev();
+
 protected:
 	virtual void contextMenuEvent(QContextMenuEvent * event);
 
@@ -366,6 +369,7 @@ private:
 	QAction * _aResetText;
 	QAction * _aChangeColor;
 	QAction * _aCopyToClipboard;
+	QAction * _aShowStdDev;
 	QAction * _aRemoveCurve;
 	QAction * _aMoveUp;
 	QAction * _aMoveDown;

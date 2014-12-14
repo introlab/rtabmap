@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UEventsSender.h>
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/SensorData.h>
 
 #include <opencv2/core/core.hpp>
 
@@ -53,14 +54,7 @@ public:
 
 	bool init(int startIndex=0);
 	void setFrameRate(float frameRate);
-	void getNextImage(cv::Mat & image,
-			cv::Mat & depth,
-			cv::Mat & depth2d,
-			float & fx, float & fy,
-			float & cx, float & cy,
-			Transform & localTransform,
-			Transform & pose,
-			int & seq);
+	SensorData getNextData();
 
 protected:
 	virtual void mainLoopBegin();

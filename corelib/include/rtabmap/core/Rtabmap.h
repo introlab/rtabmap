@@ -157,6 +157,7 @@ private:
 	float _localDetectMaxNeighbors;
 	int _localDetectMaxDiffID;
 	int _toroIterations;
+	bool _toroIgnoreVariance;
 	std::string _databasePath;
 	bool _optimizeFromGraphEnd;
 	bool _reextractLoopClosureFeatures;

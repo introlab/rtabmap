@@ -131,36 +131,24 @@ void DBReader::mainLoopBegin()
 
 void DBReader::mainLoop()
 {
-	cv::Mat image, depth, depth2d;
-	float fx,fy,cx,cy;
-	Transform localTransform, pose;
-	int seq = 0;
-	this->getNextImage(image, depth, depth2d, fx, fy, cx, cy, localTransform, pose, seq);
-	if(!image.empty())
+	SensorData data = this->getNextData();
+	if(data.isValid())
 	{
-		if(depth.empty())
+		if(!_odometryIgnored)
 		{
-			this->post(new CameraEvent(image));
+			if(data.pose().isNull())
+			{
+				UWARN("Reading the database: odometry is null! "
+					  "Please set \"Ignore odometry = true\" if there is "
+					  "no odometry in the database.");
+			}
+			this->post(new OdometryEvent(data));
 		}
 		else
 		{
-			if(!_odometryIgnored)
-			{
-				SensorData data(image, depth, depth2d, fx, fy, cx, cy, pose, localTransform, seq);
-				this->post(new OdometryEvent(data));
-				if(pose.isNull())
-				{
-					UWARN("Reading the database: odometry is null! "
-						  "Please set \"Ignore odometry = true\" if there is "
-						  "no odometry in the database.");
-				}
-			}
-			else
-			{
-				// without odometry
-				this->post(new CameraEvent(image, depth, depth2d, fx, fy, cx, cy, localTransform, seq));
-			}
+			this->post(new CameraEvent(data));
 		}
+
 	}
 	else if(!this->isKilled())
 	{
@@ -171,18 +159,9 @@ void DBReader::mainLoop()
 
 }
 
-void DBReader::getNextImage(
-		cv::Mat & image,
-		cv::Mat & depth,
-		cv::Mat & depth2d,
-		float & fx,
-		float & fy,
-		float & cx,
-		float & cy,
-		Transform & localTransform,
-		Transform & pose,
-		int & seq)
+SensorData DBReader::getNextData()
 {
+	SensorData data;
 	if(_dbDriver)
 	{
 		float frameRate = _frameRate;
@@ -209,11 +188,24 @@ void DBReader::getNextImage(
 		{
 			cv::Mat imageBytes;
 			cv::Mat depthBytes;
-			cv::Mat depth2dBytes;
+			cv::Mat laserScanBytes;
 			int mapId;
-			_dbDriver->getNodeData(*_currentId, imageBytes, depthBytes, depth2dBytes, fx, fy, cx, cy, localTransform);
-			_dbDriver->getPose(*_currentId, pose, mapId);
-			seq = *_currentId;
+			float fx,fy,cx,cy;
+			Transform localTransform, pose;
+			float variance = 1.0f;
+			_dbDriver->getNodeData(*_currentId, imageBytes, depthBytes, laserScanBytes, fx, fy, cx, cy, localTransform);
+			if(!_odometryIgnored)
+			{
+				_dbDriver->getPose(*_currentId, pose, mapId);
+				std::map<int, Link> links;
+				_dbDriver->loadLinks(*_currentId, links, Link::kNeighbor);
+				if(links.size())
+				{
+					// assume the first is the backward neighbor, take its variance
+					variance = links.begin()->second.variance();
+				}
+			}
+			int seq = *_currentId;
 			++_currentId;
 			if(imageBytes.empty())
 			{
@@ -222,22 +214,29 @@ void DBReader::getNextImage(
 
 			util3d::CompressionThread ctImage(imageBytes, true);
 			util3d::CompressionThread ctDepth(depthBytes, true);
-			util3d::CompressionThread ctDepth2D(depth2dBytes, false);
+			util3d::CompressionThread ctLaserScan(laserScanBytes, false);
 			ctImage.start();
 			ctDepth.start();
-			ctDepth2D.start();
+			ctLaserScan.start();
 			ctImage.join();
 			ctDepth.join();
-			ctDepth2D.join();
-			image = ctImage.getUncompressedData();
-			depth = ctDepth.getUncompressedData();
-			depth2d = ctDepth2D.getUncompressedData();
+			ctLaserScan.join();
+			data = SensorData(
+					ctLaserScan.getUncompressedData(),
+					ctImage.getUncompressedData(),
+					ctDepth.getUncompressedData(),
+					fx,fy,cx,cy,
+					localTransform,
+					pose,
+					variance,
+					seq);
 		}
 	}
 	else
 	{
 		UERROR("Not initialized...");
 	}
+	return data;
 }
 
 } /* namespace rtabmap */

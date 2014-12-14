@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QSet>
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/SensorData.h"
+#include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/gui/PreferencesDialog.h"
 
 #include <pcl/point_cloud.h>
@@ -148,7 +149,7 @@ private slots:
 	void selectScreenCaptureFormat(bool checked);
 	void takeScreenshot();
 	void updateElapsedTime();
-	void processOdometry(const rtabmap::SensorData & data, int quality, float time, int features, int localMapSize);
+	void processOdometry(const rtabmap::SensorData & data, const rtabmap::OdometryInfo & info);
 	void applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags);
 	void applyPrefSettings(const rtabmap::ParametersMap & parameters);
 	void processRtabmapEventInit(int status, const QString & info);
@@ -179,7 +180,7 @@ private slots:
 
 signals:
 	void statsReceived(const rtabmap::Statistics &);
-	void odometryReceived(const rtabmap::SensorData &, int, float, int, int);
+	void odometryReceived(const rtabmap::SensorData &, const rtabmap::OdometryInfo &);
 	void thresholdsChanged(int, int);
 	void stateChanged(MainWindow::State);
 	void rtabmapEventInitReceived(int status, const QString & info);
