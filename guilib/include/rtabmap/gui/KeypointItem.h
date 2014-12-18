@@ -43,6 +43,8 @@ public:
 	KeypointItem(qreal x, qreal y, int r, const QString & info, const QColor & color = Qt::green, QGraphicsItem * parent = 0);
 	virtual ~KeypointItem();
 
+	void setColor(const QColor & color);
+
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event );
 	virtual void hoverLeaveEvent ( QGraphicsSceneHoverEvent * event );

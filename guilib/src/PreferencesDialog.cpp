@@ -482,17 +482,15 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	//Odometry
 	_ui->odom_strategy->setObjectName(Parameters::kOdomStrategy().c_str());
 	_ui->odom_type->setObjectName(Parameters::kOdomFeatureType().c_str());
-	_ui->odom_linearUpdate->setObjectName(Parameters::kOdomLinearUpdate().c_str());
-	_ui->odom_angularUpdate->setObjectName(Parameters::kOdomAngularUpdate().c_str());
 	_ui->odom_countdown->setObjectName(Parameters::kOdomResetCountdown().c_str());
 	_ui->odom_maxFeatures->setObjectName(Parameters::kOdomMaxFeatures().c_str());
-	_ui->odom_ratio->setObjectName(Parameters::kOdomFeaturesRatio().c_str());
 	_ui->odom_inlierDistance->setObjectName(Parameters::kOdomInlierDistance().c_str());
 	_ui->odom_iterations->setObjectName(Parameters::kOdomIterations().c_str());
 	_ui->odom_maxDepth->setObjectName(Parameters::kOdomMaxDepth().c_str());
 	_ui->odom_minInliers->setObjectName(Parameters::kOdomMinInliers().c_str());
 	_ui->odom_refine_iterations->setObjectName(Parameters::kOdomRefineIterations().c_str());
 	_ui->odom_force2D->setObjectName(Parameters::kOdomForce2D().c_str());
+	_ui->odom_fillInfoData->setObjectName(Parameters::kOdomFillInfoData().c_str());
 	_ui->lineEdit_odom_roi->setObjectName(Parameters::kOdomRoiRatios().c_str());
 
 	//Odometry BOW

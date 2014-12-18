@@ -1504,7 +1504,7 @@ Transform transformFromXYZCorrespondences(
 
 	if(varianceOut)
 	{
-		*varianceOut = 1.0f;
+		*varianceOut = 1.0;
 	}
 	Transform transform;
 	if(cloud1->size() >=3 && cloud1->size() == cloud2->size())

@@ -63,7 +63,8 @@ public:
 	void setImageDepthShown(bool shown);
 	void setLinesShown(bool shown);
 
-	void setFeatures(const std::multimap<int, cv::KeyPoint> & refWords);
+	void setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, const QColor & color = QColor(255, 255, 0, 70));
+	void setFeatures(const std::vector<cv::KeyPoint> & features, const QColor & color = QColor(255, 255, 0, 70));
 	void setImage(const QImage & image);
 	void setImageDepth(const QImage & image);
 	void setFeatureColor(int id, const QColor & color);

@@ -39,8 +39,7 @@ KeypointItem::KeypointItem(qreal x, qreal y, int r, const QString & info, const 
 	_info(info),
 	_placeHolder(0)
 {
-	this->setPen(QPen(color));
-	this->setBrush(QBrush(color));
+	this->setColor(color);
 	this->setAcceptsHoverEvents(true);
 	this->setFlag(QGraphicsItem::ItemIsFocusable, true);
 	_width = pen().width();
@@ -48,10 +47,16 @@ KeypointItem::KeypointItem(qreal x, qreal y, int r, const QString & info, const 
 
 KeypointItem::~KeypointItem()
 {
-	/*if(_placeHolder)
+	if(_placeHolder)
 	{
 		delete _placeHolder;
-	}*/
+	}
+}
+
+void KeypointItem::setColor(const QColor & color)
+{
+	this->setPen(QPen(color));
+	this->setBrush(QBrush(color));
 }
 
 void KeypointItem::showDescription()

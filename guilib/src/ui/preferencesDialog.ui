@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-305</y>
+            <y>0</y>
             <width>744</width>
-            <height>1252</height>
+            <height>1056</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>19</number>
+                <number>23</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -6261,7 +6261,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                     </item>
                     <item>
                      <layout class="QGridLayout" name="gridLayout_27" columnstretch="0,0">
-                      <item row="4" column="1">
+                      <item row="2" column="1">
                        <widget class="QLabel" name="label_47">
                         <property name="text">
                          <string>Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).</string>
@@ -6288,52 +6288,10 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </item>
                        </widget>
                       </item>
-                      <item row="3" column="1">
-                       <widget class="QLabel" name="label_46">
-                        <property name="text">
-                         <string>Angular update: minimum angular distance to update the odometry.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="0">
-                       <widget class="QDoubleSpinBox" name="odom_angularUpdate">
-                        <property name="suffix">
-                         <string> m</string>
-                        </property>
-                        <property name="decimals">
-                         <number>3</number>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.100000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.015000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="0">
+                      <item row="2" column="0">
                        <widget class="QSpinBox" name="odom_countdown">
                         <property name="maximum">
                          <number>999999</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="0">
-                       <widget class="QDoubleSpinBox" name="odom_linearUpdate">
-                        <property name="suffix">
-                         <string> m</string>
-                        </property>
-                        <property name="decimals">
-                         <number>3</number>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.100000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.015000000000000</double>
                         </property>
                        </widget>
                       </item>
@@ -6384,16 +6342,6 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </item>
                        </widget>
                       </item>
-                      <item row="2" column="1">
-                       <widget class="QLabel" name="label_45">
-                        <property name="text">
-                         <string>Linear update: minimum linear distance to update the odometry.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="1" column="1">
                        <widget class="QLabel" name="label_44">
                         <property name="text">
@@ -6416,20 +6364,37 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="0">
+                      <item row="3" column="0">
                        <widget class="QCheckBox" name="odom_force2D">
                         <property name="text">
                          <string/>
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="1">
+                      <item row="3" column="1">
                        <widget class="QLabel" name="label_196">
                         <property name="text">
                          <string>Force 2D transform (3DoF: x,y and yaw).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QLabel" name="label_221">
+                        <property name="text">
+                         <string>Fill info with data (inliers/outliers features to be shown in Odometry view).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QCheckBox" name="odom_fillInfoData">
+                        <property name="text">
+                         <string/>
                         </property>
                        </widget>
                       </item>
@@ -6539,38 +6504,6 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <widget class="QLabel" name="label_111">
                          <property name="text">
                           <string>Refine iterations of the resulting transformation computed by RANSAC. 0 means no refining.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="0">
-                        <widget class="QDoubleSpinBox" name="odom_ratio">
-                         <property name="suffix">
-                          <string/>
-                         </property>
-                         <property name="decimals">
-                          <number>2</number>
-                         </property>
-                         <property name="minimum">
-                          <double>0.000000000000000</double>
-                         </property>
-                         <property name="maximum">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.500000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="1">
-                        <widget class="QLabel" name="label_90">
-                         <property name="text">
-                          <string>Minimum ratio of keypoints between the current image and the last image to compute odometry.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>

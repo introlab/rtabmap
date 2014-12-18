@@ -40,7 +40,8 @@ public:
 		variance(-1),
 		features(-1),
 		localMapSize(-1),
-		time(0.0f)
+		time(-1),
+		type(-1)
 	{}
 	bool lost;
 	int matches;
@@ -49,6 +50,18 @@ public:
 	int features;
 	int localMapSize;
 	float time;
+
+	int type; // 0=BOW, 1=Optical Flow, 2=ICP
+
+	// BOW odometry
+	std::multimap<int, cv::KeyPoint> words;
+	std::vector<int> wordMatches;
+	std::vector<int> wordInliers;
+
+	// Optical Flow odometry
+	std::vector<cv::KeyPoint> refCorners;
+	std::vector<cv::KeyPoint> newCorners;
+	std::vector<int> cornerInliers;
 };
 
 }

@@ -109,6 +109,8 @@ private:
 
 	Rtabmap * _rtabmap;
 	bool _paused;
+	Transform lastPose_;
+	float _variance;
 };
 
 } /* namespace rtabmap */

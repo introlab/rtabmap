@@ -63,26 +63,22 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_inlierDistance(Parameters::defaultOdomInlierDistance()),
 		_iterations(Parameters::defaultOdomIterations()),
 		_refineIterations(Parameters::defaultOdomRefineIterations()),
-		_featuresRatio(Parameters::defaultOdomFeaturesRatio()),
 		_maxDepth(Parameters::defaultOdomMaxDepth()),
-		_linearUpdate(Parameters::defaultOdomLinearUpdate()),
-		_angularUpdate(Parameters::defaultOdomAngularUpdate()),
 		_resetCountdown(Parameters::defaultOdomResetCountdown()),
 		_force2D(Parameters::defaultOdomForce2D()),
+		_fillInfoData(Parameters::defaultOdomFillInfoData()),
 		_resetCurrentCount(0)
 {
-	Parameters::parse(parameters, Parameters::kOdomLinearUpdate(), _linearUpdate);
-	Parameters::parse(parameters, Parameters::kOdomAngularUpdate(), _angularUpdate);
 	Parameters::parse(parameters, Parameters::kOdomResetCountdown(), _resetCountdown);
 	Parameters::parse(parameters, Parameters::kOdomMinInliers(), _minInliers);
 	Parameters::parse(parameters, Parameters::kOdomInlierDistance(), _inlierDistance);
 	Parameters::parse(parameters, Parameters::kOdomIterations(), _iterations);
 	Parameters::parse(parameters, Parameters::kOdomRefineIterations(), _refineIterations);
-	Parameters::parse(parameters, Parameters::kOdomFeaturesRatio(), _featuresRatio);
 	Parameters::parse(parameters, Parameters::kOdomMaxDepth(), _maxDepth);
 	Parameters::parse(parameters, Parameters::kOdomMaxFeatures(), _maxFeatures);
 	Parameters::parse(parameters, Parameters::kOdomRoiRatios(), _roiRatios);
 	Parameters::parse(parameters, Parameters::kOdomForce2D(), _force2D);
+	Parameters::parse(parameters, Parameters::kOdomFillInfoData(), _fillInfoData);
 }
 
 void Odometry::reset(const Transform & initialPose)
@@ -105,27 +101,14 @@ void Odometry::reset(const Transform & initialPose)
 	}
 }
 
-bool Odometry::isLargeEnoughTransform(const Transform & transform)
-{
-	float x,y,z, roll,pitch,yaw;
-	transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-	return (_linearUpdate == 0.0f && _angularUpdate == 0.0f) ||
-			fabs(x) > _linearUpdate ||
-		   fabs(y) > _linearUpdate ||
-	       fabs(z) > _linearUpdate ||
-	       fabs(roll) > _angularUpdate ||
-			fabs(pitch) > _angularUpdate ||
-			fabs(yaw) > _angularUpdate;
-}
-
 Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 {
-	UTimer time;
 	if(_pose.isNull())
 	{
 		_pose.setIdentity(); // initialized
 	}
 
+	UTimer time;
 	Transform t = this->computeTransform(data, info);
 
 	if(info)
@@ -145,7 +128,7 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 			t = Transform(x,y,0, 0,0,yaw);
 		}
 
-		return _pose *= t;
+		return _pose *= t; // updated
 	}
 	else if(_resetCurrentCount > 0)
 	{
@@ -154,10 +137,11 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 		--_resetCurrentCount;
 		if(_resetCurrentCount == 0)
 		{
-			UWARN("Odometry automatically reset!");
-			this->reset();
+			UWARN("Odometry automatically reset to latest pose!");
+			this->reset(_pose);
 		}
 	}
+
 	return Transform();
 }
 
@@ -242,7 +226,12 @@ Transform OdometryBOW::computeTransform(
 	UTimer timer;
 	Transform output;
 
-	double variance = -1;
+	if(info)
+	{
+		info->type = 0;
+	}
+
+	double variance = 0;
 	int inliers = 0;
 	int correspondences = 0;
 	int nFeatures = 0;
@@ -254,18 +243,17 @@ Transform OdometryBOW::computeTransform(
 		if(newSignature)
 		{
 			nFeatures = (int)newSignature->getWords().size();
+			if(this->isInfoDataFilled() && info)
+			{
+				info->words = newSignature->getWords();
+			}
 		}
 
 		if(previousSignature && newSignature)
 		{
 			Transform transform;
 			std::set<int> uniqueCorrespondences;
-			if(newSignature->getWords3().size() < (unsigned int)(this->getFeaturesRatio() * float(previousSignature->getWords3().size())))
-			{
-				UWARN("At least %f%% keypoints of the last image required. New=%d last=%d",
-						this->getFeaturesRatio()*100.0f, newSignature->getWords3().size(), previousSignature->getWords3().size());
-			}
-			else if(!localMap_.empty() && !newSignature->getWords3().empty())
+			if(!localMap_.empty() && !newSignature->getWords3().empty())
 			{
 				pcl::PointCloud<pcl::PointXYZ>::Ptr inliers1(new pcl::PointCloud<pcl::PointXYZ>); // previous
 				pcl::PointCloud<pcl::PointXYZ>::Ptr inliers2(new pcl::PointCloud<pcl::PointXYZ>); // new
@@ -282,6 +270,11 @@ Transform OdometryBOW::computeTransform(
 						&uniqueCorrespondences);
 
 				UDEBUG("localMap=%d, new=%d, unique correspondences=%d", (int)localMap_.size(), (int)newSignature->getWords3().size(), (int)uniqueCorrespondences.size());
+
+				if(this->isInfoDataFilled() && info)
+				{
+					info->wordMatches.insert(info->wordMatches.end(), uniqueCorrespondences.begin(), uniqueCorrespondences.end());
+				}
 
 				correspondences = (int)inliers1->size();
 				if((int)inliers1->size() >= this->getMinInliers())
@@ -307,6 +300,15 @@ Transform OdometryBOW::computeTransform(
 						transform = this->getPose().inverse() * transform;
 
 						UDEBUG("Odom transform = %s", transform.prettyPrint().c_str());
+
+						if(this->isInfoDataFilled() && info && inliersV.size())
+						{
+							info->wordInliers.resize(inliersV.size());
+							for(unsigned int i=0; i<inliersV.size(); ++i)
+							{
+								info->wordInliers[i] = info->wordMatches[inliersV[i]];
+							}
+						}
 					}
 					else
 					{
@@ -388,54 +390,46 @@ Transform OdometryBOW::computeTransform(
 			else
 			{
 				output = transform;
-				if(!isLargeEnoughTransform(transform))
+				// remove words if history max size is reached
+				while(localMap_.size() && (int)localMap_.size() > _localHistoryMaxSize && _memory->getStMem().size()>1)
 				{
-					// Transform not large enough, keep the old signature
-					_memory->deleteLocation(newSignature->id());
+					int nodeId = *_memory->getStMem().begin();
+					std::list<int> removedPts;
+					_memory->deleteLocation(nodeId, &removedPts);
+					for(std::list<int>::iterator iter = removedPts.begin(); iter!=removedPts.end(); ++iter)
+					{
+						localMap_.erase(*iter);
+					}
 				}
-				else
+
+				if(_localHistoryMaxSize == 0 && localMap_.size() > 0 && localMap_.size() > newSignature->getWords3().size())
 				{
-					// remove words if history max size is reached
-					while(localMap_.size() && (int)localMap_.size() > _localHistoryMaxSize && _memory->getStMem().size()>1)
-					{
-						int nodeId = *_memory->getStMem().begin();
-						std::list<int> removedPts;
-						_memory->deleteLocation(nodeId, &removedPts);
-						for(std::list<int>::iterator iter = removedPts.begin(); iter!=removedPts.end(); ++iter)
-						{
-							localMap_.erase(*iter);
-						}
-					}
+					UERROR("Local map should have only words of the last added signature here! (size=%d, max history size=%d, newWords=%d)",
+							(int)localMap_.size(), _localHistoryMaxSize, (int)newSignature->getWords3().size());
+				}
 
-					if(_localHistoryMaxSize == 0 && localMap_.size() > 0 && localMap_.size() > newSignature->getWords3().size())
+				// update local map
+				std::list<int> uniques = uUniqueKeys(newSignature->getWords3());
+				Transform t = this->getPose()*output;
+				for(std::list<int>::iterator iter = uniques.begin(); iter!=uniques.end(); ++iter)
+				{
+					// Only add unique words not in local map
+					if(newSignature->getWords3().count(*iter) == 1)
 					{
-						UERROR("Local map should have only words of the last added signature here! (size=%d, max history size=%d, newWords=%d)",
-								(int)localMap_.size(), _localHistoryMaxSize, (int)newSignature->getWords3().size());
-					}
-
-					// update local map
-					std::list<int> uniques = uUniqueKeys(newSignature->getWords3());
-					Transform t = this->getPose()*output;
-					for(std::list<int>::iterator iter = uniques.begin(); iter!=uniques.end(); ++iter)
-					{
-						// Only add unique words not in local map
-						if(newSignature->getWords3().count(*iter) == 1)
+						// keep old word
+						if(localMap_.find(*iter) == localMap_.end())
 						{
-							// keep old word
-							if(localMap_.find(*iter) == localMap_.end())
+							const pcl::PointXYZ & pt = newSignature->getWords3().find(*iter)->second;
+							if(pcl::isFinite(pt))
 							{
-								const pcl::PointXYZ & pt = newSignature->getWords3().find(*iter)->second;
-								if(pcl::isFinite(pt))
-								{
-									pcl::PointXYZ pt2 = util3d::transformPoint(pt, t);
-									localMap_.insert(std::make_pair(*iter, pt2));
-								}
+								pcl::PointXYZ pt2 = util3d::transformPoint(pt, t);
+								localMap_.insert(std::make_pair(*iter, pt2));
 							}
 						}
-						else
-						{
-							localMap_.erase(*iter);
-						}
+					}
+					else
+					{
+						localMap_.erase(*iter);
 					}
 				}
 			}
@@ -443,27 +437,36 @@ Transform OdometryBOW::computeTransform(
 		else if(!previousSignature && newSignature)
 		{
 			localMap_.clear();
-			output.setIdentity();
 
 			int count = 0;
 			std::list<int> uniques = uUniqueKeys(newSignature->getWords3());
-			Transform t = this->getPose(); // initial pose maybe not identity...
-			for(std::list<int>::iterator iter = uniques.begin(); iter!=uniques.end(); ++iter)
+			if((int)uniques.size() >= this->getMinInliers())
 			{
-				// Only add unique words
-				if(newSignature->getWords3().count(*iter) == 1)
+				output.setIdentity();
+
+				Transform t = this->getPose(); // initial pose maybe not identity...
+				for(std::list<int>::iterator iter = uniques.begin(); iter!=uniques.end(); ++iter)
 				{
-					const pcl::PointXYZ & pt = newSignature->getWords3().find(*iter)->second;
-					if(pcl::isFinite(pt))
+					// Only add unique words
+					if(newSignature->getWords3().count(*iter) == 1)
 					{
-						pcl::PointXYZ pt2 = util3d::transformPoint(pt, t);
-						localMap_.insert(std::make_pair(*iter, pt2));
-					}
-					else
-					{
-						++count;
+						const pcl::PointXYZ & pt = newSignature->getWords3().find(*iter)->second;
+						if(pcl::isFinite(pt))
+						{
+							pcl::PointXYZ pt2 = util3d::transformPoint(pt, t);
+							localMap_.insert(std::make_pair(*iter, pt2));
+						}
+						else
+						{
+							++count;
+						}
 					}
 				}
+			}
+			else
+			{
+				// not enough features, just delete it
+				_memory->deleteLocation(newSignature->id());
 			}
 			UDEBUG("uniques=%d, pt not finite = %d", (int)uniques.size(),count);
 		}
@@ -480,12 +483,13 @@ Transform OdometryBOW::computeTransform(
 		info->localMapSize = (int)localMap_.size();
 	}
 
-	UINFO("Odom update time = %fs out=[%s] features=%d inliers=%d/%d local_map=%d[%d] dict=%d nodes=%d",
+	UINFO("Odom update time = %fs out=[%s] features=%d inliers=%d/%d variance=%f local_map=%d[%d] dict=%d nodes=%d",
 			timer.elapsed(),
 			output.prettyPrint().c_str(),
 			nFeatures,
 			inliers,
 			correspondences,
+			variance,
 			(int)uUniqueKeys(localMap_).size(),
 			(int)localMap_.size(),
 			(int)_memory->getVWDictionary()->getVisualWords().size(),
@@ -553,6 +557,11 @@ Transform OdometryOpticalFlow::computeTransform(
 {
 	UDEBUG("");
 
+	if(info)
+	{
+		info->type = 1;
+	}
+
 	if(!data.rightImage().empty())
 	{
 		//stereo
@@ -572,7 +581,7 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 	UTimer timer;
 	Transform output;
 
-	double variance = -1;
+	double variance = 0;
 	int inliers = 0;
 	int correspondences = 0;
 
@@ -642,21 +651,6 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 						cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
 
 			UDEBUG("");
-			std::vector<cv::KeyPoint> lastKpts, newKpts;
-			/*cv::KeyPoint::convert(lastCornersKept, lastKpts);
-			cv::KeyPoint::convert(newCornersKept, newKpts);
-			std::vector<cv::DMatch> good_matches(lastKpts.size());
-			for(unsigned int i=0; i<good_matches.size(); ++i)
-			{
-				good_matches[i].trainIdx = i;
-				good_matches[i].queryIdx = i;
-			}
-
-			cv::drawMatches( lastFrame_, lastKpts, newLeftFrame, newKpts,
-						   good_matches, imgMatches_, cv::Scalar::all(-1), cv::Scalar::all(-1),
-						   std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
-			UDEBUG("");*/
-
 			std::vector<unsigned char> statusNew;
 			std::vector<float> errNew;
 			std::vector<cv::Point2f> newCornersKeptRight;
@@ -678,8 +672,11 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 			correspondencesLast->resize(statusLast.size());
 			correspondencesNew->resize(statusLast.size());
 			int oi = 0;
-			lastKpts.resize(statusLast.size());
-			newKpts.resize(statusLast.size());
+			if(this->isInfoDataFilled() && info)
+			{
+				info->refCorners.resize(statusLast.size());
+				info->newCorners.resize(statusLast.size());
+			}
 			for(unsigned int i=0; i<statusLast.size(); ++i)
 			{
 				if(statusLast[i] && statusNew[i])
@@ -708,8 +705,11 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 							newPt3D = util3d::transformPoint(newPt3D, data.localTransform());
 							correspondencesLast->at(oi) = lastPt3D;
 							correspondencesNew->at(oi) = newPt3D;
-							lastKpts[oi].pt = lastCornersKept[i];
-							newKpts[oi].pt = newCornersKept[i];
+							if(this->isInfoDataFilled() && info)
+							{
+								info->refCorners[oi].pt = lastCornersKept[i];
+								info->newCorners[oi].pt = newCornersKept[i];
+							}
 							++oi;
 						}
 					}
@@ -717,25 +717,14 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 			}// end loop
 			correspondencesLast->resize(oi);
 			correspondencesNew->resize(oi);
-			lastKpts.resize(oi);
-			newKpts.resize(oi);
+			if(this->isInfoDataFilled() && info)
+			{
+				info->refCorners.resize(oi);
+				info->newCorners.resize(oi);
+			}
 			correspondences = oi;
 			refCorners3D_ = correspondencesNew;
 			UDEBUG("Getting correspondences end, kept %d/%d", correspondences, (int)statusLast.size());
-
-			/*good_matches.resize(lastKpts.size());
-			for(unsigned int i=0; i<good_matches.size(); ++i)
-			{
-				good_matches[i].trainIdx = i;
-				good_matches[i].queryIdx = i;
-			}
-
-			cv::Mat imgInliers;
-			cv::drawMatches( lastFrame_, lastKpts, newLeftFrame, newKpts,
-						   good_matches, imgInliers, cv::Scalar::all(-1), cv::Scalar::all(-1),
-						   std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
-			imgMatches_.push_back(imgInliers);
-			UDEBUG("");*/
 
 			if(correspondences >= this->getMinInliers())
 			{
@@ -757,15 +746,10 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 					output.setNull();
 					UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
 				}
-
-				//if(correspondencesLast->size() >= 6)
-				//{
-				//	UWARN("saved pcd");
-				//	pcl::io::savePCDFile("last.pcd", *correspondencesLast);
-				//	pcl::io::savePCDFile("new.pcd", *correspondencesNew);
-					//correspondencesNew = util3d::transformPointCloud(correspondencesNew, output);
-					//pcl::io::savePCDFile("new2.pcd", *correspondencesNew);
-				//}
+				else if(this->isInfoDataFilled() && info && !output.isNull())
+				{
+					info->cornerInliers = inliersV;
+				}
 			}
 			else
 			{
@@ -815,12 +799,7 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 			}
 		}
 
-		if(refCorners_.size() && newCorners.size() < (unsigned int)(this->getFeaturesRatio() * float(refCorners_.size())))
-		{
-			UWARN("At least %f%% keypoints of the last image required. New=%d last=%d",
-					this->getFeaturesRatio()*100.0f, newCorners.size(), refCorners_.size());
-		}
-		else if((int)newCorners.size() > this->getMinInliers())
+		if((int)newCorners.size() > this->getMinInliers())
 		{
 			refFrame_ = newLeftFrame;
 			refRightFrame_ = newRightFrame;
@@ -830,11 +809,8 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 		{
 			UWARN("Too low 2D corners (%d), ignoring new frame...",
 					(int)newCorners.size());
+			output.setNull();
 		}
-	}
-	else if(!output.isNull())
-	{
-		output.setNull();
 	}
 
 	if(info)
@@ -862,7 +838,7 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 	UTimer timer;
 	Transform output;
 
-	double variance = -1;
+	double variance = 0;
 	int inliers = 0;
 	int correspondences = 0;
 
@@ -876,9 +852,6 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 	{
 		newFrame = data.image().clone();
 	}
-
-	float updatePixels = 0.0f;
-	bool updateFrame = false;
 
 	std::vector<cv::Point2f> newCorners;
 	if(!refFrame_.empty() && refCorners_.size() && refCorners3D_->size())
@@ -904,8 +877,11 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 		correspondencesNew->resize(refCorners_.size());
 		int oi=0;
 
-		std::vector<cv::KeyPoint> lastKpts(refCorners_.size());
-		std::vector<cv::KeyPoint> newKpts(refCorners_.size());
+		if(this->isInfoDataFilled() && info)
+		{
+			info->refCorners.resize(refCorners_.size());
+			info->newCorners.resize(refCorners_.size());
+		}
 
 		UASSERT(refCorners_.size() == refCorners3D_->size());
 		UDEBUG("lastCorners3D_ = %d", refCorners3D_->size());
@@ -932,8 +908,11 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 					cv::Point2f diff = newCorners[i]-refCorners_[i];
 					sumSqrdDistance += diff.x*diff.x + diff.y*diff.y;
 
-					lastKpts[oi].pt = refCorners_[i];
-					newKpts[oi].pt = newCorners[i];
+					if(this->isInfoDataFilled() && info)
+					{
+						info->refCorners[oi].pt = refCorners_[i];
+						info->newCorners[oi].pt = newCorners[i];
+					}
 
 					++oi;
 				}
@@ -945,19 +924,12 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 			}
 		}
 		UDEBUG("Flow inliers = %d, added inliers=%d", flowInliers, oi);
-		float meanPixel = -1;
-		if(oi)
-		{
-			float meanPixel = sumSqrdDistance/(float)oi;
-			if(meanPixel >= updatePixels*updatePixels)
-			{
-				updateFrame = true;
-			}
-		}
-		UDEBUG("mean pixel distance = %f", meanPixel);
 
-		lastKpts.resize(oi);
-		newKpts.resize(oi);
+		if(this->isInfoDataFilled() && info)
+		{
+			info->refCorners.resize(oi);
+			info->newCorners.resize(oi);
+		}
 		correspondencesLast->resize(oi);
 		correspondencesNew->resize(oi);
 		correspondences = oi;
@@ -981,6 +953,10 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 				output.setNull();
 				UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
 			}
+			else if(this->isInfoDataFilled() && info && !output.isNull())
+			{
+				info->cornerInliers = inliersV;
+			}
 
 			/*std::vector<cv::DMatch> good_matches(lastKpts.size());
 			for(unsigned int i=0; i<good_matches.size(); ++i)
@@ -1002,11 +978,10 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 	{
 		//return Identity
 		output = Transform::getIdentity();
-		updateFrame = true;
 	}
 
 	newCorners.clear();
-	if(!output.isNull() && updateFrame)
+	if(!output.isNull())
 	{
 		// Copy or generate new keypoints
 		if(data.keypoints().size())
@@ -1040,12 +1015,7 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 			}
 		}
 
-		if(refCorners_.size() && newCorners.size() < (unsigned int)(this->getFeaturesRatio() * float(refCorners_.size())))
-		{
-			UWARN("At least %f%% keypoints of the last image required. New=%d last=%d",
-					this->getFeaturesRatio()*100.0f, newCorners.size(), refCorners_.size());
-		}
-		else if((int)newCorners.size() > this->getMinInliers())
+		if((int)newCorners.size() > this->getMinInliers())
 		{
 			// get 3D corners for the extracted 2D corners (not the ones refined by Optical Flow)
 			pcl::PointCloud<pcl::PointXYZ>::Ptr newCorners3D(new pcl::PointCloud<pcl::PointXYZ>);
@@ -1084,17 +1054,15 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 			{
 				UWARN("Too low 3D corners (%d/%d, minCorners=%d), ignoring new frame...",
 						(int)newCornersFiltered.size(), (int)refCorners3D_->size(), this->getMinInliers());
+				output.setNull();
 			}
 		}
 		else
 		{
 			UWARN("Too low 2D corners (%d), ignoring new frame...",
 					(int)newCorners.size());
+			output.setNull();
 		}
-	}
-	else if(!output.isNull())
-	{
-		output = Transform::getIdentity();
 	}
 
 	if(info)
@@ -1105,12 +1073,12 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 		info->matches = correspondences;
 	}
 
-	UINFO("Odom update time = %fs inliers=%d/%d, new corners=%d, transform accepted=%s",
+	UINFO("Odom update time = %fs inliers=%d/%d, variance=%f, new corners=%d",
 			timer.elapsed(),
 			inliers,
 			correspondences,
-			(int)newCorners.size(),
-			updateFrame||output.isNull()?"true":"false");
+			variance,
+			(int)newCorners.size());
 	return output;
 }
 
@@ -1150,7 +1118,7 @@ Transform OdometryICP::computeTransform(const SensorData & data, OdometryInfo * 
 	Transform output;
 
 	bool hasConverged = false;
-	double variance = -1;
+	double variance = 0;
 	unsigned int minPoints = 100;
 	if(!data.depth().empty())
 	{

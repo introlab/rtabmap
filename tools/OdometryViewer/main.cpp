@@ -60,9 +60,6 @@ void showUsage()
 			"  -min #                    Minimum inliers to accept the transform (default 20)\n"
 			"  -depth #.#                Maximum features depth (default 5.0 m)\n"
 			"  -i #                      RANSAC/ICP iterations (default 30)\n"
-			"  -r #.#                    Words ratio (default 0.5)\n"
-			"  -lu #                     Linear update (default 0.0 m)\n"
-			"  -au #                     Angular update (default 0.0 radian)\n"
 			"  -reset #                  Reset countdown (default 0 = disabled)\n"
 			"  -gpu                      Use GPU\n"
 			"  -lh #                     Local history (default 1000)\n"
@@ -105,11 +102,8 @@ int main (int argc, char * argv[])
 	float distance = 0.01;
 	int maxWords = 0;
 	int minInliers = 20;
-	float wordsRatio = 0.5;
 	float maxDepth = 5.0f;
 	int iterations = 30;
-	float linearUpdate = 0.0f;
-	float angularUpdate = 0.0f;
 	int resetCountdown = 0;
 	int decimation = 4;
 	float voxel = 0.005;
@@ -337,57 +331,6 @@ int main (int argc, char * argv[])
 			{
 				iterations = std::atoi(argv[i]);
 				if(iterations <= 0)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-r") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				wordsRatio = std::atof(argv[i]);
-				if(wordsRatio < 0.0f || wordsRatio > 1.0f)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-lu") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				linearUpdate = std::atof(argv[i]);
-				if(linearUpdate < 0.0f)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-au") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				angularUpdate = std::atof(argv[i]);
-				if(angularUpdate < 0.0f)
 				{
 					showUsage();
 				}
@@ -655,8 +598,6 @@ int main (int argc, char * argv[])
 	UINFO("Maximum clouds shown =    %d", maxClouds);
 	UINFO("Delay =                   %f s", sec);
 	UINFO("Max depth =               %f", maxDepth);
-	UINFO("Linear update =           %f", linearUpdate);
-	UINFO("Angular update =          %f", angularUpdate);
 	UINFO("Reset odometry coutdown = %d", resetCountdown);
 	UINFO("Local history =           %d", localHistory);
 
@@ -667,8 +608,6 @@ int main (int argc, char * argv[])
 	rtabmap::ParametersMap parameters;
 
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMaxDepth(), uNumber2Str(maxDepth)));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomLinearUpdate(), uNumber2Str(linearUpdate)));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomAngularUpdate(), uNumber2Str(angularUpdate)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomResetCountdown(), uNumber2Str(resetCountdown)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomBowLocalHistorySize(), uNumber2Str(localHistory)));
 
@@ -693,7 +632,6 @@ int main (int argc, char * argv[])
 			UINFO("Nearest neighbor ratio =  %f", nndr);
 			UINFO("Max features =            %d", maxWords);
 			UINFO("Min inliers =             %d", minInliers);
-			UINFO("Words ratio =             %f", wordsRatio);
 			UINFO("Inlier maximum correspondences distance = %f", distance);
 			UINFO("RANSAC iterations =       %d", iterations);
 			UINFO("GPU =                     %s", gpu?"true":"false");
@@ -702,7 +640,6 @@ int main (int argc, char * argv[])
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMinInliers(), uNumber2Str(minInliers)));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomIterations(), uNumber2Str(iterations)));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomFeatureType(), uNumber2Str(odomType)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomFeaturesRatio(), uNumber2Str(wordsRatio)));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomBowNNType(), uNumber2Str(nnType)));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomBowNNDR(), uNumber2Str(nndr)));
 			if(odomType == 0)

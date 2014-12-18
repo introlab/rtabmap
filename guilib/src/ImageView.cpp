@@ -201,6 +201,14 @@ void ImageView::updateOpacity()
 			_imageDepth->setGraphicsEffect(0);
 		}
 	}
+	else if(_image)
+	{
+		_image->setGraphicsEffect(0);
+	}
+	else if(_imageDepth)
+	{
+		_imageDepth->setGraphicsEffect(0);
+	}
 }
 
 void ImageView::updateZoom()
@@ -242,13 +250,12 @@ void ImageView::wheelEvent(QWheelEvent * e)
 	this->setMatrix(matrix);
 }
 
-void ImageView::setFeatures(const std::multimap<int, cv::KeyPoint> & refWords)
+void ImageView::setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, const QColor & color)
 {
 	qDeleteAll(_features);
 	_features.clear();
 
 	rtabmap::KeypointItem * item = 0;
-	int alpha = 70;
 	for(std::multimap<int, cv::KeyPoint>::const_iterator i = refWords.begin(); i != refWords.end(); ++i )
 	{
 		const cv::KeyPoint & r = (*i).second;
@@ -260,9 +267,35 @@ void ImageView::setFeatures(const std::multimap<int, cv::KeyPoint> & refWords)
 								"X = %5\n"
 								"Y = %6\n"
 								"Size = %7").arg(id).arg(1).arg(r.angle).arg(r.response).arg(r.pt.x).arg(r.pt.y).arg(r.size);
-		float radius = r.size*1.2/9.*2;
+		float radius = r.size/2.0f;
+		item = new rtabmap::KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, color);
 
-		item = new rtabmap::KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 255, 0, alpha));
+		scene()->addItem(item);
+		_features.insert(id, item);
+		item->setVisible(_showFeatures->isChecked());
+		item->setZValue(1);
+	}
+}
+
+void ImageView::setFeatures(const std::vector<cv::KeyPoint> & features, const QColor & color)
+{
+	qDeleteAll(_features);
+	_features.clear();
+
+	rtabmap::KeypointItem * item = 0;
+	for(unsigned int i = 0; i< features.size(); ++i )
+	{
+		const cv::KeyPoint & r = features[i];
+		int id = i;
+		QString info = QString( "WordRef = %1\n"
+								"Laplacian = %2\n"
+								"Dir = %3\n"
+								"Hessian = %4\n"
+								"X = %5\n"
+								"Y = %6\n"
+								"Size = %7").arg(id).arg(1).arg(r.angle).arg(r.response).arg(r.pt.x).arg(r.pt.y).arg(r.size);
+		float radius = (r.size==0?3:r.size)/2.0f;
+		item = new rtabmap::KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, color);
 
 		scene()->addItem(item);
 		_features.insert(id, item);
@@ -308,8 +341,7 @@ void ImageView::setFeatureColor(int id, const QColor & color)
 	{
 		for(int i=0; i<items.size(); ++i)
 		{
-			items[i]->setPen(QPen(color));
-			items[i]->setBrush(QBrush(color));
+			items[i]->setColor(color);
 		}
 	}
 	else

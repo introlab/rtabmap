@@ -60,8 +60,6 @@ public:
 	Transform process(const SensorData & data, OdometryInfo * info = 0);
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 
-	bool isLargeEnoughTransform(const Transform & transform);
-
 	//getters
 	const Transform & getPose() const {return _pose;}
 	int getMaxFeatures() const  {return _maxFeatures;}
@@ -70,10 +68,8 @@ public:
 	float getInlierDistance() const {return _inlierDistance;}
 	int getIterations() const {return _iterations;}
 	int getRefineIterations() const {return _refineIterations;}
-	float getFeaturesRatio() const {return _featuresRatio;}
 	float getMaxDepth() const {return _maxDepth;}
-	float geLinearUpdate() const {return _linearUpdate;}
-	float getAngularUpdate() const {return _angularUpdate;}
+	bool isInfoDataFilled() const {return _fillInfoData;}
 
 private:
 	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0) = 0;
@@ -85,12 +81,10 @@ private:
 	float _inlierDistance;
 	int _iterations;
 	int _refineIterations;
-	float _featuresRatio;
 	float _maxDepth;
-	float _linearUpdate;
-	float _angularUpdate;
 	int _resetCountdown;
 	bool _force2D;
+	bool _fillInfoData;
 	Transform _pose;
 	int _resetCurrentCount;
 
