@@ -83,7 +83,7 @@ ENDIF()
 # Installation stuff
 #--------------------------- 
 INSTALL(TARGETS rtabmap
-        RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT runtime
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT runtime
         BUNDLE DESTINATION "${CMAKE_BUNDLE_LOCATION}" COMPONENT runtime)
       
 IF(APPLE AND BUILD_AS_BUNDLE)
