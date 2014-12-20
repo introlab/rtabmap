@@ -80,9 +80,6 @@ IF(APPLE)
 ENDIF()
 
 ####### Build libraries as shared or static #######
-# It is a bit messed up on Windows between STATIC and SHARED, if we don't want
-# to add UtiLite_DEFINITIONS in FindUtiLite.cmake... to know from 3rd party application if it needs to
-# link dynamically [UTILITE_EXP __declspec( dllimport )] or statically (UTILITE_EXP "nothing").
 OPTION( BUILD_SHARED_LIBS "Set to OFF to build static libraries" ON )
 
 
@@ -214,7 +211,7 @@ install(FILES
 ####
 
 ### Install package.xml for catkin
-install(FILES package.xml DESTINATION "share/${PROJECT_PREFIX}")
+install(FILES package.xml DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_PREFIX}")
 
 #######################
 # CPACK (Packaging)
