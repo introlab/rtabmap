@@ -17,7 +17,7 @@ if exist(GT_file, 'file')
     display(['Loading GroundTruth ''' GT_file ''' ...']);
     GroundTruth = imread(GT_file);
     if max(max(GroundTruth)) == 1
-        GroundTruth*=255;
+        GroundTruth=GroundTruth*255;
     end
 else
     error(['The ground truth ''' GT_file '''doesn''t exist.'])
