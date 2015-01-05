@@ -540,9 +540,9 @@ int main(int argc, char * argv[])
 		}
 
 		// Generate the ground truth file
-		printf("Generate ground truth to file %s, size of %d\n", (rtabmap.getWorkingDir()+GENERATED_GT_NAME).c_str(), groundTruthMat.rows);
+		printf("Generate ground truth to file %s, size of %d\n", GENERATED_GT_NAME, groundTruthMat.rows);
 		IplImage img = groundTruthMat;
-		cvSaveImage((rtabmap.getWorkingDir()+GENERATED_GT_NAME).c_str(), &img);
+		cvSaveImage(GENERATED_GT_NAME, &img);
 		printf(" Creating ground truth file = %fs\n", timer.ticks());
 	}
 
