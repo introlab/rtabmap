@@ -135,11 +135,11 @@ bool CameraImages::init()
 	UDEBUG("");
 	if(_dir)
 	{
-		_dir->setPath(_path, "jpg ppm png bmp pnm");
+		_dir->setPath(_path, "jpg ppm png bmp pnm tiff");
 	}
 	else
 	{
-		_dir = new UDirectory(_path, "jpg ppm png bmp pnm");
+		_dir = new UDirectory(_path, "jpg ppm png bmp pnm tiff");
 	}
 	_count = 0;
 	if(_path[_path.size()-1] != '\\' && _path[_path.size()-1] != '/')

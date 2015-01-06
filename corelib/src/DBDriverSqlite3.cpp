@@ -1412,6 +1412,10 @@ void DBDriverSqlite3::loadLinksQuery(
 			{
 				memcpy(transform.data(), data, dataSize);
 			}
+			else if(dataSize)
+			{
+				UERROR("Error while loading link transform from %d to %d! Setting to null...", signatureId, toId);
+			}
 
 			if(uStrNumCmp(_version, "0.7.4") >= 0)
 			{
@@ -1497,8 +1501,14 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 				data = sqlite3_column_blob(ppStmt, index);
 				dataSize = sqlite3_column_bytes(ppStmt, index++);
 				Transform transform;
-				UASSERT((unsigned int)dataSize == transform.size()*sizeof(float) && data);
-				memcpy(transform.data(), data, dataSize);
+				if((unsigned int)dataSize == transform.size()*sizeof(float) && data)
+				{
+					memcpy(transform.data(), data, dataSize);
+				}
+				else if(dataSize)
+				{
+					UERROR("Error while loading link transform from %d to %d! Setting to null...", (*iter)->id(), toId);
+				}
 
 				if(linkType >= 0 && linkType != Link::kUndef)
 				{

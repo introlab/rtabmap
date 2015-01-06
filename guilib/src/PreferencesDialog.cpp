@@ -1747,7 +1747,7 @@ void PreferencesDialog::selectSourceImage(Src src)
 		if(!path.isEmpty() && dir.exists())
 		{
 			QStringList filters;
-			filters << "*.jpg" << "*.ppm" << "*.bmp" << "*.png" << "*.pnm";
+			filters << "*.jpg" << "*.ppm" << "*.bmp" << "*.png" << "*.pnm" << "*.tiff";
 			dir.setNameFilters(filters);
 			QFileInfoList files = dir.entryInfoList();
 			if(!files.empty())

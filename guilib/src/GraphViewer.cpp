@@ -160,7 +160,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	_workingDirectory = QDir::homePath();
 
 	this->scene()->clear();
-	_root = (QGraphicsItem *)this->scene()->addEllipse(QRectF(0,0,0,0));
+	_root = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
 
 	// add referential
 	QGraphicsLineItem * item = this->scene()->addLine(0,0,0,-1, QPen(QBrush(Qt::red), _linkWidth));
