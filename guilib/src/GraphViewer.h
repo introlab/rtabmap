@@ -51,8 +51,10 @@ public:
 	void updateGraph(const std::map<int, Transform> & poses,
 					 const std::multimap<int, Link> & constraints);
 	void updateMap(const cv::Mat & map8U, float resolution, float xMin, float yMin);
+	void updatePosterior(const std::map<int, float> & posterior);
 	void clearGraph();
 	void clearMap();
+	void clearPosterior();
 	void clearAll();
 
 	void setWorkingDirectory(const QString & path) {_workingDirectory = path;}
@@ -68,8 +70,8 @@ private:
 	QColor _loopClosureColor;
 	QGraphicsItem * _root;
 	QMap<int, NodeItem*> _nodeItems;
-	QMap<int, LinkItem*> _neighborLinkItems;
-	QMap<int, LinkItem*> _loopLinkItems;
+	QMultiMap<int, LinkItem*> _neighborLinkItems;
+	QMultiMap<int, LinkItem*> _loopLinkItems;
 	float _nodeRadius;
 	float _linkWidth;
 	QGraphicsPixmapItem * _gridMap;

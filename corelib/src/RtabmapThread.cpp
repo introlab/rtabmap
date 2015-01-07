@@ -174,6 +174,10 @@ void RtabmapThread::mainLoop()
 		break;
 	case kStateInit:
 		UASSERT(!parameters.at("RtabmapThread/DatabasePath").empty());
+		Parameters::parse(parameters, Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
+		Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), _rate);
+		UASSERT(_dataBufferMaxSize >= 0);
+		UASSERT(_rate >= 0.0f);
 		_rtabmap->init(parameters, parameters.at("RtabmapThread/DatabasePath"));
 		break;
 	case kStateChangingParameters:

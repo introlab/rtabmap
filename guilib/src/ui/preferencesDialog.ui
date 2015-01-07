@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>744</width>
-            <height>1056</height>
+            <width>732</width>
+            <height>1302</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>23</number>
+                <number>0</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -97,10 +97,7 @@
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_28">
                     <item>
-                     <layout class="QFormLayout" name="formLayout_14">
-                      <property name="fieldGrowthPolicy">
-                       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                      </property>
+                     <layout class="QGridLayout" name="gridLayout_39" columnstretch="0,1">
                       <item row="0" column="0">
                        <widget class="QCheckBox" name="general_checkBox_imagesKept">
                         <property name="text">
@@ -145,24 +142,7 @@
                       <property name="title">
                        <string>Loop closure detection view</string>
                       </property>
-                      <layout class="QFormLayout" name="formLayout_12">
-                       <item row="1" column="0">
-                        <widget class="QCheckBox" name="checkBox_imageFlipped">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_80">
-                         <property name="text">
-                          <string>Flip image (like a mirror).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>false</bool>
-                         </property>
-                        </widget>
-                       </item>
+                      <layout class="QGridLayout" name="gridLayout_31" columnstretch="0,1">
                        <item row="2" column="0">
                         <widget class="QCheckBox" name="checkBox_imageRejectedShown">
                          <property name="text">
@@ -173,10 +153,10 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_73">
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="label_105">
                          <property name="text">
-                          <string>Show image when an hypothesis is rejected.</string>
+                          <string>Show the image of the highest hypothesis.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -193,17 +173,17 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="1">
-                        <widget class="QLabel" name="label_105">
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_80">
                          <property name="text">
-                          <string>Show the image of the highest hypothesis.</string>
+                          <string>Flip image (like a mirror).</string>
                          </property>
                          <property name="wordWrap">
-                          <bool>true</bool>
+                          <bool>false</bool>
                          </property>
                         </widget>
                        </item>
-                       <item row="4" column="0">
+                       <item row="5" column="0">
                         <widget class="QSlider" name="horizontalSlider_keypointsOpacity">
                          <property name="minimum">
                           <number>0</number>
@@ -219,10 +199,10 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="4" column="1">
-                        <widget class="QLabel" name="label_102">
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_73">
                          <property name="text">
-                          <string>Keypoints opacity.</string>
+                          <string>Show image when an hypothesis is rejected.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -249,6 +229,43 @@
                          </property>
                         </widget>
                        </item>
+                       <item row="1" column="0">
+                        <widget class="QCheckBox" name="checkBox_imageFlipped">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="1">
+                        <widget class="QLabel" name="label_102">
+                         <property name="text">
+                          <string>Keypoints opacity.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="1">
+                        <widget class="QLabel" name="label_222">
+                         <property name="text">
+                          <string>Show loop closure hypotheses on the graph view. Nodes are colorized from blue to red depending on the highest hypothesis (which is red). Posterior hypotheses should be published. </string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="0">
+                        <widget class="QCheckBox" name="checkBox_posteriorGraphView">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
                       </layout>
                      </widget>
                     </item>
@@ -257,7 +274,7 @@
                       <property name="title">
                        <string>3D Map view</string>
                       </property>
-                      <layout class="QFormLayout" name="formLayout_23">
+                      <layout class="QGridLayout" name="gridLayout_38" columnstretch="0,1">
                        <item row="0" column="0">
                         <widget class="QSpinBox" name="spinBox_odomQualityWarnThr">
                          <property name="maximum">
@@ -1121,10 +1138,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                    <property name="title">
                     <string>Logging</string>
                    </property>
-                   <layout class="QFormLayout" name="formLayout_11">
-                    <property name="fieldGrowthPolicy">
-                     <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                    </property>
+                   <layout class="QGridLayout" name="gridLayout_40" columnstretch="0,1">
                     <item row="0" column="0">
                      <widget class="QComboBox" name="comboBox_loggerLevel">
                       <property name="currentIndex">
@@ -2282,10 +2296,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_15">
                     <item>
-                     <layout class="QFormLayout" name="formLayout_17">
-                      <property name="fieldGrowthPolicy">
-                       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                      </property>
+                     <layout class="QGridLayout" name="gridLayout_43" columnstretch="0,1">
                       <item row="0" column="0">
                        <widget class="QCheckBox" name="general_checkBox_SLAM_mode">
                         <property name="text">
@@ -2330,16 +2341,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="1">
-                       <widget class="QLabel" name="label_84">
-                        <property name="text">
-                         <string>Data buffer size (0 means inf).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="2" column="0">
                        <widget class="QSpinBox" name="general_spinBox_imagesBufferSize">
                         <property name="maximum">
@@ -2347,6 +2348,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="value">
                          <number>1</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QLabel" name="label_84">
+                        <property name="text">
+                         <string>Data buffer size (0 means inf).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>
@@ -2377,10 +2388,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <property name="title">
                        <string>Thresholds</string>
                       </property>
-                      <layout class="QFormLayout" name="formLayout_18">
-                       <property name="fieldGrowthPolicy">
-                        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                       </property>
+                      <layout class="QGridLayout" name="gridLayout_44" columnstretch="0,1">
                        <item row="0" column="0">
                         <widget class="QDoubleSpinBox" name="general_doubleSpinBox_timeThr">
                          <property name="suffix">
@@ -2487,10 +2495,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <property name="checkable">
                        <bool>true</bool>
                       </property>
-                      <layout class="QFormLayout" name="formLayout_15">
-                       <property name="fieldGrowthPolicy">
-                        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                       </property>
+                      <layout class="QGridLayout" name="gridLayout_45" columnstretch="0,1">
                        <item row="0" column="0">
                         <widget class="QCheckBox" name="general_checkBox_publishRawData">
                          <property name="text">
@@ -2553,10 +2558,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <property name="checkable">
                        <bool>true</bool>
                       </property>
-                      <layout class="QFormLayout" name="formLayout_16">
-                       <property name="fieldGrowthPolicy">
-                        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                       </property>
+                      <layout class="QGridLayout" name="gridLayout_46" columnstretch="0,1">
                        <item row="0" column="0">
                         <widget class="QCheckBox" name="general_checkBox_statisticLogsBufferedInRAM">
                          <property name="text">
@@ -2808,10 +2810,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_10">
                     <item>
-                     <layout class="QFormLayout" name="formLayout_10">
-                      <property name="fieldGrowthPolicy">
-                       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                      </property>
+                     <layout class="QGridLayout" name="gridLayout_42" columnstretch="0,1">
                       <item row="0" column="0">
                        <widget class="QSpinBox" name="general_spinBox_maxStMemSize">
                         <property name="minimum">
@@ -2927,16 +2926,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="1">
-                       <widget class="QLabel" name="label_retrieved_4">
-                        <property name="text">
-                         <string>Initialize the Woking Memory with all nodes from Long-Term memory, instead of only nodes of the last session. This may be useful in localization mode, where less processing time is required than in SLAM mode, so more nodes can be kept in Working Memory.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="5" column="0">
                        <widget class="QCheckBox" name="general_checkBox_initWMWithAllNodes">
                         <property name="text">
@@ -2944,6 +2933,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="checked">
                          <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_retrieved_4">
+                        <property name="text">
+                         <string>Initialize the Woking Memory with all nodes from Long-Term memory, instead of only nodes of the last session. This may be useful in localization mode, where less processing time is required than in SLAM mode, so more nodes can be kept in Working Memory.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>
@@ -3235,10 +3234,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_12">
                     <item>
-                     <layout class="QFormLayout" name="formLayout_7">
-                      <property name="fieldGrowthPolicy">
-                       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                      </property>
+                     <layout class="QGridLayout" name="gridLayout_41" columnstretch="0,1">
                       <item row="0" column="0">
                        <widget class="QComboBox" name="comboBox_detector_strategy">
                         <item>
@@ -3395,14 +3391,14 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="0">
+                      <item row="4" column="0">
                        <widget class="QLineEdit" name="lineEdit_kp_roi">
                         <property name="readOnly">
                          <bool>true</bool>
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="1">
+                      <item row="4" column="1">
                        <widget class="QLabel" name="label_101">
                         <property name="text">
                          <string>ROI ratios [left, right, top, bottom] between 0 and 1.</string>
@@ -3412,7 +3408,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
+                      <item row="5" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi0">
                         <property name="suffix">
                          <string> %</string>
@@ -3422,7 +3418,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="1">
+                      <item row="5" column="1">
                        <widget class="QLabel" name="label_97">
                         <property name="text">
                          <string>Left ROI ratio (0 = no change).</string>
@@ -3432,7 +3428,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
+                      <item row="6" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi1">
                         <property name="suffix">
                          <string> %</string>
@@ -3442,7 +3438,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="1">
+                      <item row="6" column="1">
                        <widget class="QLabel" name="label_98">
                         <property name="text">
                          <string>Right ROI ratio (0 = no change).</string>
@@ -3452,7 +3448,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="0">
+                      <item row="7" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi2">
                         <property name="suffix">
                          <string> %</string>
@@ -3462,7 +3458,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="1">
+                      <item row="7" column="1">
                        <widget class="QLabel" name="label_99">
                         <property name="text">
                          <string>Top ROI ratio (0 = no change).</string>
@@ -3472,7 +3468,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="0">
+                      <item row="8" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi3">
                         <property name="suffix">
                          <string> %</string>
@@ -3482,7 +3478,7 @@ generate the number of words requested.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="1">
+                      <item row="8" column="1">
                        <widget class="QLabel" name="label_100">
                         <property name="text">
                          <string>Bottom ROI ratio (0 = no change).</string>

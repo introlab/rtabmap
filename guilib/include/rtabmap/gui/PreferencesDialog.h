@@ -120,6 +120,7 @@ public:
 	bool beepOnPause() const;
 	int getKeypointsOpacity() const;
 	int getOdomQualityWarnThr() const;
+	bool isPosteriorGraphView() const;
 
 	bool isGraphsShown() const;
 	bool isCloudMeshing() const;

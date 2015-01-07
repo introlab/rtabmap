@@ -153,6 +153,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_beep, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->horizontalSlider_keypointsOpacity, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->spinBox_odomQualityWarnThr, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->checkBox_posteriorGraphView, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 
 	// Cloud rendering panel
 	_3dRenderingShowClouds.resize(2);
@@ -554,7 +555,6 @@ void PreferencesDialog::init()
 
 	this->loadWindowGeometry("PreferencesDialog", this);
 
-	_obsoletePanels = kPanelAll;
 	_initialized = true;
 }
 
@@ -819,6 +819,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_imageHighestHypShown->setChecked(false);
 		_ui->horizontalSlider_keypointsOpacity->setSliderPosition(20);
 		_ui->spinBox_odomQualityWarnThr->setValue(50);
+		_ui->checkBox_posteriorGraphView->setChecked(true);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_cloudRendering1->objectName())
 	{
@@ -1059,6 +1060,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_beep->setChecked(settings.value("beep", _ui->checkBox_beep->isChecked()).toBool());
 	_ui->horizontalSlider_keypointsOpacity->setValue(settings.value("keypointsOpacity", _ui->horizontalSlider_keypointsOpacity->value()).toInt());
 	_ui->spinBox_odomQualityWarnThr->setValue(settings.value("odomQualityThr", _ui->spinBox_odomQualityWarnThr->value()).toInt());
+	_ui->checkBox_posteriorGraphView->setChecked(settings.value("posteriorGraphView", _ui->checkBox_posteriorGraphView->isChecked()).toBool());
 
 	for(int i=0; i<2; ++i)
 	{
@@ -1269,6 +1271,8 @@ void PreferencesDialog::writeSettings(const QString & filePath)
 	writeCameraSettings(filePath);
 	writeCoreSettings(filePath);
 
+	UDEBUG("_obsoletePanels=%d parameters=%d", (int)_obsoletePanels, (int)_parameters.size());
+
 	if(_parameters.size())
 	{
 		emit settingsChanged(_parameters);
@@ -1307,6 +1311,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath)
 	settings.setValue("beep", _ui->checkBox_beep->isChecked());
 	settings.setValue("keypointsOpacity", _ui->horizontalSlider_keypointsOpacity->value());
 	settings.setValue("odomQualityThr", _ui->spinBox_odomQualityWarnThr->value());
+	settings.setValue("posteriorGraphView", _ui->checkBox_posteriorGraphView->isChecked());
 
 	for(int i=0; i<2; ++i)
 	{
@@ -2650,6 +2655,10 @@ int PreferencesDialog::getKeypointsOpacity() const
 int PreferencesDialog::getOdomQualityWarnThr() const
 {
 	return _ui->spinBox_odomQualityWarnThr->value();
+}
+bool PreferencesDialog::isPosteriorGraphView() const
+{
+	return _ui->checkBox_posteriorGraphView->isChecked();
 }
 
 bool PreferencesDialog::isCloudsShown(int index) const

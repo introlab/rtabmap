@@ -101,8 +101,10 @@ class LinkItem: public QGraphicsLineItem
 {
 public:
 	// in meter
-	LinkItem(const Transform & poseA, const Transform & poseB, bool loopClosure) :
+	LinkItem(int from, int to, const Transform & poseA, const Transform & poseB, bool loopClosure) :
 		QGraphicsLineItem(-poseA.y(), -poseA.x(), -poseB.y(), -poseB.x()),
+		_from(from),
+		_to(to),
 		_poseA(poseA),
 		_poseB(poseB),
 		_loopClosure(loopClosure)
@@ -125,6 +127,8 @@ public:
 	}
 
 	bool isLoopClosure() const {return _loopClosure;}
+	int from() const {return _from;}
+	int to() const {return _to;}
 
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event )
@@ -138,6 +142,8 @@ protected:
 	}
 
 private:
+	int _from;
+	int _to;
 	Transform _poseA;
 	Transform _poseB;
 	bool _loopClosure;
@@ -195,39 +201,43 @@ GraphViewer::~GraphViewer()
 void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				 const std::multimap<int, Link> & constraints)
 {
+	UDEBUG("poses=%d constraints=%d", (int)poses.size(), (int)constraints.size());
 	//Hide nodes and links
 	for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 	{
 		iter.value()->hide();
 		iter.value()->setColor(_nodeColor); // reset color
 	}
-	for(QMap<int, LinkItem*>::iterator iter = _loopLinkItems.begin(); iter!=_loopLinkItems.end(); ++iter)
+	for(QMultiMap<int, LinkItem*>::iterator iter = _loopLinkItems.begin(); iter!=_loopLinkItems.end(); ++iter)
 	{
 		iter.value()->hide();
 	}
-	for(QMap<int, LinkItem*>::iterator iter = _neighborLinkItems.begin(); iter!=_neighborLinkItems.end(); ++iter)
+	for(QMultiMap<int, LinkItem*>::iterator iter = _neighborLinkItems.begin(); iter!=_neighborLinkItems.end(); ++iter)
 	{
 		iter.value()->hide();
 	}
 
 	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 	{
-		QMap<int, NodeItem*>::iterator itemIter = _nodeItems.find(iter->first);
-		if(itemIter != _nodeItems.end())
+		if(!iter->second.isNull())
 		{
-			itemIter.value()->setPose(iter->second);
-			itemIter.value()->show();
-		}
-		else
-		{
-			// create node item
-			const Transform & pose = iter->second;
-			NodeItem * item = new NodeItem(iter->first, pose, _nodeRadius);
-			this->scene()->addItem(item);
-			item->setZValue(2);
-			item->setColor(_nodeColor);
-			item->setParentItem(_root);
-			_nodeItems.insert(iter->first, item);
+			QMap<int, NodeItem*>::iterator itemIter = _nodeItems.find(iter->first);
+			if(itemIter != _nodeItems.end())
+			{
+				itemIter.value()->setPose(iter->second);
+				itemIter.value()->show();
+			}
+			else
+			{
+				// create node item
+				const Transform & pose = iter->second;
+				NodeItem * item = new NodeItem(iter->first, pose, _nodeRadius);
+				this->scene()->addItem(item);
+				item->setZValue(2);
+				item->setColor(_nodeColor);
+				item->setParentItem(_root);
+				_nodeItems.insert(iter->first, item);
+			}
 		}
 	}
 
@@ -235,28 +245,48 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	{
 		std::map<int, Transform>::const_iterator jterA = poses.find(iter->first);
 		std::map<int, Transform>::const_iterator jterB = poses.find(iter->second.to());
-		if(jterA != poses.end() && jterB != poses.end())
+		if(jterA != poses.end() && jterB != poses.end() &&
+		   _nodeItems.contains(iter->first) && _nodeItems.contains(iter->second.to()))
 		{
 			const Transform & poseA = jterA->second;
 			const Transform & poseB = jterB->second;
 			bool loopClosure = iter->second.type() != Link::kNeighbor;
 
+			bool added = false;
 			if(loopClosure && _loopLinkItems.contains(iter->first))
 			{
-				QMap<int, LinkItem*>::iterator itemIter = _loopLinkItems.find(iter->first);
-				itemIter.value()->setPoses(poseA, poseB);
-				itemIter.value()->show();
+				QMultiMap<int, LinkItem*>::iterator itemIter = _loopLinkItems.find(iter->first);
+				while(itemIter.key() == iter->first && itemIter != _loopLinkItems.end())
+				{
+					if(itemIter.value()->to() == iter->second.to())
+					{
+						itemIter.value()->setPoses(poseA, poseB);
+						itemIter.value()->show();
+						added = true;
+						break;
+					}
+					++itemIter;
+				}
 			}
 			else if(!loopClosure && _neighborLinkItems.contains(iter->first))
 			{
-				QMap<int, LinkItem*>::iterator itemIter = _neighborLinkItems.find(iter->first);
-				itemIter.value()->setPoses(poseA, poseB);
-				itemIter.value()->show();
+				QMultiMap<int, LinkItem*>::iterator itemIter = _neighborLinkItems.find(iter->first);
+				while(itemIter.key() == iter->first && itemIter != _neighborLinkItems.end())
+				{
+					if(itemIter.value()->to() == iter->second.to())
+					{
+						itemIter.value()->setPoses(poseA, poseB);
+						itemIter.value()->show();
+						added = true;
+						break;
+					}
+					++itemIter;
+				}
 			}
-			else
+			if(!added)
 			{
 				//create a link item
-				LinkItem * item = new LinkItem(poseA, poseB, loopClosure);
+				LinkItem * item = new LinkItem(iter->first, iter->second.to(), poseA, poseB, loopClosure);
 				QPen p = item->pen();
 				p.setWidthF(_linkWidth);
 				item->setPen(p);
@@ -289,7 +319,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 			++iter;
 		}
 	}
-	for(QMap<int, LinkItem*>::iterator iter = _loopLinkItems.begin(); iter!=_loopLinkItems.end();)
+	for(QMultiMap<int, LinkItem*>::iterator iter = _loopLinkItems.begin(); iter!=_loopLinkItems.end();)
 	{
 		if(!iter.value()->isVisible())
 		{
@@ -301,7 +331,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 			++iter;
 		}
 	}
-	for(QMap<int, LinkItem*>::iterator iter = _neighborLinkItems.begin(); iter!=_neighborLinkItems.end();)
+	for(QMultiMap<int, LinkItem*>::iterator iter = _neighborLinkItems.begin(); iter!=_neighborLinkItems.end();)
 	{
 		if(!iter.value()->isVisible())
 		{
@@ -348,6 +378,35 @@ void GraphViewer::updateMap(const cv::Mat & map8U, float resolution, float xMin,
 	}
 }
 
+void GraphViewer::updatePosterior(const std::map<int, float> & posterior)
+{
+	//find max
+	float max = 0.0f;
+	for(std::map<int, float>::const_iterator iter = posterior.begin(); iter!=posterior.end(); ++iter)
+	{
+		if(iter->first > 0 && iter->second>max)
+		{
+			max = iter->second;
+		}
+	}
+	if(max > 0.0f)
+	{
+		for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
+		{
+			std::map<int,float>::const_iterator jter = posterior.find(iter.key());
+			if(jter != posterior.end())
+			{
+				UDEBUG("id=%d max=%f hyp=%f color = %f", iter.key(), max, jter->second, (1-jter->second/max)*240.0f/360.0f);
+				iter.value()->setColor(QColor::fromHsvF((1-jter->second/max)*240.0f/360.0f, 1, 1, 1)); //0=red 240=blue
+			}
+			else
+			{
+				iter.value()->setColor(QColor::fromHsvF(240.0f/360.0f, 1, 1, 1)); // blue
+			}
+		}
+	}
+}
+
 void GraphViewer::clearGraph()
 {
 	qDeleteAll(_nodeItems);
@@ -363,6 +422,14 @@ void GraphViewer::clearGraph()
 void GraphViewer::clearMap()
 {
 	_gridMap->setPixmap(QPixmap());
+}
+
+void GraphViewer::clearPosterior()
+{
+	for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
+	{
+		iter.value()->setColor(Qt::blue); // blue
+	}
 }
 
 void GraphViewer::clearAll()
@@ -523,7 +590,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else if(r == aSetNodeSize)
 	{
 		bool ok;
-		double value = QInputDialog::getDouble(this, tr("Node radius"), tr("Radius (m)"), _nodeRadius, 0.01, 1, 2, &ok);
+		double value = QInputDialog::getDouble(this, tr("Node radius"), tr("Radius (m)"), _nodeRadius, 0.01, 100, 2, &ok);
 		if(ok)
 		{
 			_nodeRadius = value;
@@ -541,7 +608,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else if(r == aSetLinkSize)
 	{
 		bool ok;
-		double value = QInputDialog::getDouble(this, tr("Link width"), tr("Width (m)"), _linkWidth, 0, 1, 2, &ok);
+		double value = QInputDialog::getDouble(this, tr("Link width"), tr("Width (m)"), _linkWidth, 0, 100, 2, &ok);
 		if(ok)
 		{
 			_linkWidth = value;

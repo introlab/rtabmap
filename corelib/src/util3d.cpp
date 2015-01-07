@@ -2350,6 +2350,7 @@ void optimizeTOROGraph(
 		{
 			if(uContains(depthGraph, iter->first))
 			{
+				UASSERT(!iter->second.isNull());
 				posesToro.insert(std::make_pair(rtabmapToToro.at(iter->first), iter->second));
 			}
 		}
@@ -2359,6 +2360,7 @@ void optimizeTOROGraph(
 		{
 			if(uContains(depthGraph, iter->second.from()) && uContains(depthGraph, iter->second.to()))
 			{
+				UASSERT(!iter->second.transform().isNull());
 				edgeConstraintsToro.insert(std::make_pair(rtabmapToToro.at(iter->first), Link(rtabmapToToro.at(iter->first), rtabmapToToro.at(iter->second.to()), iter->second.type(), iter->second.transform(), iter->second.variance())));
 			}
 		}
@@ -2433,6 +2435,7 @@ void optimizeTOROGraph(
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			float x,y,z, roll,pitch,yaw;
+			UASSERT(!iter->second.isNull());
 			pcl::getTranslationAndEulerAngles(transformToEigen3f(iter->second), x,y,z, roll,pitch,yaw);
 			AISNavigation::TreePoseGraph3::Pose p(x, y, z, roll, pitch, yaw);
 			AISNavigation::TreePoseGraph<AISNavigation::Operations3D<double> >::Vertex* v = pg.addVertex(iter->first, p);
@@ -2451,6 +2454,7 @@ void optimizeTOROGraph(
 			int id1 = iter->first;
 			int id2 = iter->second.to();
 			float x,y,z, roll,pitch,yaw;
+			UASSERT(!iter->second.transform().isNull());
 			pcl::getTranslationAndEulerAngles(transformToEigen3f(iter->second.transform()), x,y,z, roll,pitch,yaw);
 			AISNavigation::TreePoseGraph3::Pose p(x, y, z, roll, pitch, yaw);
 			AISNavigation::TreePoseGraph3::InformationMatrix inf = DMatrix<double>::I(6);
@@ -2939,6 +2943,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 	{
 		if(uContains(occupancy, iter->first))
 		{
+			UASSERT(!iter->second.isNull());
 			const std::pair<cv::Mat, cv::Mat> & pair = occupancy.at(iter->first);
 
 			iter->second.getTranslationAndEulerAngles(x,y,z,toll,pitch,yaw);
@@ -3100,6 +3105,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 	{
 		if(uContains(scans, iter->first) && scans.at(iter->first)->size())
 		{
+			UASSERT(!iter->second.isNull());
 			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = transformPointCloud<pcl::PointXYZ>(scans.at(iter->first), iter->second);
 			pcl::PointXYZ min, max;
 			pcl::getMinMax3D(*cloud, min, max);

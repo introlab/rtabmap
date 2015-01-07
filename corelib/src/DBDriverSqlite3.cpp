@@ -1019,7 +1019,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 			// create the node
 			if(id)
 			{
-				ULOGGER_DEBUG("Creating %d (map=%d)", *iter, mapId);
+				ULOGGER_DEBUG("Creating %d (map=%d, pose=%s)", *iter, mapId, pose.prettyPrint().c_str());
 				Signature * s = new Signature(
 						id,
 						mapId,

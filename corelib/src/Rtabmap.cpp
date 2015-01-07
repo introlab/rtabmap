@@ -1664,20 +1664,33 @@ bool Rtabmap::process(const SensorData & data)
 		statistics_.addStatistic(Statistics::kMemorySignatures_removed(), signaturesRemoved.size());
 
 		//Poses, place this after Transfer! (_optimizedPoses may change)
+		std::map<int, int> mapIds;
 		if(_rgbdSlamMode)
 		{
-			std::map<int, int> mapIds;
 			for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 			{
 				mapIds.insert(std::make_pair(iter->first, _memory->getMapId(iter->first)));
 			}
-
-			statistics_.setMapIds(mapIds);
 			statistics_.setPoses(_optimizedPoses);
 			statistics_.setConstraints(_constraints);
 			statistics_.setMapCorrection(_mapCorrection);
 			UINFO("Set map correction = %s", _mapCorrection.prettyPrint().c_str());
 		}
+		else if(_memory->getLastWorkingSignature())
+		{
+			// no optimization on appearance-only mode
+			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, 0, true);
+			std::map<int, Transform> poses;
+			std::multimap<int, Link> constraints;
+			_memory->getMetricConstraints(uKeys(ids), poses, constraints, false);
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				mapIds.insert(std::make_pair(iter->first, _memory->getMapId(iter->first)));
+			}
+			statistics_.setPoses(poses);
+			statistics_.setConstraints(constraints);
+		}
+		statistics_.setMapIds(mapIds);
 	}
 
 	// Log info...
@@ -2128,11 +2141,17 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 				std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
 				_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
 			}
+		}
+		else
+		{
+			// no optimization on appearance-only mode
+			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
+			_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
+		}
 
-			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-			{
-				mapIds.insert(std::make_pair(iter->first, _memory->getMapId(iter->first)));
-			}
+		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		{
+			mapIds.insert(std::make_pair(iter->first, _memory->getMapId(iter->first)));
 		}
 
 
@@ -2187,22 +2206,17 @@ void Rtabmap::getGraph(
 				std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
 				_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
 			}
-
-			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-			{
-				mapIds.insert(std::make_pair(iter->first, _memory->getMapId(iter->first)));
-			}
 		}
 		else
 		{
-			UWARN("Getting graph while not in RGB-D SLAM mode makes no sense... only map ids are set.");
+			// no optimization on appearance-only mode
+			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
+			_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
 		}
 
-		std::set<int> ids = _memory->getWorkingMem(); // STM + WM
-		ids.insert(_memory->getStMem().begin(), _memory->getStMem().end());
-		if(global)
+		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
-			ids = _memory->getAllSignatureIds(); // STM + WM + LTM
+			mapIds.insert(std::make_pair(iter->first, _memory->getMapId(iter->first)));
 		}
 	}
 	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size()))

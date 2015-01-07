@@ -704,11 +704,6 @@ void Memory::getPose(int locationId, Transform & pose, bool lookInDatabase) cons
 	{
 		pose = s->getPose();
 		mapId = s->mapId();
-
-		if(pose.isNull())
-		{
-			UERROR("Pose of %d is null?!?", locationId);
-		}
 	}
 	else if(lookInDatabase && _dbDriver)
 	{
@@ -1071,7 +1066,7 @@ std::map<int, float> Memory::computeLikelihood(const Signature * signature, cons
 			likelihood.insert(likelihood.end(), std::pair<int, float>(*iter, sim));
 		}
 
-		UDEBUG("compute likelihood... %f s", timer.ticks());
+		UDEBUG("compute likelihood (similarity)... %f s", timer.ticks());
 		return likelihood;
 	}
 	else
@@ -1147,7 +1142,7 @@ std::map<int, float> Memory::computeLikelihood(const Signature * signature, cons
 			}
 		}
 
-		UDEBUG("compute likelihood %f s", timer.ticks());
+		UDEBUG("compute likelihood (tf-idf) %f s", timer.ticks());
 		return likelihood;
 	}
 }
@@ -3558,10 +3553,7 @@ void Memory::getMetricConstraints(
 	{
 		Transform pose;
 		this->getPose(ids[i], pose, lookInDatabase);
-		if(!pose.isNull())
-		{
-			poses.insert(std::make_pair(ids[i], pose));
-		}
+		poses.insert(std::make_pair(ids[i], pose));
 	}
 
 	for(unsigned int i=0; i<ids.size(); ++i)
@@ -3571,7 +3563,7 @@ void Memory::getMetricConstraints(
 			std::map<int, Link> neighbors = this->getNeighborLinks(ids[i], lookInDatabase); // only direct neighbors
 			for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
 			{
-				if(!jter->second.transform().isNull() && uContains(poses, jter->first))
+				if(uContains(poses, jter->first))
 				{
 					bool edgeAlreadyAdded = false;
 					for(std::multimap<int, Link>::iterator iter = links.lower_bound(jter->first);
@@ -3594,7 +3586,6 @@ void Memory::getMetricConstraints(
 			for(std::map<int, Link>::iterator jter=loops.begin(); jter!=loops.end(); ++jter)
 			{
 				if(jter->first < ids[i] &&
-					!jter->second.transform().isNull() &&
 					uContains(poses, jter->first))
 				{
 					links.insert(std::make_pair(ids[i],jter->second));
