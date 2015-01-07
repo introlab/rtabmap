@@ -925,6 +925,10 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			if(uContains(defaults, key))
 			{
 				this->setParameter(key, defaults.at(key));
+				if(qobject_cast<const QGroupBox*>(children.at(i)))
+				{
+					this->resetSettings((QGroupBox*)children.at(i));
+				}
 			}
 			else if(qobject_cast<const QGroupBox*>(children.at(i)))
 			{

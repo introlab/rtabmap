@@ -1588,7 +1588,7 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 		   !_emptyNewDatabase)
 		{
 			// Temp database used, automatically backup with unique name (timestamp)
-			QString newName = QDateTime::currentDateTime().toString("yyMMdd-hhmmsszzz");
+			QString newName = QDateTime::currentDateTime().toString("yyMMdd-hhmmss");
 			bool ok = false;
 			newName = QInputDialog::getText(this, tr("Saving database..."), tr("Database name:"), QLineEdit::Normal, newName, &ok);
 			while(ok)
