@@ -230,6 +230,11 @@ SensorData DBReader::getNextData()
 					pose,
 					variance,
 					seq);
+			UDEBUG("Laser=%d RGB/Left=%d Depth=%d Right=%d",
+					data.laserScan().empty()?0:1,
+					data.image().empty()?0:1,
+					data.depth().empty()?0:1,
+					data.rightImage().empty()?0:1);
 		}
 	}
 	else

@@ -1308,7 +1308,7 @@ void OdometryThread::mainLoop()
 
 void OdometryThread::addData(const SensorData & data)
 {
-	if(data.image().empty() || data.depth().empty() || data.fx() == 0.0f || data.fy() == 0.0f)
+	if(data.image().empty() || data.depthOrRightImage().empty() || data.fx() == 0.0f || data.fyOrBaseline() == 0.0f)
 	{
 		ULOGGER_ERROR("image empty !?");
 		return;

@@ -406,9 +406,30 @@ void DatabaseViewer::updateIds()
 		std::map<int, int> nids = memory_->getNeighborsId(memory_->getLastWorkingSignature()->id(), 0, -1, true);
 		memory_->getMetricConstraints(uKeys(nids), poses_, links_, true);
 
-		int first = nids.begin()->first;
-		ui_->spinBox_optimizationsFrom->setRange(first, memory_->getLastWorkingSignature()->id());
-		ui_->spinBox_optimizationsFrom->setValue(first);
+		if(poses_.size())
+		{
+			bool nullPoses = poses_.begin()->second.isNull();
+			for(std::map<int,Transform>::iterator iter=poses_.begin(); iter!=poses_.end(); ++iter)
+			{
+				if((!iter->second.isNull() && nullPoses) ||
+					(iter->second.isNull() && !nullPoses))
+				{
+					UWARN("Mixed valid and null poses! Ignoring graph...");
+					poses_.clear();
+					links_.clear();
+					break;
+				}
+			}
+			if(nullPoses)
+			{
+				poses_.clear();
+				links_.clear();
+			}
+
+			int first = nids.begin()->first;
+			ui_->spinBox_optimizationsFrom->setRange(first, memory_->getLastWorkingSignature()->id());
+			ui_->spinBox_optimizationsFrom->setValue(first);
+		}
 	}
 
 	ui_->actionGenerate_TORO_graph_graph->setEnabled(false);
