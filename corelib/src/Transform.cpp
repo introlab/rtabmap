@@ -131,13 +131,6 @@ void Transform::setIdentity()
 	*this = getIdentity();
 }
 
-Transform Transform::getIdentity()
-{
-	return Transform(1,0,0,0,
-					 0,1,0,0,
-					 0,0,1,0);
-}
-
 Transform Transform::inverse() const
 {
 	Eigen::Matrix4f m = util3d::transformToEigen4f(*this);

@@ -96,7 +96,10 @@ public:
 	bool operator==(const Transform & t) const;
 	bool operator!=(const Transform & t) const;
 
-	static Transform getIdentity();
+	static Transform getIdentity()
+	{
+		return Transform(1,0,0,0, 0,1,0,0, 0,0,1,0);
+	}
 
 private:
 	std::vector<float> data_;
