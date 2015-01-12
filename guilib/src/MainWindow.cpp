@@ -3507,6 +3507,10 @@ void MainWindow::selectScreenCaptureFormat(bool checked)
 				_autoScreenCaptureOdomSync = true;
 			}
 		}
+		else
+		{
+			_ui->actionAuto_screen_capture->setChecked(false);
+		}
 	}
 }
 
