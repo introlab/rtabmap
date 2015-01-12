@@ -1708,22 +1708,9 @@ QString PreferencesDialog::loadCustomConfig(const QString & section, const QStri
 	return value;
 }
 
-void PreferencesDialog::selectSourceImage(Src src)
+void PreferencesDialog::selectSourceImage(Src src, bool ckecked)
 {
 	ULOGGER_DEBUG("");
-
-	if(_ui->general_checkBox_activateRGBD->isChecked())
-	{
-		int button = QMessageBox::information(this,
-				tr("Desactivate RGB-D SLAM?"),
-				tr("You've selected source input as images only and RGB-D SLAM mode is activated. "
-				   "RGB-D SLAM cannot work with images only so do you want to desactivate it?"),
-				QMessageBox::Yes | QMessageBox::No);
-		if(button & QMessageBox::Yes)
-		{
-			_ui->general_checkBox_activateRGBD->setChecked(false);
-		}
-	}
 
 	bool fromPrefDialog = false;
 	//bool modified = false;
@@ -1743,56 +1730,85 @@ void PreferencesDialog::selectSourceImage(Src src)
 			src = kSrcUsbDevice;
 		}
 	}
-	else
-	{
-		// from user
-		_ui->groupBox_sourceImage->setChecked(true);
-	}
 
-	if(src == kSrcImages)
+	if(!fromPrefDialog)
 	{
-		QString path = QFileDialog::getExistingDirectory(this, QString(), _ui->source_images_lineEdit_path->text());
-		QDir dir(path);
-		if(!path.isEmpty() && dir.exists())
+		if(ckecked)
 		{
-			QStringList filters;
-			filters << "*.jpg" << "*.ppm" << "*.bmp" << "*.png" << "*.pnm" << "*.tiff";
-			dir.setNameFilters(filters);
-			QFileInfoList files = dir.entryInfoList();
-			if(!files.empty())
+			if(_ui->general_checkBox_activateRGBD->isChecked())
 			{
-				_ui->source_comboBox_image_type->setCurrentIndex(1);
-				_ui->source_images_lineEdit_path->setText(path);
-				_ui->source_images_spinBox_startPos->setValue(1);
-				_ui->source_images_refreshDir->setChecked(false);
-			}
-			else
-			{
-				QMessageBox::information(this,
-										   tr("RTAB-Map"),
-										   tr("Images must be one of these formats: ") + filters.join(" "));
+				int button = QMessageBox::information(this,
+						tr("Desactivate RGB-D SLAM?"),
+						tr("You've selected source input as images only and RGB-D SLAM mode is activated. "
+						   "RGB-D SLAM cannot work with images only so do you want to desactivate it?"),
+						QMessageBox::Yes | QMessageBox::No);
+				if(button & QMessageBox::Yes)
+				{
+					_ui->general_checkBox_activateRGBD->setChecked(false);
+				}
 			}
 		}
-	}
-	else if(src == kSrcVideo)
-	{
-		QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->source_video_lineEdit_path->text(), tr("Videos (*.avi *.mpg *.mp4)"));
-		QFile file(path);
-		if(!path.isEmpty() && file.exists())
-		{
-			_ui->source_comboBox_image_type->setCurrentIndex(2);
-			_ui->source_video_lineEdit_path->setText(path);
-		}
-	}
-	else // kSrcUsbDevice
-	{
-		_ui->source_comboBox_image_type->setCurrentIndex(0);
+
+		_ui->groupBox_sourceImage->setChecked(false);
 	}
 
-	if(!fromPrefDialog && _obsoletePanels)
+	if(ckecked)
+	{
+		if(src == kSrcImages)
+		{
+			QString path = QFileDialog::getExistingDirectory(this, QString(), _ui->source_images_lineEdit_path->text());
+			QDir dir(path);
+			if(!path.isEmpty() && dir.exists())
+			{
+				QStringList filters;
+				filters << "*.jpg" << "*.ppm" << "*.bmp" << "*.png" << "*.pnm" << "*.tiff";
+				dir.setNameFilters(filters);
+				QFileInfoList files = dir.entryInfoList();
+				if(!files.empty())
+				{
+					_ui->source_comboBox_image_type->setCurrentIndex(1);
+					_ui->source_images_lineEdit_path->setText(path);
+					_ui->source_images_spinBox_startPos->setValue(1);
+					_ui->source_images_refreshDir->setChecked(false);
+					_ui->groupBox_sourceImage->setChecked(true);
+				}
+				else
+				{
+					QMessageBox::information(this,
+											   tr("RTAB-Map"),
+											   tr("Images must be one of these formats: ") + filters.join(" "));
+				}
+			}
+		}
+		else if(src == kSrcVideo)
+		{
+			QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->source_video_lineEdit_path->text(), tr("Videos (*.avi *.mpg *.mp4)"));
+			QFile file(path);
+			if(!path.isEmpty() && file.exists())
+			{
+				_ui->source_comboBox_image_type->setCurrentIndex(2);
+				_ui->source_video_lineEdit_path->setText(path);
+				_ui->groupBox_sourceImage->setChecked(true);
+			}
+		}
+		else // kSrcUsbDevice
+		{
+			_ui->source_comboBox_image_type->setCurrentIndex(0);
+			_ui->groupBox_sourceImage->setChecked(true);
+		}
+	}
+
+	if(_ui->groupBox_sourceImage->isChecked())
 	{
 		_ui->groupBox_sourceDatabase->setChecked(false);
 		_ui->groupBox_sourceOpenni->setChecked(false);
+	}
+
+	if(!fromPrefDialog)
+	{
+		// Even if there is no change, MainWindow should be notified
+		makeObsoleteSourcePanel();
+
 		if(validateForm())
 		{
 			this->writeSettings();
@@ -1804,72 +1820,85 @@ void PreferencesDialog::selectSourceImage(Src src)
 	}
 }
 
-void PreferencesDialog::selectSourceDatabase(bool user)
+void PreferencesDialog::selectSourceDatabase(bool user, bool ckecked)
 {
 	ULOGGER_DEBUG("");
 
-	QString dir = _ui->source_database_lineEdit_path->text();
-	if(dir.isEmpty())
+	if(user)
 	{
-		dir = getWorkingDirectory();
+		_ui->groupBox_sourceDatabase->setChecked(false);
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("RTAB-Map database files (*.db)"));
-	QFile file(path);
-	if(!path.isEmpty() && file.exists())
+
+	if(ckecked)
 	{
-		int r = QMessageBox::question(this, tr("Odometry in database..."), tr("Use odometry saved in database (if some saved)?"), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
-
-		if(user)
+		QString dir = _ui->source_database_lineEdit_path->text();
+		if(dir.isEmpty())
 		{
-			// from user
-			_ui->groupBox_sourceDatabase->setChecked(true);
+			dir = getWorkingDirectory();
 		}
-
-		_ui->source_checkBox_ignoreOdometry->setChecked(r != QMessageBox::Yes);
-		_ui->source_database_lineEdit_path->setText(path);
-		_ui->source_spinBox_databaseStartPos->setValue(0);
-
-		if(user && _obsoletePanels)
+		QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("RTAB-Map database files (*.db)"));
+		QFile file(path);
+		if(!path.isEmpty() && file.exists())
 		{
-			_ui->groupBox_sourceImage->setChecked(false);
-			_ui->groupBox_sourceOpenni->setChecked(false);
-			if(validateForm())
-			{
-				this->writeSettings();
-			}
-			else
-			{
-				this->readSettingsBegin();
-			}
+			int r = QMessageBox::question(this, tr("Odometry in database..."), tr("Use odometry saved in database (if some saved)?"), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+
+			_ui->groupBox_sourceDatabase->setChecked(true);
+			_ui->source_checkBox_ignoreOdometry->setChecked(r != QMessageBox::Yes);
+			_ui->source_database_lineEdit_path->setText(path);
+			_ui->source_spinBox_databaseStartPos->setValue(0);
+		}
+	}
+
+	if(_ui->groupBox_sourceDatabase->isChecked())
+	{
+		_ui->groupBox_sourceImage->setChecked(false);
+		_ui->groupBox_sourceOpenni->setChecked(false);
+	}
+
+	if(user)
+	{
+		// Even if there is no change, MainWindow should be notified
+		makeObsoleteSourcePanel();
+
+		if(validateForm())
+		{
+			this->writeSettings();
+		}
+		else
+		{
+			this->readSettingsBegin();
 		}
 	}
 }
 
-void PreferencesDialog::selectSourceRGBD(Src src)
+void PreferencesDialog::selectSourceRGBD(Src src, bool ckecked)
 {
 	ULOGGER_DEBUG("");
 
-	if(!_ui->general_checkBox_activateRGBD->isChecked())
+	if(ckecked)
 	{
-		int button = QMessageBox::information(this,
-				tr("Activate RGB-D SLAM?"),
-				tr("You've selected RGB-D camera as source input, "
-				   "would you want to activate RGB-D SLAM mode?"),
-				QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
-		if(button & QMessageBox::Yes)
+		if(!_ui->general_checkBox_activateRGBD->isChecked())
 		{
-			_ui->general_checkBox_activateRGBD->setChecked(true);
+			int button = QMessageBox::information(this,
+					tr("Activate RGB-D SLAM?"),
+					tr("You've selected RGB-D camera as source input, "
+					   "would you want to activate RGB-D SLAM mode?"),
+					QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+			if(button & QMessageBox::Yes)
+			{
+				_ui->general_checkBox_activateRGBD->setChecked(true);
+			}
 		}
 	}
 
-	_ui->groupBox_sourceOpenni->setChecked(true);
+	_ui->groupBox_sourceOpenni->setChecked(ckecked);
 	_ui->radioButton_opennipcl->setChecked(src == kSrcOpenNI_PCL);
 	_ui->radioButton_freenect->setChecked(src == kSrcFreenect);
 	_ui->radioButton_opennicv->setChecked(src == kSrcOpenNI_CV);
 	_ui->radioButton_opennicvasus->setChecked(src == kSrcOpenNI_CV_ASUS);
 	_ui->radioButton_openni2->setChecked(src == kSrcOpenNI2);
 
-	if(_obsoletePanels)
+	if(_ui->groupBox_sourceOpenni->isChecked())
 	{
 		_ui->groupBox_sourceImage->setChecked(false);
 		_ui->groupBox_sourceDatabase->setChecked(false);
@@ -1893,15 +1922,18 @@ void PreferencesDialog::selectSourceRGBD(Src src)
 				this->resetCalibration();
 			}
 		}
+	}
 
-		if(validateForm())
-		{
-			this->writeSettings();
-		}
-		else
-		{
-			this->readSettingsBegin();
-		}
+	if(validateForm())
+	{
+		// Even if there is no change, MainWindow should be notified
+		makeObsoleteSourcePanel();
+
+		this->writeSettings();
+	}
+	else
+	{
+		this->readSettingsBegin();
 	}
 }
 
@@ -2792,9 +2824,20 @@ bool PreferencesDialog::isSourceOpenniUsed() const
 }
 
 
-int PreferencesDialog::getSourceImageType() const
+PreferencesDialog::Src PreferencesDialog::getSourceImageType() const
 {
-	return _ui->source_comboBox_image_type->currentIndex();
+	if(_ui->source_comboBox_image_type->currentIndex() == 1)
+	{
+		return kSrcImages;
+	}
+	else if(_ui->source_comboBox_image_type->currentIndex() == 2)
+	{
+		return kSrcVideo;
+	}
+	else
+	{
+		return kSrcUsbDevice;
+	}
 }
 QString PreferencesDialog::getSourceImageTypeStr() const
 {

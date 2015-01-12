@@ -158,7 +158,7 @@ public:
 	bool isSourceImageUsed() const;
 	bool isSourceDatabaseUsed() const;
 	bool isSourceOpenniUsed() const;
-	int getSourceImageType() const;
+	PreferencesDialog::Src getSourceImageType() const;
 	QString getSourceImageTypeStr() const;
 	int getSourceWidth() const;
 	int getSourceHeight() const;
@@ -211,9 +211,9 @@ public slots:
 	void setHardThr(int value);
 	void setTimeLimit(float value);
 	void setSLAMMode(bool enabled);
-	void selectSourceImage(Src src = kSrcUndef);
-	void selectSourceDatabase(bool user = false);
-	void selectSourceRGBD(Src src = kSrcUndef);
+	void selectSourceImage(Src src = kSrcUndef, bool checked = true);
+	void selectSourceDatabase(bool user = false, bool checked = true);
+	void selectSourceRGBD(Src src = kSrcUndef, bool checked = true);
 
 private slots:
 	void closeDialog ( QAbstractButton * button );

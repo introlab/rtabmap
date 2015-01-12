@@ -305,7 +305,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 #endif
 
 	//Settings menu
-	this->updateSelectSourceImageMenu(_preferencesDialog->getSourceImageType());
+	this->updateSelectSourceImageMenu(_preferencesDialog->isSourceImageUsed(), _preferencesDialog->getSourceImageType());
 	connect(_ui->actionImageFiles, SIGNAL(triggered()), this, SLOT(selectImages()));
 	connect(_ui->actionVideo, SIGNAL(triggered()), this, SLOT(selectVideo()));
 	connect(_ui->actionUsbCamera, SIGNAL(triggered()), this, SLOT(selectStream()));
@@ -1725,7 +1725,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 	{
 		// Camera settings...
 		_ui->doubleSpinBox_stats_imgRate->setValue(_preferencesDialog->getGeneralInputRate());
-		this->updateSelectSourceImageMenu(_preferencesDialog->getSourceImageType());
+		this->updateSelectSourceImageMenu(_preferencesDialog->isSourceImageUsed(), _preferencesDialog->getSourceImageType());
 		this->updateSelectSourceDatabase(_preferencesDialog->isSourceDatabaseUsed());
 		this->updateSelectSourceRGBDMenu(_preferencesDialog->isSourceOpenniUsed(), _preferencesDialog->getSourceRGBD());
 		QString src;
@@ -2012,32 +2012,11 @@ void MainWindow::resizeEvent(QResizeEvent* anEvent)
 	_ui->imageView_odometry->resetZoom();
 }
 
-void MainWindow::updateSelectSourceImageMenu(int type)
+void MainWindow::updateSelectSourceImageMenu(bool used, PreferencesDialog::Src src)
 {
-	if(_preferencesDialog->isSourceImageUsed())
-	{
-		switch(type)
-		{
-		case 0:
-			_ui->actionUsbCamera->setChecked(true);
-			break;
-		case 1:
-			_ui->actionImageFiles->setChecked(true);
-			break;
-		case 2:
-			_ui->actionVideo->setChecked(true);
-			break;
-		default:
-			UERROR("Unknown source image type");
-			break;
-		}
-	}
-	else
-	{
-		// they are exclusive actions, so check/uncheck one should disable all.
-		_ui->actionUsbCamera->setChecked(true);
-		_ui->actionUsbCamera->setChecked(false);
-	}
+	_ui->actionUsbCamera->setChecked(used && src == PreferencesDialog::kSrcUsbDevice);
+	_ui->actionImageFiles->setChecked(used && src == PreferencesDialog::kSrcImages);
+	_ui->actionVideo->setChecked(used && src == PreferencesDialog::kSrcVideo);
 }
 
 void MainWindow::updateSelectSourceDatabase(bool used)
@@ -3205,47 +3184,47 @@ void MainWindow::updateEditMenu()
 
 void MainWindow::selectImages()
 {
-	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcImages);
+	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcImages, _ui->actionImageFiles->isChecked());
 }
 
 void MainWindow::selectVideo()
 {
-	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcVideo);
+	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcVideo, _ui->actionVideo->isChecked());
 }
 
 void MainWindow::selectStream()
 {
-	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcUsbDevice);
+	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcUsbDevice, _ui->actionUsbCamera->isChecked());
 }
 
 void MainWindow::selectDatabase()
 {
-	_preferencesDialog->selectSourceDatabase(true);
+	_preferencesDialog->selectSourceDatabase(true, _ui->actionDatabase->isChecked());
 }
 
 void MainWindow::selectOpenni()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_PCL);
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_PCL, _ui->actionOpenNI_PCL->isChecked());
 }
 
 void MainWindow::selectFreenect()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcFreenect);
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcFreenect, _ui->actionFreenect->isChecked());
 }
 
 void MainWindow::selectOpenniCv()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV);
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV, _ui->actionOpenNI_CV->isChecked());
 }
 
 void MainWindow::selectOpenniCvAsus()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV_ASUS);
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV_ASUS, _ui->actionOpenNI_CV_ASUS->isChecked());
 }
 
 void MainWindow::selectOpenni2()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI2);
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI2, _ui->actionOpenNI2->isChecked());
 }
 
 
