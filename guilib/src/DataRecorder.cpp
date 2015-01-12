@@ -60,7 +60,7 @@ bool DataRecorder::init(const QString & path, bool recordInRAM)
 		ParametersMap customParameters;
 		customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
 		customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "-1")); // desactivate keypoints extraction
-		customParameters.insert(ParametersPair(Parameters::kMemImageKept(), "true")); // to keep images
+		customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "true")); // to keep images
 		if(!recordInRAM)
 		{
 			customParameters.insert(ParametersPair(Parameters::kDbSqlite3InMemory(), "false")); // to keep images

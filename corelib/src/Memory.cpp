@@ -57,6 +57,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_dbDriver(0),
 	_similarityThreshold(Parameters::defaultMemRehearsalSimilarity()),
 	_rawDataKept(Parameters::defaultMemImageKept()),
+	_binDataKept(Parameters::defaultMemBinDataKept()),
 	_keepRehearsedNodesInDb(Parameters::defaultMemRehearsedNodesKept()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
 	_maxStMemSize(Parameters::defaultMemSTMSize()),
@@ -363,6 +364,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	ParametersMap::const_iterator iter;
 
 	Parameters::parse(parameters, Parameters::kMemImageKept(), _rawDataKept);
+	Parameters::parse(parameters, Parameters::kMemBinDataKept(), _binDataKept);
 	Parameters::parse(parameters, Parameters::kMemRehearsedNodesKept(), _keepRehearsedNodesInDb);
 	Parameters::parse(parameters, Parameters::kMemRehearsalIdUpdatedToNewOne(), _idUpdatedToNewOneRehearsal);
 	Parameters::parse(parameters, Parameters::kMemGenerateIds(), _generateIds);
@@ -514,7 +516,7 @@ bool Memory::update(const SensorData & data, Statistics * stats)
 	//============================================================
 	// Create a signature with the image received.
 	//============================================================
-	Signature * signature = this->createSignature(data, this->isRawDataKept(), stats);
+	Signature * signature = this->createSignature(data, stats);
 	if (signature == 0)
 	{
 		UERROR("Failed to create a signature...");
@@ -2484,7 +2486,7 @@ cv::Mat Memory::getImageCompressed(int signatureId) const
 	{
 		image = s->getImageCompressed();
 	}
-	if(image.empty() && this->isRawDataKept() && _dbDriver)
+	if(image.empty() && this->isBinDataKept() && _dbDriver)
 	{
 		_dbDriver->getNodeData(signatureId, image);
 	}
@@ -2877,7 +2879,7 @@ private:
 	VWDictionary * _vwp;
 };
 
-Signature * Memory::createSignature(const SensorData & data, bool keepRawData, Statistics * stats)
+Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 {
 	UASSERT(data.image().empty() || data.image().type() == CV_8UC1 || data.image().type() == CV_8UC3);
 	UASSERT(data.depth().empty() || data.depth().type() == CV_16UC1 || data.depth().type() == CV_32FC1);
@@ -3283,7 +3285,7 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData, S
 	}
 
 	Signature * s;
-	if(keepRawData)
+	if(this->isBinDataKept())
 	{
 		std::vector<unsigned char> imageBytes;
 		std::vector<unsigned char> depthBytes;
@@ -3323,9 +3325,6 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData, S
 			data.cx(),
 			data.cy(),
 			data.localTransform());
-		s->setImageRaw(data.image());
-		s->setDepthRaw(depthOrRightImage);
-		s->setLaserScanRaw(data.laserScan());
 	}
 	else
 	{
@@ -3335,6 +3334,12 @@ Signature * Memory::createSignature(const SensorData & data, bool keepRawData, S
 			words3D,
 			data.pose(),
 			util3d::compressData2(data.laserScan()));
+	}
+	if(this->isRawDataKept())
+	{
+		s->setImageRaw(data.image());
+		s->setDepthRaw(data.depth());
+		s->setLaserScanRaw(data.laserScan());
 	}
 
 

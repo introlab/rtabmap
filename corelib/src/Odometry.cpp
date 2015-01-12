@@ -158,7 +158,7 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 	customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(this->getMaxDepth())));
 	customParameters.insert(ParametersPair(Parameters::kKpRoiRatios(), this->getRoiRatios()));
 	customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-	customParameters.insert(ParametersPair(Parameters::kMemImageKept(), "false"));
+	customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
 	customParameters.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
 	int nn = Parameters::defaultOdomBowNNType();
 	float nndr = Parameters::defaultOdomBowNNDR();

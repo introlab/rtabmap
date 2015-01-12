@@ -183,7 +183,8 @@ class RTABMAP_EXP Parameters
 
 	// Memory
 	RTABMAP_PARAM(Mem, RehearsalSimilarity,     float, 0.6, 	"Rehearsal similarity.");
-	RTABMAP_PARAM(Mem, ImageKept, 		        bool, true, 	"Keep images in db.");
+	RTABMAP_PARAM(Mem, ImageKept, 		        bool, false, 	"Keep raw images in RAM.");
+	RTABMAP_PARAM(Mem, BinDataKept, 		    bool, true, 	"Keep binary data in db.");
 	RTABMAP_PARAM(Mem, RehearsedNodesKept, 	    bool, true, 	"Keep rehearsed ndoes in db.");
 	RTABMAP_PARAM(Mem, STMSize, 		        unsigned int, 10, "Short-term memory size.");
 	RTABMAP_PARAM(Mem, IncrementalMemory, 	    bool, true, 	"SLAM mode, othwersize it is Localization mode.");

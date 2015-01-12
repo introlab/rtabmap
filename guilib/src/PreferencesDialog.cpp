@@ -327,6 +327,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	// Memory
 	_ui->general_checkBox_keepRawData->setObjectName(Parameters::kMemImageKept().c_str());
+	_ui->general_checkBox_keepBinaryData->setObjectName(Parameters::kMemBinDataKept().c_str());
 	_ui->general_checkBox_keepRehearsedNodes->setObjectName(Parameters::kMemRehearsedNodesKept().c_str());
 	_ui->general_spinBox_maxStMemSize->setObjectName(Parameters::kMemSTMSize().c_str());
 	_ui->doubleSpinBox_similarityThreshold->setObjectName(Parameters::kMemRehearsalSimilarity().c_str());

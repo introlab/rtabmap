@@ -103,6 +103,7 @@ public:
 	std::map<int, Link> getLoopClosureLinks(int signatureId,
 			bool lookInDatabase = false) const;
 	bool isRawDataKept() const {return _rawDataKept;}
+	bool isBinDataKept() const {return _binDataKept;}
 	float getSimilarityThreshold() const {return _similarityThreshold;}
 	std::map<int, int> getWeights() const;
 	int getLastSignatureId() const;
@@ -183,7 +184,6 @@ private:
 	void copyData(const Signature * from, Signature * to);
 	Signature * createSignature(
 			const SensorData & data,
-			bool keepRawData=false,
 			Statistics * stats = 0);
 
 	//keypoint stuff
@@ -199,6 +199,7 @@ private:
 	// parameters
 	float _similarityThreshold;
 	bool _rawDataKept;
+	bool _binDataKept;
 	bool _keepRehearsedNodesInDb;
 	bool _incrementalMemory;
 	int _maxStMemSize;

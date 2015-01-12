@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>732</width>
-            <height>1302</height>
+            <width>744</width>
+            <height>1056</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>0</number>
+                <number>8</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -2811,6 +2811,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    <layout class="QVBoxLayout" name="verticalLayout_10">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_42" columnstretch="0,1">
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_retrieved_4">
+                        <property name="text">
+                         <string>Initialize the Woking Memory with all nodes from Long-Term memory, instead of only nodes of the last session. This may be useful in localization mode, where less processing time is required than in SLAM mode, so more nodes can be kept in Working Memory.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="0" column="0">
                        <widget class="QSpinBox" name="general_spinBox_maxStMemSize">
                         <property name="minimum">
@@ -2936,13 +2946,23 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="1">
-                       <widget class="QLabel" name="label_retrieved_4">
+                      <item row="6" column="1">
+                       <widget class="QLabel" name="label_retrieved_5">
                         <property name="text">
-                         <string>Initialize the Woking Memory with all nodes from Long-Term memory, instead of only nodes of the last session. This may be useful in localization mode, where less processing time is required than in SLAM mode, so more nodes can be kept in Working Memory.</string>
+                         <string>Keep raw sensor data. Only useful to save loop closure computation time when features re-extraction is enabled. Disable to save RAM memory.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_keepRawData">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
                         </property>
                        </widget>
                       </item>
@@ -3021,7 +3041,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    </property>
                    <layout class="QGridLayout" name="gridLayout_11" columnstretch="0,1">
                     <item row="0" column="0">
-                     <widget class="QCheckBox" name="general_checkBox_keepRawData">
+                     <widget class="QCheckBox" name="general_checkBox_keepBinaryData">
                       <property name="text">
                        <string/>
                       </property>
@@ -3033,7 +3053,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item row="0" column="1">
                      <widget class="QLabel" name="label_keepRawData">
                       <property name="text">
-                       <string>Keep raw sensor data.</string>
+                       <string>Keep sensor compressed data.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>

@@ -2839,7 +2839,7 @@ void MainWindow::postProcessing()
 			ParametersMap customParameters;
 			// override some parameters
 			customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-			customParameters.insert(ParametersPair(Parameters::kMemImageKept(), "false"));
+			customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
 			customParameters.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
 			customParameters.insert(ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
 			customParameters.insert(ParametersPair(Parameters::kKpNNStrategy(), parameters.at(Parameters::kLccReextractNNType())));

@@ -1256,7 +1256,7 @@ bool Rtabmap::process(const SensorData & data)
 				// override some parameters
 				uInsert(customParameters, ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
 				uInsert(customParameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-				uInsert(customParameters, ParametersPair(Parameters::kMemImageKept(), "false"));
+				uInsert(customParameters, ParametersPair(Parameters::kMemBinDataKept(), "false"));
 				uInsert(customParameters, ParametersPair(Parameters::kMemSTMSize(), "0"));
 				uInsert(customParameters, ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
 				uInsert(customParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
