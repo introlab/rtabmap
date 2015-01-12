@@ -45,6 +45,7 @@ public:
 
 	void setSaveButton();
 	void setOkButton();
+	void enableRegeneration(bool enabled);
 
 	bool getAssemble() const;
 	double getAssembleVoxel() const;

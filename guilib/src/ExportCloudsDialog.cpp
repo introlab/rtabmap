@@ -56,6 +56,15 @@ void ExportCloudsDialog::setOkButton()
 	_ui->checkBox_binary->setVisible(false);
 }
 
+void ExportCloudsDialog::enableRegeneration(bool enabled)
+{
+	if(!enabled)
+	{
+		_ui->groupBox_regenerate->setChecked(false);
+	}
+	_ui->groupBox_regenerate->setEnabled(enabled);
+}
+
 bool ExportCloudsDialog::getAssemble() const
 {
 	return _ui->groupBox_assemble->isChecked();

@@ -1060,6 +1060,11 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		this->captureScreen();
 	}
 	_processingStatistics = false;
+
+	if(!_preferencesDialog->isImagesKept())
+	{
+		_cachedSignatures.clear();
+	}
 }
 
 void MainWindow::updateMapCloud(
@@ -1101,7 +1106,7 @@ void MainWindow::updateMapCloud(
 			}
 		}
 
-		_ui->actionPost_processing->setEnabled(_currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
+		_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
 	}
 
 	// filter duplicated poses
@@ -1518,10 +1523,10 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 	if(_currentPosesMap.find(nodeId) != _currentPosesMap.end())
 	{
 		QMap<std::string, Transform> viewerClouds = _ui->widget_cloudViewer->getAddedClouds();
-		if(_preferencesDialog->isCloudsShown(0) && _cachedSignatures.contains(nodeId))
+		if(_preferencesDialog->isCloudsShown(0))
 		{
 			std::string cloudName = uFormat("cloud%d", nodeId);
-			if(visible && !viewerClouds.contains(cloudName))
+			if(visible && !viewerClouds.contains(cloudName) && _cachedSignatures.contains(nodeId))
 			{
 				createAndAddCloudToMap(nodeId, _currentPosesMap.find(nodeId)->second, uValue(_currentMapIds, nodeId, -1));
 			}
@@ -1536,10 +1541,10 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 			}
 		}
 
-		if(_preferencesDialog->isScansShown(0) && _cachedSignatures.contains(nodeId))
+		if(_preferencesDialog->isScansShown(0))
 		{
 			std::string scanName = uFormat("scan%d", nodeId);
-			if(visible && !viewerClouds.contains(scanName))
+			if(visible && !viewerClouds.contains(scanName) && _cachedSignatures.contains(nodeId))
 			{
 				createAndAddScanToMap(nodeId, _currentPosesMap.find(nodeId)->second, uValue(_currentMapIds, nodeId, -1));
 			}
@@ -1714,6 +1719,11 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		}
 
 		_initProgressDialog->appendText(tr("%1 locations are updated to/inserted in the cache.").arg(event.getPoses().size()));
+
+		if(!_preferencesDialog->isImagesKept())
+		{
+			_cachedSignatures.clear();
+		}
 	}
 	_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
 }
@@ -2711,6 +2721,11 @@ void MainWindow::generateTOROMap()
 
 void MainWindow::postProcessing()
 {
+	if(_cachedSignatures.size() == 0)
+	{
+		UERROR("Signatures must be cached in the GUI to post processing.");
+		return;
+	}
 	if(_postProcessingDialog->exec() != QDialog::Accepted)
 	{
 		return;
@@ -3901,6 +3916,7 @@ bool MainWindow::getExportedClouds(
 	{
 		_exportDialog->setOkButton();
 	}
+	_exportDialog->enableRegeneration(_preferencesDialog->isImagesKept());
 	if(_exportDialog->exec() == QDialog::Accepted)
 	{
 		std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
@@ -4453,14 +4469,15 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::getAssembledCloud(
 		bool inserted = false;
 		if(!iter->second.isNull())
 		{
-			if(_cachedSignatures.contains(iter->first))
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+			if(regenerateClouds)
 			{
-				const Signature & s = _cachedSignatures.find(iter->first).value();
-				cv::Mat image, depth;
-				s.uncompressDataConst(&image, &depth, 0);
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-				if(regenerateClouds)
+				if(_cachedSignatures.contains(iter->first))
 				{
+					const Signature & s = _cachedSignatures.find(iter->first).value();
+					cv::Mat image, depth;
+					s.uncompressDataConst(&image, &depth, 0);
+
 					cloud = createCloud(iter->first,
 							image,
 							depth,
@@ -4474,22 +4491,22 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::getAssembledCloud(
 							regenerateDecimation,
 							regenerateMaxDepth);
 				}
-				else if(uContains(_createdClouds, iter->first))
+				else
 				{
-					cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(_createdClouds.at(iter->first), iter->second);
-				}
-
-				if(cloud->size())
-				{
-					*assembledCloud += *cloud;
-
-					inserted = true;
-					++count;
+					UWARN("Cloud %d not found in cache!", iter->first);
 				}
 			}
-			else
+			else if(uContains(_createdClouds, iter->first))
 			{
-				UERROR("Cloud %d not found?!?", iter->first);
+				cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(_createdClouds.at(iter->first), iter->second);
+			}
+
+			if(cloud->size())
+			{
+				*assembledCloud += *cloud;
+
+				inserted = true;
+				++count;
 			}
 		}
 		else
@@ -4539,41 +4556,41 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
 		bool inserted = false;
 		if(!iter->second.isNull())
 		{
-			if(_cachedSignatures.contains(iter->first))
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+			if(regenerateClouds)
 			{
-				const Signature & s = _cachedSignatures.find(iter->first).value();
-				cv::Mat image, depth;
-				s.uncompressDataConst(&image, &depth, 0);
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-				if(regenerateClouds)
+				if(_cachedSignatures.contains(iter->first))
 				{
-					cloud = createCloud(iter->first,
-							image,
-							depth,
-							s.getDepthFx(),
-							s.getDepthFy(),
-							s.getDepthCx(),
-							s.getDepthCy(),
-							s.getLocalTransform(),
-							Transform::getIdentity(),
-							regenerateVoxelSize,
-							regenerateDecimation,
-							regenerateMaxDepth);
+					const Signature & s = _cachedSignatures.find(iter->first).value();
+					cv::Mat image, depth;
+					s.uncompressDataConst(&image, &depth, 0);
+					cloud =	 createCloud(iter->first,
+						image,
+						depth,
+						s.getDepthFx(),
+						s.getDepthFy(),
+						s.getDepthCx(),
+						s.getDepthCy(),
+						s.getLocalTransform(),
+						Transform::getIdentity(),
+						regenerateVoxelSize,
+						regenerateDecimation,
+						regenerateMaxDepth);
 				}
-				else if(uContains(_createdClouds, iter->first))
+				else
 				{
-					cloud = _createdClouds.at(iter->first);
-				}
-
-				if(cloud->size())
-				{
-					clouds.insert(std::make_pair(iter->first, cloud));
-					inserted = true;
+					UERROR("Cloud %d not found in cache!", iter->first);
 				}
 			}
-			else
+			else if(uContains(_createdClouds, iter->first))
 			{
-				UERROR("Cloud %d not found?!?", iter->first);
+				cloud = _createdClouds.at(iter->first);
+			}
+
+			if(cloud->size())
+			{
+				clouds.insert(std::make_pair(iter->first, cloud));
+				inserted = true;
 			}
 		}
 		else
