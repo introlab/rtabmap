@@ -70,10 +70,14 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_aSetTrajectorySize(0),
 		_aClearTrajectory(0),
 		_aShowGrid(0),
+		_aSetGridCellCount(0),
+		_aSetGridCellSize(0),
 		_aSetBackgroundColor(0),
 		_menu(0),
 		_trajectory(new pcl::PointCloud<pcl::PointXYZ>),
 		_maxTrajectorySize(100),
+		_gridCellCount(50),
+		_gridCellSize(1),
 		_workingDirectory("."),
 		_backgroundColor(Qt::black)
 {
@@ -125,6 +129,8 @@ void CloudViewer::createMenu()
 	_aClearTrajectory = new QAction("Clear trajectory", this);
 	_aShowGrid = new QAction("Show grid", this);
 	_aShowGrid->setCheckable(true);
+	_aSetGridCellCount = new QAction("Set cell count...", this);
+	_aSetGridCellSize = new QAction("Set cell size...", this);
 	_aSetBackgroundColor = new QAction("Set background color...", this);
 
 	QMenu * cameraMenu = new QMenu("Camera", this);
@@ -144,11 +150,16 @@ void CloudViewer::createMenu()
 	trajectoryMenu->addAction(_aSetTrajectorySize);
 	trajectoryMenu->addAction(_aClearTrajectory);
 
+	QMenu * gridMenu = new QMenu("Grid", this);
+	gridMenu->addAction(_aShowGrid);
+	gridMenu->addAction(_aSetGridCellCount);
+	gridMenu->addAction(_aSetGridCellSize);
+
 	//menus
 	_menu = new QMenu(this);
 	_menu->addMenu(cameraMenu);
 	_menu->addMenu(trajectoryMenu);
-	_menu->addAction(_aShowGrid);
+	_menu->addMenu(gridMenu);
 	_menu->addAction(_aSetBackgroundColor);
 }
 
@@ -480,12 +491,22 @@ void CloudViewer::removeAllGraphs()
 	_graphes.clear();
 }
 
+bool CloudViewer::isTrajectoryShown() const
+{
+	return _aShowTrajectory->isChecked();
+}
+
+int CloudViewer::getTrajectorySize() const
+{
+	return _maxTrajectorySize;
+}
+
 void CloudViewer::setTrajectoryShown(bool shown)
 {
 	_aShowTrajectory->setChecked(shown);
 }
 
-void CloudViewer::setTrajectorySize(int value)
+void CloudViewer::setTrajectorySize(unsigned int value)
 {
 	_maxTrajectorySize = value;
 }
@@ -494,7 +515,6 @@ void CloudViewer::clearTrajectory()
 {
 	_trajectory->clear();
 	_visualizer->removeShape("trajectory");
-	_lastPose.setNull();
 	this->render();
 }
 
@@ -521,7 +541,42 @@ bool CloudViewer::getPose(const std::string & id, Transform & pose)
 	return false;
 }
 
-void CloudViewer::updateCameraPosition(const Transform & pose)
+Transform CloudViewer::getTargetPose() const
+{
+	if(_lastPose.isNull())
+	{
+		return Transform::getIdentity();
+	}
+	return _lastPose;
+}
+
+void CloudViewer::getCameraPosition(
+		float & x, float & y, float & z,
+		float & focalX, float & focalY, float & focalZ,
+		float & upX, float & upY, float & upZ) const
+{
+	std::vector<pcl::visualization::Camera> cameras;
+	_visualizer->getCameras(cameras);
+	x = cameras.front().pos[0];
+	y = cameras.front().pos[1];
+	z = cameras.front().pos[2];
+	focalX = cameras.front().focal[0];
+	focalY = cameras.front().focal[1];
+	focalZ = cameras.front().focal[2];
+	upX = cameras.front().view[0];
+	upY = cameras.front().view[1];
+	upZ = cameras.front().view[2];
+}
+
+void CloudViewer::setCameraPosition(
+		float x, float y, float z,
+		float focalX, float focalY, float focalZ,
+		float upX, float upY, float upZ)
+{
+	_visualizer->setCameraPosition(x,y,z, focalX,focalY,focalX, upX,upY,upZ);
+}
+
+void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 {
 	if(!pose.isNull())
 	{
@@ -752,12 +807,73 @@ void CloudViewer::setGridShown(bool shown)
 	}
 }
 
+bool CloudViewer::isCameraTargetLocked() const
+{
+	return _aLockCamera->isChecked();
+}
+bool CloudViewer::isCameraTargetFollow() const
+{
+	return _aFollowCamera->isChecked();
+}
+bool CloudViewer::isCameraFree() const
+{
+	return !_aFollowCamera->isChecked() && !_aLockCamera->isChecked();
+}
+bool CloudViewer::isCameraLockZ() const
+{
+	return _aLockViewZ->isChecked();
+}
+bool CloudViewer::isGridShown() const
+{
+	return _aShowGrid->isChecked();
+}
+unsigned int CloudViewer::getGridCellCount() const
+{
+	return _gridCellCount;
+}
+float CloudViewer::getGridCellSize() const
+{
+	return _gridCellSize;
+}
+
+void CloudViewer::setGridCellCount(unsigned int count)
+{
+	if(count > 0)
+	{
+		_gridCellCount = count;
+		if(_aShowGrid->isChecked())
+		{
+			this->removeGrid();
+			this->addGrid();
+		}
+	}
+	else
+	{
+		UERROR("Cannot set grid cell count < 1, count=%d", count);
+	}
+}
+void CloudViewer::setGridCellSize(float size)
+{
+	if(size > 0)
+	{
+		_gridCellSize = size;
+		if(_aShowGrid->isChecked())
+		{
+			this->removeGrid();
+			this->addGrid();
+		}
+	}
+	else
+	{
+		UERROR("Cannot set grid cell size <= 0, value=%f", size);
+	}
+}
 void CloudViewer::addGrid()
 {
 	if(_gridLines.empty())
 	{
-		float cellSize = 1.0f;
-		int cellCount = 50;
+		float cellSize = _gridCellSize;
+		int cellCount = _gridCellCount;
 		double r=0.5;
 		double g=0.5;
 		double b=0.5;
@@ -935,6 +1051,39 @@ void CloudViewer::keyPressEvent(QKeyEvent * event)
 	}
 }
 
+void CloudViewer::mousePressEvent(QMouseEvent * event)
+{
+	if(event->button() == Qt::RightButton)
+	{
+		event->accept();
+	}
+	else
+	{
+		QVTKWidget::mousePressEvent(event);
+	}
+}
+
+void CloudViewer::mouseMoveEvent(QMouseEvent * event)
+{
+	QVTKWidget::mouseMoveEvent(event);
+	// camera view up z locked?
+	if(_aLockViewZ->isChecked())
+	{
+		std::vector<pcl::visualization::Camera> cameras;
+		_visualizer->getCameras(cameras);
+
+		cameras.front().view[0] = 0;
+		cameras.front().view[1] = 0;
+		cameras.front().view[2] = 1;
+
+		_visualizer->setCameraPosition(
+			cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2],
+			cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
+			cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
+
+	}
+}
+
 void CloudViewer::contextMenuEvent(QContextMenuEvent * event)
 {
 	QAction * a = _menu->exec(event->globalPos());
@@ -961,10 +1110,31 @@ void CloudViewer::handleAction(QAction * a)
 	}
 	else if(a == _aResetCamera)
 	{
-		_visualizer->setCameraPosition(
-				-1, 0, 0,
-				0, 0, 0,
-				0, 0, 1);
+		if((_aFollowCamera->isChecked() || _aLockCamera->isChecked()) && !_lastPose.isNull())
+		{
+			// reset relative to last current pose
+			if(_aLockViewZ->isChecked())
+			{
+				_visualizer->setCameraPosition(
+						_lastPose.x()-1, _lastPose.y(), _lastPose.z(),
+						_lastPose.x(), _lastPose.y(), _lastPose.z(),
+						0, 0, 1);
+			}
+			else
+			{
+				_visualizer->setCameraPosition(
+						_lastPose.x()-1, _lastPose.y(), _lastPose.z(),
+						_lastPose.x(), _lastPose.y(), _lastPose.z(),
+						_lastPose.r31(), _lastPose.r32(), _lastPose.r33());
+			}
+		}
+		else
+		{
+			_visualizer->setCameraPosition(
+					-1, 0, 0,
+					0, 0, 0,
+					0, 0, 1);
+		}
 		this->render();
 	}
 	else if(a == _aShowGrid)
@@ -980,11 +1150,36 @@ void CloudViewer::handleAction(QAction * a)
 
 		this->render();
 	}
+	else if(a == _aSetGridCellCount)
+	{
+		bool ok;
+		int value = QInputDialog::getInt(this, tr("Set grid cell count"), tr("Count"), _gridCellCount, 1, 10000, 10, &ok);
+		if(ok)
+		{
+			this->setGridCellCount(value);
+		}
+	}
+	else if(a == _aSetGridCellSize)
+	{
+		bool ok;
+		double value = QInputDialog::getDouble(this, tr("Set grid cell size"), tr("Size (m)"), _gridCellSize, 0.01, 10, 2, &ok);
+		if(ok)
+		{
+			this->setGridCellSize(value);
+		}
+	}
 	else if(a == _aSetBackgroundColor)
 	{
-		QColor color = Qt::black;
+		QColor color = this->getBackgroundColor();
 		color = QColorDialog::getColor(color, this);
 		this->setBackgroundColor(color);
+	}
+	else if(a == _aLockViewZ)
+	{
+		if(_aLockViewZ->isChecked())
+		{
+			this->render();
+		}
 	}
 }
 

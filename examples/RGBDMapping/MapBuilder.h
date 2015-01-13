@@ -126,7 +126,7 @@ private slots:
 			if(!data.pose().isNull())
 			{
 				// update camera position
-				cloudViewer_->updateCameraPosition(data.pose());
+				cloudViewer_->updateCameraTargetPosition(data.pose());
 			}
 		}
 		cloudViewer_->render();

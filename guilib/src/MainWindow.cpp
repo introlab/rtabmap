@@ -196,6 +196,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->imageView_source->setBackgroundBrush(QBrush(Qt::black));
 	_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
 	_ui->imageView_odometry->setBackgroundBrush(QBrush(Qt::black));
+	_preferencesDialog->loadImageViewState(_ui->imageView_source->objectName(), _ui->imageView_source);
+	_preferencesDialog->loadImageViewState(_ui->imageView_loopClosure->objectName(), _ui->imageView_loopClosure);
+	_preferencesDialog->loadImageViewState(_ui->imageView_odometry->objectName(), _ui->imageView_odometry);
 
 	_posteriorCurve = new PdfPlotCurve("Posterior", &_cachedSignatures, this);
 	_ui->posteriorPlot->addCurve(_posteriorCurve, false);
@@ -370,6 +373,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_ui->widget_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
+	_preferencesDialog->loadCloudViewerState(_ui->widget_cloudViewer->objectName(), _ui->widget_cloudViewer);
 
 	if(_ui->statsToolBox->findChildren<StatItem*>().size() == 0)
 	{
@@ -448,6 +452,10 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
 		//write settings before quit?
 		_preferencesDialog->saveMainWindowState(this);
+		_preferencesDialog->saveCloudViewerState(_ui->widget_cloudViewer->objectName(), _ui->widget_cloudViewer);
+		_preferencesDialog->saveImageViewState(_ui->imageView_source->objectName(), _ui->imageView_source);
+		_preferencesDialog->saveImageViewState(_ui->imageView_loopClosure->objectName(), _ui->imageView_loopClosure);
+		_preferencesDialog->saveImageViewState(_ui->imageView_odometry->objectName(), _ui->imageView_odometry);
 
 		_ui->dockWidget_imageView->close();
 		_ui->dockWidget_likelihood->close();
@@ -695,7 +703,7 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 			if(!data.pose().isNull())
 			{
 				// update camera position
-				_ui->widget_cloudViewer->updateCameraPosition(_odometryCorrection*data.pose());
+				_ui->widget_cloudViewer->updateCameraTargetPosition(_odometryCorrection*data.pose());
 			}
 		}
 		_ui->widget_cloudViewer->render();
@@ -1359,7 +1367,7 @@ void MainWindow::updateMapCloud(
 
 	if(!currentPose.isNull())
 	{
-		_ui->widget_cloudViewer->updateCameraPosition(currentPose);
+		_ui->widget_cloudViewer->updateCameraTargetPosition(currentPose);
 	}
 
 	_ui->widget_cloudViewer->render();

@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QDir>
 #include <QtCore/QTimer>
 
+#include <QtGui/QVector3D>
 #include <QtGui/QFileDialog>
 #include <QtGui/QMessageBox>
 #include <QtGui/QStandardItemModel>
@@ -56,6 +57,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/gui/LoopClosureViewer.h"
 #include "rtabmap/gui/DataRecorder.h"
+#include "rtabmap/gui/CloudViewer.h"
+#include "rtabmap/gui/ImageView.h"
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -1685,6 +1688,120 @@ void PreferencesDialog::loadMainWindowState(QMainWindow * mainWindow)
 	settings.endGroup(); // rtabmap
 
 	loadWindowGeometry("MainWindow", mainWindow);
+}
+
+void PreferencesDialog::saveCloudViewerState(const QString & name, const CloudViewer * viewer)
+{
+	QSettings settings(getIniFilePath(), QSettings::IniFormat);
+	settings.beginGroup("Gui");
+	settings.beginGroup(name);
+
+	float poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ;
+	viewer->getCameraPosition(poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ);
+	QVector3D pose(poseX, poseY, poseZ);
+	QVector3D focal(focalX, focalY, focalZ);
+	if(!viewer->isCameraFree())
+	{
+		// make camera position relative to target
+		Transform T = viewer->getTargetPose();
+		if(viewer->isCameraTargetLocked())
+		{
+			T = Transform(T.x(), T.y(), T.z(), 0,0,0);
+		}
+		Transform F(focalX, focalY, focalZ, 0,0,0);
+		Transform P(poseX, poseY, poseZ, 0,0,0);
+		Transform newFocal = T.inverse() * F;
+		Transform newPose = newFocal * F.inverse() * P;
+		pose = QVector3D(newPose.x(), newPose.y(), newPose.z());
+		focal = QVector3D(newFocal.x(), newFocal.y(), newFocal.z());
+	}
+	settings.setValue("camera_pose", pose);
+	settings.setValue("camera_focal", focal);
+	settings.setValue("camera_up", QVector3D(upX, upY, upZ));
+
+	settings.setValue("grid", viewer->isGridShown());
+	settings.setValue("grid_cell_count", viewer->getGridCellCount());
+	settings.setValue("grid_cell_size", viewer->getGridCellSize());
+
+	settings.setValue("trajectory_shown", viewer->isTrajectoryShown());
+	settings.setValue("trajectory_size", viewer->getTrajectorySize());
+
+	settings.setValue("camera_target_locked", viewer->isCameraTargetLocked());
+	settings.setValue("camera_target_follow", viewer->isCameraTargetFollow());
+	settings.setValue("camera_free", viewer->isCameraFree());
+	settings.setValue("camera_lockZ", viewer->isCameraLockZ());
+
+	settings.setValue("bg_color", viewer->getBackgroundColor());
+
+	settings.endGroup(); // "name"
+	settings.endGroup(); // Gui
+}
+
+void PreferencesDialog::loadCloudViewerState(const QString & name, CloudViewer * viewer)
+{
+	QByteArray bytes;
+	QSettings settings(getIniFilePath(), QSettings::IniFormat);
+	settings.beginGroup("Gui");
+	settings.beginGroup(name);
+
+	float poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ;
+	viewer->getCameraPosition(poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ);
+	QVector3D pose(poseX, poseY, poseZ), focal(focalX, focalY, focalZ), up(upX, upY, upZ);
+	pose = settings.value("camera_pose", pose).value<QVector3D>();
+	focal = settings.value("camera_focal", focal).value<QVector3D>();
+	up = settings.value("camera_up", up).value<QVector3D>();
+	viewer->setCameraPosition(pose.x(),pose.y(),pose.z(), focal.x(),focal.y(),focal.z(), up.x(),up.y(),up.z());
+
+	viewer->setGridShown(settings.value("grid", viewer->isGridShown()).toBool());
+	viewer->setGridCellCount(settings.value("grid_cell_count", viewer->getGridCellCount()).toInt());
+	viewer->setGridCellSize(settings.value("grid_cell_size", viewer->getGridCellSize()).toFloat());
+
+	viewer->setTrajectoryShown(settings.value("trajectory_shown", viewer->isTrajectoryShown()).toBool());
+	viewer->setTrajectorySize(settings.value("trajectory_size", viewer->getTrajectorySize()).toInt());
+
+	viewer->setCameraTargetLocked(settings.value("camera_target_locked", viewer->isCameraTargetLocked()).toBool());
+	viewer->setCameraTargetFollow(settings.value("camera_target_follow", viewer->isCameraTargetFollow()).toBool());
+	if(settings.value("camera_free", viewer->isCameraFree()).toBool())
+	{
+		viewer->setCameraFree();
+	}
+	viewer->setCameraLockZ(settings.value("camera_lockZ", viewer->isCameraLockZ()).toBool());
+
+	viewer->setBackgroundColor(settings.value("bg_color", viewer->getBackgroundColor()).value<QColor>());
+
+	settings.endGroup(); //"name"
+	settings.endGroup(); // Gui
+}
+
+void PreferencesDialog::saveImageViewState(const QString & name, const ImageView * view)
+{
+	QSettings settings(getIniFilePath(), QSettings::IniFormat);
+	settings.beginGroup("Gui");
+	settings.beginGroup(name);
+
+	settings.setValue("image_shown", view->isImageShown());
+	settings.setValue("depth_shown", view->isImageDepthShown());
+	settings.setValue("features_shown", view->isFeaturesShown());
+	settings.setValue("lines_shown", view->isLinesShown());
+
+	settings.endGroup(); // "name"
+	settings.endGroup(); // Gui
+}
+
+void PreferencesDialog::loadImageViewState(const QString & name, ImageView * view)
+{
+	QByteArray bytes;
+	QSettings settings(getIniFilePath(), QSettings::IniFormat);
+	settings.beginGroup("Gui");
+	settings.beginGroup(name);
+
+	view->setImageShown(settings.value("image_shown", view->isImageShown()).toBool());
+	view->setImageDepthShown(settings.value("depth_shown", view->isImageDepthShown()).toBool());
+	view->setFeaturesShown(settings.value("features_shown", view->isFeaturesShown()).toBool());
+	view->setLinesShown(settings.value("lines_shown", view->isLinesShown()).toBool());
+
+	settings.endGroup(); //"name"
+	settings.endGroup(); // Gui
 }
 
 void PreferencesDialog::saveCustomConfig(const QString & section, const QString & key, const QString & value)

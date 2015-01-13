@@ -53,10 +53,10 @@ public:
 
 	void resetZoom();
 
-	bool isImageShown();
-	bool isImageDepthShown();
-	bool isFeaturesShown();
-	bool isLinesShown();
+	bool isImageShown() const;
+	bool isImageDepthShown() const;
+	bool isFeaturesShown() const;
+	bool isLinesShown() const;
 
 	void setFeaturesShown(bool shown);
 	void setImageShown(bool shown);

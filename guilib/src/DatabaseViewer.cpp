@@ -1240,7 +1240,7 @@ void DatabaseViewer::updateStereo(const Signature * data)
 		UINFO("correspondences = %d/%d (%f) (time kpt=%fs flow=%fs)",
 				(int)cloud->size(), (int)leftCorners.size(), float(cloud->size())/float(leftCorners.size()), timeKpt, timeFlow);
 
-		ui_->stereoViewer->updateCameraPosition(Transform::getIdentity());
+		ui_->stereoViewer->updateCameraTargetPosition(Transform::getIdentity());
 		ui_->stereoViewer->addOrUpdateCloud("stereo", cloud);
 		ui_->stereoViewer->render();
 
@@ -1655,7 +1655,7 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & linkIn,
 		}
 
 		//update cordinate
-		ui_->constraintsViewer->updateCameraPosition(t);
+		ui_->constraintsViewer->updateCameraTargetPosition(t);
 		ui_->constraintsViewer->clearTrajectory();
 
 		ui_->constraintsViewer->render();

@@ -147,7 +147,7 @@ void OdometryViewer::processData()
 				this->addCloud(uFormat("cloud%d", clouds_.rbegin()->first), clouds_.rbegin()->second, data.pose());
 			}
 
-			this->updateCameraPosition(data.pose());
+			this->updateCameraTargetPosition(data.pose());
 
 			if(qualityWarningThr_ && quality>=0 && quality < qualityWarningThr_)
 			{

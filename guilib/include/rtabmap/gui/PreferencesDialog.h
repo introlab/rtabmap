@@ -61,6 +61,8 @@ class OdometryThread;
 class CameraThread;
 class Signature;
 class LoopClosureViewer;
+class CloudViewer;
+class ImageView;
 
 class RTABMAPGUI_EXP PreferencesDialog : public QDialog
 {
@@ -101,6 +103,10 @@ public:
 	void loadWindowGeometry(const QString & windowName, QWidget * window);
 	void saveMainWindowState(const QMainWindow * mainWindow);
 	void loadMainWindowState(QMainWindow * mainWindow);
+	void saveCloudViewerState(const QString & name, const CloudViewer * viewer);
+	void loadCloudViewerState(const QString & name, CloudViewer * viewer);
+	void saveImageViewState(const QString & name, const ImageView * view);
+	void loadImageViewState(const QString & name, ImageView * view);
 
 	void saveCustomConfig(const QString & section, const QString & key, const QString & value);
 	QString loadCustomConfig(const QString & section, const QString & key);

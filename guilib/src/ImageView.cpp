@@ -77,17 +77,17 @@ void ImageView::resetZoom()
 	this->setDragMode(QGraphicsView::NoDrag);
 }
 
-bool ImageView::isImageShown()
+bool ImageView::isImageShown() const
 {
 	return _showImage->isChecked();
 }
 
-bool ImageView::isImageDepthShown()
+bool ImageView::isImageDepthShown() const
 {
 	return _showImageDepth->isChecked();
 }
 
-bool ImageView::isFeaturesShown()
+bool ImageView::isFeaturesShown() const
 {
 	return _showFeatures->isChecked();
 }
@@ -121,7 +121,7 @@ void ImageView::setImageDepthShown(bool shown)
 	}
 }
 
-bool ImageView::isLinesShown()
+bool ImageView::isLinesShown() const
 {
 	return _showLines->isChecked();
 }
