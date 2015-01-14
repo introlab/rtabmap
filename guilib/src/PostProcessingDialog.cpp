@@ -89,4 +89,34 @@ bool PostProcessingDialog::isRefineLoopClosureLinks() const
 	return _ui->refineLoopClosureLinks->isChecked();
 }
 
+//setters
+void PostProcessingDialog::setDetectMoreLoopClosures(bool on)
+{
+	_ui->detectMoreLoopClosures->setChecked(on);
+}
+void PostProcessingDialog::setClusterRadius(double radius)
+{
+	_ui->clusterRadius->setValue(radius);
+}
+void PostProcessingDialog::setClusterAngle(double angle)
+{
+	_ui->clusterAngle->setValue(angle);
+}
+void PostProcessingDialog::setIterations(int iterations)
+{
+	_ui->iterations->setValue(iterations);
+}
+void PostProcessingDialog::setReextractFeatures(bool on)
+{
+	_ui->reextractFeatures->setChecked(on);
+}
+void PostProcessingDialog::setRefineNeighborLinks(bool on)
+{
+	_ui->refineNeighborLinks->setChecked(on);
+}
+void PostProcessingDialog::setRefineLoopClosureLinks(bool on)
+{
+	_ui->refineLoopClosureLinks->setChecked(on);
+}
+
 }

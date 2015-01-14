@@ -82,10 +82,10 @@ void DetailedProgressDialog::setAutoClose(bool on, int delayedClosingTimeSec)
 	_closeWhenDoneCheckBox->setChecked(on);
 }
 
-void DetailedProgressDialog::appendText(const QString & text)
+void DetailedProgressDialog::appendText(const QString & text, const QColor & color)
 {
 	_text->setText(text);
-	QString html = tr("<html><font color=\"#999999\">%1 </font>%2</html>").arg(QTime::currentTime().toString("HH:mm:ss")).arg(text);
+	QString html = tr("<html><font color=\"#999999\">%1 </font><font color=\"%2\">%3</font></html>").arg(QTime::currentTime().toString("HH:mm:ss")).arg(color.name()).arg(text);
 	_detailedText->append(html);
 	_detailedText->ensureCursorVisible();
 }

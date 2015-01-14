@@ -496,7 +496,7 @@ bool CloudViewer::isTrajectoryShown() const
 	return _aShowTrajectory->isChecked();
 }
 
-int CloudViewer::getTrajectorySize() const
+unsigned int CloudViewer::getTrajectorySize() const
 {
 	return _maxTrajectorySize;
 }

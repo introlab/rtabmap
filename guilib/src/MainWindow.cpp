@@ -141,7 +141,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	// Create dialogs
 	_aboutDialog = new AboutDialog(this);
 	_exportDialog = new ExportCloudsDialog(this);
+	_exportDialog->setObjectName("ExportCloudsDialog");
 	_postProcessingDialog = new PostProcessingDialog(this);
+	_postProcessingDialog->setObjectName("PostProcessingDialog");
 
 	_ui = new Ui_mainWindow();
 	_ui->setupUi(this);
@@ -196,9 +198,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->imageView_source->setBackgroundBrush(QBrush(Qt::black));
 	_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
 	_ui->imageView_odometry->setBackgroundBrush(QBrush(Qt::black));
-	_preferencesDialog->loadImageViewState(_ui->imageView_source->objectName(), _ui->imageView_source);
-	_preferencesDialog->loadImageViewState(_ui->imageView_loopClosure->objectName(), _ui->imageView_loopClosure);
-	_preferencesDialog->loadImageViewState(_ui->imageView_odometry->objectName(), _ui->imageView_odometry);
+	_preferencesDialog->loadWidgetState(_ui->imageView_source->objectName(), _ui->imageView_source);
+	_preferencesDialog->loadWidgetState(_ui->imageView_loopClosure->objectName(), _ui->imageView_loopClosure);
+	_preferencesDialog->loadWidgetState(_ui->imageView_odometry->objectName(), _ui->imageView_odometry);
 
 	_posteriorCurve = new PdfPlotCurve("Posterior", &_cachedSignatures, this);
 	_ui->posteriorPlot->addCurve(_posteriorCurve, false);
@@ -373,7 +375,11 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_ui->widget_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
-	_preferencesDialog->loadCloudViewerState(_ui->widget_cloudViewer->objectName(), _ui->widget_cloudViewer);
+	_preferencesDialog->loadWidgetState(_ui->widget_cloudViewer->objectName(), _ui->widget_cloudViewer);
+
+	//dialog states
+	_preferencesDialog->loadWidgetState(_exportDialog->objectName(), _exportDialog);
+	_preferencesDialog->loadWidgetState(_postProcessingDialog->objectName(), _postProcessingDialog);
 
 	if(_ui->statsToolBox->findChildren<StatItem*>().size() == 0)
 	{
@@ -452,11 +458,12 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
 		//write settings before quit?
 		_preferencesDialog->saveMainWindowState(this);
-		_preferencesDialog->saveCloudViewerState(_ui->widget_cloudViewer->objectName(), _ui->widget_cloudViewer);
-		_preferencesDialog->saveImageViewState(_ui->imageView_source->objectName(), _ui->imageView_source);
-		_preferencesDialog->saveImageViewState(_ui->imageView_loopClosure->objectName(), _ui->imageView_loopClosure);
-		_preferencesDialog->saveImageViewState(_ui->imageView_odometry->objectName(), _ui->imageView_odometry);
-
+		_preferencesDialog->saveWidgetState(_ui->widget_cloudViewer->objectName(), _ui->widget_cloudViewer);
+		_preferencesDialog->saveWidgetState(_ui->imageView_source->objectName(), _ui->imageView_source);
+		_preferencesDialog->saveWidgetState(_ui->imageView_loopClosure->objectName(), _ui->imageView_loopClosure);
+		_preferencesDialog->saveWidgetState(_ui->imageView_odometry->objectName(), _ui->imageView_odometry);
+		_preferencesDialog->saveWidgetState(_exportDialog->objectName(), _exportDialog);
+		_preferencesDialog->saveWidgetState(_postProcessingDialog->objectName(), _postProcessingDialog);
 		_ui->dockWidget_imageView->close();
 		_ui->dockWidget_likelihood->close();
 		_ui->dockWidget_rawlikelihood->close();
@@ -3111,7 +3118,9 @@ void MainWindow::postProcessing()
 					}
 					else
 					{
-						UWARN("Cannot refine link %d->%d (converged=%s variance=%f)", from, to, hasConverged?"true":"false", variance);
+						QString str = tr("Cannot refine link %1->%2 (converged=%3 variance=%4 correspondencesRatio=%5 (ref=%6))").arg(from).arg(to).arg(hasConverged?"true":"false").arg(variance).arg(correspondencesRatio).arg(correspondenceRatio);
+						_initProgressDialog->appendText(str, Qt::darkYellow);
+						UWARN("%s", str.toStdString().c_str());
 					}
 				}
 			}

@@ -43,6 +43,7 @@ public:
 
 	virtual ~PostProcessingDialog();
 
+	//getters
 	bool isDetectMoreLoopClosures() const;
 	double clusterRadius() const;
 	double clusterAngle() const;
@@ -50,6 +51,15 @@ public:
 	bool isReextractFeatures() const;
 	bool isRefineNeighborLinks() const;
 	bool isRefineLoopClosureLinks() const;
+
+	//setters
+	void setDetectMoreLoopClosures(bool on);
+	void setClusterRadius(double radius);
+	void setClusterAngle(double angle);
+	void setIterations(int iterations);
+	void setReextractFeatures(bool on);
+	void setRefineNeighborLinks(bool on);
+	void setRefineLoopClosureLinks(bool on);
 
 private slots:
 	void updateButtonBox();

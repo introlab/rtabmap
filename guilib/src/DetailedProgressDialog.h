@@ -56,7 +56,7 @@ protected:
 	virtual void closeEvent(QCloseEvent * event);
 
 public slots:
-	void appendText(const QString & text);
+	void appendText(const QString & text ,const QColor & color = Qt::black);
 	void incrementStep();
 	void clear();
 	void resetProgress();

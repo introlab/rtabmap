@@ -138,7 +138,7 @@ public:
 	void removeAllGraphs();
 
 	bool isTrajectoryShown() const;
-	int getTrajectorySize() const;
+	unsigned int getTrajectorySize() const;
 	void setTrajectoryShown(bool shown);
 	void setTrajectorySize(unsigned int value);
 	void clearTrajectory();

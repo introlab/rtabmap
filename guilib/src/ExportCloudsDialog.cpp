@@ -65,6 +65,7 @@ void ExportCloudsDialog::enableRegeneration(bool enabled)
 	_ui->groupBox_regenerate->setEnabled(enabled);
 }
 
+//getters
 bool ExportCloudsDialog::getAssemble() const
 {
 	return _ui->groupBox_assemble->isChecked();
@@ -123,6 +124,56 @@ int ExportCloudsDialog::getMeshNormalKSearch() const
 double ExportCloudsDialog::getMeshGp3Radius() const
 {
 	return _ui->doubleSpinBox_gp3Radius->value();
+}
+
+//setters
+void ExportCloudsDialog::setAssemble(bool on)
+{
+	_ui->groupBox_assemble->setChecked(on);
+}
+void ExportCloudsDialog::setAssembleVoxel(double voxel)
+{
+	_ui->doubleSpinBox_voxelSize_assembled->setValue(voxel);
+}
+void ExportCloudsDialog::setGenerate(bool on)
+{
+	_ui->groupBox_regenerate->setChecked(on);
+}
+void ExportCloudsDialog::setGenerateDecimation(int decimation)
+{
+	_ui->spinBox_decimation->setValue(decimation);
+}
+void ExportCloudsDialog::setGenerateVoxel(double voxel)
+{
+	_ui->doubleSpinBox_voxelSize->setValue(voxel);
+}
+void ExportCloudsDialog::setGenerateMaxDepth(double maxDepth)
+{
+	_ui->doubleSpinBox_maxDepth->setValue(maxDepth);
+}
+void ExportCloudsDialog::setBinaryFile(bool on)
+{
+	_ui->checkBox_binary->setChecked(on);
+}
+void ExportCloudsDialog::setMLS(bool on)
+{
+	_ui->groupBox_mls->setChecked(on);
+}
+void ExportCloudsDialog::setMLSRadius(double radius)
+{
+	_ui->doubleSpinBox_mlsRadius->setValue(radius);
+}
+void ExportCloudsDialog::setMesh(bool on)
+{
+	_ui->groupBox_gp3->setChecked(on);
+}
+void ExportCloudsDialog::setMeshNormalKSearch(int k)
+{
+	_ui->spinBox_normalKSearch->setValue(k);
+}
+void ExportCloudsDialog::setMeshGp3Radius(double radius)
+{
+	_ui->doubleSpinBox_gp3Radius->setValue(radius);
 }
 
 

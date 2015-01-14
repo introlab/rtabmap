@@ -59,6 +59,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/DataRecorder.h"
 #include "rtabmap/gui/CloudViewer.h"
 #include "rtabmap/gui/ImageView.h"
+#include "ExportCloudsDialog.h"
+#include "PostProcessingDialog.h"
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -1690,119 +1692,177 @@ void PreferencesDialog::loadMainWindowState(QMainWindow * mainWindow)
 	loadWindowGeometry("MainWindow", mainWindow);
 }
 
-void PreferencesDialog::saveCloudViewerState(const QString & name, const CloudViewer * viewer)
+void PreferencesDialog::saveWidgetState(const QString & name, const QWidget * widget)
 {
 	QSettings settings(getIniFilePath(), QSettings::IniFormat);
 	settings.beginGroup("Gui");
 	settings.beginGroup(name);
 
-	float poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ;
-	viewer->getCameraPosition(poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ);
-	QVector3D pose(poseX, poseY, poseZ);
-	QVector3D focal(focalX, focalY, focalZ);
-	if(!viewer->isCameraFree())
+	const CloudViewer * cloudViewer = qobject_cast<const CloudViewer*>(widget);
+	const ImageView * imageView = qobject_cast<const ImageView*>(widget);
+	const ExportCloudsDialog * exportCloudsDialog = qobject_cast<const ExportCloudsDialog*>(widget);
+	const PostProcessingDialog * postProcessingDialog = qobject_cast<const PostProcessingDialog *>(widget);
+
+	if(cloudViewer)
 	{
-		// make camera position relative to target
-		Transform T = viewer->getTargetPose();
-		if(viewer->isCameraTargetLocked())
+		float poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ;
+		cloudViewer->getCameraPosition(poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ);
+		QVector3D pose(poseX, poseY, poseZ);
+		QVector3D focal(focalX, focalY, focalZ);
+		if(!cloudViewer->isCameraFree())
 		{
-			T = Transform(T.x(), T.y(), T.z(), 0,0,0);
+			// make camera position relative to target
+			Transform T = cloudViewer->getTargetPose();
+			if(cloudViewer->isCameraTargetLocked())
+			{
+				T = Transform(T.x(), T.y(), T.z(), 0,0,0);
+			}
+			Transform F(focalX, focalY, focalZ, 0,0,0);
+			Transform P(poseX, poseY, poseZ, 0,0,0);
+			Transform newFocal = T.inverse() * F;
+			Transform newPose = newFocal * F.inverse() * P;
+			pose = QVector3D(newPose.x(), newPose.y(), newPose.z());
+			focal = QVector3D(newFocal.x(), newFocal.y(), newFocal.z());
 		}
-		Transform F(focalX, focalY, focalZ, 0,0,0);
-		Transform P(poseX, poseY, poseZ, 0,0,0);
-		Transform newFocal = T.inverse() * F;
-		Transform newPose = newFocal * F.inverse() * P;
-		pose = QVector3D(newPose.x(), newPose.y(), newPose.z());
-		focal = QVector3D(newFocal.x(), newFocal.y(), newFocal.z());
+		settings.setValue("camera_pose", pose);
+		settings.setValue("camera_focal", focal);
+		settings.setValue("camera_up", QVector3D(upX, upY, upZ));
+
+		settings.setValue("grid", cloudViewer->isGridShown());
+		settings.setValue("grid_cell_count", cloudViewer->getGridCellCount());
+		settings.setValue("grid_cell_size", cloudViewer->getGridCellSize());
+
+		settings.setValue("trajectory_shown", cloudViewer->isTrajectoryShown());
+		settings.setValue("trajectory_size", cloudViewer->getTrajectorySize());
+
+		settings.setValue("camera_target_locked", cloudViewer->isCameraTargetLocked());
+		settings.setValue("camera_target_follow", cloudViewer->isCameraTargetFollow());
+		settings.setValue("camera_free", cloudViewer->isCameraFree());
+		settings.setValue("camera_lockZ", cloudViewer->isCameraLockZ());
+
+		settings.setValue("bg_color", cloudViewer->getBackgroundColor());
 	}
-	settings.setValue("camera_pose", pose);
-	settings.setValue("camera_focal", focal);
-	settings.setValue("camera_up", QVector3D(upX, upY, upZ));
-
-	settings.setValue("grid", viewer->isGridShown());
-	settings.setValue("grid_cell_count", viewer->getGridCellCount());
-	settings.setValue("grid_cell_size", viewer->getGridCellSize());
-
-	settings.setValue("trajectory_shown", viewer->isTrajectoryShown());
-	settings.setValue("trajectory_size", viewer->getTrajectorySize());
-
-	settings.setValue("camera_target_locked", viewer->isCameraTargetLocked());
-	settings.setValue("camera_target_follow", viewer->isCameraTargetFollow());
-	settings.setValue("camera_free", viewer->isCameraFree());
-	settings.setValue("camera_lockZ", viewer->isCameraLockZ());
-
-	settings.setValue("bg_color", viewer->getBackgroundColor());
-
-	settings.endGroup(); // "name"
-	settings.endGroup(); // Gui
-}
-
-void PreferencesDialog::loadCloudViewerState(const QString & name, CloudViewer * viewer)
-{
-	QByteArray bytes;
-	QSettings settings(getIniFilePath(), QSettings::IniFormat);
-	settings.beginGroup("Gui");
-	settings.beginGroup(name);
-
-	float poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ;
-	viewer->getCameraPosition(poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ);
-	QVector3D pose(poseX, poseY, poseZ), focal(focalX, focalY, focalZ), up(upX, upY, upZ);
-	pose = settings.value("camera_pose", pose).value<QVector3D>();
-	focal = settings.value("camera_focal", focal).value<QVector3D>();
-	up = settings.value("camera_up", up).value<QVector3D>();
-	viewer->setCameraPosition(pose.x(),pose.y(),pose.z(), focal.x(),focal.y(),focal.z(), up.x(),up.y(),up.z());
-
-	viewer->setGridShown(settings.value("grid", viewer->isGridShown()).toBool());
-	viewer->setGridCellCount(settings.value("grid_cell_count", viewer->getGridCellCount()).toInt());
-	viewer->setGridCellSize(settings.value("grid_cell_size", viewer->getGridCellSize()).toFloat());
-
-	viewer->setTrajectoryShown(settings.value("trajectory_shown", viewer->isTrajectoryShown()).toBool());
-	viewer->setTrajectorySize(settings.value("trajectory_size", viewer->getTrajectorySize()).toInt());
-
-	viewer->setCameraTargetLocked(settings.value("camera_target_locked", viewer->isCameraTargetLocked()).toBool());
-	viewer->setCameraTargetFollow(settings.value("camera_target_follow", viewer->isCameraTargetFollow()).toBool());
-	if(settings.value("camera_free", viewer->isCameraFree()).toBool())
+	else if(imageView)
 	{
-		viewer->setCameraFree();
+		settings.setValue("image_shown", imageView->isImageShown());
+		settings.setValue("depth_shown", imageView->isImageDepthShown());
+		settings.setValue("features_shown", imageView->isFeaturesShown());
+		settings.setValue("lines_shown", imageView->isLinesShown());
 	}
-	viewer->setCameraLockZ(settings.value("camera_lockZ", viewer->isCameraLockZ()).toBool());
-
-	viewer->setBackgroundColor(settings.value("bg_color", viewer->getBackgroundColor()).value<QColor>());
-
-	settings.endGroup(); //"name"
-	settings.endGroup(); // Gui
-}
-
-void PreferencesDialog::saveImageViewState(const QString & name, const ImageView * view)
-{
-	QSettings settings(getIniFilePath(), QSettings::IniFormat);
-	settings.beginGroup("Gui");
-	settings.beginGroup(name);
-
-	settings.setValue("image_shown", view->isImageShown());
-	settings.setValue("depth_shown", view->isImageDepthShown());
-	settings.setValue("features_shown", view->isFeaturesShown());
-	settings.setValue("lines_shown", view->isLinesShown());
+	else if(exportCloudsDialog)
+	{
+		settings.setValue("assemble", exportCloudsDialog->getAssemble());
+		settings.setValue("assemble_voxel", exportCloudsDialog->getAssembleVoxel());
+		settings.setValue("regenerate", exportCloudsDialog->getGenerate());
+		settings.setValue("regenerate_decimation", exportCloudsDialog->getGenerateDecimation());
+		settings.setValue("regenerate_voxel", exportCloudsDialog->getGenerateVoxel());
+		settings.setValue("regenerate_max_depth", exportCloudsDialog->getGenerateMaxDepth());
+		settings.setValue("binary", exportCloudsDialog->getBinaryFile());
+		settings.setValue("mls", exportCloudsDialog->getMLS());
+		settings.setValue("mls_radius", exportCloudsDialog->getMLSRadius());
+		settings.setValue("mesh", exportCloudsDialog->getMesh());
+		settings.setValue("mesh_k", exportCloudsDialog->getMeshNormalKSearch());
+		settings.setValue("mesh_radius", exportCloudsDialog->getMeshGp3Radius());
+	}
+	else if(postProcessingDialog)
+	{
+		settings.setValue("detect_more_lc", postProcessingDialog->isDetectMoreLoopClosures());
+		settings.setValue("cluster_radius", postProcessingDialog->clusterRadius());
+		settings.setValue("cluster_angle", postProcessingDialog->clusterAngle());
+		settings.setValue("iterations", postProcessingDialog->iterations());
+		settings.setValue("reextract_features", postProcessingDialog->isReextractFeatures());
+		settings.setValue("refine_neigbors", postProcessingDialog->isRefineNeighborLinks());
+		settings.setValue("refine_lc", postProcessingDialog->isRefineLoopClosureLinks());
+	}
+	else
+	{
+		UERROR("Widget \"%s\" cannot be exported in config file.", widget->objectName().toStdString().c_str());
+	}
 
 	settings.endGroup(); // "name"
 	settings.endGroup(); // Gui
 }
 
-void PreferencesDialog::loadImageViewState(const QString & name, ImageView * view)
+void PreferencesDialog::loadWidgetState(const QString & name, QWidget * widget)
 {
 	QByteArray bytes;
 	QSettings settings(getIniFilePath(), QSettings::IniFormat);
 	settings.beginGroup("Gui");
 	settings.beginGroup(name);
 
-	view->setImageShown(settings.value("image_shown", view->isImageShown()).toBool());
-	view->setImageDepthShown(settings.value("depth_shown", view->isImageDepthShown()).toBool());
-	view->setFeaturesShown(settings.value("features_shown", view->isFeaturesShown()).toBool());
-	view->setLinesShown(settings.value("lines_shown", view->isLinesShown()).toBool());
+	CloudViewer * cloudViewer = qobject_cast<CloudViewer*>(widget);
+	ImageView * imageView = qobject_cast<ImageView*>(widget);
+	ExportCloudsDialog * exportCloudsDialog = qobject_cast<ExportCloudsDialog*>(widget);
+	PostProcessingDialog * postProcessingDialog = qobject_cast<PostProcessingDialog *>(widget);
+
+	if(cloudViewer)
+	{
+		float poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ;
+		cloudViewer->getCameraPosition(poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ);
+		QVector3D pose(poseX, poseY, poseZ), focal(focalX, focalY, focalZ), up(upX, upY, upZ);
+		pose = settings.value("camera_pose", pose).value<QVector3D>();
+		focal = settings.value("camera_focal", focal).value<QVector3D>();
+		up = settings.value("camera_up", up).value<QVector3D>();
+		cloudViewer->setCameraPosition(pose.x(),pose.y(),pose.z(), focal.x(),focal.y(),focal.z(), up.x(),up.y(),up.z());
+
+		cloudViewer->setGridShown(settings.value("grid", cloudViewer->isGridShown()).toBool());
+		cloudViewer->setGridCellCount(settings.value("grid_cell_count", cloudViewer->getGridCellCount()).toUInt());
+		cloudViewer->setGridCellSize(settings.value("grid_cell_size", cloudViewer->getGridCellSize()).toFloat());
+
+		cloudViewer->setTrajectoryShown(settings.value("trajectory_shown", cloudViewer->isTrajectoryShown()).toBool());
+		cloudViewer->setTrajectorySize(settings.value("trajectory_size", cloudViewer->getTrajectorySize()).toUInt());
+
+		cloudViewer->setCameraTargetLocked(settings.value("camera_target_locked", cloudViewer->isCameraTargetLocked()).toBool());
+		cloudViewer->setCameraTargetFollow(settings.value("camera_target_follow", cloudViewer->isCameraTargetFollow()).toBool());
+		if(settings.value("camera_free", cloudViewer->isCameraFree()).toBool())
+		{
+			cloudViewer->setCameraFree();
+		}
+		cloudViewer->setCameraLockZ(settings.value("camera_lockZ", cloudViewer->isCameraLockZ()).toBool());
+
+		cloudViewer->setBackgroundColor(settings.value("bg_color", cloudViewer->getBackgroundColor()).value<QColor>());
+	}
+	else if(imageView)
+	{
+		imageView->setImageShown(settings.value("image_shown", imageView->isImageShown()).toBool());
+		imageView->setImageDepthShown(settings.value("depth_shown", imageView->isImageDepthShown()).toBool());
+		imageView->setFeaturesShown(settings.value("features_shown", imageView->isFeaturesShown()).toBool());
+		imageView->setLinesShown(settings.value("lines_shown", imageView->isLinesShown()).toBool());
+	}
+	else if(exportCloudsDialog)
+	{
+		exportCloudsDialog->setAssemble(settings.value("assemble", exportCloudsDialog->getAssemble()).toBool());
+		exportCloudsDialog->setAssembleVoxel(settings.value("assemble_voxel", exportCloudsDialog->getAssembleVoxel()).toDouble());
+		exportCloudsDialog->setGenerate(settings.value("regenerate", exportCloudsDialog->getGenerate()).toBool());
+		exportCloudsDialog->setGenerateDecimation(settings.value("regenerate_decimation", exportCloudsDialog->getGenerateDecimation()).toInt());
+		exportCloudsDialog->setGenerateVoxel(settings.value("regenerate_voxel", exportCloudsDialog->getGenerateVoxel()).toDouble());
+		exportCloudsDialog->setGenerateMaxDepth(settings.value("regenerate_max_depth", exportCloudsDialog->getGenerateMaxDepth()).toDouble());
+		exportCloudsDialog->setBinaryFile(settings.value("binary", exportCloudsDialog->getBinaryFile()).toBool());
+		exportCloudsDialog->setMLS(settings.value("mls", exportCloudsDialog->getMLS()).toBool());
+		exportCloudsDialog->setMLSRadius(settings.value("mls_radius", exportCloudsDialog->getMLSRadius()).toDouble());
+		exportCloudsDialog->setMesh(settings.value("mesh", exportCloudsDialog->getMesh()).toBool());
+		exportCloudsDialog->setMeshNormalKSearch(settings.value("mesh_k", exportCloudsDialog->getMeshNormalKSearch()).toInt());
+		exportCloudsDialog->setMeshGp3Radius(settings.value("mesh_radius", exportCloudsDialog->getMeshGp3Radius()).toDouble());
+	}
+	else if(postProcessingDialog)
+	{
+		postProcessingDialog->setDetectMoreLoopClosures(settings.value("detect_more_lc", postProcessingDialog->isDetectMoreLoopClosures()).toBool());
+		postProcessingDialog->setClusterRadius(settings.value("cluster_radius", postProcessingDialog->clusterRadius()).toDouble());
+		postProcessingDialog->setClusterAngle(settings.value("cluster_angle", postProcessingDialog->clusterAngle()).toDouble());
+		postProcessingDialog->setIterations(settings.value("iterations", postProcessingDialog->iterations()).toInt());
+		postProcessingDialog->setReextractFeatures(settings.value("reextract_features", postProcessingDialog->isReextractFeatures()).toBool());
+		postProcessingDialog->setRefineNeighborLinks(settings.value("refine_neigbors", postProcessingDialog->isRefineNeighborLinks()).toBool());
+		postProcessingDialog->setRefineLoopClosureLinks(settings.value("refine_lc", postProcessingDialog->isRefineLoopClosureLinks()).toBool());
+	}
+	else
+	{
+		UERROR("Widget \"%s\" cannot be loaded from config file.", widget->objectName().toStdString().c_str());
+	}
 
 	settings.endGroup(); //"name"
 	settings.endGroup(); // Gui
 }
+
 
 void PreferencesDialog::saveCustomConfig(const QString & section, const QString & key, const QString & value)
 {
