@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QDialog>
 
 class Ui_PostProcessingDialog;
+class QAbstractButton;
 
 namespace rtabmap {
 
@@ -61,8 +62,12 @@ public:
 	void setRefineNeighborLinks(bool on);
 	void setRefineLoopClosureLinks(bool on);
 
+public slots:
+	void restoreDefaults();
+
 private slots:
 	void updateButtonBox();
+
 
 private:
 	Ui_PostProcessingDialog * _ui;

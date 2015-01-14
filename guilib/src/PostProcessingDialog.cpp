@@ -41,11 +41,23 @@ PostProcessingDialog::PostProcessingDialog(QWidget * parent) :
 	connect(_ui->detectMoreLoopClosures, SIGNAL(clicked(bool)), this, SLOT(updateButtonBox()));
 	connect(_ui->refineNeighborLinks, SIGNAL(stateChanged(int)), this, SLOT(updateButtonBox()));
 	connect(_ui->refineLoopClosureLinks, SIGNAL(stateChanged(int)), this, SLOT(updateButtonBox()));
+	connect(_ui->buttonBox->button(QDialogButtonBox::RestoreDefaults), SIGNAL(clicked()), this, SLOT(restoreDefaults()));
 }
 
 PostProcessingDialog::~PostProcessingDialog()
 {
 	delete _ui;
+}
+
+void PostProcessingDialog::restoreDefaults()
+{
+	setDetectMoreLoopClosures(true);
+	setClusterRadius(0.3);
+	setClusterAngle(30);
+	setIterations(1);
+	setReextractFeatures(false);
+	setRefineNeighborLinks(false);
+	setRefineLoopClosureLinks(false);
 }
 
 void PostProcessingDialog::updateButtonBox()

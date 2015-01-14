@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QDialog>
 
 class Ui_ExportCloudsDialog;
+class QAbstractButton;
 
 namespace rtabmap {
 
@@ -74,6 +75,9 @@ public:
 	void setMesh(bool on);
 	void setMeshNormalKSearch(int k);
 	void setMeshGp3Radius(double radius);
+
+public slots:
+	void restoreDefaults();
 
 private:
 	Ui_ExportCloudsDialog * _ui;

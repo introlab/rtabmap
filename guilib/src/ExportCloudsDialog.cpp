@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ExportCloudsDialog.h"
 #include "ui_exportCloudsDialog.h"
 
-#include <QtGui/QFileDialog>
+#include <QtGui/QPushButton>
 
 namespace rtabmap {
 
@@ -37,6 +37,8 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 {
 	_ui = new Ui_ExportCloudsDialog();
 	_ui->setupUi(this);
+
+	connect(_ui->buttonBox->button(QDialogButtonBox::RestoreDefaults), SIGNAL(clicked()), this, SLOT(restoreDefaults()));
 }
 
 ExportCloudsDialog::~ExportCloudsDialog()
@@ -44,15 +46,36 @@ ExportCloudsDialog::~ExportCloudsDialog()
 	delete _ui;
 }
 
+void ExportCloudsDialog::restoreDefaults()
+{
+	setAssemble(true);
+	setAssembleVoxel(0.005);
+	if(_ui->groupBox_regenerate->isEnabled())
+	{
+		setGenerate(true);
+	}
+	setGenerateDecimation(1);
+	setGenerateVoxel(0.005);
+	setGenerateMaxDepth(4);
+	setBinaryFile(true);
+	setMLS(false);
+	setMLSRadius(0.04);
+	setMesh(false);
+	setMeshNormalKSearch(20);
+	setMeshGp3Radius(0.04);
+}
+
 void ExportCloudsDialog::setSaveButton()
 {
-	_ui->buttonBox->setStandardButtons(QDialogButtonBox::Cancel|QDialogButtonBox::Save);
+	_ui->buttonBox->button(QDialogButtonBox::Ok)->setVisible(false);
+	_ui->buttonBox->button(QDialogButtonBox::Save)->setVisible(true);
 	_ui->checkBox_binary->setVisible(true);
 }
 
 void ExportCloudsDialog::setOkButton()
 {
-	_ui->buttonBox->setStandardButtons(QDialogButtonBox::Cancel|QDialogButtonBox::Ok);
+	_ui->buttonBox->button(QDialogButtonBox::Ok)->setVisible(true);
+	_ui->buttonBox->button(QDialogButtonBox::Save)->setVisible(false);
 	_ui->checkBox_binary->setVisible(false);
 }
 
