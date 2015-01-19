@@ -61,6 +61,10 @@ public:
 	void setImageRate(float imageRate) {_imageRate = imageRate;}
 	void setImageSize(unsigned int width, unsigned int height);
 
+	void setCalibration(const std::string & fileName);
+	void setCalibration(const cv::Mat & cameraMatrix, const cv::Mat & distorsionCoefficients);
+	void resetCalibration();
+
 protected:
 	/**
 	 * Constructor
@@ -78,6 +82,8 @@ private:
 	unsigned int _imageWidth;
 	unsigned int _imageHeight;
 	UTimer * _frameRateTimer;
+	cv::Mat _k; // camera_matrix
+	cv::Mat _d; // distorsion_coefficients
 };
 
 

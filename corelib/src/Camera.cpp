@@ -74,6 +74,79 @@ void Camera::getImageSize(unsigned int & width, unsigned int & height)
 	height = _imageHeight;
 }
 
+void Camera::setCalibration(const std::string & fileName)
+{
+	if(UFile::getExtension(fileName).compare("yaml") == 0)
+	{
+		cv::FileStorage fs;
+		fs.open(fileName, cv::FileStorage::READ);
+
+		if (!fs.isOpened())
+		{
+			UERROR("Failed to open file \"%s\"", fileName.c_str());
+			return;
+		}
+
+		cv::Mat k,d;
+
+		cv::FileNode n = fs["camera_matrix"];
+		int rows = n["rows"];
+		int cols = n["cols"];
+		std::vector<double> data;
+		n["data"] >> data;
+		if(rows > 0 && cols > 0 && (int)data.size() == rows*cols)
+		{
+			k = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+		}
+
+		cv::FileNode nd = fs["distortion_coefficients"];
+		rows = nd["rows"];
+		cols = nd["cols"];
+		data.clear();
+		nd["data"] >> data;
+		if(rows > 0 && cols > 0 && (int)data.size() == rows*cols)
+		{
+			d = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+		}
+
+		if(k.empty())
+		{
+			UERROR("Failed to load \"camera_matrix\" matrix.");
+		}
+		if(d.empty())
+		{
+			UERROR("Failed to load \"distortion_coefficients\" matrix.");
+		}
+		if(!k.empty() && !d.empty())
+		{
+			this->setCalibration(k, d);
+		}
+	}
+	else
+	{
+		UERROR("Calibration file must be in \"*.yaml\" format");
+	}
+}
+
+void Camera::setCalibration(const cv::Mat & cameraMatrix, const cv::Mat & distorsionCoefficients)
+{
+	UASSERT(cameraMatrix.type() == CV_64FC1 &&
+			cameraMatrix.rows == 3 &&
+			cameraMatrix.cols == 3);
+	UASSERT(distorsionCoefficients.type() == CV_64FC1 &&
+			distorsionCoefficients.rows ==1 &&
+			(distorsionCoefficients.cols == 4 || distorsionCoefficients.cols == 5 || distorsionCoefficients.cols == 8));
+
+	_k = cameraMatrix;
+	_d = distorsionCoefficients;
+}
+
+void Camera::resetCalibration()
+{
+	_k = cv::Mat();
+	_d = cv::Mat();
+}
+
 cv::Mat Camera::takeImage()
 {
 	cv::Mat img;
@@ -99,6 +172,11 @@ cv::Mat Camera::takeImage()
 
 	UTimer timer;
 	img = this->captureImage();
+	if(!img.empty() && !_k.empty() && !_d.empty())
+	{
+		cv::Mat temp = img.clone();
+		cv::undistort(temp, img, _k, _d);
+	}
 	UDEBUG("Time capturing image = %fs", timer.ticks());
 	return img;
 }

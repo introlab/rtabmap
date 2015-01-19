@@ -25,6 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "rtabmap/core/Camera.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/utilite/ULogger.h"
@@ -35,7 +36,7 @@ void showUsage()
 {
 	printf("\nUsage:\n"
 			"rtabmap-calibration driver\n"
-			"  driver       Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS\n\n");
+			"  driver       Driver number to use: 0=USB camera, 1=OpenNI-PCL, 2=OpenNI2, 3=Freenect, 4=OpenNI-CV, 5=OpenNI-CV-ASUS\n\n");
 	exit(1);
 }
 
@@ -52,21 +53,26 @@ int main(int argc, char * argv[])
 	else
 	{
 		driver = atoi(argv[argc-1]);
-		if(driver < 0 || driver > 4)
+		if(driver < 0 || driver > 5)
 		{
-			UERROR("driver should be between 0 and 4.");
+			UERROR("driver should be between 0 and 5.");
 			showUsage();
 		}
 	}
 	UINFO("Using driver %d", driver);
 
 	float imageRate = 1.0f;
+	rtabmap::Camera * cameraUsb = 0;
 	rtabmap::CameraRGBD * camera = 0;
 	if(driver == 0)
 	{
-		camera = new rtabmap::CameraOpenni("", imageRate);
+		cameraUsb = new rtabmap::CameraVideo(0, imageRate);
 	}
 	else if(driver == 1)
+	{
+		camera = new rtabmap::CameraOpenni("", imageRate);
+	}
+	else if(driver == 2)
 	{
 		if(!rtabmap::CameraOpenNI2::available())
 		{
@@ -75,7 +81,7 @@ int main(int argc, char * argv[])
 		}
 		camera = new rtabmap::CameraOpenNI2(imageRate);
 	}
-	else if(driver == 2)
+	else if(driver == 3)
 	{
 		if(!rtabmap::CameraFreenect::available())
 		{
@@ -84,7 +90,7 @@ int main(int argc, char * argv[])
 		}
 		camera = new rtabmap::CameraFreenect(0, imageRate);
 	}
-	else if(driver == 3)
+	else if(driver == 4)
 	{
 		if(!rtabmap::CameraOpenNICV::available())
 		{
@@ -93,7 +99,7 @@ int main(int argc, char * argv[])
 		}
 		camera = new rtabmap::CameraOpenNICV(false, imageRate);
 	}
-	else if(driver == 4)
+	else if(driver == 5)
 	{
 		if(!rtabmap::CameraOpenNICV::available())
 		{
@@ -107,21 +113,36 @@ int main(int argc, char * argv[])
 		UFATAL("");
 	}
 
-	if(!camera->init())
-	{
-		printf("Camera init failed!\n");
-		delete camera;
-		exit(1);
-	}
+	rtabmap::CameraThread * cameraThread = 0;
 
-	rtabmap::CameraThread cameraThread(camera);
+	if(cameraUsb)
+	{
+		if(!cameraUsb->init())
+		{
+			printf("Camera init failed!\n");
+			delete cameraUsb;
+			exit(1);
+		}
+		cameraThread = new rtabmap::CameraThread(cameraUsb);
+	}
+	else if(camera)
+	{
+		if(!camera->init())
+		{
+			printf("Camera init failed!\n");
+			delete camera;
+			exit(1);
+		}
+		cameraThread = new rtabmap::CameraThread(camera);
+	}
 
 	QApplication app(argc, argv);
 	rtabmap::CalibrationDialog dialog;
 	dialog.registerToEventsManager();
 
 	dialog.show();
-	cameraThread.start();
+	cameraThread->start();
 	app.exec();
-	cameraThread.join(true);
+	cameraThread->join(true);
+	delete cameraThread;
 }

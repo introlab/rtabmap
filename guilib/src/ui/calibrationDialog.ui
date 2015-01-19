@@ -199,6 +199,9 @@
           <string>Camera intrinsic parameters</string>
          </property>
          <layout class="QFormLayout" name="formLayout_2">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+          </property>
           <item row="0" column="0">
            <widget class="QLabel" name="label_8">
             <property name="text">
@@ -326,6 +329,13 @@
            </widget>
           </item>
          </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="pushButton_save">
+         <property name="text">
+          <string>Export calibration (*.yaml)</string>
+         </property>
         </widget>
        </item>
        <item>

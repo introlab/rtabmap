@@ -64,6 +64,7 @@ private slots:
 	void processImage(const cv::Mat & image);
 	void restart();
 	void calibrate();
+	void save();
 
 protected:
 	virtual void closeEvent(QCloseEvent* event);

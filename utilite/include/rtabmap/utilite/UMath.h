@@ -533,18 +533,68 @@ inline T uVariance(const std::vector<T> & v, const T & m)
 }
 
 /**
- * Get the norm of the vector : return sqrt(x1*x1 + x2*x2 + x3*x3 + ...)
- * @return the norm of the vector
+ * Get the squared norm of the vector : return x1*x1 + x2*x2 + x3*x3 + ...
+ * @return the squared norm of the vector
  */
 template<class T>
-inline T uNorm(const std::vector<T> & v)
+inline T uNormSquared(const std::vector<T> & v)
 {
 	float sum = 0.0f;
 	for(unsigned int i=0; i<v.size(); ++i)
 	{
 		sum += v[i]*v[i];
 	}
-	return std::sqrt(sum);
+	return sum;
+}
+
+/**
+ * Get the norm of the vector : return sqrt(x1*x1 + x2*x2 + x3*x3 + ...)
+ * @return the norm of the vector
+ */
+template<class T>
+inline T uNorm(const std::vector<T> & v)
+{
+	return std::sqrt(uNormSquared(v));
+}
+
+/**
+ * Get the squared norm of the vector : return x1*x1 + x2*x2
+ * @return the squared norm of the vector
+ */
+template<class T>
+inline T uNormSquared(const T & x1, const T & x2)
+{
+	return x1*x1 + x2*x2;
+}
+
+/**
+ * Get the norm of the vector : return sqrt(x1*x1 + x2*x2 + x3*x3)
+ * @return the norm of the vector
+ */
+template<class T>
+inline T uNorm(const T & x1, const T & x2)
+{
+	return std::sqrt(uNormSquared(x1, x2));
+}
+
+/**
+ * Get the squared norm of the vector : return x1*x1 + x2*x2 + x3*x3
+ * @return the squared norm of the vector
+ */
+template<class T>
+inline T uNormSquared(const T & x1, const T & x2, const T & x3)
+{
+	return x1*x1 + x2*x2 + x3*x3;
+}
+
+/**
+ * Get the norm of the vector : return sqrt(x1*x1 + x2*x2 + x3*x3)
+ * @return the norm of the vector
+ */
+template<class T>
+inline T uNorm(const T & x1, const T & x2, const T & x3)
+{
+	return std::sqrt(uNormSquared(x1, x2, x3));
 }
 
 /**

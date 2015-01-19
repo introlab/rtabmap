@@ -33,6 +33,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+#include <QtGui/QFileDialog>
+#include <QtGui/QMessageBox>
+
 #include <rtabmap/core/CameraEvent.h>
 #include <rtabmap/gui/UCv2Qt.h>
 
@@ -57,6 +60,7 @@ CalibrationDialog::CalibrationDialog(QWidget * parent) :
 
 	connect(ui_->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
 	connect(ui_->pushButton_restart, SIGNAL(clicked()), this, SLOT(restart()));
+	connect(ui_->pushButton_save, SIGNAL(clicked()), this, SLOT(save()));
 
 	connect(ui_->spinBox_boardWidth, SIGNAL(valueChanged(int)), this, SLOT(setBoardWidth(int)));
 	connect(ui_->spinBox_boardHeight, SIGNAL(valueChanged(int)), this, SLOT(setBoardHeight(int)));
@@ -254,6 +258,7 @@ void CalibrationDialog::restart()
 	ui_->pushButton_calibrate->setEnabled(false);
 	ui_->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
 	ui_->checkBox_rectified->setEnabled(false);
+	//ui_->pushButton_save->setEnabled(false);
 
 	ui_->progressBar_count->reset();
 	ui_->progressBar_count->setMaximum(COUNT_MIN);
@@ -343,6 +348,34 @@ void CalibrationDialog::calibrate()
 		ui_->checkBox_rectified->setChecked(true);
 
 		ui_->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(true);
+		ui_->pushButton_save->setEnabled(true);
+	}
+}
+
+void CalibrationDialog::save()
+{
+	QString fileName = QFileDialog::getSaveFileName(this, tr("Export"), "calibration.yaml", "*.yaml");
+
+	if(!fileName.isEmpty())
+	{
+		cv::FileStorage fs(fileName.toStdString(), cv::FileStorage::WRITE);
+
+		// export in ROS calibration format
+		fs << "camera_matrix" << "{";
+		fs << "rows" << cameraMatrix_.rows;
+		fs << "cols" << cameraMatrix_.cols;
+		fs << "data" << std::vector<double>((double*)cameraMatrix_.data, ((double*)cameraMatrix_.data)+(cameraMatrix_.rows*cameraMatrix_.cols));
+		fs << "}";
+
+		fs << "distortion_coefficients" << "{";
+		fs << "rows" << distCoeffs_.rows;
+		fs << "cols" << distCoeffs_.cols;
+		fs << "data" << std::vector<double>((double*)distCoeffs_.data, ((double*)distCoeffs_.data)+(distCoeffs_.rows*distCoeffs_.cols));
+		fs << "}";
+
+		fs.release();
+		QMessageBox::information(this, tr("Export"), tr("Calibration file saved to \"%1\".").arg(fileName));
+		UINFO("Saved \"%s\"!", fileName.toStdString().c_str());
 	}
 }
 
