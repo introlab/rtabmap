@@ -245,7 +245,7 @@ void CalibrationDialog::processImage(const cv::Mat & image)
 	}
 
 	//show frame
-	ui_->image_view->setImage(uCvMat2QImage(image));
+	ui_->image_view->setImage(uCvMat2QImage(image).mirrored(ui_->checkBox_mirror->isChecked(), false));
 }
 
 void CalibrationDialog::restart()

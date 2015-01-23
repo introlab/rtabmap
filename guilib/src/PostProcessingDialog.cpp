@@ -42,6 +42,14 @@ PostProcessingDialog::PostProcessingDialog(QWidget * parent) :
 	connect(_ui->refineNeighborLinks, SIGNAL(stateChanged(int)), this, SLOT(updateButtonBox()));
 	connect(_ui->refineLoopClosureLinks, SIGNAL(stateChanged(int)), this, SLOT(updateButtonBox()));
 	connect(_ui->buttonBox->button(QDialogButtonBox::RestoreDefaults), SIGNAL(clicked()), this, SLOT(restoreDefaults()));
+
+	connect(_ui->detectMoreLoopClosures, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->clusterRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->clusterAngle, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->iterations, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->reextractFeatures, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->refineNeighborLinks, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->refineLoopClosureLinks, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 }
 
 PostProcessingDialog::~PostProcessingDialog()

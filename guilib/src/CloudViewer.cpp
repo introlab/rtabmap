@@ -97,6 +97,8 @@ CloudViewer::CloudViewer(QWidget *parent) :
 
 	//setup menu/actions
 	createMenu();
+
+	setMouseTracking(false);
 }
 
 CloudViewer::~CloudViewer()
@@ -171,7 +173,7 @@ bool CloudViewer::updateCloudPose(
 	{
 		UDEBUG("Updating pose %s to %s", id.c_str(), pose.prettyPrint().c_str());
 		if(_addedClouds.find(id).value() == pose ||
-		   _visualizer->updatePointCloudPose(id, util3d::transformToEigen3f(pose)))
+		   _visualizer->updatePointCloudPose(id, pose.toEigen3f()))
 		{
 			_addedClouds.find(id).value() = pose;
 			return true;
@@ -254,7 +256,7 @@ bool CloudViewer::addCloud(
 	if(!_addedClouds.contains(id))
 	{
 		Eigen::Vector4f origin(pose.x(), pose.y(), pose.z(), 0.0f);
-		Eigen::Quaternionf orientation = Eigen::Quaternionf(util3d::transformToEigen3f(pose).rotation());
+		Eigen::Quaternionf orientation = Eigen::Quaternionf(pose.toEigen3f().rotation());
 
 		// add random color channel
 		 pcl::visualization::PointCloudColorHandler<pcl::PCLPointCloud2>::Ptr colorHandler;
@@ -334,7 +336,7 @@ bool CloudViewer::addCloudMesh(
 		UDEBUG("Adding %s with %d points and %d polygons", id.c_str(), (int)cloud->size(), (int)polygons.size());
 		if(_visualizer->addPolygonMesh<pcl::PointXYZRGB>(cloud, polygons, id))
 		{
-			_visualizer->updatePointCloudPose(id, util3d::transformToEigen3f(pose));
+			_visualizer->updatePointCloudPose(id, pose.toEigen3f());
 			_addedClouds.insert(id, pose);
 			return true;
 		}
@@ -352,7 +354,7 @@ bool CloudViewer::addCloudMesh(
 		UDEBUG("Adding %s with %d polygons", id.c_str(), (int)mesh->polygons.size());
 		if(_visualizer->addPolygonMesh(*mesh, id))
 		{
-			_visualizer->updatePointCloudPose(id, util3d::transformToEigen3f(pose));
+			_visualizer->updatePointCloudPose(id, pose.toEigen3f());
 			_addedClouds.insert(id, pose);
 			return true;
 		}
@@ -580,7 +582,7 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 {
 	if(!pose.isNull())
 	{
-		Eigen::Affine3f m = util3d::transformToEigen3f(pose);
+		Eigen::Affine3f m = pose.toEigen3f();
 		Eigen::Vector3f pos = m.translation();
 
 		Eigen::Vector3f lastPos(0,0,0);
@@ -1044,6 +1046,8 @@ void CloudViewer::keyPressEvent(QKeyEvent * event)
 			cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
 
 		render();
+
+		emit configChanged();
 	}
 	else
 	{
@@ -1082,6 +1086,7 @@ void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 			cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
 
 	}
+	emit configChanged();
 }
 
 void CloudViewer::contextMenuEvent(QContextMenuEvent * event)
@@ -1090,6 +1095,7 @@ void CloudViewer::contextMenuEvent(QContextMenuEvent * event)
 	if(a)
 	{
 		handleAction(a);
+		emit configChanged();
 	}
 }
 

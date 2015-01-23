@@ -74,7 +74,7 @@ Transform::Transform(float r11, float r12, float r13, float o14,
 Transform::Transform(float x, float y, float z, float roll, float pitch, float yaw)
 {
 	Eigen::Affine3f t = pcl::getTransformation (x, y, z, roll, pitch, yaw);
-	*this = util3d::transformFromEigen3f(t);
+	*this = fromEigen3f(t);
 }
 
 bool Transform::isNull() const
@@ -133,8 +133,7 @@ void Transform::setIdentity()
 
 Transform Transform::inverse() const
 {
-	Eigen::Matrix4f m = util3d::transformToEigen4f(*this);
-	return util3d::transformFromEigen4f(m.inverse());
+	return fromEigen4f(toEigen4f().inverse());
 }
 
 Transform Transform::rotation() const
@@ -153,7 +152,7 @@ Transform Transform::translation() const
 
 void Transform::getTranslationAndEulerAngles(float & x, float & y, float & z, float & roll, float & pitch, float & yaw) const
 {
-	pcl::getTranslationAndEulerAngles(util3d::transformToEigen3f(*this), x, y, z, roll, pitch, yaw);
+	pcl::getTranslationAndEulerAngles(toEigen3f(), x, y, z, roll, pitch, yaw);
 }
 
 void Transform::getTranslation(float & x, float & y, float & z) const
@@ -165,12 +164,22 @@ void Transform::getTranslation(float & x, float & y, float & z) const
 
 float Transform::getNorm() const
 {
-	return std::sqrt(this->getNormSquared());
+	return uNorm(this->x(), this->y(), this->z());
 }
 
 float Transform::getNormSquared() const
 {
-	return this->x()*this->x() + this->y()*this->y() + this->z()*this->z();
+	return uNormSquared(this->x(), this->y(), this->z());
+}
+
+float Transform::getDistance(const Transform & t) const
+{
+	return uNorm(this->x()-t.x(), this->y()-t.y(), this->z()-t.z());
+}
+
+float Transform::getDistanceSquared(const Transform & t) const
+{
+	return uNormSquared(this->x()-t.x(), this->y()-t.y(), this->z()-t.z());
 }
 
 std::string Transform::prettyPrint() const
@@ -182,9 +191,7 @@ std::string Transform::prettyPrint() const
 
 Transform Transform::operator*(const Transform & t) const
 {
-	Eigen::Matrix4f m1 = util3d::transformToEigen4f(*this);
-	Eigen::Matrix4f m2 = util3d::transformToEigen4f(t);
-	return util3d::transformFromEigen4f(m1*m2);
+	return fromEigen4f(toEigen4f()*t.toEigen4f());
 }
 
 Transform & Transform::operator*=(const Transform & t)
@@ -216,5 +223,64 @@ std::ostream& operator<<(std::ostream& os, const Transform& s)
 	return os;
 }
 
+Eigen::Matrix4f Transform::toEigen4f() const
+{
+	Eigen::Matrix4f m;
+	m << data_[0], data_[1], data_[2], data_[3],
+		 data_[4], data_[5], data_[6], data_[7],
+		 data_[8], data_[9], data_[10], data_[11],
+		 0,0,0,1;
+	return m;
+}
+Eigen::Matrix4d Transform::toEigen4d() const
+{
+	Eigen::Matrix4d m;
+	m << data_[0], data_[1], data_[2], data_[3],
+		 data_[4], data_[5], data_[6], data_[7],
+		 data_[8], data_[9], data_[10], data_[11],
+		 0,0,0,1;
+	return m;
+}
+
+Eigen::Affine3f Transform::toEigen3f() const
+{
+	return Eigen::Affine3f(toEigen4f());
+}
+
+Eigen::Affine3d Transform::toEigen3d() const
+{
+	return Eigen::Affine3d(toEigen4d());
+}
+
+Transform Transform::getIdentity()
+{
+	return Transform(1,0,0,0, 0,1,0,0, 0,0,1,0);
+}
+
+Transform Transform::fromEigen4f(const Eigen::Matrix4f & matrix)
+{
+	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
+					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),
+					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
+}
+Transform Transform::fromEigen4d(const Eigen::Matrix4d & matrix)
+{
+	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
+					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),
+					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
+}
+
+Transform Transform::fromEigen3f(const Eigen::Affine3f & matrix)
+{
+	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
+					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),
+					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
+}
+Transform Transform::fromEigen3d(const Eigen::Affine3d & matrix)
+{
+	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
+					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),
+					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
+}
 
 }

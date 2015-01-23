@@ -109,11 +109,15 @@ public slots:
 protected:
 	virtual void closeEvent(QCloseEvent* event);
 	virtual void handleEvent(UEvent* anEvent);
+	virtual void showEvent(QShowEvent* anEvent);
+	virtual void moveEvent(QMoveEvent* anEvent);
 	virtual void resizeEvent(QResizeEvent* anEvent);
 
 private slots:
 	void changeState(MainWindow::State state);
 	void beep();
+	void configGUIModified();
+	void saveConfigGUI();
 	void newDatabase();
 	void openDatabase();
 	void closeDatabase();

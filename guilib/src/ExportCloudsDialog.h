@@ -76,6 +76,9 @@ public:
 	void setMeshNormalKSearch(int k);
 	void setMeshGp3Radius(double radius);
 
+signals:
+	void configChanged();
+
 public slots:
 	void restoreDefaults();
 

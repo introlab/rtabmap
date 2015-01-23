@@ -82,6 +82,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/core/util3d.h"
+#include "rtabmap/core/Graph.h"
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/common/transforms.h>
 #include <pcl/common/common.h>
@@ -128,7 +129,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_rawLikelihoodCurve(0),
 	_autoScreenCaptureOdomSync(false)
 {
-	ULOGGER_DEBUG("");
+	UDEBUG("");
 
 	initGuiResource();
 
@@ -140,6 +141,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 
 	// Create dialogs
 	_aboutDialog = new AboutDialog(this);
+	_aboutDialog->setObjectName("AboutDialog");
 	_exportDialog = new ExportCloudsDialog(this);
 	_exportDialog->setObjectName("ExportCloudsDialog");
 	_postProcessingDialog = new PostProcessingDialog(this);
@@ -148,9 +150,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui = new Ui_mainWindow();
 	_ui->setupUi(this);
 
-	QString title("RTAB-Map: Real-Time Appearance-Based Mapping");
+	QString title("RTAB-Map[*]");
 	this->setWindowTitle(title);
 	this->setWindowIconText(tr("RTAB-Map"));
+	this->setObjectName("MainWindow");
 
 	//Setup dock widgets position if it is the first time the application is started.
 	//if(!QFile::exists(PreferencesDialog::getIniFilePath()))
@@ -179,10 +182,15 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	{
 		_preferencesDialog = new PreferencesDialog(this);
 	}
+	_preferencesDialog->setObjectName("PreferencesDialog");
 	_preferencesDialog->init();
 
 	// Restore window geometry
 	_preferencesDialog->loadMainWindowState(this);
+	_preferencesDialog->loadWindowGeometry(_preferencesDialog);
+	_preferencesDialog->loadWindowGeometry(_exportDialog);
+	_preferencesDialog->loadWindowGeometry(_postProcessingDialog);
+	_preferencesDialog->loadWindowGeometry(_aboutDialog);
 	setupMainLayout(_preferencesDialog->isVerticalLayoutUsed());
 
 	// Timer
@@ -198,9 +206,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->imageView_source->setBackgroundBrush(QBrush(Qt::black));
 	_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
 	_ui->imageView_odometry->setBackgroundBrush(QBrush(Qt::black));
-	_preferencesDialog->loadWidgetState(_ui->imageView_source->objectName(), _ui->imageView_source);
-	_preferencesDialog->loadWidgetState(_ui->imageView_loopClosure->objectName(), _ui->imageView_loopClosure);
-	_preferencesDialog->loadWidgetState(_ui->imageView_odometry->objectName(), _ui->imageView_odometry);
+	_preferencesDialog->loadWidgetState(_ui->imageView_source);
+	_preferencesDialog->loadWidgetState(_ui->imageView_loopClosure);
+	_preferencesDialog->loadWidgetState(_ui->imageView_odometry);
 
 	_posteriorCurve = new PdfPlotCurve("Posterior", &_cachedSignatures, this);
 	_ui->posteriorPlot->addCurve(_posteriorCurve, false);
@@ -255,6 +263,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(a, SIGNAL(triggered(bool)), _initProgressDialog, SLOT(show()));
 
 	// connect actions with custom slots
+	connect(_ui->actionSave_GUI_config, SIGNAL(triggered()), this, SLOT(saveConfigGUI()));
 	connect(_ui->actionNew_database, SIGNAL(triggered()), this, SLOT(newDatabase()));
 	connect(_ui->actionOpen_database, SIGNAL(triggered()), this, SLOT(openDatabase()));
 	connect(_ui->actionClose_database, SIGNAL(triggered()), this, SLOT(closeDatabase()));
@@ -295,6 +304,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionPost_processing, SIGNAL(triggered()), this, SLOT(postProcessing()));
 
 	_ui->actionPause->setShortcut(Qt::Key_Space);
+	_ui->actionSave_GUI_config->setShortcut(QKeySequence::Save);
 	_ui->actionSave_point_cloud->setEnabled(false);
 	_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
 	_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
@@ -349,6 +359,21 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_preferencesDialog, SIGNAL(settingsChanged(PreferencesDialog::PANEL_FLAGS)), this, SLOT(applyPrefSettings(PreferencesDialog::PANEL_FLAGS)));
 	qRegisterMetaType<rtabmap::ParametersMap>("rtabmap::ParametersMap");
 	connect(_preferencesDialog, SIGNAL(settingsChanged(rtabmap::ParametersMap)), this, SLOT(applyPrefSettings(rtabmap::ParametersMap)));
+	// config GUI modified
+	connect(_ui->imageView_source, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
+	connect(_ui->imageView_loopClosure, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
+	connect(_ui->imageView_odometry, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
+	connect(_ui->widget_cloudViewer, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
+	connect(_exportDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
+	connect(_postProcessingDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
+	connect(_ui->toolBar->toggleViewAction(), SIGNAL(toggled(bool)), this, SLOT(configGUIModified()));
+	connect(_ui->toolBar, SIGNAL(orientationChanged(Qt::Orientation)), this, SLOT(configGUIModified()));
+	QList<QDockWidget*> dockWidgets = this->findChildren<QDockWidget*>();
+	for(int i=0; i<dockWidgets.size(); ++i)
+	{
+		connect(dockWidgets[i], SIGNAL(dockLocationChanged(Qt::DockWidgetArea)), this, SLOT(configGUIModified()));
+		connect(dockWidgets[i]->toggleViewAction(), SIGNAL(toggled(bool)), this, SLOT(configGUIModified()));
+	}
 
 	// more connects...
 	connect(_ui->doubleSpinBox_stats_imgRate, SIGNAL(editingFinished()), this, SLOT(changeImgRateSetting()));
@@ -375,11 +400,11 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_ui->widget_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
-	_preferencesDialog->loadWidgetState(_ui->widget_cloudViewer->objectName(), _ui->widget_cloudViewer);
+	_preferencesDialog->loadWidgetState(_ui->widget_cloudViewer);
 
 	//dialog states
-	_preferencesDialog->loadWidgetState(_exportDialog->objectName(), _exportDialog);
-	_preferencesDialog->loadWidgetState(_postProcessingDialog->objectName(), _postProcessingDialog);
+	_preferencesDialog->loadWidgetState(_exportDialog);
+	_preferencesDialog->loadWidgetState(_postProcessingDialog);
 
 	if(_ui->statsToolBox->findChildren<StatItem*>().size() == 0)
 	{
@@ -404,6 +429,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	splash.close();
 
 	this->setFocus();
+
+	UDEBUG("");
 }
 
 MainWindow::~MainWindow()
@@ -454,16 +481,32 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
 	if(processStopped)
 	{
+		//write settings before quit?
+		bool save = false;
+		if(this->isWindowModified())
+		{
+			QMessageBox::Button b=QMessageBox::question(this,
+					tr("RTAB-Map"),
+					tr("There are unsaved GUI changes. Save them?"),
+					QMessageBox::Save | QMessageBox::Cancel | QMessageBox::Discard);
+			if(b == QMessageBox::Save)
+			{
+				save = true;
+			}
+			else if(b != QMessageBox::Discard)
+			{
+				event->ignore();
+				return;
+			}
+		}
+
+		if(save)
+		{
+			saveConfigGUI();
+		}
+
 		_ui->statsToolBox->closeFigures();
 
-		//write settings before quit?
-		_preferencesDialog->saveMainWindowState(this);
-		_preferencesDialog->saveWidgetState(_ui->widget_cloudViewer->objectName(), _ui->widget_cloudViewer);
-		_preferencesDialog->saveWidgetState(_ui->imageView_source->objectName(), _ui->imageView_source);
-		_preferencesDialog->saveWidgetState(_ui->imageView_loopClosure->objectName(), _ui->imageView_loopClosure);
-		_preferencesDialog->saveWidgetState(_ui->imageView_odometry->objectName(), _ui->imageView_odometry);
-		_preferencesDialog->saveWidgetState(_exportDialog->objectName(), _exportDialog);
-		_preferencesDialog->saveWidgetState(_postProcessingDialog->objectName(), _postProcessingDialog);
 		_ui->dockWidget_imageView->close();
 		_ui->dockWidget_likelihood->close();
 		_ui->dockWidget_rawlikelihood->close();
@@ -1131,7 +1174,7 @@ void MainWindow::updateMapCloud(
 	{
 		float radius = _preferencesDialog->getCloudFilteringRadius();
 		float angle = _preferencesDialog->getCloudFilteringAngle()*CV_PI/180.0; // convert to rad
-		poses = util3d::radiusPosesFiltering(posesIn, radius, angle);
+		poses = rtabmap::radiusPosesFiltering(posesIn, radius, angle);
 		// make sure the last is here
 		poses.insert(*posesIn.rbegin());
 		for(std::map<int, Transform>::iterator iter= poses.begin(); iter!=poses.end(); ++iter)
@@ -2027,6 +2070,25 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	}
 }
 
+void MainWindow::showEvent(QShowEvent* anEvent)
+{
+	this->setWindowModified(false);
+}
+
+void MainWindow::moveEvent(QMoveEvent* anEvent)
+{
+	if(this->isVisible())
+	{
+		// HACK, there is a move event when the window is shown the first time.
+		static bool firstCall = true;
+		if(!firstCall)
+		{
+			this->configGUIModified();
+		}
+		firstCall = false;
+	}
+}
+
 void MainWindow::resizeEvent(QResizeEvent* anEvent)
 {
 	_ui->imageView_source->fitInView(_ui->imageView_source->sceneRect(), Qt::KeepAspectRatio);
@@ -2035,6 +2097,10 @@ void MainWindow::resizeEvent(QResizeEvent* anEvent)
 	_ui->imageView_source->resetZoom();
 	_ui->imageView_loopClosure->resetZoom();
 	_ui->imageView_odometry->resetZoom();
+	if(this->isVisible())
+	{
+		this->configGUIModified();
+	}
 }
 
 void MainWindow::updateSelectSourceImageMenu(bool used, PreferencesDialog::Src src)
@@ -2108,7 +2174,26 @@ void MainWindow::beep()
 	QApplication::beep();
 }
 
+void MainWindow::configGUIModified()
+{
+	this->setWindowModified(true);
+}
+
 //ACTIONS
+void MainWindow::saveConfigGUI()
+{
+	_preferencesDialog->saveMainWindowState(this);
+	_preferencesDialog->saveWindowGeometry(_preferencesDialog);
+	_preferencesDialog->saveWindowGeometry(_aboutDialog);
+	_preferencesDialog->saveWidgetState(_ui->widget_cloudViewer);
+	_preferencesDialog->saveWidgetState(_ui->imageView_source);
+	_preferencesDialog->saveWidgetState(_ui->imageView_loopClosure);
+	_preferencesDialog->saveWidgetState(_ui->imageView_odometry);
+	_preferencesDialog->saveWidgetState(_exportDialog);
+	_preferencesDialog->saveWidgetState(_postProcessingDialog);
+	this->setWindowModified(false);
+}
+
 void MainWindow::newDatabase()
 {
 	if(_state != MainWindow::kIdle)
@@ -2871,7 +2956,7 @@ void MainWindow::postProcessing()
 			_initProgressDialog->appendText(tr("Looking for more loop closures, clustering poses... (iteration=%1/%2, radius=%3 m angle=%4 degrees)")
 					.arg(n+1).arg(detectLoopClosureIterations).arg(clusterRadius).arg(clusterAngle));
 
-			std::multimap<int, int> clusters = util3d::radiusPosesClustering(
+			std::multimap<int, int> clusters = rtabmap::radiusPosesClustering(
 					_currentPosesMap,
 					clusterRadius,
 					clusterAngle*CV_PI/180.0);
@@ -2893,7 +2978,7 @@ void MainWindow::postProcessing()
 
 				// only add new links and one per cluster per iteration
 				if(addedLinks.find(from) == addedLinks.end() && addedLinks.find(to) == addedLinks.end() &&
-				   util3d::findLink(_currentLinksMap, from, to) == _currentLinksMap.end())
+				   rtabmap::findLink(_currentLinksMap, from, to) == _currentLinksMap.end())
 				{
 					if(!_cachedSignatures.contains(from))
 					{
@@ -2976,8 +3061,8 @@ void MainWindow::postProcessing()
 				_initProgressDialog->appendText(tr("Optimizing graph with new links (%1 nodes, %2 constraints)...")
 						.arg(odomPoses.size()).arg(_currentLinksMap.size()));
 				std::map<int, rtabmap::Transform> optimizedPoses;
-				std::map<int, int> depthGraph = util3d::generateDepthGraph(_currentLinksMap, toroOptimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first);
-				util3d::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations, true, ignoreVariance);
+				std::map<int, int> depthGraph = rtabmap::generateDepthGraph(_currentLinksMap, toroOptimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first);
+				rtabmap::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations, true, ignoreVariance);
 				_currentPosesMap = optimizedPoses;
 				_initProgressDialog->appendText(tr("Optimizing graph with new links... done!"));
 			}
@@ -3131,8 +3216,8 @@ void MainWindow::postProcessing()
 	_initProgressDialog->appendText(tr("Optimizing graph with updated links (%1 nodes, %2 constraints)...")
 			.arg(odomPoses.size()).arg(_currentLinksMap.size()));
 	std::map<int, rtabmap::Transform> optimizedPoses;
-	std::map<int, int> depthGraph = util3d::generateDepthGraph(_currentLinksMap, toroOptimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first);
-	util3d::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations, true, ignoreVariance);
+	std::map<int, int> depthGraph = rtabmap::generateDepthGraph(_currentLinksMap, toroOptimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first);
+	rtabmap::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations, true, ignoreVariance);
 	_initProgressDialog->appendText(tr("Optimizing graph with updated links... done!"));
 	_initProgressDialog->incrementStep();
 

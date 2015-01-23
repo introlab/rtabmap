@@ -50,6 +50,9 @@ public:
 	bool isDepth2dExported() const;
 	bool isOdomExported() const;
 
+signals:
+	void configChanged();
+
 private slots:
 	void getPath();
 

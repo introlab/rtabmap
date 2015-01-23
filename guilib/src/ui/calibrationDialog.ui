@@ -15,18 +15,42 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_3">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,0">
+    <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="1,0">
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_2" stretch="1,0">
        <item>
         <widget class="UImageView" name="image_view" native="true"/>
        </item>
        <item>
-        <widget class="QCheckBox" name="checkBox_rectified">
-         <property name="text">
-          <string>Show rectified</string>
-         </property>
-        </widget>
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <widget class="QCheckBox" name="checkBox_rectified">
+           <property name="text">
+            <string>Show rectified</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkBox_mirror">
+           <property name="text">
+            <string>Mirror</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
        </item>
       </layout>
      </item>
@@ -88,7 +112,7 @@
           <item row="2" column="1">
            <widget class="QDoubleSpinBox" name="doubleSpinBox_squareSize">
             <property name="decimals">
-             <number>3</number>
+             <number>4</number>
             </property>
             <property name="maximum">
              <double>1.000000000000000</double>

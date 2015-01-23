@@ -178,6 +178,7 @@
      <addaction name="action360p"/>
      <addaction name="action240p"/>
     </widget>
+    <addaction name="actionSave_GUI_config"/>
     <addaction name="menuShow_view"/>
     <addaction name="menuFigures"/>
     <addaction name="actionScreenshot"/>
@@ -1114,6 +1115,11 @@
   <action name="actionPost_processing">
    <property name="text">
     <string>Post-processing...</string>
+   </property>
+  </action>
+  <action name="actionSave_GUI_config">
+   <property name="text">
+    <string>Save GUI config</string>
    </property>
   </action>
  </widget>

@@ -62,6 +62,9 @@ public:
 	void setRefineNeighborLinks(bool on);
 	void setRefineLoopClosureLinks(bool on);
 
+signals:
+	void configChanged();
+
 public slots:
 	void restoreDefaults();
 

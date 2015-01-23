@@ -40,6 +40,12 @@ ExportDialog::ExportDialog(QWidget * parent) :
 
 	connect(_ui->toolButton_path, SIGNAL(clicked()), this, SLOT(getPath()));
 
+	connect(_ui->spinBox_ignored, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_rgb, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_depth, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_depth2d, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_odom, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+
 	_ui->lineEdit_path->setText(QDir::homePath()+QDir::separator()+"output.db");
 }
 

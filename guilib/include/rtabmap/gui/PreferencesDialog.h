@@ -97,12 +97,12 @@ public:
 	virtual QString getIniFilePath() const;
 	void init();
 
-	void saveWindowGeometry(const QString & windowName, const QWidget * window);
-	void loadWindowGeometry(const QString & windowName, QWidget * window);
+	void saveWindowGeometry(const QWidget * window);
+	void loadWindowGeometry(QWidget * window);
 	void saveMainWindowState(const QMainWindow * mainWindow);
 	void loadMainWindowState(QMainWindow * mainWindow);
-	void saveWidgetState(const QString & name, const QWidget * widget);
-	void loadWidgetState(const QString & name, QWidget * widget);
+	void saveWidgetState(const QWidget * widget);
+	void loadWidgetState(QWidget * widget);
 
 	void saveCustomConfig(const QString & section, const QString & key, const QString & value);
 	QString loadCustomConfig(const QString & section, const QString & key);

@@ -127,7 +127,7 @@ typename pcl::PointCloud<PointT>::Ptr transformPointCloud(
 	typedef typename pcl::PointCloud<PointT> PointCloud;
 	typedef typename PointCloud::Ptr PointCloudPtr;
 	PointCloudPtr output(new PointCloud);
-	pcl::transformPointCloud<PointT>(*cloud, *output, transformToEigen4f(transform));
+	pcl::transformPointCloud<PointT>(*cloud, *output, transform.toEigen4f());
 	return output;
 }
 
@@ -136,7 +136,7 @@ PointT transformPoint(
 		const PointT & pt,
 		const Transform & transform)
 {
-	return pcl::transformPoint(pt, transformToEigen3f(transform));
+	return pcl::transformPoint(pt, transform.toEigen3f());
 }
 
 template<typename PointT>

@@ -75,6 +75,9 @@ public:
 	void clearLines();
 	void clear();
 
+signals:
+	void configChanged();
+
 protected:
 	virtual void contextMenuEvent(QContextMenuEvent * e);
 	virtual void wheelEvent(QWheelEvent * e);

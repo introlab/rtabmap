@@ -185,6 +185,9 @@ public slots:
 	void setCloudPointSize(const std::string & id, int size);
 	virtual void clear() {removeAllClouds(); clearTrajectory();}
 
+signals:
+	void configChanged();
+
 protected:
 	virtual void keyReleaseEvent(QKeyEvent * event);
 	virtual void keyPressEvent(QKeyEvent * event);

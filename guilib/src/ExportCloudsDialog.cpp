@@ -39,6 +39,19 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	_ui->setupUi(this);
 
 	connect(_ui->buttonBox->button(QDialogButtonBox::RestoreDefaults), SIGNAL(clicked()), this, SLOT(restoreDefaults()));
+
+	connect(_ui->groupBox_assemble, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_voxelSize_assembled, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->groupBox_regenerate, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_decimation, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_maxDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_binary, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->groupBox_mls, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_mlsRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->groupBox_gp3, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_normalKSearch, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 }
 
 ExportCloudsDialog::~ExportCloudsDialog()

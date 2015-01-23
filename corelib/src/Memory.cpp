@@ -43,6 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "DBDriverSqlite3.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Statistics.h"
+#include "rtabmap/core/Compression.h"
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
@@ -1658,7 +1659,7 @@ Transform Memory::computeVisualTransform(
 					UDEBUG("Forcing 2D...");
 					float x,y,z,r,p,yaw;
 					transform.getTranslationAndEulerAngles(x,y,z, r,p,yaw);
-					transform = util3d::transformFromEigen3f(pcl::getTransformation(x,y,0, 0, 0, yaw));
+					transform = Transform::fromEigen3f(pcl::getTransformation(x,y,0, 0, 0, yaw));
 				}
 			}
 			else if(inliersCount < _bowMinInliers)
@@ -1923,7 +1924,7 @@ Transform Memory::computeIcpTransform(
 		// We are 2D here, make sure the guess has only YAW rotation
 		float x,y,z,r,p,yaw;
 		guess.getTranslationAndEulerAngles(x,y,z, r,p,yaw);
-		guess = util3d::transformFromEigen3f(pcl::getTransformation(x,y,0, 0, 0, yaw));
+		guess = Transform::fromEigen3f(pcl::getTransformation(x,y,0, 0, 0, yaw));
 		if(r!=0 || p!=0)
 		{
 			UINFO("2D ICP: Dropping z (%f), roll (%f) and pitch (%f) rotation!", z, r, p);
@@ -2040,7 +2041,7 @@ Transform Memory::computeScanMatchingTransform(
 			const Signature * s = this->getSignature(iter->first);
 			if(!s->getLaserScanCompressed().empty())
 			{
-				*assembledOldClouds += *util3d::cvMat2Cloud(util3d::uncompressData(s->getLaserScanCompressed()), iter->second);
+				*assembledOldClouds += *util3d::cvMat2Cloud(rtabmap::uncompressData(s->getLaserScanCompressed()), iter->second);
 			}
 			else
 			{
@@ -2059,7 +2060,7 @@ Transform Memory::computeScanMatchingTransform(
 	const Signature * newS = getSignature(newId);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud;
 	UASSERT(uContains(poses, newId));
-	newCloud = util3d::cvMat2Cloud(util3d::uncompressData(newS->getLaserScanCompressed()), poses.at(newId));
+	newCloud = util3d::cvMat2Cloud(rtabmap::uncompressData(newS->getLaserScanCompressed()), poses.at(newId));
 
 	//voxelize
 	if(newCloud->size() && _icp2VoxelSize > 0.0f)
@@ -3302,9 +3303,9 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 		{
 			depthOrRightImage = data.rightImage();
 		}
-		util3d::CompressionThread ctImage(data.image(), std::string(".jpg"));
-		util3d::CompressionThread ctDepth(depthOrRightImage, std::string(".png"));
-		util3d::CompressionThread ctDepth2d(data.laserScan());
+		rtabmap::CompressionThread ctImage(data.image(), std::string(".jpg"));
+		rtabmap::CompressionThread ctDepth(depthOrRightImage, std::string(".png"));
+		rtabmap::CompressionThread ctDepth2d(data.laserScan());
 		ctImage.start();
 		ctDepth.start();
 		ctDepth2d.start();
@@ -3333,7 +3334,7 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 			words,
 			words3D,
 			data.pose(),
-			util3d::compressData2(data.laserScan()));
+			rtabmap::compressData2(data.laserScan()));
 	}
 	if(this->isRawDataKept())
 	{

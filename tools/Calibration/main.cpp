@@ -29,14 +29,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/utilite/ULogger.h"
+#include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/gui/CalibrationDialog.h"
 #include <QtGui/QApplication>
 
 void showUsage()
 {
 	printf("\nUsage:\n"
-			"rtabmap-calibration driver\n"
-			"  driver       Driver number to use: 0=USB camera, 1=OpenNI-PCL, 2=OpenNI2, 3=Freenect, 4=OpenNI-CV, 5=OpenNI-CV-ASUS\n\n");
+			"rtabmap-calibration [options]\n"
+			"Options:\n"
+			"  --driver #     Driver number to use: 0=USB camera, 1=OpenNI-PCL, 2=OpenNI2,\n"
+			"                                       3=Freenect, 4=OpenNI-CV, 5=OpenNI-CV-ASUS\n"
+			"  --device #     Device id\n\n");
 	exit(1);
 }
 
@@ -46,31 +50,70 @@ int main(int argc, char * argv[])
 	ULogger::setLevel(ULogger::kInfo);
 
 	int driver = 0;
-	if(argc < 2)
+	int device = 0;
+	for(int i=1; i<argc; ++i)
 	{
-		showUsage();
-	}
-	else
-	{
-		driver = atoi(argv[argc-1]);
-		if(driver < 0 || driver > 5)
+		if(strcmp(argv[i], "--driver") == 0)
 		{
-			UERROR("driver should be between 0 and 5.");
+			++i;
+			if(i < argc)
+			{
+				driver = std::atoi(argv[i]);
+				if(driver < 0)
+				{
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
+		if(strcmp(argv[i], "--device") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				device = std::atoi(argv[i]);
+				if(device < 0)
+				{
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
+		if(strcmp(argv[i], "--help") == 0)
+		{
 			showUsage();
 		}
+		printf("Unrecognized option : %s\n", argv[i]);
+		showUsage();
 	}
+	driver = atoi(argv[argc-1]);
+	if(driver < 0 || driver > 5)
+	{
+		UERROR("driver should be between 0 and 5.");
+		showUsage();
+	}
+
 	UINFO("Using driver %d", driver);
+	UINFO("Using device %d", device);
 
 	float imageRate = 1.0f;
 	rtabmap::Camera * cameraUsb = 0;
 	rtabmap::CameraRGBD * camera = 0;
 	if(driver == 0)
 	{
-		cameraUsb = new rtabmap::CameraVideo(0, imageRate);
+		cameraUsb = new rtabmap::CameraVideo(device, imageRate);
 	}
 	else if(driver == 1)
 	{
-		camera = new rtabmap::CameraOpenni("", imageRate);
+		camera = new rtabmap::CameraOpenni(uNumber2Str(device), imageRate);
 	}
 	else if(driver == 2)
 	{
@@ -88,7 +131,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Freenect support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraFreenect(0, imageRate);
+		camera = new rtabmap::CameraFreenect(device, imageRate);
 	}
 	else if(driver == 4)
 	{

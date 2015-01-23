@@ -162,23 +162,28 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 	else if(action == _showFeatures)
 	{
 		this->setFeaturesShown(_showFeatures->isChecked());
+		emit configChanged();
 	}
 	else if(action == _showImage)
 	{
 		this->setImageShown(_showImage->isChecked());
+		emit configChanged();
 	}
 	else if(action == _showImageDepth)
 	{
 		this->setImageDepthShown(_showImageDepth->isChecked());
+		emit configChanged();
 	}
 	else if(action == _showLines)
 	{
 		this->setLinesShown(_showLines->isChecked());
+		emit configChanged();
 	}
 
 	if(action == _showImage || action ==_showImageDepth)
 	{
 		this->updateOpacity();
+		emit configChanged();
 	}
 }
 

@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/core/util3d.h"
+#include "rtabmap/core/Compression.h"
 
 namespace rtabmap {
 
@@ -212,9 +213,9 @@ SensorData DBReader::getNextData()
 				UWARN("No image loaded from the database for id=%d!", *_currentId);
 			}
 
-			util3d::CompressionThread ctImage(imageBytes, true);
-			util3d::CompressionThread ctDepth(depthBytes, true);
-			util3d::CompressionThread ctLaserScan(laserScanBytes, false);
+			rtabmap::CompressionThread ctImage(imageBytes, true);
+			rtabmap::CompressionThread ctDepth(depthBytes, true);
+			rtabmap::CompressionThread ctLaserScan(laserScanBytes, false);
 			ctImage.start();
 			ctDepth.start();
 			ctLaserScan.start();

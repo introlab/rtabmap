@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/Version.h"
 #include "rtabmap/core/Features2d.h"
-
+#include "rtabmap/core/Graph.h"
 #include "rtabmap/core/Signature.h"
 
 #include "rtabmap/core/EpipolarGeometry.h"
@@ -646,7 +646,7 @@ void Rtabmap::generateTOROGraph(const std::string & path, bool optimized, bool g
 			_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
 		}
 
-		util3d::saveTOROGraph(path, poses, constraints);
+		rtabmap::saveTOROGraph(path, poses, constraints);
 	}
 }
 
@@ -1264,6 +1264,8 @@ bool Rtabmap::process(const SensorData & data)
 				uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(_reextractNNDR)));
 				uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(_reextractFeatureType))); // FAST/BRIEF
 				uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(_reextractMaxWords)));
+				uInsert(customParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
+				uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
 				uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
 
 				//for(ParametersMap::iterator iter = customParameters.begin(); iter!=customParameters.end(); ++iter)
@@ -2010,7 +2012,7 @@ void Rtabmap::optimizeCurrentMap(
 		}
 		else
 		{
-			util3d::optimizeTOROGraph(ids, poses, edgeConstraints, optimizedPoses, _toroIterations, true, _toroIgnoreVariance);
+			rtabmap::optimizeTOROGraph(ids, poses, edgeConstraints, optimizedPoses, _toroIterations, true, _toroIgnoreVariance);
 		}
 	}
 }

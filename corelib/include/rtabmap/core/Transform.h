@@ -31,6 +31,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/RtabmapExp.h>
 #include <vector>
 #include <string>
+#include <Eigen/Core>
+#include <Eigen/Geometry>
 
 namespace rtabmap {
 
@@ -89,6 +91,8 @@ public:
 	void getTranslation(float & x, float & y, float & z) const;
 	float getNorm() const;
 	float getNormSquared() const;
+	float getDistance(const Transform & t) const;
+	float getDistanceSquared(const Transform & t) const;
 	std::string prettyPrint() const;
 
 	Transform operator*(const Transform & t) const;
@@ -96,10 +100,17 @@ public:
 	bool operator==(const Transform & t) const;
 	bool operator!=(const Transform & t) const;
 
-	static Transform getIdentity()
-	{
-		return Transform(1,0,0,0, 0,1,0,0, 0,0,1,0);
-	}
+	Eigen::Matrix4f toEigen4f() const;
+	Eigen::Matrix4d toEigen4d() const;
+	Eigen::Affine3f toEigen3f() const;
+	Eigen::Affine3d toEigen3d() const;
+
+public:
+	static Transform getIdentity();
+	static Transform fromEigen4f(const Eigen::Matrix4f & matrix);
+	static Transform fromEigen4d(const Eigen::Matrix4d & matrix);
+	static Transform fromEigen3f(const Eigen::Affine3f & matrix);
+	static Transform fromEigen3d(const Eigen::Affine3d & matrix);
 
 private:
 	std::vector<float> data_;

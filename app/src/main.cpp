@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
 	UEventsManager::addHandler(mainWindow);
 
 	/* Start thread's task */
-	mainWindow->showNormal();
+	mainWindow->show();
 
 	RtabmapThread * rtabmap = new RtabmapThread(new Rtabmap());
 	rtabmap->start(); // start it not initialized... will be initialized by event from the gui

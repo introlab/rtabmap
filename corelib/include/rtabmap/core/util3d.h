@@ -49,41 +49,6 @@ namespace rtabmap
 namespace util3d
 {
 
-/**
- * Compress image or data
- *
- * Example compression:
- *   cv::Mat image;// an image
- *   CompressionThread ct(image);
- *   ct.start();
- *   ct.join();
- *   std::vector<unsigned char> bytes = ct.getCompressedData();
- *
- * Example uncompression
- *   std::vector<unsigned char> bytes;// a compressed image
- *   CompressionThread ct(bytes);
- *   ct.start();
- *   ct.join();
- *   cv::Mat image = ct.getUncompressedData();
- */
-class RTABMAP_EXP CompressionThread : public UThread
-{
-public:
-	// format : ".png" ".jpg" "" (empty is general)
-	CompressionThread(const cv::Mat & mat, const std::string & format = "");
-	CompressionThread(const cv::Mat & bytes, bool isImage);
-	const cv::Mat & getCompressedData() const {return compressedData_;}
-	cv::Mat & getUncompressedData() {return uncompressedData_;}
-protected:
-	virtual void mainLoop();
-private:
-	cv::Mat compressedData_;
-	cv::Mat uncompressedData_;
-	std::string format_;
-	bool image_;
-	bool compressMode_;
-};
-
 cv::Mat RTABMAP_EXP rgbFromCloud(const pcl::PointCloud<pcl::PointXYZRGBA> & cloud, bool bgrOrder = true);
 cv::Mat RTABMAP_EXP depthFromCloud(
 		const pcl::PointCloud<pcl::PointXYZRGBA> & cloud,
@@ -235,19 +200,6 @@ cv::Mat RTABMAP_EXP depthFromDisparity(const cv::Mat & disparity,
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud);
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const cv::Mat & laserScan);
 
-std::vector<unsigned char> RTABMAP_EXP compressImage(const cv::Mat & image, const std::string & format = ".png");
-cv::Mat RTABMAP_EXP compressImage2(const cv::Mat & image, const std::string & format = ".png");
-
-cv::Mat RTABMAP_EXP uncompressImage(const cv::Mat & bytes);
-cv::Mat RTABMAP_EXP uncompressImage(const std::vector<unsigned char> & bytes);
-
-std::vector<unsigned char> RTABMAP_EXP compressData(const cv::Mat & data);
-cv::Mat RTABMAP_EXP compressData2(const cv::Mat & data);
-
-cv::Mat RTABMAP_EXP uncompressData(const cv::Mat & bytes);
-cv::Mat RTABMAP_EXP uncompressData(const std::vector<unsigned char> & bytes);
-cv::Mat RTABMAP_EXP uncompressData(const unsigned char * bytes, unsigned long size);
-
 // remove depth by z axis
 void RTABMAP_EXP extractXYZCorrespondences(const std::multimap<int, pcl::PointXYZ> & words1,
 									  const std::multimap<int, pcl::PointXYZ> & words2,
@@ -374,61 +326,6 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP getICPReadyCloud(
 		int samples,
 		const Transform & transform = Transform::getIdentity());
 
-inline Eigen::Matrix4f transformToEigen4f(const Transform & transform)
-{
-	Eigen::Matrix4f m;
-	m << transform[0], transform[1], transform[2], transform[3],
-		 transform[4], transform[5], transform[6], transform[7],
-		 transform[8], transform[9], transform[10], transform[11],
-		 0,0,0,1;
-	return m;
-}
-inline Eigen::Matrix4d transformToEigen4d(const Transform & transform)
-{
-	Eigen::Matrix4d m;
-	m << transform[0], transform[1], transform[2], transform[3],
-		 transform[4], transform[5], transform[6], transform[7],
-		 transform[8], transform[9], transform[10], transform[11],
-		 0,0,0,1;
-	return m;
-}
-
-inline Eigen::Affine3f transformToEigen3f(const Transform & transform)
-{
-	return Eigen::Affine3f(transformToEigen4f(transform));
-}
-
-inline Eigen::Affine3d transformToEigen3d(const Transform & transform)
-{
-	return Eigen::Affine3d(transformToEigen4d(transform));
-}
-
-inline Transform transformFromEigen4f(const Eigen::Matrix4f & matrix)
-{
-	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
-					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),
-					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
-}
-inline Transform transformFromEigen4d(const Eigen::Matrix4d & matrix)
-{
-	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
-					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),
-					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
-}
-
-inline Transform transformFromEigen3f(const Eigen::Affine3f & matrix)
-{
-	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
-					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),
-					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
-}
-inline Transform transformFromEigen3d(const Eigen::Affine3d & matrix)
-{
-	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
-					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),
-					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
-}
-
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP concatenateClouds(const std::list<pcl::PointCloud<pcl::PointXYZ>::Ptr> & clouds);
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP concatenateClouds(const std::list<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds);
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP get3DFASTKpts(
@@ -448,56 +345,6 @@ pcl::PolygonMesh::Ptr RTABMAP_EXP createMesh(
 		float gp3MinimumAngle = M_PI/18,
 		float gp3MaximumAngle = 2*M_PI/3,
 		bool gp3NormalConsistency = false);
-
-std::multimap<int, Link>::iterator RTABMAP_EXP findLink(
-		std::multimap<int, Link> & links,
-		int from,
-		int to);
-
-// <int, depth> depth=0 means infinite depth
-std::map<int, int> RTABMAP_EXP generateDepthGraph(
-		const std::multimap<int, Link> & links,
-		int fromId,
-		int depth = 0);
-
-void RTABMAP_EXP optimizeTOROGraph(
-		const std::map<int, int> & depthGraph,
-		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & links,
-		std::map<int, Transform> & optimizedPoses,
-		int toroIterations = 100,
-		bool toroInitialGuess = true,
-		bool ignoreCovariance = false,
-		std::list<std::map<int, Transform> > * intermediateGraphes = 0);
-
-void RTABMAP_EXP optimizeTOROGraph(
-		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & edgeConstraints,
-		std::map<int, Transform> & optimizedPoses,
-		int toroIterations = 100,
-		bool toroInitialGuess = true,
-		bool ignoreCovariance = false,
-		std::list<std::map<int, Transform> > * intermediateGraphes = 0);
-
-bool RTABMAP_EXP saveTOROGraph(
-		const std::string & fileName,
-		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & edgeConstraints);
-
-bool RTABMAP_EXP loadTOROGraph(const std::string & fileName,
-		std::map<int, Transform> & poses,
-		std::multimap<int, std::pair<int, Transform> > & edgeConstraints);
-
-std::map<int, Transform> RTABMAP_EXP radiusPosesFiltering(
-		const std::map<int, Transform> & poses,
-		float radius,
-		float angle,
-		bool keepLatest = true);
-
-std::multimap<int, int> RTABMAP_EXP radiusPosesClustering(
-		const std::map<int, Transform> & poses,
-		float radius,
-		float angle);
 
 bool RTABMAP_EXP occupancy2DFromCloud3D(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
