@@ -116,11 +116,9 @@ public:
 	int getGeneralLoggerType() const;
 	bool getGeneralLoggerPrintTime() const;
 	bool isVerticalLayoutUsed() const;
-	bool isImageFlipped() const;
 	bool imageRejectedShown() const;
 	bool imageHighestHypShown() const;
 	bool beepOnPause() const;
-	int getKeypointsOpacity() const;
 	int getOdomQualityWarnThr() const;
 	bool isPosteriorGraphView() const;
 

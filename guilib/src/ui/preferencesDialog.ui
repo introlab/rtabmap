@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>8</number>
+                <number>0</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -143,7 +143,7 @@
                        <string>Loop closure detection view</string>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_31" columnstretch="0,1">
-                       <item row="2" column="0">
+                       <item row="1" column="0">
                         <widget class="QCheckBox" name="checkBox_imageRejectedShown">
                          <property name="text">
                           <string/>
@@ -153,7 +153,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="1">
+                       <item row="2" column="1">
                         <widget class="QLabel" name="label_105">
                          <property name="text">
                           <string>Show the image of the highest hypothesis.</string>
@@ -163,7 +163,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="0">
+                       <item row="2" column="0">
                         <widget class="QCheckBox" name="checkBox_imageHighestHypShown">
                          <property name="text">
                           <string/>
@@ -174,32 +174,6 @@
                         </widget>
                        </item>
                        <item row="1" column="1">
-                        <widget class="QLabel" name="label_80">
-                         <property name="text">
-                          <string>Flip image (like a mirror).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>false</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="5" column="0">
-                        <widget class="QSlider" name="horizontalSlider_keypointsOpacity">
-                         <property name="minimum">
-                          <number>0</number>
-                         </property>
-                         <property name="maximum">
-                          <number>100</number>
-                         </property>
-                         <property name="sliderPosition">
-                          <number>16</number>
-                         </property>
-                         <property name="orientation">
-                          <enum>Qt::Horizontal</enum>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="1">
                         <widget class="QLabel" name="label_73">
                          <property name="text">
                           <string>Show image when an hypothesis is rejected.</string>
@@ -229,24 +203,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="0">
-                        <widget class="QCheckBox" name="checkBox_imageFlipped">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="5" column="1">
-                        <widget class="QLabel" name="label_102">
-                         <property name="text">
-                          <string>Keypoints opacity.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="1">
+                       <item row="3" column="1">
                         <widget class="QLabel" name="label_222">
                          <property name="text">
                           <string>Show loop closure hypotheses on the graph view. Nodes are colorized from blue to red depending on the highest hypothesis (which is red). Posterior hypotheses should be published. </string>
@@ -256,7 +213,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="4" column="0">
+                       <item row="3" column="0">
                         <widget class="QCheckBox" name="checkBox_posteriorGraphView">
                          <property name="text">
                           <string/>

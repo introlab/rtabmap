@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QDir>
 #include <QtGui/QAction>
 #include <QtGui/QGraphicsEffect>
+#include <QtGui/QInputDialog>
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/gui/KeypointItem.h"
 
@@ -44,6 +45,7 @@ ImageView::ImageView(QWidget * parent) :
 		_zoom(250),
 		_minZoom(250),
 		_savedFileName((QDir::homePath()+ "/") + "picture" + ".png"),
+		_alpha(100),
 		_image(0),
 		_imageDepth(0)
 {
@@ -64,6 +66,7 @@ ImageView::ImageView(QWidget * parent) :
 	_showLines = _menu->addAction(tr("Show lines"));
 	_showLines->setCheckable(true);
 	_showLines->setChecked(true);
+	_setAlpha = _menu->addAction(tr("Set alpha..."));
 	_saveImage = _menu->addAction(tr("Save picture..."));
 }
 
@@ -178,6 +181,16 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 	{
 		this->setLinesShown(_showLines->isChecked());
 		emit configChanged();
+	}
+	else if(action == _setAlpha)
+	{
+		bool ok = false;
+		int value = QInputDialog::getInt(this, tr("Set features and lines alpha"), tr("alpha (0-255)"), _alpha, 0, 255, 10, &ok);
+		if(ok)
+		{
+			this->setAlpha(value);
+			emit configChanged();
+		}
 	}
 
 	if(action == _showImage || action ==_showImageDepth)
@@ -361,6 +374,19 @@ void ImageView::setFeaturesColor(const QColor & color)
 	{
 		iter.value()->setPen(QPen(color));
 		iter.value()->setBrush(QBrush(color));
+	}
+}
+
+void ImageView::setAlpha(int alpha)
+{
+	UASSERT(alpha >=0 && alpha <= 255);
+	_alpha = alpha;
+	for(QMultiMap<int, KeypointItem*>::iterator iter=_features.begin(); iter!=_features.end(); ++iter)
+	{
+		QColor c = iter.value()->pen().color();
+		c.setAlpha(_alpha);
+		iter.value()->setPen(QPen(c));
+		iter.value()->setBrush(QBrush(c));
 	}
 }
 

@@ -152,11 +152,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	// General panel
 	connect(_ui->general_checkBox_imagesKept, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_verticalLayoutUsed, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
-	connect(_ui->checkBox_imageFlipped, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_imageRejectedShown, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_imageHighestHypShown, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_beep, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
-	connect(_ui->horizontalSlider_keypointsOpacity, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->spinBox_odomQualityWarnThr, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_posteriorGraphView, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 
@@ -817,10 +815,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->general_checkBox_imagesKept->setChecked(true);
 		_ui->checkBox_beep->setChecked(false);
 		_ui->checkBox_verticalLayoutUsed->setChecked(true);
-		_ui->checkBox_imageFlipped->setChecked(false);
 		_ui->checkBox_imageRejectedShown->setChecked(true);
 		_ui->checkBox_imageHighestHypShown->setChecked(false);
-		_ui->horizontalSlider_keypointsOpacity->setSliderPosition(20);
 		_ui->spinBox_odomQualityWarnThr->setValue(50);
 		_ui->checkBox_posteriorGraphView->setChecked(true);
 	}
@@ -1061,11 +1057,9 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->comboBox_loggerType->setCurrentIndex(settings.value("loggerType", _ui->comboBox_loggerType->currentIndex()).toInt());
 	_ui->checkBox_logger_printTime->setChecked(settings.value("loggerPrintTime", _ui->checkBox_logger_printTime->isChecked()).toBool());
 	_ui->checkBox_verticalLayoutUsed->setChecked(settings.value("verticalLayoutUsed", _ui->checkBox_verticalLayoutUsed->isChecked()).toBool());
-	_ui->checkBox_imageFlipped->setChecked(settings.value("imageFlipped", _ui->checkBox_imageFlipped->isChecked()).toBool());
 	_ui->checkBox_imageRejectedShown->setChecked(settings.value("imageRejectedShown", _ui->checkBox_imageRejectedShown->isChecked()).toBool());
 	_ui->checkBox_imageHighestHypShown->setChecked(settings.value("imageHighestHypShown", _ui->checkBox_imageHighestHypShown->isChecked()).toBool());
 	_ui->checkBox_beep->setChecked(settings.value("beep", _ui->checkBox_beep->isChecked()).toBool());
-	_ui->horizontalSlider_keypointsOpacity->setValue(settings.value("keypointsOpacity", _ui->horizontalSlider_keypointsOpacity->value()).toInt());
 	_ui->spinBox_odomQualityWarnThr->setValue(settings.value("odomQualityThr", _ui->spinBox_odomQualityWarnThr->value()).toInt());
 	_ui->checkBox_posteriorGraphView->setChecked(settings.value("posteriorGraphView", _ui->checkBox_posteriorGraphView->isChecked()).toBool());
 
@@ -1312,11 +1306,9 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath)
 	settings.setValue("loggerType", _ui->comboBox_loggerType->currentIndex());
 	settings.setValue("loggerPrintTime", _ui->checkBox_logger_printTime->isChecked());
 	settings.setValue("verticalLayoutUsed", _ui->checkBox_verticalLayoutUsed->isChecked());
-	settings.setValue("imageFlipped", _ui->checkBox_imageFlipped->isChecked());
 	settings.setValue("imageRejectedShown", _ui->checkBox_imageRejectedShown->isChecked());
 	settings.setValue("imageHighestHypShown", _ui->checkBox_imageHighestHypShown->isChecked());
 	settings.setValue("beep", _ui->checkBox_beep->isChecked());
-	settings.setValue("keypointsOpacity", _ui->horizontalSlider_keypointsOpacity->value());
 	settings.setValue("odomQualityThr", _ui->spinBox_odomQualityWarnThr->value());
 	settings.setValue("posteriorGraphView", _ui->checkBox_posteriorGraphView->isChecked());
 
@@ -1762,6 +1754,7 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 			settings.setValue("depth_shown", imageView->isImageDepthShown());
 			settings.setValue("features_shown", imageView->isFeaturesShown());
 			settings.setValue("lines_shown", imageView->isLinesShown());
+			settings.setValue("alpha", imageView->getAlpha());
 		}
 		else if(exportCloudsDialog)
 		{
@@ -1845,6 +1838,7 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 			imageView->setImageDepthShown(settings.value("depth_shown", imageView->isImageDepthShown()).toBool());
 			imageView->setFeaturesShown(settings.value("features_shown", imageView->isFeaturesShown()).toBool());
 			imageView->setLinesShown(settings.value("lines_shown", imageView->isLinesShown()).toBool());
+			imageView->setAlpha(settings.value("alpha", imageView->getAlpha()).toInt());
 		}
 		else if(exportCloudsDialog)
 		{
@@ -2864,10 +2858,6 @@ bool PreferencesDialog::isVerticalLayoutUsed() const
 {
 	return _ui->checkBox_verticalLayoutUsed->isChecked();
 }
-bool PreferencesDialog::isImageFlipped() const
-{
-	return _ui->checkBox_imageFlipped->isChecked();
-}
 bool PreferencesDialog::imageRejectedShown() const
 {
 	return _ui->checkBox_imageRejectedShown->isChecked();
@@ -2879,10 +2869,6 @@ bool PreferencesDialog::imageHighestHypShown() const
 bool PreferencesDialog::beepOnPause() const
 {
 	return _ui->checkBox_beep->isChecked();
-}
-int PreferencesDialog::getKeypointsOpacity() const
-{
-	return _ui->horizontalSlider_keypointsOpacity->value();
 }
 int PreferencesDialog::getOdomQualityWarnThr() const
 {

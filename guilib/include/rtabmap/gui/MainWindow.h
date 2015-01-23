@@ -264,6 +264,8 @@ private:
 	bool _odometryReceived;
 	QString _openedDatabasePath;
 	bool _emptyNewDatabase;
+	bool _odomImageShow;
+	bool _odomImageDepthShow;
 
 	QMap<int, Signature> _cachedSignatures;
 	std::map<int, Transform> _currentPosesMap; // <nodeId, pose>

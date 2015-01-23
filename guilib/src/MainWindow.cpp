@@ -120,6 +120,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_odometryReceived(false),
 	_openedDatabasePath(""),
 	_emptyNewDatabase(true),
+	_odomImageShow(true),
+	_odomImageDepthShow(false),
 	_odometryCorrection(Transform::getIdentity()),
 	_lastOdometryProcessed(true),
 	_oneSecondTimer(0),
@@ -206,6 +208,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->imageView_source->setBackgroundBrush(QBrush(Qt::black));
 	_ui->imageView_loopClosure->setBackgroundBrush(QBrush(Qt::black));
 	_ui->imageView_odometry->setBackgroundBrush(QBrush(Qt::black));
+	_ui->imageView_odometry->setAlpha(200);
 	_preferencesDialog->loadWidgetState(_ui->imageView_source);
 	_preferencesDialog->loadWidgetState(_ui->imageView_loopClosure);
 	_preferencesDialog->loadWidgetState(_ui->imageView_odometry);
@@ -635,10 +638,12 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 	UTimer time;
 	Transform pose = data.pose();
 	bool lost = false;
+	bool lostStateChanged = false;
 	_ui->imageView_odometry->resetTransform();
 	if(pose.isNull())
 	{
 		UDEBUG("odom lost"); // use last pose
+		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() != Qt::darkRed;
 		_ui->widget_cloudViewer->setBackgroundColor(Qt::darkRed);
 		_ui->imageView_odometry->setBackgroundBrush(QBrush(Qt::darkRed));
 
@@ -650,12 +655,14 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 			info.inliers < _preferencesDialog->getOdomQualityWarnThr())
 	{
 		UDEBUG("odom warn, quality(inliers)=%d thr=%d", info.inliers, _preferencesDialog->getOdomQualityWarnThr());
+		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
 		_ui->widget_cloudViewer->setBackgroundColor(Qt::darkYellow);
 		_ui->imageView_odometry->setBackgroundBrush(QBrush(Qt::darkYellow));
 	}
 	else
 	{
 		UDEBUG("odom ok");
+		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
 		_ui->widget_cloudViewer->setBackgroundColor(Qt::black);
 		_ui->imageView_odometry->setBackgroundBrush(QBrush(Qt::black));
 	}
@@ -762,54 +769,86 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 	if(_ui->dockWidget_odometry->isVisible() &&
 	   !data.image().empty())
 	{
-		int alpha = _preferencesDialog->getKeypointsOpacity()*255/100;
-		if(info.type == 0)
+		if(_ui->imageView_odometry->isFeaturesShown())
 		{
-			_ui->imageView_odometry->setFeatures(info.words, QColor(255,255,0, alpha));
-		}
-		else if(info.type == 1)
-		{
-			_ui->imageView_odometry->setFeatures(info.refCorners, QColor(255,0,0, alpha));
+			int alpha = _ui->imageView_odometry->getAlpha();
+			if(info.type == 0)
+			{
+				_ui->imageView_odometry->setFeatures(info.words, QColor(255,255,0, alpha));
+			}
+			else if(info.type == 1)
+			{
+				_ui->imageView_odometry->setFeatures(info.refCorners, QColor(255,0,0, alpha));
+			}
 		}
 		_ui->imageView_odometry->clearLines();
 		if(lost)
 		{
+			if(lostStateChanged)
+			{
+				// save state
+				_odomImageShow = _ui->imageView_odometry->isImageShown();
+				_odomImageDepthShow = _ui->imageView_odometry->isImageDepthShown();
+			}
 			_ui->imageView_odometry->setImageDepth(uCvMat2QImage(data.image()));
 			_ui->imageView_odometry->setImageShown(true);
 			_ui->imageView_odometry->setImageDepthShown(true);
 		}
 		else
 		{
+			if(lostStateChanged)
+			{
+				// restore state
+				_ui->imageView_odometry->setImageShown(_odomImageShow);
+				_ui->imageView_odometry->setImageDepthShown(_odomImageDepthShow);
+			}
+
 			_ui->imageView_odometry->setImage(uCvMat2QImage(data.image()));
-			_ui->imageView_odometry->setImageShown(true);
-			_ui->imageView_odometry->setImageDepthShown(false);
+			if(_ui->imageView_odometry->isImageDepthShown())
+			{
+				_ui->imageView_odometry->setImageDepth(uCvMat2QImage(data.depthOrRightImage()));
+			}
 
 			if(info.type == 0)
 			{
-				for(unsigned int i=0; i<info.wordMatches.size(); ++i)
+				if(_ui->imageView_odometry->isFeaturesShown())
 				{
-					_ui->imageView_odometry->setFeatureColor(info.wordMatches[i], QColor(255,0,0, alpha)); // outliers
-				}
-				for(unsigned int i=0; i<info.wordInliers.size(); ++i)
-				{
-					_ui->imageView_odometry->setFeatureColor(info.wordInliers[i], QColor(0,255,0, alpha)); // inliers
+					int alpha = _ui->imageView_odometry->getAlpha();
+					for(unsigned int i=0; i<info.wordMatches.size(); ++i)
+					{
+						_ui->imageView_odometry->setFeatureColor(info.wordMatches[i], QColor(255,0,0, alpha)); // outliers
+					}
+					for(unsigned int i=0; i<info.wordInliers.size(); ++i)
+					{
+						_ui->imageView_odometry->setFeatureColor(info.wordInliers[i], QColor(0,255,0, alpha)); // inliers
+					}
 				}
 			}
 			else if(info.type == 1)
 			{
-				//draw lines
-				UASSERT(info.refCorners.size() == info.newCorners.size());
-				for(unsigned int i=0; i<info.cornerInliers.size(); ++i)
+				if(_ui->imageView_odometry->isFeaturesShown() || _ui->imageView_odometry->isLinesShown())
 				{
-					_ui->imageView_odometry->setFeatureColor(info.cornerInliers[i], QColor(0,255,0, alpha)); // inliers
-					QGraphicsLineItem * item = _ui->imageView_odometry->scene()->addLine(
-							info.refCorners[info.cornerInliers[i]].pt.x,
-							info.refCorners[info.cornerInliers[i]].pt.y,
-							info.newCorners[info.cornerInliers[i]].pt.x,
-							info.newCorners[info.cornerInliers[i]].pt.y,
-							QPen(QColor(0, 0, 255, alpha)));
-					item->setVisible(_ui->imageView_odometry->isLinesShown());
-					item->setZValue(1);
+					//draw lines
+					int alpha = _ui->imageView_odometry->getAlpha();
+					UASSERT(info.refCorners.size() == info.newCorners.size());
+					for(unsigned int i=0; i<info.cornerInliers.size(); ++i)
+					{
+						if(_ui->imageView_odometry->isFeaturesShown())
+						{
+							_ui->imageView_odometry->setFeatureColor(info.cornerInliers[i], QColor(0,255,0, alpha)); // inliers
+						}
+						if(_ui->imageView_odometry->isLinesShown())
+						{
+							QGraphicsLineItem * item = _ui->imageView_odometry->scene()->addLine(
+									info.refCorners[info.cornerInliers[i]].pt.x,
+									info.refCorners[info.cornerInliers[i]].pt.y,
+									info.newCorners[info.cornerInliers[i]].pt.x,
+									info.newCorners[info.cornerInliers[i]].pt.y,
+									QPen(QColor(0, 0, 255, alpha)));
+							item->setVisible(_ui->imageView_odometry->isLinesShown());
+							item->setZValue(1);
+						}
+					}
 				}
 			}
 		}
@@ -817,10 +856,6 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 		_ui->imageView_odometry->resetZoom();
 		_ui->imageView_odometry->setSceneRect(_ui->imageView_odometry->scene()->itemsBoundingRect());
 		_ui->imageView_odometry->fitInView(_ui->imageView_odometry->sceneRect(), Qt::KeepAspectRatio);
-		if(_preferencesDialog->isImageFlipped())
-		{
-			_ui->imageView_odometry->scale(-1.0, 1.0);
-		}
 	}
 
 	_lastOdometryProcessed = true;
@@ -1008,12 +1043,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		// do it after scaling
 		this->drawKeypoints(signature.getWords(), loopSignature.getWords());
-
-		if(_preferencesDialog->isImageFlipped())
-		{
-			_ui->imageView_source->scale(-1.0, 1.0);
-			_ui->imageView_loopClosure->scale(-1.0, 1.0);
-		}
 
 		UDEBUG("time= %d ms", time.restart());
 
@@ -1929,7 +1958,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 
 	timer.start();
 	KeypointItem * item = 0;
-	int alpha = _preferencesDialog->getKeypointsOpacity()*255/100;
+	int alphaA = _ui->imageView_source->getAlpha();
 	ULOGGER_DEBUG("refWords.size() = %d", refWords.size());
 	QMap<int, KeypointItem*> addedKeypoints;
 	for(std::multimap<int, cv::KeyPoint>::const_iterator i = refWords.begin(); i != refWords.end(); ++i )
@@ -1948,27 +1977,27 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 		if(uContains(loopWords, id))
 		{
 			// PINK = FOUND IN LOOP SIGNATURE
-			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 0, 255, alpha));
+			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 0, 255, alphaA));
 		}
 		else if(_lastIds.contains(id))
 		{
 			// BLUE = FOUND IN LAST SIGNATURE
-			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(0, 0, 255, alpha));
+			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(0, 0, 255, alphaA));
 		}
 		else if(id<=_lastId)
 		{
 			// RED = ALREADY EXISTS
-			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 0, 0, alpha));
+			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 0, 0, alphaA));
 		}
 		else if(refWords.count(id) > 1)
 		{
 			// YELLOW = NEW and multiple times
-			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 255, 0, alpha));
+			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 255, 0, alphaA));
 		}
 		else
 		{
 			// GREEN = NEW
-			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(0, 255, 0, alpha));
+			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(0, 255, 0, alphaA));
 		}
 		item->setVisible(this->_ui->imageView_source->isFeaturesShown());
 		this->_ui->imageView_source->scene()->addItem(item);
@@ -1979,6 +2008,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 
 	timer.start();
 	item = 0;
+	int alphaB = _ui->imageView_loopClosure->getAlpha();
 	ULOGGER_DEBUG("loopWords.size() = %d", loopWords.size());
 	QList<QPair<KeypointItem*, KeypointItem*> > uniqueCorrespondences;
 	for(std::multimap<int, cv::KeyPoint>::const_iterator i = loopWords.begin(); i != loopWords.end(); ++i )
@@ -1997,7 +2027,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 		if(uContains(refWords, id))
 		{
 			// PINK = FOUND IN LOOP SIGNATURE
-			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 0, 255, alpha));
+			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 0, 255, alphaB));
 			//To draw lines... get only unique correspondences
 			if(uValues(refWords, id).size() == 1 && uValues(loopWords, id).size() == 1)
 			{
@@ -2007,17 +2037,17 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 		else if(id<=_lastId)
 		{
 			// RED = ALREADY EXISTS
-			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 0, 0, alpha));
+			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 0, 0, alphaB));
 		}
 		else if(refWords.count(id) > 1)
 		{
 			// YELLOW = NEW and multiple times
-			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 255, 0, alpha));
+			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 255, 0, alphaB));
 		}
 		else
 		{
 			// GREEN = NEW
-			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(0, 255, 0, alpha));
+			item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(0, 255, 0, alphaB));
 		}
 		item->setVisible(this->_ui->imageView_loopClosure->isFeaturesShown());
 		this->_ui->imageView_loopClosure->scene()->addItem(item);
@@ -2055,7 +2085,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 				iter->first->rect().y()+iter->first->rect().height()/2,
 				iter->second->rect().x()+iter->second->rect().width()/2+deltaX,
 				iter->second->rect().y()+iter->second->rect().height()/2+deltaY,
-				QPen(QColor(0, 255, 255, alpha)));
+				QPen(QColor(0, 255, 255, alphaA)));
 		item->setVisible(_ui->imageView_source->isLinesShown());
 		item->setZValue(1);
 
@@ -2064,7 +2094,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 				iter->first->rect().y()+iter->first->rect().height()/2-deltaY,
 				iter->second->rect().x()+iter->second->rect().width()/2,
 				iter->second->rect().y()+iter->second->rect().height()/2,
-				QPen(QColor(0, 255, 255, alpha)));
+				QPen(QColor(0, 255, 255, alphaB)));
 		item->setVisible(_ui->imageView_loopClosure->isLinesShown());
 		item->setZValue(1);
 	}
