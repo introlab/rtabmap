@@ -719,6 +719,7 @@ std::vector<int> computePath(
 				path.push_front(currentNode.id());
 				currentNode = nodes.find(currentNode.fromId())->second;
 			}
+			path.push_front(startNode);
 			break;
 		}
 
@@ -743,7 +744,7 @@ std::vector<int> computePath(
 				float newCostSoFar = currentNode.costSoFar() + currentNode.distFrom(nodeIter->second.pose());
 				if(nodeIter->second.costSoFar() > newCostSoFar)
 				{
-					UERROR("newCostSoFar > previous cost (%f vs %f)", newCostSoFar, nodeIter->second.costSoFar());
+					UWARN("newCostSoFar > previous cost (%f vs %f)", newCostSoFar, nodeIter->second.costSoFar());
 				}
 			}
 		}

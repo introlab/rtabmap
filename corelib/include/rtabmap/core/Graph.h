@@ -81,11 +81,26 @@ std::map<int, Transform> RTABMAP_EXP radiusPosesFiltering(
 		float angle,
 		bool keepLatest = true);
 
+/**
+ * Get all neighbor nodes in a fixed radius around each pose.
+ * @param poses The poses
+ * @param radius Radius (m) of the search for near neighbors
+ * @param angle Maximum angle (rad, [0,PI]) of accepted neighbor nodes in the radius
+ * @return A map between each pose id and its neighbors found in the radius
+ */
 std::multimap<int, int> RTABMAP_EXP radiusPosesClustering(
 		const std::map<int, Transform> & poses,
 		float radius,
 		float angle);
 
+/**
+ * Perform A* path planning in the graph.
+ * @param poses The graph's poses
+ * @param links The graph's links (from node id -> to node id)
+ * @param from initial node
+ * @param to final node
+ * @return the path ids from id "from" to id "to" including initial and final nodes.
+ */
 std::vector<int> RTABMAP_EXP computePath(
 			const std::map<int, rtabmap::Transform> & poses,
 			const std::multimap<int, int> & links,
