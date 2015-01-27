@@ -812,18 +812,6 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 	{
 		curentMarginList = std::list<int>(nextMargin.begin(), nextMargin.end());
 		nextMargin.clear();
-		// first pass: count number of node in current margin in database
-		for(std::list<int>::iterator jter = curentMarginList.begin(); jter!=curentMarginList.end();++jter)
-		{
-			if(!uContains(ids, *jter))
-			{
-				const Signature * s = this->getSignature(*jter);
-				if(!s)
-				{
-					++nbLoadedFromDb;
-				}
-			}
-		}
 
 		for(std::list<int>::iterator jter = curentMarginList.begin(); jter!=curentMarginList.end(); ++jter)
 		{
@@ -842,6 +830,7 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 				}
 				else if(maxCheckedInDatabase == -1 || (maxCheckedInDatabase > 0 && _dbDriver && nbLoadedFromDb < maxCheckedInDatabase))
 				{
+					++nbLoadedFromDb;
 					ids.insert(std::pair<int, int>(*jter, m));
 
 					UTimer timer;
@@ -872,12 +861,6 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 							{
 								if(currentMargin.insert(iter->first).second)
 								{
-									const Signature * s = this->getSignature(iter->first);
-									if(!s)
-									{
-										// update db count because it's on current margin
-										++nbLoadedFromDb;
-									}
 									curentMarginList.push_back(iter->first);
 								}
 							}
