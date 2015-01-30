@@ -229,6 +229,17 @@ std::string UDirectory::getNextFileName()
 	return fileName;
 }
 
+std::string UDirectory::getNextFilePath()
+{
+	std::string filePath;
+	if(iFileName_ != fileNames_.end())
+	{
+		filePath = path_+separator()+*iFileName_;
+		++iFileName_;
+	}
+	return filePath;
+}
+
 void UDirectory::rewind()
 {
 	iFileName_ = fileNames_.begin();

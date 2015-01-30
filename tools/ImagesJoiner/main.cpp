@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UDirectory.h"
+#include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/UConversion.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -35,96 +36,69 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void showUsage()
 {
 	printf("Usage:\n"
-			"imagesJoiner.exe \"# (see below)\" \"type\" [option]\n"
-			"  # :      Name pattern is how the file names are formatted (in number).\n"
-			"           Examples: 4 for pictures with 0001.jpg, 0002.jpg, ..., 0010.jpg, 0100.jpg, 1000.jpg, ...\n"
-			"                     1 for pictures with 1.jpg, 2.jpg, ..., 10.jpg, 100.jpg, 1000.jpg, ...\n"
-			"  type :   is the extension (jpg, bmp, png...)\n"
+			"imagesJoiner.exe [option] path\n"
 			"  Options:\n"
-			"    -inv       option for copying odd images on the right\n"
-			"    -d #       destination filename size\n");
+			"    -inv       option for copying odd images on the right\n\n");
 	exit(1);
 }
 
 int main(int argc, char * argv[])
 {
-	if(argc < 3)
+	if(argc < 2)
 	{
 		showUsage();
 	}
 
 	bool inv = false;
-	unsigned int sizeFileName = std::atoi(argv[1]);
-	int sizeTargetFileName = sizeFileName;
-
-	std::string type = argv[2];
-	for(int i=3; i<argc; ++i)
+	for(int i=1; i<argc-1; ++i)
 	{
 		if(strcmp(argv[i], "-inv") == 0)
 		{
 			inv = true;
 			printf(" Inversing option activated...\n");
+			continue;
 		}
-		if(strcmp(argv[i], "-d") == 0 && i+1<argc)
-		{
-			sizeTargetFileName = std::atoi(argv[i+1]);
-			if(sizeTargetFileName < 0)
-			{
-				showUsage();
-			}
-			printf(" Target size file name option activated=%d\n",sizeTargetFileName);
-			++i;
-		}
+		showUsage();
+		printf(" Not recognized option: \"%s\"\n", argv[i]);
 	}
 
-	printf(" Format = %s\n", argv[1]);
-	printf(" Type = %s\n", argv[2]);
+	std::string path = argv[argc-1];
+	printf(" Path = %s\n", path.c_str());
 
-	std::string targetDirectory = "imagesJoined/";
-	UDirectory::makeDir((UDirectory::currentDir(true) + "imagesJoined").c_str());
-
-	int counterJoined = 1;
-	int counterImages = 1;
-	bool imagesExist = true;
-
-	std::string fileNameA;
-	std::string fileNameB;
-
-	while(imagesExist)
+	UDirectory dir(path, "jpg bmp png tiff jpeg");
+	if(!dir.isValid())
 	{
-		std::string fileNameTarget = uNumber2Str(counterJoined);
+		printf("Path invalid!\n");
+		exit(-1);
+	}
+
+	std::string targetDirectory = path+"_joined";
+	UDirectory::makeDir(targetDirectory);
+	printf(" Creating directory \"%s\"\n", targetDirectory.c_str());
+
+
+	std::string fileNameA = dir.getNextFilePath();
+	std::string fileNameB = dir.getNextFilePath();
+
+	int i=1;
+	while(!fileNameA.empty() && !fileNameB.empty())
+	{
 		if(inv)
 		{
-			fileNameA =  uNumber2Str(counterImages+1);
-			fileNameB =  uNumber2Str(counterImages);
-		}
-		else
-		{
-			fileNameA =  uNumber2Str(counterImages);
-			fileNameB =  uNumber2Str(counterImages+1);
+			std::string tmp = fileNameA;
+			fileNameA = fileNameB;
+			fileNameB = tmp;
 		}
 
-		while(fileNameA.size() < sizeFileName)
-		{
-			fileNameA.insert(0, "0");
-		}
+		std::string ext = UFile::getExtension(fileNameA);
 
-		while(fileNameB.size() < sizeFileName)
-		{
-			fileNameB.insert(0, "0");
-		}
-
-		while(fileNameTarget.size() < (unsigned int)sizeTargetFileName)
-		{
-			fileNameTarget.insert(0, "0");
-		}
-
-		(fileNameTarget.insert(0, targetDirectory) += ".") += type;
-		(fileNameA += ".") += type;
-		(fileNameB += ".") += type;
+		std::string targetFilePath = targetDirectory+UDirectory::separator()+uNumber2Str(i++)+"."+ext;
 
 		IplImage * imageA = cvLoadImage(fileNameA.c_str(), CV_LOAD_IMAGE_COLOR);
 		IplImage * imageB = cvLoadImage(fileNameB.c_str(), CV_LOAD_IMAGE_COLOR);
+
+		fileNameA.clear();
+		fileNameB.clear();
 
 		if(imageA && imageB)
 		{
@@ -142,26 +116,28 @@ int main(int argc, char * argv[])
 				cvCopy( imageB, targetImage );
 				cvResetImageROI( targetImage );
 
-				if(!cvSaveImage(fileNameTarget.c_str(), targetImage))
+				if(!cvSaveImage(targetFilePath.c_str(), targetImage))
 				{
-					printf("Error : saving to \"%s\" goes wrong...\n", fileNameTarget.c_str());
+					printf("Error : saving to \"%s\" goes wrong...\n", targetFilePath.c_str());
 				}
 				else
 				{
-					printf("Saved \"%s\" \n", fileNameTarget.c_str());
+					printf("Saved \"%s\" \n", targetFilePath.c_str());
 				}
 
 				cvReleaseImage(&targetImage);
+
+				fileNameA = dir.getNextFilePath();
+				fileNameB = dir.getNextFilePath();
 			}
 			else
 			{
 				printf("Error : can't allocated the target image with size (%d,%d)\n", targetSize.width, targetSize.height);
-				imagesExist = false;
 			}
 		}
 		else
 		{
-			imagesExist = false;
+			printf("Error: loading images failed!\n");
 		}
 
 		if(imageA)
@@ -172,13 +148,8 @@ int main(int argc, char * argv[])
 		{
 			cvReleaseImage(&imageB);
 		}
-
-		counterJoined++;
-		counterImages += 2;
 	}
-
-
-
+	printf("%d files processed\n", i-1);
 
 	return 0;
 }
