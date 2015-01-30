@@ -49,7 +49,6 @@ void showUsage()
 			"  path                            For images, use the directory path. For videos or databases, use full\n "
 			"                                  path name\n"
 			"Options:\n"
-			"  -t #.##                         Time threshold (ms)\n"
 			"  -rate #.##                      Acquisition time (seconds)\n"
 			"  -rateHz #.##                    Acquisition rate (Hz), for convenience\n"
 			"  -repeat #                       Repeat the process on the data set # times (minimum of 1)\n"
@@ -114,7 +113,6 @@ int main(int argc, char * argv[])
 	printf("\n");
 
 	std::string path;
-	float timeThreshold = 0.0;
 	float rate = 0.0;
 	int loopDataset = 0;
 	int repeat = 0;
@@ -140,23 +138,6 @@ int main(int argc, char * argv[])
 				exit(1);
 			}
 			break;
-		}
-		if(strcmp(argv[i], "-t") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				timeThreshold = std::atof(argv[i]);
-				if(timeThreshold < 0)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
 		}
 		if(strcmp(argv[i], "-rate") == 0)
 		{
@@ -401,7 +382,6 @@ int main(int argc, char * argv[])
 	pm.insert(ParametersPair(Parameters::kRGBDEnabled(), "false"));
 
 	rtabmap.init(pm, inputDbPath);
-	rtabmap.setTimeThreshold(timeThreshold); // in ms
 
 	printf("Avpd init time = %fs\n", timer.ticks());
 
@@ -412,7 +392,7 @@ int main(int argc, char * argv[])
 
 	printf("\nParameters : \n");
 	printf(" Data set : %s\n", path.c_str());
-	printf(" Time threshold = %1.2f ms\n", timeThreshold);
+	printf(" Time threshold = %1.2f ms\n", rtabmap.getTimeThreshold());
 	printf(" Image rate = %1.2f s (%1.2f Hz)\n", rate, 1/rate);
 	printf(" Repeating data set = %s\n", repeat?"true":"false");
 	printf(" Camera width=%d, height=%d (0 is default)\n", imageWidth, imageHeight);
@@ -514,7 +494,7 @@ int main(int argc, char * argv[])
 				printf(" iteration(%d) time=%fs/%fs\n", count, rtabmapTime, iterationTime);
 			}
 
-			if(timeThreshold && rtabmapTime > timeThreshold*100.0f)
+			if(rtabmap.getTimeThreshold() && rtabmapTime > rtabmap.getTimeThreshold()*100.0f)
 			{
 				printf(" ERROR,  there is  problem, too much time taken... %fs", rtabmapTime);
 				break; // there is  problem, don't continue
