@@ -474,14 +474,9 @@ void GraphViewer::setWorkingDirectory(const QString & path)
 void GraphViewer::setNodeRadius(float radius)
 {
 	_nodeRadius = radius;
-	QList<QGraphicsItem*> items = this->scene()->items();
-	for(int i=0; i<items.size(); ++i)
+	for(QMap<int, NodeItem*>::iterator iter=_nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 	{
-		NodeItem * node = qgraphicsitem_cast<NodeItem *>(items[i]);
-		if(node)
-		{
-			node->setRect(-_nodeRadius, -_nodeRadius, _nodeRadius*2.0f, _nodeRadius*2.0f);
-		}
+		iter.value()->setRect(-_nodeRadius, -_nodeRadius, _nodeRadius*2.0f, _nodeRadius*2.0f);
 	}
 }
 void GraphViewer::setLinkWidth(float width)
@@ -502,82 +497,64 @@ void GraphViewer::setLinkWidth(float width)
 void GraphViewer::setNodeColor(const QColor & color)
 {
 	_nodeColor = color;
-	QList<QGraphicsItem*> items = this->scene()->items();
-	for(int i=0; i<items.size(); ++i)
+	for(QMap<int, NodeItem*>::iterator iter=_nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 	{
-		NodeItem * node = qgraphicsitem_cast<NodeItem *>(items[i]);
-		if(node)
-		{
-			node->setColor(_nodeColor);
-		}
+		iter.value()->setColor(_nodeColor);
 	}
 }
 void GraphViewer::setNeighborColor(const QColor & color)
 {
 	_neighborColor = color;
-	QList<QGraphicsItem*> items = this->scene()->items();
-	for(int i=0; i<items.size(); ++i)
+	for(QMultiMap<int, LinkItem*>::iterator iter=_neighborLinkItems.begin(); iter!=_neighborLinkItems.end(); ++iter)
 	{
-		LinkItem * link = qgraphicsitem_cast<LinkItem *>(items[i]);
-		if(link && link->linkType() == Link::kNeighbor)
-		{
-			link->setColor(_neighborColor);
-		}
+		iter.value()->setColor(_neighborColor);
 	}
 }
 void GraphViewer::setGlobalLoopClosureColor(const QColor & color)
 {
 	_loopClosureColor = color;
-	QList<QGraphicsItem*> items = this->scene()->items();
-	for(int i=0; i<items.size(); ++i)
+	for(QMultiMap<int, LinkItem*>::iterator iter=_loopLinkItems.begin(); iter!=_loopLinkItems.end(); ++iter)
 	{
-		LinkItem * link = qgraphicsitem_cast<LinkItem *>(items[i]);
-		if(link && (link->linkType() != Link::kNeighbor &&
-				link->linkType() != Link::kLocalSpaceClosure &&
-				link->linkType() != Link::kLocalTimeClosure &&
-				link->linkType() != Link::kUserClosure &&
-				link->linkType() != Link::kVirtualClosure))
+		if(iter.value()->linkType() != Link::kLocalSpaceClosure &&
+			iter.value()->linkType() != Link::kLocalTimeClosure &&
+			iter.value()->linkType() != Link::kUserClosure &&
+			iter.value()->linkType() != Link::kVirtualClosure)
 		{
-			link->setColor(_loopClosureColor);
+			iter.value()->setColor(_loopClosureColor);
 		}
 	}
 }
 void GraphViewer::setLocalLoopClosureColor(const QColor & color)
 {
 	_loopClosureLocalColor = color;
-	QList<QGraphicsItem*> items = this->scene()->items();
-	for(int i=0; i<items.size(); ++i)
+	for(QMultiMap<int, LinkItem*>::iterator iter=_loopLinkItems.begin(); iter!=_loopLinkItems.end(); ++iter)
 	{
-		LinkItem * link = qgraphicsitem_cast<LinkItem *>(items[i]);
-		if(link && (link->linkType() == Link::kLocalSpaceClosure || link->linkType() == Link::kLocalSpaceClosure))
+		if(iter.value()->linkType() == Link::kLocalSpaceClosure ||
+		   iter.value()->linkType() == Link::kLocalTimeClosure)
 		{
-			link->setColor(_loopClosureLocalColor);
+			iter.value()->setColor(_loopClosureLocalColor);
 		}
 	}
 }
 void GraphViewer::setUserLoopClosureColor(const QColor & color)
 {
 	_loopClosureUserColor = color;
-	QList<QGraphicsItem*> items = this->scene()->items();
-	for(int i=0; i<items.size(); ++i)
+	for(QMultiMap<int, LinkItem*>::iterator iter=_loopLinkItems.begin(); iter!=_loopLinkItems.end(); ++iter)
 	{
-		LinkItem * link = qgraphicsitem_cast<LinkItem *>(items[i]);
-		if(link && link->linkType() == Link::kUserClosure)
+		if(iter.value()->linkType() == Link::kUserClosure)
 		{
-			link->setColor(_loopClosureUserColor);
+			iter.value()->setColor(_loopClosureUserColor);
 		}
 	}
 }
 void GraphViewer::setVirtualLoopClosureColor(const QColor & color)
 {
 	_loopClosureVirtualColor = color;
-	QList<QGraphicsItem*> items = this->scene()->items();
-	for(int i=0; i<items.size(); ++i)
+	for(QMultiMap<int, LinkItem*>::iterator iter=_loopLinkItems.begin(); iter!=_loopLinkItems.end(); ++iter)
 	{
-		LinkItem * link = qgraphicsitem_cast<LinkItem *>(items[i]);
-		if(link && link->linkType() == Link::kVirtualClosure)
+		if(iter.value()->linkType() == Link::kVirtualClosure)
 		{
-			link->setColor(_loopClosureVirtualColor);
+			iter.value()->setColor(_loopClosureVirtualColor);
 		}
 	}
 }
