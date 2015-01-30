@@ -104,8 +104,7 @@ private:
 	QColor _loopClosureVirtualColor;
 	QGraphicsItem * _root;
 	QMap<int, NodeItem*> _nodeItems;
-	QMultiMap<int, LinkItem*> _neighborLinkItems;
-	QMultiMap<int, LinkItem*> _loopLinkItems;
+	QMultiMap<int, LinkItem*> _linkItems;
 	float _nodeRadius;
 	float _linkWidth;
 	QGraphicsPixmapItem * _gridMap;
