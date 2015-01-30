@@ -22,6 +22,7 @@ SET(headers_ui
 	./PostProcessingDialog.h
 	./ExportCloudsDialog.h
 	./MapVisibilityWidget.h
+	./GraphViewer.h
 )
 
 SET(uis

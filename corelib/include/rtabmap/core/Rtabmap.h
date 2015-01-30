@@ -71,10 +71,11 @@ public:
 	void close();
 
 	const std::string & getWorkingDir() const {return _wDir;}
-	int getLoopClosureId() const;
-	int getRetrievedId() const;
+	int getLoopClosureId() const {return _loopClosureHypothesis.first;}
+	float getLoopClosureValue() const {return _loopClosureHypothesis.second;}
+	int getHighestHypothesisId() const {return _highestHypothesis.first;}
+	float getHighestHypothesisValue() const {return _highestHypothesis.second;}
 	int getLastLocationId() const;
-	float getLcHypValue() const {return _lcHypothesisValue;}
 	std::list<int> getWM() const; // working memory
 	std::set<int> getSTM() const; // short-term memory
 	int getWMSize() const; // working memory size
@@ -90,6 +91,7 @@ public:
 	Transform getPose(int locationId) const;
 	Transform getMapCorrection() const {return _mapCorrection;}
 	const Memory * getMemory() const {return _memory;}
+	float getGoalReachedRadius() const {return _goalReachedRadius;}
 
 	float getTimeThreshold() const {return _maxTimeAllowed;} // in ms
 	void setTimeThreshold(float maxTimeAllowed); // in ms
@@ -115,8 +117,13 @@ public:
 			std::map<int, int> & mapIds,
 			bool optimized,
 			bool global);
+	void clearPath();
+	std::list<std::pair<int, Transform> > computePath(int targetNode);
+	const std::vector<int> & getPath() const {return _path;}
+	int getPathGoalId() const;
 
-	std::map<int, Transform> getOptimizedWMPosesInRadius(int fromId, int maxNearestNeighbors, float radius, int maxDiffID, int & nearestId) const;
+	std::map<int, float> getNodesInRadius(int fromId, int maxNearestNeighbors, float radius) const;
+	std::map<int, Transform> getWMPosesInRadius(int fromId, int maxNearestNeighbors, float radius, int maxDiffID, int & nearestId) const;
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
 	std::pair<int, float> selectHypothesis(const std::map<int, float> & posterior,
 											const std::map<int, float> & likelihood) const;
@@ -126,6 +133,7 @@ private:
 			bool lookInDatabase,
 			std::map<int, Transform> & optimizedPoses,
 			std::multimap<int, Link> * constraints = 0) const;
+	void updateGoalIndex();
 
 	void setupLogFiles(bool overwrite = false);
 	void flushStatisticLogs();
@@ -166,10 +174,11 @@ private:
 	int _reextractFeatureType;
 	int _reextractMaxWords;
 	bool _startNewMapOnLoopClosure;
+	float _goalReachedRadius; // meters
+	unsigned int _maxAnticipatedNodes;
 
-	int _lcHypothesisId;
-	float _lcHypothesisValue;
-	int _retrievedId;
+	std::pair<int, float> _loopClosureHypothesis;
+	std::pair<int, float> _highestHypothesis;
 	double _lastProcessTime;
 
 	// Abstract classes containing all loop closure
@@ -193,6 +202,12 @@ private:
 	std::multimap<int, Link> _constraints;
 	Transform _mapCorrection;
 	Transform _mapTransform; // for localization mode
+
+	// Planning stuff
+	std::vector<int> _path;
+	unsigned int _pathCurrentIndex;
+	unsigned int _pathGoalIndex;
+
 };
 
 #endif /* RTABMAP_H_ */

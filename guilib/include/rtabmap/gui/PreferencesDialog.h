@@ -100,7 +100,8 @@ public:
 	void saveWindowGeometry(const QWidget * window);
 	void loadWindowGeometry(QWidget * window);
 	void saveMainWindowState(const QMainWindow * mainWindow);
-	void loadMainWindowState(QMainWindow * mainWindow);
+	void loadMainWindowState(QMainWindow * mainWindow, bool & maximized);
+
 	void saveWidgetState(const QWidget * widget);
 	void loadWidgetState(QWidget * widget);
 

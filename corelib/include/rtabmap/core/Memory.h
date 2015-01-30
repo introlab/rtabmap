@@ -82,6 +82,7 @@ public:
 	void joinTrashThread();
 	bool addLoopClosureLink(int oldId, int newId, const Transform & transform, Link::Type type, float variance);
 	void updateNeighborLink(int fromId, int toId, const Transform & transform, float variance);
+	void removeAllVirtualLinks();
 	std::map<int, int> getNeighborsId(int signatureId,
 			int margin,
 			int maxCheckedInDatabase = -1,

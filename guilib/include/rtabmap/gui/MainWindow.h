@@ -102,6 +102,7 @@ public:
 
 	QString getWorkingDirectory() const;
 	void setMonitoringState(bool pauseChecked = false); // in monitoring state, only some actions are enabled
+	bool isSavedMaximized() const {return _savedMaximized;}
 
 public slots:
 	void processStats(const rtabmap::Statistics & stat);
@@ -266,6 +267,7 @@ private:
 	bool _emptyNewDatabase;
 	bool _odomImageShow;
 	bool _odomImageDepthShow;
+	bool _savedMaximized;
 
 	QMap<int, Signature> _cachedSignatures;
 	std::map<int, Transform> _currentPosesMap; // <nodeId, pose>

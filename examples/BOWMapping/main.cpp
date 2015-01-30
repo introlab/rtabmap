@@ -139,7 +139,7 @@ int main(int argc, char * argv[])
 					(int)rtabmap.getSTM().size(), // short-term memory
 					(int)rtabmap.getWM().size(), // working memory
 					rtabmap.getLoopClosureId(),
-					rtabmap.getLcHypValue(),
+					rtabmap.getLoopClosureValue(),
 					nextIndex,
 					rtabmap.getLoopClosureId());
 		}
@@ -150,8 +150,8 @@ int main(int argc, char * argv[])
 					rtabmap.getLastProcessTime(),
 					(int)rtabmap.getSTM().size(), // short-term memory
 					(int)rtabmap.getWM().size(), // working memory
-					rtabmap.getRetrievedId(), // highest loop closure hypothesis
-					rtabmap.getLcHypValue());
+					rtabmap.getHighestHypothesisId(), // highest loop closure hypothesis
+					rtabmap.getLoopClosureValue());
 		}
 
 		++nextIndex;

@@ -502,12 +502,12 @@ int main(int argc, char * argv[])
 			if(rtabmap.getLoopClosureId())
 			{
 				printf(" iteration(%d) loop(%d) hyp(%.2f) time=%fs/%fs *\n",
-						count, rtabmap.getLoopClosureId(), rtabmap.getLcHypValue(), rtabmapTime, iterationTime);
+						count, rtabmap.getLoopClosureId(), rtabmap.getLoopClosureValue(), rtabmapTime, iterationTime);
 			}
-			else if(rtabmap.getRetrievedId())
+			else if(rtabmap.getHighestHypothesisId())
 			{
 				printf(" iteration(%d) high(%d) hyp(%.2f) time=%fs/%fs\n",
-						count, rtabmap.getRetrievedId(), rtabmap.getLcHypValue(), rtabmapTime, iterationTime);
+						count, rtabmap.getHighestHypothesisId(), rtabmap.getHighestHypothesisValue(), rtabmapTime, iterationTime);
 			}
 			else
 			{

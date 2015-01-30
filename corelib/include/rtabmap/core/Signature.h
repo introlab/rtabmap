@@ -89,6 +89,7 @@ public:
 
 	void removeLinks();
 	void removeLink(int idTo);
+	void removeVirtualLinks();
 
 	void setSaved(bool saved) {_saved = saved;}
 	void setModified(bool modified) {_modified = modified; _linksModified = modified;}

@@ -107,9 +107,10 @@ Rtabmap::Rtabmap() :
 	_reextractFeatureType(Parameters::defaultLccReextractFeatureType()),
 	_reextractMaxWords(Parameters::defaultLccReextractMaxWords()),
 	_startNewMapOnLoopClosure(Parameters::defaultRtabmapStartNewMapOnLoopClosure()),
-	_lcHypothesisId(0),
-	_lcHypothesisValue(0),
-	_retrievedId(0),
+	_goalReachedRadius(Parameters::defaultRGBDGoalReachedRadius()),
+	_maxAnticipatedNodes(Parameters::defaultRGBDMaxAnticipatedNodes()),
+	_loopClosureHypothesis(0,0.0f),
+	_highestHypothesis(0,0.0f),
 	_lastProcessTime(0.0),
 	_epipolarGeometry(0),
 	_bayesFilter(0),
@@ -118,7 +119,9 @@ Rtabmap::Rtabmap() :
 	_foutInt(0),
 	_wDir("."),
 	_mapCorrection(Transform::getIdentity()),
-	_mapTransform(Transform::getIdentity())
+	_mapTransform(Transform::getIdentity()),
+	_pathCurrentIndex(0),
+	_pathGoalIndex(0)
 {
 }
 
@@ -281,14 +284,15 @@ void Rtabmap::init(const std::string & configFile, const std::string & databaseP
 
 void Rtabmap::close()
 {
-	_retrievedId = 0;
-	_lcHypothesisValue = 0;
-	_lcHypothesisId = 0;
+	UINFO("");
+	_highestHypothesis = std::make_pair(0,0.0f);
+	_loopClosureHypothesis = std::make_pair(0,0.0f);
 	_lastProcessTime = 0.0;
 	_optimizedPoses.clear();
 	_constraints.clear();
 	_mapCorrection.setIdentity();
 	_mapTransform.setIdentity();
+	this->clearPath();
 
 	flushStatisticLogs();
 	if(_foutFloat)
@@ -367,6 +371,9 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kLccReextractFeatureType(), _reextractFeatureType);
 	Parameters::parse(parameters, Parameters::kLccReextractMaxWords(), _reextractMaxWords);
 	Parameters::parse(parameters, Parameters::kRtabmapStartNewMapOnLoopClosure(), _startNewMapOnLoopClosure);
+	Parameters::parse(parameters, Parameters::kRGBDGoalReachedRadius(), _goalReachedRadius);
+	Parameters::parse(parameters, Parameters::kRGBDMaxAnticipatedNodes(), _maxAnticipatedNodes);
+
 
 	// RGB-D SLAM stuff
 	if((iter=parameters.find(Parameters::kLccIcpType())) != parameters.end())
@@ -435,16 +442,6 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		uInsert(_lastParameters, ParametersPair(iter->first, iter->second));
 	}
-}
-
-int Rtabmap::getLoopClosureId() const
-{
-	return _lcHypothesisId;
-}
-
-int Rtabmap::getRetrievedId() const
-{
-	return _retrievedId;
 }
 
 int Rtabmap::getLastLocationId() const
@@ -652,9 +649,8 @@ void Rtabmap::generateTOROGraph(const std::string & path, bool optimized, bool g
 
 void Rtabmap::resetMemory()
 {
-	_retrievedId = 0;
-	_lcHypothesisValue = 0;
-	_lcHypothesisId = 0;
+	_highestHypothesis = std::make_pair(0,0.0f);
+	_loopClosureHypothesis = std::make_pair(0,0.0f);
 	_lastProcessTime = 0.0;
 	_optimizedPoses.clear();
 	_constraints.clear();
@@ -719,7 +715,6 @@ bool Rtabmap::process(const SensorData & data)
 	std::map<int, float> likelihood;
 	std::map<int, int> weights;
 	std::map<int, float> posterior;
-	std::pair<int, float> hypothesis(0, 0.0f);
 	std::list<std::pair<int, float> > reactivateHypotheses;
 
 	std::map<int, int> childCount;
@@ -730,7 +725,8 @@ bool Rtabmap::process(const SensorData & data)
 	const Signature * signature = 0;
 	const Signature * sLoop = 0;
 
-	_lcHypothesisId = 0;
+	_loopClosureHypothesis.first = 0; // Don't reset now the last loop closure value
+	_highestHypothesis = std::make_pair(0,0.0f);
 
 	std::set<int> immunizedLocations;
 
@@ -999,61 +995,55 @@ bool Rtabmap::process(const SensorData & data)
 			ULOGGER_INFO("creating hypotheses...");
 			if(posterior.size())
 			{
-				hypothesis.first = 0;
-				hypothesis.second = 0.0f;
 				for(std::map<int, float>::const_reverse_iterator iter = posterior.rbegin(); iter != posterior.rend(); ++iter)
 				{
-					if(iter->first > 0 && iter->second > hypothesis.second)
+					if(iter->first > 0 && iter->second > _highestHypothesis.second)
 					{
-						hypothesis.first = iter->first;
-						hypothesis.second = iter->second;
+						_highestHypothesis = *iter;
 					}
 				}
 				// With the virtual place, use sum of LC probabilities (1 - virtual place hypothesis).
-				hypothesis.second = 1-posterior.begin()->second;
+				_highestHypothesis.second = 1-posterior.begin()->second;
 			}
 			timeHypothesesCreation = timer.ticks();
-			ULOGGER_INFO("Hypothesis=%d, value=%f, timeHypothesesCreation=%fs", hypothesis.first, hypothesis.second, timeHypothesesCreation);
+			ULOGGER_INFO("Highest hypothesis=%d, value=%f, timeHypothesesCreation=%fs", _highestHypothesis.first, _highestHypothesis.second, timeHypothesesCreation);
 
-			if(hypothesis.first > 0)
+			if(_highestHypothesis.first > 0)
 			{
 				// Loop closure Threshold
 				// When _loopThr=0, accept loop closure if the hypothesis is over
 				// the virtual (new) place hypothesis.
-				if(hypothesis.second >= _loopThr)
+				if(_highestHypothesis.second >= _loopThr)
 				{
-					//============================================================
-					// Hypothesis verification for loop closure with geometric
-					// information (like the epipolar geometry or using the local map
-					// associated with the signature)
-					//============================================================
-					if(_lcHypothesisValue && hypothesis.second >= _loopRatio*_lcHypothesisValue &&
-					   (!_epipolarGeometry || _epipolarGeometry->check(signature, _memory->getSignature(hypothesis.first))))
+					rejectedHypothesis = true;
+					if(posterior.size() <= 2)
 					{
-						_lcHypothesisId = hypothesis.first;
+						// Ignore loop closure if there is only one loop closure hypothesis
+						UDEBUG("rejected hypothesis: single hypothesis");
+					}
+					else if(_epipolarGeometry && !_epipolarGeometry->check(signature, _memory->getSignature(_highestHypothesis.first)))
+					{
+						UWARN("rejected hypothesis: by epipolar geometry");
+					}
+					else if(_loopRatio > 0.0f && _loopClosureHypothesis.second && _highestHypothesis.second < _loopRatio*_loopClosureHypothesis.second)
+					{
+						UWARN("rejected hypothesis: not satisfying hypothesis ratio (%f < %f * %f)",
+								_highestHypothesis.second, _loopRatio, _loopClosureHypothesis.second);
+					}
+					else if(_loopRatio > 0.0f && _loopClosureHypothesis.second == 0)
+					{
+						UDEBUG("rejected hypothesis: last closure hypothesis is null (loop ratio is on)");
 					}
 					else
 					{
-						if(_lcHypothesisValue == 0.0f)
-						{
-							UDEBUG("rejected hypothesis: last closure hypothesis is null");
-						}
-						else if(hypothesis.second < _loopRatio*_lcHypothesisValue)
-						{
-							UWARN("rejected hypothesis: not satisfying hypothesis ratio (%f < %f * %f)",
-									hypothesis.second, _loopRatio, _lcHypothesisValue);
-						}
-						else
-						{
-							UWARN("rejected hypothesis: by epipolar geometry");
-						}
-						rejectedHypothesis = true;
+						_loopClosureHypothesis = _highestHypothesis;
+						rejectedHypothesis = false;
 					}
 
 					timeHypothesesValidation = timer.ticks();
 					ULOGGER_INFO("timeHypothesesValidation=%fs",timeHypothesesValidation);
 				}
-				else if(hypothesis.second < _loopRatio*_lcHypothesisValue)
+				else if(_highestHypothesis.second < _loopRatio*_loopClosureHypothesis.second)
 				{
 					// Used for Precision-Recall computation.
 					// When analysing logs, it's convenient to know
@@ -1061,15 +1051,13 @@ bool Rtabmap::process(const SensorData & data)
 					rejectedHypothesis = true;
 				}
 
-				//============================================================
-				// Retrieval id update
-				//============================================================
-				_retrievedId = hypothesis.first;
-
 				//for statistic...
-				hypothesisRatio = _lcHypothesisValue>0?hypothesis.second/_lcHypothesisValue:0;
-				_lcHypothesisValue = hypothesis.second;
+				hypothesisRatio = _loopClosureHypothesis.second>0?_highestHypothesis.second/_loopClosureHypothesis.second:0;
 
+			}
+			if(_loopClosureHypothesis.first == 0)
+			{
+				_loopClosureHypothesis.second = 0.0f; // reset loop closure value
 			}
 		} // if(_memory->getWorkingMemSize())
 	}// !isBadSignature
@@ -1089,22 +1077,24 @@ bool Rtabmap::process(const SensorData & data)
 	}
 
 	//============================================================
-	// RETRIEVAL : Loop closure neighbors reactivation
+	// RETRIEVAL 1/3 : Loop closure neighbors reactivation
 	//============================================================
-	if(_retrievedId > 0 )
+	int retrievalId = _highestHypothesis.first;
+	std::list<int> reactivatedIds;
+	double timeGetNeighborsTimeDb = 0.0;
+	double timeGetNeighborsSpaceDb = 0.0;
+	if(retrievalId > 0 )
 	{
 		//Load neighbors
-		ULOGGER_INFO("Retrieving locations... around id=%d", _retrievedId);
+		ULOGGER_INFO("Retrieving locations... around id=%d", retrievalId);
 		int neighborhoodSize = (int)_bayesFilter->getPredictionLC().size()-1;
 		UASSERT(neighborhoodSize >= 0);
 		int margin = neighborhoodSize;
+		ULOGGER_DEBUG("margin=%d maxRetieved=%d", margin, _maxRetrieved);
 
 		UTimer timeGetN;
 		unsigned int nbLoadedFromDb = 0;
 		std::set<int> reactivatedIdsSet;
-		std::list<int> reactivatedIds;
-		double timeGetNeighborsTimeDb = 0.0;
-		double timeGetNeighborsSpaceDb = 0.0;
 		std::map<int, int> neighbors;
 		bool firstPassDone = false;
 		int m = 0;
@@ -1113,12 +1103,13 @@ bool Rtabmap::process(const SensorData & data)
 		// priority in time
 		// Direct neighbors TIME
 		ULOGGER_DEBUG("In TIME");
-		neighbors = _memory->getNeighborsId(_retrievedId,
+		neighbors = _memory->getNeighborsId(retrievalId,
 				margin,
 				_maxRetrieved,
 				true,
 				true,
 				&timeGetNeighborsTimeDb);
+		ULOGGER_DEBUG("neighbors of %d in time = %d", retrievalId, (int)neighbors.size());
 		//Priority to locations near in time (direct neighbor) then by space (loop closure)
 		while(m < margin)
 		{
@@ -1163,12 +1154,13 @@ bool Rtabmap::process(const SensorData & data)
 
 		// neighbors SPACE, already added direct neighbors will be ignored
 		ULOGGER_DEBUG("In SPACE");
-		neighbors = _memory->getNeighborsId(_retrievedId,
+		neighbors = _memory->getNeighborsId(retrievalId,
 				margin,
 				_maxRetrieved,
 				true,
 				false,
 				&timeGetNeighborsSpaceDb);
+		ULOGGER_DEBUG("neighbors of %d in space = %d", retrievalId, (int)neighbors.size());
 		m = 0;
 		firstPassDone = false;
 		while(m < margin)
@@ -1191,6 +1183,7 @@ bool Rtabmap::process(const SensorData & data)
 						{
 							++nbDirectNeighborsInDb;
 						}
+						UDEBUG("nt=%d m=%d", iter->first, iter->second);
 					}
 					std::map<int, int>::iterator tmp = iter++;
 					neighbors.erase(tmp);
@@ -1219,14 +1212,54 @@ bool Rtabmap::process(const SensorData & data)
 				timeGetNeighborsTimeDb,
 				timeGetNeighborsSpaceDb);
 
+	}
+
+	//============================================================
+	// RETRIEVAL 2/3 : Update planned path and get next nodes to retrieve
+	//============================================================
+	std::list<int> retrievalPathIds;
+	if(_path.size() && _rgbdSlamMode)
+	{
+		updateGoalIndex();
+
+		if(_path.size())
+		{
+			// immunize all nodes between current node and goal node
+			for(unsigned int i=_pathCurrentIndex; i<=_pathGoalIndex; ++i)
+			{
+				immunizedLocations.insert(_path[i]);
+				UDEBUG("Path immunization: node %d", _path[i]);
+			}
+			// retrieve nodes after current node up to _maxPathRetrievalSize
+			for(unsigned int i=_pathCurrentIndex;
+				i<_path.size() && i<_pathCurrentIndex+_maxAnticipatedNodes && retrievalPathIds.size() < _maxRetrieved;
+				++i)
+			{
+				if(_memory->getSignature(_path[i]) == 0)
+				{
+					UINFO("retrieval of node %d on path", _path[i]);
+					retrievalPathIds.push_back(_path[i]);
+				}
+			}
+
+			// insert them first to make sure they are loaded.
+			reactivatedIds.insert(reactivatedIds.begin(), retrievalPathIds.begin(), retrievalPathIds.end());
+		}
+	}
+
+	//============================================================
+	// RETRIEVAL 3/3 : Load signatures from the database
+	//============================================================
+	if(reactivatedIds.size())
+	{
 		// Not important if the loop closure hypothesis don't have all its neighbors loaded,
 		// only a loop closure link is added...
 		signaturesRetrieved = _memory->reactivateSignatures(
 				reactivatedIds,
-				_maxRetrieved,
+				_maxRetrieved+retrievalPathIds.size(), // add path retrieved
 				timeRetrievalDbAccess);
 
-		ULOGGER_INFO("retrieval of %d reactivatedIds=%fs (db time = %fs)", (int)signaturesRetrieved.size(), timeGetN.ticks(), timeRetrievalDbAccess);
+		ULOGGER_INFO("retrieval of %d (db time = %fs)", (int)signaturesRetrieved.size(), timeRetrievalDbAccess);
 
 		timeRetrievalDbAccess += timeGetNeighborsTimeDb + timeGetNeighborsSpaceDb;
 		UINFO("total timeRetrievalDbAccess=%fs", timeRetrievalDbAccess);
@@ -1242,7 +1275,7 @@ bool Rtabmap::process(const SensorData & data)
 	// (updated: place this after retrieval to be sure that neighbors of the loop closure are in RAM)
 	//=============================================================
 	int loopClosureVisualInliers = 0; // for statistics
-	if(_lcHypothesisId>0)
+	if(_loopClosureHypothesis.first>0)
 	{
 		//Compute transform if metric data are present
 		Transform transform;
@@ -1280,7 +1313,7 @@ bool Rtabmap::process(const SensorData & data)
 				// Add signatures
 				SensorData dataFrom = data;
 				dataFrom.setId(signature->id());
-				Signature tmpTo = _memory->getSignatureData(_lcHypothesisId, true);
+				Signature tmpTo = _memory->getSignatureData(_loopClosureHypothesis.first, true);
 				SensorData dataTo = tmpTo.toSensorData();
 				UDEBUG("timeTo = %fs", timeT.ticks());
 
@@ -1304,16 +1337,16 @@ bool Rtabmap::process(const SensorData & data)
 					// Fallback to normal way (raw data not kept in database...)
 					UWARN("Loop closure: Some images not found in memory for re-extracting "
 						  "features, is Mem/RawDataKept=false? Falling back with already extracted 3D features.");
-					transform = _memory->computeVisualTransform(_lcHypothesisId, signature->id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
+					transform = _memory->computeVisualTransform(_loopClosureHypothesis.first, signature->id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
 				}
 			}
 			else
 			{
-				transform = _memory->computeVisualTransform(_lcHypothesisId, signature->id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
+				transform = _memory->computeVisualTransform(_loopClosureHypothesis.first, signature->id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
 			}
 			if(!transform.isNull() && _globalLoopClosureIcpType > 0)
 			{
-				Transform icpTransform  = _memory->computeIcpTransform(_lcHypothesisId, signature->id(), transform, _globalLoopClosureIcpType == 1, &rejectedMsg, 0, &variance);
+				Transform icpTransform  = _memory->computeIcpTransform(_loopClosureHypothesis.first, signature->id(), transform, _globalLoopClosureIcpType == 1, &rejectedMsg, 0, &variance);
 				float squaredNorm = (transform.inverse()*icpTransform).getNormSquared();
 				if(!icpTransform.isNull() &&
 					_globalLoopClosureIcpMaxDistance>0.0f &&
@@ -1321,7 +1354,7 @@ bool Rtabmap::process(const SensorData & data)
 				{
 					UWARN("Global loop closure rejected (%d->%d) (ICP correction too large %f > %f [squared norm])",
 							signature->id(),
-							_lcHypothesisId,
+							_loopClosureHypothesis.first,
 							squaredNorm,
 							_globalLoopClosureIcpMaxDistance*_globalLoopClosureIcpMaxDistance);
 					icpTransform.setNull();
@@ -1331,34 +1364,42 @@ bool Rtabmap::process(const SensorData & data)
 			rejectedHypothesis = transform.isNull();
 			if(rejectedHypothesis)
 			{
-				UWARN("Cannot compute a loop closure transform between %d and %d: %s", _lcHypothesisId, signature->id(), rejectedMsg.c_str());
+				UWARN("Cannot compute a loop closure transform between %d and %d: %s", _loopClosureHypothesis.first, signature->id(), rejectedMsg.c_str());
 			}
 		}
 		if(!rejectedHypothesis)
 		{
 			// Make the new one the parent of the old one
-			rejectedHypothesis = !_memory->addLoopClosureLink(_lcHypothesisId, signature->id(), transform, Link::kGlobalClosure, variance);
+			rejectedHypothesis = !_memory->addLoopClosureLink(_loopClosureHypothesis.first, signature->id(), transform, Link::kGlobalClosure, variance);
 		}
 
 		if(rejectedHypothesis)
 		{
-			_lcHypothesisId = 0;
+			_loopClosureHypothesis.first = 0;
 		}
 		else
 		{
-			const Signature * oldS = _memory->getSignature(_lcHypothesisId);
+			const Signature * oldS = _memory->getSignature(_loopClosureHypothesis.first);
 			UASSERT(oldS != 0);
 			// Old map -> new map, used for localization correction on loop closure
 			_mapTransform = oldS->getPose() * transform.inverse() * signature->getPose().inverse();
 		}
 	}
+
+	// Add a virtual loop closure link to keep the path linked to local map
+	if(_path.size() && !signature->hasLink(_path[_pathCurrentIndex]))
+	{
+		Transform virtualLoop = _optimizedPoses.at(signature->id()).inverse() * _optimizedPoses.at(_path[_pathCurrentIndex]);
+		_memory->addLoopClosureLink(_path[_pathCurrentIndex], signature->id(), virtualLoop, Link::kVirtualClosure, 99999);
+	}
+
 	timeAddLoopClosureLink = timer.ticks();
 	ULOGGER_INFO("timeAddLoopClosureLink=%fs", timeAddLoopClosureLink);
 
 	int localSpaceDetectionPosesCount = 0;
 	int localSpaceClosureId = 0;
 	int localSpaceNearestId = 0;
-	if(_lcHypothesisId == 0 &&
+	if(_loopClosureHypothesis.first == 0 &&
 	   _localLoopClosureDetectionSpace &&
 	   !signature->getLaserScanCompressed().empty())
 	{
@@ -1371,24 +1412,26 @@ bool Rtabmap::process(const SensorData & data)
 			//============================================================
 			// Scan matching LOCAL LOOP CLOSURE SPACE
 			//============================================================
-			// get all nodes in radius of the current node
-			std::map<int, Transform> poses;
+			std::map<int, Transform> localSpacePoses;
 			localSpaceNearestId = 0;
-			poses = this->getOptimizedWMPosesInRadius(signature->id(), _localDetectMaxNeighbors, _localDetectRadius, _localDetectMaxDiffID, localSpaceNearestId);
+			localSpacePoses = this->getWMPosesInRadius(
+			signature->id(),
+			_localDetectMaxNeighbors,
+			_localDetectRadius,
+			_localDetectMaxDiffID,
+			localSpaceNearestId);
 
 			// add current node to poses
-			UASSERT(_optimizedPoses.find(signature->id()) != _optimizedPoses.end());
-			poses.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
-
-			localSpaceDetectionPosesCount = (int)poses.size()-1;
+			localSpacePoses.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
+			localSpaceDetectionPosesCount = (int)localSpacePoses.size()-1;
 			//The nearest will be the reference for a loop closure transform
-			if(poses.size() &&
+			if(localSpacePoses.size() &&
 				localSpaceNearestId &&
 				signature->getLinks().find(localSpaceNearestId) == signature->getLinks().end())
 			{
 				double variance = 1.0;
 				std::string rejectedMsg;
-				Transform t = _memory->computeScanMatchingTransform(signature->id(), localSpaceNearestId, poses, &rejectedMsg, 0, &variance);
+				Transform t = _memory->computeScanMatchingTransform(signature->id(), localSpaceNearestId, localSpacePoses, &rejectedMsg, 0, &variance);
 				if(!t.isNull())
 				{
 					localSpaceClosureId = localSpaceNearestId;
@@ -1417,7 +1460,7 @@ bool Rtabmap::process(const SensorData & data)
 	// Optimize map graph
 	//============================================================
 	if(_rgbdSlamMode &&
-		(_lcHypothesisId>0 ||				// can be different map of the current one
+		(_loopClosureHypothesis.first>0 ||				// can be different map of the current one
 		 localLoopClosuresInTimeFound>0 || 	// only same map of the current one
 		 scanMatchingSuccess || 			// only same map of the current one
 		 localSpaceClosureId>0 || 			// can be different map of the current one
@@ -1437,10 +1480,10 @@ bool Rtabmap::process(const SensorData & data)
 				UERROR("Map correction should be identity when optimizing from the last node. T=%s", _mapCorrection.prettyPrint().c_str());
 			}
 		}
-		else if(_lcHypothesisId > 0 || localSpaceClosureId > 0 || signaturesRetrieved.size())
+		else if(_loopClosureHypothesis.first > 0 || localSpaceClosureId > 0 || signaturesRetrieved.size())
 		{
 			UINFO("Update map correction: Localization mode");
-			int oldId = _lcHypothesisId>0?_lcHypothesisId:localSpaceClosureId?localSpaceClosureId:_retrievedId;
+			int oldId = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:localSpaceClosureId?localSpaceClosureId:_highestHypothesis.first;
 			UASSERT(oldId != 0);
 			if(signaturesRetrieved.size() || _optimizedPoses.find(oldId) == _optimizedPoses.end())
 			{
@@ -1475,7 +1518,7 @@ bool Rtabmap::process(const SensorData & data)
 	int lcHypothesisReactivated = 0;
 	float rehearsalValue = uValue(statistics_.data(), Statistics::kMemoryRehearsal_sim(), 0.0f);
 	int rehearsalMaxId = (int)uValue(statistics_.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
-	sLoop = _memory->getSignature(_lcHypothesisId?_lcHypothesisId:localSpaceClosureId?localSpaceClosureId:hypothesis.first);
+	sLoop = _memory->getSignature(_loopClosureHypothesis.first?_loopClosureHypothesis.first:localSpaceClosureId?localSpaceClosureId:_highestHypothesis.first);
 	if(sLoop)
 	{
 		lcHypothesisReactivated = sLoop->isSaved()?1.0f:0.0f;
@@ -1488,25 +1531,25 @@ bool Rtabmap::process(const SensorData & data)
 	float vpHypothesis = posterior.size()?posterior.at(Memory::kIdVirtual):0.0f;
 
 	// prepare statistics
-	if(_lcHypothesisId || _publishStats)
+	if(_loopClosureHypothesis.first || _publishStats)
 	{
 		ULOGGER_INFO("sending stats...");
 		statistics_.setRefImageId(signature->id());
-		if(_lcHypothesisId != Memory::kIdInvalid)
+		if(_loopClosureHypothesis.first != Memory::kIdInvalid)
 		{
-			statistics_.setLoopClosureId(_lcHypothesisId);
-			ULOGGER_INFO("Loop closure detected! With id=%d", _lcHypothesisId);
+			statistics_.setLoopClosureId(_loopClosureHypothesis.first);
+			ULOGGER_INFO("Loop closure detected! With id=%d", _loopClosureHypothesis.first);
 		}
 		if(_publishStats)
 		{
 			ULOGGER_INFO("send all stats...");
 			statistics_.setExtended(1);
 
-			statistics_.addStatistic(Statistics::kLoopHighest_hypothesis_id(), hypothesis.first);
-			statistics_.addStatistic(Statistics::kLoopHighest_hypothesis_value(), hypothesis.second);
+			statistics_.addStatistic(Statistics::kLoopHighest_hypothesis_id(), _highestHypothesis.first);
+			statistics_.addStatistic(Statistics::kLoopHighest_hypothesis_value(), _highestHypothesis.second);
 			statistics_.addStatistic(Statistics::kLoopHypothesis_reactivated(), lcHypothesisReactivated);
 			statistics_.addStatistic(Statistics::kLoopVp_hypothesis(), vpHypothesis);
-			statistics_.addStatistic(Statistics::kLoopReactivateId(), _retrievedId);
+			statistics_.addStatistic(Statistics::kLoopReactivateId(), retrievalId);
 			statistics_.addStatistic(Statistics::kLoopHypothesis_ratio(), hypothesisRatio);
 			statistics_.addStatistic(Statistics::kLoopVisualInliers(), loopClosureVisualInliers);
 
@@ -1528,7 +1571,7 @@ bool Rtabmap::process(const SensorData & data)
 				d = d <= d3?d:d3;
 				statistics_.addStatistic(Statistics::kLocalLoopSpace_diff_id(), d);
 			}
-			if(_lcHypothesisId || localSpaceClosureId)
+			if(_loopClosureHypothesis.first || localSpaceClosureId)
 			{
 				UASSERT(uContains(sLoop->getLinks(), signature->id()));
 				UINFO("Set loop closure transform = %s", sLoop->getLinks().at(signature->id()).transform().prettyPrint().c_str());
@@ -1539,9 +1582,9 @@ bool Rtabmap::process(const SensorData & data)
 			{
 				std::map<int, int> mapIds;
 				mapIds.insert(std::make_pair(signature->id(), _memory->getMapId(signature->id())));
-				if(_lcHypothesisId)
+				if(_loopClosureHypothesis.first)
 				{
-					mapIds.insert(std::make_pair(_lcHypothesisId, _memory->getMapId(_lcHypothesisId)));
+					mapIds.insert(std::make_pair(_loopClosureHypothesis.first, _memory->getMapId(_loopClosureHypothesis.first)));
 				}
 				statistics_.setMapIds(mapIds);
 			}//else... see finalize statistics below
@@ -1709,7 +1752,7 @@ bool Rtabmap::process(const SensorData & data)
 									timeHypothesesValidation,
 									timeRealTimeLimitReachedProcess,
 									timeStatsCreation,
-									_lcHypothesisValue,
+									_loopClosureHypothesis.second,
 									0.0f,
 									0.0f,
 									0.0f,
@@ -1722,8 +1765,8 @@ bool Rtabmap::process(const SensorData & data)
 									timeRetrievalDbAccess,
 									timeAddLoopClosureLink);
 		std::string logI = uFormat("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
-									_lcHypothesisId,
-									hypothesis.first,
+									_loopClosureHypothesis.first,
+									_highestHypothesis.first,
 									(int)signaturesRemoved.size(),
 									0,
 									refWordsCount,
@@ -1735,7 +1778,7 @@ bool Rtabmap::process(const SensorData & data)
 									int(signaturesRetrieved.size()),
 									lcHypothesisReactivated,
 									refUniqueWordsCount,
-									_retrievedId,
+									retrievalId,
 									0.0f,
 									rehearsalMaxId,
 									rehearsalMaxId>0?1:0);
@@ -1777,7 +1820,7 @@ void Rtabmap::setTimeThreshold(float maxTimeAllowed)
 		ULOGGER_WARN("maxTimeAllowed < 0, then setting it to 0 (inf).");
 		_maxTimeAllowed = 0;
 	}
-	else if(_maxTimeAllowed < 1)
+	else if(_maxTimeAllowed > 0.0f && _maxTimeAllowed < 1.0f)
 	{
 		ULOGGER_WARN("Time threshold set to %fms, it is not in seconds!", _maxTimeAllowed);
 	}
@@ -1819,10 +1862,10 @@ void Rtabmap::deleteLocation(int locationId)
 
 void Rtabmap::rejectLoopClosure(int oldId, int newId)
 {
-	UDEBUG("_lcHypothesisId=%d", _lcHypothesisId);
-	if(_lcHypothesisId)
+	UDEBUG("_loopClosureHypothesis.first=%d", _loopClosureHypothesis.first);
+	if(_loopClosureHypothesis.first)
 	{
-		_lcHypothesisId = 0;
+		_loopClosureHypothesis.first = 0;
 		if(_memory)
 		{
 			_memory->rejectLoopClosure(oldId, newId);
@@ -1845,7 +1888,57 @@ void Rtabmap::dumpData() const
 }
 
 // fromId must be in _memory and in _optimizedPoses
-std::map<int, Transform> Rtabmap::getOptimizedWMPosesInRadius(
+// return <id, distance>
+std::map<int, float> Rtabmap::getNodesInRadius(
+		int fromId,
+		int maxNearestNeighbors,
+		float radius) const
+{
+	UDEBUG("");
+	const Signature * fromS = _memory->getSignature(fromId);
+	UASSERT(fromS != 0);
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	cloud->resize(_optimizedPoses.size());
+	std::vector<int> ids(_optimizedPoses.size());
+	int oi = 0;
+	for(std::map<int, Transform>::const_iterator iter = _optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+	{
+		(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+		ids[oi++] = iter->first;
+	}
+
+	cloud->resize(oi);
+	ids.resize(oi);
+
+	UASSERT(_optimizedPoses.find(fromId) != _optimizedPoses.end());
+	Transform fromT = _optimizedPoses.at(fromId);
+
+	std::map<int, float> nodes;
+	if(cloud->size())
+	{
+		pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
+		kdTree->setInputCloud(cloud);
+		std::vector<int> ind;
+		std::vector<float> dist;
+		pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
+		kdTree->radiusSearch(pt, radius, ind, dist, maxNearestNeighbors);
+		for(unsigned int i=0; i<ind.size(); ++i)
+		{
+			if(ind[i] >=0)
+			{
+				UDEBUG("Inlier %d: %f", ids[ind[i]], dist[i]);
+				nodes.insert(std::make_pair(ids[ind[i]], dist[i]));
+			}
+		}
+	}
+	UDEBUG("nodes=%d", (int)nodes.size());
+	return nodes;
+}
+
+// fromId must be in _memory and in _optimizedPoses
+// Get poses in front of the robot
+std::map<int, Transform> Rtabmap::getWMPosesInRadius(
 		int fromId,
 		int maxNearestNeighbors,
 		float radius,
@@ -1864,7 +1957,10 @@ std::map<int, Transform> Rtabmap::getOptimizedWMPosesInRadius(
 	for(std::map<int, Transform>::const_iterator iter = _optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 	{
 		// Only locations in Working Memory with ID not too far from the last loop closure child id
-		bool diffIdOk = maxDiffID == 0 || abs(fromId - iter->first) <= maxDiffID || (abs(iter->first - _memory->getLastGlobalLoopClosureChildId()) <= maxDiffID && abs(fromId - _memory->getLastGlobalLoopClosureParentId()) <= maxDiffID);
+		bool diffIdOk = maxDiffID == 0 ||
+				abs(fromId - iter->first) <= maxDiffID ||
+				(abs(iter->first - _memory->getLastGlobalLoopClosureChildId()) <= maxDiffID &&
+				 abs(fromId - _memory->getLastGlobalLoopClosureParentId()) <= maxDiffID);
 		if(stm.find(iter->first) == stm.end() && diffIdOk)
 		{
 			(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
@@ -1883,9 +1979,13 @@ std::map<int, Transform> Rtabmap::getOptimizedWMPosesInRadius(
 	float minDistance = -1;
 	if(cloud->size())
 	{
-		//filter poses in front of the fromId
-		//pcl::io::savePCDFile("radiusPoses.pcd", *cloud);
+		//if(cloud->size())
+		//{
+		//	pcl::io::savePCDFile("radiusPoses.pcd", *cloud);
+		//	UWARN("Saved radiusPoses.pcd");
+		//}
 
+		//filter poses in front of the fromId
 		Transform t=Transform::getIdentity();
 		t.x() = radius*0.95f;
 		float x,y,z, roll,pitch,yaw;
@@ -1900,7 +2000,11 @@ std::map<int, Transform> Rtabmap::getOptimizedWMPosesInRadius(
 		pcl::IndicesPtr indices(new std::vector<int>());
 		cropbox.filter(*indices);
 
-		//pcl::io::savePCDFile("radiusCrop.pcd", *cloud, *indices);
+		//if(indices->size())
+		//{
+		//	pcl::io::savePCDFile("radiusCrop.pcd", *cloud, *indices);
+		//	UWARN("Saved radiusCrop.pcd");
+		//}
 
 		if(indices->size())
 		{
@@ -1940,23 +2044,7 @@ std::map<int, Transform> Rtabmap::getOptimizedWMPosesInRadius(
 			//	pcl::io::savePCDFile("radiusNearestPt.pcd", c);
 			//}
 
-			if(nearestId > 0)
-			{
-				// Only take nodes linked with the nearest node
-				std::map<int, int> neighbors = _memory->getNeighborsId(nearestId, maxNearestNeighbors, 0, true, true);
-				for(std::map<int, Transform>::iterator iter = poses.begin(); iter!= poses.end();)
-				{
-					if(!uContains(neighbors, iter->first))
-					{
-						poses.erase(iter++);
-					}
-					else
-					{
-						++iter;
-					}
-				}
-			}
-			else if(poses.size())
+			if(nearestId == 0 && poses.size())
 			{
 				UWARN("Flushing poses (%d) because nearest id of %d can't be found!", (int)poses.size(), fromId);
 				poses.clear();
@@ -2228,6 +2316,188 @@ void Rtabmap::getGraph(
 	else if(_memory == 0)
 	{
 		UWARN("Memory not initialized...");
+	}
+}
+
+void Rtabmap::clearPath()
+{
+	_path.clear();
+	_pathCurrentIndex=0;
+	_pathGoalIndex = 0;
+	if(_memory)
+	{
+		_memory->removeAllVirtualLinks();
+	}
+}
+
+// return true if path is updated
+std::list<std::pair<int, Transform> > Rtabmap::computePath(int targetNode)
+{
+	this->clearPath();
+	std::list<std::pair<int, Transform> > pathPoses;
+
+	if(!_rgbdSlamMode)
+	{
+		UWARN("A path can only be computed in RGBD-SLAM mode");
+		return pathPoses;
+	}
+
+	if(_memory->getWorkingMem().size() <= 1 || !_memory->getLastWorkingSignature()) // ignore virtual place
+	{
+		UWARN("Working memory is empty... cannot compute a path");
+		return pathPoses;
+	}
+	int currentNode = _memory->getLastWorkingSignature()->id();
+
+	UTimer timer;
+	std::map<int, Transform> globalGraph;
+	std::multimap<int, Link> constraints;
+	std::map<int, int> mapIds;
+	this->getGraph(globalGraph, constraints, mapIds, true, true);
+
+	if(!uContains(globalGraph, currentNode))
+	{
+		UWARN("Last signature %d not found in the global graph! Cannot compute a path", currentNode);
+		return pathPoses;
+	}
+	if(!uContains(globalGraph, targetNode))
+	{
+		UWARN("Goal %d not found in the global graph! Cannot compute a path", targetNode);
+		return pathPoses;
+	}
+
+	std::multimap<int, int> links;
+	for(std::multimap<int, rtabmap::Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
+	{
+		links.insert(std::make_pair(iter->first, iter->second.to()));
+		links.insert(std::make_pair(iter->second.to(), iter->first)); // <->
+	}
+	// Add links between neighbor nodes in the goal radius.
+	//std::multimap<int, int> clusters = rtabmap::radiusPosesClustering(globalGraph, _goalMetricError, CV_PI);
+	//links.insert(clusters.begin(), clusters.end());
+
+	UINFO("Time creating global graph = %fs", timer.ticks());
+
+	UINFO("Computing path from location %d to %d", currentNode, targetNode);
+	_path = rtabmap::computePath(globalGraph, links, currentNode, targetNode);
+	UINFO("Time computing path = %fs", timer.ticks());
+
+	if(_path.size()<2)
+	{
+		_path.clear();
+		UWARN("Cannot compute a path (or goal is already reached)!");
+	}
+	else
+	{
+		UINFO("Path generated! Size=%d", (int)_path.size());
+		if(ULogger::level() == ULogger::kInfo)
+		{
+			std::stringstream stream;
+			for(unsigned int i=0; i<_path.size(); ++i)
+			{
+				stream << _path[i];
+				if(i+1 < _path.size())
+				{
+					stream << " ";
+				}
+			}
+			UINFO("Path = [%s]", stream.str().c_str());
+		}
+	}
+
+	updateGoalIndex();
+
+	for(unsigned int i = 0; i<_path.size(); ++i)
+	{
+		pathPoses.push_back(std::make_pair(_path[i], globalGraph.at(_path[i])));
+	}
+
+	return pathPoses;
+}
+
+int Rtabmap::getPathGoalId() const
+{
+	if(_path.size())
+	{
+		UASSERT(_pathGoalIndex <= _path.size());
+		return _path[_pathGoalIndex];
+	}
+	return 0;
+}
+
+void Rtabmap::updateGoalIndex()
+{
+	UDEBUG("");
+	if(!_rgbdSlamMode)
+	{
+		UWARN("This method can on be used in RGBD-SLAM mode!");
+		return;
+	}
+
+	if(_path.size())
+	{
+		if(_memory->getLastWorkingSignature() == 0 ||
+		   !uContains(_optimizedPoses, _memory->getLastWorkingSignature()->id()))
+		{
+			UERROR("Last node is null in memory or not in optimized poses");
+			return;
+		}
+
+		int goalId = _path.back();
+		if(uContains(_optimizedPoses, goalId))
+		{
+			//use local position to know if the goal is reached
+			float d = _optimizedPoses.at(_memory->getLastWorkingSignature()->id()).getDistance(_optimizedPoses.at(goalId));
+			if(d < _goalReachedRadius)
+			{
+				UINFO("Goal %d reached!", goalId);
+				this->clearPath();
+			}
+		}
+
+		if(_path.size())
+		{
+			//Always check if the farthest node is accessible in local map
+			int goalIndex = 0;
+			for(int i=(int)_path.size()-1; i>=0; --i)
+			{
+				if(uContains(_optimizedPoses, _path[i]))
+				{
+					goalIndex = i;
+					break;
+				}
+			}
+			UASSERT(_pathGoalIndex <= _path.size() && goalIndex >= 0 && goalIndex <= (int)_path.size());
+			if((int)_pathGoalIndex != goalIndex)
+			{
+				UINFO("Updated current goal from %d to %d (%d/%d)",
+						(int)_path[_pathGoalIndex], _path[goalIndex], goalIndex+1, (int)_path.size());
+				_pathGoalIndex = goalIndex;
+			}
+
+			// update nearest pose in the path
+			unsigned int nearestNodeIndex = 0;
+			float distance = -1.0f;
+			const Transform & currentPose = _optimizedPoses.at(_memory->getLastWorkingSignature()->id());
+			UASSERT(_pathGoalIndex < _path.size() && _pathGoalIndex >= 0);
+			for(unsigned int i=_pathCurrentIndex; i<=_pathGoalIndex; ++i)
+			{
+				std::map<int, Transform>::iterator iter = _optimizedPoses.find(_path[i]);
+				if(iter != _optimizedPoses.end())
+				{
+					float d = currentPose.getDistanceSquared(iter->second);
+					if(distance == -1.0f || distance > d)
+					{
+						distance = d;
+						nearestNodeIndex = i;
+					}
+				}
+			}
+			if(distance >= 0 && nearestNodeIndex != _pathCurrentIndex)
+			{
+				_pathCurrentIndex = nearestNodeIndex;
+			}
+		}
 	}
 }
 

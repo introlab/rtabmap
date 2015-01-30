@@ -44,6 +44,9 @@ class NodeItem;
 class LinkItem;
 
 class GraphViewer : public QGraphicsView {
+
+	Q_OBJECT;
+
 public:
 	GraphViewer(QWidget * parent = 0);
 	virtual ~GraphViewer();
@@ -57,7 +60,35 @@ public:
 	void clearPosterior();
 	void clearAll();
 
-	void setWorkingDirectory(const QString & path) {_workingDirectory = path;}
+	//getters
+	const QString & getWorkingDirectory() const {return _workingDirectory;}
+	float getNodeRadius() const {return _nodeRadius;}
+	float getLinkWidth() const {return _linkWidth;}
+	const QColor & getNodeColor() const {return _nodeColor;}
+	const QColor & getNeighborColor() const {return _neighborColor;}
+	const QColor & getGlobalLoopClosureColor() const {return _loopClosureColor;}
+	const QColor & getLocalLoopClosureColor() const {return _loopClosureLocalColor;}
+	const QColor & getUserLoopClosureColor() const {return _loopClosureUserColor;}
+	const QColor & getVirtualLoopClosureColor() const {return _loopClosureVirtualColor;}
+	bool isGridMapVisible() const;
+
+	// setters
+	void setWorkingDirectory(const QString & path);
+	void setNodeRadius(float radius);
+	void setLinkWidth(float width);
+	void setNodeColor(const QColor & color);
+	void setNeighborColor(const QColor & color);
+	void setGlobalLoopClosureColor(const QColor & color);
+	void setLocalLoopClosureColor(const QColor & color);
+	void setUserLoopClosureColor(const QColor & color);
+	void setVirtualLoopClosureColor(const QColor & color);
+	void setGridMapVisible(bool visible);
+
+signals:
+	void configChanged();
+
+public slots:
+	void restoreDefaults();
 
 protected:
 	virtual void wheelEvent ( QWheelEvent * event );
@@ -68,6 +99,9 @@ private:
 	QColor _nodeColor;
 	QColor _neighborColor;
 	QColor _loopClosureColor;
+	QColor _loopClosureLocalColor;
+	QColor _loopClosureUserColor;
+	QColor _loopClosureVirtualColor;
 	QGraphicsItem * _root;
 	QMap<int, NodeItem*> _nodeItems;
 	QMultiMap<int, LinkItem*> _neighborLinkItems;

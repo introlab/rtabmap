@@ -149,6 +149,21 @@ void Signature::removeLink(int idTo)
 	}
 }
 
+void Signature::removeVirtualLinks()
+{
+	for(std::map<int, Link>::iterator iter=_links.begin(); iter!=_links.end();)
+	{
+		if(iter->second.type() == Link::kVirtualClosure)
+		{
+			_links.erase(iter++);
+		}
+		else
+		{
+			++iter;
+		}
+	}
+}
+
 float Signature::compareTo(const Signature & s) const
 {
 	float similarity = 0.0f;

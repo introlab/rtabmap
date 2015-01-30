@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-693</y>
             <width>744</width>
-            <height>1056</height>
+            <height>1378</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>0</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -4900,7 +4900,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <property name="title">
                        <string>Map update</string>
                       </property>
-                      <layout class="QFormLayout" name="formLayout_20">
+                      <layout class="QGridLayout" name="gridLayout_47" columnstretch="0,1">
                        <item row="0" column="0">
                         <widget class="QDoubleSpinBox" name="rgdb_linearUpdate">
                          <property name="suffix">
@@ -4950,16 +4950,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_163">
-                         <property name="text">
-                          <string>Odometry change detected that triggers a new map (0 means whatever the odometry change, the detector will still link the new pose in the current map). Also by default, when an odometry with Identity transformation is detected, a new map is automatically created. </string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="2" column="0">
                         <widget class="QDoubleSpinBox" name="rgdb_newMapOdomChange">
                          <property name="suffix">
@@ -4979,10 +4969,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="1">
-                        <widget class="QLabel" name="label_scanMatching">
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_163">
                          <property name="text">
-                          <string>Laser scan matching for odometry pose correction. ICP 2D only is used here.</string>
+                          <string>Odometry change detected that triggers a new map (0 means whatever the odometry change, the detector will still link the new pose in the current map). Also by default, when an odometry with Identity transformation is detected, a new map is automatically created. </string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -4993,6 +4983,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <widget class="QCheckBox" name="odomScanHistory">
                          <property name="text">
                           <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="label_scanMatching">
+                         <property name="text">
+                          <string>Laser scan matching for odometry pose correction. ICP 2D only is used here.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
                          </property>
                         </widget>
                        </item>
@@ -5054,10 +5054,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </layout>
                        </item>
                        <item>
-                        <layout class="QFormLayout" name="formLayout_5">
-                         <property name="fieldGrowthPolicy">
-                          <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                         </property>
+                        <layout class="QGridLayout" name="gridLayout_48" columnstretch="0,1">
                          <item row="0" column="0">
                           <widget class="QComboBox" name="globalDetection_icpType">
                            <property name="sizeAdjustPolicy">
@@ -5126,7 +5123,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <property name="title">
                        <string>Graph optimization</string>
                       </property>
-                      <layout class="QFormLayout" name="formLayout_19">
+                      <layout class="QGridLayout" name="gridLayout_49" columnstretch="0,1">
                        <item row="0" column="0">
                         <widget class="QSpinBox" name="globalDetection_toroIterations">
                          <property name="minimum">
@@ -5147,13 +5144,17 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_151">
+                       <item row="1" column="0">
+                        <widget class="QCheckBox" name="globalDetection_toroIgnoreVariance">
                          <property name="text">
-                          <string>Optimize graph from the newest node.
--If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). An odometry correction from frames /map to /odom is computed.
--If true, there is no odometry correction computed since it is all previous poses in the map that are corrected, not the last one (which corresponds to latest odometry value).
-Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).</string>
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_141">
+                         <property name="text">
+                          <string>Ignore constraints' variance. If checked, identity information matrix is used for each constraint in TORO. Otherwise, an information matrix is generated from the variance saved in the links.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -5167,17 +5168,13 @@ Warning when set to false: when some nodes are transferred, the first referentia
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="0">
-                        <widget class="QCheckBox" name="globalDetection_toroIgnoreVariance">
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_151">
                          <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_141">
-                         <property name="text">
-                          <string>Ignore constraints' variance. If checked, identity information matrix is used for each constraint in TORO. Otherwise, an information matrix is generated from the variance saved in the links.</string>
+                          <string>Optimize graph from the newest node.
+-If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). An odometry correction from frames /map to /odom is computed.
+-If true, there is no odometry correction computed since it is all previous poses in the map that are corrected, not the last one (which corresponds to latest odometry value).
+Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -5229,7 +5226,7 @@ Warning when set to false: when some nodes are transferred, the first referentia
                         </widget>
                        </item>
                        <item>
-                        <layout class="QFormLayout" name="formLayout_13">
+                        <layout class="QGridLayout" name="gridLayout_50" columnstretch="0,1">
                          <item row="0" column="0">
                           <widget class="QDoubleSpinBox" name="localDetection_radius">
                            <property name="suffix">
@@ -5267,16 +5264,6 @@ Warning when set to false: when some nodes are transferred, the first referentia
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="1">
-                          <widget class="QLabel" name="label_space3_2">
-                           <property name="text">
-                            <string>Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
                          <item row="2" column="0">
                           <widget class="QSpinBox" name="localDetection_maxDiffID">
                            <property name="maximum">
@@ -5287,7 +5274,66 @@ Warning when set to false: when some nodes are transferred, the first referentia
                            </property>
                           </widget>
                          </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_space3_2">
+                           <property name="text">
+                            <string>Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
                         </layout>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_12">
+                      <property name="title">
+                       <string>Graph planning</string>
+                      </property>
+                      <layout class="QGridLayout" name="gridLayout_51" columnstretch="0,1">
+                       <item row="0" column="0">
+                        <widget class="QDoubleSpinBox" name="graphPlan_goalReachedRadius">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="value">
+                          <double>1.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_space2_2">
+                         <property name="text">
+                          <string>Goal reached radius.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QSpinBox" name="graphPlan_maxAnticipatedNodes">
+                         <property name="maximum">
+                          <number>999999999</number>
+                         </property>
+                         <property name="value">
+                          <number>10</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_space3_3">
+                         <property name="text">
+                          <string>Maximum anticipated nodes on the computed path that can be retrieved (the number of nodes actually retrieved at each iteration is limited by &quot;Maximum locations retrieved&quot; from the Memory panel).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
                        </item>
                       </layout>
                      </widget>

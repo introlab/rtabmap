@@ -188,7 +188,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_preferencesDialog->init();
 
 	// Restore window geometry
-	_preferencesDialog->loadMainWindowState(this);
+	_preferencesDialog->loadMainWindowState(this, _savedMaximized);
 	_preferencesDialog->loadWindowGeometry(_preferencesDialog);
 	_preferencesDialog->loadWindowGeometry(_exportDialog);
 	_preferencesDialog->loadWindowGeometry(_postProcessingDialog);
@@ -212,6 +212,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_preferencesDialog->loadWidgetState(_ui->imageView_source);
 	_preferencesDialog->loadWidgetState(_ui->imageView_loopClosure);
 	_preferencesDialog->loadWidgetState(_ui->imageView_odometry);
+	_preferencesDialog->loadWidgetState(_ui->graphicsView_graphView);
 
 	_posteriorCurve = new PdfPlotCurve("Posterior", &_cachedSignatures, this);
 	_ui->posteriorPlot->addCurve(_posteriorCurve, false);
@@ -366,6 +367,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->imageView_source, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_ui->imageView_loopClosure, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_ui->imageView_odometry, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
+	connect(_ui->graphicsView_graphView, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_ui->widget_cloudViewer, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_exportDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_postProcessingDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
@@ -1369,7 +1371,7 @@ void MainWindow::updateMapCloud(
 			QColor color = Qt::gray;
 			if(iter->first >= 0)
 			{
-				color = (Qt::GlobalColor)(iter->first % 12 + 7 );
+				color = (Qt::GlobalColor)((iter->first+2) % 12 + 7 );
 			}
 			_ui->widget_cloudViewer->addOrUpdateGraph(uFormat("graph_%d", iter->first), iter->second, color);
 		}
@@ -2212,6 +2214,7 @@ void MainWindow::configGUIModified()
 //ACTIONS
 void MainWindow::saveConfigGUI()
 {
+	_savedMaximized = this->isMaximized();
 	_preferencesDialog->saveMainWindowState(this);
 	_preferencesDialog->saveWindowGeometry(_preferencesDialog);
 	_preferencesDialog->saveWindowGeometry(_aboutDialog);
@@ -2221,6 +2224,7 @@ void MainWindow::saveConfigGUI()
 	_preferencesDialog->saveWidgetState(_ui->imageView_odometry);
 	_preferencesDialog->saveWidgetState(_exportDialog);
 	_preferencesDialog->saveWidgetState(_postProcessingDialog);
+	_preferencesDialog->saveWidgetState(_ui->graphicsView_graphView);
 	this->setWindowModified(false);
 }
 

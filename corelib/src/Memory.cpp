@@ -2134,7 +2134,10 @@ bool Memory::addLoopClosureLink(int oldId, int newId, const Transform & transfor
 			return true;
 		}
 
-		_memoryChanged = true;
+		if(type != Link::kVirtualClosure)
+		{
+			_memoryChanged = true;
+		}
 		UDEBUG("Add loop closure link between %d and %d", oldS->id(), newS->id());
 
 		oldS->addLink(Link(oldS->id(), newS->id(), type, transform.inverse(), variance));
@@ -2181,6 +2184,15 @@ void Memory::updateNeighborLink(int fromId, int toId, const Transform & transfor
 	else
 	{
 		UERROR("fromId=%d and toId=%d are not neighbors!", fromId, toId);
+	}
+}
+
+void Memory::removeAllVirtualLinks()
+{
+	UDEBUG("");
+	for(std::map<int, Signature*>::iterator iter=_signatures.begin(); iter!=_signatures.end(); ++iter)
+	{
+		iter->second->removeVirtualLinks();
 	}
 }
 

@@ -175,7 +175,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Rtabmap, StatisticLogsBufferedInRAM,   bool, true, "Statistic logs buffered in RAM instead of written to hard drive after each iteration.");
 	RTABMAP_PARAM(Rtabmap, StatisticLogged,   	         bool, false, "Logging enabled.");
 	RTABMAP_PARAM(Rtabmap, StatisticLoggedHeaders,   	 bool, true, "Add column header description to log files.");
-	RTABMAP_PARAM(Rtabmap, StartNewMapOnLoopClosure,     bool, false, "Start a new map only if there is a global loop closure with a previous map.")
+	RTABMAP_PARAM(Rtabmap, StartNewMapOnLoopClosure,     bool, false, "Start a new map only if there is a global loop closure with a previous map.");
 
 	// Hypotheses selection
 	RTABMAP_PARAM(Rtabmap, LoopThr,    	     float, 0.11, 	"Loop closing threshold.");
@@ -286,6 +286,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, ToroIterations,    int, 100,    "TORO graph optimization iterations");
 	RTABMAP_PARAM(RGBD, ToroIgnoreVariance,   bool, false,    "Ignore constraints' variance. If checked, identity information matrix is used for each constraint in TORO. Otherwise, an information matrix is generated from the variance saved in the links.");
 	RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd, bool, false,    "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
+	RTABMAP_PARAM(RGBD, GoalReachedRadius,    float, 1.0, "Goal reached radius (m).");
+	RTABMAP_PARAM(RGBD, MaxAnticipatedNodes,  unsigned int, 10, "Maximum anticipated nodes on the computed path that can be retrieved (the number of nodes actually retrieved at each iteration is limited by \"Rtabmap/MaxRetrieved\").");
 
 	// Local loop closure detection
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionTime,     bool, false, 	"Detection over all locations in STM.");

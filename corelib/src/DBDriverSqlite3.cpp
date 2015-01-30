@@ -340,7 +340,7 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 	}
 	if(rc != SQLITE_OK)
 	{
-		UFATAL("DB error : %s", sqlite3_errmsg(_ppDb));
+		UFATAL("DB error : %s (path=\"%s\")", sqlite3_errmsg(_ppDb), url.c_str());
 		_ppDb = 0;
 		return false;
 	}
@@ -2027,13 +2027,21 @@ std::string DBDriverSqlite3::queryStepLink() const
 		return "INSERT INTO Link(from_id, to_id, type, transform) VALUES(?,?,?,?);";
 	}
 }
-void DBDriverSqlite3::stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, int type, float variance, const Transform & transform) const
+void DBDriverSqlite3::stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, Link::Type type, float variance, const Transform & transform) const
 {
 	if(!ppStmt)
 	{
 		UFATAL("");
 	}
 	UDEBUG("Save link from %d to %d, type=%d", fromId, toId, type);
+
+	// Don't save virtual links
+	if(type==Link::kVirtualClosure)
+	{
+		UDEBUG("Virtual link ignored....");
+		return;
+	}
+
 	int rc = SQLITE_OK;
 	int index = 1;
 	rc = sqlite3_bind_int(ppStmt, index++, fromId);

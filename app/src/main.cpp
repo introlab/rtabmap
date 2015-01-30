@@ -43,16 +43,23 @@ int main(int argc, char* argv[])
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kInfo);
 
-	ULOGGER_INFO("Program started...");
-
 	/* Create tasks */
 	QApplication * app = new QApplication(argc, argv);
 	MainWindow * mainWindow = new MainWindow();
 
+	UINFO("Program started...");
+
 	UEventsManager::addHandler(mainWindow);
 
 	/* Start thread's task */
-	mainWindow->show();
+	if(mainWindow->isSavedMaximized())
+	{
+		mainWindow->showMaximized();
+	}
+	else
+	{
+		mainWindow->show();
+	}
 
 	RtabmapThread * rtabmap = new RtabmapThread(new Rtabmap());
 	rtabmap->start(); // start it not initialized... will be initialized by event from the gui
@@ -67,37 +74,14 @@ int main(int argc, char* argv[])
 	UEventsManager::removeHandler(mainWindow);
 	UEventsManager::removeHandler(rtabmap);
 
-	ULOGGER_INFO("Killing threads...");
+	UINFO("Killing threads...");
 	rtabmap->join(true);
 
-	ULogger::setLevel(ULogger::kInfo);
-
-	ULOGGER_INFO("Closing RTAB-Map core...");
-
-	//Since we can't put the Rtabmap object in the MainWindow class,
-	//we pop up a message box indicating that the rtabmap object
-	// is being deleted (saving data to the database)
-	QMessageBox * msg = new QMessageBox(QMessageBox::Information,
-			QObject::tr("RTAB-Map is closing..."),
-			QObject::tr("The detector is saving the working memory to database (located in RTAB-Map's working directory)..."),
-			QMessageBox::NoButton,
-			mainWindow);
-	msg->setEnabled(false);
-	msg->setIconPixmap(QPixmap(":/images/RTAB-Map.ico"));
-	msg->setWindowIcon(QIcon(":/images/RTAB-Map.ico"));
-	msg->show();
-	UObjDeletionThread<RtabmapThread> delThread(rtabmap);
-	ObjDeletionHandler handler(delThread.id(), app, SLOT(quit()));
-	UEventsManager::addHandler(&handler);
-	delThread.startDeletion(1); // make sure that app-exec() is called before the deletion of the object
-	app->exec();
-
-	ULOGGER_INFO("Closing RTAB-Map gui...");
+	UINFO("Closing RTAB-Map...");
+	delete rtabmap;
 	delete mainWindow;
-
 	delete app;
-
-	ULOGGER_INFO("All done!");
+	UINFO("All done!");
 
     return 0;
 }

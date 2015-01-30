@@ -35,7 +35,7 @@ namespace rtabmap {
 class Link
 {
 public:
-	enum Type {kNeighbor, kGlobalClosure, kLocalSpaceClosure, kLocalTimeClosure, kUserClosure, kUndef};
+	enum Type {kNeighbor, kGlobalClosure, kLocalSpaceClosure, kLocalTimeClosure, kUserClosure, kVirtualClosure, kUndef};
 	Link() :
 		from_(0),
 		to_(0),

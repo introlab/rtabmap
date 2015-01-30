@@ -59,6 +59,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/DataRecorder.h"
 #include "rtabmap/gui/CloudViewer.h"
 #include "rtabmap/gui/ImageView.h"
+#include "GraphViewer.h"
 #include "ExportCloudsDialog.h"
 #include "PostProcessingDialog.h"
 
@@ -447,6 +448,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->globalDetection_toroIterations->setObjectName(Parameters::kRGBDToroIterations().c_str());
 	_ui->globalDetection_toroIgnoreVariance->setObjectName(Parameters::kRGBDToroIgnoreVariance().c_str());
 	_ui->globalDetection_optimizeFromGraphEnd->setObjectName(Parameters::kRGBDOptimizeFromGraphEnd().c_str());
+
+	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
+	_ui->graphPlan_maxAnticipatedNodes->setObjectName(Parameters::kRGBDMaxAnticipatedNodes().c_str());
 
 	_ui->groupBox_localDetection_time->setObjectName(Parameters::kRGBDLocalLoopDetectionTime().c_str());
 	_ui->groupBox_localDetection_space->setObjectName(Parameters::kRGBDLocalLoopDetectionSpace().c_str());
@@ -1629,17 +1633,14 @@ void PreferencesDialog::readSettingsEnd()
 
 void PreferencesDialog::saveWindowGeometry(const QWidget * window)
 {
-	if(!window->objectName().isNull())
+	if(!window->objectName().isNull() && !window->isMaximized())
 	{
-		if(!window->isMaximized())
-		{
-			QSettings settings(getIniFilePath(), QSettings::IniFormat);
-			settings.beginGroup("Gui");
-			settings.beginGroup(window->objectName());
-			settings.setValue("geometry", window->saveGeometry());
-			settings.endGroup(); // "windowName"
-			settings.endGroup(); // rtabmap
-		}
+		QSettings settings(getIniFilePath(), QSettings::IniFormat);
+		settings.beginGroup("Gui");
+		settings.beginGroup(window->objectName());
+		settings.setValue("geometry", window->saveGeometry());
+		settings.endGroup(); // "windowName"
+		settings.endGroup(); // rtabmap
 	}
 }
 
@@ -1671,12 +1672,13 @@ void PreferencesDialog::saveMainWindowState(const QMainWindow * mainWindow)
 		settings.beginGroup("Gui");
 		settings.beginGroup(mainWindow->objectName());
 		settings.setValue("state", mainWindow->saveState());
+		settings.setValue("maximized", mainWindow->isMaximized());
 		settings.endGroup(); // "MainWindow"
 		settings.endGroup(); // rtabmap
 	}
 }
 
-void PreferencesDialog::loadMainWindowState(QMainWindow * mainWindow)
+void PreferencesDialog::loadMainWindowState(QMainWindow * mainWindow,  bool & maximized)
 {
 	if(!mainWindow->objectName().isNull())
 	{
@@ -1691,6 +1693,7 @@ void PreferencesDialog::loadMainWindowState(QMainWindow * mainWindow)
 		{
 			mainWindow->restoreState(bytes);
 		}
+		maximized = settings.value("maximized", false).toBool();
 		settings.endGroup(); // "MainWindow"
 		settings.endGroup(); // rtabmap
 	}
@@ -1708,6 +1711,7 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 		const ImageView * imageView = qobject_cast<const ImageView*>(widget);
 		const ExportCloudsDialog * exportCloudsDialog = qobject_cast<const ExportCloudsDialog*>(widget);
 		const PostProcessingDialog * postProcessingDialog = qobject_cast<const PostProcessingDialog *>(widget);
+		const GraphViewer * graphViewer = qobject_cast<const GraphViewer *>(widget);
 
 		if(cloudViewer)
 		{
@@ -1781,6 +1785,18 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 			settings.setValue("refine_neigbors", postProcessingDialog->isRefineNeighborLinks());
 			settings.setValue("refine_lc", postProcessingDialog->isRefineLoopClosureLinks());
 		}
+		else if(graphViewer)
+		{
+			settings.setValue("node_radius", graphViewer->getNodeRadius());
+			settings.setValue("link_width", graphViewer->getLinkWidth());
+			settings.setValue("node_color", graphViewer->getNodeColor());
+			settings.setValue("neighbor_color", graphViewer->getNeighborColor());
+			settings.setValue("global_color", graphViewer->getGlobalLoopClosureColor());
+			settings.setValue("local_color", graphViewer->getLocalLoopClosureColor());
+			settings.setValue("user_color", graphViewer->getUserLoopClosureColor());
+			settings.setValue("virtual_color", graphViewer->getVirtualLoopClosureColor());
+			settings.setValue("grid_visible", graphViewer->isGridMapVisible());
+		}
 		else
 		{
 			UERROR("Widget \"%s\" cannot be exported in config file.", widget->objectName().toStdString().c_str());
@@ -1804,6 +1820,7 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 		ImageView * imageView = qobject_cast<ImageView*>(widget);
 		ExportCloudsDialog * exportCloudsDialog = qobject_cast<ExportCloudsDialog*>(widget);
 		PostProcessingDialog * postProcessingDialog = qobject_cast<PostProcessingDialog *>(widget);
+		GraphViewer * graphViewer = qobject_cast<GraphViewer *>(widget);
 
 		if(cloudViewer)
 		{
@@ -1864,6 +1881,18 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 			postProcessingDialog->setReextractFeatures(settings.value("reextract_features", postProcessingDialog->isReextractFeatures()).toBool());
 			postProcessingDialog->setRefineNeighborLinks(settings.value("refine_neigbors", postProcessingDialog->isRefineNeighborLinks()).toBool());
 			postProcessingDialog->setRefineLoopClosureLinks(settings.value("refine_lc", postProcessingDialog->isRefineLoopClosureLinks()).toBool());
+		}
+		else if(graphViewer)
+		{
+			graphViewer->setNodeRadius(settings.value("node_radius", graphViewer->getNodeRadius()).toDouble());
+			graphViewer->setLinkWidth(settings.value("link_width", graphViewer->getLinkWidth()).toDouble());
+			graphViewer->setNodeColor(settings.value("node_color", graphViewer->getNodeColor()).value<QColor>());
+			graphViewer->setNeighborColor(settings.value("neighbor_color", graphViewer->getNeighborColor()).value<QColor>());
+			graphViewer->setGlobalLoopClosureColor(settings.value("global_color", graphViewer->getGlobalLoopClosureColor()).value<QColor>());
+			graphViewer->setLocalLoopClosureColor(settings.value("local_color", graphViewer->getLocalLoopClosureColor()).value<QColor>());
+			graphViewer->setUserLoopClosureColor(settings.value("user_color", graphViewer->getUserLoopClosureColor()).value<QColor>());
+			graphViewer->setVirtualLoopClosureColor(settings.value("virtual_color", graphViewer->getVirtualLoopClosureColor()).value<QColor>());
+			graphViewer->setGridMapVisible(settings.value("grid_visible", graphViewer->isGridMapVisible()).toBool());
 		}
 		else
 		{
