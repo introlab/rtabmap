@@ -765,7 +765,7 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 				_ui->widget_cloudViewer->updateCameraTargetPosition(_odometryCorrection*data.pose());
 			}
 		}
-		_ui->widget_cloudViewer->render();
+		_ui->widget_cloudViewer->update();
 	}
 
 	if(_ui->dockWidget_odometry->isVisible() &&
@@ -1451,7 +1451,7 @@ void MainWindow::updateMapCloud(
 		_ui->widget_cloudViewer->updateCameraTargetPosition(currentPose);
 	}
 
-	_ui->widget_cloudViewer->render();
+	_ui->widget_cloudViewer->update();
 }
 
 void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int mapId)
@@ -1648,7 +1648,7 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 			}
 		}
 	}
-	_ui->widget_cloudViewer->render();
+	_ui->widget_cloudViewer->update();
 }
 
 void MainWindow::processRtabmapEventInit(int status, const QString & info)

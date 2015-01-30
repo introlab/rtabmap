@@ -2315,7 +2315,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 
 		UDEBUG("map min=(%f, %f) max=(%f,%f)", xMin, yMin, xMax, yMax);
 
-		//UTimer timer;
+		UTimer timer;
 
 		map = cv::Mat::ones((yMax - yMin) / cellSize + 0.5f, (xMax - xMin) / cellSize + 0.5f, CV_8S)*-1;
 		std::vector<float> maxSquaredLength(localScans.size(), 0.0f);
@@ -2343,7 +2343,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 			}
 			++j;
 		}
-		//UWARN("timer=%fs", timer.ticks());
+		UDEBUG("Ray trace known space=%fs", timer.ticks());
 
 		// now fill unknown spaces
 		if(unknownSpaceFilled)
@@ -2407,8 +2407,8 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 					}
 				}
 				++j;
-				//UWARN("timer=%fs", timer.ticks());
 			}
+			UDEBUG("Fill empty space=%fs", timer.ticks());
 		}
 	}
 	return map;
@@ -2446,26 +2446,18 @@ void rayTrace(const cv::Point2i & start, const cv::Point2i & end, cv::Mat & grid
 		//ROS_WARN("lowerbound=%f upperbound=%f", lowerbound, upperbound);
 		UASSERT_MSG(lowerbound >= 0 && lowerbound < grid.rows, uFormat("lowerbound=%f grid.rows=%d x=%d slope=%f b=%f x=%f", lowerbound, grid.rows, x, slope, b, x).c_str());
 		UASSERT_MSG(upperbound >= 0 && upperbound < grid.rows, uFormat("upperbound=%f grid.rows=%d x+1=%d slope=%f b=%f x=%f", upperbound, grid.rows, x+1, slope, b, x).c_str());
-		// verify if there is no obstacle
-		bool stopped = false;
-		if(stopOnObstacle)
-		{
-			for(int y = lowerbound; y<=(int)upperbound; ++y)
-			{
-				if(grid.at<char>(y, x) == 100)
-				{
-					stopped = true;
-					break;
-				}
-			}
-		}
-		if(stopped)
-		{
-			break;
-		}
+
 		for(int y = lowerbound; y<=(int)upperbound; ++y)
 		{
-			grid.at<char>(y, x) = 0; // free space
+			char & v = grid.at<char>(y, x);
+			if(v == 100 && stopOnObstacle)
+			{
+				return;
+			}
+			else
+			{
+				v = 0; // free space
+			}
 		}
 	}
 }

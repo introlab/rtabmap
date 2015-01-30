@@ -197,7 +197,7 @@ void LoopClosureViewer::updateView(const Transform & transform)
 			UERROR("loop transform is null !?!?");
 			ui_->cloudViewerTransform->removeAllClouds();
 		}
-		ui_->cloudViewerTransform->render();
+		ui_->cloudViewerTransform->update();
 	}
 }
 

@@ -178,7 +178,6 @@ public:
 	void setWorkingDirectory(const QString & path) {_workingDirectory = path;}
 
 public slots:
-	void render();
 	void setBackgroundColor(const QColor & color);
 	void setCloudVisibility(const std::string & id, bool isVisible);
 	void setCloudOpacity(const std::string & id, double opacity = 1.0);

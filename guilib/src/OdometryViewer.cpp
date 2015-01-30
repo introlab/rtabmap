@@ -164,7 +164,7 @@ void OdometryViewer::processData()
 			this->setBackgroundColor(Qt::darkRed);
 		}
 
-		this->render();
+		this->update();
 	}
 }
 

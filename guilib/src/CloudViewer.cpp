@@ -51,7 +51,7 @@ void CloudViewer::mouseEventOccurred (const pcl::visualization::MouseEvent &even
 	if (event.getButton () == pcl::visualization::MouseEvent::LeftButton ||
 	  event.getButton () == pcl::visualization::MouseEvent::MiddleButton)
 	{
-		this->render(); // this will apply frustum
+		this->update(); // this will apply frustum
 	}
 }
 
@@ -517,7 +517,7 @@ void CloudViewer::clearTrajectory()
 {
 	_trajectory->clear();
 	_visualizer->removeShape("trajectory");
-	this->render();
+	this->update();
 }
 
 void CloudViewer::removeAllClouds()
@@ -671,9 +671,9 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 				cameras.front().focal[1] = Fp.y();
 				cameras.front().focal[2] = Fp.z();
 				//FIXME: the view up is not set properly...
-				cameras.front().view[0] = Fp[8];
-				cameras.front().view[1] = Fp[9];
-				cameras.front().view[2] = Fp[10];
+				cameras.front().view[0] = _aLockViewZ->isChecked()?0:Fp[8];
+				cameras.front().view[1] = _aLockViewZ->isChecked()?0:Fp[9];
+				cameras.front().view[2] = _aLockViewZ->isChecked()?1:Fp[10];
 			}
 
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
@@ -691,28 +691,6 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 	}
 
 	_lastPose = pose;
-}
-
-void CloudViewer::render()
-{
-	// camera view up z locked?
-	if(_aLockViewZ->isChecked())
-	{
-		std::vector<pcl::visualization::Camera> cameras;
-		_visualizer->getCameras(cameras);
-
-		cameras.front().view[0] = 0;
-		cameras.front().view[1] = 0;
-		cameras.front().view[2] = 1;
-
-		_visualizer->setCameraPosition(
-			cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2],
-			cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
-			cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
-
-	}
-
-	this->GetRenderWindow()->Render();
 }
 
 const QColor & CloudViewer::getBackgroundColor() const
@@ -1045,7 +1023,7 @@ void CloudViewer::keyPressEvent(QKeyEvent * event)
 			cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
 			cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
 
-		render();
+		update();
 
 		emit configChanged();
 	}
@@ -1141,7 +1119,7 @@ void CloudViewer::handleAction(QAction * a)
 					0, 0, 0,
 					0, 0, 1);
 		}
-		this->render();
+		this->update();
 	}
 	else if(a == _aShowGrid)
 	{
@@ -1154,7 +1132,7 @@ void CloudViewer::handleAction(QAction * a)
 			this->removeGrid();
 		}
 
-		this->render();
+		this->update();
 	}
 	else if(a == _aSetGridCellCount)
 	{
@@ -1184,7 +1162,7 @@ void CloudViewer::handleAction(QAction * a)
 	{
 		if(_aLockViewZ->isChecked())
 		{
-			this->render();
+			this->update();
 		}
 	}
 }

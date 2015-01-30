@@ -1131,7 +1131,7 @@ void DatabaseViewer::update(int value,
 			ui_->horizontalSlider_loops->setValue(0);
 			ui_->horizontalSlider_neighbors->setValue(0);
 			ui_->constraintsViewer->removeAllClouds();
-			ui_->constraintsViewer->render();
+			ui_->constraintsViewer->update();
 			ui_->horizontalSlider_loops->blockSignals(false);
 			ui_->horizontalSlider_neighbors->blockSignals(false);
 		}
@@ -1244,7 +1244,7 @@ void DatabaseViewer::updateStereo(const Signature * data)
 
 		ui_->stereoViewer->updateCameraTargetPosition(Transform::getIdentity());
 		ui_->stereoViewer->addOrUpdateCloud("stereo", cloud);
-		ui_->stereoViewer->render();
+		ui_->stereoViewer->update();
 
 		std::vector<cv::KeyPoint> rightKpts;
 		cv::KeyPoint::convert(rightCorners, rightKpts);
@@ -1660,7 +1660,7 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & linkIn,
 		ui_->constraintsViewer->updateCameraTargetPosition(t);
 		ui_->constraintsViewer->clearTrajectory();
 
-		ui_->constraintsViewer->render();
+		ui_->constraintsViewer->update();
 	}
 
 	// update buttons
@@ -2490,7 +2490,7 @@ void DatabaseViewer::updateLoopClosuresSlider(int from, int to)
 	{
 		ui_->horizontalSlider_loops->setEnabled(false);
 		ui_->constraintsViewer->removeAllClouds();
-		ui_->constraintsViewer->render();
+		ui_->constraintsViewer->update();
 		updateConstraintButtons();
 	}
 }

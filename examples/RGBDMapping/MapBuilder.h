@@ -129,7 +129,7 @@ private slots:
 				cloudViewer_->updateCameraTargetPosition(data.pose());
 			}
 		}
-		cloudViewer_->render();
+		cloudViewer_->update();
 
 		_lastOdometryProcessed = true;
 	}
@@ -193,7 +193,7 @@ private slots:
 			}
 		}
 
-		cloudViewer_->render();
+		cloudViewer_->update();
 
 		_processingStatistics = false;
 	}
