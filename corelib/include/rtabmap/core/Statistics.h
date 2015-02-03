@@ -140,6 +140,7 @@ public:
 	void setPosterior(const std::map<int, float> & posterior) {_posterior = posterior;}
 	void setLikelihood(const std::map<int, float> & likelihood) {_likelihood = likelihood;}
 	void setRawLikelihood(const std::map<int, float> & rawLikelihood) {_rawLikelihood = rawLikelihood;}
+	void setLocalPath(const std::vector<int> & localPath) {_localPath=localPath;}
 
 	// getters
 	bool extended() const {return _extended;}
@@ -158,6 +159,7 @@ public:
 	const std::map<int, float> & posterior() const {return _posterior;}
 	const std::map<int, float> & likelihood() const {return _likelihood;}
 	const std::map<int, float> & rawLikelihood() const {return _rawLikelihood;}
+	const std::vector<int> & localPath() const {return _localPath;}
 
 	const std::map<std::string, float> & data() const {return _data;}
 
@@ -183,6 +185,8 @@ private:
 	std::map<int, float> _posterior;
 	std::map<int, float> _likelihood;
 	std::map<int, float> _rawLikelihood;
+
+	std::vector<int> _localPath;
 
 	// Format for statistics (Plottable statistics must go in that map) :
 	// {"Group/Name/Unit", value}

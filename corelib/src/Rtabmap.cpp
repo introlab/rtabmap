@@ -1633,6 +1633,12 @@ bool Rtabmap::process(const SensorData & data)
 					statistics_.setRawLikelihood(rawLikelihood);
 				}
 			}
+
+			// Path
+			if(_path.size())
+			{
+				statistics_.setLocalPath(this->getPathNextNodes());
+			}
 		}
 
 		timeStatsCreation = timer.ticks();
@@ -2413,6 +2419,53 @@ std::list<std::pair<int, Transform> > Rtabmap::computePath(int targetNode)
 	}
 
 	return pathPoses;
+}
+
+std::list<std::pair<int, Transform> > Rtabmap::getPathNextPoses() const
+{
+	std::list<std::pair<int, Transform> > poses;
+	if(_path.size())
+	{
+		UASSERT(_pathCurrentIndex < _path.size() && _pathGoalIndex < _path.size());
+		for(unsigned int i=_pathCurrentIndex; i<=_pathGoalIndex; ++i)
+		{
+			std::map<int, Transform>::const_iterator iter = _optimizedPoses.find(_path[i]);
+			if(iter != _optimizedPoses.end())
+			{
+				poses.push_back(*iter);
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+	return poses;
+}
+
+std::vector<int> Rtabmap::getPathNextNodes() const
+{
+	std::vector<int> ids;
+	if(_path.size())
+	{
+		UASSERT(_pathCurrentIndex < _path.size() && _pathGoalIndex < _path.size());
+		ids.resize(_pathGoalIndex-_pathCurrentIndex+1);
+		int oi = 0;
+		for(unsigned int i=_pathCurrentIndex; i<=_pathGoalIndex; ++i)
+		{
+			std::map<int, Transform>::const_iterator iter = _optimizedPoses.find(_path[i]);
+			if(iter != _optimizedPoses.end())
+			{
+				ids[oi++] = iter->first;
+			}
+			else
+			{
+				break;
+			}
+		}
+		ids.resize(oi);
+	}
+	return ids;
 }
 
 int Rtabmap::getPathGoalId() const

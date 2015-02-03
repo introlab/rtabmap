@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-693</y>
+            <y>0</y>
             <width>744</width>
-            <height>1378</height>
+            <height>1074</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>19</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -543,7 +543,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                             <number>10</number>
                            </property>
                            <property name="value">
-                            <number>0</number>
+                            <number>1</number>
                            </property>
                           </widget>
                          </item>

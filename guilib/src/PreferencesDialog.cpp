@@ -856,7 +856,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_map_resolution->setValue(0.05);
 		_ui->checkBox_map_fillEmptySpace->setChecked(true);
 		_ui->checkBox_map_occupancyFrom3DCloud->setChecked(false);
-		_ui->spinbox_map_fillEmptyRadius->setValue(0);
+		_ui->spinbox_map_fillEmptyRadius->setValue(1);
 		_ui->doubleSpinBox_map_opacity->setValue(0.75);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_logging1->objectName())
@@ -1795,6 +1795,7 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 			settings.setValue("local_color", graphViewer->getLocalLoopClosureColor());
 			settings.setValue("user_color", graphViewer->getUserLoopClosureColor());
 			settings.setValue("virtual_color", graphViewer->getVirtualLoopClosureColor());
+			settings.setValue("local_path_color", graphViewer->getLocalPathColor());
 			settings.setValue("grid_visible", graphViewer->isGridMapVisible());
 		}
 		else
@@ -1892,6 +1893,7 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 			graphViewer->setLocalLoopClosureColor(settings.value("local_color", graphViewer->getLocalLoopClosureColor()).value<QColor>());
 			graphViewer->setUserLoopClosureColor(settings.value("user_color", graphViewer->getUserLoopClosureColor()).value<QColor>());
 			graphViewer->setVirtualLoopClosureColor(settings.value("virtual_color", graphViewer->getVirtualLoopClosureColor()).value<QColor>());
+			graphViewer->setLocalPathColor(settings.value("local_path_color", graphViewer->getLocalPathColor()).value<QColor>());
 			graphViewer->setGridMapVisible(settings.value("grid_visible", graphViewer->isGridMapVisible()).toBool());
 		}
 		else

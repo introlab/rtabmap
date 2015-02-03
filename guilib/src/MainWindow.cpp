@@ -713,19 +713,19 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 			_odometryReceived = true;
 
 			// 3d cloud
-			if(data.depth().cols == data.image().cols &&
-			   data.depth().rows == data.image().rows &&
-			   !data.depth().empty() &&
+			if(data.depthOrRightImage().cols == data.image().cols &&
+			   data.depthOrRightImage().rows == data.image().rows &&
+			   !data.depthOrRightImage().empty() &&
 			   data.fx() > 0.0f &&
-			   data.fy() > 0.0f &&
+			   data.fyOrBaseline() > 0.0f &&
 			   _preferencesDialog->isCloudsShown(1))
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 				cloud = createCloud(0,
 						data.image(),
-						data.depth(),
+						data.depthOrRightImage(),
 						data.fx(),
-						data.fy(),
+						data.fyOrBaseline(),
 						data.cx(),
 						data.cy(),
 						data.localTransform(),
@@ -1133,6 +1133,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		{
 			_ui->graphicsView_graphView->updatePosterior(stat.posterior());
 		}
+		// update local path on the graph view
+		_ui->graphicsView_graphView->updateLocalPath(stat.localPath());
 
 		UDEBUG("");
 	}
@@ -1246,7 +1248,8 @@ void MainWindow::updateMapCloud(
 			std::string cloudName = uFormat("cloud%d", iter->first);
 
 			// 3d point cloud
-			if(_preferencesDialog->isCloudsShown(0))
+			if((_ui->widget_cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0)) ||
+				(_ui->graphicsView_graphView->isVisible() && _ui->graphicsView_graphView->isGridMapVisible() && _preferencesDialog->isGridMapFrom3DCloud()))
 			{
 				if(viewerClouds.contains(cloudName))
 				{
@@ -1281,7 +1284,8 @@ void MainWindow::updateMapCloud(
 
 			// 2d point cloud
 			std::string scanName = uFormat("scan%d", iter->first);
-			if(_preferencesDialog->isScansShown(0) || _ui->graphicsView_graphView->isVisible() || _preferencesDialog->getGridMapShown())
+			if((_ui->widget_cloudViewer->isVisible() && (_preferencesDialog->isScansShown(0) || _preferencesDialog->getGridMapShown())) ||
+				(_ui->graphicsView_graphView->isVisible() && _ui->graphicsView_graphView->isGridMapVisible()))
 			{
 				if(viewerClouds.contains(scanName))
 				{

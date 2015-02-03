@@ -120,6 +120,8 @@ public:
 	void clearPath();
 	std::list<std::pair<int, Transform> > computePath(int targetNode);
 	const std::vector<int> & getPath() const {return _path;}
+	std::list<std::pair<int, Transform> > getPathNextPoses() const;
+	std::vector<int> getPathNextNodes() const;
 	int getPathGoalId() const;
 
 	std::map<int, float> getNodesInRadius(int fromId, int maxNearestNeighbors, float radius) const;
