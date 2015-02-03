@@ -1387,7 +1387,9 @@ bool Rtabmap::process(const SensorData & data)
 	}
 
 	// Add a virtual loop closure link to keep the path linked to local map
-	if(_path.size() && !signature->hasLink(_path[_pathCurrentIndex]))
+	if(_path.size() &&
+		signature->id() != _path[_pathCurrentIndex] &&
+		!signature->hasLink(_path[_pathCurrentIndex]))
 	{
 		Transform virtualLoop = _optimizedPoses.at(signature->id()).inverse() * _optimizedPoses.at(_path[_pathCurrentIndex]);
 		_memory->addLoopClosureLink(_path[_pathCurrentIndex], signature->id(), virtualLoop, Link::kVirtualClosure, 99999);
