@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UMath.h>
+#include <rtabmap/utilite/UConversion.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/common/eigen.h>
 #include <pcl/common/common.h>
@@ -169,7 +170,7 @@ void optimizeTOROGraph(
 		{
 			if(uContains(depthGraph, iter->first))
 			{
-				UASSERT(!iter->second.isNull());
+				UASSERT_MSG(!iter->second.isNull(), uFormat("Poses should not be null! Id=%d", iter->first).c_str());
 				posesToro.insert(std::make_pair(rtabmapToToro.at(iter->first), iter->second));
 			}
 		}

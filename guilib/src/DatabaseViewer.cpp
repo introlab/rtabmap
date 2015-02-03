@@ -416,6 +416,10 @@ void DatabaseViewer::updateIds()
 				if((!iter->second.isNull() && nullPoses) ||
 					(iter->second.isNull() && !nullPoses))
 				{
+					if(iter->second.isNull())
+					{
+						UWARN("Pose %d is null!", iter->first);
+					}
 					UWARN("Mixed valid and null poses! Ignoring graph...");
 					poses_.clear();
 					links_.clear();
