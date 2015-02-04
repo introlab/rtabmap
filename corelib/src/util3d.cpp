@@ -2308,10 +2308,11 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		pcl::PointXYZ min, max;
 		pcl::getMinMax3D(minMax, min, max);
 
-		xMin = min.x-cellSize;
-		yMin = min.y-cellSize;
-		float xMax = max.x+cellSize;
-		float yMax = max.y+cellSize;
+		// Added X2 to make sure that all points are inside the map (when rounded to integer)
+		xMin = min.x-cellSize*2.0f;
+		yMin = min.y-cellSize*2.0f;
+		float xMax = max.x+cellSize*2.0f;
+		float yMax = max.y+cellSize*2.0f;
 
 		UDEBUG("map min=(%f, %f) max=(%f,%f)", xMin, yMin, xMax, yMax);
 

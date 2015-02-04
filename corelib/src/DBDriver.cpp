@@ -38,7 +38,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 DBDriver::DBDriver(const ParametersMap & parameters) :
-	_emptyTrashesTime(0)
+	_emptyTrashesTime(0),
+	_timestampUpdate(true)
 {
 	this->parseParameters(parameters);
 }
@@ -242,7 +243,7 @@ void DBDriver::saveOrUpdate(const std::vector<Signature *> & signatures) const
 
 		if(toUpdate.size())
 		{
-			this->updateQuery(toUpdate);
+			this->updateQuery(toUpdate, _timestampUpdate);
 		}
 		if(toSave.size())
 		{
@@ -272,7 +273,7 @@ void DBDriver::saveOrUpdate(const std::vector<VisualWord *> & words) const
 
 		if(toUpdate.size())
 		{
-			this->updateQuery(toUpdate);
+			this->updateQuery(toUpdate, _timestampUpdate);
 		}
 		if(toSave.size())
 		{

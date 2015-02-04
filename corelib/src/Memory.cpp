@@ -72,6 +72,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_lastGlobalLoopClosureParentId(0),
 	_lastGlobalLoopClosureChildId(0),
 	_memoryChanged(false),
+	_linksChanged(false),
 	_signaturesAdded(0),
 	_postInitClosingEvents(false),
 
@@ -131,13 +132,17 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 
 	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory..."));
 	DBDriver * tmpDriver = 0;
-	if(!_memoryChanged)
+	if(!_memoryChanged && !_linksChanged)
 	{
 		if(_dbDriver)
 		{
 			tmpDriver = _dbDriver;
 			_dbDriver = 0; // HACK for the clear() below to think that there is no db
 		}
+	}
+	else if(!_memoryChanged && _linksChanged)
+	{
+		_dbDriver->setTimestampUpdateEnabled(false); // update links only
 	}
 	this->clear();
 	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory, done!"));
@@ -162,6 +167,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	bool success = true;
 	if(_dbDriver)
 	{
+		_dbDriver->setTimestampUpdateEnabled(true); // make sure that timestamp update is enabled (may be disabled above)
 		success = false;
 		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database ") + dbUrl + "..."));
 		if(_dbDriver->openConnection(dbUrl, dbOverwritten))
@@ -312,7 +318,7 @@ Memory::~Memory()
 {
 	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosing));
 	UDEBUG("");
-	if(!_memoryChanged)
+	if(!_memoryChanged && !_linksChanged)
 	{
 		UDEBUG("");
 		if(_dbDriver)
@@ -331,6 +337,11 @@ Memory::~Memory()
 	{
 		UDEBUG("");
 		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving memory..."));
+		if(!_memoryChanged && _linksChanged && _dbDriver)
+		{
+			// don't update the time stamps!
+			_dbDriver->setTimestampUpdateEnabled(false);
+		}
 		this->clear();
 		if(_dbDriver)
 		{
@@ -946,11 +957,14 @@ void Memory::clear()
 						_workingMem.size(), _stMem.size(), _signatures.size()).c_str());
 
 		UDEBUG("Adding statistics after run...");
-		_dbDriver->addStatisticsAfterRun(memSize,
-				_lastSignature?_lastSignature->id():0,
-				UProcessInfo::getMemoryUsage(),
-				_dbDriver->getMemoryUsed(),
-				(int)_vwd->getVisualWords().size());
+		if(_memoryChanged)
+		{
+			_dbDriver->addStatisticsAfterRun(memSize,
+					_lastSignature?_lastSignature->id():0,
+					UProcessInfo::getMemoryUsage(),
+					_dbDriver->getMemoryUsed(),
+					(int)_vwd->getVisualWords().size());
+		}
 	}
 	UDEBUG("");
 
@@ -994,6 +1008,7 @@ void Memory::clear()
 	_idCount = kIdStart;
 	_idMapCount = kIdStart;
 	_memoryChanged = false;
+	_linksChanged = false;
 
 	if(_dbDriver)
 	{
@@ -1527,43 +1542,63 @@ void Memory::deleteLocation(int locationId, std::list<int> * deletedWords)
 	}
 }
 
-void Memory::rejectLoopClosure(int oldId, int newId)
+void Memory::removeLink(int oldId, int newId)
 {
-	Signature * oldS = this->_getSignature(oldId);
-	Signature * newS = this->_getSignature(newId);
+	//this method assumes receiving oldId < newId, if not switch them
+	Signature * oldS = this->_getSignature(oldId<newId?oldId:newId);
+	Signature * newS = this->_getSignature(oldId<newId?newId:oldId);
 	if(oldS && newS)
 	{
-		UDEBUG("removing loop closure from location %d", newS->id());
-		oldS->removeLink(newS->id());
-		oldS->setWeight(oldS->getWeight()+1);
+		UINFO("removing link between location %d and %d", oldS->id(), newS->id());
 
-		newS->removeLink(oldS->id());
-		newS->setWeight(newS->getWeight()>0?newS->getWeight()-1:0);
-
-		bool noChildrenAnymore = true;
-		for(std::map<int, Link>::const_iterator iter=newS->getLinks().begin(); iter!=newS->getLinks().end(); ++iter)
+		if(oldS->hasLink(newS->id()) && newS->hasLink(oldS->id()))
 		{
-			if(iter->second.type() > Link::kNeighbor && iter->first < newS->id())
+			Link::Type type = oldS->getLinks().at(newS->id()).type();
+			if(type == Link::kGlobalClosure && newS->getWeight() > 0)
 			{
-				noChildrenAnymore = false;
-				break;
+				// adjust the weight
+				oldS->setWeight(oldS->getWeight()+1);
+				newS->setWeight(newS->getWeight()>0?newS->getWeight()-1:0);
+			}
+
+
+			oldS->removeLink(newS->id());
+			newS->removeLink(oldS->id());
+
+			if(type!=Link::kVirtualClosure)
+			{
+				_linksChanged = true;
+			}
+
+			bool noChildrenAnymore = true;
+			for(std::map<int, Link>::const_iterator iter=newS->getLinks().begin(); iter!=newS->getLinks().end(); ++iter)
+			{
+				if(iter->second.type() > Link::kNeighbor && iter->first < newS->id())
+				{
+					noChildrenAnymore = false;
+					break;
+				}
+			}
+			if(noChildrenAnymore && newS->id() == _lastGlobalLoopClosureParentId)
+			{
+				_lastGlobalLoopClosureParentId = 0;
+				_lastGlobalLoopClosureChildId = 0;
 			}
 		}
-		if(noChildrenAnymore && newId == _lastGlobalLoopClosureParentId)
+		else
 		{
-			_lastGlobalLoopClosureParentId = 0;
-			_lastGlobalLoopClosureChildId = 0;
+			UERROR("Signatures %d and %d don't have bidirectional link!", oldS->id(), newS->id());
 		}
 	}
 	else
 	{
 		if(!newS)
 		{
-			UERROR("Signature %d is not in working memory... cannot remove loop closure links.", newS->id());
+			UERROR("Signature %d is not in working memory... cannot remove link.", newS->id());
 		}
 		if(!oldS)
 		{
-			UERROR("Signature %d is not in working memory... cannot remove loop closure links.", oldS->id());
+			UERROR("Signature %d is not in working memory... cannot remove link.", oldS->id());
 		}
 	}
 }
@@ -2118,7 +2153,7 @@ Transform Memory::computeScanMatchingTransform(
 }
 
 // Transform from new to old
-bool Memory::addLoopClosureLink(int oldId, int newId, const Transform & transform, Link::Type type, float variance)
+bool Memory::addLink(int oldId, int newId, const Transform & transform, Link::Type type, float variance)
 {
 	UASSERT(type > Link::kNeighbor && type != Link::kUndef);
 
@@ -2134,23 +2169,32 @@ bool Memory::addLoopClosureLink(int oldId, int newId, const Transform & transfor
 			return true;
 		}
 
-		if(type != Link::kVirtualClosure)
-		{
-			_memoryChanged = true;
-		}
-		UDEBUG("Add loop closure link between %d and %d", oldS->id(), newS->id());
+		UDEBUG("Add link between %d and %d", oldS->id(), newS->id());
 
 		oldS->addLink(Link(oldS->id(), newS->id(), type, transform.inverse(), variance));
 		newS->addLink(Link(newS->id(), oldS->id(), type, transform, variance));
 
+		if(type!=Link::kVirtualClosure)
+		{
+			_linksChanged = true;
+		}
+
 		if(_incrementalMemory && type == Link::kGlobalClosure)
 		{
-			_lastGlobalLoopClosureParentId = newS->id();
-			_lastGlobalLoopClosureChildId = oldS->id();
+			_lastGlobalLoopClosureParentId = newS->id()>oldS->id()?newS->id():oldS->id();
+			_lastGlobalLoopClosureChildId = newS->id()>oldS->id()?oldS->id():newS->id();
 
 			// udpate weights only if the memory is incremental
-			newS->setWeight(newS->getWeight() + oldS->getWeight());
-			oldS->setWeight(0);
+			if(newS->id() > oldS->id())
+			{
+				newS->setWeight(newS->getWeight() + oldS->getWeight());
+				oldS->setWeight(0);
+			}
+			else
+			{
+				oldS->setWeight(oldS->getWeight() + newS->getWeight());
+				newS->setWeight(0);
+			}
 		}
 		return true;
 	}
@@ -2168,22 +2212,28 @@ bool Memory::addLoopClosureLink(int oldId, int newId, const Transform & transfor
 	return false;
 }
 
-void Memory::updateNeighborLink(int fromId, int toId, const Transform & transform, float variance)
+void Memory::updateLink(int fromId, int toId, const Transform & transform, float variance)
 {
 	Signature * fromS = this->_getSignature(fromId);
 	Signature * toS = this->_getSignature(toId);
 
 	if(fromS->hasLink(toId) && toS->hasLink(fromId))
 	{
+		Link::Type type = fromS->getLinks().at(toId).type();
 		fromS->removeLink(toId);
 		toS->removeLink(fromId);
 
-		fromS->addLink(Link(fromId, toId, Link::kNeighbor, transform, variance));
-		toS->addLink(Link(toId, fromId, Link::kNeighbor, transform.inverse(), variance));
+		fromS->addLink(Link(fromId, toId, type, transform, variance));
+		toS->addLink(Link(toId, fromId, type, transform.inverse(), variance));
+
+		if(type!=Link::kVirtualClosure)
+		{
+			_linksChanged = true;
+		}
 	}
 	else
 	{
-		UERROR("fromId=%d and toId=%d are not neighbors!", fromId, toId);
+		UERROR("fromId=%d and toId=%d are not linked!", fromId, toId);
 	}
 }
 

@@ -1548,7 +1548,7 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 }
 
 
-void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes) const
+void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool updateTimestamp) const
 {
 	UDEBUG("nodes = %d", nodes.size());
 	if(_ppDb && nodes.size())
@@ -1559,7 +1559,15 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes) const
 		sqlite3_stmt * ppStmt = 0;
 		Signature * s = 0;
 
-		std::string query = "UPDATE Node SET weight=?, time_enter = DATETIME('NOW') WHERE id=?;";
+		std::string query;
+		if(updateTimestamp)
+		{
+			query = "UPDATE Node SET weight=?, time_enter = DATETIME('NOW') WHERE id=?;";
+		}
+		else
+		{
+			query = "UPDATE Node SET weight=? WHERE id=?;";
+		}
 		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
@@ -1655,10 +1663,11 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes) const
 	}
 }
 
-void DBDriverSqlite3::updateQuery(const std::list<VisualWord *> & words) const
+void DBDriverSqlite3::updateQuery(const std::list<VisualWord *> & words, bool updateTimestamp) const
 {
-	if(_ppDb && words.size())
+	if(_ppDb && words.size() && updateTimestamp)
 	{
+		// Only timestamp update is done here, so don't enter this if at all if false
 		UTimer timer;
 		timer.start();
 		int rc = SQLITE_OK;

@@ -80,8 +80,8 @@ public:
 	std::list<int> cleanup(const std::list<int> & ignoredIds = std::list<int>());
 	void emptyTrash();
 	void joinTrashThread();
-	bool addLoopClosureLink(int oldId, int newId, const Transform & transform, Link::Type type, float variance);
-	void updateNeighborLink(int fromId, int toId, const Transform & transform, float variance);
+	bool addLink(int to, int from, const Transform & transform, Link::Type type, float variance);
+	void updateLink(int fromId, int toId, const Transform & transform, float variance);
 	void removeAllVirtualLinks();
 	std::map<int, int> getNeighborsId(int signatureId,
 			int margin,
@@ -90,7 +90,7 @@ public:
 			bool ignoreLoopIds = false,
 			double * dbAccessTime = 0) const;
 	void deleteLocation(int locationId, std::list<int> * deletedWords = 0);
-	void rejectLoopClosure(int oldId, int newId);
+	void removeLink(int idA, int idB);
 
 	//getters
 	const std::set<int> & getWorkingMem() const {return _workingMem;}
@@ -214,7 +214,8 @@ private:
 	Signature * _lastSignature;
 	int _lastGlobalLoopClosureParentId;
 	int _lastGlobalLoopClosureChildId;
-	bool _memoryChanged; // False by default, become true when Memory::update() is called.
+	bool _memoryChanged; // False by default, become true only when Memory::update() is called.
+	bool _linksChanged; // False by default, become true when links are modified.
 	int _signaturesAdded;
 	bool _postInitClosingEvents;
 

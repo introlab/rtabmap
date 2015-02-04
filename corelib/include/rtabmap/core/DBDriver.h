@@ -72,6 +72,7 @@ public:
 	void asyncSave(VisualWord * vw); //ownership transferred
 	void emptyTrashes(bool async = false);
 	double getEmptyTrashesTime() const {return _emptyTrashesTime;}
+	void setTimestampUpdateEnabled(bool enabled) {_timestampUpdate = enabled;} // used on Update Signature and Word queries
 
 public:
 	void addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize) const;
@@ -121,8 +122,8 @@ private:
 
 	virtual void saveQuery(const std::list<Signature *> & signatures) const = 0;
 	virtual void saveQuery(const std::list<VisualWord *> & words) const = 0;
-	virtual void updateQuery(const std::list<Signature *> & signatures) const = 0;
-	virtual void updateQuery(const std::list<VisualWord *> & words) const = 0;
+	virtual void updateQuery(const std::list<Signature *> & signatures, bool updateTimestamp) const = 0;
+	virtual void updateQuery(const std::list<VisualWord *> & words, bool updateTimestamp) const = 0;
 
 
 	// Load objects
@@ -157,6 +158,7 @@ private:
 	USemaphore _addSem;
 	double _emptyTrashesTime;
 	std::string _url;
+	bool _timestampUpdate;
 };
 
 }

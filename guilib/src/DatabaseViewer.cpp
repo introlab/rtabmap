@@ -244,11 +244,11 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 				std::multimap<int, rtabmap::Link>::iterator refinedIter = rtabmap::findLink(linksRefined_, iter->second.from(), iter->second.to());
 				if(refinedIter != linksRefined_.end())
 				{
-					memory_->addLoopClosureLink(refinedIter->second.to(), refinedIter->second.from(), refinedIter->second.transform(), refinedIter->second.type(), refinedIter->second.variance());
+					memory_->addLink(refinedIter->second.to(), refinedIter->second.from(), refinedIter->second.transform(), refinedIter->second.type(), refinedIter->second.variance());
 				}
 				else
 				{
-					memory_->addLoopClosureLink(iter->second.to(), iter->second.from(), iter->second.transform(), iter->second.type(), iter->second.variance());
+					memory_->addLink(iter->second.to(), iter->second.from(), iter->second.transform(), iter->second.type(), iter->second.variance());
 				}
 			}
 
@@ -257,15 +257,14 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 			{
 				if(!containsLink(linksAdded_, iter->second.from(), iter->second.to()))
 				{
-					memory_->rejectLoopClosure(iter->second.to(), iter->second.from());
-					memory_->addLoopClosureLink(iter->second.to(), iter->second.from(), iter->second.transform(), iter->second.type(), iter->second.variance());
+					memory_->updateLink(iter->second.from(), iter->second.to(), iter->second.transform(), iter->second.variance());
 				}
 			}
 
 			// Rejected links
 			for(std::multimap<int, rtabmap::Link>::iterator iter=linksRemoved_.begin(); iter!=linksRemoved_.end(); ++iter)
 			{
-				memory_->rejectLoopClosure(iter->second.to(), iter->second.from());
+				memory_->removeLink(iter->second.to(), iter->second.from());
 			}
 		}
 

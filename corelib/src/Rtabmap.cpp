@@ -865,7 +865,7 @@ bool Rtabmap::process(const SensorData & data)
 						oldId,
 						signature->getLinks().at(oldId).transform().prettyPrint().c_str(),
 						t.prettyPrint().c_str());
-				_memory->updateNeighborLink(signature->id(), oldId, t, variance);
+				_memory->updateLink(signature->id(), oldId, t, variance);
 			}
 			else
 			{
@@ -923,7 +923,7 @@ bool Rtabmap::process(const SensorData & data)
 								*iter,
 								transform.prettyPrint().c_str());
 						// Add a loop constraint
-						if(_memory->addLoopClosureLink(*iter, signature->id(), transform, Link::kLocalTimeClosure, variance))
+						if(_memory->addLink(*iter, signature->id(), transform, Link::kLocalTimeClosure, variance))
 						{
 							++localLoopClosuresInTimeFound;
 							UINFO("Local loop closure found between %d and %d with t=%s",
@@ -1370,7 +1370,7 @@ bool Rtabmap::process(const SensorData & data)
 		if(!rejectedHypothesis)
 		{
 			// Make the new one the parent of the old one
-			rejectedHypothesis = !_memory->addLoopClosureLink(_loopClosureHypothesis.first, signature->id(), transform, Link::kGlobalClosure, variance);
+			rejectedHypothesis = !_memory->addLink(_loopClosureHypothesis.first, signature->id(), transform, Link::kGlobalClosure, variance);
 		}
 
 		if(rejectedHypothesis)
@@ -1392,7 +1392,7 @@ bool Rtabmap::process(const SensorData & data)
 		!signature->hasLink(_path[_pathCurrentIndex]))
 	{
 		Transform virtualLoop = _optimizedPoses.at(signature->id()).inverse() * _optimizedPoses.at(_path[_pathCurrentIndex]);
-		_memory->addLoopClosureLink(_path[_pathCurrentIndex], signature->id(), virtualLoop, Link::kVirtualClosure, 99999);
+		_memory->addLink(_path[_pathCurrentIndex], signature->id(), virtualLoop, Link::kVirtualClosure, 99999);
 	}
 
 	timeAddLoopClosureLink = timer.ticks();
@@ -1441,7 +1441,7 @@ bool Rtabmap::process(const SensorData & data)
 							signature->id(),
 							localSpaceNearestId,
 							t.prettyPrint().c_str());
-					_memory->addLoopClosureLink(localSpaceNearestId, signature->id(), t, Link::kLocalSpaceClosure, variance);
+					_memory->addLink(localSpaceNearestId, signature->id(), t, Link::kLocalSpaceClosure, variance);
 
 					// Old map -> new map, used for localization correction on loop closure
 					const Signature * oldS = _memory->getSignature(localSpaceNearestId);
@@ -1876,7 +1876,7 @@ void Rtabmap::rejectLoopClosure(int oldId, int newId)
 		_loopClosureHypothesis.first = 0;
 		if(_memory)
 		{
-			_memory->rejectLoopClosure(oldId, newId);
+			_memory->removeLink(oldId, newId);
 		}
 		if(uContains(statistics_.data(), rtabmap::Statistics::kLoopRejectedHypothesis()))
 		{
@@ -2031,8 +2031,7 @@ std::map<int, Transform> Rtabmap::getWMPosesInRadius(
 					//inliers.push_back(pcl::PointXYZ(tmp.x(), tmp.y(), tmp.z()));
 					UDEBUG("Inlier %d: %s", ids[ind[i]], tmp.prettyPrint().c_str());
 					poses.insert(std::make_pair(ids[ind[i]], tmp));
-					if(fromS->getLinks().find(ids[ind[i]]) == fromS->getLinks().end() && // can't be a neighbor
-					   (minDistance == -1 || minDistance > dist[i]))
+					if(minDistance == -1 || minDistance > dist[i])
 					{
 						nearestId = ids[ind[i]];
 						minDistance = dist[i];

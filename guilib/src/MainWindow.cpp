@@ -1418,6 +1418,8 @@ void MainWindow::updateMapCloud(
 			}
 		}
 	}
+	_ui->graphicsView_graphView->update();
+
 	if(!_preferencesDialog->getGridMapShown())
 	{
 		_ui->widget_cloudViewer->removeOccupancyGridMap();

@@ -60,8 +60,8 @@ private:
 
 	virtual void saveQuery(const std::list<Signature *> & signatures) const;
 	virtual void saveQuery(const std::list<VisualWord *> & words) const;
-	virtual void updateQuery(const std::list<Signature *> & signatures) const;
-	virtual void updateQuery(const std::list<VisualWord *> & words) const;
+	virtual void updateQuery(const std::list<Signature *> & signatures, bool updateTimestamp) const;
+	virtual void updateQuery(const std::list<VisualWord *> & words, bool updateTimestamp) const;
 
 	// Load objects
 	virtual void loadQuery(VWDictionary * dictionary) const;
