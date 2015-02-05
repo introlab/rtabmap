@@ -611,7 +611,7 @@ void Memory::setRoi(const std::string & roi)
 		unsigned int i=0;
 		for(std::list<std::string>::iterator iter = strValues.begin(); iter!=strValues.end(); ++iter)
 		{
-			tmpValues[i] = std::atof((*iter).c_str());
+			tmpValues[i] = uStr2Float(*iter);
 			++i;
 		}
 

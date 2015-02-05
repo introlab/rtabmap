@@ -71,7 +71,7 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kKpNndrRatio(), _nndrRatio);
 	Parameters::parse(parameters, Parameters::kKpNewWordsComparedTogether(), _newWordsComparedTogether);
 
-	UASSERT(_nndrRatio > 0.0f);
+	UASSERT_MSG(_nndrRatio > 0.0f, uFormat("String=%s value=%f", uContains(parameters, Parameters::kKpNndrRatio())?parameters.at(Parameters::kKpNndrRatio()).c_str():"", _nndrRatio).c_str());
 
 	std::string dictionaryPath = _dictionaryPath;
 	bool incrementalDictionary = _incrementalDictionary;
@@ -167,7 +167,7 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 							//get descriptor
 							for(;i<dimension && iter != strList.end(); ++i, ++iter)
 							{
-								descriptor.at<float>(i) = std::atof(iter->c_str());
+								descriptor.at<float>(i) = uStr2Float(*iter);
 							}
 							if(i != dimension)
 							{

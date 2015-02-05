@@ -75,7 +75,7 @@ void BayesFilter::setPredictionLC(const std::string & prediction)
 		bool valid = true;
 		for(std::list<std::string>::iterator iter = strValues.begin(); iter!=strValues.end(); ++iter)
 		{
-			tmpValues[i] = std::atof((*iter).c_str());
+			tmpValues[i] = uStr2Float((*iter).c_str());
 			//UINFO("%d=%e", i, tmpValues[i]);
 			if(tmpValues[i] < 0.0 || tmpValues[i]>1.0)
 			{

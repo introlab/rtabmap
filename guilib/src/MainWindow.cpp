@@ -423,7 +423,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	// update loop closure viewer parameters
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
 	_ui->widget_loopClosureViewer->setDecimation(atoi(parameters.at(Parameters::kLccIcp3Decimation()).c_str()));
-	_ui->widget_loopClosureViewer->setMaxDepth(atof(parameters.at(Parameters::kLccIcp3MaxDepth()).c_str()));
+	_ui->widget_loopClosureViewer->setMaxDepth(uStr2Float(parameters.at(Parameters::kLccIcp3MaxDepth())));
 	_ui->widget_loopClosureViewer->setSamples(atoi(parameters.at(Parameters::kLccIcp3Samples()).c_str()));
 
 	//update ui
@@ -1942,7 +1942,7 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters)
 		}
 		if(uContains(parameters, Parameters::kLccIcp3MaxDepth()))
 		{
-			_ui->widget_loopClosureViewer->setMaxDepth(atof(parameters.at(Parameters::kLccIcp3MaxDepth()).c_str()));
+			_ui->widget_loopClosureViewer->setMaxDepth(uStr2Float(parameters.at(Parameters::kLccIcp3MaxDepth())));
 		}
 		if(uContains(parameters, Parameters::kLccIcp3Samples()))
 		{
@@ -2320,8 +2320,8 @@ void MainWindow::startDetection()
 	   _preferencesDialog->isSourceDatabaseUsed())
 	{
 		float inputRate = _preferencesDialog->getGeneralInputRate();
-		float detectionRate = std::atof(parameters.at(Parameters::kRtabmapDetectionRate()).c_str());
-		int bufferingSize = std::atof(parameters.at(Parameters::kRtabmapImageBufferSize()).c_str());
+		float detectionRate = uStr2Float(parameters.at(Parameters::kRtabmapDetectionRate()));
+		int bufferingSize = uStr2Float(parameters.at(Parameters::kRtabmapImageBufferSize()));
 		if((detectionRate!=0.0f && detectionRate < inputRate) || (detectionRate > 0.0f && inputRate == 0.0f))
 		{
 			int button = QMessageBox::question(this,

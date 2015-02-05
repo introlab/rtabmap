@@ -175,7 +175,7 @@ int main (int argc, char * argv[])
 			++i;
 			if(i < argc)
 			{
-				nndr = std::atof(argv[i]);
+				nndr = uStr2Float(argv[i]);
 				if(nndr < 0.0f)
 				{
 					showUsage();
@@ -192,7 +192,7 @@ int main (int argc, char * argv[])
 			++i;
 			if(i < argc)
 			{
-				rate = std::atof(argv[i]);
+				rate = uStr2Float(argv[i]);
 				if(rate < 0)
 				{
 					showUsage();
@@ -244,7 +244,7 @@ int main (int argc, char * argv[])
 			++i;
 			if(i < argc)
 			{
-				sec = std::atof(argv[i]);
+				sec = uStr2Float(argv[i]);
 				if(sec < 0.0f)
 				{
 					showUsage();
@@ -261,7 +261,7 @@ int main (int argc, char * argv[])
 			++i;
 			if(i < argc)
 			{
-				distance = std::atof(argv[i]);
+				distance = uStr2Float(argv[i]);
 				if(distance <= 0)
 				{
 					showUsage();
@@ -312,7 +312,7 @@ int main (int argc, char * argv[])
 			++i;
 			if(i < argc)
 			{
-				maxDepth = std::atof(argv[i]);
+				maxDepth = uStr2Float(argv[i]);
 				if(maxDepth < 0)
 				{
 					showUsage();
@@ -380,7 +380,7 @@ int main (int argc, char * argv[])
 			++i;
 			if(i < argc)
 			{
-				voxel = std::atof(argv[i]);
+				voxel = uStr2Float(argv[i]);
 				if(voxel < 0)
 				{
 					showUsage();
@@ -414,7 +414,7 @@ int main (int argc, char * argv[])
 			++i;
 			if(i < argc)
 			{
-				ratio = std::atof(argv[i]);
+				ratio = uStr2Float(argv[i]);
 				if(ratio < 0.0f)
 				{
 					showUsage();

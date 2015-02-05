@@ -144,7 +144,7 @@ int main(int argc, char * argv[])
 			++i;
 			if(i < argc)
 			{
-				rate = std::atof(argv[i]);
+				rate = uStr2Float(argv[i]);
 				if(rate < 0)
 				{
 					showUsage();
@@ -161,7 +161,7 @@ int main(int argc, char * argv[])
 			++i;
 			if(i < argc)
 			{
-				rate = std::atof(argv[i]);
+				rate = uStr2Float(argv[i]);
 				if(rate < 0)
 				{
 					showUsage();

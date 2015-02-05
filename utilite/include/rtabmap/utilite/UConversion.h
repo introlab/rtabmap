@@ -117,6 +117,22 @@ std::string UTILITE_EXP uNumber2Str(float number);
  */
 std::string UTILITE_EXP uNumber2Str(double number);
 
+
+/**
+ * Convert a string to a float independent of the locale (comma/dot).
+ * @param the string
+ * @return the number
+ */
+float UTILITE_EXP uStr2Float(const std::string & str);
+
+/**
+ * Convert a string to a double independent of the locale (comma/dot).
+ * @param the string
+ * @return the number
+ */
+double UTILITE_EXP uStr2Double(const std::string & str);
+
+
 /**
  * Convert a bool to a string.
  * The format used is "true" and "false".

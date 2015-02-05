@@ -251,7 +251,7 @@ cv::Rect Feature2D::computeRoi(const cv::Mat & image, const std::string & roiRat
 		unsigned int i=0;
 		for(std::list<std::string>::iterator iter = strValues.begin(); iter!=strValues.end(); ++iter)
 		{
-			values[i] = std::atof((*iter).c_str());
+			values[i] = uStr2Float(*iter);
 			++i;
 		}
 

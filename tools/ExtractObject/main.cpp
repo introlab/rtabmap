@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 			++i;
 			if(i < argc)
 			{
-				planeDistanceThreshold = std::atof(argv[i]);
+				planeDistanceThreshold = uStr2Float(argv[i]);
 				if(planeDistanceThreshold < 0.0f)
 				{
 					showUsage();
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 			++i;
 			if(i < argc)
 			{
-				planeEpsAngle = std::atof(argv[i]);
+				planeEpsAngle = uStr2Float(argv[i]);
 				if(planeEpsAngle < 0.0f)
 				{
 					showUsage();
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 			++i;
 			if(i < argc)
 			{
-				clusterTolerance = std::atof(argv[i]);
+				clusterTolerance = uStr2Float(argv[i]);
 				if(clusterTolerance <= 0.0f)
 				{
 					showUsage();

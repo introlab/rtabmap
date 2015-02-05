@@ -113,6 +113,24 @@ std::string uNumber2Str(double number)
 	return s.str();
 }
 
+float uStr2Float(const std::string & str)
+{
+	float value = 0.0f;
+	std::istringstream istr(uReplaceChar(str, ',', '.').c_str());
+	istr.imbue(std::locale("C"));
+	istr >> value;
+	return value;
+}
+
+double uStr2Double(const std::string & str)
+{
+	double value = 0.0;
+	std::istringstream istr(uReplaceChar(str, ',', '.').c_str());
+	istr.imbue(std::locale("C"));
+	istr >> value;
+	return value;
+}
+
 std::string uBool2Str(bool boolean)
 {
 	std::string s;

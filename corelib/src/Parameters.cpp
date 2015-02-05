@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <math.h>
 #include <stdlib.h>
+#include <sstream>
 
 namespace rtabmap
 {
@@ -112,7 +113,7 @@ void Parameters::parse(const ParametersMap & parameters, const std::string & key
 	ParametersMap::const_iterator iter = parameters.find(key);
 	if(iter != parameters.end())
 	{
-		value = atof(iter->second.c_str());
+		value = uStr2Float(iter->second);
 	}
 }
 void Parameters::parse(const ParametersMap & parameters, const std::string & key, double & value)
@@ -120,7 +121,7 @@ void Parameters::parse(const ParametersMap & parameters, const std::string & key
 	ParametersMap::const_iterator iter = parameters.find(key);
 	if(iter != parameters.end())
 	{
-		value = atof(iter->second.c_str());
+		value = uStr2Double(iter->second);
 	}
 }
 void Parameters::parse(const ParametersMap & parameters, const std::string & key, std::string & value)

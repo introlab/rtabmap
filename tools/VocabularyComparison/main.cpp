@@ -117,7 +117,7 @@ int main(int argc, char * argv[])
 					//get descriptor
 					for(;i<dimension && iter != strList.end(); ++i, ++iter)
 					{
-						descriptor[i] = std::atof(iter->c_str());
+						descriptor[i] = uStr2Float(*iter);
 					}
 					if(i != dimension)
 					{

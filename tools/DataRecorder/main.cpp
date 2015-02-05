@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UFile.h>
+#include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/core/CameraThread.h>
 #include <rtabmap/core/CameraRGBD.h>
 #include <rtabmap/core/Camera.h>
@@ -91,7 +92,7 @@ int main (int argc, char * argv[])
 			++i;
 			if(i < argc)
 			{
-				rate = std::atof(argv[i]);
+				rate = uStr2Float(argv[i]);
 				if(rate < 0.0f)
 				{
 					showUsage();

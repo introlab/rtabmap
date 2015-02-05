@@ -439,12 +439,12 @@ bool loadTOROGraph(const std::string & fileName,
 			{
 				//VERTEX3
 				int id = atoi(strList[1].c_str());
-				float x = atof(strList[2].c_str());
-				float y = atof(strList[3].c_str());
-				float z = atof(strList[4].c_str());
-				float roll = atof(strList[5].c_str());
-				float pitch = atof(strList[6].c_str());
-				float yaw = atof(strList[7].c_str());
+				float x = uStr2Float(strList[2]);
+				float y = uStr2Float(strList[3]);
+				float z = uStr2Float(strList[4]);
+				float roll = uStr2Float(strList[5]);
+				float pitch = uStr2Float(strList[6]);
+				float yaw = uStr2Float(strList[7]);
 				Transform pose = Transform::fromEigen3f(pcl::getTransformation(x, y, z, roll, pitch, yaw));
 				std::map<int, Transform>::iterator iter = poses.find(id);
 				if(iter != poses.end())
@@ -461,12 +461,12 @@ bool loadTOROGraph(const std::string & fileName,
 				//EDGE3
 				int idFrom = atoi(strList[1].c_str());
 				int idTo = atoi(strList[2].c_str());
-				float x = atof(strList[3].c_str());
-				float y = atof(strList[4].c_str());
-				float z = atof(strList[5].c_str());
-				float roll = atof(strList[6].c_str());
-				float pitch = atof(strList[7].c_str());
-				float yaw = atof(strList[8].c_str());
+				float x = uStr2Float(strList[3]);
+				float y = uStr2Float(strList[4]);
+				float z = uStr2Float(strList[5]);
+				float roll = uStr2Float(strList[6]);
+				float pitch = uStr2Float(strList[7]);
+				float yaw = uStr2Float(strList[8]);
 				Transform transform = Transform::fromEigen3f(pcl::getTransformation(x, y, z, roll, pitch, yaw));
 				if(poses.find(idFrom) != poses.end() && poses.find(idTo) != poses.end())
 				{
