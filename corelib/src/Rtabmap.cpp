@@ -2295,7 +2295,7 @@ bool Rtabmap::computePath(
 		const std::map<int, Transform> & nodes,
 		const std::multimap<int, rtabmap::Link> & constraints)
 {
-	if(_memory->getWorkingMem().size() <= 1 || !_memory->getLastWorkingSignature()) // ignore virtual place
+	if(!_memory->getLastWorkingSignature())
 	{
 		UWARN("Working memory is empty... cannot compute a path");
 		return false;
