@@ -121,7 +121,8 @@ Rtabmap::Rtabmap() :
 	_mapCorrection(Transform::getIdentity()),
 	_mapTransform(Transform::getIdentity()),
 	_pathCurrentIndex(0),
-	_pathGoalIndex(0)
+	_pathGoalIndex(0),
+	_pathTransformToGoal(Transform::getIdentity())
 {
 }
 
@@ -643,7 +644,7 @@ void Rtabmap::generateTOROGraph(const std::string & path, bool optimized, bool g
 			_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
 		}
 
-		rtabmap::saveTOROGraph(path, poses, constraints);
+		rtabmap::graph::saveTOROGraph(path, poses, constraints);
 	}
 }
 
@@ -1896,55 +1897,6 @@ void Rtabmap::dumpData() const
 }
 
 // fromId must be in _memory and in _optimizedPoses
-// return <id, distance>
-std::map<int, float> Rtabmap::getNodesInRadius(
-		int fromId,
-		int maxNearestNeighbors,
-		float radius) const
-{
-	UDEBUG("");
-	const Signature * fromS = _memory->getSignature(fromId);
-	UASSERT(fromS != 0);
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-	cloud->resize(_optimizedPoses.size());
-	std::vector<int> ids(_optimizedPoses.size());
-	int oi = 0;
-	for(std::map<int, Transform>::const_iterator iter = _optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
-	{
-		(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-		ids[oi++] = iter->first;
-	}
-
-	cloud->resize(oi);
-	ids.resize(oi);
-
-	UASSERT(_optimizedPoses.find(fromId) != _optimizedPoses.end());
-	Transform fromT = _optimizedPoses.at(fromId);
-
-	std::map<int, float> nodes;
-	if(cloud->size())
-	{
-		pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
-		kdTree->setInputCloud(cloud);
-		std::vector<int> ind;
-		std::vector<float> dist;
-		pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
-		kdTree->radiusSearch(pt, radius, ind, dist, maxNearestNeighbors);
-		for(unsigned int i=0; i<ind.size(); ++i)
-		{
-			if(ind[i] >=0)
-			{
-				UDEBUG("Inlier %d: %f", ids[ind[i]], dist[i]);
-				nodes.insert(std::make_pair(ids[ind[i]], dist[i]));
-			}
-		}
-	}
-	UDEBUG("nodes=%d", (int)nodes.size());
-	return nodes;
-}
-
-// fromId must be in _memory and in _optimizedPoses
 // Get poses in front of the robot
 std::map<int, Transform> Rtabmap::getWMPosesInRadius(
 		int fromId,
@@ -2107,7 +2059,7 @@ void Rtabmap::optimizeCurrentMap(
 		}
 		else
 		{
-			rtabmap::optimizeTOROGraph(ids, poses, edgeConstraints, optimizedPoses, _toroIterations, true, _toroIgnoreVariance);
+			rtabmap::graph::optimizeTOROGraph(ids, poses, edgeConstraints, optimizedPoses, _toroIterations, true, _toroIgnoreVariance);
 		}
 	}
 }
@@ -2331,50 +2283,39 @@ void Rtabmap::clearPath()
 	_path.clear();
 	_pathCurrentIndex=0;
 	_pathGoalIndex = 0;
+	_pathTransformToGoal.setIdentity();
 	if(_memory)
 	{
 		_memory->removeAllVirtualLinks();
 	}
 }
 
-// return true if path is updated
-std::list<std::pair<int, Transform> > Rtabmap::computePath(int targetNode)
+bool Rtabmap::computePath(
+		int targetNode,
+		const std::map<int, Transform> & nodes,
+		const std::multimap<int, rtabmap::Link> & constraints)
 {
-	this->clearPath();
-	std::list<std::pair<int, Transform> > pathPoses;
-
-	if(!_rgbdSlamMode)
-	{
-		UWARN("A path can only be computed in RGBD-SLAM mode");
-		return pathPoses;
-	}
-
 	if(_memory->getWorkingMem().size() <= 1 || !_memory->getLastWorkingSignature()) // ignore virtual place
 	{
 		UWARN("Working memory is empty... cannot compute a path");
-		return pathPoses;
+		return false;
 	}
 	int currentNode = _memory->getLastWorkingSignature()->id();
 
-	UTimer timer;
-	std::map<int, Transform> globalGraph;
-	std::multimap<int, Link> constraints;
-	std::map<int, int> mapIds;
-	this->getGraph(globalGraph, constraints, mapIds, true, true);
-
-	if(!uContains(globalGraph, currentNode))
+	if(!uContains(nodes, currentNode))
 	{
-		UWARN("Last signature %d not found in the global graph! Cannot compute a path", currentNode);
-		return pathPoses;
+		UWARN("Last signature %d not found in the graph! Cannot compute a path", currentNode);
+		return false;
 	}
-	if(!uContains(globalGraph, targetNode))
+
+	if(!uContains(nodes, targetNode))
 	{
-		UWARN("Goal %d not found in the global graph! Cannot compute a path", targetNode);
-		return pathPoses;
+		UWARN("Goal %d not found in the graph! Cannot compute a path", targetNode);
+		return false;
 	}
 
 	std::multimap<int, int> links;
-	for(std::multimap<int, rtabmap::Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
+	for(std::multimap<int, rtabmap::Link>::const_iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
 	{
 		links.insert(std::make_pair(iter->first, iter->second.to()));
 		links.insert(std::make_pair(iter->second.to(), iter->first)); // <->
@@ -2383,11 +2324,8 @@ std::list<std::pair<int, Transform> > Rtabmap::computePath(int targetNode)
 	//std::multimap<int, int> clusters = rtabmap::radiusPosesClustering(globalGraph, _goalMetricError, CV_PI);
 	//links.insert(clusters.begin(), clusters.end());
 
-	UINFO("Time creating global graph = %fs", timer.ticks());
-
 	UINFO("Computing path from location %d to %d", currentNode, targetNode);
-	_path = rtabmap::computePath(globalGraph, links, currentNode, targetNode);
-	UINFO("Time computing path = %fs", timer.ticks());
+	_path = rtabmap::graph::computePath(nodes, links, currentNode, targetNode);
 
 	if(_path.size()<2)
 	{
@@ -2412,11 +2350,83 @@ std::list<std::pair<int, Transform> > Rtabmap::computePath(int targetNode)
 		}
 	}
 
-	updateGoalIndex();
+	return _path.size()>0;
+}
 
-	for(unsigned int i = 0; i<_path.size(); ++i)
+// return true if path is updated
+std::list<std::pair<int, Transform> > Rtabmap::computePath(int targetNode, bool global)
+{
+	this->clearPath();
+	std::list<std::pair<int, Transform> > pathPoses;
+
+	if(!_rgbdSlamMode)
 	{
-		pathPoses.push_back(std::make_pair(_path[i], globalGraph.at(_path[i])));
+		UWARN("A path can only be computed in RGBD-SLAM mode");
+		return pathPoses;
+	}
+
+	UTimer timer;
+	std::map<int, Transform> nodes;
+	std::multimap<int, Link> constraints;
+	std::map<int, int> mapIds;
+	this->getGraph(nodes, constraints, mapIds, true, global);
+	UINFO("Time creating graph (global=%s) = %fs", global?"true":"false", timer.ticks());
+
+	if(computePath(targetNode, nodes, constraints))
+	{
+		updateGoalIndex();
+
+		for(unsigned int i = 0; i<_path.size(); ++i)
+		{
+			pathPoses.push_back(std::make_pair(_path[i], nodes.at(_path[i])));
+		}
+	}
+	UINFO("Time computing path = %fs", timer.ticks());
+
+	return pathPoses;
+}
+
+std::list<std::pair<int, Transform> > Rtabmap::computePath(const Transform & targetPose, bool global)
+{
+	this->clearPath();
+	std::list<std::pair<int, Transform> > pathPoses;
+
+	if(!_rgbdSlamMode)
+	{
+		UWARN("This method can only be used in RGBD-SLAM mode");
+		return pathPoses;
+	}
+
+	//Find the nearest node
+	UTimer timer;
+	std::map<int, Transform> nodes;
+	std::multimap<int, Link> constraints;
+	std::map<int, int> mapIds;
+	this->getGraph(nodes, constraints, mapIds, true, global);
+	UINFO("Time creating graph (global=%s) = %fs", global?"true":"false", timer.ticks());
+
+	int nearestId = rtabmap::graph::findNearestNode(nodes, targetPose);
+	UINFO("Nearest node found=%d ,%fs", nearestId, timer.ticks());
+	if(nearestId > 0)
+	{
+		if(computePath(nearestId, nodes, constraints))
+		{
+			UASSERT(_path.size() > 0);
+			UASSERT(uContains(nodes, _path.back()));
+			_pathTransformToGoal = nodes.at(_path.back()).inverse() * targetPose;
+
+			updateGoalIndex();
+			for(unsigned int i = 0; i<_path.size(); ++i)
+			{
+				pathPoses.push_back(std::make_pair(_path[i], nodes.at(_path[i])));
+			}
+			pathPoses.back().second *= _pathTransformToGoal;
+		}
+		UINFO("Time computing path = %fs", timer.ticks());
+	}
+	else
+	{
+		UWARN("Nearest node not found in graph (size=%d) for pose %s", (int)nodes.size(), targetPose.prettyPrint().c_str());
 	}
 
 	return pathPoses;
@@ -2469,7 +2479,7 @@ std::vector<int> Rtabmap::getPathNextNodes() const
 	return ids;
 }
 
-int Rtabmap::getPathGoalId() const
+int Rtabmap::getPathCurrentGoalId() const
 {
 	if(_path.size())
 	{
@@ -2501,7 +2511,7 @@ void Rtabmap::updateGoalIndex()
 		if(uContains(_optimizedPoses, goalId))
 		{
 			//use local position to know if the goal is reached
-			float d = _optimizedPoses.at(_memory->getLastWorkingSignature()->id()).getDistance(_optimizedPoses.at(goalId));
+			float d = _optimizedPoses.at(_memory->getLastWorkingSignature()->id()).getDistance(_optimizedPoses.at(goalId)*_pathTransformToGoal);
 			if(d < _goalReachedRadius)
 			{
 				UINFO("Goal %d reached!", goalId);
@@ -2521,7 +2531,7 @@ void Rtabmap::updateGoalIndex()
 					break;
 				}
 			}
-			UASSERT(_pathGoalIndex <= _path.size() && goalIndex >= 0 && goalIndex <= (int)_path.size());
+			UASSERT(_pathGoalIndex < _path.size() && goalIndex >= 0 && goalIndex < (int)_path.size());
 			if((int)_pathGoalIndex != goalIndex)
 			{
 				UINFO("Updated current goal from %d to %d (%d/%d)",

@@ -36,6 +36,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+namespace graph {
+
 std::multimap<int, Link>::iterator RTABMAP_EXP findLink(
 		std::multimap<int, Link> & links,
 		int from,
@@ -106,6 +108,18 @@ std::vector<int> RTABMAP_EXP computePath(
 			const std::multimap<int, int> & links,
 			int from,
 			int to);
+
+int RTABMAP_EXP findNearestNode(
+		const std::map<int, rtabmap::Transform> & nodes,
+		const rtabmap::Transform & targetPose);
+
+std::map<int, float> RTABMAP_EXP getNodesInRadius(
+		int nodeId,
+		const std::map<int, Transform> & nodes,
+		int maxNearestNeighbors,
+		float radius);
+
+} /* namespace graph */
 
 } /* namespace rtabmap */
 #endif /* GRAPH_H_ */

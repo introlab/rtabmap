@@ -241,7 +241,7 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 			// Added links
 			for(std::multimap<int, rtabmap::Link>::iterator iter=linksAdded_.begin(); iter!=linksAdded_.end(); ++iter)
 			{
-				std::multimap<int, rtabmap::Link>::iterator refinedIter = rtabmap::findLink(linksRefined_, iter->second.from(), iter->second.to());
+				std::multimap<int, rtabmap::Link>::iterator refinedIter = rtabmap::graph::findLink(linksRefined_, iter->second.from(), iter->second.to());
 				if(refinedIter != linksRefined_.end())
 				{
 					memory_->addLink(refinedIter->second.to(), refinedIter->second.from(), refinedIter->second.transform(), refinedIter->second.type(), refinedIter->second.variance());
@@ -574,7 +574,7 @@ void DatabaseViewer::generateTOROGraph()
 		QString path = QFileDialog::getSaveFileName(this, tr("Save File"), pathDatabase_+"/constraints" + QString::number(id) + ".graph", tr("TORO file (*.graph)"));
 		if(!path.isEmpty())
 		{
-			rtabmap::saveTOROGraph(path.toStdString(), uValueAt(graphes_, id), links);
+			rtabmap::graph::saveTOROGraph(path.toStdString(), uValueAt(graphes_, id), links);
 		}
 	}
 }
@@ -806,7 +806,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 	for(int n=0; n<iterations; ++n)
 	{
 		UINFO("iteration %d/%d", n+1, iterations);
-		std::multimap<int, int> clusters = rtabmap::radiusPosesClustering(
+		std::multimap<int, int> clusters = rtabmap::graph::radiusPosesClustering(
 				optimizedPoses,
 				ui_->doubleSpinBox_detectMore_radius->value(),
 				ui_->doubleSpinBox_detectMore_angle->value()*CV_PI/180.0);
@@ -1418,7 +1418,7 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & linkIn,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudTo,
 		bool updateImageSliders)
 {
-	std::multimap<int, Link>::iterator iter = rtabmap::findLink(linksRefined_, linkIn.from(), linkIn.to());
+	std::multimap<int, Link>::iterator iter = rtabmap::graph::findLink(linksRefined_, linkIn.from(), linkIn.to());
 	rtabmap::Link link = linkIn;
 	if(iter != linksRefined_.end())
 	{
@@ -1701,7 +1701,7 @@ void DatabaseViewer::updateConstraintButtons()
 
 		//check for modified link
 		bool modified = false;
-		std::multimap<int, Link>::iterator iter = rtabmap::findLink(linksRefined_, currentLink.from(), currentLink.to());
+		std::multimap<int, Link>::iterator iter = rtabmap::graph::findLink(linksRefined_, currentLink.from(), currentLink.to());
 		if(iter != linksRefined_.end())
 		{
 			currentLink = iter->second;
@@ -1791,8 +1791,8 @@ void DatabaseViewer::updateGraphView()
 		graphes_.push_back(poses_);
 		ui_->actionGenerate_TORO_graph_graph->setEnabled(true);
 		std::multimap<int, rtabmap::Link> links = updateLinksWithModifications(links_);
-		std::map<int, int> depthGraph = rtabmap::generateDepthGraph(links, ui_->spinBox_optimizationsFrom->value(), 0);
-		rtabmap::optimizeTOROGraph(
+		std::map<int, int> depthGraph = rtabmap::graph::generateDepthGraph(links, ui_->spinBox_optimizationsFrom->value(), 0);
+		rtabmap::graph::optimizeTOROGraph(
 				depthGraph,
 				poses_,
 				links, finalPoses,
@@ -1818,21 +1818,21 @@ void DatabaseViewer::updateGraphView()
 Link DatabaseViewer::findActiveLink(int from, int to)
 {
 	Link link;
-	std::multimap<int, Link>::iterator findIter = rtabmap::findLink(linksRefined_, from ,to);
+	std::multimap<int, Link>::iterator findIter = rtabmap::graph::findLink(linksRefined_, from ,to);
 	if(findIter != linksRefined_.end())
 	{
 		link = findIter->second;
 	}
 	else
 	{
-		findIter = rtabmap::findLink(linksAdded_, from ,to);
+		findIter = rtabmap::graph::findLink(linksAdded_, from ,to);
 		if(findIter != linksAdded_.end())
 		{
 			link = findIter->second;
 		}
 		else if(!containsLink(linksRemoved_, from ,to))
 		{
-			findIter = rtabmap::findLink(links_, from ,to);
+			findIter = rtabmap::graph::findLink(links_, from ,to);
 			if(findIter != links_.end())
 			{
 				link = findIter->second;
@@ -1844,7 +1844,7 @@ Link DatabaseViewer::findActiveLink(int from, int to)
 
 bool DatabaseViewer::containsLink(std::multimap<int, Link> & links, int from, int to)
 {
-	return rtabmap::findLink(links, from, to) != links.end();
+	return rtabmap::graph::findLink(links, from, to) != links.end();
 }
 
 void DatabaseViewer::refineConstraint()
@@ -2282,7 +2282,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 	else if(containsLink(linksRemoved_, from, to))
 	{
 		//simply remove from linksRemoved
-		linksRemoved_.erase(rtabmap::findLink(linksRemoved_, from, to));
+		linksRemoved_.erase(rtabmap::graph::findLink(linksRemoved_, from, to));
 		updateSlider = true;
 	}
 
@@ -2315,19 +2315,19 @@ void DatabaseViewer::resetConstraint()
 	}
 
 
-	std::multimap<int, Link>::iterator iter = rtabmap::findLink(linksRefined_, from, to);
+	std::multimap<int, Link>::iterator iter = rtabmap::graph::findLink(linksRefined_, from, to);
 	if(iter != linksRefined_.end())
 	{
 		linksRefined_.erase(iter);
 		this->updateGraphView();
 	}
 
-	iter = rtabmap::findLink(links_, from, to);
+	iter = rtabmap::graph::findLink(links_, from, to);
 	if(iter != links_.end())
 	{
 		this->updateConstraintView(iter->second);
 	}
-	iter = rtabmap::findLink(linksAdded_, from, to);
+	iter = rtabmap::graph::findLink(linksAdded_, from, to);
 	if(iter != linksAdded_.end())
 	{
 		this->updateConstraintView(iter->second);
@@ -2355,7 +2355,7 @@ void DatabaseViewer::rejectConstraint()
 
 	// find the original one
 	std::multimap<int, Link>::iterator iter;
-	iter = rtabmap::findLink(links_, from, to);
+	iter = rtabmap::graph::findLink(links_, from, to);
 	if(iter != links_.end())
 	{
 		if(iter->second.type() == Link::kNeighbor)
@@ -2368,13 +2368,13 @@ void DatabaseViewer::rejectConstraint()
 	}
 
 	// remove from refined and added
-	iter = rtabmap::findLink(linksRefined_, from, to);
+	iter = rtabmap::graph::findLink(linksRefined_, from, to);
 	if(iter != linksRefined_.end())
 	{
 		linksRefined_.erase(iter);
 		removed = true;
 	}
-	iter = rtabmap::findLink(linksAdded_, from, to);
+	iter = rtabmap::graph::findLink(linksAdded_, from, to);
 	if(iter != linksAdded_.end())
 	{
 		linksAdded_.erase(iter);
@@ -2397,7 +2397,7 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 	{
 		std::multimap<int, rtabmap::Link>::iterator findIter;
 
-		findIter = rtabmap::findLink(linksRemoved_, iter->second.from(), iter->second.to());
+		findIter = rtabmap::graph::findLink(linksRemoved_, iter->second.from(), iter->second.to());
 		if(findIter != linksRemoved_.end())
 		{
 			if(!(iter->second.from() == findIter->second.from() &&
@@ -2415,7 +2415,7 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 			}
 		}
 
-		findIter = rtabmap::findLink(linksRefined_, iter->second.from(), iter->second.to());
+		findIter = rtabmap::graph::findLink(linksRefined_, iter->second.from(), iter->second.to());
 		if(findIter!=linksRefined_.end())
 		{
 			if(iter->second.from() == findIter->second.from() &&

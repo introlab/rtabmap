@@ -1207,7 +1207,7 @@ void MainWindow::updateMapCloud(
 	{
 		float radius = _preferencesDialog->getCloudFilteringRadius();
 		float angle = _preferencesDialog->getCloudFilteringAngle()*CV_PI/180.0; // convert to rad
-		poses = rtabmap::radiusPosesFiltering(posesIn, radius, angle);
+		poses = rtabmap::graph::radiusPosesFiltering(posesIn, radius, angle);
 		// make sure the last is here
 		poses.insert(*posesIn.rbegin());
 		for(std::map<int, Transform>::iterator iter= poses.begin(); iter!=poses.end(); ++iter)
@@ -2996,7 +2996,7 @@ void MainWindow::postProcessing()
 			_initProgressDialog->appendText(tr("Looking for more loop closures, clustering poses... (iteration=%1/%2, radius=%3 m angle=%4 degrees)")
 					.arg(n+1).arg(detectLoopClosureIterations).arg(clusterRadius).arg(clusterAngle));
 
-			std::multimap<int, int> clusters = rtabmap::radiusPosesClustering(
+			std::multimap<int, int> clusters = rtabmap::graph::radiusPosesClustering(
 					_currentPosesMap,
 					clusterRadius,
 					clusterAngle*CV_PI/180.0);
@@ -3018,7 +3018,7 @@ void MainWindow::postProcessing()
 
 				// only add new links and one per cluster per iteration
 				if(addedLinks.find(from) == addedLinks.end() && addedLinks.find(to) == addedLinks.end() &&
-				   rtabmap::findLink(_currentLinksMap, from, to) == _currentLinksMap.end())
+				   rtabmap::graph::findLink(_currentLinksMap, from, to) == _currentLinksMap.end())
 				{
 					if(!_cachedSignatures.contains(from))
 					{
@@ -3101,8 +3101,8 @@ void MainWindow::postProcessing()
 				_initProgressDialog->appendText(tr("Optimizing graph with new links (%1 nodes, %2 constraints)...")
 						.arg(odomPoses.size()).arg(_currentLinksMap.size()));
 				std::map<int, rtabmap::Transform> optimizedPoses;
-				std::map<int, int> depthGraph = rtabmap::generateDepthGraph(_currentLinksMap, toroOptimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first);
-				rtabmap::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations, true, ignoreVariance);
+				std::map<int, int> depthGraph = rtabmap::graph::generateDepthGraph(_currentLinksMap, toroOptimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first);
+				rtabmap::graph::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations, true, ignoreVariance);
 				_currentPosesMap = optimizedPoses;
 				_initProgressDialog->appendText(tr("Optimizing graph with new links... done!"));
 			}
@@ -3256,8 +3256,8 @@ void MainWindow::postProcessing()
 	_initProgressDialog->appendText(tr("Optimizing graph with updated links (%1 nodes, %2 constraints)...")
 			.arg(odomPoses.size()).arg(_currentLinksMap.size()));
 	std::map<int, rtabmap::Transform> optimizedPoses;
-	std::map<int, int> depthGraph = rtabmap::generateDepthGraph(_currentLinksMap, toroOptimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first);
-	rtabmap::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations, true, ignoreVariance);
+	std::map<int, int> depthGraph = rtabmap::graph::generateDepthGraph(_currentLinksMap, toroOptimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first);
+	rtabmap::graph::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations, true, ignoreVariance);
 	_initProgressDialog->appendText(tr("Optimizing graph with updated links... done!"));
 	_initProgressDialog->incrementStep();
 

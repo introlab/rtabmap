@@ -118,11 +118,13 @@ public:
 			bool optimized,
 			bool global);
 	void clearPath();
-	std::list<std::pair<int, Transform> > computePath(int targetNode);
+	std::list<std::pair<int, Transform> > computePath(int targetNode, bool global);
+	std::list<std::pair<int, Transform> > computePath(const Transform & targetPose, bool global);
 	const std::vector<int> & getPath() const {return _path;}
 	std::list<std::pair<int, Transform> > getPathNextPoses() const;
 	std::vector<int> getPathNextNodes() const;
-	int getPathGoalId() const;
+	int getPathCurrentGoalId() const;
+	const Transform & getPathTransformToGoal() const {return _pathTransformToGoal;}
 
 	std::map<int, float> getNodesInRadius(int fromId, int maxNearestNeighbors, float radius) const;
 	std::map<int, Transform> getWMPosesInRadius(int fromId, int maxNearestNeighbors, float radius, int maxDiffID, int & nearestId) const;
@@ -136,6 +138,7 @@ private:
 			std::map<int, Transform> & optimizedPoses,
 			std::multimap<int, Link> * constraints = 0) const;
 	void updateGoalIndex();
+	bool computePath(int targetNode, const std::map<int, Transform> & nodes, const std::multimap<int, rtabmap::Link> & constraints);
 
 	void setupLogFiles(bool overwrite = false);
 	void flushStatisticLogs();
@@ -209,6 +212,7 @@ private:
 	std::vector<int> _path;
 	unsigned int _pathCurrentIndex;
 	unsigned int _pathGoalIndex;
+	Transform _pathTransformToGoal;
 
 };
 

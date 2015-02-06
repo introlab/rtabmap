@@ -39,6 +39,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+namespace graph {
+
 std::multimap<int, Link>::iterator findLink(
 		std::multimap<int, Link> & links,
 		int from,
@@ -753,5 +755,85 @@ std::vector<int> computePath(
 	return uListToVector(path);
 }
 
+int findNearestNode(
+		const std::map<int, rtabmap::Transform> & nodes,
+		const rtabmap::Transform & targetPose)
+{
+	int id = 0;
+	if(nodes.size() && !targetPose.isNull())
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+		cloud->resize(nodes.size());
+		std::vector<int> ids(nodes.size());
+		int oi = 0;
+		for(std::map<int, Transform>::const_iterator iter = nodes.begin(); iter!=nodes.end(); ++iter)
+		{
+			(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+			ids[oi++] = iter->first;
+		}
+
+		std::map<int, float> foundNodes;
+		if(cloud->size())
+		{
+			pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
+			kdTree->setInputCloud(cloud);
+			std::vector<int> ind;
+			std::vector<float> dist;
+			pcl::PointXYZ pt(targetPose.x(), targetPose.y(), targetPose.z());
+			kdTree->nearestKSearch(pt, 1, ind, dist);
+			if(ind.size() && dist.size() && ind[0] >= 0)
+			{
+				UDEBUG("Nearest node = %d: %f", ids[ind[0]], dist[0]);
+				id = ids[ind[0]];
+			}
+		}
+	}
+	return id;
+}
+
+// return <id, distance>, including query
+std::map<int, float> getNodesInRadius(
+		int nodeId,
+		const std::map<int, Transform> & nodes,
+		int maxNearestNeighbors,
+		float radius)
+{
+	UASSERT(uContains(nodes, nodeId));
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	cloud->resize(nodes.size());
+	std::vector<int> ids(nodes.size());
+	int oi = 0;
+	for(std::map<int, Transform>::const_iterator iter = nodes.begin(); iter!=nodes.end(); ++iter)
+	{
+		(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+		ids[oi++] = iter->first;
+	}
+
+	Transform fromT = nodes.at(nodeId);
+
+	std::map<int, float> foundNodes;
+	if(cloud->size())
+	{
+		pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
+		kdTree->setInputCloud(cloud);
+		std::vector<int> ind;
+		std::vector<float> dist;
+		pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
+		kdTree->radiusSearch(pt, radius, ind, dist, maxNearestNeighbors);
+		for(unsigned int i=0; i<ind.size(); ++i)
+		{
+			if(ind[i] >=0)
+			{
+				UDEBUG("Inlier %d: %f", ids[ind[i]], dist[i]);
+				foundNodes.insert(std::make_pair(ids[ind[i]], dist[i]));
+			}
+		}
+	}
+	UDEBUG("found nodes=%d", (int)foundNodes.size());
+	return foundNodes;
+}
+
+} /* namespace graph */
 
 } /* namespace rtabmap */
