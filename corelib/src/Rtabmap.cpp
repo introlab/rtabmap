@@ -2327,10 +2327,10 @@ bool Rtabmap::computePath(
 	UINFO("Computing path from location %d to %d", currentNode, targetNode);
 	_path = rtabmap::graph::computePath(nodes, links, currentNode, targetNode);
 
-	if(_path.size()<2)
+	if(_path.size() == 0)
 	{
 		_path.clear();
-		UWARN("Cannot compute a path (or goal is already reached)!");
+		UWARN("Cannot compute a path!");
 	}
 	else
 	{
