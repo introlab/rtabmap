@@ -57,11 +57,7 @@ void CloudViewer::mouseEventOccurred (const pcl::visualization::MouseEvent &even
 
 CloudViewer::CloudViewer(QWidget *parent) :
 		QVTKWidget(parent),
-#if defined(_WIN32) || defined(__APPLE__)
-		_visualizer(new pcl::visualization::PCLVisualizer("PCLVisualizer")),
-#else
 		_visualizer(new pcl::visualization::PCLVisualizer("PCLVisualizer", false)),
-#endif
 		_aLockCamera(0),
 		_aFollowCamera(0),
 		_aResetCamera(0),
@@ -85,9 +81,7 @@ CloudViewer::CloudViewer(QWidget *parent) :
 
 	this->SetRenderWindow(_visualizer->getRenderWindow());
 
-#if !defined(_WIN32) && !defined(__APPLE__)
 	_visualizer->setupInteractor(this->GetInteractor(), this->GetRenderWindow());
-#endif
 
 	_visualizer->registerMouseCallback (&CloudViewer::mouseEventOccurred, *this, (void*)_visualizer);
 	_visualizer->setCameraPosition(
