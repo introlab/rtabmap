@@ -346,13 +346,11 @@ pcl::PolygonMesh::Ptr RTABMAP_EXP createMesh(
 		float gp3MaximumAngle = 2*M_PI/3,
 		bool gp3NormalConsistency = false);
 
-bool RTABMAP_EXP occupancy2DFromCloud3D(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+void occupancy2DFromLaserScan(
+		const cv::Mat & scan,
 		cv::Mat & ground,
 		cv::Mat & obstacles,
-		float cellSize = 0.05f,
-		float groundNormalAngle = M_PI_4,
-		int minClusterSize = 20);
+		float cellSize);
 
 cv::Mat RTABMAP_EXP create2DMapFromOccupancyLocalMaps(
 		const std::map<int, Transform> & poses,
@@ -360,7 +358,6 @@ cv::Mat RTABMAP_EXP create2DMapFromOccupancyLocalMaps(
 		float cellSize,
 		float & xMin,
 		float & yMin,
-		int fillEmptyRadius = 0,
 		float minMapSize = 0.0f);
 
 cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
@@ -556,6 +553,15 @@ template<typename PointT>
 pcl::IndicesPtr extractNegativeIndices(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
 		const pcl::IndicesPtr & indices);
+
+template<typename PointT>
+void occupancy2DFromCloud3D(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		cv::Mat & ground,
+		cv::Mat & obstacles,
+		float cellSize = 0.05f,
+		float groundNormalAngle = M_PI_4,
+		int minClusterSize = 20);
 
 } // namespace util3d
 } // namespace rtabmap

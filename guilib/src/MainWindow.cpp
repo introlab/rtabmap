@@ -1191,7 +1191,7 @@ void MainWindow::updateMapCloud(
 				_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(true);
 				_ui->actionView_scans->setEnabled(true);
 			}
-			else if(_preferencesDialog->isGridMapFrom3DCloud() && _occupancyLocalMaps.size())
+			else if(_preferencesDialog->isGridMapFrom3DCloud() && _projectionLocalMaps.size())
 			{
 				_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(true);
 			}
@@ -1394,13 +1394,19 @@ void MainWindow::updateMapCloud(
 		cv::Mat map8S;
 		if(_preferencesDialog->isGridMapFrom3DCloud())
 		{
-			int fillEmptyRadius = _preferencesDialog->getGridMapFillEmptyRadius();
-			map8S = util3d::create2DMapFromOccupancyLocalMaps(poses, _occupancyLocalMaps, resolution, xMin, yMin, fillEmptyRadius);
+			map8S = util3d::create2DMapFromOccupancyLocalMaps(
+					poses,
+					_projectionLocalMaps,
+					resolution,
+					xMin, yMin);
 		}
-		else if(_createdScans.size())
+		else if(_gridLocalMaps.size())
 		{
-			bool fillEmptySpace = _preferencesDialog->getGridMapFillEmptySpace();
-			map8S = util3d::create2DMap(poses, _createdScans, resolution, fillEmptySpace, xMin, yMin);
+			map8S = util3d::create2DMapFromOccupancyLocalMaps(
+					poses,
+					_gridLocalMaps,
+					resolution,
+					xMin, yMin);
 		}
 		if(!map8S.empty())
 		{
@@ -1506,9 +1512,20 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		float groundNormalMaxAngle = M_PI_4;
 		int minClusterSize = 20;
 		cv::Mat ground, obstacles;
-		if(util3d::occupancy2DFromCloud3D(cloud, ground, obstacles, cellSize, groundNormalMaxAngle, minClusterSize))
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelizedCloud = cloud;
+		if(voxelizedCloud->size())
 		{
-			_occupancyLocalMaps.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
+			voxelizedCloud = util3d::voxelize<pcl::PointXYZRGB>(cloud, cellSize);
+		}
+		util3d::occupancy2DFromCloud3D<pcl::PointXYZRGB>(
+				voxelizedCloud,
+				ground, obstacles,
+				cellSize,
+				groundNormalMaxAngle,
+				minClusterSize);
+		if(!ground.empty() || !obstacles.empty())
+		{
+			_projectionLocalMaps.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
 		}
 		UDEBUG("time gridMapFrom2DCloud = %f s", timer.ticks());
 	}
@@ -1607,6 +1624,10 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		else
 		{
 			_createdScans.insert(std::make_pair(nodeId, cloud));
+
+			cv::Mat ground, obstacles;
+			util3d::occupancy2DFromLaserScan(depth2D, ground, obstacles, _preferencesDialog->getGridMapResolution());
+			_gridLocalMaps.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
 		}
 		_ui->widget_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
 		_ui->widget_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
@@ -3504,7 +3525,8 @@ void MainWindow::clearTheCache()
 	_cachedSignatures.clear();
 	_createdClouds.clear();
 	_createdScans.clear();
-	_occupancyLocalMaps.clear();
+	_gridLocalMaps.clear();
+	_projectionLocalMaps.clear();
 	_ui->widget_cloudViewer->removeAllClouds();
 	_ui->widget_cloudViewer->removeAllGraphs();
 	_ui->widget_cloudViewer->setBackgroundColor(Qt::black);
@@ -3724,25 +3746,12 @@ void MainWindow::setAspectRatio1080p()
 void MainWindow::exportGridMap()
 {
 	double gridCellSize = 0.05;
-	bool gridUnknownSpaceFilled = true;
 	bool ok;
 	gridCellSize = QInputDialog::getDouble(this, tr("Grid cell size"), tr("Size (m):"), gridCellSize, 0.01, 1, 2, &ok);
 	if(!ok)
 	{
 		return;
 	}
-
-	QMessageBox::StandardButton b = QMessageBox::question(this,
-			tr("Fill empty space?"),
-			tr("Do you want to fill empty space?"),
-			QMessageBox::No | QMessageBox::Yes,
-			QMessageBox::Yes);
-
-	if(b != QMessageBox::Yes && b != QMessageBox::No)
-	{
-		return;
-	}
-	gridUnknownSpaceFilled = b == QMessageBox::Yes;
 
 	std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
 
@@ -3751,11 +3760,19 @@ void MainWindow::exportGridMap()
 	cv::Mat pixels;
 	if(_preferencesDialog->isGridMapFrom3DCloud())
 	{
-		pixels = util3d::create2DMapFromOccupancyLocalMaps(poses, _occupancyLocalMaps, gridCellSize, xMin, yMin, gridUnknownSpaceFilled?1:0);
+		pixels = util3d::create2DMapFromOccupancyLocalMaps(
+				poses,
+				_projectionLocalMaps,
+				gridCellSize,
+				xMin, yMin);
 	}
 	else
 	{
-		pixels = util3d::create2DMap(poses, _createdScans, gridCellSize, gridUnknownSpaceFilled, xMin, yMin);
+		pixels = util3d::create2DMapFromOccupancyLocalMaps(
+				poses,
+				_gridLocalMaps,
+				gridCellSize,
+				xMin, yMin);
 	}
 
 	if(!pixels.empty())

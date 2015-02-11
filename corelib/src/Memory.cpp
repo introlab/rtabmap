@@ -2607,6 +2607,56 @@ Signature Memory::getSignatureData(int locationId, bool uncompressedData)
 	return r;
 }
 
+Signature Memory::getSignatureDataConst(int locationId) const
+{
+	UDEBUG("");
+	Signature r;
+	const Signature * s = this->getSignature(locationId);
+	if(s && !s->getImageCompressed().empty())
+	{
+		r = *s;
+	}
+	else if(_dbDriver)
+	{
+		// load from database
+		if(s)
+		{
+			std::list<Signature*> signatures;
+			r = *s;
+			signatures.push_back(&r);
+			_dbDriver->loadNodeData(signatures, true);
+		}
+		else
+		{
+			std::list<int> ids;
+			ids.push_back(locationId);
+			std::list<Signature*> signatures;
+			std::set<int> loadedFromTrash;
+			_dbDriver->loadSignatures(ids, signatures, &loadedFromTrash);
+			if(signatures.size())
+			{
+				Signature * sTmp = signatures.front();
+				if(sTmp->getImageCompressed().empty())
+				{
+					_dbDriver->loadNodeData(signatures, !sTmp->getPose().isNull());
+				}
+				r = *sTmp;
+				if(loadedFromTrash.size())
+				{
+					//put it back to trash
+					_dbDriver->asyncSave(sTmp);
+				}
+				else
+				{
+					delete sTmp;
+				}
+			}
+		}
+	}
+
+	return r;
+}
+
 void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 {
 	if(!_dbDriver)

@@ -431,6 +431,72 @@ pcl::IndicesPtr extractNegativeIndices(
 	return output;
 }
 
+template<typename PointT>
+void occupancy2DFromCloud3D(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		cv::Mat & ground,
+		cv::Mat & obstacles,
+		float cellSize,
+		float groundNormalAngle,
+		int minClusterSize)
+{
+	if(cloud->size() == 0)
+	{
+		return;
+	}
+	pcl::IndicesPtr groundIndices, obstaclesIndices;
+
+	segmentObstaclesFromGround<PointT>(cloud,
+			groundIndices,
+			obstaclesIndices,
+			cellSize,
+			groundNormalAngle,
+			minClusterSize);
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+	if(groundIndices->size())
+	{
+		pcl::copyPointCloud(*cloud, *groundIndices, *groundCloud);
+		//project on XY plane
+		util3d::projectCloudOnXYPlane<pcl::PointXYZ>(groundCloud);
+		//voxelize to grid cell size
+		groundCloud = util3d::voxelize<pcl::PointXYZ>(groundCloud, cellSize);
+	}
+
+	if(obstaclesIndices->size())
+	{
+		pcl::copyPointCloud(*cloud, *obstaclesIndices, *obstaclesCloud);
+		//project on XY plane
+		util3d::projectCloudOnXYPlane<pcl::PointXYZ>(obstaclesCloud);
+		//voxelize to grid cell size
+		obstaclesCloud = util3d::voxelize<pcl::PointXYZ>(obstaclesCloud, cellSize);
+	}
+
+	ground = cv::Mat();
+	if(groundCloud->size())
+	{
+		ground = cv::Mat(groundCloud->size(), 1, CV_32FC2);
+		for(unsigned int i=0;i<groundCloud->size(); ++i)
+		{
+			ground.at<cv::Vec2f>(i)[0] = groundCloud->at(i).x;
+			ground.at<cv::Vec2f>(i)[1] = groundCloud->at(i).y;
+		}
+	}
+
+	obstacles = cv::Mat();
+	if(obstaclesCloud->size())
+	{
+		obstacles = cv::Mat(obstaclesCloud->size(), 1, CV_32FC2);
+		for(unsigned int i=0;i<obstaclesCloud->size(); ++i)
+		{
+			obstacles.at<cv::Vec2f>(i)[0] = obstaclesCloud->at(i).x;
+			obstacles.at<cv::Vec2f>(i)[1] = obstaclesCloud->at(i).y;
+		}
+	}
+}
+
 } // util3d
 } // rtabmap
 #endif //UTIL3D_HPP_

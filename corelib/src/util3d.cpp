@@ -2006,58 +2006,56 @@ pcl::PolygonMesh::Ptr createMesh(
 	return mesh;
 }
 
-bool occupancy2DFromCloud3D(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+void occupancy2DFromLaserScan(
+		const cv::Mat & scan,
 		cv::Mat & ground,
 		cv::Mat & obstacles,
-		float cellSize,
-		float groundNormalAngle,
-		int minClusterSize)
+		float cellSize)
 {
-	pcl::PointCloud<pcl::PointXYZ>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZ>);
-
-	//voxelize
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelizedCloud = util3d::voxelize<pcl::PointXYZRGB>(cloud, cellSize);
-
-	pcl::IndicesPtr groundIndices, obstaclesIndices;
-
-	segmentObstaclesFromGround<pcl::PointXYZRGB>(cloud,
-			groundIndices,
-			obstaclesIndices,
-			cellSize,
-			groundNormalAngle,
-			minClusterSize);
-
-	if(groundIndices->size())
+	if(scan.empty())
 	{
-		pcl::copyPointCloud(*cloud, *groundIndices, *groundCloud);
-		//project on XY plane
-		util3d::projectCloudOnXYPlane<pcl::PointXYZ>(groundCloud);
-		//voxelize to grid cell size
-		groundCloud = util3d::voxelize<pcl::PointXYZ>(groundCloud, cellSize);
+		return;
 	}
 
-	if(obstaclesIndices->size())
-	{
-		pcl::copyPointCloud(*cloud, *obstaclesIndices, *obstaclesCloud);
-		//project on XY plane
-		util3d::projectCloudOnXYPlane<pcl::PointXYZ>(obstaclesCloud);
-		//voxelize to grid cell size
-		obstaclesCloud = util3d::voxelize<pcl::PointXYZ>(obstaclesCloud, cellSize);
-	}
+	std::map<int, Transform> poses;
+	poses.insert(std::make_pair(1, Transform::getIdentity()));
 
-	ground = cv::Mat();
-	if(groundCloud->size())
+	pcl::PointCloud<pcl::PointXYZ>::Ptr obstaclesCloud = util3d::laserScanToPointCloud(scan);
+	//obstaclesCloud = util3d::voxelize<pcl::PointXYZ>(obstaclesCloud, cellSize);
+
+	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> scans;
+	scans.insert(std::make_pair(1, obstaclesCloud));
+
+	float xMin, yMin;
+	cv::Mat map8S = create2DMap(poses, scans, cellSize, false, xMin, yMin);
+
+	// find ground cells
+	std::list<int> groundIndices;
+	for(unsigned int i=0; i< map8S.total(); ++i)
 	{
-		ground = cv::Mat(groundCloud->size(), 1, CV_32FC2);
-		for(unsigned int i=0;i<groundCloud->size(); ++i)
+		if(map8S.data[i] == 0)
 		{
-			ground.at<cv::Vec2f>(i)[0] = groundCloud->at(i).x;
-			ground.at<cv::Vec2f>(i)[1] = groundCloud->at(i).y;
+			groundIndices.push_back(i);
 		}
 	}
 
+	// Convert to position matrices, get points to each center of the cells
+	ground = cv::Mat();
+	if(groundIndices.size())
+	{
+		ground = cv::Mat(groundIndices.size(), 1, CV_32FC2);
+		int i=0;
+		for(std::list<int>::iterator iter=groundIndices.begin();iter!=groundIndices.end(); ++iter)
+		{
+			int x = *iter / map8S.cols;
+			int y = *iter - x*map8S.cols;
+			ground.at<cv::Vec2f>(i)[0] = (float(y)+0.5)*cellSize + xMin;
+			ground.at<cv::Vec2f>(i)[1] = (float(x)+0.5)*cellSize + yMin;
+			++i;
+		}
+	}
+
+	// copy directly obstacles precise positions
 	obstacles = cv::Mat();
 	if(obstaclesCloud->size())
 	{
@@ -2068,27 +2066,6 @@ bool occupancy2DFromCloud3D(
 			obstacles.at<cv::Vec2f>(i)[1] = obstaclesCloud->at(i).y;
 		}
 	}
-	/*
-	if(cloud->size())
-	{
-		UWARN("saving cloud");
-		pcl::io::savePCDFile("cloud.pcd", *cloud);
-		pcl::io::savePCDFile("cloudXYZ.pcd", *cloudXYZ);
-	}
-	if(groundCloud->size())
-	{
-		UWARN("saving ground");
-		pcl::io::savePCDFile("ground.pcd", *groundCloud);
-		pcl::io::savePCDFile("ground_indices.pcd", *cloudXYZ, *groundIndices);
-	}
-	if(obstaclesCloud->size())
-	{
-		UWARN("saving obstacles");
-		pcl::io::savePCDFile("obstacles.pcd", *obstaclesCloud);
-		pcl::io::savePCDFile("obstacles_indices.pcd", *cloudXYZ, *obstaclesIndices);
-	}
-	*/
-	return !ground.empty();
 }
 
 /**
@@ -2101,7 +2078,6 @@ bool occupancy2DFromCloud3D(
  * @param cellSize m
  * @param xMin
  * @param yMin
- * @param fillEmptyRadius fill neighbors of empty space if there're no obstacles.
  */
 cv::Mat create2DMapFromOccupancyLocalMaps(
 		const std::map<int, Transform> & poses,
@@ -2109,10 +2085,8 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 		float cellSize,
 		float & xMin,
 		float & yMin,
-		int fillEmptyRadius,
 		float minMapSize)
 {
-	UASSERT(fillEmptyRadius >= 0);
 	UASSERT(minMapSize >= 0.0f);
 	UDEBUG("");
 	UTimer timer;
@@ -2209,7 +2183,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 	if(minX != maxX && minY != maxY)
 	{
 		//Get map size
-		float margin = (fillEmptyRadius + 1)*cellSize;
+		float margin = cellSize;
 		xMin = minX-margin;
 		yMin = minY-margin;
 		float xMax = maxX+margin;
@@ -2227,19 +2201,6 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 				{
 					cv::Point2i pt((iter->second.at<float>(i,0)-xMin)/cellSize + 0.5f, (iter->second.at<float>(i,1)-yMin)/cellSize + 0.5f);
 					map.at<char>(pt.y, pt.x) = 0; // free space
-					if(fillEmptyRadius>0)
-					{
-						for(int j=pt.y-fillEmptyRadius; j<=pt.y+fillEmptyRadius; ++j)
-						{
-							for(int k=pt.x-fillEmptyRadius; k<=pt.x+fillEmptyRadius; ++k)
-							{
-								if(map.at<char>(j, k) == -1)
-								{
-									map.at<char>(j, k) = 0;
-								}
-							}
-						}
-					}
 				}
 			}
 			if(jter!=occupiedLocalMaps.end())
@@ -2252,6 +2213,50 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 			}
 			//UDEBUG("empty=%d occupied=%d", empty, occupied);
 		}
+
+		// fill holes and remove empty from obstacle borders
+		cv::Mat updatedMap = map;
+		for(int i=2; i<map.rows-2; ++i)
+		{
+			for(int j=2; j<map.cols-2; ++j)
+			{
+				if(map.at<char>(i, j) == -1 &&
+					map.at<char>(i+1, j) != -1 &&
+					map.at<char>(i-1, j) != -1 &&
+					map.at<char>(i, j+1) != -1 &&
+					map.at<char>(i, j-1) != -1)
+				{
+					updatedMap.at<char>(i, j) = 0;
+				}
+				else if(map.at<char>(i, j) == 100)
+				{
+					// obstacle/empty/unknown -> remove empty
+					// unknown/empty/obstacle -> remove empty
+					if(map.at<char>(i-1, j) == 0 &&
+						map.at<char>(i-2, j) == -1)
+					{
+						updatedMap.at<char>(i-1, j) = -1;
+					}
+					else if(map.at<char>(i+1, j) == 0 &&
+							map.at<char>(i+2, j) == -1)
+					{
+						updatedMap.at<char>(i+1, j) = -1;
+					}
+					if(map.at<char>(i, j-1) == 0 &&
+						map.at<char>(i, j-2) == -1)
+					{
+						updatedMap.at<char>(i, j-1) = -1;
+					}
+					else if(map.at<char>(i, j+1) == 0 &&
+							map.at<char>(i, j+2) == -1)
+					{
+						updatedMap.at<char>(i, j+1) = -1;
+					}
+				}
+
+			}
+		}
+		map = updatedMap;
 	}
 	UDEBUG("timer=%fs", timer.ticks());
 	return map;
@@ -2427,37 +2432,70 @@ void rayTrace(const cv::Point2i & start, const cv::Point2i & end, cv::Mat & grid
 	ptB = end;
 
 	float slope = float(ptB.y - ptA.y)/float(ptB.x - ptA.x);
+
+	bool swapped = false;
+	if(slope<-1.0f || slope>1.0f)
+	{
+		// swap x and y
+		slope = 1.0f/slope;
+
+		int tmp = ptA.x;
+		ptA.x = ptA.y;
+		ptA.y = tmp;
+
+		tmp = ptB.x;
+		ptB.x = ptB.y;
+		ptB.y = tmp;
+
+		swapped = true;
+	}
+
 	float b = ptA.y - slope*ptA.x;
-
-	//UWARN("start=%d,%d end=%d,%d", ptA.x, ptA.y, ptB.x, ptB.y);
-
-	//ROS_WARN("y = %f*x + %f", slope, b);
 	for(int x=ptA.x; ptA.x<ptB.x?x<ptB.x:x>ptB.x; ptA.x<ptB.x?++x:--x)
 	{
-		int lowerbound = float(x)*slope + b;
-		int upperbound = float(ptA.x<ptB.x?x+1:x-1)*slope + b;
+		int upperbound = float(x)*slope + b;
+		int lowerbound = upperbound;
+		if(x != ptA.x)
+		{
+			lowerbound = (ptA.x<ptB.x?x+1:x-1)*slope + b;
+		}
 
 		if(lowerbound > upperbound)
 		{
-			int tmp = lowerbound;
-			lowerbound = upperbound;
-			upperbound = tmp;
+			int tmp = upperbound;
+			upperbound = lowerbound;
+			lowerbound = tmp;
 		}
 
-		//ROS_WARN("lowerbound=%f upperbound=%f", lowerbound, upperbound);
-		UASSERT_MSG(lowerbound >= 0 && lowerbound < grid.rows, uFormat("lowerbound=%f grid.rows=%d x=%d slope=%f b=%f x=%f", lowerbound, grid.rows, x, slope, b, x).c_str());
-		UASSERT_MSG(upperbound >= 0 && upperbound < grid.rows, uFormat("upperbound=%f grid.rows=%d x+1=%d slope=%f b=%f x=%f", upperbound, grid.rows, x+1, slope, b, x).c_str());
+		if(!swapped)
+		{
+			UASSERT_MSG(lowerbound >= 0 && lowerbound < grid.rows, uFormat("lowerbound=%f grid.rows=%d x=%d slope=%f b=%f x=%f", lowerbound, grid.rows, x, slope, b, x).c_str());
+			UASSERT_MSG(upperbound >= 0 && upperbound < grid.rows, uFormat("upperbound=%f grid.rows=%d x+1=%d slope=%f b=%f x=%f", upperbound, grid.rows, x+1, slope, b, x).c_str());
+		}
+		else
+		{
+			UASSERT_MSG(lowerbound >= 0 && lowerbound < grid.cols, uFormat("lowerbound=%f grid.cols=%d x=%d slope=%f b=%f x=%f", lowerbound, grid.cols, x, slope, b, x).c_str());
+			UASSERT_MSG(upperbound >= 0 && upperbound < grid.cols, uFormat("upperbound=%f grid.cols=%d x+1=%d slope=%f b=%f x=%f", upperbound, grid.cols, x+1, slope, b, x).c_str());
+		}
 
 		for(int y = lowerbound; y<=(int)upperbound; ++y)
 		{
-			char & v = grid.at<char>(y, x);
-			if(v == 100 && stopOnObstacle)
+			char * v;
+			if(swapped)
+			{
+				v = &grid.at<char>(x, y);
+			}
+			else
+			{
+				v = &grid.at<char>(y, x);
+			}
+			if(*v == 100 && stopOnObstacle)
 			{
 				return;
 			}
 			else
 			{
-				v = 0; // free space
+				*v = 0; // free space
 			}
 		}
 	}

@@ -65,7 +65,7 @@
             <x>0</x>
             <y>0</y>
             <width>744</width>
-            <height>1074</height>
+            <height>1056</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -421,6 +421,23 @@ Show a yellow background when the number of odometry inliers goes under this thr
                        </item>
                        <item>
                         <layout class="QGridLayout" name="gridLayout_20" columnstretch="0,1">
+                         <item row="0" column="0">
+                          <widget class="QCheckBox" name="checkBox_map_shown">
+                           <property name="text">
+                            <string/>
+                           </property>
+                           <property name="checked">
+                            <bool>false</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_map_shown">
+                           <property name="text">
+                            <string>Show in 3D map view.</string>
+                           </property>
+                          </widget>
+                         </item>
                          <item row="1" column="0">
                           <widget class="QDoubleSpinBox" name="doubleSpinBox_map_resolution">
                            <property name="suffix">
@@ -444,23 +461,6 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                           </widget>
                          </item>
-                         <item row="3" column="1">
-                          <widget class="QLabel" name="label_164">
-                           <property name="text">
-                            <string>Fill empty space.</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="3" column="0">
-                          <widget class="QCheckBox" name="checkBox_map_fillEmptySpace">
-                           <property name="text">
-                            <string/>
-                           </property>
-                           <property name="checked">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
                          <item row="2" column="1">
                           <widget class="QLabel" name="label_170">
                            <property name="text">
@@ -468,24 +468,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                           </widget>
                          </item>
-                         <item row="0" column="0">
-                          <widget class="QCheckBox" name="checkBox_map_shown">
-                           <property name="text">
-                            <string/>
-                           </property>
-                           <property name="checked">
-                            <bool>false</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="0" column="1">
-                          <widget class="QLabel" name="label_map_shown">
-                           <property name="text">
-                            <string>Show in 3D map view.</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="4" column="0">
+                         <item row="3" column="0">
                           <widget class="QCheckBox" name="checkBox_map_occupancyFrom3DCloud">
                            <property name="text">
                             <string/>
@@ -511,39 +494,13 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                           </widget>
                          </item>
-                         <item row="4" column="1">
+                         <item row="3" column="1">
                           <widget class="QLabel" name="label_210">
                            <property name="text">
                             <string>Occupancy from 3D cloud projection on the ground. Laser scans are ignored when activated.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="5" column="1">
-                          <widget class="QLabel" name="label_211">
-                           <property name="text">
-                            <string>Fill empty radius. Used when occupancy from 3D projection is activated.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="5" column="0">
-                          <widget class="QSpinBox" name="spinbox_map_fillEmptyRadius">
-                           <property name="suffix">
-                            <string> cells</string>
-                           </property>
-                           <property name="minimum">
-                            <number>0</number>
-                           </property>
-                           <property name="maximum">
-                            <number>10</number>
-                           </property>
-                           <property name="value">
-                            <number>1</number>
                            </property>
                           </widget>
                          </item>

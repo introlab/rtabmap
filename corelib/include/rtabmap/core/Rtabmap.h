@@ -88,6 +88,7 @@ public:
 	bool isIDsGenerated() const;
 	const Statistics & getStatistics() const;
 	//bool getMetricData(int locationId, cv::Mat & rgb, cv::Mat & depth, float & depthConstant, Transform & pose, Transform & localTransform) const;
+	const std::map<int, Transform> & getLocalOptimizedPoses() const {return _optimizedPoses;}
 	Transform getPose(int locationId) const;
 	Transform getMapCorrection() const {return _mapCorrection;}
 	const Memory * getMemory() const {return _memory;}

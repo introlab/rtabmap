@@ -114,6 +114,7 @@ public:
 	int getMapId(int signatureId) const;
 	cv::Mat getImageCompressed(int signatureId) const;
 	Signature getSignatureData(int locationId, bool uncompressedData = false);
+	Signature getSignatureDataConst(int locationId) const;
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}
 	bool isIncremental() const {return _incrementalMemory;}

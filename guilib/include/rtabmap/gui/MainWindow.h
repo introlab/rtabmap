@@ -275,7 +275,8 @@ private:
 	std::map<int, int> _currentMapIds;   // <nodeId, mapId>
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > _createdClouds;
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > _createdScans;
-	std::map<int, std::pair<cv::Mat, cv::Mat> > _occupancyLocalMaps; // <ground, obstacles>
+	std::map<int, std::pair<cv::Mat, cv::Mat> > _projectionLocalMaps; // <ground, obstacles>
+	std::map<int, std::pair<cv::Mat, cv::Mat> > _gridLocalMaps; // <ground, obstacles>
 	Transform _odometryCorrection;
 	Transform _lastOdomPose;
 	bool _lastOdometryProcessed;
