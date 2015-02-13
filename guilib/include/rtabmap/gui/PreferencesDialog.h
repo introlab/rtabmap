@@ -97,11 +97,12 @@ public:
 	virtual QString getIniFilePath() const;
 	void init();
 
+	// save stuff
+	void saveSettings();
 	void saveWindowGeometry(const QWidget * window);
 	void loadWindowGeometry(QWidget * window);
 	void saveMainWindowState(const QMainWindow * mainWindow);
 	void loadMainWindowState(QMainWindow * mainWindow, bool & maximized);
-
 	void saveWidgetState(const QWidget * widget);
 	void loadWidgetState(QWidget * widget);
 
@@ -207,7 +208,6 @@ signals:
 public slots:
 	void setInputRate(double value);
 	void setDetectionRate(double value);
-	void setHardThr(int value);
 	void setTimeLimit(float value);
 	void setSLAMMode(bool enabled);
 	void selectSourceImage(Src src = kSrcUndef, bool checked = true);
@@ -260,9 +260,11 @@ protected:
 	virtual bool readCoreSettings(const QString & filePath = QString());
 
 	virtual void writeSettings(const QString & filePath = QString());
-	virtual void writeGuiSettings(const QString & filePath = QString());
-	virtual void writeCameraSettings(const QString & filePath = QString());
-	virtual void writeCoreSettings(const QString & filePath = QString());
+	virtual void writeGuiSettings(const QString & filePath = QString()) const;
+	virtual void writeCameraSettings(const QString & filePath = QString()) const;
+	virtual void writeCoreSettings(const QString & filePath = QString()) const;
+
+	QString getTmpIniFilePath() const;
 
 private:
 	bool validateForm();

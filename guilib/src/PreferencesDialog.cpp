@@ -545,6 +545,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 }
 
 PreferencesDialog::~PreferencesDialog() {
+	// remove tmp ini file
+	QFile::remove(getTmpIniFilePath());
 	delete _ui;
 }
 
@@ -558,9 +560,14 @@ void PreferencesDialog::init()
 	}
 
 	this->readSettings();
-	this->writeSettings();// This will create the ini file if not exist
+	this->writeSettings(getTmpIniFilePath());
 
 	_initialized = true;
+}
+
+void PreferencesDialog::saveSettings()
+{
+	writeSettings();
 }
 
 void PreferencesDialog::setupTreeView()
@@ -753,6 +760,8 @@ void PreferencesDialog::closeEvent(QCloseEvent *event)
 	UDEBUG("");
 	_parameters.clear();
 	_obsoletePanels = kPanelDummy;
+	this->readGuiSettings(getTmpIniFilePath());
+	this->readCameraSettings(getTmpIniFilePath());
 	event->accept();
 }
 
@@ -766,6 +775,8 @@ void PreferencesDialog::closeDialog ( QAbstractButton * button )
 	case QDialogButtonBox::RejectRole:
 		_parameters.clear();
 		_obsoletePanels = kPanelDummy;
+		this->readGuiSettings(getTmpIniFilePath());
+		this->readCameraSettings(getTmpIniFilePath());
 		this->reject();
 		break;
 
@@ -775,7 +786,7 @@ void PreferencesDialog::closeDialog ( QAbstractButton * button )
 		{
 			if(validateForm())
 			{
-				writeSettings();
+				writeSettings(getTmpIniFilePath());
 				this->accept();
 			}
 		}
@@ -799,7 +810,7 @@ void PreferencesDialog::resetApply ( QAbstractButton * button )
 		updateBasicParameter();// make that changes without editing finished signal are updated.
 		if(validateForm())
 		{
-			writeSettings();
+			writeSettings(getTmpIniFilePath());
 		}
 		break;
 
@@ -993,6 +1004,11 @@ QString PreferencesDialog::getIniFilePath() const
 		QDir::home().mkdir(".rtabmap");
 	}
 	return privatePath + "/rtabmap.ini";
+}
+
+QString PreferencesDialog::getTmpIniFilePath() const
+{
+	return getIniFilePath()+".tmp";
 }
 
 void PreferencesDialog::loadConfigFrom()
@@ -1246,7 +1262,9 @@ bool PreferencesDialog::saveConfigTo()
 	QString path = QFileDialog::getSaveFileName(this, tr("Save settings..."), this->getWorkingDirectory()+QDir::separator()+"config.ini", "*.ini");
 	if(!path.isEmpty())
 	{
-		this->writeSettings(path);
+		writeGuiSettings(path);
+		writeCameraSettings(path);
+		writeCoreSettings(path);
 		return true;
 	}
 	return false;
@@ -1288,7 +1306,7 @@ void PreferencesDialog::writeSettings(const QString & filePath)
 	_obsoletePanels = kPanelDummy;
 }
 
-void PreferencesDialog::writeGuiSettings(const QString & filePath)
+void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 {
 	QString path = getIniFilePath();
 	if(!filePath.isEmpty())
@@ -1346,7 +1364,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath)
 	settings.endGroup(); // rtabmap
 }
 
-void PreferencesDialog::writeCameraSettings(const QString & filePath)
+void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 {
 	QString path = getIniFilePath();
 	if(!filePath.isEmpty())
@@ -1404,7 +1422,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath)
 	settings.endGroup();
 }
 
-void PreferencesDialog::writeCoreSettings(const QString & filePath)
+void PreferencesDialog::writeCoreSettings(const QString & filePath) const
 {
 	QString path = getIniFilePath();
 	if(!filePath.isEmpty())
@@ -1611,7 +1629,7 @@ void PreferencesDialog::readSettingsEnd()
 {
 	QApplication::processEvents();
 
-	this->readSettings();
+	this->readSettings(getTmpIniFilePath());
 
 	_progressDialog->setValue(1);
 	if(this->isVisible())
@@ -2026,7 +2044,7 @@ void PreferencesDialog::selectSourceImage(Src src, bool ckecked)
 
 		if(validateForm())
 		{
-			this->writeSettings();
+			this->writeSettings(getTmpIniFilePath());
 		}
 		else
 		{
@@ -2077,7 +2095,7 @@ void PreferencesDialog::selectSourceDatabase(bool user, bool ckecked)
 
 		if(validateForm())
 		{
-			this->writeSettings();
+			this->writeSettings(getTmpIniFilePath());
 		}
 		else
 		{
@@ -2144,7 +2162,7 @@ void PreferencesDialog::selectSourceRGBD(Src src, bool ckecked)
 		// Even if there is no change, MainWindow should be notified
 		makeObsoleteSourcePanel();
 
-		this->writeSettings();
+		this->writeSettings(getTmpIniFilePath());
 	}
 	else
 	{
@@ -3210,24 +3228,6 @@ bool PreferencesDialog::isSLAMMode() const
 }
 
 /*** SETTERS ***/
-void PreferencesDialog::setHardThr(int value)
-{
-	double dValue = double(value)/100;
-	ULOGGER_DEBUG("PreferencesDialog::setHardThr(%f)", dValue);
-	if(_ui->general_doubleSpinBox_hardThr->value() != dValue)
-	{
-		_ui->general_doubleSpinBox_hardThr->setValue(dValue);
-		if(validateForm())
-		{
-			this->writeSettings();
-		}
-		else
-		{
-			this->readSettingsBegin();
-		}
-	}
-}
-
 void PreferencesDialog::setInputRate(double value)
 {
 	ULOGGER_DEBUG("imgRate=%2.2f", value);
@@ -3236,7 +3236,7 @@ void PreferencesDialog::setInputRate(double value)
 		_ui->general_doubleSpinBox_imgRate->setValue(value);
 		if(validateForm())
 		{
-			this->writeSettings();
+			this->writeSettings(getTmpIniFilePath());
 		}
 		else
 		{
@@ -3253,7 +3253,7 @@ void PreferencesDialog::setDetectionRate(double value)
 		_ui->general_doubleSpinBox_detectionRate->setValue(value);
 		if(validateForm())
 		{
-			this->writeSettings();
+			this->writeSettings(getTmpIniFilePath());
 		}
 		else
 		{
@@ -3270,7 +3270,7 @@ void PreferencesDialog::setTimeLimit(float value)
 		_ui->general_doubleSpinBox_timeThr->setValue(value);
 		if(validateForm())
 		{
-			this->writeSettings();
+			this->writeSettings(getTmpIniFilePath());
 		}
 		else
 		{
@@ -3287,7 +3287,7 @@ void PreferencesDialog::setSLAMMode(bool enabled)
 		_ui->general_checkBox_SLAM_mode->setChecked(enabled);
 		if(validateForm())
 		{
-			this->writeSettings();
+			this->writeSettings(getTmpIniFilePath());
 		}
 		else
 		{

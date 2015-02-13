@@ -364,6 +364,11 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	qRegisterMetaType<rtabmap::ParametersMap>("rtabmap::ParametersMap");
 	connect(_preferencesDialog, SIGNAL(settingsChanged(rtabmap::ParametersMap)), this, SLOT(applyPrefSettings(rtabmap::ParametersMap)));
 	// config GUI modified
+	connect(_preferencesDialog, SIGNAL(settingsChanged(PreferencesDialog::PANEL_FLAGS)), this, SLOT(configGUIModified()));
+	if(prefDialog == 0)
+	{
+		connect(_preferencesDialog, SIGNAL(settingsChanged(rtabmap::ParametersMap)), this, SLOT(configGUIModified()));
+	}
 	connect(_ui->imageView_source, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_ui->imageView_loopClosure, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_ui->imageView_odometry, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
@@ -492,7 +497,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
 		{
 			QMessageBox::Button b=QMessageBox::question(this,
 					tr("RTAB-Map"),
-					tr("There are unsaved GUI changes. Save them?"),
+					tr("There are unsaved changes. Save them?"),
 					QMessageBox::Save | QMessageBox::Cancel | QMessageBox::Discard);
 			if(b == QMessageBox::Save)
 			{
@@ -2252,6 +2257,7 @@ void MainWindow::saveConfigGUI()
 	_preferencesDialog->saveWidgetState(_exportDialog);
 	_preferencesDialog->saveWidgetState(_postProcessingDialog);
 	_preferencesDialog->saveWidgetState(_ui->graphicsView_graphView);
+	_preferencesDialog->saveSettings();
 	this->setWindowModified(false);
 }
 
