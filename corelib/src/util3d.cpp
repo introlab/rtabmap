@@ -827,7 +827,7 @@ cv::Mat disparityFromStereoImages(
 			leftImage.type() == CV_8UC1 && rightImage.type() == CV_8UC1 &&
 			leftImage.cols == rightImage.cols &&
 			leftImage.rows == rightImage.rows);
-	cv::StereoBM stereo(cv::StereoBM::BASIC_PRESET, 160, 15);
+	cv::StereoBM stereo(cv::StereoBM::BASIC_PRESET, 0, 15);
 	cv::Mat disparity;
 	stereo(leftImage, rightImage, disparity, CV_16SC1);
 	cv::filterSpeckles(disparity, 0, 1000, 16);
@@ -2560,6 +2560,53 @@ pcl::IndicesPtr concatenate(const pcl::IndicesPtr & indicesA, const pcl::Indices
 		ind->at(oi++) = indicesB->at(i);
 	}
 	return ind;
+}
+
+cv::Mat decimate(const cv::Mat & image, int decimation)
+{
+	UASSERT(decimation >= 1);
+	cv::Mat out;
+	if(!image.empty())
+	{
+		if(decimation > 1)
+		{
+			if((image.type() == CV_32FC1 || image.type()==CV_16UC1))
+			{
+				UASSERT_MSG(image.rows % decimation == 0 && image.cols % decimation == 0, "Decimation of depth images should be exact!");
+
+				out = cv::Mat(image.rows/decimation, image.cols/decimation, image.type());
+				if(image.type() == CV_32FC1)
+				{
+					for(int j=0; j<out.rows; ++j)
+					{
+						for(int i=0; i<out.cols; ++i)
+						{
+							out.at<float>(j, i) = image.at<float>(j*decimation, i*decimation);
+						}
+					}
+				}
+				else // CV_16UC1
+				{
+					for(int j=0; j<out.rows; ++j)
+					{
+						for(int i=0; i<out.cols; ++i)
+						{
+							out.at<unsigned short>(j, i) = image.at<unsigned short>(j*decimation, i*decimation);
+						}
+					}
+				}
+			}
+			else
+			{
+				cv::resize(image, out, cv::Size(), 1.0f/float(decimation), 1.0f/float(decimation), cv::INTER_AREA);
+			}
+		}
+		else
+		{
+			out = image;
+		}
+	}
+	return out;
 }
 
 }

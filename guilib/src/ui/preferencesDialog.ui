@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>7</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -2725,16 +2725,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    <layout class="QVBoxLayout" name="verticalLayout_10">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_42" columnstretch="0,1">
-                      <item row="5" column="1">
-                       <widget class="QLabel" name="label_retrieved_4">
-                        <property name="text">
-                         <string>Initialize the Woking Memory with all nodes from Long-Term memory, instead of only nodes of the last session. This may be useful in localization mode, where less processing time is required than in SLAM mode, so more nodes can be kept in Working Memory.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="0" column="0">
                        <widget class="QSpinBox" name="general_spinBox_maxStMemSize">
                         <property name="minimum">
@@ -2745,6 +2735,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="value">
                          <number>15</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_retrieved_4">
+                        <property name="text">
+                         <string>Initialize the Woking Memory with all nodes from Long-Term memory, instead of only nodes of the last session. This may be useful in localization mode, where less processing time is required than in SLAM mode, so more nodes can be kept in Working Memory.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>
@@ -2877,6 +2877,26 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="checked">
                          <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="1">
+                       <widget class="QLabel" name="label_retrieved_6">
+                        <property name="text">
+                         <string>Image decimation. This feature can be used to save images in lower resolution (size/decimation).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QSpinBox" name="spinBox_imageDecimation">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>16</number>
                         </property>
                        </widget>
                       </item>

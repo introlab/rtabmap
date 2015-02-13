@@ -401,6 +401,8 @@ pcl::IndicesPtr RTABMAP_EXP concatenate(
 		const pcl::IndicesPtr & indicesA,
 		const pcl::IndicesPtr & indicesB);
 
+cv::Mat RTABMAP_EXP decimate(const cv::Mat & image, int d);
+
 ///////////////////
 // Templated PCL methods
 ///////////////////

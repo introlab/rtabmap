@@ -123,8 +123,7 @@ public:
 	bool isInWM(int signatureId) const {return _workingMem.find(signatureId) != _workingMem.end();}
 	bool isInLTM(int signatureId) const {return !this->isInSTM(signatureId) && !this->isInWM(signatureId);}
 	bool isIDsGenerated() const {return _generateIds;}
-	int getLastGlobalLoopClosureParentId() const {return _lastGlobalLoopClosureParentId;}
-	int getLastGlobalLoopClosureChildId() const {return _lastGlobalLoopClosureChildId;}
+	int getLastGlobalLoopClosureId() const {return _lastGlobalLoopClosureId;}
 	const Feature2D * getFeature2D() const {return _feature2D;}
 
 	void setRoi(const std::string & roi);
@@ -209,12 +208,12 @@ private:
 	bool _idUpdatedToNewOneRehearsal;
 	bool _generateIds;
 	bool _badSignaturesIgnored;
+	int _imageDecimation;
 
 	int _idCount;
 	int _idMapCount;
 	Signature * _lastSignature;
-	int _lastGlobalLoopClosureParentId;
-	int _lastGlobalLoopClosureChildId;
+	int _lastGlobalLoopClosureId;
 	bool _memoryChanged; // False by default, become true only when Memory::update() is called.
 	bool _linksChanged; // False by default, become true when links are modified.
 	int _signaturesAdded;

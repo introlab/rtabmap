@@ -97,7 +97,7 @@ public:
 	float getTimeThreshold() const {return _maxTimeAllowed;} // in ms
 	void setTimeThreshold(float maxTimeAllowed); // in ms
 
-	void triggerNewMap();
+	int triggerNewMap();
 	void generateDOTGraph(const std::string & path, int id=0, int margin=5);
 	void generateTOROGraph(const std::string & path, bool optimized, bool global);
 	void resetMemory();
@@ -186,6 +186,8 @@ private:
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;
 	double _lastProcessTime;
+	int _lastLocalLoopClosureParentId;
+	int _lastLocalLoopClosureChildId;
 
 	// Abstract classes containing all loop closure
 	// strategies for a type of signature or configuration.

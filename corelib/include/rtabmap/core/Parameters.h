@@ -192,7 +192,9 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, RehearsalIdUpdatedToNewOne, bool, false, "On merge, update to new id. When false, no copy.");
 	RTABMAP_PARAM(Mem, GenerateIds,             bool, true,     "True=Generate location Ids, False=use input image ids.");
 	RTABMAP_PARAM(Mem, BadSignaturesIgnored,    bool, false,     "Bad signatures are ignored.");
-	RTABMAP_PARAM(Mem, InitWMWithAllNodes,      bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.")
+	RTABMAP_PARAM(Mem, InitWMWithAllNodes,      bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.");
+	RTABMAP_PARAM(Mem, ImageDecimation,         int, 1,          "Image decimation (>=1).");
+
 
 	// KeypointMemory (Keypoint-based)
 	RTABMAP_PARAM_COND(Kp, NNStrategy,       int, RTABMAP_NONFREE, 1, 3, "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
@@ -294,7 +296,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionSpace,    bool, false, 	"Detection over locations (in Working Memory or STM) near in space.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionRadius,   float, 15, 		"Maximum radius for space detection.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionNeighbors,   int, 20, 	"Maximum nearest neighbor.");
-	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxDiffID,   int, 0,      "Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.")
+	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxDiffID,   int, 50,      "Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.")
 
 	// Odometry
 	RTABMAP_PARAM(Odom, Strategy,           	int, 0, 		"0=Bag-of-words 1=Optical Flow");

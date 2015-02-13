@@ -66,11 +66,11 @@ Memory::Memory(const ParametersMap & parameters) :
 	_idUpdatedToNewOneRehearsal(Parameters::defaultMemRehearsalIdUpdatedToNewOne()),
 	_generateIds(Parameters::defaultMemGenerateIds()),
 	_badSignaturesIgnored(Parameters::defaultMemBadSignaturesIgnored()),
+	_imageDecimation(Parameters::defaultMemImageDecimation()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
-	_lastGlobalLoopClosureParentId(0),
-	_lastGlobalLoopClosureChildId(0),
+	_lastGlobalLoopClosureId(0),
 	_memoryChanged(false),
 	_linksChanged(false),
 	_signaturesAdded(0),
@@ -384,10 +384,12 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemRehearsalSimilarity(), _similarityThreshold);
 	Parameters::parse(parameters, Parameters::kMemRecentWmRatio(), _recentWmRatio);
 	Parameters::parse(parameters, Parameters::kMemSTMSize(), _maxStMemSize);
+	Parameters::parse(parameters, Parameters::kMemImageDecimation(), _imageDecimation);
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
 	UASSERT_MSG(_recentWmRatio >= 0.0f && _recentWmRatio <= 1.0f, uFormat("value=%f", _recentWmRatio).c_str());
+	UASSERT(_imageDecimation >= 1);
 
 	// SLAM mode vs Localization mode
 	iter = parameters.find(Parameters::kMemIncrementalMemory());
@@ -589,9 +591,6 @@ bool Memory::update(const SensorData & data, Statistics * stats)
 	}
 
 	UDEBUG("totalTimer = %fs", totalTimer.ticks());
-
-	if(stats) stats->addStatistic(Statistics::kLoopLast_loop_closure_parent(), _lastGlobalLoopClosureParentId);
-	if(stats) stats->addStatistic(Statistics::kLoopLast_loop_closure_child(), _lastGlobalLoopClosureChildId);
 
 	return true;
 }
@@ -1003,8 +1002,7 @@ void Memory::clear()
 	}
 	UDEBUG("");
 	_lastSignature = 0;
-	_lastGlobalLoopClosureParentId = 0;
-	_lastGlobalLoopClosureChildId = 0;
+	_lastGlobalLoopClosureId = 0;
 	_idCount = kIdStart;
 	_idMapCount = kIdStart;
 	_memoryChanged = false;
@@ -1303,10 +1301,10 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 		bool recentWmImmunized = false;
 		// look for the position of the lastLoopClosureId in WM
 		int currentRecentWmSize = 0;
-		if(_lastGlobalLoopClosureParentId > 0 && _stMem.find(_lastGlobalLoopClosureParentId) == _stMem.end())
+		if(_lastGlobalLoopClosureId > 0 && _stMem.find(_lastGlobalLoopClosureId) == _stMem.end())
 		{
 			// If set, it must be in WM
-			std::set<int>::const_iterator iter = _workingMem.find(_lastGlobalLoopClosureParentId);
+			std::set<int>::const_iterator iter = _workingMem.find(_lastGlobalLoopClosureId);
 			while(iter != _workingMem.end())
 			{
 				++currentRecentWmSize;
@@ -1318,9 +1316,9 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 			}
 			else if(currentRecentWmSize == 0 && _workingMem.size() > 1)
 			{
-				UERROR("Last loop closure id not found in WM (%d)", _lastGlobalLoopClosureParentId);
+				UERROR("Last loop closure id not found in WM (%d)", _lastGlobalLoopClosureId);
 			}
-			UDEBUG("currentRecentWmSize=%d, recentWmMaxSize=%d, _recentWmRatio=%f, end recent wM = %d", currentRecentWmSize, recentWmMaxSize, _recentWmRatio, _lastGlobalLoopClosureParentId);
+			UDEBUG("currentRecentWmSize=%d, recentWmMaxSize=%d, _recentWmRatio=%f, end recent wM = %d", currentRecentWmSize, recentWmMaxSize, _recentWmRatio, _lastGlobalLoopClosureId);
 		}
 
 		// Ignore neighbor of the last location in STM (for neighbor links redirection issue during Rehearsal).
@@ -1332,8 +1330,8 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 
 		for(std::set<int>::const_iterator memIter = wm.begin(); memIter != wm.end(); ++memIter)
 		{
-			if( (recentWmImmunized && *memIter > _lastGlobalLoopClosureParentId) ||
-				*memIter == _lastGlobalLoopClosureParentId)
+			if( (recentWmImmunized && *memIter > _lastGlobalLoopClosureId) ||
+				*memIter == _lastGlobalLoopClosureId)
 			{
 				// ignore recent memory
 			}
@@ -1390,7 +1388,7 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 					removableSignatures.push_back(iter->second);
 					addedSignatures.insert(iter->second->id());
 
-					if(iter->second->id() > _lastGlobalLoopClosureParentId)
+					if(iter->second->id() > _lastGlobalLoopClosureId)
 					{
 						++recentWmCount;
 						if(currentRecentWmSize - recentWmCount < recentWmMaxSize)
@@ -1400,7 +1398,7 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 						}
 					}
 				}
-				else if(iter->second->id() < _lastGlobalLoopClosureParentId)
+				else if(iter->second->id() < _lastGlobalLoopClosureId)
 				{
 					UDEBUG("weight=%d, id=%d",
 							iter->first.weight,
@@ -1579,10 +1577,9 @@ void Memory::removeLink(int oldId, int newId)
 					break;
 				}
 			}
-			if(noChildrenAnymore && newS->id() == _lastGlobalLoopClosureParentId)
+			if(noChildrenAnymore && newS->id() == _lastGlobalLoopClosureId)
 			{
-				_lastGlobalLoopClosureParentId = 0;
-				_lastGlobalLoopClosureChildId = 0;
+				_lastGlobalLoopClosureId = 0;
 			}
 		}
 		else
@@ -2181,8 +2178,7 @@ bool Memory::addLink(int oldId, int newId, const Transform & transform, Link::Ty
 
 		if(_incrementalMemory && type == Link::kGlobalClosure)
 		{
-			_lastGlobalLoopClosureParentId = newS->id()>oldS->id()?newS->id():oldS->id();
-			_lastGlobalLoopClosureChildId = newS->id()>oldS->id()?oldS->id():newS->id();
+			_lastGlobalLoopClosureId = newS->id()>oldS->id()?newS->id():oldS->id();
 
 			// udpate weights only if the memory is incremental
 			if(newS->id() > oldS->id())
@@ -2470,9 +2466,9 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 			// update weight
 			newS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
 
-			if(_lastGlobalLoopClosureParentId == oldS->id())
+			if(_lastGlobalLoopClosureId == oldS->id())
 			{
-				_lastGlobalLoopClosureParentId = newS->id();
+				_lastGlobalLoopClosureId = newS->id();
 			}
 		}
 		else
@@ -2978,8 +2974,8 @@ private:
 Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 {
 	UASSERT(data.image().empty() || data.image().type() == CV_8UC1 || data.image().type() == CV_8UC3);
-	UASSERT(data.depth().empty() || data.depth().type() == CV_16UC1 || data.depth().type() == CV_32FC1);
-	UASSERT(data.rightImage().empty() || data.rightImage().type() == CV_8UC1);
+	UASSERT(data.depth().empty() || ((data.depth().type() == CV_16UC1 || data.depth().type() == CV_32FC1) && data.depth().rows == data.image().rows && data.depth().cols == data.image().cols));
+	UASSERT(data.rightImage().empty() || (data.rightImage().type() == CV_8UC1 && data.rightImage().rows == data.image().rows && data.rightImage().cols == data.image().cols));
 	UASSERT(data.laserScan().empty() || data.laserScan().type() == CV_32FC2);
 	UASSERT(_feature2D != 0);
 
@@ -3372,11 +3368,47 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 		unsigned int i=0;
 		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end() && i < keypoints.size(); ++iter, ++i)
 		{
-			words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
+			if(_imageDecimation > 1)
+			{
+				cv::KeyPoint kpt = keypoints[i];
+				kpt.pt.x /= float(_imageDecimation);
+				kpt.pt.y /= float(_imageDecimation);
+				kpt.size /= float(_imageDecimation);
+				words.insert(std::pair<int, cv::KeyPoint>(*iter, kpt));
+			}
+			else
+			{
+				words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
+			}
 			if(keypoints3D->size())
 			{
 				words3D.insert(std::pair<int, pcl::PointXYZ>(*iter, keypoints3D->at(i)));
 			}
+		}
+	}
+
+	cv::Mat image = data.image();
+	cv::Mat depthOrRightImage = data.depthOrRightImage();
+	float fx = data.fx();
+	float fyOrBaseline = data.fyOrBaseline();
+	float cx = data.cx();
+	float cy = data.cy();
+
+	// apply decimation?
+	if((this->isBinDataKept() || this->isRawDataKept()) && _imageDecimation > 1)
+	{
+		image = util3d::decimate(image, _imageDecimation);
+		depthOrRightImage = util3d::decimate(depthOrRightImage, _imageDecimation);
+		cx/=float(_imageDecimation);
+		cy/=float(_imageDecimation);
+		if(data.baseline() != 0.0f)
+		{
+			fx/=float(_imageDecimation);
+		}
+		else
+		{
+			fx/=float(_imageDecimation);
+			fyOrBaseline/=float(_imageDecimation);
 		}
 	}
 
@@ -3385,20 +3417,14 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 	{
 		std::vector<unsigned char> imageBytes;
 		std::vector<unsigned char> depthBytes;
-		if(data.depth().type() == CV_32FC1)
+
+		if(!depthOrRightImage.empty() && depthOrRightImage.type() == CV_32FC1)
 		{
 			UWARN("Keeping raw data in database: depth type is 32FC1, use 16UC1 depth format to avoid a conversion.");
+			depthOrRightImage = util3d::cvtDepthFromFloat(depthOrRightImage);
 		}
-		cv::Mat depthOrRightImage;
-		if(!data.depth().empty())
-		{
-			depthOrRightImage = data.depth().type() == CV_32FC1?util3d::cvtDepthFromFloat(data.depth()):data.depth();
-		}
-		else if(!data.rightImage().empty())
-		{
-			depthOrRightImage = data.rightImage();
-		}
-		rtabmap::CompressionThread ctImage(data.image(), std::string(".jpg"));
+
+		rtabmap::CompressionThread ctImage(image, std::string(".jpg"));
 		rtabmap::CompressionThread ctDepth(depthOrRightImage, std::string(".png"));
 		rtabmap::CompressionThread ctDepth2d(data.laserScan());
 		ctImage.start();
@@ -3416,10 +3442,10 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 			ctDepth2d.getCompressedData(),
 			ctImage.getCompressedData(),
 			ctDepth.getCompressedData(),
-			data.fx(),
-			data.fy()>0.0f?data.fy():data.baseline(),
-			data.cx(),
-			data.cy(),
+			fx,
+			fyOrBaseline,
+			cx,
+			cy,
 			data.localTransform());
 	}
 	else
@@ -3433,8 +3459,8 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 	}
 	if(this->isRawDataKept())
 	{
-		s->setImageRaw(data.image());
-		s->setDepthRaw(data.depth());
+		s->setImageRaw(image);
+		s->setDepthRaw(depthOrRightImage);
 		s->setLaserScanRaw(data.laserScan());
 	}
 
