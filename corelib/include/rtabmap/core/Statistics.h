@@ -67,9 +67,6 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(LocalLoop, Space_closure_id,);
 	RTABMAP_STATS(LocalLoop, Space_nearest_id,);
 	RTABMAP_STATS(LocalLoop, Space_neighbors,);
-	RTABMAP_STATS(LocalLoop, Space_diff_id,);
-	RTABMAP_STATS(LocalLoop, Space_last_parent,);
-	RTABMAP_STATS(LocalLoop, Space_last_child,);
 
 	RTABMAP_STATS(Memory, Working_memory_size,);
 	RTABMAP_STATS(Memory, Short_time_memory_size,);

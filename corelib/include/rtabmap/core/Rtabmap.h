@@ -186,8 +186,6 @@ private:
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;
 	double _lastProcessTime;
-	int _lastLocalLoopClosureParentId;
-	int _lastLocalLoopClosureChildId;
 
 	// Abstract classes containing all loop closure
 	// strategies for a type of signature or configuration.

@@ -112,8 +112,6 @@ Rtabmap::Rtabmap() :
 	_loopClosureHypothesis(0,0.0f),
 	_highestHypothesis(0,0.0f),
 	_lastProcessTime(0.0),
-	_lastLocalLoopClosureParentId(0),
-	_lastLocalLoopClosureChildId(0),
 	_epipolarGeometry(0),
 	_bayesFilter(0),
 	_memory(0),
@@ -595,8 +593,6 @@ int Rtabmap::triggerNewMap()
 		UINFO("New map triggered, new map = %d", mapId);
 		_optimizedPoses.clear();
 		_constraints.clear();
-		_lastLocalLoopClosureParentId = 0;
-		_lastLocalLoopClosureChildId = 0;
 	}
 	return mapId;
 }
@@ -659,8 +655,6 @@ void Rtabmap::resetMemory()
 	_highestHypothesis = std::make_pair(0,0.0f);
 	_loopClosureHypothesis = std::make_pair(0,0.0f);
 	_lastProcessTime = 0.0;
-	_lastLocalLoopClosureParentId = 0;
-	_lastLocalLoopClosureChildId = 0;
 	_optimizedPoses.clear();
 	_constraints.clear();
 	_mapCorrection.setIdentity();
@@ -1378,11 +1372,6 @@ bool Rtabmap::process(const SensorData & data)
 		{
 			// Make the new one the parent of the old one
 			rejectedHypothesis = !_memory->addLink(_loopClosureHypothesis.first, signature->id(), transform, Link::kGlobalClosure, variance);
-			if(!rejectedHypothesis)
-			{
-				_lastLocalLoopClosureParentId = signature->id();
-				_lastLocalLoopClosureChildId = _loopClosureHypothesis.first;
-			}
 		}
 
 		if(rejectedHypothesis)
@@ -1454,9 +1443,6 @@ bool Rtabmap::process(const SensorData & data)
 							localSpaceNearestId,
 							t.prettyPrint().c_str());
 					_memory->addLink(localSpaceNearestId, signature->id(), t, Link::kLocalSpaceClosure, variance);
-
-					_lastLocalLoopClosureParentId = signature->id();
-					_lastLocalLoopClosureChildId = localSpaceNearestId;
 
 					// Old map -> new map, used for localization correction on loop closure
 					const Signature * oldS = _memory->getSignature(localSpaceNearestId);
@@ -1577,18 +1563,6 @@ bool Rtabmap::process(const SensorData & data)
 			statistics_.addStatistic(Statistics::kLocalLoopSpace_closure_id(), localSpaceClosureId);
 			statistics_.addStatistic(Statistics::kLocalLoopSpace_nearest_id(), localSpaceNearestId);
 			statistics_.setLocalLoopClosureId(localSpaceClosureId);
-			if(localSpaceNearestId)
-			{
-				int d1 = abs(signature->id() - localSpaceNearestId);
-				int d2 = abs(localSpaceNearestId - _lastLocalLoopClosureChildId);
-				int d3 = abs(signature->id() - _lastLocalLoopClosureParentId);
-				int d = d1<=d2?d1:d2;
-				d = d <= d3?d:d3;
-				statistics_.addStatistic(Statistics::kLocalLoopSpace_diff_id(), d);
-			}
-			statistics_.addStatistic(Statistics::kLocalLoopSpace_last_parent(), _lastLocalLoopClosureParentId);
-			statistics_.addStatistic(Statistics::kLocalLoopSpace_last_child(), _lastLocalLoopClosureChildId);
-
 			if(_loopClosureHypothesis.first || localSpaceClosureId)
 			{
 				UASSERT(uContains(sLoop->getLinks(), signature->id()));
@@ -1929,13 +1903,16 @@ std::map<int, Transform> Rtabmap::getWMPosesInRadius(
 	std::vector<int> ids(_optimizedPoses.size());
 	int oi = 0;
 	const std::set<int> & stm = _memory->getStMem();
+	//get margins
+	std::map<int, int> margins;
+	if(maxDiffID > 0)
+	{
+		margins = _memory->getNeighborsId(fromId, maxDiffID, 0, true, false);
+	}
 	for(std::map<int, Transform>::const_iterator iter = _optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 	{
-		// Only locations in Working Memory with ID not too far from the last loop closure child id
-		bool diffIdOk = maxDiffID == 0 ||
-				abs(fromId - iter->first) <= maxDiffID ||
-				(abs(iter->first - _lastLocalLoopClosureChildId) <= maxDiffID &&
-				 abs(fromId - _lastLocalLoopClosureParentId) <= maxDiffID);
+		// Only locations in Working Memory not too far from the current node (so inside the margin)
+		bool diffIdOk = maxDiffID == 0 || uContains(margins, iter->first);
 		if(stm.find(iter->first) == stm.end() && diffIdOk)
 		{
 			(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
