@@ -264,7 +264,7 @@ protected:
 	virtual void writeCameraSettings(const QString & filePath = QString()) const;
 	virtual void writeCoreSettings(const QString & filePath = QString()) const;
 
-	QString getTmpIniFilePath() const;
+	virtual QString getTmpIniFilePath() const;
 
 private:
 	bool validateForm();
