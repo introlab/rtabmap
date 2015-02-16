@@ -3401,13 +3401,9 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 		depthOrRightImage = util3d::decimate(depthOrRightImage, _imageDecimation);
 		cx/=float(_imageDecimation);
 		cy/=float(_imageDecimation);
-		if(data.baseline() != 0.0f)
+		fx/=float(_imageDecimation);
+		if(data.fy() != 0.0f)
 		{
-			fx/=float(_imageDecimation);
-		}
-		else
-		{
-			fx/=float(_imageDecimation);
 			fyOrBaseline/=float(_imageDecimation);
 		}
 	}
