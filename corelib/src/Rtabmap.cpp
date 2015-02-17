@@ -817,7 +817,7 @@ bool Rtabmap::process(const SensorData & data)
 		{
 			_optimizedPoses.erase(rehearsedId);
 		}
-		else
+		else if(_rgbdLinearUpdate > 0.0f && _rgbdAngularUpdate > 0.0f)
 		{
 			//============================================================
 			// Minimum displacement required to add to Memory
@@ -827,14 +827,17 @@ bool Rtabmap::process(const SensorData & data)
 			{
 				float x,y,z, roll,pitch,yaw;
 				links.begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-				if(fabs(x) < _rgbdLinearUpdate &&
-					fabs(y) < _rgbdLinearUpdate &&
-					fabs(z) < _rgbdLinearUpdate &&
-					fabs(roll) < _rgbdAngularUpdate &&
-					fabs(pitch) < _rgbdAngularUpdate &&
-					fabs(yaw) < _rgbdAngularUpdate)
+				if((_rgbdLinearUpdate==0.0f || (
+					 fabs(x) < _rgbdLinearUpdate &&
+					 fabs(y) < _rgbdLinearUpdate &&
+					 fabs(z) < _rgbdLinearUpdate)) &&
+					(_rgbdAngularUpdate==0.0f || (
+					 fabs(roll) < _rgbdAngularUpdate &&
+					 fabs(pitch) < _rgbdAngularUpdate &&
+					 fabs(yaw) < _rgbdAngularUpdate)))
 				{
-					UWARN("Ignoring location %d because the displacement is too small!", signature->id());
+					UWARN("Ignoring location %d because the displacement is too small! (d=%f a=%f)",
+							signature->id(), _rgbdLinearUpdate, _rgbdAngularUpdate);
 					_memory->deleteLocation(signature->id());
 					return false;
 				}
@@ -1367,7 +1370,7 @@ bool Rtabmap::process(const SensorData & data)
 			rejectedHypothesis = transform.isNull();
 			if(rejectedHypothesis)
 			{
-				UWARN("Cannot compute a loop closure transform between %d and %d: %s", _loopClosureHypothesis.first, signature->id(), rejectedMsg.c_str());
+				UINFO("Cannot compute a loop closure transform between %d and %d: %s", _loopClosureHypothesis.first, signature->id(), rejectedMsg.c_str());
 			}
 		}
 		if(!rejectedHypothesis)

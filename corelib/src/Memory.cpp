@@ -68,6 +68,8 @@ Memory::Memory(const ParametersMap & parameters) :
 	_badSignaturesIgnored(Parameters::defaultMemBadSignaturesIgnored()),
 	_imageDecimation(Parameters::defaultMemImageDecimation()),
 	_localSpaceLinksKeptInWM(Parameters::defaultMemLocalSpaceLinksKeptInWM()),
+	_rehearsalMaxDistance(Parameters::defaultRGBDLinearUpdate()),
+	_rehearsalMaxAngle(Parameters::defaultRGBDAngularUpdate()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -387,6 +389,8 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemSTMSize(), _maxStMemSize);
 	Parameters::parse(parameters, Parameters::kMemImageDecimation(), _imageDecimation);
 	Parameters::parse(parameters, Parameters::kMemLocalSpaceLinksKeptInWM(), _localSpaceLinksKeptInWM);
+	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rehearsalMaxDistance);
+	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -2429,7 +2433,7 @@ void Memory::rehearsal(Signature * signature, Statistics * stats)
 	//============================================================
 	int id = signature->getLinks().begin()->first;
 	UDEBUG("Comparing with last signature (%d)...", id);
-	const Signature * sB = this->getSignature(id);
+	Signature * sB = this->_getSignature(id);
 	if(!sB)
 	{
 		UFATAL("Signature %d null?!?", id);
@@ -2441,9 +2445,36 @@ void Memory::rehearsal(Signature * signature, Statistics * stats)
 	{
 		if(_incrementalMemory)
 		{
-			if(this->rehearsalMerge(id, signature->id()))
+			if(signature->getLinks().begin()->second.transform().isNull())
 			{
-				merged = id;
+				if(this->rehearsalMerge(id, signature->id()))
+				{
+					merged = id;
+				}
+			}
+			else
+			{
+				float x,y,z, roll,pitch,yaw;
+				signature->getLinks().begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+				if((_rehearsalMaxDistance>0.0f && (
+						fabs(x) > _rehearsalMaxDistance ||
+						fabs(y) > _rehearsalMaxDistance ||
+						fabs(z) > _rehearsalMaxDistance)) ||
+					(_rehearsalMaxAngle>0.0f && (
+					fabs(roll) > _rehearsalMaxAngle ||
+					fabs(pitch) > _rehearsalMaxAngle ||
+					fabs(yaw) > _rehearsalMaxAngle)))
+				{
+					// if the robot has moved, transfer only weight
+					signature->setWeight(signature->getWeight() + 1 + sB->getWeight());
+					sB->setWeight(0);
+					UINFO("Only updated weight to %d of %d (old=%d) because the robot has moved. (d=%f a=%f)",
+							signature->getWeight(), signature->id(), id, _rehearsalMaxDistance, _rehearsalMaxAngle);
+				}
+				else if(this->rehearsalMerge(id, signature->id()))
+				{
+					merged = id;
+				}
 			}
 		}
 		else
@@ -2474,7 +2505,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 		}
 		UASSERT(!newS->isSaved());
 
-		UDEBUG("Rehearsal merge %d and %d", oldS->id(), newS->id());
+		UINFO("Rehearsal merging %d and %d", oldS->id(), newS->id());
 
 		//remove mutual links
 		oldS->removeLink(newId);

@@ -210,6 +210,8 @@ private:
 	bool _badSignaturesIgnored;
 	int _imageDecimation;
 	bool _localSpaceLinksKeptInWM;
+	float _rehearsalMaxDistance;
+	float _rehearsalMaxAngle;
 
 	int _idCount;
 	int _idMapCount;
