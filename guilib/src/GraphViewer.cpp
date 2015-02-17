@@ -162,7 +162,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_nodeRadius(0.01),
 		_linkWidth(0),
 		_gridMap(0),
-		_lastReferential(0),
+		_referential(0),
 		_gridCellSize(0.0f)
 {
 	this->setScene(new QGraphicsScene(this));
@@ -181,16 +181,16 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	item->setParentItem(_root);
 
 	// current pose
-	_lastReferential = new QGraphicsItemGroup();
-	this->scene()->addItem(_lastReferential);
+	_referential = new QGraphicsItemGroup();
+	this->scene()->addItem(_referential);
 	item = this->scene()->addLine(0,0,0,-0.5, QPen(QBrush(Qt::red), _linkWidth));
 	item->setZValue(100);
 	item->setParentItem(_root);
-	_lastReferential->addToGroup(item);
+	_referential->addToGroup(item);
 	item = this->scene()->addLine(0,0,-0.5,0, QPen(QBrush(Qt::green), _linkWidth));
 	item->setZValue(100);
 	item->setParentItem(_root);
-	_lastReferential->addToGroup(item);
+	_referential->addToGroup(item);
 
 
 	_gridMap = this->scene()->addPixmap(QPixmap());
@@ -360,23 +360,21 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	{
 		(--_nodeItems.end()).value()->setColor(Qt::green);
 	}
-	if(poses.size())
-	{
-		Transform t = poses.rbegin()->second;
-		QTransform qt(t.r11(), t.r12(), t.r21(), t.r22(), -t.o24(), -t.o14());
-		_lastReferential->setTransform(qt);
-	}
 
 	this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
 
-	if(poses.size() == 0 || wasEmpty)
+	if(wasEmpty)
 	{
 		this->fitInView(this->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
 	}
-	else
-	{
-		this->centerOn(_lastReferential);
-	}
+}
+
+void GraphViewer::updateReferentialPosition(const Transform & t)
+{
+	QTransform qt(t.r11(), t.r12(), t.r21(), t.r22(), -t.o24(), -t.o14());
+	_referential->setTransform(qt);
+
+	this->ensureVisible(_referential);
 }
 
 void GraphViewer::updateMap(const cv::Mat & map8U, float resolution, float xMin, float yMin)
@@ -458,7 +456,7 @@ void GraphViewer::clearGraph()
 	_nodeItems.clear();
 	qDeleteAll(_linkItems);
 	_linkItems.clear();
-	_lastReferential->resetTransform();
+	_referential->resetTransform();
 	this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
 }
 

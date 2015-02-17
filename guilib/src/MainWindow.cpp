@@ -710,13 +710,16 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 	_ui->statsToolBox->updateStat("Odometry/T_pitch/deg", (float)data.id(), pitch*180.0/CV_PI);
 	_ui->statsToolBox->updateStat("Odometry/T_yaw/deg", (float)data.id(), yaw*180.0/CV_PI);
 
+	if(!pose.isNull() && (_ui->dockWidget_cloudViewer->isVisible() || _ui->graphicsView_graphView->isVisible()))
+	{
+		_lastOdomPose = pose;
+		_odometryReceived = true;
+	}
+
 	if(_ui->dockWidget_cloudViewer->isVisible())
 	{
 		if(!pose.isNull())
 		{
-			_lastOdomPose = pose;
-			_odometryReceived = true;
-
 			// 3d cloud
 			if(data.depthOrRightImage().cols == data.image().cols &&
 			   data.depthOrRightImage().rows == data.image().rows &&
@@ -771,6 +774,15 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 			}
 		}
 		_ui->widget_cloudViewer->update();
+	}
+
+	if(_ui->graphicsView_graphView->isVisible())
+	{
+		if(!pose.isNull() && !data.pose().isNull())
+		{
+			_ui->graphicsView_graphView->updateReferentialPosition(_odometryCorrection*data.pose());
+			_ui->graphicsView_graphView->update();
+		}
 	}
 
 	if(_ui->dockWidget_odometry->isVisible() &&
@@ -1390,6 +1402,10 @@ void MainWindow::updateMapCloud(
 	if(_ui->graphicsView_graphView->isVisible())
 	{
 		_ui->graphicsView_graphView->updateGraph(posesIn, constraints);
+		if(!currentPose.isNull())
+		{
+			_ui->graphicsView_graphView->updateReferentialPosition(currentPose);
+		}
 	}
 	cv::Mat map8U;
 	if((_ui->graphicsView_graphView->isVisible() || _preferencesDialog->getGridMapShown()) && (_createdScans.size() || _preferencesDialog->isGridMapFrom3DCloud()))

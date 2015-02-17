@@ -53,6 +53,7 @@ public:
 
 	void updateGraph(const std::map<int, Transform> & poses,
 					 const std::multimap<int, Link> & constraints);
+	void updateReferentialPosition(const Transform & t);
 	void updateMap(const cv::Mat & map8U, float resolution, float xMin, float yMin);
 	void updatePosterior(const std::map<int, float> & posterior);
 	void updateLocalPath(const std::vector<int> & localPath);
@@ -112,7 +113,7 @@ private:
 	float _nodeRadius;
 	float _linkWidth;
 	QGraphicsPixmapItem * _gridMap;
-	QGraphicsItemGroup * _lastReferential;
+	QGraphicsItemGroup * _referential;
 	float _gridCellSize;
 };
 
