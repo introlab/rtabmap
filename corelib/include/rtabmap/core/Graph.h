@@ -103,7 +103,7 @@ std::multimap<int, int> RTABMAP_EXP radiusPosesClustering(
  * @param to final node
  * @return the path ids from id "from" to id "to" including initial and final nodes.
  */
-std::vector<int> RTABMAP_EXP computePath(
+std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
 			const std::map<int, rtabmap::Transform> & poses,
 			const std::multimap<int, int> & links,
 			int from,

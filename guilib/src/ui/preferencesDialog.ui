@@ -2836,7 +2836,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <string/>
                         </property>
                         <property name="checked">
-                         <bool>true</bool>
+                         <bool>false</bool>
                         </property>
                        </widget>
                       </item>
@@ -2880,7 +2880,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="1">
+                      <item row="8" column="1">
                        <widget class="QLabel" name="label_retrieved_6">
                         <property name="text">
                          <string>Image decimation. This feature can be used to save images in lower resolution (size/decimation).</string>
@@ -2890,13 +2890,33 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
+                      <item row="8" column="0">
                        <widget class="QSpinBox" name="spinBox_imageDecimation">
                         <property name="minimum">
                          <number>1</number>
                         </property>
                         <property name="maximum">
                          <number>16</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="1">
+                       <widget class="QLabel" name="label_retrieved_7">
+                        <property name="text">
+                         <string>If local space links are kept in WM.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QCheckBox" name="checkBox_localSpaceLinksKeptInWM">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>
@@ -5306,6 +5326,23 @@ Warning when set to false: when some nodes are transferred, the first referentia
                         <widget class="QLabel" name="label_space3_3">
                          <property name="text">
                           <string>Maximum anticipated nodes on the computed path that can be retrieved (the number of nodes actually retrieved at each iteration is limited by &quot;Maximum locations retrieved&quot; from the Memory panel).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QCheckBox" name="graphPlan_planWithNearNodesLinked">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_space3_4">
+                         <property name="text">
+                          <string>Before planning in the graph, near nodes are linked together (even if they don't belong to same map). Radius is defined by &quot;Goal reached radius&quot; above.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>

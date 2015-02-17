@@ -194,6 +194,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, BadSignaturesIgnored,    bool, false,     "Bad signatures are ignored.");
 	RTABMAP_PARAM(Mem, InitWMWithAllNodes,      bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.");
 	RTABMAP_PARAM(Mem, ImageDecimation,         int, 1,          "Image decimation (>=1).");
+	RTABMAP_PARAM(Mem, LocalSpaceLinksKeptInWM, bool, true,      "If local space links are kept in WM.");
 
 
 	// KeypointMemory (Keypoint-based)
@@ -288,8 +289,9 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, ToroIterations,    int, 100,    "TORO graph optimization iterations");
 	RTABMAP_PARAM(RGBD, ToroIgnoreVariance,   bool, false,    "Ignore constraints' variance. If checked, identity information matrix is used for each constraint in TORO. Otherwise, an information matrix is generated from the variance saved in the links.");
 	RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd, bool, false,    "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
-	RTABMAP_PARAM(RGBD, GoalReachedRadius,    float, 1.0, "Goal reached radius (m).");
+	RTABMAP_PARAM(RGBD, GoalReachedRadius,    float, 0.5, "Goal reached radius (m).");
 	RTABMAP_PARAM(RGBD, MaxAnticipatedNodes,  unsigned int, 10, "Maximum anticipated nodes on the computed path that can be retrieved (the number of nodes actually retrieved at each iteration is limited by \"Rtabmap/MaxRetrieved\").");
+	RTABMAP_PARAM(RGBD, PlanWithNearNodesLinked,  bool, true, "Before planning in the graph, near nodes are linked together (even if they don't belong to same map). Radius is defined by \"RGBD/GoalReachedRadius\" parameter.");
 
 	// Local loop closure detection
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionTime,     bool, false, 	"Detection over all locations in STM.");

@@ -119,10 +119,10 @@ public:
 			bool optimized,
 			bool global);
 	void clearPath();
-	std::list<std::pair<int, Transform> > computePath(int targetNode, bool global);
-	std::list<std::pair<int, Transform> > computePath(const Transform & targetPose, bool global);
-	const std::vector<int> & getPath() const {return _path;}
-	std::list<std::pair<int, Transform> > getPathNextPoses() const;
+	bool computePath(int targetNode, bool global);
+	bool computePath(const Transform & targetPose, bool global);
+	const std::vector<std::pair<int, Transform> > & getPath() const {return _path;}
+	std::vector<std::pair<int, Transform> > getPathNextPoses() const;
 	std::vector<int> getPathNextNodes() const;
 	int getPathCurrentGoalId() const;
 	const Transform & getPathTransformToGoal() const {return _pathTransformToGoal;}
@@ -182,6 +182,7 @@ private:
 	bool _startNewMapOnLoopClosure;
 	float _goalReachedRadius; // meters
 	unsigned int _maxAnticipatedNodes;
+	bool _planWithNearNodesLinked;
 
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;
@@ -210,7 +211,7 @@ private:
 	Transform _mapTransform; // for localization mode
 
 	// Planning stuff
-	std::vector<int> _path;
+	std::vector<std::pair<int,Transform> > _path;
 	unsigned int _pathCurrentIndex;
 	unsigned int _pathGoalIndex;
 	Transform _pathTransformToGoal;

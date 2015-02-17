@@ -67,6 +67,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_generateIds(Parameters::defaultMemGenerateIds()),
 	_badSignaturesIgnored(Parameters::defaultMemBadSignaturesIgnored()),
 	_imageDecimation(Parameters::defaultMemImageDecimation()),
+	_localSpaceLinksKeptInWM(Parameters::defaultMemLocalSpaceLinksKeptInWM()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -385,6 +386,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemRecentWmRatio(), _recentWmRatio);
 	Parameters::parse(parameters, Parameters::kMemSTMSize(), _maxStMemSize);
 	Parameters::parse(parameters, Parameters::kMemImageDecimation(), _imageDecimation);
+	Parameters::parse(parameters, Parameters::kMemLocalSpaceLinksKeptInWM(), _localSpaceLinksKeptInWM);
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -580,6 +582,29 @@ bool Memory::update(const SensorData & data, Statistics * stats)
 	while(_stMem.size() && _maxStMemSize>0 && (int)_stMem.size() > _maxStMemSize)
 	{
 		UDEBUG("Inserting node %d from STM in WM...", *_stMem.begin());
+		if(!_localSpaceLinksKeptInWM)
+		{
+			// remove local space links outside STM
+			Signature * s = this->_getSignature(*_stMem.begin());
+			UASSERT(s!=0);
+			std::map<int, Link> links = s->getLinks(); // get a copy because we will remove some links in "s"
+			for(std::map<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+			{
+				if(iter->second.type() == Link::kLocalSpaceClosure)
+				{
+					Signature * sTo = this->_getSignature(iter->first);
+					if(sTo)
+					{
+						sTo->removeLink(s->id());
+					}
+					else
+					{
+						UERROR("Link %d of %d not in WM/STM?!?", iter->first, s->id());
+					}
+					s->removeLink(iter->first);
+				}
+			}
+		}
 		_workingMem.insert(_workingMem.end(), *_stMem.begin());
 		_stMem.erase(*_stMem.begin());
 		++_signaturesAdded;
@@ -1465,6 +1490,27 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase, std::list<int> * de
 			}
 			s->removeLinks(); // remove all links
 			s->setWeight(0);
+		}
+		else
+		{
+			//make sure that virtual links are removed
+			const std::map<int, Link> & links = s->getLinks();
+			for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+			{
+				if(iter->second.type() == Link::kVirtualClosure)
+				{
+					Signature * sTo = this->_getSignature(iter->first);
+					if(sTo)
+					{
+						sTo->removeLink(s->id());
+					}
+					else
+					{
+						UERROR("Link %d of %d not in WM/STM?!?", iter->first, s->id());
+					}
+				}
+			}
+			s->removeVirtualLinks();
 		}
 
 		this->disableWordsRef(s->id());

@@ -209,6 +209,7 @@ private:
 	bool _generateIds;
 	bool _badSignaturesIgnored;
 	int _imageDecimation;
+	bool _localSpaceLinksKeptInWM;
 
 	int _idCount;
 	int _idMapCount;

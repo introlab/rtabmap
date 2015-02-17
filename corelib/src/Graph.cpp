@@ -172,6 +172,7 @@ void optimizeTOROGraph(
 		{
 			if(uContains(depthGraph, iter->first))
 			{
+				UASSERT(uContains(rtabmapToToro, iter->first));
 				UASSERT_MSG(!iter->second.isNull(), uFormat("Poses should not be null! Id=%d", iter->first).c_str());
 				posesToro.insert(std::make_pair(rtabmapToToro.at(iter->first), iter->second));
 			}
@@ -182,6 +183,7 @@ void optimizeTOROGraph(
 		{
 			if(uContains(depthGraph, iter->second.from()) && uContains(depthGraph, iter->second.to()))
 			{
+				UASSERT(uContains(rtabmapToToro, iter->first) && uContains(rtabmapToToro, iter->second.to()));
 				UASSERT(!iter->second.transform().isNull());
 				edgeConstraintsToro.insert(std::make_pair(rtabmapToToro.at(iter->first), Link(rtabmapToToro.at(iter->first), rtabmapToToro.at(iter->second.to()), iter->second.type(), iter->second.transform(), iter->second.variance())));
 			}
@@ -247,6 +249,7 @@ void optimizeTOROGraph(
 		bool ignoreCovariance,
 		std::list<std::map<int, Transform> > * intermediateGraphes) // contains poses after tree init to last one before the end
 {
+	UDEBUG("Optimizing graph...");
 	UASSERT(toroIterations>0);
 	optimizedPoses.clear();
 	if(edgeConstraints.size()>=1 && poses.size()>=2)
@@ -254,6 +257,7 @@ void optimizeTOROGraph(
 		// Apply TORO optimization
 		AISNavigation::TreeOptimizer3 pg;
 		pg.verboseLevel = 0;
+		UDEBUG("fill poses to TORO...");
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			float x,y,z, roll,pitch,yaw;
@@ -271,6 +275,7 @@ void optimizeTOROGraph(
 			}
 		}
 
+		UDEBUG("fill edges to TORO...");
 		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
 			int id1 = iter->first;
@@ -299,6 +304,7 @@ void optimizeTOROGraph(
 				return;
 			}
 		}
+		UDEBUG("buildMST...");
 		pg.buildMST(pg.vertices.begin()->first); // pg.buildSimpleTree();
 
 		UDEBUG("Initial guess...");
@@ -356,6 +362,7 @@ void optimizeTOROGraph(
 	{
 		UWARN("This method should be called at least with 1 pose!");
 	}
+	UDEBUG("Optimizing graph...end!");
 }
 
 bool saveTOROGraph(
@@ -692,13 +699,13 @@ struct Order
     }
 };
 
-std::vector<int> computePath(
+std::list<std::pair<int, Transform> > computePath(
 			const std::map<int, rtabmap::Transform> & poses,
 			const std::multimap<int, int> & links,
 			int from,
 			int to)
 {
-	std::list<int> path;
+	std::list<std::pair<int, Transform> > path;
 
 	//A*
 	int startNode = from;
@@ -719,10 +726,10 @@ std::vector<int> computePath(
 		{
 			while(currentNode.id()!=startNode)
 			{
-				path.push_front(currentNode.id());
+				path.push_front(std::make_pair(currentNode.id(), currentNode.pose()));
 				currentNode = nodes.find(currentNode.fromId())->second;
 			}
-			path.push_front(startNode);
+			path.push_front(std::make_pair(startNode, poses.at(startNode)));
 			break;
 		}
 
@@ -752,7 +759,7 @@ std::vector<int> computePath(
 			}
 		}
 	}
-	return uListToVector(path);
+	return path;
 }
 
 int findNearestNode(
