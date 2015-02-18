@@ -121,7 +121,7 @@ private slots:
 	void saveConfigGUI();
 	void newDatabase();
 	void openDatabase();
-	void closeDatabase();
+	bool closeDatabase();
 	void editDatabase();
 	void startDetection();
 	void pauseDetection();
@@ -263,8 +263,10 @@ private:
 	int _lastId;
 	bool _processingStatistics;
 	bool _odometryReceived;
+	QString _newDatabasePath;
+	QString _newDatabasePathOutput;
 	QString _openedDatabasePath;
-	bool _emptyNewDatabase;
+	bool _databaseUpdated;
 	bool _odomImageShow;
 	bool _odomImageDepthShow;
 	bool _savedMaximized;

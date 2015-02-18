@@ -118,8 +118,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_lastId(0),
 	_processingStatistics(false),
 	_odometryReceived(false),
+	_newDatabasePath(""),
+	_newDatabasePathOutput(""),
 	_openedDatabasePath(""),
-	_emptyNewDatabase(true),
+	_databaseUpdated(false),
 	_odomImageShow(true),
 	_odomImageDepthShow(false),
 	_odometryCorrection(Transform::getIdentity()),
@@ -480,8 +482,10 @@ void MainWindow::closeEvent(QCloseEvent* event)
 		this->stopDetection();
 		if(_state == kInitialized)
 		{
-			this->closeDatabase();
-			this->changeState(kApplicationClosing);
+			if(this->closeDatabase())
+			{
+				this->changeState(kApplicationClosing);
+			}
 		}
 		if(_state != kIdle)
 		{
@@ -1726,52 +1730,34 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 	else if((RtabmapEventInit::Status)status == RtabmapEventInit::kClosed)
 	{
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
-		if(_openedDatabasePath.compare(_preferencesDialog->getWorkingDirectory()+QDir::separator()+Parameters::getDefaultDatabaseName().c_str()) == 0 &&
-		   !_emptyNewDatabase)
+
+		if(_databaseUpdated)
 		{
-			// Temp database used, automatically backup with unique name (timestamp)
-			QString newName = QDateTime::currentDateTime().toString("yyMMdd-hhmmss");
-			bool ok = false;
-			newName = QInputDialog::getText(this, tr("Save database"), tr("Database name (the database is deleted on cancel)"), QLineEdit::Normal, newName, &ok);
-			while(ok)
+			if(!_newDatabasePath.isEmpty() && !_newDatabasePathOutput.isEmpty())
 			{
-				QString newPath = _preferencesDialog->getWorkingDirectory()+QDir::separator()+newName+".db";
-				if(QFile::exists(newPath))
+				if(QFile::rename(_newDatabasePath, _newDatabasePathOutput))
 				{
-					QMessageBox::StandardButton b = QMessageBox::question(this,
-							tr("Saving database..."),
-							tr("Database \"%1\" already exists, do you want to overwrite?").arg(newName+".db"),
-							QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
-					if(b == QMessageBox::Yes && QFile::remove(newPath))
-					{
-						UINFO("Deleted database \"%s\".", newPath.toStdString().c_str());
-					}
-					else
-					{
-						if(b == QMessageBox::Yes)
-						{
-							UERROR("Failed to erase database \"%s\"! Asking for new name...", newPath.toStdString().c_str());
-						}
-						newName = QInputDialog::getText(this, tr("Saving database..."), tr("Database name:"), QLineEdit::Normal, newName, &ok);
-						continue;
-					}
-				}
-				if(QFile::rename(_openedDatabasePath, newPath))
-				{
-					std::string msg = uFormat("Database saved to \"%s\".", newPath.toStdString().c_str());
+					std::string msg = uFormat("Database saved to \"%s\".", _newDatabasePathOutput.toStdString().c_str());
 					UINFO(msg.c_str());
 					QMessageBox::information(this, tr("Database saved!"), QString(msg.c_str()));
 				}
 				else
 				{
-					std::string msg = uFormat("Failed to rename temporary database from \"%s\" to \"%s\".", _openedDatabasePath.toStdString().c_str(), (newName+".db").toStdString().c_str());
+					std::string msg = uFormat("Failed to rename temporary database from \"%s\" to \"%s\".", _newDatabasePath.toStdString().c_str(), _newDatabasePathOutput.toStdString().c_str());
 					UERROR(msg.c_str());
 					QMessageBox::critical(this, tr("Closing failed!"), QString(msg.c_str()));
 				}
-				break;
+			}
+			else if(!_openedDatabasePath.isEmpty())
+			{
+				std::string msg = uFormat("Database \"%s\" updated.", _openedDatabasePath.toStdString().c_str());
+				UINFO(msg.c_str());
+				QMessageBox::information(this, tr("Database updated!"), QString(msg.c_str()));
 			}
 		}
 		_openedDatabasePath.clear();
+		_newDatabasePath.clear();
+		_newDatabasePathOutput.clear();
 		bool applicationClosing = _state == kApplicationClosing;
 		this->changeState(MainWindow::kIdle);
 		if(applicationClosing)
@@ -1786,6 +1772,8 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 		if((RtabmapEventInit::Status)status == RtabmapEventInit::kError)
 		{
 			_openedDatabasePath.clear();
+			_newDatabasePath.clear();
+			_newDatabasePathOutput.clear();
 			_initProgressDialog->setAutoClose(false);
 			msg.prepend(tr("[ERROR] "));
 			_initProgressDialog->appendText(msg);
@@ -2285,6 +2273,9 @@ void MainWindow::newDatabase()
 		return;
 	}
 	_openedDatabasePath.clear();
+	_newDatabasePath.clear();
+	_newDatabasePathOutput.clear();
+	_databaseUpdated = false;
 	ULOGGER_DEBUG("");
 	this->clearTheCache();
 	std::string databasePath = (_preferencesDialog->getWorkingDirectory()+QDir::separator()+Parameters::getDefaultDatabaseName().c_str()).toStdString();
@@ -2300,8 +2291,7 @@ void MainWindow::newDatabase()
 			return;
 		}
 	}
-	_openedDatabasePath = databasePath.c_str();
-	_emptyNewDatabase = true;
+	_newDatabasePath = databasePath.c_str();
 	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdInit, databasePath, 0, _preferencesDialog->getAllParameters()));
 }
 
@@ -2313,6 +2303,9 @@ void MainWindow::openDatabase()
 		return;
 	}
 	_openedDatabasePath.clear();
+	_newDatabasePath.clear();
+	_newDatabasePathOutput.clear();
+	_databaseUpdated = false;
 	QString path = QFileDialog::getOpenFileName(this, tr("Open database..."), _preferencesDialog->getWorkingDirectory(), tr("RTAB-Map database files (*.db)"));
 	if(!path.isEmpty())
 	{
@@ -2322,14 +2315,81 @@ void MainWindow::openDatabase()
 	}
 }
 
-void MainWindow::closeDatabase()
+bool MainWindow::closeDatabase()
 {
 	if(_state != MainWindow::kInitialized)
 	{
 		UERROR("This method can be called only in INITIALIZED state.");
-		return;
+		return false;
 	}
+
+	_newDatabasePathOutput.clear();
+	if(!_newDatabasePath.isEmpty() && _databaseUpdated)
+	{
+		QMessageBox::Button b = QMessageBox::question(this,
+				tr("Save database"),
+				tr("Save the new database?"),
+				QMessageBox::Save | QMessageBox::Cancel | QMessageBox::Discard,
+				QMessageBox::Save);
+
+		if(b == QMessageBox::Save)
+		{
+			// Temp database used, automatically backup with unique name (timestamp)
+			QString newName = QDateTime::currentDateTime().toString("yyMMdd-hhmmss");
+
+			bool ok = true;
+			newName = QInputDialog::getText(this,
+				tr("Save database"),
+				tr("Database name:"),
+				QLineEdit::Normal,
+				newName,
+				&ok);
+			while(ok)
+			{
+				QString newPath = _preferencesDialog->getWorkingDirectory()+QDir::separator()+newName+".db";
+				if(QFile::exists(newPath))
+				{
+					QMessageBox::StandardButton b = QMessageBox::question(this,
+							tr("Saving database..."),
+							tr("Database \"%1\" already exists, do you want to overwrite?").arg(newName+".db"),
+							QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+					if(b == QMessageBox::Yes && QFile::remove(newPath))
+					{
+						UINFO("Deleted database \"%s\".", newPath.toStdString().c_str());
+						_newDatabasePathOutput = newPath;
+						break;
+					}
+					else if(b == QMessageBox::Yes)
+					{
+						UERROR("Failed to erase database \"%s\"! Asking for new name...", newPath.toStdString().c_str());
+					}
+				}
+				else
+				{
+					_newDatabasePathOutput = newPath;
+					break;
+				}
+
+				newName = QInputDialog::getText(this,
+					tr("Save database"),
+					tr("Database name:"),
+					QLineEdit::Normal,
+					newName,
+					&ok);
+			}
+			if(!ok)
+			{
+				return false;
+			}
+		}
+		else if(b != QMessageBox::Discard)
+		{
+			return false;
+		}
+	}
+
 	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdClose));
+	return true;
 }
 
 void MainWindow::editDatabase()
@@ -3340,7 +3400,7 @@ void MainWindow::deleteMemory()
 	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdResetMemory));
 	if(_state!=kDetecting)
 	{
-		_emptyNewDatabase = true;
+		_databaseUpdated = false;
 	}
 	this->clearTheCache();
 }
@@ -3376,9 +3436,16 @@ void MainWindow::openWorkingDirectory()
 void MainWindow::updateEditMenu()
 {
 	// Update Memory delete database size
-	if(_state != kMonitoring && _state != kMonitoringPaused && !_openedDatabasePath.isEmpty())
+	if(_state != kMonitoring && _state != kMonitoringPaused && (!_openedDatabasePath.isEmpty() || !_newDatabasePath.isEmpty()))
 	{
-		_ui->actionDelete_memory->setText(tr("Delete memory (%1 MB)").arg(UFile::length(_openedDatabasePath.toStdString())/1000000));
+		if(!_openedDatabasePath.isEmpty())
+		{
+			_ui->actionDelete_memory->setText(tr("Delete memory (%1 MB)").arg(UFile::length(_openedDatabasePath.toStdString())/1000000));
+		}
+		else
+		{
+			_ui->actionDelete_memory->setText(tr("Delete memory (%1 MB)").arg(UFile::length(_newDatabasePath.toStdString())/1000000));
+		}
 	}
 }
 
@@ -4923,7 +4990,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_elapsedTime->start();
 		_oneSecondTimer->start();
 
-		_emptyNewDatabase = false; // if a new database is used, it won't be empty anymore...
+		_databaseUpdated = true; // if a new database is used, it won't be empty anymore...
 
 		if(_camera)
 		{
