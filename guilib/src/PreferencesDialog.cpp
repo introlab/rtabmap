@@ -1811,6 +1811,8 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 			settings.setValue("virtual_color", graphViewer->getVirtualLoopClosureColor());
 			settings.setValue("local_path_color", graphViewer->getLocalPathColor());
 			settings.setValue("grid_visible", graphViewer->isGridMapVisible());
+			settings.setValue("origin_visible", graphViewer->isOriginVisible());
+			settings.setValue("referential_visible", graphViewer->isReferentialVisible());
 		}
 		else
 		{
@@ -1909,6 +1911,8 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 			graphViewer->setVirtualLoopClosureColor(settings.value("virtual_color", graphViewer->getVirtualLoopClosureColor()).value<QColor>());
 			graphViewer->setLocalPathColor(settings.value("local_path_color", graphViewer->getLocalPathColor()).value<QColor>());
 			graphViewer->setGridMapVisible(settings.value("grid_visible", graphViewer->isGridMapVisible()).toBool());
+			graphViewer->setOriginVisible(settings.value("origin_visible", graphViewer->isOriginVisible()).toBool());
+			graphViewer->setReferentialVisible(settings.value("referential_visible", graphViewer->isReferentialVisible()).toBool());
 		}
 		else
 		{

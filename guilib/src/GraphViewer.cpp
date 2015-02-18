@@ -173,16 +173,20 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	_root = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
 
 	// add referential
+	_originReferential = new QGraphicsItemGroup();
+	this->scene()->addItem(_originReferential); // ownership transfered
 	QGraphicsLineItem * item = this->scene()->addLine(0,0,0,-1, QPen(QBrush(Qt::red), _linkWidth));
 	item->setZValue(100);
 	item->setParentItem(_root);
+	_originReferential->addToGroup(item);
 	item = this->scene()->addLine(0,0,-1,0, QPen(QBrush(Qt::green), _linkWidth));
 	item->setZValue(100);
 	item->setParentItem(_root);
+	_originReferential->addToGroup(item);
 
 	// current pose
 	_referential = new QGraphicsItemGroup();
-	this->scene()->addItem(_referential);
+	this->scene()->addItem(_referential); // ownership transfered
 	item = this->scene()->addLine(0,0,0,-0.5, QPen(QBrush(Qt::red), _linkWidth));
 	item->setZValue(100);
 	item->setParentItem(_root);
@@ -483,6 +487,14 @@ bool GraphViewer::isGridMapVisible() const
 {
 	return _gridMap->isVisible();
 }
+bool GraphViewer::isOriginVisible() const
+{
+	return _originReferential->isVisible();
+}
+bool GraphViewer::isReferentialVisible() const
+{
+	return _referential->isVisible();
+}
 
 void GraphViewer::setWorkingDirectory(const QString & path)
 {
@@ -587,6 +599,14 @@ void GraphViewer::setGridMapVisible(bool visible)
 {
 	_gridMap->setVisible(visible);
 }
+void GraphViewer::setOriginVisible(bool visible)
+{
+	_originReferential->setVisible(visible);
+}
+void GraphViewer::setReferentialVisible(bool visible)
+{
+	_referential->setVisible(visible);
+}
 
 void GraphViewer::restoreDefaults()
 {
@@ -657,6 +677,8 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aSetLinkSize = menu.addAction(tr("Set link width..."));
 	menu.addSeparator();
 	QAction * aShowHideGridMap;
+	QAction * aShowHideOrigin;
+	QAction * aShowHideReferential;
 	if(_gridMap->isVisible())
 	{
 		aShowHideGridMap = menu.addAction(tr("Hide grid map"));
@@ -664,6 +686,22 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else
 	{
 		aShowHideGridMap = menu.addAction(tr("Show grid map"));
+	}
+	if(_originReferential->isVisible())
+	{
+		aShowHideOrigin = menu.addAction(tr("Hide origin referential"));
+	}
+	else
+	{
+		aShowHideOrigin = menu.addAction(tr("Show origin referential"));
+	}
+	if(_referential->isVisible())
+	{
+		aShowHideReferential = menu.addAction(tr("Hide current referential"));
+	}
+	else
+	{
+		aShowHideReferential = menu.addAction(tr("Show current referential"));
 	}
 	menu.addSeparator();
 	QAction * aRestoreDefaults = menu.addAction(tr("Restore defaults"));
@@ -689,10 +727,13 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			bool isPNG = r == aScreenShotPNG;
 			QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + (isPNG?".png":".svg"));
 
-			//_root->setScale(this->transform().m11()); // current view
 			if(_gridCellSize)
 			{
 				_root->setScale(1.0f/_gridCellSize); // grid map precision (for 5cm grid cell, x20 to have 1pix/5cm)
+			}
+			else
+			{
+				_root->setScale(this->transform().m11()); // current view
 			}
 
 			this->scene()->clearSelection();                                  // Selections would also render to the file
@@ -828,6 +869,14 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else if(r == aShowHideGridMap)
 	{
 		this->setGridMapVisible(!this->isGridMapVisible());
+	}
+	else if(r == aShowHideOrigin)
+	{
+		this->setOriginVisible(!this->isOriginVisible());
+	}
+	else if(r == aShowHideReferential)
+	{
+		this->setReferentialVisible(!this->isReferentialVisible());
 	}
 	else if(r == aRestoreDefaults)
 	{

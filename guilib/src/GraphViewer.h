@@ -74,6 +74,8 @@ public:
 	const QColor & getVirtualLoopClosureColor() const {return _loopClosureVirtualColor;}
 	const QColor & getLocalPathColor() const {return _pathColor;}
 	bool isGridMapVisible() const;
+	bool isOriginVisible() const;
+	bool isReferentialVisible() const;
 
 	// setters
 	void setWorkingDirectory(const QString & path);
@@ -87,6 +89,8 @@ public:
 	void setVirtualLoopClosureColor(const QColor & color);
 	void setLocalPathColor(const QColor & color);
 	void setGridMapVisible(bool visible);
+	void setOriginVisible(bool visible);
+	void setReferentialVisible(bool visible);
 
 signals:
 	void configChanged();
@@ -114,6 +118,7 @@ private:
 	float _linkWidth;
 	QGraphicsPixmapItem * _gridMap;
 	QGraphicsItemGroup * _referential;
+	QGraphicsItemGroup * _originReferential;
 	float _gridCellSize;
 };
 
