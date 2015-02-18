@@ -467,6 +467,7 @@ void GraphViewer::clearGraph()
 void GraphViewer::clearMap()
 {
 	_gridMap->setPixmap(QPixmap());
+	_gridCellSize = 0.0f;
 }
 
 void GraphViewer::clearPosterior()
