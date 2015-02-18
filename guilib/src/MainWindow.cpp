@@ -1732,7 +1732,7 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 			// Temp database used, automatically backup with unique name (timestamp)
 			QString newName = QDateTime::currentDateTime().toString("yyMMdd-hhmmss");
 			bool ok = false;
-			newName = QInputDialog::getText(this, tr("Save database?"), tr("Database name:"), QLineEdit::Normal, newName, &ok);
+			newName = QInputDialog::getText(this, tr("Save database"), tr("Database name (the database is deleted on cancel)"), QLineEdit::Normal, newName, &ok);
 			while(ok)
 			{
 				QString newPath = _preferencesDialog->getWorkingDirectory()+QDir::separator()+newName+".db";
