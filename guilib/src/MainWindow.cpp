@@ -1217,8 +1217,10 @@ void MainWindow::updateMapCloud(
 				_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(true);
 			}
 		}
-
-		_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
+		if(_state != kMonitoring && _state != kDetecting)
+		{
+			_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
+		}
 	}
 
 	// filter duplicated poses
@@ -4891,6 +4893,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDump_the_memory->setEnabled(false);
 		_ui->actionDump_the_prediction_matrix->setEnabled(false);
 		_ui->actionDelete_memory->setEnabled(false);
+		_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
 		_ui->actionGenerate_map->setEnabled(false);
 		_ui->actionGenerate_local_map->setEnabled(false);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
@@ -4938,6 +4941,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDump_the_memory->setEnabled(true);
 		_ui->actionDump_the_prediction_matrix->setEnabled(true);
 		_ui->actionDelete_memory->setEnabled(true);
+		_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
 		_ui->actionGenerate_map->setEnabled(true);
 		_ui->actionGenerate_local_map->setEnabled(true);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(true);
@@ -4974,6 +4978,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDump_the_memory->setEnabled(false);
 		_ui->actionDump_the_prediction_matrix->setEnabled(false);
 		_ui->actionDelete_memory->setEnabled(false);
+		_ui->actionPost_processing->setEnabled(false);
 		_ui->actionGenerate_map->setEnabled(false);
 		_ui->actionGenerate_local_map->setEnabled(false);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
@@ -5012,6 +5017,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionDump_the_memory->setEnabled(false);
 			_ui->actionDump_the_prediction_matrix->setEnabled(false);
 			_ui->actionDelete_memory->setEnabled(false);
+			_ui->actionPost_processing->setEnabled(false);
 			_ui->actionGenerate_map->setEnabled(false);
 			_ui->actionGenerate_local_map->setEnabled(false);
 			_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
@@ -5039,6 +5045,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionDump_the_memory->setEnabled(true);
 			_ui->actionDump_the_prediction_matrix->setEnabled(true);
 			_ui->actionDelete_memory->setEnabled(false);
+			_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
 			_ui->actionGenerate_map->setEnabled(true);
 			_ui->actionGenerate_local_map->setEnabled(true);
 			_ui->actionGenerate_TORO_graph_graph->setEnabled(true);
@@ -5073,6 +5080,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionPause_on_local_loop_detection->setEnabled(true);
 		_ui->actionPause_when_a_loop_hypothesis_is_rejected->setEnabled(true);
 		_ui->actionReset_Odometry->setEnabled(true);
+		_ui->actionPost_processing->setEnabled(false);
 		_ui->actionDump_the_memory->setVisible(false);
 		_ui->actionDump_the_prediction_matrix->setVisible(false);
 		_ui->actionDelete_memory->setEnabled(true);
@@ -5107,6 +5115,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionPause_on_local_loop_detection->setEnabled(true);
 		_ui->actionPause_when_a_loop_hypothesis_is_rejected->setEnabled(true);
 		_ui->actionReset_Odometry->setEnabled(true);
+		_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
 		_ui->actionDump_the_memory->setVisible(false);
 		_ui->actionDump_the_prediction_matrix->setVisible(false);
 		_ui->actionDelete_memory->setEnabled(true);
