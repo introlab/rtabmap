@@ -453,6 +453,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
 	_ui->graphPlan_maxAnticipatedNodes->setObjectName(Parameters::kRGBDMaxAnticipatedNodes().c_str());
 	_ui->graphPlan_planWithNearNodesLinked->setObjectName(Parameters::kRGBDPlanWithNearNodesLinked().c_str());
+	_ui->graphPlan_goalMaxDistance->setObjectName(Parameters::kRGBDGoalMaxDistance().c_str());
 
 	_ui->groupBox_localDetection_time->setObjectName(Parameters::kRGBDLocalLoopDetectionTime().c_str());
 	_ui->groupBox_localDetection_space->setObjectName(Parameters::kRGBDLocalLoopDetectionSpace().c_str());

@@ -101,13 +101,15 @@ std::multimap<int, int> RTABMAP_EXP radiusPosesClustering(
  * @param links The graph's links (from node id -> to node id)
  * @param from initial node
  * @param to final node
+ * @param updateNewCosts Keep up-to-date costs while traversing the graph.
  * @return the path ids from id "from" to id "to" including initial and final nodes.
  */
 std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
 			const std::map<int, rtabmap::Transform> & poses,
 			const std::multimap<int, int> & links,
 			int from,
-			int to);
+			int to,
+			bool updateNewCosts = false);
 
 int RTABMAP_EXP findNearestNode(
 		const std::map<int, rtabmap::Transform> & nodes,

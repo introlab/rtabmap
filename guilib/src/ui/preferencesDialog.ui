@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-733</y>
             <width>744</width>
-            <height>1056</height>
+            <height>1475</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>7</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -5332,20 +5332,43 @@ Warning when set to false: when some nodes are transferred, the first referentia
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="0">
+                       <item row="3" column="0">
                         <widget class="QCheckBox" name="graphPlan_planWithNearNodesLinked">
                          <property name="text">
                           <string/>
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="1">
+                       <item row="3" column="1">
                         <widget class="QLabel" name="label_space3_4">
                          <property name="text">
                           <string>Before planning in the graph, near nodes are linked together (even if they don't belong to same map). Radius is defined by &quot;Goal reached radius&quot; above.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_space3_5">
+                         <property name="text">
+                          <string>Maximum distance (m) of the target goal from the graph (0 means infinity). If the goal is too far from the graph, the plan is aborted. Also when set, the next goal in the graph can't be farther than this distance from the current position.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QDoubleSpinBox" name="graphPlan_goalMaxDistance">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>0</number>
+                         </property>
+                         <property name="value">
+                          <double>1.000000000000000</double>
                          </property>
                         </widget>
                        </item>

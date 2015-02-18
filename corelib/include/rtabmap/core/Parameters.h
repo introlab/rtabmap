@@ -292,6 +292,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, GoalReachedRadius,    float, 0.5, "Goal reached radius (m).");
 	RTABMAP_PARAM(RGBD, MaxAnticipatedNodes,  unsigned int, 10, "Maximum anticipated nodes on the computed path that can be retrieved (the number of nodes actually retrieved at each iteration is limited by \"Rtabmap/MaxRetrieved\").");
 	RTABMAP_PARAM(RGBD, PlanWithNearNodesLinked,  bool, true, "Before planning in the graph, near nodes are linked together (even if they don't belong to same map). Radius is defined by \"RGBD/GoalReachedRadius\" parameter.");
+	RTABMAP_PARAM(RGBD, GoalMaxDistance,  float, 0, "Maximum distance (m) of the target goal from the graph (0 means infinity). If the goal is too far from the graph, the plan is aborted. Also when set, the next goal in the graph can't be farther than this distance from the current position.");
 
 	// Local loop closure detection
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionTime,     bool, false, 	"Detection over all locations in STM.");

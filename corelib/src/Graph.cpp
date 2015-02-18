@@ -673,7 +673,7 @@ public:
 	rtabmap::Transform pose() const {return pose_;}
 	float distFrom(const rtabmap::Transform & pose) const
 	{
-		return pose_.getDistance(pose);
+		return pose_.getDistanceSquared(pose); // use sqrt distance
 	}
 
 	void setClosed(bool closed) {closed_ = closed;}
@@ -703,7 +703,8 @@ std::list<std::pair<int, Transform> > computePath(
 			const std::map<int, rtabmap::Transform> & poses,
 			const std::multimap<int, int> & links,
 			int from,
-			int to)
+			int to,
+			bool updateNewCosts)
 {
 	std::list<std::pair<int, Transform> > path;
 
@@ -714,28 +715,46 @@ std::list<std::pair<int, Transform> > computePath(
 	std::map<int, Node> nodes;
 	nodes.insert(std::make_pair(startNode, Node(startNode, 0, poses.at(startNode))));
 	std::priority_queue<Pair, std::vector<Pair>, Order> pq;
-	pq.push(Pair(startNode, 0));
-
-	while(pq.size())
+	std::multimap<float, int> pqmap;
+	if(updateNewCosts)
 	{
-		Node & currentNode = nodes.find(pq.top().first)->second;
-		pq.pop();
-		currentNode.setClosed(true);
+		pqmap.insert(std::make_pair(0, startNode));
+	}
+	else
+	{
+		pq.push(Pair(startNode, 0));
+	}
 
-		if(currentNode.id() == endNode)
+	while((updateNewCosts && pqmap.size()) || (!updateNewCosts && pq.size()))
+	{
+		Node * currentNode;
+		if(updateNewCosts)
 		{
-			while(currentNode.id()!=startNode)
+			currentNode = &nodes.find(pqmap.begin()->second)->second;
+			pqmap.erase(pqmap.begin());
+		}
+		else
+		{
+			currentNode = &nodes.find(pq.top().first)->second;
+			pq.pop();
+		}
+
+		currentNode->setClosed(true);
+
+		if(currentNode->id() == endNode)
+		{
+			while(currentNode->id()!=startNode)
 			{
-				path.push_front(std::make_pair(currentNode.id(), currentNode.pose()));
-				currentNode = nodes.find(currentNode.fromId())->second;
+				path.push_front(std::make_pair(currentNode->id(), currentNode->pose()));
+				currentNode = &nodes.find(currentNode->fromId())->second;
 			}
 			path.push_front(std::make_pair(startNode, poses.at(startNode)));
 			break;
 		}
 
 		// lookup neighbors
-		for(std::multimap<int, int>::const_iterator iter = links.find(currentNode.id());
-			iter!=links.end() && iter->first == currentNode.id();
+		for(std::multimap<int, int>::const_iterator iter = links.find(currentNode->id());
+			iter!=links.end() && iter->first == currentNode->id();
 			++iter)
 		{
 			std::map<int, Node>::iterator nodeIter = nodes.find(iter->second);
@@ -743,18 +762,35 @@ std::list<std::pair<int, Transform> > computePath(
 			{
 				std::map<int, rtabmap::Transform>::const_iterator poseIter = poses.find(iter->second);
 				UASSERT(poseIter != poses.end());
-				Node n(iter->second, currentNode.id(), poseIter->second);
-				n.setCostSoFar(currentNode.costSoFar() + currentNode.distFrom(poseIter->second));
+				Node n(iter->second, currentNode->id(), poseIter->second);
+				n.setCostSoFar(currentNode->costSoFar() + currentNode->distFrom(poseIter->second));
 				n.setDistToEnd(n.distFrom(endPose));
 				nodes.insert(std::make_pair(iter->second, n));
-				pq.push(Pair(n.id(), n.totalCost()));
+				if(updateNewCosts)
+				{
+					pqmap.insert(std::make_pair(n.totalCost(), n.id()));
+				}
+				else
+				{
+					pq.push(Pair(n.id(), n.totalCost()));
+				}
 			}
-			else if(nodeIter->second.isOpened())
+			else if(updateNewCosts && nodeIter->second.isOpened())
 			{
-				float newCostSoFar = currentNode.costSoFar() + currentNode.distFrom(nodeIter->second.pose());
+				float newCostSoFar = currentNode->costSoFar() + currentNode->distFrom(nodeIter->second.pose());
 				if(nodeIter->second.costSoFar() > newCostSoFar)
 				{
-					UWARN("newCostSoFar > previous cost (%f vs %f)", newCostSoFar, nodeIter->second.costSoFar());
+					// update the cost in the priority queue
+					for(std::map<float, int>::iterator mapIter=pqmap.begin(); mapIter!=pqmap.end(); ++mapIter)
+					{
+						if(mapIter->second == nodeIter->first)
+						{
+							pqmap.erase(mapIter);
+							nodeIter->second.setCostSoFar(newCostSoFar);
+							pqmap.insert(std::make_pair(nodeIter->second.totalCost(), nodeIter->first));
+							break;
+						}
+					}
 				}
 			}
 		}

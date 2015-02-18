@@ -110,6 +110,7 @@ Rtabmap::Rtabmap() :
 	_goalReachedRadius(Parameters::defaultRGBDGoalReachedRadius()),
 	_maxAnticipatedNodes(Parameters::defaultRGBDMaxAnticipatedNodes()),
 	_planWithNearNodesLinked(Parameters::defaultRGBDPlanWithNearNodesLinked()),
+	_goalMaxDistance(Parameters::defaultRGBDGoalMaxDistance()),
 	_loopClosureHypothesis(0,0.0f),
 	_highestHypothesis(0,0.0f),
 	_lastProcessTime(0.0),
@@ -376,7 +377,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDGoalReachedRadius(), _goalReachedRadius);
 	Parameters::parse(parameters, Parameters::kRGBDMaxAnticipatedNodes(), _maxAnticipatedNodes);
 	Parameters::parse(parameters, Parameters::kRGBDPlanWithNearNodesLinked(), _planWithNearNodesLinked);
-
+	Parameters::parse(parameters, Parameters::kRGBDGoalMaxDistance(), _goalMaxDistance);
 
 	// RGB-D SLAM stuff
 	if((iter=parameters.find(Parameters::kLccIcpType())) != parameters.end())
@@ -1518,7 +1519,10 @@ bool Rtabmap::process(const SensorData & data)
 			uContains(_optimizedPoses, _path[_pathCurrentIndex].first))
 		{
 			Transform virtualLoop = _optimizedPoses.at(signature->id()).inverse() * _optimizedPoses.at(_path[_pathCurrentIndex].first);
-			_memory->addLink(_path[_pathCurrentIndex].first, signature->id(), virtualLoop, Link::kVirtualClosure, 99999);
+			if(_localDetectRadius > 0.0f && virtualLoop.getNorm() < _localDetectRadius)
+			{
+				_memory->addLink(_path[_pathCurrentIndex].first, signature->id(), virtualLoop, Link::kVirtualClosure, 99999);
+			}
 		}
 
 		// Make sure the next signatures on the path are linked together
@@ -2047,9 +2051,9 @@ void Rtabmap::optimizeCurrentMap(
 	UDEBUG("Optimize map: around location %d", id);
 	if(_memory && id > 0)
 	{
-
+		UTimer timer;
 		std::map<int, int> ids = _memory->getNeighborsId(id, 0, lookInDatabase?-1:0, true);
-		UDEBUG("ids=%d", (int)ids.size());
+		UDEBUG("get ids=%d", (int)ids.size());
 		if(!_optimizeFromGraphEnd && ids.size() > 1)
 		{
 			UTimer timer;
@@ -2063,11 +2067,13 @@ void Rtabmap::optimizeCurrentMap(
 				   id,
 				   timer.ticks());
 		}
+		UINFO("get ids time %f s", timer.ticks());
 
 		std::map<int, Transform> poses;
 		std::multimap<int, Link> edgeConstraints;
 		_memory->getMetricConstraints(uKeys(ids), poses, edgeConstraints, lookInDatabase);
 		UDEBUG("poses=%d, edgeConstraints=%d", (int)poses.size(), (int)edgeConstraints.size());
+		UINFO("get constraints time %f s", timer.ticks());
 
 		if(constraints)
 		{
@@ -2083,6 +2089,7 @@ void Rtabmap::optimizeCurrentMap(
 		{
 			rtabmap::graph::optimizeTOROGraph(ids, poses, edgeConstraints, optimizedPoses, _toroIterations, true, _toroIgnoreVariance);
 		}
+		UINFO("optimize time %f s", timer.ticks());
 	}
 }
 
@@ -2350,7 +2357,9 @@ bool Rtabmap::computePath(
 	}
 
 	UINFO("Computing path from location %d to %d", currentNode, targetNode);
+	UTimer timer;
 	_path = uListToVector(rtabmap::graph::computePath(nodes, links, currentNode, targetNode));
+	UINFO("A* time = %fs", timer.ticks());
 
 	if(_path.size() == 0)
 	{
@@ -2428,15 +2437,23 @@ bool Rtabmap::computePath(const Transform & targetPose, bool global)
 	UINFO("Nearest node found=%d ,%fs", nearestId, timer.ticks());
 	if(nearestId > 0)
 	{
-		if(computePath(nearestId, nodes, constraints))
+		if(_goalMaxDistance != 0.0f && targetPose.getDistance(nodes.at(nearestId)) > _goalMaxDistance)
 		{
-			UASSERT(_path.size() > 0);
-			UASSERT(uContains(nodes, _path.back().first));
-			_pathTransformToGoal = nodes.at(_path.back().first).inverse() * targetPose;
-
-			updateGoalIndex();
+			UWARN("Cannot plan farther than %f m from the graph! (distance=%f m from node %d)",
+					_goalMaxDistance, targetPose.getDistance(nodes.at(nearestId)), nearestId);
 		}
-		UINFO("Time computing path = %fs", timer.ticks());
+		else
+		{
+			if(computePath(nearestId, nodes, constraints))
+			{
+				UASSERT(_path.size() > 0);
+				UASSERT(uContains(nodes, _path.back().first));
+				_pathTransformToGoal = nodes.at(_path.back().first).inverse() * targetPose;
+
+				updateGoalIndex();
+			}
+			UINFO("Time computing path = %fs", timer.ticks());
+		}
 	}
 	else
 	{
@@ -2538,11 +2555,12 @@ void Rtabmap::updateGoalIndex()
 
 		if(_path.size())
 		{
-			//Always check if the farthest node is accessible in local map
-			int goalIndex = 0;
-			for(int i=(int)_path.size()-1; i>=0; --i)
+			//Always check if the farthest node is accessible in local map (max to local space radius if set)
+			int goalIndex = _pathGoalIndex;
+			for(int i=(int)_path.size()-1; i>=goalIndex; --i)
 			{
-				if(uContains(_optimizedPoses, _path[i].first))
+				if(uContains(_optimizedPoses, _path[i].first) &&
+				   (_goalMaxDistance == 0.0f || _optimizedPoses.at(_memory->getLastWorkingSignature()->id()).getDistance(_optimizedPoses.at(_path[i].first)) < _goalMaxDistance))
 				{
 					goalIndex = i;
 					break;
