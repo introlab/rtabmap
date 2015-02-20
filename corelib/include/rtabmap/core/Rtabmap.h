@@ -93,7 +93,7 @@ public:
 	Transform getMapCorrection() const {return _mapCorrection;}
 	const Memory * getMemory() const {return _memory;}
 	float getGoalReachedRadius() const {return _goalReachedRadius;}
-	float getGoalMaxDistance() const {return _goalMaxDistance;}
+	float getLocalRadius() const {return _localRadius;}
 
 	float getTimeThreshold() const {return _maxTimeAllowed;} // in ms
 	void setTimeThreshold(float maxTimeAllowed); // in ms
@@ -128,7 +128,6 @@ public:
 	int getPathCurrentGoalId() const;
 	const Transform & getPathTransformToGoal() const {return _pathTransformToGoal;}
 
-	std::map<int, float> getNodesInRadius(int fromId, int maxNearestNeighbors, float radius) const;
 	std::map<int, Transform> getWMPosesInRadius(int fromId, int maxNearestNeighbors, float radius, int maxDiffID, int & nearestId) const;
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
 	std::pair<int, float> selectHypothesis(const std::map<int, float> & posterior,
@@ -156,6 +155,7 @@ private:
 	float _loopThr;
 	float _loopRatio;
 	unsigned int _maxRetrieved;
+	unsigned int _maxLocalRetrieved;
 	bool _statisticLogsBufferedInRAM;
 	bool _statisticLogged;
 	bool _statisticLoggedHeaders;
@@ -168,7 +168,7 @@ private:
 	bool _poseScanMatching;
 	bool _localLoopClosureDetectionTime;
 	bool _localLoopClosureDetectionSpace;
-	float _localDetectRadius;
+	float _localRadius;
 	float _localDetectMaxNeighbors;
 	int _localDetectMaxDiffID;
 	int _toroIterations;
@@ -182,9 +182,7 @@ private:
 	int _reextractMaxWords;
 	bool _startNewMapOnLoopClosure;
 	float _goalReachedRadius; // meters
-	unsigned int _maxAnticipatedNodes;
 	bool _planWithNearNodesLinked;
-	float _goalMaxDistance;
 
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;

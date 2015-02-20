@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1035</width>
-    <height>789</height>
+    <height>716</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-733</y>
+            <y>-522</y>
             <width>744</width>
-            <height>1475</height>
+            <height>1179</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>19</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1720,7 +1720,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                           <string>OpenNI 2</string>
                          </property>
                          <layout class="QFormLayout" name="formLayout_6">
-                          <item row="3" column="0">
+                          <item row="6" column="0">
                            <widget class="QSpinBox" name="openni2_gain">
                             <property name="maximum">
                              <number>1000</number>
@@ -1730,7 +1730,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             </property>
                            </widget>
                           </item>
-                          <item row="2" column="0">
+                          <item row="3" column="0">
                            <widget class="QSpinBox" name="openni2_exposure">
                             <property name="maximum">
                              <number>65535</number>
@@ -1777,7 +1777,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             </property>
                            </widget>
                           </item>
-                          <item row="2" column="1">
+                          <item row="3" column="1">
                            <widget class="QLabel" name="label_219">
                             <property name="text">
                              <string>Exposure.</string>
@@ -1787,10 +1787,30 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             </property>
                            </widget>
                           </item>
-                          <item row="3" column="1">
+                          <item row="6" column="1">
                            <widget class="QLabel" name="label_220">
                             <property name="text">
                              <string>Gain.</string>
+                            </property>
+                            <property name="wordWrap">
+                             <bool>true</bool>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="7" column="0">
+                           <widget class="QCheckBox" name="openni2_mirroring">
+                            <property name="text">
+                             <string/>
+                            </property>
+                            <property name="checked">
+                             <bool>false</bool>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="7" column="1">
+                           <widget class="QLabel" name="label_223">
+                            <property name="text">
+                             <string>Mirroring.</string>
                             </property>
                             <property name="wordWrap">
                              <bool>true</bool>
@@ -2880,7 +2900,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="1">
+                      <item row="7" column="1">
                        <widget class="QLabel" name="label_retrieved_6">
                         <property name="text">
                          <string>Image decimation. This feature can be used to save images in lower resolution (size/decimation).</string>
@@ -2890,33 +2910,13 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="0">
+                      <item row="7" column="0">
                        <widget class="QSpinBox" name="spinBox_imageDecimation">
                         <property name="minimum">
                          <number>1</number>
                         </property>
                         <property name="maximum">
                          <number>16</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="7" column="1">
-                       <widget class="QLabel" name="label_retrieved_7">
-                        <property name="text">
-                         <string>If local space links are kept in WM.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="7" column="0">
-                       <widget class="QCheckBox" name="checkBox_localSpaceLinksKeptInWM">
-                        <property name="text">
-                         <string/>
-                        </property>
-                        <property name="checked">
-                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>
@@ -4993,6 +4993,39 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
+                       <item row="5" column="1">
+                        <widget class="QLabel" name="label_scanMatching_3">
+                         <property name="text">
+                          <string>Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="0">
+                        <widget class="QSpinBox" name="spinBox_maxLocalLocationsRetrieved"/>
+                       </item>
+                       <item row="6" column="0">
+                        <widget class="QDoubleSpinBox" name="localDetection_radius">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="value">
+                          <double>1.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="1">
+                        <widget class="QLabel" name="label_space2">
+                         <property name="text">
+                          <string>Local radius for nodes selection in the local map. This parameter is used in some approaches below.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
                       </layout>
                      </widget>
                     </item>
@@ -5215,7 +5248,7 @@ Warning when set to false: when some nodes are transferred, the first referentia
                        <item>
                         <widget class="QLabel" name="label_space1_2">
                          <property name="text">
-                          <string>Activate local detection over locations (in Working Memory) near in space. The Bayes filter is not used here, so it may results in more false detections. ICP 2D only is used here.</string>
+                          <string>Activate local detection over locations (in Working Memory) near in space. The Bayes filter is not used here, so it may results in more false detections. ICP 2D only is used here. Only nodes in the local radius are used.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -5224,27 +5257,17 @@ Warning when set to false: when some nodes are transferred, the first referentia
                        </item>
                        <item>
                         <layout class="QGridLayout" name="gridLayout_50" columnstretch="0,1">
-                         <item row="0" column="0">
-                          <widget class="QDoubleSpinBox" name="localDetection_radius">
-                           <property name="suffix">
-                            <string> m</string>
+                         <item row="1" column="0">
+                          <widget class="QSpinBox" name="localDetection_maxDiffID">
+                           <property name="maximum">
+                            <number>999</number>
                            </property>
                            <property name="value">
-                            <double>1.000000000000000</double>
+                            <number>0</number>
                            </property>
                           </widget>
                          </item>
-                         <item row="0" column="1">
-                          <widget class="QLabel" name="label_space2">
-                           <property name="text">
-                            <string>Maximum radius for space detection.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="0">
+                         <item row="0" column="0">
                           <widget class="QSpinBox" name="localDetection_maxNeighbors">
                            <property name="value">
                             <number>10</number>
@@ -5252,6 +5275,16 @@ Warning when set to false: when some nodes are transferred, the first referentia
                           </widget>
                          </item>
                          <item row="1" column="1">
+                          <widget class="QLabel" name="label_space3_2">
+                           <property name="text">
+                            <string>Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
                           <widget class="QLabel" name="label_space3">
                            <property name="text">
                             <string>Maximum nearest neighbors for space detection.</string>
@@ -5262,19 +5295,16 @@ Warning when set to false: when some nodes are transferred, the first referentia
                           </widget>
                          </item>
                          <item row="2" column="0">
-                          <widget class="QSpinBox" name="localDetection_maxDiffID">
-                           <property name="maximum">
-                            <number>999</number>
-                           </property>
-                           <property name="value">
-                            <number>0</number>
+                          <widget class="QCheckBox" name="checkBox_localSpaceLinksKeptInWM">
+                           <property name="text">
+                            <string/>
                            </property>
                           </widget>
                          </item>
                          <item row="2" column="1">
-                          <widget class="QLabel" name="label_space3_2">
+                          <widget class="QLabel" name="label_scanMatching_2">
                            <property name="text">
-                            <string>Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.</string>
+                            <string>If local space links are kept in WM.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -5291,86 +5321,57 @@ Warning when set to false: when some nodes are transferred, the first referentia
                       <property name="title">
                        <string>Graph planning</string>
                       </property>
-                      <layout class="QGridLayout" name="gridLayout_51" columnstretch="0,1">
-                       <item row="0" column="0">
-                        <widget class="QDoubleSpinBox" name="graphPlan_goalReachedRadius">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="value">
-                          <double>1.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="1">
-                        <widget class="QLabel" name="label_space2_2">
+                      <layout class="QVBoxLayout" name="verticalLayout_61">
+                       <item>
+                        <widget class="QLabel" name="label_space2_3">
                          <property name="text">
-                          <string>Goal reached radius.</string>
+                          <string> If the goal is too far (&gt;local radius) from the graph, the plan is aborted. The next goal in the graph can't be farther than the local radius around the current position. Anticipated nodes on the path are retrieved in the local radius up to &quot;Maximum local locations retrieved&quot;. A virtual link is added between the current location and the nearest one on the path up to local radius.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="0">
-                        <widget class="QSpinBox" name="graphPlan_maxAnticipatedNodes">
-                         <property name="maximum">
-                          <number>999999999</number>
-                         </property>
-                         <property name="value">
-                          <number>10</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_space3_3">
-                         <property name="text">
-                          <string>Maximum anticipated nodes on the computed path that can be retrieved (the number of nodes actually retrieved at each iteration is limited by &quot;Maximum locations retrieved&quot; from the Memory panel).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="0">
-                        <widget class="QCheckBox" name="graphPlan_planWithNearNodesLinked">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="1">
-                        <widget class="QLabel" name="label_space3_4">
-                         <property name="text">
-                          <string>Before planning in the graph, near nodes are linked together (even if they don't belong to same map). Radius is defined by &quot;Goal reached radius&quot; above.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_space3_5">
-                         <property name="text">
-                          <string>Maximum distance (m) of the target goal from the graph (0 means infinity). If the goal is too far from the graph, the plan is aborted. Also when set, the next goal in the graph can't be farther than this distance from the current position.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="0">
-                        <widget class="QDoubleSpinBox" name="graphPlan_goalMaxDistance">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="decimals">
-                          <number>0</number>
-                         </property>
-                         <property name="value">
-                          <double>1.000000000000000</double>
-                         </property>
-                        </widget>
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_51" columnstretch="0,1">
+                         <item row="0" column="0">
+                          <widget class="QDoubleSpinBox" name="graphPlan_goalReachedRadius">
+                           <property name="suffix">
+                            <string> m</string>
+                           </property>
+                           <property name="value">
+                            <double>1.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_space2_2">
+                           <property name="text">
+                            <string>Goal reached radius.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QCheckBox" name="graphPlan_planWithNearNodesLinked">
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_space3_4">
+                           <property name="text">
+                            <string>Before planning in the graph, near nodes are linked together (even if they don't belong to same map). Radius is defined by &quot;Goal reached radius&quot; above.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
                        </item>
                       </layout>
                      </widget>

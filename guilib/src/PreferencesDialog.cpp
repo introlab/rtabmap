@@ -119,6 +119,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->label_map_shown->setText(_ui->label_map_shown->text() + " (Disabled, PCL >=1.7.2 required)");
 #endif
 
+#ifdef _WIN32
+		_ui->radioButton_openni2->setChecked(true);
+		_ui->radioButton_opennipcl->setChecked(false);
+#endif
+
 	if(RTABMAP_NONFREE == 0)
 	{
 		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
@@ -278,6 +283,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->openni2_autoExposure, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_exposure, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_gain, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->openni2_mirroring, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniDevice, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniLocalTransform, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_openniFx, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
@@ -449,15 +455,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->globalDetection_toroIterations->setObjectName(Parameters::kRGBDToroIterations().c_str());
 	_ui->globalDetection_toroIgnoreVariance->setObjectName(Parameters::kRGBDToroIgnoreVariance().c_str());
 	_ui->globalDetection_optimizeFromGraphEnd->setObjectName(Parameters::kRGBDOptimizeFromGraphEnd().c_str());
+	_ui->spinBox_maxLocalLocationsRetrieved->setObjectName(Parameters::kRGBDMaxLocalRetrieved().c_str());
 
 	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
-	_ui->graphPlan_maxAnticipatedNodes->setObjectName(Parameters::kRGBDMaxAnticipatedNodes().c_str());
 	_ui->graphPlan_planWithNearNodesLinked->setObjectName(Parameters::kRGBDPlanWithNearNodesLinked().c_str());
-	_ui->graphPlan_goalMaxDistance->setObjectName(Parameters::kRGBDGoalMaxDistance().c_str());
 
 	_ui->groupBox_localDetection_time->setObjectName(Parameters::kRGBDLocalLoopDetectionTime().c_str());
 	_ui->groupBox_localDetection_space->setObjectName(Parameters::kRGBDLocalLoopDetectionSpace().c_str());
-	_ui->localDetection_radius->setObjectName(Parameters::kRGBDLocalLoopDetectionRadius().c_str());
+	_ui->localDetection_radius->setObjectName(Parameters::kRGBDLocalRadius().c_str());
 	_ui->localDetection_maxNeighbors->setObjectName(Parameters::kRGBDLocalLoopDetectionNeighbors().c_str());
 	_ui->localDetection_maxDiffID->setObjectName(Parameters::kRGBDLocalLoopDetectionMaxDiffID().c_str());
 
@@ -894,15 +899,21 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_spinBox_databaseStartPos->setValue(0);
 
 		_ui->groupBox_sourceOpenni->setChecked(true);
+#ifdef _WIN32
+		_ui->radioButton_openni2->setChecked(true);
+		_ui->radioButton_opennipcl->setChecked(false);
+#else
 		_ui->radioButton_opennipcl->setChecked(true);
-		_ui->radioButton_freenect->setChecked(false);
 		_ui->radioButton_openni2->setChecked(false);
+#endif
+		_ui->radioButton_freenect->setChecked(false);
 		_ui->radioButton_opennicv->setChecked(false);
 		_ui->radioButton_opennicvasus->setChecked(false);
 		_ui->openni2_autoWhiteBalance->setChecked(true);
 		_ui->openni2_autoExposure->setChecked(true);
 		_ui->openni2_exposure->setValue(0);
 		_ui->openni2_gain->setValue(100);
+		_ui->openni2_mirroring->setChecked(false);
 		_ui->lineEdit_openniDevice->setText("");
 		_ui->lineEdit_openniLocalTransform->setText("0 0 0 -PI_2 0 -PI_2");
 		_ui->doubleSpinBox_openniFx->setValue(0.0);
@@ -1168,6 +1179,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->openni2_autoExposure->setChecked(settings.value("openni2AutoExposure", _ui->openni2_autoExposure->isChecked()).toBool());
 	_ui->openni2_exposure->setValue(settings.value("openni2Exposure", _ui->openni2_exposure->value()).toInt());
 	_ui->openni2_gain->setValue(settings.value("openni2Gain", _ui->openni2_gain->value()).toInt());
+	_ui->openni2_mirroring->setChecked(settings.value("openni2Mirroring", _ui->openni2_mirroring->isChecked()).toBool());
 	_ui->lineEdit_openniDevice->setText(settings.value("device",_ui->lineEdit_openniDevice->text()).toString());
 	_ui->lineEdit_openniLocalTransform->setText(settings.value("localTransform",_ui->lineEdit_openniLocalTransform->text()).toString());
 	_ui->doubleSpinBox_openniFx->setValue(settings.value("fx", _ui->doubleSpinBox_openniFx->value()).toDouble());
@@ -1416,6 +1428,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("openni2AutoExposure", 	_ui->openni2_autoExposure->isChecked());
 	settings.setValue("openni2Exposure", 		_ui->openni2_exposure->value());
 	settings.setValue("openni2Gain", 			_ui->openni2_gain->value());
+	settings.setValue("openni2Mirroring", _ui->openni2_mirroring->isChecked());
 	settings.setValue("device", 		_ui->lineEdit_openniDevice->text());
 	settings.setValue("localTransform", _ui->lineEdit_openniLocalTransform->text());
 	settings.setValue("fx", _ui->doubleSpinBox_openniFx->value());
@@ -3147,6 +3160,10 @@ int PreferencesDialog::getSourceOpenni2Gain() const
 {
 	return _ui->openni2_gain->value();
 }
+bool PreferencesDialog::getSourceOpenni2Mirroring() const
+{
+	return _ui->openni2_mirroring->isChecked();
+}
 QString PreferencesDialog::getSourceOpenniDevice() const
 {
 	return _ui->lineEdit_openniDevice->text();
@@ -3335,6 +3352,7 @@ void PreferencesDialog::testOdometry(int type)
 	else if(this->getSourceRGBD() == kSrcOpenNI2)
 	{
 		camera = new CameraOpenNI2(
+			this->getSourceOpenniDevice().toStdString(),
 			this->getGeneralInputRate(),
 			this->getSourceOpenniLocalTransform(),
 			this->getSourceOpenniFx(),
@@ -3382,6 +3400,7 @@ void PreferencesDialog::testOdometry(int type)
 	{
 		((CameraOpenNI2*)camera)->setAutoWhiteBalance(getSourceOpenni2AutoWhiteBalance());
 		((CameraOpenNI2*)camera)->setAutoExposure(getSourceOpenni2AutoExposure());
+		((CameraOpenNI2*)camera)->setMirroring(getSourceOpenni2Mirroring());
 		if(CameraOpenNI2::exposureGainAvailable())
 		{
 			((CameraOpenNI2*)camera)->setExposure(getSourceOpenni2Exposure());
@@ -3500,6 +3519,7 @@ void PreferencesDialog::testRGBDCamera()
 	else if(this->getSourceRGBD() == kSrcOpenNI2)
 	{
 		camera = new CameraOpenNI2(
+			this->getSourceOpenniDevice().toStdString(),
 			this->getGeneralInputRate(),
 			this->getSourceOpenniLocalTransform(),
 			this->getSourceOpenniFx(),
@@ -3547,6 +3567,7 @@ void PreferencesDialog::testRGBDCamera()
 	{
 		((CameraOpenNI2*)camera)->setAutoWhiteBalance(getSourceOpenni2AutoWhiteBalance());
 		((CameraOpenNI2*)camera)->setAutoExposure(getSourceOpenni2AutoExposure());
+		((CameraOpenNI2*)camera)->setMirroring(getSourceOpenni2Mirroring());
 		if(CameraOpenNI2::exposureGainAvailable())
 		{
 			((CameraOpenNI2*)camera)->setExposure(getSourceOpenni2Exposure());
@@ -3596,6 +3617,7 @@ void PreferencesDialog::calibrate()
 	else if(this->getSourceRGBD() == kSrcOpenNI2)
 	{
 		camera = new CameraOpenNI2(
+			this->getSourceOpenniDevice().toStdString(),
 			this->getGeneralInputRate(),
 			this->getSourceOpenniLocalTransform(),
 			this->getSourceOpenniFx(),
@@ -3643,6 +3665,7 @@ void PreferencesDialog::calibrate()
 	{
 		((CameraOpenNI2*)camera)->setAutoWhiteBalance(getSourceOpenni2AutoWhiteBalance());
 		((CameraOpenNI2*)camera)->setAutoExposure(getSourceOpenni2AutoExposure());
+		((CameraOpenNI2*)camera)->setMirroring(getSourceOpenni2Mirroring());
 		if(CameraOpenNI2::exposureGainAvailable())
 		{
 			((CameraOpenNI2*)camera)->setExposure(getSourceOpenni2Exposure());

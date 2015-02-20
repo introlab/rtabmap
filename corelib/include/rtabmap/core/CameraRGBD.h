@@ -199,7 +199,8 @@ public:
 	static bool exposureGainAvailable();
 
 public:
-	CameraOpenNI2(float imageRate = 0,
+	CameraOpenNI2(const std::string & deviceId = "",
+					float imageRate = 0,
 					const Transform & localTransform = Transform::getIdentity(),
 					float fx = 0.0f,
 					float fy = 0.0f,
@@ -213,6 +214,7 @@ public:
 	bool setAutoExposure(bool enabled);
 	bool setExposure(int value);
 	bool setGain(int value);
+	bool setMirroring(bool enabled);
 
 protected:
 	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
@@ -223,6 +225,7 @@ private:
 	openni::VideoStream * _depth;
 	float _depthFx;
 	float _depthFy;
+	std::string _deviceId;
 };
 
 

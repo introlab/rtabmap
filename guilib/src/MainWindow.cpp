@@ -345,6 +345,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->actionOpenNI2->setEnabled(CameraOpenNI2::available());
 	connect(_ui->actionOpenNI2_Sense, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
 	_ui->actionOpenNI2_Sense->setEnabled(CameraOpenNI2::available());
+	connect(_ui->actionOpenNI2_kinect, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
+	_ui->actionOpenNI2_kinect->setEnabled(CameraOpenNI2::available());
 
 	connect(_ui->actionSave_state, SIGNAL(triggered()), this, SLOT(saveFigures()));
 	connect(_ui->actionLoad_state, SIGNAL(triggered()), this, SLOT(loadFigures()));
@@ -2193,6 +2195,8 @@ void MainWindow::updateSelectSourceRGBDMenu(bool used, PreferencesDialog::Src sr
 	_ui->actionOpenNI_CV->setChecked(used && src == PreferencesDialog::kSrcOpenNI_CV);
 	_ui->actionOpenNI_CV_ASUS->setChecked(used && src == PreferencesDialog::kSrcOpenNI_CV_ASUS);
 	_ui->actionOpenNI2->setChecked(used && src == PreferencesDialog::kSrcOpenNI2);
+	_ui->actionOpenNI2_Sense->setChecked(used && src == PreferencesDialog::kSrcOpenNI2);
+	_ui->actionOpenNI2_kinect->setChecked(used && src == PreferencesDialog::kSrcOpenNI2);
 }
 
 void MainWindow::changeImgRateSetting()
@@ -2544,6 +2548,7 @@ void MainWindow::startDetection()
 		else if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2)
 		{
 			camera = new CameraOpenNI2(
+					_preferencesDialog->getSourceOpenniDevice().toStdString(),
 					_preferencesDialog->getGeneralInputRate(),
 					_preferencesDialog->getSourceOpenniLocalTransform(),
 					_preferencesDialog->getSourceOpenniFx(),
@@ -2599,6 +2604,7 @@ void MainWindow::startDetection()
 		{
 			((CameraOpenNI2*)camera)->setAutoWhiteBalance(_preferencesDialog->getSourceOpenni2AutoWhiteBalance());
 			((CameraOpenNI2*)camera)->setAutoExposure(_preferencesDialog->getSourceOpenni2AutoExposure());
+			((CameraOpenNI2*)camera)->setMirroring(_preferencesDialog->getSourceOpenni2Mirroring());
 			if(CameraOpenNI2::exposureGainAvailable())
 			{
 				((CameraOpenNI2*)camera)->setExposure(_preferencesDialog->getSourceOpenni2Exposure());
@@ -3473,27 +3479,35 @@ void MainWindow::selectDatabase()
 
 void MainWindow::selectOpenni()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_PCL, _ui->actionOpenNI_PCL->isChecked());
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_PCL,
+			_ui->actionOpenNI_PCL->isChecked() ||
+			_ui->actionOpenNI_PCL_ASUS->isChecked());
 }
 
 void MainWindow::selectFreenect()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcFreenect, _ui->actionFreenect->isChecked());
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcFreenect,
+			_ui->actionFreenect->isChecked());
 }
 
 void MainWindow::selectOpenniCv()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV, _ui->actionOpenNI_CV->isChecked());
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV,
+			_ui->actionOpenNI_CV->isChecked());
 }
 
 void MainWindow::selectOpenniCvAsus()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV_ASUS, _ui->actionOpenNI_CV_ASUS->isChecked());
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV_ASUS,
+			_ui->actionOpenNI_CV_ASUS->isChecked());
 }
 
 void MainWindow::selectOpenni2()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI2, _ui->actionOpenNI2->isChecked());
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI2,
+			_ui->actionOpenNI2->isChecked() ||
+			_ui->actionOpenNI2_Sense->isChecked() ||
+			_ui->actionOpenNI2_kinect->isChecked());
 }
 
 

@@ -721,7 +721,7 @@ int main (int argc, char * argv[])
 				UERROR("Not built with OpenNI2 support...");
 				exit(-1);
 			}
-			camera = new rtabmap::CameraOpenNI2(rate, t);
+			camera = new rtabmap::CameraOpenNI2("", rate, t);
 		}
 		else if(driver == 2)
 		{

@@ -77,6 +77,14 @@ bool RTABMAP_EXP loadTOROGraph(const std::string & fileName,
 		std::map<int, Transform> & poses,
 		std::multimap<int, std::pair<int, Transform> > & edgeConstraints);
 
+/**
+ * Get only the the most recent or older poses in the defined radius.
+ * @param poses The poses
+ * @param radius Radius (m) of the search for near neighbors
+ * @param angle Maximum angle (rad, [0,PI]) of accepted neighbor nodes in the radius (0 means ignore angle)
+ * @param keepLatest keep the latest node if true, otherwise the oldest node is kept
+ * @return A map containing only most recent or older poses in the the defined radius
+ */
 std::map<int, Transform> RTABMAP_EXP radiusPosesFiltering(
 		const std::map<int, Transform> & poses,
 		float radius,
@@ -87,7 +95,7 @@ std::map<int, Transform> RTABMAP_EXP radiusPosesFiltering(
  * Get all neighbor nodes in a fixed radius around each pose.
  * @param poses The poses
  * @param radius Radius (m) of the search for near neighbors
- * @param angle Maximum angle (rad, [0,PI]) of accepted neighbor nodes in the radius
+ * @param angle Maximum angle (rad, [0,PI]) of accepted neighbor nodes in the radius (0 means ignore angle)
  * @return A map between each pose id and its neighbors found in the radius
  */
 std::multimap<int, int> RTABMAP_EXP radiusPosesClustering(
@@ -115,11 +123,25 @@ int RTABMAP_EXP findNearestNode(
 		const std::map<int, rtabmap::Transform> & nodes,
 		const rtabmap::Transform & targetPose);
 
+/**
+ * Get nodes near the query
+ * @param nodeId the query id
+ * @param nodes the nodes to search for
+ * @param maxNearestNeighbors Maximum nearest neighbor to get. 0 means all.
+ * @param radius radius to search for (m)
+ * @return the nodes with squared distance to query node.
+ */
 std::map<int, float> RTABMAP_EXP getNodesInRadius(
 		int nodeId,
 		const std::map<int, Transform> & nodes,
 		int maxNearestNeighbors,
 		float radius);
+
+float RTABMAP_EXP computePathLength(
+		const std::vector<std::pair<int, Transform> > & path,
+		unsigned int fromIndex = 0,
+		unsigned int toIndex = 0);
+
 
 } /* namespace graph */
 

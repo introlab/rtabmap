@@ -290,14 +290,13 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, ToroIgnoreVariance,   bool, false,    "Ignore constraints' variance. If checked, identity information matrix is used for each constraint in TORO. Otherwise, an information matrix is generated from the variance saved in the links.");
 	RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd, bool, false,    "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
 	RTABMAP_PARAM(RGBD, GoalReachedRadius,    float, 0.5, "Goal reached radius (m).");
-	RTABMAP_PARAM(RGBD, MaxAnticipatedNodes,  unsigned int, 10, "Maximum anticipated nodes on the computed path that can be retrieved (the number of nodes actually retrieved at each iteration is limited by \"Rtabmap/MaxRetrieved\").");
 	RTABMAP_PARAM(RGBD, PlanWithNearNodesLinked,  bool, true, "Before planning in the graph, near nodes are linked together (even if they don't belong to same map). Radius is defined by \"RGBD/GoalReachedRadius\" parameter.");
-	RTABMAP_PARAM(RGBD, GoalMaxDistance,  float, 0, "Maximum distance (m) of the target goal from the graph (0 means infinity). If the goal is too far from the graph, the plan is aborted. Also when set, the next goal in the graph can't be farther than this distance from the current position.");
+	RTABMAP_PARAM(RGBD, MaxLocalRetrieved, unsigned int, 2, "Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).");
+	RTABMAP_PARAM(RGBD, LocalRadius, float, 10, "Local radius (m) for nodes selection in the local map. This parameter is used in some approaches about the local map management.");
 
 	// Local loop closure detection
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionTime,     bool, false, 	"Detection over all locations in STM.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionSpace,    bool, false, 	"Detection over locations (in Working Memory or STM) near in space.");
-	RTABMAP_PARAM(RGBD, LocalLoopDetectionRadius,   float, 15, 		"Maximum radius for space detection.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionNeighbors,   int, 20, 	"Maximum nearest neighbor.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxDiffID,   int, 50,      "Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.")
 

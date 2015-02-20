@@ -182,7 +182,7 @@ int main (int argc, char * argv[])
 
 	if(openni2)
 	{
-		cam = new rtabmap::CameraThread(new rtabmap::CameraOpenNI2(rate, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0)));
+		cam = new rtabmap::CameraThread(new rtabmap::CameraOpenNI2("", rate, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0)));
 	}
 	else if(openni)
 	{

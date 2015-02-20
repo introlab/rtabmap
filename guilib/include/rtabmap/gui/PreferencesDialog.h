@@ -177,6 +177,7 @@ public:
 	bool getSourceOpenni2AutoExposure() const;  //Openni group
 	int getSourceOpenni2Exposure() const;  //Openni group
 	int getSourceOpenni2Gain() const;   //Openni group
+	bool getSourceOpenni2Mirroring() const; //Openni group
 	QString getSourceOpenniDevice() const;            //Openni group
 	Transform getSourceOpenniLocalTransform() const;    //Openni group
 	float getSourceOpenniFx() const; // Openni group

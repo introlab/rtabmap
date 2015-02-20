@@ -346,7 +346,14 @@ bool CameraOpenNI2::exposureGainAvailable()
 #endif
 }
 
-CameraOpenNI2::CameraOpenNI2(float imageRate, const rtabmap::Transform & localTransform, float fx, float fy, float cx, float cy) :
+CameraOpenNI2::CameraOpenNI2(
+		const std::string & deviceId,
+		float imageRate,
+		const rtabmap::Transform & localTransform,
+		float fx,
+		float fy,
+		float cx,
+		float cy) :
 	CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
 #ifdef WITH_OPENNI2
 	_device(new openni::Device()),
@@ -358,7 +365,8 @@ CameraOpenNI2::CameraOpenNI2(float imageRate, const rtabmap::Transform & localTr
 	_depth(0),
 #endif
 	_depthFx(0.0f),
-	_depthFy(0.0f)
+	_depthFy(0.0f),
+	_deviceId(deviceId)
 {
 }
 
@@ -438,14 +446,31 @@ bool CameraOpenNI2::setGain(int value)
 	return false;
 }
 
+bool CameraOpenNI2::setMirroring(bool enabled)
+{
+	if(_color->isValid() && _depth->isValid())
+	{
+		return _depth->setMirroringEnabled(enabled) == openni::STATUS_OK &&
+				_color->setMirroringEnabled(enabled) == openni::STATUS_OK;
+	}
+	return false;
+}
+
 bool CameraOpenNI2::init()
 {
 #ifdef WITH_OPENNI2
 	openni::OpenNI::initialize();
 
-	if(_device->open(openni::ANY_DEVICE) != openni::STATUS_OK)
+	if(_device->open(_deviceId.empty()?openni::ANY_DEVICE:_deviceId.c_str()) != openni::STATUS_OK)
 	{
-		UERROR("CameraOpenNI2: Cannot open device.");
+		if(!_deviceId.empty())
+		{
+			UERROR("CameraOpenNI2: Cannot open device \"%s\".", _deviceId.c_str());
+		}
+		else
+		{
+			UERROR("CameraOpenNI2: Cannot open device.");
+		}
 		_device->close();
 		openni::OpenNI::shutdown();
 		return false;
