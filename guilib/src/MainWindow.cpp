@@ -503,7 +503,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
 		{
 			QMessageBox::Button b=QMessageBox::question(this,
 					tr("RTAB-Map"),
-					tr("There are unsaved changes. Save them?"),
+					tr("There are unsaved changed settings. Save them?"),
 					QMessageBox::Save | QMessageBox::Cancel | QMessageBox::Discard);
 			if(b == QMessageBox::Save)
 			{
