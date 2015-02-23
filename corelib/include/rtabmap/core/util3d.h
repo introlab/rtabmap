@@ -346,7 +346,7 @@ pcl::PolygonMesh::Ptr RTABMAP_EXP createMesh(
 		float gp3MaximumAngle = 2*M_PI/3,
 		bool gp3NormalConsistency = false);
 
-void occupancy2DFromLaserScan(
+void RTABMAP_EXP occupancy2DFromLaserScan(
 		const cv::Mat & scan,
 		cv::Mat & ground,
 		cv::Mat & obstacles,
