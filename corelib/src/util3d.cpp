@@ -2183,7 +2183,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 	if(minX != maxX && minY != maxY)
 	{
 		//Get map size
-		float margin = cellSize;
+		float margin = cellSize*10.0f;
 		xMin = minX-margin;
 		yMin = minY-margin;
 		float xMax = maxX+margin;
@@ -2211,6 +2211,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 					map.at<char>(pt.y, pt.x) = 100; // obstacles
 				}
 			}
+
 			//UDEBUG("empty=%d occupied=%d", empty, occupied);
 		}
 
@@ -2314,10 +2315,11 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		pcl::getMinMax3D(minMax, min, max);
 
 		// Added X2 to make sure that all points are inside the map (when rounded to integer)
-		xMin = min.x-cellSize*2.0f;
-		yMin = min.y-cellSize*2.0f;
-		float xMax = max.x+cellSize*2.0f;
-		float yMax = max.y+cellSize*2.0f;
+		float marging = cellSize*10.0f;
+		xMin = min.x-marging;
+		yMin = min.y-marging;
+		float xMax = max.x+marging;
+		float yMax = max.y+marging;
 
 		UDEBUG("map min=(%f, %f) max=(%f,%f)", xMin, yMin, xMax, yMax);
 
