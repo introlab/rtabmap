@@ -627,7 +627,7 @@ void GraphViewer::restoreDefaults()
 
 void GraphViewer::wheelEvent ( QWheelEvent * event )
 {
-	if(event->delta() > 0)
+	if(event->delta() < 0)
 	{
 		this->scale(0.95, 0.95);
 	}
