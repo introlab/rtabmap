@@ -495,6 +495,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_icp2Iterations->setObjectName(Parameters::kLccIcp2Iterations().c_str());
 	_ui->loopClosure_icp2Ratio->setObjectName(Parameters::kLccIcp2CorrespondenceRatio().c_str());
 	_ui->loopClosure_icp2Voxel->setObjectName(Parameters::kLccIcp2VoxelSize().c_str());
+	_ui->loopClosure_highICPTransitionalVariance->setObjectName(Parameters::kLccIcpHighTransitionalVariance().c_str());
+
 
 	//Odometry
 	_ui->odom_strategy->setObjectName(Parameters::kOdomStrategy().c_str());
@@ -2478,7 +2480,6 @@ void PreferencesDialog::addParameter(const QObject * object, bool value)
 				this->addParameters(_ui->groupBox_graphOptimization);
 				this->addParameters(_ui->groupBox_localDetection_time);
 				this->addParameters(_ui->groupBox_localDetection_space);
-				this->addParameters(_ui->groupBox_globalConstraints);
 				this->addParameters(_ui->groupBox_visualTransform2);
 			}
 
@@ -2487,7 +2488,6 @@ void PreferencesDialog::addParameter(const QObject * object, bool value)
 				// RGBD panel
 				if(value && groupBox == _ui->groupBox_localDetection_time)
 				{
-					this->addParameters(_ui->groupBox_globalConstraints);
 					this->addParameters(_ui->groupBox_visualTransform2);
 				}
 				if(value && groupBox == _ui->groupBox_localDetection_space)

@@ -48,7 +48,8 @@ RtabmapThread::RtabmapThread(Rtabmap * rtabmap) :
 		_rtabmap(rtabmap),
 		_paused(false),
 		lastPose_(Transform::getIdentity()),
-		_variance(0)
+		_rotVariance(0),
+		_transVariance(0)
 
 {
 	UASSERT(rtabmap != 0);
@@ -85,7 +86,8 @@ void RtabmapThread::clearBufferedData()
 	{
 		_dataBuffer.clear();
 		lastPose_.setIdentity();
-		_variance = 0;
+		_rotVariance = 0;
+		_transVariance = 0;
 	}
 	_dataMutex.unlock();
 }
@@ -437,13 +439,18 @@ void RtabmapThread::addData(const SensorData & sensorData)
 		{
 			UWARN("Odometry is reset (identity pose detected). Increment map id!");
 			pushNewState(kStateTriggeringMap);
-			_variance = 0;
+			_rotVariance = 0;
+			_transVariance = 0;
 		}
 
 		lastPose_ = sensorData.pose();
-		if(sensorData.poseVariance() > _variance)
+		if(sensorData.poseRotVariance() > _rotVariance)
 		{
-			_variance = sensorData.poseVariance();
+			_rotVariance = sensorData.poseRotVariance();
+		}
+		if(sensorData.poseTransVariance() > _transVariance)
+		{
+			_transVariance = sensorData.poseTransVariance();
 		}
 
 		if(_rate>0.0f)
@@ -459,12 +466,17 @@ void RtabmapThread::addData(const SensorData & sensorData)
 		_dataMutex.lock();
 		{
 			_dataBuffer.push_back(sensorData);
-			if(_variance <= 0)
+			if(_rotVariance <= 0)
 			{
-				_variance = 1.0f;
+				_rotVariance = 1.0f;
 			}
-			_dataBuffer.back().setPose(_dataBuffer.back().pose(), _variance);
-			_variance = 0;
+			if(_transVariance <= 0)
+			{
+				_transVariance = 1.0f;
+			}
+			_dataBuffer.back().setPose(_dataBuffer.back().pose(), _rotVariance, _transVariance);
+			_rotVariance = 0;
+			_transVariance = 0;
 			while(_dataBufferMaxSize > 0 && _dataBuffer.size() > (unsigned int)_dataBufferMaxSize)
 			{
 				ULOGGER_WARN("Data buffer is full, the oldest data is removed to add the new one.");

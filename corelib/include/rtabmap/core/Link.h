@@ -40,15 +40,17 @@ public:
 		from_(0),
 		to_(0),
 		type_(kUndef),
-		variance_(1.0f)
+		rotVariance_(1.0f),
+		transVariance_(1.0f)
 	{
 	}
-	Link(int from, int to, Type type, const Transform & transform, float variance) :
+	Link(int from, int to, Type type, const Transform & transform, float rotVariance, float transVariance) :
 		from_(from),
 		to_(to),
 		transform_(transform),
 		type_(type),
-		variance_(variance)
+		rotVariance_(rotVariance),
+		transVariance_(transVariance)
 	{
 	}
 
@@ -58,20 +60,22 @@ public:
 	int to() const {return to_;}
 	const Transform & transform() const {return transform_;}
 	Type type() const {return type_;}
-	float variance() const {return variance_;}
+	float rotVariance() const {return rotVariance_;}
+	float transVariance() const {return transVariance_;}
 
 	void setFrom(int from) {from_ = from;}
 	void setTo(int to) {to_ = to;}
 	void setTransform(const Transform & transform) {transform_ = transform;}
 	void setType(Type type) {type_ = type;}
-	void setVariance(float variance) {variance_ = variance;}
+	void setVariance(float rotVariance, float transVariance) {rotVariance_ = rotVariance; transVariance_ = transVariance;}
 
 private:
 	int from_;
 	int to_;
 	Transform transform_;
 	Type type_;
-	float variance_;
+	float rotVariance_;
+	float transVariance_;
 };
 
 }

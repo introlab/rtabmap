@@ -80,8 +80,8 @@ public:
 	std::list<int> cleanup(const std::list<int> & ignoredIds = std::list<int>());
 	void emptyTrash();
 	void joinTrashThread();
-	bool addLink(int to, int from, const Transform & transform, Link::Type type, float variance);
-	void updateLink(int fromId, int toId, const Transform & transform, float variance);
+	bool addLink(int to, int from, const Transform & transform, Link::Type type, float rotVariance, float transVariance);
+	void updateLink(int fromId, int toId, const Transform & transform, float rotVariance, float transVariance);
 	void removeAllVirtualLinks();
 	std::map<int, int> getNeighborsId(int signatureId,
 			int margin,
@@ -167,7 +167,7 @@ public:
 
 private:
 	void preUpdate();
-	void addSignatureToStm(Signature * signature, float odomVariance);
+	void addSignatureToStm(Signature * signature, float poseRotVariance, float poseTransVariance);
 	void clear();
 	void moveToTrash(Signature * s, bool saveToDatabase = true, std::list<int> * deletedWords = 0);
 

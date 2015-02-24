@@ -1360,7 +1360,11 @@ void DBDriverSqlite3::loadLinksQuery(
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		if(uStrNumCmp(_version, "0.7.4") >= 0)
+		if(uStrNumCmp(_version, "0.8.4") >= 0)
+		{
+			query << "SELECT to_id, type, transform, rot_variance, trans_variance FROM Link ";
+		}
+		else if(uStrNumCmp(_version, "0.7.4") >= 0)
 		{
 			query << "SELECT to_id, type, transform, variance FROM Link ";
 		}
@@ -1391,7 +1395,8 @@ void DBDriverSqlite3::loadLinksQuery(
 
 		int toId = -1;
 		int type = Link::kUndef;
-		float variance = 1.0f;
+		float rotVariance = 1.0f;
+		float transVariance = 1.0f;
 		const void * data = 0;
 		int dataSize = 0;
 
@@ -1417,15 +1422,21 @@ void DBDriverSqlite3::loadLinksQuery(
 				UERROR("Error while loading link transform from %d to %d! Setting to null...", signatureId, toId);
 			}
 
-			if(uStrNumCmp(_version, "0.7.4") >= 0)
+			if(uStrNumCmp(_version, "0.8.4") >= 0)
 			{
-				variance = sqlite3_column_double(ppStmt, index++);
-				neighbors.insert(neighbors.end(), std::make_pair(toId, Link(signatureId, toId, (Link::Type)type, transform, variance)));
+				rotVariance = sqlite3_column_double(ppStmt, index++);
+				transVariance = sqlite3_column_double(ppStmt, index++);
+				neighbors.insert(neighbors.end(), std::make_pair(toId, Link(signatureId, toId, (Link::Type)type, transform, rotVariance, transVariance)));
+			}
+			else if(uStrNumCmp(_version, "0.7.4") >= 0)
+			{
+				rotVariance = transVariance = sqlite3_column_double(ppStmt, index++);
+				neighbors.insert(neighbors.end(), std::make_pair(toId, Link(signatureId, toId, (Link::Type)type, transform, rotVariance, transVariance)));
 			}
 			else
 			{
 				// neighbor is 0, loop closures are 1 and 2 (child)
-				neighbors.insert(neighbors.end(), std::make_pair(toId, Link(signatureId, toId, type==0?Link::kNeighbor:Link::kGlobalClosure, transform, variance)));
+				neighbors.insert(neighbors.end(), std::make_pair(toId, Link(signatureId, toId, type==0?Link::kNeighbor:Link::kGlobalClosure, transform, rotVariance, transVariance)));
 			}
 
 			rc = sqlite3_step(ppStmt);
@@ -1455,7 +1466,13 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 		std::stringstream query;
 		int totalLinksLoaded = 0;
 
-		if(uStrNumCmp(_version, "0.7.4") >= 0)
+		if(uStrNumCmp(_version, "0.8.4") >= 0)
+		{
+			query << "SELECT to_id, type, rot_variance, trans_variance, transform FROM Link "
+				  << "WHERE from_id = ? "
+				  << "ORDER BY to_id";
+		}
+		else if(uStrNumCmp(_version, "0.7.4") >= 0)
 		{
 			query << "SELECT to_id, type, variance, transform FROM Link "
 				  << "WHERE from_id = ? "
@@ -1479,7 +1496,8 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 
 			int toId = -1;
 			int linkType = -1;
-			float variance = 1.0f;
+			float rotVariance = 1.0f;
+			float transVariance = 1.0f;
 			std::list<Link> links;
 			const void * data = 0;
 			int dataSize = 0;
@@ -1492,9 +1510,14 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 
 				toId = sqlite3_column_int(ppStmt, index++);
 				linkType = sqlite3_column_int(ppStmt, index++);
-				if(uStrNumCmp(_version, "0.7.4") >= 0)
+				if(uStrNumCmp(_version, "0.8.4") >= 0)
 				{
-					variance = sqlite3_column_double(ppStmt, index++);
+					rotVariance = sqlite3_column_double(ppStmt, index++);
+					transVariance = sqlite3_column_double(ppStmt, index++);
+				}
+				else if(uStrNumCmp(_version, "0.7.4") >= 0)
+				{
+					rotVariance = transVariance = sqlite3_column_double(ppStmt, index++);
 				}
 
 				//transform
@@ -1514,11 +1537,11 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 				{
 					if(uStrNumCmp(_version, "0.7.4") >= 0)
 					{
-						links.push_back(Link((*iter)->id(), toId, (Link::Type)linkType, transform, variance));
+						links.push_back(Link((*iter)->id(), toId, (Link::Type)linkType, transform, rotVariance, transVariance));
 					}
 					else // neighbor is 0, loop closures are 1 and 2 (child)
 					{
-						links.push_back(Link((*iter)->id(), toId, linkType == 0?Link::kNeighbor:Link::kGlobalClosure, transform, variance));
+						links.push_back(Link((*iter)->id(), toId, linkType == 0?Link::kNeighbor:Link::kGlobalClosure, transform, rotVariance, transVariance));
 					}
 				}
 				else
@@ -1631,7 +1654,7 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool upd
 				const std::map<int, Link> & links = (*j)->getLinks();
 				for(std::map<int, Link>::const_iterator i=links.begin(); i!=links.end(); ++i)
 				{
-					stepLink(ppStmt, (*j)->id(), i->first, i->second.type(), i->second.variance(), i->second.transform());
+					stepLink(ppStmt, (*j)->id(), i->first, i->second.type(), i->second.rotVariance(), i->second.transVariance(), i->second.transform());
 				}
 			}
 		}
@@ -1739,7 +1762,7 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 			const std::map<int, Link> & links = (*jter)->getLinks();
 			for(std::map<int, Link>::const_iterator i=links.begin(); i!=links.end(); ++i)
 			{
-				stepLink(ppStmt, (*jter)->id(), i->first, i->second.type(), i->second.variance(), i->second.transform());
+				stepLink(ppStmt, (*jter)->id(), i->first, i->second.type(), i->second.rotVariance(), i->second.transVariance(), i->second.transform());
 			}
 		}
 		// Finalize (delete) the statement
@@ -2027,7 +2050,11 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt,
 
 std::string DBDriverSqlite3::queryStepLink() const
 {
-	if(uStrNumCmp(_version, "0.7.4") >= 0)
+	if(uStrNumCmp(_version, "0.8.4") >= 0)
+	{
+		return "INSERT INTO Link(from_id, to_id, type, rot_variance, trans_variance, transform) VALUES(?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.7.4") >= 0)
 	{
 		return "INSERT INTO Link(from_id, to_id, type, variance, transform) VALUES(?,?,?,?,?);";
 	}
@@ -2036,7 +2063,14 @@ std::string DBDriverSqlite3::queryStepLink() const
 		return "INSERT INTO Link(from_id, to_id, type, transform) VALUES(?,?,?,?);";
 	}
 }
-void DBDriverSqlite3::stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, Link::Type type, float variance, const Transform & transform) const
+void DBDriverSqlite3::stepLink(
+		sqlite3_stmt * ppStmt,
+		int fromId,
+		int toId,
+		Link::Type type,
+		float rotVariance,
+		float transVariance,
+		const Transform & transform) const
 {
 	if(!ppStmt)
 	{
@@ -2060,9 +2094,16 @@ void DBDriverSqlite3::stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, Link
 	rc = sqlite3_bind_int(ppStmt, index++, type);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-	if(uStrNumCmp(_version, "0.7.4") >= 0)
+	if(uStrNumCmp(_version, "0.8.4") >= 0)
 	{
-		rc = sqlite3_bind_double(ppStmt, index++, variance);
+		rc = sqlite3_bind_double(ppStmt, index++, rotVariance);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_bind_double(ppStmt, index++, transVariance);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+	else if(uStrNumCmp(_version, "0.7.4") >= 0)
+	{
+		rc = sqlite3_bind_double(ppStmt, index++, rotVariance<transVariance?rotVariance:transVariance);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	}
 

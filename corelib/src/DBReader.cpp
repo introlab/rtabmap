@@ -193,7 +193,8 @@ SensorData DBReader::getNextData()
 			int mapId;
 			float fx,fy,cx,cy;
 			Transform localTransform, pose;
-			float variance = 1.0f;
+			float rotVariance = 1.0f;
+			float transVariance = 1.0f;
 			_dbDriver->getNodeData(*_currentId, imageBytes, depthBytes, laserScanBytes, fx, fy, cx, cy, localTransform);
 			if(!_odometryIgnored)
 			{
@@ -203,7 +204,8 @@ SensorData DBReader::getNextData()
 				if(links.size())
 				{
 					// assume the first is the backward neighbor, take its variance
-					variance = links.begin()->second.variance();
+					rotVariance = links.begin()->second.rotVariance();
+					transVariance = links.begin()->second.transVariance();
 				}
 			}
 			int seq = *_currentId;
@@ -229,7 +231,8 @@ SensorData DBReader::getNextData()
 					fx,fy,cx,cy,
 					localTransform,
 					pose,
-					variance,
+					rotVariance,
+					transVariance,
 					seq);
 			UDEBUG("Laser=%d RGB/Left=%d Depth=%d Right=%d",
 					data.laserScan().empty()?0:1,

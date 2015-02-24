@@ -57,7 +57,7 @@ public:
 
 	CameraEvent(const cv::Mat & rgb, const cv::Mat & depth, float fx, float fy, float cx, float cy, const Transform & localTransform, int id) :
 		UEvent(kCodeImageDepth),
-		data_(rgb, depth, fx, fy, cx, cy, localTransform, Transform(), 1.0f, id)
+		data_(rgb, depth, fx, fy, cx, cy, localTransform, Transform(), 1.0f, 1.0f, id)
 	{
 	}
 

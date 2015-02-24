@@ -185,7 +185,7 @@ void optimizeTOROGraph(
 			{
 				UASSERT(uContains(rtabmapToToro, iter->first) && uContains(rtabmapToToro, iter->second.to()));
 				UASSERT(!iter->second.transform().isNull());
-				edgeConstraintsToro.insert(std::make_pair(rtabmapToToro.at(iter->first), Link(rtabmapToToro.at(iter->first), rtabmapToToro.at(iter->second.to()), iter->second.type(), iter->second.transform(), iter->second.variance())));
+				edgeConstraintsToro.insert(std::make_pair(rtabmapToToro.at(iter->first), Link(rtabmapToToro.at(iter->first), rtabmapToToro.at(iter->second.to()), iter->second.type(), iter->second.transform(), iter->second.rotVariance(), iter->second.transVariance())));
 			}
 		}
 
@@ -285,14 +285,20 @@ void optimizeTOROGraph(
 			pcl::getTranslationAndEulerAngles(iter->second.transform().toEigen3f(), x,y,z, roll,pitch,yaw);
 			AISNavigation::TreePoseGraph3::Pose p(x, y, z, roll, pitch, yaw);
 			AISNavigation::TreePoseGraph3::InformationMatrix inf = DMatrix<double>::I(6);
-			if(!ignoreCovariance && iter->second.variance()>0)
+			if(!ignoreCovariance)
 			{
-				inf[0][0] = 1.0f/iter->second.variance(); // x
-				inf[1][1] = 1.0f/iter->second.variance(); // y
-				inf[2][2] = 1.0f/iter->second.variance(); // z
-				inf[3][3] = 1.0f/iter->second.variance(); // roll
-				inf[4][4] = 1.0f/iter->second.variance(); // pitch
-				inf[5][5] = 1.0f/iter->second.variance(); // yaw
+				if(iter->second.rotVariance()>0)
+				{
+					inf[0][0] = 1.0f/iter->second.rotVariance(); // roll
+					inf[1][1] = 1.0f/iter->second.rotVariance(); // pitch
+					inf[2][2] = 1.0f/iter->second.rotVariance(); // yaw
+				}
+				if(iter->second.transVariance()>0)
+				{
+					inf[3][3] = 1.0f/iter->second.transVariance(); // x
+					inf[4][4] = 1.0f/iter->second.transVariance(); // y
+					inf[5][5] = 1.0f/iter->second.transVariance(); // z
+				}
 			}
 
 			AISNavigation::TreePoseGraph<AISNavigation::Operations3D<double> >::Vertex* v1=pg.vertex(id1);
@@ -409,12 +415,12 @@ bool saveTOROGraph(
 					roll,
 					pitch,
 					yaw,
-					1.0f/iter->second.variance(),
-					1.0f/iter->second.variance(),
-					1.0f/iter->second.variance(),
-					1.0f/iter->second.variance(),
-					1.0f/iter->second.variance(),
-					1.0f/iter->second.variance());
+					1.0f/iter->second.rotVariance(),
+					1.0f/iter->second.rotVariance(),
+					1.0f/iter->second.rotVariance(),
+					1.0f/iter->second.transVariance(),
+					1.0f/iter->second.transVariance(),
+					1.0f/iter->second.transVariance());
 		}
 		UINFO("Graph saved to %s", fileName.c_str());
 		fclose(file);

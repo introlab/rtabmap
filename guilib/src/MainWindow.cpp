@@ -3193,7 +3193,7 @@ void MainWindow::postProcessing()
 							UINFO("Added new loop closure between %d and %d.", from, to);
 							addedLinks.insert(from);
 							addedLinks.insert(to);
-							_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, variance)));
+							_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, variance, variance)));
 							++loopClosuresAdded;
 							_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
 						}
@@ -3349,7 +3349,7 @@ void MainWindow::postProcessing()
 					if(!transform.isNull() && hasConverged &&
 					   correspondencesRatio >= correspondenceRatio)
 					{
-						Link newLink(from, to, iter->second.type(), transform*iter->second.transform(), variance);
+						Link newLink(from, to, iter->second.type(), transform*iter->second.transform(), variance, variance);
 						iter->second = newLink;
 					}
 					else

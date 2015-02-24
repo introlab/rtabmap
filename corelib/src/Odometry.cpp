@@ -1301,7 +1301,7 @@ void OdometryThread::mainLoop()
 	{
 		OdometryInfo info;
 		Transform pose = _odometry->process(data, &info);
-		data.setPose(pose, info.variance); // a null pose notify that odometry could not be computed
+		data.setPose(pose, info.variance, info.variance); // a null pose notify that odometry could not be computed
 		this->post(new OdometryEvent(data, info));
 	}
 }

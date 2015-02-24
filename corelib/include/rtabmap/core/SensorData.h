@@ -54,8 +54,9 @@ public:
 		  float cy,
 		  const Transform & localTransform,
 		  const Transform & pose,
-		  float poseVariance,
-		  int id = 0);
+		  float poseRotVariance,
+		  float poseTransVariance,
+		  int id);
 
 	// Metric constructor + 2d laser scan
 	SensorData(const cv::Mat & laserScan,
@@ -67,8 +68,9 @@ public:
 		  float cy,
 		  const Transform & localTransform,
 		  const Transform & pose,
-		  float poseVariance,
-		  int id = 0);
+		  float poseRotVariance,
+		  float poseTransVariance,
+		  int id);
 
 	virtual ~SensorData() {}
 
@@ -82,7 +84,7 @@ public:
 	void setId(int id) {_id = id;}
 
 	bool isMetric() const {return !_depthOrRightImage.empty() || _fx != 0.0f || _fyOrBaseline != 0.0f || !_pose.isNull();}
-	void setPose(const Transform & pose, float variance) {_pose = pose; _poseVariance=variance;}
+	void setPose(const Transform & pose, float rotVariance, float transVariance) {_pose = pose; _poseRotVariance=rotVariance; _poseTransVariance = transVariance;}
 	cv::Mat depth() const {return (_depthOrRightImage.type()==CV_32FC1 || _depthOrRightImage.type()==CV_16UC1)?_depthOrRightImage:cv::Mat();}
 	cv::Mat rightImage() const {return _depthOrRightImage.type()==CV_8UC1?_depthOrRightImage:cv::Mat();}
 	const cv::Mat & depthOrRightImage() const {return _depthOrRightImage;}
@@ -95,7 +97,8 @@ public:
 	float fyOrBaseline() const {return _fyOrBaseline;}
 	const Transform & pose() const {return _pose;}
 	const Transform & localTransform() const {return _localTransform;}
-	float poseVariance() const {return _poseVariance;}
+	float poseRotVariance() const {return _poseRotVariance;}
+	float poseTransVariance() const {return _poseTransVariance;}
 
 	void setFeatures(const std::vector<cv::KeyPoint> & keypoints, const cv::Mat & descriptors)
 	{
@@ -118,7 +121,8 @@ private:
 	float _cy;
 	Transform _pose;
 	Transform _localTransform;
-	float _poseVariance;
+	float _poseRotVariance;
+	float _poseTransVariance;
 
 	// features
 	std::vector<cv::KeyPoint> _keypoints;

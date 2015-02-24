@@ -548,7 +548,7 @@ bool Memory::update(const SensorData & data, Statistics * stats)
 	UDEBUG("time creating signature=%f ms", t);
 
 	// It will be added to the short-term memory, no need to delete it...
-	this->addSignatureToStm(signature, data.poseVariance());
+	this->addSignatureToStm(signature, data.poseRotVariance(), data.poseTransVariance());
 
 	_lastSignature = signature;
 
@@ -657,7 +657,7 @@ void Memory::setRoi(const std::string & roi)
 	}
 }
 
-void Memory::addSignatureToStm(Signature * signature, float poseVariance)
+void Memory::addSignatureToStm(Signature * signature, float poseRotVariance, float poseTransVariance)
 {
 	UTimer timer;
 	// add signature on top of the short-term memory
@@ -674,13 +674,13 @@ void Memory::addSignatureToStm(Signature * signature, float poseVariance)
 				   !_signatures.at(*_stMem.rbegin())->getPose().isNull())
 				{
 					motionEstimate = _signatures.at(*_stMem.rbegin())->getPose().inverse() * signature->getPose();
-					_signatures.at(*_stMem.rbegin())->addLink(Link(*_stMem.rbegin(), signature->id(), Link::kNeighbor, motionEstimate, poseVariance));
-					signature->addLink(Link(signature->id(), *_stMem.rbegin(), Link::kNeighbor, motionEstimate.inverse(), poseVariance));
+					_signatures.at(*_stMem.rbegin())->addLink(Link(*_stMem.rbegin(), signature->id(), Link::kNeighbor, motionEstimate, poseRotVariance, poseTransVariance));
+					signature->addLink(Link(signature->id(), *_stMem.rbegin(), Link::kNeighbor, motionEstimate.inverse(), poseRotVariance, poseTransVariance));
 				}
 				else
 				{
-					_signatures.at(*_stMem.rbegin())->addLink(Link(*_stMem.rbegin(), signature->id(), Link::kNeighbor, Transform(), 1.0f));
-					signature->addLink(Link(signature->id(), *_stMem.rbegin(), Link::kNeighbor, Transform(), 1.0f));
+					_signatures.at(*_stMem.rbegin())->addLink(Link(*_stMem.rbegin(), signature->id(), Link::kNeighbor, Transform(), 1.0f, 1.0f));
+					signature->addLink(Link(signature->id(), *_stMem.rbegin(), Link::kNeighbor, Transform(), 1.0f, 1.0f));
 				}
 				UDEBUG("Min STM id = %d", *_stMem.begin());
 			}
@@ -2200,7 +2200,7 @@ Transform Memory::computeScanMatchingTransform(
 }
 
 // Transform from new to old
-bool Memory::addLink(int oldId, int newId, const Transform & transform, Link::Type type, float variance)
+bool Memory::addLink(int oldId, int newId, const Transform & transform, Link::Type type, float rotVariance, float transVariance)
 {
 	UASSERT(type > Link::kNeighbor && type != Link::kUndef);
 
@@ -2218,8 +2218,8 @@ bool Memory::addLink(int oldId, int newId, const Transform & transform, Link::Ty
 
 		UDEBUG("Add link between %d and %d", oldS->id(), newS->id());
 
-		oldS->addLink(Link(oldS->id(), newS->id(), type, transform.inverse(), variance));
-		newS->addLink(Link(newS->id(), oldS->id(), type, transform, variance));
+		oldS->addLink(Link(oldS->id(), newS->id(), type, transform.inverse(), rotVariance, transVariance));
+		newS->addLink(Link(newS->id(), oldS->id(), type, transform, rotVariance, transVariance));
 
 		if(type!=Link::kVirtualClosure)
 		{
@@ -2258,7 +2258,7 @@ bool Memory::addLink(int oldId, int newId, const Transform & transform, Link::Ty
 	return false;
 }
 
-void Memory::updateLink(int fromId, int toId, const Transform & transform, float variance)
+void Memory::updateLink(int fromId, int toId, const Transform & transform, float rotVariance, float transVariance)
 {
 	Signature * fromS = this->_getSignature(fromId);
 	Signature * toS = this->_getSignature(toId);
@@ -2269,8 +2269,8 @@ void Memory::updateLink(int fromId, int toId, const Transform & transform, float
 		fromS->removeLink(toId);
 		toS->removeLink(fromId);
 
-		fromS->addLink(Link(fromId, toId, type, transform, variance));
-		toS->addLink(Link(toId, fromId, type, transform.inverse(), variance));
+		fromS->addLink(Link(fromId, toId, type, transform, rotVariance, transVariance));
+		toS->addLink(Link(toId, fromId, type, transform.inverse(), rotVariance, transVariance));
 
 		if(type!=Link::kVirtualClosure)
 		{
@@ -2535,7 +2535,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 			}
 
 			oldS->removeLinks(); // remove all links
-			oldS->addLink(Link(oldS->id(), newS->id(), Link::kGlobalClosure, Transform(), 1.0f)); // to keep track of the merged location
+			oldS->addLink(Link(oldS->id(), newS->id(), Link::kGlobalClosure, Transform(), 1.0f, 1.0f)); // to keep track of the merged location
 
 			// Set old image to new signature
 			this->copyData(oldS, newS);
@@ -2550,7 +2550,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 		}
 		else
 		{
-			newS->addLink(Link(newS->id(), oldS->id(), Link::kGlobalClosure, Transform(), 1.0f)); // to keep track of the merged location
+			newS->addLink(Link(newS->id(), oldS->id(), Link::kGlobalClosure, Transform(), 1.0f, 1.0f)); // to keep track of the merged location
 
 			// update weight
 			oldS->setWeight(newS->getWeight() + 1 + oldS->getWeight());

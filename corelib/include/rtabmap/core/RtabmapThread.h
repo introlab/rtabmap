@@ -110,7 +110,8 @@ private:
 	Rtabmap * _rtabmap;
 	bool _paused;
 	Transform lastPose_;
-	float _variance;
+	float _rotVariance;
+	float _transVariance;
 };
 
 } /* namespace rtabmap */

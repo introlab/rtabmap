@@ -43,7 +43,8 @@ SensorData::SensorData() :
 	_cx(0.0f),
 	_cy(0.0f),
 	_localTransform(Transform::getIdentity()),
-	_poseVariance(1.0f)
+	_poseRotVariance(1.0f),
+	_poseTransVariance(1.0f)
 {
 }
 
@@ -56,7 +57,8 @@ SensorData::SensorData(const cv::Mat & image,
 	_cx(0.0f),
 	_cy(0.0f),
 	_localTransform(Transform::getIdentity()),
-	_poseVariance(1.0f)
+	_poseRotVariance(1.0f),
+	_poseTransVariance(1.0f)
 {
 	UASSERT(image.type() == CV_8UC1 || // Mono
 			image.type() == CV_8UC3);  // RGB
@@ -71,7 +73,8 @@ SensorData::SensorData(const cv::Mat & image,
 		  float cy,
 		  const Transform & localTransform,
 		  const Transform & pose,
-		  float poseVariance,
+		  float poseRotVariance,
+		  float poseTransVariance,
 		  int id) :
 	_image(image),
 	_id(id),
@@ -82,7 +85,8 @@ SensorData::SensorData(const cv::Mat & image,
 	_cy(cy),
 	_pose(pose),
 	_localTransform(localTransform),
-	_poseVariance(poseVariance)
+	_poseRotVariance(poseRotVariance),
+	_poseTransVariance(poseTransVariance)
 {
 	UASSERT(image.type() == CV_8UC1 || // Mono
 			image.type() == CV_8UC3);  // RGB
@@ -103,7 +107,8 @@ SensorData::SensorData(const cv::Mat & laserScan,
 		  float cy,
 		  const Transform & localTransform,
 		  const Transform & pose,
-		  float poseVariance,
+		  float poseRotVariance,
+		  float poseTransVariance,
 		  int id) :
 	_image(image),
 	_id(id),
@@ -115,7 +120,8 @@ SensorData::SensorData(const cv::Mat & laserScan,
 	_cy(cy),
 	_pose(pose),
 	_localTransform(localTransform),
-	_poseVariance(poseVariance)
+	_poseRotVariance(poseRotVariance),
+	_poseTransVariance(poseTransVariance)
 {
 	UASSERT(_laserScan.empty() || _laserScan.type() == CV_32FC2);
 	UASSERT(image.type() == CV_8UC1 || // Mono

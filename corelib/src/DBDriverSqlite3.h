@@ -109,7 +109,7 @@ private:
 			float cx,
 			float cy,
 			const Transform & localTransform) const;
-	void stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, Link::Type type, float variance, const Transform & transform) const;
+	void stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, Link::Type type, float rotVariance, float transVariance, const Transform & transform) const;
 	void stepWordsChanged(sqlite3_stmt * ppStmt, int signatureId, int oldWordId, int newWordId) const;
 	void stepKeypoint(sqlite3_stmt * ppStmt, int signatureId, int wordId, const cv::KeyPoint & kp, const pcl::PointXYZ & pt) const;
 

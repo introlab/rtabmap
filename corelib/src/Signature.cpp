@@ -229,7 +229,8 @@ void Signature::setDepthCompressed(const cv::Mat & bytes, float fx, float fy, fl
 SensorData Signature::toSensorData()
 {
 	this->uncompressData();
-	float variance = 1.0f;
+	float rotVariance = 1.0f;
+	float transVariance = 1.0f;
 	if(_links.size())
 	{
 		for(std::map<int, Link>::iterator iter = _links.begin(); iter!=_links.end(); ++iter)
@@ -239,7 +240,8 @@ SensorData Signature::toSensorData()
 				//Assume the first neighbor to be the backward neighbor link
 				if(iter->second.to() < iter->second.from())
 				{
-					variance = iter->second.variance();
+					rotVariance = iter->second.rotVariance();
+					transVariance = iter->second.transVariance();
 					break;
 				}
 			}
@@ -254,7 +256,8 @@ SensorData Signature::toSensorData()
 			_cy,
 			_localTransform,
 			_pose,
-			variance,
+			rotVariance,
+			transVariance,
 			_id);
 }
 

@@ -244,11 +244,23 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 				std::multimap<int, rtabmap::Link>::iterator refinedIter = rtabmap::graph::findLink(linksRefined_, iter->second.from(), iter->second.to());
 				if(refinedIter != linksRefined_.end())
 				{
-					memory_->addLink(refinedIter->second.to(), refinedIter->second.from(), refinedIter->second.transform(), refinedIter->second.type(), refinedIter->second.variance());
+					memory_->addLink(
+							refinedIter->second.to(),
+							refinedIter->second.from(),
+							refinedIter->second.transform(),
+							refinedIter->second.type(),
+							refinedIter->second.rotVariance(),
+							refinedIter->second.transVariance());
 				}
 				else
 				{
-					memory_->addLink(iter->second.to(), iter->second.from(), iter->second.transform(), iter->second.type(), iter->second.variance());
+					memory_->addLink(
+							iter->second.to(),
+							iter->second.from(),
+							iter->second.transform(),
+							iter->second.type(),
+							iter->second.rotVariance(),
+							iter->second.transVariance());
 				}
 			}
 
@@ -257,7 +269,12 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 			{
 				if(!containsLink(linksAdded_, iter->second.from(), iter->second.to()))
 				{
-					memory_->updateLink(iter->second.from(), iter->second.to(), iter->second.transform(), iter->second.variance());
+					memory_->updateLink(
+							iter->second.from(),
+							iter->second.to(),
+							iter->second.transform(),
+							iter->second.rotVariance(),
+							iter->second.transVariance());
 				}
 			}
 
@@ -1431,7 +1448,7 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & linkIn,
 	ui_->checkBox_showOptimized->setEnabled(false);
 	UASSERT(!t.isNull() && memory_);
 
-	ui_->label_constraint->setText(QString("%1 (%2=%3)").arg(t.prettyPrint().c_str()).arg(QChar(0xc3, 0x03)).arg(sqrt(link.variance())));
+	ui_->label_constraint->setText(QString("%1 (%2r=%3 %4t=%5)").arg(t.prettyPrint().c_str()).arg(QChar(0xc3, 0x03)).arg(sqrt(link.rotVariance())).arg(QChar(0xc3, 0x03)).arg(sqrt(link.transVariance())));
 	if(link.type() == Link::kNeighbor &&
 	   graphes_.size() &&
 	   (int)graphes_.size()-1 == ui_->horizontalSlider_iterations->maximum())
@@ -2042,7 +2059,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool updateGraph)
 
 	if(hasConverged && !transform.isNull())
 	{
-		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), transform*t, variance);
+		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), transform*t, variance, variance);
 
 		bool updated = false;
 		std::multimap<int, Link>::iterator iter = linksRefined_.find(currentLink.from());
@@ -2147,7 +2164,7 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool updateGraph
 
 	if(!t.isNull())
 	{
-		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), t, variance);
+		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), t, variance, variance);
 
 		bool updated = false;
 		std::multimap<int, Link>::iterator iter = linksRefined_.find(currentLink.from());
@@ -2275,7 +2292,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 			}
 
 			// transform is valid, make a link
-			linksAdded_.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, variance)));
+			linksAdded_.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, variance, variance)));
 			updateSlider = true;
 		}
 	}
