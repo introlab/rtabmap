@@ -58,7 +58,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define LOG_I "LogI.txt"
 
 #define GRAPH_FILE_NAME "Graph.dot"
-#define HIGH_VARIANCE 10000
+
 
 //
 //
@@ -111,7 +111,6 @@ Rtabmap::Rtabmap() :
 	_startNewMapOnLoopClosure(Parameters::defaultRtabmapStartNewMapOnLoopClosure()),
 	_goalReachedRadius(Parameters::defaultRGBDGoalReachedRadius()),
 	_planWithNearNodesLinked(Parameters::defaultRGBDPlanWithNearNodesLinked()),
-	_icpHighTransVariance(Parameters::defaultLccIcpHighTransitionalVariance()),
 	_loopClosureHypothesis(0,0.0f),
 	_highestHypothesis(0,0.0f),
 	_lastProcessTime(0.0),
@@ -378,7 +377,6 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRtabmapStartNewMapOnLoopClosure(), _startNewMapOnLoopClosure);
 	Parameters::parse(parameters, Parameters::kRGBDGoalReachedRadius(), _goalReachedRadius);
 	Parameters::parse(parameters, Parameters::kRGBDPlanWithNearNodesLinked(), _planWithNearNodesLinked);
-	Parameters::parse(parameters, Parameters::kLccIcpHighTransitionalVariance(), _icpHighTransVariance);
 
 	// RGB-D SLAM stuff
 	if((iter=parameters.find(Parameters::kLccIcpType())) != parameters.end())
@@ -873,7 +871,7 @@ bool Rtabmap::process(const SensorData & data)
 						oldId,
 						signature->getLinks().at(oldId).transform().prettyPrint().c_str(),
 						t.prettyPrint().c_str());
-				_memory->updateLink(signature->id(), oldId, t, variance, _icpHighTransVariance?HIGH_VARIANCE:variance);
+				_memory->updateLink(signature->id(), oldId, t, 1, 1); // set Identify covariance
 			}
 			else
 			{
@@ -1486,7 +1484,7 @@ bool Rtabmap::process(const SensorData & data)
 							signature->id(),
 							localSpaceNearestId,
 							t.prettyPrint().c_str());
-					_memory->addLink(localSpaceNearestId, signature->id(), t, Link::kLocalSpaceClosure, variance, _icpHighTransVariance?HIGH_VARIANCE:variance);
+					_memory->addLink(localSpaceNearestId, signature->id(), t, Link::kLocalSpaceClosure, 1, 1); // set Identify covariance
 
 					// Old map -> new map, used for localization correction on loop closure
 					const Signature * oldS = _memory->getSignature(localSpaceNearestId);
@@ -1568,7 +1566,7 @@ bool Rtabmap::process(const SensorData & data)
 			Transform virtualLoop = _optimizedPoses.at(signature->id()).inverse() * _optimizedPoses.at(_path[_pathCurrentIndex].first);
 			if(_localRadius > 0.0f && virtualLoop.getNorm() < _localRadius)
 			{
-				_memory->addLink(_path[_pathCurrentIndex].first, signature->id(), virtualLoop, Link::kVirtualClosure, HIGH_VARIANCE, HIGH_VARIANCE);
+				_memory->addLink(_path[_pathCurrentIndex].first, signature->id(), virtualLoop, Link::kVirtualClosure, 100, 100); // set high variance
 			}
 		}
 	}
@@ -2608,7 +2606,7 @@ void Rtabmap::updateGoalIndex()
 						if(!s->hasLink(_path[i-1].first) && _memory->getSignature(_path[i-1].first) != 0)
 						{
 							Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
-							_memory->addLink(_path[i-1].first, _path[i].first, virtualLoop, Link::kVirtualClosure, HIGH_VARIANCE, HIGH_VARIANCE);
+							_memory->addLink(_path[i-1].first, _path[i].first, virtualLoop, Link::kVirtualClosure, 1, 1); // on the optimized path, set Identity variance
 							UINFO("Added Virtual link between %d and %d", _path[i-1].first, _path[i].first);
 						}
 					}

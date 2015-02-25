@@ -495,7 +495,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_icp2Iterations->setObjectName(Parameters::kLccIcp2Iterations().c_str());
 	_ui->loopClosure_icp2Ratio->setObjectName(Parameters::kLccIcp2CorrespondenceRatio().c_str());
 	_ui->loopClosure_icp2Voxel->setObjectName(Parameters::kLccIcp2VoxelSize().c_str());
-	_ui->loopClosure_highICPTransitionalVariance->setObjectName(Parameters::kLccIcpHighTransitionalVariance().c_str());
 
 
 	//Odometry

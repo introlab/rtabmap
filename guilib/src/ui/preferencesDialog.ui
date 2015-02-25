@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-203</y>
             <width>744</width>
             <height>1101</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>21</number>
+                <number>20</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -5662,13 +5662,6 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                     </item>
                     <item>
                      <layout class="QGridLayout" name="gridLayout_48" columnstretch="0,1">
-                      <item row="1" column="0">
-                       <widget class="QCheckBox" name="loopClosure_highICPTransitionalVariance">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="0" column="0">
                        <widget class="QDoubleSpinBox" name="globalDetection_icpMaxDistance">
                         <property name="suffix">
@@ -5692,16 +5685,6 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                        <widget class="QLabel" name="label_51">
                         <property name="text">
                          <string>Maximum ICP correction distance accepted. A large translation difference between the visual transformation and ICP transformation results in wrong transformations in most cases.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QLabel" name="label_80">
-                        <property name="text">
-                         <string>Set high transitional variance on odometry pose correction and on local loop closure in space. Particularly useful when the robot is moving in hallways with short-range laser rangefinder. Only used with ICP 2D.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>

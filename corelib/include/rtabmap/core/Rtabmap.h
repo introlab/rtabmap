@@ -183,7 +183,6 @@ private:
 	bool _startNewMapOnLoopClosure;
 	float _goalReachedRadius; // meters
 	bool _planWithNearNodesLinked;
-	bool _icpHighTransVariance;
 
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;

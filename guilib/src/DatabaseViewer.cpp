@@ -700,6 +700,7 @@ void DatabaseViewer::view3DMap()
 						{
 							color = (Qt::GlobalColor)(mapId % 12 + 7 );
 						}
+
 						viewer->addCloud(uFormat("cloud%d", iter->first), cloud, pose, color);
 
 						UINFO("Generated %d (%d points)", iter->first, cloud->size());
@@ -1109,10 +1110,7 @@ void DatabaseViewer::update(int value,
 						ui_->horizontalSlider_loops->blockSignals(true);
 						ui_->horizontalSlider_loops->setValue(i);
 						ui_->horizontalSlider_loops->blockSignals(false);
-						this->updateConstraintView(loopLinks_.at(i),
-								pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>),
-								pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>),
-								false);
+						this->updateConstraintView(loopLinks_.at(i), false);
 					}
 					ui_->horizontalSlider_neighbors->blockSignals(true);
 					ui_->horizontalSlider_neighbors->setValue(0);
@@ -1131,10 +1129,7 @@ void DatabaseViewer::update(int value,
 						ui_->horizontalSlider_neighbors->blockSignals(true);
 						ui_->horizontalSlider_neighbors->setValue(i);
 						ui_->horizontalSlider_neighbors->blockSignals(false);
-						this->updateConstraintView(neighborLinks_.at(i),
-								pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>),
-								pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>),
-								false);
+						this->updateConstraintView(neighborLinks_.at(i), false);
 					}
 					ui_->horizontalSlider_loops->blockSignals(true);
 					ui_->horizontalSlider_loops->setValue(0);
@@ -1424,16 +1419,16 @@ void DatabaseViewer::sliderLoopValueChanged(int value)
 // only called when ui_->checkBox_showOptimized state changed
 void DatabaseViewer::updateConstraintView()
 {
-	this->updateConstraintView(neighborLinks_.at(ui_->horizontalSlider_neighbors->value()),
-			pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>),
-			pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>),
-			false);
+	this->updateConstraintView(neighborLinks_.at(ui_->horizontalSlider_neighbors->value()), false);
 }
 
-void DatabaseViewer::updateConstraintView(const rtabmap::Link & linkIn,
+void DatabaseViewer::updateConstraintView(
+		const rtabmap::Link & linkIn,
+		bool updateImageSliders,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudFrom,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloudTo,
-		bool updateImageSliders)
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & scanFrom,
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & scanTo)
 {
 	std::multimap<int, Link>::iterator iter = rtabmap::graph::findLink(linksRefined_, linkIn.from(), linkIn.to());
 	rtabmap::Link link = linkIn;
@@ -1448,7 +1443,9 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & linkIn,
 	ui_->checkBox_showOptimized->setEnabled(false);
 	UASSERT(!t.isNull() && memory_);
 
-	ui_->label_constraint->setText(QString("%1 (%2r=%3 %4t=%5)").arg(t.prettyPrint().c_str()).arg(QChar(0xc3, 0x03)).arg(sqrt(link.rotVariance())).arg(QChar(0xc3, 0x03)).arg(sqrt(link.transVariance())));
+	ui_->label_type->setNum(link.type());
+	ui_->label_variance->setText(QString("%1, %2").arg(sqrt(link.rotVariance())).arg(sqrt(link.transVariance())));
+	ui_->label_constraint->setText(QString("%1").arg(t.prettyPrint().c_str()));
 	if(link.type() == Link::kNeighbor &&
 	   graphes_.size() &&
 	   (int)graphes_.size()-1 == ui_->horizontalSlider_iterations->maximum())
@@ -1462,12 +1459,12 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & linkIn,
 			{
 				ui_->checkBox_showOptimized->setEnabled(true);
 				Transform topt = iterFrom->second.inverse()*iterTo->second;
-				Transform delta = t.inverse()*topt;
+				float diff = topt.getDistance(t);
 				Transform v1 = t.rotation()*Transform(1,0,0,0,0,0);
 				Transform v2 = topt.rotation()*Transform(1,0,0,0,0,0);
 				float a = pcl::getAngle3D(Eigen::Vector4f(v1.x(), v1.y(), v1.z(), 0), Eigen::Vector4f(v2.x(), v2.y(), v2.z(), 0));
 				a = (a *180.0f) / CV_PI;
-				ui_->label_constraint_opt->setText(QString("%1 (error=%2% a=%3)").arg(topt.prettyPrint().c_str()).arg((delta.getNorm()/t.getNorm())*100.0f).arg(a));
+				ui_->label_constraint_opt->setText(QString("%1 (error=%2% a=%3)").arg(topt.prettyPrint().c_str()).arg((diff/t.getNorm())*100.0f).arg(a));
 
 				if(ui_->checkBox_showOptimized->isChecked())
 				{
@@ -1520,19 +1517,19 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & linkIn,
 
 	if(ui_->constraintsViewer->isVisible())
 	{
+		Signature dataFrom, dataTo;
+
+		dataFrom = memory_->getSignatureData(link.from(), true);
+		UASSERT(dataFrom.getImageRaw().empty() || dataFrom.getImageRaw().type()==CV_8UC3 || dataFrom.getImageRaw().type() == CV_8UC1);
+		UASSERT(dataFrom.getDepthRaw().empty() || dataFrom.getDepthRaw().type()==CV_8UC1 || dataFrom.getDepthRaw().type() == CV_16UC1 || dataFrom.getDepthRaw().type() == CV_32FC1);
+
+		dataTo = memory_->getSignatureData(link.to(), true);
+		UASSERT(dataTo.getImageRaw().empty() || dataTo.getImageRaw().type()==CV_8UC3 || dataTo.getImageRaw().type() == CV_8UC1);
+		UASSERT(dataTo.getDepthRaw().empty() || dataTo.getDepthRaw().type()==CV_8UC1 || dataTo.getDepthRaw().type() == CV_16UC1 || dataTo.getDepthRaw().type() == CV_32FC1);
+
+
 		if(cloudFrom->size() == 0 && cloudTo->size() == 0)
 		{
-			Signature dataFrom, dataTo;
-
-			dataFrom = memory_->getSignatureData(link.from(), true);
-			UASSERT(dataFrom.getImageRaw().empty() || dataFrom.getImageRaw().type()==CV_8UC3 || dataFrom.getImageRaw().type() == CV_8UC1);
-			UASSERT(dataFrom.getDepthRaw().empty() || dataFrom.getDepthRaw().type()==CV_8UC1 || dataFrom.getDepthRaw().type() == CV_16UC1 || dataFrom.getDepthRaw().type() == CV_32FC1);
-
-			dataTo = memory_->getSignatureData(link.to(), true);
-			UASSERT(dataTo.getImageRaw().empty() || dataTo.getImageRaw().type()==CV_8UC3 || dataTo.getImageRaw().type() == CV_8UC1);
-			UASSERT(dataTo.getDepthRaw().empty() || dataTo.getDepthRaw().type()==CV_8UC1 || dataTo.getDepthRaw().type() == CV_16UC1 || dataTo.getDepthRaw().type() == CV_32FC1);
-
-
 			//cloud 3d
 			if(!ui_->checkBox_show3DWords->isChecked())
 			{
@@ -1584,11 +1581,11 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & linkIn,
 
 				if(cloudFrom->size())
 				{
-					ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom);
+					ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
 				}
 				if(cloudTo->size())
 				{
-					ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo);
+					ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
 				}
 			}
 			else
@@ -1628,7 +1625,7 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & linkIn,
 
 					if(cloudFrom->size())
 					{
-						ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom);
+						ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
 					}
 					else
 					{
@@ -1636,7 +1633,7 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & linkIn,
 					}
 					if(cloudTo->size())
 					{
-						ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo);
+						ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
 					}
 					else
 					{
@@ -1648,31 +1645,44 @@ void DatabaseViewer::updateConstraintView(const rtabmap::Link & linkIn,
 					UERROR("Not found signature %d or %d in RAM", link.from(), link.to());
 				}
 			}
-
-			//cloud 2d
-			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
-			scanA = rtabmap::util3d::laserScanToPointCloud(dataFrom.getLaserScanRaw());
-			scanB = rtabmap::util3d::laserScanToPointCloud(dataTo.getLaserScanRaw());
-			scanB = rtabmap::util3d::transformPointCloud<pcl::PointXYZ>(scanB, t);
-
-			if(scanA->size())
-			{
-				ui_->constraintsViewer->addOrUpdateCloud("scan0", scanA);
-			}
-			if(scanB->size())
-			{
-				ui_->constraintsViewer->addOrUpdateCloud("scan1", scanB);
-			}
 		}
 		else
 		{
 			if(cloudFrom->size())
 			{
-				ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom);
+				ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
 			}
 			if(cloudTo->size())
 			{
-				ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo);
+				ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
+			}
+		}
+
+		if(scanFrom->size() == 0 && scanTo->size() == 0)
+		{
+			//cloud 2d
+			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
+			scanA = rtabmap::util3d::laserScanToPointCloud(dataFrom.getLaserScanRaw());
+			scanB = rtabmap::util3d::laserScanToPointCloud(dataTo.getLaserScanRaw());
+			scanB = rtabmap::util3d::transformPointCloud<pcl::PointXYZ>(scanB, t);
+			if(scanA->size())
+			{
+				ui_->constraintsViewer->addOrUpdateCloud("scan0", scanA, Transform::getIdentity(), Qt::yellow);
+			}
+			if(scanB->size())
+			{
+				ui_->constraintsViewer->addOrUpdateCloud("scan1", scanB, Transform::getIdentity(), Qt::magenta);
+			}
+		}
+		else
+		{
+			if(scanFrom->size())
+			{
+				ui_->constraintsViewer->addOrUpdateCloud("scan0", scanFrom, Transform::getIdentity(), Qt::yellow);
+			}
+			if(scanTo->size())
+			{
+				ui_->constraintsViewer->addOrUpdateCloud("scan1", scanTo, Transform::getIdentity(), Qt::magenta);
 			}
 		}
 
@@ -1916,6 +1926,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool updateGraph)
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr scanA(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr scanB(new pcl::PointCloud<pcl::PointXYZ>);
 	if(ui_->checkBox_icp_2d->isChecked())
 	{
 		//2D
@@ -1925,20 +1937,20 @@ void DatabaseViewer::refineConstraint(int from, int to, bool updateGraph)
 		if(!oldLaserScan.empty() && !newLaserScan.empty())
 		{
 			// 2D
-			pcl::PointCloud<pcl::PointXYZ>::Ptr oldCloud = util3d::cvMat2Cloud(oldLaserScan);
-			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud = util3d::cvMat2Cloud(newLaserScan, t);
+			scanA = util3d::cvMat2Cloud(oldLaserScan);
+			scanB = util3d::cvMat2Cloud(newLaserScan, t);
 
 			//voxelize
 			if(ui_->doubleSpinBox_icp_voxel->value() > 0.0f)
 			{
-				oldCloud = util3d::voxelize<pcl::PointXYZ>(oldCloud, ui_->doubleSpinBox_icp_voxel->value());
-				newCloud = util3d::voxelize<pcl::PointXYZ>(newCloud, ui_->doubleSpinBox_icp_voxel->value());
+				scanA = util3d::voxelize<pcl::PointXYZ>(scanA, ui_->doubleSpinBox_icp_voxel->value());
+				scanB = util3d::voxelize<pcl::PointXYZ>(scanB, ui_->doubleSpinBox_icp_voxel->value());
 			}
 
-			if(newCloud->size() && oldCloud->size())
+			if(scanB->size() && scanA->size())
 			{
-				transform = util3d::icp2D(newCloud,
-						oldCloud,
+				transform = util3d::icp2D(scanB,
+						scanA,
 						ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
 						ui_->spinBox_icp_iteration->value(),
 					   &hasConverged,
@@ -2087,7 +2099,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool updateGraph)
 		if(ui_->dockWidget_constraints->isVisible())
 		{
 			cloudB = util3d::transformPointCloud<pcl::PointXYZ>(cloudB, transform);
-			this->updateConstraintView(newLink, cloudA, cloudB);
+			scanB = util3d::transformPointCloud<pcl::PointXYZ>(scanB, transform);
+			this->updateConstraintView(newLink, true, cloudA, cloudB, scanA, scanB);
 		}
 	}
 }

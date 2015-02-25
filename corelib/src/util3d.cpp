@@ -589,6 +589,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		int decimation)
 {
 	UASSERT(!imageDepth.empty() && (imageDepth.type() == CV_16UC1 || imageDepth.type() == CV_32FC1));
+	UASSERT(imageDepth.rows % decimation == 0);
+	UASSERT(imageDepth.cols % decimation == 0);
+
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 	if(decimation < 1)
 	{
@@ -630,6 +633,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 {
 	UASSERT(imageRgb.rows == imageDepth.rows && imageRgb.cols == imageDepth.cols);
 	UASSERT(!imageDepth.empty() && (imageDepth.type() == CV_16UC1 || imageDepth.type() == CV_32FC1));
+	UASSERT(imageDepth.rows % decimation == 0);
+	UASSERT(imageDepth.cols % decimation == 0);
+
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 	if(decimation < 1)
 	{
@@ -691,6 +697,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDisparity(
 		int decimation)
 {
 	UASSERT(imageDisparity.type() == CV_32FC1 || imageDisparity.type()==CV_16SC1);
+	UASSERT(imageDisparity.rows % decimation == 0);
+	UASSERT(imageDisparity.cols % decimation == 0);
+
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 	if(decimation < 1)
 	{
@@ -738,6 +747,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDisparityRGB(
 	UASSERT(imageRgb.rows == imageDisparity.rows &&
 			imageRgb.cols == imageDisparity.cols &&
 			(imageDisparity.type() == CV_32FC1 || imageDisparity.type()==CV_16SC1));
+	UASSERT(imageDisparity.rows % decimation == 0);
+	UASSERT(imageDisparity.cols % decimation == 0);
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 	if(decimation < 1)
 	{

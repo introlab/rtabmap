@@ -332,7 +332,6 @@ class RTABMAP_EXP Parameters
 	// Loop closure constraint
 	RTABMAP_PARAM(LccIcp, Type,            int, 0, 			"0=No ICP, 1=ICP 3D, 2=ICP 2D");
 	RTABMAP_PARAM(LccIcp, MaxDistance,     float, 0.2,     "Maximum ICP correction distance accepted (m).");
-	RTABMAP_PARAM(LccIcp, HighTransitionalVariance,  bool, true, 	"Set high transitional variance on odometry pose correction and on local loop closure in space. Particularly useful when the robot is moving in hallways with short-range laser rangefinder.");
 
 	RTABMAP_PARAM(LccBow, MinInliers,      int, 20, 		"Minimum visual word correspondences to compute geometry transform.");
 	RTABMAP_PARAM(LccBow, InlierDistance,  float, 0.02, 	"Maximum distance for visual word correspondences.");
@@ -358,7 +357,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccIcp2, MaxCorrespondenceDistance, float, 0.1, 	"Max distance for point correspondences.");
 	RTABMAP_PARAM(LccIcp2, Iterations,      int, 30, 				"Max iterations.");
 	RTABMAP_PARAM(LccIcp2, CorrespondenceRatio, float, 0.7, 		"Ratio of matching correspondences to accept the transform.");
-	RTABMAP_PARAM(LccIcp2, VoxelSize,       float, 0.005, 			"Voxel size to be used for ICP computation.");
+	RTABMAP_PARAM(LccIcp2, VoxelSize,       float, 0.05, 			"Voxel size to be used for ICP computation.");
 
 	// Stereo disparity
 	RTABMAP_PARAM(Stereo, WinSize,               int, 16,        "See cv::calcOpticalFlowPyrLK().");

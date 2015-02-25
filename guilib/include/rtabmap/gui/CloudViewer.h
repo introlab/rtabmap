@@ -70,12 +70,14 @@ public:
 	bool updateCloud(
 		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const Transform & pose = Transform::getIdentity());
+		const Transform & pose = Transform::getIdentity(),
+		const QColor & color = Qt::gray);
 
 	bool updateCloud(
 		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const Transform & pose = Transform::getIdentity());
+		const Transform & pose = Transform::getIdentity(),
+		const QColor & color = Qt::gray);
 
 	bool addOrUpdateCloud(
 		const std::string & id,
