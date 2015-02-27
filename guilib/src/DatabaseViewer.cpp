@@ -148,7 +148,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->horizontalSlider_iterations, SIGNAL(valueChanged(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->horizontalSlider_iterations, SIGNAL(sliderMoved(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->spinBox_iterations, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
-	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
+	connect(ui_->spinBox_optimizationsFrom, SIGNAL(valueChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_initGuess, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreCovariance, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 
@@ -422,8 +422,7 @@ void DatabaseViewer::updateIds()
 	linksRemoved_.clear();
 	if(memory_->getLastWorkingSignature())
 	{
-		std::map<int, int> nids = memory_->getNeighborsId(memory_->getLastWorkingSignature()->id(), 0, -1, true);
-		memory_->getMetricConstraints(uKeys(nids), poses_, links_, true);
+		memory_->getMetricConstraints(std::vector<int>(ids.begin(), ids.end()), poses_, links_, true);
 
 		if(poses_.size())
 		{
@@ -449,7 +448,7 @@ void DatabaseViewer::updateIds()
 				links_.clear();
 			}
 
-			int first = nids.begin()->first;
+			int first = *ids.begin();
 			ui_->spinBox_optimizationsFrom->setRange(first, memory_->getLastWorkingSignature()->id());
 			ui_->spinBox_optimizationsFrom->setValue(first);
 		}
@@ -1465,7 +1464,7 @@ void DatabaseViewer::updateConstraintView(
 
 	ui_->label_type->setNum(link.type());
 	ui_->label_variance->setText(QString("%1, %2").arg(sqrt(link.rotVariance())).arg(sqrt(link.transVariance())));
-	ui_->label_constraint->setText(QString("%1").arg(t.prettyPrint().c_str()));
+	ui_->label_constraint->setText(QString("%1").arg(t.prettyPrint().c_str()).replace(" ", "\n"));
 	if(link.type() == Link::kNeighbor &&
 	   graphes_.size() &&
 	   (int)graphes_.size()-1 == ui_->horizontalSlider_iterations->maximum())
@@ -1484,7 +1483,7 @@ void DatabaseViewer::updateConstraintView(
 				Transform v2 = topt.rotation()*Transform(1,0,0,0,0,0);
 				float a = pcl::getAngle3D(Eigen::Vector4f(v1.x(), v1.y(), v1.z(), 0), Eigen::Vector4f(v2.x(), v2.y(), v2.z(), 0));
 				a = (a *180.0f) / CV_PI;
-				ui_->label_constraint_opt->setText(QString("%1 (error=%2% a=%3)").arg(topt.prettyPrint().c_str()).arg((diff/t.getNorm())*100.0f).arg(a));
+				ui_->label_constraint_opt->setText(QString("%1\n(error=%2% a=%3)").arg(QString(topt.prettyPrint().c_str()).replace(" ", "\n")).arg((diff/t.getNorm())*100.0f).arg(a));
 
 				if(ui_->checkBox_showOptimized->isChecked())
 				{
@@ -2299,6 +2298,13 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 
 
 			t = tmpMemory.computeVisualTransform(to, from, &rejectedMsg, &inliers, &variance);
+
+			if(!silent)
+			{
+				ui_->graphicsView_A->setFeatures(tmpMemory.getSignature(to)->getWords());
+				ui_->graphicsView_B->setFeatures(tmpMemory.getSignature(from)->getWords());
+				updateWordsMatching();
+			}
 		}
 		else
 		{

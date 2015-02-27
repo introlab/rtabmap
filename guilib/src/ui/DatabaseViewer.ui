@@ -44,7 +44,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>128</width>
+             <width>144</width>
              <height>127</height>
             </rect>
            </property>
@@ -199,7 +199,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>127</width>
+             <width>143</width>
              <height>127</height>
             </rect>
            </property>
@@ -377,9 +377,6 @@
     <addaction name="actionRefine_all_neighbor_links"/>
     <addaction name="actionVisual_Refine_all_loop_closure_links"/>
     <addaction name="actionRefine_all_loop_closure_links"/>
-    <addaction name="separator"/>
-    <addaction name="actionClean_database"/>
-    <addaction name="actionClean_local_graph"/>
     <addaction name="separator"/>
     <addaction name="actionView_3D_map"/>
     <addaction name="actionGenerate_3D_map_pcd"/>
@@ -966,7 +963,7 @@
           <double>0.100000000000000</double>
          </property>
          <property name="value">
-          <double>0.800000000000000</double>
+          <double>0.500000000000000</double>
          </property>
         </widget>
        </item>
