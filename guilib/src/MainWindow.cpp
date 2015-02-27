@@ -170,7 +170,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 		_ui->dockWidget_loopClosureViewer->setVisible(false);
 		_ui->dockWidget_mapVisibility->setVisible(false);
 		_ui->dockWidget_graphViewer->setVisible(false);
-		_ui->dockWidget_odometry->setVisible(false);
+		//_ui->dockWidget_odometry->setVisible(false);
 		//_ui->dockWidget_cloudViewer->setVisible(false);
 		//_ui->dockWidget_imageView->setVisible(false);
 	}

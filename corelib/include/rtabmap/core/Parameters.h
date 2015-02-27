@@ -312,7 +312,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,         "Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).");
 	RTABMAP_PARAM_STR(Odom, RoiRatios,          "0.0 0.0 0.0 0.0", "Region of interest ratios [left, right, top, bottom].");
 	RTABMAP_PARAM(Odom, Force2D, 		        bool, false,     "Force 2D transform (3Dof: x,y and yaw).");
-	RTABMAP_PARAM(Odom, FillInfoData, 		    bool, false,     "Fill info with data (inliers/outliers features).");
+	RTABMAP_PARAM(Odom, FillInfoData, 		    bool, true,     "Fill info with data (inliers/outliers features).");
 
 	// Odometry Bag-of-words
 	RTABMAP_PARAM(OdomBow, LocalHistorySize,       int, 1000,      "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");

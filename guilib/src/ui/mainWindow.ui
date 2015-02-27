@@ -244,7 +244,7 @@
   </widget>
   <widget class="QDockWidget" name="dockWidget_statsV2">
    <property name="floating">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="windowTitle">
     <string>Statistics</string>
@@ -577,7 +577,7 @@
     <string>3D Loop closure</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>8</number>
+    <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_7">
     <layout class="QVBoxLayout" name="verticalLayout_7">
@@ -594,6 +594,9 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="dockWidget_mapVisibility">
+   <property name="floating">
+    <bool>true</bool>
+   </property>
    <property name="windowTitle">
     <string>Map visibility</string>
    </property>
@@ -619,7 +622,7 @@
     <string>Graph view</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>8</number>
+    <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_9">
     <layout class="QVBoxLayout" name="verticalLayout_10">
@@ -636,6 +639,9 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="dockWidget_imageView">
+   <property name="allowedAreas">
+    <set>Qt::AllDockWidgetAreas</set>
+   </property>
    <property name="windowTitle">
     <string>Loop closure detection</string>
    </property>
