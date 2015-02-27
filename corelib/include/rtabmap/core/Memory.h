@@ -109,6 +109,8 @@ public:
 	std::map<int, int> getWeights() const;
 	int getLastSignatureId() const;
 	const Signature * getLastWorkingSignature() const;
+	int getSignatureIdByLabel(const std::string & label, bool lookInDatabase = true) const;
+	bool labelSignature(int id, const std::string & label);
 	int getDatabaseMemoryUsed() const; // in bytes
 	double getDbSavingTime() const;
 	int getMapId(int signatureId) const;

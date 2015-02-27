@@ -483,6 +483,41 @@ void DBDriver::getInvertedIndexNi(int signatureId, int & ni) const
 	_dbSafeAccessMutex.unlock();
 }
 
+void DBDriver::getNodeIdByLabel(const std::string & label, int & id) const
+{
+	if(!label.empty())
+	{
+		int idFound = 0;
+		// look in the trash
+		_trashesMutex.lock();
+		for(std::map<int, Signature*>::const_iterator sIter = _trashSignatures.begin(); sIter!=_trashSignatures.end(); ++sIter)
+		{
+			if(sIter->second->getLabel().compare(label) == 0)
+			{
+				idFound = sIter->first;
+				break;
+			}
+		}
+		_trashesMutex.unlock();
+
+		// then look in the database
+		if(idFound == 0)
+		{
+			_dbSafeAccessMutex.lock();
+			this->getNodeIdByLabelQuery(label, id);
+			_dbSafeAccessMutex.unlock();
+		}
+		else
+		{
+			id = idFound;
+		}
+	}
+	else
+	{
+		UWARN("Can't search with an empty label!");
+	}
+}
+
 void DBDriver::addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize) const
 {
 	ULOGGER_DEBUG("");

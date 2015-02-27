@@ -86,6 +86,7 @@ private:
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const;
+	virtual void getNodeIdByLabelQuery(const std::string & label, int & id) const;
 
 private:
 	std::string queryStepNode() const;

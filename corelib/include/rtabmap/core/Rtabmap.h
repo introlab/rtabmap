@@ -99,6 +99,7 @@ public:
 	void setTimeThreshold(float maxTimeAllowed); // in ms
 
 	int triggerNewMap();
+	bool labelLocation(int id, const std::string & label);
 	void generateDOTGraph(const std::string & path, int id=0, int margin=5);
 	void generateTOROGraph(const std::string & path, bool optimized, bool global);
 	void resetMemory();

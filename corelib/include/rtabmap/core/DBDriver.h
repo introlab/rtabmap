@@ -79,8 +79,6 @@ public:
 
 public:
 	// Mutex-protected methods of abstract versions below
-	bool getSignature(int signatureId, Signature ** s);
-	bool getVisualWord(int wordId, VisualWord ** vw);
 
 	bool openConnection(const std::string & url, bool overwritten = false);
 	void closeConnection();
@@ -106,6 +104,7 @@ public:
 	void getLastNodeId(int & id) const;
 	void getLastWordId(int & id) const;
 	void getInvertedIndexNi(int signatureId, int & ni) const;
+	void getNodeIdByLabel(const std::string & label, int & id) const;
 
 protected:
 	DBDriver(const ParametersMap & parameters = ParametersMap());
@@ -140,6 +139,7 @@ private:
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const = 0;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const = 0;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const = 0;
+	virtual void getNodeIdByLabelQuery(const std::string & label, int & id) const = 0;
 
 private:
 	//non-abstract methods

@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QGraphicsOpacityEffect>
 #include <QtCore/QBuffer>
 #include <QtCore/QTextStream>
+#include <QtCore/QDateTime>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -969,6 +970,9 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_indexA,
 			ui_->label_parentsA,
 			ui_->label_childrenA,
+			ui_->label_weightA,
+			ui_->label_labelA,
+			ui_->label_stampA,
 			ui_->graphicsView_A,
 			ui_->label_idA);
 }
@@ -979,6 +983,9 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_indexB,
 			ui_->label_parentsB,
 			ui_->label_childrenB,
+			ui_->label_weightB,
+			ui_->label_labelB,
+			ui_->label_stampB,
 			ui_->graphicsView_B,
 			ui_->label_idB);
 }
@@ -987,6 +994,9 @@ void DatabaseViewer::update(int value,
 						QLabel * labelIndex,
 						QLabel * labelParents,
 						QLabel * labelChildren,
+						QLabel * weight,
+						QLabel * label,
+						QLabel * stamp,
 						rtabmap::ImageView * view,
 						QLabel * labelId,
 						bool updateConstraintView)
@@ -995,6 +1005,9 @@ void DatabaseViewer::update(int value,
 	labelIndex->setText(QString::number(value));
 	labelParents->clear();
 	labelChildren->clear();
+	weight->clear();
+	label->clear();
+	stamp->clear();
 	QRectF rect;
 	if(value >= 0 && value < ids_.size())
 	{
@@ -1026,6 +1039,13 @@ void DatabaseViewer::update(int value,
 				}
 
 				mapId = memory_->getMapId(id);
+
+				weight->setNum(data.getWeight());
+				label->setText(data.getLabel().c_str());
+				if(data.getStamp()!=0.0)
+				{
+					stamp->setText(QDateTime::fromMSecsSinceEpoch(data.getStamp()*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
+				}
 
 				//stereo
 				if(!data.getDepthRaw().empty() && data.getDepthRaw().type() == CV_8UC1)
@@ -1499,6 +1519,9 @@ void DatabaseViewer::updateConstraintView(
 						ui_->label_indexA,
 						ui_->label_parentsA,
 						ui_->label_childrenA,
+						ui_->label_weightA,
+						ui_->label_labelA,
+						ui_->label_stampA,
 						ui_->graphicsView_A,
 						ui_->label_idA,
 						false); // don't update constraints view!
@@ -1509,6 +1532,9 @@ void DatabaseViewer::updateConstraintView(
 						ui_->label_indexB,
 						ui_->label_parentsB,
 						ui_->label_childrenB,
+						ui_->label_weightB,
+						ui_->label_labelB,
+						ui_->label_stampB,
 						ui_->graphicsView_B,
 						ui_->label_idB,
 						false); // don't update constraints view!

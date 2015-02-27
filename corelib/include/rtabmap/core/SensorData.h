@@ -43,7 +43,7 @@ class RTABMAP_EXP SensorData
 {
 public:
 	SensorData(); // empty constructor
-	SensorData(const cv::Mat & image, int id = 0);
+	SensorData(const cv::Mat & image, int id = 0, double stamp = 0.0);
 
 	// Metric constructor
 	SensorData(const cv::Mat & image,
@@ -56,7 +56,8 @@ public:
 		  const Transform & pose,
 		  float poseRotVariance,
 		  float poseTransVariance,
-		  int id);
+		  int id,
+		  double stamp);
 
 	// Metric constructor + 2d laser scan
 	SensorData(const cv::Mat & laserScan,
@@ -70,7 +71,8 @@ public:
 		  const Transform & pose,
 		  float poseRotVariance,
 		  float poseTransVariance,
-		  int id);
+		  int id,
+		  double stamp);
 
 	virtual ~SensorData() {}
 
@@ -82,6 +84,7 @@ public:
 	const cv::Mat & image() const {return _image;}
 	int id() const {return _id;}
 	void setId(int id) {_id = id;}
+	double stamp() const {return _stamp;}
 
 	bool isMetric() const {return !_depthOrRightImage.empty() || _fx != 0.0f || _fyOrBaseline != 0.0f || !_pose.isNull();}
 	void setPose(const Transform & pose, float rotVariance, float transVariance) {_pose = pose; _poseRotVariance=rotVariance; _poseTransVariance = transVariance;}
@@ -111,6 +114,7 @@ public:
 private:
 	cv::Mat _image;
 	int _id;
+	double _stamp;
 
 	// Metric stuff
 	cv::Mat _depthOrRightImage;

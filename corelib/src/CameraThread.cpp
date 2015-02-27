@@ -125,11 +125,11 @@ void CameraThread::mainLoop()
 	{
 		if(_cameraRGBD)
 		{
-			this->post(new CameraEvent(rgb, depth, fx, fy, cx, cy, _cameraRGBD->getLocalTransform(), ++_seq));
+			this->post(new CameraEvent(rgb, depth, fx, fy, cx, cy, _cameraRGBD->getLocalTransform(), ++_seq, UTimer::now()));
 		}
 		else
 		{
-			this->post(new CameraEvent(rgb, ++_seq));
+			this->post(new CameraEvent(rgb, ++_seq, UTimer::now()));
 		}
 	}
 	else if(!this->isKilled())

@@ -103,6 +103,9 @@ private:
 				QLabel * labelIndex,
 				QLabel * labelParents,
 				QLabel * labelChildren,
+				QLabel * weight,
+				QLabel * label,
+				QLabel * stamp,
 				rtabmap::ImageView * view,
 				QLabel * labelId,
 				bool updateConstraintView = true);

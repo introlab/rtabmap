@@ -39,6 +39,7 @@ namespace rtabmap
 Signature::Signature() :
 	_id(0), // invalid id
 	_mapId(-1),
+	_stamp(0.0),
 	_weight(-1),
 	_saved(false),
 	_modified(true),
@@ -54,6 +55,9 @@ Signature::Signature() :
 Signature::Signature(
 		int id,
 		int mapId,
+		int weight,
+		double stamp,
+		const std::string & label,
 		const std::multimap<int, cv::KeyPoint> & words,
 		const std::multimap<int, pcl::PointXYZ> & words3, // in base_link frame (localTransform applied)
 		const Transform & pose,
@@ -67,7 +71,9 @@ Signature::Signature(
 		const Transform & localTransform) :
 	_id(id),
 	_mapId(mapId),
-	_weight(0),
+	_stamp(stamp),
+	_weight(weight),
+	_label(label),
 	_saved(false),
 	_modified(true),
 	_linksModified(true),
@@ -258,7 +264,8 @@ SensorData Signature::toSensorData()
 			_pose,
 			rotVariance,
 			transVariance,
-			_id);
+			_id,
+			_stamp);
 }
 
 void Signature::uncompressData()

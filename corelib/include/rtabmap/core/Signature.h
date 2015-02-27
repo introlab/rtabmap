@@ -54,6 +54,9 @@ public:
 	Signature();
 	Signature(int id,
 			int mapId,
+			int weight,
+			double stamp,
+			const std::string & label,
 			const std::multimap<int, cv::KeyPoint> & words,
 			const std::multimap<int, pcl::PointXYZ> & words3,
 			const Transform & pose = Transform(),
@@ -76,8 +79,13 @@ public:
 	int id() const {return _id;}
 	int mapId() const {return _mapId;}
 
-	void setWeight(int weight) {if(_weight!=weight)_modified=true;_weight = weight;}
+	void setWeight(int weight) {_modified=_weight!=weight;_weight = weight;}
 	int getWeight() const {return _weight;}
+
+	void setLabel(const std::string & label) {_modified=_label.compare(label)!=0;_label = label;}
+	const std::string & getLabel() const {return _label;}
+
+	double getStamp() const {return _stamp;}
 
 	void addLinks(const std::list<Link> & links);
 	void addLinks(const std::map<int, Link> & links);
@@ -141,8 +149,10 @@ public:
 private:
 	int _id;
 	int _mapId;
+	double _stamp;
 	std::map<int, Link> _links; // id, transform
 	int _weight;
+	std::string _label;
 	bool _saved; // If it's saved to bd
 	bool _modified;
 	bool _linksModified; // Optimization when updating signatures in database

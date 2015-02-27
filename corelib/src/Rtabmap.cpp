@@ -599,6 +599,26 @@ int Rtabmap::triggerNewMap()
 	return mapId;
 }
 
+bool Rtabmap::labelLocation(int id, const std::string & label)
+{
+	if(!label.empty() && _memory)
+	{
+		if(id > 0)
+		{
+			return _memory->labelSignature(id, label);
+		}
+		else if(_memory->getLastWorkingSignature())
+		{
+			return _memory->labelSignature(_memory->getLastWorkingSignature()->id(), label);
+		}
+		else
+		{
+			UERROR("Last signature is null! Cannot set label \"%s\"", label.c_str());
+		}
+	}
+	return false;
+}
+
 void Rtabmap::generateDOTGraph(const std::string & path, int id, int margin)
 {
 	if(_memory)

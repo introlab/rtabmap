@@ -689,6 +689,24 @@ void Memory::addSignatureToStm(Signature * signature, float poseRotVariance, flo
 				UDEBUG("Ignoring neighbor link between %d and %d because they are not in the same map! (%d vs %d)",
 						*_stMem.rbegin(), signature->id(),
 						_signatures.at(*_stMem.rbegin())->mapId(), signature->mapId());
+
+				//Tag the first node of the map
+				std::string tag = uFormat("map%d", signature->mapId());
+				if(getSignatureIdByLabel(tag, false) == 0)
+				{
+					UINFO("Tagging node %d with label \"%s\"", tag.c_str());
+					signature->setLabel(tag);
+				}
+			}
+		}
+		else
+		{
+			//Tag the first node of the map
+			std::string tag = uFormat("map%d", signature->mapId());
+			if(getSignatureIdByLabel(tag, false) == 0)
+			{
+				UINFO("Tagging node %d with label \"%s\"", tag.c_str());
+				signature->setLabel(tag);
 			}
 		}
 
@@ -1578,6 +1596,64 @@ const Signature * Memory::getLastWorkingSignature() const
 {
 	UDEBUG("");
 	return _lastSignature;
+}
+
+int Memory::getSignatureIdByLabel(const std::string & label, bool lookInDatabase) const
+{
+	int id = 0;
+	for(std::map<int, Signature*>::const_iterator iter=_signatures.begin(); iter!=_signatures.end(); ++iter)
+	{
+		if(iter->second->getLabel().compare(label) == 0)
+		{
+			id = iter->second->id();
+			break;
+		}
+	}
+	if(id == 0 && _dbDriver && lookInDatabase)
+	{
+		_dbDriver->getNodeIdByLabel(label, id);
+	}
+	return id;
+}
+
+bool Memory::labelSignature(int id, const std::string & label)
+{
+	if(!label.empty())
+	{
+		// verify that this label is not used
+		int idFound=getSignatureIdByLabel(label);
+		if(idFound == 0 || idFound == id)
+		{
+			Signature * s  = this->_getSignature(id);
+			if(s)
+			{
+				s->setLabel(label);
+				return true;
+			}
+			else if(_dbDriver)
+			{
+				std::list<int> ids;
+				ids.push_back(id);
+				std::list<Signature *> signatures;
+				_dbDriver->loadSignatures(ids,signatures);
+				if(signatures.size())
+				{
+					signatures.front()->setLabel(label);
+					_dbDriver->asyncSave(signatures.front()); // move it again to trash
+					return true;
+				}
+			}
+			else
+			{
+				UERROR("Node %d not found, failed to set label \"%s\"!", id, label.c_str());
+			}
+		}
+		else if(idFound)
+		{
+			UWARN("Node %d has already label \"%s\"", idFound, label.c_str());
+		}
+	}
+	return false;
 }
 
 void Memory::deleteLocation(int locationId, std::list<int> * deletedWords)
@@ -3509,6 +3585,9 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 
 		s = new Signature(id,
 			_idMapCount,
+			0,
+			data.stamp(),
+			"",
 			words,
 			words3D,
 			data.pose(),
@@ -3525,6 +3604,9 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 	{
 		s = new Signature(id,
 			_idMapCount,
+			0,
+			data.stamp(),
+			"",
 			words,
 			words3D,
 			data.pose(),

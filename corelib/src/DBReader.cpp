@@ -233,7 +233,8 @@ SensorData DBReader::getNextData()
 					pose,
 					rotVariance,
 					transVariance,
-					seq);
+					seq,
+					UTimer::now());
 			UDEBUG("Laser=%d RGB/Left=%d Depth=%d Right=%d",
 					data.laserScan().empty()?0:1,
 					data.image().empty()?0:1,

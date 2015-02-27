@@ -17,7 +17,9 @@ CREATE TABLE Node (
 	id INTEGER NOT NULL,
 	map_id INTEGER NOT NULL,
 	weight INTEGER,
+	stamp FLOAT,
 	pose BLOB,
+	label TEXT,
 	time_enter DATE,
 	PRIMARY KEY (id)
 );
@@ -122,6 +124,7 @@ END;
 -- *******************************************************************
 CREATE INDEX IDX_Map_Node_Word_node_id on Map_Node_Word (node_id);
 CREATE INDEX IDX_Link_from_id on Link (from_id);
+CREATE UNIQUE INDEX IDX_node_label on Node (label);
 
 -- *******************************************************************
 -- VERSION

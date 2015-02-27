@@ -38,6 +38,7 @@ namespace rtabmap
 SensorData::SensorData() :
 	_image(cv::Mat()),
 	_id(0),
+	_stamp(0.0),
 	_fx(0.0f),
 	_fyOrBaseline(0.0f),
 	_cx(0.0f),
@@ -49,9 +50,11 @@ SensorData::SensorData() :
 }
 
 SensorData::SensorData(const cv::Mat & image,
-	  int id) :
+	  int id,
+	  double stamp) :
 	_image(image),
 	_id(id),
+	_stamp(stamp),
 	_fx(0.0f),
 	_fyOrBaseline(0.0f),
 	_cx(0.0f),
@@ -75,9 +78,11 @@ SensorData::SensorData(const cv::Mat & image,
 		  const Transform & pose,
 		  float poseRotVariance,
 		  float poseTransVariance,
-		  int id) :
+		  int id,
+		  double stamp) :
 	_image(image),
 	_id(id),
+	_stamp(stamp),
 	_depthOrRightImage(depthOrRightImage),
 	_fx(fx),
 	_fyOrBaseline(fyOrBaseline),
@@ -109,9 +114,11 @@ SensorData::SensorData(const cv::Mat & laserScan,
 		  const Transform & pose,
 		  float poseRotVariance,
 		  float poseTransVariance,
-		  int id) :
+		  int id,
+		  double stamp) :
 	_image(image),
 	_id(id),
+	_stamp(stamp),
 	_depthOrRightImage(depthOrRightImage),
 	_laserScan(laserScan),
 	_fx(fx),

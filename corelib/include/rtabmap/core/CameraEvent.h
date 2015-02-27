@@ -44,9 +44,9 @@ public:
 	};
 
 public:
-	CameraEvent(const cv::Mat & image, int seq=0) :
+	CameraEvent(const cv::Mat & image, int seq=0, double stamp = 0.0) :
 		UEvent(kCodeImage),
-		data_(image, seq)
+		data_(image, seq, stamp)
 	{
 	}
 
@@ -55,9 +55,9 @@ public:
 	{
 	}
 
-	CameraEvent(const cv::Mat & rgb, const cv::Mat & depth, float fx, float fy, float cx, float cy, const Transform & localTransform, int id) :
+	CameraEvent(const cv::Mat & rgb, const cv::Mat & depth, float fx, float fy, float cx, float cy, const Transform & localTransform, int id, double stamp) :
 		UEvent(kCodeImageDepth),
-		data_(rgb, depth, fx, fy, cx, cy, localTransform, Transform(), 1.0f, 1.0f, id)
+		data_(rgb, depth, fx, fy, cx, cy, localTransform, Transform(), 1.0f, 1.0f, id, stamp)
 	{
 	}
 

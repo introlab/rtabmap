@@ -927,6 +927,36 @@ void DBDriverSqlite3::getInvertedIndexNiQuery(int nodeId, int & ni) const
 	}
 }
 
+void DBDriverSqlite3::getNodeIdByLabelQuery(const std::string & label, int & id) const
+{
+	if(_ppDb && !label.empty())
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::stringstream query;
+		query << "SELECT id FROM Node WHERE label='" << label <<"'";
+
+		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		// Process the result if one
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			id = sqlite3_column_int(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		ULOGGER_DEBUG("Time=%f", timer.ticks());
+	}
+}
+
 void DBDriverSqlite3::getWeightQuery(int nodeId, int & weight) const
 {
 	weight = 0;
@@ -976,9 +1006,18 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 		unsigned int loaded = 0;
 
 		// Load nodes information
-		query << "SELECT id, map_id, weight, pose "
-			  << "FROM Node "
-			  << "WHERE id=?;";
+		if(uStrNumCmp(_version, "0.8.5") >= 0)
+		{
+			query << "SELECT id, map_id, weight, pose, stamp, label "
+				  << "FROM Node "
+				  << "WHERE id=?;";
+		}
+		else
+		{
+			query << "SELECT id, map_id, weight, pose "
+				  << "FROM Node "
+				  << "WHERE id=?;";
+		}
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
@@ -992,10 +1031,12 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 
 			int id = 0;
 			int mapId = 0;
+			double stamp = 0.0;
 			int weight = 0;
 			Transform pose;
 			const void * data = 0;
 			int dataSize = 0;
+			std::string label;
 
 			// Process the result if one
 			rc = sqlite3_step(ppStmt);
@@ -1012,6 +1053,17 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 				{
 					memcpy(pose.data(), data, dataSize);
 				}
+
+				if(uStrNumCmp(_version, "0.8.5") >= 0)
+				{
+					stamp = sqlite3_column_double(ppStmt, index++);
+					const unsigned char * p = sqlite3_column_text(ppStmt, index++);
+					if(p)
+					{
+						label = reinterpret_cast<const char*>(p);
+					}
+				}
+
 				rc = sqlite3_step(ppStmt);
 			}
 			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
@@ -1023,10 +1075,12 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 				Signature * s = new Signature(
 						id,
 						mapId,
+						weight,
+						stamp,
+						label,
 						std::multimap<int, cv::KeyPoint>(),
 						std::multimap<int, pcl::PointXYZ>(),
 						pose);
-				s->setWeight(weight);
 				s->setSaved(true);
 				nodes.push_back(s);
 				++loaded;
@@ -1583,13 +1637,27 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool upd
 		Signature * s = 0;
 
 		std::string query;
-		if(updateTimestamp)
+		if(uStrNumCmp(_version, "0.8.5") >= 0)
 		{
-			query = "UPDATE Node SET weight=?, time_enter = DATETIME('NOW') WHERE id=?;";
+			if(updateTimestamp)
+			{
+				query = "UPDATE Node SET weight=?, label=?, time_enter = DATETIME('NOW') WHERE id=?;";
+			}
+			else
+			{
+				query = "UPDATE Node SET weight=?, label=? WHERE id=?;";
+			}
 		}
 		else
 		{
-			query = "UPDATE Node SET weight=? WHERE id=?;";
+			if(updateTimestamp)
+			{
+				query = "UPDATE Node SET weight=?, time_enter = DATETIME('NOW') WHERE id=?;";
+			}
+			else
+			{
+				query = "UPDATE Node SET weight=? WHERE id=?;";
+			}
 		}
 		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
@@ -1602,6 +1670,20 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool upd
 			{
 				rc = sqlite3_bind_int(ppStmt, index++, s->getWeight());
 				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+				if(uStrNumCmp(_version, "0.8.5") >= 0)
+				{
+					if(s->getLabel().empty())
+					{
+						rc = sqlite3_bind_null(ppStmt, index++);
+						UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+					}
+					else
+					{
+						rc = sqlite3_bind_text(ppStmt, index++, s->getLabel().c_str(), -1, SQLITE_STATIC);
+						UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+					}
+				}
 
 				rc = sqlite3_bind_int(ppStmt, index++, s->id());
 				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
@@ -1900,6 +1982,10 @@ void DBDriverSqlite3::saveQuery(const std::list<VisualWord *> & words) const
 
 std::string DBDriverSqlite3::queryStepNode() const
 {
+	if(uStrNumCmp(_version, "0.8.5") >= 0)
+	{
+		return "INSERT INTO Node(id, map_id, weight, pose, stamp, label) VALUES(?,?,?,?,?,?);";
+	}
 	return "INSERT INTO Node(id, map_id, weight, pose) VALUES(?,?,?,?);";
 }
 void DBDriverSqlite3::stepNode(sqlite3_stmt * ppStmt, const Signature * s) const
@@ -1920,6 +2006,23 @@ void DBDriverSqlite3::stepNode(sqlite3_stmt * ppStmt, const Signature * s) const
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_blob(ppStmt, index++, s->getPose().data(), s->getPose().size()*sizeof(float), SQLITE_STATIC);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+	if(uStrNumCmp(_version, "0.8.5") >= 0)
+	{
+		rc = sqlite3_bind_double(ppStmt, index++, s->getStamp());
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		if(s->getLabel().empty())
+		{
+			rc = sqlite3_bind_null(ppStmt, index++);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		}
+		else
+		{
+			rc = sqlite3_bind_text(ppStmt, index++, s->getLabel().c_str(), -1, SQLITE_STATIC);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		}
+	}
 
 	//step
 	rc=sqlite3_step(ppStmt);
