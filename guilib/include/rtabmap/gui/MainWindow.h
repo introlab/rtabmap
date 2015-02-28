@@ -113,6 +113,7 @@ protected:
 	virtual void showEvent(QShowEvent* anEvent);
 	virtual void moveEvent(QMoveEvent* anEvent);
 	virtual void resizeEvent(QResizeEvent* anEvent);
+	virtual bool eventFilter(QObject *obj, QEvent *event);
 
 private slots:
 	void changeState(MainWindow::State state);

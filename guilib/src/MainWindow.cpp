@@ -173,6 +173,19 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 		//_ui->dockWidget_odometry->setVisible(false);
 		//_ui->dockWidget_cloudViewer->setVisible(false);
 		//_ui->dockWidget_imageView->setVisible(false);
+
+		// catch resize events
+		_ui->dockWidget_posterior->installEventFilter(this);
+		_ui->dockWidget_likelihood->installEventFilter(this);
+		_ui->dockWidget_rawlikelihood->installEventFilter(this);
+		_ui->dockWidget_statsV2->installEventFilter(this);
+		_ui->dockWidget_console->installEventFilter(this);
+		_ui->dockWidget_loopClosureViewer->installEventFilter(this);
+		_ui->dockWidget_mapVisibility->installEventFilter(this);
+		_ui->dockWidget_graphViewer->installEventFilter(this);
+		_ui->dockWidget_odometry->installEventFilter(this);
+		_ui->dockWidget_cloudViewer->installEventFilter(this);
+		_ui->dockWidget_imageView->installEventFilter(this);
 	}
 
 	_ui->widget_mainWindow->setVisible(false);
@@ -2173,6 +2186,15 @@ void MainWindow::resizeEvent(QResizeEvent* anEvent)
 	{
 		this->configGUIModified();
 	}
+}
+
+bool MainWindow::eventFilter(QObject *obj, QEvent *event)
+{
+	if (event->type() == QEvent::Resize && qobject_cast<QDockWidget*>(obj))
+	{
+		this->setWindowModified(true);
+	}
+	return QWidget::eventFilter(obj, event);
 }
 
 void MainWindow::updateSelectSourceImageMenu(bool used, PreferencesDialog::Src src)
