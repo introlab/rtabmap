@@ -1905,6 +1905,14 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 					((CameraOpenNI2*)_camera->cameraRGBD())->setGain(_preferencesDialog->getSourceOpenni2Gain());
 				}
 			}
+			if(_camera->camera())
+			{
+				_camera->camera()->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
+			}
+			if(_camera->cameraRGBD())
+			{
+				_camera->cameraRGBD()->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
+			}
 		}
 		if(_dbReader)
 		{
@@ -2633,6 +2641,7 @@ void MainWindow::startDetection()
 				((CameraOpenNI2*)camera)->setGain(_preferencesDialog->getSourceOpenni2Gain());
 			}
 		}
+		camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
 
 		_camera = new CameraThread(camera);
 		if(_odomThread)
@@ -2738,6 +2747,7 @@ void MainWindow::startDetection()
 				camera = 0;
 				return;
 			}
+			camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
 
 			_camera = new CameraThread(camera);
 		}

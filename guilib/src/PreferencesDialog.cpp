@@ -122,6 +122,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifdef _WIN32
 		_ui->radioButton_openni2->setChecked(true);
 		_ui->radioButton_opennipcl->setChecked(false);
+		showOpenNI2GroupBox(true);
 #endif
 
 	if(RTABMAP_NONFREE == 0)
@@ -241,6 +242,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	//Source panel
 	connect(_ui->general_doubleSpinBox_imgRate, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_mirroring, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	//Image source
 	connect(_ui->groupBox_sourceImage, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	_ui->stackedWidget_image->setCurrentIndex(_ui->source_comboBox_image_type->currentIndex());
@@ -888,6 +890,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 	else if(groupBox->objectName() == _ui->groupBox_source0->objectName())
 	{
 		_ui->general_doubleSpinBox_imgRate->setValue(30.0);
+		_ui->source_mirroring->setChecked(false);
 
 		_ui->groupBox_sourceImage->setChecked(false);
 		_ui->source_spinBox_imgWidth->setValue(0);
@@ -1143,6 +1146,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.beginGroup("Camera");
 	_ui->groupBox_sourceImage->setChecked(settings.value("imageUsed", _ui->groupBox_sourceImage->isChecked()).toBool());
 	_ui->general_doubleSpinBox_imgRate->setValue(settings.value("imgRate", _ui->general_doubleSpinBox_imgRate->value()).toDouble());
+	_ui->source_mirroring->setChecked(settings.value("mirroring", _ui->source_mirroring->isChecked()).toBool());
 	_ui->source_comboBox_image_type->setCurrentIndex(settings.value("type", _ui->source_comboBox_image_type->currentIndex()).toInt());
 	_ui->source_spinBox_imgWidth->setValue(settings.value("imgWidth",_ui->source_spinBox_imgWidth->value()).toInt());
 	_ui->source_spinBox_imgheight->setValue(settings.value("imgHeight",_ui->source_spinBox_imgheight->value()).toInt());
@@ -1391,6 +1395,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.beginGroup("Camera");
 	settings.setValue("imageUsed", 		_ui->groupBox_sourceImage->isChecked());
 	settings.setValue("imgRate", 		_ui->general_doubleSpinBox_imgRate->value());
+	settings.setValue("mirroring",      _ui->source_mirroring->isChecked());
 	settings.setValue("type", 			_ui->source_comboBox_image_type->currentIndex());
 	settings.setValue("imgWidth", 		_ui->source_spinBox_imgWidth->value());
 	settings.setValue("imgHeight", 		_ui->source_spinBox_imgheight->value());
@@ -3046,6 +3051,10 @@ double PreferencesDialog::getGeneralInputRate() const
 {
 	return _ui->general_doubleSpinBox_imgRate->value();
 }
+bool PreferencesDialog::isSourceMirroring() const
+{
+	return _ui->source_mirroring->isChecked();
+}
 bool PreferencesDialog::isSourceImageUsed() const
 {
 	return _ui->groupBox_sourceImage->isChecked();
@@ -3406,6 +3415,7 @@ void PreferencesDialog::testOdometry(int type)
 			((CameraOpenNI2*)camera)->setGain(getSourceOpenni2Gain());
 		}
 	}
+	camera->setMirroringEnabled(isSourceMirroring());
 
 
 	if(camera)
@@ -3573,6 +3583,7 @@ void PreferencesDialog::testRGBDCamera()
 			((CameraOpenNI2*)camera)->setGain(getSourceOpenni2Gain());
 		}
 	}
+	camera->setMirroringEnabled(isSourceMirroring());
 
 
 	if(camera)
@@ -3671,6 +3682,7 @@ void PreferencesDialog::calibrate()
 			((CameraOpenNI2*)camera)->setGain(getSourceOpenni2Gain());
 		}
 	}
+	camera->setMirroringEnabled(isSourceMirroring());
 
 
 	if(camera)

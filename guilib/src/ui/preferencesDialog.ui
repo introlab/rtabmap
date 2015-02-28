@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-203</y>
-            <width>744</width>
-            <height>1101</height>
+            <y>0</y>
+            <width>737</width>
+            <height>1320</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>20</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1288,6 +1288,20 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_17">
+                        <property name="text">
+                         <string>Mirroring mode (flip image horizontally). It has no effect on database source.</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QCheckBox" name="source_mirroring">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
                      </layout>
                     </item>
                     <item>
@@ -1719,34 +1733,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          <property name="title">
                           <string>OpenNI 2</string>
                          </property>
-                         <layout class="QFormLayout" name="formLayout_6">
-                          <item row="6" column="0">
-                           <widget class="QSpinBox" name="openni2_gain">
-                            <property name="maximum">
-                             <number>1000</number>
-                            </property>
-                            <property name="value">
-                             <number>100</number>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="3" column="0">
-                           <widget class="QSpinBox" name="openni2_exposure">
-                            <property name="maximum">
-                             <number>65535</number>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="1" column="0">
-                           <widget class="QCheckBox" name="openni2_autoExposure">
-                            <property name="text">
-                             <string/>
-                            </property>
-                            <property name="checked">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
+                         <layout class="QGridLayout" name="gridLayout_54" columnstretch="0,1">
                           <item row="0" column="0">
                            <widget class="QCheckBox" name="openni2_autoWhiteBalance">
                             <property name="text">
@@ -1767,6 +1754,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             </property>
                            </widget>
                           </item>
+                          <item row="1" column="0">
+                           <widget class="QCheckBox" name="openni2_autoExposure">
+                            <property name="text">
+                             <string/>
+                            </property>
+                            <property name="checked">
+                             <bool>true</bool>
+                            </property>
+                           </widget>
+                          </item>
                           <item row="1" column="1">
                            <widget class="QLabel" name="label_218">
                             <property name="text">
@@ -1777,7 +1774,14 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             </property>
                            </widget>
                           </item>
-                          <item row="3" column="1">
+                          <item row="2" column="0">
+                           <widget class="QSpinBox" name="openni2_exposure">
+                            <property name="maximum">
+                             <number>65535</number>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="2" column="1">
                            <widget class="QLabel" name="label_219">
                             <property name="text">
                              <string>Exposure.</string>
@@ -1787,7 +1791,17 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             </property>
                            </widget>
                           </item>
-                          <item row="6" column="1">
+                          <item row="3" column="0">
+                           <widget class="QSpinBox" name="openni2_gain">
+                            <property name="maximum">
+                             <number>1000</number>
+                            </property>
+                            <property name="value">
+                             <number>100</number>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="3" column="1">
                            <widget class="QLabel" name="label_220">
                             <property name="text">
                              <string>Gain.</string>
@@ -1797,7 +1811,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             </property>
                            </widget>
                           </item>
-                          <item row="7" column="0">
+                          <item row="4" column="0">
                            <widget class="QCheckBox" name="openni2_mirroring">
                             <property name="text">
                              <string/>
@@ -1807,7 +1821,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             </property>
                            </widget>
                           </item>
-                          <item row="7" column="1">
+                          <item row="4" column="1">
                            <widget class="QLabel" name="label_223">
                             <property name="text">
                              <string>Mirroring.</string>
@@ -1878,10 +1892,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </widget>
                           </item>
                           <item>
-                           <layout class="QFormLayout" name="formLayout_21">
-                            <property name="fieldGrowthPolicy">
-                             <enum>QFormLayout::ExpandingFieldsGrow</enum>
-                            </property>
+                           <layout class="QGridLayout" name="gridLayout_55" columnstretch="0,1">
                             <item row="0" column="0">
                              <widget class="QDoubleSpinBox" name="doubleSpinBox_openniFx">
                               <property name="maximum">
@@ -4720,7 +4731,7 @@ When set to false, no new words are added to dictionary, so no more updates are 
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_3">
                     <item>
-                     <layout class="QFormLayout" name="formLayout_9">
+                     <layout class="QGridLayout" name="gridLayout_10" columnstretch="0,1">
                       <item row="0" column="0">
                        <widget class="QComboBox" name="comboBox_vh_strategy">
                         <property name="sizeAdjustPolicy">

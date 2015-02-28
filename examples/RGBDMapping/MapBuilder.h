@@ -30,13 +30,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <QtGui/QVBoxLayout>
 #include <QtCore/QMetaType>
+
+#ifndef Q_MOC_RUN
 #include "rtabmap/gui/CloudViewer.h"
+#include "rtabmap/core/util3d.h"
+#include "rtabmap/core/RtabmapEvent.h"
+#endif
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/utilite/ULogger.h"
-#include "rtabmap/core/util3d.h"
-#include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/OdometryEvent.h"
 
 using namespace rtabmap;

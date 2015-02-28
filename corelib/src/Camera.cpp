@@ -50,6 +50,7 @@ Camera::Camera(float imageRate,
 	_imageRate(imageRate),
 	_imageWidth(imageWidth),
 	_imageHeight(imageHeight),
+	_mirroring(false),
 	_frameRateTimer(new UTimer())
 {
 }
@@ -176,6 +177,10 @@ cv::Mat Camera::takeImage()
 	{
 		cv::Mat temp = img.clone();
 		cv::undistort(temp, img, _k, _d);
+	}
+	if(!img.empty() && _mirroring)
+	{
+		cv::flip(img,img,1);
 	}
 	UDEBUG("Time capturing image = %fs", timer.ticks());
 	return img;

@@ -77,6 +77,7 @@ public:
 	//getters
 	float getImageRate() const {return _imageRate;}
 	const Transform & getLocalTransform() const {return _localTransform;}
+	bool isMirroringEnabled() const {return _mirroring;}
 	float getFx() const {return _fx;}
 	float getFy() const {return _fy;}
 	float getCx() const {return _cx;}
@@ -85,6 +86,7 @@ public:
 	//setters
 	void setImageRate(float imageRate) {_imageRate = imageRate;}
 	void setLocalTransform(const Transform & localTransform) {_localTransform= localTransform;}
+	void setMirroringEnabled(bool mirroring) {_mirroring = mirroring;}
 	void setFx(float fx) {_fx = fx;}
 	void setFy(float fy) {_fy = fy;}
 	void setCx(float cx) {_cx = cx;}
@@ -108,6 +110,7 @@ protected:
 private:
 	float _imageRate;
 	Transform _localTransform;
+	bool _mirroring;
 	UTimer * _frameRateTimer;
 	float _fx;
 	float _fy;

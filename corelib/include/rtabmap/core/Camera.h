@@ -56,10 +56,12 @@ public:
 	//getters
 	void getImageSize(unsigned int & width, unsigned int & height);
 	float getImageRate() const {return _imageRate;}
+	bool isMirroringEnabled() const {return _mirroring;}
 
 	//setters
 	void setImageRate(float imageRate) {_imageRate = imageRate;}
 	void setImageSize(unsigned int width, unsigned int height);
+	void setMirroringEnabled(bool enabled) {_mirroring = enabled;}
 
 	void setCalibration(const std::string & fileName);
 	void setCalibration(const cv::Mat & cameraMatrix, const cv::Mat & distorsionCoefficients);
@@ -81,6 +83,7 @@ private:
 	float _imageRate;
 	unsigned int _imageWidth;
 	unsigned int _imageHeight;
+	bool _mirroring;
 	UTimer * _frameRateTimer;
 	cv::Mat _k; // camera_matrix
 	cv::Mat _d; // distorsion_coefficients

@@ -118,6 +118,15 @@ void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & f
 	{
 		cy = _cy; // override if set
 	}
+	if(!rgb.empty() && !depth.empty() && _mirroring)
+	{
+		cv::flip(rgb,rgb,1);
+		cv::flip(depth,depth,1);
+		if(cx != 0.0f)
+		{
+			cx = float(rgb.cols) - cx;
+		}
+	}
 	UDEBUG("Time capturing image = %fs", timer.ticks());
 }
 

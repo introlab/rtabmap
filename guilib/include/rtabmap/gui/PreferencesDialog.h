@@ -155,6 +155,7 @@ public:
 
 	// source panel
 	double getGeneralInputRate() const;
+	bool isSourceMirroring() const;
 	bool isSourceImageUsed() const;
 	bool isSourceDatabaseUsed() const;
 	bool isSourceOpenniUsed() const;
