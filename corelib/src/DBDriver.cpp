@@ -504,7 +504,7 @@ void DBDriver::loadLinks(int signatureId, std::map<int, Link> & links, Link::Typ
 	{
 		const Signature * s = _trashSignatures.at(signatureId);
 		UASSERT(s != 0);
-		for(std::multimap<int, Link>::const_iterator nIter = s->getLinks().begin();
+		for(std::map<int, Link>::const_iterator nIter = s->getLinks().begin();
 				nIter!=s->getLinks().end();
 				++nIter)
 		{
@@ -556,7 +556,7 @@ void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren) const
 			bool hasNeighbors = !ignoreChildren;
 			if(ignoreChildren)
 			{
-				for(std::multimap<int, Link>::const_iterator nIter = sIter->second->getLinks().begin();
+				for(std::map<int, Link>::const_iterator nIter = sIter->second->getLinks().begin();
 						nIter!=sIter->second->getLinks().end();
 						++nIter)
 				{

@@ -804,7 +804,7 @@ std::list<std::pair<int, Transform> > computePath(
 				if(nodeIter->second.costSoFar() > newCostSoFar)
 				{
 					// update the cost in the priority queue
-					for(std::map<float, int>::iterator mapIter=pqmap.begin(); mapIter!=pqmap.end(); ++mapIter)
+					for(std::multimap<float, int>::iterator mapIter=pqmap.begin(); mapIter!=pqmap.end(); ++mapIter)
 					{
 						if(mapIter->second == nodeIter->first)
 						{
@@ -911,7 +911,7 @@ float computePathLength(
 		UASSERT(fromIndex  < path.size() && toIndex < path.size() && fromIndex <= toIndex);
 		if(fromIndex >= toIndex)
 		{
-			toIndex = path.size()-1;
+			toIndex = (unsigned int)path.size()-1;
 		}
 		float x=0, y=0, z=0;
 		for(unsigned int i=fromIndex; i<toIndex-1; ++i)

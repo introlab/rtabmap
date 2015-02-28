@@ -405,7 +405,7 @@ std::vector<pcl::IndicesPtr> extractClusters(
 
 		if(maxSize < cluster_indices[i].indices.size())
 		{
-			maxSize = cluster_indices[i].indices.size();
+			maxSize = (unsigned int)cluster_indices[i].indices.size();
 			maxIndex = i;
 		}
 	}
@@ -477,7 +477,7 @@ void occupancy2DFromCloud3D(
 	ground = cv::Mat();
 	if(groundCloud->size())
 	{
-		ground = cv::Mat(groundCloud->size(), 1, CV_32FC2);
+		ground = cv::Mat((int)groundCloud->size(), 1, CV_32FC2);
 		for(unsigned int i=0;i<groundCloud->size(); ++i)
 		{
 			ground.at<cv::Vec2f>(i)[0] = groundCloud->at(i).x;
@@ -488,7 +488,7 @@ void occupancy2DFromCloud3D(
 	obstacles = cv::Mat();
 	if(obstaclesCloud->size())
 	{
-		obstacles = cv::Mat(obstaclesCloud->size(), 1, CV_32FC2);
+		obstacles = cv::Mat((int)obstaclesCloud->size(), 1, CV_32FC2);
 		for(unsigned int i=0;i<obstaclesCloud->size(); ++i)
 		{
 			obstacles.at<cv::Vec2f>(i)[0] = obstaclesCloud->at(i).x;

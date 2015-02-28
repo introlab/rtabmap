@@ -3086,11 +3086,11 @@ void MainWindow::postProcessing()
 	int totalSteps = 0;
 	if(refineNeighborLinks)
 	{
-		totalSteps+=odomPoses.size();
+		totalSteps+=(int)odomPoses.size();
 	}
 	if(refineLoopClosureLinks)
 	{
-		totalSteps+=_currentLinksMap.size() - odomPoses.size();
+		totalSteps+=(int)_currentLinksMap.size() - (int)odomPoses.size();
 	}
 	_initProgressDialog->setMaximumSteps(totalSteps);
 	_initProgressDialog->show();
@@ -3134,7 +3134,7 @@ void MainWindow::postProcessing()
 					clusterRadius,
 					clusterAngle*CV_PI/180.0);
 
-			_initProgressDialog->setMaximumSteps(_initProgressDialog->maximumSteps()+clusters.size());
+			_initProgressDialog->setMaximumSteps(_initProgressDialog->maximumSteps()+(int)clusters.size());
 			_initProgressDialog->appendText(tr("Looking for more loop closures, clustering poses... found %1 clusters.").arg(clusters.size()));
 
 			int i=0;

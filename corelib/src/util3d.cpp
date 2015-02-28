@@ -1525,7 +1525,7 @@ Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 
 		if(inliers)
 		{
-			*inliers = correspondences.size();
+			*inliers = (int)correspondences.size();
 		}
 	}
 	else
@@ -1615,7 +1615,7 @@ Transform icpPointToPlane(
 
 		if(inliers)
 		{
-			*inliers = correspondences.size();
+			*inliers = (int)correspondences.size();
 		}
 	}
 	else
@@ -1704,7 +1704,7 @@ Transform icp2D(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 
 		if(inliers)
 		{
-			*inliers = correspondences.size();
+			*inliers = (int)correspondences.size();
 		}
 	}
 	else
@@ -2054,7 +2054,7 @@ void occupancy2DFromLaserScan(
 	ground = cv::Mat();
 	if(groundIndices.size())
 	{
-		ground = cv::Mat(groundIndices.size(), 1, CV_32FC2);
+		ground = cv::Mat((int)groundIndices.size(), 1, CV_32FC2);
 		int i=0;
 		for(std::list<int>::iterator iter=groundIndices.begin();iter!=groundIndices.end(); ++iter)
 		{
@@ -2070,7 +2070,7 @@ void occupancy2DFromLaserScan(
 	obstacles = cv::Mat();
 	if(obstaclesCloud->size())
 	{
-		obstacles = cv::Mat(obstaclesCloud->size(), 1, CV_32FC2);
+		obstacles = cv::Mat((int)obstaclesCloud->size(), 1, CV_32FC2);
 		for(unsigned int i=0;i<obstaclesCloud->size(); ++i)
 		{
 			obstacles.at<cv::Vec2f>(i)[0] = obstaclesCloud->at(i).x;
@@ -2549,7 +2549,7 @@ pcl::IndicesPtr concatenate(const std::vector<pcl::IndicesPtr> & indices)
 	unsigned int totalSize = 0;
 	for(unsigned int i=0; i<indices.size(); ++i)
 	{
-		totalSize += indices[i]->size();
+		totalSize += (unsigned int)indices[i]->size();
 	}
 	pcl::IndicesPtr ind(new std::vector<int>(totalSize));
 	unsigned int io = 0;
@@ -2567,7 +2567,7 @@ pcl::IndicesPtr concatenate(const pcl::IndicesPtr & indicesA, const pcl::Indices
 {
 	pcl::IndicesPtr ind(new std::vector<int>(*indicesA));
 	ind->resize(ind->size()+indicesB->size());
-	unsigned int oi = indicesA->size();
+	unsigned int oi = (unsigned int)indicesA->size();
 	for(unsigned int i=0; i<indicesB->size(); ++i)
 	{
 		ind->at(oi++) = indicesB->at(i);
