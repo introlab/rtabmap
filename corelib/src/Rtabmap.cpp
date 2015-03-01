@@ -750,7 +750,8 @@ bool Rtabmap::process(const SensorData & data)
 	const Signature * signature = 0;
 	const Signature * sLoop = 0;
 
-	_loopClosureHypothesis.first = 0; // Don't reset now the last loop closure value
+	_loopClosureHypothesis = std::make_pair(0,0.0f);
+	std::pair<int, float> lastHighestHypothesis = _highestHypothesis;
 	_highestHypothesis = std::make_pair(0,0.0f);
 
 	std::set<int> immunizedLocations;
@@ -1051,14 +1052,14 @@ bool Rtabmap::process(const SensorData & data)
 					{
 						UWARN("rejected hypothesis: by epipolar geometry");
 					}
-					else if(_loopRatio > 0.0f && _loopClosureHypothesis.second && _highestHypothesis.second < _loopRatio*_loopClosureHypothesis.second)
+					else if(_loopRatio > 0.0f && lastHighestHypothesis.second && _highestHypothesis.second < _loopRatio*lastHighestHypothesis.second)
 					{
 						UWARN("rejected hypothesis: not satisfying hypothesis ratio (%f < %f * %f)",
-								_highestHypothesis.second, _loopRatio, _loopClosureHypothesis.second);
+								_highestHypothesis.second, _loopRatio, lastHighestHypothesis.second);
 					}
-					else if(_loopRatio > 0.0f && _loopClosureHypothesis.second == 0)
+					else if(_loopRatio > 0.0f && lastHighestHypothesis.second == 0)
 					{
-						UDEBUG("rejected hypothesis: last closure hypothesis is null (loop ratio is on)");
+						UWARN("rejected hypothesis: last closure hypothesis is null (loop ratio is on)");
 					}
 					else
 					{
@@ -1069,7 +1070,7 @@ bool Rtabmap::process(const SensorData & data)
 					timeHypothesesValidation = timer.ticks();
 					ULOGGER_INFO("timeHypothesesValidation=%fs",timeHypothesesValidation);
 				}
-				else if(_highestHypothesis.second < _loopRatio*_loopClosureHypothesis.second)
+				else if(_highestHypothesis.second < _loopRatio*lastHighestHypothesis.second)
 				{
 					// Used for Precision-Recall computation.
 					// When analysing logs, it's convenient to know
@@ -1079,11 +1080,6 @@ bool Rtabmap::process(const SensorData & data)
 
 				//for statistic...
 				hypothesisRatio = _loopClosureHypothesis.second>0?_highestHypothesis.second/_loopClosureHypothesis.second:0;
-
-			}
-			if(_loopClosureHypothesis.first == 0)
-			{
-				_loopClosureHypothesis.second = 0.0f; // reset loop closure value
 			}
 		} // if(_memory->getWorkingMemSize())
 	}// !isBadSignature
