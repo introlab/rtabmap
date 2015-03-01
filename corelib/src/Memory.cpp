@@ -2040,7 +2040,7 @@ Transform Memory::computeIcpTransform(
 					}
 					else
 					{
-						msg = uFormat("Cannot compute transform (hasConverged=%s variance=%f correspondencesRatio=%f/%f)",
+						msg = uFormat("Cannot compute transform (converged=%s var=%f corrRatio=%f/%f)",
 								hasConverged?"true":"false", variance?*variance:-1, correspondencesRatio, _icpCorrespondenceRatio);
 						UINFO(msg.c_str());
 					}
@@ -2121,7 +2121,7 @@ Transform Memory::computeIcpTransform(
 				}
 				else
 				{
-					msg = uFormat("Cannot compute transform (hasConverged=%s variance=%f correspondencesRatio=%f/%f)",
+					msg = uFormat("Cannot compute transform (converged=%s var=%f corrRatio=%f/%f)",
 							hasConverged?"true":"false", variance?*variance:-1, correspondencesRatio, _icp2CorrespondenceRatio);
 					UINFO(msg.c_str());
 				}
