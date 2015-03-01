@@ -122,7 +122,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifdef _WIN32
 		_ui->radioButton_openni2->setChecked(true);
 		_ui->radioButton_opennipcl->setChecked(false);
-		showOpenNI2GroupBox(true);
+		_ui->groupBox_openni2->setVisible(true);
+#else
+		_ui->groupBox_openni2->setVisible(false);
 #endif
 
 	if(RTABMAP_NONFREE == 0)
@@ -140,7 +142,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	}
 
 	_ui->predictionPlot->showLegend(false);
-	_ui->groupBox_openni2->setVisible(false);
 
 	QButtonGroup * buttonGroup = new QButtonGroup(this);
 	buttonGroup->addButton(_ui->radioButton_basic);
