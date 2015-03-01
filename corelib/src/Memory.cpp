@@ -694,7 +694,7 @@ void Memory::addSignatureToStm(Signature * signature, float poseRotVariance, flo
 				std::string tag = uFormat("map%d", signature->mapId());
 				if(getSignatureIdByLabel(tag, false) == 0)
 				{
-					UINFO("Tagging node %d with label \"%s\"", tag.c_str());
+					UINFO("Tagging node %d with label \"%s\"", signature->id(), tag.c_str());
 					signature->setLabel(tag);
 				}
 			}
@@ -705,7 +705,7 @@ void Memory::addSignatureToStm(Signature * signature, float poseRotVariance, flo
 			std::string tag = uFormat("map%d", signature->mapId());
 			if(getSignatureIdByLabel(tag, false) == 0)
 			{
-				UINFO("Tagging node %d with label \"%s\"", tag.c_str());
+				UINFO("Tagging node %d with label \"%s\"", signature->id(), tag.c_str());
 				signature->setLabel(tag);
 			}
 		}
@@ -1600,18 +1600,23 @@ const Signature * Memory::getLastWorkingSignature() const
 
 int Memory::getSignatureIdByLabel(const std::string & label, bool lookInDatabase) const
 {
+	UDEBUG("label=%s", label.c_str());
 	int id = 0;
-	for(std::map<int, Signature*>::const_iterator iter=_signatures.begin(); iter!=_signatures.end(); ++iter)
+	if(label.size())
 	{
-		if(iter->second->getLabel().compare(label) == 0)
+		for(std::map<int, Signature*>::const_iterator iter=_signatures.begin(); iter!=_signatures.end(); ++iter)
 		{
-			id = iter->second->id();
-			break;
+			UASSERT(iter->second != 0);
+			if(iter->second->getLabel().compare(label) == 0)
+			{
+				id = iter->second->id();
+				break;
+			}
 		}
-	}
-	if(id == 0 && _dbDriver && lookInDatabase)
-	{
-		_dbDriver->getNodeIdByLabel(label, id);
+		if(id == 0 && _dbDriver && lookInDatabase)
+		{
+			_dbDriver->getNodeIdByLabel(label, id);
+		}
 	}
 	return id;
 }
@@ -2690,7 +2695,7 @@ cv::Mat Memory::getImageCompressed(int signatureId) const
 
 Signature Memory::getSignatureData(int locationId, bool uncompressedData)
 {
-	UDEBUG("");
+	UDEBUG("locationId=%d", locationId);
 	Signature r;
 	Signature * s = this->_getSignature(locationId);
 	if(s && !s->getImageCompressed().empty())

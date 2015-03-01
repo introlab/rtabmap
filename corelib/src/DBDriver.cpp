@@ -400,7 +400,7 @@ void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool loadMetric
 		for(std::list<Signature *>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
 		{
 			UASSERT(*iter != 0);
-			UASSERT_MSG(uContains(_trashSignatures, (*iter)->id()), uFormat("Signature %d should not be used when transferred to trash!!!!", (*iter)->id()).c_str());
+			UASSERT_MSG(!uContains(_trashSignatures, (*iter)->id()), uFormat("Signature %d should not be used when transferred to trash!!!!", (*iter)->id()).c_str());
 		}
 	}
 	_trashesMutex.unlock();
