@@ -674,7 +674,7 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 		pose = _lastOdomPose;
 		lost = true;
 	}
-	else if(info.inliers>=0 &&
+	else if(info.inliers>0 &&
 			_preferencesDialog->getOdomQualityWarnThr() &&
 			info.inliers < _preferencesDialog->getOdomQualityWarnThr())
 	{
