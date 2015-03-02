@@ -2484,7 +2484,10 @@ void MainWindow::startDetection()
 {
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
 	// verify source with input rates
-	if((_preferencesDialog->isSourceImageUsed() && (_preferencesDialog->getSourceImageType()>0)) ||
+	if((_preferencesDialog->isSourceImageUsed() &&
+			(_preferencesDialog->getSourceImageType() == PreferencesDialog::kSrcImages ||
+			 _preferencesDialog->getSourceImageType() == PreferencesDialog::kSrcVideo))
+	   ||
 	   _preferencesDialog->isSourceDatabaseUsed())
 	{
 		float inputRate = _preferencesDialog->getGeneralInputRate();
@@ -2738,7 +2741,8 @@ void MainWindow::startDetection()
 			// Change type of the camera...
 			//
 			int sourceType = _preferencesDialog->getSourceImageType();
-			if(sourceType == 1) //Images
+			UASSERT(sourceType >= PreferencesDialog::kSrcUsbDevice && sourceType <= PreferencesDialog::kSrcVideo);
+			if(sourceType == PreferencesDialog::kSrcImages) //Images
 			{
 				camera = new CameraImages(
 						_preferencesDialog->getSourceImagesPath().append(QDir::separator()).toStdString(),
@@ -2748,7 +2752,7 @@ void MainWindow::startDetection()
 						_preferencesDialog->getSourceWidth(),
 						_preferencesDialog->getSourceHeight());
 			}
-			else if(sourceType == 2)
+			else if(sourceType == PreferencesDialog::kSrcVideo)
 			{
 				camera = new CameraVideo(
 						_preferencesDialog->getSourceVideoPath().toStdString(),
@@ -2756,7 +2760,7 @@ void MainWindow::startDetection()
 						_preferencesDialog->getSourceWidth(),
 						_preferencesDialog->getSourceHeight());
 			}
-			else //if(sourceType == 0)
+			else //if(sourceType == PreferencesDialog::kSrcUsbDevice)
 			{
 				camera = new CameraVideo(
 						_preferencesDialog->getSourceUsbDeviceId(),

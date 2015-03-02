@@ -296,6 +296,14 @@ cv::Mat CameraImages::captureImage()
 						img = cv::Mat(i, true);
 						cvReleaseImage(&i);
 					}
+
+					if(img.channels()>3)
+					{
+						UWARN("Conversion from 4 channels to 3 channels (file=%s)", fullPath.c_str());
+						cv::Mat out;
+						cv::cvtColor(img, out, CV_BGRA2BGR);
+						img = out;
+					}
 				}
 			}
 		}
