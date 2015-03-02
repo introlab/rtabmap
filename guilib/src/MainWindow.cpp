@@ -339,13 +339,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 #endif
 
 	//Settings menu
-	this->updateSelectSourceImageMenu(_preferencesDialog->isSourceImageUsed(), _preferencesDialog->getSourceImageType());
 	connect(_ui->actionImageFiles, SIGNAL(triggered()), this, SLOT(selectImages()));
 	connect(_ui->actionVideo, SIGNAL(triggered()), this, SLOT(selectVideo()));
 	connect(_ui->actionUsbCamera, SIGNAL(triggered()), this, SLOT(selectStream()));
-	this->updateSelectSourceDatabase(_preferencesDialog->isSourceDatabaseUsed());
 	connect(_ui->actionDatabase, SIGNAL(triggered()), this, SLOT(selectDatabase()));
-	this->updateSelectSourceRGBDMenu(_preferencesDialog->isSourceOpenniUsed(), _preferencesDialog->getSourceRGBD());
 	connect(_ui->actionOpenNI_PCL, SIGNAL(triggered()), this, SLOT(selectOpenni()));
 	connect(_ui->actionOpenNI_PCL_ASUS, SIGNAL(triggered()), this, SLOT(selectOpenni()));
 	connect(_ui->actionFreenect, SIGNAL(triggered()), this, SLOT(selectFreenect()));
@@ -360,6 +357,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->actionOpenNI2_Sense->setEnabled(CameraOpenNI2::available());
 	connect(_ui->actionOpenNI2_kinect, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
 	_ui->actionOpenNI2_kinect->setEnabled(CameraOpenNI2::available());
+	this->updateSelectSourceMenu();
 
 	connect(_ui->actionSave_state, SIGNAL(triggered()), this, SLOT(saveFigures()));
 	connect(_ui->actionLoad_state, SIGNAL(triggered()), this, SLOT(loadFigures()));
@@ -1750,26 +1748,50 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 
 		if(_databaseUpdated)
 		{
-			if(!_newDatabasePath.isEmpty() && !_newDatabasePathOutput.isEmpty())
+			if(!_newDatabasePath.isEmpty())
 			{
-				if(QFile::rename(_newDatabasePath, _newDatabasePathOutput))
+				if(!_newDatabasePathOutput.isEmpty())
 				{
-					std::string msg = uFormat("Database saved to \"%s\".", _newDatabasePathOutput.toStdString().c_str());
-					UINFO(msg.c_str());
-					QMessageBox::information(this, tr("Database saved!"), QString(msg.c_str()));
+					if(QFile::rename(_newDatabasePath, _newDatabasePathOutput))
+					{
+						std::string msg = uFormat("Database saved to \"%s\".", _newDatabasePathOutput.toStdString().c_str());
+						UINFO(msg.c_str());
+						QMessageBox::information(this, tr("Database saved!"), QString(msg.c_str()));
+					}
+					else
+					{
+						std::string msg = uFormat("Failed to rename temporary database from \"%s\" to \"%s\".", _newDatabasePath.toStdString().c_str(), _newDatabasePathOutput.toStdString().c_str());
+						UERROR(msg.c_str());
+						QMessageBox::critical(this, tr("Closing failed!"), QString(msg.c_str()));
+					}
+				}
+				else if(QFile::remove(_newDatabasePath))
+				{
+					UINFO("Deleted temporary database \"%s\".", _newDatabasePath.toStdString().c_str());
 				}
 				else
 				{
-					std::string msg = uFormat("Failed to rename temporary database from \"%s\" to \"%s\".", _newDatabasePath.toStdString().c_str(), _newDatabasePathOutput.toStdString().c_str());
-					UERROR(msg.c_str());
-					QMessageBox::critical(this, tr("Closing failed!"), QString(msg.c_str()));
+					UERROR("Temporary database \"%s\" could not be deleted.", _newDatabasePath.toStdString().c_str());
 				}
+
 			}
 			else if(!_openedDatabasePath.isEmpty())
 			{
 				std::string msg = uFormat("Database \"%s\" updated.", _openedDatabasePath.toStdString().c_str());
 				UINFO(msg.c_str());
 				QMessageBox::information(this, tr("Database updated!"), QString(msg.c_str()));
+			}
+		}
+		else if(!_newDatabasePath.isEmpty())
+		{
+			// just remove temporary database;
+			if(QFile::remove(_newDatabasePath))
+			{
+				UINFO("Deleted temporary database \"%s\".", _newDatabasePath.toStdString().c_str());
+			}
+			else
+			{
+				UERROR("Temporary database \"%s\" could not be deleted.", _newDatabasePath.toStdString().c_str());
 			}
 		}
 		_openedDatabasePath.clear();
@@ -1877,9 +1899,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 	{
 		// Camera settings...
 		_ui->doubleSpinBox_stats_imgRate->setValue(_preferencesDialog->getGeneralInputRate());
-		this->updateSelectSourceImageMenu(_preferencesDialog->isSourceImageUsed(), _preferencesDialog->getSourceImageType());
-		this->updateSelectSourceDatabase(_preferencesDialog->isSourceDatabaseUsed());
-		this->updateSelectSourceRGBDMenu(_preferencesDialog->isSourceOpenniUsed(), _preferencesDialog->getSourceRGBD());
+		this->updateSelectSourceMenu();
 		QString src;
 		if(_preferencesDialog->isSourceImageUsed())
 		{
@@ -2205,28 +2225,22 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 	return QWidget::eventFilter(obj, event);
 }
 
-void MainWindow::updateSelectSourceImageMenu(bool used, PreferencesDialog::Src src)
+void MainWindow::updateSelectSourceMenu()
 {
-	_ui->actionUsbCamera->setChecked(used && src == PreferencesDialog::kSrcUsbDevice);
-	_ui->actionImageFiles->setChecked(used && src == PreferencesDialog::kSrcImages);
-	_ui->actionVideo->setChecked(used && src == PreferencesDialog::kSrcVideo);
-}
+	_ui->actionUsbCamera->setChecked(_preferencesDialog->isSourceImageUsed() && _preferencesDialog->getSourceImageType() == PreferencesDialog::kSrcUsbDevice);
+	_ui->actionImageFiles->setChecked(_preferencesDialog->isSourceImageUsed() && _preferencesDialog->getSourceImageType() == PreferencesDialog::kSrcImages);
+	_ui->actionVideo->setChecked(_preferencesDialog->isSourceImageUsed() && _preferencesDialog->getSourceImageType() == PreferencesDialog::kSrcVideo);
 
-void MainWindow::updateSelectSourceDatabase(bool used)
-{
-	_ui->actionDatabase->setChecked(used);
-}
+	_ui->actionDatabase->setChecked(_preferencesDialog->isSourceDatabaseUsed());
 
-void MainWindow::updateSelectSourceRGBDMenu(bool used, PreferencesDialog::Src src)
-{
-	_ui->actionOpenNI_PCL->setChecked(used && src == PreferencesDialog::kSrcOpenNI_PCL);
-	_ui->actionOpenNI_PCL_ASUS->setChecked(used && src == PreferencesDialog::kSrcOpenNI_PCL);
-	_ui->actionFreenect->setChecked(used && src == PreferencesDialog::kSrcFreenect);
-	_ui->actionOpenNI_CV->setChecked(used && src == PreferencesDialog::kSrcOpenNI_CV);
-	_ui->actionOpenNI_CV_ASUS->setChecked(used && src == PreferencesDialog::kSrcOpenNI_CV_ASUS);
-	_ui->actionOpenNI2->setChecked(used && src == PreferencesDialog::kSrcOpenNI2);
-	_ui->actionOpenNI2_Sense->setChecked(used && src == PreferencesDialog::kSrcOpenNI2);
-	_ui->actionOpenNI2_kinect->setChecked(used && src == PreferencesDialog::kSrcOpenNI2);
+	_ui->actionOpenNI_PCL->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_PCL);
+	_ui->actionOpenNI_PCL_ASUS->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_PCL);
+	_ui->actionFreenect->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcFreenect);
+	_ui->actionOpenNI_CV->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV);
+	_ui->actionOpenNI_CV_ASUS->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS);
+	_ui->actionOpenNI2->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2);
+	_ui->actionOpenNI2_Sense->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2);
+	_ui->actionOpenNI2_kinect->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2);
 }
 
 void MainWindow::changeImgRateSetting()
@@ -2314,16 +2328,31 @@ void MainWindow::newDatabase()
 	_databaseUpdated = false;
 	ULOGGER_DEBUG("");
 	this->clearTheCache();
-	std::string databasePath = (_preferencesDialog->getWorkingDirectory()+QDir::separator()+Parameters::getDefaultDatabaseName().c_str()).toStdString();
+	std::string databasePath = (_preferencesDialog->getWorkingDirectory()+QDir::separator()+QString("rtabmap.tmp.db")).toStdString();
 	if(QFile::exists(databasePath.c_str()))
 	{
-		if(QFile::remove(databasePath.c_str()))
+		int r = QMessageBox::question(this,
+				tr("Creating temporary database"),
+				tr("Cannot create a new database because the temporary database \"%1\" already exists. "
+				  "There may be another instance of RTAB-Map running with the same Working Directory or "
+				  "the last time RTAB-Map was not closed correctly. "
+				  "Do you want to continue (the database will be deleted to create the new one)?").arg(databasePath.c_str()),
+				  QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+
+		if(r == QMessageBox::Yes)
 		{
-			UINFO("Deleted database \"%s\".", databasePath.c_str());
+			if(QFile::remove(databasePath.c_str()))
+			{
+				UINFO("Deleted temporary database \"%s\".", databasePath.c_str());
+			}
+			else
+			{
+				UERROR("Temporary database \"%s\" could not be deleted!", databasePath.c_str());
+				return;
+			}
 		}
 		else
 		{
-			UERROR("Cannot create a new database because the temporary database \"%s\" cannot be deleted.", databasePath.c_str());
 			return;
 		}
 	}
@@ -3491,55 +3520,47 @@ void MainWindow::updateEditMenu()
 
 void MainWindow::selectImages()
 {
-	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcImages, _ui->actionImageFiles->isChecked());
+	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcImages);
 }
 
 void MainWindow::selectVideo()
 {
-	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcVideo, _ui->actionVideo->isChecked());
+	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcVideo);
 }
 
 void MainWindow::selectStream()
 {
-	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcUsbDevice, _ui->actionUsbCamera->isChecked());
+	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcUsbDevice);
 }
 
 void MainWindow::selectDatabase()
 {
-	_preferencesDialog->selectSourceDatabase(true, _ui->actionDatabase->isChecked());
+	_preferencesDialog->selectSourceDatabase(true);
 }
 
 void MainWindow::selectOpenni()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_PCL,
-			_ui->actionOpenNI_PCL->isChecked() ||
-			_ui->actionOpenNI_PCL_ASUS->isChecked());
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_PCL);
 }
 
 void MainWindow::selectFreenect()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcFreenect,
-			_ui->actionFreenect->isChecked());
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcFreenect);
 }
 
 void MainWindow::selectOpenniCv()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV,
-			_ui->actionOpenNI_CV->isChecked());
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV);
 }
 
 void MainWindow::selectOpenniCvAsus()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV_ASUS,
-			_ui->actionOpenNI_CV_ASUS->isChecked());
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV_ASUS);
 }
 
 void MainWindow::selectOpenni2()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI2,
-			_ui->actionOpenNI2->isChecked() ||
-			_ui->actionOpenNI2_Sense->isChecked() ||
-			_ui->actionOpenNI2_kinect->isChecked());
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI2);
 }
 
 

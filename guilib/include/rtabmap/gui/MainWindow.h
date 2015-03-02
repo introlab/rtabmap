@@ -206,9 +206,7 @@ private:
 	void createAndAddScanToMap(int nodeId, const Transform & pose, int mapId);
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
 	void setupMainLayout(bool vertical);
-	void updateSelectSourceImageMenu(bool used, PreferencesDialog::Src src);
-	void updateSelectSourceDatabase(bool used);
-	void updateSelectSourceRGBDMenu(bool used, PreferencesDialog::Src src);
+	void updateSelectSourceMenu();
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getAssembledCloud(
 			const std::map<int, Transform> & poses,

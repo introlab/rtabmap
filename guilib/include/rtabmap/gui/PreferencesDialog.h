@@ -212,9 +212,9 @@ public slots:
 	void setDetectionRate(double value);
 	void setTimeLimit(float value);
 	void setSLAMMode(bool enabled);
-	void selectSourceImage(Src src = kSrcUndef, bool checked = true);
-	void selectSourceDatabase(bool user = false, bool checked = true);
-	void selectSourceRGBD(Src src = kSrcUndef, bool checked = true);
+	void selectSourceImage(Src src = kSrcUndef);
+	void selectSourceDatabase(bool user = false);
+	void selectSourceRGBD(Src src = kSrcUndef);
 
 private slots:
 	void closeDialog ( QAbstractButton * button );
