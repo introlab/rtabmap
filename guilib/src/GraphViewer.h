@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <QtGui/QGraphicsView>
 #include <QtCore/QMap>
+#include <QtCore/QSettings>
 #include <rtabmap/core/Link.h>
 #include <opencv2/opencv.hpp>
 #include <map>
@@ -61,6 +62,9 @@ public:
 	void clearMap();
 	void clearPosterior();
 	void clearAll();
+
+	void saveSettings(QSettings & settings, const QString & group = "") const;
+	void loadSettings(QSettings & settings, const QString & group = "");
 
 	//getters
 	const QString & getWorkingDirectory() const {return _workingDirectory;}

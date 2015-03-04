@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define POSTPROCESSINGDIALOG_H_
 
 #include <QtGui/QDialog>
+#include <QtCore/QSettings>
 
 class Ui_PostProcessingDialog;
 class QAbstractButton;
@@ -43,6 +44,9 @@ public:
 	PostProcessingDialog(QWidget * parent = 0);
 
 	virtual ~PostProcessingDialog();
+
+	void saveSettings(QSettings & settings, const QString & group = "") const;
+	void loadSettings(QSettings & settings, const QString & group = "");
 
 	//getters
 	bool isDetectMoreLoopClosures() const;

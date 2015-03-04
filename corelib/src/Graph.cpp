@@ -139,7 +139,7 @@ void optimizeTOROGraph(
 		std::list<std::map<int, Transform> > * intermediateGraphes)
 {
 	optimizedPoses.clear();
-	if(depthGraph.size() && poses.size()>=2 && links.size()>=1)
+	if(depthGraph.size() >= 2 && poses.size()>=2 && links.size()>=1)
 	{
 		// Modify IDs using the margin from the current signature (TORO root will be the last signature)
 		int m = 0;
@@ -184,7 +184,7 @@ void optimizeTOROGraph(
 			if(uContains(depthGraph, iter->second.from()) && uContains(depthGraph, iter->second.to()))
 			{
 				UASSERT(uContains(rtabmapToToro, iter->first) && uContains(rtabmapToToro, iter->second.to()));
-				UASSERT(!iter->second.transform().isNull());
+				UASSERT_MSG(!iter->second.transform().isNull(), uFormat("Link from=%d to=%d", iter->first, iter->second.to()).c_str());
 				edgeConstraintsToro.insert(std::make_pair(rtabmapToToro.at(iter->first), Link(rtabmapToToro.at(iter->first), rtabmapToToro.at(iter->second.to()), iter->second.type(), iter->second.transform(), iter->second.rotVariance(), iter->second.transVariance())));
 			}
 		}
@@ -225,12 +225,30 @@ void optimizeTOROGraph(
 		}
 		else
 		{
-			UERROR("No TORO poses and constraints!?");
+			if(edgeConstraintsToro.size() == 0)
+			{
+				UERROR("No TORO constraints!? (input poses=%d, links=%d, depthGraph=%d)",
+						(int)poses.size(), (int)links.size(), (int)depthGraph.size());
+			}
+			if(posesToro.size() == 0)
+			{
+				UERROR("No TORO poses!? (input poses=%d, links=%d, depthGraph=%d)",
+						(int)poses.size(), (int)links.size(), (int)depthGraph.size());
+			}
 		}
 	}
-	else if(links.size() == 0 && poses.size() == 1)
+	else if(depthGraph.size() == 1)
 	{
-		optimizedPoses = poses;
+		std::map<int, Transform>::const_iterator iter = poses.find(depthGraph.begin()->first);
+		if(iter != poses.end())
+		{
+			UASSERT_MSG(!iter->second.isNull(), uFormat("Poses should not be null! Id=%d", iter->first).c_str());
+			optimizedPoses.insert(*iter);
+		}
+		else
+		{
+			UERROR("Pose %d from depthGraph not found in the poses map!", depthGraph.begin()->first);
+		}
 	}
 	else
 	{

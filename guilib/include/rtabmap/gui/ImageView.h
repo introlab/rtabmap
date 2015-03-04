@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QGraphicsView>
 #include <QtCore/QRectF>
 #include <QtCore/QMultiMap>
+#include <QtCore/QSettings>
 #include <opencv2/features2d/features2d.hpp>
 #include <map>
 
@@ -50,6 +51,9 @@ class RTABMAPGUI_EXP ImageView : public QGraphicsView {
 public:
 	ImageView(QWidget * parent = 0);
 	virtual ~ImageView();
+
+	void saveSettings(QSettings & settings, const QString & group = "") const;
+	void loadSettings(QSettings & settings, const QString & group = "");
 
 	void resetZoom();
 

@@ -59,6 +59,54 @@ ExportCloudsDialog::~ExportCloudsDialog()
 	delete _ui;
 }
 
+void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & group) const
+{
+	if(!group.isEmpty())
+	{
+		settings.beginGroup(group);
+	}
+	settings.setValue("assemble", this->getAssemble());
+	settings.setValue("assemble_voxel", this->getAssembleVoxel());
+	settings.setValue("regenerate", this->getGenerate());
+	settings.setValue("regenerate_decimation", this->getGenerateDecimation());
+	settings.setValue("regenerate_voxel", this->getGenerateVoxel());
+	settings.setValue("regenerate_max_depth", this->getGenerateMaxDepth());
+	settings.setValue("binary", this->getBinaryFile());
+	settings.setValue("mls", this->getMLS());
+	settings.setValue("mls_radius", this->getMLSRadius());
+	settings.setValue("mesh", this->getMesh());
+	settings.setValue("mesh_k", this->getMeshNormalKSearch());
+	settings.setValue("mesh_radius", this->getMeshGp3Radius());
+	if(!group.isEmpty())
+	{
+		settings.endGroup();
+	}
+}
+
+void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & group)
+{
+	if(!group.isEmpty())
+	{
+		settings.beginGroup(group);
+	}
+	this->setAssemble(settings.value("assemble", this->getAssemble()).toBool());
+	this->setAssembleVoxel(settings.value("assemble_voxel", this->getAssembleVoxel()).toDouble());
+	this->setGenerate(settings.value("regenerate", this->getGenerate()).toBool());
+	this->setGenerateDecimation(settings.value("regenerate_decimation", this->getGenerateDecimation()).toInt());
+	this->setGenerateVoxel(settings.value("regenerate_voxel", this->getGenerateVoxel()).toDouble());
+	this->setGenerateMaxDepth(settings.value("regenerate_max_depth", this->getGenerateMaxDepth()).toDouble());
+	this->setBinaryFile(settings.value("binary", this->getBinaryFile()).toBool());
+	this->setMLS(settings.value("mls", this->getMLS()).toBool());
+	this->setMLSRadius(settings.value("mls_radius", this->getMLSRadius()).toDouble());
+	this->setMesh(settings.value("mesh", this->getMesh()).toBool());
+	this->setMeshNormalKSearch(settings.value("mesh_k", this->getMeshNormalKSearch()).toInt());
+	this->setMeshGp3Radius(settings.value("mesh_radius", this->getMeshGp3Radius()).toDouble());
+	if(!group.isEmpty())
+	{
+		settings.endGroup();
+	}
+}
+
 void ExportCloudsDialog::restoreDefaults()
 {
 	setAssemble(true);

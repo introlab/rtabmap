@@ -835,12 +835,23 @@ cv::Mat disparityFromStereoImages(
 		const cv::Mat & rightImage)
 {
 	UASSERT(!leftImage.empty() && !rightImage.empty() &&
-			leftImage.type() == CV_8UC1 && rightImage.type() == CV_8UC1 &&
+			(leftImage.type() == CV_8UC1 || leftImage.type() == CV_8UC3) && rightImage.type() == CV_8UC1 &&
 			leftImage.cols == rightImage.cols &&
 			leftImage.rows == rightImage.rows);
+
+	cv::Mat leftMono;
+	if(leftImage.channels() == 3)
+	{
+		cv::cvtColor(leftImage, leftMono, CV_BGR2GRAY);
+	}
+	else
+	{
+		leftMono = leftImage;
+	}
+
 	cv::StereoBM stereo(cv::StereoBM::BASIC_PRESET, 0, 15);
 	cv::Mat disparity;
-	stereo(leftImage, rightImage, disparity, CV_16SC1);
+	stereo(leftMono, rightImage, disparity, CV_16SC1);
 	cv::filterSpeckles(disparity, 0, 1000, 16);
 	return disparity;
 }

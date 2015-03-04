@@ -53,6 +53,7 @@ namespace rtabmap
 class Memory;
 class ImageView;
 class Signature;
+class CloudViewer;
 
 class RTABMAPGUI_EXP DatabaseViewer : public QMainWindow
 {
@@ -62,13 +63,18 @@ public:
 	DatabaseViewer(QWidget * parent = 0);
 	virtual ~DatabaseViewer();
 	bool openDatabase(const QString & path);
+	bool isSavedMaximized() const {return savedMaximized_;}
 
 protected:
 	virtual void showEvent(QShowEvent* anEvent);
+	virtual void moveEvent(QMoveEvent* anEvent);
 	virtual void resizeEvent(QResizeEvent* anEvent);
 	virtual void closeEvent(QCloseEvent* event);
+	virtual bool eventFilter(QObject *obj, QEvent *event);
 
 private slots:
+	void writeSettings();
+	void configModified();
 	void openDatabase();
 	void generateGraph();
 	void exportDatabase();
@@ -89,6 +95,7 @@ private slots:
 	void sliderNeighborValueChanged(int);
 	void sliderLoopValueChanged(int);
 	void sliderIterationsValueChanged(int);
+	void updateGrid();
 	void updateGraphView();
 	void refineConstraint();
 	void refineConstraintVisually();
@@ -98,6 +105,9 @@ private slots:
 	void updateConstraintView();
 
 private:
+	QString getIniFilePath() const;
+	void readSettings();
+
 	void updateIds();
 	void update(int value,
 				QLabel * labelIndex,
@@ -107,6 +117,7 @@ private:
 				QLabel * label,
 				QLabel * stamp,
 				rtabmap::ImageView * view,
+				rtabmap::CloudViewer * view3D,
 				QLabel * labelId,
 				bool updateConstraintView = true);
 	void updateStereo(const Signature * data);
@@ -145,7 +156,10 @@ private:
 	std::multimap<int, rtabmap::Link> linksRefined_;
 	std::multimap<int, rtabmap::Link> linksAdded_;
 	std::multimap<int, rtabmap::Link> linksRemoved_;
-	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > scans_;
+	std::map<int, std::pair<cv::Mat, cv::Mat> > localMaps_; // <ground, obstacles>
+
+	bool savedMaximized_;
+	bool firstCall_;
 };
 
 }

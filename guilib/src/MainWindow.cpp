@@ -131,7 +131,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_posteriorCurve(0),
 	_likelihoodCurve(0),
 	_rawLikelihoodCurve(0),
-	_autoScreenCaptureOdomSync(false)
+	_autoScreenCaptureOdomSync(false),
+	_firstCall(true)
 {
 	UDEBUG("");
 
@@ -173,19 +174,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 		//_ui->dockWidget_odometry->setVisible(false);
 		//_ui->dockWidget_cloudViewer->setVisible(false);
 		//_ui->dockWidget_imageView->setVisible(false);
-
-		// catch resize events
-		_ui->dockWidget_posterior->installEventFilter(this);
-		_ui->dockWidget_likelihood->installEventFilter(this);
-		_ui->dockWidget_rawlikelihood->installEventFilter(this);
-		_ui->dockWidget_statsV2->installEventFilter(this);
-		_ui->dockWidget_console->installEventFilter(this);
-		_ui->dockWidget_loopClosureViewer->installEventFilter(this);
-		_ui->dockWidget_mapVisibility->installEventFilter(this);
-		_ui->dockWidget_graphViewer->installEventFilter(this);
-		_ui->dockWidget_odometry->installEventFilter(this);
-		_ui->dockWidget_cloudViewer->installEventFilter(this);
-		_ui->dockWidget_imageView->installEventFilter(this);
 	}
 
 	_ui->widget_mainWindow->setVisible(false);
@@ -399,6 +387,18 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 		connect(dockWidgets[i], SIGNAL(dockLocationChanged(Qt::DockWidgetArea)), this, SLOT(configGUIModified()));
 		connect(dockWidgets[i]->toggleViewAction(), SIGNAL(toggled(bool)), this, SLOT(configGUIModified()));
 	}
+	// catch resize events
+	_ui->dockWidget_posterior->installEventFilter(this);
+	_ui->dockWidget_likelihood->installEventFilter(this);
+	_ui->dockWidget_rawlikelihood->installEventFilter(this);
+	_ui->dockWidget_statsV2->installEventFilter(this);
+	_ui->dockWidget_console->installEventFilter(this);
+	_ui->dockWidget_loopClosureViewer->installEventFilter(this);
+	_ui->dockWidget_mapVisibility->installEventFilter(this);
+	_ui->dockWidget_graphViewer->installEventFilter(this);
+	_ui->dockWidget_odometry->installEventFilter(this);
+	_ui->dockWidget_cloudViewer->installEventFilter(this);
+	_ui->dockWidget_imageView->installEventFilter(this);
 
 	// more connects...
 	connect(_ui->doubleSpinBox_stats_imgRate, SIGNAL(editingFinished()), this, SLOT(changeImgRateSetting()));
@@ -2193,12 +2193,11 @@ void MainWindow::moveEvent(QMoveEvent* anEvent)
 	if(this->isVisible())
 	{
 		// HACK, there is a move event when the window is shown the first time.
-		static bool firstCall = true;
-		if(!firstCall)
+		if(!_firstCall)
 		{
 			this->configGUIModified();
 		}
-		firstCall = false;
+		_firstCall = false;
 	}
 }
 
@@ -2471,7 +2470,14 @@ void MainWindow::editDatabase()
 		viewer->setWindowModality(Qt::WindowModal);
 		if(viewer->openDatabase(path))
 		{
-			viewer->show();
+			if(viewer->isSavedMaximized())
+			{
+				viewer->showMaximized();
+			}
+			else
+			{
+				viewer->show();
+			}
 		}
 		else
 		{

@@ -57,6 +57,44 @@ PostProcessingDialog::~PostProcessingDialog()
 	delete _ui;
 }
 
+void PostProcessingDialog::saveSettings(QSettings & settings, const QString & group) const
+{
+	if(!group.isEmpty())
+	{
+		settings.beginGroup(group);
+	}
+	settings.setValue("detect_more_lc", this->isDetectMoreLoopClosures());
+	settings.setValue("cluster_radius", this->clusterRadius());
+	settings.setValue("cluster_angle", this->clusterAngle());
+	settings.setValue("iterations", this->iterations());
+	settings.setValue("reextract_features", this->isReextractFeatures());
+	settings.setValue("refine_neigbors", this->isRefineNeighborLinks());
+	settings.setValue("refine_lc", this->isRefineLoopClosureLinks());
+	if(!group.isEmpty())
+	{
+		settings.endGroup();
+	}
+}
+
+void PostProcessingDialog::loadSettings(QSettings & settings, const QString & group)
+{
+	if(!group.isEmpty())
+	{
+		settings.beginGroup(group);
+	}
+	this->setDetectMoreLoopClosures(settings.value("detect_more_lc", this->isDetectMoreLoopClosures()).toBool());
+	this->setClusterRadius(settings.value("cluster_radius", this->clusterRadius()).toDouble());
+	this->setClusterAngle(settings.value("cluster_angle", this->clusterAngle()).toDouble());
+	this->setIterations(settings.value("iterations", this->iterations()).toInt());
+	this->setReextractFeatures(settings.value("reextract_features", this->isReextractFeatures()).toBool());
+	this->setRefineNeighborLinks(settings.value("refine_neigbors", this->isRefineNeighborLinks()).toBool());
+	this->setRefineLoopClosureLinks(settings.value("refine_lc", this->isRefineLoopClosureLinks()).toBool());
+	if(!group.isEmpty())
+	{
+		settings.endGroup();
+	}
+}
+
 void PostProcessingDialog::restoreDefaults()
 {
 	setDetectMoreLoopClosures(true);

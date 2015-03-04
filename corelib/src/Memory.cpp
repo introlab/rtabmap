@@ -2614,7 +2614,8 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 					UERROR("Didn't find neighbor %d of %d in RAM...", link.to(), oldS->id());
 				}
 			}
-
+			newS->setLabel(oldS->getLabel());
+			oldS->setLabel("");
 			oldS->removeLinks(); // remove all links
 			oldS->addLink(Link(oldS->id(), newS->id(), Link::kGlobalClosure, Transform(), 1.0f, 1.0f)); // to keep track of the merged location
 
@@ -3840,7 +3841,10 @@ void Memory::getMetricConstraints(
 	{
 		Transform pose;
 		this->getPose(ids[i], pose, lookInDatabase);
-		poses.insert(std::make_pair(ids[i], pose));
+		if(!pose.isNull())
+		{
+			poses.insert(std::make_pair(ids[i], pose));
+		}
 	}
 
 	for(unsigned int i=0; i<ids.size(); ++i)
@@ -3850,7 +3854,7 @@ void Memory::getMetricConstraints(
 			std::map<int, Link> neighbors = this->getNeighborLinks(ids[i], lookInDatabase); // only direct neighbors
 			for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
 			{
-				if(uContains(poses, jter->first))
+				if(uContains(poses, jter->first) && jter->second.isValid())
 				{
 					bool edgeAlreadyAdded = false;
 					for(std::multimap<int, Link>::iterator iter = links.lower_bound(jter->first);
@@ -3873,7 +3877,8 @@ void Memory::getMetricConstraints(
 			for(std::map<int, Link>::iterator jter=loops.begin(); jter!=loops.end(); ++jter)
 			{
 				if(jter->first < ids[i] &&
-					uContains(poses, jter->first))
+					uContains(poses, jter->first) &&
+					jter->second.isValid()) // null transform means a child (rehearsed location)
 				{
 					links.insert(std::make_pair(ids[i],jter->second));
 				}

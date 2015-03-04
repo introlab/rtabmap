@@ -298,6 +298,8 @@ private:
 
 	QVector<int> _refIds;
 	QVector<int> _loopClosureIds;
+
+	bool _firstCall;
 };
 
 }

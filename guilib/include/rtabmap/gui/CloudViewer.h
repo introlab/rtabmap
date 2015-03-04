@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QMap>
 #include <QtCore/QSet>
 #include <QtCore/qnamespace.h>
+#include <QtCore/QSettings>
 
 #include <opencv2/opencv.hpp>
 
@@ -62,6 +63,9 @@ class RTABMAPGUI_EXP CloudViewer : public QVTKWidget
 public:
 	CloudViewer(QWidget * parent = 0);
 	virtual ~CloudViewer();
+
+	void saveSettings(QSettings & settings, const QString & group = "") const;
+	void loadSettings(QSettings & settings, const QString & group = "");
 
 	bool updateCloudPose(
 		const std::string & id,

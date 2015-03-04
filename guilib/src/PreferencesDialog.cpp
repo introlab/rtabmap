@@ -34,7 +34,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QDir>
 #include <QtCore/QTimer>
 
-#include <QtGui/QVector3D>
 #include <QtGui/QFileDialog>
 #include <QtGui/QMessageBox>
 #include <QtGui/QStandardItemModel>
@@ -1750,90 +1749,23 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 
 		if(cloudViewer)
 		{
-			float poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ;
-			cloudViewer->getCameraPosition(poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ);
-			QVector3D pose(poseX, poseY, poseZ);
-			QVector3D focal(focalX, focalY, focalZ);
-			if(!cloudViewer->isCameraFree())
-			{
-				// make camera position relative to target
-				Transform T = cloudViewer->getTargetPose();
-				if(cloudViewer->isCameraTargetLocked())
-				{
-					T = Transform(T.x(), T.y(), T.z(), 0,0,0);
-				}
-				Transform F(focalX, focalY, focalZ, 0,0,0);
-				Transform P(poseX, poseY, poseZ, 0,0,0);
-				Transform newFocal = T.inverse() * F;
-				Transform newPose = newFocal * F.inverse() * P;
-				pose = QVector3D(newPose.x(), newPose.y(), newPose.z());
-				focal = QVector3D(newFocal.x(), newFocal.y(), newFocal.z());
-			}
-			settings.setValue("camera_pose", pose);
-			settings.setValue("camera_focal", focal);
-			settings.setValue("camera_up", QVector3D(upX, upY, upZ));
-
-			settings.setValue("grid", cloudViewer->isGridShown());
-			settings.setValue("grid_cell_count", cloudViewer->getGridCellCount());
-			settings.setValue("grid_cell_size", cloudViewer->getGridCellSize());
-
-			settings.setValue("trajectory_shown", cloudViewer->isTrajectoryShown());
-			settings.setValue("trajectory_size", cloudViewer->getTrajectorySize());
-
-			settings.setValue("camera_target_locked", cloudViewer->isCameraTargetLocked());
-			settings.setValue("camera_target_follow", cloudViewer->isCameraTargetFollow());
-			settings.setValue("camera_free", cloudViewer->isCameraFree());
-			settings.setValue("camera_lockZ", cloudViewer->isCameraLockZ());
-
-			settings.setValue("bg_color", cloudViewer->getBackgroundColor());
+			cloudViewer->saveSettings(settings);
 		}
 		else if(imageView)
 		{
-			settings.setValue("image_shown", imageView->isImageShown());
-			settings.setValue("depth_shown", imageView->isImageDepthShown());
-			settings.setValue("features_shown", imageView->isFeaturesShown());
-			settings.setValue("lines_shown", imageView->isLinesShown());
-			settings.setValue("alpha", imageView->getAlpha());
+			imageView->saveSettings(settings);
 		}
 		else if(exportCloudsDialog)
 		{
-			settings.setValue("assemble", exportCloudsDialog->getAssemble());
-			settings.setValue("assemble_voxel", exportCloudsDialog->getAssembleVoxel());
-			settings.setValue("regenerate", exportCloudsDialog->getGenerate());
-			settings.setValue("regenerate_decimation", exportCloudsDialog->getGenerateDecimation());
-			settings.setValue("regenerate_voxel", exportCloudsDialog->getGenerateVoxel());
-			settings.setValue("regenerate_max_depth", exportCloudsDialog->getGenerateMaxDepth());
-			settings.setValue("binary", exportCloudsDialog->getBinaryFile());
-			settings.setValue("mls", exportCloudsDialog->getMLS());
-			settings.setValue("mls_radius", exportCloudsDialog->getMLSRadius());
-			settings.setValue("mesh", exportCloudsDialog->getMesh());
-			settings.setValue("mesh_k", exportCloudsDialog->getMeshNormalKSearch());
-			settings.setValue("mesh_radius", exportCloudsDialog->getMeshGp3Radius());
+			exportCloudsDialog->saveSettings(settings);
 		}
 		else if(postProcessingDialog)
 		{
-			settings.setValue("detect_more_lc", postProcessingDialog->isDetectMoreLoopClosures());
-			settings.setValue("cluster_radius", postProcessingDialog->clusterRadius());
-			settings.setValue("cluster_angle", postProcessingDialog->clusterAngle());
-			settings.setValue("iterations", postProcessingDialog->iterations());
-			settings.setValue("reextract_features", postProcessingDialog->isReextractFeatures());
-			settings.setValue("refine_neigbors", postProcessingDialog->isRefineNeighborLinks());
-			settings.setValue("refine_lc", postProcessingDialog->isRefineLoopClosureLinks());
+			postProcessingDialog->saveSettings(settings);
 		}
 		else if(graphViewer)
 		{
-			settings.setValue("node_radius", graphViewer->getNodeRadius());
-			settings.setValue("link_width", graphViewer->getLinkWidth());
-			settings.setValue("node_color", graphViewer->getNodeColor());
-			settings.setValue("neighbor_color", graphViewer->getNeighborColor());
-			settings.setValue("global_color", graphViewer->getGlobalLoopClosureColor());
-			settings.setValue("local_color", graphViewer->getLocalLoopClosureColor());
-			settings.setValue("user_color", graphViewer->getUserLoopClosureColor());
-			settings.setValue("virtual_color", graphViewer->getVirtualLoopClosureColor());
-			settings.setValue("local_path_color", graphViewer->getLocalPathColor());
-			settings.setValue("grid_visible", graphViewer->isGridMapVisible());
-			settings.setValue("origin_visible", graphViewer->isOriginVisible());
-			settings.setValue("referential_visible", graphViewer->isReferentialVisible());
+			graphViewer->saveSettings(settings);
 		}
 		else
 		{
@@ -1862,78 +1794,23 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 
 		if(cloudViewer)
 		{
-			float poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ;
-			cloudViewer->getCameraPosition(poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ);
-			QVector3D pose(poseX, poseY, poseZ), focal(focalX, focalY, focalZ), up(upX, upY, upZ);
-			pose = settings.value("camera_pose", pose).value<QVector3D>();
-			focal = settings.value("camera_focal", focal).value<QVector3D>();
-			up = settings.value("camera_up", up).value<QVector3D>();
-			cloudViewer->setCameraPosition(pose.x(),pose.y(),pose.z(), focal.x(),focal.y(),focal.z(), up.x(),up.y(),up.z());
-
-			cloudViewer->setGridShown(settings.value("grid", cloudViewer->isGridShown()).toBool());
-			cloudViewer->setGridCellCount(settings.value("grid_cell_count", cloudViewer->getGridCellCount()).toUInt());
-			cloudViewer->setGridCellSize(settings.value("grid_cell_size", cloudViewer->getGridCellSize()).toFloat());
-
-			cloudViewer->setTrajectoryShown(settings.value("trajectory_shown", cloudViewer->isTrajectoryShown()).toBool());
-			cloudViewer->setTrajectorySize(settings.value("trajectory_size", cloudViewer->getTrajectorySize()).toUInt());
-
-			cloudViewer->setCameraTargetLocked(settings.value("camera_target_locked", cloudViewer->isCameraTargetLocked()).toBool());
-			cloudViewer->setCameraTargetFollow(settings.value("camera_target_follow", cloudViewer->isCameraTargetFollow()).toBool());
-			if(settings.value("camera_free", cloudViewer->isCameraFree()).toBool())
-			{
-				cloudViewer->setCameraFree();
-			}
-			cloudViewer->setCameraLockZ(settings.value("camera_lockZ", cloudViewer->isCameraLockZ()).toBool());
-
-			cloudViewer->setBackgroundColor(settings.value("bg_color", cloudViewer->getBackgroundColor()).value<QColor>());
+			cloudViewer->loadSettings(settings);
 		}
 		else if(imageView)
 		{
-			imageView->setImageShown(settings.value("image_shown", imageView->isImageShown()).toBool());
-			imageView->setImageDepthShown(settings.value("depth_shown", imageView->isImageDepthShown()).toBool());
-			imageView->setFeaturesShown(settings.value("features_shown", imageView->isFeaturesShown()).toBool());
-			imageView->setLinesShown(settings.value("lines_shown", imageView->isLinesShown()).toBool());
-			imageView->setAlpha(settings.value("alpha", imageView->getAlpha()).toInt());
+			imageView->loadSettings(settings);
 		}
 		else if(exportCloudsDialog)
 		{
-			exportCloudsDialog->setAssemble(settings.value("assemble", exportCloudsDialog->getAssemble()).toBool());
-			exportCloudsDialog->setAssembleVoxel(settings.value("assemble_voxel", exportCloudsDialog->getAssembleVoxel()).toDouble());
-			exportCloudsDialog->setGenerate(settings.value("regenerate", exportCloudsDialog->getGenerate()).toBool());
-			exportCloudsDialog->setGenerateDecimation(settings.value("regenerate_decimation", exportCloudsDialog->getGenerateDecimation()).toInt());
-			exportCloudsDialog->setGenerateVoxel(settings.value("regenerate_voxel", exportCloudsDialog->getGenerateVoxel()).toDouble());
-			exportCloudsDialog->setGenerateMaxDepth(settings.value("regenerate_max_depth", exportCloudsDialog->getGenerateMaxDepth()).toDouble());
-			exportCloudsDialog->setBinaryFile(settings.value("binary", exportCloudsDialog->getBinaryFile()).toBool());
-			exportCloudsDialog->setMLS(settings.value("mls", exportCloudsDialog->getMLS()).toBool());
-			exportCloudsDialog->setMLSRadius(settings.value("mls_radius", exportCloudsDialog->getMLSRadius()).toDouble());
-			exportCloudsDialog->setMesh(settings.value("mesh", exportCloudsDialog->getMesh()).toBool());
-			exportCloudsDialog->setMeshNormalKSearch(settings.value("mesh_k", exportCloudsDialog->getMeshNormalKSearch()).toInt());
-			exportCloudsDialog->setMeshGp3Radius(settings.value("mesh_radius", exportCloudsDialog->getMeshGp3Radius()).toDouble());
+			exportCloudsDialog->loadSettings(settings);
 		}
 		else if(postProcessingDialog)
 		{
-			postProcessingDialog->setDetectMoreLoopClosures(settings.value("detect_more_lc", postProcessingDialog->isDetectMoreLoopClosures()).toBool());
-			postProcessingDialog->setClusterRadius(settings.value("cluster_radius", postProcessingDialog->clusterRadius()).toDouble());
-			postProcessingDialog->setClusterAngle(settings.value("cluster_angle", postProcessingDialog->clusterAngle()).toDouble());
-			postProcessingDialog->setIterations(settings.value("iterations", postProcessingDialog->iterations()).toInt());
-			postProcessingDialog->setReextractFeatures(settings.value("reextract_features", postProcessingDialog->isReextractFeatures()).toBool());
-			postProcessingDialog->setRefineNeighborLinks(settings.value("refine_neigbors", postProcessingDialog->isRefineNeighborLinks()).toBool());
-			postProcessingDialog->setRefineLoopClosureLinks(settings.value("refine_lc", postProcessingDialog->isRefineLoopClosureLinks()).toBool());
+			postProcessingDialog->loadSettings(settings);
 		}
 		else if(graphViewer)
 		{
-			graphViewer->setNodeRadius(settings.value("node_radius", graphViewer->getNodeRadius()).toDouble());
-			graphViewer->setLinkWidth(settings.value("link_width", graphViewer->getLinkWidth()).toDouble());
-			graphViewer->setNodeColor(settings.value("node_color", graphViewer->getNodeColor()).value<QColor>());
-			graphViewer->setNeighborColor(settings.value("neighbor_color", graphViewer->getNeighborColor()).value<QColor>());
-			graphViewer->setGlobalLoopClosureColor(settings.value("global_color", graphViewer->getGlobalLoopClosureColor()).value<QColor>());
-			graphViewer->setLocalLoopClosureColor(settings.value("local_color", graphViewer->getLocalLoopClosureColor()).value<QColor>());
-			graphViewer->setUserLoopClosureColor(settings.value("user_color", graphViewer->getUserLoopClosureColor()).value<QColor>());
-			graphViewer->setVirtualLoopClosureColor(settings.value("virtual_color", graphViewer->getVirtualLoopClosureColor()).value<QColor>());
-			graphViewer->setLocalPathColor(settings.value("local_path_color", graphViewer->getLocalPathColor()).value<QColor>());
-			graphViewer->setGridMapVisible(settings.value("grid_visible", graphViewer->isGridMapVisible()).toBool());
-			graphViewer->setOriginVisible(settings.value("origin_visible", graphViewer->isOriginVisible()).toBool());
-			graphViewer->setReferentialVisible(settings.value("referential_visible", graphViewer->isReferentialVisible()).toBool());
+			graphViewer->loadSettings(settings);
 		}
 		else
 		{

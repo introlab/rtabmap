@@ -128,21 +128,21 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromDisparity(
 		const cv::Mat & imageDisparity,
 		float cx, float cy,
 		float fx, float baseline,
-		int decimation);
+		int decimation = 1);
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDisparityRGB(
 		const cv::Mat & imageRgb,
 		const cv::Mat & imageDisparity,
 		float cx, float cy,
 		float fx, float baseline,
-		int decimation);
+		int decimation = 1);
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromStereoImages(
 		const cv::Mat & imageLeft,
 		const cv::Mat & imageRight,
 		float cx, float cy,
 		float fx, float baseline,
-		int decimation);
+		int decimation = 1);
 
 cv::Mat RTABMAP_EXP disparityFromStereoImages(
 		const cv::Mat & leftImage,

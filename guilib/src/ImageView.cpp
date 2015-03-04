@@ -74,6 +74,40 @@ ImageView::~ImageView() {
 	clear();
 }
 
+void ImageView::saveSettings(QSettings & settings, const QString & group) const
+{
+	if(!group.isEmpty())
+	{
+		settings.beginGroup(group);
+	}
+	settings.setValue("image_shown", this->isImageShown());
+	settings.setValue("depth_shown", this->isImageDepthShown());
+	settings.setValue("features_shown", this->isFeaturesShown());
+	settings.setValue("lines_shown", this->isLinesShown());
+	settings.setValue("alpha", this->getAlpha());
+	if(!group.isEmpty())
+	{
+		settings.endGroup();
+	}
+}
+
+void ImageView::loadSettings(QSettings & settings, const QString & group)
+{
+	if(!group.isEmpty())
+	{
+		settings.beginGroup(group);
+	}
+	this->setImageShown(settings.value("image_shown", this->isImageShown()).toBool());
+	this->setImageDepthShown(settings.value("depth_shown", this->isImageDepthShown()).toBool());
+	this->setFeaturesShown(settings.value("features_shown", this->isFeaturesShown()).toBool());
+	this->setLinesShown(settings.value("lines_shown", this->isLinesShown()).toBool());
+	this->setAlpha(settings.value("alpha", this->getAlpha()).toInt());
+	if(!group.isEmpty())
+	{
+		settings.endGroup();
+	}
+}
+
 void ImageView::resetZoom()
 {
 	_zoom = _minZoom;

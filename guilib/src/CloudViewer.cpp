@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QWheelEvent>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QColorDialog>
+#include <QtGui/QVector3D>
 #include <set>
 
 #include <vtkRenderWindow.h>
@@ -157,6 +158,92 @@ void CloudViewer::createMenu()
 	_menu->addMenu(trajectoryMenu);
 	_menu->addMenu(gridMenu);
 	_menu->addAction(_aSetBackgroundColor);
+}
+
+void CloudViewer::saveSettings(QSettings & settings, const QString & group) const
+{
+	if(!group.isEmpty())
+	{
+		settings.beginGroup(group);
+	}
+
+	float poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ;
+	this->getCameraPosition(poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ);
+	QVector3D pose(poseX, poseY, poseZ);
+	QVector3D focal(focalX, focalY, focalZ);
+	if(!this->isCameraFree())
+	{
+		// make camera position relative to target
+		Transform T = this->getTargetPose();
+		if(this->isCameraTargetLocked())
+		{
+			T = Transform(T.x(), T.y(), T.z(), 0,0,0);
+		}
+		Transform F(focalX, focalY, focalZ, 0,0,0);
+		Transform P(poseX, poseY, poseZ, 0,0,0);
+		Transform newFocal = T.inverse() * F;
+		Transform newPose = newFocal * F.inverse() * P;
+		pose = QVector3D(newPose.x(), newPose.y(), newPose.z());
+		focal = QVector3D(newFocal.x(), newFocal.y(), newFocal.z());
+	}
+	settings.setValue("camera_pose", pose);
+	settings.setValue("camera_focal", focal);
+	settings.setValue("camera_up", QVector3D(upX, upY, upZ));
+
+	settings.setValue("grid", this->isGridShown());
+	settings.setValue("grid_cell_count", this->getGridCellCount());
+	settings.setValue("grid_cell_size", this->getGridCellSize());
+
+	settings.setValue("trajectory_shown", this->isTrajectoryShown());
+	settings.setValue("trajectory_size", this->getTrajectorySize());
+
+	settings.setValue("camera_target_locked", this->isCameraTargetLocked());
+	settings.setValue("camera_target_follow", this->isCameraTargetFollow());
+	settings.setValue("camera_free", this->isCameraFree());
+	settings.setValue("camera_lockZ", this->isCameraLockZ());
+
+	settings.setValue("bg_color", this->getBackgroundColor());
+	if(!group.isEmpty())
+	{
+		settings.endGroup();
+	}
+}
+
+void CloudViewer::loadSettings(QSettings & settings, const QString & group)
+{
+	if(!group.isEmpty())
+	{
+		settings.beginGroup(group);
+	}
+
+	float poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ;
+	this->getCameraPosition(poseX, poseY, poseZ, focalX, focalY, focalZ, upX, upY, upZ);
+	QVector3D pose(poseX, poseY, poseZ), focal(focalX, focalY, focalZ), up(upX, upY, upZ);
+	pose = settings.value("camera_pose", pose).value<QVector3D>();
+	focal = settings.value("camera_focal", focal).value<QVector3D>();
+	up = settings.value("camera_up", up).value<QVector3D>();
+	this->setCameraPosition(pose.x(),pose.y(),pose.z(), focal.x(),focal.y(),focal.z(), up.x(),up.y(),up.z());
+
+	this->setGridShown(settings.value("grid", this->isGridShown()).toBool());
+	this->setGridCellCount(settings.value("grid_cell_count", this->getGridCellCount()).toUInt());
+	this->setGridCellSize(settings.value("grid_cell_size", this->getGridCellSize()).toFloat());
+
+	this->setTrajectoryShown(settings.value("trajectory_shown", this->isTrajectoryShown()).toBool());
+	this->setTrajectorySize(settings.value("trajectory_size", this->getTrajectorySize()).toUInt());
+
+	this->setCameraTargetLocked(settings.value("camera_target_locked", this->isCameraTargetLocked()).toBool());
+	this->setCameraTargetFollow(settings.value("camera_target_follow", this->isCameraTargetFollow()).toBool());
+	if(settings.value("camera_free", this->isCameraFree()).toBool())
+	{
+		this->setCameraFree();
+	}
+	this->setCameraLockZ(settings.value("camera_lockZ", this->isCameraLockZ()).toBool());
+
+	this->setBackgroundColor(settings.value("bg_color", this->getBackgroundColor()).value<QColor>());
+	if(!group.isEmpty())
+	{
+		settings.endGroup();
+	}
 }
 
 bool CloudViewer::updateCloudPose(

@@ -486,6 +486,54 @@ void GraphViewer::clearAll()
 	clearGraph();
 }
 
+void GraphViewer::saveSettings(QSettings & settings, const QString & group) const
+{
+	if(!group.isEmpty())
+	{
+		settings.beginGroup(group);
+	}
+	settings.setValue("node_radius", this->getNodeRadius());
+	settings.setValue("link_width", this->getLinkWidth());
+	settings.setValue("node_color", this->getNodeColor());
+	settings.setValue("neighbor_color", this->getNeighborColor());
+	settings.setValue("global_color", this->getGlobalLoopClosureColor());
+	settings.setValue("local_color", this->getLocalLoopClosureColor());
+	settings.setValue("user_color", this->getUserLoopClosureColor());
+	settings.setValue("virtual_color", this->getVirtualLoopClosureColor());
+	settings.setValue("local_path_color", this->getLocalPathColor());
+	settings.setValue("grid_visible", this->isGridMapVisible());
+	settings.setValue("origin_visible", this->isOriginVisible());
+	settings.setValue("referential_visible", this->isReferentialVisible());
+	if(!group.isEmpty())
+	{
+		settings.endGroup();
+	}
+}
+
+void GraphViewer::loadSettings(QSettings & settings, const QString & group)
+{
+	if(!group.isEmpty())
+	{
+		settings.beginGroup(group);
+	}
+	this->setNodeRadius(settings.value("node_radius", this->getNodeRadius()).toDouble());
+	this->setLinkWidth(settings.value("link_width", this->getLinkWidth()).toDouble());
+	this->setNodeColor(settings.value("node_color", this->getNodeColor()).value<QColor>());
+	this->setNeighborColor(settings.value("neighbor_color", this->getNeighborColor()).value<QColor>());
+	this->setGlobalLoopClosureColor(settings.value("global_color", this->getGlobalLoopClosureColor()).value<QColor>());
+	this->setLocalLoopClosureColor(settings.value("local_color", this->getLocalLoopClosureColor()).value<QColor>());
+	this->setUserLoopClosureColor(settings.value("user_color", this->getUserLoopClosureColor()).value<QColor>());
+	this->setVirtualLoopClosureColor(settings.value("virtual_color", this->getVirtualLoopClosureColor()).value<QColor>());
+	this->setLocalPathColor(settings.value("local_path_color", this->getLocalPathColor()).value<QColor>());
+	this->setGridMapVisible(settings.value("grid_visible", this->isGridMapVisible()).toBool());
+	this->setOriginVisible(settings.value("origin_visible", this->isOriginVisible()).toBool());
+	this->setReferentialVisible(settings.value("referential_visible", this->isReferentialVisible()).toBool());
+	if(!group.isEmpty())
+	{
+		settings.endGroup();
+	}
+}
+
 bool GraphViewer::isGridMapVisible() const
 {
 	return _gridMap->isVisible();
