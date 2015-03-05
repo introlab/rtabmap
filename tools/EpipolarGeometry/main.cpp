@@ -107,7 +107,7 @@ public:
 	}
 
 private:
-	virtual Transform computeTransform(const SensorData & data, int * quality = 0, int * features = 0, int * localMapSize = 0)
+	virtual Transform computeTransform(const SensorData & data, OdometryInfo * info = 0)
 	{
 		UTimer timer;
 		Transform output;
