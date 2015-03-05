@@ -199,15 +199,13 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 				// ignore bad signatures
 				if(!((*iter)->isBadSignature() && _badSignaturesIgnored))
 				{
+					// insert all in WM
+					// Note: it doesn't make sense to keep last STM images
+					//       of the last session in the new STM because they can be
+					//       only linked with the ones of the current session by
+					//       global loop closures.
 					_signatures.insert(std::pair<int, Signature *>((*iter)->id(), *iter));
-					if(_maxStMemSize == 0 || (int)_stMem.size() <= _maxStMemSize)
-					{
-						_stMem.insert((*iter)->id());
-					}
-					else
-					{
-						_workingMem.insert((*iter)->id());
-					}
+					_workingMem.insert((*iter)->id());
 				}
 				else
 				{
