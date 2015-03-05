@@ -940,6 +940,37 @@ int Memory::incrementMapId()
 	const Signature * s = getLastWorkingSignature();
 	if(s && s->mapId() == _idMapCount)
 	{
+		// New session! move all signatures from the STM to WM
+		while(_stMem.size())
+		{
+			UDEBUG("Inserting node %d from STM in WM...", *_stMem.begin());
+			if(!_localSpaceLinksKeptInWM)
+			{
+				// remove local space links outside STM
+				Signature * s = this->_getSignature(*_stMem.begin());
+				UASSERT(s!=0);
+				std::map<int, Link> links = s->getLinks(); // get a copy because we will remove some links in "s"
+				for(std::map<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+				{
+					if(iter->second.type() == Link::kLocalSpaceClosure)
+					{
+						Signature * sTo = this->_getSignature(iter->first);
+						if(sTo)
+						{
+							sTo->removeLink(s->id());
+						}
+						else
+						{
+							UERROR("Link %d of %d not in WM/STM?!?", iter->first, s->id());
+						}
+						s->removeLink(iter->first);
+					}
+				}
+			}
+			_workingMem.insert(_workingMem.end(), *_stMem.begin());
+			_stMem.erase(*_stMem.begin());
+		}
+
 		return ++_idMapCount;
 	}
 	return _idMapCount;
