@@ -96,9 +96,6 @@ public:
 	const std::set<int> & getWorkingMem() const {return _workingMem;}
 	const std::set<int> & getStMem() const {return _stMem;}
 	int getMaxStMemSize() const {return _maxStMemSize;}
-	void getPose(int locationId,
-			Transform & pose,
-			bool lookInDatabase = false) const;
 	std::map<int, Link> getNeighborLinks(int signatureId,
 			bool lookInDatabase = false) const;
 	std::map<int, Link> getLoopClosureLinks(int signatureId,
@@ -111,9 +108,17 @@ public:
 	const Signature * getLastWorkingSignature() const;
 	int getSignatureIdByLabel(const std::string & label, bool lookInDatabase = true) const;
 	bool labelSignature(int id, const std::string & label);
+	std::map<int, std::string> getAllLabels() const;
 	int getDatabaseMemoryUsed() const; // in bytes
 	double getDbSavingTime() const;
-	int getMapId(int signatureId) const;
+	Transform getOdomPose(int signatureId, bool lookInDatabase = false) const;
+	bool getNodeInfo(int signatureId,
+			Transform & odomPose,
+			int & mapId,
+			int & weight,
+			std::string & label,
+			double & stamp,
+			bool lookInDatabase = false) const;
 	cv::Mat getImageCompressed(int signatureId) const;
 	Signature getSignatureData(int locationId, bool uncompressedData = false);
 	Signature getSignatureDataConst(int locationId) const;

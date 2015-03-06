@@ -751,8 +751,14 @@ void DBDriverSqlite3::getNodeDataQuery(int signatureId, cv::Mat & imageCompresse
 	}
 }
 
-void DBDriverSqlite3::getPoseQuery(int signatureId, Transform & pose, int & mapId) const
+bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
+		Transform & pose,
+		int & mapId,
+		int & weight,
+		std::string & label,
+		double & stamp) const
 {
+	bool found = false;
 	if(_ppDb && signatureId)
 	{
 		int rc = SQLITE_OK;
@@ -760,10 +766,20 @@ void DBDriverSqlite3::getPoseQuery(int signatureId, Transform & pose, int & mapI
 		std::stringstream query;
 
 		// Prepare the query... Get the map from signature and visual words
-		query << "SELECT pose, map_id "
-				 "FROM Node "
-				 "WHERE id = " << signatureId <<
-				 ";";
+		if(uStrNumCmp(_version, "0.8.5") >= 0)
+		{
+			query << "SELECT pose, map_id, weight, label "
+					 "FROM Node "
+					 "WHERE id = " << signatureId <<
+					 ";";
+		}
+		else
+		{
+			query << "SELECT pose, map_id, weight "
+					 "FROM Node "
+					 "WHERE id = " << signatureId <<
+					 ";";
+		}
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
@@ -775,6 +791,7 @@ void DBDriverSqlite3::getPoseQuery(int signatureId, Transform & pose, int & mapI
 		rc = sqlite3_step(ppStmt);
 		if(rc == SQLITE_ROW)
 		{
+			found = true;
 			int index = 0;
 			data = sqlite3_column_blob(ppStmt, index); // pose
 			dataSize = sqlite3_column_bytes(ppStmt, index++);
@@ -784,7 +801,16 @@ void DBDriverSqlite3::getPoseQuery(int signatureId, Transform & pose, int & mapI
 			}
 
 			mapId = sqlite3_column_int(ppStmt, index++); // map id
+			weight = sqlite3_column_int(ppStmt, index++); // weight
 
+			if(uStrNumCmp(_version, "0.8.5") >= 0)
+			{
+				const unsigned char * p = sqlite3_column_text(ppStmt, index++);
+				if(p)
+				{
+					label = reinterpret_cast<const char*>(p); // label
+				}
+			}
 
 			rc = sqlite3_step(ppStmt); // next result...
 		}
@@ -794,6 +820,7 @@ void DBDriverSqlite3::getPoseQuery(int signatureId, Transform & pose, int & mapI
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	}
+	return found;
 }
 
 
@@ -929,7 +956,7 @@ void DBDriverSqlite3::getInvertedIndexNiQuery(int nodeId, int & ni) const
 
 void DBDriverSqlite3::getNodeIdByLabelQuery(const std::string & label, int & id) const
 {
-	if(_ppDb && !label.empty())
+	if(_ppDb && !label.empty() && uStrNumCmp(_version, "0.8.5") >= 0)
 	{
 		UTimer timer;
 		timer.start();
@@ -946,6 +973,46 @@ void DBDriverSqlite3::getNodeIdByLabelQuery(const std::string & label, int & id)
 		if(rc == SQLITE_ROW)
 		{
 			id = sqlite3_column_int(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		ULOGGER_DEBUG("Time=%f", timer.ticks());
+	}
+}
+
+void DBDriverSqlite3::getAllLabelsQuery(std::map<int, std::string> & labels) const
+{
+	if(_ppDb && uStrNumCmp(_version, "0.8.5") >= 0)
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::stringstream query;
+		query << "SELECT id,label FROM Node WHERE label IS NOT NULL";
+
+		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		// Process the result if one
+		rc = sqlite3_step(ppStmt);
+		while(rc == SQLITE_ROW)
+		{
+			int index = 0;
+			int id = sqlite3_column_int(ppStmt, index++);
+			const unsigned char * p = sqlite3_column_text(ppStmt, index++);
+			if(p)
+			{
+				std::string label = reinterpret_cast<const char*>(p);
+				if(!label.empty())
+				{
+					labels.insert(std::make_pair(id, label));
+				}
+			}
 			rc = sqlite3_step(ppStmt);
 		}
 		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());

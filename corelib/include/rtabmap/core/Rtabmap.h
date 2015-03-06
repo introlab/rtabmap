@@ -113,11 +113,13 @@ public:
 			std::map<int, Transform> & poses,
 			std::multimap<int, Link> & constraints,
 			std::map<int, int> & mapIds,
+			std::map<int, std::string> & labels,
 			bool optimized,
 			bool global) const;
 	void getGraph(std::map<int, Transform> & poses,
 			std::multimap<int, Link> & constraints,
 			std::map<int, int> & mapIds,
+			std::map<int, std::string> & labels,
 			bool optimized,
 			bool global);
 	void clearPath();

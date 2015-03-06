@@ -754,21 +754,6 @@ const VWDictionary * Memory::getVWDictionary() const
 	return _vwd;
 }
 
-void Memory::getPose(int locationId, Transform & pose, bool lookInDatabase) const
-{
-	const Signature * s = getSignature(locationId);
-	int mapId = -1;
-	if(s)
-	{
-		pose = s->getPose();
-		mapId = s->mapId();
-	}
-	else if(lookInDatabase && _dbDriver)
-	{
-		_dbDriver->getPose(locationId, pose, mapId);
-	}
-}
-
 std::map<int, Link> Memory::getNeighborLinks(
 		int signatureId,
 		bool lookInDatabase) const
@@ -1688,6 +1673,23 @@ bool Memory::labelSignature(int id, const std::string & label)
 		}
 	}
 	return false;
+}
+
+std::map<int, std::string> Memory::getAllLabels() const
+{
+	std::map<int, std::string> labels;
+	for(std::map<int, Signature*>::const_iterator iter = _signatures.begin(); iter!=_signatures.end(); ++iter)
+	{
+		if(!iter->second->getLabel().empty())
+		{
+			labels.insert(std::make_pair(iter->first, iter->second->getLabel()));
+		}
+	}
+	if(_dbDriver)
+	{
+		_dbDriver->getAllLabels(labels);
+	}
+	return labels;
 }
 
 void Memory::deleteLocation(int locationId, std::list<int> * deletedWords)
@@ -2692,20 +2694,39 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 	return false;
 }
 
-int Memory::getMapId(int signatureId) const
+Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const
 {
-	int mapId = 0;
+	Transform pose;
+	int mapId, weight;
+	std::string label;
+	double stamp;
+	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, lookInDatabase);
+	return pose;
+}
+
+bool Memory::getNodeInfo(int signatureId,
+		Transform & odomPose,
+		int & mapId,
+		int & weight,
+		std::string & label,
+		double & stamp,
+		bool lookInDatabase) const
+{
 	const Signature * s = this->getSignature(signatureId);
 	if(s)
 	{
+		odomPose = s->getPose();
 		mapId = s->mapId();
+		weight = s->getWeight();
+		label = s->getLabel();
+		stamp = s->getStamp();
+		return true;
 	}
-	else if(_dbDriver)
+	else if(lookInDatabase && _dbDriver)
 	{
-		Transform pose;
-		_dbDriver->getPose(signatureId, pose, mapId);
+		return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp);
 	}
-	return mapId;
+	return false;
 }
 
 cv::Mat Memory::getImageCompressed(int signatureId) const
@@ -3868,8 +3889,7 @@ void Memory::getMetricConstraints(
 	UDEBUG("");
 	for(unsigned int i=0; i<ids.size(); ++i)
 	{
-		Transform pose;
-		this->getPose(ids[i], pose, lookInDatabase);
+		Transform pose = getOdomPose(ids[i], lookInDatabase);
 		if(!pose.isNull())
 		{
 			poses.insert(std::make_pair(ids[i], pose));

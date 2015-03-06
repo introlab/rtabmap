@@ -955,8 +955,11 @@ void DatabaseViewer::view3DMap()
 						cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, data.getLocalTransform());
 
 						QColor color = Qt::red;
-						int mapId = memory_->getMapId(iter->first);
-						if(mapId >= 0)
+						int mapId, weight;
+						Transform odomPose;
+						std::string label;
+						double stamp;
+						if(memory_->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, true))
 						{
 							color = (Qt::GlobalColor)(mapId % 12 + 7 );
 						}
@@ -1300,7 +1303,11 @@ void DatabaseViewer::update(int value,
 					view->setFeatures(data.getWords());
 				}
 
-				mapId = memory_->getMapId(id);
+				Transform odomPose;
+				int w;
+				std::string l;
+				double s;
+				memory_->getNodeInfo(id, odomPose, mapId, w, l, s, true);
 
 				weight->setNum(data.getWeight());
 				label->setText(data.getLabel().c_str());

@@ -148,12 +148,14 @@ public:
 			const std::map<int, Signature> & signatures,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & constraints,
-			const std::map<int, int> & mapIds) :
+			const std::map<int, int> & mapIds,
+			const std::map<int, std::string> & labels) :
 		UEvent(0),
 		_signatures(signatures),
 		_poses(poses),
 		_constraints(constraints),
-		_mapIds(mapIds)
+		_mapIds(mapIds),
+		_labels(labels)
 	{}
 
 	virtual ~RtabmapEvent3DMap() {}
@@ -162,6 +164,7 @@ public:
 	const std::map<int, Transform> & getPoses() const {return _poses;}
 	const std::multimap<int, Link> & getConstraints() const {return _constraints;}
 	const std::map<int, int> & getMapIds() const {return _mapIds;}
+	const std::map<int, std::string> & getLabels() const {return _labels;}
 
 	virtual std::string getClassName() const {return std::string("RtabmapEvent3DMap");}
 
@@ -170,6 +173,7 @@ private:
 	std::map<int, Transform> _poses;
 	std::multimap<int, Link> _constraints;
 	std::map<int, int> _mapIds;
+	std::map<int, std::string> _labels;
 };
 
 } // namespace rtabmap

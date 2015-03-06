@@ -1586,6 +1586,7 @@ bool Rtabmap::process(const SensorData & data)
 			}
 		}
 	}
+
 	//============================================================
 	// Prepare statistics
 	//============================================================
@@ -1654,15 +1655,24 @@ bool Rtabmap::process(const SensorData & data)
 				std::map<int, int> ids = _memory->getNeighborsId(signature->id(), 0, 0, true);
 				std::map<int, Transform> poses;
 				std::map<int, int> mapIds;
+				std::map<int, std::string> labels;
 				std::multimap<int, Link> constraints;
 				_memory->getMetricConstraints(uKeys(ids), poses, constraints, false);
 				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 				{
-					mapIds.insert(std::make_pair(iter->first, _memory->getMapId(iter->first)));
+					Transform odomPose;
+					int weight = -1;
+					int mapId = -1;
+					std::string label;
+					double stamp = 0;
+					_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, false);
+					mapIds.insert(std::make_pair(iter->first, mapId));
+					labels.insert(std::make_pair(iter->first, label));
 				}
 				statistics_.setPoses(poses);
 				statistics_.setConstraints(constraints);
 				statistics_.setMapIds(mapIds);
+				statistics_.setLabels(labels);
 			}
 			else // RGBD-SLAM mode
 			{
@@ -1805,9 +1815,6 @@ bool Rtabmap::process(const SensorData & data)
 	timeRealTimeLimitReachedProcess = timer.ticks();
 	ULOGGER_INFO("Time limit reached processing = %f...", timeRealTimeLimitReachedProcess);
 
-	//Start trashing
-	_memory->emptyTrash();
-
 	//==============================================================
 	// Finalize statistics and log files
 	//==============================================================
@@ -1828,16 +1835,28 @@ bool Rtabmap::process(const SensorData & data)
 		if(_rgbdSlamMode)
 		{
 			std::map<int, int> mapIds;
+			std::map<int, std::string> labels;
 			for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 			{
-				mapIds.insert(std::make_pair(iter->first, _memory->getMapId(iter->first)));
+				Transform odomPose;
+				int weight = -1;
+				int mapId = -1;
+				std::string label;
+				double stamp = 0;
+				_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, true);
+				mapIds.insert(std::make_pair(iter->first, mapId));
+				labels.insert(std::make_pair(iter->first, label));
 			}
 			statistics_.setPoses(_optimizedPoses);
 			statistics_.setConstraints(_constraints);
 			statistics_.setMapIds(mapIds);
+			statistics_.setLabels(labels);
 		}
 
 	}
+
+	//Start trashing
+	_memory->emptyTrash();
 
 	// Log info...
 	// TODO : use a specific class which will handle the RtabmapEvent
@@ -2271,6 +2290,7 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> & constraints,
 		std::map<int, int> & mapIds,
+		std::map<int, std::string> & labels,
 		bool optimized,
 		bool global) const
 {
@@ -2298,7 +2318,14 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 
 		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
-			mapIds.insert(std::make_pair(iter->first, _memory->getMapId(iter->first)));
+			Transform odomPose;
+			int weight = -1;
+			int mapId = -1;
+			std::string label;
+			double stamp = 0;
+			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, true);
+			mapIds.insert(std::make_pair(iter->first, mapId));
+			labels.insert(std::make_pair(iter->first, label));
 		}
 
 
@@ -2337,6 +2364,7 @@ void Rtabmap::getGraph(
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> & constraints,
 		std::map<int, int> & mapIds,
+		std::map<int, std::string> & labels,
 		bool optimized,
 		bool global)
 {
@@ -2363,7 +2391,14 @@ void Rtabmap::getGraph(
 
 		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
-			mapIds.insert(std::make_pair(iter->first, _memory->getMapId(iter->first)));
+			Transform odomPose;
+			int weight = -1;
+			int mapId = -1;
+			std::string label;
+			double stamp = 0;
+			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, true);
+			mapIds.insert(std::make_pair(iter->first, mapId));
+			labels.insert(std::make_pair(iter->first, label));
 		}
 	}
 	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size()))
@@ -2471,7 +2506,8 @@ bool Rtabmap::computePath(int targetNode, bool global)
 	std::map<int, Transform> nodes;
 	std::multimap<int, Link> constraints;
 	std::map<int, int> mapIds;
-	this->getGraph(nodes, constraints, mapIds, true, global);
+	std::map<int, std::string> labels;
+	this->getGraph(nodes, constraints, mapIds, labels, true, global);
 	UINFO("Time creating graph (global=%s) = %fs", global?"true":"false", timer.ticks());
 
 	if(computePath(targetNode, nodes, constraints))
@@ -2499,7 +2535,8 @@ bool Rtabmap::computePath(const Transform & targetPose, bool global)
 	std::map<int, Transform> nodes;
 	std::multimap<int, Link> constraints;
 	std::map<int, int> mapIds;
-	this->getGraph(nodes, constraints, mapIds, true, global);
+	std::map<int, std::string> labels;
+	this->getGraph(nodes, constraints, mapIds, labels, true, global);
 	UINFO("Time creating graph (global=%s) = %fs", global?"true":"false", timer.ticks());
 
 	int nearestId = rtabmap::graph::findNearestNode(nodes, targetPose);

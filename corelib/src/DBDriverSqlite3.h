@@ -82,11 +82,12 @@ private:
 			float & cy,
 			Transform & localTransform) const;
 	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed) const;
-	virtual void getPoseQuery(int signatureId, Transform & pose, int & mapId) const;
+	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp) const;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const;
 	virtual void getNodeIdByLabelQuery(const std::string & label, int & id) const;
+	virtual void getAllLabelsQuery(std::map<int, std::string> & labels) const;
 
 private:
 	std::string queryStepNode() const;

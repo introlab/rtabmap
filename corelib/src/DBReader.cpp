@@ -198,7 +198,10 @@ SensorData DBReader::getNextData()
 			_dbDriver->getNodeData(*_currentId, imageBytes, depthBytes, laserScanBytes, fx, fy, cx, cy, localTransform);
 			if(!_odometryIgnored)
 			{
-				_dbDriver->getPose(*_currentId, pose, mapId);
+				int weight;
+				std::string label;
+				double stamp;
+				_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp);
 				std::map<int, Link> links;
 				_dbDriver->loadLinks(*_currentId, links, Link::kNeighbor);
 				if(links.size())

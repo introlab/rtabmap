@@ -97,7 +97,7 @@ public:
 	void loadNodeData(std::list<Signature *> & signatures, bool loadMetricData) const;
 	void getNodeData(int signatureId, cv::Mat & imageCompressed, cv::Mat & depthCompressed, cv::Mat & laserScanCompressed, float & fx, float & fy, float & cx, float & cy, Transform & localTransform) const;
 	void getNodeData(int signatureId, cv::Mat & imageCompressed) const;
-	void getPose(int signatureId, Transform & pose, int & mapId) const;
+	bool getNodeInfo(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp) const;
 	void loadLinks(int signatureId, std::map<int, Link> & links, Link::Type type = Link::kUndef) const;
 	void getWeight(int signatureId, int & weight) const;
 	void getAllNodeIds(std::set<int> & ids, bool ignoreChildren = false) const;
@@ -105,6 +105,7 @@ public:
 	void getLastWordId(int & id) const;
 	void getInvertedIndexNi(int signatureId, int & ni) const;
 	void getNodeIdByLabel(const std::string & label, int & id) const;
+	void getAllLabels(std::map<int, std::string> & labels) const;
 
 protected:
 	DBDriver(const ParametersMap & parameters = ParametersMap());
@@ -135,11 +136,12 @@ private:
 	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool loadMetricData) const = 0;
 	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed, cv::Mat & depthCompressed, cv::Mat & laserScanCompressed, float & fx, float & fy, float & cx, float & cy, Transform & localTransform) const = 0;
 	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed) const = 0;
-	virtual void getPoseQuery(int signatureId, Transform & pose, int & mapId) const = 0;
+	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp) const = 0;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const = 0;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const = 0;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const = 0;
 	virtual void getNodeIdByLabelQuery(const std::string & label, int & id) const = 0;
+	virtual void getAllLabelsQuery(std::map<int, std::string> & labels) const = 0;
 
 private:
 	//non-abstract methods

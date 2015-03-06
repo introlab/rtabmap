@@ -474,7 +474,7 @@ void DBDriver::getNodeData(int signatureId, cv::Mat & imageCompressed) const
 	}
 }
 
-void DBDriver::getPose(int signatureId, Transform & pose, int & mapId) const
+bool DBDriver::getNodeInfo(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp) const
 {
 	bool found = false;
 	// look in the trash
@@ -483,6 +483,9 @@ void DBDriver::getPose(int signatureId, Transform & pose, int & mapId) const
 	{
 		pose = _trashSignatures.at(signatureId)->getPose();
 		mapId = _trashSignatures.at(signatureId)->mapId();
+		weight = _trashSignatures.at(signatureId)->getWeight();
+		label = _trashSignatures.at(signatureId)->getLabel();
+		stamp = _trashSignatures.at(signatureId)->getStamp();
 		found = true;
 	}
 	_trashesMutex.unlock();
@@ -490,9 +493,10 @@ void DBDriver::getPose(int signatureId, Transform & pose, int & mapId) const
 	if(!found)
 	{
 		_dbSafeAccessMutex.lock();
-		this->getPoseQuery(signatureId, pose, mapId);
+		found = this->getNodeInfoQuery(signatureId, pose, mapId, weight, label, stamp);
 		_dbSafeAccessMutex.unlock();
 	}
+	return found;
 }
 
 void DBDriver::loadLinks(int signatureId, std::map<int, Link> & links, Link::Type type) const
@@ -666,6 +670,25 @@ void DBDriver::getNodeIdByLabel(const std::string & label, int & id) const
 	{
 		UWARN("Can't search with an empty label!");
 	}
+}
+
+void DBDriver::getAllLabels(std::map<int, std::string> & labels) const
+{
+	// look in the trash
+	_trashesMutex.lock();
+	for(std::map<int, Signature*>::const_iterator sIter = _trashSignatures.begin(); sIter!=_trashSignatures.end(); ++sIter)
+	{
+		if(!sIter->second->getLabel().empty())
+		{
+			labels.insert(std::make_pair(sIter->first, sIter->second->getLabel()));
+		}
+	}
+	_trashesMutex.unlock();
+
+	// then look in the database
+	_dbSafeAccessMutex.lock();
+	this->getAllLabelsQuery(labels);
+	_dbSafeAccessMutex.unlock();
 }
 
 void DBDriver::addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize) const

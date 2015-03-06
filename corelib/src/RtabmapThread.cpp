@@ -110,18 +110,21 @@ void RtabmapThread::publishMap(bool optimized, bool full) const
 	std::map<int, Transform> poses;
 	std::multimap<int, Link> constraints;
 	std::map<int, int> mapIds;
+	std::map<int, std::string> labels;
 
 	_rtabmap->get3DMap(signatures,
 			poses,
 			constraints,
 			mapIds,
+			labels,
 			optimized,
 			full);
 
 	this->post(new RtabmapEvent3DMap(signatures,
 			poses,
 			constraints,
-			mapIds));
+			mapIds,
+			labels));
 }
 
 void RtabmapThread::publishTOROGraph(bool optimized, bool full) const
@@ -130,17 +133,20 @@ void RtabmapThread::publishTOROGraph(bool optimized, bool full) const
 	std::map<int, Transform> poses;
 	std::multimap<int, Link> constraints;
 	std::map<int, int> mapIds;
+	std::map<int, std::string> labels;
 
 	_rtabmap->getGraph(poses,
 			constraints,
 			mapIds,
+			labels,
 			optimized,
 			full);
 
 	this->post(new RtabmapEvent3DMap(signatures,
 			poses,
 			constraints,
-			mapIds));
+			mapIds,
+			labels));
 }
 
 

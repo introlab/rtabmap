@@ -128,6 +128,7 @@ public:
 	void setLocalLoopClosureId(int localLoopClosureId) {_localLoopClosureId = localLoopClosureId;}
 
 	void setMapIds(const std::map<int, int> & mapIds) {_mapIds = mapIds;}
+	void setLabels(const std::map<int, std::string> & labels) {_labels = labels;}
 	void setSignature(const Signature & s) {_signature = s;}
 
 	void setPoses(const std::map<int, Transform> & poses) {_poses = poses;}
@@ -147,6 +148,7 @@ public:
 	int localLoopClosureId() const {return _localLoopClosureId;}
 
 	const std::map<int, int> & getMapIds() const {return _mapIds;}
+	const std::map<int, std::string> & getLabels() const {return _labels;}
 	const Signature & getSignature() const {return _signature;}
 
 	const std::map<int, Transform> & poses() const {return _poses;}
@@ -170,6 +172,7 @@ private:
 
 	// extended data start here...
 	std::map<int, int> _mapIds;
+	std::map<int, std::string> _labels;
 
 	// Signature data
 	Signature _signature;
