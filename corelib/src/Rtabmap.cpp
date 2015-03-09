@@ -1432,7 +1432,8 @@ bool Rtabmap::process(const SensorData & data)
 			rejectedHypothesis = transform.isNull();
 			if(rejectedHypothesis)
 			{
-				UINFO("Cannot compute a loop closure transform between %d and %d: %s", _loopClosureHypothesis.first, signature->id(), rejectedMsg.c_str());
+				UWARN("Rejected loop closure transform between %d and %d: %s",
+						_loopClosureHypothesis.first, signature->id(), rejectedMsg.c_str());
 			}
 		}
 		if(!rejectedHypothesis)

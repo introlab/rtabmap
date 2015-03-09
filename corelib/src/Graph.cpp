@@ -875,7 +875,7 @@ int findNearestNode(
 	return id;
 }
 
-// return <id, sqrd distance>, including query
+// return <id, sqrd distance>, excluding query
 std::map<int, float> getNodesInRadius(
 		int nodeId,
 		const std::map<int, Transform> & nodes,
@@ -883,20 +883,27 @@ std::map<int, float> getNodesInRadius(
 		float radius)
 {
 	UASSERT(uContains(nodes, nodeId));
+	std::map<int, float> foundNodes;
+	if(nodes.size() <= 1)
+	{
+		return foundNodes;
+	}
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-	cloud->resize(nodes.size());
-	std::vector<int> ids(nodes.size());
+	cloud->resize(nodes.size()-1);
+	std::vector<int> ids(nodes.size()-1);
 	int oi = 0;
 	for(std::map<int, Transform>::const_iterator iter = nodes.begin(); iter!=nodes.end(); ++iter)
 	{
-		(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-		ids[oi++] = iter->first;
+		if(iter->first != nodeId)
+		{
+			(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+			ids[oi++] = iter->first;
+		}
 	}
 
 	Transform fromT = nodes.at(nodeId);
 
-	std::map<int, float> foundNodes;
 	if(cloud->size())
 	{
 		pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
