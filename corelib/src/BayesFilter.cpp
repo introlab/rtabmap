@@ -273,7 +273,7 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 					{
 						if(iter->second == 0)
 						{
-							idsLoopMargin.push_back(iter->second);
+							idsLoopMargin.push_back(iter->first);
 						}
 						++iter;
 					}
