@@ -462,7 +462,7 @@ std::list<int> Rtabmap::getWM() const
 	std::list<int> mem;
 	if(_memory)
 	{
-		mem = std::list<int>(_memory->getWorkingMem().begin(), _memory->getWorkingMem().end());
+		mem = uKeysList(_memory->getWorkingMem());
 		mem.remove(-1);// Ignore the virtual signature (if here)
 	}
 	return mem;
@@ -991,9 +991,7 @@ bool Rtabmap::process(const SensorData & data)
 			// with all images contained in the working memory + reactivated.
 			//============================================================
 			ULOGGER_INFO("computing likelihood...");
-			const std::set<int> & wm = _memory->getWorkingMem();
-
-			std::list<int> signaturesToCompare(wm.begin(), wm.end());
+			std::list<int> signaturesToCompare = uKeysList(_memory->getWorkingMem());
 			rawLikelihood = _memory->computeLikelihood(signature, signaturesToCompare);
 
 			// Adjust the likelihood (with mean and std dev)
@@ -1308,6 +1306,11 @@ bool Rtabmap::process(const SensorData & data)
 						retrievalLocalIds.insert(jter->first);
 					}
 				}
+			}
+			// update Age of the close signatures (oldest the farthest)
+			for(std::multimap<float, int>::reverse_iterator iter=nearNodesByDist.rbegin(); iter!=nearNodesByDist.rend(); ++iter)
+			{
+				_memory->updateAge(iter->second);
 			}
 		}
 
@@ -2257,8 +2260,7 @@ void Rtabmap::dumpPrediction() const
 {
 	if(_memory && _bayesFilter)
 	{
-		const std::set<int> & wm = _memory->getWorkingMem();
-		cv::Mat prediction = _bayesFilter->generatePrediction(_memory, std::vector<int>(wm.begin(), wm.end()));
+		cv::Mat prediction = _bayesFilter->generatePrediction(_memory, uKeys(_memory->getWorkingMem()));
 
 		FILE* fout = 0;
 		std::string fileName = this->getWorkingDir() + "/DumpPrediction.txt";
@@ -2331,12 +2333,12 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 
 
 		// Get data
-		std::set<int> ids = _memory->getWorkingMem(); // STM + WM
+		std::set<int> ids = uKeysSet(_memory->getWorkingMem()); // WM
 
 		//remove virtual signature
 		ids.erase(Memory::kIdVirtual);
 
-		ids.insert(_memory->getStMem().begin(), _memory->getStMem().end());
+		ids.insert(_memory->getStMem().begin(), _memory->getStMem().end()); // STM + WM
 		if(global)
 		{
 			ids = _memory->getAllSignatureIds(); // STM + WM + LTM

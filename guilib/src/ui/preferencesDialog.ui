@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>737</width>
-            <height>1320</height>
+            <width>744</width>
+            <height>1110</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>7</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -2756,6 +2756,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    <layout class="QVBoxLayout" name="verticalLayout_10">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_42" columnstretch="0,1">
+                      <item row="8" column="0">
+                       <widget class="QSpinBox" name="spinBox_imageDecimation">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>16</number>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="0" column="0">
                        <widget class="QSpinBox" name="general_spinBox_maxStMemSize">
                         <property name="minimum">
@@ -2769,7 +2779,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="1">
+                      <item row="6" column="1">
                        <widget class="QLabel" name="label_retrieved_4">
                         <property name="text">
                          <string>Initialize the Woking Memory with all nodes from Long-Term memory, instead of only nodes of the last session. This may be useful in localization mode, where less processing time is required than in SLAM mode, so more nodes can be kept in Working Memory.</string>
@@ -2841,7 +2851,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="0">
+                      <item row="4" column="0">
                        <widget class="QCheckBox" name="general_checkBox_generateIds">
                         <property name="text">
                          <string/>
@@ -2851,7 +2861,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="1">
+                      <item row="4" column="1">
                        <widget class="QLabel" name="label_retrieved_2">
                         <property name="text">
                          <string>True=Generate location Ids, False=use input image ids.</string>
@@ -2861,7 +2871,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="0">
+                      <item row="5" column="0">
                        <widget class="QCheckBox" name="general_checkBox_badSignaturesIgnored">
                         <property name="text">
                          <string/>
@@ -2871,7 +2881,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="1">
+                      <item row="5" column="1">
                        <widget class="QLabel" name="label_retrieved_3">
                         <property name="text">
                          <string>Bad signatures are ignored.</string>
@@ -2881,7 +2891,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="0">
+                      <item row="6" column="0">
                        <widget class="QCheckBox" name="general_checkBox_initWMWithAllNodes">
                         <property name="text">
                          <string/>
@@ -2891,7 +2901,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="1">
+                      <item row="7" column="1">
                        <widget class="QLabel" name="label_retrieved_5">
                         <property name="text">
                          <string>Keep raw sensor data. Only useful to save loop closure computation time when features re-extraction is enabled. Disable to save RAM memory.</string>
@@ -2901,7 +2911,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
+                      <item row="7" column="0">
                        <widget class="QCheckBox" name="general_checkBox_keepRawData">
                         <property name="text">
                          <string/>
@@ -2911,7 +2921,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="1">
+                      <item row="8" column="1">
                        <widget class="QLabel" name="label_retrieved_6">
                         <property name="text">
                          <string>Image decimation. This feature can be used to save images in lower resolution (size/decimation).</string>
@@ -2921,13 +2931,23 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
-                       <widget class="QSpinBox" name="spinBox_imageDecimation">
-                        <property name="minimum">
-                         <number>1</number>
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_retrieved_7">
+                        <property name="text">
+                         <string>On transfer, signatures are sorted by weight-&gt;ID (i.e. the oldest of the lowest weighted signatures are transferred first). If false, the signatures are sorted by weight-&gt;Age (i.e. the oldest inserted in WM of the lowest weighted signatures are transferred first). Note that retrieval updates the age, not the ID.</string>
                         </property>
-                        <property name="maximum">
-                         <number>16</number>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_transferSortingByWeightId">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>

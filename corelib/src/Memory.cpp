@@ -63,6 +63,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
 	_maxStMemSize(Parameters::defaultMemSTMSize()),
 	_recentWmRatio(Parameters::defaultMemRecentWmRatio()),
+	_transferSortingByWeightId(Parameters::defaultMemTransferSortingByWeightId()),
 	_idUpdatedToNewOneRehearsal(Parameters::defaultMemRehearsalIdUpdatedToNewOne()),
 	_generateIds(Parameters::defaultMemGenerateIds()),
 	_badSignaturesIgnored(Parameters::defaultMemBadSignaturesIgnored()),
@@ -205,7 +206,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 					//       only linked with the ones of the current session by
 					//       global loop closures.
 					_signatures.insert(std::pair<int, Signature *>((*iter)->id(), *iter));
-					_workingMem.insert((*iter)->id());
+					_workingMem.insert(std::make_pair((*iter)->id(), UTimer::now()));
 				}
 				else
 				{
@@ -221,7 +222,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 			}
 			else if(_workingMem.size()>0)
 			{
-				_lastSignature = uValue(_signatures, *_workingMem.rbegin(), (Signature*)0);
+				_lastSignature = uValue(_signatures, _workingMem.rbegin()->first, (Signature*)0);
 			}
 
 			// Last id
@@ -239,7 +240,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 		_idMapCount = kIdStart;
 	}
 
-	_workingMem.insert(kIdVirtual);
+	_workingMem.insert(std::make_pair(kIdVirtual, 0));
 
 	UDEBUG("ids start with %d", _idCount+1);
 	UDEBUG("map ids start with %d", _idMapCount);
@@ -384,6 +385,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
 	Parameters::parse(parameters, Parameters::kMemRehearsalSimilarity(), _similarityThreshold);
 	Parameters::parse(parameters, Parameters::kMemRecentWmRatio(), _recentWmRatio);
+	Parameters::parse(parameters, Parameters::kMemTransferSortingByWeightId(), _transferSortingByWeightId);
 	Parameters::parse(parameters, Parameters::kMemSTMSize(), _maxStMemSize);
 	Parameters::parse(parameters, Parameters::kMemImageDecimation(), _imageDecimation);
 	Parameters::parse(parameters, Parameters::kMemLocalSpaceLinksKeptInWM(), _localSpaceLinksKeptInWM);
@@ -607,7 +609,7 @@ bool Memory::update(const SensorData & data, Statistics * stats)
 				}
 			}
 		}
-		_workingMem.insert(_workingMem.end(), *_stMem.begin());
+		_workingMem.insert(_workingMem.end(), std::make_pair(*_stMem.begin(), UTimer::now()));
 		_stMem.erase(*_stMem.begin());
 		++_signaturesAdded;
 	}
@@ -729,7 +731,7 @@ void Memory::addSignatureToWm(Signature * signature)
 	if(signature)
 	{
 		UDEBUG("Inserting node %d in WM...", signature->id());
-		_workingMem.insert(signature->id());
+		_workingMem.insert(std::make_pair(signature->id(), UTimer::now()));
 		_signatures.insert(std::pair<int, Signature*>(signature->id(), signature));
 		++_signaturesAdded;
 	}
@@ -952,13 +954,22 @@ int Memory::incrementMapId()
 					}
 				}
 			}
-			_workingMem.insert(_workingMem.end(), *_stMem.begin());
+			_workingMem.insert(_workingMem.end(), std::make_pair(*_stMem.begin(), UTimer::now()));
 			_stMem.erase(*_stMem.begin());
 		}
 
 		return ++_idMapCount;
 	}
 	return _idMapCount;
+}
+
+void Memory::updateAge(int signatureId)
+{
+	std::map<int, double>::iterator iter=_workingMem.find(signatureId);
+	if(iter!=_workingMem.end())
+	{
+		iter->second = UTimer::now();
+	}
 }
 
 int Memory::getDatabaseMemoryUsed() const
@@ -1006,7 +1017,7 @@ void Memory::clear()
 	if(_dbDriver && (_stMem.size() || _workingMem.size()))
 	{
 		unsigned int memSize = _workingMem.size() + _stMem.size();
-		if(_workingMem.size() && *_workingMem.begin() < 0)
+		if(_workingMem.size() && _workingMem.begin()->first < 0)
 		{
 			--memSize;
 		}
@@ -1039,7 +1050,7 @@ void Memory::clear()
 		}
 	}
 
-	if(_workingMem.size() != 0 && !(_workingMem.size() == 1 && *_workingMem.begin() == kIdVirtual))
+	if(_workingMem.size() != 0 && !(_workingMem.size() == 1 && _workingMem.begin()->first == kIdVirtual))
 	{
 		ULOGGER_ERROR("_workingMem must be empty here, size=%d", _workingMem.size());
 	}
@@ -1211,20 +1222,20 @@ std::map<int, float> Memory::computeLikelihood(const Signature * signature, cons
 std::map<int, int> Memory::getWeights() const
 {
 	std::map<int, int> weights;
-	for(std::set<int>::const_iterator iter=_workingMem.begin(); iter!=_workingMem.end(); ++iter)
+	for(std::map<int, double>::const_iterator iter=_workingMem.begin(); iter!=_workingMem.end(); ++iter)
 	{
-		if(*iter > 0)
+		if(iter->first > 0)
 		{
-			const Signature * s = this->getSignature(*iter);
+			const Signature * s = this->getSignature(iter->first);
 			if(!s)
 			{
-				UFATAL("Location %d must exist in memory", *iter);
+				UFATAL("Location %d must exist in memory", iter->first);
 			}
-			weights.insert(weights.end(), std::make_pair(*iter, s->getWeight()));
+			weights.insert(weights.end(), std::make_pair(iter->first, s->getWeight()));
 		}
 		else
 		{
-			weights.insert(weights.end(), std::make_pair(*iter, -1));
+			weights.insert(weights.end(), std::make_pair(iter->first, -1));
 		}
 	}
 	return weights;
@@ -1323,13 +1334,14 @@ void Memory::joinTrashThread()
 	}
 }
 
-class WeightIdKey
+class WeightAgeIdKey
 {
 public:
-	WeightIdKey(int w, int i) :
+	WeightAgeIdKey(int w, double a, int i) :
 		weight(w),
-		id(i) {}
-	bool operator<(const WeightIdKey & k) const
+		age(a),
+		id(i){}
+	bool operator<(const WeightAgeIdKey & k) const
 	{
 		if(weight < k.weight)
 		{
@@ -1337,35 +1349,41 @@ public:
 		}
 		else if(weight == k.weight)
 		{
-			if(id < k.id)
+			if(age < k.age)
 			{
 				return true;
+			}
+			else if(age == k.age)
+			{
+				if(id < k.id)
+				{
+					return true;
+				}
 			}
 		}
 		return false;
 	}
-	int weight, id;
+	int weight, age, id;
 };
 std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<int> & ignoredIds)
 {
 	//UDEBUG("");
 	std::list<Signature *> removableSignatures;
-	std::map<WeightIdKey, Signature *> signatureMap;
+	std::map<WeightAgeIdKey, Signature *> weightAgeIdMap;
 
 	// Find the last index to check...
-	const std::set<int> & wm = _workingMem;
-	UDEBUG("mem.size()=%d, ignoredIds.size()=%d", wm.size(), ignoredIds.size());
+	UDEBUG("mem.size()=%d, ignoredIds.size()=%d", (int)_workingMem.size(), (int)ignoredIds.size());
 
-	if(wm.size())
+	if(_workingMem.size())
 	{
-		int recentWmMaxSize = _recentWmRatio * float(wm.size());
+		int recentWmMaxSize = _recentWmRatio * float(_workingMem.size());
 		bool recentWmImmunized = false;
 		// look for the position of the lastLoopClosureId in WM
 		int currentRecentWmSize = 0;
 		if(_lastGlobalLoopClosureId > 0 && _stMem.find(_lastGlobalLoopClosureId) == _stMem.end())
 		{
 			// If set, it must be in WM
-			std::set<int>::const_iterator iter = _workingMem.find(_lastGlobalLoopClosureId);
+			std::map<int, double>::const_iterator iter = _workingMem.find(_lastGlobalLoopClosureId);
 			while(iter != _workingMem.end())
 			{
 				++currentRecentWmSize;
@@ -1389,16 +1407,16 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 			lastInSTM = _signatures.at(*_stMem.begin());
 		}
 
-		for(std::set<int>::const_iterator memIter = wm.begin(); memIter != wm.end(); ++memIter)
+		for(std::map<int, double>::const_iterator memIter = _workingMem.begin(); memIter != _workingMem.end(); ++memIter)
 		{
-			if( (recentWmImmunized && *memIter > _lastGlobalLoopClosureId) ||
-				*memIter == _lastGlobalLoopClosureId)
+			if( (recentWmImmunized && memIter->first > _lastGlobalLoopClosureId) ||
+				memIter->first == _lastGlobalLoopClosureId)
 			{
 				// ignore recent memory
 			}
-			else if(*memIter > 0 && ignoredIds.find(*memIter) == ignoredIds.end() && (!lastInSTM || !lastInSTM->hasLink(*memIter)))
+			else if(memIter->first > 0 && ignoredIds.find(memIter->first) == ignoredIds.end() && (!lastInSTM || !lastInSTM->hasLink(memIter->first)))
 			{
-				Signature * s = this->_getSignature(*memIter);
+				Signature * s = this->_getSignature(memIter->first);
 				if(s)
 				{
 					// Links must not be in STM to be removable, rehearsal issue
@@ -1415,7 +1433,7 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 					if(!foundInSTM)
 					{
 						// less weighted signature priority to be transferred
-						signatureMap.insert(std::make_pair(WeightIdKey(s->getWeight(), s->id()), s));
+						weightAgeIdMap.insert(std::make_pair(WeightAgeIdKey(s->getWeight(), _transferSortingByWeightId?0.0:memIter->second, s->id()), s));
 					}
 				}
 				else
@@ -1430,12 +1448,11 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 		}
 
 		int recentWmCount = 0;
-		std::set<int> addedSignatures;
 		// make the list of removable signatures
 		// Criteria : Weight -> ID
-		UDEBUG("signatureMap.size()=%d", (int)signatureMap.size());
-		for(std::map<WeightIdKey, Signature*>::iterator iter=signatureMap.begin();
-			iter!=signatureMap.end();
+		UDEBUG("signatureMap.size()=%d", (int)weightAgeIdMap.size());
+		for(std::map<WeightAgeIdKey, Signature*>::iterator iter=weightAgeIdMap.begin();
+			iter!=weightAgeIdMap.end();
 			++iter)
 		{
 			bool removable = true;
@@ -1444,10 +1461,9 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 				if(!recentWmImmunized)
 				{
 					UDEBUG("weight=%d, id=%d",
-							iter->first.weight,
+							iter->second->getWeight(),
 							iter->second->id());
 					removableSignatures.push_back(iter->second);
-					addedSignatures.insert(iter->second->id());
 
 					if(iter->second->id() > _lastGlobalLoopClosureId)
 					{
@@ -1462,10 +1478,9 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 				else if(iter->second->id() < _lastGlobalLoopClosureId)
 				{
 					UDEBUG("weight=%d, id=%d",
-							iter->first.weight,
+							iter->second->getWeight(),
 							iter->second->id());
 					removableSignatures.push_back(iter->second);
-					addedSignatures.insert(iter->second->id());
 				}
 				if(removableSignatures.size() >= (unsigned int)count)
 				{
@@ -1584,7 +1599,7 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase, std::list<int> * de
 			}
 			else if(_workingMem.size())
 			{
-				_lastSignature = this->_getSignature(*_workingMem.rbegin());
+				_lastSignature = this->_getSignature(_workingMem.rbegin()->first);
 			}
 		}
 

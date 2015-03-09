@@ -73,6 +73,7 @@ public:
 	std::map<int, float> computeLikelihood(const Signature * signature,
 			const std::list<int> & ids);
 	int incrementMapId();
+	void updateAge(int signatureId);
 
 	std::list<int> forget(const std::set<int> & ignoredIds = std::set<int>());
 	std::set<int> reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, double & timeDbAccess);
@@ -93,7 +94,7 @@ public:
 	void removeLink(int idA, int idB);
 
 	//getters
-	const std::set<int> & getWorkingMem() const {return _workingMem;}
+	const std::map<int, double> & getWorkingMem() const {return _workingMem;}
 	const std::set<int> & getStMem() const {return _stMem;}
 	int getMaxStMemSize() const {return _maxStMemSize;}
 	std::map<int, Link> getNeighborLinks(int signatureId,
@@ -212,6 +213,7 @@ private:
 	bool _incrementalMemory;
 	int _maxStMemSize;
 	float _recentWmRatio;
+	bool _transferSortingByWeightId;
 	bool _idUpdatedToNewOneRehearsal;
 	bool _generateIds;
 	bool _badSignaturesIgnored;
@@ -231,7 +233,7 @@ private:
 
 	std::map<int, Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
 	std::set<int> _stMem; // id
-	std::set<int> _workingMem; // id,age
+	std::map<int, double> _workingMem; // id,age
 
 	//Keypoint stuff
 	VWDictionary * _vwd;
