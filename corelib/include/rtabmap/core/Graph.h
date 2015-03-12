@@ -33,49 +33,118 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <map>
 #include <list>
 #include <rtabmap/core/Link.h>
+#include <rtabmap/core/Parameters.h>
 
 namespace rtabmap {
 
 namespace graph {
 
+////////////////////////////////////////////
+// Graph optimizers
+////////////////////////////////////////////
+class RTABMAP_EXP Optimizer
+{
+public:
+	enum Type {
+		kTypeUndef = -1,
+		kTypeTORO = 0,
+		kTypeG2O = 1
+	};
+	static Optimizer * create(const ParametersMap & parameters);
+	static Optimizer * create(Optimizer::Type & type, const ParametersMap & parameters = ParametersMap());
+
+	// Get connected poses and constraints from a set of links
+	static void getConnectedGraph(
+			int fromId,
+			const std::map<int, Transform> & posesIn,
+			const std::multimap<int, Link> & linksIn,
+			std::map<int, Transform> & posesOut,
+			std::multimap<int, Link> & linksOut,
+			int depth = 0);
+
+public:
+	virtual ~Optimizer() {}
+
+	virtual Type type() const = 0;
+
+	int iterations() const {return iterations_;}
+	bool isSlam2d() const {return slam2d_;}
+	bool isCovarianceIgnored() const {return covarianceIgnored_;}
+
+	virtual std::map<int, Transform> optimize(
+			int rootId,
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & constraints,
+			std::list<std::map<int, Transform> > * intermediateGraphes = 0) = 0;
+
+	virtual void parseParameters(const ParametersMap & parameters);
+
+protected:
+	Optimizer(int iterations = 100, bool slam2d = false, bool covarianceIgnored = false);
+	Optimizer(const ParametersMap & parameters);
+
+private:
+	int iterations_;
+	bool slam2d_;
+	bool covarianceIgnored_;
+};
+
+class RTABMAP_EXP TOROOptimizer : public Optimizer
+{
+public:
+	static bool saveGraph(
+			const std::string & fileName,
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & edgeConstraints);
+	static bool loadGraph(
+			const std::string & fileName,
+			std::map<int, Transform> & poses,
+			std::multimap<int, std::pair<int, Transform> > & edgeConstraints);
+
+public:
+	TOROOptimizer(int iterations = 100, bool slam2d = false, bool covarianceIgnored = false) :
+		Optimizer(iterations, slam2d, covarianceIgnored) {}
+	TOROOptimizer(const ParametersMap & parameters) :
+		Optimizer(parameters) {}
+	virtual ~TOROOptimizer() {}
+
+	virtual Type type() const {return kTypeTORO;}
+
+	virtual std::map<int, Transform> optimize(
+			int rootId,
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & edgeConstraints,
+			std::list<std::map<int, Transform> > * intermediateGraphes = 0);
+};
+
+class RTABMAP_EXP G2OOptimizer : public Optimizer
+{
+public:
+	static bool available();
+
+public:
+	G2OOptimizer(int iterations = 100, bool slam2d = false, bool covarianceIgnored = false) :
+		Optimizer(iterations, slam2d, covarianceIgnored) {}
+	G2OOptimizer(const ParametersMap & parameters) :
+		Optimizer(parameters) {}
+	virtual ~G2OOptimizer() {}
+
+	virtual Type type() const {return kTypeG2O;}
+
+	virtual std::map<int, Transform> optimize(
+			int rootId,
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & edgeConstraints,
+			std::list<std::map<int, Transform> > * intermediateGraphes = 0);
+};
+
+////////////////////////////////////////////
+// Graph utilities
+////////////////////////////////////////////
 std::multimap<int, Link>::iterator RTABMAP_EXP findLink(
 		std::multimap<int, Link> & links,
 		int from,
 		int to);
-
-// <int, depth> depth=0 means infinite depth
-std::map<int, int> RTABMAP_EXP generateDepthGraph(
-		const std::multimap<int, Link> & links,
-		int fromId,
-		int depth = 0);
-
-void RTABMAP_EXP optimizeTOROGraph(
-		const std::map<int, int> & depthGraph,
-		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & links,
-		std::map<int, Transform> & optimizedPoses,
-		int toroIterations = 100,
-		bool toroInitialGuess = true,
-		bool ignoreCovariance = false,
-		std::list<std::map<int, Transform> > * intermediateGraphes = 0);
-
-void RTABMAP_EXP optimizeTOROGraph(
-		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & edgeConstraints,
-		std::map<int, Transform> & optimizedPoses,
-		int toroIterations = 100,
-		bool toroInitialGuess = true,
-		bool ignoreCovariance = false,
-		std::list<std::map<int, Transform> > * intermediateGraphes = 0);
-
-bool RTABMAP_EXP saveTOROGraph(
-		const std::string & fileName,
-		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & edgeConstraints);
-
-bool RTABMAP_EXP loadTOROGraph(const std::string & fileName,
-		std::map<int, Transform> & poses,
-		std::multimap<int, std::pair<int, Transform> > & edgeConstraints);
 
 /**
  * Get only the the most recent or older poses in the defined radius.

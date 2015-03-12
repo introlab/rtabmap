@@ -131,6 +131,13 @@ void Transform::setIdentity()
 	*this = getIdentity();
 }
 
+float Transform::theta() const
+{
+	float roll, pitch, yaw;
+	this->getEulerAngles(roll, pitch, yaw);
+	return yaw;
+}
+
 Transform Transform::inverse() const
 {
 	return fromEigen4f(toEigen4f().inverse());
@@ -152,6 +159,12 @@ Transform Transform::translation() const
 
 void Transform::getTranslationAndEulerAngles(float & x, float & y, float & z, float & roll, float & pitch, float & yaw) const
 {
+	pcl::getTranslationAndEulerAngles(toEigen3f(), x, y, z, roll, pitch, yaw);
+}
+
+void Transform::getEulerAngles(float & roll, float & pitch, float & yaw) const
+{
+	float x,y,z;
 	pcl::getTranslationAndEulerAngles(toEigen3f(), x, y, z, roll, pitch, yaw);
 }
 
@@ -252,6 +265,16 @@ Eigen::Affine3d Transform::toEigen3d() const
 	return Eigen::Affine3d(toEigen4d());
 }
 
+Eigen::Quaternionf Transform::getQuaternionf() const
+{
+	return Eigen::Quaternionf(this->toEigen3f().rotation()).normalized();
+}
+
+Eigen::Quaterniond Transform::getQuaterniond() const
+{
+	return Eigen::Quaterniond(this->toEigen3d().rotation()).normalized();
+}
+
 Transform Transform::getIdentity()
 {
 	return Transform(1,0,0,0, 0,1,0,0, 0,0,1,0);
@@ -277,6 +300,19 @@ Transform Transform::fromEigen3f(const Eigen::Affine3f & matrix)
 					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
 }
 Transform Transform::fromEigen3d(const Eigen::Affine3d & matrix)
+{
+	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
+					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),
+					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
+}
+
+Transform Transform::fromEigen3f(const Eigen::Isometry3f & matrix)
+{
+	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
+					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),
+					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
+}
+Transform Transform::fromEigen3d(const Eigen::Isometry3d & matrix)
 {
 	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
 					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),

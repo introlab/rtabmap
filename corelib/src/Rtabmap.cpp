@@ -99,8 +99,6 @@ Rtabmap::Rtabmap() :
 	_localRadius(Parameters::defaultRGBDLocalRadius()),
 	_localDetectMaxNeighbors(Parameters::defaultRGBDLocalLoopDetectionNeighbors()),
 	_localDetectMaxDiffID(Parameters::defaultRGBDLocalLoopDetectionMaxDiffID()),
-	_toroIterations(Parameters::defaultRGBDToroIterations()),
-	_toroIgnoreVariance(Parameters::defaultRGBDToroIgnoreVariance()),
 	_databasePath(""),
 	_optimizeFromGraphEnd(Parameters::defaultRGBDOptimizeFromGraphEnd()),
 	_reextractLoopClosureFeatures(Parameters::defaultLccReextractActivated()),
@@ -116,6 +114,7 @@ Rtabmap::Rtabmap() :
 	_lastProcessTime(0.0),
 	_epipolarGeometry(0),
 	_bayesFilter(0),
+	_graphOptimizer(0),
 	_memory(0),
 	_foutFloat(0),
 	_foutInt(0),
@@ -325,6 +324,11 @@ void Rtabmap::close()
 		delete _bayesFilter;
 		_bayesFilter = 0;
 	}
+	if(_graphOptimizer)
+	{
+		delete _graphOptimizer;
+		_graphOptimizer = 0;
+	}
 	_databasePath.clear();
 }
 
@@ -367,8 +371,6 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLocalRadius(), _localRadius);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionNeighbors(), _localDetectMaxNeighbors);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionMaxDiffID(), _localDetectMaxDiffID);
-	Parameters::parse(parameters, Parameters::kRGBDToroIterations(), _toroIterations);
-	Parameters::parse(parameters, Parameters::kRGBDToroIgnoreVariance(), _toroIgnoreVariance);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
 	Parameters::parse(parameters, Parameters::kLccReextractActivated(), _reextractLoopClosureFeatures);
 	Parameters::parse(parameters, Parameters::kLccReextractNNType(), _reextractNNType);
@@ -441,6 +443,29 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		_bayesFilter->parseParameters(parameters);
 	}
+
+	// Graph optimizer
+	graph::Optimizer::Type optimizerType = graph::Optimizer::kTypeUndef;
+	if((iter=parameters.find(Parameters::kRGBDOptimizeStrategy())) != parameters.end())
+	{
+		optimizerType = (graph::Optimizer::Type)std::atoi((*iter).second.c_str());
+	}
+	if(optimizerType!=graph::Optimizer::kTypeUndef)
+	{
+		UDEBUG("new detector strategy %d", int(optimizerType));
+		if(_graphOptimizer)
+		{
+			delete _graphOptimizer;
+			_graphOptimizer = 0;
+		}
+
+		_graphOptimizer = graph::Optimizer::create(optimizerType, parameters);
+	}
+	else if(_graphOptimizer)
+	{
+		_graphOptimizer->parseParameters(parameters);
+	}
+
 
 	for(ParametersMap::const_iterator iter = parameters.begin(); iter!=parameters.end(); ++iter)
 	{
@@ -669,7 +694,7 @@ void Rtabmap::generateTOROGraph(const std::string & path, bool optimized, bool g
 			_memory->getMetricConstraints(uKeys(ids), poses, constraints, global);
 		}
 
-		rtabmap::graph::saveTOROGraph(path, poses, constraints);
+		graph::TOROOptimizer::saveGraph(path, poses, constraints);
 	}
 }
 
@@ -772,7 +797,7 @@ bool Rtabmap::process(const SensorData & data)
 	timer.start();
 	timerTotal.start();
 
-	if(!_memory || !_bayesFilter)
+	if(!_memory || !_bayesFilter || !_graphOptimizer)
 	{
 		UFATAL("RTAB-Map is not initialized, data received is ignored.");
 	}
@@ -1469,7 +1494,7 @@ bool Rtabmap::process(const SensorData & data)
 	   _localLoopClosureDetectionSpace &&
 	   !signature->getLaserScanCompressed().empty())
 	{
-		if(_toroIterations == 0)
+		if(_graphOptimizer->iterations() == 0)
 		{
 			UWARN("Cannot do local loop closure detection in space if graph optimization is disabled!");
 		}
@@ -1481,11 +1506,11 @@ bool Rtabmap::process(const SensorData & data)
 			std::map<int, Transform> localSpacePoses;
 			localSpaceNearestId = 0;
 			localSpacePoses = this->getWMPosesInRadius(
-			signature->id(),
-			_localDetectMaxNeighbors,
-			_localRadius,
-			_localDetectMaxDiffID,
-			localSpaceNearestId);
+					signature->id(),
+					_localDetectMaxNeighbors,
+					_localRadius,
+					_localDetectMaxDiffID,
+					localSpaceNearestId);
 
 			// add current node to poses
 			localSpacePoses.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
@@ -2149,16 +2174,7 @@ void Rtabmap::optimizeCurrentMap(
 		UDEBUG("get ids=%d", (int)ids.size());
 		if(!_optimizeFromGraphEnd && ids.size() > 1)
 		{
-			UTimer timer;
-
-			int first = ids.begin()->first;
-			ids = _memory->getNeighborsId(first, 0, lookInDatabase?-1:0, true);
-
-			UDEBUG("Optimize from the first location (%d) instead of the last (%d) "
-				   "in the local graph. Recomputing neighbors depth... time=%fs",
-				   first,
-				   id,
-				   timer.ticks());
+			id = ids.begin()->first;
 		}
 		UINFO("get ids time %f s", timer.ticks());
 
@@ -2173,14 +2189,14 @@ void Rtabmap::optimizeCurrentMap(
 			*constraints = edgeConstraints;
 		}
 
-		if(_toroIterations == 0)
+		if(_graphOptimizer->iterations() == 0)
 		{
 			// Optimization desactivated! Return not optimized poses.
 			optimizedPoses = poses;
 		}
 		else
 		{
-			rtabmap::graph::optimizeTOROGraph(ids, poses, edgeConstraints, optimizedPoses, _toroIterations, true, _toroIgnoreVariance);
+			optimizedPoses = _graphOptimizer->optimize(id, poses, edgeConstraints);
 		}
 		UINFO("optimize time %f s", timer.ticks());
 	}

@@ -3145,12 +3145,9 @@ void MainWindow::postProcessing()
 	_initProgressDialog->show();
 
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
-	int toroIterations = Parameters::defaultRGBDToroIterations();
-	bool ignoreVariance =  Parameters::defaultRGBDToroIgnoreVariance();
-	bool toroOptimizeFromGraphEnd =  Parameters::defaultRGBDOptimizeFromGraphEnd();
-	Parameters::parse(parameters, Parameters::kRGBDToroIterations(), toroIterations);
-	Parameters::parse(parameters, Parameters::kRGBDToroIgnoreVariance(), ignoreVariance);
-	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), toroOptimizeFromGraphEnd);
+	graph::Optimizer * optimizer = graph::Optimizer::create(parameters);
+	bool optimizeFromGraphEnd =  Parameters::defaultRGBDOptimizeFromGraphEnd();
+	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), optimizeFromGraphEnd);
 
 	int loopClosuresAdded = 0;
 	if(detectMoreLoopClosures)
@@ -3282,9 +3279,17 @@ void MainWindow::postProcessing()
 			{
 				_initProgressDialog->appendText(tr("Optimizing graph with new links (%1 nodes, %2 constraints)...")
 						.arg(odomPoses.size()).arg(_currentLinksMap.size()));
+				int fromId = optimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first;
+				std::map<int, rtabmap::Transform> posesOut;
+				std::multimap<int, rtabmap::Link> linksOut;
 				std::map<int, rtabmap::Transform> optimizedPoses;
-				std::map<int, int> depthGraph = rtabmap::graph::generateDepthGraph(_currentLinksMap, toroOptimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first);
-				rtabmap::graph::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations, true, ignoreVariance);
+				optimizer->getConnectedGraph(
+						fromId,
+						odomPoses,
+						_currentLinksMap,
+						posesOut,
+						linksOut);
+				optimizedPoses = optimizer->optimize(fromId, posesOut, linksOut);
 				_currentPosesMap = optimizedPoses;
 				_initProgressDialog->appendText(tr("Optimizing graph with new links... done!"));
 			}
@@ -3437,9 +3442,18 @@ void MainWindow::postProcessing()
 
 	_initProgressDialog->appendText(tr("Optimizing graph with updated links (%1 nodes, %2 constraints)...")
 			.arg(odomPoses.size()).arg(_currentLinksMap.size()));
+
+	int fromId = optimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first;
+	std::map<int, rtabmap::Transform> posesOut;
+	std::multimap<int, rtabmap::Link> linksOut;
 	std::map<int, rtabmap::Transform> optimizedPoses;
-	std::map<int, int> depthGraph = rtabmap::graph::generateDepthGraph(_currentLinksMap, toroOptimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first);
-	rtabmap::graph::optimizeTOROGraph(depthGraph, odomPoses, _currentLinksMap, optimizedPoses, toroIterations, true, ignoreVariance);
+	optimizer->getConnectedGraph(
+			fromId,
+			odomPoses,
+			_currentLinksMap,
+			posesOut,
+			linksOut);
+	optimizedPoses = optimizer->optimize(fromId, posesOut, linksOut);
 	_initProgressDialog->appendText(tr("Optimizing graph with updated links... done!"));
 	_initProgressDialog->incrementStep();
 
@@ -3449,6 +3463,8 @@ void MainWindow::postProcessing()
 
 	_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
 	_initProgressDialog->appendText("Post-processing finished!");
+
+	delete optimizer;
 }
 
 void MainWindow::deleteMemory()

@@ -2118,7 +2118,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 
 	float minX=-minMapSize/2.0, minY=-minMapSize/2.0, maxX=minMapSize/2.0, maxY=minMapSize/2.0;
 	bool undefinedSize = minMapSize == 0.0f;
-	float x,y,z,toll,pitch,yaw,cosT,sinT;
+	float x=0.0f,y=0.0f,z=0.0f,roll=0.0f,pitch=0.0f,yaw=0.0f,cosT=0.0f,sinT=0.0f;
 	cv::Mat affineTransform(2,3,CV_32FC1);
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
@@ -2127,7 +2127,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 			UASSERT(!iter->second.isNull());
 			const std::pair<cv::Mat, cv::Mat> & pair = occupancy.at(iter->first);
 
-			iter->second.getTranslationAndEulerAngles(x,y,z,toll,pitch,yaw);
+			iter->second.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
 			cosT = cos(yaw);
 			sinT = sin(yaw);
 			affineTransform.at<float>(0,0) = cosT;
@@ -2210,76 +2210,87 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 		yMin = minY-margin;
 		float xMax = maxX+margin;
 		float yMax = maxY+margin;
-		UDEBUG("map min=(%f, %f) max=(%f,%f)", xMin, yMin, xMax, yMax);
-
-		map = cv::Mat::ones((yMax - yMin) / cellSize + 0.5f, (xMax - xMin) / cellSize + 0.5f, CV_8S)*-1;
-		for(std::map<int, Transform>::const_iterator kter = poses.begin(); kter!=poses.end(); ++kter)
+		if(fabs((yMax - yMin) / cellSize) > 99999 ||
+		   fabs((xMax - xMin) / cellSize) > 99999)
 		{
-			std::map<int, cv::Mat >::iterator iter = emptyLocalMaps.find(kter->first);
-			std::map<int, cv::Mat >::iterator jter = occupiedLocalMaps.find(kter->first);
-			if(iter!=emptyLocalMaps.end())
-			{
-				for(int i=0; i<iter->second.rows; ++i)
-				{
-					cv::Point2i pt((iter->second.at<float>(i,0)-xMin)/cellSize + 0.5f, (iter->second.at<float>(i,1)-yMin)/cellSize + 0.5f);
-					map.at<char>(pt.y, pt.x) = 0; // free space
-				}
-			}
-			if(jter!=occupiedLocalMaps.end())
-			{
-				for(int i=0; i<jter->second.rows; ++i)
-				{
-					cv::Point2i pt((jter->second.at<float>(i,0)-xMin)/cellSize + 0.5f, (jter->second.at<float>(i,1)-yMin)/cellSize + 0.5f);
-					map.at<char>(pt.y, pt.x) = 100; // obstacles
-				}
-			}
-
-			//UDEBUG("empty=%d occupied=%d", empty, occupied);
+			UERROR("Large map size!! map min=(%f, %f) max=(%f,%f). "
+					"There's maybe an error with the poses provided! The map will not be created!",
+					xMin, yMin, xMax, yMax);
 		}
-
-		// fill holes and remove empty from obstacle borders
-		cv::Mat updatedMap = map;
-		for(int i=2; i<map.rows-2; ++i)
+		else
 		{
-			for(int j=2; j<map.cols-2; ++j)
+			UDEBUG("map min=(%f, %f) max=(%f,%f)", xMin, yMin, xMax, yMax);
+
+
+			map = cv::Mat::ones((yMax - yMin) / cellSize + 0.5f, (xMax - xMin) / cellSize + 0.5f, CV_8S)*-1;
+			for(std::map<int, Transform>::const_iterator kter = poses.begin(); kter!=poses.end(); ++kter)
 			{
-				if(map.at<char>(i, j) == -1 &&
-					map.at<char>(i+1, j) != -1 &&
-					map.at<char>(i-1, j) != -1 &&
-					map.at<char>(i, j+1) != -1 &&
-					map.at<char>(i, j-1) != -1)
+				std::map<int, cv::Mat >::iterator iter = emptyLocalMaps.find(kter->first);
+				std::map<int, cv::Mat >::iterator jter = occupiedLocalMaps.find(kter->first);
+				if(iter!=emptyLocalMaps.end())
 				{
-					updatedMap.at<char>(i, j) = 0;
+					for(int i=0; i<iter->second.rows; ++i)
+					{
+						cv::Point2i pt((iter->second.at<float>(i,0)-xMin)/cellSize + 0.5f, (iter->second.at<float>(i,1)-yMin)/cellSize + 0.5f);
+						map.at<char>(pt.y, pt.x) = 0; // free space
+					}
 				}
-				else if(map.at<char>(i, j) == 100)
+				if(jter!=occupiedLocalMaps.end())
 				{
-					// obstacle/empty/unknown -> remove empty
-					// unknown/empty/obstacle -> remove empty
-					if(map.at<char>(i-1, j) == 0 &&
-						map.at<char>(i-2, j) == -1)
+					for(int i=0; i<jter->second.rows; ++i)
 					{
-						updatedMap.at<char>(i-1, j) = -1;
-					}
-					else if(map.at<char>(i+1, j) == 0 &&
-							map.at<char>(i+2, j) == -1)
-					{
-						updatedMap.at<char>(i+1, j) = -1;
-					}
-					if(map.at<char>(i, j-1) == 0 &&
-						map.at<char>(i, j-2) == -1)
-					{
-						updatedMap.at<char>(i, j-1) = -1;
-					}
-					else if(map.at<char>(i, j+1) == 0 &&
-							map.at<char>(i, j+2) == -1)
-					{
-						updatedMap.at<char>(i, j+1) = -1;
+						cv::Point2i pt((jter->second.at<float>(i,0)-xMin)/cellSize + 0.5f, (jter->second.at<float>(i,1)-yMin)/cellSize + 0.5f);
+						map.at<char>(pt.y, pt.x) = 100; // obstacles
 					}
 				}
 
+				//UDEBUG("empty=%d occupied=%d", empty, occupied);
 			}
+
+			// fill holes and remove empty from obstacle borders
+			cv::Mat updatedMap = map;
+			for(int i=2; i<map.rows-2; ++i)
+			{
+				for(int j=2; j<map.cols-2; ++j)
+				{
+					if(map.at<char>(i, j) == -1 &&
+						map.at<char>(i+1, j) != -1 &&
+						map.at<char>(i-1, j) != -1 &&
+						map.at<char>(i, j+1) != -1 &&
+						map.at<char>(i, j-1) != -1)
+					{
+						updatedMap.at<char>(i, j) = 0;
+					}
+					else if(map.at<char>(i, j) == 100)
+					{
+						// obstacle/empty/unknown -> remove empty
+						// unknown/empty/obstacle -> remove empty
+						if(map.at<char>(i-1, j) == 0 &&
+							map.at<char>(i-2, j) == -1)
+						{
+							updatedMap.at<char>(i-1, j) = -1;
+						}
+						else if(map.at<char>(i+1, j) == 0 &&
+								map.at<char>(i+2, j) == -1)
+						{
+							updatedMap.at<char>(i+1, j) = -1;
+						}
+						if(map.at<char>(i, j-1) == 0 &&
+							map.at<char>(i, j-2) == -1)
+						{
+							updatedMap.at<char>(i, j-1) = -1;
+						}
+						else if(map.at<char>(i, j+1) == 0 &&
+								map.at<char>(i, j+2) == -1)
+						{
+							updatedMap.at<char>(i, j+1) = -1;
+						}
+					}
+
+				}
+			}
+			map = updatedMap;
 		}
-		map = updatedMap;
 	}
 	UDEBUG("timer=%fs", timer.ticks());
 	return map;

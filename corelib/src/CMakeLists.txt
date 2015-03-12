@@ -34,6 +34,9 @@ SET(SRC_FILES
 	toro3d/treeoptimizer3_iteration.cpp
 	toro3d/treeoptimizer3.cpp
 	
+	toro3d/posegraph2.cpp
+	toro3d/treeoptimizer2.cpp
+	
 	sqlite3/sqlite3.c
 )
 
@@ -79,6 +82,18 @@ IF(OpenNI2_FOUND)
 		${OpenNI2_LIBRARIES}
 	)
 ENDIF(OpenNI2_FOUND)
+
+IF(G2O_FOUND)
+	ADD_DEFINITIONS("-DWITH_G2O")
+	SET(INCLUDE_DIRS 
+		${INCLUDE_DIRS} 
+		${G2O_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${G2O_LIBRARIES}
+	)
+ENDIF(G2O_FOUND)
 
 ####################################
 # Generate resources files

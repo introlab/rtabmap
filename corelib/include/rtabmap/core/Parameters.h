@@ -287,8 +287,6 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, LinearUpdate,      float, 0.0, 	"Min linear displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
 	RTABMAP_PARAM(RGBD, AngularUpdate,     float, 0.0, 	"Min angular displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
 	RTABMAP_PARAM(RGBD, NewMapOdomChangeDistance, float, 0, "A new map is created if a change of odometry translation greater than X m is detected (0 m = disabled).");
-	RTABMAP_PARAM(RGBD, ToroIterations,    int, 100,    "TORO graph optimization iterations");
-	RTABMAP_PARAM(RGBD, ToroIgnoreVariance,   bool, false,    "Ignore constraints' variance. If checked, identity information matrix is used for each constraint in TORO. Otherwise, an information matrix is generated from the variance saved in the links.");
 	RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd, bool, false,    "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
 	RTABMAP_PARAM(RGBD, GoalReachedRadius,    float, 0.5, "Goal reached radius (m).");
 	RTABMAP_PARAM(RGBD, PlanWithNearNodesLinked,  bool, true, "Before planning in the graph, near nodes are linked together (even if they don't belong to same map). Radius is defined by \"RGBD/GoalReachedRadius\" parameter.");
@@ -300,6 +298,12 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionSpace,    bool, false, 	"Detection over locations (in Working Memory or STM) near in space.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionNeighbors,   int, 20, 	"Maximum nearest neighbor.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxDiffID,   int, 50,      "Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.")
+
+	// Graph optimization
+	RTABMAP_PARAM(RGBD, OptimizeStrategy,          int, 0,        "Graph optimization strategy: 0=TORO and 1=g2o.");
+	RTABMAP_PARAM(RGBD, OptimizeIterations,        int, 100,      "Optimization iterations.");
+	RTABMAP_PARAM(RGBD, OptimizeSlam2D,            bool, false,  "If optimization is done only on x,y and theta (3DoF). Otherwise, it is done on full 6DoF poses.");
+	RTABMAP_PARAM(RGBD, OptimizeVarianceIgnored,   bool, false,  "Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links.");
 
 	// Odometry
 	RTABMAP_PARAM(Odom, Strategy,           	int, 0, 		"0=Bag-of-words 1=Optical Flow");

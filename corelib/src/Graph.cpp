@@ -36,54 +36,118 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <set>
 #include <queue>
 #include "toro3d/treeoptimizer3.hh"
+#include "toro3d/treeoptimizer2.hh"
+
+#ifdef WITH_G2O
+#include "g2o/core/sparse_optimizer.h"
+#include "g2o/core/block_solver.h"
+#include "g2o/core/factory.h"
+#include "g2o/core/optimization_algorithm_factory.h"
+#include "g2o/core/optimization_algorithm_gauss_newton.h"
+#include "g2o/core/optimization_algorithm_levenberg.h"
+#include "g2o/solvers/csparse/linear_solver_csparse.h"
+#include "g2o/types/slam3d/vertex_se3.h"
+#include "g2o/types/slam3d/edge_se3.h"
+#include "g2o/types/slam2d/vertex_se2.h"
+#include "g2o/types/slam2d/edge_se2.h"
+#endif
 
 namespace rtabmap {
 
 namespace graph {
 
-std::multimap<int, Link>::iterator findLink(
-		std::multimap<int, Link> & links,
-		int from,
-		int to)
-{
-	std::multimap<int, Link>::iterator iter = links.find(from);
-	while(iter != links.end() && iter->first == from)
-	{
-		if(iter->second.to() == to)
-		{
-			return iter;
-		}
-		++iter;
-	}
+////////////////////////////////////////////
+// Graph optimizers
+////////////////////////////////////////////
 
-	// let's try to -> from
-	iter = links.find(to);
-	while(iter != links.end() && iter->first == to)
+Optimizer * Optimizer::create(const ParametersMap & parameters)
+{
+	int optimizerTypeInt = Parameters::defaultRGBDOptimizeStrategy();
+	Parameters::parse(parameters, Parameters::kRGBDOptimizeStrategy(), optimizerTypeInt);
+	graph::Optimizer::Type type = (graph::Optimizer::Type)optimizerTypeInt;
+
+	if(!G2OOptimizer::available() && type == Optimizer::kTypeG2O)
 	{
-		if(iter->second.to() == from)
-		{
-			return iter;
-		}
-		++iter;
+		UWARN("g2o optimizer not available. TORO will be used instead.");
+		type = Optimizer::kTypeTORO;
 	}
-	return links.end();
+	Optimizer * optimizer = 0;
+	switch(type)
+	{
+	case Optimizer::kTypeG2O:
+		optimizer = new G2OOptimizer(parameters);
+		break;
+	case Optimizer::kTypeTORO:
+	default:
+		optimizer = new TOROOptimizer(parameters);
+		type = Optimizer::kTypeTORO;
+		break;
+
+	}
+	return optimizer;
 }
 
+Optimizer * Optimizer::create(Optimizer::Type & type, const ParametersMap & parameters)
+{
+	if(!G2OOptimizer::available() && type == Optimizer::kTypeG2O)
+	{
+		UWARN("g2o optimizer not available. TORO will be used instead.");
+		type = Optimizer::kTypeTORO;
+	}
+	Optimizer * optimizer = 0;
+	switch(type)
+	{
+	case Optimizer::kTypeG2O:
+		optimizer = new G2OOptimizer(parameters);
+		break;
+	case Optimizer::kTypeTORO:
+	default:
+		optimizer = new TOROOptimizer(parameters);
+		type = Optimizer::kTypeTORO;
+		break;
 
-// <int, depth> margin=0 means infinite margin
-std::map<int, int> generateDepthGraph(
-		const std::multimap<int, Link> & links,
+	}
+	return optimizer;
+}
+
+Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored) :
+		iterations_(iterations),
+		slam2d_(slam2d),
+		covarianceIgnored_(covarianceIgnored)
+{
+}
+
+Optimizer::Optimizer(const ParametersMap & parameters) :
+		iterations_(100),
+		slam2d_(false),
+		covarianceIgnored_(false)
+{
+	parseParameters(parameters);
+}
+
+void Optimizer::parseParameters(const ParametersMap & parameters)
+{
+	Parameters::parse(parameters, Parameters::kRGBDOptimizeIterations(), iterations_);
+	Parameters::parse(parameters, Parameters::kRGBDOptimizeVarianceIgnored(), covarianceIgnored_);
+	Parameters::parse(parameters, Parameters::kRGBDOptimizeSlam2D(), slam2d_);
+}
+
+void Optimizer::getConnectedGraph(
 		int fromId,
+		const std::map<int, Transform> & posesIn,
+		const std::multimap<int, Link> & linksIn,
+		std::map<int, Transform> & posesOut,
+		std::multimap<int, Link> & linksOut,
 		int depth)
 {
 	UASSERT(depth >= 0);
-	//UDEBUG("signatureId=%d, neighborsMargin=%d", signatureId, margin);
-	std::map<int, int> ids;
-	if(fromId<=0)
-	{
-		return ids;
-	}
+	UASSERT(fromId>0);
+	UASSERT(uContains(posesIn, fromId));
 
+	posesOut.clear();
+	linksOut.clear();
+
+	std::set<int> ids;
 	std::list<int> curentDepthList;
 	std::set<int> nextDepth;
 	nextDepth.insert(fromId);
@@ -97,288 +161,250 @@ std::map<int, int> generateDepthGraph(
 		{
 			if(ids.find(*jter) == ids.end())
 			{
-				std::set<int> marginIds;
+				ids.insert(*jter);
+				posesOut.insert(*posesIn.find(*jter));
 
-				ids.insert(std::pair<int, int>(*jter, d));
-
-				for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+				for(std::multimap<int, Link>::const_iterator iter=linksIn.begin(); iter!=linksIn.end(); ++iter)
 				{
 					if(iter->second.from() == *jter)
 					{
-						marginIds.insert(iter->second.to());
+						if(ids.find(iter->second.to()) == ids.end() && uContains(posesIn, iter->second.to()))
+						{
+							linksOut.insert(*iter);
+							nextDepth.insert(iter->second.to());
+						}
 					}
 					else if(iter->second.to() == *jter)
 					{
-						marginIds.insert(iter->second.from());
-					}
-				}
-
-				// Margin links
-				for(std::set<int>::const_iterator iter=marginIds.begin(); iter!=marginIds.end(); ++iter)
-				{
-					if( !uContains(ids, *iter) && nextDepth.find(*iter) == nextDepth.end())
-					{
-						nextDepth.insert(*iter);
+						if(ids.find(iter->second.from()) == ids.end() && uContains(posesIn, iter->second.from()))
+						{
+							linksOut.insert(*iter);
+							nextDepth.insert(iter->second.from());
+						}
 					}
 				}
 			}
 		}
 		++d;
 	}
-	return ids;
 }
 
-void optimizeTOROGraph(
-		const std::map<int, int> & depthGraph,
-		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & links,
-		std::map<int, Transform> & optimizedPoses,
-		int toroIterations,
-		bool toroInitialGuess,
-		bool ignoreCovariance,
-		std::list<std::map<int, Transform> > * intermediateGraphes)
-{
-	optimizedPoses.clear();
-	if(depthGraph.size() >= 2 && poses.size()>=2 && links.size()>=1)
-	{
-		// Modify IDs using the margin from the current signature (TORO root will be the last signature)
-		int m = 0;
-		int toroId = 1;
-		std::map<int, int> rtabmapToToro; // <RTAB-Map ID, TORO ID>
-		std::map<int, int> toroToRtabmap; // <TORO ID, RTAB-Map ID>
-		std::map<int, int> idsTmp = depthGraph;
-		while(idsTmp.size())
-		{
-			for(std::map<int, int>::iterator iter = idsTmp.begin(); iter!=idsTmp.end();)
-			{
-				if(m == iter->second)
-				{
-					rtabmapToToro.insert(std::make_pair(iter->first, toroId));
-					toroToRtabmap.insert(std::make_pair(toroId, iter->first));
-					++toroId;
-					idsTmp.erase(iter++);
-				}
-				else
-				{
-					++iter;
-				}
-			}
-			++m;
-		}
-
-		std::map<int, rtabmap::Transform> posesToro;
-		std::multimap<int, rtabmap::Link> edgeConstraintsToro;
-		for(std::map<int, rtabmap::Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-		{
-			if(uContains(depthGraph, iter->first))
-			{
-				UASSERT(uContains(rtabmapToToro, iter->first));
-				UASSERT_MSG(!iter->second.isNull(), uFormat("Poses should not be null! Id=%d", iter->first).c_str());
-				posesToro.insert(std::make_pair(rtabmapToToro.at(iter->first), iter->second));
-			}
-		}
-		for(std::multimap<int, rtabmap::Link>::const_iterator iter = links.begin();
-			iter!=links.end();
-			++iter)
-		{
-			if(uContains(depthGraph, iter->second.from()) && uContains(depthGraph, iter->second.to()))
-			{
-				UASSERT(uContains(rtabmapToToro, iter->first) && uContains(rtabmapToToro, iter->second.to()));
-				UASSERT_MSG(!iter->second.transform().isNull(), uFormat("Link from=%d to=%d", iter->first, iter->second.to()).c_str());
-				edgeConstraintsToro.insert(std::make_pair(rtabmapToToro.at(iter->first), Link(rtabmapToToro.at(iter->first), rtabmapToToro.at(iter->second.to()), iter->second.type(), iter->second.transform(), iter->second.rotVariance(), iter->second.transVariance())));
-			}
-		}
-
-		std::map<int, rtabmap::Transform> optimizedPosesToro;
-
-		if(posesToro.size() && edgeConstraintsToro.size())
-		{
-			std::list<std::map<int, rtabmap::Transform> > graphesToro;
-
-			// Optimize!
-			optimizeTOROGraph(
-					posesToro,
-					edgeConstraintsToro,
-					optimizedPosesToro,
-					toroIterations,
-					toroInitialGuess,
-					ignoreCovariance,
-					&graphesToro);
-
-			for(std::map<int, rtabmap::Transform>::iterator iter=optimizedPosesToro.begin(); iter!=optimizedPosesToro.end(); ++iter)
-			{
-				optimizedPoses.insert(std::make_pair(toroToRtabmap.at(iter->first), iter->second));
-			}
-
-			if(intermediateGraphes)
-			{
-				for(std::list<std::map<int, rtabmap::Transform> >::iterator iter = graphesToro.begin(); iter!=graphesToro.end(); ++iter)
-				{
-					std::map<int, rtabmap::Transform> tmp;
-					for(std::map<int, rtabmap::Transform>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
-					{
-						tmp.insert(std::make_pair(toroToRtabmap.at(jter->first), jter->second));
-					}
-					intermediateGraphes->push_back(tmp);
-				}
-			}
-		}
-		else
-		{
-			if(edgeConstraintsToro.size() == 0)
-			{
-				UERROR("No TORO constraints!? (input poses=%d, links=%d, depthGraph=%d)",
-						(int)poses.size(), (int)links.size(), (int)depthGraph.size());
-			}
-			if(posesToro.size() == 0)
-			{
-				UERROR("No TORO poses!? (input poses=%d, links=%d, depthGraph=%d)",
-						(int)poses.size(), (int)links.size(), (int)depthGraph.size());
-			}
-		}
-	}
-	else if(depthGraph.size() == 1)
-	{
-		std::map<int, Transform>::const_iterator iter = poses.find(depthGraph.begin()->first);
-		if(iter != poses.end())
-		{
-			UASSERT_MSG(!iter->second.isNull(), uFormat("Poses should not be null! Id=%d", iter->first).c_str());
-			optimizedPoses.insert(*iter);
-		}
-		else
-		{
-			UERROR("Pose %d from depthGraph not found in the poses map!", depthGraph.begin()->first);
-		}
-	}
-	else
-	{
-		UERROR("Wrong inputs! depthGraph=%d poses=%d links=%d",
-				(int)depthGraph.size(), (int)poses.size(), (int)links.size());
-	}
-}
-
-//On success, optimizedPoses is cleared and new poses are inserted in
-void optimizeTOROGraph(
+//////////////////
+// TORO
+//////////////////
+std::map<int, Transform> TOROOptimizer::optimize(
+		int rootId,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & edgeConstraints,
-		std::map<int, Transform> & optimizedPoses,
-		int toroIterations,
-		bool toroInitialGuess,
-		bool ignoreCovariance,
 		std::list<std::map<int, Transform> > * intermediateGraphes) // contains poses after tree init to last one before the end
 {
+	std::map<int, Transform> optimizedPoses;
 	UDEBUG("Optimizing graph...");
-	UASSERT(toroIterations>0);
-	optimizedPoses.clear();
-	if(edgeConstraints.size()>=1 && poses.size()>=2)
+	if(edgeConstraints.size()>=1 && poses.size()>=2 && iterations() > 0)
 	{
 		// Apply TORO optimization
-		AISNavigation::TreeOptimizer3 pg;
-		pg.verboseLevel = 0;
+		AISNavigation::TreeOptimizer2 pg2;
+		AISNavigation::TreeOptimizer3 pg3;
+		pg2.verboseLevel = 0;
+		pg3.verboseLevel = 0;
+
 		UDEBUG("fill poses to TORO...");
-		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		if(isSlam2d())
 		{
-			float x,y,z, roll,pitch,yaw;
-			UASSERT(!iter->second.isNull());
-			pcl::getTranslationAndEulerAngles(iter->second.toEigen3f(), x,y,z, roll,pitch,yaw);
-			AISNavigation::TreePoseGraph3::Pose p(x, y, z, roll, pitch, yaw);
-			AISNavigation::TreePoseGraph<AISNavigation::Operations3D<double> >::Vertex* v = pg.addVertex(iter->first, p);
-			if (v)
+			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 			{
+				UASSERT(!iter->second.isNull());
+				AISNavigation::TreePoseGraph2::Pose p(iter->second.x(), iter->second.y(), iter->second.theta());
+				AISNavigation::TreePoseGraph2::Vertex* v = pg2.addVertex(iter->first, p);
+				UASSERT_MSG(v != 0, uFormat("cannot insert vertex %d!?", iter->first).c_str());
+			}
+		}
+		else
+		{
+			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+			{
+				UASSERT(!iter->second.isNull());
+				float x,y,z, roll,pitch,yaw;
+				iter->second.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+				AISNavigation::TreePoseGraph3::Pose p(x, y, z, roll, pitch, yaw);
+				AISNavigation::TreePoseGraph3::Vertex* v = pg3.addVertex(iter->first, p);
+				UASSERT_MSG(v != 0, uFormat("cannot insert vertex %d!?", iter->first).c_str());
 				v->transformation=AISNavigation::TreePoseGraph3::Transformation(p);
 			}
-			else
-			{
-				UERROR("cannot insert vertex %d!?", iter->first);
-			}
+
 		}
 
 		UDEBUG("fill edges to TORO...");
-		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+		if(isSlam2d())
 		{
-			int id1 = iter->first;
-			int id2 = iter->second.to();
-			float x,y,z, roll,pitch,yaw;
-			UASSERT(!iter->second.transform().isNull());
-			pcl::getTranslationAndEulerAngles(iter->second.transform().toEigen3f(), x,y,z, roll,pitch,yaw);
-			AISNavigation::TreePoseGraph3::Pose p(x, y, z, roll, pitch, yaw);
-			AISNavigation::TreePoseGraph3::InformationMatrix inf = DMatrix<double>::I(6);
-			if(!ignoreCovariance)
+			for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 			{
-				if(iter->second.rotVariance()>0)
+				UASSERT(!iter->second.transform().isNull());
+				AISNavigation::TreePoseGraph2::Pose p(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta());
+				AISNavigation::TreePoseGraph2::InformationMatrix inf;
+				//Identity:
+				inf.values[0][0] = 1.0f; inf.values[0][1] = 0.0f; inf.values[0][2] = 0.0f; // x
+				inf.values[1][0] = 0.0f; inf.values[1][1] = 1.0f; inf.values[1][2] = 0.0f; // y
+				inf.values[2][0] = 0.0f; inf.values[2][1] = 0.0f; inf.values[2][2] = 1.0f; // theta
+				if(!isCovarianceIgnored())
 				{
-					inf[0][0] = 1.0f/iter->second.rotVariance(); // roll
-					inf[1][1] = 1.0f/iter->second.rotVariance(); // pitch
-					inf[2][2] = 1.0f/iter->second.rotVariance(); // yaw
+					if(iter->second.transVariance()>0)
+					{
+						inf.values[0][0] = 1.0f/iter->second.transVariance(); // x
+						inf.values[1][1] = 1.0f/iter->second.transVariance(); // y
+					}
+					if(iter->second.rotVariance()>0)
+					{
+						inf.values[2][2] = 1.0f/iter->second.rotVariance(); // theta
+					}
 				}
-				if(iter->second.transVariance()>0)
+
+				int id1 = iter->first;
+				int id2 = iter->second.to();
+				AISNavigation::TreePoseGraph2::Vertex* v1=pg2.vertex(id1);
+				AISNavigation::TreePoseGraph2::Vertex* v2=pg2.vertex(id2);
+				AISNavigation::TreePoseGraph2::Transformation t(p);
+				if (!pg2.addEdge(v1, v2, t, inf))
 				{
-					inf[3][3] = 1.0f/iter->second.transVariance(); // x
-					inf[4][4] = 1.0f/iter->second.transVariance(); // y
-					inf[5][5] = 1.0f/iter->second.transVariance(); // z
+					UERROR("Map: Edge already exits between nodes %d and %d, skipping", id1, id2);
 				}
 			}
-
-			AISNavigation::TreePoseGraph<AISNavigation::Operations3D<double> >::Vertex* v1=pg.vertex(id1);
-			AISNavigation::TreePoseGraph<AISNavigation::Operations3D<double> >::Vertex* v2=pg.vertex(id2);
-			AISNavigation::TreePoseGraph3::Transformation t(p);
-			if (!pg.addEdge(v1, v2, t, inf))
+		}
+		else
+		{
+			for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 			{
-				UERROR("Map: Edge already exits between nodes %d and %d, skipping", id1, id2);
-				return;
+				UASSERT(!iter->second.transform().isNull());
+				float x,y,z, roll,pitch,yaw;
+				iter->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+
+				AISNavigation::TreePoseGraph3::Pose p(x, y, z, roll, pitch, yaw);
+				AISNavigation::TreePoseGraph3::InformationMatrix inf = DMatrix<double>::I(6);
+				if(!isCovarianceIgnored())
+				{
+					if(iter->second.rotVariance()>0)
+					{
+						inf[0][0] = 1.0f/iter->second.rotVariance(); // roll
+						inf[1][1] = 1.0f/iter->second.rotVariance(); // pitch
+						inf[2][2] = 1.0f/iter->second.rotVariance(); // yaw
+					}
+					if(iter->second.transVariance()>0)
+					{
+						inf[3][3] = 1.0f/iter->second.transVariance(); // x
+						inf[4][4] = 1.0f/iter->second.transVariance(); // y
+						inf[5][5] = 1.0f/iter->second.transVariance(); // z
+					}
+				}
+
+				int id1 = iter->first;
+				int id2 = iter->second.to();
+				AISNavigation::TreePoseGraph3::Vertex* v1=pg3.vertex(id1);
+				AISNavigation::TreePoseGraph3::Vertex* v2=pg3.vertex(id2);
+				AISNavigation::TreePoseGraph3::Transformation t(p);
+				if (!pg3.addEdge(v1, v2, t, inf))
+				{
+					UERROR("Map: Edge already exits between nodes %d and %d, skipping", id1, id2);
+				}
 			}
 		}
 		UDEBUG("buildMST...");
-		pg.buildMST(pg.vertices.begin()->first); // pg.buildSimpleTree();
-
-		UDEBUG("Initial guess...");
-		if(toroInitialGuess)
+		UASSERT(uContains(poses, rootId));
+		if(isSlam2d())
 		{
-			pg.initializeOnTree(); // optional
+			pg2.buildMST(rootId); // pg.buildSimpleTree();
+			pg2.initializeOnTree();
+			pg2.initializeTreeParameters();
+			UDEBUG("Building TORO tree... (if a crash happens just after this msg, "
+				   "TORO is not able to find the root of the graph!)");
+			pg2.initializeOptimization();
+		}
+		else
+		{
+			pg3.buildMST(rootId); // pg.buildSimpleTree();
+			pg3.initializeOnTree();
+			pg3.initializeTreeParameters();
+			UDEBUG("Building TORO tree... (if a crash happens just after this msg, "
+				   "TORO is not able to find the root of the graph!)");
+			pg3.initializeOptimization();
 		}
 
-		pg.initializeTreeParameters();
-		UDEBUG("Building TORO tree... (if a crash happens just after this msg, "
-			   "TORO is not able to find the root of the graph!)");
-		pg.initializeOptimization();
-
-		UDEBUG("TORO iterate begin (iterations=%d)", toroIterations);
-		for (int i=0; i<toroIterations; i++)
+		UINFO("TORO iterate begin (iterations=%d)", iterations());
+		for (int i=0; i<iterations(); i++)
 		{
-			if(intermediateGraphes && (toroInitialGuess || i>0))
+			if(intermediateGraphes && i>0)
 			{
 				std::map<int, Transform> tmpPoses;
-				for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+				if(isSlam2d())
 				{
-					AISNavigation::TreePoseGraph<AISNavigation::Operations3D<double> >::Vertex* v=pg.vertex(iter->first);
-					v->pose=v->transformation.toPoseType();
-					Transform newPose = Transform::fromEigen3f(pcl::getTransformation(v->pose.x(), v->pose.y(), v->pose.z(), v->pose.roll(), v->pose.pitch(), v->pose.yaw()));
+					for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+					{
+						AISNavigation::TreePoseGraph2::Vertex* v=pg2.vertex(iter->first);
+						float roll, pitch, yaw;
+						iter->second.getEulerAngles(roll, pitch, yaw);
+						Transform newPose(v->pose.x(), v->pose.y(), iter->second.z(), roll, pitch, v->pose.theta());
 
-					tmpPoses.insert(std::pair<int, Transform>(iter->first, newPose));
+						tmpPoses.insert(std::pair<int, Transform>(iter->first, newPose));
+					}
+				}
+				else
+				{
+					for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+					{
+						AISNavigation::TreePoseGraph3::Vertex* v=pg3.vertex(iter->first);
+						AISNavigation::TreePoseGraph3::Pose pose=v->transformation.toPoseType();
+						Transform newPose(pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
+
+						tmpPoses.insert(std::pair<int, Transform>(iter->first, newPose));
+					}
 				}
 				intermediateGraphes->push_back(tmpPoses);
 			}
+			if(isSlam2d())
+			{
+				pg2.iterate();
 
-			pg.iterate();
+				// compute the error and dump it
+				double error=pg2.error();
+				UDEBUG("iteration %d global error=%f error/constraint=%f", i, error, error/pg2.edges.size());
+			}
+			else
+			{
+				pg3.iterate();
+
+				// compute the error and dump it
+				double mte, mre, are, ate;
+				double error=pg3.error(&mre, &mte, &are, &ate);
+				UDEBUG("iteration %d RotGain=%f global error=%f error/constraint=%f mte=%f mre=%f are=%f ate=%f",
+						i, pg3.getRotGain(), error, error/pg3.edges.size(), mte, mre, are, ate);
+			}
 		}
-		UDEBUG("TORO iterate end");
+		UINFO("TORO iterate end");
 
-		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		if(isSlam2d())
 		{
-			AISNavigation::TreePoseGraph<AISNavigation::Operations3D<double> >::Vertex* v=pg.vertex(iter->first);
-			v->pose=v->transformation.toPoseType();
-			Transform newPose = Transform::fromEigen3f(pcl::getTransformation(v->pose.x(), v->pose.y(), v->pose.z(), v->pose.roll(), v->pose.pitch(), v->pose.yaw()));
+			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+			{
+				AISNavigation::TreePoseGraph2::Vertex* v=pg2.vertex(iter->first);
+				float roll, pitch, yaw;
+				iter->second.getEulerAngles(roll, pitch, yaw);
+				Transform newPose(v->pose.x(), v->pose.y(), iter->second.z(), roll, pitch, v->pose.theta());
 
-			optimizedPoses.insert(std::pair<int, Transform>(iter->first, newPose));
+				optimizedPoses.insert(std::pair<int, Transform>(iter->first, newPose));
+			}
 		}
+		else
+		{
+			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+			{
+				AISNavigation::TreePoseGraph3::Vertex* v=pg3.vertex(iter->first);
+				AISNavigation::TreePoseGraph3::Pose pose=v->transformation.toPoseType();
+				Transform newPose(pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
 
-		//Eigen::Matrix4f newPose = transformToEigen4f(optimizedPoses.at(poses.rbegin()->first));
-		//Eigen::Matrix4f oldPose = transformToEigen4f(poses.rbegin()->second);
-		//Eigen::Matrix4f poseCorrection = oldPose.inverse() * newPose; // transform from odom to correct odom
-		//Eigen::Matrix4f result = oldPose*poseCorrection*oldPose.inverse();
-		//mapCorrection = transformFromEigen4f(result);
+				optimizedPoses.insert(std::pair<int, Transform>(iter->first, newPose));
+			}
+		}
 	}
-	else if(edgeConstraints.size() == 0 && poses.size() == 1)
+	else if(poses.size() == 1 || iterations() <= 0)
 	{
 		optimizedPoses = poses;
 	}
@@ -387,9 +413,10 @@ void optimizeTOROGraph(
 		UWARN("This method should be called at least with 1 pose!");
 	}
 	UDEBUG("Optimizing graph...end!");
+	return optimizedPoses;
 }
 
-bool saveTOROGraph(
+bool TOROOptimizer::saveGraph(
 		const std::string & fileName,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & edgeConstraints)
@@ -451,7 +478,8 @@ bool saveTOROGraph(
 	return true;
 }
 
-bool loadTOROGraph(const std::string & fileName,
+bool TOROOptimizer::loadGraph(
+		const std::string & fileName,
 		std::map<int, Transform> & poses,
 		std::multimap<int, std::pair<int, Transform> > & edgeConstraints)
 {
@@ -528,6 +556,312 @@ bool loadTOROGraph(const std::string & fileName,
 	return true;
 }
 
+
+//////////////////////
+// g2o
+//////////////////////
+bool G2OOptimizer::available()
+{
+#ifdef WITH_G2O
+	return true;
+#else
+	return false;
+#endif
+}
+
+std::map<int, Transform> G2OOptimizer::optimize(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & edgeConstraints,
+		std::list<std::map<int, Transform> > * intermediateGraphes)
+{
+	std::map<int, Transform> optimizedPoses;
+#ifdef WITH_G2O
+	UDEBUG("Optimizing graph...");
+	optimizedPoses.clear();
+	if(edgeConstraints.size()>=1 && poses.size()>=2 && iterations() > 0)
+	{
+		// Apply g2o optimization
+
+		// create the linear solver
+		g2o::BlockSolverX::LinearSolverType * linearSolver = new g2o::LinearSolverCSparse<g2o::BlockSolverX::PoseMatrixType>();
+
+		// create the block solver on top of the linear solver
+		g2o::BlockSolverX* blockSolver = new g2o::BlockSolverX(linearSolver);
+
+		// create the algorithm to carry out the optimization
+		//g2o::OptimizationAlgorithmGaussNewton* optimizationAlgorithm = new g2o::OptimizationAlgorithmGaussNewton(blockSolver);
+		g2o::OptimizationAlgorithmLevenberg* optimizationAlgorithm = new g2o::OptimizationAlgorithmLevenberg(blockSolver);
+
+		// create the optimizer to load the data and carry out the optimization
+		g2o::SparseOptimizer optimizer;
+		optimizer.setVerbose(false);
+		optimizer.setAlgorithm(optimizationAlgorithm);
+
+		UDEBUG("fill poses to g2o...");
+		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			UASSERT(!iter->second.isNull());
+			g2o::HyperGraph::Vertex * vertex = 0;
+			if(isSlam2d())
+			{
+				g2o::VertexSE2 * v2 = new g2o::VertexSE2();
+				v2->setEstimate(g2o::SE2(iter->second.x(), iter->second.y(), iter->second.theta()));
+				vertex = v2;
+			}
+			else
+			{
+				g2o::VertexSE3 * v3 = new g2o::VertexSE3();
+				Eigen::Isometry3d pose;
+				Eigen::Affine3d a = iter->second.toEigen3d();
+				pose.translation() = a.translation();
+				pose.linear() = a.rotation();
+				v3->setEstimate(pose);
+				vertex = v3;
+			}
+			vertex->setId(iter->first);
+			UASSERT_MSG(optimizer.addVertex(vertex), uFormat("cannot insert vertex %d!?", iter->first).c_str());
+		}
+
+		UDEBUG("fill edges to g2o...");
+		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+		{
+			int id1 = iter->first;
+			int id2 = iter->second.to();
+
+			UASSERT(!iter->second.transform().isNull());
+
+			g2o::HyperGraph::Edge * edge = 0;
+
+			if(isSlam2d())
+			{
+				Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
+				if(!isCovarianceIgnored())
+				{
+					if(iter->second.transVariance()>0)
+					{
+						information(0,0) = 1.0f/iter->second.transVariance(); // x
+						information(1,1) = 1.0f/iter->second.transVariance(); // y
+					}
+					if(iter->second.rotVariance()>0)
+					{
+						information(2,2) = 1.0f/iter->second.rotVariance(); // theta
+					}
+				}
+
+				g2o::EdgeSE2 * e = new g2o::EdgeSE2();
+				g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
+				g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
+				e->setVertex(0, v1);
+				e->setVertex(1, v2);
+				e->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
+				e->setInformation(information);
+				edge = e;
+			}
+			else
+			{
+				Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
+				if(!isCovarianceIgnored())
+				{
+					if(iter->second.transVariance()>0)
+					{
+						information(0,0) = 1.0f/iter->second.transVariance(); // x
+						information(1,1) = 1.0f/iter->second.transVariance(); // y
+						information(2,2) = 1.0f/iter->second.transVariance(); // z
+					}
+					if(iter->second.rotVariance()>0)
+					{
+						information(3,3) = 1.0f/iter->second.rotVariance(); // roll
+						information(4,4) = 1.0f/iter->second.rotVariance(); // pitch
+						information(5,5) = 1.0f/iter->second.rotVariance(); // yaw
+					}
+				}
+
+				Eigen::Affine3d a = iter->second.transform().toEigen3d();
+				Eigen::Isometry3d constraint;
+				constraint.translation() = a.translation();
+				constraint.linear() = a.rotation();
+
+				g2o::EdgeSE3 * e = new g2o::EdgeSE3();
+				g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+				g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
+				e->setVertex(0, v1);
+				e->setVertex(1, v2);
+				e->setMeasurement(constraint);
+				e->setInformation(information);
+				edge = e;
+			}
+
+			if (!optimizer.addEdge(edge))
+			{
+				delete edge;
+				UERROR("Map: Failed adding constraint between %d and %d, skipping", id1, id2);
+			}
+		}
+
+		UDEBUG("Initial optimization...");
+		UASSERT(uContains(poses, rootId));
+		if(isSlam2d())
+		{
+			g2o::VertexSE2* firstRobotPose = (g2o::VertexSE2*)optimizer.vertex(rootId);
+			UASSERT(firstRobotPose != 0);
+			firstRobotPose->setFixed(true);
+		}
+		else
+		{
+			g2o::VertexSE3* firstRobotPose = (g2o::VertexSE3*)optimizer.vertex(rootId);
+			UASSERT(firstRobotPose != 0);
+			firstRobotPose->setFixed(true);
+		}
+
+		UINFO("g2o iterate begin (max iterations=%d)", iterations());
+		int it = 0;
+		if(intermediateGraphes)
+		{
+			optimizer.initializeOptimization();
+			for(int i=0; i<iterations(); ++i)
+			{
+				if(i > 0)
+				{
+					std::map<int, Transform> tmpPoses;
+					if(isSlam2d())
+					{
+						for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+						{
+							const g2o::VertexSE2* v = (const g2o::VertexSE2*)optimizer.vertex(iter->first);
+							if(v)
+							{
+								float roll, pitch, yaw;
+								iter->second.getEulerAngles(roll, pitch, yaw);
+								Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().rotation().angle());
+								tmpPoses.insert(std::pair<int, Transform>(iter->first, t));
+							}
+							else
+							{
+								UERROR("Vertex %d not found!?", iter->first);
+							}
+						}
+					}
+					else
+					{
+						for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+						{
+							const g2o::VertexSE3* v = (const g2o::VertexSE3*)optimizer.vertex(iter->first);
+							if(v)
+							{
+								Transform t = Transform::fromEigen3d(v->estimate());
+								tmpPoses.insert(std::pair<int, Transform>(iter->first, t));
+							}
+							else
+							{
+								UERROR("Vertex %d not found!?", iter->first);
+							}
+						}
+					}
+					intermediateGraphes->push_back(tmpPoses);
+				}
+
+				it += optimizer.optimize(1);
+				if(ULogger::level() == ULogger::kDebug)
+				{
+					optimizer.computeActiveErrors();
+					UDEBUG("iteration %d: %d nodes, %d edges, chi2: %f", i, (int)optimizer.vertices().size(), (int)optimizer.edges().size(), optimizer.chi2());
+				}
+			}
+		}
+		else
+		{
+			optimizer.initializeOptimization();
+			it = optimizer.optimize(iterations());
+			optimizer.computeActiveErrors();
+			UDEBUG("%d nodes, %d edges, chi2: %f", (int)optimizer.vertices().size(), (int)optimizer.edges().size(), optimizer.chi2());
+		}
+		UINFO("g2o iterate end (%d iterations done)", it);
+
+		if(isSlam2d())
+		{
+			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+			{
+				const g2o::VertexSE2* v = (const g2o::VertexSE2*)optimizer.vertex(iter->first);
+				if(v)
+				{
+					float roll, pitch, yaw;
+					iter->second.getEulerAngles(roll, pitch, yaw);
+					Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().rotation().angle());
+					optimizedPoses.insert(std::pair<int, Transform>(iter->first, t));
+				}
+				else
+				{
+					UERROR("Vertex %d not found!?", iter->first);
+				}
+			}
+		}
+		else
+		{
+			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+			{
+				const g2o::VertexSE3* v = (const g2o::VertexSE3*)optimizer.vertex(iter->first);
+				if(v)
+				{
+					Transform t = Transform::fromEigen3d(v->estimate());
+					optimizedPoses.insert(std::pair<int, Transform>(iter->first, t));
+				}
+				else
+				{
+					UERROR("Vertex %d not found!?", iter->first);
+				}
+			}
+		}
+		optimizer.clear();
+		g2o::Factory::destroy();
+		g2o::OptimizationAlgorithmFactory::destroy();
+		g2o::HyperGraphActionLibrary::destroy();
+	}
+	else if(poses.size() == 1 || iterations() <= 0)
+	{
+		optimizedPoses = poses;
+	}
+	else
+	{
+		UWARN("This method should be called at least with 1 pose!");
+	}
+	UDEBUG("Optimizing graph...end!");
+#else
+	UERROR("Not built with G2O support!");
+#endif
+	return optimizedPoses;
+}
+
+////////////////////////////////////////////
+// Graph utilities
+////////////////////////////////////////////
+std::multimap<int, Link>::iterator findLink(
+		std::multimap<int, Link> & links,
+		int from,
+		int to)
+{
+	std::multimap<int, Link>::iterator iter = links.find(from);
+	while(iter != links.end() && iter->first == from)
+	{
+		if(iter->second.to() == to)
+		{
+			return iter;
+		}
+		++iter;
+	}
+
+	// let's try to -> from
+	iter = links.find(to);
+	while(iter != links.end() && iter->first == to)
+	{
+		if(iter->second.to() == from)
+		{
+			return iter;
+		}
+		++iter;
+	}
+	return links.end();
+}
 
 std::map<int, Transform> radiusPosesFiltering(
 		const std::map<int, Transform> & poses,

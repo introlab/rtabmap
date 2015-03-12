@@ -83,11 +83,14 @@ public:
 	const float & y() const {return data_[7];}
 	const float & z() const {return data_[11];}
 
+	float theta() const;
+
 	Transform inverse() const;
 	Transform rotation() const;
 	Transform translation() const;
 
 	void getTranslationAndEulerAngles(float & x, float & y, float & z, float & roll, float & pitch, float & yaw) const;
+	void getEulerAngles(float & roll, float & pitch, float & yaw) const;
 	void getTranslation(float & x, float & y, float & z) const;
 	float getNorm() const;
 	float getNormSquared() const;
@@ -105,12 +108,17 @@ public:
 	Eigen::Affine3f toEigen3f() const;
 	Eigen::Affine3d toEigen3d() const;
 
+	Eigen::Quaternionf getQuaternionf() const;
+	Eigen::Quaterniond getQuaterniond() const;
+
 public:
 	static Transform getIdentity();
 	static Transform fromEigen4f(const Eigen::Matrix4f & matrix);
 	static Transform fromEigen4d(const Eigen::Matrix4d & matrix);
 	static Transform fromEigen3f(const Eigen::Affine3f & matrix);
 	static Transform fromEigen3d(const Eigen::Affine3d & matrix);
+	static Transform fromEigen3f(const Eigen::Isometry3f & matrix);
+	static Transform fromEigen3d(const Eigen::Isometry3d & matrix);
 
 private:
 	std::vector<float> data_;

@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-171</y>
             <width>744</width>
-            <height>1110</height>
+            <height>1389</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>7</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -5017,7 +5017,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="3" column="1">
                         <widget class="QLabel" name="label_scanMatching">
                          <property name="text">
-                          <string>Odometry pose correction using laser scan matching. ICP 2D only is used here.</string>
+                          <string>Pose scan matching: odometry pose correction using laser scan matching. ICP 2D only is used here.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -5067,7 +5067,28 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <layout class="QGridLayout" name="gridLayout_49" columnstretch="0,1">
                        <item row="0" column="0">
-                        <widget class="QSpinBox" name="globalDetection_toroIterations">
+                        <widget class="QComboBox" name="graphOptimization_type">
+                         <item>
+                          <property name="text">
+                           <string>TORO</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>g2o</string>
+                          </property>
+                         </item>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_31">
+                         <property name="text">
+                          <string>Iterations.</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QSpinBox" name="graphOptimization_iterations">
                          <property name="minimum">
                           <number>0</number>
                          </property>
@@ -5079,44 +5100,85 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="0" column="1">
-                        <widget class="QLabel" name="label_31">
-                         <property name="text">
-                          <string>TORO graph optimization iterations</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="0">
-                        <widget class="QCheckBox" name="globalDetection_toroIgnoreVariance">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_141">
-                         <property name="text">
-                          <string>Ignore constraints' variance. If checked, identity information matrix is used for each constraint in TORO. Otherwise, an information matrix is generated from the variance saved in the links.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="2" column="0">
-                        <widget class="QCheckBox" name="globalDetection_optimizeFromGraphEnd">
+                        <widget class="QCheckBox" name="graphOptimization_covarianceIgnored">
                          <property name="text">
                           <string/>
                          </property>
                         </widget>
                        </item>
                        <item row="2" column="1">
+                        <widget class="QLabel" name="label_141">
+                         <property name="text">
+                          <string>Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links (transitional and rotational variances).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="0">
+                        <widget class="QCheckBox" name="graphOptimization_fromGraphEnd">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="1">
                         <widget class="QLabel" name="label_151">
                          <property name="text">
-                          <string>Optimize graph from the newest node.
--If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). An odometry correction from frames /map to /odom is computed.
--If true, there is no odometry correction computed since it is all previous poses in the map that are corrected, not the last one (which corresponds to latest odometry value).
-Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).</string>
+                          <string>Optimize graph from the newest node.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="1">
+                        <widget class="Line" name="line">
+                         <property name="orientation">
+                          <enum>Qt::Horizontal</enum>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QCheckBox" name="graphOptimization_slam2d">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="label_164">
+                         <property name="text">
+                          <string>2d SLAM: use fast 3DoF (x, y, theta) optimization instead of 6DoF (x, y, z, roll, pitch, yaw) optimization.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_45">
+                         <property name="text">
+                          <string>Graph optimization algorithm.</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="7" column="1">
+                        <widget class="QLabel" name="label_183">
+                         <property name="text">
+                          <string>-If false, the graph is optimized from the oldest node of the current graph. It can be useful to preserve the map referential from the oldest node. An odometry correction between frames /map to /odom is computed. Warning: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="1">
+                        <widget class="QLabel" name="label_211">
+                         <property name="text">
+                          <string>-If true, there is no odometry correction computed. All previous poses in the map are corrected instead, not the last one (which corresponds to latest odometry value). So, the transform between frames /map to /odom will be always Identity even on loop closures.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -5138,7 +5200,7 @@ Warning when set to false: when some nodes are transferred, the first referentia
                        <item>
                         <widget class="QLabel" name="label_54">
                          <property name="text">
-                          <string>Activate local detection over all locations in STM. The Bayes filter is not used here: If there are enough correspondences between the current image and others in STM, transformations are computed. The same 2-steps technique as for global loop closure constraints is used here. This generates more constraints in the map's graph, so more time is required to optimize the graph.</string>
+                          <string>Activate local detection over all locations in STM. The Bayes filter is not used here: If there are enough correspondences between the current image and others in STM, transformations are computed. This generates more constraints in the map's graph, so more time is required to optimize the graph.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -5160,7 +5222,7 @@ Warning when set to false: when some nodes are transferred, the first referentia
                        <item>
                         <widget class="QLabel" name="label_space1_2">
                          <property name="text">
-                          <string>Activate local detection over locations (in Working Memory) near in space. The Bayes filter is not used here, so it may results in more false detections. ICP 2D only is used here. Only nodes in the local radius are used.</string>
+                          <string>Activate local detection over locations (in Working Memory) near in space. The Bayes filter is not used here, so it may results in more false detections. ICP 2D only is used here. Only nodes in the local radius are used. The laser scans are compared to those inside a radius around the current estimated position of the robot. If the laser scans match, a constraint is added to the graph.  Useful when the robot is visiting backward (camera not in the same direction) already visited locations.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -5727,7 +5789,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                     <item>
                      <widget class="QGroupBox" name="groupBox_loopClosure_icp3">
                       <property name="title">
-                       <string>ICP 3D - Point To Plane (e.g. Kinect depth)</string>
+                       <string>ICP 3D (e.g. Kinect depth)</string>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_53" columnstretch="0,1">
                        <item row="0" column="0">

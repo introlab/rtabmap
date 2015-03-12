@@ -47,6 +47,9 @@ class EpipolarGeometry;
 class Memory;
 class BayesFilter;
 class Signature;
+namespace graph {
+class Optimizer;
+}
 
 class RTABMAP_EXP Rtabmap
 {
@@ -174,8 +177,6 @@ private:
 	float _localRadius;
 	float _localDetectMaxNeighbors;
 	int _localDetectMaxDiffID;
-	int _toroIterations;
-	bool _toroIgnoreVariance;
 	std::string _databasePath;
 	bool _optimizeFromGraphEnd;
 	bool _reextractLoopClosureFeatures;
@@ -195,6 +196,7 @@ private:
 	// strategies for a type of signature or configuration.
 	EpipolarGeometry * _epipolarGeometry;
 	BayesFilter * _bayesFilter;
+	graph::Optimizer * _graphOptimizer;
 	ParametersMap _lastParameters;
 
 	Memory * _memory;

@@ -53,6 +53,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/VWDictionary.h"
+#include "rtabmap/core/Graph.h"
 
 #include "rtabmap/gui/LoopClosureViewer.h"
 #include "rtabmap/gui/DataRecorder.h"
@@ -119,11 +120,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #endif
 
 #ifdef _WIN32
-		_ui->radioButton_openni2->setChecked(true);
-		_ui->radioButton_opennipcl->setChecked(false);
-		_ui->groupBox_openni2->setVisible(true);
+	_ui->radioButton_openni2->setChecked(true);
+	_ui->radioButton_opennipcl->setChecked(false);
+	_ui->groupBox_openni2->setVisible(true);
 #else
-		_ui->groupBox_openni2->setVisible(false);
+	_ui->groupBox_openni2->setVisible(false);
 #endif
 
 	if(RTABMAP_NONFREE == 0)
@@ -138,6 +139,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->comboBox_dictionary_strategy->setItemData(1, 0, Qt::UserRole - 1);
 		_ui->reextract_nn->setItemData(1, 0, Qt::UserRole - 1);
 		_ui->odom_bin_nn->setItemData(1, 0, Qt::UserRole - 1);
+	}
+	if(!graph::G2OOptimizer::available())
+	{
+		_ui->graphOptimization_type->setItemData(1, 0, Qt::UserRole - 1);
 	}
 
 	_ui->predictionPlot->showLegend(false);
@@ -455,10 +460,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->rgdb_angularUpdate->setObjectName(Parameters::kRGBDAngularUpdate().c_str());
 	_ui->rgdb_newMapOdomChange->setObjectName(Parameters::kRGBDNewMapOdomChangeDistance().c_str());
 	_ui->odomScanHistory->setObjectName(Parameters::kRGBDPoseScanMatching().c_str());
-	_ui->globalDetection_toroIterations->setObjectName(Parameters::kRGBDToroIterations().c_str());
-	_ui->globalDetection_toroIgnoreVariance->setObjectName(Parameters::kRGBDToroIgnoreVariance().c_str());
-	_ui->globalDetection_optimizeFromGraphEnd->setObjectName(Parameters::kRGBDOptimizeFromGraphEnd().c_str());
 	_ui->spinBox_maxLocalLocationsRetrieved->setObjectName(Parameters::kRGBDMaxLocalRetrieved().c_str());
+
+	_ui->graphOptimization_type->setObjectName(Parameters::kRGBDOptimizeStrategy().c_str());
+	_ui->graphOptimization_slam2d->setObjectName(Parameters::kRGBDOptimizeSlam2D().c_str());
+	_ui->graphOptimization_iterations->setObjectName(Parameters::kRGBDOptimizeIterations().c_str());
+	_ui->graphOptimization_covarianceIgnored->setObjectName(Parameters::kRGBDOptimizeVarianceIgnored().c_str());
+	_ui->graphOptimization_fromGraphEnd->setObjectName(Parameters::kRGBDOptimizeFromGraphEnd().c_str());
 
 	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
 	_ui->graphPlan_planWithNearNodesLinked->setObjectName(Parameters::kRGBDPlanWithNearNodesLinked().c_str());
@@ -1544,6 +1552,18 @@ bool PreferencesDialog::validateForm()
 		}
 	}
 
+	// optimization strategy
+	if(!graph::G2OOptimizer::available())
+	{
+		if(_ui->graphOptimization_type->currentIndex() > 0)
+		{
+			QMessageBox::warning(this, tr("Parameter warning"),
+					tr("Selected graph optimization strategy (g2o) is not available. RTAB-Map is not built "
+					   "with g2o. TORO is set instead for graph optimization strategy."));
+			_ui->graphOptimization_type->setCurrentIndex(graph::Optimizer::kTypeTORO);
+		}
+	}
+
 	//verify binary features and nearest neighbor
 	// BOW dictionary type
 	if(_ui->comboBox_dictionary_strategy->currentIndex() == VWDictionary::kNNFlannLSH && _ui->comboBox_detector_strategy->currentIndex() <= 1)
@@ -2120,6 +2140,7 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 							  "with the nonfree module from OpenCV. Keeping default combo value: %s.",
 							  combo->objectName().toStdString().c_str(),
 							  combo->currentText().toStdString().c_str());
+						ok = false;
 					}
 					else if(valueInt==1 &&
 							(combo->objectName().toStdString().compare(Parameters::kKpNNStrategy()) == 0 ||
@@ -2132,13 +2153,21 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 							  "with binary descriptors. Keeping default combo value: %s.",
 							  combo->objectName().toStdString().c_str(),
 							  combo->currentText().toStdString().c_str());
-					}
-					else
-					{
-						combo->setCurrentIndex(valueInt);
+						ok = false;
 					}
 				}
-				else
+				if(!graph::G2OOptimizer::available())
+				{
+					if(valueInt==1 && combo->objectName().toStdString().compare(Parameters::kRGBDOptimizeStrategy()) == 0)
+					{
+						UWARN("Trying to set \"%s\" to g2o but RTAB-Map isn't built "
+							  "with g2o. Keeping default combo value: %s.",
+							  combo->objectName().toStdString().c_str(),
+							  combo->currentText().toStdString().c_str());
+						ok = false;
+					}
+				}
+				if(ok)
 				{
 					combo->setCurrentIndex(valueInt);
 				}

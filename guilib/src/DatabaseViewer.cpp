@@ -89,6 +89,9 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	ui_->dockWidget_visual->setVisible(false);
 	ui_->dockWidget_stereoView->setVisible(false);
 	ui_->dockWidget_view3d->setVisible(false);
+	ui_->dockWidget_detectMoreLC->setVisible(false);
+	ui_->dockWidget_graphOptimizer->setVisible(false);
+	ui_->dockWidget_gridcloud->setVisible(false);
 
 	ui_->constraintsViewer->setCameraLockZ(false);
 	ui_->constraintsViewer->setCameraFree();
@@ -101,6 +104,9 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	ui_->menuView->addAction(ui_->dockWidget_visual->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_stereoView->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_view3d->toggleViewAction());
+	ui_->menuView->addAction(ui_->dockWidget_detectMoreLC->toggleViewAction());
+	ui_->menuView->addAction(ui_->dockWidget_graphOptimizer->toggleViewAction());
+	ui_->menuView->addAction(ui_->dockWidget_gridcloud->toggleViewAction());
 	connect(ui_->dockWidget_graphView->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateGraphView()));
 
 	connect(ui_->actionQuit, SIGNAL(triggered()), this, SLOT(close()));
@@ -162,13 +168,16 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->horizontalSlider_iterations, SIGNAL(valueChanged(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->horizontalSlider_iterations, SIGNAL(sliderMoved(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->spinBox_iterations, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
-	connect(ui_->spinBox_optimizationsFrom, SIGNAL(valueChanged(int)), this, SLOT(updateGraphView()));
-	connect(ui_->checkBox_initGuess, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreCovariance, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
-	connect(ui_->checkBox_gridFromProjection, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
+	connect(ui_->comboBox_graphOptimizer, SIGNAL(currentIndexChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_2dslam, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+
+	connect(ui_->groupBox_gridFromProjection, SIGNAL(clicked(bool)), this, SLOT(updateGrid()));
 	connect(ui_->doubleSpinBox_gridCellSize, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
 	connect(ui_->spinBox_projDecimation, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
 	connect(ui_->doubleSpinBox_projMaxDepth, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
+
 
 	// connect configuration changed
 	connect(ui_->graphViewer, SIGNAL(configChanged()), this, SLOT(configModified()));
@@ -176,12 +185,16 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	//connect(ui_->graphicsView_B, SIGNAL(configChanged()), this, SLOT(configModified()));
 	// Graph view
 	connect(ui_->spinBox_iterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_initGuess, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignoreCovariance, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_gridFromProjection, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->comboBox_graphOptimizer, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_2dslam, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->groupBox_gridFromProjection, SIGNAL(clicked(bool)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_gridCellSize, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->spinBox_projDecimation, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_projMaxDepth, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_posefilteringRadius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_posefilteringAngle, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	// ICP parameters
 	connect(ui_->spinBox_icp_decimation, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_icp_maxDepth, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
@@ -192,9 +205,10 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->spinBox_icp_normalKSearch, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_icp_2d, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	// Visual parameters
-	connect(ui_->checkBox_visual_recomputeFeatures, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->groupBox_visual_recomputeFeatures, SIGNAL(clicked(bool)), this, SLOT(configModified()));
+	connect(ui_->comboBox_featureType, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
+	connect(ui_->comboBox_nnType, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_visual_2d, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->doubleSpinBox_visual_hessian, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_visual_nndr, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->spinBox_visual_minCorrespondences, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_visual_maxCorrespDistance, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
@@ -216,6 +230,9 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	ui_->dockWidget_stereoView->installEventFilter(this);
 	ui_->dockWidget_visual->installEventFilter(this);
 	ui_->dockWidget_view3d->installEventFilter(this);
+	ui_->dockWidget_detectMoreLC->installEventFilter(this);
+	ui_->dockWidget_graphOptimizer->installEventFilter(this);
+	ui_->dockWidget_gridcloud->installEventFilter(this);
 }
 
 DatabaseViewer::~DatabaseViewer()
@@ -263,15 +280,23 @@ void DatabaseViewer::readSettings()
 	savedMaximized_ = settings.value("maximized", false).toBool();
 
 	// GraphViewer settings
-	settings.beginGroup("GraphView");
-	ui_->graphViewer->loadSettings(settings);
+	ui_->graphViewer->loadSettings(settings, "GraphView");
+
+	settings.beginGroup("optimization");
 	ui_->spinBox_iterations->setValue(settings.value("iterations", ui_->spinBox_iterations->value()).toInt());
-	ui_->checkBox_initGuess->setChecked(settings.value("initGuess", ui_->checkBox_initGuess->isChecked()).toBool());
 	ui_->checkBox_ignoreCovariance->setChecked(settings.value("ignoreCovariance", ui_->checkBox_ignoreCovariance->isChecked()).toBool());
-	ui_->checkBox_gridFromProjection->setChecked(settings.value("gridFromProj", ui_->checkBox_gridFromProjection->isChecked()).toBool());
+	ui_->comboBox_graphOptimizer->setCurrentIndex(settings.value("strategy", ui_->comboBox_graphOptimizer->currentIndex()).toInt());
+	ui_->checkBox_2dslam->setChecked(settings.value("slam2d", ui_->checkBox_2dslam->isChecked()).toBool());
+	settings.endGroup();
+
+	settings.beginGroup("grid");
+	ui_->groupBox_gridFromProjection->setChecked(settings.value("gridFromProj", ui_->groupBox_gridFromProjection->isChecked()).toBool());
 	ui_->doubleSpinBox_gridCellSize->setValue(settings.value("gridCellSize", ui_->doubleSpinBox_gridCellSize->value()).toDouble());
 	ui_->spinBox_projDecimation->setValue(settings.value("projDecimation", ui_->spinBox_projDecimation->value()).toInt());
 	ui_->doubleSpinBox_projMaxDepth->setValue(settings.value("projMaxDepth", ui_->doubleSpinBox_projMaxDepth->value()).toDouble());
+	ui_->groupBox_posefiltering->setChecked(settings.value("poseFiltering", ui_->groupBox_posefiltering->isChecked()).toBool());
+	ui_->doubleSpinBox_posefilteringRadius->setValue(settings.value("poseFilteringRadius", ui_->doubleSpinBox_posefilteringRadius->value()).toDouble());
+	ui_->doubleSpinBox_posefilteringAngle->setValue(settings.value("poseFilteringAngle", ui_->doubleSpinBox_posefilteringAngle->value()).toDouble());
 	settings.endGroup();
 
 	// ImageViews
@@ -292,9 +317,10 @@ void DatabaseViewer::readSettings()
 
 	// Visual parameters
 	settings.beginGroup("visual");
-	ui_->checkBox_visual_recomputeFeatures->setChecked(settings.value("reextract", ui_->checkBox_visual_recomputeFeatures->isChecked()).toBool());
+	ui_->groupBox_visual_recomputeFeatures->setChecked(settings.value("reextract", ui_->groupBox_visual_recomputeFeatures->isChecked()).toBool());
+	ui_->comboBox_featureType->setCurrentIndex(settings.value("featureType", ui_->comboBox_featureType->currentIndex()).toInt());
+	ui_->comboBox_nnType->setCurrentIndex(settings.value("nnType", ui_->comboBox_nnType->currentIndex()).toInt());
 	ui_->checkBox_visual_2d->setChecked(settings.value("force2d", ui_->checkBox_visual_2d->isChecked()).toBool());
-	ui_->doubleSpinBox_visual_hessian->setValue(settings.value("hessian", ui_->doubleSpinBox_visual_hessian->value()).toDouble());
 	ui_->doubleSpinBox_visual_nndr->setValue(settings.value("nndr", ui_->doubleSpinBox_visual_nndr->value()).toDouble());
 	ui_->spinBox_visual_minCorrespondences->setValue(settings.value("minCorr", ui_->spinBox_visual_minCorrespondences->value()).toInt());
 	ui_->doubleSpinBox_visual_maxCorrespDistance->setValue(settings.value("maxCorrDist", ui_->doubleSpinBox_visual_maxCorrespDistance->value()).toDouble());
@@ -324,15 +350,25 @@ void DatabaseViewer::writeSettings()
 	savedMaximized_ = this->isMaximized();
 
 	// save GraphViewer settings
-	settings.beginGroup("GraphView");
-	ui_->graphViewer->saveSettings(settings);
+	ui_->graphViewer->saveSettings(settings, "GraphView");
+
+	// save optimization settings
+	settings.beginGroup("optimization");
 	settings.setValue("iterations", ui_->spinBox_iterations->value());
-	settings.setValue("initGuess", ui_->checkBox_initGuess->isChecked());
 	settings.setValue("ignoreCovariance", ui_->checkBox_ignoreCovariance->isChecked());
-	settings.setValue("gridFromProj", ui_->checkBox_gridFromProjection->isChecked());
+	settings.setValue("strategy", ui_->comboBox_graphOptimizer->currentIndex());
+	settings.setValue("slam2d", ui_->checkBox_2dslam->isChecked());
+	settings.endGroup();
+
+	// save Grid settings
+	settings.beginGroup("grid");
+	settings.setValue("gridFromProj", ui_->groupBox_gridFromProjection->isChecked());
 	settings.setValue("gridCellSize", ui_->doubleSpinBox_gridCellSize->value());
 	settings.setValue("projDecimation", ui_->spinBox_projDecimation->value());
 	settings.setValue("projMaxDepth", ui_->doubleSpinBox_projMaxDepth->value());
+	settings.setValue("poseFiltering", ui_->groupBox_posefiltering->isChecked());
+	settings.setValue("poseFilteringRadius", ui_->doubleSpinBox_posefilteringRadius->value());
+	settings.setValue("poseFilteringAngle", ui_->doubleSpinBox_posefilteringAngle->value());
 	settings.endGroup();
 
 	// ImageViews
@@ -353,9 +389,10 @@ void DatabaseViewer::writeSettings()
 
 	// save Visual parameters
 	settings.beginGroup("visual");
-	settings.setValue("reextract", ui_->checkBox_visual_recomputeFeatures->isChecked());
+	settings.setValue("reextract", ui_->groupBox_visual_recomputeFeatures->isChecked());
+	settings.setValue("featureType", ui_->comboBox_featureType->currentIndex());
+	settings.setValue("nnType", ui_->comboBox_nnType->currentIndex());
 	settings.setValue("force2d", ui_->checkBox_visual_2d->isChecked());
-	settings.setValue("hessian", ui_->doubleSpinBox_visual_hessian->value());
 	settings.setValue("nndr", ui_->doubleSpinBox_visual_nndr->value());
 	settings.setValue("minCorr", ui_->spinBox_visual_minCorrespondences->value());
 	settings.setValue("maxCorrDist", ui_->doubleSpinBox_visual_maxCorrespDistance->value());
@@ -678,6 +715,7 @@ void DatabaseViewer::updateIds()
 	linksAdded_.clear();
 	linksRefined_.clear();
 	linksRemoved_.clear();
+	ui_->label_optimizeFrom->setText(tr("Optimize from"));
 	if(memory_->getLastWorkingSignature())
 	{
 		//get constraints only for parent links
@@ -710,7 +748,8 @@ void DatabaseViewer::updateIds()
 
 			int first = *ids.begin();
 			ui_->spinBox_optimizationsFrom->setRange(first, memory_->getLastWorkingSignature()->id());
-			ui_->spinBox_optimizationsFrom->setValue(first);
+			ui_->spinBox_optimizationsFrom->setValue(memory_->getLastWorkingSignature()->id());
+			ui_->label_optimizeFrom->setText(tr("Optimize from [%1, %2]").arg(first).arg(memory_->getLastWorkingSignature()->id()));
 		}
 	}
 
@@ -851,7 +890,7 @@ void DatabaseViewer::generateTOROGraph()
 		QString path = QFileDialog::getSaveFileName(this, tr("Save File"), pathDatabase_+"/constraints" + QString::number(id) + ".graph", tr("TORO file (*.graph)"));
 		if(!path.isEmpty())
 		{
-			rtabmap::graph::saveTOROGraph(path.toStdString(), uValueAt(graphes_, id), links);
+			graph::TOROOptimizer::saveGraph(path.toStdString(), uValueAt(graphes_, id), links);
 		}
 	}
 }
@@ -2080,7 +2119,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			{
 				UTimer time;
 				bool added = false;
-				if(ui_->checkBox_gridFromProjection->isChecked())
+				if(ui_->groupBox_gridFromProjection->isChecked())
 				{
 					Signature data = memory_->getSignatureData(ids_.at(i), true);
 					if(!data.getDepthRaw().empty())
@@ -2159,13 +2198,28 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		std::map<int, rtabmap::Transform> & graph = uValueAt(graphes_, value);
 		std::multimap<int, Link> links = updateLinksWithModifications(links_);
 		ui_->graphViewer->updateGraph(graph, links);
-		if(graph.size() && localMaps_.size())
+		if(graph.size() && localMaps_.size() && ui_->graphViewer->isGridMapVisible())
 		{
 			float xMin, yMin;
 			float cell = ui_->doubleSpinBox_gridCellSize->value();
-			cv::Mat map = rtabmap::util3d::convertMap2Image8U(rtabmap::util3d::create2DMapFromOccupancyLocalMaps(graph, localMaps_, cell, xMin, yMin));
-			ui_->graphViewer->updateMap(map, cell, xMin, yMin);
+			cv::Mat map;
+			if(ui_->groupBox_posefiltering->isChecked())
+			{
+				std::map<int, rtabmap::Transform> graphFiltered = graph::radiusPosesFiltering(graph,
+						ui_->doubleSpinBox_posefilteringRadius->value(),
+						ui_->doubleSpinBox_posefilteringAngle->value()*CV_PI/180.0);
+				map = rtabmap::util3d::create2DMapFromOccupancyLocalMaps(graphFiltered, localMaps_, cell, xMin, yMin);
+			}
+			else
+			{
+				map = rtabmap::util3d::create2DMapFromOccupancyLocalMaps(graph, localMaps_, cell, xMin, yMin);
+			}
+			if(!map.empty())
+			{
+				ui_->graphViewer->updateMap(rtabmap::util3d::convertMap2Image8U(map), cell, xMin, yMin);
+			}
 		}
+		ui_->graphViewer->update();
 		ui_->label_iterations->setNum(value);
 
 		//compute total length (neighbor links)
@@ -2209,16 +2263,31 @@ void DatabaseViewer::updateGraphView()
 		graphes_.push_back(poses_);
 		ui_->actionGenerate_TORO_graph_graph->setEnabled(true);
 		std::multimap<int, rtabmap::Link> links = updateLinksWithModifications(links_);
-		std::map<int, int> depthGraph = rtabmap::graph::generateDepthGraph(links, ui_->spinBox_optimizationsFrom->value(), 0);
-		rtabmap::graph::optimizeTOROGraph(
-				depthGraph,
+		graph::Optimizer * optimizer = 0;
+		if(ui_->comboBox_graphOptimizer->currentIndex() == graph::Optimizer::kTypeG2O)
+		{
+			optimizer = new graph::G2OOptimizer(ui_->spinBox_iterations->value(), ui_->checkBox_2dslam->isChecked(), ui_->checkBox_ignoreCovariance->isChecked());
+		}
+		else
+		{
+			optimizer = new graph::TOROOptimizer(ui_->spinBox_iterations->value(), ui_->checkBox_2dslam->isChecked(), ui_->checkBox_ignoreCovariance->isChecked());
+		}
+		int fromId = ui_->spinBox_optimizationsFrom->value();
+		std::map<int, rtabmap::Transform> posesOut;
+		std::multimap<int, rtabmap::Link> linksOut;
+		optimizer->getConnectedGraph(
+				fromId,
 				poses_,
-				links, finalPoses,
-				ui_->spinBox_iterations->value(),
-				ui_->checkBox_initGuess->isChecked(),
-				ui_->checkBox_ignoreCovariance->isChecked(),
-				&graphes_);
+				links,
+				posesOut,
+				linksOut);
+
+		QTime time;
+		time.start();
+		finalPoses = optimizer->optimize(fromId, posesOut, linksOut, &graphes_);
+		ui_->label_timeOptimization->setNum(double(time.elapsed())/1000.0);
 		graphes_.push_back(finalPoses);
+		delete optimizer;
 	}
 	if(graphes_.size())
 	{
@@ -2238,8 +2307,8 @@ void DatabaseViewer::updateGraphView()
 void DatabaseViewer::updateGrid()
 {
 	if((sender() != ui_->spinBox_projDecimation && sender() != ui_->doubleSpinBox_projMaxDepth) ||
-	   (sender() == ui_->spinBox_projDecimation && ui_->checkBox_gridFromProjection->isChecked()) ||
-	   (sender() == ui_->doubleSpinBox_projMaxDepth && ui_->checkBox_gridFromProjection->isChecked()))
+	   (sender() == ui_->spinBox_projDecimation && ui_->groupBox_gridFromProjection->isChecked()) ||
+	   (sender() == ui_->doubleSpinBox_projMaxDepth && ui_->groupBox_gridFromProjection->isChecked()))
 	{
 		localMaps_.clear();
 		updateGraphView();
@@ -2535,11 +2604,12 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool updateGraph
 	std::string rejectedMsg;
 	double variance = -1.0;
 	int inliers = -1;
-	if(ui_->checkBox_visual_recomputeFeatures->isChecked())
+	if(ui_->groupBox_visual_recomputeFeatures->isChecked())
 	{
 		// create a fake memory to regenerate features
 		ParametersMap parameters;
-		parameters.insert(ParametersPair(Parameters::kSURFHessianThreshold(), uNumber2Str(ui_->doubleSpinBox_visual_hessian->value())));
+		parameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(ui_->comboBox_featureType->currentIndex())));
+		parameters.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(ui_->comboBox_nnType->currentIndex())));
 		parameters.insert(ParametersPair(Parameters::kLccBowInlierDistance(), uNumber2Str(ui_->doubleSpinBox_visual_maxCorrespDistance->value())));
 		parameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(ui_->doubleSpinBox_visual_maxDepth->value())));
 		parameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(ui_->doubleSpinBox_visual_nndr->value())));
@@ -2645,11 +2715,12 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		std::string rejectedMsg;
 		double variance = -1.0;
 		int inliers = -1;
-		if(ui_->checkBox_visual_recomputeFeatures->isChecked())
+		if(ui_->groupBox_visual_recomputeFeatures->isChecked())
 		{
 			// create a fake memory to regenerate features
 			ParametersMap parameters;
-			parameters.insert(ParametersPair(Parameters::kSURFHessianThreshold(), uNumber2Str(ui_->doubleSpinBox_visual_hessian->value())));
+			parameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(ui_->comboBox_featureType->currentIndex())));
+			parameters.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(ui_->comboBox_nnType->currentIndex())));
 			parameters.insert(ParametersPair(Parameters::kLccBowInlierDistance(), uNumber2Str(ui_->doubleSpinBox_visual_maxCorrespDistance->value())));
 			parameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(ui_->doubleSpinBox_visual_maxDepth->value())));
 			parameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(ui_->doubleSpinBox_visual_nndr->value())));
