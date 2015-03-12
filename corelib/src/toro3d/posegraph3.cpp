@@ -93,7 +93,7 @@ bool TreePoseGraph3::load(const char* filename, bool overrideCovariances, bool t
   is.clear(); /* clears the end-of-file and error flags */
   is.seekg(0, ios::beg);
 
-  bool edgesOk=true;
+  //bool edgesOk=true;
   while(is){
     char buf[LINESIZE];
     is.getline(buf,LINESIZE);
@@ -119,7 +119,7 @@ bool TreePoseGraph3::load(const char* filename, bool overrideCovariances, bool t
 	if (!addEdge(v1, v2,t ,m)){
 	  cerr << "Fatal, attempting to insert an edge between non existing nodes, skipping";
 	  cerr << "edge=" << id1 <<" -> " << id2 << endl;
-	  edgesOk=false;
+	  //edgesOk=false;
 	} 
       }
     } else {
@@ -140,7 +140,7 @@ bool TreePoseGraph3::load(const char* filename, bool overrideCovariances, bool t
 	if (!addEdge(v1, v2,t ,m)){
 	  cerr << "Fatal, attempting to insert an edge between non existing nodes, skipping";
 	  cerr << "edge=" << id1 <<" -> " << id2 << endl;
-	  edgesOk=false;
+	  //edgesOk=false;
 	}
       }
     }

@@ -274,14 +274,14 @@ void TreePoseGraph2::revertEdgeInfo(Edge* e){
   R.values[2][2]=1;
 
   InformationMatrix IM=R.transpose()*e->informationMatrix*R;
-  
 
-  Pose np=e->transformation.toPoseType();
+
+  //Pose np=e->transformation.toPoseType();
  
-  Pose ip=it.toPoseType();
+  //Pose ip=it.toPoseType();
 
-  Transformation tc=it*e->transformation;
-  Pose pc=tc.toPoseType();
+  //Transformation tc=it*e->transformation;
+  //Pose pc=tc.toPoseType();
 
   e->transformation=it;
   e->informationMatrix=IM;
@@ -302,10 +302,10 @@ void TreePoseGraph2::collapseEdge(Edge* e){
   EdgeMap::iterator ie_it=edges.find(e);
   if (ie_it==edges.end())
     return;
-  VertexMap::iterator it1=vertices.find(e->v1->id);
-  VertexMap::iterator it2=vertices.find(e->v2->id);
-  assert(it1!=vertices.end());
-  assert(it2!=vertices.end());
+  //VertexMap::iterator it1=vertices.find(e->v1->id);
+  //VertexMap::iterator it2=vertices.find(e->v2->id);
+  assert(vertices.find(e->v1->id)!=vertices.end());
+  assert(vertices.find(e->v2->id)!=vertices.end());
 
   Vertex* v1=e->v1;
   Vertex* v2=e->v2;
@@ -328,37 +328,37 @@ void TreePoseGraph2::collapseEdge(Edge* e){
   InformationMatrix I12=e->informationMatrix;
   CovarianceMatrix  C12=I12.inv();
   Transformation    T12=e->transformation;
-  Pose              p12=T12.toPoseType();
+  //Pose              p12=T12.toPoseType();
 
-  Transformation iT12=T12.inv();
+  //Transformation iT12=T12.inv();
 
   //compute the marginal information of the nodes in the path v1-v2-v*
   for (EdgeList::iterator it2=v2->edges.begin(); it2!=v2->edges.end(); it2++){
     Edge* e2=*it2;
     if (e2->v1==v2){ //edge leaving v2
-      Transformation T2x=e2->transformation;
-      Pose           p2x=T2x.toPoseType();
+      //Transformation T2x=e2->transformation;
+      //Pose           p2x=T2x.toPoseType();
       InformationMatrix I2x=e2->informationMatrix;
       CovarianceMatrix  C2x=I2x.inv();
       
       //compute the estimate of the vertex based on the path v1-v2-vx
       
-      Transformation tr=iT12*T2x;
+      //Transformation tr=iT12*T2x;
       
-      InformationMatrix R;
-      R.values[0][0]=tr.rotationMatrix[0][0];
-      R.values[0][1]=tr.rotationMatrix[0][1];
-      R.values[0][2]=0;
+      //InformationMatrix R;
+      //R.values[0][0]=tr.rotationMatrix[0][0];
+      //R.values[0][1]=tr.rotationMatrix[0][1];
+      //R.values[0][2]=0;
       
-      R.values[1][0]=tr.rotationMatrix[1][0];
-      R.values[1][1]=tr.rotationMatrix[1][1];
-      R.values[1][2]=0;
+      //R.values[1][0]=tr.rotationMatrix[1][0];
+      //R.values[1][1]=tr.rotationMatrix[1][1];
+      //R.values[1][2]=0;
       
-      R.values[2][0]=0;
-      R.values[2][1]=0;
-      R.values[2][2]=1;
+      //R.values[2][0]=0;
+      //R.values[2][1]=0;
+      //R.values[2][2]=1;
 
-      CovarianceMatrix CM=R.transpose()*C2x*R;
+      //CovarianceMatrix CM=R.transpose()*C2x*R;
       
       
       Transformation T1x_pred=T12*e2->transformation;
