@@ -28,12 +28,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/DatabaseViewer.h"
 #include "rtabmap/gui/CloudViewer.h"
 #include "ui_DatabaseViewer.h"
-#include <QtGui/QMessageBox>
-#include <QtGui/QFileDialog>
-#include <QtGui/QInputDialog>
-#include <QtGui/QGraphicsLineItem>
+#include <QMessageBox>
+#include <QFileDialog>
+#include <QInputDialog>
+#include <QGraphicsLineItem>
 #include <QtGui/QCloseEvent>
-#include <QtGui/QGraphicsOpacityEffect>
+#include <QGraphicsOpacityEffect>
 #include <QtCore/QBuffer>
 #include <QtCore/QTextStream>
 #include <QtCore/QDateTime>

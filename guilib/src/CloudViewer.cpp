@@ -33,13 +33,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/filters/frustum_culling.h>
-#include <QtGui/QMenu>
-#include <QtGui/QAction>
+#include <QMenu>
+#include <QAction>
 #include <QtGui/QContextMenuEvent>
-#include <QtGui/QInputDialog>
+#include <QInputDialog>
 #include <QtGui/QWheelEvent>
 #include <QtGui/QKeyEvent>
-#include <QtGui/QColorDialog>
+#include <QColorDialog>
 #include <QtGui/QVector3D>
 #include <set>
 
@@ -490,7 +490,11 @@ bool CloudViewer::addOccupancyGridMap(
 		material.tex_file = tmpPath;
 		mesh->tex_materials.push_back(material);
 
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+		std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > coordinates;
+#else
 		std::vector<Eigen::Vector2f> coordinates;
+#endif
 		coordinates.push_back(Eigen::Vector2f(0,1));
 		coordinates.push_back(Eigen::Vector2f(1,1));
 		coordinates.push_back(Eigen::Vector2f(1,0));

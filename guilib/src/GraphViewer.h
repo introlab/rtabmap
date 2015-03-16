@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef GRAPHVIEWER_H_
 #define GRAPHVIEWER_H_
 
-#include <QtGui/QGraphicsView>
+#include <QGraphicsView>
 #include <QtCore/QMap>
 #include <QtCore/QSettings>
 #include <rtabmap/core/Link.h>

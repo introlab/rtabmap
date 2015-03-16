@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAPVISIBILITYWIDGET_H_
 #define MAPVISIBILITYWIDGET_H_
 
-#include <QtGui/QWidget>
+#include <QWidget>
 #include <rtabmap/core/Transform.h>
 #include <map>
 

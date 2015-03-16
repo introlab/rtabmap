@@ -33,9 +33,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UConversion.h"
 #include <pcl/common/transforms.h>
 #include <pcl/io/pcd_io.h>
-#include <QtGui/QInputDialog>
-#include <QtGui/QAction>
-#include <QtGui/QMenu>
+#include <QInputDialog>
+#include <QAction>
+#include <QMenu>
 #include <QtGui/QKeyEvent>
 
 namespace rtabmap {

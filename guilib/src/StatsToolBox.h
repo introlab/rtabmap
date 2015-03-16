@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef STATSTOOLBOX_H_
 #define STATSTOOLBOX_H_
 
-#include <QtGui/QWidget>
+#include <QWidget>
 #include <QtCore/QMap>
 
 class QToolButton;
