@@ -98,6 +98,28 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 
 	this->readSettings();
 
+	if(RTABMAP_NONFREE == 0)
+	{
+		ui_->comboBox_featureType->setItemData(0, 0, Qt::UserRole - 1);
+		ui_->comboBox_featureType->setItemData(1, 0, Qt::UserRole - 1);
+
+		if(ui_->comboBox_featureType->currentIndex() <= 1)
+		{
+			UWARN("SURF/SIFT not available, setting feature default to FAST/BRIEF.");
+			ui_->comboBox_featureType->setCurrentIndex(4);
+			ui_->comboBox_nnType->setCurrentIndex(3);
+		}
+	}
+	if(!graph::G2OOptimizer::available())
+	{
+		ui_->comboBox_graphOptimizer->setItemData(1, 0, Qt::UserRole - 1);
+		if(ui_->comboBox_graphOptimizer->currentIndex() == 1)
+		{
+			UWARN("g2o is not available, setting optimization default to TORO.");
+			ui_->comboBox_graphOptimizer->setCurrentIndex(0);
+		}
+	}
+
 	ui_->menuView->addAction(ui_->dockWidget_constraints->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_graphView->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_icp->toggleViewAction());
