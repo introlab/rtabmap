@@ -1765,6 +1765,12 @@ bool Rtabmap::process(const SensorData & data)
 		ULOGGER_INFO("Time creating stats = %f...", timeStatsCreation);
 	}
 
+	//By default, remove all signatures with a loop closure link if they are not in reactivateIds
+	//This will also remove rehearsed signatures
+	std::list<int> signaturesRemoved = _memory->cleanup();
+	timeMemoryCleanup = timer.ticks();
+	ULOGGER_INFO("timeMemoryCleanup = %fs... %d signatures removed", timeMemoryCleanup, (int)signaturesRemoved.size());
+
 	// If this option activated, add new nodes only if there are linked with a previous map.
 	// Used when rtabmap is first started, it will wait a
 	// global loop closure detection before starting the new map,
@@ -1776,6 +1782,7 @@ bool Rtabmap::process(const SensorData & data)
 	{
 		UWARN("Ignoring location %d because a global loop closure is required before starting a new map!",
 				signature->id());
+		signaturesRemoved.push_back(signature->id());
 		_memory->deleteLocation(signature->id());
 	}
 	else if(smallDisplacement)
@@ -1783,17 +1790,12 @@ bool Rtabmap::process(const SensorData & data)
 		UWARN("Ignoring location %d because the displacement is too small! (d=%f a=%f)",
 			  signature->id(), _rgbdLinearUpdate, _rgbdAngularUpdate);
 		// If there is a too small displacement, remove the node
+		signaturesRemoved.push_back(signature->id());
 		_memory->deleteLocation(signature->id());
 	}
 
 	// Pass this point signature should not be used, since it could have been transferred...
 	signature = 0;
-
-	//By default, remove all signatures with a loop closure link if they are not in reactivateIds
-	//This will also remove rehearsed signatures
-	std::list<int> signaturesRemoved = _memory->cleanup();
-	timeMemoryCleanup = timer.ticks();
-	ULOGGER_INFO("timeMemoryCleanup = %fs... %d signatures removed", timeMemoryCleanup, (int)signaturesRemoved.size());
 
 	//============================================================
 	// TRANSFER
