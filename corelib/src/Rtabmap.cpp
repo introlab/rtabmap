@@ -398,6 +398,28 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	// By default, we create our strategies if they are not already created.
 	// If they already exists, we check the parameters if a change is requested
 
+	// Graph optimizer
+	graph::Optimizer::Type optimizerType = graph::Optimizer::kTypeUndef;
+	if((iter=parameters.find(Parameters::kRGBDOptimizeStrategy())) != parameters.end())
+	{
+		optimizerType = (graph::Optimizer::Type)std::atoi((*iter).second.c_str());
+	}
+	if(optimizerType!=graph::Optimizer::kTypeUndef)
+	{
+		UDEBUG("new detector strategy %d", int(optimizerType));
+		if(_graphOptimizer)
+		{
+			delete _graphOptimizer;
+			_graphOptimizer = 0;
+		}
+
+		_graphOptimizer = graph::Optimizer::create(optimizerType, parameters);
+	}
+	else if(_graphOptimizer)
+	{
+		_graphOptimizer->parseParameters(parameters);
+	}
+
 	if(!_memory)
 	{
 		_memory = new Memory(parameters);
@@ -443,29 +465,6 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		_bayesFilter->parseParameters(parameters);
 	}
-
-	// Graph optimizer
-	graph::Optimizer::Type optimizerType = graph::Optimizer::kTypeUndef;
-	if((iter=parameters.find(Parameters::kRGBDOptimizeStrategy())) != parameters.end())
-	{
-		optimizerType = (graph::Optimizer::Type)std::atoi((*iter).second.c_str());
-	}
-	if(optimizerType!=graph::Optimizer::kTypeUndef)
-	{
-		UDEBUG("new detector strategy %d", int(optimizerType));
-		if(_graphOptimizer)
-		{
-			delete _graphOptimizer;
-			_graphOptimizer = 0;
-		}
-
-		_graphOptimizer = graph::Optimizer::create(optimizerType, parameters);
-	}
-	else if(_graphOptimizer)
-	{
-		_graphOptimizer->parseParameters(parameters);
-	}
-
 
 	for(ParametersMap::const_iterator iter = parameters.begin(); iter!=parameters.end(); ++iter)
 	{
@@ -2189,6 +2188,7 @@ void Rtabmap::optimizeCurrentMap(
 			*constraints = edgeConstraints;
 		}
 
+		UASSERT(_graphOptimizer!=0);
 		if(_graphOptimizer->iterations() == 0)
 		{
 			// Optimization desactivated! Return not optimized poses.
