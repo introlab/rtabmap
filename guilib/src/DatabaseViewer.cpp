@@ -194,6 +194,8 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->checkBox_ignoreCovariance, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->comboBox_graphOptimizer, SIGNAL(currentIndexChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_2dslam, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->spinBox_optimizationDepth, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
+
 
 	connect(ui_->groupBox_gridFromProjection, SIGNAL(clicked(bool)), this, SLOT(updateGrid()));
 	connect(ui_->doubleSpinBox_gridCellSize, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
@@ -210,6 +212,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->checkBox_ignoreCovariance, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->comboBox_graphOptimizer, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_2dslam, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->spinBox_optimizationDepth, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->groupBox_gridFromProjection, SIGNAL(clicked(bool)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_gridCellSize, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->spinBox_projDecimation, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
@@ -309,6 +312,7 @@ void DatabaseViewer::readSettings()
 	ui_->checkBox_ignoreCovariance->setChecked(settings.value("ignoreCovariance", ui_->checkBox_ignoreCovariance->isChecked()).toBool());
 	ui_->comboBox_graphOptimizer->setCurrentIndex(settings.value("strategy", ui_->comboBox_graphOptimizer->currentIndex()).toInt());
 	ui_->checkBox_2dslam->setChecked(settings.value("slam2d", ui_->checkBox_2dslam->isChecked()).toBool());
+	ui_->spinBox_optimizationDepth->setValue(settings.value("depth", ui_->spinBox_optimizationDepth->value()).toInt());
 	settings.endGroup();
 
 	settings.beginGroup("grid");
@@ -380,6 +384,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("ignoreCovariance", ui_->checkBox_ignoreCovariance->isChecked());
 	settings.setValue("strategy", ui_->comboBox_graphOptimizer->currentIndex());
 	settings.setValue("slam2d", ui_->checkBox_2dslam->isChecked());
+	settings.setValue("depth", ui_->spinBox_optimizationDepth->value());
 	settings.endGroup();
 
 	// save Grid settings
@@ -947,7 +952,13 @@ void DatabaseViewer::view3DMap()
 		double maxDepth = QInputDialog::getDouble(this, tr("Camera depth?"), tr("Maximum depth (m, 0=no max):"), 4.0, 0, 10, 2, &ok);
 		if(ok)
 		{
-			const std::map<int, Transform> & optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+			std::map<int, Transform> optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+			if(ui_->groupBox_posefiltering->isChecked())
+			{
+				optimizedPoses = graph::radiusPosesFiltering(optimizedPoses,
+						ui_->doubleSpinBox_posefilteringRadius->value(),
+						ui_->doubleSpinBox_posefilteringAngle->value()*CV_PI/180.0);
+			}
 			if(optimizedPoses.size() > 0)
 			{
 				rtabmap::DetailedProgressDialog progressDialog(this);
@@ -1067,7 +1078,13 @@ void DatabaseViewer::generate3DMap()
 			QString path = QFileDialog::getExistingDirectory(this, tr("Save directory"), pathDatabase_);
 			if(!path.isEmpty())
 			{
-				const std::map<int, Transform> & optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+				std::map<int, Transform> optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+				if(ui_->groupBox_posefiltering->isChecked())
+				{
+					optimizedPoses = graph::radiusPosesFiltering(optimizedPoses,
+							ui_->doubleSpinBox_posefilteringRadius->value(),
+							ui_->doubleSpinBox_posefilteringAngle->value()*CV_PI/180.0);
+				}
 				if(optimizedPoses.size() > 0)
 				{
 					rtabmap::DetailedProgressDialog progressDialog;
@@ -2302,7 +2319,8 @@ void DatabaseViewer::updateGraphView()
 				poses_,
 				links,
 				posesOut,
-				linksOut);
+				linksOut,
+				ui_->spinBox_optimizationDepth->value());
 
 		QTime time;
 		time.start();

@@ -855,6 +855,7 @@ bool Rtabmap::process(const SensorData & data)
 	//============================================================
 	// Metric
 	//============================================================
+	bool smallDisplacement = false;
 	if(_rgbdSlamMode)
 	{
 		//Verify if there was a rehearsal
@@ -882,10 +883,9 @@ bool Rtabmap::process(const SensorData & data)
 					 fabs(pitch) < _rgbdAngularUpdate &&
 					 fabs(yaw) < _rgbdAngularUpdate)))
 				{
-					UWARN("Ignoring location %d because the displacement is too small! (d=%f a=%f)",
-							signature->id(), _rgbdLinearUpdate, _rgbdAngularUpdate);
-					_memory->deleteLocation(signature->id());
-					return false;
+					// This will disable global loop closure detection, only retrieval will be done.
+					// The location will also be deleted at the end.
+					smallDisplacement = true;
 				}
 			}
 		}
@@ -1003,7 +1003,7 @@ bool Rtabmap::process(const SensorData & data)
 	//============================================================
 	// Bayes filter update
 	//============================================================
-	if(!signature->isBadSignature())
+	if(!signature->isBadSignature() && !smallDisplacement)
 	{
 		// If the working memory is empty, don't do the detection. It happens when it
 		// is the first time the detector is started (there needs some images to
@@ -1037,6 +1037,11 @@ bool Rtabmap::process(const SensorData & data)
 			timePosteriorCalculation = timer.ticks();
 			ULOGGER_INFO("timePosteriorCalculation=%fs",timePosteriorCalculation);
 
+			// For statistics, copy weights
+			if(_publishStats && (_publishLikelihood || _publishPdf))
+			{
+				weights = _memory->getWeights();
+			}
 
 			timer.start();
 			//============================================================
@@ -1106,6 +1111,10 @@ bool Rtabmap::process(const SensorData & data)
 			}
 		} // if(_memory->getWorkingMemSize())
 	}// !isBadSignature
+	else if(!signature->isBadSignature() && smallDisplacement)
+	{
+		_highestHypothesis = lastHighestHypothesis;
+	}
 
 	//============================================================
 	// Before retrieval, make sure the trash has finished
@@ -1114,12 +1123,6 @@ bool Rtabmap::process(const SensorData & data)
 	timeEmptyingTrash = _memory->getDbSavingTime();
 	timeJoiningTrash = timer.ticks();
 	ULOGGER_INFO("Time emptying memory trash = %fs,  joining (actual overhead) = %fs", timeEmptyingTrash, timeJoiningTrash);
-
-	// also copy weights before the memory is changed
-	if(_publishStats && (_publishLikelihood || _publishPdf))
-	{
-		weights = _memory->getWeights();
-	}
 
 	//============================================================
 	// RETRIEVAL 1/3 : Loop closure neighbors reactivation
@@ -1771,6 +1774,15 @@ bool Rtabmap::process(const SensorData & data)
 		signature->getLinks().size() == 0 &&     // alone in the current map
 		_memory->getWorkingMem().size()>1)       // The working memory should not be empty
 	{
+		UWARN("Ignoring location %d because a global loop closure is required before starting a new map!",
+				signature->id());
+		_memory->deleteLocation(signature->id());
+	}
+	else if(smallDisplacement)
+	{
+		UWARN("Ignoring location %d because the displacement is too small! (d=%f a=%f)",
+			  signature->id(), _rgbdLinearUpdate, _rgbdAngularUpdate);
+		// If there is a too small displacement, remove the node
 		_memory->deleteLocation(signature->id());
 	}
 

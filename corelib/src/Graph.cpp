@@ -148,16 +148,16 @@ void Optimizer::getConnectedGraph(
 	linksOut.clear();
 
 	std::set<int> ids;
-	std::list<int> curentDepthList;
+	std::set<int> curentDepth;
 	std::set<int> nextDepth;
 	nextDepth.insert(fromId);
 	int d = 0;
 	while((depth == 0 || d < depth) && nextDepth.size())
 	{
-		curentDepthList = std::list<int>(nextDepth.begin(), nextDepth.end());
+		curentDepth = nextDepth;
 		nextDepth.clear();
 
-		for(std::list<int>::iterator jter = curentDepthList.begin(); jter!=curentDepthList.end(); ++jter)
+		for(std::set<int>::iterator jter = curentDepth.begin(); jter!=curentDepth.end(); ++jter)
 		{
 			if(ids.find(*jter) == ids.end())
 			{
@@ -170,16 +170,33 @@ void Optimizer::getConnectedGraph(
 					{
 						if(ids.find(iter->second.to()) == ids.end() && uContains(posesIn, iter->second.to()))
 						{
-							linksOut.insert(*iter);
 							nextDepth.insert(iter->second.to());
+							if(depth == 0 || d < depth-1)
+							{
+								linksOut.insert(*iter);
+							}
+							else if(curentDepth.find(iter->second.to()) != curentDepth.end() ||
+									ids.find(iter->second.to()) != ids.end())
+							{
+								linksOut.insert(*iter);
+							}
 						}
 					}
 					else if(iter->second.to() == *jter)
 					{
 						if(ids.find(iter->second.from()) == ids.end() && uContains(posesIn, iter->second.from()))
 						{
-							linksOut.insert(*iter);
 							nextDepth.insert(iter->second.from());
+
+							if(depth == 0 || d < depth-1)
+							{
+								linksOut.insert(*iter);
+							}
+							else if(curentDepth.find(iter->second.from()) != curentDepth.end() ||
+									ids.find(iter->second.from()) != ids.end())
+							{
+								linksOut.insert(*iter);
+							}
 						}
 					}
 				}
@@ -199,7 +216,7 @@ std::map<int, Transform> TOROOptimizer::optimize(
 		std::list<std::map<int, Transform> > * intermediateGraphes) // contains poses after tree init to last one before the end
 {
 	std::map<int, Transform> optimizedPoses;
-	UDEBUG("Optimizing graph...");
+	UDEBUG("Optimizing graph (pose=%d constraints=%d)...", (int)poses.size(), (int)edgeConstraints.size());
 	if(edgeConstraints.size()>=1 && poses.size()>=2 && iterations() > 0)
 	{
 		// Apply TORO optimization
@@ -263,6 +280,8 @@ std::map<int, Transform> TOROOptimizer::optimize(
 				int id2 = iter->second.to();
 				AISNavigation::TreePoseGraph2::Vertex* v1=pg2.vertex(id1);
 				AISNavigation::TreePoseGraph2::Vertex* v2=pg2.vertex(id2);
+				UASSERT(v1 != 0);
+				UASSERT(v2 != 0);
 				AISNavigation::TreePoseGraph2::Transformation t(p);
 				if (!pg2.addEdge(v1, v2, t, inf))
 				{
@@ -300,6 +319,8 @@ std::map<int, Transform> TOROOptimizer::optimize(
 				int id2 = iter->second.to();
 				AISNavigation::TreePoseGraph3::Vertex* v1=pg3.vertex(id1);
 				AISNavigation::TreePoseGraph3::Vertex* v2=pg3.vertex(id2);
+				UASSERT(v1 != 0);
+				UASSERT(v2 != 0);
 				AISNavigation::TreePoseGraph3::Transformation t(p);
 				if (!pg3.addEdge(v1, v2, t, inf))
 				{
@@ -652,6 +673,8 @@ std::map<int, Transform> G2OOptimizer::optimize(
 				g2o::EdgeSE2 * e = new g2o::EdgeSE2();
 				g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
 				g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
+				UASSERT(v1 != 0);
+				UASSERT(v2 != 0);
 				e->setVertex(0, v1);
 				e->setVertex(1, v2);
 				e->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
@@ -685,6 +708,8 @@ std::map<int, Transform> G2OOptimizer::optimize(
 				g2o::EdgeSE3 * e = new g2o::EdgeSE3();
 				g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
 				g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
+				UASSERT(v1 != 0);
+				UASSERT(v2 != 0);
 				e->setVertex(0, v1);
 				e->setVertex(1, v2);
 				e->setMeasurement(constraint);
