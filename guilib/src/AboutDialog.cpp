@@ -27,6 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "AboutDialog.h"
 #include "rtabmap/core/Rtabmap.h"
+#include "rtabmap/core/CameraRGBD.h"
+#include "rtabmap/core/Graph.h"
 #include "ui_aboutDialog.h"
 #include <opencv2/core/version.hpp>
 #include <pcl/pcl_config.h>
@@ -51,6 +53,9 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_version->setText(version);
 	_ui->label_opencv_version->setText(cv_version);
 	_ui->label_pcl_version->setText(PCL_VERSION_PRETTY);
+	_ui->label_freenect->setText(CameraFreenect::available()?"Yes":"No");
+	_ui->label_openni2->setText(CameraOpenNI2::available()?"Yes":"No");
+	_ui->label_g2o->setText(graph::G2OOptimizer::available()?"Yes":"No");
 }
 
 AboutDialog::~AboutDialog()
