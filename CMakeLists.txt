@@ -32,6 +32,8 @@ SET(PROJECT_VERSION_PATCH ${RTABMAP_PATCH_VERSION})
 
 SET(PROJECT_SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
 
+SET(RTABMAP_QT_VERSION 4 CACHE STRING "Which QT version to use")
+
 ####### COMPILATION PARAMS #######
 # In case of Makefiles if the user does not setup CMAKE_BUILD_TYPE, assume it's Release:
 IF(${CMAKE_GENERATOR} MATCHES ".*Makefiles")
@@ -128,7 +130,11 @@ FIND_PACKAGE(OpenNI2)
 FIND_PACKAGE(G2O)
 
 # If Qt is here, the GUI will be built
-FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg) 
+IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
+    FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg)
+ELSE()
+    FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui Svg)
+ENDIF()
 
 ####### OSX BUNDLE CMAKE_INSTALL_PREFIX #######
 IF(APPLE AND BUILD_AS_BUNDLE)
@@ -164,11 +170,11 @@ CONFIGURE_FILE(Version.h.in ${PROJECT_SOURCE_DIR}/corelib/include/${PROJECT_PREF
 ADD_SUBDIRECTORY( utilite )
 ADD_SUBDIRECTORY( corelib )
 
-IF(QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND)
+IF(Qt5_FOUND OR (QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND))
    ADD_SUBDIRECTORY( guilib )
    ADD_SUBDIRECTORY( app )
 ELSE()
-   MESSAGE(STATUS "[WARNING] Qt4 not found, the GUI lib and the stand-alone application will not be compiled...")
+   MESSAGE(STATUS "[WARNING] Qt not found, the GUI lib and the stand-alone application will not be compiled...")
 ENDIF()
 
 ADD_SUBDIRECTORY( tools )

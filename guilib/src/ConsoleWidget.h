@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CONSOLEWIDGET_H_
 
 #include <rtabmap/utilite/UEventsHandler.h>
-#include <QtGui/QWidget>
+#include <QWidget>
 #include <QtCore/QMutex>
 #include <QtCore/QTimer>
 #include <QtCore/QTime>

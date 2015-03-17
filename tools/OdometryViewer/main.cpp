@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/CameraRGBD.h>
 #include <rtabmap/core/DBReader.h>
 #include <rtabmap/core/VWDictionary.h>
-#include <QtGui/QApplication>
+#include <QApplication>
 #include <pcl/console/print.h>
 
 void showUsage()

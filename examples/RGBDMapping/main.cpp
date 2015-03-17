@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/utilite/UEventsManager.h"
-#include <QtGui/QApplication>
+#include <QApplication>
 #include <stdio.h>
 
 #include "MapBuilder.h"

@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/gui/CalibrationDialog.h"
-#include <QtGui/QApplication>
+#include <QApplication>
 
 void showUsage()
 {

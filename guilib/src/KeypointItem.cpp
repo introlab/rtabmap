@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <QtGui/QPen>
 #include <QtGui/QBrush>
-#include <QtGui/QGraphicsScene>
+#include <QGraphicsScene>
 #include "rtabmap/utilite/ULogger.h"
 
 namespace rtabmap {
@@ -40,7 +40,7 @@ KeypointItem::KeypointItem(qreal x, qreal y, int r, const QString & info, const 
 	_placeHolder(0)
 {
 	this->setColor(color);
-	this->setAcceptsHoverEvents(true);
+	this->setAcceptHoverEvents(true);
 	this->setFlag(QGraphicsItem::ItemIsFocusable, true);
 	_width = pen().width();
 }

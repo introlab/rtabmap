@@ -27,17 +27,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "StatsToolBox.h"
 
-#include <QtGui/QHBoxLayout>
-#include <QtGui/QVBoxLayout>
-#include <QtGui/QGridLayout>
-#include <QtGui/QMenu>
-#include <QtGui/QLabel>
-#include <QtGui/QToolButton>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QGridLayout>
+#include <QMenu>
+#include <QLabel>
+#include <QToolButton>
 #include <QtCore/QChildEvent>
 #include <QtCore/QDir>
 #include <QtGui/QContextMenuEvent>
-#include <QtGui/QToolBox>
-#include <QtGui/QDialog>
+#include <QToolBox>
+#include <QDialog>
 
 #include "utilite/UPlot.h"
 #include <rtabmap/utilite/ULogger.h>

@@ -30,7 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
-#include <QtGui/QDialog>
+#include <QDialog>
 #include <QtCore/QModelIndex>
 #include <QtCore/QVector>
 #include <set>

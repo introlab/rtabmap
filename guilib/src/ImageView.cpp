@@ -29,12 +29,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <QtGui/QWheelEvent>
 #include <QtCore/qmath.h>
-#include <QtGui/QMenu>
-#include <QtGui/QFileDialog>
+#include <QMenu>
+#include <QFileDialog>
 #include <QtCore/QDir>
-#include <QtGui/QAction>
-#include <QtGui/QGraphicsEffect>
-#include <QtGui/QInputDialog>
+#include <QAction>
+#include <QGraphicsEffect>
+#include <QInputDialog>
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/gui/KeypointItem.h"
 

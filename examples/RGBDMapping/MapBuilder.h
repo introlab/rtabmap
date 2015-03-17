@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAPBUILDER_H_
 #define MAPBUILDER_H_
 
-#include <QtGui/QVBoxLayout>
+#include <QVBoxLayout>
 #include <QtCore/QMetaType>
 
 #ifndef Q_MOC_RUN // Mac OS X issue

@@ -33,7 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Camera.h>
 #include <rtabmap/core/CameraThread.h>
 #include <rtabmap/gui/DataRecorder.h>
-#include <QtGui/QApplication>
+#include <QApplication>
 #include <signal.h>
 
 using namespace rtabmap;

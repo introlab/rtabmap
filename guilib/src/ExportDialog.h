@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef EXPORTDIALOG_H_
 #define EXPORTDIALOG_H_
 
-#include <QtGui/QDialog>
+#include <QDialog>
 
 class Ui_ExportDialog;
 

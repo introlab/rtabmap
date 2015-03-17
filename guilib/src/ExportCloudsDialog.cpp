@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ExportCloudsDialog.h"
 #include "ui_exportCloudsDialog.h"
 
-#include <QtGui/QPushButton>
+#include <QPushButton>
 
 namespace rtabmap {
 

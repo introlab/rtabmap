@@ -25,13 +25,13 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <QtGui/QApplication>
+#include <QApplication>
 #include <QtCore/QDir>
 #include "rtabmap/utilite/UEventsManager.h"
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/gui/MainWindow.h"
-#include <QtGui/QMessageBox>
+#include <QMessageBox>
 #include "rtabmap/utilite/UObjDeletionThread.h"
 #include "ObjDeletionHandler.h"
 

@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/Signature.h>
 #include <opencv2/opencv.hpp>
-#include <QtGui/QWidget>
+#include <QWidget>
 
 class Ui_loopClosureViewer;
 

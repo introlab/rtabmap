@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
 #include "rtabmap/utilite/UEventsHandler.h"
-#include <QtGui/QMainWindow>
+#include <QMainWindow>
 #include <QtCore/QSet>
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/SensorData.h"

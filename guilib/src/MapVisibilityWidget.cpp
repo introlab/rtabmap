@@ -27,9 +27,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "MapVisibilityWidget.h"
 
-#include <QtGui/QCheckBox>
-#include <QtGui/QVBoxLayout>
-#include <QtGui/QScrollArea>
+#include <QCheckBox>
+#include <QVBoxLayout>
+#include <QScrollArea>
 
 #include <rtabmap/utilite/ULogger.h>
 

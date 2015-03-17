@@ -42,17 +42,21 @@ SET(qrc
     ./GuiLib.qrc
 )
 
-# generate rules for building source files from the resources
-QT4_ADD_RESOURCES(srcs_qrc ${qrc})
+IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
+    # generate rules for building source files from the resources
+    QT4_ADD_RESOURCES(srcs_qrc ${qrc})
 
-#Generate .h files from the .ui files
-QT4_WRAP_UI(moc_uis ${uis})
+    #Generate .h files from the .ui files
+    QT4_WRAP_UI(moc_uis ${uis})
 
-#This will generate moc_* for Qt
-QT4_WRAP_CPP(moc_srcs ${headers_ui})
-### Qt Gui stuff  end###
-
-
+    #This will generate moc_* for Qt
+    QT4_WRAP_CPP(moc_srcs ${headers_ui})
+    ### Qt Gui stuff  end###
+ELSE()
+    QT5_ADD_RESOURCES(srcs_qrc ${qrc})
+    QT5_WRAP_UI(moc_uis ${uis})
+    QT5_WRAP_CPP(moc_srcs ${headers_ui})
+ENDIF()
 
 
 SET(SRC_FILES 
@@ -92,7 +96,9 @@ SET(INCLUDE_DIRS
 	${PCL_INCLUDE_DIRS}
 )
 
-INCLUDE(${QT_USE_FILE})
+IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
+    INCLUDE(${QT_USE_FILE})
+ENDIF()
 
 SET(LIBRARIES
     ${QT_LIBRARIES} 
@@ -113,7 +119,11 @@ add_definitions(${PCL_DEFINITIONS})
 # create a library from the source files
 ADD_LIBRARY(rtabmap_gui ${SRC_FILES})
 # Linking with Qt libraries
+
 TARGET_LINK_LIBRARIES(rtabmap_gui rtabmap_core rtabmap_utilite ${LIBRARIES})
+IF("${RTABMAP_QT_VERSION}" STREQUAL "5")
+    QT5_USE_MODULES(rtabmap_gui Widgets Core Gui Svg PrintSupport)
+ENDIF()
 
 SET_TARGET_PROPERTIES(
      rtabmap_gui

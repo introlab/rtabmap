@@ -30,7 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
-#include <QtGui/QDialog>
+#include <QDialog>
 #include <opencv2/opencv.hpp>
 
 #include <rtabmap/utilite/UEventsHandler.h>
