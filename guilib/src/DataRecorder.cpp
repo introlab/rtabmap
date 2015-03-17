@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/gui/ImageView.h>
 #include <rtabmap/gui/UCv2Qt.h>
 #include <QtCore/QMetaType>
-#include <QtGui/QHBoxLayout>
+#include <QHBoxLayout>
 
 namespace rtabmap {
 

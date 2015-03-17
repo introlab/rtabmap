@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef POSTPROCESSINGDIALOG_H_
 #define POSTPROCESSINGDIALOG_H_
 
-#include <QtGui/QDialog>
+#include <QDialog>
 #include <QtCore/QSettings>
 
 class Ui_PostProcessingDialog;

@@ -45,13 +45,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/KeypointItem.h"
-#include <QtGui/QApplication>
-#include <QtGui/QGraphicsLineItem>
-#include <QtGui/QGraphicsPixmapItem>
-#include <QtGui/QVBoxLayout>
-#include <QtGui/QHBoxLayout>
+#include <QApplication>
+#include <QGraphicsLineItem>
+#include <QGraphicsPixmapItem>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QtCore/QTime>
-#include <QtGui/QGraphicsEffect>
+#include <QGraphicsEffect>
 
 
 using namespace rtabmap;

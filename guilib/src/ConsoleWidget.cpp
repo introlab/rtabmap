@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ui_consoleWidget.h"
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UEventsManager.h>
-#include <QtGui/QMessageBox>
+#include <QMessageBox>
 #include <QtGui/QTextCursor>
 #include <QtCore/QTimer>
 

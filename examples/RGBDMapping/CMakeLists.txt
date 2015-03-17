@@ -7,7 +7,9 @@ SET(INCLUDE_DIRS
     ${PCL_INCLUDE_DIRS}
 )
 
-INCLUDE(${QT_USE_FILE})
+IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
+    INCLUDE(${QT_USE_FILE})
+ENDIF()
 
 SET(LIBRARIES
 	${OpenCV_LIBRARIES}
@@ -17,7 +19,11 @@ SET(LIBRARIES
 
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
-QT4_WRAP_CPP(moc_srcs MapBuilder.h)
+IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
+    QT4_WRAP_CPP(moc_srcs MapBuilder.h)
+ELSE()
+    QT5_WRAP_CPP(moc_srcs MapBuilder.h)
+ENDIF()
 
 ADD_EXECUTABLE(rgbd_mapping main.cpp ${moc_srcs})
   

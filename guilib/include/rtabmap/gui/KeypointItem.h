@@ -30,8 +30,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
-#include <QtGui/QGraphicsEllipseItem>
-#include <QtGui/QGraphicsTextItem>
+#include <QGraphicsEllipseItem>
+#include <QGraphicsTextItem>
 #include <QtGui/QPen>
 #include <QtGui/QBrush>
 

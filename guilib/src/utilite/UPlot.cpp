@@ -21,29 +21,29 @@
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UMath.h"
 
-#include <QtGui/QGraphicsScene>
-#include <QtGui/QGraphicsView>
-#include <QtGui/QGraphicsItem>
-#include <QtGui/QGraphicsRectItem>
-#include <QtGui/QHBoxLayout>
-#include <QtGui/QFormLayout>
+#include <QGraphicsScene>
+#include <QGraphicsView>
+#include <QGraphicsItem>
+#include <QGraphicsRectItem>
+#include <QHBoxLayout>
+#include <QFormLayout>
 #include <QtGui/QResizeEvent>
 #include <QtGui/QMouseEvent>
 #include <QtCore/QTime>
 #include <QtCore/QTimer>
 #include <QtCore/QFileInfo>
-#include <QtGui/QPushButton>
-#include <QtGui/QToolButton>
-#include <QtGui/QLabel>
-#include <QtGui/QMenu>
-#include <QtGui/QInputDialog>
-#include <QtGui/QMessageBox>
-#include <QtGui/QFileDialog>
+#include <QPushButton>
+#include <QToolButton>
+#include <QLabel>
+#include <QMenu>
+#include <QInputDialog>
+#include <QMessageBox>
+#include <QFileDialog>
 #include <QtGui/QClipboard>
-#include <QtGui/QApplication>
-#include <QtGui/QPrinter>
-#include <QtGui/QColorDialog>
-#include <QtGui/QToolTip>
+#include <QApplication>
+#include <QtPrintSupport/QPrinter>
+#include <QColorDialog>
+#include <QToolTip>
 #ifdef QT_SVG_LIB
 #include <QtSvg/QSvgGenerator>
 #endif
@@ -75,7 +75,7 @@ void UPlotItem::init(qreal dataX, qreal dataY)
 {
 	_data.setX(dataX);
 	_data.setY(dataY);
-	this->setAcceptsHoverEvents(true);
+	this->setAcceptHoverEvents(true);
 	this->setFlag(QGraphicsItem::ItemIsFocusable, true);
 }
 
@@ -1773,7 +1773,7 @@ void UPlot::setupUi()
 	_view->setScene(new QGraphicsScene(0,0,0,0,this));
 	_view->setStyleSheet( "QGraphicsView { border-style: none; }" );
 	_sceneRoot = _view->scene()->addText("");
-	_sceneRoot->translate(0,0);
+	_sceneRoot->setTransform(QTransform::fromTranslate(0, 0), true);
 	_graphicsViewHolder = new QWidget(this);
 	_graphicsViewHolder->setMinimumSize(100,100);
 	_graphicsViewHolder->setMouseTracking(true);

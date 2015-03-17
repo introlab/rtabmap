@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "PostProcessingDialog.h"
 #include "ui_postProcessingDialog.h"
 
-#include <QtGui/QPushButton>
+#include <QPushButton>
 
 namespace rtabmap {
 

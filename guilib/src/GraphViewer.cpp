@@ -27,18 +27,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "GraphViewer.h"
 
-#include <QtGui/QGraphicsView>
-#include <QtGui/QVBoxLayout>
-#include <QtGui/QGraphicsScene>
-#include <QtGui/QGraphicsEllipseItem>
+#include <QGraphicsView>
+#include <QVBoxLayout>
+#include <QGraphicsScene>
+#include <QGraphicsEllipseItem>
 #include <QtGui/QWheelEvent>
-#include <QtGui/QGraphicsSceneHoverEvent>
-#include <QtGui/QMenu>
+#include <QGraphicsSceneHoverEvent>
+#include <QMenu>
 #include <QtGui/QDesktopServices>
 #include <QtGui/QContextMenuEvent>
-#include <QtGui/QColorDialog>
+#include <QColorDialog>
 #include <QtSvg/QSvgGenerator>
-#include <QtGui/QInputDialog>
+#include <QInputDialog>
 
 #include <QtCore/QDir>
 #include <QtCore/QDateTime>
@@ -87,7 +87,7 @@ protected:
 
 	virtual void hoverLeaveEvent ( QGraphicsSceneHoverEvent * event )
 	{
-		qDeleteAll(this->children());
+		qDeleteAll(this->childItems());
 		this->setScale(1);
 		QGraphicsEllipseItem::hoverEnterEvent(event);
 	}
@@ -389,7 +389,7 @@ void GraphViewer::updateMap(const cv::Mat & map8U, float resolution, float xMin,
 		_gridCellSize = resolution;
 		QImage image = uCvMat2QImage(map8U, false);
 		_gridMap->resetTransform();
-		_gridMap->scale(resolution, -resolution);
+		_gridMap->setTransform(QTransform::fromScale(resolution, -resolution), true);
 		_gridMap->setRotation(90);
 		_gridMap->setPixmap(QPixmap::fromImage(image));
 		_gridMap->setPos(-yMin, -xMin);

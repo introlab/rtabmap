@@ -34,12 +34,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QDir>
 #include <QtCore/QTimer>
 
-#include <QtGui/QFileDialog>
-#include <QtGui/QMessageBox>
+#include <QFileDialog>
+#include <QMessageBox>
 #include <QtGui/QStandardItemModel>
-#include <QtGui/QMainWindow>
-#include <QtGui/QProgressDialog>
-#include <QtGui/QScrollBar>
+#include <QMainWindow>
+#include <QProgressDialog>
+#include <QScrollBar>
 #include <QtGui/QCloseEvent>
 
 #include "ui_preferencesDialog.h"

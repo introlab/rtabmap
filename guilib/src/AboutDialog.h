@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ABOUTDIALOG_H_
 #define ABOUTDIALOG_H_
 
-#include <QtGui/QDialog>
+#include <QDialog>
 #include <QtCore/QUrl>
 
 class Ui_aboutDialog;

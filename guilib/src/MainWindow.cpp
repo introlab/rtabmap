@@ -62,20 +62,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QPixmap>
 #include <QtCore/QDir>
 #include <QtCore/QFileInfo>
-#include <QtGui/QMessageBox>
-#include <QtGui/QFileDialog>
-#include <QtGui/QGraphicsEllipseItem>
-#include <QtGui/QDockWidget>
+#include <QMessageBox>
+#include <QFileDialog>
+#include <QGraphicsEllipseItem>
+#include <QDockWidget>
 #include <QtCore/QBuffer>
 #include <QtCore/QTimer>
 #include <QtCore/QTime>
-#include <QtGui/QActionGroup>
+#include <QActionGroup>
 #include <QtCore/QThread>
 #include <QtGui/QDesktopServices>
 #include <QtCore/QStringList>
 #include <QtCore/QProcess>
-#include <QtGui/QSplashScreen>
-#include <QtGui/QInputDialog>
+#include <QSplashScreen>
+#include <QInputDialog>
 
 //RGB-D stuff
 #include "rtabmap/core/CameraRGBD.h"

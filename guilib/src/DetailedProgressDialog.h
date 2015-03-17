@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef DETAILEDPROGRESSDIALOG_H_
 #define DETAILEDPROGRESSDIALOG_H_
 
-#include <QtGui/QDialog>
+#include <QDialog>
 
 class QLabel;
 class QTextEdit;

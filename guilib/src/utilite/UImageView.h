@@ -8,7 +8,7 @@
 #ifndef IMAGEVIEW_H_
 #define IMAGEVIEW_H_
 
-#include <QtGui/QWidget>
+#include <QWidget>
 #include <QtGui/QPainter>
 
 class UImageView : public QWidget

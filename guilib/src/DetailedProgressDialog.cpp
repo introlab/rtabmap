@@ -26,13 +26,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "DetailedProgressDialog.h"
-#include <QtGui/QLayout>
-#include <QtGui/QProgressBar>
-#include <QtGui/QTextEdit>
-#include <QtGui/QLabel>
-#include <QtGui/QPushButton>
+#include <QLayout>
+#include <QProgressBar>
+#include <QTextEdit>
+#include <QLabel>
+#include <QPushButton>
 #include <QtGui/QCloseEvent>
-#include <QtGui/QCheckBox>
+#include <QCheckBox>
 #include <QtCore/QTimer>
 #include <QtCore/QTime>
 #include "rtabmap/utilite/ULogger.h"
