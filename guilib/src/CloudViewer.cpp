@@ -76,7 +76,8 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_gridCellCount(50),
 		_gridCellSize(1),
 		_workingDirectory("."),
-		_backgroundColor(Qt::black)
+		_defaultBgColor(Qt::black),
+		_currentBgColor(Qt::black)
 {
 	this->setMinimumSize(200, 200);
 
@@ -202,7 +203,7 @@ void CloudViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("camera_free", this->isCameraFree());
 	settings.setValue("camera_lockZ", this->isCameraLockZ());
 
-	settings.setValue("bg_color", this->getBackgroundColor());
+	settings.setValue("bg_color", this->getDefaultBackgroundColor());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -239,7 +240,7 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 	}
 	this->setCameraLockZ(settings.value("camera_lockZ", this->isCameraLockZ()).toBool());
 
-	this->setBackgroundColor(settings.value("bg_color", this->getBackgroundColor()).value<QColor>());
+	this->setDefaultBackgroundColor(settings.value("bg_color", this->getDefaultBackgroundColor()).value<QColor>());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -776,14 +777,28 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 	_lastPose = pose;
 }
 
+const QColor & CloudViewer::getDefaultBackgroundColor() const
+{
+	return _defaultBgColor;
+}
+
+void CloudViewer::setDefaultBackgroundColor(const QColor & color)
+{
+	if(_currentBgColor == _defaultBgColor)
+	{
+		setBackgroundColor(color);
+	}
+	_defaultBgColor = color;
+}
+
 const QColor & CloudViewer::getBackgroundColor() const
 {
-	return _backgroundColor;
+	return _currentBgColor;
 }
 
 void CloudViewer::setBackgroundColor(const QColor & color)
 {
-	_backgroundColor = color;
+	_currentBgColor = color;
 	_visualizer->setBackgroundColor(color.redF(), color.greenF(), color.blueF());
 }
 
@@ -1237,9 +1252,12 @@ void CloudViewer::handleAction(QAction * a)
 	}
 	else if(a == _aSetBackgroundColor)
 	{
-		QColor color = this->getBackgroundColor();
+		QColor color = this->getDefaultBackgroundColor();
 		color = QColorDialog::getColor(color, this);
-		this->setBackgroundColor(color);
+		if(color.isValid())
+		{
+			this->setDefaultBackgroundColor(color);
+		}
 	}
 	else if(a == _aLockViewZ)
 	{

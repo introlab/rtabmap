@@ -91,7 +91,7 @@ private slots:
 		}
 		else
 		{
-			cloudViewer_->setBackgroundColor(Qt::black);
+			cloudViewer_->setBackgroundColor(cloudViewer_->getDefaultBackgroundColor());
 		}
 		if(!pose.isNull())
 		{

@@ -156,6 +156,7 @@ public:
 	bool getCloudVisibility(const std::string & id);
 
 	const QMap<std::string, Transform> & getAddedClouds() const {return _addedClouds;} //including meshes
+	const QColor & getDefaultBackgroundColor() const;
 	const QColor & getBackgroundColor() const;
 	Transform getTargetPose() const;
 	void getCameraPosition(
@@ -184,6 +185,7 @@ public:
 	void setWorkingDirectory(const QString & path) {_workingDirectory = path;}
 
 public slots:
+	void setDefaultBackgroundColor(const QColor & color);
 	void setBackgroundColor(const QColor & color);
 	void setCloudVisibility(const std::string & id, bool isVisible);
 	void setCloudOpacity(const std::string & id, double opacity = 1.0);
@@ -232,7 +234,8 @@ private:
     std::list<std::string> _gridLines;
     QSet<Qt::Key> _keysPressed;
     QString _workingDirectory;
-    QColor _backgroundColor;
+    QColor _defaultBgColor;
+    QColor _currentBgColor;
 };
 
 } /* namespace rtabmap */

@@ -687,7 +687,7 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 	{
 		UDEBUG("odom ok");
 		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
-		_ui->widget_cloudViewer->setBackgroundColor(Qt::black);
+		_ui->widget_cloudViewer->setBackgroundColor(_ui->widget_cloudViewer->getDefaultBackgroundColor());
 		_ui->imageView_odometry->setBackgroundBrush(QBrush(Qt::black));
 	}
 	if(info.inliers >= 0)
@@ -3713,7 +3713,7 @@ void MainWindow::clearTheCache()
 	_projectionLocalMaps.clear();
 	_ui->widget_cloudViewer->removeAllClouds();
 	_ui->widget_cloudViewer->removeAllGraphs();
-	_ui->widget_cloudViewer->setBackgroundColor(Qt::black);
+	_ui->widget_cloudViewer->setBackgroundColor(_ui->widget_cloudViewer->getDefaultBackgroundColor());
 	_ui->widget_cloudViewer->clearTrajectory();
 	_ui->widget_mapVisibility->clear();
 	_currentPosesMap.clear();

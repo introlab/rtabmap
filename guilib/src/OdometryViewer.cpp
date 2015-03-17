@@ -155,7 +155,7 @@ void OdometryViewer::processData()
 			}
 			else
 			{
-				this->setBackgroundColor(Qt::black);
+				this->setBackgroundColor(this->getDefaultBackgroundColor());
 			}
 		}
 		else
