@@ -41,11 +41,7 @@
 #include <QFileDialog>
 #include <QtGui/QClipboard>
 #include <QApplication>
-#if QT_VERSION >= 0x050000
-#include <QtPrintSupport/QPrinter>
-#else
 #include <QPrinter>
-#endif
 #include <QColorDialog>
 #include <QToolTip>
 #ifdef QT_SVG_LIB
