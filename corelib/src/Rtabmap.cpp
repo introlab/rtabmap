@@ -2188,8 +2188,7 @@ void Rtabmap::optimizeCurrentMap(
 		std::map<int, Transform> poses;
 		std::multimap<int, Link> edgeConstraints;
 		_memory->getMetricConstraints(uKeys(ids), poses, edgeConstraints, lookInDatabase);
-		UDEBUG("poses=%d, edgeConstraints=%d", (int)poses.size(), (int)edgeConstraints.size());
-		UINFO("get constraints time %f s", timer.ticks());
+		UINFO("get constraints (%d poses, %d edges) time %f s", (int)poses.size(), (int)edgeConstraints.size(), timer.ticks());
 
 		if(constraints)
 		{
@@ -2207,6 +2206,12 @@ void Rtabmap::optimizeCurrentMap(
 			optimizedPoses = _graphOptimizer->optimize(id, poses, edgeConstraints);
 		}
 		UINFO("optimize time %f s", timer.ticks());
+
+		if(_memory->getSignature(id) && uContains(optimizedPoses, id))
+		{
+			Transform t = optimizedPoses.at(id) * _memory->getSignature(id)->getPose().inverse();
+			UINFO("Correction (from node %d) %s", id, t.prettyPrint().c_str());
+		}
 	}
 }
 

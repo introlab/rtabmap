@@ -395,8 +395,8 @@ std::map<int, Transform> TOROOptimizer::optimize(
 				// compute the error and dump it
 				double mte, mre, are, ate;
 				double error=pg3.error(&mre, &mte, &are, &ate);
-				UDEBUG("iteration %d RotGain=%f global error=%f error/constraint=%f mte=%f mre=%f are=%f ate=%f",
-						i, pg3.getRotGain(), error, error/pg3.edges.size(), mte, mre, are, ate);
+				UDEBUG("i %d RotGain=%f global error=%f error/constraint=%f",
+						i, pg3.getRotGain(), error, error/pg3.edges.size());
 			}
 		}
 		UINFO("TORO iterate end");
