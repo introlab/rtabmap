@@ -1523,13 +1523,13 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase, std::list<int> * de
 					}
 
 					// child
-					if(iter->second.type() > Link::kNeighbor && s->id() > sTo->id())
+					if(iter->second.type() == Link::kGlobalClosure && s->id() > sTo->id())
 					{
 						sTo->setWeight(sTo->getWeight() + s->getWeight()); // copy weight
 					}
 
 					sTo->removeLink(s->id());
-					if(s == _lastSignature)
+					if(s == _lastSignature && iter->second.type() == Link::kNeighbor)
 					{
 						_lastSignature = sTo;
 					}
