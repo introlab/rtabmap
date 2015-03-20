@@ -1529,10 +1529,6 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase, std::list<int> * de
 					}
 
 					sTo->removeLink(s->id());
-					if(s == _lastSignature && iter->second.type() == Link::kNeighbor)
-					{
-						_lastSignature = sTo;
-					}
 				}
 				else
 				{
