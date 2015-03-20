@@ -104,6 +104,9 @@ public:
 	void setMonitoringState(bool pauseChecked = false); // in monitoring state, only some actions are enabled
 	bool isSavedMaximized() const {return _savedMaximized;}
 
+	bool isProcessingStatistics() const {return _processingStatistics;}
+	bool isProcessingOdometry() const {return _processingOdometry;}
+
 public slots:
 	void processStats(const rtabmap::Statistics & stat);
 
@@ -280,7 +283,7 @@ private:
 	std::map<int, std::pair<cv::Mat, cv::Mat> > _gridLocalMaps; // <ground, obstacles>
 	Transform _odometryCorrection;
 	Transform _lastOdomPose;
-	bool _lastOdometryProcessed;
+	bool _processingOdometry;
 
 	QTimer * _oneSecondTimer;
 	QTime * _elapsedTime;

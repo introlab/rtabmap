@@ -125,7 +125,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_odomImageShow(true),
 	_odomImageDepthShow(false),
 	_odometryCorrection(Transform::getIdentity()),
-	_lastOdometryProcessed(true),
+	_processingOdometry(false),
 	_oneSecondTimer(0),
 	_elapsedTime(0),
 	_posteriorCurve(0),
@@ -604,6 +604,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 				this->pauseDetection();
 			}
 		}
+		_processingStatistics = true;
 		emit statsReceived(stats);
 	}
 	else if(anEvent->getClassName().compare("RtabmapEventInit") == 0)
@@ -631,9 +632,9 @@ void MainWindow::handleEvent(UEvent* anEvent)
 	else if(anEvent->getClassName().compare("OdometryEvent") == 0)
 	{
 		OdometryEvent * odomEvent = (OdometryEvent*)anEvent;
-		if(_lastOdometryProcessed && !_processingStatistics)
+		if(!_processingOdometry && !_processingStatistics)
 		{
-			_lastOdometryProcessed = false; // if we receive too many odometry events!
+			_processingOdometry = true; // if we receive too many odometry events!
 			emit odometryReceived(odomEvent->data(), odomEvent->info());
 		}
 	}
@@ -659,6 +660,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 
 void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap::OdometryInfo & info)
 {
+	_processingOdometry = true;
 	UTimer time;
 	Transform pose = data.pose();
 	bool lost = false;
@@ -894,14 +896,14 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 		_ui->imageView_odometry->fitInView(_ui->imageView_odometry->sceneRect(), Qt::KeepAspectRatio);
 	}
 
-	_lastOdometryProcessed = true;
-
 	if(_ui->actionAuto_screen_capture->isChecked() && _autoScreenCaptureOdomSync)
 	{
 		this->captureScreen();
 	}
 
 	_ui->statsToolBox->updateStat("/Gui refresh odom/ms", (float)data.id(), time.elapsed()*1000.0);
+
+	_processingOdometry = false;
 }
 
 void MainWindow::processStats(const rtabmap::Statistics & stat)
@@ -1184,12 +1186,13 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	{
 		this->captureScreen();
 	}
-	_processingStatistics = false;
 
 	if(!_preferencesDialog->isImagesKept())
 	{
 		_cachedSignatures.clear();
 	}
+
+	_processingStatistics = false;
 }
 
 void MainWindow::updateMapCloud(
