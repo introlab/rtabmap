@@ -197,7 +197,7 @@ private:
 	EpipolarGeometry * _epipolarGeometry;
 	BayesFilter * _bayesFilter;
 	graph::Optimizer * _graphOptimizer;
-	ParametersMap _lastParameters;
+	ParametersMap _modifiedParameters;
 
 	Memory * _memory;
 

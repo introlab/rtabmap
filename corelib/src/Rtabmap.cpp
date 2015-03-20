@@ -265,6 +265,8 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	{
 		_databasePath = _wDir + "/" + Parameters::getDefaultDatabaseName();
 	}
+	UASSERT(UFile::getExtension(_databasePath).compare("db") == 0);
+
 	UINFO("Using database \"%s\".", _databasePath.c_str());
 	bool newDatabase = !UFile::exists(_databasePath);
 	this->parseParameters(parameters);
@@ -330,16 +332,12 @@ void Rtabmap::close()
 		_graphOptimizer = 0;
 	}
 	_databasePath.clear();
+	parseParameters(Parameters::getDefaultParameters()); // reset to default parameters
+	_modifiedParameters.clear();
 }
 
 void Rtabmap::parseParameters(const ParametersMap & parameters)
 {
-	if(_databasePath.empty())
-	{
-		UERROR("RTAB-Map is not initialized. Call rtabmap::init() instead.");
-		return;
-	}
-
 	ULOGGER_DEBUG("");
 	ParametersMap::const_iterator iter;
 	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
@@ -422,8 +420,11 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 
 	if(!_memory)
 	{
-		_memory = new Memory(parameters);
-		_memory->init(_databasePath, false, parameters, true);
+		if(!_databasePath.empty())
+		{
+			_memory = new Memory(parameters);
+			_memory->init(_databasePath, false, parameters, true);
+		}
 	}
 	else
 	{
@@ -462,7 +463,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 
 	for(ParametersMap::const_iterator iter = parameters.begin(); iter!=parameters.end(); ++iter)
 	{
-		uInsert(_lastParameters, ParametersPair(iter->first, iter->second));
+		uInsert(_modifiedParameters, ParametersPair(iter->first, iter->second));
 	}
 }
 
@@ -700,10 +701,11 @@ void Rtabmap::resetMemory()
 	_constraints.clear();
 	_mapCorrection.setIdentity();
 	_mapTransform.setIdentity();
+	this->clearPath();
 
 	if(_memory)
 	{
-		_memory->init(_databasePath, true, ParametersMap(), true);
+		_memory->init(_databasePath, true, _modifiedParameters, true);
 		if(_memory->getLastWorkingSignature())
 		{
 			optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), false, _optimizedPoses, &_constraints);
@@ -1378,7 +1380,7 @@ bool Rtabmap::process(const SensorData & data)
 			std::string rejectedMsg;
 			if(_reextractLoopClosureFeatures)
 			{
-				ParametersMap customParameters = _lastParameters; // get BOW LCC parameters
+				ParametersMap customParameters = _modifiedParameters; // get BOW LCC parameters
 				// override some parameters
 				uInsert(customParameters, ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
 				uInsert(customParameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
@@ -2053,115 +2055,118 @@ std::map<int, Transform> Rtabmap::getWMPosesInRadius(
 		int maxDiffID, // 0 means ignore
 		int & nearestId) const
 {
-	UDEBUG("");
-	const Signature * fromS = _memory->getSignature(fromId);
-	UASSERT(fromS != 0);
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-	cloud->resize(_optimizedPoses.size());
-	std::vector<int> ids(_optimizedPoses.size());
-	int oi = 0;
-	const std::set<int> & stm = _memory->getStMem();
-	//get margins
-	std::map<int, int> margins;
-	if(maxDiffID > 0)
-	{
-		margins = _memory->getNeighborsId(fromId, maxDiffID, 0, true, false);
-	}
-	for(std::map<int, Transform>::const_iterator iter = _optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
-	{
-		// Only locations in Working Memory not too far from the current node (so inside the margin)
-		bool diffIdOk = maxDiffID == 0 || uContains(margins, iter->first);
-		if(stm.find(iter->first) == stm.end() && diffIdOk)
-		{
-			(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-			ids[oi++] = iter->first;
-		}
-	}
-
-	cloud->resize(oi);
-	ids.resize(oi);
-
-	UASSERT(_optimizedPoses.find(fromId) != _optimizedPoses.end());
-	Transform fromT = _optimizedPoses.at(fromId);
-
-	nearestId = 0;
 	std::map<int, Transform> poses;
-	float minDistance = -1;
-	if(cloud->size())
+	if(_memory && fromId > 0)
 	{
-		//if(cloud->size())
-		//{
-		//	pcl::io::savePCDFile("radiusPoses.pcd", *cloud);
-		//	UWARN("Saved radiusPoses.pcd");
-		//}
+		UDEBUG("");
+		const Signature * fromS = _memory->getSignature(fromId);
+		UASSERT(fromS != 0);
 
-		//filter poses in front of the fromId
-		Transform t=Transform::getIdentity();
-		t.x() = radius*0.95f;
-		float x,y,z, roll,pitch,yaw;
-		(fromT*t).getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-
-		pcl::CropBox<pcl::PointXYZ> cropbox;
-		cropbox.setInputCloud(cloud);
-		cropbox.setMin(Eigen::Vector4f(-radius, -radius, -radius, 0));
-		cropbox.setMax(Eigen::Vector4f(radius, radius, radius, 0));
-		cropbox.setRotation(Eigen::Vector3f(roll, pitch, yaw));
-		cropbox.setTranslation(Eigen::Vector3f(x, y, z));
-		pcl::IndicesPtr indices(new std::vector<int>());
-		cropbox.filter(*indices);
-
-		//if(indices->size())
-		//{
-		//	pcl::io::savePCDFile("radiusCrop.pcd", *cloud, *indices);
-		//	UWARN("Saved radiusCrop.pcd");
-		//}
-
-		if(indices->size())
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+		cloud->resize(_optimizedPoses.size());
+		std::vector<int> ids(_optimizedPoses.size());
+		int oi = 0;
+		const std::set<int> & stm = _memory->getStMem();
+		//get margins
+		std::map<int, int> margins;
+		if(maxDiffID > 0)
 		{
-			pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
-			kdTree->setInputCloud(cloud, indices);
-			std::vector<int> ind;
-			std::vector<float> dist;
-			pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
-			kdTree->radiusSearch(pt, radius, ind, dist, maxNearestNeighbors);
-			//pcl::PointCloud<pcl::PointXYZ> inliers;
-			for(unsigned int i=0; i<ind.size(); ++i)
+			margins = _memory->getNeighborsId(fromId, maxDiffID, 0, true, false);
+		}
+		for(std::map<int, Transform>::const_iterator iter = _optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+		{
+			// Only locations in Working Memory not too far from the current node (so inside the margin)
+			bool diffIdOk = maxDiffID == 0 || uContains(margins, iter->first);
+			if(stm.find(iter->first) == stm.end() && diffIdOk)
 			{
-				if(ind[i] >=0)
+				(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+				ids[oi++] = iter->first;
+			}
+		}
+
+		cloud->resize(oi);
+		ids.resize(oi);
+
+		UASSERT(_optimizedPoses.find(fromId) != _optimizedPoses.end());
+		Transform fromT = _optimizedPoses.at(fromId);
+
+		nearestId = 0;
+		float minDistance = -1;
+		if(cloud->size())
+		{
+			//if(cloud->size())
+			//{
+			//	pcl::io::savePCDFile("radiusPoses.pcd", *cloud);
+			//	UWARN("Saved radiusPoses.pcd");
+			//}
+
+			//filter poses in front of the fromId
+			Transform t=Transform::getIdentity();
+			t.x() = radius*0.95f;
+			float x,y,z, roll,pitch,yaw;
+			(fromT*t).getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+
+			pcl::CropBox<pcl::PointXYZ> cropbox;
+			cropbox.setInputCloud(cloud);
+			cropbox.setMin(Eigen::Vector4f(-radius, -radius, -radius, 0));
+			cropbox.setMax(Eigen::Vector4f(radius, radius, radius, 0));
+			cropbox.setRotation(Eigen::Vector3f(roll, pitch, yaw));
+			cropbox.setTranslation(Eigen::Vector3f(x, y, z));
+			pcl::IndicesPtr indices(new std::vector<int>());
+			cropbox.filter(*indices);
+
+			//if(indices->size())
+			//{
+			//	pcl::io::savePCDFile("radiusCrop.pcd", *cloud, *indices);
+			//	UWARN("Saved radiusCrop.pcd");
+			//}
+
+			if(indices->size())
+			{
+				pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
+				kdTree->setInputCloud(cloud, indices);
+				std::vector<int> ind;
+				std::vector<float> dist;
+				pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
+				kdTree->radiusSearch(pt, radius, ind, dist, maxNearestNeighbors);
+				//pcl::PointCloud<pcl::PointXYZ> inliers;
+				for(unsigned int i=0; i<ind.size(); ++i)
 				{
-					Transform tmp = _optimizedPoses.find(ids[ind[i]])->second;
-					//inliers.push_back(pcl::PointXYZ(tmp.x(), tmp.y(), tmp.z()));
-					UDEBUG("Inlier %d: %s", ids[ind[i]], tmp.prettyPrint().c_str());
-					poses.insert(std::make_pair(ids[ind[i]], tmp));
-					if(minDistance == -1 || minDistance > dist[i])
+					if(ind[i] >=0)
 					{
-						nearestId = ids[ind[i]];
-						minDistance = dist[i];
+						Transform tmp = _optimizedPoses.find(ids[ind[i]])->second;
+						//inliers.push_back(pcl::PointXYZ(tmp.x(), tmp.y(), tmp.z()));
+						UDEBUG("Inlier %d: %s", ids[ind[i]], tmp.prettyPrint().c_str());
+						poses.insert(std::make_pair(ids[ind[i]], tmp));
+						if(minDistance == -1 || minDistance > dist[i])
+						{
+							nearestId = ids[ind[i]];
+							minDistance = dist[i];
+						}
 					}
 				}
-			}
 
-			//if(inliers.size())
-			//{
-			//	pcl::io::savePCDFile("radiusInliers.pcd", inliers);
-			//}
-			//if(nearestId >0)
-			//{
-			//	pcl::PointCloud<pcl::PointXYZ> c;
-			//	Transform ct = _optimizedPoses.find(nearestId)->second;
-			//	c.push_back(pcl::PointXYZ(ct.x(), ct.y(), ct.z()));
-			//	pcl::io::savePCDFile("radiusNearestPt.pcd", c);
-			//}
+				//if(inliers.size())
+				//{
+				//	pcl::io::savePCDFile("radiusInliers.pcd", inliers);
+				//}
+				//if(nearestId >0)
+				//{
+				//	pcl::PointCloud<pcl::PointXYZ> c;
+				//	Transform ct = _optimizedPoses.find(nearestId)->second;
+				//	c.push_back(pcl::PointXYZ(ct.x(), ct.y(), ct.z()));
+				//	pcl::io::savePCDFile("radiusNearestPt.pcd", c);
+				//}
 
-			if(nearestId == 0 && poses.size())
-			{
-				UWARN("Flushing poses (%d) because nearest id of %d can't be found!", (int)poses.size(), fromId);
-				poses.clear();
+				if(nearestId == 0 && poses.size())
+				{
+					UWARN("Flushing poses (%d) because nearest id of %d can't be found!", (int)poses.size(), fromId);
+					poses.clear();
+				}
 			}
 		}
+		UDEBUG("nearestId = %d, minDistance=%f poses=%d", nearestId, minDistance, (int)poses.size());
 	}
-	UDEBUG("nearestId = %d, minDistance=%f poses=%d", nearestId, minDistance, (int)poses.size());
 	return poses;
 }
 
@@ -2461,67 +2466,71 @@ bool Rtabmap::computePath(
 		const std::map<int, Transform> & nodes,
 		const std::multimap<int, rtabmap::Link> & constraints)
 {
-	if(!_memory->getLastWorkingSignature())
+	if(_memory)
 	{
-		UWARN("Working memory is empty... cannot compute a path");
-		return false;
-	}
-	int currentNode = _memory->getLastWorkingSignature()->id();
-
-	if(!uContains(nodes, currentNode))
-	{
-		UWARN("Last signature %d not found in the graph! Cannot compute a path", currentNode);
-		return false;
-	}
-
-	if(!uContains(nodes, targetNode))
-	{
-		UWARN("Goal %d not found in the graph! Cannot compute a path", targetNode);
-		return false;
-	}
-
-	std::multimap<int, int> links;
-	for(std::multimap<int, rtabmap::Link>::const_iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
-	{
-		links.insert(std::make_pair(iter->first, iter->second.to()));
-		links.insert(std::make_pair(iter->second.to(), iter->first)); // <->
-	}
-	// Add links between neighbor nodes in the goal radius.
-	if(_planWithNearNodesLinked)
-	{
-		std::multimap<int, int> clusters = rtabmap::graph::radiusPosesClustering(nodes, _goalReachedRadius, CV_PI);
-		links.insert(clusters.begin(), clusters.end());
-	}
-
-	UINFO("Computing path from location %d to %d", currentNode, targetNode);
-	UTimer timer;
-	_path = uListToVector(rtabmap::graph::computePath(nodes, links, currentNode, targetNode));
-	UINFO("A* time = %fs", timer.ticks());
-
-	if(_path.size() == 0)
-	{
-		_path.clear();
-		UWARN("Cannot compute a path!");
-	}
-	else
-	{
-		UINFO("Path generated! Size=%d", (int)_path.size());
-		if(ULogger::level() == ULogger::kInfo)
+		if(!_memory->getLastWorkingSignature())
 		{
-			std::stringstream stream;
-			for(unsigned int i=0; i<_path.size(); ++i)
-			{
-				stream << _path[i].first;
-				if(i+1 < _path.size())
-				{
-					stream << " ";
-				}
-			}
-			UINFO("Path = [%s]", stream.str().c_str());
+			UWARN("Working memory is empty... cannot compute a path");
+			return false;
 		}
-	}
+		int currentNode = _memory->getLastWorkingSignature()->id();
 
-	return _path.size()>0;
+		if(!uContains(nodes, currentNode))
+		{
+			UWARN("Last signature %d not found in the graph! Cannot compute a path", currentNode);
+			return false;
+		}
+
+		if(!uContains(nodes, targetNode))
+		{
+			UWARN("Goal %d not found in the graph! Cannot compute a path", targetNode);
+			return false;
+		}
+
+		std::multimap<int, int> links;
+		for(std::multimap<int, rtabmap::Link>::const_iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
+		{
+			links.insert(std::make_pair(iter->first, iter->second.to()));
+			links.insert(std::make_pair(iter->second.to(), iter->first)); // <->
+		}
+		// Add links between neighbor nodes in the goal radius.
+		if(_planWithNearNodesLinked)
+		{
+			std::multimap<int, int> clusters = rtabmap::graph::radiusPosesClustering(nodes, _goalReachedRadius, CV_PI);
+			links.insert(clusters.begin(), clusters.end());
+		}
+
+		UINFO("Computing path from location %d to %d", currentNode, targetNode);
+		UTimer timer;
+		_path = uListToVector(rtabmap::graph::computePath(nodes, links, currentNode, targetNode));
+		UINFO("A* time = %fs", timer.ticks());
+
+		if(_path.size() == 0)
+		{
+			_path.clear();
+			UWARN("Cannot compute a path!");
+		}
+		else
+		{
+			UINFO("Path generated! Size=%d", (int)_path.size());
+			if(ULogger::level() == ULogger::kInfo)
+			{
+				std::stringstream stream;
+				for(unsigned int i=0; i<_path.size(); ++i)
+				{
+					stream << _path[i].first;
+					if(i+1 < _path.size())
+					{
+						stream << " ";
+					}
+				}
+				UINFO("Path = [%s]", stream.str().c_str());
+			}
+		}
+
+		return _path.size()>0;
+	}
+	return false;
 }
 
 // return true if path is updated
@@ -2670,7 +2679,7 @@ void Rtabmap::updateGoalIndex()
 		return;
 	}
 
-	if(_path.size())
+	if( _memory && _path.size())
 	{
 		// Make sure the next signatures on the path are linked together
 		float distanceSoFar = 0.0f;
