@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-171</y>
+            <y>0</y>
             <width>744</width>
-            <height>1389</height>
+            <height>1110</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>19</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -421,6 +421,22 @@ Show a yellow background when the number of odometry inliers goes under this thr
                        </item>
                        <item>
                         <layout class="QGridLayout" name="gridLayout_20" columnstretch="0,1">
+                         <item row="2" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_map_opacity">
+                           <property name="suffix">
+                            <string/>
+                           </property>
+                           <property name="minimum">
+                            <double>0.750000000000000</double>
+                           </property>
+                           <property name="maximum">
+                            <double>1.000000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>0.750000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
                          <item row="0" column="0">
                           <widget class="QCheckBox" name="checkBox_map_shown">
                            <property name="text">
@@ -478,22 +494,6 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="0">
-                          <widget class="QDoubleSpinBox" name="doubleSpinBox_map_opacity">
-                           <property name="suffix">
-                            <string/>
-                           </property>
-                           <property name="minimum">
-                            <double>0.750000000000000</double>
-                           </property>
-                           <property name="maximum">
-                            <double>1.000000000000000</double>
-                           </property>
-                           <property name="value">
-                            <double>0.750000000000000</double>
-                           </property>
-                          </widget>
-                         </item>
                          <item row="3" column="1">
                           <widget class="QLabel" name="label_210">
                            <property name="text">
@@ -501,6 +501,26 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="4" column="1">
+                          <widget class="QLabel" name="label_224">
+                           <property name="text">
+                            <string>Erode.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="4" column="0">
+                          <widget class="QCheckBox" name="checkBox_map_erode">
+                           <property name="text">
+                            <string/>
+                           </property>
+                           <property name="checked">
+                            <bool>false</bool>
                            </property>
                           </widget>
                          </item>

@@ -195,7 +195,10 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->comboBox_graphOptimizer, SIGNAL(currentIndexChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_2dslam, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->spinBox_optimizationDepth, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
-
+	connect(ui_->checkBox_gridErode, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(updateGraphView()));
+	connect(ui_->doubleSpinBox_posefilteringRadius, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
+	connect(ui_->doubleSpinBox_posefilteringAngle, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 
 	connect(ui_->groupBox_gridFromProjection, SIGNAL(clicked(bool)), this, SLOT(updateGrid()));
 	connect(ui_->doubleSpinBox_gridCellSize, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
@@ -213,6 +216,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->comboBox_graphOptimizer, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_2dslam, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->spinBox_optimizationDepth, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_gridErode, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->groupBox_gridFromProjection, SIGNAL(clicked(bool)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_gridCellSize, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->spinBox_projDecimation, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
@@ -313,6 +317,7 @@ void DatabaseViewer::readSettings()
 	ui_->comboBox_graphOptimizer->setCurrentIndex(settings.value("strategy", ui_->comboBox_graphOptimizer->currentIndex()).toInt());
 	ui_->checkBox_2dslam->setChecked(settings.value("slam2d", ui_->checkBox_2dslam->isChecked()).toBool());
 	ui_->spinBox_optimizationDepth->setValue(settings.value("depth", ui_->spinBox_optimizationDepth->value()).toInt());
+	ui_->checkBox_gridErode->setChecked(settings.value("erode", ui_->checkBox_gridErode->isChecked()).toBool());
 	settings.endGroup();
 
 	settings.beginGroup("grid");
@@ -385,6 +390,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("strategy", ui_->comboBox_graphOptimizer->currentIndex());
 	settings.setValue("slam2d", ui_->checkBox_2dslam->isChecked());
 	settings.setValue("depth", ui_->spinBox_optimizationDepth->value());
+	settings.setValue("erode", ui_->checkBox_gridErode->isChecked());
 	settings.endGroup();
 
 	// save Grid settings
@@ -2242,21 +2248,24 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			float xMin, yMin;
 			float cell = ui_->doubleSpinBox_gridCellSize->value();
 			cv::Mat map;
+			QTime time;
+			time.start();
 			if(ui_->groupBox_posefiltering->isChecked())
 			{
 				std::map<int, rtabmap::Transform> graphFiltered = graph::radiusPosesFiltering(graph,
 						ui_->doubleSpinBox_posefilteringRadius->value(),
 						ui_->doubleSpinBox_posefilteringAngle->value()*CV_PI/180.0);
-				map = rtabmap::util3d::create2DMapFromOccupancyLocalMaps(graphFiltered, localMaps_, cell, xMin, yMin);
+				map = rtabmap::util3d::create2DMapFromOccupancyLocalMaps(graphFiltered, localMaps_, cell, xMin, yMin, 0, ui_->checkBox_gridErode->isChecked());
 			}
 			else
 			{
-				map = rtabmap::util3d::create2DMapFromOccupancyLocalMaps(graph, localMaps_, cell, xMin, yMin);
+				map = rtabmap::util3d::create2DMapFromOccupancyLocalMaps(graph, localMaps_, cell, xMin, yMin, 0, ui_->checkBox_gridErode->isChecked());
 			}
 			if(!map.empty())
 			{
 				ui_->graphViewer->updateMap(rtabmap::util3d::convertMap2Image8U(map), cell, xMin, yMin);
 			}
+			ui_->label_timeGrid->setNum(double(time.elapsed())/1000.0);
 		}
 		ui_->graphViewer->update();
 		ui_->label_iterations->setNum(value);

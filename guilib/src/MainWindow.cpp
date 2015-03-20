@@ -1438,7 +1438,9 @@ void MainWindow::updateMapCloud(
 					poses,
 					_projectionLocalMaps,
 					resolution,
-					xMin, yMin);
+					xMin, yMin,
+					0,
+					_preferencesDialog->isGridMapEroded());
 		}
 		else if(_gridLocalMaps.size())
 		{
@@ -1446,7 +1448,9 @@ void MainWindow::updateMapCloud(
 					poses,
 					_gridLocalMaps,
 					resolution,
-					xMin, yMin);
+					xMin, yMin,
+					0,
+					_preferencesDialog->isGridMapEroded());
 		}
 		if(!map8S.empty())
 		{
@@ -3948,7 +3952,9 @@ void MainWindow::exportGridMap()
 				poses,
 				_projectionLocalMaps,
 				gridCellSize,
-				xMin, yMin);
+				xMin, yMin,
+				0,
+				_preferencesDialog->isGridMapEroded());
 	}
 	else
 	{
@@ -3956,7 +3962,9 @@ void MainWindow::exportGridMap()
 				poses,
 				_gridLocalMaps,
 				gridCellSize,
-				xMin, yMin);
+				xMin, yMin,
+				0,
+				_preferencesDialog->isGridMapEroded());
 	}
 
 	if(!pixels.empty())

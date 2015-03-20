@@ -2100,6 +2100,8 @@ void occupancy2DFromLaserScan(
  * @param cellSize m
  * @param xMin
  * @param yMin
+ * @param minMapSize minimum width (m)
+ * @param erode
  */
 cv::Mat create2DMapFromOccupancyLocalMaps(
 		const std::map<int, Transform> & poses,
@@ -2107,10 +2109,11 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 		float cellSize,
 		float & xMin,
 		float & yMin,
-		float minMapSize)
+		float minMapSize,
+		bool erode)
 {
 	UASSERT(minMapSize >= 0.0f);
-	UDEBUG("");
+	UDEBUG("cellSize=%f m, minMapSize=%f m, erode=%d", cellSize, minMapSize, erode?1:0);
 	UTimer timer;
 
 	std::map<int, cv::Mat> emptyLocalMaps;
@@ -2248,7 +2251,8 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 			}
 
 			// fill holes and remove empty from obstacle borders
-			cv::Mat updatedMap = map;
+			cv::Mat updatedMap = map.clone();
+			std::list<std::pair<int, int> > obstacleIndices;
 			for(int i=2; i<map.rows-2; ++i)
 			{
 				for(int j=2; j<map.cols-2; ++j)
@@ -2285,11 +2289,55 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 						{
 							updatedMap.at<char>(i, j+1) = -1;
 						}
+
+						if(erode)
+						{
+							obstacleIndices.push_back(std::make_pair(i, j));
+						}
+					}
+					else if(map.at<char>(i, j) == 0)
+					{
+						// obstacle/empty/obstacle -> remove empty
+						if(map.at<char>(i-1, j) == 100 &&
+							map.at<char>(i+1, j) == 100)
+						{
+							updatedMap.at<char>(i, j) = -1;
+						}
+						else if(map.at<char>(i, j-1) == 100 &&
+							map.at<char>(i, j+1) == 100)
+						{
+							updatedMap.at<char>(i, j) = -1;
+						}
 					}
 
 				}
 			}
 			map = updatedMap;
+
+			if(erode)
+			{
+				// remove obstacles which touch to empty cells but not unknown cells
+				cv::Mat erodedMap = map.clone();
+				for(std::list<std::pair<int,int> >::iterator iter = obstacleIndices.begin();
+					iter!= obstacleIndices.end();
+					++iter)
+				{
+					int i = iter->first;
+					int j = iter->second;
+					bool touchEmpty = map.at<char>(i+1, j) == 0 ||
+						map.at<char>(i-1, j) == 0 ||
+						map.at<char>(i, j+1) == 0 ||
+						map.at<char>(i, j-1) == 0;
+					if(touchEmpty && map.at<char>(i+1, j) != -1 &&
+						map.at<char>(i-1, j) != -1 &&
+						map.at<char>(i, j+1) != -1 &&
+						map.at<char>(i, j-1) != -1)
+					{
+						erodedMap.at<char>(i, j) = 0; // empty
+					}
+				}
+				map = erodedMap;
+			}
 		}
 	}
 	UDEBUG("timer=%fs", timer.ticks());
