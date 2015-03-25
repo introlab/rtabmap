@@ -916,7 +916,7 @@ void DatabaseViewer::generateTOROGraph()
 		return;
 	}
 	bool ok = false;
-	int id = QInputDialog::getInt(this, tr("Which iteration?"), tr("Iteration (0 -> %1)").arg((int)graphes_.size()-1), (int)graphes_.size()-1, 0, graphes_.size()-1, 1, &ok);
+	int id = QInputDialog::getInt(this, tr("Which iteration?"), tr("Iteration (0 -> %1)").arg((int)graphes_.size()-1), (int)graphes_.size()-1, 0, (int)graphes_.size()-1, 1, &ok);
 
 	if(ok)
 	{
@@ -968,7 +968,7 @@ void DatabaseViewer::view3DMap()
 			if(optimizedPoses.size() > 0)
 			{
 				rtabmap::DetailedProgressDialog progressDialog(this);
-				progressDialog.setMaximumSteps(optimizedPoses.size());
+				progressDialog.setMaximumSteps((int)optimizedPoses.size());
 				progressDialog.show();
 
 				// create a window
@@ -2342,11 +2342,11 @@ void DatabaseViewer::updateGraphView()
 	}
 	if(graphes_.size())
 	{
-		ui_->horizontalSlider_iterations->setMaximum(graphes_.size()-1);
-		ui_->horizontalSlider_iterations->setValue(graphes_.size()-1);
+		ui_->horizontalSlider_iterations->setMaximum((int)graphes_.size()-1);
+		ui_->horizontalSlider_iterations->setValue((int)graphes_.size()-1);
 		ui_->horizontalSlider_iterations->setEnabled(true);
 		ui_->spinBox_optimizationsFrom->setEnabled(true);
-		sliderIterationsValueChanged(graphes_.size()-1);
+		sliderIterationsValueChanged((int)graphes_.size()-1);
 	}
 	else
 	{

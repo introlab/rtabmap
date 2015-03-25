@@ -50,6 +50,7 @@ using namespace std;
 namespace AISNavigation {
 
 
+typedef unsigned int uint;
 #define LINESIZE 81920
 
 

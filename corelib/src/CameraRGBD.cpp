@@ -62,6 +62,7 @@ namespace rtabmap
 CameraRGBD::CameraRGBD(float imageRate, const Transform & localTransform, float fx, float fy, float cx, float cy) :
 	_imageRate(imageRate),
 	_localTransform(localTransform),
+	_mirroring(false),
 	_frameRateTimer(new UTimer()),
 	_fx(fx),
 	_fy(fy),

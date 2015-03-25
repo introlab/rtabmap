@@ -35,14 +35,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 
 #include "MapBuilderWifi.h"
+
 #include "WifiThread.h"
 
 void showUsage()
 {
 	printf("\nUsage:\n"
-			"rtabmap-wifi_mapping interface_name [driver]\n"
-			"  interface_name         Wifi interface name (e.g. \"eth0\")\n"
-			"  driver                 Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS\n\n");
+			"rtabmap-wifi_mapping [options]\n"
+			"Options:\n"
+			"  -i \"name\"            Wifi interface name (e.g. \"eth0\"). Only required on Linux.\n"
+			"  -m                     Enable mirroring of the camera image.\n"
+			"  -d #                   Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS\n\n");
 	exit(1);
 }
 
@@ -52,33 +55,52 @@ int main(int argc, char * argv[])
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kWarning);
 
-	std::string interfaceName;
+	std::string interfaceName = "eth0";
 	int driver = 0;
-	if(argc < 2)
+	bool mirroring = false;
+
+	// parse options
+	for(int i = 1; i<argc; ++i)
 	{
-		showUsage();
-	}
-	else
-	{
-		interfaceName = argv[1];
-		if(interfaceName.size() == 0)
+		if(strcmp(argv[i], "-i") == 0)
 		{
-			UERROR("Interface name invalid!");
-			showUsage();
-		}
-		else
-		{
-			printf("Using Wifi interface \"%s\"\n", interfaceName.c_str());
-		}
-		if(argc > 2)
-		{
-			driver = atoi(argv[2]);
-			if(driver < 0 || driver > 4)
+			++i;
+			if(i < argc)
 			{
-				UERROR("driver should be between 0 and 4.");
+				interfaceName = argv[i];
+			}
+			else
+			{
 				showUsage();
 			}
+			continue;
 		}
+		if(strcmp(argv[i], "-m") == 0)
+		{
+			mirroring = true;
+			continue;
+		}
+		if(strcmp(argv[i], "-d") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				driver = atoi(argv[i]);
+				if(driver < 0 || driver > 4)
+				{
+					UERROR("driver should be between 0 and 4.");
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
+
+		UERROR("Option \"%s\" not recognized!", argv[i]);
+		showUsage();
 	}
 
 	// Here is the pipeline that we will use:
@@ -127,6 +149,11 @@ int main(int argc, char * argv[])
 	else
 	{
 		camera = new rtabmap::CameraOpenni("", 0, opticalRotation);
+	}
+
+	if(mirroring)
+	{
+		camera->setMirroringEnabled(true);
 	}
 
 	CameraThread cameraThread(camera);

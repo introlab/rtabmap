@@ -32,6 +32,24 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using namespace rtabmap;
 
+// A percentage value that represents the signal quality
+// of the network. WLAN_SIGNAL_QUALITY is of type ULONG.
+// This member contains a value between 0 and 100. A value
+// of 0 implies an actual RSSI signal strength of -100 dbm.
+// A value of 100 implies an actual RSSI signal strength of -50 dbm.
+// You can calculate the RSSI signal strength value for wlanSignalQuality
+// values between 1 and 99 using linear interpolation.
+inline int dBm2Quality(int dBm)
+{
+	// dBm to Quality:
+    if(dBm <= -100)
+        return 0;
+    else if(dBm >= -50)
+    	return 100;
+    else
+    	return 2 * (dBm + 100);
+}
+
 class MapBuilderWifi : public MapBuilder
 {
 	Q_OBJECT
@@ -124,10 +142,7 @@ protected slots:
 				else
 				{
 					// Make a line with points
-					int level = -iter->second.first;
-					level = level < 30 ? 0 : level > 80 ? 50: level - 30; // set between 0 and 50
-					level/=5; // set between 0 and 10
-					level = 10 - level; // make higher level to 10
+					int quality = dBm2Quality(iter->second.first)/10;
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 					for(int i=0; i<10; ++i)
 					{
@@ -135,7 +150,7 @@ protected slots:
 						// the number of points depends on the dBm (which varies from -30 (near) to -80 (far))
 						pcl::PointXYZRGB pt;
 						pt.z = float(i+1)*0.02f;
-						if(i<level)
+						if(i<quality)
 						{
 							// yellow
 							pt.r = 255;
