@@ -43,7 +43,7 @@ class RTABMAP_EXP SensorData
 {
 public:
 	SensorData(); // empty constructor
-	SensorData(const cv::Mat & image, int id = 0, double stamp = 0.0);
+	SensorData(const cv::Mat & image, int id = 0, double stamp = 0.0, const std::vector<unsigned char> & userData = std::vector<unsigned char>());
 
 	// Metric constructor
 	SensorData(const cv::Mat & image,
@@ -57,7 +57,8 @@ public:
 		  float poseRotVariance,
 		  float poseTransVariance,
 		  int id,
-		  double stamp);
+		  double stamp,
+		  const std::vector<unsigned char> & userData = std::vector<unsigned char>());
 
 	// Metric constructor + 2d laser scan
 	SensorData(const cv::Mat & laserScan,
@@ -72,7 +73,8 @@ public:
 		  float poseRotVariance,
 		  float poseTransVariance,
 		  int id,
-		  double stamp);
+		  double stamp,
+		  const std::vector<unsigned char> & userData = std::vector<unsigned char>());
 
 	virtual ~SensorData() {}
 
@@ -111,6 +113,9 @@ public:
 	const std::vector<cv::KeyPoint> & keypoints() const {return _keypoints;}
 	const cv::Mat & descriptors() const {return _descriptors;}
 
+	void setUserData(const std::vector<unsigned char> & data) {_userData = data;}
+	const std::vector<unsigned char> userData() const {return _userData;}
+
 private:
 	cv::Mat _image;
 	int _id;
@@ -131,6 +136,9 @@ private:
 	// features
 	std::vector<cv::KeyPoint> _keypoints;
 	cv::Mat _descriptors;
+
+	// user data
+	std::vector<unsigned char> _userData;
 };
 
 }

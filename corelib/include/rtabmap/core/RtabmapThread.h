@@ -69,7 +69,8 @@ public:
 		kStatePublishingMapGlobal,
 		kStatePublishingTOROGraphLocal,
 		kStatePublishingTOROGraphGlobal,
-		kStateTriggeringMap
+		kStateTriggeringMap,
+		kStateAddingUserData
 	};
 
 public:
@@ -112,6 +113,9 @@ private:
 	Transform lastPose_;
 	float _rotVariance;
 	float _transVariance;
+
+	std::vector<unsigned char> _userData;
+	UMutex _userDataMutex;
 };
 
 } /* namespace rtabmap */

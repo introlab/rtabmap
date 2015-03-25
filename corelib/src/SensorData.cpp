@@ -36,7 +36,6 @@ namespace rtabmap
  * An id is automatically generated if id=0.
  */
 SensorData::SensorData() :
-	_image(cv::Mat()),
 	_id(0),
 	_stamp(0.0),
 	_fx(0.0f),
@@ -51,7 +50,8 @@ SensorData::SensorData() :
 
 SensorData::SensorData(const cv::Mat & image,
 	  int id,
-	  double stamp) :
+	  double stamp,
+	  const std::vector<unsigned char> & userData) :
 	_image(image),
 	_id(id),
 	_stamp(stamp),
@@ -61,7 +61,8 @@ SensorData::SensorData(const cv::Mat & image,
 	_cy(0.0f),
 	_localTransform(Transform::getIdentity()),
 	_poseRotVariance(1.0f),
-	_poseTransVariance(1.0f)
+	_poseTransVariance(1.0f),
+	_userData(userData)
 {
 	UASSERT(image.type() == CV_8UC1 || // Mono
 			image.type() == CV_8UC3);  // RGB
@@ -79,7 +80,8 @@ SensorData::SensorData(const cv::Mat & image,
 		  float poseRotVariance,
 		  float poseTransVariance,
 		  int id,
-		  double stamp) :
+		  double stamp,
+		  const std::vector<unsigned char> & userData) :
 	_image(image),
 	_id(id),
 	_stamp(stamp),
@@ -91,7 +93,8 @@ SensorData::SensorData(const cv::Mat & image,
 	_pose(pose),
 	_localTransform(localTransform),
 	_poseRotVariance(poseRotVariance),
-	_poseTransVariance(poseTransVariance)
+	_poseTransVariance(poseTransVariance),
+	_userData(userData)
 {
 	UASSERT(image.type() == CV_8UC1 || // Mono
 			image.type() == CV_8UC3);  // RGB
@@ -115,7 +118,8 @@ SensorData::SensorData(const cv::Mat & laserScan,
 		  float poseRotVariance,
 		  float poseTransVariance,
 		  int id,
-		  double stamp) :
+		  double stamp,
+		  const std::vector<unsigned char> & userData) :
 	_image(image),
 	_id(id),
 	_stamp(stamp),
@@ -128,7 +132,8 @@ SensorData::SensorData(const cv::Mat & laserScan,
 	_pose(pose),
 	_localTransform(localTransform),
 	_poseRotVariance(poseRotVariance),
-	_poseTransVariance(poseTransVariance)
+	_poseTransVariance(poseTransVariance),
+	_userData(userData)
 {
 	UASSERT(_laserScan.empty() || _laserScan.type() == CV_32FC2);
 	UASSERT(image.type() == CV_8UC1 || // Mono

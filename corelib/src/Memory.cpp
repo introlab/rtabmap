@@ -1648,40 +1648,37 @@ int Memory::getSignatureIdByLabel(const std::string & label, bool lookInDatabase
 
 bool Memory::labelSignature(int id, const std::string & label)
 {
-	if(!label.empty())
+	// verify that this label is not used
+	int idFound=getSignatureIdByLabel(label);
+	if(idFound == 0 || idFound == id)
 	{
-		// verify that this label is not used
-		int idFound=getSignatureIdByLabel(label);
-		if(idFound == 0 || idFound == id)
+		Signature * s  = this->_getSignature(id);
+		if(s)
 		{
-			Signature * s  = this->_getSignature(id);
-			if(s)
+			s->setLabel(label);
+			return true;
+		}
+		else if(_dbDriver)
+		{
+			std::list<int> ids;
+			ids.push_back(id);
+			std::list<Signature *> signatures;
+			_dbDriver->loadSignatures(ids,signatures);
+			if(signatures.size())
 			{
-				s->setLabel(label);
+				signatures.front()->setLabel(label);
+				_dbDriver->asyncSave(signatures.front()); // move it again to trash
 				return true;
 			}
-			else if(_dbDriver)
-			{
-				std::list<int> ids;
-				ids.push_back(id);
-				std::list<Signature *> signatures;
-				_dbDriver->loadSignatures(ids,signatures);
-				if(signatures.size())
-				{
-					signatures.front()->setLabel(label);
-					_dbDriver->asyncSave(signatures.front()); // move it again to trash
-					return true;
-				}
-			}
-			else
-			{
-				UERROR("Node %d not found, failed to set label \"%s\"!", id, label.c_str());
-			}
 		}
-		else if(idFound)
+		else
 		{
-			UWARN("Node %d has already label \"%s\"", idFound, label.c_str());
+			UERROR("Node %d not found, failed to set label \"%s\"!", id, label.c_str());
 		}
+	}
+	else if(idFound)
+	{
+		UWARN("Node %d has already label \"%s\"", idFound, label.c_str());
 	}
 	return false;
 }
@@ -1701,6 +1698,34 @@ std::map<int, std::string> Memory::getAllLabels() const
 		_dbDriver->getAllLabels(labels);
 	}
 	return labels;
+}
+
+bool Memory::setUserData(int id, const std::vector<unsigned char> & data)
+{
+	Signature * s  = this->_getSignature(id);
+	if(s)
+	{
+		s->setUserData(data);
+		return true;
+	}
+	else if(_dbDriver)
+	{
+		std::list<int> ids;
+		ids.push_back(id);
+		std::list<Signature *> signatures;
+		_dbDriver->loadSignatures(ids,signatures);
+		if(signatures.size())
+		{
+			signatures.front()->setUserData(data);
+			_dbDriver->asyncSave(signatures.front()); // move it again to trash
+			return true;
+		}
+	}
+	else
+	{
+		UERROR("Node %d not found, failed to set user data (size=%d)!", id, data.size());
+	}
+	return false;
 }
 
 void Memory::deleteLocation(int locationId, std::list<int> * deletedWords)
@@ -2711,7 +2736,8 @@ Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const
 	int mapId, weight;
 	std::string label;
 	double stamp;
-	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, lookInDatabase);
+	std::vector<unsigned char> userData;
+	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, userData, lookInDatabase);
 	return pose;
 }
 
@@ -2721,6 +2747,7 @@ bool Memory::getNodeInfo(int signatureId,
 		int & weight,
 		std::string & label,
 		double & stamp,
+		std::vector<unsigned char> & userData,
 		bool lookInDatabase) const
 {
 	const Signature * s = this->getSignature(signatureId);
@@ -2731,11 +2758,12 @@ bool Memory::getNodeInfo(int signatureId,
 		weight = s->getWeight();
 		label = s->getLabel();
 		stamp = s->getStamp();
+		userData = s->getUserData();
 		return true;
 	}
 	else if(lookInDatabase && _dbDriver)
 	{
-		return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp);
+		return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp, userData);
 	}
 	return false;
 }
@@ -3658,6 +3686,7 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 			words,
 			words3D,
 			data.pose(),
+			data.userData(),
 			ctDepth2d.getCompressedData(),
 			ctImage.getCompressedData(),
 			ctDepth.getCompressedData(),
@@ -3677,6 +3706,7 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 			words,
 			words3D,
 			data.pose(),
+			data.userData(),
 			rtabmap::compressData2(data.laserScan()));
 	}
 	if(this->isRawDataKept())

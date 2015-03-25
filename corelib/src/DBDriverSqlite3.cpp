@@ -458,10 +458,10 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 
 		if(loadMetricData)
 		{
-			if(uStrNumCmp(_version, "0.7.0") < 0)
+			if(uStrNumCmp(_version, "0.7.0") >= 0)
 			{
 				query << "SELECT Image.data, "
-						 "Depth.data, Depth.constant, Depth.local_transform, Depth.data2d "
+						 "Depth.data, Depth.fx, Depth.fy, Depth.cx, Depth.cy, Depth.local_transform, Depth.data2d "
 					  << "FROM Image "
 					  << "LEFT OUTER JOIN Depth " // returns all images even if there are no metric data
 					  << "ON Image.id = Depth.id "
@@ -471,7 +471,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 			else
 			{
 				query << "SELECT Image.data, "
-						 "Depth.data, Depth.fx, Depth.fy, Depth.cx, Depth.cy, Depth.local_transform, Depth.data2d "
+						 "Depth.data, Depth.constant, Depth.local_transform, Depth.data2d "
 					  << "FROM Image "
 					  << "LEFT OUTER JOIN Depth " // returns all images even if there are no metric data
 					  << "ON Image.id = Depth.id "
@@ -598,10 +598,10 @@ void DBDriverSqlite3::getNodeDataQuery(
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		if(uStrNumCmp(_version, "0.7.0") < 0)
+		if(uStrNumCmp(_version, "0.7.0") >= 0)
 		{
 			query << "SELECT Image.data, "
-					 "Depth.data, Depth.constant, Depth.local_transform, Depth.data2d "
+					 "Depth.data, Depth.fx, Depth.fy, Depth.cx, Depth.cy, Depth.local_transform, Depth.data2d "
 				  << "FROM Image "
 				  << "LEFT OUTER JOIN Depth " // returns all images even if there are no metric data
 				  << "ON Image.id = Depth.id "
@@ -611,7 +611,7 @@ void DBDriverSqlite3::getNodeDataQuery(
 		else
 		{
 			query << "SELECT Image.data, "
-					 "Depth.data, Depth.fx, Depth.fy, Depth.cx, Depth.cy, Depth.local_transform, Depth.data2d "
+					 "Depth.data, Depth.constant, Depth.local_transform, Depth.data2d "
 				  << "FROM Image "
 				  << "LEFT OUTER JOIN Depth " // returns all images even if there are no metric data
 				  << "ON Image.id = Depth.id "
@@ -756,7 +756,8 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 		int & mapId,
 		int & weight,
 		std::string & label,
-		double & stamp) const
+		double & stamp,
+		std::vector<unsigned char> & userData) const
 {
 	bool found = false;
 	if(_ppDb && signatureId)
@@ -766,9 +767,16 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 		std::stringstream query;
 
 		// Prepare the query... Get the map from signature and visual words
-		if(uStrNumCmp(_version, "0.8.5") >= 0)
+		if(uStrNumCmp(_version, "0.8.8") >= 0)
 		{
-			query << "SELECT pose, map_id, weight, label "
+			query << "SELECT pose, map_id, weight, label, stamp, user_data"
+					 "FROM Node "
+					 "WHERE id = " << signatureId <<
+					 ";";
+		}
+		else if(uStrNumCmp(_version, "0.8.5") >= 0)
+		{
+			query << "SELECT pose, map_id, weight, label, stamp "
 					 "FROM Node "
 					 "WHERE id = " << signatureId <<
 					 ";";
@@ -809,6 +817,19 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 				if(p)
 				{
 					label = reinterpret_cast<const char*>(p); // label
+				}
+				stamp = sqlite3_column_double(ppStmt, index++); // stamp
+			}
+
+			if(uStrNumCmp(_version, "0.8.8") >= 0)
+			{
+				data = sqlite3_column_blob(ppStmt, index);
+				dataSize = sqlite3_column_bytes(ppStmt, index++); // user_data
+
+				if(dataSize && data)
+				{
+					userData.resize(dataSize);
+					memcpy(userData.data(), data, dataSize);
 				}
 			}
 
@@ -1073,7 +1094,13 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 		unsigned int loaded = 0;
 
 		// Load nodes information
-		if(uStrNumCmp(_version, "0.8.5") >= 0)
+		if(uStrNumCmp(_version, "0.8.8") >= 0)
+		{
+			query << "SELECT id, map_id, weight, pose, stamp, label, user_data "
+				  << "FROM Node "
+				  << "WHERE id=?;";
+		}
+		else if(uStrNumCmp(_version, "0.8.5") >= 0)
 		{
 			query << "SELECT id, map_id, weight, pose, stamp, label "
 				  << "FROM Node "
@@ -1104,6 +1131,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 			const void * data = 0;
 			int dataSize = 0;
 			std::string label;
+			std::vector<unsigned char> userData;
 
 			// Process the result if one
 			rc = sqlite3_step(ppStmt);
@@ -1123,11 +1151,23 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 
 				if(uStrNumCmp(_version, "0.8.5") >= 0)
 				{
-					stamp = sqlite3_column_double(ppStmt, index++);
-					const unsigned char * p = sqlite3_column_text(ppStmt, index++);
+					stamp = sqlite3_column_double(ppStmt, index++); // stamp
+					const unsigned char * p = sqlite3_column_text(ppStmt, index++); // label
 					if(p)
 					{
 						label = reinterpret_cast<const char*>(p);
+					}
+				}
+
+				if(uStrNumCmp(_version, "0.8.8") >= 0)
+				{
+					data = sqlite3_column_blob(ppStmt, index);
+					dataSize = sqlite3_column_bytes(ppStmt, index++); // user_data
+
+					if(dataSize && data)
+					{
+						userData.resize(dataSize);
+						memcpy(userData.data(), data, dataSize);
 					}
 				}
 
@@ -1147,7 +1187,8 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 						label,
 						std::multimap<int, cv::KeyPoint>(),
 						std::multimap<int, pcl::PointXYZ>(),
-						pose);
+						pose,
+						userData);
 				s->setSaved(true);
 				nodes.push_back(s);
 				++loaded;
@@ -1704,7 +1745,18 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool upd
 		Signature * s = 0;
 
 		std::string query;
-		if(uStrNumCmp(_version, "0.8.5") >= 0)
+		if(uStrNumCmp(_version, "0.8.8") >= 0)
+		{
+			if(updateTimestamp)
+			{
+				query = "UPDATE Node SET weight=?, label=?, user_data=?, time_enter = DATETIME('NOW') WHERE id=?;";
+			}
+			else
+			{
+				query = "UPDATE Node SET weight=?, label=?, user_data=? WHERE id=?;";
+			}
+		}
+		else if(uStrNumCmp(_version, "0.8.5") >= 0)
 		{
 			if(updateTimestamp)
 			{
@@ -1748,6 +1800,20 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool upd
 					else
 					{
 						rc = sqlite3_bind_text(ppStmt, index++, s->getLabel().c_str(), -1, SQLITE_STATIC);
+						UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+					}
+				}
+
+				if(uStrNumCmp(_version, "0.8.8") >= 0)
+				{
+					if(s->getUserData().empty())
+					{
+						rc = sqlite3_bind_null(ppStmt, index++);
+						UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+					}
+					else
+					{
+						rc = sqlite3_bind_blob(ppStmt, index++, s->getUserData().data(), (int)s->getUserData().size(), SQLITE_STATIC);
 						UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 					}
 				}
@@ -2049,7 +2115,11 @@ void DBDriverSqlite3::saveQuery(const std::list<VisualWord *> & words) const
 
 std::string DBDriverSqlite3::queryStepNode() const
 {
-	if(uStrNumCmp(_version, "0.8.5") >= 0)
+	if(uStrNumCmp(_version, "0.8.8") >= 0)
+	{
+		return "INSERT INTO Node(id, map_id, weight, pose, stamp, label, user_data) VALUES(?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.8.5") >= 0)
 	{
 		return "INSERT INTO Node(id, map_id, weight, pose, stamp, label) VALUES(?,?,?,?,?,?);";
 	}
@@ -2087,6 +2157,20 @@ void DBDriverSqlite3::stepNode(sqlite3_stmt * ppStmt, const Signature * s) const
 		else
 		{
 			rc = sqlite3_bind_text(ppStmt, index++, s->getLabel().c_str(), -1, SQLITE_STATIC);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		}
+	}
+
+	if(uStrNumCmp(_version, "0.8.8") >= 0)
+	{
+		if(s->getUserData().empty())
+		{
+			rc = sqlite3_bind_null(ppStmt, index++);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		}
+		else
+		{
+			rc = sqlite3_bind_blob(ppStmt, index++, s->getUserData().data(), (int)s->getUserData().size(), SQLITE_STATIC);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		}
 	}
@@ -2139,13 +2223,13 @@ void DBDriverSqlite3::stepImage(sqlite3_stmt * ppStmt,
 
 std::string DBDriverSqlite3::queryStepDepth() const
 {
-	if(uStrNumCmp(_version, "0.7.0") < 0)
+	if(uStrNumCmp(_version, "0.7.0") >= 0)
 	{
-		return "INSERT INTO Depth(id, data, constant, local_transform, data2d) VALUES(?,?,?,?,?);";
+		return "INSERT INTO Depth(id, data, fx, fy, cx, cy, local_transform, data2d) VALUES(?,?,?,?,?,?,?,?);";
 	}
 	else
 	{
-		return "INSERT INTO Depth(id, data, fx, fy, cx, cy, local_transform, data2d) VALUES(?,?,?,?,?,?,?,?);";
+		return "INSERT INTO Depth(id, data, constant, local_transform, data2d) VALUES(?,?,?,?,?);";
 	}
 }
 void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt,
@@ -2180,12 +2264,7 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt,
 	}
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
-	if(uStrNumCmp(_version, "0.7.0") < 0)
-	{
-		rc = sqlite3_bind_double(ppStmt, index++, 1.0f/fx);
-		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-	}
-	else
+	if(uStrNumCmp(_version, "0.7.0") >= 0)
 	{
 		rc = sqlite3_bind_double(ppStmt, index++, fx);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
@@ -2194,6 +2273,11 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt,
 		rc = sqlite3_bind_double(ppStmt, index++, cx);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		rc = sqlite3_bind_double(ppStmt, index++, cy);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+	else
+	{
+		rc = sqlite3_bind_double(ppStmt, index++, 1.0f/fx);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	}
 

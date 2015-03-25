@@ -1393,10 +1393,14 @@ void MainWindow::updateMapCloud(
 
 	// update 3D graphes (show all poses)
 	_ui->widget_cloudViewer->removeAllGraphs();
+	_ui->widget_cloudViewer->removeCloud("graph_nodes");
 	if(_preferencesDialog->isGraphsShown() && _currentPosesMap.size())
 	{
 		// Find all graphs
 		std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > graphs;
+		pcl::PointCloud<pcl::PointXYZ>::Ptr graphNodes(new pcl::PointCloud<pcl::PointXYZ>);
+		graphNodes->resize(_currentPosesMap.size());
+		int oi = 0;
 		for(std::map<int, Transform>::iterator iter=_currentPosesMap.begin(); iter!=_currentPosesMap.end(); ++iter)
 		{
 			int mapId = uValue(_currentMapIds, iter->first, -1);
@@ -1405,7 +1409,9 @@ void MainWindow::updateMapCloud(
 			{
 				kter = graphs.insert(std::make_pair(mapId, pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>))).first;
 			}
-			kter->second->push_back(pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z()));
+			pcl::PointXYZ pt(iter->second.x(), iter->second.y(), iter->second.z());
+			kter->second->push_back(pt);
+			(*graphNodes)[oi++] = pcl::PointXYZ(pt);
 		}
 
 		// add graphs
@@ -1418,6 +1424,10 @@ void MainWindow::updateMapCloud(
 			}
 			_ui->widget_cloudViewer->addOrUpdateGraph(uFormat("graph_%d", iter->first), iter->second, color);
 		}
+
+		// add nodes
+		_ui->widget_cloudViewer->addOrUpdateCloud("graph_nodes", graphNodes, Transform::getIdentity(), Qt::green);
+		_ui->widget_cloudViewer->setCloudPointSize("graph_nodes", 5);
 	}
 
 	// Update occupancy grid map in 3D map view and graph view

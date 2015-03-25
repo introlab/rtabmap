@@ -195,13 +195,17 @@ SensorData DBReader::getNextData()
 			Transform localTransform, pose;
 			float rotVariance = 1.0f;
 			float transVariance = 1.0f;
+			std::vector<unsigned char> userData;
 			_dbDriver->getNodeData(*_currentId, imageBytes, depthBytes, laserScanBytes, fx, fy, cx, cy, localTransform);
+
+			// info
+			int weight;
+			std::string label;
+			double stamp;
+			_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, userData);
+
 			if(!_odometryIgnored)
 			{
-				int weight;
-				std::string label;
-				double stamp;
-				_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp);
 				std::map<int, Link> links;
 				_dbDriver->loadLinks(*_currentId, links, Link::kNeighbor);
 				if(links.size())
@@ -211,6 +215,11 @@ SensorData DBReader::getNextData()
 					transVariance = links.begin()->second.transVariance();
 				}
 			}
+			else
+			{
+				pose.setNull();
+			}
+
 			int seq = *_currentId;
 			++_currentId;
 			if(imageBytes.empty())
@@ -237,7 +246,8 @@ SensorData DBReader::getNextData()
 					rotVariance,
 					transVariance,
 					seq,
-					UTimer::now());
+					UTimer::now(),
+					userData);
 			UDEBUG("Laser=%d RGB/Left=%d Depth=%d Right=%d",
 					data.laserScan().empty()?0:1,
 					data.image().empty()?0:1,

@@ -1037,7 +1037,8 @@ void DatabaseViewer::view3DMap()
 						Transform odomPose;
 						std::string label;
 						double stamp;
-						if(memory_->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, true))
+						std::vector<unsigned char> userData;
+						if(memory_->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true))
 						{
 							color = (Qt::GlobalColor)(mapId % 12 + 7 );
 						}
@@ -1391,7 +1392,8 @@ void DatabaseViewer::update(int value,
 				int w;
 				std::string l;
 				double s;
-				memory_->getNodeInfo(id, odomPose, mapId, w, l, s, true);
+				std::vector<unsigned char> d;
+				memory_->getNodeInfo(id, odomPose, mapId, w, l, s, d, true);
 
 				weight->setNum(data.getWeight());
 				label->setText(data.getLabel().c_str());

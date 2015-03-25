@@ -347,8 +347,12 @@ bool CloudViewer::addCloud(
 		 colorHandler.reset (new pcl::visualization::PointCloudColorHandlerRandom<pcl::PCLPointCloud2> (binaryCloud));
 		 if(_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id))
 		{
-			 // white
-			colorHandler.reset (new pcl::visualization::PointCloudColorHandlerCustom<pcl::PCLPointCloud2> (binaryCloud, color.red(), color.green(), color.blue()));
+			QColor c = Qt::gray;
+			if(color.isValid())
+			{
+				c = color;
+			}
+			colorHandler.reset (new pcl::visualization::PointCloudColorHandlerCustom<pcl::PCLPointCloud2> (binaryCloud, c.red(), c.green(), c.blue()));
 			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id);
 
 			// x,y,z
@@ -366,6 +370,10 @@ bool CloudViewer::addCloud(
 				_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id);
 
 				_visualizer->updateColorHandlerIndex(id, 5);
+			}
+			else if(color.isValid())
+			{
+				_visualizer->updateColorHandlerIndex(id, 1);
 			}
 
 			_addedClouds.insert(id, pose);

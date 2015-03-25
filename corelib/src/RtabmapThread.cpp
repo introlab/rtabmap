@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/ParamEvent.h"
 #include "rtabmap/core/OdometryEvent.h"
+#include "rtabmap/core/UserDataEvent.h"
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UEventsManager.h>
@@ -90,6 +91,12 @@ void RtabmapThread::clearBufferedData()
 		_transVariance = 0;
 	}
 	_dataMutex.unlock();
+
+	_userDataMutex.lock();
+	{
+		_userData = cv::Mat();
+	}
+	_userDataMutex.unlock();
 }
 
 void RtabmapThread::setDetectorRate(float rate)
@@ -175,6 +182,7 @@ void RtabmapThread::mainLoop()
 	}
 	_stateMutex.unlock();
 
+	std::vector<unsigned char> userData;
 	switch(state)
 	{
 	case kStateDetecting:
@@ -243,6 +251,15 @@ void RtabmapThread::mainLoop()
 	case kStateTriggeringMap:
 		_rtabmap->triggerNewMap();
 		break;
+	case kStateAddingUserData:
+		_userDataMutex.lock();
+		{
+			userData = _userData;
+			_userData.clear();
+		}
+		_userDataMutex.unlock();
+		_rtabmap->setUserData(0, userData);
+		break;
 	default:
 		UFATAL("Invalid state !?!?");
 		break;
@@ -272,6 +289,32 @@ void RtabmapThread::handleEvent(UEvent* event)
 		else
 		{
 			lastPose_.setNull();
+		}
+	}
+	else if(event->getClassName().compare("UserDataEvent") == 0)
+	{
+		if(!_paused)
+		{
+			UDEBUG("UserDataEvent");
+			bool updated = false;
+			UserDataEvent * e = (UserDataEvent*)event;
+			_userDataMutex.lock();
+			if(!e->data().empty())
+			{
+				updated = !_userData.empty();
+				_userData = e->data();
+			}
+			_userDataMutex.unlock();
+			if(updated)
+			{
+				UWARN("New user data received before the last one was processed... replacing "
+					"user data with this new one. Note that UserDataEvent should be used only "
+					"if the rate of UserDataEvent is lower than RTAB-Map's detection rate (%f Hz).", _rate);
+			}
+			else
+			{
+				pushNewState(kStateAddingUserData);
+			}
 		}
 	}
 	else if(event->getClassName().compare("RtabmapEventCmd") == 0)

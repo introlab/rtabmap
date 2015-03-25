@@ -97,7 +97,7 @@ public:
 	void loadNodeData(std::list<Signature *> & signatures, bool loadMetricData) const;
 	void getNodeData(int signatureId, cv::Mat & imageCompressed, cv::Mat & depthCompressed, cv::Mat & laserScanCompressed, float & fx, float & fy, float & cx, float & cy, Transform & localTransform) const;
 	void getNodeData(int signatureId, cv::Mat & imageCompressed) const;
-	bool getNodeInfo(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp) const;
+	bool getNodeInfo(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, std::vector<unsigned char> & userData) const;
 	void loadLinks(int signatureId, std::map<int, Link> & links, Link::Type type = Link::kUndef) const;
 	void getWeight(int signatureId, int & weight) const;
 	void getAllNodeIds(std::set<int> & ids, bool ignoreChildren = false) const;
@@ -136,7 +136,7 @@ private:
 	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool loadMetricData) const = 0;
 	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed, cv::Mat & depthCompressed, cv::Mat & laserScanCompressed, float & fx, float & fy, float & cx, float & cy, Transform & localTransform) const = 0;
 	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed) const = 0;
-	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp) const = 0;
+	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, std::vector<unsigned char> & userData) const = 0;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const = 0;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const = 0;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const = 0;

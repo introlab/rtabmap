@@ -474,7 +474,13 @@ void DBDriver::getNodeData(int signatureId, cv::Mat & imageCompressed) const
 	}
 }
 
-bool DBDriver::getNodeInfo(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp) const
+bool DBDriver::getNodeInfo(int signatureId,
+		Transform & pose,
+		int & mapId,
+		int & weight,
+		std::string & label,
+		double & stamp,
+		std::vector<unsigned char> & userData) const
 {
 	bool found = false;
 	// look in the trash
@@ -486,6 +492,7 @@ bool DBDriver::getNodeInfo(int signatureId, Transform & pose, int & mapId, int &
 		weight = _trashSignatures.at(signatureId)->getWeight();
 		label = _trashSignatures.at(signatureId)->getLabel();
 		stamp = _trashSignatures.at(signatureId)->getStamp();
+		userData = _trashSignatures.at(signatureId)->getUserData();
 		found = true;
 	}
 	_trashesMutex.unlock();
@@ -493,7 +500,7 @@ bool DBDriver::getNodeInfo(int signatureId, Transform & pose, int & mapId, int &
 	if(!found)
 	{
 		_dbSafeAccessMutex.lock();
-		found = this->getNodeInfoQuery(signatureId, pose, mapId, weight, label, stamp);
+		found = this->getNodeInfoQuery(signatureId, pose, mapId, weight, label, stamp, userData);
 		_dbSafeAccessMutex.unlock();
 	}
 	return found;

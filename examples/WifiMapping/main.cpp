@@ -34,13 +34,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QApplication>
 #include <stdio.h>
 
-#include "MapBuilder.h"
+#include "MapBuilderWifi.h"
+#include "WifiThread.h"
 
 void showUsage()
 {
 	printf("\nUsage:\n"
-			"rtabmap-rgbd_mapping driver\n"
-			"  driver       Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS\n\n");
+			"rtabmap-wifi_mapping interface_name [driver]\n"
+			"  interface_name         Wifi interface name (e.g. \"eth0\")\n"
+			"  driver                 Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS\n\n");
 	exit(1);
 }
 
@@ -50,6 +52,7 @@ int main(int argc, char * argv[])
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kWarning);
 
+	std::string interfaceName;
 	int driver = 0;
 	if(argc < 2)
 	{
@@ -57,11 +60,24 @@ int main(int argc, char * argv[])
 	}
 	else
 	{
-		driver = atoi(argv[argc-1]);
-		if(driver < 0 || driver > 4)
+		interfaceName = argv[1];
+		if(interfaceName.size() == 0)
 		{
-			UERROR("driver should be between 0 and 4.");
+			UERROR("Interface name invalid!");
 			showUsage();
+		}
+		else
+		{
+			printf("Using Wifi interface \"%s\"\n", interfaceName.c_str());
+		}
+		if(argc > 2)
+		{
+			driver = atoi(argv[2]);
+			if(driver < 0 || driver > 4)
+			{
+				UERROR("driver should be between 0 and 4.");
+				showUsage();
+			}
 		}
 	}
 
@@ -117,27 +133,31 @@ int main(int argc, char * argv[])
 	if(!cameraThread.init())
 	{
 		UERROR("Camera init failed!");
-		exit(1);
+		//exit(1);
 	}
 
 	// GUI stuff, there the handler will receive RtabmapEvent and construct the map
 	// We give it the camera so the GUI can pause/resume the camera
 	QApplication app(argc, argv);
-	MapBuilder mapBuilder(&cameraThread);
+	MapBuilderWifi mapBuilderWifi(&cameraThread);
 
 	// Create an odometry thread to process camera events, it will send OdometryEvent.
 	OdometryThread odomThread(new OdometryBOW());
 
-
 	// Create RTAB-Map to process OdometryEvent
 	Rtabmap * rtabmap = new Rtabmap();
-	rtabmap->init();
+	ParametersMap param;
+	param.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // disable rehearsal (node merging when not moving)
+	rtabmap->init(param);
 	RtabmapThread rtabmapThread(rtabmap); // ownership is transfered
+
+	// Create Wifi monitoring thread
+	WifiThread wifiThread(interfaceName); // 0.5 Hz, should be under RTAB-Map rate (which is 1 Hz by default)
 
 	// Setup handlers
 	odomThread.registerToEventsManager();
 	rtabmapThread.registerToEventsManager();
-	mapBuilder.registerToEventsManager();
+	mapBuilderWifi.registerToEventsManager();
 
 	// The RTAB-Map is subscribed by default to CameraEvent, but we want
 	// RTAB-Map to process OdometryEvent instead, ignoring the CameraEvent.
@@ -151,12 +171,13 @@ int main(int argc, char * argv[])
 	rtabmapThread.start();
 	odomThread.start();
 	cameraThread.start();
+	wifiThread.start();
 
-	mapBuilder.show();
+	mapBuilderWifi.show();
 	app.exec(); // main loop
 
 	// remove handlers
-	mapBuilder.unregisterFromEventsManager();
+	mapBuilderWifi.unregisterFromEventsManager();
 	rtabmapThread.unregisterFromEventsManager();
 	odomThread.unregisterFromEventsManager();
 
@@ -164,6 +185,7 @@ int main(int argc, char * argv[])
 	cameraThread.kill();
 	odomThread.join(true);
 	rtabmapThread.join(true);
+	wifiThread.join(true);
 
 	return 0;
 }

@@ -103,6 +103,7 @@ public:
 
 	int triggerNewMap();
 	bool labelLocation(int id, const std::string & label);
+	bool setUserData(int id, const std::vector<unsigned char> & data);
 	void generateDOTGraph(const std::string & path, int id=0, int margin=5);
 	void generateTOROGraph(const std::string & path, bool optimized, bool global);
 	void resetMemory();

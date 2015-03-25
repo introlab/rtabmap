@@ -110,6 +110,7 @@ public:
 	int getSignatureIdByLabel(const std::string & label, bool lookInDatabase = true) const;
 	bool labelSignature(int id, const std::string & label);
 	std::map<int, std::string> getAllLabels() const;
+	bool setUserData(int id, const std::vector<unsigned char> & data);
 	int getDatabaseMemoryUsed() const; // in bytes
 	double getDbSavingTime() const;
 	Transform getOdomPose(int signatureId, bool lookInDatabase = false) const;
@@ -119,6 +120,7 @@ public:
 			int & weight,
 			std::string & label,
 			double & stamp,
+			std::vector<unsigned char> & userData,
 			bool lookInDatabase = false) const;
 	cv::Mat getImageCompressed(int signatureId) const;
 	Signature getSignatureData(int locationId, bool uncompressedData = false);

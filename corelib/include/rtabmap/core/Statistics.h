@@ -129,6 +129,8 @@ public:
 
 	void setMapIds(const std::map<int, int> & mapIds) {_mapIds = mapIds;}
 	void setLabels(const std::map<int, std::string> & labels) {_labels = labels;}
+	void setStamps(const std::map<int, double> & stamps) {_stamps = stamps;}
+	void setUserDatas(const std::map<int, std::vector<unsigned char> > & userDatas) {_userDatas = userDatas;}
 	void setSignature(const Signature & s) {_signature = s;}
 
 	void setPoses(const std::map<int, Transform> & poses) {_poses = poses;}
@@ -149,6 +151,8 @@ public:
 
 	const std::map<int, int> & getMapIds() const {return _mapIds;}
 	const std::map<int, std::string> & getLabels() const {return _labels;}
+	const std::map<int, double> & getStamps() const {return _stamps;}
+	const std::map<int, std::vector<unsigned char> > & getUserDatas() const {return _userDatas;}
 	const Signature & getSignature() const {return _signature;}
 
 	const std::map<int, Transform> & poses() const {return _poses;}
@@ -173,6 +177,8 @@ private:
 	// extended data start here...
 	std::map<int, int> _mapIds;
 	std::map<int, std::string> _labels;
+	std::map<int, double> _stamps;
+	std::map<int, std::vector<unsigned char> > _userDatas;
 
 	// Signature data
 	Signature _signature;

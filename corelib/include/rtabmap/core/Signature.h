@@ -60,6 +60,7 @@ public:
 			const std::multimap<int, cv::KeyPoint> & words,
 			const std::multimap<int, pcl::PointXYZ> & words3,
 			const Transform & pose = Transform(),
+			const std::vector<unsigned char> & userData = std::vector<unsigned char>(),
 			const cv::Mat & laserScan = cv::Mat(),
 			const cv::Mat & image = cv::Mat(),
 			const cv::Mat & depth = cv::Mat(),
@@ -84,6 +85,9 @@ public:
 
 	void setLabel(const std::string & label) {_modified=_label.compare(label)!=0;_label = label;}
 	const std::string & getLabel() const {return _label;}
+
+	void setUserData(const std::vector<unsigned char> & data);
+	const std::vector<unsigned char> & getUserData() const {return _userData;}
 
 	double getStamp() const {return _stamp;}
 
@@ -153,6 +157,7 @@ private:
 	std::map<int, Link> _links; // id, transform
 	int _weight;
 	std::string _label;
+	std::vector<unsigned char> _userData;
 	bool _saved; // If it's saved to bd
 	bool _modified;
 	bool _linksModified; // Optimization when updating signatures in database

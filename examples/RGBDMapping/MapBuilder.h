@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <QVBoxLayout>
 #include <QtCore/QMetaType>
+#include <QAction>
 
 #ifndef Q_MOC_RUN // Mac OS X issue
 #include "rtabmap/gui/CloudViewer.h"
@@ -41,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/core/OdometryEvent.h"
+#include "rtabmap/core/CameraThread.h"
 
 using namespace rtabmap;
 
@@ -49,9 +51,12 @@ class MapBuilder : public QWidget, public UEventsHandler
 {
 	Q_OBJECT
 public:
-	MapBuilder() :
-		_processingStatistics(false),
-		_lastOdometryProcessed(true)
+	//Camera ownership is not transferred!
+	MapBuilder(CameraThread * camera = 0) :
+		camera_(camera),
+		odometryCorrection_(Transform::getIdentity()),
+		processingStatistics_(false),
+		lastOdometryProcessed_(true)
 	{
 		this->setWindowFlags(Qt::Dialog);
 		this->setWindowTitle(tr("3D Map"));
@@ -66,6 +71,11 @@ public:
 
 		qRegisterMetaType<rtabmap::Statistics>("rtabmap::Statistics");
 		qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
+
+		QAction * pause = new QAction(this);
+		this->addAction(pause);
+		pause->setShortcut(Qt::Key_Space);
+		connect(pause, SIGNAL(triggered()), this, SLOT(pauseDetection()));
 	}
 
 	virtual ~MapBuilder()
@@ -73,8 +83,24 @@ public:
 		this->unregisterFromEventsManager();
 	}
 
-private slots:
-	void processOdometry(const rtabmap::SensorData & data)
+protected slots:
+	virtual void pauseDetection()
+	{
+		UWARN("");
+		if(camera_)
+		{
+			if(camera_->isCapturing())
+			{
+				camera_->join(true);
+			}
+			else
+			{
+				camera_->start();
+			}
+		}
+	}
+
+	virtual void processOdometry(const rtabmap::SensorData & data)
 	{
 		if(!this->isVisible())
 		{
@@ -120,7 +146,7 @@ private slots:
 						cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, data.localTransform());
 					}
 				}
-				if(!cloudViewer_->addOrUpdateCloud("cloudOdom", cloud, pose))
+				if(!cloudViewer_->addOrUpdateCloud("cloudOdom", cloud, odometryCorrection_*pose))
 				{
 					UERROR("Adding cloudOdom to viewer failed!");
 				}
@@ -129,19 +155,22 @@ private slots:
 			if(!data.pose().isNull())
 			{
 				// update camera position
-				cloudViewer_->updateCameraTargetPosition(data.pose());
+				cloudViewer_->updateCameraTargetPosition(odometryCorrection_*data.pose());
 			}
 		}
 		cloudViewer_->update();
 
-		_lastOdometryProcessed = true;
+		lastOdometryProcessed_ = true;
 	}
 
 
-	void processStatistics(const rtabmap::Statistics & stats)
+	virtual void processStatistics(const rtabmap::Statistics & stats)
 	{
-		_processingStatistics = true;
+		processingStatistics_ = true;
 
+		//============================
+		// Add RGB-D clouds
+		//============================
 		const std::map<int, Transform> & poses = stats.poses();
 		QMap<std::string, Transform> clouds = cloudViewer_->getAddedClouds();
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
@@ -178,7 +207,7 @@ private slots:
 							s.getDepthCy(),
 							s.getDepthFx(),
 							s.getDepthFy(),
-						   8); // decimation
+						   4); // decimation
 
 					if(cloud->size())
 					{
@@ -196,12 +225,36 @@ private slots:
 			}
 		}
 
+		//============================
+		// Add 3D graph (show all poses)
+		//============================
+		cloudViewer_->removeAllGraphs();
+		cloudViewer_->removeCloud("graph_nodes");
+		if(poses.size())
+		{
+			// Set graph
+			pcl::PointCloud<pcl::PointXYZ>::Ptr graph(new pcl::PointCloud<pcl::PointXYZ>);
+			pcl::PointCloud<pcl::PointXYZ>::Ptr graphNodes(new pcl::PointCloud<pcl::PointXYZ>);
+			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				graph->push_back(pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z()));
+			}
+			*graphNodes = *graph;
+
+
+			// add graph
+			cloudViewer_->addOrUpdateGraph("graph", graph, Qt::gray);
+			cloudViewer_->addOrUpdateCloud("graph_nodes", graphNodes, Transform::getIdentity(), Qt::green);
+			cloudViewer_->setCloudPointSize("graph_nodes", 5);
+		}
+
+		odometryCorrection_ = stats.mapCorrection();
+
 		cloudViewer_->update();
 
-		_processingStatistics = false;
+		processingStatistics_ = false;
 	}
 
-protected:
 	virtual void handleEvent(UEvent * event)
 	{
 		if(event->getClassName().compare("RtabmapEvent") == 0)
@@ -219,20 +272,22 @@ protected:
 			OdometryEvent * odomEvent = (OdometryEvent *)event;
 			// Odometry must be processed in the Qt thread
 			if(this->isVisible() &&
-			   _lastOdometryProcessed &&
-			   !_processingStatistics)
+			   lastOdometryProcessed_ &&
+			   !processingStatistics_)
 			{
-				_lastOdometryProcessed = false; // if we receive too many odometry events!
+				lastOdometryProcessed_ = false; // if we receive too many odometry events!
 				QMetaObject::invokeMethod(this, "processOdometry", Q_ARG(rtabmap::SensorData, odomEvent->data()));
 			}
 		}
 	}
 
-private:
+protected:
 	CloudViewer * cloudViewer_;
+	CameraThread * camera_;
 	Transform lastOdomPose_;
-	bool _processingStatistics;
-	bool _lastOdometryProcessed;
+	Transform odometryCorrection_;
+	bool processingStatistics_;
+	bool lastOdometryProcessed_;
 };
 
 

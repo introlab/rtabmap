@@ -261,15 +261,32 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	}
 
 	_databasePath = databasePath;
+	if(!_databasePath.empty())
+	{
+		UASSERT(UFile::getExtension(_databasePath).compare("db") == 0);
+		UINFO("Using database \"%s\".", _databasePath.c_str());
+	}
+	else
+	{
+		UWARN("Using empty database. Mapping session will not be saved.");
+	}
+
+	bool newDatabase = _databasePath.empty() || !UFile::exists(_databasePath);
+
+	// If not exist, create a memory
+	if(!_memory)
+	{
+		_memory = new Memory(parameters);
+		_memory->init(_databasePath, false, parameters, true);
+	}
+
+	// Parse all parameters
+	this->parseParameters(parameters);
+
 	if(_databasePath.empty())
 	{
-		_databasePath = _wDir + "/" + Parameters::getDefaultDatabaseName();
+		_statisticLogged = false;
 	}
-	UASSERT(UFile::getExtension(_databasePath).compare("db") == 0);
-
-	UINFO("Using database \"%s\".", _databasePath.c_str());
-	bool newDatabase = !UFile::exists(_databasePath);
-	this->parseParameters(parameters);
 	setupLogFiles(newDatabase);
 }
 
@@ -417,16 +434,13 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	{
 		_graphOptimizer->parseParameters(parameters);
 	}
-
-	if(!_memory)
-	{
-		if(!_databasePath.empty())
-		{
-			_memory = new Memory(parameters);
-			_memory->init(_databasePath, false, parameters, true);
-		}
-	}
 	else
+	{
+		optimizerType = (graph::Optimizer::Type)Parameters::defaultRGBDOptimizeStrategy();
+		_graphOptimizer = graph::Optimizer::create(optimizerType, parameters);
+	}
+
+	if(_memory)
 	{
 		_memory->parseParameters(parameters);
 	}
@@ -621,7 +635,7 @@ int Rtabmap::triggerNewMap()
 
 bool Rtabmap::labelLocation(int id, const std::string & label)
 {
-	if(!label.empty() && _memory)
+	if(_memory)
 	{
 		if(id > 0)
 		{
@@ -634,6 +648,26 @@ bool Rtabmap::labelLocation(int id, const std::string & label)
 		else
 		{
 			UERROR("Last signature is null! Cannot set label \"%s\"", label.c_str());
+		}
+	}
+	return false;
+}
+
+bool Rtabmap::setUserData(int id, const std::vector<unsigned char> & data)
+{
+	if(_memory)
+	{
+		if(id > 0)
+		{
+			return _memory->setUserData(id, data);
+		}
+		else if(_memory->getLastWorkingSignature())
+		{
+			return _memory->setUserData(_memory->getLastWorkingSignature()->id(), data);
+		}
+		else
+		{
+			UERROR("Last signature is null! Cannot set user data!");
 		}
 	}
 	return false;
@@ -792,10 +826,9 @@ bool Rtabmap::process(const SensorData & data)
 	timer.start();
 	timerTotal.start();
 
-	if(!_memory || !_bayesFilter || !_graphOptimizer)
-	{
-		UFATAL("RTAB-Map is not initialized, data received is ignored.");
-	}
+	UASSERT_MSG(_memory, "RTAB-Map is not initialized!");
+	UASSERT_MSG(_bayesFilter, "RTAB-Map is not initialized!");
+	UASSERT_MSG(_graphOptimizer, "RTAB-Map is not initialized!");
 
 	//============================================================
 	// If RGBD SLAM is enabled, a pose must be set.
@@ -1684,6 +1717,8 @@ bool Rtabmap::process(const SensorData & data)
 				std::map<int, Transform> poses;
 				std::map<int, int> mapIds;
 				std::map<int, std::string> labels;
+				std::map<int, double> stamps;
+				std::map<int, std::vector<unsigned char> > userDatas;
 				std::multimap<int, Link> constraints;
 				_memory->getMetricConstraints(uKeys(ids), poses, constraints, false);
 				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
@@ -1693,14 +1728,22 @@ bool Rtabmap::process(const SensorData & data)
 					int mapId = -1;
 					std::string label;
 					double stamp = 0;
-					_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, false);
+					std::vector<unsigned char> userData;
+					_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, false);
 					mapIds.insert(std::make_pair(iter->first, mapId));
 					labels.insert(std::make_pair(iter->first, label));
+					stamps.insert(std::make_pair(iter->first, stamp));
+					if(userData.size())
+					{
+						userDatas.insert(std::make_pair(iter->first, userData));
+					}
 				}
 				statistics_.setPoses(poses);
 				statistics_.setConstraints(constraints);
 				statistics_.setMapIds(mapIds);
 				statistics_.setLabels(labels);
+				statistics_.setStamps(stamps);
+				statistics_.setUserDatas(userDatas);
 			}
 			else // RGBD-SLAM mode
 			{
@@ -1875,6 +1918,8 @@ bool Rtabmap::process(const SensorData & data)
 		{
 			std::map<int, int> mapIds;
 			std::map<int, std::string> labels;
+			std::map<int, double> stamps;
+			std::map<int, std::vector<unsigned char> > userDatas;
 			for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 			{
 				Transform odomPose;
@@ -1882,14 +1927,22 @@ bool Rtabmap::process(const SensorData & data)
 				int mapId = -1;
 				std::string label;
 				double stamp = 0;
-				_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, true);
+				std::vector<unsigned char> userData;
+				_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true);
 				mapIds.insert(std::make_pair(iter->first, mapId));
 				labels.insert(std::make_pair(iter->first, label));
+				stamps.insert(std::make_pair(iter->first, stamp));
+				if(userData.size())
+				{
+					userDatas.insert(std::make_pair(iter->first, userData));
+				}
 			}
 			statistics_.setPoses(_optimizedPoses);
 			statistics_.setConstraints(_constraints);
 			statistics_.setMapIds(mapIds);
 			statistics_.setLabels(labels);
+			statistics_.setStamps(stamps);
+			statistics_.setUserDatas(userDatas);
 		}
 
 	}
@@ -2361,7 +2414,8 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 			int mapId = -1;
 			std::string label;
 			double stamp = 0;
-			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, true);
+			std::vector<unsigned char> userData;
+			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true);
 			mapIds.insert(std::make_pair(iter->first, mapId));
 			labels.insert(std::make_pair(iter->first, label));
 		}
@@ -2434,7 +2488,8 @@ void Rtabmap::getGraph(
 			int mapId = -1;
 			std::string label;
 			double stamp = 0;
-			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, true);
+			std::vector<unsigned char> userData;
+			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true);
 			mapIds.insert(std::make_pair(iter->first, mapId));
 			labels.insert(std::make_pair(iter->first, label));
 		}
