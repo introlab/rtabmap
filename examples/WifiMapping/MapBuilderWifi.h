@@ -57,27 +57,30 @@ protected slots:
 		//============================
 		// Add WIFI symbols
 		//============================
-
-		// Sort stamps by stamps
 		std::map<double, int> nodeStamps; // <stamp, id>
-		for(std::map<int, double>::const_iterator iter = stats.getStamps().begin(); iter!=stats.getStamps().end(); ++iter)
-		{
-			nodeStamps.insert(std::make_pair(iter->second, iter->first));
-		}
-
-		// convert userData to wifi levels
 		std::map<int, std::pair<int, double> > wifiLevels;
-		for(std::map<int, std::vector<unsigned char> >::const_iterator iter = stats.getUserDatas().begin(); iter!=stats.getUserDatas().end(); ++iter)
+
+		UASSERT(stats.getStamps().size() == stats.getUserDatas().size());
+		std::map<int, double>::const_iterator iterStamps = stats.getStamps().begin();
+		std::map<int, std::vector<unsigned char> >::const_iterator iterUserDatas = stats.getUserDatas().begin();
+		for(; iterStamps!=stats.getStamps().end() && iterUserDatas!=stats.getUserDatas().end(); ++iterStamps, ++iterUserDatas)
 		{
-			UASSERT(iter->second.size() == sizeof(int)+sizeof(double));
+			// Sort stamps by stamps
+			nodeStamps.insert(std::make_pair(iterStamps->second, iterStamps->first));
 
-			// format [int level, double stamp]
-			int level;
-			double stamp;
-			memcpy(&level, iter->second.data(), sizeof(int));
-			memcpy(&stamp, iter->second.data()+sizeof(int), sizeof(double));
+			// convert userData to wifi levels
+			if(iterUserDatas->second.size())
+			{
+				UASSERT(iterUserDatas->second.size() == sizeof(int)+sizeof(double));
 
-			wifiLevels.insert(std::make_pair(iter->first, std::make_pair(level, stamp)));
+				// format [int level, double stamp]
+				int level;
+				double stamp;
+				memcpy(&level, iterUserDatas->second.data(), sizeof(int));
+				memcpy(&stamp, iterUserDatas->second.data()+sizeof(int), sizeof(double));
+
+				wifiLevels.insert(std::make_pair(iterUserDatas->first, std::make_pair(level, stamp)));
+			}
 		}
 
 		for(std::map<int, std::pair<int, double> >::iterator iter=wifiLevels.begin(); iter!=wifiLevels.end(); ++iter)

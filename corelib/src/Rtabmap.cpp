@@ -1733,10 +1733,7 @@ bool Rtabmap::process(const SensorData & data)
 					mapIds.insert(std::make_pair(iter->first, mapId));
 					labels.insert(std::make_pair(iter->first, label));
 					stamps.insert(std::make_pair(iter->first, stamp));
-					if(userData.size())
-					{
-						userDatas.insert(std::make_pair(iter->first, userData));
-					}
+					userDatas.insert(std::make_pair(iter->first, userData));
 				}
 				statistics_.setPoses(poses);
 				statistics_.setConstraints(constraints);
@@ -1932,10 +1929,7 @@ bool Rtabmap::process(const SensorData & data)
 				mapIds.insert(std::make_pair(iter->first, mapId));
 				labels.insert(std::make_pair(iter->first, label));
 				stamps.insert(std::make_pair(iter->first, stamp));
-				if(userData.size())
-				{
-					userDatas.insert(std::make_pair(iter->first, userData));
-				}
+				userDatas.insert(std::make_pair(iter->first, userData));
 			}
 			statistics_.setPoses(_optimizedPoses);
 			statistics_.setConstraints(_constraints);
@@ -2381,7 +2375,9 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> & constraints,
 		std::map<int, int> & mapIds,
+		std::map<int, double> & stamps,
 		std::map<int, std::string> & labels,
+		std::map<int, std::vector<unsigned char> > & userDatas,
 		bool optimized,
 		bool global) const
 {
@@ -2417,7 +2413,9 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 			std::vector<unsigned char> userData;
 			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true);
 			mapIds.insert(std::make_pair(iter->first, mapId));
+			stamps.insert(std::make_pair(iter->first, stamp));
 			labels.insert(std::make_pair(iter->first, label));
+			userDatas.insert(std::make_pair(iter->first, userData));
 		}
 
 
@@ -2456,7 +2454,9 @@ void Rtabmap::getGraph(
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> & constraints,
 		std::map<int, int> & mapIds,
+		std::map<int, double> & stamps,
 		std::map<int, std::string> & labels,
+		std::map<int, std::vector<unsigned char> > & userDatas,
 		bool optimized,
 		bool global)
 {
@@ -2491,7 +2491,9 @@ void Rtabmap::getGraph(
 			std::vector<unsigned char> userData;
 			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true);
 			mapIds.insert(std::make_pair(iter->first, mapId));
+			stamps.insert(std::make_pair(iter->first, stamp));
 			labels.insert(std::make_pair(iter->first, label));
+			userDatas.insert(std::make_pair(iter->first, userData));
 		}
 	}
 	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size()))
@@ -2603,8 +2605,10 @@ bool Rtabmap::computePath(int targetNode, bool global)
 	std::map<int, Transform> nodes;
 	std::multimap<int, Link> constraints;
 	std::map<int, int> mapIds;
+	std::map<int, double> stamps;
 	std::map<int, std::string> labels;
-	this->getGraph(nodes, constraints, mapIds, labels, true, global);
+	std::map<int, std::vector<unsigned char> > userDatas;
+	this->getGraph(nodes, constraints, mapIds, stamps, labels, userDatas, true, global);
 	UINFO("Time creating graph (global=%s) = %fs", global?"true":"false", timer.ticks());
 
 	if(computePath(targetNode, nodes, constraints))
@@ -2632,8 +2636,10 @@ bool Rtabmap::computePath(const Transform & targetPose, bool global)
 	std::map<int, Transform> nodes;
 	std::multimap<int, Link> constraints;
 	std::map<int, int> mapIds;
+	std::map<int, double> stamps;
 	std::map<int, std::string> labels;
-	this->getGraph(nodes, constraints, mapIds, labels, true, global);
+	std::map<int, std::vector<unsigned char> > userDatas;
+	this->getGraph(nodes, constraints, mapIds, stamps, labels, userDatas, true, global);
 	UINFO("Time creating graph (global=%s) = %fs", global?"true":"false", timer.ticks());
 
 	int nearestId = rtabmap::graph::findNearestNode(nodes, targetPose);
