@@ -769,7 +769,7 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 		// Prepare the query... Get the map from signature and visual words
 		if(uStrNumCmp(_version, "0.8.8") >= 0)
 		{
-			query << "SELECT pose, map_id, weight, label, stamp, user_data"
+			query << "SELECT pose, map_id, weight, label, stamp, user_data "
 					 "FROM Node "
 					 "WHERE id = " << signatureId <<
 					 ";";

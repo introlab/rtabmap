@@ -2007,6 +2007,7 @@ bool Rtabmap::process(const SensorData & data)
 		UINFO("Time logging = %f...", timer.ticks());
 		//ULogger::flush();
 	}
+	UDEBUG("End process");
 
 	return true;
 }
