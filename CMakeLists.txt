@@ -138,7 +138,7 @@ ENDIF()
 
 ####### OSX BUNDLE CMAKE_INSTALL_PREFIX #######
 IF(APPLE AND BUILD_AS_BUNDLE)
-  IF(QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND)
+  IF(Qt5_FOUND OR (QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND))
        
     # Required when packaging, and set CMAKE_INSTALL_PREFIX to "/".
     SET(CMAKE_INSTALL_PREFIX "/")
@@ -339,6 +339,14 @@ IF(G2O_FOUND)
 MESSAGE(STATUS "  With g2o  = YES")
 ELSE()
 MESSAGE(STATUS "  With g2o  = NO (g2o not found)")
+ENDIF()
+
+IF(QT4_FOUND)
+MESSAGE(STATUS "  With Qt  = YES (version 4)")
+ELSEIF(Qt5_FOUND)
+MESSAGE(STATUS "  With Qt  = YES (version 5)")
+ELSE()
+MESSAGE(STATUS "  With Qt  = NO (Qt not found, to use Qt5 you should set -DRTABMAP_QT_VERSION=5)")
 ENDIF()
 
 MESSAGE(STATUS "--------------------------------------------")

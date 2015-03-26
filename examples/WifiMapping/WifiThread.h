@@ -45,6 +45,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	// Need to link with Wlanapi.lib and Ole32.lib
 	#pragma comment(lib, "wlanapi.lib")
 	#pragma comment(lib, "ole32.lib")
+#elif __APPLE__
+#include "WifiOSX.h"
 #else
 	#include <sys/socket.h>
 	#include <linux/wireless.h>
@@ -159,6 +161,8 @@ private:
 				WlanFreeMemory(pIfList);
 				pIfList = NULL;
 			}
+#elif __APPLE__
+			dBm = getRssi(interfaceName_);
 #else
 			// Code inspired from http://blog.ajhodges.com/2011/10/using-ioctl-to-gather-wifi-information.html
 

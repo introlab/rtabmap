@@ -1,4 +1,7 @@
 
+SET(srcs
+    main.cpp)
+
 SET(INCLUDE_DIRS
 	${PROJECT_SOURCE_DIR}/utilite/include
 	${PROJECT_SOURCE_DIR}/corelib/include
@@ -25,8 +28,20 @@ ELSE()
     QT5_WRAP_CPP(moc_srcs ../RGBDMapping/MapBuilder.h MapBuilderWifi.h)
 ENDIF()
 
-ADD_EXECUTABLE(wifi_mapping main.cpp ${moc_srcs})
-  
+IF(APPLE)
+    FIND_LIBRARY(CoreWLAN_LIBRARY CoreWLAN)
+    MARK_AS_ADVANCED(CoreWLAN_LIBRARY)
+    SET(LIBRARIES
+	    ${LIBRARIES}
+	    ${CoreWLAN_LIBRARY}
+	)
+	SET(srcs
+	    ${srcs}
+	    WifiOSX.mm
+	)
+ENDIF(APPLE)
+
+ADD_EXECUTABLE(wifi_mapping ${srcs} ${moc_srcs})
 TARGET_LINK_LIBRARIES(wifi_mapping rtabmap_core rtabmap_gui rtabmap_utilite ${LIBRARIES})
 
 SET_TARGET_PROPERTIES( wifi_mapping 
