@@ -152,63 +152,66 @@ void segmentObstaclesFromGround(
 	ground.reset(new std::vector<int>);
 	obstacles.reset(new std::vector<int>);
 
-	// Find the ground
-	pcl::IndicesPtr flatSurfaces = util3d::normalFiltering<PointT>(
-			cloud,
-			groundNormalAngle,
-			Eigen::Vector4f(0,0,1,0),
-			normalRadiusSearch*2.0f,
-			Eigen::Vector4f(0,0,100,0));
-
-	if(segmentFlatObstacles)
+	if(cloud->size())
 	{
-		int biggestFlatSurfaceIndex;
-		std::vector<pcl::IndicesPtr> clusteredFlatSurfaces = util3d::extractClusters<PointT>(
+		// Find the ground
+		pcl::IndicesPtr flatSurfaces = util3d::normalFiltering<PointT>(
 				cloud,
-				flatSurfaces,
+				groundNormalAngle,
+				Eigen::Vector4f(0,0,1,0),
 				normalRadiusSearch*2.0f,
-				minClusterSize,
-				std::numeric_limits<int>::max(),
-				&biggestFlatSurfaceIndex);
+				Eigen::Vector4f(0,0,100,0));
 
-
-		// cluster all surfaces for which the centroid is in the Z-range of the bigger surface
-		ground = clusteredFlatSurfaces.at(biggestFlatSurfaceIndex);
-		Eigen::Vector4f min,max;
-		pcl::getMinMax3D<PointT>(*cloud, *clusteredFlatSurfaces.at(biggestFlatSurfaceIndex), min, max);
-
-		for(unsigned int i=0; i<clusteredFlatSurfaces.size(); ++i)
+		if(segmentFlatObstacles)
 		{
-			if((int)i!=biggestFlatSurfaceIndex)
+			int biggestFlatSurfaceIndex;
+			std::vector<pcl::IndicesPtr> clusteredFlatSurfaces = util3d::extractClusters<PointT>(
+					cloud,
+					flatSurfaces,
+					normalRadiusSearch*2.0f,
+					minClusterSize,
+					std::numeric_limits<int>::max(),
+					&biggestFlatSurfaceIndex);
+
+
+			// cluster all surfaces for which the centroid is in the Z-range of the bigger surface
+			ground = clusteredFlatSurfaces.at(biggestFlatSurfaceIndex);
+			Eigen::Vector4f min,max;
+			pcl::getMinMax3D<PointT>(*cloud, *clusteredFlatSurfaces.at(biggestFlatSurfaceIndex), min, max);
+
+			for(unsigned int i=0; i<clusteredFlatSurfaces.size(); ++i)
 			{
-				Eigen::Vector4f centroid;
-				pcl::compute3DCentroid<PointT>(*cloud, *clusteredFlatSurfaces.at(i), centroid);
-				if(centroid[2] >= min[2] && centroid[2] <= max[2])
+				if((int)i!=biggestFlatSurfaceIndex)
 				{
-					ground = util3d::concatenate(ground, clusteredFlatSurfaces.at(i));
+					Eigen::Vector4f centroid;
+					pcl::compute3DCentroid<PointT>(*cloud, *clusteredFlatSurfaces.at(i), centroid);
+					if(centroid[2] >= min[2] && centroid[2] <= max[2])
+					{
+						ground = util3d::concatenate(ground, clusteredFlatSurfaces.at(i));
+					}
 				}
 			}
 		}
-	}
-	else
-	{
-		ground = flatSurfaces;
-	}
+		else
+		{
+			ground = flatSurfaces;
+		}
 
-	if(ground->size() != cloud->size())
-	{
-		// Remove ground
-		pcl::IndicesPtr otherStuffIndices = util3d::extractNegativeIndices<PointT>(cloud, ground);
+		if(ground->size() != cloud->size())
+		{
+			// Remove ground
+			pcl::IndicesPtr otherStuffIndices = util3d::extractNegativeIndices<PointT>(cloud, ground);
 
-		//Cluster remaining stuff (obstacles)
-		std::vector<pcl::IndicesPtr> clusteredObstaclesSurfaces = util3d::extractClusters<PointT>(
-				cloud,
-				otherStuffIndices,
-				normalRadiusSearch*2.0f,
-				minClusterSize);
+			//Cluster remaining stuff (obstacles)
+			std::vector<pcl::IndicesPtr> clusteredObstaclesSurfaces = util3d::extractClusters<PointT>(
+					cloud,
+					otherStuffIndices,
+					normalRadiusSearch*2.0f,
+					minClusterSize);
 
-		// merge indices
-		obstacles = util3d::concatenate(clusteredObstaclesSurfaces);
+			// merge indices
+			obstacles = util3d::concatenate(clusteredObstaclesSurfaces);
+		}
 	}
 }
 
@@ -302,51 +305,56 @@ pcl::IndicesPtr normalFiltering(
 		float radiusSearch,
 		const Eigen::Vector4f & viewpoint)
 {
-	typedef typename pcl::search::KdTree<PointT> KdTree;
-	typedef typename KdTree::Ptr KdTreePtr;
+	pcl::IndicesPtr output(new std::vector<int>());
 
-	pcl::NormalEstimation<PointT, pcl::Normal> ne;
-	ne.setInputCloud (cloud);
-	if(indices->size())
+	if(cloud->size())
 	{
-		ne.setIndices(indices);
-	}
+		typedef typename pcl::search::KdTree<PointT> KdTree;
+		typedef typename KdTree::Ptr KdTreePtr;
 
-	KdTreePtr tree (new KdTree(false));
-
-	if(indices->size())
-	{
-		tree->setInputCloud(cloud, indices);
-	}
-	else
-	{
-		tree->setInputCloud(cloud);
-	}
-	ne.setSearchMethod (tree);
-
-	pcl::PointCloud<pcl::Normal>::Ptr cloud_normals (new pcl::PointCloud<pcl::Normal>);
-
-	ne.setRadiusSearch (radiusSearch);
-	if(viewpoint[0] != 0 || viewpoint[1] != 0 || viewpoint[2] != 0)
-	{
-		ne.setViewPoint(viewpoint[0], viewpoint[1], viewpoint[2]);
-	}
-
-	ne.compute (*cloud_normals);
-
-	pcl::IndicesPtr output(new std::vector<int>(cloud_normals->size()));
-	int oi = 0; // output iterator
-	Eigen::Vector3f n(normal[0], normal[1], normal[2]);
-	for(unsigned int i=0; i<cloud_normals->size(); ++i)
-	{
-		Eigen::Vector4f v(cloud_normals->at(i).normal_x, cloud_normals->at(i).normal_y, cloud_normals->at(i).normal_z, 0.0f);
-		float angle = pcl::getAngle3D(normal, v);
-		if(angle < angleMax)
+		pcl::NormalEstimation<PointT, pcl::Normal> ne;
+		ne.setInputCloud (cloud);
+		if(indices->size())
 		{
-			output->at(oi++) = indices->size()!=0?indices->at(i):i;
+			ne.setIndices(indices);
 		}
+
+		KdTreePtr tree (new KdTree(false));
+
+		if(indices->size())
+		{
+			tree->setInputCloud(cloud, indices);
+		}
+		else
+		{
+			tree->setInputCloud(cloud);
+		}
+		ne.setSearchMethod (tree);
+
+		pcl::PointCloud<pcl::Normal>::Ptr cloud_normals (new pcl::PointCloud<pcl::Normal>);
+
+		ne.setRadiusSearch (radiusSearch);
+		if(viewpoint[0] != 0 || viewpoint[1] != 0 || viewpoint[2] != 0)
+		{
+			ne.setViewPoint(viewpoint[0], viewpoint[1], viewpoint[2]);
+		}
+
+		ne.compute (*cloud_normals);
+
+		output->resize(cloud_normals->size());
+		int oi = 0; // output iterator
+		Eigen::Vector3f n(normal[0], normal[1], normal[2]);
+		for(unsigned int i=0; i<cloud_normals->size(); ++i)
+		{
+			Eigen::Vector4f v(cloud_normals->at(i).normal_x, cloud_normals->at(i).normal_y, cloud_normals->at(i).normal_z, 0.0f);
+			float angle = pcl::getAngle3D(normal, v);
+			if(angle < angleMax)
+			{
+				output->at(oi++) = indices->size()!=0?indices->at(i):i;
+			}
+		}
+		output->resize(oi);
 	}
-	output->resize(oi);
 
 	return output;
 }
