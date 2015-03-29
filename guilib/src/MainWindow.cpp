@@ -115,6 +115,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_preferencesDialog(0),
 	_aboutDialog(0),
 	_exportDialog(0),
+	_dataRecorder(0),
 	_lastId(0),
 	_processingStatistics(false),
 	_odometryReceived(false),
@@ -2809,6 +2810,11 @@ void MainWindow::startDetection()
 		}
 	}
 
+	if(_dataRecorder)
+	{
+		UEventsManager::createPipe(_camera, _dataRecorder, "CameraEvent");
+	}
+
 	_lastOdomPose.setNull();
 	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdCleanDataBuffer)); // clean sensors buffer
 	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdTriggerNewMap)); // Trigger a new map
@@ -2917,6 +2923,13 @@ void MainWindow::stopDetection()
 		delete _odomThread;
 		_odomThread = 0;
 	}
+
+	if(_dataRecorder)
+	{
+		delete _dataRecorder;
+		_dataRecorder = 0;
+	}
+
 	emit stateChanged(kInitialized);
 }
 
@@ -4373,7 +4386,7 @@ void MainWindow::triggerNewMap()
 
 void MainWindow::dataRecorder()
 {
-	if(_camera)
+	if(_dataRecorder == 0)
 	{
 		QString path = QFileDialog::getSaveFileName(this, tr("Save to..."), "output.db", "RTAB-Map database (*.db)");
 		if(!path.isEmpty())
@@ -4383,36 +4396,43 @@ void MainWindow::dataRecorder()
 			if(r == QMessageBox::No || r == QMessageBox::Yes)
 			{
 				bool recordInRAM = r == QMessageBox::Yes;
-				QWidget * window = new QWidget(this, Qt::Popup);
-				window->setAttribute(Qt::WA_DeleteOnClose);
-				window->setWindowFlags(Qt::Dialog);
-				window->setWindowTitle(tr("Data recorder (%1)").arg(path));
 
-				DataRecorder * recorder = new DataRecorder(window);
+				_dataRecorder = new DataRecorder(this);
+				_dataRecorder->setWindowFlags(Qt::Dialog);
+				_dataRecorder->setAttribute(Qt::WA_DeleteOnClose, true);
+				_dataRecorder->setWindowTitle(tr("Data recorder (%1)").arg(path));
 
-				QVBoxLayout *layout = new QVBoxLayout();
-				layout->addWidget(recorder);
-				window->setLayout(layout);
-
-				if(recorder->init(path, recordInRAM))
+				if(_dataRecorder->init(path, recordInRAM))
 				{
-					window->show();
-					recorder->registerToEventsManager();
-					UEventsManager::createPipe(_camera, recorder, "CameraEvent");
+					this->connect(_dataRecorder, SIGNAL(destroyed(QObject*)), this, SLOT(dataRecorderDestroyed()));
+					_dataRecorder->show();
+					_dataRecorder->registerToEventsManager();
+					if(_camera)
+					{
+						UEventsManager::createPipe(_camera, _dataRecorder, "CameraEvent");
+					}
+					_ui->actionData_recorder->setEnabled(false);
 				}
 				else
 				{
 					QMessageBox::warning(this, tr(""), tr("Cannot initialize the data recorder!"));
 					UERROR("Cannot initialize the data recorder!");
-					delete window;
+					delete _dataRecorder;
+					_dataRecorder = 0;
 				}
 			}
 		}
 	}
 	else
 	{
-		UERROR("Camera should be already created.");
+		UERROR("Only one recorder at the same time.");
 	}
+}
+
+void MainWindow::dataRecorderDestroyed()
+{
+	_ui->actionData_recorder->setEnabled(true);
+	_dataRecorder = 0;
 }
 
 //END ACTIONS
@@ -5011,7 +5031,6 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setEnabled(false);
 		_ui->actionGenerate_local_map->setEnabled(false);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
-		_ui->actionData_recorder->setEnabled(false);
 		_ui->actionOpen_working_directory->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
@@ -5059,7 +5078,6 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setEnabled(true);
 		_ui->actionGenerate_local_map->setEnabled(true);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(true);
-		_ui->actionData_recorder->setEnabled(false);
 		_ui->actionOpen_working_directory->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
@@ -5096,7 +5114,6 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setEnabled(false);
 		_ui->actionGenerate_local_map->setEnabled(false);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
-		_ui->actionData_recorder->setEnabled(true);
 		_ui->actionOpen_working_directory->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);

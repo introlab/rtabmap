@@ -35,6 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/gui/ImageView.h>
 #include <rtabmap/gui/UCv2Qt.h>
 #include <QtCore/QMetaType>
+#include <QMessageBox>
+#include <QtGui/QCloseEvent>
 #include <QHBoxLayout>
 
 namespace rtabmap {
@@ -50,6 +52,7 @@ DataRecorder::DataRecorder(QWidget * parent) :
 
 	imageView_->setImageDepthShown(true);
 	QHBoxLayout * layout = new QHBoxLayout(this);
+	layout->setMargin(0);
 	layout->addWidget(imageView_);
 	this->setLayout(layout);
 }
@@ -73,6 +76,7 @@ bool DataRecorder::init(const QString & path, bool recordInRAM)
 			UERROR("Error initializing the memory.");
 			return false;
 		}
+		path_ = path;
 		return true;
 	}
 	else
@@ -82,18 +86,23 @@ bool DataRecorder::init(const QString & path, bool recordInRAM)
 	}
 }
 
-void DataRecorder::close()
+void DataRecorder::closeRecorder()
 {
 	if(memory_)
 	{
 		delete memory_;
 		memory_ = 0;
 	}
+	UINFO("Data recorded to \"%s\".", this->path().toStdString().c_str());
+	if(this->isVisible())
+	{
+		QMessageBox::information(this, tr("Data recorder"), tr("Data recorded to \"%1\".").arg(this->path()));
+	}
 }
 
 DataRecorder::~DataRecorder()
 {
-	this->close();
+	this->closeRecorder();
 }
 
 void DataRecorder::addData(const rtabmap::SensorData & data)
@@ -123,6 +132,12 @@ void DataRecorder::showImage(const rtabmap::SensorData & data)
 		imageView_->setImageDepth(uCvMat2QImage(data.depth()));
 		imageView_->fitInView(imageView_->sceneRect(), Qt::KeepAspectRatio);
 	}
+}
+
+void DataRecorder::closeEvent(QCloseEvent* event)
+{
+	this->closeRecorder();
+	event->accept();
 }
 
 void DataRecorder::handleEvent(UEvent * event)

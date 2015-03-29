@@ -47,14 +47,17 @@ public:
 	DataRecorder(QWidget * parent = 0);
 	bool init(const QString & path, bool recordInRAM = true);
 
-	void close();
+	void closeRecorder();
 
 	virtual ~DataRecorder();
+
+	const QString & path() const {return path_;}
 
 public slots:
 	void addData(const rtabmap::SensorData & data);
 	void showImage(const rtabmap::SensorData & data);
 protected:
+	virtual void closeEvent(QCloseEvent* event);
 	void handleEvent(UEvent * event);
 
 private:
@@ -62,6 +65,7 @@ private:
 	ImageView* imageView_;
 	UTimer timer_;
 	int dataQueue_;
+	QString path_;
 };
 
 } /* namespace rtabmap */

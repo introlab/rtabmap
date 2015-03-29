@@ -66,6 +66,7 @@ class DetailedProgressDialog;
 class TwistGridWidget;
 class ExportCloudsDialog;
 class PostProcessingDialog;
+class DataRecorder;
 
 class RTABMAPGUI_EXP MainWindow : public QMainWindow, public UEventsHandler
 {
@@ -185,6 +186,7 @@ private slots:
 	void resetOdometry();
 	void triggerNewMap();
 	void dataRecorder();
+	void dataRecorderDestroyed();
 	void updateNodeVisibility(int, bool);
 
 signals:
@@ -260,6 +262,7 @@ private:
 	AboutDialog * _aboutDialog;
 	ExportCloudsDialog * _exportDialog;
 	PostProcessingDialog * _postProcessingDialog;
+	DataRecorder * _dataRecorder;
 
 	QSet<int> _lastIds;
 	int _lastId;
