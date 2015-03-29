@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -53,27 +53,28 @@
     <property name="title">
      <string>Edit</string>
     </property>
+    <widget class="QMenu" name="menuAdvanced">
+     <property name="title">
+      <string>Advanced</string>
+     </property>
+     <addaction name="actionDump_the_memory"/>
+     <addaction name="actionDump_the_prediction_matrix"/>
+     <addaction name="actionGenerate_map"/>
+     <addaction name="actionGenerate_local_map"/>
+     <addaction name="actionGenerate_TORO_graph_graph"/>
+     <addaction name="actionPrint_loop_closure_IDs_to_console"/>
+    </widget>
     <addaction name="actionDownload_all_clouds"/>
     <addaction name="actionDownload_graph"/>
     <addaction name="actionClear_cache"/>
     <addaction name="separator"/>
-    <addaction name="actionOpen_working_directory"/>
+    <addaction name="actionView_high_res_point_cloud"/>
+    <addaction name="actionView_scans"/>
     <addaction name="separator"/>
     <addaction name="actionDelete_memory"/>
     <addaction name="separator"/>
-    <addaction name="actionDump_the_memory"/>
-    <addaction name="actionDump_the_prediction_matrix"/>
-    <addaction name="actionGenerate_map"/>
-    <addaction name="actionGenerate_local_map"/>
-    <addaction name="actionGenerate_TORO_graph_graph"/>
-    <addaction name="actionPrint_loop_closure_IDs_to_console"/>
-    <addaction name="separator"/>
-    <addaction name="actionData_recorder"/>
-    <addaction name="separator"/>
-    <addaction name="actionPost_processing"/>
-    <addaction name="separator"/>
-    <addaction name="actionView_high_res_point_cloud"/>
-    <addaction name="actionView_scans"/>
+    <addaction name="actionOpen_working_directory"/>
+    <addaction name="menuAdvanced"/>
    </widget>
    <widget class="QMenu" name="menu6">
     <property name="title">
@@ -189,9 +190,17 @@
     <addaction name="separator"/>
     <addaction name="actionPreferences"/>
    </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="actionPost_processing"/>
+    <addaction name="actionData_recorder"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
    <addaction name="menuProcess"/>
+   <addaction name="menuTools"/>
    <addaction name="menuWindow"/>
    <addaction name="menu6"/>
   </widget>
@@ -211,7 +220,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -230,17 +248,13 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionNew_database"/>
+   <addaction name="actionOpen_database"/>
+   <addaction name="actionClose_database"/>
+   <addaction name="separator"/>
    <addaction name="actionStart"/>
    <addaction name="actionPause"/>
    <addaction name="actionStop"/>
-   <addaction name="separator"/>
-   <addaction name="actionPause_on_match"/>
-   <addaction name="actionPause_when_a_loop_hypothesis_is_rejected"/>
-   <addaction name="actionPause_on_local_loop_detection"/>
-   <addaction name="separator"/>
-   <addaction name="actionSLAM_mode"/>
-   <addaction name="actionLocalization_mode"/>
-   <addaction name="separator"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget_statsV2">
    <property name="floating">
@@ -257,7 +271,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -500,7 +523,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -521,7 +553,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -542,7 +583,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -563,7 +613,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -584,7 +643,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -608,7 +676,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -629,7 +706,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -653,7 +739,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -737,7 +832,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -747,6 +851,10 @@
    </widget>
   </widget>
   <action name="actionExit">
+   <property name="icon">
+    <iconset resource="../GuiLib.qrc">
+     <normaloff>:/images/system-log-out.png</normaloff>:/images/system-log-out.png</iconset>
+   </property>
    <property name="text">
     <string>Exit</string>
    </property>
@@ -1104,21 +1212,37 @@
    </property>
   </action>
   <action name="actionOpen_database">
+   <property name="icon">
+    <iconset resource="../GuiLib.qrc">
+     <normaloff>:/images/document-open.png</normaloff>:/images/document-open.png</iconset>
+   </property>
    <property name="text">
     <string>Open database...</string>
    </property>
   </action>
   <action name="actionNew_database">
+   <property name="icon">
+    <iconset resource="../GuiLib.qrc">
+     <normaloff>:/images/document-new.png</normaloff>:/images/document-new.png</iconset>
+   </property>
    <property name="text">
     <string>New database...</string>
    </property>
   </action>
   <action name="actionClose_database">
+   <property name="icon">
+    <iconset resource="../GuiLib.qrc">
+     <normaloff>:/images/document-save.png</normaloff>:/images/document-save.png</iconset>
+   </property>
    <property name="text">
     <string>Close database</string>
    </property>
   </action>
   <action name="actionEdit_database">
+   <property name="icon">
+    <iconset resource="../GuiLib.qrc">
+     <normaloff>:/images/document-properties.png</normaloff>:/images/document-properties.png</iconset>
+   </property>
    <property name="text">
     <string>Edit database...</string>
    </property>

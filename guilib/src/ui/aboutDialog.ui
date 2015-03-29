@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>824</width>
-    <height>475</height>
+    <height>507</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -273,7 +273,7 @@ p, li { white-space: pre-wrap; }
         <item>
          <widget class="QLabel" name="label_5">
           <property name="text">
-           <string>Copyright (C) 2010-2014 IntRoLab - Université de Sherbrooke</string>
+           <string>Copyright (C) 2010-2015 IntRoLab - Université de Sherbrooke</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignCenter</set>

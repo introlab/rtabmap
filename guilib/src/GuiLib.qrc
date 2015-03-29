@@ -1,22 +1,27 @@
 <RCC>
-  <qresource>
-    <file>images/Stop1NormalYellow.png</file>
-    <file>images/PauseNormalRed.png</file>
-    <file>images/PauseNormal.png</file>
-    <file>images/Play1Normal.png</file>
-    <file>images/Pause.ico</file>
-    <file>images/PauseOnLoop.ico</file>
-    <file>images/PauseOnLocalLoop.ico</file>
-    <file>images/PauseLoopRejected.ico</file>
-    <file>qss/default.qss</file>
-    <file>images/Plot16.png</file>
-    <file>images/Plot48.png</file>
-    <file>images/RTAB-Map.ico</file>
-    <file>images/RTAB-Map.png</file>
-    <file>images/IntRoLab.png</file>
-    <file>images/IntRoLabSmall.png</file>
-    <file>images/metal_7280826_512.jpg</file>
-    <file>images/crosshatch_metal_grille_9280154_150.JPG</file>
-    <file>images/mag_glass.png</file>
-  </qresource>
+    <qresource prefix="/">
+        <file>images/Stop1NormalYellow.png</file>
+        <file>images/PauseNormalRed.png</file>
+        <file>images/PauseNormal.png</file>
+        <file>images/Play1Normal.png</file>
+        <file>images/Pause.ico</file>
+        <file>images/PauseOnLoop.ico</file>
+        <file>images/PauseOnLocalLoop.ico</file>
+        <file>images/PauseLoopRejected.ico</file>
+        <file>qss/default.qss</file>
+        <file>images/Plot16.png</file>
+        <file>images/Plot48.png</file>
+        <file>images/RTAB-Map.ico</file>
+        <file>images/RTAB-Map.png</file>
+        <file>images/IntRoLab.png</file>
+        <file>images/IntRoLabSmall.png</file>
+        <file>images/metal_7280826_512.jpg</file>
+        <file>images/crosshatch_metal_grille_9280154_150.JPG</file>
+        <file>images/mag_glass.png</file>
+        <file>images/document-open.png</file>
+        <file>images/document-new.png</file>
+        <file>images/document-save.png</file>
+        <file>images/document-properties.png</file>
+        <file>images/system-log-out.png</file>
+    </qresource>
 </RCC>
