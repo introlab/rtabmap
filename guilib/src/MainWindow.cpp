@@ -2047,7 +2047,6 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	UTimer timer;
 
 	timer.start();
-	KeypointItem * item = 0;
 	ULOGGER_DEBUG("refWords.size() = %d", refWords.size());
 	for(std::multimap<int, cv::KeyPoint>::const_iterator iter = refWords.begin(); iter != refWords.end(); ++iter )
 	{
@@ -2083,7 +2082,6 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	ULOGGER_DEBUG("source time = %f s", timer.ticks());
 
 	timer.start();
-	item = 0;
 	ULOGGER_DEBUG("loopWords.size() = %d", loopWords.size());
 	QList<QPair<cv::Point2f, cv::Point2f> > uniqueCorrespondences;
 	for(std::multimap<int, cv::KeyPoint>::const_iterator iter = loopWords.begin(); iter != loopWords.end(); ++iter )
