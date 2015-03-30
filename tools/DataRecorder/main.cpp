@@ -204,7 +204,7 @@ int main (int argc, char * argv[])
 		recorder.registerToEventsManager();
 		if(show)
 		{
-			recorder.setWindowTitle("Cloud viewer");
+			recorder.setWindowTitle("Data recorder");
 			recorder.setMinimumWidth(500);
 			recorder.setMinimumHeight(300);
 			recorder.showNormal();

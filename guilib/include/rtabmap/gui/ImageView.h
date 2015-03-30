@@ -44,7 +44,7 @@ namespace rtabmap {
 
 class KeypointItem;
 
-class RTABMAPGUI_EXP ImageView : public QGraphicsView {
+class RTABMAPGUI_EXP ImageView : public QWidget {
 
 	Q_OBJECT
 
@@ -55,48 +55,57 @@ public:
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");
 
-	void resetZoom();
-
 	bool isImageShown() const;
 	bool isImageDepthShown() const;
 	bool isFeaturesShown() const;
 	bool isLinesShown() const;
 	int getAlpha() const {return _alpha;}
+	bool isGraphicsViewMode() const;
+	bool isGraphicsViewScaled() const;
+
+	float viewScale() const;
 
 	void setFeaturesShown(bool shown);
 	void setImageShown(bool shown);
 	void setImageDepthShown(bool shown);
 	void setLinesShown(bool shown);
+	void setGraphicsViewMode(bool on);
+	void setGraphicsViewScaled(bool scaled);
+	void setBackgroundColor(const QColor & color);
 
-	void setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, const QColor & color = QColor(255, 255, 0, 70));
-	void setFeatures(const std::vector<cv::KeyPoint> & features, const QColor & color = QColor(255, 255, 0, 70));
+	void setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, const QColor & color = Qt::yellow);
+	void setFeatures(const std::vector<cv::KeyPoint> & features, const QColor & color = Qt::yellow);
+	void addFeature(int id, const cv::KeyPoint & kpt, QColor color);
+	void addLine(float x1, float y1, float x2, float y2, QColor color);
 	void setImage(const QImage & image);
 	void setImageDepth(const QImage & image);
-	void setFeatureColor(int id, const QColor & color);
-	void setFeaturesColor(const QColor & color);
+	void setFeatureColor(int id, QColor color);
+	void setFeaturesColor(QColor color);
 	void setAlpha(int alpha);
+	void setSceneRect(const QRectF & rect);
 
 	const QMultiMap<int, rtabmap::KeypointItem *> & getFeatures() const {return _features;}
 
 	void clearLines();
 	void clear();
 
+	virtual QSize sizeHint() const;
+
 signals:
 	void configChanged();
 
 protected:
+	virtual void paintEvent(QPaintEvent *event);
+	virtual void resizeEvent(QResizeEvent* event);
 	virtual void contextMenuEvent(QContextMenuEvent * e);
-	virtual void wheelEvent(QWheelEvent * e);
-
-private slots:
-	void updateZoom();
 
 private:
 	void updateOpacity();
+	void computeScaleOffsets(float & scale, float & offsetX, float & offsetY) const;
+	void drawFeatures(QPainter * painter);
+	void drawLines(QPainter * painter);
 
 private:
-	int _zoom;
-	int _minZoom;
 	QString _savedFileName;
 	int _alpha;
 
@@ -107,10 +116,16 @@ private:
 	QAction * _showLines;
 	QAction * _saveImage;
 	QAction * _setAlpha;
+	QAction * _graphicsViewMode;
+	QAction * _graphicsViewScaled;
 
+	QGraphicsView * _graphicsView;
 	QMultiMap<int, rtabmap::KeypointItem *> _features;
-	QGraphicsPixmapItem * _image;
-	QGraphicsPixmapItem * _imageDepth;
+	QList<QGraphicsLineItem*> _lines;
+	QGraphicsPixmapItem * _imageItem;
+	QGraphicsPixmapItem * _imageDepthItem;
+	QPixmap _image;
+	QPixmap _imageDepth;
 };
 
 }

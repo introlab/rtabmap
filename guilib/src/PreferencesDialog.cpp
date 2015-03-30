@@ -1261,6 +1261,27 @@ bool PreferencesDialog::readCoreSettings(const QString & filePath)
 		QString value = settings.value(key, "").toString();
 		if(!value.isEmpty())
 		{
+			if(key.toStdString().compare(Parameters::kRtabmapWorkingDirectory()) == 0)
+			{
+				// The directory should exist if not the default one
+				if(!QDir(value).exists() && value.compare(Parameters::defaultRtabmapWorkingDirectory().c_str()) != 0)
+				{
+					if(QDir(this->getWorkingDirectory().toStdString().c_str()).exists())
+					{
+						UWARN("Reading config: Not existing working directory \"%s\". Keeping old one (\"%s\").",
+							value.toStdString().c_str(),
+							this->getWorkingDirectory().toStdString().c_str());
+						value = this->getWorkingDirectory();
+					}
+					else
+					{
+						UWARN("Reading config: Not existing working directory \"%s\". Using default one (\"%s\").",
+							value.toStdString().c_str(),
+							(*iter).second.c_str());
+						value = (*iter).second.c_str();
+					}
+				}
+			}
 			this->setParameter(key.toStdString(), value.toStdString());
 		}
 		else

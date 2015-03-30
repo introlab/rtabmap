@@ -34,6 +34,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QWidget>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UMutex.h>
+
+class QLabel;
 
 namespace rtabmap {
 
@@ -55,17 +58,21 @@ public:
 
 public slots:
 	void addData(const rtabmap::SensorData & data);
-	void showImage(const rtabmap::SensorData & data);
+	void showImage(const cv::Mat & image, const cv::Mat & depth);
 protected:
 	virtual void closeEvent(QCloseEvent* event);
 	void handleEvent(UEvent * event);
 
 private:
+	UMutex memoryMutex_;
 	Memory * memory_;
 	ImageView* imageView_;
+	QLabel* label_;
 	UTimer timer_;
-	int dataQueue_;
 	QString path_;
+	bool processingImages_;
+	int count_;
+	int totalSizeKB_;
 };
 
 } /* namespace rtabmap */

@@ -612,11 +612,6 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 
 void DatabaseViewer::showEvent(QShowEvent* anEvent)
 {
-	ui_->graphicsView_A->fitInView(ui_->graphicsView_A->sceneRect(), Qt::KeepAspectRatio);
-	ui_->graphicsView_B->fitInView(ui_->graphicsView_B->sceneRect(), Qt::KeepAspectRatio);
-	ui_->graphicsView_A->resetZoom();
-	ui_->graphicsView_B->resetZoom();
-
 	this->setWindowModified(false);
 }
 
@@ -635,10 +630,6 @@ void DatabaseViewer::moveEvent(QMoveEvent* anEvent)
 
 void DatabaseViewer::resizeEvent(QResizeEvent* anEvent)
 {
-	ui_->graphicsView_A->fitInView(ui_->graphicsView_A->sceneRect(), Qt::KeepAspectRatio);
-	ui_->graphicsView_B->fitInView(ui_->graphicsView_B->sceneRect(), Qt::KeepAspectRatio);
-	ui_->graphicsView_A->resetZoom();
-	ui_->graphicsView_B->resetZoom();
 	if(this->isVisible())
 	{
 		this->configModified();
@@ -1362,7 +1353,6 @@ void DatabaseViewer::update(int value,
 	if(value >= 0 && value < ids_.size())
 	{
 		view->clear();
-		view->resetTransform();
 		int id = ids_.at(value);
 		int mapId = -1;
 		labelId->setText(QString::number(id));
@@ -1557,11 +1547,6 @@ void DatabaseViewer::update(int value,
 	{
 		view->setSceneRect(rect);
 	}
-	else
-	{
-		view->setSceneRect(view->scene()->itemsBoundingRect());
-	}
-	view->fitInView(view->sceneRect(), Qt::KeepAspectRatio);
 }
 
 void DatabaseViewer::updateStereo(const Signature * data)
@@ -1680,20 +1665,13 @@ void DatabaseViewer::updateStereo(const Signature * data)
 
 		//ui_->graphicsView_stereo->setImage(uCvMat2QImage(imageMatches));
 
-		ui_->graphicsView_stereo->scene()->clear();
-		ui_->graphicsView_stereo->setSceneRect(0,0,(float)leftMono.cols, (float)leftMono.rows);
+		ui_->graphicsView_stereo->clear();
 		ui_->graphicsView_stereo->setLinesShown(true);
 		ui_->graphicsView_stereo->setFeaturesShown(false);
+		ui_->graphicsView_stereo->setImageDepthShown(true);
 
-		QGraphicsPixmapItem * item1 = ui_->graphicsView_stereo->scene()->addPixmap(QPixmap::fromImage(uCvMat2QImage(data->getImageRaw())));
-		QGraphicsPixmapItem * item2 = ui_->graphicsView_stereo->scene()->addPixmap(QPixmap::fromImage(uCvMat2QImage(data->getDepthRaw())));
-
-		QGraphicsOpacityEffect * effect1 = new QGraphicsOpacityEffect();
-		QGraphicsOpacityEffect * effect2 = new QGraphicsOpacityEffect();
-		effect1->setOpacity(0.5);
-		effect2->setOpacity(0.5);
-		item1->setGraphicsEffect(effect1);
-		item2->setGraphicsEffect(effect2);
+		ui_->graphicsView_stereo->setImage(uCvMat2QImage(data->getImageRaw()));
+		ui_->graphicsView_stereo->setImageDepth(uCvMat2QImage(data->getDepthRaw()));
 
 		// Draw lines between corresponding features...
 		for(unsigned int i=0; i<kpts.size(); ++i)
@@ -1715,14 +1693,14 @@ void DatabaseViewer::updateStereo(const Signature * data)
 			{
 				c = Qt::magenta;
 			}
-			QGraphicsLineItem * item = ui_->graphicsView_stereo->scene()->addLine(
+			ui_->graphicsView_stereo->addLine(
 					kpts[i].pt.x,
 					kpts[i].pt.y,
 					rightKpts[i].pt.x,
 					rightKpts[i].pt.y,
-					QPen(c));
-			item->setZValue(1);
+					c);
 		}
+		ui_->graphicsView_stereo->update();
 	}
 }
 
@@ -1748,35 +1726,34 @@ void DatabaseViewer::updateWordsMatching()
 				if(wordsA.count(ids[i]) == 1 && wordsB.count(ids[i]) == 1)
 				{
 					// PINK features
-					ui_->graphicsView_A->setFeatureColor(ids[i], QColor(255, 0, 255, alpha));
-					ui_->graphicsView_B->setFeatureColor(ids[i], QColor(255, 0, 255, alpha));
+					ui_->graphicsView_A->setFeatureColor(ids[i], Qt::magenta);
+					ui_->graphicsView_B->setFeatureColor(ids[i], Qt::magenta);
 
 					// Add lines
 					// Draw lines between corresponding features...
-					float deltaX = ui_->graphicsView_A->sceneRect().width();
+					float scaleX = ui_->graphicsView_A->viewScale();
+					float deltaX = ui_->graphicsView_A->width()/scaleX;
 					float deltaY = 0;
 
 					const KeypointItem * kptA = wordsA.value(ids[i]);
 					const KeypointItem * kptB = wordsB.value(ids[i]);
-					QGraphicsLineItem * item = ui_->graphicsView_A->scene()->addLine(
+					ui_->graphicsView_A->addLine(
 							kptA->rect().x()+kptA->rect().width()/2,
 							kptA->rect().y()+kptA->rect().height()/2,
 							kptB->rect().x()+kptB->rect().width()/2+deltaX,
 							kptB->rect().y()+kptB->rect().height()/2+deltaY,
-							QPen(QColor(0, 255, 255, alpha)));
-					item->setVisible(ui_->graphicsView_A->isLinesShown());
-					item->setZValue(1);
+							Qt::cyan);
 
-					item = ui_->graphicsView_B->scene()->addLine(
+					ui_->graphicsView_B->addLine(
 							kptA->rect().x()+kptA->rect().width()/2-deltaX,
 							kptA->rect().y()+kptA->rect().height()/2-deltaY,
 							kptB->rect().x()+kptB->rect().width()/2,
 							kptB->rect().y()+kptB->rect().height()/2,
-							QPen(QColor(0, 255, 255, alpha)));
-					item->setVisible(ui_->graphicsView_B->isLinesShown());
-					item->setZValue(1);
+							Qt::cyan);
 				}
 			}
+			ui_->graphicsView_A->update();
+			ui_->graphicsView_B->update();
 		}
 	}
 }

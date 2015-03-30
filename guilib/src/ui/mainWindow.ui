@@ -45,8 +45,6 @@
     <addaction name="separator"/>
     <addaction name="actionClose_database"/>
     <addaction name="separator"/>
-    <addaction name="actionEdit_database"/>
-    <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
@@ -194,8 +192,11 @@
     <property name="title">
      <string>Tools</string>
     </property>
-    <addaction name="actionPost_processing"/>
+    <addaction name="actionEdit_database"/>
+    <addaction name="separator"/>
     <addaction name="actionData_recorder"/>
+    <addaction name="separator"/>
+    <addaction name="actionPost_processing"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
@@ -735,7 +736,7 @@
     <number>1</number>
    </attribute>
    <widget class="QWidget" name="layout_imageview">
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
+    <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,1">
      <property name="spacing">
       <number>0</number>
      </property>
@@ -752,7 +753,7 @@
       <number>0</number>
      </property>
      <item>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
+      <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,1">
        <property name="spacing">
         <number>0</number>
        </property>
@@ -773,19 +774,12 @@
         </widget>
        </item>
        <item>
-        <widget class="rtabmap::ImageView" name="imageView_source">
-         <property name="verticalScrollBarPolicy">
-          <enum>Qt::ScrollBarAlwaysOff</enum>
-         </property>
-         <property name="horizontalScrollBarPolicy">
-          <enum>Qt::ScrollBarAlwaysOff</enum>
-         </property>
-        </widget>
+        <widget class="rtabmap::ImageView" name="imageView_source" native="true"/>
        </item>
       </layout>
      </item>
      <item>
-      <layout class="QVBoxLayout" name="verticalLayout">
+      <layout class="QVBoxLayout" name="verticalLayout" stretch="0,1">
        <property name="spacing">
         <number>0</number>
        </property>
@@ -806,14 +800,7 @@
         </widget>
        </item>
        <item>
-        <widget class="rtabmap::ImageView" name="imageView_loopClosure">
-         <property name="verticalScrollBarPolicy">
-          <enum>Qt::ScrollBarAlwaysOff</enum>
-         </property>
-         <property name="horizontalScrollBarPolicy">
-          <enum>Qt::ScrollBarAlwaysOff</enum>
-         </property>
-        </widget>
+        <widget class="rtabmap::ImageView" name="imageView_loopClosure" native="true"/>
        </item>
       </layout>
      </item>
@@ -845,7 +832,7 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="rtabmap::ImageView" name="imageView_odometry"/>
+      <widget class="rtabmap::ImageView" name="imageView_odometry" native="true"/>
      </item>
     </layout>
    </widget>
@@ -1239,10 +1226,6 @@
    </property>
   </action>
   <action name="actionEdit_database">
-   <property name="icon">
-    <iconset resource="../GuiLib.qrc">
-     <normaloff>:/images/document-properties.png</normaloff>:/images/document-properties.png</iconset>
-   </property>
    <property name="text">
     <string>Edit database...</string>
    </property>
@@ -1275,7 +1258,7 @@
   </customwidget>
   <customwidget>
    <class>rtabmap::ImageView</class>
-   <extends>QGraphicsView</extends>
+   <extends>QWidget</extends>
    <header>../include/rtabmap/gui/ImageView.h</header>
   </customwidget>
   <customwidget>

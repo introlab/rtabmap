@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1182</width>
-    <height>804</height>
+    <height>821</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,7 +16,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_7" stretch="2">
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="1,1">
       <property name="rightMargin">
        <number>0</number>
       </property>
@@ -26,7 +26,7 @@
          <number>0</number>
         </property>
         <item>
-         <widget class="rtabmap::ImageView" name="graphicsView_A"/>
+         <widget class="rtabmap::ImageView" name="graphicsView_A" native="true"/>
         </item>
         <item>
          <widget class="QScrollArea" name="scrollArea_2">
@@ -41,8 +41,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>136</width>
-             <height>127</height>
+             <width>153</width>
+             <height>136</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -122,7 +122,16 @@
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout">
-          <property name="margin">
+          <property name="leftMargin">
+           <number>12</number>
+          </property>
+          <property name="topMargin">
+           <number>12</number>
+          </property>
+          <property name="rightMargin">
+           <number>12</number>
+          </property>
+          <property name="bottomMargin">
            <number>12</number>
           </property>
           <item>
@@ -181,7 +190,7 @@
          <number>0</number>
         </property>
         <item>
-         <widget class="rtabmap::ImageView" name="graphicsView_B"/>
+         <widget class="rtabmap::ImageView" name="graphicsView_B" native="true"/>
         </item>
         <item>
          <widget class="QScrollArea" name="scrollArea">
@@ -196,8 +205,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>137</width>
-             <height>127</height>
+             <width>152</width>
+             <height>136</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -277,7 +286,16 @@
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
-          <property name="margin">
+          <property name="leftMargin">
+           <number>12</number>
+          </property>
+          <property name="topMargin">
+           <number>12</number>
+          </property>
+          <property name="rightMargin">
+           <number>12</number>
+          </property>
+          <property name="bottomMargin">
            <number>12</number>
           </property>
           <item>
@@ -340,7 +358,7 @@
      <x>0</x>
      <y>0</y>
      <width>1182</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1124,9 +1142,9 @@
     <number>4</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_5">
-    <layout class="QHBoxLayout" name="horizontalLayout_6">
+    <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="1,1">
      <item>
-      <widget class="rtabmap::ImageView" name="graphicsView_stereo"/>
+      <widget class="rtabmap::ImageView" name="graphicsView_stereo" native="true"/>
      </item>
      <item>
       <widget class="rtabmap::CloudViewer" name="stereoViewer" native="true"/>
@@ -1142,7 +1160,7 @@
     <number>4</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_6">
-    <layout class="QHBoxLayout" name="horizontalLayout_8">
+    <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="1,1">
      <item>
       <widget class="rtabmap::CloudViewer" name="widget_cloudA" native="true"/>
      </item>
@@ -1679,7 +1697,7 @@
   </customwidget>
   <customwidget>
    <class>rtabmap::ImageView</class>
-   <extends>QGraphicsView</extends>
+   <extends>QWidget</extends>
    <header>rtabmap/gui/ImageView.h</header>
   </customwidget>
   <customwidget>

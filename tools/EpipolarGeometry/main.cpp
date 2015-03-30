@@ -641,22 +641,13 @@ public:
 		this->layout()->setSpacing(0);
 		this->layout()->setContentsMargins(0,0,0,0);
 		this->layout()->addWidget(view1_);
-		view1_->setSceneRect(0,0,(float)image1.cols, (float)image1.rows);
+		view1_->setSceneRect(QRectF(0,0,(float)image1.cols, (float)image1.rows));
 		view1_->setLinesShown(true);
 		view1_->setFeaturesShown(false);
+		view1_->setImageDepthShown(true);
 
-		QGraphicsPixmapItem * item1 = view1_->scene()->addPixmap(QPixmap::fromImage(uCvMat2QImage(image1)));
-		QGraphicsPixmapItem * item2 = view1_->scene()->addPixmap(QPixmap::fromImage(uCvMat2QImage(image2)));
-
-		QGraphicsOpacityEffect * effect1 = new QGraphicsOpacityEffect();
-		QGraphicsOpacityEffect * effect2 = new QGraphicsOpacityEffect();
-		effect1->setOpacity(0.5);
-		effect2->setOpacity(0.5);
-		item1->setGraphicsEffect(effect1);
-		item2->setGraphicsEffect(effect2);
-
-		item1->setVisible(view1_->isImageShown());
-		item2->setVisible(view1_->isImageShown());
+		view1_->setImage(uCvMat2QImage(image1));
+		view1_->setImageDepth(uCvMat2QImage(image2));
 
 		drawKeypoints(words1, words2, status);
 	}
@@ -665,59 +656,41 @@ protected:
 	{
 		resizeEvent(0);
 	}
-	virtual void resizeEvent(QResizeEvent* event)
-	{
-		view1_->fitInView(view1_->sceneRect(), Qt::KeepAspectRatio);
-		view1_->resetZoom();
-	}
 private:
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords, const std::vector<uchar> & status)
 	{
 		UTimer timer;
 
 		timer.start();
-		KeypointItem * item = 0;
-		int alpha = 10*255/100;
 		QList<QPair<cv::Point2f, cv::Point2f> > uniqueCorrespondences;
 		QList<bool> inliers;
 		int j=0;
 		for(std::multimap<int, cv::KeyPoint>::const_iterator i = refWords.begin(); i != refWords.end(); ++i )
 		{
-			const cv::KeyPoint & r = (*i).second;
 			int id = (*i).first;
-
-			QString info = QString( "WordRef = %1\n"
-									"Laplacian = %2\n"
-									"Dir = %3\n"
-									"Hessian = %4\n"
-									"X = %5\n"
-									"Y = %6\n"
-									"Size = %7").arg(id).arg(1).arg(r.angle).arg(r.response).arg(r.pt.x).arg(r.pt.y).arg(r.size);
-			float radius = r.size*1.2/9.*2;
+			QColor color;
 			if(uContains(loopWords, id))
 			{
 				// PINK = FOUND IN LOOP SIGNATURE
-				item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 0, 255, alpha));
+				color = Qt::magenta;
 				//To draw lines... get only unique correspondences
 				if(uValues(refWords, id).size() == 1 && uValues(loopWords, id).size() == 1)
 				{
-					uniqueCorrespondences.push_back(QPair<cv::Point2f, cv::Point2f>(r.pt, uValues(loopWords, id).begin()->pt));
+					uniqueCorrespondences.push_back(QPair<cv::Point2f, cv::Point2f>(i->second.pt, uValues(loopWords, id).begin()->pt));
 					inliers.push_back(status[j++]);
 				}
 			}
 			else if(refWords.count(id) > 1)
 			{
 				// YELLOW = NEW and multiple times
-				item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(255, 255, 0, alpha));
+				color = Qt::yellow;
 			}
 			else
 			{
 				// GREEN = NEW
-				item = new KeypointItem(r.pt.x-radius, r.pt.y-radius, radius*2, info, QColor(0, 255, 0, alpha));
+				color = Qt::green;
 			}
-			item->setVisible(view1_->isFeaturesShown());
-			view1_->scene()->addItem(item);
-			item->setZValue(1);
+			view1_->addFeature(id, i->second, color);
 		}
 		ULOGGER_DEBUG("source time = %f s", timer.ticks());
 
@@ -728,16 +701,15 @@ private:
 			iter!=uniqueCorrespondences.end();
 			++iter)
 		{
-			QGraphicsLineItem * item = view1_->scene()->addLine(
+			view1_->addLine(
 					iter->first.x,
 					iter->first.y,
 					iter->second.x,
 					iter->second.y,
-					*jter?QPen(Qt::cyan):QPen(Qt::red));
-			item->setVisible(view1_->isLinesShown());
-			item->setZValue(1);
+					*jter?Qt::cyan:Qt::red);
 			++jter;
 		}
+		view1_->update();
 	}
 
 private:
