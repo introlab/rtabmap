@@ -458,11 +458,13 @@ bool CameraOpenNI2::setGain(int value)
 
 bool CameraOpenNI2::setMirroring(bool enabled)
 {
+#ifdef WITH_OPENNI2
 	if(_color->isValid() && _depth->isValid())
 	{
 		return _depth->setMirroringEnabled(enabled) == openni::STATUS_OK &&
 				_color->setMirroringEnabled(enabled) == openni::STATUS_OK;
 	}
+#endif
 	return false;
 }
 
