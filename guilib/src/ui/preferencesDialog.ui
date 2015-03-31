@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>23</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -6608,6 +6608,81 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="1">
+                        <widget class="QLabel" name="label_225">
+                         <property name="text">
+                          <string>PnP reprojection error.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="0">
+                        <widget class="QDoubleSpinBox" name="odom_pnpReprojError">
+                         <property name="suffix">
+                          <string> pix</string>
+                         </property>
+                         <property name="decimals">
+                          <number>1</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.100000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>8.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="0">
+                        <widget class="QCheckBox" name="odom_pnpEstimation">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="1">
+                        <widget class="QLabel" name="label_226">
+                         <property name="text">
+                          <string>PnP RANSAC: Pose estimation from 2D to 3D correspondences instead of 3D to 3D correspondences. PnP uses &quot;Minimum feature correspondences&quot; and &quot;Maximum iterations&quot; above.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="1">
+                        <widget class="QLabel" name="label_227">
+                         <property name="text">
+                          <string>PnP flags.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="0">
+                        <widget class="QComboBox" name="odom_pnpFlags">
+                         <item>
+                          <property name="text">
+                           <string>Iterative</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>EPNP</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>P3P</string>
+                          </property>
+                         </item>
                         </widget>
                        </item>
                       </layout>

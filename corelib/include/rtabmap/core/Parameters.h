@@ -318,6 +318,9 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM_STR(Odom, RoiRatios,          "0.0 0.0 0.0 0.0", "Region of interest ratios [left, right, top, bottom].");
 	RTABMAP_PARAM(Odom, Force2D, 		        bool, false,     "Force 2D transform (3Dof: x,y and yaw).");
 	RTABMAP_PARAM(Odom, FillInfoData, 		    bool, true,     "Fill info with data (inliers/outliers features).");
+	RTABMAP_PARAM(Odom, PnPEstimation, 		    bool, false,     "(PnP) Pose estimation from 2D to 3D correspondences instead of 3D to 3D correspondences.");
+	RTABMAP_PARAM(Odom, PnPReprojError, 		double, 8.0,     "PnP reprojection error.");
+	RTABMAP_PARAM(Odom, PnPFlags, 				int, 0,    	      "PnP flags: 0=Iterative, 1=EPNP, 2=P3P");
 
 	// Odometry Bag-of-words
 	RTABMAP_PARAM(OdomBow, LocalHistorySize,       int, 1000,      "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");

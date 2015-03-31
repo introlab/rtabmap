@@ -67,6 +67,9 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_resetCountdown(Parameters::defaultOdomResetCountdown()),
 		_force2D(Parameters::defaultOdomForce2D()),
 		_fillInfoData(Parameters::defaultOdomFillInfoData()),
+		_pnpEstimation(Parameters::defaultOdomPnPEstimation()),
+		_pnpReprojError(Parameters::defaultOdomPnPReprojError()),
+		_pnpFlags(Parameters::defaultOdomPnPFlags()),
 		_resetCurrentCount(0)
 {
 	Parameters::parse(parameters, Parameters::kOdomResetCountdown(), _resetCountdown);
@@ -79,6 +82,10 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomRoiRatios(), _roiRatios);
 	Parameters::parse(parameters, Parameters::kOdomForce2D(), _force2D);
 	Parameters::parse(parameters, Parameters::kOdomFillInfoData(), _fillInfoData);
+	Parameters::parse(parameters, Parameters::kOdomPnPEstimation(), _pnpEstimation);
+	Parameters::parse(parameters, Parameters::kOdomPnPReprojError(), _pnpReprojError);
+	Parameters::parse(parameters, Parameters::kOdomPnPFlags(), _pnpFlags);
+	UASSERT(_pnpFlags>=0 && _pnpFlags <=2);
 }
 
 void Odometry::reset(const Transform & initialPose)
@@ -252,135 +259,188 @@ Transform OdometryBOW::computeTransform(
 		if(previousSignature && newSignature)
 		{
 			Transform transform;
-			std::set<int> uniqueCorrespondences;
-			if(!localMap_.empty() && !newSignature->getWords3().empty())
+			if((int)localMap_.size() >= this->getMinInliers())
 			{
-				pcl::PointCloud<pcl::PointXYZ>::Ptr inliers1(new pcl::PointCloud<pcl::PointXYZ>); // previous
-				pcl::PointCloud<pcl::PointXYZ>::Ptr inliers2(new pcl::PointCloud<pcl::PointXYZ>); // new
-
-				// No need to set max depth here, it is already applied in extractKeypointsAndDescriptors() above.
-				// Also! the localMap_ have points not in camera frame anymore (in local map frame), so filtering
-				// by depth here is wrong!
-				util3d::findCorrespondences(
-						localMap_,
-						newSignature->getWords3(),
-						*inliers1,
-						*inliers2,
-						0,
-						&uniqueCorrespondences);
-
-				UDEBUG("localMap=%d, new=%d, unique correspondences=%d", (int)localMap_.size(), (int)newSignature->getWords3().size(), (int)uniqueCorrespondences.size());
-
-				if(this->isInfoDataFilled() && info)
+				if(this->isPnPEstimationUsed())
 				{
-					info->wordMatches.insert(info->wordMatches.end(), uniqueCorrespondences.begin(), uniqueCorrespondences.end());
-				}
-
-				correspondences = (int)inliers1->size();
-				if((int)inliers1->size() >= this->getMinInliers())
-				{
-					// transform new words in local map referential
-					//inliers2 = util3d::transformPointCloud<pcl::PointXYZ>(inliers2, this->getPose());
-
-					// the transform returned is global odometry pose, not incremental one
-					std::vector<int> inliersV;
-					transform = util3d::transformFromXYZCorrespondences(
-							inliers2,
-							inliers1,
-							this->getInlierDistance(),
-							this->getIterations(),
-							this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
-							&inliersV,
-							&variance);
-
-					inliers = (int)inliersV.size();
-					if(!transform.isNull())
+					if((int)newSignature->getWords().size() >= this->getMinInliers())
 					{
-						// make it incremental
-						transform = this->getPose().inverse() * transform;
-
-						UDEBUG("Odom transform = %s", transform.prettyPrint().c_str());
-
-						if(this->isInfoDataFilled() && info && inliersV.size())
+						// find correspondences
+						std::vector<int> ids = uListToVector(uUniqueKeys(newSignature->getWords()));
+						std::vector<cv::Point3f> objectPoints(ids.size());
+						std::vector<cv::Point2f> imagePoints(ids.size());
+						int oi=0;
+						std::vector<int> matches(ids.size());
+						for(unsigned int i=0; i<ids.size(); ++i)
 						{
-							info->wordInliers.resize(inliersV.size());
-							for(unsigned int i=0; i<inliersV.size(); ++i)
+							if(localMap_.count(ids[i]) == 1)
 							{
-								info->wordInliers[i] = info->wordMatches[inliersV[i]];
+								pcl::PointXYZ pt = localMap_.find(ids[i])->second;
+								objectPoints[oi].x = pt.x;
+								objectPoints[oi].y = pt.y;
+								objectPoints[oi].z = pt.z;
+								imagePoints[oi] = newSignature->getWords().find(ids[i])->second.pt;
+								matches[oi++] = ids[i];
 							}
+						}
+						objectPoints.resize(oi);
+						imagePoints.resize(oi);
+						matches.resize(oi);
+
+						if(this->isInfoDataFilled() && info)
+						{
+							info->wordMatches.insert(info->wordMatches.end(), matches.begin(), matches.end());
+						}
+						correspondences = (int)matches.size();
+
+						if((int)matches.size() >= this->getMinInliers())
+						{
+							//PnPRansac
+							cv::Mat K = (cv::Mat_<double>(3,3) <<
+								data.fx(), 0, data.cx(),
+								0, data.fyOrBaseline(), data.cy(),
+								0, 0, 1);
+							Transform guess = (this->getPose() * data.localTransform()).inverse();
+							cv::Mat R = (cv::Mat_<double>(3,3) <<
+									(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
+									(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
+									(double)guess.r31(), (double)guess.r32(), (double)guess.r33());
+							cv::Mat rvec(1,3, CV_64FC1);
+							cv::Rodrigues(R, rvec);
+							cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guess.x(), (double)guess.y(), (double)guess.z());
+							std::vector<int> inliersV;
+							cv::solvePnPRansac(objectPoints,
+									imagePoints,
+									K,
+									cv::Mat(),
+									rvec,
+									tvec,
+									true,
+									this->getIterations(),
+									this->getPnPReprojError(),
+									this->getMinInliers(),
+									inliersV,
+									this->getPnPFlags());
+
+							inliers = (int)inliersV.size();
+							if((int)inliersV.size() >= this->getMinInliers())
+							{
+								cv::Rodrigues(rvec, R);
+								Transform pnp(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
+											   R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
+											   R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
+
+								// make it incremental
+								transform = (data.localTransform() * pnp * this->getPose()).inverse();
+
+								UDEBUG("Odom transform = %s", transform.prettyPrint().c_str());
+
+								if(this->isInfoDataFilled() && info && inliersV.size())
+								{
+									info->wordInliers.resize(inliersV.size());
+									for(unsigned int i=0; i<inliersV.size(); ++i)
+									{
+										info->wordInliers[i] = matches[inliersV[i]];
+									}
+								}
+							}
+							else
+							{
+								UWARN("PnP not enough inliers (%d < %d), rejecting the transform...", (int)inliersV.size(), this->getMinInliers());
+							}
+						}
+						else
+						{
+							UWARN("Not enough correspondences (%d < %d)", correspondences, this->getMinInliers());
 						}
 					}
 					else
 					{
-						UDEBUG("Odom transform null");
-						//pcl::io::savePCDFile("from.pcd", *inliers1);
-						//inliers2 = util3d::transformPointCloud(inliers2, this->getPose());
-						//pcl::io::savePCDFile("to.pcd", *inliers2);
-						//inliers2 = util3d::transformPointCloud(inliers2, transform);
-						//pcl::io::savePCDFile("to_t.pcd", *inliers2);
-					}
-
-					if(ULogger::level() == ULogger::kDebug)
-					{
-						float error3D = 0;
-					//	pcl::PointCloud<pcl::PointXYZ>::Ptr inliers1Cloud(new pcl::PointCloud<pcl::PointXYZ>), inliers2Cloud(new pcl::PointCloud<pcl::PointXYZ>);
-						for(unsigned int i=0; i<inliersV.size(); ++i)
-						{
-							pcl::PointXYZ pt = util3d::transformPoint(inliers2->at(inliersV[i]), this->getPose()*transform);
-							error3D+=pcl::euclideanDistance(inliers1->at(inliersV[i]), pt);
-						//	inliers1Cloud->push_back(inliers1->at(inliersV[i]));
-						//	inliers2Cloud->push_back(pt);
-						}
-						error3D/=float(inliersV.size());
-						UDEBUG("3D error = %f", error3D);
-					}
-
-					/*if(inliersV.size() < 30 || fabs(transform.x()) > 0.3 || fabs(transform.y()) > 0.3 || fabs(transform.z()) > 0.3)
-					{
-						UWARN("Saved from.pcd, to.pcd and to_t.pcd");
-						pcl::io::savePCDFile("from.pcd", *inliers1);
-						pcl::io::savePCDFile("to.pcd", *inliers2);
-						inliers2 = util3d::transformPointCloud<pcl::PointXYZ>(inliers2, transform);
-						pcl::io::savePCDFile("to_t.pcd", *inliers2);
-
-						pcl::io::savePCDFile("inliersFrom.pcd", *inliers1Cloud);
-						pcl::io::savePCDFile("inliersTo.pcd", *inliers2Cloud);
-						inliers2Cloud = util3d::transformPointCloud<pcl::PointXYZ>(inliers2Cloud, transform);
-						pcl::io::savePCDFile("inliersTo_t.pcd", *inliers2Cloud);
-						exit(-1);
-					}*/
-					/*pcl::io::savePCDFile("from.pcd", *inliers1);
-					inliers2 = util3d::transformPointCloud(inliers2, this->getPose());
-					pcl::io::savePCDFile("to.pcd", *inliers2);
-					inliers2 = util3d::transformPointCloud(inliers2, transform);
-					pcl::io::savePCDFile("to_t.pcd", *inliers2);*/
-
-
-					/*
-					//refine ICP test
-					bool hasConverged;
-					double fitness;
-					inliers2 = util3d::transformPointCloud(inliers2, transform);
-					Transform icpT = util3d::icp(inliers1, <-- must be all correspondences, not only unique
-						inliers2,
-						0.02,
-						100,
-						hasConverged,
-						fitness);
-
-					transform = transform * icpT;
-					*/
-
-					if(inliers < this->getMinInliers())
-					{
-						transform.setNull();
-						UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
+						UWARN("Not enough features in the new image (%d < %d)", (int)newSignature->getWords().size(), this->getMinInliers());
 					}
 				}
 				else
 				{
-					UWARN("Not enough inliers %d < %d", (int)inliers1->size(), this->getMinInliers());
+					if((int)newSignature->getWords3().size() >= this->getMinInliers())
+					{
+						pcl::PointCloud<pcl::PointXYZ>::Ptr inliers1(new pcl::PointCloud<pcl::PointXYZ>); // previous
+						pcl::PointCloud<pcl::PointXYZ>::Ptr inliers2(new pcl::PointCloud<pcl::PointXYZ>); // new
+
+						// No need to set max depth here, it is already applied in extractKeypointsAndDescriptors() above.
+						// Also! the localMap_ have points not in camera frame anymore (in local map frame), so filtering
+						// by depth here is wrong!
+						std::set<int> uniqueCorrespondences;
+						util3d::findCorrespondences(
+								localMap_,
+								newSignature->getWords3(),
+								*inliers1,
+								*inliers2,
+								0,
+								&uniqueCorrespondences);
+
+						UDEBUG("localMap=%d, new=%d, unique correspondences=%d", (int)localMap_.size(), (int)newSignature->getWords3().size(), (int)uniqueCorrespondences.size());
+
+						if(this->isInfoDataFilled() && info)
+						{
+							info->wordMatches.insert(info->wordMatches.end(), uniqueCorrespondences.begin(), uniqueCorrespondences.end());
+						}
+
+						correspondences = (int)inliers1->size();
+						if((int)inliers1->size() >= this->getMinInliers())
+						{
+							// the transform returned is global odometry pose, not incremental one
+							std::vector<int> inliersV;
+							transform = util3d::transformFromXYZCorrespondences(
+									inliers2,
+									inliers1,
+									this->getInlierDistance(),
+									this->getIterations(),
+									this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
+									&inliersV,
+									&variance);
+
+							inliers = (int)inliersV.size();
+							if(!transform.isNull())
+							{
+								// make it incremental
+								transform = this->getPose().inverse() * transform;
+
+								UDEBUG("Odom transform = %s", transform.prettyPrint().c_str());
+
+								if(this->isInfoDataFilled() && info && inliersV.size())
+								{
+									info->wordInliers.resize(inliersV.size());
+									for(unsigned int i=0; i<inliersV.size(); ++i)
+									{
+										info->wordInliers[i] = info->wordMatches[inliersV[i]];
+									}
+								}
+							}
+							else
+							{
+								UDEBUG("Odom transform null");
+							}
+
+							if(inliers < this->getMinInliers())
+							{
+								transform.setNull();
+								UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
+							}
+						}
+						else
+						{
+							UWARN("Not enough inliers %d < %d", (int)inliers1->size(), this->getMinInliers());
+						}
+					}
+					else
+					{
+						UWARN("Not enough 3D features in the new image (%d < %d)", (int)newSignature->getWords3().size(), this->getMinInliers());
+					}
 				}
+			}
+			else
+			{
+				UWARN("Local map too small!? (%d < %d)", (int)localMap_.size(), this->getMinInliers());
 			}
 
 			if(transform.isNull())
@@ -635,7 +695,6 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 
 		if(ki && ki >= this->getMinInliers())
 		{
-
 			std::vector<unsigned char> statusLast;
 			std::vector<float> errLast;
 			std::vector<cv::Point2f> lastCornersKeptRight;
@@ -650,110 +709,230 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 						cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, stereoIterations_, stereoEps_),
 						cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
 
-			UDEBUG("");
-			std::vector<unsigned char> statusNew;
-			std::vector<float> errNew;
-			std::vector<cv::Point2f> newCornersKeptRight;
-			cv::calcOpticalFlowPyrLK(
-						newLeftFrame,
-						newRightFrame,
-						newCornersKept,
-						newCornersKeptRight,
-						statusNew,
-						errNew,
-						cv::Size(stereoWinSize_, stereoWinSize_), stereoMaxLevel_,
-						cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, stereoIterations_, stereoEps_),
-						cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
-
-			UDEBUG("Getting correspondences begin");
-			// Get 3D correspondences
-			pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesLast(new pcl::PointCloud<pcl::PointXYZ>);
-			pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesNew(new pcl::PointCloud<pcl::PointXYZ>);
-			correspondencesLast->resize(statusLast.size());
-			correspondencesNew->resize(statusLast.size());
-			int oi = 0;
-			if(this->isInfoDataFilled() && info)
+			if(this->isPnPEstimationUsed())
 			{
-				info->refCorners.resize(statusLast.size());
-				info->newCorners.resize(statusLast.size());
-			}
-			for(unsigned int i=0; i<statusLast.size(); ++i)
-			{
-				if(statusLast[i] && statusNew[i])
+				// find correspondences
+				if(this->isInfoDataFilled() && info)
 				{
-					float lastDisparity = lastCornersKept[i].x - lastCornersKeptRight[i].x;
-					float newDisparity = newCornersKept[i].x - newCornersKeptRight[i].x;
-					float lastSlope = fabs((lastCornersKept[i].y-lastCornersKeptRight[i].y) / (lastCornersKept[i].x-lastCornersKeptRight[i].x));
-					float newSlope = fabs((newCornersKept[i].y-newCornersKeptRight[i].y) / (newCornersKept[i].x-newCornersKeptRight[i].x));
-					if(lastDisparity > 0.0f && newDisparity > 0.0f &&
-						lastSlope < stereoMaxSlope_ && newSlope < stereoMaxSlope_)
-					{
-						pcl::PointXYZ lastPt3D = util3d::projectDisparityTo3D(
-								lastCornersKept[i],
-								lastDisparity,
-								data.cx(), data.cy(), data.fx(), data.baseline());
-						pcl::PointXYZ newPt3D = util3d::projectDisparityTo3D(
-								newCornersKept[i],
-								newDisparity,
-								data.cx(), data.cy(), data.fx(), data.baseline());
+					info->refCorners.resize(statusLast.size());
+					info->newCorners.resize(statusLast.size());
+				}
 
-						if(pcl::isFinite(lastPt3D) && (this->getMaxDepth() == 0.0f || uIsInBounds(lastPt3D.z, 0.0f, this->getMaxDepth())) &&
-						   pcl::isFinite(newPt3D) && (this->getMaxDepth() == 0.0f || uIsInBounds(newPt3D.z, 0.0f, this->getMaxDepth())))
+				int flowInliers = 0;
+				std::vector<cv::Point3f> objectPoints(statusLast.size());
+				std::vector<cv::Point2f> imagePoints(statusLast.size());
+				int oi=0;
+				for(unsigned int i=0; i<statusLast.size(); ++i)
+				{
+					if(statusLast[i])
+					{
+						float lastDisparity = lastCornersKept[i].x - lastCornersKeptRight[i].x;
+						float lastSlope = fabs((lastCornersKept[i].y-lastCornersKeptRight[i].y) / (lastCornersKept[i].x-lastCornersKeptRight[i].x));
+						if(lastDisparity > 0.0f && lastSlope < stereoMaxSlope_)
 						{
-							//Add 3D correspondences!
-							lastPt3D = util3d::transformPoint(lastPt3D, data.localTransform());
-							newPt3D = util3d::transformPoint(newPt3D, data.localTransform());
-							correspondencesLast->at(oi) = lastPt3D;
-							correspondencesNew->at(oi) = newPt3D;
-							if(this->isInfoDataFilled() && info)
+							pcl::PointXYZ lastPt3D = util3d::projectDisparityTo3D(
+									lastCornersKept[i],
+									lastDisparity,
+									data.cx(), data.cy(), data.fx(), data.baseline());
+
+							if(pcl::isFinite(lastPt3D) &&
+							   (this->getMaxDepth() == 0.0f || uIsInBounds(lastPt3D.z, 0.0f, this->getMaxDepth())))
 							{
-								info->refCorners[oi].pt = lastCornersKept[i];
-								info->newCorners[oi].pt = newCornersKept[i];
+								//Add 3D correspondences!
+								lastPt3D = util3d::transformPoint(lastPt3D, data.localTransform());
+								objectPoints[oi].x = lastPt3D.x;
+								objectPoints[oi].y = lastPt3D.y;
+								objectPoints[oi].z = lastPt3D.z;
+								imagePoints[oi] = newCornersKept.at(i);
+
+								if(this->isInfoDataFilled() && info)
+								{
+									info->refCorners[oi].pt = lastCornersKept[i];
+									info->newCorners[oi].pt = newCornersKept[i];
+								}
+								++oi;
 							}
-							++oi;
 						}
+						++flowInliers;
 					}
 				}
-			}// end loop
-			correspondencesLast->resize(oi);
-			correspondencesNew->resize(oi);
-			if(this->isInfoDataFilled() && info)
-			{
-				info->refCorners.resize(oi);
-				info->newCorners.resize(oi);
-			}
-			correspondences = oi;
-			refCorners3D_ = correspondencesNew;
-			UDEBUG("Getting correspondences end, kept %d/%d", correspondences, (int)statusLast.size());
+				objectPoints.resize(oi);
+				imagePoints.resize(oi);
+				UDEBUG("Flow inliers = %d, added inliers=%d", flowInliers, oi);
 
-			if(correspondences >= this->getMinInliers())
-			{
-				std::vector<int> inliersV;
-				UTimer timerRANSAC;
-				output = util3d::transformFromXYZCorrespondences(
-						correspondencesNew,
-						correspondencesLast,
-						this->getInlierDistance(),
-						this->getIterations(),
-						this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
-						&inliersV,
-						&variance);
-				UDEBUG("time RANSAC = %fs", timerRANSAC.ticks());
-
-				inliers = (int)inliersV.size();
-				if(inliers < this->getMinInliers())
+				if(this->isInfoDataFilled() && info)
 				{
-					output.setNull();
-					UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
+					info->refCorners.resize(oi);
+					info->newCorners.resize(oi);
 				}
-				else if(this->isInfoDataFilled() && info && !output.isNull())
+
+				correspondences = oi;
+
+				if(correspondences >= this->getMinInliers())
 				{
-					info->cornerInliers = inliersV;
+					//PnPRansac
+					cv::Mat K = (cv::Mat_<double>(3,3) <<
+						data.fx(), 0, data.cx(),
+						0, data.fyOrBaseline(), data.cy(),
+						0, 0, 1);
+					Transform guess = (data.localTransform()).inverse();
+					cv::Mat R = (cv::Mat_<double>(3,3) <<
+							(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
+							(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
+							(double)guess.r31(), (double)guess.r32(), (double)guess.r33());
+					cv::Mat rvec(1,3, CV_64FC1);
+					cv::Rodrigues(R, rvec);
+					cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guess.x(), (double)guess.y(), (double)guess.z());
+					std::vector<int> inliersV;
+					cv::solvePnPRansac(objectPoints,
+							imagePoints,
+							K,
+							cv::Mat(),
+							rvec,
+							tvec,
+							true,
+							this->getIterations(),
+							this->getPnPReprojError(),
+							this->getMinInliers(),
+							inliersV,
+							this->getPnPFlags());
+
+					inliers = (int)inliersV.size();
+					if((int)inliersV.size() >= this->getMinInliers())
+					{
+						cv::Rodrigues(rvec, R);
+						Transform pnp(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
+									   R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
+									   R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
+
+						// make it incremental
+						output = (data.localTransform() * pnp).inverse();
+
+						UDEBUG("Odom transform = %s", output.prettyPrint().c_str());
+
+						if(this->isInfoDataFilled() && info && inliersV.size())
+						{
+							info->cornerInliers = inliersV;
+						}
+					}
+					else
+					{
+						UWARN("PnP not enough inliers (%d < %d), rejecting the transform...", (int)inliersV.size(), this->getMinInliers());
+					}
+				}
+				else
+				{
+					UWARN("Not enough correspondences (%d < %d)", correspondences, this->getMinInliers());
 				}
 			}
 			else
 			{
-				UWARN("Not enough correspondences (%d)", correspondences);
+
+				UDEBUG("");
+				std::vector<unsigned char> statusNew;
+				std::vector<float> errNew;
+				std::vector<cv::Point2f> newCornersKeptRight;
+				cv::calcOpticalFlowPyrLK(
+							newLeftFrame,
+							newRightFrame,
+							newCornersKept,
+							newCornersKeptRight,
+							statusNew,
+							errNew,
+							cv::Size(stereoWinSize_, stereoWinSize_), stereoMaxLevel_,
+							cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, stereoIterations_, stereoEps_),
+							cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
+
+				UDEBUG("Getting correspondences begin");
+				// Get 3D correspondences
+				pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesLast(new pcl::PointCloud<pcl::PointXYZ>);
+				pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesNew(new pcl::PointCloud<pcl::PointXYZ>);
+				correspondencesLast->resize(statusLast.size());
+				correspondencesNew->resize(statusLast.size());
+				int oi = 0;
+				if(this->isInfoDataFilled() && info)
+				{
+					info->refCorners.resize(statusLast.size());
+					info->newCorners.resize(statusLast.size());
+				}
+				for(unsigned int i=0; i<statusLast.size(); ++i)
+				{
+					if(statusLast[i] && statusNew[i])
+					{
+						float lastDisparity = lastCornersKept[i].x - lastCornersKeptRight[i].x;
+						float newDisparity = newCornersKept[i].x - newCornersKeptRight[i].x;
+						float lastSlope = fabs((lastCornersKept[i].y-lastCornersKeptRight[i].y) / (lastCornersKept[i].x-lastCornersKeptRight[i].x));
+						float newSlope = fabs((newCornersKept[i].y-newCornersKeptRight[i].y) / (newCornersKept[i].x-newCornersKeptRight[i].x));
+						if(lastDisparity > 0.0f && newDisparity > 0.0f &&
+							lastSlope < stereoMaxSlope_ && newSlope < stereoMaxSlope_)
+						{
+							pcl::PointXYZ lastPt3D = util3d::projectDisparityTo3D(
+									lastCornersKept[i],
+									lastDisparity,
+									data.cx(), data.cy(), data.fx(), data.baseline());
+							pcl::PointXYZ newPt3D = util3d::projectDisparityTo3D(
+									newCornersKept[i],
+									newDisparity,
+									data.cx(), data.cy(), data.fx(), data.baseline());
+
+							if(pcl::isFinite(lastPt3D) && (this->getMaxDepth() == 0.0f || uIsInBounds(lastPt3D.z, 0.0f, this->getMaxDepth())) &&
+							   pcl::isFinite(newPt3D) && (this->getMaxDepth() == 0.0f || uIsInBounds(newPt3D.z, 0.0f, this->getMaxDepth())))
+							{
+								//Add 3D correspondences!
+								lastPt3D = util3d::transformPoint(lastPt3D, data.localTransform());
+								newPt3D = util3d::transformPoint(newPt3D, data.localTransform());
+								correspondencesLast->at(oi) = lastPt3D;
+								correspondencesNew->at(oi) = newPt3D;
+								if(this->isInfoDataFilled() && info)
+								{
+									info->refCorners[oi].pt = lastCornersKept[i];
+									info->newCorners[oi].pt = newCornersKept[i];
+								}
+								++oi;
+							}
+						}
+					}
+				}// end loop
+				correspondencesLast->resize(oi);
+				correspondencesNew->resize(oi);
+				if(this->isInfoDataFilled() && info)
+				{
+					info->refCorners.resize(oi);
+					info->newCorners.resize(oi);
+				}
+				correspondences = oi;
+				refCorners3D_ = correspondencesNew;
+				UDEBUG("Getting correspondences end, kept %d/%d", correspondences, (int)statusLast.size());
+
+				if(correspondences >= this->getMinInliers())
+				{
+					std::vector<int> inliersV;
+					UTimer timerRANSAC;
+					output = util3d::transformFromXYZCorrespondences(
+							correspondencesNew,
+							correspondencesLast,
+							this->getInlierDistance(),
+							this->getIterations(),
+							this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
+							&inliersV,
+							&variance);
+					UDEBUG("time RANSAC = %fs", timerRANSAC.ticks());
+
+					inliers = (int)inliersV.size();
+					if(inliers < this->getMinInliers())
+					{
+						output.setNull();
+						UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
+					}
+					else if(this->isInfoDataFilled() && info && !output.isNull())
+					{
+						info->cornerInliers = inliersV;
+					}
+				}
+				else
+				{
+					UWARN("Not enough correspondences (%d)", correspondences);
+				}
 			}
 		}
 	}
@@ -854,7 +1033,9 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 	}
 
 	std::vector<cv::Point2f> newCorners;
-	if(!refFrame_.empty() && refCorners_.size() && refCorners3D_->size())
+	if(!refFrame_.empty() &&
+		(int)refCorners_.size() >= this->getMinInliers() &&
+		(int)refCorners3D_->size() >= this->getMinInliers())
 	{
 		std::vector<unsigned char> status;
 		std::vector<float> err;
@@ -871,107 +1052,201 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 				cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
 		UDEBUG("cv::calcOpticalFlowPyrLK() end");
 
-		pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesLast(new pcl::PointCloud<pcl::PointXYZ>);
-		pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesNew(new pcl::PointCloud<pcl::PointXYZ>);
-		correspondencesLast->resize(refCorners_.size());
-		correspondencesNew->resize(refCorners_.size());
-		int oi=0;
-
-		if(this->isInfoDataFilled() && info)
+		if(this->isPnPEstimationUsed())
 		{
-			info->refCorners.resize(refCorners_.size());
-			info->newCorners.resize(refCorners_.size());
-		}
-
-		UASSERT(refCorners_.size() == refCorners3D_->size());
-		UDEBUG("lastCorners3D_ = %d", refCorners3D_->size());
-		float sumSqrdDistance = 0.0f;
-		int flowInliers = 0;
-		for(unsigned int i=0; i<status.size(); ++i)
-		{
-			if(status[i] && pcl::isFinite(refCorners3D_->at(i)) &&
-				uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols-1)) &&
-				uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows-1)))
+			// find correspondences
+			if(this->isInfoDataFilled() && info)
 			{
-				pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depth(), newCorners[i].x, newCorners[i].y,
-						data.cx(), data.cy(), data.fx(), data.fy(), true);
-				if(pcl::isFinite(pt) &&
-					(this->getMaxDepth() == 0.0f || (
-					uIsInBounds(pt.x, -this->getMaxDepth(), this->getMaxDepth()) &&
-					uIsInBounds(pt.y, -this->getMaxDepth(), this->getMaxDepth()) &&
-					uIsInBounds(pt.z, 0.0f, this->getMaxDepth()))))
+				info->refCorners.resize(refCorners_.size());
+				info->newCorners.resize(refCorners_.size());
+			}
+
+			UASSERT(refCorners_.size() == refCorners3D_->size());
+			UDEBUG("lastCorners3D_ = %d", refCorners3D_->size());
+			int flowInliers = 0;
+			std::vector<cv::Point3f> objectPoints(refCorners_.size());
+			std::vector<cv::Point2f> imagePoints(refCorners_.size());
+			int oi=0;
+			for(unsigned int i=0; i<status.size(); ++i)
+			{
+				if(status[i])
 				{
-					pt = util3d::transformPoint(pt, data.localTransform());
-					correspondencesLast->at(oi) = refCorners3D_->at(i);
-					correspondencesNew->at(oi) = pt;
-
-					cv::Point2f diff = newCorners[i]-refCorners_[i];
-					sumSqrdDistance += diff.x*diff.x + diff.y*diff.y;
-
-					if(this->isInfoDataFilled() && info)
+					if(pcl::isFinite(refCorners3D_->at(i)))
 					{
-						info->refCorners[oi].pt = refCorners_[i];
-						info->newCorners[oi].pt = newCorners[i];
+						objectPoints[oi].x = refCorners3D_->at(i).x;
+						objectPoints[oi].y = refCorners3D_->at(i).y;
+						objectPoints[oi].z = refCorners3D_->at(i).z;
+						imagePoints[oi] = newCorners.at(i);
+
+						if(this->isInfoDataFilled() && info)
+						{
+							info->refCorners[oi].pt = refCorners_[i];
+							info->newCorners[oi].pt = newCorners[i];
+						}
+
+						++oi;
 					}
-
-					++oi;
+					++flowInliers;
 				}
-				++flowInliers;
 			}
-			else if(status[i])
-			{
-				++flowInliers;
-			}
-		}
-		UDEBUG("Flow inliers = %d, added inliers=%d", flowInliers, oi);
+			objectPoints.resize(oi);
+			imagePoints.resize(oi);
+			UDEBUG("Flow inliers = %d, added inliers=%d", flowInliers, oi);
 
-		if(this->isInfoDataFilled() && info)
-		{
-			info->refCorners.resize(oi);
-			info->newCorners.resize(oi);
-		}
-		correspondencesLast->resize(oi);
-		correspondencesNew->resize(oi);
-		correspondences = oi;
-		if(correspondences >= this->getMinInliers())
-		{
-			std::vector<int> inliersV;
-			UTimer timerRANSAC;
-			output = util3d::transformFromXYZCorrespondences(
-					correspondencesNew,
-					correspondencesLast,
-					this->getInlierDistance(),
-					this->getIterations(),
-					this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
-					&inliersV,
-					&variance);
-			UDEBUG("time RANSAC = %fs", timerRANSAC.ticks());
-
-			inliers = (int)inliersV.size();
-			if(inliers < this->getMinInliers())
+			if(this->isInfoDataFilled() && info)
 			{
-				output.setNull();
-				UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
-			}
-			else if(this->isInfoDataFilled() && info && !output.isNull())
-			{
-				info->cornerInliers = inliersV;
+				info->refCorners.resize(oi);
+				info->newCorners.resize(oi);
 			}
 
-			/*std::vector<cv::DMatch> good_matches(lastKpts.size());
-			for(unsigned int i=0; i<good_matches.size(); ++i)
-			{
-				good_matches[i].trainIdx = i;
-				good_matches[i].queryIdx = i;
-			}
+			correspondences = oi;
 
-			cv::drawMatches( lastFrame_, lastKpts, newFrame, newKpts,
-						   good_matches, imgMatches_, cv::Scalar::all(-1), cv::Scalar::all(-1),
-						   std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );*/
+			if(correspondences >= this->getMinInliers())
+			{
+				//PnPRansac
+				cv::Mat K = (cv::Mat_<double>(3,3) <<
+					data.fx(), 0, data.cx(),
+					0, data.fyOrBaseline(), data.cy(),
+					0, 0, 1);
+				Transform guess = (data.localTransform()).inverse();
+				cv::Mat R = (cv::Mat_<double>(3,3) <<
+						(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
+						(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
+						(double)guess.r31(), (double)guess.r32(), (double)guess.r33());
+				cv::Mat rvec(1,3, CV_64FC1);
+				cv::Rodrigues(R, rvec);
+				cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guess.x(), (double)guess.y(), (double)guess.z());
+				std::vector<int> inliersV;
+				cv::solvePnPRansac(objectPoints,
+						imagePoints,
+						K,
+						cv::Mat(),
+						rvec,
+						tvec,
+						true,
+						this->getIterations(),
+						this->getPnPReprojError(),
+						this->getMinInliers(),
+						inliersV,
+						this->getPnPFlags());
+
+				inliers = (int)inliersV.size();
+				if((int)inliersV.size() >= this->getMinInliers())
+				{
+					cv::Rodrigues(rvec, R);
+					Transform pnp(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
+								   R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
+								   R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
+
+					// make it incremental
+					output = (data.localTransform() * pnp).inverse();
+
+					UDEBUG("Odom transform = %s", output.prettyPrint().c_str());
+
+					if(this->isInfoDataFilled() && info && inliersV.size())
+					{
+						info->cornerInliers = inliersV;
+					}
+				}
+				else
+				{
+					UWARN("PnP not enough inliers (%d < %d), rejecting the transform...", (int)inliersV.size(), this->getMinInliers());
+				}
+			}
+			else
+			{
+				UWARN("Not enough correspondences (%d < %d)", correspondences, this->getMinInliers());
+			}
 		}
 		else
 		{
-			UWARN("Not enough correspondences (%d)", correspondences);
+			pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesLast(new pcl::PointCloud<pcl::PointXYZ>);
+			pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesNew(new pcl::PointCloud<pcl::PointXYZ>);
+			correspondencesLast->resize(refCorners_.size());
+			correspondencesNew->resize(refCorners_.size());
+			int oi=0;
+
+			if(this->isInfoDataFilled() && info)
+			{
+				info->refCorners.resize(refCorners_.size());
+				info->newCorners.resize(refCorners_.size());
+			}
+
+			UASSERT(refCorners_.size() == refCorners3D_->size());
+			UDEBUG("lastCorners3D_ = %d", refCorners3D_->size());
+			int flowInliers = 0;
+			for(unsigned int i=0; i<status.size(); ++i)
+			{
+				if(status[i] && pcl::isFinite(refCorners3D_->at(i)) &&
+					uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols-1)) &&
+					uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows-1)))
+				{
+					pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depth(), newCorners[i].x, newCorners[i].y,
+							data.cx(), data.cy(), data.fx(), data.fy(), true);
+					if(pcl::isFinite(pt) &&
+						(this->getMaxDepth() == 0.0f || (
+						uIsInBounds(pt.x, -this->getMaxDepth(), this->getMaxDepth()) &&
+						uIsInBounds(pt.y, -this->getMaxDepth(), this->getMaxDepth()) &&
+						uIsInBounds(pt.z, 0.0f, this->getMaxDepth()))))
+					{
+						pt = util3d::transformPoint(pt, data.localTransform());
+						correspondencesLast->at(oi) = refCorners3D_->at(i);
+						correspondencesNew->at(oi) = pt;
+
+						if(this->isInfoDataFilled() && info)
+						{
+							info->refCorners[oi].pt = refCorners_[i];
+							info->newCorners[oi].pt = newCorners[i];
+						}
+
+						++oi;
+					}
+					++flowInliers;
+				}
+				else if(status[i])
+				{
+					++flowInliers;
+				}
+			}
+			UDEBUG("Flow inliers = %d, added inliers=%d", flowInliers, oi);
+
+			if(this->isInfoDataFilled() && info)
+			{
+				info->refCorners.resize(oi);
+				info->newCorners.resize(oi);
+			}
+			correspondencesLast->resize(oi);
+			correspondencesNew->resize(oi);
+			correspondences = oi;
+			if(correspondences >= this->getMinInliers())
+			{
+				std::vector<int> inliersV;
+				UTimer timerRANSAC;
+				output = util3d::transformFromXYZCorrespondences(
+						correspondencesNew,
+						correspondencesLast,
+						this->getInlierDistance(),
+						this->getIterations(),
+						this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
+						&inliersV,
+						&variance);
+				UDEBUG("time RANSAC = %fs", timerRANSAC.ticks());
+
+				inliers = (int)inliersV.size();
+				if(inliers < this->getMinInliers())
+				{
+					output.setNull();
+					UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
+				}
+				else if(this->isInfoDataFilled() && info && !output.isNull())
+				{
+					info->cornerInliers = inliersV;
+				}
+			}
+			else
+			{
+				UWARN("Not enough correspondences (%d)", correspondences);
+			}
 		}
 	}
 	else

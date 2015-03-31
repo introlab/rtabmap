@@ -62,6 +62,7 @@ public:
 	int getAlpha() const {return _alpha;}
 	bool isGraphicsViewMode() const;
 	bool isGraphicsViewScaled() const;
+	const QColor & getBackgroundColor() const;
 
 	float viewScale() const;
 

@@ -70,6 +70,9 @@ public:
 	int getRefineIterations() const {return _refineIterations;}
 	float getMaxDepth() const {return _maxDepth;}
 	bool isInfoDataFilled() const {return _fillInfoData;}
+	bool isPnPEstimationUsed() const {return _pnpEstimation;}
+	double  getPnPReprojError() const {return _pnpReprojError;}
+	int  getPnPFlags() const {return _pnpFlags;}
 
 private:
 	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0) = 0;
@@ -85,6 +88,9 @@ private:
 	int _resetCountdown;
 	bool _force2D;
 	bool _fillInfoData;
+	bool _pnpEstimation;
+	double _pnpReprojError;
+	int _pnpFlags;
 	Transform _pose;
 	int _resetCurrentCount;
 

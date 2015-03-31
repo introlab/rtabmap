@@ -76,6 +76,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QProcess>
 #include <QSplashScreen>
 #include <QInputDialog>
+#include <QToolButton>
 
 //RGB-D stuff
 #include "rtabmap/core/CameraRGBD.h"
@@ -127,6 +128,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_odomImageDepthShow(false),
 	_odometryCorrection(Transform::getIdentity()),
 	_processingOdometry(false),
+	_lastOdomInfoUpdateTime(0),
 	_oneSecondTimer(0),
 	_elapsedTime(0),
 	_posteriorCurve(0),
@@ -265,7 +267,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->menuShow_view->addAction(_ui->dockWidget_graphViewer->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_odometry->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->toolBar->toggleViewAction());
-	_ui->toolBar->setWindowTitle(tr("Control toolbar"));
+	_ui->toolBar->setWindowTitle(tr("File toolbar"));
+	_ui->menuShow_view->addAction(_ui->toolBar_2->toggleViewAction());
+	_ui->toolBar_2->setWindowTitle(tr("Control toolbar"));
 	QAction * a = _ui->menuShow_view->addAction("Progress dialog");
 	a->setCheckable(false);
 	connect(a, SIGNAL(triggered(bool)), _initProgressDialog, SLOT(show()));
@@ -320,6 +324,13 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->actionView_high_res_point_cloud->setEnabled(false);
 	_ui->actionReset_Odometry->setEnabled(false);
 	_ui->actionPost_processing->setEnabled(false);
+
+	QToolButton* toolButton = new QToolButton(this);
+	toolButton->setMenu(_ui->menuRGB_D_camera);
+	toolButton->setPopupMode(QToolButton::InstantPopup);
+	toolButton->setIcon(QIcon(":images/kinect_xbox_360.png"));
+	toolButton->setToolTip("Select sensor driver");
+	_ui->toolBar->addWidget(toolButton)->setObjectName("toolbar_source");
 
 #if defined(Q_WS_MAC) || defined(Q_WS_WIN)
 	connect(_ui->actionOpen_working_directory, SIGNAL(triggered()), SLOT(openWorkingDirectory()));
@@ -632,11 +643,16 @@ void MainWindow::handleEvent(UEvent* anEvent)
 	}
 	else if(anEvent->getClassName().compare("OdometryEvent") == 0)
 	{
-		OdometryEvent * odomEvent = (OdometryEvent*)anEvent;
-		if(!_processingOdometry && !_processingStatistics)
+		// limit 10 Hz max
+		if(UTimer::now() - _lastOdomInfoUpdateTime > 0.1)
 		{
-			_processingOdometry = true; // if we receive too many odometry events!
-			emit odometryReceived(odomEvent->data(), odomEvent->info());
+			_lastOdomInfoUpdateTime = UTimer::now();
+			OdometryEvent * odomEvent = (OdometryEvent*)anEvent;
+			if(!_processingOdometry && !_processingStatistics)
+			{
+				_processingOdometry = true; // if we receive too many odometry events!
+				emit odometryReceived(odomEvent->data(), odomEvent->info());
+			}
 		}
 	}
 	else if(anEvent->getClassName().compare("ULogEvent") == 0)
@@ -4960,7 +4976,75 @@ void MainWindow::setMonitoringState(bool pauseChecked)
 // Must be called by the GUI thread, use signal StateChanged()
 void MainWindow::changeState(MainWindow::State newState)
 {
-	// TODO : To protect with mutex ?
+	bool monitoring = newState==kMonitoring || newState == kMonitoringPaused;
+	_ui->actionNew_database->setVisible(!monitoring);
+	_ui->actionOpen_database->setVisible(!monitoring);
+	_ui->actionClose_database->setVisible(!monitoring);
+	_ui->actionEdit_database->setVisible(!monitoring);
+	_ui->actionStart->setVisible(!monitoring);
+	_ui->actionStop->setVisible(!monitoring);
+	_ui->actionDump_the_memory->setVisible(!monitoring);
+	_ui->actionDump_the_prediction_matrix->setVisible(!monitoring);
+	_ui->actionGenerate_map->setVisible(!monitoring);
+	_ui->actionGenerate_local_map->setVisible(!monitoring);
+	_ui->actionGenerate_TORO_graph_graph->setVisible(!monitoring);
+	_ui->actionOpen_working_directory->setVisible(!monitoring);
+	_ui->actionData_recorder->setVisible(!monitoring);
+	_ui->menuSelect_source->menuAction()->setVisible(!monitoring);
+	_ui->doubleSpinBox_stats_imgRate->setVisible(!monitoring);
+	_ui->doubleSpinBox_stats_imgRate_label->setVisible(!monitoring);
+	_ui->toolBar->setVisible(!monitoring);
+	_ui->toolBar->toggleViewAction()->setVisible(!monitoring);
+	QList<QAction*> actions = _ui->menuTools->actions();
+	for(int i=0; i<actions.size(); ++i)
+	{
+		if(actions.at(i)->isSeparator())
+		{
+			actions.at(i)->setVisible(!monitoring);
+		}
+	}
+	actions = _ui->menuFile->actions();
+	if(actions.size()>=9)
+	{
+		if(actions.at(2)->isSeparator())
+		{
+			actions.at(2)->setVisible(!monitoring);
+		}
+		else
+		{
+			UWARN("Menu File separators have not the same order.");
+		}
+		if(actions.at(8)->isSeparator())
+		{
+			actions.at(8)->setVisible(!monitoring);
+		}
+		else
+		{
+			UWARN("Menu File separators have not the same order.");
+		}
+	}
+	else
+	{
+		UWARN("Menu File separators have not the same order.");
+	}
+	actions = _ui->menuProcess->actions();
+	if(actions.size()>=2)
+	{
+		if(actions.at(1)->isSeparator())
+		{
+			actions.at(1)->setVisible(!monitoring);
+		}
+		else
+		{
+			UWARN("Menu File separators have not the same order.");
+		}
+	}
+	else
+	{
+		UWARN("Menu File separators have not the same order.");
+	}
+
+
 	switch (newState)
 	{
 	case kIdle: // RTAB-Map is not initialized yet
@@ -4983,10 +5067,10 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setEnabled(false);
 		_ui->actionGenerate_local_map->setEnabled(false);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
-		_ui->actionOpen_working_directory->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
+		_ui->toolBar->findChild<QAction*>("toolbar_source")->setEnabled(false);
 		_ui->actionTrigger_a_new_map->setEnabled(false);
 		_ui->doubleSpinBox_stats_imgRate->setEnabled(true);
 		_ui->statusbar->clearMessage();
@@ -5030,10 +5114,10 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setEnabled(true);
 		_ui->actionGenerate_local_map->setEnabled(true);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(true);
-		_ui->actionOpen_working_directory->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
 		_ui->menuSelect_source->setEnabled(true);
+		_ui->toolBar->findChild<QAction*>("toolbar_source")->setEnabled(true);
 		_ui->actionTrigger_a_new_map->setEnabled(true);
 		_ui->doubleSpinBox_stats_imgRate->setEnabled(true);
 		_ui->statusbar->clearMessage();
@@ -5066,10 +5150,10 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setEnabled(false);
 		_ui->actionGenerate_local_map->setEnabled(false);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
-		_ui->actionOpen_working_directory->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
+		_ui->toolBar->findChild<QAction*>("toolbar_source")->setEnabled(false);
 		_ui->actionTrigger_a_new_map->setEnabled(true);
 		_ui->doubleSpinBox_stats_imgRate->setEnabled(true);
 		_ui->statusbar->showMessage(tr("Detecting..."));
@@ -5150,34 +5234,18 @@ void MainWindow::changeState(MainWindow::State newState)
 		}
 		break;
 	case kMonitoring:
-		_ui->actionNew_database->setVisible(false);
-		_ui->actionOpen_database->setVisible(false);
-		_ui->actionClose_database->setVisible(false);
-		_ui->actionEdit_database->setVisible(false);
-		_ui->actionStart->setVisible(false);
 		_ui->actionPause->setEnabled(true);
 		_ui->actionPause->setChecked(false);
 		_ui->actionPause->setToolTip(tr("Pause"));
-		_ui->actionStop->setVisible(false);
 		_ui->actionPause_on_match->setEnabled(true);
 		_ui->actionPause_on_local_loop_detection->setEnabled(true);
 		_ui->actionPause_when_a_loop_hypothesis_is_rejected->setEnabled(true);
 		_ui->actionReset_Odometry->setEnabled(true);
 		_ui->actionPost_processing->setEnabled(false);
-		_ui->actionDump_the_memory->setVisible(false);
-		_ui->actionDump_the_prediction_matrix->setVisible(false);
 		_ui->actionDelete_memory->setEnabled(true);
-		_ui->actionGenerate_map->setVisible(false);
-		_ui->actionGenerate_local_map->setVisible(false);
-		_ui->actionGenerate_TORO_graph_graph->setVisible(false);
-		_ui->actionData_recorder->setVisible(false);
-		_ui->actionOpen_working_directory->setEnabled(false);
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
-		_ui->menuSelect_source->setVisible(false);
 		_ui->actionTrigger_a_new_map->setEnabled(true);
-		_ui->doubleSpinBox_stats_imgRate->setVisible(false);
-		_ui->doubleSpinBox_stats_imgRate_label->setVisible(false);
 		_ui->statusbar->showMessage(tr("Monitoring..."));
 		_state = newState;
 		_elapsedTime->start();
@@ -5185,34 +5253,18 @@ void MainWindow::changeState(MainWindow::State newState)
 		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPause, "", 0));
 		break;
 	case kMonitoringPaused:
-		_ui->actionNew_database->setVisible(false);
-		_ui->actionOpen_database->setVisible(false);
-		_ui->actionClose_database->setVisible(false);
-		_ui->actionEdit_database->setVisible(false);
-		_ui->actionStart->setVisible(false);
 		_ui->actionPause->setToolTip(tr("Continue"));
 		_ui->actionPause->setChecked(true);
 		_ui->actionPause->setEnabled(true);
-		_ui->actionStop->setVisible(false);
 		_ui->actionPause_on_match->setEnabled(true);
 		_ui->actionPause_on_local_loop_detection->setEnabled(true);
 		_ui->actionPause_when_a_loop_hypothesis_is_rejected->setEnabled(true);
 		_ui->actionReset_Odometry->setEnabled(true);
 		_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
-		_ui->actionDump_the_memory->setVisible(false);
-		_ui->actionDump_the_prediction_matrix->setVisible(false);
 		_ui->actionDelete_memory->setEnabled(true);
-		_ui->actionGenerate_map->setVisible(false);
-		_ui->actionGenerate_local_map->setVisible(false);
-		_ui->actionGenerate_TORO_graph_graph->setVisible(false);
-		_ui->actionData_recorder->setVisible(false);
-		_ui->actionOpen_working_directory->setEnabled(false);
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
-		_ui->menuSelect_source->setVisible(false);
 		_ui->actionTrigger_a_new_map->setEnabled(true);
-		_ui->doubleSpinBox_stats_imgRate->setVisible(false);
-		_ui->doubleSpinBox_stats_imgRate_label->setVisible(false);
 		_ui->statusbar->showMessage(tr("Monitoring paused..."));
 		_state = newState;
 		_oneSecondTimer->stop();

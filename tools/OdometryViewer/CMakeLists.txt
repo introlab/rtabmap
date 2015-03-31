@@ -1,8 +1,4 @@
 
-SET(SRC_FILES
-    main.cpp
-)
-
 SET(INCLUDE_DIRS
 	${PROJECT_SOURCE_DIR}/corelib/include
 	${PROJECT_SOURCE_DIR}/utilite/include
@@ -18,6 +14,16 @@ ENDIF()
 SET(LIBRARIES
 	${PCL_LIBRARIES} 
 	${QT_LIBRARIES} 
+)
+
+IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
+    QT4_WRAP_CPP(moc_srcs OdomInfoWidget.h)
+ELSE()
+    QT5_WRAP_CPP(moc_srcs OdomInfoWidget.h)
+ENDIF()
+
+SET(SRC_FILES
+    main.cpp OdomInfoWidget.cpp ${moc_srcs}
 )
 
 add_definitions(${PCL_DEFINITIONS})

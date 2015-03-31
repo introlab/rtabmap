@@ -148,6 +148,12 @@ bool ImageView::isGraphicsViewScaled() const
 	return _graphicsViewScaled->isChecked();
 }
 
+const QColor & ImageView::getBackgroundColor() const
+{
+	return _graphicsView->backgroundBrush().color();
+}
+
+
 void ImageView::setFeaturesShown(bool shown)
 {
 	_showFeatures->setChecked(shown);

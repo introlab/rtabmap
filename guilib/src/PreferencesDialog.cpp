@@ -522,6 +522,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_force2D->setObjectName(Parameters::kOdomForce2D().c_str());
 	_ui->odom_fillInfoData->setObjectName(Parameters::kOdomFillInfoData().c_str());
 	_ui->lineEdit_odom_roi->setObjectName(Parameters::kOdomRoiRatios().c_str());
+	_ui->odom_pnpEstimation->setObjectName(Parameters::kOdomPnPEstimation().c_str());
+	_ui->odom_pnpReprojError->setObjectName(Parameters::kOdomPnPReprojError().c_str());
+	_ui->odom_pnpFlags->setObjectName(Parameters::kOdomPnPFlags().c_str());
 
 	//Odometry BOW
 	_ui->odom_localHistory->setObjectName(Parameters::kOdomBowLocalHistorySize().c_str());

@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/VWDictionary.h>
 #include <QApplication>
 #include <pcl/console/print.h>
+#include "OdomInfoWidget.h"
 
 void showUsage()
 {
@@ -679,16 +680,21 @@ int main (int argc, char * argv[])
 	}
 	rtabmap::OdometryThread odomThread(odom);
 	rtabmap::OdometryViewer odomViewer(maxClouds, 2, 0.0, 50);
+	OdomInfoWidget odomInfoWidget;
 	UEventsManager::addHandler(&odomThread);
 	UEventsManager::addHandler(&odomViewer);
+	UEventsManager::addHandler(&odomInfoWidget);
 
 	odomViewer.setCameraFree();
 	odomViewer.setGridShown(true);
 
-	odomViewer.setWindowTitle("Odometry viewer");
+	odomViewer.setWindowTitle("Odometry 3D view");
 	odomViewer.setMinimumWidth(800);
 	odomViewer.setMinimumHeight(500);
 	odomViewer.showNormal();
+
+	odomInfoWidget.setWindowTitle("Odometry info");
+	odomInfoWidget.showNormal();
 
 	app.processEvents();
 
