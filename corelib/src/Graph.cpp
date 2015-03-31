@@ -907,9 +907,10 @@ std::map<int, Transform> radiusPosesFiltering(
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		cloud->resize(poses.size());
 		int i=0;
-		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter, ++i)
 		{
-			(*cloud)[i++] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+			(*cloud)[i] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+			UASSERT_MSG(pcl::isFinite((*cloud)[i]), uFormat("Invalid pose (%d) %s", iter->first, iter->second.prettyPrint().c_str()).c_str());
 		}
 
 		// radius filtering
@@ -1011,9 +1012,10 @@ std::multimap<int, int> radiusPosesClustering(const std::map<int, Transform> & p
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		cloud->resize(poses.size());
 		int i=0;
-		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter, ++i)
 		{
-			(*cloud)[i++] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+			(*cloud)[i] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+			UASSERT_MSG(pcl::isFinite((*cloud)[i]), uFormat("Invalid pose (%d) %s", iter->first, iter->second.prettyPrint().c_str()).c_str());
 		}
 
 		// radius clustering (nearest neighbors)
@@ -1257,17 +1259,21 @@ std::map<int, float> getNodesInRadius(
 	}
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-	cloud->resize(nodes.size()-1);
-	std::vector<int> ids(nodes.size()-1);
+	cloud->resize(nodes.size());
+	std::vector<int> ids(nodes.size());
 	int oi = 0;
 	for(std::map<int, Transform>::const_iterator iter = nodes.begin(); iter!=nodes.end(); ++iter)
 	{
 		if(iter->first != nodeId)
 		{
 			(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-			ids[oi++] = iter->first;
+			UASSERT_MSG(pcl::isFinite((*cloud)[oi]), uFormat("Invalid pose (%d) %s", iter->first, iter->second.prettyPrint().c_str()).c_str());
+			ids[oi] = iter->first;
+			++oi;
 		}
 	}
+	cloud->resize(oi);
+	ids.resize(oi);
 
 	Transform fromT = nodes.at(nodeId);
 
