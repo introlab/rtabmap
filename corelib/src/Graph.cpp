@@ -364,6 +364,7 @@ std::map<int, Transform> TOROOptimizer::optimize(
 						iter->second.getEulerAngles(roll, pitch, yaw);
 						Transform newPose(v->pose.x(), v->pose.y(), iter->second.z(), roll, pitch, v->pose.theta());
 
+						UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
 						tmpPoses.insert(std::pair<int, Transform>(iter->first, newPose));
 					}
 				}
@@ -375,6 +376,7 @@ std::map<int, Transform> TOROOptimizer::optimize(
 						AISNavigation::TreePoseGraph3::Pose pose=v->transformation.toPoseType();
 						Transform newPose(pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
 
+						UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
 						tmpPoses.insert(std::pair<int, Transform>(iter->first, newPose));
 					}
 				}
@@ -410,6 +412,7 @@ std::map<int, Transform> TOROOptimizer::optimize(
 				iter->second.getEulerAngles(roll, pitch, yaw);
 				Transform newPose(v->pose.x(), v->pose.y(), iter->second.z(), roll, pitch, v->pose.theta());
 
+				UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
 				optimizedPoses.insert(std::pair<int, Transform>(iter->first, newPose));
 			}
 		}
@@ -421,6 +424,7 @@ std::map<int, Transform> TOROOptimizer::optimize(
 				AISNavigation::TreePoseGraph3::Pose pose=v->transformation.toPoseType();
 				Transform newPose(pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
 
+				UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
 				optimizedPoses.insert(std::pair<int, Transform>(iter->first, newPose));
 			}
 		}
@@ -760,6 +764,7 @@ std::map<int, Transform> G2OOptimizer::optimize(
 								iter->second.getEulerAngles(roll, pitch, yaw);
 								Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().rotation().angle());
 								tmpPoses.insert(std::pair<int, Transform>(iter->first, t));
+								UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
 							}
 							else
 							{
@@ -776,6 +781,7 @@ std::map<int, Transform> G2OOptimizer::optimize(
 							{
 								Transform t = Transform::fromEigen3d(v->estimate());
 								tmpPoses.insert(std::pair<int, Transform>(iter->first, t));
+								UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
 							}
 							else
 							{
@@ -814,6 +820,7 @@ std::map<int, Transform> G2OOptimizer::optimize(
 					iter->second.getEulerAngles(roll, pitch, yaw);
 					Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().rotation().angle());
 					optimizedPoses.insert(std::pair<int, Transform>(iter->first, t));
+					UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
 				}
 				else
 				{
@@ -830,6 +837,7 @@ std::map<int, Transform> G2OOptimizer::optimize(
 				{
 					Transform t = Transform::fromEigen3d(v->estimate());
 					optimizedPoses.insert(std::pair<int, Transform>(iter->first, t));
+					UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
 				}
 				else
 				{
