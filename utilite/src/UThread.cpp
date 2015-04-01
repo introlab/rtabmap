@@ -90,7 +90,7 @@ void UThread::join(bool killFirst)
 		uSleep(1);
 	}
 
-#if WIN32
+#ifdef _WIN32
 #if PRINT_DEBUG
 	UDEBUG("Thread %d joining %d", UThreadC<void>::Self(), threadId_);
 #endif

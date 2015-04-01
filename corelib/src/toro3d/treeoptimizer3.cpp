@@ -95,7 +95,7 @@ void TreeOptimizer3::iterate(TreePoseGraph3::EdgeSet* eset, bool noPreconditione
     maxRotationalErrors.push_back(mre);
     int interval=3;
     if ((int)maxRotationalErrors.size()>=interval){
-      uint s=maxRotationalErrors.size();
+      uint s=(uint)maxRotationalErrors.size();
       double re0 = maxRotationalErrors[s-interval];
       double re1 = maxRotationalErrors[s-1];
 

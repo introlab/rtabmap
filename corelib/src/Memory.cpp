@@ -1016,7 +1016,7 @@ void Memory::clear()
 	// Save some stats to the db, save only when the mem is not empty
 	if(_dbDriver && (_stMem.size() || _workingMem.size()))
 	{
-		unsigned int memSize = _workingMem.size() + _stMem.size();
+		unsigned int memSize = (unsigned int)(_workingMem.size() + _stMem.size());
 		if(_workingMem.size() && _workingMem.begin()->first < 0)
 		{
 			--memSize;
@@ -1863,7 +1863,7 @@ Transform Memory::computeVisualTransform(
 					true, 3.0, 10,
 					&inliersV,
 					variance);
-			inliersCount = inliersV.size();
+			inliersCount = (int)inliersV.size();
 			if(!t.isNull() && inliersCount >= _bowMinInliers)
 			{
 				transform = t;

@@ -129,8 +129,8 @@ void DataRecorder::addData(const rtabmap::SensorData & data)
 		UTimer time;
 		memory_->update(data);
 		const Signature * s = memory_->getLastWorkingSignature();
-		totalSizeKB_ += s->getImageCompressed().total()/1000;
-		totalSizeKB_ += s->getDepthCompressed().total()/1000;
+		totalSizeKB_ += (int)s->getImageCompressed().total()/1000;
+		totalSizeKB_ += (int)s->getDepthCompressed().total()/1000;
 		memory_->cleanup();
 
 		if(++count_ % 30)

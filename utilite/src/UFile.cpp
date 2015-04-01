@@ -70,7 +70,7 @@ std::string UFile::getName(const std::string & filePath)
 {
 	std::string fullPath = filePath;
 	std::string name;
-	for(int i=fullPath.size()-1; i>=0; --i)
+	for(int i=(int)fullPath.size()-1; i>=0; --i)
 	{
 		if(fullPath[i] == '/' || fullPath[i] == '\\')
 		{

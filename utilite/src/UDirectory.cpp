@@ -249,7 +249,7 @@ void UDirectory::rewind()
 bool UDirectory::exists(const std::string & dirPath)
 {
 	bool r = false;
-#if WIN32
+#ifdef _WIN32
 	#ifdef UNICODE
 	wchar_t * wDirPath = createWCharFromChar(dirPath.c_str());
 	DWORD dwAttrib = GetFileAttributes(wDirPath);
@@ -273,7 +273,7 @@ bool UDirectory::exists(const std::string & dirPath)
 std::string UDirectory::getDir(const std::string & filePath)
 {
 	std::string dir = filePath;
-	int i=dir.size()-1;
+	int i=(int)dir.size()-1;
 	for(; i>=0; --i)
 	{
 		if(dir[i] == '/' || dir[i] == '\\')
@@ -333,7 +333,7 @@ std::string UDirectory::currentDir(bool trailingSeparator)
 bool UDirectory::makeDir(const std::string & dirPath)
 {
 	int status;
-#if WIN32
+#ifdef _WIN32
 	status = _mkdir(dirPath.c_str());
 #else
 	status = mkdir(dirPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
@@ -344,7 +344,7 @@ bool UDirectory::makeDir(const std::string & dirPath)
 bool UDirectory::removeDir(const std::string & dirPath)
 {
 	int status;
-#if WIN32
+#ifdef _WIN32
 	status = _rmdir(dirPath.c_str());
 #else
 	status = rmdir(dirPath.c_str());
@@ -355,7 +355,7 @@ bool UDirectory::removeDir(const std::string & dirPath)
 std::string UDirectory::homeDir()
 {
 	std::string path;
-#if WIN32
+#ifdef _WIN32
 	#ifdef UNICODE
 	wchar_t wProfilePath[250];
 	ExpandEnvironmentStrings(L"%userprofile%",wProfilePath,250);

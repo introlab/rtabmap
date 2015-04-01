@@ -99,7 +99,7 @@ cv::Mat compressImage2(const cv::Mat & image, const std::string & format)
 	std::vector<unsigned char> bytes = compressImage(image, format);
 	if(bytes.size())
 	{
-		return cv::Mat(1, bytes.size(), CV_8UC1, bytes.data()).clone();
+		return cv::Mat(1, (int)bytes.size(), CV_8UC1, bytes.data()).clone();
 	}
 	return cv::Mat();
 }
@@ -201,7 +201,7 @@ cv::Mat uncompressData(const cv::Mat & bytes)
 
 cv::Mat uncompressData(const std::vector<unsigned char> & bytes)
 {
-	return uncompressData(bytes.data(), bytes.size());
+	return uncompressData(bytes.data(), (unsigned long)bytes.size());
 }
 
 cv::Mat uncompressData(const unsigned char * bytes, unsigned long size)
