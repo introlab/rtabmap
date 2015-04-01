@@ -283,6 +283,7 @@ Transform OdometryBOW::computeTransform(
 								matches[oi++] = ids[i];
 							}
 						}
+
 						objectPoints.resize(oi);
 						imagePoints.resize(oi);
 						matches.resize(oi);
@@ -298,7 +299,7 @@ Transform OdometryBOW::computeTransform(
 							//PnPRansac
 							cv::Mat K = (cv::Mat_<double>(3,3) <<
 								data.fx(), 0, data.cx(),
-								0, data.fyOrBaseline(), data.cy(),
+								0, data.fx(), data.cy(),
 								0, 0, 1);
 							Transform guess = (this->getPose() * data.localTransform()).inverse();
 							cv::Mat R = (cv::Mat_<double>(3,3) <<
@@ -335,18 +336,32 @@ Transform OdometryBOW::computeTransform(
 
 								UDEBUG("Odom transform = %s", transform.prettyPrint().c_str());
 
-								if(this->isInfoDataFilled() && info && inliersV.size())
+								// compute variance (like in PCL computeVariance() method of sac_model.h)
+								std::vector<float> errorSqrdDists(inliersV.size());
+								for(unsigned int i=0; i<inliersV.size(); ++i)
 								{
-									info->wordInliers.resize(inliersV.size());
-									for(unsigned int i=0; i<inliersV.size(); ++i)
-									{
-										info->wordInliers[i] = matches[inliersV[i]];
-									}
+									std::multimap<int, pcl::PointXYZ>::const_iterator iter = newSignature->getWords3().find(matches[inliersV[i]]);
+									UASSERT(iter != newSignature->getWords3().end());
+									const cv::Point3f & objPt = objectPoints[inliersV[i]];
+									pcl::PointXYZ newPt = util3d::transformPoint(iter->second, this->getPose()*transform);
+									errorSqrdDists[i] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
 								}
+								std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
+								double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
+								variance = 2.1981 * median_error_sqr;
 							}
 							else
 							{
 								UWARN("PnP not enough inliers (%d < %d), rejecting the transform...", (int)inliersV.size(), this->getMinInliers());
+							}
+
+							if(this->isInfoDataFilled() && info && inliersV.size())
+							{
+								info->wordInliers.resize(inliersV.size());
+								for(unsigned int i=0; i<inliersV.size(); ++i)
+								{
+									info->wordInliers[i] = matches[inliersV[i]];
+								}
 							}
 						}
 						else
@@ -390,7 +405,7 @@ Transform OdometryBOW::computeTransform(
 						{
 							// the transform returned is global odometry pose, not incremental one
 							std::vector<int> inliersV;
-							transform = util3d::transformFromXYZCorrespondences(
+							Transform t = util3d::transformFromXYZCorrespondences(
 									inliers2,
 									inliers1,
 									this->getInlierDistance(),
@@ -400,31 +415,25 @@ Transform OdometryBOW::computeTransform(
 									&variance);
 
 							inliers = (int)inliersV.size();
-							if(!transform.isNull())
+							if(!t.isNull() && inliers >= this->getMinInliers())
 							{
 								// make it incremental
-								transform = this->getPose().inverse() * transform;
+								transform = this->getPose().inverse() * t;
 
 								UDEBUG("Odom transform = %s", transform.prettyPrint().c_str());
-
-								if(this->isInfoDataFilled() && info && inliersV.size())
-								{
-									info->wordInliers.resize(inliersV.size());
-									for(unsigned int i=0; i<inliersV.size(); ++i)
-									{
-										info->wordInliers[i] = info->wordMatches[inliersV[i]];
-									}
-								}
 							}
 							else
 							{
-								UDEBUG("Odom transform null");
+								UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
 							}
 
-							if(inliers < this->getMinInliers())
+							if(this->isInfoDataFilled() && info && inliersV.size())
 							{
-								transform.setNull();
-								UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
+								info->wordInliers.resize(inliersV.size());
+								for(unsigned int i=0; i<inliersV.size(); ++i)
+								{
+									info->wordInliers[i] = info->wordMatches[inliersV[i]];
+								}
 							}
 						}
 						else
@@ -698,6 +707,7 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 			std::vector<unsigned char> statusLast;
 			std::vector<float> errLast;
 			std::vector<cv::Point2f> lastCornersKeptRight;
+			UDEBUG("previous stereo disparity");
 			cv::calcOpticalFlowPyrLK(
 						refFrame_,
 						refRightFrame_,
@@ -705,6 +715,21 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 						lastCornersKeptRight,
 						statusLast,
 						errLast,
+						cv::Size(stereoWinSize_, stereoWinSize_), stereoMaxLevel_,
+						cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, stereoIterations_, stereoEps_),
+						cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
+
+			UDEBUG("new stereo disparity");
+			std::vector<unsigned char> statusNew;
+			std::vector<float> errNew;
+			std::vector<cv::Point2f> newCornersKeptRight;
+			cv::calcOpticalFlowPyrLK(
+						newLeftFrame,
+						newRightFrame,
+						newCornersKept,
+						newCornersKeptRight,
+						statusNew,
+						errNew,
 						cv::Size(stereoWinSize_, stereoWinSize_), stereoMaxLevel_,
 						cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, stereoIterations_, stereoEps_),
 						cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
@@ -721,13 +746,17 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 				int flowInliers = 0;
 				std::vector<cv::Point3f> objectPoints(statusLast.size());
 				std::vector<cv::Point2f> imagePoints(statusLast.size());
+				std::vector<pcl::PointXYZ> image3DPoints(statusLast.size());
 				int oi=0;
+				float bad_point = std::numeric_limits<float>::quiet_NaN ();
 				for(unsigned int i=0; i<statusLast.size(); ++i)
 				{
 					if(statusLast[i])
 					{
 						float lastDisparity = lastCornersKept[i].x - lastCornersKeptRight[i].x;
 						float lastSlope = fabs((lastCornersKept[i].y-lastCornersKeptRight[i].y) / (lastCornersKept[i].x-lastCornersKeptRight[i].x));
+						float newDisparity = newCornersKept[i].x - newCornersKeptRight[i].x;
+						float newSlope = fabs((newCornersKept[i].y-newCornersKeptRight[i].y) / (newCornersKept[i].x-newCornersKeptRight[i].x));
 						if(lastDisparity > 0.0f && lastSlope < stereoMaxSlope_)
 						{
 							pcl::PointXYZ lastPt3D = util3d::projectDisparityTo3D(
@@ -745,6 +774,21 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 								objectPoints[oi].z = lastPt3D.z;
 								imagePoints[oi] = newCornersKept.at(i);
 
+								// new 3D points, used to compute variance
+								image3DPoints[oi] = pcl::PointXYZ(bad_point, bad_point, bad_point);
+								if(newDisparity > 0.0f && newSlope < stereoMaxSlope_)
+								{
+									pcl::PointXYZ newPt3D = util3d::projectDisparityTo3D(
+											newCornersKept[i],
+											newDisparity,
+											data.cx(), data.cy(), data.fx(), data.baseline());
+									if(pcl::isFinite(newPt3D) &&
+									   (this->getMaxDepth() == 0.0f || uIsInBounds(newPt3D.z, 0.0f, this->getMaxDepth())))
+									{
+										image3DPoints[oi] = util3d::transformPoint(newPt3D, data.localTransform());
+									}
+								}
+
 								if(this->isInfoDataFilled() && info)
 								{
 									info->refCorners[oi].pt = lastCornersKept[i];
@@ -758,6 +802,7 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 				}
 				objectPoints.resize(oi);
 				imagePoints.resize(oi);
+				image3DPoints.resize(oi);
 				UDEBUG("Flow inliers = %d, added inliers=%d", flowInliers, oi);
 
 				if(this->isInfoDataFilled() && info)
@@ -773,7 +818,7 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 					//PnPRansac
 					cv::Mat K = (cv::Mat_<double>(3,3) <<
 						data.fx(), 0, data.cx(),
-						0, data.fyOrBaseline(), data.cy(),
+						0, data.fx(), data.cy(),
 						0, 0, 1);
 					Transform guess = (data.localTransform()).inverse();
 					cv::Mat R = (cv::Mat_<double>(3,3) <<
@@ -810,14 +855,35 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 
 						UDEBUG("Odom transform = %s", output.prettyPrint().c_str());
 
-						if(this->isInfoDataFilled() && info && inliersV.size())
+						// compute variance (like in PCL computeVariance() method of sac_model.h)
+						std::vector<float> errorSqrdDists(inliersV.size());
+						int ii=0;
+						for(unsigned int i=0; i<inliersV.size(); ++i)
 						{
-							info->cornerInliers = inliersV;
+							pcl::PointXYZ & newPt = image3DPoints[inliersV[i]];
+							if(pcl::isFinite(newPt))
+							{
+								newPt = util3d::transformPoint(newPt, output);
+								const cv::Point3f & objPt = objectPoints[inliersV[i]];
+								errorSqrdDists[ii++] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
+							}
+						}
+						errorSqrdDists.resize(ii);
+						if(errorSqrdDists.size())
+						{
+							std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
+							double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
+							variance = 2.1981 * median_error_sqr;
 						}
 					}
 					else
 					{
 						UWARN("PnP not enough inliers (%d < %d), rejecting the transform...", (int)inliersV.size(), this->getMinInliers());
+					}
+
+					if(this->isInfoDataFilled() && info)
+					{
+						info->cornerInliers = inliersV;
 					}
 				}
 				else
@@ -827,22 +893,6 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 			}
 			else
 			{
-
-				UDEBUG("");
-				std::vector<unsigned char> statusNew;
-				std::vector<float> errNew;
-				std::vector<cv::Point2f> newCornersKeptRight;
-				cv::calcOpticalFlowPyrLK(
-							newLeftFrame,
-							newRightFrame,
-							newCornersKept,
-							newCornersKeptRight,
-							statusNew,
-							errNew,
-							cv::Size(stereoWinSize_, stereoWinSize_), stereoMaxLevel_,
-							cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, stereoIterations_, stereoEps_),
-							cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
-
 				UDEBUG("Getting correspondences begin");
 				// Get 3D correspondences
 				pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesLast(new pcl::PointCloud<pcl::PointXYZ>);
@@ -908,7 +958,7 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 				{
 					std::vector<int> inliersV;
 					UTimer timerRANSAC;
-					output = util3d::transformFromXYZCorrespondences(
+					Transform t = util3d::transformFromXYZCorrespondences(
 							correspondencesNew,
 							correspondencesLast,
 							this->getInlierDistance(),
@@ -919,12 +969,16 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 					UDEBUG("time RANSAC = %fs", timerRANSAC.ticks());
 
 					inliers = (int)inliersV.size();
-					if(inliers < this->getMinInliers())
+					if(!t.isNull() && inliers >= this->getMinInliers())
 					{
-						output.setNull();
+						output = t;
+					}
+					else
+					{
 						UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
 					}
-					else if(this->isInfoDataFilled() && info && !output.isNull())
+
+					if(this->isInfoDataFilled() && info)
 					{
 						info->cornerInliers = inliersV;
 					}
@@ -1066,7 +1120,9 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 			int flowInliers = 0;
 			std::vector<cv::Point3f> objectPoints(refCorners_.size());
 			std::vector<cv::Point2f> imagePoints(refCorners_.size());
+			std::vector<pcl::PointXYZ> image3DPoints(refCorners_.size());
 			int oi=0;
+			float bad_point = std::numeric_limits<float>::quiet_NaN ();
 			for(unsigned int i=0; i<status.size(); ++i)
 			{
 				if(status[i])
@@ -1077,6 +1133,23 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 						objectPoints[oi].y = refCorners3D_->at(i).y;
 						objectPoints[oi].z = refCorners3D_->at(i).z;
 						imagePoints[oi] = newCorners.at(i);
+
+						// new 3D points, used to compute variance
+						image3DPoints[oi] = pcl::PointXYZ(bad_point, bad_point, bad_point);
+						if(uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols-1)) &&
+						   uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows-1)))
+						{
+							pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depth(), newCorners[i].x, newCorners[i].y,
+									data.cx(), data.cy(), data.fx(), data.fy(), true);
+							if(pcl::isFinite(pt) &&
+								(this->getMaxDepth() == 0.0f || (
+								uIsInBounds(pt.x, -this->getMaxDepth(), this->getMaxDepth()) &&
+								uIsInBounds(pt.y, -this->getMaxDepth(), this->getMaxDepth()) &&
+								uIsInBounds(pt.z, 0.0f, this->getMaxDepth()))))
+							{
+								image3DPoints[oi] = util3d::transformPoint(pt, data.localTransform());
+							}
+						}
 
 						if(this->isInfoDataFilled() && info)
 						{
@@ -1091,6 +1164,7 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 			}
 			objectPoints.resize(oi);
 			imagePoints.resize(oi);
+			image3DPoints.resize(oi);
 			UDEBUG("Flow inliers = %d, added inliers=%d", flowInliers, oi);
 
 			if(this->isInfoDataFilled() && info)
@@ -1143,14 +1217,35 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 
 					UDEBUG("Odom transform = %s", output.prettyPrint().c_str());
 
-					if(this->isInfoDataFilled() && info && inliersV.size())
+					// compute variance (like in PCL computeVariance() method of sac_model.h)
+					std::vector<float> errorSqrdDists(inliersV.size());
+					int ii=0;
+					for(unsigned int i=0; i<inliersV.size(); ++i)
 					{
-						info->cornerInliers = inliersV;
+						pcl::PointXYZ & newPt = image3DPoints[inliersV[i]];
+						if(pcl::isFinite(newPt))
+						{
+							newPt = util3d::transformPoint(newPt, output);
+							const cv::Point3f & objPt = objectPoints[inliersV[i]];
+							errorSqrdDists[ii++] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
+						}
+					}
+					errorSqrdDists.resize(ii);
+					if(errorSqrdDists.size())
+					{
+						std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
+						double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
+						variance = 2.1981 * median_error_sqr;
 					}
 				}
 				else
 				{
 					UWARN("PnP not enough inliers (%d < %d), rejecting the transform...", (int)inliersV.size(), this->getMinInliers());
+				}
+
+				if(this->isInfoDataFilled() && info)
+				{
+					info->cornerInliers = inliersV;
 				}
 			}
 			else
@@ -1238,7 +1333,8 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 					output.setNull();
 					UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
 				}
-				else if(this->isInfoDataFilled() && info && !output.isNull())
+
+				if(this->isInfoDataFilled() && info)
 				{
 					info->cornerInliers = inliersV;
 				}
