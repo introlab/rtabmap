@@ -81,7 +81,7 @@ public:
 	 * @return double the interval in seconds.
 	 * @deprecated use elapsed() instead.
 	 */
-    DEPRECATED(double getInterval());
+    UTILITE_DEPRECATED(double getInterval());
 
     /** 
      * This method is used to get the interval of 
