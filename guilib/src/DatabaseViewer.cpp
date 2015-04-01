@@ -192,6 +192,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->spinBox_iterations, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreCovariance, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->comboBox_graphOptimizer, SIGNAL(currentIndexChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_2dslam, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->spinBox_optimizationDepth, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
@@ -314,6 +315,7 @@ void DatabaseViewer::readSettings()
 	settings.beginGroup("optimization");
 	ui_->spinBox_iterations->setValue(settings.value("iterations", ui_->spinBox_iterations->value()).toInt());
 	ui_->checkBox_ignoreCovariance->setChecked(settings.value("ignoreCovariance", ui_->checkBox_ignoreCovariance->isChecked()).toBool());
+	ui_->checkBox_ignorePoseCorrection->setChecked(settings.value("ignorePoseCorrection", ui_->checkBox_ignorePoseCorrection->isChecked()).toBool());
 	ui_->comboBox_graphOptimizer->setCurrentIndex(settings.value("strategy", ui_->comboBox_graphOptimizer->currentIndex()).toInt());
 	ui_->checkBox_2dslam->setChecked(settings.value("slam2d", ui_->checkBox_2dslam->isChecked()).toBool());
 	ui_->spinBox_optimizationDepth->setValue(settings.value("depth", ui_->spinBox_optimizationDepth->value()).toInt());
@@ -387,6 +389,7 @@ void DatabaseViewer::writeSettings()
 	settings.beginGroup("optimization");
 	settings.setValue("iterations", ui_->spinBox_iterations->value());
 	settings.setValue("ignoreCovariance", ui_->checkBox_ignoreCovariance->isChecked());
+	settings.setValue("ignorePoseCorrection", ui_->checkBox_ignorePoseCorrection->isChecked());
 	settings.setValue("strategy", ui_->comboBox_graphOptimizer->currentIndex());
 	settings.setValue("slam2d", ui_->checkBox_2dslam->isChecked());
 	settings.setValue("depth", ui_->spinBox_optimizationDepth->value());
@@ -2289,7 +2292,29 @@ void DatabaseViewer::updateGraphView()
 		std::map<int, rtabmap::Transform> finalPoses;
 		graphes_.push_back(poses_);
 		ui_->actionGenerate_TORO_graph_graph->setEnabled(true);
-		std::multimap<int, rtabmap::Link> links = updateLinksWithModifications(links_);
+		std::multimap<int, rtabmap::Link> links;
+		if(ui_->checkBox_ignorePoseCorrection->isChecked())
+		{
+			std::multimap<int, Link> tmp = links_;
+			for(std::multimap<int, Link>::iterator iter=tmp.begin(); iter!=tmp.end(); ++iter)
+			{
+				if(iter->second.type() == Link::kNeighbor)
+				{
+					Transform poseFrom = uValue(poses_, iter->second.from(), Transform());
+					Transform poseTo = uValue(poses_, iter->second.to(), Transform());
+					if(!poseFrom.isNull() && !poseTo.isNull())
+					{
+						iter->second.setTransform(poseFrom.inverse() * poseTo); // recompute raw odom transformation
+
+					}
+				}
+			}
+			links = updateLinksWithModifications(tmp);
+		}
+		else
+		{
+			links = updateLinksWithModifications(links_);
+		}
 		graph::Optimizer * optimizer = 0;
 		if(ui_->comboBox_graphOptimizer->currentIndex() == graph::Optimizer::kTypeG2O)
 		{

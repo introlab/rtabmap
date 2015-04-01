@@ -42,7 +42,7 @@
              <x>0</x>
              <y>0</y>
              <width>153</width>
-             <height>136</height>
+             <height>127</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -122,16 +122,7 @@
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout">
-          <property name="leftMargin">
-           <number>12</number>
-          </property>
-          <property name="topMargin">
-           <number>12</number>
-          </property>
-          <property name="rightMargin">
-           <number>12</number>
-          </property>
-          <property name="bottomMargin">
+          <property name="margin">
            <number>12</number>
           </property>
           <item>
@@ -206,7 +197,7 @@
              <x>0</x>
              <y>0</y>
              <width>152</width>
-             <height>136</height>
+             <height>127</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -286,16 +277,7 @@
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
-          <property name="leftMargin">
-           <number>12</number>
-          </property>
-          <property name="topMargin">
-           <number>12</number>
-          </property>
-          <property name="rightMargin">
-           <number>12</number>
-          </property>
-          <property name="bottomMargin">
+          <property name="margin">
            <number>12</number>
           </property>
           <item>
@@ -358,7 +340,7 @@
      <x>0</x>
      <y>0</y>
      <width>1182</width>
-     <height>22</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1181,6 +1163,22 @@
     <layout class="QVBoxLayout" name="verticalLayout_12">
      <item>
       <layout class="QGridLayout" name="gridLayout_7" columnstretch="0,1">
+       <item row="2" column="0">
+        <widget class="QSpinBox" name="spinBox_optimizationDepth">
+         <property name="suffix">
+          <string/>
+         </property>
+         <property name="minimum">
+          <number>0</number>
+         </property>
+         <property name="maximum">
+          <number>1000</number>
+         </property>
+         <property name="value">
+          <number>0</number>
+         </property>
+        </widget>
+       </item>
        <item row="1" column="1">
         <widget class="QLabel" name="label_7">
          <property name="text">
@@ -1218,7 +1216,7 @@
          </property>
         </widget>
        </item>
-       <item row="4" column="1">
+       <item row="5" column="1">
         <widget class="QLabel" name="label_41">
          <property name="text">
           <string>2d SLAM</string>
@@ -1249,7 +1247,7 @@
          </property>
         </widget>
        </item>
-       <item row="4" column="0">
+       <item row="5" column="0">
         <widget class="QCheckBox" name="checkBox_2dslam">
          <property name="text">
           <string/>
@@ -1266,19 +1264,20 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="0">
-        <widget class="QSpinBox" name="spinBox_optimizationDepth">
-         <property name="suffix">
+       <item row="4" column="1">
+        <widget class="QLabel" name="label_35">
+         <property name="text">
+          <string>Ignore pose correction</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QCheckBox" name="checkBox_ignorePoseCorrection">
+         <property name="text">
           <string/>
          </property>
-         <property name="minimum">
-          <number>0</number>
-         </property>
-         <property name="maximum">
-          <number>1000</number>
-         </property>
-         <property name="value">
-          <number>0</number>
+         <property name="checked">
+          <bool>false</bool>
          </property>
         </widget>
        </item>
