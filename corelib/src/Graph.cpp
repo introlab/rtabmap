@@ -485,12 +485,12 @@ bool TOROOptimizer::saveGraph(
 					roll,
 					pitch,
 					yaw,
-					1.0f/iter->second.rotVariance(),
-					1.0f/iter->second.rotVariance(),
-					1.0f/iter->second.rotVariance(),
-					1.0f/iter->second.transVariance(),
-					1.0f/iter->second.transVariance(),
-					1.0f/iter->second.transVariance());
+					iter->second.rotVariance()>0?1.0f/iter->second.rotVariance():1.0f,
+					iter->second.rotVariance()>0?1.0f/iter->second.rotVariance():1.0f,
+					iter->second.rotVariance()>0?1.0f/iter->second.rotVariance():1.0f,
+					iter->second.transVariance()>0?1.0f/iter->second.transVariance():1.0f,
+					iter->second.transVariance()>0?1.0f/iter->second.transVariance():1.0f,
+					iter->second.transVariance()>0?1.0f/iter->second.transVariance():1.0f);
 		}
 		UINFO("Graph saved to %s", fileName.c_str());
 		fclose(file);

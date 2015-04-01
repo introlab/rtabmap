@@ -318,7 +318,7 @@ Transform OdometryBOW::computeTransform(
 									true,
 									this->getIterations(),
 									this->getPnPReprojError(),
-									this->getMinInliers(),
+									0,
 									inliersV,
 									this->getPnPFlags());
 
@@ -793,7 +793,7 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 							true,
 							this->getIterations(),
 							this->getPnPReprojError(),
-							this->getMinInliers(),
+							0,
 							inliersV,
 							this->getPnPFlags());
 
@@ -1126,7 +1126,7 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 						true,
 						this->getIterations(),
 						this->getPnPReprojError(),
-						this->getMinInliers(),
+						0,
 						inliersV,
 						this->getPnPFlags());
 
