@@ -99,7 +99,7 @@ public:
 	static bool loadGraph(
 			const std::string & fileName,
 			std::map<int, Transform> & poses,
-			std::multimap<int, std::pair<int, Transform> > & edgeConstraints);
+			std::multimap<int, Link> & edgeConstraints);
 
 public:
 	TOROOptimizer(int iterations = 100, bool slam2d = false, bool covarianceIgnored = false) :

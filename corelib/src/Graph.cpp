@@ -506,7 +506,7 @@ bool TOROOptimizer::saveGraph(
 bool TOROOptimizer::loadGraph(
 		const std::string & fileName,
 		std::map<int, Transform> & poses,
-		std::multimap<int, std::pair<int, Transform> > & edgeConstraints)
+		std::multimap<int, Link> & edgeConstraints)
 {
 	FILE * file = 0;
 #ifdef _MSC_VER
@@ -517,10 +517,10 @@ bool TOROOptimizer::loadGraph(
 
 	if(file)
 	{
-		char line[200];
-		while ( fgets (line , 200 , file) != NULL )
+		char line[400];
+		while ( fgets (line , 400 , file) != NULL )
 		{
-			std::vector<std::string> strList = uListToVector(uSplit(line, ' '));
+			std::vector<std::string> strList = uListToVector(uSplit(uReplaceChar(line, '\n', ' '), ' '));
 			if(strList.size() == 8)
 			{
 				//VERTEX3
@@ -532,14 +532,13 @@ bool TOROOptimizer::loadGraph(
 				float pitch = uStr2Float(strList[6]);
 				float yaw = uStr2Float(strList[7]);
 				Transform pose = Transform::fromEigen3f(pcl::getTransformation(x, y, z, roll, pitch, yaw));
-				std::map<int, Transform>::iterator iter = poses.find(id);
-				if(iter != poses.end())
+				if(poses.find(id) == poses.end())
 				{
-					iter->second = pose;
+					poses.insert(std::make_pair(id, pose));
 				}
 				else
 				{
-					UFATAL("");
+					UFATAL("Pose %d already added", id);
 				}
 			}
 			else if(strList.size() == 30)
@@ -553,20 +552,32 @@ bool TOROOptimizer::loadGraph(
 				float roll = uStr2Float(strList[6]);
 				float pitch = uStr2Float(strList[7]);
 				float yaw = uStr2Float(strList[8]);
+				float infR = uStr2Float(strList[9]);
+				float infP = uStr2Float(strList[15]);
+				float infW = uStr2Float(strList[20]);
+				UASSERT_MSG(infR > 0 && infP > 0 && infW > 0, uFormat("Information matrix should not be null! line=\"%s\"", line).c_str());
+				float rotVariance = infR<=infP && infR<=infW?infR:infP<=infW?infP:infW; // maximum variance
+				float infX = uStr2Float(strList[24]);
+				float infY = uStr2Float(strList[27]);
+				float infZ = uStr2Float(strList[29]);
+				UASSERT_MSG(infX > 0 && infY > 0 && infZ > 0, uFormat("Information matrix should not be null! line=\"%s\"", line).c_str());
+				float transVariance = 1.0f/(infX<=infY && infX<=infZ?infX:infY<=infW?infY:infZ); // maximum variance
+				UINFO("id=%d rotV=%f transV=%f", idFrom, rotVariance, transVariance);
 				Transform transform = Transform::fromEigen3f(pcl::getTransformation(x, y, z, roll, pitch, yaw));
 				if(poses.find(idFrom) != poses.end() && poses.find(idTo) != poses.end())
 				{
-					std::pair<int, Transform> edge(idTo, transform);
-					edgeConstraints.insert(std::pair<int, std::pair<int, Transform> >(idFrom, edge));
+					//Link type is unknown
+					Link link(idFrom, idTo, Link::kUndef, transform, rotVariance, transVariance);
+					edgeConstraints.insert(std::pair<int, Link>(idFrom, link));
 				}
 				else
 				{
-					UFATAL("");
+					UFATAL("Referred poses from the link not exist!");
 				}
 			}
-			else
+			else if(strList.size())
 			{
-				UFATAL("Error parsing map file %s", fileName.c_str());
+				UFATAL("Error parsing graph file %s on line \"%s\" (strList.size()=%d)", fileName.c_str(), line, (int)strList.size());
 			}
 		}
 

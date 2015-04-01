@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define LINK_H_
 
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/utilite/ULogger.h>
 
 namespace rtabmap {
 
@@ -52,6 +53,7 @@ public:
 		rotVariance_(rotVariance),
 		transVariance_(transVariance)
 	{
+		UASSERT_MSG(rotVariance_ > 0 && transVariance_ > 0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
 	}
 
 	bool isValid() const {return from_ > 0 && to_ > 0 && !transform_.isNull() && type_!=kUndef;}
