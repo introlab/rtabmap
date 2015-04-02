@@ -36,7 +36,12 @@ void showUsage()
 {
 	printf("\nUsage:\n"
 			"rtabmap-rgbd_camera driver\n"
-			"  driver       Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS\n\n");
+			"  driver       Driver number to use: 0=OpenNI-PCL\n"
+			"                                     1=OpenNI2\n"
+			"                                     2=Freenect\n"
+			"                                     3=OpenNI-CV\n"
+			"                                     4=OpenNI-CV-ASUS\n"
+			"                                     5=Freenect2\n\n");
 	exit(1);
 }
 
@@ -53,9 +58,9 @@ int main(int argc, char * argv[])
 	else
 	{
 		driver = atoi(argv[argc-1]);
-		if(driver < 0 || driver > 4)
+		if(driver < 0 || driver > 5)
 		{
-			UERROR("driver should be between 0 and 4.");
+			UERROR("driver should be between 0 and 5.");
 			showUsage();
 		}
 	}
@@ -102,6 +107,15 @@ int main(int argc, char * argv[])
 		}
 		camera = new rtabmap::CameraOpenNICV(true, 0);
 	}
+	else if(driver == 5)
+	{
+		if(!rtabmap::CameraFreenect2::available())
+		{
+			UERROR("Not built with Freenect2 support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraFreenect2();
+	}
 	else
 	{
 		UFATAL("");
@@ -113,25 +127,36 @@ int main(int argc, char * argv[])
 		delete camera;
 		exit(1);
 	}
-
 	cv::Mat rgb, depth;
 	float fx, fy, cx, cy;
 	camera->takeImage(rgb, depth, fx, fy, cx, cy);
+	if(rgb.cols != depth.cols || rgb.rows != depth.rows)
+	{
+		UWARN("RGB (%d/%d) and depth (%d/%d) frames are not the same size! The registered cloud cannot be shown.",
+				rgb.cols, rgb.rows, depth.cols, depth.rows);
+	}
 	cv::namedWindow("Video", CV_WINDOW_AUTOSIZE); // create window
 	cv::namedWindow("Depth", CV_WINDOW_AUTOSIZE); // create window
 	pcl::visualization::CloudViewer viewer("cloud");
 	rtabmap::Transform opticalTransform(0,0,1,0, -1,0,0,0, 0,-1,0,0);
 	while(!rgb.empty() && !viewer.wasStopped())
 	{
+		if(depth.type() == CV_32FC1)
+		{
+			depth = rtabmap::util3d::cvtDepthFromFloat(depth);
+		}
 		cv::Mat tmp;
 		depth.convertTo(tmp, CV_8UC1, 255.0/2048.0);
 
 		cv::imshow("Video", rgb); // show frame
-		cv::imshow("Depth",tmp);
+		cv::imshow("Depth", tmp);
 
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromDepthRGB(rgb, depth, cx, cy, fx, fy);
-		cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, opticalTransform);
-		viewer.showCloud(cloud, "cloud");
+		if(rgb.cols == depth.cols && rgb.rows == depth.rows)
+		{
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromDepthRGB(rgb, depth, cx, cy, fx, fy);
+			cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, opticalTransform);
+			viewer.showCloud(cloud, "cloud");
+		}
 
 		int c = cv::waitKey(10); // wait 10 ms or for key stroke
 		if(c == 27)

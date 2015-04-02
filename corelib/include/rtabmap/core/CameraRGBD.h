@@ -54,7 +54,14 @@ class VideoStream;
 
 namespace pcl
 {
-	class Grabber;
+class Grabber;
+}
+
+namespace libfreenect2
+{
+class Freenect2;
+class Freenect2Device;
+class SyncMultiFrameListener;
 }
 
 typedef struct _freenect_context freenect_context;
@@ -263,6 +270,39 @@ private:
 	int deviceId_;
 	freenect_context * ctx_;
 	FreenectDevice * freenectDevice_;
+};
+
+/////////////////////////
+// CameraFreenect2
+/////////////////////////
+
+class RTABMAP_EXP CameraFreenect2 :
+	public CameraRGBD
+{
+public:
+	static bool available();
+
+public:
+	// default local transform z in, x right, y down));
+	CameraFreenect2(int deviceId= 0,
+					float imageRate=0.0f,
+					const Transform & localTransform = Transform::getIdentity(),
+					float fx = 0.0f,
+					float fy = 0.0f,
+					float cx = 0.0f,
+					float cy = 0.0f);
+	virtual ~CameraFreenect2();
+
+	bool init();
+
+protected:
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
+
+private:
+	int deviceId_;
+	libfreenect2::Freenect2 * freenect2_;
+	libfreenect2::Freenect2Device *dev_;
+	libfreenect2::SyncMultiFrameListener * listener_;
 };
 
 } // namespace rtabmap
