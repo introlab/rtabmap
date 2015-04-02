@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UMath.h>
 
 namespace rtabmap {
 
@@ -53,7 +54,7 @@ public:
 		rotVariance_(rotVariance),
 		transVariance_(transVariance)
 	{
-		UASSERT_MSG(rotVariance_ > 0 && transVariance_ > 0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
+		UASSERT_MSG(uIsFinite(rotVariance) && rotVariance>0 && uIsFinite(transVariance) && transVariance>0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
 	}
 
 	bool isValid() const {return from_ > 0 && to_ > 0 && !transform_.isNull() && type_!=kUndef;}
@@ -69,7 +70,11 @@ public:
 	void setTo(int to) {to_ = to;}
 	void setTransform(const Transform & transform) {transform_ = transform;}
 	void setType(Type type) {type_ = type;}
-	void setVariance(float rotVariance, float transVariance) {rotVariance_ = rotVariance; transVariance_ = transVariance;}
+	void setVariance(float rotVariance, float transVariance) {
+		UASSERT_MSG(uIsFinite(rotVariance) && rotVariance>0 && uIsFinite(transVariance) && transVariance>0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
+		rotVariance_ = rotVariance;
+		transVariance_ = transVariance;
+	}
 
 private:
 	int from_;

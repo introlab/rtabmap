@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/utilite/ULogger.h"
+#include <rtabmap/utilite/UMath.h>
 
 namespace rtabmap
 {
@@ -103,7 +104,7 @@ SensorData::SensorData(const cv::Mat & image,
 			depthOrRightImage.type() == CV_8U);     // Right stereo image
 	UASSERT(!depthOrRightImage.empty() && _fx>0.0f && _fyOrBaseline>0.0f && _cx>=0.0f && _cy>=0.0f);
 	UASSERT(!_localTransform.isNull());
-	UASSERT_MSG(_poseRotVariance>0 && _poseTransVariance>0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
+	UASSERT_MSG(uIsFinite(_poseRotVariance) && _poseRotVariance>0 && uIsFinite(_poseTransVariance) && _poseTransVariance>0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
 }
 
 	// Metric constructor + 2d depth
@@ -144,7 +145,7 @@ SensorData::SensorData(const cv::Mat & laserScan,
 			depthOrRightImage.type() == CV_8U);     // Right stereo image
 	UASSERT(!depthOrRightImage.empty() && _fx>0.0f && _fyOrBaseline>0.0f && _cx>=0.0f && _cy>=0.0f);
 	UASSERT(!_localTransform.isNull());
-	UASSERT_MSG(_poseRotVariance>0 && _poseTransVariance>0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
+	UASSERT_MSG(uIsFinite(_poseRotVariance) && _poseRotVariance>0 && uIsFinite(_poseTransVariance) && _poseTransVariance>0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
 }
 
 bool SensorData::empty() const
