@@ -69,7 +69,7 @@ int main(int argc, char * argv[])
 	rtabmap::CameraRGBD * camera = 0;
 	if(driver == 0)
 	{
-		camera = new rtabmap::CameraOpenni("", 0);
+		camera = new rtabmap::CameraOpenni();
 	}
 	else if(driver == 1)
 	{
@@ -78,7 +78,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with OpenNI2 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNI2(0);
+		camera = new rtabmap::CameraOpenNI2();
 	}
 	else if(driver == 2)
 	{
@@ -87,7 +87,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Freenect support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraFreenect(0, 0);
+		camera = new rtabmap::CameraFreenect();
 	}
 	else if(driver == 3)
 	{
@@ -96,7 +96,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with OpenNI from OpenCV support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNICV(false, 0);
+		camera = new rtabmap::CameraOpenNICV(false);
 	}
 	else if(driver == 4)
 	{
@@ -105,7 +105,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with OpenNI from OpenCV support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNICV(true, 0);
+		camera = new rtabmap::CameraOpenNICV(true);
 	}
 	else if(driver == 5)
 	{
