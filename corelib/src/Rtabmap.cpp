@@ -977,7 +977,7 @@ bool Rtabmap::process(const SensorData & data)
 				{
 					std::string rejectedMsg;
 					UDEBUG("Check local transform between %d and %d", signature->id(), *iter);
-					double variance = -1.0;
+					double variance = 1.0;
 					int inliers = -1;
 					Transform transform = _memory->computeVisualTransform(*iter, signature->id(), &rejectedMsg, &inliers, &variance);
 					if(!transform.isNull() && _globalLoopClosureIcpType > 0)
@@ -1407,7 +1407,7 @@ bool Rtabmap::process(const SensorData & data)
 	{
 		//Compute transform if metric data are present
 		Transform transform;
-		double variance = -1;
+		double variance = 1;
 		if(_rgbdSlamMode)
 		{
 			std::string rejectedMsg;
