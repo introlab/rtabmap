@@ -51,6 +51,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
+#ifdef WITH_FREENECT2
+#include <libfreenect2/libfreenect2.hpp>
+#include <libfreenect2/frame_listener_impl.h>
+#endif
+
 #ifdef WITH_OPENNI2
 #include <OniVersion.h>
 #include <OpenNI.h>
@@ -940,19 +945,145 @@ void CameraFreenect::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, fl
 			delete freenectDevice_;
 			freenectDevice_ = 0;
 		}
-
-		if(depth.empty() || rgb.empty())
-		{
-			rgb = cv::Mat();
-			depth = cv::Mat();
-			fx = 0.0f;
-			fy = 0.0f;
-			cx = 0.0f;
-			cy = 0.0f;
-		}
+	}
+	if(depth.empty() || rgb.empty())
+	{
+		rgb = cv::Mat();
+		depth = cv::Mat();
+		fx = 0.0f;
+		fy = 0.0f;
+		cx = 0.0f;
+		cy = 0.0f;
 	}
 #else
 	UERROR("CameraFreenect: RTAB-Map is not built with Freenect support!");
+#endif
+}
+
+//
+// CameraFreenect2
+//
+bool CameraFreenect2::available()
+{
+#ifdef WITH_FREENECT2
+	return true;
+#else
+	return false;
+#endif
+}
+
+CameraFreenect2::CameraFreenect2(int deviceId, float imageRate, const Transform & localTransform, float fx, float fy, float cx, float cy) :
+		CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
+		deviceId_(deviceId),
+		freenect2_(0),
+		dev_(0)
+{
+#ifdef WITH_FREENECT2
+	freenect2_ = new libfreenect2::Freenect2();
+	//listener_ = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth);
+	listener_ = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Color | libfreenect2::Frame::Depth);
+	UWARN("CameraFreenect2: Images are not yet registered!");
+#endif
+}
+
+CameraFreenect2::~CameraFreenect2()
+{
+#ifdef WITH_FREENECT2
+	if(dev_)
+	{
+		dev_->stop();
+		dev_->close();
+	}
+	if(listener_)
+	{
+		delete listener_;
+	}
+	if(freenect2_)
+	{
+		delete freenect2_;
+	}
+#endif
+}
+
+bool CameraFreenect2::init()
+{
+#ifdef WITH_FREENECT2
+	if(dev_)
+	{
+		dev_->stop();
+		dev_->close();
+		dev_ = 0;
+	}
+
+	if(deviceId_ <= 0)
+	{
+		dev_ = freenect2_->openDefaultDevice();
+	}
+	else
+	{
+		dev_ = freenect2_->openDevice(deviceId_);
+	}
+
+	if(dev_)
+	{
+		dev_->setColorFrameListener(listener_);
+		dev_->setIrAndDepthFrameListener(listener_);
+		dev_->start();
+		UINFO("CameraFreenect2: device serial: %s", dev_->getSerialNumber().c_str());
+		UINFO("CameraFreenect2: device firmware: %s", dev_->getFirmwareVersion().c_str());
+		return true;
+	}
+	else
+	{
+		UERROR("CameraFreenect2: no device connected or failure opening the default one!");
+	}
+#else
+	UERROR("CameraFreenect2: RTAB-Map is not built with Freenect2 support!");
+#endif
+	return false;
+}
+
+void CameraFreenect2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
+{
+#ifdef WITH_FREENECT2
+	rgb = cv::Mat();
+	depth = cv::Mat();
+	fx = 0.0f;
+	fy = 0.0f;
+	cx = 0.0f;
+	cy = 0.0f;
+	if(dev_ && listener_)
+	{
+		libfreenect2::FrameMap frames;
+		if(listener_->waitForNewFrame(frames, 1000))
+		{
+			libfreenect2::Frame *rgbFrame = frames[libfreenect2::Frame::Color];
+			//libfreenect2::Frame *ir = frames[libfreenect2::Frame::Ir];
+			libfreenect2::Frame *depthFrame = frames[libfreenect2::Frame::Depth];
+
+			if(rgbFrame && depthFrame)
+			{
+				cv::flip(cv::Mat(rgbFrame->height, rgbFrame->width, CV_8UC3, rgbFrame->data), rgb, 1);
+				cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
+				cv::flip(depth, depth, 1);
+				libfreenect2::Freenect2Device::ColorCameraParams params = dev_->getColorCameraParams();
+				fx = params.fx;
+				fy = params.fy;
+				cx = params.cx;
+				cy = params.cy;
+			}
+
+			listener_->release(frames);
+		}
+		else
+		{
+			UWARN("CameraFreenect2: Failed to get frames! rtabmap should link on libusb of "
+					"libfreenect2, this can be done by setting LD_LIBRARY_PATH to "
+					"\"libfreenect2/depends/libusb/lib\"");
+		}
+	}
+#else
+	UERROR("CameraFreenect2: RTAB-Map is not built with Freenect2 support!");
 #endif
 }
 
