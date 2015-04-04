@@ -849,10 +849,18 @@ cv::Mat disparityFromStereoImages(
 		leftMono = leftImage;
 	}
 
-	cv::StereoBM stereo(cv::StereoBM::BASIC_PRESET, 0, 15);
+	cv::StereoBM stereo(cv::StereoBM::BASIC_PRESET);
+	stereo.state->SADWindowSize = 15;
+	stereo.state->minDisparity = 0;
+	stereo.state->numberOfDisparities = 64;
+	stereo.state->preFilterSize = 9;
+	stereo.state->preFilterCap = 31;
+	stereo.state->uniquenessRatio = 15;
+	stereo.state->textureThreshold = 10;
+	stereo.state->speckleWindowSize = 100;
+	stereo.state->speckleRange = 4;
 	cv::Mat disparity;
 	stereo(leftMono, rightImage, disparity, CV_16SC1);
-	cv::filterSpeckles(disparity, 0, 1000, 16);
 	return disparity;
 }
 

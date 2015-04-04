@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/utilite/UMutex.h"
 #include "rtabmap/utilite/USemaphore.h"
+#include "rtabmap/core/CameraModel.h"
 #include <set>
 #include <stack>
 #include <list>
@@ -112,6 +113,9 @@ protected:
 				float cx = 0.0f,
 				float cy = 0.0f);
 
+	/**
+	 * returned rgb and depth images should be already rectified
+	 */
 	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy) = 0;
 
 private:
@@ -303,6 +307,39 @@ private:
 	libfreenect2::Freenect2 * freenect2_;
 	libfreenect2::Freenect2Device *dev_;
 	libfreenect2::SyncMultiFrameListener * listener_;
+};
+
+/////////////////////////
+// CameraDC1394
+/////////////////////////
+class DC1394Device;
+
+class RTABMAP_EXP CameraDC1394 :
+	public CameraRGBD
+{
+public:
+	static bool available();
+
+public:
+	// default local transform z in, x right, y down));
+	CameraDC1394(const std::string & calibrationFolder,
+					float imageRate=0.0f,
+					const Transform & localTransform = Transform::getIdentity(),
+					float fx = 0.0f,
+					float fy = 0.0f,
+					float cx = 0.0f,
+					float cy = 0.0f);
+	virtual ~CameraDC1394();
+
+	bool init();
+
+protected:
+	virtual void captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy);
+
+private:
+	std::string calibrationFolder_;
+	DC1394Device *device_;
+	StereoCameraModel stereoModel_;
 };
 
 } // namespace rtabmap

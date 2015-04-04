@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/utilite/ULogger.h"
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #include <pcl/visualization/cloud_viewer.h>
 #include <stdio.h>
 
@@ -36,12 +37,13 @@ void showUsage()
 {
 	printf("\nUsage:\n"
 			"rtabmap-rgbd_camera driver\n"
-			"  driver       Driver number to use: 0=OpenNI-PCL\n"
-			"                                     1=OpenNI2\n"
-			"                                     2=Freenect\n"
-			"                                     3=OpenNI-CV\n"
-			"                                     4=OpenNI-CV-ASUS\n"
-			"                                     5=Freenect2\n\n");
+			"  driver       Driver number to use: 0=OpenNI-PCL (Kinect)\n"
+			"                                     1=OpenNI2    (Kinect and Xtion PRO Live)\n"
+			"                                     2=Freenect   (Kinect)\n"
+			"                                     3=OpenNI-CV  (Kinect)\n"
+			"                                     4=OpenNI-CV-ASUS (Xtion PRO Live)\n"
+			"                                     5=Freenect2  (Kinect v2)\n"
+			"                                     6=DC1394     (Bumblebee2)\n\n");
 	exit(1);
 }
 
@@ -58,9 +60,9 @@ int main(int argc, char * argv[])
 	else
 	{
 		driver = atoi(argv[argc-1]);
-		if(driver < 0 || driver > 5)
+		if(driver < 0 || driver > 6)
 		{
-			UERROR("driver should be between 0 and 5.");
+			UERROR("driver should be between 0 and 6.");
 			showUsage();
 		}
 	}
@@ -116,6 +118,15 @@ int main(int argc, char * argv[])
 		}
 		camera = new rtabmap::CameraFreenect2();
 	}
+	else if(driver == 6)
+	{
+		if(!rtabmap::CameraDC1394::available())
+		{
+			UERROR("Not built with DC1394 support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraDC1394("camera_info");
+	}
 	else
 	{
 		UFATAL("");
@@ -135,27 +146,52 @@ int main(int argc, char * argv[])
 		UWARN("RGB (%d/%d) and depth (%d/%d) frames are not the same size! The registered cloud cannot be shown.",
 				rgb.cols, rgb.rows, depth.cols, depth.rows);
 	}
-	cv::namedWindow("Video", CV_WINDOW_AUTOSIZE); // create window
-	cv::namedWindow("Depth", CV_WINDOW_AUTOSIZE); // create window
+	if(!fx || !fy)
+	{
+		UWARN("fx and/or fy are not set! The registered cloud cannot be shown.");
+	}
 	pcl::visualization::CloudViewer viewer("cloud");
-	rtabmap::Transform opticalTransform(0,0,1,0, -1,0,0,0, 0,-1,0,0);
+	rtabmap::Transform t(1, 0, 0, 0,
+						 0, -1, 0, 0,
+						 0, 0, -1, 0);
 	while(!rgb.empty() && !viewer.wasStopped())
 	{
-		if(depth.type() == CV_32FC1)
+		if(depth.type() == CV_16UC1 || depth.type() == CV_32FC1)
 		{
-			depth = rtabmap::util3d::cvtDepthFromFloat(depth);
+			// depth
+			if(depth.type() == CV_32FC1)
+			{
+				depth = rtabmap::util3d::cvtDepthFromFloat(depth);
+			}
+			cv::Mat tmp;
+			depth.convertTo(tmp, CV_8UC1, 255.0/2048.0);
+
+			cv::imshow("Video", rgb); // show frame
+			cv::imshow("Depth", tmp);
+
+			if(rgb.cols == depth.cols && rgb.rows == depth.rows && fx && fy)
+			{
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromDepthRGB(rgb, depth, cx, cy, fx, fy);
+				cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, t);
+				viewer.showCloud(cloud, "cloud");
+			}
 		}
-		cv::Mat tmp;
-		depth.convertTo(tmp, CV_8UC1, 255.0/2048.0);
-
-		cv::imshow("Video", rgb); // show frame
-		cv::imshow("Depth", tmp);
-
-		if(rgb.cols == depth.cols && rgb.rows == depth.rows)
+		else
 		{
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromDepthRGB(rgb, depth, cx, cy, fx, fy);
-			cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, opticalTransform);
-			viewer.showCloud(cloud, "cloud");
+			// stereo
+			cv::imshow("Left", rgb); // show frame
+			cv::imshow("Right", depth);
+
+			if(rgb.cols == depth.cols && rgb.rows == depth.rows && fx && fy)
+			{
+				if(depth.channels() == 3)
+				{
+					cv::cvtColor(depth, depth, CV_BGR2GRAY);
+				}
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromStereoImages(rgb, depth, cx, cy, fx, fy);
+				cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, t);
+				viewer.showCloud(cloud, "cloud");
+			}
 		}
 
 		int c = cv::waitKey(10); // wait 10 ms or for key stroke

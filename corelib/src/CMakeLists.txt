@@ -14,6 +14,7 @@ SET(SRC_FILES
     Camera.cpp
     CameraThread.cpp
     CameraRGBD.cpp
+    CameraModel.cpp
     
     EpipolarGeometry.cpp
 	VisualWord.cpp
