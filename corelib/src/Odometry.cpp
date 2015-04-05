@@ -115,6 +115,16 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 		_pose.setIdentity(); // initialized
 	}
 
+	UASSERT(!data.image().empty());
+	UASSERT(!data.depthOrRightImage().empty());
+
+	if(data.fx() <= 0 || data.fyOrBaseline() <= 0)
+	{
+		UERROR("Rectified images required! Calibrate your camera. (fx=%f, fy/baseline=%f, cx=%f, cy=%f)",
+				data.fx(), data.fyOrBaseline(), data.cx(), data.cy());
+		return Transform();
+	}
+
 	UTimer time;
 	Transform t = this->computeTransform(data, info);
 

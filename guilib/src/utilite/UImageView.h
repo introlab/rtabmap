@@ -22,11 +22,6 @@ public:
 public slots:
 	void setImage(const QImage & image)
 	{
-		if(pixmap_.width() != image.width() || pixmap_.height() != image.height())
-		{
-			this->setMinimumSize(image.width(), image.height());
-			this->setGeometry(this->geometry().x(), this->geometry().y(), image.width(), image.height());
-		}
 		pixmap_ = QPixmap::fromImage(image);
 		this->update();
 	}

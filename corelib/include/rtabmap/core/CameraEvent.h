@@ -44,9 +44,10 @@ public:
 	};
 
 public:
-	CameraEvent(const cv::Mat & image, int seq=0, double stamp = 0.0) :
+	CameraEvent(const cv::Mat & image, int seq=0, double stamp = 0.0, const std::string & cameraName = "") :
 		UEvent(kCodeImage),
-		data_(image, seq, stamp)
+		data_(image, seq, stamp),
+		cameraName_(cameraName)
 	{
 	}
 
@@ -55,26 +56,23 @@ public:
 	{
 	}
 
-	CameraEvent(const cv::Mat & rgb, const cv::Mat & depth, float fx, float fy, float cx, float cy, const Transform & localTransform, int id, double stamp) :
+	CameraEvent(const SensorData & data, const std::string & cameraName = "") :
 		UEvent(kCodeImageDepth),
-		data_(rgb, depth, fx, fy, cx, cy, localTransform, Transform(), 1.0f, 1.0f, id, stamp)
-	{
-	}
-
-	CameraEvent(const SensorData & data) :
-		UEvent(kCodeImageDepth),
-		data_(data)
+		data_(data),
+		cameraName_(cameraName)
 	{
 	}
 
 	// Image or descriptors
 	const SensorData & data() const {return data_;}
+	const std::string & cameraName() const {return cameraName_;}
 
 	virtual ~CameraEvent() {}
 	virtual std::string getClassName() const {return std::string("CameraEvent");}
 
 private:
 	SensorData data_;
+	std::string cameraName_;
 };
 
 } // namespace rtabmap

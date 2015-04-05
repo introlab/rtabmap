@@ -225,6 +225,15 @@ bool CameraOpenni::init()
 	return true;
 }
 
+std::string CameraOpenni::getSerial() const
+{
+	if(interface_)
+	{
+		return interface_->getName();
+	}
+	return "";
+}
+
 void CameraOpenni::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
 {
 	if(interface_ && interface_->isRunning())
@@ -637,6 +646,15 @@ bool CameraOpenNI2::init()
 #endif
 }
 
+std::string CameraOpenNI2::getSerial() const
+{
+	if(_device)
+	{
+		return _device->getDeviceInfo().getName();
+	}
+	return "";
+}
+
 void CameraOpenNI2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
 {
 #ifdef WITH_OPENNI2
@@ -698,13 +716,41 @@ class FreenectDevice : public UThread {
 		if(device_ && freenect_close_device(device_) < 0){} //FN_WARNING("Device did not shutdown in a clean fashion");
 	}
 
+	const std::string & getSerial() const {return serial_;}
+
 	bool init()
 	{
+		if(device_)
+		{
+			this->join(true);
+			freenect_close_device(device_);
+			device_ = 0;
+		}
+		serial_.clear();
+		std::vector<std::string> deviceSerials;
+		freenect_device_attributes* attr_list;
+		freenect_device_attributes* item;
+		freenect_list_device_attributes(ctx_, &attr_list);
+		for (item = attr_list; item != NULL; item = item->next) {
+			deviceSerials.push_back(std::string(item->camera_serial));
+		}
+		freenect_free_device_attributes(attr_list);
+
 		if(freenect_open_device(ctx_, &device_, index_) < 0)
 		{
 			UERROR("FreenectDevice: Cannot open Kinect");
 			return false;
 		}
+
+		if(index_ >= 0 && index_ < (int)deviceSerials.size())
+		{
+			serial_ = deviceSerials[index_];
+		}
+		else
+		{
+			UERROR("Could not get serial for index %d", index_);
+		}
+
 		freenect_set_user(device_, this);
 		freenect_set_video_mode(device_, freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_VIDEO_RGB));
 		freenect_set_depth_mode(device_, freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_REGISTERED));
@@ -833,6 +879,7 @@ private:
 
   private:
 	int index_;
+	std::string serial_;
 	freenect_context * ctx_;
 	freenect_device * device_;
 	cv::Mat depthBuffer_;
@@ -920,6 +967,17 @@ bool CameraFreenect::init()
 	UERROR("CameraFreenect: RTAB-Map is not built with Freenect support!");
 #endif
 	return false;
+}
+
+std::string CameraFreenect::getSerial() const
+{
+#ifdef WITH_FREENECT
+	if(freenectDevice_)
+	{
+		return freenectDevice_->getSerial();
+	}
+#endif
+	return "";
 }
 
 void CameraFreenect::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
@@ -1043,6 +1101,17 @@ bool CameraFreenect2::init()
 	UERROR("CameraFreenect2: RTAB-Map is not built with Freenect2 support!");
 #endif
 	return false;
+}
+
+std::string CameraFreenect2::getSerial() const
+{
+#ifdef WITH_FREENECT2
+	if(dev_)
+	{
+		return dev_->getSerialNumber();
+	}
+#endif
+	return "";
 }
 
 void CameraFreenect2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
@@ -1353,7 +1422,7 @@ public:
 			//DC1394_COLOR_CODING_RAW16:
 			//DC1394_COLOR_FILTER_BGGR
 			cv::cvtColor(cv::Mat(frame->size[1], frame->size[0], CV_8UC1, capture_buffer), left, CV_BayerRG2BGR);
-			cv::cvtColor(cv::Mat(frame->size[1], frame->size[0], CV_8UC1, capture_buffer+image.total()), right, CV_BayerRG2BGR);
+			cv::cvtColor(cv::Mat(frame->size[1], frame->size[0], CV_8UC1, capture_buffer+image.total()), right, CV_BayerRG2GRAY);
 
 			dc1394_capture_enqueue(camera_, frame);
 
@@ -1380,8 +1449,19 @@ bool CameraDC1394::available()
 #endif
 }
 
+CameraDC1394::CameraDC1394(float imageRate, const Transform & localTransform, float fx, float fy, float cx, float cy) :
+		CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
+		lookForCalibration_(false),
+		device_(0)
+{
+#ifdef WITH_DC1394
+	device_ = new DC1394Device();
+#endif
+}
+
 CameraDC1394::CameraDC1394(const std::string & calibrationFolder, float imageRate, const Transform & localTransform, float fx, float fy, float cx, float cy) :
 		CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
+		lookForCalibration_(true),
 		calibrationFolder_(calibrationFolder),
 		device_(0)
 {
@@ -1409,9 +1489,12 @@ bool CameraDC1394::init()
 		if(ok)
 		{
 			// look for calibration files
-			if(!stereoModel_.load(calibrationFolder_, device_->guid()))
+			if(lookForCalibration_)
 			{
-				UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!", device_->guid().c_str(), calibrationFolder_.c_str());
+				if(!stereoModel_.load(calibrationFolder_, device_->guid()))
+				{
+					UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!", device_->guid().c_str(), calibrationFolder_.c_str());
+				}
 			}
 		}
 		return ok;
@@ -1420,6 +1503,17 @@ bool CameraDC1394::init()
 	UERROR("CameraDC1394: RTAB-Map is not built with dc1394 support!");
 #endif
 	return false;
+}
+
+std::string CameraDC1394::getSerial() const
+{
+#ifdef WITH_DC1394
+	if(device_)
+	{
+		return device_->guid();
+	}
+#endif
+	return "";
 }
 
 void CameraDC1394::captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy)

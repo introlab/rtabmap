@@ -3225,6 +3225,15 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 	UASSERT(data.depth().empty() || ((data.depth().type() == CV_16UC1 || data.depth().type() == CV_32FC1) && data.depth().rows == data.image().rows && data.depth().cols == data.image().cols));
 	UASSERT(data.rightImage().empty() || (data.rightImage().type() == CV_8UC1 && data.rightImage().rows == data.image().rows && data.rightImage().cols == data.image().cols));
 	UASSERT(data.laserScan().empty() || data.laserScan().type() == CV_32FC2);
+
+	if(!data.depthOrRightImage().empty() && (data.fx() <= 0 || data.fyOrBaseline() <= 0))
+	{
+		UERROR("Rectified images required! Calibrate your camera. (fx=%f, fy/baseline=%f, cx=%f, cy=%f)",
+				data.fx(), data.fyOrBaseline(), data.cx(), data.cy());
+		return 0;
+	}
+	UASSERT(data.depthOrRightImage().empty() || data.fx() > 0);
+	UASSERT(data.depthOrRightImage().empty() || data.fyOrBaseline() > 0);
 	UASSERT(_feature2D != 0);
 
 	PreUpdateThread preUpdateThread(_vwd);

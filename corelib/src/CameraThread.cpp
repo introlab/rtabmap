@@ -125,7 +125,8 @@ void CameraThread::mainLoop()
 	{
 		if(_cameraRGBD)
 		{
-			this->post(new CameraEvent(rgb, depth, fx, fy, cx, cy, _cameraRGBD->getLocalTransform(), ++_seq, UTimer::now()));
+			SensorData data(rgb, depth, fx, fy, cx, cy, _cameraRGBD->getLocalTransform(), Transform(), 1, 1, ++_seq, UTimer::now());
+			this->post(new CameraEvent(data, _cameraRGBD->getSerial()));
 		}
 		else
 		{

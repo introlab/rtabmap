@@ -81,6 +81,7 @@ public:
 	virtual ~CameraRGBD();
 	void takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
 	virtual bool init() = 0;
+	virtual std::string getSerial() const = 0;
 
 	//getters
 	float getImageRate() const {return _imageRate;}
@@ -154,7 +155,8 @@ public:
 			const boost::shared_ptr<openni_wrapper::DepthImage>& depth,
 			float constant);
 
-    bool init();
+    virtual bool init();
+    virtual std::string getSerial() const;
 
 protected:
 	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
@@ -191,6 +193,7 @@ public:
 	virtual ~CameraOpenNICV();
 
 	virtual bool init();
+	virtual std::string getSerial() const {return "";} // unknown with OpenCV
 
 protected:
 	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
@@ -223,6 +226,7 @@ public:
 	virtual ~CameraOpenNI2();
 
 	virtual bool init();
+	virtual std::string getSerial() const;
 
 	bool setAutoWhiteBalance(bool enabled);
 	bool setAutoExposure(bool enabled);
@@ -266,6 +270,7 @@ public:
 	virtual ~CameraFreenect();
 
 	bool init();
+	virtual std::string getSerial() const;
 
 protected:
 	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
@@ -298,6 +303,7 @@ public:
 	virtual ~CameraFreenect2();
 
 	bool init();
+	virtual std::string getSerial() const;
 
 protected:
 	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
@@ -321,7 +327,14 @@ public:
 	static bool available();
 
 public:
-	// default local transform z in, x right, y down));
+	// The first constructor will not check for calibration files, so
+	// the images returned won't be rectified
+	CameraDC1394( float imageRate=0.0f,
+					const Transform & localTransform = Transform::getIdentity(),
+					float fx = 0.0f,
+					float fy = 0.0f,
+					float cx = 0.0f,
+					float cy = 0.0f);
 	CameraDC1394(const std::string & calibrationFolder,
 					float imageRate=0.0f,
 					const Transform & localTransform = Transform::getIdentity(),
@@ -332,11 +345,13 @@ public:
 	virtual ~CameraDC1394();
 
 	bool init();
+	virtual std::string getSerial() const;
 
 protected:
 	virtual void captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy);
 
 private:
+	bool lookForCalibration_;
 	std::string calibrationFolder_;
 	DC1394Device *device_;
 	StereoCameraModel stereoModel_;

@@ -38,9 +38,17 @@ void showUsage()
 	printf("\nUsage:\n"
 			"rtabmap-calibration [options]\n"
 			"Options:\n"
-			"  --driver #     Driver number to use: 0=USB camera, 1=OpenNI-PCL, 2=OpenNI2,\n"
-			"                                       3=Freenect, 4=OpenNI-CV, 5=OpenNI-CV-ASUS\n"
-			"  --device #     Device id\n\n");
+			"  --driver #     Driver number to use:-1=USB camera\n"
+			"                                       0=OpenNI-PCL (Kinect)\n"
+			"                                       1=OpenNI2    (Kinect and Xtion PRO Live)\n"
+			"                                       2=Freenect   (Kinect)\n"
+			"                                       3=OpenNI-CV  (Kinect)\n"
+			"                                       4=OpenNI-CV-ASUS (Xtion PRO Live)\n"
+			"                                       5=Freenect2  (Kinect v2)\n"
+			"                                       6=DC1394     (Bumblebee2)\n"
+			"  --device #     Device id\n"
+			"  --debug        Debug log\n"
+			"  --stereo       Stereo\n\n");
 	exit(1);
 }
 
@@ -49,8 +57,9 @@ int main(int argc, char * argv[])
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kInfo);
 
-	int driver = 0;
+	int driver = -1;
 	int device = 0;
+	bool stereo = false;
 	for(int i=1; i<argc; ++i)
 	{
 		if(strcmp(argv[i], "--driver") == 0)
@@ -59,7 +68,7 @@ int main(int argc, char * argv[])
 			if(i < argc)
 			{
 				driver = std::atoi(argv[i]);
-				if(driver < 0)
+				if(driver < -1)
 				{
 					showUsage();
 				}
@@ -87,6 +96,16 @@ int main(int argc, char * argv[])
 			}
 			continue;
 		}
+		if(strcmp(argv[i], "--debug") == 0)
+		{
+			ULogger::setLevel(ULogger::kDebug);
+			continue;
+		}
+		if(strcmp(argv[i], "--stereo") == 0)
+		{
+			stereo=true;
+			continue;
+		}
 		if(strcmp(argv[i], "--help") == 0)
 		{
 			showUsage();
@@ -94,44 +113,52 @@ int main(int argc, char * argv[])
 		printf("Unrecognized option : %s\n", argv[i]);
 		showUsage();
 	}
-	driver = atoi(argv[argc-1]);
-	if(driver < 0 || driver > 5)
+	if(driver < -1 || driver > 6)
 	{
-		UERROR("driver should be between 0 and 5.");
+		UERROR("driver should be between -1 and 6.");
 		showUsage();
 	}
 
 	UINFO("Using driver %d", driver);
 	UINFO("Using device %d", device);
+	UINFO("Stereo: %s", stereo?"true":"false");
 
-	float imageRate = 1.0f;
 	rtabmap::Camera * cameraUsb = 0;
 	rtabmap::CameraRGBD * camera = 0;
-	if(driver == 0)
+	if(driver == -1)
 	{
-		cameraUsb = new rtabmap::CameraVideo(device, imageRate);
+		cameraUsb = new rtabmap::CameraVideo(device);
+	}
+	else if(driver == 0)
+	{
+		camera = new rtabmap::CameraOpenni();
 	}
 	else if(driver == 1)
-	{
-		camera = new rtabmap::CameraOpenni(uNumber2Str(device), imageRate);
-	}
-	else if(driver == 2)
 	{
 		if(!rtabmap::CameraOpenNI2::available())
 		{
 			UERROR("Not built with OpenNI2 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNI2(uNumber2Str(device), imageRate);
+		camera = new rtabmap::CameraOpenNI2();
 	}
-	else if(driver == 3)
+	else if(driver == 2)
 	{
 		if(!rtabmap::CameraFreenect::available())
 		{
 			UERROR("Not built with Freenect support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraFreenect(device, imageRate);
+		camera = new rtabmap::CameraFreenect();
+	}
+	else if(driver == 3)
+	{
+		if(!rtabmap::CameraOpenNICV::available())
+		{
+			UERROR("Not built with OpenNI from OpenCV support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraOpenNICV(false);
 	}
 	else if(driver == 4)
 	{
@@ -140,16 +167,25 @@ int main(int argc, char * argv[])
 			UERROR("Not built with OpenNI from OpenCV support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNICV(false, imageRate);
+		camera = new rtabmap::CameraOpenNICV(true);
 	}
 	else if(driver == 5)
 	{
-		if(!rtabmap::CameraOpenNICV::available())
+		if(!rtabmap::CameraFreenect2::available())
 		{
-			UERROR("Not built with OpenNI from OpenCV support...");
+			UERROR("Not built with Freenect2 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNICV(true, imageRate);
+		camera = new rtabmap::CameraFreenect2();
+	}
+	else if(driver == 6)
+	{
+		if(!rtabmap::CameraDC1394::available())
+		{
+			UERROR("Not built with DC1394 support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraDC1394();
 	}
 	else
 	{
@@ -180,7 +216,7 @@ int main(int argc, char * argv[])
 	}
 
 	QApplication app(argc, argv);
-	rtabmap::CalibrationDialog dialog;
+	rtabmap::CalibrationDialog dialog(stereo);
 	dialog.registerToEventsManager();
 
 	dialog.show();

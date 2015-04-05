@@ -34,14 +34,32 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 CameraModel::CameraModel() :
-		width_(0),
-		height_(0),
 		P_(cv::Mat::zeros(3, 4, CV_64FC1))
 {
 
 }
 
-bool CameraModel::load(const std::string & directory, const std::string & cameraName)
+CameraModel::CameraModel(const std::string & cameraName, const cv::Size & imageSize, const cv::Mat & K, const cv::Mat & D, const cv::Mat & R, const cv::Mat & P) :
+		name_(cameraName),
+		imageSize_(imageSize),
+		K_(K),
+		D_(D),
+		R_(R),
+		P_(P)
+{
+	UASSERT(!name_.empty());
+	UASSERT(imageSize_.width > 0 && imageSize_.height > 0);
+	UASSERT(K_.rows == 3 && K_.cols == 3);
+	UASSERT(D_.rows == 1 && (D_.cols == 4 || D_.cols == 5 || D_.cols == 8));
+	UASSERT(R_.rows == 3 && R_.cols == 3);
+	UASSERT(P_.rows == 3 && P_.cols == 4);
+
+	// init rectification map
+	UINFO("Initialize rectify map");
+	cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_16SC2, rectificationMap1_, rectificationMap2_);
+}
+
+bool CameraModel::load(const std::string & filePath)
 {
 	K_ = cv::Mat();
 	D_ = cv::Mat();
@@ -50,14 +68,17 @@ bool CameraModel::load(const std::string & directory, const std::string & camera
 	rectificationMap1_ = cv::Mat();
 	rectificationMap2_ = cv::Mat();
 
-	std::string path = directory + UDirectory::separator() + cameraName + ".yaml";
-	if(UFile::exists(path))
+	if(UFile::exists(filePath))
 	{
-		UINFO("Reading calibration file \"%s\"", path.c_str());
-		cv::FileStorage fs(path, cv::FileStorage::READ);
+		UINFO("Reading calibration file \"%s\"", filePath.c_str());
+		cv::FileStorage fs(filePath, cv::FileStorage::READ);
 
-		width_ = (int)fs["image_width"];
-		height_ = (int)fs["image_height"];
+		name_ = (int)fs["camera_name"];
+		imageSize_.width = (int)fs["image_width"];
+		imageSize_.height = (int)fs["image_height"];
+		UASSERT(!name_.empty());
+		UASSERT(imageSize_.width > 0);
+		UASSERT(imageSize_.height > 0);
 
 		// import from ROS calibration format
 		cv::FileNode n = fs["camera_matrix"];
@@ -99,17 +120,56 @@ bool CameraModel::load(const std::string & directory, const std::string & camera
 		fs.release();
 
 		// init rectification map
-		cv::initUndistortRectifyMap(K_, D_, R_, P_, cv::Size(width_, height_),
-				CV_16SC2, rectificationMap1_, rectificationMap2_);
+		UINFO("Initialize rectify map");
+		cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_16SC2, rectificationMap1_, rectificationMap2_);
 
 		return true;
 	}
 	return false;
 }
 
-void CameraModel::save(const std::string & directory, const std::string & cameraName)
+bool CameraModel::save(const std::string & filePath)
 {
-	UFATAL("not implemented");
+	if(!filePath.empty() && !name_.empty() && !K_.empty() && !D_.empty(), !R_.empty(), !P_.empty())
+	{
+		UINFO("Saving calibration to file \"%s\"", filePath.c_str());
+		cv::FileStorage fs(filePath, cv::FileStorage::WRITE);
+
+		// export in ROS calibration format
+
+		fs << "camera_name" << name_;
+		fs << "image_width" << imageSize_.width;
+		fs << "image_height" << imageSize_.height;
+
+		fs << "camera_matrix" << "{";
+		fs << "rows" << K_.rows;
+		fs << "cols" << K_.cols;
+		fs << "data" << std::vector<double>((double*)K_.data, ((double*)K_.data)+(K_.rows*K_.cols));
+		fs << "}";
+
+		fs << "distortion_coefficients" << "{";
+		fs << "rows" << D_.rows;
+		fs << "cols" << D_.cols;
+		fs << "data" << std::vector<double>((double*)D_.data, ((double*)D_.data)+(D_.rows*D_.cols));
+		fs << "}";
+
+		fs << "rectification_matrix" << "{";
+		fs << "rows" << R_.rows;
+		fs << "cols" << R_.cols;
+		fs << "data" << std::vector<double>((double*)R_.data, ((double*)R_.data)+(R_.rows*R_.cols));
+		fs << "}";
+
+		fs << "projection_matrix" << "{";
+		fs << "rows" << P_.rows;
+		fs << "cols" << P_.cols;
+		fs << "data" << std::vector<double>((double*)P_.data, ((double*)P_.data)+(P_.rows*P_.cols));
+		fs << "}";
+
+		fs.release();
+
+		return true;
+	}
+	return false;
 }
 
 cv::Mat CameraModel::rectifyImage(const cv::Mat & raw) const

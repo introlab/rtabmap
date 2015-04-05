@@ -36,7 +36,22 @@ class CameraModel
 {
 public:
 	CameraModel();
+	// K is the camera intrinsic 3x3 CV_64FC1
+	// D is the distortion coefficients 1x5 CV_64FC1
+	// R is the rectification matrix 3x3 CV_64FC1 (computed from stereo or Identity)
+	// P is the projection matrix 3x4 CV_64FC1 (computed from stereo or equal to [K [0 0 1]'])
+	CameraModel(const std::string & name, const cv::Size & imageSize, const cv::Mat & K, const cv::Mat & D, const cv::Mat & R, const cv::Mat & P);
 	virtual ~CameraModel() {}
+
+	bool isValid() const {return !K_.empty() &&
+									!D_.empty() &&
+									!R_.empty() &&
+									!P_.empty() &&
+									imageSize_.height &&
+									imageSize_.width &&
+									!name_.empty();}
+
+	const std::string & name() const {return name_;}
 
 	double fx() const {return P_.at<double>(0,0);}
 	double fy() const {return P_.at<double>(1,1);}
@@ -49,17 +64,18 @@ public:
 	const cv::Mat & R() const {return R_;}
 	const cv::Mat & P() const {return P_;}
 
-	int width() const {return width_;}
-	int height() const {return height_;}
+	const cv::Size & imageSize() const {return imageSize_;}
+	int imageWidth() const {return imageSize_.width;}
+	int imageWeight() const {return imageSize_.height;}
 
-	bool load(const std::string & directory, const std::string & cameraName);
-	void save(const std::string & directory, const std::string & cameraName);
+	bool load(const std::string & filePath);
+	bool save(const std::string & filePath);
 
 	cv::Mat rectifyImage(const cv::Mat & raw) const;
 
 private:
-	int width_;
-	int height_;
+	std::string name_;
+	cv::Size imageSize_;
 	cv::Mat K_;
 	cv::Mat D_;
 	cv::Mat R_;
@@ -72,17 +88,29 @@ class StereoCameraModel
 {
 public:
 	StereoCameraModel() {}
+	StereoCameraModel(const std::string & name, const cv::Size & imageSize,
+			const cv::Mat & K1, const cv::Mat & D1, const cv::Mat & R1, const cv::Mat & P1,
+			const cv::Mat & K2, const cv::Mat & D2, const cv::Mat & R2, const cv::Mat & P2) :
+		left_(name+"_left", imageSize, K1, D1, R1, P1),
+		right_(name+"_right", imageSize, K2, D2, R2, P2),
+		name_(name)
+	{
+	}
 	virtual ~StereoCameraModel() {}
+
+	bool isValid() const {return left_.isValid() && right_.isValid();}
+	const std::string & name() const {return name_;}
 
 	bool load(const std::string & directory, const std::string & cameraName)
 	{
-		return left_.load(directory, cameraName+"_left") &&
-				right_.load(directory, cameraName+"_right");
+		name_ = cameraName;
+		return left_.load(directory+"/"+cameraName+"_left.yaml") &&
+				right_.load(directory+"/"+cameraName+"_right.yaml");
 	}
-	void save(const std::string & directory, const std::string & cameraName)
+	bool save(const std::string & directory, const std::string & cameraName)
 	{
-		left_.save(directory, cameraName+"_left");
-		right_.save(directory, cameraName+"_right");
+		return left_.save(directory+"/"+cameraName+"_left.yaml") &&
+				right_.save(directory+"/"+cameraName+"_right.yaml");
 	}
 	double baseline() const {return -right_.Tx()/right_.fx();}
 
@@ -92,6 +120,7 @@ public:
 private:
 	CameraModel left_;
 	CameraModel right_;
+	std::string name_;
 };
 
 } /* namespace rtabmap */

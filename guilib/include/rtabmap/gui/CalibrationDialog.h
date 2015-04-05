@@ -33,6 +33,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QDialog>
 #include <opencv2/opencv.hpp>
 
+#include <rtabmap/core/CameraModel.h>
+
 #include <rtabmap/utilite/UEventsHandler.h>
 
 class Ui_calibrationDialog;
@@ -44,16 +46,16 @@ class RTABMAPGUI_EXP CalibrationDialog  : public QDialog, public UEventsHandler
 	Q_OBJECT;
 
 public:
-	CalibrationDialog(QWidget * parent = 0);
+	CalibrationDialog(bool stereo = false, QWidget * parent = 0);
 	virtual ~CalibrationDialog();
 
 	bool isCalibrated() const {return calibrated_;}
-	const cv::Mat & cameraMatrix() const {return cameraMatrix_;} // Matrix K
-	const cv::Mat & distCoeffs() const {return distCoeffs_;} // Matrix D
-	float fx() const {return cameraMatrix_.at<double>(0,0);} // K(0)
-	float fy() const {return cameraMatrix_.at<double>(1,1);} // K(4)
-	float cx() const {return cameraMatrix_.at<double>(0,2);} // K(2)
-	float cy() const {return cameraMatrix_.at<double>(1,2);} // K(5)
+	const cv::Mat & cameraMatrix() const {return model_.K();} // Matrix K
+	const cv::Mat & distCoeffs() const {return model_.D();} // Matrix D
+	float fx() const {return model_.fx();} // K(0)
+	float fy() const {return model_.fy();} // K(4)
+	float cx() const {return model_.cx();} // K(2)
+	float cy() const {return model_.cy();} // K(5)
 
 public slots:
 	void setBoardWidth(int width);
@@ -61,7 +63,7 @@ public slots:
 	void setSquareSize(double size);
 
 private slots:
-	void processImage(const cv::Mat & image);
+	void processImages(const cv::Mat & imageLeft, const cv::Mat & imageRight, const QString & cameraName);
 	void restart();
 	void calibrate();
 	void save();
@@ -85,13 +87,17 @@ private:
 	// parameters
 	cv::Size boardSize_; // innner squares
 	float squareSize_; // m
+	bool stereo_;
 
-	std::vector<std::vector<cv::Point2f> > imagePoints_;
-	std::vector<std::vector<float> > imageParams_;
-	cv::Size imageSize_;
+	QString cameraName_;
 	bool calibrated_;
-	cv::Mat cameraMatrix_;
-	cv::Mat distCoeffs_;
+	bool processingData_;
+
+	std::vector<std::vector<std::vector<cv::Point2f> > > imagePoints_;
+	std::vector<std::vector<std::vector<float> > > imageParams_;
+	std::vector<cv::Size > imageSize_;
+	rtabmap::CameraModel model_;
+	rtabmap::StereoCameraModel stereoModel_;
 
 	Ui_calibrationDialog * ui_;
 };
