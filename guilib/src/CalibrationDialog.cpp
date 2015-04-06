@@ -41,8 +41,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/gui/UCv2Qt.h>
 
 #include <rtabmap/utilite/ULogger.h>
-#include <rtabmap/utilite/UDirectory.h>
-#include <rtabmap/utilite/UFile.h>
 
 namespace rtabmap {
 
@@ -412,12 +410,10 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 	if(!stereo_ && readyToCalibrate[0])
 	{
 		ui_->pushButton_calibrate->setEnabled(true);
-		ui_->pushButton_save->setEnabled(true);
 	}
 	else if(stereo_ && readyToCalibrate[0] && readyToCalibrate[1])
 	{
 		ui_->pushButton_calibrate->setEnabled(true);
-		ui_->pushButton_save->setEnabled(true);
 	}
 
 	if(calibrated_ && ui_->checkBox_rectified->isChecked())
@@ -746,14 +742,14 @@ bool CalibrationDialog::save()
 		UASSERT(stereoModel_.isValid());
 		QString cameraName = stereoModel_.name().c_str();
 		QString filePath = QFileDialog::getSaveFileName(this, tr("Export"), savingDirectory_ + "/" + cameraName, "*.yaml");
-		std::string name = UFile::getName(filePath.toStdString());
-		std::string dir = UDirectory::getDir(filePath.toStdString());
-		if(!name.empty())
+		QString name = QFileInfo(filePath).baseName();
+		QString dir = QFileInfo(filePath).absoluteDir().absolutePath();
+		if(!name.isEmpty())
 		{
-			std::string base = (dir+UDirectory::separator()+name).c_str();
+			std::string base = (dir+QDir::separator()+name).toStdString();
 			std::string leftPath = base+"_left.yaml";
 			std::string rightPath = base+"_right.yaml";
-			if(stereoModel_.save(dir, name))
+			if(stereoModel_.save(dir.toStdString(), name.toStdString()))
 			{
 				QMessageBox::information(this, tr("Export"), tr("Calibration files saved to \"%1\" and \"%2\".").
 						arg(leftPath.c_str()).arg(rightPath.c_str()));

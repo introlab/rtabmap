@@ -85,6 +85,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 {
 	ULOGGER_DEBUG("");
 	_calibrationDialog->setWindowFlags(Qt::Window);
+	_calibrationDialog->setWindowTitle(tr("Calibration"));
 
 	_ui = new Ui_preferencesDialog();
 	_ui->setupUi(this);
