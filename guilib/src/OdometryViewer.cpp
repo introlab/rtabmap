@@ -31,200 +31,320 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UConversion.h"
-#include <pcl/common/transforms.h>
-#include <pcl/io/pcd_io.h>
-#include <QInputDialog>
-#include <QAction>
-#include <QMenu>
-#include <QtGui/QKeyEvent>
+#include "rtabmap/gui/UCv2Qt.h"
+
+#include "rtabmap/gui/ImageView.h"
+#include "rtabmap/gui/CloudViewer.h"
+
+#include <QPushButton>
+#include <QSpinBox>
+#include <QDoubleSpinBox>
+#include <QLabel>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
 
 namespace rtabmap {
 
-
 OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, int qualityWarningThr, QWidget * parent) :
-		CloudViewer(parent),
-		dataQuality_(-1),
+		QDialog(parent),
+		imageView_(new ImageView(this)),
+		cloudView_(new CloudViewer(this)),
+		processingData_(false),
+		odomImageShow_(true),
+		odomImageDepthShow_(true),
 		lastOdomPose_(Transform::getIdentity()),
-		maxClouds_(maxClouds),
-		voxelSize_(voxelSize),
-		decimation_(decimation),
 		qualityWarningThr_(qualityWarningThr),
 		id_(0),
-		_aSetVoxelSize(0),
-		_aSetDecimation(0),
-		_aSetCloudHistorySize(0),
-		_aPause(0)
+		validDecimationValue_(1)
 {
 
-	//add actions to CloudViewer menu
-	_aSetVoxelSize = new QAction("Set voxel size...", this);
-	_aSetDecimation = new QAction("Set depth image decimation...", this);
-	_aSetCloudHistorySize = new QAction("Set cloud history size...", this);
-	_aPause = new QAction("Pause", this);
-	_aPause->setCheckable(true);
-	menu()->addAction(_aSetVoxelSize);
-	menu()->addAction(_aSetDecimation);
-	menu()->addAction(_aSetCloudHistorySize);
-	menu()->addAction(_aPause);
+	qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
+	qRegisterMetaType<rtabmap::OdometryInfo>("rtabmap::OdometryInfo");
+
+	imageView_->setImageDepthShown(true);
+	imageView_->setMinimumSize(320, 240);
+
+	cloudView_->setCameraFree();
+	cloudView_->setGridShown(true);
+
+	QLabel * maxCloudsLabel = new QLabel("Max clouds", this);
+	QLabel * voxelLabel = new QLabel("Voxel", this);
+	QLabel * decimationLabel = new QLabel("Decimation", this);
+	maxCloudsSpin_ = new QSpinBox(this);
+	maxCloudsSpin_->setMinimum(0);
+	maxCloudsSpin_->setMaximum(100);
+	maxCloudsSpin_->setValue(maxClouds);
+	voxelSpin_ = new QDoubleSpinBox(this);
+	voxelSpin_->setMinimum(0);
+	voxelSpin_->setMaximum(1);
+	voxelSpin_->setDecimals(3);
+	voxelSpin_->setSingleStep(0.01);
+	voxelSpin_->setSuffix(" m");
+	voxelSpin_->setValue(voxelSize);
+	decimationSpin_ = new QSpinBox(this);
+	decimationSpin_->setMinimum(1);
+	decimationSpin_->setMaximum(16);
+	decimationSpin_->setValue(decimation);
+	QPushButton * clearButton = new QPushButton("clear", this);
+	QPushButton * closeButton = new QPushButton("close", this);
+	connect(clearButton, SIGNAL(clicked()), this, SLOT(clear()));
+	connect(closeButton, SIGNAL(clicked()), this, SLOT(reject()));
+
+	//layout
+	QHBoxLayout * layout = new QHBoxLayout();
+	layout->setMargin(0);
+	layout->setSpacing(0);
+	layout->addWidget(imageView_,1);
+	layout->addWidget(cloudView_,1);
+
+	QHBoxLayout * hlayout2 = new QHBoxLayout();
+	hlayout2->setMargin(0);
+	hlayout2->addWidget(maxCloudsLabel);
+	hlayout2->addWidget(maxCloudsSpin_);
+	hlayout2->addWidget(voxelLabel);
+	hlayout2->addWidget(voxelSpin_);
+	hlayout2->addWidget(decimationLabel);
+	hlayout2->addWidget(decimationSpin_);
+	hlayout2->addStretch(1);
+	hlayout2->addWidget(clearButton);
+	hlayout2->addWidget(closeButton);
+
+	QVBoxLayout * vlayout = new QVBoxLayout(this);
+	vlayout->setMargin(0);
+	vlayout->setSpacing(0);
+	vlayout->addLayout(layout, 1);
+	vlayout->addLayout(hlayout2);
+
+	this->setLayout(vlayout);
+}
+
+OdometryViewer::~OdometryViewer()
+{
+	this->unregisterFromEventsManager();
+	this->clear();
 }
 
 void OdometryViewer::clear()
 {
-	dataMutex_.lock();
-	data_.clear();
-	dataMutex_.unlock();
-	clouds_.clear();
-	CloudViewer::clear();
+	cloudView_->clear();
 }
 
-void OdometryViewer::processData()
+void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap::OdometryInfo & info)
 {
-	rtabmap::SensorData data;
-	int quality = -1;
-	dataMutex_.lock();
-	if(data_.size())
-	{
-		data = data_.back();
-		data_.clear();
-		quality = dataQuality_;
-		dataQuality_ = -1;
-	}
-	dataMutex_.unlock();
+	processingData_ = true;
+	int quality = info.inliers;
 
-	if(!data.image().empty() && !data.depth().empty() && data.fx()>0.0f && data.fy()>0.0f && this->isVisible())
+	bool lost = false;
+	bool lostStateChanged = false;
+
+	if(data.pose().isNull())
+	{
+		UDEBUG("odom lost"); // use last pose
+		lostStateChanged = imageView_->getBackgroundColor() != Qt::darkRed;
+		imageView_->setBackgroundColor(Qt::darkRed);
+		cloudView_->setBackgroundColor(Qt::darkRed);
+
+		lost = true;
+	}
+	else if(info.inliers>0 &&
+			qualityWarningThr_ &&
+			info.inliers < qualityWarningThr_)
+	{
+		UDEBUG("odom warn, quality(inliers)=%d thr=%d", info.inliers, qualityWarningThr_);
+		lostStateChanged = imageView_->getBackgroundColor() == Qt::darkRed;
+		imageView_->setBackgroundColor(Qt::darkYellow);
+		cloudView_->setBackgroundColor(Qt::darkYellow);
+	}
+	else
+	{
+		UDEBUG("odom ok");
+		lostStateChanged = imageView_->getBackgroundColor() == Qt::darkRed;
+		imageView_->setBackgroundColor(cloudView_->getDefaultBackgroundColor());
+		cloudView_->setBackgroundColor(Qt::black);
+	}
+
+
+	if(!data.image().empty() && !data.depthOrRightImage().empty() && data.fx()>0.0f && data.fyOrBaseline()>0.0f)
 	{
 		UDEBUG("New pose = %s, quality=%d", data.pose().prettyPrint().c_str(), quality);
+
+		if(data.image().cols % decimationSpin_->value() == 0 &&
+		   data.image().rows % decimationSpin_->value() == 0)
+		{
+			validDecimationValue_ = decimationSpin_->value();
+		}
+		else
+		{
+			UWARN("Decimation (%d) must be a denominator of the width and height of "
+					"the image (%d/%d). Using last valid decimation value (%d).",
+					decimationSpin_->value(),
+					data.image().cols,
+					data.image().rows,
+					validDecimationValue_);
+		}
+
 
 		// visualization: buffering the clouds
 		// Create the new cloud
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-		if(data.depth().type() == CV_8UC1)
-		{
-			cloud = util3d::cloudFromStereoImages(
-					data.image(),
-					data.depth(),
-					data.cx(), data.cy(),
-					data.fx(), data.fy(),
-					decimation_);
-		}
-		else
+		if(!data.depth().empty())
 		{
 			cloud = util3d::cloudFromDepthRGB(
 					data.image(),
 					data.depth(),
 					data.cx(), data.cy(),
 					data.fx(), data.fy(),
-					decimation_);
+					validDecimationValue_);
 		}
-
-		if(voxelSize_ > 0.0f)
+		else if(!data.rightImage().empty())
 		{
-			cloud = util3d::voxelize<pcl::PointXYZRGB>(cloud, voxelSize_);
+			cloud = util3d::cloudFromStereoImages(
+					data.image(),
+					data.rightImage(),
+					data.cx(), data.cy(),
+					data.fx(), data.baseline(),
+					validDecimationValue_);
 		}
 
-		cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, data.localTransform());
+		if(voxelSpin_->value() > 0.0f && cloud->size())
+		{
+			cloud = util3d::voxelize<pcl::PointXYZRGB>(cloud, voxelSpin_->value());
+		}
+
+		if(cloud->size())
+		{
+			cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, data.localTransform());
+		}
 
 		if(!data.pose().isNull())
 		{
 			lastOdomPose_ = data.pose();
-			if(this->getAddedClouds().contains("cloudtmp"))
+			if(cloudView_->getAddedClouds().contains("cloudtmp"))
 			{
-				this->removeCloud("cloudtmp");
+				cloudView_->removeCloud("cloudtmp");
 			}
 
 			data.id()?id_=data.id():++id_;
 
-			clouds_.insert(std::make_pair(id_, cloud));
-
-			while(maxClouds_>0 && (int)clouds_.size() > maxClouds_)
+			while(maxCloudsSpin_->value()>0 && (int)cloudView_->getAddedClouds().size() > maxCloudsSpin_->value())
 			{
-				this->removeCloud(uFormat("cloud%d", clouds_.begin()->first));
-				clouds_.erase(clouds_.begin());
+				cloudView_->removeCloud(cloudView_->getAddedClouds().begin().key());
 			}
 
-			if(clouds_.size())
-			{
-				this->addCloud(uFormat("cloud%d", clouds_.rbegin()->first), clouds_.rbegin()->second, data.pose());
-			}
+			cloudView_->addOrUpdateCloud(uFormat("cloud%d", id_), cloud, data.pose());
 
-			this->updateCameraTargetPosition(data.pose());
-
-			if(qualityWarningThr_ && quality>=0 && quality < qualityWarningThr_)
-			{
-				this->setBackgroundColor(Qt::darkYellow);
-			}
-			else
-			{
-				this->setBackgroundColor(this->getDefaultBackgroundColor());
-			}
+			cloudView_->updateCameraTargetPosition(data.pose());
 		}
 		else
 		{
-			this->addOrUpdateCloud("cloudtmp", cloud, lastOdomPose_);
-			this->setBackgroundColor(Qt::darkRed);
+			cloudView_->addOrUpdateCloud("cloudtmp", cloud, lastOdomPose_);
+		}
+	}
+
+	if(!data.image().empty())
+	{
+		if(info.type == 0)
+		{
+			imageView_->setFeatures(info.words, Qt::yellow);
+		}
+		else if(info.type == 1)
+		{
+			imageView_->setFeatures(info.refCorners, Qt::red);
 		}
 
-		this->update();
+		imageView_->clearLines();
+		if(lost)
+		{
+			if(lostStateChanged)
+			{
+				// save state
+				odomImageShow_ = imageView_->isImageShown();
+				odomImageDepthShow_ = imageView_->isImageDepthShown();
+			}
+			imageView_->setImageDepth(uCvMat2QImage(data.image()));
+			imageView_->setImageShown(true);
+			imageView_->setImageDepthShown(true);
+		}
+		else
+		{
+			if(lostStateChanged)
+			{
+				// restore state
+				imageView_->setImageShown(odomImageShow_);
+				imageView_->setImageDepthShown(odomImageDepthShow_);
+			}
+
+			imageView_->setImage(uCvMat2QImage(data.image()));
+			if(imageView_->isImageDepthShown())
+			{
+				imageView_->setImageDepth(uCvMat2QImage(data.depthOrRightImage()));
+			}
+
+			if(info.type == 0)
+			{
+				if(imageView_->isFeaturesShown())
+				{
+					for(unsigned int i=0; i<info.wordMatches.size(); ++i)
+					{
+						imageView_->setFeatureColor(info.wordMatches[i], Qt::red); // outliers
+					}
+					for(unsigned int i=0; i<info.wordInliers.size(); ++i)
+					{
+						imageView_->setFeatureColor(info.wordInliers[i], Qt::green); // inliers
+					}
+				}
+			}
+			else if(info.type == 1)
+			{
+				if(imageView_->isFeaturesShown() || imageView_->isLinesShown())
+				{
+					//draw lines
+					UASSERT(info.refCorners.size() == info.newCorners.size());
+					for(unsigned int i=0; i<info.cornerInliers.size(); ++i)
+					{
+						if(imageView_->isFeaturesShown())
+						{
+							imageView_->setFeatureColor(info.cornerInliers[i], Qt::green); // inliers
+						}
+						if(imageView_->isLinesShown())
+						{
+							imageView_->addLine(
+									info.refCorners[info.cornerInliers[i]].pt.x,
+									info.refCorners[info.cornerInliers[i]].pt.y,
+									info.newCorners[info.cornerInliers[i]].pt.x,
+									info.newCorners[info.cornerInliers[i]].pt.y,
+									Qt::blue);
+						}
+					}
+					imageView_->update();
+				}
+			}
+
+		}
+		if(!data.image().empty())
+		{
+			imageView_->setSceneRect(QRectF(0,0,(float)data.image().cols, (float)data.image().rows));
+		}
 	}
+
+	cloudView_->update();
+	processingData_ = false;
 }
 
 void OdometryViewer::handleEvent(UEvent * event)
 {
-	if(!_aPause->isChecked())
+	if(!processingData_ && this->isVisible())
 	{
 		if(event->getClassName().compare("OdometryEvent") == 0)
 		{
 			rtabmap::OdometryEvent * odomEvent = (rtabmap::OdometryEvent*)event;
-
-			bool empty = false;
-			dataMutex_.lock();
-			if(data_.empty())
+			if(odomEvent->data().isValid())
 			{
-				data_.push_back(odomEvent->data());
-				empty= true;
+				processingData_ = true;
+				QMetaObject::invokeMethod(this, "processData",
+						Q_ARG(rtabmap::SensorData, odomEvent->data()),
+						Q_ARG(rtabmap::OdometryInfo, odomEvent->info()));
 			}
-			else
-			{
-				data_.back() = odomEvent->data();
-			}
-			dataQuality_ = odomEvent->info().inliers;
-			dataMutex_.unlock();
-			if(empty)
-			{
-				QMetaObject::invokeMethod(this, "processData");
-			}
-		}
-	}
-}
-
-void OdometryViewer::handleAction(QAction * a)
-{
-	CloudViewer::handleAction(a);
-	if(a == _aSetVoxelSize)
-	{
-		bool ok;
-		double value = QInputDialog::getDouble(this, tr("Set voxel size"), tr("Size (0=disabled)"), voxelSize_, 0.0, 0.1, 2, &ok);
-		if(ok)
-		{
-			voxelSize_ = value;
-		}
-	}
-	else if(a == _aSetCloudHistorySize)
-	{
-		bool ok;
-		int value = QInputDialog::getInt(this, tr("Set cloud history size"), tr("Size (0=infinite)"), maxClouds_, 0, 100, 1, &ok);
-		if(ok)
-		{
-			maxClouds_ = value;
-		}
-	}
-	else if(a == _aSetDecimation)
-	{
-		bool ok;
-		int value = QInputDialog::getInt(this, tr("Set depth image decimation"), tr("Decimation"), decimation_, 1, 8, 1, &ok);
-		if(ok)
-		{
-			decimation_ = value;
 		}
 	}
 }

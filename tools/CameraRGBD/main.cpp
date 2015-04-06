@@ -59,6 +59,10 @@ int main(int argc, char * argv[])
 	}
 	else
 	{
+		if(strcmp(argv[argc-1], "--help") == 0)
+		{
+			showUsage();
+		}
 		driver = atoi(argv[argc-1]);
 		if(driver < 0 || driver > 6)
 		{
@@ -134,7 +138,7 @@ int main(int argc, char * argv[])
 
 	if(!camera->init())
 	{
-		printf("Camera init failed!\n");
+		printf("Camera init failed! Please select another driver (see \"--help\").\n");
 		delete camera;
 		exit(1);
 	}

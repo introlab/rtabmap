@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
 #include <rtabmap/utilite/UEventsHandler.h>
-#include <QWidget>
+#include <QDialog>
 #include <rtabmap/core/SensorData.h>
 
 namespace rtabmap {
@@ -39,7 +39,7 @@ namespace rtabmap {
 class ImageView;
 class CloudViewer;
 
-class RTABMAPGUI_EXP CameraViewer : public QWidget, public UEventsHandler
+class RTABMAPGUI_EXP CameraViewer : public QDialog, public UEventsHandler
 {
 	Q_OBJECT
 public:
@@ -49,7 +49,7 @@ public:
 public slots:
 	void showImage(const rtabmap::SensorData & data);
 protected:
-	void handleEvent(UEvent * event);
+	virtual void handleEvent(UEvent * event);
 
 private:
 	ImageView* imageView_;

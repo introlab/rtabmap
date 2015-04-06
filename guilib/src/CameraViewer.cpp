@@ -34,12 +34,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/gui/UCv2Qt.h>
 #include <QtCore/QMetaType>
 #include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QDialogButtonBox>
 
 namespace rtabmap {
 
 
 CameraViewer::CameraViewer(QWidget * parent) :
-		QWidget(parent),
+		QDialog(parent),
 	imageView_(new ImageView(this)),
 	cloudView_(new CloudViewer(this)),
 	processingImages_(false)
@@ -48,13 +50,22 @@ CameraViewer::CameraViewer(QWidget * parent) :
 
 	imageView_->setImageDepthShown(true);
 	imageView_->setMinimumSize(320, 240);
-	QHBoxLayout * layout = new QHBoxLayout(this);
+	QHBoxLayout * layout = new QHBoxLayout();
 	layout->setMargin(0);
-	layout->addWidget(imageView_);
-	layout->addWidget(cloudView_);
-	layout->setStretch(0, 1);
-	layout->setStretch(1, 1);
-	this->setLayout(layout);
+	layout->addWidget(imageView_,1);
+	layout->addWidget(cloudView_,1);
+
+	QDialogButtonBox * buttonBox = new QDialogButtonBox(this);
+	buttonBox->setStandardButtons(QDialogButtonBox::Close);
+	connect(buttonBox, SIGNAL(rejected()), this, SLOT(reject()));
+
+	QVBoxLayout * vlayout = new QVBoxLayout(this);
+	vlayout->setMargin(0);
+	vlayout->setSpacing(0);
+	vlayout->addLayout(layout, 1);
+	vlayout->addWidget(buttonBox);
+
+	this->setLayout(vlayout);
 }
 
 CameraViewer::~CameraViewer()

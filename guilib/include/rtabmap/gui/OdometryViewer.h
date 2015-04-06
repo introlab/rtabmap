@@ -31,47 +31,50 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
 #include "rtabmap/core/SensorData.h"
-#include "rtabmap/gui/CloudViewer.h"
+#include "rtabmap/core/OdometryInfo.h"
+#include <QDialog>
 #include "rtabmap/utilite/UEventsHandler.h"
-#include "rtabmap/utilite/UTimer.h"
-#include "rtabmap/utilite/UMutex.h"
+
+class QSpinBox;
+class QDoubleSpinBox;
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP OdometryViewer : public CloudViewer, public UEventsHandler
+class ImageView;
+class CloudViewer;
+
+class RTABMAPGUI_EXP OdometryViewer : public QDialog, public UEventsHandler
 {
 	Q_OBJECT
 
 public:
 	OdometryViewer(int maxClouds = 10, int decimation = 2, float voxelSize = 0.0f, int qualityWarningThr=0, QWidget * parent = 0);
-	virtual ~OdometryViewer() {}
+	virtual ~OdometryViewer();
 
 public slots:
 	virtual void clear();
 
 protected:
-	void handleAction(QAction * a);
 	virtual void handleEvent(UEvent * event);
 
 private slots:
-	void processData();
+	void processData(const rtabmap::SensorData & data, const rtabmap::OdometryInfo & info);
 
 private:
-	UMutex dataMutex_;
-	std::list<rtabmap::SensorData> data_;
-	int dataQuality_;
+	ImageView* imageView_;
+	CloudViewer* cloudView_;
+	bool processingData_;
+	bool odomImageShow_;
+	bool odomImageDepthShow_;
+
 	Transform lastOdomPose_;
-	UTimer timer_;
-	int maxClouds_;
-	float voxelSize_;
-	int decimation_;
 	int qualityWarningThr_;
 	int id_;
-	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > clouds_;
-	QAction * _aSetVoxelSize;
-	QAction * _aSetDecimation;
-	QAction * _aSetCloudHistorySize;
-	QAction * _aPause;
+
+	QSpinBox * maxCloudsSpin_;
+	QDoubleSpinBox * voxelSpin_;
+	QSpinBox * decimationSpin_;
+	int validDecimationValue_;
 };
 
 } /* namespace rtabmap */

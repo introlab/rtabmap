@@ -81,11 +81,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui(0),
 	_indexModel(0),
 	_initialized(false),
-	_cameraThread(0),
-	_odomThread(0),
 	_calibrationDialog(new CalibrationDialog(false, ".", this))
 {
 	ULOGGER_DEBUG("");
+	_calibrationDialog->setWindowFlags(Qt::Window);
 
 	_ui = new Ui_preferencesDialog();
 	_ui->setupUi(this);
@@ -3254,25 +3253,18 @@ void PreferencesDialog::testOdometry()
 
 void PreferencesDialog::testOdometry(int type)
 {
-	if(_cameraThread)
-	{
-		QMessageBox::warning(this,
-			   tr("RTAB-Map"),
-			   tr("A camera is already running!"));
-		return;
-	}
-
-	UASSERT(_odomThread == 0 && _cameraThread == 0);
-
 	CameraRGBD * camera = this->createCameraRGBD();
 
-	if(!camera->init(this->getCameraInfoDir().toStdString()))
+	if(camera == 0 || !camera->init(this->getCameraInfoDir().toStdString()))
 	{
 		QMessageBox::warning(this,
 			   tr("RTAB-Map"),
 			   tr("RGBD camera initialization failed!"));
-		delete camera;
-		camera = 0;
+		if(camera)
+		{
+			delete camera;
+		}
+		return;
 	}
 	else if(dynamic_cast<CameraOpenNI2*>(camera) != 0)
 	{
@@ -3287,110 +3279,56 @@ void PreferencesDialog::testOdometry(int type)
 	}
 	camera->setMirroringEnabled(isSourceMirroring());
 
-
-	if(camera)
+	ParametersMap parameters = this->getAllParameters();
+	Odometry * odometry;
+	if(this->getOdomStrategy() == 1)
 	{
-		ParametersMap parameters = this->getAllParameters();
-		Odometry * odometry;
-		if(this->getOdomStrategy() == 1)
-		{
-			odometry = new OdometryOpticalFlow(parameters);
-		}
-		else
-		{
-			odometry = new OdometryBOW(parameters);
-		}
-
-		_odomThread = new OdometryThread(odometry); // take ownership of odometry
-
-		QDialog * window = new QDialog(this);
-		window->setWindowModality(Qt::WindowModal);
-		window->setWindowTitle(tr("Odometry viewer"));
-		window->setMinimumWidth(800);
-		window->setMinimumHeight(600);
-		connect( window, SIGNAL(finished(int)), this, SLOT(cleanOdometryTest()) );
-
-		OdometryViewer * odomViewer = new OdometryViewer(10,
-				_ui->spinBox_decimation_odom->value(),
-				_ui->doubleSpinBox_voxelSize_odom->value(),
-				this->getOdomQualityWarnThr(),
-				window);
-		connect( window, SIGNAL(finished(int)), odomViewer, SLOT(clear()) );
-
-		odomViewer->setCameraFree();
-		odomViewer->setGridShown(true);
-
-		QVBoxLayout *layout = new QVBoxLayout();
-		layout->addWidget(odomViewer);
-		window->setLayout(layout);
-
-		UEventsManager::addHandler(_odomThread);
-		UEventsManager::addHandler(odomViewer);
-
-		_cameraThread = new CameraThread(camera);
-		UEventsManager::createPipe(_cameraThread, _odomThread, "CameraEvent");
-		UEventsManager::createPipe(_odomThread, odomViewer, "OdometryEvent");
-
-		window->showNormal();
-
-		_ui->pushButton_testOdometry->setEnabled(false);
-
-		QApplication::processEvents();
-		uSleep(500);
-		QApplication::processEvents();
-
-		_odomThread->start();
-		_cameraThread->start();
+		odometry = new OdometryOpticalFlow(parameters);
 	}
-}
-
-void PreferencesDialog::cleanOdometryTest()
-{
-	UDEBUG("");
-	if(_cameraThread)
+	else
 	{
-		_cameraThread->join(true);
-		delete _cameraThread;
-		_cameraThread = 0;
+		odometry = new OdometryBOW(parameters);
 	}
-	if(_odomThread)
-	{
-		_odomThread->join(true);
-		delete _odomThread;
-		_odomThread = 0;
-	}
-	_ui->pushButton_testOdometry->setEnabled(true);
-}
 
-void PreferencesDialog::cleanRGBDCameraTest()
-{
-	UDEBUG("");
-	if(_cameraThread)
-	{
-		_cameraThread->join(true);
-		delete _cameraThread;
-		_cameraThread = 0;
-	}
-	_ui->pushButton_test_rgbd_camera->setEnabled(true);
+	OdometryThread odomThread(odometry); // take ownership of odometry
+	odomThread.registerToEventsManager();
+
+	OdometryViewer * odomViewer = new OdometryViewer(10,
+					_ui->spinBox_decimation_odom->value(),
+					_ui->doubleSpinBox_voxelSize_odom->value(),
+					this->getOdomQualityWarnThr(),
+					this);
+	odomViewer->setWindowTitle(tr("Odometry viewer"));
+	odomViewer->resize(1280, 480+QPushButton().minimumHeight());
+	odomViewer->registerToEventsManager();
+
+	CameraThread cameraThread(camera); // take ownership of camera
+	UEventsManager::createPipe(&cameraThread, &odomThread, "CameraEvent");
+	UEventsManager::createPipe(&odomThread, odomViewer, "OdometryEvent");
+
+	odomThread.start();
+	cameraThread.start();
+
+	odomViewer->exec();
+	delete odomViewer;
+
+	cameraThread.join(true);
+	odomThread.join(true);
 }
 
 void PreferencesDialog::testRGBDCamera()
 {
-	if(_cameraThread)
-	{
-		QMessageBox::warning(this,
-			   tr("RTAB-Map"),
-			   tr("A camera is already running!"));
-	}
-
 	CameraRGBD * camera = this->createCameraRGBD();
-	if(!camera->init(this->getCameraInfoDir().toStdString()))
+	if(camera == 0 || !camera->init(this->getCameraInfoDir().toStdString()))
 	{
 		QMessageBox::warning(this,
 			   tr("RTAB-Map"),
 			   tr("RGBD camera initialization failed!"));
-		delete camera;
-		camera = 0;
+		if(camera)
+		{
+			delete camera;
+		}
+		return;
 	}
 	else if(dynamic_cast<CameraOpenNI2*>(camera) != 0)
 	{
@@ -3405,41 +3343,34 @@ void PreferencesDialog::testRGBDCamera()
 	}
 	camera->setMirroringEnabled(isSourceMirroring());
 
+	// Create DataRecorder without init it, just to show images...
+	CameraViewer * window = new CameraViewer(this);
+	window->setWindowTitle(tr("RGBD camera viewer"));
+	window->resize(1280, 480+QPushButton().minimumHeight());
+	window->registerToEventsManager();
 
-	if(camera)
-	{
-		_ui->pushButton_test_rgbd_camera->setEnabled(false);
+	CameraThread cameraThread(camera);
+	UEventsManager::createPipe(&cameraThread, window, "CameraEvent");
 
-		// Create DataRecorder without init it, just to show images...
-		CameraViewer * window = new CameraViewer(this);
-		window->setWindowModality(Qt::WindowModal);
-		window->setAttribute(Qt::WA_DeleteOnClose);
-		window->setWindowFlags(Qt::Dialog);
-		window->setWindowTitle(tr("RGBD camera viewer"));
-		window->setMinimumWidth(1280);
-		window->setMinimumHeight(480);
-		connect( window, SIGNAL(destroyed(QObject*)), this, SLOT(cleanRGBDCameraTest()) );
-		window->registerToEventsManager();
-
-		_cameraThread = new CameraThread(camera);
-		UEventsManager::createPipe(_cameraThread, window, "CameraEvent");
-
-		window->showNormal();
-
-		_cameraThread->start();
-	}
+	cameraThread.start();
+	window->exec();
+	delete window;
+	cameraThread.join(true);
 }
 
 void PreferencesDialog::calibrate()
 {
 	CameraRGBD * camera = this->createCameraRGBD();
-	if(!camera->init("")) // don't set calibration folder to use raw images
+	if(camera == 0 || !camera->init("")) // don't set calibration folder to use raw images
 	{
 		QMessageBox::warning(this,
 			   tr("RTAB-Map"),
 			   tr("RGBD camera initialization failed!"));
-		delete camera;
-		camera = 0;
+		if(camera)
+		{
+			delete camera;
+		}
+		return;
 	}
 	else if(dynamic_cast<CameraOpenNI2*>(camera) != 0)
 	{
@@ -3455,34 +3386,31 @@ void PreferencesDialog::calibrate()
 	camera->setMirroringEnabled(isSourceMirroring());
 
 
-	if(camera)
+	if(!this->getCameraInfoDir().isEmpty())
 	{
-		if(!this->getCameraInfoDir().isEmpty())
+		QDir dir(this->getCameraInfoDir());
+		if (!dir.exists())
 		{
-			QDir dir(this->getCameraInfoDir());
-			if (!dir.exists())
+			UINFO("Creating camera_info directory: \"%s\"", this->getCameraInfoDir().toStdString().c_str());
+			if(!dir.mkpath(this->getCameraInfoDir()))
 			{
-				UINFO("Creating camera_info directory: \"%s\"", this->getCameraInfoDir().toStdString().c_str());
-				if(!dir.mkpath(this->getCameraInfoDir()))
-				{
-					UWARN("Could create camera_info directory: \"%s\"", this->getCameraInfoDir().toStdString().c_str());
-				}
+				UWARN("Could create camera_info directory: \"%s\"", this->getCameraInfoDir().toStdString().c_str());
 			}
 		}
-		_calibrationDialog->setStereoMode(dynamic_cast<CameraStereoDC1394*>(camera)!=0);
-		_calibrationDialog->setSavingDirectory(this->getCameraInfoDir());
-		_calibrationDialog->registerToEventsManager();
-
-		CameraThread cameraThread(camera);
-		UEventsManager::createPipe(&cameraThread, _calibrationDialog, "CameraEvent");
-
-		cameraThread.start();
-
-		_calibrationDialog->exec();
-		_calibrationDialog->unregisterFromEventsManager();
-
-		cameraThread.join(true);
 	}
+	_calibrationDialog->setStereoMode(dynamic_cast<CameraStereoDC1394*>(camera)!=0);
+	_calibrationDialog->setSavingDirectory(this->getCameraInfoDir());
+	_calibrationDialog->registerToEventsManager();
+
+	CameraThread cameraThread(camera);
+	UEventsManager::createPipe(&cameraThread, _calibrationDialog, "CameraEvent");
+
+	cameraThread.start();
+
+	_calibrationDialog->exec();
+	_calibrationDialog->unregisterFromEventsManager();
+
+	cameraThread.join(true);
 }
 
 }

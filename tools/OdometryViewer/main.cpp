@@ -36,15 +36,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/DBReader.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <QApplication>
+#include <QPushButton>
 #include <pcl/console/print.h>
-#include "OdomInfoWidget.h"
 
 void showUsage()
 {
 	printf("\nUsage:\n"
 			"odometryViewer [options]\n"
 			"Options:\n"
-			"  -driver #                 Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS\n"
+			"  -driver #                 Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS, 5=Freenect2, 6=dc1394\n"
 			"  -o #                      Odometry type (default 6): 0=SURF, 1=SIFT, 2=ORB, 3=FAST/FREAK, 4=FAST/BRIEF, 5=GFTT/FREAK, 6=GFTT/BRIEF, 7=BRISK\n"
 			"  -nn #                     Nearest neighbor strategy (default 3): kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4\n"
 			"  -nndr #                   Nearest neighbor distance ratio (default 0.7)\n"
@@ -90,6 +90,8 @@ int main (int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kInfo);
+	ULogger::setPrintTime(false);
+	ULogger::setPrintWhere(false);
 
 	// parse arguments
 	float rate = 0.0;
@@ -126,7 +128,7 @@ int main (int argc, char * argv[])
 			if(i < argc)
 			{
 				driver = std::atoi(argv[i]);
-				if(driver < 0 || driver > 4)
+				if(driver < 0 || driver > 6)
 				{
 					showUsage();
 				}
@@ -501,6 +503,8 @@ int main (int argc, char * argv[])
 		if(strcmp(argv[i], "-debug") == 0)
 		{
 			ULogger::setLevel(ULogger::kDebug);
+			ULogger::setPrintTime(true);
+			ULogger::setPrintWhere(true);
 			continue;
 		}
 
@@ -680,23 +684,11 @@ int main (int argc, char * argv[])
 	}
 	rtabmap::OdometryThread odomThread(odom);
 	rtabmap::OdometryViewer odomViewer(maxClouds, 2, 0.0, 50);
-	OdomInfoWidget odomInfoWidget;
 	UEventsManager::addHandler(&odomThread);
 	UEventsManager::addHandler(&odomViewer);
-	UEventsManager::addHandler(&odomInfoWidget);
 
-	odomViewer.setCameraFree();
-	odomViewer.setGridShown(true);
-
-	odomViewer.setWindowTitle("Odometry 3D view");
-	odomViewer.setMinimumWidth(800);
-	odomViewer.setMinimumHeight(500);
-	odomViewer.showNormal();
-
-	odomInfoWidget.setWindowTitle("Odometry info");
-	odomInfoWidget.showNormal();
-
-	app.processEvents();
+	odomViewer.setWindowTitle("Odometry view");
+	odomViewer.resize(1280, 480+QPushButton().minimumHeight());
 
 	if(inputDatabase.size())
 	{
@@ -756,6 +748,24 @@ int main (int argc, char * argv[])
 			}
 			camera = new rtabmap::CameraOpenNICV(true, rate, t);
 		}
+		else if(driver == 5)
+		{
+			if(!rtabmap::CameraFreenect2::available())
+			{
+				UERROR("Not built with Freenect2 support...");
+				exit(-1);
+			}
+			camera = new rtabmap::CameraFreenect2(0, rate, t);
+		}
+		else if(driver == 6)
+		{
+			if(!rtabmap::CameraStereoDC1394::available())
+			{
+				UERROR("Not built with dc1394 support...");
+				exit(-1);
+			}
+			camera = new rtabmap::CameraStereoDC1394(rate, t);
+		}
 		else
 		{
 			UFATAL("Camera driver (%d) not found!", driver);
@@ -763,16 +773,28 @@ int main (int argc, char * argv[])
 
 		//pcl::console::setVerbosityLevel(pcl::console::L_DEBUG);
 
-		rtabmap::CameraThread cameraThread(camera);
-		if(cameraThread.init())
+		if(camera->init())
 		{
-			odomThread.start();
-			cameraThread.start();
+			if(camera->isCalibrated())
+			{
+				rtabmap::CameraThread cameraThread(camera);
 
-			app.exec();
+				odomThread.start();
+				cameraThread.start();
 
-			cameraThread.kill();
-			odomThread.join(true);
+				odomViewer.exec();
+
+				cameraThread.kill();
+				odomThread.join(true);
+			}
+			else
+			{
+				printf("The camera is not calibrated! You should calibrate the camera first.\n");
+			}
+		}
+		else
+		{
+			printf("Failed to initialize the camera! Please select another driver (see \"--help\").\n");
 		}
 	}
 

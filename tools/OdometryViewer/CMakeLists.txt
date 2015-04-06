@@ -16,14 +16,8 @@ SET(LIBRARIES
 	${QT_LIBRARIES} 
 )
 
-IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
-    QT4_WRAP_CPP(moc_srcs OdomInfoWidget.h)
-ELSE()
-    QT5_WRAP_CPP(moc_srcs OdomInfoWidget.h)
-ENDIF()
-
 SET(SRC_FILES
-    main.cpp OdomInfoWidget.cpp ${moc_srcs}
+    main.cpp 
 )
 
 add_definitions(${PCL_DEFINITIONS})

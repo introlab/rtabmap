@@ -57,8 +57,6 @@ class QDoubleSpinBox;
 
 namespace rtabmap {
 
-class OdometryThread;
-class CameraThread;
 class Signature;
 class LoopClosureViewer;
 class CameraRGBD;
@@ -245,9 +243,7 @@ private slots:
 	void updateBasicParameter();
 	void openDatabaseViewer();
 	void showOpenNI2GroupBox(bool);
-	void cleanOdometryTest();
 	void testOdometry();
-	void cleanRGBDCameraTest();
 	void testRGBDCamera();
 
 protected:
@@ -298,10 +294,6 @@ private:
 	bool _monitoringState;
 
 	QProgressDialog * _progressDialog;
-
-	//Odometry test
-	CameraThread * _cameraThread;
-	OdometryThread * _odomThread;
 
 	//calibration
 	CalibrationDialog * _calibrationDialog;
