@@ -625,8 +625,9 @@ void CloudViewer::removeAllClouds()
 
 bool CloudViewer::removeCloud(const std::string & id)
 {
-	_addedClouds.remove(id);
-	return _visualizer->removePointCloud(id);
+	bool success = _visualizer->removePointCloud(id);
+	_addedClouds.remove(id); // remove after visualizer
+	return success;
 }
 
 bool CloudViewer::getPose(const std::string & id, Transform & pose)

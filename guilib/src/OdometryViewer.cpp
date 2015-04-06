@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QLabel>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
+#include <QApplication>
 
 namespace rtabmap {
 
@@ -61,7 +62,7 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, i
 	qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
 	qRegisterMetaType<rtabmap::OdometryInfo>("rtabmap::OdometryInfo");
 
-	imageView_->setImageDepthShown(true);
+	imageView_->setImageDepthShown(false);
 	imageView_->setMinimumSize(320, 240);
 
 	cloudView_->setCameraFree();
@@ -126,6 +127,7 @@ OdometryViewer::~OdometryViewer()
 
 void OdometryViewer::clear()
 {
+	addedClouds_.clear();
 	cloudView_->clear();
 }
 
@@ -214,30 +216,32 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 		if(cloud->size())
 		{
 			cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, data.localTransform());
-		}
 
-		if(!data.pose().isNull())
-		{
-			lastOdomPose_ = data.pose();
-			if(cloudView_->getAddedClouds().contains("cloudtmp"))
+			if(!data.pose().isNull())
 			{
-				cloudView_->removeCloud("cloudtmp");
+				lastOdomPose_ = data.pose();
+				if(cloudView_->getAddedClouds().contains("cloudtmp"))
+				{
+					cloudView_->removeCloud("cloudtmp");
+				}
+
+				while(maxCloudsSpin_->value()>0 && (int)addedClouds_.size() > maxCloudsSpin_->value())
+				{
+					UASSERT(cloudView_->removeCloud(addedClouds_.first()));
+					addedClouds_.pop_front();
+				}
+
+				data.id()?id_=data.id():++id_;
+				std::string cloudName = uFormat("cloud%d", id_);
+				addedClouds_.push_back(cloudName);
+				UASSERT(cloudView_->addCloud(cloudName, cloud, data.pose()));
+
+				cloudView_->updateCameraTargetPosition(data.pose());
 			}
-
-			data.id()?id_=data.id():++id_;
-
-			while(maxCloudsSpin_->value()>0 && (int)cloudView_->getAddedClouds().size() > maxCloudsSpin_->value())
+			else
 			{
-				cloudView_->removeCloud(cloudView_->getAddedClouds().begin().key());
+				cloudView_->addOrUpdateCloud("cloudtmp", cloud, lastOdomPose_);
 			}
-
-			cloudView_->addOrUpdateCloud(uFormat("cloud%d", id_), cloud, data.pose());
-
-			cloudView_->updateCameraTargetPosition(data.pose());
-		}
-		else
-		{
-			cloudView_->addOrUpdateCloud("cloudtmp", cloud, lastOdomPose_);
 		}
 	}
 
@@ -316,7 +320,6 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 									Qt::blue);
 						}
 					}
-					imageView_->update();
 				}
 			}
 
@@ -327,7 +330,9 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 		}
 	}
 
+	imageView_->update();
 	cloudView_->update();
+	QApplication::processEvents();
 	processingData_ = false;
 }
 

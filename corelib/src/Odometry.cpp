@@ -562,14 +562,13 @@ Transform OdometryBOW::computeTransform(
 		info->localMapSize = (int)localMap_.size();
 	}
 
-	UINFO("Odom update time = %fs out=[%s] features=%d inliers=%d/%d variance=%f local_map=%d[%d] dict=%d nodes=%d",
+	UINFO("Odom update time = %fs lost=%s features=%d inliers=%d/%d variance=%f local_map=%d dict=%d nodes=%d",
 			timer.elapsed(),
-			output.prettyPrint().c_str(),
+			output.isNull()?"true":"false",
 			nFeatures,
 			inliers,
 			correspondences,
 			variance,
-			(int)uUniqueKeys(localMap_).size(),
 			(int)localMap_.size(),
 			(int)_memory->getVWDictionary()->getVisualWords().size(),
 			(int)_memory->getStMem().size());
@@ -1064,8 +1063,9 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 		info->matches = correspondences;
 	}
 
-	UINFO("Odom update time = %fs inliers=%d/%d, new corners=%d, transform accepted=%s",
+	UINFO("Odom update time = %fs lost=%s inliers=%d/%d, new corners=%d, transform accepted=%s",
 			timer.elapsed(),
+			output.isNull()?"true":"false",
 			inliers,
 			correspondences,
 			(int)newCorners.size(),
@@ -1454,8 +1454,9 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 		info->matches = correspondences;
 	}
 
-	UINFO("Odom update time = %fs inliers=%d/%d, variance=%f, new corners=%d",
+	UINFO("Odom update time = %fs lost=%s inliers=%d/%d, variance=%f, new corners=%d",
 			timer.elapsed(),
+			output.isNull()?"true":"false",
 			inliers,
 			correspondences,
 			variance,

@@ -70,6 +70,7 @@ private:
 	Transform lastOdomPose_;
 	int qualityWarningThr_;
 	int id_;
+	QList<std::string> addedClouds_;
 
 	QSpinBox * maxCloudsSpin_;
 	QDoubleSpinBox * voxelSpin_;

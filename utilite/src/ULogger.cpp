@@ -361,7 +361,7 @@ void ULogger::write(ULogger::Level level,
 		}
 
 		std::string time = "";
-		if(printTime_)
+		if(printTime_ || level == kFatal)
 		{
 			time.append("(");
 			getTime(time);
@@ -369,7 +369,7 @@ void ULogger::write(ULogger::Level level,
 		}
 
 		std::string levelStr = "";
-		if(printLevel_)
+		if(printLevel_ || level == kFatal)
 		{
 			const int bufSize = 30;
 			char buf[bufSize] = {0};
@@ -384,7 +384,7 @@ void ULogger::write(ULogger::Level level,
 		}
 
 		std::string whereStr = "";
-		if(printWhere_)
+		if(printWhere_ || level == kFatal)
 		{
 			whereStr.append("");
 			//File
@@ -530,9 +530,6 @@ void ULogger::write(ULogger::Level level,
 
 int ULogger::getTime(std::string &timeStr)
 {
-    if(!printTime_) {
-        return 0;
-    }
     struct tm timeinfo;
     const int bufSize = 30;
     char buf[bufSize] = {0};
