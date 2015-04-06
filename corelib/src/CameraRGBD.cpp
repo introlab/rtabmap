@@ -1032,7 +1032,8 @@ CameraFreenect2::CameraFreenect2(int deviceId, float imageRate, const Transform 
 		CameraRGBD(imageRate, localTransform),
 		deviceId_(deviceId),
 		freenect2_(0),
-		dev_(0)
+		dev_(0),
+		listener_(0)
 {
 #ifdef WITH_FREENECT2
 	freenect2_ = new libfreenect2::Freenect2();

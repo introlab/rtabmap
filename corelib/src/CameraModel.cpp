@@ -130,7 +130,7 @@ bool CameraModel::load(const std::string & filePath)
 
 bool CameraModel::save(const std::string & filePath)
 {
-	if(!filePath.empty() && !name_.empty() && !K_.empty() && !D_.empty(), !R_.empty(), !P_.empty())
+	if(!filePath.empty() && !name_.empty() && !K_.empty() && !D_.empty() && !R_.empty() && !P_.empty())
 	{
 		UINFO("Saving calibration to file \"%s\"", filePath.c_str());
 		cv::FileStorage fs(filePath, cv::FileStorage::WRITE);
