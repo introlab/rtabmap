@@ -6,20 +6,32 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1310</width>
-    <height>834</height>
+    <width>1314</width>
+    <height>783</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_3">
+   <property name="spacing">
+    <number>6</number>
+   </property>
+   <property name="margin">
+    <number>0</number>
+   </property>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,0">
+     <property name="spacing">
+      <number>0</number>
+     </property>
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_2" stretch="1,0">
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <property name="spacing">
+          <number>0</number>
+         </property>
          <item>
           <widget class="UImageView" name="image_view" native="true"/>
          </item>
@@ -75,38 +87,8 @@
          <property name="title">
           <string>Chessboard</string>
          </property>
-         <layout class="QFormLayout" name="formLayout_3">
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_12">
-            <property name="toolTip">
-             <string>Number of inner squares on the board</string>
-            </property>
-            <property name="text">
-             <string>Board width</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QSpinBox" name="spinBox_boardWidth">
-            <property name="minimum">
-             <number>2</number>
-            </property>
-            <property name="value">
-             <number>8</number>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_15">
-            <property name="toolTip">
-             <string>Number of inner squares on the board</string>
-            </property>
-            <property name="text">
-             <string>Board height</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
+         <layout class="QGridLayout" name="gridLayout_3">
+          <item row="1" column="3">
            <widget class="QSpinBox" name="spinBox_boardHeight">
             <property name="minimum">
              <number>2</number>
@@ -116,15 +98,51 @@
             </property>
            </widget>
           </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_16">
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_15">
+            <property name="toolTip">
+             <string>Number of inner squares on the board</string>
+            </property>
             <property name="text">
-             <string>Square size (m)</string>
+             <string>Square size</string>
             </property>
            </widget>
           </item>
-          <item row="2" column="1">
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_12">
+            <property name="toolTip">
+             <string>Number of inner squares on the board</string>
+            </property>
+            <property name="text">
+             <string>Board size</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="3">
+           <widget class="QLabel" name="label_16">
+            <property name="toolTip">
+             <string>Number of inner squares on the board</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="spinBox_boardWidth">
+            <property name="minimum">
+             <number>2</number>
+            </property>
+            <property name="value">
+             <number>8</number>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
            <widget class="QDoubleSpinBox" name="doubleSpinBox_squareSize">
+            <property name="suffix">
+             <string> m</string>
+            </property>
             <property name="decimals">
              <number>4</number>
             </property>
@@ -136,20 +154,26 @@
             </property>
            </widget>
           </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_19">
+          <item row="0" column="1">
+           <widget class="QLabel" name="label_20">
+            <property name="toolTip">
+             <string>Number of inner squares on the board</string>
+            </property>
             <property name="text">
-             <string>Serial</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://github.com/introlab/rtabmap/raw/master/bin/data/check-108.pdf&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;Sample8x6&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="openExternalLinks">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
-          <item row="3" column="1">
-           <widget class="QLabel" name="label_serial">
-            <property name="text">
-             <string>0</string>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_21">
+            <property name="toolTip">
+             <string>Number of inner squares on the board</string>
             </property>
-            <property name="textInteractionFlags">
-             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            <property name="text">
+             <string>Download</string>
             </property>
            </widget>
           </item>
@@ -162,42 +186,42 @@
           <string>Progress</string>
          </property>
          <layout class="QGridLayout" name="gridLayout">
-          <item row="1" column="0">
+          <item row="2" column="0">
            <widget class="QLabel" name="label">
             <property name="text">
              <string>X</string>
             </property>
            </widget>
           </item>
-          <item row="4" column="0">
+          <item row="5" column="0">
            <widget class="QLabel" name="label_4">
             <property name="text">
              <string>Skew</string>
             </property>
            </widget>
           </item>
-          <item row="4" column="1">
+          <item row="5" column="1">
            <widget class="QProgressBar" name="progressBar_skew">
             <property name="value">
              <number>24</number>
             </property>
            </widget>
           </item>
-          <item row="3" column="1">
+          <item row="4" column="1">
            <widget class="QProgressBar" name="progressBar_size">
             <property name="value">
              <number>24</number>
             </property>
            </widget>
           </item>
-          <item row="2" column="0">
+          <item row="3" column="0">
            <widget class="QLabel" name="label_2">
             <property name="text">
              <string>Y</string>
             </property>
            </widget>
           </item>
-          <item row="0" column="1">
+          <item row="1" column="1">
            <widget class="QProgressBar" name="progressBar_count">
             <property name="value">
              <number>24</number>
@@ -207,7 +231,7 @@
             </property>
            </widget>
           </item>
-          <item row="1" column="1">
+          <item row="2" column="1">
            <widget class="QProgressBar" name="progressBar_x">
             <property name="value">
              <number>24</number>
@@ -217,28 +241,28 @@
             </property>
            </widget>
           </item>
-          <item row="2" column="1">
+          <item row="3" column="1">
            <widget class="QProgressBar" name="progressBar_y">
             <property name="value">
              <number>24</number>
             </property>
            </widget>
           </item>
-          <item row="3" column="0">
+          <item row="4" column="0">
            <widget class="QLabel" name="label_3">
             <property name="text">
              <string>Size</string>
             </property>
            </widget>
           </item>
-          <item row="0" column="0">
+          <item row="1" column="0">
            <widget class="QLabel" name="label_5">
             <property name="text">
              <string>Count</string>
             </property>
            </widget>
           </item>
-          <item row="1" column="2">
+          <item row="2" column="2">
            <widget class="QProgressBar" name="progressBar_x_2">
             <property name="value">
              <number>24</number>
@@ -254,7 +278,7 @@
             </property>
            </widget>
           </item>
-          <item row="2" column="2">
+          <item row="3" column="2">
            <widget class="QProgressBar" name="progressBar_y_2">
             <property name="value">
              <number>24</number>
@@ -264,7 +288,7 @@
             </property>
            </widget>
           </item>
-          <item row="3" column="2">
+          <item row="4" column="2">
            <widget class="QProgressBar" name="progressBar_size_2">
             <property name="value">
              <number>24</number>
@@ -274,13 +298,30 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="2">
+          <item row="5" column="2">
            <widget class="QProgressBar" name="progressBar_skew_2">
             <property name="value">
              <number>24</number>
             </property>
             <property name="invertedAppearance">
              <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_19">
+            <property name="text">
+             <string>Serial</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="label_serial">
+            <property name="text">
+             <string>0</string>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
             </property>
            </widget>
           </item>
@@ -300,6 +341,16 @@
           <string>Camera intrinsic parameters</string>
          </property>
          <layout class="QGridLayout" name="gridLayout_2">
+          <item row="0" column="1">
+           <widget class="QLabel" name="label_fx">
+            <property name="text">
+             <string>0</string>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
           <item row="1" column="1">
            <widget class="QLabel" name="label_fy">
             <property name="text">
@@ -354,16 +405,6 @@
             </property>
            </widget>
           </item>
-          <item row="0" column="1">
-           <widget class="QLabel" name="label_fx">
-            <property name="text">
-             <string>0</string>
-            </property>
-            <property name="textInteractionFlags">
-             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-            </property>
-           </widget>
-          </item>
           <item row="1" column="0">
            <widget class="QLabel" name="label_9">
             <property name="text">
@@ -375,13 +416,6 @@
            <widget class="QLabel" name="label_10">
             <property name="text">
              <string>cx</string>
-            </property>
-           </widget>
-          </item>
-          <item row="10" column="0">
-           <widget class="QLabel" name="label_13">
-            <property name="text">
-             <string/>
             </property>
            </widget>
           </item>
