@@ -135,11 +135,33 @@
         <iconset resource="../GuiLib.qrc">
          <normaloff>:/images/sense.png</normaloff>:/images/sense.png</iconset>
        </property>
-       <addaction name="actionOpenNI2_Sense"/>
+       <addaction name="actionOpenNI2_sense"/>
+      </widget>
+      <widget class="QMenu" name="menuKinect_v2">
+       <property name="title">
+        <string>Kinect v2</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/kinect_xbox_one.png</normaloff>:/images/kinect_xbox_one.png</iconset>
+       </property>
+       <addaction name="actionFreenect2"/>
+      </widget>
+      <widget class="QMenu" name="menuBumblebee2">
+       <property name="title">
+        <string>Bumblebee2</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/bumblebee2.png</normaloff>:/images/bumblebee2.png</iconset>
+       </property>
+       <addaction name="actionStereoDC1394"/>
       </widget>
       <addaction name="menuKinect_for_Xbox_360"/>
       <addaction name="menuXtion_PRO_LIVE"/>
       <addaction name="menuSense_3D_scanner"/>
+      <addaction name="menuKinect_v2"/>
+      <addaction name="menuBumblebee2"/>
      </widget>
      <addaction name="menuRGB_D_camera"/>
      <addaction name="menuImage"/>
@@ -1113,14 +1135,6 @@
     <string>View scans...</string>
    </property>
   </action>
-  <action name="actionOpenNI2_Sense">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>OpenNI2</string>
-   </property>
-  </action>
   <action name="actionOpen_database">
    <property name="icon">
     <iconset resource="../GuiLib.qrc">
@@ -1163,7 +1177,31 @@
     <string>Save config</string>
    </property>
   </action>
+  <action name="actionFreenect2">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Freenect2</string>
+   </property>
+  </action>
+  <action name="actionStereoDC1394">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>StereoDC1394</string>
+   </property>
+  </action>
   <action name="actionOpenNI2_kinect">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>OpenNI2</string>
+   </property>
+  </action>
+  <action name="actionOpenNI2_sense">
    <property name="checkable">
     <bool>true</bool>
    </property>

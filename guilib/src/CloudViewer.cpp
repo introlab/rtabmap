@@ -193,7 +193,7 @@ void CloudViewer::saveSettings(QSettings & settings, const QString & group) cons
 
 	settings.setValue("grid", this->isGridShown());
 	settings.setValue("grid_cell_count", this->getGridCellCount());
-	settings.setValue("grid_cell_size", this->getGridCellSize());
+	settings.setValue("grid_cell_size", (double)this->getGridCellSize());
 
 	settings.setValue("trajectory_shown", this->isTrajectoryShown());
 	settings.setValue("trajectory_size", this->getTrajectorySize());

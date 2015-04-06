@@ -61,6 +61,8 @@ class OdometryThread;
 class CameraThread;
 class Signature;
 class LoopClosureViewer;
+class CameraRGBD;
+class CalibrationDialog;
 
 class RTABMAPGUI_EXP PreferencesDialog : public QDialog
 {
@@ -87,7 +89,9 @@ public:
 		kSrcFreenect,
 		kSrcOpenNI_CV,
 		kSrcOpenNI_CV_ASUS,
-		kSrcOpenNI2
+		kSrcOpenNI2,
+		kSrcFreenect2,
+		kSrcStereoDC1394
 	};
 
 public:
@@ -159,7 +163,7 @@ public:
 	bool isSourceMirroring() const;
 	bool isSourceImageUsed() const;
 	bool isSourceDatabaseUsed() const;
-	bool isSourceOpenniUsed() const;
+	bool isSourceRGBDUsed() const;
 	PreferencesDialog::Src getSourceImageType() const;
 	QString getSourceImageTypeStr() const;
 	int getSourceWidth() const;
@@ -182,10 +186,7 @@ public:
 	bool getSourceOpenni2Mirroring() const; //Openni group
 	QString getSourceOpenniDevice() const;            //Openni group
 	Transform getSourceOpenniLocalTransform() const;    //Openni group
-	float getSourceOpenniFx() const; // Openni group
-	float getSourceOpenniFy() const; // Openni group
-	float getSourceOpenniCx() const; // Openni group
-	float getSourceOpenniCy() const; // Openni group
+	CameraRGBD * createCameraRGBD() const; // return camera should be deleted if not null
 
 	int getIgnoredDCComponents() const;
 
@@ -200,6 +201,7 @@ public:
 	double getLoopThr() const;
 	double getVpThr() const;
 	int getOdomStrategy() const;
+	QString getCameraInfoDir() const; // "workinfDir/camera_info"
 
 	//
 	void setMonitoringState(bool monitoringState) {_monitoringState = monitoringState;}
@@ -216,6 +218,7 @@ public slots:
 	void selectSourceImage(Src src = kSrcUndef);
 	void selectSourceDatabase(bool user = false);
 	void selectSourceRGBD(Src src = kSrcUndef);
+	void calibrate();
 
 private slots:
 	void closeDialog ( QAbstractButton * button );
@@ -246,8 +249,6 @@ private slots:
 	void testOdometry();
 	void cleanRGBDCameraTest();
 	void testRGBDCamera();
-	void calibrate();
-	void resetCalibration();
 
 protected:
 	virtual void showEvent ( QShowEvent * event );
@@ -301,6 +302,9 @@ private:
 	//Odometry test
 	CameraThread * _cameraThread;
 	OdometryThread * _odomThread;
+
+	//calibration
+	CalibrationDialog * _calibrationDialog;
 
 	QVector<QCheckBox*> _3dRenderingShowClouds;
 	QVector<QDoubleSpinBox*> _3dRenderingVoxelSize;

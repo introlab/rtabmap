@@ -120,12 +120,12 @@ int main(int argc, char * argv[])
 	}
 	else if(driver == 6)
 	{
-		if(!rtabmap::CameraDC1394::available())
+		if(!rtabmap::CameraStereoDC1394::available())
 		{
 			UERROR("Not built with DC1394 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraDC1394("camera_info");
+		camera = new rtabmap::CameraStereoDC1394();
 	}
 	else
 	{

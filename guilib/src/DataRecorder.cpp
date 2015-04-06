@@ -177,7 +177,7 @@ void DataRecorder::handleEvent(UEvent * event)
 						processingImages_ = true;
 						QMetaObject::invokeMethod(this, "showImage",
 								Q_ARG(cv::Mat, camEvent->data().image()),
-								Q_ARG(cv::Mat, camEvent->data().depth()));
+								Q_ARG(cv::Mat, camEvent->data().depthOrRightImage()));
 					}
 				}
 			}

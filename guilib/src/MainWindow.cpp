@@ -346,17 +346,21 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionOpenNI_PCL, SIGNAL(triggered()), this, SLOT(selectOpenni()));
 	connect(_ui->actionOpenNI_PCL_ASUS, SIGNAL(triggered()), this, SLOT(selectOpenni()));
 	connect(_ui->actionFreenect, SIGNAL(triggered()), this, SLOT(selectFreenect()));
-	_ui->actionFreenect->setEnabled(CameraFreenect::available());
 	connect(_ui->actionOpenNI_CV, SIGNAL(triggered()), this, SLOT(selectOpenniCv()));
 	connect(_ui->actionOpenNI_CV_ASUS, SIGNAL(triggered()), this, SLOT(selectOpenniCvAsus()));
+	connect(_ui->actionOpenNI2, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
+	connect(_ui->actionOpenNI2_kinect, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
+	connect(_ui->actionOpenNI2_sense, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
+	connect(_ui->actionFreenect2, SIGNAL(triggered()), this, SLOT(selectFreenect2()));
+	connect(_ui->actionStereoDC1394, SIGNAL(triggered()), this, SLOT(selectStereoDC1394()));
+	_ui->actionFreenect->setEnabled(CameraFreenect::available());
 	_ui->actionOpenNI_CV->setEnabled(CameraOpenNICV::available());
 	_ui->actionOpenNI_CV_ASUS->setEnabled(CameraOpenNICV::available());
-	connect(_ui->actionOpenNI2, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
 	_ui->actionOpenNI2->setEnabled(CameraOpenNI2::available());
-	connect(_ui->actionOpenNI2_Sense, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
-	_ui->actionOpenNI2_Sense->setEnabled(CameraOpenNI2::available());
-	connect(_ui->actionOpenNI2_kinect, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
 	_ui->actionOpenNI2_kinect->setEnabled(CameraOpenNI2::available());
+	_ui->actionOpenNI2_sense->setEnabled(CameraOpenNI2::available());
+	_ui->actionFreenect2->setEnabled(CameraFreenect2::available());
+	_ui->actionStereoDC1394->setEnabled(CameraStereoDC1394::available());
 	this->updateSelectSourceMenu();
 
 	connect(_ui->actionSave_state, SIGNAL(triggered()), this, SLOT(saveFigures()));
@@ -2221,14 +2225,16 @@ void MainWindow::updateSelectSourceMenu()
 
 	_ui->actionDatabase->setChecked(_preferencesDialog->isSourceDatabaseUsed());
 
-	_ui->actionOpenNI_PCL->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_PCL);
-	_ui->actionOpenNI_PCL_ASUS->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_PCL);
-	_ui->actionFreenect->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcFreenect);
-	_ui->actionOpenNI_CV->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV);
-	_ui->actionOpenNI_CV_ASUS->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS);
-	_ui->actionOpenNI2->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2);
-	_ui->actionOpenNI2_Sense->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2);
-	_ui->actionOpenNI2_kinect->setChecked(_preferencesDialog->isSourceOpenniUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2);
+	_ui->actionOpenNI_PCL->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_PCL);
+	_ui->actionOpenNI_PCL_ASUS->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_PCL);
+	_ui->actionFreenect->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcFreenect);
+	_ui->actionOpenNI_CV->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV);
+	_ui->actionOpenNI_CV_ASUS->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS);
+	_ui->actionOpenNI2->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2);
+	_ui->actionOpenNI2_kinect->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2);
+	_ui->actionOpenNI2_sense->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2);
+	_ui->actionFreenect2->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcFreenect2);
+	_ui->actionStereoDC1394->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcStereoDC1394);
 }
 
 void MainWindow::changeImgRateSetting()
@@ -2555,7 +2561,7 @@ void MainWindow::startDetection()
 	// Adjust pre-requirements
 	if( !_preferencesDialog->isSourceImageUsed() &&
 		!_preferencesDialog->isSourceDatabaseUsed() &&
-		!_preferencesDialog->isSourceOpenniUsed())
+		!_preferencesDialog->isSourceRGBDUsed())
 	{
 		QMessageBox::warning(this,
 				 tr("RTAB-Map"),
@@ -2565,83 +2571,11 @@ void MainWindow::startDetection()
 		return;
 	}
 
-	if(_preferencesDialog->isSourceOpenniUsed())
+	if(_preferencesDialog->isSourceRGBDUsed())
 	{
-		//Create odometry thread if rgbd slam
-		if(uStr2Bool(parameters.at(Parameters::kRGBDEnabled()).c_str()))
-		{
-			if(_odomThread)
-			{
-				UERROR("OdomThread must be already deleted here?!");
-				delete _odomThread;
-			}
-			Odometry * odom;
-			if(_preferencesDialog->getOdomStrategy() == 1)
-			{
-				odom = new OdometryOpticalFlow(parameters);
-			}
-			else
-			{
-				odom = new OdometryBOW(parameters);
-			}
-			_odomThread = new OdometryThread(odom);
+		CameraRGBD * camera = _preferencesDialog->createCameraRGBD();
 
-			UEventsManager::addHandler(_odomThread);
-			_odomThread->start();
-		}
-
-		CameraRGBD * camera = 0;
-		if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_PCL)
-		{
-			camera = new CameraOpenni(
-					_preferencesDialog->getSourceOpenniDevice().toStdString(),
-					_preferencesDialog->getGeneralInputRate(),
-					_preferencesDialog->getSourceOpenniLocalTransform(),
-					_preferencesDialog->getSourceOpenniFx(),
-					_preferencesDialog->getSourceOpenniFy(),
-					_preferencesDialog->getSourceOpenniCx(),
-					_preferencesDialog->getSourceOpenniCy());
-		}
-		else if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2)
-		{
-			camera = new CameraOpenNI2(
-					_preferencesDialog->getSourceOpenniDevice().toStdString(),
-					_preferencesDialog->getGeneralInputRate(),
-					_preferencesDialog->getSourceOpenniLocalTransform(),
-					_preferencesDialog->getSourceOpenniFx(),
-					_preferencesDialog->getSourceOpenniFy(),
-					_preferencesDialog->getSourceOpenniCx(),
-					_preferencesDialog->getSourceOpenniCy());
-		}
-		else if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcFreenect)
-		{
-			camera = new CameraFreenect(
-					_preferencesDialog->getSourceOpenniDevice().isEmpty()?0:atoi(_preferencesDialog->getSourceOpenniDevice().toStdString().c_str()),
-					_preferencesDialog->getGeneralInputRate(),
-					_preferencesDialog->getSourceOpenniLocalTransform(),
-					_preferencesDialog->getSourceOpenniFx(),
-					_preferencesDialog->getSourceOpenniFy(),
-					_preferencesDialog->getSourceOpenniCx(),
-					_preferencesDialog->getSourceOpenniCy());
-		}
-		else if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV ||
-				_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS)
-		{
-			camera = new CameraOpenNICV(
-					_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS,
-					_preferencesDialog->getGeneralInputRate(),
-					_preferencesDialog->getSourceOpenniLocalTransform(),
-					_preferencesDialog->getSourceOpenniFx(),
-					_preferencesDialog->getSourceOpenniFy(),
-					_preferencesDialog->getSourceOpenniCx(),
-					_preferencesDialog->getSourceOpenniCy());
-		}
-		else
-		{
-			UFATAL("RGBD Source type undefined!");
-		}
-
-		if(!camera->init())
+		if(!camera->init(_preferencesDialog->getCameraInfoDir().toStdString()))
 		{
 			ULOGGER_WARN("init camera failed... ");
 			QMessageBox::warning(this,
@@ -2657,7 +2591,7 @@ void MainWindow::startDetection()
 			}
 			return;
 		}
-		else if(_preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2)
+		else if(dynamic_cast<CameraOpenNI2*>(camera) != 0)
 		{
 			((CameraOpenNI2*)camera)->setAutoWhiteBalance(_preferencesDialog->getSourceOpenni2AutoWhiteBalance());
 			((CameraOpenNI2*)camera)->setAutoExposure(_preferencesDialog->getSourceOpenni2AutoExposure());
@@ -2671,9 +2605,50 @@ void MainWindow::startDetection()
 		camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
 
 		_camera = new CameraThread(camera);
-		if(_odomThread)
+
+		//Create odometry thread if rgbd slam
+		if(uStr2Bool(parameters.at(Parameters::kRGBDEnabled()).c_str()))
 		{
-			UEventsManager::createPipe(_camera, _odomThread, "CameraEvent");
+			// Require calibrated camera
+			if(!camera->isCalibrated())
+			{
+				UWARN("Camera is not calibrated!");
+				emit stateChanged(kInitialized);
+				delete _camera;
+				_camera = 0;
+
+				int button = QMessageBox::question(this,
+						tr("Camera is not calibrated!"),
+						tr("RTAB-Map cannot run with an uncalibrated camera. Do you want to calibrate the camera now?"),
+						 QMessageBox::Yes | QMessageBox::No);
+				if(button == QMessageBox::Yes)
+				{
+					QTimer::singleShot(0, _preferencesDialog, SLOT(calibrate()));
+				}
+				return;
+			}
+			else
+			{
+				if(_odomThread)
+				{
+					UERROR("OdomThread must be already deleted here?!");
+					delete _odomThread;
+				}
+				Odometry * odom;
+				if(_preferencesDialog->getOdomStrategy() == 1)
+				{
+					odom = new OdometryOpticalFlow(parameters);
+				}
+				else
+				{
+					odom = new OdometryBOW(parameters);
+				}
+				_odomThread = new OdometryThread(odom);
+
+				UEventsManager::addHandler(_odomThread);
+				UEventsManager::createPipe(_camera, _odomThread, "CameraEvent");
+				_odomThread->start();
+			}
 		}
 	}
 	else if(_preferencesDialog->isSourceDatabaseUsed())
@@ -3588,6 +3563,16 @@ void MainWindow::selectOpenniCvAsus()
 void MainWindow::selectOpenni2()
 {
 	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI2);
+}
+
+void MainWindow::selectFreenect2()
+{
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcFreenect2);
+}
+
+void MainWindow::selectStereoDC1394()
+{
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcStereoDC1394);
 }
 
 

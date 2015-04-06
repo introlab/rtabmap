@@ -492,8 +492,8 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	{
 		settings.beginGroup(group);
 	}
-	settings.setValue("node_radius", this->getNodeRadius());
-	settings.setValue("link_width", this->getLinkWidth());
+	settings.setValue("node_radius", (double)this->getNodeRadius());
+	settings.setValue("link_width", (double)this->getLinkWidth());
 	settings.setValue("node_color", this->getNodeColor());
 	settings.setValue("neighbor_color", this->getNeighborColor());
 	settings.setValue("global_color", this->getGlobalLoopClosureColor());

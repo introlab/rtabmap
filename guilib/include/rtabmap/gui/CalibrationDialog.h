@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
 #include <QDialog>
+#include <QSettings>
 #include <opencv2/opencv.hpp>
 
 #include <rtabmap/core/CameraModel.h>
@@ -46,16 +47,18 @@ class RTABMAPGUI_EXP CalibrationDialog  : public QDialog, public UEventsHandler
 	Q_OBJECT;
 
 public:
-	CalibrationDialog(bool stereo = false, QWidget * parent = 0);
+	CalibrationDialog(bool stereo = false, const QString & savingDirectory = ".", QWidget * parent = 0);
 	virtual ~CalibrationDialog();
 
 	bool isCalibrated() const {return calibrated_;}
-	const cv::Mat & cameraMatrix() const {return model_.K();} // Matrix K
-	const cv::Mat & distCoeffs() const {return model_.D();} // Matrix D
-	float fx() const {return model_.fx();} // K(0)
-	float fy() const {return model_.fy();} // K(4)
-	float cx() const {return model_.cx();} // K(2)
-	float cy() const {return model_.cy();} // K(5)
+	const rtabmap::CameraModel & getCameraModel() const {return model_;}
+	const rtabmap::StereoCameraModel & getStereoCameraModel() const {return stereoModel_;}
+
+	void saveSettings(QSettings & settings, const QString & group = "") const;
+	void loadSettings(QSettings & settings, const QString & group = "");
+
+	void setStereoMode(bool stereo);
+	void setSavingDirectory(const QString & savingDirectory) {savingDirectory_ = savingDirectory;}
 
 public slots:
 	void setBoardWidth(int width);
@@ -66,7 +69,7 @@ private slots:
 	void processImages(const cv::Mat & imageLeft, const cv::Mat & imageRight, const QString & cameraName);
 	void restart();
 	void calibrate();
-	void save();
+	bool save();
 
 protected:
 	virtual void closeEvent(QCloseEvent* event);
@@ -85,13 +88,13 @@ private:
 
 private:
 	// parameters
-	cv::Size boardSize_; // innner squares
-	float squareSize_; // m
 	bool stereo_;
+	QString savingDirectory_;
 
 	QString cameraName_;
 	bool calibrated_;
 	bool processingData_;
+	bool savedCalibration_;
 
 	std::vector<std::vector<std::vector<cv::Point2f> > > imagePoints_;
 	std::vector<std::vector<std::vector<float> > > imageParams_;

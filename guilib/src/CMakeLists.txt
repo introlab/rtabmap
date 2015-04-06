@@ -17,6 +17,7 @@ SET(headers_ui
 	../include/${PROJECT_PREFIX}/gui/OdometryViewer.h
 	../include/${PROJECT_PREFIX}/gui/LoopClosureViewer.h
 	../include/${PROJECT_PREFIX}/gui/DataRecorder.h
+	../include/${PROJECT_PREFIX}/gui/CameraViewer.h
 	../include/${PROJECT_PREFIX}/gui/CalibrationDialog.h
 	./ExportDialog.h
 	./PostProcessingDialog.h
@@ -75,6 +76,7 @@ SET(SRC_FILES
 	./OdometryViewer.cpp
 	./LoopClosureViewer.cpp
 	./DataRecorder.cpp
+	./CameraViewer.cpp
 	./CalibrationDialog.cpp
 	./ExportDialog.cpp
 	./PostProcessingDialog.cpp

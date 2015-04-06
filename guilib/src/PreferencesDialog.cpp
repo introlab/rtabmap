@@ -56,7 +56,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Graph.h"
 
 #include "rtabmap/gui/LoopClosureViewer.h"
-#include "rtabmap/gui/DataRecorder.h"
+#include "rtabmap/gui/CameraViewer.h"
 #include "rtabmap/gui/CloudViewer.h"
 #include "rtabmap/gui/ImageView.h"
 #include "GraphViewer.h"
@@ -82,7 +82,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_indexModel(0),
 	_initialized(false),
 	_cameraThread(0),
-	_odomThread(0)
+	_odomThread(0),
+	_calibrationDialog(new CalibrationDialog(false, ".", this))
 {
 	ULOGGER_DEBUG("");
 
@@ -144,6 +145,29 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->graphOptimization_type->setItemData(1, 0, Qt::UserRole - 1);
 	}
+	if(!CameraFreenect::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(1, 0, Qt::UserRole - 1);
+	}
+	if(!CameraOpenNICV::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(2, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraRGBD->setItemData(3, 0, Qt::UserRole - 1);
+	}
+	if(!CameraOpenNI2::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(4, 0, Qt::UserRole - 1);
+	}
+	if(!CameraFreenect2::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(5, 0, Qt::UserRole - 1);
+	}
+	if(!CameraStereoDC1394::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(6, 0, Qt::UserRole - 1);
+	}
+	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
+	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
 
 	_ui->predictionPlot->showLegend(false);
 
@@ -275,18 +299,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_spinBox_databaseStartPos, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	//openni group
 	connect(_ui->groupBox_sourceOpenni, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->radioButton_opennipcl, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->radioButton_freenect, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
-	_ui->radioButton_freenect->setEnabled(CameraFreenect::available());
-	connect(_ui->radioButton_opennicv, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->radioButton_opennicvasus, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
-	_ui->radioButton_opennicv->setEnabled(CameraOpenNICV::available());
-	_ui->radioButton_opennicvasus->setEnabled(CameraOpenNICV::available());
-	connect(_ui->radioButton_openni2, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->radioButton_openni2, SIGNAL(toggled(bool)), this, SLOT(showOpenNI2GroupBox(bool)));
-	_ui->radioButton_openni2->setEnabled(CameraOpenNI2::available());
-	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
-	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
+	connect(_ui->comboBox_cameraRGBD, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_autoWhiteBalance, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_autoExposure, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_exposure, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -294,12 +307,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->openni2_mirroring, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniDevice, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniLocalTransform, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->doubleSpinBox_openniFx, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->doubleSpinBox_openniFy, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->doubleSpinBox_openniCx, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->doubleSpinBox_openniCy, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
-	connect(_ui->pushButton_calibrate_reset, SIGNAL(clicked()), this, SLOT(resetCalibration()));
 
 
 	//Rtabmap basic
@@ -918,15 +926,17 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->groupBox_sourceOpenni->setChecked(true);
 #ifdef _WIN32
-		_ui->radioButton_openni2->setChecked(true);
-		_ui->radioButton_opennipcl->setChecked(false);
+		_ui->comboBox_cameraRGBD->setCurrentIndex(4); // openni2
 #else
-		_ui->radioButton_opennipcl->setChecked(true);
-		_ui->radioButton_openni2->setChecked(false);
+		if(CameraFreenect::available())
+		{
+			_ui->comboBox_cameraRGBD->setCurrentIndex(1); // freenect
+		}
+		else
+		{
+			_ui->comboBox_cameraRGBD->setCurrentIndex(0); // openni-pcl
+		}
 #endif
-		_ui->radioButton_freenect->setChecked(false);
-		_ui->radioButton_opennicv->setChecked(false);
-		_ui->radioButton_opennicvasus->setChecked(false);
 		_ui->openni2_autoWhiteBalance->setChecked(true);
 		_ui->openni2_autoExposure->setChecked(true);
 		_ui->openni2_exposure->setValue(0);
@@ -934,10 +944,6 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->openni2_mirroring->setChecked(false);
 		_ui->lineEdit_openniDevice->setText("");
 		_ui->lineEdit_openniLocalTransform->setText("0 0 0 -PI_2 0 -PI_2");
-		_ui->doubleSpinBox_openniFx->setValue(0.0);
-		_ui->doubleSpinBox_openniFy->setValue(0.0);
-		_ui->doubleSpinBox_openniCx->setValue(0.0);
-		_ui->doubleSpinBox_openniCy->setValue(0.0);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_rtabmap_basic0->objectName())
 	{
@@ -1190,11 +1196,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 
 	settings.beginGroup("Openni");
 	_ui->groupBox_sourceOpenni->setChecked(settings.value("openniUsed", _ui->groupBox_sourceOpenni->isChecked()).toBool());
-	_ui->radioButton_opennipcl->setChecked(settings.value("openniType", _ui->radioButton_opennipcl->isChecked()).toBool());
-	_ui->radioButton_freenect->setChecked(settings.value("freenectType", _ui->radioButton_freenect->isChecked()).toBool());
-	_ui->radioButton_openni2->setChecked(settings.value("openni2", _ui->radioButton_openni2->isChecked()).toBool());
-	_ui->radioButton_opennicv->setChecked(settings.value("openniCvType", _ui->radioButton_opennicv->isChecked()).toBool());
-	_ui->radioButton_opennicvasus->setChecked(settings.value("openniCvAsusType", _ui->radioButton_opennicvasus->isChecked()).toBool());
+	_ui->comboBox_cameraRGBD->setCurrentIndex(settings.value("cameraRGBDType", _ui->comboBox_cameraRGBD->currentIndex()).toInt());
 	_ui->openni2_autoWhiteBalance->setChecked(settings.value("openni2AutoWhiteBalance", _ui->openni2_autoWhiteBalance->isChecked()).toBool());
 	_ui->openni2_autoExposure->setChecked(settings.value("openni2AutoExposure", _ui->openni2_autoExposure->isChecked()).toBool());
 	_ui->openni2_exposure->setValue(settings.value("openni2Exposure", _ui->openni2_exposure->value()).toInt());
@@ -1202,10 +1204,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->openni2_mirroring->setChecked(settings.value("openni2Mirroring", _ui->openni2_mirroring->isChecked()).toBool());
 	_ui->lineEdit_openniDevice->setText(settings.value("device",_ui->lineEdit_openniDevice->text()).toString());
 	_ui->lineEdit_openniLocalTransform->setText(settings.value("localTransform",_ui->lineEdit_openniLocalTransform->text()).toString());
-	_ui->doubleSpinBox_openniFx->setValue(settings.value("fx", _ui->doubleSpinBox_openniFx->value()).toDouble());
-	_ui->doubleSpinBox_openniFy->setValue(settings.value("fy", _ui->doubleSpinBox_openniFy->value()).toDouble());
-	_ui->doubleSpinBox_openniCx->setValue(settings.value("cx", _ui->doubleSpinBox_openniCx->value()).toDouble());
-	_ui->doubleSpinBox_openniCy->setValue(settings.value("cy", _ui->doubleSpinBox_openniCy->value()).toDouble());
+	_calibrationDialog->loadSettings(settings, "CalibrationDialog");
 	settings.endGroup(); // Openni
 }
 
@@ -1462,11 +1461,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 
 	settings.beginGroup("Openni");
 	settings.setValue("openniUsed", 	_ui->groupBox_sourceOpenni->isChecked());
-	settings.setValue("openniType", 	_ui->radioButton_opennipcl->isChecked());
-	settings.setValue("freenectType", 	_ui->radioButton_freenect->isChecked());
-	settings.setValue("openni2", 		_ui->radioButton_openni2->isChecked());
-	settings.setValue("openniCvType", 	_ui->radioButton_opennicv->isChecked());
-	settings.setValue("openniCvAsusType", 	_ui->radioButton_opennicvasus->isChecked());
+	settings.setValue("cameraRGBDType", 	_ui->comboBox_cameraRGBD->currentIndex());
 	settings.setValue("openni2AutoWhiteBalance", _ui->openni2_autoWhiteBalance->isChecked());
 	settings.setValue("openni2AutoExposure", 	_ui->openni2_autoExposure->isChecked());
 	settings.setValue("openni2Exposure", 		_ui->openni2_exposure->value());
@@ -1474,11 +1469,8 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("openni2Mirroring", _ui->openni2_mirroring->isChecked());
 	settings.setValue("device", 		_ui->lineEdit_openniDevice->text());
 	settings.setValue("localTransform", _ui->lineEdit_openniLocalTransform->text());
-	settings.setValue("fx", _ui->doubleSpinBox_openniFx->value());
-	settings.setValue("fy", _ui->doubleSpinBox_openniFy->value());
-	settings.setValue("cx", _ui->doubleSpinBox_openniCx->value());
-	settings.setValue("cy", _ui->doubleSpinBox_openniCy->value());
-	settings.endGroup();
+	_calibrationDialog->saveSettings(settings, "CalibrationDialog");
+	settings.endGroup(); // Openni
 }
 
 void PreferencesDialog::writeCoreSettings(const QString & filePath) const
@@ -1795,6 +1787,7 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 		const ExportCloudsDialog * exportCloudsDialog = qobject_cast<const ExportCloudsDialog*>(widget);
 		const PostProcessingDialog * postProcessingDialog = qobject_cast<const PostProcessingDialog *>(widget);
 		const GraphViewer * graphViewer = qobject_cast<const GraphViewer *>(widget);
+		const CalibrationDialog * calibrationDialog = qobject_cast<const CalibrationDialog *>(widget);
 
 		if(cloudViewer)
 		{
@@ -1815,6 +1808,10 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 		else if(graphViewer)
 		{
 			graphViewer->saveSettings(settings);
+		}
+		else if(calibrationDialog)
+		{
+			calibrationDialog->saveSettings(settings);
 		}
 		else
 		{
@@ -1840,6 +1837,7 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 		ExportCloudsDialog * exportCloudsDialog = qobject_cast<ExportCloudsDialog*>(widget);
 		PostProcessingDialog * postProcessingDialog = qobject_cast<PostProcessingDialog *>(widget);
 		GraphViewer * graphViewer = qobject_cast<GraphViewer *>(widget);
+		CalibrationDialog * calibrationDialog = qobject_cast<CalibrationDialog *>(widget);
 
 		if(cloudViewer)
 		{
@@ -1860,6 +1858,10 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 		else if(graphViewer)
 		{
 			graphViewer->loadSettings(settings);
+		}
+		else if(calibrationDialog)
+		{
+			calibrationDialog->loadSettings(settings);
 		}
 		else
 		{
@@ -2059,36 +2061,12 @@ void PreferencesDialog::selectSourceRGBD(Src src)
 	}
 
 	_ui->groupBox_sourceOpenni->setChecked(true);
-	_ui->radioButton_opennipcl->setChecked(src == kSrcOpenNI_PCL);
-	_ui->radioButton_freenect->setChecked(src == kSrcFreenect);
-	_ui->radioButton_opennicv->setChecked(src == kSrcOpenNI_CV);
-	_ui->radioButton_opennicvasus->setChecked(src == kSrcOpenNI_CV_ASUS);
-	_ui->radioButton_openni2->setChecked(src == kSrcOpenNI2);
+	_ui->comboBox_cameraRGBD->setCurrentIndex(src - kSrcOpenNI_PCL);
 
 	if(_ui->groupBox_sourceOpenni->isChecked())
 	{
 		_ui->groupBox_sourceImage->setChecked(false);
 		_ui->groupBox_sourceDatabase->setChecked(false);
-
-		if(_ui->doubleSpinBox_openniFx->value() != 0 ||
-			_ui->doubleSpinBox_openniFy->value() != 0 ||
-			_ui->doubleSpinBox_openniCx->value() != 0 ||
-			_ui->doubleSpinBox_openniCy->value() != 0 )
-		{
-			int button = QMessageBox::information(this,
-					tr("Calibration detected"),
-					tr("Some calibration values (fx=%1, fy=%2, cx=%3, cy=%4) are set.\n"
-					   "Do you want to reset them to factory defaults?")
-					   .arg(_ui->doubleSpinBox_openniFx->value())
-					   .arg(_ui->doubleSpinBox_openniFy->value())
-					   .arg(_ui->doubleSpinBox_openniCx->value())
-					   .arg(_ui->doubleSpinBox_openniCy->value()),
-					QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
-			if(button & QMessageBox::Yes)
-			{
-				this->resetCalibration();
-			}
-		}
 	}
 
 	if(validateForm())
@@ -2984,7 +2962,7 @@ bool PreferencesDialog::isSourceDatabaseUsed() const
 {
 	return _ui->groupBox_sourceDatabase->isChecked();
 }
-bool PreferencesDialog::isSourceOpenniUsed() const
+bool PreferencesDialog::isSourceRGBDUsed() const
 {
 	return _ui->groupBox_sourceOpenni->isChecked();
 }
@@ -3052,26 +3030,7 @@ int PreferencesDialog::getSourceDatabaseStartPos() const
 
 PreferencesDialog::Src PreferencesDialog::getSourceRGBD() const
 {
-	if(_ui->radioButton_freenect->isChecked())
-	{
-		return kSrcFreenect;
-	}
-	else if(_ui->radioButton_opennicv->isChecked())
-	{
-		return kSrcOpenNI_CV;
-	}
-	else if (_ui->radioButton_opennicvasus->isChecked())
-	{
-		return kSrcOpenNI_CV_ASUS;
-	}
-	else if (_ui->radioButton_openni2->isChecked())
-	{
-		return kSrcOpenNI2;
-	}
-	else
-	{
-		return kSrcOpenNI_PCL;
-	}
+	return (PreferencesDialog::Src)(_ui->comboBox_cameraRGBD->currentIndex()+kSrcOpenNI_PCL);
 }
 bool PreferencesDialog::getSourceOpenni2AutoWhiteBalance() const
 {
@@ -3129,21 +3088,55 @@ Transform PreferencesDialog::getSourceOpenniLocalTransform() const
 	return t;
 }
 
-float PreferencesDialog::getSourceOpenniFx() const
+CameraRGBD * PreferencesDialog::createCameraRGBD() const
 {
-	return _ui->doubleSpinBox_openniFx->value();
-}
-float PreferencesDialog::getSourceOpenniFy() const
-{
-	return _ui->doubleSpinBox_openniFy->value();
-}
-float PreferencesDialog::getSourceOpenniCx() const
-{
-	return _ui->doubleSpinBox_openniCx->value();
-}
-float PreferencesDialog::getSourceOpenniCy() const
-{
-	return _ui->doubleSpinBox_openniCy->value();
+	if(this->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_PCL)
+	{
+		return new CameraOpenni(
+				this->getSourceOpenniDevice().toStdString(),
+				this->getGeneralInputRate(),
+				this->getSourceOpenniLocalTransform());
+	}
+	else if(this->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2)
+	{
+		return new CameraOpenNI2(
+				this->getSourceOpenniDevice().toStdString(),
+				this->getGeneralInputRate(),
+				this->getSourceOpenniLocalTransform());
+	}
+	else if(this->getSourceRGBD() == PreferencesDialog::kSrcFreenect)
+	{
+		return new CameraFreenect(
+				this->getSourceOpenniDevice().isEmpty()?0:atoi(this->getSourceOpenniDevice().toStdString().c_str()),
+				this->getGeneralInputRate(),
+				this->getSourceOpenniLocalTransform());
+	}
+	else if(this->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV ||
+			this->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS)
+	{
+		return new CameraOpenNICV(
+				this->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS,
+				this->getGeneralInputRate(),
+				this->getSourceOpenniLocalTransform());
+	}
+	else if(this->getSourceRGBD() == kSrcFreenect2)
+	{
+		return new CameraFreenect2(
+			this->getSourceOpenniDevice().isEmpty()?0:atoi(this->getSourceOpenniDevice().toStdString().c_str()),
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform());
+	}
+	else if(this->getSourceRGBD() == kSrcStereoDC1394)
+	{
+		return new CameraStereoDC1394(
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform());
+	}
+	else
+	{
+		UFATAL("RGBD Source type undefined!");
+	}
+	return 0;
 }
 
 bool PreferencesDialog::isStatisticsPublished() const
@@ -3161,6 +3154,11 @@ double PreferencesDialog::getVpThr() const
 int PreferencesDialog::getOdomStrategy() const
 {
 	return _ui->odom_strategy->currentIndex();
+}
+
+QString PreferencesDialog::getCameraInfoDir() const
+{
+	return (this->getWorkingDirectory().isEmpty()?".":this->getWorkingDirectory())+"/camera_info";
 }
 
 bool PreferencesDialog::isImagesKept() const
@@ -3266,58 +3264,9 @@ void PreferencesDialog::testOdometry(int type)
 
 	UASSERT(_odomThread == 0 && _cameraThread == 0);
 
-	CameraRGBD * camera = 0;
-	if(this->getSourceRGBD() == kSrcOpenNI_PCL)
-	{
-		camera = new CameraOpenni(
-			this->getSourceOpenniDevice().toStdString(),
-			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFx(),
-			this->getSourceOpenniFy(),
-			this->getSourceOpenniCx(),
-			this->getSourceOpenniCy());
-	}
-	else if(this->getSourceRGBD() == kSrcOpenNI2)
-	{
-		camera = new CameraOpenNI2(
-			this->getSourceOpenniDevice().toStdString(),
-			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFx(),
-			this->getSourceOpenniFy(),
-			this->getSourceOpenniCx(),
-			this->getSourceOpenniCy());
+	CameraRGBD * camera = this->createCameraRGBD();
 
-	}
-	else if(this->getSourceRGBD() == kSrcFreenect)
-	{
-		camera = new CameraFreenect(
-			this->getSourceOpenniDevice().isEmpty()?0:atoi(this->getSourceOpenniDevice().toStdString().c_str()),
-			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFx(),
-			this->getSourceOpenniFy(),
-			this->getSourceOpenniCx(),
-			this->getSourceOpenniCy());
-	}
-	else if(this->getSourceRGBD() == kSrcOpenNI_CV || this->getSourceRGBD() == kSrcOpenNI_CV_ASUS)
-	{
-		camera = new CameraOpenNICV(
-			this->getSourceRGBD() == kSrcOpenNI_CV_ASUS,
-			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFx(),
-			this->getSourceOpenniFy(),
-			this->getSourceOpenniCx(),
-			this->getSourceOpenniCy());
-	}
-	else
-	{
-		UFATAL("RGBD Source type undefined!");
-	}
-
-	if(!camera->init())
+	if(!camera->init(this->getCameraInfoDir().toStdString()))
 	{
 		QMessageBox::warning(this,
 			   tr("RTAB-Map"),
@@ -3325,7 +3274,7 @@ void PreferencesDialog::testOdometry(int type)
 		delete camera;
 		camera = 0;
 	}
-	else if(this->getSourceRGBD() == kSrcOpenNI2)
+	else if(dynamic_cast<CameraOpenNI2*>(camera) != 0)
 	{
 		((CameraOpenNI2*)camera)->setAutoWhiteBalance(getSourceOpenni2AutoWhiteBalance());
 		((CameraOpenNI2*)camera)->setAutoExposure(getSourceOpenni2AutoExposure());
@@ -3434,58 +3383,8 @@ void PreferencesDialog::testRGBDCamera()
 			   tr("A camera is already running!"));
 	}
 
-	CameraRGBD * camera = 0;
-	if(this->getSourceRGBD() == kSrcOpenNI_PCL)
-	{
-		camera = new CameraOpenni(
-			this->getSourceOpenniDevice().toStdString(),
-			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFx(),
-			this->getSourceOpenniFy(),
-			this->getSourceOpenniCx(),
-			this->getSourceOpenniCy());
-	}
-	else if(this->getSourceRGBD() == kSrcOpenNI2)
-	{
-		camera = new CameraOpenNI2(
-			this->getSourceOpenniDevice().toStdString(),
-			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFx(),
-			this->getSourceOpenniFy(),
-			this->getSourceOpenniCx(),
-			this->getSourceOpenniCy());
-
-	}
-	else if(this->getSourceRGBD() == kSrcFreenect)
-	{
-		camera = new CameraFreenect(
-			this->getSourceOpenniDevice().isEmpty()?0:atoi(this->getSourceOpenniDevice().toStdString().c_str()),
-			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFx(),
-			this->getSourceOpenniFy(),
-			this->getSourceOpenniCx(),
-			this->getSourceOpenniCy());
-	}
-	else if(this->getSourceRGBD() == kSrcOpenNI_CV || this->getSourceRGBD() == kSrcOpenNI_CV_ASUS)
-	{
-		camera = new CameraOpenNICV(
-			this->getSourceRGBD() == kSrcOpenNI_CV_ASUS,
-			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFx(),
-			this->getSourceOpenniFy(),
-			this->getSourceOpenniCx(),
-			this->getSourceOpenniCy());
-	}
-	else
-	{
-		UFATAL("RGBD Source type undefined!");
-	}
-
-	if(!camera->init())
+	CameraRGBD * camera = this->createCameraRGBD();
+	if(!camera->init(this->getCameraInfoDir().toStdString()))
 	{
 		QMessageBox::warning(this,
 			   tr("RTAB-Map"),
@@ -3493,7 +3392,7 @@ void PreferencesDialog::testRGBDCamera()
 		delete camera;
 		camera = 0;
 	}
-	else if(this->getSourceRGBD() == kSrcOpenNI2)
+	else if(dynamic_cast<CameraOpenNI2*>(camera) != 0)
 	{
 		((CameraOpenNI2*)camera)->setAutoWhiteBalance(getSourceOpenni2AutoWhiteBalance());
 		((CameraOpenNI2*)camera)->setAutoExposure(getSourceOpenni2AutoExposure());
@@ -3512,13 +3411,13 @@ void PreferencesDialog::testRGBDCamera()
 		_ui->pushButton_test_rgbd_camera->setEnabled(false);
 
 		// Create DataRecorder without init it, just to show images...
-		DataRecorder * window = new DataRecorder(this);
+		CameraViewer * window = new CameraViewer(this);
 		window->setWindowModality(Qt::WindowModal);
 		window->setAttribute(Qt::WA_DeleteOnClose);
 		window->setWindowFlags(Qt::Dialog);
 		window->setWindowTitle(tr("RGBD camera viewer"));
-		window->setMinimumWidth(800);
-		window->setMinimumHeight(600);
+		window->setMinimumWidth(1280);
+		window->setMinimumHeight(480);
 		connect( window, SIGNAL(destroyed(QObject*)), this, SLOT(cleanRGBDCameraTest()) );
 		window->registerToEventsManager();
 
@@ -3533,58 +3432,8 @@ void PreferencesDialog::testRGBDCamera()
 
 void PreferencesDialog::calibrate()
 {
-	CameraRGBD * camera = 0;
-	if(this->getSourceRGBD() == kSrcOpenNI_PCL)
-	{
-		camera = new CameraOpenni(
-			this->getSourceOpenniDevice().toStdString(),
-			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFx(),
-			this->getSourceOpenniFy(),
-			this->getSourceOpenniCx(),
-			this->getSourceOpenniCy());
-	}
-	else if(this->getSourceRGBD() == kSrcOpenNI2)
-	{
-		camera = new CameraOpenNI2(
-			this->getSourceOpenniDevice().toStdString(),
-			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFx(),
-			this->getSourceOpenniFy(),
-			this->getSourceOpenniCx(),
-			this->getSourceOpenniCy());
-
-	}
-	else if(this->getSourceRGBD() == kSrcFreenect)
-	{
-		camera = new CameraFreenect(
-			this->getSourceOpenniDevice().isEmpty()?0:atoi(this->getSourceOpenniDevice().toStdString().c_str()),
-			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFx(),
-			this->getSourceOpenniFy(),
-			this->getSourceOpenniCx(),
-			this->getSourceOpenniCy());
-	}
-	else if(this->getSourceRGBD() == kSrcOpenNI_CV || this->getSourceRGBD() == kSrcOpenNI_CV_ASUS)
-	{
-		camera = new CameraOpenNICV(
-			this->getSourceRGBD() == kSrcOpenNI_CV_ASUS,
-			this->getGeneralInputRate(),
-			this->getSourceOpenniLocalTransform(),
-			this->getSourceOpenniFx(),
-			this->getSourceOpenniFy(),
-			this->getSourceOpenniCx(),
-			this->getSourceOpenniCy());
-	}
-	else
-	{
-		UFATAL("RGBD Source type undefined!");
-	}
-
-	if(!camera->init())
+	CameraRGBD * camera = this->createCameraRGBD();
+	if(!camera->init("")) // don't set calibration folder to use raw images
 	{
 		QMessageBox::warning(this,
 			   tr("RTAB-Map"),
@@ -3592,7 +3441,7 @@ void PreferencesDialog::calibrate()
 		delete camera;
 		camera = 0;
 	}
-	else if(this->getSourceRGBD() == kSrcOpenNI2)
+	else if(dynamic_cast<CameraOpenNI2*>(camera) != 0)
 	{
 		((CameraOpenNI2*)camera)->setAutoWhiteBalance(getSourceOpenni2AutoWhiteBalance());
 		((CameraOpenNI2*)camera)->setAutoExposure(getSourceOpenni2AutoExposure());
@@ -3608,33 +3457,32 @@ void PreferencesDialog::calibrate()
 
 	if(camera)
 	{
-		CalibrationDialog * dialog = new CalibrationDialog(this);
-		dialog->registerToEventsManager();
+		if(!this->getCameraInfoDir().isEmpty())
+		{
+			QDir dir(this->getCameraInfoDir());
+			if (!dir.exists())
+			{
+				UINFO("Creating camera_info directory: \"%s\"", this->getCameraInfoDir().toStdString().c_str());
+				if(!dir.mkpath(this->getCameraInfoDir()))
+				{
+					UWARN("Could create camera_info directory: \"%s\"", this->getCameraInfoDir().toStdString().c_str());
+				}
+			}
+		}
+		_calibrationDialog->setStereoMode(dynamic_cast<CameraStereoDC1394*>(camera)!=0);
+		_calibrationDialog->setSavingDirectory(this->getCameraInfoDir());
+		_calibrationDialog->registerToEventsManager();
 
 		CameraThread cameraThread(camera);
-		UEventsManager::createPipe(&cameraThread, dialog, "CameraEvent");
+		UEventsManager::createPipe(&cameraThread, _calibrationDialog, "CameraEvent");
 
 		cameraThread.start();
 
-		if(dialog->exec() == QDialog::Accepted)
-		{
-			_ui->doubleSpinBox_openniFx->setValue(dialog->fx());
-			_ui->doubleSpinBox_openniFy->setValue(dialog->fy());
-			_ui->doubleSpinBox_openniCx->setValue(dialog->cx());
-			_ui->doubleSpinBox_openniCy->setValue(dialog->cy());
-		}
+		_calibrationDialog->exec();
+		_calibrationDialog->unregisterFromEventsManager();
 
 		cameraThread.join(true);
-		delete dialog;
 	}
-}
-
-void PreferencesDialog::resetCalibration()
-{
-	_ui->doubleSpinBox_openniFx->setValue(0);
-	_ui->doubleSpinBox_openniFy->setValue(0);
-	_ui->doubleSpinBox_openniCx->setValue(0);
-	_ui->doubleSpinBox_openniCy->setValue(0);
 }
 
 }

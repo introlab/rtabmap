@@ -867,10 +867,22 @@ bool Rtabmap::process(const SensorData & data)
 	// Memory Update : Location creation + Add to STM + Weight Update (Rehearsal)
 	//============================================================
 	ULOGGER_INFO("Updating memory...");
-	if(!_memory->update(data, &statistics_))
+	if(_rgbdSlamMode)
 	{
-		return false;
+		if(!_memory->update(data, &statistics_))
+		{
+			return false;
+		}
 	}
+	else
+	{
+		SensorData dataImageOnly(data.image(), data.id(), data.stamp(), data.userData());
+		if(!_memory->update(dataImageOnly, &statistics_))
+		{
+			return false;
+		}
+	}
+
 
 	signature = _memory->getLastWorkingSignature();
 	if(!signature)

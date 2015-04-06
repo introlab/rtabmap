@@ -80,26 +80,19 @@ class RTABMAP_EXP CameraRGBD
 public:
 	virtual ~CameraRGBD();
 	void takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
-	virtual bool init() = 0;
+	virtual bool init(const std::string & calibrationFolder = ".") = 0;
+	virtual bool isCalibrated() const = 0;
 	virtual std::string getSerial() const = 0;
 
 	//getters
 	float getImageRate() const {return _imageRate;}
 	const Transform & getLocalTransform() const {return _localTransform;}
 	bool isMirroringEnabled() const {return _mirroring;}
-	float getFx() const {return _fx;}
-	float getFy() const {return _fy;}
-	float getCx() const {return _cx;}
-	float getCy() const {return _cy;}
 
 	//setters
 	void setImageRate(float imageRate) {_imageRate = imageRate;}
 	void setLocalTransform(const Transform & localTransform) {_localTransform= localTransform;}
 	void setMirroringEnabled(bool mirroring) {_mirroring = mirroring;}
-	void setFx(float fx) {_fx = fx;}
-	void setFy(float fy) {_fy = fy;}
-	void setCx(float cx) {_cx = cx;}
-	void setCy(float cy) {_cy = cy;}
 
 protected:
 	/**
@@ -108,11 +101,7 @@ protected:
 	 * @param imageRate : image/second , 0 for fast as the camera can
 	 */
 	CameraRGBD(float imageRate = 0,
-				const Transform & localTransform = Transform::getIdentity(),
-				float fx = 0.0f,
-				float fy = 0.0f,
-				float cx = 0.0f,
-				float cy = 0.0f);
+				const Transform & localTransform = Transform::getIdentity());
 
 	/**
 	 * returned rgb and depth images should be already rectified
@@ -124,10 +113,6 @@ private:
 	Transform _localTransform;
 	bool _mirroring;
 	UTimer * _frameRateTimer;
-	float _fx;
-	float _fy;
-	float _cx;
-	float _cy;
 };
 
 /////////////////////////
@@ -143,11 +128,7 @@ public:
 	// default local transform z in, x right, y down));
 	CameraOpenni(const std::string & deviceId="",
 			float imageRate = 0,
-			const Transform & localTransform = Transform::getIdentity(),
-			float fx = 0.0f,
-			float fy = 0.0f,
-			float cx = 0.0f,
-			float cy = 0.0f);
+			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraOpenni();
 
     void image_cb (
@@ -155,7 +136,8 @@ public:
 			const boost::shared_ptr<openni_wrapper::DepthImage>& depth,
 			float constant);
 
-    virtual bool init();
+    virtual bool init(const std::string & calibrationFolder = ".");
+    virtual bool isCalibrated() const;
     virtual std::string getSerial() const;
 
 protected:
@@ -185,14 +167,11 @@ public:
 public:
 	CameraOpenNICV(bool asus = false,
 					float imageRate = 0,
-					const Transform & localTransform = Transform::getIdentity(),
-					float fx = 0.0f,
-					float fy = 0.0f,
-					float cx = 0.0f,
-					float cy = 0.0f);
+					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraOpenNICV();
 
-	virtual bool init();
+	virtual bool init(const std::string & calibrationFolder = ".");
+	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const {return "";} // unknown with OpenCV
 
 protected:
@@ -218,14 +197,11 @@ public:
 public:
 	CameraOpenNI2(const std::string & deviceId = "",
 					float imageRate = 0,
-					const Transform & localTransform = Transform::getIdentity(),
-					float fx = 0.0f,
-					float fy = 0.0f,
-					float cx = 0.0f,
-					float cy = 0.0f);
+					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraOpenNI2();
 
-	virtual bool init();
+	virtual bool init(const std::string & calibrationFolder = ".");
+	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
 	bool setAutoWhiteBalance(bool enabled);
@@ -262,14 +238,11 @@ public:
 	// default local transform z in, x right, y down));
 	CameraFreenect(int deviceId= 0,
 					float imageRate=0.0f,
-					const Transform & localTransform = Transform::getIdentity(),
-					float fx = 0.0f,
-					float fy = 0.0f,
-					float cx = 0.0f,
-					float cy = 0.0f);
+					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraFreenect();
 
-	bool init();
+	bool init(const std::string & calibrationFolder = ".");
+	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
 protected:
@@ -295,14 +268,11 @@ public:
 	// default local transform z in, x right, y down));
 	CameraFreenect2(int deviceId= 0,
 					float imageRate=0.0f,
-					const Transform & localTransform = Transform::getIdentity(),
-					float fx = 0.0f,
-					float fy = 0.0f,
-					float cx = 0.0f,
-					float cy = 0.0f);
+					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraFreenect2();
 
-	bool init();
+	bool init(const std::string & calibrationFolder = ".");
+	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
 protected:
@@ -320,39 +290,24 @@ private:
 /////////////////////////
 class DC1394Device;
 
-class RTABMAP_EXP CameraDC1394 :
+class RTABMAP_EXP CameraStereoDC1394 :
 	public CameraRGBD
 {
 public:
 	static bool available();
 
 public:
-	// The first constructor will not check for calibration files, so
-	// the images returned won't be rectified
-	CameraDC1394( float imageRate=0.0f,
-					const Transform & localTransform = Transform::getIdentity(),
-					float fx = 0.0f,
-					float fy = 0.0f,
-					float cx = 0.0f,
-					float cy = 0.0f);
-	CameraDC1394(const std::string & calibrationFolder,
-					float imageRate=0.0f,
-					const Transform & localTransform = Transform::getIdentity(),
-					float fx = 0.0f,
-					float fy = 0.0f,
-					float cx = 0.0f,
-					float cy = 0.0f);
-	virtual ~CameraDC1394();
+	CameraStereoDC1394( float imageRate=0.0f, const Transform & localTransform = Transform::getIdentity());
+	virtual ~CameraStereoDC1394();
 
-	bool init();
+	bool init(const std::string & calibrationFolder = ".");
+	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
 protected:
 	virtual void captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy);
 
 private:
-	bool lookForCalibration_;
-	std::string calibrationFolder_;
 	DC1394Device *device_;
 	StereoCameraModel stereoModel_;
 };

@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QCloseEvent>
 
 #include <rtabmap/core/CameraEvent.h>
 #include <rtabmap/gui/UCv2Qt.h>
@@ -47,13 +48,13 @@ namespace rtabmap {
 
 #define COUNT_MIN 40
 
-CalibrationDialog::CalibrationDialog(bool stereo, QWidget * parent) :
+CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirectory, QWidget * parent) :
 	QDialog(parent),
-	boardSize_(8,6),
-	squareSize_(0.033),
 	stereo_(stereo),
+	savingDirectory_(savingDirectory),
 	calibrated_(false),
-	processingData_(false)
+	processingData_(false),
+	savedCalibration_(false)
 {
 	imagePoints_.resize(2);
 	imageParams_.resize(2);
@@ -64,25 +65,6 @@ CalibrationDialog::CalibrationDialog(bool stereo, QWidget * parent) :
 	ui_ = new Ui_calibrationDialog();
 	ui_->setupUi(this);
 
-	if(!stereo_)
-	{
-		ui_->progressBar_x_2->setVisible(false);
-		ui_->progressBar_y_2->setVisible(false);
-		ui_->progressBar_size_2->setVisible(false);
-		ui_->progressBar_skew_2->setVisible(false);
-		ui_->image_view_2->setVisible(false);
-		ui_->label_fx_2->setVisible(false);
-		ui_->label_fy_2->setVisible(false);
-		ui_->label_cx_2->setVisible(false);
-		ui_->label_cy_2->setVisible(false);
-		ui_->label_baseline->setVisible(false);
-		ui_->label_baseline_name->setVisible(false);
-		ui_->lineEdit_K_2->setVisible(false);
-		ui_->lineEdit_D_2->setVisible(false);
-		ui_->lineEdit_R_2->setVisible(false);
-		ui_->lineEdit_P_2->setVisible(false);
-	}
-
 	connect(ui_->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
 	connect(ui_->pushButton_restart, SIGNAL(clicked()), this, SLOT(restart()));
 	connect(ui_->pushButton_save, SIGNAL(clicked()), this, SLOT(save()));
@@ -91,15 +73,14 @@ CalibrationDialog::CalibrationDialog(bool stereo, QWidget * parent) :
 	connect(ui_->spinBox_boardHeight, SIGNAL(valueChanged(int)), this, SLOT(setBoardHeight(int)));
 	connect(ui_->doubleSpinBox_squareSize, SIGNAL(valueChanged(double)), this, SLOT(setSquareSize(double)));
 
-	connect(ui_->buttonBox, SIGNAL(rejected()), this, SLOT(reject()));
-	connect(ui_->buttonBox, SIGNAL(accepted()), this, SLOT(accept()));
+	connect(ui_->buttonBox, SIGNAL(rejected()), this, SLOT(close()));
 
 	ui_->image_view->setFocus();
 
 	ui_->progressBar_count->setMaximum(COUNT_MIN);
 	ui_->progressBar_count->setFormat("%v");
 
-	this->restart();
+	this->setStereoMode(stereo_);
 }
 
 CalibrationDialog::~CalibrationDialog()
@@ -108,36 +89,120 @@ CalibrationDialog::~CalibrationDialog()
 	delete ui_;
 }
 
+void CalibrationDialog::saveSettings(QSettings & settings, const QString & group) const
+{
+	if(!group.isEmpty())
+	{
+		settings.beginGroup(group);
+	}
+	settings.setValue("board_width", ui_->spinBox_boardWidth->value());
+	settings.setValue("board_height", ui_->spinBox_boardHeight->value());
+	settings.setValue("board_square_size", ui_->doubleSpinBox_squareSize->value());
+	settings.setValue("geometry", this->saveGeometry());
+	if(!group.isEmpty())
+	{
+		settings.endGroup();
+	}
+}
+
+void CalibrationDialog::loadSettings(QSettings & settings, const QString & group)
+{
+	if(!group.isEmpty())
+	{
+		settings.beginGroup(group);
+	}
+	this->setBoardWidth(settings.value("board_width", ui_->spinBox_boardWidth->value()).toInt());
+	this->setBoardHeight(settings.value("board_height", ui_->spinBox_boardHeight->value()).toInt());
+	this->setSquareSize(settings.value("board_square_size", ui_->doubleSpinBox_squareSize->value()).toDouble());
+	QByteArray bytes = settings.value("geometry", QByteArray()).toByteArray();
+	if(!bytes.isEmpty())
+	{
+		this->restoreGeometry(bytes);
+	}
+	if(!group.isEmpty())
+	{
+		settings.endGroup();
+	}
+}
+
+void CalibrationDialog::setStereoMode(bool stereo)
+{
+	this->restart();
+
+	stereo_ = stereo;
+	ui_->progressBar_x_2->setVisible(stereo_);
+	ui_->progressBar_y_2->setVisible(stereo_);
+	ui_->progressBar_size_2->setVisible(stereo_);
+	ui_->progressBar_skew_2->setVisible(stereo_);
+	ui_->image_view_2->setVisible(stereo_);
+	ui_->label_fx_2->setVisible(stereo_);
+	ui_->label_fy_2->setVisible(stereo_);
+	ui_->label_cx_2->setVisible(stereo_);
+	ui_->label_cy_2->setVisible(stereo_);
+	ui_->label_baseline->setVisible(stereo_);
+	ui_->label_baseline_name->setVisible(stereo_);
+	ui_->lineEdit_K_2->setVisible(stereo_);
+	ui_->lineEdit_D_2->setVisible(stereo_);
+	ui_->lineEdit_R_2->setVisible(stereo_);
+	ui_->lineEdit_P_2->setVisible(stereo_);
+}
+
 void CalibrationDialog::setBoardWidth(int width)
 {
-	if(width != boardSize_.width)
+	if(width != ui_->spinBox_boardWidth->value())
 	{
-		boardSize_.width = width;
+		ui_->spinBox_boardWidth->setValue(width);
 		this->restart();
 	}
 }
 
 void CalibrationDialog::setBoardHeight(int height)
 {
-	if(height != boardSize_.height)
+	if(height != ui_->spinBox_boardHeight->value())
 	{
-		boardSize_.height = height;
+		ui_->spinBox_boardHeight->setValue(height);
 		this->restart();
 	}
 }
 
 void CalibrationDialog::setSquareSize(double size)
 {
-	if(size != squareSize_)
+	if(size != ui_->doubleSpinBox_squareSize->value())
 	{
-		squareSize_ = size;
+		ui_->doubleSpinBox_squareSize->setValue(size);
 		this->restart();
 	}
 }
 
 void CalibrationDialog::closeEvent(QCloseEvent* event)
 {
-	this->unregisterFromEventsManager();
+	if(!savedCalibration_ && calibrated_)
+	{
+		QMessageBox::StandardButton b = QMessageBox::question(this, tr("Save calibration?"),
+				tr("The camera is calibrated but you didn't "
+				   "save the calibration, do you want to save it?"),
+				QMessageBox::Yes | QMessageBox::Ignore | QMessageBox::Cancel, QMessageBox::Yes);
+		event->ignore();
+		if(b == QMessageBox::Yes)
+		{
+			if(this->save())
+			{
+				event->accept();
+			}
+		}
+		else if(b == QMessageBox::Ignore)
+		{
+			event->accept();
+		}
+	}
+	else
+	{
+		event->accept();
+	}
+	if(event->isAccepted())
+	{
+		this->unregisterFromEventsManager();
+	}
 }
 
 void CalibrationDialog::handleEvent(UEvent * event)
@@ -207,6 +272,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 		}
 
 		bool found = false;
+		cv::Size boardSize(ui_->spinBox_boardWidth->value(), ui_->spinBox_boardHeight->value());
 		if(!viewGray.empty())
 		{
 			int maxScale = 1;
@@ -217,7 +283,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 					timg = viewGray;
 				else
 					cv::resize(viewGray, timg, cv::Size(), scale, scale);
-				found = cv::findChessboardCorners(timg, boardSize_, pointBuf[id],
+				found = cv::findChessboardCorners(timg, boardSize, pointBuf[id],
 						CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE);
 				if(found)
 				{
@@ -248,10 +314,10 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 					cv::TermCriteria( CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1 ));
 
 			boardAccepted[id] = true;
-			getParams(pointBuf[id], boardSize_, imageSize_[id], params[id][0], params[id][1], params[id][2], params[id][3]);
+			getParams(pointBuf[id], boardSize, imageSize_[id], params[id][0], params[id][1], params[id][2], params[id][3]);
 
 			// Draw the corners.
-			cv::drawChessboardCorners(images[id], boardSize_, cv::Mat(pointBuf[id]), found);
+			cv::drawChessboardCorners(images[id], boardSize, cv::Mat(pointBuf[id]), found);
 		}
 	}
 
@@ -392,6 +458,7 @@ void CalibrationDialog::restart()
 {
 	// restart
 	calibrated_ = false;
+	savedCalibration_ = false;
 	imagePoints_[0].clear();
 	imagePoints_[1].clear();
 	imageParams_[0].clear();
@@ -402,7 +469,6 @@ void CalibrationDialog::restart()
 
 	ui_->pushButton_calibrate->setEnabled(false);
 	ui_->pushButton_save->setEnabled(false);
-	ui_->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
 	ui_->checkBox_rectified->setEnabled(false);
 
 	ui_->progressBar_count->reset();
@@ -442,11 +508,23 @@ void CalibrationDialog::calibrate()
 {
 	UINFO("Calibration...");
 	processingData_ = true;
+	savedCalibration_ = false;
+
+	QMessageBox mb(QMessageBox::Information,
+			tr("Calibrating..."),
+			tr("Operation in progress. You have time to take a coffee!"));
+	mb.show();
+	QApplication::processEvents();
+	uSleep(100); // hack make sure the text in the QMessageBox is shown...
+	QApplication::processEvents();
+
 	std::vector<std::vector<cv::Point3f> > objectPoints(1);
+	cv::Size boardSize(ui_->spinBox_boardWidth->value(), ui_->spinBox_boardHeight->value());
+	float squareSize = ui_->doubleSpinBox_squareSize->value();
 	// compute board corner positions
-	for( int i = 0; i < boardSize_.height; ++i )
-		for( int j = 0; j < boardSize_.width; ++j )
-			objectPoints[0].push_back(cv::Point3f(float( j*squareSize_ ), float( i*squareSize_ ), 0));
+	for( int i = 0; i < boardSize.height; ++i )
+		for( int j = 0; j < boardSize.width; ++j )
+			objectPoints[0].push_back(cv::Point3f(float( j*squareSize ), float( i*squareSize ), 0));
 
 	objectPoints.resize(imagePoints_[0].size(),objectPoints[0]);
 
@@ -523,7 +601,6 @@ void CalibrationDialog::calibrate()
 			ui_->checkBox_rectified->setEnabled(true);
 			ui_->checkBox_rectified->setChecked(true);
 
-			ui_->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(true);
 			ui_->pushButton_save->setEnabled(true);
 		}
 	}
@@ -631,24 +708,23 @@ void CalibrationDialog::calibrate()
 			ui_->checkBox_rectified->setEnabled(true);
 			ui_->checkBox_rectified->setChecked(true);
 
-			ui_->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(true);
 			ui_->pushButton_save->setEnabled(true);
 		}
 	}
 
 	UINFO("End calibration");
-
 	processingData_ = false;
 }
 
-void CalibrationDialog::save()
+bool CalibrationDialog::save()
 {
+	bool saved = false;
 	processingData_ = true;
 	if(!stereo_)
 	{
 		UASSERT(model_.isValid());
 		QString cameraName = model_.name().c_str();
-		QString filePath = QFileDialog::getSaveFileName(this, tr("Export"), cameraName+".yaml", "*.yaml");
+		QString filePath = QFileDialog::getSaveFileName(this, tr("Export"), savingDirectory_+"/"+cameraName+".yaml", "*.yaml");
 
 		if(!filePath.isEmpty())
 		{
@@ -656,6 +732,8 @@ void CalibrationDialog::save()
 			{
 				QMessageBox::information(this, tr("Export"), tr("Calibration file saved to \"%1\".").arg(filePath));
 				UINFO("Saved \"%s\"!", filePath.toStdString().c_str());
+				savedCalibration_ = true;
+				saved = true;
 			}
 			else
 			{
@@ -667,7 +745,7 @@ void CalibrationDialog::save()
 	{
 		UASSERT(stereoModel_.isValid());
 		QString cameraName = stereoModel_.name().c_str();
-		QString filePath = QFileDialog::getSaveFileName(this, tr("Export"), cameraName, "*.yaml");
+		QString filePath = QFileDialog::getSaveFileName(this, tr("Export"), savingDirectory_ + "/" + cameraName, "*.yaml");
 		std::string name = UFile::getName(filePath.toStdString());
 		std::string dir = UDirectory::getDir(filePath.toStdString());
 		if(!name.empty())
@@ -680,6 +758,8 @@ void CalibrationDialog::save()
 				QMessageBox::information(this, tr("Export"), tr("Calibration files saved to \"%1\" and \"%2\".").
 						arg(leftPath.c_str()).arg(rightPath.c_str()));
 				UINFO("Saved \"%s\" and \"%s\"!", leftPath.c_str(), rightPath.c_str());
+				savedCalibration_ = true;
+				saved = true;
 			}
 			else
 			{
@@ -688,6 +768,7 @@ void CalibrationDialog::save()
 		}
 	}
 	processingData_ = false;
+	return saved;
 }
 
 float CalibrationDialog::getArea(const std::vector<cv::Point2f> & corners, const cv::Size & boardSize)

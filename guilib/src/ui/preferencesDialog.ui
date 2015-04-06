@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>744</width>
-            <height>1110</height>
+            <width>737</width>
+            <height>982</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>23</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1687,62 +1687,80 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </widget>
                        </item>
                        <item>
-                        <layout class="QHBoxLayout" name="horizontalLayout_7">
-                         <item>
-                          <widget class="QRadioButton" name="radioButton_opennipcl">
-                           <property name="text">
-                            <string>OpenNI-PCL</string>
+                        <layout class="QGridLayout" name="gridLayout_55" columnstretch="0,0,1">
+                         <item row="0" column="1">
+                          <widget class="QComboBox" name="comboBox_cameraRGBD">
+                           <property name="sizeAdjustPolicy">
+                            <enum>QComboBox::AdjustToContents</enum>
                            </property>
-                           <property name="checked">
+                           <item>
+                            <property name="text">
+                             <string>OpenNI-PCL</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Freenect</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>OpenNI-CV</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>OpenNI-CV-ASUS</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>OpenNI2</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Freenect2</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>StereoDC1394</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QPushButton" name="pushButton_calibrate">
+                           <property name="text">
+                            <string>Calibrate</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="2">
+                          <widget class="QLabel" name="label_46">
+                           <property name="text">
+                            <string>On initialization, calibration files are loaded from the &quot;camera_info&quot; folder in the working directory.</string>
+                           </property>
+                           <property name="wordWrap">
                             <bool>true</bool>
                            </property>
                           </widget>
                          </item>
-                         <item>
-                          <widget class="QRadioButton" name="radioButton_freenect">
-                           <property name="text">
-                            <string>Feeenect</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QRadioButton" name="radioButton_opennicv">
-                           <property name="text">
-                            <string>OpenNI-CV</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QRadioButton" name="radioButton_opennicvasus">
-                           <property name="text">
-                            <string>OpenNI-CV-ASUS</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QRadioButton" name="radioButton_openni2">
-                           <property name="text">
-                            <string>OpenNI2</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <spacer name="horizontalSpacer">
-                           <property name="orientation">
-                            <enum>Qt::Horizontal</enum>
-                           </property>
-                           <property name="sizeHint" stdset="0">
-                            <size>
-                             <width>40</width>
-                             <height>20</height>
-                            </size>
-                           </property>
-                          </spacer>
-                         </item>
-                         <item>
+                         <item row="2" column="1">
                           <widget class="QPushButton" name="pushButton_test_rgbd_camera">
                            <property name="text">
                             <string>Test</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="2">
+                          <widget class="QLabel" name="label_228">
+                           <property name="text">
+                            <string>Driver</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
                            </property>
                           </widget>
                          </item>
@@ -1894,116 +1912,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                           </widget>
                          </item>
                         </layout>
-                       </item>
-                       <item>
-                        <widget class="QGroupBox" name="groupBox_3">
-                         <property name="title">
-                          <string>Calibration</string>
-                         </property>
-                         <layout class="QVBoxLayout" name="verticalLayout_41">
-                          <item>
-                           <widget class="QLabel" name="label_160">
-                            <property name="text">
-                             <string>Camera intrinsic parameters. While the default values are good, a calibration is recommended to increase the precision of the 3D clouds. Set values to 0 to use the default parameters from the camera. For example, the focal length is ~525 for Kinect and ~545 for Xtion Pro Live. The button &quot;Calibrate&quot; below can be used to calibrate the camera with a chessboard pattern.</string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
-                          <item>
-                           <layout class="QGridLayout" name="gridLayout_55" columnstretch="0,1">
-                            <item row="0" column="0">
-                             <widget class="QDoubleSpinBox" name="doubleSpinBox_openniFx">
-                              <property name="maximum">
-                               <double>1000.000000000000000</double>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="0" column="1">
-                             <widget class="QLabel" name="label_161">
-                              <property name="text">
-                               <string>fx=K[0]</string>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="1" column="0">
-                             <widget class="QDoubleSpinBox" name="doubleSpinBox_openniFy">
-                              <property name="maximum">
-                               <double>1000.000000000000000</double>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="1" column="1">
-                             <widget class="QLabel" name="label_162">
-                              <property name="text">
-                               <string>fy=K[4]</string>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="2" column="0">
-                             <widget class="QDoubleSpinBox" name="doubleSpinBox_openniCx">
-                              <property name="maximum">
-                               <double>1000.000000000000000</double>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="2" column="1">
-                             <widget class="QLabel" name="label_166">
-                              <property name="text">
-                               <string>cx=K[2]</string>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="3" column="0">
-                             <widget class="QDoubleSpinBox" name="doubleSpinBox_openniCy">
-                              <property name="maximum">
-                               <double>1000.000000000000000</double>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="3" column="1">
-                             <widget class="QLabel" name="label_165">
-                              <property name="text">
-                               <string>cy=K[5]</string>
-                              </property>
-                             </widget>
-                            </item>
-                           </layout>
-                          </item>
-                          <item>
-                           <layout class="QHBoxLayout" name="horizontalLayout_8">
-                            <item>
-                             <widget class="QPushButton" name="pushButton_calibrate">
-                              <property name="text">
-                               <string>Calibrate</string>
-                              </property>
-                             </widget>
-                            </item>
-                            <item>
-                             <widget class="QPushButton" name="pushButton_calibrate_reset">
-                              <property name="text">
-                               <string>Reset</string>
-                              </property>
-                             </widget>
-                            </item>
-                            <item>
-                             <spacer name="horizontalSpacer_3">
-                              <property name="orientation">
-                               <enum>Qt::Horizontal</enum>
-                              </property>
-                              <property name="sizeHint" stdset="0">
-                               <size>
-                                <width>40</width>
-                                <height>20</height>
-                               </size>
-                              </property>
-                             </spacer>
-                            </item>
-                           </layout>
-                          </item>
-                         </layout>
-                        </widget>
                        </item>
                       </layout>
                      </widget>

@@ -27,5 +27,6 @@
         <file>images/kinect_xbox_one.png</file>
         <file>images/sense.png</file>
         <file>images/xtion_pro_live.png</file>
+        <file>images/bumblebee2.png</file>
     </qresource>
 </RCC>

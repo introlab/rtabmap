@@ -66,15 +66,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
-CameraRGBD::CameraRGBD(float imageRate, const Transform & localTransform, float fx, float fy, float cx, float cy) :
+CameraRGBD::CameraRGBD(float imageRate, const Transform & localTransform) :
 	_imageRate(imageRate),
 	_localTransform(localTransform),
 	_mirroring(false),
-	_frameRateTimer(new UTimer()),
-	_fx(fx),
-	_fy(fy),
-	_cx(cx),
-	_cy(cy)
+	_frameRateTimer(new UTimer())
 {
 }
 
@@ -110,22 +106,6 @@ void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & f
 
 	UTimer timer;
 	this->captureImage(rgb, depth, fx, fy, cx, cy);
-	if(_fx)
-	{
-		fx = _fx; // override if set
-	}
-	if(_fy)
-	{
-		fy = _fy; // override if set
-	}
-	if(_cx)
-	{
-		cx = _cx; // override if set
-	}
-	if(_cy)
-	{
-		cy = _cy; // override if set
-	}
 	if(!rgb.empty() && !depth.empty() && _mirroring)
 	{
 		cv::flip(rgb,rgb,1);
@@ -141,8 +121,8 @@ void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & f
 /////////////////////////
 // CameraOpenNIPCL
 /////////////////////////
-CameraOpenni::CameraOpenni(const std::string & deviceId, float imageRate, const Transform & localTransform, float fx, float fy, float cx, float cy) :
-		CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
+CameraOpenni::CameraOpenni(const std::string & deviceId, float imageRate, const Transform & localTransform) :
+		CameraRGBD(imageRate, localTransform),
 		interface_(0),
 		deviceId_(deviceId),
 		depthConstant_(0.0f)
@@ -190,7 +170,7 @@ void CameraOpenni::image_cb (
 	}
 }
 
-bool CameraOpenni::init()
+bool CameraOpenni::init(const std::string & calibrationFolder)
 {
 	if(interface_)
 	{
@@ -223,6 +203,11 @@ bool CameraOpenni::init()
 		return false;
 	}
 	return true;
+}
+
+bool CameraOpenni::isCalibrated() const
+{
+	return depthConstant_ > 0.0f;
 }
 
 std::string CameraOpenni::getSerial() const
@@ -266,8 +251,8 @@ bool CameraOpenNICV::available()
 	return cv::getBuildInformation().find("OpenNI:                      YES") != std::string::npos;
 }
 
-CameraOpenNICV::CameraOpenNICV(bool asus, float imageRate, const rtabmap::Transform & localTransform, float fx, float fy, float cx, float cy) :
-	CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
+CameraOpenNICV::CameraOpenNICV(bool asus, float imageRate, const rtabmap::Transform & localTransform) :
+	CameraRGBD(imageRate, localTransform),
 	_asus(asus),
 	_depthFocal(0.0f)
 {
@@ -279,7 +264,7 @@ CameraOpenNICV::~CameraOpenNICV()
 	_capture.release();
 }
 
-bool CameraOpenNICV::init()
+bool CameraOpenNICV::init(const std::string & calibrationFolder)
 {
 	if(_capture.isOpened())
 	{
@@ -326,6 +311,11 @@ bool CameraOpenNICV::init()
 		return false;
 	}
 	return true;
+}
+
+bool CameraOpenNICV::isCalibrated() const
+{
+	return _depthFocal > 0.0f;
 }
 
 void CameraOpenNICV::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
@@ -375,12 +365,8 @@ bool CameraOpenNI2::exposureGainAvailable()
 CameraOpenNI2::CameraOpenNI2(
 		const std::string & deviceId,
 		float imageRate,
-		const rtabmap::Transform & localTransform,
-		float fx,
-		float fy,
-		float cx,
-		float cy) :
-	CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
+		const rtabmap::Transform & localTransform) :
+	CameraRGBD(imageRate, localTransform),
 #ifdef WITH_OPENNI2
 	_device(new openni::Device()),
 	_color(new openni::VideoStream()),
@@ -484,7 +470,7 @@ bool CameraOpenNI2::setMirroring(bool enabled)
 	return false;
 }
 
-bool CameraOpenNI2::init()
+bool CameraOpenNI2::init(const std::string & calibrationFolder)
 {
 #ifdef WITH_OPENNI2
 	openni::OpenNI::initialize();
@@ -644,6 +630,11 @@ bool CameraOpenNI2::init()
 	UERROR("CameraOpenNI2: RTAB-Map is not built with OpenNI2 support!");
 	return false;
 #endif
+}
+
+bool CameraOpenNI2::isCalibrated() const
+{
+	return _depthFx > 0.0f && _depthFy > 0.0f;
 }
 
 std::string CameraOpenNI2::getSerial() const
@@ -904,8 +895,8 @@ bool CameraFreenect::available()
 #endif
 }
 
-CameraFreenect::CameraFreenect(int deviceId, float imageRate, const Transform & localTransform, float fx, float fy, float cx, float cy) :
-		CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
+CameraFreenect::CameraFreenect(int deviceId, float imageRate, const Transform & localTransform) :
+		CameraRGBD(imageRate, localTransform),
 		deviceId_(deviceId),
 		ctx_(0),
 		freenectDevice_(0)
@@ -933,7 +924,7 @@ CameraFreenect::~CameraFreenect()
 #endif
 }
 
-bool CameraFreenect::init()
+bool CameraFreenect::init(const std::string & calibrationFolder)
 {
 #ifdef WITH_FREENECT
 	if(freenectDevice_)
@@ -967,6 +958,11 @@ bool CameraFreenect::init()
 	UERROR("CameraFreenect: RTAB-Map is not built with Freenect support!");
 #endif
 	return false;
+}
+
+bool CameraFreenect::isCalibrated() const
+{
+	return freenectDevice_ != 0 && freenectDevice_->getDepthFocal() > 0.0f;
 }
 
 std::string CameraFreenect::getSerial() const
@@ -1032,8 +1028,8 @@ bool CameraFreenect2::available()
 #endif
 }
 
-CameraFreenect2::CameraFreenect2(int deviceId, float imageRate, const Transform & localTransform, float fx, float fy, float cx, float cy) :
-		CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
+CameraFreenect2::CameraFreenect2(int deviceId, float imageRate, const Transform & localTransform) :
+		CameraRGBD(imageRate, localTransform),
 		deviceId_(deviceId),
 		freenect2_(0),
 		dev_(0)
@@ -1065,7 +1061,7 @@ CameraFreenect2::~CameraFreenect2()
 #endif
 }
 
-bool CameraFreenect2::init()
+bool CameraFreenect2::init(const std::string & calibrationFolder)
 {
 #ifdef WITH_FREENECT2
 	if(dev_)
@@ -1100,6 +1096,12 @@ bool CameraFreenect2::init()
 #else
 	UERROR("CameraFreenect2: RTAB-Map is not built with Freenect2 support!");
 #endif
+	return false;
+}
+
+bool CameraFreenect2::isCalibrated() const
+{
+	UWARN("Freenect2 calibration not yet implemented!");
 	return false;
 }
 
@@ -1440,7 +1442,7 @@ private:
 };
 #endif
 
-bool CameraDC1394::available()
+bool CameraStereoDC1394::available()
 {
 #ifdef WITH_DC1394
 	return true;
@@ -1449,9 +1451,8 @@ bool CameraDC1394::available()
 #endif
 }
 
-CameraDC1394::CameraDC1394(float imageRate, const Transform & localTransform, float fx, float fy, float cx, float cy) :
-		CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
-		lookForCalibration_(false),
+CameraStereoDC1394::CameraStereoDC1394(float imageRate, const Transform & localTransform) :
+		CameraRGBD(imageRate, localTransform),
 		device_(0)
 {
 #ifdef WITH_DC1394
@@ -1459,18 +1460,7 @@ CameraDC1394::CameraDC1394(float imageRate, const Transform & localTransform, fl
 #endif
 }
 
-CameraDC1394::CameraDC1394(const std::string & calibrationFolder, float imageRate, const Transform & localTransform, float fx, float fy, float cx, float cy) :
-		CameraRGBD(imageRate, localTransform, fx, fy, cx, cy),
-		lookForCalibration_(true),
-		calibrationFolder_(calibrationFolder),
-		device_(0)
-{
-#ifdef WITH_DC1394
-	device_ = new DC1394Device();
-#endif
-}
-
-CameraDC1394::~CameraDC1394()
+CameraStereoDC1394::~CameraStereoDC1394()
 {
 #ifdef WITH_DC1394
 	if(device_)
@@ -1480,7 +1470,7 @@ CameraDC1394::~CameraDC1394()
 #endif
 }
 
-bool CameraDC1394::init()
+bool CameraStereoDC1394::init(const std::string & calibrationFolder)
 {
 #ifdef WITH_DC1394
 	if(device_)
@@ -1489,11 +1479,12 @@ bool CameraDC1394::init()
 		if(ok)
 		{
 			// look for calibration files
-			if(lookForCalibration_)
+			if(!calibrationFolder.empty())
 			{
-				if(!stereoModel_.load(calibrationFolder_, device_->guid()))
+				if(!stereoModel_.load(calibrationFolder, device_->guid()))
 				{
-					UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!", device_->guid().c_str(), calibrationFolder_.c_str());
+					UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
+							device_->guid().c_str(), calibrationFolder.c_str());
 				}
 			}
 		}
@@ -1505,7 +1496,12 @@ bool CameraDC1394::init()
 	return false;
 }
 
-std::string CameraDC1394::getSerial() const
+bool CameraStereoDC1394::isCalibrated() const
+{
+	return stereoModel_.isValid();
+}
+
+std::string CameraStereoDC1394::getSerial() const
 {
 #ifdef WITH_DC1394
 	if(device_)
@@ -1516,7 +1512,7 @@ std::string CameraDC1394::getSerial() const
 	return "";
 }
 
-void CameraDC1394::captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy)
+void CameraStereoDC1394::captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy)
 {
 #ifdef WITH_DC1394
 	left = cv::Mat();
