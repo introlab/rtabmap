@@ -89,7 +89,8 @@ public:
 		kSrcOpenNI_CV_ASUS,
 		kSrcOpenNI2,
 		kSrcFreenect2,
-		kSrcStereoDC1394
+		kSrcStereoDC1394,
+		kSrcStereoFlyCapture2
 	};
 
 public:
@@ -242,7 +243,7 @@ private slots:
 	void setupTreeView();
 	void updateBasicParameter();
 	void openDatabaseViewer();
-	void showOpenNI2GroupBox(bool);
+	void updateOpenNI2GroupBoxVisibility();
 	void testOdometry();
 	void testRGBDCamera();
 

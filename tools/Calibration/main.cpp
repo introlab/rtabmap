@@ -46,6 +46,7 @@ void showUsage()
 			"                                       4=OpenNI-CV-ASUS (Xtion PRO Live)\n"
 			"                                       5=Freenect2  (Kinect v2)\n"
 			"                                       6=DC1394     (Bumblebee2)\n"
+			"                                       7=FlyCapture2 (Bumblebee2)\n"
 			"  --device #     Device id\n"
 			"  --debug        Debug log\n"
 			"  --stereo       Stereo\n\n");
@@ -56,6 +57,8 @@ int main(int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kInfo);
+	ULogger::setPrintTime(false);
+	ULogger::setPrintWhere(false);
 
 	int driver = -1;
 	int device = 0;
@@ -99,6 +102,8 @@ int main(int argc, char * argv[])
 		if(strcmp(argv[i], "--debug") == 0)
 		{
 			ULogger::setLevel(ULogger::kDebug);
+			ULogger::setPrintTime(true);
+			ULogger::setPrintWhere(true);
 			continue;
 		}
 		if(strcmp(argv[i], "--stereo") == 0)
@@ -113,9 +118,9 @@ int main(int argc, char * argv[])
 		printf("Unrecognized option : %s\n", argv[i]);
 		showUsage();
 	}
-	if(driver < -1 || driver > 6)
+	if(driver < -1 || driver > 7)
 	{
-		UERROR("driver should be between -1 and 6.");
+		UERROR("driver should be between -1 and 7.");
 		showUsage();
 	}
 
@@ -187,6 +192,15 @@ int main(int argc, char * argv[])
 		}
 		camera = new rtabmap::CameraStereoDC1394();
 	}
+	else if(driver == 7)
+	{
+		if(!rtabmap::CameraStereoFlyCapture2::available())
+		{
+			UERROR("Not built with FlyCapture2/Triclops support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraStereoFlyCapture2();
+	}
 	else
 	{
 		UFATAL("");
@@ -206,7 +220,7 @@ int main(int argc, char * argv[])
 	}
 	else if(camera)
 	{
-		if(!camera->init())
+		if(!camera->init(""))
 		{
 			printf("Camera init failed!\n");
 			delete camera;

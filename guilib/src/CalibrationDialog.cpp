@@ -433,7 +433,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 	{
 		for(int id=0; id<(stereo_?2:1); ++id)
 		{
-			int step = imageSize_[id].height/12;
+			int step = imageSize_[id].height/16;
 			for(int i=step; i<imageSize_[id].height; i+=step)
 			{
 				cv::line(images[id], cv::Point(0, i), cv::Point(imageSize_[id].width, i), CV_RGB(0,255,0));

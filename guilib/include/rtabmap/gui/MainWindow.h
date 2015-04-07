@@ -150,6 +150,7 @@ private slots:
 	void selectOpenni2();
 	void selectFreenect2();
 	void selectStereoDC1394();
+	void selectStereoFlyCapture2();
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void downloadAllClouds();

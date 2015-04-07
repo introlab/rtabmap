@@ -120,14 +120,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->label_map_shown->setText(_ui->label_map_shown->text() + " (Disabled, PCL >=1.7.2 required)");
 #endif
 
-#ifdef _WIN32
-	_ui->radioButton_openni2->setChecked(true);
-	_ui->radioButton_opennipcl->setChecked(false);
-	_ui->groupBox_openni2->setVisible(true);
-#else
-	_ui->groupBox_openni2->setVisible(false);
-#endif
-
 	if(RTABMAP_NONFREE == 0)
 	{
 		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
@@ -165,6 +157,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	if(!CameraStereoDC1394::available())
 	{
 		_ui->comboBox_cameraRGBD->setItemData(6, 0, Qt::UserRole - 1);
+	}
+	if(!CameraStereoFlyCapture2::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(7, 0, Qt::UserRole - 1);
 	}
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
@@ -300,6 +296,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	//openni group
 	connect(_ui->groupBox_sourceOpenni, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_cameraRGBD, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_cameraRGBD, SIGNAL(currentIndexChanged(int)), this, SLOT(updateOpenNI2GroupBoxVisibility()));
 	connect(_ui->openni2_autoWhiteBalance, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_autoExposure, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_exposure, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -931,6 +928,10 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		if(CameraFreenect::available())
 		{
 			_ui->comboBox_cameraRGBD->setCurrentIndex(1); // freenect
+		}
+		else if(CameraOpenNI2::available())
+		{
+			_ui->comboBox_cameraRGBD->setCurrentIndex(4); // openni2
 		}
 		else
 		{
@@ -1657,7 +1658,7 @@ void PreferencesDialog::showEvent ( QShowEvent * event )
 		_ui->label_dictionaryPath->setEnabled(false);
 
 		_ui->groupBox_source0->setEnabled(false);
-		_ui->groupBox_odometry2->setEnabled(false);
+		_ui->groupBox_odometry1->setEnabled(false);
 
 		this->setWindowTitle(tr("Preferences [Monitoring mode]"));
 	}
@@ -1672,7 +1673,7 @@ void PreferencesDialog::showEvent ( QShowEvent * event )
 		_ui->label_dictionaryPath->setEnabled(true);
 
 		_ui->groupBox_source0->setEnabled(true);
-		_ui->groupBox_odometry2->setEnabled(true);
+		_ui->groupBox_odometry1->setEnabled(true);
 
 		this->setWindowTitle(tr("Preferences"));
 	}
@@ -2789,9 +2790,9 @@ void PreferencesDialog::changeDictionaryPath()
 	}
 }
 
-void PreferencesDialog::showOpenNI2GroupBox(bool shown)
+void PreferencesDialog::updateOpenNI2GroupBoxVisibility()
 {
-	_ui->groupBox_openni2->setVisible(shown);
+	_ui->groupBox_openni2->setVisible(_ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcOpenNI_PCL);
 }
 
 /*** GETTERS ***/
@@ -3129,6 +3130,12 @@ CameraRGBD * PreferencesDialog::createCameraRGBD() const
 	else if(this->getSourceRGBD() == kSrcStereoDC1394)
 	{
 		return new CameraStereoDC1394(
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform());
+	}
+	else if(this->getSourceRGBD() == kSrcStereoFlyCapture2)
+	{
+		return new CameraStereoFlyCapture2(
 			this->getGeneralInputRate(),
 			this->getSourceOpenniLocalTransform());
 	}

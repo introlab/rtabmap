@@ -65,6 +65,11 @@ class Freenect2Device;
 class SyncMultiFrameListener;
 }
 
+namespace FlyCapture2
+{
+class Camera;
+}
+
 typedef struct _freenect_context freenect_context;
 typedef struct _freenect_device freenect_device;
 
@@ -80,6 +85,7 @@ class RTABMAP_EXP CameraRGBD
 public:
 	virtual ~CameraRGBD();
 	void takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
+
 	virtual bool init(const std::string & calibrationFolder = ".") = 0;
 	virtual bool isCalibrated() const = 0;
 	virtual std::string getSerial() const = 0;
@@ -241,7 +247,7 @@ public:
 					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraFreenect();
 
-	bool init(const std::string & calibrationFolder = ".");
+	virtual bool init(const std::string & calibrationFolder = ".");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
@@ -271,7 +277,7 @@ public:
 					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraFreenect2();
 
-	bool init(const std::string & calibrationFolder = ".");
+	virtual bool init(const std::string & calibrationFolder = ".");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
@@ -286,7 +292,7 @@ private:
 };
 
 /////////////////////////
-// CameraDC1394
+// CameraStereoDC1394
 /////////////////////////
 class DC1394Device;
 
@@ -300,7 +306,7 @@ public:
 	CameraStereoDC1394( float imageRate=0.0f, const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraStereoDC1394();
 
-	bool init(const std::string & calibrationFolder = ".");
+	virtual bool init(const std::string & calibrationFolder = ".");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
@@ -310,6 +316,31 @@ protected:
 private:
 	DC1394Device *device_;
 	StereoCameraModel stereoModel_;
+};
+
+/////////////////////////
+// CameraStereoFlyCapture2
+/////////////////////////
+class RTABMAP_EXP CameraStereoFlyCapture2 :
+	public CameraRGBD
+{
+public:
+	static bool available();
+
+public:
+	CameraStereoFlyCapture2( float imageRate=0.0f, const Transform & localTransform = Transform::getIdentity());
+	virtual ~CameraStereoFlyCapture2();
+
+	virtual bool init(const std::string & calibrationFolder = ".");
+	virtual bool isCalibrated() const;
+	virtual std::string getSerial() const;
+
+protected:
+	virtual void captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy);
+
+private:
+	FlyCapture2::Camera * camera_;
+	void * triclopsCtx_; // TriclopsContext
 };
 
 } // namespace rtabmap

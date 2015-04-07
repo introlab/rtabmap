@@ -30,9 +30,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/opencv.hpp>
 
+#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+
 namespace rtabmap {
 
-class CameraModel
+class RTABMAP_EXP CameraModel
 {
 public:
 	CameraModel();

@@ -353,6 +353,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionOpenNI2_sense, SIGNAL(triggered()), this, SLOT(selectOpenni2()));
 	connect(_ui->actionFreenect2, SIGNAL(triggered()), this, SLOT(selectFreenect2()));
 	connect(_ui->actionStereoDC1394, SIGNAL(triggered()), this, SLOT(selectStereoDC1394()));
+	connect(_ui->actionStereoFlyCapture2, SIGNAL(triggered()), this, SLOT(selectStereoFlyCapture2()));
 	_ui->actionFreenect->setEnabled(CameraFreenect::available());
 	_ui->actionOpenNI_CV->setEnabled(CameraOpenNICV::available());
 	_ui->actionOpenNI_CV_ASUS->setEnabled(CameraOpenNICV::available());
@@ -361,6 +362,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->actionOpenNI2_sense->setEnabled(CameraOpenNI2::available());
 	_ui->actionFreenect2->setEnabled(CameraFreenect2::available());
 	_ui->actionStereoDC1394->setEnabled(CameraStereoDC1394::available());
+	_ui->actionStereoFlyCapture2->setEnabled(CameraStereoFlyCapture2::available());
 	this->updateSelectSourceMenu();
 
 	connect(_ui->actionSave_state, SIGNAL(triggered()), this, SLOT(saveFigures()));
@@ -2235,6 +2237,7 @@ void MainWindow::updateSelectSourceMenu()
 	_ui->actionOpenNI2_sense->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2);
 	_ui->actionFreenect2->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcFreenect2);
 	_ui->actionStereoDC1394->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcStereoDC1394);
+	_ui->actionStereoFlyCapture2->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcStereoFlyCapture2);
 }
 
 void MainWindow::changeImgRateSetting()
@@ -3573,6 +3576,11 @@ void MainWindow::selectFreenect2()
 void MainWindow::selectStereoDC1394()
 {
 	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcStereoDC1394);
+}
+
+void MainWindow::selectStereoFlyCapture2()
+{
+	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcStereoFlyCapture2);
 }
 
 

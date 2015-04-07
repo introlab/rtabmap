@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-354</y>
-            <width>737</width>
-            <height>982</height>
+            <y>0</y>
+            <width>736</width>
+            <height>781</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>0</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1726,6 +1726,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <property name="text">
                              <string>StereoDC1394</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>StereoFlyCapture2</string>
                             </property>
                            </item>
                           </widget>
@@ -6264,7 +6269,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                <widget class="QWidget" name="page_12">
                 <layout class="QVBoxLayout" name="verticalLayout_32">
                  <item>
-                  <widget class="QGroupBox" name="groupBox_odometry2">
+                  <widget class="QGroupBox" name="groupBox_odometry1">
                    <property name="title">
                     <string>Odometry</string>
                    </property>
@@ -6280,11 +6285,11 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                      </widget>
                     </item>
                     <item>
-                     <layout class="QGridLayout" name="gridLayout_27" columnstretch="0,0">
+                     <layout class="QGridLayout" name="gridLayout_27" columnstretch="0,1">
                       <item row="2" column="1">
                        <widget class="QLabel" name="label_47">
                         <property name="text">
-                         <string>Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).</string>
+                         <string>Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset). When reset, the odometry starts from the last pose computed.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -6415,6 +6420,13 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                        <widget class="QCheckBox" name="odom_fillInfoData">
                         <property name="text">
                          <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QPushButton" name="pushButton_testOdometry">
+                        <property name="text">
+                         <string>Test selected odometry</string>
                         </property>
                        </widget>
                       </item>
@@ -6787,30 +6799,6 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </layout>
                      </widget>
                     </item>
-                    <item>
-                     <layout class="QHBoxLayout" name="horizontalLayout_5">
-                      <item>
-                       <widget class="QPushButton" name="pushButton_testOdometry">
-                        <property name="text">
-                         <string>Test selected odometry</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <spacer name="horizontalSpacer_2">
-                        <property name="orientation">
-                         <enum>Qt::Horizontal</enum>
-                        </property>
-                        <property name="sizeHint" stdset="0">
-                         <size>
-                          <width>40</width>
-                          <height>20</height>
-                         </size>
-                        </property>
-                       </spacer>
-                      </item>
-                     </layout>
-                    </item>
                    </layout>
                   </widget>
                  </item>
@@ -6832,7 +6820,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                <widget class="QWidget" name="page_26">
                 <layout class="QVBoxLayout" name="verticalLayout_54">
                  <item>
-                  <widget class="QGroupBox" name="groupBox_odometryBOW3">
+                  <widget class="QGroupBox" name="groupBox_odometryBOW2">
                    <property name="title">
                     <string>BOW</string>
                    </property>
@@ -6957,7 +6945,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                <widget class="QWidget" name="page_28">
                 <layout class="QVBoxLayout" name="verticalLayout_55">
                  <item>
-                  <widget class="QGroupBox" name="groupBox_odometryFlow3">
+                  <widget class="QGroupBox" name="groupBox_odometryFlow2">
                    <property name="title">
                     <string>Optical Flow</string>
                    </property>

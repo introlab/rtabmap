@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>25</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -156,6 +156,7 @@
          <normaloff>:/images/bumblebee2.png</normaloff>:/images/bumblebee2.png</iconset>
        </property>
        <addaction name="actionStereoDC1394"/>
+       <addaction name="actionStereoFlyCapture2"/>
       </widget>
       <addaction name="menuKinect_for_Xbox_360"/>
       <addaction name="menuXtion_PRO_LIVE"/>
@@ -1207,6 +1208,11 @@
    </property>
    <property name="text">
     <string>OpenNI2</string>
+   </property>
+  </action>
+  <action name="actionStereoFlyCapture2">
+   <property name="text">
+    <string>StereoFlyCapture2</string>
    </property>
   </action>
  </widget>

@@ -43,7 +43,8 @@ void showUsage()
 			"                                     3=OpenNI-CV  (Kinect)\n"
 			"                                     4=OpenNI-CV-ASUS (Xtion PRO Live)\n"
 			"                                     5=Freenect2  (Kinect v2)\n"
-			"                                     6=DC1394     (Bumblebee2)\n\n");
+			"                                     6=DC1394     (Bumblebee2)\n"
+			"                                     7=FlyCapture2 (Bumblebee2)\n");
 	exit(1);
 }
 
@@ -51,6 +52,8 @@ int main(int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kInfo);
+	ULogger::setPrintTime(false);
+	ULogger::setPrintWhere(false);
 
 	int driver = 0;
 	if(argc < 2)
@@ -64,7 +67,7 @@ int main(int argc, char * argv[])
 			showUsage();
 		}
 		driver = atoi(argv[argc-1]);
-		if(driver < 0 || driver > 6)
+		if(driver < 0 || driver > 7)
 		{
 			UERROR("driver should be between 0 and 6.");
 			showUsage();
@@ -130,6 +133,15 @@ int main(int argc, char * argv[])
 			exit(-1);
 		}
 		camera = new rtabmap::CameraStereoDC1394();
+	}
+	else if(driver == 7)
+	{
+		if(!rtabmap::CameraStereoFlyCapture2::available())
+		{
+			UERROR("Not built with FlyCapture2/Triclops support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraStereoFlyCapture2();
 	}
 	else
 	{
