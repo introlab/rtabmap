@@ -7,36 +7,79 @@
     <x>0</x>
     <y>0</y>
     <width>1314</width>
-    <height>783</height>
+    <height>795</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_3">
+  <layout class="QVBoxLayout" name="verticalLayout_5">
    <property name="spacing">
-    <number>6</number>
+    <number>0</number>
    </property>
-   <property name="margin">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
     <number>0</number>
    </property>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,0">
-     <property name="spacing">
-      <number>0</number>
-     </property>
      <item>
-      <layout class="QVBoxLayout" name="verticalLayout_2" stretch="1,0">
+      <layout class="QVBoxLayout" name="verticalLayout_4">
+       <property name="spacing">
+        <number>0</number>
+       </property>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_3">
          <property name="spacing">
           <number>0</number>
          </property>
          <item>
-          <widget class="UImageView" name="image_view" native="true"/>
+          <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,1">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="label_left">
+             <property name="text">
+              <string/>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="UImageView" name="image_view" native="true"/>
+           </item>
+          </layout>
          </item>
          <item>
-          <widget class="UImageView" name="image_view_2" native="true"/>
+          <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,1">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="label_right">
+             <property name="text">
+              <string/>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="UImageView" name="image_view_2" native="true"/>
+           </item>
+          </layout>
          </item>
         </layout>
        </item>
@@ -154,6 +197,16 @@
             </property>
            </widget>
           </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_21">
+            <property name="toolTip">
+             <string>Number of inner squares on the board</string>
+            </property>
+            <property name="text">
+             <string>Download</string>
+            </property>
+           </widget>
+          </item>
           <item row="0" column="1">
            <widget class="QLabel" name="label_20">
             <property name="toolTip">
@@ -164,16 +217,6 @@
             </property>
             <property name="openExternalLinks">
              <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_21">
-            <property name="toolTip">
-             <string>Number of inner squares on the board</string>
-            </property>
-            <property name="text">
-             <string>Download</string>
             </property>
            </widget>
           </item>
@@ -322,6 +365,19 @@
             </property>
             <property name="textInteractionFlags">
              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QProgressBar" name="progressBar_count_2">
+            <property name="value">
+             <number>24</number>
+            </property>
+            <property name="invertedAppearance">
+             <bool>true</bool>
+            </property>
+            <property name="format">
+             <string>%p</string>
             </property>
            </widget>
           </item>
@@ -576,6 +632,13 @@
             </property>
             <property name="textInteractionFlags">
              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="2">
+           <widget class="QLabel" name="label_error_2">
+            <property name="text">
+             <string>0</string>
             </property>
            </widget>
           </item>

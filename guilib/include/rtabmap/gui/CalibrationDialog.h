@@ -50,8 +50,9 @@ public:
 	CalibrationDialog(bool stereo = false, const QString & savingDirectory = ".", QWidget * parent = 0);
 	virtual ~CalibrationDialog();
 
-	bool isCalibrated() const {return calibrated_;}
-	const rtabmap::CameraModel & getCameraModel() const {return model_;}
+	bool isCalibrated() const {return models_[0].isValid() && (stereo_?models_[1].isValid():true);}
+	const rtabmap::CameraModel & getLeftCameraModel() const {return models_[0];}
+	const rtabmap::CameraModel & getRightCameraModel() const {return models_[1];}
 	const rtabmap::StereoCameraModel & getStereoCameraModel() const {return stereoModel_;}
 
 	void saveSettings(QSettings & settings, const QString & group = "") const;
@@ -92,14 +93,14 @@ private:
 	QString savingDirectory_;
 
 	QString cameraName_;
-	bool calibrated_;
 	bool processingData_;
 	bool savedCalibration_;
 
 	std::vector<std::vector<std::vector<cv::Point2f> > > imagePoints_;
 	std::vector<std::vector<std::vector<float> > > imageParams_;
+	std::vector<std::vector<std::vector<cv::Point2f> > > stereoImagePoints_;
 	std::vector<cv::Size > imageSize_;
-	rtabmap::CameraModel model_;
+	std::vector<rtabmap::CameraModel> models_;
 	rtabmap::StereoCameraModel stereoModel_;
 
 	Ui_calibrationDialog * ui_;
