@@ -102,6 +102,8 @@ private:
 	std::vector<cv::Size > imageSize_;
 	std::vector<rtabmap::CameraModel> models_;
 	rtabmap::StereoCameraModel stereoModel_;
+	std::vector<unsigned short> minIrs_;
+	std::vector<unsigned short> maxIrs_;
 
 	Ui_calibrationDialog * ui_;
 };

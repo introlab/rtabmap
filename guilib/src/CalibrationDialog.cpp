@@ -59,6 +59,13 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	stereoImagePoints_.resize(2);
 	models_.resize(2);
 
+	minIrs_.resize(2);
+	maxIrs_.resize(2);
+	minIrs_[0] = 0x0000;
+	maxIrs_[0] = 0x7fff;
+	minIrs_[1] = 0x0000;
+	maxIrs_[1] = 0x7fff;
+
 	qRegisterMetaType<cv::Mat>("cv::Mat");
 
 	ui_ = new Ui_calibrationDialog();
@@ -67,6 +74,7 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	connect(ui_->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
 	connect(ui_->pushButton_restart, SIGNAL(clicked()), this, SLOT(restart()));
 	connect(ui_->pushButton_save, SIGNAL(clicked()), this, SLOT(save()));
+	connect(ui_->checkBox_switchImages, SIGNAL(stateChanged(int)), this, SLOT(restart()));
 
 	connect(ui_->spinBox_boardWidth, SIGNAL(valueChanged(int)), this, SLOT(setBoardWidth(int)));
 	connect(ui_->spinBox_boardHeight, SIGNAL(valueChanged(int)), this, SLOT(setBoardHeight(int)));
@@ -80,6 +88,8 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	ui_->progressBar_count->setFormat("%v");
 	ui_->progressBar_count_2->setMaximum(COUNT_MIN);
 	ui_->progressBar_count_2->setFormat("%v");
+
+	ui_->radioButton_raw->setChecked(true);
 
 	this->setStereoMode(stereo_);
 }
@@ -136,6 +146,7 @@ void CalibrationDialog::setStereoMode(bool stereo)
 	ui_->progressBar_size_2->setVisible(stereo_);
 	ui_->progressBar_skew_2->setVisible(stereo_);
 	ui_->progressBar_count_2->setVisible(stereo_);
+	ui_->label_right->setVisible(stereo_);
 	ui_->image_view_2->setVisible(stereo_);
 	ui_->label_fx_2->setVisible(stereo_);
 	ui_->label_fy_2->setVisible(stereo_);
@@ -148,6 +159,7 @@ void CalibrationDialog::setStereoMode(bool stereo)
 	ui_->lineEdit_D_2->setVisible(stereo_);
 	ui_->lineEdit_R_2->setVisible(stereo_);
 	ui_->lineEdit_P_2->setVisible(stereo_);
+	ui_->radioButton_stereoRectified->setVisible(stereo_);
 }
 
 void CalibrationDialog::setBoardWidth(int width)
@@ -244,10 +256,21 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 		ui_->label_serial->setText(cameraName_);
 
 	}
+	std::vector<cv::Mat> inputRawImages(2);
+	if(ui_->checkBox_switchImages->isChecked())
+	{
+		inputRawImages[0] = imageRight;
+		inputRawImages[1] = imageLeft;
+	}
+	else
+	{
+		inputRawImages[0] = imageLeft;
+		inputRawImages[1] = imageRight;
+	}
+
 	std::vector<cv::Mat> images(2);
-	cv::resize(imageLeft, images[0], cv::Size(), 2.0, 2.0, CV_INTER_CUBIC);
-	//images[0] = imageLeft;
-	images[1] = imageRight;
+	images[0] = inputRawImages[0];
+	images[1] = inputRawImages[1];
 	imageSize_[0] = images[0].size();
 	imageSize_[1] = images[1].size();
 
@@ -262,7 +285,21 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 		cv::Mat viewGray;
 		if(!images[id].empty())
 		{
-			if(images[id].channels() == 3)
+			if(images[id].type() == CV_16UC1)
+			{
+				//assume IR image: convert to gray scaled
+				const float factor = 255.0f / float((maxIrs_[id] - minIrs_[id]));
+				viewGray = cv::Mat(images[id].rows, images[id].cols, CV_8UC1);
+				for(int i=0; i<images[id].rows; ++i)
+				{
+					for(int j=0; j<images[id].cols; ++j)
+					{
+						viewGray.at<unsigned char>(i, j) = (unsigned char)std::min(float(std::max(images[id].at<unsigned short>(i,j) - minIrs_[id], 0)) * factor, 255.0f);
+					}
+				}
+				cvtColor(viewGray, images[id], cv::COLOR_GRAY2BGR); // convert to show detected points in color
+			}
+			else if(images[id].channels() == 3)
 			{
 				cvtColor(images[id], viewGray, cv::COLOR_BGR2GRAY);
 			}
@@ -277,6 +314,9 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 			UERROR("Image %d is empty!! Should not!", id);
 		}
 
+		minIrs_[id] = 0;
+		maxIrs_[id] = 0x7FFF;
+
 		//Dot it only if not yet calibrated
 		if(!ui_->pushButton_save->isEnabled())
 		{
@@ -284,7 +324,29 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 			if(!viewGray.empty())
 			{
 				int flags = CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE;
-				boardFound[id] = cv::findChessboardCorners(viewGray, boardSize, pointBuf[id], flags);
+
+				if(!viewGray.empty())
+				{
+					int maxScale = viewGray.cols < 640?2:1;
+					for( int scale = 1; scale <= maxScale; scale++ )
+					{
+						cv::Mat timg;
+						if( scale == 1 )
+							timg = viewGray;
+						else
+							cv::resize(viewGray, timg, cv::Size(), scale, scale, CV_INTER_CUBIC);
+						boardFound[id] = cv::findChessboardCorners(timg, boardSize, pointBuf[id], flags);
+						if(boardFound[id])
+						{
+							if( scale > 1 )
+							{
+								cv::Mat cornersMat(pointBuf[id]);
+								cornersMat *= 1./scale;
+							}
+							break;
+						}
+					}
+				}
 			}
 
 			if(boardFound[id]) // If done with success,
@@ -388,10 +450,37 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 				{
 					readyToCalibrate[id] = true;
 				}
+
+				//update IR values
+				if(inputRawImages[id].type() == CV_16UC1)
+				{
+					//update min max IR if the chessboard was found
+					minIrs_[id] = 0xFFFF;
+					maxIrs_[id] = 0;
+					for(size_t i = 0; i < pointBuf[id].size(); ++i)
+					{
+						const cv::Point2f &p = pointBuf[id][i];
+						cv::Rect roi(std::max(0, (int)p.x - 3), std::max(0, (int)p.y - 3), 6, 6);
+
+						roi.width = std::min(roi.width, inputRawImages[id].cols - roi.x);
+						roi.height = std::min(roi.height, inputRawImages[id].rows - roi.y);
+
+						//find minMax in the roi
+						double min, max;
+						cv::minMaxLoc(inputRawImages[id](roi), &min, &max);
+						if(min < minIrs_[id])
+						{
+							minIrs_[id] = min;
+						}
+						if(max > maxIrs_[id])
+						{
+							maxIrs_[id] = max;
+						}
+					}
+				}
 			}
 		}
 	}
-
 
 	if(stereo_ && ((boardAccepted[0] && boardFound[1]) || (boardAccepted[1] && boardFound[0])))
 	{
@@ -409,17 +498,21 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 		ui_->pushButton_calibrate->setEnabled(true);
 	}
 
-	if(models_[0].isValid() && ui_->checkBox_rectified->isChecked())
+	if(ui_->radioButton_rectified->isChecked())
 	{
-		if(!stereo_)
+		if(models_[0].isValid())
 		{
 			images[0] = models_[0].rectifyImage(images[0]);
 		}
-		else
+		if(models_[1].isValid())
 		{
-			images[0] = stereoModel_.left().rectifyImage(images[0]);
-			images[1] = stereoModel_.right().rectifyImage(images[1]);
+			images[1] = models_[1].rectifyImage(images[1]);
 		}
+	}
+	else if(ui_->radioButton_stereoRectified->isChecked() && stereoModel_.isValid())
+	{
+		images[0] = stereoModel_.left().rectifyImage(images[0]);
+		images[1] = stereoModel_.right().rectifyImage(images[1]);
 	}
 
 	if(ui_->checkBox_showHorizontalLines->isChecked())
@@ -460,10 +553,16 @@ void CalibrationDialog::restart()
 	models_[1] = CameraModel();
 	stereoModel_ = StereoCameraModel();
 	cameraName_.clear();
+	minIrs_[0] = 0x0000;
+	maxIrs_[0] = 0x7fff;
+	minIrs_[1] = 0x0000;
+	maxIrs_[1] = 0x7fff;
 
 	ui_->pushButton_calibrate->setEnabled(false);
 	ui_->pushButton_save->setEnabled(false);
-	ui_->checkBox_rectified->setEnabled(false);
+	ui_->radioButton_raw->setChecked(true);
+	ui_->radioButton_rectified->setEnabled(false);
+	ui_->radioButton_stereoRectified->setEnabled(false);
 
 	ui_->progressBar_count->reset();
 	ui_->progressBar_count->setMaximum(COUNT_MIN);
@@ -617,7 +716,7 @@ void CalibrationDialog::calibrate()
 	if(stereo_ && models_[0].isValid() && models_[1].isValid())
 	{
 		UINFO("stereo calibration (samples=%d)...", (int)stereoImagePoints_[0].size());
-		cv::Size imageSize = imageSize_[0];
+		cv::Size imageSize = imageSize_[0].width > imageSize_[1].width?imageSize_[0]:imageSize_[1];
 		cv::Mat R, T, E, F;
 
 		std::vector<std::vector<cv::Point3f> > objectPoints(1);
@@ -683,7 +782,8 @@ void CalibrationDialog::calibrate()
 				cameraName_.toStdString(),
 				imageSize,
 				models_[0].K(), models_[0].D(), R1, P1,
-				models_[1].K(), models_[1].D(), R2, P2);
+				models_[1].K(), models_[1].D(), R2, P2,
+				R, T, E, F);
 
 		std::stringstream strR1, strP1, strR2, strP2;
 		strR1 << stereoModel_.left().R();
@@ -699,13 +799,18 @@ void CalibrationDialog::calibrate()
 		//ui_->label_error_stereo->setNum(totalAvgErr);
 	}
 
-	if((!stereo_ && models_[0].isValid()) ||
-		(stereo_ && stereoModel_.isValid()))
+	if(stereo_ && stereoModel_.isValid())
 	{
-		ui_->checkBox_rectified->setEnabled(true);
-		ui_->checkBox_rectified->setChecked(true);
-
+		ui_->radioButton_rectified->setEnabled(true);
+		ui_->radioButton_stereoRectified->setEnabled(true);
+		ui_->radioButton_stereoRectified->setChecked(true);
 		ui_->pushButton_save->setEnabled(true);
+	}
+	else if(models_[0].isValid())
+	{
+		ui_->radioButton_rectified->setEnabled(true);
+		ui_->radioButton_rectified->setChecked(true);
+		ui_->pushButton_save->setEnabled(!stereo_);
 	}
 
 	UINFO("End calibration");
@@ -749,10 +854,11 @@ bool CalibrationDialog::save()
 			std::string base = (dir+QDir::separator()+name).toStdString();
 			std::string leftPath = base+"_left.yaml";
 			std::string rightPath = base+"_right.yaml";
+			std::string posePath = base+"_pose.yaml";
 			if(stereoModel_.save(dir.toStdString(), name.toStdString()))
 			{
-				QMessageBox::information(this, tr("Export"), tr("Calibration files saved to \"%1\" and \"%2\".").
-						arg(leftPath.c_str()).arg(rightPath.c_str()));
+				QMessageBox::information(this, tr("Export"), tr("Calibration files saved:\n  \"%1\"\n  \"%2\"\n  \"%3\".").
+						arg(leftPath.c_str()).arg(rightPath.c_str()).arg(posePath.c_str()));
 				UINFO("Saved \"%s\" and \"%s\"!", leftPath.c_str(), rightPath.c_str());
 				savedCalibration_ = true;
 				saved = true;

@@ -1038,17 +1038,27 @@ bool CameraFreenect2::available()
 #endif
 }
 
-CameraFreenect2::CameraFreenect2(int deviceId, float imageRate, const Transform & localTransform) :
+CameraFreenect2::CameraFreenect2(int deviceId, Type type, float imageRate, const Transform & localTransform) :
 		CameraRGBD(imageRate, localTransform),
 		deviceId_(deviceId),
+		type_(type),
 		freenect2_(0),
 		dev_(0),
 		listener_(0)
 {
 #ifdef WITH_FREENECT2
 	freenect2_ = new libfreenect2::Freenect2();
-	//listener_ = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth);
-	listener_ = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Color | libfreenect2::Frame::Depth);
+	switch(type_)
+	{
+	case kTypeRGBIR:
+		listener_ = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Color | libfreenect2::Frame::Ir);
+		break;
+	case kTypeRGBDepthSD:
+	case kTypeRGBDepthHD:
+	default:
+		listener_ = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Color  | libfreenect2::Frame::Depth);
+		break;
+	}
 	UWARN("CameraFreenect2: Images are not yet registered!");
 #endif
 }
@@ -1141,21 +1151,41 @@ void CameraFreenect2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, f
 		libfreenect2::FrameMap frames;
 		if(listener_->waitForNewFrame(frames, 1000))
 		{
-			libfreenect2::Frame *rgbFrame = frames[libfreenect2::Frame::Color];
-			//libfreenect2::Frame *ir = frames[libfreenect2::Frame::Ir];
-			libfreenect2::Frame *depthFrame = frames[libfreenect2::Frame::Depth];
+			libfreenect2::Frame *rgbFrame = 0;
+			libfreenect2::Frame *irFrame = 0;
+			libfreenect2::Frame *depthFrame = 0;
 
-			if(rgbFrame && depthFrame)
+			switch(type_)
 			{
-				cv::flip(cv::Mat(rgbFrame->height, rgbFrame->width, CV_8UC3, rgbFrame->data), rgb, 1);
-				cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
-				cv::flip(depth, depth, 1);
-				libfreenect2::Freenect2Device::ColorCameraParams params = dev_->getColorCameraParams();
-				fx = params.fx;
-				fy = params.fy;
-				cx = params.cx;
-				cy = params.cy;
+			case kTypeRGBIR:
+				rgbFrame = frames[libfreenect2::Frame::Color];
+				irFrame = frames[libfreenect2::Frame::Ir];
+				break;
+			case kTypeRGBDepthSD:
+			case kTypeRGBDepthHD:
+			default:
+				rgbFrame = frames[libfreenect2::Frame::Color];
+				depthFrame = frames[libfreenect2::Frame::Depth];
+				break;
 			}
+
+			cv::flip(cv::Mat(rgbFrame->height, rgbFrame->width, CV_8UC3, rgbFrame->data), rgb, 1);
+			if(irFrame)
+			{
+				cv::Mat(irFrame->height, irFrame->width, CV_32FC1, irFrame->data).convertTo(depth, CV_16U, 1);
+			}
+			else
+			{
+				cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
+			}
+			cv::flip(depth, depth, 1);
+
+			//libfreenect2::Freenect2Device::ColorCameraParams params = dev_->getColorCameraParams();
+			libfreenect2::Freenect2Device::IrCameraParams params = dev_->getIrCameraParams();
+			fx = params.fx;
+			fy = params.fy;
+			cx = params.cx;
+			cy = params.cy;
 
 			listener_->release(frames);
 		}

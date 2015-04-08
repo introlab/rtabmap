@@ -270,9 +270,16 @@ class RTABMAP_EXP CameraFreenect2 :
 public:
 	static bool available();
 
+	enum Type{
+		kTypeRGBDepthSD,
+		kTypeRGBDepthHD,
+		kTypeRGBIR
+	};
+
 public:
 	// default local transform z in, x right, y down));
 	CameraFreenect2(int deviceId= 0,
+					Type type = kTypeRGBDepthSD,
 					float imageRate=0.0f,
 					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraFreenect2();
@@ -286,6 +293,7 @@ protected:
 
 private:
 	int deviceId_;
+	Type type_;
 	libfreenect2::Freenect2 * freenect2_;
 	libfreenect2::Freenect2Device *dev_;
 	libfreenect2::SyncMultiFrameListener * listener_;

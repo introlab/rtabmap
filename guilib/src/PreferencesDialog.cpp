@@ -3124,6 +3124,7 @@ CameraRGBD * PreferencesDialog::createCameraRGBD() const
 	{
 		return new CameraFreenect2(
 			this->getSourceOpenniDevice().isEmpty()?0:atoi(this->getSourceOpenniDevice().toStdString().c_str()),
+			CameraFreenect2::kTypeRGBDepthSD,
 			this->getGeneralInputRate(),
 			this->getSourceOpenniLocalTransform());
 	}

@@ -92,28 +92,24 @@ public:
 	StereoCameraModel() {}
 	StereoCameraModel(const std::string & name, const cv::Size & imageSize,
 			const cv::Mat & K1, const cv::Mat & D1, const cv::Mat & R1, const cv::Mat & P1,
-			const cv::Mat & K2, const cv::Mat & D2, const cv::Mat & R2, const cv::Mat & P2) :
+			const cv::Mat & K2, const cv::Mat & D2, const cv::Mat & R2, const cv::Mat & P2,
+			const cv::Mat & R, const cv::Mat & T, const cv::Mat & E, const cv::Mat & F) :
 		left_(name+"_left", imageSize, K1, D1, R1, P1),
 		right_(name+"_right", imageSize, K2, D2, R2, P2),
-		name_(name)
+		name_(name),
+		R_(R),
+		T_(T),
+		E_(E),
+		F_(F)
 	{
 	}
 	virtual ~StereoCameraModel() {}
 
-	bool isValid() const {return left_.isValid() && right_.isValid();}
+	bool isValid() const {return left_.isValid() && right_.isValid() && !R_.empty() && !T_.empty() && !E_.empty() && !F_.empty();}
 	const std::string & name() const {return name_;}
 
-	bool load(const std::string & directory, const std::string & cameraName)
-	{
-		name_ = cameraName;
-		return left_.load(directory+"/"+cameraName+"_left.yaml") &&
-				right_.load(directory+"/"+cameraName+"_right.yaml");
-	}
-	bool save(const std::string & directory, const std::string & cameraName)
-	{
-		return left_.save(directory+"/"+cameraName+"_left.yaml") &&
-				right_.save(directory+"/"+cameraName+"_right.yaml");
-	}
+	bool load(const std::string & directory, const std::string & cameraName);
+	bool save(const std::string & directory, const std::string & cameraName);
 	double baseline() const {return -right_.Tx()/right_.fx();}
 
 	const CameraModel & left() const {return left_;}
@@ -123,6 +119,10 @@ private:
 	CameraModel left_;
 	CameraModel right_;
 	std::string name_;
+	cv::Mat R_;
+	cv::Mat T_;
+	cv::Mat E_;
+	cv::Mat F_;
 };
 
 } /* namespace rtabmap */

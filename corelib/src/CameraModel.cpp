@@ -186,4 +186,115 @@ cv::Mat CameraModel::rectifyImage(const cv::Mat & raw) const
 	}
 }
 
+//
+//StereoCameraModel
+//
+bool StereoCameraModel::load(const std::string & directory, const std::string & cameraName)
+{
+	name_ = cameraName;
+	if(left_.load(directory+"/"+cameraName+"_left.yaml") && right_.load(directory+"/"+cameraName+"_right.yaml"))
+	{
+		//load rotation, translation
+		R_ = cv::Mat();
+		T_ = cv::Mat();
+
+		std::string filePath = directory+"/"+cameraName+"_pose.yaml";
+		if(UFile::exists(filePath))
+		{
+			UINFO("Reading stereo calibration file \"%s\"", filePath.c_str());
+			cv::FileStorage fs(filePath, cv::FileStorage::READ);
+
+			name_ = (int)fs["camera_name"];
+
+			// import from ROS calibration format
+			cv::FileNode n = fs["rotation_matrix"];
+			int rows = (int)n["rows"];
+			int cols = (int)n["cols"];
+			std::vector<double> data;
+			n["data"] >> data;
+			UASSERT(rows*cols == (int)data.size());
+			UASSERT(rows == 3 && cols == 3);
+			R_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+
+			n = fs["translation_matrix"];
+			rows = (int)n["rows"];
+			cols = (int)n["cols"];
+			data.clear();
+			n["data"] >> data;
+			UASSERT(rows*cols == (int)data.size());
+			UASSERT(rows == 3 && cols == 1);
+			T_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+
+			n = fs["essential_matrix"];
+			rows = (int)n["rows"];
+			cols = (int)n["cols"];
+			data.clear();
+			n["data"] >> data;
+			UASSERT(rows*cols == (int)data.size());
+			UASSERT(rows == 3 && cols == 3);
+			E_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+
+			n = fs["fundamental_matrix"];
+			rows = (int)n["rows"];
+			cols = (int)n["cols"];
+			data.clear();
+			n["data"] >> data;
+			UASSERT(rows*cols == (int)data.size());
+			UASSERT(rows == 3 && cols == 3);
+			F_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+
+			fs.release();
+
+			return true;
+		}
+	}
+	return false;
+}
+bool StereoCameraModel::save(const std::string & directory, const std::string & cameraName)
+{
+	if(left_.save(directory+"/"+cameraName+"_left.yaml") && right_.save(directory+"/"+cameraName+"_right.yaml"))
+	{
+		std::string filePath = directory+"/"+cameraName+"_pose.yaml";
+		if(!filePath.empty() && !name_.empty() && !R_.empty() && !T_.empty())
+		{
+			UINFO("Saving stereo calibration to file \"%s\"", filePath.c_str());
+			cv::FileStorage fs(filePath, cv::FileStorage::WRITE);
+
+			// export in ROS calibration format
+
+			fs << "camera_name" << name_;
+			fs << "rotation_matrix" << "{";
+			fs << "rows" << R_.rows;
+			fs << "cols" << R_.cols;
+			fs << "data" << std::vector<double>((double*)R_.data, ((double*)R_.data)+(R_.rows*R_.cols));
+			fs << "}";
+
+			fs << "translation_matrix" << "{";
+			fs << "rows" << T_.rows;
+			fs << "cols" << T_.cols;
+			fs << "data" << std::vector<double>((double*)T_.data, ((double*)T_.data)+(T_.rows*T_.cols));
+			fs << "}";
+
+			fs << "camera_name" << name_;
+			fs << "essential_matrix" << "{";
+			fs << "rows" << E_.rows;
+			fs << "cols" << E_.cols;
+			fs << "data" << std::vector<double>((double*)E_.data, ((double*)E_.data)+(E_.rows*E_.cols));
+			fs << "}";
+
+			fs << "camera_name" << name_;
+			fs << "fundamental_matrix" << "{";
+			fs << "rows" << F_.rows;
+			fs << "cols" << F_.cols;
+			fs << "data" << std::vector<double>((double*)F_.data, ((double*)F_.data)+(F_.rows*F_.cols));
+			fs << "}";
+
+			fs.release();
+
+			return true;
+		}
+	}
+	return false;
+}
+
 } /* namespace rtabmap */
