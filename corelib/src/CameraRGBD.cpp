@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/core/CameraRGBD.h"
-#include "rtabmap/core/DBDriver.h"
+#include "rtabmap/core/util3d.h"
 
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -35,10 +35,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UMath.h>
 
 #include <pcl/io/openni_grabber.h>
-
-#include <cmath>
 
 #ifdef WITH_FREENECT
 #include <libfreenect.h>
@@ -52,6 +51,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef WITH_FREENECT2
 #include <libfreenect2/libfreenect2.hpp>
 #include <libfreenect2/frame_listener_impl.h>
+#include <libfreenect2/registration.h>
+#include <libfreenect2/packet_pipeline.h>
 #endif
 
 #ifdef WITH_DC1394
@@ -89,13 +90,20 @@ CameraRGBD::~CameraRGBD()
 
 void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
 {
-	float imageRate = _imageRate==0.0f?33.0f:_imageRate; // limit to 33Hz if infinity
+	bool warnFrameRateTooHigh = false;
+	float actualFrameRate = 0;
+	float imageRate = _imageRate==0.0f?20.0f:_imageRate; // limit to 20Hz if infinity
 	if(imageRate>0)
 	{
 		int sleepTime = (1000.0f/imageRate - 1000.0f*_frameRateTimer->getElapsedTime());
 		if(sleepTime > 2)
 		{
 			uSleep(sleepTime-2);
+		}
+		else if(sleepTime < 0)
+		{
+			warnFrameRateTooHigh = true;
+			actualFrameRate = 1.0/(_frameRateTimer->getElapsedTime());
 		}
 
 		// Add precision at the cost of a small overhead
@@ -120,7 +128,15 @@ void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & f
 			cx = float(rgb.cols) - cx;
 		}
 	}
-	UDEBUG("Time capturing image = %fs", timer.ticks());
+	if(warnFrameRateTooHigh)
+	{
+		UWARN("Camera: Cannot reach target image rate %f Hz, current rate is %f Hz and capture time = %f s.",
+				imageRate, actualFrameRate, timer.ticks());
+	}
+	else
+	{
+		UDEBUG("Time capturing image = %fs", timer.ticks());
+	}
 }
 
 /////////////////////////
@@ -1044,7 +1060,9 @@ CameraFreenect2::CameraFreenect2(int deviceId, Type type, float imageRate, const
 		type_(type),
 		freenect2_(0),
 		dev_(0),
-		listener_(0)
+		pipeline_(0),
+		listener_(0),
+		reg_(0)
 {
 #ifdef WITH_FREENECT2
 	freenect2_ = new libfreenect2::Freenect2();
@@ -1059,7 +1077,28 @@ CameraFreenect2::CameraFreenect2(int deviceId, Type type, float imageRate, const
 		listener_ = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Color  | libfreenect2::Frame::Depth);
 		break;
 	}
-	UWARN("CameraFreenect2: Images are not yet registered!");
+
+#ifdef LIBFREENECT2_WITH_OPENGL_SUPPORT
+	pipeline_ = new libfreenect2::OpenGLPacketPipeline();
+#else
+#ifdef LIBFREENECT2_WITH_OPENCL_SUPPORT
+	pipeline_ = new libfreenect2::OpenCLPacketPipeline();
+#else
+	pipeline_ = new libfreenect2::CpuPacketPipeline();
+#endif
+#endif
+	//default
+	//MinDepth(0.5f),
+	//MaxDepth(4.5f),
+	//EnableBilateralFilter(true),
+	//EnableEdgeAwareFilter(true)
+	libfreenect2::DepthPacketProcessor::Config config;
+	config.EnableBilateralFilter = true;
+	config.EnableEdgeAwareFilter = true;
+	config.MinDepth = 0.1;
+	config.MaxDepth = 12;
+	pipeline_->getDepthPacketProcessor()->setConfiguration(config);
+
 #endif
 }
 
@@ -1075,10 +1114,23 @@ CameraFreenect2::~CameraFreenect2()
 	{
 		delete listener_;
 	}
+
+	if(reg_)
+	{
+		delete reg_;
+		reg_ = 0;
+	}
+	// commented, it seems released in freenect2_
+	//if(pipeline_)
+	//{
+	//	delete pipeline_;
+	//}
+
 	if(freenect2_)
 	{
 		delete freenect2_;
 	}
+	UDEBUG("");
 #endif
 }
 
@@ -1092,22 +1144,77 @@ bool CameraFreenect2::init(const std::string & calibrationFolder)
 		dev_ = 0;
 	}
 
+	if(reg_)
+	{
+		delete reg_;
+		reg_ = 0;
+	}
+
 	if(deviceId_ <= 0)
 	{
-		dev_ = freenect2_->openDefaultDevice();
+		dev_ = freenect2_->openDefaultDevice(pipeline_);
 	}
 	else
 	{
-		dev_ = freenect2_->openDevice(deviceId_);
+		dev_ = freenect2_->openDevice(deviceId_, pipeline_);
 	}
 
 	if(dev_)
 	{
 		dev_->setColorFrameListener(listener_);
 		dev_->setIrAndDepthFrameListener(listener_);
+
 		dev_->start();
+
 		UINFO("CameraFreenect2: device serial: %s", dev_->getSerialNumber().c_str());
 		UINFO("CameraFreenect2: device firmware: %s", dev_->getFirmwareVersion().c_str());
+
+		//default registration params
+		libfreenect2::Freenect2Device::IrCameraParams depthParams = dev_->getIrCameraParams();
+		libfreenect2::Freenect2Device::ColorCameraParams colorParams = dev_->getColorCameraParams();
+		reg_ = new libfreenect2::Registration(&depthParams, &colorParams);
+
+		// look for calibration files
+		if(!calibrationFolder.empty())
+		{
+			if(!stereoModel_.load(calibrationFolder, dev_->getSerialNumber()))
+			{
+				UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, default calibration used.",
+						dev_->getSerialNumber().c_str(), calibrationFolder.c_str());
+			}
+			else
+			{
+				// downscale color image by 2
+				cv::Mat colorP = stereoModel_.right().P();
+				cv::Size colorSize = stereoModel_.right().imageSize();
+				if(type_ == kTypeRGBDepthSD)
+				{
+					colorP.at<double>(0,0)/=2.0f; //fx
+					colorP.at<double>(1,1)/=2.0f; //fy
+					colorP.at<double>(0,2)/=2.0f; //cx
+					colorP.at<double>(1,2)/=2.0f; //cy
+					colorSize.width/=2;
+					colorSize.height/=2;
+				}
+				cv::Mat depthP = stereoModel_.left().P();
+				cv::Size depthSize = stereoModel_.left().imageSize();
+				float ratioY = float(colorSize.height)/float(depthSize.height);
+				float ratioX = float(colorSize.width)/float(depthSize.width);
+				depthP.at<double>(0,0)*=ratioX; //fx
+				depthP.at<double>(1,1)*=ratioY; //fy
+				depthP.at<double>(0,2)*=ratioX; //cx
+				depthP.at<double>(1,2)*=ratioY; //cy
+				depthSize.width*=ratioX;
+				depthSize.height*=ratioY;
+				const CameraModel & l = stereoModel_.left();
+				const CameraModel & r = stereoModel_.right();
+				stereoModel_ = StereoCameraModel(stereoModel_.name(),
+						depthSize, l.K(), l.D(), l.R(), depthP,
+						colorSize, r.K(), r.D(), r.R(), colorP,
+						stereoModel_.R(), stereoModel_.T(), stereoModel_.E(), stereoModel_.F());
+			}
+		}
+
 		return true;
 	}
 	else
@@ -1122,8 +1229,7 @@ bool CameraFreenect2::init(const std::string & calibrationFolder)
 
 bool CameraFreenect2::isCalibrated() const
 {
-	UWARN("Freenect2 calibration not yet implemented!");
-	return false;
+	return true;
 }
 
 std::string CameraFreenect2::getSerial() const
@@ -1158,35 +1264,140 @@ void CameraFreenect2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, f
 			switch(type_)
 			{
 			case kTypeRGBIR:
-				rgbFrame = frames[libfreenect2::Frame::Color];
-				irFrame = frames[libfreenect2::Frame::Ir];
+				rgbFrame = uValue(frames, libfreenect2::Frame::Color, (libfreenect2::Frame*)0);
+				irFrame = uValue(frames, libfreenect2::Frame::Ir, (libfreenect2::Frame*)0);
 				break;
 			case kTypeRGBDepthSD:
 			case kTypeRGBDepthHD:
 			default:
-				rgbFrame = frames[libfreenect2::Frame::Color];
-				depthFrame = frames[libfreenect2::Frame::Depth];
+				rgbFrame = uValue(frames, libfreenect2::Frame::Color, (libfreenect2::Frame*)0);
+				depthFrame = uValue(frames, libfreenect2::Frame::Depth, (libfreenect2::Frame*)0);
 				break;
 			}
 
-			cv::flip(cv::Mat(rgbFrame->height, rgbFrame->width, CV_8UC3, rgbFrame->data), rgb, 1);
-			if(irFrame)
+			cv::Mat rgbMat(rgbFrame->height, rgbFrame->width, CV_8UC3, rgbFrame->data);
+			cv::flip(rgbMat, rgb, 1);
+
+			if(stereoModel_.isValid())
 			{
-				cv::Mat(irFrame->height, irFrame->width, CV_32FC1, irFrame->data).convertTo(depth, CV_16U, 1);
+				//rectify color
+				rgb = stereoModel_.right().rectifyImage(rgb);
+				if(irFrame)
+				{
+					//rectify IR
+					cv::Mat(irFrame->height, irFrame->width, CV_32FC1, irFrame->data).convertTo(depth, CV_16U, 1);
+					cv::flip(depth, depth, 1);
+					depth = stereoModel_.left().rectifyImage(depth);
+				}
+				else
+				{
+					//rectify depth
+					cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
+					cv::flip(depth, depth, 1);
+					depth = stereoModel_.left().rectifyDepth(depth);
+
+					bool registered = true;
+					if(registered)
+					{
+						depth = util3d::registerDepth(
+								depth,
+								stereoModel_.left().P().colRange(0,3).rowRange(0,3), //scaled depth K
+								stereoModel_.right().P().colRange(0,3).rowRange(0,3), //scaled color K
+								stereoModel_.transform());
+						util3d::fillRegisteredDepthHoles(depth, true, false);
+						fx = stereoModel_.right().fx();
+						fy = stereoModel_.right().fy();
+						cx = stereoModel_.right().cx();
+						cy = stereoModel_.right().cy();
+					}
+					else
+					{
+						fx = stereoModel_.left().fx();
+						fy = stereoModel_.left().fy();
+						cx = stereoModel_.left().cx();
+						cy = stereoModel_.left().cy();
+					}
+				}
 			}
 			else
 			{
-				cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
+				//use data from libfreenect2
+				if(irFrame)
+				{
+					cv::Mat(irFrame->height, irFrame->width, CV_32FC1, irFrame->data).convertTo(depth, CV_16U, 1);
+				}
+				else
+				{
+					cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
+
+					//registration of the depth
+					if(reg_)
+					{
+						if(type_ == kTypeRGBDepthSD)
+						{
+							cv::Mat tmp;
+							cv::resize(rgb, tmp, cv::Size(), 0.5, 0.5, cv::INTER_AREA);
+							rgb = tmp;
+						}
+						cv::Mat depthFrameMat = cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data);
+						depth = cv::Mat::zeros(rgb.rows, rgb.cols, CV_16U);
+						for(int dx=0; dx<depthFrameMat.cols-1; ++dx)
+						{
+							for(int dy=0; dy<depthFrameMat.rows-1; ++dy)
+							{
+								float dz = depthFrameMat.at<float>(dy,dx);
+								float dz1 = depthFrameMat.at<float>(dy,dx+1);
+								float dz2 = depthFrameMat.at<float>(dy+1,dx);
+								float dz3 = depthFrameMat.at<float>(dy+1,dx+1);
+								if(dz && dz1 && dz2 && dz3)
+								{
+									float avg = (dz + dz1 + dz2 + dz3) / 4;
+									float thres = 0.01 * avg;
+									if( fabs(dz - avg) < thres &&
+										fabs(dz1 - avg) < thres &&
+										fabs(dz2 - avg) < thres &&
+										fabs(dz3 - avg) < thres)
+									{
+										float cx=-1,cy=-1;
+										reg_->apply(dx, dy, dz, cx, cy);
+										if(type_==kTypeRGBDepthSD)
+										{
+											cx/=2.0f;
+											cy/=2.0f;
+										}
+										int rcx = cvRound(cx);
+										int rcy = cvRound(cy);
+										if(uIsInBounds(rcx, 0, depth.cols) && uIsInBounds(rcy, 0, depth.rows))
+										{
+											unsigned short & zReg = depth.at<unsigned short>(rcy, rcx);
+											if(zReg == 0 || zReg > (unsigned short)dz)
+											{
+												zReg = (unsigned short)dz;
+											}
+										}
+									}
+								}
+							}
+						}
+						util3d::fillRegisteredDepthHoles(depth, true, true, type_==kTypeRGBDepthHD);
+						util3d::fillRegisteredDepthHoles(depth, type_==kTypeRGBDepthSD, type_==kTypeRGBDepthHD);//second pass
+						libfreenect2::Freenect2Device::ColorCameraParams params = dev_->getColorCameraParams();
+						fx = params.fx*(type_==kTypeRGBDepthSD?0.5:1.0f);
+						fy = params.fy*(type_==kTypeRGBDepthSD?0.5:1.0f);
+						cx = params.cx*(type_==kTypeRGBDepthSD?0.5:1.0f);
+						cy = params.cy*(type_==kTypeRGBDepthSD?0.5:1.0f);
+					}
+					else
+					{
+						libfreenect2::Freenect2Device::IrCameraParams params = dev_->getIrCameraParams();
+						fx = params.fx;
+						fy = params.fy;
+						cx = params.cx;
+						cy = params.cy;
+					}
+				}
+				cv::flip(depth, depth, 1);
 			}
-			cv::flip(depth, depth, 1);
-
-			//libfreenect2::Freenect2Device::ColorCameraParams params = dev_->getColorCameraParams();
-			libfreenect2::Freenect2Device::IrCameraParams params = dev_->getIrCameraParams();
-			fx = params.fx;
-			fy = params.fy;
-			cx = params.cx;
-			cy = params.cy;
-
 			listener_->release(frames);
 		}
 		else

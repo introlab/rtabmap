@@ -56,7 +56,7 @@ CameraModel::CameraModel(const std::string & cameraName, const cv::Size & imageS
 
 	// init rectification map
 	UINFO("Initialize rectify map");
-	cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_16SC2, rectificationMap1_, rectificationMap2_);
+	cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_32FC1, mapX_, mapY_);
 }
 
 bool CameraModel::load(const std::string & filePath)
@@ -65,8 +65,8 @@ bool CameraModel::load(const std::string & filePath)
 	D_ = cv::Mat();
 	R_ = cv::Mat();
 	P_ = cv::Mat::zeros(3, 4, CV_64FC1);
-	rectificationMap1_ = cv::Mat();
-	rectificationMap2_ = cv::Mat();
+	mapX_ = cv::Mat();
+	mapY_ = cv::Mat();
 
 	if(UFile::exists(filePath))
 	{
@@ -121,7 +121,7 @@ bool CameraModel::load(const std::string & filePath)
 
 		// init rectification map
 		UINFO("Initialize rectify map");
-		cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_16SC2, rectificationMap1_, rectificationMap2_);
+		cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_32FC1, mapX_, mapY_);
 
 		return true;
 	}
@@ -172,17 +172,69 @@ bool CameraModel::save(const std::string & filePath)
 	return false;
 }
 
-cv::Mat CameraModel::rectifyImage(const cv::Mat & raw) const
+cv::Mat CameraModel::rectifyImage(const cv::Mat & raw, int interpolation) const
 {
-	if(!rectificationMap1_.empty() && !rectificationMap2_.empty())
+	if(!mapX_.empty() && !mapY_.empty())
 	{
 		cv::Mat rectified;
-		cv::remap(raw, rectified, rectificationMap1_, rectificationMap2_, cv::INTER_LINEAR);
+		cv::remap(raw, rectified, mapX_, mapY_, interpolation);
 		return rectified;
 	}
 	else
 	{
-		return raw;
+		return raw.clone();
+	}
+}
+
+//inspired from https://github.com/code-iai/iai_kinect2/blob/master/depth_registration/src/depth_registration_cpu.cpp
+cv::Mat CameraModel::rectifyDepth(const cv::Mat & raw) const
+{
+	UASSERT(raw.type() == CV_16UC1);
+	if(!mapX_.empty() && !mapY_.empty())
+	{
+		cv::Mat rectified = cv::Mat::zeros(mapX_.rows, mapX_.cols, raw.type());
+		for(int y=0; y<mapX_.rows; ++y)
+		{
+			for(int x=0; x<mapX_.cols; ++x)
+			{
+				cv::Point2f pt(mapX_.at<float>(y,x), mapY_.at<float>(y,x));
+				int xL = (int)floor(pt.x);
+				int xH = (int)ceil(pt.x);
+				int yL = (int)floor(pt.y);
+				int yH = (int)ceil(pt.y);
+				if(xL >= 0 && yL >= 0 && xH < raw.cols && yH < raw.rows)
+				{
+					const uint16_t & pLT = raw.at<uint16_t>(yL, xL);
+					const uint16_t & pRT = raw.at<uint16_t>(yL, xH);
+					const uint16_t & pLB = raw.at<uint16_t>(yH, xL);
+					const uint16_t & pRB = raw.at<uint16_t>(yH, xH);
+					if(pLT > 0 && pRT > 0 && pLB > 0 && pRB > 0)
+					{
+						uint16_t avg = (pLT + pRT + pLB + pRB) / 4;
+						uint16_t thres = 0.01 * avg;
+						if( abs(pLT - avg) < thres &&
+							abs(pRT - avg) < thres &&
+							abs(pLB - avg) < thres &&
+							abs(pRB - avg) < thres)
+						{
+							//bilinear interpolation
+							float a = pt.x - (float)xL;
+							float c = pt.y - (float)yL;
+
+							//http://stackoverflow.com/questions/13299409/how-to-get-the-image-pixel-at-real-locations-in-opencv
+							rectified.at<unsigned short>(y,x) =
+									(raw.at<uint16_t>(yL, xL) * (1.f - a) + raw.at<uint16_t>(yL, xH) * a) * (1.f - c) +
+									(raw.at<uint16_t>(yH, xL) * (1.f - a) + raw.at<uint16_t>(yH, xH) * a) * c;
+						}
+					}
+				}
+			}
+		}
+		return rectified;
+	}
+	else
+	{
+		return raw.clone();
 	}
 }
 
@@ -263,6 +315,7 @@ bool StereoCameraModel::save(const std::string & directory, const std::string & 
 			// export in ROS calibration format
 
 			fs << "camera_name" << name_;
+
 			fs << "rotation_matrix" << "{";
 			fs << "rows" << R_.rows;
 			fs << "cols" << R_.cols;
@@ -275,14 +328,12 @@ bool StereoCameraModel::save(const std::string & directory, const std::string & 
 			fs << "data" << std::vector<double>((double*)T_.data, ((double*)T_.data)+(T_.rows*T_.cols));
 			fs << "}";
 
-			fs << "camera_name" << name_;
 			fs << "essential_matrix" << "{";
 			fs << "rows" << E_.rows;
 			fs << "cols" << E_.cols;
 			fs << "data" << std::vector<double>((double*)E_.data, ((double*)E_.data)+(E_.rows*E_.cols));
 			fs << "}";
 
-			fs << "camera_name" << name_;
 			fs << "fundamental_matrix" << "{";
 			fs << "rows" << F_.rows;
 			fs << "cols" << F_.cols;
@@ -295,6 +346,18 @@ bool StereoCameraModel::save(const std::string & directory, const std::string & 
 		}
 	}
 	return false;
+}
+
+Transform StereoCameraModel::transform() const
+{
+	if(!R_.empty() && !T_.empty())
+	{
+		return Transform(
+				R_.at<double>(0,0), R_.at<double>(0,1), R_.at<double>(0,2), T_.at<double>(0),
+				R_.at<double>(1,0), R_.at<double>(1,1), R_.at<double>(1,2), T_.at<double>(1),
+				R_.at<double>(2,0), R_.at<double>(2,1), R_.at<double>(2,2), T_.at<double>(2));
+	}
+	return Transform();
 }
 
 } /* namespace rtabmap */

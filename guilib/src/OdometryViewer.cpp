@@ -123,6 +123,7 @@ OdometryViewer::~OdometryViewer()
 {
 	this->unregisterFromEventsManager();
 	this->clear();
+	UDEBUG("");
 }
 
 void OdometryViewer::clear()

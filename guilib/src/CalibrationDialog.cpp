@@ -778,12 +778,24 @@ void CalibrationDialog::calibrate()
 				validRoi[1].x, validRoi[1].y, validRoi[1].width, validRoi[1].height,
 				imageSize.width, imageSize.height);
 
-		stereoModel_ = StereoCameraModel(
-				cameraName_.toStdString(),
-				imageSize,
-				models_[0].K(), models_[0].D(), R1, P1,
-				models_[1].K(), models_[1].D(), R2, P2,
-				R, T, E, F);
+		if(imageSize_[0].width == imageSize_[1].width)
+		{
+			//Stereo, keep new extrinsic projection matrix
+			stereoModel_ = StereoCameraModel(
+					cameraName_.toStdString(),
+					imageSize_[0], models_[0].K(), models_[0].D(), R1, P1,
+					imageSize_[1], models_[1].K(), models_[1].D(), R2, P2,
+					R, T, E, F);
+		}
+		else
+		{
+			//Kinect
+			stereoModel_ = StereoCameraModel(
+					cameraName_.toStdString(),
+					imageSize_[0], models_[0].K(), models_[0].D(), cv::Mat::eye(3,3,CV_64FC1), models_[0].P(),
+					imageSize_[1], models_[1].K(), models_[1].D(), cv::Mat::eye(3,3,CV_64FC1), models_[1].P(),
+					R, T, E, F);
+		}
 
 		std::stringstream strR1, strP1, strR2, strP2;
 		strR1 << stereoModel_.left().R();

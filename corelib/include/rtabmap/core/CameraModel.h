@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/opencv.hpp>
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#include "rtabmap/core/Transform.h"
 
 namespace rtabmap {
 
@@ -61,10 +62,10 @@ public:
 	double cy() const {return P_.at<double>(1,2);}
 	double Tx() const {return P_.at<double>(0,3);}
 
-	const cv::Mat & K() const {return K_;}
-	const cv::Mat & D() const {return D_;}
-	const cv::Mat & R() const {return R_;}
-	const cv::Mat & P() const {return P_;}
+	const cv::Mat & K() const {return K_;} //intrinsic camera matrix
+	const cv::Mat & D() const {return D_;} //intrinsic distorsion matrix
+	const cv::Mat & R() const {return R_;} //rectification matrix
+	const cv::Mat & P() const {return P_;} //projection matrix
 
 	const cv::Size & imageSize() const {return imageSize_;}
 	int imageWidth() const {return imageSize_.width;}
@@ -73,7 +74,9 @@ public:
 	bool load(const std::string & filePath);
 	bool save(const std::string & filePath);
 
-	cv::Mat rectifyImage(const cv::Mat & raw) const;
+	// For depth images, your should use cv::INTER_NEAREST
+	cv::Mat rectifyImage(const cv::Mat & raw, int interpolation = cv::INTER_LINEAR) const;
+	cv::Mat rectifyDepth(const cv::Mat & raw) const;
 
 private:
 	std::string name_;
@@ -82,20 +85,22 @@ private:
 	cv::Mat D_;
 	cv::Mat R_;
 	cv::Mat P_;
-	cv::Mat rectificationMap1_;
-	cv::Mat rectificationMap2_;
+	cv::Mat mapX_;
+	cv::Mat mapY_;
 };
 
 class StereoCameraModel
 {
 public:
 	StereoCameraModel() {}
-	StereoCameraModel(const std::string & name, const cv::Size & imageSize,
+	StereoCameraModel(const std::string & name,
+			const cv::Size & imageSize1,
 			const cv::Mat & K1, const cv::Mat & D1, const cv::Mat & R1, const cv::Mat & P1,
+			const cv::Size & imageSize2,
 			const cv::Mat & K2, const cv::Mat & D2, const cv::Mat & R2, const cv::Mat & P2,
 			const cv::Mat & R, const cv::Mat & T, const cv::Mat & E, const cv::Mat & F) :
-		left_(name+"_left", imageSize, K1, D1, R1, P1),
-		right_(name+"_right", imageSize, K2, D2, R2, P2),
+		left_(name+"_left", imageSize1, K1, D1, R1, P1),
+		right_(name+"_right", imageSize2, K2, D2, R2, P2),
 		name_(name),
 		R_(R),
 		T_(T),
@@ -110,7 +115,15 @@ public:
 
 	bool load(const std::string & directory, const std::string & cameraName);
 	bool save(const std::string & directory, const std::string & cameraName);
+
 	double baseline() const {return -right_.Tx()/right_.fx();}
+
+	const cv::Mat & R() const {return R_;} //extrinsic rotation matrix
+	const cv::Mat & T() const {return T_;} //extrinsic translation matrix
+	const cv::Mat & E() const {return E_;} //extrinsic essential matrix
+	const cv::Mat & F() const {return F_;} //extrinsic fundamental matrix
+
+	Transform transform() const;
 
 	const CameraModel & left() const {return left_;}
 	const CameraModel & right() const {return right_;}

@@ -225,6 +225,7 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 OdometryBOW::~OdometryBOW()
 {
 	delete _memory;
+	UDEBUG("");
 }
 
 
@@ -1146,8 +1147,8 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 
 						// new 3D points, used to compute variance
 						image3DPoints[oi] = pcl::PointXYZ(bad_point, bad_point, bad_point);
-						if(uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols-1)) &&
-						   uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows-1)))
+						if(uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols)) &&
+						   uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows)))
 						{
 							pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depth(), newCorners[i].x, newCorners[i].y,
 									data.cx(), data.cy(), data.fx(), data.fy(), true);
@@ -1283,8 +1284,8 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 			for(unsigned int i=0; i<status.size(); ++i)
 			{
 				if(status[i] && pcl::isFinite(refCorners3D_->at(i)) &&
-					uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols-1)) &&
-					uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows-1)))
+					uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols)) &&
+					uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows)))
 				{
 					pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depth(), newCorners[i].x, newCorners[i].y,
 							data.cx(), data.cy(), data.fx(), data.fy(), true);
@@ -1405,8 +1406,8 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 			int oi=0;
 			for(unsigned int i=0; i<newCorners.size(); ++i)
 			{
-				if(uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols)-1.0f) &&
-				   uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows)-1.0f))
+				if(uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols)) &&
+				   uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows)))
 				{
 					pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depth(), newCorners[i].x, newCorners[i].y,
 							data.cx(), data.cy(), data.fx(), data.fy(), true);
@@ -1636,6 +1637,7 @@ OdometryThread::~OdometryThread()
 	{
 		delete _odometry;
 	}
+	UDEBUG("");
 }
 
 void OdometryThread::handleEvent(UEvent * event)

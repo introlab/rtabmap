@@ -52,8 +52,8 @@ int main(int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kInfo);
-	ULogger::setPrintTime(false);
-	ULogger::setPrintWhere(false);
+	//ULogger::setPrintTime(false);
+	//ULogger::setPrintWhere(false);
 
 	int driver = 0;
 	if(argc < 2)
@@ -123,7 +123,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Freenect2 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraFreenect2();
+		camera = new rtabmap::CameraFreenect2(0, rtabmap::CameraFreenect2::kTypeRGBDepthSD);
 	}
 	else if(driver == 6)
 	{
@@ -179,11 +179,6 @@ int main(int argc, char * argv[])
 			{
 				depth = rtabmap::util3d::cvtDepthFromFloat(depth);
 			}
-			cv::Mat tmp;
-			depth.convertTo(tmp, CV_8UC1, 255.0/2048.0);
-
-			cv::imshow("Video", rgb); // show frame
-			cv::imshow("Depth", tmp);
 
 			if(rgb.cols == depth.cols && rgb.rows == depth.rows && fx && fy)
 			{
@@ -191,6 +186,20 @@ int main(int argc, char * argv[])
 				cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, t);
 				viewer.showCloud(cloud, "cloud");
 			}
+			else if(!depth.empty() && fx && fy)
+			{
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(depth, cx, cy, fx, fy);
+				cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZ>(cloud, t);
+				viewer.showCloud(cloud, "cloud");
+			}
+
+			cv::Mat tmp;
+			unsigned short min=0, max = 2048;
+			uMinMax((unsigned short*)depth.data, depth.rows*depth.cols, min, max);
+			depth.convertTo(tmp, CV_8UC1, 255.0/max);
+
+			cv::imshow("Video", rgb); // show frame
+			cv::imshow("Depth", tmp);
 		}
 		else
 		{

@@ -700,7 +700,7 @@ int main (int argc, char * argv[])
 
 			app.exec();
 
-			camera.kill();
+			camera.join(true);
 			odomThread.join(true);
 		}
 	}
@@ -793,7 +793,7 @@ int main (int argc, char * argv[])
 
 				odomViewer.exec();
 
-				cameraThread.kill();
+				cameraThread.join(true);
 				odomThread.join(true);
 			}
 			else

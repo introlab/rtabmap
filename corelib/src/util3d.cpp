@@ -1010,8 +1010,8 @@ pcl::PointXYZ projectDisparityTo3D(
 	int u = int(pt.x+0.5f);
 	int v = int(pt.y+0.5f);
 	float bad_point = std::numeric_limits<float>::quiet_NaN ();
-	if(uIsInBounds(u, 0, disparity.cols-1) &&
-	   uIsInBounds(v, 0, disparity.rows-1))
+	if(uIsInBounds(u, 0, disparity.cols) &&
+	   uIsInBounds(v, 0, disparity.rows))
 	{
 		float d = disparity.type() == CV_16SC1?float(disparity.at<short>(v,u))/16.0f:disparity.at<float>(v,u);
 		return projectDisparityTo3D(pt, d, cx, cy, fx, baseline);
@@ -1047,6 +1047,170 @@ cv::Mat depthFromDisparity(const cv::Mat & disparity,
 		}
 	}
 	return depth;
+}
+
+cv::Mat registerDepth(
+		const cv::Mat & depth,
+		const cv::Mat & depthK,
+		const cv::Mat & colorK,
+		const rtabmap::Transform & transform)
+{
+	UASSERT(!transform.isNull());
+	UASSERT(!depth.empty());
+	UASSERT(depth.type() == CV_16UC1); // mm
+	UASSERT(depthK.type() == CV_64FC1 && depthK.cols == 3 && depthK.cols == 3);
+	UASSERT(colorK.type() == CV_64FC1 && colorK.cols == 3 && colorK.cols == 3);
+
+	float fx = depthK.at<double>(0,0);
+	float fy = depthK.at<double>(1,1);
+	float cx = depthK.at<double>(0,2);
+	float cy = depthK.at<double>(1,2);
+
+	float rfx = colorK.at<double>(0,0);
+	float rfy = colorK.at<double>(1,1);
+	float rcx = colorK.at<double>(0,2);
+	float rcy = colorK.at<double>(1,2);
+
+	Eigen::Affine3f proj = transform.toEigen3f();
+	Eigen::Vector4f P4,P3;
+	P4[3] = 1;
+	cv::Mat registered = cv::Mat::zeros(depth.rows, depth.cols, depth.type());
+
+	for(int y=0; y<depth.rows; ++y)
+	{
+		for(int x=0; x<depth.cols; ++x)
+		{
+			//filtering
+			float dz = float(depth.at<unsigned short>(y,x))*0.001f; // put in meter for projection
+			if(dz>=0.0f)
+			{
+				// Project to 3D
+				P4[0] = (x - cx) * dz / fx; // Optimization: we could have (x-cx)/fx in a lookup table
+				P4[1] = (y - cy) * dz / fy; // Optimization: we could have (y-cy)/fy in a lookup table
+				P4[2] = dz;
+
+				P3 = proj * P4;
+				float z = P3[2];
+				float invZ = 1.0f/z;
+				int dx = (rfx*P3[0])*invZ + rcx;
+				int dy = (rfy*P3[1])*invZ + rcy;
+
+				if(uIsInBounds(dx, 0, registered.cols) && uIsInBounds(dy, 0, registered.rows))
+				{
+					unsigned short z16 = z * 1000; //mm
+					unsigned short &zReg = registered.at<unsigned short>(dy, dx);
+					if(zReg == 0 || z16 < zReg)
+					{
+						zReg = z16;
+					}
+				}
+			}
+		}
+	}
+	return registered;
+}
+
+void fillRegisteredDepthHoles(cv::Mat & registeredDepth, bool vertical, bool horizontal, bool fillDoubleHoles)
+{
+	UASSERT(registeredDepth.type() == CV_16UC1);
+	int margin = fillDoubleHoles?2:1;
+	for(int x=1; x<registeredDepth.cols-margin; ++x)
+	{
+		for(int y=1; y<registeredDepth.rows-margin; ++y)
+		{
+			unsigned short & b = registeredDepth.at<unsigned short>(y, x);
+			bool set = false;
+			if(vertical)
+			{
+				const unsigned short & a = registeredDepth.at<unsigned short>(y-1, x);
+				unsigned short & c = registeredDepth.at<unsigned short>(y+1, x);
+				if(a && c)
+				{
+					unsigned short error = 0.01*((a+c)/2);
+					if(((b == 0 && a && c) || (b > a+error && b > c+error)) &&
+						(a>c?a-c<=error:c-a<=error))
+					{
+						b = (a+c)/2;
+						set = true;
+						if(!horizontal)
+						{
+							++y;
+						}
+					}
+				}
+				if(!set && fillDoubleHoles)
+				{
+					const unsigned short & d = registeredDepth.at<unsigned short>(y+2, x);
+					if(a && d && (b==0 || c==0))
+					{
+						unsigned short error = 0.01*((a+d)/2);
+						if(((b == 0 && a && d) || (b > a+error && b > d+error)) &&
+						   ((c == 0 && a && d) || (c > a+error && c > d+error)) &&
+							(a>d?a-d<=error:d-a<=error))
+						{
+							if(a>d)
+							{
+								unsigned short tmp = (a-d)/4;
+								b = d + tmp;
+								c = d + 3*tmp;
+							}
+							else
+							{
+								unsigned short tmp = (d-a)/4;
+								b = a + tmp;
+								c = a + 3*tmp;
+							}
+							set = true;
+							if(!horizontal)
+							{
+								y+=2;
+							}
+						}
+					}
+				}
+			}
+			if(!set && horizontal)
+			{
+				const unsigned short & a = registeredDepth.at<unsigned short>(y, x-1);
+				unsigned short & c = registeredDepth.at<unsigned short>(y, x+1);
+				if(a && c)
+				{
+					unsigned short error = 0.01*((a+c)/2);
+					if(((b == 0 && a && c) || (b > a+error && b > c+error)) &&
+						(a>c?a-c<=error:c-a<=error))
+					{
+						b = (a+c)/2;
+						set = true;
+					}
+				}
+				if(!set && fillDoubleHoles)
+				{
+					const unsigned short & d = registeredDepth.at<unsigned short>(y, x+2);
+					if(a && d && (b==0 || c==0))
+					{
+						unsigned short error = 0.01*((a+d)/2);
+						if(((b == 0 && a && d) || (b > a+error && b > d+error)) &&
+						   ((c == 0 && a && d) || (c > a+error && c > d+error)) &&
+							(a>d?a-d<=error:d-a<=error))
+						{
+							if(a>d)
+							{
+								unsigned short tmp = (a-d)/4;
+								b = d + tmp;
+								c = d + 3*tmp;
+							}
+							else
+							{
+								unsigned short tmp = (d-a)/4;
+								b = a + tmp;
+								c = a + 3*tmp;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud)

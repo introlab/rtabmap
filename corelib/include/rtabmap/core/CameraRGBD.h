@@ -63,6 +63,8 @@ namespace libfreenect2
 class Freenect2;
 class Freenect2Device;
 class SyncMultiFrameListener;
+class Registration;
+class PacketPipeline;
 }
 
 namespace FlyCapture2
@@ -294,9 +296,12 @@ protected:
 private:
 	int deviceId_;
 	Type type_;
+	StereoCameraModel stereoModel_;
 	libfreenect2::Freenect2 * freenect2_;
 	libfreenect2::Freenect2Device *dev_;
+	libfreenect2::PacketPipeline * pipeline_;
 	libfreenect2::SyncMultiFrameListener * listener_;
+	libfreenect2::Registration * reg_;
 };
 
 /////////////////////////

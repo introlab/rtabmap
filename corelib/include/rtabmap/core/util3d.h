@@ -197,6 +197,14 @@ cv::Mat RTABMAP_EXP depthFromDisparity(const cv::Mat & disparity,
 		float fx, float baseline,
 		int type = CV_32FC1);
 
+cv::Mat RTABMAP_EXP registerDepth(
+		const cv::Mat & depth,
+		const cv::Mat & depthK,
+		const cv::Mat & colorK,
+		const rtabmap::Transform & transform);
+
+void RTABMAP_EXP fillRegisteredDepthHoles(cv::Mat & depth, bool vertical, bool horizontal, bool fillDoubleHoles = false);
+
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud);
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const cv::Mat & laserScan);
 
