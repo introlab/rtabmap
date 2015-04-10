@@ -799,11 +799,13 @@ int main (int argc, char * argv[])
 			else
 			{
 				printf("The camera is not calibrated! You should calibrate the camera first.\n");
+				delete camera;
 			}
 		}
 		else
 		{
 			printf("Failed to initialize the camera! Please select another driver (see \"--help\").\n");
+			delete camera;
 		}
 	}
 
