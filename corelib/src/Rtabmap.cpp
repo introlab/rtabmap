@@ -1970,7 +1970,7 @@ bool Rtabmap::process(const SensorData & data)
 									timeHypothesesValidation,
 									timeRealTimeLimitReachedProcess,
 									timeStatsCreation,
-									_loopClosureHypothesis.second,
+									_highestHypothesis.second,
 									0.0f,
 									0.0f,
 									0.0f,
