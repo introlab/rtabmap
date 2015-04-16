@@ -45,6 +45,7 @@ public:
 
 	QString outputPath() const;
 	int framesIgnored() const;
+	int sessionExported() const;
 	bool isRgbExported() const;
 	bool isDepthExported() const;
 	bool isDepth2dExported() const;

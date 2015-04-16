@@ -375,8 +375,6 @@ void ImageView::paintEvent(QPaintEvent *event)
 	{
 		if(!_graphicsView->scene()->sceneRect().isNull())
 		{
-			UWARN("rect=  %d %d", event->rect().width(), event->rect().height());
-
 			//Scale
 			float ratio, offsetX, offsetY;
 			this->computeScaleOffsets(event->rect(), ratio, offsetX, offsetY);

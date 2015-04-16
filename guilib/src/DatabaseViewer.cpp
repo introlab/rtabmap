@@ -663,17 +663,46 @@ void DatabaseViewer::exportDatabase()
 		if(!dialog.outputPath().isEmpty())
 		{
 			int framesIgnored = dialog.framesIgnored();
+			int sessionExported = dialog.sessionExported();
 			QString path = dialog.outputPath();
 			rtabmap::DataRecorder recorder;
+			QList<int> ids;
+			if(sessionExported < 0)
+			{
+				ids = ids_;
+			}
+			else
+			{
+				for(int i=0; i<ids_.size(); ++i)
+				{
+					Transform odomPose;
+					int weight = -1;
+					int mapId = -1;
+					std::string label;
+					double stamp = 0;
+					std::vector<unsigned char> userData;
+					if(memory_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, userData, true))
+					{
+						if(sessionExported == mapId)
+						{
+							ids.push_back(ids_[i]);
+						}
+						else if(mapId > sessionExported)
+						{
+							break;
+						}
+					}
+				}
+			}
 			if(recorder.init(path, false))
 			{
 				rtabmap::DetailedProgressDialog progressDialog(this);
-				progressDialog.setMaximumSteps(ids_.size() / (1+framesIgnored) + 1);
+				progressDialog.setMaximumSteps(ids.size() / (1+framesIgnored) + 1);
 				progressDialog.show();
 
-				for(int i=0; i<ids_.size(); i+=1+framesIgnored)
+				for(int i=0; i<ids.size(); i+=1+framesIgnored)
 				{
-					int id = ids_.at(i);
+					int id = ids.at(i);
 
 					Signature data = memory_->getSignatureData(id, true);
 					rtabmap::SensorData sensorData = data.toSensorData();

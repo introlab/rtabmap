@@ -41,6 +41,7 @@ ExportDialog::ExportDialog(QWidget * parent) :
 	connect(_ui->toolButton_path, SIGNAL(clicked()), this, SLOT(getPath()));
 
 	connect(_ui->spinBox_ignored, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_session, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_rgb, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_depth, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_depth2d, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
@@ -71,6 +72,11 @@ QString ExportDialog::outputPath() const
 int ExportDialog::framesIgnored() const
 {
 	return _ui->spinBox_ignored->value();
+}
+
+int ExportDialog::sessionExported() const
+{
+	return _ui->spinBox_session->value();
 }
 
 bool ExportDialog::isRgbExported() const
