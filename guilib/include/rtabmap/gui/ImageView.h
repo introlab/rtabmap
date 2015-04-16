@@ -100,11 +100,12 @@ protected:
 	virtual void resizeEvent(QResizeEvent* event);
 	virtual void contextMenuEvent(QContextMenuEvent * e);
 
+private slots:
+	void sceneRectChanged(const QRectF &rect);
+
 private:
 	void updateOpacity();
-	void computeScaleOffsets(float & scale, float & offsetX, float & offsetY) const;
-	void drawFeatures(QPainter * painter);
-	void drawLines(QPainter * painter);
+	void computeScaleOffsets(const QRect & targetRect, float & scale, float & offsetX, float & offsetY) const;
 
 private:
 	QString _savedFileName;

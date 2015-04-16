@@ -79,6 +79,9 @@ ImageView::ImageView(QWidget * parent) :
 	_graphicsViewScaled->setEnabled(false);
 	_setAlpha = _menu->addAction(tr("Set alpha..."));
 	_saveImage = _menu->addAction(tr("Save picture..."));
+	_saveImage->setEnabled(false);
+
+	connect(_graphicsView->scene(), SIGNAL(sceneRectChanged(const QRectF &)), this, SLOT(sceneRectChanged(const QRectF &)));
 }
 
 ImageView::~ImageView() {
@@ -226,7 +229,7 @@ float ImageView::viewScale() const
 	else
 	{
 		float scale, offsetX, offsetY;
-		computeScaleOffsets(scale, offsetX, offsetY);
+		computeScaleOffsets(this->rect(), scale, offsetX, offsetY);
 		return scale;
 	}
 }
@@ -317,7 +320,7 @@ void ImageView::setBackgroundColor(const QColor & color)
 	}
 }
 
-void ImageView::computeScaleOffsets(float & scale, float & offsetX, float & offsetY) const
+void ImageView::computeScaleOffsets(const QRect & targetRect, float & scale, float & offsetX, float & offsetY) const
 {
 	scale = 1.0f;
 	offsetX = 0.0f;
@@ -327,8 +330,8 @@ void ImageView::computeScaleOffsets(float & scale, float & offsetX, float & offs
 	{
 		float w = _graphicsView->scene()->width();
 		float h = _graphicsView->scene()->height();
-		float widthRatio = float(this->rect().width()) / w;
-		float heightRatio = float(this->rect().height()) / h;
+		float widthRatio = float(targetRect.width()) / w;
+		float heightRatio = float(targetRect.height()) / h;
 
 		//printf("w=%f, h=%f, wR=%f, hR=%f, sW=%d, sH=%d\n", w, h, widthRatio, heightRatio, this->rect().width(), this->rect().height());
 		if(widthRatio < heightRatio)
@@ -345,16 +348,21 @@ void ImageView::computeScaleOffsets(float & scale, float & offsetX, float & offs
 		w *= scale;
 		h *= scale;
 
-		if(w < this->rect().width())
+		if(w < targetRect.width())
 		{
-			offsetX = (this->rect().width() - w)/2.0f;
+			offsetX = (targetRect.width() - w)/2.0f;
 		}
-		if(h < this->rect().height())
+		if(h < targetRect.height())
 		{
-			offsetY = (this->rect().height() - h)/2.0f;
+			offsetY = (targetRect.height() - h)/2.0f;
 		}
 		//printf("offsetX=%f, offsetY=%f\n",offsetX, offsetY);
 	}
+}
+
+void ImageView::sceneRectChanged(const QRectF & rect)
+{
+	_saveImage->setEnabled(rect.isValid());
 }
 
 void ImageView::paintEvent(QPaintEvent *event)
@@ -367,15 +375,17 @@ void ImageView::paintEvent(QPaintEvent *event)
 	{
 		if(!_graphicsView->scene()->sceneRect().isNull())
 		{
+			UWARN("rect=  %d %d", event->rect().width(), event->rect().height());
+
 			//Scale
 			float ratio, offsetX, offsetY;
-			this->computeScaleOffsets(ratio, offsetX, offsetY);
+			this->computeScaleOffsets(event->rect(), ratio, offsetX, offsetY);
 			QPainter painter(this);
 
 			//Background
 			painter.save();
 			painter.setBrush(_graphicsView->backgroundBrush());
-			painter.drawRect(this->rect());
+			painter.drawRect(event->rect());
 			painter.restore();
 
 			painter.translate(offsetX, offsetY);
@@ -441,19 +451,29 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 	QAction * action = _menu->exec(e->globalPos());
 	if(action == _saveImage)
 	{
-		QString text;
-#ifdef QT_SVG_LIB
-		text = QFileDialog::getSaveFileName(this, tr("Save figure to ..."), _savedFileName, "*.png *.xpm *.jpg *.pdf *.svg");
-#else
-		text = QFileDialog::getSaveFileName(this, tr("Save figure to ..."), _savedFileName, "*.png *.xpm *.jpg *.pdf");
-#endif
-		if(!text.isEmpty())
+		if(!_graphicsView->scene()->sceneRect().isNull())
 		{
-			_savedFileName = text;
-			QImage img(_graphicsView->sceneRect().width(), _graphicsView->sceneRect().height(),QImage::Format_ARGB32_Premultiplied);
-			QPainter p(&img);
-			_graphicsView->scene()->render(&p, _graphicsView->sceneRect(), _graphicsView->sceneRect());
-			img.save(text);
+			QString text;
+#ifdef QT_SVG_LIB
+			text = QFileDialog::getSaveFileName(this, tr("Save figure to ..."), _savedFileName, "*.png *.xpm *.jpg *.pdf *.svg");
+#else
+			text = QFileDialog::getSaveFileName(this, tr("Save figure to ..."), _savedFileName, "*.png *.xpm *.jpg *.pdf");
+#endif
+			if(!text.isEmpty())
+			{
+				_savedFileName = text;
+				QImage img(_graphicsView->sceneRect().width(), _graphicsView->sceneRect().height(), QImage::Format_ARGB32_Premultiplied);
+				QPainter p(&img);
+				if(_graphicsView->isVisible())
+				{
+					_graphicsView->scene()->render(&p, _graphicsView->sceneRect(), _graphicsView->sceneRect());
+				}
+				else
+				{
+					this->render(&p, QPoint(), _graphicsView->sceneRect().toRect());
+				}
+				img.save(text);
+			}
 		}
 	}
 	else if(action == _showFeatures)
@@ -748,6 +768,7 @@ void ImageView::clear()
 		_imageItem = 0;
 		_showImage->setEnabled(false);
 	}
+	_image = QPixmap();
 
 	if(_imageDepthItem)
 	{
@@ -756,6 +777,7 @@ void ImageView::clear()
 		_imageDepthItem = 0;
 		_showImageDepth->setEnabled(false);
 	}
+	_imageDepth = QPixmap();
 
 	if(!_graphicsView->isVisible())
 	{
