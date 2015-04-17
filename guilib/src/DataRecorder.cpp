@@ -75,7 +75,7 @@ bool DataRecorder::init(const QString & path, bool recordInRAM)
 		customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "true")); // to keep images
 		if(!recordInRAM)
 		{
-			customParameters.insert(ParametersPair(Parameters::kDbSqlite3InMemory(), "false")); // to keep images
+			customParameters.insert(ParametersPair(Parameters::kDbSqlite3InMemory(), "false"));
 		}
 		memory_ = new Memory();
 		if(!memory_->init(path.toStdString(), true, customParameters))
@@ -125,6 +125,13 @@ void DataRecorder::addData(const rtabmap::SensorData & data)
 	memoryMutex_.lock();
 	if(memory_)
 	{
+		if(memory_->getStMem().size() == 0 && data.id() > 0)
+		{
+			ParametersMap customParameters;
+			customParameters.insert(ParametersPair(Parameters::kMemGenerateIds(), "false")); // use id from data
+			memory_->parseParameters(customParameters);
+		}
+
 		//save to database
 		UTimer time;
 		memory_->update(data);

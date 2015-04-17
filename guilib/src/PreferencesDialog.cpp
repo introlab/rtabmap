@@ -349,7 +349,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	// Memory
 	_ui->general_checkBox_keepRawData->setObjectName(Parameters::kMemImageKept().c_str());
 	_ui->general_checkBox_keepBinaryData->setObjectName(Parameters::kMemBinDataKept().c_str());
-	_ui->general_checkBox_keepRehearsedNodes->setObjectName(Parameters::kMemRehearsedNodesKept().c_str());
+	_ui->general_checkBox_keepNotLinkedNodes->setObjectName(Parameters::kMemNotLinkedNodesKept().c_str());
 	_ui->general_spinBox_maxStMemSize->setObjectName(Parameters::kMemSTMSize().c_str());
 	_ui->doubleSpinBox_similarityThreshold->setObjectName(Parameters::kMemRehearsalSimilarity().c_str());
 	_ui->general_checkBox_SLAM_mode->setObjectName(Parameters::kMemIncrementalMemory().c_str());
@@ -476,6 +476,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
 	_ui->graphPlan_planWithNearNodesLinked->setObjectName(Parameters::kRGBDPlanWithNearNodesLinked().c_str());
+	_ui->graphPlan_goalsSavedInUserData->setObjectName(Parameters::kRGBDGoalsSavedInUserData().c_str());
 
 	_ui->groupBox_localDetection_time->setObjectName(Parameters::kRGBDLocalLoopDetectionTime().c_str());
 	_ui->groupBox_localDetection_space->setObjectName(Parameters::kRGBDLocalLoopDetectionSpace().c_str());

@@ -46,6 +46,7 @@ ExportDialog::ExportDialog(QWidget * parent) :
 	connect(_ui->checkBox_depth, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_depth2d, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_odom, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_userData, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 
 	_ui->lineEdit_path->setText(QDir::homePath()+QDir::separator()+"output.db");
 }
@@ -97,6 +98,11 @@ bool ExportDialog::isDepth2dExported() const
 bool ExportDialog::isOdomExported() const
 {
 	return _ui->checkBox_odom->isChecked();
+}
+
+bool ExportDialog::isUserDataExported() const
+{
+	return _ui->checkBox_userData->isChecked();
 }
 
 }

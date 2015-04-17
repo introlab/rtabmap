@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>21</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -61,6 +61,7 @@
      <addaction name="actionGenerate_local_map"/>
      <addaction name="actionGenerate_TORO_graph_graph"/>
      <addaction name="actionPrint_loop_closure_IDs_to_console"/>
+     <addaction name="actionSend_goal"/>
     </widget>
     <addaction name="actionDownload_all_clouds"/>
     <addaction name="actionDownload_graph"/>
@@ -1213,6 +1214,11 @@
   <action name="actionStereoFlyCapture2">
    <property name="text">
     <string>StereoFlyCapture2</string>
+   </property>
+  </action>
+  <action name="actionSend_goal">
+   <property name="text">
+    <string>Send a goal...</string>
    </property>
   </action>
  </widget>

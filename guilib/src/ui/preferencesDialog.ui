@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1035</width>
-    <height>716</height>
+    <height>702</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>736</width>
-            <height>781</height>
+            <width>737</width>
+            <height>948</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>0</number>
+                <number>8</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -3140,7 +3140,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                     <item row="1" column="1">
                      <widget class="QLabel" name="label_keepRehearsed">
                       <property name="text">
-                       <string>Keep rehearsed locations.</string>
+                       <string>Keep not linked nodes in db (rehearsed nodes and deleted nodes are saved).</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -3148,7 +3148,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                      </widget>
                     </item>
                     <item row="1" column="0">
-                     <widget class="QCheckBox" name="general_checkBox_keepRehearsedNodes">
+                     <widget class="QCheckBox" name="general_checkBox_keepNotLinkedNodes">
                       <property name="text">
                        <string/>
                       </property>
@@ -3280,7 +3280,7 @@ generate the number of words requested.</string>
                       <item row="2" column="0">
                        <widget class="QSpinBox" name="surf_spinBox_wordsPerImageTarget">
                         <property name="minimum">
-                         <number>0</number>
+                         <number>-1</number>
                         </property>
                         <property name="maximum">
                          <number>2000</number>
@@ -3299,7 +3299,7 @@ Otherwise, the threshold is modified to
 generate the number of words requested.</string>
                         </property>
                         <property name="text">
-                         <string>Maximum words per image.</string>
+                         <string>Maximum words per image (0=no maximum). Setting to -1 will disable features extraction, so disabling loop closure detection indirectly.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -5287,6 +5287,23 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_space3_5">
+                           <property name="text">
+                            <string>When a goal is received and processed with success, it is saved in user data of the location with this format: &quot;GOAL:#&quot;.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QCheckBox" name="graphPlan_goalsSavedInUserData">
+                           <property name="text">
+                            <string/>
                            </property>
                           </widget>
                          </item>

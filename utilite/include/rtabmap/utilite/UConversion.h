@@ -150,6 +150,20 @@ std::string UTILITE_EXP uBool2Str(bool boolean);
 bool UTILITE_EXP uStr2Bool(const char * str);
 
 /**
+ * Convert a string to an array of bytes including the null character ('\0').
+ * @param str the string
+ * @return the array of bytes
+ */
+std::vector<unsigned char> UTILITE_EXP uStr2Bytes(const std::string & str);
+
+/**
+ * Convert an array of bytes to string, the array of bytes must end with the null character ('\0').
+ * @param bytes the array of bytes
+ * @return the string
+ */
+std::string UTILITE_EXP uBytes2Str(const std::vector<unsigned char> & bytes);
+
+/**
  * Convert a bytes array to an hexadecimal string.
  * The resulting string is twice the size of the bytes array. The hexadecimal
  * Characters are in upper case.

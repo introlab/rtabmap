@@ -50,6 +50,7 @@ public:
 	bool isDepthExported() const;
 	bool isDepth2dExported() const;
 	bool isOdomExported() const;
+	bool isUserDataExported() const;
 
 signals:
 	void configChanged();

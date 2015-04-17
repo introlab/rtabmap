@@ -87,6 +87,7 @@ public:
 	int id() const {return _id;}
 	void setId(int id) {_id = id;}
 	double stamp() const {return _stamp;}
+	void setStamp(double stamp) {_stamp = stamp;}
 
 	bool isMetric() const {return !_depthOrRightImage.empty() || _fx != 0.0f || _fyOrBaseline != 0.0f || !_pose.isNull();}
 	void setPose(const Transform & pose, float rotVariance, float transVariance) {_pose = pose; _poseRotVariance=rotVariance; _poseTransVariance = transVariance;}
@@ -114,7 +115,7 @@ public:
 	const cv::Mat & descriptors() const {return _descriptors;}
 
 	void setUserData(const std::vector<unsigned char> & data) {_userData = data;}
-	const std::vector<unsigned char> userData() const {return _userData;}
+	const std::vector<unsigned char> & userData() const {return _userData;}
 
 private:
 	cv::Mat _image;

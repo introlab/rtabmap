@@ -70,7 +70,8 @@ public:
 		kStatePublishingTOROGraphLocal,
 		kStatePublishingTOROGraphGlobal,
 		kStateTriggeringMap,
-		kStateAddingUserData
+		kStateAddingUserData,
+		kStateSettingGoal
 	};
 
 public:

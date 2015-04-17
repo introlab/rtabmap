@@ -706,6 +706,10 @@ void DatabaseViewer::exportDatabase()
 
 					Signature data = memory_->getSignatureData(id, true);
 					rtabmap::SensorData sensorData = data.toSensorData();
+					if(!dialog.isUserDataExported())
+					{
+						sensorData.setUserData(std::vector<unsigned char>());
+					}
 					recorder.addData(sensorData);
 
 					progressDialog.appendText(tr("Exported node %1").arg(id));

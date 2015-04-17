@@ -153,6 +153,7 @@ private slots:
 	void selectStereoFlyCapture2();
 	void dumpTheMemory();
 	void dumpThePrediction();
+	void sendGoal();
 	void downloadAllClouds();
 	void downloadPoseGraph();
 	void clearTheCache();
@@ -167,6 +168,7 @@ private slots:
 	void applyPrefSettings(const rtabmap::ParametersMap & parameters);
 	void processRtabmapEventInit(int status, const QString & info);
 	void processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & event);
+	void processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathEvent & event);
 	void changeImgRateSetting();
 	void changeDetectionRateSetting();
 	void changeTimeLimitSetting();
@@ -199,6 +201,7 @@ signals:
 	void stateChanged(MainWindow::State);
 	void rtabmapEventInitReceived(int status, const QString & info);
 	void rtabmapEvent3DMapReceived(const rtabmap::RtabmapEvent3DMap & event);
+	void rtabmapGlobalPathEventReceived(const rtabmap::RtabmapGlobalPathEvent & event);
 	void imgRateChanged(double);
 	void detectionRateChanged(double);
 	void timeLimitChanged(float);

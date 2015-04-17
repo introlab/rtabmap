@@ -157,7 +157,8 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_loopClosureLocalColor(Qt::yellow),
 		_loopClosureUserColor(Qt::red),
 		_loopClosureVirtualColor(Qt::magenta),
-		_pathColor(Qt::cyan),
+		_localPathColor(Qt::cyan),
+		_globalPathColor(Qt::darkMagenta),
 		_root(0),
 		_nodeRadius(0.01),
 		_linkWidth(0),
@@ -430,6 +431,32 @@ void GraphViewer::updatePosterior(const std::map<int, float> & posterior)
 	}
 }
 
+void GraphViewer::setGlobalPath(const std::vector<std::pair<int, Transform> > & globalPath)
+{
+	UDEBUG("Set global path size=%d", (int)globalPath.size());
+	qDeleteAll(_globalPathLinkItems);
+	_globalPathLinkItems.clear();
+
+	if(globalPath.size() >= 2)
+	{
+		for(unsigned int i=0; i<globalPath.size()-1; ++i)
+		{
+			//create a link item
+			int idFrom = globalPath[i].first;
+			int idTo = globalPath[i+1].first;
+			LinkItem * item = new LinkItem(idFrom, idTo, globalPath[i].second, globalPath[i+1].second, Link::kUndef);
+			QPen p = item->pen();
+			p.setWidthF(_linkWidth);
+			item->setPen(p);
+			item->setColor(_globalPathColor);
+			this->scene()->addItem(item);
+			item->setZValue(1);
+			item->setParentItem(_root);
+			_globalPathLinkItems.insert(idFrom, item);
+		}
+	}
+}
+
 void GraphViewer::updateLocalPath(const std::vector<int> & localPath)
 {
 	if(localPath.size() > 1)
@@ -445,7 +472,7 @@ void GraphViewer::updateLocalPath(const std::vector<int> & localPath)
 				{
 					if(itemIter.value()->to() == idTo)
 					{
-						itemIter.value()->setColor(_pathColor);
+						itemIter.value()->setColor(_localPathColor);
 						break;
 					}
 					++itemIter;
@@ -461,6 +488,8 @@ void GraphViewer::clearGraph()
 	_nodeItems.clear();
 	qDeleteAll(_linkItems);
 	_linkItems.clear();
+	qDeleteAll(_globalPathLinkItems);
+	_globalPathLinkItems.clear();
 	_referential->resetTransform();
 	this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
 }
@@ -501,6 +530,7 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("user_color", this->getUserLoopClosureColor());
 	settings.setValue("virtual_color", this->getVirtualLoopClosureColor());
 	settings.setValue("local_path_color", this->getLocalPathColor());
+	settings.setValue("global_path_color", this->getGlobalPathColor());
 	settings.setValue("grid_visible", this->isGridMapVisible());
 	settings.setValue("origin_visible", this->isOriginVisible());
 	settings.setValue("referential_visible", this->isReferentialVisible());
@@ -525,6 +555,7 @@ void GraphViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setUserLoopClosureColor(settings.value("user_color", this->getUserLoopClosureColor()).value<QColor>());
 	this->setVirtualLoopClosureColor(settings.value("virtual_color", this->getVirtualLoopClosureColor()).value<QColor>());
 	this->setLocalPathColor(settings.value("local_path_color", this->getLocalPathColor()).value<QColor>());
+	this->setGlobalPathColor(settings.value("global_path_color", this->getGlobalPathColor()).value<QColor>());
 	this->setGridMapVisible(settings.value("grid_visible", this->isGridMapVisible()).toBool());
 	this->setOriginVisible(settings.value("origin_visible", this->isOriginVisible()).toBool());
 	this->setReferentialVisible(settings.value("referential_visible", this->isReferentialVisible()).toBool());
@@ -644,7 +675,11 @@ void GraphViewer::setVirtualLoopClosureColor(const QColor & color)
 }
 void GraphViewer::setLocalPathColor(const QColor & color)
 {
-	_pathColor = color;
+	_localPathColor = color;
+}
+void GraphViewer::setGlobalPathColor(const QColor & color)
+{
+	_globalPathColor = color;
 }
 void GraphViewer::setGridMapVisible(bool visible)
 {
@@ -710,18 +745,21 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aChangeUserLoopColor = menuLink->addAction(tr("User loop closure"));
 	QAction * aChangeVirtualLoopColor = menuLink->addAction(tr("Virtual loop closure"));
 	QAction * aChangeLocalPathColor = menuLink->addAction(tr("Local path"));
+	QAction * aChangeGlobalPathColor = menuLink->addAction(tr("Global path"));
 	aChangeNeighborColor->setIcon(createIcon(_neighborColor));
 	aChangeGlobalLoopColor->setIcon(createIcon(_loopClosureColor));
 	aChangeLocalLoopColor->setIcon(createIcon(_loopClosureLocalColor));
 	aChangeUserLoopColor->setIcon(createIcon(_loopClosureUserColor));
 	aChangeVirtualLoopColor->setIcon(createIcon(_loopClosureVirtualColor));
-	aChangeLocalPathColor->setIcon(createIcon(_pathColor));
+	aChangeLocalPathColor->setIcon(createIcon(_localPathColor));
+	aChangeGlobalPathColor->setIcon(createIcon(_globalPathColor));
 	aChangeNeighborColor->setIconVisibleInMenu(true);
 	aChangeGlobalLoopColor->setIconVisibleInMenu(true);
 	aChangeLocalLoopColor->setIconVisibleInMenu(true);
 	aChangeUserLoopColor->setIconVisibleInMenu(true);
 	aChangeVirtualLoopColor->setIconVisibleInMenu(true);
 	aChangeLocalPathColor->setIconVisibleInMenu(true);
+	aChangeGlobalPathColor->setIconVisibleInMenu(true);
 
 	menu.addSeparator();
 	QAction * aSetNodeSize = menu.addAction(tr("Set node radius..."));
@@ -830,7 +868,8 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			r == aChangeLocalLoopColor ||
 			r == aChangeUserLoopColor ||
 			r == aChangeVirtualLoopColor ||
-			r == aChangeLocalPathColor)
+			r == aChangeLocalPathColor ||
+			r == aChangeGlobalPathColor)
 	{
 		QColor color;
 		if(r == aChangeNodeColor)
@@ -855,7 +894,11 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		}
 		else if(r == aChangeLocalPathColor)
 		{
-			color = _pathColor;
+			color = _localPathColor;
+		}
+		else if(r == aChangeGlobalPathColor)
+		{
+			color = _globalPathColor;
 		}
 		else //if(r == aChangeNeighborColor)
 		{
@@ -902,7 +945,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else if(r == aSetNodeSize)
 	{
 		bool ok;
-		double value = QInputDialog::getDouble(this, tr("Node radius"), tr("Radius (m)"), _nodeRadius, 0.01, 100, 2, &ok);
+		double value = QInputDialog::getDouble(this, tr("Node radius"), tr("Radius (m)"), _nodeRadius, 0.001, 100, 3, &ok);
 		if(ok)
 		{
 			setNodeRadius(value);

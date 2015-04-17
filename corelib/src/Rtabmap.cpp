@@ -109,6 +109,7 @@ Rtabmap::Rtabmap() :
 	_startNewMapOnLoopClosure(Parameters::defaultRtabmapStartNewMapOnLoopClosure()),
 	_goalReachedRadius(Parameters::defaultRGBDGoalReachedRadius()),
 	_planWithNearNodesLinked(Parameters::defaultRGBDPlanWithNearNodesLinked()),
+	_goalsSavedInUserData(Parameters::defaultRGBDGoalsSavedInUserData()),
 	_loopClosureHypothesis(0,0.0f),
 	_highestHypothesis(0,0.0f),
 	_lastProcessTime(0.0),
@@ -395,6 +396,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRtabmapStartNewMapOnLoopClosure(), _startNewMapOnLoopClosure);
 	Parameters::parse(parameters, Parameters::kRGBDGoalReachedRadius(), _goalReachedRadius);
 	Parameters::parse(parameters, Parameters::kRGBDPlanWithNearNodesLinked(), _planWithNearNodesLinked);
+	Parameters::parse(parameters, Parameters::kRGBDGoalsSavedInUserData(), _goalsSavedInUserData);
 
 	// RGB-D SLAM stuff
 	if((iter=parameters.find(Parameters::kLccIcpType())) != parameters.end())
@@ -1504,7 +1506,7 @@ bool Rtabmap::process(const SensorData & data)
 			rejectedHypothesis = transform.isNull();
 			if(rejectedHypothesis)
 			{
-				UWARN("Rejected loop closure transform between %d and %d: %s",
+				UWARN("Rejected loop closure %d -> %d: %s",
 						_loopClosureHypothesis.first, signature->id(), rejectedMsg.c_str());
 			}
 		}
@@ -2069,16 +2071,6 @@ void Rtabmap::setWorkingDirectory(std::string path)
 	}
 }
 
-
-
-void Rtabmap::deleteLocation(int locationId)
-{
-	if(_memory)
-	{
-		_memory->deleteLocation(locationId);
-	}
-}
-
 void Rtabmap::rejectLoopClosure(int oldId, int newId)
 {
 	UDEBUG("_loopClosureHypothesis.first=%d", _loopClosureHypothesis.first);
@@ -2595,6 +2587,12 @@ bool Rtabmap::computePath(
 					}
 				}
 				UINFO("Path = [%s]", stream.str().c_str());
+			}
+			if(_goalsSavedInUserData)
+			{
+				// set goal to latest signature
+				std::string goalStr = uFormat("GOAL:%d", targetNode);
+				setUserData(0, uStr2Bytes(goalStr));
 			}
 		}
 

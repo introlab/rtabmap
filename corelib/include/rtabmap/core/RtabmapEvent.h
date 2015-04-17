@@ -73,7 +73,8 @@ public:
 			kCmdPublishTOROGraphGlobal, // params: optimized
 			kCmdPublishTOROGraphLocal, // params: optimized
 			kCmdTriggerNewMap,
-			kCmdPause};
+			kCmdPause,
+			kCmdGoal}; // params: label or location ID
 public:
 	RtabmapEventCmd(Cmd cmd, const std::string & strValue = "", int intValue = 0, const ParametersMap & parameters = ParametersMap()) :
 			UEvent(0),
@@ -182,6 +183,24 @@ private:
 	std::map<int, double> _stamps;
 	std::map<int, std::string> _labels;
 	std::map<int, std::vector<unsigned char> > _userDatas;
+};
+
+class RtabmapGlobalPathEvent : public UEvent
+{
+public:
+	RtabmapGlobalPathEvent():
+		UEvent(0) {}
+	RtabmapGlobalPathEvent(int goalId, const std::vector<std::pair<int, Transform> > & poses) :
+		UEvent(goalId),
+		_poses(poses) {}
+
+	virtual ~RtabmapGlobalPathEvent() {}
+	int getGoal() const {return this->getCode();}
+	const std::vector<std::pair<int, Transform> > & getPoses() const {return _poses;}
+	virtual std::string getClassName() const {return std::string("RtabmapGlobalPathEvent");}
+
+private:
+	std::vector<std::pair<int, Transform> > _poses;
 };
 
 } // namespace rtabmap

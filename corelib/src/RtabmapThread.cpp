@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/ParamEvent.h"
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/core/UserDataEvent.h"
+#include "rtabmap/core/Memory.h"
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UEventsManager.h>
@@ -194,6 +195,7 @@ void RtabmapThread::mainLoop()
 	}
 	_stateMutex.unlock();
 
+	int id = 0;
 	std::vector<unsigned char> userData;
 	switch(state)
 	{
@@ -271,6 +273,18 @@ void RtabmapThread::mainLoop()
 		}
 		_userDataMutex.unlock();
 		_rtabmap->setUserData(0, userData);
+		break;
+	case kStateSettingGoal:
+		id = atoi(parameters.at("goal_id").c_str());
+		if(id == 0 && !parameters.at("goal_label").empty() && _rtabmap->getMemory())
+		{
+			id = _rtabmap->getMemory()->getSignatureIdByLabel(parameters.at("goal_label"));
+		}
+		if(id <= 0 || !_rtabmap->computePath(id, true))
+		{
+			UERROR("Failed to set a goal to location=%d.", id);
+		}
+		this->post(new RtabmapGlobalPathEvent(id, _rtabmap->getPath()));
 		break;
 	default:
 		UFATAL("Invalid state !?!?");
@@ -447,6 +461,14 @@ void RtabmapThread::handleEvent(UEvent* event)
 		{
 			ULOGGER_DEBUG("CMD_PAUSE");
 			_paused = !_paused;
+		}
+		else if(cmd == RtabmapEventCmd::kCmdGoal)
+		{
+			ULOGGER_DEBUG("CMD_GOAL");
+			ParametersMap param;
+			param.insert(ParametersPair("goal_label", rtabmapEvent->getStr()));
+			param.insert(ParametersPair("goal_id", uNumber2Str(rtabmapEvent->getInt())));
+			pushNewState(kStateSettingGoal, param);
 		}
 		else
 		{

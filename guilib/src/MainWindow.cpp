@@ -253,6 +253,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(this, SIGNAL(rtabmapEventInitReceived(int, const QString &)), this, SLOT(processRtabmapEventInit(int, const QString &)));
 	qRegisterMetaType<rtabmap::RtabmapEvent3DMap>("rtabmap::RtabmapEvent3DMap");
 	connect(this, SIGNAL(rtabmapEvent3DMapReceived(const rtabmap::RtabmapEvent3DMap &)), this, SLOT(processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap &)));
+	qRegisterMetaType<rtabmap::RtabmapGlobalPathEvent>("rtabmap::RtabmapGlobalPathEvent");
+	connect(this, SIGNAL(rtabmapGlobalPathEventReceived(const rtabmap::RtabmapGlobalPathEvent &)), this, SLOT(processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathEvent &)));
 
 	// Dock Widget view actions (Menu->Window)
 	_ui->menuShow_view->addAction(_ui->dockWidget_imageView->toggleViewAction());
@@ -285,6 +287,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionStop, SIGNAL(triggered()), this, SLOT(stopDetection()));
 	connect(_ui->actionDump_the_memory, SIGNAL(triggered()), this, SLOT(dumpTheMemory()));
 	connect(_ui->actionDump_the_prediction_matrix, SIGNAL(triggered()), this, SLOT(dumpThePrediction()));
+	connect(_ui->actionSend_goal, SIGNAL(triggered()), this, SLOT(sendGoal()));
 	connect(_ui->actionClear_cache, SIGNAL(triggered()), this, SLOT(clearTheCache()));
 	connect(_ui->actionAbout, SIGNAL(triggered()), _aboutDialog , SLOT(exec()));
 	connect(_ui->actionPrint_loop_closure_IDs_to_console, SIGNAL(triggered()), this, SLOT(printLoopClosureIds()));
@@ -635,6 +638,11 @@ void MainWindow::handleEvent(UEvent* anEvent)
 		RtabmapEvent3DMap * rtabmapEvent3DMap = (RtabmapEvent3DMap*)anEvent;
 		emit rtabmapEvent3DMapReceived(*rtabmapEvent3DMap);
 	}
+	else if(anEvent->getClassName().compare("RtabmapGlobalPathEvent") == 0)
+	{
+		RtabmapGlobalPathEvent * rtabmapGlobalPathEvent = (RtabmapGlobalPathEvent*)anEvent;
+		emit rtabmapGlobalPathEventReceived(*rtabmapGlobalPathEvent);
+	}
 	else if(anEvent->getClassName().compare("CameraEvent") == 0)
 	{
 		CameraEvent * cameraEvent = (CameraEvent*)anEvent;
@@ -744,6 +752,8 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 	{
 		_ui->statsToolBox->updateStat("Odometry/Local_map_size/", (float)data.id(), (float)info.localMapSize);
 	}
+	_ui->statsToolBox->updateStat("Odometry/ID/", (float)data.id(), (float)data.id());
+
 	float x,y,z, roll,pitch,yaw;
 	pose.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
 	_ui->statsToolBox->updateStat("Odometry/T_x/m", (float)data.id(), x);
@@ -1183,6 +1193,11 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		}
 		// update local path on the graph view
 		_ui->graphicsView_graphView->updateLocalPath(stat.localPath());
+		if(stat.localPath().size() == 0)
+		{
+			// clear the global path if set (goal reached)
+			_ui->graphicsView_graphView->setGlobalPath(std::vector<std::pair<int, Transform> >());
+		}
 
 		UDEBUG("");
 	}
@@ -1919,6 +1934,22 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		}
 	}
 	_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
+}
+
+void MainWindow::processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathEvent & event)
+{
+	if(event.getPoses().empty())
+	{
+		QMessageBox::warning(this, tr("Setting goal failed"), tr("Setting goal to location %1 failed. "
+				"Some reasons: \n"
+				"1) the location doesn't exist in the graph,\n"
+				"2) the location is not linked to the global graph or\n"
+				"3) the location is too near of the current location (goal already reached).").arg(event.getGoal()));
+	}
+	else
+	{
+		_ui->graphicsView_graphView->setGlobalPath(event.getPoses());
+	}
 }
 
 void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
@@ -3592,6 +3623,19 @@ void MainWindow::dumpTheMemory()
 void MainWindow::dumpThePrediction()
 {
 	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdDumpPrediction));
+}
+
+void MainWindow::sendGoal()
+{
+	UINFO("Sending a goal...");
+	bool ok = false;
+	int id = QInputDialog::getInt(this, tr("Send a goal"), tr("Goal location ID: "), 1, 1, 99999, 1, &ok);
+	if(ok)
+	{
+		_ui->graphicsView_graphView->setGlobalPath(std::vector<std::pair<int, Transform> >()); // clear
+		UINFO("Posting event with goal %d", id);
+		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, "", id));
+	}
 }
 
 void MainWindow::downloadAllClouds()

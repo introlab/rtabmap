@@ -179,7 +179,7 @@ private:
 	void preUpdate();
 	void addSignatureToStm(Signature * signature, float poseRotVariance, float poseTransVariance);
 	void clear();
-	void moveToTrash(Signature * s, bool saveToDatabase = true, std::list<int> * deletedWords = 0);
+	void moveToTrash(Signature * s, bool keepLinkedToGraph = true, std::list<int> * deletedWords = 0);
 
 	void addSignatureToWm(Signature * signature);
 	Signature * _getSignature(int id) const;
@@ -211,7 +211,7 @@ private:
 	float _similarityThreshold;
 	bool _rawDataKept;
 	bool _binDataKept;
-	bool _keepRehearsedNodesInDb;
+	bool _notLinkedNodesKeptInDb;
 	bool _incrementalMemory;
 	int _maxStMemSize;
 	float _recentWmRatio;

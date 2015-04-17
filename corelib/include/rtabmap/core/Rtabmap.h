@@ -111,7 +111,6 @@ public:
 	void dumpData() const;
 	void parseParameters(const ParametersMap & parameters);
 	void setWorkingDirectory(std::string path);
-	void deleteLocation(int locationId); // Only nodes in STM can be deleted
 	void rejectLoopClosure(int oldId, int newId);
 	void get3DMap(std::map<int, Signature> & signatures,
 			std::map<int, Transform> & poses,
@@ -192,6 +191,7 @@ private:
 	bool _startNewMapOnLoopClosure;
 	float _goalReachedRadius; // meters
 	bool _planWithNearNodesLinked;
+	bool _goalsSavedInUserData;
 
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;

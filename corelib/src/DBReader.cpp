@@ -31,8 +31,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UFile.h>
+#include <rtabmap/utilite/UStl.h>
+#include <rtabmap/utilite/UConversion.h>
 
 #include "rtabmap/core/CameraEvent.h"
+#include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Compression.h"
@@ -135,6 +138,23 @@ void DBReader::mainLoop()
 	SensorData data = this->getNextData();
 	if(data.isValid())
 	{
+		int goalId = 0;
+		double previousStamp = data.stamp();
+		data.setStamp(UTimer::now());
+		if(data.userData().size() >= 6 && memcmp(data.userData().data(), "GOAL:", 5) == 0)
+		{
+			//GOAL format detected, remove it from the user data and send it as goal event
+			std::string goalStr = uBytes2Str(data.userData());
+			if(!goalStr.empty())
+			{
+				std::list<std::string> strs = uSplit(goalStr, ':');
+				if(strs.size() == 2)
+				{
+					goalId = atoi(strs.rbegin()->c_str());
+					data.setUserData(std::vector<unsigned char>());
+				}
+			}
+		}
 		if(!_odometryIgnored)
 		{
 			if(data.pose().isNull())
@@ -148,6 +168,35 @@ void DBReader::mainLoop()
 		else
 		{
 			this->post(new CameraEvent(data));
+		}
+
+		if(goalId > 0)
+		{
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, "", goalId));
+
+			if(_currentId != _ids.end())
+			{
+				// get stamp for the next signature to compute the delay
+				// that was used originally for planning
+				int weight;
+				std::string label;
+				double stamp;
+				int mapId;
+				Transform localTransform, pose;
+				std::vector<unsigned char> userData;
+				_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, userData);
+				if(previousStamp && stamp && stamp > previousStamp)
+				{
+					double delay = stamp - previousStamp;
+					UWARN("Goal %d detected, posting it! Waiting %f seconds before sending next data...",
+							goalId, delay);
+					uSleep(delay*1000);
+				}
+				else
+				{
+					UWARN("stamps = %d=%f %d=%f ", data.id(), data.stamp(), *_currentId, stamp);
+				}
+			}
 		}
 
 	}
@@ -246,7 +295,7 @@ SensorData DBReader::getNextData()
 					rotVariance,
 					transVariance,
 					seq,
-					UTimer::now(),
+					stamp,
 					userData);
 			UDEBUG("Laser=%d RGB/Left=%d Depth=%d Right=%d",
 					data.laserScan().empty()?0:1,

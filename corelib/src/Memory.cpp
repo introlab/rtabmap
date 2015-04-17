@@ -59,7 +59,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_similarityThreshold(Parameters::defaultMemRehearsalSimilarity()),
 	_rawDataKept(Parameters::defaultMemImageKept()),
 	_binDataKept(Parameters::defaultMemBinDataKept()),
-	_keepRehearsedNodesInDb(Parameters::defaultMemRehearsedNodesKept()),
+	_notLinkedNodesKeptInDb(Parameters::defaultMemNotLinkedNodesKept()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
 	_maxStMemSize(Parameters::defaultMemSTMSize()),
 	_recentWmRatio(Parameters::defaultMemRecentWmRatio()),
@@ -379,7 +379,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 
 	Parameters::parse(parameters, Parameters::kMemImageKept(), _rawDataKept);
 	Parameters::parse(parameters, Parameters::kMemBinDataKept(), _binDataKept);
-	Parameters::parse(parameters, Parameters::kMemRehearsedNodesKept(), _keepRehearsedNodesInDb);
+	Parameters::parse(parameters, Parameters::kMemNotLinkedNodesKept(), _notLinkedNodesKeptInDb);
 	Parameters::parse(parameters, Parameters::kMemRehearsalIdUpdatedToNewOne(), _idUpdatedToNewOneRehearsal);
 	Parameters::parse(parameters, Parameters::kMemGenerateIds(), _generateIds);
 	Parameters::parse(parameters, Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
@@ -1499,13 +1499,13 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 /**
  * If saveToDatabase=false, deleted words are filled in deletedWords.
  */
-void Memory::moveToTrash(Signature * s, bool saveToDatabase, std::list<int> * deletedWords)
+void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> * deletedWords)
 {
 	UDEBUG("id=%d", s?s->id():0);
 	if(s)
 	{
 		// If not saved to database or it is a bad signature (not saved), remove links!
-		if(!saveToDatabase || (!s->isSaved() && s->isBadSignature() && _badSignaturesIgnored))
+		if(!keepLinkedToGraph || (!s->isSaved() && s->isBadSignature() && _badSignaturesIgnored))
 		{
 			UASSERT_MSG(this->isInSTM(s->id()),
 					uFormat("Deleting location (%d) outside the STM is not implemented!", s->id()).c_str());
@@ -1537,6 +1537,7 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase, std::list<int> * de
 			}
 			s->removeLinks(); // remove all links
 			s->setWeight(0);
+			s->setLabel(""); // reset label
 		}
 		else
 		{
@@ -1561,7 +1562,7 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase, std::list<int> * de
 		}
 
 		this->disableWordsRef(s->id());
-		if(!saveToDatabase)
+		if(!keepLinkedToGraph)
 		{
 			std::list<int> keys = uUniqueKeys(s->getWords());
 			for(std::list<int>::const_iterator i=keys.begin(); i!=keys.end(); ++i)
@@ -1599,7 +1600,7 @@ void Memory::moveToTrash(Signature * s, bool saveToDatabase, std::list<int> * de
 			}
 		}
 
-		if(	saveToDatabase &&
+		if(	(_notLinkedNodesKeptInDb || keepLinkedToGraph) &&
 			_dbDriver &&
 			s->id()>0)
 		{
@@ -2711,8 +2712,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 		}
 
 		// remove location
-		bool saveToDb = _keepRehearsedNodesInDb;
-		moveToTrash(_idUpdatedToNewOneRehearsal?oldS:newS, saveToDb);
+		moveToTrash(_idUpdatedToNewOneRehearsal?oldS:newS, _notLinkedNodesKeptInDb);
 
 		return true;
 	}

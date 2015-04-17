@@ -177,6 +177,7 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 	customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
 	customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
 	customParameters.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
+	customParameters.insert(ParametersPair(Parameters::kMemNotLinkedNodesKept(), "false"));
 	int nn = Parameters::defaultOdomBowNNType();
 	float nndr = Parameters::defaultOdomBowNNDR();
 	int featureType = Parameters::defaultOdomFeatureType();

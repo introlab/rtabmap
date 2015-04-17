@@ -58,6 +58,7 @@ public:
 	void updateMap(const cv::Mat & map8U, float resolution, float xMin, float yMin);
 	void updatePosterior(const std::map<int, float> & posterior);
 	void updateLocalPath(const std::vector<int> & localPath);
+	void setGlobalPath(const std::vector<std::pair<int, Transform> > & globalPath);
 	void clearGraph();
 	void clearMap();
 	void clearPosterior();
@@ -76,7 +77,8 @@ public:
 	const QColor & getLocalLoopClosureColor() const {return _loopClosureLocalColor;}
 	const QColor & getUserLoopClosureColor() const {return _loopClosureUserColor;}
 	const QColor & getVirtualLoopClosureColor() const {return _loopClosureVirtualColor;}
-	const QColor & getLocalPathColor() const {return _pathColor;}
+	const QColor & getLocalPathColor() const {return _localPathColor;}
+	const QColor & getGlobalPathColor() const {return _globalPathColor;}
 	bool isGridMapVisible() const;
 	bool isOriginVisible() const;
 	bool isReferentialVisible() const;
@@ -92,6 +94,7 @@ public:
 	void setUserLoopClosureColor(const QColor & color);
 	void setVirtualLoopClosureColor(const QColor & color);
 	void setLocalPathColor(const QColor & color);
+	void setGlobalPathColor(const QColor & color);
 	void setGridMapVisible(bool visible);
 	void setOriginVisible(bool visible);
 	void setReferentialVisible(bool visible);
@@ -114,10 +117,12 @@ private:
 	QColor _loopClosureLocalColor;
 	QColor _loopClosureUserColor;
 	QColor _loopClosureVirtualColor;
-	QColor _pathColor;
+	QColor _localPathColor;
+	QColor _globalPathColor;
 	QGraphicsItem * _root;
 	QMap<int, NodeItem*> _nodeItems;
 	QMultiMap<int, LinkItem*> _linkItems;
+	QMultiMap<int, LinkItem*> _globalPathLinkItems;
 	float _nodeRadius;
 	float _linkWidth;
 	QGraphicsPixmapItem * _gridMap;
