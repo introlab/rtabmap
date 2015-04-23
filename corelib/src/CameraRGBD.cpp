@@ -519,17 +519,20 @@ bool CameraOpenNI2::init(const std::string & calibrationFolder)
 		return false;
 	}
 
-	if(UFile::getExtension(_deviceId).compare("oni")!=0 &&
-	   !_device->isImageRegistrationModeSupported(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR))
+	if(UFile::getExtension(_deviceId).compare("oni")==0)
+	{
+		if(_device->getPlaybackControl() &&
+		   _device->getPlaybackControl()->setRepeatEnabled(false) != openni::STATUS_OK)
+		{
+			UERROR("CameraOpenNI2: Cannot set repeat mode to false.");
+			_device->close();
+			openni::OpenNI::shutdown();
+			return false;
+		}
+	}
+	else if(!_device->isImageRegistrationModeSupported(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR))
 	{
 		UERROR("CameraOpenNI2: Device doesn't support depth/color registration.");
-		_device->close();
-		openni::OpenNI::shutdown();
-		return false;
-	}
-	else if(_device->getPlaybackControl() && _device->getPlaybackControl()->setRepeatEnabled(false) != openni::STATUS_OK)
-	{
-		UERROR("CameraOpenNI2: Cannot set repeat mode to false.");
 		_device->close();
 		openni::OpenNI::shutdown();
 		return false;
