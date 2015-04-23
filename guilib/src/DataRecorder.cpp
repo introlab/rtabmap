@@ -102,12 +102,12 @@ void DataRecorder::closeRecorder()
 	{
 		delete memory_;
 		memory_ = 0;
+		UINFO("Data recorded to \"%s\".", this->path().toStdString().c_str());
 	}
 	memoryMutex_.unlock();
 	processingImages_ = false;
 	count_ = 0;
 	totalSizeKB_ = 0;
-	UINFO("Data recorded to \"%s\".", this->path().toStdString().c_str());
 	if(this->isVisible())
 	{
 		QMessageBox::information(this, tr("Data recorder"), tr("Data recorded to \"%1\".").arg(this->path()));

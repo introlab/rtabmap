@@ -46,9 +46,16 @@ void showUsage()
 			"  -hide                    Don't display the current cloud recorded.\n"
 			"  -debug                   Set debug level for the logger.\n"
 			"  -rate #.#                Input rate Hz (default 0=inf)\n"
-			"  -openni                  Use openni camera instead of the usb camera.\n"
-			"  -openni2                 Use openni2 camera instead of the usb camera.\n"
-			"  -freenect                Use freenect camera instead of the usb camera.\n");
+			"  -driver                  Driver number to use:\n"
+			"                                     0=OpenNI-PCL (Kinect)\n"
+			"                                     1=OpenNI2    (Kinect and Xtion PRO Live)\n"
+			"                                     2=Freenect   (Kinect)\n"
+			"                                     3=OpenNI-CV  (Kinect)\n"
+			"                                     4=OpenNI-CV-ASUS (Xtion PRO Live)\n"
+			"                                     5=Freenect2  (Kinect v2)\n"
+			"                                     6=DC1394     (Bumblebee2)\n"
+			"                                     7=FlyCapture2 (Bumblebee2)\n"
+			"  -device ""                Device ID (default \"\")\n");
 	exit(1);
 }
 
@@ -76,9 +83,8 @@ int main (int argc, char * argv[])
 	// parse arguments
 	QString fileName;
 	bool show = true;
-	bool openni = false;
-	bool openni2 = false;
-	bool freenect = false;
+	int driver = 0;
+	std::string deviceId;
 	float rate = 0.0f;
 
 	if(argc < 2)
@@ -114,19 +120,34 @@ int main (int argc, char * argv[])
 			show = false;
 			continue;
 		}
-		if(strcmp(argv[i], "-openni") == 0)
+		if(strcmp(argv[i], "-driver") == 0)
 		{
-			openni = true;
+			++i;
+			if(i < argc)
+			{
+				driver = std::atoi(argv[i]);
+				if(driver < 0 || driver > 7)
+				{
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
 			continue;
 		}
-		if(strcmp(argv[i], "-openni2") == 0)
+		if(strcmp(argv[i], "-device") == 0)
 		{
-			openni2 = true;
-			continue;
-		}
-		if(strcmp(argv[i], "-freenect") == 0)
-		{
-			freenect = true;
+			++i;
+			if(i < argc)
+			{
+				deviceId = argv[i];
+			}
+			else
+			{
+				showUsage();
+			}
 			continue;
 		}
 
@@ -143,33 +164,6 @@ int main (int argc, char * argv[])
 
 	UINFO("Output = %s", fileName.toStdString().c_str());
 	UINFO("Show = %s", show?"true":"false");
-	if(openni)
-	{
-		UINFO("Openni = true");
-		if(!CameraOpenni::available())
-		{
-			UERROR("Openni is not available. Please select another driver.");
-			return -1;
-		}
-	}
-	else if(openni2)
-	{
-		UINFO("Openni2 = true");
-		if(!CameraOpenNI2::available())
-		{
-			UERROR("Openni2 is not available. Please select another driver.");
-			return -1;
-		}
-	}
-	else if(freenect)
-	{
-		UINFO("Freenect = true");
-		if(!CameraFreenect::available())
-		{
-			UERROR("Freenect is not available. Please select another driver.");
-			return -1;
-		}
-	}
 	UINFO("Rate =%f Hz", rate);
 
 	app = new QApplication(argc, argv);
@@ -180,22 +174,80 @@ int main (int argc, char * argv[])
 	signal(SIGTERM, &sighandler);
 	signal(SIGINT, &sighandler);
 
-	if(openni2)
+	rtabmap::CameraRGBD * camera = 0;
+	rtabmap::Transform t=rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0);
+	if(driver == 0)
 	{
-		cam = new rtabmap::CameraThread(new rtabmap::CameraOpenNI2("", rate, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0)));
+		camera = new rtabmap::CameraOpenni(deviceId, rate, t);
 	}
-	else if(openni)
+	else if(driver == 1)
 	{
-		cam = new rtabmap::CameraThread(new rtabmap::CameraOpenni("", rate, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0)));
+		if(!rtabmap::CameraOpenNI2::available())
+		{
+			UERROR("Not built with OpenNI2 support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraOpenNI2(deviceId, rate, t);
 	}
-	else if(freenect)
+	else if(driver == 2)
 	{
-		cam = new rtabmap::CameraThread(new rtabmap::CameraFreenect(0, rate, rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0)));
+		if(!rtabmap::CameraFreenect::available())
+		{
+			UERROR("Not built with Freenect support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraFreenect(deviceId.size()?atoi(deviceId.c_str()):0, rate, t);
+	}
+	else if(driver == 3)
+	{
+		if(!rtabmap::CameraOpenNICV::available())
+		{
+			UERROR("Not built with OpenNI from OpenCV support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraOpenNICV(false, rate, t);
+	}
+	else if(driver == 4)
+	{
+		if(!rtabmap::CameraOpenNICV::available())
+		{
+			UERROR("Not built with OpenNI from OpenCV support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraOpenNICV(true, rate, t);
+	}
+	else if(driver == 5)
+	{
+		if(!rtabmap::CameraFreenect2::available())
+		{
+			UERROR("Not built with Freenect2 support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraFreenect2(deviceId.size()?atoi(deviceId.c_str()):0, rtabmap::CameraFreenect2::kTypeRGBDepthSD, rate, t);
+	}
+	else if(driver == 6)
+	{
+		if(!rtabmap::CameraStereoDC1394::available())
+		{
+			UERROR("Not built with dc1394 support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraStereoDC1394(rate, t);
+	}
+	else if(driver == 7)
+	{
+		if(!rtabmap::CameraStereoFlyCapture2::available())
+		{
+			UERROR("Not built with FlyCapture2/Triclops support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraStereoFlyCapture2(rate, t);
 	}
 	else
 	{
-		cam = new rtabmap::CameraThread(new rtabmap::CameraVideo(0, rate));
+		UFATAL("Camera driver (%d) not found!", driver);
 	}
+	cam = new CameraThread(camera);
 
 	DataRecorder recorder;
 

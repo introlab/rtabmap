@@ -719,7 +719,7 @@ void CameraOpenNI2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, flo
 	{
 		openni::VideoStream* depthStream[] = {_depth};
 		openni::VideoStream* colorStream[] = {_color};
-		if(openni::OpenNI::waitForAnyStream(depthStream, 1, &readyStream, 2000) != openni::STATUS_OK &&
+		if(openni::OpenNI::waitForAnyStream(depthStream, 1, &readyStream, 2000) != openni::STATUS_OK ||
 		   openni::OpenNI::waitForAnyStream(colorStream, 1, &readyStream, 2000) != openni::STATUS_OK)
 		{
 			UWARN("No frames received since the last 2 seconds, end of stream is reached!");
