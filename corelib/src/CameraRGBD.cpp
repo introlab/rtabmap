@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 
 #include <pcl/io/openni_grabber.h>
+#include <pcl/io/oni_grabber.h>
 
 #ifdef WITH_FREENECT
 #include <libfreenect.h>
@@ -203,7 +204,14 @@ bool CameraOpenni::init(const std::string & calibrationFolder)
 
 	try
 	{
-		interface_ = new pcl::OpenNIGrabber(deviceId_);
+		if(UFile::getExtension(deviceId_).compare("oni") == 0)
+		{
+			interface_ = new pcl::ONIGrabber(deviceId_, false, true);
+		}
+		else
+		{
+			interface_ = new pcl::OpenNIGrabber(deviceId_);
+		}
 
 		boost::function<void (
 				const boost::shared_ptr<openni_wrapper::Image>&,
@@ -228,7 +236,7 @@ bool CameraOpenni::init(const std::string & calibrationFolder)
 
 bool CameraOpenni::isCalibrated() const
 {
-	return depthConstant_ > 0.0f;
+	return true;
 }
 
 std::string CameraOpenni::getSerial() const
