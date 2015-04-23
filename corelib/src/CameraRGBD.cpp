@@ -250,23 +250,35 @@ std::string CameraOpenni::getSerial() const
 
 void CameraOpenni::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
 {
+	rgb = cv::Mat();
+	depth = cv::Mat();
+	fx=0.0f;
+	fy=0.0f;
+	cx=0.0f;
+	cy=0.0f;
 	if(interface_ && interface_->isRunning())
 	{
-		dataReady_.acquire();
-		UScopeMutex s(dataMutex_);
-		if(depthConstant_)
+		if(!dataReady_.acquire(1, 2000))
 		{
-			depth = depth_;
-			rgb = rgb_;
-			fx = 1.0f/depthConstant_;
-			fy = 1.0f/depthConstant_;
-			cx = float(depth_.cols/2) - 0.5f;
-			cy = float(depth_.rows/2) - 0.5f;
+			UWARN("Not received new frames since 2 seconds, end of stream reached!");
 		}
+		else
+		{
+			UScopeMutex s(dataMutex_);
+			if(depthConstant_)
+			{
+				depth = depth_;
+				rgb = rgb_;
+				fx = 1.0f/depthConstant_;
+				fy = 1.0f/depthConstant_;
+				cx = float(depth_.cols/2) - 0.5f;
+				cy = float(depth_.rows/2) - 0.5f;
+			}
 
-		depth_ = cv::Mat();
-		rgb_ = cv::Mat();
-		depthConstant_ = 0.0f;
+			depth_ = cv::Mat();
+			rgb_ = cv::Mat();
+			depthConstant_ = 0.0f;
+		}
 	}
 }
 
@@ -691,33 +703,49 @@ std::string CameraOpenNI2::getSerial() const
 void CameraOpenNI2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
 {
 #ifdef WITH_OPENNI2
+	rgb = cv::Mat();
+	depth = cv::Mat();
+	fx = 0.0f;
+	fy = 0.0f;
+	cx = 0.0f;
+	cy = 0.0f;
+
+	int readyStream = -1;
 	if(_device->isValid() &&
 		_depth->isValid() &&
 		_color->isValid() &&
 		_device->getSensorInfo(openni::SENSOR_DEPTH) != NULL &&
 		_device->getSensorInfo(openni::SENSOR_COLOR) != NULL)
 	{
-		openni::VideoFrameRef depthFrame, colorFrame;
-
-		_depth->readFrame(&depthFrame);
-		_color->readFrame(&colorFrame);
-
-		if(depthFrame.isValid() && colorFrame.isValid())
+		openni::VideoStream* depthStream[] = {_depth};
+		openni::VideoStream* colorStream[] = {_color};
+		if(openni::OpenNI::waitForAnyStream(depthStream, 1, &readyStream, 2000) != openni::STATUS_OK &&
+		   openni::OpenNI::waitForAnyStream(colorStream, 1, &readyStream, 2000) != openni::STATUS_OK)
 		{
-			int h=depthFrame.getHeight();
-			int w=depthFrame.getWidth();
-			depth = cv::Mat(h, w, CV_16U, (void*)depthFrame.getData()).clone();
-
-			h=colorFrame.getHeight();
-			w=colorFrame.getWidth();
-			cv::Mat tmp(h, w, CV_8UC3, (void *)colorFrame.getData());
-			cv::cvtColor(tmp, rgb, CV_RGB2BGR);
+			UWARN("No frames received since the last 2 seconds, end of stream is reached!");
 		}
-		UASSERT(_depthFx != 0.0f && _depthFy != 0.0f);
-		fx = _depthFx;
-		fy = _depthFy;
-		cx = float(depth.cols/2) - 0.5f;
-		cy = float(depth.rows/2) - 0.5f;
+		else
+		{
+			openni::VideoFrameRef depthFrame, colorFrame;
+			_depth->readFrame(&depthFrame);
+			_color->readFrame(&colorFrame);
+			if(depthFrame.isValid() && colorFrame.isValid())
+			{
+				int h=depthFrame.getHeight();
+				int w=depthFrame.getWidth();
+				depth = cv::Mat(h, w, CV_16U, (void*)depthFrame.getData()).clone();
+
+				h=colorFrame.getHeight();
+				w=colorFrame.getWidth();
+				cv::Mat tmp(h, w, CV_8UC3, (void *)colorFrame.getData());
+				cv::cvtColor(tmp, rgb, CV_RGB2BGR);
+			}
+			UASSERT(_depthFx != 0.0f && _depthFy != 0.0f);
+			fx = _depthFx;
+			fy = _depthFy;
+			cx = float(depth.cols/2) - 0.5f;
+			cy = float(depth.rows/2) - 0.5f;
+		}
 	}
 	else
 	{

@@ -32,6 +32,7 @@
 #define SEM_VALUE_MAX ((int) ((~0u) >> 1))
 #else
 #include <pthread.h>
+#include <sys/time.h>
 #endif
 
 /**
@@ -83,30 +84,48 @@ public:
 	 * calling thread will wait until the count acquired is released.
 	 * @see release()
 	 * @param n number to acquire
+	 * @param t time to wait (ms), a value <=0 means infinite
+	 * @return true on success, false on error/timeout
 	 */
 #ifdef _WIN32
-	void acquire(int n = 1) const
+	bool acquire(int n = 1, int ms = 0) const
 	{
-		while(n-- > 0)
+		int rt = 0;
+		while(n-- > 0 && rt==0)
 		{
-			WaitForSingleObject((HANDLE)S,INFINITE);
+			rt = WaitForSingleObject((HANDLE)S, ms<=0?INFINITE:ms);
 		}
+		return rt == 0;
+	}
 #else
-	void acquire(int n = 1)
+	bool acquire(int n = 1, int ms = 0)
 	{
+		int rt = 0;
 		pthread_mutex_lock(&_waitMutex);
-		while (n > _available)
+		while (n > _available && rt == 0)
 		{
-			while(1)
+			if(ms > 0)
 			{
-				pthread_cond_wait(&_cond, &_waitMutex);
-				break;
+				struct timespec timeToWait;
+				struct timeval now;
+
+				gettimeofday(&now,NULL);
+
+				timeToWait.tv_sec = now.tv_sec + ms/1000;
+				timeToWait.tv_nsec = (now.tv_usec+1000UL*(ms%1000))*1000UL;
+
+				rt = pthread_cond_timedwait(&_cond, &_waitMutex, &timeToWait);
+			}
+			else
+			{
+				rt = pthread_cond_wait(&_cond, &_waitMutex);
 			}
 		}
 		_available -= n;
 		pthread_mutex_unlock(&_waitMutex);
-#endif
+		return rt == 0;
 	}
+#endif
 
 	/*
 	 * Try to acquire the semaphore, not a blocking call.
@@ -116,6 +135,7 @@ public:
 	int acquireTry() const
 	{
 		return ((WaitForSingleObject((HANDLE)S,INFINITE)==WAIT_OBJECT_0)?0:EAGAIN);
+	}
 #else
 	int acquireTry(int n)
 	{
@@ -128,8 +148,8 @@ public:
 		_available -= n;
 		pthread_mutex_unlock(&_waitMutex);
 		return true;
-#endif
 	}
+#endif
 
 	/**
 	 * Release the semaphore, increasing its value by 1 and
@@ -139,6 +159,7 @@ public:
 	int release(int n = 1) const
 	{
 		return (ReleaseSemaphore((HANDLE)S,n,0)?0:ERANGE);
+	}
 #else
 	void release(int n = 1)
 	{
@@ -146,8 +167,8 @@ public:
 		_available += n;
 		pthread_cond_broadcast(&_cond);
 		pthread_mutex_unlock(&_waitMutex);
-#endif
 	}
+#endif
 
 	/**
 	 * Get the USempahore's value.
@@ -157,6 +178,7 @@ public:
 	int value() const
 	{
 		LONG V = -1; ReleaseSemaphore((HANDLE)S,0,&V); return V;
+	}
 #else
 	int value()
 	{
@@ -165,8 +187,8 @@ public:
 		value = _available;
 		pthread_mutex_unlock(&_waitMutex);
 		return value;
-#endif
 	}
+#endif
 
 #ifdef _WIN32
 	/*
@@ -182,15 +204,16 @@ public:
 #endif
 
 private:
+	void operator=(const USemaphore &S){}
 #ifdef _WIN32
+	USemaphore(const USemaphore &S){}
 	HANDLE S;
 #else
+	USemaphore(const USemaphore &S):_available(0){}
 	pthread_mutex_t _waitMutex;
 	pthread_cond_t _cond;
 	int _available;
 #endif
-	void operator=(const USemaphore &S){}
-	USemaphore(const USemaphore &S){}
 };
 
 #endif // USEMAPHORE_H

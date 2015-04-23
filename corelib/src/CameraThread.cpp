@@ -137,10 +137,6 @@ void CameraThread::mainLoop()
 	{
 		if(_cameraRGBD)
 		{
-			UERROR("Retrieved data is empty! Stopping the camera...");
-		}
-		else
-		{
 			UWARN("no more images...");
 		}
 		this->kill();
