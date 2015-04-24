@@ -204,14 +204,14 @@ cv::Mat CameraModel::rectifyDepth(const cv::Mat & raw) const
 				int yH = (int)ceil(pt.y);
 				if(xL >= 0 && yL >= 0 && xH < raw.cols && yH < raw.rows)
 				{
-					const uint16_t & pLT = raw.at<uint16_t>(yL, xL);
-					const uint16_t & pRT = raw.at<uint16_t>(yL, xH);
-					const uint16_t & pLB = raw.at<uint16_t>(yH, xL);
-					const uint16_t & pRB = raw.at<uint16_t>(yH, xH);
+					const unsigned short & pLT = raw.at<unsigned short>(yL, xL);
+					const unsigned short & pRT = raw.at<unsigned short>(yL, xH);
+					const unsigned short & pLB = raw.at<unsigned short>(yH, xL);
+					const unsigned short & pRB = raw.at<unsigned short>(yH, xH);
 					if(pLT > 0 && pRT > 0 && pLB > 0 && pRB > 0)
 					{
-						uint16_t avg = (pLT + pRT + pLB + pRB) / 4;
-						uint16_t thres = 0.01 * avg;
+						unsigned short avg = (pLT + pRT + pLB + pRB) / 4;
+						unsigned short thres = 0.01 * avg;
 						if( abs(pLT - avg) < thres &&
 							abs(pRT - avg) < thres &&
 							abs(pLB - avg) < thres &&
@@ -223,8 +223,8 @@ cv::Mat CameraModel::rectifyDepth(const cv::Mat & raw) const
 
 							//http://stackoverflow.com/questions/13299409/how-to-get-the-image-pixel-at-real-locations-in-opencv
 							rectified.at<unsigned short>(y,x) =
-									(raw.at<uint16_t>(yL, xL) * (1.f - a) + raw.at<uint16_t>(yL, xH) * a) * (1.f - c) +
-									(raw.at<uint16_t>(yH, xL) * (1.f - a) + raw.at<uint16_t>(yH, xH) * a) * c;
+									(raw.at<unsigned short>(yL, xL) * (1.f - a) + raw.at<unsigned short>(yL, xH) * a) * (1.f - c) +
+									(raw.at<unsigned short>(yH, xL) * (1.f - a) + raw.at<unsigned short>(yH, xH) * a) * c;
 						}
 					}
 				}

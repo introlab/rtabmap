@@ -89,7 +89,7 @@ private:
 	cv::Mat mapY_;
 };
 
-class StereoCameraModel
+class RTABMAP_EXP StereoCameraModel
 {
 public:
 	StereoCameraModel() {}

@@ -151,7 +151,7 @@ private:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr refCorners3D_;
 };
 
-class OdometryMono : public Odometry
+class RTABMAP_EXP OdometryMono : public Odometry
 {
 public:
 	OdometryMono(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());

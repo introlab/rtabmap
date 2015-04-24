@@ -658,8 +658,8 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 						cv::Mat E = K.t()*F*K;
 
 						//normalize coordinates
-						cv::Mat x(3, refCorners.size(), CV_64FC1);
-						cv::Mat xp(3, refCorners.size(), CV_64FC1);
+						cv::Mat x(3, (int)refCorners.size(), CV_64FC1);
+						cv::Mat xp(3, (int)refCorners.size(), CV_64FC1);
 						for(unsigned int i=0; i<refCorners.size(); ++i)
 						{
 							x.at<double>(0, i) = refCorners[i].x;

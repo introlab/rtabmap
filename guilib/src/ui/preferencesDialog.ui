@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-368</y>
-            <width>760</width>
-            <height>1009</height>
+            <y>0</y>
+            <width>759</width>
+            <height>800</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>26</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -7321,21 +7321,19 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                   </widget>
                  </item>
                  <item>
-                  <spacer name="verticalSpacer_88">
+                  <spacer name="verticalSpacer_30">
                    <property name="orientation">
                     <enum>Qt::Vertical</enum>
                    </property>
                    <property name="sizeHint" stdset="0">
                     <size>
                      <width>20</width>
-                     <height>774</height>
+                     <height>40</height>
                     </size>
                    </property>
                   </spacer>
                  </item>
                 </layout>
-                <zorder>groupBox_odometryMono2</zorder>
-                <zorder>verticalSpacer_88</zorder>
                </widget>
               </widget>
              </item>
