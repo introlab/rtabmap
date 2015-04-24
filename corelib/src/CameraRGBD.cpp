@@ -861,13 +861,18 @@ class FreenectDevice : public UThread {
 	{
 		if(this->isRunning())
 		{
-			dataReady_.acquire();
-
-			UScopeMutex s(dataMutex_);
-			rgb = rgbLastFrame_;
-			depth = depthLastFrame_;
-			rgbLastFrame_ = cv::Mat();
-			depthLastFrame_= cv::Mat();
+			if(!dataReady_.acquire(1, 2000))
+			{
+				UERROR("Not received any frames since 2 seconds, try to restart the camera again.");
+			}
+			else
+			{
+				UScopeMutex s(dataMutex_);
+				rgb = rgbLastFrame_;
+				depth = depthLastFrame_;
+				rgbLastFrame_ = cv::Mat();
+				depthLastFrame_= cv::Mat();
+			}
 		}
 	}
 
@@ -1063,20 +1068,24 @@ std::string CameraFreenect::getSerial() const
 void CameraFreenect::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
 {
 #ifdef WITH_FREENECT
+	rgb = cv::Mat();
+	depth = cv::Mat();
+	fx = 0.0f;
+	fy = 0.0f;
+	cx = 0.0f;
+	cy = 0.0f;
 	if(ctx_ && freenectDevice_)
 	{
 		if(freenectDevice_->isRunning())
 		{
 			freenectDevice_->getData(rgb, depth);
-			UASSERT(freenectDevice_->getDepthFocal() != 0.0f);
-			fx = freenectDevice_->getDepthFocal();
-			fy = freenectDevice_->getDepthFocal();
-			cx = float(depth.cols/2) - 0.5f;
-			cy = float(depth.rows/2) - 0.5f;
-
-			if(depth.empty())
+			if(!rgb.empty() && !depth.empty())
 			{
-				UWARN("CameraFreenect: Data not ready! Try to reduce the image rate to avoid this warning...");
+				UASSERT(freenectDevice_->getDepthFocal() != 0.0f);
+				fx = freenectDevice_->getDepthFocal();
+				fy = freenectDevice_->getDepthFocal();
+				cx = float(depth.cols/2) - 0.5f;
+				cy = float(depth.rows/2) - 0.5f;
 			}
 		}
 		else
@@ -1085,15 +1094,6 @@ void CameraFreenect::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, fl
 			delete freenectDevice_;
 			freenectDevice_ = 0;
 		}
-	}
-	if(depth.empty() || rgb.empty())
-	{
-		rgb = cv::Mat();
-		depth = cv::Mat();
-		fx = 0.0f;
-		fy = 0.0f;
-		cx = 0.0f;
-		cy = 0.0f;
 	}
 #else
 	UERROR("CameraFreenect: RTAB-Map is not built with Freenect support!");
