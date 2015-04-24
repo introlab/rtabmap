@@ -96,11 +96,13 @@ public:
 	float getImageRate() const {return _imageRate;}
 	const Transform & getLocalTransform() const {return _localTransform;}
 	bool isMirroringEnabled() const {return _mirroring;}
+	bool isColorOnly() const {return _colorOnly;}
 
 	//setters
 	void setImageRate(float imageRate) {_imageRate = imageRate;}
 	void setLocalTransform(const Transform & localTransform) {_localTransform= localTransform;}
 	void setMirroringEnabled(bool mirroring) {_mirroring = mirroring;}
+	void setColorOnly(bool colorOnly) {_colorOnly = colorOnly;}
 
 protected:
 	/**
@@ -120,6 +122,7 @@ private:
 	float _imageRate;
 	Transform _localTransform;
 	bool _mirroring;
+	bool _colorOnly;
 	UTimer * _frameRateTimer;
 };
 

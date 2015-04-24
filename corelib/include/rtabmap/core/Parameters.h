@@ -245,14 +245,12 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(FAST, Gpu,                bool, false, 	"GPU-FAST: Use GPU version of FAST. This option is enabled only if OpenCV is built with CUDA and GPUs are detected.");
 	RTABMAP_PARAM(FAST, GpuKeypointsRatio,  double, 0.05, 	"Used with FAST GPU.");
 
-	RTABMAP_PARAM(GFTT, MaxCorners, int, 400, "");
 	RTABMAP_PARAM(GFTT, QualityLevel, double, 0.01, "");
 	RTABMAP_PARAM(GFTT, MinDistance, double, 5, "");
 	RTABMAP_PARAM(GFTT, BlockSize, int, 3, "");
 	RTABMAP_PARAM(GFTT, UseHarrisDetector, bool, false, "");
 	RTABMAP_PARAM(GFTT, K, double, 0.04, "");
 
-	RTABMAP_PARAM(ORB, NFeatures,            int, 400,     "The maximum number of features to retain.");
 	RTABMAP_PARAM(ORB, ScaleFactor,          float,  1.2, "Pyramid decimation ratio, greater than 1. scaleFactor==2 means the classical pyramid, where each next level has 4x less pixels than the previous, but such a big scale factor will degrade feature matching scores dramatically. On the other hand, too close to 1 scale factor will mean that to cover certain scale range you will need more pyramid levels and so the speed will suffer.");
 	RTABMAP_PARAM(ORB, NLevels,              int, 1,       "The number of pyramid levels. The smallest level will have linear size equal to input_image_linear_size/pow(scaleFactor, nlevels).");
 	RTABMAP_PARAM(ORB, EdgeThreshold,        int, 31,      "This is size of the border where the features are not detected. It should roughly match the patchSize parameter.");
@@ -309,7 +307,7 @@ class RTABMAP_EXP Parameters
 	// Odometry
 	RTABMAP_PARAM(Odom, Strategy,           	int, 0, 		"0=Bag-of-words 1=Optical Flow");
 	RTABMAP_PARAM(Odom, FeatureType,            int, 6, 	    "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
-	RTABMAP_PARAM(Odom, MaxFeatures,            int, 0, 		"0 no limits.");
+	RTABMAP_PARAM(Odom, MaxFeatures,            int, 400, 		"0 no limits.");
 	RTABMAP_PARAM(Odom, InlierDistance,         float, 0.02, 	"Maximum distance for visual word correspondences.");
 	RTABMAP_PARAM(Odom, MinInliers,             int, 20, 		"Minimum visual word correspondences to compute geometry transform.");
 	RTABMAP_PARAM(Odom, Iterations,             int, 30, 		"Maximum iterations to compute the transform from visual words.");
@@ -327,6 +325,13 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(OdomBow, LocalHistorySize,       int, 1000,      "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
 	RTABMAP_PARAM(OdomBow, NNType,                 int, 3, 	    "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
 	RTABMAP_PARAM(OdomBow, NNDR,                   float, 0.8,  "NNDR: nearest neighbor distance ratio.");
+
+	// Odometry Mono
+	RTABMAP_PARAM(OdomMono, InitMinFlow,            float, 100,  "Minimum optical flow required for the initialization step.");
+	RTABMAP_PARAM(OdomMono, InitMinTranslation,     float, 0.1,  "Minimum translation required for the initialization step.");
+	RTABMAP_PARAM(OdomMono, MinTranslation,         float, 0.02,  "Minimum translation to add new points to local map. On initialization, translation x 5 is used as the minimum.");
+	RTABMAP_PARAM(OdomMono, MaxVariance,            float, 0.01,  "Maximum variance to add new points to local map.");
+
 
 	// Odometry common stuff between BOW and Optical Flow approaches
 	RTABMAP_PARAM(OdomFlow, WinSize,               int, 16,       "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
@@ -346,7 +351,9 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccBow, InlierDistance,  float, 0.02, 	"Maximum distance for visual word correspondences.");
 	RTABMAP_PARAM(LccBow, Iterations,      int, 100, 		"Maximum iterations to compute the transform from visual words.");
 	RTABMAP_PARAM(LccBow, MaxDepth,        float, 4.0, 		"Max depth of the words (0 means no limit).");
-	RTABMAP_PARAM(LccBow, Force2D, 		   bool, false,     "Force 2D transform (3Dof: x,y and yaw).");
+	RTABMAP_PARAM(LccBow, Force2D, 		   bool, false,    "Force 2D transform (3Dof: x,y and yaw).");
+	RTABMAP_PARAM(LccBow, EpipolarGeometry, bool, false,   "Use epipolar geometry to compute the loop closure transform.");
+	RTABMAP_PARAM(LccBow, EpipolarGeometryVar, float, 0.02, "Epipolar geometry maximum variance to accept the loop closure.");
 	RTABMAP_PARAM_COND(LccReextract, Activated, bool, RTABMAP_NONFREE, false, true, "Activate re-extracting features on global loop closure.");
 	RTABMAP_PARAM(LccReextract, NNType, 	int, 3, 		"kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4.");
 	RTABMAP_PARAM(LccReextract, NNDR, 		float, 0.8, 	"NNDR: nearest neighbor distance ratio.");

@@ -48,6 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/Odometry.h"
+#include "rtabmap/core/OdometryThread.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/Camera.h"
@@ -302,6 +303,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->openni2_exposure, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_gain, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_mirroring, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniDevice, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniLocalTransform, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
@@ -425,7 +427,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->fastKeypointRatio->setObjectName(Parameters::kFASTGpuKeypointsRatio().c_str());
 
 	//ORB detector
-	_ui->spinBox_ORBNFeatures->setObjectName(Parameters::kORBNFeatures().c_str());
 	_ui->doubleSpinBox_ORBScaleFactor->setObjectName(Parameters::kORBScaleFactor().c_str());
 	_ui->spinBox_ORBNLevels->setObjectName(Parameters::kORBNLevels().c_str());
 	_ui->spinBox_ORBEdgeThreshold->setObjectName(Parameters::kORBEdgeThreshold().c_str());
@@ -442,7 +443,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_FREAKNOctaves->setObjectName(Parameters::kFREAKNOctaves().c_str());
 
 	//GFTT detector
-	_ui->spinBox_GFTT_maxCorners->setObjectName(Parameters::kGFTTMaxCorners().c_str());
 	_ui->doubleSpinBox_GFTT_qualityLevel->setObjectName(Parameters::kGFTTQualityLevel().c_str());
 	_ui->doubleSpinBox_GFTT_minDistance->setObjectName(Parameters::kGFTTMinDistance().c_str());
 	_ui->spinBox_GFTT_blockSize->setObjectName(Parameters::kGFTTBlockSize().c_str());
@@ -489,6 +489,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_bowIterations->setObjectName(Parameters::kLccBowIterations().c_str());
 	_ui->loopClosure_bowMaxDepth->setObjectName(Parameters::kLccBowMaxDepth().c_str());
 	_ui->loopClosure_bowForce2D->setObjectName(Parameters::kLccBowForce2D().c_str());
+	_ui->loopClosure_bowEpipolarGeometry->setObjectName(Parameters::kLccBowEpipolarGeometry().c_str());
+	_ui->loopClosure_bowEpipolarGeometryVar->setObjectName(Parameters::kLccBowEpipolarGeometryVar().c_str());
 
 	_ui->groupBox_reextract->setObjectName(Parameters::kLccReextractActivated().c_str());
 	_ui->reextract_nn->setObjectName(Parameters::kLccReextractNNType().c_str());
@@ -545,6 +547,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_subpix_winSize->setObjectName(Parameters::kOdomSubPixWinSize().c_str());
 	_ui->odom_subpix_iterations->setObjectName(Parameters::kOdomSubPixIterations().c_str());
 	_ui->odom_subpix_eps->setObjectName(Parameters::kOdomSubPixEps().c_str());
+
+	//Odometry Mono
+	_ui->doubleSpinBox_minFlow->setObjectName(Parameters::kOdomMonoInitMinFlow().c_str());
+	_ui->doubleSpinBox_minInitTranslation->setObjectName(Parameters::kOdomMonoInitMinTranslation().c_str());
+	_ui->doubleSpinBox_minTranslation->setObjectName(Parameters::kOdomMonoMinTranslation().c_str());
+	_ui->doubleSpinBox_maxVariance->setObjectName(Parameters::kOdomMonoMaxVariance().c_str());
 
 	//Stereo
 	_ui->stereo_flow_winSize->setObjectName(Parameters::kStereoWinSize().c_str());
@@ -944,6 +952,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->openni2_exposure->setValue(0);
 		_ui->openni2_gain->setValue(100);
 		_ui->openni2_mirroring->setChecked(false);
+		_ui->checkbox_rgbd_colorOnly->setChecked(false);
 		_ui->lineEdit_openniDevice->setText("");
 		_ui->lineEdit_openniLocalTransform->setText("0 0 0 -PI_2 0 -PI_2");
 	}
@@ -1204,6 +1213,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->openni2_exposure->setValue(settings.value("openni2Exposure", _ui->openni2_exposure->value()).toInt());
 	_ui->openni2_gain->setValue(settings.value("openni2Gain", _ui->openni2_gain->value()).toInt());
 	_ui->openni2_mirroring->setChecked(settings.value("openni2Mirroring", _ui->openni2_mirroring->isChecked()).toBool());
+	_ui->checkbox_rgbd_colorOnly->setChecked(settings.value("rgbdColorOnly", _ui->checkbox_rgbd_colorOnly->isChecked()).toBool());
 	_ui->lineEdit_openniDevice->setText(settings.value("device",_ui->lineEdit_openniDevice->text()).toString());
 	_ui->lineEdit_openniLocalTransform->setText(settings.value("localTransform",_ui->lineEdit_openniLocalTransform->text()).toString());
 	_calibrationDialog->loadSettings(settings, "CalibrationDialog");
@@ -1469,6 +1479,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("openni2Exposure", 		_ui->openni2_exposure->value());
 	settings.setValue("openni2Gain", 			_ui->openni2_gain->value());
 	settings.setValue("openni2Mirroring", _ui->openni2_mirroring->isChecked());
+	settings.setValue("rgbdColorOnly", _ui->checkbox_rgbd_colorOnly->isChecked());
 	settings.setValue("device", 		_ui->lineEdit_openniDevice->text());
 	settings.setValue("localTransform", _ui->lineEdit_openniLocalTransform->text());
 	_calibrationDialog->saveSettings(settings, "CalibrationDialog");
@@ -3054,6 +3065,10 @@ bool PreferencesDialog::getSourceOpenni2Mirroring() const
 {
 	return _ui->openni2_mirroring->isChecked();
 }
+bool PreferencesDialog::isSourceRGBDColorOnly() const
+{
+	return _ui->checkbox_rgbd_colorOnly->isChecked();
+}
 QString PreferencesDialog::getSourceOpenniDevice() const
 {
 	return _ui->lineEdit_openniDevice->text();
@@ -3288,12 +3303,17 @@ void PreferencesDialog::testOdometry(int type)
 		}
 	}
 	camera->setMirroringEnabled(isSourceMirroring());
+	camera->setColorOnly(isSourceRGBDColorOnly());
 
 	ParametersMap parameters = this->getAllParameters();
 	Odometry * odometry;
 	if(this->getOdomStrategy() == 1)
 	{
 		odometry = new OdometryOpticalFlow(parameters);
+	}
+	else if(this->getOdomStrategy() == 2)
+	{
+		odometry = new OdometryMono(parameters);
 	}
 	else
 	{

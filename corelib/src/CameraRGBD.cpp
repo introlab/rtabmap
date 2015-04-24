@@ -77,6 +77,7 @@ CameraRGBD::CameraRGBD(float imageRate, const Transform & localTransform) :
 	_imageRate(imageRate),
 	_localTransform(localTransform),
 	_mirroring(false),
+	_colorOnly(false),
 	_frameRateTimer(new UTimer())
 {
 }
@@ -120,13 +121,23 @@ void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & f
 
 	UTimer timer;
 	this->captureImage(rgb, depth, fx, fy, cx, cy);
-	if(!rgb.empty() && !depth.empty() && _mirroring)
+	if(_colorOnly)
 	{
-		cv::flip(rgb,rgb,1);
-		cv::flip(depth,depth,1);
-		if(cx != 0.0f)
+		depth = cv::Mat();
+	}
+	if(_mirroring)
+	{
+		if(!rgb.empty())
 		{
-			cx = float(rgb.cols) - cx;
+			cv::flip(rgb,rgb,1);
+			if(cx != 0.0f)
+			{
+				cx = float(rgb.cols) - cx;
+			}
+		}
+		if(!depth.empty())
+		{
+			cv::flip(depth,depth,1);
 		}
 	}
 	if(warnFrameRateTooHigh)

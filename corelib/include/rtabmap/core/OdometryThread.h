@@ -25,46 +25,46 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef ODOMETRYINFO_H_
-#define ODOMETRYINFO_H_
+#ifndef ODOMETRYTHREAD_H_
+#define ODOMETRYTHREAD_H_
+
+#include <rtabmap/core/RtabmapExp.h>
+#include <rtabmap/core/SensorData.h>
+#include <rtabmap/utilite/UThread.h>
+#include <rtabmap/utilite/UEventsHandler.h>
 
 namespace rtabmap {
 
-class OdometryInfo
-{
+class Odometry;
+
+class RTABMAP_EXP OdometryThread : public UThread, public UEventsHandler {
 public:
-	OdometryInfo() :
-		lost(true),
-		matches(-1),
-		inliers(-1),
-		variance(-1),
-		features(-1),
-		localMapSize(-1),
-		time(-1),
-		type(-1)
-	{}
-	bool lost;
-	int matches;
-	int inliers;
-	float variance;
-	int features;
-	int localMapSize;
-	float time;
+	// take ownership of Odometry
+	OdometryThread(Odometry * odometry);
+	virtual ~OdometryThread();
 
-	int type; // 0=BOW, 1=Optical Flow, 2=ICP
+protected:
+	virtual void handleEvent(UEvent * event);
 
-	// BOW odometry
-	std::multimap<int, cv::KeyPoint> words;
-	std::vector<int> wordMatches;
-	std::vector<int> wordInliers;
-	std::multimap<int, cv::Point3f> localMap;
+private:
+	void mainLoopKill();
 
-	// Optical Flow odometry
-	std::vector<cv::Point2f> refCorners;
-	std::vector<cv::Point2f> newCorners;
-	std::vector<int> cornerInliers;
+	//============================================================
+	// MAIN LOOP
+	//============================================================
+	void mainLoop();
+	void addData(const SensorData & data);
+	void getData(SensorData & data);
+
+private:
+	USemaphore _dataAdded;
+	UMutex _dataMutex;
+	SensorData _dataBuffer;
+	Odometry * _odometry;
+	bool _resetOdometry;
 };
 
-}
+} // namespace rtabmap
 
-#endif /* ODOMETRYINFO_H_ */
+
+#endif /* ODOMETRYTHREAD_H_ */

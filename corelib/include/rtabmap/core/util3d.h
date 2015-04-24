@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/RtabmapExp.h"
 #include <opencv2/core/core.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <list>
 #include <string>
@@ -98,6 +99,23 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP generateKeypoints3DStereo(
 		int flowMaxLevel = 4,
 		int flowIterations = 20,
 		double flowEps = 0.02);
+
+std::multimap<int, pcl::PointXYZ> RTABMAP_EXP generateWords3DMono(
+		const std::multimap<int, cv::KeyPoint> & kpts,
+		const std::multimap<int, cv::KeyPoint> & previousKpts,
+		float fx,
+		float fy,
+		float cx,
+		float cy,
+		const Transform & localTransform,
+		Transform & cameraTransform,
+		int pnpIterations = 100,
+		float pnpReprojError = 8.0f,
+		int pnpFlags = cv::ITERATIVE,
+		float ransacParam1 = 3.0f,
+		float ransacParam2 = 0.99f,
+		const std::multimap<int, pcl::PointXYZ> & refGuess3D = std::multimap<int, pcl::PointXYZ>(),
+		double * variance = 0);
 
 std::multimap<int, cv::KeyPoint> RTABMAP_EXP aggregate(
 		const std::list<int> & wordIds,
@@ -411,6 +429,11 @@ pcl::IndicesPtr RTABMAP_EXP concatenate(
 		const pcl::IndicesPtr & indicesB);
 
 cv::Mat RTABMAP_EXP decimate(const cv::Mat & image, int d);
+
+void RTABMAP_EXP savePCDWords(
+		const std::string & fileName,
+		const std::multimap<int, pcl::PointXYZ> & words,
+		const Transform & transform = Transform::getIdentity());
 
 ///////////////////
 // Templated PCL methods

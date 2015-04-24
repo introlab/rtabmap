@@ -30,20 +30,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/RtabmapExp.h>
 
-#include <rtabmap/utilite/UThread.h>
-#include <rtabmap/utilite/UEventsHandler.h>
-#include <rtabmap/utilite/UEvent.h>
-#include <rtabmap/utilite/UMutex.h>
-#include <rtabmap/utilite/USemaphore.h>
-
-#include <rtabmap/core/Parameters.h>
-
+#include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
-#include <rtabmap/core/OdometryInfo.h>
-
-#include <opencv2/opencv.hpp>
-
-#include <pcl/common/eigen.h>
+#include <rtabmap/core/Parameters.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 
@@ -52,6 +41,7 @@ class UTimer;
 namespace rtabmap {
 
 class Feature2D;
+class OdometryInfo;
 
 class RTABMAP_EXP Odometry
 {
@@ -62,7 +52,6 @@ public:
 
 	//getters
 	const Transform & getPose() const {return _pose;}
-	int getMaxFeatures() const  {return _maxFeatures;}
 	const std::string & getRoiRatios() const {return _roiRatios;}
 	int getMinInliers() const {return _minInliers;}
 	float getInlierDistance() const {return _inlierDistance;}
@@ -71,14 +60,13 @@ public:
 	float getMaxDepth() const {return _maxDepth;}
 	bool isInfoDataFilled() const {return _fillInfoData;}
 	bool isPnPEstimationUsed() const {return _pnpEstimation;}
-	double  getPnPReprojError() const {return _pnpReprojError;}
+	double getPnPReprojError() const {return _pnpReprojError;}
 	int  getPnPFlags() const {return _pnpFlags;}
 
 private:
 	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0) = 0;
 
 private:
-	int _maxFeatures;
 	std::string _roiRatios;
 	int _minInliers;
 	float _inlierDistance;
@@ -163,6 +151,38 @@ private:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr refCorners3D_;
 };
 
+class OdometryMono : public Odometry
+{
+public:
+	OdometryMono(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
+	virtual ~OdometryMono();
+	virtual void reset(const Transform & initialPose);
+
+private:
+	virtual Transform computeTransform(const SensorData & data, OdometryInfo * info = 0);
+private:
+	//Parameters:
+	int flowWinSize_;
+	int flowIterations_;
+	double flowEps_;
+	int flowMaxLevel_;
+
+	Memory * memory_;
+	int localHistoryMaxSize_;
+	float initMinFlow_;
+	float initMinTranslation_;
+	float minTranslation_;
+	float fundMatrixReprojError_;
+	float fundMatrixConfidence_;
+
+	cv::Mat refDepth_;
+	std::map<int, cv::Point2f> cornersMap_;
+	std::multimap<int, cv::Point3f> localMap_;
+	std::map<int, std::multimap<int, pcl::PointXYZ> > keyFrameWords3D_;
+	std::map<int, Transform> keyFramePoses_;
+	float maxVariance_;
+};
+
 class RTABMAP_EXP OdometryICP : public Odometry
 {
 public:
@@ -190,33 +210,6 @@ private:
 
 	pcl::PointCloud<pcl::PointNormal>::Ptr _previousCloudNormal; // for point ot plane
 	pcl::PointCloud<pcl::PointXYZ>::Ptr _previousCloud; // for point to point
-};
-
-class RTABMAP_EXP OdometryThread : public UThread, public UEventsHandler {
-public:
-	// take ownership of Odometry
-	OdometryThread(Odometry * odometry);
-	virtual ~OdometryThread();
-
-protected:
-	virtual void handleEvent(UEvent * event);
-
-private:
-	void mainLoopKill();
-
-	//============================================================
-	// MAIN LOOP
-	//============================================================
-	void mainLoop();
-	void addData(const SensorData & data);
-	void getData(SensorData & data);
-
-private:
-	USemaphore _dataAdded;
-	UMutex _dataMutex;
-	SensorData _dataBuffer;
-	Odometry * _odometry;
-	bool _resetOdometry;
 };
 
 } /* namespace rtabmap */

@@ -109,8 +109,8 @@ void LoopClosureViewer::updateView(const Transform & transform)
 				cloudA = util3d::cloudFromStereoImages(
 						sA_.getImageRaw(),
 						sA_.getDepthRaw(),
-						sA_.getDepthCx(), sA_.getDepthCy(),
-						sA_.getDepthFx(), sA_.getDepthFy(),
+						sA_.getCx(), sA_.getCy(),
+						sA_.getFx(), sA_.getFy(),
 						decimation);
 			}
 			else
@@ -118,8 +118,8 @@ void LoopClosureViewer::updateView(const Transform & transform)
 				cloudA = util3d::cloudFromDepthRGB(
 						sA_.getImageRaw(),
 						sA_.getDepthRaw(),
-						sA_.getDepthCx(), sA_.getDepthCy(),
-						sA_.getDepthFx(), sA_.getDepthFy(),
+						sA_.getCx(), sA_.getCy(),
+						sA_.getFx(), sA_.getFy(),
 						decimation);
 			}
 
@@ -141,8 +141,8 @@ void LoopClosureViewer::updateView(const Transform & transform)
 				cloudB = util3d::cloudFromStereoImages(
 						sB_.getImageRaw(),
 						sB_.getDepthRaw(),
-						sB_.getDepthCx(), sB_.getDepthCy(),
-						sB_.getDepthFx(), sB_.getDepthFy(),
+						sB_.getCx(), sB_.getCy(),
+						sB_.getFx(), sB_.getFy(),
 						decimation);
 			}
 			else
@@ -150,8 +150,8 @@ void LoopClosureViewer::updateView(const Transform & transform)
 				cloudB = util3d::cloudFromDepthRGB(
 						sB_.getImageRaw(),
 						sB_.getDepthRaw(),
-						sB_.getDepthCx(), sB_.getDepthCy(),
-						sB_.getDepthFx(), sB_.getDepthFy(),
+						sB_.getCx(), sB_.getCy(),
+						sB_.getFx(), sB_.getFy(),
 						decimation);
 			}
 

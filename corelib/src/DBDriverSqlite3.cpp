@@ -2045,7 +2045,7 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 			//metric
 			if(!(*i)->getDepthCompressed().empty() || !(*i)->getLaserScanCompressed().empty())
 			{
-				stepDepth(ppStmt, (*i)->id(), (*i)->getDepthCompressed(), (*i)->getLaserScanCompressed(), (*i)->getDepthFx(), (*i)->getDepthFy(), (*i)->getDepthCx(), (*i)->getDepthCy(), (*i)->getLocalTransform());
+				stepDepth(ppStmt, (*i)->id(), (*i)->getDepthCompressed(), (*i)->getLaserScanCompressed(), (*i)->getFx(), (*i)->getFy(), (*i)->getCx(), (*i)->getCy(), (*i)->getLocalTransform());
 			}
 		}
 		// Finalize (delete) the statement

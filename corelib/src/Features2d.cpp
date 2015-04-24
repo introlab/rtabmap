@@ -319,6 +319,14 @@ cv::Rect Feature2D::computeRoi(const cv::Mat & image, const std::vector<float> &
 /////////////////////
 // Feature2D
 /////////////////////
+Feature2D::Feature2D(const ParametersMap & parameters) :
+		maxFeatures_(Parameters::defaultKpWordsPerImage())
+{
+}
+void Feature2D::parseParameters(const ParametersMap & parameters)
+{
+	Parameters::parse(parameters, Parameters::kKpWordsPerImage(), maxFeatures_);
+}
 Feature2D * Feature2D::create(Feature2D::Type & type, const ParametersMap & parameters)
 {
 	if(RTABMAP_NONFREE == 0 &&
@@ -369,9 +377,8 @@ Feature2D * Feature2D::create(Feature2D::Type & type, const ParametersMap & para
 	}
 	return feature2D;
 }
-std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, int maxKeypoints, const cv::Rect & roi) const
+std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const
 {
-	ULOGGER_DEBUG("");
 	std::vector<cv::KeyPoint> keypoints;
 	if(!image.empty() && image.channels() == 1 && image.type() == CV_8U)
 	{
@@ -381,7 +388,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, in
 		keypoints = this->generateKeypointsImpl(image, roi.width && roi.height?roi:cv::Rect(0,0,image.cols, image.rows));
 		ULOGGER_DEBUG("Keypoints extraction time = %f s, keypoints extracted = %d", timer.ticks(), keypoints.size());
 
-		limitKeypoints(keypoints, maxKeypoints);
+		limitKeypoints(keypoints, maxFeatures_);
 
 		if(roi.x || roi.y)
 		{
@@ -615,7 +622,7 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 //ORB
 //////////////////////////
 ORB::ORB(const ParametersMap & parameters) :
-		nFeatures_(Parameters::defaultORBNFeatures()),
+		nFeatures_(Parameters::defaultKpWordsPerImage()),
 		scaleFactor_(Parameters::defaultORBScaleFactor()),
 		nLevels_(Parameters::defaultORBNLevels()),
 		edgeThreshold_(Parameters::defaultORBEdgeThreshold()),
@@ -646,7 +653,7 @@ ORB::~ORB()
 
 void ORB::parseParameters(const ParametersMap & parameters)
 {
-	Parameters::parse(parameters, Parameters::kORBNFeatures(), nFeatures_);
+	Parameters::parse(parameters, Parameters::kKpWordsPerImage(), nFeatures_);
 	Parameters::parse(parameters, Parameters::kORBScaleFactor(), scaleFactor_);
 	Parameters::parse(parameters, Parameters::kORBNLevels(), nLevels_);
 	Parameters::parse(parameters, Parameters::kORBEdgeThreshold(), edgeThreshold_);
@@ -903,7 +910,7 @@ cv::Mat FAST_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<c
 //GFTT
 //////////////////////////
 GFTT::GFTT(const ParametersMap & parameters) :
-		_maxCorners(Parameters::defaultGFTTMaxCorners()),
+		_maxCorners(Parameters::defaultKpWordsPerImage()),
 		_qualityLevel(Parameters::defaultGFTTQualityLevel()),
 		_minDistance(Parameters::defaultGFTTMinDistance()),
 		_blockSize(Parameters::defaultGFTTBlockSize()),
@@ -924,7 +931,7 @@ GFTT::~GFTT()
 
 void GFTT::parseParameters(const ParametersMap & parameters)
 {
-	Parameters::parse(parameters, Parameters::kGFTTMaxCorners(), _maxCorners);
+	Parameters::parse(parameters, Parameters::kKpWordsPerImage(), _maxCorners);
 	Parameters::parse(parameters, Parameters::kGFTTQualityLevel(), _qualityLevel);
 	Parameters::parse(parameters, Parameters::kGFTTMinDistance(), _minDistance);
 	Parameters::parse(parameters, Parameters::kGFTTBlockSize(), _blockSize);

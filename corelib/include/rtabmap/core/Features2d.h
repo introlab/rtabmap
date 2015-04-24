@@ -89,21 +89,26 @@ public:
 	static cv::Rect computeRoi(const cv::Mat & image, const std::string & roiRatios);
 	static cv::Rect computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios);
 
+	int getMaxFeatures() const {return maxFeatures_;}
+
 public:
 	virtual ~Feature2D() {}
 
-	std::vector<cv::KeyPoint> generateKeypoints(const cv::Mat & image, int maxKeypoints=0, const cv::Rect & roi = cv::Rect()) const;
+	std::vector<cv::KeyPoint> generateKeypoints(const cv::Mat & image, const cv::Rect & roi = cv::Rect()) const;
 	cv::Mat generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
-	virtual void parseParameters(const ParametersMap & parameters) {}
+	virtual void parseParameters(const ParametersMap & parameters);
 	virtual Feature2D::Type getType() const = 0;
 
 protected:
-	Feature2D(const ParametersMap & parameters = ParametersMap()) {}
+	Feature2D(const ParametersMap & parameters = ParametersMap());
 
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const = 0;
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const = 0;
+
+private:
+	int maxFeatures_;
 };
 
 //SURF

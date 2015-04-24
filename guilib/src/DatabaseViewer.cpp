@@ -182,6 +182,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->horizontalSlider_neighbors, SIGNAL(sliderMoved(int)), this, SLOT(sliderNeighborValueChanged(int)));
 	connect(ui_->horizontalSlider_loops, SIGNAL(sliderMoved(int)), this, SLOT(sliderLoopValueChanged(int)));
 	connect(ui_->checkBox_showOptimized, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
+	connect(ui_->checkBox_show3DWords, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
 	ui_->checkBox_showOptimized->setEnabled(false);
 
 	ui_->horizontalSlider_iterations->setTracking(false);
@@ -1038,8 +1039,8 @@ void DatabaseViewer::view3DMap()
 							cloud = rtabmap::util3d::cloudFromDisparityRGB(
 									data.getImageRaw(),
 								util3d::disparityFromStereoImages(leftImg, data.getDepthRaw()),
-								data.getDepthCx(), data.getDepthCy(),
-								data.getDepthFx(), data.getDepthFy(),
+								data.getCx(), data.getCy(),
+								data.getFx(), data.getFy(),
 								decimation);
 						}
 						else
@@ -1047,8 +1048,8 @@ void DatabaseViewer::view3DMap()
 							cloud = rtabmap::util3d::cloudFromDepthRGB(
 									data.getImageRaw(),
 									data.getDepthRaw(),
-									data.getDepthCx(), data.getDepthCy(),
-									data.getDepthFx(), data.getDepthFy(),
+									data.getCx(), data.getCy(),
+									data.getFx(), data.getFy(),
 									decimation);
 						}
 
@@ -1148,8 +1149,8 @@ void DatabaseViewer::generate3DMap()
 								cloud = rtabmap::util3d::cloudFromDisparityRGB(
 										data.getImageRaw(),
 									util3d::disparityFromStereoImages(leftImg, data.getDepthRaw()),
-									data.getDepthCx(), data.getDepthCy(),
-									data.getDepthFx(), data.getDepthFy(),
+									data.getCx(), data.getCy(),
+									data.getFx(), data.getFy(),
 									decimation);
 							}
 							else
@@ -1157,8 +1158,8 @@ void DatabaseViewer::generate3DMap()
 								cloud = rtabmap::util3d::cloudFromDepthRGB(
 										data.getImageRaw(),
 										data.getDepthRaw(),
-										data.getDepthCx(), data.getDepthCy(),
-										data.getDepthFx(), data.getDepthFy(),
+										data.getCx(), data.getCy(),
+										data.getFx(), data.getFy(),
 										decimation);
 							}
 
@@ -1443,8 +1444,8 @@ void DatabaseViewer::update(int value,
 						cloud = util3d::cloudFromStereoImages(
 								data.getImageRaw(),
 								data.getDepthRaw(),
-								data.getDepthCx(), data.getDepthCy(),
-								data.getDepthFx(), data.getDepthFy(),
+								data.getCx(), data.getCy(),
+								data.getFx(), data.getFy(),
 								1);
 					}
 					else
@@ -1452,8 +1453,8 @@ void DatabaseViewer::update(int value,
 						cloud = util3d::cloudFromDepthRGB(
 								data.getImageRaw(),
 								data.getDepthRaw(),
-								data.getDepthCx(), data.getDepthCy(),
-								data.getDepthFx(), data.getDepthFy(),
+								data.getCx(), data.getCy(),
+								data.getFx(), data.getFy(),
 								1);
 					}
 					view3D->addOrUpdateCloud("0", cloud, data.getLocalTransform());
@@ -1605,11 +1606,11 @@ void DatabaseViewer::updateStereo(const Signature * data)
 		std::vector<cv::KeyPoint> kpts;
 		cv::Rect roi = Feature2D::computeRoi(leftMono, "0.03 0.03 0.04 0.04");
 		ParametersMap parameters;
-		parameters.insert(ParametersPair(Parameters::kGFTTMaxCorners(), "1000"));
+		parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "1000"));
 		parameters.insert(ParametersPair(Parameters::kGFTTMinDistance(), "5"));
 		Feature2D::Type type = Feature2D::kFeatureGfttBrief;
 		Feature2D * kptDetector = Feature2D::create(type, parameters);
-		kpts = kptDetector->generateKeypoints(leftMono, 0, roi);
+		kpts = kptDetector->generateKeypoints(leftMono, roi);
 		delete kptDetector;
 
 		float timeKpt = timer.ticks();
@@ -1651,7 +1652,7 @@ void DatabaseViewer::updateStereo(const Signature * data)
 						pcl::PointXYZ tmpPt = util3d::projectDisparityTo3D(
 								leftCorners[i],
 								disparity,
-								data->getDepthCx(), data->getDepthCy(), data->getDepthFx(), data->getDepthFy());
+								data->getCx(), data->getCy(), data->getFx(), data->getFy());
 
 						if(pcl::isFinite(tmpPt))
 						{
@@ -1833,7 +1834,15 @@ void DatabaseViewer::sliderLoopValueChanged(int value)
 // only called when ui_->checkBox_showOptimized state changed
 void DatabaseViewer::updateConstraintView()
 {
-	this->updateConstraintView(neighborLinks_.at(ui_->horizontalSlider_neighbors->value()), false);
+	Link link = this->findActiveLink(ui_->horizontalSlider_A->value(), ui_->horizontalSlider_B->value());
+	if(link.type() == Link::kNeighbor)
+	{
+		this->updateConstraintView(neighborLinks_.at(ui_->horizontalSlider_neighbors->value()), false);
+	}
+	else
+	{
+		this->updateConstraintView(loopLinks_.at(ui_->horizontalSlider_loops->value()), false);
+	}
 }
 
 void DatabaseViewer::updateConstraintView(
@@ -1961,8 +1970,8 @@ void DatabaseViewer::updateConstraintView(
 					cloudFrom = rtabmap::util3d::cloudFromStereoImages(
 							dataFrom.getImageRaw(),
 							dataFrom.getDepthRaw(),
-							dataFrom.getDepthCx(), dataFrom.getDepthCy(),
-							dataFrom.getDepthFx(), dataFrom.getDepthFy(),
+							dataFrom.getCx(), dataFrom.getCy(),
+							dataFrom.getFx(), dataFrom.getFy(),
 							1);
 				}
 				else
@@ -1970,8 +1979,8 @@ void DatabaseViewer::updateConstraintView(
 					cloudFrom = rtabmap::util3d::cloudFromDepthRGB(
 							dataFrom.getImageRaw(),
 							dataFrom.getDepthRaw(),
-							dataFrom.getDepthCx(), dataFrom.getDepthCy(),
-							dataFrom.getDepthFx(), dataFrom.getDepthFy(),
+							dataFrom.getCx(), dataFrom.getCy(),
+							dataFrom.getFx(), dataFrom.getFy(),
 							1);
 				}
 
@@ -1984,8 +1993,8 @@ void DatabaseViewer::updateConstraintView(
 					cloudTo = rtabmap::util3d::cloudFromStereoImages(
 							dataTo.getImageRaw(),
 							dataTo.getDepthRaw(),
-							dataTo.getDepthCx(), dataTo.getDepthCy(),
-							dataTo.getDepthFx(), dataTo.getDepthFy(),
+							dataTo.getCx(), dataTo.getCy(),
+							dataTo.getFx(), dataTo.getFy(),
 							1);
 				}
 				else
@@ -1993,8 +2002,8 @@ void DatabaseViewer::updateConstraintView(
 					cloudTo = rtabmap::util3d::cloudFromDepthRGB(
 							dataTo.getImageRaw(),
 							dataTo.getDepthRaw(),
-							dataTo.getDepthCx(), dataTo.getDepthCy(),
-							dataTo.getDepthFx(), dataTo.getDepthFy(),
+							dataTo.getCx(), dataTo.getCy(),
+							dataTo.getFx(), dataTo.getFy(),
 							1);
 				}
 
@@ -2189,20 +2198,20 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						{
 							cloud = rtabmap::util3d::cloudFromDisparity(
 									util3d::disparityFromStereoImages(data.getImageRaw(), data.getDepthRaw()),
-									data.getDepthCx(),
-									data.getDepthCy(),
-									data.getDepthFx(),
-									data.getDepthFy(),
+									data.getCx(),
+									data.getCy(),
+									data.getFx(),
+									data.getFy(),
 									ui_->spinBox_projDecimation->value());
 						}
 						else
 						{
 							cloud = util3d::cloudFromDepth(
 									data.getDepthRaw(),
-									data.getDepthCx(),
-									data.getDepthCy(),
-									data.getDepthFx(),
-									data.getDepthFy(),
+									data.getCx(),
+									data.getCy(),
+									data.getFx(),
+									data.getFy(),
 									ui_->spinBox_projDecimation->value());
 						}
 						if(cloud->size())
@@ -2536,7 +2545,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool updateGraph)
 			{
 				leftMono = left;
 			}
-			cloudA = util3d::cloudFromDisparity(util3d::disparityFromStereoImages(leftMono, depthA), dataFrom.getDepthCx(), dataFrom.getDepthCy(), dataFrom.getDepthFx(), dataFrom.getDepthFy(), ui_->spinBox_icp_decimation->value());
+			cloudA = util3d::cloudFromDisparity(util3d::disparityFromStereoImages(leftMono, depthA), dataFrom.getCx(), dataFrom.getCy(), dataFrom.getFx(), dataFrom.getFy(), ui_->spinBox_icp_decimation->value());
 			if(ui_->doubleSpinBox_icp_maxDepth->value() > 0)
 			{
 				cloudA = util3d::passThrough<pcl::PointXYZ>(cloudA, "z", 0, ui_->doubleSpinBox_icp_maxDepth->value());
@@ -2550,7 +2559,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool updateGraph)
 		else
 		{
 			cloudA = util3d::getICPReadyCloud(depthA,
-					dataFrom.getDepthFx(), dataFrom.getDepthFy(), dataFrom.getDepthCx(), dataFrom.getDepthCy(),
+					dataFrom.getFx(), dataFrom.getFy(), dataFrom.getCx(), dataFrom.getCy(),
 					ui_->spinBox_icp_decimation->value(),
 					ui_->doubleSpinBox_icp_maxDepth->value(),
 					ui_->doubleSpinBox_icp_voxel->value(),
@@ -2569,7 +2578,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool updateGraph)
 			{
 				leftMono = left;
 			}
-			cloudB = util3d::cloudFromDisparity(util3d::disparityFromStereoImages(leftMono, depthB), dataTo.getDepthCx(), dataTo.getDepthCy(), dataTo.getDepthFx(), dataTo.getDepthFy(), ui_->spinBox_icp_decimation->value());
+			cloudB = util3d::cloudFromDisparity(util3d::disparityFromStereoImages(leftMono, depthB), dataTo.getCx(), dataTo.getCy(), dataTo.getFx(), dataTo.getFy(), ui_->spinBox_icp_decimation->value());
 			if(ui_->doubleSpinBox_icp_maxDepth->value() > 0)
 			{
 				cloudB = util3d::passThrough<pcl::PointXYZ>(cloudB, "z", 0, ui_->doubleSpinBox_icp_maxDepth->value());
@@ -2583,7 +2592,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool updateGraph)
 		else
 		{
 			cloudB = util3d::getICPReadyCloud(depthB,
-					dataTo.getDepthFx(), dataTo.getDepthFy(), dataTo.getDepthCx(), dataTo.getDepthCy(),
+					dataTo.getFx(), dataTo.getFy(), dataTo.getCx(), dataTo.getCy(),
 					ui_->spinBox_icp_decimation->value(),
 					ui_->doubleSpinBox_icp_maxDepth->value(),
 					ui_->doubleSpinBox_icp_voxel->value(),
@@ -3075,6 +3084,11 @@ void DatabaseViewer::updateLoopClosuresSlider(int from, int to)
 
 	if(loopLinks_.size())
 	{
+		if(loopLinks_.size() == 1)
+		{
+			// just to be able to move the cursor of the loop slider
+			loopLinks_.push_back(loopLinks_.front());
+		}
 		ui_->horizontalSlider_loops->setMinimum(0);
 		ui_->horizontalSlider_loops->setMaximum(loopLinks_.size()-1);
 		ui_->horizontalSlider_loops->setEnabled(true);

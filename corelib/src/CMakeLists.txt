@@ -26,10 +26,16 @@ SET(SRC_FILES
 	Transform.cpp
 	
 	util3d.cpp
-	Odometry.cpp
 	SensorData.cpp
 	Graph.cpp
 	Compression.cpp
+	
+	Odometry.cpp
+	OdometryThread.cpp
+	OdometryBOW.cpp
+	OdometryOpticalFlow.cpp
+	OdometryMono.cpp
+	OdometryICP.cpp
 	
 	toro3d/posegraph3.cpp
 	toro3d/treeoptimizer3_iteration.cpp

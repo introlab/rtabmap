@@ -246,6 +246,11 @@ void Signature::setDepthCompressed(const cv::Mat & bytes, float fx, float fy, fl
 	_cy=cy;
 }
 
+float Signature::getDepthFx() const {return getFx();}
+float Signature::getDepthFy() const {return getFy();}
+float Signature::getDepthCx() const {return getCx();}
+float Signature::getDepthCy() const {return getCy();}
+
 SensorData Signature::toSensorData()
 {
 	this->uncompressData();

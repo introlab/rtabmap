@@ -86,6 +86,7 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, i
 	decimationSpin_->setMinimum(1);
 	decimationSpin_->setMaximum(16);
 	decimationSpin_->setValue(decimation);
+	timeLabel_ = new QLabel(this);
 	QPushButton * clearButton = new QPushButton("clear", this);
 	QPushButton * closeButton = new QPushButton("close", this);
 	connect(clearButton, SIGNAL(clicked()), this, SLOT(clear()));
@@ -106,6 +107,7 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, i
 	hlayout2->addWidget(voxelSpin_);
 	hlayout2->addWidget(decimationLabel);
 	hlayout2->addWidget(decimationSpin_);
+	hlayout2->addWidget(timeLabel_);
 	hlayout2->addStretch(1);
 	hlayout2->addWidget(clearButton);
 	hlayout2->addWidget(closeButton);
@@ -166,6 +168,7 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 		cloudView_->setBackgroundColor(Qt::black);
 	}
 
+	timeLabel_->setText(QString("%1 s").arg(info.time));
 
 	if(!data.image().empty() && !data.depthOrRightImage().empty() && data.fx()>0.0f && data.fyOrBaseline()>0.0f)
 	{
@@ -220,7 +223,6 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 
 			if(!data.pose().isNull())
 			{
-				lastOdomPose_ = data.pose();
 				if(cloudView_->getAddedClouds().contains("cloudtmp"))
 				{
 					cloudView_->removeCloud("cloudtmp");
@@ -236,14 +238,32 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 				std::string cloudName = uFormat("cloud%d", id_);
 				addedClouds_.push_back(cloudName);
 				UASSERT(cloudView_->addCloud(cloudName, cloud, data.pose()));
-
-				cloudView_->updateCameraTargetPosition(data.pose());
 			}
 			else
 			{
 				cloudView_->addOrUpdateCloud("cloudtmp", cloud, lastOdomPose_);
 			}
 		}
+	}
+
+	if(!data.pose().isNull())
+	{
+		lastOdomPose_ = data.pose();
+		cloudView_->updateCameraTargetPosition(data.pose());
+	}
+
+	if(info.localMap.size())
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+		cloud->resize(info.localMap.size());
+		int i=0;
+		for(std::multimap<int, cv::Point3f>::const_iterator iter=info.localMap.begin(); iter!=info.localMap.end(); ++iter)
+		{
+			(*cloud)[i].x = iter->second.x;
+			(*cloud)[i].y = iter->second.y;
+			(*cloud)[i++].z = iter->second.z;
+		}
+		cloudView_->addOrUpdateCloud("localmap", cloud);
 	}
 
 	if(!data.image().empty())
@@ -254,7 +274,9 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 		}
 		else if(info.type == 1)
 		{
-			imageView_->setFeatures(info.refCorners, Qt::red);
+			std::vector<cv::KeyPoint> kpts;
+			cv::KeyPoint::convert(info.refCorners, kpts);
+			imageView_->setFeatures(kpts, Qt::red);
 		}
 
 		imageView_->clearLines();
@@ -299,32 +321,32 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 					}
 				}
 			}
-			else if(info.type == 1)
+		}
+		if(info.type == 1 && info.cornerInliers.size())
+		{
+			if(imageView_->isFeaturesShown() || imageView_->isLinesShown())
 			{
-				if(imageView_->isFeaturesShown() || imageView_->isLinesShown())
+				//draw lines
+				UASSERT(info.refCorners.size() == info.newCorners.size());
+				for(unsigned int i=0; i<info.cornerInliers.size(); ++i)
 				{
-					//draw lines
-					UASSERT(info.refCorners.size() == info.newCorners.size());
-					for(unsigned int i=0; i<info.cornerInliers.size(); ++i)
+					if(imageView_->isFeaturesShown())
 					{
-						if(imageView_->isFeaturesShown())
-						{
-							imageView_->setFeatureColor(info.cornerInliers[i], Qt::green); // inliers
-						}
-						if(imageView_->isLinesShown())
-						{
-							imageView_->addLine(
-									info.refCorners[info.cornerInliers[i]].pt.x,
-									info.refCorners[info.cornerInliers[i]].pt.y,
-									info.newCorners[info.cornerInliers[i]].pt.x,
-									info.newCorners[info.cornerInliers[i]].pt.y,
-									Qt::blue);
-						}
+						imageView_->setFeatureColor(info.cornerInliers[i], Qt::green); // inliers
+					}
+					if(imageView_->isLinesShown())
+					{
+						imageView_->addLine(
+								info.refCorners[info.cornerInliers[i]].x,
+								info.refCorners[info.cornerInliers[i]].y,
+								info.newCorners[info.cornerInliers[i]].x,
+								info.newCorners[info.cornerInliers[i]].y,
+								Qt::blue);
 					}
 				}
 			}
-
 		}
+
 		if(!data.image().empty())
 		{
 			imageView_->setSceneRect(QRectF(0,0,(float)data.image().cols, (float)data.image().rows));

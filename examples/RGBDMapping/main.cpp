@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/Odometry.h"
+#include "rtabmap/core/OdometryThread.h"
 #include "rtabmap/utilite/UEventsManager.h"
 #include <QApplication>
 #include <stdio.h>

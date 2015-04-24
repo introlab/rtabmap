@@ -432,10 +432,10 @@ void DBDriver::getNodeData(
 			imageCompressed = s->getImageCompressed();
 			depthCompressed = s->getDepthCompressed();
 			laserScanCompressed = s->getLaserScanCompressed();
-			fx = s->getDepthFx();
-			fy = s->getDepthFy();
-			cx = s->getDepthCx();
-			cy = s->getDepthCy();
+			fx = s->getFx();
+			fy = s->getFy();
+			cx = s->getCx();
+			cy = s->getCy();
 			localTransform = s->getLocalTransform();
 			found = true;
 		}

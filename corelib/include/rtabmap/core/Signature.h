@@ -134,10 +134,14 @@ public:
 	const std::multimap<int, pcl::PointXYZ> & getWords3() const {return _words3;}
 	const cv::Mat & getDepthCompressed() const {return _depthCompressed;}
 	const cv::Mat & getLaserScanCompressed() const {return _laserScanCompressed;}
-	float getDepthFx() const {return _fx;}
-	float getDepthFy() const {return _fy;}
-	float getDepthCx() const {return _cx;}
-	float getDepthCy() const {return _cy;}
+	RTABMAP_DEPRECATED(float getDepthFx() const, "Use getFx() instead.");
+	RTABMAP_DEPRECATED(float getDepthFy() const, "Use getFy() instead.");
+	RTABMAP_DEPRECATED(float getDepthCx() const, "Use getCx() instead.");
+	RTABMAP_DEPRECATED(float getDepthCy() const, "Use getCy() instead.");
+	float getFx() const {return _fx;}
+	float getFy() const {return _fy;}
+	float getCx() const {return _cx;}
+	float getCy() const {return _cy;}
 	const Transform & getPose() const {return _pose;}
 	const Transform & getLocalTransform() const {return _localTransform;}
 	void setDepthRaw(const cv::Mat & depth) {_depthRaw = depth;}

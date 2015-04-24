@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/core/Odometry.h>
+#include <rtabmap/core/OdometryThread.h>
 #include <rtabmap/gui/OdometryViewer.h>
 #include <rtabmap/core/CameraThread.h>
 #include <rtabmap/core/CameraRGBD.h>
@@ -48,8 +49,9 @@ void showUsage()
 			"  -o #                      Odometry type (default 6): 0=SURF, 1=SIFT, 2=ORB, 3=FAST/FREAK, 4=FAST/BRIEF, 5=GFTT/FREAK, 6=GFTT/BRIEF, 7=BRISK\n"
 			"  -nn #                     Nearest neighbor strategy (default 3): kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4\n"
 			"  -nndr #                   Nearest neighbor distance ratio (default 0.7)\n"
-			"  -icp                      Use ICP odometry\n"
 			"  -flow                     Use optical flow odometry.\n"
+			"  -icp                      Use ICP odometry\n"
+			"  -mono                     Use Mono odometry\n"
 			"\n"
 			"  -hz #.#                   Camera rate (default 0, 0 means as fast as the camera can)\n"
 			"  -db \"input.db\"          Use database instead of camera (recorded with rtabmap-dataRecorder)\n"
@@ -97,28 +99,29 @@ int main (int argc, char * argv[])
 	float rate = 0.0;
 	std::string inputDatabase;
 	int driver = 0;
-	int odomType = 6;
+	int odomType = rtabmap::Parameters::defaultOdomFeatureType();
 	bool icp = false;
 	bool flow = false;
-	int nnType =3;
-	float nndr = 0.7f;
-	float distance = 0.01;
-	int maxWords = 0;
-	int minInliers = 20;
-	float maxDepth = 5.0f;
-	int iterations = 30;
-	int resetCountdown = 0;
+	bool mono = false;
+	int nnType = rtabmap::Parameters::defaultOdomBowNNType();
+	float nndr = rtabmap::Parameters::defaultOdomBowNNDR();
+	float distance = rtabmap::Parameters::defaultOdomInlierDistance();
+	int maxWords = rtabmap::Parameters::defaultOdomMaxFeatures();
+	int minInliers = rtabmap::Parameters::defaultOdomMinInliers();
+	float maxDepth = rtabmap::Parameters::defaultOdomMaxDepth();
+	int iterations = rtabmap::Parameters::defaultOdomIterations();
+	int resetCountdown = rtabmap::Parameters::defaultOdomResetCountdown();
 	int decimation = 4;
 	float voxel = 0.005;
 	int samples = 10000;
 	float ratio = 0.7f;
 	int maxClouds = 10;
-	int briefBytes = 32;
-	int fastThr = 30;
+	int briefBytes = rtabmap::Parameters::defaultBRIEFBytes();
+	int fastThr = rtabmap::Parameters::defaultFASTThreshold();
 	float sec = 0.0f;
 	bool gpu = false;
-	int localHistory = 1000;
-	bool p2p = false;
+	int localHistory = rtabmap::Parameters::defaultOdomBowLocalHistorySize();
+	bool p2p = rtabmap::Parameters::defaultOdomPnPEstimation();
 
 	for(int i=1; i<argc; ++i)
 	{
@@ -495,6 +498,11 @@ int main (int argc, char * argv[])
 			flow = true;
 			continue;
 		}
+		if(strcmp(argv[i], "-mono") == 0)
+		{
+			mono = true;
+			continue;
+		}
 		if(strcmp(argv[i], "-p2p") == 0)
 		{
 			p2p = true;
@@ -604,7 +612,6 @@ int main (int argc, char * argv[])
 	UINFO("Delay =                   %f s", sec);
 	UINFO("Max depth =               %f", maxDepth);
 	UINFO("Reset odometry coutdown = %d", resetCountdown);
-	UINFO("Local history =           %d", localHistory);
 
 	QApplication app(argc, argv);
 
@@ -614,20 +621,42 @@ int main (int argc, char * argv[])
 
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMaxDepth(), uNumber2Str(maxDepth)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomResetCountdown(), uNumber2Str(resetCountdown)));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomBowLocalHistorySize(), uNumber2Str(localHistory)));
 
 	if(!icp)
 	{
+		UINFO("Min inliers =             %d", minInliers);
+		UINFO("Inlier maximum correspondences distance = %f", distance);
+		UINFO("RANSAC iterations =       %d", iterations);
+		UINFO("Max features =            %d", maxWords);
+		UINFO("GPU =                     %s", gpu?"true":"false");
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomInlierDistance(), uNumber2Str(distance)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMinInliers(), uNumber2Str(minInliers)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomIterations(), uNumber2Str(iterations)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMaxFeatures(), uNumber2Str(maxWords)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomFeatureType(), uNumber2Str(odomType)));
+		if(odomType == 0)
+		{
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), uBool2Str(gpu)));
+		}
+		if(odomType == 2)
+		{
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kORBGpu(), uBool2Str(gpu)));
+		}
+		if(odomType == 3 || odomType == 4)
+		{
+			UINFO("FAST threshold =          %d", fastThr);
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTThreshold(), uNumber2Str(fastThr)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTGpu(), uBool2Str(gpu)));
+		}
+		if(odomType == 4 || odomType == 6)
+		{
+			UINFO("BRIEF bytes =             %d", briefBytes);
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kBRIEFBytes(), uNumber2Str(briefBytes)));
+		}
+
 		if(flow)
 		{
 			// Optical Flow
-			UINFO("Min inliers =             %d", minInliers);
-			UINFO("Inlier maximum correspondences distance = %f", distance);
-			UINFO("RANSAC iterations =       %d", iterations);
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomInlierDistance(), uNumber2Str(distance)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMinInliers(), uNumber2Str(minInliers)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomIterations(), uNumber2Str(iterations)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomFeatureType(), uNumber2Str(odomType)));
 			odom = new rtabmap::OdometryOpticalFlow(parameters);
 		}
 		else
@@ -635,42 +664,25 @@ int main (int argc, char * argv[])
 			//BOW
 			UINFO("Nearest neighbor =         %s", nnName.c_str());
 			UINFO("Nearest neighbor ratio =  %f", nndr);
-			UINFO("Max features =            %d", maxWords);
-			UINFO("Min inliers =             %d", minInliers);
-			UINFO("Inlier maximum correspondences distance = %f", distance);
-			UINFO("RANSAC iterations =       %d", iterations);
-			UINFO("GPU =                     %s", gpu?"true":"false");
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMaxFeatures(), uNumber2Str(maxWords)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomInlierDistance(), uNumber2Str(distance)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMinInliers(), uNumber2Str(minInliers)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomIterations(), uNumber2Str(iterations)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomFeatureType(), uNumber2Str(odomType)));
+			UINFO("Local history =           %d", localHistory);
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomBowNNType(), uNumber2Str(nnType)));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomBowNNDR(), uNumber2Str(nndr)));
-			if(odomType == 0)
-			{
-				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), uBool2Str(gpu)));
-			}
-			if(odomType == 2)
-			{
-				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kORBGpu(), uBool2Str(gpu)));
-			}
-			if(odomType == 3 || odomType == 4)
-			{
-				UINFO("FAST threshold =          %d", fastThr);
-				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTThreshold(), uNumber2Str(fastThr)));
-				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTGpu(), uBool2Str(gpu)));
-			}
-			if(odomType == 4 || odomType == 6)
-			{
-				UINFO("BRIEF bytes =             %d", briefBytes);
-				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kBRIEFBytes(), uNumber2Str(briefBytes)));
-			}
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomBowLocalHistorySize(), uNumber2Str(localHistory)));
 
-			odom = new rtabmap::OdometryBOW(parameters);
+			if(mono)
+			{
+				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomPnPFlags(), uNumber2Str(cv::ITERATIVE)));
+				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomPnPReprojError(), "4.0"));
+				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomIterations(), "100"));
+				odom = new rtabmap::OdometryMono(parameters);
+			}
+			else
+			{
+				odom = new rtabmap::OdometryBOW(parameters);
+			}
 		}
 	}
-	else // ICP
+	else if(icp) // ICP
 	{
 		UINFO("ICP maximum correspondences distance = %f", distance);
 		UINFO("ICP iterations =          %d", iterations);
@@ -682,6 +694,7 @@ int main (int argc, char * argv[])
 
 		odom = new rtabmap::OdometryICP(decimation, voxel, samples, distance, iterations, ratio, !p2p);
 	}
+
 	rtabmap::OdometryThread odomThread(odom);
 	rtabmap::OdometryViewer odomViewer(maxClouds, 2, 0.0, 50);
 	UEventsManager::addHandler(&odomThread);

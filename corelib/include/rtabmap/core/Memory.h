@@ -245,7 +245,6 @@ private:
 	bool _tfIdfLikelihoodUsed;
 	bool _parallelized;
 	float _wordsMaxDepth; // 0=inf
-	int _wordsPerImageTarget; // <0=none, 0=inf
 	std::vector<float> _roiRatios; // size 4
 
 	// RGBD-SLAM stuff
@@ -254,6 +253,8 @@ private:
 	int _bowIterations;
 	float _bowMaxDepth;
 	bool _bowForce2D;
+	bool _bowEpipolarGeometry;
+	float _bowEpipolarGeometryVar;
 	int _icpDecimation;
 	float _icpMaxDepth;
 	float _icpVoxelSize;

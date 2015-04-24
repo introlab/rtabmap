@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 class QSpinBox;
 class QDoubleSpinBox;
+class QLabel;
 
 namespace rtabmap {
 
@@ -75,6 +76,7 @@ private:
 	QSpinBox * maxCloudsSpin_;
 	QDoubleSpinBox * voxelSpin_;
 	QSpinBox * decimationSpin_;
+	QLabel * timeLabel_;
 	int validDecimationValue_;
 };
 

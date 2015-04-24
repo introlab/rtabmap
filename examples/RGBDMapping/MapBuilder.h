@@ -203,10 +203,10 @@ protected slots:
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
 							s.getImageRaw(),
 							s.getDepthRaw(),
-							s.getDepthCx(),
-							s.getDepthCy(),
-							s.getDepthFx(),
-							s.getDepthFy(),
+							s.getCx(),
+							s.getCy(),
+							s.getFx(),
+							s.getFy(),
 						   4); // decimation
 
 					if(cloud->size())
