@@ -1899,51 +1899,35 @@ void DatabaseViewer::updateConstraintView(
 
 	if(updateImageSliders)
 	{
-		bool updateA = false;
-		bool updateB = false;
 		ui_->horizontalSlider_A->blockSignals(true);
 		ui_->horizontalSlider_B->blockSignals(true);
-		// set from on left and to on right
-		if(ui_->horizontalSlider_A->value() != idToIndex_.value(link.from()))
-		{
-			ui_->horizontalSlider_A->setValue(idToIndex_.value(link.from()));
-			updateA=true;
-		}
-		if(ui_->horizontalSlider_B->value() != idToIndex_.value(link.to()))
-		{
-			ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
-			updateB=true;
-		}
+		// set from on left and to on right		{
+		ui_->horizontalSlider_A->setValue(idToIndex_.value(link.from()));
+		ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
 		ui_->horizontalSlider_A->blockSignals(false);
 		ui_->horizontalSlider_B->blockSignals(false);
-		if(updateA)
-		{
-			this->update(idToIndex_.value(link.from()),
-						ui_->label_indexA,
-						ui_->label_parentsA,
-						ui_->label_childrenA,
-						ui_->label_weightA,
-						ui_->label_labelA,
-						ui_->label_stampA,
-						ui_->graphicsView_A,
-						ui_->widget_cloudA,
-						ui_->label_idA,
-						false); // don't update constraints view!
-		}
-		if(updateB)
-		{
-			this->update(idToIndex_.value(link.to()),
-						ui_->label_indexB,
-						ui_->label_parentsB,
-						ui_->label_childrenB,
-						ui_->label_weightB,
-						ui_->label_labelB,
-						ui_->label_stampB,
-						ui_->graphicsView_B,
-						ui_->widget_cloudB,
-						ui_->label_idB,
-						false); // don't update constraints view!
-		}
+		this->update(idToIndex_.value(link.from()),
+					ui_->label_indexA,
+					ui_->label_parentsA,
+					ui_->label_childrenA,
+					ui_->label_weightA,
+					ui_->label_labelA,
+					ui_->label_stampA,
+					ui_->graphicsView_A,
+					ui_->widget_cloudA,
+					ui_->label_idA,
+					false); // don't update constraints view!
+		this->update(idToIndex_.value(link.to()),
+					ui_->label_indexB,
+					ui_->label_parentsB,
+					ui_->label_childrenB,
+					ui_->label_weightB,
+					ui_->label_labelB,
+					ui_->label_stampB,
+					ui_->graphicsView_B,
+					ui_->widget_cloudB,
+					ui_->label_idB,
+					false); // don't update constraints view!
 	}
 
 	if(ui_->constraintsViewer->isVisible())
@@ -2786,13 +2770,6 @@ void DatabaseViewer::addConstraint()
 
 bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGraph)
 {
-	if(from < to)
-	{
-		int tmp = to;
-		to = from;
-		from = tmp;
-	}
-
 	if(from == to)
 	{
 		UWARN("Cannot add link to same node");
@@ -2846,8 +2823,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 
 			if(!silent)
 			{
-				ui_->graphicsView_A->setFeatures(tmpMemory.getSignature(to)->getWords());
-				ui_->graphicsView_B->setFeatures(tmpMemory.getSignature(from)->getWords());
+				ui_->graphicsView_A->setFeatures(tmpMemory.getSignature(from)->getWords());
+				ui_->graphicsView_B->setFeatures(tmpMemory.getSignature(to)->getWords());
 				updateWordsMatching();
 			}
 		}
@@ -2882,7 +2859,14 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 			}
 
 			// transform is valid, make a link
-			linksAdded_.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, variance, variance)));
+			if(from>to)
+			{
+				linksAdded_.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, variance, variance)));
+			}
+			else
+			{
+				linksAdded_.insert(std::make_pair(to, Link(to, from, Link::kUserClosure, t.inverse(), variance, variance)));
+			}
 			updateSlider = true;
 		}
 	}

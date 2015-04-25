@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1182</width>
-    <height>821</height>
+    <width>1183</width>
+    <height>834</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -41,8 +41,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>153</width>
-             <height>127</height>
+             <width>154</width>
+             <height>136</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -197,7 +197,7 @@
              <x>0</x>
              <y>0</y>
              <width>152</width>
-             <height>127</height>
+             <height>136</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -339,8 +339,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1182</width>
-     <height>25</height>
+     <width>1183</width>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -955,7 +955,7 @@
           <double>0.100000000000000</double>
          </property>
          <property name="value">
-          <double>0.900000000000000</double>
+          <double>0.600000000000000</double>
          </property>
         </widget>
        </item>
@@ -1014,7 +1014,7 @@
         <item row="0" column="0">
          <widget class="QComboBox" name="comboBox_featureType">
           <property name="currentIndex">
-           <number>4</number>
+           <number>0</number>
           </property>
           <item>
            <property name="text">
