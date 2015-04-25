@@ -30,10 +30,12 @@ ENDIF()
 
 IF(APPLE)
     FIND_LIBRARY(CoreWLAN_LIBRARY CoreWLAN)
-    MARK_AS_ADVANCED(CoreWLAN_LIBRARY)
+    FIND_LIBRARY(Foundation_LIBRARY Foundation)
+    MARK_AS_ADVANCED(CoreWLAN_LIBRARY Foundation_LIBRARY)
     SET(LIBRARIES
 	    ${LIBRARIES}
 	    ${CoreWLAN_LIBRARY}
+	    ${Foundation_LIBRARY}
 	)
 	SET(srcs
 	    ${srcs}
