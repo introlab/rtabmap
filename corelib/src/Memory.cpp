@@ -69,6 +69,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_generateIds(Parameters::defaultMemGenerateIds()),
 	_badSignaturesIgnored(Parameters::defaultMemBadSignaturesIgnored()),
 	_imageDecimation(Parameters::defaultMemImageDecimation()),
+	_laserScanVoxelSize(Parameters::defaultMemLaserScanVoxelSize()),
 	_localSpaceLinksKeptInWM(Parameters::defaultMemLocalSpaceLinksKeptInWM()),
 	_rehearsalMaxDistance(Parameters::defaultRGBDLinearUpdate()),
 	_rehearsalMaxAngle(Parameters::defaultRGBDAngularUpdate()),
@@ -95,6 +96,9 @@ Memory::Memory(const ParametersMap & parameters) :
 	_bowForce2D(Parameters::defaultLccBowForce2D()),
 	_bowEpipolarGeometry(Parameters::defaultLccBowEpipolarGeometry()),
 	_bowEpipolarGeometryVar(Parameters::defaultLccBowEpipolarGeometryVar()),
+
+	_icpMaxTranslation(Parameters::defaultLccIcpMaxTranslation()),
+	_icpMaxRotation(Parameters::defaultLccIcpMaxRotation()),
 
 	_icpDecimation(Parameters::defaultLccIcp3Decimation()),
 	_icpMaxDepth(Parameters::defaultLccIcp3MaxDepth()),
@@ -344,6 +348,7 @@ Memory::~Memory()
 		if(!_memoryChanged && _linksChanged && _dbDriver)
 		{
 			// don't update the time stamps!
+			UDEBUG("");
 			_dbDriver->setTimestampUpdateEnabled(false);
 		}
 		this->clear();
@@ -390,6 +395,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemTransferSortingByWeightId(), _transferSortingByWeightId);
 	Parameters::parse(parameters, Parameters::kMemSTMSize(), _maxStMemSize);
 	Parameters::parse(parameters, Parameters::kMemImageDecimation(), _imageDecimation);
+	Parameters::parse(parameters, Parameters::kMemLaserScanVoxelSize(), _laserScanVoxelSize);
 	Parameters::parse(parameters, Parameters::kMemLocalSpaceLinksKeptInWM(), _localSpaceLinksKeptInWM);
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rehearsalMaxDistance);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
@@ -424,6 +430,8 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kLccBowForce2D(), _bowForce2D);
 	Parameters::parse(parameters, Parameters::kLccBowEpipolarGeometry(), _bowEpipolarGeometry);
 	Parameters::parse(parameters, Parameters::kLccBowEpipolarGeometryVar(), _bowEpipolarGeometryVar);
+	Parameters::parse(parameters, Parameters::kLccIcpMaxTranslation(), _icpMaxTranslation);
+	Parameters::parse(parameters, Parameters::kLccIcpMaxRotation(), _icpMaxRotation);
 	Parameters::parse(parameters, Parameters::kLccIcp3Decimation(), _icpDecimation);
 	Parameters::parse(parameters, Parameters::kLccIcp3MaxDepth(), _icpMaxDepth);
 	Parameters::parse(parameters, Parameters::kLccIcp3VoxelSize(), _icpVoxelSize);
@@ -1033,6 +1041,7 @@ void Memory::clear()
 		UDEBUG("Adding statistics after run...");
 		if(_memoryChanged)
 		{
+			UDEBUG("");
 			_dbDriver->addStatisticsAfterRun(memSize,
 					_lastSignature?_lastSignature->id():0,
 					UProcessInfo::getMemoryUsage(),
@@ -2185,8 +2194,26 @@ Transform Memory::computeIcpTransform(
 					if(!icpT.isNull() && hasConverged &&
 					   correspondencesRatio >= _icpCorrespondenceRatio)
 					{
-						transform = icpT * guess;
-						transform = transform.inverse();
+						float x,y,z, roll,pitch,yaw;
+						icpT.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+						if((_icpMaxTranslation>0.0f &&
+							(x > _icpMaxTranslation ||
+							 y > _icpMaxTranslation ||
+							 z > _icpMaxTranslation))
+							||
+							(_icpMaxRotation>0.0f &&
+							 (roll > _icpMaxRotation ||
+							 pitch > _icpMaxRotation ||
+							 yaw > _icpMaxRotation)))
+						{
+							msg = uFormat("Cannot compute transform (ICP correction too large)");
+							UINFO(msg.c_str());
+						}
+						else
+						{
+							transform = icpT * guess;
+							transform = transform.inverse();
+						}
 					}
 					else
 					{
@@ -2228,7 +2255,7 @@ Transform Memory::computeIcpTransform(
 			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud = util3d::cvMat2Cloud(newS.getLaserScanRaw(), guess);
 
 			//voxelize
-			if(_icp2VoxelSize > 0.0f)
+			if(_icp2VoxelSize > _laserScanVoxelSize)
 			{
 				oldCloud = util3d::voxelize<pcl::PointXYZ>(oldCloud, _icp2VoxelSize);
 				newCloud = util3d::voxelize<pcl::PointXYZ>(newCloud, _icp2VoxelSize);
@@ -2258,16 +2285,43 @@ Transform Memory::computeIcpTransform(
 						(int)oldCloud->size(),
 						correspondencesRatio*100.0f);
 
+				//pcl::io::savePCDFile("oldCloud.pcd", *oldCloud);
+				//pcl::io::savePCDFile("newCloud.pcd", *newCloud);
+				//UWARN("saved oldCloud.pcd and newCloud.pcd");
+				//if(!icpT.isNull())
+				//{
+				//	newCloud = util3d::transformPointCloud<pcl::PointXYZ>(newCloud, icpT);
+				//	pcl::io::savePCDFile("newCloudFinal.pcd", *newCloud);
+				//	UWARN("saved newCloudFinal.pcd");
+				//}
+
 				if(inliers)
 				{
 					*inliers = correspondences;
 				}
 
-				if(!icpT.isNull() && hasConverged &&
-				   correspondencesRatio >= _icp2CorrespondenceRatio)
+				if(!icpT.isNull() && hasConverged && correspondencesRatio >= _icp2CorrespondenceRatio)
 				{
-					transform = icpT * guess;
-					transform = transform.inverse();
+					float x,y,z, roll,pitch,yaw;
+					icpT.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+					if((_icpMaxTranslation>0.0f &&
+						(x > _icpMaxTranslation ||
+						 y > _icpMaxTranslation ||
+						 z > _icpMaxTranslation))
+					    ||
+					    (_icpMaxRotation>0.0f &&
+						 (roll > _icpMaxRotation ||
+						 pitch > _icpMaxRotation ||
+						 yaw > _icpMaxRotation)))
+					{
+						msg = uFormat("Cannot compute transform (ICP correction too large)");
+						UINFO(msg.c_str());
+					}
+					else
+					{
+						transform = icpT * guess;
+						transform = transform.inverse();
+					}
 				}
 				else
 				{
@@ -2329,10 +2383,12 @@ Transform Memory::computeScanMatchingTransform(
 	{
 		if(iter->first != newId)
 		{
-			const Signature * s = this->getSignature(iter->first);
+			Signature * s = this->_getSignature(iter->first);
 			if(!s->getLaserScanCompressed().empty())
 			{
-				*assembledOldClouds += *util3d::cvMat2Cloud(rtabmap::uncompressData(s->getLaserScanCompressed()), iter->second);
+				cv::Mat scan;
+				s->uncompressData(0, 0, &scan);
+				*assembledOldClouds += *util3d::cvMat2Cloud(scan, iter->second);
 			}
 			else
 			{
@@ -2348,20 +2404,18 @@ Transform Memory::computeScanMatchingTransform(
 	}
 
 	// get the new cloud
-	const Signature * newS = getSignature(newId);
+	Signature * newS = _getSignature(newId);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud;
 	UASSERT(uContains(poses, newId));
-	newCloud = util3d::cvMat2Cloud(rtabmap::uncompressData(newS->getLaserScanCompressed()), poses.at(newId));
+	cv::Mat newScan;
+	newS->uncompressData(0, 0, &newScan);
+	newCloud = util3d::cvMat2Cloud(newScan, poses.at(newId));
 
 	//voxelize
-	if(newCloud->size() && _icp2VoxelSize > 0.0f)
+	if(newCloud->size() && _icp2VoxelSize > _laserScanVoxelSize)
 	{
 		newCloud = util3d::voxelize<pcl::PointXYZ>(newCloud, _icp2VoxelSize);
 	}
-
-	//UWARN("local scan matching pcd saved!");
-	//pcl::io::savePCDFile("old.pcd", *assembledOldClouds);
-	//pcl::io::savePCDFile("new.pcd", *newCloud);
 
 	Transform transform;
 	if(assembledOldClouds->size() && newCloud->size())
@@ -2397,8 +2451,11 @@ Transform Memory::computeScanMatchingTransform(
 		{
 			transform = poses.at(newId).inverse()*icpT.inverse() * poses.at(oldId);
 
-			//newCloud = util3d::cvMat2Cloud(util3d::uncompressData(newS->getDepth2DCompressed()), poses.at(oldId)*transform.inverse());
+			//pcl::io::savePCDFile("old.pcd", *assembledOldClouds);
+			//pcl::io::savePCDFile("new.pcd", *newCloud);
+			//newCloud = util3d::transformPointCloud<pcl::PointXYZ>(newCloud, icpT);
 			//pcl::io::savePCDFile("newFinal.pcd", *newCloud);
+			//UWARN("local scan matching old.pcd, new.pcd and newFinal.pcd saved!");
 		}
 		else
 		{
@@ -2443,6 +2500,17 @@ bool Memory::addLink(int oldId, int newId, const Transform & transform, Link::Ty
 		}
 
 		UDEBUG("Add link between %d and %d", oldS->id(), newS->id());
+
+		if(rotVariance == 0)
+		{
+			rotVariance = 0.000001; // set small variance (0.001 m x 0.001 m)
+			UWARN("Null rotation variance detected, set to something very small (0.001m^2)!");
+		}
+		if(transVariance == 0)
+		{
+			transVariance = 0.000001; // set small variance (0.001 m x 0.001 m)
+			UWARN("Null transitional variance detected, set to something very small (0.001m^2)!");
+		}
 
 		oldS->addLink(Link(oldS->id(), newS->id(), type, transform.inverse(), rotVariance, transVariance));
 		newS->addLink(Link(newS->id(), oldS->id(), type, transform, rotVariance, transVariance));
@@ -3330,7 +3398,7 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 	{
 		if(id <= 0)
 		{
-			UWARN("Received image ID is null. "
+			UERROR("Received image ID is null. "
 				  "Please set parameter Mem/GenerateIds to \"true\" or "
 				  "make sure the input source provides image ids (seq).");
 			return 0;
@@ -3341,7 +3409,7 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 		}
 		else
 		{
-			UWARN("Id of acquired image (%d) is smaller than the last in memory (%d). "
+			UERROR("Id of acquired image (%d) is smaller than the last in memory (%d). "
 				  "Please set parameter Mem/GenerateIds to \"true\" or "
 				  "make sure the input source provides image ids (seq) over the last in "
 				  "memory, which is %d.",
@@ -3758,6 +3826,13 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 		}
 	}
 
+	// apply icp2 voxel?
+	cv::Mat laserScan = data.laserScan();
+	if(!laserScan.empty() && _laserScanVoxelSize > 0.0f)
+	{
+		laserScan = util3d::laserScanFromPointCloud(*util3d::voxelize<pcl::PointXYZ>(util3d::laserScanToPointCloud(laserScan), _laserScanVoxelSize));
+	}
+
 	Signature * s;
 	if(this->isBinDataKept())
 	{
@@ -3772,7 +3847,7 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 
 		rtabmap::CompressionThread ctImage(image, std::string(".jpg"));
 		rtabmap::CompressionThread ctDepth(depthOrRightImage, std::string(".png"));
-		rtabmap::CompressionThread ctDepth2d(data.laserScan());
+		rtabmap::CompressionThread ctDepth2d(laserScan);
 		ctImage.start();
 		ctDepth.start();
 		ctDepth2d.start();
@@ -3809,13 +3884,13 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 			words3D,
 			data.pose(),
 			data.userData(),
-			rtabmap::compressData2(data.laserScan()));
+			rtabmap::compressData2(laserScan));
 	}
 	if(this->isRawDataKept())
 	{
 		s->setImageRaw(image);
 		s->setDepthRaw(depthOrRightImage);
-		s->setLaserScanRaw(data.laserScan());
+		s->setLaserScanRaw(laserScan);
 	}
 
 

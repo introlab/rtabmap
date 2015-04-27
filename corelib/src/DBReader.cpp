@@ -45,11 +45,11 @@ namespace rtabmap {
 DBReader::DBReader(const std::string & databasePath,
 				   float frameRate,
 				   bool odometryIgnored,
-				   float delayToStartSec) :
+				   bool ignoreGoalDelay) :
 	_path(databasePath),
 	_frameRate(frameRate),
 	_odometryIgnored(odometryIgnored),
-	_delayToStartSec(delayToStartSec),
+	_ignoreGoalDelay(ignoreGoalDelay),
 	_dbDriver(0),
 	_currentId(_ids.end())
 {
@@ -126,10 +126,6 @@ void DBReader::setFrameRate(float frameRate)
 
 void DBReader::mainLoopBegin()
 {
-	if(_delayToStartSec > 0.0f)
-	{
-		uSleep(_delayToStartSec*1000.0f);
-	}
 	_timer.start();
 }
 
@@ -174,7 +170,7 @@ void DBReader::mainLoop()
 		{
 			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, "", goalId));
 
-			if(_currentId != _ids.end())
+			if(!_ignoreGoalDelay && _currentId != _ids.end())
 			{
 				// get stamp for the next signature to compute the delay
 				// that was used originally for planning
@@ -192,10 +188,10 @@ void DBReader::mainLoop()
 							goalId, delay);
 					uSleep(delay*1000);
 				}
-				else
-				{
-					UWARN("stamps = %d=%f %d=%f ", data.id(), data.stamp(), *_currentId, stamp);
-				}
+			}
+			else
+			{
+				UWARN("Goal %d detected, posting it!", goalId);
 			}
 		}
 

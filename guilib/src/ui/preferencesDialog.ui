@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>759</width>
-            <height>800</height>
+            <width>760</width>
+            <height>1002</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>26</number>
+                <number>21</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1603,6 +1603,13 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <bool>false</bool>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_9">
+                       <item row="1" column="0">
+                        <widget class="QCheckBox" name="source_checkBox_ignoreOdometry">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
                        <item row="0" column="0">
                         <widget class="QToolButton" name="source_database_toolButton_selectSource">
                          <property name="text">
@@ -1613,14 +1620,14 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item row="0" column="1">
                         <widget class="QLineEdit" name="source_database_lineEdit_path"/>
                        </item>
-                       <item row="2" column="1">
+                       <item row="3" column="1">
                         <widget class="QLabel" name="label_58">
                          <property name="text">
                           <string>Start position (index)</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="0">
+                       <item row="3" column="0">
                         <widget class="QSpinBox" name="source_spinBox_databaseStartPos">
                          <property name="minimum">
                           <number>0</number>
@@ -1644,13 +1651,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="0">
-                        <widget class="QCheckBox" name="source_checkBox_ignoreOdometry">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="1" column="1">
                         <widget class="QLabel" name="label_72">
                          <property name="text">
@@ -1658,6 +1658,23 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_80">
+                         <property name="text">
+                          <string>Ignore goal delay.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QCheckBox" name="source_checkBox_ignoreGoalDelay">
+                         <property name="text">
+                          <string/>
                          </property>
                         </widget>
                        </item>
@@ -2731,6 +2748,25 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
+                      <item row="1" column="0">
+                       <widget class="QDoubleSpinBox" name="general_doubleSpinBox_recentWmRatio">
+                        <property name="minimumSize">
+                         <size>
+                          <width>50</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.200000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="0" column="0">
                        <widget class="QSpinBox" name="general_spinBox_maxStMemSize">
                         <property name="minimum">
@@ -2761,25 +2797,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="wordWrap">
                          <bool>false</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QDoubleSpinBox" name="general_doubleSpinBox_recentWmRatio">
-                        <property name="minimumSize">
-                         <size>
-                          <width>50</width>
-                          <height>0</height>
-                         </size>
-                        </property>
-                        <property name="maximum">
-                         <double>1.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.010000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.200000000000000</double>
                         </property>
                        </widget>
                       </item>
@@ -2913,6 +2930,41 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="checked">
                          <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="9" column="1">
+                       <widget class="QLabel" name="label_retrieved_8">
+                        <property name="text">
+                         <string>If &gt; 0.0, voxelize laser scans when creating a location. This feature can be used to save laser scans already voxelized.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="9" column="0">
+                       <widget class="QDoubleSpinBox" name="general_doubleSpinBox_laserScanVoxel">
+                        <property name="minimumSize">
+                         <size>
+                          <width>50</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="decimals">
+                         <number>3</number>
+                        </property>
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.000000000000000</double>
                         </property>
                        </widget>
                       </item>
@@ -5157,6 +5209,22 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item>
                         <layout class="QGridLayout" name="gridLayout_50" columnstretch="0,1">
                          <item row="1" column="0">
+                          <widget class="QDoubleSpinBox" name="localDetection_pathFilteringRadius">
+                           <property name="suffix">
+                            <string> m</string>
+                           </property>
+                           <property name="decimals">
+                            <number>1</number>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.100000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>1.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="0">
                           <widget class="QSpinBox" name="localDetection_maxDiffID">
                            <property name="maximum">
                             <number>999</number>
@@ -5166,27 +5234,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="0" column="0">
-                          <widget class="QSpinBox" name="localDetection_maxNeighbors">
-                           <property name="value">
-                            <number>10</number>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="1">
+                         <item row="0" column="1">
                           <widget class="QLabel" name="label_space3_2">
                            <property name="text">
                             <string>Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="0" column="1">
-                          <widget class="QLabel" name="label_space3">
-                           <property name="text">
-                            <string>Maximum nearest neighbors for space detection.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -5204,6 +5255,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <widget class="QLabel" name="label_scanMatching_2">
                            <property name="text">
                             <string>If local space links are kept in WM.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_space3_3">
+                           <property name="text">
+                            <string>Path filtering radius to avoid merging laser scans which are close.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -5263,14 +5324,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <item row="1" column="1">
                           <widget class="QLabel" name="label_space3_4">
                            <property name="text">
-                            <string>Before planning in the graph, near nodes are linked together (even if they don't belong to same map). Radius is defined by &quot;Goal reached radius&quot; above.</string>
+                            <string>Add virtual links. Before planning in the graph, near nodes are linked together. The maximum distance is defined by &quot;Goal reached radius&quot; above. If &quot;Maximum ID difference&quot; below is set, only close nodes in time can be linked together.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="1">
+                         <item row="3" column="1">
                           <widget class="QLabel" name="label_space3_5">
                            <property name="text">
                             <string>When a goal is received and processed with success, it is saved in user data of the location with this format: &quot;GOAL:#&quot;.</string>
@@ -5280,10 +5341,30 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="0">
+                         <item row="3" column="0">
                           <widget class="QCheckBox" name="graphPlan_goalsSavedInUserData">
                            <property name="text">
                             <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_space3_6">
+                           <property name="text">
+                            <string>Maximum ID difference between close nodes to add virtual links. Set 0 to ignore.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QSpinBox" name="graphPlan_maxDiffID">
+                           <property name="maximum">
+                            <number>999</number>
+                           </property>
+                           <property name="value">
+                            <number>50</number>
                            </property>
                           </widget>
                          </item>
@@ -5754,7 +5835,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                     <item>
                      <layout class="QGridLayout" name="gridLayout_48" columnstretch="0,1">
                       <item row="0" column="0">
-                       <widget class="QDoubleSpinBox" name="globalDetection_icpMaxDistance">
+                       <widget class="QDoubleSpinBox" name="globalDetection_icpMaxTranslation">
                         <property name="suffix">
                          <string> m</string>
                         </property>
@@ -5775,10 +5856,39 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       <item row="0" column="1">
                        <widget class="QLabel" name="label_51">
                         <property name="text">
-                         <string>Maximum ICP correction distance accepted. A large translation difference between the visual transformation and ICP transformation results in wrong transformations in most cases.</string>
+                         <string>Maximum ICP translation correction accepted (&gt;0). A large translation difference between the visual transformation and ICP transformation results in wrong transformations in most cases.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_55">
+                        <property name="text">
+                         <string>Maximum ICP rotation correction accepted (&gt;0). A large rotation difference between the visual transformation and ICP transformation results in wrong transformations in most cases.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QDoubleSpinBox" name="globalDetection_icpMaxRotation">
+                        <property name="suffix">
+                         <string> rad</string>
+                        </property>
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="maximum">
+                         <double>3.140000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.780000000000000</double>
                         </property>
                        </widget>
                       </item>

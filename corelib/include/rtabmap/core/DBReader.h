@@ -49,7 +49,7 @@ public:
 	DBReader(const std::string & databasePath,
 			 float frameRate = 0.0f,
 			 bool odometryIgnored = false,
-			 float delayToStartSec = 0.0f);
+			 bool ignoreGoalDelay = false);
 	virtual ~DBReader();
 
 	bool init(int startIndex=0);
@@ -64,7 +64,7 @@ private:
 	std::string _path;
 	float _frameRate;
 	bool _odometryIgnored;
-	float _delayToStartSec;
+	bool _ignoreGoalDelay;
 
 	DBDriver * _dbDriver;
 	UTimer _timer;

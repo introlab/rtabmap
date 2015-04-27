@@ -176,6 +176,7 @@ public:
 	int getSourceUsbDeviceId() const;		//UsbDevice group
 	QString getSourceDatabasePath() const; //Database group
 	bool getSourceDatabaseOdometryIgnored() const; //Database group
+	bool getSourceDatabaseGoalDelayIgnored() const; //Database group
 	int getSourceDatabaseStartPos() const; //Database group
 	Src getSourceRGBD() const; 			// Openni group
 	bool getSourceOpenni2AutoWhiteBalance() const;  //Openni group

@@ -705,10 +705,16 @@ int main (int argc, char * argv[])
 
 	if(inputDatabase.size())
 	{
-		rtabmap::DBReader camera(inputDatabase, rate, true, sec);
+		rtabmap::DBReader camera(inputDatabase, rate, true);
 		if(camera.init())
 		{
 			odomThread.start();
+
+			if(sec > 0)
+			{
+				uSleep(sec*1000);
+			}
+
 			camera.start();
 
 			app.exec();

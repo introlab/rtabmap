@@ -220,6 +220,7 @@ private:
 	bool _generateIds;
 	bool _badSignaturesIgnored;
 	int _imageDecimation;
+	float _laserScanVoxelSize;
 	bool _localSpaceLinksKeptInWM;
 	float _rehearsalMaxDistance;
 	float _rehearsalMaxAngle;
@@ -255,6 +256,8 @@ private:
 	bool _bowForce2D;
 	bool _bowEpipolarGeometry;
 	float _bowEpipolarGeometryVar;
+	float _icpMaxTranslation;
+	float _icpMaxRotation;
 	int _icpDecimation;
 	float _icpMaxDepth;
 	float _icpVoxelSize;

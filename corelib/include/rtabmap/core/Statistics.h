@@ -53,6 +53,7 @@ namespace rtabmap {
 class RTABMAP_EXP Statistics
 {
 	RTABMAP_STATS(Loop, RejectedHypothesis,);
+	RTABMAP_STATS(Loop, Accepted_hypothesis_id,);
 	RTABMAP_STATS(Loop, Highest_hypothesis_id,);
 	RTABMAP_STATS(Loop, Highest_hypothesis_value,);
 	RTABMAP_STATS(Loop, Vp_hypothesis,);
@@ -64,9 +65,10 @@ class RTABMAP_EXP Statistics
 
 	RTABMAP_STATS(LocalLoop, Odom_corrected,);
 	RTABMAP_STATS(LocalLoop, Time_closures,);
-	RTABMAP_STATS(LocalLoop, Space_closure_id,);
-	RTABMAP_STATS(LocalLoop, Space_nearest_id,);
-	RTABMAP_STATS(LocalLoop, Space_neighbors,);
+	RTABMAP_STATS(LocalLoop, Space_last_closure_id,);
+	RTABMAP_STATS(LocalLoop, Space_paths,);
+	RTABMAP_STATS(LocalLoop, Space_closures_added,);
+	RTABMAP_STATS(LocalLoop, Space_closures_added_icp_only,);
 
 	RTABMAP_STATS(Memory, Working_memory_size,);
 	RTABMAP_STATS(Memory, Short_time_memory_size,);

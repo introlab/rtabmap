@@ -602,7 +602,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 		RtabmapEvent * rtabmapEvent = (RtabmapEvent*)anEvent;
 		Statistics stats = rtabmapEvent->getStats();
 		int highestHypothesisId = int(uValue(stats.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
-		int localLoopClosureId = int(uValue(stats.data(), Statistics::kLocalLoopSpace_closure_id(), 0.0f));
+		int localLoopClosureId = int(uValue(stats.data(), Statistics::kLocalLoopSpace_last_closure_id(), 0.0f));
 		bool rejectedHyp = bool(uValue(stats.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
 		float highestHypothesisValue = uValue(stats.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f);
 		if((stats.loopClosureId() > 0 &&
@@ -1984,6 +1984,9 @@ void MainWindow::processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathE
 	else
 	{
 		_ui->graphicsView_graphView->setGlobalPath(event.getPoses());
+		_ui->statusbar->showMessage(
+				tr("Global path computed from %1 (%2 poses, %3 m)!").arg(event.getGoal()).arg(event.getPoses().size()).arg(graph::computePathLength(event.getPoses())),
+				5000);
 	}
 }
 
@@ -2730,7 +2733,8 @@ void MainWindow::startDetection()
 	{
 		_dbReader = new DBReader(_preferencesDialog->getSourceDatabasePath().toStdString(),
 								 _preferencesDialog->getGeneralInputRate(),
-								 _preferencesDialog->getSourceDatabaseOdometryIgnored());
+								 _preferencesDialog->getSourceDatabaseOdometryIgnored(),
+								 _preferencesDialog->getSourceDatabaseGoalDelayIgnored());
 
 		//Create odometry thread if rgdb slam
 		if(uStr2Bool(parameters.at(Parameters::kRGBDEnabled()).c_str()) &&

@@ -293,6 +293,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->groupBox_sourceDatabase, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_database_lineEdit_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignoreOdometry, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_checkBox_ignoreGoalDelay, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_databaseStartPos, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	//openni group
 	connect(_ui->groupBox_sourceOpenni, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
@@ -363,6 +364,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_checkBox_initWMWithAllNodes->setObjectName(Parameters::kMemInitWMWithAllNodes().c_str());
 	_ui->checkBox_localSpaceLinksKeptInWM->setObjectName(Parameters::kMemLocalSpaceLinksKeptInWM().c_str());
 	_ui->spinBox_imageDecimation->setObjectName(Parameters::kMemImageDecimation().c_str());
+	_ui->general_doubleSpinBox_laserScanVoxel->setObjectName(Parameters::kMemLaserScanVoxelSize().c_str());
 
 
 	// Database
@@ -475,14 +477,15 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->graphOptimization_fromGraphEnd->setObjectName(Parameters::kRGBDOptimizeFromGraphEnd().c_str());
 
 	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
-	_ui->graphPlan_planWithNearNodesLinked->setObjectName(Parameters::kRGBDPlanWithNearNodesLinked().c_str());
+	_ui->graphPlan_planWithNearNodesLinked->setObjectName(Parameters::kRGBDPlanVirtualLinks().c_str());
+	_ui->graphPlan_maxDiffID->setObjectName(Parameters::kRGBDPlanVirtualLinksMaxDiffID().c_str());
 	_ui->graphPlan_goalsSavedInUserData->setObjectName(Parameters::kRGBDGoalsSavedInUserData().c_str());
 
 	_ui->groupBox_localDetection_time->setObjectName(Parameters::kRGBDLocalLoopDetectionTime().c_str());
 	_ui->groupBox_localDetection_space->setObjectName(Parameters::kRGBDLocalLoopDetectionSpace().c_str());
 	_ui->localDetection_radius->setObjectName(Parameters::kRGBDLocalRadius().c_str());
-	_ui->localDetection_maxNeighbors->setObjectName(Parameters::kRGBDLocalLoopDetectionNeighbors().c_str());
 	_ui->localDetection_maxDiffID->setObjectName(Parameters::kRGBDLocalLoopDetectionMaxDiffID().c_str());
+	_ui->localDetection_pathFilteringRadius->setObjectName(Parameters::kRGBDLocalLoopDetectionPathFilteringRadius().c_str());
 
 	_ui->loopClosure_bowMinInliers->setObjectName(Parameters::kLccBowMinInliers().c_str());
 	_ui->loopClosure_bowInlierDistance->setObjectName(Parameters::kLccBowInlierDistance().c_str());
@@ -499,7 +502,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->reextract_maxFeatures->setObjectName(Parameters::kLccReextractMaxWords().c_str());
 
 	_ui->globalDetection_icpType->setObjectName(Parameters::kLccIcpType().c_str());
-	_ui->globalDetection_icpMaxDistance->setObjectName(Parameters::kLccIcpMaxDistance().c_str());
+	_ui->globalDetection_icpMaxTranslation->setObjectName(Parameters::kLccIcpMaxTranslation().c_str());
+	_ui->globalDetection_icpMaxRotation->setObjectName(Parameters::kLccIcpMaxRotation().c_str());
 
 	_ui->loopClosure_icpDecimation->setObjectName(Parameters::kLccIcp3Decimation().c_str());
 	_ui->loopClosure_icpMaxDepth->setObjectName(Parameters::kLccIcp3MaxDepth().c_str());
@@ -727,9 +731,12 @@ void PreferencesDialog::setupSignals()
 	const rtabmap::ParametersMap & parameters = Parameters::getDefaultParameters();
 	for(rtabmap::ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
-		QObject * obj = _ui->stackedWidget->findChild<QObject*>((*iter).first.c_str());
+		QWidget * obj = _ui->stackedWidget->findChild<QWidget*>((*iter).first.c_str());
 		if(obj)
 		{
+			// set tooltip as the parameter name
+			obj->setToolTip(iter->first.c_str());
+
 			QSpinBox * spin = qobject_cast<QSpinBox *>(obj);
 			QDoubleSpinBox * doubleSpin = qobject_cast<QDoubleSpinBox *>(obj);
 			QComboBox * combo = qobject_cast<QComboBox *>(obj);
@@ -767,12 +774,12 @@ void PreferencesDialog::setupSignals()
 			}
 			else
 			{
-				ULOGGER_WARN("QObject called %s can't be cast to a supported widget", (*iter).first.c_str());
+				ULOGGER_WARN("QWidget called %s can't be cast to a supported widget", (*iter).first.c_str());
 			}
 		}
 		else
 		{
-			ULOGGER_WARN("Can't find the related QObject for parameter %s", (*iter).first.c_str());
+			ULOGGER_WARN("Can't find the related QWidget for parameter %s", (*iter).first.c_str());
 		}
 	}
 }
@@ -928,6 +935,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->groupBox_sourceDatabase->setChecked(false);
 		_ui->source_checkBox_ignoreOdometry->setChecked(false);
+		_ui->source_checkBox_ignoreGoalDelay->setChecked(false);
 		_ui->source_spinBox_databaseStartPos->setValue(0);
 
 		_ui->groupBox_sourceOpenni->setChecked(true);
@@ -1202,6 +1210,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->groupBox_sourceDatabase->setChecked(settings.value("databaseUsed", _ui->groupBox_sourceDatabase->isChecked()).toBool());
 	_ui->source_database_lineEdit_path->setText(settings.value("path",_ui->source_database_lineEdit_path->text()).toString());
 	_ui->source_checkBox_ignoreOdometry->setChecked(settings.value("ignoreOdometry", _ui->source_checkBox_ignoreOdometry->isChecked()).toBool());
+	_ui->source_checkBox_ignoreGoalDelay->setChecked(settings.value("ignoreGoalDelay", _ui->source_checkBox_ignoreGoalDelay->isChecked()).toBool());
 	_ui->source_spinBox_databaseStartPos->setValue(settings.value("startPos", _ui->source_spinBox_databaseStartPos->value()).toInt());
 	settings.endGroup(); // Database
 
@@ -1468,6 +1477,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("databaseUsed", 	_ui->groupBox_sourceDatabase->isChecked());
 	settings.setValue("path", 			_ui->source_database_lineEdit_path->text());
 	settings.setValue("ignoreOdometry", _ui->source_checkBox_ignoreOdometry->isChecked());
+	settings.setValue("ignoreGoalDelay", _ui->source_checkBox_ignoreGoalDelay->isChecked());
 	settings.setValue("startPos",       _ui->source_spinBox_databaseStartPos->value());
 	settings.endGroup();
 
@@ -2030,6 +2040,7 @@ void PreferencesDialog::selectSourceDatabase(bool user)
 
 		_ui->groupBox_sourceDatabase->setChecked(true);
 		_ui->source_checkBox_ignoreOdometry->setChecked(r != QMessageBox::Yes);
+		_ui->source_checkBox_ignoreGoalDelay->setChecked(false);
 		_ui->source_database_lineEdit_path->setText(path);
 		_ui->source_spinBox_databaseStartPos->setValue(0);
 	}
@@ -3035,6 +3046,10 @@ QString PreferencesDialog::getSourceDatabasePath() const
 bool PreferencesDialog::getSourceDatabaseOdometryIgnored() const
 {
 	return _ui->source_checkBox_ignoreOdometry->isChecked();
+}
+bool PreferencesDialog::getSourceDatabaseGoalDelayIgnored() const
+{
+	return _ui->source_checkBox_ignoreGoalDelay->isChecked();
 }
 int PreferencesDialog::getSourceDatabaseStartPos() const
 {

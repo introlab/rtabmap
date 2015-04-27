@@ -865,9 +865,8 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 		{
 			query << "SELECT id "
 				  << "FROM Node "
-				  << "LEFT OUTER JOIN Link "
-				  << "ON id = from_id "
-				  << "WHERE type==0 " // select only nodes with neighor links, ignore merged nodes
+				  << "INNER JOIN Link "
+				  << "ON id = to_id " // use to_id tp ignore all children (which don't have link pointing on them)
 				  << "ORDER BY id";
 		}
 

@@ -194,7 +194,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, GenerateIds,             bool, true,     "True=Generate location IDs, False=use input image IDs.");
 	RTABMAP_PARAM(Mem, BadSignaturesIgnored,    bool, false,     "Bad signatures are ignored.");
 	RTABMAP_PARAM(Mem, InitWMWithAllNodes,      bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.");
-	RTABMAP_PARAM(Mem, ImageDecimation,         int, 1,          "Image decimation (>=1).");
+	RTABMAP_PARAM(Mem, ImageDecimation,         int, 1,          "Image decimation (>=1) when creating a signature.");
+	RTABMAP_PARAM(Mem, LaserScanVoxelSize,      float, 0.0,      "If > 0.0, voxelize laser scans when creating a signature.");
 	RTABMAP_PARAM(Mem, LocalSpaceLinksKeptInWM, bool, true,      "If local space links are kept in WM.");
 
 
@@ -287,7 +288,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, NewMapOdomChangeDistance, float, 0, "A new map is created if a change of odometry translation greater than X m is detected (0 m = disabled).");
 	RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd, bool, false,    "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
 	RTABMAP_PARAM(RGBD, GoalReachedRadius,    float, 0.5, "Goal reached radius (m).");
-	RTABMAP_PARAM(RGBD, PlanWithNearNodesLinked,  bool, true, "Before planning in the graph, near nodes are linked together (even if they don't belong to same map). Radius is defined by \"RGBD/GoalReachedRadius\" parameter.");
+	RTABMAP_PARAM(RGBD, PlanVirtualLinks,  bool, true, "Before planning in the graph, close nodes are linked together. Radius is defined by \"RGBD/GoalReachedRadius\" parameter.");
+	RTABMAP_PARAM(RGBD, PlanVirtualLinksMaxDiffID,  int, 50, "Max difference ID to add virtual links before planning.");
 	RTABMAP_PARAM(RGBD, GoalsSavedInUserData,     bool, true, "When a goal is received and processed with success, it is saved in user data of the location with this format: \"GOAL:#\".");
 	RTABMAP_PARAM(RGBD, MaxLocalRetrieved, unsigned int, 2, "Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).");
 	RTABMAP_PARAM(RGBD, LocalRadius, float, 10, "Local radius (m) for nodes selection in the local map. This parameter is used in some approaches about the local map management.");
@@ -295,8 +297,8 @@ class RTABMAP_EXP Parameters
 	// Local loop closure detection
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionTime,     bool, false, 	"Detection over all locations in STM.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionSpace,    bool, false, 	"Detection over locations (in Working Memory or STM) near in space.");
-	RTABMAP_PARAM(RGBD, LocalLoopDetectionNeighbors,   int, 20, 	"Maximum nearest neighbor.");
-	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxDiffID,   int, 50,      "Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.")
+	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxDiffID,   int, 50,      "Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.");
+	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathFilteringRadius,   float, 1.0, "Path filtering radius.");
 
 	// Graph optimization
 	RTABMAP_PARAM(RGBD, OptimizeStrategy,          int, 0,        "Graph optimization strategy: 0=TORO and 1=g2o.");
@@ -345,7 +347,8 @@ class RTABMAP_EXP Parameters
 
 	// Loop closure constraint
 	RTABMAP_PARAM(LccIcp, Type,            int, 0, 			"0=No ICP, 1=ICP 3D, 2=ICP 2D");
-	RTABMAP_PARAM(LccIcp, MaxDistance,     float, 0.2,     "Maximum ICP correction distance accepted (m).");
+	RTABMAP_PARAM(LccIcp, MaxTranslation,  float, 0.2,      "Maximum ICP translation correction accepted (m).");
+	RTABMAP_PARAM(LccIcp, MaxRotation,     float, 0.78,     "Maximum ICP rotation correction accepted (rad).");
 
 	RTABMAP_PARAM(LccBow, MinInliers,      int, 20, 		"Minimum visual word correspondences to compute geometry transform.");
 	RTABMAP_PARAM(LccBow, InlierDistance,  float, 0.02, 	"Maximum distance for visual word correspondences.");

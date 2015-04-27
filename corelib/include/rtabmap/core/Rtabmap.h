@@ -138,7 +138,8 @@ public:
 	int getPathCurrentGoalId() const;
 	const Transform & getPathTransformToGoal() const {return _pathTransformToGoal;}
 
-	std::map<int, Transform> getWMPosesInRadius(int fromId, int maxNearestNeighbors, float radius, int maxDiffID, int & nearestId) const;
+	std::map<int, Transform> getForwardWMPoses(int fromId, int maxNearestNeighbors, float radius, int maxDiffID) const;
+	std::list<std::map<int, Transform> > getPaths(std::map<int, Transform> poses) const;
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
 	std::pair<int, float> selectHypothesis(const std::map<int, float> & posterior,
 											const std::map<int, float> & likelihood) const;
@@ -174,13 +175,12 @@ private:
 	float _rgbdAngularUpdate;
 	float _newMapOdomChangeDistance;
 	int _globalLoopClosureIcpType;
-	float _globalLoopClosureIcpMaxDistance;
 	bool _poseScanMatching;
 	bool _localLoopClosureDetectionTime;
 	bool _localLoopClosureDetectionSpace;
 	float _localRadius;
-	float _localDetectMaxNeighbors;
 	int _localDetectMaxDiffID;
+	float _localPathFilteringRadius;
 	std::string _databasePath;
 	bool _optimizeFromGraphEnd;
 	bool _reextractLoopClosureFeatures;
@@ -190,7 +190,8 @@ private:
 	int _reextractMaxWords;
 	bool _startNewMapOnLoopClosure;
 	float _goalReachedRadius; // meters
-	bool _planWithNearNodesLinked;
+	bool _planVirtualLinks;
+	int _planVirtualLinksMaxDiffID;
 	bool _goalsSavedInUserData;
 
 	std::pair<int, float> _loopClosureHypothesis;
