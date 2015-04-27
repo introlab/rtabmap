@@ -964,7 +964,7 @@ bool Rtabmap::process(const SensorData & data)
 			}
 			else
 			{
-				UWARN("Scan matching rejected: %s", rejectedMsg.c_str());
+				UINFO("Scan matching rejected: %s", rejectedMsg.c_str());
 			}
 		}
 		timeScanMatching = timer.ticks();
@@ -1485,7 +1485,7 @@ bool Rtabmap::process(const SensorData & data)
 			rejectedHypothesis = transform.isNull();
 			if(rejectedHypothesis)
 			{
-				UWARN("Rejected loop closure %d -> %d: %s",
+				UINFO("Rejected loop closure %d -> %d: %s",
 						_loopClosureHypothesis.first, signature->id(), rejectedMsg.c_str());
 			}
 		}
@@ -1557,8 +1557,12 @@ bool Rtabmap::process(const SensorData & data)
 						// path filtering
 						if(_localPathFilteringRadius > 0.0f)
 						{
-							path = graph::radiusPosesFiltering(path, _localPathFilteringRadius, CV_PI, true);
-							path.insert(*_optimizedPoses.find(nearestId)); // make sure the nearest pose is still here
+							std::map<int, Transform> filteredPath = graph::radiusPosesFiltering(path, _localPathFilteringRadius, CV_PI, true);
+							// make sure the nearest and farthest poses are still here
+							filteredPath.insert(*_optimizedPoses.find(nearestId));
+							filteredPath.insert(*path.begin());
+							filteredPath.insert(*path.rbegin());
+							path = filteredPath;
 						}
 
 						// 1) look for loop closures based on visual correspondences
@@ -1567,7 +1571,7 @@ bool Rtabmap::process(const SensorData & data)
 						bool foundByVisual = false;
 						if(!transform.isNull() && _globalLoopClosureIcpType > 0)
 						{
-							transform  = _memory->computeIcpTransform(_loopClosureHypothesis.first, signature->id(), transform, _globalLoopClosureIcpType == 1, 0, 0, &variance);
+							transform  = _memory->computeIcpTransform(nearestId, signature->id(), transform, _globalLoopClosureIcpType == 1, 0, 0, &variance);
 							variance = 1.0f; // ICP, set variance to 1
 						}
 						if(transform.isNull())
@@ -1868,7 +1872,7 @@ bool Rtabmap::process(const SensorData & data)
 	}
 	else if(smallDisplacement)
 	{
-		UWARN("Ignoring location %d because the displacement is too small! (d=%f a=%f)",
+		UINFO("Ignoring location %d because the displacement is too small! (d=%f a=%f)",
 			  signature->id(), _rgbdLinearUpdate, _rgbdAngularUpdate);
 		// If there is a too small displacement, remove the node
 		signaturesRemoved.push_back(signature->id());

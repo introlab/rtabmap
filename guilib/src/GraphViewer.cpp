@@ -87,7 +87,6 @@ protected:
 
 	virtual void hoverLeaveEvent ( QGraphicsSceneHoverEvent * event )
 	{
-		qDeleteAll(this->childItems());
 		this->setScale(1);
 		QGraphicsEllipseItem::hoverEnterEvent(event);
 	}
@@ -133,11 +132,18 @@ public:
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event )
 	{
+		this->setToolTip(QString("%1->%2 %3 m").arg(_from).arg(_to).arg(_poseA.getDistance(_poseB)));
+		QPen pen = this->pen();
+		pen.setWidthF(pen.widthF()+0.02);
+		this->setPen(pen);
 		QGraphicsLineItem::hoverEnterEvent(event);
 	}
 
 	virtual void hoverLeaveEvent ( QGraphicsSceneHoverEvent * event )
 	{
+		QPen pen = this->pen();
+		pen.setWidthF(pen.widthF()-0.02);
+		this->setPen(pen);
 		QGraphicsLineItem::hoverEnterEvent(event);
 	}
 

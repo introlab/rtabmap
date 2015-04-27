@@ -2179,11 +2179,11 @@ Transform Memory::computeIcpTransform(
 					// verify if there are enough correspondences
 					correspondencesRatio = float(correspondences)/float(oldCloudXYZ->size()>newCloudXYZ->size()?oldCloudXYZ->size():newCloudXYZ->size());
 
-					UDEBUG("hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
+					UDEBUG("%d->%d hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
 							hasConverged?"true":"false",
 							variance?*variance:-1,
 							correspondences,
-							(int)oldCloudXYZ->size(),
+							(int)(oldCloudXYZ->size()>newCloudXYZ->size()?oldCloudXYZ->size():newCloudXYZ->size()),
 							correspondencesRatio*100.0f);
 
 					if(inliers)
@@ -2197,14 +2197,14 @@ Transform Memory::computeIcpTransform(
 						float x,y,z, roll,pitch,yaw;
 						icpT.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
 						if((_icpMaxTranslation>0.0f &&
-							(x > _icpMaxTranslation ||
-							 y > _icpMaxTranslation ||
-							 z > _icpMaxTranslation))
+							(fabs(x) > _icpMaxTranslation ||
+						     fabs(y) > _icpMaxTranslation ||
+						     fabs(z) > _icpMaxTranslation))
 							||
 							(_icpMaxRotation>0.0f &&
-							 (roll > _icpMaxRotation ||
-							 pitch > _icpMaxRotation ||
-							 yaw > _icpMaxRotation)))
+							 (fabs(roll) > _icpMaxRotation ||
+							  fabs(pitch) > _icpMaxRotation ||
+							  fabs(yaw) > _icpMaxRotation)))
 						{
 							msg = uFormat("Cannot compute transform (ICP correction too large)");
 							UINFO(msg.c_str());
@@ -2278,11 +2278,12 @@ Transform Memory::computeIcpTransform(
 				// verify if there are enough correspondences
 				correspondencesRatio = float(correspondences)/float(oldCloud->size()>newCloud->size()?oldCloud->size():newCloud->size());
 
-				UDEBUG("hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
+				UDEBUG("%d->%d hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
+						newS.id(), oldS.id(),
 						hasConverged?"true":"false",
 						variance?*variance:-1,
 						correspondences,
-						(int)oldCloud->size(),
+						(int)(oldCloud->size()>newCloud->size()?oldCloud->size():newCloud->size()),
 						correspondencesRatio*100.0f);
 
 				//pcl::io::savePCDFile("oldCloud.pcd", *oldCloud);
@@ -2302,17 +2303,17 @@ Transform Memory::computeIcpTransform(
 
 				if(!icpT.isNull() && hasConverged && correspondencesRatio >= _icp2CorrespondenceRatio)
 				{
-					float x,y,z, roll,pitch,yaw;
-					icpT.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+					float ix,iy,iz, iroll,ipitch,iyaw;
+					icpT.getTranslationAndEulerAngles(ix,iy,iz,iroll,ipitch,iyaw);
 					if((_icpMaxTranslation>0.0f &&
-						(x > _icpMaxTranslation ||
-						 y > _icpMaxTranslation ||
-						 z > _icpMaxTranslation))
+						(fabs(ix) > _icpMaxTranslation ||
+						 fabs(iy) > _icpMaxTranslation ||
+						 fabs(iz) > _icpMaxTranslation))
 					    ||
 					    (_icpMaxRotation>0.0f &&
-						 (roll > _icpMaxRotation ||
-						 pitch > _icpMaxRotation ||
-						 yaw > _icpMaxRotation)))
+						 (fabs(iroll) > _icpMaxRotation ||
+						  fabs(ipitch) > _icpMaxRotation ||
+						  fabs(iyaw) > _icpMaxRotation)))
 					{
 						msg = uFormat("Cannot compute transform (ICP correction too large)");
 						UINFO(msg.c_str());
@@ -2439,7 +2440,7 @@ Transform Memory::computeScanMatchingTransform(
 				variance?*variance:-1,
 				correspondences,
 				(int)newCloud->size(),
-				correspondencesRatio);
+				correspondencesRatio*100.0f);
 
 		if(inliers)
 		{

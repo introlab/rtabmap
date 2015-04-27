@@ -298,7 +298,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionTime,     bool, false, 	"Detection over all locations in STM.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionSpace,    bool, false, 	"Detection over locations (in Working Memory or STM) near in space.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxDiffID,   int, 50,      "Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.");
-	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathFilteringRadius,   float, 1.0, "Path filtering radius.");
+	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathFilteringRadius,   float, 0.25, "Path filtering radius.");
 
 	// Graph optimization
 	RTABMAP_PARAM(RGBD, OptimizeStrategy,          int, 0,        "Graph optimization strategy: 0=TORO and 1=g2o.");
