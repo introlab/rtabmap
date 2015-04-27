@@ -166,6 +166,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
 
+	// Default Driver
+	connect(_ui->comboBox_cameraRGBD, SIGNAL(currentIndexChanged(int)), this, SLOT(updateOpenNI2GroupBoxVisibility()));
+	this->resetSettings(_ui->groupBox_source0);
+
 	_ui->predictionPlot->showLegend(false);
 
 	QButtonGroup * buttonGroup = new QButtonGroup(this);
@@ -298,7 +302,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	//openni group
 	connect(_ui->groupBox_sourceOpenni, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_cameraRGBD, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->comboBox_cameraRGBD, SIGNAL(currentIndexChanged(int)), this, SLOT(updateOpenNI2GroupBoxVisibility()));
 	connect(_ui->openni2_autoWhiteBalance, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_autoExposure, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_exposure, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));

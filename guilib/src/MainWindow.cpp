@@ -2256,7 +2256,8 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 
 void MainWindow::showEvent(QShowEvent* anEvent)
 {
-	this->setWindowModified(false);
+	//if the config file doesn't exist, make the GUI obsolete
+	this->setWindowModified(!QFile::exists(_preferencesDialog->getIniFilePath()));
 }
 
 void MainWindow::moveEvent(QMoveEvent* anEvent)
