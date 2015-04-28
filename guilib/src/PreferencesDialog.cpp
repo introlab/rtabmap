@@ -2114,6 +2114,7 @@ void PreferencesDialog::openDatabaseViewer()
 	DatabaseViewer * viewer = new DatabaseViewer(this);
 	viewer->setWindowModality(Qt::WindowModal);
 	viewer->setAttribute(Qt::WA_DeleteOnClose, true);
+	viewer->showCloseButton();
 	if(viewer->openDatabase(_ui->source_database_lineEdit_path->text()))
 	{
 		viewer->show();

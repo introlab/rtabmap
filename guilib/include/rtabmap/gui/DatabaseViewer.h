@@ -64,6 +64,7 @@ public:
 	virtual ~DatabaseViewer();
 	bool openDatabase(const QString & path);
 	bool isSavedMaximized() const {return savedMaximized_;}
+	void showCloseButton(bool visible = true);
 
 protected:
 	virtual void showEvent(QShowEvent* anEvent);

@@ -79,6 +79,8 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 
 	ui_ = new Ui_DatabaseViewer();
 	ui_->setupUi(this);
+	ui_->buttonBox->setVisible(false);
+	connect(ui_->buttonBox->button(QDialogButtonBox::Close), SIGNAL(clicked()), this, SLOT(close()));
 
 	QString title("RTAB-Map Database Viewer[*]");
 	this->setWindowTitle(title);
@@ -273,6 +275,11 @@ DatabaseViewer::~DatabaseViewer()
 	{
 		delete memory_;
 	}
+}
+
+void DatabaseViewer::showCloseButton(bool visible)
+{
+	ui_->buttonBox->setVisible(visible);
 }
 
 void DatabaseViewer::configModified()

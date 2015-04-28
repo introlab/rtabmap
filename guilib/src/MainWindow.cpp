@@ -2538,6 +2538,7 @@ void MainWindow::editDatabase()
 		DatabaseViewer * viewer = new DatabaseViewer(this);
 		viewer->setWindowModality(Qt::WindowModal);
 		viewer->setAttribute(Qt::WA_DeleteOnClose, true);
+		viewer->showCloseButton();
 		if(viewer->openDatabase(path))
 		{
 			if(viewer->isSavedMaximized())

@@ -83,7 +83,10 @@ CloudViewer::CloudViewer(QWidget *parent) :
 
 	this->SetRenderWindow(_visualizer->getRenderWindow());
 
-	_visualizer->setupInteractor(this->GetInteractor(), this->GetRenderWindow());
+	// Replaced by the second line, to avoid a crash in Mac OS X on close, as well as
+	// the "Invalid drawable" warning when the view is not visible.
+	//_visualizer->setupInteractor(this->GetInteractor(), this->GetRenderWindow());
+	this->GetInteractor()->SetInteractorStyle (_visualizer->getInteractorStyle());
 
 	_visualizer->registerMouseCallback (&CloudViewer::mouseEventOccurred, *this, (void*)_visualizer);
 	_visualizer->setCameraPosition(
