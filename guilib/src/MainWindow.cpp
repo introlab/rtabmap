@@ -3054,7 +3054,7 @@ void MainWindow::generateTOROMap()
 	items.append("Global map optimized");
 	items.append("Global map not optimized");
 	bool ok;
-	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, 0, false, &ok);
+	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, 2, false, &ok);
 	if(ok)
 	{
 		bool optimized=false, global=false;
