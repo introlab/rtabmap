@@ -1255,7 +1255,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 
 			if(visualWords.size()==0)
 			{
-				UWARN("Empty signature detected! (id=%d)", (*iter)->id());
+				UINFO("Empty signature detected! (id=%d)", (*iter)->id());
 			}
 			else
 			{
