@@ -1880,7 +1880,7 @@ Transform Memory::computeVisualTransform(
 			}
 			if(inliers)
 			{
-				*inliers = inliers3D.size();
+				*inliers = (int)inliers3D.size();
 			}
 
 			if(!cameraTransform.isNull())

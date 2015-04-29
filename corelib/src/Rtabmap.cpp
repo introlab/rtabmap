@@ -1349,7 +1349,7 @@ bool Rtabmap::process(const SensorData & data)
 			{
 				nearNodesByDist.insert(std::make_pair(iter->second, iter->first));
 			}
-			for(std::map<float, int>::iterator iter=nearNodesByDist.begin();
+			for(std::multimap<float, int>::iterator iter=nearNodesByDist.begin();
 				iter!=nearNodesByDist.end() && retrievalLocalIds.size() < _maxLocalRetrieved;
 				++iter)
 			{
@@ -1389,7 +1389,7 @@ bool Rtabmap::process(const SensorData & data)
 		// only a loop closure link is added...
 		signaturesRetrieved = _memory->reactivateSignatures(
 				reactivatedIds,
-				_maxRetrieved+retrievalLocalIds.size(), // add path retrieved
+				_maxRetrieved+(unsigned int)retrievalLocalIds.size(), // add path retrieved
 				timeRetrievalDbAccess);
 
 		ULOGGER_INFO("retrieval of %d (db time = %fs)", (int)signaturesRetrieved.size(), timeRetrievalDbAccess);
@@ -1535,7 +1535,7 @@ bool Rtabmap::process(const SensorData & data)
 					_localDetectMaxDiffID);
 
 			std::list<std::map<int, Transform> > forwardPaths = getPaths(forwardPoses);
-			localSpacePaths = forwardPaths.size();
+			localSpacePaths = (int)forwardPaths.size();
 
 			for(std::list<std::map<int, Transform> >::iterator iter=forwardPaths.begin(); iter!=forwardPaths.end(); ++iter)
 			{
