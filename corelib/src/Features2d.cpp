@@ -322,6 +322,7 @@ cv::Rect Feature2D::computeRoi(const cv::Mat & image, const std::vector<float> &
 Feature2D::Feature2D(const ParametersMap & parameters) :
 		maxFeatures_(Parameters::defaultKpWordsPerImage())
 {
+	this->parseParameters(parameters);
 }
 void Feature2D::parseParameters(const ParametersMap & parameters)
 {
@@ -454,6 +455,8 @@ SURF::~SURF()
 
 void SURF::parseParameters(const ParametersMap & parameters)
 {
+	Feature2D::parseParameters(parameters);
+
 	Parameters::parse(parameters, Parameters::kSURFExtended(), extended_);
 	Parameters::parse(parameters, Parameters::kSURFHessianThreshold(), hessianThreshold_);
 	Parameters::parse(parameters, Parameters::kSURFOctaveLayers(), nOctaveLayers_);
@@ -574,6 +577,8 @@ SIFT::~SIFT()
 
 void SIFT::parseParameters(const ParametersMap & parameters)
 {
+	Feature2D::parseParameters(parameters);
+
 	Parameters::parse(parameters, Parameters::kSIFTContrastThreshold(), contrastThreshold_);
 	Parameters::parse(parameters, Parameters::kSIFTEdgeThreshold(), edgeThreshold_);
 	Parameters::parse(parameters, Parameters::kSIFTNFeatures(), nfeatures_);
@@ -653,6 +658,8 @@ ORB::~ORB()
 
 void ORB::parseParameters(const ParametersMap & parameters)
 {
+	Feature2D::parseParameters(parameters);
+
 	Parameters::parse(parameters, Parameters::kKpWordsPerImage(), nFeatures_);
 	Parameters::parse(parameters, Parameters::kORBScaleFactor(), scaleFactor_);
 	Parameters::parse(parameters, Parameters::kORBNLevels(), nLevels_);
@@ -771,6 +778,8 @@ FAST::~FAST()
 
 void FAST::parseParameters(const ParametersMap & parameters)
 {
+	Feature2D::parseParameters(parameters);
+
 	Parameters::parse(parameters, Parameters::kFASTThreshold(), threshold_);
 	Parameters::parse(parameters, Parameters::kFASTNonmaxSuppression(), nonmaxSuppression_);
 	Parameters::parse(parameters, Parameters::kFASTGpu(), gpu_);
@@ -931,6 +940,8 @@ GFTT::~GFTT()
 
 void GFTT::parseParameters(const ParametersMap & parameters)
 {
+	Feature2D::parseParameters(parameters);
+
 	Parameters::parse(parameters, Parameters::kKpWordsPerImage(), _maxCorners);
 	Parameters::parse(parameters, Parameters::kGFTTQualityLevel(), _qualityLevel);
 	Parameters::parse(parameters, Parameters::kGFTTMinDistance(), _minDistance);
@@ -1065,6 +1076,8 @@ BRISK::~BRISK()
 
 void BRISK::parseParameters(const ParametersMap & parameters)
 {
+	Feature2D::parseParameters(parameters);
+
 	Parameters::parse(parameters, Parameters::kBRISKThresh(), thresh_);
 	Parameters::parse(parameters, Parameters::kBRISKOctaves(), octaves_);
 	Parameters::parse(parameters, Parameters::kBRISKPatternScale(), patternScale_);

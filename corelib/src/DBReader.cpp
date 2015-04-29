@@ -102,10 +102,10 @@ bool DBReader::init(int startIndex)
 	_currentId = _ids.begin();
 	if(startIndex>0 && _ids.size())
 	{
-		std::set<int>::iterator iter = _ids.lower_bound(startIndex);
+		std::set<int>::iterator iter = uIteratorAt(_ids, startIndex);
 		if(iter == _ids.end())
 		{
-			UWARN("Start index is too high (%d), the last in database is %d. Starting from beginning...", startIndex, *_ids.rbegin());
+			UWARN("Start index is too high (%d), the last in database is %d. Starting from beginning...", startIndex, _ids.size()-1);
 		}
 		else
 		{

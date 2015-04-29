@@ -309,6 +309,42 @@ inline typename std::list<V>::const_iterator uIteratorAt(const std::list<V> & li
 }
 
 /**
+ * Get the iterator at a specified position in a std::set. If the position
+ * is out of range, the result is the end iterator of the set.
+ * @param set the set
+ * @param pos the index position in the set
+ * @return the iterator at the specified index
+ */
+template<class V>
+inline typename std::set<V>::iterator uIteratorAt(std::set<V> & set, const unsigned int & pos)
+{
+	typename std::set<V>::iterator iter = set.begin();
+	for(unsigned int i = 0; i<pos && iter != set.end(); ++i )
+	{
+		++iter;
+	}
+	return iter;
+}
+
+/**
+ * Get the iterator at a specified position in a std::set. If the position
+ * is out of range, the result is the end iterator of the set.
+ * @param set the set
+ * @param pos the index position in the set
+ * @return the iterator at the specified index
+ */
+template<class V>
+inline typename std::set<V>::const_iterator uIteratorAt(const std::set<V> & set, const unsigned int & pos)
+{
+	typename std::set<V>::const_iterator iter = set.begin();
+	for(unsigned int i = 0; i<pos && iter != set.end(); ++i )
+	{
+		++iter;
+	}
+	return iter;
+}
+
+/**
  * Get the iterator at a specified position in a std::vector. If the position
  * is out of range, the result is the end iterator of the vector.
  * @param v the vector
@@ -317,6 +353,19 @@ inline typename std::list<V>::const_iterator uIteratorAt(const std::list<V> & li
  */
 template<class V>
 inline typename std::vector<V>::iterator uIteratorAt(std::vector<V> & v, const unsigned int & pos)
+{
+	return v.begin() + pos;
+}
+
+/**
+ * Get the iterator at a specified position in a std::vector. If the position
+ * is out of range, the result is the end iterator of the vector.
+ * @param v the vector
+ * @param pos the index position in the vector
+ * @return the iterator at the specified index
+ */
+template<class V>
+inline typename std::vector<V>::const_iterator uIteratorAt(const std::vector<V> & v, const unsigned int & pos)
 {
 	return v.begin() + pos;
 }
