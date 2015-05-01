@@ -45,7 +45,8 @@ SensorData::SensorData() :
 	_cy(0.0f),
 	_localTransform(Transform::getIdentity()),
 	_poseRotVariance(1.0f),
-	_poseTransVariance(1.0f)
+	_poseTransVariance(1.0f),
+	_laserScanMaxPts(0)
 {
 }
 
@@ -63,6 +64,7 @@ SensorData::SensorData(const cv::Mat & image,
 	_localTransform(Transform::getIdentity()),
 	_poseRotVariance(1.0f),
 	_poseTransVariance(1.0f),
+	_laserScanMaxPts(0),
 	_userData(userData)
 {
 	UASSERT(image.type() == CV_8UC1 || // Mono
@@ -95,6 +97,7 @@ SensorData::SensorData(const cv::Mat & image,
 	_localTransform(localTransform),
 	_poseRotVariance(poseRotVariance),
 	_poseTransVariance(poseTransVariance),
+	_laserScanMaxPts(0),
 	_userData(userData)
 {
 	UASSERT(image.type() == CV_8UC1 || // Mono
@@ -109,6 +112,7 @@ SensorData::SensorData(const cv::Mat & image,
 
 	// Metric constructor + 2d depth
 SensorData::SensorData(const cv::Mat & laserScan,
+		  int laserScanMaxPts,
 		  const cv::Mat & image,
 		  const cv::Mat & depthOrRightImage,
 		  float fx,
@@ -135,6 +139,7 @@ SensorData::SensorData(const cv::Mat & laserScan,
 	_localTransform(localTransform),
 	_poseRotVariance(poseRotVariance),
 	_poseTransVariance(poseTransVariance),
+	_laserScanMaxPts(laserScanMaxPts),
 	_userData(userData)
 {
 	UASSERT(_laserScan.empty() || _laserScan.type() == CV_32FC2);

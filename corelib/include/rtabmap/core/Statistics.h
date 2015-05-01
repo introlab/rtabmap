@@ -63,12 +63,16 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, VisualInliers,);
 	RTABMAP_STATS(Loop, Last_id,);
 
-	RTABMAP_STATS(LocalLoop, Odom_corrected,);
 	RTABMAP_STATS(LocalLoop, Time_closures,);
 	RTABMAP_STATS(LocalLoop, Space_last_closure_id,);
 	RTABMAP_STATS(LocalLoop, Space_paths,);
 	RTABMAP_STATS(LocalLoop, Space_closures_added,);
 	RTABMAP_STATS(LocalLoop, Space_closures_added_icp_only,);
+
+	RTABMAP_STATS(OdomCorrection, Accepted,);
+	RTABMAP_STATS(OdomCorrection, Inliers,);
+	RTABMAP_STATS(OdomCorrection, Inliers_ratio,);
+	RTABMAP_STATS(OdomCorrection, Variance,);
 
 	RTABMAP_STATS(Memory, Working_memory_size,);
 	RTABMAP_STATS(Memory, Short_time_memory_size,);

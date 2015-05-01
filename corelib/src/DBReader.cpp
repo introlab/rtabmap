@@ -75,6 +75,7 @@ bool DBReader::init(int startIndex)
 	}
 	_ids.clear();
 	_currentId=_ids.end();
+	_previousStamp = 0;
 
 	if(!UFile::exists(_path))
 	{
@@ -118,10 +119,7 @@ bool DBReader::init(int startIndex)
 
 void DBReader::setFrameRate(float frameRate)
 {
-	if(frameRate >= 0.0f)
-	{
-		_frameRate = frameRate;
-	}
+	_frameRate = frameRate;
 }
 
 void DBReader::mainLoopBegin()
@@ -210,26 +208,6 @@ SensorData DBReader::getNextData()
 	SensorData data;
 	if(_dbDriver)
 	{
-		float frameRate = _frameRate;
-		if(frameRate>0.0f)
-		{
-			int sleepTime = (1000.0f/frameRate - 1000.0f*_timer.getElapsedTime());
-			if(sleepTime > 2)
-			{
-				uSleep(sleepTime-2);
-			}
-
-			// Add precision at the cost of a small overhead
-			while(_timer.getElapsedTime() < 1.0/double(frameRate)-0.000001)
-			{
-				//
-			}
-
-			double slept = _timer.getElapsedTime();
-			_timer.start();
-			UDEBUG("slept=%fs vs target=%fs", slept, 1.0/double(frameRate));
-		}
-
 		if(!this->isKilled() && _currentId != _ids.end())
 		{
 			cv::Mat imageBytes;
@@ -241,7 +219,8 @@ SensorData DBReader::getNextData()
 			float rotVariance = 1.0f;
 			float transVariance = 1.0f;
 			std::vector<unsigned char> userData;
-			_dbDriver->getNodeData(*_currentId, imageBytes, depthBytes, laserScanBytes, fx, fy, cx, cy, localTransform);
+			int laserScanMaxPts = 0;
+			_dbDriver->getNodeData(*_currentId, imageBytes, depthBytes, laserScanBytes, fx, fy, cx, cy, localTransform, laserScanMaxPts);
 
 			// info
 			int weight;
@@ -272,32 +251,83 @@ SensorData DBReader::getNextData()
 				UWARN("No image loaded from the database for id=%d!", *_currentId);
 			}
 
-			rtabmap::CompressionThread ctImage(imageBytes, true);
-			rtabmap::CompressionThread ctDepth(depthBytes, true);
-			rtabmap::CompressionThread ctLaserScan(laserScanBytes, false);
-			ctImage.start();
-			ctDepth.start();
-			ctLaserScan.start();
-			ctImage.join();
-			ctDepth.join();
-			ctLaserScan.join();
-			data = SensorData(
-					ctLaserScan.getUncompressedData(),
-					ctImage.getUncompressedData(),
-					ctDepth.getUncompressedData(),
-					fx,fy,cx,cy,
-					localTransform,
-					pose,
-					rotVariance,
-					transVariance,
-					seq,
-					stamp,
-					userData);
-			UDEBUG("Laser=%d RGB/Left=%d Depth=%d Right=%d",
-					data.laserScan().empty()?0:1,
-					data.image().empty()?0:1,
-					data.depth().empty()?0:1,
-					data.rightImage().empty()?0:1);
+			// Frame rate
+			if(_frameRate < 0.0f)
+			{
+				if(stamp == 0)
+				{
+					UERROR("The option to use database stamps is set (framerate<0), but there are no stamps saved in the database! Aborting...");
+					this->kill();
+				}
+				else if(_previousStamp > 0)
+				{
+					int sleepTime = 1000.0*(stamp-_previousStamp) - 1000.0*_timer.getElapsedTime();
+					if(sleepTime > 2)
+					{
+						uSleep(sleepTime-2);
+					}
+
+					// Add precision at the cost of a small overhead
+					while(_timer.getElapsedTime() < (stamp-_previousStamp)-0.000001)
+					{
+						//
+					}
+
+					double slept = _timer.getElapsedTime();
+					_timer.start();
+					UDEBUG("slept=%fs vs target=%fs", slept, stamp-_previousStamp);
+				}
+				_previousStamp = stamp;
+			}
+			else if(_frameRate>0.0f)
+			{
+				int sleepTime = (1000.0f/_frameRate - 1000.0f*_timer.getElapsedTime());
+				if(sleepTime > 2)
+				{
+					uSleep(sleepTime-2);
+				}
+
+				// Add precision at the cost of a small overhead
+				while(_timer.getElapsedTime() < 1.0/double(_frameRate)-0.000001)
+				{
+					//
+				}
+
+				double slept = _timer.getElapsedTime();
+				_timer.start();
+				UDEBUG("slept=%fs vs target=%fs", slept, 1.0/double(_frameRate));
+			}
+
+			if(!this->isKilled())
+			{
+				rtabmap::CompressionThread ctImage(imageBytes, true);
+				rtabmap::CompressionThread ctDepth(depthBytes, true);
+				rtabmap::CompressionThread ctLaserScan(laserScanBytes, false);
+				ctImage.start();
+				ctDepth.start();
+				ctLaserScan.start();
+				ctImage.join();
+				ctDepth.join();
+				ctLaserScan.join();
+				data = SensorData(
+						ctLaserScan.getUncompressedData(),
+						laserScanMaxPts,
+						ctImage.getUncompressedData(),
+						ctDepth.getUncompressedData(),
+						fx,fy,cx,cy,
+						localTransform,
+						pose,
+						rotVariance,
+						transVariance,
+						seq,
+						stamp,
+						userData);
+				UDEBUG("Laser=%d RGB/Left=%d Depth=%d Right=%d",
+						data.laserScan().empty()?0:1,
+						data.image().empty()?0:1,
+						data.depth().empty()?0:1,
+						data.rightImage().empty()?0:1);
+			}
 		}
 	}
 	else

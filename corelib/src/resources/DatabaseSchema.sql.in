@@ -42,6 +42,7 @@ CREATE TABLE Depth (
 	cy FLOAT,
 	local_transform BLOB,
 	data2d BLOB,     -- compressed data (Laser scan)
+	data2d_max_pts INTEGER,   -- Laser scan max points
 	time_enter DATE,
 	PRIMARY KEY (id)
 );

@@ -299,6 +299,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionSpace,    bool, false, 	"Detection over locations (in Working Memory or STM) near in space.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxDiffID,   int, 50,      "Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathFilteringRadius,   float, 0.25, "Path filtering radius.");
+	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathOdomPosesUsed,   bool, true, "When comparing to a local path, merge the scan using the odometry poses instead of the ones in the optimized local graph.");
 
 	// Graph optimization
 	RTABMAP_PARAM(RGBD, OptimizeStrategy,          int, 0,        "Graph optimization strategy: 0=TORO and 1=g2o.");
@@ -373,10 +374,10 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccIcp3, PointToPlane,      bool, false, 	"Use point to plane ICP.");
 	RTABMAP_PARAM(LccIcp3, PointToPlaneNormalNeighbors,      int, 20, 	"Number of neighbors to compute normals for point to plane.");
 
-	RTABMAP_PARAM(LccIcp2, MaxCorrespondenceDistance, float, 0.1, 	"Max distance for point correspondences.");
+	RTABMAP_PARAM(LccIcp2, MaxCorrespondenceDistance, float, 0.05, 	"Max distance for point correspondences.");
 	RTABMAP_PARAM(LccIcp2, Iterations,      int, 30, 				"Max iterations.");
-	RTABMAP_PARAM(LccIcp2, CorrespondenceRatio, float, 0.7, 		"Ratio of matching correspondences to accept the transform.");
-	RTABMAP_PARAM(LccIcp2, VoxelSize,       float, 0.05, 			"Voxel size to be used for ICP computation.");
+	RTABMAP_PARAM(LccIcp2, CorrespondenceRatio, float, 0.3, 		"Ratio of matching correspondences to accept the transform.");
+	RTABMAP_PARAM(LccIcp2, VoxelSize,       float, 0.025, 			"Voxel size to be used for ICP computation.");
 
 	// Stereo disparity
 	RTABMAP_PARAM(Stereo, WinSize,               int, 16,        "See cv::calcOpticalFlowPyrLK().");

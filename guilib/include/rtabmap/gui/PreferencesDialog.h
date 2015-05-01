@@ -178,6 +178,7 @@ public:
 	bool getSourceDatabaseOdometryIgnored() const; //Database group
 	bool getSourceDatabaseGoalDelayIgnored() const; //Database group
 	int getSourceDatabaseStartPos() const; //Database group
+	bool getSourceDatabaseStampsUsed() const;//Database group
 	Src getSourceRGBD() const; 			// Openni group
 	bool getSourceOpenni2AutoWhiteBalance() const;  //Openni group
 	bool getSourceOpenni2AutoExposure() const;  //Openni group

@@ -165,8 +165,8 @@ public:
 	bool getBowForce2D() const {return _bowForce2D;}
 	Transform computeVisualTransform(int oldId, int newId, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
 	Transform computeVisualTransform(const Signature & oldS, const Signature & newS, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
-	Transform computeIcpTransform(int oldId, int newId, Transform guess, bool icp3D, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0);
-	Transform computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess, bool icp3D, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
+	Transform computeIcpTransform(int oldId, int newId, Transform guess, bool icp3D, std::string * rejectedMsg = 0, int * correspondences = 0, double * variance = 0, float * correspondencesRatio = 0);
+	Transform computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess, bool icp3D, std::string * rejectedMsg = 0, int * correspondences = 0, double * variance = 0, float * correspondencesRatio = 0) const;
 	Transform computeScanMatchingTransform(
 			int newId,
 			int oldId,

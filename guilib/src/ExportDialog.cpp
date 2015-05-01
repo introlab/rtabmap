@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ui_exportDialog.h"
 
 #include <QFileDialog>
+#include <QPushButton>
 
 namespace rtabmap {
 
@@ -40,7 +41,11 @@ ExportDialog::ExportDialog(QWidget * parent) :
 
 	connect(_ui->toolButton_path, SIGNAL(clicked()), this, SLOT(getPath()));
 
+	restoreDefaults();
+	connect(_ui->buttonBox->button(QDialogButtonBox::RestoreDefaults), SIGNAL(clicked()), this, SLOT(restoreDefaults()));
+
 	connect(_ui->spinBox_ignored, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_framerate, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_session, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_rgb, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_depth, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
@@ -48,12 +53,64 @@ ExportDialog::ExportDialog(QWidget * parent) :
 	connect(_ui->checkBox_odom, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_userData, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 
-	_ui->lineEdit_path->setText(QDir::homePath()+QDir::separator()+"output.db");
+	_ui->lineEdit_path->setText(QDir::currentPath()+QDir::separator()+"output.db");
 }
 
 ExportDialog::~ExportDialog()
 {
 	delete _ui;
+}
+
+void ExportDialog::saveSettings(QSettings & settings, const QString & group) const
+{
+	if(!group.isEmpty())
+	{
+		settings.beginGroup(group);
+	}
+	settings.setValue("framesIgnored", this->framesIgnored());
+	settings.setValue("targetFramerate", this->targetFramerate());
+	settings.setValue("sessionExported", this->sessionExported());
+	settings.setValue("rgbExported", this->isRgbExported());
+	settings.setValue("depthExported", this->isDepthExported());
+	settings.setValue("depth2dExported", this->isDepth2dExported());
+	settings.setValue("odomExported", this->isOdomExported());
+	settings.setValue("userDataExported", this->isUserDataExported());
+	if(!group.isEmpty())
+	{
+		settings.endGroup();
+	}
+}
+
+void ExportDialog::loadSettings(QSettings & settings, const QString & group)
+{
+	if(!group.isEmpty())
+	{
+		settings.beginGroup(group);
+	}
+	_ui->spinBox_ignored->setValue(settings.value("framesIgnored", this->framesIgnored()).toInt());
+	_ui->doubleSpinBox_framerate->setValue(settings.value("targetFramerate", this->targetFramerate()).toDouble());
+	_ui->spinBox_session->setValue(settings.value("sessionExported", this->sessionExported()).toInt());
+	_ui->checkBox_rgb->setChecked(settings.value("rgbExported", this->isRgbExported()).toBool());
+	_ui->checkBox_depth->setChecked(settings.value("depthExported", this->isDepthExported()).toBool());
+	_ui->checkBox_depth2d->setChecked(settings.value("depth2dExported", this->isDepth2dExported()).toBool());
+	_ui->checkBox_odom->setChecked(settings.value("odomExported", this->isOdomExported()).toBool());
+	_ui->checkBox_userData->setChecked(settings.value("userDataExported", this->isUserDataExported()).toBool());
+	if(!group.isEmpty())
+	{
+		settings.endGroup();
+	}
+}
+
+void ExportDialog::restoreDefaults()
+{
+	_ui->spinBox_ignored->setValue(0);
+	_ui->doubleSpinBox_framerate->setValue(0);
+	_ui->spinBox_session->setValue(-1);
+	_ui->checkBox_rgb->setChecked(true);
+	_ui->checkBox_depth->setChecked(true);
+	_ui->checkBox_depth2d->setChecked(true);
+	_ui->checkBox_odom->setChecked(true);
+	_ui->checkBox_userData->setChecked(false);
 }
 
 void ExportDialog::getPath()
@@ -73,6 +130,11 @@ QString ExportDialog::outputPath() const
 int ExportDialog::framesIgnored() const
 {
 	return _ui->spinBox_ignored->value();
+}
+
+double ExportDialog::targetFramerate() const
+{
+	return _ui->doubleSpinBox_framerate->value();
 }
 
 int ExportDialog::sessionExported() const

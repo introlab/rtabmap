@@ -458,7 +458,17 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 
 		if(loadMetricData)
 		{
-			if(uStrNumCmp(_version, "0.7.0") >= 0)
+			if(uStrNumCmp(_version, "0.8.11") >= 0)
+			{
+				query << "SELECT Image.data, "
+						 "Depth.data, Depth.fx, Depth.fy, Depth.cx, Depth.cy, Depth.local_transform, Depth.data2d_max_pts, Depth.data2d "
+					  << "FROM Image "
+					  << "LEFT OUTER JOIN Depth " // returns all images even if there are no metric data
+					  << "ON Image.id = Depth.id "
+					  << "WHERE Image.id = ?"
+					  <<";";
+			}
+			else if(uStrNumCmp(_version, "0.7.0") >= 0)
 			{
 				query << "SELECT Image.data, "
 						 "Depth.data, Depth.fx, Depth.fy, Depth.cx, Depth.cy, Depth.local_transform, Depth.data2d "
@@ -553,14 +563,19 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 					}
 					(*iter)->setLocalTransform(localTransform);
 
+					int laserScanMaxPts = 0;
+					if(uStrNumCmp(_version, "0.8.11") >= 0)
+					{
+						laserScanMaxPts = sqlite3_column_int(ppStmt, index++);
+					}
+
 					data = sqlite3_column_blob(ppStmt, index);
 					dataSize = sqlite3_column_bytes(ppStmt, index++);
 					//Create the laserScan
 					if(dataSize>4 && data)
 					{
-						(*iter)->setLaserScanCompressed(cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone()); // depth2d
+						(*iter)->setLaserScanCompressed(cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone(), laserScanMaxPts); // depth2d
 					}
-
 				}
 
 				rc = sqlite3_step(ppStmt); // next result...
@@ -588,7 +603,8 @@ void DBDriverSqlite3::getNodeDataQuery(
 		float & fy,
 		float & cx,
 		float & cy,
-		Transform & localTransform) const
+		Transform & localTransform,
+		int & laserScanMaxPts) const
 {
 	if(_ppDb)
 	{
@@ -598,7 +614,17 @@ void DBDriverSqlite3::getNodeDataQuery(
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		if(uStrNumCmp(_version, "0.7.0") >= 0)
+		if(uStrNumCmp(_version, "0.8.11") >= 0)
+		{
+			query << "SELECT Image.data, "
+					 "Depth.data, Depth.fx, Depth.fy, Depth.cx, Depth.cy, Depth.local_transform, Depth.data2d_max_pts, Depth.data2d "
+				  << "FROM Image "
+				  << "LEFT OUTER JOIN Depth " // returns all images even if there are no metric data
+				  << "ON Image.id = Depth.id "
+				  << "WHERE Image.id = " << signatureId
+				  <<";";
+		}
+		else if(uStrNumCmp(_version, "0.7.0") >= 0)
 		{
 			query << "SELECT Image.data, "
 					 "Depth.data, Depth.fx, Depth.fy, Depth.cx, Depth.cy, Depth.local_transform, Depth.data2d "
@@ -673,6 +699,12 @@ void DBDriverSqlite3::getNodeDataQuery(
 			if((unsigned int)dataSize == localTransform.size()*sizeof(float) && data)
 			{
 				memcpy(localTransform.data(), data, dataSize);
+			}
+
+			laserScanMaxPts = 0;
+			if(uStrNumCmp(_version, "0.8.11") >= 0)
+			{
+				laserScanMaxPts = sqlite3_column_int(ppStmt, index++);
 			}
 
 			data = sqlite3_column_blob(ppStmt, index); // depth2d
@@ -1255,7 +1287,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 
 			if(visualWords.size()==0)
 			{
-				UINFO("Empty signature detected! (id=%d)", (*iter)->id());
+				UDEBUG("Empty signature detected! (id=%d)", (*iter)->id());
 			}
 			else
 			{
@@ -2044,7 +2076,7 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 			//metric
 			if(!(*i)->getDepthCompressed().empty() || !(*i)->getLaserScanCompressed().empty())
 			{
-				stepDepth(ppStmt, (*i)->id(), (*i)->getDepthCompressed(), (*i)->getLaserScanCompressed(), (*i)->getFx(), (*i)->getFy(), (*i)->getCx(), (*i)->getCy(), (*i)->getLocalTransform());
+				stepDepth(ppStmt, (*i)->id(), (*i)->getDepthCompressed(), (*i)->getLaserScanCompressed(), (*i)->getFx(), (*i)->getFy(), (*i)->getCx(), (*i)->getCy(), (*i)->getLocalTransform(), (*i)->getLaserScanMaxPts());
 			}
 		}
 		// Finalize (delete) the statement
@@ -2222,7 +2254,11 @@ void DBDriverSqlite3::stepImage(sqlite3_stmt * ppStmt,
 
 std::string DBDriverSqlite3::queryStepDepth() const
 {
-	if(uStrNumCmp(_version, "0.7.0") >= 0)
+	if(uStrNumCmp(_version, "0.8.11") >= 0)
+	{
+		return "INSERT INTO Depth(id, data, fx, fy, cx, cy, local_transform, data2d, data2d_max_pts) VALUES(?,?,?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.7.0") >= 0)
 	{
 		return "INSERT INTO Depth(id, data, fx, fy, cx, cy, local_transform, data2d) VALUES(?,?,?,?,?,?,?,?);";
 	}
@@ -2239,7 +2275,8 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt,
 		float fy,
 		float cx,
 		float cy,
-		const Transform & localTransform) const
+		const Transform & localTransform,
+		int depth2dMaxPts) const
 {
 	UDEBUG("Save depth %d (size=%d) depth2d = %d", id, (int)depthBytes.cols, (int)depth2dBytes.cols);
 	if(!ppStmt)
@@ -2292,6 +2329,12 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt,
 		rc = sqlite3_bind_zeroblob(ppStmt, index++, 4);
 	}
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+	if(uStrNumCmp(_version, "0.8.11") >= 0)
+	{
+		rc = sqlite3_bind_int(ppStmt, index++, depth2dMaxPts);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
 
 	//step
 	rc=sqlite3_step(ppStmt);

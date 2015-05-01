@@ -68,7 +68,8 @@ public:
 			float fy = 0.0f,
 			float cx = 0.0f,
 			float cy = 0.0f,
-			const Transform & localTransform =Transform::getIdentity());
+			const Transform & localTransform =Transform::getIdentity(),
+			int laserScanMaxPts = 0);
 	virtual ~Signature();
 
 	/**
@@ -128,7 +129,7 @@ public:
 	//metric stuff
 	void setWords3(const std::multimap<int, pcl::PointXYZ> & words3) {_words3 = words3;}
 	void setDepthCompressed(const cv::Mat & bytes, float fx, float fy, float cx, float cy);
-	void setLaserScanCompressed(const cv::Mat & bytes) {_laserScanCompressed = bytes;}
+	void setLaserScanCompressed(const cv::Mat & bytes, int maxPts = 0) {_laserScanCompressed = bytes; _laserScanMaxPts=maxPts;}
 	void setLocalTransform(const Transform & t) {_localTransform = t;}
 	void setPose(const Transform & pose) {_pose = pose;}
 	const std::multimap<int, pcl::PointXYZ> & getWords3() const {return _words3;}
@@ -146,8 +147,9 @@ public:
 	const Transform & getLocalTransform() const {return _localTransform;}
 	void setDepthRaw(const cv::Mat & depth) {_depthRaw = depth;}
 	const cv::Mat & getDepthRaw() const {return _depthRaw;}
-	void setLaserScanRaw(const cv::Mat & depth2D) {_laserScanRaw = depth2D;}
+	void setLaserScanRaw(const cv::Mat & depth2D, int maxPts = 0) {_laserScanRaw = depth2D; _laserScanMaxPts=maxPts;}
 	const cv::Mat & getLaserScanRaw() const {return _laserScanRaw;}
+	int getLaserScanMaxPts() const {return _laserScanMaxPts;}
 
 	SensorData toSensorData();
 	void uncompressData();
@@ -183,6 +185,7 @@ private:
 	Transform _pose;
 	Transform _localTransform; // camera_link -> base_link
 	std::multimap<int, pcl::PointXYZ> _words3; // word <id, keypoint>
+	int _laserScanMaxPts;
 
 	cv::Mat _imageRaw; // CV_8UC1 or CV_8UC3
 	cv::Mat _depthRaw; // depth CV_16UC1 or CV_32FC1, right image CV_8UC1

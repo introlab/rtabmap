@@ -286,7 +286,7 @@ Transform RTABMAP_EXP icp(
 		int maximumIterations,
 		bool * hasConverged = 0,
 		double * variance = 0,
-		int * inliers = 0);
+		int * correspondences = 0);
 
 Transform RTABMAP_EXP icpPointToPlane(
 		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloud_source,
@@ -295,7 +295,7 @@ Transform RTABMAP_EXP icpPointToPlane(
 		int maximumIterations,
 		bool * hasConverged = 0,
 		double * variance = 0,
-		int * inliers = 0);
+		int * correspondences = 0);
 
 Transform RTABMAP_EXP icp2D(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
@@ -304,7 +304,7 @@ Transform RTABMAP_EXP icp2D(
 		int maximumIterations,
 		bool * hasConverged = 0,
 		double * variance = 0,
-		int * inliers = 0);
+		int * correspondences = 0);
 
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,

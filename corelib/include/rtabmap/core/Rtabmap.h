@@ -149,6 +149,11 @@ private:
 			bool lookInDatabase,
 			std::map<int, Transform> & optimizedPoses,
 			std::multimap<int, Link> * constraints = 0) const;
+	std::map<int, Transform> optimizeGraph(
+			int fromId,
+			const std::vector<int> & ids,
+			bool lookInDatabase,
+			std::multimap<int, Link> * constraints = 0) const;
 	void updateGoalIndex();
 	bool computePath(int targetNode, const std::map<int, Transform> & nodes, const std::multimap<int, rtabmap::Link> & constraints);
 
@@ -181,6 +186,7 @@ private:
 	float _localRadius;
 	int _localDetectMaxDiffID;
 	float _localPathFilteringRadius;
+	bool _localPathOdomPosesUsed;
 	std::string _databasePath;
 	bool _optimizeFromGraphEnd;
 	bool _reextractLoopClosureFeatures;

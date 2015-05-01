@@ -48,7 +48,8 @@ Signature::Signature() :
 	_fx(0.0f),
 	_fy(0.0f),
 	_cx(0.0f),
-	_cy(0.0f)
+	_cy(0.0f),
+	_laserScanMaxPts(0)
 {
 }
 
@@ -69,7 +70,8 @@ Signature::Signature(
 		float fy,
 		float cx,
 		float cy,
-		const Transform & localTransform) :
+		const Transform & localTransform,
+		int laserScanMaxPts) :
 	_id(id),
 	_mapId(mapId),
 	_stamp(stamp),
@@ -90,7 +92,8 @@ Signature::Signature(
 	_cy(cy),
 	_pose(pose),
 	_localTransform(localTransform),
-	_words3(words3)
+	_words3(words3),
+	_laserScanMaxPts(laserScanMaxPts)
 {
 }
 
@@ -273,6 +276,7 @@ SensorData Signature::toSensorData()
 		}
 	}
 	return SensorData(_laserScanRaw,
+			_laserScanMaxPts,
 			_imageRaw,
 			_depthRaw,
 			_fx,

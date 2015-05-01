@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-806</y>
+            <y>0</y>
             <width>760</width>
-            <height>1462</height>
+            <height>1029</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>19</number>
+                <number>21</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1603,6 +1603,20 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <bool>false</bool>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_9">
+                       <item row="0" column="2">
+                        <widget class="QToolButton" name="toolButton_dbViewer">
+                         <property name="toolTip">
+                          <string>Open database viewer</string>
+                         </property>
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="icon">
+                          <iconset resource="../GuiLib.qrc">
+                           <normaloff>:/images/mag_glass.png</normaloff>:/images/mag_glass.png</iconset>
+                         </property>
+                        </widget>
+                       </item>
                        <item row="1" column="0">
                         <widget class="QCheckBox" name="source_checkBox_ignoreOdometry">
                          <property name="text">
@@ -1620,34 +1634,20 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item row="0" column="1">
                         <widget class="QLineEdit" name="source_database_lineEdit_path"/>
                        </item>
-                       <item row="3" column="1">
+                       <item row="4" column="1">
                         <widget class="QLabel" name="label_58">
                          <property name="text">
                           <string>Start position (index)</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="0">
+                       <item row="4" column="0">
                         <widget class="QSpinBox" name="source_spinBox_databaseStartPos">
                          <property name="minimum">
                           <number>0</number>
                          </property>
                          <property name="maximum">
                           <number>999999999</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="2">
-                        <widget class="QToolButton" name="toolButton_dbViewer">
-                         <property name="toolTip">
-                          <string>Open database viewer</string>
-                         </property>
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="icon">
-                          <iconset resource="../GuiLib.qrc">
-                           <normaloff>:/images/mag_glass.png</normaloff>:/images/mag_glass.png</iconset>
                          </property>
                         </widget>
                        </item>
@@ -1661,7 +1661,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="1">
+                       <item row="3" column="1">
                         <widget class="QLabel" name="label_80">
                          <property name="text">
                           <string>Ignore goal delay.</string>
@@ -1671,8 +1671,25 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="0">
+                       <item row="3" column="0">
                         <widget class="QCheckBox" name="source_checkBox_ignoreGoalDelay">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_90">
+                         <property name="text">
+                          <string>Use database stamps as input rate.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QCheckBox" name="source_checkBox_useDbStamps">
                          <property name="text">
                           <string/>
                          </property>
@@ -5244,14 +5261,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="0">
+                         <item row="3" column="0">
                           <widget class="QCheckBox" name="checkBox_localSpaceLinksKeptInWM">
                            <property name="text">
                             <string/>
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="1">
+                         <item row="3" column="1">
                           <widget class="QLabel" name="label_scanMatching_2">
                            <property name="text">
                             <string>If local space links are kept in WM.</string>
@@ -5268,6 +5285,23 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_scanMatching_4">
+                           <property name="text">
+                            <string>When comparing to a local path, merge the scan using the odometry poses instead of the ones in the optimized local graph.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QCheckBox" name="checkBox_localSpacePathOdomPosesUsed">
+                           <property name="text">
+                            <string/>
                            </property>
                           </widget>
                          </item>
@@ -5900,6 +5934,45 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                        <string>ICP 3D (e.g. Kinect depth)</string>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_53" columnstretch="0,1">
+                       <item row="5" column="0">
+                        <widget class="QSpinBox" name="loopClosure_icpIterations">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <number>1000</number>
+                         </property>
+                         <property name="value">
+                          <number>10</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="1">
+                        <widget class="QLabel" name="label_124">
+                         <property name="text">
+                          <string>Max iterations.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QSpinBox" name="loopClosure_icpSamples">
+                         <property name="minimum">
+                          <number>0</number>
+                         </property>
+                         <property name="maximum">
+                          <number>999999</number>
+                         </property>
+                         <property name="singleStep">
+                          <number>100</number>
+                         </property>
+                         <property name="value">
+                          <number>5000</number>
+                         </property>
+                        </widget>
+                       </item>
                        <item row="0" column="0">
                         <widget class="QSpinBox" name="loopClosure_icpDecimation">
                          <property name="minimum">
@@ -5907,6 +5980,22 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                          <property name="maximum">
                           <number>32</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="0">
+                        <widget class="QDoubleSpinBox" name="loopClosure_icpMaxCorrespondenceDistance">
+                         <property name="decimals">
+                          <number>3</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.100000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -5972,22 +6061,6 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="0">
-                        <widget class="QSpinBox" name="loopClosure_icpSamples">
-                         <property name="minimum">
-                          <number>0</number>
-                         </property>
-                         <property name="maximum">
-                          <number>999999</number>
-                         </property>
-                         <property name="singleStep">
-                          <number>100</number>
-                         </property>
-                         <property name="value">
-                          <number>5000</number>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="3" column="1">
                         <widget class="QLabel" name="label_118">
                          <property name="text">
@@ -5998,46 +6071,10 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                         </widget>
                        </item>
-                       <item row="4" column="0">
-                        <widget class="QDoubleSpinBox" name="loopClosure_icpMaxCorrespondenceDistance">
-                         <property name="minimum">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.100000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="4" column="1">
                         <widget class="QLabel" name="label_122">
                          <property name="text">
                           <string>Max distance for point correspondences.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="5" column="0">
-                        <widget class="QSpinBox" name="loopClosure_icpIterations">
-                         <property name="minimum">
-                          <number>1</number>
-                         </property>
-                         <property name="maximum">
-                          <number>1000</number>
-                         </property>
-                         <property name="value">
-                          <number>10</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="5" column="1">
-                        <widget class="QLabel" name="label_124">
-                         <property name="text">
-                          <string>Max iterations.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -6121,6 +6158,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       <layout class="QGridLayout" name="gridLayout_52" columnstretch="0,1">
                        <item row="0" column="0">
                         <widget class="QDoubleSpinBox" name="loopClosure_icp2MaxCorrespondenceDistance">
+                         <property name="decimals">
+                          <number>3</number>
+                         </property>
                          <property name="minimum">
                           <double>0.010000000000000</double>
                          </property>
@@ -6184,7 +6224,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                        <item row="2" column="1">
                         <widget class="QLabel" name="label_148">
                          <property name="text">
-                          <string>Ratio of matching correspondences to accept the transform.</string>
+                          <string>Minimum ratio of correspondences on laser scan maximum size to accept the transform.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>

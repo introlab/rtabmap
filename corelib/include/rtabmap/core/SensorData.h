@@ -62,6 +62,7 @@ public:
 
 	// Metric constructor + 2d laser scan
 	SensorData(const cv::Mat & laserScan,
+			int laserScanMaxPts,
 		  const cv::Mat & image,
 		  const cv::Mat & depthOrRightImage,
 		  float fx,
@@ -95,6 +96,7 @@ public:
 	cv::Mat rightImage() const {return _depthOrRightImage.type()==CV_8UC1?_depthOrRightImage:cv::Mat();}
 	const cv::Mat & depthOrRightImage() const {return _depthOrRightImage;}
 	const cv::Mat & laserScan() const {return _laserScan;}
+	int laserScanMaxPts() const {return _laserScanMaxPts;}
 	float fx() const {return _fx;}
 	float fy() const {return (_depthOrRightImage.type()==CV_8UC1)?0:_fyOrBaseline;}
 	float cx() const {return _cx;}
@@ -133,6 +135,7 @@ private:
 	Transform _localTransform;
 	float _poseRotVariance;
 	float _poseTransVariance;
+	int _laserScanMaxPts;
 
 	// features
 	std::vector<cv::KeyPoint> _keypoints;

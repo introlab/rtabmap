@@ -2006,7 +2006,8 @@ Transform Memory::computeIcpTransform(
 		bool icp3D,
 		std::string * rejectedMsg,
 		int * inliers,
-		double * variance)
+		double * variance,
+		float * inliersRatio)
 {
 	Signature * oldS = this->_getSignature(oldId);
 	Signature * newS = this->_getSignature(newId);
@@ -2064,7 +2065,7 @@ Transform Memory::computeIcpTransform(
 			newS->uncompressData(0, 0, &tmp2);
 		}
 
-		t = computeIcpTransform(*oldS, *newS, guess, icp3D, rejectedMsg, inliers, variance);
+		t = computeIcpTransform(*oldS, *newS, guess, icp3D, rejectedMsg, inliers, variance, inliersRatio);
 	}
 	else
 	{
@@ -2085,8 +2086,9 @@ Transform Memory::computeIcpTransform(
 		Transform guess,
 		bool icp3D,
 		std::string * rejectedMsg,
-		int * inliers,
-		double * variance) const
+		int * correspondencesOut,
+		double * varianceOut,
+		float * correspondencesRatioOut) const
 {
 	if(guess.isNull())
 	{
@@ -2145,6 +2147,7 @@ Transform Memory::computeIcpTransform(
 					Transform icpT;
 					int correspondences = 0;
 					float correspondencesRatio = -1.0f;
+					double variance = 1;
 					if(_icpPointToPlane)
 					{
 						pcl::PointCloud<pcl::PointNormal>::Ptr oldCloud = util3d::computeNormals(oldCloudXYZ, _icpPointToPlaneNormalNeighbors);
@@ -2161,7 +2164,7 @@ Transform Memory::computeIcpTransform(
 								   _icpMaxCorrespondenceDistance,
 								   _icpMaxIterations,
 								   &hasConverged,
-								   variance,
+								   &variance,
 								   &correspondences);
 						}
 					}
@@ -2172,23 +2175,31 @@ Transform Memory::computeIcpTransform(
 								_icpMaxCorrespondenceDistance,
 								_icpMaxIterations,
 								&hasConverged,
-								variance,
+								&variance,
 								&correspondences);
 					}
 
 					// verify if there are enough correspondences
-					correspondencesRatio = float(correspondences)/float(oldCloudXYZ->size()>newCloudXYZ->size()?oldCloudXYZ->size():newCloudXYZ->size());
+					correspondencesRatio = float(correspondences)/float(newS.getDepthRaw().total());
 
 					UDEBUG("%d->%d hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
 							hasConverged?"true":"false",
-							variance?*variance:-1,
+							variance,
 							correspondences,
 							(int)(oldCloudXYZ->size()>newCloudXYZ->size()?oldCloudXYZ->size():newCloudXYZ->size()),
 							correspondencesRatio*100.0f);
 
-					if(inliers)
+					if(varianceOut)
 					{
-						*inliers = correspondences;
+						*varianceOut = variance;
+					}
+					if(correspondencesOut)
+					{
+						*correspondencesOut = correspondences;
+					}
+					if(correspondencesRatioOut)
+					{
+						*correspondencesRatioOut = correspondencesRatio;
 					}
 
 					if(!icpT.isNull() && hasConverged &&
@@ -2217,8 +2228,8 @@ Transform Memory::computeIcpTransform(
 					}
 					else
 					{
-						msg = uFormat("Cannot compute transform (converged=%s var=%f corrRatio=%f/%f)",
-								hasConverged?"true":"false", variance?*variance:-1, correspondencesRatio, _icpCorrespondenceRatio);
+						msg = uFormat("Cannot compute transform (converged=%s var=%f corr=%d corrRatio=%f/%f)",
+								hasConverged?"true":"false", variance, correspondences, correspondencesRatio, _icpCorrespondenceRatio);
 						UINFO(msg.c_str());
 					}
 				}
@@ -2267,21 +2278,30 @@ Transform Memory::computeIcpTransform(
 				bool hasConverged = false;
 				float correspondencesRatio = -1.0f;
 				int correspondences = 0;
+				double variance = 1;
 				icpT = util3d::icp2D(newCloud,
 						oldCloud,
 					   _icp2MaxCorrespondenceDistance,
 					   _icp2MaxIterations,
 					   &hasConverged,
-					   variance,
+					   &variance,
 					   &correspondences);
 
 				// verify if there are enough correspondences
-				correspondencesRatio = float(correspondences)/float(oldCloud->size()>newCloud->size()?oldCloud->size():newCloud->size());
+
+				if(newS.getLaserScanMaxPts())
+				{
+					correspondencesRatio = float(correspondences)/float(newS.getLaserScanMaxPts());
+				}
+				else
+				{
+					correspondencesRatio = float(correspondences)/float(oldCloud->size()>newCloud->size()?oldCloud->size():newCloud->size());
+				}
 
 				UDEBUG("%d->%d hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
 						newS.id(), oldS.id(),
 						hasConverged?"true":"false",
-						variance?*variance:-1,
+						variance,
 						correspondences,
 						(int)(oldCloud->size()>newCloud->size()?oldCloud->size():newCloud->size()),
 						correspondencesRatio*100.0f);
@@ -2296,12 +2316,22 @@ Transform Memory::computeIcpTransform(
 				//	UWARN("saved newCloudFinal.pcd");
 				//}
 
-				if(inliers)
+				if(varianceOut)
 				{
-					*inliers = correspondences;
+					*varianceOut = variance;
+				}
+				if(correspondencesOut)
+				{
+					*correspondencesOut = correspondences;
+				}
+				if(correspondencesRatioOut)
+				{
+					*correspondencesRatioOut = correspondencesRatio;
 				}
 
-				if(!icpT.isNull() && hasConverged && correspondencesRatio >= _icp2CorrespondenceRatio)
+				if(!icpT.isNull() &&
+					hasConverged &&
+					correspondencesRatio >= _icp2CorrespondenceRatio)
 				{
 					float ix,iy,iz, iroll,ipitch,iyaw;
 					icpT.getTranslationAndEulerAngles(ix,iy,iz,iroll,ipitch,iyaw);
@@ -2326,8 +2356,8 @@ Transform Memory::computeIcpTransform(
 				}
 				else
 				{
-					msg = uFormat("Cannot compute transform (converged=%s var=%f corrRatio=%f/%f)",
-							hasConverged?"true":"false", variance?*variance:-1, correspondencesRatio, _icp2CorrespondenceRatio);
+					msg = uFormat("Cannot compute transform (converged=%s var=%f cor=%d corrRatio=%f/%f)",
+							hasConverged?"true":"false", variance, correspondences, correspondencesRatio, _icp2CorrespondenceRatio);
 					UINFO(msg.c_str());
 				}
 			}
@@ -2362,6 +2392,9 @@ Transform Memory::computeScanMatchingTransform(
 		int * inliers,
 		double * variance)
 {
+	UASSERT(uContains(poses, newId) && uContains(_signatures, newId));
+	UASSERT(uContains(poses, oldId) && uContains(_signatures, oldId));
+
 	// make sure that all depth2D are loaded
 	std::list<Signature*> depthToLoad;
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
@@ -2407,7 +2440,6 @@ Transform Memory::computeScanMatchingTransform(
 	// get the new cloud
 	Signature * newS = _getSignature(newId);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud;
-	UASSERT(uContains(poses, newId));
 	cv::Mat newScan;
 	newS->uncompressData(0, 0, &newScan);
 	newCloud = util3d::cvMat2Cloud(newScan, poses.at(newId));
@@ -2452,10 +2484,10 @@ Transform Memory::computeScanMatchingTransform(
 		{
 			transform = poses.at(newId).inverse()*icpT.inverse() * poses.at(oldId);
 
-			//pcl::io::savePCDFile("old.pcd", *assembledOldClouds);
-			//pcl::io::savePCDFile("new.pcd", *newCloud);
+			//pcl::io::savePCDFile("old.pcd", *assembledOldClouds, true);
+			//pcl::io::savePCDFile("new.pcd", *newCloud, true);
 			//newCloud = util3d::transformPointCloud<pcl::PointXYZ>(newCloud, icpT);
-			//pcl::io::savePCDFile("newFinal.pcd", *newCloud);
+			//pcl::io::savePCDFile("newFinal.pcd", *newCloud, true);
 			//UWARN("local scan matching old.pcd, new.pcd and newFinal.pcd saved!");
 		}
 		else
@@ -3322,11 +3354,12 @@ void Memory::copyData(const Signature * from, Signature * to)
 			cv::Mat laserScan;
 			float fx, fy, cx, cy;
 			Transform localTransform;
-			_dbDriver->getNodeData(from->id(), image, depth, laserScan, fx, fy, cx, cy, localTransform);
+			int laserScanMaxPts = 0;
+			_dbDriver->getNodeData(from->id(), image, depth, laserScan, fx, fy, cx, cy, localTransform, laserScanMaxPts);
 
 			to->setImageCompressed(image);
 			to->setDepthCompressed(depth, fx, fy, cx, cy);
-			to->setLaserScanCompressed(laserScan);
+			to->setLaserScanCompressed(laserScan, laserScanMaxPts);
 			to->setLocalTransform(localTransform);
 
 			UDEBUG("Loaded image data from database");
@@ -3872,7 +3905,8 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 			fyOrBaseline,
 			cx,
 			cy,
-			data.localTransform());
+			data.localTransform(),
+			data.laserScanMaxPts());
 	}
 	else
 	{
@@ -3885,7 +3919,15 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 			words3D,
 			data.pose(),
 			data.userData(),
-			rtabmap::compressData2(laserScan));
+			rtabmap::compressData2(laserScan),
+			cv::Mat(),
+			cv::Mat(),
+			0,
+			0,
+			0,
+			0,
+			Transform(),
+			data.laserScanMaxPts());
 	}
 	if(this->isRawDataKept())
 	{

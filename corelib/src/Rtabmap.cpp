@@ -98,6 +98,7 @@ Rtabmap::Rtabmap() :
 	_localRadius(Parameters::defaultRGBDLocalRadius()),
 	_localDetectMaxDiffID(Parameters::defaultRGBDLocalLoopDetectionMaxDiffID()),
 	_localPathFilteringRadius(Parameters::defaultRGBDLocalLoopDetectionPathFilteringRadius()),
+	_localPathOdomPosesUsed(Parameters::defaultRGBDLocalLoopDetectionPathOdomPosesUsed()),
 	_databasePath(""),
 	_optimizeFromGraphEnd(Parameters::defaultRGBDOptimizeFromGraphEnd()),
 	_reextractLoopClosureFeatures(Parameters::defaultLccReextractActivated()),
@@ -386,6 +387,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLocalRadius(), _localRadius);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionMaxDiffID(), _localDetectMaxDiffID);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionPathFilteringRadius(), _localPathFilteringRadius);
+	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionPathOdomPosesUsed(), _localPathOdomPosesUsed);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
 	Parameters::parse(parameters, Parameters::kLccReextractActivated(), _reextractLoopClosureFeatures);
 	Parameters::parse(parameters, Parameters::kLccReextractNNType(), _reextractNNType);
@@ -951,7 +953,9 @@ bool Rtabmap::process(const SensorData & data)
 			std::string rejectedMsg;
 			Transform guess = signature->getLinks().begin()->second.transform();
 			double variance = -1.0;
-			Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, false, &rejectedMsg, 0, &variance);
+			int inliers = 0;
+			float inliersRatio = 0;
+			Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, false, &rejectedMsg, &inliers, &variance, &inliersRatio);
 			if(!t.isNull())
 			{
 				scanMatchingSuccess = true;
@@ -966,6 +970,10 @@ bool Rtabmap::process(const SensorData & data)
 			{
 				UINFO("Scan matching rejected: %s", rejectedMsg.c_str());
 			}
+			statistics_.addStatistic(Statistics::kOdomCorrectionAccepted(), scanMatchingSuccess?1.0f:0);
+			statistics_.addStatistic(Statistics::kOdomCorrectionInliers(), inliers);
+			statistics_.addStatistic(Statistics::kOdomCorrectionInliers_ratio(), inliersRatio);
+			statistics_.addStatistic(Statistics::kOdomCorrectionVariance(), variance);
 		}
 		timeScanMatching = timer.ticks();
 		ULOGGER_INFO("timeScanMatching=%fs", timeScanMatching);
@@ -1554,17 +1562,6 @@ bool Rtabmap::process(const SensorData & data)
 					if(_localPathFilteringRadius <= 0.0f ||
 					   _optimizedPoses.at(signature->id()).getDistance(_optimizedPoses.at(nearestId)) < _localPathFilteringRadius)
 					{
-						// path filtering
-						if(_localPathFilteringRadius > 0.0f)
-						{
-							std::map<int, Transform> filteredPath = graph::radiusPosesFiltering(path, _localPathFilteringRadius, CV_PI, true);
-							// make sure the nearest and farthest poses are still here
-							filteredPath.insert(*_optimizedPoses.find(nearestId));
-							filteredPath.insert(*path.begin());
-							filteredPath.insert(*path.rbegin());
-							path = filteredPath;
-						}
-
 						// 1) look for loop closures based on visual correspondences
 						double variance = 1.0;
 						Transform transform = _memory->computeVisualTransform(nearestId, signature->id(), 0, 0, &variance);
@@ -1576,9 +1573,31 @@ bool Rtabmap::process(const SensorData & data)
 						}
 						if(transform.isNull())
 						{
+							// 2) Assemble scans in the path and do ICP only
+							if(_localPathOdomPosesUsed)
+							{
+								//optimize the path's poses locally
+								path = optimizeGraph(nearestId, uKeys(path), false);
+								// transform local poses in optimized graph referential
+								Transform t = _optimizedPoses.at(nearestId) * path.at(nearestId).inverse();
+								for(std::map<int, Transform>::iterator jter=path.begin(); jter!=path.end(); ++jter)
+								{
+									jter->second = t * jter->second;
+								}
+							}
+							if(_localPathFilteringRadius > 0.0f)
+							{
+								// path filtering
+								std::map<int, Transform> filteredPath = graph::radiusPosesFiltering(path, _localPathFilteringRadius, CV_PI, true);
+								// make sure the nearest and farthest poses are still here
+								filteredPath.insert(*path.find(nearestId));
+								filteredPath.insert(*path.begin());
+								filteredPath.insert(*path.rbegin());
+								path = filteredPath;
+							}
+
 							if(path.size() > 2) // more than current+nearest
 							{
-								// 2) Assemble scans in the path and do ICP only
 								// add current node to poses
 								path.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
 								//The nearest will be the reference for a loop closure transform
@@ -1742,7 +1761,6 @@ bool Rtabmap::process(const SensorData & data)
 			statistics_.addStatistic(Statistics::kLoopVisualInliers(), loopClosureVisualInliers);
 			statistics_.addStatistic(Statistics::kLoopLast_id(), _memory->getLastGlobalLoopClosureId());
 
-			statistics_.addStatistic(Statistics::kLocalLoopOdom_corrected(), scanMatchingSuccess?1:0);
 			statistics_.addStatistic(Statistics::kLocalLoopTime_closures(), localLoopClosuresInTimeFound);
 			statistics_.addStatistic(Statistics::kLocalLoopSpace_closures_added(), localSpaceClosuresAdded);
 			statistics_.addStatistic(Statistics::kLocalLoopSpace_closures_added_icp_only(), localSpaceClosuresAddedByICPOnly);
@@ -2295,34 +2313,48 @@ void Rtabmap::optimizeCurrentMap(
 		}
 		UINFO("get ids time %f s", timer.ticks());
 
-		std::map<int, Transform> poses;
-		std::multimap<int, Link> edgeConstraints;
-		_memory->getMetricConstraints(uKeys(ids), poses, edgeConstraints, lookInDatabase);
-		UINFO("get constraints (%d poses, %d edges) time %f s", (int)poses.size(), (int)edgeConstraints.size(), timer.ticks());
-
-		if(constraints)
-		{
-			*constraints = edgeConstraints;
-		}
-
-		UASSERT(_graphOptimizer!=0);
-		if(_graphOptimizer->iterations() == 0)
-		{
-			// Optimization desactivated! Return not optimized poses.
-			optimizedPoses = poses;
-		}
-		else
-		{
-			optimizedPoses = _graphOptimizer->optimize(id, poses, edgeConstraints);
-		}
-		UINFO("optimize time %f s", timer.ticks());
+		optimizedPoses = Rtabmap::optimizeGraph(id, uKeys(ids), lookInDatabase, constraints);
 
 		if(_memory->getSignature(id) && uContains(optimizedPoses, id))
 		{
 			Transform t = optimizedPoses.at(id) * _memory->getSignature(id)->getPose().inverse();
 			UINFO("Correction (from node %d) %s", id, t.prettyPrint().c_str());
 		}
+		UINFO("optimize time %f s", timer.ticks());
 	}
+}
+
+std::map<int, Transform> Rtabmap::optimizeGraph(
+		int fromId,
+		const std::vector<int> & ids,
+		bool lookInDatabase,
+		std::multimap<int, Link> * constraints) const
+{
+	UTimer timer;
+	std::map<int, Transform> optimizedPoses;
+	std::map<int, Transform> poses;
+	std::multimap<int, Link> edgeConstraints;
+	UDEBUG("ids=%d", (int)ids.size());
+	_memory->getMetricConstraints(ids, poses, edgeConstraints, lookInDatabase);
+	UDEBUG("get constraints (%d poses, %d edges) time %f s", (int)poses.size(), (int)edgeConstraints.size(), timer.ticks());
+
+	if(constraints)
+	{
+		*constraints = edgeConstraints;
+	}
+
+	UASSERT(_graphOptimizer!=0);
+	if(_graphOptimizer->iterations() == 0)
+	{
+		// Optimization desactivated! Return not optimized poses.
+		optimizedPoses = poses;
+	}
+	else
+	{
+		optimizedPoses = _graphOptimizer->optimize(fromId, poses, edgeConstraints);
+	}
+
+	return optimizedPoses;
 }
 
 void Rtabmap::adjustLikelihood(std::map<int, float> & likelihood) const

@@ -62,7 +62,7 @@ protected:
 
 private:
 	std::string _path;
-	float _frameRate;
+	float _frameRate; // -1 = use Database stamps, 0 = inf
 	bool _odometryIgnored;
 	bool _ignoreGoalDelay;
 
@@ -70,6 +70,7 @@ private:
 	UTimer _timer;
 	std::set<int> _ids;
 	std::set<int>::iterator _currentId;
+	double _previousStamp;
 };
 
 } /* namespace rtabmap */

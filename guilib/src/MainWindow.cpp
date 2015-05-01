@@ -981,7 +981,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		int rehearsed = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
 		int localTimeClosures = (int)uValue(stat.data(), Statistics::kLocalLoopTime_closures(), 0.0f);
-		bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kLocalLoopOdom_corrected(), 0.0f);
+		bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kOdomCorrectionAccepted(), 0.0f);
 		_ui->label_matchId->clear();
 		_ui->label_stats_imageNumber->setText(QString("%1 [%2]").arg(stat.refImageId()).arg(refMapId));
 
@@ -2035,7 +2035,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		}
 		if(_dbReader)
 		{
-			_dbReader->setFrameRate(_preferencesDialog->getGeneralInputRate());
+			_dbReader->setFrameRate( _preferencesDialog->getSourceDatabaseStampsUsed()?-1:_preferencesDialog->getGeneralInputRate());
 		}
 	}//This will update the statistics toolbox
 
@@ -2735,7 +2735,7 @@ void MainWindow::startDetection()
 	else if(_preferencesDialog->isSourceDatabaseUsed())
 	{
 		_dbReader = new DBReader(_preferencesDialog->getSourceDatabasePath().toStdString(),
-								 _preferencesDialog->getGeneralInputRate(),
+								 _preferencesDialog->getSourceDatabaseStampsUsed()?-1:_preferencesDialog->getGeneralInputRate(),
 								 _preferencesDialog->getSourceDatabaseOdometryIgnored(),
 								 _preferencesDialog->getSourceDatabaseGoalDelayIgnored());
 

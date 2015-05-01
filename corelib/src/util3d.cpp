@@ -1933,7 +1933,7 @@ Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 			  int maximumIterations,
 			  bool * hasConvergedOut,
 			  double * variance,
-			  int * inliers)
+			  int * correspondencesOut)
 {
 	pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
 	// Set the input source and target
@@ -1956,7 +1956,7 @@ Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 	bool hasConverged = icp.hasConverged();
 
 	// compute variance
-	if((inliers || variance) && hasConverged)
+	if((correspondencesOut || variance) && hasConverged)
 	{
 		pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>::Ptr est;
 		est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>);
@@ -1986,16 +1986,16 @@ Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 			}
 		}
 
-		if(inliers)
+		if(correspondencesOut)
 		{
-			*inliers = (int)correspondences.size();
+			*correspondencesOut = (int)correspondences.size();
 		}
 	}
 	else
 	{
-		if(inliers)
+		if(correspondencesOut)
 		{
-			*inliers = 0;
+			*correspondencesOut = 0;
 		}
 		if(variance)
 		{
@@ -2019,7 +2019,7 @@ Transform icpPointToPlane(
 		int maximumIterations,
 		bool * hasConvergedOut,
 		double * variance,
-		int * inliers)
+		int * correspondencesOut)
 {
 	pcl::IterativeClosestPoint<pcl::PointNormal, pcl::PointNormal> icp;
 	// Set the input source and target
@@ -2046,7 +2046,7 @@ Transform icpPointToPlane(
 	bool hasConverged = icp.hasConverged();
 
 	// compute variance
-	if((inliers || variance) && hasConverged)
+	if((correspondencesOut || variance) && hasConverged)
 	{
 		pcl::registration::CorrespondenceEstimation<pcl::PointNormal, pcl::PointNormal>::Ptr est;
 		est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointNormal, pcl::PointNormal>);
@@ -2076,16 +2076,16 @@ Transform icpPointToPlane(
 			}
 		}
 
-		if(inliers)
+		if(correspondencesOut)
 		{
-			*inliers = (int)correspondences.size();
+			*correspondencesOut = (int)correspondences.size();
 		}
 	}
 	else
 	{
-		if(inliers)
+		if(correspondencesOut)
 		{
-			*inliers = 0;
+			*correspondencesOut = 0;
 		}
 		if(variance)
 		{
@@ -2108,7 +2108,7 @@ Transform icp2D(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 			  int maximumIterations,
 			  bool * hasConvergedOut,
 			  double * variance,
-			  int * inliers)
+			  int * correspondencesOut)
 {
 	pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
 	// Set the input source and target
@@ -2135,7 +2135,7 @@ Transform icp2D(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 	bool hasConverged = icp.hasConverged();
 
 	// compute variance
-	if((inliers || variance) && hasConverged)
+	if((correspondencesOut || variance) && hasConverged)
 	{
 		pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>::Ptr est;
 		est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>);
@@ -2165,16 +2165,16 @@ Transform icp2D(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 			}
 		}
 
-		if(inliers)
+		if(correspondencesOut)
 		{
-			*inliers = (int)correspondences.size();
+			*correspondencesOut = (int)correspondences.size();
 		}
 	}
 	else
 	{
-		if(inliers)
+		if(correspondencesOut)
 		{
-			*inliers = 0;
+			*correspondencesOut = 0;
 		}
 		if(variance)
 		{

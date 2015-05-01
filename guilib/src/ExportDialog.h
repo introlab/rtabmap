@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define EXPORTDIALOG_H_
 
 #include <QDialog>
+#include <QSettings>
 
 class Ui_ExportDialog;
 
@@ -43,8 +44,12 @@ public:
 
 	virtual ~ExportDialog();
 
+	void saveSettings(QSettings & settings, const QString & group) const;
+	void loadSettings(QSettings & settings, const QString & group);
+
 	QString outputPath() const;
 	int framesIgnored() const;
+	double targetFramerate() const;
 	int sessionExported() const;
 	bool isRgbExported() const;
 	bool isDepthExported() const;
@@ -57,6 +62,7 @@ signals:
 
 private slots:
 	void getPath();
+	void restoreDefaults();
 
 private:
 	Ui_ExportDialog * _ui;

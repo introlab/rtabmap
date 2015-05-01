@@ -299,6 +299,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_checkBox_ignoreOdometry, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignoreGoalDelay, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_databaseStartPos, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_checkBox_useDbStamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
 	//openni group
 	connect(_ui->groupBox_sourceOpenni, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_cameraRGBD, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -489,6 +491,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->localDetection_radius->setObjectName(Parameters::kRGBDLocalRadius().c_str());
 	_ui->localDetection_maxDiffID->setObjectName(Parameters::kRGBDLocalLoopDetectionMaxDiffID().c_str());
 	_ui->localDetection_pathFilteringRadius->setObjectName(Parameters::kRGBDLocalLoopDetectionPathFilteringRadius().c_str());
+	_ui->checkBox_localSpacePathOdomPosesUsed->setObjectName(Parameters::kRGBDLocalLoopDetectionPathOdomPosesUsed().c_str());
 
 	_ui->loopClosure_bowMinInliers->setObjectName(Parameters::kLccBowMinInliers().c_str());
 	_ui->loopClosure_bowInlierDistance->setObjectName(Parameters::kLccBowInlierDistance().c_str());
@@ -940,6 +943,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_checkBox_ignoreOdometry->setChecked(false);
 		_ui->source_checkBox_ignoreGoalDelay->setChecked(false);
 		_ui->source_spinBox_databaseStartPos->setValue(0);
+		_ui->source_checkBox_useDbStamps->setChecked(false);
 
 		_ui->groupBox_sourceOpenni->setChecked(true);
 #ifdef _WIN32
@@ -1215,6 +1219,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->source_checkBox_ignoreOdometry->setChecked(settings.value("ignoreOdometry", _ui->source_checkBox_ignoreOdometry->isChecked()).toBool());
 	_ui->source_checkBox_ignoreGoalDelay->setChecked(settings.value("ignoreGoalDelay", _ui->source_checkBox_ignoreGoalDelay->isChecked()).toBool());
 	_ui->source_spinBox_databaseStartPos->setValue(settings.value("startPos", _ui->source_spinBox_databaseStartPos->value()).toInt());
+	_ui->source_checkBox_useDbStamps->setChecked(settings.value("useDatabaseStamps", _ui->source_checkBox_useDbStamps->isChecked()).toBool());
 	settings.endGroup(); // Database
 
 	settings.beginGroup("Openni");
@@ -1482,6 +1487,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("ignoreOdometry", _ui->source_checkBox_ignoreOdometry->isChecked());
 	settings.setValue("ignoreGoalDelay", _ui->source_checkBox_ignoreGoalDelay->isChecked());
 	settings.setValue("startPos",       _ui->source_spinBox_databaseStartPos->value());
+	settings.setValue("useDatabaseStamps", _ui->source_checkBox_useDbStamps->isChecked());
 	settings.endGroup();
 
 	settings.beginGroup("Openni");
@@ -2046,6 +2052,7 @@ void PreferencesDialog::selectSourceDatabase(bool user)
 		_ui->source_checkBox_ignoreGoalDelay->setChecked(false);
 		_ui->source_database_lineEdit_path->setText(path);
 		_ui->source_spinBox_databaseStartPos->setValue(0);
+		_ui->source_checkBox_useDbStamps->setChecked(false);
 	}
 
 	if(_ui->groupBox_sourceDatabase->isChecked())
@@ -3059,6 +3066,10 @@ bool PreferencesDialog::getSourceDatabaseGoalDelayIgnored() const
 int PreferencesDialog::getSourceDatabaseStartPos() const
 {
 	return _ui->source_spinBox_databaseStartPos->value();
+}
+bool PreferencesDialog::getSourceDatabaseStampsUsed() const
+{
+	return _ui->source_checkBox_useDbStamps->isChecked();
 }
 
 PreferencesDialog::Src PreferencesDialog::getSourceRGBD() const

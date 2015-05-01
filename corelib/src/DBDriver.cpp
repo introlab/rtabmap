@@ -419,7 +419,8 @@ void DBDriver::getNodeData(
 		float & fy,
 		float & cx,
 		float & cy,
-		Transform & localTransform) const
+		Transform & localTransform,
+		int & laserScanMaxPts) const
 {
 	bool found = false;
 	// look in the trash
@@ -437,6 +438,7 @@ void DBDriver::getNodeData(
 			cx = s->getCx();
 			cy = s->getCy();
 			localTransform = s->getLocalTransform();
+			laserScanMaxPts = s->getLaserScanMaxPts();
 			found = true;
 		}
 	}
@@ -445,7 +447,7 @@ void DBDriver::getNodeData(
 	if(!found)
 	{
 		_dbSafeAccessMutex.lock();
-		this->getNodeDataQuery(signatureId, imageCompressed, depthCompressed, laserScanCompressed, fx, fy, cx, cy, localTransform);
+		this->getNodeDataQuery(signatureId, imageCompressed, depthCompressed, laserScanCompressed, fx, fy, cx, cy, localTransform, laserScanMaxPts);
 		_dbSafeAccessMutex.unlock();
 	}
 }

@@ -671,44 +671,47 @@ void DatabaseViewer::exportDatabase()
 		if(!dialog.outputPath().isEmpty())
 		{
 			int framesIgnored = dialog.framesIgnored();
+			double frameRate = dialog.targetFramerate();
 			int sessionExported = dialog.sessionExported();
 			QString path = dialog.outputPath();
 			rtabmap::DataRecorder recorder;
 			QList<int> ids;
-			if(sessionExported < 0)
+
+			double previousStamp = 0;
+			for(int i=0; i<ids_.size(); i+=1+framesIgnored)
 			{
-				ids = ids_;
-			}
-			else
-			{
-				for(int i=0; i<ids_.size(); ++i)
+				Transform odomPose;
+				int weight = -1;
+				int mapId = -1;
+				std::string label;
+				double stamp = 0;
+				std::vector<unsigned char> userData;
+				if(memory_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, userData, true))
 				{
-					Transform odomPose;
-					int weight = -1;
-					int mapId = -1;
-					std::string label;
-					double stamp = 0;
-					std::vector<unsigned char> userData;
-					if(memory_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, userData, true))
+					if(frameRate == 0 ||
+					   previousStamp == 0 ||
+					   stamp == 0 ||
+					   stamp - previousStamp >= 1.0/frameRate)
 					{
-						if(sessionExported == mapId)
+						if(sessionExported < 0 || sessionExported == mapId)
 						{
 							ids.push_back(ids_[i]);
 						}
-						else if(mapId > sessionExported)
-						{
-							break;
-						}
+						previousStamp = stamp;
+					}
+					if(sessionExported >= 0 && mapId > sessionExported)
+					{
+						break;
 					}
 				}
 			}
 			if(recorder.init(path, false))
 			{
 				rtabmap::DetailedProgressDialog progressDialog(this);
-				progressDialog.setMaximumSteps(ids.size() / (1+framesIgnored) + 1);
+				progressDialog.setMaximumSteps(ids.size());
 				progressDialog.show();
 
-				for(int i=0; i<ids.size(); i+=1+framesIgnored)
+				for(int i=0; i<ids.size(); ++i)
 				{
 					int id = ids.at(i);
 
@@ -1465,6 +1468,11 @@ void DatabaseViewer::update(int value,
 								1);
 					}
 					view3D->addOrUpdateCloud("0", cloud, data.getLocalTransform());
+
+					//add scan
+					pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.getLaserScanRaw());
+					view3D->addOrUpdateCloud("1", scan);
+
 					view3D->update();
 				}
 			}
@@ -1842,13 +1850,16 @@ void DatabaseViewer::sliderLoopValueChanged(int value)
 void DatabaseViewer::updateConstraintView()
 {
 	Link link = this->findActiveLink(ui_->horizontalSlider_A->value(), ui_->horizontalSlider_B->value());
-	if(link.type() == Link::kNeighbor)
+	if(link.isValid())
 	{
-		this->updateConstraintView(neighborLinks_.at(ui_->horizontalSlider_neighbors->value()), false);
-	}
-	else
-	{
-		this->updateConstraintView(loopLinks_.at(ui_->horizontalSlider_loops->value()), false);
+		if(link.type() == Link::kNeighbor)
+		{
+			this->updateConstraintView(neighborLinks_.at(ui_->horizontalSlider_neighbors->value()), false);
+		}
+		else
+		{
+			this->updateConstraintView(loopLinks_.at(ui_->horizontalSlider_loops->value()), false);
+		}
 	}
 }
 
@@ -2042,7 +2053,10 @@ void DatabaseViewer::updateConstraintView(
 					if(cloudTo->size())
 					{
 						cloudTo = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZ>(cloudTo);
-						cloudTo = rtabmap::util3d::transformPointCloud<pcl::PointXYZ>(cloudTo, t);
+						if(cloudTo->size())
+						{
+							cloudTo = rtabmap::util3d::transformPointCloud<pcl::PointXYZ>(cloudTo, t);
+						}
 					}
 
 					if(cloudFrom->size())
