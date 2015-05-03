@@ -369,9 +369,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->actionStereoFlyCapture2->setEnabled(CameraStereoFlyCapture2::available());
 	this->updateSelectSourceMenu();
 
-	connect(_ui->actionSave_state, SIGNAL(triggered()), this, SLOT(saveFigures()));
-	connect(_ui->actionLoad_state, SIGNAL(triggered()), this, SLOT(loadFigures()));
-
 	connect(_ui->actionPreferences, SIGNAL(triggered()), this, SLOT(openPreferences()));
 
 	QActionGroup * modeGrp = new QActionGroup(this);
@@ -461,6 +458,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 			_ui->statsToolBox->updateStat(QString((*iter).first.c_str()).replace('_', ' '), 0, (*iter).second);
 		}
 	}
+	this->loadFigures();
+	connect(_ui->statsToolBox, SIGNAL(figuresSetupChanged()), this, SLOT(configGUIModified()));
 
 	// update loop closure viewer parameters
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
@@ -1200,6 +1199,11 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		{
 			// clear the global path if set (goal reached)
 			_ui->graphicsView_graphView->setGlobalPath(std::vector<std::pair<int, Transform> >());
+		}
+		// update current goal id
+		if(stat.currentGoalId() > 0)
+		{
+			_ui->graphicsView_graphView->setCurrentGoalID(stat.currentGoalId());
 		}
 
 		UDEBUG("");
@@ -1986,7 +1990,7 @@ void MainWindow::processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathE
 		_ui->graphicsView_graphView->setGlobalPath(event.getPoses());
 		_ui->statusbar->showMessage(
 				tr("Global path computed from %1 (%2 poses, %3 m)!").arg(event.getGoal()).arg(event.getPoses().size()).arg(graph::computePathLength(event.getPoses())),
-				5000);
+				10000);
 	}
 }
 
@@ -2075,6 +2079,11 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 
 void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters)
 {
+	applyPrefSettings(parameters, true); //post parameters
+}
+
+void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bool postParamEvent)
+{
 	ULOGGER_DEBUG("");
 	if(parameters.size())
 	{
@@ -2098,7 +2107,10 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters)
 					QMessageBox::information(this, tr("Working memory changed"), tr("The working directory can't be changed while the detector is running. This will be applied when the detector will stop."));
 				}
 			}
-			this->post(new ParamEvent(parametersModified));
+			if(postParamEvent)
+			{
+				this->post(new ParamEvent(parametersModified));
+			}
 		}
 
 		if(_state != kMonitoring && _state != kMonitoringPaused &&
@@ -2121,6 +2133,12 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters)
 		if(uContains(parameters, Parameters::kLccIcp3Samples()))
 		{
 			_ui->widget_loopClosureViewer->setSamples(atoi(parameters.at(Parameters::kLccIcp3Samples()).c_str()));
+		}
+
+		// update graph view parameters
+		if(uContains(parameters, Parameters::kRGBDLocalRadius()))
+		{
+			_ui->graphicsView_graphView->setLocalRadius(uStr2Float(parameters.at(Parameters::kRGBDLocalRadius())));
 		}
 	}
 
@@ -2380,6 +2398,7 @@ void MainWindow::saveConfigGUI()
 	_preferencesDialog->saveWidgetState(_postProcessingDialog);
 	_preferencesDialog->saveWidgetState(_ui->graphicsView_graphView);
 	_preferencesDialog->saveSettings();
+	this->saveFigures();
 	this->setWindowModified(false);
 }
 
@@ -2426,6 +2445,7 @@ void MainWindow::newDatabase()
 	}
 	_newDatabasePath = databasePath.c_str();
 	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdInit, databasePath, 0, _preferencesDialog->getAllParameters()));
+	applyPrefSettings(_preferencesDialog->getAllParameters(), false);
 }
 
 void MainWindow::openDatabase()
@@ -2446,6 +2466,7 @@ void MainWindow::openDatabase()
 		_openedDatabasePath = path;
 		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdInit, path.toStdString(), 0, _preferencesDialog->getAllParameters()));
 	}
+	applyPrefSettings(_preferencesDialog->getAllParameters(), false);
 }
 
 bool MainWindow::closeDatabase()
@@ -3854,20 +3875,6 @@ void MainWindow::saveFigures()
 	QStringList curveNames;
 	_ui->statsToolBox->getFiguresSetup(curvesPerFigure, curveNames);
 
-	if(curvesPerFigure.size() == 0)
-	{
-		QMessageBox msgBox;
-		msgBox.setText("There is no figure shown.");
-		msgBox.setInformativeText("Do you want to save anyway ? (this will erase the previous saved configuration)");
-		msgBox.setStandardButtons(QFlags<QMessageBox::StandardButton>(QMessageBox::Save | QMessageBox::Cancel));
-		msgBox.setDefaultButton(QMessageBox::Cancel);
-		int ret = msgBox.exec();
-		if(ret == QMessageBox::Cancel)
-		{
-			return;
-		}
-	}
-
 	QStringList curvesPerFigureStr;
 	for(int i=0; i<curvesPerFigure.size(); ++i)
 	{
@@ -3886,25 +3893,28 @@ void MainWindow::loadFigures()
 	QString curvesPerFigure = _preferencesDialog->loadCustomConfig("Figures", "counts");
 	QString curveNames = _preferencesDialog->loadCustomConfig("Figures", "curves");
 
-	QStringList curvesPerFigureList = curvesPerFigure.split(" ");
-	QStringList curvesNamesList = curveNames.split(" ");
-
-	int j=0;
-	for(int i=0; i<curvesPerFigureList.size(); ++i)
+	if(!curvesPerFigure.isEmpty())
 	{
-		bool ok = false;
-		int count = curvesPerFigureList[i].toInt(&ok);
-		if(!ok)
+		QStringList curvesPerFigureList = curvesPerFigure.split(" ");
+		QStringList curvesNamesList = curveNames.split(" ");
+
+		int j=0;
+		for(int i=0; i<curvesPerFigureList.size(); ++i)
 		{
-			QMessageBox::warning(this, "Loading failed", "Corrupted figures setup...");
-			break;
-		}
-		else
-		{
-			_ui->statsToolBox->addCurve(curvesNamesList[j++].replace('_', ' '));
-			for(int k=1; k<count && j<curveNames.size(); ++k)
+			bool ok = false;
+			int count = curvesPerFigureList[i].toInt(&ok);
+			if(!ok)
 			{
-				_ui->statsToolBox->addCurve(curvesNamesList[j++].replace('_', ' '), false);
+				QMessageBox::warning(this, "Loading failed", "Corrupted figures setup...");
+				break;
+			}
+			else
+			{
+				_ui->statsToolBox->addCurve(curvesNamesList[j++].replace('_', ' '));
+				for(int k=1; k<count && j<curveNames.size(); ++k)
+				{
+					_ui->statsToolBox->addCurve(curvesNamesList[j++].replace('_', ' '), false);
+				}
 			}
 		}
 	}

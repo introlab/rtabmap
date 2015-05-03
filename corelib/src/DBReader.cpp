@@ -46,14 +46,26 @@ DBReader::DBReader(const std::string & databasePath,
 				   float frameRate,
 				   bool odometryIgnored,
 				   bool ignoreGoalDelay) :
-	_path(databasePath),
+	_paths(uSplit(databasePath, ';')),
 	_frameRate(frameRate),
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
 	_dbDriver(0),
 	_currentId(_ids.end())
 {
+}
 
+DBReader::DBReader(const std::list<std::string> & databasePaths,
+				   float frameRate,
+				   bool odometryIgnored,
+				   bool ignoreGoalDelay) :
+   _paths(databasePaths),
+   _frameRate(frameRate),
+	_odometryIgnored(odometryIgnored),
+	_ignoreGoalDelay(ignoreGoalDelay),
+	_dbDriver(0),
+	_currentId(_ids.end())
+{
 }
 
 DBReader::~DBReader()
@@ -77,9 +89,16 @@ bool DBReader::init(int startIndex)
 	_currentId=_ids.end();
 	_previousStamp = 0;
 
-	if(!UFile::exists(_path))
+	if(_paths.size() == 0)
 	{
-		UERROR("Database path does not exist (%s)", _path.c_str());
+		UERROR("No database path set...");
+		return false;
+	}
+
+	std::string path = _paths.front();
+	if(!UFile::exists(path))
+	{
+		UERROR("Database path does not exist (%s)", path.c_str());
 		return false;
 	}
 
@@ -91,9 +110,9 @@ bool DBReader::init(int startIndex)
 		UERROR("Driver doesn't exist.");
 		return false;
 	}
-	if(!_dbDriver->openConnection(_path))
+	if(!_dbDriver->openConnection(path))
 	{
-		UERROR("Can't open database %s", _path.c_str());
+		UERROR("Can't open database %s", path.c_str());
 		delete _dbDriver;
 		_dbDriver = 0;
 		return false;
@@ -197,8 +216,23 @@ void DBReader::mainLoop()
 	else if(!this->isKilled())
 	{
 		UINFO("no more images...");
-		this->kill();
-		this->post(new CameraEvent());
+		if(_paths.size() > 1)
+		{
+			_paths.pop_front();
+			UWARN("Loading next database \"%s\"...", _paths.front().c_str());
+			if(!this->init())
+			{
+				UERROR("Failed to initialize the next database \"%s\"", _paths.front().c_str());
+				this->kill();
+				this->post(new CameraEvent());
+			}
+		}
+		else
+		{
+			this->kill();
+			this->post(new CameraEvent());
+		}
+
 	}
 
 }

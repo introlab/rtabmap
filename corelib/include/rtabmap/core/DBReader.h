@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/core/core.hpp>
 
 #include <set>
+#include <list>
 
 namespace rtabmap {
 
@@ -47,6 +48,10 @@ class DBDriver;
 class RTABMAP_EXP DBReader : public UThreadNode, public UEventsSender {
 public:
 	DBReader(const std::string & databasePath,
+			 float frameRate = 0.0f,
+			 bool odometryIgnored = false,
+			 bool ignoreGoalDelay = false);
+	DBReader(const std::list<std::string> & databasePaths,
 			 float frameRate = 0.0f,
 			 bool odometryIgnored = false,
 			 bool ignoreGoalDelay = false);
@@ -61,7 +66,7 @@ protected:
 	virtual void mainLoop();
 
 private:
-	std::string _path;
+	std::list<std::string> _paths;
 	float _frameRate; // -1 = use Database stamps, 0 = inf
 	bool _odometryIgnored;
 	bool _ignoreGoalDelay;

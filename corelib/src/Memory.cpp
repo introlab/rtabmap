@@ -73,6 +73,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_localSpaceLinksKeptInWM(Parameters::defaultMemLocalSpaceLinksKeptInWM()),
 	_rehearsalMaxDistance(Parameters::defaultRGBDLinearUpdate()),
 	_rehearsalMaxAngle(Parameters::defaultRGBDAngularUpdate()),
+	_rehearsalWeightIgnoredWhileMoving(Parameters::defaultMemRehearsalWeightIgnoredWhileMoving()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -399,6 +400,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemLocalSpaceLinksKeptInWM(), _localSpaceLinksKeptInWM);
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rehearsalMaxDistance);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
+	Parameters::parse(parameters, Parameters::kMemRehearsalWeightIgnoredWhileMoving(), _rehearsalWeightIgnoredWhileMoving);
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -837,14 +839,14 @@ std::map<int, Link> Memory::getLoopClosureLinks(
 // maxCheckedInDatabase = -1 means no limit to check in database (default)
 // maxCheckedInDatabase = 0 means don't check in database
 std::map<int, int> Memory::getNeighborsId(int signatureId,
-		int margin, // 0 means infinite margin
+		int maxGraphDepth, // 0 means infinite margin
 		int maxCheckedInDatabase, // default -1 (no limit)
 		bool incrementMarginOnLoop, // default false
 		bool ignoreLoopIds, // default false
 		double * dbAccessTime
 		) const
 {
-	UASSERT(margin >= 0);
+	UASSERT(maxGraphDepth >= 0);
 	//UDEBUG("signatureId=%d, neighborsMargin=%d", signatureId, margin);
 	if(dbAccessTime)
 	{
@@ -861,9 +863,10 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 	std::set<int> nextMargin;
 	nextMargin.insert(signatureId);
 	int m = 0;
-	while((margin == 0 || m < margin) && nextMargin.size())
+	while((maxGraphDepth == 0 || m < maxGraphDepth) && nextMargin.size())
 	{
-		curentMarginList = std::list<int>(nextMargin.begin(), nextMargin.end());
+		// insert more recent first (priority to be loaded first from the database below if set)
+		curentMarginList = std::list<int>(nextMargin.rbegin(), nextMargin.rend());
 		nextMargin.clear();
 
 		for(std::list<int>::iterator jter = curentMarginList.begin(); jter!=curentMarginList.end(); ++jter)
@@ -918,6 +921,73 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 								}
 							}
 						}
+					}
+				}
+			}
+		}
+		++m;
+	}
+	return ids;
+}
+
+// return map<Id,sqrdDistance>, including signatureId
+std::map<int, float> Memory::getNeighborsIdRadius(
+		int signatureId,
+		float radius, // 0 means ignore radius
+		const std::map<int, Transform> & optimizedPoses,
+		int maxGraphDepth // 0 means infinite margin
+		) const
+{
+	UASSERT(maxGraphDepth >= 0);
+	UASSERT(uContains(optimizedPoses, signatureId));
+	UASSERT(signatureId > 0);
+	std::map<int, float> ids;
+	std::list<int> curentMarginList;
+	std::set<int> currentMargin;
+	std::set<int> nextMargin;
+	nextMargin.insert(signatureId);
+	int m = 0;
+	Transform referential = optimizedPoses.at(signatureId);
+	UASSERT(!referential.isNull());
+	float radiusSqrd = radius*radius;
+	std::map<int, float> savedRadius;
+	savedRadius.insert(std::make_pair(signatureId, 0));
+	while((maxGraphDepth == 0 || m < maxGraphDepth) && nextMargin.size())
+	{
+		curentMarginList = std::list<int>(nextMargin.begin(), nextMargin.end());
+		nextMargin.clear();
+
+		for(std::list<int>::iterator jter = curentMarginList.begin(); jter!=curentMarginList.end(); ++jter)
+		{
+			if(ids.find(*jter) == ids.end())
+			{
+				//UDEBUG("Added %d with margin %d", *jter, m);
+				// Look up in STM/WM if all ids are here, if not... load them from the database
+				const Signature * s = this->getSignature(*jter);
+				std::map<int, Link> tmpLinks;
+				const std::map<int, Link> * links = &tmpLinks;
+				if(s)
+				{
+					ids.insert(std::pair<int, float>(*jter, savedRadius.at(*jter)));
+
+					links = &s->getLinks();
+				}
+
+				// links
+				for(std::map<int, Link>::const_iterator iter=links->begin(); iter!=links->end(); ++iter)
+				{
+					if(!uContains(ids, iter->first) &&
+						uContains(optimizedPoses, iter->first))
+					{
+						const Transform & t = optimizedPoses.at(iter->first);
+						UASSERT(!t.isNull());
+						float distanceSqrd = referential.getDistanceSquared(t);
+						if(radiusSqrd == 0 || distanceSqrd<radiusSqrd)
+						{
+							savedRadius.insert(std::make_pair(iter->first, distanceSqrd));
+							nextMargin.insert(iter->first);
+						}
+
 					}
 				}
 			}
@@ -1256,7 +1326,7 @@ std::list<int> Memory::forget(const std::set<int> & ignoredIds)
 {
 	UDEBUG("");
 	std::list<int> signaturesRemoved;
-	if(_vwd->isIncremental())
+	if(_vwd->isIncremental() && _vwd->getVisualWords().size())
 	{
 		int newWords = 0;
 		int wordsRemoved = 0;
@@ -1890,6 +1960,13 @@ Transform Memory::computeVisualTransform(
 					if(variance <= _bowEpipolarGeometryVar)
 					{
 						transform = cameraTransform.inverse();
+						if(_bowForce2D)
+						{
+							UDEBUG("Forcing 2D...");
+							float x,y,z,r,p,yaw;
+							transform.getTranslationAndEulerAngles(x,y,z, r,p,yaw);
+							transform = Transform::fromEigen3f(pcl::getTransformation(x,y,0, 0, 0, yaw));
+						}
 					}
 					else
 					{
@@ -1986,6 +2063,22 @@ Transform Memory::computeVisualTransform(
 			msg = uFormat("Words 3D empty?!? olds=%d=%d newS=%d=%d",
 					oldS.id(), (int)oldS.getWords3().size(),
 					newS.id(), (int)newS.getWords3().size());
+			UWARN(msg.c_str());
+		}
+	}
+
+	if(!transform.isNull())
+	{
+		// verify if it is a 180 degree transform, well verify > 90
+		float roll,pitch,yaw;
+		transform.getEulerAngles(roll, pitch, yaw);
+		if(fabs(roll) > CV_PI/2 ||
+		   fabs(pitch) > CV_PI/2 ||
+		   fabs(yaw) > CV_PI/2)
+		{
+			transform.setNull();
+			msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)",
+					roll, pitch, yaw);
 			UWARN(msg.c_str());
 		}
 	}
@@ -2295,7 +2388,8 @@ Transform Memory::computeIcpTransform(
 				}
 				else
 				{
-					correspondencesRatio = float(correspondences)/float(oldCloud->size()>newCloud->size()?oldCloud->size():newCloud->size());
+					UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set to 0!",
+							newS.id());
 				}
 
 				UDEBUG("%d->%d hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
@@ -2466,9 +2560,18 @@ Transform Memory::computeScanMatchingTransform(
 		UDEBUG("icpT=%s", icpT.prettyPrint().c_str());
 
 		// verify if there enough correspondences
-		float correspondencesRatio = float(correspondences)/float(newCloud->size());
+		float correspondencesRatio = 0.0f;
+		if(newS->getLaserScanMaxPts())
+		{
+			correspondencesRatio = float(correspondences)/float(newS->getLaserScanMaxPts());
+		}
+		else
+		{
+			UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set to 0!",
+					newS->id());
+		}
 
-		UDEBUG("variance=%f, correspondences=%d/%d (%f%%)",
+		UDEBUG("variance=%f, correspondences=%d/%d (%f%%) %f",
 				variance?*variance:-1,
 				correspondences,
 				(int)newCloud->size(),
@@ -2479,16 +2582,20 @@ Transform Memory::computeScanMatchingTransform(
 			*inliers = correspondences;
 		}
 
+		//pcl::io::savePCDFile("old.pcd", *assembledOldClouds, true);
+		//pcl::io::savePCDFile("new.pcd", *newCloud, true);
+		//UWARN("local scan matching old.pcd, new.pcd saved!");
+		//if(!icpT.isNull())
+		//{
+		//	newCloud = util3d::transformPointCloud<pcl::PointXYZ>(newCloud, icpT);
+		//	pcl::io::savePCDFile("newFinal.pcd", *newCloud, true);
+		//	UWARN("local scan matching newFinal.pcd saved!");
+		//}
+
 		if(!icpT.isNull() && hasConverged &&
 		   correspondencesRatio >= _icp2CorrespondenceRatio)
 		{
 			transform = poses.at(newId).inverse()*icpT.inverse() * poses.at(oldId);
-
-			//pcl::io::savePCDFile("old.pcd", *assembledOldClouds, true);
-			//pcl::io::savePCDFile("new.pcd", *newCloud, true);
-			//newCloud = util3d::transformPointCloud<pcl::PointXYZ>(newCloud, icpT);
-			//pcl::io::savePCDFile("newFinal.pcd", *newCloud, true);
-			//UWARN("local scan matching old.pcd, new.pcd and newFinal.pcd saved!");
 		}
 		else
 		{
@@ -2788,15 +2895,23 @@ void Memory::rehearsal(Signature * signature, Statistics * stats)
 						fabs(y) > _rehearsalMaxDistance ||
 						fabs(z) > _rehearsalMaxDistance)) ||
 					(_rehearsalMaxAngle>0.0f && (
-					fabs(roll) > _rehearsalMaxAngle ||
-					fabs(pitch) > _rehearsalMaxAngle ||
-					fabs(yaw) > _rehearsalMaxAngle)))
+						fabs(roll) > _rehearsalMaxAngle ||
+						fabs(pitch) > _rehearsalMaxAngle ||
+						fabs(yaw) > _rehearsalMaxAngle)))
 				{
-					// if the robot has moved, transfer only weight
-					signature->setWeight(signature->getWeight() + 1 + sB->getWeight());
-					sB->setWeight(0);
-					UINFO("Only updated weight to %d of %d (old=%d) because the robot has moved. (d=%f a=%f)",
-							signature->getWeight(), signature->id(), id, _rehearsalMaxDistance, _rehearsalMaxAngle);
+					if(_rehearsalWeightIgnoredWhileMoving)
+					{
+						UINFO("Rehearsal ignored because the robot has moved more than %f m or %f rad",
+								_rehearsalMaxDistance, _rehearsalMaxAngle);
+					}
+					else
+					{
+						// if the robot has moved, increase only weight of the previous
+						// signature because they are not merged
+						sB->setWeight(sB->getWeight()+1);
+						UINFO("Only updated weight to %d of %d (new=%d) because the robot has moved. (d=%f a=%f)",
+								sB->getWeight(), sB->id(), signature->id(), _rehearsalMaxDistance, _rehearsalMaxAngle);
+					}
 				}
 				else if(this->rehearsalMerge(id, signature->id()))
 				{
@@ -3017,7 +3132,7 @@ Signature Memory::getSignatureData(int locationId, bool uncompressedData)
 			s->uncompressData();
 			r.setImageRaw(s->getImageRaw());
 			r.setDepthRaw(s->getDepthRaw());
-			r.setLaserScanRaw(s->getLaserScanRaw());
+			r.setLaserScanRaw(s->getLaserScanRaw(), s->getLaserScanMaxPts());
 		}
 		else
 		{
@@ -3368,7 +3483,7 @@ void Memory::copyData(const Signature * from, Signature * to)
 		{
 			to->setImageCompressed(from->getImageCompressed());
 			to->setDepthCompressed(from->getDepthCompressed(), from->getFx(), from->getFy(), from->getCx(), from->getCy());
-			to->setLaserScanCompressed(from->getLaserScanCompressed());
+			to->setLaserScanCompressed(from->getLaserScanCompressed(), from->getLaserScanMaxPts());
 			to->setLocalTransform(from->getLocalTransform());
 		}
 
@@ -3933,7 +4048,7 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 	{
 		s->setImageRaw(image);
 		s->setDepthRaw(depthOrRightImage);
-		s->setLaserScanRaw(laserScan);
+		s->setLaserScanRaw(laserScan, data.laserScanMaxPts());
 	}
 
 

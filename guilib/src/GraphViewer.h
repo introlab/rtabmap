@@ -59,6 +59,8 @@ public:
 	void updatePosterior(const std::map<int, float> & posterior);
 	void updateLocalPath(const std::vector<int> & localPath);
 	void setGlobalPath(const std::vector<std::pair<int, Transform> > & globalPath);
+	void setCurrentGoalID(int id);
+	void setLocalRadius(float radius);
 	void clearGraph();
 	void clearMap();
 	void clearPosterior();
@@ -72,6 +74,7 @@ public:
 	float getNodeRadius() const {return _nodeRadius;}
 	float getLinkWidth() const {return _linkWidth;}
 	const QColor & getNodeColor() const {return _nodeColor;}
+	const QColor & getCurrentGoalColor() const {return _currentGoalColor;}
 	const QColor & getNeighborColor() const {return _neighborColor;}
 	const QColor & getGlobalLoopClosureColor() const {return _loopClosureColor;}
 	const QColor & getLocalLoopClosureColor() const {return _loopClosureLocalColor;}
@@ -82,12 +85,14 @@ public:
 	bool isGridMapVisible() const;
 	bool isOriginVisible() const;
 	bool isReferentialVisible() const;
+	bool isLocalRadiusVisible() const;
 
 	// setters
 	void setWorkingDirectory(const QString & path);
 	void setNodeRadius(float radius);
 	void setLinkWidth(float width);
 	void setNodeColor(const QColor & color);
+	void setCurrentGoalColor(const QColor & color);
 	void setNeighborColor(const QColor & color);
 	void setGlobalLoopClosureColor(const QColor & color);
 	void setLocalLoopClosureColor(const QColor & color);
@@ -98,6 +103,7 @@ public:
 	void setGridMapVisible(bool visible);
 	void setOriginVisible(bool visible);
 	void setReferentialVisible(bool visible);
+	void setLocalRadiusVisible(bool visible);
 
 signals:
 	void configChanged();
@@ -112,6 +118,7 @@ protected:
 private:
 	QString _workingDirectory;
 	QColor _nodeColor;
+	QColor _currentGoalColor;
 	QColor _neighborColor;
 	QColor _loopClosureColor;
 	QColor _loopClosureLocalColor;
@@ -129,6 +136,7 @@ private:
 	QGraphicsItemGroup * _referential;
 	QGraphicsItemGroup * _originReferential;
 	float _gridCellSize;
+	QGraphicsEllipseItem * _localRadius;
 };
 
 } /* namespace rtabmap */

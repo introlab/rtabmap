@@ -66,7 +66,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(LocalLoop, Time_closures,);
 	RTABMAP_STATS(LocalLoop, Space_last_closure_id,);
 	RTABMAP_STATS(LocalLoop, Space_paths,);
-	RTABMAP_STATS(LocalLoop, Space_closures_added,);
+	RTABMAP_STATS(LocalLoop, Space_closures_added_visually,);
 	RTABMAP_STATS(LocalLoop, Space_closures_added_icp_only,);
 
 	RTABMAP_STATS(OdomCorrection, Accepted,);
@@ -81,6 +81,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Memory, Images_buffered,);
 	RTABMAP_STATS(Memory, Rehearsal_sim,);
 	RTABMAP_STATS(Memory, Rehearsal_merged,);
+	RTABMAP_STATS(Memory, Local_graph_size,);
 
 	RTABMAP_STATS(Timing, Memory_update, ms);
 	RTABMAP_STATS(Timing, Scan_matching, ms);
@@ -147,6 +148,7 @@ public:
 	void setLikelihood(const std::map<int, float> & likelihood) {_likelihood = likelihood;}
 	void setRawLikelihood(const std::map<int, float> & rawLikelihood) {_rawLikelihood = rawLikelihood;}
 	void setLocalPath(const std::vector<int> & localPath) {_localPath=localPath;}
+	void setCurrentGoalId(int goal) {_currentGoalId=goal;}
 
 	// getters
 	bool extended() const {return _extended;}
@@ -169,6 +171,7 @@ public:
 	const std::map<int, float> & likelihood() const {return _likelihood;}
 	const std::map<int, float> & rawLikelihood() const {return _rawLikelihood;}
 	const std::vector<int> & localPath() const {return _localPath;}
+	int currentGoalId() const {return _currentGoalId;}
 
 	const std::map<std::string, float> & data() const {return _data;}
 
@@ -199,6 +202,7 @@ private:
 	std::map<int, float> _rawLikelihood;
 
 	std::vector<int> _localPath;
+	int _currentGoalId;
 
 	// Format for statistics (Plottable statistics must go in that map) :
 	// {"Group/Name/Unit", value}

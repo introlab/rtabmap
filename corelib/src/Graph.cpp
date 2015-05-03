@@ -1122,7 +1122,7 @@ public:
 	rtabmap::Transform pose() const {return pose_;}
 	float distFrom(const rtabmap::Transform & pose) const
 	{
-		return pose_.getDistanceSquared(pose); // use sqrt distance
+		return pose_.getDistance(pose); // use sqrt distance
 	}
 
 	void setClosed(bool closed) {closed_ = closed;}
@@ -1287,7 +1287,6 @@ int findNearestNode(
 std::map<int, float> getNodesInRadius(
 		int nodeId,
 		const std::map<int, Transform> & nodes,
-		int maxNearestNeighbors,
 		float radius)
 {
 	UASSERT(uContains(nodes, nodeId));
@@ -1323,13 +1322,66 @@ std::map<int, float> getNodesInRadius(
 		std::vector<int> ind;
 		std::vector<float> dist;
 		pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
-		kdTree->radiusSearch(pt, radius, ind, dist, maxNearestNeighbors);
+		kdTree->radiusSearch(pt, radius, ind, dist, 0);
 		for(unsigned int i=0; i<ind.size(); ++i)
 		{
 			if(ind[i] >=0)
 			{
 				UDEBUG("Inlier %d: %f", ids[ind[i]], sqrt(dist[i]));
 				foundNodes.insert(std::make_pair(ids[ind[i]], dist[i]));
+			}
+		}
+	}
+	UDEBUG("found nodes=%d", (int)foundNodes.size());
+	return foundNodes;
+}
+
+// return <id, Transform>, excluding query
+std::map<int, Transform> getPosesInRadius(
+		int nodeId,
+		const std::map<int, Transform> & nodes,
+		float radius)
+{
+	UASSERT(uContains(nodes, nodeId));
+	std::map<int, Transform> foundNodes;
+	if(nodes.size() <= 1)
+	{
+		return foundNodes;
+	}
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	cloud->resize(nodes.size());
+	std::vector<int> ids(nodes.size());
+	int oi = 0;
+	for(std::map<int, Transform>::const_iterator iter = nodes.begin(); iter!=nodes.end(); ++iter)
+	{
+		if(iter->first != nodeId)
+		{
+			(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+			UASSERT_MSG(pcl::isFinite((*cloud)[oi]), uFormat("Invalid pose (%d) %s", iter->first, iter->second.prettyPrint().c_str()).c_str());
+			ids[oi] = iter->first;
+			++oi;
+		}
+	}
+	cloud->resize(oi);
+	ids.resize(oi);
+
+	Transform fromT = nodes.at(nodeId);
+
+	if(cloud->size())
+	{
+		pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
+		kdTree->setInputCloud(cloud);
+		std::vector<int> ind;
+		std::vector<float> dist;
+		pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
+		kdTree->radiusSearch(pt, radius, ind, dist, 0);
+		for(unsigned int i=0; i<ind.size(); ++i)
+		{
+			if(ind[i] >=0)
+			{
+				UDEBUG("Inlier %d: %f", ids[ind[i]], sqrt(dist[i]));
+				foundNodes.insert(std::make_pair(ids[ind[i]], nodes.at(ids[ind[i]])));
 			}
 		}
 	}

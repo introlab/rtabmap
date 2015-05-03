@@ -120,7 +120,8 @@ private:
 				rtabmap::ImageView * view,
 				rtabmap::CloudViewer * view3D,
 				QLabel * labelId,
-				bool updateConstraintView = true);
+				QLabel * labelMapId,
+				bool updateConstraintView);
 	void updateStereo(const Signature * data);
 	void updateWordsMatching();
 	void updateConstraintView(
@@ -139,8 +140,8 @@ private:
 	std::multimap<int, rtabmap::Link> updateLinksWithModifications(
 			const std::multimap<int, rtabmap::Link> & edgeConstraints);
 	void updateLoopClosuresSlider(int from = 0, int to = 0);
-	void refineConstraint(int from, int to, bool updateGraph);
-	void refineConstraintVisually(int from, int to, bool updateGraph);
+	void refineConstraint(int from, int to,  bool silent, bool updateGraph);
+	void refineConstraintVisually(int from, int to,  bool silent, bool updateGraph);
 	bool addConstraint(int from, int to, bool silent, bool updateGraph);
 
 private:

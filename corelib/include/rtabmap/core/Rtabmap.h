@@ -184,7 +184,7 @@ private:
 	bool _localLoopClosureDetectionTime;
 	bool _localLoopClosureDetectionSpace;
 	float _localRadius;
-	int _localDetectMaxDiffID;
+	int _localDetectMaxGraphDepth;
 	float _localPathFilteringRadius;
 	bool _localPathOdomPosesUsed;
 	std::string _databasePath;

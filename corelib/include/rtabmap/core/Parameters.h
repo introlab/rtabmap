@@ -191,6 +191,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, RecentWmRatio,           float, 0.2, 	"Ratio of locations after the last loop closure in WM that cannot be transferred.");
 	RTABMAP_PARAM(Mem, TransferSortingByWeightId, bool, false,  "On transfer, signatures are sorted by weight->ID only (i.e. the oldest of the lowest weighted signatures are transferred first). If false, the signatures are sorted by weight->Age->ID (i.e. the oldest inserted in WM of the lowest weighted signatures are transferred first). Note that retrieval updates the age, not the ID.");
 	RTABMAP_PARAM(Mem, RehearsalIdUpdatedToNewOne, bool, false, "On merge, update to new id. When false, no copy.");
+	RTABMAP_PARAM(Mem, RehearsalWeightIgnoredWhileMoving, bool, true, "When the robot is moving, weights are not updated on rehearsal.");
 	RTABMAP_PARAM(Mem, GenerateIds,             bool, true,     "True=Generate location IDs, False=use input image IDs.");
 	RTABMAP_PARAM(Mem, BadSignaturesIgnored,    bool, false,     "Bad signatures are ignored.");
 	RTABMAP_PARAM(Mem, InitWMWithAllNodes,      bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.");
@@ -297,8 +298,8 @@ class RTABMAP_EXP Parameters
 	// Local loop closure detection
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionTime,     bool, false, 	"Detection over all locations in STM.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionSpace,    bool, false, 	"Detection over locations (in Working Memory or STM) near in space.");
-	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxDiffID,   int, 50,      "Maximum ID difference between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.");
-	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathFilteringRadius,   float, 0.25, "Path filtering radius.");
+	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxGraphDepth,   int, 20,      "Maximum depth from the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.");
+	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathFilteringRadius,   float, 0.5, "Path filtering radius.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathOdomPosesUsed,   bool, true, "When comparing to a local path, merge the scan using the odometry poses instead of the ones in the optimized local graph.");
 
 	// Graph optimization

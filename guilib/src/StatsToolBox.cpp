@@ -313,6 +313,7 @@ void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 			{
 				ULOGGER_WARN("Already added to the figure");
 			}
+			emit figuresSetupChanged();
 		}
 		else
 		{
@@ -362,6 +363,7 @@ void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 			delete curve;
 		}
 		figure->show();
+		emit figuresSetupChanged();
 
 		emit menuChanged(_plotMenu);
 	}
@@ -386,6 +388,7 @@ void StatsToolBox::figureDeleted(QObject * obj)
 					break;
 				}
 			}
+			emit figuresSetupChanged();
 		}
 		else
 		{

@@ -129,7 +129,7 @@ public:
 	//metric stuff
 	void setWords3(const std::multimap<int, pcl::PointXYZ> & words3) {_words3 = words3;}
 	void setDepthCompressed(const cv::Mat & bytes, float fx, float fy, float cx, float cy);
-	void setLaserScanCompressed(const cv::Mat & bytes, int maxPts = 0) {_laserScanCompressed = bytes; _laserScanMaxPts=maxPts;}
+	void setLaserScanCompressed(const cv::Mat & bytes, int maxPts) {_laserScanCompressed = bytes; _laserScanMaxPts=maxPts;}
 	void setLocalTransform(const Transform & t) {_localTransform = t;}
 	void setPose(const Transform & pose) {_pose = pose;}
 	const std::multimap<int, pcl::PointXYZ> & getWords3() const {return _words3;}
@@ -147,7 +147,7 @@ public:
 	const Transform & getLocalTransform() const {return _localTransform;}
 	void setDepthRaw(const cv::Mat & depth) {_depthRaw = depth;}
 	const cv::Mat & getDepthRaw() const {return _depthRaw;}
-	void setLaserScanRaw(const cv::Mat & depth2D, int maxPts = 0) {_laserScanRaw = depth2D; _laserScanMaxPts=maxPts;}
+	void setLaserScanRaw(const cv::Mat & depth2D, int maxPts) {_laserScanRaw = depth2D; _laserScanMaxPts=maxPts;}
 	const cv::Mat & getLaserScanRaw() const {return _laserScanRaw;}
 	int getLaserScanMaxPts() const {return _laserScanMaxPts;}
 

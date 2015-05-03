@@ -94,6 +94,7 @@ public slots:
 
 signals:
 	void menuChanged(const QMenu *);
+	void figuresSetupChanged();
 
 private slots:
 	void plot(const StatItem * stat, const QString & plotName = QString());

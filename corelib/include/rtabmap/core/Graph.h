@@ -207,7 +207,10 @@ int RTABMAP_EXP findNearestNode(
 std::map<int, float> RTABMAP_EXP getNodesInRadius(
 		int nodeId,
 		const std::map<int, Transform> & nodes,
-		int maxNearestNeighbors,
+		float radius);
+std::map<int, Transform> RTABMAP_EXP getPosesInRadius(
+		int nodeId,
+		const std::map<int, Transform> & nodes,
 		float radius);
 
 float RTABMAP_EXP computePathLength(

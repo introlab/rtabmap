@@ -529,21 +529,13 @@ void ImageView::updateOpacity()
 		if(_imageItem->isVisible() && _imageDepthItem->isVisible())
 		{
 			QGraphicsOpacityEffect * effect = new QGraphicsOpacityEffect();
-			QGraphicsOpacityEffect * effect2 = new QGraphicsOpacityEffect();
 			effect->setOpacity(0.5);
-			effect2->setOpacity(0.5);
-			_imageItem->setGraphicsEffect(effect);
-			_imageDepthItem->setGraphicsEffect(effect2);
+			_imageDepthItem->setGraphicsEffect(effect);
 		}
 		else
 		{
-			_imageItem->setGraphicsEffect(0);
 			_imageDepthItem->setGraphicsEffect(0);
 		}
-	}
-	else if(_imageItem)
-	{
-		_imageItem->setGraphicsEffect(0);
 	}
 	else if(_imageDepthItem)
 	{

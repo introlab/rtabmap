@@ -195,13 +195,6 @@
      </property>
      <addaction name="separator"/>
     </widget>
-    <widget class="QMenu" name="menuFigures">
-     <property name="title">
-      <string>Figures</string>
-     </property>
-     <addaction name="actionSave_state"/>
-     <addaction name="actionLoad_state"/>
-    </widget>
     <widget class="QMenu" name="menuAspect_ratio_2">
      <property name="title">
       <string>Aspect ratio</string>
@@ -217,7 +210,6 @@
      <addaction name="action240p"/>
     </widget>
     <addaction name="menuShow_view"/>
-    <addaction name="menuFigures"/>
     <addaction name="actionScreenshot"/>
     <addaction name="actionAuto_screen_capture"/>
     <addaction name="menuAspect_ratio_2"/>
@@ -876,16 +868,6 @@
   <action name="actionClear_cache">
    <property name="text">
     <string>Clear the cache</string>
-   </property>
-  </action>
-  <action name="actionSave_state">
-   <property name="text">
-    <string>Save state</string>
-   </property>
-  </action>
-  <action name="actionLoad_state">
-   <property name="text">
-    <string>Load state</string>
    </property>
   </action>
   <action name="actionAuto_screen_capture">

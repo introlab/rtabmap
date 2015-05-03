@@ -84,12 +84,18 @@ public:
 	bool addLink(int to, int from, const Transform & transform, Link::Type type, float rotVariance, float transVariance);
 	void updateLink(int fromId, int toId, const Transform & transform, float rotVariance, float transVariance);
 	void removeAllVirtualLinks();
-	std::map<int, int> getNeighborsId(int signatureId,
-			int margin,
+	std::map<int, int> getNeighborsId(
+			int signatureId,
+			int maxGraphDepth,
 			int maxCheckedInDatabase = -1,
 			bool incrementMarginOnLoop = false,
 			bool ignoreLoopIds = false,
 			double * dbAccessTime = 0) const;
+	std::map<int, float> getNeighborsIdRadius(
+			int signatureId,
+			float radius,
+			const std::map<int, Transform> & optimizedPoses,
+			int maxGraphDepth) const;
 	void deleteLocation(int locationId, std::list<int> * deletedWords = 0);
 	void removeLink(int idA, int idB);
 
@@ -224,6 +230,7 @@ private:
 	bool _localSpaceLinksKeptInWM;
 	float _rehearsalMaxDistance;
 	float _rehearsalMaxAngle;
+	bool _rehearsalWeightIgnoredWhileMoving;
 
 	int _idCount;
 	int _idMapCount;

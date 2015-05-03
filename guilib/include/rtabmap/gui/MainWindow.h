@@ -157,8 +157,6 @@ private slots:
 	void downloadAllClouds();
 	void downloadPoseGraph();
 	void clearTheCache();
-	void saveFigures();
-	void loadFigures();
 	void openPreferences();
 	void selectScreenCaptureFormat(bool checked);
 	void takeScreenshot();
@@ -218,6 +216,9 @@ private:
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
 	void setupMainLayout(bool vertical);
 	void updateSelectSourceMenu();
+	void applyPrefSettings(const rtabmap::ParametersMap & parameters, bool postParamEvent);
+	void saveFigures();
+	void loadFigures();
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getAssembledCloud(
 			const std::map<int, Transform> & poses,

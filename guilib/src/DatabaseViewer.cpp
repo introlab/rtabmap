@@ -237,6 +237,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->checkBox_icp_p2plane, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->spinBox_icp_normalKSearch, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_icp_2d, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_icp_minCorrespondenceRatio, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	// Visual parameters
 	connect(ui_->groupBox_visual_recomputeFeatures, SIGNAL(clicked(bool)), this, SLOT(configModified()));
 	connect(ui_->comboBox_featureType, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
@@ -354,6 +355,7 @@ void DatabaseViewer::readSettings()
 	ui_->checkBox_icp_p2plane->setChecked(settings.value("point2place", ui_->checkBox_icp_p2plane->isChecked()).toBool());
 	ui_->spinBox_icp_normalKSearch->setValue(settings.value("normalKSearch", ui_->spinBox_icp_normalKSearch->value()).toInt());
 	ui_->checkBox_icp_2d->setChecked(settings.value("icp2d", ui_->checkBox_icp_2d->isChecked()).toBool());
+	ui_->doubleSpinBox_icp_minCorrespondenceRatio->setValue(settings.value("icpMinRatio", ui_->doubleSpinBox_icp_minCorrespondenceRatio->value()).toDouble());
 	settings.endGroup();
 
 	// Visual parameters
@@ -429,6 +431,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("point2place", ui_->checkBox_icp_p2plane->isChecked());
 	settings.setValue("normalKSearch", ui_->spinBox_icp_normalKSearch->value());
 	settings.setValue("icp2d", ui_->checkBox_icp_2d->isChecked());
+	settings.setValue("icpMinRatio", ui_->doubleSpinBox_icp_minCorrespondenceRatio->value());
 	settings.endGroup();
 
 	// save Visual parameters
@@ -678,6 +681,8 @@ void DatabaseViewer::exportDatabase()
 			QList<int> ids;
 
 			double previousStamp = 0;
+			std::vector<double> delays(ids_.size());
+			int oi=0;
 			for(int i=0; i<ids_.size(); i+=1+framesIgnored)
 			{
 				Transform odomPose;
@@ -697,6 +702,10 @@ void DatabaseViewer::exportDatabase()
 						{
 							ids.push_back(ids_[i]);
 						}
+						if(previousStamp && stamp)
+						{
+							delays[oi++] = stamp - previousStamp;
+						}
 						previousStamp = stamp;
 					}
 					if(sessionExported >= 0 && mapId > sessionExported)
@@ -705,11 +714,14 @@ void DatabaseViewer::exportDatabase()
 					}
 				}
 			}
+			delays.resize(oi);
+
 			if(recorder.init(path, false))
 			{
-				rtabmap::DetailedProgressDialog progressDialog(this);
-				progressDialog.setMaximumSteps(ids.size());
-				progressDialog.show();
+				rtabmap::DetailedProgressDialog * progressDialog = new rtabmap::DetailedProgressDialog(this);
+				progressDialog->setAttribute(Qt::WA_DeleteOnClose);
+				progressDialog->setMaximumSteps(ids.size());
+				progressDialog->show();
 
 				for(int i=0; i<ids.size(); ++i)
 				{
@@ -723,12 +735,17 @@ void DatabaseViewer::exportDatabase()
 					}
 					recorder.addData(sensorData);
 
-					progressDialog.appendText(tr("Exported node %1").arg(id));
-					progressDialog.incrementStep();
+					progressDialog->appendText(tr("Exported node %1").arg(id));
+					progressDialog->incrementStep();
 					QApplication::processEvents();
 				}
-				progressDialog.setValue(progressDialog.maximumSteps());
-				progressDialog.appendText("Export finished!");
+				progressDialog->setValue(progressDialog->maximumSteps());
+				if(delays.size())
+				{
+					progressDialog->appendText(tr("Average frame rate=%1 Hz (Min=%2, Max=%3)")
+							.arg(1.0/uMean(delays)).arg(1.0/uMax(delays)).arg(1.0/uMin(delays)));
+				}
+				progressDialog->appendText(tr("Export finished to \"%1\"!").arg(path));
 			}
 			else
 			{
@@ -1261,7 +1278,7 @@ void DatabaseViewer::refineAllNeighborLinks()
 		{
 			int from = neighborLinks_[i].from();
 			int to = neighborLinks_[i].to();
-			this->refineConstraint(neighborLinks_[i].from(), neighborLinks_[i].to(), false);
+			this->refineConstraint(neighborLinks_[i].from(), neighborLinks_[i].to(), true, false);
 
 			progressDialog.appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(neighborLinks_.size()));
 			progressDialog.incrementStep();
@@ -1286,7 +1303,7 @@ void DatabaseViewer::refineAllLoopClosureLinks()
 		{
 			int from = loopLinks_[i].from();
 			int to = loopLinks_[i].to();
-			this->refineConstraint(loopLinks_[i].from(), loopLinks_[i].to(), false);
+			this->refineConstraint(loopLinks_[i].from(), loopLinks_[i].to(), true, false);
 
 			progressDialog.appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(loopLinks_.size()));
 			progressDialog.incrementStep();
@@ -1311,7 +1328,7 @@ void DatabaseViewer::refineVisuallyAllNeighborLinks()
 		{
 			int from = neighborLinks_[i].from();
 			int to = neighborLinks_[i].to();
-			this->refineConstraintVisually(neighborLinks_[i].from(), neighborLinks_[i].to(), false);
+			this->refineConstraintVisually(neighborLinks_[i].from(), neighborLinks_[i].to(), true, false);
 
 			progressDialog.appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(neighborLinks_.size()));
 			progressDialog.incrementStep();
@@ -1336,7 +1353,7 @@ void DatabaseViewer::refineVisuallyAllLoopClosureLinks()
 		{
 			int from = loopLinks_[i].from();
 			int to = loopLinks_[i].to();
-			this->refineConstraintVisually(loopLinks_[i].from(), loopLinks_[i].to(), false);
+			this->refineConstraintVisually(loopLinks_[i].from(), loopLinks_[i].to(), true, false);
 
 			progressDialog.appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(loopLinks_.size()));
 			progressDialog.incrementStep();
@@ -1360,7 +1377,9 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_stampA,
 			ui_->graphicsView_A,
 			ui_->widget_cloudA,
-			ui_->label_idA);
+			ui_->label_idA,
+			ui_->label_mapA,
+			true);
 }
 
 void DatabaseViewer::sliderBValueChanged(int value)
@@ -1374,7 +1393,9 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_stampB,
 			ui_->graphicsView_B,
 			ui_->widget_cloudB,
-			ui_->label_idB);
+			ui_->label_idB,
+			ui_->label_mapB,
+			true);
 }
 
 void DatabaseViewer::update(int value,
@@ -1387,6 +1408,7 @@ void DatabaseViewer::update(int value,
 						rtabmap::ImageView * view,
 						rtabmap::CloudViewer * view3D,
 						QLabel * labelId,
+						QLabel * labelMapId,
 						bool updateConstraintView)
 {
 	UTimer timer;
@@ -1395,6 +1417,7 @@ void DatabaseViewer::update(int value,
 	labelChildren->clear();
 	weight->clear();
 	label->clear();
+	labelMapId->clear();
 	stamp->clear();
 	QRectF rect;
 	if(value >= 0 && value < ids_.size())
@@ -1520,11 +1543,7 @@ void DatabaseViewer::update(int value,
 
 		if(mapId>=0)
 		{
-			labelId->setText(QString("%1 [%2]").arg(id).arg(mapId));
-		}
-		else
-		{
-			labelId->setText(QString::number(id));
+			labelMapId->setText(QString::number(mapId));
 		}
 	}
 	else
@@ -1849,16 +1868,19 @@ void DatabaseViewer::sliderLoopValueChanged(int value)
 // only called when ui_->checkBox_showOptimized state changed
 void DatabaseViewer::updateConstraintView()
 {
-	Link link = this->findActiveLink(ui_->horizontalSlider_A->value(), ui_->horizontalSlider_B->value());
-	if(link.isValid())
+	if(ids_.size())
 	{
-		if(link.type() == Link::kNeighbor)
+		Link link = this->findActiveLink(ids_.at(ui_->horizontalSlider_A->value()), ids_.at(ui_->horizontalSlider_B->value()));
+		if(link.isValid())
 		{
-			this->updateConstraintView(neighborLinks_.at(ui_->horizontalSlider_neighbors->value()), false);
-		}
-		else
-		{
-			this->updateConstraintView(loopLinks_.at(ui_->horizontalSlider_loops->value()), false);
+			if(link.type() == Link::kNeighbor)
+			{
+				this->updateConstraintView(neighborLinks_.at(ui_->horizontalSlider_neighbors->value()), false);
+			}
+			else
+			{
+				this->updateConstraintView(loopLinks_.at(ui_->horizontalSlider_loops->value()), false);
+			}
 		}
 	}
 }
@@ -1934,6 +1956,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->graphicsView_A,
 					ui_->widget_cloudA,
 					ui_->label_idA,
+					ui_->label_mapA,
 					false); // don't update constraints view!
 		this->update(idToIndex_.value(link.to()),
 					ui_->label_indexB,
@@ -1945,6 +1968,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->graphicsView_B,
 					ui_->widget_cloudB,
 					ui_->label_idB,
+					ui_->label_mapB,
 					false); // don't update constraints view!
 	}
 
@@ -2105,9 +2129,17 @@ void DatabaseViewer::updateConstraintView(
 			{
 				ui_->constraintsViewer->addOrUpdateCloud("scan0", scanA, Transform::getIdentity(), Qt::yellow);
 			}
+			else
+			{
+				ui_->constraintsViewer->removeCloud("scan0");
+			}
 			if(scanB->size())
 			{
 				ui_->constraintsViewer->addOrUpdateCloud("scan1", scanB, Transform::getIdentity(), Qt::magenta);
+			}
+			else
+			{
+				ui_->constraintsViewer->removeCloud("scan1");
 			}
 		}
 		else
@@ -2116,9 +2148,17 @@ void DatabaseViewer::updateConstraintView(
 			{
 				ui_->constraintsViewer->addOrUpdateCloud("scan0", scanFrom, Transform::getIdentity(), Qt::yellow);
 			}
+			else
+			{
+				ui_->constraintsViewer->removeCloud("scan0");
+			}
 			if(scanTo->size())
 			{
 				ui_->constraintsViewer->addOrUpdateCloud("scan1", scanTo, Transform::getIdentity(), Qt::magenta);
+			}
+			else
+			{
+				ui_->constraintsViewer->removeCloud("scan1");
 			}
 		}
 
@@ -2451,10 +2491,10 @@ void DatabaseViewer::refineConstraint()
 {
 	int from = ids_.at(ui_->horizontalSlider_A->value());
 	int to = ids_.at(ui_->horizontalSlider_B->value());
-	refineConstraint(from, to, true);
+	refineConstraint(from, to, false, true);
 }
 
-void DatabaseViewer::refineConstraint(int from, int to, bool updateGraph)
+void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool updateGraph)
 {
 	if(from == to)
 	{
@@ -2501,6 +2541,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool updateGraph)
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr scanA(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr scanB(new pcl::PointCloud<pcl::PointXYZ>);
+	float correspondenceRatio = 0.0f;
 	if(ui_->checkBox_icp_2d->isChecked())
 	{
 		//2D
@@ -2529,6 +2570,18 @@ void DatabaseViewer::refineConstraint(int from, int to, bool updateGraph)
 					   &hasConverged,
 					   &variance,
 					   &correspondences);
+
+				if(!transform.isNull())
+				{
+					if(dataTo.getLaserScanMaxPts())
+					{
+						correspondenceRatio =  float(correspondences)/float(dataTo.getLaserScanMaxPts());
+					}
+					else if(ui_->doubleSpinBox_icp_minCorrespondenceRatio->value())
+					{
+						UWARN("Laser scan max pts not set, but correspondence ratio is set!");
+					}
+				}
 			}
 		}
 	}
@@ -2639,42 +2692,64 @@ void DatabaseViewer::refineConstraint(int from, int to, bool updateGraph)
 					&hasConverged,
 					&variance,
 					&correspondences);
+
+			correspondenceRatio = float(correspondences)/float(depthB.total());
 		}
 	}
 
 	if(hasConverged && !transform.isNull())
 	{
-		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), transform*t, variance, variance);
-
-		bool updated = false;
-		std::multimap<int, Link>::iterator iter = linksRefined_.find(currentLink.from());
-		while(iter != linksRefined_.end() && iter->first == currentLink.from())
+		if(correspondenceRatio < ui_->doubleSpinBox_icp_minCorrespondenceRatio->value())
 		{
-			if(iter->second.to() == currentLink.to() &&
-			   iter->second.type() == currentLink.type())
+			if(!silent)
 			{
-				iter->second = newLink;
-				updated = true;
-				break;
-			}
-			++iter;
-		}
-		if(!updated)
-		{
-			linksRefined_.insert(std::make_pair<int, Link>(newLink.from(), newLink));
-
-			if(updateGraph)
-			{
-				this->updateGraphView();
+				QMessageBox::warning(this,
+								tr("Refine link"),
+								tr("Cannot find a transformation between nodes %1 and %2, correspondence ratio too low (%3).")
+								.arg(from).arg(to).arg(correspondenceRatio));
 			}
 		}
-
-		if(ui_->dockWidget_constraints->isVisible())
+		else
 		{
-			cloudB = util3d::transformPointCloud<pcl::PointXYZ>(cloudB, transform);
-			scanB = util3d::transformPointCloud<pcl::PointXYZ>(scanB, transform);
-			this->updateConstraintView(newLink, true, cloudA, cloudB, scanA, scanB);
+
+			Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), transform*t, variance, variance);
+
+			bool updated = false;
+			std::multimap<int, Link>::iterator iter = linksRefined_.find(currentLink.from());
+			while(iter != linksRefined_.end() && iter->first == currentLink.from())
+			{
+				if(iter->second.to() == currentLink.to() &&
+				   iter->second.type() == currentLink.type())
+				{
+					iter->second = newLink;
+					updated = true;
+					break;
+				}
+				++iter;
+			}
+			if(!updated)
+			{
+				linksRefined_.insert(std::make_pair<int, Link>(newLink.from(), newLink));
+
+				if(updateGraph)
+				{
+					this->updateGraphView();
+				}
+			}
+
+			if(ui_->dockWidget_constraints->isVisible())
+			{
+				cloudB = util3d::transformPointCloud<pcl::PointXYZ>(cloudB, transform);
+				scanB = util3d::transformPointCloud<pcl::PointXYZ>(scanB, transform);
+				this->updateConstraintView(newLink, true, cloudA, cloudB, scanA, scanB);
+			}
 		}
+	}
+	else if(!silent)
+	{
+		QMessageBox::warning(this,
+				tr("Refine link"),
+				tr("Cannot find a transformation between nodes %1 and %2").arg(from).arg(to));
 	}
 }
 
@@ -2682,10 +2757,10 @@ void DatabaseViewer::refineConstraintVisually()
 {
 	int from = ids_.at(ui_->horizontalSlider_A->value());
 	int to = ids_.at(ui_->horizontalSlider_B->value());
-	refineConstraintVisually(from, to, true);
+	refineConstraintVisually(from, to, false, true);
 }
 
-void DatabaseViewer::refineConstraintVisually(int from, int to, bool updateGraph)
+void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, bool updateGraph)
 {
 	if(from == to)
 	{
@@ -2751,6 +2826,14 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool updateGraph
 
 	if(!t.isNull())
 	{
+		if(ui_->checkBox_visual_2d->isChecked())
+		{
+			// We are 2D here, make sure the guess has only YAW rotation
+			float x,y,z,r,p,yaw;
+			t.getTranslationAndEulerAngles(x,y,z, r,p,yaw);
+			t = Transform::fromEigen3f(pcl::getTransformation(x,y,0, 0, 0, yaw));
+		}
+
 		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), t, variance, variance);
 
 		bool updated = false;
@@ -2779,6 +2862,12 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool updateGraph
 		{
 			this->updateConstraintView(newLink);
 		}
+	}
+	else if(!silent)
+	{
+		QMessageBox::warning(this,
+				tr("Add link"),
+				tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(rejectedMsg.c_str()));
 	}
 }
 
@@ -2860,16 +2949,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 			t = memory_->computeVisualTransform(to, from, &rejectedMsg, &inliers, &variance);
 		}
 
-		if(t.isNull())
-		{
-			if(!silent)
-			{
-				QMessageBox::warning(this,
-						tr("Add link"),
-						tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(rejectedMsg.c_str()));
-			}
-		}
-		else
+		if(!t.isNull())
 		{
 			if(ui_->checkBox_visual_2d->isChecked())
 			{
@@ -2889,6 +2969,12 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 				linksAdded_.insert(std::make_pair(to, Link(to, from, Link::kUserClosure, t.inverse(), variance, variance)));
 			}
 			updateSlider = true;
+		}
+		else if(!silent)
+		{
+			QMessageBox::warning(this,
+					tr("Add link"),
+					tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(rejectedMsg.c_str()));
 		}
 	}
 	else if(containsLink(linksRemoved_, from, to))

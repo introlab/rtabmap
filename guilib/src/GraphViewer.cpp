@@ -158,6 +158,7 @@ private:
 GraphViewer::GraphViewer(QWidget * parent) :
 		QGraphicsView(parent),
 		_nodeColor(Qt::blue),
+		_currentGoalColor(Qt::darkMagenta),
 		_neighborColor(Qt::blue),
 		_loopClosureColor(Qt::red),
 		_loopClosureLocalColor(Qt::yellow),
@@ -170,7 +171,8 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_linkWidth(0),
 		_gridMap(0),
 		_referential(0),
-		_gridCellSize(0.0f)
+		_gridCellSize(0.0f),
+		_localRadius(0)
 {
 	this->setScene(new QGraphicsScene(this));
 	this->setDragMode(QGraphicsView::ScrollHandDrag);
@@ -203,12 +205,19 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	item->setParentItem(_root);
 	_referential->addToGroup(item);
 
+	_localRadius = this->scene()->addEllipse(-0.0001,-0.0001,0.0001,0.0001);
+	_localRadius->setZValue(1);
+	_localRadius->setParentItem(_root);
+	_localRadius->setVisible(false);
+	_localRadius->setPen(QPen(Qt::DashLine));
 
 	_gridMap = this->scene()->addPixmap(QPixmap());
 	_gridMap->setZValue(0);
 	_gridMap->setParentItem(_root);
 
 	this->restoreDefaults();
+
+	this->fitInView(this->sceneRect(), Qt::KeepAspectRatio);
 }
 
 GraphViewer::~GraphViewer()
@@ -247,7 +256,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				const Transform & pose = iter->second;
 				NodeItem * item = new NodeItem(iter->first, pose, _nodeRadius);
 				this->scene()->addItem(item);
-				item->setZValue(2);
+				item->setZValue(20);
 				item->setColor(_nodeColor);
 				item->setParentItem(_root);
 				_nodeItems.insert(iter->first, item);
@@ -334,7 +343,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 					item->setColor(_loopClosureColor);
 				}
 				this->scene()->addItem(item);
-				item->setZValue(1);
+				item->setZValue(10);
 				item->setParentItem(_root);
 				_linkItems.insert(idFrom, item);
 			}
@@ -384,6 +393,7 @@ void GraphViewer::updateReferentialPosition(const Transform & t)
 {
 	QTransform qt(t.r11(), t.r12(), t.r21(), t.r22(), -t.o24(), -t.o14());
 	_referential->setTransform(qt);
+	_localRadius->setTransform(qt);
 
 	this->ensureVisible(_referential);
 }
@@ -456,11 +466,29 @@ void GraphViewer::setGlobalPath(const std::vector<std::pair<int, Transform> > & 
 			item->setPen(p);
 			item->setColor(_globalPathColor);
 			this->scene()->addItem(item);
-			item->setZValue(1);
+			item->setZValue(15);
 			item->setParentItem(_root);
 			_globalPathLinkItems.insert(idFrom, item);
 		}
 	}
+}
+
+void GraphViewer::setCurrentGoalID(int id)
+{
+	NodeItem * node = _nodeItems.value(id, 0);
+	if(node)
+	{
+		node->setColor(_currentGoalColor);
+	}
+	else
+	{
+		UWARN("Curent goal %d not found in the graph", id);
+	}
+}
+
+void GraphViewer::setLocalRadius(float radius)
+{
+	_localRadius->setRect(-radius, -radius, radius*2, radius*2);
 }
 
 void GraphViewer::updateLocalPath(const std::vector<int> & localPath)
@@ -497,6 +525,7 @@ void GraphViewer::clearGraph()
 	qDeleteAll(_globalPathLinkItems);
 	_globalPathLinkItems.clear();
 	_referential->resetTransform();
+	_localRadius->resetTransform();
 	this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
 }
 
@@ -530,6 +559,7 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("node_radius", (double)this->getNodeRadius());
 	settings.setValue("link_width", (double)this->getLinkWidth());
 	settings.setValue("node_color", this->getNodeColor());
+	settings.setValue("current_goal_color", this->getCurrentGoalColor());
 	settings.setValue("neighbor_color", this->getNeighborColor());
 	settings.setValue("global_color", this->getGlobalLoopClosureColor());
 	settings.setValue("local_color", this->getLocalLoopClosureColor());
@@ -540,6 +570,7 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("grid_visible", this->isGridMapVisible());
 	settings.setValue("origin_visible", this->isOriginVisible());
 	settings.setValue("referential_visible", this->isReferentialVisible());
+	settings.setValue("local_radius_visible", this->isLocalRadiusVisible());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -555,6 +586,7 @@ void GraphViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setNodeRadius(settings.value("node_radius", this->getNodeRadius()).toDouble());
 	this->setLinkWidth(settings.value("link_width", this->getLinkWidth()).toDouble());
 	this->setNodeColor(settings.value("node_color", this->getNodeColor()).value<QColor>());
+	this->setCurrentGoalColor(settings.value("current_goal_color", this->getCurrentGoalColor()).value<QColor>());
 	this->setNeighborColor(settings.value("neighbor_color", this->getNeighborColor()).value<QColor>());
 	this->setGlobalLoopClosureColor(settings.value("global_color", this->getGlobalLoopClosureColor()).value<QColor>());
 	this->setLocalLoopClosureColor(settings.value("local_color", this->getLocalLoopClosureColor()).value<QColor>());
@@ -565,6 +597,7 @@ void GraphViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setGridMapVisible(settings.value("grid_visible", this->isGridMapVisible()).toBool());
 	this->setOriginVisible(settings.value("origin_visible", this->isOriginVisible()).toBool());
 	this->setReferentialVisible(settings.value("referential_visible", this->isReferentialVisible()).toBool());
+	this->setLocalRadiusVisible(settings.value("local_radius_visible", this->isLocalRadiusVisible()).toBool());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -582,6 +615,10 @@ bool GraphViewer::isOriginVisible() const
 bool GraphViewer::isReferentialVisible() const
 {
 	return _referential->isVisible();
+}
+bool GraphViewer::isLocalRadiusVisible() const
+{
+	return _localRadius->isVisible();
 }
 
 void GraphViewer::setWorkingDirectory(const QString & path)
@@ -618,6 +655,10 @@ void GraphViewer::setNodeColor(const QColor & color)
 	{
 		iter.value()->setColor(_nodeColor);
 	}
+}
+void GraphViewer::setCurrentGoalColor(const QColor & color)
+{
+	_currentGoalColor = color;
 }
 void GraphViewer::setNeighborColor(const QColor & color)
 {
@@ -699,6 +740,10 @@ void GraphViewer::setReferentialVisible(bool visible)
 {
 	_referential->setVisible(visible);
 }
+void GraphViewer::setLocalRadiusVisible(bool visible)
+{
+	_localRadius->setVisible(visible);
+}
 
 void GraphViewer::restoreDefaults()
 {
@@ -741,7 +786,9 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	menu.addSeparator();
 
 	QAction * aChangeNodeColor = menu.addAction(createIcon(_nodeColor), tr("Set node color..."));
+	QAction * aChangeCurrentGoalColor = menu.addAction(createIcon(_currentGoalColor), tr("Set current goal color..."));
 	aChangeNodeColor->setIconVisibleInMenu(true);
+	aChangeCurrentGoalColor->setIconVisibleInMenu(true);
 
 	// Links
 	QMenu * menuLink = menu.addMenu(tr("Set link color..."));
@@ -774,6 +821,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aShowHideGridMap;
 	QAction * aShowHideOrigin;
 	QAction * aShowHideReferential;
+	QAction * aShowHideLocalRadius;
 	if(_gridMap->isVisible())
 	{
 		aShowHideGridMap = menu.addAction(tr("Hide grid map"));
@@ -797,6 +845,14 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else
 	{
 		aShowHideReferential = menu.addAction(tr("Show current referential"));
+	}
+	if(_localRadius->isVisible())
+	{
+		aShowHideLocalRadius = menu.addAction(tr("Hide local radius"));
+	}
+	else
+	{
+		aShowHideLocalRadius = menu.addAction(tr("Show local radius"));
 	}
 	menu.addSeparator();
 	QAction * aRestoreDefaults = menu.addAction(tr("Restore defaults"));
@@ -869,6 +925,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		return; // without emitting configChanged
 	}
 	else if(r == aChangeNodeColor ||
+			r == aChangeCurrentGoalColor ||
 			r == aChangeNeighborColor ||
 			r == aChangeGlobalLoopColor ||
 			r == aChangeLocalLoopColor ||
@@ -881,6 +938,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		if(r == aChangeNodeColor)
 		{
 			color = _nodeColor;
+		}
+		else if(r == aChangeCurrentGoalColor)
+		{
+			color = _currentGoalColor;
 		}
 		else if(r == aChangeGlobalLoopColor)
 		{
@@ -917,6 +978,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			if(r == aChangeNodeColor)
 			{
 				this->setNodeColor(color);
+			}
+			else if(r == aChangeCurrentGoalColor)
+			{
+				this->setCurrentGoalColor(color);
 			}
 			else if(r == aChangeGlobalLoopColor)
 			{
@@ -977,6 +1042,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else if(r == aShowHideReferential)
 	{
 		this->setReferentialVisible(!this->isReferentialVisible());
+	}
+	else if(r == aShowHideLocalRadius)
+	{
+		this->setLocalRadiusVisible(!this->isLocalRadiusVisible());
 	}
 	else if(r == aRestoreDefaults)
 	{
