@@ -701,12 +701,13 @@ void DatabaseViewer::exportDatabase()
 						if(sessionExported < 0 || sessionExported == mapId)
 						{
 							ids.push_back(ids_[i]);
+
+							if(previousStamp && stamp)
+							{
+								delays[oi++] = stamp - previousStamp;
+							}
+							previousStamp = stamp;
 						}
-						if(previousStamp && stamp)
-						{
-							delays[oi++] = stamp - previousStamp;
-						}
-						previousStamp = stamp;
 					}
 					if(sessionExported >= 0 && mapId > sessionExported)
 					{
