@@ -3099,7 +3099,8 @@ void Rtabmap::updateGoalIndex()
 		if(_memory->getLastWorkingSignature() == 0 ||
 		   !uContains(_optimizedPoses, _memory->getLastWorkingSignature()->id()))
 		{
-			UERROR("Last node is null in memory or not in optimized poses");
+			UERROR("Last node is null in memory or not in optimized poses. Aborting the plan...");
+			this->clearPath();
 			return;
 		}
 
