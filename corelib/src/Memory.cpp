@@ -2906,11 +2906,10 @@ void Memory::rehearsal(Signature * signature, Statistics * stats)
 					}
 					else
 					{
-						// if the robot has moved, increase only weight of the previous
-						// signature because they are not merged
-						sB->setWeight(sB->getWeight()+1);
-						UINFO("Only updated weight to %d of %d (new=%d) because the robot has moved. (d=%f a=%f)",
-								sB->getWeight(), sB->id(), signature->id(), _rehearsalMaxDistance, _rehearsalMaxAngle);
+						// if the robot has moved, increase only weight of the new one
+						signature->setWeight(signature->getWeight()+1);
+						UINFO("Only updated weight to %d of %d (old=%d) because the robot has moved. (d=%f a=%f)",
+								signature->getWeight(), signature->id(), sB->id(), _rehearsalMaxDistance, _rehearsalMaxAngle);
 					}
 				}
 				else if(this->rehearsalMerge(id, signature->id()))
