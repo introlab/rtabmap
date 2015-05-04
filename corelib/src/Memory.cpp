@@ -2907,7 +2907,8 @@ void Memory::rehearsal(Signature * signature, Statistics * stats)
 					else
 					{
 						// if the robot has moved, increase only weight of the new one
-						signature->setWeight(signature->getWeight()+1);
+						signature->setWeight(sB->getWeight() + signature->getWeight() + 1);
+						sB->setWeight(0);
 						UINFO("Only updated weight to %d of %d (old=%d) because the robot has moved. (d=%f a=%f)",
 								signature->getWeight(), signature->id(), sB->id(), _rehearsalMaxDistance, _rehearsalMaxAngle);
 					}
