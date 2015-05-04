@@ -44,7 +44,7 @@ namespace rtabmap {
 ImageView::ImageView(QWidget * parent) :
 		QWidget(parent),
 		_savedFileName((QDir::homePath()+ "/") + "picture" + ".png"),
-		_alpha(100),
+		_alpha(50),
 		_imageItem(0),
 		_imageDepthItem(0)
 {
@@ -77,7 +77,7 @@ ImageView::ImageView(QWidget * parent) :
 	_graphicsViewScaled->setCheckable(true);
 	_graphicsViewScaled->setChecked(true);
 	_graphicsViewScaled->setEnabled(false);
-	_setAlpha = _menu->addAction(tr("Set alpha..."));
+	_setAlpha = _menu->addAction(tr("Set transparency..."));
 	_saveImage = _menu->addAction(tr("Save picture..."));
 	_saveImage->setEnabled(false);
 
@@ -507,7 +507,7 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 	else if(action == _setAlpha)
 	{
 		bool ok = false;
-		int value = QInputDialog::getInt(this, tr("Set features and lines alpha"), tr("alpha (0-255)"), _alpha, 0, 255, 10, &ok);
+		int value = QInputDialog::getInt(this, tr("Set features and lines transparency"), tr("alpha (0-255)"), _alpha, 0, 255, 10, &ok);
 		if(ok)
 		{
 			this->setAlpha(value);
