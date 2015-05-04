@@ -45,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Statistics.h"
 #include "rtabmap/core/Compression.h"
+#include "rtabmap/core/Graph.h"
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
@@ -4256,56 +4257,47 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 	return std::set<int>(idsToLoad.begin(), idsToLoad.end());
 }
 
+// return all non-null poses
+// return unique links between nodes (for neighbors: old->new, for loops: parent->child)
 void Memory::getMetricConstraints(
-		const std::vector<int> & ids,
+		const std::set<int> & ids,
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> & links,
 		bool lookInDatabase)
 {
 	UDEBUG("");
-	for(unsigned int i=0; i<ids.size(); ++i)
+	for(std::set<int>::const_iterator iter=ids.begin(); iter!=ids.end(); ++iter)
 	{
-		Transform pose = getOdomPose(ids[i], lookInDatabase);
+		Transform pose = getOdomPose(*iter, lookInDatabase);
 		if(!pose.isNull())
 		{
-			poses.insert(std::make_pair(ids[i], pose));
+			poses.insert(std::make_pair(*iter, pose));
 		}
 	}
 
-	for(unsigned int i=0; i<ids.size(); ++i)
+	for(std::set<int>::const_iterator iter=ids.begin(); iter!=ids.end(); ++iter)
 	{
-		if(uContains(poses, ids[i]))
+		if(uContains(poses, *iter))
 		{
-			std::map<int, Link> neighbors = this->getNeighborLinks(ids[i], lookInDatabase); // only direct neighbors
+			std::map<int, Link> neighbors = this->getNeighborLinks(*iter, lookInDatabase); // only direct neighbors
 			for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
 			{
-				if(uContains(poses, jter->first) && jter->second.isValid())
+				if(	jter->second.isValid() &&
+					uContains(poses, jter->first) &&
+					graph::findLink(links, *iter, jter->first) == links.end())
 				{
-					bool edgeAlreadyAdded = false;
-					for(std::multimap<int, Link>::iterator iter = links.lower_bound(jter->first);
-							iter != links.end() && iter->first == jter->first;
-							++iter)
-					{
-						if(iter->second.to() == ids[i])
-						{
-							edgeAlreadyAdded = true;
-						}
-					}
-					if(!edgeAlreadyAdded)
-					{
-						links.insert(std::make_pair(ids[i], jter->second));
-					}
+					links.insert(std::make_pair(*iter, jter->second));
 				}
 			}
 
-			std::map<int, Link> loops = this->getLoopClosureLinks(ids[i], lookInDatabase);
+			std::map<int, Link> loops = this->getLoopClosureLinks(*iter, lookInDatabase);
 			for(std::map<int, Link>::iterator jter=loops.begin(); jter!=loops.end(); ++jter)
 			{
-				if(jter->first < ids[i] &&
-					uContains(poses, jter->first) &&
-					jter->second.isValid()) // null transform means a child (rehearsed location)
+				if( jter->second.isValid() && // null transform means a rehearsed location
+					jter->first < *iter && // Loop parent to child
+					uContains(poses, jter->first))
 				{
-					links.insert(std::make_pair(ids[i],jter->second));
+					links.insert(std::make_pair(*iter, jter->second));
 				}
 			}
 		}

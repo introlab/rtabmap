@@ -808,7 +808,7 @@ void DatabaseViewer::updateIds()
 	{
 		//get constraints only for parent links
 
-		memory_->getMetricConstraints(std::vector<int>(ids.begin(), ids.end()), poses_, links_, true);
+		memory_->getMetricConstraints(ids, poses_, links_, true);
 
 		if(poses_.size())
 		{

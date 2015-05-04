@@ -160,7 +160,7 @@ public:
 
 	// RGB-D stuff
 	void getMetricConstraints(
-			const std::vector<int> & ids,
+			const std::set<int> & ids,
 			std::map<int, Transform> & poses,
 			std::multimap<int, Link> & links,
 			bool lookInDatabase = false);

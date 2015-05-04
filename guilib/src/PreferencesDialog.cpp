@@ -484,7 +484,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
 	_ui->graphPlan_planWithNearNodesLinked->setObjectName(Parameters::kRGBDPlanVirtualLinks().c_str());
-	_ui->graphPlan_maxDiffID->setObjectName(Parameters::kRGBDPlanVirtualLinksMaxDiffID().c_str());
 	_ui->graphPlan_goalsSavedInUserData->setObjectName(Parameters::kRGBDGoalsSavedInUserData().c_str());
 
 	_ui->groupBox_localDetection_time->setObjectName(Parameters::kRGBDLocalLoopDetectionTime().c_str());
@@ -493,6 +492,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->localDetection_maxDiffID->setObjectName(Parameters::kRGBDLocalLoopDetectionMaxGraphDepth().c_str());
 	_ui->localDetection_pathFilteringRadius->setObjectName(Parameters::kRGBDLocalLoopDetectionPathFilteringRadius().c_str());
 	_ui->checkBox_localSpacePathOdomPosesUsed->setObjectName(Parameters::kRGBDLocalLoopDetectionPathOdomPosesUsed().c_str());
+	_ui->rgdb_localImmunizationRatio->setObjectName(Parameters::kRGBDLocalImmunizationRatio().c_str());
 
 	_ui->loopClosure_bowMinInliers->setObjectName(Parameters::kLccBowMinInliers().c_str());
 	_ui->loopClosure_bowInlierDistance->setObjectName(Parameters::kLccBowInlierDistance().c_str());
@@ -742,7 +742,7 @@ void PreferencesDialog::setupSignals()
 		if(obj)
 		{
 			// set tooltip as the parameter name
-			obj->setToolTip(iter->first.c_str());
+			obj->setToolTip(tr("%1 (Default=\"%2\")").arg(iter->first.c_str()).arg(iter->second.c_str()));
 
 			QSpinBox * spin = qobject_cast<QSpinBox *>(obj);
 			QDoubleSpinBox * doubleSpin = qobject_cast<QDoubleSpinBox *>(obj);

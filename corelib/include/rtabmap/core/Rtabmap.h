@@ -151,7 +151,7 @@ private:
 			std::multimap<int, Link> * constraints = 0) const;
 	std::map<int, Transform> optimizeGraph(
 			int fromId,
-			const std::vector<int> & ids,
+			const std::set<int> & ids,
 			bool lookInDatabase,
 			std::multimap<int, Link> * constraints = 0) const;
 	void updateGoalIndex();
@@ -184,6 +184,7 @@ private:
 	bool _localLoopClosureDetectionTime;
 	bool _localLoopClosureDetectionSpace;
 	float _localRadius;
+	float _localImmunizationRatio;
 	int _localDetectMaxGraphDepth;
 	float _localPathFilteringRadius;
 	bool _localPathOdomPosesUsed;
@@ -197,7 +198,6 @@ private:
 	bool _startNewMapOnLoopClosure;
 	float _goalReachedRadius; // meters
 	bool _planVirtualLinks;
-	int _planVirtualLinksMaxDiffID;
 	bool _goalsSavedInUserData;
 
 	std::pair<int, float> _loopClosureHypothesis;
