@@ -46,7 +46,7 @@ namespace rtabmap {
 
 #define COUNT_MIN 40
 
-CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirectory, QWidget * parent) :
+CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirectory, bool switchImages, QWidget * parent) :
 	QDialog(parent),
 	stereo_(stereo),
 	savingDirectory_(savingDirectory),
@@ -91,6 +91,8 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 
 	ui_->radioButton_raw->setChecked(true);
 
+	ui_->checkBox_switchImages->setChecked(switchImages);
+
 	this->setStereoMode(stereo_);
 }
 
@@ -134,6 +136,11 @@ void CalibrationDialog::loadSettings(QSettings & settings, const QString & group
 	{
 		settings.endGroup();
 	}
+}
+
+void CalibrationDialog::setSwitchedImages(bool switched)
+{
+	ui_->checkBox_switchImages->setChecked(switched);
 }
 
 void CalibrationDialog::setStereoMode(bool stereo)

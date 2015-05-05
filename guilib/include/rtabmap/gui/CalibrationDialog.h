@@ -47,7 +47,7 @@ class RTABMAPGUI_EXP CalibrationDialog  : public QDialog, public UEventsHandler
 	Q_OBJECT;
 
 public:
-	CalibrationDialog(bool stereo = false, const QString & savingDirectory = ".", QWidget * parent = 0);
+	CalibrationDialog(bool stereo = false, const QString & savingDirectory = ".", bool switchImages = false, QWidget * parent = 0);
 	virtual ~CalibrationDialog();
 
 	bool isCalibrated() const {return models_[0].isValid() && (stereo_?models_[1].isValid():true);}
@@ -58,6 +58,7 @@ public:
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");
 
+	void setSwitchedImages(bool switched);
 	void setStereoMode(bool stereo);
 	void setSavingDirectory(const QString & savingDirectory) {savingDirectory_ = savingDirectory;}
 
