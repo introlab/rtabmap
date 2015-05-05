@@ -396,6 +396,10 @@ void GraphViewer::updateReferentialPosition(const Transform & t)
 	_localRadius->setTransform(qt);
 
 	this->ensureVisible(_referential);
+	if(_localRadius->isVisible())
+	{
+		this->ensureVisible(_localRadius, 0, 0);
+	}
 }
 
 void GraphViewer::updateMap(const cv::Mat & map8U, float resolution, float xMin, float yMin)

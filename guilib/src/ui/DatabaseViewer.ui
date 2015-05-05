@@ -414,6 +414,8 @@
     <addaction name="actionVisual_Refine_all_loop_closure_links"/>
     <addaction name="actionRefine_all_loop_closure_links"/>
     <addaction name="separator"/>
+    <addaction name="actionReset_all_changes"/>
+    <addaction name="separator"/>
     <addaction name="actionView_3D_map"/>
     <addaction name="actionGenerate_3D_map_pcd"/>
    </widget>
@@ -1754,6 +1756,11 @@
   <action name="actionSave_config">
    <property name="text">
     <string>Save config</string>
+   </property>
+  </action>
+  <action name="actionReset_all_changes">
+   <property name="text">
+    <string>Reset all changes</string>
    </property>
   </action>
  </widget>

@@ -2595,12 +2595,32 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 	cv::Mat affineTransform(2,3,CV_32FC1);
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
+		UASSERT(!iter->second.isNull());
+
+		iter->second.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+
+		if(undefinedSize)
+		{
+			minX = maxX = x;
+			minY = maxY = y;
+			undefinedSize = false;
+		}
+		else
+		{
+			if(minX > x)
+				minX = x;
+			else if(maxX < x)
+				maxX = x;
+
+			if(minY > y)
+				minY = y;
+			else if(maxY < y)
+				maxY = y;
+		}
+
 		if(uContains(occupancy, iter->first))
 		{
-			UASSERT(!iter->second.isNull());
 			const std::pair<cv::Mat, cv::Mat> & pair = occupancy.at(iter->first);
-
-			iter->second.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
 			cosT = cos(yaw);
 			sinT = sin(yaw);
 			affineTransform.at<float>(0,0) = cosT;
@@ -2609,25 +2629,6 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 			affineTransform.at<float>(1,1) = cosT;
 			affineTransform.at<float>(0,2) = x;
 			affineTransform.at<float>(1,2) = y;
-
-			if(undefinedSize)
-			{
-				minX = maxX = x;
-				minY = maxY = y;
-				undefinedSize = false;
-			}
-			else
-			{
-				if(minX > x)
-					minX = x;
-				else if(maxX < x)
-					maxX = x;
-
-				if(minY > y)
-					minY = y;
-				else if(maxY < y)
-					maxY = y;
-			}
 
 			//ground
 			if(pair.first.rows)

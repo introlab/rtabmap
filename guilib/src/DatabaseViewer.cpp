@@ -151,6 +151,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->actionRefine_all_loop_closure_links, SIGNAL(triggered()), this, SLOT(refineAllLoopClosureLinks()));
 	connect(ui_->actionVisual_Refine_all_neighbor_links, SIGNAL(triggered()), this, SLOT(refineVisuallyAllNeighborLinks()));
 	connect(ui_->actionVisual_Refine_all_loop_closure_links, SIGNAL(triggered()), this, SLOT(refineVisuallyAllLoopClosureLinks()));
+	connect(ui_->actionReset_all_changes, SIGNAL(triggered()), this, SLOT(resetAllChanges()));
 
 	//ICP buttons
 	connect(ui_->pushButton_refine, SIGNAL(clicked()), this, SLOT(refineConstraint()));
@@ -627,6 +628,11 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 void DatabaseViewer::showEvent(QShowEvent* anEvent)
 {
 	this->setWindowModified(false);
+
+	if(ui_->graphViewer->isVisible() && graphes_.size() && localMaps_.size()==0)
+	{
+		sliderIterationsValueChanged((int)graphes_.size()-1);
+	}
 }
 
 void DatabaseViewer::moveEvent(QMoveEvent* anEvent)
@@ -1365,6 +1371,15 @@ void DatabaseViewer::refineVisuallyAllLoopClosureLinks()
 		progressDialog.setValue(progressDialog.maximumSteps());
 		progressDialog.appendText("Refining links finished!");
 	}
+}
+
+void DatabaseViewer::resetAllChanges()
+{
+	linksAdded_.clear();
+	linksRefined_.clear();
+	linksRemoved_.clear();
+	updateLoopClosuresSlider();
+	this->updateGraphView();
 }
 
 void DatabaseViewer::sliderAValueChanged(int value)

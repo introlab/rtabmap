@@ -1479,27 +1479,13 @@ void MainWindow::updateMapCloud(
 	{
 		float xMin, yMin;
 		float resolution = _preferencesDialog->getGridMapResolution();
-		cv::Mat map8S;
-		if(_preferencesDialog->isGridMapFrom3DCloud())
-		{
-			map8S = util3d::create2DMapFromOccupancyLocalMaps(
+		cv::Mat map8S = util3d::create2DMapFromOccupancyLocalMaps(
 					poses,
-					_projectionLocalMaps,
+					_preferencesDialog->isGridMapFrom3DCloud()?_projectionLocalMaps:_gridLocalMaps,
 					resolution,
 					xMin, yMin,
 					0,
 					_preferencesDialog->isGridMapEroded());
-		}
-		else if(_gridLocalMaps.size())
-		{
-			map8S = util3d::create2DMapFromOccupancyLocalMaps(
-					poses,
-					_gridLocalMaps,
-					resolution,
-					xMin, yMin,
-					0,
-					_preferencesDialog->isGridMapEroded());
-		}
 		if(!map8S.empty())
 		{
 			//convert to gray scaled map
@@ -1977,20 +1963,40 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 
 void MainWindow::processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathEvent & event)
 {
-	if(event.getPoses().empty())
-	{
-		QMessageBox::warning(this, tr("Setting goal failed"), tr("Setting goal to location %1 failed. "
-				"Some reasons: \n"
-				"1) the location doesn't exist in the graph,\n"
-				"2) the location is not linked to the global graph or\n"
-				"3) the location is too near of the current location (goal already reached).").arg(event.getGoal()));
-	}
-	else
+	if(!event.getPoses().empty())
 	{
 		_ui->graphicsView_graphView->setGlobalPath(event.getPoses());
-		_ui->statusbar->showMessage(
-				tr("Global path computed from %1 (%2 poses, %3 m)!").arg(event.getGoal()).arg(event.getPoses().size()).arg(graph::computePathLength(event.getPoses())),
-				10000);
+	}
+
+	if(_preferencesDialog->notifyWhenNewGlobalPathIsReceived())
+	{
+		// use MessageBox
+		if(event.getPoses().empty())
+		{
+			QMessageBox * warn = new QMessageBox(
+					QMessageBox::Warning,
+					tr("Setting goal failed!"),
+					tr("Setting goal to location %1 failed. "
+						"Some reasons: \n"
+						"1) the location doesn't exist in the graph,\n"
+						"2) the location is not linked to the global graph or\n"
+						"3) the location is too near of the current location (goal already reached).").arg(event.getGoal()),
+					QMessageBox::Ok,
+					this);
+			warn->setAttribute(Qt::WA_DeleteOnClose, true);
+			warn->show();
+		}
+		else
+		{
+			QMessageBox * info = new QMessageBox(
+					QMessageBox::Information,
+					tr("Goal detected!"),
+					tr("Global path computed from %1 to %2 (%3 poses, %4 m).").arg(event.getPoses().front().first).arg(event.getGoal()).arg(event.getPoses().size()).arg(graph::computePathLength(event.getPoses())),
+					QMessageBox::Ok,
+					this);
+			info->setAttribute(Qt::WA_DeleteOnClose, true);
+			info->show();
+		}
 	}
 }
 
@@ -4038,27 +4044,13 @@ void MainWindow::exportGridMap()
 
 	// create the map
 	float xMin=0.0f, yMin=0.0f;
-	cv::Mat pixels;
-	if(_preferencesDialog->isGridMapFrom3DCloud())
-	{
-		pixels = util3d::create2DMapFromOccupancyLocalMaps(
+	cv::Mat pixels = util3d::create2DMapFromOccupancyLocalMaps(
 				poses,
-				_projectionLocalMaps,
+				_preferencesDialog->isGridMapFrom3DCloud()?_projectionLocalMaps:_gridLocalMaps,
 				gridCellSize,
 				xMin, yMin,
 				0,
 				_preferencesDialog->isGridMapEroded());
-	}
-	else
-	{
-		pixels = util3d::create2DMapFromOccupancyLocalMaps(
-				poses,
-				_gridLocalMaps,
-				gridCellSize,
-				xMin, yMin,
-				0,
-				_preferencesDialog->isGridMapEroded());
-	}
 
 	if(!pixels.empty())
 	{

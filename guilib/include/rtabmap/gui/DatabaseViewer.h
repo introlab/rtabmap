@@ -89,6 +89,7 @@ private slots:
 	void refineAllLoopClosureLinks();
 	void refineVisuallyAllNeighborLinks();
 	void refineVisuallyAllLoopClosureLinks();
+	void resetAllChanges();
 	void sliderAValueChanged(int);
 	void sliderBValueChanged(int);
 	void sliderAMoved(int);
