@@ -367,7 +367,7 @@ bool CameraOpenNICV::init(const std::string & calibrationFolder)
 
 bool CameraOpenNICV::isCalibrated() const
 {
-	return _depthFocal > 0.0f;
+	return true;
 }
 
 void CameraOpenNICV::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
@@ -697,7 +697,7 @@ bool CameraOpenNI2::init(const std::string & calibrationFolder)
 
 bool CameraOpenNI2::isCalibrated() const
 {
-	return _depthFx > 0.0f && _depthFy > 0.0f;
+	return true;
 }
 
 std::string CameraOpenNI2::getSerial() const
@@ -1048,10 +1048,7 @@ bool CameraFreenect::init(const std::string & calibrationFolder)
 
 bool CameraFreenect::isCalibrated() const
 {
-#ifdef WITH_FREENECT
-	return freenectDevice_ != 0 && freenectDevice_->getDepthFocal() > 0.0f;
-#endif
-	return false;
+	return true;
 }
 
 std::string CameraFreenect::getSerial() const

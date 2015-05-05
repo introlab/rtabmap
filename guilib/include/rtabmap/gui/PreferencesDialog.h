@@ -186,10 +186,11 @@ public:
 	int getSourceOpenni2Exposure() const;  //Openni group
 	int getSourceOpenni2Gain() const;   //Openni group
 	bool getSourceOpenni2Mirroring() const; //Openni group
+	int getSourceFreenect2Format() const; //Openni group
 	bool isSourceRGBDColorOnly() const;
 	QString getSourceOpenniDevice() const;            //Openni group
 	Transform getSourceOpenniLocalTransform() const;    //Openni group
-	CameraRGBD * createCameraRGBD() const; // return camera should be deleted if not null
+	CameraRGBD * createCameraRGBD(bool forCalibration = false); // return camera should be deleted if not null
 
 	int getIgnoredDCComponents() const;
 
@@ -247,7 +248,7 @@ private slots:
 	void setupTreeView();
 	void updateBasicParameter();
 	void openDatabaseViewer();
-	void updateOpenNI2GroupBoxVisibility();
+	void updateRGBDCameraGroupBoxVisibility();
 	void testOdometry();
 	void testRGBDCamera();
 

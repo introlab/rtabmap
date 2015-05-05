@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-485</y>
             <width>760</width>
-            <height>1029</height>
+            <height>1132</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>0</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1938,6 +1938,42 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             <property name="wordWrap">
                              <bool>true</bool>
                             </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QGroupBox" name="groupBox_freenect2">
+                         <property name="title">
+                          <string>Freenect2</string>
+                         </property>
+                         <layout class="QGridLayout" name="gridLayout_56" columnstretch="0,1">
+                          <item row="0" column="1">
+                           <widget class="QLabel" name="label_230">
+                            <property name="text">
+                             <string>Format.</string>
+                            </property>
+                            <property name="wordWrap">
+                             <bool>true</bool>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="0" column="0">
+                           <widget class="QComboBox" name="comboBox_freenect2Format">
+                            <property name="sizeAdjustPolicy">
+                             <enum>QComboBox::AdjustToContents</enum>
+                            </property>
+                            <item>
+                             <property name="text">
+                              <string>RGB+Depth SD</string>
+                             </property>
+                            </item>
+                            <item>
+                             <property name="text">
+                              <string>RGB+Depth HD</string>
+                             </property>
+                            </item>
                            </widget>
                           </item>
                          </layout>
