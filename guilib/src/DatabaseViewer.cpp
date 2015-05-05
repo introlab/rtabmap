@@ -1446,7 +1446,7 @@ void DatabaseViewer::update(int value,
 
 				if(data.getWords().size())
 				{
-					view->setFeatures(data.getWords());
+					view->setFeatures(data.getWords(), data.getDepthRaw().type() == CV_8UC1?cv::Mat():data.getDepthRaw(), Qt::yellow);
 				}
 
 				Transform odomPose;
@@ -2934,8 +2934,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 
 			if(!silent)
 			{
-				ui_->graphicsView_A->setFeatures(tmpMemory.getSignature(from)->getWords());
-				ui_->graphicsView_B->setFeatures(tmpMemory.getSignature(to)->getWords());
+				ui_->graphicsView_A->setFeatures(tmpMemory.getSignature(from)->getWords(), dataFrom.depth());
+				ui_->graphicsView_B->setFeatures(tmpMemory.getSignature(to)->getWords(), dataTo.depth());
 				updateWordsMatching();
 			}
 		}

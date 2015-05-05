@@ -126,7 +126,7 @@ private:
 				// GREEN = NEW
 				color = Qt::green;
 			}
-			view1_->addFeature(id, i->second, color);
+			view1_->addFeature(id, i->second, 0, color);
 		}
 		ULOGGER_DEBUG("source time = %f s", timer.ticks());
 

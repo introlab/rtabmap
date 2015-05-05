@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QVBoxLayout>
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/gui/KeypointItem.h"
+#include "rtabmap/core/util3d.h"
 
 namespace rtabmap {
 
@@ -543,14 +544,14 @@ void ImageView::updateOpacity()
 	}
 }
 
-void ImageView::setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, const QColor & color)
+void ImageView::setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, const cv::Mat & depth, const QColor & color)
 {
 	qDeleteAll(_features);
 	_features.clear();
 
 	for(std::multimap<int, cv::KeyPoint>::const_iterator iter = refWords.begin(); iter != refWords.end(); ++iter )
 	{
-		addFeature(iter->first, iter->second, color);
+		addFeature(iter->first, iter->second, depth.empty()?0:util3d::getDepth(depth, iter->second.pt.x, iter->second.pt.y, false), color);
 	}
 
 	if(!_graphicsView->isVisible())
@@ -559,14 +560,14 @@ void ImageView::setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, c
 	}
 }
 
-void ImageView::setFeatures(const std::vector<cv::KeyPoint> & features, const QColor & color)
+void ImageView::setFeatures(const std::vector<cv::KeyPoint> & features, const cv::Mat & depth, const QColor & color)
 {
 	qDeleteAll(_features);
 	_features.clear();
 
 	for(unsigned int i = 0; i< features.size(); ++i )
 	{
-		addFeature(i, features[i], color);
+		addFeature(i, features[i], depth.empty()?0:util3d::getDepth(depth, features[i].pt.x, features[i].pt.y, false), color);
 	}
 
 	if(!_graphicsView->isVisible())
@@ -575,10 +576,10 @@ void ImageView::setFeatures(const std::vector<cv::KeyPoint> & features, const QC
 	}
 }
 
-void ImageView::addFeature(int id, const cv::KeyPoint & kpt, QColor color)
+void ImageView::addFeature(int id, const cv::KeyPoint & kpt, float depth, QColor color)
 {
 	color.setAlpha(this->getAlpha());
-	rtabmap::KeypointItem * item = new rtabmap::KeypointItem(id, kpt, color);
+	rtabmap::KeypointItem * item = new rtabmap::KeypointItem(id, kpt, depth, color);
 	_features.insert(id, item);
 	item->setVisible(isFeaturesShown());
 	item->setZValue(1);

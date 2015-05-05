@@ -845,13 +845,13 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 		{
 			if(info.type == 0)
 			{
-				_ui->imageView_odometry->setFeatures(info.words, Qt::yellow);
+				_ui->imageView_odometry->setFeatures(info.words, data.depth(), Qt::yellow);
 			}
 			else if(info.type == 1)
 			{
 				std::vector<cv::KeyPoint> kpts;
 				cv::KeyPoint::convert(info.refCorners, kpts);
-				_ui->imageView_odometry->setFeatures(kpts, Qt::red);
+				_ui->imageView_odometry->setFeatures(kpts, data.depth(), Qt::red);
 			}
 		}
 
@@ -2187,7 +2187,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 			// GREEN = NEW
 			color = Qt::green;
 		}
-		_ui->imageView_source->addFeature(iter->first, iter->second, color);
+		_ui->imageView_source->addFeature(iter->first, iter->second, 0, color);
 	}
 	ULOGGER_DEBUG("source time = %f s", timer.ticks());
 
@@ -2225,7 +2225,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 			// GREEN = NEW
 			color = Qt::green;
 		}
-		_ui->imageView_loopClosure->addFeature(iter->first, iter->second, color);
+		_ui->imageView_loopClosure->addFeature(iter->first, iter->second, 0, color);
 	}
 
 	ULOGGER_DEBUG("loop closure time = %f s", timer.ticks());

@@ -41,7 +41,7 @@ namespace rtabmap {
 class RTABMAPGUI_EXP KeypointItem : public QGraphicsEllipseItem
 {
 public:
-	KeypointItem(int id, const cv::KeyPoint & kpt, const QColor & color = Qt::green, QGraphicsItem * parent = 0);
+	KeypointItem(int id, const cv::KeyPoint & kpt, float depth = 0, const QColor & color = Qt::green, QGraphicsItem * parent = 0);
 	virtual ~KeypointItem();
 
 	void setColor(const QColor & color);
@@ -61,6 +61,7 @@ private:
 	cv::KeyPoint _kpt;
 	QGraphicsRectItem * _placeHolder;
 	int _width;
+	float _depth;
 };
 
 }

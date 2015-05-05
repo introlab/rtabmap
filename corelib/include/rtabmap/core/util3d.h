@@ -121,6 +121,12 @@ std::multimap<int, cv::KeyPoint> RTABMAP_EXP aggregate(
 		const std::list<int> & wordIds,
 		const std::vector<cv::KeyPoint> & keypoints);
 
+float RTABMAP_EXP getDepth(
+		const cv::Mat & depthImage,
+		float x, float y,
+		bool smoothing,
+		float maxZError = 0.02f);
+
 pcl::PointXYZ RTABMAP_EXP projectDepthTo3D(
 		const cv::Mat & depthImage,
 		float x, float y,

@@ -74,9 +74,9 @@ public:
 	void setGraphicsViewScaled(bool scaled);
 	void setBackgroundColor(const QColor & color);
 
-	void setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, const QColor & color = Qt::yellow);
-	void setFeatures(const std::vector<cv::KeyPoint> & features, const QColor & color = Qt::yellow);
-	void addFeature(int id, const cv::KeyPoint & kpt, QColor color);
+	void setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, const cv::Mat & depth = cv::Mat(), const QColor & color = Qt::yellow);
+	void setFeatures(const std::vector<cv::KeyPoint> & features, const cv::Mat & depth = cv::Mat(), const QColor & color = Qt::yellow);
+	void addFeature(int id, const cv::KeyPoint & kpt, float depth, QColor color);
 	void addLine(float x1, float y1, float x2, float y2, QColor color);
 	void setImage(const QImage & image);
 	void setImageDepth(const QImage & image);

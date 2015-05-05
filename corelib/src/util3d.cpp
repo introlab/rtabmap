@@ -770,18 +770,14 @@ void findCorrespondences(
 	inliers2.resize(oi);
 }
 
-pcl::PointXYZ projectDepthTo3D(
+float getDepth(
 		const cv::Mat & depthImage,
 		float x, float y,
-		float cx, float cy,
-		float fx, float fy,
 		bool smoothing,
 		float maxZError)
 {
+	UASSERT(!depthImage.empty());
 	UASSERT(depthImage.type() == CV_16UC1 || depthImage.type() == CV_32FC1);
-
-	pcl::PointXYZ pt;
-	float bad_point = std::numeric_limits<float>::quiet_NaN ();
 
 	int u = int(x+0.5f);
 	int v = int(y+0.5f);
@@ -790,8 +786,7 @@ pcl::PointXYZ projectDepthTo3D(
 	{
 		UERROR("!(x >=0 && x<depthImage.cols && y >=0 && y<depthImage.rows) cond failed! returning bad point. (x=%f (u=%d), y=%f (v=%d), cols=%d, rows=%d)",
 				x,u,y,v,depthImage.cols, depthImage.rows);
-		pt.x = pt.y = pt.z = bad_point;
-		return pt;
+		return 0;
 	}
 
 	bool isInMM = depthImage.type() == CV_16UC1; // is in mm?
@@ -845,7 +840,30 @@ pcl::PointXYZ projectDepthTo3D(
 			// mean
 			depth = (depth+sumDepths)/sumWeights;
 		}
+	}
+	else
+	{
+		depth = 0;
+	}
+	return depth;
+}
 
+pcl::PointXYZ projectDepthTo3D(
+		const cv::Mat & depthImage,
+		float x, float y,
+		float cx, float cy,
+		float fx, float fy,
+		bool smoothing,
+		float maxZError)
+{
+	UASSERT(depthImage.type() == CV_16UC1 || depthImage.type() == CV_32FC1);
+
+	pcl::PointXYZ pt;
+	float bad_point = std::numeric_limits<float>::quiet_NaN ();
+
+	float depth = getDepth(depthImage, x, y, smoothing, maxZError);
+	if(depth)
+	{
 		// Use correct principal point from calibration
 		cx = cx > 0.0f ? cx : float(depthImage.cols/2) - 0.5f; //cameraInfo.K.at(2)
 		cy = cy > 0.0f ? cy : float(depthImage.rows/2) - 0.5f; //cameraInfo.K.at(5)

@@ -270,13 +270,13 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 	{
 		if(info.type == 0)
 		{
-			imageView_->setFeatures(info.words, Qt::yellow);
+			imageView_->setFeatures(info.words, data.depth(), Qt::yellow);
 		}
 		else if(info.type == 1)
 		{
 			std::vector<cv::KeyPoint> kpts;
 			cv::KeyPoint::convert(info.refCorners, kpts);
-			imageView_->setFeatures(kpts, Qt::red);
+			imageView_->setFeatures(kpts, data.depth(), Qt::red);
 		}
 
 		imageView_->clearLines();
