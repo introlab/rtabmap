@@ -278,6 +278,7 @@ public:
 	enum Type{
 		kTypeRGBDepthSD,
 		kTypeRGBDepthHD,
+		kTypeIRDepth,
 		kTypeRGBIR
 	};
 

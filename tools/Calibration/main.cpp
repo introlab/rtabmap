@@ -128,6 +128,8 @@ int main(int argc, char * argv[])
 	UINFO("Using device %d", device);
 	UINFO("Stereo: %s", stereo?"true":"false");
 
+	bool switchImages = false;
+
 	rtabmap::Camera * cameraUsb = 0;
 	rtabmap::CameraRGBD * camera = 0;
 	if(driver == -1)
@@ -181,6 +183,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Freenect2 support...");
 			exit(-1);
 		}
+		switchImages = true;
 		camera = new rtabmap::CameraFreenect2(0, rtabmap::CameraFreenect2::kTypeRGBIR);
 	}
 	else if(driver == 6)
@@ -230,7 +233,7 @@ int main(int argc, char * argv[])
 	}
 
 	QApplication app(argc, argv);
-	rtabmap::CalibrationDialog dialog(stereo);
+	rtabmap::CalibrationDialog dialog(stereo, ".", switchImages);
 	dialog.registerToEventsManager();
 
 	dialog.show();

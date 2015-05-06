@@ -1126,6 +1126,9 @@ CameraFreenect2::CameraFreenect2(int deviceId, Type type, float imageRate, const
 	case kTypeRGBIR:
 		listener_ = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Color | libfreenect2::Frame::Ir);
 		break;
+	case kTypeIRDepth:
+		listener_ = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Ir | libfreenect2::Frame::Depth);
+		break;
 	case kTypeRGBDepthSD:
 	case kTypeRGBDepthHD:
 	default:
@@ -1318,9 +1321,13 @@ void CameraFreenect2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, f
 
 			switch(type_)
 			{
-			case kTypeRGBIR:
+			case kTypeRGBIR: //used for calibration
 				rgbFrame = uValue(frames, libfreenect2::Frame::Color, (libfreenect2::Frame*)0);
 				irFrame = uValue(frames, libfreenect2::Frame::Ir, (libfreenect2::Frame*)0);
+				break;
+			case kTypeIRDepth:
+				irFrame = uValue(frames, libfreenect2::Frame::Ir, (libfreenect2::Frame*)0);
+				depthFrame = uValue(frames, libfreenect2::Frame::Depth, (libfreenect2::Frame*)0);
 				break;
 			case kTypeRGBDepthSD:
 			case kTypeRGBDepthHD:
@@ -1330,128 +1337,171 @@ void CameraFreenect2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, f
 				break;
 			}
 
-			cv::Mat rgbMat(rgbFrame->height, rgbFrame->width, CV_8UC3, rgbFrame->data);
-			cv::flip(rgbMat, rgb, 1);
-
-			if(stereoModel_.isValid())
+			if(irFrame && depthFrame)
 			{
-				//rectify color
-				rgb = stereoModel_.right().rectifyImage(rgb);
-				if(irFrame)
+				cv::Mat irMat(irFrame->height, irFrame->width, CV_32FC1, irFrame->data);
+				//convert to gray scaled
+				float maxIr_ = 0x7FFF;
+				float minIr_ = 0x0;
+				const float factor = 255.0f / float((maxIr_ - minIr_));
+				rgb = cv::Mat(irMat.rows, irMat.cols, CV_8UC1);
+				for(int i=0; i<irMat.rows; ++i)
 				{
-					//rectify IR
-					cv::Mat(irFrame->height, irFrame->width, CV_32FC1, irFrame->data).convertTo(depth, CV_16U, 1);
-					cv::flip(depth, depth, 1);
+					for(int j=0; j<irMat.cols; ++j)
+					{
+						rgb.at<unsigned char>(i, j) = (unsigned char)std::min(float(std::max(irMat.at<float>(i,j) - minIr_, 0.0f)) * factor, 255.0f);
+					}
+				}
+
+				cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
+				cv::flip(rgb, rgb, 1);
+				cv::flip(depth, depth, 1);
+				if(stereoModel_.isValid())
+				{
+					//rectify
+					rgb = stereoModel_.left().rectifyImage(rgb);
 					depth = stereoModel_.left().rectifyImage(depth);
+					fx = stereoModel_.left().fx();
+					fy = stereoModel_.left().fy();
+					cx = stereoModel_.left().cx();
+					cy = stereoModel_.left().cy();
 				}
 				else
 				{
-					//rectify depth
-					cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
-					cv::flip(depth, depth, 1);
-					depth = stereoModel_.left().rectifyDepth(depth);
-
-					bool registered = true;
-					if(registered)
-					{
-						depth = util3d::registerDepth(
-								depth,
-								stereoModel_.left().P().colRange(0,3).rowRange(0,3), //scaled depth K
-								stereoModel_.right().P().colRange(0,3).rowRange(0,3), //scaled color K
-								stereoModel_.transform());
-						util3d::fillRegisteredDepthHoles(depth, true, false);
-						fx = stereoModel_.right().fx();
-						fy = stereoModel_.right().fy();
-						cx = stereoModel_.right().cx();
-						cy = stereoModel_.right().cy();
-					}
-					else
-					{
-						fx = stereoModel_.left().fx();
-						fy = stereoModel_.left().fy();
-						cx = stereoModel_.left().cx();
-						cy = stereoModel_.left().cy();
-					}
+					libfreenect2::Freenect2Device::IrCameraParams params = dev_->getIrCameraParams();
+					fx = params.fx;
+					fy = params.fy;
+					cx = params.cx;
+					cy = params.cy;
 				}
 			}
 			else
 			{
-				//use data from libfreenect2
-				if(irFrame)
+				//rgb + ir or rgb + depth
+
+				cv::Mat rgbMat(rgbFrame->height, rgbFrame->width, CV_8UC3, rgbFrame->data);
+				cv::flip(rgbMat, rgb, 1);
+
+				if(stereoModel_.isValid())
 				{
-					cv::Mat(irFrame->height, irFrame->width, CV_32FC1, irFrame->data).convertTo(depth, CV_16U, 1);
+					//rectify color
+					rgb = stereoModel_.right().rectifyImage(rgb);
+					if(irFrame)
+					{
+						//rectify IR
+						cv::Mat(irFrame->height, irFrame->width, CV_32FC1, irFrame->data).convertTo(depth, CV_16U, 1);
+						cv::flip(depth, depth, 1);
+						depth = stereoModel_.left().rectifyImage(depth);
+					}
+					else
+					{
+						//rectify depth
+						cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
+						cv::flip(depth, depth, 1);
+						depth = stereoModel_.left().rectifyDepth(depth);
+
+						bool registered = true;
+						if(registered)
+						{
+							depth = util3d::registerDepth(
+									depth,
+									stereoModel_.left().P().colRange(0,3).rowRange(0,3), //scaled depth K
+									stereoModel_.right().P().colRange(0,3).rowRange(0,3), //scaled color K
+									stereoModel_.transform());
+							util3d::fillRegisteredDepthHoles(depth, true, false);
+							fx = stereoModel_.right().fx();
+							fy = stereoModel_.right().fy();
+							cx = stereoModel_.right().cx();
+							cy = stereoModel_.right().cy();
+						}
+						else
+						{
+							fx = stereoModel_.left().fx();
+							fy = stereoModel_.left().fy();
+							cx = stereoModel_.left().cx();
+							cy = stereoModel_.left().cy();
+						}
+					}
 				}
 				else
 				{
-					cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
-
-					//registration of the depth
-					if(reg_)
+					//use data from libfreenect2
+					if(irFrame)
 					{
-						if(type_ == kTypeRGBDepthSD)
+						cv::Mat(irFrame->height, irFrame->width, CV_32FC1, irFrame->data).convertTo(depth, CV_16U, 1);
+					}
+					else
+					{
+						cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
+
+						//registration of the depth
+						if(reg_)
 						{
-							cv::Mat tmp;
-							cv::resize(rgb, tmp, cv::Size(), 0.5, 0.5, cv::INTER_AREA);
-							rgb = tmp;
-						}
-						cv::Mat depthFrameMat = cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data);
-						depth = cv::Mat::zeros(rgb.rows, rgb.cols, CV_16U);
-						for(int dx=0; dx<depthFrameMat.cols-1; ++dx)
-						{
-							for(int dy=0; dy<depthFrameMat.rows-1; ++dy)
+							if(type_ == kTypeRGBDepthSD)
 							{
-								float dz = depthFrameMat.at<float>(dy,dx);
-								float dz1 = depthFrameMat.at<float>(dy,dx+1);
-								float dz2 = depthFrameMat.at<float>(dy+1,dx);
-								float dz3 = depthFrameMat.at<float>(dy+1,dx+1);
-								if(dz && dz1 && dz2 && dz3)
+								cv::Mat tmp;
+								cv::resize(rgb, tmp, cv::Size(), 0.5, 0.5, cv::INTER_AREA);
+								rgb = tmp;
+							}
+							cv::Mat depthFrameMat = cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data);
+							depth = cv::Mat::zeros(rgb.rows, rgb.cols, CV_16U);
+							for(int dx=0; dx<depthFrameMat.cols-1; ++dx)
+							{
+								for(int dy=0; dy<depthFrameMat.rows-1; ++dy)
 								{
-									float avg = (dz + dz1 + dz2 + dz3) / 4;
-									float thres = 0.01 * avg;
-									if( fabs(dz - avg) < thres &&
-										fabs(dz1 - avg) < thres &&
-										fabs(dz2 - avg) < thres &&
-										fabs(dz3 - avg) < thres)
+									float dz = depthFrameMat.at<float>(dy,dx);
+									float dz1 = depthFrameMat.at<float>(dy,dx+1);
+									float dz2 = depthFrameMat.at<float>(dy+1,dx);
+									float dz3 = depthFrameMat.at<float>(dy+1,dx+1);
+									if(dz && dz1 && dz2 && dz3)
 									{
-										float cx=-1,cy=-1;
-										reg_->apply(dx, dy, dz, cx, cy);
-										if(type_==kTypeRGBDepthSD)
+										float avg = (dz + dz1 + dz2 + dz3) / 4;
+										float thres = 0.01 * avg;
+										if( fabs(dz - avg) < thres &&
+											fabs(dz1 - avg) < thres &&
+											fabs(dz2 - avg) < thres &&
+											fabs(dz3 - avg) < thres)
 										{
-											cx/=2.0f;
-											cy/=2.0f;
-										}
-										int rcx = cvRound(cx);
-										int rcy = cvRound(cy);
-										if(uIsInBounds(rcx, 0, depth.cols) && uIsInBounds(rcy, 0, depth.rows))
-										{
-											unsigned short & zReg = depth.at<unsigned short>(rcy, rcx);
-											if(zReg == 0 || zReg > (unsigned short)dz)
+											float cx=-1,cy=-1;
+											reg_->apply(dx, dy, dz, cx, cy);
+											if(type_==kTypeRGBDepthSD)
 											{
-												zReg = (unsigned short)dz;
+												cx/=2.0f;
+												cy/=2.0f;
+											}
+											int rcx = cvRound(cx);
+											int rcy = cvRound(cy);
+											if(uIsInBounds(rcx, 0, depth.cols) && uIsInBounds(rcy, 0, depth.rows))
+											{
+												unsigned short & zReg = depth.at<unsigned short>(rcy, rcx);
+												if(zReg == 0 || zReg > (unsigned short)dz)
+												{
+													zReg = (unsigned short)dz;
+												}
 											}
 										}
 									}
 								}
 							}
+							util3d::fillRegisteredDepthHoles(depth, true, true, type_==kTypeRGBDepthHD);
+							util3d::fillRegisteredDepthHoles(depth, type_==kTypeRGBDepthSD, type_==kTypeRGBDepthHD);//second pass
+							libfreenect2::Freenect2Device::ColorCameraParams params = dev_->getColorCameraParams();
+							fx = params.fx*(type_==kTypeRGBDepthSD?0.5:1.0f);
+							fy = params.fy*(type_==kTypeRGBDepthSD?0.5:1.0f);
+							cx = params.cx*(type_==kTypeRGBDepthSD?0.5:1.0f);
+							cy = params.cy*(type_==kTypeRGBDepthSD?0.5:1.0f);
 						}
-						util3d::fillRegisteredDepthHoles(depth, true, true, type_==kTypeRGBDepthHD);
-						util3d::fillRegisteredDepthHoles(depth, type_==kTypeRGBDepthSD, type_==kTypeRGBDepthHD);//second pass
-						libfreenect2::Freenect2Device::ColorCameraParams params = dev_->getColorCameraParams();
-						fx = params.fx*(type_==kTypeRGBDepthSD?0.5:1.0f);
-						fy = params.fy*(type_==kTypeRGBDepthSD?0.5:1.0f);
-						cx = params.cx*(type_==kTypeRGBDepthSD?0.5:1.0f);
-						cy = params.cy*(type_==kTypeRGBDepthSD?0.5:1.0f);
+						else
+						{
+							libfreenect2::Freenect2Device::IrCameraParams params = dev_->getIrCameraParams();
+							fx = params.fx;
+							fy = params.fy;
+							cx = params.cx;
+							cy = params.cy;
+						}
 					}
-					else
-					{
-						libfreenect2::Freenect2Device::IrCameraParams params = dev_->getIrCameraParams();
-						fx = params.fx;
-						fy = params.fy;
-						cx = params.cx;
-						cy = params.cy;
-					}
+					cv::flip(depth, depth, 1);
 				}
-				cv::flip(depth, depth, 1);
 			}
 			listener_->release(frames);
 		}

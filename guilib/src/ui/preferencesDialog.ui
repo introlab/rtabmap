@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-485</y>
+            <y>-591</y>
             <width>760</width>
-            <height>1132</height>
+            <height>1502</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -1972,6 +1972,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             <item>
                              <property name="text">
                               <string>RGB+Depth HD</string>
+                             </property>
+                            </item>
+                            <item>
+                             <property name="text">
+                              <string>IR+Depth</string>
                              </property>
                             </item>
                            </widget>

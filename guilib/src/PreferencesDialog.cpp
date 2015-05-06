@@ -3523,6 +3523,7 @@ void PreferencesDialog::calibrate()
 		}
 	}
 	_calibrationDialog->setStereoMode(true);
+	_calibrationDialog->setSwitchedImages(dynamic_cast<CameraFreenect2*>(camera) != 0);
 	_calibrationDialog->setSavingDirectory(this->getCameraInfoDir());
 	_calibrationDialog->registerToEventsManager();
 
