@@ -144,6 +144,7 @@ public:
 	float getCx() const {return _cx;}
 	float getCy() const {return _cy;}
 	const Transform & getPose() const {return _pose;}
+	void getPoseVariance(float & rotVariance, float & transVariance) const;
 	const Transform & getLocalTransform() const {return _localTransform;}
 	void setDepthRaw(const cv::Mat & depth) {_depthRaw = depth;}
 	const cv::Mat & getDepthRaw() const {return _depthRaw;}

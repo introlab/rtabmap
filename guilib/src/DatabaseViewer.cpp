@@ -723,11 +723,29 @@ void DatabaseViewer::exportDatabase()
 					int id = ids.at(i);
 
 					Signature data = memory_->getSignatureData(id, true);
-					rtabmap::SensorData sensorData = data.toSensorData();
-					if(!dialog.isUserDataExported())
+					float rotVariance = 1.0f;
+					float transVariance = 1.0f;
+					if(dialog.isOdomExported())
 					{
-						sensorData.setUserData(std::vector<unsigned char>());
+						data.getPoseVariance(rotVariance, transVariance);
 					}
+					rtabmap::SensorData sensorData(
+						dialog.isDepth2dExported()?data.getLaserScanRaw():cv::Mat(),
+						dialog.isDepth2dExported()?data.getLaserScanMaxPts():0,
+						dialog.isRgbExported()?data.getImageRaw():cv::Mat(),
+						dialog.isDepthExported()?data.getDepthRaw():cv::Mat(),
+						dialog.isRgbExported() || dialog.isDepthExported()?data.getFx():0,
+						dialog.isRgbExported() || dialog.isDepthExported()?data.getFy():0,
+						dialog.isRgbExported() || dialog.isDepthExported()?data.getCx():0,
+						dialog.isRgbExported() || dialog.isDepthExported()?data.getCy():0,
+						dialog.isRgbExported() || dialog.isDepthExported()?data.getLocalTransform():Transform::getIdentity(),
+						dialog.isOdomExported()?data.getPose():Transform(),
+						rotVariance,
+						transVariance,
+						data.id(),
+						data.getStamp(),
+						dialog.isUserDataExported()?data.getUserData():std::vector<unsigned char>());
+
 					recorder.addData(sensorData);
 
 					progressDialog->appendText(tr("Exported node %1").arg(id));

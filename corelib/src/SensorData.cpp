@@ -67,7 +67,8 @@ SensorData::SensorData(const cv::Mat & image,
 	_laserScanMaxPts(0),
 	_userData(userData)
 {
-	UASSERT(image.type() == CV_8UC1 || // Mono
+	UASSERT(image.empty() ||
+			image.type() == CV_8UC1 || // Mono
 			image.type() == CV_8UC3);  // RGB
 }
 
@@ -100,7 +101,8 @@ SensorData::SensorData(const cv::Mat & image,
 	_laserScanMaxPts(0),
 	_userData(userData)
 {
-	UASSERT(image.type() == CV_8UC1 || // Mono
+	UASSERT(image.empty() ||
+			image.type() == CV_8UC1 || // Mono
 			image.type() == CV_8UC3);  // RGB
 	UASSERT(depthOrRightImage.empty() ||
 			depthOrRightImage.type() == CV_32FC1 || // Depth in meter
@@ -143,12 +145,13 @@ SensorData::SensorData(const cv::Mat & laserScan,
 	_userData(userData)
 {
 	UASSERT(_laserScan.empty() || _laserScan.type() == CV_32FC2);
-	UASSERT(image.type() == CV_8UC1 || // Mono
+	UASSERT(image.empty() ||
+			image.type() == CV_8UC1 || // Mono
 			image.type() == CV_8UC3);  // RGB
-	UASSERT(depthOrRightImage.type() == CV_32FC1 || // Depth in meter
+	UASSERT(depthOrRightImage.empty() ||
+			depthOrRightImage.type() == CV_32FC1 || // Depth in meter
 			depthOrRightImage.type() == CV_16UC1 || // Depth in millimetre
 			depthOrRightImage.type() == CV_8U);     // Right stereo image
-	UASSERT(!depthOrRightImage.empty());
 	UASSERT(!_localTransform.isNull());
 	UASSERT_MSG(uIsFinite(_poseRotVariance) && _poseRotVariance>0 && uIsFinite(_poseTransVariance) && _poseTransVariance>0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
 }

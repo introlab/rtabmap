@@ -254,14 +254,13 @@ float Signature::getDepthFy() const {return getFy();}
 float Signature::getDepthCx() const {return getCx();}
 float Signature::getDepthCy() const {return getCy();}
 
-SensorData Signature::toSensorData()
+void Signature::getPoseVariance(float & rotVariance, float & transVariance) const
 {
-	this->uncompressData();
-	float rotVariance = 1.0f;
-	float transVariance = 1.0f;
+	rotVariance = 1.0f;
+	transVariance = 1.0f;
 	if(_links.size())
 	{
-		for(std::map<int, Link>::iterator iter = _links.begin(); iter!=_links.end(); ++iter)
+		for(std::map<int, Link>::const_iterator iter = _links.begin(); iter!=_links.end(); ++iter)
 		{
 			if(iter->second.kNeighbor)
 			{
@@ -275,6 +274,15 @@ SensorData Signature::toSensorData()
 			}
 		}
 	}
+}
+
+SensorData Signature::toSensorData()
+{
+	this->uncompressData();
+	float rotVariance = 1.0f;
+	float transVariance = 1.0f;
+	this->getPoseVariance(rotVariance, transVariance);
+
 	return SensorData(_laserScanRaw,
 			_laserScanMaxPts,
 			_imageRaw,
