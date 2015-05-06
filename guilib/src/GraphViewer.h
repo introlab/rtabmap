@@ -129,6 +129,7 @@ private:
 	QGraphicsItem * _root;
 	QMap<int, NodeItem*> _nodeItems;
 	QMultiMap<int, LinkItem*> _linkItems;
+	QMultiMap<int, LinkItem*> _localPathLinkItems;
 	QMultiMap<int, LinkItem*> _globalPathLinkItems;
 	float _nodeRadius;
 	float _linkWidth;

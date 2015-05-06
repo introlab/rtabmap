@@ -75,6 +75,7 @@ public:
 		this->setBrush(b);
 	}
 
+	const Transform & pose() const {return _pose;}
 	void setPose(const Transform & pose) {this->setPos(-pose.y(),-pose.x()); _pose=pose;}
 
 protected:
@@ -497,25 +498,63 @@ void GraphViewer::setLocalRadius(float radius)
 
 void GraphViewer::updateLocalPath(const std::vector<int> & localPath)
 {
+	for(QMultiMap<int, LinkItem*>::iterator iter = _localPathLinkItems.begin(); iter!=_localPathLinkItems.end(); ++iter)
+	{
+		iter.value()->hide();
+	}
+
 	if(localPath.size() > 1)
 	{
 		for(unsigned int i=0; i<localPath.size()-1; ++i)
 		{
-			if(_linkItems.contains(localPath[i]))
+			int idFrom = localPath[i]<localPath[i+1]?localPath[i]:localPath[i+1];
+			int idTo = localPath[i]<localPath[i+1]?localPath[i+1]:localPath[i];
+			if(_nodeItems.contains(idFrom) && _nodeItems.contains(idTo))
 			{
-				int idFrom = localPath[i]<localPath[i+1]?localPath[i]:localPath[i+1];
-				int idTo = localPath[i]<localPath[i+1]?localPath[i+1]:localPath[i];
-				QMultiMap<int, LinkItem*>::iterator itemIter = _linkItems.find(idFrom);
-				while(itemIter.key() == idFrom && itemIter != _linkItems.end())
+				bool updated = false;
+				if(_localPathLinkItems.contains(idFrom))
 				{
-					if(itemIter.value()->to() == idTo)
+					QMultiMap<int, LinkItem*>::iterator itemIter = _localPathLinkItems.find(idFrom);
+					while(itemIter.key() == idFrom && itemIter != _localPathLinkItems.end())
 					{
-						itemIter.value()->setColor(_localPathColor);
-						break;
+						if(itemIter.value()->to() == idTo)
+						{
+							itemIter.value()->setPoses(_nodeItems.value(idFrom)->pose(), _nodeItems.value(idTo)->pose());
+							itemIter.value()->show();
+							updated = true;
+							break;
+						}
+						++itemIter;
 					}
-					++itemIter;
+				}
+				if(!updated)
+				{
+					//create a link item
+					LinkItem * item = new LinkItem(idFrom, idTo, _nodeItems.value(idFrom)->pose(), _nodeItems.value(idTo)->pose(), Link::kUndef);
+					QPen p = item->pen();
+					p.setWidthF(_linkWidth);
+					item->setPen(p);
+					item->setColor(_localPathColor);
+					this->scene()->addItem(item);
+					item->setZValue(16); // just over the global path
+					item->setParentItem(_root);
+					_localPathLinkItems.insert(idFrom, item);
 				}
 			}
+		}
+	}
+
+	// remove not used links
+	for(QMultiMap<int, LinkItem*>::iterator iter = _localPathLinkItems.begin(); iter!=_localPathLinkItems.end();)
+	{
+		if(!iter.value()->isVisible())
+		{
+			delete iter.value();
+			iter = _localPathLinkItems.erase(iter);
+		}
+		else
+		{
+			++iter;
 		}
 	}
 }
@@ -526,8 +565,11 @@ void GraphViewer::clearGraph()
 	_nodeItems.clear();
 	qDeleteAll(_linkItems);
 	_linkItems.clear();
+	qDeleteAll(_localPathLinkItems);
+	_localPathLinkItems.clear();
 	qDeleteAll(_globalPathLinkItems);
 	_globalPathLinkItems.clear();
+
 	_referential->resetTransform();
 	_localRadius->resetTransform();
 	this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents

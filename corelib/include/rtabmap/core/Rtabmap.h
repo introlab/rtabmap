@@ -155,7 +155,7 @@ private:
 			bool lookInDatabase,
 			std::multimap<int, Link> * constraints = 0) const;
 	void updateGoalIndex();
-	bool computePath(int targetNode, const std::map<int, Transform> & nodes, const std::multimap<int, rtabmap::Link> & constraints);
+	bool computePath(int targetNode, std::map<int, Transform> nodes, const std::multimap<int, rtabmap::Link> & constraints);
 
 	void setupLogFiles(bool overwrite = false);
 	void flushStatisticLogs();
@@ -226,6 +226,7 @@ private:
 	std::multimap<int, Link> _constraints;
 	Transform _mapCorrection;
 	Transform _mapTransform; // for localization mode
+	Transform _lastLocalizationPose; // for localization mode
 
 	// Planning stuff
 	std::vector<std::pair<int,Transform> > _path;

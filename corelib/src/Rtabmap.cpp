@@ -316,6 +316,7 @@ void Rtabmap::close()
 	_constraints.clear();
 	_mapCorrection.setIdentity();
 	_mapTransform.setIdentity();
+	_lastLocalizationPose.setNull();
 	this->clearPath();
 
 	flushStatisticLogs();
@@ -739,6 +740,7 @@ void Rtabmap::resetMemory()
 	_constraints.clear();
 	_mapCorrection.setIdentity();
 	_mapTransform.setIdentity();
+	_lastLocalizationPose.setNull();
 	this->clearPath();
 
 	if(_memory)
@@ -938,6 +940,7 @@ bool Rtabmap::process(const SensorData & data)
 
 		Transform newPose = _mapCorrection * signature->getPose();
 		_optimizedPoses.insert(std::make_pair(signature->id(), newPose));
+		_lastLocalizationPose = newPose; // used in localization mode only (path planning)
 
 		//============================================================
 		// Scan matching
@@ -1361,7 +1364,8 @@ bool Rtabmap::process(const SensorData & data)
 		}
 
 		// immunize the path from the nearest local location to the current location
-		if(immunizedLocally < maxLocalLocationsImmunized)
+		if(immunizedLocally < maxLocalLocationsImmunized &&
+			_memory->isIncremental()) // Can only work in mapping mode
 		{
 			std::map<int ,Transform> poses;
 			// remove poses from STM
@@ -1644,8 +1648,11 @@ bool Rtabmap::process(const SensorData & data)
 		{
 			UWARN("Cannot do local loop closure detection in space if graph optimization is disabled!");
 		}
-		else
+		else if(_memory->isIncremental() || _loopClosureHypothesis.first == 0)
 		{
+			// In localization mode, no need to check local loop
+			// closures if we are already localized by a global closure.
+
 			//============================================================
 			// LOCAL LOOP CLOSURE SPACE
 			//============================================================
@@ -1658,7 +1665,16 @@ bool Rtabmap::process(const SensorData & data)
 			{
 				r = _localPathFilteringRadius;
 			}
-			std::map<int, float> nearestIds = _memory->getNeighborsIdRadius(signature->id(), r, _optimizedPoses, _localDetectMaxGraphDepth);
+
+			std::map<int, float> nearestIds;
+			if(_memory->isIncremental())
+			{
+				nearestIds = _memory->getNeighborsIdRadius(signature->id(), r, _optimizedPoses, _localDetectMaxGraphDepth);
+			}
+			else
+			{
+				nearestIds = graph::getNodesInRadius(signature->id(), _optimizedPoses, r);
+			}
 			std::map<int, Transform> nearestPoses;
 			for(std::map<int, float>::iterator iter=nearestIds.begin(); iter!=nearestIds.end(); ++iter)
 			{
@@ -1666,7 +1682,9 @@ bool Rtabmap::process(const SensorData & data)
 			}
 			// segment poses by paths, only one detection per path
 			std::list<std::map<int, Transform> > nearestPaths = getPaths(nearestPoses);
-			for(std::list<std::map<int, Transform> >::iterator iter=nearestPaths.begin(); iter!=nearestPaths.end(); ++iter)
+			for(std::list<std::map<int, Transform> >::iterator iter=nearestPaths.begin();
+				iter!=nearestPaths.end() && (_memory->isIncremental() || lastLocalSpaceClosureId == 0);
+				++iter)
 			{
 				std::map<int, Transform> & path = *iter;
 				UASSERT(path.size());
@@ -1753,12 +1771,15 @@ bool Rtabmap::process(const SensorData & data)
 								transform.prettyPrint().c_str());
 						_memory->addLink(nearestId, signature->id(), transform, Link::kLocalSpaceClosure, variance, variance);
 
-						// Old map -> new map, used for localization correction on loop closure
-						const Signature * oldS = _memory->getSignature(nearestId);
-						UASSERT(oldS != 0);
-						_mapTransform = oldS->getPose() * transform.inverse() * signature->getPose().inverse();
-						++localSpaceClosuresAddedVisually;
-						lastLocalSpaceClosureId = nearestId;
+						if(_loopClosureHypothesis.first == 0)
+						{
+							// Old map -> new map, used for localization correction on loop closure
+							const Signature * oldS = _memory->getSignature(nearestId);
+							UASSERT(oldS != 0);
+							_mapTransform = oldS->getPose() * transform.inverse() * signature->getPose().inverse();
+							++localSpaceClosuresAddedVisually;
+							lastLocalSpaceClosureId = nearestId;
+						}
 					}
 				}
 			}
@@ -1766,8 +1787,13 @@ bool Rtabmap::process(const SensorData & data)
 			//
 			// 2) compare locally with nearest locations by scan matching
 			//
-			if( !signature->getLaserScanCompressed().empty())
+			if( !signature->getLaserScanCompressed().empty() &&
+				(_memory->isIncremental() || lastLocalSpaceClosureId == 0))
 			{
+				// In localization mode, no need to check local loop
+				// closures if we are already localized by at least one
+				// local visual closure above.
+
 				std::map<int, Transform> forwardPoses;
 				forwardPoses = this->getForwardWMPoses(
 						signature->id(),
@@ -1778,7 +1804,9 @@ bool Rtabmap::process(const SensorData & data)
 				std::list<std::map<int, Transform> > forwardPaths = getPaths(forwardPoses);
 				localSpacePaths = (int)forwardPaths.size();
 
-				for(std::list<std::map<int, Transform> >::iterator iter=forwardPaths.begin(); iter!=forwardPaths.end(); ++iter)
+				for(std::list<std::map<int, Transform> >::iterator iter=forwardPaths.begin();
+						iter!=forwardPaths.end() && (_memory->isIncremental() || lastLocalSpaceClosureId == 0);
+						++iter)
 				{
 					std::map<int, Transform> & path = *iter;
 					UASSERT(path.size());
@@ -1835,7 +1863,7 @@ bool Rtabmap::process(const SensorData & data)
 									++localSpaceClosuresAddedByICPOnly;
 
 									// no local loop closure added visually
-									if(localSpaceClosuresAddedVisually == 0)
+									if(localSpaceClosuresAddedVisually == 0 && _loopClosureHypothesis.first == 0)
 									{
 										// Old map -> new map, used for localization correction on loop closure
 										const Signature * oldS = _memory->getSignature(nearestId);
@@ -1873,6 +1901,7 @@ bool Rtabmap::process(const SensorData & data)
 			// Update map correction, it should be identify when optimizing from the last node
 			_mapCorrection = _optimizedPoses.at(signature->id()) * signature->getPose().inverse();
 			_mapTransform.setIdentity(); // reset mapTransform (used for localization only)
+			_lastLocalizationPose = _optimizedPoses.at(signature->id()); // update in case we switch to localization mode
 			if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
 			{
 				UERROR("Map correction should be identity when optimizing from the last node. T=%s", _mapCorrection.prettyPrint().c_str());
@@ -1895,13 +1924,13 @@ bool Rtabmap::process(const SensorData & data)
 			UASSERT(oldS != 0);
 			Transform correction = _optimizedPoses.at(oldId) * oldS->getPose().inverse();
 			_mapCorrection = correction * _mapTransform;
+			_lastLocalizationPose = _mapCorrection * signature->getPose();
 		}
 		else
 		{
 			UERROR("Not supposed to be here!");
 		}
 	}
-	Transform currentRawOdomPose = signature->getPose();
 
 	timeMapOptimization = timer.ticks();
 	ULOGGER_INFO("timeMapOptimization=%fs", timeMapOptimization);
@@ -2374,7 +2403,7 @@ std::map<int, Transform> Rtabmap::getForwardWMPoses(
 		int fromId,
 		int maxNearestNeighbors,
 		float radius,
-		int maxDiffID // 0 means ignore
+		int maxGraphDepth // 0 means ignore
 		) const
 {
 	std::map<int, Transform> poses;
@@ -2392,10 +2421,15 @@ std::map<int, Transform> Rtabmap::getForwardWMPoses(
 		const std::set<int> & stm = _memory->getStMem();
 		//get distances
 		std::map<int, float> foundIds;
-		if(maxDiffID > 0)
+		if(_memory->isIncremental())
 		{
-			foundIds = _memory->getNeighborsIdRadius(fromId, radius, _optimizedPoses, maxDiffID);
+			foundIds = _memory->getNeighborsIdRadius(fromId, radius, _optimizedPoses, maxGraphDepth);
 		}
+		else
+		{
+			foundIds = graph::getNodesInRadius(fromId, _optimizedPoses, radius);
+		}
+
 		float radiusSqrd = radius * radius;
 		for(std::map<int, Transform>::const_iterator iter = _optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 		{
@@ -2828,17 +2862,30 @@ void Rtabmap::clearPath()
 
 bool Rtabmap::computePath(
 		int targetNode,
-		const std::map<int, Transform> & nodes,
+		std::map<int, Transform> nodes,
 		const std::multimap<int, rtabmap::Link> & constraints)
 {
 	if(_memory)
 	{
-		if(!_memory->getLastWorkingSignature())
+		int currentNode;
+		if(_memory->isIncremental())
 		{
-			UWARN("Working memory is empty... cannot compute a path");
-			return false;
+			if(!_memory->getLastWorkingSignature())
+			{
+				UWARN("Working memory is empty... cannot compute a path");
+				return false;
+			}
+			currentNode = _memory->getLastWorkingSignature()->id();
 		}
-		int currentNode = _memory->getLastWorkingSignature()->id();
+		else
+		{
+			if(_lastLocalizationPose.isNull() || _optimizedPoses.size() == 0)
+			{
+				UWARN("Last localization pose is null... cannot compute a path");
+				return false;
+			}
+			currentNode = graph::findNearestNode(_optimizedPoses, _lastLocalizationPose);
+		}
 
 		if(!uContains(nodes, currentNode))
 		{
@@ -2850,6 +2897,19 @@ bool Rtabmap::computePath(
 		{
 			UWARN("Goal %d not found in the graph! Cannot compute a path", targetNode);
 			return false;
+		}
+
+		// transform nodes into current referential
+		if(_optimizedPoses.size())
+		{
+			if(uContains(nodes, currentNode) && uContains(_optimizedPoses, currentNode))
+			{
+				Transform t = _optimizedPoses.at(currentNode) * nodes.at(currentNode).inverse();
+				for(std::map<int, Transform>::iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
+				{
+					iter->second = t * iter->second;
+				}
+			}
 		}
 
 		std::multimap<int, int> links;
@@ -3096,19 +3156,34 @@ void Rtabmap::updateGoalIndex()
 		}
 
 		UDEBUG("current node = %d current goal = %d", _path[_pathCurrentIndex].first, _path[_pathGoalIndex].first);
-		if(_memory->getLastWorkingSignature() == 0 ||
-		   !uContains(_optimizedPoses, _memory->getLastWorkingSignature()->id()))
+		Transform currentPose;
+		if(_memory->isIncremental())
 		{
-			UERROR("Last node is null in memory or not in optimized poses. Aborting the plan...");
-			this->clearPath();
-			return;
+			if(_memory->getLastWorkingSignature() == 0 ||
+			   !uContains(_optimizedPoses, _memory->getLastWorkingSignature()->id()))
+			{
+				UERROR("Last node is null in memory or not in optimized poses. Aborting the plan...");
+				this->clearPath();
+				return;
+			}
+			currentPose = _optimizedPoses.at(_memory->getLastWorkingSignature()->id());
+		}
+		else
+		{
+			if(_lastLocalizationPose.isNull())
+			{
+				UERROR("Last localization pose is null. Aborting the plan...");
+				this->clearPath();
+				return;
+			}
+			currentPose = _lastLocalizationPose;
 		}
 
 		int goalId = _path.back().first;
 		if(uContains(_optimizedPoses, goalId))
 		{
 			//use local position to know if the goal is reached
-			float d = _optimizedPoses.at(_memory->getLastWorkingSignature()->id()).getDistance(_optimizedPoses.at(goalId)*_pathTransformToGoal);
+			float d = currentPose.getDistance(_optimizedPoses.at(goalId)*_pathTransformToGoal);
 			if(d < _goalReachedRadius)
 			{
 				UINFO("Goal %d reached!", goalId);
@@ -3127,7 +3202,7 @@ void Rtabmap::updateGoalIndex()
 				{
 					if(_localRadius > 0.0f)
 					{
-						distanceFromCurrentNode = _optimizedPoses.at(_memory->getLastWorkingSignature()->id()).getDistance(_optimizedPoses.at(_path[i].first));
+						distanceFromCurrentNode = currentPose.getDistance(_optimizedPoses.at(_path[i].first));
 					}
 
 					if(distanceFromCurrentNode <= _localRadius)
@@ -3155,7 +3230,6 @@ void Rtabmap::updateGoalIndex()
 			// update nearest pose in the path
 			unsigned int nearestNodeIndex = 0;
 			float distance = -1.0f;
-			const Transform & currentPose = _optimizedPoses.at(_memory->getLastWorkingSignature()->id());
 			UASSERT(_pathGoalIndex < _path.size() && _pathGoalIndex >= 0);
 			for(unsigned int i=_pathCurrentIndex; i<=_pathGoalIndex; ++i)
 			{

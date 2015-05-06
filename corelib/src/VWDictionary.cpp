@@ -209,6 +209,10 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 	{
 		_incrementalDictionary = false;
 	}
+	else if(_incrementalDictionary)
+	{
+		UWARN("Cannot change to fixed dictionary, %d words already loaded as incremental", (int)_visualWords.size());
+	}
 	_dictionaryPath = dictionaryPath;
 }
 

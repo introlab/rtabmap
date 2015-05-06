@@ -330,6 +330,8 @@ Memory::~Memory()
 	UDEBUG("");
 	if(!_memoryChanged && !_linksChanged)
 	{
+		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("No changes added to database.")));
+
 		UDEBUG("");
 		if(_dbDriver)
 		{
