@@ -94,10 +94,9 @@ void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & f
 {
 	bool warnFrameRateTooHigh = false;
 	float actualFrameRate = 0;
-	float imageRate = _imageRate==0.0f?20.0f:_imageRate; // limit to 20Hz if infinity
-	if(imageRate>0)
+	if(_imageRate>0)
 	{
-		int sleepTime = (1000.0f/imageRate - 1000.0f*_frameRateTimer->getElapsedTime());
+		int sleepTime = (1000.0f/_imageRate - 1000.0f*_frameRateTimer->getElapsedTime());
 		if(sleepTime > 2)
 		{
 			uSleep(sleepTime-2);
@@ -109,14 +108,14 @@ void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & f
 		}
 
 		// Add precision at the cost of a small overhead
-		while(_frameRateTimer->getElapsedTime() < 1.0/double(imageRate)-0.000001)
+		while(_frameRateTimer->getElapsedTime() < 1.0/double(_imageRate)-0.000001)
 		{
 			//
 		}
 
 		double slept = _frameRateTimer->getElapsedTime();
 		_frameRateTimer->start();
-		UDEBUG("slept=%fs vs target=%fs", slept, 1.0/double(imageRate));
+		UDEBUG("slept=%fs vs target=%fs", slept, 1.0/double(_imageRate));
 	}
 
 	UTimer timer;
@@ -143,7 +142,7 @@ void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & f
 	if(warnFrameRateTooHigh)
 	{
 		UWARN("Camera: Cannot reach target image rate %f Hz, current rate is %f Hz and capture time = %f s.",
-				imageRate, actualFrameRate, timer.ticks());
+				_imageRate, actualFrameRate, timer.ticks());
 	}
 	else
 	{
