@@ -87,13 +87,9 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 
 	ui_->dockWidget_constraints->setVisible(false);
 	ui_->dockWidget_graphView->setVisible(false);
-	ui_->dockWidget_icp->setVisible(false);
-	ui_->dockWidget_visual->setVisible(false);
+	ui_->dockWidget_parameters->setVisible(false);
 	ui_->dockWidget_stereoView->setVisible(false);
 	ui_->dockWidget_view3d->setVisible(false);
-	ui_->dockWidget_detectMoreLC->setVisible(false);
-	ui_->dockWidget_graphOptimizer->setVisible(false);
-	ui_->dockWidget_gridcloud->setVisible(false);
 
 	ui_->constraintsViewer->setCameraLockZ(false);
 	ui_->constraintsViewer->setCameraFree();
@@ -124,13 +120,9 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 
 	ui_->menuView->addAction(ui_->dockWidget_constraints->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_graphView->toggleViewAction());
-	ui_->menuView->addAction(ui_->dockWidget_icp->toggleViewAction());
-	ui_->menuView->addAction(ui_->dockWidget_visual->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_stereoView->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_view3d->toggleViewAction());
-	ui_->menuView->addAction(ui_->dockWidget_detectMoreLC->toggleViewAction());
-	ui_->menuView->addAction(ui_->dockWidget_graphOptimizer->toggleViewAction());
-	ui_->menuView->addAction(ui_->dockWidget_gridcloud->toggleViewAction());
+	ui_->menuView->addAction(ui_->dockWidget_parameters->toggleViewAction());
 	connect(ui_->dockWidget_graphView->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateGraphView()));
 
 	connect(ui_->actionQuit, SIGNAL(triggered()), this, SLOT(close()));
@@ -261,13 +253,9 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	}
 	ui_->dockWidget_constraints->installEventFilter(this);
 	ui_->dockWidget_graphView->installEventFilter(this);
-	ui_->dockWidget_icp->installEventFilter(this);
 	ui_->dockWidget_stereoView->installEventFilter(this);
-	ui_->dockWidget_visual->installEventFilter(this);
 	ui_->dockWidget_view3d->installEventFilter(this);
-	ui_->dockWidget_detectMoreLC->installEventFilter(this);
-	ui_->dockWidget_graphOptimizer->installEventFilter(this);
-	ui_->dockWidget_gridcloud->installEventFilter(this);
+	ui_->dockWidget_parameters->installEventFilter(this);
 }
 
 DatabaseViewer::~DatabaseViewer()
