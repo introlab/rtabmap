@@ -1433,12 +1433,11 @@ void MainWindow::updateMapCloud(
 	{
 		// Find all graphs
 		std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > graphs;
-		pcl::PointCloud<pcl::PointXYZ>::Ptr graphNodes(new pcl::PointCloud<pcl::PointXYZ>);
-		graphNodes->resize(_currentPosesMap.size());
-		int oi = 0;
 		for(std::map<int, Transform>::iterator iter=_currentPosesMap.begin(); iter!=_currentPosesMap.end(); ++iter)
 		{
 			int mapId = uValue(_currentMapIds, iter->first, -1);
+
+			//edges
 			std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator kter = graphs.find(mapId);
 			if(kter == graphs.end())
 			{
@@ -1446,7 +1445,6 @@ void MainWindow::updateMapCloud(
 			}
 			pcl::PointXYZ pt(iter->second.x(), iter->second.y(), iter->second.z());
 			kter->second->push_back(pt);
-			(*graphNodes)[oi++] = pcl::PointXYZ(pt);
 		}
 
 		// add graphs
@@ -1455,14 +1453,10 @@ void MainWindow::updateMapCloud(
 			QColor color = Qt::gray;
 			if(iter->first >= 0)
 			{
-				color = (Qt::GlobalColor)((iter->first+2) % 12 + 7 );
+				color = (Qt::GlobalColor)((iter->first+3) % 12 + 7 );
 			}
 			_ui->widget_cloudViewer->addOrUpdateGraph(uFormat("graph_%d", iter->first), iter->second, color);
 		}
-
-		// add nodes
-		_ui->widget_cloudViewer->addOrUpdateCloud("graph_nodes", graphNodes, Transform::getIdentity(), Qt::green);
-		_ui->widget_cloudViewer->setCloudPointSize("graph_nodes", 5);
 	}
 
 	// Update occupancy grid map in 3D map view and graph view
@@ -1649,7 +1643,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			QColor color = Qt::gray;
 			if(mapId >= 0)
 			{
-				color = (Qt::GlobalColor)(mapId % 12 + 7 );
+				color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
 			}
 			if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloud, pose, color))
 			{
@@ -1666,7 +1660,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		QColor color = Qt::gray;
 		if(mapId >= 0)
 		{
-			color = (Qt::GlobalColor)(mapId % 12 + 7 );
+			color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
 		}
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 		cloud->resize(iter->getWords3().size());
@@ -1721,12 +1715,12 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 		cloud = util3d::laserScanToPointCloud(depth2D);
-		QColor color = Qt::red;
+		QColor color = Qt::gray;
 		if(mapId >= 0)
 		{
-			color = (Qt::GlobalColor)(mapId % 12 + 7 );
+			color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
 		}
-		if(!_ui->widget_cloudViewer->addOrUpdateCloud(scanName, cloud, pose))
+		if(!_ui->widget_cloudViewer->addOrUpdateCloud(scanName, cloud, pose, color))
 		{
 			UERROR("Adding cloud %d to viewer failed!", nodeId);
 		}

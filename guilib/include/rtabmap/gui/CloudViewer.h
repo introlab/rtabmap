@@ -224,7 +224,7 @@ private:
     QAction * _aSetGridCellSize;
     QAction * _aSetBackgroundColor;
     QMenu * _menu;
-    std::map<std::string, pcl::PointCloud<pcl::PointXYZ>::Ptr > _graphes;
+    std::set<std::string> _graphes;
     pcl::PointCloud<pcl::PointXYZ>::Ptr _trajectory;
     unsigned int _maxTrajectorySize;
     unsigned int _gridCellCount;

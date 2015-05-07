@@ -552,7 +552,7 @@ void CloudViewer::addOrUpdateGraph(
 
 	if(graph->size())
 	{
-		_graphes.insert(std::make_pair(id, graph));
+		_graphes.insert(id);
 
 		pcl::PolygonMesh mesh;
 		pcl::Vertices vertices;
@@ -565,6 +565,9 @@ void CloudViewer::addOrUpdateGraph(
 		mesh.polygons.push_back(vertices);
 		_visualizer->addPolylineFromPolygonMesh(mesh, id);
 		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, color.redF(), color.greenF(), color.blueF(), id);
+
+		this->addOrUpdateCloud(id+"_nodes", graph, Transform::getIdentity(), color);
+		this->setCloudPointSize(id+"_nodes", 5);
 	}
 }
 
@@ -580,16 +583,18 @@ void CloudViewer::removeGraph(const std::string & id)
 	{
 		_visualizer->removeShape(id);
 		_graphes.erase(id);
+		removeCloud(id+"_nodes");
 	}
 }
 
 void CloudViewer::removeAllGraphs()
 {
-	for(std::map<std::string, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator iter = _graphes.begin(); iter!=_graphes.end(); ++iter)
+	std::set<std::string> graphes = _graphes;
+	for(std::set<std::string>::iterator iter = graphes.begin(); iter!=graphes.end(); ++iter)
 	{
-		_visualizer->removeShape(iter->first);
+		this->removeGraph(*iter);
 	}
-	_graphes.clear();
+	UASSERT(_graphes.empty());
 }
 
 bool CloudViewer::isTrajectoryShown() const
