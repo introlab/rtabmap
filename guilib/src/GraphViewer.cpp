@@ -868,6 +868,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aShowHideOrigin;
 	QAction * aShowHideReferential;
 	QAction * aShowHideLocalRadius;
+	QAction * aClearGlobalPath;
 	if(_gridMap->isVisible())
 	{
 		aShowHideGridMap = menu.addAction(tr("Hide grid map"));
@@ -900,6 +901,15 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	{
 		aShowHideLocalRadius = menu.addAction(tr("Show local radius"));
 	}
+	if(_globalPathLinkItems.size() && _globalPathLinkItems.begin().value()->isVisible())
+	{
+		aClearGlobalPath = menu.addAction(tr("Hide global path"));
+	}
+	else
+	{
+		aClearGlobalPath = menu.addAction(tr("Show global path"));
+	}
+	aClearGlobalPath->setEnabled(_globalPathLinkItems.size());
 	menu.addSeparator();
 	QAction * aRestoreDefaults = menu.addAction(tr("Restore defaults"));
 
@@ -1096,6 +1106,13 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else if(r == aRestoreDefaults)
 	{
 		this->restoreDefaults();
+	}
+	else if(r == aClearGlobalPath)
+	{
+		for(QMap<int, LinkItem*>::iterator iter=_globalPathLinkItems.begin(); iter!=_globalPathLinkItems.end(); ++iter)
+		{
+			iter.value()->setVisible(!iter.value()->isVisible());
+		}
 	}
 	if(r)
 	{
