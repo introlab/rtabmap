@@ -1058,7 +1058,9 @@ bool Rtabmap::process(const SensorData & data)
 	//============================================================
 	// Bayes filter update
 	//============================================================
-	if(!signature->isBadSignature() && !smallDisplacement)
+	int previousId = signature->getLinks().size() == 1?signature->getLinks().begin()->first:0;
+	// Not a bad signature, not a small displacemnt unless the previous signature didn't have a loop closure
+	if(!signature->isBadSignature() && (!smallDisplacement || _memory->getLoopClosureLinks(previousId, false).size() == 0))
 	{
 		// If the working memory is empty, don't do the detection. It happens when it
 		// is the first time the detector is started (there needs some images to
@@ -1653,223 +1655,228 @@ bool Rtabmap::process(const SensorData & data)
 			// In localization mode, no need to check local loop
 			// closures if we are already localized by a global closure.
 
-			//============================================================
-			// LOCAL LOOP CLOSURE SPACE
-			//============================================================
+			// don't do it if it is a small displacement unless the previous signature didn't have a loop closure
+			if(!smallDisplacement || _memory->getLoopClosureLinks(previousId, false).size() == 0)
+			{
 
-			//
-			// 1) compare visually with nearest locations
-			//
-			float r = _localRadius;
-			if(_localPathFilteringRadius > 0 && _localPathFilteringRadius<_localRadius)
-			{
-				r = _localPathFilteringRadius;
-			}
+				//============================================================
+				// LOCAL LOOP CLOSURE SPACE
+				//============================================================
 
-			std::map<int, float> nearestIds;
-			if(_memory->isIncremental())
-			{
-				nearestIds = _memory->getNeighborsIdRadius(signature->id(), r, _optimizedPoses, _localDetectMaxGraphDepth);
-			}
-			else
-			{
-				nearestIds = graph::getNodesInRadius(signature->id(), _optimizedPoses, r);
-			}
-			std::map<int, Transform> nearestPoses;
-			for(std::map<int, float>::iterator iter=nearestIds.begin(); iter!=nearestIds.end(); ++iter)
-			{
-				nearestPoses.insert(std::make_pair(iter->first, _optimizedPoses.at(iter->first)));
-			}
-			// segment poses by paths, only one detection per path
-			std::list<std::map<int, Transform> > nearestPaths = getPaths(nearestPoses);
-			for(std::list<std::map<int, Transform> >::iterator iter=nearestPaths.begin();
-				iter!=nearestPaths.end() && (_memory->isIncremental() || lastLocalSpaceClosureId == 0);
-				++iter)
-			{
-				std::map<int, Transform> & path = *iter;
-				UASSERT(path.size());
-				//find the nearest pose on the path
-				int nearestId = rtabmap::graph::findNearestNode(path, _optimizedPoses.at(signature->id()));
-				UASSERT(nearestId > 0);
-
-				// nearest pose must not be linked to current location, and not in STM
-				if(!signature->hasLink(nearestId) &&
-				   _memory->getStMem().find(nearestId) == _memory->getStMem().end())
+				//
+				// 1) compare visually with nearest locations
+				//
+				float r = _localRadius;
+				if(_localPathFilteringRadius > 0 && _localPathFilteringRadius<_localRadius)
 				{
-					double variance = 1.0;
-					Transform transform;
-					if(_reextractLoopClosureFeatures)
-					{
-						ParametersMap customParameters = _modifiedParameters; // get BOW LCC parameters
-						// override some parameters
-						uInsert(customParameters, ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
-						uInsert(customParameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-						uInsert(customParameters, ParametersPair(Parameters::kMemBinDataKept(), "false"));
-						uInsert(customParameters, ParametersPair(Parameters::kMemSTMSize(), "0"));
-						uInsert(customParameters, ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
-						uInsert(customParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
-						uInsert(customParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(_reextractNNType))); // bruteforce
-						uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(_reextractNNDR)));
-						uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(_reextractFeatureType))); // FAST/BRIEF
-						uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(_reextractMaxWords)));
-						uInsert(customParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
-						uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
-						uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
-
-						//for(ParametersMap::iterator iter = customParameters.begin(); iter!=customParameters.end(); ++iter)
-						//{
-						//	UDEBUG("%s=%s", iter->first.c_str(), iter->second.c_str());
-						//}
-
-						Memory memory(customParameters);
-
-						UTimer timeT;
-
-						// Add signatures
-						SensorData dataFrom = data;
-						dataFrom.setId(signature->id());
-						Signature tmpTo = _memory->getSignatureData(nearestId, true);
-						SensorData dataTo = tmpTo.toSensorData();
-						UDEBUG("timeTo = %fs", timeT.ticks());
-
-						if(dataFrom.isValid() &&
-						   dataFrom.isMetric() &&
-						   dataTo.isValid() &&
-						   dataTo.isMetric() &&
-						   dataFrom.id() != Memory::kIdInvalid &&
-						   tmpTo.id() != Memory::kIdInvalid)
-						{
-							memory.update(dataTo);
-							UDEBUG("timeUpTo = %fs", timeT.ticks());
-							memory.update(dataFrom);
-							UDEBUG("timeUpFrom = %fs", timeT.ticks());
-
-							transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), 0, 0, &variance);
-							UDEBUG("timeTransform = %fs", timeT.ticks());
-						}
-						else
-						{
-							// Fallback to normal way (raw data not kept in database...)
-							UWARN("Loop closure: Some images not found in memory for re-extracting "
-								  "features, is Mem/RawDataKept=false? Falling back with already extracted 3D features.");
-							transform = _memory->computeVisualTransform(nearestId, signature->id(), 0, 0, &variance);
-						}
-					}
-					else
-					{
-						transform = _memory->computeVisualTransform(nearestId, signature->id(), 0, 0, &variance);
-					}
-					if(!transform.isNull() && _globalLoopClosureIcpType > 0)
-					{
-						transform  = _memory->computeIcpTransform(nearestId, signature->id(), transform, _globalLoopClosureIcpType == 1, 0, 0, &variance);
-					}
-					if(!transform.isNull())
-					{
-						UINFO("[Visual] Add local loop closure in SPACE (%d->%d) %s",
-								signature->id(),
-								nearestId,
-								transform.prettyPrint().c_str());
-						_memory->addLink(nearestId, signature->id(), transform, Link::kLocalSpaceClosure, variance, variance);
-
-						if(_loopClosureHypothesis.first == 0)
-						{
-							// Old map -> new map, used for localization correction on loop closure
-							const Signature * oldS = _memory->getSignature(nearestId);
-							UASSERT(oldS != 0);
-							_mapTransform = oldS->getPose() * transform.inverse() * signature->getPose().inverse();
-							++localSpaceClosuresAddedVisually;
-							lastLocalSpaceClosureId = nearestId;
-						}
-					}
+					r = _localPathFilteringRadius;
 				}
-			}
 
-			//
-			// 2) compare locally with nearest locations by scan matching
-			//
-			if( !signature->getLaserScanCompressed().empty() &&
-				(_memory->isIncremental() || lastLocalSpaceClosureId == 0))
-			{
-				// In localization mode, no need to check local loop
-				// closures if we are already localized by at least one
-				// local visual closure above.
-
-				std::map<int, Transform> forwardPoses;
-				forwardPoses = this->getForwardWMPoses(
-						signature->id(),
-						0,
-						_localRadius,
-						_localDetectMaxGraphDepth);
-
-				std::list<std::map<int, Transform> > forwardPaths = getPaths(forwardPoses);
-				localSpacePaths = (int)forwardPaths.size();
-
-				for(std::list<std::map<int, Transform> >::iterator iter=forwardPaths.begin();
-						iter!=forwardPaths.end() && (_memory->isIncremental() || lastLocalSpaceClosureId == 0);
-						++iter)
+				std::map<int, float> nearestIds;
+				if(_memory->isIncremental())
+				{
+					nearestIds = _memory->getNeighborsIdRadius(signature->id(), r, _optimizedPoses, _localDetectMaxGraphDepth);
+				}
+				else
+				{
+					nearestIds = graph::getNodesInRadius(signature->id(), _optimizedPoses, r);
+				}
+				std::map<int, Transform> nearestPoses;
+				for(std::map<int, float>::iterator iter=nearestIds.begin(); iter!=nearestIds.end(); ++iter)
+				{
+					nearestPoses.insert(std::make_pair(iter->first, _optimizedPoses.at(iter->first)));
+				}
+				// segment poses by paths, only one detection per path
+				std::list<std::map<int, Transform> > nearestPaths = getPaths(nearestPoses);
+				for(std::list<std::map<int, Transform> >::iterator iter=nearestPaths.begin();
+					iter!=nearestPaths.end() && (_memory->isIncremental() || lastLocalSpaceClosureId == 0);
+					++iter)
 				{
 					std::map<int, Transform> & path = *iter;
 					UASSERT(path.size());
-
 					//find the nearest pose on the path
 					int nearestId = rtabmap::graph::findNearestNode(path, _optimizedPoses.at(signature->id()));
 					UASSERT(nearestId > 0);
 
-					// nearest pose must be close and not linked to current location
+					// nearest pose must not be linked to current location, and not in STM
 					if(!signature->hasLink(nearestId) &&
-					   (_localPathFilteringRadius <= 0.0f ||
-						_optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _localPathFilteringRadius*_localPathFilteringRadius))
+					   _memory->getStMem().find(nearestId) == _memory->getStMem().end())
 					{
-						// Assemble scans in the path and do ICP only
-						if(_localPathOdomPosesUsed)
+						double variance = 1.0;
+						Transform transform;
+						if(_reextractLoopClosureFeatures)
 						{
-							//optimize the path's poses locally
-							path = optimizeGraph(nearestId, uKeysSet(path), false);
-							// transform local poses in optimized graph referential
-							Transform t = _optimizedPoses.at(nearestId) * path.at(nearestId).inverse();
-							for(std::map<int, Transform>::iterator jter=path.begin(); jter!=path.end(); ++jter)
+							ParametersMap customParameters = _modifiedParameters; // get BOW LCC parameters
+							// override some parameters
+							uInsert(customParameters, ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
+							uInsert(customParameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
+							uInsert(customParameters, ParametersPair(Parameters::kMemBinDataKept(), "false"));
+							uInsert(customParameters, ParametersPair(Parameters::kMemSTMSize(), "0"));
+							uInsert(customParameters, ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
+							uInsert(customParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
+							uInsert(customParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(_reextractNNType))); // bruteforce
+							uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(_reextractNNDR)));
+							uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(_reextractFeatureType))); // FAST/BRIEF
+							uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(_reextractMaxWords)));
+							uInsert(customParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
+							uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
+							uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
+
+							//for(ParametersMap::iterator iter = customParameters.begin(); iter!=customParameters.end(); ++iter)
+							//{
+							//	UDEBUG("%s=%s", iter->first.c_str(), iter->second.c_str());
+							//}
+
+							Memory memory(customParameters);
+
+							UTimer timeT;
+
+							// Add signatures
+							SensorData dataFrom = data;
+							dataFrom.setId(signature->id());
+							Signature tmpTo = _memory->getSignatureData(nearestId, true);
+							SensorData dataTo = tmpTo.toSensorData();
+							UDEBUG("timeTo = %fs", timeT.ticks());
+
+							if(dataFrom.isValid() &&
+							   dataFrom.isMetric() &&
+							   dataTo.isValid() &&
+							   dataTo.isMetric() &&
+							   dataFrom.id() != Memory::kIdInvalid &&
+							   tmpTo.id() != Memory::kIdInvalid)
 							{
-								jter->second = t * jter->second;
+								memory.update(dataTo);
+								UDEBUG("timeUpTo = %fs", timeT.ticks());
+								memory.update(dataFrom);
+								UDEBUG("timeUpFrom = %fs", timeT.ticks());
+
+								transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), 0, 0, &variance);
+								UDEBUG("timeTransform = %fs", timeT.ticks());
+							}
+							else
+							{
+								// Fallback to normal way (raw data not kept in database...)
+								UWARN("Loop closure: Some images not found in memory for re-extracting "
+									  "features, is Mem/RawDataKept=false? Falling back with already extracted 3D features.");
+								transform = _memory->computeVisualTransform(nearestId, signature->id(), 0, 0, &variance);
 							}
 						}
-						if(_localPathFilteringRadius > 0.0f)
+						else
 						{
-							// path filtering
-							std::map<int, Transform> filteredPath = graph::radiusPosesFiltering(path, _localPathFilteringRadius, CV_PI, true);
-							// make sure the nearest and farthest poses are still here
-							filteredPath.insert(*path.find(nearestId));
-							filteredPath.insert(*path.begin());
-							filteredPath.insert(*path.rbegin());
-							path = filteredPath;
+							transform = _memory->computeVisualTransform(nearestId, signature->id(), 0, 0, &variance);
 						}
-
-						if(path.size() > 2) // more than current+nearest
+						if(!transform.isNull() && _globalLoopClosureIcpType > 0)
 						{
-							// add current node to poses
-							path.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
-							//The nearest will be the reference for a loop closure transform
-							if(signature->getLinks().find(nearestId) == signature->getLinks().end())
+							transform  = _memory->computeIcpTransform(nearestId, signature->id(), transform, _globalLoopClosureIcpType == 1, 0, 0, &variance);
+						}
+						if(!transform.isNull())
+						{
+							UINFO("[Visual] Add local loop closure in SPACE (%d->%d) %s",
+									signature->id(),
+									nearestId,
+									transform.prettyPrint().c_str());
+							_memory->addLink(nearestId, signature->id(), transform, Link::kLocalSpaceClosure, variance, variance);
+
+							if(_loopClosureHypothesis.first == 0)
 							{
-								Transform transform = _memory->computeScanMatchingTransform(signature->id(), nearestId, path, 0, 0, 0);
-								if(!transform.isNull())
+								// Old map -> new map, used for localization correction on loop closure
+								const Signature * oldS = _memory->getSignature(nearestId);
+								UASSERT(oldS != 0);
+								_mapTransform = oldS->getPose() * transform.inverse() * signature->getPose().inverse();
+								++localSpaceClosuresAddedVisually;
+								lastLocalSpaceClosureId = nearestId;
+							}
+						}
+					}
+				}
+
+				//
+				// 2) compare locally with nearest locations by scan matching
+				//
+				if( !signature->getLaserScanCompressed().empty() &&
+					(_memory->isIncremental() || lastLocalSpaceClosureId == 0))
+				{
+					// In localization mode, no need to check local loop
+					// closures if we are already localized by at least one
+					// local visual closure above.
+
+					std::map<int, Transform> forwardPoses;
+					forwardPoses = this->getForwardWMPoses(
+							signature->id(),
+							0,
+							_localRadius,
+							_localDetectMaxGraphDepth);
+
+					std::list<std::map<int, Transform> > forwardPaths = getPaths(forwardPoses);
+					localSpacePaths = (int)forwardPaths.size();
+
+					for(std::list<std::map<int, Transform> >::iterator iter=forwardPaths.begin();
+							iter!=forwardPaths.end() && (_memory->isIncremental() || lastLocalSpaceClosureId == 0);
+							++iter)
+					{
+						std::map<int, Transform> & path = *iter;
+						UASSERT(path.size());
+
+						//find the nearest pose on the path
+						int nearestId = rtabmap::graph::findNearestNode(path, _optimizedPoses.at(signature->id()));
+						UASSERT(nearestId > 0);
+
+						// nearest pose must be close and not linked to current location
+						if(!signature->hasLink(nearestId) &&
+						   (_localPathFilteringRadius <= 0.0f ||
+							_optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _localPathFilteringRadius*_localPathFilteringRadius))
+						{
+							// Assemble scans in the path and do ICP only
+							if(_localPathOdomPosesUsed)
+							{
+								//optimize the path's poses locally
+								path = optimizeGraph(nearestId, uKeysSet(path), false);
+								// transform local poses in optimized graph referential
+								Transform t = _optimizedPoses.at(nearestId) * path.at(nearestId).inverse();
+								for(std::map<int, Transform>::iterator jter=path.begin(); jter!=path.end(); ++jter)
 								{
-									UINFO("[Scan matching] Add local loop closure in SPACE (%d->%d) %s",
-											signature->id(),
-											nearestId,
-											transform.prettyPrint().c_str());
-									// set Identify covariance for laser scan matching only
-									_memory->addLink(nearestId, signature->id(), transform, Link::kLocalSpaceClosure, 1, 1);
+									jter->second = t * jter->second;
+								}
+							}
+							if(_localPathFilteringRadius > 0.0f)
+							{
+								// path filtering
+								std::map<int, Transform> filteredPath = graph::radiusPosesFiltering(path, _localPathFilteringRadius, CV_PI, true);
+								// make sure the nearest and farthest poses are still here
+								filteredPath.insert(*path.find(nearestId));
+								filteredPath.insert(*path.begin());
+								filteredPath.insert(*path.rbegin());
+								path = filteredPath;
+							}
 
-									++localSpaceClosuresAddedByICPOnly;
-
-									// no local loop closure added visually
-									if(localSpaceClosuresAddedVisually == 0 && _loopClosureHypothesis.first == 0)
+							if(path.size() > 2) // more than current+nearest
+							{
+								// add current node to poses
+								path.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
+								//The nearest will be the reference for a loop closure transform
+								if(signature->getLinks().find(nearestId) == signature->getLinks().end())
+								{
+									Transform transform = _memory->computeScanMatchingTransform(signature->id(), nearestId, path, 0, 0, 0);
+									if(!transform.isNull())
 									{
-										// Old map -> new map, used for localization correction on loop closure
-										const Signature * oldS = _memory->getSignature(nearestId);
-										UASSERT(oldS != 0);
-										_mapTransform = oldS->getPose() * transform.inverse() * signature->getPose().inverse();
-										lastLocalSpaceClosureId = nearestId;
+										UINFO("[Scan matching] Add local loop closure in SPACE (%d->%d) %s",
+												signature->id(),
+												nearestId,
+												transform.prettyPrint().c_str());
+										// set Identify covariance for laser scan matching only
+										_memory->addLink(nearestId, signature->id(), transform, Link::kLocalSpaceClosure, 1, 1);
+
+										++localSpaceClosuresAddedByICPOnly;
+
+										// no local loop closure added visually
+										if(localSpaceClosuresAddedVisually == 0 && _loopClosureHypothesis.first == 0)
+										{
+											// Old map -> new map, used for localization correction on loop closure
+											const Signature * oldS = _memory->getSignature(nearestId);
+											UASSERT(oldS != 0);
+											_mapTransform = oldS->getPose() * transform.inverse() * signature->getPose().inverse();
+											lastLocalSpaceClosureId = nearestId;
+										}
 									}
 								}
 							}
@@ -2128,8 +2135,9 @@ bool Rtabmap::process(const SensorData & data)
 		signaturesRemoved.push_back(signature->id());
 		_memory->deleteLocation(signature->id());
 	}
-	else if(smallDisplacement)
+	else if(smallDisplacement && _loopClosureHypothesis.first == 0 && lastLocalSpaceClosureId == 0)
 	{
+		// Don't delete the location if a loop closure is detected
 		UINFO("Ignoring location %d because the displacement is too small! (d=%f a=%f)",
 			  signature->id(), _rgbdLinearUpdate, _rgbdAngularUpdate);
 		// If there is a too small displacement, remove the node
