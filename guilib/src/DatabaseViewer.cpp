@@ -2112,6 +2112,7 @@ void DatabaseViewer::updateConstraintView(
 					else
 					{
 						UWARN("Empty 3D words for node %d", link.from());
+						ui_->constraintsViewer->removeCloud("cloud0");
 					}
 					if(cloudTo->size())
 					{
@@ -2120,11 +2121,14 @@ void DatabaseViewer::updateConstraintView(
 					else
 					{
 						UWARN("Empty 3D words for node %d", link.to());
+						ui_->constraintsViewer->removeCloud("cloud1");
 					}
 				}
 				else
 				{
 					UERROR("Not found signature %d or %d in RAM", link.from(), link.to());
+					ui_->constraintsViewer->removeCloud("cloud0");
+					ui_->constraintsViewer->removeCloud("cloud1");
 				}
 			}
 		}
