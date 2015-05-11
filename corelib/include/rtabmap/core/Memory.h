@@ -84,6 +84,7 @@ public:
 	bool addLink(int to, int from, const Transform & transform, Link::Type type, float rotVariance, float transVariance);
 	void updateLink(int fromId, int toId, const Transform & transform, float rotVariance, float transVariance);
 	void removeAllVirtualLinks();
+	void removeVirtualLinks(int signatureId);
 	std::map<int, int> getNeighborsId(
 			int signatureId,
 			int maxGraphDepth,

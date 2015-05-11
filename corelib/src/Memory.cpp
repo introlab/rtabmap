@@ -1625,24 +1625,10 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 		}
 		else
 		{
-			//make sure that virtual links are removed
-			const std::map<int, Link> & links = s->getLinks();
-			for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
-			{
-				if(iter->second.type() == Link::kVirtualClosure)
-				{
-					Signature * sTo = this->_getSignature(iter->first);
-					if(sTo)
-					{
-						sTo->removeLink(s->id());
-					}
-					else
-					{
-						UERROR("Link %d of %d not in WM/STM?!?", iter->first, s->id());
-					}
-				}
-			}
-			s->removeVirtualLinks();
+			// Make sure that virtual links are removed.
+			// It should be called before the signature is
+			// removed from _signatures below.
+			removeVirtualLinks(s->id());
 		}
 
 		this->disableWordsRef(s->id());
@@ -2726,6 +2712,36 @@ void Memory::removeAllVirtualLinks()
 	for(std::map<int, Signature*>::iterator iter=_signatures.begin(); iter!=_signatures.end(); ++iter)
 	{
 		iter->second->removeVirtualLinks();
+	}
+}
+
+void Memory::removeVirtualLinks(int signatureId)
+{
+	UDEBUG("");
+	Signature * s = this->_getSignature(signatureId);
+	if(s)
+	{
+		const std::map<int, Link> & links = s->getLinks();
+		for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+		{
+			if(iter->second.type() == Link::kVirtualClosure)
+			{
+				Signature * sTo = this->_getSignature(iter->first);
+				if(sTo)
+				{
+					sTo->removeLink(s->id());
+				}
+				else
+				{
+					UERROR("Link %d of %d not in WM/STM?!?", iter->first, s->id());
+				}
+			}
+		}
+		s->removeVirtualLinks();
+	}
+	else
+	{
+		UERROR("Signature %d not in WM/STM?!?", signatureId);
 	}
 }
 

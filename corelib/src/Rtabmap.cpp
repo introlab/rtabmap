@@ -3131,6 +3131,15 @@ void Rtabmap::updateGoalIndex()
 
 	if( _memory && _path.size())
 	{
+		// remove all previous virtual links
+		for(unsigned int i=0; i<_pathCurrentIndex && i<_path.size(); ++i)
+		{
+			if(_memory->getSignature(_path[i].first))
+			{
+				_memory->removeVirtualLinks(_path[i].first);
+			}
+		}
+
 		// Make sure the next signatures on the path are linked together
 		float distanceSoFar = 0.0f;
 		for(unsigned int i=_pathCurrentIndex;
