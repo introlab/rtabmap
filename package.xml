@@ -25,7 +25,7 @@
   <run_depend>libqt4-dev</run_depend>
   <run_depend>libsqlite3-dev</run_depend>
   <run_depend>zlib</run_depend>
-  <run_depend>libfreenect</run_depend>
+  <run_depend>libfreenect-dev</run_depend>
   <run_depend>libopenni-dev</run_depend>
   <run_depend>libopenni2-dev</run_depend>
   <run_depend>cv_bridge</run_depend>
