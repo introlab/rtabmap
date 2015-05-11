@@ -55,9 +55,9 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_pcl_version->setText(PCL_VERSION_PRETTY);
 	_ui->label_freenect->setText(CameraFreenect::available()?"Yes":"No");
 	_ui->label_openni2->setText(CameraOpenNI2::available()?"Yes":"No");
-	_ui->label_openni2->setText(CameraFreenect2::available()?"Yes":"No");
-	_ui->label_openni2->setText(CameraStereoDC1394::available()?"Yes":"No");
-	_ui->label_openni2->setText(CameraStereoFlyCapture2::available()?"Yes":"No");
+	_ui->label_freenect2->setText(CameraFreenect2::available()?"Yes":"No");
+	_ui->label_dc1394->setText(CameraStereoDC1394::available()?"Yes":"No");
+	_ui->label_flycapture2->setText(CameraStereoFlyCapture2::available()?"Yes":"No");
 
 	_ui->label_g2o->setText(graph::G2OOptimizer::available()?"Yes":"No");
 }
