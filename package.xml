@@ -14,6 +14,7 @@
   
   <build_depend>libpcl-all-dev</build_depend>
   <build_depend>libqt4-dev</build_depend>
+  <build_depend>libvtk-qt</build_depend>
   <build_depend>libsqlite3-dev</build_depend>
   <build_depend>zlib</build_depend>
   <build_depend>libfreenect-dev</build_depend>
@@ -23,6 +24,7 @@
   
   <run_depend>libpcl-all-dev</run_depend>
   <run_depend>libqt4-dev</run_depend>
+  <run_depend>libvtk-qt</run_depend>
   <run_depend>libsqlite3-dev</run_depend>
   <run_depend>zlib</run_depend>
   <run_depend>libfreenect-dev</run_depend>
