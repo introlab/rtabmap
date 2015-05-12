@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-591</y>
-            <width>760</width>
-            <height>1502</height>
+            <y>0</y>
+            <width>755</width>
+            <height>1557</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -5007,7 +5007,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <string> m</string>
                          </property>
                          <property name="decimals">
-                          <number>2</number>
+                          <number>3</number>
                          </property>
                          <property name="singleStep">
                           <double>0.100000000000000</double>
