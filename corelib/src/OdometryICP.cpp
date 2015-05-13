@@ -26,7 +26,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/core/Odometry.h"
-#include "rtabmap/core/util3d.h"
+#include "rtabmap/core/util3d_registration.h"
+#include "rtabmap/core/util3d_filtering.h"
+#include "rtabmap/core/util3d_surface.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
@@ -95,7 +97,7 @@ Transform OdometryICP::computeTransform(const SensorData & data, OdometryInfo * 
 			pcl::PointCloud<pcl::PointNormal>::Ptr newCloud = util3d::computeNormals(newCloudXYZ);
 
 			std::vector<int> indices;
-			newCloud = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(newCloud);
+			newCloud = util3d::removeNaNNormalsFromPointCloud(newCloud);
 			if(newCloudXYZ->size() != newCloud->size())
 			{
 				UWARN("removed nan normals...");

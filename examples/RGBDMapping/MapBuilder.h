@@ -35,6 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef Q_MOC_RUN // Mac OS X issue
 #include "rtabmap/gui/CloudViewer.h"
 #include "rtabmap/core/util3d.h"
+#include "rtabmap/core/util3d_filtering.h"
+#include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/RtabmapEvent.h"
 #endif
 #include "rtabmap/utilite/UStl.h"
@@ -140,10 +142,10 @@ protected slots:
 					2); // decimation // high definition
 				if(cloud->size())
 				{
-					cloud = util3d::passThrough<pcl::PointXYZRGB>(cloud, "z", 0, 4.0f);
+					cloud = util3d::passThrough(cloud, "z", 0, 4.0f);
 					if(cloud->size())
 					{
-						cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, data.localTransform());
+						cloud = util3d::transformPointCloud(cloud, data.localTransform());
 					}
 				}
 				if(!cloudViewer_->addOrUpdateCloud("cloudOdom", cloud, odometryCorrection_*pose))
@@ -211,10 +213,10 @@ protected slots:
 
 					if(cloud->size())
 					{
-						cloud = util3d::passThrough<pcl::PointXYZRGB>(cloud, "z", 0, 4.0f);
+						cloud = util3d::passThrough(cloud, "z", 0, 4.0f);
 						if(cloud->size())
 						{
-							cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, stats.getSignature().getLocalTransform());
+							cloud = util3d::transformPointCloud(cloud, stats.getSignature().getLocalTransform());
 						}
 					}
 					if(!cloudViewer_->addOrUpdateCloud(cloudName, cloud, iter->second))

@@ -27,7 +27,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/util3d.h"
+#include "rtabmap/core/util3d_conversions.h"
+#include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/utilite/ULogger.h"
+#include "rtabmap/utilite/UMath.h"
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <pcl/visualization/cloud_viewer.h>
@@ -183,13 +186,13 @@ int main(int argc, char * argv[])
 			if(rgb.cols == depth.cols && rgb.rows == depth.rows && fx && fy)
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromDepthRGB(rgb, depth, cx, cy, fx, fy);
-				cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, t);
+				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
 				viewer.showCloud(cloud, "cloud");
 			}
 			else if(!depth.empty() && fx && fy)
 			{
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(depth, cx, cy, fx, fy);
-				cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZ>(cloud, t);
+				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
 				viewer.showCloud(cloud, "cloud");
 			}
 
@@ -214,7 +217,7 @@ int main(int argc, char * argv[])
 					cv::cvtColor(depth, depth, CV_BGR2GRAY);
 				}
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromStereoImages(rgb, depth, cx, cy, fx, fy);
-				cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, t);
+				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
 				viewer.showCloud(cloud, "cloud");
 			}
 		}

@@ -29,6 +29,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ui_loopClosureViewer.h"
 
 #include "rtabmap/core/Memory.h"
+#include "rtabmap/core/util3d_filtering.h"
+#include "rtabmap/core/util3d_transforms.h"
+#include "rtabmap/core/util3d_conversions.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/utilite/ULogger.h"
@@ -123,17 +126,17 @@ void LoopClosureViewer::updateView(const Transform & transform)
 						decimation);
 			}
 
-			cloudA = util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudA);
+			cloudA = util3d::removeNaNFromPointCloud(cloudA);
 
 			if(maxDepth>0.0)
 			{
-				cloudA = util3d::passThrough<pcl::PointXYZRGB>(cloudA, "z", 0, maxDepth);
+				cloudA = util3d::passThrough(cloudA, "z", 0, maxDepth);
 			}
 			if(samples>0 && (int)cloudA->size() > samples)
 			{
-				cloudA = util3d::sampling<pcl::PointXYZRGB>(cloudA, samples);
+				cloudA = util3d::sampling(cloudA, samples);
 			}
-			cloudA = util3d::transformPointCloud<pcl::PointXYZRGB>(cloudA, sA_.getLocalTransform());
+			cloudA = util3d::transformPointCloud(cloudA, sA_.getLocalTransform());
 
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudB;
 			if(sB_.getDepthRaw().type() == CV_8UC1)
@@ -155,23 +158,23 @@ void LoopClosureViewer::updateView(const Transform & transform)
 						decimation);
 			}
 
-			cloudB = util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudB);
+			cloudB = util3d::removeNaNFromPointCloud(cloudB);
 
 			if(maxDepth>0.0)
 			{
-				cloudB = util3d::passThrough<pcl::PointXYZRGB>(cloudB, "z", 0, maxDepth);
+				cloudB = util3d::passThrough(cloudB, "z", 0, maxDepth);
 			}
 			if(samples>0 && (int)cloudB->size() > samples)
 			{
-				cloudB = util3d::sampling<pcl::PointXYZRGB>(cloudB, samples);
+				cloudB = util3d::sampling(cloudB, samples);
 			}
-			cloudB = util3d::transformPointCloud<pcl::PointXYZRGB>(cloudB, t*sB_.getLocalTransform());
+			cloudB = util3d::transformPointCloud(cloudB, t*sB_.getLocalTransform());
 
 			//cloud 2d
 			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
 			scanA = util3d::laserScanToPointCloud(sA_.getLaserScanRaw());
 			scanB = util3d::laserScanToPointCloud(sB_.getLaserScanRaw());
-			scanB = util3d::transformPointCloud<pcl::PointXYZ>(scanB, t);
+			scanB = util3d::transformPointCloud(scanB, t);
 
 			ui_->label_idA->setText(QString("[%1 (%2) -> %3 (%4)]").arg(sB_.id()).arg(cloudB->size()).arg(sA_.id()).arg(cloudA->size()));
 

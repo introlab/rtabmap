@@ -29,7 +29,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/Signature.h"
+#include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d.h"
+#include "rtabmap/core/util3d_features.h"
 #include "rtabmap/core/EpipolarGeometry.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
@@ -38,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/video/tracking.hpp>
+#include <pcl/common/centroid.h>
 
 namespace rtabmap {
 

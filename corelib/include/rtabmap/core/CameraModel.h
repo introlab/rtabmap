@@ -138,5 +138,6 @@ private:
 	cv::Mat F_;
 };
 
+
 } /* namespace rtabmap */
 #endif /* CAMERAMODEL_H_ */

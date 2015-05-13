@@ -49,8 +49,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/filters/crop_box.h>
 #include <pcl/io/pcd_io.h>
 
-#include "rtabmap/core/util3d.h"
-
 #include <stdlib.h>
 #include <set>
 
