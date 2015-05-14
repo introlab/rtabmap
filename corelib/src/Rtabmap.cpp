@@ -49,8 +49,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/filters/crop_box.h>
 #include <pcl/io/pcd_io.h>
 
-#include "rtabmap/core/util3d.h"
-
 #include <stdlib.h>
 #include <set>
 
@@ -3139,6 +3137,26 @@ void Rtabmap::updateGoalIndex()
 				_memory->removeVirtualLinks(_path[i].first);
 			}
 		}
+		// for the current index, only keep the newest virtual link
+		UASSERT(_pathCurrentIndex < _path.size());
+		const Signature * currentIndexS = _memory->getSignature(_path[_pathCurrentIndex].first);
+		UASSERT(currentIndexS != 0);
+		std::map<int, Link> links = currentIndexS->getLinks(); // make a copy
+		bool latestVirtualLinkFound = false;
+		for(std::map<int, Link>::reverse_iterator iter=links.rbegin(); iter!=links.rend(); ++iter)
+		{
+			if(iter->second.type() == Link::kVirtualClosure)
+			{
+				if(latestVirtualLinkFound)
+				{
+					_memory->removeLink(currentIndexS->id(), iter->first);
+				}
+				else
+				{
+					latestVirtualLinkFound = true;
+				}
+			}
+		}
 
 		// Make sure the next signatures on the path are linked together
 		float distanceSoFar = 0.0f;
@@ -3263,7 +3281,8 @@ void Rtabmap::updateGoalIndex()
 			}
 			if(distance < 0)
 			{
-				UERROR("The nearest pose on the path not found!");
+				UERROR("The nearest pose on the path not found! Aborting the plan...");
+				this->clearPath();
 			}
 			else
 			{

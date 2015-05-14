@@ -49,6 +49,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/KeypointItem.h"
 #include "rtabmap/gui/UCv2Qt.h"
 #include "rtabmap/core/util3d.h"
+#include "rtabmap/core/util3d_conversions.h"
+#include "rtabmap/core/util3d_transforms.h"
+#include "rtabmap/core/util3d_filtering.h"
+#include "rtabmap/core/util3d_surface.h"
+#include "rtabmap/core/util3d_registration.h"
+#include "rtabmap/core/util3d_mapping.h"
+#include "rtabmap/core/util2d.h"
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/Compression.h"
@@ -61,6 +68,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/pcd_io.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/common/transforms.h>
+#include <pcl/common/common.h>
 
 namespace rtabmap {
 
@@ -1078,7 +1086,7 @@ void DatabaseViewer::view3DMap()
 							}
 							cloud = rtabmap::util3d::cloudFromDisparityRGB(
 									data.getImageRaw(),
-								util3d::disparityFromStereoImages(leftImg, data.getDepthRaw()),
+								util2d::disparityFromStereoImages(leftImg, data.getDepthRaw()),
 								data.getCx(), data.getCy(),
 								data.getFx(), data.getFy(),
 								decimation);
@@ -1095,10 +1103,10 @@ void DatabaseViewer::view3DMap()
 
 						if(maxDepth)
 						{
-							cloud = rtabmap::util3d::passThrough<pcl::PointXYZRGB>(cloud, "z", 0, maxDepth);
+							cloud = rtabmap::util3d::passThrough(cloud, "z", 0, maxDepth);
 						}
 
-						cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, data.getLocalTransform());
+						cloud = rtabmap::util3d::transformPointCloud(cloud, data.getLocalTransform());
 
 						QColor color = Qt::red;
 						int mapId, weight;
@@ -1188,7 +1196,7 @@ void DatabaseViewer::generate3DMap()
 								}
 								cloud = rtabmap::util3d::cloudFromDisparityRGB(
 										data.getImageRaw(),
-									util3d::disparityFromStereoImages(leftImg, data.getDepthRaw()),
+									util2d::disparityFromStereoImages(leftImg, data.getDepthRaw()),
 									data.getCx(), data.getCy(),
 									data.getFx(), data.getFy(),
 									decimation);
@@ -1205,10 +1213,10 @@ void DatabaseViewer::generate3DMap()
 
 							if(maxDepth)
 							{
-								cloud = rtabmap::util3d::passThrough<pcl::PointXYZRGB>(cloud, "z", 0, maxDepth);
+								cloud = rtabmap::util3d::passThrough(cloud, "z", 0, maxDepth);
 							}
 
-							cloud = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, pose*data.getLocalTransform());
+							cloud = rtabmap::util3d::transformPointCloud(cloud, pose*data.getLocalTransform());
 							std::string name = uFormat("%s/node%d.pcd", path.toStdString().c_str(), iter->first);
 							pcl::io::savePCDFile(name, *cloud);
 							UINFO("Saved %s (%d points)", name.c_str(), cloud->size());
@@ -2032,8 +2040,8 @@ void DatabaseViewer::updateConstraintView(
 							1);
 				}
 
-				cloudFrom = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudFrom);
-				cloudFrom = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudFrom, dataFrom.getLocalTransform());
+				cloudFrom = rtabmap::util3d::removeNaNFromPointCloud(cloudFrom);
+				cloudFrom = rtabmap::util3d::transformPointCloud(cloudFrom, dataFrom.getLocalTransform());
 
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudTo;
 				if(dataTo.getDepthRaw().type() == CV_8UC1)
@@ -2055,8 +2063,8 @@ void DatabaseViewer::updateConstraintView(
 							1);
 				}
 
-				cloudTo = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudTo);
-				cloudTo = rtabmap::util3d::transformPointCloud<pcl::PointXYZRGB>(cloudTo, t*dataTo.getLocalTransform());
+				cloudTo = rtabmap::util3d::removeNaNFromPointCloud(cloudTo);
+				cloudTo = rtabmap::util3d::transformPointCloud(cloudTo, t*dataTo.getLocalTransform());
 
 				if(cloudFrom->size())
 				{
@@ -2094,14 +2102,14 @@ void DatabaseViewer::updateConstraintView(
 
 					if(cloudFrom->size())
 					{
-						cloudFrom = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZ>(cloudFrom);
+						cloudFrom = rtabmap::util3d::removeNaNFromPointCloud(cloudFrom);
 					}
 					if(cloudTo->size())
 					{
-						cloudTo = rtabmap::util3d::removeNaNFromPointCloud<pcl::PointXYZ>(cloudTo);
+						cloudTo = rtabmap::util3d::removeNaNFromPointCloud(cloudTo);
 						if(cloudTo->size())
 						{
-							cloudTo = rtabmap::util3d::transformPointCloud<pcl::PointXYZ>(cloudTo, t);
+							cloudTo = rtabmap::util3d::transformPointCloud(cloudTo, t);
 						}
 					}
 
@@ -2150,7 +2158,7 @@ void DatabaseViewer::updateConstraintView(
 			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
 			scanA = rtabmap::util3d::laserScanToPointCloud(dataFrom.getLaserScanRaw());
 			scanB = rtabmap::util3d::laserScanToPointCloud(dataTo.getLaserScanRaw());
-			scanB = rtabmap::util3d::transformPointCloud<pcl::PointXYZ>(scanB, t);
+			scanB = rtabmap::util3d::transformPointCloud(scanB, t);
 			if(scanA->size())
 			{
 				ui_->constraintsViewer->addOrUpdateCloud("scan0", scanA, Transform::getIdentity(), Qt::yellow);
@@ -2268,7 +2276,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						if(data.getDepthRaw().type() == CV_8UC1)
 						{
 							cloud = rtabmap::util3d::cloudFromDisparity(
-									util3d::disparityFromStereoImages(data.getImageRaw(), data.getDepthRaw()),
+									util2d::disparityFromStereoImages(data.getImageRaw(), data.getDepthRaw()),
 									data.getCx(),
 									data.getCy(),
 									data.getFx(),
@@ -2287,13 +2295,13 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						}
 						if(cloud->size())
 						{
-							cloud = util3d::passThrough<pcl::PointXYZ>(cloud, "z", 0, ui_->doubleSpinBox_projMaxDepth->value());
+							cloud = util3d::passThrough(cloud, "z", 0, ui_->doubleSpinBox_projMaxDepth->value());
 						}
 
 						if(cloud->size())
 						{
-							cloud = util3d::voxelize<pcl::PointXYZ>(cloud, ui_->doubleSpinBox_gridCellSize->value());
-							cloud = util3d::transformPointCloud<pcl::PointXYZ>(cloud, data.getLocalTransform());
+							cloud = util3d::voxelize(cloud, ui_->doubleSpinBox_gridCellSize->value());
+							cloud = util3d::transformPointCloud(cloud, data.getLocalTransform());
 
 							UTimer timer;
 							float cellSize = ui_->doubleSpinBox_gridCellSize->value();
@@ -2583,8 +2591,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 			//voxelize
 			if(ui_->doubleSpinBox_icp_voxel->value() > 0.0f)
 			{
-				scanA = util3d::voxelize<pcl::PointXYZ>(scanA, ui_->doubleSpinBox_icp_voxel->value());
-				scanB = util3d::voxelize<pcl::PointXYZ>(scanB, ui_->doubleSpinBox_icp_voxel->value());
+				scanA = util3d::voxelize(scanA, ui_->doubleSpinBox_icp_voxel->value());
+				scanB = util3d::voxelize(scanB, ui_->doubleSpinBox_icp_voxel->value());
 			}
 
 			if(scanB->size() && scanA->size())
@@ -2629,16 +2637,16 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 			{
 				leftMono = left;
 			}
-			cloudA = util3d::cloudFromDisparity(util3d::disparityFromStereoImages(leftMono, depthA), dataFrom.getCx(), dataFrom.getCy(), dataFrom.getFx(), dataFrom.getFy(), ui_->spinBox_icp_decimation->value());
+			cloudA = util3d::cloudFromDisparity(util2d::disparityFromStereoImages(leftMono, depthA), dataFrom.getCx(), dataFrom.getCy(), dataFrom.getFx(), dataFrom.getFy(), ui_->spinBox_icp_decimation->value());
 			if(ui_->doubleSpinBox_icp_maxDepth->value() > 0)
 			{
-				cloudA = util3d::passThrough<pcl::PointXYZ>(cloudA, "z", 0, ui_->doubleSpinBox_icp_maxDepth->value());
+				cloudA = util3d::passThrough(cloudA, "z", 0, ui_->doubleSpinBox_icp_maxDepth->value());
 			}
 			if(ui_->doubleSpinBox_icp_voxel->value() > 0)
 			{
-				cloudA = util3d::voxelize<pcl::PointXYZ>(cloudA, ui_->doubleSpinBox_icp_voxel->value());
+				cloudA = util3d::voxelize(cloudA, ui_->doubleSpinBox_icp_voxel->value());
 			}
-			cloudA = util3d::transformPointCloud<pcl::PointXYZ>(cloudA, dataFrom.getLocalTransform());
+			cloudA = util3d::transformPointCloud(cloudA, dataFrom.getLocalTransform());
 		}
 		else
 		{
@@ -2662,16 +2670,16 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 			{
 				leftMono = left;
 			}
-			cloudB = util3d::cloudFromDisparity(util3d::disparityFromStereoImages(leftMono, depthB), dataTo.getCx(), dataTo.getCy(), dataTo.getFx(), dataTo.getFy(), ui_->spinBox_icp_decimation->value());
+			cloudB = util3d::cloudFromDisparity(util2d::disparityFromStereoImages(leftMono, depthB), dataTo.getCx(), dataTo.getCy(), dataTo.getFx(), dataTo.getFy(), ui_->spinBox_icp_decimation->value());
 			if(ui_->doubleSpinBox_icp_maxDepth->value() > 0)
 			{
-				cloudB = util3d::passThrough<pcl::PointXYZ>(cloudB, "z", 0, ui_->doubleSpinBox_icp_maxDepth->value());
+				cloudB = util3d::passThrough(cloudB, "z", 0, ui_->doubleSpinBox_icp_maxDepth->value());
 			}
 			if(ui_->doubleSpinBox_icp_voxel->value() > 0)
 			{
-				cloudB = util3d::voxelize<pcl::PointXYZ>(cloudB, ui_->doubleSpinBox_icp_voxel->value());
+				cloudB = util3d::voxelize(cloudB, ui_->doubleSpinBox_icp_voxel->value());
 			}
-			cloudB = util3d::transformPointCloud<pcl::PointXYZ>(cloudB, t * dataTo.getLocalTransform());
+			cloudB = util3d::transformPointCloud(cloudB, t * dataTo.getLocalTransform());
 		}
 		else
 		{
@@ -2689,13 +2697,13 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 			pcl::PointCloud<pcl::PointNormal>::Ptr cloudANormals = util3d::computeNormals(cloudA, ui_->spinBox_icp_normalKSearch->value());
 			pcl::PointCloud<pcl::PointNormal>::Ptr cloudBNormals = util3d::computeNormals(cloudB, ui_->spinBox_icp_normalKSearch->value());
 
-			cloudANormals = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(cloudANormals);
+			cloudANormals = util3d::removeNaNNormalsFromPointCloud(cloudANormals);
 			if(cloudA->size() != cloudANormals->size())
 			{
 				UWARN("removed nan normals...");
 			}
 
-			cloudBNormals = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(cloudBNormals);
+			cloudBNormals = util3d::removeNaNNormalsFromPointCloud(cloudBNormals);
 			if(cloudB->size() != cloudBNormals->size())
 			{
 				UWARN("removed nan normals...");
@@ -2765,8 +2773,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 
 			if(ui_->dockWidget_constraints->isVisible())
 			{
-				cloudB = util3d::transformPointCloud<pcl::PointXYZ>(cloudB, transform);
-				scanB = util3d::transformPointCloud<pcl::PointXYZ>(scanB, transform);
+				cloudB = util3d::transformPointCloud(cloudB, transform);
+				scanB = util3d::transformPointCloud(scanB, transform);
 				this->updateConstraintView(newLink, true, cloudA, cloudB, scanA, scanB);
 			}
 		}

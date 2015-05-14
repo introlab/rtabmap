@@ -40,9 +40,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/EpipolarGeometry.h>
 #include "VisualWord.h"
 #include "rtabmap/core/Features2d.h"
-#include "rtabmap/core/util3d.h"
 #include "DBDriverSqlite3.h"
-#include "rtabmap/core/util3d.h"
+#include "rtabmap/core/util3d_conversions.h"
+#include "rtabmap/core/util3d_features.h"
+#include "rtabmap/core/util3d_filtering.h"
+#include "rtabmap/core/util3d_correspondences.h"
+#include "rtabmap/core/util3d_registration.h"
+#include "rtabmap/core/util3d_surface.h"
+#include "rtabmap/core/util2d.h"
 #include "rtabmap/core/Statistics.h"
 #include "rtabmap/core/Compression.h"
 #include "rtabmap/core/Graph.h"
@@ -1954,7 +1959,7 @@ Transform Memory::computeVisualTransform(
 							UDEBUG("Forcing 2D...");
 							float x,y,z,r,p,yaw;
 							transform.getTranslationAndEulerAngles(x,y,z, r,p,yaw);
-							transform = Transform::fromEigen3f(pcl::getTransformation(x,y,0, 0, 0, yaw));
+							transform = Transform(x,y,0, 0, 0, yaw);
 						}
 					}
 					else
@@ -2022,7 +2027,7 @@ Transform Memory::computeVisualTransform(
 						UDEBUG("Forcing 2D...");
 						float x,y,z,r,p,yaw;
 						transform.getTranslationAndEulerAngles(x,y,z, r,p,yaw);
-						transform = Transform::fromEigen3f(pcl::getTransformation(x,y,0, 0, 0, yaw));
+						transform = Transform(x,y,0, 0, 0, yaw);
 					}
 				}
 				else if(inliersCount < _bowMinInliers)
@@ -2236,8 +2241,8 @@ Transform Memory::computeIcpTransform(
 						pcl::PointCloud<pcl::PointNormal>::Ptr newCloud = util3d::computeNormals(newCloudXYZ, _icpPointToPlaneNormalNeighbors);
 
 						std::vector<int> indices;
-						newCloud = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(newCloud);
-						oldCloud = util3d::removeNaNNormalsFromPointCloud<pcl::PointNormal>(oldCloud);
+						newCloud = util3d::removeNaNNormalsFromPointCloud(newCloud);
+						oldCloud = util3d::removeNaNNormalsFromPointCloud(oldCloud);
 
 						if(newCloud->size() && oldCloud->size())
 						{
@@ -2335,7 +2340,7 @@ Transform Memory::computeIcpTransform(
 		// We are 2D here, make sure the guess has only YAW rotation
 		float x,y,z,r,p,yaw;
 		guess.getTranslationAndEulerAngles(x,y,z, r,p,yaw);
-		guess = Transform::fromEigen3f(pcl::getTransformation(x,y,0, 0, 0, yaw));
+		guess = Transform(x,y,0, 0, 0, yaw);
 		if(r!=0 || p!=0)
 		{
 			UINFO("2D ICP: Dropping z (%f), roll (%f) and pitch (%f) rotation!", z, r, p);
@@ -2350,8 +2355,8 @@ Transform Memory::computeIcpTransform(
 			//voxelize
 			if(_icp2VoxelSize > _laserScanVoxelSize)
 			{
-				oldCloud = util3d::voxelize<pcl::PointXYZ>(oldCloud, _icp2VoxelSize);
-				newCloud = util3d::voxelize<pcl::PointXYZ>(newCloud, _icp2VoxelSize);
+				oldCloud = util3d::voxelize(oldCloud, _icp2VoxelSize);
+				newCloud = util3d::voxelize(newCloud, _icp2VoxelSize);
 			}
 
 			if(newCloud->size() && oldCloud->size())
@@ -2517,7 +2522,7 @@ Transform Memory::computeScanMatchingTransform(
 	//voxelize
 	if(assembledOldClouds->size() && _icp2VoxelSize > 0.0f)
 	{
-		assembledOldClouds = util3d::voxelize<pcl::PointXYZ>(assembledOldClouds, _icp2VoxelSize);
+		assembledOldClouds = util3d::voxelize(assembledOldClouds, _icp2VoxelSize);
 	}
 
 	// get the new cloud
@@ -2530,7 +2535,7 @@ Transform Memory::computeScanMatchingTransform(
 	//voxelize
 	if(newCloud->size() && _icp2VoxelSize > _laserScanVoxelSize)
 	{
-		newCloud = util3d::voxelize<pcl::PointXYZ>(newCloud, _icp2VoxelSize);
+		newCloud = util3d::voxelize(newCloud, _icp2VoxelSize);
 	}
 
 	Transform transform;
@@ -3664,7 +3669,7 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 					}
 
 					//generate a disparity map
-					disparity = util3d::disparityFromStereoImages(
+					disparity = util2d::disparityFromStereoImages(
 							imageMono,
 							data.rightImage(),
 							leftCorners,
@@ -3834,7 +3839,7 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 			//generate a disparity map
 			std::vector<cv::Point2f> leftCorners;
 			cv::KeyPoint::convert(keypoints, leftCorners);
-			cv::Mat disparity = util3d::disparityFromStereoImages(
+			cv::Mat disparity = util2d::disparityFromStereoImages(
 					imageMono,
 					data.rightImage(),
 					leftCorners,
@@ -3983,8 +3988,8 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 	// apply decimation?
 	if((this->isBinDataKept() || this->isRawDataKept()) && _imageDecimation > 1)
 	{
-		image = util3d::decimate(image, _imageDecimation);
-		depthOrRightImage = util3d::decimate(depthOrRightImage, _imageDecimation);
+		image = util2d::decimate(image, _imageDecimation);
+		depthOrRightImage = util2d::decimate(depthOrRightImage, _imageDecimation);
 		cx/=float(_imageDecimation);
 		cy/=float(_imageDecimation);
 		fx/=float(_imageDecimation);
@@ -3998,7 +4003,7 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 	cv::Mat laserScan = data.laserScan();
 	if(!laserScan.empty() && _laserScanVoxelSize > 0.0f)
 	{
-		laserScan = util3d::laserScanFromPointCloud(*util3d::voxelize<pcl::PointXYZ>(util3d::laserScanToPointCloud(laserScan), _laserScanVoxelSize));
+		laserScan = util3d::laserScanFromPointCloud(*util3d::voxelize(util3d::laserScanToPointCloud(laserScan), _laserScanVoxelSize));
 	}
 
 	Signature * s;

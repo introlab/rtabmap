@@ -25,7 +25,18 @@ SET(SRC_FILES
 	Features2d.cpp
 	Transform.cpp
 	
+	util2d.cpp
+	
 	util3d.cpp
+	util3d_filtering.cpp
+	util3d_mapping.cpp
+	util3d_transforms.cpp
+	util3d_registration.cpp
+	util3d_surface.cpp
+	util3d_features.cpp
+	util3d_correspondences.cpp
+	util3d_conversions.cpp
+	
 	SensorData.cpp
 	Graph.cpp
 	Compression.cpp

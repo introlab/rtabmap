@@ -27,6 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/gui/OdometryViewer.h"
 
+#include "rtabmap/core/util3d_transforms.h"
+#include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/utilite/ULogger.h"
@@ -214,12 +216,12 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 
 		if(voxelSpin_->value() > 0.0f && cloud->size())
 		{
-			cloud = util3d::voxelize<pcl::PointXYZRGB>(cloud, voxelSpin_->value());
+			cloud = util3d::voxelize(cloud, voxelSpin_->value());
 		}
 
 		if(cloud->size())
 		{
-			cloud = util3d::transformPointCloud<pcl::PointXYZRGB>(cloud, data.localTransform());
+			cloud = util3d::transformPointCloud(cloud, data.localTransform());
 
 			if(!data.pose().isNull())
 			{

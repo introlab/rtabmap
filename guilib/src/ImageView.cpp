@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QVBoxLayout>
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/gui/KeypointItem.h"
-#include "rtabmap/core/util3d.h"
+#include "rtabmap/core/util2d.h"
 
 namespace rtabmap {
 
@@ -551,7 +551,7 @@ void ImageView::setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, c
 
 	for(std::multimap<int, cv::KeyPoint>::const_iterator iter = refWords.begin(); iter != refWords.end(); ++iter )
 	{
-		addFeature(iter->first, iter->second, depth.empty()?0:util3d::getDepth(depth, iter->second.pt.x, iter->second.pt.y, false), color);
+		addFeature(iter->first, iter->second, depth.empty()?0:util2d::getDepth(depth, iter->second.pt.x, iter->second.pt.y, false), color);
 	}
 
 	if(!_graphicsView->isVisible())
@@ -567,7 +567,7 @@ void ImageView::setFeatures(const std::vector<cv::KeyPoint> & features, const cv
 
 	for(unsigned int i = 0; i< features.size(); ++i )
 	{
-		addFeature(i, features[i], depth.empty()?0:util3d::getDepth(depth, features[i].pt.x, features[i].pt.y, false), color);
+		addFeature(i, features[i], depth.empty()?0:util2d::getDepth(depth, features[i].pt.x, features[i].pt.y, false), color);
 	}
 
 	if(!_graphicsView->isVisible())
