@@ -2496,51 +2496,21 @@ bool MainWindow::closeDatabase()
 		{
 			// Temp database used, automatically backup with unique name (timestamp)
 			QString newName = QDateTime::currentDateTime().toString("yyMMdd-hhmmss");
+			QString newPath = _preferencesDialog->getWorkingDirectory()+QDir::separator()+newName+".db";
 
-			bool ok = true;
-			newName = QInputDialog::getText(this,
-				tr("Save database"),
-				tr("Database name:"),
-				QLineEdit::Normal,
-				newName,
-				&ok);
-			while(ok)
-			{
-				QString newPath = _preferencesDialog->getWorkingDirectory()+QDir::separator()+newName+".db";
-				if(QFile::exists(newPath))
-				{
-					QMessageBox::StandardButton b = QMessageBox::question(this,
-							tr("Saving database..."),
-							tr("Database \"%1\" already exists, do you want to overwrite?").arg(newName+".db"),
-							QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
-					if(b == QMessageBox::Yes && QFile::remove(newPath))
-					{
-						UINFO("Deleted database \"%s\".", newPath.toStdString().c_str());
-						_newDatabasePathOutput = newPath;
-						break;
-					}
-					else if(b == QMessageBox::Yes)
-					{
-						UERROR("Failed to erase database \"%s\"! Asking for new name...", newPath.toStdString().c_str());
-					}
-				}
-				else
-				{
-					_newDatabasePathOutput = newPath;
-					break;
-				}
-
-				newName = QInputDialog::getText(this,
-					tr("Save database"),
-					tr("Database name:"),
-					QLineEdit::Normal,
-					newName,
-					&ok);
-			}
-			if(!ok)
+			newPath = QFileDialog::getSaveFileName(this, tr("Save database"), newPath, tr("RTAB-Map database files (*.db)"));
+			if(newPath.isEmpty())
 			{
 				return false;
 			}
+
+			if(QFileInfo(newPath).suffix() == "")
+			{
+				//use ply by default
+				newPath += ".db";
+			}
+
+			_newDatabasePathOutput = newPath;
 		}
 		else if(b != QMessageBox::Discard)
 		{
