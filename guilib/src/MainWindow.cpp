@@ -2506,7 +2506,6 @@ bool MainWindow::closeDatabase()
 
 			if(QFileInfo(newPath).suffix() == "")
 			{
-				//use ply by default
 				newPath += ".db";
 			}
 
