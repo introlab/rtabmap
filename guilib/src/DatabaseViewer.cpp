@@ -1409,6 +1409,7 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->widget_cloudA,
 			ui_->label_idA,
 			ui_->label_mapA,
+			ui_->label_poseA,
 			true);
 }
 
@@ -1425,6 +1426,7 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->widget_cloudB,
 			ui_->label_idB,
 			ui_->label_mapB,
+			ui_->label_poseB,
 			true);
 }
 
@@ -1439,6 +1441,7 @@ void DatabaseViewer::update(int value,
 						rtabmap::CloudViewer * view3D,
 						QLabel * labelId,
 						QLabel * labelMapId,
+						QLabel * labelPose,
 						bool updateConstraintView)
 {
 	UTimer timer;
@@ -1448,6 +1451,7 @@ void DatabaseViewer::update(int value,
 	weight->clear();
 	label->clear();
 	labelMapId->clear();
+	labelPose->clear();
 	stamp->clear();
 	QRectF rect;
 	if(value >= 0 && value < ids_.size())
@@ -1487,6 +1491,7 @@ void DatabaseViewer::update(int value,
 
 				weight->setNum(data.getWeight());
 				label->setText(data.getLabel().c_str());
+				labelPose->setText(QString("%1%2, %3, %4").arg(odomPose.isIdentity()?"* ":"").arg(odomPose.x()).arg(odomPose.y()).arg(odomPose.z()));
 				if(data.getStamp()!=0.0)
 				{
 					stamp->setText(QDateTime::fromMSecsSinceEpoch(data.getStamp()*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
@@ -1987,6 +1992,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->widget_cloudA,
 					ui_->label_idA,
 					ui_->label_mapA,
+					ui_->label_poseA,
 					false); // don't update constraints view!
 		this->update(idToIndex_.value(link.to()),
 					ui_->label_indexB,
@@ -1999,6 +2005,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->widget_cloudB,
 					ui_->label_idB,
 					ui_->label_mapB,
+					ui_->label_poseB,
 					false); // don't update constraints view!
 	}
 

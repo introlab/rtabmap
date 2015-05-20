@@ -122,6 +122,7 @@ private:
 				rtabmap::CloudViewer * view3D,
 				QLabel * labelId,
 				QLabel * labelMapId,
+				QLabel * labelPose,
 				bool updateConstraintView);
 	void updateStereo(const Signature * data);
 	void updateWordsMatching();
