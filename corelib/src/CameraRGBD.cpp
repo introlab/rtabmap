@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/core/CameraRGBD.h"
-#include "rtabmap/core/util3d.h"
+#include "rtabmap/core/util2d.h"
 
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -1402,12 +1402,12 @@ void CameraFreenect2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, f
 						bool registered = true;
 						if(registered)
 						{
-							depth = util3d::registerDepth(
+							depth = util2d::registerDepth(
 									depth,
 									stereoModel_.left().P().colRange(0,3).rowRange(0,3), //scaled depth K
 									stereoModel_.right().P().colRange(0,3).rowRange(0,3), //scaled color K
 									stereoModel_.transform());
-							util3d::fillRegisteredDepthHoles(depth, true, false);
+							util2d::fillRegisteredDepthHoles(depth, true, false);
 							fx = stereoModel_.right().fx();
 							fy = stereoModel_.right().fy();
 							cx = stereoModel_.right().cx();
@@ -1482,8 +1482,8 @@ void CameraFreenect2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, f
 									}
 								}
 							}
-							util3d::fillRegisteredDepthHoles(depth, true, true, type_==kTypeRGBDepthHD);
-							util3d::fillRegisteredDepthHoles(depth, type_==kTypeRGBDepthSD, type_==kTypeRGBDepthHD);//second pass
+							util2d::fillRegisteredDepthHoles(depth, true, true, type_==kTypeRGBDepthHD);
+							util2d::fillRegisteredDepthHoles(depth, type_==kTypeRGBDepthSD, type_==kTypeRGBDepthHD);//second pass
 							libfreenect2::Freenect2Device::ColorCameraParams params = dev_->getColorCameraParams();
 							fx = params.fx*(type_==kTypeRGBDepthSD?0.5:1.0f);
 							fy = params.fy*(type_==kTypeRGBDepthSD?0.5:1.0f);
