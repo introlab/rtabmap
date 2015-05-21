@@ -851,17 +851,28 @@ bool Rtabmap::process(const SensorData & data)
 			if(_memory->getLastWorkingSignature())
 			{
 				const Transform & lastPose = _memory->getLastWorkingSignature()->getPose(); // use raw odometry
-				Transform lastPoseToNewPose = lastPose.inverse() * data.pose();
-				float x,y,z, roll,pitch,yaw;
-				lastPoseToNewPose.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-				if(_newMapOdomChangeDistance > 0.0 && (x*x + y*y + z*z) > _newMapOdomChangeDistance*_newMapOdomChangeDistance)
+
+				// look for identity
+				if(!lastPose.isIdentity() && data.pose().isIdentity())
 				{
 					int mapId = triggerNewMap();
-					UWARN("Odometry is reset (large odometry change detected > %f). A new map (%d) is created! Last pose = %s, new pose = %s",
-							_newMapOdomChangeDistance,
-							mapId,
-							lastPose.prettyPrint().c_str(),
-							data.pose().prettyPrint().c_str());
+					UWARN("Odometry is reset (identity pose detected). Increment map id to %d!", mapId);
+				}
+				else if(_newMapOdomChangeDistance > 0.0)
+				{
+					// look for large change
+					Transform lastPoseToNewPose = lastPose.inverse() * data.pose();
+					float x,y,z, roll,pitch,yaw;
+					lastPoseToNewPose.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+					if((x*x + y*y + z*z) > _newMapOdomChangeDistance*_newMapOdomChangeDistance)
+					{
+						int mapId = triggerNewMap();
+						UWARN("Odometry is reset (large odometry change detected > %f). A new map (%d) is created! Last pose = %s, new pose = %s",
+								_newMapOdomChangeDistance,
+								mapId,
+								lastPose.prettyPrint().c_str(),
+								data.pose().prettyPrint().c_str());
+					}
 				}
 			}
 		}

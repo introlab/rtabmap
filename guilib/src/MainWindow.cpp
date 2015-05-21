@@ -1821,15 +1821,31 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 			{
 				if(!_newDatabasePathOutput.isEmpty())
 				{
-					if(QFile::rename(_newDatabasePath, _newDatabasePathOutput))
+					bool removed = true;
+					if(QFile::exists(_newDatabasePathOutput))
 					{
-						std::string msg = uFormat("Database saved to \"%s\".", _newDatabasePathOutput.toStdString().c_str());
-						UINFO(msg.c_str());
-						QMessageBox::information(this, tr("Database saved!"), QString(msg.c_str()));
+						removed = QFile::remove(_newDatabasePathOutput);
+					}
+					if(removed)
+					{
+						if(QFile::rename(_newDatabasePath, _newDatabasePathOutput))
+						{
+							std::string msg = uFormat("Database saved to \"%s\".", _newDatabasePathOutput.toStdString().c_str());
+							UINFO(msg.c_str());
+							QMessageBox::information(this, tr("Database saved!"), QString(msg.c_str()));
+						}
+						else
+						{
+							std::string msg = uFormat("Failed to rename temporary database from \"%s\" to \"%s\".",
+									_newDatabasePath.toStdString().c_str(), _newDatabasePathOutput.toStdString().c_str());
+							UERROR(msg.c_str());
+							QMessageBox::critical(this, tr("Closing failed!"), QString(msg.c_str()));
+						}
 					}
 					else
 					{
-						std::string msg = uFormat("Failed to rename temporary database from \"%s\" to \"%s\".", _newDatabasePath.toStdString().c_str(), _newDatabasePathOutput.toStdString().c_str());
+						std::string msg = uFormat("Failed to overwrite the database \"%s\". The temporary database is still correctly saved at \"%s\".",
+								_newDatabasePathOutput.toStdString().c_str(), _newDatabasePath.toStdString().c_str());
 						UERROR(msg.c_str());
 						QMessageBox::critical(this, tr("Closing failed!"), QString(msg.c_str()));
 					}

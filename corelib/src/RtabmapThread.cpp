@@ -518,13 +518,29 @@ void RtabmapThread::addData(const SensorData & sensorData)
 			return;
 		}
 
-		if(!lastPose_.isIdentity() && sensorData.pose().isIdentity())
+		if(_rate>0.0f)
+		{
+			if(_frameRateTimer->getElapsedTime() < 1.0f/_rate)
+			{
+				if(!lastPose_.isIdentity() && sensorData.pose().isIdentity())
+				{
+					UWARN("Odometry is reset (identity pose detected). Increment map id!");
+					pushNewState(kStateTriggeringMap);
+					_rotVariance = 0;
+					_transVariance = 0;
+				}
+
+				return;
+			}
+		}
+		if(_dataBufferMaxSize > 0 && !lastPose_.isIdentity() && sensorData.pose().isIdentity())
 		{
 			UWARN("Odometry is reset (identity pose detected). Increment map id!");
 			pushNewState(kStateTriggeringMap);
 			_rotVariance = 0;
 			_transVariance = 0;
 		}
+		_frameRateTimer->start();
 
 		lastPose_ = sensorData.pose();
 		if(sensorData.poseRotVariance() > _rotVariance)
@@ -535,15 +551,6 @@ void RtabmapThread::addData(const SensorData & sensorData)
 		{
 			_transVariance = sensorData.poseTransVariance();
 		}
-
-		if(_rate>0.0f)
-		{
-			if(_frameRateTimer->getElapsedTime() < 1.0f/_rate)
-			{
-				return;
-			}
-		}
-		_frameRateTimer->start();
 
 		bool notify = true;
 		_dataMutex.lock();
