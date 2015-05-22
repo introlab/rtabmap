@@ -55,9 +55,10 @@ class NodeItem: public QGraphicsEllipseItem
 {
 public:
 	// in meter
-	NodeItem(int id, const Transform & pose, float radius) :
+	NodeItem(int id, int mapId, const Transform & pose, float radius) :
 		QGraphicsEllipseItem(QRectF(-radius,-radius,radius*2.0f,radius*2.0f)),
 		_id(id),
+		_mapId(mapId),
 		_pose(pose)
 	{
 		this->setPos(-pose.y(),-pose.x());
@@ -81,7 +82,7 @@ public:
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event )
 	{
-		this->setToolTip(QString("[%1] %2").arg(_id).arg(_pose.prettyPrint().c_str()));
+		this->setToolTip(QString("%1 [%2] %3").arg(_id).arg(_mapId).arg(_pose.prettyPrint().c_str()));
 		this->setScale(2);
 		QGraphicsEllipseItem::hoverEnterEvent(event);
 	}
@@ -94,6 +95,7 @@ protected:
 
 private:
 	int _id;
+	int _mapId;
 	Transform _pose;
 };
 
@@ -101,13 +103,14 @@ class LinkItem: public QGraphicsLineItem
 {
 public:
 	// in meter
-	LinkItem(int from, int to, const Transform & poseA, const Transform & poseB, Link::Type type) :
+	LinkItem(int from, int to, const Transform & poseA, const Transform & poseB, Link::Type type, bool interSessionClosure) :
 		QGraphicsLineItem(-poseA.y(), -poseA.x(), -poseB.y(), -poseB.x()),
 		_from(from),
 		_to(to),
 		_poseA(poseA),
 		_poseB(poseB),
-		_type(type)
+		_type(type),
+		_interSession(interSessionClosure)
 	{
 		this->setAcceptHoverEvents(true);
 	}
@@ -127,6 +130,7 @@ public:
 	}
 
 	Link::Type linkType() const {return _type;}
+	bool isInterSession() const {return _interSession;}
 	int from() const {return _from;}
 	int to() const {return _to;}
 
@@ -154,6 +158,7 @@ private:
 	Transform _poseA;
 	Transform _poseB;
 	Link::Type _type;
+	bool _interSession;
 };
 
 GraphViewer::GraphViewer(QWidget * parent) :
@@ -167,6 +172,9 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_loopClosureVirtualColor(Qt::magenta),
 		_localPathColor(Qt::cyan),
 		_globalPathColor(Qt::darkMagenta),
+		_loopIntraSessionColor(Qt::red),
+		_loopInterSessionColor(Qt::green),
+		_intraInterSessionColors(false),
 		_root(0),
 		_nodeRadius(0.01),
 		_linkWidth(0),
@@ -226,7 +234,8 @@ GraphViewer::~GraphViewer()
 }
 
 void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
-				 const std::multimap<int, Link> & constraints)
+				 const std::multimap<int, Link> & constraints,
+				 const std::map<int, int> & mapIds)
 {
 	bool wasEmpty = _nodeItems.size() == 0 && _linkItems.size() == 0;
 	UDEBUG("poses=%d constraints=%d", (int)poses.size(), (int)constraints.size());
@@ -255,7 +264,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 			{
 				// create node item
 				const Transform & pose = iter->second;
-				NodeItem * item = new NodeItem(iter->first, pose, _nodeRadius);
+				NodeItem * item = new NodeItem(iter->first, uContains(mapIds, iter->first)?mapIds.at(iter->first):-1, pose, _nodeRadius);
 				this->scene()->addItem(item);
 				item->setZValue(20);
 				item->setColor(_nodeColor);
@@ -319,10 +328,16 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 			if(!added)
 			{
 				//create a link item
-				LinkItem * item = new LinkItem(idFrom, idTo, poseA, poseB, iter->second.type());
+				bool interSessionClosure = false;
+				if(uContains(mapIds, jterA->first) && uContains(mapIds, jterB->first))
+				{
+					interSessionClosure = mapIds.at(jterA->first) != mapIds.at(jterB->first);
+				}
+				LinkItem * item = new LinkItem(idFrom, idTo, poseA, poseB, iter->second.type(), interSessionClosure);
 				QPen p = item->pen();
 				p.setWidthF(_linkWidth);
 				item->setPen(p);
+				item->setZValue(10);
 				if(iter->second.type() == Link::kNeighbor)
 				{
 					item->setColor(_neighborColor);
@@ -337,14 +352,30 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				}
 				else if(iter->second.type() == Link::kLocalSpaceClosure || iter->second.type() == Link::kLocalTimeClosure)
 				{
-					item->setColor(_loopClosureLocalColor);
+					if(_intraInterSessionColors)
+					{
+						item->setColor(interSessionClosure?_loopInterSessionColor:_loopIntraSessionColor);
+						item->setZValue(interSessionClosure?8:9);
+					}
+					else
+					{
+						item->setColor(_loopClosureLocalColor);
+					}
 				}
 				else
 				{
-					item->setColor(_loopClosureColor);
+					if(_intraInterSessionColors)
+					{
+						item->setColor(interSessionClosure?_loopInterSessionColor:_loopIntraSessionColor);
+						item->setZValue(interSessionClosure?8:9);
+					}
+					else
+					{
+						item->setColor(_loopClosureColor);
+					}
 				}
+
 				this->scene()->addItem(item);
-				item->setZValue(10);
 				item->setParentItem(_root);
 				_linkItems.insert(idFrom, item);
 			}
@@ -465,7 +496,7 @@ void GraphViewer::setGlobalPath(const std::vector<std::pair<int, Transform> > & 
 			//create a link item
 			int idFrom = globalPath[i].first;
 			int idTo = globalPath[i+1].first;
-			LinkItem * item = new LinkItem(idFrom, idTo, globalPath[i].second, globalPath[i+1].second, Link::kUndef);
+			LinkItem * item = new LinkItem(idFrom, idTo, globalPath[i].second, globalPath[i+1].second, Link::kUndef, false);
 			QPen p = item->pen();
 			p.setWidthF(_linkWidth);
 			item->setPen(p);
@@ -530,7 +561,7 @@ void GraphViewer::updateLocalPath(const std::vector<int> & localPath)
 				if(!updated)
 				{
 					//create a link item
-					LinkItem * item = new LinkItem(idFrom, idTo, _nodeItems.value(idFrom)->pose(), _nodeItems.value(idTo)->pose(), Link::kUndef);
+					LinkItem * item = new LinkItem(idFrom, idTo, _nodeItems.value(idFrom)->pose(), _nodeItems.value(idTo)->pose(), Link::kUndef, false);
 					QPen p = item->pen();
 					p.setWidthF(_linkWidth);
 					item->setPen(p);
@@ -613,6 +644,9 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("virtual_color", this->getVirtualLoopClosureColor());
 	settings.setValue("local_path_color", this->getLocalPathColor());
 	settings.setValue("global_path_color", this->getGlobalPathColor());
+	settings.setValue("intra_session_color", this->getIntraSessionLoopColor());
+	settings.setValue("inter_session_color", this->getInterSessionLoopColor());
+	settings.setValue("intra_inter_session_colors_enabled", this->isIntraInterSessionColorsEnabled());
 	settings.setValue("grid_visible", this->isGridMapVisible());
 	settings.setValue("origin_visible", this->isOriginVisible());
 	settings.setValue("referential_visible", this->isReferentialVisible());
@@ -640,10 +674,13 @@ void GraphViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setVirtualLoopClosureColor(settings.value("virtual_color", this->getVirtualLoopClosureColor()).value<QColor>());
 	this->setLocalPathColor(settings.value("local_path_color", this->getLocalPathColor()).value<QColor>());
 	this->setGlobalPathColor(settings.value("global_path_color", this->getGlobalPathColor()).value<QColor>());
+	this->setIntraSessionLoopColor(settings.value("intra_session_color", this->getIntraSessionLoopColor()).value<QColor>());
+	this->setInterSessionLoopColor(settings.value("inter_session_color", this->getInterSessionLoopColor()).value<QColor>());
 	this->setGridMapVisible(settings.value("grid_visible", this->isGridMapVisible()).toBool());
 	this->setOriginVisible(settings.value("origin_visible", this->isOriginVisible()).toBool());
 	this->setReferentialVisible(settings.value("referential_visible", this->isReferentialVisible()).toBool());
 	this->setLocalRadiusVisible(settings.value("local_radius_visible", this->isLocalRadiusVisible()).toBool());
+	this->setIntraInterSessionColorsEnabled(settings.value("intra_inter_session_colors_enabled", this->isIntraInterSessionColorsEnabled()).toBool());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -720,27 +757,31 @@ void GraphViewer::setNeighborColor(const QColor & color)
 void GraphViewer::setGlobalLoopClosureColor(const QColor & color)
 {
 	_loopClosureColor = color;
-	for(QMultiMap<int, LinkItem*>::iterator iter=_linkItems.begin(); iter!=_linkItems.end(); ++iter)
+	if(!_intraInterSessionColors)
 	{
-		if(iter.value()->linkType() != Link::kNeighbor &&
-			iter.value()->linkType() != Link::kLocalSpaceClosure &&
-			iter.value()->linkType() != Link::kLocalTimeClosure &&
-			iter.value()->linkType() != Link::kUserClosure &&
-			iter.value()->linkType() != Link::kVirtualClosure)
+		for(QMultiMap<int, LinkItem*>::iterator iter=_linkItems.begin(); iter!=_linkItems.end(); ++iter)
 		{
-			iter.value()->setColor(_loopClosureColor);
+			if(iter.value()->linkType() == Link::kGlobalClosure)
+			{
+				iter.value()->setColor(_loopClosureColor);
+				iter.value()->setZValue(10);
+			}
 		}
 	}
 }
 void GraphViewer::setLocalLoopClosureColor(const QColor & color)
 {
 	_loopClosureLocalColor = color;
-	for(QMultiMap<int, LinkItem*>::iterator iter=_linkItems.begin(); iter!=_linkItems.end(); ++iter)
+	if(!_intraInterSessionColors)
 	{
-		if(iter.value()->linkType() == Link::kLocalSpaceClosure ||
-		   iter.value()->linkType() == Link::kLocalTimeClosure)
+		for(QMultiMap<int, LinkItem*>::iterator iter=_linkItems.begin(); iter!=_linkItems.end(); ++iter)
 		{
-			iter.value()->setColor(_loopClosureLocalColor);
+			if(iter.value()->linkType() == Link::kLocalSpaceClosure ||
+			   iter.value()->linkType() == Link::kLocalTimeClosure)
+			{
+				iter.value()->setColor(_loopClosureLocalColor);
+				iter.value()->setZValue(10);
+			}
 		}
 	}
 }
@@ -774,6 +815,58 @@ void GraphViewer::setGlobalPathColor(const QColor & color)
 {
 	_globalPathColor = color;
 }
+void GraphViewer::setIntraSessionLoopColor(const QColor & color)
+{
+	_loopIntraSessionColor = color;
+	if(_intraInterSessionColors)
+	{
+		for(QMultiMap<int, LinkItem*>::iterator iter=_linkItems.begin(); iter!=_linkItems.end(); ++iter)
+		{
+			if((iter.value()->linkType() == Link::kGlobalClosure ||
+				iter.value()->linkType() == Link::kLocalSpaceClosure ||
+				iter.value()->linkType() == Link::kLocalTimeClosure) &&
+				!iter.value()->isInterSession())
+			{
+				iter.value()->setColor(_loopIntraSessionColor);
+				iter.value()->setZValue(9);
+			}
+		}
+	}
+}
+void GraphViewer::setInterSessionLoopColor(const QColor & color)
+{
+	_loopInterSessionColor = color;
+	if(_intraInterSessionColors)
+	{
+		for(QMultiMap<int, LinkItem*>::iterator iter=_linkItems.begin(); iter!=_linkItems.end(); ++iter)
+		{
+			if((iter.value()->linkType() == Link::kGlobalClosure ||
+				iter.value()->linkType() == Link::kLocalSpaceClosure ||
+				iter.value()->linkType() == Link::kLocalTimeClosure) &&
+				iter.value()->isInterSession())
+			{
+				iter.value()->setColor(_loopInterSessionColor);
+				iter.value()->setZValue(8);
+			}
+		}
+	}
+}
+
+void GraphViewer::setIntraInterSessionColorsEnabled(bool enabled)
+{
+	_intraInterSessionColors = enabled;
+	if(_intraInterSessionColors)
+	{
+		this->setIntraSessionLoopColor(_loopIntraSessionColor);
+		this->setInterSessionLoopColor(_loopInterSessionColor);
+	}
+	else
+	{
+		this->setGlobalLoopClosureColor(_loopClosureColor);
+		this->setLocalLoopClosureColor(_loopClosureLocalColor);
+	}
+}
+
 void GraphViewer::setGridMapVisible(bool visible)
 {
 	_gridMap->setVisible(visible);
@@ -845,6 +938,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aChangeVirtualLoopColor = menuLink->addAction(tr("Virtual loop closure"));
 	QAction * aChangeLocalPathColor = menuLink->addAction(tr("Local path"));
 	QAction * aChangeGlobalPathColor = menuLink->addAction(tr("Global path"));
+	menuLink->addSeparator();
+	QAction * aSetIntraInterSessionColors = menuLink->addAction(tr("Enable intra/inter-session colors"));
+	QAction * aChangeIntraSessionLoopColor = menuLink->addAction(tr("Intra-session loop closure"));
+	QAction * aChangeInterSessionLoopColor = menuLink->addAction(tr("Inter-session loop closure"));
 	aChangeNeighborColor->setIcon(createIcon(_neighborColor));
 	aChangeGlobalLoopColor->setIcon(createIcon(_loopClosureColor));
 	aChangeLocalLoopColor->setIcon(createIcon(_loopClosureLocalColor));
@@ -852,6 +949,8 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	aChangeVirtualLoopColor->setIcon(createIcon(_loopClosureVirtualColor));
 	aChangeLocalPathColor->setIcon(createIcon(_localPathColor));
 	aChangeGlobalPathColor->setIcon(createIcon(_globalPathColor));
+	aChangeIntraSessionLoopColor->setIcon(createIcon(_loopIntraSessionColor));
+	aChangeInterSessionLoopColor->setIcon(createIcon(_loopInterSessionColor));
 	aChangeNeighborColor->setIconVisibleInMenu(true);
 	aChangeGlobalLoopColor->setIconVisibleInMenu(true);
 	aChangeLocalLoopColor->setIconVisibleInMenu(true);
@@ -859,6 +958,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	aChangeVirtualLoopColor->setIconVisibleInMenu(true);
 	aChangeLocalPathColor->setIconVisibleInMenu(true);
 	aChangeGlobalPathColor->setIconVisibleInMenu(true);
+	aChangeIntraSessionLoopColor->setIconVisibleInMenu(true);
+	aChangeInterSessionLoopColor->setIconVisibleInMenu(true);
+	aSetIntraInterSessionColors->setCheckable(true);
+	aSetIntraInterSessionColors->setChecked(_intraInterSessionColors);
 
 	menu.addSeparator();
 	QAction * aSetNodeSize = menu.addAction(tr("Set node radius..."));
@@ -980,6 +1083,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		}
 		return; // without emitting configChanged
 	}
+	else if(r == aSetIntraInterSessionColors)
+	{
+		setIntraInterSessionColorsEnabled(aSetIntraInterSessionColors->isChecked());
+	}
 	else if(r == aChangeNodeColor ||
 			r == aChangeCurrentGoalColor ||
 			r == aChangeNeighborColor ||
@@ -988,7 +1095,9 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			r == aChangeUserLoopColor ||
 			r == aChangeVirtualLoopColor ||
 			r == aChangeLocalPathColor ||
-			r == aChangeGlobalPathColor)
+			r == aChangeGlobalPathColor ||
+			r == aChangeIntraSessionLoopColor ||
+			r == aChangeInterSessionLoopColor)
 	{
 		QColor color;
 		if(r == aChangeNodeColor)
@@ -1022,6 +1131,14 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		else if(r == aChangeGlobalPathColor)
 		{
 			color = _globalPathColor;
+		}
+		else if(r == aChangeIntraSessionLoopColor)
+		{
+			color = _loopIntraSessionColor;
+		}
+		else if(r == aChangeInterSessionLoopColor)
+		{
+			color = _loopInterSessionColor;
 		}
 		else //if(r == aChangeNeighborColor)
 		{
@@ -1058,6 +1175,14 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			else if(r == aChangeLocalPathColor)
 			{
 				this->setLocalPathColor(color);
+			}
+			else if(r == aChangeIntraSessionLoopColor)
+			{
+				this->setIntraSessionLoopColor(color);
+			}
+			else if(r == aChangeInterSessionLoopColor)
+			{
+				this->setInterSessionLoopColor(color);
 			}
 			else //if(r == aChangeNeighborColor)
 			{

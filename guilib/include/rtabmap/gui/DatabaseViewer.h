@@ -149,6 +149,7 @@ private:
 private:
 	Ui_DatabaseViewer * ui_;
 	QList<int> ids_;
+	std::map<int, int> mapIds_;
 	QMap<int, int> idToIndex_;
 	QList<rtabmap::Link> neighborLinks_;
 	QList<rtabmap::Link> loopLinks_;

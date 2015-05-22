@@ -53,7 +53,8 @@ public:
 	virtual ~GraphViewer();
 
 	void updateGraph(const std::map<int, Transform> & poses,
-					 const std::multimap<int, Link> & constraints);
+					 const std::multimap<int, Link> & constraints,
+					 const std::map<int, int> & mapIds);
 	void updateReferentialPosition(const Transform & t);
 	void updateMap(const cv::Mat & map8U, float resolution, float xMin, float yMin);
 	void updatePosterior(const std::map<int, float> & posterior);
@@ -82,6 +83,9 @@ public:
 	const QColor & getVirtualLoopClosureColor() const {return _loopClosureVirtualColor;}
 	const QColor & getLocalPathColor() const {return _localPathColor;}
 	const QColor & getGlobalPathColor() const {return _globalPathColor;}
+	const QColor & getIntraSessionLoopColor() const {return _loopIntraSessionColor;}
+	const QColor & getInterSessionLoopColor() const {return _loopInterSessionColor;}
+	bool isIntraInterSessionColorsEnabled() const {return _intraInterSessionColors;}
 	bool isGridMapVisible() const;
 	bool isOriginVisible() const;
 	bool isReferentialVisible() const;
@@ -100,6 +104,9 @@ public:
 	void setVirtualLoopClosureColor(const QColor & color);
 	void setLocalPathColor(const QColor & color);
 	void setGlobalPathColor(const QColor & color);
+	void setIntraSessionLoopColor(const QColor & color);
+	void setInterSessionLoopColor(const QColor & color);
+	void setIntraInterSessionColorsEnabled(bool enabled);
 	void setGridMapVisible(bool visible);
 	void setOriginVisible(bool visible);
 	void setReferentialVisible(bool visible);
@@ -126,6 +133,9 @@ private:
 	QColor _loopClosureVirtualColor;
 	QColor _localPathColor;
 	QColor _globalPathColor;
+	QColor _loopIntraSessionColor;
+	QColor _loopInterSessionColor;
+	bool _intraInterSessionColors;
 	QGraphicsItem * _root;
 	QMap<int, NodeItem*> _nodeItems;
 	QMultiMap<int, LinkItem*> _linkItems;

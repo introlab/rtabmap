@@ -1407,7 +1407,10 @@ void MainWindow::updateMapCloud(
 			{
 				_initProgressDialog->appendText(tr("Updated cloud %1 (%2/%3)").arg(iter->first).arg(i).arg(poses.size()));
 				_initProgressDialog->incrementStep();
-				QApplication::processEvents();
+				if(poses.size() < 200 || i % 100 == 0)
+				{
+					QApplication::processEvents();
+				}
 			}
 		}
 
@@ -1468,7 +1471,7 @@ void MainWindow::updateMapCloud(
 	// Update occupancy grid map in 3D map view and graph view
 	if(_ui->graphicsView_graphView->isVisible())
 	{
-		_ui->graphicsView_graphView->updateGraph(posesIn, constraints);
+		_ui->graphicsView_graphView->updateGraph(posesIn, constraints, mapIdsIn);
 		if(!currentPose.isNull())
 		{
 			_ui->graphicsView_graphView->updateReferentialPosition(currentPose);

@@ -476,6 +476,7 @@ bool DatabaseViewer::openDatabase(const QString & path)
 			loopLinks_.clear();
 			graphes_.clear();
 			poses_.clear();
+			mapIds_.clear();
 			links_.clear();
 			linksAdded_.clear();
 			linksRefined_.clear();
@@ -814,9 +815,19 @@ void DatabaseViewer::updateIds()
 	std::set<int> ids = memory_->getAllSignatureIds();
 	ids_ = QList<int>::fromStdList(std::list<int>(ids.begin(), ids.end()));
 	idToIndex_.clear();
+	mapIds_.clear();
 	for(int i=0; i<ids_.size(); ++i)
 	{
 		idToIndex_.insert(ids_[i], i);
+
+		Transform p;
+		int w;
+		std::string l;
+		double s;
+		std::vector<unsigned char> d;
+		int mapId;
+		memory_->getNodeInfo(ids_[i], p, mapId, w, l, s, d, true);
+		mapIds_.insert(std::make_pair(ids_[i], mapId));
 	}
 
 	poses_.clear();
@@ -2352,7 +2363,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		}
 		std::map<int, rtabmap::Transform> & graph = uValueAt(graphes_, value);
 		std::multimap<int, Link> links = updateLinksWithModifications(links_);
-		ui_->graphViewer->updateGraph(graph, links);
+		ui_->graphViewer->updateGraph(graph, links, mapIds_);
 		if(graph.size() && localMaps_.size() && ui_->graphViewer->isGridMapVisible())
 		{
 			float xMin, yMin;
