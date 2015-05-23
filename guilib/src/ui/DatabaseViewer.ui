@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1183</width>
+    <width>1285</width>
     <height>804</height>
    </rect>
   </property>
@@ -50,8 +50,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>162</width>
-             <height>173</height>
+             <width>172</width>
+             <height>184</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -233,8 +233,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>162</width>
-             <height>173</height>
+             <width>172</width>
+             <height>184</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -411,8 +411,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1183</width>
-     <height>25</height>
+     <width>1285</width>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -666,34 +666,17 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout_5" columnstretch="0,1">
-       <item row="2" column="1">
-        <widget class="QLabel" name="label_10">
-         <property name="text">
-          <string>Total path length (m)</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QSpinBox" name="spinBox_optimizationsFrom"/>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="label_optimizeFrom">
-         <property name="text">
-          <string>Optimize from</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_pathLength">
+       <item row="6" column="0">
+        <widget class="QLabel" name="label_loopClosures">
          <property name="text">
           <string/>
          </property>
         </widget>
        </item>
-       <item row="3" column="1">
-        <widget class="QLabel" name="label_39">
+       <item row="4" column="0">
+        <widget class="QLabel" name="label_timeGrid">
          <property name="text">
-          <string>Time optimization (s)</string>
+          <string/>
          </property>
         </widget>
        </item>
@@ -704,6 +687,37 @@
          </property>
         </widget>
        </item>
+       <item row="0" column="0">
+        <widget class="QSpinBox" name="spinBox_optimizationsFrom"/>
+       </item>
+       <item row="5" column="1">
+        <widget class="QLabel" name="label_52">
+         <property name="text">
+          <string>Nodes</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QLabel" name="label_39">
+         <property name="text">
+          <string>Time optimization (s)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QLabel" name="label_41">
+         <property name="text">
+          <string>Loop closures (G, LS, LT, U)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLabel" name="label_10">
+         <property name="text">
+          <string>Total path length (m)</string>
+         </property>
+        </widget>
+       </item>
        <item row="4" column="1">
         <widget class="QLabel" name="label_45">
          <property name="text">
@@ -711,8 +725,36 @@
          </property>
         </widget>
        </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="label_timeGrid">
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_pathLength">
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <layout class="QHBoxLayout" name="horizontalLayout_7" stretch="0,1">
+         <item>
+          <widget class="QLabel" name="label_optimizeFrom">
+           <property name="text">
+            <string>Graph root</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkBox_spanAllMaps">
+           <property name="text">
+            <string>Span to all maps</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="label_nodes">
          <property name="text">
           <string/>
          </property>
@@ -741,15 +783,15 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>4</number>
+        <number>2</number>
        </property>
        <widget class="QWidget" name="page">
         <property name="geometry">
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>314</width>
-          <height>303</height>
+          <width>312</width>
+          <height>314</height>
          </rect>
         </property>
         <attribute name="label">
@@ -968,8 +1010,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>338</width>
-          <height>314</height>
+          <width>351</width>
+          <height>331</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1236,37 +1278,50 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>0</y>
-          <width>246</width>
-          <height>198</height>
+          <y>-118</y>
+          <width>330</width>
+          <height>304</height>
          </rect>
         </property>
         <attribute name="label">
          <string>Graph optimization</string>
         </attribute>
-        <layout class="QGridLayout" name="gridLayout_7" columnstretch="0,1">
-         <item row="0" column="0">
-          <widget class="QComboBox" name="comboBox_graphOptimizer">
-           <item>
-            <property name="text">
-             <string>TORO</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>g2o</string>
-            </property>
-           </item>
-          </widget>
-         </item>
-         <item row="0" column="1">
-          <widget class="QLabel" name="label_40">
+        <layout class="QGridLayout" name="gridLayout_7" columnstretch="0,0,0">
+         <item row="3" column="0">
+          <widget class="QCheckBox" name="checkBox_2dslam">
            <property name="text">
-            <string>Strategy</string>
+            <string/>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
            </property>
           </widget>
          </item>
-         <item row="1" column="0">
+         <item row="6" column="2">
+          <widget class="QLabel" name="label_48">
+           <property name="text">
+            <string>Ignore global loop closures</string>
+           </property>
+          </widget>
+         </item>
+         <item row="9" column="0">
+          <widget class="QCheckBox" name="checkBox_ignoreUserLoop">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="2">
+          <widget class="QLabel" name="label_7">
+           <property name="text">
+            <string>Iterations</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
           <widget class="QSpinBox" name="spinBox_iterations">
            <property name="suffix">
             <string/>
@@ -1282,14 +1337,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <widget class="QLabel" name="label_7">
-           <property name="text">
-            <string>Iterations</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="0">
+         <item row="2" column="1">
           <widget class="QSpinBox" name="spinBox_optimizationDepth">
            <property name="suffix">
             <string/>
@@ -1305,15 +1353,15 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="1">
-          <widget class="QLabel" name="label_8">
+         <item row="5" column="2">
+          <widget class="QLabel" name="label_35">
            <property name="text">
-            <string>Depth (0=inf)</string>
+            <string>Ignore pose correction</string>
            </property>
           </widget>
          </item>
-         <item row="3" column="0">
-          <widget class="QCheckBox" name="checkBox_ignoreCovariance">
+         <item row="6" column="0">
+          <widget class="QCheckBox" name="checkBox_ignoreGlobalLoop">
            <property name="text">
             <string/>
            </property>
@@ -1322,14 +1370,7 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="1">
-          <widget class="QLabel" name="label_34">
-           <property name="text">
-            <string>Ignore covariance</string>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="0">
+         <item row="5" column="0">
           <widget class="QCheckBox" name="checkBox_ignorePoseCorrection">
            <property name="text">
             <string/>
@@ -1339,15 +1380,8 @@
            </property>
           </widget>
          </item>
-         <item row="4" column="1">
-          <widget class="QLabel" name="label_35">
-           <property name="text">
-            <string>Ignore pose correction</string>
-           </property>
-          </widget>
-         </item>
-         <item row="5" column="0">
-          <widget class="QCheckBox" name="checkBox_2dslam">
+         <item row="8" column="0">
+          <widget class="QCheckBox" name="checkBox_ignoreLocalLoopTime">
            <property name="text">
             <string/>
            </property>
@@ -1356,25 +1390,104 @@
            </property>
           </widget>
          </item>
-         <item row="5" column="1">
-          <widget class="QLabel" name="label_41">
+         <item row="0" column="0" colspan="2">
+          <widget class="QComboBox" name="comboBox_graphOptimizer">
+           <property name="sizeAdjustPolicy">
+            <enum>QComboBox::AdjustToContents</enum>
+           </property>
+           <item>
+            <property name="text">
+             <string>TORO</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>g2o</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item row="2" column="2">
+          <widget class="QLabel" name="label_8">
            <property name="text">
-            <string>2d SLAM</string>
+            <string>Depth (0=inf)</string>
            </property>
           </widget>
          </item>
-         <item row="6" column="0">
+         <item row="9" column="2">
+          <widget class="QLabel" name="label_50">
+           <property name="text">
+            <string>Ignore user loop closures</string>
+           </property>
+          </widget>
+         </item>
+         <item row="7" column="2">
+          <widget class="QLabel" name="label_47">
+           <property name="text">
+            <string>Ignore local loop closures (space)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="10" column="0">
           <spacer name="verticalSpacer_3">
            <property name="orientation">
             <enum>Qt::Vertical</enum>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>20</width>
+             <width>0</width>
              <height>40</height>
             </size>
            </property>
           </spacer>
+         </item>
+         <item row="7" column="0">
+          <widget class="QCheckBox" name="checkBox_ignoreLocalLoopSpace">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="8" column="2">
+          <widget class="QLabel" name="label_49">
+           <property name="text">
+            <string>Ignore local loop closures (time)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QLabel" name="label_40">
+           <property name="text">
+            <string>Strategy</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="0">
+          <widget class="QCheckBox" name="checkBox_ignoreCovariance">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="2">
+          <widget class="QLabel" name="label_51">
+           <property name="text">
+            <string>2d SLAM</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="2">
+          <widget class="QLabel" name="label_34">
+           <property name="text">
+            <string>Ignore covariance</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>
@@ -1383,8 +1496,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>243</width>
-          <height>284</height>
+          <width>248</width>
+          <height>319</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1577,8 +1690,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>256</width>
-          <height>151</height>
+          <width>201</width>
+          <height>126</height>
          </rect>
         </property>
         <attribute name="label">

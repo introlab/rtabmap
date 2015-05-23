@@ -195,8 +195,13 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->horizontalSlider_iterations, SIGNAL(sliderMoved(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->spinBox_iterations, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreCovariance, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_ignoreGlobalLoop, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_ignoreLocalLoopSpace, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_ignoreLocalLoopTime, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_ignoreUserLoop, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->comboBox_graphOptimizer, SIGNAL(currentIndexChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_2dslam, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->spinBox_optimizationDepth, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
@@ -217,7 +222,13 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	//connect(ui_->graphicsView_B, SIGNAL(configChanged()), this, SLOT(configModified()));
 	// Graph view
 	connect(ui_->spinBox_iterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignoreCovariance, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_ignoreGlobalLoop, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_ignoreLocalLoopSpace, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_ignoreLocalLoopTime, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_ignoreUserLoop, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->comboBox_graphOptimizer, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_2dslam, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->spinBox_optimizationDepth, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
@@ -320,8 +331,13 @@ void DatabaseViewer::readSettings()
 
 	settings.beginGroup("optimization");
 	ui_->spinBox_iterations->setValue(settings.value("iterations", ui_->spinBox_iterations->value()).toInt());
+	ui_->checkBox_spanAllMaps->setChecked(settings.value("spanToAllMaps", ui_->checkBox_spanAllMaps->isChecked()).toBool());
 	ui_->checkBox_ignoreCovariance->setChecked(settings.value("ignoreCovariance", ui_->checkBox_ignoreCovariance->isChecked()).toBool());
 	ui_->checkBox_ignorePoseCorrection->setChecked(settings.value("ignorePoseCorrection", ui_->checkBox_ignorePoseCorrection->isChecked()).toBool());
+	ui_->checkBox_ignoreGlobalLoop->setChecked(settings.value("ignoreGlobalLoop", ui_->checkBox_ignoreGlobalLoop->isChecked()).toBool());
+	ui_->checkBox_ignoreLocalLoopSpace->setChecked(settings.value("ignoreLocalLoopSpace", ui_->checkBox_ignoreLocalLoopSpace->isChecked()).toBool());
+	ui_->checkBox_ignoreLocalLoopTime->setChecked(settings.value("ignoreLocalLoopTime", ui_->checkBox_ignoreLocalLoopTime->isChecked()).toBool());
+	ui_->checkBox_ignoreUserLoop->setChecked(settings.value("ignoreUserLoop", ui_->checkBox_ignoreUserLoop->isChecked()).toBool());
 	ui_->comboBox_graphOptimizer->setCurrentIndex(settings.value("strategy", ui_->comboBox_graphOptimizer->currentIndex()).toInt());
 	ui_->checkBox_2dslam->setChecked(settings.value("slam2d", ui_->checkBox_2dslam->isChecked()).toBool());
 	ui_->spinBox_optimizationDepth->setValue(settings.value("depth", ui_->spinBox_optimizationDepth->value()).toInt());
@@ -395,8 +411,13 @@ void DatabaseViewer::writeSettings()
 	// save optimization settings
 	settings.beginGroup("optimization");
 	settings.setValue("iterations", ui_->spinBox_iterations->value());
+	settings.setValue("spanToAllMaps", ui_->checkBox_spanAllMaps->isChecked());
 	settings.setValue("ignoreCovariance", ui_->checkBox_ignoreCovariance->isChecked());
 	settings.setValue("ignorePoseCorrection", ui_->checkBox_ignorePoseCorrection->isChecked());
+	settings.setValue("ignoreGlobalLoop", ui_->checkBox_ignoreGlobalLoop->isChecked());
+	settings.setValue("ignoreLocalLoopSpace", ui_->checkBox_ignoreLocalLoopSpace->isChecked());
+	settings.setValue("ignoreLocalLoopTime", ui_->checkBox_ignoreLocalLoopTime->isChecked());
+	settings.setValue("ignoreUserLoop", ui_->checkBox_ignoreUserLoop->isChecked());
 	settings.setValue("strategy", ui_->comboBox_graphOptimizer->currentIndex());
 	settings.setValue("slam2d", ui_->checkBox_2dslam->isChecked());
 	settings.setValue("depth", ui_->spinBox_optimizationDepth->value());
@@ -475,6 +496,7 @@ bool DatabaseViewer::openDatabase(const QString & path)
 			neighborLinks_.clear();
 			loopLinks_.clear();
 			graphes_.clear();
+			graphLinks_.clear();
 			poses_.clear();
 			mapIds_.clear();
 			links_.clear();
@@ -875,6 +897,7 @@ void DatabaseViewer::updateIds()
 
 	ui_->actionGenerate_TORO_graph_graph->setEnabled(false);
 	graphes_.clear();
+	graphLinks_.clear();
 	neighborLinks_.clear();
 	loopLinks_.clear();
 	for(std::multimap<int, rtabmap::Link>::iterator iter = links_.begin(); iter!=links_.end(); ++iter)
@@ -996,8 +1019,7 @@ void DatabaseViewer::generateLocalGraph()
 
 void DatabaseViewer::generateTOROGraph()
 {
-	std::multimap<int, Link> links = updateLinksWithModifications(links_);
-	if(!graphes_.size() || !links.size())
+	if(!graphes_.size() || !graphLinks_.size())
 	{
 		QMessageBox::warning(this, tr("Cannot generate a TORO graph"), tr("No poses or no links..."));
 		return;
@@ -1010,7 +1032,7 @@ void DatabaseViewer::generateTOROGraph()
 		QString path = QFileDialog::getSaveFileName(this, tr("Save File"), pathDatabase_+"/constraints" + QString::number(id) + ".graph", tr("TORO file (*.graph)"));
 		if(!path.isEmpty())
 		{
-			graph::TOROOptimizer::saveGraph(path.toStdString(), uValueAt(graphes_, id), links);
+			graph::TOROOptimizer::saveGraph(path.toStdString(), uValueAt(graphes_, id), graphLinks_);
 		}
 	}
 }
@@ -2362,8 +2384,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			UINFO("Update local maps list... done");
 		}
 		std::map<int, rtabmap::Transform> & graph = uValueAt(graphes_, value);
-		std::multimap<int, Link> links = updateLinksWithModifications(links_);
-		ui_->graphViewer->updateGraph(graph, links, mapIds_);
+		ui_->graphViewer->updateGraph(graph, graphLinks_, mapIds_);
 		if(graph.size() && localMaps_.size() && ui_->graphViewer->isGridMapVisible())
 		{
 			float xMin, yMin;
@@ -2393,7 +2414,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 
 		//compute total length (neighbor links)
 		float length = 0.0f;
-		for(std::multimap<int, rtabmap::Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+		for(std::multimap<int, rtabmap::Link>::const_iterator iter=graphLinks_.begin(); iter!=graphLinks_.end(); ++iter)
 		{
 			std::map<int, rtabmap::Transform>::const_iterator jterA = graph.find(iter->first);
 			std::map<int, rtabmap::Transform>::const_iterator jterB = graph.find(iter->second.to());
@@ -2415,36 +2436,81 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 }
 void DatabaseViewer::updateGraphView()
 {
+	ui_->label_loopClosures->clear();
+	ui_->label_nodes->clear();
 	if(poses_.size())
 	{
-		if(!uContains(poses_, ui_->spinBox_optimizationsFrom->value()))
+		int fromId = ui_->spinBox_optimizationsFrom->value();
+		if(!uContains(poses_, fromId))
 		{
 			QMessageBox::warning(this, tr(""), tr("Graph optimization from id (%1) for which node is not linked to graph.\n Minimum=%2, Maximum=%3")
-						.arg(ui_->spinBox_optimizationsFrom->value())
+						.arg(fromId)
 						.arg(poses_.begin()->first)
 						.arg(poses_.rbegin()->first));
 			return;
 		}
 
 		graphes_.clear();
+		graphLinks_.clear();
 
-		std::map<int, rtabmap::Transform> finalPoses;
-		graphes_.push_back(poses_);
+		std::map<int, rtabmap::Transform> poses = poses_;
+
+		// filter current map if not spanning to all maps
+		if(!ui_->checkBox_spanAllMaps->isChecked() && uContains(mapIds_, fromId) && mapIds_.at(fromId) >= 0)
+		{
+			int currentMapId = mapIds_.at(fromId);
+			for(std::map<int, rtabmap::Transform>::iterator iter=poses.begin(); iter!=poses.end();)
+			{
+				if(!uContains(mapIds_, iter->first) ||
+					mapIds_.at(iter->first) != currentMapId)
+				{
+					iter = poses.erase(iter);
+				}
+				else
+				{
+					++iter;
+				}
+			}
+		}
+
+		graphes_.push_back(poses);
+
 		ui_->actionGenerate_TORO_graph_graph->setEnabled(true);
-		std::multimap<int, rtabmap::Link> links;
+		std::multimap<int, rtabmap::Link> links = links_;
+
+		// filter current map if not spanning to all maps
+		if(!ui_->checkBox_spanAllMaps->isChecked() && uContains(mapIds_, fromId) && mapIds_.at(fromId) >= 0)
+		{
+			int currentMapId = mapIds_.at(fromId);
+			for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end();)
+			{
+				if(!uContains(mapIds_, iter->second.from()) ||
+					!uContains(mapIds_, iter->second.to()) ||
+					mapIds_.at(iter->second.from()) != currentMapId ||
+					mapIds_.at(iter->second.to()) != currentMapId)
+				{
+					iter = links.erase(iter);
+				}
+				else
+				{
+					++iter;
+				}
+			}
+		}
+
 		if(ui_->checkBox_ignorePoseCorrection->isChecked())
 		{
-			std::multimap<int, Link> tmp = links_;
+			std::multimap<int, Link> tmp = links;
 			for(std::multimap<int, Link>::iterator iter=tmp.begin(); iter!=tmp.end(); ++iter)
 			{
 				if(iter->second.type() == Link::kNeighbor)
 				{
-					Transform poseFrom = uValue(poses_, iter->second.from(), Transform());
-					Transform poseTo = uValue(poses_, iter->second.to(), Transform());
+					Transform poseFrom = uValue(poses, iter->second.from(), Transform());
+					Transform poseTo = uValue(poses, iter->second.to(), Transform());
 					if(!poseFrom.isNull() && !poseTo.isNull())
 					{
 						iter->second.setTransform(poseFrom.inverse() * poseTo); // recompute raw odom transformation
-
+						iter->second.setVariance(1.0f, 1.0f); // reset variance
 					}
 				}
 			}
@@ -2452,8 +2518,56 @@ void DatabaseViewer::updateGraphView()
 		}
 		else
 		{
-			links = updateLinksWithModifications(links_);
+			links = updateLinksWithModifications(links);
 		}
+
+		// filter links
+		int totalGlobal = 0;
+		int totalLocalTime = 0;
+		int totalLocalSpace = 0;
+		int totalUser = 0;
+		for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end();)
+		{
+			if(iter->second.type() == Link::kGlobalClosure)
+			{
+				if(ui_->checkBox_ignoreGlobalLoop->isChecked())
+				{
+					iter = links.erase(iter);
+					continue;
+				}
+				++totalGlobal;
+			}
+			else if(iter->second.type() == Link::kLocalSpaceClosure)
+			{
+				if(ui_->checkBox_ignoreLocalLoopSpace->isChecked())
+				{
+					iter = links.erase(iter);
+					continue;
+				}
+				++totalLocalSpace;
+			}
+			else if(iter->second.type() == Link::kLocalTimeClosure)
+			{
+				if(ui_->checkBox_ignoreLocalLoopTime->isChecked())
+				{
+					iter = links.erase(iter);
+					continue;
+				}
+				++totalLocalTime;
+			}
+			else if(iter->second.type() == Link::kUserClosure)
+			{
+				if(ui_->checkBox_ignoreUserLoop->isChecked())
+				{
+					iter = links.erase(iter);
+					continue;
+				}
+				++totalUser;
+			}
+			++iter;
+		}
+		ui_->label_loopClosures->setText(tr("(%1, %2, %3, %4)").arg(totalGlobal).arg(totalLocalSpace).arg(totalLocalTime).arg(totalUser));
+
 		graph::Optimizer * optimizer = 0;
 		if(ui_->comboBox_graphOptimizer->currentIndex() == graph::Optimizer::kTypeG2O)
 		{
@@ -2463,12 +2577,11 @@ void DatabaseViewer::updateGraphView()
 		{
 			optimizer = new graph::TOROOptimizer(ui_->spinBox_iterations->value(), ui_->checkBox_2dslam->isChecked(), ui_->checkBox_ignoreCovariance->isChecked());
 		}
-		int fromId = ui_->spinBox_optimizationsFrom->value();
 		std::map<int, rtabmap::Transform> posesOut;
 		std::multimap<int, rtabmap::Link> linksOut;
 		optimizer->getConnectedGraph(
 				fromId,
-				poses_,
+				poses,
 				links,
 				posesOut,
 				linksOut,
@@ -2476,9 +2589,11 @@ void DatabaseViewer::updateGraphView()
 
 		QTime time;
 		time.start();
-		finalPoses = optimizer->optimize(fromId, posesOut, linksOut, &graphes_);
+		std::map<int, rtabmap::Transform> finalPoses = optimizer->optimize(fromId, posesOut, linksOut, &graphes_);
 		ui_->label_timeOptimization->setNum(double(time.elapsed())/1000.0);
 		graphes_.push_back(finalPoses);
+		graphLinks_ = linksOut;
+		ui_->label_nodes->setNum((int)finalPoses.size());
 		delete optimizer;
 	}
 	if(graphes_.size())

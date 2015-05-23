@@ -1928,10 +1928,8 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 	{
 
 		UINFO("Received map!");
-		UINFO(" signatures = %d", event.getSignatures().size());
-		UINFO(" map ids = %d", event.getMapIds().size());
-		UINFO(" poses = %d", event.getPoses().size());
-		UINFO(" constraints = %d", event.getConstraints().size());
+		_initProgressDialog->appendText(tr(" poses = %1").arg(event.getPoses().size()));
+		_initProgressDialog->appendText(tr(" constraints = %1").arg(event.getConstraints().size()));
 
 		_initProgressDialog->setMaximumSteps(int(event.getSignatures().size()+event.getPoses().size()+1));
 		_initProgressDialog->appendText(QString("Inserting data in the cache (%1 signatures downloaded)...").arg(event.getSignatures().size()));
