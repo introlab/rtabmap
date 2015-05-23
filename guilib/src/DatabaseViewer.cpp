@@ -2464,7 +2464,7 @@ void DatabaseViewer::updateGraphView()
 				if(!uContains(mapIds_, iter->first) ||
 					mapIds_.at(iter->first) != currentMapId)
 				{
-					iter = poses.erase(iter);
+					poses.erase(iter++);
 				}
 				else
 				{
@@ -2489,7 +2489,7 @@ void DatabaseViewer::updateGraphView()
 					mapIds_.at(iter->second.from()) != currentMapId ||
 					mapIds_.at(iter->second.to()) != currentMapId)
 				{
-					iter = links.erase(iter);
+					links.erase(iter++);
 				}
 				else
 				{
@@ -2532,7 +2532,7 @@ void DatabaseViewer::updateGraphView()
 			{
 				if(ui_->checkBox_ignoreGlobalLoop->isChecked())
 				{
-					iter = links.erase(iter);
+					links.erase(iter++);
 					continue;
 				}
 				++totalGlobal;
@@ -2541,7 +2541,7 @@ void DatabaseViewer::updateGraphView()
 			{
 				if(ui_->checkBox_ignoreLocalLoopSpace->isChecked())
 				{
-					iter = links.erase(iter);
+					links.erase(iter++);
 					continue;
 				}
 				++totalLocalSpace;
@@ -2550,7 +2550,7 @@ void DatabaseViewer::updateGraphView()
 			{
 				if(ui_->checkBox_ignoreLocalLoopTime->isChecked())
 				{
-					iter = links.erase(iter);
+					links.erase(iter++);
 					continue;
 				}
 				++totalLocalTime;
@@ -2559,7 +2559,7 @@ void DatabaseViewer::updateGraphView()
 			{
 				if(ui_->checkBox_ignoreUserLoop->isChecked())
 				{
-					iter = links.erase(iter);
+					links.erase(iter++);
 					continue;
 				}
 				++totalUser;
