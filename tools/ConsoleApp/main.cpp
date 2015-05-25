@@ -58,7 +58,7 @@ void showUsage()
 			"  -image_height #                 Force an image height (Default 0: original size used)\n"
 			"                                   The height must be also specified if changed.\n"
 			"  -start_at #                     When \"path\" is a directory of images, set this parameter\n"
-			"                                   to start processing at image # (default 1)."
+			"                                   to start processing at image # (default 1).\n"
 			"  -\"parameter name\" \"value\"       Overwrite a specific RTAB-Map's parameter :\n"
 			"                                     -SURF/HessianThreshold 150\n"
 			"                                   For parameters in table format, add ',' between values :\n"
