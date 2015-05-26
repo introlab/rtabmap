@@ -52,10 +52,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr voxelize(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		float voxelSize)
 {
-	typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-	typedef typename PointCloud::Ptr PointCloudPtr;
 	UASSERT(voxelSize > 0.0f);
-	PointCloudPtr output(new PointCloud);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::VoxelGrid<pcl::PointXYZ> filter;
 	filter.setLeafSize(voxelSize, voxelSize, voxelSize);
 	filter.setInputCloud(cloud);
@@ -66,10 +64,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelize(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float voxelSize)
 {
-	typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloud;
-	typedef typename PointCloud::Ptr PointCloudPtr;
 	UASSERT(voxelSize > 0.0f);
-	PointCloudPtr output(new PointCloud);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
 	pcl::VoxelGrid<pcl::PointXYZRGB> filter;
 	filter.setLeafSize(voxelSize, voxelSize, voxelSize);
 	filter.setInputCloud(cloud);
@@ -81,10 +77,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelize(
 pcl::PointCloud<pcl::PointXYZ>::Ptr sampling(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud, int samples)
 {
-	typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-	typedef typename PointCloud::Ptr PointCloudPtr;
 	UASSERT(samples > 0);
-	PointCloudPtr output(new PointCloud);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::RandomSample<pcl::PointXYZ> filter;
 	filter.setSample(samples);
 	filter.setInputCloud(cloud);
@@ -94,10 +88,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr sampling(
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr sampling(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, int samples)
 {
-	typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloud;
-	typedef typename PointCloud::Ptr PointCloudPtr;
 	UASSERT(samples > 0);
-	PointCloudPtr output(new PointCloud);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
 	pcl::RandomSample<pcl::PointXYZRGB> filter;
 	filter.setSample(samples);
 	filter.setInputCloud(cloud);
@@ -112,12 +104,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr passThrough(
 		float min,
 		float max)
 {
-	typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-	typedef typename PointCloud::Ptr PointCloudPtr;
 	UASSERT(max > min);
 	UASSERT(axis.compare("x") == 0 || axis.compare("y") == 0 || axis.compare("z") == 0);
 
-	PointCloudPtr output(new PointCloud);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PassThrough<pcl::PointXYZ> filter;
 	filter.setFilterFieldName(axis);
 	filter.setFilterLimits(min, max);
@@ -132,12 +122,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr passThrough(
 		float min,
 		float max)
 {
-	typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloud;
-	typedef typename PointCloud::Ptr PointCloudPtr;
 	UASSERT(max > min);
 	UASSERT(axis.compare("x") == 0 || axis.compare("y") == 0 || axis.compare("z") == 0);
 
-	PointCloudPtr output(new PointCloud);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
 	pcl::PassThrough<pcl::PointXYZRGB> filter;
 	filter.setFilterFieldName(axis);
 	filter.setFilterLimits(min, max);
@@ -208,9 +196,7 @@ pcl::IndicesPtr radiusFiltering(
 		float radiusSearch,
 		int minNeighborsInRadius)
 {
-	typedef pcl::search::KdTree<pcl::PointXYZ> KdTree;
-	typedef typename KdTree::Ptr KdTreePtr;
-	KdTreePtr tree (new KdTree(false));
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>(false));
 
 	if(indices->size())
 	{
@@ -255,9 +241,7 @@ pcl::IndicesPtr radiusFiltering(
 		float radiusSearch,
 		int minNeighborsInRadius)
 {
-	typedef pcl::search::KdTree<pcl::PointXYZRGB> KdTree;
-	typedef typename KdTree::Ptr KdTreePtr;
-	KdTreePtr tree (new KdTree(false));
+	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>(false));
 
 	if(indices->size())
 	{
@@ -583,7 +567,7 @@ pcl::IndicesPtr extractNegativeIndices(
 	return output;
 }
 pcl::IndicesPtr extractNegativeIndices(
-		const typename pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices)
 {
 	pcl::IndicesPtr output(new std::vector<int>);
