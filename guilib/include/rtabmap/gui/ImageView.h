@@ -55,6 +55,7 @@ public:
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");
 
+	QRectF sceneRect() const;
 	bool isImageShown() const;
 	bool isImageDepthShown() const;
 	bool isFeaturesShown() const;
