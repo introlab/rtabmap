@@ -3012,7 +3012,7 @@ bool Rtabmap::computePath(int targetNode, bool global)
 	std::map<int, double> stamps;
 	std::map<int, std::string> labels;
 	std::map<int, std::vector<unsigned char> > userDatas;
-	this->getGraph(nodes, constraints, mapIds, stamps, labels, userDatas, true, global);
+	this->getGraph(nodes, constraints, mapIds, stamps, labels, userDatas, true, global, true);
 	UINFO("Time creating graph (global=%s) = %fs", global?"true":"false", timer.ticks());
 
 	if(computePath(targetNode, nodes, constraints))
@@ -3046,7 +3046,7 @@ bool Rtabmap::computePath(const Transform & targetPose, bool global)
 	std::map<int, double> stamps;
 	std::map<int, std::string> labels;
 	std::map<int, std::vector<unsigned char> > userDatas;
-	this->getGraph(nodes, constraints, mapIds, stamps, labels, userDatas, true, global);
+	this->getGraph(nodes, constraints, mapIds, stamps, labels, userDatas, true, global, true);
 	UINFO("Time creating graph (global=%s) = %fs", global?"true":"false", timer.ticks());
 
 	int nearestId = rtabmap::graph::findNearestNode(nodes, targetPose);
