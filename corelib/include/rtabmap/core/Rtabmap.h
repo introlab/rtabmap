@@ -128,7 +128,8 @@ public:
 			std::map<int, std::string> & labels,
 			std::map<int, std::vector<unsigned char> > & userDatas,
 			bool optimized,
-			bool global);
+			bool global,
+			bool posesConstraintsOnly = false);
 	void clearPath();
 	bool computePath(int targetNode, bool global);
 	bool computePath(const Transform & targetPose, bool global);

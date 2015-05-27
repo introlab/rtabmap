@@ -141,7 +141,7 @@ void RtabmapThread::publishMap(bool optimized, bool full) const
 			userDatas));
 }
 
-void RtabmapThread::publishTOROGraph(bool optimized, bool full) const
+void RtabmapThread::publishGraph(bool optimized, bool full) const
 {
 	std::map<int, Signature> signatures;
 	std::map<int, Transform> poses;
@@ -257,10 +257,10 @@ void RtabmapThread::mainLoop()
 		this->publishMap(atoi(parameters.at("optimized").c_str())!=0, true);
 		break;
 	case kStatePublishingTOROGraphLocal:
-		this->publishTOROGraph(atoi(parameters.at("optimized").c_str())!=0, false);
+		this->publishGraph(atoi(parameters.at("optimized").c_str())!=0, false);
 		break;
 	case kStatePublishingTOROGraphGlobal:
-		this->publishTOROGraph(atoi(parameters.at("optimized").c_str())!=0, true);
+		this->publishGraph(atoi(parameters.at("optimized").c_str())!=0, true);
 		break;
 	case kStateTriggeringMap:
 		_rtabmap->triggerNewMap();

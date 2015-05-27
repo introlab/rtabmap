@@ -2570,17 +2570,16 @@ void Rtabmap::optimizeCurrentMap(
 {
 	//Optimize the map
 	optimizedPoses.clear();
-	UDEBUG("Optimize map: around location %d", id);
+	UINFO("Optimize map: around location %d", id);
 	if(_memory && id > 0)
 	{
 		UTimer timer;
 		std::map<int, int> ids = _memory->getNeighborsId(id, 0, lookInDatabase?-1:0, true);
-		UDEBUG("get ids=%d", (int)ids.size());
 		if(!_optimizeFromGraphEnd && ids.size() > 1)
 		{
 			id = ids.begin()->first;
 		}
-		UINFO("get ids time %f s", timer.ticks());
+		UINFO("get %d ids time %f s", (int)ids.size(), timer.ticks());
 
 		optimizedPoses = Rtabmap::optimizeGraph(id, uKeysSet(ids), lookInDatabase, constraints);
 
@@ -2605,7 +2604,7 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	std::multimap<int, Link> edgeConstraints;
 	UDEBUG("ids=%d", (int)ids.size());
 	_memory->getMetricConstraints(ids, poses, edgeConstraints, lookInDatabase);
-	UDEBUG("get constraints (%d poses, %d edges) time %f s", (int)poses.size(), (int)edgeConstraints.size(), timer.ticks());
+	UINFO("get constraints (%d poses, %d edges) time %f s", (int)poses.size(), (int)edgeConstraints.size(), timer.ticks());
 
 	if(constraints)
 	{
@@ -2622,6 +2621,7 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	{
 		optimizedPoses = _graphOptimizer->optimize(fromId, poses, edgeConstraints);
 	}
+	UINFO("Optimization time %f s", timer.ticks());
 
 	return optimizedPoses;
 }
@@ -2817,7 +2817,8 @@ void Rtabmap::getGraph(
 		std::map<int, std::string> & labels,
 		std::map<int, std::vector<unsigned char> > & userDatas,
 		bool optimized,
-		bool global)
+		bool global,
+		bool posesConstraintsOnly)
 {
 	if(_memory && _memory->getLastWorkingSignature())
 	{
@@ -2840,19 +2841,22 @@ void Rtabmap::getGraph(
 			_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, global);
 		}
 
-		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		if(!posesConstraintsOnly)
 		{
-			Transform odomPose;
-			int weight = -1;
-			int mapId = -1;
-			std::string label;
-			double stamp = 0;
-			std::vector<unsigned char> userData;
-			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true);
-			mapIds.insert(std::make_pair(iter->first, mapId));
-			stamps.insert(std::make_pair(iter->first, stamp));
-			labels.insert(std::make_pair(iter->first, label));
-			userDatas.insert(std::make_pair(iter->first, userData));
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				Transform odomPose;
+				int weight = -1;
+				int mapId = -1;
+				std::string label;
+				double stamp = 0;
+				std::vector<unsigned char> userData;
+				_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, global);
+				mapIds.insert(std::make_pair(iter->first, mapId));
+				stamps.insert(std::make_pair(iter->first, stamp));
+				labels.insert(std::make_pair(iter->first, label));
+				userDatas.insert(std::make_pair(iter->first, userData));
+			}
 		}
 	}
 	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size()))
@@ -2991,6 +2995,7 @@ bool Rtabmap::computePath(
 // return true if path is updated
 bool Rtabmap::computePath(int targetNode, bool global)
 {
+	UINFO("Planning a path to node %d (global=%d)", targetNode, global?1:0);
 	this->clearPath();
 
 	if(!_rgbdSlamMode)
@@ -2999,6 +3004,7 @@ bool Rtabmap::computePath(int targetNode, bool global)
 		return false;
 	}
 
+	UTimer totalTimer;
 	UTimer timer;
 	std::map<int, Transform> nodes;
 	std::multimap<int, Link> constraints;
@@ -3013,13 +3019,16 @@ bool Rtabmap::computePath(int targetNode, bool global)
 	{
 		updateGoalIndex();
 	}
-	UINFO("Time computing path = %fs", timer.ticks());
+	UINFO("Time computing path (A*) = %fs", timer.ticks());
+	UINFO("Total planning time = %fs (%d nodes, %f m long)", totalTimer.ticks(), (int)_path.size(), graph::computePathLength(_path));
 
 	return _path.size()>0;
 }
 
 bool Rtabmap::computePath(const Transform & targetPose, bool global)
 {
+	UINFO("Planning a path to pose %s (global=%d)", targetPose.prettyPrint().c_str(), global?1:0);
+
 	this->clearPath();
 	std::list<std::pair<int, Transform> > pathPoses;
 

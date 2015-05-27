@@ -1099,6 +1099,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				_ui->imageView_loopClosure->setImageDepth(lcDepth);
 			}
+			if(_ui->imageView_loopClosure->sceneRect().isNull())
+			{
+				_ui->imageView_loopClosure->setSceneRect(_ui->imageView_source->sceneRect());
+			}
 		}
 
 		UDEBUG("time= %d ms", time.restart());
