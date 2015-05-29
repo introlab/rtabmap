@@ -96,7 +96,7 @@ private:
 	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
 	void setDataBufferSize(int size);
 	void publishMap(bool optimized, bool full) const;
-	void publishTOROGraph(bool optimized, bool full) const;
+	void publishGraph(bool optimized, bool full) const;
 
 private:
 	UMutex _stateMutex;

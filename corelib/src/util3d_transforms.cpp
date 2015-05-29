@@ -36,22 +36,18 @@ namespace util3d
 {
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr transformPointCloud(
-		const typename pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const Transform & transform)
 {
-	typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-	typedef PointCloud::Ptr PointCloudPtr;
-	PointCloudPtr output(new PointCloud);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::transformPointCloud(*cloud, *output, transform.toEigen4f());
 	return output;
 }
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformPointCloud(
-		const typename pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const Transform & transform)
 {
-	typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloud;
-	typedef PointCloud::Ptr PointCloudPtr;
-	PointCloudPtr output(new PointCloud);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
 	pcl::transformPointCloud(*cloud, *output, transform.toEigen4f());
 	return output;
 }
