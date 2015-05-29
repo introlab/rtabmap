@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
+#include <rtabmap/utilite/UConversion.h>
 #include <opencv2/imgproc/imgproc.hpp>
 
 namespace rtabmap {
@@ -39,13 +40,21 @@ CameraModel::CameraModel() :
 
 }
 
-CameraModel::CameraModel(const std::string & cameraName, const cv::Size & imageSize, const cv::Mat & K, const cv::Mat & D, const cv::Mat & R, const cv::Mat & P) :
+CameraModel::CameraModel(
+		const std::string & cameraName,
+		const cv::Size & imageSize,
+		const cv::Mat & K,
+		const cv::Mat & D,
+		const cv::Mat & R,
+		const cv::Mat & P,
+		const Transform & localTransform) :
 		name_(cameraName),
 		imageSize_(imageSize),
 		K_(K),
 		D_(D),
 		R_(R),
-		P_(P)
+		P_(P),
+		localTransform_(localTransform)
 {
 	UASSERT(!name_.empty());
 	UASSERT(imageSize_.width > 0 && imageSize_.height > 0);
@@ -57,6 +66,35 @@ CameraModel::CameraModel(const std::string & cameraName, const cv::Size & imageS
 	// init rectification map
 	UINFO("Initialize rectify map");
 	cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_32FC1, mapX_, mapY_);
+}
+
+CameraModel::CameraModel(
+		double fx,
+		double fy,
+		double cx,
+		double cy,
+		const Transform & localTransform,
+		double Tx) :
+		K_(cv::Mat::eye(3, 3, CV_64FC1)),
+		D_(cv::Mat::zeros(1, 5, CV_64FC1)),
+		R_(cv::Mat::eye(3, 3, CV_64FC1)),
+		P_(cv::Mat::eye(3, 4, CV_64FC1)),
+		localTransform_(localTransform)
+{
+	UASSERT_MSG(fx > 0.0, uFormat("fx=%f", fx).c_str());
+	UASSERT_MSG(fy > 0.0, uFormat("fy=%f", fy).c_str());
+	UASSERT_MSG(cx >= 0.0, uFormat("cx=%f", cx).c_str());
+	UASSERT_MSG(cy >= 0.0, uFormat("cy=%f", cy).c_str());
+	P_.at<double>(0,0) = fx;
+	P_.at<double>(1,1) = fy;
+	P_.at<double>(0,2) = cx;
+	P_.at<double>(1,2) = cy;
+	P_.at<double>(0,3) = Tx;
+
+	K_.at<double>(0,0) = fx;
+	K_.at<double>(1,1) = fy;
+	K_.at<double>(0,2) = cx;
+	K_.at<double>(1,2) = cy;
 }
 
 bool CameraModel::load(const std::string & filePath)
@@ -170,6 +208,22 @@ bool CameraModel::save(const std::string & filePath)
 		return true;
 	}
 	return false;
+}
+
+void CameraModel::scale(double scale)
+{
+	UASSERT(scale > 0.0);
+	// has only effect on K and P
+	imageSize_.width *= scale;
+	imageSize_.height *= scale;
+	K_.at<double>(0,0) *= scale;
+	K_.at<double>(1,1) *= scale;
+	K_.at<double>(0,2) *= scale;
+	K_.at<double>(1,2) *= scale;
+	P_.at<double>(0,0) *= scale;
+	P_.at<double>(1,1) *= scale;
+	P_.at<double>(0,2) *= scale;
+	P_.at<double>(1,2) *= scale;
 }
 
 cv::Mat CameraModel::rectifyImage(const cv::Mat & raw, int interpolation) const
@@ -348,7 +402,13 @@ bool StereoCameraModel::save(const std::string & directory, const std::string & 
 	return false;
 }
 
-Transform StereoCameraModel::transform() const
+void StereoCameraModel::scale(double scale)
+{
+	left_.scale(scale);
+	right_.scale(scale);
+}
+
+Transform StereoCameraModel::stereoTransform() const
 {
 	if(!R_.empty() && !T_.empty())
 	{

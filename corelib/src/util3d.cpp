@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_transforms.h>
+#include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UMath.h>
@@ -480,6 +481,246 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 			cx, cy,
 			fx, baseline,
 			decimation);
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
+		const SensorData & sensorData,
+		int decimation,
+		float maxDepth,
+		float voxelSize,
+		int samples)
+{
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+
+	if(!sensorData.depthRaw().empty() && sensorData.cameraModels().size())
+	{
+		//depth
+		UASSERT(int((sensorData.depthRaw().cols/sensorData.cameraModels().size())*sensorData.cameraModels().size()) == sensorData.depthRaw().cols);
+		int subImageWidth = sensorData.depthRaw().cols/sensorData.cameraModels().size();
+		cloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
+		for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
+		{
+			if(sensorData.cameraModels()[i].isValid())
+			{
+				pcl::PointCloud<pcl::PointXYZ>::Ptr tmp = util3d::cloudFromDepth(
+						cv::Mat(sensorData.depthRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.depthRaw().rows)),
+						sensorData.cameraModels()[i].cx(),
+						sensorData.cameraModels()[i].cy(),
+						sensorData.cameraModels()[i].fx(),
+						sensorData.cameraModels()[i].fy(),
+						decimation);
+
+				if(tmp->size())
+				{
+					bool filtered = false;
+					if(tmp->size() && maxDepth)
+					{
+						tmp = util3d::passThrough(tmp, "z", 0, maxDepth);
+						filtered = true;
+					}
+
+					if(tmp->size() && voxelSize)
+					{
+						tmp = util3d::voxelize(tmp, voxelSize);
+						filtered = true;
+					}
+
+					if(tmp->size() && samples)
+					{
+						tmp = util3d::sampling(tmp, samples);
+						filtered = true;
+					}
+
+					if(tmp->size() && !filtered)
+					{
+						tmp = util3d::removeNaNFromPointCloud(tmp);
+					}
+
+					if(tmp->size())
+					{
+						tmp = util3d::transformPointCloud(tmp, sensorData.cameraModels()[i].localTransform());
+					}
+
+					*cloud += *tmp;
+				}
+			}
+			else
+			{
+				UERROR("Camera model %d is invalid", i);
+			}
+		}
+
+		if(cloud->size() && voxelSize)
+		{
+			cloud = util3d::voxelize(cloud, voxelSize);
+		}
+	}
+	else if(!sensorData.imageRaw().empty() && !sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValid())
+	{
+		//stereo
+		UASSERT(sensorData.rightRaw().type() == CV_8UC1);
+
+		cv::Mat leftMono;
+		if(sensorData.imageRaw().channels() == 3)
+		{
+			cv::cvtColor(sensorData.imageRaw(), leftMono, CV_BGR2GRAY);
+		}
+		else
+		{
+			leftMono = sensorData.imageRaw();
+		}
+		return cloudFromDisparity(
+				util2d::disparityFromStereoImages(leftMono, sensorData.rightRaw()),
+				sensorData.stereoCameraModel().left().cx(),
+				sensorData.stereoCameraModel().left().cy(),
+				sensorData.stereoCameraModel().left().fx(),
+				sensorData.stereoCameraModel().baseline(),
+				decimation);
+
+		if(cloud->size())
+		{
+			bool filtered = false;
+			if(cloud->size() && maxDepth)
+			{
+				cloud = util3d::passThrough(cloud, "z", 0, maxDepth);
+				filtered = true;
+			}
+
+			if(cloud->size() && voxelSize)
+			{
+				cloud = util3d::voxelize(cloud, voxelSize);
+				filtered = true;
+			}
+
+			if(cloud->size() && !filtered)
+			{
+				cloud = util3d::removeNaNFromPointCloud(cloud);
+			}
+
+			if(cloud->size())
+			{
+				cloud = util3d::transformPointCloud(cloud, sensorData.stereoCameraModel().left().localTransform());
+			}
+		}
+	}
+	return cloud;
+}
+
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
+		const SensorData & sensorData,
+		int decimation,
+		float maxDepth,
+		float voxelSize,
+		int samples)
+{
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+
+	if(!sensorData.imageRaw().empty())
+	{
+		if(!sensorData.depthRaw().empty() && sensorData.cameraModels().size())
+		{
+			//depth
+			UASSERT(int((sensorData.imageRaw().cols/sensorData.cameraModels().size())*sensorData.cameraModels().size()) == sensorData.imageRaw().cols);
+			UASSERT(sensorData.depthRaw().size() == sensorData.imageRaw().size());
+			int subImageWidth = sensorData.imageRaw().cols/sensorData.cameraModels().size();
+			cloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
+			for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
+			{
+				if(sensorData.cameraModels()[i].isValid())
+				{
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp = util3d::cloudFromDepthRGB(
+							cv::Mat(sensorData.imageRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.imageRaw().rows)),
+							cv::Mat(sensorData.depthRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.depthRaw().rows)),
+							sensorData.cameraModels()[i].cx(),
+							sensorData.cameraModels()[i].cy(),
+							sensorData.cameraModels()[i].fx(),
+							sensorData.cameraModels()[i].fy(),
+							decimation);
+
+					if(tmp->size())
+					{
+						bool filtered = false;
+						if(tmp->size() && maxDepth)
+						{
+							tmp = util3d::passThrough(tmp, "z", 0, maxDepth);
+							filtered = true;
+						}
+
+						if(tmp->size() && voxelSize)
+						{
+							tmp = util3d::voxelize(tmp, voxelSize);
+							filtered = true;
+						}
+
+						if(tmp->size() && samples)
+						{
+							tmp = util3d::sampling(tmp, samples);
+							filtered = true;
+						}
+
+						if(tmp->size() && !filtered)
+						{
+							tmp = util3d::removeNaNFromPointCloud(tmp);
+						}
+
+						if(tmp->size())
+						{
+							tmp = util3d::transformPointCloud(tmp, sensorData.cameraModels()[i].localTransform());
+						}
+
+						*cloud += *tmp;
+					}
+				}
+				else
+				{
+					UERROR("Camera model %d is invalid", i);
+				}
+			}
+
+			if(cloud->size() && voxelSize)
+			{
+				cloud = util3d::voxelize(cloud, voxelSize);
+			}
+		}
+		else if(!sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValid())
+		{
+			//stereo
+			cloud = cloudFromStereoImages(sensorData.imageRaw(),
+					sensorData.rightRaw(),
+					sensorData.stereoCameraModel().left().cx(),
+					sensorData.stereoCameraModel().left().cy(),
+					sensorData.stereoCameraModel().left().fx(),
+					sensorData.stereoCameraModel().baseline(),
+					decimation);
+
+			if(cloud->size())
+			{
+				bool filtered = false;
+				if(cloud->size() && maxDepth)
+				{
+					cloud = util3d::passThrough(cloud, "z", 0, maxDepth);
+					filtered = true;
+				}
+
+				if(cloud->size() && voxelSize)
+				{
+					cloud = util3d::voxelize(cloud, voxelSize);
+					filtered = true;
+				}
+
+				if(cloud->size() && !filtered)
+				{
+					cloud = util3d::removeNaNFromPointCloud(cloud);
+				}
+
+				if(cloud->size())
+				{
+					cloud = util3d::transformPointCloud(cloud, sensorData.stereoCameraModel().left().localTransform());
+				}
+			}
+		}
+	}
+	return cloud;
 }
 
 // inspired from ROS image_geometry/src/stereo_camera_model.cpp

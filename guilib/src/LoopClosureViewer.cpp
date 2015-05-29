@@ -106,74 +106,14 @@ void LoopClosureViewer::updateView(const Transform & transform)
 		if(!t.isNull())
 		{
 			//cloud 3d
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudA;
-			if(sA_.getDepthRaw().type() == CV_8UC1)
-			{
-				cloudA = util3d::cloudFromStereoImages(
-						sA_.getImageRaw(),
-						sA_.getDepthRaw(),
-						sA_.getCx(), sA_.getCy(),
-						sA_.getFx(), sA_.getFy(),
-						decimation);
-			}
-			else
-			{
-				cloudA = util3d::cloudFromDepthRGB(
-						sA_.getImageRaw(),
-						sA_.getDepthRaw(),
-						sA_.getCx(), sA_.getCy(),
-						sA_.getFx(), sA_.getFy(),
-						decimation);
-			}
-
-			cloudA = util3d::removeNaNFromPointCloud(cloudA);
-
-			if(maxDepth>0.0)
-			{
-				cloudA = util3d::passThrough(cloudA, "z", 0, maxDepth);
-			}
-			if(samples>0 && (int)cloudA->size() > samples)
-			{
-				cloudA = util3d::sampling(cloudA, samples);
-			}
-			cloudA = util3d::transformPointCloud(cloudA, sA_.getLocalTransform());
-
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudB;
-			if(sB_.getDepthRaw().type() == CV_8UC1)
-			{
-				cloudB = util3d::cloudFromStereoImages(
-						sB_.getImageRaw(),
-						sB_.getDepthRaw(),
-						sB_.getCx(), sB_.getCy(),
-						sB_.getFx(), sB_.getFy(),
-						decimation);
-			}
-			else
-			{
-				cloudB = util3d::cloudFromDepthRGB(
-						sB_.getImageRaw(),
-						sB_.getDepthRaw(),
-						sB_.getCx(), sB_.getCy(),
-						sB_.getFx(), sB_.getFy(),
-						decimation);
-			}
-
-			cloudB = util3d::removeNaNFromPointCloud(cloudB);
-
-			if(maxDepth>0.0)
-			{
-				cloudB = util3d::passThrough(cloudB, "z", 0, maxDepth);
-			}
-			if(samples>0 && (int)cloudB->size() > samples)
-			{
-				cloudB = util3d::sampling(cloudB, samples);
-			}
-			cloudB = util3d::transformPointCloud(cloudB, t*sB_.getLocalTransform());
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudA, cloudB;
+			cloudA = util3d::cloudRGBFromSensorData(sA_.sensorData(), decimation, maxDepth, 0.0f, samples);
+			cloudB = util3d::cloudRGBFromSensorData(sB_.sensorData(), decimation, maxDepth, 0.0f, samples);
 
 			//cloud 2d
 			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
-			scanA = util3d::laserScanToPointCloud(sA_.getLaserScanRaw());
-			scanB = util3d::laserScanToPointCloud(sB_.getLaserScanRaw());
+			scanA = util3d::laserScanToPointCloud(sA_.sensorData().laserScanRaw());
+			scanB = util3d::laserScanToPointCloud(sB_.sensorData().laserScanRaw());
 			scanB = util3d::transformPointCloud(scanB, t);
 
 			ui_->label_idA->setText(QString("[%1 (%2) -> %3 (%4)]").arg(sB_.id()).arg(cloudB->size()).arg(sA_.id()).arg(cloudA->size()));
@@ -184,6 +124,7 @@ void LoopClosureViewer::updateView(const Transform & transform)
 			}
 			if(cloudB->size())
 			{
+				cloudB = util3d::transformPointCloud(cloudB, t);
 				ui_->cloudViewerTransform->addOrUpdateCloud("cloud1", cloudB);
 			}
 			if(scanA->size())

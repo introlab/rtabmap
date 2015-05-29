@@ -125,20 +125,13 @@ void RtabmapThread::publishMap(bool optimized, bool full) const
 	_rtabmap->get3DMap(signatures,
 			poses,
 			constraints,
-			mapIds,
-			stamps,
-			labels,
-			userDatas,
 			optimized,
 			full);
 
-	this->post(new RtabmapEvent3DMap(signatures,
+	this->post(new RtabmapEvent3DMap(
+			signatures,
 			poses,
-			constraints,
-			mapIds,
-			stamps,
-			labels,
-			userDatas));
+			constraints));
 }
 
 void RtabmapThread::publishTOROGraph(bool optimized, bool full) const
@@ -153,20 +146,14 @@ void RtabmapThread::publishTOROGraph(bool optimized, bool full) const
 
 	_rtabmap->getGraph(poses,
 			constraints,
-			mapIds,
-			stamps,
-			labels,
-			userDatas,
 			optimized,
-			full);
+			full,
+			&signatures);
 
-	this->post(new RtabmapEvent3DMap(signatures,
+	this->post(new RtabmapEvent3DMap(
+			signatures,
 			poses,
-			constraints,
-			mapIds,
-			stamps,
-			labels,
-			userDatas));
+			constraints));
 }
 
 
@@ -301,7 +288,7 @@ void RtabmapThread::handleEvent(UEvent* event)
 		CameraEvent * e = (CameraEvent*)event;
 		if(e->getCode() == CameraEvent::kCodeImage || e->getCode() == CameraEvent::kCodeImageDepth)
 		{
-			this->addData(e->data());
+			this->addData(OdometryEvent(e->data(), Transform(), 1, 1));
 		}
 	}
 	else if(event->getClassName().compare("OdometryEvent") == 0)
@@ -310,7 +297,7 @@ void RtabmapThread::handleEvent(UEvent* event)
 		OdometryEvent * e = (OdometryEvent*)event;
 		if(e->isValid())
 		{
-			this->addData(e->data());
+			this->addData(*e);
 		}
 		else
 		{
@@ -487,13 +474,13 @@ void RtabmapThread::handleEvent(UEvent* event)
 //============================================================
 void RtabmapThread::process()
 {
-	SensorData data;
+	OdometryEvent data;
 	getData(data);
 	if(data.isValid() && _state.empty())
 	{
 		if(_rtabmap->getMemory())
 		{
-			if(_rtabmap->process(data))
+			if(_rtabmap->process(data.data(), data.pose(), data.covariance()))
 			{
 				Statistics stats = _rtabmap->getStatistics();
 				stats.addStatistic(Statistics::kMemoryImages_buffered(), (float)_dataBuffer.size());
@@ -508,11 +495,11 @@ void RtabmapThread::process()
 	}
 }
 
-void RtabmapThread::addData(const SensorData & sensorData)
+void RtabmapThread::addData(const OdometryEvent & odomEvent)
 {
 	if(!_paused)
 	{
-		if(!sensorData.isValid())
+		if(!odomEvent.isValid())
 		{
 			ULOGGER_ERROR("data not valid !?");
 			return;
@@ -522,7 +509,7 @@ void RtabmapThread::addData(const SensorData & sensorData)
 		{
 			if(_frameRateTimer->getElapsedTime() < 1.0f/_rate)
 			{
-				if(!lastPose_.isIdentity() && sensorData.pose().isIdentity())
+				if(!lastPose_.isIdentity() && odomEvent.pose().isIdentity())
 				{
 					UWARN("Odometry is reset (identity pose detected). Increment map id!");
 					pushNewState(kStateTriggeringMap);
@@ -533,7 +520,7 @@ void RtabmapThread::addData(const SensorData & sensorData)
 				return;
 			}
 		}
-		if(_dataBufferMaxSize > 0 && !lastPose_.isIdentity() && sensorData.pose().isIdentity())
+		if(_dataBufferMaxSize > 0 && !lastPose_.isIdentity() && odomEvent.pose().isIdentity())
 		{
 			UWARN("Odometry is reset (identity pose detected). Increment map id!");
 			pushNewState(kStateTriggeringMap);
@@ -542,29 +529,30 @@ void RtabmapThread::addData(const SensorData & sensorData)
 		}
 		_frameRateTimer->start();
 
-		lastPose_ = sensorData.pose();
-		if(sensorData.poseRotVariance() > _rotVariance)
+		lastPose_ = odomEvent.pose();
+		double maxRotVar = odomEvent.rotVariance();
+		double maxTransVar = odomEvent.transVariance();
+		if(maxRotVar > _rotVariance)
 		{
-			_rotVariance = sensorData.poseRotVariance();
+			_rotVariance = maxRotVar;
 		}
-		if(sensorData.poseTransVariance() > _transVariance)
+		if(maxTransVar > _transVariance)
 		{
-			_transVariance = sensorData.poseTransVariance();
+			_transVariance = maxTransVar;
 		}
 
 		bool notify = true;
 		_dataMutex.lock();
 		{
-			_dataBuffer.push_back(sensorData);
 			if(_rotVariance <= 0)
 			{
-				_rotVariance = 1.0f;
+				_rotVariance = 1.0;
 			}
 			if(_transVariance <= 0)
 			{
-				_transVariance = 1.0f;
+				_transVariance = 1.0;
 			}
-			_dataBuffer.back().setPose(_dataBuffer.back().pose(), _rotVariance, _transVariance);
+			_dataBuffer.push_back(OdometryEvent(odomEvent.data(), odomEvent.pose(), _rotVariance, _transVariance));
 			_rotVariance = 0;
 			_transVariance = 0;
 			while(_dataBufferMaxSize > 0 && _dataBuffer.size() > (unsigned int)_dataBufferMaxSize)
@@ -583,7 +571,7 @@ void RtabmapThread::addData(const SensorData & sensorData)
 	}
 }
 
-void RtabmapThread::getData(SensorData & image)
+void RtabmapThread::getData(OdometryEvent & data)
 {
 	ULOGGER_DEBUG("");
 
@@ -595,7 +583,7 @@ void RtabmapThread::getData(SensorData & image)
 	{
 		if(!_dataBuffer.empty())
 		{
-			image = _dataBuffer.front();
+			data = _dataBuffer.front();
 			_dataBuffer.pop_front();
 		}
 	}

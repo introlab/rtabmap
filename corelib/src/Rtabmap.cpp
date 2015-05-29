@@ -763,7 +763,10 @@ void Rtabmap::resetMemory()
 //============================================================
 // MAIN LOOP
 //============================================================
-bool Rtabmap::process(const SensorData & data)
+bool Rtabmap::process(
+		const SensorData & data,
+		const Transform & odomPose,
+		const cv::Mat & covariance)
 {
 	UDEBUG("");
 
@@ -821,11 +824,6 @@ bool Rtabmap::process(const SensorData & data)
 	// Wait for an image...
 	//============================================================
 	ULOGGER_INFO("getting data...");
-	if(!data.isValid())
-	{
-		ULOGGER_INFO("image is not valid...");
-		return false;
-	}
 
 	timer.start();
 	timerTotal.start();
@@ -839,7 +837,7 @@ bool Rtabmap::process(const SensorData & data)
 	//============================================================
 	if(_rgbdSlamMode)
 	{
-		if(data.pose().isNull())
+		if(odomPose.isNull())
 		{
 			UERROR("RGB-D SLAM mode is enabled and no odometry is provided. "
 				   "Image %d is ignored!", data.id());
@@ -853,7 +851,7 @@ bool Rtabmap::process(const SensorData & data)
 				const Transform & lastPose = _memory->getLastWorkingSignature()->getPose(); // use raw odometry
 
 				// look for identity
-				if(!lastPose.isIdentity() && data.pose().isIdentity())
+				if(!lastPose.isIdentity() && odomPose.isIdentity())
 				{
 					int mapId = triggerNewMap();
 					UWARN("Odometry is reset (identity pose detected). Increment map id to %d!", mapId);
@@ -861,7 +859,7 @@ bool Rtabmap::process(const SensorData & data)
 				else if(_newMapOdomChangeDistance > 0.0)
 				{
 					// look for large change
-					Transform lastPoseToNewPose = lastPose.inverse() * data.pose();
+					Transform lastPoseToNewPose = lastPose.inverse() * odomPose;
 					float x,y,z, roll,pitch,yaw;
 					lastPoseToNewPose.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
 					if((x*x + y*y + z*z) > _newMapOdomChangeDistance*_newMapOdomChangeDistance)
@@ -871,7 +869,7 @@ bool Rtabmap::process(const SensorData & data)
 								_newMapOdomChangeDistance,
 								mapId,
 								lastPose.prettyPrint().c_str(),
-								data.pose().prettyPrint().c_str());
+								odomPose.prettyPrint().c_str());
 					}
 				}
 			}
@@ -884,16 +882,14 @@ bool Rtabmap::process(const SensorData & data)
 	ULOGGER_INFO("Updating memory...");
 	if(_rgbdSlamMode)
 	{
-		if(!_memory->update(data, &statistics_))
+		if(!_memory->update(data, odomPose, covariance, &statistics_))
 		{
 			return false;
 		}
 	}
 	else
 	{
-		SensorData dataWithoutOdom = data;
-		dataWithoutOdom.setPose(Transform(), 1, 1);
-		if(!_memory->update(dataWithoutOdom, &statistics_))
+		if(!_memory->update(data, Transform(), cv::Mat(), &statistics_))
 		{
 			return false;
 		}
@@ -905,6 +901,7 @@ bool Rtabmap::process(const SensorData & data)
 	{
 		UFATAL("Not supposed to be here...last signature is null?!?");
 	}
+
 	ULOGGER_INFO("Processing signature %d", signature->id());
 	timeMemoryUpdate = timer.ticks();
 	ULOGGER_INFO("timeMemoryUpdate=%fs", timeMemoryUpdate);
@@ -956,7 +953,7 @@ bool Rtabmap::process(const SensorData & data)
 		//============================================================
 		if(_poseScanMatching &&
 			signature->getLinks().size() == 1 &&
-			!signature->getLaserScanCompressed().empty() &&
+			!signature->sensorData().laserScanCompressed().empty() &&
 			rehearsedId == 0) // don't do it if rehearsal happened
 		{
 			UINFO("Odometry correction by scan matching");
@@ -1039,7 +1036,7 @@ bool Rtabmap::process(const SensorData & data)
 								*iter,
 								transform.prettyPrint().c_str());
 						// Add a loop constraint
-						if(_memory->addLink(*iter, signature->id(), transform, Link::kLocalTimeClosure, variance, variance))
+						if(_memory->addLink(Link(signature->id(), *iter, Link::kLocalTimeClosure, transform, variance, variance)))
 						{
 							++localLoopClosuresInTimeFound;
 							UINFO("Local loop closure found between %d and %d with t=%s",
@@ -1584,16 +1581,13 @@ bool Rtabmap::process(const SensorData & data)
 				// Add signatures
 				SensorData dataFrom = data;
 				dataFrom.setId(signature->id());
-				Signature tmpTo = _memory->getSignatureData(_loopClosureHypothesis.first, true);
-				SensorData dataTo = tmpTo.toSensorData();
+				SensorData dataTo = _memory->getNodeData(_loopClosureHypothesis.first, true);
 				UDEBUG("timeTo = %fs", timeT.ticks());
 
-				if(dataFrom.isValid() &&
-				   dataFrom.isMetric() &&
-				   dataTo.isValid() &&
-				   dataTo.isMetric() &&
+				if(!dataFrom.depthOrRightRaw().empty() &&
+				   !dataTo.depthOrRightRaw().empty() &&
 				   dataFrom.id() != Memory::kIdInvalid &&
-				   tmpTo.id() != Memory::kIdInvalid)
+				   dataTo.id() != Memory::kIdInvalid)
 				{
 					memory.update(dataTo);
 					UDEBUG("timeUpTo = %fs", timeT.ticks());
@@ -1629,7 +1623,7 @@ bool Rtabmap::process(const SensorData & data)
 		if(!rejectedHypothesis)
 		{
 			// Make the new one the parent of the old one
-			rejectedHypothesis = !_memory->addLink(_loopClosureHypothesis.first, signature->id(), transform, Link::kGlobalClosure, variance, variance);
+			rejectedHypothesis = !_memory->addLink(Link(signature->id(), _loopClosureHypothesis.first, Link::kGlobalClosure, transform, variance, variance));
 		}
 
 		if(rejectedHypothesis)
@@ -1743,16 +1737,13 @@ bool Rtabmap::process(const SensorData & data)
 							// Add signatures
 							SensorData dataFrom = data;
 							dataFrom.setId(signature->id());
-							Signature tmpTo = _memory->getSignatureData(nearestId, true);
-							SensorData dataTo = tmpTo.toSensorData();
+							SensorData dataTo = _memory->getNodeData(nearestId, true);
 							UDEBUG("timeTo = %fs", timeT.ticks());
 
-							if(dataFrom.isValid() &&
-							   dataFrom.isMetric() &&
-							   dataTo.isValid() &&
-							   dataTo.isMetric() &&
+							if(!dataFrom.depthOrRightRaw().empty() &&
+							   !dataTo.depthOrRightRaw().empty() &&
 							   dataFrom.id() != Memory::kIdInvalid &&
-							   tmpTo.id() != Memory::kIdInvalid)
+							   dataTo.id() != Memory::kIdInvalid)
 							{
 								memory.update(dataTo);
 								UDEBUG("timeUpTo = %fs", timeT.ticks());
@@ -1784,7 +1775,7 @@ bool Rtabmap::process(const SensorData & data)
 									signature->id(),
 									nearestId,
 									transform.prettyPrint().c_str());
-							_memory->addLink(nearestId, signature->id(), transform, Link::kLocalSpaceClosure, variance, variance);
+							_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, variance, variance));
 
 							if(_loopClosureHypothesis.first == 0)
 							{
@@ -1802,7 +1793,7 @@ bool Rtabmap::process(const SensorData & data)
 				//
 				// 2) compare locally with nearest locations by scan matching
 				//
-				if( !signature->getLaserScanCompressed().empty() &&
+				if( !signature->sensorData().laserScanCompressed().empty() &&
 					(_memory->isIncremental() || lastLocalSpaceClosureId == 0))
 				{
 					// In localization mode, no need to check local loop
@@ -1873,7 +1864,7 @@ bool Rtabmap::process(const SensorData & data)
 												nearestId,
 												transform.prettyPrint().c_str());
 										// set Identify covariance for laser scan matching only
-										_memory->addLink(nearestId, signature->id(), transform, Link::kLocalSpaceClosure, 1, 1);
+										_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, 1, 1));
 
 										++localSpaceClosuresAddedByICPOnly;
 
@@ -1913,6 +1904,7 @@ bool Rtabmap::process(const SensorData & data)
 			UINFO("Update map correction: SLAM mode");
 			// SLAM mode!
 			optimizeCurrentMap(signature->id(), false, _optimizedPoses, &_constraints);
+			UASSERT(_optimizedPoses.find(signature->id()) != _optimizedPoses.end());
 
 			// Update map correction, it should be identify when optimizing from the last node
 			_mapCorrection = _optimizedPoses.at(signature->id()) * signature->getPose().inverse();
@@ -1964,7 +1956,7 @@ bool Rtabmap::process(const SensorData & data)
 			Transform virtualLoop = _optimizedPoses.at(signature->id()).inverse() * _optimizedPoses.at(_path[_pathCurrentIndex].first);
 			if(_localRadius > 0.0f && virtualLoop.getNorm() < _localRadius)
 			{
-				_memory->addLink(_path[_pathCurrentIndex].first, signature->id(), virtualLoop, Link::kVirtualClosure, 100, 100); // set high variance
+				_memory->addLink(Link(signature->id(), _path[_pathCurrentIndex].first, Link::kVirtualClosure, virtualLoop, 100, 100)); // set high variance
 			}
 		}
 	}
@@ -2344,7 +2336,7 @@ bool Rtabmap::process(const SensorData & data)
 
 bool Rtabmap::process(const cv::Mat & image, int id)
 {
-	return this->process(SensorData(image, id));
+	return this->process(SensorData(image, id), Transform());
 }
 
 // SETTERS
@@ -2730,13 +2722,10 @@ void Rtabmap::dumpPrediction() const
 	}
 }
 
-void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
+void Rtabmap::get3DMap(
+		std::map<int, Signature> & signatures,
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> & constraints,
-		std::map<int, int> & mapIds,
-		std::map<int, double> & stamps,
-		std::map<int, std::string> & labels,
-		std::map<int, std::vector<unsigned char> > & userDatas,
 		bool optimized,
 		bool global) const
 {
@@ -2762,22 +2751,6 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 			_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, global);
 		}
 
-		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-		{
-			Transform odomPose;
-			int weight = -1;
-			int mapId = -1;
-			std::string label;
-			double stamp = 0;
-			std::vector<unsigned char> userData;
-			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true);
-			mapIds.insert(std::make_pair(iter->first, mapId));
-			stamps.insert(std::make_pair(iter->first, stamp));
-			labels.insert(std::make_pair(iter->first, label));
-			userDatas.insert(std::make_pair(iter->first, userData));
-		}
-
-
 		// Get data
 		std::set<int> ids = uKeysSet(_memory->getWorkingMem()); // WM
 
@@ -2792,11 +2765,26 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 
 		for(std::set<int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
 		{
-			Signature data = _memory->getSignatureData(*iter);
-			if(data.id() != Memory::kIdInvalid)
-			{
-				signatures.insert(std::make_pair(*iter, Signature())).first->second = data;
-			}
+			Transform odomPose;
+			int weight = -1;
+			int mapId = -1;
+			std::string label;
+			double stamp = 0;
+			std::vector<unsigned char> userData;
+			_memory->getNodeInfo(*iter, odomPose, mapId, weight, label, stamp, userData, true);
+			SensorData data = _memory->getNodeData(*iter);
+			data.setId(*iter);
+			signatures.insert(std::make_pair(*iter,
+					Signature(*iter,
+							mapId,
+							weight,
+							stamp,
+							label,
+							std::multimap<int, cv::KeyPoint>(),
+							std::multimap<int, pcl::PointXYZ>(),
+							odomPose,
+							userData,
+							data)));
 		}
 	}
 	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size() > 1))
@@ -2812,12 +2800,9 @@ void Rtabmap::get3DMap(std::map<int, Signature> & signatures,
 void Rtabmap::getGraph(
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> & constraints,
-		std::map<int, int> & mapIds,
-		std::map<int, double> & stamps,
-		std::map<int, std::string> & labels,
-		std::map<int, std::vector<unsigned char> > & userDatas,
 		bool optimized,
-		bool global)
+		bool global,
+		std::map<int, Signature> * signatures)
 {
 	if(_memory && _memory->getLastWorkingSignature())
 	{
@@ -2840,19 +2825,29 @@ void Rtabmap::getGraph(
 			_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, global);
 		}
 
-		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		if(signatures)
 		{
-			Transform odomPose;
-			int weight = -1;
-			int mapId = -1;
-			std::string label;
-			double stamp = 0;
-			std::vector<unsigned char> userData;
-			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true);
-			mapIds.insert(std::make_pair(iter->first, mapId));
-			stamps.insert(std::make_pair(iter->first, stamp));
-			labels.insert(std::make_pair(iter->first, label));
-			userDatas.insert(std::make_pair(iter->first, userData));
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				Transform odomPose;
+				int weight = -1;
+				int mapId = -1;
+				std::string label;
+				double stamp = 0;
+				std::vector<unsigned char> userData;
+				_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true);
+				signatures->insert(std::make_pair(iter->first,
+						Signature(iter->first,
+							mapId,
+							weight,
+							stamp,
+							label,
+							std::multimap<int, cv::KeyPoint>(),
+							std::multimap<int, pcl::PointXYZ>(),
+							odomPose,
+							userData,
+							SensorData())));
+			}
 		}
 	}
 	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size()))
@@ -3002,11 +2997,7 @@ bool Rtabmap::computePath(int targetNode, bool global)
 	UTimer timer;
 	std::map<int, Transform> nodes;
 	std::multimap<int, Link> constraints;
-	std::map<int, int> mapIds;
-	std::map<int, double> stamps;
-	std::map<int, std::string> labels;
-	std::map<int, std::vector<unsigned char> > userDatas;
-	this->getGraph(nodes, constraints, mapIds, stamps, labels, userDatas, true, global);
+	this->getGraph(nodes, constraints, true, global);
 	UINFO("Time creating graph (global=%s) = %fs", global?"true":"false", timer.ticks());
 
 	if(computePath(targetNode, nodes, constraints))
@@ -3037,7 +3028,7 @@ bool Rtabmap::computePath(const Transform & targetPose, bool global)
 	std::map<int, double> stamps;
 	std::map<int, std::string> labels;
 	std::map<int, std::vector<unsigned char> > userDatas;
-	this->getGraph(nodes, constraints, mapIds, stamps, labels, userDatas, true, global);
+	this->getGraph(nodes, constraints, true, global);
 	UINFO("Time creating graph (global=%s) = %fs", global?"true":"false", timer.ticks());
 
 	int nearestId = rtabmap::graph::findNearestNode(nodes, targetPose);
@@ -3189,7 +3180,7 @@ void Rtabmap::updateGoalIndex()
 						if(!s->hasLink(_path[i-1].first) && _memory->getSignature(_path[i-1].first) != 0)
 						{
 							Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
-							_memory->addLink(_path[i-1].first, _path[i].first, virtualLoop, Link::kVirtualClosure, 1, 1); // on the optimized path, set Identity variance
+							_memory->addLink(Link(_path[i].first, _path[i-1].first, Link::kVirtualClosure, virtualLoop, 1, 1)); // on the optimized path, set Identity variance
 							UINFO("Added Virtual link between %d and %d", _path[i-1].first, _path[i].first);
 						}
 					}

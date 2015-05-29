@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_types.h>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/CameraModel.h>
 #include <list>
 
 namespace rtabmap
@@ -46,30 +47,23 @@ namespace util3d
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP generateKeypoints3DDepth(
 		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & depth,
-		float fx,
-		float fy,
-		float cx,
-		float cy,
-		const Transform & transform);
+		const CameraModel & cameraModel);
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP generateKeypoints3DDepth(
+		const std::vector<cv::KeyPoint> & keypoints,
+		const cv::Mat & depth,
+		const std::vector<CameraModel> & cameraModels);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP generateKeypoints3DDisparity(
 		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & disparity,
-		float fx,
-		float baseline,
-		float cx,
-		float cy,
-		const Transform & transform);
+		const StereoCameraModel & stereoCameraMode);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP generateKeypoints3DStereo(
 		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & leftImage,
 		const cv::Mat & rightImage,
-		float fx,
-		float baseline,
-		float cx,
-		float cy,
-		const Transform & transform = Transform::getIdentity(),
+		const StereoCameraModel & stereoCameraMode,
 		int flowWinSize = 9,
 		int flowMaxLevel = 4,
 		int flowIterations = 20,
@@ -78,11 +72,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP generateKeypoints3DStereo(
 std::multimap<int, pcl::PointXYZ> RTABMAP_EXP generateWords3DMono(
 		const std::multimap<int, cv::KeyPoint> & kpts,
 		const std::multimap<int, cv::KeyPoint> & previousKpts,
-		float fx,
-		float fy,
-		float cx,
-		float cy,
-		const Transform & localTransform,
+		const CameraModel & cameraModel,
 		Transform & cameraTransform,
 		int pnpIterations = 100,
 		float pnpReprojError = 8.0f,

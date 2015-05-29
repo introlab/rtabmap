@@ -160,8 +160,15 @@ Transform OdometryBOW::computeTransform(
 			{
 				if(this->isPnPEstimationUsed())
 				{
-					if((int)newSignature->getWords().size() >= this->getMinInliers())
+					if(data.cameraModels().size() > 1)
 					{
+						UERROR("PnP cannot be used on multi-cameras setup.");
+					}
+					else if((int)newSignature->getWords().size() >= this->getMinInliers())
+					{
+						UASSERT(data.stereoCameraModel().isValid() || (data.cameraModels().size() == 1 && data.cameraModels()[0].isValid()));
+						const CameraModel & cameraModel = data.stereoCameraModel().isValid()?data.stereoCameraModel().left():data.cameraModels()[0];
+
 						// find correspondences
 						std::vector<int> ids = uListToVector(uUniqueKeys(newSignature->getWords()));
 						std::vector<cv::Point3f> objectPoints(ids.size());
@@ -194,11 +201,8 @@ Transform OdometryBOW::computeTransform(
 						if((int)matches.size() >= this->getMinInliers())
 						{
 							//PnPRansac
-							cv::Mat K = (cv::Mat_<double>(3,3) <<
-								data.fx(), 0, data.cx(),
-								0, data.fy()>0?data.fy():data.fx(), data.cy(),
-								0, 0, 1);
-							Transform guess = (this->getPose() * data.localTransform()).inverse();
+							cv::Mat K = cameraModel.K();
+							Transform guess = (this->getPose() * cameraModel.localTransform()).inverse();
 							cv::Mat R = (cv::Mat_<double>(3,3) <<
 									(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
 									(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
@@ -229,7 +233,7 @@ Transform OdometryBOW::computeTransform(
 											   R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
 
 								// make it incremental
-								transform = (data.localTransform() * pnp * this->getPose()).inverse();
+								transform = (cameraModel.localTransform() * pnp * this->getPose()).inverse();
 
 								UDEBUG("Odom transform = %s", transform.prettyPrint().c_str());
 

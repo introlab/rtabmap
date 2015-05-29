@@ -65,7 +65,12 @@ public:
 	virtual ~Memory();
 
 	virtual void parseParameters(const ParametersMap & parameters);
-	bool update(const SensorData & data, Statistics * stats = 0);
+	bool update(const SensorData & data,
+			Statistics * stats = 0);
+	bool update(const SensorData & data,
+			const Transform & pose,
+			const cv::Mat & covariance,
+			Statistics * stats = 0);
 	bool init(const std::string & dbUrl,
 			bool dbOverwritten = false,
 			const ParametersMap & parameters = ParametersMap(),
@@ -81,8 +86,9 @@ public:
 	std::list<int> cleanup(const std::list<int> & ignoredIds = std::list<int>());
 	void emptyTrash();
 	void joinTrashThread();
-	bool addLink(int to, int from, const Transform & transform, Link::Type type, float rotVariance, float transVariance);
+	bool addLink(const Link & link);
 	void updateLink(int fromId, int toId, const Transform & transform, float rotVariance, float transVariance);
+	void updateLink(int fromId, int toId, const Transform & transform, const cv::Mat & covariance);
 	void removeAllVirtualLinks();
 	void removeVirtualLinks(int signatureId);
 	std::map<int, int> getNeighborsId(
@@ -130,8 +136,8 @@ public:
 			std::vector<unsigned char> & userData,
 			bool lookInDatabase = false) const;
 	cv::Mat getImageCompressed(int signatureId) const;
-	Signature getSignatureData(int locationId, bool uncompressedData = false);
-	Signature getSignatureDataConst(int locationId) const;
+	SensorData getNodeData(int nodeId, bool uncompressedData = false);
+	SensorData getSignatureDataConst(int locationId) const;
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}
 	bool isIncremental() const {return _incrementalMemory;}
@@ -184,7 +190,7 @@ public:
 
 private:
 	void preUpdate();
-	void addSignatureToStm(Signature * signature, float poseRotVariance, float poseTransVariance);
+	void addSignatureToStm(Signature * signature, const cv::Mat & covariance);
 	void clear();
 	void moveToTrash(Signature * s, bool keepLinkedToGraph = true, std::list<int> * deletedWords = 0);
 
@@ -202,6 +208,7 @@ private:
 	void copyData(const Signature * from, Signature * to);
 	Signature * createSignature(
 			const SensorData & data,
+			const Transform & pose,
 			Statistics * stats = 0);
 
 	//keypoint stuff

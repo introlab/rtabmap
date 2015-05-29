@@ -29,6 +29,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ODOMETRYEVENT_H_
 
 #include "rtabmap/utilite/UEvent.h"
+#include "rtabmap/utilite/ULogger.h"
+#include "rtabmap/utilite/UMath.h"
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/OdometryInfo.h"
 
@@ -37,20 +39,64 @@ namespace rtabmap {
 class OdometryEvent : public UEvent
 {
 public:
+	OdometryEvent() :
+		_covariance(cv::Mat::eye(6,6,CV_64FC1))
+	{
+	}
 	OdometryEvent(
-		const SensorData & data, const OdometryInfo & info = OdometryInfo()) :
+		const SensorData & data,
+		const Transform & pose,
+		const cv::Mat & covariance = cv::Mat::eye(6,6,CV_64FC1),
+		const OdometryInfo & info = OdometryInfo()) :
 			_data(data),
+			_pose(pose),
 			_info(info)
-	{}
+	{
+		UASSERT(covariance.cols == 6 && covariance.rows == 6 && covariance.type() == CV_64FC1);
+		UASSERT_MSG(uIsFinite(covariance.at<double>(0,0)) && covariance.at<double>(0,0)>0, "Transitional variance should not be null! (set to 1 if unknown)");
+		UASSERT_MSG(uIsFinite(covariance.at<double>(1,1)) && covariance.at<double>(1,1)>0, "Transitional variance should not be null! (set to 1 if unknown)");
+		UASSERT_MSG(uIsFinite(covariance.at<double>(2,2)) && covariance.at<double>(2,2)>0, "Transitional variance should not be null! (set to 1 if unknown)");
+		UASSERT_MSG(uIsFinite(covariance.at<double>(3,3)) && covariance.at<double>(3,3)>0, "Rotational variance should not be null! (set to 1 if unknown)");
+		UASSERT_MSG(uIsFinite(covariance.at<double>(4,4)) && covariance.at<double>(4,4)>0, "Rotational variance should not be null! (set to 1 if unknown)");
+		UASSERT_MSG(uIsFinite(covariance.at<double>(5,5)) && covariance.at<double>(5,5)>0, "Rotational variance should not be null! (set to 1 if unknown)");
+		_covariance = covariance;
+	}
+	OdometryEvent(
+		const SensorData & data,
+		const Transform & pose,
+		double rotVariance = 1.0,
+		double transVariance = 1.0,
+		const OdometryInfo & info = OdometryInfo()) :
+			_data(data),
+			_pose(pose),
+			_covariance(cv::Mat::eye(6,6,CV_64FC1)),
+			_info(info)
+	{
+		UASSERT(uIsFinite(rotVariance) && rotVariance>0);
+		UASSERT(uIsFinite(transVariance) && transVariance>0);
+		_covariance.at<double>(0,0) = transVariance;
+		_covariance.at<double>(1,1) = transVariance;
+		_covariance.at<double>(2,2) = transVariance;
+		_covariance.at<double>(3,3) = rotVariance;
+		_covariance.at<double>(4,4) = rotVariance;
+		_covariance.at<double>(5,5) = rotVariance;
+	}
 	virtual ~OdometryEvent() {}
 	virtual std::string getClassName() const {return "OdometryEvent";}
 
-	bool isValid() const {return !_data.pose().isNull();}
+	bool isValid() const {return !_pose.isNull();}
+	SensorData & data() {return _data;}
 	const SensorData & data() const {return _data;}
+	const Transform & pose() const {return _pose;}
+	const cv::Mat & covariance() const {return _covariance;}
 	const OdometryInfo & info() const {return _info;}
+	double rotVariance() const {return uMax3(_covariance.at<double>(3,3), _covariance.at<double>(4,4), _covariance.at<double>(5,5));}
+	double transVariance() const {return uMax3(_covariance.at<double>(0,0), _covariance.at<double>(1,1), _covariance.at<double>(2,2));}
 
 private:
 	SensorData _data;
+	Transform _pose;
+	cv::Mat _covariance;
 	OdometryInfo _info;
 };
 

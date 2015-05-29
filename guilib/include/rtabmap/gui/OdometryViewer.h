@@ -30,8 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
-#include "rtabmap/core/SensorData.h"
-#include "rtabmap/core/OdometryInfo.h"
+#include "rtabmap/core/OdometryEvent.h"
 #include <QDialog>
 #include "rtabmap/utilite/UEventsHandler.h"
 
@@ -59,7 +58,7 @@ protected:
 	virtual void handleEvent(UEvent * event);
 
 private slots:
-	void processData(const rtabmap::SensorData & data, const rtabmap::OdometryInfo & info);
+	void processData(const rtabmap::OdometryEvent & odom);
 
 private:
 	ImageView* imageView_;

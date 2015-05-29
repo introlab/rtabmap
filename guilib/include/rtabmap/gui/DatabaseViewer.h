@@ -52,7 +52,7 @@ namespace rtabmap
 {
 class Memory;
 class ImageView;
-class Signature;
+class SensorData;
 class CloudViewer;
 
 class RTABMAPGUI_EXP DatabaseViewer : public QMainWindow
@@ -124,7 +124,7 @@ private:
 				QLabel * labelMapId,
 				QLabel * labelPose,
 				bool updateConstraintView);
-	void updateStereo(const Signature * data);
+	void updateStereo(const SensorData * data);
 	void updateWordsMatching();
 	void updateConstraintView(
 			const rtabmap::Link & link,

@@ -72,25 +72,32 @@ Transform OdometryICP::computeTransform(const SensorData & data, OdometryInfo * 
 	bool hasConverged = false;
 	double variance = 0;
 	unsigned int minPoints = 100;
-	if(!data.depth().empty())
+	if(!data.depthOrRightRaw().empty())
 	{
-		if(data.depth().type() == CV_8UC1)
+		if(data.depthOrRightRaw().type() == CV_8UC1)
 		{
 			UERROR("ICP 3D cannot be done on stereo images!");
 			return output;
 		}
 
+		if(!(data.cameraModels().size() == 1 && data.cameraModels()[0].isValid()))
+		{
+			UERROR("ICP 3D cannot be done without calibration or on multi-camera!");
+			return output;
+		}
+		const CameraModel & cameraModel = data.cameraModels()[0];
+
 		pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudXYZ = util3d::getICPReadyCloud(
-						data.depth(),
-						data.fx(),
-						data.fy(),
-						data.cx(),
-						data.cy(),
+						data.depthOrRightRaw(),
+						cameraModel.fx(),
+						cameraModel.fy(),
+						cameraModel.cx(),
+						cameraModel.cy(),
 						_decimation,
 						this->getMaxDepth(),
 						_voxelSize,
 						_samples,
-						data.localTransform());
+						cameraModel.localTransform());
 
 		if(_pointToPlane)
 		{

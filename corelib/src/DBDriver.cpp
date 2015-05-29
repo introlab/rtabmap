@@ -412,15 +412,7 @@ void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool loadMetric
 
 void DBDriver::getNodeData(
 		int signatureId,
-		cv::Mat & imageCompressed,
-		cv::Mat & depthCompressed,
-		cv::Mat & laserScanCompressed,
-		float & fx,
-		float & fy,
-		float & cx,
-		float & cy,
-		Transform & localTransform,
-		int & laserScanMaxPts) const
+		SensorData & data) const
 {
 	bool found = false;
 	// look in the trash
@@ -428,17 +420,9 @@ void DBDriver::getNodeData(
 	if(uContains(_trashSignatures, signatureId))
 	{
 		const Signature * s = _trashSignatures.at(signatureId);
-		if(!s->getImageCompressed().empty() || !s->isSaved())
+		if(!s->sensorData().imageCompressed().empty() || !s->isSaved())
 		{
-			imageCompressed = s->getImageCompressed();
-			depthCompressed = s->getDepthCompressed();
-			laserScanCompressed = s->getLaserScanCompressed();
-			fx = s->getFx();
-			fy = s->getFy();
-			cx = s->getCx();
-			cy = s->getCy();
-			localTransform = s->getLocalTransform();
-			laserScanMaxPts = s->getLaserScanMaxPts();
+			data = (SensorData)s->sensorData();
 			found = true;
 		}
 	}
@@ -447,31 +431,7 @@ void DBDriver::getNodeData(
 	if(!found)
 	{
 		_dbSafeAccessMutex.lock();
-		this->getNodeDataQuery(signatureId, imageCompressed, depthCompressed, laserScanCompressed, fx, fy, cx, cy, localTransform, laserScanMaxPts);
-		_dbSafeAccessMutex.unlock();
-	}
-}
-
-void DBDriver::getNodeData(int signatureId, cv::Mat & imageCompressed) const
-{
-	bool found = false;
-	// look in the trash
-	_trashesMutex.lock();
-	if(uContains(_trashSignatures, signatureId))
-	{
-		const Signature * s = _trashSignatures.at(signatureId);
-		if(!s->getImageCompressed().empty() || !s->isSaved())
-		{
-			imageCompressed = s->getImageCompressed();
-			found = true;
-		}
-	}
-	_trashesMutex.unlock();
-
-	if(!found)
-	{
-		_dbSafeAccessMutex.lock();
-		this->getNodeDataQuery(signatureId, imageCompressed);
+		this->getNodeDataQuery(signatureId, data);
 		_dbSafeAccessMutex.unlock();
 	}
 }

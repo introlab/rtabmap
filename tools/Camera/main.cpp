@@ -189,7 +189,7 @@ int main(int argc, char * argv[])
 	}
 
 	cv::Mat rgb;
-	rgb = camera?camera->takeImage():dbReader->getNextData().image();
+	rgb = camera?camera->takeImage():dbReader->getNextData().data().imageRaw();
 	cv::namedWindow("Video", CV_WINDOW_AUTOSIZE); // create window
 	while(!rgb.empty())
 	{
@@ -199,7 +199,7 @@ int main(int argc, char * argv[])
 		if(c == 27)
 			break; // if ESC, break and quit
 
-		rgb = camera?camera->takeImage():dbReader->getNextData().image();
+		rgb = camera?camera->takeImage():dbReader->getNextData().data().imageRaw();
 	}
 	cv::destroyWindow("Video");
 	if(camera)

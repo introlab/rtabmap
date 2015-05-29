@@ -66,7 +66,10 @@ public:
 	virtual ~Rtabmap();
 
 	bool process(const cv::Mat & image, int id=0); // for convenience, an id is automatically generated if id=0
-	bool process(const SensorData & data); // for convenience
+	bool process(
+			const SensorData & data,
+			const Transform & odomPose,
+			const cv::Mat & covariance = cv::Mat::eye(6,6,CV_64FC1)); // for convenience
 
 	void init(const ParametersMap & parameters, const std::string & databasePath = "");
 	void init(const std::string & configFile = "", const std::string & databasePath = "");
@@ -115,20 +118,13 @@ public:
 	void get3DMap(std::map<int, Signature> & signatures,
 			std::map<int, Transform> & poses,
 			std::multimap<int, Link> & constraints,
-			std::map<int, int> & mapIds,
-			std::map<int, double> & stamps,
-			std::map<int, std::string> & labels,
-			std::map<int, std::vector<unsigned char> > & userDatas,
 			bool optimized,
 			bool global) const;
 	void getGraph(std::map<int, Transform> & poses,
 			std::multimap<int, Link> & constraints,
-			std::map<int, int> & mapIds,
-			std::map<int, double> & stamps,
-			std::map<int, std::string> & labels,
-			std::map<int, std::vector<unsigned char> > & userDatas,
 			bool optimized,
-			bool global);
+			bool global,
+			std::map<int, Signature> * signatures = 0);
 	void clearPath();
 	bool computePath(int targetNode, bool global);
 	bool computePath(const Transform & targetPose, bool global);

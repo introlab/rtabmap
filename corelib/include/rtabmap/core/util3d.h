@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_types.h>
 #include <pcl/pcl_base.h>
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/SensorData.h>
 #include <opencv2/core/core.hpp>
 #include <list>
 
@@ -102,6 +103,19 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromStereoImages(
 		float cx, float cy,
 		float fx, float baseline,
 		int decimation = 1);
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
+		const SensorData & sensorData,
+		int decimation = 1,
+		float maxDepth = 0.0f,
+		float voxelSize = 0.0f,
+		int samples = 0);
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
+		const SensorData & sensorData,
+		int decimation = 1,
+		float maxDepth = 0.0f,
+		float voxelSize = 0.0f,
+		int samples = 0);
 
 pcl::PointXYZ RTABMAP_EXP projectDisparityTo3D(
 		const cv::Point2f & pt,
