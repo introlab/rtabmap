@@ -39,6 +39,20 @@ namespace rtabmap {
 class OdometryEvent : public UEvent
 {
 public:
+	static cv::Mat generateCovarianceMatrix(float rotVariance, float transVariance)
+	{
+		UASSERT(uIsFinite(rotVariance) && rotVariance>0);
+		UASSERT(uIsFinite(transVariance) && transVariance>0);
+		cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
+		covariance.at<double>(0,0) = transVariance;
+		covariance.at<double>(1,1) = transVariance;
+		covariance.at<double>(2,2) = transVariance;
+		covariance.at<double>(3,3) = rotVariance;
+		covariance.at<double>(4,4) = rotVariance;
+		covariance.at<double>(5,5) = rotVariance;
+		return covariance;
+	}
+public:
 	OdometryEvent() :
 		_covariance(cv::Mat::eye(6,6,CV_64FC1))
 	{
@@ -69,22 +83,13 @@ public:
 		const OdometryInfo & info = OdometryInfo()) :
 			_data(data),
 			_pose(pose),
-			_covariance(cv::Mat::eye(6,6,CV_64FC1)),
+			_covariance(generateCovarianceMatrix(rotVariance, transVariance)),
 			_info(info)
 	{
-		UASSERT(uIsFinite(rotVariance) && rotVariance>0);
-		UASSERT(uIsFinite(transVariance) && transVariance>0);
-		_covariance.at<double>(0,0) = transVariance;
-		_covariance.at<double>(1,1) = transVariance;
-		_covariance.at<double>(2,2) = transVariance;
-		_covariance.at<double>(3,3) = rotVariance;
-		_covariance.at<double>(4,4) = rotVariance;
-		_covariance.at<double>(5,5) = rotVariance;
 	}
 	virtual ~OdometryEvent() {}
 	virtual std::string getClassName() const {return "OdometryEvent";}
 
-	bool isValid() const {return !_pose.isNull();}
 	SensorData & data() {return _data;}
 	const SensorData & data() const {return _data;}
 	const Transform & pose() const {return _pose;}

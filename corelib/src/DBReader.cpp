@@ -149,7 +149,7 @@ void DBReader::mainLoopBegin()
 void DBReader::mainLoop()
 {
 	OdometryEvent odom = this->getNextData();
-	if(odom.isValid())
+	if(odom.data().id())
 	{
 		int goalId = 0;
 		double previousStamp = odom.data().stamp();

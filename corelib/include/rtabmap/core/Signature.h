@@ -53,12 +53,10 @@ class RTABMAP_EXP Signature
 public:
 	Signature();
 	Signature(int id,
-			int mapId,
-			int weight,
-			double stamp,
-			const std::string & label,
-			const std::multimap<int, cv::KeyPoint> & words,
-			const std::multimap<int, pcl::PointXYZ> & words3,
+			int mapId = -1,
+			int weight = 0,
+			double stamp = 0.0,
+			const std::string & label = std::string(),
 			const Transform & pose = Transform(),
 			const std::vector<unsigned char> & userData = std::vector<unsigned char>(),
 			const SensorData & sensorData = SensorData());
@@ -141,7 +139,7 @@ private:
 	// times in the signature, it will be 2 times in this list)
 	// Words match with the CvSeq keypoints and descriptors
 	std::multimap<int, cv::KeyPoint> _words; // word <id, keypoint>
-	std::multimap<int, pcl::PointXYZ> _words3; // word <id, keypoint>
+	std::multimap<int, pcl::PointXYZ> _words3; // word <id, keypoint> // in base_link frame (localTransform applied))
 	std::map<int, int> _wordsChanged; // <oldId, newId>
 	bool _enabled;
 

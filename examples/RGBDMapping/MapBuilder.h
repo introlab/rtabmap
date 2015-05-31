@@ -191,9 +191,9 @@ protected slots:
 					}
 					cloudViewer_->setCloudVisibility(cloudName, true);
 				}
-				else if(stats.getSignature().id() == iter->first)
+				else if(uContains(stats.getSignatures(), iter->first))
 				{
-					Signature s = stats.getSignature();
+					Signature s = stats.getSignatures().at(iter->first);
 					s.sensorData().uncompressData(); // make sure data is uncompressed
 					// Add the new cloud
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudRGBFromSensorData(

@@ -4027,8 +4027,6 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			0,
 			data.stamp(),
 			"",
-			words,
-			words3D,
 			pose,
 			data.userData(),
 			stereoCameraModel.isValid()?
@@ -4054,8 +4052,6 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			0,
 			data.stamp(),
 			"",
-			words,
-			words3D,
 			pose,
 			data.userData(),
 			SensorData(
@@ -4063,6 +4059,8 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				data.laserScanMaxPts(),
 				cv::Mat(), cv::Mat(), CameraModel(), id));
 	}
+	s->setWords(words);
+	s->setWords3(words3D);
 	if(this->isRawDataKept())
 	{
 		s->sensorData().setImageRaw(image);

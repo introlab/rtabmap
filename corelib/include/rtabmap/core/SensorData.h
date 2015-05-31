@@ -167,7 +167,7 @@ public:
 	void uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthOrRightRaw, cv::Mat * laserScanRaw) const;
 
 	const std::vector<CameraModel> & cameraModels() const {return _cameraModels;}
-	StereoCameraModel stereoCameraModel() const {return _stereoCameraModel;}
+	const StereoCameraModel & stereoCameraModel() const {return _stereoCameraModel;}
 
 	void setUserData(const std::vector<unsigned char> & data) {_userData = data;}
 	const std::vector<unsigned char> & userData() const {return _userData;}

@@ -137,7 +137,7 @@ public:
 			double baseline,
 			const Transform & localTransform = Transform::getIdentity()) :
 		left_(fx, fy, cx, cy, localTransform),
-		right_(fx, fy, cx, cy, localTransform, baseline*-right_.fx())
+		right_(fx, fy, cx, cy, localTransform, baseline*-fx)
 	{
 	}
 	virtual ~StereoCameraModel() {}

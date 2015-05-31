@@ -39,8 +39,7 @@ namespace rtabmap
 Signature::Signature() :
 	_id(0), // invalid id
 	_mapId(-1),
-	_stamp(0.0),
-	_weight(-1),
+	_weight(0),
 	_saved(false),
 	_modified(true),
 	_linksModified(true),
@@ -54,11 +53,9 @@ Signature::Signature(
 		int weight,
 		double stamp,
 		const std::string & label,
-		const std::multimap<int, cv::KeyPoint> & words,
-		const std::multimap<int, pcl::PointXYZ> & words3, // in base_link frame (localTransform applied)
 		const Transform & pose,
 		const std::vector<unsigned char> & userData,
-		const SensorData & sensorData) :
+		const SensorData & sensorData):
 	_id(id),
 	_mapId(mapId),
 	_stamp(stamp),
@@ -68,12 +65,15 @@ Signature::Signature(
 	_saved(false),
 	_modified(true),
 	_linksModified(true),
-	_words(words),
-	_words3(words3),
 	_enabled(false),
 	_pose(pose),
 	_sensorData(sensorData)
 {
+	if(_sensorData.id() == 0)
+	{
+		_sensorData.setId(id);
+	}
+	UASSERT(_sensorData.id() == _id);
 }
 
 Signature::~Signature()

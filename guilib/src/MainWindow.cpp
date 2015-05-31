@@ -960,8 +960,15 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	totalTime.start();
 	//Affichage des stats et images
 
-	int refMapId = uValue(stat.getMapIds(), stat.refImageId(), -1);
-	int loopMapId = uValue(stat.getMapIds(), stat.loopClosureId(), uValue(stat.getMapIds(), stat.localLoopClosureId(), -1));
+	int refMapId = -1, loopMapId = -1;
+	if(uContains(stat.getSignatures(), stat.refImageId()))
+	{
+		refMapId = stat.getSignatures().at(stat.refImageId()).mapId();
+	}
+	if(uContains(stat.getSignatures(), stat.loopClosureId()))
+	{
+		loopMapId = stat.getSignatures().at(stat.loopClosureId()).mapId();
+	}
 
 	_ui->label_refId->setText(QString("New ID = %1 [%2]").arg(stat.refImageId()).arg(refMapId));
 	_ui->label_matchId->clear();
@@ -985,9 +992,13 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		_ui->imageView_loopClosure->setBackgroundColor(Qt::black);
 
 		// update cache
-		Signature signature = stat.getSignature();
-		signature.sensorData().uncompressData(); // make sure data are uncompressed
-		_cachedSignatures.insert(stat.getSignature().id(), signature);
+		Signature signature;
+		if(uContains(stat.getSignatures(), stat.refImageId()))
+		{
+			signature = stat.getSignatures().at(stat.refImageId());
+			signature.sensorData().uncompressData(); // make sure data are uncompressed
+			_cachedSignatures.insert(signature.id(), signature);
+		}
 
 		int rehearsed = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
 		int localTimeClosures = (int)uValue(stat.data(), Statistics::kLocalLoopTime_closures(), 0.0f);
@@ -1164,10 +1175,15 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		if(stat.poses().size())
 		{
 			// update pose only if odometry is not received
+			std::map<int, int> mapIds;
+			for(std::map<int, Signature>::const_iterator iter=stat.getSignatures().begin(); iter!=stat.getSignatures().end();++iter)
+			{
+				mapIds.insert(std::make_pair(iter->first, iter->second.mapId()));
+			}
 			updateMapCloud(stat.poses(),
 					_odometryReceived||stat.poses().size()==0?Transform():stat.poses().rbegin()->second,
 					stat.constraints(),
-					stat.getMapIds());
+					mapIds);
 
 			_odometryReceived = false;
 

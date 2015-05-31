@@ -1349,8 +1349,6 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 						weight,
 						stamp,
 						label,
-						std::multimap<int, cv::KeyPoint>(),
-						std::multimap<int, pcl::PointXYZ>(),
 						pose,
 						userData);
 				s->setSaved(true);

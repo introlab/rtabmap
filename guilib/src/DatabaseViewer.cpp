@@ -2252,12 +2252,14 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 							float groundNormalMaxAngle = M_PI_4;
 							int minClusterSize = 20;
 							cv::Mat ground, obstacles;
+
 							util3d::occupancy2DFromCloud3D<pcl::PointXYZ>(
 									cloud,
 									ground, obstacles,
 									cellSize,
 									groundNormalMaxAngle,
 									minClusterSize);
+
 							if(!ground.empty() || !obstacles.empty())
 							{
 								localMaps_.insert(std::make_pair(ids_.at(i), std::make_pair(ground, obstacles)));

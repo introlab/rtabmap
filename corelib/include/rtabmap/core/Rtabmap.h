@@ -159,7 +159,7 @@ private:
 private:
 	// Modifiable parameters
 	bool _publishStats;
-	bool _publishLastSignature;
+	bool _publishLastSignatureData;
 	bool _publishPdf;
 	bool _publishLikelihood;
 	float _maxTimeAllowed; // in ms

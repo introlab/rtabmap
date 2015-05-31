@@ -73,7 +73,7 @@ namespace rtabmap
 
 Rtabmap::Rtabmap() :
 	_publishStats(Parameters::defaultRtabmapPublishStats()),
-	_publishLastSignature(Parameters::defaultRtabmapPublishLastSignature()),
+	_publishLastSignatureData(Parameters::defaultRtabmapPublishLastSignature()),
 	_publishPdf(Parameters::defaultRtabmapPublishPdf()),
 	_publishLikelihood(Parameters::defaultRtabmapPublishLikelihood()),
 	_maxTimeAllowed(Parameters::defaultRtabmapTimeThr()), // 700 ms
@@ -364,7 +364,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	}
 
 	Parameters::parse(parameters, Parameters::kRtabmapPublishStats(), _publishStats);
-	Parameters::parse(parameters, Parameters::kRtabmapPublishLastSignature(), _publishLastSignature);
+	Parameters::parse(parameters, Parameters::kRtabmapPublishLastSignature(), _publishLastSignatureData);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishPdf(), _publishPdf);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishLikelihood(), _publishLikelihood);
 	Parameters::parse(parameters, Parameters::kRtabmapTimeThr(), _maxTimeAllowed);
@@ -2023,44 +2023,6 @@ bool Rtabmap::process(
 			statistics_.setMapCorrection(_mapCorrection);
 			UINFO("Set map correction = %s", _mapCorrection.prettyPrint().c_str());
 
-			// Set local graph
-			if(!_rgbdSlamMode)
-			{
-				// no optimization on appearance-only mode, create a local graph
-				std::map<int, int> ids = _memory->getNeighborsId(signature->id(), 0, 0, true);
-				std::map<int, Transform> poses;
-				std::map<int, int> mapIds;
-				std::map<int, std::string> labels;
-				std::map<int, double> stamps;
-				std::map<int, std::vector<unsigned char> > userDatas;
-				std::multimap<int, Link> constraints;
-				_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, false);
-				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-				{
-					Transform odomPose;
-					int weight = -1;
-					int mapId = -1;
-					std::string label;
-					double stamp = 0;
-					std::vector<unsigned char> userData;
-					_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, false);
-					mapIds.insert(std::make_pair(iter->first, mapId));
-					labels.insert(std::make_pair(iter->first, label));
-					stamps.insert(std::make_pair(iter->first, stamp));
-					userDatas.insert(std::make_pair(iter->first, userData));
-				}
-				statistics_.setPoses(poses);
-				statistics_.setConstraints(constraints);
-				statistics_.setMapIds(mapIds);
-				statistics_.setLabels(labels);
-				statistics_.setStamps(stamps);
-				statistics_.setUserDatas(userDatas);
-			}
-			else // RGBD-SLAM mode
-			{
-				//see after transfer below
-			}
-
 			// timings...
 			statistics_.addStatistic(Statistics::kTimingMemory_update(), timeMemoryUpdate*1000);
 			statistics_.addStatistic(Statistics::kTimingScan_matching(), timeScanMatching*1000);
@@ -2083,11 +2045,6 @@ bool Rtabmap::process(
 
 			//Epipolar geometry constraint
 			statistics_.addStatistic(Statistics::kLoopRejectedHypothesis(), rejectedHypothesis?1.0f:0);
-
-			if(_publishLastSignature)
-			{
-				statistics_.setSignature(*signature);
-			}
 
 			if(_publishLikelihood || _publishPdf)
 			{
@@ -2144,6 +2101,12 @@ bool Rtabmap::process(
 		// If there is a too small displacement, remove the node
 		signaturesRemoved.push_back(signature->id());
 		_memory->deleteLocation(signature->id());
+	}
+
+	Signature lastSignatureData(signature->id());
+	if(_publishLastSignatureData)
+	{
+		lastSignatureData = *signature;
 	}
 
 	// Pass this point signature should not be used, since it could have been transferred...
@@ -2231,36 +2194,48 @@ bool Rtabmap::process(
 		// place after transfer because the memory/local graph may have changed
 		statistics_.addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMem().size());
 		statistics_.addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMem().size());
-		statistics_.addStatistic(Statistics::kMemoryLocal_graph_size(), _optimizedPoses.size());
 
-		if(_rgbdSlamMode)
+		std::map<int, Signature> signatures;
+		if(_publishLastSignatureData)
 		{
-			std::map<int, int> mapIds;
-			std::map<int, std::string> labels;
-			std::map<int, double> stamps;
-			std::map<int, std::vector<unsigned char> > userDatas;
-			for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
-			{
-				Transform odomPose;
-				int weight = -1;
-				int mapId = -1;
-				std::string label;
-				double stamp = 0;
-				std::vector<unsigned char> userData;
-				_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true);
-				mapIds.insert(std::make_pair(iter->first, mapId));
-				labels.insert(std::make_pair(iter->first, label));
-				stamps.insert(std::make_pair(iter->first, stamp));
-				userDatas.insert(std::make_pair(iter->first, userData));
-			}
-			statistics_.setPoses(_optimizedPoses);
-			statistics_.setConstraints(_constraints);
-			statistics_.setMapIds(mapIds);
-			statistics_.setLabels(labels);
-			statistics_.setStamps(stamps);
-			statistics_.setUserDatas(userDatas);
+			signatures.insert(std::make_pair(lastSignatureData.id(), lastSignatureData));
 		}
-
+		// Set local graph
+		std::map<int, Transform> poses;
+		std::multimap<int, Link> constraints;
+		if(!_rgbdSlamMode)
+		{
+			// no optimization on appearance-only mode, create a local graph
+			std::map<int, int> ids = _memory->getNeighborsId(lastSignatureData.id(), 0, 0, true);
+			_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, false);
+		}
+		else // RGBD-SLAM mode
+		{
+			poses = _optimizedPoses;
+			constraints = _constraints;
+		}
+		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		{
+			Transform odomPose;
+			int weight = -1;
+			int mapId = -1;
+			std::string label;
+			double stamp = 0;
+			std::vector<unsigned char> userData;
+			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, false);
+			signatures.insert(std::make_pair(iter->first,
+					Signature(iter->first,
+							mapId,
+							weight,
+							stamp,
+							label,
+							odomPose,
+							userData)));
+		}
+		statistics_.setPoses(poses);
+		statistics_.setConstraints(constraints);
+		statistics_.setSignatures(signatures);
+		statistics_.addStatistic(Statistics::kMemoryLocal_graph_size(), poses.size());
 	}
 
 	//Start trashing
@@ -2780,8 +2755,6 @@ void Rtabmap::get3DMap(
 							weight,
 							stamp,
 							label,
-							std::multimap<int, cv::KeyPoint>(),
-							std::multimap<int, pcl::PointXYZ>(),
 							odomPose,
 							userData,
 							data)));
@@ -2842,11 +2815,8 @@ void Rtabmap::getGraph(
 							weight,
 							stamp,
 							label,
-							std::multimap<int, cv::KeyPoint>(),
-							std::multimap<int, pcl::PointXYZ>(),
 							odomPose,
-							userData,
-							SensorData())));
+							userData)));
 			}
 		}
 	}

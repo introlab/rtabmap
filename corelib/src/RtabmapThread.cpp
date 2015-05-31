@@ -295,7 +295,7 @@ void RtabmapThread::handleEvent(UEvent* event)
 	{
 		UDEBUG("OdometryEvent");
 		OdometryEvent * e = (OdometryEvent*)event;
-		if(e->isValid())
+		if(!e->pose().isNull())
 		{
 			this->addData(*e);
 		}
@@ -476,7 +476,7 @@ void RtabmapThread::process()
 {
 	OdometryEvent data;
 	getData(data);
-	if(data.isValid() && _state.empty())
+	if(data.data().isValid() && _state.empty())
 	{
 		if(_rtabmap->getMemory())
 		{
@@ -499,12 +499,6 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 {
 	if(!_paused)
 	{
-		if(!odomEvent.isValid())
-		{
-			ULOGGER_ERROR("data not valid !?");
-			return;
-		}
-
 		if(_rate>0.0f)
 		{
 			if(_frameRateTimer->getElapsedTime() < 1.0f/_rate)
@@ -552,6 +546,7 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 			{
 				_transVariance = 1.0;
 			}
+			UDEBUG("Added data %d", odomEvent.data().id());
 			_dataBuffer.push_back(OdometryEvent(odomEvent.data(), odomEvent.pose(), _rotVariance, _transVariance));
 			_rotVariance = 0;
 			_transVariance = 0;

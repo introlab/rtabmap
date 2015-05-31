@@ -169,15 +169,15 @@ SensorData::SensorData(
 				depth.type() == CV_16UC1); // Depth in millimetre
 		_depthOrRightRaw = depth;
 	}
-	if(laserScan.rows == 1)
+
+	if(laserScan.type() == CV_32FC2)
 	{
-		UASSERT(laserScan.type() == CV_8UC1); // Bytes
-		_laserScanCompressed = laserScan;
+		_laserScanRaw = laserScan;
 	}
 	else if(!laserScan.empty())
 	{
-		UASSERT(laserScan.type() == CV_32FC2);
-		_laserScanRaw = laserScan;
+		UASSERT(laserScan.type() == CV_8UC1); // Bytes
+		_laserScanCompressed = laserScan;
 	}
 }
 
@@ -262,15 +262,14 @@ SensorData::SensorData(
 		_depthOrRightRaw = depth;
 	}
 
-	if(laserScan.rows == 1)
+	if(laserScan.type() == CV_32FC2)
 	{
-		UASSERT(laserScan.type() == CV_8UC1); // Bytes
-		_laserScanCompressed = laserScan;
+		_laserScanRaw = laserScan;
 	}
 	else if(!laserScan.empty())
 	{
-		UASSERT(laserScan.type() == CV_32FC2);
-		_laserScanRaw = laserScan;
+		UASSERT(laserScan.type() == CV_8UC1); // Bytes
+		_laserScanCompressed = laserScan;
 	}
 
 	for(unsigned int i=0; i<cameraModels.size(); ++i)
@@ -355,15 +354,14 @@ SensorData::SensorData(
 		_depthOrRightRaw = right;
 	}
 
-	if(laserScan.rows == 1)
+	if(laserScan.type() == CV_32FC2)
 	{
-		UASSERT(laserScan.type() == CV_8UC1); // Bytes
-		_laserScanCompressed = laserScan;
+		_laserScanRaw = laserScan;
 	}
 	else if(!laserScan.empty())
 	{
-		UASSERT(laserScan.type() == CV_32FC2);
-		_laserScanRaw = laserScan;
+		UASSERT(laserScan.type() == CV_8UC1); // Bytes
+		_laserScanCompressed = laserScan;
 	}
 }
 

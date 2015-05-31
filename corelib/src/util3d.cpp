@@ -569,7 +569,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 		{
 			leftMono = sensorData.imageRaw();
 		}
-		return cloudFromDisparity(
+		cloud = cloudFromDisparity(
 				util2d::disparityFromStereoImages(leftMono, sensorData.rightRaw()),
 				sensorData.stereoCameraModel().left().cx(),
 				sensorData.stereoCameraModel().left().cy(),
