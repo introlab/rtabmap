@@ -41,7 +41,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "VisualWord.h"
 #include "rtabmap/core/Features2d.h"
 #include "DBDriverSqlite3.h"
-#include "rtabmap/core/util3d_conversions.h"
 #include "rtabmap/core/util3d_features.h"
 #include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/util3d_correspondences.h"

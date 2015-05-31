@@ -82,8 +82,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DDepth(
 					cameraModels.at(cameraIndex).fy(),
 					true);
 
-			if(!cameraModels.at(cameraIndex).localTransform().isNull() &&
-			   !cameraModels.at(cameraIndex).localTransform().isIdentity())
+			if(pcl::isFinite(pt) &&
+				!cameraModels.at(cameraIndex).localTransform().isNull() &&
+			    !cameraModels.at(cameraIndex).localTransform().isIdentity())
 			{
 				pt = util3d::transformPoint(pt, cameraModels.at(cameraIndex).localTransform());
 			}

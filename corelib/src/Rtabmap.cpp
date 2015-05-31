@@ -1413,17 +1413,21 @@ bool Rtabmap::process(
 					{
 						if(immunizedLocally >= maxLocalLocationsImmunized)
 						{
-							UWARN("Could not immunize the whole local path (%d) between "
-								  "%d and %d (max location immunized=%d). You may want "
-								  "to increase RGBD/LocalImmunizationRatio (current=%f (%d of WM=%d)) "
-								  "to be able to immunize longer paths.",
-									(int)path.size(),
-									nearestId,
-									signature->id(),
-									maxLocalLocationsImmunized,
-									_localImmunizationRatio,
-									maxLocalLocationsImmunized,
-									(int)_memory->getWorkingMem().size());
+							// set 20 to avoid this warning when starting mapping
+							if(maxLocalLocationsImmunized > 20)
+							{
+								UWARN("Could not immunize the whole local path (%d) between "
+									  "%d and %d (max location immunized=%d). You may want "
+									  "to increase RGBD/LocalImmunizationRatio (current=%f (%d of WM=%d)) "
+									  "to be able to immunize longer paths.",
+										(int)path.size(),
+										nearestId,
+										signature->id(),
+										maxLocalLocationsImmunized,
+										_localImmunizationRatio,
+										maxLocalLocationsImmunized,
+										(int)_memory->getWorkingMem().size());
+							}
 							break;
 						}
 						else if(!_memory->isInSTM(iter->first))

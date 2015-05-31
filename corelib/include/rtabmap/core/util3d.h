@@ -117,6 +117,25 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		float voxelSize = 0.0f,
 		int samples = 0);
 
+pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImage(
+					const cv::Mat & depthImage,
+					float fx,
+					float fy,
+					float cx,
+					float cy,
+					float maxDepth = 0,
+					const Transform & localTransform = Transform::getIdentity());
+
+cv::Mat RTABMAP_EXP cvtDepthFromFloat(const cv::Mat & depth32F);
+cv::Mat RTABMAP_EXP cvtDepthToFloat(const cv::Mat & depth16U);
+
+cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud);
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const cv::Mat & laserScan);
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cvMat2Cloud(
+		const cv::Mat & matrix,
+		const Transform & tranform = Transform::getIdentity());
+
 pcl::PointXYZ RTABMAP_EXP projectDisparityTo3D(
 		const cv::Point2f & pt,
 		float disparity,

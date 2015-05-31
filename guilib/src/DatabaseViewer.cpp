@@ -49,7 +49,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/KeypointItem.h"
 #include "rtabmap/gui/UCv2Qt.h"
 #include "rtabmap/core/util3d.h"
-#include "rtabmap/core/util3d_conversions.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/util3d_surface.h"

@@ -95,13 +95,8 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 		UASSERT(!data.depthOrRightRaw().empty());
 	}
 
-	if(data.cameraModels().size() > 1)
-	{
-		UERROR("Odometry doesn't support multi-camera yet.");
-		return Transform();
-	}
-	else if(!data.stereoCameraModel().isValid() &&
-		    (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValid()))
+	if(!data.stereoCameraModel().isValid() &&
+	   (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValid()))
 	{
 		UERROR("Rectified images required! Calibrate your camera.");
 		return Transform();

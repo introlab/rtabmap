@@ -35,7 +35,6 @@ SET(SRC_FILES
 	util3d_surface.cpp
 	util3d_features.cpp
 	util3d_correspondences.cpp
-	util3d_conversions.cpp
 	
 	SensorData.cpp
 	Graph.cpp

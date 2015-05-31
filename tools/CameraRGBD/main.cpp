@@ -27,7 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/util3d.h"
-#include "rtabmap/core/util3d_conversions.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UMath.h"
