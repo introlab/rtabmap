@@ -2331,7 +2331,9 @@ Transform Memory::computeIcpTransform(
 		}
 		else
 		{
-			msg = "Depths 3D empty?!?";
+			msg = uFormat("Depths 3D empty?!? (new[%d]=%d old[%d]=%d)",
+					newS.id(), newS.sensorData().depthOrRightRaw().total(),
+					oldS.id(), oldS.sensorData().depthOrRightRaw().total());
 			UERROR(msg.c_str());
 		}
 	}
@@ -2459,7 +2461,9 @@ Transform Memory::computeIcpTransform(
 		}
 		else
 		{
-			msg = "Depths 2D empty?!?";
+			msg = uFormat("Depths 2D empty?!? (new[%d]=%d old[%d]=%d)",
+					newS.id(), newS.sensorData().laserScanRaw().total(),
+					oldS.id(), oldS.sensorData().laserScanRaw().total());
 			UERROR(msg.c_str());
 		}
 	}
@@ -3148,6 +3152,10 @@ SensorData Memory::getNodeData(int nodeId, bool uncompressedData)
 		else
 		{
 			_dbDriver->getNodeData(nodeId, r);
+			if(uncompressedData)
+			{
+				r.uncompressData();
+			}
 		}
 	}
 

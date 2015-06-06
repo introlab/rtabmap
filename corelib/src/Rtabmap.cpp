@@ -2180,6 +2180,7 @@ bool Rtabmap::process(
 	//==============================================================
 	// Finalize statistics and log files
 	//==============================================================
+	int localGraphSize = 0;
 	if(_publishStats)
 	{
 		statistics_.addStatistic(Statistics::kTimingStatistics_creation(), timeStatsCreation*1000);
@@ -2240,6 +2241,7 @@ bool Rtabmap::process(
 		statistics_.setConstraints(constraints);
 		statistics_.setSignatures(signatures);
 		statistics_.addStatistic(Statistics::kMemoryLocal_graph_size(), poses.size());
+		localGraphSize = poses.size();
 	}
 
 	//Start trashing
@@ -2271,7 +2273,7 @@ bool Rtabmap::process(
 									timeEmptyingTrash,
 									timeRetrievalDbAccess,
 									timeAddLoopClosureLink);
-		std::string logI = uFormat("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
+		std::string logI = uFormat("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
 									_loopClosureHypothesis.first,
 									_highestHypothesis.first,
 									(int)signaturesRemoved.size(),
@@ -2286,9 +2288,11 @@ bool Rtabmap::process(
 									lcHypothesisReactivated,
 									refUniqueWordsCount,
 									retrievalId,
-									0.0f,
+									0,
 									rehearsalMaxId,
-									rehearsalMaxId>0?1:0);
+									rehearsalMaxId>0?1:0,
+									localGraphSize,
+									data.id());
 		if(_statisticLogsBufferedInRAM)
 		{
 			_bufferedLogsF.push_back(logF);

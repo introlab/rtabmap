@@ -2608,6 +2608,10 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	}
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
+	// scan_max_pts
+	rc = sqlite3_bind_int(ppStmt, index++, sensorData.laserScanMaxPts());
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
 	// scan
 	if(!sensorData.laserScanCompressed().empty())
 	{
@@ -2617,10 +2621,6 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	{
 		rc = sqlite3_bind_zeroblob(ppStmt, index++, 4);
 	}
-	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-
-	// scan_max_pts
-	rc = sqlite3_bind_int(ppStmt, index++, sensorData.laserScanMaxPts());
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 	//step

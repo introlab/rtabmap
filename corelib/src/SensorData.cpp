@@ -367,7 +367,9 @@ SensorData::SensorData(
 
 void SensorData::uncompressData()
 {
-	uncompressData(&_imageRaw, &_depthOrRightRaw, &_laserScanRaw);
+	uncompressData(_imageCompressed.empty()?0:&_imageRaw,
+				_depthOrRightCompressed.empty()?0:&_depthOrRightRaw,
+				_laserScanCompressed.empty()?0:&_laserScanRaw);
 }
 
 void SensorData::uncompressData(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw)
@@ -426,14 +428,27 @@ void SensorData::uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthRaw, cv:
 		if(imageRaw && imageRaw->empty())
 		{
 			*imageRaw = ctImage.getUncompressedData();
+			if(imageRaw->empty())
+			{
+				UWARN("Requested raw image data, but the sensor data (%d) doesn't have image.", this->id());
+			}
 		}
 		if(depthRaw && depthRaw->empty())
 		{
 			*depthRaw = ctDepth.getUncompressedData();
+			if(depthRaw->empty())
+			{
+				UWARN("Requested depth/right image data, but the sensor data (%d) doesn't have depth/right image.", this->id());
+			}
 		}
 		if(laserScanRaw && laserScanRaw->empty())
 		{
 			*laserScanRaw = ctLaserScan.getUncompressedData();
+
+			if(laserScanRaw->empty())
+			{
+				UWARN("Requested laser scan data, but the sensor data (%d) doesn't have laser scan.", this->id());
+			}
 		}
 	}
 }
