@@ -184,20 +184,26 @@ void Rtabmap::setupLogFiles(bool overwrite)
 			fprintf(_foutFloat, " 4-Likelihood time (s)\n");
 			fprintf(_foutFloat, " 5-Posterior time (s)\n");
 			fprintf(_foutFloat, " 6-Hypothesis selection time (s)\n");
-			fprintf(_foutFloat, " 7-Transfer time (s)\n");
-			fprintf(_foutFloat, " 8-Statistics creation time (s)\n");
-			fprintf(_foutFloat, " 9-Loop closure hypothesis value\n");
-			fprintf(_foutFloat, " 10-NAN\n");
-			fprintf(_foutFloat, " 11-Maximum likelihood\n");
-			fprintf(_foutFloat, " 12-Sum likelihood\n");
-			fprintf(_foutFloat, " 13-Mean likelihood\n");
-			fprintf(_foutFloat, " 14-Std dev likelihood\n");
-			fprintf(_foutFloat, " 15-Virtual place hypothesis\n");
-			fprintf(_foutFloat, " 16-Join trash time (s)\n");
-			fprintf(_foutFloat, " 17-Weight Update (rehearsal) similarity\n");
-			fprintf(_foutFloat, " 18-Empty trash time (s)\n");
-			fprintf(_foutFloat, " 19-Retrieval database access time (s)\n");
-			fprintf(_foutFloat, " 20-Add loop closure link time (s)\n");
+			fprintf(_foutFloat, " 7-Hypothesis validation time (s)\n");
+			fprintf(_foutFloat, " 8-Transfer time (s)\n");
+			fprintf(_foutFloat, " 9-Statistics creation time (s)\n");
+			fprintf(_foutFloat, " 10-Loop closure hypothesis value\n");
+			fprintf(_foutFloat, " 11-NAN\n");
+			fprintf(_foutFloat, " 12-NAN\n");
+			fprintf(_foutFloat, " 13-NAN\n");
+			fprintf(_foutFloat, " 14-NAN\n");
+			fprintf(_foutFloat, " 15-NAN\n");
+			fprintf(_foutFloat, " 16-Virtual place hypothesis\n");
+			fprintf(_foutFloat, " 17-Join trash time (s)\n");
+			fprintf(_foutFloat, " 18-Weight Update (rehearsal) similarity\n");
+			fprintf(_foutFloat, " 19-Empty trash time (s)\n");
+			fprintf(_foutFloat, " 20-Retrieval database access time (s)\n");
+			fprintf(_foutFloat, " 21-Add loop closure link time (s)\n");
+			fprintf(_foutFloat, " 22-Memory cleanup time (s)\n");
+			fprintf(_foutFloat, " 23-Scan matching (odometry correction) time (s)\n");
+			fprintf(_foutFloat, " 24-Local time loop closure detection time (s)\n");
+			fprintf(_foutFloat, " 25-Local space loop closure detection time (s)\n");
+			fprintf(_foutFloat, " 26-Map optimization (s)\n");
 		}
 		if(_statisticLoggedHeaders && addLogIHeader && _foutInt)
 		{
@@ -219,6 +225,8 @@ void Rtabmap::setupLogFiles(bool overwrite)
 			fprintf(_foutInt, " 15-Non-null likelihood values\n");
 			fprintf(_foutInt, " 16-Weight Update ID\n");
 			fprintf(_foutInt, " 17-Is last location merged through Weight Update?\n");
+			fprintf(_foutInt, " 18-Local graph size\n");
+			fprintf(_foutInt, " 19-Sensor data id\n");
 		}
 
 		ULOGGER_DEBUG("Log file (int)=%s", (_wDir+"/"+LOG_I).c_str());
@@ -1109,7 +1117,6 @@ bool Rtabmap::process(const SensorData & data)
 				weights = _memory->getWeights();
 			}
 
-			timer.start();
 			//============================================================
 			// Select the highest hypothesis
 			//============================================================
@@ -1948,9 +1955,6 @@ bool Rtabmap::process(const SensorData & data)
 		}
 	}
 
-	timeMapOptimization = timer.ticks();
-	ULOGGER_INFO("timeMapOptimization=%fs", timeMapOptimization);
-
 	//============================================================
 	// Add virtual links if a path is activated
 	//============================================================
@@ -1968,6 +1972,9 @@ bool Rtabmap::process(const SensorData & data)
 			}
 		}
 	}
+
+	timeMapOptimization = timer.ticks();
+	ULOGGER_INFO("timeMapOptimization=%fs", timeMapOptimization);
 
 	//============================================================
 	// Prepare statistics
@@ -2127,8 +2134,6 @@ bool Rtabmap::process(const SensorData & data)
 	//By default, remove all signatures with a loop closure link if they are not in reactivateIds
 	//This will also remove rehearsed signatures
 	std::list<int> signaturesRemoved = _memory->cleanup();
-	timeMemoryCleanup = timer.ticks();
-	ULOGGER_INFO("timeMemoryCleanup = %fs... %d signatures removed", timeMemoryCleanup, (int)signaturesRemoved.size());
 
 	// If this option activated, add new nodes only if there are linked with a previous map.
 	// Used when rtabmap is first started, it will wait a
@@ -2154,6 +2159,9 @@ bool Rtabmap::process(const SensorData & data)
 		_memory->deleteLocation(signature->id());
 	}
 
+	timeMemoryCleanup = timer.ticks();
+	ULOGGER_INFO("timeMemoryCleanup = %fs... %d signatures removed", timeMemoryCleanup, (int)signaturesRemoved.size());
+
 	// Pass this point signature should not be used, since it could have been transferred...
 	signature = 0;
 
@@ -2167,7 +2175,6 @@ bool Rtabmap::process(const SensorData & data)
 	//============================================================
 	double totalTime = timerTotal.ticks();
 	ULOGGER_INFO("Total time processing = %fs...", totalTime);
-	timer.start();
 	if((_maxTimeAllowed != 0 && totalTime*1000>_maxTimeAllowed) ||
 		(_maxMemoryAllowed != 0 && _memory->getWorkingMem().size() > _maxMemoryAllowed))
 	{
@@ -2278,7 +2285,7 @@ bool Rtabmap::process(const SensorData & data)
 	// TODO : use a specific class which will handle the RtabmapEvent
 	if(_foutFloat && _foutInt)
 	{
-		std::string logF = uFormat("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+		std::string logF = uFormat("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
 									totalTime,
 									timeMemoryUpdate,
 									timeReactivations,
@@ -2299,7 +2306,12 @@ bool Rtabmap::process(const SensorData & data)
 									rehearsalValue,
 									timeEmptyingTrash,
 									timeRetrievalDbAccess,
-									timeAddLoopClosureLink);
+									timeAddLoopClosureLink,
+									timeMemoryCleanup,
+									timeScanMatching,
+									timeLocalTimeDetection,
+									timeLocalSpaceDetection,
+									timeMapOptimization);
 		std::string logI = uFormat("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
 									_loopClosureHypothesis.first,
 									_highestHypothesis.first,

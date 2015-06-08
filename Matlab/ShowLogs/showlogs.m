@@ -97,15 +97,21 @@ end
 % xlabel('Location indexes')
 
 figure
-plot((sum(LogF(:,2:7),2)+LogF(:,17))*1000);
+plot(LogF(:,1), 'g'); % to verify that we have all timings below
 hold on
-ylabel('Time (ms)')
-xlabel('Location indexes')
+if size(LogF, 2) == 21
+    plot((sum(LogF(:,2:7),2)+LogF(:,17)+LogF(:,21)));
+else
+    plot((sum(LogF(:,2:7),2)+LogF(:,17)+sum(LogF(:,21:26),2)));
+end
+ylabel('Time (s)')
+xlabel('Node indexes')
 meanTime = mean(LogF(:,1))*1000
-plot([1 length(LogF(:,1))], [700 700], 'r')
+plot([1 length(LogF(:,1))], [0.7 0.7], 'r')
+plot([1 length(LogF(:,1))], [1 1], 'k')
 %plot([1 length(LogF(:,1))], [350 350], 'r')
 %legend('Processing time', 'Time limit')%, 'Acquisition rate (1 Hz)')
-title('Processing time')
+%title('Processing time')
 
 maxTime = max(sum(LogF(:,2:7),2)+LogF(:,17))
 maxDict = max(LogI(:, 6))
@@ -183,22 +189,51 @@ ylabel('MB')
 xlabel('Location indexes')
 % -------------------------
 
-figure
-% subplot(211)
-H1 = plot(LogI(:,7));
-% hold on
-% H2 = plot(1:length(LogI(:,7)), ones(length(LogI(:,7)),1).*mean(LogI(:,7)), 'r--')
-title('Working memory size')
-meanWM = mean(LogI(:,7))
-ylabel('WM size (locations)')
-xlabel('Location indexes')
-% set(H1,'color',[0.3 0.3 0.3])
-% set(H2,'color',[0 0 0])
-% subplot(212)
-% plot(LogI(:,6));
-meanDict = mean(LogI(:,6))
-% ylabel('Dictionary size')
-% xlabel('Location indexes')
+if size(LogI, 2) >= 18
+    LTMsize = zeros(1,length(LogI(:,16)));
+    for i=1:length(LogI(:,16))
+        LTMsize(i) = sum(LogI(1:i,16) == 0);
+    end
+    LTM = LTMsize(end)
+
+    figure
+    % subplot(211)
+    H2 = plot(LTMsize, 'r'); % global graph
+     hold on
+    H1 = plot(LogI(:,7)); % WM
+    H3 = plot(LogI(:,17), 'g'); % Local graph
+    % H2 = plot(1:length(LogI(:,7)), ones(length(LogI(:,7)),1).*mean(LogI(:,7)), 'r--')
+    %title('Graph size')
+    legend('Global graph', 'WM', 'Local graph')
+    ylabel('Nodes')
+    xlabel('Node indexes')
+    %set(H1,'color',[0.3 0.3 0.3])
+    %set(H2,'color',[0 0 0])
+    %set(H3,'color',[0 0 0])
+    % subplot(212)
+    % plot(LogI(:,6));
+    meanWM = mean(LogI(:,7))
+    meanDict = mean(LogI(:,6))
+    % ylabel('Dictionary size')
+    % xlabel('Location indexes')
+else
+    figure
+    % subplot(211)
+    H1 = plot(LogI(:,7));
+    % hold on
+    % H2 = plot(1:length(LogI(:,7)), ones(length(LogI(:,7)),1).*mean(LogI(:,7)), 'r--')
+    title('Working memory size')
+    meanWM = mean(LogI(:,7))
+    ylabel('WM size (locations)')
+    xlabel('Location indexes')
+    % set(H1,'color',[0.3 0.3 0.3])
+    % set(H2,'color',[0 0 0])
+    % subplot(212)
+    % plot(LogI(:,6));
+    meanDict = mean(LogI(:,6))
+    % ylabel('Dictionary size')
+    % xlabel('Location indexes')
+end
 
 meanWordsPerSign = mean(LogI(:,5))
 %% -------------------------
