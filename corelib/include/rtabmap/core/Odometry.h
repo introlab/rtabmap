@@ -42,11 +42,12 @@ namespace rtabmap {
 
 class Feature2D;
 class OdometryInfo;
+class ParticleFilter;
 
 class RTABMAP_EXP Odometry
 {
 public:
-	virtual ~Odometry() {}
+	virtual ~Odometry();
 	Transform process(const SensorData & data, OdometryInfo * info = 0);
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 
@@ -75,12 +76,21 @@ private:
 	float _maxDepth;
 	int _resetCountdown;
 	bool _force2D;
+	bool _particleFiltering;
+	int _particleSize;
+	float _particleNoiseT;
+	float _particleLambdaT;
+	float _particleNoiseR;
+	float _particleLambdaR;
 	bool _fillInfoData;
 	bool _pnpEstimation;
 	double _pnpReprojError;
 	int _pnpFlags;
 	Transform _pose;
 	int _resetCurrentCount;
+	double previousStamp_;
+
+	std::vector<ParticleFilter *> filters_;
 
 protected:
 	Odometry(const rtabmap::ParametersMap & parameters);

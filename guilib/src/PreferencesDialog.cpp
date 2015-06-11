@@ -311,6 +311,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->openni2_gain, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_mirroring, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_freenect2Format, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->toolButton_cameraStereoImages_timestamps, SIGNAL(clicked()), this, SLOT(selectSourceStereoImagesStamps()));
+	connect(_ui->lineEdit_cameraStereoImages_timestamps, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->toolButton_cameraStereoImages_path, SIGNAL(clicked()), this, SLOT(selectSourceStereoImagesPath()));
+	connect(_ui->lineEdit_cameraStereoImages_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniDevice, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openniLocalTransform, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -351,6 +355,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_spinBox_memoryThr->setObjectName(Parameters::kRtabmapMemoryThr().c_str());
 	_ui->general_doubleSpinBox_detectionRate->setObjectName(Parameters::kRtabmapDetectionRate().c_str());
 	_ui->general_spinBox_imagesBufferSize->setObjectName(Parameters::kRtabmapImageBufferSize().c_str());
+	_ui->general_checkBox_createIntermediateNodes->setObjectName(Parameters::kRtabmapCreateIntermediateNodes().c_str());
 	_ui->general_spinBox_maxRetrieved->setObjectName(Parameters::kRtabmapMaxRetrieved().c_str());
 	_ui->general_checkBox_startNewMapOnLoopClosure->setObjectName(Parameters::kRtabmapStartNewMapOnLoopClosure().c_str());
 	_ui->lineEdit_workingDirectory->setObjectName(Parameters::kRtabmapWorkingDirectory().c_str());
@@ -483,6 +488,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->graphOptimization_iterations->setObjectName(Parameters::kRGBDOptimizeIterations().c_str());
 	_ui->graphOptimization_covarianceIgnored->setObjectName(Parameters::kRGBDOptimizeVarianceIgnored().c_str());
 	_ui->graphOptimization_fromGraphEnd->setObjectName(Parameters::kRGBDOptimizeFromGraphEnd().c_str());
+	_ui->graphOptimization_stopEpsilon->setObjectName(Parameters::kRGBDOptimizeEpsilon().c_str());
 
 	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
 	_ui->graphPlan_planWithNearNodesLinked->setObjectName(Parameters::kRGBDPlanVirtualLinks().c_str());
@@ -503,6 +509,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_bowForce2D->setObjectName(Parameters::kLccBowForce2D().c_str());
 	_ui->loopClosure_bowEpipolarGeometry->setObjectName(Parameters::kLccBowEpipolarGeometry().c_str());
 	_ui->loopClosure_bowEpipolarGeometryVar->setObjectName(Parameters::kLccBowEpipolarGeometryVar().c_str());
+	_ui->loopClosure_pnpEstimation->setObjectName(Parameters::kLccBowPnPEstimation().c_str());
+	_ui->loopClosure_pnpReprojError->setObjectName(Parameters::kLccBowPnPReprojError().c_str());
+	_ui->loopClosure_pnpFlags->setObjectName(Parameters::kLccBowPnPFlags().c_str());
 
 	_ui->groupBox_reextract->setObjectName(Parameters::kLccReextractActivated().c_str());
 	_ui->reextract_nn->setObjectName(Parameters::kLccReextractNNType().c_str());
@@ -542,6 +551,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_refine_iterations->setObjectName(Parameters::kOdomRefineIterations().c_str());
 	_ui->odom_force2D->setObjectName(Parameters::kOdomForce2D().c_str());
 	_ui->odom_fillInfoData->setObjectName(Parameters::kOdomFillInfoData().c_str());
+	_ui->odom_dataBufferSize->setObjectName(Parameters::kOdomImageBufferSize().c_str());
 	_ui->lineEdit_odom_roi->setObjectName(Parameters::kOdomRoiRatios().c_str());
 	_ui->odom_pnpEstimation->setObjectName(Parameters::kOdomPnPEstimation().c_str());
 	_ui->odom_pnpReprojError->setObjectName(Parameters::kOdomPnPReprojError().c_str());
@@ -566,6 +576,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_minInitTranslation->setObjectName(Parameters::kOdomMonoInitMinTranslation().c_str());
 	_ui->doubleSpinBox_minTranslation->setObjectName(Parameters::kOdomMonoMinTranslation().c_str());
 	_ui->doubleSpinBox_maxVariance->setObjectName(Parameters::kOdomMonoMaxVariance().c_str());
+
+	//Odometry particle filter
+	_ui->odom_particleFiltering->setObjectName(Parameters::kOdomParticleFiltering().c_str());
+	_ui->spinBox_particleSize->setObjectName(Parameters::kOdomParticleSize().c_str());
+	_ui->doubleSpinBox_particleNoiseT->setObjectName(Parameters::kOdomParticleNoiseT().c_str());
+	_ui->doubleSpinBox_particleLambdaT->setObjectName(Parameters::kOdomParticleLambdaT().c_str());
+	_ui->doubleSpinBox_particleNoiseR->setObjectName(Parameters::kOdomParticleNoiseR().c_str());
+	_ui->doubleSpinBox_particleLambdaR->setObjectName(Parameters::kOdomParticleLambdaR().c_str());
 
 	//Stereo
 	_ui->stereo_flow_winSize->setObjectName(Parameters::kStereoWinSize().c_str());
@@ -972,6 +990,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->openni2_gain->setValue(100);
 		_ui->openni2_mirroring->setChecked(false);
 		_ui->comboBox_freenect2Format->setCurrentIndex(0);
+		_ui->lineEdit_cameraStereoImages_timestamps->setText("");
+		_ui->lineEdit_cameraStereoImages_path->setText("");
 		_ui->checkbox_rgbd_colorOnly->setChecked(false);
 		_ui->lineEdit_openniDevice->setText("");
 		_ui->lineEdit_openniLocalTransform->setText("0 0 0 -PI_2 0 -PI_2");
@@ -1237,6 +1257,8 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->openni2_gain->setValue(settings.value("openni2Gain", _ui->openni2_gain->value()).toInt());
 	_ui->openni2_mirroring->setChecked(settings.value("openni2Mirroring", _ui->openni2_mirroring->isChecked()).toBool());
 	_ui->comboBox_freenect2Format->setCurrentIndex(settings.value("freenect2Format", _ui->comboBox_freenect2Format->currentIndex()).toInt());
+	_ui->lineEdit_cameraStereoImages_timestamps->setText(settings.value("stereoImagesStamps", _ui->lineEdit_cameraStereoImages_timestamps->text()).toString());
+	_ui->lineEdit_cameraStereoImages_path->setText(settings.value("stereoImagesPath", _ui->lineEdit_cameraStereoImages_path->text()).toString());
 	_ui->checkbox_rgbd_colorOnly->setChecked(settings.value("rgbdColorOnly", _ui->checkbox_rgbd_colorOnly->isChecked()).toBool());
 	_ui->lineEdit_openniDevice->setText(settings.value("device",_ui->lineEdit_openniDevice->text()).toString());
 	_ui->lineEdit_openniLocalTransform->setText(settings.value("localTransform",_ui->lineEdit_openniLocalTransform->text()).toString());
@@ -1507,6 +1529,8 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("openni2Gain", 			_ui->openni2_gain->value());
 	settings.setValue("openni2Mirroring", _ui->openni2_mirroring->isChecked());
 	settings.setValue("freenect2Format", _ui->comboBox_freenect2Format->currentIndex());
+	settings.setValue("stereoImagesStamps", _ui->lineEdit_cameraStereoImages_timestamps->text());
+	settings.setValue("stereoImagesPath", _ui->lineEdit_cameraStereoImages_path->text());
 	settings.setValue("rgbdColorOnly", _ui->checkbox_rgbd_colorOnly->isChecked());
 	settings.setValue("device", 		_ui->lineEdit_openniDevice->text());
 	settings.setValue("localTransform", _ui->lineEdit_openniLocalTransform->text());
@@ -2111,6 +2135,12 @@ void PreferencesDialog::selectSourceRGBD(Src src)
 		_ui->groupBox_sourceDatabase->setChecked(false);
 	}
 
+	if(src == kSrcStereoImages)
+	{
+		_ui->lineEdit_cameraStereoImages_timestamps->setText("");
+		_ui->lineEdit_cameraStereoImages_path->setText("");
+	}
+
 	if(validateForm())
 	{
 		// Even if there is no change, MainWindow should be notified
@@ -2137,6 +2167,34 @@ void PreferencesDialog::openDatabaseViewer()
 	else
 	{
 		delete viewer;
+	}
+}
+
+void PreferencesDialog::selectSourceStereoImagesStamps()
+{
+	QString dir = _ui->lineEdit_cameraStereoImages_timestamps->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Timestamps file (*.txt)"));
+	if(path.size())
+	{
+		_ui->lineEdit_cameraStereoImages_timestamps->setText(path);
+	}
+}
+
+void PreferencesDialog::selectSourceStereoImagesPath()
+{
+	QString dir = _ui->lineEdit_cameraStereoImages_path->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getExistingDirectory(this, tr("Select stereo images directory"), dir);
+	if(path.size())
+	{
+		_ui->lineEdit_cameraStereoImages_path->setText(path);
 	}
 }
 
@@ -2837,6 +2895,7 @@ void PreferencesDialog::updateRGBDCameraGroupBoxVisibility()
 {
 	_ui->groupBox_openni2->setVisible(_ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcOpenNI_PCL);
 	_ui->groupBox_freenect2->setVisible(_ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcOpenNI_PCL);
+	_ui->groupBox_cameraStereoImages->setVisible(_ui->comboBox_cameraRGBD->currentIndex() == kSrcStereoImages-kSrcOpenNI_PCL);
 }
 
 /*** GETTERS ***/
@@ -3245,6 +3304,15 @@ CameraRGBD * PreferencesDialog::createCameraRGBD(bool forCalibration)
 			this->getGeneralInputRate(),
 			this->getSourceOpenniLocalTransform());
 	}
+	else if(this->getSourceRGBD() == kSrcStereoImages)
+	{
+		return new CameraStereoImages(
+			_ui->lineEdit_cameraStereoImages_path->text().toStdString(),
+			this->getSourceOpenniDevice().toStdString(),
+			_ui->lineEdit_cameraStereoImages_timestamps->text().toStdString(),
+			this->getGeneralInputRate(),
+			this->getSourceOpenniLocalTransform());
+	}
 	else
 	{
 		UFATAL("RGBD Source type undefined!");
@@ -3267,6 +3335,10 @@ double PreferencesDialog::getVpThr() const
 int PreferencesDialog::getOdomStrategy() const
 {
 	return _ui->odom_strategy->currentIndex();
+}
+int PreferencesDialog::getOdomBufferSize() const
+{
+	return _ui->odom_dataBufferSize->value();
 }
 
 QString PreferencesDialog::getCameraInfoDir() const
@@ -3409,12 +3481,15 @@ void PreferencesDialog::testOdometry(int type)
 		odometry = new OdometryBOW(parameters);
 	}
 
-	OdometryThread odomThread(odometry); // take ownership of odometry
+	OdometryThread odomThread(
+			odometry, // take ownership of odometry
+			_ui->odom_dataBufferSize->value());
 	odomThread.registerToEventsManager();
 
 	OdometryViewer * odomViewer = new OdometryViewer(10,
 					_ui->spinBox_decimation_odom->value(),
 					_ui->doubleSpinBox_voxelSize_odom->value(),
+					_ui->doubleSpinBox_maxDepth_odom->value(),
 					this->getOdomQualityWarnThr(),
 					this);
 	odomViewer->setWindowTitle(tr("Odometry viewer"));

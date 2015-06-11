@@ -70,6 +70,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fc2triclops.h>
 #endif
 
+#include <rtabmap/core/Camera.h>
+
 namespace rtabmap
 {
 
@@ -90,7 +92,7 @@ CameraRGBD::~CameraRGBD()
 	}
 }
 
-void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
+void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy, double & stamp)
 {
 	bool warnFrameRateTooHigh = false;
 	float actualFrameRate = 0;
@@ -119,7 +121,7 @@ void CameraRGBD::takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & f
 	}
 
 	UTimer timer;
-	this->captureImage(rgb, depth, fx, fy, cx, cy);
+	this->captureImage(rgb, depth, fx, fy, cx, cy, stamp);
 	if(_colorOnly)
 	{
 		depth = cv::Mat();
@@ -258,7 +260,7 @@ std::string CameraOpenni::getSerial() const
 	return "";
 }
 
-void CameraOpenni::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
+void CameraOpenni::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy, double & stamp)
 {
 	rgb = cv::Mat();
 	depth = cv::Mat();
@@ -266,6 +268,7 @@ void CameraOpenni::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, floa
 	fy=0.0f;
 	cx=0.0f;
 	cy=0.0f;
+	stamp = 0.0;
 	if(interface_ && interface_->isRunning())
 	{
 		if(!dataReady_.acquire(1, 2000))
@@ -283,6 +286,7 @@ void CameraOpenni::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, floa
 				fy = 1.0f/depthConstant_;
 				cx = float(depth_.cols/2) - 0.5f;
 				cy = float(depth_.rows/2) - 0.5f;
+				stamp = UTimer::now();
 			}
 
 			depth_ = cv::Mat();
@@ -369,7 +373,7 @@ bool CameraOpenNICV::isCalibrated() const
 	return true;
 }
 
-void CameraOpenNICV::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
+void CameraOpenNICV::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy, double & stamp)
 {
 	if(_capture.isOpened())
 	{
@@ -384,6 +388,7 @@ void CameraOpenNICV::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, fl
 		fy = _depthFocal;
 		cx = float(depth.cols/2) - 0.5f;
 		cy = float(depth.rows/2) - 0.5f;
+		stamp = UTimer::now();
 	}
 	else
 	{
@@ -710,7 +715,7 @@ std::string CameraOpenNI2::getSerial() const
 	return "";
 }
 
-void CameraOpenNI2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
+void CameraOpenNI2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy, double & stamp)
 {
 #ifdef WITH_OPENNI2
 	rgb = cv::Mat();
@@ -719,6 +724,7 @@ void CameraOpenNI2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, flo
 	fy = 0.0f;
 	cx = 0.0f;
 	cy = 0.0f;
+	stamp = 0.0;
 
 	int readyStream = -1;
 	if(_device->isValid() &&
@@ -755,6 +761,7 @@ void CameraOpenNI2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, flo
 			fy = _depthFy;
 			cx = float(depth.cols/2) - 0.5f;
 			cy = float(depth.rows/2) - 0.5f;
+			stamp = UTimer::now();
 		}
 	}
 	else
@@ -1061,7 +1068,7 @@ std::string CameraFreenect::getSerial() const
 	return "";
 }
 
-void CameraFreenect::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
+void CameraFreenect::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy, double & stamp)
 {
 #ifdef WITH_FREENECT
 	rgb = cv::Mat();
@@ -1070,6 +1077,7 @@ void CameraFreenect::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, fl
 	fy = 0.0f;
 	cx = 0.0f;
 	cy = 0.0f;
+	stamp = 0.0;
 	if(ctx_ && freenectDevice_)
 	{
 		if(freenectDevice_->isRunning())
@@ -1082,6 +1090,7 @@ void CameraFreenect::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, fl
 				fy = freenectDevice_->getDepthFocal();
 				cx = float(depth.cols/2) - 0.5f;
 				cy = float(depth.rows/2) - 0.5f;
+				stamp = UTimer::now();
 			}
 		}
 		else
@@ -1234,7 +1243,7 @@ bool CameraFreenect2::init(const std::string & calibrationFolder)
 		// look for calibration files
 		if(!calibrationFolder.empty())
 		{
-			if(!stereoModel_.load(calibrationFolder, dev_->getSerialNumber()))
+			if(!stereoModel_.load(calibrationFolder, dev_->getSerialNumber(), false))
 			{
 				UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, default calibration used.",
 						dev_->getSerialNumber().c_str(), calibrationFolder.c_str());
@@ -1300,7 +1309,7 @@ std::string CameraFreenect2::getSerial() const
 	return "";
 }
 
-void CameraFreenect2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy)
+void CameraFreenect2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy, double & stamp)
 {
 #ifdef WITH_FREENECT2
 	rgb = cv::Mat();
@@ -1309,11 +1318,13 @@ void CameraFreenect2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, f
 	fy = 0.0f;
 	cx = 0.0f;
 	cy = 0.0f;
+	stamp = 0.0;
 	if(dev_ && listener_)
 	{
 		libfreenect2::FrameMap frames;
 		if(listener_->waitForNewFrame(frames, 1000))
 		{
+			stamp = UTimer::now();
 			libfreenect2::Frame *rgbFrame = 0;
 			libfreenect2::Frame *irFrame = 0;
 			libfreenect2::Frame *depthFrame = 0;
@@ -1757,7 +1768,7 @@ public:
 				return false;
 			}
 			dc1394video_frame_t frame1 = *frame;
-			// deinterlace frame into two images one on top the other
+			// deinterlace frame into two imagesCount one on top the other
 			size_t frame1_size = frame->total_bytes;
 			frame1.image = (unsigned char *) malloc(frame1_size);
 			frame1.allocated_image_bytes = frame1_size;
@@ -1876,7 +1887,7 @@ std::string CameraStereoDC1394::getSerial() const
 	return "";
 }
 
-void CameraStereoDC1394::captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy)
+void CameraStereoDC1394::captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy, double & stamp)
 {
 #ifdef WITH_DC1394
 	left = cv::Mat();
@@ -1885,6 +1896,7 @@ void CameraStereoDC1394::captureImage(cv::Mat & left, cv::Mat & right, float & f
 	baseline = 0.0f;
 	cx = 0.0f;
 	cy = 0.0f;
+	stamp = 0.0;
 	if(device_)
 	{
 		device_->getImages(left, right);
@@ -1896,6 +1908,7 @@ void CameraStereoDC1394::captureImage(cv::Mat & left, cv::Mat & right, float & f
 		cx = stereoModel_.left().cx();
 		cy = stereoModel_.left().cy();
 		baseline = stereoModel_.baseline();
+		stamp = UTimer::now();
 	}
 #else
 	UERROR("CameraDC1394: RTAB-Map is not built with dc1394 support!");
@@ -2056,7 +2069,7 @@ struct ImageContainer
 } ;
 #endif
 
-void CameraStereoFlyCapture2::captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy)
+void CameraStereoFlyCapture2::captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy, double & stamp)
 {
 #ifdef WITH_FLYCAPTURE2
 	left = cv::Mat();
@@ -2065,14 +2078,17 @@ void CameraStereoFlyCapture2::captureImage(cv::Mat & left, cv::Mat & right, floa
 	baseline = 0.0f;
 	cx = 0.0f;
 	cy = 0.0f;
+	stamp = 0.0;
 
 	if(camera_ && triclopsCtx_ && camera_->IsConnected())
 	{
 		// grab image from camera.
-		// this image contains both right and left images
+		// this image contains both right and left imagesCount
 		FlyCapture2::Image grabbedImage;
 		if(camera_->RetrieveBuffer(&grabbedImage) == FlyCapture2::PGRERROR_OK)
 		{
+			stamp = UTimer::now();
+
 			// right and left image extracted from grabbed image
 			ImageContainer imageCont;
 
@@ -2172,6 +2188,197 @@ void CameraStereoFlyCapture2::captureImage(cv::Mat & left, cv::Mat & right, floa
 #else
 	UERROR("CameraStereoFlyCapture2: RTAB-Map is not built with Triclops support!");
 #endif
+}
+
+//
+// CameraStereoImages
+//
+bool CameraStereoImages::available()
+{
+	return true;
+}
+
+CameraStereoImages::CameraStereoImages(
+		const std::string & path,
+		const std::string & cameraName,
+		const std::string & timestampsPath,
+		float imageRate,
+		const Transform & localTransform) :
+		CameraRGBD(imageRate, localTransform),
+		camera_(0),
+		camera2_(0),
+		cameraName_(cameraName),
+		timestampsPath_(timestampsPath)
+{
+	std::vector<std::string> paths = uListToVector(uSplit(path, uStrContains(path, ":")?':':';'));
+	if(paths.size() >= 1)
+	{
+		camera_ = new CameraImages(paths[0]);
+
+		if(paths.size() >= 2)
+		{
+			camera2_ = new CameraImages(paths[1]);
+		}
+	}
+	else
+	{
+		UERROR("The path is empty!");
+	}
+}
+
+CameraStereoImages::~CameraStereoImages()
+{
+	if(camera_)
+	{
+		delete camera_;
+	}
+	if(camera2_)
+	{
+		delete camera2_;
+	}
+}
+
+bool CameraStereoImages::init(const std::string & calibrationFolder)
+{
+	// look for calibration files
+	if(!calibrationFolder.empty() && !cameraName_.empty())
+	{
+		if(!stereoModel_.load(calibrationFolder, cameraName_))
+		{
+			UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
+					cameraName_.c_str(), calibrationFolder.c_str());
+		}
+		else
+		{
+			UINFO("Stereo parameters: fx=%f cx=%f cy=%f baseline=%f",
+					stereoModel_.left().fx(),
+					stereoModel_.left().cx(),
+					stereoModel_.left().cy(),
+					stereoModel_.baseline());
+		}
+	}
+	bool success = false;
+	if(camera_ == 0)
+	{
+		UERROR("Cannot initialize the camera.");
+	}
+	else if(camera_->init())
+	{
+		if(camera2_)
+		{
+			if(camera2_->init())
+			{
+				if(camera_->imagesCount() == camera2_->imagesCount())
+				{
+					success = true;
+				}
+				else
+				{
+					UERROR("Cameras don't have the same number of images (%d vs %d)",
+							camera_->imagesCount(), camera2_->imagesCount());
+				}
+			}
+			else
+			{
+				UERROR("Cannot initialize the second camera.");
+			}
+		}
+		else
+		{
+			success = true;
+		}
+	}
+
+	stamps_.clear();
+	if(success && timestampsPath_.size())
+	{
+		FILE * file = 0;
+#ifdef _MSC_VER
+		fopen_s(&file, timestampsPath_.c_str(), "r");
+#else
+		file = fopen(timestampsPath_.c_str(), "r");
+#endif
+		if(file)
+		{
+			char line[16];
+			while ( fgets (line , 16 , file) != NULL )
+			{
+				stamps_.push_back(uStr2Double(uReplaceChar(line, '\n', 0)));
+			}
+			fclose(file);
+		}
+		if(stamps_.size() != camera_->imagesCount())
+		{
+			UERROR("The stamps count is not the same as the images (%d vs %d)! Please remove "
+					"the timestamps file path if you don't want to use them (current file path=%s).",
+					(int)stamps_.size(), camera_->imagesCount(), timestampsPath_.c_str());
+			stamps_.clear();
+			success = false;
+		}
+	}
+
+	return success;
+}
+
+bool CameraStereoImages::isCalibrated() const
+{
+	return stereoModel_.isValid();
+}
+
+std::string CameraStereoImages::getSerial() const
+{
+	return "stereo_images";
+}
+
+void CameraStereoImages::captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy, double & stamp)
+{
+	left = cv::Mat();
+	right = cv::Mat();
+	fx = 0.0f;
+	baseline = 0.0f;
+	cx = 0.0f;
+	cy = 0.0f;
+	stamp = 0.0;
+
+	if(camera_)
+	{
+		if(stamps_.size())
+		{
+			stamp = stamps_.front();
+			stamps_.pop_front();
+		}
+		else
+		{
+			stamp = UTimer::now();
+		}
+		left = camera_->takeImage();
+		if(!left.empty())
+		{
+			if(camera2_)
+			{
+				right = camera2_->takeImage();
+			}
+			else
+			{
+				right = camera_->takeImage();
+			}
+
+			if(!right.empty())
+			{
+				// Rectification
+				//left = stereoModel_.left().rectifyImage(left);
+				//right = stereoModel_.right().rectifyImage(right);
+				fx = stereoModel_.left().fx();
+				cx = stereoModel_.left().cx();
+				cy = stereoModel_.left().cy();
+				baseline = stereoModel_.baseline();
+			}
+			else
+			{
+				left = cv::Mat();
+			}
+		}
+	}
 }
 
 } // namespace rtabmap

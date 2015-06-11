@@ -159,7 +159,8 @@ int main(int argc, char * argv[])
 	}
 	cv::Mat rgb, depth;
 	float fx, fy, cx, cy;
-	camera->takeImage(rgb, depth, fx, fy, cx, cy);
+	double stamp = 0.0;
+	camera->takeImage(rgb, depth, fx, fy, cx, cy, stamp);
 	if(rgb.cols != depth.cols || rgb.rows != depth.rows)
 	{
 		UWARN("RGB (%d/%d) and depth (%d/%d) frames are not the same size! The registered cloud cannot be shown.",
@@ -228,7 +229,7 @@ int main(int argc, char * argv[])
 
 		rgb = cv::Mat();
 		depth = cv::Mat();
-		camera->takeImage(rgb, depth, fx, fy, cx, cy);
+		camera->takeImage(rgb, depth, fx, fy, cx, cy, stamp);
 	}
 	cv::destroyWindow("Video");
 	cv::destroyWindow("Depth");

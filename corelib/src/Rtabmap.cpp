@@ -737,6 +737,27 @@ void Rtabmap::generateTOROGraph(const std::string & path, bool optimized, bool g
 	}
 }
 
+void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global)
+{
+	if(_memory && _memory->getLastWorkingSignature())
+	{
+		std::map<int, Transform> poses;
+		std::multimap<int, Link> constraints;
+
+		if(optimized)
+		{
+			this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), global, poses, &constraints);
+		}
+		else
+		{
+			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
+			_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, global);
+		}
+
+		this->dumpPoses(path, poses);
+	}
+}
+
 void Rtabmap::resetMemory()
 {
 	_highestHypothesis = std::make_pair(0,0.0f);
@@ -829,11 +850,6 @@ bool Rtabmap::process(const SensorData & data)
 	// Wait for an image...
 	//============================================================
 	ULOGGER_INFO("getting data...");
-	if(!data.isValid())
-	{
-		ULOGGER_INFO("image is not valid...");
-		return false;
-	}
 
 	timer.start();
 	timerTotal.start();
@@ -1002,18 +1018,25 @@ bool Rtabmap::process(const SensorData & data)
 		if(signature->getLinks().size() == 1)
 		{
 			// link should be old to new
-			if(signature->id() > signature->getLinks().begin()->second.to())
+			UASSERT_MSG(signature->id() > signature->getLinks().begin()->second.to(),
+					"Only forward links should be added.");
+
+			Link tmp = signature->getLinks().begin()->second.inverse();
+
+			// if the previous signature is a bad signature, remove it from the local graph
+			if(_constraints.size() &&
+			   _constraints.rbegin()->second.to() == signature->getLinks().begin()->second.to())
 			{
-				Link tmp = signature->getLinks().begin()->second;
-				tmp.setFrom(tmp.to());
-				tmp.setTo(signature->id());
-				tmp.setTransform(tmp.transform().inverse());
-				_constraints.insert(std::make_pair(tmp.from(), tmp));
+				const Signature * s = _memory->getSignature(signature->getLinks().begin()->second.to());
+				UASSERT(s!=0);
+				if(s->isBadSignature())
+				{
+					tmp = _constraints.rbegin()->second.merge(tmp);
+					_optimizedPoses.erase(s->id());
+					_constraints.erase(--_constraints.end());
+				}
 			}
-			else
-			{
-				_constraints.insert(std::make_pair(signature->id(), signature->getLinks().begin()->second));
-			}
+			_constraints.insert(std::make_pair(tmp.from(), tmp));
 		}
 
 		//============================================================
@@ -1090,7 +1113,29 @@ bool Rtabmap::process(const SensorData & data)
 			// with all images contained in the working memory + reactivated.
 			//============================================================
 			ULOGGER_INFO("computing likelihood...");
-			std::list<int> signaturesToCompare = uKeysList(_memory->getWorkingMem());
+
+			// select only not empty signatures (may happen often if intermediate nodes are created)
+			std::list<int> signaturesToCompare;
+			for(std::map<int, double>::const_iterator iter=_memory->getWorkingMem().begin();
+				iter!=_memory->getWorkingMem().end();
+				++iter)
+			{
+				if(iter->first > 0)
+				{
+					const Signature * s = _memory->getSignature(iter->first);
+					UASSERT(s!=0);
+					if(!_bayesFilter->isBadSignaturesIgnored() || !s->isBadSignature())
+					{
+						signaturesToCompare.push_back(iter->first);
+					}
+				}
+				else
+				{
+					// virtual signature should be added
+					signaturesToCompare.push_back(iter->first);
+				}
+			}
+
 			rawLikelihood = _memory->computeLikelihood(signature, signaturesToCompare);
 
 			// Adjust the likelihood (with mean and std dev)
@@ -1228,6 +1273,7 @@ bool Rtabmap::process(const SensorData & data)
 				_maxRetrieved,
 				true,
 				true,
+				false,
 				&timeGetNeighborsTimeDb);
 		ULOGGER_DEBUG("neighbors of %d in time = %d", retrievalId, (int)neighbors.size());
 		//Priority to locations near in time (direct neighbor) then by space (loop closure)
@@ -1280,6 +1326,7 @@ bool Rtabmap::process(const SensorData & data)
 				neighborhoodSize,
 				_maxRetrieved,
 				true,
+				false,
 				false,
 				&timeGetNeighborsSpaceDb);
 		ULOGGER_DEBUG("neighbors of %d in space = %d", retrievalId, (int)neighbors.size());
@@ -2426,6 +2473,37 @@ void Rtabmap::dumpData() const
 	}
 }
 
+void Rtabmap::dumpPoses(
+		const std::string & path,
+		const std::map<int, Transform> & poses) const
+{
+	UDEBUG("");
+	FILE* fout = 0;
+#ifdef _MSC_VER
+	fopen_s(&fout, path.c_str(), "w");
+#else
+	fout = fopen(path.c_str(), "w");
+#endif
+	if(fout)
+	{
+		Transform localTransformInv = Transform(0,0,0, -CV_PI/2, 0, -CV_PI/2).inverse();
+		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		{
+			Transform t = localTransformInv * (*iter).second;
+			// in camera frame
+			const float * p = (const float *)t.data();
+
+			fprintf(fout, "%f", p[0]);
+			for(int i=1; i<(*iter).second.size(); i++)
+			{
+				fprintf(fout, " %f", p[i]);
+			}
+			fprintf(fout, "\n");
+		}
+		fclose(fout);
+	}
+}
+
 // fromId must be in _memory and in _optimizedPoses
 // Get poses in front of the robot, return optimized poses
 std::map<int, Transform> Rtabmap::getForwardWMPoses(
@@ -2586,7 +2664,7 @@ void Rtabmap::optimizeCurrentMap(
 	if(_memory && id > 0)
 	{
 		UTimer timer;
-		std::map<int, int> ids = _memory->getNeighborsId(id, 0, lookInDatabase?-1:0, true);
+		std::map<int, int> ids = _memory->getNeighborsId(id, 0, lookInDatabase?-1:0, true, false);
 		if(!_optimizeFromGraphEnd && ids.size() > 1)
 		{
 			id = ids.begin()->first;
@@ -2713,7 +2791,27 @@ void Rtabmap::dumpPrediction() const
 {
 	if(_memory && _bayesFilter)
 	{
-		cv::Mat prediction = _bayesFilter->generatePrediction(_memory, uKeys(_memory->getWorkingMem()));
+		std::list<int> signaturesToCompare;
+		for(std::map<int, double>::const_iterator iter=_memory->getWorkingMem().begin();
+			iter!=_memory->getWorkingMem().end();
+			++iter)
+		{
+			if(iter->first > 0)
+			{
+				const Signature * s = _memory->getSignature(iter->first);
+				UASSERT(s!=0);
+				if(!_bayesFilter->isBadSignaturesIgnored() || !s->isBadSignature())
+				{
+					signaturesToCompare.push_back(iter->first);
+				}
+			}
+			else
+			{
+				// virtual signature should be added
+				signaturesToCompare.push_back(iter->first);
+			}
+		}
+		cv::Mat prediction = _bayesFilter->generatePrediction(_memory, uListToVector(signaturesToCompare));
 
 		FILE* fout = 0;
 		std::string fileName = this->getWorkingDir() + "/DumpPrediction.txt";

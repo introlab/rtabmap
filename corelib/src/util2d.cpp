@@ -210,7 +210,7 @@ float getDepth(
 
 	if(!(u >=0 && u<depthImage.cols && v >=0 && v<depthImage.rows))
 	{
-		UERROR("!(x >=0 && x<depthImage.cols && y >=0 && y<depthImage.rows) cond failed! returning bad point. (x=%f (u=%d), y=%f (v=%d), cols=%d, rows=%d)",
+		UDEBUG("!(x >=0 && x<depthImage.cols && y >=0 && y<depthImage.rows) cond failed! returning bad point. (x=%f (u=%d), y=%f (v=%d), cols=%d, rows=%d)",
 				x,u,y,v,depthImage.cols, depthImage.rows);
 		return 0;
 	}

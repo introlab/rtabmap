@@ -235,17 +235,24 @@ Transform OdometryBOW::computeTransform(
 
 								// compute variance (like in PCL computeVariance() method of sac_model.h)
 								std::vector<float> errorSqrdDists(inliersV.size());
+								oi = 0;
 								for(unsigned int i=0; i<inliersV.size(); ++i)
 								{
 									std::multimap<int, pcl::PointXYZ>::const_iterator iter = newSignature->getWords3().find(matches[inliersV[i]]);
-									UASSERT(iter != newSignature->getWords3().end());
-									const cv::Point3f & objPt = objectPoints[inliersV[i]];
-									pcl::PointXYZ newPt = util3d::transformPoint(iter->second, this->getPose()*transform);
-									errorSqrdDists[i] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
+									if(iter != newSignature->getWords3().end() && pcl::isFinite(iter->second))
+									{
+										const cv::Point3f & objPt = objectPoints[inliersV[i]];
+										pcl::PointXYZ newPt = util3d::transformPoint(iter->second, this->getPose()*transform);
+										errorSqrdDists[oi++] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
+									}
 								}
-								std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
-								double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
-								variance = 2.1981 * median_error_sqr;
+								errorSqrdDists.resize(oi);
+								if(errorSqrdDists.size())
+								{
+									std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
+									double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
+									variance = 2.1981 * median_error_sqr;
+								}
 							}
 							else
 							{

@@ -351,12 +351,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDisparity(
 	UASSERT(imageDisparity.type() == CV_32FC1 || imageDisparity.type()==CV_16SC1);
 	UASSERT(imageDisparity.rows % decimation == 0);
 	UASSERT(imageDisparity.cols % decimation == 0);
+	UASSERT(decimation >= 1);
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-	if(decimation < 1)
-	{
-		return cloud;
-	}
 
 	//cloud.header = cameraInfo.header;
 	cloud->height = imageDisparity.rows/decimation;
@@ -396,29 +393,24 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDisparityRGB(
 		float fx, float baseline,
 		int decimation)
 {
+	UASSERT(!imageRgb.empty() && !imageDisparity.empty());
 	UASSERT(imageRgb.rows == imageDisparity.rows &&
 			imageRgb.cols == imageDisparity.cols &&
 			(imageDisparity.type() == CV_32FC1 || imageDisparity.type()==CV_16SC1));
-	UASSERT(imageDisparity.rows % decimation == 0);
-	UASSERT(imageDisparity.cols % decimation == 0);
+	UASSERT(imageRgb.channels() == 3 || imageRgb.channels() == 1);
+	UASSERT(decimation >= 1);
+	UASSERT(imageDisparity.rows % decimation == 0 && imageDisparity.cols % decimation == 0);
+
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-	if(decimation < 1)
-	{
-		return cloud;
-	}
 
 	bool mono;
 	if(imageRgb.channels() == 3) // BGR
 	{
 		mono = false;
 	}
-	else if(imageRgb.channels() == 1) // Mono
+	else // Mono
 	{
 		mono = true;
-	}
-	else
-	{
-		return cloud;
 	}
 
 	//cloud.header = cameraInfo.header;
@@ -463,20 +455,40 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 		float fx, float baseline,
 		int decimation)
 {
+	UASSERT(!imageLeft.empty() && !imageRight.empty());
 	UASSERT(imageRight.type() == CV_8UC1);
+	UASSERT(imageLeft.channels() == 3 || imageLeft.channels() == 1);
+	UASSERT(imageLeft.rows == imageRight.rows &&
+			imageLeft.cols == imageRight.cols);
+	UASSERT(decimation >= 1);
+
+	cv::Mat leftColor = imageLeft;
+	cv::Mat rightMono = imageRight;
+
+	if(leftColor.rows % decimation != 0 ||
+	   leftColor.cols % decimation != 0)
+	{
+		leftColor = util2d::decimate(leftColor, decimation);
+		rightMono = util2d::decimate(rightMono, decimation);
+		fx /= float(decimation);
+		cx /= float(decimation);
+		cy /= float(decimation);
+		decimation = 1;
+	}
 
 	cv::Mat leftMono;
-	if(imageLeft.channels() == 3)
+	if(leftColor.channels() == 3)
 	{
-		cv::cvtColor(imageLeft, leftMono, CV_BGR2GRAY);
+		cv::cvtColor(leftColor, leftMono, CV_BGR2GRAY);
 	}
 	else
 	{
-		leftMono = imageLeft;
+		leftMono = leftColor;
 	}
+
 	return cloudFromDisparityRGB(
-			imageLeft,
-			util2d::disparityFromStereoImages(leftMono, imageRight),
+			leftColor,
+			util2d::disparityFromStereoImages(leftMono, rightMono),
 			cx, cy,
 			fx, baseline,
 			decimation);

@@ -159,10 +159,9 @@ void PdfPlotCurve::setData(const QMap<int, float> & dataMap, const QMap<int, int
 
 		// update values
 		QList<QGraphicsItem*>::iterator iter = _items.begin();
-		QMap<int, int>::const_iterator j=weightsMap.begin();
-		for(QMap<int, float>::const_iterator i=dataMap.begin(); i!=dataMap.end(); ++i, ++j)
+		for(QMap<int, float>::const_iterator i=dataMap.begin(); i!=dataMap.end(); ++i)
 		{
-			((PdfPlotItem*)*iter)->setLikelihood(i.key(),  i.value(), j!=weightsMap.end()?j.value():-1);
+			((PdfPlotItem*)*iter)->setLikelihood(i.key(),  i.value(), weightsMap.value(i.key(), -1));
 			//2 times...
 			++iter;
 			++iter;

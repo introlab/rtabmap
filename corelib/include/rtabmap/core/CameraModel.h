@@ -110,11 +110,11 @@ public:
 	}
 	virtual ~StereoCameraModel() {}
 
-	bool isValid() const {return left_.isValid() && right_.isValid() && !R_.empty() && !T_.empty() && !E_.empty() && !F_.empty();}
+	bool isValid() const {return left_.isValid() && right_.isValid();}
 	const std::string & name() const {return name_;}
 
-	bool load(const std::string & directory, const std::string & cameraName);
-	bool save(const std::string & directory, const std::string & cameraName);
+	bool load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true);
+	bool save(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true);
 
 	double baseline() const {return -right_.Tx()/right_.fx();}
 

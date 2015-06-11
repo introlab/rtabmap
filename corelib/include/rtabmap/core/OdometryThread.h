@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UEventsHandler.h>
+#include <list>
 
 namespace rtabmap {
 
@@ -40,7 +41,7 @@ class Odometry;
 class RTABMAP_EXP OdometryThread : public UThread, public UEventsHandler {
 public:
 	// take ownership of Odometry
-	OdometryThread(Odometry * odometry);
+	OdometryThread(Odometry * odometry, unsigned int dataBufferMaxSize = 1);
 	virtual ~OdometryThread();
 
 protected:
@@ -54,13 +55,14 @@ private:
 	//============================================================
 	void mainLoop();
 	void addData(const SensorData & data);
-	void getData(SensorData & data);
+	bool getData(SensorData & data);
 
 private:
 	USemaphore _dataAdded;
 	UMutex _dataMutex;
-	SensorData _dataBuffer;
+	std::list<SensorData> _dataBuffer;
 	Odometry * _odometry;
+	unsigned int _dataBufferMaxSize;
 	bool _resetOdometry;
 };
 

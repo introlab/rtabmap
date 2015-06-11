@@ -76,6 +76,27 @@ public:
 		transVariance_ = transVariance;
 	}
 
+	Link merge(const Link & link) const
+	{
+		UASSERT(to_ == link.from());
+		UASSERT(type_ == link.type());
+		UASSERT(!transform_.isNull());
+		UASSERT(!link.transform().isNull());
+		UASSERT(rotVariance_ > 0 && link.rotVariance() > 0 && transVariance_ > 0 && link.transVariance() > 0);
+		return Link(
+				from_,
+				link.to(),
+				type_,
+				transform_ * link.transform(),
+				1.0f/(1.0f/rotVariance_   + 1.0f/link.rotVariance()),
+				1.0f/(1.0f/transVariance_ + 1.0f/link.transVariance()));
+	}
+
+	Link inverse() const
+	{
+		return Link(to_, from_, type_, transform_.inverse(), rotVariance_, transVariance_);
+	}
+
 private:
 	int from_;
 	int to_;

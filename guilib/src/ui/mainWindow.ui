@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -49,7 +49,7 @@
    </widget>
    <widget class="QMenu" name="menuEdit">
     <property name="title">
-     <string>Edit</string>
+     <string> Edit</string>
     </property>
     <widget class="QMenu" name="menuAdvanced">
      <property name="title">
@@ -60,6 +60,7 @@
      <addaction name="actionGenerate_map"/>
      <addaction name="actionGenerate_local_map"/>
      <addaction name="actionGenerate_TORO_graph_graph"/>
+     <addaction name="actionExport_poses_txt"/>
      <addaction name="actionPrint_loop_closure_IDs_to_console"/>
      <addaction name="actionSend_goal"/>
     </widget>
@@ -1201,6 +1202,11 @@
   <action name="actionSend_goal">
    <property name="text">
     <string>Send a goal...</string>
+   </property>
+  </action>
+  <action name="actionExport_poses_txt">
+   <property name="text">
+    <string>Export poses (*.txt)...</string>
    </property>
   </action>
  </widget>

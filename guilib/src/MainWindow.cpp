@@ -301,6 +301,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionGenerate_map, SIGNAL(triggered()), this , SLOT(generateMap()));
 	connect(_ui->actionGenerate_local_map, SIGNAL(triggered()), this, SLOT(generateLocalMap()));
 	connect(_ui->actionGenerate_TORO_graph_graph, SIGNAL(triggered()), this , SLOT(generateTOROMap()));
+	connect(_ui->actionExport_poses_txt, SIGNAL(triggered()), this , SLOT(exportPoses()));
 	connect(_ui->actionDelete_memory, SIGNAL(triggered()), this , SLOT(deleteMemory()));
 	connect(_ui->actionDownload_all_clouds, SIGNAL(triggered()), this , SLOT(downloadAllClouds()));
 	connect(_ui->actionDownload_graph, SIGNAL(triggered()), this , SLOT(downloadPoseGraph()));
@@ -441,7 +442,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	qRegisterMetaType<rtabmap::OdometryInfo>("rtabmap::OdometryInfo");
 	connect(this, SIGNAL(odometryReceived(rtabmap::SensorData, rtabmap::OdometryInfo)), this, SLOT(processOdometry(rtabmap::SensorData, rtabmap::OdometryInfo)));
 
-	connect(this, SIGNAL(noMoreImagesReceived()), this, SLOT(stopDetection()));
+	connect(this, SIGNAL(noMoreImagesReceived()), this, SLOT(notifyNoMoreImages()));
 
 	// Apply state
 	this->changeState(kIdle);
@@ -673,6 +674,11 @@ void MainWindow::handleEvent(UEvent* anEvent)
 				_processingOdometry = true; // if we receive too many odometry events!
 				emit odometryReceived(odomEvent->data(), odomEvent->info());
 			}
+			else
+			{
+				// we receive too many odometry events! just send without data
+				emit odometryReceived(SensorData(cv::Mat(), odomEvent->data().id()), odomEvent->info());
+			}
 		}
 	}
 	else if(anEvent->getClassName().compare("ULogEvent") == 0)
@@ -699,37 +705,214 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 {
 	_processingOdometry = true;
 	UTimer time;
-	Transform pose = data.pose();
-	bool lost = false;
-	bool lostStateChanged = false;
-
-	if(pose.isNull())
+	// Process Data
+	if(data.isValid())
 	{
-		UDEBUG("odom lost"); // use last pose
-		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() != Qt::darkRed;
-		_ui->widget_cloudViewer->setBackgroundColor(Qt::darkRed);
-		_ui->imageView_odometry->setBackgroundColor(Qt::darkRed);
+		Transform pose = data.pose();
+		bool lost = false;
+		bool lostStateChanged = false;
 
-		pose = _lastOdomPose;
-		lost = true;
-	}
-	else if(info.inliers>0 &&
-			_preferencesDialog->getOdomQualityWarnThr() &&
-			info.inliers < _preferencesDialog->getOdomQualityWarnThr())
-	{
-		UDEBUG("odom warn, quality(inliers)=%d thr=%d", info.inliers, _preferencesDialog->getOdomQualityWarnThr());
-		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
-		_ui->widget_cloudViewer->setBackgroundColor(Qt::darkYellow);
-		_ui->imageView_odometry->setBackgroundColor(Qt::darkYellow);
-	}
-	else
-	{
-		UDEBUG("odom ok");
-		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
-		_ui->widget_cloudViewer->setBackgroundColor(_ui->widget_cloudViewer->getDefaultBackgroundColor());
-		_ui->imageView_odometry->setBackgroundColor(Qt::black);
+		if(pose.isNull())
+		{
+			UDEBUG("odom lost"); // use last pose
+			lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() != Qt::darkRed;
+			_ui->widget_cloudViewer->setBackgroundColor(Qt::darkRed);
+			_ui->imageView_odometry->setBackgroundColor(Qt::darkRed);
+
+			pose = _lastOdomPose;
+			lost = true;
+		}
+		else if(info.inliers>0 &&
+				_preferencesDialog->getOdomQualityWarnThr() &&
+				info.inliers < _preferencesDialog->getOdomQualityWarnThr())
+		{
+			UDEBUG("odom warn, quality(inliers)=%d thr=%d", info.inliers, _preferencesDialog->getOdomQualityWarnThr());
+			lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
+			_ui->widget_cloudViewer->setBackgroundColor(Qt::darkYellow);
+			_ui->imageView_odometry->setBackgroundColor(Qt::darkYellow);
+		}
+		else
+		{
+			UDEBUG("odom ok");
+			lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
+			_ui->widget_cloudViewer->setBackgroundColor(_ui->widget_cloudViewer->getDefaultBackgroundColor());
+			_ui->imageView_odometry->setBackgroundColor(Qt::black);
+		}
+
+		if(!pose.isNull() && (_ui->dockWidget_cloudViewer->isVisible() || _ui->graphicsView_graphView->isVisible()))
+		{
+			_lastOdomPose = pose;
+			_odometryReceived = true;
+		}
+
+		if(_ui->dockWidget_cloudViewer->isVisible())
+		{
+			if(!pose.isNull())
+			{
+				// 3d cloud
+				if(data.depthOrRightImage().cols == data.image().cols &&
+				   data.depthOrRightImage().rows == data.image().rows &&
+				   !data.depthOrRightImage().empty() &&
+				   data.fx() > 0.0f &&
+				   data.fyOrBaseline() > 0.0f &&
+				   _preferencesDialog->isCloudsShown(1))
+				{
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+					cloud = createCloud(0,
+							data.image(),
+							data.depthOrRightImage(),
+							data.fx(),
+							data.fyOrBaseline(),
+							data.cx(),
+							data.cy(),
+							data.localTransform(),
+							pose,
+							_preferencesDialog->getCloudVoxelSize(1),
+							_preferencesDialog->getCloudDecimation(1),
+							_preferencesDialog->getCloudMaxDepth(1));
+
+					if(!_ui->widget_cloudViewer->addOrUpdateCloud("cloudOdom", cloud, _odometryCorrection))
+					{
+						UERROR("Adding cloudOdom to viewer failed!");
+					}
+					_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", true);
+					_ui->widget_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
+					_ui->widget_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
+				}
+
+				// 2d cloud
+				if(!data.laserScan().empty() &&
+					_preferencesDialog->isScansShown(1))
+				{
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+					cloud = util3d::laserScanToPointCloud(data.laserScan());
+					cloud = util3d::transformPointCloud(cloud, pose);
+					if(!_ui->widget_cloudViewer->addOrUpdateCloud("scanOdom", cloud, _odometryCorrection))
+					{
+						UERROR("Adding scanOdom to viewer failed!");
+					}
+					_ui->widget_cloudViewer->setCloudVisibility("scanOdom", true);
+					_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
+					_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
+				}
+
+				if(!data.pose().isNull())
+				{
+					// update camera position
+					_ui->widget_cloudViewer->updateCameraTargetPosition(_odometryCorrection*data.pose());
+				}
+			}
+			_ui->widget_cloudViewer->update();
+		}
+
+		if(_ui->graphicsView_graphView->isVisible())
+		{
+			if(!pose.isNull() && !data.pose().isNull())
+			{
+				_ui->graphicsView_graphView->updateReferentialPosition(_odometryCorrection*data.pose());
+				_ui->graphicsView_graphView->update();
+			}
+		}
+
+		if(_ui->dockWidget_odometry->isVisible() &&
+		   !data.image().empty())
+		{
+			if(_ui->imageView_odometry->isFeaturesShown())
+			{
+				if(info.type == 0)
+				{
+					_ui->imageView_odometry->setFeatures(info.words, data.depth(), Qt::yellow);
+				}
+				else if(info.type == 1)
+				{
+					std::vector<cv::KeyPoint> kpts;
+					cv::KeyPoint::convert(info.refCorners, kpts);
+					_ui->imageView_odometry->setFeatures(kpts, data.depth(), Qt::red);
+				}
+			}
+
+			_ui->imageView_odometry->clearLines();
+			if(lost)
+			{
+				if(lostStateChanged)
+				{
+					// save state
+					_odomImageShow = _ui->imageView_odometry->isImageShown();
+					_odomImageDepthShow = _ui->imageView_odometry->isImageDepthShown();
+				}
+				_ui->imageView_odometry->setImageDepth(uCvMat2QImage(data.image()));
+				_ui->imageView_odometry->setImageShown(true);
+				_ui->imageView_odometry->setImageDepthShown(true);
+			}
+			else
+			{
+				if(lostStateChanged)
+				{
+					// restore state
+					_ui->imageView_odometry->setImageShown(_odomImageShow);
+					_ui->imageView_odometry->setImageDepthShown(_odomImageDepthShow);
+				}
+
+				_ui->imageView_odometry->setImage(uCvMat2QImage(data.image()));
+				if(_ui->imageView_odometry->isImageDepthShown())
+				{
+					_ui->imageView_odometry->setImageDepth(uCvMat2QImage(data.depthOrRightImage()));
+				}
+
+				if(info.type == 0)
+				{
+					if(_ui->imageView_odometry->isFeaturesShown())
+					{
+						for(unsigned int i=0; i<info.wordMatches.size(); ++i)
+						{
+							_ui->imageView_odometry->setFeatureColor(info.wordMatches[i], Qt::red); // outliers
+						}
+						for(unsigned int i=0; i<info.wordInliers.size(); ++i)
+						{
+							_ui->imageView_odometry->setFeatureColor(info.wordInliers[i], Qt::green); // inliers
+						}
+					}
+				}
+			}
+			if(info.type == 1 && info.cornerInliers.size())
+			{
+				if(_ui->imageView_odometry->isFeaturesShown() || _ui->imageView_odometry->isLinesShown())
+				{
+					//draw lines
+					UASSERT(info.refCorners.size() == info.newCorners.size());
+					for(unsigned int i=0; i<info.cornerInliers.size(); ++i)
+					{
+						if(_ui->imageView_odometry->isFeaturesShown())
+						{
+							_ui->imageView_odometry->setFeatureColor(info.cornerInliers[i], Qt::green); // inliers
+						}
+						if(_ui->imageView_odometry->isLinesShown())
+						{
+							_ui->imageView_odometry->addLine(
+									info.refCorners[info.cornerInliers[i]].x,
+									info.refCorners[info.cornerInliers[i]].y,
+									info.newCorners[info.cornerInliers[i]].x,
+									info.newCorners[info.cornerInliers[i]].y,
+									Qt::blue);
+						}
+					}
+				}
+			}
+			if(!data.image().empty())
+			{
+				_ui->imageView_odometry->setSceneRect(QRectF(0,0,(float)data.image().cols, (float)data.image().rows));
+			}
+
+			_ui->imageView_odometry->update();
+		}
+
+		if(_ui->actionAuto_screen_capture->isChecked() && _autoScreenCaptureOdomSync)
+		{
+			this->captureScreen();
+		}
 	}
 
+	//Process info
 	if(info.inliers >= 0)
 	{
 		_ui->statsToolBox->updateStat("Odometry/Inliers/", (float)data.id(), (float)info.inliers);
@@ -746,9 +929,13 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 	{
 		_ui->statsToolBox->updateStat("Odometry/Variance/", (float)data.id(), (float)info.variance);
 	}
-	if(info.time > 0)
+	if(info.timeEstimation > 0)
 	{
-		_ui->statsToolBox->updateStat("Odometry/Time/ms", (float)data.id(), (float)info.time*1000.0f);
+		_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", (float)data.id(), (float)info.timeEstimation*1000.0f);
+	}
+	if(info.timeParticleFiltering > 0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", (float)data.id(), (float)info.timeParticleFiltering*1000.0f);
 	}
 	if(info.features >=0)
 	{
@@ -761,188 +948,35 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 	_ui->statsToolBox->updateStat("Odometry/ID/", (float)data.id(), (float)data.id());
 
 	float x,y,z, roll,pitch,yaw;
-	pose.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-	_ui->statsToolBox->updateStat("Odometry/T_x/m", (float)data.id(), x);
-	_ui->statsToolBox->updateStat("Odometry/T_y/m", (float)data.id(), y);
-	_ui->statsToolBox->updateStat("Odometry/T_z/m", (float)data.id(), z);
-	_ui->statsToolBox->updateStat("Odometry/T_roll/deg", (float)data.id(), roll*180.0/CV_PI);
-	_ui->statsToolBox->updateStat("Odometry/T_pitch/deg", (float)data.id(), pitch*180.0/CV_PI);
-	_ui->statsToolBox->updateStat("Odometry/T_yaw/deg", (float)data.id(), yaw*180.0/CV_PI);
-
-	if(!pose.isNull() && (_ui->dockWidget_cloudViewer->isVisible() || _ui->graphicsView_graphView->isVisible()))
+	if(!info.transform.isNull())
 	{
-		_lastOdomPose = pose;
-		_odometryReceived = true;
+		info.transform.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+		_ui->statsToolBox->updateStat("Odometry/Tx/m", (float)data.id(), x);
+		_ui->statsToolBox->updateStat("Odometry/Ty/m", (float)data.id(), y);
+		_ui->statsToolBox->updateStat("Odometry/Tz/m", (float)data.id(), z);
+		_ui->statsToolBox->updateStat("Odometry/Troll/deg", (float)data.id(), roll*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Tpitch/deg", (float)data.id(), pitch*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Tyaw/deg", (float)data.id(), yaw*180.0/CV_PI);
 	}
 
-	if(_ui->dockWidget_cloudViewer->isVisible())
+	if(!info.transformFiltered.isNull())
 	{
-		if(!pose.isNull())
-		{
-			// 3d cloud
-			if(data.depthOrRightImage().cols == data.image().cols &&
-			   data.depthOrRightImage().rows == data.image().rows &&
-			   !data.depthOrRightImage().empty() &&
-			   data.fx() > 0.0f &&
-			   data.fyOrBaseline() > 0.0f &&
-			   _preferencesDialog->isCloudsShown(1))
-			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-				cloud = createCloud(0,
-						data.image(),
-						data.depthOrRightImage(),
-						data.fx(),
-						data.fyOrBaseline(),
-						data.cx(),
-						data.cy(),
-						data.localTransform(),
-						pose,
-						_preferencesDialog->getCloudVoxelSize(1),
-						_preferencesDialog->getCloudDecimation(1),
-						_preferencesDialog->getCloudMaxDepth(1));
-
-				if(!_ui->widget_cloudViewer->addOrUpdateCloud("cloudOdom", cloud, _odometryCorrection))
-				{
-					UERROR("Adding cloudOdom to viewer failed!");
-				}
-				_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", true);
-				_ui->widget_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
-				_ui->widget_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
-			}
-
-			// 2d cloud
-			if(!data.laserScan().empty() &&
-				_preferencesDialog->isScansShown(1))
-			{
-				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-				cloud = util3d::laserScanToPointCloud(data.laserScan());
-				cloud = util3d::transformPointCloud(cloud, pose);
-				if(!_ui->widget_cloudViewer->addOrUpdateCloud("scanOdom", cloud, _odometryCorrection))
-				{
-					UERROR("Adding scanOdom to viewer failed!");
-				}
-				_ui->widget_cloudViewer->setCloudVisibility("scanOdom", true);
-				_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
-				_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
-			}
-
-			if(!data.pose().isNull())
-			{
-				// update camera position
-				_ui->widget_cloudViewer->updateCameraTargetPosition(_odometryCorrection*data.pose());
-			}
-		}
-		_ui->widget_cloudViewer->update();
+		info.transformFiltered.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+		_ui->statsToolBox->updateStat("Odometry/Fx/m", (float)data.id(), x);
+		_ui->statsToolBox->updateStat("Odometry/Fy/m", (float)data.id(), y);
+		_ui->statsToolBox->updateStat("Odometry/Fz/m", (float)data.id(), z);
+		_ui->statsToolBox->updateStat("Odometry/Froll/deg", (float)data.id(), roll*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Fpitch/deg", (float)data.id(), pitch*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Fyaw/deg", (float)data.id(), yaw*180.0/CV_PI);
 	}
 
-	if(_ui->graphicsView_graphView->isVisible())
+	if(info.interval > 0)
 	{
-		if(!pose.isNull() && !data.pose().isNull())
-		{
-			_ui->graphicsView_graphView->updateReferentialPosition(_odometryCorrection*data.pose());
-			_ui->graphicsView_graphView->update();
-		}
-	}
-
-	if(_ui->dockWidget_odometry->isVisible() &&
-	   !data.image().empty())
-	{
-		if(_ui->imageView_odometry->isFeaturesShown())
-		{
-			if(info.type == 0)
-			{
-				_ui->imageView_odometry->setFeatures(info.words, data.depth(), Qt::yellow);
-			}
-			else if(info.type == 1)
-			{
-				std::vector<cv::KeyPoint> kpts;
-				cv::KeyPoint::convert(info.refCorners, kpts);
-				_ui->imageView_odometry->setFeatures(kpts, data.depth(), Qt::red);
-			}
-		}
-
-		_ui->imageView_odometry->clearLines();
-		if(lost)
-		{
-			if(lostStateChanged)
-			{
-				// save state
-				_odomImageShow = _ui->imageView_odometry->isImageShown();
-				_odomImageDepthShow = _ui->imageView_odometry->isImageDepthShown();
-			}
-			_ui->imageView_odometry->setImageDepth(uCvMat2QImage(data.image()));
-			_ui->imageView_odometry->setImageShown(true);
-			_ui->imageView_odometry->setImageDepthShown(true);
-		}
-		else
-		{
-			if(lostStateChanged)
-			{
-				// restore state
-				_ui->imageView_odometry->setImageShown(_odomImageShow);
-				_ui->imageView_odometry->setImageDepthShown(_odomImageDepthShow);
-			}
-
-			_ui->imageView_odometry->setImage(uCvMat2QImage(data.image()));
-			if(_ui->imageView_odometry->isImageDepthShown())
-			{
-				_ui->imageView_odometry->setImageDepth(uCvMat2QImage(data.depthOrRightImage()));
-			}
-
-			if(info.type == 0)
-			{
-				if(_ui->imageView_odometry->isFeaturesShown())
-				{
-					for(unsigned int i=0; i<info.wordMatches.size(); ++i)
-					{
-						_ui->imageView_odometry->setFeatureColor(info.wordMatches[i], Qt::red); // outliers
-					}
-					for(unsigned int i=0; i<info.wordInliers.size(); ++i)
-					{
-						_ui->imageView_odometry->setFeatureColor(info.wordInliers[i], Qt::green); // inliers
-					}
-				}
-			}
-		}
-		if(info.type == 1 && info.cornerInliers.size())
-		{
-			if(_ui->imageView_odometry->isFeaturesShown() || _ui->imageView_odometry->isLinesShown())
-			{
-				//draw lines
-				UASSERT(info.refCorners.size() == info.newCorners.size());
-				for(unsigned int i=0; i<info.cornerInliers.size(); ++i)
-				{
-					if(_ui->imageView_odometry->isFeaturesShown())
-					{
-						_ui->imageView_odometry->setFeatureColor(info.cornerInliers[i], Qt::green); // inliers
-					}
-					if(_ui->imageView_odometry->isLinesShown())
-					{
-						_ui->imageView_odometry->addLine(
-								info.refCorners[info.cornerInliers[i]].x,
-								info.refCorners[info.cornerInliers[i]].y,
-								info.newCorners[info.cornerInliers[i]].x,
-								info.newCorners[info.cornerInliers[i]].y,
-								Qt::blue);
-					}
-				}
-			}
-		}
-		if(!data.image().empty())
-		{
-			_ui->imageView_odometry->setSceneRect(QRectF(0,0,(float)data.image().cols, (float)data.image().rows));
-		}
-
-		_ui->imageView_odometry->update();
-	}
-
-	if(_ui->actionAuto_screen_capture->isChecked() && _autoScreenCaptureOdomSync)
-	{
-		this->captureScreen();
+		_ui->statsToolBox->updateStat("Odometry/Interval/ms", (float)data.id(), info.interval*1000.f);
+		_ui->statsToolBox->updateStat("Odometry/Speed/kph", (float)data.id(), x/info.interval*3.6f);
 	}
 
 	_ui->statsToolBox->updateStat("/Gui refresh odom/ms", (float)data.id(), time.elapsed()*1000.0);
-
 	_processingOdometry = false;
 }
 
@@ -973,21 +1007,26 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		int highestHypothesisId = static_cast<float>(uValue(stat.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
 		bool highestHypothesisIsSaved = (bool)uValue(stat.data(), Statistics::kLoopHypothesis_reactivated(), 0.0f);
 
-		// Loop closure info
-		_ui->imageView_source->clear();
-		_ui->imageView_loopClosure->clear();
-		_ui->imageView_source->setBackgroundColor(Qt::black);
-		_ui->imageView_loopClosure->setBackgroundColor(Qt::black);
-
 		// update cache
 		Signature signature = stat.getSignature();
 		signature.uncompressData(); // make sure data are uncompressed
 		_cachedSignatures.insert(stat.getSignature().id(), signature);
 
+		// For intermediate empty nodes, keep latest image shown
+		if(!signature.getImageRaw().empty() || signature.getWords().size())
+		{
+			_ui->imageView_source->clear();
+			_ui->imageView_loopClosure->clear();
+
+			_ui->imageView_source->setBackgroundColor(Qt::black);
+			_ui->imageView_loopClosure->setBackgroundColor(Qt::black);
+
+			_ui->label_matchId->clear();
+		}
+
 		int rehearsed = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
 		int localTimeClosures = (int)uValue(stat.data(), Statistics::kLocalLoopTime_closures(), 0.0f);
 		bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kOdomCorrectionAccepted(), 0.0f);
-		_ui->label_matchId->clear();
 		_ui->label_stats_imageNumber->setText(QString("%1 [%2]").arg(stat.refImageId()).arg(refMapId));
 
 		if(rehearsed > 0)
@@ -1119,10 +1158,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		if(!stat.posterior().empty() && _ui->dockWidget_posterior->isVisible())
 		{
 			UDEBUG("");
-			if(stat.weights().size() != stat.posterior().size())
-			{
-				UWARN("%d %d", stat.weights().size(), stat.posterior().size());
-			}
 			_posteriorCurve->setData(QMap<int, float>(stat.posterior()), QMap<int, int>(stat.weights()));
 
 			ULOGGER_DEBUG("");
@@ -2747,7 +2782,7 @@ void MainWindow::startDetection()
 				{
 					odom = new OdometryBOW(parameters);
 				}
-				_odomThread = new OdometryThread(odom);
+				_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize());
 
 				UEventsManager::addHandler(_odomThread);
 				UEventsManager::createPipe(_camera, _odomThread, "CameraEvent");
@@ -2988,6 +3023,13 @@ void MainWindow::stopDetection()
 	emit stateChanged(kInitialized);
 }
 
+void MainWindow::notifyNoMoreImages()
+{
+	QMessageBox::information(this,
+			tr("No more images..."),
+			tr("The camera has reached the end of the stream."));
+}
+
 void MainWindow::printLoopClosureIds()
 {
 	_ui->dockWidget_console->show();
@@ -3121,6 +3163,66 @@ void MainWindow::generateTOROMap()
 			_ui->dockWidget_console->show();
 			_ui->widget_console->appendMsg(QString("TORO Graph saved (global=%1, optimized=%2)... %3")
 					.arg(global?"true":"false").arg(optimized?"true":"false").arg(_toroSavingFileName));
+		}
+
+	}
+}
+
+void MainWindow::exportPoses()
+{
+	if(_posesSavingFileName.isEmpty())
+	{
+		_posesSavingFileName = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "poses.txt";
+	}
+
+	QStringList items;
+	items.append("Local map optimized");
+	items.append("Local map not optimized");
+	items.append("Global map optimized");
+	items.append("Global map not optimized");
+	bool ok;
+	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, 2, false, &ok);
+	if(ok)
+	{
+		bool optimized=false, global=false;
+		if(item.compare("Local map optimized") == 0)
+		{
+			optimized = true;
+		}
+		else if(item.compare("Local map not optimized") == 0)
+		{
+
+		}
+		else if(item.compare("Global map optimized") == 0)
+		{
+			global=true;
+			optimized=true;
+		}
+		else if(item.compare("Global map not optimized") == 0)
+		{
+			global=true;
+		}
+		else
+		{
+			UFATAL("Item \"%s\" not found?!?", item.toStdString().c_str());
+		}
+
+		QString path = QFileDialog::getSaveFileName(this, tr("Save File"), _posesSavingFileName, tr("Text file (*.txt)"));
+		if(!path.isEmpty())
+		{
+			_posesSavingFileName = path;
+			if(global)
+			{
+				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdExportPosesGlobal, path.toStdString(), optimized?1:0));
+			}
+			else
+			{
+				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdExportPosesLocal, path.toStdString(), optimized?1:0));
+			}
+
+			_ui->dockWidget_console->show();
+			_ui->widget_console->appendMsg(QString("Poses saved (global=%1, optimized=%2)... %3")
+					.arg(global?"true":"false").arg(optimized?"true":"false").arg(_posesSavingFileName));
 		}
 
 	}
@@ -5109,6 +5211,7 @@ void MainWindow::changeState(MainWindow::State newState)
 	_ui->actionGenerate_map->setVisible(!monitoring);
 	_ui->actionGenerate_local_map->setVisible(!monitoring);
 	_ui->actionGenerate_TORO_graph_graph->setVisible(!monitoring);
+	_ui->actionExport_poses_txt->setVisible(!monitoring);
 	_ui->actionOpen_working_directory->setVisible(!monitoring);
 	_ui->actionData_recorder->setVisible(!monitoring);
 	_ui->menuSelect_source->menuAction()->setVisible(!monitoring);
@@ -5188,6 +5291,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setEnabled(false);
 		_ui->actionGenerate_local_map->setEnabled(false);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
+		_ui->actionExport_poses_txt->setEnabled(false);
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
@@ -5235,6 +5339,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setEnabled(true);
 		_ui->actionGenerate_local_map->setEnabled(true);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(true);
+		_ui->actionExport_poses_txt->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
 		_ui->menuSelect_source->setEnabled(true);
@@ -5271,6 +5376,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setEnabled(false);
 		_ui->actionGenerate_local_map->setEnabled(false);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
+		_ui->actionExport_poses_txt->setEnabled(false);
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
@@ -5309,6 +5415,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionGenerate_map->setEnabled(false);
 			_ui->actionGenerate_local_map->setEnabled(false);
 			_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
+			_ui->actionExport_poses_txt->setEnabled(false);
 			_ui->actionDownload_all_clouds->setEnabled(false);
 			_ui->actionDownload_graph->setEnabled(false);
 			_state = kDetecting;
@@ -5337,6 +5444,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionGenerate_map->setEnabled(true);
 			_ui->actionGenerate_local_map->setEnabled(true);
 			_ui->actionGenerate_TORO_graph_graph->setEnabled(true);
+			_ui->actionExport_poses_txt->setEnabled(true);
 			_ui->actionDownload_all_clouds->setEnabled(true);
 			_ui->actionDownload_graph->setEnabled(true);
 			_state = kPaused;

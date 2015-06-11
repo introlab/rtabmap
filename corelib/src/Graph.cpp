@@ -110,17 +110,19 @@ Optimizer * Optimizer::create(Optimizer::Type & type, const ParametersMap & para
 	return optimizer;
 }
 
-Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored) :
+Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored, double epsilon) :
 		iterations_(iterations),
 		slam2d_(slam2d),
-		covarianceIgnored_(covarianceIgnored)
+		covarianceIgnored_(covarianceIgnored),
+		epsilon_(epsilon)
 {
 }
 
 Optimizer::Optimizer(const ParametersMap & parameters) :
-		iterations_(100),
-		slam2d_(false),
-		covarianceIgnored_(false)
+		iterations_(Parameters::defaultRGBDOptimizeIterations()),
+		slam2d_(Parameters::defaultRGBDOptimizeSlam2D()),
+		covarianceIgnored_(Parameters::defaultRGBDOptimizeVarianceIgnored()),
+		epsilon_(Parameters::defaultRGBDOptimizeEpsilon())
 {
 	parseParameters(parameters);
 }
@@ -130,6 +132,7 @@ void Optimizer::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeIterations(), iterations_);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeVarianceIgnored(), covarianceIgnored_);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeSlam2D(), slam2d_);
+	Parameters::parse(parameters, Parameters::kRGBDOptimizeEpsilon(), epsilon_);
 }
 
 void Optimizer::getConnectedGraph(
@@ -350,6 +353,7 @@ std::map<int, Transform> TOROOptimizer::optimize(
 		}
 
 		UINFO("TORO iterate begin (iterations=%d)", iterations());
+		double lasterror = 0;
 		for (int i=0; i<iterations(); i++)
 		{
 			if(intermediateGraphes && i>0)
@@ -382,12 +386,14 @@ std::map<int, Transform> TOROOptimizer::optimize(
 				}
 				intermediateGraphes->push_back(tmpPoses);
 			}
+
+			double error = 0;
 			if(isSlam2d())
 			{
 				pg2.iterate();
 
 				// compute the error and dump it
-				double error=pg2.error();
+				error=pg2.error();
 				UDEBUG("iteration %d global error=%f error/constraint=%f", i, error, error/pg2.edges.size());
 			}
 			else
@@ -396,10 +402,19 @@ std::map<int, Transform> TOROOptimizer::optimize(
 
 				// compute the error and dump it
 				double mte, mre, are, ate;
-				double error=pg3.error(&mre, &mte, &are, &ate);
+				error=pg3.error(&mre, &mte, &are, &ate);
 				UDEBUG("i %d RotGain=%f global error=%f error/constraint=%f",
 						i, pg3.getRotGain(), error, error/pg3.edges.size());
 			}
+
+			// early stop condition
+			double errorDelta = lasterror - error;
+			if(i>0 && errorDelta < this->epsilon())
+			{
+				UDEBUG("Stop optimizing, not enough improvement (%f < %f)", errorDelta, this->epsilon());
+				break;
+			}
+			lasterror = error;
 		}
 		UINFO("TORO iterate end");
 

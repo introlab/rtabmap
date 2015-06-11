@@ -67,6 +67,8 @@ public:
 			kCmdGenerateDOTLocalGraph, // params: path, id, margin
 			kCmdGenerateTOROGraphLocal, // params: path, optimized
 			kCmdGenerateTOROGraphGlobal, // params: path, optimized
+			kCmdExportPosesGlobal,
+			kCmdExportPosesLocal,
 			kCmdCleanDataBuffer,
 			kCmdPublish3DMapLocal, // params: optimized
 			kCmdPublish3DMapGlobal, // params: optimized

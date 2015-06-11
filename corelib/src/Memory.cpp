@@ -47,6 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_correspondences.h"
 #include "rtabmap/core/util3d_registration.h"
 #include "rtabmap/core/util3d_surface.h"
+#include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util2d.h"
 #include "rtabmap/core/Statistics.h"
 #include "rtabmap/core/Compression.h"
@@ -103,6 +104,9 @@ Memory::Memory(const ParametersMap & parameters) :
 	_bowForce2D(Parameters::defaultLccBowForce2D()),
 	_bowEpipolarGeometry(Parameters::defaultLccBowEpipolarGeometry()),
 	_bowEpipolarGeometryVar(Parameters::defaultLccBowEpipolarGeometryVar()),
+	_bowPnPEstimation(Parameters::defaultLccBowPnPEstimation()),
+	_bowPnPReprojError(Parameters::defaultLccBowPnPReprojError()),
+	_bowPnPFlags(Parameters::defaultLccBowPnPFlags()),
 
 	_icpMaxTranslation(Parameters::defaultLccIcpMaxTranslation()),
 	_icpMaxRotation(Parameters::defaultLccIcpMaxRotation()),
@@ -440,6 +444,9 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kLccBowForce2D(), _bowForce2D);
 	Parameters::parse(parameters, Parameters::kLccBowEpipolarGeometry(), _bowEpipolarGeometry);
 	Parameters::parse(parameters, Parameters::kLccBowEpipolarGeometryVar(), _bowEpipolarGeometryVar);
+	Parameters::parse(parameters, Parameters::kLccBowPnPEstimation(), _bowPnPEstimation);
+	Parameters::parse(parameters, Parameters::kLccBowPnPReprojError(), _bowPnPReprojError);
+	Parameters::parse(parameters, Parameters::kLccBowPnPFlags(), _bowPnPFlags);
 	Parameters::parse(parameters, Parameters::kLccIcpMaxTranslation(), _icpMaxTranslation);
 	Parameters::parse(parameters, Parameters::kLccIcpMaxRotation(), _icpMaxRotation);
 	Parameters::parse(parameters, Parameters::kLccIcp3Decimation(), _icpDecimation);
@@ -604,13 +611,23 @@ bool Memory::update(const SensorData & data, Statistics * stats)
 	//============================================================
 	// Transfer the oldest signature of the short-term memory to the working memory
 	//============================================================
-	while(_stMem.size() && _maxStMemSize>0 && (int)_stMem.size() > _maxStMemSize)
+	int validSignaturesCount = 0;
+	for(std::set<int>::iterator iter=_stMem.begin(); iter!=_stMem.end(); ++iter)
+	{
+		const Signature * s = this->getSignature(*iter);
+		UASSERT(s != 0);
+		if(!s->isBadSignature())
+		{
+			++validSignaturesCount;
+		}
+	}
+	while(_stMem.size() && _maxStMemSize>0 && validSignaturesCount > _maxStMemSize)
 	{
 		UDEBUG("Inserting node %d from STM in WM...", *_stMem.begin());
+		Signature * s = this->_getSignature(*_stMem.begin());
 		if(!_localSpaceLinksKeptInWM)
 		{
 			// remove local space links outside STM
-			Signature * s = this->_getSignature(*_stMem.begin());
 			UASSERT(s!=0);
 			std::map<int, Link> links = s->getLinks(); // get a copy because we will remove some links in "s"
 			for(std::map<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
@@ -629,6 +646,10 @@ bool Memory::update(const SensorData & data, Statistics * stats)
 					s->removeLink(iter->first);
 				}
 			}
+		}
+		if(!s->isBadSignature())
+		{
+			--validSignaturesCount;
 		}
 		_workingMem.insert(_workingMem.end(), std::make_pair(*_stMem.begin(), UTimer::now()));
 		_stMem.erase(*_stMem.begin());
@@ -851,6 +872,7 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 		int maxCheckedInDatabase, // default -1 (no limit)
 		bool incrementMarginOnLoop, // default false
 		bool ignoreLoopIds, // default false
+		bool ignoreBadSignatures, // default false
 		double * dbAccessTime
 		) const
 {
@@ -871,6 +893,7 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 	std::set<int> nextMargin;
 	nextMargin.insert(signatureId);
 	int m = 0;
+	std::set<int> ignoredIds;
 	while((maxGraphDepth == 0 || m < maxGraphDepth) && nextMargin.size())
 	{
 		// insert more recent first (priority to be loaded first from the database below if set)
@@ -888,7 +911,14 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 				const std::map<int, Link> * links = &tmpLinks;
 				if(s)
 				{
-					ids.insert(std::pair<int, int>(*jter, m));
+					if(!ignoreBadSignatures || !s->isBadSignature())
+					{
+						ids.insert(std::pair<int, int>(*jter, m));
+					}
+					else
+					{
+						ignoredIds.insert(*jter);
+					}
 
 					links = &s->getLinks();
 				}
@@ -908,12 +938,23 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 				// links
 				for(std::map<int, Link>::const_iterator iter=links->begin(); iter!=links->end(); ++iter)
 				{
-					if( !uContains(ids, iter->first))
+					if( !uContains(ids, iter->first) && ignoredIds.find(iter->first) == ignoredIds.end())
 					{
 						UASSERT(iter->second.type() != Link::kUndef);
 						if(iter->second.type() == Link::kNeighbor)
 						{
-							nextMargin.insert(iter->first);
+							if(ignoreBadSignatures && s->isBadSignature())
+							{
+								// stay on the same margin
+								if(currentMargin.insert(iter->first).second)
+								{
+									curentMarginList.push_back(iter->first);
+								}
+							}
+							else
+							{
+								nextMargin.insert(iter->first);
+							}
 						}
 						else if(!ignoreLoopIds)
 						{
@@ -1915,7 +1956,134 @@ Transform Memory::computeVisualTransform(
 	std::string msg;
 	// Guess transform from visual words
 
-	if(_bowEpipolarGeometry)
+	if(_bowPnPEstimation)
+	{
+		if(_bowEpipolarGeometry)
+		{
+			UWARN("PnP estimation and Epipolar geometry estimation are set, only PnP is used.");
+		}
+
+		// 2D -> 3D
+		if(!oldS.getWords3().empty() && !newS.getWords().empty())
+		{
+			// find correspondences
+			std::vector<int> ids = uListToVector(uUniqueKeys(newS.getWords()));
+			std::vector<cv::Point3f> objectPoints(ids.size());
+			std::vector<cv::Point2f> imagePoints(ids.size());
+			int oi=0;
+			std::vector<int> matches(ids.size());
+			for(unsigned int i=0; i<ids.size(); ++i)
+			{
+				if(oldS.getWords3().count(ids[i]) == 1)
+				{
+					pcl::PointXYZ pt = oldS.getWords3().find(ids[i])->second;
+					if(pcl::isFinite(pt))
+					{
+						objectPoints[oi].x = pt.x;
+						objectPoints[oi].y = pt.y;
+						objectPoints[oi].z = pt.z;
+						imagePoints[oi] = newS.getWords().find(ids[i])->second.pt;
+						matches[oi++] = ids[i];
+					}
+				}
+			}
+
+			objectPoints.resize(oi);
+			imagePoints.resize(oi);
+			matches.resize(oi);
+
+			if((int)matches.size() >= _bowMinInliers)
+			{
+				//PnPRansac
+				cv::Mat K = (cv::Mat_<double>(3,3) <<
+					newS.getFx(), 0, newS.getCx(),
+					0, newS.getFy()>1?newS.getFy():newS.getFx(), newS.getCy(),
+					0, 0, 1);
+
+				Transform guess = (newS.getLocalTransform()).inverse();
+				cv::Mat R = (cv::Mat_<double>(3,3) <<
+						(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
+						(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
+						(double)guess.r31(), (double)guess.r32(), (double)guess.r33());
+				cv::Mat rvec(1,3, CV_64FC1);
+				cv::Rodrigues(R, rvec);
+				cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guess.x(), (double)guess.y(), (double)guess.z());
+				std::vector<int> inliersV;
+				cv::solvePnPRansac(objectPoints,
+						imagePoints,
+						K,
+						cv::Mat(),
+						rvec,
+						tvec,
+						true,
+						_bowIterations,
+						_bowPnPReprojError,
+						0,
+						inliersV,
+						_bowPnPFlags);
+
+				if(inliers)
+				{
+					*inliers = (int)inliersV.size();
+				}
+				if((int)inliersV.size() >= _bowMinInliers)
+				{
+					cv::Rodrigues(rvec, R);
+					Transform pnp(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
+								   R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
+								   R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
+
+					transform = newS.getLocalTransform() * pnp;
+
+					UDEBUG("Odom transform = %s", transform.prettyPrint().c_str());
+
+					// compute variance (like in PCL computeVariance() method of sac_model.h)
+					if(varianceOut)
+					{
+						std::vector<float> errorSqrdDists(inliersV.size());
+						oi = 0;
+						for(unsigned int i=0; i<inliersV.size(); ++i)
+						{
+							std::multimap<int, pcl::PointXYZ>::const_iterator iter = newS.getWords3().find(matches[inliersV[i]]);
+							if(iter != newS.getWords3().end() && pcl::isFinite(iter->second))
+							{
+								const cv::Point3f & objPt = objectPoints[inliersV[i]];
+								pcl::PointXYZ newPt = util3d::transformPoint(iter->second, transform);
+								errorSqrdDists[oi++] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
+							}
+						}
+						errorSqrdDists.resize(oi);
+						*varianceOut= 0;
+						if(errorSqrdDists.size())
+						{
+							std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
+							double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
+							*varianceOut = 2.1981 * median_error_sqr;
+						}
+					}
+				}
+				else
+				{
+					msg = uFormat("PnP not enough inliers (%d[%d] < %d), rejecting the transform...",
+							(int)inliersV.size(), (int)matches.size(), _bowMinInliers);
+					UINFO(msg.c_str());
+				}
+			}
+			else
+			{
+				msg = uFormat("Not enough inliers %d < %d", (int)matches.size(), _bowMinInliers);
+				UINFO(msg.c_str());
+			}
+		}
+		else
+		{
+			msg = uFormat("Not enough features in the new image (old=%d new=%d min=%d)",
+					(int)oldS.getWords3().size(), (int)newS.getWords().size(), _bowMinInliers);
+			UINFO(msg.c_str());
+		}
+
+	}
+	else if(_bowEpipolarGeometry)
 	{
 		// we only need the camera transform, send guess words3 for scale estimation
 		if(oldS.getWords3().size())
@@ -1988,6 +2156,7 @@ Transform Memory::computeVisualTransform(
 	}
 	else
 	{
+		// 3D -> 3D
 		if(!oldS.getWords3().empty() && !newS.getWords3().empty())
 		{
 			pcl::PointCloud<pcl::PointXYZ>::Ptr inliersOld(new pcl::PointCloud<pcl::PointXYZ>);
@@ -2887,72 +3056,97 @@ void Memory::rehearsal(Signature * signature, Statistics * stats)
 	}
 
 	//============================================================
-	// Compare with the last
+	// Compare with the last (not null)
 	//============================================================
-	int id = signature->getLinks().begin()->first;
-	UDEBUG("Comparing with last signature (%d)...", id);
-	Signature * sB = this->_getSignature(id);
-	if(!sB)
+	Signature * sB = 0;
+	for(std::set<int>::reverse_iterator iter=_stMem.rbegin(); iter!=_stMem.rend(); ++iter)
 	{
-		UFATAL("Signature %d null?!?", id);
-	}
-	float sim = signature->compareTo(*sB);
-
-	int merged = 0;
-	if(sim >= _similarityThreshold)
-	{
-		if(_incrementalMemory)
+		Signature * s = this->_getSignature(*iter);
+		UASSERT(s!=0);
+		if(!s->isBadSignature() && s->id() != signature->id())
 		{
-			if(signature->getLinks().begin()->second.transform().isNull())
+			sB = s;
+			break;
+		}
+	}
+	if(sB)
+	{
+		int id = sB->id();
+		UDEBUG("Comparing with signature (%d)...", id);
+
+		float sim = signature->compareTo(*sB);
+
+		int merged = 0;
+		if(sim >= _similarityThreshold)
+		{
+			if(_incrementalMemory)
 			{
-				if(this->rehearsalMerge(id, signature->id()))
+				if(signature->hasLink(id))
 				{
-					merged = id;
+					if(signature->getLinks().begin()->second.transform().isNull())
+					{
+						if(this->rehearsalMerge(id, signature->id()))
+						{
+							merged = id;
+						}
+					}
+					else
+					{
+						float x,y,z, roll,pitch,yaw;
+						signature->getLinks().begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+						if((_rehearsalMaxDistance>0.0f && (
+								fabs(x) > _rehearsalMaxDistance ||
+								fabs(y) > _rehearsalMaxDistance ||
+								fabs(z) > _rehearsalMaxDistance)) ||
+							(_rehearsalMaxAngle>0.0f && (
+								fabs(roll) > _rehearsalMaxAngle ||
+								fabs(pitch) > _rehearsalMaxAngle ||
+								fabs(yaw) > _rehearsalMaxAngle)))
+						{
+							if(_rehearsalWeightIgnoredWhileMoving)
+							{
+								UINFO("Rehearsal ignored because the robot has moved more than %f m or %f rad",
+										_rehearsalMaxDistance, _rehearsalMaxAngle);
+							}
+							else
+							{
+								// if the robot has moved, increase only weight of the new one
+								signature->setWeight(sB->getWeight() + signature->getWeight() + 1);
+								sB->setWeight(0);
+								UINFO("Only updated weight to %d of %d (old=%d) because the robot has moved. (d=%f a=%f)",
+										signature->getWeight(), signature->id(), sB->id(), _rehearsalMaxDistance, _rehearsalMaxAngle);
+							}
+						}
+						else if(this->rehearsalMerge(id, signature->id()))
+						{
+							merged = id;
+						}
+					}
+				}
+				else
+				{
+					// cannot merge not neighbor signatures, just update weight
+					signature->setWeight(sB->getWeight() + signature->getWeight() + 1);
+					sB->setWeight(0);
+					UINFO("Only updated weight to %d of %d (old=%d) because the signatures are not neighbors.",
+							signature->getWeight(), signature->id(), sB->id());
 				}
 			}
 			else
 			{
-				float x,y,z, roll,pitch,yaw;
-				signature->getLinks().begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-				if((_rehearsalMaxDistance>0.0f && (
-						fabs(x) > _rehearsalMaxDistance ||
-						fabs(y) > _rehearsalMaxDistance ||
-						fabs(z) > _rehearsalMaxDistance)) ||
-					(_rehearsalMaxAngle>0.0f && (
-						fabs(roll) > _rehearsalMaxAngle ||
-						fabs(pitch) > _rehearsalMaxAngle ||
-						fabs(yaw) > _rehearsalMaxAngle)))
-				{
-					if(_rehearsalWeightIgnoredWhileMoving)
-					{
-						UINFO("Rehearsal ignored because the robot has moved more than %f m or %f rad",
-								_rehearsalMaxDistance, _rehearsalMaxAngle);
-					}
-					else
-					{
-						// if the robot has moved, increase only weight of the new one
-						signature->setWeight(sB->getWeight() + signature->getWeight() + 1);
-						sB->setWeight(0);
-						UINFO("Only updated weight to %d of %d (old=%d) because the robot has moved. (d=%f a=%f)",
-								signature->getWeight(), signature->id(), sB->id(), _rehearsalMaxDistance, _rehearsalMaxAngle);
-					}
-				}
-				else if(this->rehearsalMerge(id, signature->id()))
-				{
-					merged = id;
-				}
+				signature->setWeight(signature->getWeight() + 1 + sB->getWeight());
 			}
 		}
-		else
-		{
-			signature->setWeight(signature->getWeight() + 1 + sB->getWeight());
-		}
+
+		if(stats) stats->addStatistic(Statistics::kMemoryRehearsal_merged(), merged);
+		if(stats) stats->addStatistic(Statistics::kMemoryRehearsal_sim(), sim);
+		UDEBUG("merged=%d, sim=%f t=%fs", merged, sim, timer.ticks());
 	}
-
-	if(stats) stats->addStatistic(Statistics::kMemoryRehearsal_merged(), merged);
-	if(stats) stats->addStatistic(Statistics::kMemoryRehearsal_sim(), sim);
-
-	UDEBUG("merged=%d, sim=%f t=%fs", merged, sim, timer.ticks());
+	else
+	{
+		if(stats) stats->addStatistic(Statistics::kMemoryRehearsal_merged(), 0);
+		if(stats) stats->addStatistic(Statistics::kMemoryRehearsal_sim(), 0);
+	}
 }
 
 bool Memory::rehearsalMerge(int oldId, int newId)
@@ -3608,7 +3802,7 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 	pcl::PointCloud<pcl::PointXYZ>::Ptr keypoints3D(new pcl::PointCloud<pcl::PointXYZ>);
 	if(data.keypoints().size() == 0)
 	{
-		if(_feature2D->getMaxFeatures() >= 0)
+		if(_feature2D->getMaxFeatures() >= 0 && !data.image().empty())
 		{
 			// Extract features
 			cv::Mat imageMono;
@@ -3811,6 +4005,10 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 			{
 				descriptors = cv::Mat();
 			}
+		}
+		else if(data.image().empty())
+		{
+			UDEBUG("Empty image, cannot extract features...");
 		}
 		else
 		{
@@ -4061,11 +4259,11 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
 			rtabmap::compressData2(laserScan),
 			cv::Mat(),
 			cv::Mat(),
-			0,
-			0,
-			0,
-			0,
-			Transform(),
+			fx,
+			fyOrBaseline,
+			cx,
+			cy,
+			data.localTransform(),
 			data.laserScanMaxPts());
 	}
 	if(this->isRawDataKept())
@@ -4309,7 +4507,42 @@ void Memory::getMetricConstraints(
 					uContains(poses, jter->first) &&
 					graph::findLink(links, *iter, jter->first) == links.end())
 				{
-					links.insert(std::make_pair(*iter, jter->second));
+					// Remove bad signatures from the graph (Intermediate nodes)
+					if(!lookInDatabase)
+					{
+						Link link = jter->second;
+						const Signature * s = this->getSignature(jter->first);
+						UASSERT(s!=0);
+						while(s && s->isBadSignature())
+						{
+							// skip to next neighbor, well we assume that bad signatures
+							// are only linked by max 2 neighbor links.
+							std::map<int, Link> n = this->getNeighborLinks(s->id(), false);
+							UASSERT(n.size() <= 2);
+							std::map<int, Link>::iterator uter = n.upper_bound(s->id());
+							if(uter != n.end())
+							{
+								const Signature * s2 = this->getSignature(uter->first);
+								if(s2)
+								{
+									link = link.merge(uter->second);
+									poses.erase(s->id());
+									s = s2;
+								}
+
+							}
+							else
+							{
+								break;
+							}
+						}
+
+						links.insert(std::make_pair(*iter, link));
+					}
+					else
+					{
+						links.insert(std::make_pair(*iter, jter->second));
+					}
 				}
 			}
 

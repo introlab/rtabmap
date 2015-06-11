@@ -90,7 +90,8 @@ public:
 		kSrcOpenNI2,
 		kSrcFreenect2,
 		kSrcStereoDC1394,
-		kSrcStereoFlyCapture2
+		kSrcStereoFlyCapture2,
+		kSrcStereoImages
 	};
 
 public:
@@ -205,6 +206,7 @@ public:
 	double getLoopThr() const;
 	double getVpThr() const;
 	int getOdomStrategy() const;
+	int getOdomBufferSize() const;
 	QString getCameraInfoDir() const; // "workinfDir/camera_info"
 
 	//
@@ -248,6 +250,8 @@ private slots:
 	void setupTreeView();
 	void updateBasicParameter();
 	void openDatabaseViewer();
+	void selectSourceStereoImagesStamps();
+	void selectSourceStereoImagesPath();
 	void updateRGBDCameraGroupBoxVisibility();
 	void testOdometry();
 	void testRGBDCamera();

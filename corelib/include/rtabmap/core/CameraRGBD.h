@@ -86,7 +86,7 @@ class RTABMAP_EXP CameraRGBD
 {
 public:
 	virtual ~CameraRGBD();
-	void takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
+	void takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy, double & stamp);
 
 	virtual bool init(const std::string & calibrationFolder = ".") = 0;
 	virtual bool isCalibrated() const = 0;
@@ -116,7 +116,7 @@ protected:
 	/**
 	 * returned rgb and depth images should be already rectified
 	 */
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy) = 0;
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy, double & stamp) = 0;
 
 private:
 	float _imageRate;
@@ -152,7 +152,7 @@ public:
     virtual std::string getSerial() const;
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy, double & stamp);
 
 private:
     pcl::Grabber* interface_;
@@ -186,7 +186,7 @@ public:
 	virtual std::string getSerial() const {return "";} // unknown with OpenCV
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy, double & stamp);
 
 private:
 	bool _asus;
@@ -222,7 +222,7 @@ public:
 	bool setMirroring(bool enabled);
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy, double & stamp);
 
 private:
 	openni::Device * _device;
@@ -257,7 +257,7 @@ public:
 	virtual std::string getSerial() const;
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy, double & stamp);
 
 private:
 	int deviceId_;
@@ -295,7 +295,7 @@ public:
 	virtual std::string getSerial() const;
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
+	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy, double & stamp);
 
 private:
 	int deviceId_;
@@ -328,7 +328,7 @@ public:
 	virtual std::string getSerial() const;
 
 protected:
-	virtual void captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy);
+	virtual void captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy, double & stamp);
 
 private:
 	DC1394Device *device_;
@@ -353,11 +353,46 @@ public:
 	virtual std::string getSerial() const;
 
 protected:
-	virtual void captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy);
+	virtual void captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy, double & stamp);
 
 private:
 	FlyCapture2::Camera * camera_;
 	void * triclopsCtx_; // TriclopsContext
+};
+
+/////////////////////////
+// CameraStereoImages
+/////////////////////////
+class CameraImages;
+class RTABMAP_EXP CameraStereoImages :
+	public CameraRGBD
+{
+public:
+	static bool available();
+
+public:
+	CameraStereoImages(
+			const std::string & path,
+			const std::string & cameraName = "stereo_images", // calibration file name
+			const std::string & timestampsPath = "", // "times.txt"
+			float imageRate=0.0f,
+			const Transform & localTransform = Transform::getIdentity());
+	virtual ~CameraStereoImages();
+
+	virtual bool init(const std::string & calibrationFolder = ".");
+	virtual bool isCalibrated() const;
+	virtual std::string getSerial() const;
+
+protected:
+	virtual void captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy, double & stamp);
+
+private:
+	CameraImages * camera_;
+	CameraImages * camera2_;
+	std::string cameraName_;
+	std::string timestampsPath_;
+	std::list<double> stamps_;
+	StereoCameraModel stereoModel_;
 };
 
 } // namespace rtabmap

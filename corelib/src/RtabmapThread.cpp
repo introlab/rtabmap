@@ -46,6 +46,7 @@ namespace rtabmap {
 RtabmapThread::RtabmapThread(Rtabmap * rtabmap) :
 		_dataBufferMaxSize(Parameters::defaultRtabmapImageBufferSize()),
 		_rate(Parameters::defaultRtabmapDetectionRate()),
+		_createIntermediateNodes(Parameters::defaultRtabmapCreateIntermediateNodes()),
 		_frameRateTimer(new UTimer()),
 		_rtabmap(rtabmap),
 		_paused(false),
@@ -106,10 +107,14 @@ void RtabmapThread::setDetectorRate(float rate)
 	_rate = rate;
 }
 
-void RtabmapThread::setBufferSize(int bufferSize)
+void RtabmapThread::setDataBufferSize(unsigned int size)
 {
-	UASSERT(bufferSize >= 0);
-	_dataBufferMaxSize = bufferSize;
+	_dataBufferMaxSize = size;
+}
+
+void RtabmapThread::createIntermediateNodes(bool enabled)
+{
+	enabled = _createIntermediateNodes;
 }
 
 void RtabmapThread::publishMap(bool optimized, bool full) const
@@ -206,6 +211,7 @@ void RtabmapThread::mainLoop()
 		UASSERT(!parameters.at("RtabmapThread/DatabasePath").empty());
 		Parameters::parse(parameters, Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
 		Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), _rate);
+		Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), _createIntermediateNodes);
 		UASSERT(_dataBufferMaxSize >= 0);
 		UASSERT(_rate >= 0.0f);
 		_rtabmap->init(parameters, parameters.at("RtabmapThread/DatabasePath"));
@@ -213,6 +219,7 @@ void RtabmapThread::mainLoop()
 	case kStateChangingParameters:
 		Parameters::parse(parameters, Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
 		Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), _rate);
+		Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), _createIntermediateNodes);
 		UASSERT(_dataBufferMaxSize >= 0);
 		UASSERT(_rate >= 0.0f);
 		_rtabmap->parseParameters(parameters);
@@ -246,6 +253,12 @@ void RtabmapThread::mainLoop()
 		break;
 	case kStateGeneratingTOROGraphGlobal:
 		_rtabmap->generateTOROGraph(parameters.at("path"), atoi(parameters.at("optimized").c_str())!=0, true);
+		break;
+	case kStateExportingPosesLocal:
+		_rtabmap->exportPoses(parameters.at("path"), atoi(parameters.at("optimized").c_str())!=0, false);
+		break;
+	case kStateExportingPosesGlobal:
+		_rtabmap->exportPoses(parameters.at("path"), atoi(parameters.at("optimized").c_str())!=0, true);
 		break;
 	case kStateCleanDataBuffer:
 		this->clearBufferedData();
@@ -419,6 +432,28 @@ void RtabmapThread::handleEvent(UEvent* event)
 			pushNewState(kStateGeneratingTOROGraphGlobal, param);
 
 		}
+		else if(cmd == RtabmapEventCmd::kCmdExportPosesLocal)
+		{
+			UASSERT(!rtabmapEvent->getStr().empty());
+
+			ULOGGER_DEBUG("CMD_EXPORT_POSES_LOCAL");
+			ParametersMap param;
+			param.insert(ParametersPair("path", rtabmapEvent->getStr()));
+			param.insert(ParametersPair("optimized", uNumber2Str(rtabmapEvent->getInt())));
+			pushNewState(kStateExportingPosesLocal, param);
+
+		}
+		else if(cmd == RtabmapEventCmd::kCmdExportPosesGlobal)
+		{
+			UASSERT(!rtabmapEvent->getStr().empty());
+
+			ULOGGER_DEBUG("CMD_EXPORT_POSES_GLOBAL");
+			ParametersMap param;
+			param.insert(ParametersPair("path", rtabmapEvent->getStr()));
+			param.insert(ParametersPair("optimized", uNumber2Str(rtabmapEvent->getInt())));
+			pushNewState(kStateExportingPosesGlobal, param);
+
+		}
 		else if(cmd == RtabmapEventCmd::kCmdCleanDataBuffer)
 		{
 			ULOGGER_DEBUG("CMD_CLEAN_DATA_BUFFER");
@@ -488,8 +523,7 @@ void RtabmapThread::handleEvent(UEvent* event)
 void RtabmapThread::process()
 {
 	SensorData data;
-	getData(data);
-	if(data.isValid() && _state.empty())
+	if(_state.empty() && getData(data))
 	{
 		if(_rtabmap->getMemory())
 		{
@@ -518,20 +552,14 @@ void RtabmapThread::addData(const SensorData & sensorData)
 			return;
 		}
 
+		bool ignoreFrame = false;
 		if(_rate>0.0f)
 		{
 			if(_frameRateTimer->getElapsedTime() < 1.0f/_rate)
 			{
-				if(!lastPose_.isIdentity() && sensorData.pose().isIdentity())
-				{
-					UWARN("Odometry is reset (identity pose detected). Increment map id!");
-					pushNewState(kStateTriggeringMap);
-					_rotVariance = 0;
-					_transVariance = 0;
-				}
-
-				return;
+				ignoreFrame = true;
 			}
+
 		}
 		if(_dataBufferMaxSize > 0 && !lastPose_.isIdentity() && sensorData.pose().isIdentity())
 		{
@@ -540,7 +568,15 @@ void RtabmapThread::addData(const SensorData & sensorData)
 			_rotVariance = 0;
 			_transVariance = 0;
 		}
-		_frameRateTimer->start();
+
+		if(ignoreFrame && !_createIntermediateNodes)
+		{
+			return;
+		}
+		else if(!ignoreFrame)
+		{
+			_frameRateTimer->start();
+		}
 
 		lastPose_ = sensorData.pose();
 		if(sensorData.poseRotVariance() > _rotVariance)
@@ -555,7 +591,26 @@ void RtabmapThread::addData(const SensorData & sensorData)
 		bool notify = true;
 		_dataMutex.lock();
 		{
-			_dataBuffer.push_back(sensorData);
+			if(ignoreFrame)
+			{
+				// remove data from the frame, keeping only constraints
+				SensorData tmp(
+						cv::Mat(),
+						cv::Mat(),
+						0,0,0,0,
+						sensorData.localTransform(),
+						sensorData.pose(),
+						sensorData.poseRotVariance(),
+						sensorData.poseTransVariance(),
+						sensorData.id(),
+						sensorData.stamp(),
+						sensorData.userData());
+				_dataBuffer.push_back(tmp);
+			}
+			else
+			{
+				_dataBuffer.push_back(sensorData);
+			}
 			if(_rotVariance <= 0)
 			{
 				_rotVariance = 1.0f;
@@ -567,7 +622,7 @@ void RtabmapThread::addData(const SensorData & sensorData)
 			_dataBuffer.back().setPose(_dataBuffer.back().pose(), _rotVariance, _transVariance);
 			_rotVariance = 0;
 			_transVariance = 0;
-			while(_dataBufferMaxSize > 0 && _dataBuffer.size() > (unsigned int)_dataBufferMaxSize)
+			while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
 			{
 				ULOGGER_WARN("Data buffer is full, the oldest data is removed to add the new one.");
 				_dataBuffer.pop_front();
@@ -583,7 +638,7 @@ void RtabmapThread::addData(const SensorData & sensorData)
 	}
 }
 
-void RtabmapThread::getData(SensorData & image)
+bool RtabmapThread::getData(SensorData & image)
 {
 	ULOGGER_DEBUG("");
 
@@ -591,28 +646,18 @@ void RtabmapThread::getData(SensorData & image)
 	_dataAdded.acquire();
 	ULOGGER_INFO("wake-up");
 
+	bool dataFilled = false;
 	_dataMutex.lock();
 	{
 		if(!_dataBuffer.empty())
 		{
 			image = _dataBuffer.front();
 			_dataBuffer.pop_front();
+			dataFilled = true;
 		}
 	}
 	_dataMutex.unlock();
-}
-
-void RtabmapThread::setDataBufferSize(int size)
-{
-	if(size < 0)
-	{
-		ULOGGER_WARN("size < 0, then setting it to 0 (inf).");
-		_dataBufferMaxSize = 0;
-	}
-	else
-	{
-		_dataBufferMaxSize = size;
-	}
+	return dataFilled;
 }
 
 } /* namespace rtabmap */

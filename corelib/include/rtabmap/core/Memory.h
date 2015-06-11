@@ -91,6 +91,7 @@ public:
 			int maxCheckedInDatabase = -1,
 			bool incrementMarginOnLoop = false,
 			bool ignoreLoopIds = false,
+			bool ignoreBadSignatures = false,
 			double * dbAccessTime = 0) const;
 	std::map<int, float> getNeighborsIdRadius(
 			int signatureId,
@@ -264,6 +265,9 @@ private:
 	bool _bowForce2D;
 	bool _bowEpipolarGeometry;
 	float _bowEpipolarGeometryVar;
+	bool _bowPnPEstimation;
+	double _bowPnPReprojError;
+	int _bowPnPFlags;
 	float _icpMaxTranslation;
 	float _icpMaxRotation;
 	int _icpDecimation;

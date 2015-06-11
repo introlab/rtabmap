@@ -1064,7 +1064,7 @@ void DatabaseViewer::view3DMap()
 	if(ok)
 	{
 		int decimation = item.toInt();
-		double maxDepth = QInputDialog::getDouble(this, tr("Camera depth?"), tr("Maximum depth (m, 0=no max):"), 4.0, 0, 10, 2, &ok);
+		double maxDepth = QInputDialog::getDouble(this, tr("Camera depth?"), tr("Maximum depth (m, 0=no max):"), 4.0, 0, 100, 2, &ok);
 		if(ok)
 		{
 			std::map<int, Transform> optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
@@ -1188,7 +1188,7 @@ void DatabaseViewer::generate3DMap()
 	if(ok)
 	{
 		int decimation = item.toInt();
-		double maxDepth = QInputDialog::getDouble(this, tr("Camera depth?"), tr("Maximum depth (m, 0=no max):"), 4.0, 0, 10, 2, &ok);
+		double maxDepth = QInputDialog::getDouble(this, tr("Camera depth?"), tr("Maximum depth (m, 0=no max):"), 4.0, 0, 100, 2, &ok);
 		if(ok)
 		{
 			QString path = QFileDialog::getExistingDirectory(this, tr("Save directory"), pathDatabase_);
@@ -2957,6 +2957,7 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 		parameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(ui_->doubleSpinBox_visual_nndr->value())));
 		parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
 		parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
+		parameters.insert(ParametersPair(Parameters::kLccBowMaxDepth(), uNumber2Str(ui_->doubleSpinBox_visual_maxDepth->value())));
 		parameters.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
 		parameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0"));
 		parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "0"));
@@ -3075,6 +3076,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 			parameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(ui_->doubleSpinBox_visual_nndr->value())));
 			parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
 			parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
+			parameters.insert(ParametersPair(Parameters::kLccBowMaxDepth(), uNumber2Str(ui_->doubleSpinBox_visual_maxDepth->value())));
+			parameters.insert(ParametersPair(Parameters::kLccBowPnPEstimation(), uBool2Str(ui_->checkBox_pnp->isChecked())));
 			parameters.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
 			parameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0"));
 			parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "0"));
@@ -3112,6 +3115,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 			parameters.insert(ParametersPair(Parameters::kLccBowMaxDepth(), uNumber2Str(ui_->doubleSpinBox_visual_maxDepth->value())));
 			parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
 			parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
+			parameters.insert(ParametersPair(Parameters::kLccBowPnPEstimation(), uBool2Str(ui_->checkBox_pnp->isChecked())));
 			memory_->parseParameters(parameters);
 			t = memory_->computeVisualTransform(to, from, &rejectedMsg, &inliers, &variance);
 		}

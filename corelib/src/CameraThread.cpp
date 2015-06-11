@@ -112,25 +112,26 @@ void CameraThread::mainLoop()
 	float fy = 0.0f;
 	float cx = 0.0f;
 	float cy = 0.0f;
+	double stamp = UTimer::now();
 	if(_cameraRGBD)
 	{
-		_cameraRGBD->takeImage(rgb, depth, fx, fy, cx, cy);
+		_cameraRGBD->takeImage(rgb, depth, fx, fy, cx, cy, stamp);
 	}
 	else
 	{
 		rgb = _camera->takeImage();
 	}
 
-	if(!rgb.empty() && !this->isKilled())
+	if(!rgb.empty())
 	{
 		if(_cameraRGBD)
 		{
-			SensorData data(rgb, depth, fx, fy, cx, cy, _cameraRGBD->getLocalTransform(), Transform(), 1, 1, ++_seq, UTimer::now());
+			SensorData data(rgb, depth, fx, fy, cx, cy, _cameraRGBD->getLocalTransform(), Transform(), 1, 1, ++_seq, stamp);
 			this->post(new CameraEvent(data, _cameraRGBD->getSerial()));
 		}
 		else
 		{
-			this->post(new CameraEvent(rgb, ++_seq, UTimer::now()));
+			this->post(new CameraEvent(rgb, ++_seq, stamp));
 		}
 	}
 	else if(!this->isKilled())

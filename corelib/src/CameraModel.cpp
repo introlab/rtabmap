@@ -125,6 +125,10 @@ bool CameraModel::load(const std::string & filePath)
 
 		return true;
 	}
+	else
+	{
+		UWARN("Could not load calibration file \"%s\".", filePath.c_str());
+	}
 	return false;
 }
 
@@ -241,11 +245,15 @@ cv::Mat CameraModel::rectifyDepth(const cv::Mat & raw) const
 //
 //StereoCameraModel
 //
-bool StereoCameraModel::load(const std::string & directory, const std::string & cameraName)
+bool StereoCameraModel::load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform)
 {
 	name_ = cameraName;
 	if(left_.load(directory+"/"+cameraName+"_left.yaml") && right_.load(directory+"/"+cameraName+"_right.yaml"))
 	{
+		if(ignoreStereoTransform)
+		{
+			return true;
+		}
 		//load rotation, translation
 		R_ = cv::Mat();
 		T_ = cv::Mat();
@@ -299,13 +307,21 @@ bool StereoCameraModel::load(const std::string & directory, const std::string & 
 
 			return true;
 		}
+		else
+		{
+			UWARN("Could not load stereo calibration file \"%s\".", filePath.c_str());
+		}
 	}
 	return false;
 }
-bool StereoCameraModel::save(const std::string & directory, const std::string & cameraName)
+bool StereoCameraModel::save(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform)
 {
 	if(left_.save(directory+"/"+cameraName+"_left.yaml") && right_.save(directory+"/"+cameraName+"_right.yaml"))
 	{
+		if(ignoreStereoTransform)
+		{
+			return true;
+		}
 		std::string filePath = directory+"/"+cameraName+"_pose.yaml";
 		if(!filePath.empty() && !name_.empty() && !R_.empty() && !T_.empty())
 		{

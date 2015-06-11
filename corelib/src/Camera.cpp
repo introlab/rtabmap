@@ -237,7 +237,20 @@ bool CameraImages::init()
 	{
 		UWARN("Directory is empty \"%s\"", _path.c_str());
 	}
+	else
+	{
+		UINFO("path=%s images=%d", _path.c_str(), (int)this->imagesCount());
+	}
 	return _dir->isValid();
+}
+
+unsigned int CameraImages::imagesCount() const
+{
+	if(_dir)
+	{
+		return _dir->getFileNames().size();
+	}
+	return 0;
 }
 
 cv::Mat CameraImages::captureImage()

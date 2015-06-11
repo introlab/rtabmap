@@ -107,6 +107,7 @@ public:
 
 	virtual bool init();
 	std::string getPath() const {return _path;}
+	unsigned int imagesCount() const;
 
 protected:
 	virtual cv::Mat captureImage();

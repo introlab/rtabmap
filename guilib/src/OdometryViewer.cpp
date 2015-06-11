@@ -48,7 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, int qualityWarningThr, QWidget * parent) :
+OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, float maxDepth, int qualityWarningThr, QWidget * parent) :
 		QDialog(parent),
 		imageView_(new ImageView(this)),
 		cloudView_(new CloudViewer(this)),
@@ -66,12 +66,14 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, i
 
 	imageView_->setImageDepthShown(false);
 	imageView_->setMinimumSize(320, 240);
+	imageView_->setAlpha(255);
 
-	cloudView_->setCameraFree();
+	cloudView_->setCameraTargetLocked();
 	cloudView_->setGridShown(true);
 
 	QLabel * maxCloudsLabel = new QLabel("Max clouds", this);
 	QLabel * voxelLabel = new QLabel("Voxel", this);
+	QLabel * maxDepthLabel = new QLabel("Max depth", this);
 	QLabel * decimationLabel = new QLabel("Decimation", this);
 	maxCloudsSpin_ = new QSpinBox(this);
 	maxCloudsSpin_->setMinimum(0);
@@ -84,6 +86,13 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, i
 	voxelSpin_->setSingleStep(0.01);
 	voxelSpin_->setSuffix(" m");
 	voxelSpin_->setValue(voxelSize);
+	maxDepthSpin_ = new QDoubleSpinBox(this);
+	maxDepthSpin_->setMinimum(0);
+	maxDepthSpin_->setMaximum(100);
+	maxDepthSpin_->setDecimals(0);
+	maxDepthSpin_->setSingleStep(1);
+	maxDepthSpin_->setSuffix(" m");
+	maxDepthSpin_->setValue(maxDepth);
 	decimationSpin_ = new QSpinBox(this);
 	decimationSpin_->setMinimum(1);
 	decimationSpin_->setMaximum(16);
@@ -107,6 +116,8 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, i
 	hlayout2->addWidget(maxCloudsSpin_);
 	hlayout2->addWidget(voxelLabel);
 	hlayout2->addWidget(voxelSpin_);
+	hlayout2->addWidget(maxDepthLabel);
+	hlayout2->addWidget(maxDepthSpin_);
 	hlayout2->addWidget(decimationLabel);
 	hlayout2->addWidget(decimationSpin_);
 	hlayout2->addWidget(timeLabel_);
@@ -170,25 +181,32 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 		cloudView_->setBackgroundColor(Qt::black);
 	}
 
-	timeLabel_->setText(QString("%1 s").arg(info.time));
+	timeLabel_->setText(QString("%1 s").arg(info.timeEstimation));
 
 	if(!data.image().empty() && !data.depthOrRightImage().empty() && data.fx()>0.0f && data.fyOrBaseline()>0.0f)
 	{
 		UDEBUG("New pose = %s, quality=%d", data.pose().prettyPrint().c_str(), quality);
 
-		if(data.image().cols % decimationSpin_->value() == 0 &&
-		   data.image().rows % decimationSpin_->value() == 0)
+		if(!data.depth().empty())
 		{
-			validDecimationValue_ = decimationSpin_->value();
+			if(data.image().cols % decimationSpin_->value() == 0 &&
+			   data.image().rows % decimationSpin_->value() == 0)
+			{
+				validDecimationValue_ = decimationSpin_->value();
+			}
+			else
+			{
+				UWARN("Decimation (%d) must be a denominator of the width and height of "
+						"the image (%d/%d). Using last valid decimation value (%d).",
+						decimationSpin_->value(),
+						data.image().cols,
+						data.image().rows,
+						validDecimationValue_);
+			}
 		}
 		else
 		{
-			UWARN("Decimation (%d) must be a denominator of the width and height of "
-					"the image (%d/%d). Using last valid decimation value (%d).",
-					decimationSpin_->value(),
-					data.image().cols,
-					data.image().rows,
-					validDecimationValue_);
+			validDecimationValue_ = decimationSpin_->value();
 		}
 
 
@@ -212,6 +230,11 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 					data.cx(), data.cy(),
 					data.fx(), data.baseline(),
 					validDecimationValue_);
+		}
+
+		if(maxDepthSpin_->value() > 0.0f && cloud->size())
+		{
+			cloud = util3d::passThrough(cloud, "z", 0, maxDepthSpin_->value());
 		}
 
 		if(voxelSpin_->value() > 0.0f && cloud->size())

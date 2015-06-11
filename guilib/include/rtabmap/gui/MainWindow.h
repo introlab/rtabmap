@@ -131,10 +131,12 @@ private slots:
 	void startDetection();
 	void pauseDetection();
 	void stopDetection();
+	void notifyNoMoreImages();
 	void printLoopClosureIds();
 	void generateMap();
 	void generateLocalMap();
 	void generateTOROMap();
+	void exportPoses();
 	void postProcessing();
 	void deleteMemory();
 	void openWorkingDirectory();
@@ -308,6 +310,7 @@ private:
 
 	QString _graphSavingFileName;
 	QString _toroSavingFileName;
+	QString _posesSavingFileName;
 	bool _autoScreenCaptureOdomSync;
 
 	QVector<int> _refIds;

@@ -34,8 +34,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-OdometryThread::OdometryThread(Odometry * odometry) :
+OdometryThread::OdometryThread(Odometry * odometry, unsigned int dataBufferMaxSize) :
 	_odometry(odometry),
+	_dataBufferMaxSize(dataBufferMaxSize),
 	_resetOdometry(false)
 {
 	UASSERT(_odometry != 0);
@@ -92,8 +93,7 @@ void OdometryThread::mainLoop()
 	}
 
 	SensorData data;
-	getData(data);
-	if(data.isValid())
+	if(getData(data))
 	{
 		OdometryInfo info;
 		Transform pose = _odometry->process(data, &info);
@@ -124,8 +124,13 @@ void OdometryThread::addData(const SensorData & data)
 	bool notify = true;
 	_dataMutex.lock();
 	{
-		notify = !_dataBuffer.isValid();
-		_dataBuffer = data;
+		_dataBuffer.push_back(data);
+		while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
+		{
+			ULOGGER_WARN("Data buffer is full, the oldest data is removed to add the new one.");
+			_dataBuffer.pop_front();
+			notify = false;
+		}
 	}
 	_dataMutex.unlock();
 
@@ -135,18 +140,21 @@ void OdometryThread::addData(const SensorData & data)
 	}
 }
 
-void OdometryThread::getData(SensorData & data)
+bool OdometryThread::getData(SensorData & data)
 {
+	bool dataFilled = false;
 	_dataAdded.acquire();
 	_dataMutex.lock();
 	{
-		if(_dataBuffer.isValid())
+		if(!_dataBuffer.empty())
 		{
-			data = _dataBuffer;
-			_dataBuffer = SensorData();
+			data = _dataBuffer.front();
+			_dataBuffer.pop_front();
+			dataFilled = true;
 		}
 	}
 	_dataMutex.unlock();
+	return dataFilled;
 }
 
 } // namespace rtabmap

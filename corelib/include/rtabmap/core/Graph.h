@@ -70,6 +70,7 @@ public:
 	int iterations() const {return iterations_;}
 	bool isSlam2d() const {return slam2d_;}
 	bool isCovarianceIgnored() const {return covarianceIgnored_;}
+	double epsilon() const {return epsilon_;}
 
 	virtual std::map<int, Transform> optimize(
 			int rootId,
@@ -80,13 +81,18 @@ public:
 	virtual void parseParameters(const ParametersMap & parameters);
 
 protected:
-	Optimizer(int iterations = 100, bool slam2d = false, bool covarianceIgnored = false);
+	Optimizer(
+			int iterations         = Parameters::defaultRGBDOptimizeIterations(),
+			bool slam2d            = Parameters::defaultRGBDOptimizeSlam2D(),
+			bool covarianceIgnored = Parameters::defaultRGBDOptimizeVarianceIgnored(),
+			double epsilon         = Parameters::defaultRGBDOptimizeEpsilon());
 	Optimizer(const ParametersMap & parameters);
 
 private:
 	int iterations_;
 	bool slam2d_;
 	bool covarianceIgnored_;
+	double epsilon_;
 };
 
 class RTABMAP_EXP TOROOptimizer : public Optimizer

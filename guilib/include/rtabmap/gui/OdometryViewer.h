@@ -49,7 +49,7 @@ class RTABMAPGUI_EXP OdometryViewer : public QDialog, public UEventsHandler
 	Q_OBJECT
 
 public:
-	OdometryViewer(int maxClouds = 10, int decimation = 2, float voxelSize = 0.0f, int qualityWarningThr=0, QWidget * parent = 0);
+	OdometryViewer(int maxClouds = 10, int decimation = 2, float voxelSize = 0.0f, float maxDepth = 0, int qualityWarningThr=0, QWidget * parent = 0);
 	virtual ~OdometryViewer();
 
 public slots:
@@ -76,6 +76,7 @@ private:
 	QSpinBox * maxCloudsSpin_;
 	QDoubleSpinBox * voxelSpin_;
 	QSpinBox * decimationSpin_;
+	QDoubleSpinBox * maxDepthSpin_;
 	QLabel * timeLabel_;
 	int validDecimationValue_;
 };

@@ -64,6 +64,8 @@ public:
 		kStateGeneratingDOTLocalGraph,
 		kStateGeneratingTOROGraphLocal,
 		kStateGeneratingTOROGraphGlobal,
+		kStateExportingPosesLocal,
+		kStateExportingPosesGlobal,
 		kStateCleanDataBuffer,
 		kStatePublishingMapLocal,
 		kStatePublishingMapGlobal,
@@ -81,7 +83,8 @@ public:
 
 	void clearBufferedData();
 	void setDetectorRate(float rate);
-	void setBufferSize(int bufferSize);
+	void setDataBufferSize(unsigned int bufferSize);
+	void createIntermediateNodes(bool enabled);
 
 protected:
 	virtual void handleEvent(UEvent * anEvent);
@@ -91,9 +94,8 @@ private:
 	virtual void mainLoopKill();
 	void process();
 	void addData(const SensorData & data);
-	void getData(SensorData & data);
+	bool getData(SensorData & data);
 	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
-	void setDataBufferSize(int size);
 	void publishMap(bool optimized, bool full) const;
 	void publishGraph(bool optimized, bool full) const;
 
@@ -105,8 +107,9 @@ private:
 	std::list<SensorData> _dataBuffer;
 	UMutex _dataMutex;
 	USemaphore _dataAdded;
-	int _dataBufferMaxSize;
+	unsigned int _dataBufferMaxSize;
 	float _rate;
+	bool _createIntermediateNodes;
 	UTimer * _frameRateTimer;
 
 	Rtabmap * _rtabmap;
