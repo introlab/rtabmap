@@ -73,7 +73,22 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP generateKeypoints3DStereo(
 		int flowWinSize = 9,
 		int flowMaxLevel = 4,
 		int flowIterations = 20,
-		double flowEps = 0.02);
+		double flowEps = 0.02,
+		double maxCorrespondencesSlope = 0.0);
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP generateKeypoints3DStereo(
+		const std::vector<cv::Point2f> & leftCorners,
+		const cv::Mat & leftImage,
+		const cv::Mat & rightImage,
+		float fx,
+		float baseline,
+		float cx,
+		float cy,
+		const Transform & transform = Transform::getIdentity(),
+		int flowWinSize = 9,
+		int flowMaxLevel = 4,
+		int flowIterations = 20,
+		double flowEps = 0.02,
+		double maxCorrespondencesSlope = 0.0);
 
 std::multimap<int, pcl::PointXYZ> RTABMAP_EXP generateWords3DMono(
 		const std::multimap<int, cv::KeyPoint> & kpts,

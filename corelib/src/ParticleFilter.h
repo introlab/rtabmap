@@ -132,7 +132,7 @@ public:
 
 	double filter(double val)
 	{
-		std::vector<double> weights(particles_.size());
+		std::vector<double> weights(particles_.size(), 1);
 		double sumWeights = 0;
 		for(unsigned int i=0; i<particles_.size(); ++i)
 		{
@@ -142,7 +142,11 @@ public:
 			// compute weight
 			double dist = fabs(particles_[i] - val);
 			//dist = sqrt(dist*dist);
-			weights[i] = exp(-lambda_*dist);
+			double w = exp(-lambda_*dist);
+			if(uIsFinite(w) && w > 0)
+			{
+				weights[i] = w;
+			}
 			sumWeights += weights[i];
 		}
 

@@ -43,6 +43,7 @@ public:
 		timeEstimation(-1),
 		stamp(0),
 		interval(0),
+		distanceTravelled(0),
 		type(-1)
 	{}
 	bool lost;
@@ -57,6 +58,7 @@ public:
 	double interval;
 	Transform transform;
 	Transform transformFiltered;
+	float distanceTravelled;
 
 	int type; // 0=BOW, 1=Optical Flow, 2=ICP
 

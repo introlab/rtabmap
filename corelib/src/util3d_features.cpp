@@ -124,14 +124,45 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DStereo(
 		int flowWinSize,
 		int flowMaxLevel,
 		int flowIterations,
-		double flowEps)
+		double flowEps,
+		double maxCorrespondencesSlope)
+{
+	std::vector<cv::Point2f> leftCorners;
+	cv::KeyPoint::convert(keypoints, leftCorners);
+	return generateKeypoints3DStereo(
+			leftCorners,
+			leftImage,
+			rightImage,
+			fx,
+			baseline,
+			cx,
+			cy,
+			transform,
+			flowWinSize,
+			flowMaxLevel,
+			flowIterations,
+			flowEps,
+			maxCorrespondencesSlope);
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DStereo(
+		const std::vector<cv::Point2f> & leftCorners,
+		const cv::Mat & leftImage,
+		const cv::Mat & rightImage,
+		float fx,
+		float baseline,
+		float cx,
+		float cy,
+		const Transform & transform,
+		int flowWinSize,
+		int flowMaxLevel,
+		int flowIterations,
+		double flowEps,
+		double maxCorrespondencesSlope)
 {
 	UASSERT(!leftImage.empty() && !rightImage.empty() &&
 			leftImage.type() == CV_8UC1 && rightImage.type() == CV_8UC1 &&
 			leftImage.rows == rightImage.rows && leftImage.cols == rightImage.cols);
-
-	std::vector<cv::Point2f> leftCorners;
-	cv::KeyPoint::convert(keypoints, leftCorners);
 
 	// Find features in the new left image
 	std::vector<unsigned char> status;
@@ -151,16 +182,18 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DStereo(
 	UDEBUG("cv::calcOpticalFlowPyrLK() end");
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr keypoints3d(new pcl::PointCloud<pcl::PointXYZ>);
-	keypoints3d->resize(keypoints.size());
+	keypoints3d->resize(leftCorners.size());
 	float bad_point = std::numeric_limits<float>::quiet_NaN ();
-	UASSERT(status.size() == keypoints.size());
+	UASSERT(status.size() == leftCorners.size());
 	for(unsigned int i=0; i<status.size(); ++i)
 	{
 		pcl::PointXYZ pt(bad_point, bad_point, bad_point);
 		if(status[i])
 		{
 			float disparity = leftCorners[i].x - rightCorners[i].x;
-			if(disparity > 0.0f)
+			float slope = fabs((leftCorners[i].y-rightCorners[i].y) / (leftCorners[i].x-rightCorners[i].x));
+			if(disparity > 0.0f &&
+			   (maxCorrespondencesSlope <=0 || fabs(leftCorners[i].y-rightCorners[i].y) <= 1.0f || slope <= maxCorrespondencesSlope))
 			{
 				pcl::PointXYZ tmpPt = util3d::projectDisparityTo3D(
 						leftCorners[i],

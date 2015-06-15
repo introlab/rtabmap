@@ -63,6 +63,7 @@ public:
 	bool isPnPEstimationUsed() const {return _pnpEstimation;}
 	double getPnPReprojError() const {return _pnpReprojError;}
 	int  getPnPFlags() const {return _pnpFlags;}
+	const Transform & previousTransform() const {return previousTransform_;}
 
 private:
 	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0) = 0;
@@ -89,6 +90,8 @@ private:
 	Transform _pose;
 	int _resetCurrentCount;
 	double previousStamp_;
+	Transform previousTransform_;
+	float distanceTravelled_;
 
 	std::vector<ParticleFilter *> filters_;
 
@@ -133,9 +136,7 @@ public:
 
 private:
 	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0);
-	Transform computeTransformStereo(const SensorData & image, OdometryInfo * info);
-	Transform computeTransformRGBD(const SensorData & image, OdometryInfo * info);
-	Transform computeTransformMono(const SensorData & image, OdometryInfo * info);
+
 private:
 	//Parameters:
 	int flowWinSize_;
@@ -156,7 +157,6 @@ private:
 	Feature2D * feature2D_;
 
 	cv::Mat refFrame_;
-	cv::Mat refRightFrame_;
 	std::vector<cv::Point2f> refCorners_;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr refCorners3D_;
 };

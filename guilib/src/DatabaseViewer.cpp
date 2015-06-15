@@ -102,6 +102,8 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	ui_->constraintsViewer->setCameraLockZ(false);
 	ui_->constraintsViewer->setCameraFree();
 
+	ui_->graphicsView_stereo->setAlpha(255);
+
 	this->readSettings();
 
 	if(RTABMAP_NONFREE == 0)
@@ -215,6 +217,20 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->spinBox_projDecimation, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
 	connect(ui_->doubleSpinBox_projMaxDepth, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
 
+	connect(ui_->spinBox_stereo_flowIterations, SIGNAL(valueChanged(int)), this, SLOT(updateStereo()));
+	connect(ui_->spinBox_stereo_flowMaxLevel, SIGNAL(valueChanged(int)), this, SLOT(updateStereo()));
+	connect(ui_->spinBox_stereo_flowWinSize, SIGNAL(valueChanged(int)), this, SLOT(updateStereo()));
+	connect(ui_->spinBox_stereo_gfttBlockSize, SIGNAL(valueChanged(int)), this, SLOT(updateStereo()));
+	connect(ui_->doubleSpinBox_stereo_flowEps, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
+	connect(ui_->doubleSpinBox_stereo_gfttMinDistance, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
+	connect(ui_->doubleSpinBox_stereo_gfttQuality, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
+	connect(ui_->doubleSpinBox_stereo_maxSlope, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
+	connect(ui_->checkBox_stereo_subpix, SIGNAL(stateChanged(int)), this, SLOT(updateStereo()));
+	ui_->label_stereo_inliers_name->setStyleSheet("QLabel {color : blue; }");
+	ui_->label_stereo_flowOutliers_name->setStyleSheet("QLabel {color : red; }");
+	ui_->label_stereo_slopeOutliers_name->setStyleSheet("QLabel {color : yellow; }");
+	ui_->label_stereo_disparityOutliers_name->setStyleSheet("QLabel {color : magenta; }");
+
 
 	// connect configuration changed
 	connect(ui_->graphViewer, SIGNAL(configChanged()), this, SLOT(configModified()));
@@ -263,6 +279,16 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->doubleSpinBox_detectMore_radius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_detectMore_angle, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->spinBox_detectMore_iterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
+	//stereo parameters
+	connect(ui_->spinBox_stereo_flowIterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
+	connect(ui_->spinBox_stereo_flowMaxLevel, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
+	connect(ui_->spinBox_stereo_flowWinSize, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
+	connect(ui_->spinBox_stereo_gfttBlockSize, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_stereo_flowEps, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_stereo_gfttMinDistance, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_stereo_gfttQuality, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_stereo_maxSlope, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->checkBox_stereo_subpix, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	// dockwidget
 	QList<QDockWidget*> dockWidgets = this->findChildren<QDockWidget*>();
 	for(int i=0; i<dockWidgets.size(); ++i)
@@ -387,6 +413,19 @@ void DatabaseViewer::readSettings()
 	ui_->spinBox_detectMore_iterations->setValue(settings.value("detectMoreIterations", ui_->spinBox_detectMore_iterations->value()).toInt());
 	settings.endGroup();
 
+	//Stereo parameters
+	settings.beginGroup("stereo");
+	ui_->spinBox_stereo_flowIterations->setValue(settings.value("flowIterations", ui_->spinBox_stereo_flowIterations->value()).toInt());
+	ui_->spinBox_stereo_flowMaxLevel->setValue(settings.value("flowMaxLevel", ui_->spinBox_stereo_flowMaxLevel->value()).toInt());
+	ui_->spinBox_stereo_flowWinSize->setValue(settings.value("flowWinSize", ui_->spinBox_stereo_flowWinSize->value()).toInt());
+	ui_->spinBox_stereo_gfttBlockSize->setValue(settings.value("gfttBlockSize", ui_->spinBox_stereo_gfttBlockSize->value()).toInt());
+	ui_->doubleSpinBox_stereo_flowEps->setValue(settings.value("flowEps", ui_->doubleSpinBox_stereo_flowEps->value()).toDouble());
+	ui_->doubleSpinBox_stereo_gfttMinDistance->setValue(settings.value("gfttMinDistance", ui_->doubleSpinBox_stereo_gfttMinDistance->value()).toDouble());
+	ui_->doubleSpinBox_stereo_gfttQuality->setValue(settings.value("gfttQuality", ui_->doubleSpinBox_stereo_gfttQuality->value()).toDouble());
+	ui_->doubleSpinBox_stereo_maxSlope->setValue(settings.value("maxSlope", ui_->doubleSpinBox_stereo_maxSlope->value()).toDouble());
+	ui_->checkBox_stereo_subpix->setChecked(settings.value("subpix", ui_->checkBox_stereo_subpix->isChecked()).toBool());
+	settings.endGroup();
+
 	settings.endGroup(); // DatabaseViewer
 }
 
@@ -466,6 +505,19 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("detectMoreRadius", ui_->doubleSpinBox_detectMore_radius->value());
 	settings.setValue("detectMoreAngle", ui_->doubleSpinBox_detectMore_angle->value());
 	settings.setValue("detectMoreIterations", ui_->spinBox_detectMore_iterations->value());
+	settings.endGroup();
+
+	//Stereo parameters
+	settings.beginGroup("stereo");
+	settings.setValue("flowIterations", ui_->spinBox_stereo_flowIterations->value());
+	settings.setValue("flowMaxLevel", ui_->spinBox_stereo_flowMaxLevel->value());
+	settings.setValue("flowWinSize", ui_->spinBox_stereo_flowWinSize->value());
+	settings.setValue("gfttBlockSize", ui_->spinBox_stereo_gfttBlockSize->value());
+	settings.setValue("flowEps", ui_->doubleSpinBox_stereo_flowEps->value());
+	settings.setValue("gfttMinDistance", ui_->doubleSpinBox_stereo_gfttMinDistance->value());
+	settings.setValue("gfttQuality", ui_->doubleSpinBox_stereo_gfttQuality->value());
+	settings.setValue("maxSlope", ui_->doubleSpinBox_stereo_maxSlope->value());
+	settings.setValue("subpix", ui_->checkBox_stereo_subpix->isChecked());
 	settings.endGroup();
 
 	settings.endGroup(); // DatabaseViewer
@@ -1535,6 +1587,11 @@ void DatabaseViewer::update(int value,
 				{
 					this->updateStereo(&data);
 				}
+				else
+				{
+					ui_->stereoViewer->clear();
+					ui_->graphicsView_stereo->clear();
+				}
 
 				// 3d view
 				if(view3D->isVisible() && !data.getDepthRaw().empty())
@@ -1688,6 +1745,16 @@ void DatabaseViewer::update(int value,
 	}
 }
 
+void DatabaseViewer::updateStereo()
+{
+	if(ui_->horizontalSlider_A->maximum())
+	{
+		int id = ids_.at(ui_->horizontalSlider_A->value());
+		Signature data = memory_->getSignatureData(id, true);
+		updateStereo(&data);
+	}
+}
+
 void DatabaseViewer::updateStereo(const Signature * data)
 {
 	if(data && ui_->dockWidget_stereoView->isVisible() && !data->getImageRaw().empty() && !data->getDepthRaw().empty() && data->getDepthRaw().type() == CV_8UC1)
@@ -1708,8 +1775,10 @@ void DatabaseViewer::updateStereo(const Signature * data)
 		std::vector<cv::KeyPoint> kpts;
 		cv::Rect roi = Feature2D::computeRoi(leftMono, "0.03 0.03 0.04 0.04");
 		ParametersMap parameters;
-		parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "1000"));
-		parameters.insert(ParametersPair(Parameters::kGFTTMinDistance(), "5"));
+		parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "0"));
+		parameters.insert(ParametersPair(Parameters::kGFTTMinDistance(), uNumber2Str(ui_->doubleSpinBox_stereo_gfttMinDistance->value())));
+		parameters.insert(ParametersPair(Parameters::kGFTTQualityLevel(), uNumber2Str(ui_->doubleSpinBox_stereo_gfttQuality->value())));
+		parameters.insert(ParametersPair(Parameters::kGFTTBlockSize(), uNumber2Str(ui_->spinBox_stereo_gfttBlockSize->value())));
 		Feature2D::Type type = Feature2D::kFeatureGfttBrief;
 		Feature2D * kptDetector = Feature2D::create(type, parameters);
 		kpts = kptDetector->generateKeypoints(leftMono, roi);
@@ -1719,6 +1788,19 @@ void DatabaseViewer::updateStereo(const Signature * data)
 
 		std::vector<cv::Point2f> leftCorners;
 		cv::KeyPoint::convert(kpts, leftCorners);
+
+		int subPixWinSize = 3;
+		int subPixIterations = 30;
+		double subPixEps = 0.02;
+		if(ui_->checkBox_stereo_subpix->isChecked())
+		{
+			UDEBUG("cv::cornerSubPix() begin");
+			cv::cornerSubPix(leftMono, leftCorners,
+				cv::Size( subPixWinSize, subPixWinSize ),
+				cv::Size( -1, -1 ),
+				cv::TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, subPixIterations, subPixEps ) );
+			UDEBUG("cv::cornerSubPix() end");
+		}
 
 		// Find features in the new left image
 		std::vector<unsigned char> status;
@@ -1731,8 +1813,8 @@ void DatabaseViewer::updateStereo(const Signature * data)
 				rightCorners,
 				status,
 				err,
-				cv::Size(Parameters::defaultStereoWinSize(), Parameters::defaultStereoWinSize()), Parameters::defaultStereoMaxLevel(),
-				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, Parameters::defaultStereoIterations(), Parameters::defaultStereoEps()));
+				cv::Size(ui_->spinBox_stereo_flowWinSize->value(), ui_->spinBox_stereo_flowWinSize->value()), ui_->spinBox_stereo_flowMaxLevel->value(),
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, ui_->spinBox_stereo_flowIterations->value(), ui_->doubleSpinBox_stereo_flowEps->value()));
 
 		float timeFlow = timer.ticks();
 
@@ -1741,6 +1823,10 @@ void DatabaseViewer::updateStereo(const Signature * data)
 		float bad_point = std::numeric_limits<float>::quiet_NaN ();
 		UASSERT(status.size() == kpts.size());
 		int oi = 0;
+		int inliers = 0;
+		int flowOutliers= 0;
+		int slopeOutliers= 0;
+		int negativeDisparityOutliers = 0;
 		for(unsigned int i=0; i<status.size(); ++i)
 		{
 			pcl::PointXYZ pt(bad_point, bad_point, bad_point);
@@ -1749,7 +1835,7 @@ void DatabaseViewer::updateStereo(const Signature * data)
 				float disparity = leftCorners[i].x - rightCorners[i].x;
 				if(disparity > 0.0f)
 				{
-					if(fabs((leftCorners[i].y-rightCorners[i].y) / (leftCorners[i].x-rightCorners[i].x)) < Parameters::defaultStereoMaxSlope())
+					if(fabs((leftCorners[i].y-rightCorners[i].y) / (leftCorners[i].x-rightCorners[i].x)) < ui_->doubleSpinBox_stereo_maxSlope->value())
 					{
 						pcl::PointXYZ tmpPt = util3d::projectDisparityTo3D(
 								leftCorners[i],
@@ -1759,22 +1845,31 @@ void DatabaseViewer::updateStereo(const Signature * data)
 						if(pcl::isFinite(tmpPt))
 						{
 							pt = pcl::transformPoint(tmpPt, data->getLocalTransform().toEigen3f());
-							if(fabs(pt.x) > 2 || fabs(pt.y) > 2 || fabs(pt.z) > 2)
-							{
-								status[i] = 100; //blue
-							}
+							status[i] = 100; //blue
+							++inliers;
 							cloud->at(oi++) = pt;
 						}
+					}
+					else if(fabs(leftCorners[i].y-rightCorners[i].y) <=1.0f)
+					{
+						status[i] = 110; //cyan
+						++inliers;
 					}
 					else
 					{
 						status[i] = 101; //yellow
+						++slopeOutliers;
 					}
 				}
 				else
 				{
 					status[i] = 102; //magenta
+					++negativeDisparityOutliers;
 				}
+			}
+			else
+			{
+				++flowOutliers;
 			}
 		}
 		cloud->resize(oi);
@@ -1785,6 +1880,11 @@ void DatabaseViewer::updateStereo(const Signature * data)
 		ui_->stereoViewer->updateCameraTargetPosition(Transform::getIdentity());
 		ui_->stereoViewer->addOrUpdateCloud("stereo", cloud);
 		ui_->stereoViewer->update();
+
+		ui_->label_stereo_inliers->setNum(inliers);
+		ui_->label_stereo_flowOutliers->setNum(flowOutliers);
+		ui_->label_stereo_slopeOutliers->setNum(slopeOutliers);
+		ui_->label_stereo_disparityOutliers->setNum(negativeDisparityOutliers);
 
 		std::vector<cv::KeyPoint> rightKpts;
 		cv::KeyPoint::convert(rightCorners, rightKpts);
@@ -1831,6 +1931,10 @@ void DatabaseViewer::updateStereo(const Signature * data)
 			else if(status[i] == 102)
 			{
 				c = Qt::magenta;
+			}
+			else if(status[i] == 110)
+			{
+				c = Qt::cyan;
 			}
 			ui_->graphicsView_stereo->addLine(
 					kpts[i].pt.x,

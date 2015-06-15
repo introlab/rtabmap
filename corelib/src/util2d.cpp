@@ -162,7 +162,7 @@ cv::Mat disparityFromStereoCorrespondences(
 		{
 			float d = leftCorners[i].x - rightCorners[i].x;
 			float slope = fabs((leftCorners[i].y - rightCorners[i].y) / (leftCorners[i].x - rightCorners[i].x));
-			if(d > 0.0f && slope < maxSlope)
+			if(d > 0.0f && (maxSlope <= 0 || fabs(leftCorners[i].y-rightCorners[i].y) <= 1.0f || slope <= maxSlope))
 			{
 				disparity.at<float>(int(leftCorners[i].y+0.5f), int(leftCorners[i].x+0.5f)) = d;
 			}

@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-613</y>
+            <y>-450</y>
             <width>755</width>
             <height>1591</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>23</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -7222,10 +7222,13 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                           <string> m</string>
                          </property>
                          <property name="decimals">
-                          <number>2</number>
+                          <number>0</number>
                          </property>
                          <property name="minimum">
                           <double>0.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>999.000000000000000</double>
                          </property>
                          <property name="singleStep">
                           <double>1.000000000000000</double>

@@ -2486,12 +2486,10 @@ void Rtabmap::dumpPoses(
 #endif
 	if(fout)
 	{
-		Transform localTransformInv = Transform(0,0,0, -CV_PI/2, 0, -CV_PI/2).inverse();
 		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
-			Transform t = localTransformInv * (*iter).second;
 			// in camera frame
-			const float * p = (const float *)t.data();
+			const float * p = (const float *)(*iter).second.data();
 
 			fprintf(fout, "%f", p[0]);
 			for(int i=1; i<(*iter).second.size(); i++)

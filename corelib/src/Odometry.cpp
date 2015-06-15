@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
+#include "rtabmap/utilite/UConversion.h"
 #include "ParticleFilter.h"
 
 namespace rtabmap {
@@ -53,7 +54,9 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_pnpReprojError(Parameters::defaultOdomPnPReprojError()),
 		_pnpFlags(Parameters::defaultOdomPnPFlags()),
 		_resetCurrentCount(0),
-		previousStamp_(0)
+		previousStamp_(0),
+		previousTransform_(Transform::getIdentity()),
+		distanceTravelled_(0)
 {
 	Parameters::parse(parameters, Parameters::kOdomResetCountdown(), _resetCountdown);
 	Parameters::parse(parameters, Parameters::kOdomMinInliers(), _minInliers);
@@ -106,8 +109,10 @@ Odometry::~Odometry()
 
 void Odometry::reset(const Transform & initialPose)
 {
+	previousTransform_.setIdentity();
 	_resetCurrentCount = 0;
 	previousStamp_ = 0;
+	distanceTravelled_ = 0;
 	if(_force2D || filters_.size())
 	{
 		float x,y,z, roll,pitch,yaw;
@@ -178,6 +183,8 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 		info->interval = data.stamp() - previousStamp_;
 		info->transform = t;
 	}
+
+	previousTransform_.setIdentity();
 	previousStamp_ = data.stamp();
 
 	if(!t.isNull())
@@ -192,15 +199,27 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 			if(filters_.size())
 			{
 				UASSERT(filters_.size()==6);
-				x = filters_[0]->filter(x);
-				y = filters_[1]->filter(y);
-				yaw = filters_[5]->filter(yaw);
-
-				if(!_force2D)
+				if(_pose.isIdentity())
 				{
-					z = filters_[2]->filter(z);
-					roll = filters_[3]->filter(roll);
-					pitch = filters_[4]->filter(pitch);
+					filters_[0]->init(x);
+					filters_[1]->init(y);
+					filters_[2]->init(z);
+					filters_[3]->init(roll);
+					filters_[4]->init(pitch);
+					filters_[5]->init(yaw);
+				}
+				else
+				{
+					x = filters_[0]->filter(x);
+					y = filters_[1]->filter(y);
+					yaw = filters_[5]->filter(yaw);
+
+					if(!_force2D)
+					{
+						z = filters_[2]->filter(z);
+						roll = filters_[3]->filter(roll);
+						pitch = filters_[4]->filter(pitch);
+					}
 				}
 
 				if(info)
@@ -208,12 +227,23 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 					info->timeParticleFiltering = time.ticks();
 				}
 			}
+			UASSERT_MSG(uIsFinite(x) && uIsFinite(y) && uIsFinite(z) &&
+					uIsFinite(roll) && uIsFinite(pitch) && uIsFinite(yaw),
+					uFormat("x=%f y=%f z=%f roll=%f pitch=%f yaw=%f org T=%s",
+							x, y, z, roll, pitch, yaw, t.prettyPrint().c_str()).c_str());
 			t = Transform(x,y,_force2D?0:z, _force2D?0:roll,_force2D?0:pitch,yaw);
 
 			if(info)
 			{
 				info->transformFiltered = t;
 			}
+		}
+
+		previousTransform_ = t;
+		if(info)
+		{
+			distanceTravelled_ += t.getNorm();
+			info->distanceTravelled = distanceTravelled_;
 		}
 
 		return _pose *= t; // updated

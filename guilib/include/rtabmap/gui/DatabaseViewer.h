@@ -105,6 +105,7 @@ private slots:
 	void resetConstraint();
 	void rejectConstraint();
 	void updateConstraintView();
+	void updateStereo();
 
 private:
 	QString getIniFilePath() const;

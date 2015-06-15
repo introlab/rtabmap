@@ -880,20 +880,21 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 				{
 					//draw lines
 					UASSERT(info.refCorners.size() == info.newCorners.size());
-					for(unsigned int i=0; i<info.cornerInliers.size(); ++i)
+					std::set<int> inliers(info.cornerInliers.begin(), info.cornerInliers.end());
+					for(unsigned int i=0; i<info.refCorners.size(); ++i)
 					{
-						if(_ui->imageView_odometry->isFeaturesShown())
+						if(_ui->imageView_odometry->isFeaturesShown() && inliers.find(i) != inliers.end())
 						{
-							_ui->imageView_odometry->setFeatureColor(info.cornerInliers[i], Qt::green); // inliers
+							_ui->imageView_odometry->setFeatureColor(i, Qt::green); // inliers
 						}
 						if(_ui->imageView_odometry->isLinesShown())
 						{
 							_ui->imageView_odometry->addLine(
-									info.refCorners[info.cornerInliers[i]].x,
-									info.refCorners[info.cornerInliers[i]].y,
-									info.newCorners[info.cornerInliers[i]].x,
-									info.newCorners[info.cornerInliers[i]].y,
-									Qt::blue);
+									info.refCorners[i].x,
+									info.refCorners[i].y,
+									info.newCorners[i].x,
+									info.newCorners[i].y,
+									inliers.find(i) != inliers.end()?Qt::blue:Qt::yellow);
 						}
 					}
 				}
@@ -975,6 +976,10 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 		_ui->statsToolBox->updateStat("Odometry/Interval/ms", (float)data.id(), info.interval*1000.f);
 		_ui->statsToolBox->updateStat("Odometry/Speed/kph", (float)data.id(), x/info.interval*3.6f);
 	}
+	if(info.distanceTravelled > 0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/Distance/m", (float)data.id(), info.distanceTravelled);
+	}
 
 	_ui->statsToolBox->updateStat("/Gui refresh odom/ms", (float)data.id(), time.elapsed()*1000.0);
 	_processingOdometry = false;
@@ -993,7 +998,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	int loopMapId = uValue(stat.getMapIds(), stat.loopClosureId(), uValue(stat.getMapIds(), stat.localLoopClosureId(), -1));
 
 	_ui->label_refId->setText(QString("New ID = %1 [%2]").arg(stat.refImageId()).arg(refMapId));
-	_ui->label_matchId->clear();
 
 	if(stat.extended())
 	{
@@ -1251,6 +1255,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	{
 		_ui->label_stats_loopClosuresDetected->setText(QString::number(_ui->label_stats_loopClosuresDetected->text().toInt() + 1));
 		_ui->label_matchId->setText(QString("Match ID = %1 [%2]").arg(stat.loopClosureId()).arg(loopMapId));
+	}
+	else
+	{
+		_ui->label_matchId->clear();
 	}
 	float elapsedTime = static_cast<float>(totalTime.elapsed());
 	UINFO("Updating GUI time = %fs", elapsedTime/1000.0f);
@@ -2902,7 +2910,14 @@ void MainWindow::startDetection()
 
 	if(_dataRecorder)
 	{
-		UEventsManager::createPipe(_camera, _dataRecorder, "CameraEvent");
+		if(_camera)
+		{
+			UEventsManager::createPipe(_camera, _dataRecorder, "CameraEvent");
+		}
+		else if(_dbReader)
+		{
+			UEventsManager::createPipe(_dbReader, _dataRecorder, "CameraEvent");
+		}
 	}
 
 	_lastOdomPose.setNull();
