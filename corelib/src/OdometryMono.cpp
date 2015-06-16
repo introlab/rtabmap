@@ -147,11 +147,24 @@ void OdometryMono::reset(const Transform & initialPose)
 
 Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo * info)
 {
-	UASSERT(!data.image().empty());
-	UASSERT(data.fx());
+	Transform output;
+
+	if(data.imageRaw().empty())
+	{
+		UERROR("Image empty! Cannot compute odometry...");
+		return output;
+	}
+
+	if(!(((data.cameraModels().size() == 1 && data.cameraModels()[0].isValid()) || data.stereoCameraModel().isValid())))
+	{
+		UERROR("Odometry cannot be done without calibration or on multi-camera!");
+		return output;
+	}
+
+
+	const CameraModel & cameraModel = data.stereoCameraModel().isValid()?data.stereoCameraModel().left():data.cameraModels()[0];
 
 	UTimer timer;
-	Transform output;
 
 	int inliers = 0;
 	int correspondences = 0;
@@ -159,13 +172,13 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 
 	cv::Mat newFrame;
 	// convert to grayscale
-	if(data.image().channels() > 1)
+	if(data.imageRaw().channels() > 1)
 	{
-		cv::cvtColor(data.image(), newFrame, cv::COLOR_BGR2GRAY);
+		cv::cvtColor(data.imageRaw(), newFrame, cv::COLOR_BGR2GRAY);
 	}
 	else
 	{
-		newFrame = data.image().clone();
+		newFrame = data.imageRaw().clone();
 	}
 
 	if(memory_->getStMem().size() >= 1)
@@ -190,11 +203,8 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 				nFeatures = (int)newS->getWords().size();
 				if((int)newS->getWords().size() > this->getMinInliers())
 				{
-					cv::Mat K = (cv::Mat_<double>(3,3) <<
-						data.fx(), 0, data.cx(),
-						0, data.fy()==0?data.fx():data.fy(), data.cy(),
-						0, 0, 1);
-					Transform guess = (this->getPose() * data.localTransform()).inverse();
+					cv::Mat K = cameraModel.K();
+					Transform guess = (this->getPose() * cameraModel.localTransform()).inverse();
 					cv::Mat R = (cv::Mat_<double>(3,3) <<
 							(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
 							(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
@@ -216,7 +226,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 					UDEBUG("project points to previous image");
 					std::vector<cv::Point2f> prevImagePoints;
 					const Signature * prevS = memory_->getSignature(*(++memory_->getStMem().rbegin()));
-					Transform prevGuess = (keyFramePoses_.at(prevS->id()) * data.localTransform()).inverse();
+					Transform prevGuess = (keyFramePoses_.at(prevS->id()) * cameraModel.localTransform()).inverse();
 					cv::Mat prevR = (cv::Mat_<double>(3,3) <<
 							(double)prevGuess.r11(), (double)prevGuess.r12(), (double)prevGuess.r13(),
 							(double)prevGuess.r21(), (double)prevGuess.r22(), (double)prevGuess.r23(),
@@ -240,8 +250,8 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 					{
 						if(uIsInBounds(int(imagePoints[i].x), 0, newFrame.cols) &&
 						   uIsInBounds(int(imagePoints[i].y), 0, newFrame.rows) &&
-						   uIsInBounds(int(prevImagePoints[i].x), 0, prevS->getImageRaw().cols) &&
-						   uIsInBounds(int(prevImagePoints[i].y), 0, prevS->getImageRaw().rows))
+						   uIsInBounds(int(prevImagePoints[i].x), 0, prevS->sensorData().imageRaw().cols) &&
+						   uIsInBounds(int(prevImagePoints[i].y), 0, prevS->sensorData().imageRaw().rows))
 						{
 							refCorners[oi] = prevImagePoints[i];
 							newCorners[oi] = imagePoints[i];
@@ -273,7 +283,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 					std::vector<float> err;
 					UDEBUG("cv::calcOpticalFlowPyrLK() begin");
 					cv::calcOpticalFlowPyrLK(
-							prevS->getImageRaw(),
+							prevS->sensorData().imageRaw(),
 							newFrame,
 							refCorners,
 							newCorners,
@@ -357,7 +367,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 							Transform pnp = Transform(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
 													  R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
 													  R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
-							output = this->getPose().inverse() * pnp.inverse() * data.localTransform().inverse();
+							output = this->getPose().inverse() * pnp.inverse() * cameraModel.localTransform().inverse();
 
 							if(this->isInfoDataFilled() && info && inliersV.size())
 							{
@@ -402,9 +412,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 								std::multimap<int, pcl::PointXYZ> inliers3D = util3d::generateWords3DMono(
 										previousS->getWords(),
 										newS->getWords(),
-										data.fx(), data.fy()?data.fy():data.fx(),
-										data.cx(), data.cy(),
-										data.localTransform(),
+										cameraModel,
 										cameraTransform,
 										this->getIterations(),
 										this->getPnPReprojError(),
@@ -515,7 +523,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 			std::vector<float> err;
 			UDEBUG("cv::calcOpticalFlowPyrLK() begin");
 			cv::calcOpticalFlowPyrLK(
-					refS->getImageRaw(),
+					refS->sensorData().imageRaw(),
 					newFrame,
 					refCorners,
 					refCornersGuess,
@@ -652,10 +660,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 						//UDEBUG("Correcting matches...done!");
 
 						UDEBUG("Computing P...");
-						cv::Mat K = (cv::Mat_<double>(3,3) <<
-									data.fx(), 0, data.cx(),
-									0, data.fy()==0?data.fx():data.fy(), data.cy(),
-									0, 0, 1);
+						cv::Mat K = cameraModel.K();
 
 						cv::Mat Kinv = K.inv();
 						cv::Mat E = K.t()*F*K;
@@ -716,7 +721,15 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 									(*inliersRef)[oi] = cloud->at(i);
 									if(!refDepth_.empty())
 									{
-										(*inliersRefGuess)[oi] = util3d::projectDepthTo3D(refDepth_, refCorners[i].x, refCorners[i].y, data.cx(), data.cy(), data.fx(), data.fy(), true);
+										(*inliersRefGuess)[oi] = util3d::projectDepthTo3D(
+												refDepth_,
+												refCorners[i].x,
+												refCorners[i].y,
+												cameraModel.cx(),
+												cameraModel.cy(),
+												cameraModel.fx(),
+												cameraModel.fy(),
+												true);
 									}
 									++oi;
 								}
@@ -824,7 +837,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 											  R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
 											  R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
 
-								output = data.localTransform() * pnp.inverse() * data.localTransform().inverse();
+								output = cameraModel.localTransform() * pnp.inverse() * cameraModel.localTransform().inverse();
 								if(output.getNorm() < minTranslation_*5)
 								{
 									reject = true;
@@ -844,7 +857,9 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 										int index  =inliersPnP.at(i);
 										int id = cornerIds[index];
 										UASSERT(id > 0 && id <= *wordsId.rbegin());
-										pcl::PointXYZ pt =  util3d::transformPoint(pcl::PointXYZ(objectPoints.at(index).x, objectPoints.at(index).y, objectPoints.at(index).z), this->getPose()*data.localTransform());
+										pcl::PointXYZ pt =  util3d::transformPoint(
+												pcl::PointXYZ(objectPoints.at(index).x, objectPoints.at(index).y, objectPoints.at(index).z),
+												this->getPose()*cameraModel.localTransform());
 										localMap_.insert(std::make_pair(id, cv::Point3f(pt.x, pt.y, pt.z)));
 										keyFrameWords3D.insert(std::make_pair(id, pt));
 									}
@@ -890,7 +905,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 				{
 					cornersMap_.insert(std::make_pair(iter->first, iter->second.pt));
 				}
-				refDepth_ = data.depth().clone();
+				refDepth_ = data.depthOrRightRaw().clone();
 				keyFramePoses_.insert(std::make_pair(memory_->getLastSignatureId(), Transform::getIdentity()));
 			}
 			else

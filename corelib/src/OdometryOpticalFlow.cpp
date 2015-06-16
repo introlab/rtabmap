@@ -124,6 +124,17 @@ Transform OdometryOpticalFlow::computeTransform(
 {
 	UTimer timer;
 	Transform output;
+	if(!data.rightRaw().empty() && !data.stereoCameraModel().isValid())
+	{
+		UERROR("Calibrated stereo camera required");
+		return output;
+	}
+	if(!data.depthRaw().empty() &&
+		(data.cameraModels().size() != 1 || !data.cameraModels()[0].isValid()))
+	{
+		UERROR("Calibrated camera required (multi-cameras not supported).");
+		return output;
+	}
 
 	double variance = 0;
 	int inliers = 0;
@@ -136,20 +147,20 @@ Transform OdometryOpticalFlow::computeTransform(
 
 	cv::Mat newLeftFrame;
 	// convert to grayscale
-	if(data.image().channels() > 1)
+	if(data.imageRaw().channels() > 1)
 	{
-		cv::cvtColor(data.image(), newLeftFrame, cv::COLOR_BGR2GRAY);
+		cv::cvtColor(data.imageRaw(), newLeftFrame, cv::COLOR_BGR2GRAY);
 	}
 	else
 	{
-		newLeftFrame = data.image().clone();
+		newLeftFrame = data.imageRaw().clone();
 	}
 
 	std::vector<cv::Point2f> newCorners;
 	UDEBUG("lastCorners_.size()=%d lastFrame_=%d depthRight=%d",
-			(int)refCorners_.size(), refFrame_.empty()?0:1, data.depthOrRightImage().empty()?0:1);
+			(int)refCorners_.size(), refFrame_.empty()?0:1, data.depthOrRightRaw().empty()?0:1);
 	if(!refFrame_.empty() &&
-	   !data.depthOrRightImage().empty() &&
+	   ((data.cameraModels().size() == 1 && data.cameraModels()[0].isValid()) || data.stereoCameraModel().isValid()) &&
 	   refCorners_.size() &&
 	   refCorners3D_->size())
 	{
@@ -158,11 +169,9 @@ Transform OdometryOpticalFlow::computeTransform(
 
 		// make guess
 		bool flowGuessByMotion = true;
-		cv::Mat K = (cv::Mat_<double>(3,3) <<
-			data.fx(), 0, data.cx(),
-			0, data.fx(), data.cy(),
-			0, 0, 1);
-		Transform guess = (this->previousTransform() * data.localTransform()).inverse();
+		cv::Mat K = data.cameraModels().size()?data.cameraModels()[0].K():data.stereoCameraModel().left().K();
+		Transform localTransform = data.cameraModels().size()?data.cameraModels()[0].localTransform():data.stereoCameraModel().left().localTransform();
+		Transform guess = (this->previousTransform() * localTransform).inverse();
 		cv::Mat R = (cv::Mat_<double>(3,3) <<
 				(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
 				(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
@@ -263,7 +272,7 @@ Transform OdometryOpticalFlow::computeTransform(
 					if((int)inliersV.size() >= this->getMinInliers())
 					{
 						// make it incremental
-						output = (data.localTransform() * pnp).inverse();
+						output = (localTransform * pnp).inverse();
 						variance = 1; // FIXME, is there a way to compute a variance from the PNP approach?
 					}
 					else
@@ -294,17 +303,17 @@ Transform OdometryOpticalFlow::computeTransform(
 					info->newCorners.resize(newCornersKept.size());
 				}
 				int oi = 0;
-				if(!data.rightImage().empty())
+				if(!data.rightRaw().empty())
 				{
 					// stereo
 					pcl::PointCloud<pcl::PointXYZ>::Ptr newCorners3D = util3d::generateKeypoints3DStereo(
 							newCornersKept,
 							newLeftFrame,
-							data.rightImage(),
-							data.fx(),
-							data.baseline(),
-							data.cx(),
-							data.cy(),
+							data.rightRaw(),
+							data.stereoCameraModel().left().fx(),
+							data.stereoCameraModel().baseline(),
+							data.stereoCameraModel().left().cx(),
+							data.stereoCameraModel().left().cy(),
 							Transform::getIdentity(),
 							stereoWinSize_,
 							stereoMaxLevel_,
@@ -319,7 +328,7 @@ Transform OdometryOpticalFlow::computeTransform(
 						{
 							//Add 3D correspondences!
 							correspondencesRef->at(oi) = refCorners3DKept->at(i);
-							correspondencesNew->at(oi) = util3d::transformPoint(newCorners3D->at(i), data.localTransform());
+							correspondencesNew->at(oi) = util3d::transformPoint(newCorners3D->at(i), localTransform);
 							if(this->isInfoDataFilled() && info)
 							{
 								info->refCorners[oi] = refCornersKept[i];
@@ -334,17 +343,18 @@ Transform OdometryOpticalFlow::computeTransform(
 					//depth
 					for(unsigned int i=0; i<newCornersKept.size(); ++i)
 					{
-						if(uIsInBounds(newCornersKept[i].x, 0.0f, float(data.depth().cols)) &&
-						   uIsInBounds(newCornersKept[i].y, 0.0f, float(data.depth().rows)))
+						if(uIsInBounds(newCornersKept[i].x, 0.0f, float(data.depthRaw().cols)) &&
+						   uIsInBounds(newCornersKept[i].y, 0.0f, float(data.depthRaw().rows)))
 						{
-							pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depth(), newCornersKept[i].x, newCorners[i].y,
-									data.cx(), data.cy(), data.fx(), data.fy(), true);
+							pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depthRaw(), newCornersKept[i].x, newCorners[i].y,
+									data.cameraModels()[0].cx(), data.cameraModels()[0].cy(), data.cameraModels()[0].fx(), data.cameraModels()[0].fy(), true);
 							if(pcl::isFinite(pt) &&
 								(this->getMaxDepth() == 0.0f || pt.z < this->getMaxDepth()))
 							{
 								//Add 3D correspondences!
 								correspondencesRef->at(oi) = refCorners3DKept->at(i);
-								correspondencesNew->at(oi) = util3d::transformPoint(pt, data.localTransform());
+								correspondencesNew->at(oi) = util3d::transformPoint(pt, localTransform);
+
 								if(this->isInfoDataFilled() && info)
 								{
 									info->refCorners[oi] = refCornersKept[i];
@@ -444,17 +454,17 @@ Transform OdometryOpticalFlow::computeTransform(
 			newCorners3D->resize(newCorners.size());
 			std::vector<cv::Point2f> newCornersFiltered(newCorners.size());
 			int oi=0;
-			if(!data.rightImage().empty())
+			if(!data.rightRaw().empty())
 			{
 				/// stereo
 				pcl::PointCloud<pcl::PointXYZ>::Ptr refCorners3DTmp = util3d::generateKeypoints3DStereo(
 						newCorners,
 						newLeftFrame,
-						data.rightImage(),
-						data.fx(),
-						data.baseline(),
-						data.cx(),
-						data.cy(),
+						data.rightRaw(),
+						data.stereoCameraModel().left().fx(),
+						data.stereoCameraModel().baseline(),
+						data.stereoCameraModel().left().cx(),
+						data.stereoCameraModel().left().cy(),
 						Transform::getIdentity(),
 						stereoWinSize_,
 						stereoMaxLevel_,
@@ -467,7 +477,7 @@ Transform OdometryOpticalFlow::computeTransform(
 					if(pcl::isFinite(refCorners3DTmp->at(i)) &&
 						(this->getMaxDepth() == 0.0f || refCorners3DTmp->at(i).z < this->getMaxDepth()))
 					{
-						newCorners3D->at(oi) = util3d::transformPoint(refCorners3DTmp->at(i), data.localTransform());
+						newCorners3D->at(oi) = util3d::transformPoint(refCorners3DTmp->at(i), data.stereoCameraModel().left().localTransform());
 						newCornersFiltered[oi] = newCorners[i];
 						++oi;
 					}
@@ -478,15 +488,22 @@ Transform OdometryOpticalFlow::computeTransform(
 				// depth
 				for(unsigned int i=0; i<newCorners.size(); ++i)
 				{
-					if(uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols)) &&
-					   uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows)))
+					if(uIsInBounds(newCorners[i].x, 0.0f, float(data.depthRaw().cols)) &&
+					   uIsInBounds(newCorners[i].y, 0.0f, float(data.depthRaw().rows)))
 					{
-						pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depth(), newCorners[i].x, newCorners[i].y,
-								data.cx(), data.cy(), data.fx(), data.fy(), true);
+						pcl::PointXYZ pt = util3d::projectDepthTo3D(
+								data.depthRaw(),
+								newCorners[i].x,
+								newCorners[i].y,
+								data.cameraModels()[0].cx(),
+								data.cameraModels()[0].cy(),
+								data.cameraModels()[0].fx(),
+								data.cameraModels()[0].fy(),
+								true);
 						if(pcl::isFinite(pt) &&
 							(this->getMaxDepth() == 0.0f || pt.z < this->getMaxDepth()))
 						{
-							newCorners3D->at(oi) = util3d::transformPoint(pt, data.localTransform());
+							newCorners3D->at(oi) = util3d::transformPoint(pt, data.cameraModels()[0].localTransform());
 							newCornersFiltered[oi] = newCorners[i];
 							++oi;
 						}

@@ -64,6 +64,28 @@ inline bool uIsFinite(const T & value)
 }
 
 /**
+ * Get the minimum of the 3 values.
+ * @return the minimum value
+ */
+template<class T>
+inline T uMin3( const T& a, const T& b, const T& c)
+{
+	float m=a<b?a:b;
+	return m<c?m:c;
+}
+
+/**
+ * Get the maximum of the 3 values.
+ * @return the maximum value
+ */
+template<class T>
+inline T uMax3( const T& a, const T& b, const T& c)
+{
+	float m=a>b?a:b;
+	return m>c?m:c;
+}
+
+/**
  * Get the maximum of a vector.
  * @param v the array
  * @param size the size of the array

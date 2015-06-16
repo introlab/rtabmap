@@ -93,6 +93,7 @@ CloudViewer::CloudViewer(QWidget *parent) :
 				-1, 0, 0,
 				0, 0, 0,
 				0, 0, 1);
+	_visualizer->addCoordinateSystem(0.2, 0, 0, 0, 0);
 
 	//setup menu/actions
 	createMenu();

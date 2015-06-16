@@ -78,26 +78,25 @@ protected slots:
 		std::map<double, int> nodeStamps; // <stamp, id>
 		std::map<int, std::pair<int, double> > wifiLevels;
 
-		UASSERT(stats.getStamps().size() == stats.getUserDatas().size());
-		std::map<int, double>::const_iterator iterStamps = stats.getStamps().begin();
-		std::map<int, std::vector<unsigned char> >::const_iterator iterUserDatas = stats.getUserDatas().begin();
-		for(; iterStamps!=stats.getStamps().end() && iterUserDatas!=stats.getUserDatas().end(); ++iterStamps, ++iterUserDatas)
+		for(std::map<int, Signature>::const_iterator iter=stats.getSignatures().begin();
+			iter!=stats.getSignatures().end();
+			++iter)
 		{
-			// Sort stamps by stamps
-			nodeStamps.insert(std::make_pair(iterStamps->second, iterStamps->first));
+			// Sort stamps by stamps->id
+			nodeStamps.insert(std::make_pair(iter->second.getStamp(), iter->first));
 
 			// convert userData to wifi levels
-			if(iterUserDatas->second.size())
+			if(iter->second.getUserData().size())
 			{
-				UASSERT(iterUserDatas->second.size() == sizeof(int)+sizeof(double));
+				UASSERT(iter->second.getUserData().size() == sizeof(int)+sizeof(double));
 
 				// format [int level, double stamp]
 				int level;
 				double stamp;
-				memcpy(&level, iterUserDatas->second.data(), sizeof(int));
-				memcpy(&stamp, iterUserDatas->second.data()+sizeof(int), sizeof(double));
+				memcpy(&level, iter->second.getUserData().data(), sizeof(int));
+				memcpy(&stamp, iter->second.getUserData().data()+sizeof(int), sizeof(double));
 
-				wifiLevels.insert(std::make_pair(iterUserDatas->first, std::make_pair(level, stamp)));
+				wifiLevels.insert(std::make_pair(iter->first, std::make_pair(level, stamp)));
 			}
 		}
 

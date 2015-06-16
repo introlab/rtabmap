@@ -49,7 +49,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/KeypointItem.h"
 #include "rtabmap/gui/UCv2Qt.h"
 #include "rtabmap/core/util3d.h"
-#include "rtabmap/core/util3d_conversions.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/util3d_surface.h"
@@ -631,23 +630,21 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 				std::multimap<int, rtabmap::Link>::iterator refinedIter = rtabmap::graph::findLink(linksRefined_, iter->second.from(), iter->second.to());
 				if(refinedIter != linksRefined_.end())
 				{
-					memory_->addLink(
-							refinedIter->second.to(),
+					memory_->addLink(Link(
 							refinedIter->second.from(),
-							refinedIter->second.transform(),
+							refinedIter->second.to(),
 							refinedIter->second.type(),
-							refinedIter->second.rotVariance(),
-							refinedIter->second.transVariance());
+							refinedIter->second.transform(),
+							refinedIter->second.infMatrix()));
 				}
 				else
 				{
-					memory_->addLink(
-							iter->second.to(),
+					memory_->addLink(Link(
 							iter->second.from(),
-							iter->second.transform(),
+							iter->second.to(),
 							iter->second.type(),
-							iter->second.rotVariance(),
-							iter->second.transVariance());
+							iter->second.transform(),
+							iter->second.infMatrix()));
 				}
 			}
 
@@ -660,8 +657,7 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 							iter->second.from(),
 							iter->second.to(),
 							iter->second.transform(),
-							iter->second.rotVariance(),
-							iter->second.transVariance());
+							iter->second.infMatrix());
 				}
 			}
 
@@ -760,6 +756,7 @@ void DatabaseViewer::exportDatabase()
 			double previousStamp = 0;
 			std::vector<double> delays(ids_.size());
 			int oi=0;
+			std::map<int, Transform> poses;
 			for(int i=0; i<ids_.size(); i+=1+framesIgnored)
 			{
 				Transform odomPose;
@@ -784,6 +781,8 @@ void DatabaseViewer::exportDatabase()
 								delays[oi++] = stamp - previousStamp;
 							}
 							previousStamp = stamp;
+
+							poses.insert(std::make_pair(ids_[i], odomPose));
 						}
 					}
 					if(sessionExported >= 0 && mapId > sessionExported)
@@ -805,31 +804,47 @@ void DatabaseViewer::exportDatabase()
 				{
 					int id = ids.at(i);
 
-					Signature data = memory_->getSignatureData(id, true);
-					float rotVariance = 1.0f;
-					float transVariance = 1.0f;
+					SensorData data = memory_->getNodeData(id, true);
+					cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
 					if(dialog.isOdomExported())
 					{
-						data.getPoseVariance(rotVariance, transVariance);
+						if(memory_->getSignature(id) == 0)
+						{
+							UERROR("could not find node %d in memory.", id);
+						}
+						else
+						{
+							covariance = memory_->getSignature(id)->getPoseCovariance();
+						}
 					}
-					rtabmap::SensorData sensorData(
-						dialog.isDepth2dExported()?data.getLaserScanRaw():cv::Mat(),
-						dialog.isDepth2dExported()?data.getLaserScanMaxPts():0,
-						dialog.isRgbExported()?data.getImageRaw():cv::Mat(),
-						dialog.isDepthExported()?data.getDepthRaw():cv::Mat(),
-						dialog.isRgbExported() || dialog.isDepthExported()?data.getFx():0,
-						dialog.isRgbExported() || dialog.isDepthExported()?data.getFy():0,
-						dialog.isRgbExported() || dialog.isDepthExported()?data.getCx():0,
-						dialog.isRgbExported() || dialog.isDepthExported()?data.getCy():0,
-						dialog.isRgbExported() || dialog.isDepthExported()?data.getLocalTransform():Transform::getIdentity(),
-						dialog.isOdomExported()?data.getPose():Transform(),
-						rotVariance,
-						transVariance,
-						data.id(),
-						data.getStamp(),
-						dialog.isUserDataExported()?data.getUserData():std::vector<unsigned char>());
 
-					recorder.addData(sensorData);
+					rtabmap::SensorData sensorData;
+					if(data.cameraModels().size())
+					{
+						sensorData = rtabmap::SensorData(
+							dialog.isDepth2dExported()?data.laserScanRaw():cv::Mat(),
+							dialog.isDepth2dExported()?data.laserScanMaxPts():0,
+							dialog.isRgbExported()?data.imageRaw():cv::Mat(),
+							dialog.isDepthExported()?data.depthOrRightRaw():cv::Mat(),
+							data.cameraModels(),
+							data.id(),
+							data.stamp(),
+							dialog.isUserDataExported()?data.userData():std::vector<unsigned char>());
+					}
+					else
+					{
+						sensorData = rtabmap::SensorData(
+							dialog.isDepth2dExported()?data.laserScanRaw():cv::Mat(),
+							dialog.isDepth2dExported()?data.laserScanMaxPts():0,
+							dialog.isRgbExported()?data.imageRaw():cv::Mat(),
+							dialog.isDepthExported()?data.depthOrRightRaw():cv::Mat(),
+							data.stereoCameraModel(),
+							data.id(),
+							data.stamp(),
+							dialog.isUserDataExported()?data.userData():std::vector<unsigned char>());
+					}
+
+					recorder.addData(sensorData, dialog.isOdomExported()?poses.at(id):Transform(), covariance);
 
 					progressDialog->appendText(tr("Exported node %1").arg(id));
 					progressDialog->incrementStep();
@@ -1154,60 +1169,35 @@ void DatabaseViewer::view3DMap()
 					rtabmap::Transform pose = iter->second;
 					if(!pose.isNull())
 					{
-						Signature data = memory_->getSignatureData(iter->first, true);
+						SensorData data = memory_->getNodeData(iter->first, true);
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-						UASSERT(data.getImageRaw().empty() || data.getImageRaw().type()==CV_8UC3 || data.getImageRaw().type() == CV_8UC1);
-						UASSERT(data.getDepthRaw().empty() || data.getDepthRaw().type()==CV_8UC1 || data.getDepthRaw().type() == CV_16UC1 || data.getDepthRaw().type() == CV_32FC1);
-						if(data.getDepthRaw().type() == CV_8UC1)
+						UASSERT(data.imageRaw().empty() || data.imageRaw().type()==CV_8UC3 || data.imageRaw().type() == CV_8UC1);
+						UASSERT(data.depthOrRightRaw().empty() || data.depthOrRightRaw().type()==CV_8UC1 || data.depthOrRightRaw().type() == CV_16UC1 || data.depthOrRightRaw().type() == CV_32FC1);
+						cloud = util3d::cloudRGBFromSensorData(data, decimation, maxDepth);
+
+						if(cloud->size())
 						{
-							cv::Mat leftImg;
-							if(data.getImageRaw().channels() == 3)
+							QColor color = Qt::red;
+							int mapId, weight;
+							Transform odomPose;
+							std::string label;
+							double stamp;
+							std::vector<unsigned char> userData;
+							if(memory_->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true))
 							{
-								cv::cvtColor(data.getImageRaw(), leftImg, CV_BGR2GRAY);
+								color = (Qt::GlobalColor)(mapId % 12 + 7 );
 							}
-							else
-							{
-								leftImg = data.getImageRaw();
-							}
-							cloud = rtabmap::util3d::cloudFromDisparityRGB(
-									data.getImageRaw(),
-								util2d::disparityFromStereoImages(leftImg, data.getDepthRaw()),
-								data.getCx(), data.getCy(),
-								data.getFx(), data.getFy(),
-								decimation);
+
+							viewer->addCloud(uFormat("cloud%d", iter->first), cloud, pose, color);
+
+							UINFO("Generated %d (%d points)", iter->first, cloud->size());
+							progressDialog.appendText(QString("Generated %1 (%2 points)").arg(iter->first).arg(cloud->size()));
 						}
 						else
 						{
-							cloud = rtabmap::util3d::cloudFromDepthRGB(
-									data.getImageRaw(),
-									data.getDepthRaw(),
-									data.getCx(), data.getCy(),
-									data.getFx(), data.getFy(),
-									decimation);
+							UINFO("Empty cloud %d", iter->first);
+							progressDialog.appendText(QString("Empty cloud %1").arg(iter->first));
 						}
-
-						if(maxDepth)
-						{
-							cloud = rtabmap::util3d::passThrough(cloud, "z", 0, maxDepth);
-						}
-
-						cloud = rtabmap::util3d::transformPointCloud(cloud, data.getLocalTransform());
-
-						QColor color = Qt::red;
-						int mapId, weight;
-						Transform odomPose;
-						std::string label;
-						double stamp;
-						std::vector<unsigned char> userData;
-						if(memory_->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true))
-						{
-							color = (Qt::GlobalColor)(mapId % 12 + 7 );
-						}
-
-						viewer->addCloud(uFormat("cloud%d", iter->first), cloud, pose, color);
-
-						UINFO("Generated %d (%d points)", iter->first, cloud->size());
-						progressDialog.appendText(QString("Generated %1 (%2 points)").arg(iter->first).arg(cloud->size()));
 						progressDialog.incrementStep();
 						QApplication::processEvents();
 					}
@@ -1264,48 +1254,24 @@ void DatabaseViewer::generate3DMap()
 						const rtabmap::Transform & pose = iter->second;
 						if(!pose.isNull())
 						{
-							Signature data = memory_->getSignatureData(iter->first, true);
+							SensorData data = memory_->getNodeData(iter->first, true);
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-							UASSERT(data.getImageRaw().empty() || data.getImageRaw().type()==CV_8UC3 || data.getImageRaw().type() == CV_8UC1);
-							UASSERT(data.getDepthRaw().empty() || data.getDepthRaw().type()==CV_8UC1 || data.getDepthRaw().type() == CV_16UC1 || data.getDepthRaw().type() == CV_32FC1);
-							if(data.getDepthRaw().type() == CV_8UC1)
+							UASSERT(data.imageRaw().empty() || data.imageRaw().type()==CV_8UC3 || data.imageRaw().type() == CV_8UC1);
+							UASSERT(data.depthOrRightRaw().empty() || data.depthOrRightRaw().type()==CV_8UC1 || data.depthOrRightRaw().type() == CV_16UC1 || data.depthOrRightRaw().type() == CV_32FC1);
+							cloud = util3d::cloudRGBFromSensorData(data, decimation, maxDepth);
+							std::string name = uFormat("%s/node%d.pcd", path.toStdString().c_str(), iter->first);
+							if(cloud->size())
 							{
-								cv::Mat leftImg;
-								if(data.getImageRaw().channels() == 3)
-								{
-									cv::cvtColor(data.getImageRaw(), leftImg, CV_BGR2GRAY);
-								}
-								else
-								{
-									leftImg = data.getImageRaw();
-								}
-								cloud = rtabmap::util3d::cloudFromDisparityRGB(
-										data.getImageRaw(),
-									util2d::disparityFromStereoImages(leftImg, data.getDepthRaw()),
-									data.getCx(), data.getCy(),
-									data.getFx(), data.getFy(),
-									decimation);
+								cloud = rtabmap::util3d::transformPointCloud(cloud, pose);
+								pcl::io::savePCDFile(name, *cloud);
+								UINFO("Saved %s (%d points)", name.c_str(), cloud->size());
+								progressDialog.appendText(QString("Saved %1 (%2 points)").arg(name.c_str()).arg(cloud->size()));
 							}
 							else
 							{
-								cloud = rtabmap::util3d::cloudFromDepthRGB(
-										data.getImageRaw(),
-										data.getDepthRaw(),
-										data.getCx(), data.getCy(),
-										data.getFx(), data.getFy(),
-										decimation);
+								UINFO("Ignored empty cloud %s", name.c_str());
+								progressDialog.appendText(QString("Ignored empty cloud %1").arg(name.c_str()));
 							}
-
-							if(maxDepth)
-							{
-								cloud = rtabmap::util3d::passThrough(cloud, "z", 0, maxDepth);
-							}
-
-							cloud = rtabmap::util3d::transformPointCloud(cloud, pose*data.getLocalTransform());
-							std::string name = uFormat("%s/node%d.pcd", path.toStdString().c_str(), iter->first);
-							pcl::io::savePCDFile(name, *cloud);
-							UINFO("Saved %s (%d points)", name.c_str(), cloud->size());
-							progressDialog.appendText(QString("Saved %1 (%2 points)").arg(name.c_str()).arg(cloud->size()));
 							progressDialog.incrementStep();
 							QApplication::processEvents();
 						}
@@ -1552,19 +1518,21 @@ void DatabaseViewer::update(int value,
 			QImage imgDepth;
 			if(memory_)
 			{
-				Signature data = memory_->getSignatureData(id, true);
-				if(!data.getImageRaw().empty())
+				SensorData data = memory_->getNodeData(id, true);
+				if(!data.imageRaw().empty())
 				{
-					img = uCvMat2QImage(data.getImageRaw());
+					img = uCvMat2QImage(data.imageRaw());
 				}
-				if(!data.getDepthRaw().empty())
+				if(!data.depthOrRightRaw().empty())
 				{
-					imgDepth = uCvMat2QImage(data.getDepthRaw());
+					imgDepth = uCvMat2QImage(data.depthOrRightRaw());
 				}
 
-				if(data.getWords().size())
+				const Signature * signature = memory_->getSignature(id);
+
+				if(signature && signature->getWords().size())
 				{
-					view->setFeatures(data.getWords(), data.getDepthRaw().type() == CV_8UC1?cv::Mat():data.getDepthRaw(), Qt::yellow);
+					view->setFeatures(signature->getWords(), data.depthOrRightRaw().type() == CV_8UC1?cv::Mat():data.depthOrRightRaw(), Qt::yellow);
 				}
 
 				Transform odomPose;
@@ -1574,16 +1542,16 @@ void DatabaseViewer::update(int value,
 				std::vector<unsigned char> d;
 				memory_->getNodeInfo(id, odomPose, mapId, w, l, s, d, true);
 
-				weight->setNum(data.getWeight());
-				label->setText(data.getLabel().c_str());
+				weight->setNum(w);
+				label->setText(l.c_str());
 				labelPose->setText(QString("%1%2, %3, %4").arg(odomPose.isIdentity()?"* ":"").arg(odomPose.x()).arg(odomPose.y()).arg(odomPose.z()));
-				if(data.getStamp()!=0.0)
+				if(s!=0.0)
 				{
-					stamp->setText(QDateTime::fromMSecsSinceEpoch(data.getStamp()*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
+					stamp->setText(QDateTime::fromMSecsSinceEpoch(s*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
 				}
 
 				//stereo
-				if(!data.getDepthRaw().empty() && data.getDepthRaw().type() == CV_8UC1)
+				if(!data.depthOrRightRaw().empty() && data.depthOrRightRaw().type() == CV_8UC1)
 				{
 					this->updateStereo(&data);
 				}
@@ -1594,32 +1562,21 @@ void DatabaseViewer::update(int value,
 				}
 
 				// 3d view
-				if(view3D->isVisible() && !data.getDepthRaw().empty())
+				if(view3D->isVisible() && !data.depthOrRightRaw().empty())
 				{
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-					if(data.getDepthRaw().type() == CV_8UC1)
+					cloud = util3d::cloudRGBFromSensorData(data);
+					if(cloud->size())
 					{
-						cloud = util3d::cloudFromStereoImages(
-								data.getImageRaw(),
-								data.getDepthRaw(),
-								data.getCx(), data.getCy(),
-								data.getFx(), data.getFy(),
-								1);
+						view3D->addOrUpdateCloud("0", cloud);
 					}
-					else
-					{
-						cloud = util3d::cloudFromDepthRGB(
-								data.getImageRaw(),
-								data.getDepthRaw(),
-								data.getCx(), data.getCy(),
-								data.getFx(), data.getFy(),
-								1);
-					}
-					view3D->addOrUpdateCloud("0", cloud, data.getLocalTransform());
 
 					//add scan
-					pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.getLaserScanRaw());
-					view3D->addOrUpdateCloud("1", scan);
+					pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.laserScanRaw());
+					if(scan->size())
+					{
+						view3D->addOrUpdateCloud("1", scan);
+					}
 
 					view3D->update();
 				}
@@ -1750,23 +1707,28 @@ void DatabaseViewer::updateStereo()
 	if(ui_->horizontalSlider_A->maximum())
 	{
 		int id = ids_.at(ui_->horizontalSlider_A->value());
-		Signature data = memory_->getSignatureData(id, true);
+		SensorData data = memory_->getNodeData(id, true);
 		updateStereo(&data);
 	}
 }
 
-void DatabaseViewer::updateStereo(const Signature * data)
+void DatabaseViewer::updateStereo(const SensorData * data)
 {
-	if(data && ui_->dockWidget_stereoView->isVisible() && !data->getImageRaw().empty() && !data->getDepthRaw().empty() && data->getDepthRaw().type() == CV_8UC1)
+	if(data &&
+		ui_->dockWidget_stereoView->isVisible() &&
+		!data->imageRaw().empty() &&
+		!data->depthOrRightRaw().empty() &&
+		data->depthOrRightRaw().type() == CV_8UC1 &&
+		data->stereoCameraModel().isValid())
 	{
 		cv::Mat leftMono;
-		if(data->getImageRaw().channels() == 3)
+		if(data->imageRaw().channels() == 3)
 		{
-			cv::cvtColor(data->getImageRaw(), leftMono, CV_BGR2GRAY);
+			cv::cvtColor(data->imageRaw(), leftMono, CV_BGR2GRAY);
 		}
 		else
 		{
-			leftMono = data->getImageRaw();
+			leftMono = data->imageRaw();
 		}
 
 		UTimer timer;
@@ -1808,7 +1770,7 @@ void DatabaseViewer::updateStereo(const Signature * data)
 		std::vector<cv::Point2f> rightCorners;
 		cv::calcOpticalFlowPyrLK(
 				leftMono,
-				data->getDepthRaw(),
+				data->depthOrRightRaw(),
 				leftCorners,
 				rightCorners,
 				status,
@@ -1840,11 +1802,14 @@ void DatabaseViewer::updateStereo(const Signature * data)
 						pcl::PointXYZ tmpPt = util3d::projectDisparityTo3D(
 								leftCorners[i],
 								disparity,
-								data->getCx(), data->getCy(), data->getFx(), data->getFy());
+								data->stereoCameraModel().left().cx(),
+								data->stereoCameraModel().left().cy(),
+								data->stereoCameraModel().left().fx(),
+								data->stereoCameraModel().baseline());
 
 						if(pcl::isFinite(tmpPt))
 						{
-							pt = pcl::transformPoint(tmpPt, data->getLocalTransform().toEigen3f());
+							pt = pcl::transformPoint(tmpPt, data->stereoCameraModel().left().localTransform().toEigen3f());
 							status[i] = 100; //blue
 							++inliers;
 							cloud->at(oi++) = pt;
@@ -1909,8 +1874,8 @@ void DatabaseViewer::updateStereo(const Signature * data)
 		ui_->graphicsView_stereo->setFeaturesShown(false);
 		ui_->graphicsView_stereo->setImageDepthShown(true);
 
-		ui_->graphicsView_stereo->setImage(uCvMat2QImage(data->getImageRaw()));
-		ui_->graphicsView_stereo->setImageDepth(uCvMat2QImage(data->getDepthRaw()));
+		ui_->graphicsView_stereo->setImage(uCvMat2QImage(data->imageRaw()));
+		ui_->graphicsView_stereo->setImageDepth(uCvMat2QImage(data->depthOrRightRaw()));
 
 		// Draw lines between corresponding features...
 		for(unsigned int i=0; i<kpts.size(); ++i)
@@ -2079,7 +2044,9 @@ void DatabaseViewer::updateConstraintView(
 	UASSERT(!t.isNull() && memory_);
 
 	ui_->label_type->setNum(link.type());
-	ui_->label_variance->setText(QString("%1, %2").arg(sqrt(link.rotVariance())).arg(sqrt(link.transVariance())));
+	ui_->label_variance->setText(QString("%1, %2")
+			.arg(sqrt(link.rotVariance()))
+			.arg(sqrt(link.transVariance())));
 	ui_->label_constraint->setText(QString("%1").arg(t.prettyPrint().c_str()).replace(" ", "\n"));
 	if(link.type() == Link::kNeighbor &&
 	   graphes_.size() &&
@@ -2148,15 +2115,15 @@ void DatabaseViewer::updateConstraintView(
 
 	if(ui_->constraintsViewer->isVisible())
 	{
-		Signature dataFrom, dataTo;
+		SensorData dataFrom, dataTo;
 
-		dataFrom = memory_->getSignatureData(link.from(), true);
-		UASSERT(dataFrom.getImageRaw().empty() || dataFrom.getImageRaw().type()==CV_8UC3 || dataFrom.getImageRaw().type() == CV_8UC1);
-		UASSERT(dataFrom.getDepthRaw().empty() || dataFrom.getDepthRaw().type()==CV_8UC1 || dataFrom.getDepthRaw().type() == CV_16UC1 || dataFrom.getDepthRaw().type() == CV_32FC1);
+		dataFrom = memory_->getNodeData(link.from(), true);
+		UASSERT(dataFrom.imageRaw().empty() || dataFrom.imageRaw().type()==CV_8UC3 || dataFrom.imageRaw().type() == CV_8UC1);
+		UASSERT(dataFrom.depthOrRightRaw().empty() || dataFrom.depthOrRightRaw().type()==CV_8UC1 || dataFrom.depthOrRightRaw().type() == CV_16UC1 || dataFrom.depthOrRightRaw().type() == CV_32FC1);
 
-		dataTo = memory_->getSignatureData(link.to(), true);
-		UASSERT(dataTo.getImageRaw().empty() || dataTo.getImageRaw().type()==CV_8UC3 || dataTo.getImageRaw().type() == CV_8UC1);
-		UASSERT(dataTo.getDepthRaw().empty() || dataTo.getDepthRaw().type()==CV_8UC1 || dataTo.getDepthRaw().type() == CV_16UC1 || dataTo.getDepthRaw().type() == CV_32FC1);
+		dataTo = memory_->getNodeData(link.to(), true);
+		UASSERT(dataTo.imageRaw().empty() || dataTo.imageRaw().type()==CV_8UC3 || dataTo.imageRaw().type() == CV_8UC1);
+		UASSERT(dataTo.depthOrRightRaw().empty() || dataTo.depthOrRightRaw().type()==CV_8UC1 || dataTo.depthOrRightRaw().type() == CV_16UC1 || dataTo.depthOrRightRaw().type() == CV_32FC1);
 
 
 		if(cloudFrom->size() == 0 && cloudTo->size() == 0)
@@ -2164,51 +2131,9 @@ void DatabaseViewer::updateConstraintView(
 			//cloud 3d
 			if(!ui_->checkBox_show3DWords->isChecked())
 			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFrom;
-				if(dataFrom.getDepthRaw().type() == CV_8UC1)
-				{
-					cloudFrom = rtabmap::util3d::cloudFromStereoImages(
-							dataFrom.getImageRaw(),
-							dataFrom.getDepthRaw(),
-							dataFrom.getCx(), dataFrom.getCy(),
-							dataFrom.getFx(), dataFrom.getFy(),
-							1);
-				}
-				else
-				{
-					cloudFrom = rtabmap::util3d::cloudFromDepthRGB(
-							dataFrom.getImageRaw(),
-							dataFrom.getDepthRaw(),
-							dataFrom.getCx(), dataFrom.getCy(),
-							dataFrom.getFx(), dataFrom.getFy(),
-							1);
-				}
-
-				cloudFrom = rtabmap::util3d::removeNaNFromPointCloud(cloudFrom);
-				cloudFrom = rtabmap::util3d::transformPointCloud(cloudFrom, dataFrom.getLocalTransform());
-
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudTo;
-				if(dataTo.getDepthRaw().type() == CV_8UC1)
-				{
-					cloudTo = rtabmap::util3d::cloudFromStereoImages(
-							dataTo.getImageRaw(),
-							dataTo.getDepthRaw(),
-							dataTo.getCx(), dataTo.getCy(),
-							dataTo.getFx(), dataTo.getFy(),
-							1);
-				}
-				else
-				{
-					cloudTo = rtabmap::util3d::cloudFromDepthRGB(
-							dataTo.getImageRaw(),
-							dataTo.getDepthRaw(),
-							dataTo.getCx(), dataTo.getCy(),
-							dataTo.getFx(), dataTo.getFy(),
-							1);
-				}
-
-				cloudTo = rtabmap::util3d::removeNaNFromPointCloud(cloudTo);
-				cloudTo = rtabmap::util3d::transformPointCloud(cloudTo, t*dataTo.getLocalTransform());
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFrom, cloudTo;
+				cloudFrom=util3d::cloudRGBFromSensorData(dataFrom, 1);
+				cloudTo=util3d::cloudRGBFromSensorData(dataTo, 1);
 
 				if(cloudFrom->size())
 				{
@@ -2216,6 +2141,7 @@ void DatabaseViewer::updateConstraintView(
 				}
 				if(cloudTo->size())
 				{
+					cloudTo = rtabmap::util3d::transformPointCloud(cloudTo, t);
 					ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
 				}
 			}
@@ -2300,8 +2226,8 @@ void DatabaseViewer::updateConstraintView(
 		{
 			//cloud 2d
 			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
-			scanA = rtabmap::util3d::laserScanToPointCloud(dataFrom.getLaserScanRaw());
-			scanB = rtabmap::util3d::laserScanToPointCloud(dataTo.getLaserScanRaw());
+			scanA = rtabmap::util3d::laserScanToPointCloud(dataFrom.laserScanRaw());
+			scanB = rtabmap::util3d::laserScanToPointCloud(dataTo.laserScanRaw());
 			scanB = rtabmap::util3d::transformPointCloud(scanB, t);
 			if(scanA->size())
 			{
@@ -2413,51 +2339,30 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				bool added = false;
 				if(ui_->groupBox_gridFromProjection->isChecked())
 				{
-					Signature data = memory_->getSignatureData(ids_.at(i), true);
-					if(!data.getDepthRaw().empty())
+					SensorData data = memory_->getNodeData(ids_.at(i), true);
+					if(!data.depthOrRightRaw().empty())
 					{
 						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-						if(data.getDepthRaw().type() == CV_8UC1)
-						{
-							cloud = rtabmap::util3d::cloudFromDisparity(
-									util2d::disparityFromStereoImages(data.getImageRaw(), data.getDepthRaw()),
-									data.getCx(),
-									data.getCy(),
-									data.getFx(),
-									data.getFy(),
-									ui_->spinBox_projDecimation->value());
-						}
-						else
-						{
-							cloud = util3d::cloudFromDepth(
-									data.getDepthRaw(),
-									data.getCx(),
-									data.getCy(),
-									data.getFx(),
-									data.getFy(),
-									ui_->spinBox_projDecimation->value());
-						}
-						if(cloud->size())
-						{
-							cloud = util3d::passThrough(cloud, "z", 0, ui_->doubleSpinBox_projMaxDepth->value());
-						}
+						cloud = util3d::cloudFromSensorData(data,
+								ui_->spinBox_projDecimation->value(),
+								ui_->doubleSpinBox_projMaxDepth->value(),
+								ui_->doubleSpinBox_gridCellSize->value());
 
 						if(cloud->size())
 						{
-							cloud = util3d::voxelize(cloud, ui_->doubleSpinBox_gridCellSize->value());
-							cloud = util3d::transformPointCloud(cloud, data.getLocalTransform());
-
 							UTimer timer;
 							float cellSize = ui_->doubleSpinBox_gridCellSize->value();
 							float groundNormalMaxAngle = M_PI_4;
 							int minClusterSize = 20;
 							cv::Mat ground, obstacles;
+
 							util3d::occupancy2DFromCloud3D<pcl::PointXYZ>(
 									cloud,
 									ground, obstacles,
 									cellSize,
 									groundNormalMaxAngle,
 									minClusterSize);
+
 							if(!ground.empty() || !obstacles.empty())
 							{
 								localMaps_.insert(std::make_pair(ids_.at(i), std::make_pair(ground, obstacles)));
@@ -2468,8 +2373,8 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				}
 				else
 				{
-					Signature data = memory_->getSignatureData(ids_.at(i), false);
-					if(!data.getLaserScanCompressed().empty())
+					SensorData data = memory_->getNodeData(ids_.at(i), false);
+					if(!data.laserScanCompressed().empty())
 					{
 						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 						cv::Mat laserScan;
@@ -2804,9 +2709,9 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 	int correspondences = 0;
 	Transform transform;
 
-	Signature dataFrom, dataTo;
-	dataFrom = memory_->getSignatureData(currentLink.from(), false);
-	dataTo = memory_->getSignatureData(currentLink.to(), false);
+	SensorData dataFrom, dataTo;
+	dataFrom = memory_->getNodeData(currentLink.from(), false);
+	dataTo = memory_->getNodeData(currentLink.to(), false);
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB(new pcl::PointCloud<pcl::PointXYZ>);
@@ -2816,8 +2721,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 	if(ui_->checkBox_icp_2d->isChecked())
 	{
 		//2D
-		cv::Mat oldLaserScan = rtabmap::uncompressData(dataFrom.getLaserScanCompressed());
-		cv::Mat newLaserScan = rtabmap::uncompressData(dataTo.getLaserScanCompressed());
+		cv::Mat oldLaserScan = rtabmap::uncompressData(dataFrom.laserScanCompressed());
+		cv::Mat newLaserScan = rtabmap::uncompressData(dataTo.laserScanCompressed());
 
 		if(!oldLaserScan.empty() && !newLaserScan.empty())
 		{
@@ -2844,9 +2749,9 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 
 				if(!transform.isNull())
 				{
-					if(dataTo.getLaserScanMaxPts())
+					if(dataTo.laserScanMaxPts())
 					{
-						correspondenceRatio =  float(correspondences)/float(dataTo.getLaserScanMaxPts());
+						correspondenceRatio =  float(correspondences)/float(dataTo.laserScanMaxPts());
 					}
 					else if(ui_->doubleSpinBox_icp_minCorrespondenceRatio->value())
 					{
@@ -2859,112 +2764,60 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 	else
 	{
 		//3D
-		cv::Mat depthA = rtabmap::uncompressImage(dataFrom.getDepthCompressed());
-		cv::Mat depthB = rtabmap::uncompressImage(dataTo.getDepthCompressed());
-
-		if(depthA.type() == CV_8UC1)
+		cv::Mat im,de;
+		dataFrom.uncompressData(&im, &de, 0);
+		dataTo.uncompressData(&im, &de, 0);
+		cloudA = util3d::cloudFromSensorData(dataFrom,
+				ui_->spinBox_icp_decimation->value(),
+				ui_->doubleSpinBox_icp_maxDepth->value(),
+				ui_->doubleSpinBox_icp_voxel->value());
+		cloudB = util3d::cloudFromSensorData(dataTo,
+				ui_->spinBox_icp_decimation->value(),
+				ui_->doubleSpinBox_icp_maxDepth->value(),
+				ui_->doubleSpinBox_icp_voxel->value());
+		if(cloudA->size() && cloudB->size())
 		{
-			cv::Mat leftMono;
-			cv::Mat left = rtabmap::uncompressImage(dataFrom.getImageCompressed());
-			if(left.channels() > 1)
+			cloudB = util3d::transformPointCloud(cloudB, t);
+			if(ui_->checkBox_icp_p2plane->isChecked())
 			{
-				cv::cvtColor(left, leftMono, CV_BGR2GRAY);
+				pcl::PointCloud<pcl::PointNormal>::Ptr cloudANormals = util3d::computeNormals(cloudA, ui_->spinBox_icp_normalKSearch->value());
+				pcl::PointCloud<pcl::PointNormal>::Ptr cloudBNormals = util3d::computeNormals(cloudB, ui_->spinBox_icp_normalKSearch->value());
+
+				cloudANormals = util3d::removeNaNNormalsFromPointCloud(cloudANormals);
+				if(cloudA->size() != cloudANormals->size())
+				{
+					UWARN("removed nan normals...");
+				}
+
+				cloudBNormals = util3d::removeNaNNormalsFromPointCloud(cloudBNormals);
+				if(cloudB->size() != cloudBNormals->size())
+				{
+					UWARN("removed nan normals...");
+				}
+
+				transform = util3d::icpPointToPlane(cloudBNormals,
+						cloudANormals,
+						ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
+						ui_->spinBox_icp_iteration->value(),
+						&hasConverged,
+						&variance,
+						&correspondences);
 			}
 			else
 			{
-				leftMono = left;
+				transform = util3d::icp(cloudB,
+						cloudA,
+						ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
+						ui_->spinBox_icp_iteration->value(),
+						&hasConverged,
+						&variance,
+						&correspondences);
 			}
-			cloudA = util3d::cloudFromDisparity(util2d::disparityFromStereoImages(leftMono, depthA), dataFrom.getCx(), dataFrom.getCy(), dataFrom.getFx(), dataFrom.getFy(), ui_->spinBox_icp_decimation->value());
-			if(ui_->doubleSpinBox_icp_maxDepth->value() > 0)
-			{
-				cloudA = util3d::passThrough(cloudA, "z", 0, ui_->doubleSpinBox_icp_maxDepth->value());
-			}
-			if(ui_->doubleSpinBox_icp_voxel->value() > 0)
-			{
-				cloudA = util3d::voxelize(cloudA, ui_->doubleSpinBox_icp_voxel->value());
-			}
-			cloudA = util3d::transformPointCloud(cloudA, dataFrom.getLocalTransform());
+			correspondenceRatio = float(correspondences)/float(dataFrom.imageRaw().total());
 		}
 		else
 		{
-			cloudA = util3d::getICPReadyCloud(depthA,
-					dataFrom.getFx(), dataFrom.getFy(), dataFrom.getCx(), dataFrom.getCy(),
-					ui_->spinBox_icp_decimation->value(),
-					ui_->doubleSpinBox_icp_maxDepth->value(),
-					ui_->doubleSpinBox_icp_voxel->value(),
-					0, // no sampling
-					dataFrom.getLocalTransform());
-		}
-		if(depthB.type() == CV_8UC1)
-		{
-			cv::Mat leftMono;
-			cv::Mat left = rtabmap::uncompressImage(dataTo.getImageCompressed());
-			if(left.channels() > 1)
-			{
-				cv::cvtColor(left, leftMono, CV_BGR2GRAY);
-			}
-			else
-			{
-				leftMono = left;
-			}
-			cloudB = util3d::cloudFromDisparity(util2d::disparityFromStereoImages(leftMono, depthB), dataTo.getCx(), dataTo.getCy(), dataTo.getFx(), dataTo.getFy(), ui_->spinBox_icp_decimation->value());
-			if(ui_->doubleSpinBox_icp_maxDepth->value() > 0)
-			{
-				cloudB = util3d::passThrough(cloudB, "z", 0, ui_->doubleSpinBox_icp_maxDepth->value());
-			}
-			if(ui_->doubleSpinBox_icp_voxel->value() > 0)
-			{
-				cloudB = util3d::voxelize(cloudB, ui_->doubleSpinBox_icp_voxel->value());
-			}
-			cloudB = util3d::transformPointCloud(cloudB, t * dataTo.getLocalTransform());
-		}
-		else
-		{
-			cloudB = util3d::getICPReadyCloud(depthB,
-					dataTo.getFx(), dataTo.getFy(), dataTo.getCx(), dataTo.getCy(),
-					ui_->spinBox_icp_decimation->value(),
-					ui_->doubleSpinBox_icp_maxDepth->value(),
-					ui_->doubleSpinBox_icp_voxel->value(),
-					0, // no sampling
-					t * dataTo.getLocalTransform());
-		}
-
-		if(ui_->checkBox_icp_p2plane->isChecked())
-		{
-			pcl::PointCloud<pcl::PointNormal>::Ptr cloudANormals = util3d::computeNormals(cloudA, ui_->spinBox_icp_normalKSearch->value());
-			pcl::PointCloud<pcl::PointNormal>::Ptr cloudBNormals = util3d::computeNormals(cloudB, ui_->spinBox_icp_normalKSearch->value());
-
-			cloudANormals = util3d::removeNaNNormalsFromPointCloud(cloudANormals);
-			if(cloudA->size() != cloudANormals->size())
-			{
-				UWARN("removed nan normals...");
-			}
-
-			cloudBNormals = util3d::removeNaNNormalsFromPointCloud(cloudBNormals);
-			if(cloudB->size() != cloudBNormals->size())
-			{
-				UWARN("removed nan normals...");
-			}
-
-			transform = util3d::icpPointToPlane(cloudBNormals,
-					cloudANormals,
-					ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
-					ui_->spinBox_icp_iteration->value(),
-					&hasConverged,
-					&variance,
-					&correspondences);
-		}
-		else
-		{
-			transform = util3d::icp(cloudB,
-					cloudA,
-					ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
-					ui_->spinBox_icp_iteration->value(),
-					&hasConverged,
-					&variance,
-					&correspondences);
-
-			correspondenceRatio = float(correspondences)/float(depthB.total());
+			UWARN("No cloud generated!");
 		}
 	}
 
@@ -3068,8 +2921,8 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 		Memory tmpMemory(parameters);
 
 		// Add signatures
-		SensorData dataFrom = memory_->getSignatureData(from, true).toSensorData();
-		SensorData dataTo = memory_->getSignatureData(to, true).toSensorData();
+		SensorData dataFrom = memory_->getNodeData(from, true);
+		SensorData dataTo = memory_->getNodeData(to, true);
 
 		if(from > to)
 		{
@@ -3188,8 +3041,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 			Memory tmpMemory(parameters);
 
 			// Add signatures
-			SensorData dataFrom = memory_->getSignatureData(from, true).toSensorData();
-			SensorData dataTo = memory_->getSignatureData(to, true).toSensorData();
+			SensorData dataFrom = memory_->getNodeData(from, true);
+			SensorData dataTo = memory_->getNodeData(to, true);
 
 			if(from > to)
 			{
@@ -3207,8 +3060,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 
 			if(!silent)
 			{
-				ui_->graphicsView_A->setFeatures(tmpMemory.getSignature(from)->getWords(), dataFrom.depth());
-				ui_->graphicsView_B->setFeatures(tmpMemory.getSignature(to)->getWords(), dataTo.depth());
+				ui_->graphicsView_A->setFeatures(tmpMemory.getSignature(from)->getWords(), dataFrom.depthRaw());
+				ui_->graphicsView_B->setFeatures(tmpMemory.getSignature(to)->getWords(), dataTo.depthRaw());
 				updateWordsMatching();
 			}
 		}

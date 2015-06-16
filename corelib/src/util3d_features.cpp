@@ -44,36 +44,49 @@ namespace rtabmap
 namespace util3d
 {
 
+pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DDepth(
+		const std::vector<cv::KeyPoint> & keypoints,
+		const cv::Mat & depth,
+		const CameraModel & cameraModel)
+{
+	UASSERT(cameraModel.isValid());
+	std::vector<CameraModel> models;
+	models.push_back(cameraModel);
+	return generateKeypoints3DDepth(keypoints, depth, models);
+}
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DDepth(
 		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & depth,
-		float fx,
-		float fy,
-		float cx,
-		float cy,
-		const Transform & transform)
+		const std::vector<CameraModel> & cameraModels)
 {
 	UASSERT(!depth.empty() && (depth.type() == CV_32FC1 || depth.type() == CV_16UC1));
+	UASSERT(cameraModels.size());
 	pcl::PointCloud<pcl::PointXYZ>::Ptr keypoints3d(new pcl::PointCloud<pcl::PointXYZ>);
 	if(!depth.empty())
 	{
+		UASSERT(int((depth.cols/cameraModels.size())*cameraModels.size()) == depth.cols);
+		float subImageWidth = depth.cols/cameraModels.size();
 		keypoints3d->resize(keypoints.size());
 		for(unsigned int i=0; i!=keypoints.size(); ++i)
 		{
+			int cameraIndex = int(keypoints[i].pt.x / subImageWidth);
+			UASSERT(cameraIndex < (int)cameraModels.size());
 			pcl::PointXYZ pt = util3d::projectDepthTo3D(
 					depth,
-					keypoints[i].pt.x,
+					keypoints[i].pt.x-subImageWidth*cameraIndex,
 					keypoints[i].pt.y,
-					cx,
-					cy,
-					fx,
-					fy,
+					cameraModels.at(cameraIndex).cx(),
+					cameraModels.at(cameraIndex).cy(),
+					cameraModels.at(cameraIndex).fx(),
+					cameraModels.at(cameraIndex).fy(),
 					true);
 
-			if(!transform.isNull() && !transform.isIdentity())
+			if(pcl::isFinite(pt) &&
+				!cameraModels.at(cameraIndex).localTransform().isNull() &&
+			    !cameraModels.at(cameraIndex).localTransform().isIdentity())
 			{
-				pt = util3d::transformPoint(pt, transform);
+				pt = util3d::transformPoint(pt, cameraModels.at(cameraIndex).localTransform());
 			}
 			keypoints3d->at(i) = pt;
 		}
@@ -84,13 +97,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DDepth(
 pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DDisparity(
 		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & disparity,
-		float fx,
-		float baseline,
-		float cx,
-		float cy,
-		const Transform & transform)
+		const StereoCameraModel & stereoCameraModel)
 {
 	UASSERT(!disparity.empty() && (disparity.type() == CV_16SC1 || disparity.type() == CV_32F));
+	UASSERT(stereoCameraModel.isValid());
 	pcl::PointCloud<pcl::PointXYZ>::Ptr keypoints3d(new pcl::PointCloud<pcl::PointXYZ>);
 	keypoints3d->resize(keypoints.size());
 	for(unsigned int i=0; i!=keypoints.size(); ++i)
@@ -98,14 +108,16 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DDisparity(
 		pcl::PointXYZ pt = util3d::projectDisparityTo3D(
 				keypoints[i].pt,
 				disparity,
-				cx,
-				cy,
-				fx,
-				baseline);
+				stereoCameraModel.left().cx(),
+				stereoCameraModel.left().cy(),
+				stereoCameraModel.left().fx(),
+				stereoCameraModel.baseline());
 
-		if(pcl::isFinite(pt) && !transform.isNull() && !transform.isIdentity())
+		if(pcl::isFinite(pt) &&
+			!stereoCameraModel.left().localTransform().isNull() &&
+			!stereoCameraModel.left().localTransform().isIdentity())
 		{
-			pt = util3d::transformPoint(pt, transform);
+			pt = util3d::transformPoint(pt, stereoCameraModel.left().localTransform());
 		}
 		keypoints3d->at(i) = pt;
 	}
@@ -120,7 +132,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DStereo(
 		float baseline,
 		float cx,
 		float cy,
-		const Transform & transform,
+		Transform localTransform,
 		int flowWinSize,
 		int flowMaxLevel,
 		int flowIterations,
@@ -137,7 +149,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DStereo(
 			baseline,
 			cx,
 			cy,
-			transform,
+			localTransform,
 			flowWinSize,
 			flowMaxLevel,
 			flowIterations,
@@ -153,7 +165,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DStereo(
 		float baseline,
 		float cx,
 		float cy,
-		const Transform & transform,
+		Transform localTransform,
 		int flowWinSize,
 		int flowMaxLevel,
 		int flowIterations,
@@ -163,6 +175,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DStereo(
 	UASSERT(!leftImage.empty() && !rightImage.empty() &&
 			leftImage.type() == CV_8UC1 && rightImage.type() == CV_8UC1 &&
 			leftImage.rows == rightImage.rows && leftImage.cols == rightImage.cols);
+	UASSERT(fx > 0.0f && baseline > 0.0f);
 
 	// Find features in the new left image
 	std::vector<unsigned char> status;
@@ -198,14 +211,18 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DStereo(
 				pcl::PointXYZ tmpPt = util3d::projectDisparityTo3D(
 						leftCorners[i],
 						disparity,
-						cx, cy, fx, baseline);
+						cx,
+						cy,
+						fx,
+						baseline);
 
 				if(pcl::isFinite(tmpPt))
 				{
 					pt = tmpPt;
-					if(!transform.isNull() && !transform.isIdentity())
+					if(!localTransform.isNull() &&
+					   !localTransform.isIdentity())
 					{
-						pt = util3d::transformPoint(pt, transform);
+						pt = util3d::transformPoint(pt, localTransform);
 					}
 				}
 			}
@@ -223,11 +240,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DStereo(
 std::multimap<int, pcl::PointXYZ> generateWords3DMono(
 		const std::multimap<int, cv::KeyPoint> & refWords,
 		const std::multimap<int, cv::KeyPoint> & nextWords,
-		float fx,
-		float fy,
-		float cx,
-		float cy,
-		const Transform & localTransform,
+		const CameraModel & cameraModel,
 		Transform & cameraTransform,
 		int pnpIterations,
 		float pnpReprojError,
@@ -237,6 +250,7 @@ std::multimap<int, pcl::PointXYZ> generateWords3DMono(
 		const std::multimap<int, pcl::PointXYZ> & refGuess3D,
 		double * varianceOut)
 {
+	UASSERT(cameraModel.isValid());
 	std::multimap<int, pcl::PointXYZ> words3D;
 	std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
 	if(EpipolarGeometry::findPairsUnique(refWords, nextWords, pairs) > 8)
@@ -290,10 +304,7 @@ std::multimap<int, pcl::PointXYZ> generateWords3DMono(
 					xp.at<double>(2, i) = 1;
 				}
 
-				cv::Mat K = (cv::Mat_<double>(3,3) <<
-					fx, 0, cx,
-					0, fy, cy,
-					0, 0, 1);
+				cv::Mat K = cameraModel.K();
 				cv::Mat Kinv = K.inv();
 				cv::Mat E = K.t()*F*K;
 				cv::Mat x_norm = Kinv * x;
@@ -313,7 +324,7 @@ std::multimap<int, pcl::PointXYZ> generateWords3DMono(
 					//if camera transform is set, use it instead of the computed one from epipolar geometry
 					if(useCameraTransformGuess)
 					{
-						Transform t = (localTransform.inverse()*cameraTransform*localTransform).inverse();
+						Transform t = (cameraModel.localTransform().inverse()*cameraTransform*cameraModel.localTransform()).inverse();
 						P = (cv::Mat_<double>(3,4) <<
 								(double)t.r11(), (double)t.r12(), (double)t.r13(), (double)t.x(),
 								(double)t.r21(), (double)t.r22(), (double)t.r23(), (double)t.y(),
@@ -336,7 +347,7 @@ std::multimap<int, pcl::PointXYZ> generateWords3DMono(
 						pts4D.col(i) /= pts4D.at<double>(3,i);
 						if(pts4D.at<double>(2,i) > 0)
 						{
-							words3D.insert(std::make_pair(indexes[i], util3d::transformPoint(pcl::PointXYZ(pts4D.at<double>(0,i), pts4D.at<double>(1,i), pts4D.at<double>(2,i)), localTransform)));
+							words3D.insert(std::make_pair(indexes[i], util3d::transformPoint(pcl::PointXYZ(pts4D.at<double>(0,i), pts4D.at<double>(1,i), pts4D.at<double>(2,i)), cameraModel.localTransform())));
 						}
 					}
 
@@ -349,7 +360,7 @@ std::multimap<int, pcl::PointXYZ> generateWords3DMono(
 									R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), T.at<double>(1),
 									R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), T.at<double>(2));
 
-						cameraTransform = (localTransform * t).inverse() * localTransform;
+						cameraTransform = (cameraModel.localTransform() * t).inverse() * cameraModel.localTransform();
 					}
 
 					if(refGuess3D.size())
@@ -441,7 +452,7 @@ std::multimap<int, pcl::PointXYZ> generateWords3DMono(
 								imagePoints.resize(oi);
 
 								//PnPRansac
-								Transform guess = localTransform.inverse();
+								Transform guess = cameraModel.localTransform().inverse();
 								cv::Mat R = (cv::Mat_<double>(3,3) <<
 										(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
 										(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
@@ -473,7 +484,7 @@ std::multimap<int, pcl::PointXYZ> generateWords3DMono(
 												   R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
 												   R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
 
-									cameraTransform = (localTransform * pnp).inverse();
+									cameraTransform = (cameraModel.localTransform() * pnp).inverse();
 								}
 								else
 								{

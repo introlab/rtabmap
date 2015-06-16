@@ -239,8 +239,8 @@ void CalibrationDialog::handleEvent(UEvent * event)
 			{
 				processingData_ = true;
 				QMetaObject::invokeMethod(this, "processImages",
-						Q_ARG(cv::Mat, e->data().image()),
-						Q_ARG(cv::Mat, e->data().depthOrRightImage()),
+						Q_ARG(cv::Mat, e->data().imageRaw()),
+						Q_ARG(cv::Mat, e->data().depthOrRightRaw()),
 						Q_ARG(QString, QString(e->cameraName().c_str())));
 			}
 		}
