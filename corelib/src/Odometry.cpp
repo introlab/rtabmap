@@ -43,6 +43,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_maxDepth(Parameters::defaultOdomMaxDepth()),
 		_resetCountdown(Parameters::defaultOdomResetCountdown()),
 		_force2D(Parameters::defaultOdomForce2D()),
+		_holonomic(Parameters::defaultOdomHolonomic()),
 		_particleFiltering(Parameters::defaultOdomParticleFiltering()),
 		_particleSize(Parameters::defaultOdomParticleSize()),
 		_particleNoiseT(Parameters::defaultOdomParticleNoiseT()),
@@ -66,6 +67,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomMaxDepth(), _maxDepth);
 	Parameters::parse(parameters, Parameters::kOdomRoiRatios(), _roiRatios);
 	Parameters::parse(parameters, Parameters::kOdomForce2D(), _force2D);
+	Parameters::parse(parameters, Parameters::kOdomHolonomic(), _holonomic);
 	Parameters::parse(parameters, Parameters::kOdomFillInfoData(), _fillInfoData);
 	Parameters::parse(parameters, Parameters::kOdomPnPEstimation(), _pnpEstimation);
 	Parameters::parse(parameters, Parameters::kOdomPnPReprojError(), _pnpReprojError);
@@ -191,7 +193,7 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 	{
 		_resetCurrentCount = _resetCountdown;
 
-		if(_force2D || filters_.size())
+		if(_force2D || !_holonomic || filters_.size())
 		{
 			float x,y,z, roll,pitch,yaw;
 			t.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
@@ -211,8 +213,15 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 				else
 				{
 					x = filters_[0]->filter(x);
-					y = filters_[1]->filter(y);
 					yaw = filters_[5]->filter(yaw);
+					if(_holonomic)
+					{
+						y = filters_[1]->filter(y);
+					}
+					else
+					{
+						y = x * tan(yaw);
+					}
 
 					if(!_force2D)
 					{
@@ -227,13 +236,17 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 					info->timeParticleFiltering = time.ticks();
 				}
 			}
+			else if(!_holonomic)
+			{
+				y = x * tan(yaw);
+			}
 			UASSERT_MSG(uIsFinite(x) && uIsFinite(y) && uIsFinite(z) &&
 					uIsFinite(roll) && uIsFinite(pitch) && uIsFinite(yaw),
 					uFormat("x=%f y=%f z=%f roll=%f pitch=%f yaw=%f org T=%s",
 							x, y, z, roll, pitch, yaw, t.prettyPrint().c_str()).c_str());
 			t = Transform(x,y,_force2D?0:z, _force2D?0:roll,_force2D?0:pitch,yaw);
 
-			if(info)
+			if(info && filters_.size())
 			{
 				info->transformFiltered = t;
 			}

@@ -550,6 +550,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_minInliers->setObjectName(Parameters::kOdomMinInliers().c_str());
 	_ui->odom_refine_iterations->setObjectName(Parameters::kOdomRefineIterations().c_str());
 	_ui->odom_force2D->setObjectName(Parameters::kOdomForce2D().c_str());
+	_ui->odom_holonomic->setObjectName(Parameters::kOdomHolonomic().c_str());
 	_ui->odom_fillInfoData->setObjectName(Parameters::kOdomFillInfoData().c_str());
 	_ui->odom_dataBufferSize->setObjectName(Parameters::kOdomImageBufferSize().c_str());
 	_ui->lineEdit_odom_roi->setObjectName(Parameters::kOdomRoiRatios().c_str());

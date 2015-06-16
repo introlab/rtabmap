@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-450</y>
+            <y>0</y>
             <width>755</width>
             <height>1591</height>
            </rect>
@@ -6794,13 +6794,6 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </item>
                        </widget>
                       </item>
-                      <item row="5" column="0">
-                       <widget class="QSpinBox" name="odom_countdown">
-                        <property name="maximum">
-                         <number>999999</number>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="4" column="1">
                        <widget class="QLabel" name="label_44">
                         <property name="text">
@@ -6838,7 +6831,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="1">
+                      <item row="9" column="1">
                        <widget class="QLabel" name="label_221">
                         <property name="text">
                          <string>Fill info with data (inliers/outliers features to be shown in Odometry view).</string>
@@ -6848,7 +6841,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="0">
+                      <item row="11" column="0">
                        <widget class="QPushButton" name="pushButton_testOdometry">
                         <property name="text">
                          <string>Test selected odometry</string>
@@ -6875,7 +6868,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="1">
+                      <item row="10" column="1">
                        <widget class="QLabel" name="label_232">
                         <property name="text">
                          <string>Data buffer size (0 means inf).</string>
@@ -6885,7 +6878,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="0">
+                      <item row="10" column="0">
                        <widget class="QSpinBox" name="odom_dataBufferSize">
                         <property name="maximum">
                          <number>999999</number>
@@ -6902,7 +6895,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="0">
+                      <item row="9" column="0">
                        <widget class="QCheckBox" name="odom_fillInfoData">
                         <property name="text">
                          <string/>
@@ -6956,7 +6949,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </item>
                        </widget>
                       </item>
-                      <item row="7" column="1">
+                      <item row="8" column="1">
                        <widget class="QLabel" name="label_233">
                         <property name="text">
                          <string>Particle filtering to smooth the odometry trajectory. See &quot;Particle Filter&quot; panel for the related parameters.</string>
@@ -6966,8 +6959,32 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
+                      <item row="8" column="0">
                        <widget class="QCheckBox" name="odom_particleFiltering">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QSpinBox" name="odom_countdown">
+                        <property name="maximum">
+                         <number>999999</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="1">
+                       <widget class="QLabel" name="label_238">
+                        <property name="text">
+                         <string>If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QCheckBox" name="odom_holonomic">
                         <property name="text">
                          <string/>
                         </property>

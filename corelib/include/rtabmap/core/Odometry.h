@@ -77,6 +77,7 @@ private:
 	float _maxDepth;
 	int _resetCountdown;
 	bool _force2D;
+	bool _holonomic;
 	bool _particleFiltering;
 	int _particleSize;
 	float _particleNoiseT;

@@ -55,6 +55,7 @@
      <property name="title">
       <string>Advanced</string>
      </property>
+     <addaction name="actionOpen_working_directory"/>
      <addaction name="actionDump_the_memory"/>
      <addaction name="actionDump_the_prediction_matrix"/>
      <addaction name="actionGenerate_map"/>
@@ -73,7 +74,6 @@
     <addaction name="separator"/>
     <addaction name="actionDelete_memory"/>
     <addaction name="separator"/>
-    <addaction name="actionOpen_working_directory"/>
     <addaction name="menuAdvanced"/>
    </widget>
    <widget class="QMenu" name="menu6">
