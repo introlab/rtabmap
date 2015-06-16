@@ -3188,13 +3188,9 @@ Transform PreferencesDialog::getSourceOpenniLocalTransform() const
 	QString str = _ui->lineEdit_openniLocalTransform->text();
 	str.replace("PI_2", QString::number(3.141592/2.0));
 	QStringList list = str.split(' ');
-	if(list.size() != 6)
+	if(list.size() == 6 || list.size() == 9)
 	{
-		UERROR("Local transform is wrong! must have 6 items (%s)", str.toStdString().c_str());
-	}
-	else
-	{
-		std::vector<float> numbers(6);
+		std::vector<float> numbers(list.size());
 		bool ok = false;
 		for(int i=0; i<list.size(); ++i)
 		{
@@ -3208,8 +3204,21 @@ Transform PreferencesDialog::getSourceOpenniLocalTransform() const
 		}
 		if(ok)
 		{
-			t = Transform(numbers[0], numbers[1], numbers[2], numbers[3], numbers[4], numbers[5]);
+			if(list.size() == 6)
+			{
+				t = Transform(numbers[0], numbers[1], numbers[2], numbers[3], numbers[4], numbers[5]);
+			}
+			else // 9
+			{
+				t = Transform(numbers[0], numbers[1], numbers[2], 0,
+						      numbers[3], numbers[4], numbers[5], 0,
+						      numbers[6], numbers[7], numbers[8], 0);
+			}
 		}
+	}
+	else
+	{
+		UERROR("Local transform is wrong! must have 6 or 9 items (%s)", str.toStdString().c_str());
 	}
 	return t;
 }

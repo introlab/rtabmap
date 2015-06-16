@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-837</y>
             <width>755</width>
             <height>1591</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>23</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -2071,14 +2071,14 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          <item row="1" column="0">
                           <widget class="QLineEdit" name="lineEdit_openniLocalTransform">
                            <property name="text">
-                            <string>0 0 0 -PI_2 0 -PI_2</string>
+                            <string>0 0 1 -1 0 0 0 -1 0</string>
                            </property>
                           </widget>
                          </item>
                          <item row="1" column="1">
                           <widget class="QLabel" name="label_42">
                            <property name="text">
-                            <string>Local transform from /base_link to /camera_link. Format (6 values): x y z roll pitch yaw.</string>
+                            <string>Local transform from /base_link to /camera_link. Format (6 values): x y z roll pitch yaw. Format (9 values): r11 r12 r13 r21 r22 r23 r31 r32 r33.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -6976,7 +6976,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       <item row="7" column="1">
                        <widget class="QLabel" name="label_238">
                         <property name="text">
-                         <string>If the robot is holonomic (strafing and up/down commands can be issued). If not, y/z values will be estimated from x and rotation values (y=x*tan(yaw), z=x*tan(pitch)).</string>
+                         <string>If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>

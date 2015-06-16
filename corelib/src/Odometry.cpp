@@ -213,28 +213,27 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 				else
 				{
 					x = filters_[0]->filter(x);
+					y = filters_[1]->filter(y);
 					yaw = filters_[5]->filter(yaw);
-					if(_holonomic)
+
+					if(!_holonomic)
 					{
-						y = filters_[1]->filter(y);
-					}
-					else
-					{
-						y = x * tan(yaw);
+						float tmpY = x * tan(yaw);
+						if(fabs(tmpY) < fabs(y) || (tmpY<=0 && y >=0) || (tmpY>=0 && y<=0))
+						{
+							y = tmpY;
+						}
+						else
+						{
+							yaw = atan(y/x);
+						}
 					}
 
 					if(!_force2D)
 					{
+						z = filters_[2]->filter(z);
 						roll = filters_[3]->filter(roll);
 						pitch = filters_[4]->filter(pitch);
-						if(_holonomic)
-						{
-							z = filters_[2]->filter(z);
-						}
-						else
-						{
-							z = x * tan(pitch);
-						}
 					}
 				}
 
@@ -245,10 +244,14 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 			}
 			else if(!_holonomic)
 			{
-				y = x * tan(yaw);
-				if(!_force2D)
+				float tmpY = x * tan(yaw);
+				if(fabs(tmpY) < fabs(y) || (tmpY<=0 && y >=0) || (tmpY>=0 && y<=0))
 				{
-					z = x * tan(pitch);
+					y = tmpY;
+				}
+				else
+				{
+					yaw = atan(y/x);
 				}
 			}
 			UASSERT_MSG(uIsFinite(x) && uIsFinite(y) && uIsFinite(z) &&
