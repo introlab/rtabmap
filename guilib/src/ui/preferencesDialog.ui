@@ -6976,7 +6976,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       <item row="7" column="1">
                        <widget class="QLabel" name="label_238">
                         <property name="text">
-                         <string>If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).</string>
+                         <string>If the robot is holonomic (strafing and up/down commands can be issued). If not, y/z values will be estimated from x and rotation values (y=x*tan(yaw), z=x*tan(pitch)).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>

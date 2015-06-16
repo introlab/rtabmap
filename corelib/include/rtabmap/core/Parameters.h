@@ -322,7 +322,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,         "Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).");
 	RTABMAP_PARAM_STR(Odom, RoiRatios,          "0.0 0.0 0.0 0.0", "Region of interest ratios [left, right, top, bottom].");
 	RTABMAP_PARAM(Odom, Force2D, 		        bool, false,     "Force 2D transform (3Dof: x,y and yaw).");
-	RTABMAP_PARAM(Odom, Holonomic, 		        bool, true,     "If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).");
+	RTABMAP_PARAM(Odom, Holonomic, 		        bool, true,     "If the robot is holonomic (strafing and up/down commands can be issued). If not, y/z values will be estimated from x and rotation values (y=x*tan(yaw), z=x*tan(pitch)).");
 	RTABMAP_PARAM(Odom, FillInfoData, 		    bool, true,     "Fill info with data (inliers/outliers features).");
 	RTABMAP_PARAM(Odom, ImageBufferSize,        unsigned int, 1, "Data buffer size (0 min inf).");
 	RTABMAP_PARAM(Odom, PnPEstimation, 		    bool, false,     "(PnP) Pose estimation from 2D to 3D correspondences instead of 3D to 3D correspondences.");
