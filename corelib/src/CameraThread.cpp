@@ -127,7 +127,9 @@ void CameraThread::mainLoop()
 		if(_cameraRGBD)
 		{
 			SensorData data;
-			if(dynamic_cast<CameraStereoDC1394*>(_cameraRGBD) || dynamic_cast<CameraStereoDC1394*>(_cameraRGBD))
+			if(dynamic_cast<CameraStereoFlyCapture2*>(_cameraRGBD) ||
+				dynamic_cast<CameraStereoDC1394*>(_cameraRGBD) ||
+				dynamic_cast<CameraStereoImages*>(_cameraRGBD))
 			{
 				//stereo
 				data = SensorData(rgb, depth, StereoCameraModel(fx, fx, cx, cy, fyOrBaseline, _cameraRGBD->getLocalTransform()), ++_seq, stamp);

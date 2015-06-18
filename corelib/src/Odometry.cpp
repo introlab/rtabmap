@@ -218,14 +218,15 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 
 					if(!_holonomic)
 					{
-						float tmpY = x * tan(yaw);
+						// arc trajectory around ICR
+						float tmpY = yaw!=0.0f ? x / tan((CV_PI-yaw)/2.0f) : 0.0f;
 						if(fabs(tmpY) < fabs(y) || (tmpY<=0 && y >=0) || (tmpY>=0 && y<=0))
 						{
 							y = tmpY;
 						}
 						else
 						{
-							yaw = atan(y/x);
+							yaw = (atan(x/y)*2.0f-CV_PI)*-1;
 						}
 					}
 
@@ -244,14 +245,15 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 			}
 			else if(!_holonomic)
 			{
-				float tmpY = x * tan(yaw);
+				// arc trajectory around ICR
+				float tmpY = yaw!=0.0f ? x / tan((CV_PI-yaw)/2.0f) : 0.0f;
 				if(fabs(tmpY) < fabs(y) || (tmpY<=0 && y >=0) || (tmpY>=0 && y<=0))
 				{
 					y = tmpY;
 				}
 				else
 				{
-					yaw = atan(y/x);
+					yaw = (atan(x/y)*2.0f-CV_PI)*-1;
 				}
 			}
 			UASSERT_MSG(uIsFinite(x) && uIsFinite(y) && uIsFinite(z) &&

@@ -1975,20 +1975,29 @@ Transform Memory::computeVisualTransform(
 			UWARN("PnP estimation and Epipolar geometry estimation are set, only PnP is used.");
 		}
 
-		if(!newS.sensorData().rightRaw().empty() && !newS.sensorData().stereoCameraModel().isValid())
-		{
-			UERROR("Calibrated stereo camera required");
-		}
-		else if(!newS.sensorData().depthRaw().empty() &&
-			(newS.sensorData().cameraModels().size() != 1 || !newS.sensorData().cameraModels()[0].isValid()))
+		if((!newS.sensorData().rightRaw().empty() ||
+		   !newS.sensorData().stereoCameraModel().isValid()) &&
+		   (!newS.sensorData().depthRaw().empty() ||
+			newS.sensorData().cameraModels().size() != 1 ||
+			!newS.sensorData().cameraModels()[0].isValid()))
 		{
 			UERROR("Calibrated camera required (multi-cameras not supported).");
 		}
 		else
 		{
-			cv::Mat K = newS.sensorData().cameraModels().size()?newS.sensorData().cameraModels()[0].K():newS.sensorData().stereoCameraModel().left().K();
-			Transform localTransform = newS.sensorData().cameraModels().size()?newS.sensorData().cameraModels()[0].localTransform():newS.sensorData().stereoCameraModel().left().localTransform();
-
+			cv::Mat K;
+			Transform localTransform;
+			if(newS.sensorData().cameraModels().size())
+			{
+				K = newS.sensorData().cameraModels()[0].K();
+				localTransform = newS.sensorData().cameraModels()[0].localTransform();
+			}
+			else
+			{
+				K = newS.sensorData().stereoCameraModel().left().K();
+				localTransform = newS.sensorData().stereoCameraModel().left().localTransform();
+			}
+			UASSERT(!K.empty() && !localTransform.isNull());
 			// 2D -> 3D
 			if(!oldS.getWords3().empty() && !newS.getWords().empty())
 			{
@@ -4269,10 +4278,21 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			"",
 			pose,
 			data.userData(),
-			SensorData(
-				rtabmap::compressData2(laserScan),
-				data.laserScanMaxPts(),
-				cv::Mat(), cv::Mat(), CameraModel(), id));
+			stereoCameraModel.isValid()?
+				SensorData(
+						rtabmap::compressData2(laserScan),
+						data.laserScanMaxPts(),
+						cv::Mat(),
+						cv::Mat(),
+						stereoCameraModel,
+						id):
+				SensorData(
+						rtabmap::compressData2(laserScan),
+						data.laserScanMaxPts(),
+						cv::Mat(),
+						cv::Mat(),
+						cameraModels,
+						id));
 	}
 	s->setWords(words);
 	s->setWords3(words3D);
