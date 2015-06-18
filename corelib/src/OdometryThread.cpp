@@ -97,8 +97,9 @@ void OdometryThread::mainLoop()
 	{
 		OdometryInfo info;
 		Transform pose = _odometry->process(data, &info);
-		data.setPose(pose, info.variance, info.variance); // a null pose notify that odometry could not be computed
-		this->post(new OdometryEvent(data, info));
+		// a null pose notify that odometry could not be computed
+		double variance = info.variance>0?info.variance:1;
+		this->post(new OdometryEvent(data, pose, variance, variance, info));
 	}
 }
 
@@ -106,7 +107,7 @@ void OdometryThread::addData(const SensorData & data)
 {
 	if(dynamic_cast<OdometryMono*>(_odometry) == 0)
 	{
-		if(data.image().empty() || data.depthOrRightImage().empty() || data.fx() == 0.0f || data.fyOrBaseline() == 0.0f)
+		if(data.imageRaw().empty() || data.depthOrRightRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValid()))
 		{
 			ULOGGER_ERROR("Missing some information (images empty or missing calibration)!?");
 			return;
@@ -114,7 +115,7 @@ void OdometryThread::addData(const SensorData & data)
 	}
 	else
 	{
-		if(data.image().empty() || data.fx() == 0.0f || data.fyOrBaseline() == 0.0f)
+		if(data.imageRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValid()))
 		{
 			ULOGGER_ERROR("Missing some information (image empty or missing calibration)!?");
 			return;

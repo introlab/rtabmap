@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UMutex.h"
 #include "rtabmap/utilite/UThreadNode.h"
 #include "rtabmap/core/Parameters.h"
+#include "rtabmap/core/SensorData.h"
 
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/Link.h>
@@ -95,8 +96,7 @@ public:
 
 	// Specific queries...
 	void loadNodeData(std::list<Signature *> & signatures, bool loadMetricData) const;
-	void getNodeData(int signatureId, cv::Mat & imageCompressed, cv::Mat & depthCompressed, cv::Mat & laserScanCompressed, float & fx, float & fy, float & cx, float & cy, Transform & localTransform, int & laserScanMaxPts) const;
-	void getNodeData(int signatureId, cv::Mat & imageCompressed) const;
+	void getNodeData(int signatureId, SensorData & data) const;
 	bool getNodeInfo(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, std::vector<unsigned char> & userData) const;
 	void loadLinks(int signatureId, std::map<int, Link> & links, Link::Type type = Link::kUndef) const;
 	void getWeight(int signatureId, int & weight) const;
@@ -134,8 +134,7 @@ private:
 	virtual void loadLinksQuery(int signatureId, std::map<int, Link> & links, Link::Type type = Link::kUndef) const = 0;
 
 	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool loadMetricData) const = 0;
-	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed, cv::Mat & depthCompressed, cv::Mat & laserScanCompressed, float & fx, float & fy, float & cx, float & cy, Transform & localTransform, int & laserScanMaxPts) const = 0;
-	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed) const = 0;
+	virtual void getNodeDataQuery(int signatureId, SensorData & data) const = 0;
 	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, std::vector<unsigned char> & userData) const = 0;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const = 0;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const = 0;

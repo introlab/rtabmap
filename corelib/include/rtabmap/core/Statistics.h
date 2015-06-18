@@ -136,11 +136,7 @@ public:
 	void setLoopClosureId(int loopClosureId) {_loopClosureId = loopClosureId;}
 	void setLocalLoopClosureId(int localLoopClosureId) {_localLoopClosureId = localLoopClosureId;}
 
-	void setMapIds(const std::map<int, int> & mapIds) {_mapIds = mapIds;}
-	void setLabels(const std::map<int, std::string> & labels) {_labels = labels;}
-	void setStamps(const std::map<int, double> & stamps) {_stamps = stamps;}
-	void setUserDatas(const std::map<int, std::vector<unsigned char> > & userDatas) {_userDatas = userDatas;}
-	void setSignature(const Signature & s) {_signature = s;}
+	void setSignatures(const std::map<int, Signature> & signatures) {_signatures = signatures;}
 
 	void setPoses(const std::map<int, Transform> & poses) {_poses = poses;}
 	void setConstraints(const std::multimap<int, Link> & constraints) {_constraints = constraints;}
@@ -159,11 +155,7 @@ public:
 	int loopClosureId() const {return _loopClosureId;}
 	int localLoopClosureId() const {return _localLoopClosureId;}
 
-	const std::map<int, int> & getMapIds() const {return _mapIds;}
-	const std::map<int, std::string> & getLabels() const {return _labels;}
-	const std::map<int, double> & getStamps() const {return _stamps;}
-	const std::map<int, std::vector<unsigned char> > & getUserDatas() const {return _userDatas;}
-	const Signature & getSignature() const {return _signature;}
+	const std::map<int, Signature> & getSignatures() const {return _signatures;}
 
 	const std::map<int, Transform> & poses() const {return _poses;}
 	const std::multimap<int, Link> & constraints() const {return _constraints;}
@@ -185,14 +177,7 @@ private:
 	int _loopClosureId;
 	int _localLoopClosureId;
 
-	// extended data start here...
-	std::map<int, int> _mapIds;
-	std::map<int, std::string> _labels;
-	std::map<int, double> _stamps;
-	std::map<int, std::vector<unsigned char> > _userDatas;
-
-	// Signature data
-	Signature _signature;
+	std::map<int, Signature> _signatures;
 
 	std::map<int, Transform> _poses;
 	std::multimap<int, Link> _constraints;

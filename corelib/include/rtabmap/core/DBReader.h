@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UEventsSender.h>
 #include <rtabmap/core/Transform.h>
-#include <rtabmap/core/SensorData.h>
+#include <rtabmap/core/OdometryEvent.h>
 
 #include <opencv2/core/core.hpp>
 
@@ -59,7 +59,7 @@ public:
 
 	bool init(int startIndex=0);
 	void setFrameRate(float frameRate);
-	SensorData getNextData();
+	OdometryEvent getNextData();
 
 protected:
 	virtual void mainLoopBegin();

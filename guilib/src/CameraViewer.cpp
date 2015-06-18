@@ -76,19 +76,11 @@ CameraViewer::~CameraViewer()
 void CameraViewer::showImage(const rtabmap::SensorData & data)
 {
 	processingImages_ = true;
-	imageView_->setImage(uCvMat2QImage(data.image()));
-	imageView_->setImageDepth(uCvMat2QImage(data.depthOrRightImage()));
-	if(!data.depth().empty() && data.fx() && data.fy())
+	imageView_->setImage(uCvMat2QImage(data.imageRaw()));
+	imageView_->setImageDepth(uCvMat2QImage(data.depthOrRightRaw()));
+	if(!data.depthOrRightRaw().empty() && (data.stereoCameraModel().isValid() || data.cameraModels().size()))
 	{
-		cloudView_->addOrUpdateCloud("cloud",
-				util3d::cloudFromDepthRGB(data.image(), data.depth(), data.cx(), data.cy(), data.fx(), data.fy()),
-				data.localTransform());
-	}
-	else if(!data.rightImage().empty() && data.fx() && data.baseline())
-	{
-		cloudView_->addOrUpdateCloud("cloud",
-				util3d::cloudFromStereoImages(data.image(), data.rightImage(), data.cx(), data.cy(), data.fx(), data.baseline()),
-				data.localTransform());
+		cloudView_->addOrUpdateCloud("cloud", util3d::cloudFromSensorData(data));
 	}
 	else
 	{

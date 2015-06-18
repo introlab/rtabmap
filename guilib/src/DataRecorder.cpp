@@ -120,7 +120,7 @@ DataRecorder::~DataRecorder()
 	this->closeRecorder();
 }
 
-void DataRecorder::addData(const rtabmap::SensorData & data)
+void DataRecorder::addData(const rtabmap::SensorData & data, const Transform & pose, const cv::Mat & covariance)
 {
 	memoryMutex_.lock();
 	if(memory_)
@@ -134,10 +134,10 @@ void DataRecorder::addData(const rtabmap::SensorData & data)
 
 		//save to database
 		UTimer time;
-		memory_->update(data);
+		memory_->update(data, pose, covariance);
 		const Signature * s = memory_->getLastWorkingSignature();
-		totalSizeKB_ += (int)s->getImageCompressed().total()/1000;
-		totalSizeKB_ += (int)s->getDepthCompressed().total()/1000;
+		totalSizeKB_ += (int)s->sensorData().imageCompressed().total()/1000;
+		totalSizeKB_ += (int)s->sensorData().depthOrRightCompressed().total()/1000;
 		memory_->cleanup();
 
 		if(++count_ % 30)
@@ -183,8 +183,8 @@ void DataRecorder::handleEvent(UEvent * event)
 					{
 						processingImages_ = true;
 						QMetaObject::invokeMethod(this, "showImage",
-								Q_ARG(cv::Mat, camEvent->data().image()),
-								Q_ARG(cv::Mat, camEvent->data().depthOrRightImage()));
+								Q_ARG(cv::Mat, camEvent->data().imageRaw()),
+								Q_ARG(cv::Mat, camEvent->data().depthOrRightRaw()));
 					}
 				}
 			}

@@ -417,7 +417,8 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 
 	if(wasEmpty)
 	{
-		this->fitInView(this->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
+		QRectF rect = this->scene()->itemsBoundingRect();
+		this->fitInView(rect.adjusted(-rect.width()/2.0f, -rect.height()/2.0f, rect.width()/2.0f, rect.height()/2.0f), Qt::KeepAspectRatio);
 	}
 }
 

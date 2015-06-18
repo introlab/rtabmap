@@ -109,13 +109,13 @@ void CameraThread::mainLoop()
 	UDEBUG("");
 	cv::Mat rgb, depth;
 	float fx = 0.0f;
-	float fy = 0.0f;
+	float fyOrBaseline = 0.0f;
 	float cx = 0.0f;
 	float cy = 0.0f;
 	double stamp = UTimer::now();
 	if(_cameraRGBD)
 	{
-		_cameraRGBD->takeImage(rgb, depth, fx, fy, cx, cy, stamp);
+		_cameraRGBD->takeImage(rgb, depth, fx, fyOrBaseline, cx, cy, stamp);
 	}
 	else
 	{
@@ -126,7 +126,18 @@ void CameraThread::mainLoop()
 	{
 		if(_cameraRGBD)
 		{
-			SensorData data(rgb, depth, fx, fy, cx, cy, _cameraRGBD->getLocalTransform(), Transform(), 1, 1, ++_seq, stamp);
+			SensorData data;
+			if(dynamic_cast<CameraStereoDC1394*>(_cameraRGBD) || dynamic_cast<CameraStereoDC1394*>(_cameraRGBD))
+			{
+				//stereo
+				data = SensorData(rgb, depth, StereoCameraModel(fx, fx, cx, cy, fyOrBaseline, _cameraRGBD->getLocalTransform()), ++_seq, stamp);
+				UASSERT(data.stereoCameraModel().isValid());
+			}
+			else
+			{
+				data = SensorData(rgb, depth, CameraModel(fx, fyOrBaseline, cx, cy, _cameraRGBD->getLocalTransform()), ++_seq, stamp);
+				UASSERT(data.cameraModels().size() == 1 && data.cameraModels()[0].isValid());
+			}
 			this->post(new CameraEvent(data, _cameraRGBD->getSerial()));
 		}
 		else

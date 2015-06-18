@@ -71,8 +71,8 @@ public:
 		layout->addWidget(cloudViewer_);
 		this->setLayout(layout);
 
+		qRegisterMetaType<rtabmap::OdometryEvent>("rtabmap::OdometryEvent");
 		qRegisterMetaType<rtabmap::Statistics>("rtabmap::Statistics");
-		qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
 
 		QAction * pause = new QAction(this);
 		this->addAction(pause);
@@ -102,14 +102,14 @@ protected slots:
 		}
 	}
 
-	virtual void processOdometry(const rtabmap::SensorData & data)
+	virtual void processOdometry(const rtabmap::OdometryEvent & odom)
 	{
 		if(!this->isVisible())
 		{
 			return;
 		}
 
-		Transform pose = data.pose();
+		Transform pose = odom.pose();
 		if(pose.isNull())
 		{
 			//Odometry lost
@@ -126,38 +126,33 @@ protected slots:
 			lastOdomPose_ = pose;
 
 			// 3d cloud
-			if(data.depth().cols == data.image().cols &&
-			   data.depth().rows == data.image().rows &&
-			   !data.depth().empty() &&
-			   data.fx() > 0.0f &&
-			   data.fy() > 0.0f)
+			if(odom.data().depthOrRightRaw().cols == odom.data().imageRaw().cols &&
+			   odom.data().depthOrRightRaw().rows == odom.data().imageRaw().rows &&
+			   !odom.data().depthOrRightRaw().empty() &&
+			   (odom.data().stereoCameraModel().isValid() || odom.data().cameraModels().size()))
 			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
-					data.image(),
-					data.depth(),
-					data.cx(),
-					data.cy(),
-					data.fx(),
-					data.fy(),
-					2); // decimation // high definition
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudRGBFromSensorData(
+					odom.data(),
+					2,     // decimation
+					4.0f); // max depth
 				if(cloud->size())
 				{
-					cloud = util3d::passThrough(cloud, "z", 0, 4.0f);
-					if(cloud->size())
+					if(!cloudViewer_->addOrUpdateCloud("cloudOdom", cloud, odometryCorrection_*pose))
 					{
-						cloud = util3d::transformPointCloud(cloud, data.localTransform());
+						UERROR("Adding cloudOdom to viewer failed!");
 					}
 				}
-				if(!cloudViewer_->addOrUpdateCloud("cloudOdom", cloud, odometryCorrection_*pose))
+				else
 				{
-					UERROR("Adding cloudOdom to viewer failed!");
+					cloudViewer_->setCloudVisibility("cloudOdom", false);
+					UWARN("Empty cloudOdom!");
 				}
 			}
 
-			if(!data.pose().isNull())
+			if(!odom.pose().isNull())
 			{
 				// update camera position
-				cloudViewer_->updateCameraTargetPosition(odometryCorrection_*data.pose());
+				cloudViewer_->updateCameraTargetPosition(odometryCorrection_*odom.pose());
 			}
 		}
 		cloudViewer_->update();
@@ -196,34 +191,31 @@ protected slots:
 					}
 					cloudViewer_->setCloudVisibility(cloudName, true);
 				}
-				else if(iter->first == stats.refImageId() &&
-						stats.getSignature().id() == iter->first)
+				else if(uContains(stats.getSignatures(), iter->first))
 				{
-					Signature s = stats.getSignature();
-					s.uncompressData(); // make sure data is uncompressed
+					Signature s = stats.getSignatures().at(iter->first);
+					s.sensorData().uncompressData(); // make sure data is uncompressed
 					// Add the new cloud
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
-							s.getImageRaw(),
-							s.getDepthRaw(),
-							s.getCx(),
-							s.getCy(),
-							s.getFx(),
-							s.getFy(),
-						   4); // decimation
-
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudRGBFromSensorData(
+							s.sensorData(),
+						    4,     // decimation
+						    4.0f); // max depth
 					if(cloud->size())
 					{
-						cloud = util3d::passThrough(cloud, "z", 0, 4.0f);
-						if(cloud->size())
+						if(!cloudViewer_->addOrUpdateCloud(cloudName, cloud, iter->second))
 						{
-							cloud = util3d::transformPointCloud(cloud, stats.getSignature().getLocalTransform());
+							UERROR("Adding cloud %d to viewer failed!", iter->first);
 						}
 					}
-					if(!cloudViewer_->addOrUpdateCloud(cloudName, cloud, iter->second))
+					else
 					{
-						UERROR("Adding cloud %d to viewer failed!", iter->first);
+						UWARN("Empty cloud %d!", iter->first);
 					}
 				}
+			}
+			else
+			{
+				UWARN("Null pose for %d ?!?", iter->first);
 			}
 		}
 
@@ -278,7 +270,7 @@ protected slots:
 			   !processingStatistics_)
 			{
 				lastOdometryProcessed_ = false; // if we receive too many odometry events!
-				QMetaObject::invokeMethod(this, "processOdometry", Q_ARG(rtabmap::SensorData, odomEvent->data()));
+				QMetaObject::invokeMethod(this, "processOdometry", Q_ARG(rtabmap::OdometryEvent, *odomEvent));
 			}
 		}
 	}

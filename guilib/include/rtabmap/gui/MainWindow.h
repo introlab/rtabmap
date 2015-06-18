@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QSet>
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/SensorData.h"
-#include "rtabmap/core/OdometryInfo.h"
+#include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/gui/PreferencesDialog.h"
 
 #include <pcl/point_cloud.h>
@@ -163,7 +163,7 @@ private slots:
 	void selectScreenCaptureFormat(bool checked);
 	void takeScreenshot();
 	void updateElapsedTime();
-	void processOdometry(const rtabmap::SensorData & data, const rtabmap::OdometryInfo & info);
+	void processOdometry(const rtabmap::OdometryEvent & odom);
 	void applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags);
 	void applyPrefSettings(const rtabmap::ParametersMap & parameters);
 	void processRtabmapEventInit(int status, const QString & info);
@@ -196,7 +196,7 @@ private slots:
 
 signals:
 	void statsReceived(const rtabmap::Statistics &);
-	void odometryReceived(const rtabmap::SensorData &, const rtabmap::OdometryInfo &);
+	void odometryReceived(const rtabmap::OdometryEvent &);
 	void thresholdsChanged(int, int);
 	void stateChanged(MainWindow::State);
 	void rtabmapEventInitReceived(int status, const QString & info);
@@ -229,19 +229,6 @@ private:
 			int regenerateDecimation,
 			float regenerateVoxelSize,
 			float regenerateMaxDepth) const;
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr createCloud(
-			int id,
-			const cv::Mat & rgb,
-			const cv::Mat & depth,
-			float fx,
-			float fy,
-			float cx,
-			float cy,
-			const Transform & localTransform,
-			const Transform & pose,
-			float voxelSize,
-			int decimation,
-			float maxDepth) const;
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > getClouds(
 			const std::map<int, Transform> & poses,
 			bool regenerateClouds,
