@@ -287,6 +287,7 @@ cv::Mat CameraImages::captureImage()
 					UDEBUG("width=%d, height=%d, channels=%d, elementSize=%d, total=%d",
 							img.cols, img.rows, img.channels(), img.elemSize(), img.total());
 
+#if CV_MAJOR_VERSION < 3
 					// FIXME : it seems that some png are incorrectly loaded with opencv c++ interface, where c interface works...
 					if(img.depth() != CV_8U)
 					{
@@ -296,6 +297,7 @@ cv::Mat CameraImages::captureImage()
 						img = cv::Mat(i, true);
 						cvReleaseImage(&i);
 					}
+#endif
 
 					if(img.channels()>3)
 					{

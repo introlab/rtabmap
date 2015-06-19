@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/calib3d/calib3d.hpp>
 #include <rtabmap/core/Transform.h>
 #include <list>
+#include <map>
 
 namespace rtabmap
 {
@@ -86,7 +87,7 @@ std::multimap<int, pcl::PointXYZ> RTABMAP_EXP generateWords3DMono(
 		Transform & cameraTransform,
 		int pnpIterations = 100,
 		float pnpReprojError = 8.0f,
-		int pnpFlags = cv::ITERATIVE,
+		int pnpFlags = 0, // cv::SOLVEPNP_ITERATIVE
 		float ransacParam1 = 3.0f,
 		float ransacParam2 = 0.99f,
 		const std::multimap<int, pcl::PointXYZ> & refGuess3D = std::multimap<int, pcl::PointXYZ>(),
@@ -95,14 +96,6 @@ std::multimap<int, pcl::PointXYZ> RTABMAP_EXP generateWords3DMono(
 std::multimap<int, cv::KeyPoint> RTABMAP_EXP aggregate(
 		const std::list<int> & wordIds,
 		const std::vector<cv::KeyPoint> & keypoints);
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP get3DFASTKpts(
-		const cv::Mat & image,
-		const cv::Mat & imageDepth,
-		float constant,
-		int fastThreshold=50,
-		bool fastNonmaxSuppression=true,
-		float maxDepth = 5.0f);
 
 } // namespace util3d
 } // namespace rtabmap

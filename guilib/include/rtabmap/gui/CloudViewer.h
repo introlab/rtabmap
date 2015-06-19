@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QSettings>
 
 #include <opencv2/opencv.hpp>
+#include <set>
 
 #include <pcl/visualization/mouse_event.h>
 #include <pcl/PCLPointCloud2.h>

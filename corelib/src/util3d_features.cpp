@@ -477,32 +477,6 @@ std::multimap<int, cv::KeyPoint> aggregate(
 	return words;
 }
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr get3DFASTKpts(
-		const cv::Mat & image,
-		const cv::Mat & imageDepth,
-		float constant,
-		int fastThreshold,
-		bool fastNonmaxSuppression,
-		float maxDepth)
-{
-	// Extract words
-	cv::FastFeatureDetector detector(fastThreshold, fastNonmaxSuppression);
-	std::vector<cv::KeyPoint> kpts;
-	detector.detect(image, kpts);
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr points(new pcl::PointCloud<pcl::PointXYZ>);
-	for(unsigned int i=0; i<kpts.size(); ++i)
-	{
-		pcl::PointXYZ pt = projectDepthTo3D(imageDepth, kpts[i].pt.x, kpts[i].pt.y, 0, 0, 1.0f/constant, 1.0f/constant, true);
-		if(uIsFinite(pt.z) && (maxDepth <= 0 || pt.z <= maxDepth))
-		{
-			points->push_back(pt);
-		}
-	}
-	UDEBUG("points %d -> %d", (int)kpts.size(), (int)points->size());
-	return points;
-}
-
 }
 
 }

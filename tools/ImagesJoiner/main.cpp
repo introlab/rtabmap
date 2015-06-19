@@ -104,7 +104,7 @@ int main(int argc, char * argv[])
 		{
 			CvSize sizeA = cvGetSize(imageA);
 			CvSize sizeB = cvGetSize(imageB);
-			CvSize targetSize = {0};
+			CvSize targetSize = cvSize(0,0);
 			targetSize.width = sizeA.width + sizeB.width;
 			targetSize.height = sizeA.height > sizeB.height ? sizeA.height : sizeB.height;
 			IplImage* targetImage = cvCreateImage(targetSize, imageA->depth, imageA->nChannels);
