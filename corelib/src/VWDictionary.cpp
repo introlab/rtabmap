@@ -34,7 +34,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/utilite/UtiLite.h"
 
+#include <opencv2/opencv_modules.hpp>
+#if CV_MAJOR_VERSION < 3
 #include <opencv2/gpu/gpu.hpp>
+#else
+#include <opencv2/core/cuda.hpp>
+#ifdef HAVE_OPENCV_CUDAFEATURES2D
+#include <opencv2/cudafeatures2d.hpp>
+#endif
+#endif
 
 #include <fstream>
 #include <string>
@@ -220,11 +228,26 @@ void VWDictionary::setNNStrategy(NNStrategy strategy)
 {
 	if(strategy!=kNNUndef)
 	{
+#if CV_MAJOR_VERSION < 3
 		if(strategy == kNNBruteForceGPU && !cv::gpu::getCudaEnabledDeviceCount())
 		{
 			UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but no CUDA devices found! Doing \"kNNBruteForce\" instead.");
 			strategy = kNNBruteForce;
 		}
+#else
+		if(strategy == kNNBruteForceGPU && !cv::cuda::getCudaEnabledDeviceCount())
+		{
+			UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but no CUDA devices found! Doing \"kNNBruteForce\" instead.");
+			strategy = kNNBruteForce;
+		}
+#endif
+#ifndef HAVE_OPENCV_CUDAFEATURES2D
+		if(strategy == kNNBruteForceGPU)
+		{
+			UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but OpenCV cudafeatures2d module is not found! Doing \"kNNBruteForce\" instead.");
+			strategy = kNNBruteForce;
+		}
+#endif
 
 		if(RTABMAP_NONFREE == 0 && strategy == kNNFlannKdTree)
 		{
@@ -466,6 +489,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 		else if(_strategy == kNNBruteForceGPU)
 		{
 			bruteForce = true;
+#if CV_MAJOR_VERSION < 3
 			cv::gpu::GpuMat newDescriptorsGpu(descriptors);
 			cv::gpu::GpuMat lastDescriptorsGpu(_dataTree);
 			if(type==CV_8U)
@@ -478,6 +502,22 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 				cv::gpu::BruteForceMatcher_GPU<cv::L2<float> > gpuMatcher;
 				gpuMatcher.knnMatch(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
 			}
+#else
+#ifdef HAVE_OPENCV_CUDAFEATURES2D
+			cv::cuda::GpuMat newDescriptorsGpu(descriptors);
+			cv::cuda::GpuMat lastDescriptorsGpu(_dataTree);
+			if(type==CV_8U)
+			{
+				cv::cuda::BruteForceMatcher_GPU<cv::Hamming> gpuMatcher;
+				gpuMatcher.knnMatch(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
+			}
+			else
+			{
+				cv::cuda::BruteForceMatcher_GPU<cv::L2<float> > gpuMatcher;
+				gpuMatcher.knnMatch(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
+			}
+#endif
+#endif
 		}
 		else
 		{
@@ -681,6 +721,7 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 			else if(_strategy == kNNBruteForceGPU)
 			{
 				bruteForce = true;
+#if CV_MAJOR_VERSION < 3
 				cv::gpu::GpuMat newDescriptorsGpu(query);
 				cv::gpu::GpuMat lastDescriptorsGpu(_dataTree);
 				if(type==CV_8U)
@@ -693,6 +734,23 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 					cv::gpu::BruteForceMatcher_GPU<cv::L2<float> > gpuMatcher;
 					gpuMatcher.knnMatch(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
 				}
+#else
+#ifdef HAVE_OPENCV_CUDAFEATURES2D
+				cv::cuda::GpuMat newDescriptorsGpu(query);
+				cv::cuda::GpuMat lastDescriptorsGpu(_dataTree);
+				cv::Ptr<cv::cuda::DescriptorMatcher> gpuMatcher;
+				if(type==CV_8U)
+				{
+					gpuMatcher = cv::cuda::DescriptorMatcher::createBFMatcher(cv::NORM_HAMMING);
+					gpuMatcher->knnMatch(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
+				}
+				else
+				{
+					gpuMatcher = cv::cuda::DescriptorMatcher::createBFMatcher(cv::NORM_L2);
+					gpuMatcher.knnMatch(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
+				}
+#endif
+#endif
 			}
 			else
 			{

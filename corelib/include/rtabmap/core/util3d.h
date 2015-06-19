@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
 #include <opencv2/core/core.hpp>
+#include <map>
 #include <list>
 
 namespace rtabmap

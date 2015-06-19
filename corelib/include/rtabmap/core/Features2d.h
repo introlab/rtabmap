@@ -25,8 +25,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef KEYPOINTDESCRIPTOR_H_
-#define KEYPOINTDESCRIPTOR_H_
+#ifndef FEATURES2D_H_
+#define FEATURES2D_H_
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <list>
 #include "rtabmap/core/Parameters.h"
 
+#if CV_MAJOR_VERSION < 3
 namespace cv{
 class SURF;
 class SIFT;
@@ -45,6 +46,44 @@ namespace gpu {
 	class FAST_GPU;
 }
 }
+typedef cv::SIFT CV_SIFT;
+typedef cv::SURF CV_SURF;
+typedef cv::ORB CV_ORB;
+typedef cv::FastFeatureDetector CV_FAST;
+typedef cv::FREAK CV_FREAK;
+typedef cv::GFTTDetector CV_GFTT;
+typedef cv::BriefDescriptorExtractor CV_BRIEF;
+typedef cv::BRISK CV_BRISK;
+typedef cv::gpu::SURF_GPU CV_SURF_GPU;
+typedef cv::gpu::ORB_GPU CV_ORB_GPU;
+typedef cv::gpu::FAST_GPU CV_FAST_GPU;
+#else
+namespace cv{
+namespace xfeatures2d {
+class FREAK;
+class BriefDescriptorExtractor;
+class SIFT;
+class SURF;
+}
+namespace cuda {
+class FastFeatureDetector;
+class ORB;
+class SURF_CUDA;
+}
+}
+typedef cv::xfeatures2d::SIFT CV_SIFT;
+typedef cv::xfeatures2d::SURF CV_SURF;
+typedef cv::ORB CV_ORB;
+typedef cv::FastFeatureDetector CV_FAST;
+typedef cv::xfeatures2d::FREAK CV_FREAK;
+typedef cv::GFTTDetector CV_GFTT;
+typedef cv::xfeatures2d::BriefDescriptorExtractor CV_BRIEF;
+typedef cv::BRISK CV_BRISK;
+typedef cv::cuda::SURF_CUDA CV_SURF_GPU;
+typedef cv::cuda::ORB CV_ORB_GPU;
+typedef cv::cuda::FastFeatureDetector CV_FAST_GPU;
+#endif
+
 
 namespace rtabmap {
 
@@ -134,8 +173,8 @@ private:
 	float gpuKeypointsRatio_;
 	bool gpuVersion_;
 
-	cv::SURF * _surf;
-	cv::gpu::SURF_GPU * _gpuSurf;
+	cv::Ptr<CV_SURF> _surf;
+	cv::Ptr<CV_SURF_GPU> _gpuSurf;
 };
 
 //SIFT
@@ -159,7 +198,7 @@ private:
 	double edgeThreshold_;
 	double sigma_;
 
-	cv::SIFT * _sift;
+	cv::Ptr<CV_SIFT> _sift;
 };
 
 //ORB
@@ -190,8 +229,8 @@ private:
 	int fastThreshold_;
 	bool nonmaxSuppresion_;
 
-	cv::ORB * _orb;
-	cv::gpu::ORB_GPU * _gpuOrb;
+	cv::Ptr<CV_ORB> _orb;
+	cv::Ptr<CV_ORB_GPU> _gpuOrb;
 };
 
 //FAST
@@ -212,8 +251,8 @@ private:
 	bool gpu_;
 	double gpuKeypointsRatio_;
 
-	cv::FastFeatureDetector * _fast;
-	cv::gpu::FAST_GPU * _gpuFast;
+	cv::Ptr<CV_FAST> _fast;
+	cv::Ptr<CV_FAST_GPU> _gpuFast;
 };
 
 //FAST_BRIEF
@@ -232,7 +271,7 @@ private:
 private:
 	int bytes_;
 
-	cv::BriefDescriptorExtractor * _brief;
+	cv::Ptr<CV_BRIEF> _brief;
 };
 
 //FAST_FREAK
@@ -254,7 +293,7 @@ private:
 	float patternScale_;
 	int nOctaves_;
 
-	cv::FREAK * _freak;
+	cv::Ptr<CV_FREAK> _freak;
 };
 
 //GFTT
@@ -277,7 +316,7 @@ private:
 	bool _useHarrisDetector;
 	double _k;
 
-	cv::GFTTDetector * _gftt;
+	cv::Ptr<CV_GFTT> _gftt;
 };
 
 //GFTT_BRIEF
@@ -296,7 +335,7 @@ private:
 private:
 	int bytes_;
 
-	cv::BriefDescriptorExtractor * _brief;
+	cv::Ptr<CV_BRIEF> _brief;
 };
 
 //GFTT_FREAK
@@ -318,7 +357,7 @@ private:
 	float patternScale_;
 	int nOctaves_;
 
-	cv::FREAK * _freak;
+	cv::Ptr<CV_FREAK> _freak;
 };
 
 //BRISK
@@ -340,10 +379,10 @@ private:
 	int octaves_;
 	float patternScale_;
 
-	cv::BRISK * brisk_;
+	cv::Ptr<CV_BRISK> brisk_;
 };
 
 
 }
 
-#endif /* KEYPOINTDESCRIPTOR_H_ */
+#endif /* FEATURES2D_H_ */

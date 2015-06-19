@@ -2128,7 +2128,7 @@ Transform Memory::computeVisualTransform(
 					cameraTransform,
 					100,
 					4.0f,
-					cv::ITERATIVE,
+					0, // cv::SOLVEPNP_ITERATIVE
 					1.0f,
 					0.99f,
 					oldS.getWords3(),

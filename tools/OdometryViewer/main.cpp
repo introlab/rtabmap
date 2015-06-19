@@ -671,7 +671,7 @@ int main (int argc, char * argv[])
 
 			if(mono)
 			{
-				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomPnPFlags(), uNumber2Str(cv::ITERATIVE)));
+				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomPnPFlags(), uNumber2Str(0))); //CV_ITERATIVE
 				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomPnPReprojError(), "4.0"));
 				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomIterations(), "100"));
 				odom = new rtabmap::OdometryMono(parameters);

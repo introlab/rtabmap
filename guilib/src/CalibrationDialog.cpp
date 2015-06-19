@@ -736,12 +736,27 @@ void CalibrationDialog::calibrate()
 		objectPoints.resize(stereoImagePoints_[0].size(), objectPoints[0]);
 
 		// calibrate extrinsic
-		double rms = cv::stereoCalibrate(objectPoints, stereoImagePoints_[0], stereoImagePoints_[1],
-						models_[0].K(), models_[0].D(),
-						models_[1].K(), models_[1].D(),
-						imageSize, R, T, E, F,
-						cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5),
-						cv::CALIB_FIX_INTRINSIC);
+#if CV_MAJOR_VERSION < 3
+		double rms = cv::stereoCalibrate(
+				objectPoints,
+				stereoImagePoints_[0],
+				stereoImagePoints_[1],
+				models_[0].K(), models_[0].D(),
+				models_[1].K(), models_[1].D(),
+				imageSize, R, T, E, F,
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5),
+				cv::CALIB_FIX_INTRINSIC);
+#else
+		double rms = cv::stereoCalibrate(
+				objectPoints,
+				stereoImagePoints_[0],
+				stereoImagePoints_[1],
+				models_[0].K(), models_[0].D(),
+				models_[1].K(), models_[1].D(),
+				imageSize, R, T, E, F,
+				cv::CALIB_FIX_INTRINSIC,
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5));
+#endif
 		UINFO("stereo calibration... done with RMS error=%f", rms);
 
 		double err = 0;
