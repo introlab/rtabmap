@@ -876,6 +876,54 @@ std::map<int, Link> Memory::getLoopClosureLinks(
 	return loopClosures;
 }
 
+std::map<int, Link> Memory::getLinks(
+		int signatureId,
+		bool lookInDatabase) const
+{
+	std::map<int, Link> links;
+	Signature * s = uValue(_signatures, signatureId, (Signature*)0);
+	if(s)
+	{
+		links = s->getLinks();
+	}
+	else if(lookInDatabase && _dbDriver)
+	{
+		_dbDriver->loadLinks(signatureId, links, Link::kUndef);
+	}
+	else
+	{
+		UWARN("Cannot find signature %d in memory", signatureId);
+	}
+	return links;
+}
+
+std::multimap<int, Link> Memory::getAllLinks(bool lookInDatabase, bool ignoreNullLinks) const
+{
+	std::multimap<int, Link> links;
+
+	if(lookInDatabase && _dbDriver)
+	{
+		_dbDriver->getAllLinks(links, ignoreNullLinks);
+	}
+
+	for(std::map<int, Signature*>::const_iterator iter=_signatures.begin(); iter!=_signatures.end(); ++iter)
+	{
+		links.erase(iter->first);
+		for(std::multimap<int, Link>::const_iterator jter=iter->second->getLinks().begin();
+			jter!=iter->second->getLinks().end();
+			++jter)
+		{
+			if(!ignoreNullLinks || jter->second.isValid())
+			{
+				links.insert(std::make_pair(iter->first, jter->second));
+			}
+		}
+	}
+
+	return links;
+}
+
+
 // return map<Id,Margin>, including signatureId
 // maxCheckedInDatabase = -1 means no limit to check in database (default)
 // maxCheckedInDatabase = 0 means don't check in database

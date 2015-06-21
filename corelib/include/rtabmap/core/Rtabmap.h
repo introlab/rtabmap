@@ -129,7 +129,7 @@ public:
 			std::map<int, Signature> * signatures = 0);
 	void clearPath();
 	bool computePath(int targetNode, bool global);
-	bool computePath(const Transform & targetPose, bool global);
+	bool computePath(const Transform & targetPose); // only in current optimized map
 	const std::vector<std::pair<int, Transform> > & getPath() const {return _path;}
 	std::vector<std::pair<int, Transform> > getPathNextPoses() const;
 	std::vector<int> getPathNextNodes() const;

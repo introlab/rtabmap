@@ -291,7 +291,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd, bool, false,    "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
 	RTABMAP_PARAM(RGBD, GoalReachedRadius,    float, 0.5, "Goal reached radius (m).");
 	RTABMAP_PARAM(RGBD, PlanVirtualLinks,  bool, true, "Before planning in the graph, close nodes are linked together. Radius is defined by \"RGBD/GoalReachedRadius\" parameter.");
-	RTABMAP_PARAM(RGBD, GoalsSavedInUserData,     bool, true, "When a goal is received and processed with success, it is saved in user data of the location with this format: \"GOAL:#\".");
+	RTABMAP_PARAM(RGBD, GoalsSavedInUserData,     bool, false, "When a goal is received and processed with success, it is saved in user data of the location with this format: \"GOAL:#\".");
 	RTABMAP_PARAM(RGBD, MaxLocalRetrieved, unsigned int, 2, "Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).");
 	RTABMAP_PARAM(RGBD, LocalRadius, float, 10, "Local radius (m) for nodes selection in the local map. This parameter is used in some approaches about the local map management.");
 	RTABMAP_PARAM(RGBD, LocalImmunizationRatio, float, 0.25, "Ratio of working memory for which local nodes are immunized from transfer.");

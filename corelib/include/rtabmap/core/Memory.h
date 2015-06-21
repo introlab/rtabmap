@@ -115,6 +115,9 @@ public:
 			bool lookInDatabase = false) const;
 	std::map<int, Link> getLoopClosureLinks(int signatureId,
 			bool lookInDatabase = false) const;
+	std::map<int, Link> getLinks(int signatureId,
+			bool lookInDatabase = false) const;
+	std::multimap<int, Link> getAllLinks(bool lookInDatabase, bool ignoreNullLinks = true) const;
 	bool isRawDataKept() const {return _rawDataKept;}
 	bool isBinDataKept() const {return _binDataKept;}
 	float getSimilarityThreshold() const {return _similarityThreshold;}

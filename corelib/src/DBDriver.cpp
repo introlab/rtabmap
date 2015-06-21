@@ -556,6 +556,33 @@ void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren) const
 	_dbSafeAccessMutex.unlock();
 }
 
+void DBDriver::getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLinks) const
+{
+	_dbSafeAccessMutex.lock();
+	this->getAllLinksQuery(links, ignoreNullLinks);
+	_dbSafeAccessMutex.unlock();
+
+	// look in the trash
+	_trashesMutex.lock();
+	if(_trashSignatures.size())
+	{
+		for(std::map<int, Signature*>::const_iterator iter=_trashSignatures.begin(); iter!=_trashSignatures.end(); ++iter)
+		{
+			links.erase(iter->first);
+			for(std::multimap<int, Link>::const_iterator jter=iter->second->getLinks().begin();
+				jter!=iter->second->getLinks().end();
+				++jter)
+			{
+				if(!ignoreNullLinks || jter->second.isValid())
+				{
+					links.insert(std::make_pair(iter->first, jter->second));
+				}
+			}
+		}
+	}
+	_trashesMutex.unlock();
+}
+
 void DBDriver::getLastNodeId(int & id) const
 {
 	// look in the trash

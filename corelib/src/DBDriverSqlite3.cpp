@@ -1055,6 +1055,95 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 	}
 }
 
+void DBDriverSqlite3::getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks) const
+{
+	links.clear();
+	if(_ppDb)
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::stringstream query;
+
+		if(uStrNumCmp(_version, "0.8.4") >= 0)
+		{
+			query << "SELECT from_id, to_id, type, transform, rot_variance, trans_variance FROM Link ORDER BY from_id, to_id";
+		}
+		else if(uStrNumCmp(_version, "0.7.4") >= 0)
+		{
+			query << "SELECT from_id, to_id, type, transform, variance FROM Link ORDER BY from_id, to_id";
+		}
+		else
+		{
+			query << "SELECT from_id, to_id, type, transform FROM Link ORDER BY from_id, to_id";
+		}
+
+		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		int fromId = -1;
+		int toId = -1;
+		int type = Link::kUndef;
+		float rotVariance = 1.0f;
+		float transVariance = 1.0f;
+		const void * data = 0;
+		int dataSize = 0;
+
+		// Process the result if one
+		rc = sqlite3_step(ppStmt);
+		while(rc == SQLITE_ROW)
+		{
+			int index = 0;
+
+			fromId = sqlite3_column_int(ppStmt, index++);
+			toId = sqlite3_column_int(ppStmt, index++);
+			type = sqlite3_column_int(ppStmt, index++);
+
+			data = sqlite3_column_blob(ppStmt, index);
+			dataSize = sqlite3_column_bytes(ppStmt, index++);
+
+			Transform transform;
+			if((unsigned int)dataSize == transform.size()*sizeof(float) && data)
+			{
+				memcpy(transform.data(), data, dataSize);
+			}
+			else if(dataSize)
+			{
+				UERROR("Error while loading link transform from %d to %d! Setting to null...", fromId, toId);
+			}
+
+			if(!ignoreNullLinks || !transform.isNull())
+			{
+				if(uStrNumCmp(_version, "0.8.4") >= 0)
+				{
+					rotVariance = sqlite3_column_double(ppStmt, index++);
+					transVariance = sqlite3_column_double(ppStmt, index++);
+					links.insert(links.end(), std::make_pair(fromId, Link(fromId, toId, (Link::Type)type, transform, rotVariance, transVariance)));
+				}
+				else if(uStrNumCmp(_version, "0.7.4") >= 0)
+				{
+					rotVariance = transVariance = sqlite3_column_double(ppStmt, index++);
+					links.insert(links.end(), std::make_pair(fromId, Link(fromId, toId, (Link::Type)type, transform, rotVariance, transVariance)));
+				}
+				else
+				{
+					// neighbor is 0, loop closures are 1 and 2 (child)
+					links.insert(links.end(), std::make_pair(fromId, Link(fromId, toId, type==0?Link::kNeighbor:Link::kGlobalClosure, transform, rotVariance, transVariance)));
+				}
+			}
+
+			rc = sqlite3_step(ppStmt);
+		}
+
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+}
+
 void DBDriverSqlite3::getLastIdQuery(const std::string & tableName, int & id) const
 {
 	if(_ppDb)

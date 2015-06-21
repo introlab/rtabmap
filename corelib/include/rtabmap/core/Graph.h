@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Parameters.h>
 
 namespace rtabmap {
+class Memory;
 
 namespace graph {
 
@@ -197,6 +198,22 @@ std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
 			int from,
 			int to,
 			bool updateNewCosts = false);
+
+/**
+ * Perform Dijkstra path planning in the graph.
+ * @param fromId initial node
+ * @param toId final node
+ * @param memory The graph's memory
+ * @param lookInDatabase check links in database
+ * @param updateNewCosts Keep up-to-date costs while traversing the graph.
+ * @return the path ids from id "fromId" to id "toId" including initial and final nodes (Identity pose for the first node).
+ */
+std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
+		int fromId,
+		int toId,
+		const Memory * memory,
+		bool lookInDatabase = true,
+		bool updateNewCosts = false);
 
 int RTABMAP_EXP findNearestNode(
 		const std::map<int, rtabmap::Transform> & nodes,

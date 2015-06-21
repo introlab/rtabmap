@@ -74,6 +74,7 @@ private:
 	virtual void getNodeDataQuery(int signatureId, SensorData & data) const;
 	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, std::vector<unsigned char> & userData) const;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const;
+	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks) const;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const;
 	virtual void getNodeIdByLabelQuery(const std::string & label, int & id) const;

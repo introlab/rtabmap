@@ -30,6 +30,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/core/Memory.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/common/eigen.h>
 #include <pcl/common/common.h>
@@ -1226,6 +1228,127 @@ std::list<std::pair<int, Transform> > computePath(
 				n.setCostSoFar(currentNode->costSoFar() + currentNode->distFrom(poseIter->second));
 				n.setDistToEnd(n.distFrom(endPose));
 				nodes.insert(std::make_pair(iter->second, n));
+				if(updateNewCosts)
+				{
+					pqmap.insert(std::make_pair(n.totalCost(), n.id()));
+				}
+				else
+				{
+					pq.push(Pair(n.id(), n.totalCost()));
+				}
+			}
+			else if(updateNewCosts && nodeIter->second.isOpened())
+			{
+				float newCostSoFar = currentNode->costSoFar() + currentNode->distFrom(nodeIter->second.pose());
+				if(nodeIter->second.costSoFar() > newCostSoFar)
+				{
+					// update the cost in the priority queue
+					for(std::multimap<float, int>::iterator mapIter=pqmap.begin(); mapIter!=pqmap.end(); ++mapIter)
+					{
+						if(mapIter->second == nodeIter->first)
+						{
+							pqmap.erase(mapIter);
+							nodeIter->second.setCostSoFar(newCostSoFar);
+							pqmap.insert(std::make_pair(nodeIter->second.totalCost(), nodeIter->first));
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+	return path;
+}
+
+
+// return path starting from "fromId" (Identity pose for the first node)
+std::list<std::pair<int, Transform> > computePath(
+		int fromId,
+		int toId,
+		const Memory * memory,
+		bool lookInDatabase,
+		bool updateNewCosts)
+{
+	UASSERT(memory!=0);
+	UASSERT(fromId>=0);
+	UASSERT(toId>=0);
+	std::list<std::pair<int, Transform> > path;
+
+	std::multimap<int, Link> allLinks;
+	if(lookInDatabase)
+	{
+		// Faster to load all links in one query
+		//UTimer t;
+		allLinks = memory->getAllLinks(lookInDatabase);
+		//UWARN("getting all %d links time = %f s", (int)allLinks.size(), t.ticks());
+	}
+
+	//dijkstra
+	int startNode = fromId;
+	int endNode = toId;
+	std::map<int, Node> nodes;
+	nodes.insert(std::make_pair(startNode, Node(startNode, 0, Transform::getIdentity())));
+	std::priority_queue<Pair, std::vector<Pair>, Order> pq;
+	std::multimap<float, int> pqmap;
+	if(updateNewCosts)
+	{
+		pqmap.insert(std::make_pair(0, startNode));
+	}
+	else
+	{
+		pq.push(Pair(startNode, 0));
+	}
+
+	while((updateNewCosts && pqmap.size()) || (!updateNewCosts && pq.size()))
+	{
+		Node * currentNode;
+		if(updateNewCosts)
+		{
+			currentNode = &nodes.find(pqmap.begin()->second)->second;
+			pqmap.erase(pqmap.begin());
+		}
+		else
+		{
+			currentNode = &nodes.find(pq.top().first)->second;
+			pq.pop();
+		}
+
+		currentNode->setClosed(true);
+
+		if(currentNode->id() == endNode)
+		{
+			while(currentNode->id()!=startNode)
+			{
+				path.push_front(std::make_pair(currentNode->id(), currentNode->pose()));
+				currentNode = &nodes.find(currentNode->fromId())->second;
+			}
+			path.push_front(std::make_pair(startNode, currentNode->pose()));
+			break;
+		}
+
+		// lookup neighbors
+		std::map<int, Link> links;
+		if(allLinks.size() == 0)
+		{
+			links = memory->getLinks(currentNode->id(), lookInDatabase);
+		}
+		else
+		{
+			for(std::multimap<int, Link>::const_iterator iter = allLinks.lower_bound(currentNode->id());
+				iter!=allLinks.end() && iter->first == currentNode->id();
+				++iter)
+			{
+				links.insert(std::make_pair(iter->second.to(), iter->second));
+			}
+		}
+		for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
+		{
+			std::map<int, Node>::iterator nodeIter = nodes.find(iter->first);
+			if(nodeIter == nodes.end())
+			{
+				Node n(iter->second.to(), currentNode->id(), currentNode->pose()*iter->second.transform());
+				n.setCostSoFar(currentNode->costSoFar() + iter->second.transform().getNorm());
+				nodes.insert(std::make_pair(iter->second.to(), n));
 				if(updateNewCosts)
 				{
 					pqmap.insert(std::make_pair(n.totalCost(), n.id()));
