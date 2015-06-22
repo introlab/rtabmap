@@ -774,6 +774,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionDownload_all_clouds"/>
    <addaction name="actionStart"/>
    <addaction name="actionPause"/>
    <addaction name="actionStop"/>
@@ -988,6 +989,10 @@
    </property>
   </action>
   <action name="actionDownload_all_clouds">
+   <property name="icon">
+    <iconset resource="../GuiLib.qrc">
+     <normaloff>:/images/view-refresh.png</normaloff>:/images/view-refresh.png</iconset>
+   </property>
    <property name="text">
     <string>Download all clouds (update cache)</string>
    </property>
