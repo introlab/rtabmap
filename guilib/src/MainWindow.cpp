@@ -294,6 +294,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionDump_the_memory, SIGNAL(triggered()), this, SLOT(dumpTheMemory()));
 	connect(_ui->actionDump_the_prediction_matrix, SIGNAL(triggered()), this, SLOT(dumpThePrediction()));
 	connect(_ui->actionSend_goal, SIGNAL(triggered()), this, SLOT(sendGoal()));
+	connect(_ui->actionCancel_goal, SIGNAL(triggered()), this, SLOT(cancelGoal()));
 	connect(_ui->actionClear_cache, SIGNAL(triggered()), this, SLOT(clearTheCache()));
 	connect(_ui->actionAbout, SIGNAL(triggered()), _aboutDialog , SLOT(exec()));
 	connect(_ui->actionPrint_loop_closure_IDs_to_console, SIGNAL(triggered()), this, SLOT(printLoopClosureIds()));
@@ -3868,6 +3869,12 @@ void MainWindow::sendGoal()
 		UINFO("Posting event with goal %d", id);
 		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, "", id));
 	}
+}
+
+void MainWindow::cancelGoal()
+{
+	UINFO("Cancelling goal...");
+	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdCancelGoal));
 }
 
 void MainWindow::downloadAllClouds()

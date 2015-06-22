@@ -156,6 +156,7 @@ private slots:
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void sendGoal();
+	void cancelGoal();
 	void downloadAllClouds();
 	void downloadPoseGraph();
 	void clearTheCache();

@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>22</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -64,6 +64,7 @@
      <addaction name="actionExport_poses_txt"/>
      <addaction name="actionPrint_loop_closure_IDs_to_console"/>
      <addaction name="actionSend_goal"/>
+     <addaction name="actionCancel_goal"/>
     </widget>
     <addaction name="actionDownload_all_clouds"/>
     <addaction name="actionDownload_graph"/>
@@ -1207,6 +1208,11 @@
   <action name="actionExport_poses_txt">
    <property name="text">
     <string>Export poses (*.txt)...</string>
+   </property>
+  </action>
+  <action name="actionCancel_goal">
+   <property name="text">
+    <string>Cancel goal</string>
    </property>
   </action>
  </widget>

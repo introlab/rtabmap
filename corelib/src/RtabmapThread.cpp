@@ -286,6 +286,9 @@ void RtabmapThread::mainLoop()
 		}
 		this->post(new RtabmapGlobalPathEvent(id, _rtabmap->getPath()));
 		break;
+	case kStateCancellingGoal:
+		_rtabmap->clearPath();
+		break;
 	default:
 		UFATAL("Invalid state !?!?");
 		break;
@@ -491,6 +494,11 @@ void RtabmapThread::handleEvent(UEvent* event)
 			param.insert(ParametersPair("goal_label", rtabmapEvent->getStr()));
 			param.insert(ParametersPair("goal_id", uNumber2Str(rtabmapEvent->getInt())));
 			pushNewState(kStateSettingGoal, param);
+		}
+		else if(cmd == RtabmapEventCmd::kCmdCancelGoal)
+		{
+			ULOGGER_DEBUG("CMD_CANCEL_GOAL");
+			pushNewState(kStateCancellingGoal);
 		}
 		else
 		{

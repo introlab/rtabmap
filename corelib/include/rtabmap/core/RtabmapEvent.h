@@ -76,7 +76,8 @@ public:
 			kCmdPublishTOROGraphLocal, // params: optimized
 			kCmdTriggerNewMap,
 			kCmdPause,
-			kCmdGoal}; // params: label or location ID
+			kCmdGoal, // params: label or location ID
+			kCmdCancelGoal};
 public:
 	RtabmapEventCmd(Cmd cmd, const std::string & strValue = "", int intValue = 0, const ParametersMap & parameters = ParametersMap()) :
 			UEvent(0),

@@ -74,7 +74,8 @@ public:
 		kStatePublishingTOROGraphGlobal,
 		kStateTriggeringMap,
 		kStateAddingUserData,
-		kStateSettingGoal
+		kStateSettingGoal,
+		kStateCancellingGoal
 	};
 
 public:
