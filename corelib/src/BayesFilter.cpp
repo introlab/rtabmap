@@ -38,7 +38,6 @@ namespace rtabmap {
 BayesFilter::BayesFilter(const ParametersMap & parameters) :
 	_virtualPlacePrior(Parameters::defaultBayesVirtualPlacePriorThr()),
 	_fullPredictionUpdate(Parameters::defaultBayesFullPredictionUpdate()),
-	_badSignaturesIgnored(Parameters::defaultRtabmapCreateIntermediateNodes()),
 	_totalPredictionLCValues(0.0f)
 {
 	this->setPredictionLC(Parameters::defaultBayesPredictionLC());
@@ -57,7 +56,6 @@ void BayesFilter::parseParameters(const ParametersMap & parameters)
 	}
 	Parameters::parse(parameters, Parameters::kBayesVirtualPlacePriorThr(), _virtualPlacePrior);
 	Parameters::parse(parameters, Parameters::kBayesFullPredictionUpdate(), _fullPredictionUpdate);
-	Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), _badSignaturesIgnored);
 
 	UASSERT(_virtualPlacePrior >= 0 && _virtualPlacePrior <= 1.0f);
 }
@@ -262,7 +260,7 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 				// Set high values (gaussians curves) to loop closure neighbors
 
 				// ADD prob for each neighbors
-				std::map<int, int> neighbors = memory->getNeighborsId(ids[i], _predictionLC.size()-1, 0, false, false, _badSignaturesIgnored);
+				std::map<int, int> neighbors = memory->getNeighborsId(ids[i], _predictionLC.size()-1, 0, false, false, true);
 				std::list<int> idsLoopMargin;
 				//filter neighbors in STM
 				for(std::map<int, int>::iterator iter=neighbors.begin(); iter!=neighbors.end();)
@@ -476,7 +474,7 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 		}
 		if(i<newIds.size() && !uContains(oldIdToIndexMap,newIds[i]))
 		{
-			std::map<int, int> neighbors = memory->getNeighborsId(newIds[i], _predictionLC.size()-1, 0, false, false, _badSignaturesIgnored);
+			std::map<int, int> neighbors = memory->getNeighborsId(newIds[i], _predictionLC.size()-1, 0, false, false, true);
 			float sum = this->addNeighborProb(prediction, i, neighbors, newIdToIndexMap);
 			this->normalize(prediction, i, sum, newIds[0]<0);
 			++added;
@@ -496,7 +494,7 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 	int modified = 0;
 	for(std::set<int>::iterator iter = idsToUpdate.begin(); iter!=idsToUpdate.end(); ++iter)
 	{
-		std::map<int, int> neighbors = memory->getNeighborsId(*iter, _predictionLC.size()-1, 0, false, false, _badSignaturesIgnored);
+		std::map<int, int> neighbors = memory->getNeighborsId(*iter, _predictionLC.size()-1, 0, false, false, true);
 		int index = newIdToIndexMap.at(*iter);
 		float sum = this->addNeighborProb(prediction, index, neighbors, newIdToIndexMap);
 		this->normalize(prediction, index, sum, newIds[0]<0);

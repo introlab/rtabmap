@@ -1116,7 +1116,6 @@ bool Rtabmap::process(
 			//============================================================
 			ULOGGER_INFO("computing likelihood...");
 
-			// select only not empty signatures (may happen often if intermediate nodes are created)
 			std::list<int> signaturesToCompare;
 			for(std::map<int, double>::const_iterator iter=_memory->getWorkingMem().begin();
 				iter!=_memory->getWorkingMem().end();
@@ -1126,7 +1125,7 @@ bool Rtabmap::process(
 				{
 					const Signature * s = _memory->getSignature(iter->first);
 					UASSERT(s!=0);
-					if(!_bayesFilter->isBadSignaturesIgnored() || !s->isBadSignature())
+					if(s->getWeight() != -1) // ignore intermediate nodes
 					{
 						signaturesToCompare.push_back(iter->first);
 					}
@@ -2780,7 +2779,7 @@ void Rtabmap::dumpPrediction() const
 			{
 				const Signature * s = _memory->getSignature(iter->first);
 				UASSERT(s!=0);
-				if(!_bayesFilter->isBadSignaturesIgnored() || !s->isBadSignature())
+				if(s->getWeight() != -1) // ignore intermediate nodes
 				{
 					signaturesToCompare.push_back(iter->first);
 				}

@@ -58,7 +58,6 @@ public:
 	float getVirtualPlacePrior() const {return _virtualPlacePrior;}
 	const std::vector<double> & getPredictionLC() const; // {Vp, Lc, l1, l2, l3, l4...}
 	std::string getPredictionLCStr() const; // for convenience {Vp, Lc, l1, l2, l3, l4...}
-	bool isBadSignaturesIgnored() const {return _badSignaturesIgnored;}
 
 	cv::Mat generatePrediction(const Memory * memory, const std::vector<int> & ids) const;
 
@@ -80,7 +79,6 @@ private:
 	float _virtualPlacePrior;
 	std::vector<double> _predictionLC; // {Vp, Lc, l1, l2, l3, l4...}
 	bool _fullPredictionUpdate;
-	bool _badSignaturesIgnored;
 	float _totalPredictionLCValues;
 };
 
