@@ -306,6 +306,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionDownload_all_clouds, SIGNAL(triggered()), this , SLOT(downloadAllClouds()));
 	connect(_ui->actionDownload_graph, SIGNAL(triggered()), this , SLOT(downloadPoseGraph()));
 	connect(_ui->menuEdit, SIGNAL(aboutToShow()), this, SLOT(updateEditMenu()));
+	connect(_ui->actionDefault_views, SIGNAL(triggered(bool)), this, SLOT(setDefaultViews()));
 	connect(_ui->actionAuto_screen_capture, SIGNAL(triggered(bool)), this, SLOT(selectScreenCaptureFormat(bool)));
 	connect(_ui->actionScreenshot, SIGNAL(triggered()), this, SLOT(takeScreenshot()));
 	connect(_ui->action16_9, SIGNAL(triggered()), this, SLOT(setAspectRatio16_9()));
@@ -4091,6 +4092,23 @@ void MainWindow::openPreferences()
 {
 	_preferencesDialog->setMonitoringState(_state == kMonitoring || _state == kMonitoringPaused);
 	_preferencesDialog->exec();
+}
+
+void MainWindow::setDefaultViews()
+{
+	_ui->dockWidget_posterior->setVisible(false);
+	_ui->dockWidget_likelihood->setVisible(false);
+	_ui->dockWidget_rawlikelihood->setVisible(false);
+	_ui->dockWidget_statsV2->setVisible(false);
+	_ui->dockWidget_console->setVisible(false);
+	_ui->dockWidget_loopClosureViewer->setVisible(false);
+	_ui->dockWidget_mapVisibility->setVisible(false);
+	_ui->dockWidget_graphViewer->setVisible(false);
+	_ui->dockWidget_odometry->setVisible(true);
+	_ui->dockWidget_cloudViewer->setVisible(true);
+	_ui->dockWidget_imageView->setVisible(true);
+	_ui->toolBar->setVisible(_state != kMonitoring && _state != kMonitoringPaused);
+	_ui->toolBar_2->setVisible(true);
 }
 
 void MainWindow::selectScreenCaptureFormat(bool checked)

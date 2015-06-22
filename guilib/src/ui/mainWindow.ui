@@ -212,6 +212,7 @@
      <addaction name="action240p"/>
     </widget>
     <addaction name="menuShow_view"/>
+    <addaction name="actionDefault_views"/>
     <addaction name="actionScreenshot"/>
     <addaction name="actionAuto_screen_capture"/>
     <addaction name="menuAspect_ratio_2"/>
@@ -1218,6 +1219,11 @@
   <action name="actionCancel_goal">
    <property name="text">
     <string>Cancel goal</string>
+   </property>
+  </action>
+  <action name="actionDefault_views">
+   <property name="text">
+    <string>Default views</string>
    </property>
   </action>
  </widget>

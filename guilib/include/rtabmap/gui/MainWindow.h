@@ -161,6 +161,7 @@ private slots:
 	void downloadPoseGraph();
 	void clearTheCache();
 	void openPreferences();
+	void setDefaultViews();
 	void selectScreenCaptureFormat(bool checked);
 	void takeScreenshot();
 	void updateElapsedTime();
