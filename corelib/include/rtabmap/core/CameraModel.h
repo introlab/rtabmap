@@ -87,7 +87,7 @@ public:
 	int imageWeight() const {return imageSize_.height;}
 
 	bool load(const std::string & filePath);
-	bool save(const std::string & filePath);
+	bool save(const std::string & filePath) const;
 
 	void scale(double scale);
 
@@ -146,7 +146,7 @@ public:
 	const std::string & name() const {return name_;}
 
 	bool load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true);
-	bool save(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true);
+	bool save(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true) const;
 
 	double baseline() const {return -right_.Tx()/right_.fx();}
 
