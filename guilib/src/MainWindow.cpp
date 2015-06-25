@@ -1738,14 +1738,36 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 		cloud->resize(iter->getWords3().size());
 		int oi=0;
-		for(std::multimap<int, pcl::PointXYZ>::const_iterator jter=iter->getWords3().begin(); jter!=iter->getWords3().end(); ++jter)
+		UASSERT(iter->getWords().size() == iter->getWords3().size());
+		std::multimap<int, cv::KeyPoint>::const_iterator kter=iter->getWords().begin();
+		for(std::multimap<int, pcl::PointXYZ>::const_iterator jter=iter->getWords3().begin();
+				jter!=iter->getWords3().end(); ++jter, ++kter, ++oi)
 		{
 			(*cloud)[oi].x = jter->second.x;
 			(*cloud)[oi].y = jter->second.y;
 			(*cloud)[oi].z = jter->second.z;
-			(*cloud)[oi].r = 255;
-			(*cloud)[oi].g = 255;
-			(*cloud)[oi++].b = 255;
+			int u = kter->second.pt.x+0.5;
+			int v = kter->second.pt.x+0.5;
+			if(!iter->sensorData().imageRaw().empty() &&
+				uIsInBounds(u, 0, iter->sensorData().imageRaw().cols-1) &&
+				uIsInBounds(v, 0, iter->sensorData().imageRaw().rows-1))
+			{
+				if(iter->sensorData().imageRaw().channels() == 1)
+				{
+					(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = iter->sensorData().imageRaw().at<unsigned char>(u, v);
+				}
+				else
+				{
+					cv::Vec3b bgr = iter->sensorData().imageRaw().at<cv::Vec3b>(u, v);
+					(*cloud)[oi].r = bgr.val[0];
+					(*cloud)[oi].g = bgr.val[1];
+					(*cloud)[oi].b = bgr.val[2];
+				}
+			}
+			else
+			{
+				(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = 255;
+			}
 		}
 		if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloud, pose, color))
 		{

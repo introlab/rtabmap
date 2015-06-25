@@ -339,6 +339,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(OdomBow, LocalHistorySize,       int, 1000,      "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
 	RTABMAP_PARAM(OdomBow, NNType,                 int, 3, 	    "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
 	RTABMAP_PARAM(OdomBow, NNDR,                   float, 0.8,  "NNDR: nearest neighbor distance ratio.");
+	RTABMAP_PARAM_STR(OdomBow, FixedLocalMapPath,   "",         "Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP estimation is used.")
 
 	// Odometry Mono
 	RTABMAP_PARAM(OdomMono, InitMinFlow,            float, 100,  "Minimum optical flow required for the initialization step.");

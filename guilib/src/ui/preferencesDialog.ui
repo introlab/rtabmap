@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-837</y>
-            <width>755</width>
-            <height>1591</height>
+            <y>0</y>
+            <width>760</width>
+            <height>1570</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>24</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -7387,8 +7387,8 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                    <property name="title">
                     <string>BOW</string>
                    </property>
-                   <layout class="QGridLayout" name="gridLayout_29" columnstretch="0,1">
-                    <item row="0" column="0">
+                   <layout class="QGridLayout" name="gridLayout_29" columnstretch="0,1,0,0">
+                    <item row="0" column="1">
                      <widget class="QSpinBox" name="odom_localHistory">
                       <property name="minimum">
                        <number>0</number>
@@ -7404,7 +7404,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </property>
                      </widget>
                     </item>
-                    <item row="0" column="1">
+                    <item row="0" column="3">
                      <widget class="QLabel" name="label_190">
                       <property name="text">
                        <string>Local history size: If &gt; 0 (example 5000), the odometry will maintain a local map of X maximum words. This will decrease odometry drifting when the camera is not moving.</string>
@@ -7414,7 +7414,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </property>
                      </widget>
                     </item>
-                    <item row="1" column="0">
+                    <item row="1" column="1">
                      <widget class="QComboBox" name="odom_bin_nn">
                       <property name="sizeAdjustPolicy">
                        <enum>QComboBox::AdjustToContents</enum>
@@ -7446,7 +7446,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </item>
                      </widget>
                     </item>
-                    <item row="1" column="1">
+                    <item row="1" column="3">
                      <widget class="QLabel" name="label_201">
                       <property name="text">
                        <string>Nearest neighbor strategy. FLANN KdTree must be used only with SURF/SIFT. FLANN LSH must be used only with binary feature detector.</string>
@@ -7456,7 +7456,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </property>
                      </widget>
                     </item>
-                    <item row="2" column="0">
+                    <item row="2" column="1">
                      <widget class="QDoubleSpinBox" name="odom_bin_nndrRatio">
                       <property name="decimals">
                        <number>1</number>
@@ -7475,7 +7475,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </property>
                      </widget>
                     </item>
-                    <item row="2" column="1">
+                    <item row="2" column="3">
                      <widget class="QLabel" name="label_202">
                       <property name="text">
                        <string>NNDR ratio
@@ -7484,6 +7484,26 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="1">
+                     <widget class="QLineEdit" name="odom_fixedLocalMapPath"/>
+                    </item>
+                    <item row="3" column="3">
+                     <widget class="QLabel" name="label_239">
+                      <property name="text">
+                       <string>Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP pose estimation is activated.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="2">
+                     <widget class="QToolButton" name="toolButton_odomBowFixedLocalMap">
+                      <property name="text">
+                       <string>...</string>
                       </property>
                      </widget>
                     </item>

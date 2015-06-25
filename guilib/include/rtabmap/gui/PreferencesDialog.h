@@ -246,6 +246,7 @@ private slots:
 	void updateKpROI();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
+	void changeOdomBowFixedLocalMapPath();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();

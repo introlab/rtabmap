@@ -2141,32 +2141,39 @@ bool Rtabmap::process(
 		lastSignatureData = *signature;
 	}
 
-	//By default, remove all signatures with a loop closure link if they are not in reactivateIds
-	//This will also remove rehearsed signatures
-	std::list<int> signaturesRemoved = _memory->cleanup();
+	// remove last signature if the memory is not incremental or is a bad signature (if bad signatures are ignored)
+	std::list<int> signaturesRemoved;
+	int signatureRemoved = _memory->cleanup();
+	if(signatureRemoved)
+	{
+		signaturesRemoved.push_back(signatureRemoved);
+	}
 
 	// If this option activated, add new nodes only if there are linked with a previous map.
 	// Used when rtabmap is first started, it will wait a
 	// global loop closure detection before starting the new map,
 	// otherwise it deletes the current node.
-	if(_startNewMapOnLoopClosure &&
-		_memory->isIncremental() &&              // only in mapping mode
-		signature->getLinks().size() == 0 &&     // alone in the current map
-		_memory->getWorkingMem().size()>1)       // The working memory should not be empty
+	if(signatureRemoved != lastSignatureData.id())
 	{
-		UWARN("Ignoring location %d because a global loop closure is required before starting a new map!",
-				signature->id());
-		signaturesRemoved.push_back(signature->id());
-		_memory->deleteLocation(signature->id());
-	}
-	else if(smallDisplacement && _loopClosureHypothesis.first == 0 && lastLocalSpaceClosureId == 0)
-	{
-		// Don't delete the location if a loop closure is detected
-		UINFO("Ignoring location %d because the displacement is too small! (d=%f a=%f)",
-			  signature->id(), _rgbdLinearUpdate, _rgbdAngularUpdate);
-		// If there is a too small displacement, remove the node
-		signaturesRemoved.push_back(signature->id());
-		_memory->deleteLocation(signature->id());
+		if(_startNewMapOnLoopClosure &&
+			_memory->isIncremental() &&              // only in mapping mode
+			signature->getLinks().size() == 0 &&     // alone in the current map
+			_memory->getWorkingMem().size()>1)       // The working memory should not be empty
+		{
+			UWARN("Ignoring location %d because a global loop closure is required before starting a new map!",
+					signature->id());
+			signaturesRemoved.push_back(signature->id());
+			_memory->deleteLocation(signature->id());
+		}
+		else if(smallDisplacement && _loopClosureHypothesis.first == 0 && lastLocalSpaceClosureId == 0)
+		{
+			// Don't delete the location if a loop closure is detected
+			UINFO("Ignoring location %d because the displacement is too small! (d=%f a=%f)",
+				  signature->id(), _rgbdLinearUpdate, _rgbdAngularUpdate);
+			// If there is a too small displacement, remove the node
+			signaturesRemoved.push_back(signature->id());
+			_memory->deleteLocation(signature->id());
+		}
 	}
 
 	// Pass this point signature should not be used, since it could have been transferred...

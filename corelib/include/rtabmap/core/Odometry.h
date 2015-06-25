@@ -118,6 +118,7 @@ private:
 private:
 	//Parameters
 	int _localHistoryMaxSize;
+	std::string _fixedLocalMapPath;
 
 	Memory * _memory;
 	std::multimap<int, pcl::PointXYZ> localMap_;

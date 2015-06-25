@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d_registration.h"
 #include "rtabmap/core/util3d_correspondences.h"
+#include "rtabmap/core/Graph.h"
 #include "rtabmap/core/VWDictionary.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
@@ -49,9 +50,12 @@ namespace rtabmap {
 OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 	Odometry(parameters),
 	_localHistoryMaxSize(Parameters::defaultOdomBowLocalHistorySize()),
+	_fixedLocalMapPath(Parameters::defaultOdomBowFixedLocalMapPath()),
 	_memory(0)
 {
+	UDEBUG("");
 	Parameters::parse(parameters, Parameters::kOdomBowLocalHistorySize(), _localHistoryMaxSize);
+	Parameters::parse(parameters, Parameters::kOdomBowFixedLocalMapPath(), _fixedLocalMapPath);
 
 	ParametersMap customParameters;
 	customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(this->getMaxDepth())));
@@ -101,10 +105,71 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 		}
 	}
 
-	_memory = new Memory(customParameters);
-	if(!_memory->init("", false, ParametersMap()))
+	if(_fixedLocalMapPath.empty())
 	{
-		UERROR("Error initializing the memory for BOW Odometry.");
+		_memory = new Memory(customParameters);
+		if(!_memory->init("", false, ParametersMap()))
+		{
+			UERROR("Error initializing the memory for BOW Odometry.");
+		}
+	}
+	else
+	{
+		UINFO("Init odometry from a fixed database: \"%s\"", _fixedLocalMapPath.c_str());
+		// init the local map with a all 3D features contained in the database
+		customParameters.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false"));
+		customParameters.insert(ParametersPair(Parameters::kMemInitWMWithAllNodes(), "true"));
+		_memory = new Memory(customParameters);
+		if(!_memory->init(_fixedLocalMapPath, false, ParametersMap()))
+		{
+			UERROR("Error initializing the memory for BOW Odometry.");
+		}
+		else
+		{
+			// get the graph
+			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastSignatureId(), 0, -1);
+			std::map<int, Transform> poses;
+			std::multimap<int, Link> links;
+			_memory->getMetricConstraints(uKeysSet(ids), poses, links, true);
+
+			if(poses.size())
+			{
+				//optimize the graph
+				graph::TOROOptimizer optimizer;
+				std::map<int, Transform> optimizedPoses = optimizer.optimize(poses.begin()->first, poses, links);
+
+				// fill the local map
+				for(std::map<int, Transform>::iterator posesIter=optimizedPoses.begin();
+					posesIter!=optimizedPoses.end();
+					++posesIter)
+				{
+					const Signature * s = _memory->getSignature(posesIter->first);
+					if(s)
+					{
+						// Transform 3D points accordingly to pose and add them to local map
+						const std::multimap<int, pcl::PointXYZ> & words3D = s->getWords3();
+						for(std::multimap<int, pcl::PointXYZ>::const_iterator pointsIter=words3D.begin();
+							pointsIter!=words3D.end();
+							++pointsIter)
+						{
+							if(!uContains(localMap_, pointsIter->first))
+							{
+								localMap_.insert(std::make_pair(pointsIter->first, util3d::transformPoint(pointsIter->second, posesIter->second)));
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				UERROR("No pose loaded from database \"%s\"", _fixedLocalMapPath.c_str());
+			}
+		}
+		if((int)localMap_.size() < this->getMinInliers() || localMap_.size() == 0)
+		{
+			UERROR("The loaded fixed map from \"%s\" is too small! Only %d unique features loaded. Odometry won't be computed!",
+					_fixedLocalMapPath.c_str(), (int)localMap_.size());
+		}
 	}
 }
 
@@ -117,9 +182,16 @@ OdometryBOW::~OdometryBOW()
 
 void OdometryBOW::reset(const Transform & initialPose)
 {
-	Odometry::reset(initialPose);
-	_memory->init("", false, ParametersMap());
-	localMap_.clear();
+	if(_fixedLocalMapPath.empty())
+	{
+		Odometry::reset(initialPose);
+		_memory->init("", false, ParametersMap());
+		localMap_.clear();
+	}
+	else
+	{
+		UWARN("Odometry cannot be reset when a fixed local map is set.");
+	}
 }
 
 // return not null transform if odometry is correctly computed
@@ -140,7 +212,6 @@ Transform OdometryBOW::computeTransform(
 	int correspondences = 0;
 	int nFeatures = 0;
 
-	const Signature * previousSignature = _memory->getLastWorkingSignature();
 	if(_memory->update(data))
 	{
 		const Signature * newSignature = _memory->getLastWorkingSignature();
@@ -153,7 +224,7 @@ Transform OdometryBOW::computeTransform(
 			}
 		}
 
-		if(previousSignature && newSignature)
+		if(localMap_.size() && newSignature)
 		{
 			Transform transform;
 			if((int)localMap_.size() >= this->getMinInliers())
@@ -256,6 +327,10 @@ Transform OdometryBOW::computeTransform(
 									std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
 									double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
 									variance = 2.1981 * median_error_sqr;
+								}
+								else
+								{
+									variance = 1;
 								}
 							}
 							else
@@ -364,9 +439,10 @@ Transform OdometryBOW::computeTransform(
 			{
 				_memory->deleteLocation(newSignature->id());
 			}
-			else
+			else if(_fixedLocalMapPath.empty())
 			{
 				output = transform;
+
 				// remove words if history max size is reached
 				while(localMap_.size() && (int)localMap_.size() > _localHistoryMaxSize && _memory->getStMem().size()>1)
 				{
@@ -410,14 +486,18 @@ Transform OdometryBOW::computeTransform(
 					}
 				}
 			}
+			else
+			{
+				// fixed local map, just delete the new signature
+				output = transform;
+				_memory->deleteLocation(newSignature->id());
+			}
 		}
-		else if(!previousSignature && newSignature)
+		else if(newSignature)
 		{
-			localMap_.clear();
-
 			int count = 0;
 			std::list<int> uniques = uUniqueKeys(newSignature->getWords3());
-			if((int)uniques.size() >= this->getMinInliers())
+			if(_fixedLocalMapPath.empty() && (int)uniques.size() >= this->getMinInliers())
 			{
 				output.setIdentity();
 

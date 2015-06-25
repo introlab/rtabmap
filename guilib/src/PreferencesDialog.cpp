@@ -597,6 +597,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_localHistory->setObjectName(Parameters::kOdomBowLocalHistorySize().c_str());
 	_ui->odom_bin_nn->setObjectName(Parameters::kOdomBowNNType().c_str());
 	_ui->odom_bin_nndrRatio->setObjectName(Parameters::kOdomBowNNDR().c_str());
+	_ui->odom_fixedLocalMapPath->setObjectName(Parameters::kOdomBowFixedLocalMapPath().c_str());
+	connect(_ui->toolButton_odomBowFixedLocalMap, SIGNAL(clicked()), this, SLOT(changeOdomBowFixedLocalMapPath()));
 
 	//Odometry Optical Flow
 	_ui->odom_flow_winSize->setObjectName(Parameters::kOdomFlowWinSize().c_str());
@@ -2924,6 +2926,23 @@ void PreferencesDialog::changeDictionaryPath()
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_dictionaryPath->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOdomBowFixedLocalMapPath()
+{
+	QString path;
+	if(_ui->odom_fixedLocalMapPath->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Database"), this->getWorkingDirectory(), tr("RTAB-Map database files (*.db)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Database"), _ui->odom_fixedLocalMapPath->text(), tr("RTAB-Map database files (*.db)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->odom_fixedLocalMapPath->setText(path);
 	}
 }
 

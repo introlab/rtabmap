@@ -83,7 +83,7 @@ public:
 	std::list<int> forget(const std::set<int> & ignoredIds = std::set<int>());
 	std::set<int> reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, double & timeDbAccess);
 
-	std::list<int> cleanup(const std::list<int> & ignoredIds = std::list<int>());
+	int cleanup();
 	void emptyTrash();
 	void joinTrashThread();
 	bool addLink(const Link & link);

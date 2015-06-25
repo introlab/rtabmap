@@ -1487,10 +1487,10 @@ std::list<int> Memory::forget(const std::set<int> & ignoredIds)
 }
 
 
-std::list<int> Memory::cleanup(const std::list<int> & ignoredIds)
+int Memory::cleanup()
 {
 	UDEBUG("");
-	std::list<int> signaturesRemoved;
+	int signatureRemoved = 0;
 
 	// bad signature
 	if(_lastSignature && ((_lastSignature->isBadSignature() && _badSignaturesIgnored) || !_incrementalMemory))
@@ -1499,11 +1499,11 @@ std::list<int> Memory::cleanup(const std::list<int> & ignoredIds)
 		{
 			UDEBUG("Bad signature! %d", _lastSignature->id());
 		}
-		signaturesRemoved.push_back(_lastSignature->id());
+		signatureRemoved = _lastSignature->id();
 		moveToTrash(_lastSignature, _incrementalMemory);
 	}
 
-	return signaturesRemoved;
+	return signatureRemoved;
 }
 
 void Memory::emptyTrash()
