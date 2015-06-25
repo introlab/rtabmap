@@ -44,6 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/core/core_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UFile.h>
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/gui/KeypointItem.h"
@@ -557,6 +558,7 @@ bool DatabaseViewer::openDatabase(const QString & path)
 			localMaps_.clear();
 			ui_->actionGenerate_TORO_graph_graph->setEnabled(false);
 			ui_->checkBox_showOptimized->setEnabled(false);
+			databaseFileName_.clear();
 		}
 
 		std::string driverType = "sqlite3";
@@ -576,6 +578,7 @@ bool DatabaseViewer::openDatabase(const QString & path)
 		else
 		{
 			pathDatabase_ = UDirectory::getDir(path.toStdString()).c_str();
+			databaseFileName_ = UFile::getName(path.toStdString());
 			updateIds();
 			return true;
 		}
@@ -880,15 +883,65 @@ void DatabaseViewer::extractImages()
 	QString path = QFileDialog::getExistingDirectory(this, tr("Select directory where to save images..."), QDir::homePath());
 	if(!path.isNull())
 	{
-		for(int i=0; i<ids_.size(); i+=1)
+		if(ids_.size())
+		{
+			int id = ids_.at(0);
+			SensorData data = memory_->getNodeData(id, true);
+			if(!data.imageRaw().empty() && !data.rightRaw().empty())
+			{
+				QDir dir;
+				dir.mkdir(QString("%1/left").arg(path));
+				dir.mkdir(QString("%1/right").arg(path));
+				if(databaseFileName_.empty())
+				{
+					UERROR("Cannot save calibration file, database name is empty!");
+				}
+				else
+				{
+					std::string cameraName = uSplit(databaseFileName_, '.').front();
+					StereoCameraModel model(
+							cameraName,
+							data.imageRaw().size(),
+							data.stereoCameraModel().left().K(),
+							data.stereoCameraModel().left().D(),
+							data.stereoCameraModel().left().R(),
+							data.stereoCameraModel().left().P(),
+							data.rightRaw().size(),
+							data.stereoCameraModel().right().K(),
+							data.stereoCameraModel().right().D(),
+							data.stereoCameraModel().right().R(),
+							data.stereoCameraModel().right().P(),
+							data.stereoCameraModel().R(),
+							data.stereoCameraModel().T(),
+							data.stereoCameraModel().E(),
+							data.stereoCameraModel().F(),
+							data.stereoCameraModel().left().localTransform());
+					if(model.save(path.toStdString(), cameraName))
+					{
+						UINFO("Saved stereo calibration \"%s\"", (path.toStdString()+"/"+cameraName).c_str());
+					}
+					else
+					{
+						UERROR("Failed saving calibration \"%s\"", (path.toStdString()+"/"+cameraName).c_str());
+					}
+				}
+			}
+		}
+
+		for(int i=0; i<ids_.size(); ++i)
 		{
 			int id = ids_.at(i);
-			cv::Mat compressedRgb = memory_->getImageCompressed(id);
-			if(!compressedRgb.empty())
+			SensorData data = memory_->getNodeData(id, true);
+			if(!data.imageRaw().empty() && !data.rightRaw().empty())
 			{
-				cv::Mat imageMat = rtabmap::uncompressImage(compressedRgb);
-				cv::imwrite(QString("%1/%2.png").arg(path).arg(id).toStdString(), imageMat);
-				UINFO(QString("Saved %1/%2.png").arg(path).arg(id).toStdString().c_str());
+				cv::imwrite(QString("%1/left/%2.jpg").arg(path).arg(id).toStdString(), data.imageRaw());
+				cv::imwrite(QString("%1/right/%2.jpg").arg(path).arg(id).toStdString(), data.rightRaw());
+				UINFO(QString("Saved left/%1.jpg and right/%1.jpg").arg(id).toStdString().c_str());
+			}
+			else if(!data.imageRaw().empty())
+			{
+				cv::imwrite(QString("%1/%2.jpg").arg(path).arg(id).toStdString(), data.imageRaw());
+				UINFO(QString("Saved %1.jpg").arg(id).toStdString().c_str());
 			}
 		}
 	}

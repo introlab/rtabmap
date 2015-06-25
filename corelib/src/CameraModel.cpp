@@ -170,7 +170,7 @@ bool CameraModel::load(const std::string & filePath)
 	return false;
 }
 
-bool CameraModel::save(const std::string & filePath)
+bool CameraModel::save(const std::string & filePath) const
 {
 	if(!filePath.empty() && !name_.empty() && !K_.empty() && !D_.empty() && !R_.empty() && !P_.empty())
 	{
@@ -368,7 +368,7 @@ bool StereoCameraModel::load(const std::string & directory, const std::string & 
 	}
 	return false;
 }
-bool StereoCameraModel::save(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform)
+bool StereoCameraModel::save(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform) const
 {
 	if(left_.save(directory+"/"+cameraName+"_left.yaml") && right_.save(directory+"/"+cameraName+"_right.yaml"))
 	{

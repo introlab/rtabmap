@@ -129,7 +129,7 @@ void OdometryThread::addData(const SensorData & data)
 		_dataBuffer.push_back(data);
 		while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
 		{
-			ULOGGER_WARN("Data buffer is full, the oldest data is removed to add the new one.");
+			UDEBUG("Data buffer is full, the oldest data is removed to add the new one.");
 			_dataBuffer.pop_front();
 			notify = false;
 		}

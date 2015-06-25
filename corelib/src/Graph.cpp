@@ -1278,9 +1278,9 @@ std::list<std::pair<int, Transform> > computePath(
 	if(lookInDatabase)
 	{
 		// Faster to load all links in one query
-		//UTimer t;
+		UTimer t;
 		allLinks = memory->getAllLinks(lookInDatabase);
-		//UWARN("getting all %d links time = %f s", (int)allLinks.size(), t.ticks());
+		UINFO("getting all %d links time = %f s", (int)allLinks.size(), t.ticks());
 	}
 
 	//dijkstra

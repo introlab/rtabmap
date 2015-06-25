@@ -156,6 +156,7 @@ private:
 	QList<rtabmap::Link> loopLinks_;
 	rtabmap::Memory * memory_;
 	QString pathDatabase_;
+	std::string databaseFileName_;
 	std::list<std::map<int, rtabmap::Transform> > graphes_;
 	std::multimap<int, rtabmap::Link> graphLinks_;
 	std::map<int, rtabmap::Transform> poses_;
