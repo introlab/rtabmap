@@ -171,8 +171,7 @@ void DataRecorder::handleEvent(UEvent * event)
 		if(event->getClassName().compare("CameraEvent") == 0)
 		{
 			CameraEvent * camEvent = (CameraEvent*)event;
-			if(camEvent->getCode() == CameraEvent::kCodeImageDepth ||
-			   camEvent->getCode() == CameraEvent::kCodeImage)
+			if(camEvent->getCode() == CameraEvent::kCodeData)
 			{
 				if(camEvent->data().isValid())
 				{

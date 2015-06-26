@@ -26,6 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/core/CameraRGBD.h"
+#include "rtabmap/core/CameraStereo.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/utilite/ULogger.h"
@@ -77,7 +78,7 @@ int main(int argc, char * argv[])
 	}
 	UINFO("Using driver %d", driver);
 
-	rtabmap::CameraRGBD * camera = 0;
+	rtabmap::Camera * camera = 0;
 	if(driver == 0)
 	{
 		camera = new rtabmap::CameraOpenni();
@@ -156,42 +157,55 @@ int main(int argc, char * argv[])
 		delete camera;
 		exit(1);
 	}
-	cv::Mat rgb, depth;
-	float fx, fy, cx, cy;
-	double stamp = 0.0;
-	camera->takeImage(rgb, depth, fx, fy, cx, cy, stamp);
-	if(rgb.cols != depth.cols || rgb.rows != depth.rows)
+	rtabmap::SensorData data = camera->takeImage();
+	if(data.imageRaw().cols != data.depthOrRightRaw().cols || data.imageRaw().rows != data.depthOrRightRaw().rows)
 	{
 		UWARN("RGB (%d/%d) and depth (%d/%d) frames are not the same size! The registered cloud cannot be shown.",
-				rgb.cols, rgb.rows, depth.cols, depth.rows);
+				data.imageRaw().cols, data.imageRaw().rows, data.depthOrRightRaw().cols, data.depthOrRightRaw().rows);
 	}
-	if(!fx || !fy)
+	if(!data.stereoCameraModel().isValid() && (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValid()))
 	{
-		UWARN("fx and/or fy are not set! The registered cloud cannot be shown.");
+		UWARN("Camera not calibrated! The registered cloud cannot be shown.");
 	}
 	pcl::visualization::CloudViewer viewer("cloud");
 	rtabmap::Transform t(1, 0, 0, 0,
 						 0, -1, 0, 0,
 						 0, 0, -1, 0);
-	while(!rgb.empty() && !viewer.wasStopped())
+	while(!data.imageRaw().empty() && !viewer.wasStopped())
 	{
-		if(depth.type() == CV_16UC1 || depth.type() == CV_32FC1)
+		cv::Mat rgb = data.imageRaw();
+		if(!data.depthRaw().empty() && (data.depthRaw().type() == CV_16UC1 || data.depthRaw().type() == CV_32FC1))
 		{
 			// depth
+			cv::Mat depth = data.depthRaw();
 			if(depth.type() == CV_32FC1)
 			{
 				depth = rtabmap::util3d::cvtDepthFromFloat(depth);
 			}
 
-			if(rgb.cols == depth.cols && rgb.rows == depth.rows && fx && fy)
+			if(rgb.cols == depth.cols && rgb.rows == depth.rows &&
+					data.cameraModels().size() &&
+					data.cameraModels()[0].isValid())
 			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromDepthRGB(rgb, depth, cx, cy, fx, fy);
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromDepthRGB(
+						rgb, depth,
+						data.cameraModels()[0].cx(),
+						data.cameraModels()[0].cy(),
+						data.cameraModels()[0].fx(),
+						data.cameraModels()[0].fy());
 				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
 				viewer.showCloud(cloud, "cloud");
 			}
-			else if(!depth.empty() && fx && fy)
+			else if(!depth.empty() &&
+					data.cameraModels().size() &&
+					data.cameraModels()[0].isValid())
 			{
-				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(depth, cx, cy, fx, fy);
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(
+						depth,
+						data.cameraModels()[0].cx(),
+						data.cameraModels()[0].cy(),
+						data.cameraModels()[0].fx(),
+						data.cameraModels()[0].fy());
 				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
 				viewer.showCloud(cloud, "cloud");
 			}
@@ -204,19 +218,25 @@ int main(int argc, char * argv[])
 			cv::imshow("Video", rgb); // show frame
 			cv::imshow("Depth", tmp);
 		}
-		else
+		else if(!data.rightRaw().empty())
 		{
 			// stereo
+			cv::Mat right = data.rightRaw();
 			cv::imshow("Left", rgb); // show frame
-			cv::imshow("Right", depth);
+			cv::imshow("Right", right);
 
-			if(rgb.cols == depth.cols && rgb.rows == depth.rows && fx && fy)
+			if(rgb.cols == right.cols && rgb.rows == right.rows && data.stereoCameraModel().isValid())
 			{
-				if(depth.channels() == 3)
+				if(right.channels() == 3)
 				{
-					cv::cvtColor(depth, depth, CV_BGR2GRAY);
+					cv::cvtColor(right, right, CV_BGR2GRAY);
 				}
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromStereoImages(rgb, depth, cx, cy, fx, fy);
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromStereoImages(
+						rgb, right,
+						data.stereoCameraModel().left().cx(),
+						data.stereoCameraModel().left().cy(),
+						data.stereoCameraModel().left().fx(),
+						data.stereoCameraModel().baseline());
 				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
 				viewer.showCloud(cloud, "cloud");
 			}
@@ -226,9 +246,7 @@ int main(int argc, char * argv[])
 		if(c == 27)
 			break; // if ESC, break and quit
 
-		rgb = cv::Mat();
-		depth = cv::Mat();
-		camera->takeImage(rgb, depth, fx, fy, cx, cy, stamp);
+		data = camera->takeImage();
 	}
 	cv::destroyWindow("Video");
 	cv::destroyWindow("Depth");

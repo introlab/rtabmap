@@ -167,6 +167,7 @@ void CalibrationDialog::setStereoMode(bool stereo)
 	ui_->lineEdit_R_2->setVisible(stereo_);
 	ui_->lineEdit_P_2->setVisible(stereo_);
 	ui_->radioButton_stereoRectified->setVisible(stereo_);
+	ui_->checkBox_switchImages->setVisible(stereo_);
 }
 
 void CalibrationDialog::setBoardWidth(int width)
@@ -234,8 +235,7 @@ void CalibrationDialog::handleEvent(UEvent * event)
 		if(event->getClassName().compare("CameraEvent") == 0)
 		{
 			rtabmap::CameraEvent * e = (rtabmap::CameraEvent *)event;
-			if(e->getCode() == rtabmap::CameraEvent::kCodeImage ||
-			   e->getCode() == rtabmap::CameraEvent::kCodeImageDepth)
+			if(e->getCode() == rtabmap::CameraEvent::kCodeData)
 			{
 				processingData_ = true;
 				QMetaObject::invokeMethod(this, "processImages",

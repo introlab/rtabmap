@@ -30,7 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
 #include <opencv2/highgui/highgui.hpp>
-#include "rtabmap/core/SensorData.h"
+#include "rtabmap/core/Camera.h"
 #include <set>
 #include <stack>
 #include <list>
@@ -42,48 +42,82 @@ class UTimer;
 namespace rtabmap
 {
 
-/**
- * Class Camera
- *
- */
-class RTABMAP_EXP Camera
+/////////////////////////
+// CameraImages
+/////////////////////////
+class RTABMAP_EXP CameraImages :
+	public Camera
 {
 public:
-	virtual ~Camera();
-	SensorData takeImage();
+	CameraImages(const std::string & path,
+			int startAt = 1,
+			bool refreshDir = false,
+			float imageRate = 0,
+			const Transform & localTransform = Transform::getIdentity());
+	virtual ~CameraImages();
 
-	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "") = 0;
-	virtual bool isCalibrated() const = 0;
-	virtual std::string getSerial() const = 0;
-	int getNextSeqID() {return ++_seq;}
-
-	//getters
-	float getImageRate() const {return _imageRate;}
-	const Transform & getLocalTransform() const {return _localTransform;}
-
-	//setters
-	void setImageRate(float imageRate) {_imageRate = imageRate;}
-	void setLocalTransform(const Transform & localTransform) {_localTransform= localTransform;}
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
+	virtual bool isCalibrated() const;
+	virtual std::string getSerial() const;
+	std::string getPath() const {return _path;}
+	unsigned int imagesCount() const;
 
 protected:
-	/**
-	 * Constructor
-	 *
-	 * @param imageRate : image/second , 0 for fast as the camera can
-	 */
-	Camera(float imageRate = 0, const Transform & localTransform = Transform::getIdentity());
-
-	/**
-	 * returned rgb and depth images should be already rectified if calibration was loaded
-	 */
-	virtual SensorData captureImage() = 0;
+	virtual SensorData captureImage();
 
 private:
-	float _imageRate;
-	Transform _localTransform;
-	cv::Size _targetImageSize;
-	UTimer * _frameRateTimer;
-	int _seq;
+	std::string _path;
+	int _startAt;
+	// If the list of files in the directory is refreshed
+	// on each call of takeImage()
+	bool _refreshDir;
+	int _count;
+	UDirectory * _dir;
+	std::string _lastFileName;
+};
+
+
+
+
+/////////////////////////
+// CameraVideo
+/////////////////////////
+class RTABMAP_EXP CameraVideo :
+	public Camera
+{
+public:
+	enum Source{kVideoFile, kUsbDevice};
+
+public:
+	CameraVideo(int usbDevice = 0,
+			float imageRate = 0,
+			const Transform & localTransform = Transform::getIdentity());
+	CameraVideo(const std::string & filePath,
+			float imageRate = 0,
+			const Transform & localTransform = Transform::getIdentity());
+	virtual ~CameraVideo();
+
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
+	virtual bool isCalibrated() const;
+	virtual std::string getSerial() const;
+	int getUsbDevice() const {return _usbDevice;}
+	const std::string & getFilePath() const {return _filePath;}
+
+protected:
+	virtual SensorData captureImage();
+
+private:
+	// File type
+	std::string _filePath;
+
+	cv::VideoCapture _capture;
+	Source _src;
+
+	// Usb camera
+	int _usbDevice;
+	std::string _guid;
+
+	CameraModel _model;
 };
 
 

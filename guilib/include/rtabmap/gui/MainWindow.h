@@ -86,13 +86,6 @@ public:
 		kMonitoringPaused
 	};
 
-	enum SrcType {
-		kSrcUndefined,
-		kSrcVideo,
-		kSrcImages,
-		kSrcStream
-	};
-
 public:
 	/**
 	 * @param prefDialog If NULL, a default dialog is created. This
@@ -141,10 +134,7 @@ private slots:
 	void deleteMemory();
 	void openWorkingDirectory();
 	void updateEditMenu();
-	void selectImages();
-	void selectVideo();
 	void selectStream();
-	void selectDatabase();
 	void selectOpenni();
 	void selectFreenect();
 	void selectOpenniCv();
@@ -161,6 +151,7 @@ private slots:
 	void downloadPoseGraph();
 	void clearTheCache();
 	void openPreferences();
+	void openPreferencesSource();
 	void setDefaultViews();
 	void selectScreenCaptureFormat(bool checked);
 	void takeScreenshot();
@@ -251,9 +242,6 @@ private:
 	rtabmap::CameraThread * _camera;
 	rtabmap::DBReader * _dbReader;
 	rtabmap::OdometryThread * _odomThread;
-
-	SrcType _srcType;
-	QString _srcPath;
 
 	//Dialogs
 	PreferencesDialog * _preferencesDialog;

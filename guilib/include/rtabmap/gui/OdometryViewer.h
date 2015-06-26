@@ -58,6 +58,7 @@ protected:
 	virtual void handleEvent(UEvent * event);
 
 private slots:
+	void reset();
 	void processData(const rtabmap::OdometryEvent & odom);
 
 private:

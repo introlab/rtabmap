@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "AboutDialog.h"
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/CameraRGBD.h"
+#include "rtabmap/core/CameraStereo.h"
 #include "rtabmap/core/Graph.h"
 #include "ui_aboutDialog.h"
 #include <opencv2/core/version.hpp>

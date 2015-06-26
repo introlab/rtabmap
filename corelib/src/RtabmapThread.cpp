@@ -302,7 +302,7 @@ void RtabmapThread::handleEvent(UEvent* event)
 	{
 		UDEBUG("CameraEvent");
 		CameraEvent * e = (CameraEvent*)event;
-		if(e->getCode() == CameraEvent::kCodeImage || e->getCode() == CameraEvent::kCodeImageDepth)
+		if(e->getCode() == CameraEvent::kCodeData)
 		{
 			this->addData(OdometryEvent(e->data(), Transform(), 1, 1));
 		}

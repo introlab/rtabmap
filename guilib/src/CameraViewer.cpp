@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/gui/ImageView.h>
 #include <rtabmap/gui/CloudViewer.h>
 #include <rtabmap/gui/UCv2Qt.h>
+#include <rtabmap/utilite/ULogger.h>
 #include <QtCore/QMetaType>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -76,17 +77,33 @@ CameraViewer::~CameraViewer()
 void CameraViewer::showImage(const rtabmap::SensorData & data)
 {
 	processingImages_ = true;
-	imageView_->setImage(uCvMat2QImage(data.imageRaw()));
-	imageView_->setImageDepth(uCvMat2QImage(data.depthOrRightRaw()));
-	if(!data.depthOrRightRaw().empty() && (data.stereoCameraModel().isValid() || data.cameraModels().size()))
+	if(!data.imageRaw().empty())
 	{
-		cloudView_->addOrUpdateCloud("cloud", util3d::cloudFromSensorData(data));
+		imageView_->setImage(uCvMat2QImage(data.imageRaw()));
+	}
+	if(!data.depthOrRightRaw().empty())
+	{
+		imageView_->setImageDepth(uCvMat2QImage(data.depthOrRightRaw()));
+	}
+	if((data.stereoCameraModel().isValid() || data.cameraModels().size()))
+	{
+		if(!data.imageRaw().empty() && !data.depthOrRightRaw().empty())
+		{
+			cloudView_->addOrUpdateCloud("cloud", util3d::cloudRGBFromSensorData(data));
+			cloudView_->setVisible(true);
+			cloudView_->update();
+		}
+		else if(!data.depthOrRightRaw().empty())
+		{
+			cloudView_->addOrUpdateCloud("cloud", util3d::cloudFromSensorData(data));
+			cloudView_->setVisible(true);
+			cloudView_->update();
+		}
 	}
 	else
 	{
 		cloudView_->setVisible(false);
 	}
-	cloudView_->update();
 	processingImages_ = false;
 }
 
@@ -95,8 +112,7 @@ void CameraViewer::handleEvent(UEvent * event)
 	if(event->getClassName().compare("CameraEvent") == 0)
 	{
 		CameraEvent * camEvent = (CameraEvent*)event;
-		if(camEvent->getCode() == CameraEvent::kCodeImageDepth ||
-		   camEvent->getCode() == CameraEvent::kCodeImage)
+		if(camEvent->getCode() == CameraEvent::kCodeData)
 		{
 			if(camEvent->data().isValid())
 			{

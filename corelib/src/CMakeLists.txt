@@ -13,7 +13,9 @@ SET(SRC_FILES
 	
     Camera.cpp
     CameraThread.cpp
+    CameraRGB.cpp
     CameraRGBD.cpp
+    CameraStereo.cpp
     CameraModel.cpp
     
     EpipolarGeometry.cpp

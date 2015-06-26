@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1058</width>
-    <height>858</height>
+    <height>649</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>24</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1301,8 +1301,8 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_7">
                     <item>
-                     <layout class="QGridLayout" name="gridLayout_28" columnstretch="0,1">
-                      <item row="0" column="0">
+                     <layout class="QGridLayout" name="gridLayout_28" columnstretch="0,0">
+                      <item row="1" column="0">
                        <widget class="QDoubleSpinBox" name="general_doubleSpinBox_imgRate">
                         <property name="suffix">
                          <string> Hz</string>
@@ -1317,26 +1317,159 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          <double>0.100000000000000</double>
                         </property>
                         <property name="value">
-                         <double>30.000000000000000</double>
+                         <double>0.000000000000000</double>
                         </property>
                        </widget>
                       </item>
-                      <item row="0" column="1">
+                      <item row="1" column="1">
                        <widget class="QLabel" name="label_3">
                         <property name="text">
                          <string>Input rate (0 means as fast as possible).</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="1" column="1">
+                      <item row="4" column="1">
                        <widget class="QLabel" name="label_17">
                         <property name="text">
                          <string>Mirroring mode (flip image horizontally). It has no effect on database source.</string>
                         </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
                        </widget>
                       </item>
-                      <item row="1" column="0">
+                      <item row="4" column="0">
                        <widget class="QCheckBox" name="source_mirroring">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QLineEdit" name="lineEdit_calibrationName">
+                        <property name="minimumSize">
+                         <size>
+                          <width>100</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_18">
+                        <property name="text">
+                         <string>Calibration name. Used to search for calibration files (*.yaml) in &quot;camera_info&quot; folder of the working directory. If empty, the GUID of the camera is used (for those having one). OpenNI and Freenect drivers use factory calibration by default (so they ignore this parameter). A calibrated camera is required for RGB-D SLAM mode.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QLineEdit" name="lineEdit_sourceLocalTransform">
+                        <property name="text">
+                         <string>0 0 1 -1 0 0 0 -1 0</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_42">
+                        <property name="text">
+                         <string>Local transform from /base_link to /camera_link. Format (6 values): x y z roll pitch yaw. Format (9 values): r11 r12 r13 r21 r22 r23 r31 r32 r33.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLabel" name="label_19">
+                        <property name="text">
+                         <string>Source type. Select specific driver below.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QLabel" name="label_39">
+                        <property name="text">
+                         <string>ID of the device, which might be a serial number, bus@address or the index of the device. If empty, the first device found is taken.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="0">
+                       <widget class="QComboBox" name="comboBox_sourceType">
+                        <property name="sizeAdjustPolicy">
+                         <enum>QComboBox::AdjustToContents</enum>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string>RGB-D</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>Stereo</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>RGB</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>Database</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QPushButton" name="pushButton_test_camera">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="text">
+                         <string>Test</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="0">
+                       <widget class="QPushButton" name="pushButton_calibrate">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="text">
+                         <string>Calibrate</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="1">
+                       <widget class="QLabel" name="label_24">
+                        <property name="text">
+                         <string>Calibration files are saved in &quot;camera_info&quot; folder of the working directory.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QLineEdit" name="lineEdit_sourceDevice">
                         <property name="text">
                          <string/>
                         </property>
@@ -1345,149 +1478,851 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                      </layout>
                     </item>
                     <item>
-                     <widget class="QGroupBox" name="groupBox_sourceImage">
-                      <property name="title">
-                       <string>Image source</string>
+                     <widget class="QStackedWidget" name="stackedWidget_src">
+                      <property name="currentIndex">
+                       <number>0</number>
                       </property>
-                      <property name="checkable">
-                       <bool>true</bool>
-                      </property>
-                      <property name="checked">
-                       <bool>false</bool>
-                      </property>
-                      <layout class="QVBoxLayout" name="verticalLayout_5">
-                       <item>
-                        <layout class="QGridLayout" name="gridLayout_5" columnstretch="0,1">
-                         <item row="0" column="0">
-                          <widget class="QComboBox" name="source_comboBox_image_type">
-                           <property name="currentIndex">
-                            <number>0</number>
-                           </property>
+                      <widget class="QWidget" name="page_41">
+                       <layout class="QVBoxLayout" name="verticalLayout_64">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_sourceRGBD">
+                          <property name="title">
+                           <string>RGB-D</string>
+                          </property>
+                          <property name="checkable">
+                           <bool>false</bool>
+                          </property>
+                          <property name="checked">
+                           <bool>false</bool>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_11">
                            <item>
-                            <property name="text">
-                             <string>Usb camera</string>
-                            </property>
-                           </item>
-                           <item>
-                            <property name="text">
-                             <string>Images</string>
-                            </property>
-                           </item>
-                           <item>
-                            <property name="text">
-                             <string>Video file</string>
-                            </property>
-                           </item>
-                          </widget>
-                         </item>
-                         <item row="0" column="1">
-                          <widget class="QLabel" name="label_20">
-                           <property name="text">
-                            <string>Source type. 0-Usb camera (Webcam), 1-Images (directory of images), 2-Video (AVI)</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="1">
-                          <widget class="QLabel" name="label_10">
-                           <property name="text">
-                            <string>Image width (set to 0 to use the default size of the source).</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="1">
-                          <widget class="QLabel" name="label_11">
-                           <property name="text">
-                            <string>Image height (set to 0 to use the default size of the source).</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="0">
-                          <widget class="QSpinBox" name="source_spinBox_imgWidth">
-                           <property name="minimum">
-                            <number>0</number>
-                           </property>
-                           <property name="maximum">
-                            <number>999999999</number>
-                           </property>
-                           <property name="singleStep">
-                            <number>160</number>
-                           </property>
-                           <property name="value">
-                            <number>0</number>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="0">
-                          <widget class="QSpinBox" name="source_spinBox_imgheight">
-                           <property name="minimum">
-                            <number>0</number>
-                           </property>
-                           <property name="maximum">
-                            <number>999999999</number>
-                           </property>
-                           <property name="singleStep">
-                            <number>120</number>
-                           </property>
-                           <property name="value">
-                            <number>0</number>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                       <item>
-                        <widget class="QStackedWidget" name="stackedWidget_image">
-                         <property name="currentIndex">
-                          <number>0</number>
-                         </property>
-                         <widget class="QWidget" name="page_7">
-                          <layout class="QVBoxLayout" name="verticalLayout_30">
-                           <item>
-                            <widget class="QGroupBox" name="source_groupBox_usbDevice">
-                             <property name="title">
-                              <string>Usb device</string>
+                            <widget class="QLabel" name="label_40">
+                             <property name="text">
+                              <string>Grabber for RGB-D devices (i.e., Primesense PSDK, Microsoft Kinect, Asus XTion Pro/Live).</string>
                              </property>
-                             <layout class="QGridLayout" name="gridLayout_6" columnstretch="0,1">
-                              <item row="0" column="1">
-                               <widget class="QLabel" name="label_38">
-                                <property name="text">
-                                 <string>Usb device.</string>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="0" column="0">
-                               <widget class="QSpinBox" name="source_usbDevice_spinBox_id">
-                                <property name="minimum">
-                                 <number>-1</number>
-                                </property>
-                                <property name="maximum">
-                                 <number>999999999</number>
-                                </property>
-                                <property name="value">
-                                 <number>0</number>
-                                </property>
-                               </widget>
-                              </item>
-                             </layout>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
                             </widget>
                            </item>
                            <item>
-                            <spacer name="verticalSpacer_8">
+                            <layout class="QGridLayout" name="gridLayout_55" columnstretch="0,0,1">
+                             <item row="0" column="1">
+                              <widget class="QComboBox" name="comboBox_cameraRGBD">
+                               <property name="sizeAdjustPolicy">
+                                <enum>QComboBox::AdjustToContents</enum>
+                               </property>
+                               <item>
+                                <property name="text">
+                                 <string>OpenNI-PCL</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>Freenect</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>OpenNI-CV</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>OpenNI-CV-ASUS</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>OpenNI2</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>Freenect2</string>
+                                </property>
+                               </item>
+                              </widget>
+                             </item>
+                             <item row="0" column="2">
+                              <widget class="QLabel" name="label_228">
+                               <property name="text">
+                                <string>Driver</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="3" column="2">
+                              <widget class="QLabel" name="label_229">
+                               <property name="text">
+                                <string>Only RGB images are published.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="3" column="1">
+                              <widget class="QCheckBox" name="checkbox_rgbd_colorOnly">
+                               <property name="text">
+                                <string/>
+                               </property>
+                               <property name="checked">
+                                <bool>false</bool>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item>
+                            <widget class="QStackedWidget" name="stackedWidget_rgbd">
+                             <property name="currentIndex">
+                              <number>4</number>
+                             </property>
+                             <widget class="QWidget" name="page_32">
+                              <layout class="QVBoxLayout" name="verticalLayout_63">
+                               <item>
+                                <widget class="QGroupBox" name="groupBox_openni">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="title">
+                                  <string>OpenNI</string>
+                                 </property>
+                                 <layout class="QGridLayout" name="gridLayout_57" columnstretch="0,0,0">
+                                  <item row="0" column="1">
+                                   <widget class="QLineEdit" name="lineEdit_openniOniPath">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="2">
+                                   <widget class="QLabel" name="label_245">
+                                    <property name="text">
+                                     <string>Path to a *.ONI file.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="0">
+                                   <spacer name="verticalSpacer_34">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>20</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
+                                  <item row="0" column="0">
+                                   <widget class="QToolButton" name="toolButton_openniOniPath">
+                                    <property name="text">
+                                     <string>...</string>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                 </layout>
+                                </widget>
+                               </item>
+                              </layout>
+                             </widget>
+                             <widget class="QWidget" name="page_33"/>
+                             <widget class="QWidget" name="page_34"/>
+                             <widget class="QWidget" name="page_35"/>
+                             <widget class="QWidget" name="page_36">
+                              <layout class="QVBoxLayout" name="verticalLayout_51">
+                               <item>
+                                <widget class="QGroupBox" name="groupBox_openni2">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="title">
+                                  <string>OpenNI 2</string>
+                                 </property>
+                                 <layout class="QGridLayout" name="gridLayout_54" columnstretch="0,1,0">
+                                  <item row="1" column="0">
+                                   <widget class="QCheckBox" name="openni2_autoWhiteBalance">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                    <property name="checked">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="1">
+                                   <widget class="QLabel" name="label_217">
+                                    <property name="text">
+                                     <string>Auto white balance.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="0">
+                                   <widget class="QCheckBox" name="openni2_autoExposure">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                    <property name="checked">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="1">
+                                   <widget class="QLabel" name="label_218">
+                                    <property name="text">
+                                     <string>Auto exposure.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="3" column="0">
+                                   <widget class="QSpinBox" name="openni2_exposure">
+                                    <property name="maximum">
+                                     <number>65535</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="3" column="1">
+                                   <widget class="QLabel" name="label_219">
+                                    <property name="text">
+                                     <string>Exposure.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="6" column="0">
+                                   <spacer name="verticalSpacer_33">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>20</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
+                                  <item row="4" column="0">
+                                   <widget class="QSpinBox" name="openni2_gain">
+                                    <property name="maximum">
+                                     <number>1000</number>
+                                    </property>
+                                    <property name="value">
+                                     <number>100</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="4" column="1">
+                                   <widget class="QLabel" name="label_220">
+                                    <property name="text">
+                                     <string>Gain.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="0">
+                                   <widget class="QCheckBox" name="openni2_mirroring">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                    <property name="checked">
+                                     <bool>false</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="1">
+                                   <widget class="QLabel" name="label_223">
+                                    <property name="text">
+                                     <string>Mirroring.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="1">
+                                   <widget class="QLineEdit" name="lineEdit_openni2OniPath">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="2">
+                                   <widget class="QLabel" name="label_231">
+                                    <property name="text">
+                                     <string>Path to a *.ONI file.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="0">
+                                   <widget class="QToolButton" name="toolButton_openni2OniPath">
+                                    <property name="text">
+                                     <string>...</string>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                 </layout>
+                                </widget>
+                               </item>
+                              </layout>
+                             </widget>
+                             <widget class="QWidget" name="page_37">
+                              <layout class="QVBoxLayout" name="verticalLayout_62">
+                               <item>
+                                <widget class="QGroupBox" name="groupBox_freenect2">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="title">
+                                  <string>Freenect2</string>
+                                 </property>
+                                 <layout class="QGridLayout" name="gridLayout_56" columnstretch="0,1">
+                                  <item row="0" column="1">
+                                   <widget class="QLabel" name="label_230">
+                                    <property name="text">
+                                     <string>Format.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="0">
+                                   <widget class="QComboBox" name="comboBox_freenect2Format">
+                                    <property name="sizeAdjustPolicy">
+                                     <enum>QComboBox::AdjustToContents</enum>
+                                    </property>
+                                    <item>
+                                     <property name="text">
+                                      <string>RGB+Depth SD</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>RGB+Depth HD</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>IR+Depth</string>
+                                     </property>
+                                    </item>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="0">
+                                   <spacer name="verticalSpacer_32">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>20</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
+                                 </layout>
+                                </widget>
+                               </item>
+                              </layout>
+                             </widget>
+                            </widget>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_44">
+                       <layout class="QVBoxLayout" name="verticalLayout_71">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_sourceStereo">
+                          <property name="title">
+                           <string>Stereo</string>
+                          </property>
+                          <property name="checkable">
+                           <bool>false</bool>
+                          </property>
+                          <property name="checked">
+                           <bool>false</bool>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_67">
+                           <item>
+                            <widget class="QLabel" name="label_46">
+                             <property name="text">
+                              <string>Grabber for stereo devices (i.e., Bumblebee2).</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_58" columnstretch="0,0,0">
+                             <item row="0" column="1">
+                              <widget class="QComboBox" name="comboBox_cameraStereo">
+                               <property name="sizeAdjustPolicy">
+                                <enum>QComboBox::AdjustToContents</enum>
+                               </property>
+                               <item>
+                                <property name="text">
+                                 <string>DC1394</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>FlyCapture2</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>Images</string>
+                                </property>
+                               </item>
+                              </widget>
+                             </item>
+                             <item row="0" column="2">
+                              <widget class="QLabel" name="label_240">
+                               <property name="text">
+                                <string>Driver</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item>
+                            <widget class="QStackedWidget" name="stackedWidget_stereo">
+                             <property name="currentIndex">
+                              <number>2</number>
+                             </property>
+                             <widget class="QWidget" name="page_47"/>
+                             <widget class="QWidget" name="page_48"/>
+                             <widget class="QWidget" name="page_53">
+                              <layout class="QVBoxLayout" name="verticalLayout_70">
+                               <item>
+                                <widget class="QGroupBox" name="groupBox_cameraStereoImages">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="title">
+                                  <string>CameraStereoImages</string>
+                                 </property>
+                                 <layout class="QGridLayout" name="gridLayout_61" columnstretch="0,0,1">
+                                  <item row="1" column="1">
+                                   <widget class="QLineEdit" name="lineEdit_cameraStereoImages_timestamps">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="0">
+                                   <widget class="QToolButton" name="toolButton_cameraStereoImages_timestamps">
+                                    <property name="text">
+                                     <string>...</string>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="2">
+                                   <widget class="QLabel" name="label_248">
+                                    <property name="text">
+                                     <string>Optional timestamps file (*.txt). The file should contain one column. The number of rows should be the same than the number of images in the folder. </string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="1">
+                                   <widget class="QLineEdit" name="lineEdit_cameraStereoImages_path">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="2">
+                                   <widget class="QLabel" name="label_249">
+                                    <property name="text">
+                                     <string>Path to directory containing stereo images. The images order should be left/right/left/right... and so on. You can also set two directories (separated by ';'), one for left images and one for right images.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="0">
+                                   <widget class="QToolButton" name="toolButton_cameraStereoImages_path">
+                                    <property name="text">
+                                     <string>...</string>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="0">
+                                   <spacer name="verticalSpacer_38">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>20</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
+                                 </layout>
+                                </widget>
+                               </item>
+                              </layout>
+                             </widget>
+                            </widget>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_42">
+                       <layout class="QVBoxLayout" name="verticalLayout_65">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_sourceRGB">
+                          <property name="title">
+                           <string>RGB</string>
+                          </property>
+                          <property name="checkable">
+                           <bool>false</bool>
+                          </property>
+                          <property name="checked">
+                           <bool>false</bool>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_5">
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_5" columnstretch="0,1">
+                             <item row="0" column="0">
+                              <widget class="QComboBox" name="source_comboBox_image_type">
+                               <property name="currentIndex">
+                                <number>0</number>
+                               </property>
+                               <item>
+                                <property name="text">
+                                 <string>Usb camera</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>Images</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>Video file</string>
+                                </property>
+                               </item>
+                              </widget>
+                             </item>
+                             <item row="0" column="1">
+                              <widget class="QLabel" name="label_20">
+                               <property name="text">
+                                <string>Source type.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item>
+                            <widget class="QStackedWidget" name="stackedWidget_image">
+                             <property name="currentIndex">
+                              <number>1</number>
+                             </property>
+                             <widget class="QWidget" name="page_7">
+                              <layout class="QVBoxLayout" name="verticalLayout_30">
+                               <item>
+                                <spacer name="verticalSpacer_8">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>0</width>
+                                   <height>0</height>
+                                  </size>
+                                 </property>
+                                </spacer>
+                               </item>
+                              </layout>
+                             </widget>
+                             <widget class="QWidget" name="page_5">
+                              <layout class="QVBoxLayout" name="verticalLayout_6">
+                               <item>
+                                <widget class="QGroupBox" name="source_groupBox_images">
+                                 <property name="title">
+                                  <string>Images dataset</string>
+                                 </property>
+                                 <layout class="QGridLayout" name="gridLayout_7" columnstretch="0,1">
+                                  <item row="2" column="0">
+                                   <widget class="QCheckBox" name="source_images_refreshDir">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="0">
+                                   <widget class="QSpinBox" name="source_images_spinBox_startPos">
+                                    <property name="minimum">
+                                     <number>0</number>
+                                    </property>
+                                    <property name="maximum">
+                                     <number>999999999</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="1">
+                                   <widget class="QLineEdit" name="source_images_lineEdit_path">
+                                    <property name="readOnly">
+                                     <bool>false</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="0">
+                                   <widget class="QToolButton" name="source_images_toolButton_selectSource">
+                                    <property name="text">
+                                     <string>...</string>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="1">
+                                   <widget class="QLabel" name="label_34">
+                                    <property name="text">
+                                     <string>Refresh the directory files list after each image loaded.</string>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="1">
+                                   <widget class="QLabel" name="label_21">
+                                    <property name="text">
+                                     <string>Start position (default 1, 0=start from the last).</string>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                 </layout>
+                                </widget>
+                               </item>
+                               <item>
+                                <spacer name="verticalSpacer_9">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>0</width>
+                                   <height>0</height>
+                                  </size>
+                                 </property>
+                                </spacer>
+                               </item>
+                              </layout>
+                             </widget>
+                             <widget class="QWidget" name="page_6">
+                              <layout class="QVBoxLayout" name="verticalLayout_8">
+                               <item>
+                                <widget class="QGroupBox" name="source_groupBox_video">
+                                 <property name="title">
+                                  <string>Video (AVI)</string>
+                                 </property>
+                                 <layout class="QGridLayout" name="gridLayout_8" columnstretch="0,10">
+                                  <item row="0" column="0">
+                                   <widget class="QToolButton" name="source_video_toolButton_selectSource">
+                                    <property name="text">
+                                     <string>...</string>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="1">
+                                   <widget class="QLineEdit" name="source_video_lineEdit_path">
+                                    <property name="readOnly">
+                                     <bool>false</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                 </layout>
+                                </widget>
+                               </item>
+                               <item>
+                                <spacer name="verticalSpacer_10">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>0</width>
+                                   <height>0</height>
+                                  </size>
+                                 </property>
+                                </spacer>
+                               </item>
+                              </layout>
+                             </widget>
+                            </widget>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_43">
+                       <layout class="QVBoxLayout" name="verticalLayout_66">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_sourceDatabase">
+                          <property name="title">
+                           <string>Database</string>
+                          </property>
+                          <property name="checkable">
+                           <bool>false</bool>
+                          </property>
+                          <property name="checked">
+                           <bool>false</bool>
+                          </property>
+                          <layout class="QGridLayout" name="gridLayout_9">
+                           <item row="0" column="2">
+                            <widget class="QToolButton" name="toolButton_dbViewer">
+                             <property name="toolTip">
+                              <string>Open database viewer</string>
+                             </property>
+                             <property name="text">
+                              <string/>
+                             </property>
+                             <property name="icon">
+                              <iconset resource="../GuiLib.qrc">
+                               <normaloff>:/images/mag_glass.png</normaloff>:/images/mag_glass.png</iconset>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="1" column="0">
+                            <widget class="QCheckBox" name="source_checkBox_ignoreOdometry">
+                             <property name="text">
+                              <string/>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="0" column="0">
+                            <widget class="QToolButton" name="source_database_toolButton_selectSource">
+                             <property name="text">
+                              <string>...</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="0" column="1">
+                            <widget class="QLineEdit" name="source_database_lineEdit_path"/>
+                           </item>
+                           <item row="4" column="1">
+                            <widget class="QLabel" name="label_58">
+                             <property name="text">
+                              <string>Start position (index)</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="4" column="0">
+                            <widget class="QSpinBox" name="source_spinBox_databaseStartPos">
+                             <property name="minimum">
+                              <number>0</number>
+                             </property>
+                             <property name="maximum">
+                              <number>999999999</number>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="1" column="1">
+                            <widget class="QLabel" name="label_72">
+                             <property name="text">
+                              <string>Ignore odometry saved in the database, so if RGB-D SLAM is activated, odometry will be recomputed.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="3" column="1">
+                            <widget class="QLabel" name="label_80">
+                             <property name="text">
+                              <string>Ignore goal delay.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="3" column="0">
+                            <widget class="QCheckBox" name="source_checkBox_ignoreGoalDelay">
+                             <property name="text">
+                              <string/>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="2" column="1">
+                            <widget class="QLabel" name="label_90">
+                             <property name="text">
+                              <string>Use database stamps as input rate.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="2" column="0">
+                            <widget class="QCheckBox" name="source_checkBox_useDbStamps">
+                             <property name="text">
+                              <string/>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="5" column="1">
+                            <spacer name="verticalSpacer_35">
                              <property name="orientation">
                               <enum>Qt::Vertical</enum>
                              </property>
                              <property name="sizeHint" stdset="0">
                               <size>
-                               <width>0</width>
+                               <width>20</width>
                                <height>0</height>
                               </size>
                              </property>
@@ -1495,619 +2330,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </item>
                           </layout>
                          </widget>
-                         <widget class="QWidget" name="page_5">
-                          <layout class="QVBoxLayout" name="verticalLayout_6">
-                           <item>
-                            <widget class="QGroupBox" name="source_groupBox_images">
-                             <property name="title">
-                              <string>Images dataset</string>
-                             </property>
-                             <layout class="QGridLayout" name="gridLayout_7" columnstretch="0,1">
-                              <item row="2" column="0">
-                               <widget class="QCheckBox" name="source_images_refreshDir">
-                                <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="1" column="0">
-                               <widget class="QSpinBox" name="source_images_spinBox_startPos">
-                                <property name="minimum">
-                                 <number>0</number>
-                                </property>
-                                <property name="maximum">
-                                 <number>999999999</number>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="0" column="1">
-                               <widget class="QLineEdit" name="source_images_lineEdit_path">
-                                <property name="readOnly">
-                                 <bool>false</bool>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="0" column="0">
-                               <widget class="QToolButton" name="source_images_toolButton_selectSource">
-                                <property name="text">
-                                 <string>...</string>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="2" column="1">
-                               <widget class="QLabel" name="label_34">
-                                <property name="text">
-                                 <string>Refresh the directory files list after each image loaded.</string>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="1" column="1">
-                               <widget class="QLabel" name="label_21">
-                                <property name="text">
-                                 <string>Start position (default 1, 0=start from the last).</string>
-                                </property>
-                               </widget>
-                              </item>
-                             </layout>
-                            </widget>
-                           </item>
-                           <item>
-                            <spacer name="verticalSpacer_9">
-                             <property name="orientation">
-                              <enum>Qt::Vertical</enum>
-                             </property>
-                             <property name="sizeHint" stdset="0">
-                              <size>
-                               <width>0</width>
-                               <height>0</height>
-                              </size>
-                             </property>
-                            </spacer>
-                           </item>
-                          </layout>
-                         </widget>
-                         <widget class="QWidget" name="page_6">
-                          <layout class="QVBoxLayout" name="verticalLayout_8">
-                           <item>
-                            <widget class="QGroupBox" name="source_groupBox_video">
-                             <property name="title">
-                              <string>Video (AVI)</string>
-                             </property>
-                             <layout class="QGridLayout" name="gridLayout_8" columnstretch="0,10">
-                              <item row="0" column="0">
-                               <widget class="QToolButton" name="source_video_toolButton_selectSource">
-                                <property name="text">
-                                 <string>...</string>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="0" column="1">
-                               <widget class="QLineEdit" name="source_video_lineEdit_path">
-                                <property name="readOnly">
-                                 <bool>false</bool>
-                                </property>
-                               </widget>
-                              </item>
-                             </layout>
-                            </widget>
-                           </item>
-                           <item>
-                            <spacer name="verticalSpacer_10">
-                             <property name="orientation">
-                              <enum>Qt::Vertical</enum>
-                             </property>
-                             <property name="sizeHint" stdset="0">
-                              <size>
-                               <width>0</width>
-                               <height>0</height>
-                              </size>
-                             </property>
-                            </spacer>
-                           </item>
-                          </layout>
-                         </widget>
-                        </widget>
-                       </item>
-                      </layout>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QGroupBox" name="groupBox_sourceDatabase">
-                      <property name="title">
-                       <string>Database source</string>
-                      </property>
-                      <property name="checkable">
-                       <bool>true</bool>
-                      </property>
-                      <property name="checked">
-                       <bool>false</bool>
-                      </property>
-                      <layout class="QGridLayout" name="gridLayout_9">
-                       <item row="0" column="2">
-                        <widget class="QToolButton" name="toolButton_dbViewer">
-                         <property name="toolTip">
-                          <string>Open database viewer</string>
-                         </property>
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="icon">
-                          <iconset resource="../GuiLib.qrc">
-                           <normaloff>:/images/mag_glass.png</normaloff>:/images/mag_glass.png</iconset>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="0">
-                        <widget class="QCheckBox" name="source_checkBox_ignoreOdometry">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="0">
-                        <widget class="QToolButton" name="source_database_toolButton_selectSource">
-                         <property name="text">
-                          <string>...</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="1">
-                        <widget class="QLineEdit" name="source_database_lineEdit_path"/>
-                       </item>
-                       <item row="4" column="1">
-                        <widget class="QLabel" name="label_58">
-                         <property name="text">
-                          <string>Start position (index)</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="0">
-                        <widget class="QSpinBox" name="source_spinBox_databaseStartPos">
-                         <property name="minimum">
-                          <number>0</number>
-                         </property>
-                         <property name="maximum">
-                          <number>999999999</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_72">
-                         <property name="text">
-                          <string>Ignore odometry saved in the database, so if RGB-D SLAM is activated, odometry will be recomputed.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="1">
-                        <widget class="QLabel" name="label_80">
-                         <property name="text">
-                          <string>Ignore goal delay.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="0">
-                        <widget class="QCheckBox" name="source_checkBox_ignoreGoalDelay">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_90">
-                         <property name="text">
-                          <string>Use database stamps as input rate.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="0">
-                        <widget class="QCheckBox" name="source_checkBox_useDbStamps">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QGroupBox" name="groupBox_sourceOpenni">
-                      <property name="title">
-                       <string>RGB-D camera</string>
-                      </property>
-                      <property name="checkable">
-                       <bool>true</bool>
-                      </property>
-                      <property name="checked">
-                       <bool>true</bool>
-                      </property>
-                      <layout class="QVBoxLayout" name="verticalLayout_11">
-                       <item>
-                        <widget class="QLabel" name="label_40">
-                         <property name="text">
-                          <string>Grabber for RGB-D devices (i.e., Primesense PSDK, Microsoft Kinect, Asus XTion Pro/Live).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <layout class="QGridLayout" name="gridLayout_55" columnstretch="0,0,1">
-                         <item row="0" column="1">
-                          <widget class="QComboBox" name="comboBox_cameraRGBD">
-                           <property name="sizeAdjustPolicy">
-                            <enum>QComboBox::AdjustToContents</enum>
-                           </property>
-                           <item>
-                            <property name="text">
-                             <string>OpenNI-PCL</string>
-                            </property>
-                           </item>
-                           <item>
-                            <property name="text">
-                             <string>Freenect</string>
-                            </property>
-                           </item>
-                           <item>
-                            <property name="text">
-                             <string>OpenNI-CV</string>
-                            </property>
-                           </item>
-                           <item>
-                            <property name="text">
-                             <string>OpenNI-CV-ASUS</string>
-                            </property>
-                           </item>
-                           <item>
-                            <property name="text">
-                             <string>OpenNI2</string>
-                            </property>
-                           </item>
-                           <item>
-                            <property name="text">
-                             <string>Freenect2</string>
-                            </property>
-                           </item>
-                           <item>
-                            <property name="text">
-                             <string>StereoDC1394</string>
-                            </property>
-                           </item>
-                           <item>
-                            <property name="text">
-                             <string>StereoFlyCapture2</string>
-                            </property>
-                           </item>
-                           <item>
-                            <property name="text">
-                             <string>StereoImages</string>
-                            </property>
-                           </item>
-                          </widget>
-                         </item>
-                         <item row="1" column="1">
-                          <widget class="QPushButton" name="pushButton_calibrate">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                             <horstretch>0</horstretch>
-                             <verstretch>0</verstretch>
-                            </sizepolicy>
-                           </property>
-                           <property name="text">
-                            <string>Calibrate</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="2">
-                          <widget class="QLabel" name="label_46">
-                           <property name="text">
-                            <string>On initialization, calibration files are loaded from the &quot;camera_info&quot; folder in the working directory.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="1">
-                          <widget class="QPushButton" name="pushButton_test_rgbd_camera">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                             <horstretch>0</horstretch>
-                             <verstretch>0</verstretch>
-                            </sizepolicy>
-                           </property>
-                           <property name="text">
-                            <string>Test</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="0" column="2">
-                          <widget class="QLabel" name="label_228">
-                           <property name="text">
-                            <string>Driver</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                       <item>
-                        <widget class="QGroupBox" name="groupBox_openni2">
-                         <property name="title">
-                          <string>OpenNI 2</string>
-                         </property>
-                         <layout class="QGridLayout" name="gridLayout_54" columnstretch="0,1">
-                          <item row="0" column="0">
-                           <widget class="QCheckBox" name="openni2_autoWhiteBalance">
-                            <property name="text">
-                             <string/>
-                            </property>
-                            <property name="checked">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="0" column="1">
-                           <widget class="QLabel" name="label_217">
-                            <property name="text">
-                             <string>Auto white balance.</string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="1" column="0">
-                           <widget class="QCheckBox" name="openni2_autoExposure">
-                            <property name="text">
-                             <string/>
-                            </property>
-                            <property name="checked">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="1" column="1">
-                           <widget class="QLabel" name="label_218">
-                            <property name="text">
-                             <string>Auto exposure.</string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="2" column="0">
-                           <widget class="QSpinBox" name="openni2_exposure">
-                            <property name="maximum">
-                             <number>65535</number>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="2" column="1">
-                           <widget class="QLabel" name="label_219">
-                            <property name="text">
-                             <string>Exposure.</string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="3" column="0">
-                           <widget class="QSpinBox" name="openni2_gain">
-                            <property name="maximum">
-                             <number>1000</number>
-                            </property>
-                            <property name="value">
-                             <number>100</number>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="3" column="1">
-                           <widget class="QLabel" name="label_220">
-                            <property name="text">
-                             <string>Gain.</string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="4" column="0">
-                           <widget class="QCheckBox" name="openni2_mirroring">
-                            <property name="text">
-                             <string/>
-                            </property>
-                            <property name="checked">
-                             <bool>false</bool>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="4" column="1">
-                           <widget class="QLabel" name="label_223">
-                            <property name="text">
-                             <string>Mirroring.</string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
-                         </layout>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QGroupBox" name="groupBox_freenect2">
-                         <property name="title">
-                          <string>Freenect2</string>
-                         </property>
-                         <layout class="QGridLayout" name="gridLayout_56" columnstretch="0,1">
-                          <item row="0" column="1">
-                           <widget class="QLabel" name="label_230">
-                            <property name="text">
-                             <string>Format.</string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="0" column="0">
-                           <widget class="QComboBox" name="comboBox_freenect2Format">
-                            <property name="sizeAdjustPolicy">
-                             <enum>QComboBox::AdjustToContents</enum>
-                            </property>
-                            <item>
-                             <property name="text">
-                              <string>RGB+Depth SD</string>
-                             </property>
-                            </item>
-                            <item>
-                             <property name="text">
-                              <string>RGB+Depth HD</string>
-                             </property>
-                            </item>
-                            <item>
-                             <property name="text">
-                              <string>IR+Depth</string>
-                             </property>
-                            </item>
-                           </widget>
-                          </item>
-                         </layout>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QGroupBox" name="groupBox_cameraStereoImages">
-                         <property name="title">
-                          <string>CameraStereoImages</string>
-                         </property>
-                         <layout class="QGridLayout" name="gridLayout_57" columnstretch="0,0,1">
-                          <item row="1" column="1">
-                           <widget class="QLineEdit" name="lineEdit_cameraStereoImages_timestamps">
-                            <property name="text">
-                             <string/>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="1" column="0">
-                           <widget class="QToolButton" name="toolButton_cameraStereoImages_timestamps">
-                            <property name="text">
-                             <string>...</string>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="1" column="2">
-                           <widget class="QLabel" name="label_231">
-                            <property name="text">
-                             <string>Optional timestamps file (*.txt). The file should contain one column. The number of rows should be the same than the number of images in the folder. </string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="0" column="1">
-                           <widget class="QLineEdit" name="lineEdit_cameraStereoImages_path">
-                            <property name="text">
-                             <string/>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="0" column="2">
-                           <widget class="QLabel" name="label_237">
-                            <property name="text">
-                             <string>Path to directory containing stereo images. The images order should be left/right/left/right... and so on. You can also set two directories (separated by ';'), one for left images and one for right images.</string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="0" column="0">
-                           <widget class="QToolButton" name="toolButton_cameraStereoImages_path">
-                            <property name="text">
-                             <string>...</string>
-                            </property>
-                           </widget>
-                          </item>
-                         </layout>
-                        </widget>
-                       </item>
-                       <item>
-                        <layout class="QFormLayout" name="formLayout">
-                         <property name="fieldGrowthPolicy">
-                          <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                         </property>
-                         <item row="0" column="0">
-                          <widget class="QLineEdit" name="lineEdit_openniDevice">
-                           <property name="text">
-                            <string/>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="0" column="1">
-                          <widget class="QLabel" name="label_39">
-                           <property name="text">
-                            <string>ID of the device, which might be a serial number, bus@address or the index of the device. If empty, the first device found is taken. In case of OpenNI and OpenNI2 drivers, this can be a path to an ONI file. For StereoImages, this is the name used when looking for calibration files.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="0">
-                          <widget class="QLineEdit" name="lineEdit_openniLocalTransform">
-                           <property name="text">
-                            <string>0 0 1 -1 0 0 0 -1 0</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="1">
-                          <widget class="QLabel" name="label_42">
-                           <property name="text">
-                            <string>Local transform from /base_link to /camera_link. Format (6 values): x y z roll pitch yaw. Format (9 values): r11 r12 r13 r21 r22 r23 r31 r32 r33.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="1">
-                          <widget class="QLabel" name="label_229">
-                           <property name="text">
-                            <string>Only RGB images are published.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="0">
-                          <widget class="QCheckBox" name="checkbox_rgbd_colorOnly">
-                           <property name="text">
-                            <string/>
-                           </property>
-                           <property name="checked">
-                            <bool>false</bool>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                      </layout>
+                        </item>
+                       </layout>
+                      </widget>
                      </widget>
                     </item>
                    </layout>

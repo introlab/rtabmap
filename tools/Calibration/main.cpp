@@ -25,8 +25,9 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "rtabmap/core/Camera.h"
+#include "rtabmap/core/CameraRGB.h"
 #include "rtabmap/core/CameraRGBD.h"
+#include "rtabmap/core/CameraStereo.h"
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UConversion.h"
@@ -130,11 +131,10 @@ int main(int argc, char * argv[])
 
 	bool switchImages = false;
 
-	rtabmap::Camera * cameraUsb = 0;
-	rtabmap::CameraRGBD * camera = 0;
+	rtabmap::Camera * camera = 0;
 	if(driver == -1)
 	{
-		cameraUsb = new rtabmap::CameraVideo(device);
+		camera = new rtabmap::CameraVideo(device);
 	}
 	else if(driver == 0)
 	{
@@ -211,17 +211,7 @@ int main(int argc, char * argv[])
 
 	rtabmap::CameraThread * cameraThread = 0;
 
-	if(cameraUsb)
-	{
-		if(!cameraUsb->init())
-		{
-			printf("Camera init failed!\n");
-			delete cameraUsb;
-			exit(1);
-		}
-		cameraThread = new rtabmap::CameraThread(cameraUsb);
-	}
-	else if(camera)
+	if(camera)
 	{
 		if(!camera->init(""))
 		{

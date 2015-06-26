@@ -97,8 +97,10 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, f
 	decimationSpin_->setMaximum(16);
 	decimationSpin_->setValue(decimation);
 	timeLabel_ = new QLabel(this);
+	QPushButton * resetButton = new QPushButton("reset", this);
 	QPushButton * clearButton = new QPushButton("clear", this);
 	QPushButton * closeButton = new QPushButton("close", this);
+	connect(resetButton, SIGNAL(clicked()), this, SLOT(reset()));
 	connect(clearButton, SIGNAL(clicked()), this, SLOT(clear()));
 	connect(closeButton, SIGNAL(clicked()), this, SLOT(reject()));
 
@@ -121,6 +123,7 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, f
 	hlayout2->addWidget(decimationSpin_);
 	hlayout2->addWidget(timeLabel_);
 	hlayout2->addStretch(1);
+	hlayout2->addWidget(resetButton);
 	hlayout2->addWidget(clearButton);
 	hlayout2->addWidget(closeButton);
 
@@ -138,6 +141,11 @@ OdometryViewer::~OdometryViewer()
 	this->unregisterFromEventsManager();
 	this->clear();
 	UDEBUG("");
+}
+
+void OdometryViewer::reset()
+{
+	this->post(new OdometryResetEvent());
 }
 
 void OdometryViewer::clear()

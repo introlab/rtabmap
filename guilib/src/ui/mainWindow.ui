@@ -95,15 +95,21 @@
      </property>
      <widget class="QMenu" name="menuImage">
       <property name="title">
-       <string>Image-only</string>
+       <string>RGB camera</string>
+      </property>
+      <property name="icon">
+       <iconset resource="../GuiLib.qrc">
+        <normaloff>:/images/webcam.png</normaloff>:/images/webcam.png</iconset>
       </property>
       <addaction name="actionUsbCamera"/>
-      <addaction name="actionImageFiles"/>
-      <addaction name="actionVideo"/>
      </widget>
      <widget class="QMenu" name="menuRGB_D_camera">
       <property name="title">
        <string>RGB-D camera</string>
+      </property>
+      <property name="icon">
+       <iconset resource="../GuiLib.qrc">
+        <normaloff>:/images/kinect_xbox_360.png</normaloff>:/images/kinect_xbox_360.png</iconset>
       </property>
       <widget class="QMenu" name="menuKinect_for_Xbox_360">
        <property name="title">
@@ -150,7 +156,20 @@
        </property>
        <addaction name="actionFreenect2"/>
       </widget>
-      <widget class="QMenu" name="menuBumblebee2">
+      <addaction name="menuKinect_for_Xbox_360"/>
+      <addaction name="menuXtion_PRO_LIVE"/>
+      <addaction name="menuSense_3D_scanner"/>
+      <addaction name="menuKinect_v2"/>
+     </widget>
+     <widget class="QMenu" name="menuStereo_camera">
+      <property name="title">
+       <string>Stereo camera</string>
+      </property>
+      <property name="icon">
+       <iconset resource="../GuiLib.qrc">
+        <normaloff>:/images/bumblebee2.png</normaloff>:/images/bumblebee2.png</iconset>
+      </property>
+      <widget class="QMenu" name="menuBumblebee2_2">
        <property name="title">
         <string>Bumblebee2</string>
        </property>
@@ -161,15 +180,12 @@
        <addaction name="actionStereoDC1394"/>
        <addaction name="actionStereoFlyCapture2"/>
       </widget>
-      <addaction name="menuKinect_for_Xbox_360"/>
-      <addaction name="menuXtion_PRO_LIVE"/>
-      <addaction name="menuSense_3D_scanner"/>
-      <addaction name="menuKinect_v2"/>
-      <addaction name="menuBumblebee2"/>
+      <addaction name="menuBumblebee2_2"/>
      </widget>
      <addaction name="menuRGB_D_camera"/>
+     <addaction name="menuStereo_camera"/>
      <addaction name="menuImage"/>
-     <addaction name="actionDatabase"/>
+     <addaction name="actionMore_options"/>
     </widget>
     <addaction name="menuSelect_source"/>
     <addaction name="separator"/>
@@ -946,32 +962,12 @@
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="icon">
+    <iconset resource="../GuiLib.qrc">
+     <normaloff>:/images/webcam.png</normaloff>:/images/webcam.png</iconset>
+   </property>
    <property name="text">
     <string>Usb camera</string>
-   </property>
-  </action>
-  <action name="actionImageFiles">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Images...</string>
-   </property>
-  </action>
-  <action name="actionVideo">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Video...</string>
-   </property>
-  </action>
-  <action name="actionDatabase">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Database...</string>
    </property>
   </action>
   <action name="actionGenerate_local_map">
@@ -1203,7 +1199,7 @@
   </action>
   <action name="actionStereoFlyCapture2">
    <property name="text">
-    <string>StereoFlyCapture2</string>
+    <string>FlyCapture2</string>
    </property>
   </action>
   <action name="actionSend_goal">
@@ -1224,6 +1220,14 @@
   <action name="actionDefault_views">
    <property name="text">
     <string>Default views</string>
+   </property>
+  </action>
+  <action name="actionMore_options">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>More options...</string>
    </property>
   </action>
  </widget>

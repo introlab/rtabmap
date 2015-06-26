@@ -51,7 +51,8 @@ DBReader::DBReader(const std::string & databasePath,
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
 	_dbDriver(0),
-	_currentId(_ids.end())
+	_currentId(_ids.end()),
+	_previousStamp(0)
 {
 }
 
@@ -64,7 +65,8 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
 	_dbDriver(0),
-	_currentId(_ids.end())
+	_currentId(_ids.end()),
+	_previousStamp(0)
 {
 }
 

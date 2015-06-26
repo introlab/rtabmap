@@ -157,6 +157,9 @@ public:
 	void setImageRaw(const cv::Mat & imageRaw) {_imageRaw = imageRaw;}
 	void setDepthOrRightRaw(const cv::Mat & depthOrImageRaw) {_depthOrRightRaw =depthOrImageRaw;}
 	void setLaserScanRaw(const cv::Mat & laserScanRaw, int laserScanMaxPts) {_laserScanRaw =laserScanRaw;_laserScanMaxPts = laserScanMaxPts;}
+	void setCameraModel(const CameraModel & model) {_cameraModels.clear(); _cameraModels.push_back(model);}
+	void setCameraModels(const std::vector<CameraModel> & models) {_cameraModels = models;}
+	void setStereoCameraModel(const StereoCameraModel & stereoCameraModel) {_stereoCameraModel = stereoCameraModel;}
 
 	//for convenience
 	cv::Mat depthRaw() const {return _depthOrRightRaw.type()!=CV_8UC1?_depthOrRightRaw:cv::Mat();}

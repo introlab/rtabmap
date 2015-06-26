@@ -60,7 +60,7 @@ void OdometryThread::handleEvent(UEvent * event)
 		if(event->getClassName().compare("CameraEvent") == 0)
 		{
 			CameraEvent * cameraEvent = (CameraEvent*)event;
-			if(cameraEvent->getCode() == CameraEvent::kCodeImageDepth)
+			if(cameraEvent->getCode() == CameraEvent::kCodeData)
 			{
 				this->addData(cameraEvent->data());
 			}

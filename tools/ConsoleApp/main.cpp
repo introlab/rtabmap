@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UTimer.h>
 #include "rtabmap/core/Rtabmap.h"
-#include "rtabmap/core/Camera.h"
+#include "rtabmap/core/CameraRGB.h"
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -53,10 +53,6 @@ void showUsage()
 			"  -rateHz #.##                    Acquisition rate (Hz), for convenience\n"
 			"  -repeat #                       Repeat the process on the data set # times (minimum of 1)\n"
 			"  -createGT                       Generate a ground truth file\n"
-			"  -image_width #                  Force an image width (Default 0: original size used).\n"
-			"                                   The height must be also specified if changed.\n"
-			"  -image_height #                 Force an image height (Default 0: original size used)\n"
-			"                                   The height must be also specified if changed.\n"
 			"  -start_at #                     When \"path\" is a directory of images, set this parameter\n"
 			"                                   to start processing at image # (default 1).\n"
 			"  -\"parameter name\" \"value\"       Overwrite a specific RTAB-Map's parameter :\n"
@@ -118,8 +114,6 @@ int main(int argc, char * argv[])
 	int repeat = 0;
 	bool createGT = false;
 	std::string inputDbPath;
-	int imageWidth = 0;
-	int imageHeight = 0;
 	int startAt = 1;
 	ParametersMap pm;
 	ULogger::Level logLevel = ULogger::kError;
@@ -184,40 +178,6 @@ int main(int argc, char * argv[])
 			{
 				repeat = std::atoi(argv[i]);
 				if(repeat < 1)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-image_width") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				imageWidth = std::atoi(argv[i]);
-				if(imageWidth < 0)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-image_height") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				imageHeight = std::atoi(argv[i]);
-				if(imageHeight < 0)
 				{
 					showUsage();
 				}
@@ -328,12 +288,6 @@ int main(int argc, char * argv[])
 		printf("Cannot create a Ground truth if repeat is on.\n");
 		showUsage();
 	}
-	else if((imageWidth && imageHeight == 0) ||
-			(imageHeight && imageWidth == 0))
-	{
-		printf("If imageWidth is set, imageHeight must be too.\n");
-		showUsage();
-	}
 
 	UTimer timer;
 	timer.start();
@@ -342,11 +296,11 @@ int main(int argc, char * argv[])
 	Camera * camera = 0;
 	if(UDirectory::exists(path))
 	{
-		camera = new CameraImages(path, startAt, false, 1/rate, imageWidth, imageHeight);
+		camera = new CameraImages(path, startAt, false, 1/rate);
 	}
 	else
 	{
-		camera = new CameraVideo(path, 1/rate, imageWidth, imageHeight);
+		camera = new CameraVideo(path, 1/rate);
 	}
 
 	if(!camera || !camera->init())
@@ -395,7 +349,6 @@ int main(int argc, char * argv[])
 	printf(" Time threshold = %1.2f ms\n", rtabmap.getTimeThreshold());
 	printf(" Image rate = %1.2f s (%1.2f Hz)\n", rate, 1/rate);
 	printf(" Repeating data set = %s\n", repeat?"true":"false");
-	printf(" Camera width=%d, height=%d (0 is default)\n", imageWidth, imageHeight);
 	printf(" Camera starts at image %d (default 1)\n", startAt);
 	if(createGT)
 	{
@@ -422,23 +375,23 @@ int main(int argc, char * argv[])
 	std::list<std::vector<float> > teleopActions;
 	while(loopDataset <= repeat && g_forever)
 	{
-		cv::Mat img = camera->takeImage();
+		SensorData data = camera->takeImage();
 		int i=0;
 		double maxIterationTime = 0.0;
 		int maxIterationTimeId = 0;
-		while(!img.empty() && g_forever)
+		while(!data.imageRaw().empty() && g_forever)
 		{
 			++imagesProcessed;
 			iterationTimer.start();
 			rtabmapTimer.start();
-			rtabmap.process(img);
+			rtabmap.process(data.imageRaw());
 			double rtabmapTime = rtabmapTimer.elapsed();
 			loopClosureId = rtabmap.getLoopClosureId();
 			if(rtabmap.getLoopClosureId())
 			{
 				++countLoopDetected;
 			}
-			img = camera->takeImage();
+			data = camera->takeImage();
 			if(++count % 100 == 0)
 			{
 				printf(" count = %d, loop closures = %d, max time (at %d) = %fs\n",
