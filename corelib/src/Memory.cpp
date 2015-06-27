@@ -101,11 +101,10 @@ Memory::Memory(const ParametersMap & parameters) :
 	_bowMinInliers(Parameters::defaultLccBowMinInliers()),
 	_bowInlierDistance(Parameters::defaultLccBowInlierDistance()),
 	_bowIterations(Parameters::defaultLccBowIterations()),
-	_bowMaxDepth(Parameters::defaultLccBowMaxDepth()),
+	_bowRefineIterations(Parameters::defaultLccBowRefineIterations()),
 	_bowForce2D(Parameters::defaultLccBowForce2D()),
-	_bowEpipolarGeometry(Parameters::defaultLccBowEpipolarGeometry()),
 	_bowEpipolarGeometryVar(Parameters::defaultLccBowEpipolarGeometryVar()),
-	_bowPnPEstimation(Parameters::defaultLccBowPnPEstimation()),
+	_bowEstimationType(Parameters::defaultLccBowEstimationType()),
 	_bowPnPReprojError(Parameters::defaultLccBowPnPReprojError()),
 	_bowPnPFlags(Parameters::defaultLccBowPnPFlags()),
 
@@ -441,11 +440,10 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kLccBowMinInliers(), _bowMinInliers);
 	Parameters::parse(parameters, Parameters::kLccBowInlierDistance(), _bowInlierDistance);
 	Parameters::parse(parameters, Parameters::kLccBowIterations(), _bowIterations);
-	Parameters::parse(parameters, Parameters::kLccBowMaxDepth(), _bowMaxDepth);
+	Parameters::parse(parameters, Parameters::kLccBowRefineIterations(), _bowRefineIterations);
 	Parameters::parse(parameters, Parameters::kLccBowForce2D(), _bowForce2D);
-	Parameters::parse(parameters, Parameters::kLccBowEpipolarGeometry(), _bowEpipolarGeometry);
+	Parameters::parse(parameters, Parameters::kLccBowEstimationType(), _bowEstimationType);
 	Parameters::parse(parameters, Parameters::kLccBowEpipolarGeometryVar(), _bowEpipolarGeometryVar);
-	Parameters::parse(parameters, Parameters::kLccBowPnPEstimation(), _bowPnPEstimation);
 	Parameters::parse(parameters, Parameters::kLccBowPnPReprojError(), _bowPnPReprojError);
 	Parameters::parse(parameters, Parameters::kLccBowPnPFlags(), _bowPnPFlags);
 	Parameters::parse(parameters, Parameters::kLccIcpMaxTranslation(), _icpMaxTranslation);
@@ -474,7 +472,6 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	UASSERT_MSG(_bowMinInliers >= 1, uFormat("value=%d", _bowMinInliers).c_str());
 	UASSERT_MSG(_bowInlierDistance > 0.0f, uFormat("value=%f", _bowInlierDistance).c_str());
 	UASSERT_MSG(_bowIterations > 0, uFormat("value=%d", _bowIterations).c_str());
-	UASSERT_MSG(_bowMaxDepth >= 0.0f, uFormat("value=%f", _bowMaxDepth).c_str());
 	UASSERT_MSG(_icpDecimation > 0, uFormat("value=%d", _icpDecimation).c_str());
 	UASSERT_MSG(_icpMaxDepth >= 0.0f, uFormat("value=%f", _icpMaxDepth).c_str());
 	UASSERT_MSG(_icpVoxelSize >= 0, uFormat("value=%d", _icpVoxelSize).c_str());
@@ -2020,7 +2017,7 @@ Transform Memory::computeVisualTransform(
 	int inliersCount= 0;
 	double variance = 1.0;
 
-	if(_bowEpipolarGeometry && !_bowPnPEstimation)
+	if(_bowEstimationType == 2) // Epipolar Geometry
 	{
 		if(!newS.sensorData().stereoCameraModel().isValid() &&
 		   (newS.sensorData().cameraModels().size() != 1 ||
@@ -2088,13 +2085,8 @@ Transform Memory::computeVisualTransform(
 			UWARN(msg.c_str());
 		}
 	}
-	else if(_bowPnPEstimation)
+	else if(_bowEstimationType == 1) // PnP
 	{
-		if(_bowEpipolarGeometry)
-		{
-			UWARN("PnP estimation and Epipolar geometry estimation are set, only PnP is used.");
-		}
-
 		if(!newS.sensorData().stereoCameraModel().isValid() &&
 		   (newS.sensorData().cameraModels().size() != 1 ||
 			!newS.sensorData().cameraModels()[0].isValid()))
@@ -2158,7 +2150,7 @@ Transform Memory::computeVisualTransform(
 					_bowMinInliers,
 					_bowInlierDistance,
 					_bowIterations,
-					10,
+					_bowRefineIterations,
 					&variance,
 					0,
 					&inliersV);
@@ -2919,14 +2911,7 @@ void Memory::dumpSignatures(const char * fileNameSign, bool words3D) const
 
 	if(foutSign)
 	{
-		if(words3D)
-		{
-			fprintf(foutSign, "SignatureID WordsID... (Max features depth=%f)\n", _bowMaxDepth);
-		}
-		else
-		{
-			fprintf(foutSign, "SignatureID WordsID...\n");
-		}
+		fprintf(foutSign, "SignatureID WordsID...\n");
 		const std::map<int, Signature *> & signatures = this->getSignatures();
 		for(std::map<int, Signature *>::const_iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
 		{
@@ -2941,8 +2926,7 @@ void Memory::dumpSignatures(const char * fileNameSign, bool words3D) const
 					{
 						//show only valid point according to current parameters
 						if(pcl::isFinite(jter->second) &&
-						   (jter->second.x != 0 || jter->second.y != 0 || jter->second.z != 0) &&
-						   (_bowMaxDepth <= 0 || jter->second.x <= _bowMaxDepth))
+						   (jter->second.x != 0 || jter->second.y != 0 || jter->second.z != 0))
 						{
 							fprintf(foutSign, "%d ", (*jter).first);
 						}

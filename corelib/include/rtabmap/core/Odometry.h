@@ -60,7 +60,7 @@ public:
 	int getRefineIterations() const {return _refineIterations;}
 	float getMaxDepth() const {return _maxDepth;}
 	bool isInfoDataFilled() const {return _fillInfoData;}
-	bool isPnPEstimationUsed() const {return _pnpEstimation;}
+	bool getEstimationType() const {return _estimationType;}
 	double getPnPReprojError() const {return _pnpReprojError;}
 	int  getPnPFlags() const {return _pnpFlags;}
 	const Transform & previousTransform() const {return previousTransform_;}
@@ -85,7 +85,7 @@ private:
 	float _particleNoiseR;
 	float _particleLambdaR;
 	bool _fillInfoData;
-	bool _pnpEstimation;
+	int _estimationType;
 	double _pnpReprojError;
 	int _pnpFlags;
 	Transform _pose;

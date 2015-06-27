@@ -234,7 +234,7 @@ Transform OdometryOpticalFlow::computeTransform(
 
 		if(ki && ki >= this->getMinInliers())
 		{
-			if(this->isPnPEstimationUsed())
+			if(this->getEstimationType() == 1) // PnP
 			{
 				// find correspondences
 				if(this->isInfoDataFilled() && info)

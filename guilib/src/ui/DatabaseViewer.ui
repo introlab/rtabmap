@@ -50,8 +50,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>196</width>
-             <height>184</height>
+             <width>166</width>
+             <height>173</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -236,8 +236,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>195</width>
-             <height>184</height>
+             <width>165</width>
+             <height>173</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -418,7 +418,7 @@
      <x>0</x>
      <y>0</y>
      <width>1285</width>
-     <height>22</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -798,15 +798,15 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>5</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="page">
         <property name="geometry">
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>312</width>
-          <height>314</height>
+          <width>314</width>
+          <height>303</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1026,7 +1026,7 @@
           <x>0</x>
           <y>0</y>
           <width>351</width>
-          <height>355</height>
+          <height>347</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1044,7 +1044,7 @@
               <number>1000</number>
              </property>
              <property name="value">
-              <number>30</number>
+              <number>100</number>
              </property>
             </widget>
            </item>
@@ -1052,29 +1052,6 @@
             <widget class="QCheckBox" name="checkBox_visual_2d">
              <property name="text">
               <string/>
-             </property>
-            </widget>
-           </item>
-           <item row="6" column="0">
-            <widget class="QDoubleSpinBox" name="doubleSpinBox_visual_maxDepth">
-             <property name="suffix">
-              <string> m</string>
-             </property>
-             <property name="decimals">
-              <number>2</number>
-             </property>
-             <property name="maximum">
-              <double>100.000000000000000</double>
-             </property>
-             <property name="value">
-              <double>4.000000000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item row="6" column="1">
-            <widget class="QLabel" name="label_19">
-             <property name="text">
-              <string>Max feature depth</string>
              </property>
             </widget>
            </item>
@@ -1170,15 +1147,22 @@
            <item row="1" column="1">
             <widget class="QLabel" name="label_53">
              <property name="text">
-              <string>PnP (2D-&gt;3D estimation)</string>
+              <string>Motion estimation.</string>
              </property>
             </widget>
            </item>
            <item row="1" column="0">
-            <widget class="QCheckBox" name="checkBox_pnp">
-             <property name="text">
-              <string/>
-             </property>
+            <widget class="QComboBox" name="comboBox_estimationType">
+             <item>
+              <property name="text">
+               <string>3D to 3D</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>3D to 2D (PnP)</string>
+              </property>
+             </item>
             </widget>
            </item>
           </layout>
@@ -1285,7 +1269,7 @@
               </item>
              </widget>
             </item>
-            <item row="2" column="0">
+            <item row="3" column="0">
              <spacer name="verticalSpacer_2">
               <property name="orientation">
                <enum>Qt::Vertical</enum>
@@ -1298,6 +1282,29 @@
               </property>
              </spacer>
             </item>
+            <item row="2" column="1">
+             <widget class="QLabel" name="label_19">
+              <property name="text">
+               <string>Max feature depth</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_visual_maxDepth">
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="maximum">
+               <double>100.000000000000000</double>
+              </property>
+              <property name="value">
+               <double>4.000000000000000</double>
+              </property>
+             </widget>
+            </item>
            </layout>
           </widget>
          </item>
@@ -1308,8 +1315,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>330</width>
-          <height>304</height>
+          <width>333</width>
+          <height>306</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1525,8 +1532,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>248</width>
-          <height>319</height>
+          <width>243</width>
+          <height>284</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1720,7 +1727,7 @@
           <x>0</x>
           <y>0</y>
           <width>201</width>
-          <height>126</height>
+          <height>117</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1819,8 +1826,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>283</width>
-          <height>322</height>
+          <width>285</width>
+          <height>309</height>
          </rect>
         </property>
         <attribute name="label">

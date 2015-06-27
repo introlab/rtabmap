@@ -178,7 +178,6 @@ public:
 	float getBowInlierDistance() const {return _bowInlierDistance;}
 	int getBowIterations() const {return _bowIterations;}
 	int getBowMinInliers() const {return _bowMinInliers;}
-	float getBowMaxDepth() const {return _bowMaxDepth;}
 	bool getBowForce2D() const {return _bowForce2D;}
 	Transform computeVisualTransform(int oldId, int newId, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
 	Transform computeVisualTransform(const Signature & oldS, const Signature & newS, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
@@ -271,11 +270,10 @@ private:
 	int _bowMinInliers;
 	float _bowInlierDistance;
 	int _bowIterations;
-	float _bowMaxDepth;
+	int _bowRefineIterations;
 	bool _bowForce2D;
-	bool _bowEpipolarGeometry;
 	float _bowEpipolarGeometryVar;
-	bool _bowPnPEstimation;
+	bool _bowEstimationType;
 	double _bowPnPReprojError;
 	int _bowPnPFlags;
 	float _icpMaxTranslation;

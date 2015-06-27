@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1058</width>
-    <height>649</height>
+    <height>592</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>20</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -5867,8 +5867,18 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                      </widget>
                     </item>
                     <item>
+                     <widget class="QLabel" name="label_171">
+                      <property name="text">
+                       <string>Note that when a loop closure constraint must be computed, the words already extracted for the loop closure detector are used. These words are limited (see Visual Word-&gt;Words Per Image) and matched to the loop closure detection vocabulary. When the vocabulary is large, there maybe less corresponding words on a loop closure. You may consider to enable &quot;Re-extract features&quot; option below to increase the number of correspondences.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
                      <layout class="QGridLayout" name="gridLayout_23" columnstretch="0,1">
-                      <item row="0" column="0">
+                      <item row="1" column="0">
                        <widget class="QSpinBox" name="loopClosure_bowMinInliers">
                         <property name="minimum">
                          <number>1</number>
@@ -5881,122 +5891,24 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="0" column="1">
+                      <item row="1" column="1">
                        <widget class="QLabel" name="label_2">
                         <property name="text">
-                         <string>Minimum visual word correspondences to compute geometry transform.</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="0">
-                       <widget class="QDoubleSpinBox" name="loopClosure_bowMaxDepth">
-                        <property name="suffix">
-                         <string> m</string>
-                        </property>
-                        <property name="minimum">
-                         <double>0.000000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>5.000000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QLabel" name="label_146">
-                        <property name="text">
-                         <string>Max feature depth. Note that parameter &quot;Visual Word&quot;-&gt;&quot;Max words depth&quot; is applied before this.</string>
+                         <string>Minimum visual word correspondences to accept the estimated transformation.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="1">
-                       <widget class="QLabel" name="label_658">
-                        <property name="text">
-                         <string>Use epipolar geometry to compute the loop closure transform. &quot;Maximum distance for visual word correspondences&quot; is not used in this mode.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="7" column="1">
-                       <widget class="QLabel" name="label_234">
-                        <property name="text">
-                         <string>PnP: Pose estimation from 2D to 3D correspondences instead of 3D to 3D correspondences. PnP uses &quot;Minimum visual word correspondences&quot; and &quot;Maximum iterations&quot; above.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="11" column="0">
+                      <item row="5" column="0">
                        <widget class="QCheckBox" name="loopClosure_bowForce2D">
                         <property name="text">
                          <string/>
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="1">
-                       <widget class="QLabel" name="label_236">
-                        <property name="text">
-                         <string>PnP reprojection error.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="9" column="1">
-                       <widget class="QLabel" name="label_235">
-                        <property name="text">
-                         <string>PnP flags.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="9" column="0">
-                       <widget class="QComboBox" name="loopClosure_pnpFlags">
-                        <item>
-                         <property name="text">
-                          <string>Iterative</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>EPNP</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>P3P</string>
-                         </property>
-                        </item>
-                       </widget>
-                      </item>
-                      <item row="8" column="0">
-                       <widget class="QDoubleSpinBox" name="loopClosure_pnpReprojError">
-                        <property name="suffix">
-                         <string> pix</string>
-                        </property>
-                        <property name="decimals">
-                         <number>1</number>
-                        </property>
-                        <property name="minimum">
-                         <double>0.100000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>1.000000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>8.000000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="0">
+                      <item row="3" column="0">
                        <widget class="QSpinBox" name="loopClosure_bowIterations">
                         <property name="minimum">
                          <number>1</number>
@@ -6012,14 +5924,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="1">
+                      <item row="3" column="1">
                        <widget class="QLabel" name="label_15">
                         <property name="text">
-                         <string>Maximum iterations to compute the transform from visual words.</string>
+                         <string>Maximum RANSAC iterations.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="0">
+                      <item row="4" column="0">
                        <widget class="QComboBox" name="globalDetection_icpType">
                         <property name="sizeAdjustPolicy">
                          <enum>QComboBox::AdjustToContents</enum>
@@ -6041,57 +5953,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </item>
                        </widget>
                       </item>
-                      <item row="5" column="0">
-                       <widget class="QCheckBox" name="loopClosure_bowEpipolarGeometry">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="6" column="1">
-                       <widget class="QLabel" name="label_664">
-                        <property name="text">
-                         <string>Epipolar geometry maximum variance to accept the loop closure.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="6" column="0">
-                       <widget class="QDoubleSpinBox" name="loopClosure_bowEpipolarGeometryVar">
-                        <property name="suffix">
-                         <string> m</string>
-                        </property>
-                        <property name="decimals">
-                         <number>3</number>
-                        </property>
-                        <property name="minimum">
-                         <double>0.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.001000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.020000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="1">
-                       <widget class="QLabel" name="label_14">
-                        <property name="text">
-                         <string>Maximum distance for visual word correspondences.</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="7" column="0">
-                       <widget class="QCheckBox" name="loopClosure_pnpEstimation">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="11" column="1">
+                      <item row="5" column="1">
                        <widget class="QLabel" name="label_184">
                         <property name="text">
                          <string>Force 2D transform (3DoF: x,y and yaw).</string>
@@ -6101,26 +5963,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="0">
-                       <widget class="QDoubleSpinBox" name="loopClosure_bowInlierDistance">
-                        <property name="suffix">
-                         <string> m</string>
-                        </property>
-                        <property name="decimals">
-                         <number>3</number>
-                        </property>
-                        <property name="minimum">
-                         <double>0.001000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.010000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.020000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="10" column="1">
+                      <item row="4" column="1">
                        <widget class="QLabel" name="label_57">
                         <property name="text">
                          <string>When enabled, the visual transform is used as a guess for ICP estimation (3D or 2D). See &quot;ICP&quot; panel for parameters.</string>
@@ -6130,12 +5973,261 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
+                      <item row="0" column="0">
+                       <widget class="QComboBox" name="loopClosure_estimationType">
+                        <item>
+                         <property name="text">
+                          <string>3D to 3D</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>3D to 2D (PnP)</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>2D to 2D (Epipolar Geometry)</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLabel" name="label_146">
+                        <property name="text">
+                         <string>Motion estimation approach using 3D and/or 2D visual words correspondences.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
                      </layout>
+                    </item>
+                    <item>
+                     <widget class="QStackedWidget" name="stackedWidget_loopClosureEstimation">
+                      <property name="currentIndex">
+                       <number>0</number>
+                      </property>
+                      <widget class="QWidget" name="page_38">
+                       <layout class="QVBoxLayout" name="verticalLayout_68">
+                        <property name="spacing">
+                         <number>0</number>
+                        </property>
+                        <property name="margin">
+                         <number>0</number>
+                        </property>
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_3">
+                          <property name="title">
+                           <string>3D to 3D</string>
+                          </property>
+                          <layout class="QGridLayout" name="gridLayout_6" columnstretch="0,1">
+                           <item row="0" column="0">
+                            <widget class="QDoubleSpinBox" name="loopClosure_bowInlierDistance">
+                             <property name="suffix">
+                              <string> m</string>
+                             </property>
+                             <property name="decimals">
+                              <number>3</number>
+                             </property>
+                             <property name="minimum">
+                              <double>0.001000000000000</double>
+                             </property>
+                             <property name="singleStep">
+                              <double>0.010000000000000</double>
+                             </property>
+                             <property name="value">
+                              <double>0.020000000000000</double>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="0" column="1">
+                            <widget class="QLabel" name="label_14">
+                             <property name="text">
+                              <string>Maximum distance accepted between visual word correspondences.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="1" column="0">
+                            <widget class="QSpinBox" name="loopClosure_bowRefineIterations">
+                             <property name="minimum">
+                              <number>0</number>
+                             </property>
+                             <property name="maximum">
+                              <number>10000</number>
+                             </property>
+                             <property name="singleStep">
+                              <number>1</number>
+                             </property>
+                             <property name="value">
+                              <number>10</number>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="1" column="1">
+                            <widget class="QLabel" name="label_38">
+                             <property name="text">
+                              <string>Refine iterations of the resulting transformation computed by RANSAC. 0 means no refining.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_39">
+                       <layout class="QVBoxLayout" name="verticalLayout_69">
+                        <property name="spacing">
+                         <number>0</number>
+                        </property>
+                        <property name="margin">
+                         <number>0</number>
+                        </property>
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_13">
+                          <property name="title">
+                           <string>3D to 2D (PnP)</string>
+                          </property>
+                          <layout class="QGridLayout" name="gridLayout_59" columnstretch="0,1">
+                           <item row="0" column="0">
+                            <widget class="QDoubleSpinBox" name="loopClosure_pnpReprojError">
+                             <property name="suffix">
+                              <string> pix</string>
+                             </property>
+                             <property name="decimals">
+                              <number>1</number>
+                             </property>
+                             <property name="minimum">
+                              <double>0.100000000000000</double>
+                             </property>
+                             <property name="singleStep">
+                              <double>1.000000000000000</double>
+                             </property>
+                             <property name="value">
+                              <double>8.000000000000000</double>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="0" column="1">
+                            <widget class="QLabel" name="label_236">
+                             <property name="text">
+                              <string>Reprojection error.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="1" column="0">
+                            <widget class="QComboBox" name="loopClosure_pnpFlags">
+                             <item>
+                              <property name="text">
+                               <string>Iterative</string>
+                              </property>
+                             </item>
+                             <item>
+                              <property name="text">
+                               <string>EPNP</string>
+                              </property>
+                             </item>
+                             <item>
+                              <property name="text">
+                               <string>P3P</string>
+                              </property>
+                             </item>
+                            </widget>
+                           </item>
+                           <item row="1" column="1">
+                            <widget class="QLabel" name="label_235">
+                             <property name="text">
+                              <string>Flags.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_40">
+                       <layout class="QVBoxLayout" name="verticalLayout_72">
+                        <property name="spacing">
+                         <number>0</number>
+                        </property>
+                        <property name="margin">
+                         <number>0</number>
+                        </property>
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_14">
+                          <property name="title">
+                           <string>2D to 2D (Epipolar Geometry)</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_73">
+                           <item>
+                            <widget class="QLabel" name="label_671">
+                             <property name="text">
+                              <string>Experimental!</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_60" columnstretch="0,1">
+                             <item row="0" column="0">
+                              <widget class="QDoubleSpinBox" name="loopClosure_bowEpipolarGeometryVar">
+                               <property name="suffix">
+                                <string> m</string>
+                               </property>
+                               <property name="decimals">
+                                <number>3</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.001000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.020000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="1">
+                              <widget class="QLabel" name="label_664">
+                               <property name="text">
+                                <string>Epipolar geometry maximum variance to accept the loop closure.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                     </widget>
                     </item>
                     <item>
                      <widget class="QGroupBox" name="groupBox_reextract">
                       <property name="title">
-                       <string>Re-extract features on global loop closure</string>
+                       <string>Re-extract features</string>
                       </property>
                       <property name="checkable">
                        <bool>true</bool>
@@ -6147,27 +6239,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item>
                         <widget class="QLabel" name="label_182">
                          <property name="text">
-                          <string>By activating the re-extraction of the features, the features from the two images will be re-extracted using the settings below, and matched directly instead of using the big vocabulary. This adds an overhead processing time but it will mostly produce more corresponding words between the images, so better transformation computed. We recommend to use binary features for fast extraction and matching.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLabel" name="label_171">
-                         <property name="text">
-                          <string>If not activated, when a loop closure constraint must be computed, the words already extracted for the loop closure detector are used. These words are limited (see Visual Word-&gt;Words Per Image) and matched to the loop closure detection vocabulary. When the vocabulary is large, there maybe less corresponding words on a loop closure.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLabel" name="label_174">
-                         <property name="text">
-                          <string>Epipolar geometry is ignored (if set above) by this option.</string>
+                          <string>By activating the re-extraction of the features, the features from the two images will be re-extracted using the settings below, and matched directly instead of using the big vocabulary. This adds an overhead processing time but it will mostly produce more corresponding words between the images, so better transformations computed. We recommend to use binary features for fast extraction and matching.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -6176,7 +6248,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </item>
                        <item>
                         <layout class="QGridLayout" name="gridLayout_25" columnstretch="0,1">
-                         <item row="3" column="0">
+                         <item row="4" column="0">
                           <widget class="QComboBox" name="reextract_nn">
                            <property name="currentIndex">
                             <number>3</number>
@@ -6211,7 +6283,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </item>
                           </widget>
                          </item>
-                         <item row="4" column="0">
+                         <item row="5" column="0">
                           <widget class="QDoubleSpinBox" name="reextract_nndrRatio">
                            <property name="decimals">
                             <number>1</number>
@@ -6247,7 +6319,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="3" column="1">
+                         <item row="4" column="1">
                           <widget class="QLabel" name="label_179">
                            <property name="text">
                             <string>Nearest neighbor strategy. FLANN KdTree must be used only with SURF/SIFT. FLANN LSH must be used only with binary feature detector.</string>
@@ -6257,7 +6329,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="4" column="1">
+                         <item row="5" column="1">
                           <widget class="QLabel" name="label_181">
                            <property name="text">
                             <string>NNDR ratio
@@ -6323,6 +6395,29 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                           <widget class="QLabel" name="label_178">
                            <property name="text">
                             <string>Feature detector </string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="0">
+                          <widget class="QDoubleSpinBox" name="loopClosure_bowMaxDepth">
+                           <property name="suffix">
+                            <string> m</string>
+                           </property>
+                           <property name="minimum">
+                            <double>0.000000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>5.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="1">
+                          <widget class="QLabel" name="label_237">
+                           <property name="text">
+                            <string>Max feature depth.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
                            </property>
                           </widget>
                          </item>
@@ -6987,10 +7082,95 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                     </item>
                     <item>
                      <layout class="QGridLayout" name="gridLayout_27" columnstretch="0,1">
+                      <item row="3" column="0">
+                       <widget class="QCheckBox" name="odom_force2D">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="5" column="1">
+                       <widget class="QLabel" name="label_233">
+                        <property name="text">
+                         <string>Particle filtering to smooth the odometry trajectory. See &quot;Particle Filter&quot; panel for the related parameters.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="0">
+                       <widget class="QCheckBox" name="odom_fillInfoData">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QCheckBox" name="odom_particleFiltering">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="1">
+                       <widget class="QLabel" name="label_221">
+                        <property name="text">
+                         <string>Fill info with data (inliers/outliers features to be shown in Odometry view).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="1">
+                       <widget class="QLabel" name="label_232">
+                        <property name="text">
+                         <string>Data buffer size (0 means inf).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLabel" name="label_103">
+                        <property name="text">
+                         <string>Odometry strategy. More info corresponding panels.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
                        <widget class="QLabel" name="label_47">
                         <property name="text">
                          <string>Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset). When reset, the odometry starts from the last pose computed.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QCheckBox" name="odom_holonomic">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QSpinBox" name="odom_dataBufferSize">
+                        <property name="maximum">
+                         <number>999999</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QLabel" name="label_238">
+                        <property name="text">
+                         <string>If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -7019,34 +7199,14 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </item>
                        </widget>
                       </item>
-                      <item row="4" column="1">
-                       <widget class="QLabel" name="label_44">
-                        <property name="text">
-                         <string>Feature detector. In BOW/Mono modes, the related descriptor is also used. In Optical flow mode, only the keypoint detector is used.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
+                      <item row="2" column="0">
+                       <widget class="QSpinBox" name="odom_countdown">
+                        <property name="maximum">
+                         <number>999999</number>
                         </property>
                        </widget>
                       </item>
-                      <item row="0" column="1">
-                       <widget class="QLabel" name="label_103">
-                        <property name="text">
-                         <string>Odometry strategy:</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>false</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="6" column="0">
-                       <widget class="QCheckBox" name="odom_force2D">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="6" column="1">
+                      <item row="3" column="1">
                        <widget class="QLabel" name="label_196">
                         <property name="text">
                          <string>Force 2D transform (3DoF: x,y and yaw).</string>
@@ -7056,350 +7216,264 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="1">
-                       <widget class="QLabel" name="label_221">
-                        <property name="text">
-                         <string>Fill info with data (inliers/outliers features to be shown in Odometry view).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="11" column="0">
+                      <item row="8" column="0">
                        <widget class="QPushButton" name="pushButton_testOdometry">
                         <property name="text">
                          <string>Test selected odometry</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="1">
-                       <widget class="QLabel" name="label_161">
-                        <property name="text">
-                         <string>2-Optical flow estimate the location of 2D features from last frame to new frame, then computes RANSAC transformation with corresponding 3D features.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QLabel" name="label_162">
-                        <property name="text">
-                         <string>1-BOW matches features extracted from both frames using nearest neighbor with descriptors, then computes RANSAC transformation estimation with corresponding 3D features.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="10" column="1">
-                       <widget class="QLabel" name="label_232">
-                        <property name="text">
-                         <string>Data buffer size (0 means inf).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="10" column="0">
-                       <widget class="QSpinBox" name="odom_dataBufferSize">
-                        <property name="maximum">
-                         <number>999999</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QLabel" name="label_160">
-                        <property name="text">
-                         <string>3-Mono is for single camera motion estimation (MonoSLAM). On initialization, the camera must be translated on the side until a first transform can be computed.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="9" column="0">
-                       <widget class="QCheckBox" name="odom_fillInfoData">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="0">
-                       <widget class="QComboBox" name="odom_type">
-                        <property name="sizeAdjustPolicy">
-                         <enum>QComboBox::AdjustToContents</enum>
-                        </property>
-                        <item>
-                         <property name="text">
-                          <string>SURF</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>SIFT</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>ORB</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>FAST+FREAK</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>FAST+BRIEF</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>GFTT+FREAK</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>GFTT+BRIEF</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>BRISK</string>
-                         </property>
-                        </item>
-                       </widget>
-                      </item>
-                      <item row="8" column="1">
-                       <widget class="QLabel" name="label_233">
-                        <property name="text">
-                         <string>Particle filtering to smooth the odometry trajectory. See &quot;Particle Filter&quot; panel for the related parameters.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="8" column="0">
-                       <widget class="QCheckBox" name="odom_particleFiltering">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="0">
-                       <widget class="QSpinBox" name="odom_countdown">
-                        <property name="maximum">
-                         <number>999999</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="7" column="1">
-                       <widget class="QLabel" name="label_238">
-                        <property name="text">
-                         <string>If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="7" column="0">
-                       <widget class="QCheckBox" name="odom_holonomic">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
                      </layout>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="label_162">
+                      <property name="text">
+                       <string/>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
                     </item>
                     <item>
                      <widget class="QGroupBox" name="groupBox_11">
                       <property name="title">
-                       <string>Transformation estimation (RANSAC)</string>
+                       <string>Motion estimation</string>
                       </property>
-                      <layout class="QGridLayout" name="gridLayout_37" columnstretch="0,1">
-                       <item row="0" column="0">
-                        <widget class="QSpinBox" name="odom_minInliers">
-                         <property name="minimum">
-                          <number>8</number>
-                         </property>
-                         <property name="maximum">
-                          <number>1000</number>
-                         </property>
-                         <property name="value">
-                          <number>10</number>
-                         </property>
-                        </widget>
+                      <layout class="QVBoxLayout" name="verticalLayout_76">
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_63" columnstretch="0,1">
+                         <item row="0" column="0">
+                          <widget class="QComboBox" name="odom_estimationType">
+                           <item>
+                            <property name="text">
+                             <string>3D to 3D</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>3D to 2D (PnP)</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_166">
+                           <property name="text">
+                            <string>Motion estimation approach using 3D and/or 2D visual words correspondences.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QSpinBox" name="odom_minInliers">
+                           <property name="minimum">
+                            <number>8</number>
+                           </property>
+                           <property name="maximum">
+                            <number>1000</number>
+                           </property>
+                           <property name="value">
+                            <number>10</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_145">
+                           <property name="text">
+                            <string>Minimum feature correspondences to accept the estimated transformation.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QSpinBox" name="odom_iterations">
+                           <property name="minimum">
+                            <number>1</number>
+                           </property>
+                           <property name="maximum">
+                            <number>10000</number>
+                           </property>
+                           <property name="singleStep">
+                            <number>1</number>
+                           </property>
+                           <property name="value">
+                            <number>100</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_36">
+                           <property name="text">
+                            <string>Maximum iterations to compute the transform from 3D features.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
                        </item>
-                       <item row="0" column="1">
-                        <widget class="QLabel" name="label_145">
-                         <property name="text">
-                          <string>Minimum feature correspondences to compute geometry transform.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="0">
-                        <widget class="QDoubleSpinBox" name="odom_inlierDistance">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="decimals">
-                          <number>3</number>
-                         </property>
-                         <property name="minimum">
-                          <double>0.001000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.005000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_149">
-                         <property name="text">
-                          <string>Maximum distance for 3D feature correspondences. Lower the value, higher the precision but higher the chance of RED screens (odometry lost).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="0">
-                        <widget class="QSpinBox" name="odom_iterations">
-                         <property name="minimum">
-                          <number>1</number>
-                         </property>
-                         <property name="maximum">
-                          <number>10000</number>
-                         </property>
-                         <property name="singleStep">
-                          <number>1</number>
-                         </property>
-                         <property name="value">
-                          <number>100</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_36">
-                         <property name="text">
-                          <string>Maximum iterations to compute the transform from 3D features.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="0">
-                        <widget class="QSpinBox" name="odom_refine_iterations">
-                         <property name="minimum">
+                       <item>
+                        <widget class="QStackedWidget" name="stackedWidget_odomEstimation">
+                         <property name="currentIndex">
                           <number>0</number>
                          </property>
-                         <property name="maximum">
-                          <number>10000</number>
-                         </property>
-                         <property name="singleStep">
-                          <number>1</number>
-                         </property>
-                         <property name="value">
-                          <number>10</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="1">
-                        <widget class="QLabel" name="label_111">
-                         <property name="text">
-                          <string>Refine iterations of the resulting transformation computed by RANSAC. 0 means no refining.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="5" column="1">
-                        <widget class="QLabel" name="label_225">
-                         <property name="text">
-                          <string>PnP reprojection error.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="5" column="0">
-                        <widget class="QDoubleSpinBox" name="odom_pnpReprojError">
-                         <property name="suffix">
-                          <string> pix</string>
-                         </property>
-                         <property name="decimals">
-                          <number>1</number>
-                         </property>
-                         <property name="minimum">
-                          <double>0.100000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>8.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="0">
-                        <widget class="QCheckBox" name="odom_pnpEstimation">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="1">
-                        <widget class="QLabel" name="label_226">
-                         <property name="text">
-                          <string>PnP: Pose estimation from 2D to 3D correspondences instead of 3D to 3D correspondences. PnP uses &quot;Minimum feature correspondences&quot; and &quot;Maximum iterations&quot; above.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="6" column="1">
-                        <widget class="QLabel" name="label_227">
-                         <property name="text">
-                          <string>PnP flags.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="6" column="0">
-                        <widget class="QComboBox" name="odom_pnpFlags">
-                         <item>
-                          <property name="text">
-                           <string>Iterative</string>
-                          </property>
-                         </item>
-                         <item>
-                          <property name="text">
-                           <string>EPNP</string>
-                          </property>
-                         </item>
-                         <item>
-                          <property name="text">
-                           <string>P3P</string>
-                          </property>
-                         </item>
+                         <widget class="QWidget" name="page_45">
+                          <layout class="QVBoxLayout" name="verticalLayout_74">
+                           <property name="spacing">
+                            <number>0</number>
+                           </property>
+                           <property name="margin">
+                            <number>0</number>
+                           </property>
+                           <item>
+                            <widget class="QGroupBox" name="groupBox_15">
+                             <property name="title">
+                              <string>3D to 3D</string>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout_37" columnstretch="0,1">
+                              <item row="0" column="0">
+                               <widget class="QDoubleSpinBox" name="odom_inlierDistance">
+                                <property name="suffix">
+                                 <string> m</string>
+                                </property>
+                                <property name="decimals">
+                                 <number>3</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.001000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.010000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.005000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_149">
+                                <property name="text">
+                                 <string>Maximum distance for 3D feature correspondences. Lower the value, higher the precision but higher the chance of RED screens (odometry lost).</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QSpinBox" name="odom_refine_iterations">
+                                <property name="minimum">
+                                 <number>0</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>10000</number>
+                                </property>
+                                <property name="singleStep">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>10</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_111">
+                                <property name="text">
+                                 <string>Refine iterations of the resulting transformation computed by RANSAC. 0 means no refining.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                            </widget>
+                           </item>
+                          </layout>
+                         </widget>
+                         <widget class="QWidget" name="page_46">
+                          <layout class="QVBoxLayout" name="verticalLayout_75">
+                           <property name="spacing">
+                            <number>0</number>
+                           </property>
+                           <property name="margin">
+                            <number>0</number>
+                           </property>
+                           <item>
+                            <widget class="QGroupBox" name="groupBox_16">
+                             <property name="title">
+                              <string>3D to 2D (PnP)</string>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout_62" columnstretch="0,1">
+                              <item row="0" column="0">
+                               <widget class="QDoubleSpinBox" name="odom_pnpReprojError">
+                                <property name="suffix">
+                                 <string> pix</string>
+                                </property>
+                                <property name="decimals">
+                                 <number>1</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>8.000000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_225">
+                                <property name="text">
+                                 <string>Reprojection error.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QComboBox" name="odom_pnpFlags">
+                                <item>
+                                 <property name="text">
+                                  <string>Iterative</string>
+                                 </property>
+                                </item>
+                                <item>
+                                 <property name="text">
+                                  <string>EPNP</string>
+                                 </property>
+                                </item>
+                                <item>
+                                 <property name="text">
+                                  <string>P3P</string>
+                                 </property>
+                                </item>
+                               </widget>
+                              </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_227">
+                                <property name="text">
+                                 <string>Flags.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                            </widget>
+                           </item>
+                          </layout>
+                         </widget>
                         </widget>
                        </item>
                       </layout>
@@ -7408,17 +7482,17 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                     <item>
                      <widget class="QGroupBox" name="groupBox_8">
                       <property name="title">
-                       <string>Features filtering</string>
+                       <string>Features</string>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_36" columnstretch="0,1">
-                       <item row="0" column="0">
+                       <item row="1" column="0">
                         <widget class="QSpinBox" name="odom_maxFeatures">
                          <property name="maximum">
                           <number>999999</number>
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="1">
+                       <item row="3" column="1">
                         <widget class="QLabel" name="label_123">
                          <property name="text">
                           <string>ROI ratios [left, right, top, bottom] between 0 and 1.</string>
@@ -7428,7 +7502,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="0">
+                       <item row="3" column="0">
                         <widget class="QLineEdit" name="lineEdit_odom_roi">
                          <property name="text">
                           <string>0.0 0.0 0.0 0.0</string>
@@ -7438,7 +7512,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                         </widget>
                        </item>
-                       <item row="0" column="1">
+                       <item row="1" column="1">
                         <widget class="QLabel" name="label_136">
                          <property name="text">
                           <string>Max features extracted from the images (0 means inf).</string>
@@ -7448,7 +7522,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="1">
+                       <item row="2" column="1">
                         <widget class="QLabel" name="label_104">
                          <property name="text">
                           <string>Maximum feature depth.</string>
@@ -7458,7 +7532,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="0">
+                       <item row="2" column="0">
                         <widget class="QDoubleSpinBox" name="odom_maxDepth">
                          <property name="suffix">
                           <string> m</string>
@@ -7478,6 +7552,63 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <property name="value">
                           <double>5.000000000000000</double>
                          </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_44">
+                         <property name="text">
+                          <string>Feature detector. In BOW/Mono modes, the related descriptor is also used. In Optical flow mode, only the keypoint detector is used.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="0">
+                        <widget class="QComboBox" name="odom_type">
+                         <property name="sizeAdjustPolicy">
+                          <enum>QComboBox::AdjustToContents</enum>
+                         </property>
+                         <item>
+                          <property name="text">
+                           <string>SURF</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>SIFT</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>ORB</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>FAST+FREAK</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>FAST+BRIEF</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>GFTT+FREAK</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>GFTT+BRIEF</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>BRISK</string>
+                          </property>
+                         </item>
                         </widget>
                        </item>
                       </layout>
@@ -7606,131 +7737,145 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                 </layout>
                </widget>
                <widget class="QWidget" name="page_26">
-                <layout class="QVBoxLayout" name="verticalLayout_54">
+                <layout class="QVBoxLayout" name="verticalLayout_77">
                  <item>
                   <widget class="QGroupBox" name="groupBox_odometryBOW2">
                    <property name="title">
                     <string>BOW</string>
                    </property>
-                   <layout class="QGridLayout" name="gridLayout_29" columnstretch="0,1,0,0">
-                    <item row="0" column="1">
-                     <widget class="QSpinBox" name="odom_localHistory">
-                      <property name="minimum">
-                       <number>0</number>
-                      </property>
-                      <property name="maximum">
-                       <number>999999</number>
-                      </property>
-                      <property name="singleStep">
-                       <number>1</number>
-                      </property>
-                      <property name="value">
-                       <number>0</number>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="0" column="3">
-                     <widget class="QLabel" name="label_190">
+                   <layout class="QVBoxLayout" name="verticalLayout_54">
+                    <item>
+                     <widget class="QLabel" name="label_226">
                       <property name="text">
-                       <string>Local history size: If &gt; 0 (example 5000), the odometry will maintain a local map of X maximum words. This will decrease odometry drifting when the camera is not moving.</string>
+                       <string>Features extracted from frames are matached a using nearest neighbor approach. It maintains a local map of features to match to.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
                      </widget>
                     </item>
-                    <item row="1" column="1">
-                     <widget class="QComboBox" name="odom_bin_nn">
-                      <property name="sizeAdjustPolicy">
-                       <enum>QComboBox::AdjustToContents</enum>
-                      </property>
-                      <item>
-                       <property name="text">
-                        <string>FLANN Linear</string>
-                       </property>
+                    <item>
+                     <layout class="QGridLayout" name="gridLayout_29" columnstretch="0,0,1">
+                      <item row="0" column="0">
+                       <widget class="QSpinBox" name="odom_localHistory">
+                        <property name="minimum">
+                         <number>0</number>
+                        </property>
+                        <property name="maximum">
+                         <number>999999</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>1</number>
+                        </property>
+                        <property name="value">
+                         <number>0</number>
+                        </property>
+                       </widget>
                       </item>
-                      <item>
-                       <property name="text">
-                        <string>FLANN KdTree</string>
-                       </property>
+                      <item row="0" column="2">
+                       <widget class="QLabel" name="label_190">
+                        <property name="text">
+                         <string>Local history size: If &gt; 0 (example 5000), the odometry will maintain a local map of X maximum words. This will decrease odometry drifting when the camera is not moving.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
                       </item>
-                      <item>
-                       <property name="text">
-                        <string>FLANN LSH</string>
-                       </property>
+                      <item row="1" column="0">
+                       <widget class="QComboBox" name="odom_bin_nn">
+                        <property name="sizeAdjustPolicy">
+                         <enum>QComboBox::AdjustToContents</enum>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string>FLANN Linear</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>FLANN KdTree</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>FLANN LSH</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>Brute Force</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>Brute Force GPU</string>
+                         </property>
+                        </item>
+                       </widget>
                       </item>
-                      <item>
-                       <property name="text">
-                        <string>Brute Force</string>
-                       </property>
+                      <item row="1" column="2">
+                       <widget class="QLabel" name="label_201">
+                        <property name="text">
+                         <string>Nearest neighbor strategy. FLANN KdTree must be used only with SURF/SIFT. FLANN LSH must be used only with binary feature detector.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
                       </item>
-                      <item>
-                       <property name="text">
-                        <string>Brute Force GPU</string>
-                       </property>
+                      <item row="2" column="0">
+                       <widget class="QDoubleSpinBox" name="odom_bin_nndrRatio">
+                        <property name="decimals">
+                         <number>1</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.100000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.100000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.700000000000000</double>
+                        </property>
+                       </widget>
                       </item>
-                     </widget>
-                    </item>
-                    <item row="1" column="3">
-                     <widget class="QLabel" name="label_201">
-                      <property name="text">
-                       <string>Nearest neighbor strategy. FLANN KdTree must be used only with SURF/SIFT. FLANN LSH must be used only with binary feature detector.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="2" column="1">
-                     <widget class="QDoubleSpinBox" name="odom_bin_nndrRatio">
-                      <property name="decimals">
-                       <number>1</number>
-                      </property>
-                      <property name="minimum">
-                       <double>0.100000000000000</double>
-                      </property>
-                      <property name="maximum">
-                       <double>1.000000000000000</double>
-                      </property>
-                      <property name="singleStep">
-                       <double>0.100000000000000</double>
-                      </property>
-                      <property name="value">
-                       <double>0.700000000000000</double>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="2" column="3">
-                     <widget class="QLabel" name="label_202">
-                      <property name="text">
-                       <string>NNDR ratio
+                      <item row="2" column="2">
+                       <widget class="QLabel" name="label_202">
+                        <property name="text">
+                         <string>NNDR ratio
 (A matching pair is accepted, if its distance is closer than X times the distance of the second nearest neighbor)
 Lower the ratio -&gt; higher the precision. 0 means disabled, matching the nearest.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="3" column="1">
-                     <widget class="QLineEdit" name="odom_fixedLocalMapPath"/>
-                    </item>
-                    <item row="3" column="3">
-                     <widget class="QLabel" name="label_239">
-                      <property name="text">
-                       <string>Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP pose estimation is activated.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="3" column="2">
-                     <widget class="QToolButton" name="toolButton_odomBowFixedLocalMap">
-                      <property name="text">
-                       <string>...</string>
-                      </property>
-                     </widget>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QLineEdit" name="odom_fixedLocalMapPath"/>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QToolButton" name="toolButton_odomBowFixedLocalMap">
+                        <property name="text">
+                         <string>...</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="2">
+                       <widget class="QLabel" name="label_239">
+                        <property name="text">
+                         <string>Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP pose estimation is activated.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
                     </item>
                    </layout>
                   </widget>
@@ -7761,12 +7906,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                     <item>
                      <widget class="QLabel" name="label_199">
                       <property name="text">
-                       <string>The process is as follow:
-  - Features from the last frame are estimated in the new frame using an optical flow approach (see cv::calcOpticalFlowPyrLK()).
-  - 3D features from the new frame are extracted from the estimated positions.
-  - Using RANSAC, a transformation is estimated between corresponding 3D features.
-  - New features are extracted from the new frame to be used for the next time.
-  - Optionally, the 2D position of the features can be refined for sub pixel precision (see cv::cornerSubPix()). </string>
+                       <string>Features from the last frame are estimated in the new frame using an optical flow approach (see cv::calcOpticalFlowPyrLK()).</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -7915,6 +8055,16 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                     <string>Mono</string>
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_168">
+                    <item>
+                     <widget class="QLabel" name="label_672">
+                      <property name="text">
+                       <string>Mono is for single camera motion estimation (MonoSLAM). On initialization, the camera must be translated on the side until a first transform can be computed.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
                     <item>
                      <widget class="QLabel" name="label_661">
                       <property name="text">

@@ -51,7 +51,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_particleNoiseR(Parameters::defaultOdomParticleNoiseR()),
 		_particleLambdaR(Parameters::defaultOdomParticleLambdaR()),
 		_fillInfoData(Parameters::defaultOdomFillInfoData()),
-		_pnpEstimation(Parameters::defaultOdomPnPEstimation()),
+		_estimationType(Parameters::defaultOdomEstimationType()),
 		_pnpReprojError(Parameters::defaultOdomPnPReprojError()),
 		_pnpFlags(Parameters::defaultOdomPnPFlags()),
 		_resetCurrentCount(0),
@@ -69,7 +69,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomForce2D(), _force2D);
 	Parameters::parse(parameters, Parameters::kOdomHolonomic(), _holonomic);
 	Parameters::parse(parameters, Parameters::kOdomFillInfoData(), _fillInfoData);
-	Parameters::parse(parameters, Parameters::kOdomPnPEstimation(), _pnpEstimation);
+	Parameters::parse(parameters, Parameters::kOdomEstimationType(), _estimationType);
 	Parameters::parse(parameters, Parameters::kOdomPnPReprojError(), _pnpReprojError);
 	Parameters::parse(parameters, Parameters::kOdomPnPFlags(), _pnpFlags);
 	UASSERT(_pnpFlags>=0 && _pnpFlags <=2);

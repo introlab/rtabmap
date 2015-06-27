@@ -122,7 +122,7 @@ int main (int argc, char * argv[])
 	float sec = 0.0f;
 	bool gpu = false;
 	int localHistory = rtabmap::Parameters::defaultOdomBowLocalHistorySize();
-	bool p2p = rtabmap::Parameters::defaultOdomPnPEstimation();
+	bool p2p = false;
 
 	for(int i=1; i<argc; ++i)
 	{

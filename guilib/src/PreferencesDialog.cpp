@@ -551,11 +551,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_bowMinInliers->setObjectName(Parameters::kLccBowMinInliers().c_str());
 	_ui->loopClosure_bowInlierDistance->setObjectName(Parameters::kLccBowInlierDistance().c_str());
 	_ui->loopClosure_bowIterations->setObjectName(Parameters::kLccBowIterations().c_str());
-	_ui->loopClosure_bowMaxDepth->setObjectName(Parameters::kLccBowMaxDepth().c_str());
+	_ui->loopClosure_bowRefineIterations->setObjectName(Parameters::kLccBowRefineIterations().c_str());
 	_ui->loopClosure_bowForce2D->setObjectName(Parameters::kLccBowForce2D().c_str());
-	_ui->loopClosure_bowEpipolarGeometry->setObjectName(Parameters::kLccBowEpipolarGeometry().c_str());
+	_ui->loopClosure_estimationType->setObjectName(Parameters::kLccBowEstimationType().c_str());
+	connect(_ui->loopClosure_estimationType, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_loopClosureEstimation, SLOT(setCurrentIndex(int)));
+	_ui->stackedWidget_loopClosureEstimation->setCurrentIndex(Parameters::defaultLccBowEstimationType());
 	_ui->loopClosure_bowEpipolarGeometryVar->setObjectName(Parameters::kLccBowEpipolarGeometryVar().c_str());
-	_ui->loopClosure_pnpEstimation->setObjectName(Parameters::kLccBowPnPEstimation().c_str());
 	_ui->loopClosure_pnpReprojError->setObjectName(Parameters::kLccBowPnPReprojError().c_str());
 	_ui->loopClosure_pnpFlags->setObjectName(Parameters::kLccBowPnPFlags().c_str());
 
@@ -564,6 +565,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->reextract_nndrRatio->setObjectName(Parameters::kLccReextractNNDR().c_str());
 	_ui->reextract_type->setObjectName(Parameters::kLccReextractFeatureType().c_str());
 	_ui->reextract_maxFeatures->setObjectName(Parameters::kLccReextractMaxWords().c_str());
+	_ui->loopClosure_bowMaxDepth->setObjectName(Parameters::kLccReextractMaxDepth().c_str());
 
 	_ui->globalDetection_icpType->setObjectName(Parameters::kLccIcpType().c_str());
 	_ui->globalDetection_icpMaxTranslation->setObjectName(Parameters::kLccIcpMaxTranslation().c_str());
@@ -600,7 +602,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_fillInfoData->setObjectName(Parameters::kOdomFillInfoData().c_str());
 	_ui->odom_dataBufferSize->setObjectName(Parameters::kOdomImageBufferSize().c_str());
 	_ui->lineEdit_odom_roi->setObjectName(Parameters::kOdomRoiRatios().c_str());
-	_ui->odom_pnpEstimation->setObjectName(Parameters::kOdomPnPEstimation().c_str());
+	_ui->odom_estimationType->setObjectName(Parameters::kOdomEstimationType().c_str());
+	connect(_ui->odom_estimationType, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_odomEstimation, SLOT(setCurrentIndex(int)));
+	_ui->stackedWidget_odomEstimation->setCurrentIndex(Parameters::defaultOdomEstimationType());
 	_ui->odom_pnpReprojError->setObjectName(Parameters::kOdomPnPReprojError().c_str());
 	_ui->odom_pnpFlags->setObjectName(Parameters::kOdomPnPFlags().c_str());
 

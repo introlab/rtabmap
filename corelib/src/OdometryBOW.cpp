@@ -232,7 +232,7 @@ Transform OdometryBOW::computeTransform(
 			{
 				std::vector<int> matches, inliers;
 				Transform t;
-				if(this->isPnPEstimationUsed())
+				if(this->getEstimationType() == 1) // PnP
 				{
 					// 3D to 2D
 					if(data.cameraModels().size() > 1)

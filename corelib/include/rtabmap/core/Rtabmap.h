@@ -193,6 +193,7 @@ private:
 	float _reextractNNDR;
 	int _reextractFeatureType;
 	int _reextractMaxWords;
+	float _reextractMaxDepth;
 	bool _startNewMapOnLoopClosure;
 	float _goalReachedRadius; // meters
 	bool _planVirtualLinks;

@@ -105,6 +105,7 @@ Rtabmap::Rtabmap() :
 	_reextractNNDR(Parameters::defaultLccReextractNNDR()),
 	_reextractFeatureType(Parameters::defaultLccReextractFeatureType()),
 	_reextractMaxWords(Parameters::defaultLccReextractMaxWords()),
+	_reextractMaxDepth(Parameters::defaultLccReextractMaxDepth()),
 	_startNewMapOnLoopClosure(Parameters::defaultRtabmapStartNewMapOnLoopClosure()),
 	_goalReachedRadius(Parameters::defaultRGBDGoalReachedRadius()),
 	_planVirtualLinks(Parameters::defaultRGBDPlanVirtualLinks()),
@@ -402,6 +403,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kLccReextractNNDR(), _reextractNNDR);
 	Parameters::parse(parameters, Parameters::kLccReextractFeatureType(), _reextractFeatureType);
 	Parameters::parse(parameters, Parameters::kLccReextractMaxWords(), _reextractMaxWords);
+	Parameters::parse(parameters, Parameters::kLccReextractMaxDepth(), _reextractMaxDepth);
 	Parameters::parse(parameters, Parameters::kRtabmapStartNewMapOnLoopClosure(), _startNewMapOnLoopClosure);
 	Parameters::parse(parameters, Parameters::kRGBDGoalReachedRadius(), _goalReachedRadius);
 	Parameters::parse(parameters, Parameters::kRGBDPlanVirtualLinks(), _planVirtualLinks);
@@ -1627,6 +1629,7 @@ bool Rtabmap::process(
 				uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(_reextractNNDR)));
 				uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(_reextractFeatureType))); // FAST/BRIEF
 				uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(_reextractMaxWords)));
+				uInsert(customParameters, ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(_reextractMaxDepth)));
 				uInsert(customParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
 				uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
 				uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
@@ -1783,6 +1786,7 @@ bool Rtabmap::process(
 							uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(_reextractNNDR)));
 							uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(_reextractFeatureType))); // FAST/BRIEF
 							uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(_reextractMaxWords)));
+							uInsert(customParameters, ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(_reextractMaxDepth)));
 							uInsert(customParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
 							uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
 							uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
