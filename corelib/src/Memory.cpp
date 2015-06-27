@@ -47,6 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_registration.h"
 #include "rtabmap/core/util3d_surface.h"
 #include "rtabmap/core/util3d_transforms.h"
+#include "rtabmap/core/util3d_motion_estimation.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util2d.h"
 #include "rtabmap/core/Statistics.h"
@@ -2009,186 +2010,46 @@ Transform Memory::computeVisualTransform(
 		const Signature & oldS,
 		const Signature & newS,
 		std::string * rejectedMsg,
-		int * inliers,
+		int * inliersOut,
 		double * varianceOut) const
 {
 	Transform transform;
 	std::string msg;
 	// Guess transform from visual words
 
-	if(_bowPnPEstimation)
-	{
-		if(_bowEpipolarGeometry)
-		{
-			UWARN("PnP estimation and Epipolar geometry estimation are set, only PnP is used.");
-		}
+	int inliersCount= 0;
+	double variance = 1.0;
 
-		if((!newS.sensorData().rightRaw().empty() ||
-		   !newS.sensorData().stereoCameraModel().isValid()) &&
-		   (!newS.sensorData().depthRaw().empty() ||
-			newS.sensorData().cameraModels().size() != 1 ||
+	if(_bowEpipolarGeometry && !_bowPnPEstimation)
+	{
+		if(!newS.sensorData().stereoCameraModel().isValid() &&
+		   (newS.sensorData().cameraModels().size() != 1 ||
 			!newS.sensorData().cameraModels()[0].isValid()))
 		{
 			UERROR("Calibrated camera required (multi-cameras not supported).");
 		}
-		else
+		else if((int)oldS.getWords().size() >= _bowMinInliers &&
+				(int)newS.getWords().size() >= _bowMinInliers)
 		{
-			cv::Mat K;
-			Transform localTransform;
-			if(newS.sensorData().cameraModels().size())
-			{
-				K = newS.sensorData().cameraModels()[0].K();
-				localTransform = newS.sensorData().cameraModels()[0].localTransform();
-			}
-			else
-			{
-				K = newS.sensorData().stereoCameraModel().left().K();
-				localTransform = newS.sensorData().stereoCameraModel().left().localTransform();
-			}
-			UASSERT(!K.empty() && !localTransform.isNull());
-			// 2D -> 3D
-			if(!oldS.getWords3().empty() && !newS.getWords().empty())
-			{
-				// find correspondences
-				std::vector<int> ids = uListToVector(uUniqueKeys(newS.getWords()));
-				std::vector<cv::Point3f> objectPoints(ids.size());
-				std::vector<cv::Point2f> imagePoints(ids.size());
-				int oi=0;
-				std::vector<int> matches(ids.size());
-				for(unsigned int i=0; i<ids.size(); ++i)
-				{
-					if(oldS.getWords3().count(ids[i]) == 1)
-					{
-						pcl::PointXYZ pt = oldS.getWords3().find(ids[i])->second;
-						if(pcl::isFinite(pt))
-						{
-							objectPoints[oi].x = pt.x;
-							objectPoints[oi].y = pt.y;
-							objectPoints[oi].z = pt.z;
-							imagePoints[oi] = newS.getWords().find(ids[i])->second.pt;
-							matches[oi++] = ids[i];
-						}
-					}
-				}
+			UASSERT(oldS.sensorData().stereoCameraModel().isValid() || (oldS.sensorData().cameraModels().size() == 1 && oldS.sensorData().cameraModels()[0].isValid()));
+			const CameraModel & cameraModel = oldS.sensorData().stereoCameraModel().isValid()?oldS.sensorData().stereoCameraModel().left():oldS.sensorData().cameraModels()[0];
 
-				objectPoints.resize(oi);
-				imagePoints.resize(oi);
-				matches.resize(oi);
-
-				if((int)matches.size() >= _bowMinInliers)
-				{
-					//PnPRansac
-					Transform guess = localTransform.inverse();
-					cv::Mat R = (cv::Mat_<double>(3,3) <<
-							(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
-							(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
-							(double)guess.r31(), (double)guess.r32(), (double)guess.r33());
-					cv::Mat rvec(1,3, CV_64FC1);
-					cv::Rodrigues(R, rvec);
-					cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guess.x(), (double)guess.y(), (double)guess.z());
-					std::vector<int> inliersV;
-					cv::solvePnPRansac(objectPoints,
-							imagePoints,
-							K,
-							cv::Mat(),
-							rvec,
-							tvec,
-							true,
-							_bowIterations,
-							_bowPnPReprojError,
-							0,
-							inliersV,
-							_bowPnPFlags);
-
-					if(inliers)
-					{
-						*inliers = (int)inliersV.size();
-					}
-					if((int)inliersV.size() >= _bowMinInliers)
-					{
-						cv::Rodrigues(rvec, R);
-						Transform pnp(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
-									   R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
-									   R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
-
-						transform = localTransform * pnp;
-
-						UDEBUG("Odom transform = %s", transform.prettyPrint().c_str());
-
-						// compute variance (like in PCL computeVariance() method of sac_model.h)
-						if(varianceOut)
-						{
-							std::vector<float> errorSqrdDists(inliersV.size());
-							oi = 0;
-							for(unsigned int i=0; i<inliersV.size(); ++i)
-							{
-								std::multimap<int, pcl::PointXYZ>::const_iterator iter = newS.getWords3().find(matches[inliersV[i]]);
-								if(iter != newS.getWords3().end() && pcl::isFinite(iter->second))
-								{
-									const cv::Point3f & objPt = objectPoints[inliersV[i]];
-									pcl::PointXYZ newPt = util3d::transformPoint(iter->second, transform);
-									errorSqrdDists[oi++] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
-								}
-							}
-							errorSqrdDists.resize(oi);
-							*varianceOut= 0;
-							if(errorSqrdDists.size())
-							{
-								std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
-								double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
-								*varianceOut = 2.1981 * median_error_sqr;
-							}
-						}
-					}
-					else
-					{
-						msg = uFormat("PnP not enough inliers (%d[%d] < %d), rejecting the transform...",
-								(int)inliersV.size(), (int)matches.size(), _bowMinInliers);
-						UINFO(msg.c_str());
-					}
-				}
-				else
-				{
-					msg = uFormat("Not enough inliers %d < %d", (int)matches.size(), _bowMinInliers);
-					UINFO(msg.c_str());
-				}
-			}
-			else
-			{
-				msg = uFormat("Not enough features in the new image (old=%d new=%d min=%d)",
-						(int)oldS.getWords3().size(), (int)newS.getWords().size(), _bowMinInliers);
-				UINFO(msg.c_str());
-			}
-		}
-
-	}
-	else if(_bowEpipolarGeometry)
-	{
-		// we only need the camera transform, send guess words3 for scale estimation
-		if(oldS.getWords3().size() && oldS.sensorData().cameraModels().size())
-		{
+			// we only need the camera transform, send guess words3 for scale estimation
 			Transform cameraTransform;
-			double variance = 1;
 			std::multimap<int, pcl::PointXYZ> inliers3D = util3d::generateWords3DMono(
 					oldS.getWords(),
 					newS.getWords(),
-					oldS.sensorData().cameraModels()[0],
+					cameraModel,
 					cameraTransform,
-					100,
-					4.0f,
-					0, // cv::SOLVEPNP_ITERATIVE
+					_bowIterations,
+					_bowPnPReprojError,
+					_bowPnPFlags, // cv::SOLVEPNP_ITERATIVE
 					1.0f,
 					0.99f,
-					oldS.getWords3(),
+					oldS.getWords3(), // for scale estimation
 					&variance);
-			if(varianceOut)
-			{
-				*varianceOut = variance;
-			}
-			if(inliers)
-			{
-				*inliers = (int)inliers3D.size();
-			}
+
+			inliersCount = (int)inliers3D.size();
 
 			if(!cameraTransform.isNull())
 			{
@@ -2197,13 +2058,6 @@ Transform Memory::computeVisualTransform(
 					if(variance <= _bowEpipolarGeometryVar)
 					{
 						transform = cameraTransform.inverse();
-						if(_bowForce2D)
-						{
-							UDEBUG("Forcing 2D...");
-							float x,y,z,r,p,yaw;
-							transform.getTranslationAndEulerAngles(x,y,z, r,p,yaw);
-							transform = Transform(x,y,0, 0, 0, yaw);
-						}
 					}
 					else
 					{
@@ -2234,87 +2088,105 @@ Transform Memory::computeVisualTransform(
 			UWARN(msg.c_str());
 		}
 	}
-	else
+	else if(_bowPnPEstimation)
 	{
-		// 3D -> 3D
-		if(!oldS.getWords3().empty() && !newS.getWords3().empty())
+		if(_bowEpipolarGeometry)
 		{
-			pcl::PointCloud<pcl::PointXYZ>::Ptr inliersOld(new pcl::PointCloud<pcl::PointXYZ>);
-			pcl::PointCloud<pcl::PointXYZ>::Ptr inliersNew(new pcl::PointCloud<pcl::PointXYZ>);
-			util3d::findCorrespondences(
-					oldS.getWords3(),
-					newS.getWords3(),
-					*inliersOld,
-					*inliersNew,
-					_bowMaxDepth);
+			UWARN("PnP estimation and Epipolar geometry estimation are set, only PnP is used.");
+		}
 
-			std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs2d;
-			EpipolarGeometry::findPairsUnique(oldS.getWords(), newS.getWords(), pairs2d);
-
-			UDEBUG("3D unique Correspondences = %d (2D unique pairs=%d)  words=%d and %d",
-					(int)inliersOld->size(), (int)pairs2d.size(), (int)oldS.getWords3().size(), (int)newS.getWords3().size());
-
-			if((int)inliersOld->size() >= _bowMinInliers)
+		if(!newS.sensorData().stereoCameraModel().isValid() &&
+		   (newS.sensorData().cameraModels().size() != 1 ||
+			!newS.sensorData().cameraModels()[0].isValid()))
+		{
+			UERROR("Calibrated camera required (multi-cameras not supported).");
+		}
+		else
+		{
+			// 3D to 2D
+			if((int)oldS.getWords3().size() >= _bowMinInliers &&
+			   (int)newS.getWords().size() >= _bowMinInliers)
 			{
+				UASSERT(newS.sensorData().stereoCameraModel().isValid() || (newS.sensorData().cameraModels().size() == 1 && newS.sensorData().cameraModels()[0].isValid()));
+				const CameraModel & cameraModel = newS.sensorData().stereoCameraModel().isValid()?newS.sensorData().stereoCameraModel().left():newS.sensorData().cameraModels()[0];
 
-				int inliersCount = 0;
 				std::vector<int> inliersV;
-				Transform t = util3d::transformFromXYZCorrespondences(
-						inliersOld,
-						inliersNew,
-						_bowInlierDistance,
+				transform = util3d::estimateMotion3DTo2D(
+						oldS.getWords3(),
+						newS.getWords(),
+						cameraModel,
+						_bowMinInliers,
 						_bowIterations,
-						true, 3.0, 10,
-						&inliersV,
-						varianceOut);
+						_bowPnPReprojError,
+						_bowPnPFlags,
+						Transform::getIdentity(),
+						newS.getWords3(),
+						&variance,
+						0,
+						&inliersV);
 				inliersCount = (int)inliersV.size();
-				if(!t.isNull() && inliersCount >= _bowMinInliers)
+				if(transform.isNull())
 				{
-					transform = t;
-					if(_bowForce2D)
-					{
-						UDEBUG("Forcing 2D...");
-						float x,y,z,r,p,yaw;
-						transform.getTranslationAndEulerAngles(x,y,z, r,p,yaw);
-						transform = Transform(x,y,0, 0, 0, yaw);
-					}
-				}
-				else if(inliersCount < _bowMinInliers)
-				{
-					msg = uFormat("Not enough inliers (after RANSAC) %d/%d between %d and %d", inliersCount, _bowMinInliers, oldS.id(), newS.id());
+					msg = uFormat("Not enough inliers %d/%d between %d and %d",
+							inliersCount, _bowMinInliers, oldS.id(), newS.id());
 					UINFO(msg.c_str());
 				}
-				else if(inliersCount == (int)inliersOld->size())
+				else
 				{
-					msg = uFormat("Rejected identity with full inliers.");
-					UINFO(msg.c_str());
-				}
-
-				if(inliers)
-				{
-					*inliers = inliersCount;
+					transform = transform.inverse();
 				}
 			}
 			else
 			{
-				msg = uFormat("Not enough inliers %d/%d between %d and %d", (int)inliersOld->size(), _bowMinInliers, oldS.id(), newS.id());
+				msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)",
+						(int)oldS.getWords3().size(), (int)newS.getWords().size(), _bowMinInliers);
 				UINFO(msg.c_str());
 			}
 		}
-		else if(!oldS.isBadSignature() && !newS.isBadSignature() && (oldS.getWords3().size()==0 || newS.getWords3().size()==0))
+
+	}
+	else
+	{
+		// 3D -> 3D
+		if((int)oldS.getWords3().size() >= _bowMinInliers &&
+		   (int)newS.getWords3().size() >= _bowMinInliers)
 		{
-			msg = uFormat("Words 3D empty?!? olds=%d=%d newS=%d=%d",
-					oldS.id(), (int)oldS.getWords3().size(),
-					newS.id(), (int)newS.getWords3().size());
-			UWARN(msg.c_str());
+			std::vector<int> inliersV;
+			transform = util3d::estimateMotion3DTo3D(
+					oldS.getWords3(),
+					newS.getWords3(),
+					_bowMinInliers,
+					_bowInlierDistance,
+					_bowIterations,
+					10,
+					&variance,
+					0,
+					&inliersV);
+			inliersCount = (int)inliersV.size();
+			if(transform.isNull())
+			{
+				msg = uFormat("Not enough inliers %d/%d between %d and %d",
+						inliersCount, _bowMinInliers, oldS.id(), newS.id());
+				UINFO(msg.c_str());
+			}
+			else
+			{
+				transform = transform.inverse();
+			}
+		}
+		else
+		{
+			msg = uFormat("Not enough 3D features in images (old=%d, new=%d, min=%d)",
+					(int)oldS.getWords3().size(), (int)newS.getWords3().size(), _bowMinInliers);
+			UINFO(msg.c_str());
 		}
 	}
 
 	if(!transform.isNull())
 	{
 		// verify if it is a 180 degree transform, well verify > 90
-		float roll,pitch,yaw;
-		transform.getEulerAngles(roll, pitch, yaw);
+		float x,y,z, roll,pitch,yaw;
+		transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
 		if(fabs(roll) > CV_PI/2 ||
 		   fabs(pitch) > CV_PI/2 ||
 		   fabs(yaw) > CV_PI/2)
@@ -2324,11 +2196,24 @@ Transform Memory::computeVisualTransform(
 					roll, pitch, yaw);
 			UWARN(msg.c_str());
 		}
+		else if(_bowForce2D)
+		{
+			UDEBUG("Forcing 2D...");
+			transform = Transform(x,y,0, 0, 0, yaw);
+		}
 	}
 
 	if(rejectedMsg)
 	{
 		*rejectedMsg = msg;
+	}
+	if(inliersOut)
+	{
+		*inliersOut = inliersCount;
+	}
+	if(varianceOut)
+	{
+		*varianceOut = variance;
 	}
 	UDEBUG("transform=%s", transform.prettyPrint().c_str());
 	return transform;

@@ -351,18 +351,6 @@ std::multimap<int, pcl::PointXYZ> generateWords3DMono(
 						}
 					}
 
-					if(!useCameraTransformGuess)
-					{
-						cv::Mat R, T;
-						EpipolarGeometry::findRTFromP(P, R, T);
-
-						Transform t(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), T.at<double>(0),
-									R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), T.at<double>(1),
-									R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), T.at<double>(2));
-
-						cameraTransform = (cameraModel.localTransform() * t).inverse() * cameraModel.localTransform();
-					}
-
 					if(refGuess3D.size())
 					{
 						// scale estimation
@@ -489,7 +477,6 @@ std::multimap<int, pcl::PointXYZ> generateWords3DMono(
 								else
 								{
 									UWARN("No inliers after PnP!");
-									cameraTransform = Transform();
 								}
 							}
 						}
@@ -497,6 +484,17 @@ std::multimap<int, pcl::PointXYZ> generateWords3DMono(
 						{
 							UWARN("Cannot compute the scale, no points corresponding between the generated ref words and words guess");
 						}
+					}
+					else if(!useCameraTransformGuess)
+					{
+						cv::Mat R, T;
+						EpipolarGeometry::findRTFromP(P, R, T);
+
+						Transform t(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), T.at<double>(0),
+									R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), T.at<double>(1),
+									R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), T.at<double>(2));
+
+						cameraTransform = (cameraModel.localTransform() * t).inverse() * cameraModel.localTransform();
 					}
 				}
 			}
