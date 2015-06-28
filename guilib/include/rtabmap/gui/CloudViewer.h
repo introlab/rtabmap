@@ -201,13 +201,13 @@ protected:
 	virtual void keyPressEvent(QKeyEvent * event);
 	virtual void mousePressEvent(QMouseEvent * event);
 	virtual void mouseMoveEvent(QMouseEvent * event);
+	virtual void wheelEvent(QWheelEvent * event);
 	virtual void contextMenuEvent(QContextMenuEvent * event);
 	virtual void handleAction(QAction * event);
 	QMenu * menu() {return _menu;}
 
 private:
 	void createMenu();
-	void mouseEventOccurred (const pcl::visualization::MouseEvent &event, void* viewer_void);
 	void addGrid();
 	void removeGrid();
 
@@ -230,6 +230,8 @@ private:
     unsigned int _maxTrajectorySize;
     unsigned int _gridCellCount;
     float _gridCellSize;
+    cv::Vec3d _lastCameraOrientation;
+    cv::Vec3d _lastCameraPose;
     QMap<std::string, Transform> _addedClouds; // include cloud, scan, meshes
     Transform _lastPose;
     std::list<std::string> _gridLines;
