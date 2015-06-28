@@ -390,7 +390,7 @@ void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> 
 	}
 }
 
-void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool loadMetricData) const
+void DBDriver::loadNodeData(std::list<Signature *> & signatures) const
 {
 	// Don't look in the trash, we assume that if we want to load
 	// data of a signature, it is not in thrash! Print an error if so.
@@ -406,7 +406,7 @@ void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool loadMetric
 	_trashesMutex.unlock();
 
 	_dbSafeAccessMutex.lock();
-	this->loadNodeDataQuery(signatures, loadMetricData);
+	this->loadNodeDataQuery(signatures);
 	_dbSafeAccessMutex.unlock();
 }
 
@@ -431,7 +431,11 @@ void DBDriver::getNodeData(
 	if(!found)
 	{
 		_dbSafeAccessMutex.lock();
-		this->getNodeDataQuery(signatureId, data);
+		std::list<Signature *> signatures;
+		Signature tmp(signatureId);
+		signatures.push_back(&tmp);
+		loadNodeDataQuery(signatures);
+		data = signatures.front()->sensorData();
 		_dbSafeAccessMutex.unlock();
 	}
 }
@@ -441,8 +445,7 @@ bool DBDriver::getNodeInfo(int signatureId,
 		int & mapId,
 		int & weight,
 		std::string & label,
-		double & stamp,
-		std::vector<unsigned char> & userData) const
+		double & stamp) const
 {
 	bool found = false;
 	// look in the trash
@@ -454,7 +457,6 @@ bool DBDriver::getNodeInfo(int signatureId,
 		weight = _trashSignatures.at(signatureId)->getWeight();
 		label = _trashSignatures.at(signatureId)->getLabel();
 		stamp = _trashSignatures.at(signatureId)->getStamp();
-		userData = _trashSignatures.at(signatureId)->getUserData();
 		found = true;
 	}
 	_trashesMutex.unlock();
@@ -462,7 +464,7 @@ bool DBDriver::getNodeInfo(int signatureId,
 	if(!found)
 	{
 		_dbSafeAccessMutex.lock();
-		found = this->getNodeInfoQuery(signatureId, pose, mapId, weight, label, stamp, userData);
+		found = this->getNodeInfoQuery(signatureId, pose, mapId, weight, label, stamp);
 		_dbSafeAccessMutex.unlock();
 	}
 	return found;

@@ -666,7 +666,7 @@ bool Rtabmap::labelLocation(int id, const std::string & label)
 	return false;
 }
 
-bool Rtabmap::setUserData(int id, const std::vector<unsigned char> & data)
+bool Rtabmap::setUserData(int id, const cv::Mat & data)
 {
 	if(_memory)
 	{
@@ -2298,15 +2298,14 @@ bool Rtabmap::process(
 			std::string label;
 			double stamp = 0;
 			std::vector<unsigned char> userData;
-			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, false);
+			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, false);
 			signatures.insert(std::make_pair(iter->first,
 					Signature(iter->first,
 							mapId,
 							weight,
 							stamp,
 							label,
-							odomPose,
-							userData)));
+							odomPose)));
 		}
 		statistics_.setPoses(poses);
 		statistics_.setConstraints(constraints);
@@ -2878,8 +2877,7 @@ void Rtabmap::get3DMap(
 			int mapId = -1;
 			std::string label;
 			double stamp = 0;
-			std::vector<unsigned char> userData;
-			_memory->getNodeInfo(*iter, odomPose, mapId, weight, label, stamp, userData, true);
+			_memory->getNodeInfo(*iter, odomPose, mapId, weight, label, stamp, true);
 			SensorData data = _memory->getNodeData(*iter);
 			data.setId(*iter);
 			signatures.insert(std::make_pair(*iter,
@@ -2889,7 +2887,6 @@ void Rtabmap::get3DMap(
 							stamp,
 							label,
 							odomPose,
-							userData,
 							data)));
 		}
 	}
@@ -2940,16 +2937,14 @@ void Rtabmap::getGraph(
 				int mapId = -1;
 				std::string label;
 				double stamp = 0;
-				std::vector<unsigned char> userData;
-				_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, global);
+				_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, global);
 				signatures->insert(std::make_pair(iter->first,
 						Signature(iter->first,
 							mapId,
 							weight,
 							stamp,
 							label,
-							odomPose,
-							userData)));
+							odomPose)));
 			}
 		}
 	}
@@ -3058,7 +3053,7 @@ bool Rtabmap::computePath(int targetNode, bool global)
 		{
 			// set goal to latest signature
 			std::string goalStr = uFormat("GOAL:%d", targetNode);
-			setUserData(0, uStr2Bytes(goalStr));
+			setUserData(0, cv::Mat(1, goalStr.size()+1, CV_8SC1, (void *)goalStr.c_str()).clone());
 		}
 		updateGoalIndex();
 	}

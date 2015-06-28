@@ -54,14 +54,12 @@ Signature::Signature(
 		double stamp,
 		const std::string & label,
 		const Transform & pose,
-		const std::vector<unsigned char> & userData,
 		const SensorData & sensorData):
 	_id(id),
 	_mapId(mapId),
 	_stamp(stamp),
 	_weight(weight),
 	_label(label),
-	_userData(userData),
 	_saved(false),
 	_modified(true),
 	_linksModified(true),
@@ -79,18 +77,6 @@ Signature::Signature(
 Signature::~Signature()
 {
 	//UDEBUG("id=%d", _id);
-}
-
-void Signature::setUserData(const std::vector<unsigned char> & data)
-{
-	if(!_userData.empty() && !data.empty())
-	{
-		UWARN("Node %d: Current user data (%d bytes) overwritten by new data (%d bytes)",
-				_id, (int)_userData.size(), (int)data.size());
-	}
-
-	_modified = true;
-	_userData = data;
 }
 
 void Signature::addLinks(const std::list<Link> & links)

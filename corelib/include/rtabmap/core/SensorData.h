@@ -52,7 +52,7 @@ public:
 			const cv::Mat & image,
 			int id = 0,
 			double stamp = 0.0,
-			const std::vector<unsigned char> & userData = std::vector<unsigned char>());
+			const cv::Mat & userData = cv::Mat());
 
 	// Mono constructor
 	SensorData(
@@ -60,7 +60,7 @@ public:
 			const CameraModel & cameraModel,
 			int id = 0,
 			double stamp = 0.0,
-			const std::vector<unsigned char> & userData = std::vector<unsigned char>());
+			const cv::Mat & userData = cv::Mat());
 
 	// RGB-D constructor
 	SensorData(
@@ -69,7 +69,7 @@ public:
 			const CameraModel & cameraModel,
 			int id = 0,
 			double stamp = 0.0,
-			const std::vector<unsigned char> & userData = std::vector<unsigned char>());
+			const cv::Mat & userData = cv::Mat());
 
 	// RGB-D constructor + 2d laser scan
 	SensorData(
@@ -80,7 +80,7 @@ public:
 			const CameraModel & cameraModel,
 			int id = 0,
 			double stamp = 0.0,
-			const std::vector<unsigned char> & userData = std::vector<unsigned char>());
+			const cv::Mat & userData = cv::Mat());
 
 	// Multi-cameras RGB-D constructor
 	SensorData(
@@ -89,7 +89,7 @@ public:
 			const std::vector<CameraModel> & cameraModels,
 			int id = 0,
 			double stamp = 0.0,
-			const std::vector<unsigned char> & userData = std::vector<unsigned char>());
+			const cv::Mat & userData = cv::Mat());
 
 	// Multi-cameras RGB-D constructor + 2d laser scan
 	SensorData(
@@ -100,7 +100,7 @@ public:
 			const std::vector<CameraModel> & cameraModels,
 			int id = 0,
 			double stamp = 0.0,
-			const std::vector<unsigned char> & userData = std::vector<unsigned char>());
+			const cv::Mat & userData = cv::Mat());
 
 	// Stereo constructor
 	SensorData(
@@ -109,7 +109,7 @@ public:
 			const StereoCameraModel & cameraModel,
 			int id = 0,
 			double stamp = 0.0,
-			const std::vector<unsigned char> & userData = std::vector<unsigned char>());
+			const cv::Mat & userData = cv::Mat());
 
 	// Stereo constructor + 2d laser scan
 	SensorData(
@@ -120,7 +120,7 @@ public:
 			const StereoCameraModel & cameraModel,
 			int id = 0,
 			double stamp = 0.0,
-			const std::vector<unsigned char> & userData = std::vector<unsigned char>());
+			const cv::Mat & userData = cv::Mat());
 
 	virtual ~SensorData() {}
 
@@ -136,7 +136,8 @@ public:
 			_laserScanCompressed.empty() &&
 			_cameraModels.size() == 0 &&
 			!_stereoCameraModel.isValid() &&
-			_userData.size() == 0 &&
+			!_userDataRaw.empty() &&
+			!_userDataCompressed.empty() &&
 			_keypoints.size() == 0 &&
 			_descriptors.empty());
 	}
@@ -166,14 +167,16 @@ public:
 	cv::Mat rightRaw() const {return _depthOrRightRaw.type()==CV_8UC1?_depthOrRightRaw:cv::Mat();}
 
 	void uncompressData();
-	void uncompressData(cv::Mat * imageRaw, cv::Mat * depthOrRightRaw, cv::Mat * laserScanRaw);
-	void uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthOrRightRaw, cv::Mat * laserScanRaw) const;
+	void uncompressData(cv::Mat * imageRaw, cv::Mat * depthOrRightRaw, cv::Mat * laserScanRaw = 0, cv::Mat * userDataRaw = 0);
+	void uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthOrRightRaw, cv::Mat * laserScanRaw = 0, cv::Mat * userDataRaw = 0) const;
 
 	const std::vector<CameraModel> & cameraModels() const {return _cameraModels;}
 	const StereoCameraModel & stereoCameraModel() const {return _stereoCameraModel;}
 
-	void setUserData(const std::vector<unsigned char> & data) {_userData = data;}
-	const std::vector<unsigned char> & userData() const {return _userData;}
+	void setUserDataRaw(const cv::Mat & userDataRaw); // only set raw
+	void setUserData(const cv::Mat & userData); // detect automatically if raw or compressed. If raw, the data is compressed too.
+	const cv::Mat & userDataRaw() const {return _userDataRaw;}
+	const cv::Mat & userDataCompressed() const {return _userDataCompressed;}
 
 	void setFeatures(const std::vector<cv::KeyPoint> & keypoints, const cv::Mat & descriptors)
 	{
@@ -200,7 +203,8 @@ private:
 	StereoCameraModel _stereoCameraModel;
 
 	// user data
-	std::vector<unsigned char> _userData;
+	cv::Mat _userDataCompressed;      // compressed data
+	cv::Mat _userDataRaw;
 
 	// features
 	std::vector<cv::KeyPoint> _keypoints;

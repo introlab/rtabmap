@@ -20,7 +20,6 @@ CREATE TABLE Node (
 	stamp FLOAT,
 	pose BLOB,
 	label TEXT,
-	user_data BLOB,
 	time_enter DATE,
 	PRIMARY KEY (id)
 );
@@ -32,6 +31,7 @@ CREATE TABLE Data (
 	calibration BLOB,         -- fx, fy, cx, cy [,baseline] local_transform
 	scan BLOB,                -- compressed data (Laser scan)
 	scan_max_pts INTEGER,     -- Laser scan max points
+	user_data BLOB,           -- compressed data (User data)
 	time_enter DATE,
 	PRIMARY KEY (id)
 );

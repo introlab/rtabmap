@@ -56,7 +56,7 @@ int main(int argc, char * argv[])
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kWarning);
 
-	std::string interfaceName = "eth0";
+	std::string interfaceName = "wlan0";
 	int driver = 0;
 	bool mirroring = false;
 
@@ -155,8 +155,9 @@ int main(int argc, char * argv[])
 
 	if(!camera->init())
 	{
-		UERROR("Camera init failed!");
-		//exit(1);
+		UERROR("Camera init failed! Try another camera driver.");
+		showUsage();
+		exit(1);
 	}
 	CameraThread cameraThread(camera);
 	if(mirroring)

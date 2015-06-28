@@ -767,8 +767,7 @@ void DatabaseViewer::exportDatabase()
 				int mapId = -1;
 				std::string label;
 				double stamp = 0;
-				std::vector<unsigned char> userData;
-				if(memory_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, userData, true))
+				if(memory_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, true))
 				{
 					if(frameRate == 0 ||
 					   previousStamp == 0 ||
@@ -832,7 +831,7 @@ void DatabaseViewer::exportDatabase()
 							data.cameraModels(),
 							data.id(),
 							data.stamp(),
-							dialog.isUserDataExported()?data.userData():std::vector<unsigned char>());
+							dialog.isUserDataExported()?data.userDataRaw():cv::Mat());
 					}
 					else
 					{
@@ -844,7 +843,7 @@ void DatabaseViewer::exportDatabase()
 							data.stereoCameraModel(),
 							data.id(),
 							data.stamp(),
-							dialog.isUserDataExported()?data.userData():std::vector<unsigned char>());
+							dialog.isUserDataExported()?data.userDataRaw():cv::Mat());
 					}
 
 					recorder.addData(sensorData, dialog.isOdomExported()?poses.at(id):Transform(), covariance);
@@ -966,9 +965,8 @@ void DatabaseViewer::updateIds()
 		int w;
 		std::string l;
 		double s;
-		std::vector<unsigned char> d;
 		int mapId;
-		memory_->getNodeInfo(ids_[i], p, mapId, w, l, s, d, true);
+		memory_->getNodeInfo(ids_[i], p, mapId, w, l, s, true);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
 	}
 
@@ -1235,8 +1233,7 @@ void DatabaseViewer::view3DMap()
 							Transform odomPose;
 							std::string label;
 							double stamp;
-							std::vector<unsigned char> userData;
-							if(memory_->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true))
+							if(memory_->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, true))
 							{
 								color = (Qt::GlobalColor)(mapId % 12 + 7 );
 							}
@@ -1592,8 +1589,7 @@ void DatabaseViewer::update(int value,
 				int w;
 				std::string l;
 				double s;
-				std::vector<unsigned char> d;
-				memory_->getNodeInfo(id, odomPose, mapId, w, l, s, d, true);
+				memory_->getNodeInfo(id, odomPose, mapId, w, l, s, true);
 
 				weight->setNum(w);
 				label->setText(l.c_str());

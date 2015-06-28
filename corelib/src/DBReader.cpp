@@ -156,17 +156,20 @@ void DBReader::mainLoop()
 		int goalId = 0;
 		double previousStamp = odom.data().stamp();
 		odom.data().setStamp(UTimer::now());
-		if(odom.data().userData().size() >= 6 && memcmp(odom.data().userData().data(), "GOAL:", 5) == 0)
+		if(odom.data().userDataRaw().type() == CV_8SC1 &&
+		   odom.data().userDataRaw().cols >= 7 && // including null str ending
+		   odom.data().userDataRaw().rows == 1 &&
+		   memcmp(odom.data().userDataRaw().data, "GOAL:", 5) == 0)
 		{
 			//GOAL format detected, remove it from the user data and send it as goal event
-			std::string goalStr = uBytes2Str(odom.data().userData());
+			std::string goalStr = (const char *)odom.data().userDataRaw().data;
 			if(!goalStr.empty())
 			{
 				std::list<std::string> strs = uSplit(goalStr, ':');
 				if(strs.size() == 2)
 				{
 					goalId = atoi(strs.rbegin()->c_str());
-					odom.data().setUserData(std::vector<unsigned char>());
+					odom.data().setUserData(cv::Mat());
 				}
 			}
 		}
@@ -196,8 +199,7 @@ void DBReader::mainLoop()
 				double stamp;
 				int mapId;
 				Transform localTransform, pose;
-				std::vector<unsigned char> userData;
-				_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, userData);
+				_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp);
 				if(previousStamp && stamp && stamp > previousStamp)
 				{
 					double delay = stamp - previousStamp;
@@ -252,7 +254,6 @@ OdometryEvent DBReader::getNextData()
 		if(!this->isKilled() && _currentId != _ids.end())
 		{
 			int mapId;
-			std::vector<unsigned char> userData;
 			SensorData data;
 			_dbDriver->getNodeData(*_currentId, data);
 
@@ -261,7 +262,7 @@ OdometryEvent DBReader::getNextData()
 			int weight;
 			std::string label;
 			double stamp;
-			_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, userData);
+			_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp);
 
 			cv::Mat infMatrix = cv::Mat::eye(6,6,CV_64FC1);
 			if(!_odometryIgnored)
@@ -338,11 +339,11 @@ OdometryEvent DBReader::getNextData()
 				data.uncompressData();
 				data.setId(seq);
 				data.setStamp(stamp);
-				data.setUserData(userData);
-				UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d",
+				UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d, UserData=%d",
 						data.laserScanRaw().empty()?0:1,
 						data.imageRaw().empty()?0:1,
-						data.depthOrRightRaw().empty()?0:1);
+						data.depthOrRightRaw().empty()?0:1,
+						data.userDataRaw().empty()?0:1);
 
 				odom = OdometryEvent(data, pose, infMatrix.inv());
 			}

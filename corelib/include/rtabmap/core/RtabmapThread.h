@@ -120,7 +120,7 @@ private:
 	double _rotVariance;
 	double _transVariance;
 
-	std::vector<unsigned char> _userData;
+	cv::Mat _userData;
 	UMutex _userDataMutex;
 };
 

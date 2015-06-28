@@ -188,7 +188,7 @@ void RtabmapThread::mainLoop()
 	_stateMutex.unlock();
 
 	int id = 0;
-	std::vector<unsigned char> userData;
+	cv::Mat userData;
 	switch(state)
 	{
 	case kStateDetecting:
@@ -269,7 +269,7 @@ void RtabmapThread::mainLoop()
 		_userDataMutex.lock();
 		{
 			userData = _userData;
-			_userData.clear();
+			_userData = cv::Mat();
 		}
 		_userDataMutex.unlock();
 		_rtabmap->setUserData(0, userData);
@@ -596,7 +596,7 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 						cv::Mat(),
 						odomEvent.data().id(),
 						odomEvent.data().stamp(),
-						odomEvent.data().userData());
+						odomEvent.data().userDataRaw());
 				_dataBuffer.push_back(OdometryEvent(tmp, odomEvent.pose(), _rotVariance, _transVariance));
 			}
 			else

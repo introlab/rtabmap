@@ -1875,30 +1875,17 @@ std::map<int, std::string> Memory::getAllLabels() const
 	return labels;
 }
 
-bool Memory::setUserData(int id, const std::vector<unsigned char> & data)
+bool Memory::setUserData(int id, const cv::Mat & data)
 {
 	Signature * s  = this->_getSignature(id);
 	if(s)
 	{
-		s->setUserData(data);
+		s->sensorData().setUserData(data);
 		return true;
-	}
-	else if(_dbDriver)
-	{
-		std::list<int> ids;
-		ids.push_back(id);
-		std::list<Signature *> signatures;
-		_dbDriver->loadSignatures(ids,signatures);
-		if(signatures.size())
-		{
-			signatures.front()->setUserData(data);
-			_dbDriver->asyncSave(signatures.front()); // move it again to trash
-			return true;
-		}
 	}
 	else
 	{
-		UERROR("Node %d not found, failed to set user data (size=%d)!", id, data.size());
+		UERROR("Node %d not found in RAM, failed to set user data (size=%d)!", id, data.total());
 	}
 	return false;
 }
@@ -2257,7 +2244,7 @@ Transform Memory::computeIcpTransform(
 		}
 		if(depthToLoad.size())
 		{
-			_dbDriver->loadNodeData(depthToLoad, true);
+			_dbDriver->loadNodeData(depthToLoad);
 		}
 	}
 
@@ -2614,7 +2601,7 @@ Transform Memory::computeScanMatchingTransform(
 	}
 	if(depthToLoad.size() && _dbDriver)
 	{
-		_dbDriver->loadNodeData(depthToLoad, true);
+		_dbDriver->loadNodeData(depthToLoad);
 	}
 
 	std::string msg;
@@ -3203,8 +3190,7 @@ Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const
 	int mapId, weight;
 	std::string label;
 	double stamp;
-	std::vector<unsigned char> userData;
-	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, userData, lookInDatabase);
+	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, lookInDatabase);
 	return pose;
 }
 
@@ -3214,7 +3200,6 @@ bool Memory::getNodeInfo(int signatureId,
 		int & weight,
 		std::string & label,
 		double & stamp,
-		std::vector<unsigned char> & userData,
 		bool lookInDatabase) const
 {
 	const Signature * s = this->getSignature(signatureId);
@@ -3225,12 +3210,11 @@ bool Memory::getNodeInfo(int signatureId,
 		weight = s->getWeight();
 		label = s->getLabel();
 		stamp = s->getStamp();
-		userData = s->getUserData();
 		return true;
 	}
 	else if(lookInDatabase && _dbDriver)
 	{
-		return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp, userData);
+		return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp);
 	}
 	return false;
 }
@@ -3272,7 +3256,7 @@ SensorData Memory::getNodeData(int nodeId, bool uncompressedData)
 		{
 			std::list<Signature*> signatures;
 			signatures.push_back(s);
-			_dbDriver->loadNodeData(signatures, true);
+			_dbDriver->loadNodeData(signatures);
 			if(uncompressedData)
 			{
 				s->sensorData().uncompressData();
@@ -3309,7 +3293,7 @@ SensorData Memory::getSignatureDataConst(int locationId) const
 			std::list<Signature*> signatures;
 			Signature tmp = *s;
 			signatures.push_back(&tmp);
-			_dbDriver->loadNodeData(signatures, true);
+			_dbDriver->loadNodeData(signatures);
 			r = tmp.sensorData();
 		}
 		else
@@ -3324,7 +3308,7 @@ SensorData Memory::getSignatureDataConst(int locationId) const
 				Signature * sTmp = signatures.front();
 				if(sTmp->sensorData().imageCompressed().empty())
 				{
-					_dbDriver->loadNodeData(signatures, !sTmp->getPose().isNull());
+					_dbDriver->loadNodeData(signatures);
 				}
 				r = sTmp->sensorData();
 				if(loadedFromTrash.size())
@@ -4156,12 +4140,15 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		rtabmap::CompressionThread ctImage(image, std::string(".jpg"));
 		rtabmap::CompressionThread ctDepth(depthOrRightImage, std::string(".png"));
 		rtabmap::CompressionThread ctDepth2d(laserScan);
+		rtabmap::CompressionThread ctUserData(data.userDataRaw());
 		ctImage.start();
 		ctDepth.start();
 		ctDepth2d.start();
+		ctUserData.start();
 		ctImage.join();
 		ctDepth.join();
 		ctDepth2d.join();
+		ctUserData.join();
 
 		s = new Signature(id,
 			_idMapCount,
@@ -4169,7 +4156,6 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			data.stamp(),
 			"",
 			pose,
-			data.userData(),
 			stereoCameraModel.isValid()?
 				SensorData(
 						ctDepth2d.getCompressedData(),
@@ -4177,39 +4163,53 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						ctImage.getCompressedData(),
 						ctDepth.getCompressedData(),
 						stereoCameraModel,
-						id):
+						id,
+						0,
+						ctUserData.getCompressedData()):
 				SensorData(
 						ctDepth2d.getCompressedData(),
 						data.laserScanMaxPts(),
 						ctImage.getCompressedData(),
 						ctDepth.getCompressedData(),
 						cameraModels,
-						id));
+						id,
+						0,
+						ctUserData.getCompressedData()));
 	}
 	else
 	{
+		rtabmap::CompressionThread ctDepth2d(laserScan);
+		rtabmap::CompressionThread ctUserData(data.userDataRaw());
+		ctDepth2d.start();
+		ctUserData.start();
+		ctDepth2d.join();
+		ctUserData.join();
+
 		s = new Signature(id,
 			_idMapCount,
 			(data.imageRaw().empty()&&data.laserScanRaw().empty()&&words.size()==0)?-1:0, // tag intermediate nodes as weight=-1
 			data.stamp(),
 			"",
 			pose,
-			data.userData(),
 			stereoCameraModel.isValid()?
 				SensorData(
-						rtabmap::compressData2(laserScan),
+						ctDepth2d.getCompressedData(),
 						data.laserScanMaxPts(),
 						cv::Mat(),
 						cv::Mat(),
 						stereoCameraModel,
-						id):
+						id,
+						0,
+						ctUserData.getCompressedData()):
 				SensorData(
-						rtabmap::compressData2(laserScan),
+						ctDepth2d.getCompressedData(),
 						data.laserScanMaxPts(),
 						cv::Mat(),
 						cv::Mat(),
 						cameraModels,
-						id));
+						id,
+						0,
+						ctUserData.getCompressedData()));
 	}
 	s->setWords(words);
 	s->setWords3(words3D);
@@ -4218,6 +4218,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		s->sensorData().setImageRaw(image);
 		s->sensorData().setDepthOrRightRaw(depthOrRightImage);
 		s->sensorData().setLaserScanRaw(laserScan, data.laserScanMaxPts());
+		s->sensorData().setUserDataRaw(data.userDataRaw());
 	}
 
 

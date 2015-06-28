@@ -47,11 +47,10 @@ SensorData::SensorData(
 		const cv::Mat & image,
 		int id,
 		double stamp,
-		const std::vector<unsigned char> & userData) :
+		const cv::Mat & userData) :
 		_id(id),
 		_stamp(stamp),
-		_laserScanMaxPts(0),
-		_userData(userData)
+		_laserScanMaxPts(0)
 {
 	if(image.rows == 1)
 	{
@@ -63,6 +62,15 @@ SensorData::SensorData(
 		UASSERT(image.type() == CV_8UC1 || // Mono
 				image.type() == CV_8UC3);  // RGB
 		_imageRaw = image;
+	}
+
+	if(userData.type() == CV_8UC1) // Bytes
+	{
+		_userDataCompressed = userData; // assume compressed
+	}
+	else
+	{
+		_userDataRaw = userData;
 	}
 }
 
@@ -72,12 +80,11 @@ SensorData::SensorData(
 		const CameraModel & cameraModel,
 		int id,
 		double stamp,
-		const std::vector<unsigned char> & userData) :
+		const cv::Mat & userData) :
 		_id(id),
 		_stamp(stamp),
 		_laserScanMaxPts(0),
-		_cameraModels(std::vector<CameraModel>(1, cameraModel)),
-		_userData(userData)
+		_cameraModels(std::vector<CameraModel>(1, cameraModel))
 {
 	if(image.rows == 1)
 	{
@@ -89,6 +96,15 @@ SensorData::SensorData(
 		UASSERT(image.type() == CV_8UC1 || // Mono
 				image.type() == CV_8UC3);  // RGB
 		_imageRaw = image;
+	}
+
+	if(userData.type() == CV_8UC1) // Bytes
+	{
+		_userDataCompressed = userData; // assume compressed
+	}
+	else
+	{
+		_userDataRaw = userData;
 	}
 }
 
@@ -99,12 +115,11 @@ SensorData::SensorData(
 		const CameraModel & cameraModel,
 		int id,
 		double stamp,
-		const std::vector<unsigned char> & userData) :
+		const cv::Mat & userData) :
 		_id(id),
 		_stamp(stamp),
 		_laserScanMaxPts(0),
-		_cameraModels(std::vector<CameraModel>(1, cameraModel)),
-		_userData(userData)
+		_cameraModels(std::vector<CameraModel>(1, cameraModel))
 {
 	if(rgb.rows == 1)
 	{
@@ -128,6 +143,15 @@ SensorData::SensorData(
 		UASSERT(depth.type() == CV_32FC1 || // Depth in meter
 				depth.type() == CV_16UC1); // Depth in millimetre
 		_depthOrRightRaw = depth;
+	}
+
+	if(userData.type() == CV_8UC1) // Bytes
+	{
+		_userDataCompressed = userData; // assume compressed
+	}
+	else
+	{
+		_userDataRaw = userData;
 	}
 }
 
@@ -140,12 +164,11 @@ SensorData::SensorData(
 		const CameraModel & cameraModel,
 		int id,
 		double stamp,
-		const std::vector<unsigned char> & userData) :
+		const cv::Mat & userData) :
 		_id(id),
 		_stamp(stamp),
 		_laserScanMaxPts(laserScanMaxPts),
-		_cameraModels(std::vector<CameraModel>(1, cameraModel)),
-		_userData(userData)
+		_cameraModels(std::vector<CameraModel>(1, cameraModel))
 {
 	if(rgb.rows == 1)
 	{
@@ -179,6 +202,15 @@ SensorData::SensorData(
 		UASSERT(laserScan.type() == CV_8UC1); // Bytes
 		_laserScanCompressed = laserScan;
 	}
+
+	if(userData.type() == CV_8UC1) // Bytes
+	{
+		_userDataCompressed = userData; // assume compressed
+	}
+	else
+	{
+		_userDataRaw = userData;
+	}
 }
 
 // Multi-cameras RGB-D constructor
@@ -188,12 +220,11 @@ SensorData::SensorData(
 		const std::vector<CameraModel> & cameraModels,
 		int id,
 		double stamp,
-		const std::vector<unsigned char> & userData) :
+		const cv::Mat & userData) :
 		_id(id),
 		_stamp(stamp),
 		_laserScanMaxPts(0),
-		_cameraModels(cameraModels),
-		_userData(userData)
+		_cameraModels(cameraModels)
 {
 	if(rgb.rows == 1)
 	{
@@ -220,6 +251,15 @@ SensorData::SensorData(
 	for(unsigned int i=0; i<cameraModels.size(); ++i)
 	{
 		UASSERT(cameraModels[i].isValid());
+	}
+
+	if(userData.type() == CV_8UC1) // Bytes
+	{
+		_userDataCompressed = userData; // assume compressed
+	}
+	else
+	{
+		_userDataRaw = userData;
 	}
 }
 
@@ -232,12 +272,11 @@ SensorData::SensorData(
 		const std::vector<CameraModel> & cameraModels,
 		int id,
 		double stamp,
-		const std::vector<unsigned char> & userData) :
+		const cv::Mat & userData) :
 		_id(id),
 		_stamp(stamp),
 		_laserScanMaxPts(laserScanMaxPts),
-		_cameraModels(cameraModels),
-		_userData(userData)
+		_cameraModels(cameraModels)
 {
 	if(rgb.rows == 1)
 	{
@@ -276,6 +315,15 @@ SensorData::SensorData(
 	{
 		UASSERT(cameraModels[i].isValid());
 	}
+
+	if(userData.type() == CV_8UC1) // Bytes
+	{
+		_userDataCompressed = userData; // assume compressed
+	}
+	else
+	{
+		_userDataRaw = userData;
+	}
 }
 
 // Stereo constructor
@@ -285,12 +333,11 @@ SensorData::SensorData(
 		const StereoCameraModel & cameraModel,
 		int id,
 		double stamp,
-		const std::vector<unsigned char> & userData):
+		const cv::Mat & userData):
 		_id(id),
 		_stamp(stamp),
 		_laserScanMaxPts(0),
-		_stereoCameraModel(cameraModel),
-		_userData(userData)
+		_stereoCameraModel(cameraModel)
 {
 	if(left.rows == 1)
 	{
@@ -312,6 +359,15 @@ SensorData::SensorData(
 	{
 		UASSERT(right.type() == CV_8UC1); // Mono
 		_depthOrRightRaw = right;
+	}
+
+	if(userData.type() == CV_8UC1) // Bytes
+	{
+		_userDataCompressed = userData; // assume compressed
+	}
+	else
+	{
+		_userDataRaw = userData;
 	}
 
 }
@@ -325,12 +381,11 @@ SensorData::SensorData(
 		const StereoCameraModel & cameraModel,
 		int id,
 		double stamp,
-		const std::vector<unsigned char> & userData) :
+		const cv::Mat & userData) :
 		_id(id),
 		_stamp(stamp),
 		_laserScanMaxPts(laserScanMaxPts),
-		_stereoCameraModel(cameraModel),
-		_userData(userData)
+		_stereoCameraModel(cameraModel)
 {
 	if(left.rows == 1)
 	{
@@ -363,18 +418,60 @@ SensorData::SensorData(
 		UASSERT(laserScan.type() == CV_8UC1); // Bytes
 		_laserScanCompressed = laserScan;
 	}
+
+	if(userData.type() == CV_8UC1) // Bytes
+	{
+		_userDataCompressed = userData; // assume compressed
+	}
+	else
+	{
+		_userDataRaw = userData;
+	}
+}
+
+void SensorData::setUserDataRaw(const cv::Mat & userDataRaw)
+{
+	if(!_userDataRaw.empty())
+	{
+		UWARN("Writing new user data over existing user data. This may result in data loss.");
+	}
+	_userDataRaw = userDataRaw;
+}
+
+void SensorData::setUserData(const cv::Mat & userData)
+{
+	if(!userData.empty() && (!_userDataCompressed.empty() || !_userDataRaw.empty()))
+	{
+		UWARN("Writing new user data over existing user data. This may result in data loss.");
+	}
+	_userDataRaw = cv::Mat();
+	_userDataCompressed = cv::Mat();
+
+	if(!userData.empty())
+	{
+		if(userData.type() == CV_8UC1) // Bytes
+		{
+			_userDataCompressed = userData; // assume compressed
+		}
+		else
+		{
+			_userDataRaw = userData;
+			_userDataCompressed = compressData2(userData);
+		}
+	}
 }
 
 void SensorData::uncompressData()
 {
 	uncompressData(_imageCompressed.empty()?0:&_imageRaw,
 				_depthOrRightCompressed.empty()?0:&_depthOrRightRaw,
-				_laserScanCompressed.empty()?0:&_laserScanRaw);
+				_laserScanCompressed.empty()?0:&_laserScanRaw,
+				_userDataCompressed.empty()?0:&_userDataRaw);
 }
 
-void SensorData::uncompressData(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw)
+void SensorData::uncompressData(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw, cv::Mat * userDataRaw)
 {
-	uncompressDataConst(imageRaw, depthRaw, laserScanRaw);
+	uncompressDataConst(imageRaw, depthRaw, laserScanRaw, userDataRaw);
 	if(imageRaw && !imageRaw->empty() && _imageRaw.empty())
 	{
 		_imageRaw = *imageRaw;
@@ -387,9 +484,13 @@ void SensorData::uncompressData(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat 
 	{
 		_laserScanRaw = *laserScanRaw;
 	}
+	if(userDataRaw && !userDataRaw->empty() && _userDataRaw.empty())
+	{
+		_userDataRaw = *userDataRaw;
+	}
 }
 
-void SensorData::uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw) const
+void SensorData::uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw, cv::Mat * userDataRaw) const
 {
 	if(imageRaw)
 	{
@@ -403,13 +504,19 @@ void SensorData::uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthRaw, cv:
 	{
 		*laserScanRaw = _laserScanRaw;
 	}
+	if(userDataRaw)
+	{
+		*userDataRaw = _userDataRaw;
+	}
 	if( (imageRaw && imageRaw->empty()) ||
 		(depthRaw && depthRaw->empty()) ||
-		(laserScanRaw && laserScanRaw->empty()))
+		(laserScanRaw && laserScanRaw->empty()) ||
+		(userDataRaw && userDataRaw->empty()))
 	{
 		rtabmap::CompressionThread ctImage(_imageCompressed, true);
 		rtabmap::CompressionThread ctDepth(_depthOrRightCompressed, true);
 		rtabmap::CompressionThread ctLaserScan(_laserScanCompressed, false);
+		rtabmap::CompressionThread ctUserData(_userDataCompressed, false);
 		if(imageRaw && imageRaw->empty())
 		{
 			ctImage.start();
@@ -422,9 +529,14 @@ void SensorData::uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthRaw, cv:
 		{
 			ctLaserScan.start();
 		}
+		if(userDataRaw && userDataRaw->empty())
+		{
+			ctUserData.start();
+		}
 		ctImage.join();
 		ctDepth.join();
 		ctLaserScan.join();
+		ctUserData.join();
 		if(imageRaw && imageRaw->empty())
 		{
 			*imageRaw = ctImage.getUncompressedData();
@@ -448,6 +560,15 @@ void SensorData::uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthRaw, cv:
 			if(laserScanRaw->empty())
 			{
 				UWARN("Requested laser scan data, but the sensor data (%d) doesn't have laser scan.", this->id());
+			}
+		}
+		if(userDataRaw && userDataRaw->empty())
+		{
+			*userDataRaw = ctUserData.getUncompressedData();
+
+			if(userDataRaw->empty())
+			{
+				UWARN("Requested user data, but the sensor data (%d) doesn't have user data.", this->id());
 			}
 		}
 	}
