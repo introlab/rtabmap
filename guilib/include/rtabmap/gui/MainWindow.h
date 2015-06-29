@@ -206,7 +206,7 @@ signals:
 private:
 	void update3DMapVisibility(bool cloudsShown, bool scansShown);
 	void updateMapCloud(const std::map<int, Transform> & poses, const Transform & pose, const std::multimap<int, Link> & constraints, const std::map<int, int> & mapIds, bool verboseProgress = false);
-	void createAndAddCloudToMap(int nodeId, const Transform & pose, int mapId);
+	void createAndAddCloudToMap(int nodeId,	const Transform & pose, int mapId);
 	void createAndAddScanToMap(int nodeId, const Transform & pose, int mapId);
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
 	void setupMainLayout(bool vertical);

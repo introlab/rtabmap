@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>20</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -346,21 +346,21 @@ Show a yellow background when the number of odometry inliers goes under this thr
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_31">
                     <item>
-                     <widget class="QGroupBox" name="groupBox_poseFiltering">
+                     <widget class="QGroupBox" name="groupBox_filtering">
                       <property name="title">
                        <string>Cloud filtering</string>
                       </property>
                       <property name="checkable">
-                       <bool>true</bool>
+                       <bool>false</bool>
                       </property>
                       <property name="checked">
-                       <bool>true</bool>
+                       <bool>false</bool>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_37">
                        <item>
-                        <widget class="QLabel" name="label_33">
+                        <widget class="QLabel" name="label_160">
                          <property name="text">
-                          <string>For visualization, superposed clouds are not shown. By comparing poses in the same area, only one cloud in a fixed radius and angle is kept.</string>
+                          <string>For visualization purpose, superposed clouds can be filtered by one or both approaches below.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -368,49 +368,107 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </widget>
                        </item>
                        <item>
-                        <layout class="QGridLayout" name="gridLayout_17" rowstretch="0,0" columnstretch="0,1">
-                         <item row="0" column="0">
-                          <widget class="QDoubleSpinBox" name="doubleSpinBox_cloudFilterRadius">
-                           <property name="suffix">
-                            <string> m</string>
-                           </property>
-                           <property name="minimum">
-                            <double>0.010000000000000</double>
-                           </property>
-                           <property name="value">
-                            <double>0.100000000000000</double>
-                           </property>
-                          </widget>
-                         </item>
+                        <layout class="QGridLayout" name="gridLayout_64" columnstretch="0,1">
                          <item row="0" column="1">
-                          <widget class="QLabel" name="label_37">
+                          <widget class="QLabel" name="label_33">
                            <property name="text">
-                            <string>Radius.</string>
+                            <string>Node filtering. By comparing poses in the same area, only one cloud in a fixed radius and angle is shown.</string>
                            </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="0">
-                          <widget class="QDoubleSpinBox" name="doubleSpinBox_cloudFilterAngle">
-                           <property name="suffix">
-                            <string> degrees</string>
-                           </property>
-                           <property name="decimals">
-                            <number>0</number>
-                           </property>
-                           <property name="maximum">
-                            <double>180.000000000000000</double>
-                           </property>
-                           <property name="value">
-                            <double>30.000000000000000</double>
+                           <property name="wordWrap">
+                            <bool>true</bool>
                            </property>
                           </widget>
                          </item>
                          <item row="1" column="1">
-                          <widget class="QLabel" name="label_48">
+                          <layout class="QGridLayout" name="gridLayout_17" columnstretch="0,1">
+                           <item row="0" column="0">
+                            <widget class="QDoubleSpinBox" name="doubleSpinBox_cloudFilterRadius">
+                             <property name="suffix">
+                              <string> m</string>
+                             </property>
+                             <property name="minimum">
+                              <double>0.010000000000000</double>
+                             </property>
+                             <property name="value">
+                              <double>0.100000000000000</double>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="0" column="1">
+                            <widget class="QLabel" name="label_37">
+                             <property name="text">
+                              <string>Radius.</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="1" column="0">
+                            <widget class="QDoubleSpinBox" name="doubleSpinBox_cloudFilterAngle">
+                             <property name="suffix">
+                              <string> degrees</string>
+                             </property>
+                             <property name="decimals">
+                              <number>0</number>
+                             </property>
+                             <property name="maximum">
+                              <double>180.000000000000000</double>
+                             </property>
+                             <property name="value">
+                              <double>30.000000000000000</double>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="1" column="1">
+                            <widget class="QLabel" name="label_48">
+                             <property name="text">
+                              <string>Angle.</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item row="0" column="0">
+                          <widget class="QCheckBox" name="checkBox_nodeFiltering">
                            <property name="text">
-                            <string>Angle.</string>
+                            <string/>
+                           </property>
+                           <property name="checked">
+                            <bool>true</bool>
                            </property>
                           </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_161">
+                           <property name="text">
+                            <string>Cloud subtraction filtering. When a new cloud is added to the map, the previous cloud is subtracted from the new cloud. Using &quot;Node filtering&quot; at the same time may generate large &quot;holes&quot; in the map (so better to use without &quot;Node filtering&quot;). Voxel size of the map below is used for the radius search of the close points to filter between the two clouds.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QCheckBox" name="checkBox_subtractFiltering">
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="1">
+                          <layout class="QGridLayout" name="gridLayout_65" columnstretch="0,1">
+                           <item row="0" column="1">
+                            <widget class="QLabel" name="label_174">
+                             <property name="text">
+                              <string>Minimum number of previous cloud's points in the fixed radius in order to substract the point in the new cloud (radius is the voxel size). Increasing this value reduces the black contours between clouds.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="0" column="0">
+                            <widget class="QSpinBox" name="spinBox_substractFilteringMinPts"/>
+                           </item>
+                          </layout>
                          </item>
                         </layout>
                        </item>

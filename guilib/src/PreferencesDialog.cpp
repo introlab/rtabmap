@@ -295,9 +295,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_mls, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_mlsRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
-	connect(_ui->groupBox_poseFiltering, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_nodeFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_subtractFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_cloudFilterRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_cloudFilterAngle, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->spinBox_substractFilteringMinPts, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->checkBox_map_shown, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_map_resolution, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -999,9 +1001,11 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_mls->setChecked(false);
 		_ui->doubleSpinBox_mlsRadius->setValue(0.04);
 
-		_ui->groupBox_poseFiltering->setChecked(true);
+		_ui->checkBox_nodeFiltering->setChecked(true);
+		_ui->checkBox_subtractFiltering->setChecked(false);
 		_ui->doubleSpinBox_cloudFilterRadius->setValue(0.1);
 		_ui->doubleSpinBox_cloudFilterAngle->setValue(30);
+		_ui->spinBox_substractFilteringMinPts->setValue(0);
 
 		_ui->checkBox_map_shown->setChecked(false);
 		_ui->doubleSpinBox_map_resolution->setValue(0.05);
@@ -1261,9 +1265,11 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_mls->setChecked(settings.value("meshSmoothing", _ui->checkBox_mls->isChecked()).toBool());
 	_ui->doubleSpinBox_mlsRadius->setValue(settings.value("meshSmoothingRadius", _ui->doubleSpinBox_mlsRadius->value()).toDouble());
 
-	_ui->groupBox_poseFiltering->setChecked(settings.value("cloudFiltering", _ui->groupBox_poseFiltering->isChecked()).toBool());
+	_ui->checkBox_nodeFiltering->setChecked(settings.value("cloudFiltering", _ui->checkBox_nodeFiltering->isChecked()).toBool());
+	_ui->checkBox_subtractFiltering->setChecked(settings.value("subtractFiltering", _ui->checkBox_subtractFiltering->isChecked()).toBool());
 	_ui->doubleSpinBox_cloudFilterRadius->setValue(settings.value("cloudFilteringRadius", _ui->doubleSpinBox_cloudFilterRadius->value()).toDouble());
 	_ui->doubleSpinBox_cloudFilterAngle->setValue(settings.value("cloudFilteringAngle", _ui->doubleSpinBox_cloudFilterAngle->value()).toDouble());
+	_ui->spinBox_substractFilteringMinPts->setValue(settings.value("cloudFilteringAngleMinPts", _ui->spinBox_substractFilteringMinPts->value()).toDouble());
 
 	_ui->checkBox_map_shown->setChecked(settings.value("gridMapShown", _ui->checkBox_map_shown->isChecked()).toBool());
 	_ui->doubleSpinBox_map_resolution->setValue(settings.value("gridMapResolution", _ui->doubleSpinBox_map_resolution->value()).toDouble());
@@ -1551,9 +1557,11 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("meshSmoothing", _ui->checkBox_mls->isChecked());
 	settings.setValue("meshSmoothingRadius", _ui->doubleSpinBox_mlsRadius->value());
 
-	settings.setValue("cloudFiltering", _ui->groupBox_poseFiltering->isChecked());
+	settings.setValue("cloudFiltering", _ui->checkBox_nodeFiltering->isChecked());
+	settings.setValue("subtractFiltering", _ui->checkBox_subtractFiltering->isChecked());
 	settings.setValue("cloudFilteringRadius", _ui->doubleSpinBox_cloudFilterRadius->value());
 	settings.setValue("cloudFilteringAngle", _ui->doubleSpinBox_cloudFilterAngle->value());
+	settings.setValue("subtractFilteringMinPts", _ui->spinBox_substractFilteringMinPts->value());
 
 	settings.setValue("gridMapShown", _ui->checkBox_map_shown->isChecked());
 	settings.setValue("gridMapResolution", _ui->doubleSpinBox_map_resolution->value());
@@ -3069,7 +3077,11 @@ double PreferencesDialog::getMeshSmoothingRadius() const
 }
 bool PreferencesDialog::isCloudFiltering() const
 {
-	return _ui->groupBox_poseFiltering->isChecked();
+	return _ui->checkBox_nodeFiltering->isChecked();
+}
+bool PreferencesDialog::isSubtractFiltering() const
+{
+	return _ui->checkBox_subtractFiltering->isChecked();
 }
 double PreferencesDialog::getCloudFilteringRadius() const
 {
@@ -3078,6 +3090,10 @@ double PreferencesDialog::getCloudFilteringRadius() const
 double PreferencesDialog::getCloudFilteringAngle() const
 {
 	return _ui->doubleSpinBox_cloudFilterAngle->value();
+}
+int PreferencesDialog::getSubstractFilteringMinPts() const
+{
+	return _ui->spinBox_substractFilteringMinPts->value();
 }
 bool PreferencesDialog::getGridMapShown() const
 {

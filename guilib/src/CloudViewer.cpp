@@ -94,7 +94,6 @@ public:
 
 CloudViewer::CloudViewer(QWidget *parent) :
 		QVTKWidget(parent),
-		_visualizer(new pcl::visualization::PCLVisualizer("PCLVisualizer", false)),
 		_aLockCamera(0),
 		_aFollowCamera(0),
 		_aResetCamera(0),
@@ -119,13 +118,15 @@ CloudViewer::CloudViewer(QWidget *parent) :
 {
 	this->setMinimumSize(200, 200);
 
+	int argc = 0;
+	_visualizer = new pcl::visualization::PCLVisualizer(argc, 0, "PCLVisualizer", vtkSmartPointer<MyInteractorStyle>(new MyInteractorStyle()), false);
+
 	this->SetRenderWindow(_visualizer->getRenderWindow());
 
 	// Replaced by the second line, to avoid a crash in Mac OS X on close, as well as
 	// the "Invalid drawable" warning when the view is not visible.
 	//_visualizer->setupInteractor(this->GetInteractor(), this->GetRenderWindow());
-	vtkSmartPointer<MyInteractorStyle> interactor(new MyInteractorStyle());
-	this->GetInteractor()->SetInteractorStyle (interactor);
+	this->GetInteractor()->SetInteractorStyle (_visualizer->getInteractorStyle());
 
 	_visualizer->setCameraPosition(
 				-1, 0, 0,

@@ -156,6 +156,14 @@ std::multimap<int, int>::iterator RTABMAP_EXP findLink(
 		std::multimap<int, int> & links,
 		int from,
 		int to);
+std::multimap<int, Link>::const_iterator RTABMAP_EXP findLink(
+		const std::multimap<int, Link> & links,
+		int from,
+		int to);
+std::multimap<int, int>::const_iterator RTABMAP_EXP findLink(
+		const std::multimap<int, int> & links,
+		int from,
+		int to);
 
 /**
  * Get only the the most recent or older poses in the defined radius.

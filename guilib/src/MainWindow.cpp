@@ -1645,6 +1645,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 				_preferencesDialog->getCloudDecimation(0),
 				_preferencesDialog->getCloudMaxDepth(0),
 				_preferencesDialog->getCloudVoxelSize(0));
+		_createdClouds.insert(std::make_pair(nodeId, cloud));
 
 		if(cloud->size() && _preferencesDialog->isGridMapFrom3DCloud())
 		{
@@ -1654,7 +1655,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			int minClusterSize = 20;
 			cv::Mat ground, obstacles;
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelizedCloud = cloud;
-			if(voxelizedCloud->size())
+			if(voxelizedCloud->size() && cellSize > _preferencesDialog->getCloudVoxelSize(0))
 			{
 				voxelizedCloud = util3d::voxelize(cloud, cellSize);
 			}
@@ -1671,19 +1672,60 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			UDEBUG("time gridMapFrom2DCloud = %f s", timer.ticks());
 		}
 
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFiltered = cloud;
+		if(_preferencesDialog->isSubtractFiltering() &&
+			_preferencesDialog->getCloudVoxelSize(0) > 0.0 &&
+			cloud->size() &&
+			_createdClouds.size() &&
+			_currentPosesMap.size() &&
+			_currentLinksMap.size())
+		{
+			// find link to previous neighbor
+			std::map<int, Transform>::const_iterator previousIter = _currentPosesMap.find(nodeId);
+			Link link;
+			if(previousIter != _currentPosesMap.begin())
+			{
+				--previousIter;
+				std::multimap<int, Link>::const_iterator linkIter = graph::findLink(_currentLinksMap, nodeId, previousIter->first);
+				if(linkIter != _currentLinksMap.end())
+				{
+					link = linkIter->second;
+					if(link.from() != nodeId)
+					{
+						link = link.inverse();
+					}
+				}
+			}
+			if(link.isValid())
+			{
+				std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::iterator iter = _createdClouds.find(link.to());
+				if(iter!=_createdClouds.end() && iter->second->size())
+				{
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr previousCloud = util3d::transformPointCloud(iter->second, link.transform());
+					cloudFiltered = util3d::subtractFiltering(
+							cloud,
+							previousCloud,
+							_preferencesDialog->getCloudVoxelSize(0),
+							_preferencesDialog->getSubstractFilteringMinPts());
+					UDEBUG("Filtering %d from %d -> %d", (int)previousCloud->size(), (int)cloud->size(), (int)cloudFiltered->size());
+
+				}
+			}
+		}
+
 		if(_preferencesDialog->isCloudMeshing())
 		{
 			pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
-			if(cloud->size())
+			if(cloudFiltered->size())
 			{
 				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
 				if(_preferencesDialog->getMeshSmoothing())
 				{
-					cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius());
+					cloudWithNormals = util3d::computeNormalsSmoothed(cloudFiltered, (float)_preferencesDialog->getMeshSmoothingRadius());
 				}
 				else
 				{
-					cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch());
+					cloudWithNormals = util3d::computeNormals(cloudFiltered, _preferencesDialog->getMeshNormalKSearch());
 				}
 				mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius());
 			}
@@ -1696,10 +1738,6 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 				{
 					UERROR("Adding mesh cloud %d to viewer failed!", nodeId);
 				}
-				else
-				{
-					_createdClouds.insert(std::make_pair(nodeId, tmp));
-				}
 			}
 		}
 		else
@@ -1707,22 +1745,18 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			if(_preferencesDialog->getMeshSmoothing())
 			{
 				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-				cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius());
-				cloud->clear();
-				pcl::copyPointCloud(*cloudWithNormals, *cloud);
+				cloudWithNormals = util3d::computeNormalsSmoothed(cloudFiltered, (float)_preferencesDialog->getMeshSmoothingRadius());
+				cloudFiltered.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
+				pcl::copyPointCloud(*cloudWithNormals, *cloudFiltered);
 			}
 			QColor color = Qt::gray;
 			if(mapId >= 0)
 			{
 				color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
 			}
-			if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloud, pose, color))
+			if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloudFiltered, pose, color))
 			{
 				UERROR("Adding cloud %d to viewer failed!", nodeId);
-			}
-			else
-			{
-				_createdClouds.insert(std::make_pair(nodeId, cloud));
 			}
 		}
 	}

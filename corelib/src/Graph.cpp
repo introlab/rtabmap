@@ -947,6 +947,61 @@ std::multimap<int, int>::iterator findLink(
 	}
 	return links.end();
 }
+std::multimap<int, Link>::const_iterator findLink(
+		const std::multimap<int, Link> & links,
+		int from,
+		int to)
+{
+	std::multimap<int, Link>::const_iterator iter = links.find(from);
+	while(iter != links.end() && iter->first == from)
+	{
+		if(iter->second.to() == to)
+		{
+			return iter;
+		}
+		++iter;
+	}
+
+	// let's try to -> from
+	iter = links.find(to);
+	while(iter != links.end() && iter->first == to)
+	{
+		if(iter->second.to() == from)
+		{
+			return iter;
+		}
+		++iter;
+	}
+	return links.end();
+}
+
+std::multimap<int, int>::const_iterator findLink(
+		const std::multimap<int, int> & links,
+		int from,
+		int to)
+{
+	std::multimap<int, int>::const_iterator iter = links.find(from);
+	while(iter != links.end() && iter->first == from)
+	{
+		if(iter->second == to)
+		{
+			return iter;
+		}
+		++iter;
+	}
+
+	// let's try to -> from
+	iter = links.find(to);
+	while(iter != links.end() && iter->first == to)
+	{
+		if(iter->second == from)
+		{
+			return iter;
+		}
+		++iter;
+	}
+	return links.end();
+}
 
 std::map<int, Transform> radiusPosesFiltering(
 		const std::map<int, Transform> & poses,

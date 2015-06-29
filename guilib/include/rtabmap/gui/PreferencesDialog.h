@@ -157,8 +157,10 @@ public:
 	double getMeshSmoothingRadius() const;
 
 	bool isCloudFiltering() const;
+	bool isSubtractFiltering() const;
 	double getCloudFilteringRadius() const;
 	double getCloudFilteringAngle() const;
+	int getSubstractFilteringMinPts() const;
 
 	bool getGridMapShown() const;
 	double getGridMapResolution() const;
