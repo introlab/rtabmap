@@ -44,9 +44,53 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QVector3D>
 #include <set>
 
+#include <vtkCamera.h>
 #include <vtkRenderWindow.h>
 
 namespace rtabmap {
+
+class MyInteractorStyle: public pcl::visualization::PCLVisualizerInteractorStyle
+{
+public:
+	virtual void Rotate()
+	{
+		if (this->CurrentRenderer == NULL)
+		{
+			return;
+		}
+
+		vtkRenderWindowInteractor *rwi = this->Interactor;
+
+		int dx = rwi->GetEventPosition()[0] - rwi->GetLastEventPosition()[0];
+		int dy = rwi->GetEventPosition()[1] - rwi->GetLastEventPosition()[1];
+
+		int *size = this->CurrentRenderer->GetRenderWindow()->GetSize();
+
+		double delta_elevation = -20.0 / size[1];
+		double delta_azimuth = -20.0 / size[0];
+
+		double rxf = dx * delta_azimuth * this->MotionFactor;
+		double ryf = dy * delta_elevation * this->MotionFactor;
+
+		vtkCamera *camera = this->CurrentRenderer->GetActiveCamera();
+		camera->Azimuth(rxf);
+		camera->Elevation(ryf);
+		camera->OrthogonalizeViewUp();
+
+		if (this->AutoAdjustCameraClippingRange)
+		{
+			this->CurrentRenderer->ResetCameraClippingRange();
+		}
+
+		if (rwi->GetLightFollowCamera())
+		{
+			this->CurrentRenderer->UpdateLightsGeometryToFollowCamera();
+		}
+
+		//rwi->Render();
+	}
+};
+
 
 CloudViewer::CloudViewer(QWidget *parent) :
 		QVTKWidget(parent),
@@ -80,7 +124,8 @@ CloudViewer::CloudViewer(QWidget *parent) :
 	// Replaced by the second line, to avoid a crash in Mac OS X on close, as well as
 	// the "Invalid drawable" warning when the view is not visible.
 	//_visualizer->setupInteractor(this->GetInteractor(), this->GetRenderWindow());
-	this->GetInteractor()->SetInteractorStyle (_visualizer->getInteractorStyle());
+	vtkSmartPointer<MyInteractorStyle> interactor(new MyInteractorStyle());
+	this->GetInteractor()->SetInteractorStyle (interactor);
 
 	_visualizer->setCameraPosition(
 				-1, 0, 0,
@@ -1171,13 +1216,11 @@ void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 		_visualizer->getCameras(cameras);
 
 		cv::Vec3d newCameraOrientation = cv::Vec3d(0,0,1).cross(cv::Vec3d(cameras.front().pos)-cv::Vec3d(cameras.front().focal));
-		double norm = cv::norm(cv::Vec3d(cameras.front().pos)-cv::Vec3d(cameras.front().focal));
 
 		if(	_lastCameraOrientation!=cv::Vec3d(0,0,0) &&
 			_lastCameraPose!=cv::Vec3d(0,0,0) &&
-			(  (uSign(_lastCameraOrientation[0]) != uSign(newCameraOrientation[0]) &&
-			    uSign(_lastCameraOrientation[1]) != uSign(newCameraOrientation[1])   ) ||
-			   (norm && fabs(cameras.front().pos[2]-cameras.front().focal[2])/norm > 0.9999)))
+			(uSign(_lastCameraOrientation[0]) != uSign(newCameraOrientation[0]) &&
+			 uSign(_lastCameraOrientation[1]) != uSign(newCameraOrientation[1])))
 		{
 			cameras.front().pos[0] = _lastCameraPose[0];
 			cameras.front().pos[1] = _lastCameraPose[1];
@@ -1198,6 +1241,7 @@ void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 			cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
 
 	}
+	this->update();
 
 	emit configChanged();
 }
