@@ -571,7 +571,7 @@ void DBDriver::getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLink
 		for(std::map<int, Signature*>::const_iterator iter=_trashSignatures.begin(); iter!=_trashSignatures.end(); ++iter)
 		{
 			links.erase(iter->first);
-			for(std::multimap<int, Link>::const_iterator jter=iter->second->getLinks().begin();
+			for(std::map<int, Link>::const_iterator jter=iter->second->getLinks().begin();
 				jter!=iter->second->getLinks().end();
 				++jter)
 			{

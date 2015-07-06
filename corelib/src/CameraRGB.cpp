@@ -258,7 +258,7 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 	}
 	else
 	{
-		uint32_t guid = (unsigned int)_capture.get(CV_CAP_PROP_GUID);
+		unsigned int guid = (unsigned int)_capture.get(CV_CAP_PROP_GUID);
 		if(guid != 0 && guid != 0xffffffff)
 		{
 			_guid = uFormat("%08x", guid);

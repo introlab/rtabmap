@@ -132,7 +132,10 @@ CloudViewer::CloudViewer(QWidget *parent) :
 				-1, 0, 0,
 				0, 0, 0,
 				0, 0, 1);
+#ifndef _WIN32
+	// Crash on startup on Windows (vtk issue)
 	_visualizer->addCoordinateSystem(0.2, 0, 0, 0, 0);
+#endif
 
 	//setup menu/actions
 	createMenu();

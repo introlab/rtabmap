@@ -605,8 +605,6 @@ SensorData CameraStereoFlyCapture2::captureImage()
 		FlyCapture2::Image grabbedImage;
 		if(camera_->RetrieveBuffer(&grabbedImage) == FlyCapture2::PGRERROR_OK)
 		{
-			stamp = UTimer::now();
-
 			// right and left image extracted from grabbed image
 			ImageContainer imageCont;
 
@@ -701,10 +699,10 @@ SensorData CameraStereoFlyCapture2::captureImage()
 						triclopsGetBaseline(triclopsCtx_, &baseline);
 
 						StereoCameraModel model(
-								fx
 								fx,
-								cx
-								cy
+								fx,
+								cx,
+								cy,
 								baseline,
 								this->getLocalTransform());
 						data = SensorData(left, right, model, this->getNextSeqID(), UTimer::now());

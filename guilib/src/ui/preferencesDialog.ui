@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>760</width>
-            <height>1570</height>
+            <width>759</width>
+            <height>887</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -439,7 +439,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          <item row="2" column="1">
                           <widget class="QLabel" name="label_161">
                            <property name="text">
-                            <string>Cloud subtraction filtering. When a new cloud is added to the map, the previous cloud is subtracted from the new cloud. Using &quot;Node filtering&quot; at the same time may generate large &quot;holes&quot; in the map (so better to use without &quot;Node filtering&quot;). Voxel size of the map below is used for the radius search of the close points to filter between the two clouds.</string>
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Cloud subtraction filtering. &lt;span style=&quot; font-weight:600;&quot;&gt;Note that Map's &amp;quot;3D cloud voxel size&amp;quot; parameter below should be set&lt;/span&gt;. &lt;br/&gt;When a new cloud is added to the map, the previous cloud is subtracted from the new cloud. Using &amp;quot;Node filtering&amp;quot; at the same time may generate large &amp;quot;holes&amp;quot; in the map (so better to use without &amp;quot;Node filtering&amp;quot;). Voxel size of the map below is used for the radius search of the close points to filter between the two clouds.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>

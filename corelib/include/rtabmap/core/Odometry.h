@@ -60,7 +60,7 @@ public:
 	int getRefineIterations() const {return _refineIterations;}
 	float getMaxDepth() const {return _maxDepth;}
 	bool isInfoDataFilled() const {return _fillInfoData;}
-	bool getEstimationType() const {return _estimationType;}
+	int getEstimationType() const {return _estimationType;}
 	double getPnPReprojError() const {return _pnpReprojError;}
 	int  getPnPFlags() const {return _pnpFlags;}
 	const Transform & previousTransform() const {return previousTransform_;}
@@ -179,6 +179,12 @@ private:
 	double flowEps_;
 	int flowMaxLevel_;
 
+	int stereoWinSize_;
+	int stereoIterations_;
+	double stereoEps_;
+	int stereoMaxLevel_;
+	float stereoMaxSlope_;
+
 	Memory * memory_;
 	int localHistoryMaxSize_;
 	float initMinFlow_;
@@ -187,7 +193,7 @@ private:
 	float fundMatrixReprojError_;
 	float fundMatrixConfidence_;
 
-	cv::Mat refDepth_;
+	cv::Mat refDepthOrRight_;
 	std::map<int, cv::Point2f> cornersMap_;
 	std::multimap<int, cv::Point3f> localMap_;
 	std::map<int, std::multimap<int, pcl::PointXYZ> > keyFrameWords3D_;

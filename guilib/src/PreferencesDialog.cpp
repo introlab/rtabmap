@@ -194,11 +194,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	}
 	if(!CameraStereoDC1394::available())
 	{
-		_ui->comboBox_cameraRGBD->setItemData(6, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraStereo->setItemData(0, 0, Qt::UserRole - 1);
 	}
 	if(!CameraStereoFlyCapture2::available())
 	{
-		_ui->comboBox_cameraRGBD->setItemData(7, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraStereo->setItemData(1, 0, Qt::UserRole - 1);
 	}
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
@@ -350,6 +350,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stackedWidget_rgbd->setCurrentIndex(_ui->comboBox_cameraRGBD->currentIndex());
 	connect(_ui->comboBox_cameraRGBD, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_rgbd, SLOT(setCurrentIndex(int)));
 	connect(_ui->comboBox_cameraRGBD, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	_ui->stackedWidget_stereo->setCurrentIndex(_ui->comboBox_cameraStereo->currentIndex());
+	connect(_ui->comboBox_cameraStereo, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_stereo, SLOT(setCurrentIndex(int)));
+	connect(_ui->comboBox_cameraStereo, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_autoWhiteBalance, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_autoExposure, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_exposure, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1040,21 +1043,34 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_checkBox_useDbStamps->setChecked(false);
 
 #ifdef _WIN32
-		_ui->comboBox_cameraRGBD->setCurrentIndex(kSrcOpenNI2-kSrcOpenNI_PCL); // openni2
+		_ui->comboBox_cameraRGBD->setCurrentIndex(kSrcOpenNI2-kSrcRGBD); // openni2
 #else
 		if(CameraFreenect::available())
 		{
-			_ui->comboBox_cameraRGBD->setCurrentIndex(kSrcFreenect-kSrcOpenNI_PCL); // freenect
+			_ui->comboBox_cameraRGBD->setCurrentIndex(kSrcFreenect-kSrcRGBD); // freenect
 		}
 		else if(CameraOpenNI2::available())
 		{
-			_ui->comboBox_cameraRGBD->setCurrentIndex(kSrcOpenNI2-kSrcOpenNI_PCL); // openni2
+			_ui->comboBox_cameraRGBD->setCurrentIndex(kSrcOpenNI2-kSrcRGBD); // openni2
 		}
 		else
 		{
-			_ui->comboBox_cameraRGBD->setCurrentIndex(kSrcOpenNI_PCL-kSrcOpenNI_PCL); // openni-pcl
+			_ui->comboBox_cameraRGBD->setCurrentIndex(kSrcOpenNI_PCL-kSrcRGBD); // openni-pcl
 		}
 #endif
+		if(CameraStereoDC1394::available())
+		{
+			_ui->comboBox_cameraStereo->setCurrentIndex(kSrcDC1394-kSrcStereo); // dc1394
+		}
+		else if(CameraStereoFlyCapture2::available())
+		{
+			_ui->comboBox_cameraStereo->setCurrentIndex(kSrcFlyCapture2-kSrcStereo); // flycapture
+		}
+		else
+		{
+			_ui->comboBox_cameraStereo->setCurrentIndex(kSrcStereoImages-kSrcStereo); // stereo images
+		}
+
 		_ui->checkbox_rgbd_colorOnly->setChecked(false);
 		_ui->openni2_autoWhiteBalance->setChecked(true);
 		_ui->openni2_autoExposure->setChecked(true);

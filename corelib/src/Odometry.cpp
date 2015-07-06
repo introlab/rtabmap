@@ -162,11 +162,6 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 	}
 
 	UASSERT(!data.imageRaw().empty());
-	if(dynamic_cast<OdometryMono*>(this) == 0 && dynamic_cast<OdometryBOW*>(this) == 0)
-	{
-		UERROR("Depth or stereo images required with the odometry selected!");
-		return Transform();
-	}
 
 	if(!data.stereoCameraModel().isValid() &&
 	   (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValid()))

@@ -907,7 +907,7 @@ std::multimap<int, Link> Memory::getAllLinks(bool lookInDatabase, bool ignoreNul
 	for(std::map<int, Signature*>::const_iterator iter=_signatures.begin(); iter!=_signatures.end(); ++iter)
 	{
 		links.erase(iter->first);
-		for(std::multimap<int, Link>::const_iterator jter=iter->second->getLinks().begin();
+		for(std::map<int, Link>::const_iterator jter=iter->second->getLinks().begin();
 			jter!=iter->second->getLinks().end();
 			++jter)
 		{

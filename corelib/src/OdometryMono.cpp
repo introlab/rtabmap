@@ -50,6 +50,11 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	flowIterations_(Parameters::defaultOdomFlowIterations()),
 	flowEps_(Parameters::defaultOdomFlowEps()),
 	flowMaxLevel_(Parameters::defaultOdomFlowMaxLevel()),
+	stereoWinSize_(Parameters::defaultStereoWinSize()),
+	stereoIterations_(Parameters::defaultStereoIterations()),
+	stereoEps_(Parameters::defaultStereoEps()),
+	stereoMaxLevel_(Parameters::defaultStereoMaxLevel()),
+	stereoMaxSlope_(Parameters::defaultStereoMaxSlope()),
 	localHistoryMaxSize_(Parameters::defaultOdomBowLocalHistorySize()),
 	initMinFlow_(Parameters::defaultOdomMonoInitMinFlow()),
 	initMinTranslation_(Parameters::defaultOdomMonoInitMinTranslation()),
@@ -63,6 +68,12 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomFlowEps(), flowEps_);
 	Parameters::parse(parameters, Parameters::kOdomFlowMaxLevel(), flowMaxLevel_);
 	Parameters::parse(parameters, Parameters::kOdomBowLocalHistorySize(), localHistoryMaxSize_);
+
+	Parameters::parse(parameters, Parameters::kStereoWinSize(), stereoWinSize_);
+	Parameters::parse(parameters, Parameters::kStereoIterations(), stereoIterations_);
+	Parameters::parse(parameters, Parameters::kStereoEps(), stereoEps_);
+	Parameters::parse(parameters, Parameters::kStereoMaxLevel(), stereoMaxLevel_);
+	Parameters::parse(parameters, Parameters::kStereoMaxSlope(), stereoMaxSlope_);
 
 	Parameters::parse(parameters, Parameters::kOdomMonoInitMinFlow(), initMinFlow_);
 	Parameters::parse(parameters, Parameters::kOdomMonoInitMinTranslation(), initMinTranslation_);
@@ -139,7 +150,7 @@ void OdometryMono::reset(const Transform & initialPose)
 	Odometry::reset(initialPose);
 	memory_->init("", false, ParametersMap());
 	localMap_.clear();
-	refDepth_ = cv::Mat();
+	refDepthOrRight_ = cv::Mat();
 	cornersMap_.clear();
 	keyFrameWords3D_.clear();
 	keyFramePoses_.clear();
@@ -607,7 +618,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 						cv::RANSAC,
 						fundMatrixReprojError_,
 						fundMatrixConfidence_);
-				std::cout << "F=" << F << std::endl;
+				//std::cout << "F=" << F << std::endl;
 
 				if(!F.empty())
 				{
@@ -693,7 +704,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 							P0.at<double>(2,2) = 1;
 
 							UDEBUG("Computing P...done!");
-							std::cout << "P=" << P << std::endl;
+							//std::cout << "P=" << P << std::endl;
 
 							cv::Mat R, T;
 							EpipolarGeometry::findRTFromP(P, R, T);
@@ -712,6 +723,41 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 
 							oi = 0;
 							UASSERT(newCorners.size() == cloud->size());
+
+							pcl::PointCloud<pcl::PointXYZ>::Ptr newCorners3D(new pcl::PointCloud<pcl::PointXYZ>);
+
+							if(refDepthOrRight_.type() == CV_8UC1)
+							{
+								 newCorners3D = util3d::generateKeypoints3DStereo(
+										 refCorners,
+										 refS->sensorData().imageRaw(),
+										 refDepthOrRight_,
+										 cameraModel.fx(),
+										 data.stereoCameraModel().baseline(),
+										 cameraModel.cx(),
+										 cameraModel.cy(),
+										 Transform::getIdentity(),
+										 stereoWinSize_,
+										 stereoMaxLevel_,
+										 stereoIterations_,
+										 stereoEps_,
+										 stereoMaxSlope_ );
+							}
+							else if(refDepthOrRight_.type() == CV_32FC1 || refDepthOrRight_.type() == CV_16UC1)
+							{
+								std::vector<cv::KeyPoint> tmpKpts;
+								cv::KeyPoint::convert(refCorners, tmpKpts);
+								CameraModel m(cameraModel.fx(), cameraModel.fy(), cameraModel.cx(), cameraModel.cy());
+								 newCorners3D = util3d::generateKeypoints3DDepth(
+										 tmpKpts,
+										 refDepthOrRight_,
+										 m);
+							}
+							else if(!refDepthOrRight_.empty())
+							{
+								UWARN("Depth or right image type not supported: %d", refDepthOrRight_.type());
+							}
+
 							for(unsigned int i=0; i<cloud->size(); ++i)
 							{
 								if(cloud->at(i).z>0)
@@ -719,17 +765,9 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 									imagePoints[oi] = newCorners[i];
 									tmpCornersId[oi] = cornerIds[i];
 									(*inliersRef)[oi] = cloud->at(i);
-									if(!refDepth_.empty())
+									if(!newCorners3D->empty())
 									{
-										(*inliersRefGuess)[oi] = util3d::projectDepthTo3D(
-												refDepth_,
-												refCorners[i].x,
-												refCorners[i].y,
-												cameraModel.cx(),
-												cameraModel.cy(),
-												cameraModel.fx(),
-												cameraModel.fy(),
-												true);
+										(*inliersRefGuess)[oi] = newCorners3D->at(i);
 									}
 									++oi;
 								}
@@ -745,7 +783,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 							//estimate scale
 							float scale = 1;
 							std::multimap<float, float> scales; // <variance, scale>
-							if(!refDepth_.empty()) // scale known
+							if(!newCorners3D->empty()) // scale known
 							{
 								UASSERT(inliersRefGuess->size() == inliersRef->size());
 								for(unsigned int i=0; i<inliersRef->size(); ++i)
@@ -754,6 +792,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 									{
 										float s = inliersRefGuess->at(i).z/inliersRef->at(i).z;
 										std::vector<float> errorSqrdDists(inliersRef->size());
+										oi = 0;
 										for(unsigned int j=0; j<inliersRef->size(); ++j)
 										{
 											if(cloud->at(j).z>0)
@@ -763,30 +802,40 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 												refPt.y *= s;
 												refPt.z *= s;
 												const pcl::PointXYZ & guess = inliersRefGuess->at(j);
-												errorSqrdDists[j] = uNormSquared(refPt.x-guess.x, refPt.y-guess.y, refPt.z-guess.z);
+												errorSqrdDists[oi++] = uNormSquared(refPt.x-guess.x, refPt.y-guess.y, refPt.z-guess.z);
 											}
 										}
-										std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
-										double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
-										float variance = 2.1981 * median_error_sqr;
-										//UDEBUG("scale %d = %f variance = %f", i, s, variance);
-										if(variance > 0)
+										errorSqrdDists.resize(oi);
+										if(errorSqrdDists.size() > 2)
 										{
-											scales.insert(std::make_pair(variance, s));
+											std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
+											double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
+											float variance = 2.1981 * median_error_sqr;
+											//UDEBUG("scale %d = %f variance = %f", i, s, variance);
+											if(variance > 0)
+											{
+												scales.insert(std::make_pair(variance, s));
+											}
 										}
 									}
 								}
-								UASSERT(scales.size());
-
-								scale = scales.begin()->second;
-								UDEBUG("scale used = %f (variance=%f)", scale, scales.begin()->first);
-
-								maxVariance_ = 0.01;
-								UDEBUG("Max noise variance = %f current variance=%f", 0.01, scales.begin()->first);
-								if(scales.begin()->first > 0.01)
+								if(scales.size() == 0)
 								{
-									UWARN("Too high variance %f (should be < 0.01)");
-									reject = true; // 20 cm for good initialization
+									UWARN("No scales found!?");
+									reject = true;
+								}
+								else
+								{
+									scale = scales.begin()->second;
+									UWARN("scale used = %f (variance=%f scales=%d)", scale, scales.begin()->first, (int)scales.size());
+
+									maxVariance_ = 0.01;
+									UDEBUG("Max noise variance = %f current variance=%f", 0.01, scales.begin()->first);
+									if(scales.begin()->first > 0.01)
+									{
+										UWARN("Too high variance %f (should be < 0.01)", scales.begin()->first);
+										reject = true; // 20 cm for good initialization
+									}
 								}
 
 							}
@@ -905,7 +954,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 				{
 					cornersMap_.insert(std::make_pair(iter->first, iter->second.pt));
 				}
-				refDepth_ = data.depthOrRightRaw().clone();
+				refDepthOrRight_ = data.depthOrRightRaw().clone();
 				keyFramePoses_.insert(std::make_pair(memory_->getLastSignatureId(), Transform::getIdentity()));
 			}
 			else
