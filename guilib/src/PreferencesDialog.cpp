@@ -1040,7 +1040,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_checkBox_ignoreOdometry->setChecked(false);
 		_ui->source_checkBox_ignoreGoalDelay->setChecked(false);
 		_ui->source_spinBox_databaseStartPos->setValue(0);
-		_ui->source_checkBox_useDbStamps->setChecked(false);
+		_ui->source_checkBox_useDbStamps->setChecked(true);
 
 #ifdef _WIN32
 		_ui->comboBox_cameraRGBD->setCurrentIndex(kSrcOpenNI2-kSrcRGBD); // openni2
@@ -2147,6 +2147,7 @@ void PreferencesDialog::selectSourceDatabase()
 		_ui->source_checkBox_ignoreOdometry->setChecked(r != QMessageBox::Yes);
 		_ui->source_database_lineEdit_path->setText(paths.size()==1?paths.front():paths.join(";"));
 		_ui->source_spinBox_databaseStartPos->setValue(0);
+		_ui->source_checkBox_useDbStamps->setChecked(true);
 	}
 }
 

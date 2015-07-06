@@ -2702,7 +2702,8 @@ void MainWindow::startDetection()
 		float inputRate = _preferencesDialog->getGeneralInputRate();
 		float detectionRate = uStr2Float(parameters.at(Parameters::kRtabmapDetectionRate()));
 		int bufferingSize = uStr2Float(parameters.at(Parameters::kRtabmapImageBufferSize()));
-		if((detectionRate!=0.0f && detectionRate < inputRate) || (detectionRate > 0.0f && inputRate == 0.0f))
+		if(((detectionRate!=0.0f && detectionRate < inputRate) || (detectionRate > 0.0f && inputRate == 0.0f)) &&
+			(_preferencesDialog->getSourceDriver() != PreferencesDialog::kSrcDatabase || !_preferencesDialog->getSourceDatabaseStampsUsed()))
 		{
 			int button = QMessageBox::question(this,
 					tr("Incompatible frame rates!"),
@@ -2717,7 +2718,8 @@ void MainWindow::startDetection()
 				return;
 			}
 		}
-		if(bufferingSize != 0)
+		if(bufferingSize != 0 &&
+		  (_preferencesDialog->getSourceDriver() != PreferencesDialog::kSrcDatabase || !_preferencesDialog->getSourceDatabaseStampsUsed()))
 		{
 			int button = QMessageBox::question(this,
 					tr("Some images may be skipped!"),
