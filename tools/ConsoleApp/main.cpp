@@ -474,8 +474,7 @@ int main(int argc, char * argv[])
 
 		// Generate the ground truth file
 		printf("Generate ground truth to file %s, size of %d\n", GENERATED_GT_NAME, groundTruthMat.rows);
-		IplImage img = groundTruthMat;
-		cvSaveImage(GENERATED_GT_NAME, &img);
+		cv::imwrite(GENERATED_GT_NAME, groundTruthMat);
 		printf(" Creating ground truth file = %fs\n", timer.ticks());
 	}
 

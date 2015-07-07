@@ -94,59 +94,41 @@ int main(int argc, char * argv[])
 
 		std::string targetFilePath = targetDirectory+UDirectory::separator()+uNumber2Str(i++)+"."+ext;
 
-		IplImage * imageA = cvLoadImage(fileNameA.c_str(), CV_LOAD_IMAGE_COLOR);
-		IplImage * imageB = cvLoadImage(fileNameB.c_str(), CV_LOAD_IMAGE_COLOR);
+		cv::Mat imageA = cv::imread(fileNameA.c_str());
+		cv::Mat imageB = cv::imread(fileNameB.c_str());
 
 		fileNameA.clear();
 		fileNameB.clear();
 
-		if(imageA && imageB)
+		if(!imageA.empty() && !imageB.empty())
 		{
-			CvSize sizeA = cvGetSize(imageA);
-			CvSize sizeB = cvGetSize(imageB);
-			CvSize targetSize = cvSize(0,0);
+			cv::Size sizeA = imageA.size();
+			cv::Size sizeB = imageB.size();
+			cv::Size targetSize(0,0);
 			targetSize.width = sizeA.width + sizeB.width;
 			targetSize.height = sizeA.height > sizeB.height ? sizeA.height : sizeB.height;
-			IplImage* targetImage = cvCreateImage(targetSize, imageA->depth, imageA->nChannels);
-			if(targetImage)
+			cv::Mat targetImage(targetSize, imageA.type());
+
+			cv::Mat roiA(targetImage, cv::Rect( 0, 0, sizeA.width, sizeA.height ));
+			imageA.copyTo(roiA);
+			cv::Mat roiB( targetImage, cvRect( sizeA.width, 0, sizeB.width, sizeB.height ) );
+			imageB.copyTo(roiB);
+
+			if(!cv::imwrite(targetFilePath.c_str(), targetImage))
 			{
-				cvSetImageROI( targetImage, cvRect( 0, 0, sizeA.width, sizeA.height ) );
-				cvCopy( imageA, targetImage );
-				cvSetImageROI( targetImage, cvRect( sizeA.width, 0, sizeB.width, sizeB.height ) );
-				cvCopy( imageB, targetImage );
-				cvResetImageROI( targetImage );
-
-				if(!cvSaveImage(targetFilePath.c_str(), targetImage))
-				{
-					printf("Error : saving to \"%s\" goes wrong...\n", targetFilePath.c_str());
-				}
-				else
-				{
-					printf("Saved \"%s\" \n", targetFilePath.c_str());
-				}
-
-				cvReleaseImage(&targetImage);
-
-				fileNameA = dir.getNextFilePath();
-				fileNameB = dir.getNextFilePath();
+				printf("Error : saving to \"%s\" goes wrong...\n", targetFilePath.c_str());
 			}
 			else
 			{
-				printf("Error : can't allocated the target image with size (%d,%d)\n", targetSize.width, targetSize.height);
+				printf("Saved \"%s\" \n", targetFilePath.c_str());
 			}
+
+			fileNameA = dir.getNextFilePath();
+			fileNameB = dir.getNextFilePath();
 		}
 		else
 		{
 			printf("Error: loading images failed!\n");
-		}
-
-		if(imageA)
-		{
-			cvReleaseImage(&imageA);
-		}
-		if(imageB)
-		{
-			cvReleaseImage(&imageB);
 		}
 	}
 	printf("%d files processed\n", i-1);
