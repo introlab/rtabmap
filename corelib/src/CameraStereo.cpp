@@ -424,13 +424,17 @@ SensorData CameraStereoDC1394::captureImage()
 			// Rectification
 			left = stereoModel_.left().rectifyImage(left);
 			right = stereoModel_.right().rectifyImage(right);
-			StereoCameraModel model(
-					stereoModel_.left().fx(), //fx
-					stereoModel_.left().fy(), //fy
-					stereoModel_.left().cx(), //cx
-					stereoModel_.left().cy(), //cy
-					stereoModel_.baseline(),
-					this->getLocalTransform());
+			StereoCameraModel model;
+			if(stereoModel_.isValid())
+			{
+				model = StereoCameraModel(
+						stereoModel_.left().fx(), //fx
+						stereoModel_.left().fy(), //fy
+						stereoModel_.left().cx(), //cx
+						stereoModel_.left().cy(), //cy
+						stereoModel_.baseline(),
+						this->getLocalTransform());
+			}
 			data = SensorData(left, right, model, this->getNextSeqID(), UTimer::now());
 		}
 	}
