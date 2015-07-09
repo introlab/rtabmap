@@ -62,6 +62,7 @@ public:
 
 private:
 	virtual void mainLoop();
+	virtual void mainLoopKill();
 
 private:
 	Camera * _camera;

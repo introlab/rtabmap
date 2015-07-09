@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/CameraEvent.h"
+#include "rtabmap/core/CameraRGBD.h"
 
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
@@ -103,6 +104,31 @@ void CameraThread::mainLoop()
 		UWARN("no more images...");
 		this->kill();
 		this->post(new CameraEvent());
+	}
+}
+
+void CameraThread::mainLoopKill()
+{
+	if(dynamic_cast<CameraFreenect2*>(_camera) != 0)
+	{
+		int i=20;
+		while(i-->0)
+		{
+			uSleep(100);
+			if(!this->isKilled())
+			{
+				break;
+			}
+		}
+		if(this->isKilled())
+		{
+			//still in killed state, maybe a deadlock
+			UERROR("CameraFreenect2: Failed to kill normally the Freenect2 driver! The thread is locked "
+				   "on waitForNewFrame() method of libfreenect2. This maybe caused by not linking on the right libusb. "
+				   "Note that rtabmap should link on libusb of libfreenect2. "
+				   "Tip before starting rtabmap: \"$ export LD_LIBRARY_PATH=~/libfreenect2/depends/libusb/lib:$LD_LIBRARY_PATH\"");
+		}
+
 	}
 }
 

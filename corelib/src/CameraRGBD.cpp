@@ -55,6 +55,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <libfreenect2/frame_listener_impl.h>
 #include <libfreenect2/registration.h>
 #include <libfreenect2/packet_pipeline.h>
+#include <libfreenect2/config.h>
 #endif
 
 #ifdef WITH_DC1394
@@ -1249,16 +1250,14 @@ SensorData CameraFreenect2::captureImage()
 	{
 		libfreenect2::FrameMap frames;
 #ifndef LIBFREENECT2_THREADING_STDLIB
-		UDEBUG("Waiting for new frames... If it is stalled here, rtabmap should link on libusb of "
-				"libfreenect2, this can be done by setting LD_LIBRARY_PATH to "
-				"\"libfreenect2/depends/libusb/lib\"");
+		UDEBUG("Waiting for new frames... If it is stalled here, rtabmap should link on libusb of libfreenect2. "
+				"Tip, before starting rtabmap: \"$ export LD_LIBRARY_PATH=~/libfreenect2/depends/libusb/lib:$LD_LIBRARY_PATH\"");
 		listener_->waitForNewFrame(frames);
 #else
 		if(!listener_->waitForNewFrame(frames, 1000))
 		{
-			UWARN("CameraFreenect2: Failed to get frames! rtabmap should link on libusb of "
-					"libfreenect2, this can be done by setting LD_LIBRARY_PATH to "
-					"\"libfreenect2/depends/libusb/lib\"");
+			UWARN("CameraFreenect2: Failed to get frames! rtabmap should link on libusb of libfreenect2. "
+					"Tip, before starting rtabmap: \"$ export LD_LIBRARY_PATH=~/libfreenect2/depends/libusb/lib:$LD_LIBRARY_PATH\"");
 		}
 		else
 #endif
