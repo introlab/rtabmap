@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>759</width>
-            <height>887</height>
+            <width>760</width>
+            <height>1570</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1436,7 +1436,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                       <item row="3" column="1">
                        <widget class="QLabel" name="label_42">
                         <property name="text">
-                         <string>Local transform from /base_link to /camera_link. Format (6 values): x y z roll pitch yaw. Format (9 values): r11 r12 r13 r21 r22 r23 r31 r32 r33.</string>
+                         <string>Local transform from /base_link to /camera_link. Format (6 values): x y z roll pitch yaw. Format (9 [+3] values): r11 r12 r13 r21 r22 r23 r31 r32 r33 [tx ty tz].</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>

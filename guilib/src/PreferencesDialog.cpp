@@ -3221,7 +3221,7 @@ Transform PreferencesDialog::getSourceLocalTransform() const
 	QString str = _ui->lineEdit_sourceLocalTransform->text();
 	str.replace("PI_2", QString::number(3.141592/2.0));
 	QStringList list = str.split(' ');
-	if(list.size() == 6 || list.size() == 9)
+	if(list.size() == 6 || list.size() == 9 || list.size() == 12)
 	{
 		std::vector<float> numbers(list.size());
 		bool ok = false;
@@ -3237,15 +3237,21 @@ Transform PreferencesDialog::getSourceLocalTransform() const
 		}
 		if(ok)
 		{
-			if(list.size() == 6)
+			if(numbers.size() == 6)
 			{
 				t = Transform(numbers[0], numbers[1], numbers[2], numbers[3], numbers[4], numbers[5]);
 			}
-			else // 9
+			else if(numbers.size() == 9)
 			{
 				t = Transform(numbers[0], numbers[1], numbers[2], 0,
 						      numbers[3], numbers[4], numbers[5], 0,
 						      numbers[6], numbers[7], numbers[8], 0);
+			}
+			else if(numbers.size() == 12)
+			{
+				t = Transform(numbers[0], numbers[1], numbers[2], numbers[9],
+							  numbers[3], numbers[4], numbers[5], numbers[10],
+							  numbers[6], numbers[7], numbers[8], numbers[11]);
 			}
 		}
 	}

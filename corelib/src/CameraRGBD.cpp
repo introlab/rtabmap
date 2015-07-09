@@ -1459,12 +1459,16 @@ SensorData CameraFreenect2::captureImage()
 				}
 			}
 
-			CameraModel model(
-					fx, //fx
-					fy, //fy
-					cx,  //cx
-					cy, // cy
-					this->getLocalTransform());
+			CameraModel model;
+			if(fx && fy)
+			{
+				model=CameraModel(
+						fx, //fx
+						fy, //fy
+						cx,  //cx
+						cy, // cy
+						this->getLocalTransform());
+			}
 			data = SensorData(rgb, depth, model, this->getNextSeqID(), stamp);
 
 			listener_->release(frames);
