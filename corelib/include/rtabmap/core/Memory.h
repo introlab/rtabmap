@@ -272,7 +272,7 @@ private:
 	int _bowRefineIterations;
 	bool _bowForce2D;
 	float _bowEpipolarGeometryVar;
-	bool _bowEstimationType;
+	int _bowEstimationType;
 	double _bowPnPReprojError;
 	int _bowPnPFlags;
 	float _icpMaxTranslation;

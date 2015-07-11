@@ -2348,28 +2348,44 @@ Transform Memory::computeIcpTransform(
 
 					if(newCloud->size() && oldCloud->size())
 					{
-						icpT = util3d::icpPointToPlane(newCloud,
+						pcl::PointCloud<pcl::PointNormal>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointNormal>);
+						icpT = util3d::icpPointToPlane(
+								newCloud,
 								oldCloud,
 							   _icpMaxCorrespondenceDistance,
 							   _icpMaxIterations,
-							   &hasConverged,
-							   &variance,
-							   &correspondences);
+							   hasConverged,
+							   *newCloudRegistered);
+
+						util3d::computeVarianceAndCorrespondences(
+								newCloudRegistered,
+								oldCloud,
+								_icpMaxCorrespondenceDistance,
+								variance,
+								correspondences);
 					}
 				}
 				else
 				{
-					icpT = util3d::icp(newCloudXYZ,
+					pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
+					icpT = util3d::icp(
+							newCloudXYZ,
 							oldCloudXYZ,
 							_icpMaxCorrespondenceDistance,
 							_icpMaxIterations,
-							&hasConverged,
-							&variance,
-							&correspondences);
+							hasConverged,
+							*newCloudRegistered);
+
+					util3d::computeVarianceAndCorrespondences(
+							newCloudRegistered,
+							oldCloudXYZ,
+							_icpMaxCorrespondenceDistance,
+							variance,
+							correspondences);
 				}
 
 				// verify if there are enough correspondences
-				correspondencesRatio = float(correspondences)/float(newS.sensorData().depthOrRightRaw().total());
+				correspondencesRatio = float(correspondences)/float(newCloudXYZ->size()>oldCloudXYZ->size()?newCloudXYZ->size():oldCloudXYZ->size());
 
 				UDEBUG("%d->%d hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
 						hasConverged?"true":"false",
@@ -2456,10 +2472,12 @@ Transform Memory::computeIcpTransform(
 			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud = util3d::cvMat2Cloud(newS.sensorData().laserScanRaw(), guess);
 
 			//voxelize
+			pcl::PointCloud<pcl::PointXYZ>::Ptr oldCloudVoxelized = oldCloud;
+			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudVoxelized = newCloud;
 			if(_icp2VoxelSize > _laserScanVoxelSize)
 			{
-				oldCloud = util3d::voxelize(oldCloud, _icp2VoxelSize);
-				newCloud = util3d::voxelize(newCloud, _icp2VoxelSize);
+				oldCloudVoxelized = util3d::voxelize(oldCloud, _icp2VoxelSize);
+				newCloudVoxelized = util3d::voxelize(newCloud, _icp2VoxelSize);
 			}
 
 			if(newCloud->size() && oldCloud->size())
@@ -2469,33 +2487,14 @@ Transform Memory::computeIcpTransform(
 				float correspondencesRatio = -1.0f;
 				int correspondences = 0;
 				double variance = 1;
-				icpT = util3d::icp2D(newCloud,
-						oldCloud,
+				pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
+				icpT = util3d::icp2D(
+						newCloudVoxelized,
+						oldCloudVoxelized,
 					   _icp2MaxCorrespondenceDistance,
 					   _icp2MaxIterations,
-					   &hasConverged,
-					   &variance,
-					   &correspondences);
-
-				// verify if there are enough correspondences
-
-				if(newS.sensorData().laserScanMaxPts())
-				{
-					correspondencesRatio = float(correspondences)/float(newS.sensorData().laserScanMaxPts());
-				}
-				else
-				{
-					UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set to 0!",
-							newS.id());
-				}
-
-				UDEBUG("%d->%d hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
-						newS.id(), oldS.id(),
-						hasConverged?"true":"false",
-						variance,
-						correspondences,
-						(int)(oldCloud->size()>newCloud->size()?oldCloud->size():newCloud->size()),
-						correspondencesRatio*100.0f);
+					   hasConverged,
+					   *newCloudRegistered);
 
 				//pcl::io::savePCDFile("oldCloud.pcd", *oldCloud);
 				//pcl::io::savePCDFile("newCloud.pcd", *newCloud);
@@ -2507,22 +2506,8 @@ Transform Memory::computeIcpTransform(
 				//	UWARN("saved newCloudFinal.pcd");
 				//}
 
-				if(varianceOut)
-				{
-					*varianceOut = variance;
-				}
-				if(correspondencesOut)
-				{
-					*correspondencesOut = correspondences;
-				}
-				if(correspondencesRatioOut)
-				{
-					*correspondencesRatioOut = correspondencesRatio;
-				}
-
 				if(!icpT.isNull() &&
-					hasConverged &&
-					correspondencesRatio >= _icp2CorrespondenceRatio)
+					hasConverged)
 				{
 					float ix,iy,iz, iroll,ipitch,iyaw;
 					icpT.getTranslationAndEulerAngles(ix,iy,iz,iroll,ipitch,iyaw);
@@ -2530,8 +2515,8 @@ Transform Memory::computeIcpTransform(
 						(fabs(ix) > _icpMaxTranslation ||
 						 fabs(iy) > _icpMaxTranslation ||
 						 fabs(iz) > _icpMaxTranslation))
-					    ||
-					    (_icpMaxRotation>0.0f &&
+						||
+						(_icpMaxRotation>0.0f &&
 						 (fabs(iroll) > _icpMaxRotation ||
 						  fabs(ipitch) > _icpMaxRotation ||
 						  fabs(iyaw) > _icpMaxRotation)))
@@ -2541,14 +2526,72 @@ Transform Memory::computeIcpTransform(
 					}
 					else
 					{
-						transform = icpT * guess;
-						transform = transform.inverse();
+						if(_icp2VoxelSize <= _laserScanVoxelSize)
+						{
+							newCloud = util3d::transformPointCloud(newCloud, icpT);
+						}
+						else
+						{
+							newCloud = newCloudRegistered;
+						}
+
+						pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
+						util3d::computeVarianceAndCorrespondences(
+								newCloud,
+								oldCloud,
+								_icpMaxCorrespondenceDistance,
+								variance,
+								correspondences);
+
+						// verify if there are enough correspondences
+						if(newS.sensorData().laserScanMaxPts())
+						{
+							correspondencesRatio = float(correspondences)/float(newS.sensorData().laserScanMaxPts());
+						}
+						else
+						{
+							UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set to 0!",
+									newS.id());
+						}
+
+						UDEBUG("%d->%d hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
+								newS.id(), oldS.id(),
+								hasConverged?"true":"false",
+								variance,
+								correspondences,
+								(int)(newS.sensorData().laserScanMaxPts()),
+								correspondencesRatio*100.0f);
+
+						if(varianceOut)
+						{
+							*varianceOut = variance;
+						}
+						if(correspondencesOut)
+						{
+							*correspondencesOut = correspondences;
+						}
+						if(correspondencesRatioOut)
+						{
+							*correspondencesRatioOut = correspondencesRatio;
+						}
+
+						if(correspondencesRatio < _icp2CorrespondenceRatio)
+						{
+							msg = uFormat("Cannot compute transform (cor=%d corrRatio=%f/%f)",
+									correspondences, correspondencesRatio, _icp2CorrespondenceRatio);
+							UINFO(msg.c_str());
+						}
+						else
+						{
+							transform = icpT * guess;
+							transform = transform.inverse();
+						}
 					}
 				}
 				else
 				{
-					msg = uFormat("Cannot compute transform (converged=%s var=%f cor=%d corrRatio=%f/%f)",
-							hasConverged?"true":"false", variance, correspondences, correspondencesRatio, _icp2CorrespondenceRatio);
+					msg = uFormat("Cannot compute transform (converged=%s var=%f)",
+							hasConverged?"true":"false", variance);
 					UINFO(msg.c_str());
 				}
 			}
@@ -2638,48 +2681,27 @@ Transform Memory::computeScanMatchingTransform(
 	newCloud = util3d::cvMat2Cloud(newScan, poses.at(newId));
 
 	//voxelize
+	pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudVoxelized = newCloud;
 	if(newCloud->size() && _icp2VoxelSize > _laserScanVoxelSize)
 	{
-		newCloud = util3d::voxelize(newCloud, _icp2VoxelSize);
+		newCloudVoxelized = util3d::voxelize(newCloud, _icp2VoxelSize);
 	}
 
 	Transform transform;
-	if(assembledOldClouds->size() && newCloud->size())
+	if(assembledOldClouds->size() && newCloudVoxelized->size())
 	{
 		int correspondences = 0;
 		bool hasConverged = false;
-		Transform icpT = util3d::icp2D(newCloud,
+		pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
+		Transform icpT = util3d::icp2D(
+				newCloudVoxelized,
 				assembledOldClouds,
 			   _icp2MaxCorrespondenceDistance,
 			   _icp2MaxIterations,
-			   &hasConverged,
-			   variance,
-			   &correspondences);
+			   hasConverged,
+			   *newCloudRegistered);
 
 		UDEBUG("icpT=%s", icpT.prettyPrint().c_str());
-
-		// verify if there enough correspondences
-		float correspondencesRatio = 0.0f;
-		if(newS->sensorData().laserScanMaxPts())
-		{
-			correspondencesRatio = float(correspondences)/float(newS->sensorData().laserScanMaxPts());
-		}
-		else
-		{
-			UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set to 0!",
-					newS->id());
-		}
-
-		UDEBUG("variance=%f, correspondences=%d/%d (%f%%) %f",
-				variance?*variance:-1,
-				correspondences,
-				(int)newCloud->size(),
-				correspondencesRatio*100.0f);
-
-		if(inliers)
-		{
-			*inliers = correspondences;
-		}
 
 		//pcl::io::savePCDFile("old.pcd", *assembledOldClouds, true);
 		//pcl::io::savePCDFile("new.pcd", *newCloud, true);
@@ -2691,19 +2713,71 @@ Transform Memory::computeScanMatchingTransform(
 		//	UWARN("local scan matching newFinal.pcd saved!");
 		//}
 
-		if(!icpT.isNull() && hasConverged &&
-		   correspondencesRatio >= _icp2CorrespondenceRatio)
+		if(!icpT.isNull() && hasConverged)
 		{
-			transform = poses.at(newId).inverse()*icpT.inverse() * poses.at(oldId);
+			if(_icp2VoxelSize <= _laserScanVoxelSize)
+			{
+				newCloud = util3d::transformPointCloud(newCloud, icpT);
+			}
+			else
+			{
+				newCloud = newCloudRegistered;
+			}
+
+			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
+			double v = 1;
+			util3d::computeVarianceAndCorrespondences(
+					newCloud,
+					assembledOldClouds,
+					_icpMaxCorrespondenceDistance,
+					v,
+					correspondences);
+			if(variance)
+			{
+				*variance = v;
+			}
+
+			// verify if there enough correspondences
+			float correspondencesRatio = 0.0f;
+			if(newS->sensorData().laserScanMaxPts())
+			{
+				correspondencesRatio = float(correspondences)/float(newS->sensorData().laserScanMaxPts());
+			}
+			else
+			{
+				UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set to 0!",
+						newS->id());
+			}
+
+			UDEBUG("variance=%f, correspondences=%d/%d (%f%%) %f",
+					variance?*variance:-1,
+					correspondences,
+					(int)newCloud->size(),
+					correspondencesRatio*100.0f);
+
+			if(inliers)
+			{
+				*inliers = correspondences;
+			}
+
+			if(correspondencesRatio >= _icp2CorrespondenceRatio)
+			{
+				transform = poses.at(newId).inverse()*icpT.inverse() * poses.at(oldId);
+			}
+			else
+			{
+				msg = uFormat("Constraints failed... variance=%f, correspondences=%d/%d (%f%%)",
+					variance?*variance:-1,
+					correspondences,
+					(int)newCloud->size(),
+					correspondencesRatio);
+				UINFO(msg.c_str());
+			}
 		}
 		else
 		{
-			msg = uFormat("Constraints failed... hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
-				hasConverged?"true":"false",
-				variance?*variance:-1,
-				correspondences,
-				(int)newCloud->size(),
-				correspondencesRatio);
+			msg = uFormat("Constraints failed... hasConverged=%s",
+				hasConverged?"true":"false");
 			UINFO(msg.c_str());
 		}
 	}

@@ -3505,22 +3505,22 @@ void MainWindow::postProcessing()
 		}
 		_initProgressDialog->appendText(tr("Refining links..."));
 
-		int decimation=8;
-		float maxDepth=2.0f;
-		float voxelSize=0.01f;
-		int samples = 0;
-		float maxCorrespondences = 0.05f;
-		float correspondenceRatio = 0.7f;
-		float icpIterations = 30;
+		int decimation=Parameters::defaultLccIcp3Decimation();
+		float maxDepth=Parameters::defaultLccIcp3MaxDepth();
+		float voxelSize=Parameters::defaultLccIcp3VoxelSize();
+		int samples = Parameters::defaultLccIcp3Samples();
+		float maxCorrespondenceDistance = Parameters::defaultLccIcp3MaxCorrespondenceDistance();
+		float correspondenceRatio = Parameters::defaultLccIcp3CorrespondenceRatio();
+		float icpIterations = Parameters::defaultLccIcp3Iterations();
 		Parameters::parse(parameters, Parameters::kLccIcp3Decimation(), decimation);
 		Parameters::parse(parameters, Parameters::kLccIcp3MaxDepth(), maxDepth);
 		Parameters::parse(parameters, Parameters::kLccIcp3VoxelSize(), voxelSize);
 		Parameters::parse(parameters, Parameters::kLccIcp3Samples(), samples);
 		Parameters::parse(parameters, Parameters::kLccIcp3CorrespondenceRatio(), correspondenceRatio);
-		Parameters::parse(parameters, Parameters::kLccIcp3MaxCorrespondenceDistance(), maxCorrespondences);
+		Parameters::parse(parameters, Parameters::kLccIcp3MaxCorrespondenceDistance(), maxCorrespondenceDistance);
 		Parameters::parse(parameters, Parameters::kLccIcp3Iterations(), icpIterations);
-		bool pointToPlane = false;
-		int pointToPlaneNormalNeighbors = 20;
+		bool pointToPlane = Parameters::defaultLccIcp3PointToPlane();
+		int pointToPlaneNormalNeighbors = Parameters::defaultLccIcp3PointToPlaneNormalNeighbors();
 		Parameters::parse(parameters, Parameters::kLccIcp3PointToPlane(), pointToPlane);
 		Parameters::parse(parameters, Parameters::kLccIcp3PointToPlaneNormalNeighbors(), pointToPlaneNormalNeighbors);
 
@@ -3605,24 +3605,36 @@ void MainWindow::postProcessing()
 								UWARN("removed nan normals...");
 							}
 
+							pcl::PointCloud<pcl::PointNormal>::Ptr cloudBRegistered(new pcl::PointCloud<pcl::PointNormal>);
 							transform = util3d::icpPointToPlane(cloudBNormals,
 									cloudANormals,
-									maxCorrespondences,
+									maxCorrespondenceDistance,
 									icpIterations,
-									&hasConverged,
-									&variance,
-									&correspondences);
+									hasConverged,
+									*cloudBRegistered);
+							util3d::computeVarianceAndCorrespondences(
+									cloudBRegistered,
+									cloudANormals,
+									maxCorrespondenceDistance,
+									variance,
+									correspondences);
 						}
 						else
 						{
 							UDEBUG("");
+							pcl::PointCloud<pcl::PointXYZ>::Ptr cloudBRegistered(new pcl::PointCloud<pcl::PointXYZ>);
 							transform = util3d::icp(cloudB,
 									cloudA,
-									maxCorrespondences,
+									maxCorrespondenceDistance,
 									icpIterations,
-									&hasConverged,
-									&variance,
-									&correspondences);
+									hasConverged,
+									*cloudBRegistered);
+							util3d::computeVarianceAndCorrespondences(
+									cloudBRegistered,
+									cloudA,
+									maxCorrespondenceDistance,
+									variance,
+									correspondences);
 						}
 
 						float correspondencesRatio = float(correspondences)/float(cloudB->size()>cloudA->size()?cloudB->size():cloudA->size());

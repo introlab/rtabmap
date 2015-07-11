@@ -506,15 +506,16 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
 			cv::cuda::GpuMat newDescriptorsGpu(descriptors);
 			cv::cuda::GpuMat lastDescriptorsGpu(_dataTree);
+			cv::Ptr<cv::cuda::DescriptorMatcher> gpuMatcher;
 			if(type==CV_8U)
 			{
-				cv::cuda::BruteForceMatcher_GPU<cv::Hamming> gpuMatcher;
-				gpuMatcher.knnMatch(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
+				gpuMatcher = cv::cuda::DescriptorMatcher::createBFMatcher(cv::NORM_HAMMING);
+				gpuMatcher->knnMatch(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
 			}
 			else
 			{
-				cv::cuda::BruteForceMatcher_GPU<cv::L2<float> > gpuMatcher;
-				gpuMatcher.knnMatch(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
+				gpuMatcher = cv::cuda::DescriptorMatcher::createBFMatcher(cv::NORM_L2);
+				gpuMatcher->knnMatch(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
 			}
 #endif
 #endif
@@ -742,12 +743,12 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 				if(type==CV_8U)
 				{
 					gpuMatcher = cv::cuda::DescriptorMatcher::createBFMatcher(cv::NORM_HAMMING);
-					gpuMatcher->knnMatch(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
+					gpuMatcher->knnMatchAsync(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
 				}
 				else
 				{
 					gpuMatcher = cv::cuda::DescriptorMatcher::createBFMatcher(cv::NORM_L2);
-					gpuMatcher.knnMatch(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
+					gpuMatcher->knnMatchAsync(newDescriptorsGpu, lastDescriptorsGpu, matches, k);
 				}
 #endif
 #endif

@@ -115,7 +115,7 @@ unsigned int CameraImages::imagesCount() const
 {
 	if(_dir)
 	{
-		return _dir->getFileNames().size();
+		return (unsigned int)_dir->getFileNames().size();
 	}
 	return 0;
 }

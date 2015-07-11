@@ -112,14 +112,22 @@ Transform OdometryICP::computeTransform(const SensorData & data, OdometryInfo * 
 
 			if(_previousCloudNormal->size() > minPoints && newCloud->size() > minPoints)
 			{
-				int correspondences = 0;
-				Transform transform = util3d::icpPointToPlane(newCloud,
+				pcl::PointCloud<pcl::PointNormal>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointNormal>);
+				Transform transform = util3d::icpPointToPlane(
+						newCloud,
 						_previousCloudNormal,
 						_maxCorrespondenceDistance,
 						_maxIterations,
-						&hasConverged,
-						&variance,
-						&correspondences);
+						hasConverged,
+						*newCloudRegistered);
+
+				int correspondences = 0;
+				util3d::computeVarianceAndCorrespondences(
+						newCloudRegistered,
+						_previousCloudNormal,
+						_maxCorrespondenceDistance,
+						variance,
+						correspondences);
 
 				// verify if there are enough correspondences
 				float correspondencesRatio = float(correspondences)/float(_previousCloudNormal->size()>newCloud->size()?_previousCloudNormal->size():newCloud->size());
@@ -147,14 +155,22 @@ Transform OdometryICP::computeTransform(const SensorData & data, OdometryInfo * 
 			//point to point
 			if(_previousCloud->size() > minPoints && newCloudXYZ->size() > minPoints)
 			{
-				int correspondences = 0;
-				Transform transform = util3d::icp(newCloudXYZ,
+				pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
+				Transform transform = util3d::icp(
+						newCloudXYZ,
 						_previousCloud,
 						_maxCorrespondenceDistance,
 						_maxIterations,
-						&hasConverged,
-						&variance,
-						&correspondences);
+						hasConverged,
+						*newCloudRegistered);
+
+				int correspondences = 0;
+				util3d::computeVarianceAndCorrespondences(
+						newCloudRegistered,
+						_previousCloud,
+						_maxCorrespondenceDistance,
+						variance,
+						correspondences);
 
 				// verify if there are enough correspondences
 				float correspondencesRatio = float(correspondences)/float(_previousCloud->size()>newCloudXYZ->size()?_previousCloud->size():newCloudXYZ->size());

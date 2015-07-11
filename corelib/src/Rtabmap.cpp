@@ -1553,7 +1553,7 @@ bool Rtabmap::process(
 				iter!=retrievalLocalIds.end() && retrievalLocalIds.size() < _maxLocalRetrieved;
 				++iter)
 			{
-				std::map<int, int> ids = _memory->getNeighborsId(*iter, 2, _maxLocalRetrieved - retrievalLocalIds.size() + 1, true, false);
+				std::map<int, int> ids = _memory->getNeighborsId(*iter, 2, _maxLocalRetrieved - (unsigned int)retrievalLocalIds.size() + 1, true, false);
 				for(std::map<int, int>::reverse_iterator jter=ids.rbegin();
 					jter!=ids.rend() && retrievalLocalIds.size() < _maxLocalRetrieved;
 					++jter)
@@ -2311,7 +2311,7 @@ bool Rtabmap::process(
 		statistics_.setConstraints(constraints);
 		statistics_.setSignatures(signatures);
 		statistics_.addStatistic(Statistics::kMemoryLocal_graph_size(), poses.size());
-		localGraphSize = poses.size();
+		localGraphSize = (int)poses.size();
 	}
 
 	//Start trashing
@@ -3053,7 +3053,7 @@ bool Rtabmap::computePath(int targetNode, bool global)
 		{
 			// set goal to latest signature
 			std::string goalStr = uFormat("GOAL:%d", targetNode);
-			setUserData(0, cv::Mat(1, goalStr.size()+1, CV_8SC1, (void *)goalStr.c_str()).clone());
+			setUserData(0, cv::Mat(1, int(goalStr.size()+1), CV_8SC1, (void *)goalStr.c_str()).clone());
 		}
 		updateGoalIndex();
 	}

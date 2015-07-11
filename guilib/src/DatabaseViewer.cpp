@@ -2764,8 +2764,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr scanA(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr scanB(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr scanAVoxelized(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr scanBVoxelized(new pcl::PointCloud<pcl::PointXYZ>);
 	float correspondenceRatio = 0.0f;
 	if(ui_->checkBox_icp_2d->isChecked())
 	{
@@ -2776,6 +2776,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 		if(!oldLaserScan.empty() && !newLaserScan.empty())
 		{
 			// 2D
+			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA(new pcl::PointCloud<pcl::PointXYZ>);
+			pcl::PointCloud<pcl::PointXYZ>::Ptr scanB(new pcl::PointCloud<pcl::PointXYZ>);
 			scanA = util3d::cvMat2Cloud(oldLaserScan);
 			scanB = util3d::cvMat2Cloud(newLaserScan, t);
 
@@ -2785,21 +2787,40 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 				scanA = util3d::voxelize(scanA, ui_->doubleSpinBox_icp_voxel->value());
 				scanB = util3d::voxelize(scanB, ui_->doubleSpinBox_icp_voxel->value());
 			}
+			else
+			{
+				scanAVoxelized = scanA;
+				scanBVoxelized = scanB;
+			}
 
 			if(scanB->size() && scanA->size())
 			{
-				transform = util3d::icp2D(scanB,
+				pcl::PointCloud<pcl::PointXYZ>::Ptr scanBRegistered(new pcl::PointCloud<pcl::PointXYZ>);
+				transform = util3d::icp2D(
+						scanB,
 						scanA,
 						ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
 						ui_->spinBox_icp_iteration->value(),
-					   &hasConverged,
-					   &variance,
-					   &correspondences);
+						hasConverged,
+						*scanBRegistered);
 
 				if(!transform.isNull())
 				{
 					if(dataTo.laserScanMaxPts())
 					{
+						pcl::PointCloud<pcl::PointXYZ>::Ptr scanBTransformed = scanBRegistered;
+						if(ui_->doubleSpinBox_icp_voxel->value() > 0.0f)
+						{
+							scanBTransformed = util3d::transformPointCloud(scanB, transform);
+						}
+
+						util3d::computeVarianceAndCorrespondences(
+								scanBTransformed,
+								scanA,
+								ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
+								variance,
+								correspondences);
+
 						correspondenceRatio =  float(correspondences)/float(dataTo.laserScanMaxPts());
 					}
 					else if(ui_->doubleSpinBox_icp_minCorrespondenceRatio->value())
@@ -2844,25 +2865,38 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 					UWARN("removed nan normals...");
 				}
 
-				transform = util3d::icpPointToPlane(cloudBNormals,
+				pcl::PointCloud<pcl::PointNormal>::Ptr cloudBRegistered(new pcl::PointCloud<pcl::PointNormal>);
+				transform = util3d::icpPointToPlane(
+						cloudBNormals,
 						cloudANormals,
 						ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
 						ui_->spinBox_icp_iteration->value(),
-						&hasConverged,
-						&variance,
-						&correspondences);
+						hasConverged,
+						*cloudBRegistered);
+				util3d::computeVarianceAndCorrespondences(
+						cloudBRegistered,
+						cloudANormals,
+						ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
+						variance,
+						correspondences);
 			}
 			else
 			{
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudBRegistered(new pcl::PointCloud<pcl::PointXYZ>);
 				transform = util3d::icp(cloudB,
 						cloudA,
 						ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
 						ui_->spinBox_icp_iteration->value(),
-						&hasConverged,
-						&variance,
-						&correspondences);
+						hasConverged,
+						*cloudBRegistered);
+				util3d::computeVarianceAndCorrespondences(
+						cloudBRegistered,
+						cloudA,
+						ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
+						variance,
+						correspondences);
 			}
-			correspondenceRatio = float(correspondences)/float(dataFrom.imageRaw().total());
+			correspondenceRatio = float(correspondences)/float(cloudA->size()>cloudB->size()?cloudA->size():cloudB->size());
 		}
 		else
 		{
@@ -2913,8 +2947,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 			if(ui_->dockWidget_constraints->isVisible())
 			{
 				cloudB = util3d::transformPointCloud(cloudB, transform);
-				scanB = util3d::transformPointCloud(scanB, transform);
-				this->updateConstraintView(newLink, true, cloudA, cloudB, scanA, scanB);
+				scanBVoxelized = util3d::transformPointCloud(scanBVoxelized, transform);
+				this->updateConstraintView(newLink, true, cloudA, cloudB, scanAVoxelized, scanBVoxelized);
 			}
 		}
 	}
