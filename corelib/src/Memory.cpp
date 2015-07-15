@@ -336,7 +336,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 Memory::~Memory()
 {
 	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosing));
-	UDEBUG("");
+
 	if(!_memoryChanged && !_linksChanged)
 	{
 		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("No changes added to database.")));
@@ -1776,7 +1776,8 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 
 		if(	(_notLinkedNodesKeptInDb || keepLinkedToGraph) &&
 			_dbDriver &&
-			s->id()>0)
+			s->id()>0 &&
+			(_incrementalMemory || s->isSaved()))
 		{
 			_dbDriver->asyncSave(s);
 		}
@@ -2816,26 +2817,29 @@ bool Memory::addLink(const Link & link)
 		toS->addLink(Link(link.to(), link.from(), link.type(), link.transform().inverse(), link.infMatrix()));
 		fromS->addLink(link);
 
-		if(link.type()!=Link::kVirtualClosure)
+		if(_incrementalMemory)
 		{
-			_linksChanged = true;
-		}
-
-		if(_incrementalMemory && link.type() == Link::kGlobalClosure)
-		{
-			_lastGlobalLoopClosureId = fromS->id()>toS->id()?fromS->id():toS->id();
-
-			// update weights only if the memory is incremental
-			UASSERT(fromS->getWeight() >= 0 && toS->getWeight() >=0);
-			if(fromS->id() > toS->id())
+			if(link.type()!=Link::kVirtualClosure)
 			{
-				fromS->setWeight(fromS->getWeight() + toS->getWeight());
-				toS->setWeight(0);
+				_linksChanged = true;
 			}
-			else
+
+			if(link.type() == Link::kGlobalClosure)
 			{
-				toS->setWeight(toS->getWeight() + fromS->getWeight());
-				fromS->setWeight(0);
+				_lastGlobalLoopClosureId = fromS->id()>toS->id()?fromS->id():toS->id();
+
+				// update weights only if the memory is incremental
+				UASSERT(fromS->getWeight() >= 0 && toS->getWeight() >=0);
+				if(fromS->id() > toS->id())
+				{
+					fromS->setWeight(fromS->getWeight() + toS->getWeight());
+					toS->setWeight(0);
+				}
+				else
+				{
+					toS->setWeight(toS->getWeight() + fromS->getWeight());
+					fromS->setWeight(0);
+				}
 			}
 		}
 		return true;
