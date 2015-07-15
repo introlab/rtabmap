@@ -3354,6 +3354,42 @@ SensorData Memory::getNodeData(int nodeId, bool uncompressedData)
 	return r;
 }
 
+void Memory::getNodeWords(int nodeId,
+		std::multimap<int, cv::KeyPoint> & words,
+		std::multimap<int, pcl::PointXYZ> & words3)
+{
+	UDEBUG("nodeId=%d", nodeId);
+	Signature * s = this->_getSignature(nodeId);
+	if(s)
+	{
+		words = s->getWords();
+		words3 = s->getWords3();
+	}
+	else if(_dbDriver)
+	{
+		// load from database
+		std::list<Signature*> signatures;
+		std::list<int> ids;
+		ids.push_back(nodeId);
+		std::set<int> loadedFromTrash;
+		_dbDriver->loadSignatures(ids, signatures, &loadedFromTrash);
+		if(signatures.size())
+		{
+			words = signatures.front()->getWords();
+			words3 = signatures.front()->getWords3();
+			if(loadedFromTrash.size())
+			{
+				//put back
+				_dbDriver->asyncSave(signatures.front());
+			}
+			else
+			{
+				delete signatures.front();
+			}
+		}
+	}
+}
+
 SensorData Memory::getSignatureDataConst(int locationId) const
 {
 	UDEBUG("");

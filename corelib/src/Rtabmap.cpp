@@ -2880,6 +2880,9 @@ void Rtabmap::get3DMap(
 			_memory->getNodeInfo(*iter, odomPose, mapId, weight, label, stamp, true);
 			SensorData data = _memory->getNodeData(*iter);
 			data.setId(*iter);
+			std::multimap<int, cv::KeyPoint> words;
+			std::multimap<int, pcl::PointXYZ> words3;
+			_memory->getNodeWords(*iter, words, words3);
 			signatures.insert(std::make_pair(*iter,
 					Signature(*iter,
 							mapId,
@@ -2888,6 +2891,8 @@ void Rtabmap::get3DMap(
 							label,
 							odomPose,
 							data)));
+			signatures.at(*iter).setWords(words);
+			signatures.at(*iter).setWords3(words3);
 		}
 	}
 	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size() > 1))
