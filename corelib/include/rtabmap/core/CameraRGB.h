@@ -52,6 +52,7 @@ public:
 	CameraImages(const std::string & path,
 			int startAt = 1,
 			bool refreshDir = false,
+			bool rectifyImages = false,
 			float imageRate = 0,
 			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraImages();
@@ -71,9 +72,13 @@ private:
 	// If the list of files in the directory is refreshed
 	// on each call of takeImage()
 	bool _refreshDir;
+	bool _rectifyImages;
 	int _count;
 	UDirectory * _dir;
 	std::string _lastFileName;
+
+	std::string _cameraName;
+	CameraModel _model;
 };
 
 
@@ -93,6 +98,7 @@ public:
 			float imageRate = 0,
 			const Transform & localTransform = Transform::getIdentity());
 	CameraVideo(const std::string & filePath,
+			bool rectifyImages = false,
 			float imageRate = 0,
 			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraVideo();
@@ -109,6 +115,7 @@ protected:
 private:
 	// File type
 	std::string _filePath;
+	bool _rectifyImages;
 
 	cv::VideoCapture _capture;
 	Source _src;

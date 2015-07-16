@@ -80,6 +80,7 @@ public:
 	const cv::Mat & R() const {return R_;} //rectification matrix
 	const cv::Mat & P() const {return P_;} //projection matrix
 
+	void setLocalTransform(const Transform & transform) {localTransform_ = transform;}
 	const Transform & localTransform() const {return localTransform_;}
 
 	const cv::Size & imageSize() const {return imageSize_;}
@@ -157,6 +158,8 @@ public:
 
 	void scale(double scale);
 
+	void setLocalTransform(const Transform & transform) {left_.setLocalTransform(transform);}
+	const Transform & localTransform() const {return left_.localTransform();}
 	Transform stereoTransform() const;
 
 	const CameraModel & left() const {return left_;}

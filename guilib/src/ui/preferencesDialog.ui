@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>760</width>
-            <height>1570</height>
+            <y>-290</y>
+            <width>755</width>
+            <height>1591</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -1538,7 +1538,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>2</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -1948,7 +1948,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             </widget>
                            </item>
                            <item>
-                            <layout class="QGridLayout" name="gridLayout_58" columnstretch="0,0,0">
+                            <layout class="QGridLayout" name="gridLayout_58" columnstretch="0,0,1">
                              <item row="0" column="1">
                               <widget class="QComboBox" name="comboBox_cameraStereo">
                                <property name="sizeAdjustPolicy">
@@ -1969,6 +1969,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  <string>Images</string>
                                 </property>
                                </item>
+                               <item>
+                                <property name="text">
+                                 <string>Video (Side-by-Side)</string>
+                                </property>
+                               </item>
                               </widget>
                              </item>
                              <item row="0" column="2">
@@ -1986,9 +1991,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>2</number>
+                              <number>3</number>
                              </property>
-                             <widget class="QWidget" name="page_47"/>
+                             <widget class="QWidget" name="page_49"/>
                              <widget class="QWidget" name="page_48"/>
                              <widget class="QWidget" name="page_53">
                               <layout class="QVBoxLayout" name="verticalLayout_70">
@@ -2001,7 +2006,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   </sizepolicy>
                                  </property>
                                  <property name="title">
-                                  <string>CameraStereoImages</string>
+                                  <string>Stereo Images</string>
                                  </property>
                                  <layout class="QGridLayout" name="gridLayout_61" columnstretch="0,0,1">
                                   <item row="1" column="1">
@@ -2018,6 +2023,33 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
+                                  <item row="0" column="1">
+                                   <widget class="QLineEdit" name="lineEdit_cameraStereoImages_path">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="0">
+                                   <widget class="QToolButton" name="toolButton_cameraStereoImages_path">
+                                    <property name="text">
+                                     <string>...</string>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="3" column="0">
+                                   <spacer name="verticalSpacer_38">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>20</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
                                   <item row="1" column="2">
                                    <widget class="QLabel" name="label_248">
                                     <property name="text">
@@ -2025,13 +2057,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="0" column="1">
-                                   <widget class="QLineEdit" name="lineEdit_cameraStereoImages_path">
-                                    <property name="text">
-                                     <string/>
                                     </property>
                                    </widget>
                                   </item>
@@ -2045,15 +2070,44 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="0" column="0">
-                                   <widget class="QToolButton" name="toolButton_cameraStereoImages_path">
+                                  <item row="2" column="2">
+                                   <widget class="QLabel" name="label_250">
                                     <property name="text">
-                                     <string>...</string>
+                                     <string>Rectify images. If checked, the images will be rectified using the calibration file (if its name is set above). If not checked, we assume that images are already rectified.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
                                     </property>
                                    </widget>
                                   </item>
+                                  <item row="2" column="1">
+                                   <widget class="QCheckBox" name="checkBox_stereoImages_rectify">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                 </layout>
+                                </widget>
+                               </item>
+                              </layout>
+                             </widget>
+                             <widget class="QWidget" name="page_50">
+                              <layout class="QVBoxLayout" name="verticalLayout_78">
+                               <item>
+                                <widget class="QGroupBox" name="groupBox_cameraStereoImages_2">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="title">
+                                  <string>Stereo side-by-side video (*.avi)</string>
+                                 </property>
+                                 <layout class="QGridLayout" name="gridLayout_66" columnstretch="0,0">
                                   <item row="2" column="0">
-                                   <spacer name="verticalSpacer_38">
+                                   <spacer name="verticalSpacer_39">
                                     <property name="orientation">
                                      <enum>Qt::Vertical</enum>
                                     </property>
@@ -2064,6 +2118,37 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                      </size>
                                     </property>
                                    </spacer>
+                                  </item>
+                                  <item row="0" column="0">
+                                   <widget class="QToolButton" name="toolButton_cameraStereoVideo_path">
+                                    <property name="text">
+                                     <string>...</string>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="1">
+                                   <widget class="QLineEdit" name="lineEdit_cameraStereoVideo_path">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="0">
+                                   <widget class="QCheckBox" name="checkBox_stereoVideo_rectify">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="1">
+                                   <widget class="QLabel" name="label_234">
+                                    <property name="text">
+                                     <string>Rectify images. If checked, the images will be rectified using the calibration file (if its name is set above). If not checked, we assume that images are already rectified.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
                                   </item>
                                  </layout>
                                 </widget>
@@ -2157,6 +2242,33 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <string>Images dataset</string>
                                  </property>
                                  <layout class="QGridLayout" name="gridLayout_7" columnstretch="0,1">
+                                  <item row="0" column="1">
+                                   <widget class="QLineEdit" name="source_images_lineEdit_path">
+                                    <property name="readOnly">
+                                     <bool>false</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="1">
+                                   <widget class="QLabel" name="label_34">
+                                    <property name="text">
+                                     <string>Refresh the directory files list after each image loaded.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="1">
+                                   <widget class="QLabel" name="label_21">
+                                    <property name="text">
+                                     <string>Start position (default 1, 0=start from the last).</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
                                   <item row="2" column="0">
                                    <widget class="QCheckBox" name="source_images_refreshDir">
                                     <property name="text">
@@ -2174,13 +2286,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="0" column="1">
-                                   <widget class="QLineEdit" name="source_images_lineEdit_path">
-                                    <property name="readOnly">
-                                     <bool>false</bool>
-                                    </property>
-                                   </widget>
-                                  </item>
                                   <item row="0" column="0">
                                    <widget class="QToolButton" name="source_images_toolButton_selectSource">
                                     <property name="text">
@@ -2188,17 +2293,20 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="2" column="1">
-                                   <widget class="QLabel" name="label_34">
+                                  <item row="3" column="1">
+                                   <widget class="QLabel" name="label_242">
                                     <property name="text">
-                                     <string>Refresh the directory files list after each image loaded.</string>
+                                     <string>Rectify images. If checked, the images will be rectified using the calibration file (if its name is set above). If not checked, we assume that images are already rectified.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="1" column="1">
-                                   <widget class="QLabel" name="label_21">
+                                  <item row="3" column="0">
+                                   <widget class="QCheckBox" name="checkBox_rgbImages_rectify">
                                     <property name="text">
-                                     <string>Start position (default 1, 0=start from the last).</string>
+                                     <string/>
                                     </property>
                                    </widget>
                                   </item>
@@ -2239,6 +2347,23 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    <widget class="QLineEdit" name="source_video_lineEdit_path">
                                     <property name="readOnly">
                                      <bool>false</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="1">
+                                   <widget class="QLabel" name="label_241">
+                                    <property name="text">
+                                     <string>Rectify images. If checked, the images will be rectified using the calibration file (if its name is set above). If not checked, we assume that images are already rectified.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="0">
+                                   <widget class="QCheckBox" name="checkBox_rgbVideo_rectify">
+                                    <property name="text">
+                                     <string/>
                                     </property>
                                    </widget>
                                   </item>

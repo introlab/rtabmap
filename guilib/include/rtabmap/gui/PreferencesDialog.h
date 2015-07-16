@@ -93,6 +93,7 @@ public:
 		kSrcDC1394         = 100,
 		kSrcFlyCapture2    = 101,
 		kSrcStereoImages   = 102,
+		kSrcStereoVideo    = 103,
 
 		kSrcRGB            = 200,
 		kSrcUsbDevice      = 200,
@@ -184,7 +185,9 @@ public:
 	int getSourceImagesSuffixIndex() const;	//Images group
 	int getSourceImagesStartPos() const;	//Images group
 	bool getSourceImagesRefreshDir() const;	//Images group
+	bool getSourceImagesRectify() const; //Images group
 	QString getSourceVideoPath() const;	//Video group
+	bool getSourceVideoRectify() const; //Video group
 	QString getSourceDatabasePath() const; //Database group
 	bool getSourceDatabaseOdometryIgnored() const; //Database group
 	bool getSourceDatabaseGoalDelayIgnored() const; //Database group
@@ -196,6 +199,8 @@ public:
 	int getSourceOpenni2Gain() const;   //Openni group
 	bool getSourceOpenni2Mirroring() const; //Openni group
 	int getSourceFreenect2Format() const; //Openni group
+	bool getSourceStereoImagesRectify() const;
+	bool getSourceStereoVideoRectify() const;
 	bool isSourceRGBDColorOnly() const;
 	Transform getSourceLocalTransform() const;    //Openni group
 	Camera * createCamera(bool useRawImages = false); // return camera should be deleted if not null
@@ -261,6 +266,7 @@ private slots:
 	void selectSourceStereoImagesPath();
 	void selectSourceImagesPath();
 	void selectSourceVideoPath();
+	void selectSourceStereoVideoPath();
 	void selectSourceOniPath();
 	void selectSourceOni2Path();
 	void updateSourceGrpVisibility();

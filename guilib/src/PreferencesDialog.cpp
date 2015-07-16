@@ -333,9 +333,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_images_lineEdit_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_images_spinBox_startPos, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_images_refreshDir, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_rgbImages_rectify, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	//video group
 	connect(_ui->source_video_toolButton_selectSource, SIGNAL(clicked()), this, SLOT(selectSourceVideoPath()));
 	connect(_ui->source_video_lineEdit_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_rgbVideo_rectify, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	//database group
 	connect(_ui->source_database_toolButton_selectSource, SIGNAL(clicked()), this, SLOT(selectSourceDatabase()));
 	connect(_ui->toolButton_dbViewer, SIGNAL(clicked()), this, SLOT(openDatabaseViewer()));
@@ -363,6 +365,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->lineEdit_cameraStereoImages_timestamps, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->toolButton_cameraStereoImages_path, SIGNAL(clicked()), this, SLOT(selectSourceStereoImagesPath()));
 	connect(_ui->lineEdit_cameraStereoImages_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_stereoImages_rectify, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->toolButton_cameraStereoVideo_path, SIGNAL(clicked()), this, SLOT(selectSourceStereoVideoPath()));
+	connect(_ui->lineEdit_cameraStereoVideo_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_stereoVideo_rectify, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
 	connect(_ui->toolButton_openniOniPath, SIGNAL(clicked()), this, SLOT(selectSourceOniPath()));
@@ -1036,6 +1042,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_comboBox_image_type->setCurrentIndex(kSrcUsbDevice-kSrcUsbDevice);
 		_ui->source_images_spinBox_startPos->setValue(1);
 		_ui->source_images_refreshDir->setChecked(false);
+		_ui->checkBox_rgbImages_rectify->setChecked(false);
+		_ui->checkBox_rgbVideo_rectify->setChecked(false);
 
 		_ui->source_checkBox_ignoreOdometry->setChecked(false);
 		_ui->source_checkBox_ignoreGoalDelay->setChecked(false);
@@ -1084,6 +1092,9 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_comboBox_image_type->setCurrentIndex(kSrcDC1394-kSrcDC1394);
 		_ui->lineEdit_cameraStereoImages_timestamps->setText("");
 		_ui->lineEdit_cameraStereoImages_path->setText("");
+		_ui->checkBox_stereoImages_rectify->setChecked(false);
+		_ui->lineEdit_cameraStereoVideo_path->setText("");
+		_ui->checkBox_stereoVideo_rectify->setChecked(false);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_rtabmap_basic0->objectName())
 	{
@@ -1348,16 +1359,24 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.beginGroup("StereoImages");
 	_ui->lineEdit_cameraStereoImages_timestamps->setText(settings.value("stamps", _ui->lineEdit_cameraStereoImages_timestamps->text()).toString());
 	_ui->lineEdit_cameraStereoImages_path->setText(settings.value("path", _ui->lineEdit_cameraStereoImages_path->text()).toString());
+	_ui->checkBox_stereoImages_rectify->setChecked(settings.value("rectify",_ui->checkBox_stereoImages_rectify->isChecked()).toBool());
 	settings.endGroup(); // StereoImages
+
+	settings.beginGroup("StereoVideo");
+	_ui->lineEdit_cameraStereoVideo_path->setText(settings.value("path", _ui->lineEdit_cameraStereoVideo_path->text()).toString());
+	_ui->checkBox_stereoVideo_rectify->setChecked(settings.value("rectify",_ui->checkBox_stereoVideo_rectify->isChecked()).toBool());
+	settings.endGroup(); // StereoVideo
 
 	settings.beginGroup("Images");
 	_ui->source_images_lineEdit_path->setText(settings.value("path", _ui->source_images_lineEdit_path->text()).toString());
 	_ui->source_images_spinBox_startPos->setValue(settings.value("startPos",_ui->source_images_spinBox_startPos->value()).toInt());
 	_ui->source_images_refreshDir->setChecked(settings.value("refreshDir",_ui->source_images_refreshDir->isChecked()).toBool());
+	_ui->checkBox_rgbImages_rectify->setChecked(settings.value("rectify",_ui->checkBox_rgbImages_rectify->isChecked()).toBool());
 	settings.endGroup(); // images
 
 	settings.beginGroup("Video");
 	_ui->source_video_lineEdit_path->setText(settings.value("path", _ui->source_video_lineEdit_path->text()).toString());
+	_ui->checkBox_rgbVideo_rectify->setChecked(settings.value("rectify",_ui->checkBox_rgbVideo_rectify->isChecked()).toBool());
 	settings.endGroup(); // video
 
 	settings.beginGroup("Database");
@@ -1639,16 +1658,24 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.beginGroup("StereoImages");
 	settings.setValue("stamps", _ui->lineEdit_cameraStereoImages_timestamps->text());
 	settings.setValue("path", _ui->lineEdit_cameraStereoImages_path->text());
+	settings.setValue("rectify", 	    _ui->checkBox_stereoImages_rectify->isChecked());
 	settings.endGroup(); // StereoImages
+
+	settings.beginGroup("StereoVideo");
+	settings.setValue("path", 			_ui->lineEdit_cameraStereoVideo_path->text());
+	settings.setValue("rectify", 	    _ui->checkBox_stereoVideo_rectify->isChecked());
+	settings.endGroup(); // StereoVideo
 
 	settings.beginGroup("Images");
 	settings.setValue("path", 			_ui->source_images_lineEdit_path->text());
 	settings.setValue("startPos", 		_ui->source_images_spinBox_startPos->value());
 	settings.setValue("refreshDir", 	_ui->source_images_refreshDir->isChecked());
+	settings.setValue("rectify", 	    _ui->checkBox_rgbImages_rectify->isChecked());
 	settings.endGroup(); // images
 
 	settings.beginGroup("Video");
 	settings.setValue("path", 			_ui->source_video_lineEdit_path->text());
+	settings.setValue("rectify", 	    _ui->checkBox_rgbVideo_rectify->isChecked());
 	settings.endGroup(); // video
 
 	settings.beginGroup("Database");
@@ -2221,6 +2248,20 @@ void PreferencesDialog::selectSourceVideoPath()
 	if(!path.isEmpty())
 	{
 		_ui->source_video_lineEdit_path->setText(path);
+	}
+}
+
+void PreferencesDialog::selectSourceStereoVideoPath()
+{
+	QString dir = _ui->lineEdit_cameraStereoVideo_path->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_cameraStereoVideo_path->text(), tr("Videos (*.avi *.mpg *.mp4)"));
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_cameraStereoVideo_path->setText(path);
 	}
 }
 
@@ -3274,9 +3315,17 @@ bool PreferencesDialog::getSourceImagesRefreshDir() const
 {
 	return _ui->source_images_refreshDir->isChecked();
 }
+bool PreferencesDialog::getSourceImagesRectify() const
+{
+	return _ui->checkBox_rgbImages_rectify->isChecked();
+}
 QString PreferencesDialog::getSourceVideoPath() const
 {
 	return _ui->source_video_lineEdit_path->text();
+}
+bool PreferencesDialog::getSourceVideoRectify() const
+{
+	return _ui->checkBox_rgbVideo_rectify->isChecked();
 }
 QString PreferencesDialog::getSourceDatabasePath() const
 {
@@ -3322,6 +3371,14 @@ bool PreferencesDialog::getSourceOpenni2Mirroring() const
 int PreferencesDialog::getSourceFreenect2Format() const
 {
 	return _ui->comboBox_freenect2Format->currentIndex();
+}
+bool PreferencesDialog::getSourceStereoImagesRectify() const
+{
+	return _ui->checkBox_stereoImages_rectify->isChecked();
+}
+bool PreferencesDialog::getSourceStereoVideoRectify() const
+{
+	return _ui->checkBox_stereoVideo_rectify->isChecked();
 }
 
 bool PreferencesDialog::isSourceRGBDColorOnly() const
@@ -3438,6 +3495,15 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 		camera = new CameraStereoImages(
 			_ui->lineEdit_cameraStereoImages_path->text().append(QDir::separator()).toStdString(),
 			_ui->lineEdit_cameraStereoImages_timestamps->text().toStdString(),
+			_ui->checkBox_stereoImages_rectify->isChecked(),
+			this->getGeneralInputRate(),
+			this->getSourceLocalTransform());
+	}
+	else if(driver == kSrcStereoVideo)
+	{
+		camera = new CameraStereoVideo(
+			_ui->lineEdit_cameraStereoVideo_path->text().toStdString(),
+			_ui->checkBox_stereoVideo_rectify->isChecked(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}
@@ -3452,6 +3518,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	{
 		camera = new CameraVideo(
 			this->getSourceVideoPath().toStdString(),
+			this->getSourceVideoRectify(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}
@@ -3461,6 +3528,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 			this->getSourceImagesPath().toStdString(),
 			this->getSourceImagesStartPos(),
 			this->getSourceImagesRefreshDir(),
+			this->getSourceVideoRectify(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}

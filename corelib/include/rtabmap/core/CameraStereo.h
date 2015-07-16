@@ -107,6 +107,7 @@ public:
 	CameraStereoImages(
 			const std::string & path,
 			const std::string & timestampsPath = "", // "times.txt"
+			bool rectifyImages = false,
 			float imageRate=0.0f,
 			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraStereoImages();
@@ -122,7 +123,42 @@ private:
 	CameraImages * camera_;
 	CameraImages * camera2_;
 	std::string timestampsPath_;
+	bool rectifyImages_;
 	std::list<double> stamps_;
+	StereoCameraModel stereoModel_;
+	std::string cameraName_;
+};
+
+
+/////////////////////////
+// CameraStereoVideo
+/////////////////////////
+class CameraImages;
+class RTABMAP_EXP CameraStereoVideo :
+	public Camera
+{
+public:
+	static bool available();
+
+public:
+	CameraStereoVideo(
+			const std::string & path,
+			bool rectifyImages = false,
+			float imageRate=0.0f,
+			const Transform & localTransform = Transform::getIdentity());
+	virtual ~CameraStereoVideo();
+
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
+	virtual bool isCalibrated() const;
+	virtual std::string getSerial() const;
+
+protected:
+	virtual SensorData captureImage();
+
+private:
+	cv::VideoCapture capture_;
+	std::string path_;
+	bool rectifyImages_;
 	StereoCameraModel stereoModel_;
 	std::string cameraName_;
 };

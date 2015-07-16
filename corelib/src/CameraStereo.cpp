@@ -733,12 +733,14 @@ bool CameraStereoImages::available()
 CameraStereoImages::CameraStereoImages(
 		const std::string & path,
 		const std::string & timestampsPath,
+		bool rectifyImages,
 		float imageRate,
 		const Transform & localTransform) :
 		Camera(imageRate, localTransform),
 		camera_(0),
 		camera2_(0),
-		timestampsPath_(timestampsPath)
+		timestampsPath_(timestampsPath),
+		rectifyImages_(rectifyImages)
 {
 	std::vector<std::string> paths = uListToVector(uSplit(path, uStrContains(path, ":")?':':';'));
 	if(paths.size() >= 1)
@@ -771,10 +773,9 @@ CameraStereoImages::~CameraStereoImages()
 bool CameraStereoImages::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	// look for calibration files
-	cameraName_.clear();
+	cameraName_ = cameraName;
 	if(!calibrationFolder.empty() && !cameraName.empty())
 	{
-		cameraName_ = cameraName;
 		if(!stereoModel_.load(calibrationFolder, cameraName))
 		{
 			UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
@@ -789,6 +790,13 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 					stereoModel_.baseline());
 		}
 	}
+	stereoModel_.setLocalTransform(this->getLocalTransform());
+	if(rectifyImages_ && !stereoModel_.isValid())
+	{
+		UERROR("Parameter \"rectifyImages\" is set, but no stereo model is loaded or valid.");
+		return false;
+	}
+
 	bool success = false;
 	if(camera_ == 0)
 	{
@@ -893,20 +901,148 @@ SensorData CameraStereoImages::captureImage()
 			if(!right.imageRaw().empty())
 			{
 				// Rectification
-				//left = stereoModel_.left().rectifyImage(left);
-				//right = stereoModel_.right().rectifyImage(right);
-				StereoCameraModel model(
-						stereoModel_.left().fx(), //fx
-						stereoModel_.left().fy(), //fy
-						stereoModel_.left().cx(), //cx
-						stereoModel_.left().cy(), //cy
-						stereoModel_.baseline(),
-						this->getLocalTransform());
-				data = SensorData(left.imageRaw(), right.imageRaw(), model, this->getNextSeqID(), stamp);
+				cv::Mat leftImage = left.imageRaw();
+				cv::Mat rightImage = right.imageRaw();
+				if(rightImage.type() != CV_8UC1)
+				{
+					cv::Mat tmp;
+					cv::cvtColor(rightImage, tmp, CV_BGR2GRAY);
+					rightImage = tmp;
+				}
+				if(rectifyImages_ && stereoModel_.left().isValid() && stereoModel_.right().isValid())
+				{
+					leftImage = stereoModel_.left().rectifyImage(leftImage);
+					rightImage = stereoModel_.right().rectifyImage(rightImage);
+				}
+				data = SensorData(leftImage, rightImage, stereoModel_, this->getNextSeqID(), stamp);
 			}
 		}
 	}
 	return data;
 }
+
+//
+// CameraStereoVideo
+//
+bool CameraStereoVideo::available()
+{
+	return true;
+}
+
+CameraStereoVideo::CameraStereoVideo(
+		const std::string & path,
+		bool rectifyImages,
+		float imageRate,
+		const Transform & localTransform) :
+		Camera(imageRate, localTransform),
+		path_(path),
+		rectifyImages_(rectifyImages)
+{
+}
+
+CameraStereoVideo::~CameraStereoVideo()
+{
+	capture_.release();
+}
+
+bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::string & cameraName)
+{
+	if(capture_.isOpened())
+	{
+		capture_.release();
+	}
+	ULOGGER_DEBUG("Camera: filename=\"%s\"", path_.c_str());
+	capture_.open(path_.c_str());
+
+	if(!capture_.isOpened())
+	{
+		ULOGGER_ERROR("Camera: Failed to create a capture object!");
+		capture_.release();
+		return false;
+	}
+	else
+	{
+		// look for calibration files
+		cameraName_ = cameraName;
+		if(!calibrationFolder.empty() && !cameraName.empty())
+		{
+			if(!stereoModel_.load(calibrationFolder, cameraName))
+			{
+				UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
+						cameraName.c_str(), calibrationFolder.c_str());
+			}
+			else
+			{
+				UINFO("Stereo parameters: fx=%f cx=%f cy=%f baseline=%f",
+						stereoModel_.left().fx(),
+						stereoModel_.left().cx(),
+						stereoModel_.left().cy(),
+						stereoModel_.baseline());
+			}
+		}
+		stereoModel_.setLocalTransform(this->getLocalTransform());
+		if(rectifyImages_ && !stereoModel_.isValid())
+		{
+			UERROR("Parameter \"rectifyImages\" is set, but no stereo model is loaded or valid.");
+			return false;
+		}
+	}
+	return true;
+}
+
+bool CameraStereoVideo::isCalibrated() const
+{
+	return stereoModel_.isValid();
+}
+
+std::string CameraStereoVideo::getSerial() const
+{
+	return cameraName_;
+}
+
+SensorData CameraStereoVideo::captureImage()
+{
+	SensorData data;
+
+	cv::Mat img;
+	if(capture_.isOpened())
+	{
+		if(capture_.read(img))
+		{
+			// Rectification
+			cv::Mat leftImage(img, cv::Rect( 0, 0, img.size().width/2, img.size().height ));
+			cv::Mat rightImage(img, cv::Rect( img.size().width/2, 0, img.size().width/2, img.size().height ));
+			bool rightCvt = false;
+			if(rightImage.type() != CV_8UC1)
+			{
+				cv::Mat tmp;
+				cv::cvtColor(rightImage, tmp, CV_BGR2GRAY);
+				rightImage = tmp;
+				rightCvt = true;
+			}
+			if(rectifyImages_ && stereoModel_.left().isValid() && stereoModel_.right().isValid())
+			{
+				leftImage = stereoModel_.left().rectifyImage(leftImage);
+				rightImage = stereoModel_.right().rectifyImage(rightImage);
+			}
+			else
+			{
+				leftImage = leftImage.clone();
+				if(!rightCvt)
+				{
+					rightImage = rightImage.clone();
+				}
+			}
+			data = SensorData(leftImage, rightImage, stereoModel_, this->getNextSeqID(), UTimer::now());
+		}
+	}
+	else
+	{
+		ULOGGER_WARN("The camera must be initialized before requesting an image.");
+	}
+
+	return data;
+}
+
 
 } // namespace rtabmap

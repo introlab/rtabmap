@@ -50,12 +50,14 @@ namespace rtabmap
 CameraImages::CameraImages(const std::string & path,
 					 int startAt,
 					 bool refreshDir,
+					 bool rectifyImages,
 					 float imageRate,
 					 const Transform & localTransform) :
 	Camera(imageRate, localTransform),
 	_path(path),
 	_startAt(startAt),
 	_refreshDir(refreshDir),
+	_rectifyImages(rectifyImages),
 	_count(0),
 	_dir(0)
 {
@@ -72,6 +74,8 @@ CameraImages::~CameraImages(void)
 
 bool CameraImages::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
+	_cameraName = cameraName;
+
 	UDEBUG("");
 	if(_dir)
 	{
@@ -98,17 +102,43 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	{
 		UINFO("path=%s images=%d", _path.c_str(), (int)this->imagesCount());
 	}
+
+	// look for calibration files
+	if(!calibrationFolder.empty() && !cameraName.empty())
+	{
+		if(!_model.load(calibrationFolder + "/" + cameraName + ".yaml"))
+		{
+			UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
+					cameraName.c_str(), calibrationFolder.c_str());
+		}
+		else
+		{
+			UINFO("Camera parameters: fx=%f fy=%f cx=%f cy=%f",
+					_model.fx(),
+					_model.fy(),
+					_model.cx(),
+					_model.cy());
+		}
+	}
+
+	_model.setLocalTransform(this->getLocalTransform());
+	if(_rectifyImages && !_model.isValid())
+	{
+		UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");
+		return false;
+	}
+
 	return _dir->isValid();
 }
 
 bool CameraImages::isCalibrated() const
 {
-	return false;
+	return _model.isValid();
 }
 
 std::string CameraImages::getSerial() const
 {
-	return "";
+	return _cameraName;
 }
 
 unsigned int CameraImages::imagesCount() const
@@ -189,13 +219,18 @@ SensorData CameraImages::captureImage()
 				}
 			}
 		}
+
+		if(!img.empty() && _model.isValid() && _rectifyImages)
+		{
+			img = _model.rectifyImage(img);
+		}
 	}
 	else
 	{
 		UWARN("Directory is not set, camera must be initialized.");
 	}
 
-	return SensorData(img);
+	return SensorData(img, _model, this->getNextSeqID(), UTimer::now());
 }
 
 
@@ -203,21 +238,26 @@ SensorData CameraImages::captureImage()
 /////////////////////////
 // CameraVideo
 /////////////////////////
-CameraVideo::CameraVideo(int usbDevice,
-						 float imageRate,
-						 const Transform & localTransform) :
+CameraVideo::CameraVideo(
+		int usbDevice,
+		float imageRate,
+		const Transform & localTransform) :
 	Camera(imageRate, localTransform),
+	_rectifyImages(false),
 	_src(kUsbDevice),
 	_usbDevice(usbDevice)
 {
 
 }
 
-CameraVideo::CameraVideo(const std::string & filePath,
-						   float imageRate,
-						   const Transform & localTransform) :
+CameraVideo::CameraVideo(
+		const std::string & filePath,
+		bool rectifyImages,
+		float imageRate,
+		const Transform & localTransform) :
 	Camera(imageRate, localTransform),
 	_filePath(filePath),
+	_rectifyImages(rectifyImages),
 	_src(kVideoFile),
 	_usbDevice(0)
 {
@@ -274,12 +314,18 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 			}
 			else
 			{
-				UINFO("Camera parameters: fx=%f cx=%f cy=%f cy=%f",
+				UINFO("Camera parameters: fx=%f fy=%f cx=%f cy=%f",
 						_model.fx(),
+						_model.fy(),
 						_model.cx(),
-						_model.cy(),
 						_model.cy());
 			}
+		}
+		_model.setLocalTransform(this->getLocalTransform());
+		if(_rectifyImages && !_model.isValid())
+		{
+			UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");
+			return false;
 		}
 	}
 	return true;
@@ -302,7 +348,7 @@ SensorData CameraVideo::captureImage()
 	{
 		if(_capture.read(img))
 		{
-			if(_model.isValid())
+			if(_model.isValid() && (_src != kVideoFile || _rectifyImages))
 			{
 				img = _model.rectifyImage(img);
 			}
@@ -322,7 +368,7 @@ SensorData CameraVideo::captureImage()
 		ULOGGER_WARN("The camera must be initialized before requesting an image.");
 	}
 
-	return SensorData(img);
+	return SensorData(img, _model, this->getNextSeqID(), UTimer::now());
 }
 
 } // namespace rtabmap
