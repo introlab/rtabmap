@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-290</y>
+            <y>0</y>
             <width>755</width>
             <height>1591</height>
            </rect>
@@ -116,6 +116,9 @@
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="1" column="0">
@@ -133,6 +136,9 @@
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="2" column="1">
@@ -142,6 +148,9 @@
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -181,6 +190,9 @@
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="2" column="0">
@@ -201,6 +213,9 @@
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="0" column="1">
@@ -210,6 +225,9 @@
                          </property>
                          <property name="wordWrap">
                           <bool>false</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -230,6 +248,9 @@
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -270,6 +291,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -365,6 +389,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item>
@@ -376,6 +403,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -398,6 +428,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                             <widget class="QLabel" name="label_37">
                              <property name="text">
                               <string>Radius.</string>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                              </property>
                             </widget>
                            </item>
@@ -422,6 +455,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                              <property name="text">
                               <string>Angle.</string>
                              </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
                             </widget>
                            </item>
                           </layout>
@@ -444,6 +480,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
                           </widget>
                          </item>
                          <item row="2" column="0">
@@ -462,6 +501,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                              </property>
                             </widget>
                            </item>
@@ -494,6 +536,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -530,6 +575,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            <property name="text">
                             <string>Show in 3D map view.</string>
                            </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
                           </widget>
                          </item>
                          <item row="1" column="0">
@@ -553,12 +601,18 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            <property name="text">
                             <string>Resolution (cell size).</string>
                            </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
                           </widget>
                          </item>
                          <item row="2" column="1">
                           <widget class="QLabel" name="label_170">
                            <property name="text">
                             <string>Opacity.</string>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -580,6 +634,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
                           </widget>
                          </item>
                          <item row="4" column="1">
@@ -589,6 +646,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -643,6 +703,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -700,6 +763,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="3" column="0">
@@ -747,6 +813,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -822,6 +891,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="6" column="0">
@@ -870,6 +942,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="7" column="0">
@@ -900,6 +975,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="9" column="1">
@@ -919,6 +997,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -975,6 +1056,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="11" column="1">
@@ -995,6 +1079,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="15" column="2">
@@ -1005,6 +1092,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="17" column="2">
@@ -1014,6 +1104,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -1063,6 +1156,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="18" column="2">
@@ -1072,6 +1168,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -1093,6 +1192,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="14" column="0">
@@ -1109,6 +1211,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -1189,6 +1294,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="1" column="0">
@@ -1228,6 +1336,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -1274,6 +1385,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="3" column="0">
@@ -1293,6 +1407,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -1330,6 +1447,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                    </layout>
@@ -1359,7 +1479,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_7">
                     <item>
-                     <layout class="QGridLayout" name="gridLayout_28" columnstretch="0,0">
+                     <layout class="QGridLayout" name="gridLayout_28" columnstretch="0,1">
                       <item row="1" column="0">
                        <widget class="QDoubleSpinBox" name="general_doubleSpinBox_imgRate">
                         <property name="suffix">
@@ -1384,6 +1504,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         <property name="text">
                          <string>Input rate (0 means as fast as possible).</string>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="4" column="1">
@@ -1393,6 +1516,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -1424,6 +1550,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="3" column="0">
@@ -1441,6 +1570,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="0" column="1">
@@ -1451,6 +1583,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="2" column="1">
@@ -1460,6 +1595,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -1524,6 +1662,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="2" column="0">
@@ -1538,7 +1679,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>2</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -1668,6 +1809,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                     </property>
                                    </widget>
                                   </item>
@@ -1874,6 +2018,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     <property name="wordWrap">
                                      <bool>true</bool>
                                     </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
                                    </widget>
                                   </item>
                                   <item row="0" column="0">
@@ -1991,7 +2138,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>3</number>
+                              <number>2</number>
                              </property>
                              <widget class="QWidget" name="page_49"/>
                              <widget class="QWidget" name="page_48"/>
@@ -2058,6 +2205,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     <property name="wordWrap">
                                      <bool>true</bool>
                                     </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
                                    </widget>
                                   </item>
                                   <item row="0" column="2">
@@ -2068,6 +2218,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     <property name="wordWrap">
                                      <bool>true</bool>
                                     </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
                                    </widget>
                                   </item>
                                   <item row="2" column="2">
@@ -2077,6 +2230,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                     </property>
                                    </widget>
                                   </item>
@@ -2148,6 +2304,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     <property name="wordWrap">
                                      <bool>true</bool>
                                     </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
                                    </widget>
                                   </item>
                                  </layout>
@@ -2208,6 +2367,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                <property name="wordWrap">
                                 <bool>true</bool>
                                </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
                               </widget>
                              </item>
                             </layout>
@@ -2257,6 +2419,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     <property name="wordWrap">
                                      <bool>true</bool>
                                     </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
                                    </widget>
                                   </item>
                                   <item row="1" column="1">
@@ -2266,6 +2431,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                     </property>
                                    </widget>
                                   </item>
@@ -2300,6 +2468,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                     </property>
                                    </widget>
                                   </item>
@@ -2357,6 +2528,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                     </property>
                                    </widget>
                                   </item>
@@ -2442,6 +2616,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              <property name="text">
                               <string>Start position (index)</string>
                              </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
                             </widget>
                            </item>
                            <item row="4" column="0">
@@ -2462,6 +2639,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              <property name="wordWrap">
                               <bool>true</bool>
                              </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
                             </widget>
                            </item>
                            <item row="3" column="1">
@@ -2471,6 +2651,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                              </property>
                             </widget>
                            </item>
@@ -2488,6 +2671,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                              </property>
                             </widget>
                            </item>
@@ -2576,6 +2762,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="1" column="0">
@@ -2597,6 +2786,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="2" column="0">
@@ -2617,6 +2809,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="3" column="1">
@@ -2626,6 +2821,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -2646,6 +2844,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -2676,6 +2877,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="6" column="0">
@@ -2699,6 +2903,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="7" column="0">
@@ -2718,6 +2925,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -2741,6 +2951,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -2791,6 +3004,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="4" column="0">
@@ -2810,6 +3026,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -2831,6 +3050,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="2" column="1">
@@ -2840,6 +3062,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -2863,6 +3088,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -2911,6 +3139,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="1" column="0">
@@ -2930,6 +3161,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -2954,6 +3188,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="3" column="0">
@@ -2976,6 +3213,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -3006,6 +3246,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="text">
                           <string>Publish signature data.</string>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="1" column="0">
@@ -3023,6 +3266,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="text">
                           <string>Publish loop closure hypotheses (pdf).</string>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="2" column="0">
@@ -3039,6 +3285,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <widget class="QLabel" name="label_116">
                          <property name="text">
                           <string>Publish loop closure likelihood.</string>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -3072,6 +3321,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="1" column="0">
@@ -3092,6 +3344,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                       </layout>
@@ -3106,6 +3361,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -3156,6 +3414,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <property name="text">
                        <string>Prediction probabilities for each loop closure event:</string>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item>
@@ -3165,6 +3426,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -3244,6 +3508,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="0" column="1">
@@ -3254,6 +3521,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="2" column="1">
@@ -3263,6 +3533,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -3356,6 +3629,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="0" column="1">
@@ -3366,6 +3642,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <property name="wordWrap">
                          <bool>false</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="1" column="1">
@@ -3375,6 +3654,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -3399,6 +3681,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="4" column="0">
@@ -3418,6 +3703,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -3439,6 +3727,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="6" column="0">
@@ -3458,6 +3749,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -3479,6 +3773,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="3" column="1">
@@ -3488,6 +3785,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -3508,6 +3808,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -3559,6 +3862,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="0" column="0">
@@ -3579,6 +3885,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="3" column="1">
@@ -3588,6 +3897,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -3645,6 +3957,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="2" column="0">
@@ -3678,6 +3993,9 @@ see Sqlite3 doc 'PRAGMA cache_size'.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -3719,6 +4037,9 @@ see Sqlite3 doc 'PRAGMA journal_mode'.</string>
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="2" column="1">
@@ -3728,6 +4049,9 @@ see Sqlite3 doc 'PRAGMA journal_mode'.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -3740,6 +4064,9 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="6" column="1">
@@ -3750,6 +4077,9 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -3801,6 +4131,9 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -3894,6 +4227,9 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="1" column="0">
@@ -3932,6 +4268,9 @@ generate the number of words requested.</string>
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="2" column="0">
@@ -3960,6 +4299,9 @@ generate the number of words requested.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -3996,6 +4338,9 @@ generate the number of words requested.</string>
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="4" column="0">
@@ -4012,6 +4357,9 @@ generate the number of words requested.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -4033,6 +4381,9 @@ generate the number of words requested.</string>
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="6" column="0">
@@ -4052,6 +4403,9 @@ generate the number of words requested.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -4073,6 +4427,9 @@ generate the number of words requested.</string>
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="8" column="0">
@@ -4092,6 +4449,9 @@ generate the number of words requested.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -4119,6 +4479,9 @@ Lower the ratio -&gt; higher the precision.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -4152,6 +4515,9 @@ Lower the ratio -&gt; higher the precision.</string>
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="1" column="0">
@@ -4168,6 +4534,9 @@ Lower the ratio -&gt; higher the precision.</string>
                         <widget class="QLabel" name="label_12">
                          <property name="text">
                           <string>Nearest neighbor strategy.</string>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -4212,6 +4581,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="2" column="2">
@@ -4221,6 +4593,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -4252,6 +4627,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                       </layout>
@@ -4270,6 +4648,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -4299,6 +4680,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
                           </widget>
                          </item>
                          <item row="1" column="0">
@@ -4324,6 +4708,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -4353,6 +4740,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -4402,6 +4792,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="text">
                        <string>Octave layers.</string>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="3" column="1">
@@ -4411,6 +4804,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -4425,6 +4821,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="5" column="1">
@@ -4437,6 +4836,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -4467,6 +4869,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                      <widget class="QLabel" name="label_49">
                       <property name="text">
                        <string>U-SURF used.</string>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -4515,12 +4920,18 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="text">
                        <string>Octaves.</string>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="0" column="1">
                      <widget class="QLabel" name="label_4">
                       <property name="text">
                        <string>Hessian threshold.</string>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -4558,6 +4969,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="text">
                        <string>Sigma.</string>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="2" column="0">
@@ -4584,12 +4998,18 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="text">
                        <string>Contrast threshold.</string>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="3" column="1">
                      <widget class="QLabel" name="label_30">
                       <property name="text">
                        <string>Edge threshold.</string>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -4621,12 +5041,18 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="text">
                        <string>nOctaveLayers.</string>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="0" column="1">
                      <widget class="QLabel" name="label_131">
                       <property name="text">
                        <string>nFeatures.</string>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -4685,6 +5111,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="1" column="0">
@@ -4705,6 +5134,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="2" column="0">
@@ -4724,6 +5156,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -4747,6 +5182,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -4799,6 +5237,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                    </layout>
@@ -4845,6 +5286,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="1" column="0">
@@ -4861,6 +5305,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -4879,6 +5326,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="3" column="0">
@@ -4895,6 +5345,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -4913,6 +5366,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="5" column="0">
@@ -4925,6 +5381,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -4943,6 +5402,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="7" column="0">
@@ -4959,6 +5421,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -5006,6 +5471,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="1" column="0">
@@ -5026,6 +5494,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="2" column="0">
@@ -5043,6 +5514,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="3" column="0">
@@ -5059,6 +5533,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -5132,6 +5609,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="4" column="0">
@@ -5155,6 +5635,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="2" column="0">
@@ -5172,6 +5655,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="1" column="1">
@@ -5182,6 +5668,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="2" column="1">
@@ -5191,6 +5680,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -5228,6 +5720,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="2" column="0">
@@ -5251,6 +5746,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item row="1" column="0">
@@ -5270,6 +5768,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -5339,6 +5840,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                         <property name="text">
                          <string>Hypotheses verification.</string>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                      </layout>
@@ -5370,6 +5874,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="1" column="0">
@@ -5396,6 +5903,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="2" column="0">
@@ -5421,6 +5931,9 @@ When set to false, no new words are added to dictionary, so no more updates are 
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -5474,6 +5987,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                      </layout>
@@ -5485,6 +6001,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -5515,6 +6034,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="1" column="0">
@@ -5540,6 +6062,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -5570,6 +6095,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="3" column="0">
@@ -5587,6 +6115,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="5" column="1">
@@ -5596,6 +6127,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -5620,6 +6154,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="6" column="1">
@@ -5629,6 +6166,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -5709,6 +6249,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="5" column="1">
@@ -5733,12 +6276,18 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="0" column="1">
                         <widget class="QLabel" name="label_45">
                          <property name="text">
                           <string>Graph optimization algorithm.</string>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -5750,6 +6299,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="7" column="1">
@@ -5760,6 +6312,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="1" column="1">
@@ -5767,12 +6322,18 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="text">
                           <string>Iterations.</string>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="2" column="1">
                         <widget class="QLabel" name="label_64">
                          <property name="text">
                           <string>Stop optimizing when the error improvement is less than this value.</string>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -5803,6 +6364,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                       </layout>
@@ -5825,6 +6389,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                       </layout>
@@ -5846,6 +6413,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -5885,6 +6455,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
                           </widget>
                          </item>
                          <item row="3" column="0">
@@ -5902,6 +6475,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
                           </widget>
                          </item>
                          <item row="1" column="1">
@@ -5912,6 +6488,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
                           </widget>
                          </item>
                          <item row="2" column="1">
@@ -5921,6 +6500,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -5950,6 +6532,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item>
@@ -5972,6 +6557,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
                           </widget>
                          </item>
                          <item row="1" column="0">
@@ -5989,6 +6577,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
                           </widget>
                          </item>
                          <item row="2" column="1">
@@ -5998,6 +6589,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -6047,6 +6641,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item>
@@ -6056,6 +6653,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -6081,6 +6681,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -6111,6 +6714,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <widget class="QLabel" name="label_15">
                         <property name="text">
                          <string>Maximum RANSAC iterations.</string>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -6144,6 +6750,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="4" column="1">
@@ -6153,6 +6762,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -6183,6 +6795,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                      </layout>
@@ -6190,7 +6805,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_loopClosureEstimation">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_38">
                        <layout class="QVBoxLayout" name="verticalLayout_68">
@@ -6233,6 +6848,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <property name="wordWrap">
                               <bool>true</bool>
                              </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
                             </widget>
                            </item>
                            <item row="1" column="0">
@@ -6258,6 +6876,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                              </property>
                             </widget>
                            </item>
@@ -6307,6 +6928,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <property name="wordWrap">
                               <bool>true</bool>
                              </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
                             </widget>
                            </item>
                            <item row="1" column="0">
@@ -6336,6 +6960,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <property name="wordWrap">
                               <bool>true</bool>
                              </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
                             </widget>
                            </item>
                           </layout>
@@ -6364,6 +6991,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                              </property>
                             </widget>
                            </item>
@@ -6396,6 +7026,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                <property name="wordWrap">
                                 <bool>true</bool>
                                </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
                               </widget>
                              </item>
                             </layout>
@@ -6426,6 +7059,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -6500,6 +7136,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
                           </widget>
                          </item>
                          <item row="4" column="1">
@@ -6509,6 +7148,9 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -6521,6 +7163,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -6579,6 +7224,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            <property name="text">
                             <string>Feature detector </string>
                            </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
                           </widget>
                          </item>
                          <item row="3" column="0">
@@ -6601,6 +7249,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -6640,6 +7291,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       <property name="text">
                        <string>Iterative closest point (ICP) parameters.</string>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item>
@@ -6671,6 +7325,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="1" column="1">
@@ -6680,6 +7337,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -6730,6 +7390,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -6783,6 +7446,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="1" column="0">
@@ -6805,6 +7471,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -6835,6 +7504,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="3" column="1">
@@ -6845,6 +7517,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="4" column="1">
@@ -6854,6 +7529,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -6881,6 +7559,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="7" column="0">
@@ -6897,6 +7578,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -6920,6 +7604,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -6956,6 +7643,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="1" column="0">
@@ -6978,6 +7668,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -7004,6 +7697,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -7036,6 +7732,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -7076,6 +7775,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item>
@@ -7108,6 +7810,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="1" column="0">
@@ -7133,6 +7838,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -7163,6 +7871,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="3" column="1">
@@ -7172,6 +7883,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -7223,6 +7937,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                      </layout>
@@ -7261,6 +7978,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item>
@@ -7279,6 +7999,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -7304,6 +8027,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="7" column="1">
@@ -7313,6 +8039,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -7324,6 +8053,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="2" column="1">
@@ -7333,6 +8065,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -7357,6 +8092,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -7396,6 +8134,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -7448,6 +8189,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
                           </widget>
                          </item>
                          <item row="1" column="0">
@@ -7470,6 +8214,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -7496,6 +8243,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -7547,6 +8297,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                                 <property name="wordWrap">
                                  <bool>true</bool>
                                 </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
                                </widget>
                               </item>
                               <item row="1" column="0">
@@ -7572,6 +8325,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                 </property>
                                </widget>
                               </item>
@@ -7683,6 +8439,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="3" column="0">
@@ -7703,6 +8462,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="2" column="1">
@@ -7712,6 +8474,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -7744,6 +8509,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -7811,6 +8579,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item>
@@ -7839,6 +8610,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
                           </widget>
                          </item>
                          <item row="1" column="0">
@@ -7864,6 +8638,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -7893,6 +8670,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -7935,6 +8715,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item>
@@ -7962,6 +8745,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -8005,6 +8791,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="2" column="0">
@@ -8036,6 +8825,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="3" column="0">
@@ -8055,6 +8847,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -8094,6 +8889,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item>
@@ -8126,6 +8924,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="1" column="0">
@@ -8152,6 +8953,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                        <item row="2" column="1">
@@ -8161,6 +8965,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -8187,6 +8994,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -8246,6 +9056,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                     <item>
@@ -8255,6 +9068,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -8287,6 +9103,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="2" column="0">
@@ -8313,6 +9132,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="1" column="1">
@@ -8322,6 +9144,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -8348,6 +9173,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -8405,6 +9233,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -8484,6 +9315,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="3" column="1">
@@ -8493,6 +9327,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -8504,6 +9341,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="wordWrap">
                          <bool>true</bool>
                         </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
                        </widget>
                       </item>
                       <item row="4" column="1">
@@ -8513,6 +9353,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -8545,6 +9388,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
