@@ -53,7 +53,10 @@ void showUsage()
 			"                                     7=FlyCapture2 (Bumblebee2)\n"
 			"  Options:\n"
 			"      -rate #.#                      Input rate Hz (default 0=inf)\n"
-			"      -save_stereo \"path\"            Save stereo images in a folder or a video file (side by side *.avi).\n");
+			"      -save_stereo \"path\"            Save stereo images in a folder or a video file (side by side *.avi).\n"
+			"      -fourcc \"XXXX\"               Four characters FourCC code (default is \"MJPG\") used\n"
+			"                                       when saving stereo images to a video file.\n"
+			"                                       See http://www.fourcc.org/codecs.php for more codes.\n");
 	exit(1);
 }
 
@@ -75,6 +78,7 @@ int main(int argc, char * argv[])
 	int driver = 0;
 	std::string stereoSavePath;
 	float rate = 0.0f;
+	std::string fourcc = "MJPG";
 	if(argc < 2)
 	{
 		showUsage();
@@ -113,8 +117,31 @@ int main(int argc, char * argv[])
 				}
 				continue;
 			}
+			if(strcmp(argv[i], "-fourcc") == 0)
+			{
+				++i;
+				if(i < argc)
+				{
+					fourcc = argv[i];
+					if(fourcc.size() != 4)
+					{
+						UERROR("fourcc should be 4 characters.");
+						showUsage();
+					}
+				}
+				else
+				{
+					showUsage();
+				}
+				continue;
+			}
 			if(strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-help") == 0)
 			{
+				showUsage();
+			}
+			else if(i< argc-1)
+			{
+				printf("Unrecognized option \"%s\"", argv[i]);
 				showUsage();
 			}
 
@@ -254,7 +281,13 @@ int main(int argc, char * argv[])
 				}
 				cv::Size targetSize = data.imageRaw().size();
 				targetSize.width *= 2;
-				videoWriter.open(stereoSavePath, CV_FOURCC('M', 'J', 'P', 'G'), rate, targetSize, data.imageRaw().channels() == 3);
+				UASSERT(fourcc.size() == 4);
+				videoWriter.open(
+						stereoSavePath,
+						CV_FOURCC(fourcc.at(0), fourcc.at(1), fourcc.at(2), fourcc.at(3)),
+						rate,
+						targetSize,
+						data.imageRaw().channels() == 3);
 			}
 			else
 			{
