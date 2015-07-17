@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/imgproc/imgproc.hpp>
 #include <pcl/visualization/cloud_viewer.h>
 #include <stdio.h>
+#include <signal.h>
 
 void showUsage()
 {
