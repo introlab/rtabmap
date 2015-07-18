@@ -289,6 +289,12 @@ int main(int argc, char * argv[])
 		showUsage();
 	}
 
+	ULogger::setType(ULogger::kTypeConsole);
+	//ULogger::setType(ULogger::kTypeFile, rtabmap.getWorkingDir()+"/LogConsole.txt", false);
+	//ULogger::setBuffered(true);
+	ULogger::setLevel(logLevel);
+	ULogger::setExitLevel(exitLevel);
+
 	UTimer timer;
 	timer.start();
 	std::queue<double> iterationMeanTime;
@@ -296,7 +302,7 @@ int main(int argc, char * argv[])
 	Camera * camera = 0;
 	if(UDirectory::exists(path))
 	{
-		camera = new CameraImages(path, startAt, false, 1/rate);
+		camera = new CameraImages(path, startAt, false, false, 1/rate);
 	}
 	else
 	{
@@ -310,12 +316,6 @@ int main(int argc, char * argv[])
 	}
 
 	std::map<int, int> groundTruth;
-
-	ULogger::setType(ULogger::kTypeConsole);
-	//ULogger::setType(ULogger::kTypeFile, rtabmap.getWorkingDir()+"/LogConsole.txt", false);
-	//ULogger::setBuffered(true);
-	ULogger::setLevel(logLevel);
-	ULogger::setExitLevel(exitLevel);
 
 	// Create tasks
 	Rtabmap rtabmap;

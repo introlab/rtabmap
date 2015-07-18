@@ -65,7 +65,9 @@ public:
 	bool isValid() const {return !K_.empty() &&
 									!D_.empty() &&
 									!R_.empty() &&
-									!P_.empty();}
+									!P_.empty() &&
+									fx()>0.0 &&
+									fy()>0.0;}
 
 	const std::string & name() const {return name_;}
 

@@ -81,8 +81,8 @@ CameraModel::CameraModel(
 		P_(cv::Mat::eye(3, 4, CV_64FC1)),
 		localTransform_(localTransform)
 {
-	UASSERT_MSG(fx > 0.0, uFormat("fx=%f", fx).c_str());
-	UASSERT_MSG(fy > 0.0, uFormat("fy=%f", fy).c_str());
+	UASSERT_MSG(fx >= 0.0, uFormat("fx=%f", fx).c_str());
+	UASSERT_MSG(fy >= 0.0, uFormat("fy=%f", fy).c_str());
 	UASSERT_MSG(cx >= 0.0, uFormat("cx=%f", cx).c_str());
 	UASSERT_MSG(cy >= 0.0, uFormat("cy=%f", cy).c_str());
 	P_.at<double>(0,0) = fx;
