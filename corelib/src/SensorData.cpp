@@ -248,10 +248,6 @@ SensorData::SensorData(
 				depth.type() == CV_16UC1); // Depth in millimetre
 		_depthOrRightRaw = depth;
 	}
-	for(unsigned int i=0; i<cameraModels.size(); ++i)
-	{
-		UASSERT(cameraModels[i].isValid());
-	}
 
 	if(userData.type() == CV_8UC1) // Bytes
 	{
@@ -309,11 +305,6 @@ SensorData::SensorData(
 	{
 		UASSERT(laserScan.type() == CV_8UC1); // Bytes
 		_laserScanCompressed = laserScan;
-	}
-
-	for(unsigned int i=0; i<cameraModels.size(); ++i)
-	{
-		UASSERT(cameraModels[i].isValid());
 	}
 
 	if(userData.type() == CV_8UC1) // Bytes

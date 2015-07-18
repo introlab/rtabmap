@@ -2233,7 +2233,7 @@ void PreferencesDialog::selectSourceImagesPath()
 	if(!path.isEmpty())
 	{
 		_ui->source_images_lineEdit_path->setText(path);
-		_ui->source_images_spinBox_startPos->setValue(0);
+		_ui->source_images_spinBox_startPos->setValue(1);
 	}
 }
 
