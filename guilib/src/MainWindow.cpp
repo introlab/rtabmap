@@ -1010,9 +1010,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	{
 		refMapId = stat.getSignatures().at(stat.refImageId()).mapId();
 	}
-	if(uContains(stat.getSignatures(), stat.loopClosureId()))
+	if(_cachedSignatures.contains(stat.loopClosureId()))
 	{
-		loopMapId = stat.getSignatures().at(stat.loopClosureId()).mapId();
+		loopMapId = _cachedSignatures.value(stat.loopClosureId()).mapId();
 	}
 
 	_ui->label_refId->setText(QString("New ID = %1 [%2]").arg(stat.refImageId()).arg(refMapId));
@@ -2702,12 +2702,12 @@ void MainWindow::startDetection()
 		float inputRate = _preferencesDialog->getGeneralInputRate();
 		float detectionRate = uStr2Float(parameters.at(Parameters::kRtabmapDetectionRate()));
 		int bufferingSize = uStr2Float(parameters.at(Parameters::kRtabmapImageBufferSize()));
-		if(((detectionRate!=0.0f && detectionRate < inputRate) || (detectionRate > 0.0f && inputRate == 0.0f)) &&
+		if(((detectionRate!=0.0f && detectionRate <= inputRate) || (detectionRate > 0.0f && inputRate == 0.0f)) &&
 			(_preferencesDialog->getSourceDriver() != PreferencesDialog::kSrcDatabase || !_preferencesDialog->getSourceDatabaseStampsUsed()))
 		{
 			int button = QMessageBox::question(this,
 					tr("Incompatible frame rates!"),
-					tr("\"Source/Input rate\" (%1 Hz) is higher than \"RTAB-Map/Detection rate\" (%2 Hz). As the "
+					tr("\"Source/Input rate\" (%1 Hz) is equal to/higher than \"RTAB-Map/Detection rate\" (%2 Hz). As the "
 					   "source input is a directory of images/video/database, some images may be "
 					   "skipped by the detector. You may want to increase the \"RTAB-Map/Detection rate\" over "
 					   "the \"Source/Input rate\" to guaranty that all images are processed. Would you want to "
@@ -5199,8 +5199,12 @@ void MainWindow::changeState(MainWindow::State newState)
 	_ui->menuSelect_source->menuAction()->setVisible(!monitoring);
 	_ui->doubleSpinBox_stats_imgRate->setVisible(!monitoring);
 	_ui->doubleSpinBox_stats_imgRate_label->setVisible(!monitoring);
-	_ui->toolBar->setVisible(!monitoring);
-	_ui->toolBar->toggleViewAction()->setVisible(!monitoring);
+	bool wasMonitoring = _state==kMonitoring || _state == kMonitoringPaused;
+	if(wasMonitoring != monitoring)
+	{
+		_ui->toolBar->setVisible(!monitoring);
+		_ui->toolBar->toggleViewAction()->setVisible(!monitoring);
+	}
 	QList<QAction*> actions = _ui->menuTools->actions();
 	for(int i=0; i<actions.size(); ++i)
 	{
