@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/Parameters.h"
+#include "rtabmap/core/OdometryEvent.h"
 
 #include <stack>
 
@@ -64,6 +65,8 @@ public:
 		kStateGeneratingDOTLocalGraph,
 		kStateGeneratingTOROGraphLocal,
 		kStateGeneratingTOROGraphGlobal,
+		kStateExportingPosesLocal,
+		kStateExportingPosesGlobal,
 		kStateCleanDataBuffer,
 		kStatePublishingMapLocal,
 		kStatePublishingMapGlobal,
@@ -71,7 +74,8 @@ public:
 		kStatePublishingTOROGraphGlobal,
 		kStateTriggeringMap,
 		kStateAddingUserData,
-		kStateSettingGoal
+		kStateSettingGoal,
+		kStateCancellingGoal
 	};
 
 public:
@@ -81,7 +85,8 @@ public:
 
 	void clearBufferedData();
 	void setDetectorRate(float rate);
-	void setBufferSize(int bufferSize);
+	void setDataBufferSize(unsigned int bufferSize);
+	void createIntermediateNodes(bool enabled);
 
 protected:
 	virtual void handleEvent(UEvent * anEvent);
@@ -90,10 +95,9 @@ private:
 	virtual void mainLoop();
 	virtual void mainLoopKill();
 	void process();
-	void addData(const SensorData & data);
-	void getData(SensorData & data);
+	void addData(const OdometryEvent & odomEvent);
+	bool getData(OdometryEvent & data);
 	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
-	void setDataBufferSize(int size);
 	void publishMap(bool optimized, bool full) const;
 	void publishGraph(bool optimized, bool full) const;
 
@@ -102,20 +106,21 @@ private:
 	std::stack<State> _state;
 	std::stack<ParametersMap> _stateParam;
 
-	std::list<SensorData> _dataBuffer;
+	std::list<OdometryEvent> _dataBuffer;
 	UMutex _dataMutex;
 	USemaphore _dataAdded;
-	int _dataBufferMaxSize;
+	unsigned int _dataBufferMaxSize;
 	float _rate;
+	bool _createIntermediateNodes;
 	UTimer * _frameRateTimer;
 
 	Rtabmap * _rtabmap;
 	bool _paused;
 	Transform lastPose_;
-	float _rotVariance;
-	float _transVariance;
+	double _rotVariance;
+	double _transVariance;
 
-	std::vector<unsigned char> _userData;
+	cv::Mat _userData;
 	UMutex _userDataMutex;
 };
 

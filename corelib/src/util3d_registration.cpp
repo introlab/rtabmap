@@ -222,14 +222,79 @@ Transform transformFromXYZCorrespondences(
 	return Transform();
 }
 
+void computeVarianceAndCorrespondences(
+		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloudA,
+		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloudB,
+		double maxCorrespondenceDistance,
+		double & variance,
+		int & correspondencesOut)
+{
+	variance = 1;
+	correspondencesOut = 0;
+	pcl::registration::CorrespondenceEstimation<pcl::PointNormal, pcl::PointNormal>::Ptr est;
+	est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointNormal, pcl::PointNormal>);
+	est->setInputTarget(cloudA);
+	est->setInputSource(cloudB);
+	pcl::Correspondences correspondences;
+	est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
+
+	if(correspondences.size()>=3)
+	{
+		std::vector<double> distances(correspondences.size());
+		for(unsigned int i=0; i<correspondences.size(); ++i)
+		{
+			distances[i] = correspondences[i].distance;
+		}
+
+		//variance
+		std::sort(distances.begin (), distances.end ());
+		double median_error_sqr = distances[distances.size () >> 1];
+		variance = (2.1981 * median_error_sqr);
+	}
+
+	correspondencesOut = (int)correspondences.size();
+}
+
+void computeVarianceAndCorrespondences(
+		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloudA,
+		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloudB,
+		double maxCorrespondenceDistance,
+		double & variance,
+		int & correspondencesOut)
+{
+	variance = 1;
+	correspondencesOut = 0;
+	pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>::Ptr est;
+	est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>);
+	est->setInputTarget(cloudA);
+	est->setInputSource(cloudB);
+	pcl::Correspondences correspondences;
+	est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
+
+	if(correspondences.size()>=3)
+	{
+		std::vector<double> distances(correspondences.size());
+		for(unsigned int i=0; i<correspondences.size(); ++i)
+		{
+			distances[i] = correspondences[i].distance;
+		}
+
+		//variance
+		std::sort(distances.begin (), distances.end ());
+		double median_error_sqr = distances[distances.size () >> 1];
+		variance = (2.1981 * median_error_sqr);
+	}
+
+	correspondencesOut = (int)correspondences.size();
+}
+
 // return transform from source to target (All points must be finite!!!)
 Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 			  const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_target,
 			  double maxCorrespondenceDistance,
 			  int maximumIterations,
-			  bool * hasConvergedOut,
-			  double * variance,
-			  int * correspondencesOut)
+			  bool & hasConverged,
+			  pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered)
 {
 	pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
 	// Set the input source and target
@@ -247,63 +312,8 @@ Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
 
 	// Perform the alignment
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source_registered(new pcl::PointCloud<pcl::PointXYZ>);
-	icp.align (*cloud_source_registered);
-	bool hasConverged = icp.hasConverged();
-
-	// compute variance
-	if((correspondencesOut || variance) && hasConverged)
-	{
-		pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>::Ptr est;
-		est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>);
-		est->setInputTarget(cloud_target);
-		est->setInputSource(cloud_source_registered);
-		pcl::Correspondences correspondences;
-		est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
-		if(variance)
-		{
-			if(correspondences.size()>=3)
-			{
-				std::vector<double> distances(correspondences.size());
-				for(unsigned int i=0; i<correspondences.size(); ++i)
-				{
-					distances[i] = correspondences[i].distance;
-				}
-
-				//variance
-				std::sort(distances.begin (), distances.end ());
-				double median_error_sqr = distances[distances.size () >> 1];
-				*variance = (2.1981 * median_error_sqr);
-			}
-			else
-			{
-				hasConverged = false;
-				*variance = -1.0;
-			}
-		}
-
-		if(correspondencesOut)
-		{
-			*correspondencesOut = (int)correspondences.size();
-		}
-	}
-	else
-	{
-		if(correspondencesOut)
-		{
-			*correspondencesOut = 0;
-		}
-		if(variance)
-		{
-			*variance = -1;
-		}
-	}
-
-	if(hasConvergedOut)
-	{
-		*hasConvergedOut = hasConverged;
-	}
-
+	icp.align (cloud_source_registered);
+	hasConverged = icp.hasConverged();
 	return Transform::fromEigen4f(icp.getFinalTransformation());
 }
 
@@ -313,9 +323,8 @@ Transform icpPointToPlane(
 		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloud_target,
 		double maxCorrespondenceDistance,
 		int maximumIterations,
-		bool * hasConvergedOut,
-		double * variance,
-		int * correspondencesOut)
+		bool & hasConverged,
+		pcl::PointCloud<pcl::PointNormal> & cloud_source_registered)
 {
 	pcl::IterativeClosestPoint<pcl::PointNormal, pcl::PointNormal> icp;
 	// Set the input source and target
@@ -337,63 +346,8 @@ Transform icpPointToPlane(
 	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
 
 	// Perform the alignment
-	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_source_registered(new pcl::PointCloud<pcl::PointNormal>);
-	icp.align (*cloud_source_registered);
-	bool hasConverged = icp.hasConverged();
-
-	// compute variance
-	if((correspondencesOut || variance) && hasConverged)
-	{
-		pcl::registration::CorrespondenceEstimation<pcl::PointNormal, pcl::PointNormal>::Ptr est;
-		est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointNormal, pcl::PointNormal>);
-		est->setInputTarget(cloud_target);
-		est->setInputSource(cloud_source_registered);
-		pcl::Correspondences correspondences;
-		est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
-		if(variance)
-		{
-			if(correspondences.size()>=3)
-			{
-				std::vector<double> distances(correspondences.size());
-				for(unsigned int i=0; i<correspondences.size(); ++i)
-				{
-					distances[i] = correspondences[i].distance;
-				}
-
-				//variance
-				std::sort(distances.begin (), distances.end ());
-				double median_error_sqr = distances[distances.size () >> 1];
-				*variance = (2.1981 * median_error_sqr);
-			}
-			else
-			{
-				hasConverged = false;
-				*variance = -1.0;
-			}
-		}
-
-		if(correspondencesOut)
-		{
-			*correspondencesOut = (int)correspondences.size();
-		}
-	}
-	else
-	{
-		if(correspondencesOut)
-		{
-			*correspondencesOut = 0;
-		}
-		if(variance)
-		{
-			*variance = -1;
-		}
-	}
-
-	if(hasConvergedOut)
-	{
-		*hasConvergedOut = hasConverged;
-	}
-
+	icp.align (cloud_source_registered);
+	hasConverged = icp.hasConverged();
 	return Transform::fromEigen4f(icp.getFinalTransformation());
 }
 
@@ -402,9 +356,8 @@ Transform icp2D(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 			  const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_target,
 			  double maxCorrespondenceDistance,
 			  int maximumIterations,
-			  bool * hasConvergedOut,
-			  double * variance,
-			  int * correspondencesOut)
+			  bool & hasConverged,
+			  pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered)
 {
 	pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
 	// Set the input source and target
@@ -426,63 +379,8 @@ Transform icp2D(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
 
 	// Perform the alignment
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source_registered(new pcl::PointCloud<pcl::PointXYZ>);
-	icp.align (*cloud_source_registered);
-	bool hasConverged = icp.hasConverged();
-
-	// compute variance
-	if((correspondencesOut || variance) && hasConverged)
-	{
-		pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>::Ptr est;
-		est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>);
-		est->setInputTarget(cloud_target);
-		est->setInputSource(cloud_source_registered);
-		pcl::Correspondences correspondences;
-		est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
-		if(variance)
-		{
-			if(correspondences.size()>=3)
-			{
-				std::vector<double> distances(correspondences.size());
-				for(unsigned int i=0; i<correspondences.size(); ++i)
-				{
-					distances[i] = correspondences[i].distance;
-				}
-
-				//variance
-				std::sort(distances.begin (), distances.end ());
-				double median_error_sqr = distances[distances.size () >> 1];
-				*variance = (2.1981 * median_error_sqr);
-			}
-			else
-			{
-				hasConverged = false;
-				*variance = -1.0;
-			}
-		}
-
-		if(correspondencesOut)
-		{
-			*correspondencesOut = (int)correspondences.size();
-		}
-	}
-	else
-	{
-		if(correspondencesOut)
-		{
-			*correspondencesOut = 0;
-		}
-		if(variance)
-		{
-			*variance = -1;
-		}
-	}
-
-	if(hasConvergedOut)
-	{
-		*hasConvergedOut = hasConverged;
-	}
-
+	icp.align (cloud_source_registered);
+	hasConverged = icp.hasConverged();
 	return Transform::fromEigen4f(icp.getFinalTransformation());
 }
 

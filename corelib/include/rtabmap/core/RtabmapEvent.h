@@ -67,6 +67,8 @@ public:
 			kCmdGenerateDOTLocalGraph, // params: path, id, margin
 			kCmdGenerateTOROGraphLocal, // params: path, optimized
 			kCmdGenerateTOROGraphGlobal, // params: path, optimized
+			kCmdExportPosesGlobal,
+			kCmdExportPosesLocal,
 			kCmdCleanDataBuffer,
 			kCmdPublish3DMapLocal, // params: optimized
 			kCmdPublish3DMapGlobal, // params: optimized
@@ -74,7 +76,8 @@ public:
 			kCmdPublishTOROGraphLocal, // params: optimized
 			kCmdTriggerNewMap,
 			kCmdPause,
-			kCmdGoal}; // params: label or location ID
+			kCmdGoal, // params: label or location ID
+			kCmdCancelGoal};
 public:
 	RtabmapEventCmd(Cmd cmd, const std::string & strValue = "", int intValue = 0, const ParametersMap & parameters = ParametersMap()) :
 			UEvent(0),
@@ -148,19 +151,11 @@ public:
 	RtabmapEvent3DMap(
 			const std::map<int, Signature> & signatures,
 			const std::map<int, Transform> & poses,
-			const std::multimap<int, Link> & constraints,
-			const std::map<int, int> & mapIds,
-			const std::map<int, double> & stamps,
-			const std::map<int, std::string> & labels,
-			const std::map<int, std::vector<unsigned char> > & userDatas) :
+			const std::multimap<int, Link> & constraints) :
 		UEvent(0),
 		_signatures(signatures),
 		_poses(poses),
-		_constraints(constraints),
-		_mapIds(mapIds),
-		_stamps(stamps),
-		_labels(labels),
-		_userDatas(userDatas)
+		_constraints(constraints)
 	{}
 
 	virtual ~RtabmapEvent3DMap() {}
@@ -168,10 +163,6 @@ public:
 	const std::map<int, Signature> & getSignatures() const {return _signatures;}
 	const std::map<int, Transform> & getPoses() const {return _poses;}
 	const std::multimap<int, Link> & getConstraints() const {return _constraints;}
-	const std::map<int, int> & getMapIds() const {return _mapIds;}
-	const std::map<int, double> & getStamps() const {return _stamps;}
-	const std::map<int, std::string> & getLabels() const {return _labels;}
-	const std::map<int, std::vector<unsigned char> > & getUserDatas() const {return _userDatas;}
 
 	virtual std::string getClassName() const {return std::string("RtabmapEvent3DMap");}
 
@@ -179,10 +170,6 @@ private:
 	std::map<int, Signature> _signatures;
 	std::map<int, Transform> _poses;
 	std::multimap<int, Link> _constraints;
-	std::map<int, int> _mapIds;
-	std::map<int, double> _stamps;
-	std::map<int, std::string> _labels;
-	std::map<int, std::vector<unsigned char> > _userDatas;
 };
 
 class RtabmapGlobalPathEvent : public UEvent

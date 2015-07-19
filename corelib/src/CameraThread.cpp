@@ -27,8 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/Camera.h"
-#include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraEvent.h"
+#include "rtabmap/core/CameraRGBD.h"
 
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
@@ -39,19 +39,10 @@ namespace rtabmap
 // ownership transferred
 CameraThread::CameraThread(Camera * camera) :
 		_camera(camera),
-		_cameraRGBD(0),
-		_seq(0)
+		_mirroring(false),
+		_colorOnly(false)
 {
 	UASSERT(_camera != 0);
-}
-
-// ownership transferred
-CameraThread::CameraThread(CameraRGBD * camera) :
-		_camera(0),
-		_cameraRGBD(camera),
-		_seq(0)
-{
-	UASSERT(_cameraRGBD != 0);
 }
 
 CameraThread::~CameraThread()
@@ -61,10 +52,6 @@ CameraThread::~CameraThread()
 	{
 		delete _camera;
 	}
-	if(_cameraRGBD)
-	{
-		delete _cameraRGBD;
-	}
 }
 
 void CameraThread::setImageRate(float imageRate)
@@ -73,74 +60,75 @@ void CameraThread::setImageRate(float imageRate)
 	{
 		_camera->setImageRate(imageRate);
 	}
-	if(_cameraRGBD)
-	{
-		_cameraRGBD->setImageRate(imageRate);
-	}
-}
-
-bool CameraThread::init()
-{
-	if(!this->isRunning())
-	{
-		_seq = 0;
-		if(_cameraRGBD)
-		{
-			return _cameraRGBD->init();
-		}
-		else
-		{
-			return _camera->init();
-		}
-
-		// Added sleep time to ignore first frames (which are darker)
-		uSleep(1000);
-	}
-	else
-	{
-		UERROR("Cannot initialize the camera because it is already running...");
-	}
-	return false;
 }
 
 void CameraThread::mainLoop()
 {
 	UTimer timer;
 	UDEBUG("");
-	cv::Mat rgb, depth;
-	float fx = 0.0f;
-	float fy = 0.0f;
-	float cx = 0.0f;
-	float cy = 0.0f;
-	if(_cameraRGBD)
-	{
-		_cameraRGBD->takeImage(rgb, depth, fx, fy, cx, cy);
-	}
-	else
-	{
-		rgb = _camera->takeImage();
-	}
+	SensorData data = _camera->takeImage();
 
-	if(!rgb.empty() && !this->isKilled())
+	if(!data.imageRaw().empty())
 	{
-		if(_cameraRGBD)
+		if(_colorOnly && !data.depthRaw().empty())
 		{
-			SensorData data(rgb, depth, fx, fy, cx, cy, _cameraRGBD->getLocalTransform(), Transform(), 1, 1, ++_seq, UTimer::now());
-			this->post(new CameraEvent(data, _cameraRGBD->getSerial()));
+			data.setDepthOrRightRaw(cv::Mat());
 		}
-		else
+		if(_mirroring && data.cameraModels().size() == 1)
 		{
-			this->post(new CameraEvent(rgb, ++_seq, UTimer::now()));
+			cv::Mat tmpRgb;
+			cv::flip(data.imageRaw(), tmpRgb, 1);
+			data.setImageRaw(tmpRgb);
+			if(data.cameraModels()[0].cx())
+			{
+				CameraModel tmpModel(
+						data.cameraModels()[0].fx(),
+						data.cameraModels()[0].fy(),
+						float(data.imageRaw().cols) - data.cameraModels()[0].cx(),
+						data.cameraModels()[0].cy(),
+						data.cameraModels()[0].localTransform());
+				data.setCameraModel(tmpModel);
+			}
+			if(!data.depthRaw().empty())
+			{
+				cv::Mat tmpDepth;
+				cv::flip(data.depthRaw(), tmpDepth, 1);
+				data.setDepthOrRightRaw(tmpDepth);
+			}
 		}
+
+		this->post(new CameraEvent(data, _camera->getSerial()));
 	}
 	else if(!this->isKilled())
 	{
-		if(_cameraRGBD)
-		{
-			UWARN("no more images...");
-		}
+		UWARN("no more images...");
 		this->kill();
 		this->post(new CameraEvent());
+	}
+}
+
+void CameraThread::mainLoopKill()
+{
+	if(dynamic_cast<CameraFreenect2*>(_camera) != 0)
+	{
+		int i=20;
+		while(i-->0)
+		{
+			uSleep(100);
+			if(!this->isKilled())
+			{
+				break;
+			}
+		}
+		if(this->isKilled())
+		{
+			//still in killed state, maybe a deadlock
+			UERROR("CameraFreenect2: Failed to kill normally the Freenect2 driver! The thread is locked "
+				   "on waitForNewFrame() method of libfreenect2. This maybe caused by not linking on the right libusb. "
+				   "Note that rtabmap should link on libusb of libfreenect2. "
+				   "Tip before starting rtabmap: \"$ export LD_LIBRARY_PATH=~/libfreenect2/depends/libusb/lib:$LD_LIBRARY_PATH\"");
+		}
+
 	}
 }
 

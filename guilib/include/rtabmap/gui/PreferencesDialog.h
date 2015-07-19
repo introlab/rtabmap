@@ -59,7 +59,7 @@ namespace rtabmap {
 
 class Signature;
 class LoopClosureViewer;
-class CameraRGBD;
+class Camera;
 class CalibrationDialog;
 
 class RTABMAPGUI_EXP PreferencesDialog : public QDialog
@@ -79,18 +79,28 @@ public:
 	Q_DECLARE_FLAGS(PANEL_FLAGS, PanelFlag);
 
 	enum Src {
-		kSrcUndef,
-		kSrcUsbDevice,
-		kSrcImages,
-		kSrcVideo,
-		kSrcOpenNI_PCL,
-		kSrcFreenect,
-		kSrcOpenNI_CV,
-		kSrcOpenNI_CV_ASUS,
-		kSrcOpenNI2,
-		kSrcFreenect2,
-		kSrcStereoDC1394,
-		kSrcStereoFlyCapture2
+		kSrcUndef = -1,
+
+		kSrcRGBD           = 0,
+		kSrcOpenNI_PCL     = 0,
+		kSrcFreenect       = 1,
+		kSrcOpenNI_CV      = 2,
+		kSrcOpenNI_CV_ASUS = 3,
+		kSrcOpenNI2        = 4,
+		kSrcFreenect2      = 5,
+
+		kSrcStereo         = 100,
+		kSrcDC1394         = 100,
+		kSrcFlyCapture2    = 101,
+		kSrcStereoImages   = 102,
+		kSrcStereoVideo    = 103,
+
+		kSrcRGB            = 200,
+		kSrcUsbDevice      = 200,
+		kSrcImages         = 201,
+		kSrcVideo          = 202,
+
+		kSrcDatabase       = 300
 	};
 
 public:
@@ -99,6 +109,7 @@ public:
 
 	virtual QString getIniFilePath() const;
 	void init();
+	void setCurrentPanelToSource();
 
 	// save stuff
 	void saveSettings();
@@ -147,8 +158,10 @@ public:
 	double getMeshSmoothingRadius() const;
 
 	bool isCloudFiltering() const;
+	bool isSubtractFiltering() const;
 	double getCloudFilteringRadius() const;
 	double getCloudFilteringAngle() const;
+	int getSubstractFilteringMinPts() const;
 
 	bool getGridMapShown() const;
 	double getGridMapResolution() const;
@@ -161,36 +174,36 @@ public:
 	// source panel
 	double getGeneralInputRate() const;
 	bool isSourceMirroring() const;
-	bool isSourceImageUsed() const;
-	bool isSourceDatabaseUsed() const;
-	bool isSourceRGBDUsed() const;
-	PreferencesDialog::Src getSourceImageType() const;
-	QString getSourceImageTypeStr() const;
-	int getSourceWidth() const;
-	int getSourceHeight() const;
+	QString getCalibrationName() const;
+	PreferencesDialog::Src getSourceType() const;
+	PreferencesDialog::Src getSourceDriver() const;
+	QString getSourceDriverStr() const;
+	QString getSourceDevice() const;
+
 	QString getSourceImagesPath() const;	//Images group
 	QString getSourceImagesSuffix() const;	//Images group
 	int getSourceImagesSuffixIndex() const;	//Images group
 	int getSourceImagesStartPos() const;	//Images group
 	bool getSourceImagesRefreshDir() const;	//Images group
+	bool getSourceImagesRectify() const; //Images group
 	QString getSourceVideoPath() const;	//Video group
-	int getSourceUsbDeviceId() const;		//UsbDevice group
+	bool getSourceVideoRectify() const; //Video group
 	QString getSourceDatabasePath() const; //Database group
 	bool getSourceDatabaseOdometryIgnored() const; //Database group
 	bool getSourceDatabaseGoalDelayIgnored() const; //Database group
 	int getSourceDatabaseStartPos() const; //Database group
 	bool getSourceDatabaseStampsUsed() const;//Database group
-	Src getSourceRGBD() const; 			// Openni group
 	bool getSourceOpenni2AutoWhiteBalance() const;  //Openni group
 	bool getSourceOpenni2AutoExposure() const;  //Openni group
 	int getSourceOpenni2Exposure() const;  //Openni group
 	int getSourceOpenni2Gain() const;   //Openni group
 	bool getSourceOpenni2Mirroring() const; //Openni group
 	int getSourceFreenect2Format() const; //Openni group
+	bool getSourceStereoImagesRectify() const;
+	bool getSourceStereoVideoRectify() const;
 	bool isSourceRGBDColorOnly() const;
-	QString getSourceOpenniDevice() const;            //Openni group
-	Transform getSourceOpenniLocalTransform() const;    //Openni group
-	CameraRGBD * createCameraRGBD(bool forCalibration = false); // return camera should be deleted if not null
+	Transform getSourceLocalTransform() const;    //Openni group
+	Camera * createCamera(bool useRawImages = false); // return camera should be deleted if not null
 
 	int getIgnoredDCComponents() const;
 
@@ -205,6 +218,7 @@ public:
 	double getLoopThr() const;
 	double getVpThr() const;
 	int getOdomStrategy() const;
+	int getOdomBufferSize() const;
 	QString getCameraInfoDir() const; // "workinfDir/camera_info"
 
 	//
@@ -219,9 +233,7 @@ public slots:
 	void setDetectionRate(double value);
 	void setTimeLimit(float value);
 	void setSLAMMode(bool enabled);
-	void selectSourceImage(Src src = kSrcUndef);
-	void selectSourceDatabase(bool user = false);
-	void selectSourceRGBD(Src src = kSrcUndef);
+	void selectSourceDriver(Src src);
 	void calibrate();
 
 private slots:
@@ -244,13 +256,25 @@ private slots:
 	void updateKpROI();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
+	void changeOdomBowFixedLocalMapPath();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();
 	void openDatabaseViewer();
+	void selectSourceDatabase();
+	void selectSourceStereoImagesStamps();
+	void selectSourceStereoImagesPath();
+	void selectSourceImagesPath();
+	void selectSourceVideoPath();
+	void selectSourceStereoVideoPath();
+	void selectSourceOniPath();
+	void selectSourceOni2Path();
+	void updateSourceGrpVisibility();
 	void updateRGBDCameraGroupBoxVisibility();
+	void updateRGBCameraGroupBoxVisibility();
+	void updateStereoCameraGroupBoxVisibility();
 	void testOdometry();
-	void testRGBDCamera();
+	void testCamera();
 
 protected:
 	virtual void showEvent ( QShowEvent * event );

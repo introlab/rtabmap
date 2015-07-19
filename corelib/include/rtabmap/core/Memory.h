@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UStl.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
+#include <pcl/point_types.h>
 
 namespace rtabmap {
 
@@ -65,7 +66,12 @@ public:
 	virtual ~Memory();
 
 	virtual void parseParameters(const ParametersMap & parameters);
-	bool update(const SensorData & data, Statistics * stats = 0);
+	bool update(const SensorData & data,
+			Statistics * stats = 0);
+	bool update(const SensorData & data,
+			const Transform & pose,
+			const cv::Mat & covariance,
+			Statistics * stats = 0);
 	bool init(const std::string & dbUrl,
 			bool dbOverwritten = false,
 			const ParametersMap & parameters = ParametersMap(),
@@ -78,11 +84,12 @@ public:
 	std::list<int> forget(const std::set<int> & ignoredIds = std::set<int>());
 	std::set<int> reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, double & timeDbAccess);
 
-	std::list<int> cleanup(const std::list<int> & ignoredIds = std::list<int>());
+	int cleanup();
 	void emptyTrash();
 	void joinTrashThread();
-	bool addLink(int to, int from, const Transform & transform, Link::Type type, float rotVariance, float transVariance);
+	bool addLink(const Link & link);
 	void updateLink(int fromId, int toId, const Transform & transform, float rotVariance, float transVariance);
+	void updateLink(int fromId, int toId, const Transform & transform, const cv::Mat & covariance);
 	void removeAllVirtualLinks();
 	void removeVirtualLinks(int signatureId);
 	std::map<int, int> getNeighborsId(
@@ -91,6 +98,7 @@ public:
 			int maxCheckedInDatabase = -1,
 			bool incrementMarginOnLoop = false,
 			bool ignoreLoopIds = false,
+			bool ignoreIntermediateNodes = false,
 			double * dbAccessTime = 0) const;
 	std::map<int, float> getNeighborsIdRadius(
 			int signatureId,
@@ -108,6 +116,9 @@ public:
 			bool lookInDatabase = false) const;
 	std::map<int, Link> getLoopClosureLinks(int signatureId,
 			bool lookInDatabase = false) const;
+	std::map<int, Link> getLinks(int signatureId,
+			bool lookInDatabase = false) const;
+	std::multimap<int, Link> getAllLinks(bool lookInDatabase, bool ignoreNullLinks = true) const;
 	bool isRawDataKept() const {return _rawDataKept;}
 	bool isBinDataKept() const {return _binDataKept;}
 	float getSimilarityThreshold() const {return _similarityThreshold;}
@@ -117,7 +128,7 @@ public:
 	int getSignatureIdByLabel(const std::string & label, bool lookInDatabase = true) const;
 	bool labelSignature(int id, const std::string & label);
 	std::map<int, std::string> getAllLabels() const;
-	bool setUserData(int id, const std::vector<unsigned char> & data);
+	bool setUserData(int id, const cv::Mat & data);
 	int getDatabaseMemoryUsed() const; // in bytes
 	double getDbSavingTime() const;
 	Transform getOdomPose(int signatureId, bool lookInDatabase = false) const;
@@ -127,11 +138,13 @@ public:
 			int & weight,
 			std::string & label,
 			double & stamp,
-			std::vector<unsigned char> & userData,
 			bool lookInDatabase = false) const;
 	cv::Mat getImageCompressed(int signatureId) const;
-	Signature getSignatureData(int locationId, bool uncompressedData = false);
-	Signature getSignatureDataConst(int locationId) const;
+	SensorData getNodeData(int nodeId, bool uncompressedData = false);
+	void getNodeWords(int nodeId,
+			std::multimap<int, cv::KeyPoint> & words,
+			std::multimap<int, pcl::PointXYZ> & words3);
+	SensorData getSignatureDataConst(int locationId) const;
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}
 	bool isIncremental() const {return _incrementalMemory;}
@@ -168,7 +181,6 @@ public:
 	float getBowInlierDistance() const {return _bowInlierDistance;}
 	int getBowIterations() const {return _bowIterations;}
 	int getBowMinInliers() const {return _bowMinInliers;}
-	float getBowMaxDepth() const {return _bowMaxDepth;}
 	bool getBowForce2D() const {return _bowForce2D;}
 	Transform computeVisualTransform(int oldId, int newId, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
 	Transform computeVisualTransform(const Signature & oldS, const Signature & newS, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
@@ -184,7 +196,7 @@ public:
 
 private:
 	void preUpdate();
-	void addSignatureToStm(Signature * signature, float poseRotVariance, float poseTransVariance);
+	void addSignatureToStm(Signature * signature, const cv::Mat & covariance);
 	void clear();
 	void moveToTrash(Signature * s, bool keepLinkedToGraph = true, std::list<int> * deletedWords = 0);
 
@@ -202,6 +214,7 @@ private:
 	void copyData(const Signature * from, Signature * to);
 	Signature * createSignature(
 			const SensorData & data,
+			const Transform & pose,
 			Statistics * stats = 0);
 
 	//keypoint stuff
@@ -260,10 +273,12 @@ private:
 	int _bowMinInliers;
 	float _bowInlierDistance;
 	int _bowIterations;
-	float _bowMaxDepth;
+	int _bowRefineIterations;
 	bool _bowForce2D;
-	bool _bowEpipolarGeometry;
 	float _bowEpipolarGeometryVar;
+	int _bowEstimationType;
+	double _bowPnPReprojError;
+	int _bowPnPFlags;
 	float _icpMaxTranslation;
 	float _icpMaxRotation;
 	int _icpDecimation;

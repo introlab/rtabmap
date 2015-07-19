@@ -66,7 +66,10 @@ public:
 	virtual ~Rtabmap();
 
 	bool process(const cv::Mat & image, int id=0); // for convenience, an id is automatically generated if id=0
-	bool process(const SensorData & data); // for convenience
+	bool process(
+			const SensorData & data,
+			const Transform & odomPose,
+			const cv::Mat & covariance = cv::Mat::eye(6,6,CV_64FC1)); // for convenience
 
 	void init(const ParametersMap & parameters, const std::string & databasePath = "");
 	void init(const std::string & configFile = "", const std::string & databasePath = "");
@@ -103,36 +106,30 @@ public:
 
 	int triggerNewMap();
 	bool labelLocation(int id, const std::string & label);
-	bool setUserData(int id, const std::vector<unsigned char> & data);
+	bool setUserData(int id, const cv::Mat & data);
 	void generateDOTGraph(const std::string & path, int id=0, int margin=5);
 	void generateTOROGraph(const std::string & path, bool optimized, bool global);
+	void exportPoses(const std::string & path, bool optimized, bool global);
 	void resetMemory();
 	void dumpPrediction() const;
 	void dumpData() const;
+	void dumpPoses(const std::string & path, const std::map<int, Transform> & poses) const;
 	void parseParameters(const ParametersMap & parameters);
 	void setWorkingDirectory(std::string path);
 	void rejectLoopClosure(int oldId, int newId);
 	void get3DMap(std::map<int, Signature> & signatures,
 			std::map<int, Transform> & poses,
 			std::multimap<int, Link> & constraints,
-			std::map<int, int> & mapIds,
-			std::map<int, double> & stamps,
-			std::map<int, std::string> & labels,
-			std::map<int, std::vector<unsigned char> > & userDatas,
 			bool optimized,
 			bool global) const;
 	void getGraph(std::map<int, Transform> & poses,
 			std::multimap<int, Link> & constraints,
-			std::map<int, int> & mapIds,
-			std::map<int, double> & stamps,
-			std::map<int, std::string> & labels,
-			std::map<int, std::vector<unsigned char> > & userDatas,
 			bool optimized,
 			bool global,
-			bool posesConstraintsOnly = false);
+			std::map<int, Signature> * signatures = 0);
 	void clearPath();
 	bool computePath(int targetNode, bool global);
-	bool computePath(const Transform & targetPose, bool global);
+	bool computePath(const Transform & targetPose); // only in current optimized map
 	const std::vector<std::pair<int, Transform> > & getPath() const {return _path;}
 	std::vector<std::pair<int, Transform> > getPathNextPoses() const;
 	std::vector<int> getPathNextNodes() const;
@@ -164,7 +161,7 @@ private:
 private:
 	// Modifiable parameters
 	bool _publishStats;
-	bool _publishLastSignature;
+	bool _publishLastSignatureData;
 	bool _publishPdf;
 	bool _publishLikelihood;
 	float _maxTimeAllowed; // in ms
@@ -196,6 +193,7 @@ private:
 	float _reextractNNDR;
 	int _reextractFeatureType;
 	int _reextractMaxWords;
+	float _reextractMaxDepth;
 	bool _startNewMapOnLoopClosure;
 	float _goalReachedRadius; // meters
 	bool _planVirtualLinks;

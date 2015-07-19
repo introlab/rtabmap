@@ -29,7 +29,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ui_mainWindow.h"
 
-#include "rtabmap/core/Camera.h"
+#include "rtabmap/core/CameraRGB.h"
+#include "rtabmap/core/CameraStereo.h"
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/DBReader.h"
@@ -86,7 +87,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d_filtering.h"
-#include "rtabmap/core/util3d_conversions.h"
 #include "rtabmap/core/util3d_mapping.h"
 #include "rtabmap/core/util3d_surface.h"
 #include "rtabmap/core/util3d_registration.h"
@@ -119,7 +119,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_camera(0),
 	_dbReader(0),
 	_odomThread(0),
-	_srcType(kSrcUndefined),
 	_preferencesDialog(0),
 	_aboutDialog(0),
 	_exportDialog(0),
@@ -295,16 +294,19 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionDump_the_memory, SIGNAL(triggered()), this, SLOT(dumpTheMemory()));
 	connect(_ui->actionDump_the_prediction_matrix, SIGNAL(triggered()), this, SLOT(dumpThePrediction()));
 	connect(_ui->actionSend_goal, SIGNAL(triggered()), this, SLOT(sendGoal()));
+	connect(_ui->actionCancel_goal, SIGNAL(triggered()), this, SLOT(cancelGoal()));
 	connect(_ui->actionClear_cache, SIGNAL(triggered()), this, SLOT(clearTheCache()));
 	connect(_ui->actionAbout, SIGNAL(triggered()), _aboutDialog , SLOT(exec()));
 	connect(_ui->actionPrint_loop_closure_IDs_to_console, SIGNAL(triggered()), this, SLOT(printLoopClosureIds()));
 	connect(_ui->actionGenerate_map, SIGNAL(triggered()), this , SLOT(generateMap()));
 	connect(_ui->actionGenerate_local_map, SIGNAL(triggered()), this, SLOT(generateLocalMap()));
 	connect(_ui->actionGenerate_TORO_graph_graph, SIGNAL(triggered()), this , SLOT(generateTOROMap()));
+	connect(_ui->actionExport_poses_txt, SIGNAL(triggered()), this , SLOT(exportPoses()));
 	connect(_ui->actionDelete_memory, SIGNAL(triggered()), this , SLOT(deleteMemory()));
 	connect(_ui->actionDownload_all_clouds, SIGNAL(triggered()), this , SLOT(downloadAllClouds()));
 	connect(_ui->actionDownload_graph, SIGNAL(triggered()), this , SLOT(downloadPoseGraph()));
 	connect(_ui->menuEdit, SIGNAL(aboutToShow()), this, SLOT(updateEditMenu()));
+	connect(_ui->actionDefault_views, SIGNAL(triggered(bool)), this, SLOT(setDefaultViews()));
 	connect(_ui->actionAuto_screen_capture, SIGNAL(triggered(bool)), this, SLOT(selectScreenCaptureFormat(bool)));
 	connect(_ui->actionScreenshot, SIGNAL(triggered()), this, SLOT(takeScreenshot()));
 	connect(_ui->action16_9, SIGNAL(triggered()), this, SLOT(setAspectRatio16_9()));
@@ -336,7 +338,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->actionPost_processing->setEnabled(false);
 
 	QToolButton* toolButton = new QToolButton(this);
-	toolButton->setMenu(_ui->menuRGB_D_camera);
+	toolButton->setMenu(_ui->menuSelect_source);
 	toolButton->setPopupMode(QToolButton::InstantPopup);
 	toolButton->setIcon(QIcon(":images/kinect_xbox_360.png"));
 	toolButton->setToolTip("Select sensor driver");
@@ -349,10 +351,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 #endif
 
 	//Settings menu
-	connect(_ui->actionImageFiles, SIGNAL(triggered()), this, SLOT(selectImages()));
-	connect(_ui->actionVideo, SIGNAL(triggered()), this, SLOT(selectVideo()));
+	connect(_ui->actionMore_options, SIGNAL(triggered()), this, SLOT(openPreferencesSource()));
 	connect(_ui->actionUsbCamera, SIGNAL(triggered()), this, SLOT(selectStream()));
-	connect(_ui->actionDatabase, SIGNAL(triggered()), this, SLOT(selectDatabase()));
 	connect(_ui->actionOpenNI_PCL, SIGNAL(triggered()), this, SLOT(selectOpenni()));
 	connect(_ui->actionOpenNI_PCL_ASUS, SIGNAL(triggered()), this, SLOT(selectOpenni()));
 	connect(_ui->actionFreenect, SIGNAL(triggered()), this, SLOT(selectFreenect()));
@@ -437,11 +437,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	qRegisterMetaType<rtabmap::Statistics>("rtabmap::Statistics");
 	connect(this, SIGNAL(statsReceived(rtabmap::Statistics)), this, SLOT(processStats(rtabmap::Statistics)));
 
-	qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
-	qRegisterMetaType<rtabmap::OdometryInfo>("rtabmap::OdometryInfo");
-	connect(this, SIGNAL(odometryReceived(rtabmap::SensorData, rtabmap::OdometryInfo)), this, SLOT(processOdometry(rtabmap::SensorData, rtabmap::OdometryInfo)));
+	qRegisterMetaType<rtabmap::OdometryEvent>("rtabmap::OdometryEvent");
+	connect(this, SIGNAL(odometryReceived(rtabmap::OdometryEvent)), this, SLOT(processOdometry(rtabmap::OdometryEvent)));
 
-	connect(this, SIGNAL(noMoreImagesReceived()), this, SLOT(stopDetection()));
+	connect(this, SIGNAL(noMoreImagesReceived()), this, SLOT(notifyNoMoreImages()));
 
 	// Apply state
 	this->changeState(kIdle);
@@ -671,7 +670,13 @@ void MainWindow::handleEvent(UEvent* anEvent)
 			if(!_processingOdometry && !_processingStatistics)
 			{
 				_processingOdometry = true; // if we receive too many odometry events!
-				emit odometryReceived(odomEvent->data(), odomEvent->info());
+				emit odometryReceived(*odomEvent);
+			}
+			else
+			{
+				// we receive too many odometry events! just send without data
+				OdometryEvent tmp(SensorData(cv::Mat(), odomEvent->data().id()), odomEvent->pose(), odomEvent->covariance(), odomEvent->info());
+				emit odometryReceived(tmp);
 			}
 		}
 	}
@@ -695,254 +700,299 @@ void MainWindow::handleEvent(UEvent* anEvent)
 	}
 }
 
-void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap::OdometryInfo & info)
+void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 {
 	_processingOdometry = true;
 	UTimer time;
-	Transform pose = data.pose();
-	bool lost = false;
-	bool lostStateChanged = false;
+	// Process Data
+	if(!odom.data().imageRaw().empty())
+	{
+		Transform pose = odom.pose();
+		bool lost = false;
+		bool lostStateChanged = false;
 
-	if(pose.isNull())
-	{
-		UDEBUG("odom lost"); // use last pose
-		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() != Qt::darkRed;
-		_ui->widget_cloudViewer->setBackgroundColor(Qt::darkRed);
-		_ui->imageView_odometry->setBackgroundColor(Qt::darkRed);
-
-		pose = _lastOdomPose;
-		lost = true;
-	}
-	else if(info.inliers>0 &&
-			_preferencesDialog->getOdomQualityWarnThr() &&
-			info.inliers < _preferencesDialog->getOdomQualityWarnThr())
-	{
-		UDEBUG("odom warn, quality(inliers)=%d thr=%d", info.inliers, _preferencesDialog->getOdomQualityWarnThr());
-		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
-		_ui->widget_cloudViewer->setBackgroundColor(Qt::darkYellow);
-		_ui->imageView_odometry->setBackgroundColor(Qt::darkYellow);
-	}
-	else
-	{
-		UDEBUG("odom ok");
-		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
-		_ui->widget_cloudViewer->setBackgroundColor(_ui->widget_cloudViewer->getDefaultBackgroundColor());
-		_ui->imageView_odometry->setBackgroundColor(Qt::black);
-	}
-
-	if(info.inliers >= 0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/Inliers/", (float)data.id(), (float)info.inliers);
-	}
-	if(info.matches >= 0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/Matches/", (float)data.id(), (float)info.matches);
-	}
-	if(info.variance >= 0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/StdDev/", (float)data.id(), sqrt((float)info.variance));
-	}
-	if(info.variance >= 0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/Variance/", (float)data.id(), (float)info.variance);
-	}
-	if(info.time > 0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/Time/ms", (float)data.id(), (float)info.time*1000.0f);
-	}
-	if(info.features >=0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/Features/", (float)data.id(), (float)info.features);
-	}
-	if(info.localMapSize >=0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/Local_map_size/", (float)data.id(), (float)info.localMapSize);
-	}
-	_ui->statsToolBox->updateStat("Odometry/ID/", (float)data.id(), (float)data.id());
-
-	float x,y,z, roll,pitch,yaw;
-	pose.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-	_ui->statsToolBox->updateStat("Odometry/T_x/m", (float)data.id(), x);
-	_ui->statsToolBox->updateStat("Odometry/T_y/m", (float)data.id(), y);
-	_ui->statsToolBox->updateStat("Odometry/T_z/m", (float)data.id(), z);
-	_ui->statsToolBox->updateStat("Odometry/T_roll/deg", (float)data.id(), roll*180.0/CV_PI);
-	_ui->statsToolBox->updateStat("Odometry/T_pitch/deg", (float)data.id(), pitch*180.0/CV_PI);
-	_ui->statsToolBox->updateStat("Odometry/T_yaw/deg", (float)data.id(), yaw*180.0/CV_PI);
-
-	if(!pose.isNull() && (_ui->dockWidget_cloudViewer->isVisible() || _ui->graphicsView_graphView->isVisible()))
-	{
-		_lastOdomPose = pose;
-		_odometryReceived = true;
-	}
-
-	if(_ui->dockWidget_cloudViewer->isVisible())
-	{
-		if(!pose.isNull())
+		if(pose.isNull())
 		{
-			// 3d cloud
-			if(data.depthOrRightImage().cols == data.image().cols &&
-			   data.depthOrRightImage().rows == data.image().rows &&
-			   !data.depthOrRightImage().empty() &&
-			   data.fx() > 0.0f &&
-			   data.fyOrBaseline() > 0.0f &&
-			   _preferencesDialog->isCloudsShown(1))
-			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-				cloud = createCloud(0,
-						data.image(),
-						data.depthOrRightImage(),
-						data.fx(),
-						data.fyOrBaseline(),
-						data.cx(),
-						data.cy(),
-						data.localTransform(),
-						pose,
-						_preferencesDialog->getCloudVoxelSize(1),
-						_preferencesDialog->getCloudDecimation(1),
-						_preferencesDialog->getCloudMaxDepth(1));
+			UDEBUG("odom lost"); // use last pose
+			lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() != Qt::darkRed;
+			_ui->widget_cloudViewer->setBackgroundColor(Qt::darkRed);
+			_ui->imageView_odometry->setBackgroundColor(Qt::darkRed);
 
-				if(!_ui->widget_cloudViewer->addOrUpdateCloud("cloudOdom", cloud, _odometryCorrection))
-				{
-					UERROR("Adding cloudOdom to viewer failed!");
-				}
-				_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", true);
-				_ui->widget_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
-				_ui->widget_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
-			}
-
-			// 2d cloud
-			if(!data.laserScan().empty() &&
-				_preferencesDialog->isScansShown(1))
-			{
-				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-				cloud = util3d::laserScanToPointCloud(data.laserScan());
-				cloud = util3d::transformPointCloud(cloud, pose);
-				if(!_ui->widget_cloudViewer->addOrUpdateCloud("scanOdom", cloud, _odometryCorrection))
-				{
-					UERROR("Adding scanOdom to viewer failed!");
-				}
-				_ui->widget_cloudViewer->setCloudVisibility("scanOdom", true);
-				_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
-				_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
-			}
-
-			if(!data.pose().isNull())
-			{
-				// update camera position
-				_ui->widget_cloudViewer->updateCameraTargetPosition(_odometryCorrection*data.pose());
-			}
+			pose = _lastOdomPose;
+			lost = true;
 		}
-		_ui->widget_cloudViewer->update();
-	}
-
-	if(_ui->graphicsView_graphView->isVisible())
-	{
-		if(!pose.isNull() && !data.pose().isNull())
+		else if(odom.info().inliers>0 &&
+				_preferencesDialog->getOdomQualityWarnThr() &&
+				odom.info().inliers < _preferencesDialog->getOdomQualityWarnThr())
 		{
-			_ui->graphicsView_graphView->updateReferentialPosition(_odometryCorrection*data.pose());
-			_ui->graphicsView_graphView->update();
-		}
-	}
-
-	if(_ui->dockWidget_odometry->isVisible() &&
-	   !data.image().empty())
-	{
-		if(_ui->imageView_odometry->isFeaturesShown())
-		{
-			if(info.type == 0)
-			{
-				_ui->imageView_odometry->setFeatures(info.words, data.depth(), Qt::yellow);
-			}
-			else if(info.type == 1)
-			{
-				std::vector<cv::KeyPoint> kpts;
-				cv::KeyPoint::convert(info.refCorners, kpts);
-				_ui->imageView_odometry->setFeatures(kpts, data.depth(), Qt::red);
-			}
-		}
-
-		_ui->imageView_odometry->clearLines();
-		if(lost)
-		{
-			if(lostStateChanged)
-			{
-				// save state
-				_odomImageShow = _ui->imageView_odometry->isImageShown();
-				_odomImageDepthShow = _ui->imageView_odometry->isImageDepthShown();
-			}
-			_ui->imageView_odometry->setImageDepth(uCvMat2QImage(data.image()));
-			_ui->imageView_odometry->setImageShown(true);
-			_ui->imageView_odometry->setImageDepthShown(true);
+			UDEBUG("odom warn, quality(inliers)=%d thr=%d", odom.info().inliers, _preferencesDialog->getOdomQualityWarnThr());
+			lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
+			_ui->widget_cloudViewer->setBackgroundColor(Qt::darkYellow);
+			_ui->imageView_odometry->setBackgroundColor(Qt::darkYellow);
 		}
 		else
 		{
-			if(lostStateChanged)
-			{
-				// restore state
-				_ui->imageView_odometry->setImageShown(_odomImageShow);
-				_ui->imageView_odometry->setImageDepthShown(_odomImageDepthShow);
-			}
+			UDEBUG("odom ok");
+			lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
+			_ui->widget_cloudViewer->setBackgroundColor(_ui->widget_cloudViewer->getDefaultBackgroundColor());
+			_ui->imageView_odometry->setBackgroundColor(Qt::black);
+		}
 
-			_ui->imageView_odometry->setImage(uCvMat2QImage(data.image()));
-			if(_ui->imageView_odometry->isImageDepthShown())
-			{
-				_ui->imageView_odometry->setImageDepth(uCvMat2QImage(data.depthOrRightImage()));
-			}
+		if(!pose.isNull() && (_ui->dockWidget_cloudViewer->isVisible() || _ui->graphicsView_graphView->isVisible()))
+		{
+			_lastOdomPose = pose;
+			_odometryReceived = true;
+		}
 
-			if(info.type == 0)
+		if(_ui->dockWidget_cloudViewer->isVisible())
+		{
+			if(!pose.isNull())
 			{
-				if(_ui->imageView_odometry->isFeaturesShown())
+				// 3d cloud
+				if(odom.data().depthOrRightRaw().cols == odom.data().imageRaw().cols &&
+				   odom.data().depthOrRightRaw().rows == odom.data().imageRaw().rows &&
+				   !odom.data().depthOrRightRaw().empty() &&
+				   (odom.data().cameraModels().size() || odom.data().stereoCameraModel().isValid()) &&
+				   _preferencesDialog->isCloudsShown(1))
 				{
-					for(unsigned int i=0; i<info.wordMatches.size(); ++i)
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+					cloud = util3d::cloudRGBFromSensorData(odom.data(),
+							_preferencesDialog->getCloudDecimation(1),
+							_preferencesDialog->getCloudMaxDepth(1),
+							_preferencesDialog->getCloudVoxelSize(1));
+					if(cloud->size())
 					{
-						_ui->imageView_odometry->setFeatureColor(info.wordMatches[i], Qt::red); // outliers
+						cloud = util3d::transformPointCloud(cloud, pose);
+
+						if(!_ui->widget_cloudViewer->addOrUpdateCloud("cloudOdom", cloud, _odometryCorrection))
+						{
+							UERROR("Adding cloudOdom to viewer failed!");
+						}
+						_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", true);
+						_ui->widget_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
+						_ui->widget_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
 					}
-					for(unsigned int i=0; i<info.wordInliers.size(); ++i)
+					else
 					{
-						_ui->imageView_odometry->setFeatureColor(info.wordInliers[i], Qt::green); // inliers
+						UWARN("Empty cloudOdom!");
+						_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", false);
+					}
+				}
+
+				// 2d cloud
+				if(!odom.data().laserScanRaw().empty() &&
+					_preferencesDialog->isScansShown(1))
+				{
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+					cloud = util3d::laserScanToPointCloud(odom.data().laserScanRaw());
+					cloud = util3d::transformPointCloud(cloud, pose);
+					if(!_ui->widget_cloudViewer->addOrUpdateCloud("scanOdom", cloud, _odometryCorrection))
+					{
+						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+						cloud = util3d::laserScanToPointCloud(odom.data().laserScanRaw());
+						cloud = util3d::transformPointCloud(cloud, pose);
+						if(!_ui->widget_cloudViewer->addOrUpdateCloud("scanOdom", cloud, _odometryCorrection))
+						{
+							UERROR("Adding scanOdom to viewer failed!");
+						}
+						_ui->widget_cloudViewer->setCloudVisibility("scanOdom", true);
+						_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
+						_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
 					}
 				}
 			}
 		}
-		if(info.type == 1 && info.cornerInliers.size())
+
+		if(!odom.pose().isNull())
 		{
-			if(_ui->imageView_odometry->isFeaturesShown() || _ui->imageView_odometry->isLinesShown())
+			// update camera position
+			_ui->widget_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
+		}
+		_ui->widget_cloudViewer->update();
+
+		if(_ui->graphicsView_graphView->isVisible())
+		{
+			if(!pose.isNull() && !odom.pose().isNull())
 			{
-				//draw lines
-				UASSERT(info.refCorners.size() == info.newCorners.size());
-				for(unsigned int i=0; i<info.cornerInliers.size(); ++i)
+				_ui->graphicsView_graphView->updateReferentialPosition(_odometryCorrection*odom.pose());
+				_ui->graphicsView_graphView->update();
+			}
+		}
+
+		if(_ui->dockWidget_odometry->isVisible() &&
+		   !odom.data().imageRaw().empty())
+		{
+			if(_ui->imageView_odometry->isFeaturesShown())
+			{
+				if(odom.info().type == 0)
+				{
+					_ui->imageView_odometry->setFeatures(
+							odom.info().words,
+							odom.data().depthRaw(),
+							Qt::yellow);
+				}
+				else if(odom.info().type == 1)
+				{
+					std::vector<cv::KeyPoint> kpts;
+					cv::KeyPoint::convert(odom.info().refCorners, kpts);
+					_ui->imageView_odometry->setFeatures(
+							kpts,
+							odom.data().depthRaw(),
+							Qt::red);
+				}
+			}
+
+			_ui->imageView_odometry->clearLines();
+			if(lost)
+			{
+				if(lostStateChanged)
+				{
+					// save state
+					_odomImageShow = _ui->imageView_odometry->isImageShown();
+					_odomImageDepthShow = _ui->imageView_odometry->isImageDepthShown();
+				}
+				_ui->imageView_odometry->setImageDepth(uCvMat2QImage(odom.data().imageRaw()));
+				_ui->imageView_odometry->setImageShown(true);
+				_ui->imageView_odometry->setImageDepthShown(true);
+			}
+			else
+			{
+				if(lostStateChanged)
+				{
+					// restore state
+					_ui->imageView_odometry->setImageShown(_odomImageShow);
+					_ui->imageView_odometry->setImageDepthShown(_odomImageDepthShow);
+				}
+
+				_ui->imageView_odometry->setImage(uCvMat2QImage(odom.data().imageRaw()));
+				if(_ui->imageView_odometry->isImageDepthShown())
+				{
+					_ui->imageView_odometry->setImageDepth(uCvMat2QImage(odom.data().depthOrRightRaw()));
+				}
+
+				if(odom.info().type == 0)
 				{
 					if(_ui->imageView_odometry->isFeaturesShown())
 					{
-						_ui->imageView_odometry->setFeatureColor(info.cornerInliers[i], Qt::green); // inliers
+						for(unsigned int i=0; i<odom.info().wordMatches.size(); ++i)
+						{
+							_ui->imageView_odometry->setFeatureColor(odom.info().wordMatches[i], Qt::red); // outliers
+						}
+						for(unsigned int i=0; i<odom.info().wordInliers.size(); ++i)
+						{
+							_ui->imageView_odometry->setFeatureColor(odom.info().wordInliers[i], Qt::green); // inliers
+						}
 					}
-					if(_ui->imageView_odometry->isLinesShown())
+				}
+				if(odom.info().type == 1 && odom.info().refCorners.size())
+				{
+					if(_ui->imageView_odometry->isFeaturesShown() || _ui->imageView_odometry->isLinesShown())
 					{
-						_ui->imageView_odometry->addLine(
-								info.refCorners[info.cornerInliers[i]].x,
-								info.refCorners[info.cornerInliers[i]].y,
-								info.newCorners[info.cornerInliers[i]].x,
-								info.newCorners[info.cornerInliers[i]].y,
-								Qt::blue);
+						//draw lines
+						UASSERT(odom.info().refCorners.size() == odom.info().newCorners.size());
+						std::set<int> inliers(odom.info().cornerInliers.begin(), odom.info().cornerInliers.end());
+						for(unsigned int i=0; i<odom.info().refCorners.size(); ++i)
+						{
+							if(_ui->imageView_odometry->isFeaturesShown() && inliers.find(i) != inliers.end())
+							{
+								_ui->imageView_odometry->setFeatureColor(i, Qt::green); // inliers
+							}
+							if(_ui->imageView_odometry->isLinesShown())
+							{
+								_ui->imageView_odometry->addLine(
+										odom.info().refCorners[i].x,
+										odom.info().refCorners[i].y,
+										odom.info().newCorners[i].x,
+										odom.info().newCorners[i].y,
+										inliers.find(i) != inliers.end()?Qt::blue:Qt::yellow);
+							}
+						}
 					}
 				}
 			}
+			if(!odom.data().imageRaw().empty())
+			{
+				_ui->imageView_odometry->setSceneRect(QRectF(0,0,(float)odom.data().imageRaw().cols, (float)odom.data().imageRaw().rows));
+			}
+
+			_ui->imageView_odometry->update();
 		}
-		if(!data.image().empty())
+
+		if(_ui->actionAuto_screen_capture->isChecked() && _autoScreenCaptureOdomSync)
 		{
-			_ui->imageView_odometry->setSceneRect(QRectF(0,0,(float)data.image().cols, (float)data.image().rows));
+			this->captureScreen();
 		}
-
-		_ui->imageView_odometry->update();
 	}
 
-	if(_ui->actionAuto_screen_capture->isChecked() && _autoScreenCaptureOdomSync)
+	//Process info
+	if(odom.info().inliers >= 0)
 	{
-		this->captureScreen();
+		_ui->statsToolBox->updateStat("Odometry/Inliers/", (float)odom.data().id(), (float)odom.info().inliers);
+	}
+	if(odom.info().matches >= 0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/Matches/", (float)odom.data().id(), (float)odom.info().matches);
+	}
+	if(odom.info().variance >= 0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/StdDev/", (float)odom.data().id(), sqrt((float)odom.info().variance));
+	}
+	if(odom.info().variance >= 0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/Variance/", (float)odom.data().id(), (float)odom.info().variance);
+	}
+	if(odom.info().timeEstimation > 0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", (float)odom.data().id(), (float)odom.info().timeEstimation*1000.0f);
+	}
+	if(odom.info().timeParticleFiltering > 0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", (float)odom.data().id(), (float)odom.info().timeParticleFiltering*1000.0f);
+	}
+	if(odom.info().features >=0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/Features/", (float)odom.data().id(), (float)odom.info().features);
+	}
+	if(odom.info().localMapSize >=0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/Local_map_size/", (float)odom.data().id(), (float)odom.info().localMapSize);
+	}
+	_ui->statsToolBox->updateStat("Odometry/ID/", (float)odom.data().id(), (float)odom.data().id());
+
+	float x=0.0f,y,z, roll,pitch,yaw;
+	if(!odom.info().transform.isNull())
+	{
+		odom.info().transform.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+		_ui->statsToolBox->updateStat("Odometry/Tx/m", (float)odom.data().id(), x);
+		_ui->statsToolBox->updateStat("Odometry/Ty/m", (float)odom.data().id(), y);
+		_ui->statsToolBox->updateStat("Odometry/Tz/m", (float)odom.data().id(), z);
+		_ui->statsToolBox->updateStat("Odometry/Troll/deg", (float)odom.data().id(), roll*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Tpitch/deg", (float)odom.data().id(), pitch*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Tyaw/deg", (float)odom.data().id(), yaw*180.0/CV_PI);
 	}
 
-	_ui->statsToolBox->updateStat("/Gui refresh odom/ms", (float)data.id(), time.elapsed()*1000.0);
+	if(!odom.info().transformFiltered.isNull())
+	{
+		odom.info().transformFiltered.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+		_ui->statsToolBox->updateStat("Odometry/Fx/m", (float)odom.data().id(), x);
+		_ui->statsToolBox->updateStat("Odometry/Fy/m", (float)odom.data().id(), y);
+		_ui->statsToolBox->updateStat("Odometry/Fz/m", (float)odom.data().id(), z);
+		_ui->statsToolBox->updateStat("Odometry/Froll/deg", (float)odom.data().id(), roll*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Fpitch/deg", (float)odom.data().id(), pitch*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Fyaw/deg", (float)odom.data().id(), yaw*180.0/CV_PI);
+	}
 
+	if(odom.info().interval > 0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/Interval/ms", (float)odom.data().id(), odom.info().interval*1000.f);
+		_ui->statsToolBox->updateStat("Odometry/Speed/kph", (float)odom.data().id(), x/odom.info().interval*3.6f);
+	}
+	if(odom.info().distanceTravelled > 0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/Distance/m", (float)odom.data().id(), odom.info().distanceTravelled);
+	}
+
+	_ui->statsToolBox->updateStat("/Gui refresh odom/ms", (float)odom.data().id(), time.elapsed()*1000.0);
 	_processingOdometry = false;
 }
 
@@ -955,11 +1005,19 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	totalTime.start();
 	//Affichage des stats et images
 
-	int refMapId = uValue(stat.getMapIds(), stat.refImageId(), -1);
-	int loopMapId = uValue(stat.getMapIds(), stat.loopClosureId(), uValue(stat.getMapIds(), stat.localLoopClosureId(), -1));
+	int refMapId = -1, loopMapId = -1;
+	if(uContains(stat.getSignatures(), stat.refImageId()))
+	{
+		refMapId = stat.getSignatures().at(stat.refImageId()).mapId();
+	}
+	int highestHypothesisId = static_cast<float>(uValue(stat.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
+	int loopId = stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId()>0?stat.localLoopClosureId():highestHypothesisId;
+	if(_cachedSignatures.contains(loopId))
+	{
+		loopMapId = _cachedSignatures.value(loopId).mapId();
+	}
 
 	_ui->label_refId->setText(QString("New ID = %1 [%2]").arg(stat.refImageId()).arg(refMapId));
-	_ui->label_matchId->clear();
 
 	if(stat.extended())
 	{
@@ -970,24 +1028,32 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		}
 
 		UDEBUG("");
-		int highestHypothesisId = static_cast<float>(uValue(stat.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
 		bool highestHypothesisIsSaved = (bool)uValue(stat.data(), Statistics::kLoopHypothesis_reactivated(), 0.0f);
 
-		// Loop closure info
-		_ui->imageView_source->clear();
-		_ui->imageView_loopClosure->clear();
-		_ui->imageView_source->setBackgroundColor(Qt::black);
-		_ui->imageView_loopClosure->setBackgroundColor(Qt::black);
-
 		// update cache
-		Signature signature = stat.getSignature();
-		signature.uncompressData(); // make sure data are uncompressed
-		_cachedSignatures.insert(stat.getSignature().id(), signature);
+		Signature signature;
+		if(uContains(stat.getSignatures(), stat.refImageId()))
+		{
+			signature = stat.getSignatures().at(stat.refImageId());
+			signature.sensorData().uncompressData(); // make sure data are uncompressed
+			_cachedSignatures.insert(signature.id(), signature);
+		}
+
+		// For intermediate empty nodes, keep latest image shown
+		if(!signature.sensorData().imageRaw().empty() || signature.getWords().size())
+		{
+			_ui->imageView_source->clear();
+			_ui->imageView_loopClosure->clear();
+
+			_ui->imageView_source->setBackgroundColor(Qt::black);
+			_ui->imageView_loopClosure->setBackgroundColor(Qt::black);
+
+			_ui->label_matchId->clear();
+		}
 
 		int rehearsed = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
 		int localTimeClosures = (int)uValue(stat.data(), Statistics::kLocalLoopTime_closures(), 0.0f);
 		bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kOdomCorrectionAccepted(), 0.0f);
-		_ui->label_matchId->clear();
 		_ui->label_stats_imageNumber->setText(QString("%1 [%2]").arg(stat.refImageId()).arg(refMapId));
 
 		if(rehearsed > 0)
@@ -1055,7 +1121,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				QMap<int, Signature>::iterator iter = _cachedSignatures.find(shownLoopId);
 				if(iter != _cachedSignatures.end())
 				{
-					iter.value().uncompressData();
+					iter.value().sensorData().uncompressData();
 					loopSignature = iter.value();
 				}
 			}
@@ -1065,10 +1131,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		//update image views
 		{
-			UCvMat2QImageThread qimageThread(signature.getImageRaw());
-			UCvMat2QImageThread qimageLoopThread(loopSignature.getImageRaw());
-			UCvMat2QImageThread qdepthThread(signature.getDepthRaw());
-			UCvMat2QImageThread qdepthLoopThread(loopSignature.getDepthRaw());
+			UCvMat2QImageThread qimageThread(signature.sensorData().imageRaw());
+			UCvMat2QImageThread qimageLoopThread(loopSignature.sensorData().imageRaw());
+			UCvMat2QImageThread qdepthThread(signature.sensorData().depthOrRightRaw());
+			UCvMat2QImageThread qdepthLoopThread(loopSignature.sensorData().depthOrRightRaw());
 			qimageThread.start();
 			qdepthThread.start();
 			qimageLoopThread.start();
@@ -1119,10 +1185,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		if(!stat.posterior().empty() && _ui->dockWidget_posterior->isVisible())
 		{
 			UDEBUG("");
-			if(stat.weights().size() != stat.posterior().size())
-			{
-				UWARN("%d %d", stat.weights().size(), stat.posterior().size());
-			}
 			_posteriorCurve->setData(QMap<int, float>(stat.posterior()), QMap<int, int>(stat.weights()));
 
 			ULOGGER_DEBUG("");
@@ -1159,10 +1221,15 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		if(stat.poses().size())
 		{
 			// update pose only if odometry is not received
+			std::map<int, int> mapIds;
+			for(std::map<int, Signature>::const_iterator iter=stat.getSignatures().begin(); iter!=stat.getSignatures().end();++iter)
+			{
+				mapIds.insert(std::make_pair(iter->first, iter->second.mapId()));
+			}
 			updateMapCloud(stat.poses(),
 					_odometryReceived||stat.poses().size()==0?Transform():stat.poses().rbegin()->second,
 					stat.constraints(),
-					stat.getMapIds());
+					mapIds);
 
 			_odometryReceived = false;
 
@@ -1174,7 +1241,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			// loop closure view
 			if((stat.loopClosureId() > 0 || stat.localLoopClosureId() > 0)  &&
 			   !stat.loopClosureTransform().isNull() &&
-			   !loopSignature.getImageRaw().empty())
+			   !loopSignature.sensorData().imageRaw().empty())
 			{
 				// the last loop closure data
 				Transform loopClosureTransform = stat.loopClosureTransform();
@@ -1217,6 +1284,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		_ui->label_stats_loopClosuresDetected->setText(QString::number(_ui->label_stats_loopClosuresDetected->text().toInt() + 1));
 		_ui->label_matchId->setText(QString("Match ID = %1 [%2]").arg(stat.loopClosureId()).arg(loopMapId));
 	}
+	else
+	{
+		_ui->label_matchId->clear();
+	}
 	float elapsedTime = static_cast<float>(totalTime.elapsed());
 	UINFO("Updating GUI time = %fs", elapsedTime/1000.0f);
 	_ui->statsToolBox->updateStat("/Gui refresh stats/ms", stat.refImageId(), elapsedTime);
@@ -1251,7 +1322,7 @@ void MainWindow::updateMapCloud(
 		{
 			if(!_ui->actionSave_point_cloud->isEnabled() &&
 				_cachedSignatures.size() &&
-				(!(--_cachedSignatures.end())->getDepthCompressed().empty() ||
+				(!(--_cachedSignatures.end())->sensorData().depthOrRightCompressed().empty() ||
 				 !(--_cachedSignatures.end())->getWords3().empty()))
 			{
 				//enable save cloud action
@@ -1261,7 +1332,7 @@ void MainWindow::updateMapCloud(
 
 			if(!_ui->actionView_scans->isEnabled() &&
 				_cachedSignatures.size() &&
-				!(--_cachedSignatures.end())->getLaserScanCompressed().empty())
+				!(--_cachedSignatures.end())->sensorData().laserScanCompressed().empty())
 			{
 				_ui->actionExport_2D_scans_ply_pcd->setEnabled(true);
 				_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(true);
@@ -1348,7 +1419,7 @@ void MainWindow::updateMapCloud(
 				else if(_cachedSignatures.contains(iter->first))
 				{
 					QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
-					if((!jter->getImageCompressed().empty() && !jter->getDepthCompressed().empty()) || jter->getWords3().size())
+					if((!jter->sensorData().imageCompressed().empty() && !jter->sensorData().depthOrRightCompressed().empty()) || jter->getWords3().size())
 					{
 						this->createAndAddCloudToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
 					}
@@ -1384,7 +1455,7 @@ void MainWindow::updateMapCloud(
 				else if(_cachedSignatures.contains(iter->first))
 				{
 					QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
-					if(!jter->getLaserScanCompressed().empty())
+					if(!jter->sensorData().laserScanCompressed().empty())
 					{
 						this->createAndAddScanToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
 					}
@@ -1562,25 +1633,20 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		return;
 	}
 
-	if(!iter->getImageCompressed().empty() && !iter->getDepthCompressed().empty())
+	if(!iter->sensorData().imageCompressed().empty() && !iter->sensorData().depthOrRightCompressed().empty())
 	{
 
 		cv::Mat image, depth;
-		iter->uncompressData(&image, &depth, 0);
+		SensorData data = iter->sensorData();
+		data.uncompressData(&image, &depth, 0);
 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-		cloud = createCloud(nodeId,
-				image,
-				depth,
-				iter->getFx(),
-				iter->getFy(),
-				iter->getCx(),
-				iter->getCy(),
-				iter->getLocalTransform(),
-				Transform::getIdentity(),
-				_preferencesDialog->getCloudVoxelSize(0),
+		UASSERT(nodeId == data.id());
+		cloud = util3d::cloudRGBFromSensorData(data,
 				_preferencesDialog->getCloudDecimation(0),
-				_preferencesDialog->getCloudMaxDepth(0));
+				_preferencesDialog->getCloudMaxDepth(0),
+				_preferencesDialog->getCloudVoxelSize(0));
+		_createdClouds.insert(std::make_pair(nodeId, cloud));
 
 		if(cloud->size() && _preferencesDialog->isGridMapFrom3DCloud())
 		{
@@ -1590,7 +1656,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			int minClusterSize = 20;
 			cv::Mat ground, obstacles;
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelizedCloud = cloud;
-			if(voxelizedCloud->size())
+			if(voxelizedCloud->size() && cellSize > _preferencesDialog->getCloudVoxelSize(0))
 			{
 				voxelizedCloud = util3d::voxelize(cloud, cellSize);
 			}
@@ -1607,19 +1673,60 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			UDEBUG("time gridMapFrom2DCloud = %f s", timer.ticks());
 		}
 
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFiltered = cloud;
+		if(_preferencesDialog->isSubtractFiltering() &&
+			_preferencesDialog->getCloudVoxelSize(0) > 0.0 &&
+			cloud->size() &&
+			_createdClouds.size() &&
+			_currentPosesMap.size() &&
+			_currentLinksMap.size())
+		{
+			// find link to previous neighbor
+			std::map<int, Transform>::const_iterator previousIter = _currentPosesMap.find(nodeId);
+			Link link;
+			if(previousIter != _currentPosesMap.begin())
+			{
+				--previousIter;
+				std::multimap<int, Link>::const_iterator linkIter = graph::findLink(_currentLinksMap, nodeId, previousIter->first);
+				if(linkIter != _currentLinksMap.end())
+				{
+					link = linkIter->second;
+					if(link.from() != nodeId)
+					{
+						link = link.inverse();
+					}
+				}
+			}
+			if(link.isValid())
+			{
+				std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::iterator iter = _createdClouds.find(link.to());
+				if(iter!=_createdClouds.end() && iter->second->size())
+				{
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr previousCloud = util3d::transformPointCloud(iter->second, link.transform());
+					cloudFiltered = util3d::subtractFiltering(
+							cloud,
+							previousCloud,
+							_preferencesDialog->getCloudVoxelSize(0),
+							_preferencesDialog->getSubstractFilteringMinPts());
+					UDEBUG("Filtering %d from %d -> %d", (int)previousCloud->size(), (int)cloud->size(), (int)cloudFiltered->size());
+
+				}
+			}
+		}
+
 		if(_preferencesDialog->isCloudMeshing())
 		{
 			pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
-			if(cloud->size())
+			if(cloudFiltered->size())
 			{
 				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
 				if(_preferencesDialog->getMeshSmoothing())
 				{
-					cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius());
+					cloudWithNormals = util3d::computeNormalsSmoothed(cloudFiltered, (float)_preferencesDialog->getMeshSmoothingRadius());
 				}
 				else
 				{
-					cloudWithNormals = util3d::computeNormals(cloud, _preferencesDialog->getMeshNormalKSearch());
+					cloudWithNormals = util3d::computeNormals(cloudFiltered, _preferencesDialog->getMeshNormalKSearch());
 				}
 				mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius());
 			}
@@ -1632,10 +1739,6 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 				{
 					UERROR("Adding mesh cloud %d to viewer failed!", nodeId);
 				}
-				else
-				{
-					_createdClouds.insert(std::make_pair(nodeId, tmp));
-				}
 			}
 		}
 		else
@@ -1643,22 +1746,18 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			if(_preferencesDialog->getMeshSmoothing())
 			{
 				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-				cloudWithNormals = util3d::computeNormalsSmoothed(cloud, (float)_preferencesDialog->getMeshSmoothingRadius());
-				cloud->clear();
-				pcl::copyPointCloud(*cloudWithNormals, *cloud);
+				cloudWithNormals = util3d::computeNormalsSmoothed(cloudFiltered, (float)_preferencesDialog->getMeshSmoothingRadius());
+				cloudFiltered.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
+				pcl::copyPointCloud(*cloudWithNormals, *cloudFiltered);
 			}
 			QColor color = Qt::gray;
 			if(mapId >= 0)
 			{
 				color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
 			}
-			if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloud, pose, color))
+			if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloudFiltered, pose, color))
 			{
 				UERROR("Adding cloud %d to viewer failed!", nodeId);
-			}
-			else
-			{
-				_createdClouds.insert(std::make_pair(nodeId, cloud));
 			}
 		}
 	}
@@ -1672,14 +1771,36 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 		cloud->resize(iter->getWords3().size());
 		int oi=0;
-		for(std::multimap<int, pcl::PointXYZ>::const_iterator jter=iter->getWords3().begin(); jter!=iter->getWords3().end(); ++jter)
+		UASSERT(iter->getWords().size() == iter->getWords3().size());
+		std::multimap<int, cv::KeyPoint>::const_iterator kter=iter->getWords().begin();
+		for(std::multimap<int, pcl::PointXYZ>::const_iterator jter=iter->getWords3().begin();
+				jter!=iter->getWords3().end(); ++jter, ++kter, ++oi)
 		{
 			(*cloud)[oi].x = jter->second.x;
 			(*cloud)[oi].y = jter->second.y;
 			(*cloud)[oi].z = jter->second.z;
-			(*cloud)[oi].r = 255;
-			(*cloud)[oi].g = 255;
-			(*cloud)[oi++].b = 255;
+			int u = kter->second.pt.x+0.5;
+			int v = kter->second.pt.x+0.5;
+			if(!iter->sensorData().imageRaw().empty() &&
+				uIsInBounds(u, 0, iter->sensorData().imageRaw().cols-1) &&
+				uIsInBounds(v, 0, iter->sensorData().imageRaw().rows-1))
+			{
+				if(iter->sensorData().imageRaw().channels() == 1)
+				{
+					(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = iter->sensorData().imageRaw().at<unsigned char>(u, v);
+				}
+				else
+				{
+					cv::Vec3b bgr = iter->sensorData().imageRaw().at<cv::Vec3b>(u, v);
+					(*cloud)[oi].r = bgr.val[0];
+					(*cloud)[oi].g = bgr.val[1];
+					(*cloud)[oi].b = bgr.val[2];
+				}
+			}
+			else
+			{
+				(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = 255;
+			}
 		}
 		if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloud, pose, color))
 		{
@@ -1715,10 +1836,10 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		return;
 	}
 
-	if(!iter->getLaserScanCompressed().empty())
+	if(!iter->sensorData().laserScanCompressed().empty())
 	{
 		cv::Mat depth2D;
-		iter->uncompressData(0, 0, &depth2D);
+		iter->sensorData().uncompressData(0, 0, &depth2D);
 
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 		cloud = util3d::laserScanToPointCloud(depth2D);
@@ -1934,10 +2055,12 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		QApplication::processEvents();
 
 		int addedSignatures = 0;
+		std::map<int, int> mapIds;
 		for(std::map<int, Signature>::const_iterator iter = event.getSignatures().begin();
 			iter!=event.getSignatures().end();
 			++iter)
 		{
+			mapIds.insert(std::make_pair(iter->first, iter->second.mapId()));
 			if(!_cachedSignatures.contains(iter->first))
 			{
 				_cachedSignatures.insert(iter->first, iter->second);
@@ -1957,7 +2080,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			_initProgressDialog->appendText("Updating the 3D map cloud...");
 			_initProgressDialog->incrementStep();
 			QApplication::processEvents();
-			this->updateMapCloud(event.getPoses(), Transform(), event.getConstraints(), event.getMapIds(), true);
+			this->updateMapCloud(event.getPoses(), Transform(), event.getConstraints(), mapIds, true);
 			_initProgressDialog->appendText("Updating the 3D map cloud... done.");
 		}
 		else
@@ -2023,39 +2146,26 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		// Camera settings...
 		_ui->doubleSpinBox_stats_imgRate->setValue(_preferencesDialog->getGeneralInputRate());
 		this->updateSelectSourceMenu();
-		QString src;
-		if(_preferencesDialog->isSourceImageUsed())
-		{
-			src = _preferencesDialog->getSourceImageTypeStr();
-		}
-		else if(_preferencesDialog->isSourceDatabaseUsed())
-		{
-			src = "Database";
-		}
-		_ui->label_stats_source->setText(src);
+		_ui->label_stats_source->setText(_preferencesDialog->getSourceDriverStr());
 
 		if(_camera)
 		{
 			_camera->setImageRate(_preferencesDialog->getGeneralInputRate());
 
-			if(_camera->cameraRGBD() && dynamic_cast<CameraOpenNI2*>(_camera->cameraRGBD()) != 0)
+			if(_camera->camera() && dynamic_cast<CameraOpenNI2*>(_camera->camera()) != 0)
 			{
-				((CameraOpenNI2*)_camera->cameraRGBD())->setAutoWhiteBalance(_preferencesDialog->getSourceOpenni2AutoWhiteBalance());
-				((CameraOpenNI2*)_camera->cameraRGBD())->setAutoExposure(_preferencesDialog->getSourceOpenni2AutoExposure());
+				((CameraOpenNI2*)_camera->camera())->setAutoWhiteBalance(_preferencesDialog->getSourceOpenni2AutoWhiteBalance());
+				((CameraOpenNI2*)_camera->camera())->setAutoExposure(_preferencesDialog->getSourceOpenni2AutoExposure());
 				if(CameraOpenNI2::exposureGainAvailable())
 				{
-					((CameraOpenNI2*)_camera->cameraRGBD())->setExposure(_preferencesDialog->getSourceOpenni2Exposure());
-					((CameraOpenNI2*)_camera->cameraRGBD())->setGain(_preferencesDialog->getSourceOpenni2Gain());
+					((CameraOpenNI2*)_camera->camera())->setExposure(_preferencesDialog->getSourceOpenni2Exposure());
+					((CameraOpenNI2*)_camera->camera())->setGain(_preferencesDialog->getSourceOpenni2Gain());
 				}
 			}
-			if(_camera->camera())
+			if(_camera)
 			{
-				_camera->camera()->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
-			}
-			if(_camera->cameraRGBD())
-			{
-				_camera->cameraRGBD()->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
-				_camera->cameraRGBD()->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
+				_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
+				_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
 			}
 		}
 		if(_dbReader)
@@ -2343,23 +2453,25 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 
 void MainWindow::updateSelectSourceMenu()
 {
-	_ui->actionUsbCamera->setChecked(_preferencesDialog->isSourceImageUsed() && _preferencesDialog->getSourceImageType() == PreferencesDialog::kSrcUsbDevice);
-	_ui->actionImageFiles->setChecked(_preferencesDialog->isSourceImageUsed() && _preferencesDialog->getSourceImageType() == PreferencesDialog::kSrcImages);
-	_ui->actionVideo->setChecked(_preferencesDialog->isSourceImageUsed() && _preferencesDialog->getSourceImageType() == PreferencesDialog::kSrcVideo);
+	_ui->actionUsbCamera->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcUsbDevice);
 
-	_ui->actionDatabase->setChecked(_preferencesDialog->isSourceDatabaseUsed());
+	_ui->actionMore_options->setChecked(
+			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDatabase ||
+			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcImages ||
+			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcVideo ||
+			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoImages);
 
-	_ui->actionOpenNI_PCL->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_PCL);
-	_ui->actionOpenNI_PCL_ASUS->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_PCL);
-	_ui->actionFreenect->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcFreenect);
-	_ui->actionOpenNI_CV->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV);
-	_ui->actionOpenNI_CV_ASUS->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI_CV_ASUS);
-	_ui->actionOpenNI2->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2);
-	_ui->actionOpenNI2_kinect->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2);
-	_ui->actionOpenNI2_sense->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcOpenNI2);
-	_ui->actionFreenect2->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcFreenect2);
-	_ui->actionStereoDC1394->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcStereoDC1394);
-	_ui->actionStereoFlyCapture2->setChecked(_preferencesDialog->isSourceRGBDUsed() && _preferencesDialog->getSourceRGBD() == PreferencesDialog::kSrcStereoFlyCapture2);
+	_ui->actionOpenNI_PCL->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcOpenNI_PCL);
+	_ui->actionOpenNI_PCL_ASUS->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcOpenNI_PCL);
+	_ui->actionFreenect->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcFreenect);
+	_ui->actionOpenNI_CV->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcOpenNI_CV);
+	_ui->actionOpenNI_CV_ASUS->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcOpenNI_CV_ASUS);
+	_ui->actionOpenNI2->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcOpenNI2);
+	_ui->actionOpenNI2_kinect->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcOpenNI2);
+	_ui->actionOpenNI2_sense->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcOpenNI2);
+	_ui->actionFreenect2->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcFreenect2);
+	_ui->actionStereoDC1394->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDC1394);
+	_ui->actionStereoFlyCapture2->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcFlyCapture2);
 }
 
 void MainWindow::changeImgRateSetting()
@@ -2584,20 +2696,19 @@ void MainWindow::startDetection()
 {
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
 	// verify source with input rates
-	if((_preferencesDialog->isSourceImageUsed() &&
-			(_preferencesDialog->getSourceImageType() == PreferencesDialog::kSrcImages ||
-			 _preferencesDialog->getSourceImageType() == PreferencesDialog::kSrcVideo))
-	   ||
-	   _preferencesDialog->isSourceDatabaseUsed())
+	if(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcImages ||
+	   _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcVideo ||
+	   _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDatabase)
 	{
 		float inputRate = _preferencesDialog->getGeneralInputRate();
 		float detectionRate = uStr2Float(parameters.at(Parameters::kRtabmapDetectionRate()));
 		int bufferingSize = uStr2Float(parameters.at(Parameters::kRtabmapImageBufferSize()));
-		if((detectionRate!=0.0f && detectionRate < inputRate) || (detectionRate > 0.0f && inputRate == 0.0f))
+		if(((detectionRate!=0.0f && detectionRate <= inputRate) || (detectionRate > 0.0f && inputRate == 0.0f)) &&
+			(_preferencesDialog->getSourceDriver() != PreferencesDialog::kSrcDatabase || !_preferencesDialog->getSourceDatabaseStampsUsed()))
 		{
 			int button = QMessageBox::question(this,
 					tr("Incompatible frame rates!"),
-					tr("\"Source/Input rate\" (%1 Hz) is higher than \"RTAB-Map/Detection rate\" (%2 Hz). As the "
+					tr("\"Source/Input rate\" (%1 Hz) is equal to/higher than \"RTAB-Map/Detection rate\" (%2 Hz). As the "
 					   "source input is a directory of images/video/database, some images may be "
 					   "skipped by the detector. You may want to increase the \"RTAB-Map/Detection rate\" over "
 					   "the \"Source/Input rate\" to guaranty that all images are processed. Would you want to "
@@ -2608,7 +2719,8 @@ void MainWindow::startDetection()
 				return;
 			}
 		}
-		if(bufferingSize != 0)
+		if(bufferingSize != 0 &&
+		  (_preferencesDialog->getSourceDriver() != PreferencesDialog::kSrcDatabase || !_preferencesDialog->getSourceDatabaseStampsUsed()))
 		{
 			int button = QMessageBox::question(this,
 					tr("Some images may be skipped!"),
@@ -2658,9 +2770,7 @@ void MainWindow::startDetection()
 	}
 
 	// Adjust pre-requirements
-	if( !_preferencesDialog->isSourceImageUsed() &&
-		!_preferencesDialog->isSourceDatabaseUsed() &&
-		!_preferencesDialog->isSourceRGBDUsed())
+	if(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcUndef)
 	{
 		QMessageBox::warning(this,
 				 tr("RTAB-Map"),
@@ -2670,41 +2780,19 @@ void MainWindow::startDetection()
 		return;
 	}
 
-	if(_preferencesDialog->isSourceRGBDUsed())
-	{
-		CameraRGBD * camera = _preferencesDialog->createCameraRGBD();
 
-		if(!camera->init(_preferencesDialog->getCameraInfoDir().toStdString()))
+	if(_preferencesDialog->getSourceDriver() < PreferencesDialog::kSrcDatabase)
+	{
+		Camera * camera = _preferencesDialog->createCamera();
+		if(!camera)
 		{
-			ULOGGER_WARN("init camera failed... ");
-			QMessageBox::warning(this,
-								   tr("RTAB-Map"),
-								   tr("Camera initialization failed..."));
 			emit stateChanged(kInitialized);
-			delete camera;
-			camera = 0;
-			if(_odomThread)
-			{
-				delete _odomThread;
-				_odomThread = 0;
-			}
 			return;
 		}
-		else if(dynamic_cast<CameraOpenNI2*>(camera) != 0)
-		{
-			((CameraOpenNI2*)camera)->setAutoWhiteBalance(_preferencesDialog->getSourceOpenni2AutoWhiteBalance());
-			((CameraOpenNI2*)camera)->setAutoExposure(_preferencesDialog->getSourceOpenni2AutoExposure());
-			((CameraOpenNI2*)camera)->setMirroring(_preferencesDialog->getSourceOpenni2Mirroring());
-			if(CameraOpenNI2::exposureGainAvailable())
-			{
-				((CameraOpenNI2*)camera)->setExposure(_preferencesDialog->getSourceOpenni2Exposure());
-				((CameraOpenNI2*)camera)->setGain(_preferencesDialog->getSourceOpenni2Gain());
-			}
-		}
-		camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
-		camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
 
 		_camera = new CameraThread(camera);
+		_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
+		_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
 
 		//Create odometry thread if rgbd slam
 		if(uStr2Bool(parameters.at(Parameters::kRGBDEnabled()).c_str()))
@@ -2733,6 +2821,7 @@ void MainWindow::startDetection()
 				{
 					UERROR("OdomThread must be already deleted here?!");
 					delete _odomThread;
+					_odomThread = 0;
 				}
 				Odometry * odom;
 				if(_preferencesDialog->getOdomStrategy() == 1)
@@ -2747,7 +2836,7 @@ void MainWindow::startDetection()
 				{
 					odom = new OdometryBOW(parameters);
 				}
-				_odomThread = new OdometryThread(odom);
+				_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize());
 
 				UEventsManager::addHandler(_odomThread);
 				UEventsManager::createPipe(_camera, _odomThread, "CameraEvent");
@@ -2755,7 +2844,7 @@ void MainWindow::startDetection()
 			}
 		}
 	}
-	else if(_preferencesDialog->isSourceDatabaseUsed())
+	else if(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDatabase)
 	{
 		_dbReader = new DBReader(_preferencesDialog->getSourceDatabasePath().toStdString(),
 								 _preferencesDialog->getSourceDatabaseStampsUsed()?-1:_preferencesDialog->getGeneralInputRate(),
@@ -2812,62 +2901,17 @@ void MainWindow::startDetection()
 			UEventsManager::createPipe(_dbReader, _odomThread, "CameraEvent");
 		}
 	}
-	else
-	{
-		if(_preferencesDialog->isSourceImageUsed())
-		{
-			Camera * camera = 0;
-			// Change type of the camera...
-			//
-			int sourceType = _preferencesDialog->getSourceImageType();
-			UASSERT(sourceType >= PreferencesDialog::kSrcUsbDevice && sourceType <= PreferencesDialog::kSrcVideo);
-			if(sourceType == PreferencesDialog::kSrcImages) //Images
-			{
-				camera = new CameraImages(
-						_preferencesDialog->getSourceImagesPath().append(QDir::separator()).toStdString(),
-						_preferencesDialog->getSourceImagesStartPos(),
-						_preferencesDialog->getSourceImagesRefreshDir(),
-						_preferencesDialog->getGeneralInputRate(),
-						_preferencesDialog->getSourceWidth(),
-						_preferencesDialog->getSourceHeight());
-			}
-			else if(sourceType == PreferencesDialog::kSrcVideo)
-			{
-				camera = new CameraVideo(
-						_preferencesDialog->getSourceVideoPath().toStdString(),
-						_preferencesDialog->getGeneralInputRate(),
-						_preferencesDialog->getSourceWidth(),
-						_preferencesDialog->getSourceHeight());
-			}
-			else //if(sourceType == PreferencesDialog::kSrcUsbDevice)
-			{
-				camera = new CameraVideo(
-						_preferencesDialog->getSourceUsbDeviceId(),
-						_preferencesDialog->getGeneralInputRate(),
-						_preferencesDialog->getSourceWidth(),
-						_preferencesDialog->getSourceHeight());
-			}
-
-			if(!camera->init())
-			{
-				ULOGGER_WARN("init camera failed... ");
-				QMessageBox::warning(this,
-									   tr("RTAB-Map"),
-									   tr("Camera initialization failed..."));
-				emit stateChanged(kInitialized);
-				delete camera;
-				camera = 0;
-				return;
-			}
-			camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
-
-			_camera = new CameraThread(camera);
-		}
-	}
 
 	if(_dataRecorder)
 	{
-		UEventsManager::createPipe(_camera, _dataRecorder, "CameraEvent");
+		if(_camera)
+		{
+			UEventsManager::createPipe(_camera, _dataRecorder, "CameraEvent");
+		}
+		else if(_dbReader)
+		{
+			UEventsManager::createPipe(_dbReader, _dataRecorder, "CameraEvent");
+		}
 	}
 
 	_lastOdomPose.setNull();
@@ -2986,6 +3030,13 @@ void MainWindow::stopDetection()
 	}
 
 	emit stateChanged(kInitialized);
+}
+
+void MainWindow::notifyNoMoreImages()
+{
+	QMessageBox::information(this,
+			tr("No more images..."),
+			tr("The camera has reached the end of the stream."));
 }
 
 void MainWindow::printLoopClosureIds()
@@ -3126,6 +3177,66 @@ void MainWindow::generateTOROMap()
 	}
 }
 
+void MainWindow::exportPoses()
+{
+	if(_posesSavingFileName.isEmpty())
+	{
+		_posesSavingFileName = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "poses.txt";
+	}
+
+	QStringList items;
+	items.append("Local map optimized");
+	items.append("Local map not optimized");
+	items.append("Global map optimized");
+	items.append("Global map not optimized");
+	bool ok;
+	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, 2, false, &ok);
+	if(ok)
+	{
+		bool optimized=false, global=false;
+		if(item.compare("Local map optimized") == 0)
+		{
+			optimized = true;
+		}
+		else if(item.compare("Local map not optimized") == 0)
+		{
+
+		}
+		else if(item.compare("Global map optimized") == 0)
+		{
+			global=true;
+			optimized=true;
+		}
+		else if(item.compare("Global map not optimized") == 0)
+		{
+			global=true;
+		}
+		else
+		{
+			UFATAL("Item \"%s\" not found?!?", item.toStdString().c_str());
+		}
+
+		QString path = QFileDialog::getSaveFileName(this, tr("Save File"), _posesSavingFileName, tr("Text file (*.txt)"));
+		if(!path.isEmpty())
+		{
+			_posesSavingFileName = path;
+			if(global)
+			{
+				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdExportPosesGlobal, path.toStdString(), optimized?1:0));
+			}
+			else
+			{
+				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdExportPosesLocal, path.toStdString(), optimized?1:0));
+			}
+
+			_ui->dockWidget_console->show();
+			_ui->widget_console->appendMsg(QString("Poses saved (global=%1, optimized=%2)... %3")
+					.arg(global?"true":"false").arg(optimized?"true":"false").arg(_posesSavingFileName));
+		}
+
+	}
+}
+
 void MainWindow::postProcessing()
 {
 	if(_cachedSignatures.size() == 0)
@@ -3171,15 +3282,15 @@ void MainWindow::postProcessing()
 			{
 				odomPoses.insert(*iter); // fill raw poses
 			}
-			if(jter->getLocalTransform().isNull())
+			if(jter->sensorData().cameraModels().size() == 0 && !jter->sensorData().stereoCameraModel().isValid())
 			{
-				UWARN("Local transform of %d is null.", iter->first);
+				UWARN("Calibration of %d is null.", iter->first);
 				allDataAvailable = false;
 			}
 			if(refineNeighborLinks || refineLoopClosureLinks || reextractFeatures)
 			{
 				// depth data required
-				if(jter->getDepthCompressed().empty() || jter->getFx() <= 0.0f || jter->getFy() <= 0.0f)
+				if(jter->sensorData().depthOrRightCompressed().empty())
 				{
 					UWARN("Depth data of %d missing.", iter->first);
 					allDataAvailable = false;
@@ -3188,7 +3299,7 @@ void MainWindow::postProcessing()
 				if(reextractFeatures)
 				{
 					// rgb required
-					if(jter->getImageCompressed().empty())
+					if(jter->sensorData().imageCompressed().empty())
 					{
 						UWARN("Rgb of %d missing.", iter->first);
 						allDataAvailable = false;
@@ -3237,6 +3348,7 @@ void MainWindow::postProcessing()
 	int loopClosuresAdded = 0;
 	if(detectMoreLoopClosures)
 	{
+		UDEBUG("");
 		Memory memory(parameters);
 		if(reextractFeatures)
 		{
@@ -3309,13 +3421,15 @@ void MainWindow::postProcessing()
 							memory.init("", true); // clear previously added signatures
 
 							// Add signatures
-							SensorData dataFrom = signatureFrom.toSensorData();
-							SensorData dataTo = signatureTo.toSensorData();
+							SensorData dataFrom = signatureFrom.sensorData();
+							SensorData dataTo = signatureTo.sensorData();
+
+							cv::Mat image, depth;
+							dataFrom.uncompressData(&image, &depth, 0);
+							dataTo.uncompressData(&image, &depth, 0);
 
 							if(dataFrom.isValid() &&
-							   dataFrom.isMetric() &&
 							   dataTo.isValid() &&
-							   dataTo.isMetric() &&
 							   dataFrom.id() != Memory::kIdInvalid &&
 							   signatureFrom.id() != Memory::kIdInvalid)
 							{
@@ -3385,28 +3499,29 @@ void MainWindow::postProcessing()
 
 	if(refineNeighborLinks || refineLoopClosureLinks)
 	{
+		UDEBUG("");
 		if(refineLoopClosureLinks)
 		{
 			_initProgressDialog->setMaximumSteps(_initProgressDialog->maximumSteps()+loopClosuresAdded);
 		}
 		_initProgressDialog->appendText(tr("Refining links..."));
 
-		int decimation=8;
-		float maxDepth=2.0f;
-		float voxelSize=0.01f;
-		int samples = 0;
-		float maxCorrespondences = 0.05f;
-		float correspondenceRatio = 0.7f;
-		float icpIterations = 30;
+		int decimation=Parameters::defaultLccIcp3Decimation();
+		float maxDepth=Parameters::defaultLccIcp3MaxDepth();
+		float voxelSize=Parameters::defaultLccIcp3VoxelSize();
+		int samples = Parameters::defaultLccIcp3Samples();
+		float maxCorrespondenceDistance = Parameters::defaultLccIcp3MaxCorrespondenceDistance();
+		float correspondenceRatio = Parameters::defaultLccIcp3CorrespondenceRatio();
+		float icpIterations = Parameters::defaultLccIcp3Iterations();
 		Parameters::parse(parameters, Parameters::kLccIcp3Decimation(), decimation);
 		Parameters::parse(parameters, Parameters::kLccIcp3MaxDepth(), maxDepth);
 		Parameters::parse(parameters, Parameters::kLccIcp3VoxelSize(), voxelSize);
 		Parameters::parse(parameters, Parameters::kLccIcp3Samples(), samples);
 		Parameters::parse(parameters, Parameters::kLccIcp3CorrespondenceRatio(), correspondenceRatio);
-		Parameters::parse(parameters, Parameters::kLccIcp3MaxCorrespondenceDistance(), maxCorrespondences);
+		Parameters::parse(parameters, Parameters::kLccIcp3MaxCorrespondenceDistance(), maxCorrespondenceDistance);
 		Parameters::parse(parameters, Parameters::kLccIcp3Iterations(), icpIterations);
-		bool pointToPlane = false;
-		int pointToPlaneNormalNeighbors = 20;
+		bool pointToPlane = Parameters::defaultLccIcp3PointToPlane();
+		int pointToPlaneNormalNeighbors = Parameters::defaultLccIcp3PointToPlaneNormalNeighbors();
 		Parameters::parse(parameters, Parameters::kLccIcp3PointToPlane(), pointToPlane);
 		Parameters::parse(parameters, Parameters::kLccIcp3PointToPlaneNormalNeighbors(), pointToPlaneNormalNeighbors);
 
@@ -3439,83 +3554,108 @@ void MainWindow::postProcessing()
 					Signature & signatureTo = _cachedSignatures[to];
 
 					//3D
+					UDEBUG("");
 					cv::Mat depthA, depthB;
-					signatureFrom.uncompressData(0, &depthA, 0);
-					signatureTo.uncompressData(0, &depthB, 0);
-
-					if(depthA.type() == CV_8UC1 || depthB.type() == CV_8UC1)
+					if(signatureFrom.sensorData().stereoCameraModel().isValid())
 					{
-						QMessageBox::critical(this, tr("ICP failed"), tr("ICP cannot be done on stereo images!"));
-						UERROR("ICP 3D cannot be done on stereo images! Aborting refining links with ICP...");
-						break;
-					}
-
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA = util3d::getICPReadyCloud(depthA,
-							signatureFrom.getFx(), signatureFrom.getFy(), signatureFrom.getCx(), signatureFrom.getCy(),
-							decimation,
-							maxDepth,
-							voxelSize,
-							samples,
-							signatureFrom.getLocalTransform());
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB = util3d::getICPReadyCloud(depthB,
-							signatureTo.getFx(), signatureTo.getFy(), signatureTo.getCx(), signatureTo.getCy(),
-							decimation,
-							maxDepth,
-							voxelSize,
-							samples,
-							iter->second.transform() * signatureTo.getLocalTransform());
-
-					bool hasConverged = false;
-					double variance = -1;
-					int correspondences = 0;
-					Transform transform;
-					if(pointToPlane)
-					{
-						pcl::PointCloud<pcl::PointNormal>::Ptr cloudANormals = util3d::computeNormals(cloudA, pointToPlaneNormalNeighbors);
-						pcl::PointCloud<pcl::PointNormal>::Ptr cloudBNormals = util3d::computeNormals(cloudB, pointToPlaneNormalNeighbors);
-
-						cloudANormals = util3d::removeNaNNormalsFromPointCloud(cloudANormals);
-						if(cloudA->size() != cloudANormals->size())
-						{
-							UWARN("removed nan normals...");
-						}
-
-						cloudBNormals = util3d::removeNaNNormalsFromPointCloud(cloudBNormals);
-						if(cloudB->size() != cloudBNormals->size())
-						{
-							UWARN("removed nan normals...");
-						}
-
-						transform = util3d::icpPointToPlane(cloudBNormals,
-								cloudANormals,
-								maxCorrespondences,
-								icpIterations,
-								&hasConverged,
-								&variance,
-								&correspondences);
+						cv::Mat leftA, leftB;
+						signatureFrom.sensorData().uncompressData(&leftA, &depthA, 0);
+						signatureTo.sensorData().uncompressData(&leftB, &depthB, 0);
 					}
 					else
 					{
-						transform = util3d::icp(cloudB,
-								cloudA,
-								maxCorrespondences,
-								icpIterations,
-								&hasConverged,
-								&variance,
-								&correspondences);
+						signatureFrom.sensorData().uncompressData(0, &depthA, 0);
+						signatureTo.sensorData().uncompressData(0, &depthB, 0);
 					}
 
-					float correspondencesRatio = float(correspondences)/float(cloudB->size()>cloudA->size()?cloudB->size():cloudA->size());
-
-					if(!transform.isNull() && hasConverged &&
-					   correspondencesRatio >= correspondenceRatio)
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA = util3d::cloudFromSensorData(
+							signatureFrom.sensorData(),
+							decimation,
+							maxDepth,
+							voxelSize,
+							samples);
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB = util3d::cloudFromSensorData(
+							signatureTo.sensorData(),
+							decimation,
+							maxDepth,
+							voxelSize,
+							samples);
+					if(cloudA->size() && cloudB->size())
 					{
-						Link newLink(from, to, iter->second.type(), transform*iter->second.transform(), variance, variance);
-						iter->second = newLink;
+						cloudB = util3d::transformPointCloud(cloudB, iter->second.transform());
+
+						bool hasConverged = false;
+						double variance = -1;
+						int correspondences = 0;
+						Transform transform;
+						if(pointToPlane)
+						{
+							UDEBUG("");
+							pcl::PointCloud<pcl::PointNormal>::Ptr cloudANormals = util3d::computeNormals(cloudA, pointToPlaneNormalNeighbors);
+							pcl::PointCloud<pcl::PointNormal>::Ptr cloudBNormals = util3d::computeNormals(cloudB, pointToPlaneNormalNeighbors);
+
+							cloudANormals = util3d::removeNaNNormalsFromPointCloud(cloudANormals);
+							if(cloudA->size() != cloudANormals->size())
+							{
+								UWARN("removed nan normals...");
+							}
+
+							cloudBNormals = util3d::removeNaNNormalsFromPointCloud(cloudBNormals);
+							if(cloudB->size() != cloudBNormals->size())
+							{
+								UWARN("removed nan normals...");
+							}
+
+							pcl::PointCloud<pcl::PointNormal>::Ptr cloudBRegistered(new pcl::PointCloud<pcl::PointNormal>);
+							transform = util3d::icpPointToPlane(cloudBNormals,
+									cloudANormals,
+									maxCorrespondenceDistance,
+									icpIterations,
+									hasConverged,
+									*cloudBRegistered);
+							util3d::computeVarianceAndCorrespondences(
+									cloudBRegistered,
+									cloudANormals,
+									maxCorrespondenceDistance,
+									variance,
+									correspondences);
+						}
+						else
+						{
+							UDEBUG("");
+							pcl::PointCloud<pcl::PointXYZ>::Ptr cloudBRegistered(new pcl::PointCloud<pcl::PointXYZ>);
+							transform = util3d::icp(cloudB,
+									cloudA,
+									maxCorrespondenceDistance,
+									icpIterations,
+									hasConverged,
+									*cloudBRegistered);
+							util3d::computeVarianceAndCorrespondences(
+									cloudBRegistered,
+									cloudA,
+									maxCorrespondenceDistance,
+									variance,
+									correspondences);
+						}
+
+						float correspondencesRatio = float(correspondences)/float(cloudB->size()>cloudA->size()?cloudB->size():cloudA->size());
+
+						if(!transform.isNull() && hasConverged &&
+						   correspondencesRatio >= correspondenceRatio)
+						{
+							Link newLink(from, to, iter->second.type(), transform*iter->second.transform(), variance, variance);
+							iter->second = newLink;
+						}
+						else
+						{
+							QString str = tr("Cannot refine link %1->%2 (converged=%3 variance=%4 correspondencesRatio=%5 (ref=%6))").arg(from).arg(to).arg(hasConverged?"true":"false").arg(variance).arg(correspondencesRatio).arg(correspondenceRatio);
+							_initProgressDialog->appendText(str, Qt::darkYellow);
+							UWARN("%s", str.toStdString().c_str());
+						}
 					}
 					else
 					{
-						QString str = tr("Cannot refine link %1->%2 (converged=%3 variance=%4 correspondencesRatio=%5 (ref=%6))").arg(from).arg(to).arg(hasConverged?"true":"false").arg(variance).arg(correspondencesRatio).arg(correspondenceRatio);
+						QString str = tr("Cannot refine link %1->%2 (clouds empty!)").arg(from).arg(to);
 						_initProgressDialog->appendText(str, Qt::darkYellow);
 						UWARN("%s", str.toStdString().c_str());
 					}
@@ -3629,64 +3769,49 @@ void MainWindow::updateEditMenu()
 	}
 }
 
-void MainWindow::selectImages()
-{
-	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcImages);
-}
-
-void MainWindow::selectVideo()
-{
-	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcVideo);
-}
-
 void MainWindow::selectStream()
 {
-	_preferencesDialog->selectSourceImage(PreferencesDialog::kSrcUsbDevice);
-}
-
-void MainWindow::selectDatabase()
-{
-	_preferencesDialog->selectSourceDatabase(true);
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcUsbDevice);
 }
 
 void MainWindow::selectOpenni()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_PCL);
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcOpenNI_PCL);
 }
 
 void MainWindow::selectFreenect()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcFreenect);
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcFreenect);
 }
 
 void MainWindow::selectOpenniCv()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV);
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcOpenNI_CV);
 }
 
 void MainWindow::selectOpenniCvAsus()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI_CV_ASUS);
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcOpenNI_CV_ASUS);
 }
 
 void MainWindow::selectOpenni2()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcOpenNI2);
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcOpenNI2);
 }
 
 void MainWindow::selectFreenect2()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcFreenect2);
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcFreenect2);
 }
 
 void MainWindow::selectStereoDC1394()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcStereoDC1394);
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcDC1394);
 }
 
 void MainWindow::selectStereoFlyCapture2()
 {
-	_preferencesDialog->selectSourceRGBD(PreferencesDialog::kSrcStereoFlyCapture2);
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcFlyCapture2);
 }
 
 
@@ -3711,6 +3836,12 @@ void MainWindow::sendGoal()
 		UINFO("Posting event with goal %d", id);
 		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, "", id));
 	}
+}
+
+void MainWindow::cancelGoal()
+{
+	UINFO("Cancelling goal...");
+	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdCancelGoal));
 }
 
 void MainWindow::downloadAllClouds()
@@ -3927,6 +4058,30 @@ void MainWindow::openPreferences()
 {
 	_preferencesDialog->setMonitoringState(_state == kMonitoring || _state == kMonitoringPaused);
 	_preferencesDialog->exec();
+}
+
+void MainWindow::openPreferencesSource()
+{
+	_preferencesDialog->setCurrentPanelToSource();
+	openPreferences();
+	this->updateSelectSourceMenu();
+}
+
+void MainWindow::setDefaultViews()
+{
+	_ui->dockWidget_posterior->setVisible(false);
+	_ui->dockWidget_likelihood->setVisible(false);
+	_ui->dockWidget_rawlikelihood->setVisible(false);
+	_ui->dockWidget_statsV2->setVisible(false);
+	_ui->dockWidget_console->setVisible(false);
+	_ui->dockWidget_loopClosureViewer->setVisible(false);
+	_ui->dockWidget_mapVisibility->setVisible(false);
+	_ui->dockWidget_graphViewer->setVisible(false);
+	_ui->dockWidget_odometry->setVisible(true);
+	_ui->dockWidget_cloudViewer->setVisible(true);
+	_ui->dockWidget_imageView->setVisible(true);
+	_ui->toolBar->setVisible(_state != kMonitoring && _state != kMonitoringPaused);
+	_ui->toolBar_2->setVisible(true);
 }
 
 void MainWindow::selectScreenCaptureFormat(bool checked)
@@ -4828,70 +4983,6 @@ void MainWindow::saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::P
 	}
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createCloud(
-		int id,
-		const cv::Mat & rgb,
-		const cv::Mat & depth,
-		float fx,
-		float fy,
-		float cx,
-		float cy,
-		const Transform & localTransform,
-		const Transform & pose,
-		float voxelSize,
-		int decimation,
-		float maxDepth) const
-{
-	UTimer timer;
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-	if(depth.type() == CV_8UC1)
-	{
-		cloud = util3d::cloudFromStereoImages(
-				rgb,
-				depth,
-				cx, cy,
-				fx, fy,
-				decimation);
-	}
-	else
-	{
-		cloud = util3d::cloudFromDepthRGB(
-				rgb,
-				depth,
-				cx, cy,
-				fx, fy,
-				decimation);
-	}
-
-	if(cloud->size())
-	{
-		bool filtered = false;
-		if(cloud->size() && maxDepth)
-		{
-			cloud = util3d::passThrough(cloud, "z", 0, maxDepth);
-			filtered = true;
-		}
-
-		if(cloud->size() && voxelSize)
-		{
-			cloud = util3d::voxelize(cloud, voxelSize);
-			filtered = true;
-		}
-
-		if(cloud->size() && !filtered)
-		{
-			cloud = util3d::removeNaNFromPointCloud(cloud);
-		}
-
-		if(cloud->size())
-		{
-			cloud = util3d::transformPointCloud(cloud, pose * localTransform);
-		}
-	}
-	UDEBUG("Generated cloud %d (pts=%d) time=%fs", id, (int)cloud->size(), timer.ticks());
-	return cloud;
-}
-
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::getAssembledCloud(
 		const std::map<int, Transform> & poses,
 		float assembledVoxelSize,
@@ -4914,23 +5005,22 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::getAssembledCloud(
 				if(_cachedSignatures.contains(iter->first))
 				{
 					const Signature & s = _cachedSignatures.find(iter->first).value();
+					SensorData d = s.sensorData();
 					cv::Mat image, depth;
-					s.uncompressDataConst(&image, &depth, 0);
+					d.uncompressData(&image, &depth, 0);
 
 					if(!image.empty() && !depth.empty())
 					{
-						cloud = createCloud(iter->first,
-								image,
-								depth,
-								s.getFx(),
-								s.getFy(),
-								s.getCx(),
-								s.getCy(),
-								s.getLocalTransform(),
-								iter->second,
-								regenerateVoxelSize,
+						UASSERT(iter->first == d.id());
+						cloud = util3d::cloudRGBFromSensorData(
+								d,
 								regenerateDecimation,
-								regenerateMaxDepth);
+								regenerateMaxDepth,
+								regenerateVoxelSize);
+						if(cloud->size())
+						{
+							cloud = util3d::transformPointCloud(cloud, iter->second);
+						}
 					}
 					else if(s.getWords3().size())
 					{
@@ -5018,22 +5108,17 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
 				if(_cachedSignatures.contains(iter->first))
 				{
 					const Signature & s = _cachedSignatures.find(iter->first).value();
+					SensorData d = s.sensorData();
 					cv::Mat image, depth;
-					s.uncompressDataConst(&image, &depth, 0);
+					d.uncompressData(&image, &depth, 0);
 					if(!image.empty() && !depth.empty())
 					{
-						cloud =	 createCloud(iter->first,
-							image,
-							depth,
-							s.getFx(),
-							s.getFy(),
-							s.getCx(),
-							s.getCy(),
-							s.getLocalTransform(),
-							Transform::getIdentity(),
-							regenerateVoxelSize,
+						UASSERT(iter->first == d.id());
+						cloud =	 util3d::cloudRGBFromSensorData(
+							d,
 							regenerateDecimation,
-							regenerateMaxDepth);
+							regenerateMaxDepth,
+							regenerateVoxelSize);
 					}
 					else if(s.getWords3().size())
 					{
@@ -5109,13 +5194,18 @@ void MainWindow::changeState(MainWindow::State newState)
 	_ui->actionGenerate_map->setVisible(!monitoring);
 	_ui->actionGenerate_local_map->setVisible(!monitoring);
 	_ui->actionGenerate_TORO_graph_graph->setVisible(!monitoring);
+	_ui->actionExport_poses_txt->setVisible(!monitoring);
 	_ui->actionOpen_working_directory->setVisible(!monitoring);
 	_ui->actionData_recorder->setVisible(!monitoring);
 	_ui->menuSelect_source->menuAction()->setVisible(!monitoring);
 	_ui->doubleSpinBox_stats_imgRate->setVisible(!monitoring);
 	_ui->doubleSpinBox_stats_imgRate_label->setVisible(!monitoring);
-	_ui->toolBar->setVisible(!monitoring);
-	_ui->toolBar->toggleViewAction()->setVisible(!monitoring);
+	bool wasMonitoring = _state==kMonitoring || _state == kMonitoringPaused;
+	if(wasMonitoring != monitoring)
+	{
+		_ui->toolBar->setVisible(!monitoring);
+		_ui->toolBar->toggleViewAction()->setVisible(!monitoring);
+	}
 	QList<QAction*> actions = _ui->menuTools->actions();
 	for(int i=0; i<actions.size(); ++i)
 	{
@@ -5188,6 +5278,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setEnabled(false);
 		_ui->actionGenerate_local_map->setEnabled(false);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
+		_ui->actionExport_poses_txt->setEnabled(false);
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
@@ -5235,6 +5326,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setEnabled(true);
 		_ui->actionGenerate_local_map->setEnabled(true);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(true);
+		_ui->actionExport_poses_txt->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
 		_ui->menuSelect_source->setEnabled(true);
@@ -5271,6 +5363,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionGenerate_map->setEnabled(false);
 		_ui->actionGenerate_local_map->setEnabled(false);
 		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
+		_ui->actionExport_poses_txt->setEnabled(false);
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
@@ -5309,6 +5402,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionGenerate_map->setEnabled(false);
 			_ui->actionGenerate_local_map->setEnabled(false);
 			_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
+			_ui->actionExport_poses_txt->setEnabled(false);
 			_ui->actionDownload_all_clouds->setEnabled(false);
 			_ui->actionDownload_graph->setEnabled(false);
 			_state = kDetecting;
@@ -5337,6 +5431,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionGenerate_map->setEnabled(true);
 			_ui->actionGenerate_local_map->setEnabled(true);
 			_ui->actionGenerate_TORO_graph_graph->setEnabled(true);
+			_ui->actionExport_poses_txt->setEnabled(true);
 			_ui->actionDownload_all_clouds->setEnabled(true);
 			_ui->actionDownload_graph->setEnabled(true);
 			_state = kPaused;

@@ -42,11 +42,12 @@ namespace rtabmap {
 
 class Feature2D;
 class OdometryInfo;
+class ParticleFilter;
 
 class RTABMAP_EXP Odometry
 {
 public:
-	virtual ~Odometry() {}
+	virtual ~Odometry();
 	Transform process(const SensorData & data, OdometryInfo * info = 0);
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 
@@ -59,9 +60,10 @@ public:
 	int getRefineIterations() const {return _refineIterations;}
 	float getMaxDepth() const {return _maxDepth;}
 	bool isInfoDataFilled() const {return _fillInfoData;}
-	bool isPnPEstimationUsed() const {return _pnpEstimation;}
+	int getEstimationType() const {return _estimationType;}
 	double getPnPReprojError() const {return _pnpReprojError;}
 	int  getPnPFlags() const {return _pnpFlags;}
+	const Transform & previousTransform() const {return previousTransform_;}
 
 private:
 	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0) = 0;
@@ -75,12 +77,24 @@ private:
 	float _maxDepth;
 	int _resetCountdown;
 	bool _force2D;
+	bool _holonomic;
+	bool _particleFiltering;
+	int _particleSize;
+	float _particleNoiseT;
+	float _particleLambdaT;
+	float _particleNoiseR;
+	float _particleLambdaR;
 	bool _fillInfoData;
-	bool _pnpEstimation;
+	int _estimationType;
 	double _pnpReprojError;
 	int _pnpFlags;
 	Transform _pose;
 	int _resetCurrentCount;
+	double previousStamp_;
+	Transform previousTransform_;
+	float distanceTravelled_;
+
+	std::vector<ParticleFilter *> filters_;
 
 protected:
 	Odometry(const rtabmap::ParametersMap & parameters);
@@ -104,6 +118,7 @@ private:
 private:
 	//Parameters
 	int _localHistoryMaxSize;
+	std::string _fixedLocalMapPath;
 
 	Memory * _memory;
 	std::multimap<int, pcl::PointXYZ> localMap_;
@@ -123,9 +138,7 @@ public:
 
 private:
 	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0);
-	Transform computeTransformStereo(const SensorData & image, OdometryInfo * info);
-	Transform computeTransformRGBD(const SensorData & image, OdometryInfo * info);
-	Transform computeTransformMono(const SensorData & image, OdometryInfo * info);
+
 private:
 	//Parameters:
 	int flowWinSize_;
@@ -146,7 +159,6 @@ private:
 	Feature2D * feature2D_;
 
 	cv::Mat refFrame_;
-	cv::Mat refRightFrame_;
 	std::vector<cv::Point2f> refCorners_;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr refCorners3D_;
 };
@@ -167,6 +179,12 @@ private:
 	double flowEps_;
 	int flowMaxLevel_;
 
+	int stereoWinSize_;
+	int stereoIterations_;
+	double stereoEps_;
+	int stereoMaxLevel_;
+	float stereoMaxSlope_;
+
 	Memory * memory_;
 	int localHistoryMaxSize_;
 	float initMinFlow_;
@@ -175,7 +193,7 @@ private:
 	float fundMatrixReprojError_;
 	float fundMatrixConfidence_;
 
-	cv::Mat refDepth_;
+	cv::Mat refDepthOrRight_;
 	std::map<int, cv::Point2f> cornersMap_;
 	std::multimap<int, cv::Point3f> localMap_;
 	std::map<int, std::multimap<int, pcl::PointXYZ> > keyFrameWords3D_;

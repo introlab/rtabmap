@@ -56,32 +56,42 @@ Transform RTABMAP_EXP transformFromXYZCorrespondences(
 		std::vector<int> * inliers = 0,
 		double * variance = 0);
 
+void RTABMAP_EXP computeVarianceAndCorrespondences(
+		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloudA,
+		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloudB,
+		double maxCorrespondenceDistance,
+		double & variance,
+		int & correspondencesOut);
+void RTABMAP_EXP computeVarianceAndCorrespondences(
+		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloudA,
+		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloudB,
+		double maxCorrespondenceDistance,
+		double & variance,
+		int & correspondencesOut);
+
 Transform RTABMAP_EXP icp(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_target,
 		double maxCorrespondenceDistance,
 		int maximumIterations,
-		bool * hasConverged = 0,
-		double * variance = 0,
-		int * correspondences = 0);
+		bool & hasConverged,
+		pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered);
 
 Transform RTABMAP_EXP icpPointToPlane(
 		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloud_source,
 		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloud_target,
 		double maxCorrespondenceDistance,
 		int maximumIterations,
-		bool * hasConverged = 0,
-		double * variance = 0,
-		int * correspondences = 0);
+		bool & hasConverged,
+		pcl::PointCloud<pcl::PointNormal> & cloud_source_registered);
 
 Transform RTABMAP_EXP icp2D(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_target,
 		double maxCorrespondenceDistance,
 		int maximumIterations,
-		bool * hasConverged = 0,
-		double * variance = 0,
-		int * correspondences = 0);
+		bool & hasConverged,
+		pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP getICPReadyCloud(
 		const cv::Mat & depth,

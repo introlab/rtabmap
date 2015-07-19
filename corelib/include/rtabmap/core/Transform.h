@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <opencv2/core/core.hpp>
 
 namespace rtabmap {
 
@@ -46,25 +47,27 @@ public:
 	Transform(float r11, float r12, float r13, float o14,
 		      float r21, float r22, float r23, float o24,
 			  float r31, float r32, float r33, float o34);
+	// should have 3 rows, 4 cols and type CV_32FC1
+	Transform(const cv::Mat & transformationMatrix);
 	// x,y,z, roll,pitch,yaw
 	Transform(float x, float y, float z, float roll, float pitch, float yaw);
 
-	float r11() const {return data_[0];}
-	float r12() const {return data_[1];}
-	float r13() const {return data_[2];}
-	float r21() const {return data_[4];}
-	float r22() const {return data_[5];}
-	float r23() const {return data_[6];}
-	float r31() const {return data_[8];}
-	float r32() const {return data_[9];}
-	float r33() const {return data_[10];}
+	float r11() const {return data()[0];}
+	float r12() const {return data()[1];}
+	float r13() const {return data()[2];}
+	float r21() const {return data()[4];}
+	float r22() const {return data()[5];}
+	float r23() const {return data()[6];}
+	float r31() const {return data()[8];}
+	float r32() const {return data()[9];}
+	float r33() const {return data()[10];}
 
-	float o14() const {return data_[3];}
-	float o24() const {return data_[7];}
-	float o34() const {return data_[11];}
+	float o14() const {return data()[3];}
+	float o24() const {return data()[7];}
+	float o34() const {return data()[11];}
 
-	float & operator[](int index) {return data_[index];}
-	const float & operator[](int index) const {return data_[index];}
+	float & operator[](int index) {return data()[index];}
+	const float & operator[](int index) const {return data()[index];}
 
 	bool isNull() const;
 	bool isIdentity() const;
@@ -72,16 +75,16 @@ public:
 	void setNull();
 	void setIdentity();
 
-	const float * data() const {return data_.data();}
-	float * data() {return data_.data();}
-	int size() const {return (int)data_.size();}
+	const float * data() const {return (const float *)data_.data;}
+	float * data() {return (float *)data_.data;}
+	int size() const {return 12;}
 
-	float & x() {return data_[3];}
-	float & y() {return data_[7];}
-	float & z() {return data_[11];}
-	const float & x() const {return data_[3];}
-	const float & y() const {return data_[7];}
-	const float & z() const {return data_[11];}
+	float & x() {return data()[3];}
+	float & y() {return data()[7];}
+	float & z() {return data()[11];}
+	const float & x() const {return data()[3];}
+	const float & y() const {return data()[7];}
+	const float & z() const {return data()[11];}
 
 	float theta() const;
 
@@ -121,7 +124,7 @@ public:
 	static Transform fromEigen3d(const Eigen::Isometry3d & matrix);
 
 private:
-	std::vector<float> data_;
+	cv::Mat data_;
 };
 
 RTABMAP_EXP std::ostream& operator<<(std::ostream& os, const Transform& s);

@@ -55,7 +55,7 @@ void RTABMAP_EXP findCorrespondences(
 		pcl::PointCloud<pcl::PointXYZ> & inliers1,
 		pcl::PointCloud<pcl::PointXYZ> & inliers2,
 		float maxDepth,
-		std::set<int> * uniqueCorrespondences = 0);
+		std::vector<int> * uniqueCorrespondences = 0);
 
 // remove depth by z axis
 void RTABMAP_EXP extractXYZCorrespondences(const std::multimap<int, pcl::PointXYZ> & words1,

@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_registration.h"
+#include "rtabmap/core/util3d_features.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UConversion.h"
@@ -121,57 +122,81 @@ Transform OdometryOpticalFlow::computeTransform(
 		const SensorData & data,
 		OdometryInfo * info)
 {
-	UDEBUG("");
+	UTimer timer;
+	Transform output;
+	if(!data.rightRaw().empty() && !data.stereoCameraModel().isValid())
+	{
+		UERROR("Calibrated stereo camera required");
+		return output;
+	}
+	if(!data.depthRaw().empty() &&
+		(data.cameraModels().size() != 1 || !data.cameraModels()[0].isValid()))
+	{
+		UERROR("Calibrated camera required (multi-cameras not supported).");
+		return output;
+	}
+
+	double variance = 0;
+	int inliers = 0;
+	int correspondences = 0;
 
 	if(info)
 	{
 		info->type = 1;
 	}
 
-	if(!data.rightImage().empty())
-	{
-		//stereo
-		return computeTransformStereo(data, info);
-	}
-	else
-	{
-		//rgbd
-		return computeTransformRGBD(data, info);
-	}
-}
-
-Transform OdometryOpticalFlow::computeTransformStereo(
-		const SensorData & data,
-		OdometryInfo * info)
-{
-	UTimer timer;
-	Transform output;
-
-	double variance = 0;
-	int inliers = 0;
-	int correspondences = 0;
-
 	cv::Mat newLeftFrame;
 	// convert to grayscale
-	if(data.image().channels() > 1)
+	if(data.imageRaw().channels() > 1)
 	{
-		cv::cvtColor(data.image(), newLeftFrame, cv::COLOR_BGR2GRAY);
+		cv::cvtColor(data.imageRaw(), newLeftFrame, cv::COLOR_BGR2GRAY);
 	}
 	else
 	{
-		newLeftFrame = data.image().clone();
+		newLeftFrame = data.imageRaw().clone();
 	}
-	cv::Mat newRightFrame = data.rightImage().clone();
 
 	std::vector<cv::Point2f> newCorners;
-	UDEBUG("lastCorners_.size()=%d lastFrame_=%d lastRightFrame_=%d", (int)refCorners_.size(), refFrame_.empty()?0:1, refRightFrame_.empty()?0:1);
-	if(!refFrame_.empty() && !refRightFrame_.empty() && refCorners_.size())
+	UDEBUG("lastCorners_.size()=%d lastFrame_=%d depthRight=%d",
+			(int)refCorners_.size(), refFrame_.empty()?0:1, data.depthOrRightRaw().empty()?0:1);
+	if(!refFrame_.empty() &&
+	   ((data.cameraModels().size() == 1 && data.cameraModels()[0].isValid()) || data.stereoCameraModel().isValid()) &&
+	   refCorners_.size() &&
+	   refCorners3D_->size())
 	{
-		UDEBUG("");
+		UASSERT_MSG(refCorners_.size() == refCorners3D_->size(),
+				uFormat("%d vs %d", (int)refCorners_.size(), (int)refCorners3D_->size()).c_str());
+
+		// make guess
+		bool flowGuessByMotion = true;
+		cv::Mat K = data.cameraModels().size()?data.cameraModels()[0].K():data.stereoCameraModel().left().K();
+		Transform localTransform = data.cameraModels().size()?data.cameraModels()[0].localTransform():data.stereoCameraModel().left().localTransform();
+		Transform guess = (this->previousTransform() * localTransform).inverse();
+		cv::Mat R = (cv::Mat_<double>(3,3) <<
+				(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
+				(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
+				(double)guess.r31(), (double)guess.r32(), (double)guess.r33());
+		cv::Mat rvec(1,3, CV_64FC1);
+		cv::Rodrigues(R, rvec);
+		cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guess.x(), (double)guess.y(), (double)guess.z());
+		std::vector<cv::Point3f> objectPoints(refCorners3D_->size());
+		for(unsigned int i=0; i<objectPoints.size(); ++i)
+		{
+			objectPoints[i].x = refCorners3D_->at(i).x;
+			objectPoints[i].y = refCorners3D_->at(i).y;
+			objectPoints[i].z = refCorners3D_->at(i).z;
+		}
+		if(flowGuessByMotion && !this->previousTransform().isIdentity())
+		{
+			UDEBUG("project points to new image");
+			cv::projectPoints(objectPoints, rvec, tvec, K, cv::Mat(), newCorners);
+		}
+
 		// Find features in the new left image
 		std::vector<unsigned char> status;
 		std::vector<float> err;
 		UDEBUG("cv::calcOpticalFlowPyrLK() begin");
+		int winSize = (newCorners.size()||!flowGuessByMotion)?flowWinSize_:(flowWinSize_*2);
 		cv::calcOpticalFlowPyrLK(
 				refFrame_,
 				newLeftFrame,
@@ -179,155 +204,54 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 				newCorners,
 				status,
 				err,
-				cv::Size(flowWinSize_, flowWinSize_), flowMaxLevel_,
+				cv::Size(winSize, winSize),
+				(newCorners.size()||!flowGuessByMotion)?flowMaxLevel_:flowMaxLevel_*2,
 				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, flowIterations_, flowEps_),
-				cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
+				cv::OPTFLOW_LK_GET_MIN_EIGENVALS | (newCorners.size()?cv::OPTFLOW_USE_INITIAL_FLOW:0), 1e-4);
 		UDEBUG("cv::calcOpticalFlowPyrLK() end");
 
-		std::vector<cv::Point2f> lastCornersKept(status.size());
+		pcl::PointCloud<pcl::PointXYZ>::Ptr refCorners3DKept(new pcl::PointCloud<pcl::PointXYZ>);
+		refCorners3DKept->resize(status.size());
+		std::vector<cv::Point3f> objectPointsKept(status.size());
+		std::vector<cv::Point2f> refCornersKept(status.size());
 		std::vector<cv::Point2f> newCornersKept(status.size());
 		int ki = 0;
 		for(unsigned int i=0; i<status.size(); ++i)
 		{
 			if(status[i])
 			{
-				lastCornersKept[ki] = refCorners_[i];
+				refCorners3DKept->at(ki) = refCorners3D_->at(i);
+				objectPointsKept[ki] = objectPoints[i];
+				refCornersKept[ki] = refCorners_[i];
 				newCornersKept[ki] = newCorners[i];
 				++ki;
 			}
 		}
-		lastCornersKept.resize(ki);
+		refCorners3DKept->resize(ki);
+		objectPointsKept.resize(ki);
+		refCornersKept.resize(ki);
 		newCornersKept.resize(ki);
 
 		if(ki && ki >= this->getMinInliers())
 		{
-			std::vector<unsigned char> statusLast;
-			std::vector<float> errLast;
-			std::vector<cv::Point2f> lastCornersKeptRight;
-			UDEBUG("previous stereo disparity");
-			cv::calcOpticalFlowPyrLK(
-						refFrame_,
-						refRightFrame_,
-						lastCornersKept,
-						lastCornersKeptRight,
-						statusLast,
-						errLast,
-						cv::Size(stereoWinSize_, stereoWinSize_), stereoMaxLevel_,
-						cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, stereoIterations_, stereoEps_),
-						cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
-
-			UDEBUG("new stereo disparity");
-			std::vector<unsigned char> statusNew;
-			std::vector<float> errNew;
-			std::vector<cv::Point2f> newCornersKeptRight;
-			cv::calcOpticalFlowPyrLK(
-						newLeftFrame,
-						newRightFrame,
-						newCornersKept,
-						newCornersKeptRight,
-						statusNew,
-						errNew,
-						cv::Size(stereoWinSize_, stereoWinSize_), stereoMaxLevel_,
-						cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, stereoIterations_, stereoEps_),
-						cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
-
-			if(this->isPnPEstimationUsed())
+			if(this->getEstimationType() == 1) // PnP
 			{
 				// find correspondences
 				if(this->isInfoDataFilled() && info)
 				{
-					info->refCorners.resize(statusLast.size());
-					info->newCorners.resize(statusLast.size());
+					info->refCorners = refCornersKept;
+					info->newCorners = newCornersKept;
 				}
 
-				int flowInliers = 0;
-				std::vector<cv::Point3f> objectPoints(statusLast.size());
-				std::vector<cv::Point2f> imagePoints(statusLast.size());
-				std::vector<pcl::PointXYZ> image3DPoints(statusLast.size());
-				int oi=0;
-				float bad_point = std::numeric_limits<float>::quiet_NaN ();
-				for(unsigned int i=0; i<statusLast.size(); ++i)
-				{
-					if(statusLast[i])
-					{
-						float lastDisparity = lastCornersKept[i].x - lastCornersKeptRight[i].x;
-						float lastSlope = fabs((lastCornersKept[i].y-lastCornersKeptRight[i].y) / (lastCornersKept[i].x-lastCornersKeptRight[i].x));
-						float newDisparity = newCornersKept[i].x - newCornersKeptRight[i].x;
-						float newSlope = fabs((newCornersKept[i].y-newCornersKeptRight[i].y) / (newCornersKept[i].x-newCornersKeptRight[i].x));
-						if(lastDisparity > 0.0f && lastSlope < stereoMaxSlope_)
-						{
-							pcl::PointXYZ lastPt3D = util3d::projectDisparityTo3D(
-									lastCornersKept[i],
-									lastDisparity,
-									data.cx(), data.cy(), data.fx(), data.baseline());
-
-							if(pcl::isFinite(lastPt3D) &&
-							   (this->getMaxDepth() == 0.0f || uIsInBounds(lastPt3D.z, 0.0f, this->getMaxDepth())))
-							{
-								//Add 3D correspondences!
-								lastPt3D = util3d::transformPoint(lastPt3D, data.localTransform());
-								objectPoints[oi].x = lastPt3D.x;
-								objectPoints[oi].y = lastPt3D.y;
-								objectPoints[oi].z = lastPt3D.z;
-								imagePoints[oi] = newCornersKept.at(i);
-
-								// new 3D points, used to compute variance
-								image3DPoints[oi] = pcl::PointXYZ(bad_point, bad_point, bad_point);
-								if(newDisparity > 0.0f && newSlope < stereoMaxSlope_)
-								{
-									pcl::PointXYZ newPt3D = util3d::projectDisparityTo3D(
-											newCornersKept[i],
-											newDisparity,
-											data.cx(), data.cy(), data.fx(), data.baseline());
-									if(pcl::isFinite(newPt3D) &&
-									   (this->getMaxDepth() == 0.0f || uIsInBounds(newPt3D.z, 0.0f, this->getMaxDepth())))
-									{
-										image3DPoints[oi] = util3d::transformPoint(newPt3D, data.localTransform());
-									}
-								}
-
-								if(this->isInfoDataFilled() && info)
-								{
-									info->refCorners[oi] = lastCornersKept[i];
-									info->newCorners[oi] = newCornersKept[i];
-								}
-								++oi;
-							}
-						}
-						++flowInliers;
-					}
-				}
-				objectPoints.resize(oi);
-				imagePoints.resize(oi);
-				image3DPoints.resize(oi);
-				UDEBUG("Flow inliers = %d, added inliers=%d", flowInliers, oi);
-
-				if(this->isInfoDataFilled() && info)
-				{
-					info->refCorners.resize(oi);
-					info->newCorners.resize(oi);
-				}
-
-				correspondences = oi;
+				correspondences = refCornersKept.size();
 
 				if(correspondences >= this->getMinInliers())
 				{
 					//PnPRansac
-					cv::Mat K = (cv::Mat_<double>(3,3) <<
-						data.fx(), 0, data.cx(),
-						0, data.fx(), data.cy(),
-						0, 0, 1);
-					Transform guess = (data.localTransform()).inverse();
-					cv::Mat R = (cv::Mat_<double>(3,3) <<
-							(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
-							(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
-							(double)guess.r31(), (double)guess.r32(), (double)guess.r33());
-					cv::Mat rvec(1,3, CV_64FC1);
-					cv::Rodrigues(R, rvec);
-					cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guess.x(), (double)guess.y(), (double)guess.z());
 					std::vector<int> inliersV;
-					cv::solvePnPRansac(objectPoints,
-							imagePoints,
+					cv::solvePnPRansac(
+							objectPointsKept,
+							newCornersKept,
 							K,
 							cv::Mat(),
 							rvec,
@@ -339,39 +263,17 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 							inliersV,
 							this->getPnPFlags());
 
+					cv::Rodrigues(rvec, R);
+					Transform pnp(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
+								   R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
+								   R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
+
 					inliers = (int)inliersV.size();
 					if((int)inliersV.size() >= this->getMinInliers())
 					{
-						cv::Rodrigues(rvec, R);
-						Transform pnp(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
-									   R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
-									   R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
-
 						// make it incremental
-						output = (data.localTransform() * pnp).inverse();
-
-						UDEBUG("Odom transform = %s", output.prettyPrint().c_str());
-
-						// compute variance (like in PCL computeVariance() method of sac_model.h)
-						std::vector<float> errorSqrdDists(inliersV.size());
-						int ii=0;
-						for(unsigned int i=0; i<inliersV.size(); ++i)
-						{
-							pcl::PointXYZ & newPt = image3DPoints[inliersV[i]];
-							if(pcl::isFinite(newPt))
-							{
-								newPt = util3d::transformPoint(newPt, output);
-								const cv::Point3f & objPt = objectPoints[inliersV[i]];
-								errorSqrdDists[ii++] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
-							}
-						}
-						errorSqrdDists.resize(ii);
-						if(errorSqrdDists.size())
-						{
-							std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
-							double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
-							variance = 2.1981 * median_error_sqr;
-						}
+						output = (localTransform * pnp).inverse();
+						variance = 1; // FIXME, is there a way to compute a variance from the PNP approach?
 					}
 					else
 					{
@@ -390,57 +292,80 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 			}
 			else
 			{
-				UDEBUG("Getting correspondences begin");
 				// Get 3D correspondences
-				pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesLast(new pcl::PointCloud<pcl::PointXYZ>);
+				pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesRef(new pcl::PointCloud<pcl::PointXYZ>);
 				pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesNew(new pcl::PointCloud<pcl::PointXYZ>);
-				correspondencesLast->resize(statusLast.size());
-				correspondencesNew->resize(statusLast.size());
-				int oi = 0;
+				correspondencesRef->resize(newCornersKept.size());
+				correspondencesNew->resize(newCornersKept.size());
 				if(this->isInfoDataFilled() && info)
 				{
-					info->refCorners.resize(statusLast.size());
-					info->newCorners.resize(statusLast.size());
+					info->refCorners.resize(newCornersKept.size());
+					info->newCorners.resize(newCornersKept.size());
 				}
-				for(unsigned int i=0; i<statusLast.size(); ++i)
+				int oi = 0;
+				if(!data.rightRaw().empty())
 				{
-					if(statusLast[i] && statusNew[i])
-					{
-						float lastDisparity = lastCornersKept[i].x - lastCornersKeptRight[i].x;
-						float newDisparity = newCornersKept[i].x - newCornersKeptRight[i].x;
-						float lastSlope = fabs((lastCornersKept[i].y-lastCornersKeptRight[i].y) / (lastCornersKept[i].x-lastCornersKeptRight[i].x));
-						float newSlope = fabs((newCornersKept[i].y-newCornersKeptRight[i].y) / (newCornersKept[i].x-newCornersKeptRight[i].x));
-						if(lastDisparity > 0.0f && newDisparity > 0.0f &&
-							lastSlope < stereoMaxSlope_ && newSlope < stereoMaxSlope_)
-						{
-							pcl::PointXYZ lastPt3D = util3d::projectDisparityTo3D(
-									lastCornersKept[i],
-									lastDisparity,
-									data.cx(), data.cy(), data.fx(), data.baseline());
-							pcl::PointXYZ newPt3D = util3d::projectDisparityTo3D(
-									newCornersKept[i],
-									newDisparity,
-									data.cx(), data.cy(), data.fx(), data.baseline());
+					// stereo
+					pcl::PointCloud<pcl::PointXYZ>::Ptr newCorners3D = util3d::generateKeypoints3DStereo(
+							newCornersKept,
+							newLeftFrame,
+							data.rightRaw(),
+							data.stereoCameraModel().left().fx(),
+							data.stereoCameraModel().baseline(),
+							data.stereoCameraModel().left().cx(),
+							data.stereoCameraModel().left().cy(),
+							Transform::getIdentity(),
+							stereoWinSize_,
+							stereoMaxLevel_,
+							stereoIterations_,
+							stereoEps_,
+							stereoMaxSlope_);
 
-							if(pcl::isFinite(lastPt3D) && (this->getMaxDepth() == 0.0f || uIsInBounds(lastPt3D.z, 0.0f, this->getMaxDepth())) &&
-							   pcl::isFinite(newPt3D) && (this->getMaxDepth() == 0.0f || uIsInBounds(newPt3D.z, 0.0f, this->getMaxDepth())))
+					UASSERT(newCorners3D->size() == refCorners3DKept->size());
+					for(unsigned int i=0; i<newCorners3D->size(); ++i)
+					{
+						if(pcl::isFinite(newCorners3D->at(i)) && (this->getMaxDepth() <= 0.0f || newCorners3D->at(i).z < this->getMaxDepth()))
+						{
+							//Add 3D correspondences!
+							correspondencesRef->at(oi) = refCorners3DKept->at(i);
+							correspondencesNew->at(oi) = util3d::transformPoint(newCorners3D->at(i), localTransform);
+							if(this->isInfoDataFilled() && info)
+							{
+								info->refCorners[oi] = refCornersKept[i];
+								info->newCorners[oi] = newCornersKept[i];
+							}
+							++oi;
+						}
+					}// end loop
+				}
+				else
+				{
+					//depth
+					for(unsigned int i=0; i<newCornersKept.size(); ++i)
+					{
+						if(uIsInBounds(newCornersKept[i].x, 0.0f, float(data.depthRaw().cols)) &&
+						   uIsInBounds(newCornersKept[i].y, 0.0f, float(data.depthRaw().rows)))
+						{
+							pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depthRaw(), newCornersKept[i].x, newCorners[i].y,
+									data.cameraModels()[0].cx(), data.cameraModels()[0].cy(), data.cameraModels()[0].fx(), data.cameraModels()[0].fy(), true);
+							if(pcl::isFinite(pt) &&
+								(this->getMaxDepth() == 0.0f || pt.z < this->getMaxDepth()))
 							{
 								//Add 3D correspondences!
-								lastPt3D = util3d::transformPoint(lastPt3D, data.localTransform());
-								newPt3D = util3d::transformPoint(newPt3D, data.localTransform());
-								correspondencesLast->at(oi) = lastPt3D;
-								correspondencesNew->at(oi) = newPt3D;
+								correspondencesRef->at(oi) = refCorners3DKept->at(i);
+								correspondencesNew->at(oi) = util3d::transformPoint(pt, localTransform);
+
 								if(this->isInfoDataFilled() && info)
 								{
-									info->refCorners[oi] = lastCornersKept[i];
+									info->refCorners[oi] = refCornersKept[i];
 									info->newCorners[oi] = newCornersKept[i];
 								}
 								++oi;
 							}
 						}
 					}
-				}// end loop
-				correspondencesLast->resize(oi);
+				}
+				correspondencesRef->resize(oi);
 				correspondencesNew->resize(oi);
 				if(this->isInfoDataFilled() && info)
 				{
@@ -448,8 +373,7 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 					info->newCorners.resize(oi);
 				}
 				correspondences = oi;
-				refCorners3D_ = correspondencesNew;
-				UDEBUG("Getting correspondences end, kept %d/%d", correspondences, (int)statusLast.size());
+				UDEBUG("Getting correspondences end, kept %d/%d", correspondences, (int)newCornersKept.size());
 
 				if(correspondences >= this->getMinInliers())
 				{
@@ -457,7 +381,7 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 					UTimer timerRANSAC;
 					Transform t = util3d::transformFromXYZCorrespondences(
 							correspondencesNew,
-							correspondencesLast,
+							correspondencesRef,
 							this->getInlierDistance(),
 							this->getIterations(),
 							this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
@@ -499,11 +423,7 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 		// Copy or generate new keypoints
 		if(data.keypoints().size())
 		{
-			newCorners.resize(data.keypoints().size());
-			for(unsigned int i=0; i<data.keypoints().size(); ++i)
-			{
-				newCorners[i] = data.keypoints().at(i).pt;
-			}
+			cv::KeyPoint::convert(data.keypoints(), newCorners);
 		}
 		else
 		{
@@ -528,393 +448,74 @@ Transform OdometryOpticalFlow::computeTransformStereo(
 			}
 		}
 
-		if((int)newCorners.size() > this->getMinInliers())
+		if((int)newCorners.size() >= this->getMinInliers())
 		{
-			refFrame_ = newLeftFrame;
-			refRightFrame_ = newRightFrame;
-			refCorners_ = newCorners;
-		}
-		else
-		{
-			UWARN("Too low 2D corners (%d), ignoring new frame...",
-					(int)newCorners.size());
-			output.setNull();
-		}
-	}
-
-	if(info)
-	{
-		info->type = 1;
-		info->variance = variance;
-		info->inliers = inliers;
-		info->features = (int)newCorners.size();
-		info->matches = correspondences;
-	}
-
-	UINFO("Odom update time = %fs lost=%s inliers=%d/%d, new corners=%d, transform accepted=%s",
-			timer.elapsed(),
-			output.isNull()?"true":"false",
-			inliers,
-			correspondences,
-			(int)newCorners.size(),
-			!output.isNull()?"true":"false");
-
-	return output;
-}
-
-Transform OdometryOpticalFlow::computeTransformRGBD(
-		const SensorData & data,
-		OdometryInfo * info)
-{
-	UTimer timer;
-	Transform output;
-
-	double variance = 0;
-	int inliers = 0;
-	int correspondences = 0;
-
-	cv::Mat newFrame;
-	// convert to grayscale
-	if(data.image().channels() > 1)
-	{
-		cv::cvtColor(data.image(), newFrame, cv::COLOR_BGR2GRAY);
-	}
-	else
-	{
-		newFrame = data.image().clone();
-	}
-
-	std::vector<cv::Point2f> newCorners;
-	if(!refFrame_.empty() &&
-		(int)refCorners_.size() >= this->getMinInliers() &&
-		(int)refCorners3D_->size() >= this->getMinInliers())
-	{
-		std::vector<unsigned char> status;
-		std::vector<float> err;
-		UDEBUG("cv::calcOpticalFlowPyrLK() begin");
-		cv::calcOpticalFlowPyrLK(
-				refFrame_,
-				newFrame,
-				refCorners_,
-				newCorners,
-				status,
-				err,
-				cv::Size(flowWinSize_, flowWinSize_), flowMaxLevel_,
-				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, flowIterations_, flowEps_),
-				cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
-		UDEBUG("cv::calcOpticalFlowPyrLK() end");
-
-		if(this->isPnPEstimationUsed())
-		{
-			// find correspondences
-			if(this->isInfoDataFilled() && info)
-			{
-				info->refCorners.resize(refCorners_.size());
-				info->newCorners.resize(refCorners_.size());
-			}
-
-			UASSERT(refCorners_.size() == refCorners3D_->size());
-			UDEBUG("lastCorners3D_ = %d", refCorners3D_->size());
-			int flowInliers = 0;
-			std::vector<cv::Point3f> objectPoints(refCorners_.size());
-			std::vector<cv::Point2f> imagePoints(refCorners_.size());
-			std::vector<pcl::PointXYZ> image3DPoints(refCorners_.size());
-			int oi=0;
-			float bad_point = std::numeric_limits<float>::quiet_NaN ();
-			for(unsigned int i=0; i<status.size(); ++i)
-			{
-				if(status[i])
-				{
-					if(pcl::isFinite(refCorners3D_->at(i)))
-					{
-						objectPoints[oi].x = refCorners3D_->at(i).x;
-						objectPoints[oi].y = refCorners3D_->at(i).y;
-						objectPoints[oi].z = refCorners3D_->at(i).z;
-						imagePoints[oi] = newCorners.at(i);
-
-						// new 3D points, used to compute variance
-						image3DPoints[oi] = pcl::PointXYZ(bad_point, bad_point, bad_point);
-						if(uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols)) &&
-						   uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows)))
-						{
-							pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depth(), newCorners[i].x, newCorners[i].y,
-									data.cx(), data.cy(), data.fx(), data.fy(), true);
-							if(pcl::isFinite(pt) &&
-								(this->getMaxDepth() == 0.0f || (
-								uIsInBounds(pt.x, -this->getMaxDepth(), this->getMaxDepth()) &&
-								uIsInBounds(pt.y, -this->getMaxDepth(), this->getMaxDepth()) &&
-								uIsInBounds(pt.z, 0.0f, this->getMaxDepth()))))
-							{
-								image3DPoints[oi] = util3d::transformPoint(pt, data.localTransform());
-							}
-						}
-
-						if(this->isInfoDataFilled() && info)
-						{
-							info->refCorners[oi] = refCorners_[i];
-							info->newCorners[oi] = newCorners[i];
-						}
-
-						++oi;
-					}
-					++flowInliers;
-				}
-			}
-			objectPoints.resize(oi);
-			imagePoints.resize(oi);
-			image3DPoints.resize(oi);
-			UDEBUG("Flow inliers = %d, added inliers=%d", flowInliers, oi);
-
-			if(this->isInfoDataFilled() && info)
-			{
-				info->refCorners.resize(oi);
-				info->newCorners.resize(oi);
-			}
-
-			correspondences = oi;
-
-			if(correspondences >= this->getMinInliers())
-			{
-				//PnPRansac
-				cv::Mat K = (cv::Mat_<double>(3,3) <<
-					data.fx(), 0, data.cx(),
-					0, data.fy(), data.cy(),
-					0, 0, 1);
-				Transform guess = (data.localTransform()).inverse();
-				cv::Mat R = (cv::Mat_<double>(3,3) <<
-						(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
-						(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
-						(double)guess.r31(), (double)guess.r32(), (double)guess.r33());
-				cv::Mat rvec(1,3, CV_64FC1);
-				cv::Rodrigues(R, rvec);
-				cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guess.x(), (double)guess.y(), (double)guess.z());
-				std::vector<int> inliersV;
-				cv::solvePnPRansac(objectPoints,
-						imagePoints,
-						K,
-						cv::Mat(),
-						rvec,
-						tvec,
-						true,
-						this->getIterations(),
-						this->getPnPReprojError(),
-						0,
-						inliersV,
-						this->getPnPFlags());
-
-				inliers = (int)inliersV.size();
-				if((int)inliersV.size() >= this->getMinInliers())
-				{
-					cv::Rodrigues(rvec, R);
-					Transform pnp(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
-								   R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
-								   R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
-
-					// make it incremental
-					output = (data.localTransform() * pnp).inverse();
-
-					UDEBUG("Odom transform = %s", output.prettyPrint().c_str());
-
-					// compute variance (like in PCL computeVariance() method of sac_model.h)
-					std::vector<float> errorSqrdDists(inliersV.size());
-					int ii=0;
-					for(unsigned int i=0; i<inliersV.size(); ++i)
-					{
-						pcl::PointXYZ & newPt = image3DPoints[inliersV[i]];
-						if(pcl::isFinite(newPt))
-						{
-							newPt = util3d::transformPoint(newPt, output);
-							const cv::Point3f & objPt = objectPoints[inliersV[i]];
-							errorSqrdDists[ii++] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
-						}
-					}
-					errorSqrdDists.resize(ii);
-					if(errorSqrdDists.size())
-					{
-						std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
-						double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
-						variance = 2.1981 * median_error_sqr;
-					}
-				}
-				else
-				{
-					UWARN("PnP not enough inliers (%d < %d), rejecting the transform...", (int)inliersV.size(), this->getMinInliers());
-				}
-
-				if(this->isInfoDataFilled() && info)
-				{
-					info->cornerInliers = inliersV;
-				}
-			}
-			else
-			{
-				UWARN("Not enough correspondences (%d < %d)", correspondences, this->getMinInliers());
-			}
-		}
-		else
-		{
-			pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesLast(new pcl::PointCloud<pcl::PointXYZ>);
-			pcl::PointCloud<pcl::PointXYZ>::Ptr correspondencesNew(new pcl::PointCloud<pcl::PointXYZ>);
-			correspondencesLast->resize(refCorners_.size());
-			correspondencesNew->resize(refCorners_.size());
-			int oi=0;
-
-			if(this->isInfoDataFilled() && info)
-			{
-				info->refCorners.resize(refCorners_.size());
-				info->newCorners.resize(refCorners_.size());
-			}
-
-			UASSERT(refCorners_.size() == refCorners3D_->size());
-			UDEBUG("lastCorners3D_ = %d", refCorners3D_->size());
-			int flowInliers = 0;
-			for(unsigned int i=0; i<status.size(); ++i)
-			{
-				if(status[i] && pcl::isFinite(refCorners3D_->at(i)) &&
-					uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols)) &&
-					uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows)))
-				{
-					pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depth(), newCorners[i].x, newCorners[i].y,
-							data.cx(), data.cy(), data.fx(), data.fy(), true);
-					if(pcl::isFinite(pt) &&
-						(this->getMaxDepth() == 0.0f || (
-						uIsInBounds(pt.x, -this->getMaxDepth(), this->getMaxDepth()) &&
-						uIsInBounds(pt.y, -this->getMaxDepth(), this->getMaxDepth()) &&
-						uIsInBounds(pt.z, 0.0f, this->getMaxDepth()))))
-					{
-						pt = util3d::transformPoint(pt, data.localTransform());
-						correspondencesLast->at(oi) = refCorners3D_->at(i);
-						correspondencesNew->at(oi) = pt;
-
-						if(this->isInfoDataFilled() && info)
-						{
-							info->refCorners[oi] = refCorners_[i];
-							info->newCorners[oi] = newCorners[i];
-						}
-
-						++oi;
-					}
-					++flowInliers;
-				}
-				else if(status[i])
-				{
-					++flowInliers;
-				}
-			}
-			UDEBUG("Flow inliers = %d, added inliers=%d", flowInliers, oi);
-
-			if(this->isInfoDataFilled() && info)
-			{
-				info->refCorners.resize(oi);
-				info->newCorners.resize(oi);
-			}
-			correspondencesLast->resize(oi);
-			correspondencesNew->resize(oi);
-			correspondences = oi;
-			if(correspondences >= this->getMinInliers())
-			{
-				std::vector<int> inliersV;
-				UTimer timerRANSAC;
-				output = util3d::transformFromXYZCorrespondences(
-						correspondencesNew,
-						correspondencesLast,
-						this->getInlierDistance(),
-						this->getIterations(),
-						this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
-						&inliersV,
-						&variance);
-				UDEBUG("time RANSAC = %fs", timerRANSAC.ticks());
-
-				inliers = (int)inliersV.size();
-				if(inliers < this->getMinInliers())
-				{
-					output.setNull();
-					UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
-				}
-
-				if(this->isInfoDataFilled() && info)
-				{
-					info->cornerInliers = inliersV;
-				}
-			}
-			else
-			{
-				UWARN("Not enough correspondences (%d)", correspondences);
-			}
-		}
-	}
-	else
-	{
-		//return Identity
-		output = Transform::getIdentity();
-	}
-
-	newCorners.clear();
-	if(!output.isNull())
-	{
-		// Copy or generate new keypoints
-		if(data.keypoints().size())
-		{
-			newCorners.resize(data.keypoints().size());
-			for(unsigned int i=0; i<data.keypoints().size(); ++i)
-			{
-				newCorners[i] = data.keypoints().at(i).pt;
-			}
-		}
-		else
-		{
-			// generate kpts
-			std::vector<cv::KeyPoint> newKtps;
-			cv::Rect roi = Feature2D::computeRoi(newFrame, this->getRoiRatios());
-			newKtps = feature2D_->generateKeypoints(newFrame, roi);
-			Feature2D::filterKeypointsByDepth(newKtps, data.depth(), this->getMaxDepth());
-
-			if(newKtps.size())
-			{
-				cv::KeyPoint::convert(newKtps, newCorners);
-
-				if(subPixWinSize_ > 0 && subPixIterations_ > 0)
-				{
-					cv::cornerSubPix(newFrame, newCorners,
-						cv::Size( subPixWinSize_, subPixWinSize_ ),
-						cv::Size( -1, -1 ),
-						cv::TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, subPixIterations_, subPixEps_ ) );
-				}
-			}
-		}
-
-		if((int)newCorners.size() > this->getMinInliers())
-		{
-			// get 3D corners for the extracted 2D corners (not the ones refined by Optical Flow)
 			pcl::PointCloud<pcl::PointXYZ>::Ptr newCorners3D(new pcl::PointCloud<pcl::PointXYZ>);
 			newCorners3D->resize(newCorners.size());
 			std::vector<cv::Point2f> newCornersFiltered(newCorners.size());
 			int oi=0;
-			for(unsigned int i=0; i<newCorners.size(); ++i)
+			if(!data.rightRaw().empty())
 			{
-				if(uIsInBounds(newCorners[i].x, 0.0f, float(data.depth().cols)) &&
-				   uIsInBounds(newCorners[i].y, 0.0f, float(data.depth().rows)))
+				/// stereo
+				pcl::PointCloud<pcl::PointXYZ>::Ptr refCorners3DTmp = util3d::generateKeypoints3DStereo(
+						newCorners,
+						newLeftFrame,
+						data.rightRaw(),
+						data.stereoCameraModel().left().fx(),
+						data.stereoCameraModel().baseline(),
+						data.stereoCameraModel().left().cx(),
+						data.stereoCameraModel().left().cy(),
+						Transform::getIdentity(),
+						stereoWinSize_,
+						stereoMaxLevel_,
+						stereoIterations_,
+						stereoEps_,
+						stereoMaxSlope_);
+				UASSERT(refCorners3DTmp->size() == newCorners.size());
+				for(unsigned int i=0; i<newCorners.size(); ++i)
 				{
-					pcl::PointXYZ pt = util3d::projectDepthTo3D(data.depth(), newCorners[i].x, newCorners[i].y,
-							data.cx(), data.cy(), data.fx(), data.fy(), true);
-					if(pcl::isFinite(pt) &&
-						(this->getMaxDepth() == 0.0f || (
-						uIsInBounds(pt.x, -this->getMaxDepth(), this->getMaxDepth()) &&
-						uIsInBounds(pt.y, -this->getMaxDepth(), this->getMaxDepth()) &&
-						uIsInBounds(pt.z, 0.0f, this->getMaxDepth()))))
+					if(pcl::isFinite(refCorners3DTmp->at(i)) &&
+						(this->getMaxDepth() == 0.0f || refCorners3DTmp->at(i).z < this->getMaxDepth()))
 					{
-						pt = util3d::transformPoint(pt, data.localTransform());
-						newCorners3D->at(oi) = pt;
+						newCorners3D->at(oi) = util3d::transformPoint(refCorners3DTmp->at(i), data.stereoCameraModel().left().localTransform());
 						newCornersFiltered[oi] = newCorners[i];
 						++oi;
 					}
 				}
 			}
+			else
+			{
+				// depth
+				for(unsigned int i=0; i<newCorners.size(); ++i)
+				{
+					if(uIsInBounds(newCorners[i].x, 0.0f, float(data.depthRaw().cols)) &&
+					   uIsInBounds(newCorners[i].y, 0.0f, float(data.depthRaw().rows)))
+					{
+						pcl::PointXYZ pt = util3d::projectDepthTo3D(
+								data.depthRaw(),
+								newCorners[i].x,
+								newCorners[i].y,
+								data.cameraModels()[0].cx(),
+								data.cameraModels()[0].cy(),
+								data.cameraModels()[0].fx(),
+								data.cameraModels()[0].fy(),
+								true);
+						if(pcl::isFinite(pt) &&
+							(this->getMaxDepth() == 0.0f || pt.z < this->getMaxDepth()))
+						{
+							newCorners3D->at(oi) = util3d::transformPoint(pt, data.cameraModels()[0].localTransform());
+							newCornersFiltered[oi] = newCorners[i];
+							++oi;
+						}
+					}
+				}
+			}
 			newCornersFiltered.resize(oi);
 			newCorners3D->resize(oi);
-			if((int)newCornersFiltered.size() > this->getMinInliers())
+
+			if((int)newCornersFiltered.size() >= this->getMinInliers())
 			{
-				refFrame_ = newFrame;
+				refFrame_ = newLeftFrame;
 				refCorners_ = newCornersFiltered;
 				refCorners3D_ = newCorners3D;
 			}
@@ -942,13 +543,14 @@ Transform OdometryOpticalFlow::computeTransformRGBD(
 		info->matches = correspondences;
 	}
 
-	UINFO("Odom update time = %fs lost=%s inliers=%d/%d, variance=%f, new corners=%d",
+	UINFO("Odom update time = %fs lost=%s inliers=%d/%d, new corners=%d, transform accepted=%s",
 			timer.elapsed(),
 			output.isNull()?"true":"false",
 			inliers,
 			correspondences,
-			variance,
-			(int)newCorners.size());
+			(int)newCorners.size(),
+			!output.isNull()?"true":"false");
+
 	return output;
 }
 

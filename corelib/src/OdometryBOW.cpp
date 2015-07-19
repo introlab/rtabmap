@@ -32,6 +32,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d_registration.h"
 #include "rtabmap/core/util3d_correspondences.h"
+#include "rtabmap/core/util3d_motion_estimation.h"
+#include "rtabmap/core/Graph.h"
 #include "rtabmap/core/VWDictionary.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
@@ -49,9 +51,12 @@ namespace rtabmap {
 OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 	Odometry(parameters),
 	_localHistoryMaxSize(Parameters::defaultOdomBowLocalHistorySize()),
+	_fixedLocalMapPath(Parameters::defaultOdomBowFixedLocalMapPath()),
 	_memory(0)
 {
+	UDEBUG("");
 	Parameters::parse(parameters, Parameters::kOdomBowLocalHistorySize(), _localHistoryMaxSize);
+	Parameters::parse(parameters, Parameters::kOdomBowFixedLocalMapPath(), _fixedLocalMapPath);
 
 	ParametersMap customParameters;
 	customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(this->getMaxDepth())));
@@ -101,10 +106,71 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 		}
 	}
 
-	_memory = new Memory(customParameters);
-	if(!_memory->init("", false, ParametersMap()))
+	if(_fixedLocalMapPath.empty())
 	{
-		UERROR("Error initializing the memory for BOW Odometry.");
+		_memory = new Memory(customParameters);
+		if(!_memory->init("", false, ParametersMap()))
+		{
+			UERROR("Error initializing the memory for BOW Odometry.");
+		}
+	}
+	else
+	{
+		UINFO("Init odometry from a fixed database: \"%s\"", _fixedLocalMapPath.c_str());
+		// init the local map with a all 3D features contained in the database
+		customParameters.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false"));
+		customParameters.insert(ParametersPair(Parameters::kMemInitWMWithAllNodes(), "true"));
+		_memory = new Memory(customParameters);
+		if(!_memory->init(_fixedLocalMapPath, false, ParametersMap()))
+		{
+			UERROR("Error initializing the memory for BOW Odometry.");
+		}
+		else
+		{
+			// get the graph
+			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastSignatureId(), 0, -1);
+			std::map<int, Transform> poses;
+			std::multimap<int, Link> links;
+			_memory->getMetricConstraints(uKeysSet(ids), poses, links, true);
+
+			if(poses.size())
+			{
+				//optimize the graph
+				graph::TOROOptimizer optimizer;
+				std::map<int, Transform> optimizedPoses = optimizer.optimize(poses.begin()->first, poses, links);
+
+				// fill the local map
+				for(std::map<int, Transform>::iterator posesIter=optimizedPoses.begin();
+					posesIter!=optimizedPoses.end();
+					++posesIter)
+				{
+					const Signature * s = _memory->getSignature(posesIter->first);
+					if(s)
+					{
+						// Transform 3D points accordingly to pose and add them to local map
+						const std::multimap<int, pcl::PointXYZ> & words3D = s->getWords3();
+						for(std::multimap<int, pcl::PointXYZ>::const_iterator pointsIter=words3D.begin();
+							pointsIter!=words3D.end();
+							++pointsIter)
+						{
+							if(!uContains(localMap_, pointsIter->first))
+							{
+								localMap_.insert(std::make_pair(pointsIter->first, util3d::transformPoint(pointsIter->second, posesIter->second)));
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				UERROR("No pose loaded from database \"%s\"", _fixedLocalMapPath.c_str());
+			}
+		}
+		if((int)localMap_.size() < this->getMinInliers() || localMap_.size() == 0)
+		{
+			UERROR("The loaded fixed map from \"%s\" is too small! Only %d unique features loaded. Odometry won't be computed!",
+					_fixedLocalMapPath.c_str(), (int)localMap_.size());
+		}
 	}
 }
 
@@ -117,9 +183,16 @@ OdometryBOW::~OdometryBOW()
 
 void OdometryBOW::reset(const Transform & initialPose)
 {
-	Odometry::reset(initialPose);
-	_memory->init("", false, ParametersMap());
-	localMap_.clear();
+	if(_fixedLocalMapPath.empty())
+	{
+		Odometry::reset(initialPose);
+		_memory->init("", false, ParametersMap());
+		localMap_.clear();
+	}
+	else
+	{
+		UWARN("Odometry cannot be reset when a fixed local map is set.");
+	}
 }
 
 // return not null transform if odometry is correctly computed
@@ -136,11 +209,10 @@ Transform OdometryBOW::computeTransform(
 	}
 
 	double variance = 0;
-	int inliers = 0;
+	int inliersCount = 0;
 	int correspondences = 0;
 	int nFeatures = 0;
 
-	const Signature * previousSignature = _memory->getLastWorkingSignature();
 	if(_memory->update(data))
 	{
 		const Signature * newSignature = _memory->getLastWorkingSignature();
@@ -153,118 +225,38 @@ Transform OdometryBOW::computeTransform(
 			}
 		}
 
-		if(previousSignature && newSignature)
+		if(localMap_.size() && newSignature)
 		{
 			Transform transform;
 			if((int)localMap_.size() >= this->getMinInliers())
 			{
-				if(this->isPnPEstimationUsed())
+				std::vector<int> matches, inliers;
+				Transform t;
+				if(this->getEstimationType() == 1) // PnP
 				{
-					if((int)newSignature->getWords().size() >= this->getMinInliers())
+					// 3D to 2D
+					if(data.cameraModels().size() > 1)
 					{
-						// find correspondences
-						std::vector<int> ids = uListToVector(uUniqueKeys(newSignature->getWords()));
-						std::vector<cv::Point3f> objectPoints(ids.size());
-						std::vector<cv::Point2f> imagePoints(ids.size());
-						int oi=0;
-						std::vector<int> matches(ids.size());
-						for(unsigned int i=0; i<ids.size(); ++i)
-						{
-							if(localMap_.count(ids[i]) == 1)
-							{
-								pcl::PointXYZ pt = localMap_.find(ids[i])->second;
-								objectPoints[oi].x = pt.x;
-								objectPoints[oi].y = pt.y;
-								objectPoints[oi].z = pt.z;
-								imagePoints[oi] = newSignature->getWords().find(ids[i])->second.pt;
-								matches[oi++] = ids[i];
-							}
-						}
+						UERROR("PnP cannot be used on multi-cameras setup.");
+					}
+					else if((int)newSignature->getWords().size() >= this->getMinInliers())
+					{
+						UASSERT(data.stereoCameraModel().isValid() || (data.cameraModels().size() == 1 && data.cameraModels()[0].isValid()));
+						const CameraModel & cameraModel = data.stereoCameraModel().isValid()?data.stereoCameraModel().left():data.cameraModels()[0];
 
-						objectPoints.resize(oi);
-						imagePoints.resize(oi);
-						matches.resize(oi);
-
-						if(this->isInfoDataFilled() && info)
-						{
-							info->wordMatches.insert(info->wordMatches.end(), matches.begin(), matches.end());
-						}
-						correspondences = (int)matches.size();
-
-						if((int)matches.size() >= this->getMinInliers())
-						{
-							//PnPRansac
-							cv::Mat K = (cv::Mat_<double>(3,3) <<
-								data.fx(), 0, data.cx(),
-								0, data.fy()>0?data.fy():data.fx(), data.cy(),
-								0, 0, 1);
-							Transform guess = (this->getPose() * data.localTransform()).inverse();
-							cv::Mat R = (cv::Mat_<double>(3,3) <<
-									(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
-									(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
-									(double)guess.r31(), (double)guess.r32(), (double)guess.r33());
-							cv::Mat rvec(1,3, CV_64FC1);
-							cv::Rodrigues(R, rvec);
-							cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guess.x(), (double)guess.y(), (double)guess.z());
-							std::vector<int> inliersV;
-							cv::solvePnPRansac(objectPoints,
-									imagePoints,
-									K,
-									cv::Mat(),
-									rvec,
-									tvec,
-									true,
-									this->getIterations(),
-									this->getPnPReprojError(),
-									0,
-									inliersV,
-									this->getPnPFlags());
-
-							inliers = (int)inliersV.size();
-							if((int)inliersV.size() >= this->getMinInliers())
-							{
-								cv::Rodrigues(rvec, R);
-								Transform pnp(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
-											   R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
-											   R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
-
-								// make it incremental
-								transform = (data.localTransform() * pnp * this->getPose()).inverse();
-
-								UDEBUG("Odom transform = %s", transform.prettyPrint().c_str());
-
-								// compute variance (like in PCL computeVariance() method of sac_model.h)
-								std::vector<float> errorSqrdDists(inliersV.size());
-								for(unsigned int i=0; i<inliersV.size(); ++i)
-								{
-									std::multimap<int, pcl::PointXYZ>::const_iterator iter = newSignature->getWords3().find(matches[inliersV[i]]);
-									UASSERT(iter != newSignature->getWords3().end());
-									const cv::Point3f & objPt = objectPoints[inliersV[i]];
-									pcl::PointXYZ newPt = util3d::transformPoint(iter->second, this->getPose()*transform);
-									errorSqrdDists[i] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
-								}
-								std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
-								double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
-								variance = 2.1981 * median_error_sqr;
-							}
-							else
-							{
-								UWARN("PnP not enough inliers (%d < %d), rejecting the transform...", (int)inliersV.size(), this->getMinInliers());
-							}
-
-							if(this->isInfoDataFilled() && info && inliersV.size())
-							{
-								info->wordInliers.resize(inliersV.size());
-								for(unsigned int i=0; i<inliersV.size(); ++i)
-								{
-									info->wordInliers[i] = matches[inliersV[i]];
-								}
-							}
-						}
-						else
-						{
-							UWARN("Not enough correspondences (%d < %d)", correspondences, this->getMinInliers());
-						}
+						t = util3d::estimateMotion3DTo2D(
+								localMap_,
+								newSignature->getWords(),
+								cameraModel,
+								this->getMinInliers(),
+								this->getIterations(),
+								this->getPnPReprojError(),
+								this->getPnPFlags(),
+								this->getPose(),
+								newSignature->getWords3(),
+								&variance,
+								&matches,
+								&inliers);
 					}
 					else
 					{
@@ -273,75 +265,50 @@ Transform OdometryBOW::computeTransform(
 				}
 				else
 				{
+					// 3D to 3D
 					if((int)newSignature->getWords3().size() >= this->getMinInliers())
 					{
-						pcl::PointCloud<pcl::PointXYZ>::Ptr inliers1(new pcl::PointCloud<pcl::PointXYZ>); // previous
-						pcl::PointCloud<pcl::PointXYZ>::Ptr inliers2(new pcl::PointCloud<pcl::PointXYZ>); // new
-
-						// No need to set max depth here, it is already applied in extractKeypointsAndDescriptors() above.
-						// Also! the localMap_ have points not in camera frame anymore (in local map frame), so filtering
-						// by depth here is wrong!
-						std::set<int> uniqueCorrespondences;
-						util3d::findCorrespondences(
+						t = util3d::estimateMotion3DTo3D(
 								localMap_,
 								newSignature->getWords3(),
-								*inliers1,
-								*inliers2,
-								0,
-								&uniqueCorrespondences);
-
-						UDEBUG("localMap=%d, new=%d, unique correspondences=%d", (int)localMap_.size(), (int)newSignature->getWords3().size(), (int)uniqueCorrespondences.size());
-
-						if(this->isInfoDataFilled() && info)
-						{
-							info->wordMatches.insert(info->wordMatches.end(), uniqueCorrespondences.begin(), uniqueCorrespondences.end());
-						}
-
-						correspondences = (int)inliers1->size();
-						if((int)inliers1->size() >= this->getMinInliers())
-						{
-							// the transform returned is global odometry pose, not incremental one
-							std::vector<int> inliersV;
-							Transform t = util3d::transformFromXYZCorrespondences(
-									inliers2,
-									inliers1,
-									this->getInlierDistance(),
-									this->getIterations(),
-									this->getRefineIterations()>0, 3.0, this->getRefineIterations(),
-									&inliersV,
-									&variance);
-
-							inliers = (int)inliersV.size();
-							if(!t.isNull() && inliers >= this->getMinInliers())
-							{
-								// make it incremental
-								transform = this->getPose().inverse() * t;
-
-								UDEBUG("Odom transform = %s", transform.prettyPrint().c_str());
-							}
-							else
-							{
-								UWARN("Transform not valid (inliers = %d/%d)", inliers, correspondences);
-							}
-
-							if(this->isInfoDataFilled() && info && inliersV.size())
-							{
-								info->wordInliers.resize(inliersV.size());
-								for(unsigned int i=0; i<inliersV.size(); ++i)
-								{
-									info->wordInliers[i] = info->wordMatches[inliersV[i]];
-								}
-							}
-						}
-						else
-						{
-							UWARN("Not enough inliers %d < %d", (int)inliers1->size(), this->getMinInliers());
-						}
+								this->getMinInliers(),
+								this->getInlierDistance(),
+								this->getIterations(),
+								this->getRefineIterations(),
+								&variance,
+								&matches,
+								&inliers);
 					}
 					else
 					{
 						UWARN("Not enough 3D features in the new image (%d < %d)", (int)newSignature->getWords3().size(), this->getMinInliers());
 					}
+				}
+
+				correspondences = matches.size();
+				inliersCount = inliers.size();
+				if(this->isInfoDataFilled() && info)
+				{
+					info->wordMatches = matches;
+					info->wordInliers = inliers;
+				}
+
+				if(!t.isNull())
+				{
+					// make it incremental
+					transform = this->getPose().inverse() * t;
+				}
+				else if(correspondences < this->getMinInliers())
+				{
+					UWARN("Not enough correspondences (%d < %d)", correspondences, this->getMinInliers());
+				}
+				else if(inliersCount < this->getMinInliers())
+				{
+					UWARN("Not enough inliers (%d < %d)", inliersCount, this->getMinInliers());
+				}
+				else
+				{
+					UWARN("Unknown estimation error");
 				}
 			}
 			else
@@ -353,9 +320,10 @@ Transform OdometryBOW::computeTransform(
 			{
 				_memory->deleteLocation(newSignature->id());
 			}
-			else
+			else if(_fixedLocalMapPath.empty())
 			{
 				output = transform;
+
 				// remove words if history max size is reached
 				while(localMap_.size() && (int)localMap_.size() > _localHistoryMaxSize && _memory->getStMem().size()>1)
 				{
@@ -399,14 +367,18 @@ Transform OdometryBOW::computeTransform(
 					}
 				}
 			}
+			else
+			{
+				// fixed local map, just delete the new signature
+				output = transform;
+				_memory->deleteLocation(newSignature->id());
+			}
 		}
-		else if(!previousSignature && newSignature)
+		else if(newSignature)
 		{
-			localMap_.clear();
-
 			int count = 0;
 			std::list<int> uniques = uUniqueKeys(newSignature->getWords3());
-			if((int)uniques.size() >= this->getMinInliers())
+			if(_fixedLocalMapPath.empty() && (int)uniques.size() >= this->getMinInliers())
 			{
 				output.setIdentity();
 
@@ -443,7 +415,7 @@ Transform OdometryBOW::computeTransform(
 	if(info)
 	{
 		info->variance = variance;
-		info->inliers = inliers;
+		info->inliers = inliersCount;
 		info->matches = correspondences;
 		info->features = nFeatures;
 		info->localMapSize = (int)localMap_.size();
@@ -453,7 +425,7 @@ Transform OdometryBOW::computeTransform(
 			timer.elapsed(),
 			output.isNull()?"true":"false",
 			nFeatures,
-			inliers,
+			inliersCount,
 			correspondences,
 			variance,
 			(int)localMap_.size(),

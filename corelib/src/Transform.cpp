@@ -31,44 +31,33 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UMath.h>
+#include <rtabmap/utilite/ULogger.h>
 #include <iomanip>
 
 namespace rtabmap {
 
-Transform::Transform() : data_(12)
+Transform::Transform() : data_(cv::Mat::zeros(3,4,CV_32FC1))
 {
-	data_[0] = 0.0f;
-	data_[1] = 0.0f;
-	data_[2] = 0.0f;
-	data_[3] = 0.0f;
-	data_[4] = 0.0f;
-	data_[5] = 0.0f;
-	data_[6] = 0.0f;
-	data_[7] = 0.0f;
-	data_[8] = 0.0f;
-	data_[9] = 0.0f;
-	data_[10] = 0.0f;
-	data_[11] = 0.0f;
 }
 
 // rotation matrix r## and origin o##
-Transform::Transform(float r11, float r12, float r13, float o14,
-				     float r21, float r22, float r23, float o24,
-				     float r31, float r32, float r33, float o34) :
-	data_(12)
+Transform::Transform(
+		float r11, float r12, float r13, float o14,
+		float r21, float r22, float r23, float o24,
+		float r31, float r32, float r33, float o34)
 {
-	data_[0] = r11;
-	data_[1] = r12;
-	data_[2] = r13;
-	data_[3] = o14;
-	data_[4] = r21;
-	data_[5] = r22;
-	data_[6] = r23;
-	data_[7] = o24;
-	data_[8] = r31;
-	data_[9] = r32;
-	data_[10] = r33;
-	data_[11] = o34;
+	data_ = (cv::Mat_<float>(3,4) <<
+			r11, r12, r13, o14,
+			r21, r22, r23, o24,
+			r31, r32, r33, o34);
+}
+
+Transform::Transform(const cv::Mat & transformationMatrix)
+{
+	UASSERT(transformationMatrix.cols == 4 &&
+			transformationMatrix.rows == 3 &&
+			transformationMatrix.type() == CV_32FC1);
+	data_ = transformationMatrix;
 }
 
 Transform::Transform(float x, float y, float z, float roll, float pitch, float yaw)
@@ -79,46 +68,46 @@ Transform::Transform(float x, float y, float z, float roll, float pitch, float y
 
 bool Transform::isNull() const
 {
-	return (data_[0] == 0.0f &&
-			data_[1] == 0.0f &&
-			data_[2] == 0.0f &&
-			data_[3] == 0.0f &&
-			data_[4] == 0.0f &&
-			data_[5] == 0.0f &&
-			data_[6] == 0.0f &&
-			data_[7] == 0.0f &&
-			data_[8] == 0.0f &&
-			data_[9] == 0.0f &&
-			data_[10] == 0.0f &&
-			data_[11] == 0.0f) ||
-			uIsNan(data_[0]) ||
-			uIsNan(data_[1]) ||
-			uIsNan(data_[2]) ||
-			uIsNan(data_[3]) ||
-			uIsNan(data_[4]) ||
-			uIsNan(data_[5]) ||
-			uIsNan(data_[6]) ||
-			uIsNan(data_[7]) ||
-			uIsNan(data_[8]) ||
-			uIsNan(data_[9]) ||
-			uIsNan(data_[10]) ||
-			uIsNan(data_[11]);
+	return (data()[0] == 0.0f &&
+			data()[1] == 0.0f &&
+			data()[2] == 0.0f &&
+			data()[3] == 0.0f &&
+			data()[4] == 0.0f &&
+			data()[5] == 0.0f &&
+			data()[6] == 0.0f &&
+			data()[7] == 0.0f &&
+			data()[8] == 0.0f &&
+			data()[9] == 0.0f &&
+			data()[10] == 0.0f &&
+			data()[11] == 0.0f) ||
+			uIsNan(data()[0]) ||
+			uIsNan(data()[1]) ||
+			uIsNan(data()[2]) ||
+			uIsNan(data()[3]) ||
+			uIsNan(data()[4]) ||
+			uIsNan(data()[5]) ||
+			uIsNan(data()[6]) ||
+			uIsNan(data()[7]) ||
+			uIsNan(data()[8]) ||
+			uIsNan(data()[9]) ||
+			uIsNan(data()[10]) ||
+			uIsNan(data()[11]);
 }
 
 bool Transform::isIdentity() const
 {
-	return data_[0] == 1.0f &&
-			data_[1] == 0.0f &&
-			data_[2] == 0.0f &&
-			data_[3] == 0.0f &&
-			data_[4] == 0.0f &&
-			data_[5] == 1.0f &&
-			data_[6] == 0.0f &&
-			data_[7] == 0.0f &&
-			data_[8] == 0.0f &&
-			data_[9] == 0.0f &&
-			data_[10] == 1.0f &&
-			data_[11] == 0.0f;
+	return data()[0] == 1.0f &&
+			data()[1] == 0.0f &&
+			data()[2] == 0.0f &&
+			data()[3] == 0.0f &&
+			data()[4] == 0.0f &&
+			data()[5] == 1.0f &&
+			data()[6] == 0.0f &&
+			data()[7] == 0.0f &&
+			data()[8] == 0.0f &&
+			data()[9] == 0.0f &&
+			data()[10] == 1.0f &&
+			data()[11] == 0.0f;
 }
 
 void Transform::setNull()
@@ -145,16 +134,17 @@ Transform Transform::inverse() const
 
 Transform Transform::rotation() const
 {
-	return Transform(data_[0], data_[1], data_[2], 0,
-					 data_[4], data_[5], data_[6], 0,
-					 data_[8], data_[9], data_[10], 0);
+	return Transform(
+			data()[0], data()[1], data()[2], 0,
+			data()[4], data()[5], data()[6], 0,
+			data()[8], data()[9], data()[10], 0);
 }
 
 Transform Transform::translation() const
 {
-	return Transform(1,0,0, data_[3],
-					 0,1,0, data_[7],
-					 0,0,1, data_[11]);
+	return Transform(1,0,0, data()[3],
+					 0,1,0, data()[7],
+					 0,0,1, data()[11]);
 }
 
 void Transform::getTranslationAndEulerAngles(float & x, float & y, float & z, float & roll, float & pitch, float & yaw) const
@@ -215,7 +205,7 @@ Transform & Transform::operator*=(const Transform & t)
 
 bool Transform::operator==(const Transform & t) const
 {
-	return memcmp(data_.data(), t.data_.data(), data_.size() * sizeof(float)) == 0;
+	return memcmp(data_.data, t.data_.data, data_.total() * sizeof(float)) == 0;
 }
 
 bool Transform::operator!=(const Transform & t) const
@@ -239,18 +229,18 @@ std::ostream& operator<<(std::ostream& os, const Transform& s)
 Eigen::Matrix4f Transform::toEigen4f() const
 {
 	Eigen::Matrix4f m;
-	m << data_[0], data_[1], data_[2], data_[3],
-		 data_[4], data_[5], data_[6], data_[7],
-		 data_[8], data_[9], data_[10], data_[11],
+	m << data()[0], data()[1], data()[2], data()[3],
+		 data()[4], data()[5], data()[6], data()[7],
+		 data()[8], data()[9], data()[10], data()[11],
 		 0,0,0,1;
 	return m;
 }
 Eigen::Matrix4d Transform::toEigen4d() const
 {
 	Eigen::Matrix4d m;
-	m << data_[0], data_[1], data_[2], data_[3],
-		 data_[4], data_[5], data_[6], data_[7],
-		 data_[8], data_[9], data_[10], data_[11],
+	m << data()[0], data()[1], data()[2], data()[3],
+		 data()[4], data()[5], data()[6], data()[7],
+		 data()[8], data()[9], data()[10], data()[11],
 		 0,0,0,1;
 	return m;
 }

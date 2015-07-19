@@ -30,6 +30,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/core/Memory.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/common/eigen.h>
 #include <pcl/common/common.h>
@@ -110,17 +112,19 @@ Optimizer * Optimizer::create(Optimizer::Type & type, const ParametersMap & para
 	return optimizer;
 }
 
-Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored) :
+Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored, double epsilon) :
 		iterations_(iterations),
 		slam2d_(slam2d),
-		covarianceIgnored_(covarianceIgnored)
+		covarianceIgnored_(covarianceIgnored),
+		epsilon_(epsilon)
 {
 }
 
 Optimizer::Optimizer(const ParametersMap & parameters) :
-		iterations_(100),
-		slam2d_(false),
-		covarianceIgnored_(false)
+		iterations_(Parameters::defaultRGBDOptimizeIterations()),
+		slam2d_(Parameters::defaultRGBDOptimizeSlam2D()),
+		covarianceIgnored_(Parameters::defaultRGBDOptimizeVarianceIgnored()),
+		epsilon_(Parameters::defaultRGBDOptimizeEpsilon())
 {
 	parseParameters(parameters);
 }
@@ -130,6 +134,7 @@ void Optimizer::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeIterations(), iterations_);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeVarianceIgnored(), covarianceIgnored_);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeSlam2D(), slam2d_);
+	Parameters::parse(parameters, Parameters::kRGBDOptimizeEpsilon(), epsilon_);
 }
 
 void Optimizer::getConnectedGraph(
@@ -260,20 +265,23 @@ std::map<int, Transform> TOROOptimizer::optimize(
 				AISNavigation::TreePoseGraph2::Pose p(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta());
 				AISNavigation::TreePoseGraph2::InformationMatrix inf;
 				//Identity:
-				inf.values[0][0] = 1.0f; inf.values[0][1] = 0.0f; inf.values[0][2] = 0.0f; // x
-				inf.values[1][0] = 0.0f; inf.values[1][1] = 1.0f; inf.values[1][2] = 0.0f; // y
-				inf.values[2][0] = 0.0f; inf.values[2][1] = 0.0f; inf.values[2][2] = 1.0f; // theta
-				if(!isCovarianceIgnored())
+				if(isCovarianceIgnored())
 				{
-					if(iter->second.transVariance()>0)
-					{
-						inf.values[0][0] = 1.0f/iter->second.transVariance(); // x
-						inf.values[1][1] = 1.0f/iter->second.transVariance(); // y
-					}
-					if(iter->second.rotVariance()>0)
-					{
-						inf.values[2][2] = 1.0f/iter->second.rotVariance(); // theta
-					}
+					inf.values[0][0] = 1.0; inf.values[0][1] = 0.0; inf.values[0][2] = 0.0; // x
+					inf.values[1][0] = 0.0; inf.values[1][1] = 1.0; inf.values[1][2] = 0.0; // y
+					inf.values[2][0] = 0.0; inf.values[2][1] = 0.0; inf.values[2][2] = 1.0; // theta/yaw
+				}
+				else
+				{
+					inf.values[0][0] = iter->second.infMatrix().at<double>(0,0); // x-x
+					inf.values[0][1] = iter->second.infMatrix().at<double>(0,1); // x-y
+					inf.values[0][2] = iter->second.infMatrix().at<double>(0,5); // x-theta
+					inf.values[1][0] = iter->second.infMatrix().at<double>(1,0); // y-x
+					inf.values[1][1] = iter->second.infMatrix().at<double>(1,1); // y-y
+					inf.values[1][2] = iter->second.infMatrix().at<double>(1,5); // y-theta
+					inf.values[2][0] = iter->second.infMatrix().at<double>(5,0); // theta-x
+					inf.values[2][1] = iter->second.infMatrix().at<double>(5,1); // theta-y
+					inf.values[2][2] = iter->second.infMatrix().at<double>(5,5); // theta-theta
 				}
 
 				int id1 = iter->first;
@@ -301,18 +309,7 @@ std::map<int, Transform> TOROOptimizer::optimize(
 				AISNavigation::TreePoseGraph3::InformationMatrix inf = DMatrix<double>::I(6);
 				if(!isCovarianceIgnored())
 				{
-					if(iter->second.rotVariance()>0)
-					{
-						inf[0][0] = 1.0f/iter->second.rotVariance(); // roll
-						inf[1][1] = 1.0f/iter->second.rotVariance(); // pitch
-						inf[2][2] = 1.0f/iter->second.rotVariance(); // yaw
-					}
-					if(iter->second.transVariance()>0)
-					{
-						inf[3][3] = 1.0f/iter->second.transVariance(); // x
-						inf[4][4] = 1.0f/iter->second.transVariance(); // y
-						inf[5][5] = 1.0f/iter->second.transVariance(); // z
-					}
+					memcpy(inf[0], iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
 				}
 
 				int id1 = iter->first;
@@ -350,6 +347,7 @@ std::map<int, Transform> TOROOptimizer::optimize(
 		}
 
 		UINFO("TORO iterate begin (iterations=%d)", iterations());
+		double lasterror = 0;
 		for (int i=0; i<iterations(); i++)
 		{
 			if(intermediateGraphes && i>0)
@@ -382,12 +380,14 @@ std::map<int, Transform> TOROOptimizer::optimize(
 				}
 				intermediateGraphes->push_back(tmpPoses);
 			}
+
+			double error = 0;
 			if(isSlam2d())
 			{
 				pg2.iterate();
 
 				// compute the error and dump it
-				double error=pg2.error();
+				error=pg2.error();
 				UDEBUG("iteration %d global error=%f error/constraint=%f", i, error, error/pg2.edges.size());
 			}
 			else
@@ -396,10 +396,19 @@ std::map<int, Transform> TOROOptimizer::optimize(
 
 				// compute the error and dump it
 				double mte, mre, are, ate;
-				double error=pg3.error(&mre, &mte, &are, &ate);
+				error=pg3.error(&mre, &mte, &are, &ate);
 				UDEBUG("i %d RotGain=%f global error=%f error/constraint=%f",
 						i, pg3.getRotGain(), error, error/pg3.edges.size());
 			}
+
+			// early stop condition
+			double errorDelta = lasterror - error;
+			if(i>0 && errorDelta < this->epsilon())
+			{
+				UDEBUG("Stop optimizing, not enough improvement (%f < %f)", errorDelta, this->epsilon());
+				break;
+			}
+			lasterror = error;
 		}
 		UINFO("TORO iterate end");
 
@@ -476,7 +485,7 @@ bool TOROOptimizer::saveGraph(
 		{
 			float x,y,z, yaw,pitch,roll;
 			pcl::getTranslationAndEulerAngles(iter->second.transform().toEigen3f(), x,y,z, roll, pitch, yaw);
-			fprintf(file, "EDGE3 %d %d %f %f %f %f %f %f %f 0 0 0 0 0 %f 0 0 0 0 %f 0 0 0 %f 0 0 %f 0 %f\n",
+			fprintf(file, "EDGE3 %d %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
 					iter->first,
 					iter->second.to(),
 					x,
@@ -485,12 +494,27 @@ bool TOROOptimizer::saveGraph(
 					roll,
 					pitch,
 					yaw,
-					iter->second.rotVariance()>0?1.0f/iter->second.rotVariance():1.0f,
-					iter->second.rotVariance()>0?1.0f/iter->second.rotVariance():1.0f,
-					iter->second.rotVariance()>0?1.0f/iter->second.rotVariance():1.0f,
-					iter->second.transVariance()>0?1.0f/iter->second.transVariance():1.0f,
-					iter->second.transVariance()>0?1.0f/iter->second.transVariance():1.0f,
-					iter->second.transVariance()>0?1.0f/iter->second.transVariance():1.0f);
+					iter->second.infMatrix().at<double>(0,0),
+					iter->second.infMatrix().at<double>(0,1),
+					iter->second.infMatrix().at<double>(0,2),
+					iter->second.infMatrix().at<double>(0,3),
+					iter->second.infMatrix().at<double>(0,4),
+					iter->second.infMatrix().at<double>(0,5),
+					iter->second.infMatrix().at<double>(1,1),
+					iter->second.infMatrix().at<double>(1,2),
+					iter->second.infMatrix().at<double>(1,3),
+					iter->second.infMatrix().at<double>(1,4),
+					iter->second.infMatrix().at<double>(1,5),
+					iter->second.infMatrix().at<double>(2,2),
+					iter->second.infMatrix().at<double>(2,3),
+					iter->second.infMatrix().at<double>(2,4),
+					iter->second.infMatrix().at<double>(2,5),
+					iter->second.infMatrix().at<double>(3,3),
+					iter->second.infMatrix().at<double>(3,4),
+					iter->second.infMatrix().at<double>(3,5),
+					iter->second.infMatrix().at<double>(4,4),
+					iter->second.infMatrix().at<double>(4,5),
+					iter->second.infMatrix().at<double>(5,5));
 		}
 		UINFO("Graph saved to %s", fileName.c_str());
 		fclose(file);
@@ -674,15 +698,15 @@ std::map<int, Transform> G2OOptimizer::optimize(
 				Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
 				if(!isCovarianceIgnored())
 				{
-					if(iter->second.transVariance()>0)
-					{
-						information(0,0) = 1.0f/iter->second.transVariance(); // x
-						information(1,1) = 1.0f/iter->second.transVariance(); // y
-					}
-					if(iter->second.rotVariance()>0)
-					{
-						information(2,2) = 1.0f/iter->second.rotVariance(); // theta
-					}
+					information(0,0) = iter->second.infMatrix().at<double>(0,0); // x-x
+					information(0,1) = iter->second.infMatrix().at<double>(0,1); // x-y
+					information(0,2) = iter->second.infMatrix().at<double>(0,5); // x-theta
+					information(1,0) = iter->second.infMatrix().at<double>(1,0); // y-x
+					information(1,1) = iter->second.infMatrix().at<double>(1,1); // y-y
+					information(1,2) = iter->second.infMatrix().at<double>(1,5); // y-theta
+					information(2,0) = iter->second.infMatrix().at<double>(5,0); // theta-x
+					information(2,1) = iter->second.infMatrix().at<double>(5,1); // theta-y
+					information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
 				}
 
 				g2o::EdgeSE2 * e = new g2o::EdgeSE2();
@@ -701,18 +725,7 @@ std::map<int, Transform> G2OOptimizer::optimize(
 				Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
 				if(!isCovarianceIgnored())
 				{
-					if(iter->second.transVariance()>0)
-					{
-						information(0,0) = 1.0f/iter->second.transVariance(); // x
-						information(1,1) = 1.0f/iter->second.transVariance(); // y
-						information(2,2) = 1.0f/iter->second.transVariance(); // z
-					}
-					if(iter->second.rotVariance()>0)
-					{
-						information(3,3) = 1.0f/iter->second.rotVariance(); // roll
-						information(4,4) = 1.0f/iter->second.rotVariance(); // pitch
-						information(5,5) = 1.0f/iter->second.rotVariance(); // yaw
-					}
+					memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
 				}
 
 				Eigen::Affine3d a = iter->second.transform().toEigen3d();
@@ -913,6 +926,61 @@ std::multimap<int, int>::iterator findLink(
 		int to)
 {
 	std::multimap<int, int>::iterator iter = links.find(from);
+	while(iter != links.end() && iter->first == from)
+	{
+		if(iter->second == to)
+		{
+			return iter;
+		}
+		++iter;
+	}
+
+	// let's try to -> from
+	iter = links.find(to);
+	while(iter != links.end() && iter->first == to)
+	{
+		if(iter->second == from)
+		{
+			return iter;
+		}
+		++iter;
+	}
+	return links.end();
+}
+std::multimap<int, Link>::const_iterator findLink(
+		const std::multimap<int, Link> & links,
+		int from,
+		int to)
+{
+	std::multimap<int, Link>::const_iterator iter = links.find(from);
+	while(iter != links.end() && iter->first == from)
+	{
+		if(iter->second.to() == to)
+		{
+			return iter;
+		}
+		++iter;
+	}
+
+	// let's try to -> from
+	iter = links.find(to);
+	while(iter != links.end() && iter->first == to)
+	{
+		if(iter->second.to() == from)
+		{
+			return iter;
+		}
+		++iter;
+	}
+	return links.end();
+}
+
+std::multimap<int, int>::const_iterator findLink(
+		const std::multimap<int, int> & links,
+		int from,
+		int to)
+{
+	std::multimap<int, int>::const_iterator iter = links.find(from);
 	while(iter != links.end() && iter->first == from)
 	{
 		if(iter->second == to)
@@ -1215,6 +1283,127 @@ std::list<std::pair<int, Transform> > computePath(
 				n.setCostSoFar(currentNode->costSoFar() + currentNode->distFrom(poseIter->second));
 				n.setDistToEnd(n.distFrom(endPose));
 				nodes.insert(std::make_pair(iter->second, n));
+				if(updateNewCosts)
+				{
+					pqmap.insert(std::make_pair(n.totalCost(), n.id()));
+				}
+				else
+				{
+					pq.push(Pair(n.id(), n.totalCost()));
+				}
+			}
+			else if(updateNewCosts && nodeIter->second.isOpened())
+			{
+				float newCostSoFar = currentNode->costSoFar() + currentNode->distFrom(nodeIter->second.pose());
+				if(nodeIter->second.costSoFar() > newCostSoFar)
+				{
+					// update the cost in the priority queue
+					for(std::multimap<float, int>::iterator mapIter=pqmap.begin(); mapIter!=pqmap.end(); ++mapIter)
+					{
+						if(mapIter->second == nodeIter->first)
+						{
+							pqmap.erase(mapIter);
+							nodeIter->second.setCostSoFar(newCostSoFar);
+							pqmap.insert(std::make_pair(nodeIter->second.totalCost(), nodeIter->first));
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+	return path;
+}
+
+
+// return path starting from "fromId" (Identity pose for the first node)
+std::list<std::pair<int, Transform> > computePath(
+		int fromId,
+		int toId,
+		const Memory * memory,
+		bool lookInDatabase,
+		bool updateNewCosts)
+{
+	UASSERT(memory!=0);
+	UASSERT(fromId>=0);
+	UASSERT(toId>=0);
+	std::list<std::pair<int, Transform> > path;
+
+	std::multimap<int, Link> allLinks;
+	if(lookInDatabase)
+	{
+		// Faster to load all links in one query
+		UTimer t;
+		allLinks = memory->getAllLinks(lookInDatabase);
+		UINFO("getting all %d links time = %f s", (int)allLinks.size(), t.ticks());
+	}
+
+	//dijkstra
+	int startNode = fromId;
+	int endNode = toId;
+	std::map<int, Node> nodes;
+	nodes.insert(std::make_pair(startNode, Node(startNode, 0, Transform::getIdentity())));
+	std::priority_queue<Pair, std::vector<Pair>, Order> pq;
+	std::multimap<float, int> pqmap;
+	if(updateNewCosts)
+	{
+		pqmap.insert(std::make_pair(0, startNode));
+	}
+	else
+	{
+		pq.push(Pair(startNode, 0));
+	}
+
+	while((updateNewCosts && pqmap.size()) || (!updateNewCosts && pq.size()))
+	{
+		Node * currentNode;
+		if(updateNewCosts)
+		{
+			currentNode = &nodes.find(pqmap.begin()->second)->second;
+			pqmap.erase(pqmap.begin());
+		}
+		else
+		{
+			currentNode = &nodes.find(pq.top().first)->second;
+			pq.pop();
+		}
+
+		currentNode->setClosed(true);
+
+		if(currentNode->id() == endNode)
+		{
+			while(currentNode->id()!=startNode)
+			{
+				path.push_front(std::make_pair(currentNode->id(), currentNode->pose()));
+				currentNode = &nodes.find(currentNode->fromId())->second;
+			}
+			path.push_front(std::make_pair(startNode, currentNode->pose()));
+			break;
+		}
+
+		// lookup neighbors
+		std::map<int, Link> links;
+		if(allLinks.size() == 0)
+		{
+			links = memory->getLinks(currentNode->id(), lookInDatabase);
+		}
+		else
+		{
+			for(std::multimap<int, Link>::const_iterator iter = allLinks.lower_bound(currentNode->id());
+				iter!=allLinks.end() && iter->first == currentNode->id();
+				++iter)
+			{
+				links.insert(std::make_pair(iter->second.to(), iter->second));
+			}
+		}
+		for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
+		{
+			std::map<int, Node>::iterator nodeIter = nodes.find(iter->first);
+			if(nodeIter == nodes.end())
+			{
+				Node n(iter->second.to(), currentNode->id(), currentNode->pose()*iter->second.transform());
+				n.setCostSoFar(currentNode->costSoFar() + iter->second.transform().getNorm());
+				nodes.insert(std::make_pair(iter->second.to(), n));
 				if(updateNewCosts)
 				{
 					pqmap.insert(std::make_pair(n.totalCost(), n.id()));

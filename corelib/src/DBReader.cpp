@@ -51,7 +51,8 @@ DBReader::DBReader(const std::string & databasePath,
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
 	_dbDriver(0),
-	_currentId(_ids.end())
+	_currentId(_ids.end()),
+	_previousStamp(0)
 {
 }
 
@@ -64,7 +65,8 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
 	_dbDriver(0),
-	_currentId(_ids.end())
+	_currentId(_ids.end()),
+	_previousStamp(0)
 {
 }
 
@@ -148,39 +150,42 @@ void DBReader::mainLoopBegin()
 
 void DBReader::mainLoop()
 {
-	SensorData data = this->getNextData();
-	if(data.isValid())
+	OdometryEvent odom = this->getNextData();
+	if(odom.data().id())
 	{
 		int goalId = 0;
-		double previousStamp = data.stamp();
-		data.setStamp(UTimer::now());
-		if(data.userData().size() >= 6 && memcmp(data.userData().data(), "GOAL:", 5) == 0)
+		double previousStamp = odom.data().stamp();
+		odom.data().setStamp(UTimer::now());
+		if(odom.data().userDataRaw().type() == CV_8SC1 &&
+		   odom.data().userDataRaw().cols >= 7 && // including null str ending
+		   odom.data().userDataRaw().rows == 1 &&
+		   memcmp(odom.data().userDataRaw().data, "GOAL:", 5) == 0)
 		{
 			//GOAL format detected, remove it from the user data and send it as goal event
-			std::string goalStr = uBytes2Str(data.userData());
+			std::string goalStr = (const char *)odom.data().userDataRaw().data;
 			if(!goalStr.empty())
 			{
 				std::list<std::string> strs = uSplit(goalStr, ':');
 				if(strs.size() == 2)
 				{
 					goalId = atoi(strs.rbegin()->c_str());
-					data.setUserData(std::vector<unsigned char>());
+					odom.data().setUserData(cv::Mat());
 				}
 			}
 		}
 		if(!_odometryIgnored)
 		{
-			if(data.pose().isNull())
+			if(odom.pose().isNull())
 			{
 				UWARN("Reading the database: odometry is null! "
 					  "Please set \"Ignore odometry = true\" if there is "
 					  "no odometry in the database.");
 			}
-			this->post(new OdometryEvent(data));
+			this->post(new OdometryEvent(odom));
 		}
 		else
 		{
-			this->post(new CameraEvent(data));
+			this->post(new CameraEvent(odom.data()));
 		}
 
 		if(goalId > 0)
@@ -194,8 +199,7 @@ void DBReader::mainLoop()
 				double stamp;
 				int mapId;
 				Transform localTransform, pose;
-				std::vector<unsigned char> userData;
-				_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, userData);
+				_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp);
 				if(previousStamp && stamp && stamp > previousStamp)
 				{
 					double delay = stamp - previousStamp;
@@ -242,31 +246,25 @@ void DBReader::mainLoop()
 
 }
 
-SensorData DBReader::getNextData()
+OdometryEvent DBReader::getNextData()
 {
-	SensorData data;
+	OdometryEvent odom;
 	if(_dbDriver)
 	{
 		if(!this->isKilled() && _currentId != _ids.end())
 		{
-			cv::Mat imageBytes;
-			cv::Mat depthBytes;
-			cv::Mat laserScanBytes;
 			int mapId;
-			float fx,fy,cx,cy;
-			Transform localTransform, pose;
-			float rotVariance = 1.0f;
-			float transVariance = 1.0f;
-			std::vector<unsigned char> userData;
-			int laserScanMaxPts = 0;
-			_dbDriver->getNodeData(*_currentId, imageBytes, depthBytes, laserScanBytes, fx, fy, cx, cy, localTransform, laserScanMaxPts);
+			SensorData data;
+			_dbDriver->getNodeData(*_currentId, data);
 
 			// info
+			Transform pose;
 			int weight;
 			std::string label;
 			double stamp;
-			_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, userData);
+			_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp);
 
+			cv::Mat infMatrix = cv::Mat::eye(6,6,CV_64FC1);
 			if(!_odometryIgnored)
 			{
 				std::map<int, Link> links;
@@ -274,8 +272,7 @@ SensorData DBReader::getNextData()
 				if(links.size())
 				{
 					// assume the first is the backward neighbor, take its variance
-					rotVariance = links.begin()->second.rotVariance();
-					transVariance = links.begin()->second.transVariance();
+					infMatrix = links.begin()->second.infMatrix();
 				}
 			}
 			else
@@ -285,7 +282,7 @@ SensorData DBReader::getNextData()
 
 			int seq = *_currentId;
 			++_currentId;
-			if(imageBytes.empty())
+			if(data.imageCompressed().empty())
 			{
 				UWARN("No image loaded from the database for id=%d!", *_currentId);
 			}
@@ -339,33 +336,16 @@ SensorData DBReader::getNextData()
 
 			if(!this->isKilled())
 			{
-				rtabmap::CompressionThread ctImage(imageBytes, true);
-				rtabmap::CompressionThread ctDepth(depthBytes, true);
-				rtabmap::CompressionThread ctLaserScan(laserScanBytes, false);
-				ctImage.start();
-				ctDepth.start();
-				ctLaserScan.start();
-				ctImage.join();
-				ctDepth.join();
-				ctLaserScan.join();
-				data = SensorData(
-						ctLaserScan.getUncompressedData(),
-						laserScanMaxPts,
-						ctImage.getUncompressedData(),
-						ctDepth.getUncompressedData(),
-						fx,fy,cx,cy,
-						localTransform,
-						pose,
-						rotVariance,
-						transVariance,
-						seq,
-						stamp,
-						userData);
-				UDEBUG("Laser=%d RGB/Left=%d Depth=%d Right=%d",
-						data.laserScan().empty()?0:1,
-						data.image().empty()?0:1,
-						data.depth().empty()?0:1,
-						data.rightImage().empty()?0:1);
+				data.uncompressData();
+				data.setId(seq);
+				data.setStamp(stamp);
+				UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d, UserData=%d",
+						data.laserScanRaw().empty()?0:1,
+						data.imageRaw().empty()?0:1,
+						data.depthOrRightRaw().empty()?0:1,
+						data.userDataRaw().empty()?0:1);
+
+				odom = OdometryEvent(data, pose, infMatrix.inv());
 			}
 		}
 	}
@@ -373,7 +353,7 @@ SensorData DBReader::getNextData()
 	{
 		UERROR("Not initialized...");
 	}
-	return data;
+	return odom;
 }
 
 } /* namespace rtabmap */

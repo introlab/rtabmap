@@ -378,6 +378,7 @@ void UPlotCurve::_addValue(UPlotItem * data)
 	{
 		float x = data->data().x();
 		float y = data->data().y();
+
 		if(_minMax.size() != 4)
 		{
 			_minMax = QVector<float>(4);
@@ -428,6 +429,16 @@ void UPlotCurve::addValue(UPlotItem * data)
 
 void UPlotCurve::addValue(float x, float y)
 {
+	if(_items.size() &&
+		dynamic_cast<UPlotItem*>(_items.back()) &&
+		x < ((UPlotItem*)_items.back())->data().x())
+	{
+		UWARN("New value (%f) added to curve \"%s\" is smaller "
+			  "than the last added (%f). Clearing the curve.",
+				x, this->name().toStdString().c_str(), _items.back()->pos().x());
+		this->clear();
+	}
+
 	float width = 2; // TODO warn : hard coded value!
 	this->addValue(new UPlotItem(x,y,width));
 }

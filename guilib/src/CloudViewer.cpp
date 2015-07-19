@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/core/util3d.h>
 #include <pcl/visualization/pcl_visualizer.h>
@@ -43,22 +44,56 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QVector3D>
 #include <set>
 
+#include <vtkCamera.h>
 #include <vtkRenderWindow.h>
 
 namespace rtabmap {
 
-void CloudViewer::mouseEventOccurred (const pcl::visualization::MouseEvent &event, void* viewer_void)
+class MyInteractorStyle: public pcl::visualization::PCLVisualizerInteractorStyle
 {
-	if (event.getButton () == pcl::visualization::MouseEvent::LeftButton ||
-	  event.getButton () == pcl::visualization::MouseEvent::MiddleButton)
+public:
+	virtual void Rotate()
 	{
-		this->update(); // this will apply frustum
+		if (this->CurrentRenderer == NULL)
+		{
+			return;
+		}
+
+		vtkRenderWindowInteractor *rwi = this->Interactor;
+
+		int dx = rwi->GetEventPosition()[0] - rwi->GetLastEventPosition()[0];
+		int dy = rwi->GetEventPosition()[1] - rwi->GetLastEventPosition()[1];
+
+		int *size = this->CurrentRenderer->GetRenderWindow()->GetSize();
+
+		double delta_elevation = -20.0 / size[1];
+		double delta_azimuth = -20.0 / size[0];
+
+		double rxf = dx * delta_azimuth * this->MotionFactor;
+		double ryf = dy * delta_elevation * this->MotionFactor;
+
+		vtkCamera *camera = this->CurrentRenderer->GetActiveCamera();
+		camera->Azimuth(rxf);
+		camera->Elevation(ryf);
+		camera->OrthogonalizeViewUp();
+
+		if (this->AutoAdjustCameraClippingRange)
+		{
+			this->CurrentRenderer->ResetCameraClippingRange();
+		}
+
+		if (rwi->GetLightFollowCamera())
+		{
+			this->CurrentRenderer->UpdateLightsGeometryToFollowCamera();
+		}
+
+		//rwi->Render();
 	}
-}
+};
+
 
 CloudViewer::CloudViewer(QWidget *parent) :
 		QVTKWidget(parent),
-		_visualizer(new pcl::visualization::PCLVisualizer("PCLVisualizer", false)),
 		_aLockCamera(0),
 		_aFollowCamera(0),
 		_aResetCamera(0),
@@ -75,11 +110,16 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_maxTrajectorySize(100),
 		_gridCellCount(50),
 		_gridCellSize(1),
+		_lastCameraOrientation(0,0,0),
+		_lastCameraPose(0,0,0),
 		_workingDirectory("."),
 		_defaultBgColor(Qt::black),
 		_currentBgColor(Qt::black)
 {
 	this->setMinimumSize(200, 200);
+
+	int argc = 0;
+	_visualizer = new pcl::visualization::PCLVisualizer(argc, 0, "PCLVisualizer", vtkSmartPointer<MyInteractorStyle>(new MyInteractorStyle()), false);
 
 	this->SetRenderWindow(_visualizer->getRenderWindow());
 
@@ -88,11 +128,14 @@ CloudViewer::CloudViewer(QWidget *parent) :
 	//_visualizer->setupInteractor(this->GetInteractor(), this->GetRenderWindow());
 	this->GetInteractor()->SetInteractorStyle (_visualizer->getInteractorStyle());
 
-	_visualizer->registerMouseCallback (&CloudViewer::mouseEventOccurred, *this, (void*)_visualizer);
 	_visualizer->setCameraPosition(
 				-1, 0, 0,
 				0, 0, 0,
 				0, 0, 1);
+#ifndef _WIN32
+	// Crash on startup on Windows (vtk issue)
+	_visualizer->addCoordinateSystem(0.2, 0, 0, 0, 0);
+#endif
 
 	//setup menu/actions
 	createMenu();
@@ -680,6 +723,7 @@ void CloudViewer::setCameraPosition(
 		float focalX, float focalY, float focalZ,
 		float upX, float upY, float upZ)
 {
+	_lastCameraOrientation= _lastCameraPose= cv::Vec3f(0,0,0);
 	_visualizer->setCameraPosition(x,y,z, focalX,focalY,focalX, upX,upY,upZ);
 }
 
@@ -890,6 +934,7 @@ void CloudViewer::setCameraFree()
 
 void CloudViewer::setCameraLockZ(bool enabled)
 {
+	_lastCameraOrientation= _lastCameraPose = cv::Vec3f(0,0,0);
 	_aLockViewZ->setChecked(enabled);
 }
 
@@ -1167,12 +1212,29 @@ void CloudViewer::mousePressEvent(QMouseEvent * event)
 void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 {
 	QVTKWidget::mouseMoveEvent(event);
+
 	// camera view up z locked?
 	if(_aLockViewZ->isChecked())
 	{
 		std::vector<pcl::visualization::Camera> cameras;
 		_visualizer->getCameras(cameras);
 
+		cv::Vec3d newCameraOrientation = cv::Vec3d(0,0,1).cross(cv::Vec3d(cameras.front().pos)-cv::Vec3d(cameras.front().focal));
+
+		if(	_lastCameraOrientation!=cv::Vec3d(0,0,0) &&
+			_lastCameraPose!=cv::Vec3d(0,0,0) &&
+			(uSign(_lastCameraOrientation[0]) != uSign(newCameraOrientation[0]) &&
+			 uSign(_lastCameraOrientation[1]) != uSign(newCameraOrientation[1])))
+		{
+			cameras.front().pos[0] = _lastCameraPose[0];
+			cameras.front().pos[1] = _lastCameraPose[1];
+			cameras.front().pos[2] = _lastCameraPose[2];
+		}
+		else if(newCameraOrientation != cv::Vec3d(0,0,0))
+		{
+			_lastCameraOrientation = newCameraOrientation;
+			_lastCameraPose = cv::Vec3d(cameras.front().pos);
+		}
 		cameras.front().view[0] = 0;
 		cameras.front().view[1] = 0;
 		cameras.front().view[2] = 1;
@@ -1182,6 +1244,20 @@ void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 			cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
 			cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
 
+	}
+	this->update();
+
+	emit configChanged();
+}
+
+void CloudViewer::wheelEvent(QWheelEvent * event)
+{
+	QVTKWidget::wheelEvent(event);
+	if(_aLockViewZ->isChecked())
+	{
+		std::vector<pcl::visualization::Camera> cameras;
+		_visualizer->getCameras(cameras);
+		_lastCameraPose = cv::Vec3d(cameras.front().pos);
 	}
 	emit configChanged();
 }
@@ -1213,6 +1289,7 @@ void CloudViewer::handleAction(QAction * a)
 	}
 	else if(a == _aResetCamera)
 	{
+		_lastCameraOrientation= _lastCameraPose = cv::Vec3f(0,0,0);
 		if((_aFollowCamera->isChecked() || _aLockCamera->isChecked()) && !_lastPose.isNull())
 		{
 			// reset relative to last current pose

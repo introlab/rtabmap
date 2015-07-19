@@ -25,15 +25,15 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef UTIL3D_CONVERSIONS_H_
-#define UTIL3D_CONVERSIONS_H_
+#ifndef UTIL3D_MOTION_ESTIMATION_H_
+#define UTIL3D_MOTION_ESTIMATION_H_
 
 #include <rtabmap/core/RtabmapExp.h>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <opencv2/core/core.hpp>
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/CameraModel.h>
 
 namespace rtabmap
 {
@@ -41,17 +41,32 @@ namespace rtabmap
 namespace util3d
 {
 
-cv::Mat RTABMAP_EXP cvtDepthFromFloat(const cv::Mat & depth32F);
-cv::Mat RTABMAP_EXP cvtDepthToFloat(const cv::Mat & depth16U);
+Transform estimateMotion3DTo2D(
+			const std::multimap<int, pcl::PointXYZ> & words3A,
+			const std::multimap<int, cv::KeyPoint> & words2B,
+			const CameraModel & cameraModel,
+			int minInliers = 10,
+			int iterations = 100,
+			double reprojError = 5.,
+			int flagsPnP = 0,
+			const Transform & guess = Transform::getIdentity(),
+			const std::multimap<int, pcl::PointXYZ> & words3B = std::multimap<int, pcl::PointXYZ>(),
+			double * varianceOut = 0,
+			std::vector<int> * matchesOut = 0,
+			std::vector<int> * inliersOut = 0);
 
-cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud);
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const cv::Mat & laserScan);
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cvMat2Cloud(
-		const cv::Mat & matrix,
-		const Transform & tranform = Transform::getIdentity());
+Transform estimateMotion3DTo3D(
+			const std::multimap<int, pcl::PointXYZ> & words3A,
+			const std::multimap<int, pcl::PointXYZ> & words3B,
+			int minInliers = 10,
+			double inliersDistance = 0.1,
+			int iterations = 100,
+			int refineIterations = 5,
+			double * varianceOut = 0,
+			std::vector<int> * matchesOut = 0,
+			std::vector<int> * inliersOut = 0);
 
 } // namespace util3d
 } // namespace rtabmap
 
-#endif /* UTIL3D_CONVERSIONS_H_ */
+#endif /* UTIL3D_TRANSFORMS_H_ */

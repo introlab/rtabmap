@@ -355,12 +355,16 @@ void findCorrespondences(
 		pcl::PointCloud<pcl::PointXYZ> & inliers1,
 		pcl::PointCloud<pcl::PointXYZ> & inliers2,
 		float maxDepth,
-		std::set<int> * uniqueCorrespondences)
+		std::vector<int> * uniqueCorrespondences)
 {
 	std::list<int> ids = uUniqueKeys(words1);
 	// Find pairs
 	inliers1.resize(ids.size());
 	inliers2.resize(ids.size());
+	if(uniqueCorrespondences)
+	{
+		uniqueCorrespondences->resize(ids.size());
+	}
 
 	int oi=0;
 	for(std::list<int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
@@ -375,16 +379,20 @@ void findCorrespondences(
 			   (inliers2[oi].x != 0 || inliers2[oi].y != 0 || inliers2[oi].z != 0) &&
 			   (maxDepth <= 0 || (inliers1[oi].x > 0 && inliers1[oi].x <= maxDepth && inliers2[oi].x>0 &&inliers2[oi].x<=maxDepth)))
 			{
-				++oi;
 				if(uniqueCorrespondences)
 				{
-					uniqueCorrespondences->insert(*iter);
+					uniqueCorrespondences->at(oi) = *iter;
 				}
+				++oi;
 			}
 		}
 	}
 	inliers1.resize(oi);
 	inliers2.resize(oi);
+	if(uniqueCorrespondences)
+	{
+		uniqueCorrespondences->resize(oi);
+	}
 }
 
 }

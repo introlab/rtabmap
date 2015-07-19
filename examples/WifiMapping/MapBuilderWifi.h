@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MAPBUILDERWIFI_H_
 
 #include "../RGBDMapping/MapBuilder.h"
+#include "rtabmap/core/UserDataEvent.h"
 
 using namespace rtabmap;
 
@@ -64,6 +65,28 @@ public:
 		this->unregisterFromEventsManager();
 	}
 
+protected:
+	virtual void handleEvent(UEvent * event)
+	{
+		if(event->getClassName().compare("UserDataEvent") == 0)
+		{
+			UserDataEvent * rtabmapEvent = (UserDataEvent *)event;
+			// convert userData to wifi levels
+			if(!rtabmapEvent->data().empty())
+			{
+				UASSERT(rtabmapEvent->data().type() == CV_64FC1 &&
+						rtabmapEvent->data().cols == 2 &&
+						rtabmapEvent->data().rows == 1);
+
+				// format [int level, double stamp]
+				int level = rtabmapEvent->data().at<double>(0);
+				double stamp = rtabmapEvent->data().at<double>(1);
+				wifiLevels_.insert(std::make_pair(stamp, level));
+			}
+		}
+		MapBuilder::handleEvent(event);
+	}
+
 protected slots:
 	virtual void processStatistics(const rtabmap::Statistics & stats)
 	{
@@ -76,43 +99,29 @@ protected slots:
 		// Add WIFI symbols
 		//============================
 		std::map<double, int> nodeStamps; // <stamp, id>
-		std::map<int, std::pair<int, double> > wifiLevels;
 
-		UASSERT(stats.getStamps().size() == stats.getUserDatas().size());
-		std::map<int, double>::const_iterator iterStamps = stats.getStamps().begin();
-		std::map<int, std::vector<unsigned char> >::const_iterator iterUserDatas = stats.getUserDatas().begin();
-		for(; iterStamps!=stats.getStamps().end() && iterUserDatas!=stats.getUserDatas().end(); ++iterStamps, ++iterUserDatas)
+		for(std::map<int, Signature>::const_iterator iter=stats.getSignatures().begin();
+			iter!=stats.getSignatures().end();
+			++iter)
 		{
-			// Sort stamps by stamps
-			nodeStamps.insert(std::make_pair(iterStamps->second, iterStamps->first));
-
-			// convert userData to wifi levels
-			if(iterUserDatas->second.size())
-			{
-				UASSERT(iterUserDatas->second.size() == sizeof(int)+sizeof(double));
-
-				// format [int level, double stamp]
-				int level;
-				double stamp;
-				memcpy(&level, iterUserDatas->second.data(), sizeof(int));
-				memcpy(&stamp, iterUserDatas->second.data()+sizeof(int), sizeof(double));
-
-				wifiLevels.insert(std::make_pair(iterUserDatas->first, std::make_pair(level, stamp)));
-			}
+			// Sort stamps by stamps->id
+			nodeStamps.insert(std::make_pair(iter->second.getStamp(), iter->first));
 		}
 
-		for(std::map<int, std::pair<int, double> >::iterator iter=wifiLevels.begin(); iter!=wifiLevels.end(); ++iter)
+		int id = 0;
+		for(std::map<double, int>::iterator iter=wifiLevels_.begin(); iter!=wifiLevels_.end(); ++iter, ++id)
 		{
 			// The Wifi value may be taken between two nodes, interpolate its position.
-			double stampWifi = iter->second.second;
+			double stampWifi = iter->first;
 			std::map<double, int>::iterator previousNode = nodeStamps.lower_bound(stampWifi); // lower bound of the stamp
 			if(previousNode!=nodeStamps.end() && previousNode->first > stampWifi && previousNode != nodeStamps.begin())
 			{
 				--previousNode;
 			}
-			std::map<double, int>::iterator nextNode = nodeStamps.upper_bound(iter->second.second); // upper bound of the stamp
+			std::map<double, int>::iterator nextNode = nodeStamps.upper_bound(stampWifi); // upper bound of the stamp
 
-			if(previousNode != nodeStamps.end() && nextNode != nodeStamps.end() &&
+			if(previousNode != nodeStamps.end() &&
+			   nextNode != nodeStamps.end() &&
 			   previousNode->second != nextNode->second &&
 			   uContains(poses, previousNode->second) && uContains(poses, nextNode->second))
 			{
@@ -131,18 +140,18 @@ protected slots:
 
 				Transform wifiPose = (poseA*v).translation(); // rip off the rotation
 
-				std::string cloudName = uFormat("level%d", iter->first);
+				std::string cloudName = uFormat("level%d", id);
 				if(clouds.contains(cloudName))
 				{
 					if(!cloudViewer_->updateCloudPose(cloudName, wifiPose))
 					{
-						UERROR("Updating pose cloud %d failed!", iter->first);
+						UERROR("Updating pose cloud %d failed!", id);
 					}
 				}
 				else
 				{
 					// Make a line with points
-					int quality = dBm2Quality(iter->second.first)/10;
+					int quality = dBm2Quality(iter->second)/10;
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 					for(int i=0; i<10; ++i)
 					{
@@ -168,17 +177,13 @@ protected slots:
 					//UWARN("level %d -> %d pose=%s size=%d", level, iter->second.first, wifiPose.prettyPrint().c_str(), (int)cloud->size());
 					if(!cloudViewer_->addOrUpdateCloud(cloudName, cloud, wifiPose, Qt::yellow))
 					{
-						UERROR("Adding cloud %d to viewer failed!", iter->first);
+						UERROR("Adding cloud %d to viewer failed!", id);
 					}
 					else
 					{
 						cloudViewer_->setCloudPointSize(cloudName, 5);
 					}
 				}
-			}
-			else
-			{
-				UWARN("Bounds not found!");
 			}
 		}
 
@@ -187,6 +192,9 @@ protected slots:
 		//============================
 		MapBuilder::processStatistics(stats);
 	}
+
+private:
+	std::map<double, int> wifiLevels_;
 };
 
 

@@ -36,7 +36,6 @@ namespace rtabmap
 {
 
 class Camera;
-class CameraRGBD;
 
 /**
  * Class CameraThread
@@ -49,10 +48,10 @@ class RTABMAP_EXP CameraThread :
 public:
 	// ownership transferred
 	CameraThread(Camera * camera);
-	CameraThread(CameraRGBD * camera);
 	virtual ~CameraThread();
 
-	bool init(); // call camera->init()
+	void setMirroringEnabled(bool enabled) {_mirroring = enabled;}
+	void setColorOnly(bool colorOnly) {_colorOnly = colorOnly;}
 
 	//getters
 	bool isPaused() const {return !this->isRunning();}
@@ -60,15 +59,15 @@ public:
 	void setImageRate(float imageRate);
 
 	Camera * camera() {return _camera;} // return null if not set, valid until CameraThread is deleted
-	CameraRGBD * cameraRGBD() {return _cameraRGBD;} // return null if not set, valid until CameraThread is deleted
 
 private:
 	virtual void mainLoop();
+	virtual void mainLoopKill();
 
 private:
 	Camera * _camera;
-	CameraRGBD * _cameraRGBD;
-	int _seq;
+	bool _mirroring;
+	bool _colorOnly;
 };
 
 } // namespace rtabmap

@@ -72,25 +72,32 @@ Transform OdometryICP::computeTransform(const SensorData & data, OdometryInfo * 
 	bool hasConverged = false;
 	double variance = 0;
 	unsigned int minPoints = 100;
-	if(!data.depth().empty())
+	if(!data.depthOrRightRaw().empty())
 	{
-		if(data.depth().type() == CV_8UC1)
+		if(data.depthOrRightRaw().type() == CV_8UC1)
 		{
 			UERROR("ICP 3D cannot be done on stereo images!");
 			return output;
 		}
 
+		if(!(data.cameraModels().size() == 1 && data.cameraModels()[0].isValid()))
+		{
+			UERROR("ICP 3D cannot be done without calibration or on multi-camera!");
+			return output;
+		}
+		const CameraModel & cameraModel = data.cameraModels()[0];
+
 		pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudXYZ = util3d::getICPReadyCloud(
-						data.depth(),
-						data.fx(),
-						data.fy(),
-						data.cx(),
-						data.cy(),
+						data.depthOrRightRaw(),
+						cameraModel.fx(),
+						cameraModel.fy(),
+						cameraModel.cx(),
+						cameraModel.cy(),
 						_decimation,
 						this->getMaxDepth(),
 						_voxelSize,
 						_samples,
-						data.localTransform());
+						cameraModel.localTransform());
 
 		if(_pointToPlane)
 		{
@@ -105,14 +112,22 @@ Transform OdometryICP::computeTransform(const SensorData & data, OdometryInfo * 
 
 			if(_previousCloudNormal->size() > minPoints && newCloud->size() > minPoints)
 			{
-				int correspondences = 0;
-				Transform transform = util3d::icpPointToPlane(newCloud,
+				pcl::PointCloud<pcl::PointNormal>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointNormal>);
+				Transform transform = util3d::icpPointToPlane(
+						newCloud,
 						_previousCloudNormal,
 						_maxCorrespondenceDistance,
 						_maxIterations,
-						&hasConverged,
-						&variance,
-						&correspondences);
+						hasConverged,
+						*newCloudRegistered);
+
+				int correspondences = 0;
+				util3d::computeVarianceAndCorrespondences(
+						newCloudRegistered,
+						_previousCloudNormal,
+						_maxCorrespondenceDistance,
+						variance,
+						correspondences);
 
 				// verify if there are enough correspondences
 				float correspondencesRatio = float(correspondences)/float(_previousCloudNormal->size()>newCloud->size()?_previousCloudNormal->size():newCloud->size());
@@ -140,14 +155,22 @@ Transform OdometryICP::computeTransform(const SensorData & data, OdometryInfo * 
 			//point to point
 			if(_previousCloud->size() > minPoints && newCloudXYZ->size() > minPoints)
 			{
-				int correspondences = 0;
-				Transform transform = util3d::icp(newCloudXYZ,
+				pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
+				Transform transform = util3d::icp(
+						newCloudXYZ,
 						_previousCloud,
 						_maxCorrespondenceDistance,
 						_maxIterations,
-						&hasConverged,
-						&variance,
-						&correspondences);
+						hasConverged,
+						*newCloudRegistered);
+
+				int correspondences = 0;
+				util3d::computeVarianceAndCorrespondences(
+						newCloudRegistered,
+						_previousCloud,
+						_maxCorrespondenceDistance,
+						variance,
+						correspondences);
 
 				// verify if there are enough correspondences
 				float correspondencesRatio = float(correspondences)/float(_previousCloud->size()>newCloudXYZ->size()?_previousCloud->size():newCloudXYZ->size());

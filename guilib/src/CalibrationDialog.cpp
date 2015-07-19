@@ -167,6 +167,7 @@ void CalibrationDialog::setStereoMode(bool stereo)
 	ui_->lineEdit_R_2->setVisible(stereo_);
 	ui_->lineEdit_P_2->setVisible(stereo_);
 	ui_->radioButton_stereoRectified->setVisible(stereo_);
+	ui_->checkBox_switchImages->setVisible(stereo_);
 }
 
 void CalibrationDialog::setBoardWidth(int width)
@@ -198,7 +199,11 @@ void CalibrationDialog::setSquareSize(double size)
 
 void CalibrationDialog::closeEvent(QCloseEvent* event)
 {
-	if(!savedCalibration_ && models_[0].isValid() && (!stereo_ || stereoModel_.isValid()))
+	if(!savedCalibration_ && models_[0].isValid() &&
+			(!stereo_ ||
+					(stereoModel_.left().isValid() &&
+					stereoModel_.right().isValid()&&
+					(!ui_->label_baseline->isVisible() || stereoModel_.baseline() > 0.0))))
 	{
 		QMessageBox::StandardButton b = QMessageBox::question(this, tr("Save calibration?"),
 				tr("The camera is calibrated but you didn't "
@@ -234,13 +239,12 @@ void CalibrationDialog::handleEvent(UEvent * event)
 		if(event->getClassName().compare("CameraEvent") == 0)
 		{
 			rtabmap::CameraEvent * e = (rtabmap::CameraEvent *)event;
-			if(e->getCode() == rtabmap::CameraEvent::kCodeImage ||
-			   e->getCode() == rtabmap::CameraEvent::kCodeImageDepth)
+			if(e->getCode() == rtabmap::CameraEvent::kCodeData)
 			{
 				processingData_ = true;
 				QMetaObject::invokeMethod(this, "processImages",
-						Q_ARG(cv::Mat, e->data().image()),
-						Q_ARG(cv::Mat, e->data().depthOrRightImage()),
+						Q_ARG(cv::Mat, e->data().imageRaw()),
+						Q_ARG(cv::Mat, e->data().depthOrRightRaw()),
 						Q_ARG(QString, QString(e->cameraName().c_str())));
 			}
 		}
@@ -287,6 +291,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 
 	std::vector<std::vector<cv::Point2f> > pointBuf(2);
 
+	bool depthDetected = false;
 	for(int id=0; id<(stereo_?2:1); ++id)
 	{
 		cv::Mat viewGray;
@@ -294,6 +299,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 		{
 			if(images[id].type() == CV_16UC1)
 			{
+				depthDetected = true;
 				//assume IR image: convert to gray scaled
 				const float factor = 255.0f / float((maxIrs_[id] - minIrs_[id]));
 				viewGray = cv::Mat(images[id].rows, images[id].cols, CV_8UC1);
@@ -488,6 +494,8 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 			}
 		}
 	}
+	ui_->label_baseline->setVisible(!depthDetected);
+	ui_->label_baseline_name->setVisible(!depthDetected);
 
 	if(stereo_ && ((boardAccepted[0] && boardFound[1]) || (boardAccepted[1] && boardFound[0])))
 	{
@@ -516,7 +524,10 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 			images[1] = models_[1].rectifyImage(images[1]);
 		}
 	}
-	else if(ui_->radioButton_stereoRectified->isChecked() && stereoModel_.isValid())
+	else if(ui_->radioButton_stereoRectified->isChecked() &&
+			(stereoModel_.left().isValid() &&
+			stereoModel_.right().isValid()&&
+			(!ui_->label_baseline->isVisible() || stereoModel_.baseline() > 0.0)))
 	{
 		images[0] = stereoModel_.left().rectifyImage(images[0]);
 		images[1] = stereoModel_.right().rectifyImage(images[1]);
@@ -833,7 +844,10 @@ void CalibrationDialog::calibrate()
 		//ui_->label_error_stereo->setNum(totalAvgErr);
 	}
 
-	if(stereo_ && stereoModel_.isValid())
+	if(stereo_ &&
+		stereoModel_.left().isValid() &&
+		stereoModel_.right().isValid()&&
+		(!ui_->label_baseline->isVisible() || stereoModel_.baseline() > 0.0))
 	{
 		ui_->radioButton_rectified->setEnabled(true);
 		ui_->radioButton_stereoRectified->setEnabled(true);
@@ -878,7 +892,9 @@ bool CalibrationDialog::save()
 	}
 	else
 	{
-		UASSERT(stereoModel_.isValid());
+		UASSERT(stereoModel_.left().isValid() &&
+				stereoModel_.right().isValid()&&
+				(!ui_->label_baseline->isVisible() || stereoModel_.baseline() > 0.0));
 		QString cameraName = stereoModel_.name().c_str();
 		QString filePath = QFileDialog::getSaveFileName(this, tr("Export"), savingDirectory_ + "/" + cameraName, "*.yaml");
 		QString name = QFileInfo(filePath).baseName();
@@ -889,7 +905,7 @@ bool CalibrationDialog::save()
 			std::string leftPath = base+"_left.yaml";
 			std::string rightPath = base+"_right.yaml";
 			std::string posePath = base+"_pose.yaml";
-			if(stereoModel_.save(dir.toStdString(), name.toStdString()))
+			if(stereoModel_.save(dir.toStdString(), name.toStdString(), false))
 			{
 				QMessageBox::information(this, tr("Export"), tr("Calibration files saved:\n  \"%1\"\n  \"%2\"\n  \"%3\".").
 						arg(leftPath.c_str()).arg(rightPath.c_str()).arg(posePath.c_str()));

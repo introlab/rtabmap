@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UMutex.h"
 #include "rtabmap/utilite/UThreadNode.h"
 #include "rtabmap/core/Parameters.h"
+#include "rtabmap/core/SensorData.h"
 
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/Link.h>
@@ -94,13 +95,13 @@ public:
 	void loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws);
 
 	// Specific queries...
-	void loadNodeData(std::list<Signature *> & signatures, bool loadMetricData) const;
-	void getNodeData(int signatureId, cv::Mat & imageCompressed, cv::Mat & depthCompressed, cv::Mat & laserScanCompressed, float & fx, float & fy, float & cx, float & cy, Transform & localTransform, int & laserScanMaxPts) const;
-	void getNodeData(int signatureId, cv::Mat & imageCompressed) const;
-	bool getNodeInfo(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, std::vector<unsigned char> & userData) const;
+	void loadNodeData(std::list<Signature *> & signatures) const;
+	void getNodeData(int signatureId, SensorData & data) const;
+	bool getNodeInfo(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp) const;
 	void loadLinks(int signatureId, std::map<int, Link> & links, Link::Type type = Link::kUndef) const;
 	void getWeight(int signatureId, int & weight) const;
 	void getAllNodeIds(std::set<int> & ids, bool ignoreChildren = false) const;
+	void getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLinks = true) const;
 	void getLastNodeId(int & id) const;
 	void getLastWordId(int & id) const;
 	void getInvertedIndexNi(int signatureId, int & ni) const;
@@ -133,11 +134,10 @@ private:
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const = 0;
 	virtual void loadLinksQuery(int signatureId, std::map<int, Link> & links, Link::Type type = Link::kUndef) const = 0;
 
-	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool loadMetricData) const = 0;
-	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed, cv::Mat & depthCompressed, cv::Mat & laserScanCompressed, float & fx, float & fy, float & cx, float & cy, Transform & localTransform, int & laserScanMaxPts) const = 0;
-	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed) const = 0;
-	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, std::vector<unsigned char> & userData) const = 0;
+	virtual void loadNodeDataQuery(std::list<Signature *> & signatures) const = 0;
+	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp) const = 0;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const = 0;
+	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks) const = 0;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const = 0;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const = 0;
 	virtual void getNodeIdByLabelQuery(const std::string & label, int & id) const = 0;

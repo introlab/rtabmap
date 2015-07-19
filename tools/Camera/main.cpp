@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "rtabmap/core/Camera.h"
+#include "rtabmap/core/CameraRGB.h"
 #include "rtabmap/core/DBReader.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UFile.h"
@@ -40,7 +40,7 @@ void showUsage()
 			"rtabmap-camera [option] \n"
 			" Options:\n"
 			"    --device #            USB camera device id (default 0).\n"
-			"    --rate #              Frame rate (default 30 Hz). 0 means as fast as possible.\n"
+			"    --rate #              Frame rate (default 0 Hz). 0 means as fast as possible.\n"
 			"    --path ""             Path to a directory of images or a video file.\n"
 			"    --calibration ""      Calibration file (*.yaml).\n\n");
 	exit(1);
@@ -53,7 +53,7 @@ int main(int argc, char * argv[])
 
 	int device = 0;
 	std::string path;
-	float rate = 30.0f;
+	float rate = 0.0f;
 	std::string calibrationFile;
 	for(int i=1; i<argc; ++i)
 	{
@@ -164,17 +164,15 @@ int main(int argc, char * argv[])
 
 	if(camera)
 	{
-		if(!camera->init())
+		if(!calibrationFile.empty())
+		{
+			UINFO("Set calibration: %s", calibrationFile.c_str());
+		}
+		if(!camera->init(UDirectory::getDir(calibrationFile), UFile::getName(calibrationFile)))
 		{
 			delete camera;
 			UERROR("Cannot initialize the camera.");
 			return -1;
-		}
-
-		if(!calibrationFile.empty())
-		{
-			UINFO("Set calibration: %s", calibrationFile.c_str());
-			camera->setCalibration(calibrationFile);
 		}
 	}
 
@@ -189,7 +187,7 @@ int main(int argc, char * argv[])
 	}
 
 	cv::Mat rgb;
-	rgb = camera?camera->takeImage():dbReader->getNextData().image();
+	rgb = camera?camera->takeImage().imageRaw():dbReader->getNextData().data().imageRaw();
 	cv::namedWindow("Video", CV_WINDOW_AUTOSIZE); // create window
 	while(!rgb.empty())
 	{
@@ -199,7 +197,7 @@ int main(int argc, char * argv[])
 		if(c == 27)
 			break; // if ESC, break and quit
 
-		rgb = camera?camera->takeImage():dbReader->getNextData().image();
+		rgb = camera?camera->takeImage().imageRaw():dbReader->getNextData().data().imageRaw();
 	}
 	cv::destroyWindow("Video");
 	if(camera)

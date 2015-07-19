@@ -38,14 +38,13 @@ class CameraEvent :
 {
 public:
 	enum Code {
-		kCodeImage,
-		kCodeImageDepth,
+		kCodeData,
 		kCodeNoMoreImages
 	};
 
 public:
 	CameraEvent(const cv::Mat & image, int seq=0, double stamp = 0.0, const std::string & cameraName = "") :
-		UEvent(kCodeImage),
+		UEvent(kCodeData),
 		data_(image, seq, stamp),
 		cameraName_(cameraName)
 	{
@@ -57,7 +56,7 @@ public:
 	}
 
 	CameraEvent(const SensorData & data, const std::string & cameraName = "") :
-		UEvent(kCodeImageDepth),
+		UEvent(kCodeData),
 		data_(data),
 		cameraName_(cameraName)
 	{

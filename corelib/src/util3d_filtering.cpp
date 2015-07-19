@@ -281,6 +281,82 @@ pcl::IndicesPtr radiusFiltering(
 	}
 }
 
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr subtractFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & substractCloud,
+		float radiusSearch,
+		int minNeighborsInRadius)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	pcl::IndicesPtr indicesOut = subtractFiltering(cloud, indices, substractCloud, indices, radiusSearch, minNeighborsInRadius);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr out(new pcl::PointCloud<pcl::PointXYZRGB>);
+	pcl::copyPointCloud(*cloud, *indicesOut, *out);
+	return out;
+}
+
+
+pcl::IndicesPtr subtractFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & substractCloud,
+		const pcl::IndicesPtr & substractIndices,
+		float radiusSearch,
+		int minNeighborsInRadius)
+{
+	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>(false));
+
+	if(indices->size())
+	{
+		pcl::IndicesPtr output(new std::vector<int>(indices->size()));
+		int oi = 0; // output iterator
+		if(substractIndices->size())
+		{
+			tree->setInputCloud(substractCloud, substractIndices);
+		}
+		else
+		{
+			tree->setInputCloud(substractCloud);
+		}
+		for(unsigned int i=0; i<indices->size(); ++i)
+		{
+			std::vector<int> kIndices;
+			std::vector<float> kDistances;
+			int k = tree->radiusSearch(cloud->at(indices->at(i)), radiusSearch, kIndices, kDistances);
+			if(k <= minNeighborsInRadius)
+			{
+				output->at(oi++) = indices->at(i);
+			}
+		}
+		output->resize(oi);
+		return output;
+	}
+	else
+	{
+		pcl::IndicesPtr output(new std::vector<int>(cloud->size()));
+		int oi = 0; // output iterator
+		if(substractIndices->size())
+		{
+			tree->setInputCloud(substractCloud, substractIndices);
+		}
+		else
+		{
+			tree->setInputCloud(substractCloud);
+		}
+		for(unsigned int i=0; i<cloud->size(); ++i)
+		{
+			std::vector<int> kIndices;
+			std::vector<float> kDistances;
+			int k = tree->radiusSearch(cloud->at(i), radiusSearch, kIndices, kDistances);
+			if(k <= minNeighborsInRadius)
+			{
+				output->at(oi++) = i;
+			}
+		}
+		output->resize(oi);
+		return output;
+	}
+}
+
 
 pcl::IndicesPtr normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,

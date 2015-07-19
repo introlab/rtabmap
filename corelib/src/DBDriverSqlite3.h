@@ -70,21 +70,10 @@ private:
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const;
 	virtual void loadLinksQuery(int signatureId, std::map<int, Link> & links, Link::Type type = Link::kUndef) const;
 
-	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool loadMetricData) const;
-	virtual void getNodeDataQuery(
-			int signatureId,
-			cv::Mat & imageCompressed,
-			cv::Mat & depthCompressed,
-			cv::Mat & laserScanCompressed,
-			float & fx,
-			float & fy,
-			float & cx,
-			float & cy,
-			Transform & localTransform,
-			int & laserScanMaxPts) const;
-	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed) const;
-	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, std::vector<unsigned char> & userData) const;
+	virtual void loadNodeDataQuery(std::list<Signature *> & signatures) const;
+	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp) const;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const;
+	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks) const;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const;
 	virtual void getNodeIdByLabelQuery(const std::string & label, int & id) const;
@@ -94,6 +83,7 @@ private:
 	std::string queryStepNode() const;
 	std::string queryStepImage() const;
 	std::string queryStepDepth() const;
+	std::string queryStepSensorData() const;
 	std::string queryStepLink() const;
 	std::string queryStepWordsChanged() const;
 	std::string queryStepKeypoint() const;
@@ -102,18 +92,9 @@ private:
 			sqlite3_stmt * ppStmt,
 			int id,
 			const cv::Mat & imageBytes) const;
-	void stepDepth(
-			sqlite3_stmt * ppStmt,
-			int id,
-			const cv::Mat & depthBytes,
-			const cv::Mat & depth2dBytes,
-			float fx,
-			float fy,
-			float cx,
-			float cy,
-			const Transform & localTransform,
-			int depth2dMaxPts) const;
-	void stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, Link::Type type, float rotVariance, float transVariance, const Transform & transform) const;
+	void stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
+	void stepSensorData(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
+	void stepLink(sqlite3_stmt * ppStmt, const Link & link) const;
 	void stepWordsChanged(sqlite3_stmt * ppStmt, int signatureId, int oldWordId, int newWordId) const;
 	void stepKeypoint(sqlite3_stmt * ppStmt, int signatureId, int wordId, const cv::KeyPoint & kp, const pcl::PointXYZ & pt) const;
 

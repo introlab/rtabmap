@@ -22,11 +22,13 @@
         <file>images/document-new.png</file>
         <file>images/document-save.png</file>
         <file>images/document-properties.png</file>
+        <file>images/view-refresh.png</file>
         <file>images/system-log-out.png</file>
         <file>images/kinect_xbox_360.png</file>
         <file>images/kinect_xbox_one.png</file>
         <file>images/sense.png</file>
         <file>images/xtion_pro_live.png</file>
         <file>images/bumblebee2.png</file>
+	<file>images/webcam.png</file>
     </qresource>
 </RCC>

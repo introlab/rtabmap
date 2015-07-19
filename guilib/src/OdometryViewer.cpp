@@ -48,7 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, int qualityWarningThr, QWidget * parent) :
+OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, float maxDepth, int qualityWarningThr, QWidget * parent) :
 		QDialog(parent),
 		imageView_(new ImageView(this)),
 		cloudView_(new CloudViewer(this)),
@@ -61,17 +61,18 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, i
 		validDecimationValue_(1)
 {
 
-	qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
-	qRegisterMetaType<rtabmap::OdometryInfo>("rtabmap::OdometryInfo");
+	qRegisterMetaType<rtabmap::OdometryEvent>("rtabmap::OdometryEvent");
 
 	imageView_->setImageDepthShown(false);
 	imageView_->setMinimumSize(320, 240);
+	imageView_->setAlpha(255);
 
-	cloudView_->setCameraFree();
+	cloudView_->setCameraTargetLocked();
 	cloudView_->setGridShown(true);
 
 	QLabel * maxCloudsLabel = new QLabel("Max clouds", this);
 	QLabel * voxelLabel = new QLabel("Voxel", this);
+	QLabel * maxDepthLabel = new QLabel("Max depth", this);
 	QLabel * decimationLabel = new QLabel("Decimation", this);
 	maxCloudsSpin_ = new QSpinBox(this);
 	maxCloudsSpin_->setMinimum(0);
@@ -84,13 +85,22 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, i
 	voxelSpin_->setSingleStep(0.01);
 	voxelSpin_->setSuffix(" m");
 	voxelSpin_->setValue(voxelSize);
+	maxDepthSpin_ = new QDoubleSpinBox(this);
+	maxDepthSpin_->setMinimum(0);
+	maxDepthSpin_->setMaximum(100);
+	maxDepthSpin_->setDecimals(0);
+	maxDepthSpin_->setSingleStep(1);
+	maxDepthSpin_->setSuffix(" m");
+	maxDepthSpin_->setValue(maxDepth);
 	decimationSpin_ = new QSpinBox(this);
 	decimationSpin_->setMinimum(1);
 	decimationSpin_->setMaximum(16);
 	decimationSpin_->setValue(decimation);
 	timeLabel_ = new QLabel(this);
+	QPushButton * resetButton = new QPushButton("reset", this);
 	QPushButton * clearButton = new QPushButton("clear", this);
 	QPushButton * closeButton = new QPushButton("close", this);
+	connect(resetButton, SIGNAL(clicked()), this, SLOT(reset()));
 	connect(clearButton, SIGNAL(clicked()), this, SLOT(clear()));
 	connect(closeButton, SIGNAL(clicked()), this, SLOT(reject()));
 
@@ -107,10 +117,13 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, i
 	hlayout2->addWidget(maxCloudsSpin_);
 	hlayout2->addWidget(voxelLabel);
 	hlayout2->addWidget(voxelSpin_);
+	hlayout2->addWidget(maxDepthLabel);
+	hlayout2->addWidget(maxDepthSpin_);
 	hlayout2->addWidget(decimationLabel);
 	hlayout2->addWidget(decimationSpin_);
 	hlayout2->addWidget(timeLabel_);
 	hlayout2->addStretch(1);
+	hlayout2->addWidget(resetButton);
 	hlayout2->addWidget(clearButton);
 	hlayout2->addWidget(closeButton);
 
@@ -130,21 +143,26 @@ OdometryViewer::~OdometryViewer()
 	UDEBUG("");
 }
 
+void OdometryViewer::reset()
+{
+	this->post(new OdometryResetEvent());
+}
+
 void OdometryViewer::clear()
 {
 	addedClouds_.clear();
 	cloudView_->clear();
 }
 
-void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap::OdometryInfo & info)
+void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 {
 	processingData_ = true;
-	int quality = info.inliers;
+	int quality = odom.info().inliers;
 
 	bool lost = false;
 	bool lostStateChanged = false;
 
-	if(data.pose().isNull())
+	if(odom.pose().isNull())
 	{
 		UDEBUG("odom lost"); // use last pose
 		lostStateChanged = imageView_->getBackgroundColor() != Qt::darkRed;
@@ -153,11 +171,11 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 
 		lost = true;
 	}
-	else if(info.inliers>0 &&
+	else if(odom.info().inliers>0 &&
 			qualityWarningThr_ &&
-			info.inliers < qualityWarningThr_)
+			odom.info().inliers < qualityWarningThr_)
 	{
-		UDEBUG("odom warn, quality(inliers)=%d thr=%d", info.inliers, qualityWarningThr_);
+		UDEBUG("odom warn, quality(inliers)=%d thr=%d", odom.info().inliers, qualityWarningThr_);
 		lostStateChanged = imageView_->getBackgroundColor() == Qt::darkRed;
 		imageView_->setBackgroundColor(Qt::darkYellow);
 		cloudView_->setBackgroundColor(Qt::darkYellow);
@@ -170,60 +188,48 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 		cloudView_->setBackgroundColor(Qt::black);
 	}
 
-	timeLabel_->setText(QString("%1 s").arg(info.time));
+	timeLabel_->setText(QString("%1 s").arg(odom.info().timeEstimation));
 
-	if(!data.image().empty() && !data.depthOrRightImage().empty() && data.fx()>0.0f && data.fyOrBaseline()>0.0f)
+	if(!odom.data().imageRaw().empty() &&
+		!odom.data().depthOrRightRaw().empty() &&
+		(odom.data().stereoCameraModel().isValid() || odom.data().cameraModels().size()))
 	{
-		UDEBUG("New pose = %s, quality=%d", data.pose().prettyPrint().c_str(), quality);
+		UDEBUG("New pose = %s, quality=%d", odom.pose().prettyPrint().c_str(), quality);
 
-		if(data.image().cols % decimationSpin_->value() == 0 &&
-		   data.image().rows % decimationSpin_->value() == 0)
+		if(!odom.data().depthRaw().empty())
 		{
-			validDecimationValue_ = decimationSpin_->value();
+			if(odom.data().imageRaw().cols % decimationSpin_->value() == 0 &&
+			   odom.data().imageRaw().rows % decimationSpin_->value() == 0)
+			{
+				validDecimationValue_ = decimationSpin_->value();
+			}
+			else
+			{
+				UWARN("Decimation (%d) must be a denominator of the width and height of "
+						"the image (%d/%d). Using last valid decimation value (%d).",
+						decimationSpin_->value(),
+						odom.data().imageRaw().cols,
+						odom.data().imageRaw().rows,
+						validDecimationValue_);
+			}
 		}
 		else
 		{
-			UWARN("Decimation (%d) must be a denominator of the width and height of "
-					"the image (%d/%d). Using last valid decimation value (%d).",
-					decimationSpin_->value(),
-					data.image().cols,
-					data.image().rows,
-					validDecimationValue_);
+			validDecimationValue_ = decimationSpin_->value();
 		}
-
 
 		// visualization: buffering the clouds
 		// Create the new cloud
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-		if(!data.depth().empty())
-		{
-			cloud = util3d::cloudFromDepthRGB(
-					data.image(),
-					data.depth(),
-					data.cx(), data.cy(),
-					data.fx(), data.fy(),
-					validDecimationValue_);
-		}
-		else if(!data.rightImage().empty())
-		{
-			cloud = util3d::cloudFromStereoImages(
-					data.image(),
-					data.rightImage(),
-					data.cx(), data.cy(),
-					data.fx(), data.baseline(),
-					validDecimationValue_);
-		}
-
-		if(voxelSpin_->value() > 0.0f && cloud->size())
-		{
-			cloud = util3d::voxelize(cloud, voxelSpin_->value());
-		}
+		cloud = util3d::cloudRGBFromSensorData(
+				odom.data(),
+				validDecimationValue_,
+				0.0f,
+				voxelSpin_->value());
 
 		if(cloud->size())
 		{
-			cloud = util3d::transformPointCloud(cloud, data.localTransform());
-
-			if(!data.pose().isNull())
+			if(!odom.pose().isNull())
 			{
 				if(cloudView_->getAddedClouds().contains("cloudtmp"))
 				{
@@ -236,10 +242,10 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 					addedClouds_.pop_front();
 				}
 
-				data.id()?id_=data.id():++id_;
+				odom.data().id()?id_=odom.data().id():++id_;
 				std::string cloudName = uFormat("cloud%d", id_);
 				addedClouds_.push_back(cloudName);
-				UASSERT(cloudView_->addCloud(cloudName, cloud, data.pose()));
+				UASSERT(cloudView_->addCloud(cloudName, cloud, odom.pose()));
 			}
 			else
 			{
@@ -248,18 +254,18 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 		}
 	}
 
-	if(!data.pose().isNull())
+	if(!odom.pose().isNull())
 	{
-		lastOdomPose_ = data.pose();
-		cloudView_->updateCameraTargetPosition(data.pose());
+		lastOdomPose_ = odom.pose();
+		cloudView_->updateCameraTargetPosition(odom.pose());
 	}
 
-	if(info.localMap.size())
+	if(odom.info().localMap.size())
 	{
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		cloud->resize(info.localMap.size());
+		cloud->resize(odom.info().localMap.size());
 		int i=0;
-		for(std::multimap<int, cv::Point3f>::const_iterator iter=info.localMap.begin(); iter!=info.localMap.end(); ++iter)
+		for(std::multimap<int, cv::Point3f>::const_iterator iter=odom.info().localMap.begin(); iter!=odom.info().localMap.end(); ++iter)
 		{
 			(*cloud)[i].x = iter->second.x;
 			(*cloud)[i].y = iter->second.y;
@@ -268,17 +274,17 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 		cloudView_->addOrUpdateCloud("localmap", cloud);
 	}
 
-	if(!data.image().empty())
+	if(!odom.data().imageRaw().empty())
 	{
-		if(info.type == 0)
+		if(odom.info().type == 0)
 		{
-			imageView_->setFeatures(info.words, data.depth(), Qt::yellow);
+			imageView_->setFeatures(odom.info().words, odom.data().depthRaw(), Qt::yellow);
 		}
-		else if(info.type == 1)
+		else if(odom.info().type == 1)
 		{
 			std::vector<cv::KeyPoint> kpts;
-			cv::KeyPoint::convert(info.refCorners, kpts);
-			imageView_->setFeatures(kpts, data.depth(), Qt::red);
+			cv::KeyPoint::convert(odom.info().refCorners, kpts);
+			imageView_->setFeatures(kpts, odom.data().depthRaw(), Qt::red);
 		}
 
 		imageView_->clearLines();
@@ -290,7 +296,7 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 				odomImageShow_ = imageView_->isImageShown();
 				odomImageDepthShow_ = imageView_->isImageDepthShown();
 			}
-			imageView_->setImageDepth(uCvMat2QImage(data.image()));
+			imageView_->setImageDepth(uCvMat2QImage(odom.data().imageRaw()));
 			imageView_->setImageShown(true);
 			imageView_->setImageDepthShown(true);
 		}
@@ -303,55 +309,55 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 				imageView_->setImageDepthShown(odomImageDepthShow_);
 			}
 
-			imageView_->setImage(uCvMat2QImage(data.image()));
+			imageView_->setImage(uCvMat2QImage(odom.data().imageRaw()));
 			if(imageView_->isImageDepthShown())
 			{
-				imageView_->setImageDepth(uCvMat2QImage(data.depthOrRightImage()));
+				imageView_->setImageDepth(uCvMat2QImage(odom.data().depthOrRightRaw()));
 			}
 
-			if(info.type == 0)
+			if(odom.info().type == 0)
 			{
 				if(imageView_->isFeaturesShown())
 				{
-					for(unsigned int i=0; i<info.wordMatches.size(); ++i)
+					for(unsigned int i=0; i<odom.info().wordMatches.size(); ++i)
 					{
-						imageView_->setFeatureColor(info.wordMatches[i], Qt::red); // outliers
+						imageView_->setFeatureColor(odom.info().wordMatches[i], Qt::red); // outliers
 					}
-					for(unsigned int i=0; i<info.wordInliers.size(); ++i)
+					for(unsigned int i=0; i<odom.info().wordInliers.size(); ++i)
 					{
-						imageView_->setFeatureColor(info.wordInliers[i], Qt::green); // inliers
+						imageView_->setFeatureColor(odom.info().wordInliers[i], Qt::green); // inliers
 					}
 				}
 			}
 		}
-		if(info.type == 1 && info.cornerInliers.size())
+		if(odom.info().type == 1 && odom.info().cornerInliers.size())
 		{
 			if(imageView_->isFeaturesShown() || imageView_->isLinesShown())
 			{
 				//draw lines
-				UASSERT(info.refCorners.size() == info.newCorners.size());
-				for(unsigned int i=0; i<info.cornerInliers.size(); ++i)
+				UASSERT(odom.info().refCorners.size() == odom.info().newCorners.size());
+				for(unsigned int i=0; i<odom.info().cornerInliers.size(); ++i)
 				{
 					if(imageView_->isFeaturesShown())
 					{
-						imageView_->setFeatureColor(info.cornerInliers[i], Qt::green); // inliers
+						imageView_->setFeatureColor(odom.info().cornerInliers[i], Qt::green); // inliers
 					}
 					if(imageView_->isLinesShown())
 					{
 						imageView_->addLine(
-								info.refCorners[info.cornerInliers[i]].x,
-								info.refCorners[info.cornerInliers[i]].y,
-								info.newCorners[info.cornerInliers[i]].x,
-								info.newCorners[info.cornerInliers[i]].y,
+								odom.info().refCorners[odom.info().cornerInliers[i]].x,
+								odom.info().refCorners[odom.info().cornerInliers[i]].y,
+								odom.info().newCorners[odom.info().cornerInliers[i]].x,
+								odom.info().newCorners[odom.info().cornerInliers[i]].y,
 								Qt::blue);
 					}
 				}
 			}
 		}
 
-		if(!data.image().empty())
+		if(!odom.data().imageRaw().empty())
 		{
-			imageView_->setSceneRect(QRectF(0,0,(float)data.image().cols, (float)data.image().rows));
+			imageView_->setSceneRect(QRectF(0,0,(float)odom.data().imageRaw().cols, (float)odom.data().imageRaw().rows));
 		}
 	}
 
@@ -372,8 +378,7 @@ void OdometryViewer::handleEvent(UEvent * event)
 			{
 				processingData_ = true;
 				QMetaObject::invokeMethod(this, "processData",
-						Q_ARG(rtabmap::SensorData, odomEvent->data()),
-						Q_ARG(rtabmap::OdometryInfo, odomEvent->info()));
+						Q_ARG(rtabmap::OdometryEvent, *odomEvent));
 			}
 		}
 	}

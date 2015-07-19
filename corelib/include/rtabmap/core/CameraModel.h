@@ -43,16 +43,31 @@ public:
 	// D is the distortion coefficients 1x5 CV_64FC1
 	// R is the rectification matrix 3x3 CV_64FC1 (computed from stereo or Identity)
 	// P is the projection matrix 3x4 CV_64FC1 (computed from stereo or equal to [K [0 0 1]'])
-	CameraModel(const std::string & name, const cv::Size & imageSize, const cv::Mat & K, const cv::Mat & D, const cv::Mat & R, const cv::Mat & P);
+	CameraModel(
+			const std::string & name,
+			const cv::Size & imageSize,
+			const cv::Mat & K,
+			const cv::Mat & D,
+			const cv::Mat & R,
+			const cv::Mat & P,
+			const Transform & localTransform = Transform::getIdentity());
+
+	// minimal
+	CameraModel(
+			double fx,
+			double fy,
+			double cx,
+			double cy,
+			const Transform & localTransform = Transform::getIdentity(),
+			double Tx = 0.0f);
 	virtual ~CameraModel() {}
 
 	bool isValid() const {return !K_.empty() &&
 									!D_.empty() &&
 									!R_.empty() &&
 									!P_.empty() &&
-									imageSize_.height &&
-									imageSize_.width &&
-									!name_.empty();}
+									fx()>0.0 &&
+									fy()>0.0;}
 
 	const std::string & name() const {return name_;}
 
@@ -67,12 +82,17 @@ public:
 	const cv::Mat & R() const {return R_;} //rectification matrix
 	const cv::Mat & P() const {return P_;} //projection matrix
 
+	void setLocalTransform(const Transform & transform) {localTransform_ = transform;}
+	const Transform & localTransform() const {return localTransform_;}
+
 	const cv::Size & imageSize() const {return imageSize_;}
 	int imageWidth() const {return imageSize_.width;}
 	int imageWeight() const {return imageSize_.height;}
 
 	bool load(const std::string & filePath);
-	bool save(const std::string & filePath);
+	bool save(const std::string & filePath) const;
+
+	void scale(double scale);
 
 	// For depth images, your should use cv::INTER_NEAREST
 	cv::Mat rectifyImage(const cv::Mat & raw, int interpolation = cv::INTER_LINEAR) const;
@@ -87,20 +107,23 @@ private:
 	cv::Mat P_;
 	cv::Mat mapX_;
 	cv::Mat mapY_;
+	Transform localTransform_;
 };
 
 class RTABMAP_EXP StereoCameraModel
 {
 public:
 	StereoCameraModel() {}
-	StereoCameraModel(const std::string & name,
+	StereoCameraModel(
+			const std::string & name,
 			const cv::Size & imageSize1,
 			const cv::Mat & K1, const cv::Mat & D1, const cv::Mat & R1, const cv::Mat & P1,
 			const cv::Size & imageSize2,
 			const cv::Mat & K2, const cv::Mat & D2, const cv::Mat & R2, const cv::Mat & P2,
-			const cv::Mat & R, const cv::Mat & T, const cv::Mat & E, const cv::Mat & F) :
-		left_(name+"_left", imageSize1, K1, D1, R1, P1),
-		right_(name+"_right", imageSize2, K2, D2, R2, P2),
+			const cv::Mat & R, const cv::Mat & T, const cv::Mat & E, const cv::Mat & F,
+			const Transform & localTransform = Transform::getIdentity()) :
+		left_(name+"_left", imageSize1, K1, D1, R1, P1, localTransform),
+		right_(name+"_right", imageSize2, K2, D2, R2, P2, localTransform),
 		name_(name),
 		R_(R),
 		T_(T),
@@ -108,13 +131,25 @@ public:
 		F_(F)
 	{
 	}
+	//minimal
+	StereoCameraModel(
+			double fx,
+			double fy,
+			double cx,
+			double cy,
+			double baseline,
+			const Transform & localTransform = Transform::getIdentity()) :
+		left_(fx, fy, cx, cy, localTransform),
+		right_(fx, fy, cx, cy, localTransform, baseline*-fx)
+	{
+	}
 	virtual ~StereoCameraModel() {}
 
-	bool isValid() const {return left_.isValid() && right_.isValid() && !R_.empty() && !T_.empty() && !E_.empty() && !F_.empty();}
+	bool isValid() const {return left_.isValid() && right_.isValid() && baseline() > 0.0;}
 	const std::string & name() const {return name_;}
 
-	bool load(const std::string & directory, const std::string & cameraName);
-	bool save(const std::string & directory, const std::string & cameraName);
+	bool load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true);
+	bool save(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true) const;
 
 	double baseline() const {return -right_.Tx()/right_.fx();}
 
@@ -123,7 +158,11 @@ public:
 	const cv::Mat & E() const {return E_;} //extrinsic essential matrix
 	const cv::Mat & F() const {return F_;} //extrinsic fundamental matrix
 
-	Transform transform() const;
+	void scale(double scale);
+
+	void setLocalTransform(const Transform & transform) {left_.setLocalTransform(transform);}
+	const Transform & localTransform() const {return left_.localTransform();}
+	Transform stereoTransform() const;
 
 	const CameraModel & left() const {return left_;}
 	const CameraModel & right() const {return right_;}

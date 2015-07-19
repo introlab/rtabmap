@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/gui/OdometryViewer.h>
 #include <rtabmap/core/CameraThread.h>
 #include <rtabmap/core/CameraRGBD.h>
+#include <rtabmap/core/CameraStereo.h>
 #include <rtabmap/core/DBReader.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <QApplication>
@@ -121,7 +122,7 @@ int main (int argc, char * argv[])
 	float sec = 0.0f;
 	bool gpu = false;
 	int localHistory = rtabmap::Parameters::defaultOdomBowLocalHistorySize();
-	bool p2p = rtabmap::Parameters::defaultOdomPnPEstimation();
+	bool p2p = false;
 
 	for(int i=1; i<argc; ++i)
 	{
@@ -725,7 +726,7 @@ int main (int argc, char * argv[])
 	}
 	else
 	{
-		rtabmap::CameraRGBD * camera = 0;
+		rtabmap::Camera * camera = 0;
 		rtabmap::Transform t=rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0);
 		if(driver == 0)
 		{

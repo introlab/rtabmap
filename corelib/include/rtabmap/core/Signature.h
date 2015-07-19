@@ -53,23 +53,12 @@ class RTABMAP_EXP Signature
 public:
 	Signature();
 	Signature(int id,
-			int mapId,
-			int weight,
-			double stamp,
-			const std::string & label,
-			const std::multimap<int, cv::KeyPoint> & words,
-			const std::multimap<int, pcl::PointXYZ> & words3,
+			int mapId = -1,
+			int weight = 0,
+			double stamp = 0.0,
+			const std::string & label = std::string(),
 			const Transform & pose = Transform(),
-			const std::vector<unsigned char> & userData = std::vector<unsigned char>(),
-			const cv::Mat & laserScan = cv::Mat(),
-			const cv::Mat & image = cv::Mat(),
-			const cv::Mat & depth = cv::Mat(),
-			float fx = 0.0f,
-			float fy = 0.0f,
-			float cx = 0.0f,
-			float cy = 0.0f,
-			const Transform & localTransform =Transform::getIdentity(),
-			int laserScanMaxPts = 0);
+			const SensorData & sensorData = SensorData());
 	virtual ~Signature();
 
 	/**
@@ -86,9 +75,6 @@ public:
 
 	void setLabel(const std::string & label) {_modified=_label.compare(label)!=0;_label = label;}
 	const std::string & getLabel() const {return _label;}
-
-	void setUserData(const std::vector<unsigned char> & data);
-	const std::vector<unsigned char> & getUserData() const {return _userData;}
 
 	double getStamp() const {return _stamp;}
 
@@ -121,41 +107,17 @@ public:
 	void setEnabled(bool enabled) {_enabled = enabled;}
 	const std::multimap<int, cv::KeyPoint> & getWords() const {return _words;}
 	const std::map<int, int> & getWordsChanged() const {return _wordsChanged;}
-	void setImageCompressed(const cv::Mat & bytes) {_imageCompressed = bytes;}
-	const cv::Mat & getImageCompressed() const {return _imageCompressed;}
-	void setImageRaw(const cv::Mat & image) {_imageRaw = image;}
-	const cv::Mat & getImageRaw() const {return _imageRaw;}
 
 	//metric stuff
 	void setWords3(const std::multimap<int, pcl::PointXYZ> & words3) {_words3 = words3;}
-	void setDepthCompressed(const cv::Mat & bytes, float fx, float fy, float cx, float cy);
-	void setLaserScanCompressed(const cv::Mat & bytes, int maxPts) {_laserScanCompressed = bytes; _laserScanMaxPts=maxPts;}
-	void setLocalTransform(const Transform & t) {_localTransform = t;}
 	void setPose(const Transform & pose) {_pose = pose;}
-	const std::multimap<int, pcl::PointXYZ> & getWords3() const {return _words3;}
-	const cv::Mat & getDepthCompressed() const {return _depthCompressed;}
-	const cv::Mat & getLaserScanCompressed() const {return _laserScanCompressed;}
-	RTABMAP_DEPRECATED(float getDepthFx() const, "Use getFx() instead.");
-	RTABMAP_DEPRECATED(float getDepthFy() const, "Use getFy() instead.");
-	RTABMAP_DEPRECATED(float getDepthCx() const, "Use getCx() instead.");
-	RTABMAP_DEPRECATED(float getDepthCy() const, "Use getCy() instead.");
-	float getFx() const {return _fx;}
-	float getFy() const {return _fy;}
-	float getCx() const {return _cx;}
-	float getCy() const {return _cy;}
-	const Transform & getPose() const {return _pose;}
-	void getPoseVariance(float & rotVariance, float & transVariance) const;
-	const Transform & getLocalTransform() const {return _localTransform;}
-	void setDepthRaw(const cv::Mat & depth) {_depthRaw = depth;}
-	const cv::Mat & getDepthRaw() const {return _depthRaw;}
-	void setLaserScanRaw(const cv::Mat & depth2D, int maxPts) {_laserScanRaw = depth2D; _laserScanMaxPts=maxPts;}
-	const cv::Mat & getLaserScanRaw() const {return _laserScanRaw;}
-	int getLaserScanMaxPts() const {return _laserScanMaxPts;}
 
-	SensorData toSensorData();
-	void uncompressData();
-	void uncompressData(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw);
-	void uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw) const;
+	const std::multimap<int, pcl::PointXYZ> & getWords3() const {return _words3;}
+	const Transform & getPose() const {return _pose;}
+	cv::Mat getPoseCovariance() const;
+
+	SensorData & sensorData() {return _sensorData;}
+	const SensorData & sensorData() const {return _sensorData;}
 
 private:
 	int _id;
@@ -164,7 +126,6 @@ private:
 	std::map<int, Link> _links; // id, transform
 	int _weight;
 	std::string _label;
-	std::vector<unsigned char> _userData;
 	bool _saved; // If it's saved to bd
 	bool _modified;
 	bool _linksModified; // Optimization when updating signatures in database
@@ -173,24 +134,13 @@ private:
 	// times in the signature, it will be 2 times in this list)
 	// Words match with the CvSeq keypoints and descriptors
 	std::multimap<int, cv::KeyPoint> _words; // word <id, keypoint>
+	std::multimap<int, pcl::PointXYZ> _words3; // word <id, keypoint> // in base_link frame (localTransform applied))
 	std::map<int, int> _wordsChanged; // <oldId, newId>
 	bool _enabled;
-	cv::Mat _imageCompressed; // compressed image
 
-	cv::Mat _depthCompressed; // compressed image
-	cv::Mat _laserScanCompressed; // compressed data
-	float _fx;
-	float _fy;
-	float _cx;
-	float _cy;
 	Transform _pose;
-	Transform _localTransform; // camera_link -> base_link
-	std::multimap<int, pcl::PointXYZ> _words3; // word <id, keypoint>
-	int _laserScanMaxPts;
 
-	cv::Mat _imageRaw; // CV_8UC1 or CV_8UC3
-	cv::Mat _depthRaw; // depth CV_16UC1 or CV_32FC1, right image CV_8UC1
-	cv::Mat _laserScanRaw; // CV_32FC2
+	SensorData _sensorData;
 };
 
 } // namespace rtabmap

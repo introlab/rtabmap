@@ -29,6 +29,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
+#include "rtabmap/utilite/UConversion.h"
+#include "ParticleFilter.h"
 
 namespace rtabmap {
 
@@ -41,11 +43,21 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_maxDepth(Parameters::defaultOdomMaxDepth()),
 		_resetCountdown(Parameters::defaultOdomResetCountdown()),
 		_force2D(Parameters::defaultOdomForce2D()),
+		_holonomic(Parameters::defaultOdomHolonomic()),
+		_particleFiltering(Parameters::defaultOdomParticleFiltering()),
+		_particleSize(Parameters::defaultOdomParticleSize()),
+		_particleNoiseT(Parameters::defaultOdomParticleNoiseT()),
+		_particleLambdaT(Parameters::defaultOdomParticleLambdaT()),
+		_particleNoiseR(Parameters::defaultOdomParticleNoiseR()),
+		_particleLambdaR(Parameters::defaultOdomParticleLambdaR()),
 		_fillInfoData(Parameters::defaultOdomFillInfoData()),
-		_pnpEstimation(Parameters::defaultOdomPnPEstimation()),
+		_estimationType(Parameters::defaultOdomEstimationType()),
 		_pnpReprojError(Parameters::defaultOdomPnPReprojError()),
 		_pnpFlags(Parameters::defaultOdomPnPFlags()),
-		_resetCurrentCount(0)
+		_resetCurrentCount(0),
+		previousStamp_(0),
+		previousTransform_(Transform::getIdentity()),
+		distanceTravelled_(0)
 {
 	Parameters::parse(parameters, Parameters::kOdomResetCountdown(), _resetCountdown);
 	Parameters::parse(parameters, Parameters::kOdomMinInliers(), _minInliers);
@@ -55,26 +67,86 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomMaxDepth(), _maxDepth);
 	Parameters::parse(parameters, Parameters::kOdomRoiRatios(), _roiRatios);
 	Parameters::parse(parameters, Parameters::kOdomForce2D(), _force2D);
+	Parameters::parse(parameters, Parameters::kOdomHolonomic(), _holonomic);
 	Parameters::parse(parameters, Parameters::kOdomFillInfoData(), _fillInfoData);
-	Parameters::parse(parameters, Parameters::kOdomPnPEstimation(), _pnpEstimation);
+	Parameters::parse(parameters, Parameters::kOdomEstimationType(), _estimationType);
 	Parameters::parse(parameters, Parameters::kOdomPnPReprojError(), _pnpReprojError);
 	Parameters::parse(parameters, Parameters::kOdomPnPFlags(), _pnpFlags);
 	UASSERT(_pnpFlags>=0 && _pnpFlags <=2);
+	Parameters::parse(parameters, Parameters::kOdomParticleFiltering(), _particleFiltering);
+	Parameters::parse(parameters, Parameters::kOdomParticleSize(), _particleSize);
+	Parameters::parse(parameters, Parameters::kOdomParticleNoiseT(), _particleNoiseT);
+	Parameters::parse(parameters, Parameters::kOdomParticleLambdaT(), _particleLambdaT);
+	Parameters::parse(parameters, Parameters::kOdomParticleNoiseR(), _particleNoiseR);
+	Parameters::parse(parameters, Parameters::kOdomParticleLambdaR(), _particleLambdaR);
+	UASSERT(_particleNoiseT>0);
+	UASSERT(_particleLambdaT>0);
+	UASSERT(_particleNoiseR>0);
+	UASSERT(_particleLambdaR>0);
+	if(_particleFiltering)
+	{
+		filters_.resize(6);
+		for(unsigned int i = 0; i<filters_.size(); ++i)
+		{
+			if(i<3)
+			{
+				filters_[i] = new ParticleFilter(_particleSize, _particleNoiseT, _particleLambdaT);
+			}
+			else
+			{
+				filters_[i] = new ParticleFilter(_particleSize, _particleNoiseR, _particleLambdaR);
+			}
+		}
+	}
+}
+
+Odometry::~Odometry()
+{
+	for(unsigned int i=0; i<filters_.size(); ++i)
+	{
+		delete filters_[i];
+	}
+	filters_.clear();
 }
 
 void Odometry::reset(const Transform & initialPose)
 {
+	previousTransform_.setIdentity();
 	_resetCurrentCount = 0;
-	if(_force2D)
+	previousStamp_ = 0;
+	distanceTravelled_ = 0;
+	if(_force2D || filters_.size())
 	{
 		float x,y,z, roll,pitch,yaw;
 		initialPose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-		if(z != 0.0f || roll != 0.0f || yaw != 0.0f)
+
+		if(_force2D)
 		{
-			UWARN("Force2D=true and the initial pose contains z, roll or pitch values (%s). They are set to null.", initialPose.prettyPrint().c_str());
+			if(z != 0.0f || roll != 0.0f || yaw != 0.0f)
+			{
+				UWARN("Force2D=true and the initial pose contains z, roll or pitch values (%s). They are set to null.", initialPose.prettyPrint().c_str());
+			}
+			z = 0;
+			roll = 0;
+			yaw = 0;
+			Transform pose(x, y, z, roll, pitch, yaw);
+			_pose = pose;
 		}
-		Transform pose(x, y, 0, 0, 0, yaw);
-		_pose = pose;
+		else
+		{
+			_pose = initialPose;
+		}
+
+		if(filters_.size())
+		{
+			UASSERT(filters_.size() == 6);
+			filters_[0]->init(x);
+			filters_[1]->init(y);
+			filters_[2]->init(z);
+			filters_[3]->init(roll);
+			filters_[4]->init(pitch);
+			filters_[5]->init(yaw);
+		}
 	}
 	else
 	{
@@ -89,16 +161,12 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 		_pose.setIdentity(); // initialized
 	}
 
-	UASSERT(!data.image().empty());
-	if(dynamic_cast<OdometryMono*>(this) == 0)
-	{
-		UASSERT(!data.depthOrRightImage().empty());
-	}
+	UASSERT(!data.imageRaw().empty());
 
-	if(data.fx() <= 0 || data.fyOrBaseline() <= 0)
+	if(!data.stereoCameraModel().isValid() &&
+	   (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValid()))
 	{
-		UERROR("Rectified images required! Calibrate your camera. (fx=%f, fy/baseline=%f, cx=%f, cy=%f)",
-				data.fx(), data.fyOrBaseline(), data.cx(), data.cy());
+		UERROR("Rectified images required! Calibrate your camera.");
 		return Transform();
 	}
 
@@ -107,19 +175,100 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 
 	if(info)
 	{
-		info->time = time.elapsed();
+		info->timeEstimation = time.ticks();
 		info->lost = t.isNull();
+		info->stamp = data.stamp();
+		info->interval = data.stamp() - previousStamp_;
+		info->transform = t;
 	}
+
+	previousTransform_.setIdentity();
+	previousStamp_ = data.stamp();
 
 	if(!t.isNull())
 	{
 		_resetCurrentCount = _resetCountdown;
 
-		if(_force2D)
+		if(_force2D || !_holonomic || filters_.size())
 		{
 			float x,y,z, roll,pitch,yaw;
 			t.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-			t = Transform(x,y,0, 0,0,yaw);
+
+			if(filters_.size())
+			{
+				UASSERT(filters_.size()==6);
+				if(_pose.isIdentity())
+				{
+					filters_[0]->init(x);
+					filters_[1]->init(y);
+					filters_[2]->init(z);
+					filters_[3]->init(roll);
+					filters_[4]->init(pitch);
+					filters_[5]->init(yaw);
+				}
+				else
+				{
+					x = filters_[0]->filter(x);
+					y = filters_[1]->filter(y);
+					yaw = filters_[5]->filter(yaw);
+
+					if(!_holonomic)
+					{
+						// arc trajectory around ICR
+						float tmpY = yaw!=0.0f ? x / tan((CV_PI-yaw)/2.0f) : 0.0f;
+						if(fabs(tmpY) < fabs(y) || (tmpY<=0 && y >=0) || (tmpY>=0 && y<=0))
+						{
+							y = tmpY;
+						}
+						else
+						{
+							yaw = (atan(x/y)*2.0f-CV_PI)*-1;
+						}
+					}
+
+					if(!_force2D)
+					{
+						z = filters_[2]->filter(z);
+						roll = filters_[3]->filter(roll);
+						pitch = filters_[4]->filter(pitch);
+					}
+				}
+
+				if(info)
+				{
+					info->timeParticleFiltering = time.ticks();
+				}
+			}
+			else if(!_holonomic)
+			{
+				// arc trajectory around ICR
+				float tmpY = yaw!=0.0f ? x / tan((CV_PI-yaw)/2.0f) : 0.0f;
+				if(fabs(tmpY) < fabs(y) || (tmpY<=0 && y >=0) || (tmpY>=0 && y<=0))
+				{
+					y = tmpY;
+				}
+				else
+				{
+					yaw = (atan(x/y)*2.0f-CV_PI)*-1;
+				}
+			}
+			UASSERT_MSG(uIsFinite(x) && uIsFinite(y) && uIsFinite(z) &&
+					uIsFinite(roll) && uIsFinite(pitch) && uIsFinite(yaw),
+					uFormat("x=%f y=%f z=%f roll=%f pitch=%f yaw=%f org T=%s",
+							x, y, z, roll, pitch, yaw, t.prettyPrint().c_str()).c_str());
+			t = Transform(x,y,_force2D?0:z, _force2D?0:roll,_force2D?0:pitch,yaw);
+
+			if(info && filters_.size())
+			{
+				info->transformFiltered = t;
+			}
+		}
+
+		previousTransform_ = t;
+		if(info)
+		{
+			distanceTravelled_ += t.getNorm();
+			info->distanceTravelled = distanceTravelled_;
 		}
 
 		return _pose *= t; // updated

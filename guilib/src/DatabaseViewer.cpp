@@ -44,12 +44,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/core/core_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UFile.h>
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/gui/KeypointItem.h"
 #include "rtabmap/gui/UCv2Qt.h"
 #include "rtabmap/core/util3d.h"
-#include "rtabmap/core/util3d_conversions.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/util3d_surface.h"
@@ -101,6 +101,8 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 
 	ui_->constraintsViewer->setCameraLockZ(false);
 	ui_->constraintsViewer->setCameraFree();
+
+	ui_->graphicsView_stereo->setAlpha(255);
 
 	this->readSettings();
 
@@ -215,6 +217,20 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->spinBox_projDecimation, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
 	connect(ui_->doubleSpinBox_projMaxDepth, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
 
+	connect(ui_->spinBox_stereo_flowIterations, SIGNAL(valueChanged(int)), this, SLOT(updateStereo()));
+	connect(ui_->spinBox_stereo_flowMaxLevel, SIGNAL(valueChanged(int)), this, SLOT(updateStereo()));
+	connect(ui_->spinBox_stereo_flowWinSize, SIGNAL(valueChanged(int)), this, SLOT(updateStereo()));
+	connect(ui_->spinBox_stereo_gfttBlockSize, SIGNAL(valueChanged(int)), this, SLOT(updateStereo()));
+	connect(ui_->doubleSpinBox_stereo_flowEps, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
+	connect(ui_->doubleSpinBox_stereo_gfttMinDistance, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
+	connect(ui_->doubleSpinBox_stereo_gfttQuality, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
+	connect(ui_->doubleSpinBox_stereo_maxSlope, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
+	connect(ui_->checkBox_stereo_subpix, SIGNAL(stateChanged(int)), this, SLOT(updateStereo()));
+	ui_->label_stereo_inliers_name->setStyleSheet("QLabel {color : blue; }");
+	ui_->label_stereo_flowOutliers_name->setStyleSheet("QLabel {color : red; }");
+	ui_->label_stereo_slopeOutliers_name->setStyleSheet("QLabel {color : yellow; }");
+	ui_->label_stereo_disparityOutliers_name->setStyleSheet("QLabel {color : magenta; }");
+
 
 	// connect configuration changed
 	connect(ui_->graphViewer, SIGNAL(configChanged()), this, SLOT(configModified()));
@@ -263,6 +279,16 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->doubleSpinBox_detectMore_radius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_detectMore_angle, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->spinBox_detectMore_iterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
+	//stereo parameters
+	connect(ui_->spinBox_stereo_flowIterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
+	connect(ui_->spinBox_stereo_flowMaxLevel, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
+	connect(ui_->spinBox_stereo_flowWinSize, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
+	connect(ui_->spinBox_stereo_gfttBlockSize, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_stereo_flowEps, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_stereo_gfttMinDistance, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_stereo_gfttQuality, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_stereo_maxSlope, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->checkBox_stereo_subpix, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	// dockwidget
 	QList<QDockWidget*> dockWidgets = this->findChildren<QDockWidget*>();
 	for(int i=0; i<dockWidgets.size(); ++i)
@@ -387,6 +413,19 @@ void DatabaseViewer::readSettings()
 	ui_->spinBox_detectMore_iterations->setValue(settings.value("detectMoreIterations", ui_->spinBox_detectMore_iterations->value()).toInt());
 	settings.endGroup();
 
+	//Stereo parameters
+	settings.beginGroup("stereo");
+	ui_->spinBox_stereo_flowIterations->setValue(settings.value("flowIterations", ui_->spinBox_stereo_flowIterations->value()).toInt());
+	ui_->spinBox_stereo_flowMaxLevel->setValue(settings.value("flowMaxLevel", ui_->spinBox_stereo_flowMaxLevel->value()).toInt());
+	ui_->spinBox_stereo_flowWinSize->setValue(settings.value("flowWinSize", ui_->spinBox_stereo_flowWinSize->value()).toInt());
+	ui_->spinBox_stereo_gfttBlockSize->setValue(settings.value("gfttBlockSize", ui_->spinBox_stereo_gfttBlockSize->value()).toInt());
+	ui_->doubleSpinBox_stereo_flowEps->setValue(settings.value("flowEps", ui_->doubleSpinBox_stereo_flowEps->value()).toDouble());
+	ui_->doubleSpinBox_stereo_gfttMinDistance->setValue(settings.value("gfttMinDistance", ui_->doubleSpinBox_stereo_gfttMinDistance->value()).toDouble());
+	ui_->doubleSpinBox_stereo_gfttQuality->setValue(settings.value("gfttQuality", ui_->doubleSpinBox_stereo_gfttQuality->value()).toDouble());
+	ui_->doubleSpinBox_stereo_maxSlope->setValue(settings.value("maxSlope", ui_->doubleSpinBox_stereo_maxSlope->value()).toDouble());
+	ui_->checkBox_stereo_subpix->setChecked(settings.value("subpix", ui_->checkBox_stereo_subpix->isChecked()).toBool());
+	settings.endGroup();
+
 	settings.endGroup(); // DatabaseViewer
 }
 
@@ -468,6 +507,19 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("detectMoreIterations", ui_->spinBox_detectMore_iterations->value());
 	settings.endGroup();
 
+	//Stereo parameters
+	settings.beginGroup("stereo");
+	settings.setValue("flowIterations", ui_->spinBox_stereo_flowIterations->value());
+	settings.setValue("flowMaxLevel", ui_->spinBox_stereo_flowMaxLevel->value());
+	settings.setValue("flowWinSize", ui_->spinBox_stereo_flowWinSize->value());
+	settings.setValue("gfttBlockSize", ui_->spinBox_stereo_gfttBlockSize->value());
+	settings.setValue("flowEps", ui_->doubleSpinBox_stereo_flowEps->value());
+	settings.setValue("gfttMinDistance", ui_->doubleSpinBox_stereo_gfttMinDistance->value());
+	settings.setValue("gfttQuality", ui_->doubleSpinBox_stereo_gfttQuality->value());
+	settings.setValue("maxSlope", ui_->doubleSpinBox_stereo_maxSlope->value());
+	settings.setValue("subpix", ui_->checkBox_stereo_subpix->isChecked());
+	settings.endGroup();
+
 	settings.endGroup(); // DatabaseViewer
 
 	this->setWindowModified(false);
@@ -506,6 +558,7 @@ bool DatabaseViewer::openDatabase(const QString & path)
 			localMaps_.clear();
 			ui_->actionGenerate_TORO_graph_graph->setEnabled(false);
 			ui_->checkBox_showOptimized->setEnabled(false);
+			databaseFileName_.clear();
 		}
 
 		std::string driverType = "sqlite3";
@@ -525,6 +578,7 @@ bool DatabaseViewer::openDatabase(const QString & path)
 		else
 		{
 			pathDatabase_ = UDirectory::getDir(path.toStdString()).c_str();
+			databaseFileName_ = UFile::getName(path.toStdString());
 			updateIds();
 			return true;
 		}
@@ -579,23 +633,21 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 				std::multimap<int, rtabmap::Link>::iterator refinedIter = rtabmap::graph::findLink(linksRefined_, iter->second.from(), iter->second.to());
 				if(refinedIter != linksRefined_.end())
 				{
-					memory_->addLink(
-							refinedIter->second.to(),
+					memory_->addLink(Link(
 							refinedIter->second.from(),
-							refinedIter->second.transform(),
+							refinedIter->second.to(),
 							refinedIter->second.type(),
-							refinedIter->second.rotVariance(),
-							refinedIter->second.transVariance());
+							refinedIter->second.transform(),
+							refinedIter->second.infMatrix()));
 				}
 				else
 				{
-					memory_->addLink(
-							iter->second.to(),
+					memory_->addLink(Link(
 							iter->second.from(),
-							iter->second.transform(),
+							iter->second.to(),
 							iter->second.type(),
-							iter->second.rotVariance(),
-							iter->second.transVariance());
+							iter->second.transform(),
+							iter->second.infMatrix()));
 				}
 			}
 
@@ -608,8 +660,7 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 							iter->second.from(),
 							iter->second.to(),
 							iter->second.transform(),
-							iter->second.rotVariance(),
-							iter->second.transVariance());
+							iter->second.infMatrix());
 				}
 			}
 
@@ -708,6 +759,7 @@ void DatabaseViewer::exportDatabase()
 			double previousStamp = 0;
 			std::vector<double> delays(ids_.size());
 			int oi=0;
+			std::map<int, Transform> poses;
 			for(int i=0; i<ids_.size(); i+=1+framesIgnored)
 			{
 				Transform odomPose;
@@ -715,8 +767,7 @@ void DatabaseViewer::exportDatabase()
 				int mapId = -1;
 				std::string label;
 				double stamp = 0;
-				std::vector<unsigned char> userData;
-				if(memory_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, userData, true))
+				if(memory_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, true))
 				{
 					if(frameRate == 0 ||
 					   previousStamp == 0 ||
@@ -732,6 +783,8 @@ void DatabaseViewer::exportDatabase()
 								delays[oi++] = stamp - previousStamp;
 							}
 							previousStamp = stamp;
+
+							poses.insert(std::make_pair(ids_[i], odomPose));
 						}
 					}
 					if(sessionExported >= 0 && mapId > sessionExported)
@@ -753,31 +806,47 @@ void DatabaseViewer::exportDatabase()
 				{
 					int id = ids.at(i);
 
-					Signature data = memory_->getSignatureData(id, true);
-					float rotVariance = 1.0f;
-					float transVariance = 1.0f;
+					SensorData data = memory_->getNodeData(id, true);
+					cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
 					if(dialog.isOdomExported())
 					{
-						data.getPoseVariance(rotVariance, transVariance);
+						if(memory_->getSignature(id) == 0)
+						{
+							UERROR("could not find node %d in memory.", id);
+						}
+						else
+						{
+							covariance = memory_->getSignature(id)->getPoseCovariance();
+						}
 					}
-					rtabmap::SensorData sensorData(
-						dialog.isDepth2dExported()?data.getLaserScanRaw():cv::Mat(),
-						dialog.isDepth2dExported()?data.getLaserScanMaxPts():0,
-						dialog.isRgbExported()?data.getImageRaw():cv::Mat(),
-						dialog.isDepthExported()?data.getDepthRaw():cv::Mat(),
-						dialog.isRgbExported() || dialog.isDepthExported()?data.getFx():0,
-						dialog.isRgbExported() || dialog.isDepthExported()?data.getFy():0,
-						dialog.isRgbExported() || dialog.isDepthExported()?data.getCx():0,
-						dialog.isRgbExported() || dialog.isDepthExported()?data.getCy():0,
-						dialog.isRgbExported() || dialog.isDepthExported()?data.getLocalTransform():Transform::getIdentity(),
-						dialog.isOdomExported()?data.getPose():Transform(),
-						rotVariance,
-						transVariance,
-						data.id(),
-						data.getStamp(),
-						dialog.isUserDataExported()?data.getUserData():std::vector<unsigned char>());
 
-					recorder.addData(sensorData);
+					rtabmap::SensorData sensorData;
+					if(data.cameraModels().size())
+					{
+						sensorData = rtabmap::SensorData(
+							dialog.isDepth2dExported()?data.laserScanRaw():cv::Mat(),
+							dialog.isDepth2dExported()?data.laserScanMaxPts():0,
+							dialog.isRgbExported()?data.imageRaw():cv::Mat(),
+							dialog.isDepthExported()?data.depthOrRightRaw():cv::Mat(),
+							data.cameraModels(),
+							data.id(),
+							data.stamp(),
+							dialog.isUserDataExported()?data.userDataRaw():cv::Mat());
+					}
+					else
+					{
+						sensorData = rtabmap::SensorData(
+							dialog.isDepth2dExported()?data.laserScanRaw():cv::Mat(),
+							dialog.isDepth2dExported()?data.laserScanMaxPts():0,
+							dialog.isRgbExported()?data.imageRaw():cv::Mat(),
+							dialog.isDepthExported()?data.depthOrRightRaw():cv::Mat(),
+							data.stereoCameraModel(),
+							data.id(),
+							data.stamp(),
+							dialog.isUserDataExported()?data.userDataRaw():cv::Mat());
+					}
+
+					recorder.addData(sensorData, dialog.isOdomExported()?poses.at(id):Transform(), covariance);
 
 					progressDialog->appendText(tr("Exported node %1").arg(id));
 					progressDialog->incrementStep();
@@ -813,15 +882,65 @@ void DatabaseViewer::extractImages()
 	QString path = QFileDialog::getExistingDirectory(this, tr("Select directory where to save images..."), QDir::homePath());
 	if(!path.isNull())
 	{
-		for(int i=0; i<ids_.size(); i+=1)
+		if(ids_.size())
+		{
+			int id = ids_.at(0);
+			SensorData data = memory_->getNodeData(id, true);
+			if(!data.imageRaw().empty() && !data.rightRaw().empty())
+			{
+				QDir dir;
+				dir.mkdir(QString("%1/left").arg(path));
+				dir.mkdir(QString("%1/right").arg(path));
+				if(databaseFileName_.empty())
+				{
+					UERROR("Cannot save calibration file, database name is empty!");
+				}
+				else
+				{
+					std::string cameraName = uSplit(databaseFileName_, '.').front();
+					StereoCameraModel model(
+							cameraName,
+							data.imageRaw().size(),
+							data.stereoCameraModel().left().K(),
+							data.stereoCameraModel().left().D(),
+							data.stereoCameraModel().left().R(),
+							data.stereoCameraModel().left().P(),
+							data.rightRaw().size(),
+							data.stereoCameraModel().right().K(),
+							data.stereoCameraModel().right().D(),
+							data.stereoCameraModel().right().R(),
+							data.stereoCameraModel().right().P(),
+							data.stereoCameraModel().R(),
+							data.stereoCameraModel().T(),
+							data.stereoCameraModel().E(),
+							data.stereoCameraModel().F(),
+							data.stereoCameraModel().left().localTransform());
+					if(model.save(path.toStdString(), cameraName))
+					{
+						UINFO("Saved stereo calibration \"%s\"", (path.toStdString()+"/"+cameraName).c_str());
+					}
+					else
+					{
+						UERROR("Failed saving calibration \"%s\"", (path.toStdString()+"/"+cameraName).c_str());
+					}
+				}
+			}
+		}
+
+		for(int i=0; i<ids_.size(); ++i)
 		{
 			int id = ids_.at(i);
-			cv::Mat compressedRgb = memory_->getImageCompressed(id);
-			if(!compressedRgb.empty())
+			SensorData data = memory_->getNodeData(id, true);
+			if(!data.imageRaw().empty() && !data.rightRaw().empty())
 			{
-				cv::Mat imageMat = rtabmap::uncompressImage(compressedRgb);
-				cv::imwrite(QString("%1/%2.png").arg(path).arg(id).toStdString(), imageMat);
-				UINFO(QString("Saved %1/%2.png").arg(path).arg(id).toStdString().c_str());
+				cv::imwrite(QString("%1/left/%2.jpg").arg(path).arg(id).toStdString(), data.imageRaw());
+				cv::imwrite(QString("%1/right/%2.jpg").arg(path).arg(id).toStdString(), data.rightRaw());
+				UINFO(QString("Saved left/%1.jpg and right/%1.jpg").arg(id).toStdString().c_str());
+			}
+			else if(!data.imageRaw().empty())
+			{
+				cv::imwrite(QString("%1/%2.jpg").arg(path).arg(id).toStdString(), data.imageRaw());
+				UINFO(QString("Saved %1.jpg").arg(id).toStdString().c_str());
 			}
 		}
 	}
@@ -846,9 +965,8 @@ void DatabaseViewer::updateIds()
 		int w;
 		std::string l;
 		double s;
-		std::vector<unsigned char> d;
 		int mapId;
-		memory_->getNodeInfo(ids_[i], p, mapId, w, l, s, d, true);
+		memory_->getNodeInfo(ids_[i], p, mapId, w, l, s, true);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
 	}
 
@@ -1064,7 +1182,7 @@ void DatabaseViewer::view3DMap()
 	if(ok)
 	{
 		int decimation = item.toInt();
-		double maxDepth = QInputDialog::getDouble(this, tr("Camera depth?"), tr("Maximum depth (m, 0=no max):"), 4.0, 0, 10, 2, &ok);
+		double maxDepth = QInputDialog::getDouble(this, tr("Camera depth?"), tr("Maximum depth (m, 0=no max):"), 4.0, 0, 100, 2, &ok);
 		if(ok)
 		{
 			std::map<int, Transform> optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
@@ -1102,60 +1220,34 @@ void DatabaseViewer::view3DMap()
 					rtabmap::Transform pose = iter->second;
 					if(!pose.isNull())
 					{
-						Signature data = memory_->getSignatureData(iter->first, true);
+						SensorData data = memory_->getNodeData(iter->first, true);
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-						UASSERT(data.getImageRaw().empty() || data.getImageRaw().type()==CV_8UC3 || data.getImageRaw().type() == CV_8UC1);
-						UASSERT(data.getDepthRaw().empty() || data.getDepthRaw().type()==CV_8UC1 || data.getDepthRaw().type() == CV_16UC1 || data.getDepthRaw().type() == CV_32FC1);
-						if(data.getDepthRaw().type() == CV_8UC1)
+						UASSERT(data.imageRaw().empty() || data.imageRaw().type()==CV_8UC3 || data.imageRaw().type() == CV_8UC1);
+						UASSERT(data.depthOrRightRaw().empty() || data.depthOrRightRaw().type()==CV_8UC1 || data.depthOrRightRaw().type() == CV_16UC1 || data.depthOrRightRaw().type() == CV_32FC1);
+						cloud = util3d::cloudRGBFromSensorData(data, decimation, maxDepth);
+
+						if(cloud->size())
 						{
-							cv::Mat leftImg;
-							if(data.getImageRaw().channels() == 3)
+							QColor color = Qt::red;
+							int mapId, weight;
+							Transform odomPose;
+							std::string label;
+							double stamp;
+							if(memory_->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, true))
 							{
-								cv::cvtColor(data.getImageRaw(), leftImg, CV_BGR2GRAY);
+								color = (Qt::GlobalColor)(mapId % 12 + 7 );
 							}
-							else
-							{
-								leftImg = data.getImageRaw();
-							}
-							cloud = rtabmap::util3d::cloudFromDisparityRGB(
-									data.getImageRaw(),
-								util2d::disparityFromStereoImages(leftImg, data.getDepthRaw()),
-								data.getCx(), data.getCy(),
-								data.getFx(), data.getFy(),
-								decimation);
+
+							viewer->addCloud(uFormat("cloud%d", iter->first), cloud, pose, color);
+
+							UINFO("Generated %d (%d points)", iter->first, cloud->size());
+							progressDialog.appendText(QString("Generated %1 (%2 points)").arg(iter->first).arg(cloud->size()));
 						}
 						else
 						{
-							cloud = rtabmap::util3d::cloudFromDepthRGB(
-									data.getImageRaw(),
-									data.getDepthRaw(),
-									data.getCx(), data.getCy(),
-									data.getFx(), data.getFy(),
-									decimation);
+							UINFO("Empty cloud %d", iter->first);
+							progressDialog.appendText(QString("Empty cloud %1").arg(iter->first));
 						}
-
-						if(maxDepth)
-						{
-							cloud = rtabmap::util3d::passThrough(cloud, "z", 0, maxDepth);
-						}
-
-						cloud = rtabmap::util3d::transformPointCloud(cloud, data.getLocalTransform());
-
-						QColor color = Qt::red;
-						int mapId, weight;
-						Transform odomPose;
-						std::string label;
-						double stamp;
-						std::vector<unsigned char> userData;
-						if(memory_->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true))
-						{
-							color = (Qt::GlobalColor)(mapId % 12 + 7 );
-						}
-
-						viewer->addCloud(uFormat("cloud%d", iter->first), cloud, pose, color);
-
-						UINFO("Generated %d (%d points)", iter->first, cloud->size());
-						progressDialog.appendText(QString("Generated %1 (%2 points)").arg(iter->first).arg(cloud->size()));
 						progressDialog.incrementStep();
 						QApplication::processEvents();
 					}
@@ -1188,7 +1280,7 @@ void DatabaseViewer::generate3DMap()
 	if(ok)
 	{
 		int decimation = item.toInt();
-		double maxDepth = QInputDialog::getDouble(this, tr("Camera depth?"), tr("Maximum depth (m, 0=no max):"), 4.0, 0, 10, 2, &ok);
+		double maxDepth = QInputDialog::getDouble(this, tr("Camera depth?"), tr("Maximum depth (m, 0=no max):"), 4.0, 0, 100, 2, &ok);
 		if(ok)
 		{
 			QString path = QFileDialog::getExistingDirectory(this, tr("Save directory"), pathDatabase_);
@@ -1212,48 +1304,24 @@ void DatabaseViewer::generate3DMap()
 						const rtabmap::Transform & pose = iter->second;
 						if(!pose.isNull())
 						{
-							Signature data = memory_->getSignatureData(iter->first, true);
+							SensorData data = memory_->getNodeData(iter->first, true);
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-							UASSERT(data.getImageRaw().empty() || data.getImageRaw().type()==CV_8UC3 || data.getImageRaw().type() == CV_8UC1);
-							UASSERT(data.getDepthRaw().empty() || data.getDepthRaw().type()==CV_8UC1 || data.getDepthRaw().type() == CV_16UC1 || data.getDepthRaw().type() == CV_32FC1);
-							if(data.getDepthRaw().type() == CV_8UC1)
+							UASSERT(data.imageRaw().empty() || data.imageRaw().type()==CV_8UC3 || data.imageRaw().type() == CV_8UC1);
+							UASSERT(data.depthOrRightRaw().empty() || data.depthOrRightRaw().type()==CV_8UC1 || data.depthOrRightRaw().type() == CV_16UC1 || data.depthOrRightRaw().type() == CV_32FC1);
+							cloud = util3d::cloudRGBFromSensorData(data, decimation, maxDepth);
+							std::string name = uFormat("%s/node%d.pcd", path.toStdString().c_str(), iter->first);
+							if(cloud->size())
 							{
-								cv::Mat leftImg;
-								if(data.getImageRaw().channels() == 3)
-								{
-									cv::cvtColor(data.getImageRaw(), leftImg, CV_BGR2GRAY);
-								}
-								else
-								{
-									leftImg = data.getImageRaw();
-								}
-								cloud = rtabmap::util3d::cloudFromDisparityRGB(
-										data.getImageRaw(),
-									util2d::disparityFromStereoImages(leftImg, data.getDepthRaw()),
-									data.getCx(), data.getCy(),
-									data.getFx(), data.getFy(),
-									decimation);
+								cloud = rtabmap::util3d::transformPointCloud(cloud, pose);
+								pcl::io::savePCDFile(name, *cloud);
+								UINFO("Saved %s (%d points)", name.c_str(), cloud->size());
+								progressDialog.appendText(QString("Saved %1 (%2 points)").arg(name.c_str()).arg(cloud->size()));
 							}
 							else
 							{
-								cloud = rtabmap::util3d::cloudFromDepthRGB(
-										data.getImageRaw(),
-										data.getDepthRaw(),
-										data.getCx(), data.getCy(),
-										data.getFx(), data.getFy(),
-										decimation);
+								UINFO("Ignored empty cloud %s", name.c_str());
+								progressDialog.appendText(QString("Ignored empty cloud %1").arg(name.c_str()));
 							}
-
-							if(maxDepth)
-							{
-								cloud = rtabmap::util3d::passThrough(cloud, "z", 0, maxDepth);
-							}
-
-							cloud = rtabmap::util3d::transformPointCloud(cloud, pose*data.getLocalTransform());
-							std::string name = uFormat("%s/node%d.pcd", path.toStdString().c_str(), iter->first);
-							pcl::io::savePCDFile(name, *cloud);
-							UINFO("Saved %s (%d points)", name.c_str(), cloud->size());
-							progressDialog.appendText(QString("Saved %1 (%2 points)").arg(name.c_str()).arg(cloud->size()));
 							progressDialog.incrementStep();
 							QApplication::processEvents();
 						}
@@ -1500,69 +1568,64 @@ void DatabaseViewer::update(int value,
 			QImage imgDepth;
 			if(memory_)
 			{
-				Signature data = memory_->getSignatureData(id, true);
-				if(!data.getImageRaw().empty())
+				SensorData data = memory_->getNodeData(id, true);
+				if(!data.imageRaw().empty())
 				{
-					img = uCvMat2QImage(data.getImageRaw());
+					img = uCvMat2QImage(data.imageRaw());
 				}
-				if(!data.getDepthRaw().empty())
+				if(!data.depthOrRightRaw().empty())
 				{
-					imgDepth = uCvMat2QImage(data.getDepthRaw());
+					imgDepth = uCvMat2QImage(data.depthOrRightRaw());
 				}
 
-				if(data.getWords().size())
+				const Signature * signature = memory_->getSignature(id);
+
+				if(signature && signature->getWords().size())
 				{
-					view->setFeatures(data.getWords(), data.getDepthRaw().type() == CV_8UC1?cv::Mat():data.getDepthRaw(), Qt::yellow);
+					view->setFeatures(signature->getWords(), data.depthOrRightRaw().type() == CV_8UC1?cv::Mat():data.depthOrRightRaw(), Qt::yellow);
 				}
 
 				Transform odomPose;
 				int w;
 				std::string l;
 				double s;
-				std::vector<unsigned char> d;
-				memory_->getNodeInfo(id, odomPose, mapId, w, l, s, d, true);
+				memory_->getNodeInfo(id, odomPose, mapId, w, l, s, true);
 
-				weight->setNum(data.getWeight());
-				label->setText(data.getLabel().c_str());
+				weight->setNum(w);
+				label->setText(l.c_str());
 				labelPose->setText(QString("%1%2, %3, %4").arg(odomPose.isIdentity()?"* ":"").arg(odomPose.x()).arg(odomPose.y()).arg(odomPose.z()));
-				if(data.getStamp()!=0.0)
+				if(s!=0.0)
 				{
-					stamp->setText(QDateTime::fromMSecsSinceEpoch(data.getStamp()*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
+					stamp->setText(QDateTime::fromMSecsSinceEpoch(s*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
 				}
 
 				//stereo
-				if(!data.getDepthRaw().empty() && data.getDepthRaw().type() == CV_8UC1)
+				if(!data.depthOrRightRaw().empty() && data.depthOrRightRaw().type() == CV_8UC1)
 				{
 					this->updateStereo(&data);
 				}
+				else
+				{
+					ui_->stereoViewer->clear();
+					ui_->graphicsView_stereo->clear();
+				}
 
 				// 3d view
-				if(view3D->isVisible() && !data.getDepthRaw().empty())
+				if(view3D->isVisible() && !data.depthOrRightRaw().empty())
 				{
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-					if(data.getDepthRaw().type() == CV_8UC1)
+					cloud = util3d::cloudRGBFromSensorData(data);
+					if(cloud->size())
 					{
-						cloud = util3d::cloudFromStereoImages(
-								data.getImageRaw(),
-								data.getDepthRaw(),
-								data.getCx(), data.getCy(),
-								data.getFx(), data.getFy(),
-								1);
+						view3D->addOrUpdateCloud("0", cloud);
 					}
-					else
-					{
-						cloud = util3d::cloudFromDepthRGB(
-								data.getImageRaw(),
-								data.getDepthRaw(),
-								data.getCx(), data.getCy(),
-								data.getFx(), data.getFy(),
-								1);
-					}
-					view3D->addOrUpdateCloud("0", cloud, data.getLocalTransform());
 
 					//add scan
-					pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.getLaserScanRaw());
-					view3D->addOrUpdateCloud("1", scan);
+					pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.laserScanRaw());
+					if(scan->size())
+					{
+						view3D->addOrUpdateCloud("1", scan);
+					}
 
 					view3D->update();
 				}
@@ -1688,18 +1751,33 @@ void DatabaseViewer::update(int value,
 	}
 }
 
-void DatabaseViewer::updateStereo(const Signature * data)
+void DatabaseViewer::updateStereo()
 {
-	if(data && ui_->dockWidget_stereoView->isVisible() && !data->getImageRaw().empty() && !data->getDepthRaw().empty() && data->getDepthRaw().type() == CV_8UC1)
+	if(ui_->horizontalSlider_A->maximum())
+	{
+		int id = ids_.at(ui_->horizontalSlider_A->value());
+		SensorData data = memory_->getNodeData(id, true);
+		updateStereo(&data);
+	}
+}
+
+void DatabaseViewer::updateStereo(const SensorData * data)
+{
+	if(data &&
+		ui_->dockWidget_stereoView->isVisible() &&
+		!data->imageRaw().empty() &&
+		!data->depthOrRightRaw().empty() &&
+		data->depthOrRightRaw().type() == CV_8UC1 &&
+		data->stereoCameraModel().isValid())
 	{
 		cv::Mat leftMono;
-		if(data->getImageRaw().channels() == 3)
+		if(data->imageRaw().channels() == 3)
 		{
-			cv::cvtColor(data->getImageRaw(), leftMono, CV_BGR2GRAY);
+			cv::cvtColor(data->imageRaw(), leftMono, CV_BGR2GRAY);
 		}
 		else
 		{
-			leftMono = data->getImageRaw();
+			leftMono = data->imageRaw();
 		}
 
 		UTimer timer;
@@ -1708,8 +1786,10 @@ void DatabaseViewer::updateStereo(const Signature * data)
 		std::vector<cv::KeyPoint> kpts;
 		cv::Rect roi = Feature2D::computeRoi(leftMono, "0.03 0.03 0.04 0.04");
 		ParametersMap parameters;
-		parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "1000"));
-		parameters.insert(ParametersPair(Parameters::kGFTTMinDistance(), "5"));
+		parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "0"));
+		parameters.insert(ParametersPair(Parameters::kGFTTMinDistance(), uNumber2Str(ui_->doubleSpinBox_stereo_gfttMinDistance->value())));
+		parameters.insert(ParametersPair(Parameters::kGFTTQualityLevel(), uNumber2Str(ui_->doubleSpinBox_stereo_gfttQuality->value())));
+		parameters.insert(ParametersPair(Parameters::kGFTTBlockSize(), uNumber2Str(ui_->spinBox_stereo_gfttBlockSize->value())));
 		Feature2D::Type type = Feature2D::kFeatureGfttBrief;
 		Feature2D * kptDetector = Feature2D::create(type, parameters);
 		kpts = kptDetector->generateKeypoints(leftMono, roi);
@@ -1720,19 +1800,32 @@ void DatabaseViewer::updateStereo(const Signature * data)
 		std::vector<cv::Point2f> leftCorners;
 		cv::KeyPoint::convert(kpts, leftCorners);
 
+		int subPixWinSize = 3;
+		int subPixIterations = 30;
+		double subPixEps = 0.02;
+		if(ui_->checkBox_stereo_subpix->isChecked())
+		{
+			UDEBUG("cv::cornerSubPix() begin");
+			cv::cornerSubPix(leftMono, leftCorners,
+				cv::Size( subPixWinSize, subPixWinSize ),
+				cv::Size( -1, -1 ),
+				cv::TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, subPixIterations, subPixEps ) );
+			UDEBUG("cv::cornerSubPix() end");
+		}
+
 		// Find features in the new left image
 		std::vector<unsigned char> status;
 		std::vector<float> err;
 		std::vector<cv::Point2f> rightCorners;
 		cv::calcOpticalFlowPyrLK(
 				leftMono,
-				data->getDepthRaw(),
+				data->depthOrRightRaw(),
 				leftCorners,
 				rightCorners,
 				status,
 				err,
-				cv::Size(Parameters::defaultStereoWinSize(), Parameters::defaultStereoWinSize()), Parameters::defaultStereoMaxLevel(),
-				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, Parameters::defaultStereoIterations(), Parameters::defaultStereoEps()));
+				cv::Size(ui_->spinBox_stereo_flowWinSize->value(), ui_->spinBox_stereo_flowWinSize->value()), ui_->spinBox_stereo_flowMaxLevel->value(),
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, ui_->spinBox_stereo_flowIterations->value(), ui_->doubleSpinBox_stereo_flowEps->value()));
 
 		float timeFlow = timer.ticks();
 
@@ -1741,6 +1834,10 @@ void DatabaseViewer::updateStereo(const Signature * data)
 		float bad_point = std::numeric_limits<float>::quiet_NaN ();
 		UASSERT(status.size() == kpts.size());
 		int oi = 0;
+		int inliers = 0;
+		int flowOutliers= 0;
+		int slopeOutliers= 0;
+		int negativeDisparityOutliers = 0;
 		for(unsigned int i=0; i<status.size(); ++i)
 		{
 			pcl::PointXYZ pt(bad_point, bad_point, bad_point);
@@ -1749,32 +1846,44 @@ void DatabaseViewer::updateStereo(const Signature * data)
 				float disparity = leftCorners[i].x - rightCorners[i].x;
 				if(disparity > 0.0f)
 				{
-					if(fabs((leftCorners[i].y-rightCorners[i].y) / (leftCorners[i].x-rightCorners[i].x)) < Parameters::defaultStereoMaxSlope())
+					if(fabs((leftCorners[i].y-rightCorners[i].y) / (leftCorners[i].x-rightCorners[i].x)) < ui_->doubleSpinBox_stereo_maxSlope->value())
 					{
 						pcl::PointXYZ tmpPt = util3d::projectDisparityTo3D(
 								leftCorners[i],
 								disparity,
-								data->getCx(), data->getCy(), data->getFx(), data->getFy());
+								data->stereoCameraModel().left().cx(),
+								data->stereoCameraModel().left().cy(),
+								data->stereoCameraModel().left().fx(),
+								data->stereoCameraModel().baseline());
 
 						if(pcl::isFinite(tmpPt))
 						{
-							pt = pcl::transformPoint(tmpPt, data->getLocalTransform().toEigen3f());
-							if(fabs(pt.x) > 2 || fabs(pt.y) > 2 || fabs(pt.z) > 2)
-							{
-								status[i] = 100; //blue
-							}
+							pt = pcl::transformPoint(tmpPt, data->stereoCameraModel().left().localTransform().toEigen3f());
+							status[i] = 100; //blue
+							++inliers;
 							cloud->at(oi++) = pt;
 						}
+					}
+					else if(fabs(leftCorners[i].y-rightCorners[i].y) <=1.0f)
+					{
+						status[i] = 110; //cyan
+						++inliers;
 					}
 					else
 					{
 						status[i] = 101; //yellow
+						++slopeOutliers;
 					}
 				}
 				else
 				{
 					status[i] = 102; //magenta
+					++negativeDisparityOutliers;
 				}
+			}
+			else
+			{
+				++flowOutliers;
 			}
 		}
 		cloud->resize(oi);
@@ -1785,6 +1894,11 @@ void DatabaseViewer::updateStereo(const Signature * data)
 		ui_->stereoViewer->updateCameraTargetPosition(Transform::getIdentity());
 		ui_->stereoViewer->addOrUpdateCloud("stereo", cloud);
 		ui_->stereoViewer->update();
+
+		ui_->label_stereo_inliers->setNum(inliers);
+		ui_->label_stereo_flowOutliers->setNum(flowOutliers);
+		ui_->label_stereo_slopeOutliers->setNum(slopeOutliers);
+		ui_->label_stereo_disparityOutliers->setNum(negativeDisparityOutliers);
 
 		std::vector<cv::KeyPoint> rightKpts;
 		cv::KeyPoint::convert(rightCorners, rightKpts);
@@ -1809,8 +1923,8 @@ void DatabaseViewer::updateStereo(const Signature * data)
 		ui_->graphicsView_stereo->setFeaturesShown(false);
 		ui_->graphicsView_stereo->setImageDepthShown(true);
 
-		ui_->graphicsView_stereo->setImage(uCvMat2QImage(data->getImageRaw()));
-		ui_->graphicsView_stereo->setImageDepth(uCvMat2QImage(data->getDepthRaw()));
+		ui_->graphicsView_stereo->setImage(uCvMat2QImage(data->imageRaw()));
+		ui_->graphicsView_stereo->setImageDepth(uCvMat2QImage(data->depthOrRightRaw()));
 
 		// Draw lines between corresponding features...
 		for(unsigned int i=0; i<kpts.size(); ++i)
@@ -1831,6 +1945,10 @@ void DatabaseViewer::updateStereo(const Signature * data)
 			else if(status[i] == 102)
 			{
 				c = Qt::magenta;
+			}
+			else if(status[i] == 110)
+			{
+				c = Qt::cyan;
 			}
 			ui_->graphicsView_stereo->addLine(
 					kpts[i].pt.x,
@@ -1975,7 +2093,9 @@ void DatabaseViewer::updateConstraintView(
 	UASSERT(!t.isNull() && memory_);
 
 	ui_->label_type->setNum(link.type());
-	ui_->label_variance->setText(QString("%1, %2").arg(sqrt(link.rotVariance())).arg(sqrt(link.transVariance())));
+	ui_->label_variance->setText(QString("%1, %2")
+			.arg(sqrt(link.rotVariance()))
+			.arg(sqrt(link.transVariance())));
 	ui_->label_constraint->setText(QString("%1").arg(t.prettyPrint().c_str()).replace(" ", "\n"));
 	if(link.type() == Link::kNeighbor &&
 	   graphes_.size() &&
@@ -2044,15 +2164,15 @@ void DatabaseViewer::updateConstraintView(
 
 	if(ui_->constraintsViewer->isVisible())
 	{
-		Signature dataFrom, dataTo;
+		SensorData dataFrom, dataTo;
 
-		dataFrom = memory_->getSignatureData(link.from(), true);
-		UASSERT(dataFrom.getImageRaw().empty() || dataFrom.getImageRaw().type()==CV_8UC3 || dataFrom.getImageRaw().type() == CV_8UC1);
-		UASSERT(dataFrom.getDepthRaw().empty() || dataFrom.getDepthRaw().type()==CV_8UC1 || dataFrom.getDepthRaw().type() == CV_16UC1 || dataFrom.getDepthRaw().type() == CV_32FC1);
+		dataFrom = memory_->getNodeData(link.from(), true);
+		UASSERT(dataFrom.imageRaw().empty() || dataFrom.imageRaw().type()==CV_8UC3 || dataFrom.imageRaw().type() == CV_8UC1);
+		UASSERT(dataFrom.depthOrRightRaw().empty() || dataFrom.depthOrRightRaw().type()==CV_8UC1 || dataFrom.depthOrRightRaw().type() == CV_16UC1 || dataFrom.depthOrRightRaw().type() == CV_32FC1);
 
-		dataTo = memory_->getSignatureData(link.to(), true);
-		UASSERT(dataTo.getImageRaw().empty() || dataTo.getImageRaw().type()==CV_8UC3 || dataTo.getImageRaw().type() == CV_8UC1);
-		UASSERT(dataTo.getDepthRaw().empty() || dataTo.getDepthRaw().type()==CV_8UC1 || dataTo.getDepthRaw().type() == CV_16UC1 || dataTo.getDepthRaw().type() == CV_32FC1);
+		dataTo = memory_->getNodeData(link.to(), true);
+		UASSERT(dataTo.imageRaw().empty() || dataTo.imageRaw().type()==CV_8UC3 || dataTo.imageRaw().type() == CV_8UC1);
+		UASSERT(dataTo.depthOrRightRaw().empty() || dataTo.depthOrRightRaw().type()==CV_8UC1 || dataTo.depthOrRightRaw().type() == CV_16UC1 || dataTo.depthOrRightRaw().type() == CV_32FC1);
 
 
 		if(cloudFrom->size() == 0 && cloudTo->size() == 0)
@@ -2060,51 +2180,9 @@ void DatabaseViewer::updateConstraintView(
 			//cloud 3d
 			if(!ui_->checkBox_show3DWords->isChecked())
 			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFrom;
-				if(dataFrom.getDepthRaw().type() == CV_8UC1)
-				{
-					cloudFrom = rtabmap::util3d::cloudFromStereoImages(
-							dataFrom.getImageRaw(),
-							dataFrom.getDepthRaw(),
-							dataFrom.getCx(), dataFrom.getCy(),
-							dataFrom.getFx(), dataFrom.getFy(),
-							1);
-				}
-				else
-				{
-					cloudFrom = rtabmap::util3d::cloudFromDepthRGB(
-							dataFrom.getImageRaw(),
-							dataFrom.getDepthRaw(),
-							dataFrom.getCx(), dataFrom.getCy(),
-							dataFrom.getFx(), dataFrom.getFy(),
-							1);
-				}
-
-				cloudFrom = rtabmap::util3d::removeNaNFromPointCloud(cloudFrom);
-				cloudFrom = rtabmap::util3d::transformPointCloud(cloudFrom, dataFrom.getLocalTransform());
-
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudTo;
-				if(dataTo.getDepthRaw().type() == CV_8UC1)
-				{
-					cloudTo = rtabmap::util3d::cloudFromStereoImages(
-							dataTo.getImageRaw(),
-							dataTo.getDepthRaw(),
-							dataTo.getCx(), dataTo.getCy(),
-							dataTo.getFx(), dataTo.getFy(),
-							1);
-				}
-				else
-				{
-					cloudTo = rtabmap::util3d::cloudFromDepthRGB(
-							dataTo.getImageRaw(),
-							dataTo.getDepthRaw(),
-							dataTo.getCx(), dataTo.getCy(),
-							dataTo.getFx(), dataTo.getFy(),
-							1);
-				}
-
-				cloudTo = rtabmap::util3d::removeNaNFromPointCloud(cloudTo);
-				cloudTo = rtabmap::util3d::transformPointCloud(cloudTo, t*dataTo.getLocalTransform());
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFrom, cloudTo;
+				cloudFrom=util3d::cloudRGBFromSensorData(dataFrom, 1);
+				cloudTo=util3d::cloudRGBFromSensorData(dataTo, 1);
 
 				if(cloudFrom->size())
 				{
@@ -2112,6 +2190,7 @@ void DatabaseViewer::updateConstraintView(
 				}
 				if(cloudTo->size())
 				{
+					cloudTo = rtabmap::util3d::transformPointCloud(cloudTo, t);
 					ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
 				}
 			}
@@ -2196,8 +2275,8 @@ void DatabaseViewer::updateConstraintView(
 		{
 			//cloud 2d
 			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
-			scanA = rtabmap::util3d::laserScanToPointCloud(dataFrom.getLaserScanRaw());
-			scanB = rtabmap::util3d::laserScanToPointCloud(dataTo.getLaserScanRaw());
+			scanA = rtabmap::util3d::laserScanToPointCloud(dataFrom.laserScanRaw());
+			scanB = rtabmap::util3d::laserScanToPointCloud(dataTo.laserScanRaw());
 			scanB = rtabmap::util3d::transformPointCloud(scanB, t);
 			if(scanA->size())
 			{
@@ -2309,51 +2388,30 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				bool added = false;
 				if(ui_->groupBox_gridFromProjection->isChecked())
 				{
-					Signature data = memory_->getSignatureData(ids_.at(i), true);
-					if(!data.getDepthRaw().empty())
+					SensorData data = memory_->getNodeData(ids_.at(i), true);
+					if(!data.depthOrRightRaw().empty())
 					{
 						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-						if(data.getDepthRaw().type() == CV_8UC1)
-						{
-							cloud = rtabmap::util3d::cloudFromDisparity(
-									util2d::disparityFromStereoImages(data.getImageRaw(), data.getDepthRaw()),
-									data.getCx(),
-									data.getCy(),
-									data.getFx(),
-									data.getFy(),
-									ui_->spinBox_projDecimation->value());
-						}
-						else
-						{
-							cloud = util3d::cloudFromDepth(
-									data.getDepthRaw(),
-									data.getCx(),
-									data.getCy(),
-									data.getFx(),
-									data.getFy(),
-									ui_->spinBox_projDecimation->value());
-						}
-						if(cloud->size())
-						{
-							cloud = util3d::passThrough(cloud, "z", 0, ui_->doubleSpinBox_projMaxDepth->value());
-						}
+						cloud = util3d::cloudFromSensorData(data,
+								ui_->spinBox_projDecimation->value(),
+								ui_->doubleSpinBox_projMaxDepth->value(),
+								ui_->doubleSpinBox_gridCellSize->value());
 
 						if(cloud->size())
 						{
-							cloud = util3d::voxelize(cloud, ui_->doubleSpinBox_gridCellSize->value());
-							cloud = util3d::transformPointCloud(cloud, data.getLocalTransform());
-
 							UTimer timer;
 							float cellSize = ui_->doubleSpinBox_gridCellSize->value();
 							float groundNormalMaxAngle = M_PI_4;
 							int minClusterSize = 20;
 							cv::Mat ground, obstacles;
+
 							util3d::occupancy2DFromCloud3D<pcl::PointXYZ>(
 									cloud,
 									ground, obstacles,
 									cellSize,
 									groundNormalMaxAngle,
 									minClusterSize);
+
 							if(!ground.empty() || !obstacles.empty())
 							{
 								localMaps_.insert(std::make_pair(ids_.at(i), std::make_pair(ground, obstacles)));
@@ -2364,8 +2422,8 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				}
 				else
 				{
-					Signature data = memory_->getSignatureData(ids_.at(i), false);
-					if(!data.getLaserScanCompressed().empty())
+					SensorData data = memory_->getNodeData(ids_.at(i), false);
+					if(!data.laserScanCompressed().empty())
 					{
 						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 						cv::Mat laserScan;
@@ -2700,24 +2758,26 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 	int correspondences = 0;
 	Transform transform;
 
-	Signature dataFrom, dataTo;
-	dataFrom = memory_->getSignatureData(currentLink.from(), false);
-	dataTo = memory_->getSignatureData(currentLink.to(), false);
+	SensorData dataFrom, dataTo;
+	dataFrom = memory_->getNodeData(currentLink.from(), false);
+	dataTo = memory_->getNodeData(currentLink.to(), false);
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr scanA(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr scanB(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr scanAVoxelized(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr scanBVoxelized(new pcl::PointCloud<pcl::PointXYZ>);
 	float correspondenceRatio = 0.0f;
 	if(ui_->checkBox_icp_2d->isChecked())
 	{
 		//2D
-		cv::Mat oldLaserScan = rtabmap::uncompressData(dataFrom.getLaserScanCompressed());
-		cv::Mat newLaserScan = rtabmap::uncompressData(dataTo.getLaserScanCompressed());
+		cv::Mat oldLaserScan = rtabmap::uncompressData(dataFrom.laserScanCompressed());
+		cv::Mat newLaserScan = rtabmap::uncompressData(dataTo.laserScanCompressed());
 
 		if(!oldLaserScan.empty() && !newLaserScan.empty())
 		{
 			// 2D
+			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA(new pcl::PointCloud<pcl::PointXYZ>);
+			pcl::PointCloud<pcl::PointXYZ>::Ptr scanB(new pcl::PointCloud<pcl::PointXYZ>);
 			scanA = util3d::cvMat2Cloud(oldLaserScan);
 			scanB = util3d::cvMat2Cloud(newLaserScan, t);
 
@@ -2727,22 +2787,41 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 				scanA = util3d::voxelize(scanA, ui_->doubleSpinBox_icp_voxel->value());
 				scanB = util3d::voxelize(scanB, ui_->doubleSpinBox_icp_voxel->value());
 			}
+			else
+			{
+				scanAVoxelized = scanA;
+				scanBVoxelized = scanB;
+			}
 
 			if(scanB->size() && scanA->size())
 			{
-				transform = util3d::icp2D(scanB,
+				pcl::PointCloud<pcl::PointXYZ>::Ptr scanBRegistered(new pcl::PointCloud<pcl::PointXYZ>);
+				transform = util3d::icp2D(
+						scanB,
 						scanA,
 						ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
 						ui_->spinBox_icp_iteration->value(),
-					   &hasConverged,
-					   &variance,
-					   &correspondences);
+						hasConverged,
+						*scanBRegistered);
 
 				if(!transform.isNull())
 				{
-					if(dataTo.getLaserScanMaxPts())
+					if(dataTo.laserScanMaxPts())
 					{
-						correspondenceRatio =  float(correspondences)/float(dataTo.getLaserScanMaxPts());
+						pcl::PointCloud<pcl::PointXYZ>::Ptr scanBTransformed = scanBRegistered;
+						if(ui_->doubleSpinBox_icp_voxel->value() > 0.0f)
+						{
+							scanBTransformed = util3d::transformPointCloud(scanB, transform);
+						}
+
+						util3d::computeVarianceAndCorrespondences(
+								scanBTransformed,
+								scanA,
+								ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
+								variance,
+								correspondences);
+
+						correspondenceRatio =  float(correspondences)/float(dataTo.laserScanMaxPts());
 					}
 					else if(ui_->doubleSpinBox_icp_minCorrespondenceRatio->value())
 					{
@@ -2755,112 +2834,73 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 	else
 	{
 		//3D
-		cv::Mat depthA = rtabmap::uncompressImage(dataFrom.getDepthCompressed());
-		cv::Mat depthB = rtabmap::uncompressImage(dataTo.getDepthCompressed());
-
-		if(depthA.type() == CV_8UC1)
+		cv::Mat im,de;
+		dataFrom.uncompressData(&im, &de, 0);
+		dataTo.uncompressData(&im, &de, 0);
+		cloudA = util3d::cloudFromSensorData(dataFrom,
+				ui_->spinBox_icp_decimation->value(),
+				ui_->doubleSpinBox_icp_maxDepth->value(),
+				ui_->doubleSpinBox_icp_voxel->value());
+		cloudB = util3d::cloudFromSensorData(dataTo,
+				ui_->spinBox_icp_decimation->value(),
+				ui_->doubleSpinBox_icp_maxDepth->value(),
+				ui_->doubleSpinBox_icp_voxel->value());
+		if(cloudA->size() && cloudB->size())
 		{
-			cv::Mat leftMono;
-			cv::Mat left = rtabmap::uncompressImage(dataFrom.getImageCompressed());
-			if(left.channels() > 1)
+			cloudB = util3d::transformPointCloud(cloudB, t);
+			if(ui_->checkBox_icp_p2plane->isChecked())
 			{
-				cv::cvtColor(left, leftMono, CV_BGR2GRAY);
+				pcl::PointCloud<pcl::PointNormal>::Ptr cloudANormals = util3d::computeNormals(cloudA, ui_->spinBox_icp_normalKSearch->value());
+				pcl::PointCloud<pcl::PointNormal>::Ptr cloudBNormals = util3d::computeNormals(cloudB, ui_->spinBox_icp_normalKSearch->value());
+
+				cloudANormals = util3d::removeNaNNormalsFromPointCloud(cloudANormals);
+				if(cloudA->size() != cloudANormals->size())
+				{
+					UWARN("removed nan normals...");
+				}
+
+				cloudBNormals = util3d::removeNaNNormalsFromPointCloud(cloudBNormals);
+				if(cloudB->size() != cloudBNormals->size())
+				{
+					UWARN("removed nan normals...");
+				}
+
+				pcl::PointCloud<pcl::PointNormal>::Ptr cloudBRegistered(new pcl::PointCloud<pcl::PointNormal>);
+				transform = util3d::icpPointToPlane(
+						cloudBNormals,
+						cloudANormals,
+						ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
+						ui_->spinBox_icp_iteration->value(),
+						hasConverged,
+						*cloudBRegistered);
+				util3d::computeVarianceAndCorrespondences(
+						cloudBRegistered,
+						cloudANormals,
+						ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
+						variance,
+						correspondences);
 			}
 			else
 			{
-				leftMono = left;
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudBRegistered(new pcl::PointCloud<pcl::PointXYZ>);
+				transform = util3d::icp(cloudB,
+						cloudA,
+						ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
+						ui_->spinBox_icp_iteration->value(),
+						hasConverged,
+						*cloudBRegistered);
+				util3d::computeVarianceAndCorrespondences(
+						cloudBRegistered,
+						cloudA,
+						ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
+						variance,
+						correspondences);
 			}
-			cloudA = util3d::cloudFromDisparity(util2d::disparityFromStereoImages(leftMono, depthA), dataFrom.getCx(), dataFrom.getCy(), dataFrom.getFx(), dataFrom.getFy(), ui_->spinBox_icp_decimation->value());
-			if(ui_->doubleSpinBox_icp_maxDepth->value() > 0)
-			{
-				cloudA = util3d::passThrough(cloudA, "z", 0, ui_->doubleSpinBox_icp_maxDepth->value());
-			}
-			if(ui_->doubleSpinBox_icp_voxel->value() > 0)
-			{
-				cloudA = util3d::voxelize(cloudA, ui_->doubleSpinBox_icp_voxel->value());
-			}
-			cloudA = util3d::transformPointCloud(cloudA, dataFrom.getLocalTransform());
+			correspondenceRatio = float(correspondences)/float(cloudA->size()>cloudB->size()?cloudA->size():cloudB->size());
 		}
 		else
 		{
-			cloudA = util3d::getICPReadyCloud(depthA,
-					dataFrom.getFx(), dataFrom.getFy(), dataFrom.getCx(), dataFrom.getCy(),
-					ui_->spinBox_icp_decimation->value(),
-					ui_->doubleSpinBox_icp_maxDepth->value(),
-					ui_->doubleSpinBox_icp_voxel->value(),
-					0, // no sampling
-					dataFrom.getLocalTransform());
-		}
-		if(depthB.type() == CV_8UC1)
-		{
-			cv::Mat leftMono;
-			cv::Mat left = rtabmap::uncompressImage(dataTo.getImageCompressed());
-			if(left.channels() > 1)
-			{
-				cv::cvtColor(left, leftMono, CV_BGR2GRAY);
-			}
-			else
-			{
-				leftMono = left;
-			}
-			cloudB = util3d::cloudFromDisparity(util2d::disparityFromStereoImages(leftMono, depthB), dataTo.getCx(), dataTo.getCy(), dataTo.getFx(), dataTo.getFy(), ui_->spinBox_icp_decimation->value());
-			if(ui_->doubleSpinBox_icp_maxDepth->value() > 0)
-			{
-				cloudB = util3d::passThrough(cloudB, "z", 0, ui_->doubleSpinBox_icp_maxDepth->value());
-			}
-			if(ui_->doubleSpinBox_icp_voxel->value() > 0)
-			{
-				cloudB = util3d::voxelize(cloudB, ui_->doubleSpinBox_icp_voxel->value());
-			}
-			cloudB = util3d::transformPointCloud(cloudB, t * dataTo.getLocalTransform());
-		}
-		else
-		{
-			cloudB = util3d::getICPReadyCloud(depthB,
-					dataTo.getFx(), dataTo.getFy(), dataTo.getCx(), dataTo.getCy(),
-					ui_->spinBox_icp_decimation->value(),
-					ui_->doubleSpinBox_icp_maxDepth->value(),
-					ui_->doubleSpinBox_icp_voxel->value(),
-					0, // no sampling
-					t * dataTo.getLocalTransform());
-		}
-
-		if(ui_->checkBox_icp_p2plane->isChecked())
-		{
-			pcl::PointCloud<pcl::PointNormal>::Ptr cloudANormals = util3d::computeNormals(cloudA, ui_->spinBox_icp_normalKSearch->value());
-			pcl::PointCloud<pcl::PointNormal>::Ptr cloudBNormals = util3d::computeNormals(cloudB, ui_->spinBox_icp_normalKSearch->value());
-
-			cloudANormals = util3d::removeNaNNormalsFromPointCloud(cloudANormals);
-			if(cloudA->size() != cloudANormals->size())
-			{
-				UWARN("removed nan normals...");
-			}
-
-			cloudBNormals = util3d::removeNaNNormalsFromPointCloud(cloudBNormals);
-			if(cloudB->size() != cloudBNormals->size())
-			{
-				UWARN("removed nan normals...");
-			}
-
-			transform = util3d::icpPointToPlane(cloudBNormals,
-					cloudANormals,
-					ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
-					ui_->spinBox_icp_iteration->value(),
-					&hasConverged,
-					&variance,
-					&correspondences);
-		}
-		else
-		{
-			transform = util3d::icp(cloudB,
-					cloudA,
-					ui_->doubleSpinBox_icp_maxCorrespDistance->value(),
-					ui_->spinBox_icp_iteration->value(),
-					&hasConverged,
-					&variance,
-					&correspondences);
-
-			correspondenceRatio = float(correspondences)/float(depthB.total());
+			UWARN("No cloud generated!");
 		}
 	}
 
@@ -2907,8 +2947,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 			if(ui_->dockWidget_constraints->isVisible())
 			{
 				cloudB = util3d::transformPointCloud(cloudB, transform);
-				scanB = util3d::transformPointCloud(scanB, transform);
-				this->updateConstraintView(newLink, true, cloudA, cloudB, scanA, scanB);
+				scanBVoxelized = util3d::transformPointCloud(scanBVoxelized, transform);
+				this->updateConstraintView(newLink, true, cloudA, cloudB, scanAVoxelized, scanBVoxelized);
 			}
 		}
 	}
@@ -2957,14 +2997,15 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 		parameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(ui_->doubleSpinBox_visual_nndr->value())));
 		parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
 		parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
+		parameters.insert(ParametersPair(Parameters::kLccBowEstimationType(), uNumber2Str(ui_->comboBox_estimationType->currentIndex())));
 		parameters.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
 		parameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0"));
 		parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "0"));
 		Memory tmpMemory(parameters);
 
 		// Add signatures
-		SensorData dataFrom = memory_->getSignatureData(from, true).toSensorData();
-		SensorData dataTo = memory_->getSignatureData(to, true).toSensorData();
+		SensorData dataFrom = memory_->getNodeData(from, true);
+		SensorData dataTo = memory_->getNodeData(to, true);
 
 		if(from > to)
 		{
@@ -2984,9 +3025,9 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 	{
 		ParametersMap parameters;
 		parameters.insert(ParametersPair(Parameters::kLccBowInlierDistance(), uNumber2Str(ui_->doubleSpinBox_visual_maxCorrespDistance->value())));
-		parameters.insert(ParametersPair(Parameters::kLccBowMaxDepth(), uNumber2Str(ui_->doubleSpinBox_visual_maxDepth->value())));
 		parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
 		parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
+		parameters.insert(ParametersPair(Parameters::kLccBowEstimationType(), uNumber2Str(ui_->comboBox_estimationType->currentIndex())));
 		memory_->parseParameters(parameters);
 		t = memory_->computeVisualTransform(to, from, &rejectedMsg, &inliers, &variance);
 	}
@@ -3075,14 +3116,15 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 			parameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(ui_->doubleSpinBox_visual_nndr->value())));
 			parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
 			parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
+			parameters.insert(ParametersPair(Parameters::kLccBowEstimationType(), uNumber2Str(ui_->comboBox_estimationType->currentIndex())));
 			parameters.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
 			parameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0"));
 			parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "0"));
 			Memory tmpMemory(parameters);
 
 			// Add signatures
-			SensorData dataFrom = memory_->getSignatureData(from, true).toSensorData();
-			SensorData dataTo = memory_->getSignatureData(to, true).toSensorData();
+			SensorData dataFrom = memory_->getNodeData(from, true);
+			SensorData dataTo = memory_->getNodeData(to, true);
 
 			if(from > to)
 			{
@@ -3100,8 +3142,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 
 			if(!silent)
 			{
-				ui_->graphicsView_A->setFeatures(tmpMemory.getSignature(from)->getWords(), dataFrom.depth());
-				ui_->graphicsView_B->setFeatures(tmpMemory.getSignature(to)->getWords(), dataTo.depth());
+				ui_->graphicsView_A->setFeatures(tmpMemory.getSignature(from)->getWords(), dataFrom.depthRaw());
+				ui_->graphicsView_B->setFeatures(tmpMemory.getSignature(to)->getWords(), dataTo.depthRaw());
 				updateWordsMatching();
 			}
 		}
@@ -3109,9 +3151,9 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		{
 			ParametersMap parameters;
 			parameters.insert(ParametersPair(Parameters::kLccBowInlierDistance(), uNumber2Str(ui_->doubleSpinBox_visual_maxCorrespDistance->value())));
-			parameters.insert(ParametersPair(Parameters::kLccBowMaxDepth(), uNumber2Str(ui_->doubleSpinBox_visual_maxDepth->value())));
 			parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
 			parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
+			parameters.insert(ParametersPair(Parameters::kLccBowEstimationType(), uNumber2Str(ui_->comboBox_estimationType->currentIndex())));
 			memory_->parseParameters(parameters);
 			t = memory_->computeVisualTransform(to, from, &rejectedMsg, &inliers, &variance);
 		}

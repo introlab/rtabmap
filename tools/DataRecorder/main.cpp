@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/core/CameraThread.h>
 #include <rtabmap/core/CameraRGBD.h>
+#include <rtabmap/core/CameraStereo.h>
 #include <rtabmap/core/Camera.h>
 #include <rtabmap/core/CameraThread.h>
 #include <rtabmap/gui/DataRecorder.h>
@@ -174,7 +175,7 @@ int main (int argc, char * argv[])
 	signal(SIGTERM, &sighandler);
 	signal(SIGINT, &sighandler);
 
-	rtabmap::CameraRGBD * camera = 0;
+	rtabmap::Camera * camera = 0;
 	rtabmap::Transform t=rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0);
 	if(driver == 0)
 	{
@@ -263,7 +264,7 @@ int main (int argc, char * argv[])
 			app->processEvents();
 		}
 
-		if(cam->init())
+		if(camera->init())
 		{
 			cam->start();
 

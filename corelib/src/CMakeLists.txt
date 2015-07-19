@@ -13,7 +13,9 @@ SET(SRC_FILES
 	
     Camera.cpp
     CameraThread.cpp
+    CameraRGB.cpp
     CameraRGBD.cpp
+    CameraStereo.cpp
     CameraModel.cpp
     
     EpipolarGeometry.cpp
@@ -35,7 +37,7 @@ SET(SRC_FILES
 	util3d_surface.cpp
 	util3d_features.cpp
 	util3d_correspondences.cpp
-	util3d_conversions.cpp
+	util3d_motion_estimation.cpp
 	
 	SensorData.cpp
 	Graph.cpp

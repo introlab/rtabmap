@@ -161,7 +161,7 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	// STEP 1 - Prediction : Prior*lastPosterior
 	_prediction = this->generatePrediction(memory, uKeys(likelihood));
 
-	ULOGGER_DEBUG("STEP1-generate prior=%fs, rows=%d, cols=%d", timer.ticks(), _prediction.rows, _prediction.cols);
+	UDEBUG("STEP1-generate prior=%fs, rows=%d, cols=%d", timer.ticks(), _prediction.rows, _prediction.cols);
 	//std::cout << "Prediction=" << _prediction << std::endl;
 
 	// Adjust the last posterior if some images were
@@ -260,7 +260,7 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 				// Set high values (gaussians curves) to loop closure neighbors
 
 				// ADD prob for each neighbors
-				std::map<int, int> neighbors = memory->getNeighborsId(ids[i], _predictionLC.size()-1, 0);
+				std::map<int, int> neighbors = memory->getNeighborsId(ids[i], _predictionLC.size()-1, 0, false, false, true);
 				std::list<int> idsLoopMargin;
 				//filter neighbors in STM
 				for(std::map<int, int>::iterator iter=neighbors.begin(); iter!=neighbors.end();)
@@ -474,7 +474,7 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 		}
 		if(i<newIds.size() && !uContains(oldIdToIndexMap,newIds[i]))
 		{
-			std::map<int, int> neighbors = memory->getNeighborsId(newIds[i], _predictionLC.size()-1, 0);
+			std::map<int, int> neighbors = memory->getNeighborsId(newIds[i], _predictionLC.size()-1, 0, false, false, true);
 			float sum = this->addNeighborProb(prediction, i, neighbors, newIdToIndexMap);
 			this->normalize(prediction, i, sum, newIds[0]<0);
 			++added;
@@ -494,7 +494,7 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 	int modified = 0;
 	for(std::set<int>::iterator iter = idsToUpdate.begin(); iter!=idsToUpdate.end(); ++iter)
 	{
-		std::map<int, int> neighbors = memory->getNeighborsId(*iter, _predictionLC.size()-1, 0);
+		std::map<int, int> neighbors = memory->getNeighborsId(*iter, _predictionLC.size()-1, 0, false, false, true);
 		int index = newIdToIndexMap.at(*iter);
 		float sum = this->addNeighborProb(prediction, index, neighbors, newIdToIndexMap);
 		this->normalize(prediction, index, sum, newIds[0]<0);

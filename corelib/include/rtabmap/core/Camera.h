@@ -50,22 +50,20 @@ class RTABMAP_EXP Camera
 {
 public:
 	virtual ~Camera();
-	cv::Mat takeImage();
-	virtual bool init() = 0;
+	SensorData takeImage();
+
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "") = 0;
+	virtual bool isCalibrated() const = 0;
+	virtual std::string getSerial() const = 0;
+	int getNextSeqID() {return ++_seq;}
 
 	//getters
-	void getImageSize(unsigned int & width, unsigned int & height);
 	float getImageRate() const {return _imageRate;}
-	bool isMirroringEnabled() const {return _mirroring;}
+	const Transform & getLocalTransform() const {return _localTransform;}
 
 	//setters
 	void setImageRate(float imageRate) {_imageRate = imageRate;}
-	void setImageSize(unsigned int width, unsigned int height);
-	void setMirroringEnabled(bool enabled) {_mirroring = enabled;}
-
-	void setCalibration(const std::string & fileName);
-	void setCalibration(const cv::Mat & cameraMatrix, const cv::Mat & distorsionCoefficients);
-	void resetCalibration();
+	void setLocalTransform(const Transform & localTransform) {_localTransform= localTransform;}
 
 protected:
 	/**
@@ -73,94 +71,19 @@ protected:
 	 *
 	 * @param imageRate : image/second , 0 for fast as the camera can
 	 */
-	Camera(float imageRate = 0,
-			unsigned int imageWidth = 0,
-			unsigned int imageHeight = 0);
+	Camera(float imageRate = 0, const Transform & localTransform = Transform::getIdentity());
 
-	virtual cv::Mat captureImage() = 0;
+	/**
+	 * returned rgb and depth images should be already rectified if calibration was loaded
+	 */
+	virtual SensorData captureImage() = 0;
 
 private:
 	float _imageRate;
-	unsigned int _imageWidth;
-	unsigned int _imageHeight;
-	bool _mirroring;
+	Transform _localTransform;
+	cv::Size _targetImageSize;
 	UTimer * _frameRateTimer;
-	cv::Mat _k; // camera_matrix
-	cv::Mat _d; // distorsion_coefficients
-};
-
-
-/////////////////////////
-// CameraImages
-/////////////////////////
-class RTABMAP_EXP CameraImages :
-	public Camera
-{
-public:
-	CameraImages(const std::string & path,
-			int startAt = 1,
-			bool refreshDir = false,
-			float imageRate = 0,
-			unsigned int imageWidth = 0,
-			unsigned int imageHeight = 0);
-	virtual ~CameraImages();
-
-	virtual bool init();
-	std::string getPath() const {return _path;}
-
-protected:
-	virtual cv::Mat captureImage();
-
-private:
-	std::string _path;
-	int _startAt;
-	// If the list of files in the directory is refreshed
-	// on each call of takeImage()
-	bool _refreshDir;
-	int _count;
-	UDirectory * _dir;
-	std::string _lastFileName;
-};
-
-
-
-
-/////////////////////////
-// CameraVideo
-/////////////////////////
-class RTABMAP_EXP CameraVideo :
-	public Camera
-{
-public:
-	enum Source{kVideoFile, kUsbDevice};
-
-public:
-	CameraVideo(int usbDevice = 0,
-			float imageRate = 0,
-			unsigned int imageWidth = 0,
-			unsigned int imageHeight = 0);
-	CameraVideo(const std::string & filePath,
-			float imageRate = 0,
-			unsigned int imageWidth = 0,
-			unsigned int imageHeight = 0);
-	virtual ~CameraVideo();
-
-	virtual bool init();
-	int getUsbDevice() const {return _usbDevice;}
-	const std::string & getFilePath() const {return _filePath;}
-
-protected:
-	virtual cv::Mat captureImage();
-
-private:
-	// File type
-	std::string _filePath;
-
-	cv::VideoCapture _capture;
-	Source _src;
-
-	// Usb camera
-	int _usbDevice;
+	int _seq;
 };
 
 
