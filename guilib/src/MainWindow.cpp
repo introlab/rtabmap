@@ -1010,9 +1010,11 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	{
 		refMapId = stat.getSignatures().at(stat.refImageId()).mapId();
 	}
-	if(_cachedSignatures.contains(stat.loopClosureId()))
+	int highestHypothesisId = static_cast<float>(uValue(stat.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
+	int loopId = stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId()>0?stat.localLoopClosureId():highestHypothesisId;
+	if(_cachedSignatures.contains(loopId))
 	{
-		loopMapId = _cachedSignatures.value(stat.loopClosureId()).mapId();
+		loopMapId = _cachedSignatures.value(loopId).mapId();
 	}
 
 	_ui->label_refId->setText(QString("New ID = %1 [%2]").arg(stat.refImageId()).arg(refMapId));
@@ -1026,7 +1028,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		}
 
 		UDEBUG("");
-		int highestHypothesisId = static_cast<float>(uValue(stat.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
 		bool highestHypothesisIsSaved = (bool)uValue(stat.data(), Statistics::kLoopHypothesis_reactivated(), 0.0f);
 
 		// update cache
