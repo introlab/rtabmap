@@ -1370,7 +1370,12 @@ void MainWindow::updateMapCloud(
 			{
 				UERROR("map id of node %d not found!", iter->first);
 			}
+		}
 
+		if(verboseProgress)
+		{
+			_initProgressDialog->appendText(tr("Map update: %1 nodes shown of %2 (cloud filtering is on)").arg(poses.size()).arg(posesIn.size()));
+			QApplication::processEvents();
 		}
 	}
 	else
