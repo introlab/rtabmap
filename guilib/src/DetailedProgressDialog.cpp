@@ -42,8 +42,7 @@ namespace rtabmap {
 
 DetailedProgressDialog::DetailedProgressDialog(QWidget *parent, Qt::WindowFlags flags) :
 		QDialog(parent, flags),
-		_autoClose(false),
-		_delayedClosingTime(0)
+		_delayedClosingTime(1)
 {
 	_text = new QLabel(this);
 	_text->setWordWrap(true);
@@ -55,7 +54,7 @@ DetailedProgressDialog::DetailedProgressDialog(QWidget *parent, Qt::WindowFlags 
 	_closeButton = new QPushButton(this);
 	_closeButton->setText("Close");
 	_closeWhenDoneCheckBox = new QCheckBox(this);
-	_closeWhenDoneCheckBox->setChecked(false);
+	_closeWhenDoneCheckBox->setChecked(true);
 	_closeWhenDoneCheckBox->setText("Close when done.");
 	_endMessage = "Finished!";
 	this->clear();
@@ -90,6 +89,7 @@ void DetailedProgressDialog::appendText(const QString & text, const QColor & col
 	_detailedText->append(html);
 	_detailedText->ensureCursorVisible();
 	_detailedText->horizontalScrollBar()->setSliderPosition(0);
+	_detailedText->verticalScrollBar()->setSliderPosition(_detailedText->verticalScrollBar()->maximum());
 }
 void DetailedProgressDialog::setValue(int value)
 {
@@ -146,6 +146,7 @@ void DetailedProgressDialog::closeEvent(QCloseEvent *event)
 	if(_progressBar->value() == _progressBar->maximum())
 	{
 		event->accept();
+		_closeWhenDoneCheckBox->setChecked(true);
 	}
 	else
 	{

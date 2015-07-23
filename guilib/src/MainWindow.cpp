@@ -1913,7 +1913,6 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 {
 	if((RtabmapEventInit::Status)status == RtabmapEventInit::kInitializing)
 	{
-		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
 		this->changeState(MainWindow::kInitializing);
@@ -1925,7 +1924,6 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 	}
 	else if((RtabmapEventInit::Status)status == RtabmapEventInit::kClosing)
 	{
-		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
 		if(_state!=kApplicationClosing)
@@ -2061,7 +2059,8 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			++iter)
 		{
 			mapIds.insert(std::make_pair(iter->first, iter->second.mapId()));
-			if(!_cachedSignatures.contains(iter->first))
+			if(!_cachedSignatures.contains(iter->first) ||
+			   (_cachedSignatures.value(iter->first).sensorData().imageCompressed().empty() && !iter->second.sensorData().imageCompressed().empty()))
 			{
 				_cachedSignatures.insert(iter->first, iter->second);
 				++addedSignatures;
@@ -3853,7 +3852,7 @@ void MainWindow::downloadAllClouds()
 	items.append("Global map not optimized");
 
 	bool ok;
-	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, 2, false, &ok);
+	QString item = QInputDialog::getItem(this, tr("Download map"), tr("Options:"), items, 2, false, &ok);
 	if(ok)
 	{
 		bool optimized=false, global=false;
@@ -3880,7 +3879,6 @@ void MainWindow::downloadAllClouds()
 		}
 
 		UINFO("Download clouds...");
-		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
 		_initProgressDialog->appendText(tr("Downloading the map (global=%1 ,optimized=%2)...")
@@ -3905,7 +3903,7 @@ void MainWindow::downloadPoseGraph()
 	items.append("Global map not optimized");
 
 	bool ok;
-	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, 2, false, &ok);
+	QString item = QInputDialog::getItem(this, tr("Download graph"), tr("Options:"), items, 2, false, &ok);
 	if(ok)
 	{
 		bool optimized=false, global=false;
@@ -3932,7 +3930,6 @@ void MainWindow::downloadPoseGraph()
 		}
 
 		UINFO("Download the graph...");
-		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
 		_initProgressDialog->appendText(tr("Downloading the graph (global=%1 ,optimized=%2)...")
@@ -4341,7 +4338,6 @@ bool MainWindow::getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::
 	pcl::PointCloud<pcl::PointXYZ>::Ptr assembledScans(new pcl::PointCloud<pcl::PointXYZ>());
 	std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
 
-	_initProgressDialog->setAutoClose(true, 1);
 	_initProgressDialog->resetProgress();
 	_initProgressDialog->show();
 	_initProgressDialog->setMaximumSteps(int(poses.size())*(assemble?1:2)+1);
@@ -4508,7 +4504,6 @@ bool MainWindow::getExportedClouds(
 	{
 		std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
 
-		_initProgressDialog->setAutoClose(true, 1);
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
 		int mul = _exportDialog->getMesh()&&!_exportDialog->getGenerate()?3:_exportDialog->getMLS()&&!_exportDialog->getGenerate()?2:1;

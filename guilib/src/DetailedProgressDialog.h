@@ -68,7 +68,6 @@ private:
 	QPushButton * _closeButton;
 	QCheckBox * _closeWhenDoneCheckBox;
 	QString _endMessage;
-	bool _autoClose;
 	int _delayedClosingTime; // sec
 };
 
