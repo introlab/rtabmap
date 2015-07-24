@@ -137,6 +137,13 @@ public:
 	void updateCameraTargetPosition(
 		const Transform & pose);
 
+	void addOrUpdateCoordinate(
+			const std::string & id,
+			const Transform & transform,
+			double scale);
+	void removeCoordinate(const std::string & id);
+	void removeAllCoordinates();
+
 	void addOrUpdateGraph(
 			const std::string & id,
 			const pcl::PointCloud<pcl::PointXYZ>::Ptr & graph,
@@ -226,6 +233,7 @@ private:
     QAction * _aSetBackgroundColor;
     QMenu * _menu;
     std::set<std::string> _graphes;
+    std::set<std::string> _coordinates;
     pcl::PointCloud<pcl::PointXYZ>::Ptr _trajectory;
     unsigned int _maxTrajectorySize;
     unsigned int _gridCellCount;

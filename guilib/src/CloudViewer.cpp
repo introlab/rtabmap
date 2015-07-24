@@ -134,7 +134,7 @@ CloudViewer::CloudViewer(QWidget *parent) :
 				0, 0, 1);
 #ifndef _WIN32
 	// Crash on startup on Windows (vtk issue)
-	_visualizer->addCoordinateSystem(0.2, 0, 0, 0, 0);
+	this->addOrUpdateCoordinate("reference", Transform::getIdentity(), 0.2);
 #endif
 
 	//setup menu/actions
@@ -580,6 +580,61 @@ void CloudViewer::removeOccupancyGridMap()
 #endif
 }
 
+void CloudViewer::addOrUpdateCoordinate(
+			const std::string & id,
+			const Transform & transform,
+			double scale)
+{
+	if(id.empty())
+	{
+		UERROR("id should not be empty!");
+		return;
+	}
+
+	removeCoordinate(id);
+
+	if(!transform.isNull())
+	{
+		_coordinates.insert(id);
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
+		_visualizer->addCoordinateSystem(scale, transform.toEigen3f(), id);
+#else
+		// Well, on older versions, just update the main coordinate
+		_visualizer->addCoordinateSystem(scale, transform.toEigen3f(), 0);
+#endif
+	}
+}
+
+void CloudViewer::removeCoordinate(const std::string & id)
+{
+	if(id.empty())
+	{
+		UERROR("id should not be empty!");
+		return;
+	}
+
+	if(_coordinates.find(id) != _coordinates.end())
+	{
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
+		_visualizer->removeCoordinateSystem(id);
+#else
+		// Well, on older versions, just update the main coordinate
+		_visualizer->removeCoordinateSystem(0);
+#endif
+		_coordinates.erase(id);
+	}
+}
+
+void CloudViewer::removeAllCoordinates()
+{
+	std::set<std::string> coordinates = _coordinates;
+	for(std::set<std::string>::iterator iter = coordinates.begin(); iter!=coordinates.end(); ++iter)
+	{
+		this->removeCoordinate(*iter);
+	}
+	UASSERT(_coordinates.empty());
+}
+
 void CloudViewer::addOrUpdateGraph(
 		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & graph,
@@ -825,13 +880,8 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 				cameras.front().view[2] = _aLockViewZ->isChecked()?1:Fp[10];
 			}
 
-#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-			_visualizer->removeCoordinateSystem("reference", 0);
-			_visualizer->addCoordinateSystem(0.2, m, "reference", 0);
-#else
-			_visualizer->removeCoordinateSystem(0);
-			_visualizer->addCoordinateSystem(0.2, m, 0);
-#endif
+			this->addOrUpdateCoordinate("reference", pose, 0.2);
+
 			_visualizer->setCameraPosition(
 					cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2],
 					cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
@@ -1355,6 +1405,7 @@ void CloudViewer::handleAction(QAction * a)
 		if(color.isValid())
 		{
 			this->setDefaultBackgroundColor(color);
+			this->update();
 		}
 	}
 	else if(a == _aLockViewZ)

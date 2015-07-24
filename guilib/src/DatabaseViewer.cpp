@@ -1685,7 +1685,7 @@ void DatabaseViewer::update(int value,
 	updateConstraintButtons();
 	updateWordsMatching();
 
-	if(updateConstraintView)
+	if(updateConstraintView && ui_->dockWidget_constraints->isVisible())
 	{
 		// update constraint view
 		int from = ids_.at(ui_->horizontalSlider_A->value());
@@ -1703,7 +1703,7 @@ void DatabaseViewer::update(int value,
 						ui_->horizontalSlider_loops->blockSignals(true);
 						ui_->horizontalSlider_loops->setValue(i);
 						ui_->horizontalSlider_loops->blockSignals(false);
-						this->updateConstraintView(loopLinks_.at(i), false);
+						this->updateConstraintView(loopLinks_[i].from() == from?loopLinks_.at(i):loopLinks_.at(i).inverse(), false);
 					}
 					ui_->horizontalSlider_neighbors->blockSignals(true);
 					ui_->horizontalSlider_neighbors->setValue(0);
@@ -1722,7 +1722,7 @@ void DatabaseViewer::update(int value,
 						ui_->horizontalSlider_neighbors->blockSignals(true);
 						ui_->horizontalSlider_neighbors->setValue(i);
 						ui_->horizontalSlider_neighbors->blockSignals(false);
-						this->updateConstraintView(neighborLinks_.at(i), false);
+						this->updateConstraintView(neighborLinks_[i].from() == from?neighborLinks_.at(i):neighborLinks_.at(i).inverse(), false);
 					}
 					ui_->horizontalSlider_loops->blockSignals(true);
 					ui_->horizontalSlider_loops->setValue(0);
@@ -1738,10 +1738,30 @@ void DatabaseViewer::update(int value,
 			ui_->horizontalSlider_neighbors->blockSignals(true);
 			ui_->horizontalSlider_loops->setValue(0);
 			ui_->horizontalSlider_neighbors->setValue(0);
-			ui_->constraintsViewer->removeAllClouds();
-			ui_->constraintsViewer->update();
 			ui_->horizontalSlider_loops->blockSignals(false);
 			ui_->horizontalSlider_neighbors->blockSignals(false);
+
+			ui_->constraintsViewer->removeAllClouds();
+
+			// make a fake link using globally optimized poses
+			if(graphes_.size())
+			{
+				std::map<int, Transform> optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+				if(optimizedPoses.size() > 0)
+				{
+					std::map<int, Transform>::iterator fromIter = optimizedPoses.find(from);
+					std::map<int, Transform>::iterator toIter = optimizedPoses.find(to);
+					if(fromIter != optimizedPoses.end() &&
+					   toIter != optimizedPoses.end())
+					{
+						Link link(from, to, Link::kUndef, fromIter->second.inverse() * toIter->second);
+						this->updateConstraintView(link, false);
+					}
+				}
+			}
+
+			ui_->constraintsViewer->update();
+
 		}
 	}
 
@@ -2178,7 +2198,7 @@ void DatabaseViewer::updateConstraintView(
 		if(cloudFrom->size() == 0 && cloudTo->size() == 0)
 		{
 			//cloud 3d
-			if(!ui_->checkBox_show3DWords->isChecked())
+			if(ui_->checkBox_show3Dclouds->isChecked())
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFrom, cloudTo;
 				cloudFrom=util3d::cloudRGBFromSensorData(dataFrom, 1);
@@ -2186,15 +2206,15 @@ void DatabaseViewer::updateConstraintView(
 
 				if(cloudFrom->size())
 				{
-					ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
+					ui_->constraintsViewer->addOrUpdateCloud("words0", cloudFrom, Transform::getIdentity(), Qt::red);
 				}
 				if(cloudTo->size())
 				{
 					cloudTo = rtabmap::util3d::transformPointCloud(cloudTo, t);
-					ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
+					ui_->constraintsViewer->addOrUpdateCloud("words1", cloudTo, Transform::getIdentity(), Qt::cyan);
 				}
 			}
-			else
+			if(ui_->checkBox_show3DWords->isChecked())
 			{
 				const Signature * sFrom = memory_->getSignature(link.from());
 				const Signature * sTo = memory_->getSignature(link.to());
@@ -2273,26 +2293,29 @@ void DatabaseViewer::updateConstraintView(
 
 		if(scanFrom->size() == 0 && scanTo->size() == 0)
 		{
-			//cloud 2d
-			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
-			scanA = rtabmap::util3d::laserScanToPointCloud(dataFrom.laserScanRaw());
-			scanB = rtabmap::util3d::laserScanToPointCloud(dataTo.laserScanRaw());
-			scanB = rtabmap::util3d::transformPointCloud(scanB, t);
-			if(scanA->size())
+			if(ui_->checkBox_show2DScans->isChecked())
 			{
-				ui_->constraintsViewer->addOrUpdateCloud("scan0", scanA, Transform::getIdentity(), Qt::yellow);
-			}
-			else
-			{
-				ui_->constraintsViewer->removeCloud("scan0");
-			}
-			if(scanB->size())
-			{
-				ui_->constraintsViewer->addOrUpdateCloud("scan1", scanB, Transform::getIdentity(), Qt::magenta);
-			}
-			else
-			{
-				ui_->constraintsViewer->removeCloud("scan1");
+				//cloud 2d
+				pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
+				scanA = rtabmap::util3d::laserScanToPointCloud(dataFrom.laserScanRaw());
+				scanB = rtabmap::util3d::laserScanToPointCloud(dataTo.laserScanRaw());
+				scanB = rtabmap::util3d::transformPointCloud(scanB, t);
+				if(scanA->size())
+				{
+					ui_->constraintsViewer->addOrUpdateCloud("scan0", scanA, Transform::getIdentity(), Qt::yellow);
+				}
+				else
+				{
+					ui_->constraintsViewer->removeCloud("scan0");
+				}
+				if(scanB->size())
+				{
+					ui_->constraintsViewer->addOrUpdateCloud("scan1", scanB, Transform::getIdentity(), Qt::magenta);
+				}
+				else
+				{
+					ui_->constraintsViewer->removeCloud("scan1");
+				}
 			}
 		}
 		else
@@ -2315,8 +2338,12 @@ void DatabaseViewer::updateConstraintView(
 			}
 		}
 
-		//update cordinate
-		ui_->constraintsViewer->updateCameraTargetPosition(t);
+		//update coordinate
+
+		ui_->constraintsViewer->addOrUpdateCoordinate("from_coordinate", Transform::getIdentity(), 0.2);
+		ui_->constraintsViewer->addOrUpdateCoordinate("to_coordinate", t, 0.2);
+
+
 		ui_->constraintsViewer->clearTrajectory();
 
 		ui_->constraintsViewer->update();

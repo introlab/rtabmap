@@ -50,8 +50,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>166</width>
-             <height>173</height>
+             <width>154</width>
+             <height>184</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -236,8 +236,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>165</width>
-             <height>173</height>
+             <width>154</width>
+             <height>184</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -418,7 +418,7 @@
      <x>0</x>
      <y>0</y>
      <width>1285</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -470,12 +470,56 @@
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
-    <layout class="QVBoxLayout" name="verticalLayout_8" stretch="1,0,0">
+    <layout class="QVBoxLayout" name="verticalLayout_8" stretch="1,0,0,0">
      <item>
       <widget class="rtabmap::CloudViewer" name="constraintsViewer" native="true"/>
      </item>
      <item>
-      <layout class="QGridLayout" name="gridLayout_6" columnstretch="0,1">
+      <layout class="QHBoxLayout" name="horizontalLayout_10">
+       <item>
+        <widget class="QCheckBox" name="checkBox_show3DWords">
+         <property name="text">
+          <string>Words</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_show3Dclouds">
+         <property name="text">
+          <string>Clouds</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_show2DScans">
+         <property name="text">
+          <string>Scans</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QGridLayout" name="gridLayout_6" columnstretch="0,0">
        <item row="0" column="0">
         <widget class="QLabel" name="label">
          <property name="text">
@@ -567,20 +611,6 @@
        </item>
        <item row="5" column="1">
         <widget class="QLabel" name="label_constraint_opt">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="0">
-        <widget class="QLabel" name="label_32">
-         <property name="text">
-          <string>Show 3D words</string>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="1">
-        <widget class="QCheckBox" name="checkBox_show3DWords">
          <property name="text">
           <string/>
          </property>
@@ -805,8 +835,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>314</width>
-          <height>303</height>
+          <width>312</width>
+          <height>314</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1025,8 +1055,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>351</width>
-          <height>347</height>
+          <width>366</width>
+          <height>361</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1315,8 +1345,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>333</width>
-          <height>306</height>
+          <width>330</width>
+          <height>304</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1532,8 +1562,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>243</width>
-          <height>284</height>
+          <width>248</width>
+          <height>319</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1727,7 +1757,7 @@
           <x>0</x>
           <y>0</y>
           <width>201</width>
-          <height>117</height>
+          <height>126</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1826,8 +1856,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>285</width>
-          <height>309</height>
+          <width>283</width>
+          <height>322</height>
          </rect>
         </property>
         <attribute name="label">
