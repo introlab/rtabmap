@@ -175,6 +175,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->graphOptimization_type->setItemData(1, 0, Qt::UserRole - 1);
 	}
+	if(!CameraOpenni::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(0, 0, Qt::UserRole - 1);
+	}
 	if(!CameraFreenect::available())
 	{
 		_ui->comboBox_cameraRGBD->setItemData(1, 0, Qt::UserRole - 1);

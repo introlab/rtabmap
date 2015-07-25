@@ -144,7 +144,7 @@ int main(int argc, char * argv[])
 			}
 			else
 			{
-				camera = new rtabmap::CameraVideo(path, rate);
+				camera = new rtabmap::CameraVideo(path, false, rate);
 			}
 		}
 		else if(UDirectory::exists(path))

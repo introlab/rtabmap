@@ -38,8 +38,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UMath.h>
 
+#ifdef HAVE_OPENNI
 #include <pcl/io/openni_grabber.h>
 #include <pcl/io/oni_grabber.h>
+#endif
 
 #ifdef WITH_FREENECT
 #include <libfreenect.h>
@@ -86,8 +88,18 @@ CameraOpenni::CameraOpenni(const std::string & deviceId, float imageRate, const 
 {
 }
 
+bool CameraOpenni::available() 
+{
+#ifdef HAVE_OPENNI
+	return true;
+#else
+	return false;
+#endif
+}
+
 CameraOpenni::~CameraOpenni()
 {
+#ifdef HAVE_OPENNI
 	UDEBUG("");
 	if(connection_.connected())
 	{
@@ -101,8 +113,9 @@ CameraOpenni::~CameraOpenni()
 		delete interface_;
 		interface_ = 0;
 	}
+#endif
 }
-
+#ifdef HAVE_OPENNI
 void CameraOpenni::image_cb (
 		const boost::shared_ptr<openni_wrapper::Image>& rgb,
 		const boost::shared_ptr<openni_wrapper::DepthImage>& depth,
@@ -126,9 +139,11 @@ void CameraOpenni::image_cb (
 		dataReady_.release();
 	}
 }
+#endif
 
 bool CameraOpenni::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
+#ifdef HAVE_OPENNI
 	if(interface_)
 	{
 		interface_->stop();
@@ -167,25 +182,36 @@ bool CameraOpenni::init(const std::string & calibrationFolder, const std::string
 		return false;
 	}
 	return true;
+#else
+	UERROR("PCL not built with OpenNI! Cannot initialize CameraOpenNI");
+	return false;
+#endif
 }
 
 bool CameraOpenni::isCalibrated() const
 {
+#ifdef HAVE_OPENNI
 	return true;
+#else
+	return false;
+#endif
 }
 
 std::string CameraOpenni::getSerial() const
 {
+#ifdef HAVE_OPENNI
 	if(interface_)
 	{
 		return interface_->getName();
 	}
+#endif
 	return "";
 }
 
 SensorData CameraOpenni::captureImage()
 {
 	SensorData data;
+#ifdef HAVE_OPENNI
 	if(interface_ && interface_->isRunning())
 	{
 		if(!dataReady_.acquire(1, 2000))
@@ -211,6 +237,9 @@ SensorData CameraOpenni::captureImage()
 			depthConstant_ = 0.0f;
 		}
 	}
+#else
+	UERROR("CameraOpenNI: RTAB-Map is not built with PCL having OpenNI support!");
+#endif
 	return data;
 }
 
@@ -1289,7 +1318,7 @@ SensorData CameraFreenect2::captureImage()
 			float fx=0,fy=0,cx=0,cy=0;
 			if(irFrame && depthFrame)
 			{
-				cv::Mat irMat(irFrame->height, irFrame->width, CV_32FC1, irFrame->data);
+				cv::Mat irMat((int)irFrame->height, (int)irFrame->width, CV_32FC1, irFrame->data);
 				//convert to gray scaled
 				float maxIr_ = 0x7FFF;
 				float minIr_ = 0x0;
@@ -1303,7 +1332,7 @@ SensorData CameraFreenect2::captureImage()
 					}
 				}
 
-				cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
+				cv::Mat((int)depthFrame->height, (int)depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
 
 				cv::flip(rgb, rgb, 1);
 				cv::flip(depth, depth, 1);
@@ -1331,7 +1360,7 @@ SensorData CameraFreenect2::captureImage()
 			{
 				//rgb + ir or rgb + depth
 
-				cv::Mat rgbMatC4(rgbFrame->height, rgbFrame->width, CV_8UC4, rgbFrame->data);
+				cv::Mat rgbMatC4((int)rgbFrame->height, (int)rgbFrame->width, CV_8UC4, rgbFrame->data);
 				cv::Mat rgbMat; // rtabmap uses 3 channels RGB
 				cv::cvtColor(rgbMatC4, rgbMat, CV_BGRA2BGR);
 				cv::flip(rgbMat, rgb, 1);
@@ -1343,14 +1372,14 @@ SensorData CameraFreenect2::captureImage()
 					if(irFrame)
 					{
 						//rectify IR
-						cv::Mat(irFrame->height, irFrame->width, CV_32FC1, irFrame->data).convertTo(depth, CV_16U, 1);
+						cv::Mat((int)irFrame->height, (int)irFrame->width, CV_32FC1, irFrame->data).convertTo(depth, CV_16U, 1);
 						cv::flip(depth, depth, 1);
 						depth = stereoModel_.left().rectifyImage(depth);
 					}
 					else
 					{
 						//rectify depth
-						cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
+						cv::Mat((int)depthFrame->height, (int)depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
 						cv::flip(depth, depth, 1);
 						depth = stereoModel_.left().rectifyDepth(depth);
 
@@ -1382,11 +1411,11 @@ SensorData CameraFreenect2::captureImage()
 					//use data from libfreenect2
 					if(irFrame)
 					{
-						cv::Mat(irFrame->height, irFrame->width, CV_32FC1, irFrame->data).convertTo(depth, CV_16U, 1);
+						cv::Mat((int)irFrame->height, (int)irFrame->width, CV_32FC1, irFrame->data).convertTo(depth, CV_16U, 1);
 					}
 					else
 					{
-						cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
+						cv::Mat((int)depthFrame->height, (int)depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
 
 						//registration of the depth
 						if(reg_)
@@ -1397,7 +1426,7 @@ SensorData CameraFreenect2::captureImage()
 								cv::resize(rgb, tmp, cv::Size(), 0.5, 0.5, cv::INTER_AREA);
 								rgb = tmp;
 							}
-							cv::Mat depthFrameMat = cv::Mat(depthFrame->height, depthFrame->width, CV_32FC1, depthFrame->data);
+							cv::Mat depthFrameMat = cv::Mat((int)depthFrame->height, (int)depthFrame->width, CV_32FC1, depthFrame->data);
 							depth = cv::Mat::zeros(rgb.rows, rgb.cols, CV_16U);
 							for(int dx=0; dx<depthFrameMat.cols-1; ++dx)
 							{

@@ -302,11 +302,11 @@ int main(int argc, char * argv[])
 	Camera * camera = 0;
 	if(UDirectory::exists(path))
 	{
-		camera = new CameraImages(path, startAt, false, false, 1/rate);
+		camera = new CameraImages(path, startAt, false, false, 1.0f/rate);
 	}
 	else
 	{
-		camera = new CameraVideo(path, 1/rate);
+		camera = new CameraVideo(path, false, 1.0f/rate);
 	}
 
 	if(!camera || !camera->init())

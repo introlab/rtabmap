@@ -72,7 +72,7 @@ class RTABMAP_EXP CameraOpenni :
 	public Camera
 {
 public:
-	static bool available() {return true;}
+	static bool available();
 
 public:
 	// default local transform z in, x right, y down));
@@ -80,11 +80,12 @@ public:
 			float imageRate = 0,
 			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraOpenni();
-
+#ifdef HAVE_OPENNI
     void image_cb (
     		const boost::shared_ptr<openni_wrapper::Image>& rgb,
 			const boost::shared_ptr<openni_wrapper::DepthImage>& depth,
 			float constant);
+#endif
 
     virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
     virtual bool isCalibrated() const;
