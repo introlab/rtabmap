@@ -3558,17 +3558,19 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 			delete camera;
 			camera = 0;
 		}
-
-		//should be after initialization
-		if(driver == kSrcOpenNI2)
+		else
 		{
-			((CameraOpenNI2*)camera)->setAutoWhiteBalance(this->getSourceOpenni2AutoWhiteBalance());
-			((CameraOpenNI2*)camera)->setAutoExposure(this->getSourceOpenni2AutoExposure());
-			((CameraOpenNI2*)camera)->setMirroring(this->getSourceOpenni2Mirroring());
-			if(CameraOpenNI2::exposureGainAvailable())
+			//should be after initialization
+			if(driver == kSrcOpenNI2)
 			{
-				((CameraOpenNI2*)camera)->setExposure(this->getSourceOpenni2Exposure());
-				((CameraOpenNI2*)camera)->setGain(this->getSourceOpenni2Gain());
+				((CameraOpenNI2*)camera)->setAutoWhiteBalance(this->getSourceOpenni2AutoWhiteBalance());
+				((CameraOpenNI2*)camera)->setAutoExposure(this->getSourceOpenni2AutoExposure());
+				((CameraOpenNI2*)camera)->setMirroring(this->getSourceOpenni2Mirroring());
+				if(CameraOpenNI2::exposureGainAvailable())
+				{
+					((CameraOpenNI2*)camera)->setExposure(this->getSourceOpenni2Exposure());
+					((CameraOpenNI2*)camera)->setGain(this->getSourceOpenni2Gain());
+				}
 			}
 		}
 	}
