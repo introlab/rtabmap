@@ -289,6 +289,12 @@ void RtabmapThread::mainLoop()
 	case kStateCancellingGoal:
 		_rtabmap->clearPath();
 		break;
+	case kStateLabelling:
+		if(!_rtabmap->labelLocation(atoi(parameters.at("id").c_str()), parameters.at("label").c_str()))
+		{
+			this->post(new RtabmapLabelErrorEvent(atoi(parameters.at("id").c_str()), parameters.at("label").c_str()));
+		}
+		break;
 	default:
 		UFATAL("Invalid state !?!?");
 		break;
@@ -499,6 +505,14 @@ void RtabmapThread::handleEvent(UEvent* event)
 		{
 			ULOGGER_DEBUG("CMD_CANCEL_GOAL");
 			pushNewState(kStateCancellingGoal);
+		}
+		else if(cmd == RtabmapEventCmd::kCmdLabel)
+		{
+			ULOGGER_DEBUG("CMD_LABEL");
+			ParametersMap param;
+			param.insert(ParametersPair("label", rtabmapEvent->getStr()));
+			param.insert(ParametersPair("id", uNumber2Str(rtabmapEvent->getInt())));
+			pushNewState(kStateLabelling, param);
 		}
 		else
 		{

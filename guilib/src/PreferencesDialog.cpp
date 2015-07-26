@@ -292,6 +292,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	}
 
 	connect(_ui->checkBox_showGraphs, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_showLabels, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -1007,6 +1008,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		}
 
 		_ui->checkBox_showGraphs->setChecked(true);
+		_ui->checkBox_showLabels->setChecked(true);
 
 		_ui->checkBox_meshing->setChecked(false);
 		_ui->doubleSpinBox_gp3Radius->setValue(0.04);
@@ -1289,6 +1291,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 		_3dRenderingPtSizeScan[i]->setValue(settings.value(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value()).toInt());
 	}
 	_ui->checkBox_showGraphs->setChecked(settings.value("showGraphs", _ui->checkBox_showGraphs->isChecked()).toBool());
+	_ui->checkBox_showLabels->setChecked(settings.value("showLabels", _ui->checkBox_showLabels->isChecked()).toBool());
 
 	_ui->checkBox_meshing->setChecked(settings.value("meshing", _ui->checkBox_meshing->isChecked()).toBool());
 	_ui->doubleSpinBox_gp3Radius->setValue(settings.value("meshGP3Radius", _ui->doubleSpinBox_gp3Radius->value()).toDouble());
@@ -1589,6 +1592,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 		settings.setValue(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value());
 	}
 	settings.setValue("showGraphs", _ui->checkBox_showGraphs->isChecked());
+	settings.setValue("showLabels", _ui->checkBox_showLabels->isChecked());
 
 	settings.setValue("meshing", _ui->checkBox_meshing->isChecked());
 	settings.setValue("meshGP3Radius", _ui->doubleSpinBox_gp3Radius->value());
@@ -3075,6 +3079,10 @@ bool PreferencesDialog::isCloudsShown(int index) const
 bool PreferencesDialog::isGraphsShown() const
 {
 	return _ui->checkBox_showGraphs->isChecked();
+}
+bool PreferencesDialog::isLabelsShown() const
+{
+	return _ui->checkBox_showLabels->isChecked();
 }
 bool PreferencesDialog::isCloudMeshing() const
 {

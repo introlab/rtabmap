@@ -63,6 +63,7 @@
      <addaction name="actionGenerate_TORO_graph_graph"/>
      <addaction name="actionExport_poses_txt"/>
      <addaction name="actionPrint_loop_closure_IDs_to_console"/>
+     <addaction name="separator"/>
      <addaction name="actionSend_goal"/>
      <addaction name="actionCancel_goal"/>
     </widget>
@@ -202,6 +203,8 @@
     <addaction name="separator"/>
     <addaction name="actionReset_Odometry"/>
     <addaction name="actionTrigger_a_new_map"/>
+    <addaction name="separator"/>
+    <addaction name="actionLabel_current_location"/>
    </widget>
    <widget class="QMenu" name="menuWindow">
     <property name="title">
@@ -1231,6 +1234,11 @@
    </property>
    <property name="text">
     <string>More options...</string>
+   </property>
+  </action>
+  <action name="actionLabel_current_location">
+   <property name="text">
+    <string>Label current location...</string>
    </property>
   </action>
  </widget>

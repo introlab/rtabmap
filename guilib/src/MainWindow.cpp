@@ -261,7 +261,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(this, SIGNAL(rtabmapEvent3DMapReceived(const rtabmap::RtabmapEvent3DMap &)), this, SLOT(processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap &)));
 	qRegisterMetaType<rtabmap::RtabmapGlobalPathEvent>("rtabmap::RtabmapGlobalPathEvent");
 	connect(this, SIGNAL(rtabmapGlobalPathEventReceived(const rtabmap::RtabmapGlobalPathEvent &)), this, SLOT(processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathEvent &)));
-
+	connect(this, SIGNAL(rtabmapLabelErrorReceived(int, const QString &)), this, SLOT(processRtabmapLabelErrorEvent(int, const QString &)));
 	// Dock Widget view actions (Menu->Window)
 	_ui->menuShow_view->addAction(_ui->dockWidget_imageView->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_posterior->toggleViewAction());
@@ -295,6 +295,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionDump_the_prediction_matrix, SIGNAL(triggered()), this, SLOT(dumpThePrediction()));
 	connect(_ui->actionSend_goal, SIGNAL(triggered()), this, SLOT(sendGoal()));
 	connect(_ui->actionCancel_goal, SIGNAL(triggered()), this, SLOT(cancelGoal()));
+	connect(_ui->actionLabel_current_location, SIGNAL(triggered()), this, SLOT(label()));
 	connect(_ui->actionClear_cache, SIGNAL(triggered()), this, SLOT(clearTheCache()));
 	connect(_ui->actionAbout, SIGNAL(triggered()), _aboutDialog , SLOT(exec()));
 	connect(_ui->actionPrint_loop_closure_IDs_to_console, SIGNAL(triggered()), this, SLOT(printLoopClosureIds()));
@@ -647,6 +648,11 @@ void MainWindow::handleEvent(UEvent* anEvent)
 	{
 		RtabmapGlobalPathEvent * rtabmapGlobalPathEvent = (RtabmapGlobalPathEvent*)anEvent;
 		emit rtabmapGlobalPathEventReceived(*rtabmapGlobalPathEvent);
+	}
+	else if(anEvent->getClassName().compare("RtabmapLabelErrorEvent") == 0)
+	{
+		RtabmapLabelErrorEvent * rtabmapLabelErrorEvent = (RtabmapLabelErrorEvent*)anEvent;
+		emit rtabmapLabelErrorReceived(rtabmapLabelErrorEvent->id(), QString(rtabmapLabelErrorEvent->label().c_str()));
 	}
 	else if(anEvent->getClassName().compare("CameraEvent") == 0)
 	{
@@ -1222,14 +1228,20 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		{
 			// update pose only if odometry is not received
 			std::map<int, int> mapIds;
+			std::map<int, std::string> labels;
 			for(std::map<int, Signature>::const_iterator iter=stat.getSignatures().begin(); iter!=stat.getSignatures().end();++iter)
 			{
 				mapIds.insert(std::make_pair(iter->first, iter->second.mapId()));
+				if(!iter->second.getLabel().empty())
+				{
+					labels.insert(std::make_pair(iter->first, iter->second.getLabel()));
+				}
 			}
 			updateMapCloud(stat.poses(),
 					_odometryReceived||stat.poses().size()==0?Transform():stat.poses().rbegin()->second,
 					stat.constraints(),
-					mapIds);
+					mapIds,
+					labels);
 
 			_odometryReceived = false;
 
@@ -1309,15 +1321,17 @@ void MainWindow::updateMapCloud(
 		const Transform & currentPose,
 		const std::multimap<int, Link> & constraints,
 		const std::map<int, int> & mapIdsIn,
+		const std::map<int, std::string> & labels,
 		bool verboseProgress)
 {
-	UDEBUG("posesIn=%d constraints=%d mapIdsIn=%d currentPose=%s",
-			(int)posesIn.size(), (int)constraints.size(), (int)mapIdsIn.size(), currentPose.prettyPrint().c_str());
+	UDEBUG("posesIn=%d constraints=%d mapIdsIn=%d labelsIn=%d currentPose=%s",
+			(int)posesIn.size(), (int)constraints.size(), (int)mapIdsIn.size(), (int)labels.size(), currentPose.prettyPrint().c_str());
 	if(posesIn.size())
 	{
 		_currentPosesMap = posesIn;
 		_currentLinksMap = constraints;
 		_currentMapIds = mapIdsIn;
+		_curentLabels = labels;
 		if(_currentPosesMap.size())
 		{
 			if(!_ui->actionSave_point_cloud->isEnabled() &&
@@ -1539,6 +1553,30 @@ void MainWindow::updateMapCloud(
 				color = (Qt::GlobalColor)((iter->first+3) % 12 + 7 );
 			}
 			_ui->widget_cloudViewer->addOrUpdateGraph(uFormat("graph_%d", iter->first), iter->second, color);
+		}
+	}
+
+	// Update labels
+	_ui->widget_cloudViewer->removeAllTexts();
+	if(_preferencesDialog->isLabelsShown() && labels.size())
+	{
+		for(std::map<int, std::string>::const_iterator iter=labels.begin(); iter!=labels.end(); ++iter)
+		{
+			if(posesIn.find(iter->first)!=posesIn.end())
+			{
+				int mapId = uValue(mapIdsIn, iter->first, -1);
+				QColor color = Qt::gray;
+				if(mapId >= 0)
+				{
+					color = (Qt::GlobalColor)((mapId+3) % 12 + 7 );
+				}
+				_ui->widget_cloudViewer->addOrUpdateText(
+						std::string("label_") + uNumber2Str(iter->first),
+						iter->second,
+						_currentPosesMap.at(iter->first),
+						0.1,
+						color);
+			}
 		}
 	}
 
@@ -2059,11 +2097,16 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 
 		int addedSignatures = 0;
 		std::map<int, int> mapIds;
+		std::map<int, std::string> labels;
 		for(std::map<int, Signature>::const_iterator iter = event.getSignatures().begin();
 			iter!=event.getSignatures().end();
 			++iter)
 		{
 			mapIds.insert(std::make_pair(iter->first, iter->second.mapId()));
+			if(!iter->second.getLabel().empty())
+			{
+				labels.insert(std::make_pair(iter->first, iter->second.getLabel()));
+			}
 			if(!_cachedSignatures.contains(iter->first) ||
 			   (_cachedSignatures.value(iter->first).sensorData().imageCompressed().empty() && !iter->second.sensorData().imageCompressed().empty()))
 			{
@@ -2084,7 +2127,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			_initProgressDialog->appendText("Updating the 3D map cloud...");
 			_initProgressDialog->incrementStep();
 			QApplication::processEvents();
-			this->updateMapCloud(event.getPoses(), Transform(), event.getConstraints(), mapIds, true);
+			this->updateMapCloud(event.getPoses(), Transform(), event.getConstraints(), mapIds, labels, true);
 			_initProgressDialog->appendText("Updating the 3D map cloud... done.");
 		}
 		else
@@ -2142,6 +2185,21 @@ void MainWindow::processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathE
 	}
 }
 
+void MainWindow::processRtabmapLabelErrorEvent(int id, const QString & label)
+{
+	QMessageBox * warn = new QMessageBox(
+			QMessageBox::Warning,
+			tr("Setting label failed!"),
+			tr("Setting label %1 to location %2 failed. "
+				"Some reasons: \n"
+				"1) the location doesn't exist in the map,\n"
+				"2) the location has already a label.").arg(label).arg(id),
+			QMessageBox::Ok,
+			this);
+	warn->setAttribute(Qt::WA_DeleteOnClose, true);
+	warn->show();
+}
+
 void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 {
 	ULOGGER_DEBUG("");
@@ -2197,7 +2255,8 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 					std::map<int, Transform>(_currentPosesMap),
 					Transform(),
 					std::multimap<int, Link>(_currentLinksMap),
-					std::map<int, int>(_currentMapIds));
+					std::map<int, int>(_currentMapIds),
+					std::map<int, std::string>(_curentLabels));
 		}
 	}
 
@@ -3687,7 +3746,12 @@ void MainWindow::postProcessing()
 	_initProgressDialog->incrementStep();
 
 	_initProgressDialog->appendText(tr("Updating map..."));
-	this->updateMapCloud(optimizedPoses, Transform(), std::multimap<int, Link>(_currentLinksMap), std::map<int, int>(_currentMapIds), false);
+	this->updateMapCloud(
+			optimizedPoses, Transform(),
+			std::multimap<int, Link>(_currentLinksMap),
+			std::map<int, int>(_currentMapIds),
+			std::map<int, std::string>(_curentLabels),
+			false);
 	_initProgressDialog->appendText(tr("Updating map... done!"));
 
 	_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
@@ -3848,6 +3912,17 @@ void MainWindow::cancelGoal()
 	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdCancelGoal));
 }
 
+void MainWindow::label()
+{
+	UINFO("Labelling current location...");
+	bool ok = false;
+	QString label = QInputDialog::getText(this, tr("Label current location"), tr("Label: "), QLineEdit::Normal, "", &ok);
+	if(ok && !label.isEmpty())
+	{
+		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdLabel, label.toStdString(), 0));
+	}
+}
+
 void MainWindow::downloadAllClouds()
 {
 	QStringList items;
@@ -3957,14 +4032,14 @@ void MainWindow::clearTheCache()
 	_createdScans.clear();
 	_gridLocalMaps.clear();
 	_projectionLocalMaps.clear();
-	_ui->widget_cloudViewer->removeAllClouds();
-	_ui->widget_cloudViewer->removeAllGraphs();
+	_ui->widget_cloudViewer->clear();
 	_ui->widget_cloudViewer->setBackgroundColor(_ui->widget_cloudViewer->getDefaultBackgroundColor());
 	_ui->widget_cloudViewer->clearTrajectory();
 	_ui->widget_mapVisibility->clear();
 	_currentPosesMap.clear();
 	_currentLinksMap.clear();
 	_currentMapIds.clear();
+	_curentLabels.clear();
 	_odometryCorrection = Transform::getIdentity();
 	_lastOdomPose.setNull();
 	//disable save cloud action

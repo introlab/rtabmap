@@ -77,7 +77,8 @@ public:
 			kCmdTriggerNewMap,
 			kCmdPause,
 			kCmdGoal, // params: label or location ID
-			kCmdCancelGoal};
+			kCmdCancelGoal,
+			kCmdLabel}; // // params: label or location ID
 public:
 	RtabmapEventCmd(Cmd cmd, const std::string & strValue = "", int intValue = 0, const ParametersMap & parameters = ParametersMap()) :
 			UEvent(0),
@@ -188,6 +189,22 @@ public:
 
 private:
 	std::vector<std::pair<int, Transform> > _poses;
+};
+
+class RtabmapLabelErrorEvent : public UEvent
+{
+public:
+	RtabmapLabelErrorEvent(int id, const std::string & label):
+		UEvent(id),
+		_label(label){}
+
+	virtual ~RtabmapLabelErrorEvent() {}
+	int id() const {return this->getCode();}
+	const std::string & label() const {return _label;}
+	virtual std::string getClassName() const {return std::string("RtabmapLabelErrorEvent");}
+
+private:
+	std::string _label;
 };
 
 } // namespace rtabmap

@@ -147,6 +147,7 @@ private slots:
 	void dumpThePrediction();
 	void sendGoal();
 	void cancelGoal();
+	void label();
 	void downloadAllClouds();
 	void downloadPoseGraph();
 	void clearTheCache();
@@ -162,6 +163,7 @@ private slots:
 	void processRtabmapEventInit(int status, const QString & info);
 	void processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & event);
 	void processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathEvent & event);
+	void processRtabmapLabelErrorEvent(int id, const QString & label);
 	void changeImgRateSetting();
 	void changeDetectionRateSetting();
 	void changeTimeLimitSetting();
@@ -195,6 +197,7 @@ signals:
 	void rtabmapEventInitReceived(int status, const QString & info);
 	void rtabmapEvent3DMapReceived(const rtabmap::RtabmapEvent3DMap & event);
 	void rtabmapGlobalPathEventReceived(const rtabmap::RtabmapGlobalPathEvent & event);
+	void rtabmapLabelErrorReceived(int id, const QString & label);
 	void imgRateChanged(double);
 	void detectionRateChanged(double);
 	void timeLimitChanged(float);
@@ -205,7 +208,13 @@ signals:
 
 private:
 	void update3DMapVisibility(bool cloudsShown, bool scansShown);
-	void updateMapCloud(const std::map<int, Transform> & poses, const Transform & pose, const std::multimap<int, Link> & constraints, const std::map<int, int> & mapIds, bool verboseProgress = false);
+	void updateMapCloud(
+			const std::map<int, Transform> & poses,
+			const Transform & pose,
+			const std::multimap<int, Link> & constraints,
+			const std::map<int, int> & mapIds,
+			const std::map<int, std::string> & labels,
+			bool verboseProgress = false);
 	void createAndAddCloudToMap(int nodeId,	const Transform & pose, int mapId);
 	void createAndAddScanToMap(int nodeId, const Transform & pose, int mapId);
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
@@ -266,6 +275,7 @@ private:
 	std::map<int, Transform> _currentPosesMap; // <nodeId, pose>
 	std::multimap<int, Link> _currentLinksMap; // <nodeFromId, link>
 	std::map<int, int> _currentMapIds;   // <nodeId, mapId>
+	std::map<int, std::string> _curentLabels; // <nodeId, label>
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > _createdClouds;
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > _createdScans;
 	std::map<int, std::pair<cv::Mat, cv::Mat> > _projectionLocalMaps; // <ground, obstacles>

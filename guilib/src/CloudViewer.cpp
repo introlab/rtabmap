@@ -146,9 +146,17 @@ CloudViewer::CloudViewer(QWidget *parent) :
 CloudViewer::~CloudViewer()
 {
 	UDEBUG("");
+	this->clear();
+	delete _visualizer;
+}
+
+void CloudViewer::clear()
+{
 	this->removeAllClouds();
 	this->removeAllGraphs();
-	delete _visualizer;
+	this->removeAllCoordinates();
+	this->removeAllTexts();
+	this->clearTrajectory();
 }
 
 void CloudViewer::createMenu()
@@ -693,6 +701,60 @@ void CloudViewer::removeAllGraphs()
 		this->removeGraph(*iter);
 	}
 	UASSERT(_graphes.empty());
+}
+
+void CloudViewer::addOrUpdateText(
+			const std::string & id,
+			const std::string & text,
+			const Transform & position,
+			double scale,
+			const QColor & color)
+{
+	if(id.empty())
+	{
+		UERROR("id should not be empty!");
+		return;
+	}
+
+	removeCoordinate(id);
+
+	if(!position.isNull())
+	{
+		_texts.insert(id);
+		_visualizer->addText3D(
+				text,
+				pcl::PointXYZ(position.x(), position.y(), position.z()),
+				scale,
+				color.redF(),
+				color.greenF(),
+				color.blueF(),
+				id);
+	}
+}
+
+void CloudViewer::removeText(const std::string & id)
+{
+	if(id.empty())
+	{
+		UERROR("id should not be empty!");
+		return;
+	}
+
+	if(_texts.find(id) != _coordinates.end())
+	{
+		_visualizer->removeText3D(id);
+		_texts.erase(id);
+	}
+}
+
+void CloudViewer::removeAllTexts()
+{
+	std::set<std::string> texts = _texts;
+	for(std::set<std::string>::iterator iter = texts.begin(); iter!=texts.end(); ++iter)
+	{
+		this->removeText(*iter);
+	}
+	UASSERT(_texts.empty());
 }
 
 bool CloudViewer::isTrajectoryShown() const

@@ -75,7 +75,8 @@ public:
 		kStateTriggeringMap,
 		kStateAddingUserData,
 		kStateSettingGoal,
-		kStateCancellingGoal
+		kStateCancellingGoal,
+		kStateLabelling
 	};
 
 public:

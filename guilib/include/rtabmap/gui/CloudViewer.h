@@ -151,6 +151,15 @@ public:
 	void removeGraph(const std::string & id);
 	void removeAllGraphs();
 
+	void addOrUpdateText(
+			const std::string & id,
+			const std::string & text,
+			const Transform & position,
+			double scale,
+			const QColor & color);
+	void removeText(const std::string & id);
+	void removeAllTexts();
+
 	bool isTrajectoryShown() const;
 	unsigned int getTrajectorySize() const;
 	void setTrajectoryShown(bool shown);
@@ -198,7 +207,7 @@ public slots:
 	void setCloudVisibility(const std::string & id, bool isVisible);
 	void setCloudOpacity(const std::string & id, double opacity = 1.0);
 	void setCloudPointSize(const std::string & id, int size);
-	virtual void clear() {removeAllClouds(); clearTrajectory();}
+	virtual void clear();
 
 signals:
 	void configChanged();
@@ -234,6 +243,7 @@ private:
     QMenu * _menu;
     std::set<std::string> _graphes;
     std::set<std::string> _coordinates;
+    std::set<std::string> _texts;
     pcl::PointCloud<pcl::PointXYZ>::Ptr _trajectory;
     unsigned int _maxTrajectorySize;
     unsigned int _gridCellCount;

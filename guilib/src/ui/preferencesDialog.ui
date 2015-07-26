@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>755</width>
-            <height>1591</height>
+            <y>-625</y>
+            <width>760</width>
+            <height>1570</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -676,6 +676,25 @@ Show a yellow background when the number of odometry inliers goes under this thr
                        <enum>QFrame::Raised</enum>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,0,1">
+                       <item row="6" column="1">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity_odom">
+                         <property name="suffix">
+                          <string/>
+                         </property>
+                         <property name="decimals">
+                          <number>2</number>
+                         </property>
+                         <property name="maximum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.100000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>1.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
                        <item row="9" column="0">
                         <widget class="QCheckBox" name="checkBox_showScans">
                          <property name="text">
@@ -915,25 +934,6 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="1">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity_odom">
-                         <property name="suffix">
-                          <string/>
-                         </property>
-                         <property name="decimals">
-                          <number>2</number>
-                         </property>
-                         <property name="maximum">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.100000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>1.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="6" column="2">
                         <widget class="QLabel" name="label_155">
                          <property name="text">
@@ -1022,7 +1022,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="13" column="0">
+                       <item row="14" column="0">
                         <widget class="QCheckBox" name="checkBox_meshing">
                          <property name="text">
                           <string/>
@@ -1084,7 +1084,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="15" column="2">
+                       <item row="16" column="2">
                         <widget class="QLabel" name="label_168">
                          <property name="text">
                           <string>Sphere radius that is to be used for determining the k-nearest neighbors used for triangulating (GP3). Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
@@ -1097,7 +1097,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="17" column="2">
+                       <item row="18" column="2">
                         <widget class="QLabel" name="label_85">
                          <property name="text">
                           <string>Mesh smoothing using Moving Least Squares algorithm (MLS).</string>
@@ -1110,7 +1110,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="15" column="0">
+                       <item row="16" column="0">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_gp3Radius">
                          <property name="suffix">
                           <string> m</string>
@@ -1129,7 +1129,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="18" column="0">
+                       <item row="19" column="0">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_mlsRadius">
                          <property name="suffix">
                           <string> m</string>
@@ -1148,7 +1148,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="13" column="2">
+                       <item row="14" column="2">
                         <widget class="QLabel" name="label_169">
                          <property name="text">
                           <string>Online meshing using Greedy Projection Triangulation (GP3).</string>
@@ -1161,7 +1161,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="18" column="2">
+                       <item row="19" column="2">
                         <widget class="QLabel" name="label_87">
                          <property name="text">
                           <string>MLS search radius: Set the sphere radius that is to be used for determining the k-nearest neighbors used for fitting. Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
@@ -1174,7 +1174,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="17" column="0">
+                       <item row="18" column="0">
                         <widget class="QCheckBox" name="checkBox_mls">
                          <property name="text">
                           <string/>
@@ -1184,7 +1184,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="14" column="2">
+                       <item row="15" column="2">
                         <widget class="QLabel" name="label_71">
                          <property name="text">
                           <string>Set the number of k nearest neighbors to use for the normal estimation to create the mesh. Not used when mesh smoothing below is used.</string>
@@ -1197,7 +1197,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="14" column="0">
+                       <item row="15" column="0">
                         <widget class="QSpinBox" name="spinBox_normalKSearch">
                          <property name="value">
                           <number>20</number>
@@ -1219,6 +1219,29 @@ Show a yellow background when the number of odometry inliers goes under this thr
                        </item>
                        <item row="12" column="0">
                         <widget class="QCheckBox" name="checkBox_showGraphs">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="13" column="2">
+                        <widget class="QLabel" name="label_243">
+                         <property name="text">
+                          <string>Show labels.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="13" column="0">
+                        <widget class="QCheckBox" name="checkBox_showLabels">
                          <property name="text">
                           <string/>
                          </property>
