@@ -53,6 +53,7 @@ private:
 	virtual void disconnectDatabaseQuery();
 	virtual bool isConnectedQuery() const;
 	virtual long getMemoryUsedQuery() const; // In bytes
+	virtual bool getDatabaseVersionQuery(std::string & version) const;
 
 	virtual void executeNoResultQuery(const std::string & sql) const;
 
@@ -101,7 +102,6 @@ private:
 private:
 	void loadLinksQuery(std::list<Signature *> & signatures) const;
 	int loadOrSaveDb(sqlite3 *pInMemory, const std::string & fileName, int isSave) const;
-	bool getVersion(std::string &) const;
 
 private:
 	sqlite3 * _ppDb;

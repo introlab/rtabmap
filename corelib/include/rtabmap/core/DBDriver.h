@@ -85,6 +85,7 @@ public:
 	void closeConnection();
 	bool isConnected() const;
 	long getMemoryUsed() const; // In bytes
+	std::string getDatabaseVersion() const;
 
 	void executeNoResult(const std::string & sql) const;
 
@@ -116,6 +117,7 @@ private:
 	virtual void disconnectDatabaseQuery() = 0;
 	virtual bool isConnectedQuery() const = 0;
 	virtual long getMemoryUsedQuery() const = 0; // In bytes
+	virtual bool getDatabaseVersionQuery(std::string & version) const = 0;
 
 	virtual void executeNoResultQuery(const std::string & sql) const = 0;
 

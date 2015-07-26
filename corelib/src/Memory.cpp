@@ -1170,6 +1170,16 @@ int Memory::getDatabaseMemoryUsed() const
 	return memoryUsed;
 }
 
+std::string Memory::getDatabaseVersion() const
+{
+	std::string version = "0.0.0";
+	if(_dbDriver)
+	{
+		version = _dbDriver->getDatabaseVersion();
+	}
+	return version;
+}
+
 double Memory::getDbSavingTime() const
 {
 	return _dbDriver?_dbDriver->getEmptyTrashesTime():0;

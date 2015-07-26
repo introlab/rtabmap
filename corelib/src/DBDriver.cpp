@@ -99,6 +99,15 @@ long DBDriver::getMemoryUsed() const
 	return bytes;
 }
 
+std::string DBDriver::getDatabaseVersion() const
+{
+	std::string version = "0.0.0";
+	_dbSafeAccessMutex.lock();
+	getDatabaseVersionQuery(version);
+	_dbSafeAccessMutex.unlock();
+	return version;
+}
+
 void DBDriver::mainLoop()
 {
 	this->emptyTrashes();

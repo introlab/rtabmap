@@ -269,7 +269,7 @@ int DBDriverSqlite3::loadOrSaveDb(sqlite3 *pInMemory, const std::string & fileNa
   return rc;
 }
 
-bool DBDriverSqlite3::getVersion(std::string & version) const
+bool DBDriverSqlite3::getDatabaseVersionQuery(std::string & version) const
 {
 	version = "0.0.0";
 	if(_ppDb)
@@ -370,7 +370,7 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 		schema = uHex2Str(schema);
 		this->executeNoResultQuery(schema.c_str());
 	}
-	UASSERT(this->getVersion(_version)); // must be true!
+	UASSERT(this->getDatabaseVersionQuery(_version)); // must be true!
 	UINFO("Database version = %s", _version.c_str());
 
 	//Set database optimizations

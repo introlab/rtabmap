@@ -130,6 +130,7 @@ public:
 	std::map<int, std::string> getAllLabels() const;
 	bool setUserData(int id, const cv::Mat & data);
 	int getDatabaseMemoryUsed() const; // in bytes
+	std::string getDatabaseVersion() const;
 	double getDbSavingTime() const;
 	Transform getOdomPose(int signatureId, bool lookInDatabase = false) const;
 	bool getNodeInfo(int signatureId,
