@@ -459,7 +459,11 @@ std::multimap<int, pcl::PointXYZ> generateWords3DMono(
 										true,
 										pnpIterations,
 										pnpReprojError,
-										0,
+#if CV_MAJOR_VERSION < 3
+										0, // min inliers
+#else
+										0.99, // confidence
+#endif
 										inliersV,
 										pnpFlags);
 

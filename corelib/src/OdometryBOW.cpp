@@ -244,6 +244,7 @@ Transform OdometryBOW::computeTransform(
 						UASSERT(data.stereoCameraModel().isValid() || (data.cameraModels().size() == 1 && data.cameraModels()[0].isValid()));
 						const CameraModel & cameraModel = data.stereoCameraModel().isValid()?data.stereoCameraModel().left():data.cameraModels()[0];
 
+						UDEBUG("");
 						t = util3d::estimateMotion3DTo2D(
 								localMap_,
 								newSignature->getWords(),

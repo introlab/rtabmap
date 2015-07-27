@@ -110,7 +110,11 @@ Transform estimateMotion3DTo2D(
 				true,
 				iterations,
 				reprojError,
-				0,
+#if CV_MAJOR_VERSION < 3
+				0, // min inliers
+#else
+				0.99, // confidence
+#endif
 				inliers,
 				flagsPnP);
 

@@ -259,7 +259,11 @@ Transform OdometryOpticalFlow::computeTransform(
 							true,
 							this->getIterations(),
 							this->getPnPReprojError(),
-							0,
+#if CV_MAJOR_VERSION < 3
+							0, // min inliers
+#else
+							0.99, // confidence
+#endif
 							inliersV,
 							this->getPnPFlags());
 
