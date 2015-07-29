@@ -57,6 +57,14 @@ void RTABMAP_EXP findCorrespondences(
 		float maxDepth,
 		std::vector<int> * uniqueCorrespondences = 0);
 
+void RTABMAP_EXP findCorrespondences(
+		const std::map<int, pcl::PointXYZ> & words1,
+		const std::map<int, pcl::PointXYZ> & words2,
+		pcl::PointCloud<pcl::PointXYZ> & inliers1,
+		pcl::PointCloud<pcl::PointXYZ> & inliers2,
+		float maxDepth,
+		std::vector<int> * correspondences = 0);
+
 // remove depth by z axis
 void RTABMAP_EXP extractXYZCorrespondences(const std::multimap<int, pcl::PointXYZ> & words1,
 									  const std::multimap<int, pcl::PointXYZ> & words2,

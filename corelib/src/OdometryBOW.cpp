@@ -247,14 +247,14 @@ Transform OdometryBOW::computeTransform(
 						UDEBUG("");
 						t = util3d::estimateMotion3DTo2D(
 								localMap_,
-								newSignature->getWords(),
+								uMultimapToMap(newSignature->getWords()),
 								cameraModel,
 								this->getMinInliers(),
 								this->getIterations(),
 								this->getPnPReprojError(),
 								this->getPnPFlags(),
 								this->getPose(),
-								newSignature->getWords3(),
+								uMultimapToMap(newSignature->getWords3()),
 								&variance,
 								&matches,
 								&inliers);
@@ -271,7 +271,7 @@ Transform OdometryBOW::computeTransform(
 					{
 						t = util3d::estimateMotion3DTo3D(
 								localMap_,
-								newSignature->getWords3(),
+								uMultimapToMap(newSignature->getWords3()),
 								this->getMinInliers(),
 								this->getInlierDistance(),
 								this->getIterations(),

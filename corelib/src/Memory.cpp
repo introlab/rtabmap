@@ -2102,15 +2102,15 @@ Transform Memory::computeVisualTransform(
 
 				std::vector<int> inliersV;
 				transform = util3d::estimateMotion3DTo2D(
-						oldS.getWords3(),
-						newS.getWords(),
+						uMultimapToMap(oldS.getWords3()),
+						uMultimapToMap(newS.getWords()),
 						cameraModel,
 						_bowMinInliers,
 						_bowIterations,
 						_bowPnPReprojError,
 						_bowPnPFlags,
 						Transform::getIdentity(),
-						newS.getWords3(),
+						uMultimapToMap(newS.getWords3()),
 						&variance,
 						0,
 						&inliersV);
@@ -2143,8 +2143,8 @@ Transform Memory::computeVisualTransform(
 		{
 			std::vector<int> inliersV;
 			transform = util3d::estimateMotion3DTo3D(
-					oldS.getWords3(),
-					newS.getWords3(),
+					uMultimapToMap(oldS.getWords3()),
+					uMultimapToMap(newS.getWords3()),
 					_bowMinInliers,
 					_bowInlierDistance,
 					_bowIterations,

@@ -471,6 +471,15 @@ inline std::list<V> uVectorToList(const std::vector<V> & v)
 }
 
 /**
+ * Convert a std::multimap to a std::map
+ */
+template<class K, class V>
+inline std::map<K, V> uMultimapToMap(const std::multimap<K, V> & m)
+{
+	return std::map<K, V>(m.begin(), m.end());
+}
+
+/**
  * Append a list to another list.
  * @param list the list on which the other list will be appended
  * @param newItems the list of items to be appended

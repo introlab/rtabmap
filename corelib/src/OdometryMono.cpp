@@ -833,11 +833,10 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 									scale = scales.begin()->second;
 									UWARN("scale used = %f (variance=%f scales=%d)", scale, scales.begin()->first, (int)scales.size());
 
-									maxVariance_ = 0.01;
-									UDEBUG("Max noise variance = %f current variance=%f", 0.01, scales.begin()->first);
-									if(scales.begin()->first > 0.01)
+									UDEBUG("Max noise variance = %f current variance=%f", maxVariance_, scales.begin()->first);
+									if(scales.begin()->first > maxVariance_)
 									{
-										UWARN("Too high variance %f (should be < 0.01)", scales.begin()->first);
+										UWARN("Too high variance %f (should be < %f)", scales.begin()->first, maxVariance_);
 										reject = true; // 20 cm for good initialization
 									}
 								}
@@ -849,7 +848,6 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 								Eigen::Vector4f centroid;
 								pcl::compute3DCentroid(*inliersRef, centroid);
 								scale = 1.0f / centroid[2];
-								maxVariance_ = 0.01;
 							}
 							else
 							{
@@ -960,7 +958,10 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 			{
 				for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 				{
-					cornersMap_.insert(std::make_pair(iter->first, iter->second.pt));
+					if(words.count(iter->first) == 1)
+					{
+						cornersMap_.insert(std::make_pair(iter->first, iter->second.pt));
+					}
 				}
 				refDepthOrRight_ = data.depthOrRightRaw().clone();
 				keyFramePoses_.insert(std::make_pair(memory_->getLastSignatureId(), Transform::getIdentity()));

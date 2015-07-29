@@ -41,23 +41,23 @@ namespace rtabmap
 namespace util3d
 {
 
-Transform estimateMotion3DTo2D(
-			const std::multimap<int, pcl::PointXYZ> & words3A,
-			const std::multimap<int, cv::KeyPoint> & words2B,
+Transform RTABMAP_EXP estimateMotion3DTo2D(
+			const std::map<int, pcl::PointXYZ> & words3A,
+			const std::map<int, cv::KeyPoint> & words2B,
 			const CameraModel & cameraModel,
 			int minInliers = 10,
 			int iterations = 100,
 			double reprojError = 5.,
 			int flagsPnP = 0,
 			const Transform & guess = Transform::getIdentity(),
-			const std::multimap<int, pcl::PointXYZ> & words3B = std::multimap<int, pcl::PointXYZ>(),
+			const std::map<int, pcl::PointXYZ> & words3B = std::map<int, pcl::PointXYZ>(),
 			double * varianceOut = 0,
 			std::vector<int> * matchesOut = 0,
 			std::vector<int> * inliersOut = 0);
 
-Transform estimateMotion3DTo3D(
-			const std::multimap<int, pcl::PointXYZ> & words3A,
-			const std::multimap<int, pcl::PointXYZ> & words3B,
+Transform RTABMAP_EXP estimateMotion3DTo3D(
+			const std::map<int, pcl::PointXYZ> & words3A,
+			const std::map<int, pcl::PointXYZ> & words3B,
 			int minInliers = 10,
 			double inliersDistance = 0.1,
 			int iterations = 100,

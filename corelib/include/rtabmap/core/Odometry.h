@@ -109,7 +109,7 @@ public:
 	virtual ~OdometryBOW();
 
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
-	const std::multimap<int, pcl::PointXYZ> & getLocalMap() const {return localMap_;}
+	const std::map<int, pcl::PointXYZ> & getLocalMap() const {return localMap_;}
 	const Memory * getMemory() const {return _memory;}
 
 private:
@@ -121,7 +121,7 @@ private:
 	std::string _fixedLocalMapPath;
 
 	Memory * _memory;
-	std::multimap<int, pcl::PointXYZ> localMap_;
+	std::map<int, pcl::PointXYZ> localMap_;
 };
 
 class RTABMAP_EXP OdometryOpticalFlow : public Odometry
@@ -195,7 +195,7 @@ private:
 
 	cv::Mat refDepthOrRight_;
 	std::map<int, cv::Point2f> cornersMap_;
-	std::multimap<int, cv::Point3f> localMap_;
+	std::map<int, cv::Point3f> localMap_;
 	std::map<int, std::multimap<int, pcl::PointXYZ> > keyFrameWords3D_;
 	std::map<int, Transform> keyFramePoses_;
 	float maxVariance_;

@@ -314,41 +314,6 @@ void findCorrespondences(
 	}
 }
 
-
-std::list<std::pair<cv::Point2f, cv::Point2f> > findCorrespondences(
-		const std::multimap<int, cv::KeyPoint> & words1,
-		const std::multimap<int, cv::KeyPoint> & words2)
-{
-	std::list<std::pair<cv::Point2f, cv::Point2f> > correspondences;
-
-	// Find pairs
-	std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
-	rtabmap::EpipolarGeometry::findPairsUnique(words1, words2, pairs);
-
-	if(pairs.size() > 7) // 8 min?
-	{
-		// Find fundamental matrix
-		std::vector<uchar> status;
-		cv::Mat fundamentalMatrix = rtabmap::EpipolarGeometry::findFFromWords(pairs, status);
-		//ROS_INFO("inliers = %d/%d", uSum(status), pairs.size());
-		if(!fundamentalMatrix.empty())
-		{
-			int i = 0;
-			//int goodCount = 0;
-			for(std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > >::iterator iter=pairs.begin(); iter!=pairs.end(); ++iter)
-			{
-				if(status[i])
-				{
-					correspondences.push_back(std::pair<cv::Point2f, cv::Point2f>(iter->second.first.pt, iter->second.second.pt));
-					//ROS_INFO("inliers kpts %f %f vs %f %f", iter->second.first.pt.x, iter->second.first.pt.y, iter->second.second.pt.x, iter->second.second.pt.y);
-				}
-				++i;
-			}
-		}
-	}
-	return correspondences;
-}
-
 void findCorrespondences(
 		const std::multimap<int, pcl::PointXYZ> & words1,
 		const std::multimap<int, pcl::PointXYZ> & words2,
@@ -392,6 +357,52 @@ void findCorrespondences(
 	if(uniqueCorrespondences)
 	{
 		uniqueCorrespondences->resize(oi);
+	}
+}
+
+void findCorrespondences(
+		const std::map<int, pcl::PointXYZ> & words1,
+		const std::map<int, pcl::PointXYZ> & words2,
+		pcl::PointCloud<pcl::PointXYZ> & inliers1,
+		pcl::PointCloud<pcl::PointXYZ> & inliers2,
+		float maxDepth,
+		std::vector<int> * correspondences)
+{
+	std::vector<int> ids = uKeys(words1);
+	// Find pairs
+	inliers1.resize(ids.size());
+	inliers2.resize(ids.size());
+	if(correspondences)
+	{
+		correspondences->resize(ids.size());
+	}
+
+	int oi=0;
+	for(std::vector<int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
+	{
+		if(words2.find(*iter) != words2.end())
+		{
+			inliers1[oi] = words1.find(*iter)->second;
+			inliers2[oi] = words2.find(*iter)->second;
+			if(pcl::isFinite(inliers1[oi]) &&
+			   pcl::isFinite(inliers2[oi]) &&
+			   (inliers1[oi].x != 0 || inliers1[oi].y != 0 || inliers1[oi].z != 0) &&
+			   (inliers2[oi].x != 0 || inliers2[oi].y != 0 || inliers2[oi].z != 0) &&
+			   (maxDepth <= 0 || (inliers1[oi].x > 0 && inliers1[oi].x <= maxDepth && inliers2[oi].x>0 &&inliers2[oi].x<=maxDepth)))
+			{
+				if(correspondences)
+				{
+					correspondences->at(oi) = *iter;
+				}
+				++oi;
+			}
+		}
+	}
+	inliers1.resize(oi);
+	inliers2.resize(oi);
+	if(correspondences)
+	{
+		correspondences->resize(oi);
 	}
 }
 

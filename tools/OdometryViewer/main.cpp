@@ -807,6 +807,7 @@ int main (int argc, char * argv[])
 			if(camera->isCalibrated())
 			{
 				rtabmap::CameraThread cameraThread(camera);
+				cameraThread.setColorOnly(true);
 
 				odomThread.start();
 				cameraThread.start();

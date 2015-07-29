@@ -265,7 +265,7 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		cloud->resize(odom.info().localMap.size());
 		int i=0;
-		for(std::multimap<int, cv::Point3f>::const_iterator iter=odom.info().localMap.begin(); iter!=odom.info().localMap.end(); ++iter)
+		for(std::map<int, cv::Point3f>::const_iterator iter=odom.info().localMap.begin(); iter!=odom.info().localMap.end(); ++iter)
 		{
 			(*cloud)[i].x = iter->second.x;
 			(*cloud)[i].y = iter->second.y;

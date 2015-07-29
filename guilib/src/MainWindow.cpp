@@ -848,8 +848,15 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 				}
 			}
 
+			//detect if it is OdometryMono intitialization
+			bool monoInitialization = false;
+			if(_preferencesDialog->getOdomStrategy() == 2 && odom.info().type == 1)
+			{
+				monoInitialization = true;
+			}
+
 			_ui->imageView_odometry->clearLines();
-			if(lost)
+			if(lost && !monoInitialization)
 			{
 				if(lostStateChanged)
 				{

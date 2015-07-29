@@ -40,15 +40,15 @@ namespace util3d
 {
 
 Transform estimateMotion3DTo2D(
-			const std::multimap<int, pcl::PointXYZ> & words3A,
-			const std::multimap<int, cv::KeyPoint> & words2B,
+			const std::map<int, pcl::PointXYZ> & words3A,
+			const std::map<int, cv::KeyPoint> & words2B,
 			const CameraModel & cameraModel,
 			int minInliers,
 			int iterations,
 			double reprojError,
 			int flagsPnP,
 			const Transform & guess,
-			const std::multimap<int, pcl::PointXYZ> & words3B,
+			const std::map<int, pcl::PointXYZ> & words3B,
 			double * varianceOut,
 			std::vector<int> * matchesOut,
 			std::vector<int> * inliersOut)
@@ -63,14 +63,14 @@ Transform estimateMotion3DTo2D(
 	}
 
 	// find correspondences
-	std::vector<int> ids = uListToVector(uUniqueKeys(words2B));
+	std::vector<int> ids = uKeys(words2B);
 	std::vector<cv::Point3f> objectPoints(ids.size());
 	std::vector<cv::Point2f> imagePoints(ids.size());
 	int oi=0;
 	matches.resize(ids.size());
 	for(unsigned int i=0; i<ids.size(); ++i)
 	{
-		if(words3A.count(ids[i]) == 1)
+		if(words3A.find(ids[i]) != words3A.end())
 		{
 			pcl::PointXYZ pt = words3A.find(ids[i])->second;
 			objectPoints[oi].x = pt.x;
@@ -170,8 +170,8 @@ Transform estimateMotion3DTo2D(
 }
 
 Transform estimateMotion3DTo3D(
-			const std::multimap<int, pcl::PointXYZ> & words3A,
-			const std::multimap<int, pcl::PointXYZ> & words3B,
+			const std::map<int, pcl::PointXYZ> & words3A,
+			const std::map<int, pcl::PointXYZ> & words3B,
 			int minInliers,
 			double inliersDistance,
 			int iterations,
