@@ -105,7 +105,16 @@ public:
 
 public:
 	CameraStereoImages(
-			const std::string & path,
+			const std::string & pathLeftImages,
+			const std::string & pathRightImages,
+			bool filenamesAreTimestamps = false,
+			const std::string & timestampsPath = "", // "times.txt"
+			bool rectifyImages = false,
+			float imageRate=0.0f,
+			const Transform & localTransform = Transform::getIdentity());
+	CameraStereoImages(
+			const std::string & pathLeftRightImages,
+			bool filenamesAreTimestamps = false,
 			const std::string & timestampsPath = "", // "times.txt"
 			bool rectifyImages = false,
 			float imageRate=0.0f,
@@ -122,6 +131,7 @@ protected:
 private:
 	CameraImages * camera_;
 	CameraImages * camera2_;
+	bool filenamesAreTimestamps_;
 	std::string timestampsPath_;
 	bool rectifyImages_;
 	std::list<double> stamps_;

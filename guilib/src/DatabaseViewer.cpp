@@ -915,7 +915,7 @@ void DatabaseViewer::extractImages()
 							data.stereoCameraModel().E(),
 							data.stereoCameraModel().F(),
 							data.stereoCameraModel().left().localTransform());
-					if(model.save(path.toStdString(), cameraName))
+					if(model.save(path.toStdString()))
 					{
 						UINFO("Saved stereo calibration \"%s\"", (path.toStdString()+"/"+cameraName).c_str());
 					}

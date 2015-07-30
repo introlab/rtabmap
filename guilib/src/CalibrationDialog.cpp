@@ -877,7 +877,10 @@ bool CalibrationDialog::save()
 
 		if(!filePath.isEmpty())
 		{
-			if(models_[0].save(filePath.toStdString()))
+			QString name = QFileInfo(filePath).baseName();
+			QString dir = QFileInfo(filePath).absoluteDir().absolutePath();
+			models_[0].setName(name.toStdString());
+			if(models_[0].save(dir.toStdString()))
 			{
 				QMessageBox::information(this, tr("Export"), tr("Calibration file saved to \"%1\".").arg(filePath));
 				UINFO("Saved \"%s\"!", filePath.toStdString().c_str());
@@ -901,11 +904,12 @@ bool CalibrationDialog::save()
 		QString dir = QFileInfo(filePath).absoluteDir().absolutePath();
 		if(!name.isEmpty())
 		{
+			stereoModel_.setName(name.toStdString());
 			std::string base = (dir+QDir::separator()+name).toStdString();
 			std::string leftPath = base+"_left.yaml";
 			std::string rightPath = base+"_right.yaml";
 			std::string posePath = base+"_pose.yaml";
-			if(stereoModel_.save(dir.toStdString(), name.toStdString(), false))
+			if(stereoModel_.save(dir.toStdString(), false))
 			{
 				QMessageBox::information(this, tr("Export"), tr("Calibration files saved:\n  \"%1\"\n  \"%2\"\n  \"%3\".").
 						arg(leftPath.c_str()).arg(rightPath.c_str()).arg(posePath.c_str()));

@@ -60,6 +60,16 @@ public:
 			double cy,
 			const Transform & localTransform = Transform::getIdentity(),
 			double Tx = 0.0f);
+	// minimal to be saved
+	CameraModel(
+			const std::string & name,
+			double fx,
+			double fy,
+			double cx,
+			double cy,
+			const Transform & localTransform = Transform::getIdentity(),
+			double Tx = 0.0f);
+
 	virtual ~CameraModel() {}
 
 	bool isValid() const {return !K_.empty() &&
@@ -69,6 +79,7 @@ public:
 									fx()>0.0 &&
 									fy()>0.0;}
 
+	void setName(const std::string & name) {name_=name;}
 	const std::string & name() const {return name_;}
 
 	double fx() const {return P_.at<double>(0,0);}
@@ -89,8 +100,8 @@ public:
 	int imageWidth() const {return imageSize_.width;}
 	int imageWeight() const {return imageSize_.height;}
 
-	bool load(const std::string & filePath);
-	bool save(const std::string & filePath) const;
+	bool load(const std::string & directory, const std::string & cameraName);
+	bool save(const std::string & directory) const;
 
 	void scale(double scale);
 
@@ -143,13 +154,29 @@ public:
 		right_(fx, fy, cx, cy, localTransform, baseline*-fx)
 	{
 	}
+	//minimal to be saved
+	StereoCameraModel(
+			const std::string & name,
+			double fx,
+			double fy,
+			double cx,
+			double cy,
+			double baseline,
+			const Transform & localTransform = Transform::getIdentity()) :
+		left_(name+"_left", fx, fy, cx, cy, localTransform),
+		right_(name+"_right", fx, fy, cx, cy, localTransform, baseline*-fx),
+		name_(name)
+	{
+	}
 	virtual ~StereoCameraModel() {}
 
 	bool isValid() const {return left_.isValid() && right_.isValid() && baseline() > 0.0;}
+
+	void setName(const std::string & name);
 	const std::string & name() const {return name_;}
 
 	bool load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true);
-	bool save(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true) const;
+	bool save(const std::string & directory, bool ignoreStereoTransform = true) const;
 
 	double baseline() const {return -right_.Tx()/right_.fx();}
 

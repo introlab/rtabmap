@@ -24,6 +24,7 @@ SET(headers_ui
 	./ExportCloudsDialog.h
 	./MapVisibilityWidget.h
 	./GraphViewer.h
+	./CreateSimpleCalibrationDialog.h
 )
 
 SET(uis
@@ -37,6 +38,7 @@ SET(uis
     ./ui/postProcessingDialog.ui
     ./ui/exportCloudsDialog.ui
     ./ui/calibrationDialog.ui
+    ./ui/createSimpleCalibrationDialog.ui
 )
 
 SET(qrc 
@@ -83,6 +85,7 @@ SET(SRC_FILES
 	./ExportCloudsDialog.cpp
 	./MapVisibilityWidget.cpp
 	./GraphViewer.cpp
+	./CreateSimpleCalibrationDialog.cpp
 	${moc_srcs} 
 	${moc_uis} 
 	${srcs_qrc}

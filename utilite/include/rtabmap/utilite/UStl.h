@@ -549,6 +549,34 @@ inline std::list<std::string> uSplit(const std::string & str, char separator = '
 }
 
 /**
+ * Join multiple strings into one string with optional separator.
+ * Example:
+ * @code
+ *      std::list<std::string> v;
+ *      v.push_back("Hello");
+ *      v.push_back("world!");
+ * 	    std::string joined = split(v, " ");
+ * @endcode
+ * The output string is "Hello world!"
+ * @param strings a list of strings
+ * @param separator the separator string
+ * @return the joined string
+ */
+inline std::string uJoin(const std::list<std::string> & strings, const std::string & separator = "")
+{
+	std::string out;
+	for(std::list<std::string>::const_iterator iter = strings.begin(); iter!=strings.end(); ++iter)
+	{
+		if(iter!=strings.begin() && !separator.empty())
+		{
+			out += separator;
+		}
+		out+=*iter;
+	}
+	return out;
+}
+
+/**
  * Check if a character is a digit.
  * @param c the character
  * @return if the character is a digit (if c >= '0' && c <= '9')

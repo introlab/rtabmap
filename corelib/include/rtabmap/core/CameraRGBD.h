@@ -248,4 +248,44 @@ private:
 	libfreenect2::Registration * reg_;
 };
 
+
+/////////////////////////
+// CameraRGBDImages
+/////////////////////////
+class CameraImages;
+class RTABMAP_EXP CameraRGBDImages :
+	public Camera
+{
+public:
+	static bool available();
+
+public:
+	CameraRGBDImages(
+			const std::string & pathRGBImages,
+			const std::string & pathDepthImages,
+			double depthScaleFactor = 1.0,
+			bool filenamesAreTimestamps = false,
+			const std::string & timestampsPath = "", // "times.txt"
+			float imageRate=0.0f,
+			const Transform & localTransform = Transform::getIdentity());
+	virtual ~CameraRGBDImages();
+
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
+	virtual bool isCalibrated() const;
+	virtual std::string getSerial() const;
+
+protected:
+	virtual SensorData captureImage();
+
+private:
+	CameraImages * cameraRGB_;
+	CameraImages * cameraDepth_;
+	double depthScaleFactor_;
+	bool filenamesAreTimestamps_;
+	std::string timestampsPath_;
+	std::list<double> stamps_;
+	CameraModel cameraModel_;
+	std::string cameraName_;
+};
+
 } // namespace rtabmap

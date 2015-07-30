@@ -51,6 +51,7 @@ CameraImages::CameraImages(const std::string & path,
 					 int startAt,
 					 bool refreshDir,
 					 bool rectifyImages,
+					 bool isDepth,
 					 float imageRate,
 					 const Transform & localTransform) :
 	Camera(imageRate, localTransform),
@@ -58,6 +59,7 @@ CameraImages::CameraImages(const std::string & path,
 	_startAt(startAt),
 	_refreshDir(refreshDir),
 	_rectifyImages(rectifyImages),
+	_isDepth(isDepth),
 	_count(0),
 	_dir(0)
 {
@@ -106,7 +108,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	// look for calibration files
 	if(!calibrationFolder.empty() && !cameraName.empty())
 	{
-		if(!_model.load(calibrationFolder + "/" + cameraName + ".yaml"))
+		if(!_model.load(calibrationFolder, cameraName))
 		{
 			UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
 					cameraName.c_str(), calibrationFolder.c_str());
@@ -148,6 +150,15 @@ unsigned int CameraImages::imagesCount() const
 		return (unsigned int)_dir->getFileNames().size();
 	}
 	return 0;
+}
+
+std::vector<std::string> CameraImages::filenames() const
+{
+	if(_dir)
+	{
+		return uListToVector(_dir->getFileNames());
+	}
+	return std::vector<std::string>();
 }
 
 SensorData CameraImages::captureImage()
@@ -197,24 +208,37 @@ SensorData CameraImages::captureImage()
 					UDEBUG("width=%d, height=%d, channels=%d, elementSize=%d, total=%d",
 							img.cols, img.rows, img.channels(), img.elemSize(), img.total());
 
-#if CV_MAJOR_VERSION < 3
-					// FIXME : it seems that some png are incorrectly loaded with opencv c++ interface, where c interface works...
-					if(img.depth() != CV_8U)
+					if(_isDepth)
 					{
-						// The depth should be 8U
-						UWARN("Cannot read the image correctly, falling back to old OpenCV C interface...");
-						IplImage * i = cvLoadImage(fullPath.c_str());
-						img = cv::Mat(i, true);
-						cvReleaseImage(&i);
+						if(img.type() != CV_16UC1 && img.type() != CV_32FC1)
+						{
+							UERROR("Depth is on and the loaded image has not a format supported (file = \"%s\"). "
+									"Formats supported are 16 bits 1 channel and 32 bits 1 channel.",
+									fileName.c_str());
+							img = cv::Mat();
+						}
 					}
+					else
+					{
+#if CV_MAJOR_VERSION < 3
+						// FIXME : it seems that some png are incorrectly loaded with opencv c++ interface, where c interface works...
+						if(img.depth() != CV_8U)
+						{
+							// The depth should be 8U
+							UWARN("Cannot read the image correctly, falling back to old OpenCV C interface...");
+							IplImage * i = cvLoadImage(fullPath.c_str());
+							img = cv::Mat(i, true);
+							cvReleaseImage(&i);
+						}
 #endif
 
-					if(img.channels()>3)
-					{
-						UWARN("Conversion from 4 channels to 3 channels (file=%s)", fullPath.c_str());
-						cv::Mat out;
-						cv::cvtColor(img, out, CV_BGRA2BGR);
-						img = out;
+						if(img.channels()>3)
+						{
+							UWARN("Conversion from 4 channels to 3 channels (file=%s)", fullPath.c_str());
+							cv::Mat out;
+							cv::cvtColor(img, out, CV_BGRA2BGR);
+							img = out;
+						}
 					}
 				}
 			}
@@ -230,6 +254,10 @@ SensorData CameraImages::captureImage()
 		UWARN("Directory is not set, camera must be initialized.");
 	}
 
+	if(_isDepth)
+	{
+		return SensorData(cv::Mat(), img, _model, this->getNextSeqID(), UTimer::now());
+	}
 	return SensorData(img, _model, this->getNextSeqID(), UTimer::now());
 }
 
@@ -307,7 +335,7 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 		// look for calibration files
 		if(!calibrationFolder.empty() && (!_guid.empty() || !cameraName.empty()))
 		{
-			if(!_model.load(calibrationFolder + "/" + (cameraName.empty()?_guid:cameraName) + ".yaml"))
+			if(!_model.load(calibrationFolder, (cameraName.empty()?_guid:cameraName)))
 			{
 				UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
 						cameraName.empty()?_guid.c_str():cameraName.c_str(), calibrationFolder.c_str());

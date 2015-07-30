@@ -65,6 +65,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "GraphViewer.h"
 #include "ExportCloudsDialog.h"
 #include "PostProcessingDialog.h"
+#include "CreateSimpleCalibrationDialog.h"
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -366,16 +367,32 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->openni2_gain, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_mirroring, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_freenect2Format, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
+	connect(_ui->toolButton_cameraRGBDImages_timestamps, SIGNAL(clicked()), this, SLOT(selectSourceRGBDImagesStamps()));
+	connect(_ui->lineEdit_cameraRGBDImages_timestamps, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->toolButton_cameraRGBDImages_path_rgb, SIGNAL(clicked()), this, SLOT(selectSourceRGBDImagesPathRGB()));
+	connect(_ui->toolButton_cameraRGBDImages_path_depth, SIGNAL(clicked()), this, SLOT(selectSourceRGBDImagesPathDepth()));
+	connect(_ui->lineEdit_cameraRGBDImages_path_rgb, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_cameraRGBDImages_path_depth, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_RGBDImages_timestamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_cameraRGBDImages_scale, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+
 	connect(_ui->toolButton_cameraStereoImages_timestamps, SIGNAL(clicked()), this, SLOT(selectSourceStereoImagesStamps()));
 	connect(_ui->lineEdit_cameraStereoImages_timestamps, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->toolButton_cameraStereoImages_path, SIGNAL(clicked()), this, SLOT(selectSourceStereoImagesPath()));
-	connect(_ui->lineEdit_cameraStereoImages_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->toolButton_cameraStereoImages_path_left, SIGNAL(clicked()), this, SLOT(selectSourceStereoImagesPathLeft()));
+	connect(_ui->toolButton_cameraStereoImages_path_right, SIGNAL(clicked()), this, SLOT(selectSourceStereoImagesPathRight()));
+	connect(_ui->lineEdit_cameraStereoImages_path_left, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_cameraStereoImages_path_right, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_stereoImages_timestamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_stereoImages_rectify, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
 	connect(_ui->toolButton_cameraStereoVideo_path, SIGNAL(clicked()), this, SLOT(selectSourceStereoVideoPath()));
 	connect(_ui->lineEdit_cameraStereoVideo_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_stereoVideo_rectify, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
+	connect(_ui->pushButton_calibrate_simple, SIGNAL(clicked()), this, SLOT(calibrateSimple()));
 	connect(_ui->toolButton_openniOniPath, SIGNAL(clicked()), this, SLOT(selectSourceOniPath()));
 	connect(_ui->toolButton_openni2OniPath, SIGNAL(clicked()), this, SLOT(selectSourceOni2Path()));
 	connect(_ui->lineEdit_openniOniPath, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1094,10 +1111,17 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_freenect2Format->setCurrentIndex(0);
 		_ui->lineEdit_openniOniPath->clear();
 		_ui->lineEdit_openni2OniPath->clear();
+		_ui->lineEdit_cameraRGBDImages_path_rgb->setText("");
+		_ui->lineEdit_cameraRGBDImages_path_depth->setText("");
+		_ui->checkBox_RGBDImages_timestamps->setChecked(false);
+		_ui->doubleSpinBox_cameraRGBDImages_scale->setValue(1.0);
+		_ui->lineEdit_cameraRGBDImages_timestamps->setText("");
 
 		_ui->source_comboBox_image_type->setCurrentIndex(kSrcDC1394-kSrcDC1394);
 		_ui->lineEdit_cameraStereoImages_timestamps->setText("");
-		_ui->lineEdit_cameraStereoImages_path->setText("");
+		_ui->lineEdit_cameraStereoImages_path_left->setText("");
+		_ui->lineEdit_cameraStereoImages_path_right->setText("");
+		_ui->checkBox_stereoImages_timestamps->setChecked(false);
 		_ui->checkBox_stereoImages_rectify->setChecked(false);
 		_ui->lineEdit_cameraStereoVideo_path->setText("");
 		_ui->checkBox_stereoVideo_rectify->setChecked(false);
@@ -1363,9 +1387,19 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->comboBox_freenect2Format->setCurrentIndex(settings.value("format", _ui->comboBox_freenect2Format->currentIndex()).toInt());
 	settings.endGroup(); // Freenect2
 
+	settings.beginGroup("RGBDImages");
+	_ui->lineEdit_cameraRGBDImages_path_rgb->setText(settings.value("path_rgb", _ui->lineEdit_cameraRGBDImages_path_rgb->text()).toString());
+	_ui->lineEdit_cameraRGBDImages_path_depth->setText(settings.value("path_depth", _ui->lineEdit_cameraRGBDImages_path_depth->text()).toString());
+	_ui->checkBox_RGBDImages_timestamps->setChecked(settings.value("filenames_as_stamps",_ui->checkBox_RGBDImages_timestamps->isChecked()).toBool());
+	_ui->lineEdit_cameraRGBDImages_timestamps->setText(settings.value("stamps", _ui->lineEdit_cameraRGBDImages_timestamps->text()).toString());
+	_ui->doubleSpinBox_cameraRGBDImages_scale->setValue(settings.value("scale", _ui->doubleSpinBox_cameraRGBDImages_scale->value()).toDouble());
+	settings.endGroup(); // RGBDImages
+
 	settings.beginGroup("StereoImages");
 	_ui->lineEdit_cameraStereoImages_timestamps->setText(settings.value("stamps", _ui->lineEdit_cameraStereoImages_timestamps->text()).toString());
-	_ui->lineEdit_cameraStereoImages_path->setText(settings.value("path", _ui->lineEdit_cameraStereoImages_path->text()).toString());
+	_ui->lineEdit_cameraStereoImages_path_left->setText(settings.value("path_left", _ui->lineEdit_cameraStereoImages_path_left->text()).toString());
+	_ui->lineEdit_cameraStereoImages_path_right->setText(settings.value("path_right", _ui->lineEdit_cameraStereoImages_path_right->text()).toString());
+	_ui->checkBox_stereoImages_timestamps->setChecked(settings.value("filenames_as_stamps",_ui->checkBox_stereoImages_timestamps->isChecked()).toBool());
 	_ui->checkBox_stereoImages_rectify->setChecked(settings.value("rectify",_ui->checkBox_stereoImages_rectify->isChecked()).toBool());
 	settings.endGroup(); // StereoImages
 
@@ -1564,19 +1598,19 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.beginGroup("Gui");
 
 	settings.beginGroup("General");
-	settings.setValue("imagesKept", _ui->general_checkBox_imagesKept->isChecked());
-	settings.setValue("loggerLevel", _ui->comboBox_loggerLevel->currentIndex());
-	settings.setValue("loggerEventLevel", _ui->comboBox_loggerEventLevel->currentIndex());
-	settings.setValue("loggerPauseLevel", _ui->comboBox_loggerPauseLevel->currentIndex());
-	settings.setValue("loggerType", _ui->comboBox_loggerType->currentIndex());
-	settings.setValue("loggerPrintTime", _ui->checkBox_logger_printTime->isChecked());
-	settings.setValue("verticalLayoutUsed", _ui->checkBox_verticalLayoutUsed->isChecked());
-	settings.setValue("imageRejectedShown", _ui->checkBox_imageRejectedShown->isChecked());
+	settings.setValue("imagesKept",           _ui->general_checkBox_imagesKept->isChecked());
+	settings.setValue("loggerLevel",          _ui->comboBox_loggerLevel->currentIndex());
+	settings.setValue("loggerEventLevel",     _ui->comboBox_loggerEventLevel->currentIndex());
+	settings.setValue("loggerPauseLevel",     _ui->comboBox_loggerPauseLevel->currentIndex());
+	settings.setValue("loggerType",           _ui->comboBox_loggerType->currentIndex());
+	settings.setValue("loggerPrintTime",      _ui->checkBox_logger_printTime->isChecked());
+	settings.setValue("verticalLayoutUsed",   _ui->checkBox_verticalLayoutUsed->isChecked());
+	settings.setValue("imageRejectedShown",   _ui->checkBox_imageRejectedShown->isChecked());
 	settings.setValue("imageHighestHypShown", _ui->checkBox_imageHighestHypShown->isChecked());
-	settings.setValue("beep", _ui->checkBox_beep->isChecked());
-	settings.setValue("notifyNewGlobalPath", _ui->checkBox_notifyWhenNewGlobalPathIsReceived->isChecked());
-	settings.setValue("odomQualityThr", _ui->spinBox_odomQualityWarnThr->value());
-	settings.setValue("posteriorGraphView", _ui->checkBox_posteriorGraphView->isChecked());
+	settings.setValue("beep",                 _ui->checkBox_beep->isChecked());
+	settings.setValue("notifyNewGlobalPath",  _ui->checkBox_notifyWhenNewGlobalPathIsReceived->isChecked());
+	settings.setValue("odomQualityThr",       _ui->spinBox_odomQualityWarnThr->value());
+	settings.setValue("posteriorGraphView",   _ui->checkBox_posteriorGraphView->isChecked());
 
 	for(int i=0; i<2; ++i)
 	{
@@ -1594,23 +1628,23 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("showGraphs", _ui->checkBox_showGraphs->isChecked());
 	settings.setValue("showLabels", _ui->checkBox_showLabels->isChecked());
 
-	settings.setValue("meshing", _ui->checkBox_meshing->isChecked());
-	settings.setValue("meshGP3Radius", _ui->doubleSpinBox_gp3Radius->value());
-	settings.setValue("meshNormalKSearch", _ui->spinBox_normalKSearch->value());
-	settings.setValue("meshSmoothing", _ui->checkBox_mls->isChecked());
+	settings.setValue("meshing",             _ui->checkBox_meshing->isChecked());
+	settings.setValue("meshGP3Radius",       _ui->doubleSpinBox_gp3Radius->value());
+	settings.setValue("meshNormalKSearch",   _ui->spinBox_normalKSearch->value());
+	settings.setValue("meshSmoothing",       _ui->checkBox_mls->isChecked());
 	settings.setValue("meshSmoothingRadius", _ui->doubleSpinBox_mlsRadius->value());
 
-	settings.setValue("cloudFiltering", _ui->checkBox_nodeFiltering->isChecked());
-	settings.setValue("subtractFiltering", _ui->checkBox_subtractFiltering->isChecked());
-	settings.setValue("cloudFilteringRadius", _ui->doubleSpinBox_cloudFilterRadius->value());
-	settings.setValue("cloudFilteringAngle", _ui->doubleSpinBox_cloudFilterAngle->value());
+	settings.setValue("cloudFiltering",          _ui->checkBox_nodeFiltering->isChecked());
+	settings.setValue("subtractFiltering",       _ui->checkBox_subtractFiltering->isChecked());
+	settings.setValue("cloudFilteringRadius",    _ui->doubleSpinBox_cloudFilterRadius->value());
+	settings.setValue("cloudFilteringAngle",     _ui->doubleSpinBox_cloudFilterAngle->value());
 	settings.setValue("subtractFilteringMinPts", _ui->spinBox_substractFilteringMinPts->value());
 
-	settings.setValue("gridMapShown", _ui->checkBox_map_shown->isChecked());
-	settings.setValue("gridMapResolution", _ui->doubleSpinBox_map_resolution->value());
+	settings.setValue("gridMapShown",                _ui->checkBox_map_shown->isChecked());
+	settings.setValue("gridMapResolution",           _ui->doubleSpinBox_map_resolution->value());
 	settings.setValue("gridMapOccupancyFrom3DCloud", _ui->checkBox_map_occupancyFrom3DCloud->isChecked());
-	settings.setValue("gridMapEroded", _ui->checkBox_map_erode->isChecked());
-	settings.setValue("gridMapOpacity", _ui->doubleSpinBox_map_opacity->value());
+	settings.setValue("gridMapEroded",               _ui->checkBox_map_erode->isChecked());
+	settings.setValue("gridMapOpacity",              _ui->doubleSpinBox_map_opacity->value());
 	settings.endGroup(); // General
 
 	settings.endGroup(); // rtabmap
@@ -1626,15 +1660,15 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	QSettings settings(path, QSettings::IniFormat);
 
 	settings.beginGroup("Camera");
-	settings.setValue("imgRate", 		_ui->general_doubleSpinBox_imgRate->value());
-	settings.setValue("mirroring",      _ui->source_mirroring->isChecked());
+	settings.setValue("imgRate", 		 _ui->general_doubleSpinBox_imgRate->value());
+	settings.setValue("mirroring",       _ui->source_mirroring->isChecked());
 	settings.setValue("calibrationName", _ui->lineEdit_calibrationName->text());
-	settings.setValue("type", _ui->comboBox_sourceType->currentIndex());
-	settings.setValue("device", 		_ui->lineEdit_sourceDevice->text());
-	settings.setValue("localTransform", _ui->lineEdit_sourceLocalTransform->text());
+	settings.setValue("type",            _ui->comboBox_sourceType->currentIndex());
+	settings.setValue("device", 		 _ui->lineEdit_sourceDevice->text());
+	settings.setValue("localTransform",  _ui->lineEdit_sourceLocalTransform->text());
 
 	settings.beginGroup("rgbd");
-	settings.setValue("driver", 	_ui->comboBox_cameraRGBD->currentIndex());
+	settings.setValue("driver", 	   _ui->comboBox_cameraRGBD->currentIndex());
 	settings.setValue("rgbdColorOnly", _ui->checkbox_rgbd_colorOnly->isChecked());
 	settings.endGroup(); // rgbd
 
@@ -1652,20 +1686,30 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 
 	settings.beginGroup("Openni2");
 	settings.setValue("autoWhiteBalance", _ui->openni2_autoWhiteBalance->isChecked());
-	settings.setValue("autoExposure", 	_ui->openni2_autoExposure->isChecked());
-	settings.setValue("exposure", 		_ui->openni2_exposure->value());
-	settings.setValue("gain", 			_ui->openni2_gain->value());
-	settings.setValue("mirroring", 		_ui->openni2_mirroring->isChecked());
-	settings.setValue("oniPath", 		_ui->lineEdit_openni2OniPath->text());
+	settings.setValue("autoExposure", 	  _ui->openni2_autoExposure->isChecked());
+	settings.setValue("exposure", 		  _ui->openni2_exposure->value());
+	settings.setValue("gain", 		      _ui->openni2_gain->value());
+	settings.setValue("mirroring", 		  _ui->openni2_mirroring->isChecked());
+	settings.setValue("oniPath", 		  _ui->lineEdit_openni2OniPath->text());
 	settings.endGroup(); // Openni2
 
 	settings.beginGroup("Freenect2");
-	settings.setValue("format", _ui->comboBox_freenect2Format->currentIndex());
+	settings.setValue("format",         _ui->comboBox_freenect2Format->currentIndex());
 	settings.endGroup(); // Freenect2
 
+	settings.beginGroup("RGBDImages");
+	settings.setValue("path_rgb",            _ui->lineEdit_cameraRGBDImages_path_rgb->text());
+	settings.setValue("path_depth",          _ui->lineEdit_cameraRGBDImages_path_depth->text());
+	settings.setValue("filenames_as_stamps", _ui->checkBox_RGBDImages_timestamps->isChecked());
+	settings.setValue("stamps",              _ui->lineEdit_cameraRGBDImages_timestamps->text());
+	settings.setValue("scale",               _ui->doubleSpinBox_cameraRGBDImages_scale->value());
+	settings.endGroup(); // RGBDImages
+
 	settings.beginGroup("StereoImages");
-	settings.setValue("stamps", _ui->lineEdit_cameraStereoImages_timestamps->text());
-	settings.setValue("path", _ui->lineEdit_cameraStereoImages_path->text());
+	settings.setValue("stamps",         _ui->lineEdit_cameraStereoImages_timestamps->text());
+	settings.setValue("path_left",      _ui->lineEdit_cameraStereoImages_path_left->text());
+	settings.setValue("path_right",     _ui->lineEdit_cameraStereoImages_path_right->text());
+	settings.setValue("filenames_as_stamps", _ui->checkBox_stereoImages_timestamps->isChecked());
 	settings.setValue("rectify", 	    _ui->checkBox_stereoImages_rectify->isChecked());
 	settings.endGroup(); // StereoImages
 
@@ -1687,10 +1731,10 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.endGroup(); // video
 
 	settings.beginGroup("Database");
-	settings.setValue("path", 			_ui->source_database_lineEdit_path->text());
-	settings.setValue("ignoreOdometry", _ui->source_checkBox_ignoreOdometry->isChecked());
-	settings.setValue("ignoreGoalDelay", _ui->source_checkBox_ignoreGoalDelay->isChecked());
-	settings.setValue("startPos",       _ui->source_spinBox_databaseStartPos->value());
+	settings.setValue("path", 			   _ui->source_database_lineEdit_path->text());
+	settings.setValue("ignoreOdometry",    _ui->source_checkBox_ignoreOdometry->isChecked());
+	settings.setValue("ignoreGoalDelay",   _ui->source_checkBox_ignoreGoalDelay->isChecked());
+	settings.setValue("startPos",          _ui->source_spinBox_databaseStartPos->value());
 	settings.setValue("useDatabaseStamps", _ui->source_checkBox_useDbStamps->isChecked());
 	settings.endGroup(); // Database
 
@@ -2202,6 +2246,48 @@ void PreferencesDialog::openDatabaseViewer()
 	}
 }
 
+void PreferencesDialog::selectSourceRGBDImagesStamps()
+{
+	QString dir = _ui->lineEdit_cameraRGBDImages_timestamps->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Timestamps file (*.txt)"));
+	if(path.size())
+	{
+		_ui->lineEdit_cameraRGBDImages_timestamps->setText(path);
+	}
+}
+
+void PreferencesDialog::selectSourceRGBDImagesPathRGB()
+{
+	QString dir = _ui->lineEdit_cameraRGBDImages_path_rgb->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getExistingDirectory(this, tr("Select RGB images directory"), dir);
+	if(path.size())
+	{
+		_ui->lineEdit_cameraRGBDImages_path_rgb->setText(path);
+	}
+}
+
+void PreferencesDialog::selectSourceRGBDImagesPathDepth()
+{
+	QString dir = _ui->lineEdit_cameraRGBDImages_path_depth->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getExistingDirectory(this, tr("Select depth images directory"), dir);
+	if(path.size())
+	{
+		_ui->lineEdit_cameraRGBDImages_path_depth->setText(path);
+	}
+}
+
 void PreferencesDialog::selectSourceStereoImagesStamps()
 {
 	QString dir = _ui->lineEdit_cameraStereoImages_timestamps->text();
@@ -2216,17 +2302,31 @@ void PreferencesDialog::selectSourceStereoImagesStamps()
 	}
 }
 
-void PreferencesDialog::selectSourceStereoImagesPath()
+void PreferencesDialog::selectSourceStereoImagesPathLeft()
 {
-	QString dir = _ui->lineEdit_cameraStereoImages_path->text();
+	QString dir = _ui->lineEdit_cameraStereoImages_path_left->text();
 	if(dir.isEmpty())
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getExistingDirectory(this, tr("Select stereo images directory"), dir);
+	QString path = QFileDialog::getExistingDirectory(this, tr("Select left images directory"), dir);
 	if(path.size())
 	{
-		_ui->lineEdit_cameraStereoImages_path->setText(path);
+		_ui->lineEdit_cameraStereoImages_path_left->setText(path);
+	}
+}
+
+void PreferencesDialog::selectSourceStereoImagesPathRight()
+{
+	QString dir = _ui->lineEdit_cameraStereoImages_path_right->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getExistingDirectory(this, tr("Select right images directory"), dir);
+	if(path.size())
+	{
+		_ui->lineEdit_cameraStereoImages_path_right->setText(path);
 	}
 }
 
@@ -3315,30 +3415,6 @@ Transform PreferencesDialog::getSourceLocalTransform() const
 	return t;
 }
 
-QString PreferencesDialog::getSourceImagesPath() const
-{
-	return _ui->source_images_lineEdit_path->text();
-}
-int PreferencesDialog::getSourceImagesStartPos() const
-{
-	return _ui->source_images_spinBox_startPos->value();
-}
-bool PreferencesDialog::getSourceImagesRefreshDir() const
-{
-	return _ui->source_images_refreshDir->isChecked();
-}
-bool PreferencesDialog::getSourceImagesRectify() const
-{
-	return _ui->checkBox_rgbImages_rectify->isChecked();
-}
-QString PreferencesDialog::getSourceVideoPath() const
-{
-	return _ui->source_video_lineEdit_path->text();
-}
-bool PreferencesDialog::getSourceVideoRectify() const
-{
-	return _ui->checkBox_rgbVideo_rectify->isChecked();
-}
 QString PreferencesDialog::getSourceDatabasePath() const
 {
 	return _ui->source_database_lineEdit_path->text();
@@ -3359,45 +3435,10 @@ bool PreferencesDialog::getSourceDatabaseStampsUsed() const
 {
 	return _ui->source_checkBox_useDbStamps->isChecked();
 }
-
-bool PreferencesDialog::getSourceOpenni2AutoWhiteBalance() const
-{
-	return _ui->openni2_autoWhiteBalance->isChecked();
-}
-bool PreferencesDialog::getSourceOpenni2AutoExposure() const
-{
-	return _ui->openni2_autoExposure->isChecked();
-}
-int PreferencesDialog::getSourceOpenni2Exposure() const
-{
-	return _ui->openni2_exposure->value();
-}
-int PreferencesDialog::getSourceOpenni2Gain() const
-{
-	return _ui->openni2_gain->value();
-}
-bool PreferencesDialog::getSourceOpenni2Mirroring() const
-{
-	return _ui->openni2_mirroring->isChecked();
-}
-int PreferencesDialog::getSourceFreenect2Format() const
-{
-	return _ui->comboBox_freenect2Format->currentIndex();
-}
-bool PreferencesDialog::getSourceStereoImagesRectify() const
-{
-	return _ui->checkBox_stereoImages_rectify->isChecked();
-}
-bool PreferencesDialog::getSourceStereoVideoRectify() const
-{
-	return _ui->checkBox_stereoVideo_rectify->isChecked();
-}
-
 bool PreferencesDialog::isSourceRGBDColorOnly() const
 {
 	return _ui->checkbox_rgbd_colorOnly->isChecked();
 }
-
 
 Camera * PreferencesDialog::createCamera(bool useRawImages)
 {
@@ -3476,7 +3517,18 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	{
 		camera = new CameraFreenect2(
 			this->getSourceDevice().isEmpty()?0:atoi(this->getSourceDevice().toStdString().c_str()),
-			useRawImages?CameraFreenect2::kTypeRGBIR:(CameraFreenect2::Type)getSourceFreenect2Format(),
+			useRawImages?CameraFreenect2::kTypeRGBIR:(CameraFreenect2::Type)_ui->comboBox_freenect2Format->currentIndex(),
+			this->getGeneralInputRate(),
+			this->getSourceLocalTransform());
+	}
+	else if(driver == kSrcRGBDImages)
+	{
+		camera = new CameraRGBDImages(
+			_ui->lineEdit_cameraRGBDImages_path_rgb->text().append(QDir::separator()).toStdString(),
+			_ui->lineEdit_cameraRGBDImages_path_depth->text().append(QDir::separator()).toStdString(),
+			_ui->doubleSpinBox_cameraRGBDImages_scale->value(),
+			_ui->checkBox_RGBDImages_timestamps->isChecked(),
+			_ui->lineEdit_cameraRGBDImages_timestamps->text().toStdString(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}
@@ -3505,7 +3557,9 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	else if(driver == kSrcStereoImages)
 	{
 		camera = new CameraStereoImages(
-			_ui->lineEdit_cameraStereoImages_path->text().append(QDir::separator()).toStdString(),
+			_ui->lineEdit_cameraStereoImages_path_left->text().append(QDir::separator()).toStdString(),
+			_ui->lineEdit_cameraStereoImages_path_right->text().append(QDir::separator()).toStdString(),
+			_ui->checkBox_stereoImages_timestamps->isChecked(),
 			_ui->lineEdit_cameraStereoImages_timestamps->text().toStdString(),
 			_ui->checkBox_stereoImages_rectify->isChecked(),
 			this->getGeneralInputRate(),
@@ -3529,18 +3583,19 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	else if(driver == kSrcVideo)
 	{
 		camera = new CameraVideo(
-			this->getSourceVideoPath().toStdString(),
-			this->getSourceVideoRectify(),
+			_ui->source_video_lineEdit_path->text().toStdString(),
+			_ui->checkBox_rgbVideo_rectify->isChecked(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}
 	else if(driver == kSrcImages)
 	{
 		camera = new CameraImages(
-			this->getSourceImagesPath().toStdString(),
-			this->getSourceImagesStartPos(),
-			this->getSourceImagesRefreshDir(),
-			this->getSourceVideoRectify(),
+			_ui->source_images_lineEdit_path->text().toStdString(),
+			_ui->source_images_spinBox_startPos->value(),
+			_ui->source_images_refreshDir->isChecked(),
+			_ui->checkBox_rgbImages_rectify->isChecked(),
+			false,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}
@@ -3571,13 +3626,13 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 			//should be after initialization
 			if(driver == kSrcOpenNI2)
 			{
-				((CameraOpenNI2*)camera)->setAutoWhiteBalance(this->getSourceOpenni2AutoWhiteBalance());
-				((CameraOpenNI2*)camera)->setAutoExposure(this->getSourceOpenni2AutoExposure());
-				((CameraOpenNI2*)camera)->setMirroring(this->getSourceOpenni2Mirroring());
+				((CameraOpenNI2*)camera)->setAutoWhiteBalance(_ui->openni2_autoWhiteBalance->isChecked());
+				((CameraOpenNI2*)camera)->setAutoExposure(_ui->openni2_autoExposure->isChecked());
+				((CameraOpenNI2*)camera)->setMirroring(_ui->openni2_mirroring->isChecked());
 				if(CameraOpenNI2::exposureGainAvailable())
 				{
-					((CameraOpenNI2*)camera)->setExposure(this->getSourceOpenni2Exposure());
-					((CameraOpenNI2*)camera)->setGain(this->getSourceOpenni2Gain());
+					((CameraOpenNI2*)camera)->setExposure(_ui->openni2_exposure->value());
+					((CameraOpenNI2*)camera)->setGain(_ui->openni2_gain->value());
 				}
 			}
 		}
@@ -3705,8 +3760,8 @@ void PreferencesDialog::testOdometry()
 
 void PreferencesDialog::testOdometry(int type)
 {
-	DBReader dbReader(this->getSourceDatabasePath().toStdString(),
-					 this->getSourceDatabaseStampsUsed()?-1:this->getGeneralInputRate(),
+	DBReader dbReader(_ui->source_database_lineEdit_path->text().toStdString(),
+					 _ui->source_checkBox_useDbStamps->isChecked()?-1:this->getGeneralInputRate(),
 					 true,
 					 true);
 	Camera * camera = 0;
@@ -3762,7 +3817,7 @@ void PreferencesDialog::testOdometry(int type)
 	{
 		CameraThread cameraThread(camera); // take ownership of camera
 		cameraThread.setMirroringEnabled(isSourceMirroring());
-		cameraThread.setColorOnly(isSourceRGBDColorOnly());
+		cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
 		UEventsManager::createPipe(&cameraThread, &odomThread, "CameraEvent");
 		UEventsManager::createPipe(&odomThread, odomViewer, "OdometryEvent");
 		UEventsManager::createPipe(odomViewer, &odomThread, "OdometryResetEvent");
@@ -3802,8 +3857,8 @@ void PreferencesDialog::testCamera()
 
 	if(this->getSourceType() == kSrcDatabase)
 	{
-		DBReader dbReader(this->getSourceDatabasePath().toStdString(),
-						 this->getSourceDatabaseStampsUsed()?-1:this->getGeneralInputRate(),
+		DBReader dbReader(_ui->source_database_lineEdit_path->text().toStdString(),
+						  _ui->source_checkBox_useDbStamps->isChecked()?-1:this->getGeneralInputRate(),
 						 true,
 						 true);
 		if(!dbReader.init())
@@ -3828,7 +3883,7 @@ void PreferencesDialog::testCamera()
 		{
 			CameraThread cameraThread(camera);
 			cameraThread.setMirroringEnabled(isSourceMirroring());
-			cameraThread.setColorOnly(isSourceRGBDColorOnly());
+			cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
 			UEventsManager::createPipe(&cameraThread, window, "CameraEvent");
 
 			cameraThread.start();
@@ -3885,6 +3940,12 @@ void PreferencesDialog::calibrate()
 	_calibrationDialog->unregisterFromEventsManager();
 
 	cameraThread.join(true);
+}
+
+void PreferencesDialog::calibrateSimple()
+{
+	CreateSimpleCalibrationDialog dialog(this->getCameraInfoDir(), _ui->lineEdit_calibrationName->text(), this);
+	dialog.exec();
 }
 
 }

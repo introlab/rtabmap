@@ -113,7 +113,10 @@ public:
 	void resetMemory();
 	void dumpPrediction() const;
 	void dumpData() const;
-	void dumpPoses(const std::string & path, const std::map<int, Transform> & poses) const;
+	void dumpPoses(
+			const std::string & path,
+			const std::map<int, Transform> & poses,
+			const std::map<int, double> & stamps = std::map<int, double>()) const;
 	void parseParameters(const ParametersMap & parameters);
 	void setWorkingDirectory(std::string path);
 	void rejectLoopClosure(int oldId, int newId);

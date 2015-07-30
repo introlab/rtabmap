@@ -88,6 +88,7 @@ public:
 		kSrcOpenNI_CV_ASUS = 3,
 		kSrcOpenNI2        = 4,
 		kSrcFreenect2      = 5,
+		kSrcRGBDImages     = 6,
 
 		kSrcStereo         = 100,
 		kSrcDC1394         = 100,
@@ -181,27 +182,11 @@ public:
 	QString getSourceDriverStr() const;
 	QString getSourceDevice() const;
 
-	QString getSourceImagesPath() const;	//Images group
-	QString getSourceImagesSuffix() const;	//Images group
-	int getSourceImagesSuffixIndex() const;	//Images group
-	int getSourceImagesStartPos() const;	//Images group
-	bool getSourceImagesRefreshDir() const;	//Images group
-	bool getSourceImagesRectify() const; //Images group
-	QString getSourceVideoPath() const;	//Video group
-	bool getSourceVideoRectify() const; //Video group
 	QString getSourceDatabasePath() const; //Database group
 	bool getSourceDatabaseOdometryIgnored() const; //Database group
 	bool getSourceDatabaseGoalDelayIgnored() const; //Database group
 	int getSourceDatabaseStartPos() const; //Database group
 	bool getSourceDatabaseStampsUsed() const;//Database group
-	bool getSourceOpenni2AutoWhiteBalance() const;  //Openni group
-	bool getSourceOpenni2AutoExposure() const;  //Openni group
-	int getSourceOpenni2Exposure() const;  //Openni group
-	int getSourceOpenni2Gain() const;   //Openni group
-	bool getSourceOpenni2Mirroring() const; //Openni group
-	int getSourceFreenect2Format() const; //Openni group
-	bool getSourceStereoImagesRectify() const;
-	bool getSourceStereoVideoRectify() const;
 	bool isSourceRGBDColorOnly() const;
 	Transform getSourceLocalTransform() const;    //Openni group
 	Camera * createCamera(bool useRawImages = false); // return camera should be deleted if not null
@@ -236,6 +221,7 @@ public slots:
 	void setSLAMMode(bool enabled);
 	void selectSourceDriver(Src src);
 	void calibrate();
+	void calibrateSimple();
 
 private slots:
 	void closeDialog ( QAbstractButton * button );
@@ -263,8 +249,12 @@ private slots:
 	void updateBasicParameter();
 	void openDatabaseViewer();
 	void selectSourceDatabase();
+	void selectSourceRGBDImagesStamps();
+	void selectSourceRGBDImagesPathRGB();
+	void selectSourceRGBDImagesPathDepth();
 	void selectSourceStereoImagesStamps();
-	void selectSourceStereoImagesPath();
+	void selectSourceStereoImagesPathLeft();
+	void selectSourceStereoImagesPathRight();
 	void selectSourceImagesPath();
 	void selectSourceVideoPath();
 	void selectSourceStereoVideoPath();

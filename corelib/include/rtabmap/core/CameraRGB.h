@@ -53,6 +53,7 @@ public:
 			int startAt = 1,
 			bool refreshDir = false,
 			bool rectifyImages = false,
+			bool isDepth = false,
 			float imageRate = 0,
 			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraImages();
@@ -62,6 +63,7 @@ public:
 	virtual std::string getSerial() const;
 	std::string getPath() const {return _path;}
 	unsigned int imagesCount() const;
+	std::vector<std::string> filenames() const;
 
 protected:
 	virtual SensorData captureImage();
@@ -73,6 +75,7 @@ private:
 	// on each call of takeImage()
 	bool _refreshDir;
 	bool _rectifyImages;
+	bool _isDepth;
 	int _count;
 	UDirectory * _dir;
 	std::string _lastFileName;

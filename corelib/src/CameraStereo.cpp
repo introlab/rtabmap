@@ -731,7 +731,9 @@ bool CameraStereoImages::available()
 }
 
 CameraStereoImages::CameraStereoImages(
-		const std::string & path,
+		const std::string & pathLeftImages,
+		const std::string & pathRightImages,
+		bool filenamesAreTimestamps,
 		const std::string & timestampsPath,
 		bool rectifyImages,
 		float imageRate,
@@ -739,10 +741,29 @@ CameraStereoImages::CameraStereoImages(
 		Camera(imageRate, localTransform),
 		camera_(0),
 		camera2_(0),
+		filenamesAreTimestamps_(filenamesAreTimestamps),
 		timestampsPath_(timestampsPath),
 		rectifyImages_(rectifyImages)
 {
-	std::vector<std::string> paths = uListToVector(uSplit(path, uStrContains(path, ":")?':':';'));
+	camera_ = new CameraImages(pathLeftImages);
+	camera2_ = new CameraImages(pathRightImages);
+}
+
+CameraStereoImages::CameraStereoImages(
+		const std::string & pathLeftRightImages,
+		bool filenamesAreTimestamps,
+		const std::string & timestampsPath,
+		bool rectifyImages,
+		float imageRate,
+		const Transform & localTransform) :
+		Camera(imageRate, localTransform),
+		camera_(0),
+		camera2_(0),
+		filenamesAreTimestamps_(filenamesAreTimestamps),
+		timestampsPath_(timestampsPath),
+		rectifyImages_(rectifyImages)
+{
+	std::vector<std::string> paths = uListToVector(uSplit(pathLeftRightImages, uStrContains(pathLeftRightImages, ":")?':':';'));
 	if(paths.size() >= 1)
 	{
 		camera_ = new CameraImages(paths[0]);
@@ -830,30 +851,63 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 	}
 
 	stamps_.clear();
-	if(success && timestampsPath_.size())
+	if(success)
 	{
-		FILE * file = 0;
-#ifdef _MSC_VER
-		fopen_s(&file, timestampsPath_.c_str(), "r");
-#else
-		file = fopen(timestampsPath_.c_str(), "r");
-#endif
-		if(file)
+		if(filenamesAreTimestamps_)
 		{
-			char line[16];
-			while ( fgets (line , 16 , file) != NULL )
+			std::vector<std::string> filenames = camera_->filenames();
+			for(unsigned int i=0; i<filenames.size(); ++i)
 			{
-				stamps_.push_back(uStr2Double(uReplaceChar(line, '\n', 0)));
+				// format is 12234456.12334.png
+				std::list<std::string> list = uSplit(filenames.at(i), '.');
+				if(list.size() == 3)
+				{
+					list.pop_back(); // remove extension
+					double stamp = uStr2Double(uJoin(list, "."));
+					if(stamp > 0.0)
+					{
+						stamps_.push_back(stamp);
+					}
+					else
+					{
+						UERROR("Conversion filename to timestamp failed! (filename=%s)", filenames.at(i).c_str());
+					}
+				}
 			}
-			fclose(file);
+			if(stamps_.size() != camera_->imagesCount())
+			{
+				UERROR("The stamps count is not the same as the images (%d vs %d)! "
+					   "Converting filenames to timestamps is activated.",
+						(int)stamps_.size(), camera_->imagesCount());
+				stamps_.clear();
+				success = false;
+			}
 		}
-		if(stamps_.size() != camera_->imagesCount())
+		else if(timestampsPath_.size())
 		{
-			UERROR("The stamps count is not the same as the images (%d vs %d)! Please remove "
-					"the timestamps file path if you don't want to use them (current file path=%s).",
-					(int)stamps_.size(), camera_->imagesCount(), timestampsPath_.c_str());
-			stamps_.clear();
-			success = false;
+			FILE * file = 0;
+#ifdef _MSC_VER
+			fopen_s(&file, timestampsPath_.c_str(), "r");
+#else
+			file = fopen(timestampsPath_.c_str(), "r");
+#endif
+			if(file)
+			{
+				char line[16];
+				while ( fgets (line , 16 , file) != NULL )
+				{
+					stamps_.push_back(uStr2Double(uReplaceChar(line, '\n', 0)));
+				}
+				fclose(file);
+			}
+			if(stamps_.size() != camera_->imagesCount())
+			{
+				UERROR("The stamps count is not the same as the images (%d vs %d)! Please remove "
+						"the timestamps file path if you don't want to use them (current file path=%s).",
+						(int)stamps_.size(), camera_->imagesCount(), timestampsPath_.c_str());
+				stamps_.clear();
+				success = false;
+			}
 		}
 	}
 

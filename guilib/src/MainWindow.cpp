@@ -2220,22 +2220,6 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		if(_camera)
 		{
 			_camera->setImageRate(_preferencesDialog->getGeneralInputRate());
-
-			if(_camera->camera() && dynamic_cast<CameraOpenNI2*>(_camera->camera()) != 0)
-			{
-				((CameraOpenNI2*)_camera->camera())->setAutoWhiteBalance(_preferencesDialog->getSourceOpenni2AutoWhiteBalance());
-				((CameraOpenNI2*)_camera->camera())->setAutoExposure(_preferencesDialog->getSourceOpenni2AutoExposure());
-				if(CameraOpenNI2::exposureGainAvailable())
-				{
-					((CameraOpenNI2*)_camera->camera())->setExposure(_preferencesDialog->getSourceOpenni2Exposure());
-					((CameraOpenNI2*)_camera->camera())->setGain(_preferencesDialog->getSourceOpenni2Gain());
-				}
-			}
-			if(_camera)
-			{
-				_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
-				_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
-			}
 		}
 		if(_dbReader)
 		{
@@ -2768,6 +2752,9 @@ void MainWindow::startDetection()
 	// verify source with input rates
 	if(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcImages ||
 	   _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcVideo ||
+	   _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRGBDImages ||
+	   _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoImages ||
+	   _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoVideo ||
 	   _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDatabase)
 	{
 		float inputRate = _preferencesDialog->getGeneralInputRate();

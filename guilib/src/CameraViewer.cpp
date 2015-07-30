@@ -85,7 +85,7 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 	{
 		imageView_->setImageDepth(uCvMat2QImage(data.depthOrRightRaw()));
 	}
-	if((data.stereoCameraModel().isValid() || data.cameraModels().size()))
+	if((data.stereoCameraModel().isValid() || (data.cameraModels().size() && data.cameraModels().at(0).isValid())))
 	{
 		if(!data.imageRaw().empty() && !data.depthOrRightRaw().empty())
 		{

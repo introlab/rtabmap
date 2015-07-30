@@ -756,7 +756,19 @@ void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global)
 			_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, global);
 		}
 
-		this->dumpPoses(path, poses);
+		//get timestamps
+		std::map<int, double> stamps;
+		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		{
+			Transform o;
+			int m, w;
+			std::string l;
+			double stamp = 0.0;
+			_memory->getNodeInfo(iter->first, o, m, w, l, stamp, true);
+			stamps.insert(std::make_pair(iter->first, stamp));
+		}
+
+		this->dumpPoses(path, poses, stamps);
 	}
 }
 
@@ -2466,9 +2478,11 @@ void Rtabmap::dumpData() const
 
 void Rtabmap::dumpPoses(
 		const std::string & path,
-		const std::map<int, Transform> & poses) const
+		const std::map<int, Transform> & poses,
+		const std::map<int, double> & stamps) const
 {
 	UDEBUG("");
+	UASSERT(stamps.size()== 0 || stamps.size() == poses.size());
 	FILE* fout = 0;
 #ifdef _MSC_VER
 	fopen_s(&fout, path.c_str(), "w");
@@ -2482,8 +2496,17 @@ void Rtabmap::dumpPoses(
 			// in camera frame
 			const float * p = (const float *)(*iter).second.data();
 
-			fprintf(fout, "%f", p[0]);
-			for(int i=1; i<(*iter).second.size(); i++)
+			int index = 0;
+			if(stamps.size() == poses.size())
+			{
+				UASSERT(uContains(stamps, iter->first));
+				fprintf(fout, "%f", stamps.at(iter->first));
+			}
+			else
+			{
+				fprintf(fout, "%f", p[index++]);
+			}
+			for(int i=index; i<(*iter).second.size(); i++)
 			{
 				fprintf(fout, " %f", p[i]);
 			}
