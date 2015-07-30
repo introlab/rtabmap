@@ -416,7 +416,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 							UDEBUG("cameraTransform guess=  %s (norm^2=%f)", cameraTransform.prettyPrint().c_str(), cameraTransform.getNormSquared());
 							if(cameraTransform.getNorm() < minTranslation_)
 							{
-								UWARN("Translation with the nearest frame is too small (%f<%f) to add new points to local map",
+								UINFO("Translation with the nearest frame is too small (%f<%f) to add new points to local map",
 										cameraTransform.getNorm(), minTranslation_);
 							}
 							else
@@ -730,36 +730,39 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 
 							pcl::PointCloud<pcl::PointXYZ>::Ptr newCorners3D(new pcl::PointCloud<pcl::PointXYZ>);
 
-							if(refDepthOrRight_.type() == CV_8UC1)
+							if(!refDepthOrRight_.empty())
 							{
-								 newCorners3D = util3d::generateKeypoints3DStereo(
-										 refCorners,
-										 refS->sensorData().imageRaw(),
-										 refDepthOrRight_,
-										 cameraModel.fx(),
-										 data.stereoCameraModel().baseline(),
-										 cameraModel.cx(),
-										 cameraModel.cy(),
-										 Transform::getIdentity(),
-										 stereoWinSize_,
-										 stereoMaxLevel_,
-										 stereoIterations_,
-										 stereoEps_,
-										 stereoMaxSlope_ );
-							}
-							else if(refDepthOrRight_.type() == CV_32FC1 || refDepthOrRight_.type() == CV_16UC1)
-							{
-								std::vector<cv::KeyPoint> tmpKpts;
-								cv::KeyPoint::convert(refCorners, tmpKpts);
-								CameraModel m(cameraModel.fx(), cameraModel.fy(), cameraModel.cx(), cameraModel.cy());
-								 newCorners3D = util3d::generateKeypoints3DDepth(
-										 tmpKpts,
-										 refDepthOrRight_,
-										 m);
-							}
-							else if(!refDepthOrRight_.empty())
-							{
-								UWARN("Depth or right image type not supported: %d", refDepthOrRight_.type());
+								if(refDepthOrRight_.type() == CV_8UC1)
+								{
+									 newCorners3D = util3d::generateKeypoints3DStereo(
+											 refCorners,
+											 refS->sensorData().imageRaw(),
+											 refDepthOrRight_,
+											 cameraModel.fx(),
+											 data.stereoCameraModel().baseline(),
+											 cameraModel.cx(),
+											 cameraModel.cy(),
+											 Transform::getIdentity(),
+											 stereoWinSize_,
+											 stereoMaxLevel_,
+											 stereoIterations_,
+											 stereoEps_,
+											 stereoMaxSlope_ );
+								}
+								else if(refDepthOrRight_.type() == CV_32FC1 || refDepthOrRight_.type() == CV_16UC1)
+								{
+									std::vector<cv::KeyPoint> tmpKpts;
+									cv::KeyPoint::convert(refCorners, tmpKpts);
+									CameraModel m(cameraModel.fx(), cameraModel.fy(), cameraModel.cx(), cameraModel.cy());
+									 newCorners3D = util3d::generateKeypoints3DDepth(
+											 tmpKpts,
+											 refDepthOrRight_,
+											 m);
+								}
+								else
+								{
+									UWARN("Depth or right image type not supported: %d", refDepthOrRight_.type());
+								}
 							}
 
 							for(unsigned int i=0; i<cloud->size(); ++i)
