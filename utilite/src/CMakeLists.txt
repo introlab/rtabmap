@@ -10,6 +10,7 @@ SET(SRC_FILES
     UThread.cpp
     UTimer.cpp
     UProcessInfo.cpp
+    UVariant.cpp
 )
 
 SET(INCLUDE_DIRS

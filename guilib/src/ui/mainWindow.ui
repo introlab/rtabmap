@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -55,13 +55,19 @@
      <property name="title">
       <string>Advanced</string>
      </property>
+     <widget class="QMenu" name="menuExport_poses">
+      <property name="title">
+       <string>Export poses...</string>
+      </property>
+      <addaction name="actionKITTI_format_txt"/>
+      <addaction name="actionRGBD_SLAM_format_txt"/>
+      <addaction name="actionTORO_graph"/>
+     </widget>
      <addaction name="actionOpen_working_directory"/>
      <addaction name="actionDump_the_memory"/>
      <addaction name="actionDump_the_prediction_matrix"/>
      <addaction name="actionGenerate_map"/>
-     <addaction name="actionGenerate_local_map"/>
-     <addaction name="actionGenerate_TORO_graph_graph"/>
-     <addaction name="actionExport_poses_txt"/>
+     <addaction name="menuExport_poses"/>
      <addaction name="actionPrint_loop_closure_IDs_to_console"/>
      <addaction name="separator"/>
      <addaction name="actionSend_goal"/>
@@ -908,7 +914,7 @@
   </action>
   <action name="actionGenerate_map">
    <property name="text">
-    <string>Generate graph map (*.dot)...</string>
+    <string>Generate graph (*.dot)...</string>
    </property>
   </action>
   <action name="actionDelete_memory">
@@ -971,11 +977,6 @@
    </property>
    <property name="text">
     <string>Usb camera</string>
-   </property>
-  </action>
-  <action name="actionGenerate_local_map">
-   <property name="text">
-    <string>Generate graph local map (*.dot)...</string>
    </property>
   </action>
   <action name="actionPrint_loop_closure_IDs_to_console">
@@ -1041,11 +1042,6 @@
   <action name="actionTrigger_a_new_map">
    <property name="text">
     <string>Trigger a new map</string>
-   </property>
-  </action>
-  <action name="actionGenerate_TORO_graph_graph">
-   <property name="text">
-    <string>Generate TORO graph (*.graph)...</string>
    </property>
   </action>
   <action name="actionDownload_graph">
@@ -1213,11 +1209,6 @@
     <string>Send a goal...</string>
    </property>
   </action>
-  <action name="actionExport_poses_txt">
-   <property name="text">
-    <string>Export poses (*.txt)...</string>
-   </property>
-  </action>
   <action name="actionCancel_goal">
    <property name="text">
     <string>Cancel goal</string>
@@ -1239,6 +1230,21 @@
   <action name="actionLabel_current_location">
    <property name="text">
     <string>Label current location...</string>
+   </property>
+  </action>
+  <action name="actionKITTI_format_txt">
+   <property name="text">
+    <string>KITTI format (*.txt)</string>
+   </property>
+  </action>
+  <action name="actionRGBD_SLAM_format_txt">
+   <property name="text">
+    <string>RGBD-SLAM format (*.txt)</string>
+   </property>
+  </action>
+  <action name="actionTORO_graph">
+   <property name="text">
+    <string>TORO (*.graph)</string>
    </property>
   </action>
  </widget>

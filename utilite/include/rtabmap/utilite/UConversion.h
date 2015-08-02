@@ -148,6 +148,7 @@ std::string UTILITE_EXP uBool2Str(bool boolean);
  * @return the boolean
  */
 bool UTILITE_EXP uStr2Bool(const char * str);
+bool UTILITE_EXP uStr2Bool(const std::string & str);
 
 /**
  * Convert a string to an array of bytes including the null character ('\0').

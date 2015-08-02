@@ -150,6 +150,11 @@ bool uStr2Bool(const char * str)
 	return !(str && (strcmp(str, "false") == 0 || strcmp(str, "FALSE") == 0 || strcmp(str, "0") == 0));
 }
 
+bool uStr2Bool(const std::string & str)
+{
+	return !(str.compare("false") == 0 || str.compare("FALSE") == 0 || str.compare("0") == 0);
+}
+
 std::vector<unsigned char> uStr2Bytes(const std::string & str)
 {
 	std::vector<unsigned char> bytes(str.size()+1);

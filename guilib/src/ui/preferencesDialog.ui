@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-399</y>
-            <width>760</width>
-            <height>1570</height>
+            <y>0</y>
+            <width>755</width>
+            <height>1591</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>4</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -2996,7 +2996,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string> Hz</string>
                       </property>
                       <property name="decimals">
-                       <number>1</number>
+                       <number>3</number>
                       </property>
                       <property name="value">
                        <double>1.000000000000000</double>
@@ -3334,7 +3334,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <string> Hz</string>
                         </property>
                         <property name="decimals">
-                         <number>1</number>
+                         <number>3</number>
                         </property>
                         <property name="value">
                          <double>1.000000000000000</double>

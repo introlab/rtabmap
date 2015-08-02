@@ -718,7 +718,7 @@ void Rtabmap::generateDOTGraph(const std::string & path, int id, int margin)
 	}
 }
 
-void Rtabmap::generateTOROGraph(const std::string & path, bool optimized, bool global)
+void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global, int type)
 {
 	if(_memory && _memory->getLastWorkingSignature())
 	{
@@ -735,40 +735,70 @@ void Rtabmap::generateTOROGraph(const std::string & path, bool optimized, bool g
 			_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, global);
 		}
 
-		graph::TOROOptimizer::saveGraph(path, poses, constraints);
-	}
-}
-
-void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global)
-{
-	if(_memory && _memory->getLastWorkingSignature())
-	{
-		std::map<int, Transform> poses;
-		std::multimap<int, Link> constraints;
-
-		if(optimized)
+		if(type==2) // TORO
 		{
-			this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), global, poses, &constraints);
+			graph::TOROOptimizer::saveGraph(path, poses, constraints);
 		}
 		else
 		{
-			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
-			_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, global);
-		}
+			//get timestamps
+			std::map<int, double> stamps;
+			if(type == 1)
+			{
+				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+				{
+					Transform o;
+					int m, w;
+					std::string l;
+					double stamp = 0.0;
+					_memory->getNodeInfo(iter->first, o, m, w, l, stamp, true);
+					stamps.insert(std::make_pair(iter->first, stamp));
+				}
+				UASSERT(stamps.size()== 0 || stamps.size() == poses.size());
+			}
 
-		//get timestamps
-		std::map<int, double> stamps;
-		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-		{
-			Transform o;
-			int m, w;
-			std::string l;
-			double stamp = 0.0;
-			_memory->getNodeInfo(iter->first, o, m, w, l, stamp, true);
-			stamps.insert(std::make_pair(iter->first, stamp));
-		}
+			FILE* fout = 0;
+#ifdef _MSC_VER
+			fopen_s(&fout, path.c_str(), "w");
+#else
+			fout = fopen(path.c_str(), "w");
+#endif
+			if(fout)
+			{
+				for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+				{
+					if(type == 1) // rgbd-slam format
+					{
+						// Format: stamp x y z qw qx qy qz
+						Eigen::Quaternionf q = (*iter).second.getQuaternionf();
 
-		this->dumpPoses(path, poses, stamps);
+						UASSERT(uContains(stamps, iter->first));
+						fprintf(fout, "%f %f %f %f %f %f %f %f\n",
+								stamps.at(iter->first),
+								(*iter).second.x(),
+								(*iter).second.y(),
+								(*iter).second.z(),
+								q.w(),
+								q.x(),
+								q.y(),
+								q.z());
+					}
+					else // default / KITTI format
+					{
+						// Format: r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz
+						const float * p = (const float *)(*iter).second.data();
+
+						fprintf(fout, "%f", p[0]);
+						for(int i=1; i<(*iter).second.size(); i++)
+						{
+							fprintf(fout, " %f", p[i]);
+						}
+						fprintf(fout, "\n");
+					}
+				}
+				fclose(fout);
+			}
+		}
 	}
 }
 
@@ -2473,46 +2503,6 @@ void Rtabmap::dumpData() const
 	if(_memory)
 	{
 		_memory->dumpMemory(this->getWorkingDir());
-	}
-}
-
-void Rtabmap::dumpPoses(
-		const std::string & path,
-		const std::map<int, Transform> & poses,
-		const std::map<int, double> & stamps) const
-{
-	UDEBUG("");
-	UASSERT(stamps.size()== 0 || stamps.size() == poses.size());
-	FILE* fout = 0;
-#ifdef _MSC_VER
-	fopen_s(&fout, path.c_str(), "w");
-#else
-	fout = fopen(path.c_str(), "w");
-#endif
-	if(fout)
-	{
-		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-		{
-			// in camera frame
-			const float * p = (const float *)(*iter).second.data();
-
-			int index = 0;
-			if(stamps.size() == poses.size())
-			{
-				UASSERT(uContains(stamps, iter->first));
-				fprintf(fout, "%f", stamps.at(iter->first));
-			}
-			else
-			{
-				fprintf(fout, "%f", p[index++]);
-			}
-			for(int i=index; i<(*iter).second.size(); i++)
-			{
-				fprintf(fout, " %f", p[i]);
-			}
-			fprintf(fout, "\n");
-		}
-		fclose(fout);
 	}
 }
 

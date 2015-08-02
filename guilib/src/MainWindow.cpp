@@ -299,10 +299,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionClear_cache, SIGNAL(triggered()), this, SLOT(clearTheCache()));
 	connect(_ui->actionAbout, SIGNAL(triggered()), _aboutDialog , SLOT(exec()));
 	connect(_ui->actionPrint_loop_closure_IDs_to_console, SIGNAL(triggered()), this, SLOT(printLoopClosureIds()));
-	connect(_ui->actionGenerate_map, SIGNAL(triggered()), this , SLOT(generateMap()));
-	connect(_ui->actionGenerate_local_map, SIGNAL(triggered()), this, SLOT(generateLocalMap()));
-	connect(_ui->actionGenerate_TORO_graph_graph, SIGNAL(triggered()), this , SLOT(generateTOROMap()));
-	connect(_ui->actionExport_poses_txt, SIGNAL(triggered()), this , SLOT(exportPoses()));
+	connect(_ui->actionGenerate_map, SIGNAL(triggered()), this , SLOT(generateGraphDOT()));
+	connect(_ui->actionKITTI_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesKITTI()));
+	connect(_ui->actionRGBD_SLAM_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAM()));
+	connect(_ui->actionTORO_graph, SIGNAL(triggered()), this , SLOT(exportPosesTORO()));
 	connect(_ui->actionDelete_memory, SIGNAL(triggered()), this , SLOT(deleteMemory()));
 	connect(_ui->actionDownload_all_clouds, SIGNAL(triggered()), this , SLOT(downloadAllClouds()));
 	connect(_ui->actionDownload_graph, SIGNAL(triggered()), this , SLOT(downloadPoseGraph()));
@@ -2643,7 +2643,7 @@ void MainWindow::newDatabase()
 		}
 	}
 	_newDatabasePath = databasePath.c_str();
-	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdInit, databasePath, 0, _preferencesDialog->getAllParameters()));
+	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdInit, databasePath, _preferencesDialog->getAllParameters()));
 	applyPrefSettings(_preferencesDialog->getAllParameters(), false);
 }
 
@@ -3115,57 +3115,30 @@ void MainWindow::printLoopClosureIds()
 	_ui->widget_console->appendMsg(QString("LoopIDs = [%1];").arg(msgLoop));
 }
 
-void MainWindow::generateMap()
-{
-	if(_graphSavingFileName.isEmpty())
-	{
-		_graphSavingFileName = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "Graph.dot";
-	}
-	QString path = QFileDialog::getSaveFileName(this, tr("Save File"), _graphSavingFileName, tr("Graphiz file (*.dot)"));
-	if(!path.isEmpty())
-	{
-		_graphSavingFileName = path;
-		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateDOTGraph, path.toStdString())); // The event is automatically deleted by the EventsManager...
-
-		_ui->dockWidget_console->show();
-		_ui->widget_console->appendMsg(QString("Graph saved... Tip:\nneato -Tpdf \"%1\" -o out.pdf").arg(_graphSavingFileName).arg(_graphSavingFileName));
-	}
-}
-
-void MainWindow::generateLocalMap()
+void MainWindow::generateGraphDOT()
 {
 	if(_graphSavingFileName.isEmpty())
 	{
 		_graphSavingFileName = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "Graph.dot";
 	}
 
-	bool ok = false;
-	int loopId = 1;
-	if(_ui->label_matchId->text().size())
-	{
-		std::list<std::string> values = uSplitNumChar(_ui->label_matchId->text().toStdString());
-		if(values.size() > 1)
-		{
-			int val = QString((++values.begin())->c_str()).toInt(&ok);
-			if(ok)
-			{
-				loopId = val;
-			}
-			ok = false;
-		}
-	}
-	int id = QInputDialog::getInt(this, tr("Around which location?"), tr("Location ID"), loopId, 1, 999999, 1, &ok);
+	bool ok;
+	int id = QInputDialog::getInt(this, tr("Around which location?"), tr("Location ID (0=full map)"), 0, 0, 999999, 0, &ok);
 	if(ok)
 	{
-		int margin = QInputDialog::getInt(this, tr("Depth around the location?"), tr("Margin"), 4, 1, 100, 1, &ok);
+		int margin = 0;
+		if(id > 0)
+		{
+			margin = QInputDialog::getInt(this, tr("Depth around the location?"), tr("Margin"), 4, 1, 100, 1, &ok);
+		}
+
 		if(ok)
 		{
 			QString path = QFileDialog::getSaveFileName(this, tr("Save File"), _graphSavingFileName, tr("Graphiz file (*.dot)"));
 			if(!path.isEmpty())
 			{
 				_graphSavingFileName = path;
-				QString str = path + QString(";") + QString::number(id) + QString(";") + QString::number(margin);
-				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateDOTLocalGraph, str.toStdString())); // The event is automatically deleted by the EventsManager...
+				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateDOTGraph, false, path.toStdString(), id, margin));
 
 				_ui->dockWidget_console->show();
 				_ui->widget_console->appendMsg(QString("Graph saved... Tip:\nneato -Tpdf \"%1\" -o out.pdf").arg(_graphSavingFileName).arg(_graphSavingFileName));
@@ -3174,73 +3147,21 @@ void MainWindow::generateLocalMap()
 	}
 }
 
-void MainWindow::generateTOROMap()
+void MainWindow::exportPosesKITTI()
 {
-	if(_toroSavingFileName.isEmpty())
-	{
-		_toroSavingFileName = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "toro.graph";
-	}
-
-	QStringList items;
-	items.append("Local map optimized");
-	items.append("Local map not optimized");
-	items.append("Global map optimized");
-	items.append("Global map not optimized");
-	bool ok;
-	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, 2, false, &ok);
-	if(ok)
-	{
-		bool optimized=false, global=false;
-		if(item.compare("Local map optimized") == 0)
-		{
-			optimized = true;
-		}
-		else if(item.compare("Local map not optimized") == 0)
-		{
-
-		}
-		else if(item.compare("Global map optimized") == 0)
-		{
-			global=true;
-			optimized=true;
-		}
-		else if(item.compare("Global map not optimized") == 0)
-		{
-			global=true;
-		}
-		else
-		{
-			UFATAL("Item \"%s\" not found?!?", item.toStdString().c_str());
-		}
-
-		QString path = QFileDialog::getSaveFileName(this, tr("Save File"), _toroSavingFileName, tr("TORO file (*.graph)"));
-		if(!path.isEmpty())
-		{
-			_toroSavingFileName = path;
-			if(global)
-			{
-				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateTOROGraphGlobal, path.toStdString(), optimized?1:0));
-			}
-			else
-			{
-				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateTOROGraphLocal, path.toStdString(), optimized?1:0));
-			}
-
-			_ui->dockWidget_console->show();
-			_ui->widget_console->appendMsg(QString("TORO Graph saved (global=%1, optimized=%2)... %3")
-					.arg(global?"true":"false").arg(optimized?"true":"false").arg(_toroSavingFileName));
-		}
-
-	}
+	exportPoses(0);
+}
+void MainWindow::exportPosesRGBDSLAM()
+{
+	exportPoses(1);
+}
+void MainWindow::exportPosesTORO()
+{
+	exportPoses(2);
 }
 
-void MainWindow::exportPoses()
+void MainWindow::exportPoses(int format)
 {
-	if(_posesSavingFileName.isEmpty())
-	{
-		_posesSavingFileName = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "poses.txt";
-	}
-
 	QStringList items;
 	items.append("Local map optimized");
 	items.append("Local map not optimized");
@@ -3273,22 +3194,30 @@ void MainWindow::exportPoses()
 			UFATAL("Item \"%s\" not found?!?", item.toStdString().c_str());
 		}
 
-		QString path = QFileDialog::getSaveFileName(this, tr("Save File"), _posesSavingFileName, tr("Text file (*.txt)"));
+		if(_exportPosesFileName[format].isEmpty())
+		{
+			_exportPosesFileName[format] = _preferencesDialog->getWorkingDirectory() + QDir::separator() + (format==2?"toro.graph":"poses.txt");
+		}
+
+		QString path = QFileDialog::getSaveFileName(
+				this,
+				tr("Save File"),
+				_exportPosesFileName[format],
+				format == 2?tr("TORO file (*.graph)"):tr("Text file (*.txt)"));
+
 		if(!path.isEmpty())
 		{
-			_posesSavingFileName = path;
-			if(global)
-			{
-				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdExportPosesGlobal, path.toStdString(), optimized?1:0));
-			}
-			else
-			{
-				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdExportPosesLocal, path.toStdString(), optimized?1:0));
-			}
+			_exportPosesFileName[format] = path;
+
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdExportPoses, global, optimized, path.toStdString(), format));
 
 			_ui->dockWidget_console->show();
-			_ui->widget_console->appendMsg(QString("Poses saved (global=%1, optimized=%2)... %3")
-					.arg(global?"true":"false").arg(optimized?"true":"false").arg(_posesSavingFileName));
+			_ui->widget_console->appendMsg(
+					QString("%1 saved (global=%2, optimized=%3)... %4")
+					.arg(format == 2?"TORO graph":"Poses")
+					.arg(global?"true":"false")
+					.arg(optimized?"true":"false")
+					.arg(_exportPosesFileName[format]));
 		}
 
 	}
@@ -3957,14 +3886,7 @@ void MainWindow::downloadAllClouds()
 		_initProgressDialog->show();
 		_initProgressDialog->appendText(tr("Downloading the map (global=%1 ,optimized=%2)...")
 				.arg(global?"true":"false").arg(optimized?"true":"false"));
-		if(global)
-		{
-			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMapGlobal, "", optimized?1:0));
-		}
-		else
-		{
-			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMapLocal, "", optimized?1:0));
-		}
+		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMap, global, optimized, false));
 	}
 }
 
@@ -4008,14 +3930,8 @@ void MainWindow::downloadPoseGraph()
 		_initProgressDialog->show();
 		_initProgressDialog->appendText(tr("Downloading the graph (global=%1 ,optimized=%2)...")
 				.arg(global?"true":"false").arg(optimized?"true":"false"));
-		if(global)
-		{
-			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublishTOROGraphGlobal, "", optimized?1:0));
-		}
-		else
-		{
-			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublishTOROGraphLocal, "", optimized?1:0));
-		}
+
+		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMap, global, optimized, true));
 	}
 }
 
@@ -5261,9 +5177,7 @@ void MainWindow::changeState(MainWindow::State newState)
 	_ui->actionDump_the_memory->setVisible(!monitoring);
 	_ui->actionDump_the_prediction_matrix->setVisible(!monitoring);
 	_ui->actionGenerate_map->setVisible(!monitoring);
-	_ui->actionGenerate_local_map->setVisible(!monitoring);
-	_ui->actionGenerate_TORO_graph_graph->setVisible(!monitoring);
-	_ui->actionExport_poses_txt->setVisible(!monitoring);
+	_ui->menuExport_poses->setEnabled(!monitoring);
 	_ui->actionOpen_working_directory->setVisible(!monitoring);
 	_ui->actionData_recorder->setVisible(!monitoring);
 	_ui->menuSelect_source->menuAction()->setVisible(!monitoring);
@@ -5345,9 +5259,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDelete_memory->setEnabled(false);
 		_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
 		_ui->actionGenerate_map->setEnabled(false);
-		_ui->actionGenerate_local_map->setEnabled(false);
-		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
-		_ui->actionExport_poses_txt->setEnabled(false);
+		_ui->menuExport_poses->setEnabled(false);
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
@@ -5393,9 +5305,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDelete_memory->setEnabled(true);
 		_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
 		_ui->actionGenerate_map->setEnabled(true);
-		_ui->actionGenerate_local_map->setEnabled(true);
-		_ui->actionGenerate_TORO_graph_graph->setEnabled(true);
-		_ui->actionExport_poses_txt->setEnabled(true);
+		_ui->menuExport_poses->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
 		_ui->menuSelect_source->setEnabled(true);
@@ -5430,9 +5340,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDelete_memory->setEnabled(false);
 		_ui->actionPost_processing->setEnabled(false);
 		_ui->actionGenerate_map->setEnabled(false);
-		_ui->actionGenerate_local_map->setEnabled(false);
-		_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
-		_ui->actionExport_poses_txt->setEnabled(false);
+		_ui->menuExport_poses->setEnabled(false);
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
@@ -5469,9 +5377,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionDelete_memory->setEnabled(false);
 			_ui->actionPost_processing->setEnabled(false);
 			_ui->actionGenerate_map->setEnabled(false);
-			_ui->actionGenerate_local_map->setEnabled(false);
-			_ui->actionGenerate_TORO_graph_graph->setEnabled(false);
-			_ui->actionExport_poses_txt->setEnabled(false);
+			_ui->menuExport_poses->setEnabled(false);
 			_ui->actionDownload_all_clouds->setEnabled(false);
 			_ui->actionDownload_graph->setEnabled(false);
 			_state = kDetecting;
@@ -5498,9 +5404,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionDelete_memory->setEnabled(false);
 			_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
 			_ui->actionGenerate_map->setEnabled(true);
-			_ui->actionGenerate_local_map->setEnabled(true);
-			_ui->actionGenerate_TORO_graph_graph->setEnabled(true);
-			_ui->actionExport_poses_txt->setEnabled(true);
+			_ui->menuExport_poses->setEnabled(true);
 			_ui->actionDownload_all_clouds->setEnabled(true);
 			_ui->actionDownload_graph->setEnabled(true);
 			_state = kPaused;

@@ -126,10 +126,10 @@ private slots:
 	void stopDetection();
 	void notifyNoMoreImages();
 	void printLoopClosureIds();
-	void generateMap();
-	void generateLocalMap();
-	void generateTOROMap();
-	void exportPoses();
+	void generateGraphDOT();
+	void exportPosesKITTI();
+	void exportPosesRGBDSLAM();
+	void exportPosesTORO();
 	void postProcessing();
 	void deleteMemory();
 	void openWorkingDirectory();
@@ -223,6 +223,7 @@ private:
 	void applyPrefSettings(const rtabmap::ParametersMap & parameters, bool postParamEvent);
 	void saveFigures();
 	void loadFigures();
+	void exportPoses(int format);
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getAssembledCloud(
 			const std::map<int, Transform> & poses,
@@ -296,8 +297,7 @@ private:
 	DetailedProgressDialog * _initProgressDialog;
 
 	QString _graphSavingFileName;
-	QString _toroSavingFileName;
-	QString _posesSavingFileName;
+	QMap<int, QString> _exportPosesFileName;
 	bool _autoScreenCaptureOdomSync;
 
 	QVector<int> _refIds;

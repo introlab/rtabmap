@@ -61,17 +61,10 @@ public:
 		kStateChangingParameters,
 		kStateDumpingMemory,
 		kStateDumpingPrediction,
-		kStateGeneratingDOTGraph,
-		kStateGeneratingDOTLocalGraph,
-		kStateGeneratingTOROGraphLocal,
-		kStateGeneratingTOROGraphGlobal,
-		kStateExportingPosesLocal,
-		kStateExportingPosesGlobal,
+		kStateExportingDOTGraph,
+		kStateExportingPoses,
 		kStateCleanDataBuffer,
-		kStatePublishingMapLocal,
-		kStatePublishingMapGlobal,
-		kStatePublishingTOROGraphLocal,
-		kStatePublishingTOROGraphGlobal,
+		kStatePublishingMap,
 		kStateTriggeringMap,
 		kStateAddingUserData,
 		kStateSettingGoal,
@@ -99,8 +92,7 @@ private:
 	void addData(const OdometryEvent & odomEvent);
 	bool getData(OdometryEvent & data);
 	void pushNewState(State newState, const ParametersMap & parameters = ParametersMap());
-	void publishMap(bool optimized, bool full) const;
-	void publishGraph(bool optimized, bool full) const;
+	void publishMap(bool optimized, bool full, bool graphOnly) const;
 
 private:
 	UMutex _stateMutex;

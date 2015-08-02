@@ -108,15 +108,15 @@ public:
 	bool labelLocation(int id, const std::string & label);
 	bool setUserData(int id, const cv::Mat & data);
 	void generateDOTGraph(const std::string & path, int id=0, int margin=5);
-	void generateTOROGraph(const std::string & path, bool optimized, bool global);
-	void exportPoses(const std::string & path, bool optimized, bool global);
+	void exportPoses(
+			const std::string & path,
+			bool optimized,
+			bool global,
+			int type // 0=raw/KITTI format, 1=rgbd-slam format, 2=TORO
+	);
 	void resetMemory();
 	void dumpPrediction() const;
 	void dumpData() const;
-	void dumpPoses(
-			const std::string & path,
-			const std::map<int, Transform> & poses,
-			const std::map<int, double> & stamps = std::map<int, double>()) const;
 	void parseParameters(const ParametersMap & parameters);
 	void setWorkingDirectory(std::string path);
 	void rejectLoopClosure(int oldId, int newId);
