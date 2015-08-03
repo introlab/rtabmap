@@ -5439,7 +5439,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_state = newState;
 		_elapsedTime->start();
 		_oneSecondTimer->start();
-		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPause, "", 0));
+		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdResume));
 		break;
 	case kMonitoringPaused:
 		_ui->actionPause->setToolTip(tr("Continue"));
@@ -5457,7 +5457,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->statusbar->showMessage(tr("Monitoring paused..."));
 		_state = newState;
 		_oneSecondTimer->stop();
-		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPause, "", 1));
+		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPause));
 		break;
 	default:
 		break;

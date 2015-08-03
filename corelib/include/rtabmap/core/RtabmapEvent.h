@@ -70,6 +70,7 @@ public:
 			kCmdPublish3DMap,     // params: [bool] global, [bool] optimized, [bool] graphOnly
 			kCmdTriggerNewMap,
 			kCmdPause,
+			kCmdResume,
 			kCmdGoal,             // params: [string] label or [int] location ID
 			kCmdCancelGoal,
 			kCmdLabel             // params: [string] label or [int] location ID
