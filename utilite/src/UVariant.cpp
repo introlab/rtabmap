@@ -19,6 +19,8 @@
 
 #include "rtabmap/utilite/UVariant.h"
 #include "rtabmap/utilite/UConversion.h"
+#include <limits>
+#include <string.h>
 
 UVariant::UVariant() :
 	type_(kUndef)
@@ -171,7 +173,7 @@ char UVariant::toChar(bool * ok) const
 	else if(type_ == kUInt)
 	{
 		unsigned int tmp = toUInt();
-		if(tmp <= std::numeric_limits<char>::max())
+		if(tmp <= (unsigned int)std::numeric_limits<char>::max())
 		{
 			v = (char)tmp;
 			if(ok)
@@ -317,7 +319,7 @@ short UVariant::toShort(bool * ok) const
 	else if(type_ == kUInt)
 	{
 		unsigned int tmp = toUInt();
-		if(tmp <= std::numeric_limits<short>::max())
+		if(tmp <= (unsigned int)std::numeric_limits<short>::max())
 		{
 			v = (short)tmp;
 			if(ok)
@@ -451,7 +453,7 @@ int UVariant::toInt(bool * ok) const
 	else if(type_ == kUInt)
 	{
 		unsigned int tmp = toUInt();
-		if(tmp <= std::numeric_limits<int>::max())
+		if(tmp <= (unsigned int)std::numeric_limits<int>::max())
 		{
 			v = (int)tmp;
 			if(ok)
