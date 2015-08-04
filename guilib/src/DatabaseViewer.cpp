@@ -895,7 +895,7 @@ void DatabaseViewer::extractImages()
 				{
 					UERROR("Cannot save calibration file, database name is empty!");
 				}
-				else
+				else if(data.stereoCameraModel().isValid())
 				{
 					std::string cameraName = uSplit(databaseFileName_, '.').front();
 					StereoCameraModel model(
@@ -925,6 +925,43 @@ void DatabaseViewer::extractImages()
 					}
 				}
 			}
+			else if(!data.imageRaw().empty())
+			{
+				if(!data.depthRaw().empty())
+				{
+					QDir dir;
+					dir.mkdir(QString("%1/rgb").arg(path));
+					dir.mkdir(QString("%1/depth").arg(path));
+				}
+
+				if(databaseFileName_.empty())
+				{
+					UERROR("Cannot save calibration file, database name is empty!");
+				}
+				else if(data.cameraModels().size() > 1)
+				{
+					UERROR("Only one camera calibration can be saved at this time (%d detected)", (int)data.cameraModels().size());
+				}
+				else if(data.cameraModels().size() == 1 && data.cameraModels().front().isValid())
+				{
+					std::string cameraName = uSplit(databaseFileName_, '.').front();
+					CameraModel model(cameraName,
+							data.imageRaw().size(),
+							data.cameraModels().front().K(),
+							data.cameraModels().front().D(),
+							data.cameraModels().front().R(),
+							data.cameraModels().front().P(),
+							data.cameraModels().front().localTransform());
+					if(model.save(path.toStdString()))
+					{
+						UINFO("Saved calibration \"%s\"", (path.toStdString()+"/"+cameraName).c_str());
+					}
+					else
+					{
+						UERROR("Failed saving calibration \"%s\"", (path.toStdString()+"/"+cameraName).c_str());
+					}
+				}
+			}
 		}
 
 		for(int i=0; i<ids_.size(); ++i)
@@ -936,6 +973,12 @@ void DatabaseViewer::extractImages()
 				cv::imwrite(QString("%1/left/%2.jpg").arg(path).arg(id).toStdString(), data.imageRaw());
 				cv::imwrite(QString("%1/right/%2.jpg").arg(path).arg(id).toStdString(), data.rightRaw());
 				UINFO(QString("Saved left/%1.jpg and right/%1.jpg").arg(id).toStdString().c_str());
+			}
+			else if(!data.imageRaw().empty() && !data.depthRaw().empty())
+			{
+				cv::imwrite(QString("%1/rgb/%2.jpg").arg(path).arg(id).toStdString(), data.imageRaw());
+				cv::imwrite(QString("%1/depth/%2.png").arg(path).arg(id).toStdString(), data.depthRaw());
+				UINFO(QString("Saved rgb/%1.jpg and depth/%1.png").arg(id).toStdString().c_str());
 			}
 			else if(!data.imageRaw().empty())
 			{
