@@ -168,7 +168,6 @@ private slots:
 	void changeDetectionRateSetting();
 	void changeTimeLimitSetting();
 	void changeMappingMode();
-	void captureScreen();
 	void setAspectRatio(int w, int h);
 	void setAspectRatio16_9();
 	void setAspectRatio16_10();
@@ -224,6 +223,7 @@ private:
 	void saveFigures();
 	void loadFigures();
 	void exportPoses(int format);
+	QString captureScreen();
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getAssembledCloud(
 			const std::map<int, Transform> & poses,

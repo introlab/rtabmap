@@ -2555,7 +2555,7 @@ void MainWindow::changeMappingMode()
 	emit mappingModeChanged(_ui->actionSLAM_mode->isChecked());
 }
 
-void MainWindow::captureScreen()
+QString MainWindow::captureScreen()
 {
 	QString targetDir = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "ScreensCaptured";
 	QDir dir;
@@ -2577,6 +2577,8 @@ void MainWindow::captureScreen()
 	QString msg = tr("Screen captured \"%1\"").arg(targetDir + name);
 	_ui->statusbar->showMessage(msg, _preferencesDialog->getTimeLimit()*500);
 	_ui->widget_console->appendMsg(msg);
+
+	return targetDir + name;
 }
 
 void MainWindow::beep()
@@ -3832,7 +3834,7 @@ void MainWindow::sendGoal()
 	{
 		_ui->graphicsView_graphView->setGlobalPath(std::vector<std::pair<int, Transform> >()); // clear
 		UINFO("Posting event with goal %d", id);
-		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, "", id));
+		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, id));
 	}
 }
 
@@ -4106,7 +4108,7 @@ void MainWindow::selectScreenCaptureFormat(bool checked)
 
 void MainWindow::takeScreenshot()
 {
-	this->captureScreen();
+	QDesktopServices::openUrl(QUrl::fromLocalFile(this->captureScreen()));
 }
 
 void MainWindow::setAspectRatio(int w, int h)
@@ -5184,7 +5186,7 @@ void MainWindow::changeState(MainWindow::State newState)
 	_ui->actionDump_the_memory->setVisible(!monitoring);
 	_ui->actionDump_the_prediction_matrix->setVisible(!monitoring);
 	_ui->actionGenerate_map->setVisible(!monitoring);
-	_ui->menuExport_poses->setEnabled(!monitoring);
+	_ui->menuExport_poses->menuAction()->setVisible(!monitoring);
 	_ui->actionOpen_working_directory->setVisible(!monitoring);
 	_ui->actionData_recorder->setVisible(!monitoring);
 	_ui->menuSelect_source->menuAction()->setVisible(!monitoring);

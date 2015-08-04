@@ -434,10 +434,11 @@ void RtabmapThread::handleEvent(UEvent* event)
 		else if(cmd == RtabmapEventCmd::kCmdLabel)
 		{
 			ULOGGER_DEBUG("CMD_LABEL");
-			UASSERT(rtabmapEvent->value1().isStr() || rtabmapEvent->value1().isInt() || rtabmapEvent->value1().isUInt());
+			UASSERT(rtabmapEvent->value1().isStr());
+			UASSERT(rtabmapEvent->value2().isUndef() || rtabmapEvent->value2().isInt() || rtabmapEvent->value2().isUInt());
 			ParametersMap param;
-			param.insert(ParametersPair("label", rtabmapEvent->value1().isStr()?rtabmapEvent->value1().toStr():""));
-			param.insert(ParametersPair("id", !rtabmapEvent->value1().isStr()?rtabmapEvent->value1().toStr():"0"));
+			param.insert(ParametersPair("label", rtabmapEvent->value1().toStr()));
+			param.insert(ParametersPair("id", rtabmapEvent->value2().isUndef()?"0":rtabmapEvent->value2().toStr()));
 			pushNewState(kStateLabelling, param);
 		}
 		else
