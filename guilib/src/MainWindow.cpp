@@ -125,6 +125,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_dataRecorder(0),
 	_lastId(0),
 	_processingStatistics(false),
+	_processingDownloadedMap(false),
 	_odometryReceived(false),
 	_newDatabasePath(""),
 	_newDatabasePathOutput(""),
@@ -622,7 +623,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 		   (localLoopClosureId > 0 &&
 		    _ui->actionPause_on_local_loop_detection->isChecked()))
 		{
-			if(_state != kPaused && _state != kMonitoringPaused)
+			if(_state != kPaused && _state != kMonitoringPaused && !_processingDownloadedMap)
 			{
 				if(_preferencesDialog->beepOnPause())
 				{
@@ -631,8 +632,12 @@ void MainWindow::handleEvent(UEvent* anEvent)
 				this->pauseDetection();
 			}
 		}
-		_processingStatistics = true;
-		emit statsReceived(stats);
+
+		if(!_processingDownloadedMap)
+		{
+			_processingStatistics = true;
+			emit statsReceived(stats);
+		}
 	}
 	else if(anEvent->getClassName().compare("RtabmapEventInit") == 0)
 	{
@@ -2094,6 +2099,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 	else
 	{
 
+		_processingDownloadedMap = true;
 		UINFO("Received map!");
 		_initProgressDialog->appendText(tr(" poses = %1").arg(event.getPoses().size()));
 		_initProgressDialog->appendText(tr(" constraints = %1").arg(event.getConstraints().size()));
@@ -2149,6 +2155,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		{
 			_cachedSignatures.clear();
 		}
+		_processingDownloadedMap = false;
 	}
 	_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
 }

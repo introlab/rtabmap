@@ -263,6 +263,7 @@ private:
 	QSet<int> _lastIds;
 	int _lastId;
 	bool _processingStatistics;
+	bool _processingDownloadedMap;
 	bool _odometryReceived;
 	QString _newDatabasePath;
 	QString _newDatabasePathOutput;
