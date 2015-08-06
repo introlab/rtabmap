@@ -1107,7 +1107,7 @@ bool Rtabmap::process(
 					if(!transform.isNull() && _globalLoopClosureIcpType > 0)
 					{
 						transform = _memory->computeIcpTransform(*iter, signature->id(), transform, _globalLoopClosureIcpType==1, &rejectedMsg, 0, &variance);
-						variance = 1.0f; // ICP, set variance to 1
+						variance = 1.0f; // ICP, set variance to 1 // FIXME why? all other links based on visual keep the variance
 					}
 					if(!transform.isNull())
 					{

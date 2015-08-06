@@ -130,7 +130,7 @@ public:
 				from_,
 				link.to(),
 				type_,
-				transform_ * link.transform(),
+				transform_ * link.transform(), // FIXME, should be inf1^-1(inf1*t1 + inf2*t2)
 				infMatrix_ + link.infMatrix());
 	}
 

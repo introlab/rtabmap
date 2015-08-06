@@ -2495,7 +2495,7 @@ Transform Memory::computeIcpTransform(
 			{
 				Transform icpT;
 				bool hasConverged = false;
-				float correspondencesRatio = -1.0f;
+				float correspondencesRatio = 0.0f;
 				int correspondences = 0;
 				double variance = 1;
 				pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
