@@ -2346,7 +2346,7 @@ Transform Memory::computeIcpTransform(
 				bool hasConverged = false;
 				Transform icpT;
 				int correspondences = 0;
-				float correspondencesRatio = -1.0f;
+				float correspondencesRatio = 0.0f;
 				double variance = 1;
 				if(_icpPointToPlane)
 				{
@@ -2561,8 +2561,9 @@ Transform Memory::computeIcpTransform(
 						}
 						else
 						{
-							UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set to 0!",
+							UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set relative instead of absolute!",
 									newS.id());
+							correspondencesRatio = float(correspondences)/float(newCloud->size()>oldCloud->size()?newCloud->size():oldCloud->size());
 						}
 
 						UDEBUG("%d->%d hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
@@ -2756,8 +2757,9 @@ Transform Memory::computeScanMatchingTransform(
 			}
 			else
 			{
-				UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set to 0!",
+				UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set relative instead of absolute!",
 						newS->id());
+				correspondencesRatio = float(correspondences)/float(newCloud->size());
 			}
 
 			UDEBUG("variance=%f, correspondences=%d/%d (%f%%) %f",
