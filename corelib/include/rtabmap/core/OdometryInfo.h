@@ -43,6 +43,7 @@ public:
 		features(-1),
 		localMapSize(-1),
 		timeEstimation(-1),
+		timeParticleFiltering(-1),
 		stamp(0),
 		interval(0),
 		distanceTravelled(0),
