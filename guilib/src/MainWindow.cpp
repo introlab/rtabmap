@@ -1344,31 +1344,6 @@ void MainWindow::updateMapCloud(
 		_currentLinksMap = constraints;
 		_currentMapIds = mapIdsIn;
 		_curentLabels = labels;
-		if(_currentPosesMap.size())
-		{
-			if(!_ui->actionSave_point_cloud->isEnabled() &&
-				_cachedSignatures.size() &&
-				(!(--_cachedSignatures.end())->sensorData().depthOrRightCompressed().empty() ||
-				 !(--_cachedSignatures.end())->getWords3().empty()))
-			{
-				//enable save cloud action
-				_ui->actionSave_point_cloud->setEnabled(true);
-				_ui->actionView_high_res_point_cloud->setEnabled(true);
-			}
-
-			if(!_ui->actionView_scans->isEnabled() &&
-				_cachedSignatures.size() &&
-				!(--_cachedSignatures.end())->sensorData().laserScanCompressed().empty())
-			{
-				_ui->actionExport_2D_scans_ply_pcd->setEnabled(true);
-				_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(true);
-				_ui->actionView_scans->setEnabled(true);
-			}
-			else if(_preferencesDialog->isGridMapFrom3DCloud() && _projectionLocalMaps.size())
-			{
-				_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(true);
-			}
-		}
 		if(_state != kMonitoring && _state != kDetecting)
 		{
 			_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
@@ -1516,6 +1491,13 @@ void MainWindow::updateMapCloud(
 
 		++i;
 	}
+
+	// activate actions
+	_ui->actionSave_point_cloud->setEnabled(!_createdClouds.empty());
+	_ui->actionView_high_res_point_cloud->setEnabled(!_createdClouds.empty());
+	_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
+	_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
+	_ui->actionView_scans->setEnabled(!_createdScans.empty());
 
 	//remove not used clouds
 	for(QMap<std::string, Transform>::iterator iter = viewerClouds.begin(); iter!=viewerClouds.end(); ++iter)
