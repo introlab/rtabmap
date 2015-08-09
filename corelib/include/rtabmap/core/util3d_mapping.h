@@ -47,7 +47,8 @@ void RTABMAP_EXP occupancy2DFromLaserScan(
 		const cv::Mat & scan,
 		cv::Mat & ground,
 		cv::Mat & obstacles,
-		float cellSize);
+		float cellSize,
+		bool unknownSpaceFilled = false);
 
 cv::Mat RTABMAP_EXP create2DMapFromOccupancyLocalMaps(
 		const std::map<int, Transform> & poses,

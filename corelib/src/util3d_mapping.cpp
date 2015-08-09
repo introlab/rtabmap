@@ -49,7 +49,8 @@ void occupancy2DFromLaserScan(
 		const cv::Mat & scan,
 		cv::Mat & ground,
 		cv::Mat & obstacles,
-		float cellSize)
+		float cellSize,
+		bool unknownSpaceFilled)
 {
 	if(scan.empty())
 	{
@@ -66,7 +67,7 @@ void occupancy2DFromLaserScan(
 	scans.insert(std::make_pair(1, obstaclesCloud));
 
 	float xMin, yMin;
-	cv::Mat map8S = create2DMap(poses, scans, cellSize, false, xMin, yMin);
+	cv::Mat map8S = create2DMap(poses, scans, cellSize, unknownSpaceFilled, xMin, yMin);
 
 	// find ground cells
 	std::list<int> groundIndices;
