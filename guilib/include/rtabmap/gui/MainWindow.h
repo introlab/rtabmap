@@ -180,6 +180,7 @@ private slots:
 	void exportGridMap();
 	void exportScans();
 	void exportClouds();
+	void exportBundlerFormat();
 	void viewScans();
 	void viewClouds();
 	void resetOdometry();

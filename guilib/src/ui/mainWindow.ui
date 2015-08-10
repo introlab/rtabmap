@@ -42,6 +42,7 @@
     <addaction name="actionSave_point_cloud"/>
     <addaction name="actionExport_2D_scans_ply_pcd"/>
     <addaction name="actionExport_2D_Grid_map_bmp_png"/>
+    <addaction name="actionExport_cameras_in_Bundle_format_out"/>
     <addaction name="separator"/>
     <addaction name="actionClose_database"/>
     <addaction name="separator"/>
@@ -1245,6 +1246,11 @@
   <action name="actionTORO_graph">
    <property name="text">
     <string>TORO (*.graph)</string>
+   </property>
+  </action>
+  <action name="actionExport_cameras_in_Bundle_format_out">
+   <property name="text">
+    <string>Export cameras in Bundler format (*.out)...</string>
    </property>
   </action>
  </widget>

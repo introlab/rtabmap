@@ -62,6 +62,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QCloseEvent>
 #include <QtGui/QPixmap>
 #include <QtCore/QDir>
+#include <QtCore/QFile>
+#include <QtCore/QTextStream>
 #include <QtCore/QFileInfo>
 #include <QMessageBox>
 #include <QFileDialog>
@@ -322,6 +324,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionSave_point_cloud, SIGNAL(triggered()), this, SLOT(exportClouds()));
 	connect(_ui->actionExport_2D_scans_ply_pcd, SIGNAL(triggered()), this, SLOT(exportScans()));
 	connect(_ui->actionExport_2D_Grid_map_bmp_png, SIGNAL(triggered()), this, SLOT(exportGridMap()));
+	connect(_ui->actionExport_cameras_in_Bundle_format_out, SIGNAL(triggered()), SLOT(exportBundlerFormat()));
 	connect(_ui->actionView_scans, SIGNAL(triggered()), this, SLOT(viewScans()));
 	connect(_ui->actionView_high_res_point_cloud, SIGNAL(triggered()), this, SLOT(viewClouds()));
 	connect(_ui->actionReset_Odometry, SIGNAL(triggered()), this, SLOT(resetOdometry()));
@@ -334,6 +337,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->actionSave_point_cloud->setEnabled(false);
 	_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
 	_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
+	_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
 	_ui->actionView_scans->setEnabled(false);
 	_ui->actionView_high_res_point_cloud->setEnabled(false);
 	_ui->actionReset_Odometry->setEnabled(false);
@@ -1498,6 +1502,7 @@ void MainWindow::updateMapCloud(
 	_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 	_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 	_ui->actionView_scans->setEnabled(!_createdScans.empty());
+	_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_createdClouds.empty());
 
 	//remove not used clouds
 	for(QMap<std::string, Transform>::iterator iter = viewerClouds.begin(); iter!=viewerClouds.end(); ++iter)
@@ -3948,6 +3953,7 @@ void MainWindow::clearTheCache()
 	_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
 	_ui->actionPost_processing->setEnabled(false);
 	_ui->actionSave_point_cloud->setEnabled(false);
+	_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
 	_ui->actionView_scans->setEnabled(false);
 	_ui->actionView_high_res_point_cloud->setEnabled(false);
 	_likelihoodCurve->clear();
@@ -4556,6 +4562,113 @@ bool MainWindow::getExportedClouds(
 		return true;
 	}
 	return false;
+}
+
+void MainWindow::exportBundlerFormat()
+{
+	std::map<int, Transform> posesIn = _ui->widget_mapVisibility->getVisiblePoses();
+
+	std::map<int, Transform> poses;
+	for(std::map<int, Transform>::iterator iter=posesIn.begin(); iter!=posesIn.end(); ++iter)
+	{
+		if(_cachedSignatures.contains(iter->first))
+		{
+			if(_cachedSignatures[iter->first].sensorData().imageRaw().empty() &&
+			   _cachedSignatures[iter->first].sensorData().imageCompressed().empty())
+			{
+				UWARN("Missing image in cache for node %d", iter->first);
+			}
+			else if((_cachedSignatures[iter->first].sensorData().cameraModels().size() == 1 && _cachedSignatures[iter->first].sensorData().cameraModels().at(0).isValid()) ||
+			         _cachedSignatures[iter->first].sensorData().stereoCameraModel().isValid())
+			{
+				poses.insert(*iter);
+			}
+			else
+			{
+				UWARN("Missing calibration for node %d", iter->first);
+			}
+		}
+		else
+		{
+			UWARN("Did not find node %d in cache", iter->first);
+		}
+	}
+
+	if(poses.size())
+	{
+		QString path = QFileDialog::getExistingDirectory(this, tr("Exporting cameras in Bundler format..."), _preferencesDialog->getWorkingDirectory());
+		if(!path.isEmpty())
+		{
+			// export cameras and images
+			QFile fileOut(path+QDir::separator()+"cameras.out");
+			QFile fileList(path+QDir::separator()+"list.txt");
+			QDir(path).mkdir("images");
+			if(fileOut.open(QIODevice::WriteOnly | QIODevice::Text))
+			{
+				if(fileList.open(QIODevice::WriteOnly | QIODevice::Text))
+				{
+					QTextStream out(&fileOut);
+					QTextStream list(&fileList);
+					out << "# Bundle file v0.3\n";
+					out << poses.size() << " 0\n";
+
+					for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+					{
+						QString p = QString("images")+QDir::separator()+tr("%1.jpg").arg(iter->first);
+						list << p << "\n";
+						p = path+QDir::separator()+p;
+						cv::Mat image = _cachedSignatures[iter->first].sensorData().imageRaw();
+						if(image.empty())
+						{
+							_cachedSignatures[iter->first].sensorData().uncompressDataConst(&image, 0, 0, 0);
+						}
+
+						if(cv::imwrite(p.toStdString(), image))
+						{
+							UINFO("saved image %s", p.toStdString().c_str());
+						}
+						else
+						{
+							UERROR("Failed to save image %s", p.toStdString().c_str());
+						}
+
+						if(_cachedSignatures[iter->first].sensorData().cameraModels().size())
+						{
+							out << _cachedSignatures[iter->first].sensorData().cameraModels().at(0).fx() << " 0 0\n";
+						}
+						else
+						{
+							out << _cachedSignatures[iter->first].sensorData().stereoCameraModel().left().fx() << " 0 0\n";
+						}
+
+						out << iter->second.r11() << " " << iter->second.r12() << " " << iter->second.r13() << "\n";
+						out << iter->second.r21() << " " << iter->second.r22() << " " << iter->second.r23() << "\n";
+						out << iter->second.r31() << " " << iter->second.r32() << " " << iter->second.r33() << "\n";
+						out << iter->second.x() << " " << iter->second.y() << " " << iter->second.z() << "\n";
+
+						//double t[3];
+						//matrix_product(3, 3, 3, 1, cameras[idx].R, cameras[idx].t, t);
+						//matrix_scale(3, 1, t, -1.0, t);
+						//fprintf(f, "%0.10e %0.10e %0.10e\n", t[0], t[1], t[2]);
+					}
+
+					QMessageBox::Button b = QMessageBox::question(this,
+							tr("Exporting cameras in Bundler format..."),
+							tr("%1 cameras/images exported to directory \"%2\".\nDo you want to export the cloud/mesh (PLY)?").arg(poses.size()).arg(path));
+					if(b == QMessageBox::Ok)
+					{
+						this->exportClouds();
+					}
+					fileList.close();
+				}
+				fileOut.close();
+			}
+		}
+	}
+	else
+	{
+		QMessageBox::warning(this, tr("Exporting cameras..."), tr("No poses exported..."));
+	}
 }
 
 void MainWindow::resetOdometry()
@@ -5189,7 +5302,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		}
 	}
 	actions = _ui->menuFile->actions();
-	if(actions.size()>=9)
+	if(actions.size()>=10)
 	{
 		if(actions.at(2)->isSeparator())
 		{
@@ -5199,9 +5312,9 @@ void MainWindow::changeState(MainWindow::State newState)
 		{
 			UWARN("Menu File separators have not the same order.");
 		}
-		if(actions.at(8)->isSeparator())
+		if(actions.at(9)->isSeparator())
 		{
-			actions.at(8)->setVisible(!monitoring);
+			actions.at(9)->setVisible(!monitoring);
 		}
 		else
 		{
@@ -5210,7 +5323,7 @@ void MainWindow::changeState(MainWindow::State newState)
 	}
 	else
 	{
-		UWARN("Menu File separators have not the same order.");
+		UWARN("Menu File actions size has changed (%d)", actions.size());
 	}
 	actions = _ui->menuProcess->actions();
 	if(actions.size()>=2)
