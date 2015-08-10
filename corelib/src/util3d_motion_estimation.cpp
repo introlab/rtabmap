@@ -134,7 +134,7 @@ Transform estimateMotion3DTo2D(
 				oi = 0;
 				for(unsigned int i=0; i<inliers.size(); ++i)
 				{
-					std::multimap<int, pcl::PointXYZ>::const_iterator iter = words3B.find(matches[inliers[i]]);
+					std::map<int, pcl::PointXYZ>::const_iterator iter = words3B.find(matches[inliers[i]]);
 					if(iter != words3B.end() && pcl::isFinite(iter->second))
 					{
 						const cv::Point3f & objPt = objectPoints[inliers[i]];
