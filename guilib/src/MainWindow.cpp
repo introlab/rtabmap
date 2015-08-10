@@ -4632,30 +4632,40 @@ void MainWindow::exportBundlerFormat()
 							UERROR("Failed to save image %s", p.toStdString().c_str());
 						}
 
+						Transform localTransform;
 						if(_cachedSignatures[iter->first].sensorData().cameraModels().size())
 						{
 							out << _cachedSignatures[iter->first].sensorData().cameraModels().at(0).fx() << " 0 0\n";
+							localTransform = _cachedSignatures[iter->first].sensorData().cameraModels().at(0).localTransform();
 						}
 						else
 						{
 							out << _cachedSignatures[iter->first].sensorData().stereoCameraModel().left().fx() << " 0 0\n";
+							localTransform = _cachedSignatures[iter->first].sensorData().stereoCameraModel().left().localTransform();
 						}
 
-						out << iter->second.r11() << " " << iter->second.r12() << " " << iter->second.r13() << "\n";
-						out << iter->second.r21() << " " << iter->second.r22() << " " << iter->second.r23() << "\n";
-						out << iter->second.r31() << " " << iter->second.r32() << " " << iter->second.r33() << "\n";
-						out << iter->second.x() << " " << iter->second.y() << " " << iter->second.z() << "\n";
+						Transform rotation(0,-1,0,0,
+								           0,0,1,0,
+								           -1,0,0,0);
 
-						//double t[3];
-						//matrix_product(3, 3, 3, 1, cameras[idx].R, cameras[idx].t, t);
-						//matrix_scale(3, 1, t, -1.0, t);
-						//fprintf(f, "%0.10e %0.10e %0.10e\n", t[0], t[1], t[2]);
+						Transform R = rotation*iter->second.rotation().inverse();
+
+						out << R.r11() << " " << R.r12() << " " << R.r13() << "\n";
+						out << R.r21() << " " << R.r22() << " " << R.r23() << "\n";
+						out << R.r31() << " " << R.r32() << " " << R.r33() << "\n";
+
+						Transform t = R * iter->second.translation();
+						t.x() *= -1.0f;
+						t.y() *= -1.0f;
+						t.z() *= -1.0f;
+						out << t.x() << " " << t.y() << " " << t.z() << "\n";
 					}
 
 					QMessageBox::Button b = QMessageBox::question(this,
 							tr("Exporting cameras in Bundler format..."),
-							tr("%1 cameras/images exported to directory \"%2\".\nDo you want to export the cloud/mesh (PLY)?").arg(poses.size()).arg(path));
-					if(b == QMessageBox::Ok)
+							tr("%1 cameras/images exported to directory \"%2\".\nDo you want to export the cloud/mesh (PLY)?").arg(poses.size()).arg(path),
+							QMessageBox::Yes | QMessageBox::No);
+					if(b == QMessageBox::Yes)
 					{
 						this->exportClouds();
 					}
