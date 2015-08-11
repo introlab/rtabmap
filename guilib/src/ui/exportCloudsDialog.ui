@@ -242,7 +242,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
       <item row="0" column="1">
        <widget class="QLabel" name="label_71">
         <property name="text">
-         <string>Set the number of k nearest neighbors to use for the normal estimation to create the mesh. Not used when mesh smoothing (MLS) above is used.</string>
+         <string>Set the number of k nearest neighbors to use for the normal estimation to create the mesh.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>
@@ -276,6 +276,38 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLabel" name="label_169">
+        <property name="text">
+         <string>Set the multiplier of the nearest neighbor distance to obtain the final search radius for each point  (this will make the algorithm adapt to different point densities in the cloud).</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QDoubleSpinBox" name="doubleSpinBox_gp3Mu">
+        <property name="suffix">
+         <string>0</string>
+        </property>
+        <property name="decimals">
+         <number>1</number>
+        </property>
+        <property name="minimum">
+         <double>0.100000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>100.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>1.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>2.500000000000000</double>
         </property>
        </widget>
       </item>

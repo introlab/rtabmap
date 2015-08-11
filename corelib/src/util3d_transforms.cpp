@@ -51,6 +51,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformPointCloud(
 	pcl::transformPointCloud(*cloud, *output, transform.toEigen4f());
 	return output;
 }
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const Transform & transform)
+{
+	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+	pcl::transformPointCloudWithNormals(*cloud, *output, transform.toEigen4f());
+	return output;
+}
 
 pcl::PointXYZ transformPoint(
 		const pcl::PointXYZ & pt,

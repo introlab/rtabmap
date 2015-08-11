@@ -72,6 +72,18 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelize(
 	filter.filter(*output);
 	return output;
 }
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr voxelize(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		float voxelSize)
+{
+	UASSERT(voxelSize > 0.0f);
+	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+	pcl::VoxelGrid<pcl::PointXYZRGBNormal> filter;
+	filter.setLeafSize(voxelSize, voxelSize, voxelSize);
+	filter.setInputCloud(cloud);
+	filter.filter(*output);
+	return output;
+}
 
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr sampling(
@@ -304,6 +316,82 @@ pcl::IndicesPtr subtractFiltering(
 		int minNeighborsInRadius)
 {
 	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>(false));
+
+	if(indices->size())
+	{
+		pcl::IndicesPtr output(new std::vector<int>(indices->size()));
+		int oi = 0; // output iterator
+		if(substractIndices->size())
+		{
+			tree->setInputCloud(substractCloud, substractIndices);
+		}
+		else
+		{
+			tree->setInputCloud(substractCloud);
+		}
+		for(unsigned int i=0; i<indices->size(); ++i)
+		{
+			std::vector<int> kIndices;
+			std::vector<float> kDistances;
+			int k = tree->radiusSearch(cloud->at(indices->at(i)), radiusSearch, kIndices, kDistances);
+			if(k <= minNeighborsInRadius)
+			{
+				output->at(oi++) = indices->at(i);
+			}
+		}
+		output->resize(oi);
+		return output;
+	}
+	else
+	{
+		pcl::IndicesPtr output(new std::vector<int>(cloud->size()));
+		int oi = 0; // output iterator
+		if(substractIndices->size())
+		{
+			tree->setInputCloud(substractCloud, substractIndices);
+		}
+		else
+		{
+			tree->setInputCloud(substractCloud);
+		}
+		for(unsigned int i=0; i<cloud->size(); ++i)
+		{
+			std::vector<int> kIndices;
+			std::vector<float> kDistances;
+			int k = tree->radiusSearch(cloud->at(i), radiusSearch, kIndices, kDistances);
+			if(k <= minNeighborsInRadius)
+			{
+				output->at(oi++) = i;
+			}
+		}
+		output->resize(oi);
+		return output;
+	}
+}
+
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr subtractFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & substractCloud,
+		float radiusSearch,
+		int minNeighborsInRadius)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	pcl::IndicesPtr indicesOut = subtractFiltering(cloud, indices, substractCloud, indices, radiusSearch, minNeighborsInRadius);
+	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr out(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+	pcl::copyPointCloud(*cloud, *indicesOut, *out);
+	return out;
+}
+
+
+pcl::IndicesPtr subtractFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & substractCloud,
+		const pcl::IndicesPtr & substractIndices,
+		float radiusSearch,
+		int minNeighborsInRadius)
+{
+	pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGBNormal>(false));
 
 	if(indices->size())
 	{

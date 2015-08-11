@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/util3d_surface.h"
 #include "rtabmap/core/util3d_filtering.h"
+#include "rtabmap/utilite/ULogger.h"
 #include <pcl/search/kdtree.h>
 #include <pcl/surface/gp3.h>
 #include <pcl/features/normal_3d_omp.h>
@@ -68,11 +69,15 @@ pcl::PolygonMesh::Ptr createMesh(
 	gp3.setMinimumAngle(gp3MinimumAngle); // 10 degrees
 	gp3.setMaximumAngle(gp3MaximumAngle); // 120 degrees
 	gp3.setNormalConsistency(gp3NormalConsistency);
+	gp3.setConsistentVertexOrdering(gp3NormalConsistency);
 
 	// Get result
 	gp3.setInputCloud (cloudWithNormalsNoNaN);
 	gp3.setSearchMethod (tree2);
 	gp3.reconstruct (*mesh);
+
+	//UASSERT(mesh->cloud.data.size()/mesh->cloud.point_step == cloudWithNormalsNoNaN->size());
+	//mesh->polygons = normalizePolygonsSide(*cloudWithNormalsNoNaN, mesh->polygons);
 
 	return mesh;
 }
@@ -128,7 +133,8 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr computeNormals(
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr computeNormalsSmoothed(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float smoothingSearchRadius,
-		bool smoothingPolynomialFit)
+		bool smoothingPolynomialFit,
+		float voxelSize)
 {
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>);
@@ -144,11 +150,47 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr computeNormalsSmoothed(
 	mls.setPolynomialFit (smoothingPolynomialFit);
 	mls.setSearchMethod (tree);
 	mls.setSearchRadius (smoothingSearchRadius);
+	if(voxelSize > 0.0f)
+	{
+		mls.setUpsamplingMethod(pcl::MovingLeastSquares<pcl::PointXYZRGB, pcl::PointXYZRGBNormal>::VOXEL_GRID_DILATION);
+		mls.setDilationVoxelSize(voxelSize);
+	}
 
 	// Reconstruct
 	mls.process (*cloud_with_normals);
 
 	return cloud_with_normals;
+}
+
+void adjustNormalsToViewPoints(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & viewpoints,
+		pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud)
+{
+	if(viewpoints->size() && cloud.size())
+	{
+		pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
+		tree->setInputCloud (viewpoints);
+
+		for(unsigned int i=0; i<cloud.size(); ++i)
+		{
+			std::vector<int> indices;
+			std::vector<float> dist;
+			tree->nearestKSearch(pcl::PointXYZ(cloud.points[i].x, cloud.points[i].y, cloud.points[i].z), 1, indices, dist);
+			UASSERT(indices.size() == 1);
+
+			Eigen::Vector3f v = viewpoints->at(indices[0]).getVector3fMap() - cloud.points[i].getVector3fMap();
+			Eigen::Vector3f n(cloud.points[i].normal_x, cloud.points[i].normal_y, cloud.points[i].normal_z);
+
+			float result = v.dot(n);
+			if(result < 0)
+			{
+				//reverse normal
+				cloud.points[i].normal_x *= -1.0f;
+				cloud.points[i].normal_y *= -1.0f;
+				cloud.points[i].normal_z *= -1.0f;
+			}
+		}
+	}
 }
 
 }

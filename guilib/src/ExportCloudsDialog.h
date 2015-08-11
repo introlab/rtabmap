@@ -65,6 +65,7 @@ public:
 	bool getMesh() const;
 	int getMeshNormalKSearch() const;
 	double getMeshGp3Radius() const;
+	double getMeshGp3Mu() const;
 
 	//setters
 	void setAssemble(bool on);
@@ -79,6 +80,7 @@ public:
 	void setMesh(bool on);
 	void setMeshNormalKSearch(int k);
 	void setMeshGp3Radius(double radius);
+	void setMeshGp3Mu(double mu);
 
 signals:
 	void configChanged();

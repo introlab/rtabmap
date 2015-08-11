@@ -30,7 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/RtabmapExp.h>
 
-
 #include <pcl/PolygonMesh.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -49,7 +48,7 @@ pcl::PolygonMesh::Ptr RTABMAP_EXP createMesh(
 		float gp3MaximumSurfaceAngle = M_PI/4,
 		float gp3MinimumAngle = M_PI/18,
 		float gp3MaximumAngle = 2*M_PI/3,
-		bool gp3NormalConsistency = false);
+		bool gp3NormalConsistency = true);
 
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
@@ -62,7 +61,42 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP computeNormals(
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP computeNormalsSmoothed(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float smoothingSearchRadius = 0.025,
-		bool smoothingPolynomialFit = true);
+		bool smoothingPolynomialFit = true,
+		float voxelSize = 0.0f);
+
+void RTABMAP_EXP adjustNormalsToViewPoints(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & viewpoints,
+		pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud);
+
+template<typename pointT>
+std::vector<pcl::Vertices> normalizePolygonsSide(
+		const pcl::PointCloud<pointT> & cloud,
+		const std::vector<pcl::Vertices> & polygons,
+		const pcl::PointXYZ & viewPoint = pcl::PointXYZ(0,0,0))
+{
+	std::vector<pcl::Vertices> output(polygons.size());
+	for(unsigned int i=0; i<polygons.size(); ++i)
+	{
+		pcl::Vertices polygon = polygons[i];
+		Eigen::Vector3f v1 = cloud.at(polygon.vertices[1]).getVector3fMap() - cloud.at(polygon.vertices[0]).getVector3fMap();
+		Eigen::Vector3f v2 = cloud.at(polygon.vertices[2]).getVector3fMap() - cloud.at(polygon.vertices[0]).getVector3fMap();
+		Eigen::Vector3f n = (v1.cross(v2)).normalized();
+
+		Eigen::Vector3f p = Eigen::Vector3f(viewPoint.x, viewPoint.y, viewPoint.z) - cloud.at(polygon.vertices[1]).getVector3fMap();
+
+		float result = n.dot(p);
+		if(result < 0)
+		{
+			//reverse vertices order
+			int tmp = polygon.vertices[0];
+			polygon.vertices[0] = polygon.vertices[2];
+			polygon.vertices[2] = tmp;
+		}
+
+		output[i] = polygon;
+	}
+	return output;
+}
 
 } // namespace util3d
 } // namespace rtabmap

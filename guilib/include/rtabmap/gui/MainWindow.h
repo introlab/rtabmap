@@ -226,23 +226,19 @@ private:
 	void exportPoses(int format);
 	QString captureScreen();
 
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getAssembledCloud(
-			const std::map<int, Transform> & poses,
-			float assembledVoxelSize,
-			bool regenerateClouds,
-			int regenerateDecimation,
-			float regenerateVoxelSize,
-			float regenerateMaxDepth) const;
-	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > getClouds(
+	std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr > getClouds(
 			const std::map<int, Transform> & poses,
 			bool regenerateClouds,
 			int regenerateDecimation,
 			float regenerateVoxelSize,
-			float regenerateMaxDepth) const;
+			float regenerateMaxDepth,
+			int normalKSearch,
+			bool mls,
+			float mlsRadius) const;
 
 	bool getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans);
-	bool getExportedClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds, std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool toSave);
-	void saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds, bool binaryMode = true);
+	bool getExportedClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool toSave);
+	void saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, bool binaryMode = true);
 	void saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool binaryMode = true);
 	void saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> & clouds, bool binaryMode = true);
 

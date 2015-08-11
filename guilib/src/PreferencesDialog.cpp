@@ -297,6 +297,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_gp3Mu, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->spinBox_normalKSearch, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_mls, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_mlsRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -1029,6 +1030,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->checkBox_meshing->setChecked(false);
 		_ui->doubleSpinBox_gp3Radius->setValue(0.04);
+		_ui->doubleSpinBox_gp3Mu->setValue(2.5);
 		_ui->spinBox_normalKSearch->setValue(20);
 		_ui->checkBox_mls->setChecked(false);
 		_ui->doubleSpinBox_mlsRadius->setValue(0.04);
@@ -1319,6 +1321,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 
 	_ui->checkBox_meshing->setChecked(settings.value("meshing", _ui->checkBox_meshing->isChecked()).toBool());
 	_ui->doubleSpinBox_gp3Radius->setValue(settings.value("meshGP3Radius", _ui->doubleSpinBox_gp3Radius->value()).toDouble());
+	_ui->doubleSpinBox_gp3Mu->setValue(settings.value("meshGP3Mu", _ui->doubleSpinBox_gp3Mu->value()).toDouble());
 	_ui->spinBox_normalKSearch->setValue(settings.value("meshNormalKSearch", _ui->spinBox_normalKSearch->value()).toInt());
 	_ui->checkBox_mls->setChecked(settings.value("meshSmoothing", _ui->checkBox_mls->isChecked()).toBool());
 	_ui->doubleSpinBox_mlsRadius->setValue(settings.value("meshSmoothingRadius", _ui->doubleSpinBox_mlsRadius->value()).toDouble());
@@ -1630,6 +1633,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 
 	settings.setValue("meshing",             _ui->checkBox_meshing->isChecked());
 	settings.setValue("meshGP3Radius",       _ui->doubleSpinBox_gp3Radius->value());
+	settings.setValue("meshGP3Mu",       _ui->doubleSpinBox_gp3Mu->value());
 	settings.setValue("meshNormalKSearch",   _ui->spinBox_normalKSearch->value());
 	settings.setValue("meshSmoothing",       _ui->checkBox_mls->isChecked());
 	settings.setValue("meshSmoothingRadius", _ui->doubleSpinBox_mlsRadius->value());
@@ -3236,6 +3240,10 @@ int PreferencesDialog::getMeshNormalKSearch() const
 double PreferencesDialog::getMeshGP3Radius() const
 {
 	return _ui->doubleSpinBox_gp3Radius->value();
+}
+double PreferencesDialog::getMeshGP3Mu() const
+{
+	return _ui->doubleSpinBox_gp3Mu->value();
 }
 bool PreferencesDialog::getMeshSmoothing() const
 {

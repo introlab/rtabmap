@@ -156,6 +156,7 @@ public:
 
 	int getMeshNormalKSearch() const;
 	double getMeshGP3Radius() const;
+	double getMeshGP3Mu() const;
 	bool getMeshSmoothing() const;
 	double getMeshSmoothingRadius() const;
 

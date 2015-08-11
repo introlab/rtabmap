@@ -320,6 +320,26 @@ bool CloudViewer::updateCloudPose(
 
 bool CloudViewer::updateCloud(
 		const std::string & id,
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const Transform & pose,
+		const QColor & color)
+{
+	if(_addedClouds.contains(id))
+	{
+		UDEBUG("Updating %s with %d points", id.c_str(), (int)cloud->size());
+		int index = _visualizer->getColorHandlerIndex(id);
+		this->removeCloud(id);
+		if(this->addCloud(id, cloud, pose, color))
+		{
+			_visualizer->updateColorHandlerIndex(id, index);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool CloudViewer::updateCloud(
+		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const Transform & pose,
 		const QColor & color)
@@ -360,6 +380,19 @@ bool CloudViewer::updateCloud(
 
 bool CloudViewer::addOrUpdateCloud(
 		const std::string & id,
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const Transform & pose,
+		const QColor & color)
+{
+	if(!updateCloud(id, cloud, pose, color))
+	{
+		return addCloud(id, cloud, pose, color);
+	}
+	return true;
+}
+
+bool CloudViewer::addOrUpdateCloud(
+		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const Transform & pose,
 		const QColor & color)
@@ -389,6 +422,7 @@ bool CloudViewer::addCloud(
 		const pcl::PCLPointCloud2Ptr & binaryCloud,
 		const Transform & pose,
 		bool rgb,
+		bool haveNormals,
 		const QColor & color)
 {
 	if(!_addedClouds.contains(id))
@@ -422,7 +456,21 @@ bool CloudViewer::addCloud(
 				//rgb
 				colorHandler.reset(new pcl::visualization::PointCloudColorHandlerRGBField<pcl::PCLPointCloud2>(binaryCloud));
 				_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id);
+			}
 
+			if(haveNormals)
+			{
+				//normals
+				colorHandler.reset (new pcl::visualization::PointCloudColorHandlerGenericField<pcl::PCLPointCloud2> (binaryCloud, "normal_x"));
+				_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id);
+				colorHandler.reset (new pcl::visualization::PointCloudColorHandlerGenericField<pcl::PCLPointCloud2> (binaryCloud, "normal_y"));
+				_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id);
+				colorHandler.reset (new pcl::visualization::PointCloudColorHandlerGenericField<pcl::PCLPointCloud2> (binaryCloud, "normal_z"));
+				_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id);
+			}
+
+			if(rgb)
+			{
 				_visualizer->updateColorHandlerIndex(id, 5);
 			}
 			else if(color.isValid())
@@ -439,6 +487,23 @@ bool CloudViewer::addCloud(
 
 bool CloudViewer::addCloud(
 		const std::string & id,
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const Transform & pose,
+		const QColor & color)
+{
+	if(!_addedClouds.contains(id))
+	{
+		UDEBUG("Adding %s with %d points", id.c_str(), (int)cloud->size());
+
+		pcl::PCLPointCloud2Ptr binaryCloud(new pcl::PCLPointCloud2);
+		pcl::toPCLPointCloud2(*cloud, *binaryCloud);
+		return addCloud(id, binaryCloud, pose, true, true, color);
+	}
+	return false;
+}
+
+bool CloudViewer::addCloud(
+		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const Transform & pose,
 		const QColor & color)
@@ -449,7 +514,7 @@ bool CloudViewer::addCloud(
 
 		pcl::PCLPointCloud2Ptr binaryCloud(new pcl::PCLPointCloud2);
 		pcl::toPCLPointCloud2(*cloud, *binaryCloud);
-		return addCloud(id, binaryCloud, pose, true, color);
+		return addCloud(id, binaryCloud, pose, true, false, color);
 	}
 	return false;
 }
@@ -466,7 +531,7 @@ bool CloudViewer::addCloud(
 
 		pcl::PCLPointCloud2Ptr binaryCloud(new pcl::PCLPointCloud2);
 		pcl::toPCLPointCloud2(*cloud, *binaryCloud);
-		return addCloud(id, binaryCloud, pose, false, color);
+		return addCloud(id, binaryCloud, pose, false, false, color);
 	}
 	return false;
 }

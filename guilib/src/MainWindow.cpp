@@ -1751,7 +1751,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 							_preferencesDialog->getCloudVoxelSize(0),
 							_preferencesDialog->getSubstractFilteringMinPts());
 					UDEBUG("Filtering %d from %d -> %d", (int)previousCloud->size(), (int)cloud->size(), (int)cloudFiltered->size());
-
+					_createdClouds.at(link.from()) = cloudFiltered;
 				}
 			}
 		}
@@ -1764,13 +1764,21 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
 				if(_preferencesDialog->getMeshSmoothing())
 				{
-					cloudWithNormals = util3d::computeNormalsSmoothed(cloudFiltered, (float)_preferencesDialog->getMeshSmoothingRadius());
+					cloudWithNormals = util3d::computeNormalsSmoothed(
+							cloudFiltered,
+							(float)_preferencesDialog->getMeshSmoothingRadius(),
+							false,
+							(float)_preferencesDialog->getCloudVoxelSize(0));
+					//if(_preferencesDialog->getCloudVoxelSize(0))
+					//{
+					//	cloudWithNormals = util3d::voxelize(cloudWithNormals, _preferencesDialog->getCloudVoxelSize(0));
+					//}
 				}
 				else
 				{
 					cloudWithNormals = util3d::computeNormals(cloudFiltered, _preferencesDialog->getMeshNormalKSearch());
 				}
-				mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius());
+				mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(), _preferencesDialog->getMeshGP3Mu());
 			}
 
 			if(mesh->polygons.size())
@@ -1788,7 +1796,11 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			if(_preferencesDialog->getMeshSmoothing())
 			{
 				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-				cloudWithNormals = util3d::computeNormalsSmoothed(cloudFiltered, (float)_preferencesDialog->getMeshSmoothingRadius());
+				cloudWithNormals = util3d::computeNormalsSmoothed(
+						cloudFiltered,
+						(float)_preferencesDialog->getMeshSmoothingRadius(),
+						false,
+						(float)_preferencesDialog->getCloudVoxelSize(0));
 				cloudFiltered.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
 				pcl::copyPointCloud(*cloudWithNormals, *cloudFiltered);
 			}
@@ -4386,7 +4398,7 @@ bool MainWindow::getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::
 
 void MainWindow::exportClouds()
 {
-	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
+	std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clouds;
 	std::map<int, pcl::PolygonMesh::Ptr> meshes;
 
 	if(getExportedClouds(clouds, meshes, true))
@@ -4405,7 +4417,7 @@ void MainWindow::exportClouds()
 
 void MainWindow::viewClouds()
 {
-	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
+	std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clouds;
 	std::map<int, pcl::PolygonMesh::Ptr> meshes;
 
 	if(getExportedClouds(clouds, meshes, false))
@@ -4449,7 +4461,7 @@ void MainWindow::viewClouds()
 		}
 		else if(clouds.size())
 		{
-			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::iterator iter = clouds.begin(); iter!=clouds.end(); ++iter)
+			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>::iterator iter = clouds.begin(); iter!=clouds.end(); ++iter)
 			{
 				_initProgressDialog->appendText(tr("Viewing the cloud %1 (%2 points)...").arg(iter->first).arg(iter->second->size()));
 				_initProgressDialog->incrementStep();
@@ -4470,7 +4482,7 @@ void MainWindow::viewClouds()
 }
 
 bool MainWindow::getExportedClouds(
-		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds,
+		std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds,
 		std::map<int, pcl::PolygonMesh::Ptr> & meshes,
 		bool toSave)
 {
@@ -4493,68 +4505,140 @@ bool MainWindow::getExportedClouds(
 
 		_initProgressDialog->resetProgress();
 		_initProgressDialog->show();
-		int mul = _exportDialog->getMesh()&&!_exportDialog->getGenerate()?3:_exportDialog->getMLS()&&!_exportDialog->getGenerate()?2:1;
+		int mul = 1;
+		if(_exportDialog->getMesh())
+		{
+			mul+=1;
+		}
+		if(_exportDialog->getAssemble())
+		{
+			mul+=1;
+		}
 		_initProgressDialog->setMaximumSteps(int(poses.size())*mul+1);
+
+		if(_exportDialog->getMLS())
+		{
+			_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
+					"[search radius=%1m voxel=%2m]").arg(_exportDialog->getMLSRadius()).arg(_exportDialog->getGenerateVoxel()));
+		}
+		_initProgressDialog->appendText(tr("Computing surface normals... "
+					"[K neighbors=%1]").arg(_exportDialog->getMeshNormalKSearch()));
+
+		clouds = this->getClouds(
+				poses,
+				_exportDialog->getGenerate(),
+				_exportDialog->getGenerateDecimation(),
+				_exportDialog->getGenerateVoxel(),
+				_exportDialog->getGenerateMaxDepth(),
+				_exportDialog->getMeshNormalKSearch(),
+				_exportDialog->getAssemble()?false:_exportDialog->getMLS(),
+				(float)_exportDialog->getMLSRadius());
 
 		if(_exportDialog->getAssemble())
 		{
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = this->getAssembledCloud(
-					poses,
-					_exportDialog->getAssembleVoxel(),
-					_exportDialog->getGenerate(),
-					_exportDialog->getGenerateDecimation(),
-					_exportDialog->getGenerateVoxel(),
-					_exportDialog->getGenerateMaxDepth());
+			_initProgressDialog->appendText(tr("Assembling %1 clouds...").arg(clouds.size()));
+			QApplication::processEvents();
 
-			clouds.insert(std::make_pair(0, cloud));
-		}
-		else
-		{
-			clouds = this->getClouds(
-					poses,
-					_exportDialog->getGenerate(),
-					_exportDialog->getGenerateDecimation(),
-					_exportDialog->getGenerateVoxel(),
-					_exportDialog->getGenerateMaxDepth());
-		}
-
-		if(_exportDialog->getMLS() || _exportDialog->getMesh())
-		{
-			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::iterator iter=clouds.begin();
+			int i =0;
+			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr assembledCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>::iterator iter=clouds.begin();
 				iter!= clouds.end();
 				++iter)
 			{
-				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-				if(_exportDialog->getMLS())
+				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformed = util3d::transformPointCloud(iter->second, poses.at(iter->first));
+				*assembledCloud += *transformed;
+
+				_initProgressDialog->appendText(tr("Assembled cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(clouds.size()));
+				_initProgressDialog->incrementStep();
+
+				if(i % 100 == 0)
 				{
-					_initProgressDialog->appendText(tr("Smoothing the surface of cloud %1 using Moving Least Squares (MLS) algorithm... "
-							"[search radius=%2m]").arg(iter->first).arg(_exportDialog->getMLSRadius()));
-					_initProgressDialog->incrementStep();
 					QApplication::processEvents();
-
-					cloudWithNormals = util3d::computeNormalsSmoothed(iter->second, (float)_exportDialog->getMLSRadius());
-
-					iter->second->clear();
-					pcl::copyPointCloud(*cloudWithNormals, *iter->second);
 				}
-				else if(_exportDialog->getMesh())
-				{
-					_initProgressDialog->appendText(tr("Computing surface normals of cloud %1 (without smoothing)... "
-								"[K neighbors=%2]").arg(iter->first).arg(_exportDialog->getMeshNormalKSearch()));
-					_initProgressDialog->incrementStep();
-					QApplication::processEvents();
+			}
 
-					cloudWithNormals = util3d::computeNormals(iter->second, _exportDialog->getMeshNormalKSearch());
+			if(_exportDialog->getMLS())
+			{
+				_initProgressDialog->appendText(tr("Voxelize assembled cloud (%1 points, voxel size = %2 m)...")
+						.arg(assembledCloud->size())
+						.arg(_exportDialog->getGenerateVoxel()));
+				QApplication::processEvents();
+				if(_exportDialog->getGenerateVoxel())
+				{
+					assembledCloud = util3d::voxelize(
+							assembledCloud,
+							_exportDialog->getGenerateVoxel());
 				}
 
-				if(_exportDialog->getMesh())
+				_initProgressDialog->appendText(tr("Smoothing (MLS) of the assembled cloud (%1 points)...").arg(assembledCloud->size()));
+				QApplication::processEvents();
+
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloudXYZRGB(new pcl::PointCloud<pcl::PointXYZRGB>);
+				pcl::copyPointCloud(*assembledCloud, *assembledCloudXYZRGB);
+				assembledCloud = util3d::computeNormalsSmoothed(
+						assembledCloudXYZRGB,
+						(float)_exportDialog->getMLSRadius(),
+						true,
+						_exportDialog->getGenerateVoxel());
+
+				if(_exportDialog->getAssembleVoxel())
 				{
-					_initProgressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(_exportDialog->getMeshGp3Radius()));
-					_initProgressDialog->incrementStep();
+					_initProgressDialog->appendText(tr("Voxelize assembled cloud (%1 points, voxel size = %2 m)...")
+							.arg(assembledCloud->size())
+							.arg(_exportDialog->getAssembleVoxel()));
 					QApplication::processEvents();
 
-					pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals, _exportDialog->getMeshGp3Radius());
-					meshes.insert(std::make_pair(iter->first, mesh));
+					assembledCloud = util3d::voxelize(
+							assembledCloud,
+							_exportDialog->getAssembleVoxel());
+				}
+
+				_initProgressDialog->appendText(tr("Update %1 normals with %2 camera views...").arg(assembledCloud->size()).arg(poses.size()));
+				QApplication::processEvents();
+
+				pcl::PointCloud<pcl::PointXYZ>::Ptr viewpoints(new pcl::PointCloud<pcl::PointXYZ>);
+				viewpoints->resize(poses.size());
+				int oi=0;
+				for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+				{
+					(*viewpoints)[oi].x = iter->second.x();
+					(*viewpoints)[oi].y = iter->second.y();
+					(*viewpoints)[oi++].z = iter->second.z();
+				}
+				util3d::adjustNormalsToViewPoints(viewpoints, *assembledCloud);
+			}
+			else if(_exportDialog->getAssembleVoxel())
+			{
+				_initProgressDialog->appendText(tr("Voxelize assembled cloud (%1 points)...").arg(assembledCloud->size()));
+				QApplication::processEvents();
+				assembledCloud = util3d::voxelize(
+						assembledCloud,
+						_exportDialog->getAssembleVoxel());
+				_initProgressDialog->appendText(tr("Voxelized assembled cloud (%1 points)").arg(assembledCloud->size()));
+			}
+
+			clouds.clear();
+			clouds.insert(std::make_pair(0, assembledCloud));
+		}
+
+		if(_exportDialog->getMesh())
+		{
+			_initProgressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(_exportDialog->getMeshGp3Radius()));
+			QApplication::processEvents();
+
+			int i=0;
+			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>::iterator iter=clouds.begin();
+				iter!= clouds.end();
+				++iter)
+			{
+				pcl::PolygonMesh::Ptr mesh = util3d::createMesh(iter->second, _exportDialog->getMeshGp3Radius(), _exportDialog->getMeshGp3Mu());
+				meshes.insert(std::make_pair(iter->first, mesh));
+
+				_initProgressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(mesh->polygons.size()).arg(++i).arg(clouds.size()));
+				_initProgressDialog->incrementStep();
+				if(i % 100 == 0)
+				{
+					QApplication::processEvents();
 				}
 			}
 		}
@@ -4746,7 +4830,7 @@ void MainWindow::dataRecorderDestroyed()
 
 //END ACTIONS
 
-void MainWindow::saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds, bool binaryMode)
+void MainWindow::saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, bool binaryMode)
 {
 	if(clouds.size() == 1)
 	{
@@ -4811,11 +4895,11 @@ void MainWindow::saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB
 
 				if(ok)
 				{
-					for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr >::const_iterator iter=clouds.begin(); iter!=clouds.end(); ++iter)
+					for(std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr >::const_iterator iter=clouds.begin(); iter!=clouds.end(); ++iter)
 					{
 						if(iter->second->size())
 						{
-							pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformedCloud;
+							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformedCloud;
 							transformedCloud = util3d::transformPointCloud(iter->second, _currentPosesMap.at(iter->first));
 
 							QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
@@ -5082,119 +5166,17 @@ void MainWindow::saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::P
 	}
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::getAssembledCloud(
-		const std::map<int, Transform> & poses,
-		float assembledVoxelSize,
-		bool regenerateClouds,
-		int regenerateDecimation,
-		float regenerateVoxelSize,
-		float regenerateMaxDepth) const
-{
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-	int i=0;
-	int count = 0;
-	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-	{
-		bool inserted = false;
-		if(!iter->second.isNull())
-		{
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-			if(regenerateClouds)
-			{
-				if(_cachedSignatures.contains(iter->first))
-				{
-					const Signature & s = _cachedSignatures.find(iter->first).value();
-					SensorData d = s.sensorData();
-					cv::Mat image, depth;
-					d.uncompressData(&image, &depth, 0);
-
-					if(!image.empty() && !depth.empty())
-					{
-						UASSERT(iter->first == d.id());
-						cloud = util3d::cloudRGBFromSensorData(
-								d,
-								regenerateDecimation,
-								regenerateMaxDepth,
-								regenerateVoxelSize);
-						if(cloud->size())
-						{
-							cloud = util3d::transformPointCloud(cloud, iter->second);
-						}
-					}
-					else if(s.getWords3().size())
-					{
-						cloud->resize(s.getWords3().size());
-						int oi=0;
-						for(std::multimap<int, pcl::PointXYZ>::const_iterator jter=s.getWords3().begin(); jter!=s.getWords3().end(); ++jter)
-						{
-							(*cloud)[oi].x = jter->second.x;
-							(*cloud)[oi].y = jter->second.y;
-							(*cloud)[oi].z = jter->second.z;
-							(*cloud)[oi].r = 255;
-							(*cloud)[oi].g = 255;
-							(*cloud)[oi++].b = 255;
-						}
-					}
-				}
-				else
-				{
-					UWARN("Cloud %d not found in cache!", iter->first);
-				}
-			}
-			else if(uContains(_createdClouds, iter->first))
-			{
-				cloud = util3d::transformPointCloud(_createdClouds.at(iter->first), iter->second);
-			}
-
-			if(cloud->size())
-			{
-				*assembledCloud += *cloud;
-
-				inserted = true;
-				++count;
-			}
-		}
-		else
-		{
-			UERROR("transform is null!?");
-		}
-
-		if(inserted)
-		{
-			_initProgressDialog->appendText(tr("Generated cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
-
-			if(count % 100 == 0)
-			{
-				if(assembledCloud->size() && assembledVoxelSize)
-				{
-					assembledCloud = util3d::voxelize(assembledCloud, assembledVoxelSize);
-				}
-			}
-		}
-		else
-		{
-			_initProgressDialog->appendText(tr("Ignored cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
-		}
-		_initProgressDialog->incrementStep();
-		QApplication::processEvents();
-	}
-
-	if(assembledCloud->size() && assembledVoxelSize)
-	{
-		assembledCloud = util3d::voxelize(assembledCloud, assembledVoxelSize);
-	}
-
-	return assembledCloud;
-}
-
-std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
+std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr > MainWindow::getClouds(
 		const std::map<int, Transform> & poses,
 		bool regenerateClouds,
 		int regenerateDecimation,
 		float regenerateVoxelSize,
-		float regenerateMaxDepth) const
+		float regenerateMaxDepth,
+		int normalKSearch,
+		bool mls,
+		float mlsRadius) const
 {
-	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
+	std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clouds;
 	int i=0;
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
@@ -5246,7 +5228,28 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
 
 			if(cloud->size())
 			{
-				clouds.insert(std::make_pair(iter->first, cloud));
+				if(mls)
+				{
+					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals = util3d::computeNormalsSmoothed(
+							cloud,
+							mlsRadius,
+							true,
+							regenerateVoxelSize);
+
+					if(regenerateVoxelSize)
+					{
+						cloudWithNormals = util3d::voxelize(
+								cloudWithNormals,
+								regenerateVoxelSize);
+					}
+
+					cloud->clear();
+					pcl::copyPointCloud(*cloudWithNormals, *cloud);
+				}
+
+				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals = util3d::computeNormals(cloud, _exportDialog->getMeshNormalKSearch());
+
+				clouds.insert(std::make_pair(iter->first, cloudWithNormals));
 				inserted = true;
 			}
 		}

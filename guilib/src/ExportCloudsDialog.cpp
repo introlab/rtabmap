@@ -52,6 +52,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->groupBox_gp3, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_normalKSearch, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_gp3Mu, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 }
 
 ExportCloudsDialog::~ExportCloudsDialog()
@@ -77,6 +78,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh", this->getMesh());
 	settings.setValue("mesh_k", this->getMeshNormalKSearch());
 	settings.setValue("mesh_radius", this->getMeshGp3Radius());
+	settings.setValue("mesh_mu", this->getMeshGp3Mu());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -101,6 +103,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	this->setMesh(settings.value("mesh", this->getMesh()).toBool());
 	this->setMeshNormalKSearch(settings.value("mesh_k", this->getMeshNormalKSearch()).toInt());
 	this->setMeshGp3Radius(settings.value("mesh_radius", this->getMeshGp3Radius()).toDouble());
+	this->setMeshGp3Mu(settings.value("mesh_mu", this->getMeshGp3Mu()).toDouble());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -124,6 +127,7 @@ void ExportCloudsDialog::restoreDefaults()
 	setMesh(false);
 	setMeshNormalKSearch(20);
 	setMeshGp3Radius(0.04);
+	setMeshGp3Radius(2.5);
 }
 
 void ExportCloudsDialog::setSaveButton()
@@ -209,6 +213,10 @@ double ExportCloudsDialog::getMeshGp3Radius() const
 {
 	return _ui->doubleSpinBox_gp3Radius->value();
 }
+double ExportCloudsDialog::getMeshGp3Mu() const
+{
+	return _ui->doubleSpinBox_gp3Mu->value();
+}
 
 //setters
 void ExportCloudsDialog::setAssemble(bool on)
@@ -259,6 +267,9 @@ void ExportCloudsDialog::setMeshGp3Radius(double radius)
 {
 	_ui->doubleSpinBox_gp3Radius->setValue(radius);
 }
-
+void ExportCloudsDialog::setMeshGp3Mu(double mu)
+{
+	_ui->doubleSpinBox_gp3Mu->setValue(mu);
+}
 
 }

@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>755</width>
-            <height>1591</height>
+            <y>-394</y>
+            <width>759</width>
+            <height>938</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>4</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1087,7 +1087,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                        <item row="16" column="2">
                         <widget class="QLabel" name="label_168">
                          <property name="text">
-                          <string>Sphere radius that is to be used for determining the k-nearest neighbors used for triangulating (GP3). Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
+                          <string>(GP3) Sphere radius that is to be used for determining the k-nearest neighbors used for triangulating. Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -1247,6 +1247,41 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="checked">
                           <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="17" column="2">
+                        <widget class="QLabel" name="label_246">
+                         <property name="text">
+                          <string>(GP3) Set the multiplier of the nearest neighbor distance to obtain the final search radius for each point (this will make the algorithm adapt to different point densities in the cloud).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="17" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_gp3Mu">
+                         <property name="suffix">
+                          <string/>
+                         </property>
+                         <property name="decimals">
+                          <number>1</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.100000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>100.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>2.500000000000000</double>
                          </property>
                         </widget>
                        </item>
