@@ -2249,12 +2249,12 @@ void DatabaseViewer::updateConstraintView(
 
 				if(cloudFrom->size())
 				{
-					ui_->constraintsViewer->addOrUpdateCloud("words0", cloudFrom, Transform::getIdentity(), Qt::red);
+					ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
 				}
 				if(cloudTo->size())
 				{
 					cloudTo = rtabmap::util3d::transformPointCloud(cloudTo, t);
-					ui_->constraintsViewer->addOrUpdateCloud("words1", cloudTo, Transform::getIdentity(), Qt::cyan);
+					ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
 				}
 			}
 			if(ui_->checkBox_show3DWords->isChecked())
@@ -2297,28 +2297,28 @@ void DatabaseViewer::updateConstraintView(
 
 					if(cloudFrom->size())
 					{
-						ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
+						ui_->constraintsViewer->addOrUpdateCloud("words0", cloudFrom, Transform::getIdentity(), Qt::red);
 					}
 					else
 					{
 						UWARN("Empty 3D words for node %d", link.from());
-						ui_->constraintsViewer->removeCloud("cloud0");
+						ui_->constraintsViewer->removeCloud("words0");
 					}
 					if(cloudTo->size())
 					{
-						ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
+						ui_->constraintsViewer->addOrUpdateCloud("words1", cloudTo, Transform::getIdentity(), Qt::cyan);
 					}
 					else
 					{
 						UWARN("Empty 3D words for node %d", link.to());
-						ui_->constraintsViewer->removeCloud("cloud1");
+						ui_->constraintsViewer->removeCloud("words1");
 					}
 				}
 				else
 				{
 					UERROR("Not found signature %d or %d in RAM", link.from(), link.to());
-					ui_->constraintsViewer->removeCloud("cloud0");
-					ui_->constraintsViewer->removeCloud("cloud1");
+					ui_->constraintsViewer->removeCloud("words0");
+					ui_->constraintsViewer->removeCloud("words1");
 				}
 			}
 		}
