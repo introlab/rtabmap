@@ -244,6 +244,7 @@ set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/corelib/include"
 					  "${PROJECT_SOURCE_DIR}/guilib/include" 
 					  "${PROJECT_SOURCE_DIR}/utilite/include")
 set(CONF_LIB_DIR "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
+set(CONF_WITH_GUI ${WITH_QT})
 configure_file(RTABMapConfig.cmake.in
   "${PROJECT_BINARY_DIR}/RTABMapConfig.cmake" @ONLY)
   
