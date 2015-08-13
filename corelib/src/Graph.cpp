@@ -54,6 +54,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "g2o/types/slam2d/edge_se2.h"
 #endif
 
+#ifdef WITH_CVSBA
+#include <cvsba/cvsba.h>
+#include "rtabmap/core/util3d_motion_estimation.h"
+#include "rtabmap/core/util3d_transforms.h"
+#endif
+
 namespace rtabmap {
 
 namespace graph {
@@ -135,6 +141,26 @@ void Optimizer::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeVarianceIgnored(), covarianceIgnored_);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeSlam2D(), slam2d_);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeEpsilon(), epsilon_);
+}
+
+std::map<int, Transform> Optimizer::optimize(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & constraints,
+		std::list<std::map<int, Transform> > * intermediateGraphes)
+{
+	UERROR("Optimizer %d doesn't implement optimize() method. See optimizeBA().", (int)this->type());
+	return std::map<int, Transform>();
+}
+
+std::map<int, Transform> Optimizer::optimizeBA(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		const std::map<int, Signature> & signatures)
+{
+	UERROR("Optimizer %d doesn't implement optimizeBA() method. See optimize().", (int)this->type());
+	return std::map<int, Transform>();
 }
 
 void Optimizer::getConnectedGraph(
@@ -887,6 +913,207 @@ std::map<int, Transform> G2OOptimizer::optimize(
 	UERROR("Not built with G2O support!");
 #endif
 	return optimizedPoses;
+}
+
+//////////////////////
+// cvsba
+//////////////////////
+bool CVSBAOptimizer::available()
+{
+#ifdef WITH_CVSBA
+	return true;
+#else
+	return false;
+#endif
+}
+
+std::map<int, Transform> CVSBAOptimizer::optimizeBA(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		const std::map<int, Signature> & signatures)
+{
+#ifdef WITH_CVSBA
+	// run sba optimization
+	cvsba::Sba sba;
+
+	// change params if desired
+	cvsba::Sba::Params params ;
+	params.type = cvsba::Sba::MOTIONSTRUCTURE;
+	params.iterations = this->iterations();
+	params.minError = 1e-10;
+	params.fixedIntrinsics = 5;
+	params.fixedDistortion = 5;
+	params.verbose=ULogger::level() <= ULogger::kInfo;
+	sba.setParams(params);
+
+	std::map<int, Transform> frames = poses;
+
+	std::vector<cv::Mat> cameraMatrix(frames.size()); //nframes
+	std::vector<cv::Mat> R(frames.size()); //nframes
+	std::vector<cv::Mat> T(frames.size()); //nframes
+	std::vector<cv::Mat> distCoeffs(frames.size()); //nframes
+	std::map<int, int> frameIdToIndex;
+	std::map<int, CameraModel> models;
+	int oi=0;
+	for(std::map<int, Transform>::iterator iter=frames.begin(); iter!=frames.end(); )
+	{
+		CameraModel model;
+		if(uContains(signatures, iter->first))
+		{
+			if(signatures.at(iter->first).sensorData().cameraModels().size() == 1 && signatures.at(iter->first).sensorData().cameraModels().at(0).isValid())
+			{
+				model = signatures.at(iter->first).sensorData().cameraModels()[0];
+			}
+			else if(signatures.at(iter->first).sensorData().stereoCameraModel().isValid())
+			{
+				model = signatures.at(iter->first).sensorData().stereoCameraModel().left();
+			}
+			else
+			{
+				UERROR("Missing calibration for node %d", iter->first);
+			}
+		}
+		else
+		{
+			UERROR("Did not find node %d in cache", iter->first);
+		}
+
+		if(model.isValid())
+		{
+			frameIdToIndex.insert(std::make_pair(iter->first, oi));
+
+			cameraMatrix[oi] = model.K();
+			distCoeffs[oi] = model.D();
+
+			Transform t = (iter->second * model.localTransform()).inverse();
+
+			R[oi] = (cv::Mat_<double>(3,3) <<
+					(double)t.r11(), (double)t.r12(), (double)t.r13(),
+					(double)t.r21(), (double)t.r22(), (double)t.r23(),
+					(double)t.r31(), (double)t.r32(), (double)t.r33());
+			T[oi] = (cv::Mat_<double>(1,3) << (double)t.x(), (double)t.y(), (double)t.z());
+			++oi;
+
+			models.insert(std::make_pair(iter->first, model));
+
+			UDEBUG("Pose %d = %s", iter->first, t.prettyPrint().c_str());
+
+			++iter;
+		}
+		else
+		{
+			frames.erase(iter++);
+		}
+	}
+	cameraMatrix.resize(oi);
+	R.resize(oi);
+	T.resize(oi);
+	distCoeffs.resize(oi);
+
+	std::map<int, pcl::PointXYZ> points3DMap;
+	std::multimap<int, std::pair<int, cv::Point2f> > wordReferences; // <ID words, IDs frames + keypoint>
+	int genWordId = 1;
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	{
+		if(uContains(signatures, iter->second.from()) &&
+		   uContains(signatures, iter->second.to()) &&
+		   uContains(frames, iter->second.from()))
+		{
+			const Signature & sFrom = signatures.at(iter->second.from());
+			const Signature & sTo = signatures.at(iter->second.to());
+
+			std::vector<int> inliers;
+			Transform t = util3d::estimateMotion3DTo3D(
+					uMultimapToMapUnique(sFrom.getWords3()),
+					uMultimapToMapUnique(sTo.getWords3()),
+					10,
+					inlierDistance_,
+					100,
+					10,
+					0,
+					0,
+					&inliers);
+			if(!t.isNull())
+			{
+				Transform pose = frames.at(sFrom.id());
+				for(unsigned int i=0; i<inliers.size(); ++i)
+				{
+					pcl::PointXYZ p = util3d::transformPoint(sFrom.getWords3().lower_bound(inliers[i])->second, pose);
+					points3DMap.insert(std::make_pair(genWordId, p));
+					wordReferences.insert(std::make_pair(genWordId, std::make_pair(sFrom.id(), sFrom.getWords().lower_bound(inliers[i])->second.pt)));
+					wordReferences.insert(std::make_pair(genWordId, std::make_pair(sTo.id(), sTo.getWords().lower_bound(inliers[i])->second.pt)));
+					++genWordId;
+				}
+			}
+			else
+			{
+				UWARN("Not enough inliers (%d) between %d and %d", inliers.size(), sFrom.id(), sTo.id());
+			}
+		}
+	}
+
+	std::list<int> wordReferencesKeys = uUniqueKeys(wordReferences);
+	UDEBUG("points=%d frames=%d", (int)wordReferencesKeys.size(), (int)frames.size());
+	std::vector<cv::Point3f> points(wordReferencesKeys.size()); //npoints
+	std::vector<std::vector<cv::Point2f> >  imagePoints(frames.size()); //nframes -> npoints
+	std::vector<std::vector<int> > visibility(frames.size()); //nframes -> npoints
+	for(unsigned int i=0; i<frames.size(); ++i)
+	{
+		imagePoints[i].resize(wordReferencesKeys.size(), cv::Point2f(std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN()));
+		visibility[i].resize(wordReferencesKeys.size(), 0);
+	}
+	int i=0;
+	for(std::list<int>::iterator iter = wordReferencesKeys.begin(); iter!=wordReferencesKeys.end(); ++iter)
+	{
+		pcl::PointXYZ & p = points3DMap.at(*iter);
+		points[i].x = p.x;
+		points[i].y = p.y;
+		points[i].z = p.z;
+
+		std::multimap<int, std::pair<int, cv::Point2f> >::iterator jter = wordReferences.lower_bound(*iter);
+		while(jter->first == *iter && jter != wordReferences.end())
+		{
+			imagePoints[frameIdToIndex.at(jter->second.first)][i] = jter->second.second;
+			visibility[frameIdToIndex.at(jter->second.first)][i] = 1;
+			++jter;
+		}
+
+		++i;
+	}
+
+	// SBA
+	try
+	{
+		sba.run( points, imagePoints, visibility, cameraMatrix, R, T, distCoeffs);
+	}
+	catch(cv::Exception & e)
+	{
+		UERROR("Running SBA... error! %s", e.what());
+		return std::map<int, Transform>();
+	}
+
+	//update poses
+	i=0;
+	for(std::map<int, Transform>::iterator iter=frames.begin(); iter!=frames.end(); ++iter)
+	{
+		Transform t(R[i].at<double>(0,0), R[i].at<double>(0,1), R[i].at<double>(0,2), T[i].at<double>(0),
+					R[i].at<double>(1,0), R[i].at<double>(1,1), R[i].at<double>(1,2), T[i].at<double>(1),
+					R[i].at<double>(2,0), R[i].at<double>(2,1), R[i].at<double>(2,2), T[i].at<double>(2));
+
+		UDEBUG("New pose %d = %s", iter->first, t.prettyPrint().c_str());
+
+		iter->second = (models.at(iter->first).localTransform() * t).inverse();
+
+		++i;
+	}
+
+	return frames;
+
+#else
+	UERROR("RTAB-Map is not built with cvsba!");
+	return std::map<int, Transform>();
+#endif
 }
 
 ////////////////////////////////////////////

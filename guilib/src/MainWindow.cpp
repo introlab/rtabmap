@@ -3250,8 +3250,12 @@ void MainWindow::postProcessing()
 	double clusterRadius = _postProcessingDialog->clusterRadius();
 	double clusterAngle = _postProcessingDialog->clusterAngle();
 	int detectLoopClosureIterations = _postProcessingDialog->iterations();
+	bool sba = _postProcessingDialog->isSBA();
+	int sbaIterations = _postProcessingDialog->sbaIterations();
+	double sbaInlierDistance = _postProcessingDialog->sbaInlierDistance();
+	int sbaMinInliers = _postProcessingDialog->sbaMinInliers();
 
-	if(!detectMoreLoopClosures && !refineNeighborLinks && !refineLoopClosureLinks)
+	if(!detectMoreLoopClosures && !refineNeighborLinks && !refineLoopClosureLinks && !sba)
 	{
 		UWARN("No post-processing selection...");
 		return;
@@ -3330,6 +3334,10 @@ void MainWindow::postProcessing()
 	if(refineLoopClosureLinks)
 	{
 		totalSteps+=(int)_currentLinksMap.size() - (int)odomPoses.size();
+	}
+	if(sba)
+	{
+		totalSteps+=1;
 	}
 	_initProgressDialog->setMaximumSteps(totalSteps);
 	_initProgressDialog->show();
@@ -3675,6 +3683,31 @@ void MainWindow::postProcessing()
 	optimizedPoses = optimizer->optimize(fromId, posesOut, linksOut);
 	_initProgressDialog->appendText(tr("Optimizing graph with updated links... done!"));
 	_initProgressDialog->incrementStep();
+
+	if(sba)
+	{
+		_initProgressDialog->appendText(tr("SBA (%1 nodes, %2 constraints)...")
+					.arg(optimizedPoses.size()).arg(linksOut.size()));
+		QApplication::processEvents();
+		QApplication::processEvents();
+
+		ParametersMap parametersSBA = _preferencesDialog->getAllParameters();
+		uInsert(parametersSBA, std::make_pair(Parameters::kRGBDOptimizeIterations(), uNumber2Str(sbaIterations)));
+		graph::CVSBAOptimizer cvsba = graph::CVSBAOptimizer(parameters);
+		cvsba.setInlierDistance(sbaInlierDistance);
+		cvsba.setMinInliers(sbaMinInliers);
+		std::map<int, Transform>  newPoses = cvsba.optimizeBA(0, optimizedPoses, linksOut, _cachedSignatures.toStdMap());
+		if(newPoses.size())
+		{
+			optimizedPoses = newPoses;
+			_initProgressDialog->appendText(tr("SBA... done!"));
+		}
+		else
+		{
+			_initProgressDialog->appendText(tr("SBA... failed!"));
+		}
+		_initProgressDialog->incrementStep();
+	}
 
 	_initProgressDialog->appendText(tr("Updating map..."));
 	this->updateMapCloud(

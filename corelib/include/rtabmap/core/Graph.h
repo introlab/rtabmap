@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <list>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/Signature.h>
 
 namespace rtabmap {
 class Memory;
@@ -49,7 +50,8 @@ public:
 	enum Type {
 		kTypeUndef = -1,
 		kTypeTORO = 0,
-		kTypeG2O = 1
+		kTypeG2O = 1,
+		kTypeCVSBA = 2
 	};
 	static Optimizer * create(const ParametersMap & parameters);
 	static Optimizer * create(Optimizer::Type & type, const ParametersMap & parameters = ParametersMap());
@@ -73,11 +75,17 @@ public:
 	bool isCovarianceIgnored() const {return covarianceIgnored_;}
 	double epsilon() const {return epsilon_;}
 
+	// inherited classes should implement one of these methods
 	virtual std::map<int, Transform> optimize(
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & constraints,
-			std::list<std::map<int, Transform> > * intermediateGraphes = 0) = 0;
+			std::list<std::map<int, Transform> > * intermediateGraphes = 0);
+	virtual std::map<int, Transform> optimizeBA(
+			int rootId,
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & links,
+			const std::map<int, Signature> & signatures);
 
 	virtual void parseParameters(const ParametersMap & parameters);
 
@@ -143,6 +151,38 @@ public:
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & edgeConstraints,
 			std::list<std::map<int, Transform> > * intermediateGraphes = 0);
+};
+
+class CVSBAOptimizer : public Optimizer
+{
+public:
+	static bool available();
+
+public:
+	CVSBAOptimizer(int iterations = 100, bool slam2d = false, bool covarianceIgnored = false) :
+		Optimizer(iterations, slam2d, covarianceIgnored),
+		inlierDistance_(0.02),
+		minInliers_(10){}
+	CVSBAOptimizer(const ParametersMap & parameters) :
+		Optimizer(parameters),
+		inlierDistance_(0.02),
+		minInliers_(10){}
+	virtual ~CVSBAOptimizer() {}
+
+	virtual Type type() const {return kTypeCVSBA;}
+
+	void setInlierDistance(float inlierDistance) {inlierDistance_ = inlierDistance;}
+	void setMinInliers(int minInliers) {minInliers_ = minInliers;}
+
+	virtual std::map<int, Transform> optimizeBA(
+			int rootId,
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & links,
+			const std::map<int, Signature> & signatures);
+
+private:
+	float inlierDistance_;
+	float minInliers_;
 };
 
 ////////////////////////////////////////////

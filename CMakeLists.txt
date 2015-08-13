@@ -134,6 +134,7 @@ FIND_PACKAGE(OpenNI2)
 FIND_PACKAGE(DC1394)
 FIND_PACKAGE(G2O)
 FIND_PACKAGE(FlyCapture2)
+FIND_PACKAGE(cvsba)
 
 # If Qt is here, the GUI will be built
 IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
@@ -378,6 +379,12 @@ IF(G2O_FOUND)
 MESSAGE(STATUS "  With g2o                  = YES")
 ELSE()
 MESSAGE(STATUS "  With g2o                  = NO (g2o not found)")
+ENDIF()
+
+IF(cvsba_FOUND)
+MESSAGE(STATUS "  With cvsba                = YES")
+ELSE()
+MESSAGE(STATUS "  With cvsba                = NO (cvsba not found)")
 ENDIF()
 
 IF(QT4_FOUND)
