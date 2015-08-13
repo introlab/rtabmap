@@ -3686,14 +3686,15 @@ void MainWindow::postProcessing()
 
 	if(sba)
 	{
-		_initProgressDialog->appendText(tr("SBA (%1 nodes, %2 constraints)...")
-					.arg(optimizedPoses.size()).arg(linksOut.size()));
+		_initProgressDialog->appendText(tr("SBA (%1 nodes, %2 constraints, %3 iterations)...")
+					.arg(optimizedPoses.size()).arg(linksOut.size()).arg(sbaIterations));
 		QApplication::processEvents();
+		uSleep(100);
 		QApplication::processEvents();
 
 		ParametersMap parametersSBA = _preferencesDialog->getAllParameters();
 		uInsert(parametersSBA, std::make_pair(Parameters::kRGBDOptimizeIterations(), uNumber2Str(sbaIterations)));
-		graph::CVSBAOptimizer cvsba = graph::CVSBAOptimizer(parameters);
+		graph::CVSBAOptimizer cvsba = graph::CVSBAOptimizer(parametersSBA);
 		cvsba.setInlierDistance(sbaInlierDistance);
 		cvsba.setMinInliers(sbaMinInliers);
 		std::map<int, Transform>  newPoses = cvsba.optimizeBA(0, optimizedPoses, linksOut, _cachedSignatures.toStdMap());

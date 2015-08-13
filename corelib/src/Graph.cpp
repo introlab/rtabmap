@@ -1013,15 +1013,19 @@ std::map<int, Transform> CVSBAOptimizer::optimizeBA(
 
 	std::map<int, pcl::PointXYZ> points3DMap;
 	std::multimap<int, std::pair<int, cv::Point2f> > wordReferences; // <ID words, IDs frames + keypoint>
-	int genWordId = 1;
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
-		if(uContains(signatures, iter->second.from()) &&
-		   uContains(signatures, iter->second.to()) &&
-		   uContains(frames, iter->second.from()))
+		Link link = iter->second;
+		if(link.to() < link.from())
 		{
-			const Signature & sFrom = signatures.at(iter->second.from());
-			const Signature & sTo = signatures.at(iter->second.to());
+			link = link.inverse();
+		}
+		if(uContains(signatures, link.from()) &&
+		   uContains(signatures, link.to()) &&
+		   uContains(frames, link.from()))
+		{
+			const Signature & sFrom = signatures.at(link.from());
+			const Signature & sTo = signatures.at(link.to());
 
 			std::vector<int> inliers;
 			Transform t = util3d::estimateMotion3DTo3D(
@@ -1040,10 +1044,23 @@ std::map<int, Transform> CVSBAOptimizer::optimizeBA(
 				for(unsigned int i=0; i<inliers.size(); ++i)
 				{
 					pcl::PointXYZ p = util3d::transformPoint(sFrom.getWords3().lower_bound(inliers[i])->second, pose);
-					points3DMap.insert(std::make_pair(genWordId, p));
-					wordReferences.insert(std::make_pair(genWordId, std::make_pair(sFrom.id(), sFrom.getWords().lower_bound(inliers[i])->second.pt)));
-					wordReferences.insert(std::make_pair(genWordId, std::make_pair(sTo.id(), sTo.getWords().lower_bound(inliers[i])->second.pt)));
-					++genWordId;
+					std::map<int, pcl::PointXYZ>::iterator jter = points3DMap.find(inliers[i]);
+					if(jter == points3DMap.end())
+					{
+						points3DMap.insert(std::make_pair(inliers[i], p));
+						wordReferences.insert(std::make_pair(inliers[i], std::make_pair(sFrom.id(), sFrom.getWords().lower_bound(inliers[i])->second.pt)));
+						wordReferences.insert(std::make_pair(inliers[i], std::make_pair(sTo.id(), sTo.getWords().lower_bound(inliers[i])->second.pt)));
+					}
+					else
+					{
+						float dist = uNorm(p.x - jter->second.x, p.y - jter->second.y, p.z - jter->second.z);
+						if(dist <= inlierDistance_)
+						{
+							// in case of loop closure links
+							wordReferences.insert(std::make_pair(inliers[i], std::make_pair(sFrom.id(), sFrom.getWords().lower_bound(inliers[i])->second.pt)));
+							wordReferences.insert(std::make_pair(inliers[i], std::make_pair(sTo.id(), sTo.getWords().lower_bound(inliers[i])->second.pt)));
+						}
+					}
 				}
 			}
 			else
