@@ -61,12 +61,7 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_flycapture2->setText(CameraStereoFlyCapture2::available()?"Yes":"No");
 
 	_ui->label_g2o->setText(graph::G2OOptimizer::available()?"Yes":"No");
-
-#ifdef WITH_CVSBA
-	_ui->label_cvsba->setText("Yes");
-#else
-	_ui->label_cvsba->setText("No");
-#endif
+	_ui->label_cvsba->setText(graph::CVSBAOptimizer::available()?"Yes":"No");
 
 }
 
