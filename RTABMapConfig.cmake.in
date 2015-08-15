@@ -2,12 +2,72 @@
 # It defines the following variables
 #  RTABMap_INCLUDE_DIRS - include directories for RTABMap
 #  RTABMap_LIBRARIES    - libraries to link against
+#  RTABMap_CORE         - core library
+#  RTABMap_UTILITE      - utilite library
+#  RTABMap_GUI          - gui library (set if RTABMap is built with Qt)
 
 # Compute paths
 get_filename_component(RTABMap_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 set(RTABMap_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
 
-find_library(RTABMAP_CORE NAMES rtabmap_core rtabmap_cored NO_DEFAULT_PATH HINTS "@CONF_LIB_DIR@")
-find_library(RTABMAP_GUI NAMES rtabmap_gui rtabmap_guid NO_DEFAULT_PATH HINTS "@CONF_LIB_DIR@")
-find_library(RTABMAP_UTILITE NAMES rtabmap_utilite rtabmap_utilited NO_DEFAULT_PATH HINTS "@CONF_LIB_DIR@")
-set(RTABMap_LIBRARIES ${RTABMAP_CORE} ${RTABMAP_GUI} ${RTABMAP_UTILITE})
+#core lib
+find_library(RTABMap_CORE_RELEASE NAMES rtabmap_core NO_DEFAULT_PATH HINTS "@CONF_LIB_DIR@")
+find_library(RTABMap_CORE_DEBUG NAMES rtabmap_cored NO_DEFAULT_PATH HINTS "@CONF_LIB_DIR@")
+
+IF(RTABMap_CORE_DEBUG AND RTABMap_CORE_RELEASE)
+   SET(RTABMap_CORE
+      debug ${RTABMap_CORE_DEBUG}
+      optimized ${RTABMap_CORE_RELEASE}
+   )
+ELSEIF(RTABMap_CORE_RELEASE)
+   SET(RTABMap_CORE ${RTABMap_CORE_RELEASE})
+ELSEIF(RTABMap_CORE_DEBUG)
+   SET(RTABMap_CORE ${RTABMap_CORE_DEBUG})
+ENDIF()
+
+#utilite lib
+find_library(RTABMap_UTILITE_RELEASE NAMES rtabmap_utilite NO_DEFAULT_PATH HINTS "@CONF_LIB_DIR@")
+find_library(RTABMap_UTILITE_DEBUG NAMES rtabmap_utilited NO_DEFAULT_PATH HINTS "@CONF_LIB_DIR@")
+
+IF(RTABMap_UTILITE_DEBUG AND RTABMap_UTILITE_RELEASE)
+   SET(RTABMap_UTILITE
+      debug ${RTABMap_UTILITE_DEBUG}
+      optimized ${RTABMap_UTILITE_RELEASE}
+   )
+ELSEIF(RTABMap_UTILITE_RELEASE)
+   SET(RTABMap_UTILITE ${RTABMap_UTILITE_RELEASE})
+ELSEIF(RTABMap_UTILITE_DEBUG)
+   SET(RTABMap_UTILITE ${RTABMap_UTILITE_DEBUG})
+ENDIF()
+
+set(RTABMap_LIBRARIES ${RTABMap_CORE} ${RTABMap_UTILITE})
+
+#gui lib (OFF if RTAB-Map is not built with Qt)
+if(@CONF_WITH_GUI@)
+   find_library(RTABMap_GUI_RELEASE NAMES rtabmap_gui NO_DEFAULT_PATH HINTS "@CONF_LIB_DIR@")
+   find_library(RTABMap_GUI_DEBUG NAMES rtabmap_guid NO_DEFAULT_PATH HINTS "@CONF_LIB_DIR@")
+   
+   IF(RTABMap_GUI_DEBUG AND RTABMap_GUI_RELEASE)
+      SET(RTABMap_GUI
+         debug ${RTABMap_GUI_DEBUG}
+         optimized ${RTABMap_GUI_RELEASE}
+      )
+   ELSEIF(RTABMap_GUI_RELEASE)
+      SET(RTABMap_GUI ${RTABMap_GUI_RELEASE})
+   ELSEIF(RTABMap_GUI_DEBUG)
+      SET(RTABMap_GUI ${RTABMap_GUI_DEBUG})
+   ENDIF()
+   
+   set(RTABMap_LIBRARIES ${RTABMap_LIBRARIES} ${RTABMap_GUI})
+endif(@CONF_WITH_GUI@)
+
+#backward compatibilities
+if(RTABMap_CORE)
+   set(RTABMAP_CORE ${RTABMap_CORE})
+endif(RTABMap_CORE)
+if(RTABMap_UTILITE)
+   set(RTABMAP_UTILITE ${RTABMap_UTILITE})
+endif(RTABMap_UTILITE)
+if(RTABMap_GUI)
+   set(RTABMAP_GUI ${RTABMap_GUI})
+endif(RTABMap_GUI)
