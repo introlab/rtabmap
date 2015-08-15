@@ -3321,7 +3321,7 @@ void MainWindow::postProcessing()
 		return;
 	}
 
-	_initProgressDialog->setAutoClose(false, 1);
+	_initProgressDialog->setAutoClose(true, 1);
 	_initProgressDialog->resetProgress();
 	_initProgressDialog->clear();
 	_initProgressDialog->show();
@@ -3708,6 +3708,7 @@ void MainWindow::postProcessing()
 		else
 		{
 			_initProgressDialog->appendText(tr("SBA... failed!"));
+			_initProgressDialog->setAutoClose(false, 1);
 		}
 		_initProgressDialog->incrementStep();
 	}
