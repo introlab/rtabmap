@@ -128,6 +128,7 @@ option(WITH_FREENECT2     "Include Freenect2 support"            ON)
 option(WITH_OPENNI2       "Include OpenNI2 support"              ON)
 option(WITH_DC1394        "Include dc1394 support"               ON)
 option(WITH_G2O           "Include g2o support"                  ON)
+option(WITH_CVSBA         "Include cvsba support"                ON)
 option(WITH_FLYCAPTURE2   "Include FlyCapture2/Triclops support" ON)
 
 FIND_PACKAGE(OpenCV REQUIRED)
@@ -172,6 +173,10 @@ ENDIF(WITH_G2O)
 IF(WITH_FLYCAPTURE2)
     FIND_PACKAGE(FlyCapture2)
 ENDIF(WITH_FLYCAPTURE2)
+
+IF(WITH_CVSBA)
+    FIND_PACKAGE(cvsba)
+ENDIF(WITH_CVSBA)
 
 ####### OSX BUNDLE CMAKE_INSTALL_PREFIX #######
 IF(APPLE AND BUILD_AS_BUNDLE)
@@ -422,6 +427,14 @@ ELSEIF(NOT WITH_G2O)
 MESSAGE(STATUS "  With g2o                  = NO (WITH_G2O=OFF)")
 ELSE()
 MESSAGE(STATUS "  With g2o                  = NO (g2o not found)")
+ENDIF()
+
+IF(cvsba_FOUND)
+MESSAGE(STATUS "  With cvsba                = YES")
+ELSEIF(NOT WITH_CVSBA)
+MESSAGE(STATUS "  With cvsba                = NO (WITH_CVSBA=OFF)")
+ELSE()
+MESSAGE(STATUS "  With cvsba                = NO (cvsba not found)")
 ENDIF()
 
 IF(QT4_FOUND)

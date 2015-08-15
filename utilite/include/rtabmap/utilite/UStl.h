@@ -472,11 +472,31 @@ inline std::list<V> uVectorToList(const std::vector<V> & v)
 
 /**
  * Convert a std::multimap to a std::map
+ * @see uMultimapToMapUnique to keep only unique keys
  */
 template<class K, class V>
 inline std::map<K, V> uMultimapToMap(const std::multimap<K, V> & m)
 {
 	return std::map<K, V>(m.begin(), m.end());
+}
+
+/**
+ * Convert a std::multimap to a std::map, keeping only unique keys!
+ */
+template<class K, class V>
+inline std::map<K, V> uMultimapToMapUnique(const std::multimap<K, V> & m)
+{
+	std::map<K, V> mapOut;
+	std::list<K> uniqueKeys = uUniqueKeys(m);
+	for(typename std::list<K>::const_iterator iter = uniqueKeys.begin(); iter!=uniqueKeys.end(); ++iter)
+	{
+		if(m.count(*iter) == 1)
+		{
+			typename std::multimap<K, V>::const_iterator jter=m.find(*iter);
+			mapOut.insert(std::pair<K,V>(jter->first, jter->second));
+		}
+	}
+	return mapOut;
 }
 
 /**

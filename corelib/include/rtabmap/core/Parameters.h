@@ -314,7 +314,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, Strategy,           	int, 0, 		"0=Bag-of-words 1=Optical Flow");
 	RTABMAP_PARAM(Odom, FeatureType,            int, 6, 	    "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
 	RTABMAP_PARAM(Odom, EstimationType,  		int, 0,    	    "Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP)");
-	RTABMAP_PARAM(Odom, MaxFeatures,            int, 400, 		"0 no limits.");
+	RTABMAP_PARAM(Odom, MaxFeatures,            int, 1000, 		"0 no limits.");
 	RTABMAP_PARAM(Odom, InlierDistance,         float, 0.02, 	"Maximum distance for visual word correspondences.");
 	RTABMAP_PARAM(Odom, MinInliers,             int, 20, 		"Minimum visual word correspondences to compute geometry transform.");
 	RTABMAP_PARAM(Odom, Iterations,             int, 100, 		"Maximum iterations to compute the transform from visual words.");
@@ -364,8 +364,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccIcp, MaxRotation,     float, 0.78,     "Maximum ICP rotation correction accepted (rad).");
 
 	RTABMAP_PARAM(LccBow, EstimationType,  int, 0,    	    "Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)");
-	RTABMAP_PARAM(LccBow, MinInliers,      int, 20, 		"Minimum visual word correspondences to compute geometry transform.");
-	RTABMAP_PARAM(LccBow, InlierDistance,  float, 0.02, 	"Maximum distance for visual word correspondences.");
+	RTABMAP_PARAM(LccBow, MinInliers,      int, 10, 		"Minimum visual word correspondences to compute geometry transform.");
+	RTABMAP_PARAM(LccBow, InlierDistance,  float, 0.05, 	"Maximum distance for visual word correspondences.");
 	RTABMAP_PARAM(LccBow, Iterations,      int, 100, 		"Maximum iterations to compute the transform from visual words.");
 	RTABMAP_PARAM(LccBow, RefineIterations,  int, 10,        "Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
 	RTABMAP_PARAM(LccBow, Force2D, 		   bool, false,     "Force 2D transform (3Dof: x,y and yaw).");
@@ -376,7 +376,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccReextract, NNType, 	int, 3, 		"kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4.");
 	RTABMAP_PARAM(LccReextract, NNDR, 		float, 0.8, 	"NNDR: nearest neighbor distance ratio.");
 	RTABMAP_PARAM(LccReextract, FeatureType, int, 4, 		"0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
-	RTABMAP_PARAM(LccReextract, MaxWords, 	int, 600, 		"0 no limits.");
+	RTABMAP_PARAM(LccReextract, MaxWords, 	int, 1000, 		"0 no limits.");
 	RTABMAP_PARAM(LccReextract, MaxDepth, 	float, 0.0,     "Max depth of the words (0 means no limit).");
 
 	RTABMAP_PARAM(LccIcp3, Decimation,      int, 8, 		"Depth image decimation.");

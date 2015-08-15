@@ -151,6 +151,18 @@ IF(G2O_FOUND)
 	)
 ENDIF(G2O_FOUND)
 
+IF(cvsba_FOUND)
+	ADD_DEFINITIONS("-DWITH_CVSBA")
+	SET(INCLUDE_DIRS 
+		${INCLUDE_DIRS} 
+		${cvsba_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${cvsba_LIBS}
+	)
+ENDIF(cvsba_FOUND)
+
 ####################################
 # Generate resources files
 ####################################
