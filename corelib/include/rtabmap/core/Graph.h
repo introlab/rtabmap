@@ -153,7 +153,7 @@ public:
 			std::list<std::map<int, Transform> > * intermediateGraphes = 0);
 };
 
-class CVSBAOptimizer : public Optimizer
+class RTABMAP_EXP CVSBAOptimizer : public Optimizer
 {
 public:
 	static bool available();
