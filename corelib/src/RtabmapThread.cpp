@@ -510,6 +510,7 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 		lastPose_ = odomEvent.pose();
 		double maxRotVar = odomEvent.rotVariance();
 		double maxTransVar = odomEvent.transVariance();
+		// FIXME: should merge the transformations/variances like Link::merge();
 		if(maxRotVar > _rotVariance)
 		{
 			_rotVariance = maxRotVar;
