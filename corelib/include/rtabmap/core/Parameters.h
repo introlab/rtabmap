@@ -248,7 +248,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(FAST, Gpu,                bool, false, 	"GPU-FAST: Use GPU version of FAST. This option is enabled only if OpenCV is built with CUDA and GPUs are detected.");
 	RTABMAP_PARAM(FAST, GpuKeypointsRatio,  double, 0.05, 	"Used with FAST GPU.");
 
-	RTABMAP_PARAM(GFTT, QualityLevel, double, 0.01, "");
+	RTABMAP_PARAM(GFTT, QualityLevel, double, 0.001, "");
 	RTABMAP_PARAM(GFTT, MinDistance, double, 5, "");
 	RTABMAP_PARAM(GFTT, BlockSize, int, 3, "");
 	RTABMAP_PARAM(GFTT, UseHarrisDetector, bool, false, "");
