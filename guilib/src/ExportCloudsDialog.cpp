@@ -51,6 +51,10 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_maxDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 
+	connect(_ui->groupBox_filtering, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_filteringRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_filteringMinNeighbors, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+
 	connect(_ui->groupBox_assemble, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_voxelSize_assembled, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 
@@ -102,6 +106,10 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("regenerate_voxel", this->getGenerateVoxel());
 	settings.setValue("regenerate_max_depth", this->getGenerateMaxDepth());
 
+	settings.setValue("filtering", this->getFiltering());
+	settings.setValue("filtering_radius", this->getFilteringRadius());
+	settings.setValue("filtering_min_neighbors", this->getFilteringMinNeighbors());
+
 	settings.setValue("assemble", this->getAssemble());
 	settings.setValue("assemble_voxel", this->getAssembleVoxel());
 
@@ -143,6 +151,10 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->doubleSpinBox_voxelSize->setValue(settings.value("regenerate_voxel", this->getGenerateVoxel()).toDouble());
 	_ui->doubleSpinBox_maxDepth->setValue(settings.value("regenerate_max_depth", this->getGenerateMaxDepth()).toDouble());
 
+	_ui->groupBox_filtering->setChecked(settings.value("filtering", this->getFiltering()).toBool());
+	_ui->doubleSpinBox_filteringRadius->setValue(settings.value("filtering_radius", this->getFilteringRadius()).toDouble());
+	_ui->spinBox_filteringMinNeighbors->setValue(settings.value("filtering_min_neighbors", this->getFilteringMinNeighbors()).toInt());
+
 	_ui->groupBox_assemble->setChecked(settings.value("assemble", this->getAssemble()).toBool());
 	_ui->doubleSpinBox_voxelSize_assembled->setValue(settings.value("assemble_voxel", this->getAssembleVoxel()).toDouble());
 
@@ -181,6 +193,10 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->spinBox_decimation->setValue(1);
 	_ui->doubleSpinBox_voxelSize->setValue(0.01);
 	_ui->doubleSpinBox_maxDepth->setValue(4);
+
+	_ui->groupBox_filtering->setChecked(false);
+	_ui->doubleSpinBox_filteringRadius->setValue(0.02);
+	_ui->spinBox_filteringMinNeighbors->setValue(2);
 
 	_ui->groupBox_assemble->setChecked(true);
 	_ui->doubleSpinBox_voxelSize_assembled->setValue(0.01);
@@ -263,11 +279,23 @@ double ExportCloudsDialog::getGenerateMaxDepth() const
 	return _ui->doubleSpinBox_maxDepth->value();
 }
 
+bool ExportCloudsDialog::getFiltering() const
+{
+	return _ui->groupBox_filtering->isChecked();
+}
+double ExportCloudsDialog::getFilteringRadius() const
+{
+	return _ui->doubleSpinBox_filteringRadius->value();
+}
+int ExportCloudsDialog::getFilteringMinNeighbors() const
+{
+	return _ui->spinBox_filteringMinNeighbors->value();
+}
+
 bool ExportCloudsDialog::getAssemble() const
 {
 	return _ui->groupBox_assemble->isChecked();
 }
-
 double ExportCloudsDialog::getAssembleVoxel() const
 {
 	return _ui->doubleSpinBox_voxelSize_assembled->value();

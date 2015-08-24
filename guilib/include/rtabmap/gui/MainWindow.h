@@ -232,7 +232,9 @@ private:
 			bool regenerateClouds,
 			int regenerateDecimation,
 			float regenerateVoxelSize,
-			float regenerateMaxDepth) const;
+			float regenerateMaxDepth,
+			float filteringRadius,
+			float filteringMinNeighbors) const;
 
 	bool getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans);
 	bool getExportedClouds(

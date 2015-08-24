@@ -61,6 +61,10 @@ public:
 	double getGenerateVoxel() const;
 	double getGenerateMaxDepth() const;
 
+	bool getFiltering() const;
+	double getFilteringRadius() const;
+	int getFilteringMinNeighbors() const;
+
 	bool getAssemble() const;
 	double getAssembleVoxel() const;
 

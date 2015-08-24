@@ -4619,7 +4619,9 @@ bool MainWindow::getExportedClouds(
 				_exportDialog->getGenerate(),
 				_exportDialog->getGenerateDecimation(),
 				_exportDialog->getGenerateVoxel(),
-				_exportDialog->getGenerateMaxDepth());
+				_exportDialog->getGenerateMaxDepth(),
+				_exportDialog->getFiltering()?_exportDialog->getFilteringRadius():0.0f,
+				_exportDialog->getFiltering()?_exportDialog->getFilteringMinNeighbors():0.0f);
 
 		if(_exportDialog->getAssemble())
 		{
@@ -4642,14 +4644,29 @@ bool MainWindow::getExportedClouds(
 
 			_initProgressDialog->appendText(tr("Voxelize assembled cloud (%1 points, voxel size = %2 m)...")
 					.arg(assembledCloud->size())
-					.arg(_exportDialog->getGenerateVoxel()));
+					.arg(_exportDialog->getAssembleVoxel()));
 			QApplication::processEvents();
-			if(_exportDialog->getGenerateVoxel())
+			if(_exportDialog->getAssembleVoxel())
 			{
 				assembledCloud = util3d::voxelize(
 						assembledCloud,
-						_exportDialog->getGenerateVoxel());
+						_exportDialog->getAssembleVoxel());
 			}
+
+			_initProgressDialog->appendText(tr("Noise filtering (%1 points, radius = %2 m, min neighbors = %3)...")
+					.arg(assembledCloud->size())
+					.arg(_exportDialog->getFilteringRadius())
+					.arg(_exportDialog->getFilteringMinNeighbors()));
+			if(_exportDialog->getFiltering() &&
+				_exportDialog->getFilteringRadius() > 0.0 &&
+				_exportDialog->getFilteringMinNeighbors() > 0)
+			{
+				pcl::IndicesPtr indices = util3d::radiusFiltering(assembledCloud, (float)_exportDialog->getFilteringRadius(), _exportDialog->getFilteringMinNeighbors());
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFiltered(new pcl::PointCloud<pcl::PointXYZRGB>);
+				pcl::copyPointCloud(*assembledCloud, *indices, *cloudFiltered);
+				assembledCloud = cloudFiltered;
+			}
+
 			clouds.clear();
 			clouds.insert(std::make_pair(0, assembledCloud));
 		}
@@ -5488,7 +5505,9 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
 		bool regenerateClouds,
 		int regenerateDecimation,
 		float regenerateVoxelSize,
-		float regenerateMaxDepth) const
+		float regenerateMaxDepth,
+		float filteringRadius,
+		float filteringMinNeighbors) const
 {
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 	int i=0;
@@ -5542,6 +5561,14 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
 
 			if(cloud->size())
 			{
+				if(filteringRadius > 0.0f && filteringMinNeighbors > 0)
+				{
+					pcl::IndicesPtr indices = util3d::radiusFiltering(cloud, filteringRadius, filteringMinNeighbors);
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFiltered(new pcl::PointCloud<pcl::PointXYZRGB>);
+					pcl::copyPointCloud(*cloud, *indices, *cloudFiltered);
+					cloud = cloudFiltered;
+				}
+
 				clouds.insert(std::make_pair(iter->first, cloud));
 				inserted = true;
 			}
