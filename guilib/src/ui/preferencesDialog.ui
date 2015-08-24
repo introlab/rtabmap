@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-394</y>
-            <width>759</width>
-            <height>938</height>
+            <y>-542</y>
+            <width>755</width>
+            <height>1591</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -468,7 +468,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                             <string/>
                            </property>
                            <property name="checked">
-                            <bool>true</bool>
+                            <bool>false</bool>
                            </property>
                           </widget>
                          </item>
@@ -955,6 +955,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          <property name="maximum">
                           <number>64</number>
                          </property>
+                         <property name="value">
+                          <number>2</number>
+                         </property>
                         </widget>
                        </item>
                        <item row="7" column="1">
@@ -964,6 +967,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="maximum">
                           <number>64</number>
+                         </property>
+                         <property name="value">
+                          <number>2</number>
                          </property>
                         </widget>
                        </item>

@@ -1014,15 +1014,15 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		for(int i=0; i<2; ++i)
 		{
 			_3dRenderingShowClouds[i]->setChecked(true);
-			_3dRenderingVoxelSize[i]->setValue(i==2?0.005:0.00);
-			_3dRenderingDecimation[i]->setValue(i==0?4:i==1?2:1);
+			_3dRenderingVoxelSize[i]->setValue(0.00);
+			_3dRenderingDecimation[i]->setValue(i==0?4:2);
 			_3dRenderingMaxDepth[i]->setValue(i==1?0.0:4.0);
 			_3dRenderingShowScans[i]->setChecked(true);
 
-			_3dRenderingOpacity[i]->setValue(1.0);
-			_3dRenderingPtSize[i]->setValue(i==0?1:2);
-			_3dRenderingOpacityScan[i]->setValue(1.0);
-			_3dRenderingPtSizeScan[i]->setValue(1);
+			_3dRenderingOpacity[i]->setValue(i==0?1.0:0.5);
+			_3dRenderingPtSize[i]->setValue(2);
+			_3dRenderingOpacityScan[i]->setValue(i==0?1.0:0.5);
+			_3dRenderingPtSizeScan[i]->setValue(2);
 		}
 
 		_ui->checkBox_showGraphs->setChecked(true);
@@ -1035,7 +1035,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_mls->setChecked(false);
 		_ui->doubleSpinBox_mlsRadius->setValue(0.04);
 
-		_ui->checkBox_nodeFiltering->setChecked(true);
+		_ui->checkBox_nodeFiltering->setChecked(false);
 		_ui->checkBox_subtractFiltering->setChecked(false);
 		_ui->doubleSpinBox_cloudFilterRadius->setValue(0.1);
 		_ui->doubleSpinBox_cloudFilterAngle->setValue(30);

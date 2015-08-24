@@ -4542,6 +4542,29 @@ void MainWindow::viewClouds()
 	}
 }
 
+bool removeDir(const QString & dirName)
+{
+    bool result = true;
+    QDir dir(dirName);
+
+    if (dir.exists(dirName)) {
+        Q_FOREACH(QFileInfo info, dir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
+            if (info.isDir()) {
+                result = removeDir(info.absoluteFilePath());
+            }
+            else {
+                result = QFile::remove(info.absoluteFilePath());
+            }
+
+            if (!result) {
+                return result;
+            }
+        }
+        result = dir.rmdir(dirName);
+    }
+    return result;
+}
+
 bool MainWindow::getExportedClouds(
 		std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & cloudsWithNormals,
 		std::map<int, pcl::PolygonMesh::Ptr> & meshes,
@@ -4639,7 +4662,7 @@ bool MainWindow::getExportedClouds(
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 			if(_exportDialog->getMLS())
 			{
-				_initProgressDialog->appendText(tr("Smoothing (MLS) of the assembled cloud (%1 points)...").arg(iter->second->size()));
+				_initProgressDialog->appendText(tr("Smoothing (MLS) the cloud (%1 points)...").arg(iter->second->size()));
 				QApplication::processEvents();
 
 				cloudWithNormals = util3d::mls(
@@ -4654,7 +4677,7 @@ bool MainWindow::getExportedClouds(
 						_exportDialog->getMLSDilationIterations());
 
 				// Re-voxelize to make sure to have uniform density
-				_initProgressDialog->appendText(tr("Voxelize assembled cloud (%1 points, voxel size = %2 m)...")
+				_initProgressDialog->appendText(tr("Voxelize cloud (%1 points, voxel size = %2 m)...")
 						.arg(cloudWithNormals->size())
 						.arg(_exportDialog->getAssemble()?_exportDialog->getAssembleVoxel():_exportDialog->getGenerateVoxel()));
 				QApplication::processEvents();
@@ -4667,6 +4690,7 @@ bool MainWindow::getExportedClouds(
 			else
 			{
 				//compute normals
+				_initProgressDialog->appendText(tr("Computing normals (%1 points)...").arg(iter->second->size()));
 				cloudWithNormals = util3d::computeNormals(iter->second, _exportDialog->getNormalKSearch());
 			}
 
@@ -4719,6 +4743,9 @@ bool MainWindow::getExportedClouds(
 
 		if(toSave && _exportDialog->getMeshTexture())
 		{
+			QDir dir(_preferencesDialog->getWorkingDirectory());
+			removeDir(_preferencesDialog->getWorkingDirectory()+QDir::separator()+"tmp_textures");
+			dir.mkdir("tmp_textures");
 			int i=0;
 			for(std::map<int, pcl::PolygonMesh::Ptr>::iterator iter=meshes.begin();
 				iter!= meshes.end();
@@ -4766,8 +4793,6 @@ bool MainWindow::getExportedClouds(
 				}
 				if(cameraPoses.size())
 				{
-					QDir dir(_preferencesDialog->getWorkingDirectory());
-					dir.mkdir("tmp_textures");
 					pcl::TextureMesh::Ptr textureMesh = util3d::createTextureMesh(
 							iter->second,
 							cameraPoses,
@@ -5240,6 +5265,7 @@ void MainWindow::saveTextureMeshes(const std::map<int, pcl::TextureMesh::Ptr> & 
 				pcl::TextureMesh mesh;
 				mesh.tex_coordinates = meshes.begin()->second->tex_coordinates;
 				mesh.tex_materials = meshes.begin()->second->tex_materials;
+				removeDir(QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName());
 				QDir(QFileInfo(path).absoluteDir().absolutePath()).mkdir(QFileInfo(path).baseName());
 				for(unsigned int i=0;i<meshes.begin()->second->tex_materials.size(); ++i)
 				{
@@ -5295,6 +5321,7 @@ void MainWindow::saveTextureMeshes(const std::map<int, pcl::TextureMesh::Ptr> & 
 						pcl::TextureMesh mesh;
 						mesh.tex_coordinates = iter->second->tex_coordinates;
 						mesh.tex_materials = iter->second->tex_materials;
+						QDir(path).rmdir(currentPrefix);
 						QDir(path).mkdir(currentPrefix);
 						for(unsigned int i=0;i<iter->second->tex_materials.size(); ++i)
 						{
