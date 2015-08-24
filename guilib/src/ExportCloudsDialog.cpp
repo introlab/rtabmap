@@ -214,7 +214,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->groupBox_gp3->setChecked(false);
 	_ui->doubleSpinBox_gp3Radius->setValue(0.04);
 	_ui->doubleSpinBox_gp3Mu->setValue(2.5);
-	_ui->doubleSpinBox_meshDecimationFactor->setValue(1.0);
+	_ui->doubleSpinBox_meshDecimationFactor->setValue(0.0);
 	_ui->checkBox_textureMapping->setChecked(false);
 
 	this->update();

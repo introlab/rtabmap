@@ -80,7 +80,9 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP mls(
 		int dilationIterations = 0);     // VOXEL_GRID_DILATION
 
 void RTABMAP_EXP adjustNormalsToViewPoints(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & viewpoints,
+		const std::map<int, Transform> & poses,
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
+		const std::vector<int> & rawCameraIndices,
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		int k = 0); // optional: recompute normal with k neighbors (min k=3)
 

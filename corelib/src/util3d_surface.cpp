@@ -324,15 +324,16 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mls(
 }
 
 void adjustNormalsToViewPoints(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & viewpoints,
+		const std::map<int, Transform> & poses,
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
+		const std::vector<int> & rawCameraIndices,
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		int k)
 {
-	// FIXME: maybe better to project points in camera planes to know if they are visible from a specified viewpoint
-	if(viewpoints->size() && cloud->size())
+	if(poses.size() && rawCloud->size() && rawCloud->size() == rawCameraIndices.size() && cloud->size())
 	{
-		pcl::search::KdTree<pcl::PointXYZ>::Ptr viewpointsTree (new pcl::search::KdTree<pcl::PointXYZ>);
-		viewpointsTree->setInputCloud (viewpoints);
+		pcl::search::KdTree<pcl::PointXYZ>::Ptr rawTree (new pcl::search::KdTree<pcl::PointXYZ>);
+		rawTree->setInputCloud (rawCloud);
 
 		pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGBNormal>);
 		tree->setInputCloud (cloud);
@@ -341,12 +342,13 @@ void adjustNormalsToViewPoints(
 		{
 			std::vector<int> indices;
 			std::vector<float> dist;
-			viewpointsTree->nearestKSearch(pcl::PointXYZ(cloud->points[i].x, cloud->points[i].y, cloud->points[i].z), 1, indices, dist);
+			rawTree->nearestKSearch(pcl::PointXYZ(cloud->points[i].x, cloud->points[i].y, cloud->points[i].z), 1, indices, dist);
 			UASSERT(indices.size() == 1);
 			if(indices.size() && indices[0]>=0)
 			{
-
-				Eigen::Vector3f v = viewpoints->at(indices[0]).getVector3fMap() - cloud->points[i].getVector3fMap();
+				Transform p = poses.at(rawCameraIndices[indices[0]]);
+				pcl::PointXYZ viewpoint(p.x(), p.y(), p.z());
+				Eigen::Vector3f v = viewpoint.getVector3fMap() - cloud->points[i].getVector3fMap();
 
 				//compute point normal
 				if(k >= 3)

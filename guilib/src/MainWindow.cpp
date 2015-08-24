@@ -4623,6 +4623,8 @@ bool MainWindow::getExportedClouds(
 				_exportDialog->getFiltering()?_exportDialog->getFilteringRadius():0.0f,
 				_exportDialog->getFiltering()?_exportDialog->getFilteringMinNeighbors():0.0f);
 
+		pcl::PointCloud<pcl::PointXYZ>::Ptr rawAssembledCloud(new pcl::PointCloud<pcl::PointXYZ>);
+		std::vector<int> rawCameraIndices;
 		if(_exportDialog->getAssemble())
 		{
 			_initProgressDialog->appendText(tr("Assembling %1 clouds...").arg(clouds.size()));
@@ -4636,11 +4638,14 @@ bool MainWindow::getExportedClouds(
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed = util3d::transformPointCloud(iter->second, poses.at(iter->first));
 				*assembledCloud += *transformed;
+				rawCameraIndices.resize(assembledCloud->size(), iter->first);
 
 				_initProgressDialog->appendText(tr("Assembled cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(clouds.size()));
 				_initProgressDialog->incrementStep();
 				QApplication::processEvents();
 			}
+
+			pcl::copyPointCloud(*assembledCloud, *rawAssembledCloud);
 
 			_initProgressDialog->appendText(tr("Voxelize assembled cloud (%1 points, voxel size = %2 m)...")
 					.arg(assembledCloud->size())
@@ -4653,14 +4658,15 @@ bool MainWindow::getExportedClouds(
 						_exportDialog->getAssembleVoxel());
 			}
 
-			_initProgressDialog->appendText(tr("Noise filtering (%1 points, radius = %2 m, min neighbors = %3)...")
-					.arg(assembledCloud->size())
-					.arg(_exportDialog->getFilteringRadius())
-					.arg(_exportDialog->getFilteringMinNeighbors()));
 			if(_exportDialog->getFiltering() &&
 				_exportDialog->getFilteringRadius() > 0.0 &&
 				_exportDialog->getFilteringMinNeighbors() > 0)
 			{
+				_initProgressDialog->appendText(tr("Noise filtering (%1 points, radius = %2 m, min neighbors = %3)...")
+							.arg(assembledCloud->size())
+							.arg(_exportDialog->getFilteringRadius())
+							.arg(_exportDialog->getFilteringMinNeighbors()));
+
 				pcl::IndicesPtr indices = util3d::radiusFiltering(assembledCloud, (float)_exportDialog->getFilteringRadius(), _exportDialog->getFilteringMinNeighbors());
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFiltered(new pcl::PointCloud<pcl::PointXYZRGB>);
 				pcl::copyPointCloud(*assembledCloud, *indices, *cloudFiltered);
@@ -4723,7 +4729,12 @@ bool MainWindow::getExportedClouds(
 					(*viewpoints)[oi].y = iter->second.y();
 					(*viewpoints)[oi++].z = iter->second.z();
 				}
-				util3d::adjustNormalsToViewPoints(viewpoints, cloudWithNormals, _exportDialog->getNormalKSearch());
+				util3d::adjustNormalsToViewPoints(
+						poses,
+						rawAssembledCloud,
+						rawCameraIndices,
+						cloudWithNormals,
+						_exportDialog->getNormalKSearch());
 			}
 			cloudsWithNormals.insert(std::make_pair(iter->first, cloudWithNormals));
 
@@ -4745,7 +4756,7 @@ bool MainWindow::getExportedClouds(
 				pcl::PolygonMesh::Ptr mesh = util3d::createMesh(iter->second, _exportDialog->getMeshGp3Radius(), _exportDialog->getMeshGp3Mu());
 				_initProgressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(mesh->polygons.size()).arg(++i).arg(clouds.size()));
 
-				if(_exportDialog->getMeshDecimationFactor() < 1.0)
+				if(_exportDialog->getMeshDecimationFactor() > 0.0)
 				{
 					mesh = util3d::meshDecimation(mesh, (float)_exportDialog->getMeshDecimationFactor());
 					_initProgressDialog->appendText(tr("Mesh %1 decimation (factor=%2) to %3 polygons").arg(iter->first).arg(_exportDialog->getMeshDecimationFactor()).arg(mesh->polygons.size()));

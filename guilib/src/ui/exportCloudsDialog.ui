@@ -23,7 +23,7 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>0</y>
+        <y>-242</y>
         <width>773</width>
         <height>1064</height>
        </rect>
@@ -750,7 +750,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
           <item row="3" column="1">
            <widget class="QLabel" name="label_170">
             <property name="text">
-             <string>Mesh quadric decimation factor (1=no decimation). Used to reduce the number of polygons.</string>
+             <string>Mesh quadric decimation factor (0=no decimation). Used to reduce the number of polygons.</string>
             </property>
             <property name="wordWrap">
              <bool>true</bool>
@@ -763,16 +763,16 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
              <number>2</number>
             </property>
             <property name="minimum">
-             <double>0.010000000000000</double>
+             <double>0.000000000000000</double>
             </property>
             <property name="maximum">
-             <double>1.000000000000000</double>
+             <double>0.990000000000000</double>
             </property>
             <property name="singleStep">
              <double>0.100000000000000</double>
             </property>
             <property name="value">
-             <double>1.000000000000000</double>
+             <double>0.000000000000000</double>
             </property>
            </widget>
           </item>
