@@ -98,7 +98,7 @@ public:
 
 	const cv::Size & imageSize() const {return imageSize_;}
 	int imageWidth() const {return imageSize_.width;}
-	int imageWeight() const {return imageSize_.height;}
+	int imageHeight() const {return imageSize_.height;}
 
 	bool load(const std::string & directory, const std::string & cameraName);
 	bool save(const std::string & directory) const;

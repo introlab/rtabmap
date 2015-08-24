@@ -573,6 +573,24 @@ bool CloudViewer::addCloudMesh(
 	return false;
 }
 
+bool CloudViewer::addCloudTextureMesh(
+	const std::string & id,
+	const pcl::TextureMesh::Ptr & textureMesh,
+	const Transform & pose)
+{
+	if(!_addedClouds.contains(id))
+	{
+		UDEBUG("Adding %s", id.c_str());
+		if(_visualizer->addTextureMesh(*textureMesh, id))
+		{
+			_visualizer->updatePointCloudPose(id, pose.toEigen3f());
+			_addedClouds.insert(id, pose);
+			return true;
+		}
+	}
+	return false;
+}
+
 bool CloudViewer::addOccupancyGridMap(
 		const cv::Mat & map8U,
 		float resolution, // cell size

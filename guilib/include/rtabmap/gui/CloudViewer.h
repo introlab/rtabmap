@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/PolygonMesh.h>
+#include <pcl/TextureMesh.h>
 #include "rtabmap/core/Transform.h"
 #include <QtCore/QMap>
 #include <QtCore/QSet>
@@ -143,6 +144,11 @@ public:
 	bool addCloudMesh(
 			const std::string & id,
 			const pcl::PolygonMesh::Ptr & mesh,
+			const Transform & pose = Transform::getIdentity());
+
+	bool addCloudTextureMesh(
+			const std::string & id,
+			const pcl::TextureMesh::Ptr & textureMesh,
 			const Transform & pose = Transform::getIdentity());
 
 	bool addOccupancyGridMap(

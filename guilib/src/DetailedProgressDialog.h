@@ -50,7 +50,7 @@ public:
 	void setValue(int value);
 	int maximumSteps() const;
 	void setMaximumSteps(int steps);
-	void setAutoClose(bool on, int delayedClosingTimeMsec = 0);
+	void setAutoClose(bool on, int delayedClosingTimeMsec = -1);
 
 protected:
 	virtual void closeEvent(QCloseEvent * event);

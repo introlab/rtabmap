@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/PolygonMesh.h>
+#include <pcl/TextureMesh.h>
 
 namespace rtabmap {
 class CameraThread;
@@ -226,20 +227,22 @@ private:
 	void exportPoses(int format);
 	QString captureScreen();
 
-	std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr > getClouds(
+	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > getClouds(
 			const std::map<int, Transform> & poses,
 			bool regenerateClouds,
 			int regenerateDecimation,
 			float regenerateVoxelSize,
-			float regenerateMaxDepth,
-			int normalKSearch,
-			bool mls,
-			float mlsRadius) const;
+			float regenerateMaxDepth) const;
 
 	bool getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans);
-	bool getExportedClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool toSave);
+	bool getExportedClouds(
+			std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds,
+			std::map<int, pcl::PolygonMesh::Ptr> & meshes,
+			std::map<int, pcl::TextureMesh::Ptr> & textureMeshes,
+			bool toSave);
 	void saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, bool binaryMode = true);
 	void saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool binaryMode = true);
+	void saveTextureMeshes(const std::map<int, pcl::TextureMesh::Ptr> & meshes);
 	void saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> & clouds, bool binaryMode = true);
 
 private:

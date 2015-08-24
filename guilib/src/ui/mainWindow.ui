@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -987,7 +987,7 @@
   </action>
   <action name="actionSave_point_cloud">
    <property name="text">
-    <string>Export 3D clouds (*.ply *.pcd)...</string>
+    <string>Export 3D clouds (*.ply *.pcd *.obj)...</string>
    </property>
   </action>
   <action name="actionDownload_all_clouds">

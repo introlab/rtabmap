@@ -33,6 +33,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/PolygonMesh.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/TextureMesh.h>
+#include <rtabmap/core/Transform.h>
+#include <rtabmap/core/CameraModel.h>
 
 namespace rtabmap
 {
@@ -50,6 +53,13 @@ pcl::PolygonMesh::Ptr RTABMAP_EXP createMesh(
 		float gp3MaximumAngle = 2*M_PI/3,
 		bool gp3NormalConsistency = true);
 
+pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
+		const pcl::PolygonMesh::Ptr & mesh,
+		const std::map<int, Transform> & poses,
+		const std::map<int, CameraModel> & cameraModels,
+		const std::map<int, cv::Mat> & images,
+		const std::string & tmpDirectory = ".");
+
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		int normalKSearch = 20);
@@ -58,15 +68,21 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		int normalKSearch = 20);
 
-pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP computeNormalsSmoothed(
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP mls(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		float smoothingSearchRadius = 0.025,
-		bool smoothingPolynomialFit = true,
-		float voxelSize = 0.0f);
+		float searchRadius = 0.0f,
+		int polygonialOrder = 2,
+		int upsamplingMethod = 0, // NONE, DISTINCT_CLOUD, SAMPLE_LOCAL_PLANE, RANDOM_UNIFORM_DENSITY, VOXEL_GRID_DILATION
+		float upsamplingRadius = 0.0f,   // SAMPLE_LOCAL_PLANE
+		float upsamplingStep = 0.0f,     // SAMPLE_LOCAL_PLANE
+		int pointDensity = 0,            // RANDOM_UNIFORM_DENSITY
+		float dilationVoxelSize = 1.0f,  // VOXEL_GRID_DILATION
+		int dilationIterations = 0);     // VOXEL_GRID_DILATION
 
 void RTABMAP_EXP adjustNormalsToViewPoints(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & viewpoints,
-		pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud);
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		int k = 0); // optional: recompute normal with k neighbors (min k=3)
 
 template<typename pointT>
 std::vector<pcl::Vertices> normalizePolygonsSide(

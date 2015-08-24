@@ -99,6 +99,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/io/vtk_io.h>
+#include <pcl/io/obj_io.h>
 #include <pcl/filters/filter.h>
 #include <pcl/search/kdtree.h>
 
@@ -1764,7 +1765,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
 				if(_preferencesDialog->getMeshSmoothing())
 				{
-					cloudWithNormals = util3d::computeNormalsSmoothed(
+					cloudWithNormals = util3d::mls(
 							cloudFiltered,
 							(float)_preferencesDialog->getMeshSmoothingRadius(),
 							false,
@@ -1796,7 +1797,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			if(_preferencesDialog->getMeshSmoothing())
 			{
 				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-				cloudWithNormals = util3d::computeNormalsSmoothed(
+				cloudWithNormals = util3d::mls(
 						cloudFiltered,
 						(float)_preferencesDialog->getMeshSmoothingRadius(),
 						false,
@@ -3321,7 +3322,6 @@ void MainWindow::postProcessing()
 		return;
 	}
 
-	_initProgressDialog->setAutoClose(true, 1);
 	_initProgressDialog->resetProgress();
 	_initProgressDialog->clear();
 	_initProgressDialog->show();
@@ -3708,7 +3708,7 @@ void MainWindow::postProcessing()
 		else
 		{
 			_initProgressDialog->appendText(tr("SBA... failed!"));
-			_initProgressDialog->setAutoClose(false, 1);
+			_initProgressDialog->setAutoClose(false);
 		}
 		_initProgressDialog->incrementStep();
 	}
@@ -4437,10 +4437,15 @@ void MainWindow::exportClouds()
 {
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clouds;
 	std::map<int, pcl::PolygonMesh::Ptr> meshes;
+	std::map<int, pcl::TextureMesh::Ptr> textureMeshes;
 
-	if(getExportedClouds(clouds, meshes, true))
+	if(getExportedClouds(clouds, meshes, textureMeshes, true))
 	{
-		if(meshes.size())
+		if(textureMeshes.size())
+		{
+			saveTextureMeshes(textureMeshes);
+		}
+		else if(meshes.size())
 		{
 			saveMeshes(meshes, _exportDialog->getBinaryFile());
 		}
@@ -4456,8 +4461,9 @@ void MainWindow::viewClouds()
 {
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clouds;
 	std::map<int, pcl::PolygonMesh::Ptr> meshes;
+	std::map<int, pcl::TextureMesh::Ptr> textureMeshes;
 
-	if(getExportedClouds(clouds, meshes, false))
+	if(getExportedClouds(clouds, meshes, textureMeshes, false))
 	{
 		QDialog * window = new QDialog(this, Qt::Window);
 		if(meshes.size())
@@ -4519,8 +4525,9 @@ void MainWindow::viewClouds()
 }
 
 bool MainWindow::getExportedClouds(
-		std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds,
+		std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & cloudsWithNormals,
 		std::map<int, pcl::PolygonMesh::Ptr> & meshes,
+		std::map<int, pcl::TextureMesh::Ptr> & textureMeshes,
 		bool toSave)
 {
 	if(_exportDialog->isVisible())
@@ -4551,6 +4558,11 @@ bool MainWindow::getExportedClouds(
 		{
 			mul+=1;
 		}
+		mul+=1; // normals
+		if(_exportDialog->getMeshTexture())
+		{
+			mul+=1;
+		}
 		_initProgressDialog->setMaximumSteps(int(poses.size())*mul+1);
 
 		if(_exportDialog->getMLS())
@@ -4559,17 +4571,14 @@ bool MainWindow::getExportedClouds(
 					"[search radius=%1m voxel=%2m]").arg(_exportDialog->getMLSRadius()).arg(_exportDialog->getGenerateVoxel()));
 		}
 		_initProgressDialog->appendText(tr("Computing surface normals... "
-					"[K neighbors=%1]").arg(_exportDialog->getMeshNormalKSearch()));
+					"[K neighbors=%1]").arg(_exportDialog->getNormalKSearch()));
 
-		clouds = this->getClouds(
+		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds = this->getClouds(
 				poses,
 				_exportDialog->getGenerate(),
 				_exportDialog->getGenerateDecimation(),
 				_exportDialog->getGenerateVoxel(),
-				_exportDialog->getGenerateMaxDepth(),
-				_exportDialog->getMeshNormalKSearch(),
-				_exportDialog->getAssemble()?false:_exportDialog->getMLS(),
-				(float)_exportDialog->getMLSRadius());
+				_exportDialog->getGenerateMaxDepth());
 
 		if(_exportDialog->getAssemble())
 		{
@@ -4577,62 +4586,75 @@ bool MainWindow::getExportedClouds(
 			QApplication::processEvents();
 
 			int i =0;
-			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr assembledCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>::iterator iter=clouds.begin();
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::iterator iter=clouds.begin();
 				iter!= clouds.end();
 				++iter)
 			{
-				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformed = util3d::transformPointCloud(iter->second, poses.at(iter->first));
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed = util3d::transformPointCloud(iter->second, poses.at(iter->first));
 				*assembledCloud += *transformed;
 
 				_initProgressDialog->appendText(tr("Assembled cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(clouds.size()));
 				_initProgressDialog->incrementStep();
-
-				if(i % 100 == 0)
-				{
-					QApplication::processEvents();
-				}
+				QApplication::processEvents();
 			}
 
+			_initProgressDialog->appendText(tr("Voxelize assembled cloud (%1 points, voxel size = %2 m)...")
+					.arg(assembledCloud->size())
+					.arg(_exportDialog->getGenerateVoxel()));
+			QApplication::processEvents();
+			if(_exportDialog->getGenerateVoxel())
+			{
+				assembledCloud = util3d::voxelize(
+						assembledCloud,
+						_exportDialog->getGenerateVoxel());
+			}
+			clouds.clear();
+			clouds.insert(std::make_pair(0, assembledCloud));
+		}
+
+		// normals
+		for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::iterator iter=clouds.begin();
+			iter!= clouds.end();
+			++iter)
+		{
+			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 			if(_exportDialog->getMLS())
 			{
-				_initProgressDialog->appendText(tr("Voxelize assembled cloud (%1 points, voxel size = %2 m)...")
-						.arg(assembledCloud->size())
-						.arg(_exportDialog->getGenerateVoxel()));
-				QApplication::processEvents();
-				if(_exportDialog->getGenerateVoxel())
-				{
-					assembledCloud = util3d::voxelize(
-							assembledCloud,
-							_exportDialog->getGenerateVoxel());
-				}
-
-				_initProgressDialog->appendText(tr("Smoothing (MLS) of the assembled cloud (%1 points)...").arg(assembledCloud->size()));
+				_initProgressDialog->appendText(tr("Smoothing (MLS) of the assembled cloud (%1 points)...").arg(iter->second->size()));
 				QApplication::processEvents();
 
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloudXYZRGB(new pcl::PointCloud<pcl::PointXYZRGB>);
-				pcl::copyPointCloud(*assembledCloud, *assembledCloudXYZRGB);
-				assembledCloud = util3d::computeNormalsSmoothed(
-						assembledCloudXYZRGB,
+				cloudWithNormals = util3d::mls(
+						iter->second,
 						(float)_exportDialog->getMLSRadius(),
-						true,
-						_exportDialog->getGenerateVoxel());
+						_exportDialog->getMLSPolygonialOrder(),
+						_exportDialog->getMLSUpsamplingMethod(),
+						(float)_exportDialog->getMLSUpsamplingRadius(),
+						(float)_exportDialog->getMLSUpsamplingStep(),
+						_exportDialog->getMLSPointDensity(),
+						(float)_exportDialog->getMLSDilationVoxelSize(),
+						_exportDialog->getMLSDilationIterations());
 
-				if(_exportDialog->getAssembleVoxel())
-				{
-					_initProgressDialog->appendText(tr("Voxelize assembled cloud (%1 points, voxel size = %2 m)...")
-							.arg(assembledCloud->size())
-							.arg(_exportDialog->getAssembleVoxel()));
-					QApplication::processEvents();
-
-					assembledCloud = util3d::voxelize(
-							assembledCloud,
-							_exportDialog->getAssembleVoxel());
-				}
-
-				_initProgressDialog->appendText(tr("Update %1 normals with %2 camera views...").arg(assembledCloud->size()).arg(poses.size()));
+				// Re-voxelize to make sure to have uniform density
+				_initProgressDialog->appendText(tr("Voxelize assembled cloud (%1 points, voxel size = %2 m)...")
+						.arg(cloudWithNormals->size())
+						.arg(_exportDialog->getAssemble()?_exportDialog->getAssembleVoxel():_exportDialog->getGenerateVoxel()));
 				QApplication::processEvents();
 
+				cloudWithNormals = util3d::voxelize(
+						cloudWithNormals,
+						_exportDialog->getAssemble()?_exportDialog->getAssembleVoxel():_exportDialog->getGenerateVoxel());
+
+			}
+			else
+			{
+				//compute normals
+				cloudWithNormals = util3d::computeNormals(iter->second, _exportDialog->getNormalKSearch());
+			}
+
+			if(_exportDialog->getAssemble())
+			{
+				_initProgressDialog->appendText(tr("Update %1 normals with %2 camera views...").arg(cloudWithNormals->size()).arg(poses.size()));
 				pcl::PointCloud<pcl::PointXYZ>::Ptr viewpoints(new pcl::PointCloud<pcl::PointXYZ>);
 				viewpoints->resize(poses.size());
 				int oi=0;
@@ -4642,30 +4664,23 @@ bool MainWindow::getExportedClouds(
 					(*viewpoints)[oi].y = iter->second.y();
 					(*viewpoints)[oi++].z = iter->second.z();
 				}
-				util3d::adjustNormalsToViewPoints(viewpoints, *assembledCloud);
+				util3d::adjustNormalsToViewPoints(viewpoints, cloudWithNormals, _exportDialog->getNormalKSearch());
 			}
-			else if(_exportDialog->getAssembleVoxel())
-			{
-				_initProgressDialog->appendText(tr("Voxelize assembled cloud (%1 points)...").arg(assembledCloud->size()));
-				QApplication::processEvents();
-				assembledCloud = util3d::voxelize(
-						assembledCloud,
-						_exportDialog->getAssembleVoxel());
-				_initProgressDialog->appendText(tr("Voxelized assembled cloud (%1 points)").arg(assembledCloud->size()));
-			}
+			cloudsWithNormals.insert(std::make_pair(iter->first, cloudWithNormals));
 
-			clouds.clear();
-			clouds.insert(std::make_pair(0, assembledCloud));
+			_initProgressDialog->incrementStep();
+			QApplication::processEvents();
 		}
 
+		//mesh
 		if(_exportDialog->getMesh())
 		{
 			_initProgressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(_exportDialog->getMeshGp3Radius()));
 			QApplication::processEvents();
 
 			int i=0;
-			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>::iterator iter=clouds.begin();
-				iter!= clouds.end();
+			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>::iterator iter=cloudsWithNormals.begin();
+				iter!= cloudsWithNormals.end();
 				++iter)
 			{
 				pcl::PolygonMesh::Ptr mesh = util3d::createMesh(iter->second, _exportDialog->getMeshGp3Radius(), _exportDialog->getMeshGp3Mu());
@@ -4673,11 +4688,76 @@ bool MainWindow::getExportedClouds(
 
 				_initProgressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(mesh->polygons.size()).arg(++i).arg(clouds.size()));
 				_initProgressDialog->incrementStep();
-				if(i % 100 == 0)
-				{
-					QApplication::processEvents();
-				}
+				QApplication::processEvents();
 			}
+		}
+
+		if(toSave && _exportDialog->getMeshTexture())
+		{
+			int i=0;
+			for(std::map<int, pcl::PolygonMesh::Ptr>::iterator iter=meshes.begin();
+				iter!= meshes.end();
+				++iter)
+			{
+				std::map<int, Transform> cameras;
+				if(iter->first == 0)
+				{
+					cameras = poses;
+				}
+				else
+				{
+					UASSERT(uContains(poses, iter->first));
+					cameras.insert(std::make_pair(iter->first, Transform::getIdentity()));
+				}
+				std::map<int, Transform> cameraPoses;
+				std::map<int, CameraModel> cameraModels;
+				std::map<int, cv::Mat> images;
+				for(std::map<int, Transform>::iterator iter=cameras.begin(); iter!=cameras.end(); ++iter)
+				{
+					if(_cachedSignatures.contains(iter->first))
+					{
+						const Signature & s = _cachedSignatures.value(iter->first);
+						CameraModel model;
+						if(s.sensorData().stereoCameraModel().isValid())
+						{
+							model = s.sensorData().stereoCameraModel().left();
+						}
+						else if(s.sensorData().cameraModels().size() == 1 && s.sensorData().cameraModels()[0].isValid())
+						{
+							model = s.sensorData().cameraModels()[0];
+						}
+						cv::Mat image = s.sensorData().imageRaw();
+						if(image.empty() && !s.sensorData().imageCompressed().empty())
+						{
+							s.sensorData().uncompressDataConst(&image, 0, 0, 0);
+						}
+						if(!iter->second.isNull() && model.isValid() && !image.empty())
+						{
+							cameraPoses.insert(std::make_pair(iter->first, iter->second));
+							cameraModels.insert(std::make_pair(iter->first, model));
+							images.insert(std::make_pair(iter->first, image));
+						}
+					}
+				}
+				if(cameraPoses.size())
+				{
+					QDir dir(_preferencesDialog->getWorkingDirectory());
+					dir.mkdir("tmp_textures");
+					pcl::TextureMesh::Ptr textureMesh = util3d::createTextureMesh(
+							iter->second,
+							cameraPoses,
+							cameraModels,
+							images,
+							dir.filePath("tmp_textures").toStdString());
+
+					textureMeshes.insert(std::make_pair(iter->first, textureMesh));
+				}
+
+				_initProgressDialog->appendText(tr("TextureMesh %1 created [cameras=%2] (%3/%4).").arg(iter->first).arg(cameraPoses.size()).arg(++i).arg(clouds.size()));
+				_initProgressDialog->incrementStep();
+				QApplication::processEvents();
+			}
+
 		}
 
 		return true;
@@ -4782,14 +4862,9 @@ void MainWindow::exportBundlerFormat()
 						out << t.x() << " " << t.y() << " " << t.z() << "\n";
 					}
 
-					QMessageBox::Button b = QMessageBox::question(this,
+					QMessageBox::question(this,
 							tr("Exporting cameras in Bundler format..."),
-							tr("%1 cameras/images exported to directory \"%2\".\nDo you want to export the cloud/mesh (PLY)?").arg(poses.size()).arg(path),
-							QMessageBox::Yes | QMessageBox::No);
-					if(b == QMessageBox::Yes)
-					{
-						this->exportClouds();
-					}
+							tr("%1 cameras/images exported to directory \"%2\".").arg(poses.size()).arg(path));
 					fileList.close();
 				}
 				fileOut.close();
@@ -4987,7 +5062,11 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes,
 				_initProgressDialog->appendText(tr("Saving the mesh (%1 polygons)...").arg(meshes.begin()->second->polygons.size()));
 
 				bool success =false;
-				if(QFileInfo(path).suffix() == "ply")
+				if(QFileInfo(path).suffix() == "")
+				{
+					path += ".ply";
+				}
+				else if(QFileInfo(path).suffix() == "ply")
 				{
 					if(binaryMode)
 					{
@@ -4998,18 +5077,9 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes,
 						success = pcl::io::savePLYFile(path.toStdString(), *meshes.begin()->second) == 0;
 					}
 				}
-				else if(QFileInfo(path).suffix() == "")
+				else if(QFileInfo(path).suffix() == "obj")
 				{
-					//default ply
-					path += ".ply";
-					if(binaryMode)
-					{
-						success = pcl::io::savePLYFileBinary(path.toStdString(), *meshes.begin()->second) == 0;
-					}
-					else
-					{
-						success = pcl::io::savePLYFile(path.toStdString(), *meshes.begin()->second) == 0;
-					}
+					success = pcl::io::saveOBJFile(path.toStdString(), *meshes.begin()->second) == 0;
 				}
 				else
 				{
@@ -5035,38 +5105,177 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes,
 	}
 	else if(meshes.size())
 	{
-		QString path = QFileDialog::getExistingDirectory(this, tr("Save to (*.ply)..."), _preferencesDialog->getWorkingDirectory(), 0);
+		QString path = QFileDialog::getExistingDirectory(this, tr("Save to (*.ply *.obj)..."), _preferencesDialog->getWorkingDirectory(), 0);
+		if(!path.isEmpty())
+		{
+			bool ok = false;
+			QStringList items;
+			items.push_back("ply");
+			items.push_back("obj");
+			QString suffix = QInputDialog::getItem(this, tr("File format"), tr("Which format?"), items, 0, false, &ok);
+
+			if(ok)
+			{
+				QString prefix = QInputDialog::getText(this, tr("File prefix"), tr("Prefix:"), QLineEdit::Normal, "mesh", &ok);
+
+				if(ok)
+				{
+					for(std::map<int, pcl::PolygonMesh::Ptr>::const_iterator iter=meshes.begin(); iter!=meshes.end(); ++iter)
+					{
+						if(iter->second->polygons.size())
+						{
+							pcl::PolygonMesh mesh;
+							mesh.polygons = iter->second->polygons;
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp(new pcl::PointCloud<pcl::PointXYZRGB>);
+							pcl::fromPCLPointCloud2(iter->second->cloud, *tmp);
+							tmp = util3d::transformPointCloud(tmp, _currentPosesMap.at(iter->first));
+							pcl::toPCLPointCloud2(*tmp, mesh.cloud);
+
+							QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
+							bool success =false;
+							if(suffix == "ply")
+							{
+								if(binaryMode)
+								{
+									success = pcl::io::savePLYFileBinary(pathFile.toStdString(), mesh) == 0;
+								}
+								else
+								{
+									success = pcl::io::savePLYFile(pathFile.toStdString(), mesh) == 0;
+								}
+							}
+							else if(suffix == "obj")
+							{
+								success = pcl::io::saveOBJFile(pathFile.toStdString(), mesh) == 0;
+							}
+							else
+							{
+								UFATAL("Extension not recognized! (%s)", suffix.toStdString().c_str());
+							}
+							if(success)
+							{
+								_initProgressDialog->appendText(tr("Saved mesh %1 (%2 polygons) to %3.")
+										.arg(iter->first).arg(iter->second->polygons.size()).arg(pathFile));
+							}
+							else
+							{
+								_initProgressDialog->appendText(tr("Failed saving mesh %1 (%2 polygons) to %3.")
+										.arg(iter->first).arg(iter->second->polygons.size()).arg(pathFile));
+							}
+						}
+						else
+						{
+							_initProgressDialog->appendText(tr("Mesh %1 is empty!").arg(iter->first));
+						}
+						_initProgressDialog->incrementStep();
+						QApplication::processEvents();
+					}
+				}
+			}
+		}
+	}
+}
+
+void MainWindow::saveTextureMeshes(const std::map<int, pcl::TextureMesh::Ptr> & meshes)
+{
+	if(meshes.size() == 1)
+	{
+		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), _preferencesDialog->getWorkingDirectory()+QDir::separator()+"mesh.obj", tr("Mesh (*.obj)"));
+		if(!path.isEmpty())
+		{
+			if(meshes.begin()->second->tex_materials.size())
+			{
+				_initProgressDialog->appendText(tr("Saving the mesh (with %1 textures)...").arg(meshes.begin()->second->tex_materials.size()));
+
+				bool success =false;
+				if(QFileInfo(path).suffix() == "")
+				{
+					path += ".obj";
+				}
+
+				pcl::TextureMesh mesh;
+				mesh.tex_coordinates = meshes.begin()->second->tex_coordinates;
+				mesh.tex_materials = meshes.begin()->second->tex_materials;
+				QDir(QFileInfo(path).absoluteDir().absolutePath()).mkdir(QFileInfo(path).baseName());
+				for(unsigned int i=0;i<meshes.begin()->second->tex_materials.size(); ++i)
+				{
+					QFileInfo info(mesh.tex_materials[i].tex_file.c_str());
+					QString fullPath = QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName()+QDir::separator()+info.fileName();
+					// relative path
+					mesh.tex_materials[i].tex_file=(QFileInfo(path).baseName()+QDir::separator()+info.fileName()).toStdString();
+					if(!QFile::copy(meshes.begin()->second->tex_materials[i].tex_file.c_str(), fullPath))
+					{
+						_initProgressDialog->appendText(tr("Failed copying texture \"%1\" to \"%2\".")
+								.arg(meshes.begin()->second->tex_materials[i].tex_file.c_str()).arg(fullPath), Qt::darkRed);
+						_initProgressDialog->setAutoClose(false);
+					}
+				}
+				mesh.tex_polygons = meshes.begin()->second->tex_polygons;
+				mesh.cloud = meshes.begin()->second->cloud;
+
+				success = pcl::io::saveOBJFile(path.toStdString(), mesh) == 0;
+				if(success)
+				{
+					_initProgressDialog->incrementStep();
+					_initProgressDialog->appendText(tr("Saving the mesh (with %1 textures)... done.").arg(mesh.tex_materials.size()));
+
+					QMessageBox::information(this, tr("Save successful!"), tr("Mesh saved to \"%1\"").arg(path));
+				}
+				else
+				{
+					QMessageBox::warning(this, tr("Save failed!"), tr("Failed to save to \"%1\"").arg(path));
+				}
+			}
+			else
+			{
+				QMessageBox::warning(this, tr("Save failed!"), tr("No textures..."));
+			}
+		}
+	}
+	else if(meshes.size())
+	{
+		QString path = QFileDialog::getExistingDirectory(this, tr("Save to (*.obj)..."), _preferencesDialog->getWorkingDirectory(), 0);
 		if(!path.isEmpty())
 		{
 			bool ok = false;
 			QString prefix = QInputDialog::getText(this, tr("File prefix"), tr("Prefix:"), QLineEdit::Normal, "mesh", &ok);
-			QString suffix = "ply";
+			QString suffix = "obj";
 
 			if(ok)
 			{
-				for(std::map<int, pcl::PolygonMesh::Ptr>::const_iterator iter=meshes.begin(); iter!=meshes.end(); ++iter)
+				for(std::map<int, pcl::TextureMesh::Ptr>::const_iterator iter=meshes.begin(); iter!=meshes.end(); ++iter)
 				{
-					if(iter->second->polygons.size())
+					QString currentPrefix=prefix+QString::number(iter->first);
+					if(iter->second->tex_materials.size())
 					{
-						pcl::PolygonMesh mesh;
-						mesh.polygons = iter->second->polygons;
-						pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp(new pcl::PointCloud<pcl::PointXYZRGB>);
+						pcl::TextureMesh mesh;
+						mesh.tex_coordinates = iter->second->tex_coordinates;
+						mesh.tex_materials = iter->second->tex_materials;
+						QDir(path).mkdir(currentPrefix);
+						for(unsigned int i=0;i<iter->second->tex_materials.size(); ++i)
+						{
+							QFileInfo info(mesh.tex_materials[i].tex_file.c_str());
+							QString fullPath = path+QDir::separator()+currentPrefix+QDir::separator()+info.fileName();
+							// relative path
+							mesh.tex_materials[i].tex_file=(currentPrefix+QDir::separator()+info.fileName()).toStdString();
+							if(!QFile::copy(iter->second->tex_materials[i].tex_file.c_str(), fullPath))
+							{
+								_initProgressDialog->appendText(tr("Failed copying texture \"%1\" to \"%2\".")
+										.arg(iter->second->tex_materials[i].tex_file.c_str()).arg(fullPath), Qt::darkRed);
+								_initProgressDialog->setAutoClose(false);
+							}
+						}
+						mesh.tex_polygons = iter->second->tex_polygons;
+						pcl::PointCloud<pcl::PointNormal>::Ptr tmp(new pcl::PointCloud<pcl::PointNormal>);
 						pcl::fromPCLPointCloud2(iter->second->cloud, *tmp);
 						tmp = util3d::transformPointCloud(tmp, _currentPosesMap.at(iter->first));
 						pcl::toPCLPointCloud2(*tmp, mesh.cloud);
 
-						QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
+						QString pathFile = path+QDir::separator()+QString("%1.%3").arg(currentPrefix).arg(suffix);
 						bool success =false;
-						if(suffix == "ply")
+						if(suffix == "obj")
 						{
-							if(binaryMode)
-							{
-								success = pcl::io::savePLYFileBinary(pathFile.toStdString(), mesh) == 0;
-							}
-							else
-							{
-								success = pcl::io::savePLYFile(pathFile.toStdString(), mesh) == 0;
-							}
+							success = pcl::io::saveOBJFile(pathFile.toStdString(), mesh) == 0;
 						}
 						else
 						{
@@ -5074,13 +5283,13 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes,
 						}
 						if(success)
 						{
-							_initProgressDialog->appendText(tr("Saved mesh %1 (%2 polygons) to %3.")
-									.arg(iter->first).arg(iter->second->polygons.size()).arg(pathFile));
+							_initProgressDialog->appendText(tr("Saved mesh %1 (%2 textures) to %3.")
+									.arg(iter->first).arg(iter->second->tex_materials.size()-1).arg(pathFile));
 						}
 						else
 						{
-							_initProgressDialog->appendText(tr("Failed saving mesh %1 (%2 polygons) to %3.")
-									.arg(iter->first).arg(iter->second->polygons.size()).arg(pathFile));
+							_initProgressDialog->appendText(tr("Failed saving mesh %1 (%2 textures) to %3.")
+									.arg(iter->first).arg(iter->second->tex_materials.size()-1).arg(pathFile), Qt::darkRed);
 						}
 					}
 					else
@@ -5203,17 +5412,14 @@ void MainWindow::saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::P
 	}
 }
 
-std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr > MainWindow::getClouds(
+std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
 		const std::map<int, Transform> & poses,
 		bool regenerateClouds,
 		int regenerateDecimation,
 		float regenerateVoxelSize,
-		float regenerateMaxDepth,
-		int normalKSearch,
-		bool mls,
-		float mlsRadius) const
+		float regenerateMaxDepth) const
 {
-	std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clouds;
+	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 	int i=0;
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
@@ -5265,28 +5471,7 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr > MainWindow::getClou
 
 			if(cloud->size())
 			{
-				if(mls)
-				{
-					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals = util3d::computeNormalsSmoothed(
-							cloud,
-							mlsRadius,
-							true,
-							regenerateVoxelSize);
-
-					if(regenerateVoxelSize)
-					{
-						cloudWithNormals = util3d::voxelize(
-								cloudWithNormals,
-								regenerateVoxelSize);
-					}
-
-					cloud->clear();
-					pcl::copyPointCloud(*cloudWithNormals, *cloud);
-				}
-
-				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals = util3d::computeNormals(cloud, _exportDialog->getMeshNormalKSearch());
-
-				clouds.insert(std::make_pair(iter->first, cloudWithNormals));
+				clouds.insert(std::make_pair(iter->first, cloud));
 				inserted = true;
 			}
 		}

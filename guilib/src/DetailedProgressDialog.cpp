@@ -69,6 +69,8 @@ DetailedProgressDialog::DetailedProgressDialog(QWidget *parent, Qt::WindowFlags 
 	hLayout->addWidget(_closeWhenDoneCheckBox);
 	hLayout->addWidget(_closeButton);
 	this->setLayout(layout);
+
+	this->setModal(true);
 }
 
 DetailedProgressDialog::~DetailedProgressDialog()
@@ -78,7 +80,10 @@ DetailedProgressDialog::~DetailedProgressDialog()
 
 void DetailedProgressDialog::setAutoClose(bool on, int delayedClosingTimeSec)
 {
-	_delayedClosingTime = delayedClosingTimeSec;
+	if(delayedClosingTimeSec >= 0)
+	{
+		_delayedClosingTime = delayedClosingTimeSec;
+	}
 	_closeWhenDoneCheckBox->setChecked(on);
 }
 
@@ -146,7 +151,6 @@ void DetailedProgressDialog::closeEvent(QCloseEvent *event)
 	if(_progressBar->value() == _progressBar->maximum())
 	{
 		event->accept();
-		_closeWhenDoneCheckBox->setChecked(true);
 	}
 	else
 	{
