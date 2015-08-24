@@ -84,6 +84,8 @@ void RTABMAP_EXP adjustNormalsToViewPoints(
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		int k = 0); // optional: recompute normal with k neighbors (min k=3)
 
+pcl::PolygonMesh::Ptr RTABMAP_EXP meshDecimation(const pcl::PolygonMesh::Ptr & mesh, float factor);
+
 template<typename pointT>
 std::vector<pcl::Vertices> normalizePolygonsSide(
 		const pcl::PointCloud<pointT> & cloud,

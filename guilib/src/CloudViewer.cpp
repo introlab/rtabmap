@@ -538,6 +538,25 @@ bool CloudViewer::addCloud(
 
 bool CloudViewer::addCloudMesh(
 	const std::string & id,
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+	const std::vector<pcl::Vertices> & polygons,
+	const Transform & pose)
+{
+	if(!_addedClouds.contains(id))
+	{
+		UDEBUG("Adding %s with %d points and %d polygons", id.c_str(), (int)cloud->size(), (int)polygons.size());
+		if(_visualizer->addPolygonMesh<pcl::PointXYZ>(cloud, polygons, id))
+		{
+			_visualizer->updatePointCloudPose(id, pose.toEigen3f());
+			_addedClouds.insert(id, pose);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool CloudViewer::addCloudMesh(
+	const std::string & id,
 	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 	const std::vector<pcl::Vertices> & polygons,
 	const Transform & pose)

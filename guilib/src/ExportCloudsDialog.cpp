@@ -70,6 +70,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->groupBox_gp3, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gp3Mu, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_meshDecimationFactor, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_textureMapping, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 }
 
@@ -117,6 +118,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh", this->getMesh());
 	settings.setValue("mesh_radius", this->getMeshGp3Radius());
 	settings.setValue("mesh_mu", this->getMeshGp3Mu());
+	settings.setValue("mesh_decimation_factor", this->getMeshDecimationFactor());
 
 	settings.setValue("mesh_texture", this->getMeshTexture());
 
@@ -157,6 +159,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->groupBox_gp3->setChecked(settings.value("mesh", this->getMesh()).toBool());
 	_ui->doubleSpinBox_gp3Radius->setValue(settings.value("mesh_radius", this->getMeshGp3Radius()).toDouble());
 	_ui->doubleSpinBox_gp3Mu->setValue(settings.value("mesh_mu", this->getMeshGp3Mu()).toDouble());
+	_ui->doubleSpinBox_meshDecimationFactor->setValue(settings.value("mesh_decimation_factor", this->getMeshDecimationFactor()).toDouble());
 
 	_ui->checkBox_textureMapping->setChecked(settings.value("mesh_texture", this->getGenerate()).toBool());
 
@@ -195,7 +198,10 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->groupBox_gp3->setChecked(false);
 	_ui->doubleSpinBox_gp3Radius->setValue(0.04);
 	_ui->doubleSpinBox_gp3Mu->setValue(2.5);
+	_ui->doubleSpinBox_meshDecimationFactor->setValue(1.0);
 	_ui->checkBox_textureMapping->setChecked(false);
+
+	this->update();
 }
 
 void ExportCloudsDialog::setSaveButton()
@@ -315,6 +321,10 @@ double ExportCloudsDialog::getMeshGp3Radius() const
 double ExportCloudsDialog::getMeshGp3Mu() const
 {
 	return _ui->doubleSpinBox_gp3Mu->value();
+}
+double ExportCloudsDialog::getMeshDecimationFactor() const
+{
+	return _ui->doubleSpinBox_meshDecimationFactor->value();
 }
 bool ExportCloudsDialog::getMeshTexture() const
 {

@@ -137,6 +137,12 @@ public:
 
 	bool addCloudMesh(
 			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+			const std::vector<pcl::Vertices> & polygons,
+			const Transform & pose = Transform::getIdentity());
+
+	bool addCloudMesh(
+			const std::string & id,
 			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 			const std::vector<pcl::Vertices> & polygons,
 			const Transform & pose = Transform::getIdentity());

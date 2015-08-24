@@ -36,8 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/features/normal_3d.h>
 #include <pcl/surface/mls.h>
 #include <pcl/surface/texture_mapping.h>
-
-#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/surface/vtk_smoothing/vtk_mesh_quadric_decimation.h>
 
 namespace rtabmap
 {
@@ -379,6 +378,16 @@ void adjustNormalsToViewPoints(
 			}
 		}
 	}
+}
+
+pcl::PolygonMesh::Ptr meshDecimation(const pcl::PolygonMesh::Ptr & mesh, float factor)
+{
+	pcl::MeshQuadricDecimationVTK mqd;
+	mqd.setTargetReductionFactor(factor);
+	mqd.setInputMesh(mesh);
+	pcl::PolygonMesh::Ptr output(new pcl::PolygonMesh);
+	mqd.process (*output);
+	return output;
 }
 
 }

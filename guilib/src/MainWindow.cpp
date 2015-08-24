@@ -4495,9 +4495,27 @@ void MainWindow::viewClouds()
 			{
 				_initProgressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)...").arg(iter->first).arg(iter->second->polygons.size()));
 				_initProgressDialog->incrementStep();
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-				pcl::fromPCLPointCloud2(iter->second->cloud, *cloud);
-				viewer->addCloudMesh(uFormat("mesh%d",iter->first), cloud, iter->second->polygons, iter->first>0?_currentPosesMap.at(iter->first):Transform::getIdentity());
+				bool isRGB = false;
+				for(unsigned int i=0; i<iter->second->cloud.fields.size(); ++i)
+				{
+					if(iter->second->cloud.fields[i].name.compare("rgb") == 0)
+					{
+						isRGB=true;
+						break;
+					}
+				}
+				if(isRGB)
+				{
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+					pcl::fromPCLPointCloud2(iter->second->cloud, *cloud);
+					viewer->addCloudMesh(uFormat("mesh%d",iter->first), cloud, iter->second->polygons, iter->first>0?_currentPosesMap.at(iter->first):Transform::getIdentity());
+				}
+				else
+				{
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+					pcl::fromPCLPointCloud2(iter->second->cloud, *cloud);
+					viewer->addCloudMesh(uFormat("mesh%d",iter->first), cloud, iter->second->polygons, iter->first>0?_currentPosesMap.at(iter->first):Transform::getIdentity());
+				}
 				_initProgressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)... done.").arg(iter->first).arg(iter->second->polygons.size()));
 				QApplication::processEvents();
 			}
@@ -4684,9 +4702,16 @@ bool MainWindow::getExportedClouds(
 				++iter)
 			{
 				pcl::PolygonMesh::Ptr mesh = util3d::createMesh(iter->second, _exportDialog->getMeshGp3Radius(), _exportDialog->getMeshGp3Mu());
+				_initProgressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(mesh->polygons.size()).arg(++i).arg(clouds.size()));
+
+				if(_exportDialog->getMeshDecimationFactor() < 1.0)
+				{
+					mesh = util3d::meshDecimation(mesh, (float)_exportDialog->getMeshDecimationFactor());
+					_initProgressDialog->appendText(tr("Mesh %1 decimation (factor=%2) to %3 polygons").arg(iter->first).arg(_exportDialog->getMeshDecimationFactor()).arg(mesh->polygons.size()));
+				}
+
 				meshes.insert(std::make_pair(iter->first, mesh));
 
-				_initProgressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(mesh->polygons.size()).arg(++i).arg(clouds.size()));
 				_initProgressDialog->incrementStep();
 				QApplication::processEvents();
 			}
@@ -5126,10 +5151,29 @@ void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes,
 						{
 							pcl::PolygonMesh mesh;
 							mesh.polygons = iter->second->polygons;
-							pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp(new pcl::PointCloud<pcl::PointXYZRGB>);
-							pcl::fromPCLPointCloud2(iter->second->cloud, *tmp);
-							tmp = util3d::transformPointCloud(tmp, _currentPosesMap.at(iter->first));
-							pcl::toPCLPointCloud2(*tmp, mesh.cloud);
+							bool isRGB = false;
+							for(unsigned int i=0; i<iter->second->cloud.fields.size(); ++i)
+							{
+								if(iter->second->cloud.fields[i].name.compare("rgb") == 0)
+								{
+									isRGB=true;
+									break;
+								}
+							}
+							if(isRGB)
+							{
+								pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp(new pcl::PointCloud<pcl::PointXYZRGB>);
+								pcl::fromPCLPointCloud2(iter->second->cloud, *tmp);
+								tmp = util3d::transformPointCloud(tmp, _currentPosesMap.at(iter->first));
+								pcl::toPCLPointCloud2(*tmp, mesh.cloud);
+							}
+							else
+							{
+								pcl::PointCloud<pcl::PointXYZ>::Ptr tmp(new pcl::PointCloud<pcl::PointXYZ>);
+								pcl::fromPCLPointCloud2(iter->second->cloud, *tmp);
+								tmp = util3d::transformPointCloud(tmp, _currentPosesMap.at(iter->first));
+								pcl::toPCLPointCloud2(*tmp, mesh.cloud);
+							}
 
 							QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
 							bool success =false;

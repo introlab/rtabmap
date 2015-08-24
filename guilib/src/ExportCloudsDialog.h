@@ -77,6 +77,7 @@ public:
 	bool getMesh() const;
 	double getMeshGp3Radius() const;
 	double getMeshGp3Mu() const;
+	double getMeshDecimationFactor() const;
 	bool getMeshTexture() const;
 
 signals:
