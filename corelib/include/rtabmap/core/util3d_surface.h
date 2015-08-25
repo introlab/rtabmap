@@ -83,8 +83,7 @@ void RTABMAP_EXP adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
-		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
-		int k = 0); // optional: recompute normal with k neighbors (min k=3)
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud);
 
 pcl::PolygonMesh::Ptr RTABMAP_EXP meshDecimation(const pcl::PolygonMesh::Ptr & mesh, float factor);
 

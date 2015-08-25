@@ -327,16 +327,12 @@ void adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
-		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
-		int k)
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud)
 {
 	if(poses.size() && rawCloud->size() && rawCloud->size() == rawCameraIndices.size() && cloud->size())
 	{
 		pcl::search::KdTree<pcl::PointXYZ>::Ptr rawTree (new pcl::search::KdTree<pcl::PointXYZ>);
 		rawTree->setInputCloud (rawCloud);
-
-		pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGBNormal>);
-		tree->setInputCloud (cloud);
 
 		for(unsigned int i=0; i<cloud->size(); ++i)
 		{
@@ -350,23 +346,6 @@ void adjustNormalsToViewPoints(
 				pcl::PointXYZ viewpoint(p.x(), p.y(), p.z());
 				Eigen::Vector3f v = viewpoint.getVector3fMap() - cloud->points[i].getVector3fMap();
 
-				//compute point normal
-				if(k >= 3)
-				{
-					tree->nearestKSearch(cloud->points[i], k, indices, dist);
-					if(indices.size() >= 3)
-					{
-						Eigen::Vector4f planeParameters;
-						float curvature;
-						pcl::computePointNormal(*cloud, indices, planeParameters, curvature);
-
-						//update normal
-						cloud->points[i].normal_x = planeParameters[0];
-						cloud->points[i].normal_y = planeParameters[1];
-						cloud->points[i].normal_z = planeParameters[2];
-					}
-				}
-
 				Eigen::Vector3f n(cloud->points[i].normal_x, cloud->points[i].normal_y, cloud->points[i].normal_z);
 
 				float result = v.dot(n);
@@ -377,6 +356,10 @@ void adjustNormalsToViewPoints(
 					cloud->points[i].normal_y *= -1.0f;
 					cloud->points[i].normal_z *= -1.0f;
 				}
+			}
+			else
+			{
+				UWARN("Not found camera viewpoint for point %d", i);
 			}
 		}
 	}

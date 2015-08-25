@@ -4720,21 +4720,11 @@ bool MainWindow::getExportedClouds(
 			if(_exportDialog->getAssemble())
 			{
 				_initProgressDialog->appendText(tr("Update %1 normals with %2 camera views...").arg(cloudWithNormals->size()).arg(poses.size()));
-				pcl::PointCloud<pcl::PointXYZ>::Ptr viewpoints(new pcl::PointCloud<pcl::PointXYZ>);
-				viewpoints->resize(poses.size());
-				int oi=0;
-				for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-				{
-					(*viewpoints)[oi].x = iter->second.x();
-					(*viewpoints)[oi].y = iter->second.y();
-					(*viewpoints)[oi++].z = iter->second.z();
-				}
 				util3d::adjustNormalsToViewPoints(
 						poses,
 						rawAssembledCloud,
 						rawCameraIndices,
-						cloudWithNormals,
-						_exportDialog->getNormalKSearch());
+						cloudWithNormals);
 			}
 			cloudsWithNormals.insert(std::make_pair(iter->first, cloudWithNormals));
 
