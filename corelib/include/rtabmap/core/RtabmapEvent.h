@@ -65,7 +65,7 @@ public:
 			kCmdDumpMemory,
 			kCmdDumpPrediction,
 			kCmdGenerateDOTGraph, // params: [bool] global, [string] path, if global=false: [int] id, [int] margin
-			kCmdExportPoses,      // params: [bool] global, [bool] optimized, [string] path, [int] type (0=KITTI/raw format, 1=RGBD-SLAM format, 2=TORO)
+			kCmdExportPoses,      // params: [bool] global, [bool] optimized, [string] path, [int] type (0=raw format, 1=RGBD-SLAM format, 2=KITTI format, 3=TORO)
 			kCmdCleanDataBuffer,
 			kCmdPublish3DMap,     // params: [bool] global, [bool] optimized, [bool] graphOnly
 			kCmdTriggerNewMap,

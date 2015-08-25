@@ -304,8 +304,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionAbout, SIGNAL(triggered()), _aboutDialog , SLOT(exec()));
 	connect(_ui->actionPrint_loop_closure_IDs_to_console, SIGNAL(triggered()), this, SLOT(printLoopClosureIds()));
 	connect(_ui->actionGenerate_map, SIGNAL(triggered()), this , SLOT(generateGraphDOT()));
-	connect(_ui->actionKITTI_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesKITTI()));
+	connect(_ui->actionRaw_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRaw()));
 	connect(_ui->actionRGBD_SLAM_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAM()));
+	connect(_ui->actionKITTI_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesKITTI()));
 	connect(_ui->actionTORO_graph, SIGNAL(triggered()), this , SLOT(exportPosesTORO()));
 	connect(_ui->actionDelete_memory, SIGNAL(triggered()), this , SLOT(deleteMemory()));
 	connect(_ui->actionDownload_all_clouds, SIGNAL(triggered()), this , SLOT(downloadAllClouds()));
@@ -3155,7 +3156,7 @@ void MainWindow::generateGraphDOT()
 	}
 }
 
-void MainWindow::exportPosesKITTI()
+void MainWindow::exportPosesRaw()
 {
 	exportPoses(0);
 }
@@ -3163,9 +3164,13 @@ void MainWindow::exportPosesRGBDSLAM()
 {
 	exportPoses(1);
 }
-void MainWindow::exportPosesTORO()
+void MainWindow::exportPosesKITTI()
 {
 	exportPoses(2);
+}
+void MainWindow::exportPosesTORO()
+{
+	exportPoses(3);
 }
 
 void MainWindow::exportPoses(int format)
@@ -3204,14 +3209,14 @@ void MainWindow::exportPoses(int format)
 
 		if(_exportPosesFileName[format].isEmpty())
 		{
-			_exportPosesFileName[format] = _preferencesDialog->getWorkingDirectory() + QDir::separator() + (format==2?"toro.graph":"poses.txt");
+			_exportPosesFileName[format] = _preferencesDialog->getWorkingDirectory() + QDir::separator() + (format==3?"toro.graph":"poses.txt");
 		}
 
 		QString path = QFileDialog::getSaveFileName(
 				this,
 				tr("Save File"),
 				_exportPosesFileName[format],
-				format == 2?tr("TORO file (*.graph)"):tr("Text file (*.txt)"));
+				format == 3?tr("TORO file (*.graph)"):tr("Text file (*.txt)"));
 
 		if(!path.isEmpty())
 		{
@@ -3222,7 +3227,7 @@ void MainWindow::exportPoses(int format)
 			_ui->dockWidget_console->show();
 			_ui->widget_console->appendMsg(
 					QString("%1 saved (global=%2, optimized=%3)... %4")
-					.arg(format == 2?"TORO graph":"Poses")
+					.arg(format == 3?"TORO graph":"Poses")
 					.arg(global?"true":"false")
 					.arg(optimized?"true":"false")
 					.arg(_exportPosesFileName[format]));

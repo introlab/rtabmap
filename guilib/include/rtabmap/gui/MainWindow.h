@@ -128,8 +128,9 @@ private slots:
 	void notifyNoMoreImages();
 	void printLoopClosureIds();
 	void generateGraphDOT();
-	void exportPosesKITTI();
+	void exportPosesRaw();
 	void exportPosesRGBDSLAM();
+	void exportPosesKITTI();
 	void exportPosesTORO();
 	void postProcessing();
 	void deleteMemory();

@@ -60,8 +60,9 @@
       <property name="title">
        <string>Export poses...</string>
       </property>
-      <addaction name="actionKITTI_format_txt"/>
+      <addaction name="actionRaw_format_txt"/>
       <addaction name="actionRGBD_SLAM_format_txt"/>
+      <addaction name="actionKITTI_format_txt"/>
       <addaction name="actionTORO_graph"/>
      </widget>
      <addaction name="actionOpen_working_directory"/>
@@ -1251,6 +1252,11 @@
   <action name="actionExport_cameras_in_Bundle_format_out">
    <property name="text">
     <string>Export cameras in Bundler format (*.out)...</string>
+   </property>
+  </action>
+  <action name="actionRaw_format_txt">
+   <property name="text">
+    <string>Raw format (*.txt)</string>
    </property>
   </action>
  </widget>

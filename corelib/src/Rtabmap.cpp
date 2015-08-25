@@ -735,7 +735,7 @@ void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global,
 			_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, global);
 		}
 
-		if(type==2) // TORO
+		if(type==3) // TORO
 		{
 			graph::TOROOptimizer::saveGraph(path, poses, constraints);
 		}
@@ -785,11 +785,22 @@ void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global,
 					}
 					else // default / KITTI format
 					{
+						Transform pose = iter->second;
+						if(type == 2)
+						{
+							// for KITTI, we need to remove optical rotation
+							// z pointing front, x left, y down
+							Transform t( 0, 0, 1, 0,
+									    -1, 0, 0, 0,
+									     0,-1, 0, 0);
+							pose = t.inverse() * pose * t;
+						}
+
 						// Format: r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz
-						const float * p = (const float *)(*iter).second.data();
+						const float * p = (const float *)pose.data();
 
 						fprintf(fout, "%f", p[0]);
-						for(int i=1; i<(*iter).second.size(); i++)
+						for(int i=1; i<pose.size(); i++)
 						{
 							fprintf(fout, " %f", p[i]);
 						}
