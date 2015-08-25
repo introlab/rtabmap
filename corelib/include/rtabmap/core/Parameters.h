@@ -379,9 +379,9 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccReextract, MaxWords, 	int, 1000, 		"0 no limits.");
 	RTABMAP_PARAM(LccReextract, MaxDepth, 	float, 0.0,     "Max depth of the words (0 means no limit).");
 
-	RTABMAP_PARAM(LccIcp3, Decimation,      int, 8, 		"Depth image decimation.");
-	RTABMAP_PARAM(LccIcp3, MaxDepth,        float, 4.0, 	"Max cloud depth.");
-	RTABMAP_PARAM(LccIcp3, VoxelSize,       float, 0.01, 	"Voxel size to be used for ICP computation.");
+	RTABMAP_PARAM(LccIcp3, Decimation,      int, 4, 		"Depth image decimation.");
+	RTABMAP_PARAM(LccIcp3, MaxDepth,        float, 3.0, 	"Max cloud depth.");
+	RTABMAP_PARAM(LccIcp3, VoxelSize,       float, 0.025, 	"Voxel size to be used for ICP computation.");
 	RTABMAP_PARAM(LccIcp3, Samples,         int, 0, 		"Random samples to be used for ICP computation. Not used if voxelSize is set.");
 	RTABMAP_PARAM(LccIcp3, MaxCorrespondenceDistance, float, 0.05, "ICP 3D: Max distance for point correspondences.");
 	RTABMAP_PARAM(LccIcp3, Iterations,      int, 30, 		"Max iterations.");
