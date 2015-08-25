@@ -4782,11 +4782,11 @@ bool MainWindow::getExportedClouds(
 				std::map<int, Transform> cameraPoses;
 				std::map<int, CameraModel> cameraModels;
 				std::map<int, cv::Mat> images;
-				for(std::map<int, Transform>::iterator iter=cameras.begin(); iter!=cameras.end(); ++iter)
+				for(std::map<int, Transform>::iterator jter=cameras.begin(); jter!=cameras.end(); ++jter)
 				{
-					if(_cachedSignatures.contains(iter->first))
+					if(_cachedSignatures.contains(jter->first))
 					{
-						const Signature & s = _cachedSignatures.value(iter->first);
+						const Signature & s = _cachedSignatures.value(jter->first);
 						CameraModel model;
 						if(s.sensorData().stereoCameraModel().isValid())
 						{
@@ -4801,11 +4801,11 @@ bool MainWindow::getExportedClouds(
 						{
 							s.sensorData().uncompressDataConst(&image, 0, 0, 0);
 						}
-						if(!iter->second.isNull() && model.isValid() && !image.empty())
+						if(!jter->second.isNull() && model.isValid() && !image.empty())
 						{
-							cameraPoses.insert(std::make_pair(iter->first, iter->second));
-							cameraModels.insert(std::make_pair(iter->first, model));
-							images.insert(std::make_pair(iter->first, image));
+							cameraPoses.insert(std::make_pair(jter->first, jter->second));
+							cameraModels.insert(std::make_pair(jter->first, model));
+							images.insert(std::make_pair(jter->first, image));
 						}
 					}
 				}

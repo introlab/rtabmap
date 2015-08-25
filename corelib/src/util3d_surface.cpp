@@ -171,7 +171,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 
 	// Create materials for each texture (and one extra for occluded faces)
 	textureMesh->tex_materials.resize (cameras.size () + 1);
-	for(int i = 0 ; i <= cameras.size() ; ++i)
+	for(unsigned int i = 0 ; i <= cameras.size() ; ++i)
 	{
 		pcl::TexMaterial mesh_material;
 		mesh_material.tex_Ka.r = 0.2f;

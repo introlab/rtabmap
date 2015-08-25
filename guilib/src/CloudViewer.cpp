@@ -597,6 +597,7 @@ bool CloudViewer::addCloudTextureMesh(
 	const pcl::TextureMesh::Ptr & textureMesh,
 	const Transform & pose)
 {
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 	if(!_addedClouds.contains(id))
 	{
 		UDEBUG("Adding %s", id.c_str());
@@ -607,6 +608,8 @@ bool CloudViewer::addCloudTextureMesh(
 			return true;
 		}
 	}
+#endif
+	// not implemented on lower version of PCL
 	return false;
 }
 
