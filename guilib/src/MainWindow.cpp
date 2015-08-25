@@ -1752,7 +1752,6 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 							_preferencesDialog->getCloudVoxelSize(0),
 							_preferencesDialog->getSubstractFilteringMinPts());
 					UDEBUG("Filtering %d from %d -> %d", (int)previousCloud->size(), (int)cloud->size(), (int)cloudFiltered->size());
-					_createdClouds.at(link.from()) = cloudFiltered;
 				}
 			}
 		}

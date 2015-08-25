@@ -1014,7 +1014,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		for(int i=0; i<2; ++i)
 		{
 			_3dRenderingShowClouds[i]->setChecked(true);
-			_3dRenderingVoxelSize[i]->setValue(0.00);
+			_3dRenderingVoxelSize[i]->setValue(i==0?0.01:0.0); // voxel of 1 cm for cloud substracting
 			_3dRenderingDecimation[i]->setValue(i==0?4:2);
 			_3dRenderingMaxDepth[i]->setValue(i==1?0.0:4.0);
 			_3dRenderingShowScans[i]->setChecked(true);
@@ -1036,10 +1036,10 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_mlsRadius->setValue(0.04);
 
 		_ui->checkBox_nodeFiltering->setChecked(false);
-		_ui->checkBox_subtractFiltering->setChecked(false);
+		_ui->checkBox_subtractFiltering->setChecked(true);
 		_ui->doubleSpinBox_cloudFilterRadius->setValue(0.1);
 		_ui->doubleSpinBox_cloudFilterAngle->setValue(30);
-		_ui->spinBox_substractFilteringMinPts->setValue(0);
+		_ui->spinBox_substractFilteringMinPts->setValue(1);
 
 		_ui->checkBox_map_shown->setChecked(false);
 		_ui->doubleSpinBox_map_resolution->setValue(0.05);
