@@ -25,52 +25,54 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef DETAILEDPROGRESSDIALOG_H_
-#define DETAILEDPROGRESSDIALOG_H_
+#ifndef CONSOLEWIDGET_H_
+#define CONSOLEWIDGET_H_
 
-#include <QDialog>
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
-class QLabel;
-class QTextEdit;
-class QProgressBar;
-class QPushButton;
-class QCheckBox;
+#include <rtabmap/utilite/UEventsHandler.h>
+#include <QWidget>
+#include <QtCore/QMutex>
+#include <QtCore/QTimer>
+#include <QtCore/QTime>
+
+class Ui_consoleWidget;
+class QMessageBox;
+class QTextCursor;
 
 namespace rtabmap {
 
-class DetailedProgressDialog : public QDialog
+class RTABMAPGUI_EXP ConsoleWidget : public QWidget, public UEventsHandler
 {
-	Q_OBJECT
+	Q_OBJECT;
 
 public:
-	DetailedProgressDialog(QWidget *parent = 0, Qt::WindowFlags flags = 0);
-	virtual ~DetailedProgressDialog();
-
-	void setEndMessage(const QString & message) {_endMessage = message;} // Message shown when the progress is finished
-	void setValue(int value);
-	int maximumSteps() const;
-	void setMaximumSteps(int steps);
-	void setAutoClose(bool on, int delayedClosingTimeMsec = -1);
-
-protected:
-	virtual void closeEvent(QCloseEvent * event);
+	ConsoleWidget(QWidget * parent = 0);
+	virtual ~ConsoleWidget();
 
 public slots:
-	void appendText(const QString & text ,const QColor & color = Qt::black);
-	void incrementStep();
-	void clear();
-	void resetProgress();
+	void appendMsg(const QString & msg, int level = 1);
+
+signals:
+	void msgReceived(const QString &, int);
+
+private slots:
+	void flushConsole();
+
+protected:
+	virtual void handleEvent(UEvent * anEvent);
 
 private:
-	QLabel * _text;
-	QTextEdit * _detailedText;
-	QProgressBar * _progressBar;
-	QPushButton * _closeButton;
-	QCheckBox * _closeWhenDoneCheckBox;
-	QString _endMessage;
-	int _delayedClosingTime; // sec
+	Ui_consoleWidget * _ui;
+	QMessageBox * _errorMessage;
+	QMutex _errorMessageMutex;
+	QMutex _msgListMutex;
+	QTimer _timer;
+	QTime _time;
+	QTextCursor * _textCursor;
+	QList<QPair<QString, int> > _msgList;
 };
 
 }
 
-#endif /* DETAILEDPROGRESSDIALOG_H_ */
+#endif /* CONSOLEWIDGET_H_ */

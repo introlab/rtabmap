@@ -8,10 +8,12 @@
 #ifndef IMAGEVIEW_H_
 #define IMAGEVIEW_H_
 
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+
 #include <QWidget>
 #include <QtGui/QPainter>
 
-class UImageView : public QWidget
+class RTABMAPGUI_EXP UImageView : public QWidget
 {
 	Q_OBJECT;
 public:

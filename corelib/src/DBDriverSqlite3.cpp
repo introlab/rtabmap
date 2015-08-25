@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "DBDriverSqlite3.h"
 
 #include "rtabmap/core/Signature.h"
-#include "VisualWord.h"
+#include "rtabmap/core/VisualWord.h"
 #include "rtabmap/core/VWDictionary.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Compression.h"

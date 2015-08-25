@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QCloseEvent>
 
 #include <rtabmap/core/CameraEvent.h>
-#include <rtabmap/gui/UCv2Qt.h>
+#include <rtabmap/utilite/UCv2Qt.h>
 
 #include <rtabmap/utilite/ULogger.h>
 

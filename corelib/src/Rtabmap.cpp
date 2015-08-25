@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/VWDictionary.h"
-#include "BayesFilter.h"
+#include "rtabmap/core/BayesFilter.h"
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UFile.h>

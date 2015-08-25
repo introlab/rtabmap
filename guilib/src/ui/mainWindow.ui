@@ -1258,7 +1258,7 @@
   <customwidget>
    <class>UPlot</class>
    <extends>QWidget</extends>
-   <header>utilite/UPlot.h</header>
+   <header>../include/rtabmap/utilite/UPlot.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
@@ -1269,13 +1269,13 @@
   <customwidget>
    <class>rtabmap::StatsToolBox</class>
    <extends>QWidget</extends>
-   <header>StatsToolBox.h</header>
+   <header>../include/rtabmap/gui/StatsToolBox.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>rtabmap::ConsoleWidget</class>
    <extends>QWidget</extends>
-   <header>ConsoleWidget.h</header>
+   <header>../include/rtabmap/gui/ConsoleWidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
@@ -1299,7 +1299,7 @@
   <customwidget>
    <class>rtabmap::GraphViewer</class>
    <extends>QGraphicsView</extends>
-   <header>GraphViewer.h</header>
+   <header>../include/rtabmap/gui/GraphViewer.h</header>
   </customwidget>
  </customwidgets>
  <resources>

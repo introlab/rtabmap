@@ -20,6 +20,8 @@
 #ifndef UPLOT_H_
 #define UPLOT_H_
 
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+
 #include <QFrame>
 #include <QtCore/QList>
 #include <QtCore/QMap>
@@ -40,7 +42,7 @@ class QFormLayout;
  * UPlotItem is a QGraphicsEllipseItem and can be inherited to do custom behaviors
  * on an hoverEnterEvent() for example.
  */
-class  UPlotItem : public QGraphicsEllipseItem
+class RTABMAPGUI_EXP UPlotItem : public QGraphicsEllipseItem
 {
 public:
 	/**
@@ -86,7 +88,7 @@ class UPlot;
 /**
  * UPlotCurve is a curve used to hold data shown in a UPlot.
  */
-class  UPlotCurve : public QObject
+class RTABMAPGUI_EXP UPlotCurve : public QObject
 {
 	Q_OBJECT
 
@@ -255,7 +257,7 @@ private:
 /**
  * A special UPlotCurve that shows as a line at the specified value, spanning all the UPlot.
  */
-class  UPlotCurveThreshold : public UPlotCurve
+class RTABMAPGUI_EXP UPlotCurveThreshold : public UPlotCurve
 {
 	Q_OBJECT
 
@@ -288,7 +290,7 @@ private:
 /**
  * The UPlot axis object.
  */
-class  UPlotAxis : public QWidget
+class RTABMAPGUI_EXP UPlotAxis : public QWidget
 {
 public:
 	/**
@@ -338,7 +340,7 @@ private:
 /**
  * The UPlot legend item. Used internally by UPlot.
  */
-class  UPlotLegendItem : public QPushButton
+class RTABMAPGUI_EXP UPlotLegendItem : public QPushButton
 {
 	Q_OBJECT
 
@@ -378,7 +380,7 @@ private:
 /**
  * The UPlot legend. Used internally by UPlot.
  */
-class  UPlotLegend : public QWidget
+class RTABMAPGUI_EXP UPlotLegend : public QWidget
 {
 	Q_OBJECT
 
@@ -420,7 +422,7 @@ private:
 /**
  * Orientable QLabel. Inherit QLabel and let you to specify the orientation.
  */
-class  UOrientableLabel : public QLabel
+class RTABMAPGUI_EXP UOrientableLabel : public QLabel
 {
 	Q_OBJECT
 
@@ -476,7 +478,7 @@ private:
  *
  *
  */
-class  UPlot : public QWidget
+class RTABMAPGUI_EXP UPlot : public QWidget
 {
 	Q_OBJECT
 

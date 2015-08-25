@@ -2317,7 +2317,7 @@
   <customwidget>
    <class>rtabmap::GraphViewer</class>
    <extends>QGraphicsView</extends>
-   <header>GraphViewer.h</header>
+   <header>rtabmap/gui/GraphViewer.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

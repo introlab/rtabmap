@@ -9797,7 +9797,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
   <customwidget>
    <class>UPlot</class>
    <extends>QWidget</extends>
-   <header>utilite/UPlot.h</header>
+   <header>rtabmap/utilite/UPlot.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "GraphViewer.h"
+#include "rtabmap/gui/GraphViewer.h"
 
 #include <QGraphicsView>
 #include <QVBoxLayout>
@@ -45,7 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QUrl>
 
 #include <rtabmap/core/util3d.h>
-#include <rtabmap/gui/UCv2Qt.h>
+#include <rtabmap/utilite/UCv2Qt.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/ULogger.h>
 

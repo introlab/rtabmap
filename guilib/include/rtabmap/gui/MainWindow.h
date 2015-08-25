@@ -63,7 +63,7 @@ class AboutDialog;
 class Plot;
 class PdfPlotCurve;
 class StatsToolBox;
-class DetailedProgressDialog;
+class ProgressDialog;
 class TwistGridWidget;
 class ExportCloudsDialog;
 class PostProcessingDialog;
@@ -297,7 +297,7 @@ private:
 	PdfPlotCurve * _likelihoodCurve;
 	PdfPlotCurve * _rawLikelihoodCurve;
 
-	DetailedProgressDialog * _initProgressDialog;
+	ProgressDialog * _initProgressDialog;
 
 	QString _graphSavingFileName;
 	QMap<int, QString> _exportPosesFileName;

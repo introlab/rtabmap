@@ -62,7 +62,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/CameraViewer.h"
 #include "rtabmap/gui/CloudViewer.h"
 #include "rtabmap/gui/ImageView.h"
-#include "GraphViewer.h"
+#include "rtabmap/gui/GraphViewer.h"
 #include "ExportCloudsDialog.h"
 #include "PostProcessingDialog.h"
 #include "CreateSimpleCalibrationDialog.h"
@@ -71,7 +71,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UEventsManager.h>
-#include "utilite/UPlot.h"
+#include "rtabmap/utilite/UPlot.h"
 
 #include <opencv2/opencv_modules.hpp>
 #if CV_MAJOR_VERSION < 3

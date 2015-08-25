@@ -25,52 +25,54 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef CONSOLEWIDGET_H_
-#define CONSOLEWIDGET_H_
+#ifndef PROGRESSDIALOG_H_
+#define PROGRESSDIALOG_H_
 
-#include <rtabmap/utilite/UEventsHandler.h>
-#include <QWidget>
-#include <QtCore/QMutex>
-#include <QtCore/QTimer>
-#include <QtCore/QTime>
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
-class Ui_consoleWidget;
-class QMessageBox;
-class QTextCursor;
+#include <QDialog>
+
+class QLabel;
+class QTextEdit;
+class QProgressBar;
+class QPushButton;
+class QCheckBox;
 
 namespace rtabmap {
 
-class ConsoleWidget : public QWidget, public UEventsHandler
+class RTABMAPGUI_EXP ProgressDialog : public QDialog
 {
-	Q_OBJECT;
+	Q_OBJECT
 
 public:
-	ConsoleWidget(QWidget * parent = 0);
-	virtual ~ConsoleWidget();
+	ProgressDialog(QWidget *parent = 0, Qt::WindowFlags flags = 0);
+	virtual ~ProgressDialog();
 
-public slots:
-	void appendMsg(const QString & msg, int level = 1);
-
-signals:
-	void msgReceived(const QString &, int);
-
-private slots:
-	void flushConsole();
+	void setEndMessage(const QString & message) {_endMessage = message;} // Message shown when the progress is finished
+	void setValue(int value);
+	int maximumSteps() const;
+	void setMaximumSteps(int steps);
+	void setAutoClose(bool on, int delayedClosingTimeMsec = -1);
 
 protected:
-	virtual void handleEvent(UEvent * anEvent);
+	virtual void closeEvent(QCloseEvent * event);
+
+public slots:
+	void appendText(const QString & text ,const QColor & color = Qt::black);
+	void incrementStep();
+	void clear();
+	void resetProgress();
 
 private:
-	Ui_consoleWidget * _ui;
-	QMessageBox * _errorMessage;
-	QMutex _errorMessageMutex;
-	QMutex _msgListMutex;
-	QTimer _timer;
-	QTime _time;
-	QTextCursor * _textCursor;
-	QList<QPair<QString, int> > _msgList;
+	QLabel * _text;
+	QTextEdit * _detailedText;
+	QProgressBar * _progressBar;
+	QPushButton * _closeButton;
+	QCheckBox * _closeWhenDoneCheckBox;
+	QString _endMessage;
+	int _delayedClosingTime; // sec
 };
 
 }
 
-#endif /* CONSOLEWIDGET_H_ */
+#endif /* PROGRESSDIALOG_H_ */

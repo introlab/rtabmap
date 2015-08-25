@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/core/VWDictionary.h"
-#include "VisualWord.h"
+#include "rtabmap/core/VisualWord.h"
 
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/DBDriver.h"

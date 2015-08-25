@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/VWDictionary.h"
 #include <rtabmap/core/EpipolarGeometry.h>
-#include "VisualWord.h"
+#include "rtabmap/core/VisualWord.h"
 #include "rtabmap/core/Features2d.h"
 #include "DBDriverSqlite3.h"
 #include "rtabmap/core/util3d_features.h"

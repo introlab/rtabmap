@@ -43,20 +43,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/KeypointItem.h"
 #include "rtabmap/gui/DataRecorder.h"
 #include "rtabmap/gui/DatabaseViewer.h"
+#include "rtabmap/gui/PdfPlot.h"
+#include "rtabmap/gui/StatsToolBox.h"
+#include "rtabmap/gui/ProgressDialog.h"
 
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
-#include "utilite/UPlot.h"
-#include "rtabmap/gui/UCv2Qt.h"
+#include "rtabmap/utilite/UPlot.h"
+#include "rtabmap/utilite/UCv2Qt.h"
 
 #include "ExportCloudsDialog.h"
 #include "AboutDialog.h"
-#include "PdfPlot.h"
-#include "StatsToolBox.h"
-#include "DetailedProgressDialog.h"
 #include "PostProcessingDialog.h"
 
 #include <QtGui/QCloseEvent>
@@ -250,7 +250,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->doubleSpinBox_stats_detectionRate->setValue(_preferencesDialog->getDetectionRate());
 	_ui->doubleSpinBox_stats_timeLimit->setValue(_preferencesDialog->getTimeLimit());
 
-	_initProgressDialog = new DetailedProgressDialog(this);
+	_initProgressDialog = new ProgressDialog(this);
 	_initProgressDialog->setWindowTitle(tr("Progress dialog"));
 	_initProgressDialog->setMinimumWidth(800);
 

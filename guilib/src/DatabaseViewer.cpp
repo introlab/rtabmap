@@ -48,7 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/gui/KeypointItem.h"
-#include "rtabmap/gui/UCv2Qt.h"
+#include "rtabmap/utilite/UCv2Qt.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d_filtering.h"
@@ -63,7 +63,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/DataRecorder.h"
 #include "rtabmap/core/SensorData.h"
 #include "ExportDialog.h"
-#include "DetailedProgressDialog.h"
+#include "rtabmap/gui/ProgressDialog.h"
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/filters/voxel_grid.h>
@@ -797,7 +797,7 @@ void DatabaseViewer::exportDatabase()
 
 			if(recorder.init(path, false))
 			{
-				rtabmap::DetailedProgressDialog * progressDialog = new rtabmap::DetailedProgressDialog(this);
+				rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
 				progressDialog->setAttribute(Qt::WA_DeleteOnClose);
 				progressDialog->setMaximumSteps(ids.size());
 				progressDialog->show();
@@ -1237,7 +1237,7 @@ void DatabaseViewer::view3DMap()
 			}
 			if(optimizedPoses.size() > 0)
 			{
-				rtabmap::DetailedProgressDialog progressDialog(this);
+				rtabmap::ProgressDialog progressDialog(this);
 				progressDialog.setMaximumSteps((int)optimizedPoses.size());
 				progressDialog.show();
 
@@ -1338,7 +1338,7 @@ void DatabaseViewer::generate3DMap()
 				}
 				if(optimizedPoses.size() > 0)
 				{
-					rtabmap::DetailedProgressDialog progressDialog;
+					rtabmap::ProgressDialog progressDialog;
 					progressDialog.setMaximumSteps((int)optimizedPoses.size());
 					progressDialog.show();
 
@@ -1435,7 +1435,7 @@ void DatabaseViewer::refineAllNeighborLinks()
 {
 	if(neighborLinks_.size())
 	{
-		rtabmap::DetailedProgressDialog progressDialog(this);
+		rtabmap::ProgressDialog progressDialog(this);
 		progressDialog.setMaximumSteps(neighborLinks_.size());
 		progressDialog.show();
 
@@ -1460,7 +1460,7 @@ void DatabaseViewer::refineAllLoopClosureLinks()
 {
 	if(loopLinks_.size())
 	{
-		rtabmap::DetailedProgressDialog progressDialog(this);
+		rtabmap::ProgressDialog progressDialog(this);
 		progressDialog.setMaximumSteps(loopLinks_.size());
 		progressDialog.show();
 
@@ -1485,7 +1485,7 @@ void DatabaseViewer::refineVisuallyAllNeighborLinks()
 {
 	if(neighborLinks_.size())
 	{
-		rtabmap::DetailedProgressDialog progressDialog(this);
+		rtabmap::ProgressDialog progressDialog(this);
 		progressDialog.setMaximumSteps(neighborLinks_.size());
 		progressDialog.show();
 
@@ -1510,7 +1510,7 @@ void DatabaseViewer::refineVisuallyAllLoopClosureLinks()
 {
 	if(loopLinks_.size())
 	{
-		rtabmap::DetailedProgressDialog progressDialog(this);
+		rtabmap::ProgressDialog progressDialog(this);
 		progressDialog.setMaximumSteps(loopLinks_.size());
 		progressDialog.show();
 
