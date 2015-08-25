@@ -308,7 +308,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, OptimizeIterations,        int, 100,      "Optimization iterations.");
 	RTABMAP_PARAM(RGBD, OptimizeSlam2D,            bool, false,  "If optimization is done only on x,y and theta (3DoF). Otherwise, it is done on full 6DoF poses.");
 	RTABMAP_PARAM(RGBD, OptimizeVarianceIgnored,   bool, false,  "Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links.");
-	RTABMAP_PARAM(RGBD, OptimizeEpsilon,           double, 0.001,  "Stop optimizing when the error improvement is less than this value.");
+	RTABMAP_PARAM(RGBD, OptimizeEpsilon,           double, 0.0001,  "Stop optimizing when the error improvement is less than this value.");
 
 	// Odometry
 	RTABMAP_PARAM(Odom, Strategy,           	int, 0, 		"0=Bag-of-words 1=Optical Flow");
