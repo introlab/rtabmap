@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UMath.h>
+#include <rtabmap/utilite/UConversion.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/transforms.h>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -287,8 +288,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 {
 	UASSERT(imageRgb.rows == imageDepth.rows && imageRgb.cols == imageDepth.cols);
 	UASSERT(!imageDepth.empty() && (imageDepth.type() == CV_16UC1 || imageDepth.type() == CV_32FC1));
-	UASSERT(imageDepth.rows % decimation == 0);
-	UASSERT(imageDepth.cols % decimation == 0);
+	UASSERT_MSG(imageDepth.rows % decimation == 0, uFormat("imageDepth.rows=%d decimation=%d", imageDepth.rows, decimation).c_str());
+	UASSERT_MSG(imageDepth.cols % decimation == 0, uFormat("imageDepth.cols=%d decimation=%d", imageDepth.rows, decimation).c_str());
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 	if(decimation < 1)
@@ -641,6 +642,13 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 			{
 				if(sensorData.cameraModels()[i].isValid())
 				{
+					if(subImageWidth % decimation != 0 || sensorData.depthRaw().rows % decimation != 0)
+					{
+						UWARN("Image size (%d,%d) modulus decimation (%d) is not null "
+							  "for the cloud creation! Setting decimation to 1...",
+							  subImageWidth, sensorData.depthRaw().rows, decimation);
+						decimation = 1;
+					}
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp = util3d::cloudFromDepthRGB(
 							cv::Mat(sensorData.imageRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.imageRaw().rows)),
 							cv::Mat(sensorData.depthRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.depthRaw().rows)),
