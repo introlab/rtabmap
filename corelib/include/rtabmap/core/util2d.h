@@ -41,7 +41,8 @@ namespace util2d
 
 cv::Mat RTABMAP_EXP disparityFromStereoImages(
 		const cv::Mat & leftImage,
-		const cv::Mat & rightImage);
+		const cv::Mat & rightImage,
+		int type = CV_32FC1); // CV_32FC1 or CV_16SC1
 
 cv::Mat RTABMAP_EXP disparityFromStereoImages(
 		const cv::Mat & leftImage,
@@ -52,6 +53,10 @@ cv::Mat RTABMAP_EXP disparityFromStereoImages(
 		int flowIterations = 20,
 		double flowEps = 0.02,
 		float maxCorrespondencesSlope = 0.1f);
+
+cv::Mat RTABMAP_EXP depthFromDisparity(const cv::Mat & disparity,
+		float fx, float baseline,
+		int type = CV_32FC1); // CV_32FC1 or CV_16UC1
 
 cv::Mat RTABMAP_EXP depthFromStereoImages(
 		const cv::Mat & leftImage,
@@ -77,6 +82,9 @@ cv::Mat RTABMAP_EXP depthFromStereoCorrespondences(
 		const std::vector<cv::Point2f> & rightCorners,
 		const std::vector<unsigned char> & mask,
 		float fx, float baseline);
+
+cv::Mat RTABMAP_EXP cvtDepthFromFloat(const cv::Mat & depth32F);
+cv::Mat RTABMAP_EXP cvtDepthToFloat(const cv::Mat & depth16U);
 
 float RTABMAP_EXP getDepth(
 		const cv::Mat & depthImage,

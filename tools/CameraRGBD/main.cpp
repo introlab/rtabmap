@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraStereo.h"
+#include "rtabmap/core/util2d.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/utilite/ULogger.h"
@@ -322,7 +323,7 @@ int main(int argc, char * argv[])
 			cv::Mat depth = data.depthRaw();
 			if(depth.type() == CV_32FC1)
 			{
-				depth = rtabmap::util3d::cvtDepthFromFloat(depth);
+				depth = rtabmap::util2d::cvtDepthFromFloat(depth);
 			}
 
 			if(rgb.cols == depth.cols && rgb.rows == depth.rows &&

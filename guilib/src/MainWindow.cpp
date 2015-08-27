@@ -2859,6 +2859,7 @@ void MainWindow::startDetection()
 		_camera = new CameraThread(camera);
 		_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
 		_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
+		_camera->setStereoToDepth(_preferencesDialog->isSourceStereoDepthGenerated());
 
 		//Create odometry thread if rgbd slam
 		if(uStr2Bool(parameters.at(Parameters::kRGBDEnabled()).c_str()))

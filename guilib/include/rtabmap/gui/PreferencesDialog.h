@@ -189,6 +189,7 @@ public:
 	int getSourceDatabaseStartPos() const; //Database group
 	bool getSourceDatabaseStampsUsed() const;//Database group
 	bool isSourceRGBDColorOnly() const;
+	bool isSourceStereoDepthGenerated() const;
 	Transform getSourceLocalTransform() const;    //Openni group
 	Camera * createCamera(bool useRawImages = false); // return camera should be deleted if not null
 

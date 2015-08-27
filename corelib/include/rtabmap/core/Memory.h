@@ -232,6 +232,7 @@ private:
 	float _similarityThreshold;
 	bool _rawDataKept;
 	bool _binDataKept;
+	bool _saveDepth16Format;
 	bool _notLinkedNodesKeptInDb;
 	bool _incrementalMemory;
 	int _maxStMemSize;

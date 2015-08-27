@@ -88,7 +88,16 @@ std::vector<unsigned char> compressImage(const cv::Mat & image, const std::strin
 	std::vector<unsigned char> bytes;
 	if(!image.empty())
 	{
-		cv::imencode(format, image, bytes);
+		if(image.type() == CV_32FC1)
+		{
+			//save in 8bits-4channel
+			cv::Mat bgra(image.size(), CV_8UC4, image.data);
+			cv::imencode(format, bgra, bytes);
+		}
+		else
+		{
+			cv::imencode(format, image, bytes);
+		}
 	}
 	return bytes;
 }
@@ -114,6 +123,10 @@ cv::Mat uncompressImage(const cv::Mat & bytes)
 #else
 		image = cv::imdecode(bytes, -1);
 #endif
+		if(image.type() == CV_8UC4)
+		{
+			image = cv::Mat(image.size(), CV_32FC1, image.data).clone();
+		}
 	}
 	return image;
 }
@@ -128,6 +141,10 @@ cv::Mat uncompressImage(const std::vector<unsigned char> & bytes)
 #else
 		image = cv::imdecode(bytes, -1);
 #endif
+		if(image.type() == CV_8UC4)
+		{
+			image = cv::Mat(image.size(), CV_32FC1, image.data).clone();
+		}
 	}
 	return image;
 }

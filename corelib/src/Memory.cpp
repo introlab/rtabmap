@@ -68,6 +68,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_similarityThreshold(Parameters::defaultMemRehearsalSimilarity()),
 	_rawDataKept(Parameters::defaultMemImageKept()),
 	_binDataKept(Parameters::defaultMemBinDataKept()),
+	_saveDepth16Format(Parameters::defaultMemSaveDepth16Format()),
 	_notLinkedNodesKeptInDb(Parameters::defaultMemNotLinkedNodesKept()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
 	_maxStMemSize(Parameters::defaultMemSTMSize()),
@@ -399,6 +400,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 
 	Parameters::parse(parameters, Parameters::kMemImageKept(), _rawDataKept);
 	Parameters::parse(parameters, Parameters::kMemBinDataKept(), _binDataKept);
+	Parameters::parse(parameters, Parameters::kMemSaveDepth16Format(), _saveDepth16Format);
 	Parameters::parse(parameters, Parameters::kMemNotLinkedNodesKept(), _notLinkedNodesKeptInDb);
 	Parameters::parse(parameters, Parameters::kMemRehearsalIdUpdatedToNewOne(), _idUpdatedToNewOneRehearsal);
 	Parameters::parse(parameters, Parameters::kMemGenerateIds(), _generateIds);
@@ -4257,10 +4259,10 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		std::vector<unsigned char> imageBytes;
 		std::vector<unsigned char> depthBytes;
 
-		if(!depthOrRightImage.empty() && depthOrRightImage.type() == CV_32FC1)
+		if(_saveDepth16Format && !depthOrRightImage.empty() && depthOrRightImage.type() == CV_32FC1)
 		{
-			UWARN("Keeping raw data in database: depth type is 32FC1, use 16UC1 depth format to avoid a conversion.");
-			depthOrRightImage = util3d::cvtDepthFromFloat(depthOrRightImage);
+			UWARN("Save depth data to 16 bits format: depth type detected is 32FC1, use 16UC1 depth format to avoid this conversion.");
+			depthOrRightImage = util2d::cvtDepthFromFloat(depthOrRightImage);
 		}
 
 		rtabmap::CompressionThread ctImage(image, std::string(".jpg"));
@@ -4346,7 +4348,6 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		s->sensorData().setLaserScanRaw(laserScan, data.laserScanMaxPts());
 		s->sensorData().setUserDataRaw(data.userDataRaw());
 	}
-
 
 	t = timer.ticks();
 	if(stats) stats->addStatistic(Statistics::kTimingMemCompressing_data(), t*1000.0f);

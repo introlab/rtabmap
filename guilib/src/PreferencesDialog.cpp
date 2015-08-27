@@ -392,6 +392,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_stereoVideo_rectify, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkbox_stereo_depthGenerated, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
 	connect(_ui->pushButton_calibrate_simple, SIGNAL(clicked()), this, SLOT(calibrateSimple()));
 	connect(_ui->toolButton_openniOniPath, SIGNAL(clicked()), this, SLOT(selectSourceOniPath()));
@@ -444,6 +445,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	// Memory
 	_ui->general_checkBox_keepRawData->setObjectName(Parameters::kMemImageKept().c_str());
 	_ui->general_checkBox_keepBinaryData->setObjectName(Parameters::kMemBinDataKept().c_str());
+	_ui->general_checkBox_saveDepth16bits->setObjectName(Parameters::kMemSaveDepth16Format().c_str());
 	_ui->general_checkBox_keepNotLinkedNodes->setObjectName(Parameters::kMemNotLinkedNodesKept().c_str());
 	_ui->general_spinBox_maxStMemSize->setObjectName(Parameters::kMemSTMSize().c_str());
 	_ui->doubleSpinBox_similarityThreshold->setObjectName(Parameters::kMemRehearsalSimilarity().c_str());
@@ -1105,6 +1107,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		}
 
 		_ui->checkbox_rgbd_colorOnly->setChecked(false);
+		_ui->checkbox_stereo_depthGenerated->setChecked(false);
 		_ui->openni2_autoWhiteBalance->setChecked(true);
 		_ui->openni2_autoExposure->setChecked(true);
 		_ui->openni2_exposure->setValue(0);
@@ -1367,6 +1370,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 
 	settings.beginGroup("stereo");
 	_ui->comboBox_cameraStereo->setCurrentIndex(settings.value("driver", _ui->comboBox_cameraStereo->currentIndex()).toInt());
+	_ui->checkbox_stereo_depthGenerated->setChecked(settings.value("depthGenerated", _ui->checkbox_stereo_depthGenerated->isChecked()).toBool());
 	settings.endGroup(); // stereo
 
 	settings.beginGroup("rgb");
@@ -1678,6 +1682,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 
 	settings.beginGroup("stereo");
 	settings.setValue("driver", 	_ui->comboBox_cameraStereo->currentIndex());
+	settings.setValue("depthGenerated", _ui->checkbox_stereo_depthGenerated->isChecked());
 	settings.endGroup(); // stereo
 
 	settings.beginGroup("rgb");
@@ -3447,6 +3452,10 @@ bool PreferencesDialog::isSourceRGBDColorOnly() const
 {
 	return _ui->checkbox_rgbd_colorOnly->isChecked();
 }
+bool PreferencesDialog::isSourceStereoDepthGenerated() const
+{
+	return _ui->checkbox_stereo_depthGenerated->isChecked();
+}
 
 Camera * PreferencesDialog::createCamera(bool useRawImages)
 {
@@ -3826,6 +3835,7 @@ void PreferencesDialog::testOdometry(int type)
 		CameraThread cameraThread(camera); // take ownership of camera
 		cameraThread.setMirroringEnabled(isSourceMirroring());
 		cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
+		cameraThread.setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
 		UEventsManager::createPipe(&cameraThread, &odomThread, "CameraEvent");
 		UEventsManager::createPipe(&odomThread, odomViewer, "OdometryEvent");
 		UEventsManager::createPipe(odomViewer, &odomThread, "OdometryResetEvent");
@@ -3892,6 +3902,7 @@ void PreferencesDialog::testCamera()
 			CameraThread cameraThread(camera);
 			cameraThread.setMirroringEnabled(isSourceMirroring());
 			cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
+			cameraThread.setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
 			UEventsManager::createPipe(&cameraThread, window, "CameraEvent");
 
 			cameraThread.start();
