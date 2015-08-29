@@ -3670,6 +3670,10 @@ double PreferencesDialog::getVpThr() const
 {
 	return _ui->general_doubleSpinBox_vp->value();
 }
+double PreferencesDialog::getSimThr() const
+{
+	return _ui->doubleSpinBox_similarityThreshold->value();
+}
 int PreferencesDialog::getOdomStrategy() const
 {
 	return _ui->odom_strategy->currentIndex();

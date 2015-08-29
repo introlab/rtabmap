@@ -409,6 +409,9 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDPlanVirtualLinks(), _planVirtualLinks);
 	Parameters::parse(parameters, Parameters::kRGBDGoalsSavedInUserData(), _goalsSavedInUserData);
 
+	UASSERT(_rgbdLinearUpdate >= 0.0f);
+	UASSERT(_rgbdAngularUpdate >= 0.0f);
+
 	// RGB-D SLAM stuff
 	if((iter=parameters.find(Parameters::kLccIcpType())) != parameters.end())
 	{
@@ -986,7 +989,7 @@ bool Rtabmap::process(
 		UFATAL("Not supposed to be here...last signature is null?!?");
 	}
 
-	ULOGGER_INFO("Processing signature %d", signature->id());
+	ULOGGER_INFO("Processing signature %d w=%d", signature->id(), signature->getWeight());
 	timeMemoryUpdate = timer.ticks();
 	ULOGGER_INFO("timeMemoryUpdate=%fs", timeMemoryUpdate);
 
@@ -1002,7 +1005,7 @@ bool Rtabmap::process(
 		{
 			_optimizedPoses.erase(rehearsedId);
 		}
-		else if(_rgbdLinearUpdate > 0.0f && _rgbdAngularUpdate > 0.0f)
+		else if(signature->getWeight() >= 0 && _rgbdLinearUpdate > 0.0f && _rgbdAngularUpdate > 0.0f)
 		{
 			//============================================================
 			// Minimum displacement required to add to Memory
@@ -1010,20 +1013,25 @@ bool Rtabmap::process(
 			const std::map<int, Link> & links = signature->getLinks();
 			if(links.size() == 1)
 			{
-				float x,y,z, roll,pitch,yaw;
-				links.begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-				if((_rgbdLinearUpdate==0.0f || (
-					 fabs(x) < _rgbdLinearUpdate &&
-					 fabs(y) < _rgbdLinearUpdate &&
-					 fabs(z) < _rgbdLinearUpdate)) &&
-					(_rgbdAngularUpdate==0.0f || (
-					 fabs(roll) < _rgbdAngularUpdate &&
-					 fabs(pitch) < _rgbdAngularUpdate &&
-					 fabs(yaw) < _rgbdAngularUpdate)))
+				// don't do this if there are intermediate nodes
+				const Signature * s = _memory->getSignature(links.begin()->second.to());
+				UASSERT(s!=0);
+				if(s->getWeight() >= 0)
 				{
-					// This will disable global loop closure detection, only retrieval will be done.
-					// The location will also be deleted at the end.
-					smallDisplacement = true;
+					float x,y,z, roll,pitch,yaw;
+					links.begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+					bool isMoving = fabs(x) > _rgbdLinearUpdate ||
+									fabs(y) > _rgbdLinearUpdate ||
+									fabs(z) > _rgbdLinearUpdate ||
+									fabs(roll) > _rgbdAngularUpdate ||
+									fabs(pitch) > _rgbdAngularUpdate ||
+									fabs(yaw) > _rgbdAngularUpdate;
+					if(!isMoving)
+					{
+						// This will disable global loop closure detection, only retrieval will be done.
+						// The location will also be deleted at the end.
+						smallDisplacement = true;
+					}
 				}
 			}
 		}
@@ -1088,7 +1096,7 @@ bool Rtabmap::process(
 				UASSERT(s!=0);
 				if(s->getWeight() == -1)
 				{
-					tmp = _constraints.rbegin()->second.merge(tmp);
+					tmp = _constraints.rbegin()->second.merge(tmp, tmp.type());
 					_optimizedPoses.erase(s->id());
 					_constraints.erase(--_constraints.end());
 				}
@@ -1156,7 +1164,7 @@ bool Rtabmap::process(
 	// Bayes filter update
 	//============================================================
 	int previousId = signature->getLinks().size() == 1?signature->getLinks().begin()->first:0;
-	// Not a bad signature, not a small displacemnt unless the previous signature didn't have a loop closure
+	// Not a bad signature, not a small displacement unless the previous signature didn't have a loop closure
 	if(!signature->isBadSignature() && (!smallDisplacement || _memory->getLoopClosureLinks(previousId, false).size() == 0))
 	{
 		// If the working memory is empty, don't do the detection. It happens when it

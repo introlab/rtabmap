@@ -205,6 +205,7 @@ public:
 	bool isStatisticsPublished() const;
 	double getLoopThr() const;
 	double getVpThr() const;
+	double getSimThr() const;
 	int getOdomStrategy() const;
 	int getOdomBufferSize() const;
 	QString getCameraInfoDir() const; // "workinfDir/camera_info"

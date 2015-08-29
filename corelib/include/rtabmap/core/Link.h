@@ -118,25 +118,29 @@ public:
 		infMatrix_.at<double>(5,5) = 1.0/rotVariance;
 	}
 
-	Link merge(const Link & link) const
+	Link merge(const Link & link, Type outputType) const
 	{
 		UASSERT(to_ == link.from());
-		UASSERT(type_ == link.type());
-		UASSERT(!transform_.isNull());
-		UASSERT(!link.transform().isNull());
+		UASSERT(outputType != Link::kUndef);
+		UASSERT((link.transform().isNull() && transform_.isNull()) || (!link.transform().isNull() && !transform_.isNull()));
 		UASSERT(infMatrix_.cols == 6 && infMatrix_.rows == 6 && infMatrix_.type() == CV_64FC1);
 		UASSERT(link.infMatrix().cols == 6 && link.infMatrix().rows == 6 && link.infMatrix().type() == CV_64FC1);
 		return Link(
 				from_,
 				link.to(),
-				type_,
-				transform_ * link.transform(), // FIXME, should be inf1^-1(inf1*t1 + inf2*t2)
-				infMatrix_ + link.infMatrix());
+				outputType,
+				transform_.isNull()?Transform():transform_ * link.transform(), // FIXME, should be inf1^-1(inf1*t1 + inf2*t2)
+				transform_.isNull()?cv::Mat::eye(6,6,CV_64FC1):infMatrix_ + link.infMatrix());
 	}
 
 	Link inverse() const
 	{
-		return Link(to_, from_, type_, transform_.inverse(), infMatrix_);
+		return Link(
+				to_,
+				from_,
+				type_,
+				transform_.isNull()?Transform():transform_.inverse(),
+				transform_.isNull()?cv::Mat::eye(6,6,CV_64FC1):infMatrix_);
 	}
 
 private:

@@ -83,6 +83,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Memory, Signatures_retrieved,);
 	RTABMAP_STATS(Memory, Images_buffered,);
 	RTABMAP_STATS(Memory, Rehearsal_sim,);
+	RTABMAP_STATS(Memory, Rehearsal_id,);
 	RTABMAP_STATS(Memory, Rehearsal_merged,);
 	RTABMAP_STATS(Memory, Local_graph_size,);
 

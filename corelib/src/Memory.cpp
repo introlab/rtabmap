@@ -420,6 +420,8 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
 	UASSERT_MSG(_recentWmRatio >= 0.0f && _recentWmRatio <= 1.0f, uFormat("value=%f", _recentWmRatio).c_str());
 	UASSERT(_imageDecimation >= 1);
+	UASSERT(_rehearsalMaxDistance >= 0.0f);
+	UASSERT(_rehearsalMaxAngle >= 0.0f);
 
 	// SLAM mode vs Localization mode
 	iter = parameters.find(Parameters::kMemIncrementalMemory());
@@ -3091,7 +3093,7 @@ void Memory::rehearsal(Signature * signature, Statistics * stats)
 	}
 
 	//============================================================
-	// Compare with the last (not null)
+	// Compare with the last (not intermediate node)
 	//============================================================
 	Signature * sB = 0;
 	for(std::set<int>::reverse_iterator iter=_stMem.rbegin(); iter!=_stMem.rend(); ++iter)
@@ -3116,55 +3118,9 @@ void Memory::rehearsal(Signature * signature, Statistics * stats)
 		{
 			if(_incrementalMemory)
 			{
-				if(signature->hasLink(id))
+				if(this->rehearsalMerge(id, signature->id()))
 				{
-					if(signature->getLinks().begin()->second.transform().isNull())
-					{
-						if(this->rehearsalMerge(id, signature->id()))
-						{
-							merged = id;
-						}
-					}
-					else
-					{
-						float x,y,z, roll,pitch,yaw;
-						signature->getLinks().begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-						if((_rehearsalMaxDistance>0.0f && (
-								fabs(x) > _rehearsalMaxDistance ||
-								fabs(y) > _rehearsalMaxDistance ||
-								fabs(z) > _rehearsalMaxDistance)) ||
-							(_rehearsalMaxAngle>0.0f && (
-								fabs(roll) > _rehearsalMaxAngle ||
-								fabs(pitch) > _rehearsalMaxAngle ||
-								fabs(yaw) > _rehearsalMaxAngle)))
-						{
-							if(_rehearsalWeightIgnoredWhileMoving)
-							{
-								UINFO("Rehearsal ignored because the robot has moved more than %f m or %f rad",
-										_rehearsalMaxDistance, _rehearsalMaxAngle);
-							}
-							else
-							{
-								// if the robot has moved, increase only weight of the new one
-								signature->setWeight(sB->getWeight() + signature->getWeight() + 1);
-								sB->setWeight(0);
-								UINFO("Only updated weight to %d of %d (old=%d) because the robot has moved. (d=%f a=%f)",
-										signature->getWeight(), signature->id(), sB->id(), _rehearsalMaxDistance, _rehearsalMaxAngle);
-							}
-						}
-						else if(this->rehearsalMerge(id, signature->id()))
-						{
-							merged = id;
-						}
-					}
-				}
-				else
-				{
-					// cannot merge not neighbor signatures, just update weight
-					signature->setWeight(sB->getWeight() + signature->getWeight() + 1);
-					sB->setWeight(0);
-					UINFO("Only updated weight to %d of %d (old=%d) because the signatures are not neighbors.",
-							signature->getWeight(), signature->id(), sB->id());
+					merged = id;
 				}
 			}
 			else
@@ -3175,6 +3131,7 @@ void Memory::rehearsal(Signature * signature, Statistics * stats)
 
 		if(stats) stats->addStatistic(Statistics::kMemoryRehearsal_merged(), merged);
 		if(stats) stats->addStatistic(Statistics::kMemoryRehearsal_sim(), sim);
+		if(stats) stats->addStatistic(Statistics::kMemoryRehearsal_id(), sim >= _similarityThreshold?id:0);
 		UDEBUG("merged=%d, sim=%f t=%fs", merged, sim, timer.ticks());
 	}
 	else
@@ -3202,65 +3159,122 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 
 		UINFO("Rehearsal merging %d and %d", oldS->id(), newS->id());
 
-		//remove mutual links
-		oldS->removeLink(newId);
-		newS->removeLink(oldId);
-
-		if(_idUpdatedToNewOneRehearsal)
+		bool fullMerge;
+		bool intermediateMerge = false;
+		if(!newS->getLinks().begin()->second.transform().isNull())
 		{
-			// redirect neighbor links
-			const std::map<int, Link> & links = oldS->getLinks();
-			for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
+			// we are in metric SLAM mode:
+			// 1) Normal merge if not moving AND has direct link
+			// 2) Transform to intermediate node (weight = -1) if not moving AND hasn't direct link.
+			float x,y,z, roll,pitch,yaw;
+			newS->getLinks().begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+			bool isMoving = fabs(x) > _rehearsalMaxDistance ||
+							fabs(y) > _rehearsalMaxDistance ||
+							fabs(z) > _rehearsalMaxDistance ||
+							fabs(roll) > _rehearsalMaxAngle ||
+							fabs(pitch) > _rehearsalMaxAngle ||
+							fabs(yaw) > _rehearsalMaxAngle;
+			if(isMoving && _rehearsalWeightIgnoredWhileMoving)
 			{
-				Link link = iter->second;
-				link.setFrom(newS->id());
-
-				Signature * s = this->_getSignature(link.to());
-				if(s)
-				{
-					// modify neighbor "from"
-					s->changeLinkIds(oldS->id(), newS->id());
-
-					newS->addLink(link);
-				}
-				else
-				{
-					UERROR("Didn't find neighbor %d of %d in RAM...", link.to(), oldS->id());
-				}
+				UINFO("Rehearsal ignored because the robot has moved more than %f m or %f rad (\"Mem/RehearsalWeightIgnoredWhileMoving\"=true)",
+						_rehearsalMaxDistance, _rehearsalMaxAngle);
+				return false;
 			}
-			newS->setLabel(oldS->getLabel());
-			oldS->setLabel("");
-			oldS->removeLinks(); // remove all links
-			oldS->addLink(Link(oldS->id(), newS->id(), Link::kGlobalClosure, Transform(), 1, 1)); // to keep track of the merged location
-
-			// Set old image to new signature
-			this->copyData(oldS, newS);
-
-			// update weight
-			newS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
-
-			if(_lastGlobalLoopClosureId == oldS->id())
-			{
-				_lastGlobalLoopClosureId = newS->id();
-			}
+			fullMerge = !isMoving && newS->hasLink(oldS->id());
+			intermediateMerge = !isMoving && !newS->hasLink(oldS->id());
 		}
 		else
 		{
-			newS->addLink(Link(newS->id(), oldS->id(), Link::kGlobalClosure, Transform() , 1, 1)); // to keep track of the merged location
-
-			// update weight
-			oldS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
-
-			if(_lastSignature == newS)
-			{
-				_lastSignature = oldS;
-			}
+			fullMerge = newS->hasLink(oldS->id()) && newS->getLinks().begin()->second.transform().isNull();
 		}
 
-		// remove location
-		moveToTrash(_idUpdatedToNewOneRehearsal?oldS:newS, _notLinkedNodesKeptInDb);
+		if(fullMerge)
+		{
+			//remove mutual links
+			Link newToOldLink = newS->getLinks().at(oldS->id());
+			oldS->removeLink(newId);
+			newS->removeLink(oldId);
 
-		return true;
+			if(_idUpdatedToNewOneRehearsal)
+			{
+				// redirect neighbor links
+				const std::map<int, Link> & links = oldS->getLinks();
+				for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
+				{
+					Link link = iter->second;
+					Link mergedLink = newToOldLink.merge(link, link.type());
+					UASSERT(mergedLink.from() == newS->id() && mergedLink.to() == link.to());
+
+					Signature * s = this->_getSignature(link.to());
+					if(s)
+					{
+						// modify neighbor "from"
+						s->removeLink(oldS->id());
+						s->addLink(mergedLink.inverse());
+
+						newS->addLink(mergedLink);
+					}
+					else
+					{
+						UERROR("Didn't find neighbor %d of %d in RAM...", link.to(), oldS->id());
+					}
+				}
+				newS->setLabel(oldS->getLabel());
+				oldS->setLabel("");
+				oldS->removeLinks(); // remove all links
+				oldS->addLink(Link(oldS->id(), newS->id(), Link::kGlobalClosure, Transform(), 1, 1)); // to keep track of the merged location
+
+				// Set old image to new signature
+				this->copyData(oldS, newS);
+
+				// update weight
+				newS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
+
+				if(_lastGlobalLoopClosureId == oldS->id())
+				{
+					_lastGlobalLoopClosureId = newS->id();
+				}
+			}
+			else
+			{
+				newS->addLink(Link(newS->id(), oldS->id(), Link::kGlobalClosure, Transform() , 1, 1)); // to keep track of the merged location
+
+				// update weight
+				oldS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
+
+				if(_lastSignature == newS)
+				{
+					_lastSignature = oldS;
+				}
+			}
+
+			// remove location
+			moveToTrash(_idUpdatedToNewOneRehearsal?oldS:newS, _notLinkedNodesKeptInDb);
+
+			return true;
+		}
+		else
+		{
+			// update only weights
+			if(_idUpdatedToNewOneRehearsal)
+			{
+				// just update weight
+				int w = oldS->getWeight()>=0?oldS->getWeight():0;
+				newS->setWeight(w + newS->getWeight() + 1);
+				oldS->setWeight(intermediateMerge?-1:0); // convert to intermediate node
+
+				if(_lastGlobalLoopClosureId == oldS->id())
+				{
+					_lastGlobalLoopClosureId = newS->id();
+				}
+			}
+			else // !_idUpdatedToNewOneRehearsal
+			{
+				int w = newS->getWeight()>=0?newS->getWeight():0;
+				oldS->setWeight(w + oldS->getWeight() + 1);
+				newS->setWeight(intermediateMerge?-1:0); // convert to intermediate node
+			}
+		}
 	}
 	else
 	{
@@ -3273,7 +3287,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 			UERROR("newId=%d, oldId=%d, Signature %d not found in working/st memories", newId, oldId, oldId);
 		}
 	}
-	return false;
+	return false; // means that the newS can be removed without problem
 }
 
 Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const
@@ -4599,7 +4613,7 @@ void Memory::getMetricConstraints(
 								const Signature * s2 = this->getSignature(uter->first);
 								if(s2)
 								{
-									link = link.merge(uter->second);
+									link = link.merge(uter->second, uter->second.type());
 									poses.erase(s->id());
 									s = s2;
 								}

@@ -1075,22 +1075,27 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			_ui->label_matchId->clear();
 		}
 
-		int rehearsed = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
+		int rehearsalMerged = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
+		bool rehearsedSimilarity = (float)uValue(stat.data(), Statistics::kMemoryRehearsal_id(), 0.0f) != 0.0f;
 		int localTimeClosures = (int)uValue(stat.data(), Statistics::kLocalLoopTime_closures(), 0.0f);
 		bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kOdomCorrectionAccepted(), 0.0f);
 		_ui->label_stats_imageNumber->setText(QString("%1 [%2]").arg(stat.refImageId()).arg(refMapId));
 
-		if(rehearsed > 0)
+		if(rehearsalMerged > 0)
 		{
 			_ui->imageView_source->setBackgroundColor(Qt::blue);
 		}
 		else if(localTimeClosures > 0)
 		{
-			_ui->imageView_source->setBackgroundColor(Qt::darkCyan);
+			_ui->imageView_source->setBackgroundColor(Qt::darkYellow);
 		}
 		else if(scanMatchingSuccess)
 		{
 			_ui->imageView_source->setBackgroundColor(Qt::gray);
+		}
+		else if(rehearsedSimilarity)
+		{
+			_ui->imageView_source->setBackgroundColor(Qt::darkBlue);
 		}
 
 		UDEBUG("time= %d ms", time.restart());
