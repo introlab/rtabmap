@@ -48,11 +48,50 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "g2o/core/optimization_algorithm_gauss_newton.h"
 #include "g2o/core/optimization_algorithm_levenberg.h"
 #include "g2o/solvers/csparse/linear_solver_csparse.h"
+#include "g2o/solvers/cholmod/linear_solver_cholmod.h"
+#include "g2o/solvers/pcg/linear_solver_pcg.h"
 #include "g2o/types/slam3d/vertex_se3.h"
 #include "g2o/types/slam3d/edge_se3.h"
 #include "g2o/types/slam2d/vertex_se2.h"
 #include "g2o/types/slam2d/edge_se2.h"
-#endif
+
+typedef g2o::BlockSolver< g2o::BlockSolverTraits<3, 3> > Slam2dBlockSolver;
+typedef g2o::LinearSolverCSparse<Slam2dBlockSolver::PoseMatrixType> Slam2dLinearCSparseSolver;
+typedef g2o::LinearSolverCholmod<Slam2dBlockSolver::PoseMatrixType> Slam2dLinearCholmodSolver;
+typedef g2o::LinearSolverPCG<Slam2dBlockSolver::PoseMatrixType> Slam2dLinearPCGSolver;
+
+typedef g2o::BlockSolver< g2o::BlockSolverTraits<6, 3> > Slam3dBlockSolver;
+typedef g2o::LinearSolverCSparse<Slam3dBlockSolver::PoseMatrixType> Slam3dLinearCSparseSolver;
+typedef g2o::LinearSolverCholmod<Slam3dBlockSolver::PoseMatrixType> Slam3dLinearCholmodSolver;
+typedef g2o::LinearSolverPCG<Slam3dBlockSolver::PoseMatrixType> Slam3dLinearPCGSolver;
+
+#include "vertigo/g2o/edge_switchPrior.h"
+#include "vertigo/g2o/edge_se2Switchable.h"
+#include "vertigo/g2o/edge_se3Switchable.h"
+#include "vertigo/g2o/vertex_switchLinear.h"
+
+#endif // end WITH_G2O
+
+#ifdef WITH_GTSAM
+#include <gtsam/geometry/Pose2.h>
+#include <gtsam/geometry/Pose3.h>
+#include <gtsam/inference/Key.h>
+#include <gtsam/inference/Symbol.h>
+#include <gtsam/slam/PriorFactor.h>
+#include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
+#include <gtsam/nonlinear/DoglegOptimizer.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/nonlinear/NonlinearOptimizer.h>
+#include <gtsam/nonlinear/Marginals.h>
+#include <gtsam/nonlinear/Values.h>
+
+#include "vertigo/gtsam/betweenFactorMaxMix.h"
+#include "vertigo/gtsam/betweenFactorSwitchable.h"
+#include "vertigo/gtsam/switchVariableLinear.h"
+#include "vertigo/gtsam/switchVariableSigmoid.h"
+#endif // end WITH_GTSAM
 
 #ifdef WITH_CVSBA
 #include <cvsba/cvsba.h>
@@ -80,16 +119,23 @@ Optimizer * Optimizer::create(const ParametersMap & parameters)
 		UWARN("g2o optimizer not available. TORO will be used instead.");
 		type = Optimizer::kTypeTORO;
 	}
+	if(!GTSAMOptimizer::available() && type == Optimizer::kTypeGTSAM)
+	{
+		UWARN("GTSAM optimizer not available. TORO will be used instead.");
+		type = Optimizer::kTypeTORO;
+	}
 	Optimizer * optimizer = 0;
 	switch(type)
 	{
+	case Optimizer::kTypeGTSAM:
+		optimizer = new GTSAMOptimizer(parameters);
+		break;
 	case Optimizer::kTypeG2O:
 		optimizer = new G2OOptimizer(parameters);
 		break;
 	case Optimizer::kTypeTORO:
 	default:
 		optimizer = new TOROOptimizer(parameters);
-		type = Optimizer::kTypeTORO;
 		break;
 
 	}
@@ -103,9 +149,17 @@ Optimizer * Optimizer::create(Optimizer::Type & type, const ParametersMap & para
 		UWARN("g2o optimizer not available. TORO will be used instead.");
 		type = Optimizer::kTypeTORO;
 	}
+	if(!GTSAMOptimizer::available() && type == Optimizer::kTypeGTSAM)
+	{
+		UWARN("GTSAM optimizer not available. TORO will be used instead.");
+		type = Optimizer::kTypeTORO;
+	}
 	Optimizer * optimizer = 0;
 	switch(type)
 	{
+	case Optimizer::kTypeGTSAM:
+		optimizer = new GTSAMOptimizer(parameters);
+		break;
 	case Optimizer::kTypeG2O:
 		optimizer = new G2OOptimizer(parameters);
 		break;
@@ -119,11 +173,12 @@ Optimizer * Optimizer::create(Optimizer::Type & type, const ParametersMap & para
 	return optimizer;
 }
 
-Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored, double epsilon) :
+Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored, double epsilon, bool robust) :
 		iterations_(iterations),
 		slam2d_(slam2d),
 		covarianceIgnored_(covarianceIgnored),
-		epsilon_(epsilon)
+		epsilon_(epsilon),
+		robust_(robust)
 {
 }
 
@@ -131,7 +186,8 @@ Optimizer::Optimizer(const ParametersMap & parameters) :
 		iterations_(Parameters::defaultRGBDOptimizeIterations()),
 		slam2d_(Parameters::defaultRGBDOptimizeSlam2D()),
 		covarianceIgnored_(Parameters::defaultRGBDOptimizeVarianceIgnored()),
-		epsilon_(Parameters::defaultRGBDOptimizeEpsilon())
+		epsilon_(Parameters::defaultRGBDOptimizeEpsilon()),
+		robust_(Parameters::defaultRGBDOptimizeRobust())
 {
 	parseParameters(parameters);
 }
@@ -142,6 +198,7 @@ void Optimizer::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeVarianceIgnored(), covarianceIgnored_);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeSlam2D(), slam2d_);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeEpsilon(), epsilon_);
+	Parameters::parse(parameters, Parameters::kRGBDOptimizeRobust(), robust_);
 }
 
 std::map<int, Transform> Optimizer::optimize(
@@ -373,9 +430,12 @@ std::map<int, Transform> TOROOptimizer::optimize(
 			pg3.initializeOptimization();
 		}
 
-		UINFO("TORO iterate begin (iterations=%d)", iterations());
+		UINFO("TORO optimizing begin (iterations=%d)", iterations());
 		double lasterror = 0;
-		for (int i=0; i<iterations(); i++)
+		double errorDelta = 0;
+		int i=0;
+		UTimer timer;
+		for (; i<iterations(); i++)
 		{
 			if(intermediateGraphes && i>0)
 			{
@@ -429,7 +489,7 @@ std::map<int, Transform> TOROOptimizer::optimize(
 			}
 
 			// early stop condition
-			double errorDelta = lasterror - error;
+			errorDelta = lasterror - error;
 			if(i>0 && errorDelta < this->epsilon())
 			{
 				UDEBUG("Stop optimizing, not enough improvement (%f < %f)", errorDelta, this->epsilon());
@@ -437,7 +497,7 @@ std::map<int, Transform> TOROOptimizer::optimize(
 			}
 			lasterror = error;
 		}
-		UINFO("TORO iterate end");
+		UINFO("TORO optimizing end (%d iterations done, error=%f, time = %f s)", i, errorDelta, timer.ticks());
 
 		if(isSlam2d())
 		{
@@ -670,20 +730,77 @@ std::map<int, Transform> G2OOptimizer::optimize(
 	{
 		// Apply g2o optimization
 
-		// create the linear solver
-		g2o::BlockSolverX::LinearSolverType * linearSolver = new g2o::LinearSolverCSparse<g2o::BlockSolverX::PoseMatrixType>();
-
-		// create the block solver on top of the linear solver
-		g2o::BlockSolverX* blockSolver = new g2o::BlockSolverX(linearSolver);
-
-		// create the algorithm to carry out the optimization
-		//g2o::OptimizationAlgorithmGaussNewton* optimizationAlgorithm = new g2o::OptimizationAlgorithmGaussNewton(blockSolver);
-		g2o::OptimizationAlgorithmLevenberg* optimizationAlgorithm = new g2o::OptimizationAlgorithmLevenberg(blockSolver);
-
-		// create the optimizer to load the data and carry out the optimization
 		g2o::SparseOptimizer optimizer;
 		optimizer.setVerbose(false);
-		optimizer.setAlgorithm(optimizationAlgorithm);
+		int solverApproach = 0;
+		int optimizationApproach = 0;
+		if(isSlam2d())
+		{
+			Slam2dBlockSolver * blockSolver;
+			if(solverApproach == 1)
+			{
+				//pcg
+				Slam2dLinearPCGSolver * linearSolver = new Slam2dLinearPCGSolver();
+				blockSolver = new Slam2dBlockSolver(linearSolver);
+			}
+			else if(solverApproach == 2)
+			{
+				//csparse
+				Slam2dLinearCSparseSolver* linearSolver = new Slam2dLinearCSparseSolver();
+				linearSolver->setBlockOrdering(false);
+				blockSolver = new Slam2dBlockSolver(linearSolver);
+			}
+			else
+			{
+				//chmold
+				Slam2dLinearCholmodSolver * linearSolver = new Slam2dLinearCholmodSolver();
+				linearSolver->setBlockOrdering(false);
+				blockSolver = new Slam2dBlockSolver(linearSolver);
+			}
+
+			if(optimizationApproach == 1)
+			{
+				optimizer.setAlgorithm(new g2o::OptimizationAlgorithmGaussNewton(blockSolver));
+			}
+			else
+			{
+				optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(blockSolver));
+			}
+		}
+		else
+		{
+			Slam3dBlockSolver * blockSolver;
+			if(solverApproach == 1)
+			{
+				//pcg
+				Slam3dLinearPCGSolver * linearSolver = new Slam3dLinearPCGSolver();
+				blockSolver = new Slam3dBlockSolver(linearSolver);
+			}
+			else if(solverApproach == 2)
+			{
+				//csparse
+				Slam3dLinearCSparseSolver* linearSolver = new Slam3dLinearCSparseSolver();
+				linearSolver->setBlockOrdering(false);
+				blockSolver = new Slam3dBlockSolver(linearSolver);
+			}
+			else
+			{
+				//chmold
+				Slam3dLinearCholmodSolver * linearSolver = new Slam3dLinearCholmodSolver();
+				linearSolver->setBlockOrdering(false);
+				blockSolver = new Slam3dBlockSolver(linearSolver);
+			}
+
+			if(optimizationApproach == 1)
+			{
+				optimizer.setAlgorithm(new g2o::OptimizationAlgorithmGaussNewton(blockSolver));
+			}
+			else
+			{
+				optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(blockSolver));
+			}
+		}
+
 
 		UDEBUG("fill poses to g2o...");
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
@@ -694,16 +811,25 @@ std::map<int, Transform> G2OOptimizer::optimize(
 			{
 				g2o::VertexSE2 * v2 = new g2o::VertexSE2();
 				v2->setEstimate(g2o::SE2(iter->second.x(), iter->second.y(), iter->second.theta()));
+				if(iter->first == rootId)
+				{
+					v2->setFixed(true);
+				}
 				vertex = v2;
 			}
 			else
 			{
 				g2o::VertexSE3 * v3 = new g2o::VertexSE3();
-				Eigen::Isometry3d pose;
+
 				Eigen::Affine3d a = iter->second.toEigen3d();
+				Eigen::Isometry3d pose;
+				pose = a.rotation();
 				pose.translation() = a.translation();
-				pose.linear() = a.rotation();
 				v3->setEstimate(pose);
+				if(iter->first == rootId)
+				{
+					v3->setFixed(true);
+				}
 				vertex = v3;
 			}
 			vertex->setId(iter->first);
@@ -711,6 +837,7 @@ std::map<int, Transform> G2OOptimizer::optimize(
 		}
 
 		UDEBUG("fill edges to g2o...");
+		int vertigoVertexId = poses.rbegin()->first+1;
 		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
 			int id1 = iter->first;
@@ -719,6 +846,32 @@ std::map<int, Transform> G2OOptimizer::optimize(
 			UASSERT(!iter->second.transform().isNull());
 
 			g2o::HyperGraph::Edge * edge = 0;
+
+			VertexSwitchLinear * v = 0;
+			if(this->isRobust() && iter->second.type() != Link::kNeighbor)
+			{
+				// For loop closure links, add switchable edges
+
+				// create new switch variable
+				// Sunderhauf IROS 2012:
+				// "Since it is reasonable to initially accept all loop closure constraints,
+				//  a proper and convenient initial value for all switch variables would be
+				//  sij = 1 when using the linear switch function"
+				v = new VertexSwitchLinear();
+				v->setEstimate(1.0);
+				v->setId(vertigoVertexId++);
+				UASSERT_MSG(optimizer.addVertex(v), uFormat("cannot insert switchable vertex %d!?", v->id()).c_str());
+
+				// create switch prior factor
+				// "If the front-end is not able to assign sound individual values
+				//  for Ξij , it is save to set all Ξij = 1, since this value is close
+				//  to the individual optimal choice of Ξij for a large range of
+				//  outliers."
+				EdgeSwitchPrior * prior = new EdgeSwitchPrior();
+				prior->setMeasurement(1.0);
+				prior->setVertex(0, v);
+				UASSERT_MSG(optimizer.addEdge(prior), uFormat("cannot insert switchable prior edge %d!?", v->id()).c_str());
+			}
 
 			if(isSlam2d())
 			{
@@ -736,16 +889,33 @@ std::map<int, Transform> G2OOptimizer::optimize(
 					information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
 				}
 
-				g2o::EdgeSE2 * e = new g2o::EdgeSE2();
-				g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
-				g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
-				UASSERT(v1 != 0);
-				UASSERT(v2 != 0);
-				e->setVertex(0, v1);
-				e->setVertex(1, v2);
-				e->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
-				e->setInformation(information);
-				edge = e;
+				if(this->isRobust() && iter->second.type() != Link::kNeighbor)
+				{
+					EdgeSE2Switchable * e = new EdgeSE2Switchable();
+					g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
+					g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
+					UASSERT(v1 != 0);
+					UASSERT(v2 != 0);
+					e->setVertex(0, v1);
+					e->setVertex(1, v2);
+					e->setVertex(2, v);
+					e->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
+					e->setInformation(information);
+					edge = e;
+				}
+				else
+				{
+					g2o::EdgeSE2 * e = new g2o::EdgeSE2();
+					g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
+					g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
+					UASSERT(v1 != 0);
+					UASSERT(v2 != 0);
+					e->setVertex(0, v1);
+					e->setVertex(1, v2);
+					e->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
+					e->setInformation(information);
+					edge = e;
+				}
 			}
 			else
 			{
@@ -757,19 +927,36 @@ std::map<int, Transform> G2OOptimizer::optimize(
 
 				Eigen::Affine3d a = iter->second.transform().toEigen3d();
 				Eigen::Isometry3d constraint;
+				constraint = a.rotation();
 				constraint.translation() = a.translation();
-				constraint.linear() = a.rotation();
 
-				g2o::EdgeSE3 * e = new g2o::EdgeSE3();
-				g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
-				g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
-				UASSERT(v1 != 0);
-				UASSERT(v2 != 0);
-				e->setVertex(0, v1);
-				e->setVertex(1, v2);
-				e->setMeasurement(constraint);
-				e->setInformation(information);
-				edge = e;
+				if(this->isRobust() && iter->second.type() != Link::kNeighbor)
+				{
+					EdgeSE3Switchable * e = new EdgeSE3Switchable();
+					g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+					g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
+					UASSERT(v1 != 0);
+					UASSERT(v2 != 0);
+					e->setVertex(0, v1);
+					e->setVertex(1, v2);
+					e->setVertex(2, v);
+					e->setMeasurement(constraint);
+					e->setInformation(information);
+					edge = e;
+				}
+				else
+				{
+					g2o::EdgeSE3 * e = new g2o::EdgeSE3();
+					g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+					g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
+					UASSERT(v1 != 0);
+					UASSERT(v2 != 0);
+					e->setVertex(0, v1);
+					e->setVertex(1, v2);
+					e->setMeasurement(constraint);
+					e->setInformation(information);
+					edge = e;
+				}
 			}
 
 			if (!optimizer.addEdge(edge))
@@ -780,25 +967,13 @@ std::map<int, Transform> G2OOptimizer::optimize(
 		}
 
 		UDEBUG("Initial optimization...");
-		UASSERT(uContains(poses, rootId));
-		if(isSlam2d())
-		{
-			g2o::VertexSE2* firstRobotPose = (g2o::VertexSE2*)optimizer.vertex(rootId);
-			UASSERT(firstRobotPose != 0);
-			firstRobotPose->setFixed(true);
-		}
-		else
-		{
-			g2o::VertexSE3* firstRobotPose = (g2o::VertexSE3*)optimizer.vertex(rootId);
-			UASSERT(firstRobotPose != 0);
-			firstRobotPose->setFixed(true);
-		}
+		optimizer.initializeOptimization();
 
-		UINFO("g2o iterate begin (max iterations=%d)", iterations());
+		UINFO("g2o optimizing begin (max iterations=%d, robust=%d)", iterations(), isRobust()?1:0);
 		int it = 0;
+		UTimer timer;
 		if(intermediateGraphes)
 		{
-			optimizer.initializeOptimization();
 			for(int i=0; i<iterations(); ++i)
 			{
 				if(i > 0)
@@ -847,18 +1022,17 @@ std::map<int, Transform> G2OOptimizer::optimize(
 				if(ULogger::level() == ULogger::kDebug)
 				{
 					optimizer.computeActiveErrors();
-					UDEBUG("iteration %d: %d nodes, %d edges, chi2: %f", i, (int)optimizer.vertices().size(), (int)optimizer.edges().size(), optimizer.chi2());
+					UDEBUG("iteration %d: %d nodes, %d edges, chi2: %f", i, (int)optimizer.vertices().size(), (int)optimizer.edges().size(), optimizer.activeRobustChi2());
 				}
 			}
 		}
 		else
 		{
-			optimizer.initializeOptimization();
 			it = optimizer.optimize(iterations());
 			optimizer.computeActiveErrors();
-			UDEBUG("%d nodes, %d edges, chi2: %f", (int)optimizer.vertices().size(), (int)optimizer.edges().size(), optimizer.chi2());
+			UDEBUG("%d nodes, %d edges, chi2: %f", (int)optimizer.vertices().size(), (int)optimizer.edges().size(), optimizer.activeRobustChi2());
 		}
-		UINFO("g2o iterate end (%d iterations done)", it);
+		UINFO("g2o optimizing end (%d iterations done, error=%f, time = %f s)", it, optimizer.activeRobustChi2(), timer.ticks());
 
 		if(isSlam2d())
 		{
@@ -912,6 +1086,312 @@ std::map<int, Transform> G2OOptimizer::optimize(
 	UDEBUG("Optimizing graph...end!");
 #else
 	UERROR("Not built with G2O support!");
+#endif
+	return optimizedPoses;
+}
+
+bool G2OOptimizer::saveGraph(
+		const std::string & fileName,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & edgeConstraints,
+		bool useRobustConstraints)
+{
+	FILE * file = 0;
+
+#ifdef _MSC_VER
+	fopen_s(&file, fileName.c_str(), "w");
+#else
+	file = fopen(fileName.c_str(), "w");
+#endif
+
+	if(file)
+	{
+		// VERTEX_SE3 id x y z qw qx qy qz
+		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			Eigen::Quaternionf q = iter->second.getQuaternionf();
+			fprintf(file, "VERTEX_SE3:QUAT %d %f %f %f %f %f %f %f\n",
+					iter->first,
+					iter->second.x(),
+					iter->second.y(),
+					iter->second.z(),
+					q.x(),
+					q.y(),
+					q.z(),
+					q.w());
+		}
+
+		//EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
+		int virtualVertexId = poses.size()?poses.rbegin()->first+1:0;
+		for(std::multimap<int, Link>::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+		{
+			std::string prefix = "EDGE_SE3:QUAT";
+			std::string suffix = "";
+
+			if(useRobustConstraints && iter->second.type() != Link::kNeighbor)
+			{
+				prefix = "EDGE_SE3_SWITCHABLE";
+				fprintf(file, "VERTEX_SWITCH %d 1\n", virtualVertexId);
+				fprintf(file, "EDGE_SWITCH_PRIOR %d 1 1.0\n", virtualVertexId);
+				suffix = uFormat(" %d", virtualVertexId++);
+			}
+
+			Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
+			fprintf(file, "%s %d %d%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+					prefix.c_str(),
+					iter->first,
+					iter->second.to(),
+					suffix.c_str(),
+					iter->second.transform().x(),
+					iter->second.transform().y(),
+					iter->second.transform().z(),
+					q.x(),
+					q.y(),
+					q.z(),
+					q.w(),
+					iter->second.infMatrix().at<double>(0,0),
+					iter->second.infMatrix().at<double>(0,1),
+					iter->second.infMatrix().at<double>(0,2),
+					iter->second.infMatrix().at<double>(0,3),
+					iter->second.infMatrix().at<double>(0,4),
+					iter->second.infMatrix().at<double>(0,5),
+					iter->second.infMatrix().at<double>(1,1),
+					iter->second.infMatrix().at<double>(1,2),
+					iter->second.infMatrix().at<double>(1,3),
+					iter->second.infMatrix().at<double>(1,4),
+					iter->second.infMatrix().at<double>(1,5),
+					iter->second.infMatrix().at<double>(2,2),
+					iter->second.infMatrix().at<double>(2,3),
+					iter->second.infMatrix().at<double>(2,4),
+					iter->second.infMatrix().at<double>(2,5),
+					iter->second.infMatrix().at<double>(3,3),
+					iter->second.infMatrix().at<double>(3,4),
+					iter->second.infMatrix().at<double>(3,5),
+					iter->second.infMatrix().at<double>(4,4),
+					iter->second.infMatrix().at<double>(4,5),
+					iter->second.infMatrix().at<double>(5,5));
+		}
+		UINFO("Graph saved to %s", fileName.c_str());
+		fclose(file);
+	}
+	else
+	{
+		UERROR("Cannot save to file %s", fileName.c_str());
+		return false;
+	}
+	return true;
+}
+
+//////////////////////
+// GTSAM
+//////////////////////
+bool GTSAMOptimizer::available()
+{
+#ifdef WITH_GTSAM
+	return true;
+#else
+	return false;
+#endif
+}
+
+std::map<int, Transform> GTSAMOptimizer::optimize(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & edgeConstraints,
+		std::list<std::map<int, Transform> > * intermediateGraphes)
+{
+	std::map<int, Transform> optimizedPoses;
+#ifdef WITH_GTSAM
+	UDEBUG("Optimizing graph...");
+	if(edgeConstraints.size()>=1 && poses.size()>=2 && iterations() > 0)
+	{
+		gtsam::NonlinearFactorGraph graph;
+
+		//prior first pose
+		UASSERT(uContains(poses, rootId));
+		const Transform & initialPose = poses.at(rootId);
+		if(isSlam2d())
+		{
+			gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.01, 0.01, 0.01));
+			graph.add(gtsam::PriorFactor<gtsam::Pose2>(rootId, gtsam::Pose2(initialPose.x(), initialPose.y(), initialPose.theta()), priorNoise));
+		}
+		else
+		{
+			gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished());
+			graph.add(gtsam::PriorFactor<gtsam::Pose3>(rootId, gtsam::Pose3(initialPose.toEigen4d()), priorNoise));
+		}
+
+		UDEBUG("fill poses to gtsam...");
+		gtsam::Values initialEstimate;
+		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			UASSERT(!iter->second.isNull());
+			if(isSlam2d())
+			{
+				initialEstimate.insert(iter->first, gtsam::Pose2(iter->second.x(), iter->second.y(), iter->second.theta()));
+			}
+			else
+			{
+				initialEstimate.insert(iter->first, gtsam::Pose3(iter->second.toEigen4d()));
+			}
+		}
+
+		UDEBUG("fill edges to gtsam...");
+		int switchCounter = poses.rbegin()->first+1;
+		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+		{
+			int id1 = iter->first;
+			int id2 = iter->second.to();
+
+			UASSERT(!iter->second.transform().isNull());
+
+			if(this->isRobust() && iter->second.type()!=Link::kNeighbor)
+			{
+				// create new switch variable
+				// Sunderhauf IROS 2012:
+				// "Since it is reasonable to initially accept all loop closure constraints,
+				//  a proper and convenient initial value for all switch variables would be
+				//  sij = 1 when using the linear switch function"
+				double prior = 1.0;
+				initialEstimate.insert(gtsam::Symbol('s',switchCounter), vertigo::SwitchVariableLinear(prior));
+
+				// create switch prior factor
+				// "If the front-end is not able to assign sound individual values
+				//  for Ξij , it is save to set all Ξij = 1, since this value is close
+				//  to the individual optimal choice of Ξij for a large range of
+				//  outliers."
+				gtsam::noiseModel::Diagonal::shared_ptr switchPriorModel = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector1(1.0));
+				graph.add(gtsam::PriorFactor<vertigo::SwitchVariableLinear> (gtsam::Symbol('s',switchCounter), vertigo::SwitchVariableLinear(prior), switchPriorModel));
+			}
+
+			if(isSlam2d())
+			{
+				Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
+				if(!isCovarianceIgnored())
+				{
+					// For some reasons, dividing by 1000 avoids some exceptions (maybe too large numbers on optimization)
+					information(0,0) = iter->second.infMatrix().at<double>(0,0)/1000.0; // x-x
+					information(0,1) = iter->second.infMatrix().at<double>(0,1)/1000.0; // x-y
+					information(0,2) = iter->second.infMatrix().at<double>(0,5)/1000.0; // x-theta
+					information(1,0) = iter->second.infMatrix().at<double>(1,0)/1000.0; // y-x
+					information(1,1) = iter->second.infMatrix().at<double>(1,1)/1000.0; // y-y
+					information(1,2) = iter->second.infMatrix().at<double>(1,5)/1000.0; // y-theta
+					information(2,0) = iter->second.infMatrix().at<double>(5,0)/1000.0; // theta-x
+					information(2,1) = iter->second.infMatrix().at<double>(5,1)/1000.0; // theta-y
+					information(2,2) = iter->second.infMatrix().at<double>(5,5)/1000.0; // theta-theta
+				}
+				gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
+
+				if(this->isRobust() && iter->second.type()!=Link::kNeighbor)
+				{
+					// create switchable edge factor
+					graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose2>(id1, id2, gtsam::Symbol('s', switchCounter++), gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
+				}
+				else
+				{
+					graph.add(gtsam::BetweenFactor<gtsam::Pose2>(id1, id2, gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
+				}
+			}
+			else
+			{
+				Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
+				if(!isCovarianceIgnored())
+				{
+					memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
+					// For some reasons, dividing by 1000 avoids some exceptions (maybe too large numbers on optimization)
+					information = information / 1000.0;
+				}
+
+				gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
+
+				if(this->isRobust() && iter->second.type()!=Link::kNeighbor)
+				{
+					// create switchable edge factor
+					graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose3>(id1, id2, gtsam::Symbol('s', switchCounter++), gtsam::Pose3(iter->second.transform().toEigen4d()), model));
+				}
+				else
+				{
+					graph.add(gtsam::BetweenFactor<gtsam::Pose3>(id1, id2, gtsam::Pose3(iter->second.transform().toEigen4d()), model));
+				}
+			}
+		}
+
+		UDEBUG("create optimizer");
+		gtsam::GaussNewtonParams parameters;
+		parameters.relativeErrorTol = epsilon();
+		parameters.maxIterations = iterations();
+		gtsam::GaussNewtonOptimizer optimizer(graph, initialEstimate, parameters);
+		//gtsam::LevenbergMarquardtParams parametersLev;
+		//parametersLev.relativeErrorTol = epsilon();
+		//parametersLev.maxIterations = iterations();
+		//gtsam::LevenbergMarquardtOptimizer optimizer(graph, initialEstimate, parametersLev);
+		//gtsam::DoglegParams parametersDogleg;
+		//parametersDogleg.relativeErrorTol = epsilon();
+		//parametersDogleg.maxIterations = iterations();
+		//gtsam::DoglegOptimizer optimizer(graph, initialEstimate, parametersDogleg);
+
+		UINFO("GTSAM optimizing begin (max iterations=%d, robust=%d)", iterations(), isRobust()?1:0);
+		UTimer timer;
+		for(int i=0; i<iterations(); ++i)
+		{
+			if(intermediateGraphes && i > 0)
+			{
+				std::map<int, Transform> tmpPoses;
+				for(gtsam::Values::const_iterator iter=optimizer.values().begin(); iter!=optimizer.values().end(); ++iter)
+				{
+					if(iter->value.dim() > 1)
+					{
+						if(isSlam2d())
+						{
+							gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
+							tmpPoses.insert(std::make_pair((int)iter->key, Transform(p.x(), p.y(), p.theta())));
+						}
+						else
+						{
+							gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
+							tmpPoses.insert(std::make_pair((int)iter->key, Transform::fromEigen4d(p.matrix())));
+						}
+					}
+				}
+				intermediateGraphes->push_back(tmpPoses);
+			}
+			try
+			{
+				optimizer.iterate();
+			}
+			catch(gtsam::IndeterminantLinearSystemException & e)
+			{
+				UERROR("GTSAM exception catched: %s", e.what());
+				return optimizedPoses;
+			}
+			UDEBUG("iteration %d error =%f", i+1, optimizer.error());
+			if(optimizer.error() < epsilon())
+			{
+				break;
+			}
+		}
+		UINFO("GTSAM optimizing end (%d iterations done, error=%f (initial=%f final=%f), time=%f s)", optimizer.iterations(), optimizer.error(), graph.error(initialEstimate), graph.error(optimizer.values()), timer.ticks());
+
+		for(gtsam::Values::const_iterator iter=optimizer.values().begin(); iter!=optimizer.values().end(); ++iter)
+		{
+			if(iter->value.dim() > 1)
+			{
+				if(isSlam2d())
+				{
+					gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
+					optimizedPoses.insert(std::make_pair((int)iter->key, Transform(p.x(), p.y(), p.theta())));
+				}
+				else
+				{
+					gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
+					optimizedPoses.insert(std::make_pair((int)iter->key, Transform::fromEigen4d(p.matrix())));
+				}
+			}
+		}
+	}
+	UDEBUG("Optimizing graph...end!");
+#else
+	UERROR("Not built with GTSAM support!");
 #endif
 	return optimizedPoses;
 }

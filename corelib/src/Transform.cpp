@@ -66,6 +66,12 @@ Transform::Transform(float x, float y, float z, float roll, float pitch, float y
 	*this = fromEigen3f(t);
 }
 
+Transform::Transform(float x, float y, float theta)
+{
+	Eigen::Affine3f t = pcl::getTransformation (x, y, 0, 0, 0, theta);
+	*this = fromEigen3f(t);
+}
+
 bool Transform::isNull() const
 {
 	return (data()[0] == 0.0f &&

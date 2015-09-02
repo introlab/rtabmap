@@ -127,6 +127,19 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 			ui_->comboBox_graphOptimizer->setCurrentIndex(0);
 		}
 	}
+	if(!graph::GTSAMOptimizer::available())
+	{
+		ui_->comboBox_graphOptimizer->setItemData(1, 0, Qt::UserRole - 1);
+		if(ui_->comboBox_graphOptimizer->currentIndex() == 2)
+		{
+			UWARN("GTSAM is not available, setting optimization default to TORO.");
+			ui_->comboBox_graphOptimizer->setCurrentIndex(0);
+		}
+	}
+	if(!graph::G2OOptimizer::available() && !graph::GTSAMOptimizer::available())
+	{
+		ui_->checkBox_robust->setEnabled(false);
+	}
 
 	ui_->menuView->addAction(ui_->dockWidget_constraints->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_graphView->toggleViewAction());
@@ -146,6 +159,8 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->actionGenerate_graph_dot, SIGNAL(triggered()), this, SLOT(generateGraph()));
 	connect(ui_->actionGenerate_local_graph_dot, SIGNAL(triggered()), this, SLOT(generateLocalGraph()));
 	connect(ui_->actionGenerate_TORO_graph_graph, SIGNAL(triggered()), this, SLOT(generateTOROGraph()));
+	connect(ui_->actionGenerate_g2o_graph_g2o, SIGNAL(triggered()), this, SLOT(generateG2OGraph()));
+	ui_->actionGenerate_g2o_graph_g2o->setEnabled(graph::G2OOptimizer::available());
 	connect(ui_->actionView_3D_map, SIGNAL(triggered()), this, SLOT(view3DMap()));
 	connect(ui_->actionGenerate_3D_map_pcd, SIGNAL(triggered()), this, SLOT(generate3DMap()));
 	connect(ui_->actionDetect_more_loop_closures, SIGNAL(triggered()), this, SLOT(detectMoreLoopClosures()));
@@ -168,6 +183,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	ui_->pushButton_reject->setEnabled(false);
 
 	ui_->actionGenerate_TORO_graph_graph->setEnabled(false);
+	ui_->actionGenerate_g2o_graph_g2o->setEnabled(false);
 
 	ui_->horizontalSlider_A->setTracking(false);
 	ui_->horizontalSlider_B->setTracking(false);
@@ -198,6 +214,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->spinBox_iterations, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_robust, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreCovariance, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreGlobalLoop, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
@@ -239,6 +256,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	// Graph view
 	connect(ui_->spinBox_iterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_robust, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignoreCovariance, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignoreGlobalLoop, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
@@ -358,6 +376,7 @@ void DatabaseViewer::readSettings()
 	settings.beginGroup("optimization");
 	ui_->spinBox_iterations->setValue(settings.value("iterations", ui_->spinBox_iterations->value()).toInt());
 	ui_->checkBox_spanAllMaps->setChecked(settings.value("spanToAllMaps", ui_->checkBox_spanAllMaps->isChecked()).toBool());
+	ui_->checkBox_robust->setChecked(settings.value("robust", ui_->checkBox_robust->isChecked()).toBool());
 	ui_->checkBox_ignoreCovariance->setChecked(settings.value("ignoreCovariance", ui_->checkBox_ignoreCovariance->isChecked()).toBool());
 	ui_->checkBox_ignorePoseCorrection->setChecked(settings.value("ignorePoseCorrection", ui_->checkBox_ignorePoseCorrection->isChecked()).toBool());
 	ui_->checkBox_ignoreGlobalLoop->setChecked(settings.value("ignoreGlobalLoop", ui_->checkBox_ignoreGlobalLoop->isChecked()).toBool());
@@ -451,6 +470,7 @@ void DatabaseViewer::writeSettings()
 	settings.beginGroup("optimization");
 	settings.setValue("iterations", ui_->spinBox_iterations->value());
 	settings.setValue("spanToAllMaps", ui_->checkBox_spanAllMaps->isChecked());
+	settings.setValue("robust", ui_->checkBox_robust->isChecked());
 	settings.setValue("ignoreCovariance", ui_->checkBox_ignoreCovariance->isChecked());
 	settings.setValue("ignorePoseCorrection", ui_->checkBox_ignorePoseCorrection->isChecked());
 	settings.setValue("ignoreGlobalLoop", ui_->checkBox_ignoreGlobalLoop->isChecked());
@@ -556,7 +576,9 @@ bool DatabaseViewer::openDatabase(const QString & path)
 			linksRefined_.clear();
 			linksRemoved_.clear();
 			localMaps_.clear();
+			ui_->graphViewer->clearAll();
 			ui_->actionGenerate_TORO_graph_graph->setEnabled(false);
+			ui_->actionGenerate_g2o_graph_g2o->setEnabled(false);
 			ui_->checkBox_showOptimized->setEnabled(false);
 			databaseFileName_.clear();
 		}
@@ -1057,6 +1079,7 @@ void DatabaseViewer::updateIds()
 	}
 
 	ui_->actionGenerate_TORO_graph_graph->setEnabled(false);
+	ui_->actionGenerate_g2o_graph_g2o->setEnabled(false);
 	graphes_.clear();
 	graphLinks_.clear();
 	neighborLinks_.clear();
@@ -1193,7 +1216,51 @@ void DatabaseViewer::generateTOROGraph()
 		QString path = QFileDialog::getSaveFileName(this, tr("Save File"), pathDatabase_+"/constraints" + QString::number(id) + ".graph", tr("TORO file (*.graph)"));
 		if(!path.isEmpty())
 		{
-			graph::TOROOptimizer::saveGraph(path.toStdString(), uValueAt(graphes_, id), graphLinks_);
+			if(ui_->checkBox_ignoreCovariance->isChecked())
+			{
+				std::multimap<int, rtabmap::Link> links = graphLinks_;
+				for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+				{
+					iter->second.setInfMatrix(cv::Mat::eye(6,6,CV_64FC1));
+				}
+				graph::TOROOptimizer::saveGraph(path.toStdString(), uValueAt(graphes_, id), links);
+			}
+			else
+			{
+				graph::TOROOptimizer::saveGraph(path.toStdString(), uValueAt(graphes_, id), graphLinks_);
+			}
+		}
+	}
+}
+
+void DatabaseViewer::generateG2OGraph()
+{
+	if(!graphes_.size() || !graphLinks_.size())
+	{
+		QMessageBox::warning(this, tr("Cannot generate a g2o graph"), tr("No poses or no links..."));
+		return;
+	}
+	bool ok = false;
+	int id = QInputDialog::getInt(this, tr("Which iteration?"), tr("Iteration (0 -> %1)").arg((int)graphes_.size()-1), (int)graphes_.size()-1, 0, (int)graphes_.size()-1, 1, &ok);
+
+	if(ok)
+	{
+		QString path = QFileDialog::getSaveFileName(this, tr("Save File"), pathDatabase_+"/constraints" + QString::number(id) + ".g2o", tr("g2o file (*.g2o)"));
+		if(!path.isEmpty())
+		{
+			if(ui_->checkBox_ignoreCovariance->isChecked())
+			{
+				std::multimap<int, rtabmap::Link> links = graphLinks_;
+				for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+				{
+					iter->second.setInfMatrix(cv::Mat::eye(6,6,CV_64FC1));
+				}
+				graph::G2OOptimizer::saveGraph(path.toStdString(), uValueAt(graphes_, id), links, ui_->checkBox_robust->isChecked());
+			}
+			else
+			{
+				graph::G2OOptimizer::saveGraph(path.toStdString(), uValueAt(graphes_, id), graphLinks_, ui_->checkBox_robust->isChecked());
+			}
 		}
 	}
 }
@@ -2604,6 +2671,7 @@ void DatabaseViewer::updateGraphView()
 		graphes_.push_back(poses);
 
 		ui_->actionGenerate_TORO_graph_graph->setEnabled(true);
+		ui_->actionGenerate_g2o_graph_g2o->setEnabled(true);
 		std::multimap<int, rtabmap::Link> links = links_;
 
 		// filter current map if not spanning to all maps
@@ -2697,13 +2765,32 @@ void DatabaseViewer::updateGraphView()
 		ui_->label_loopClosures->setText(tr("(%1, %2, %3, %4)").arg(totalGlobal).arg(totalLocalSpace).arg(totalLocalTime).arg(totalUser));
 
 		graph::Optimizer * optimizer = 0;
-		if(ui_->comboBox_graphOptimizer->currentIndex() == graph::Optimizer::kTypeG2O)
+		if(ui_->comboBox_graphOptimizer->currentIndex() == graph::Optimizer::kTypeGTSAM)
 		{
-			optimizer = new graph::G2OOptimizer(ui_->spinBox_iterations->value(), ui_->checkBox_2dslam->isChecked(), ui_->checkBox_ignoreCovariance->isChecked());
+			optimizer = new graph::GTSAMOptimizer(
+					ui_->spinBox_iterations->value(),
+					ui_->checkBox_2dslam->isChecked(),
+					ui_->checkBox_ignoreCovariance->isChecked(),
+					0.0,
+					ui_->checkBox_robust->isChecked());
+		}
+		else if(ui_->comboBox_graphOptimizer->currentIndex() == graph::Optimizer::kTypeG2O)
+		{
+			UINFO("ui_->checkBox_robust->isChecked()=%d", ui_->checkBox_robust->isChecked()?1:0);
+			optimizer = new graph::G2OOptimizer(
+					ui_->spinBox_iterations->value(),
+					ui_->checkBox_2dslam->isChecked(),
+					ui_->checkBox_ignoreCovariance->isChecked(),
+					0.0,
+					ui_->checkBox_robust->isChecked());
 		}
 		else
 		{
-			optimizer = new graph::TOROOptimizer(ui_->spinBox_iterations->value(), ui_->checkBox_2dslam->isChecked(), ui_->checkBox_ignoreCovariance->isChecked());
+			optimizer = new graph::TOROOptimizer(
+					ui_->spinBox_iterations->value(),
+					ui_->checkBox_2dslam->isChecked(),
+					ui_->checkBox_ignoreCovariance->isChecked(),
+					0.0);
 		}
 		std::map<int, rtabmap::Transform> posesOut;
 		std::multimap<int, rtabmap::Link> linksOut;
@@ -2723,6 +2810,10 @@ void DatabaseViewer::updateGraphView()
 		graphLinks_ = linksOut;
 		ui_->label_nodes->setNum((int)finalPoses.size());
 		delete optimizer;
+		if(posesOut.size() && finalPoses.empty())
+		{
+			QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors."));
+		}
 	}
 	if(graphes_.size())
 	{
@@ -3006,7 +3097,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 			}
 			if(!updated)
 			{
-				linksRefined_.insert(std::make_pair<int, Link>(newLink.from(), newLink));
+				linksRefined_.insert(std::make_pair(newLink.from(), newLink));
 
 				if(updateGraph)
 				{
@@ -3129,7 +3220,7 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 		}
 		if(!updated)
 		{
-			linksRefined_.insert(std::make_pair<int, Link>(newLink.from(), newLink));
+			linksRefined_.insert(std::make_pair(newLink.from(), newLink));
 
 			if(updateGraph)
 			{

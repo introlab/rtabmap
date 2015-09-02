@@ -149,7 +149,33 @@ IF(G2O_FOUND)
 		${LIBRARIES}
 		${G2O_LIBRARIES}
 	)
+	#Newest versions require std11
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+	
+	IF(WITH_VERTIGO)
+		SET(SRC_FILES
+	    	${SRC_FILES}
+			vertigo/g2o/edge_se2MaxMixture.cpp
+			vertigo/g2o/edge_se2Switchable.cpp
+			vertigo/g2o/edge_se3Switchable.cpp
+			vertigo/g2o/edge_switchPrior.cpp
+			vertigo/g2o/types_g2o_robust.cpp
+			vertigo/g2o/vertex_switchLinear.cpp
+		)
+	ENDIF(WITH_VERTIGO)
 ENDIF(G2O_FOUND)
+
+IF(GTSAM_FOUND)
+	ADD_DEFINITIONS("-DWITH_GTSAM")
+	SET(INCLUDE_DIRS 
+		${INCLUDE_DIRS} 
+		${GTSAM_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		gtsam
+	)
+ENDIF(GTSAM_FOUND)
 
 IF(cvsba_FOUND)
 	ADD_DEFINITIONS("-DWITH_CVSBA")

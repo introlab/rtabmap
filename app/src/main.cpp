@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
 {
 	/* Set logger type */
 	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kInfo);
+	ULogger::setLevel(ULogger::kDebug);
 
 	/* Create tasks */
 	QApplication * app = new QApplication(argc, argv);

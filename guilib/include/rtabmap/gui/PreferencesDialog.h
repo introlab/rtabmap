@@ -301,7 +301,7 @@ private:
 	void addParameter(const QObject * object, double value);
 	void addParameter(const QObject * object, const QString & value);
 	void addParameters(const QObjectList & children);
-	void addParameters(const QStackedWidget * stackedWidget);
+	void addParameters(const QStackedWidget * stackedWidget, int panel = -1);
 	void addParameters(const QGroupBox * box);
 	QList<QGroupBox*> getGroupBoxes();
 	void readSettingsBegin();

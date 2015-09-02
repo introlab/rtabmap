@@ -82,6 +82,7 @@ private slots:
 	void extractImages();
 	void generateLocalGraph();
 	void generateTOROGraph();
+	void generateG2OGraph();
 	void view3DMap();
 	void generate3DMap();
 	void detectMoreLoopClosures();

@@ -308,6 +308,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionRGBD_SLAM_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAM()));
 	connect(_ui->actionKITTI_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesKITTI()));
 	connect(_ui->actionTORO_graph, SIGNAL(triggered()), this , SLOT(exportPosesTORO()));
+	connect(_ui->actionG2o_g2o, SIGNAL(triggered()), this , SLOT(exportPosesG2O()));
+	_ui->actionG2o_g2o->setVisible(graph::G2OOptimizer::available());
 	connect(_ui->actionDelete_memory, SIGNAL(triggered()), this , SLOT(deleteMemory()));
 	connect(_ui->actionDownload_all_clouds, SIGNAL(triggered()), this , SLOT(downloadAllClouds()));
 	connect(_ui->actionDownload_graph, SIGNAL(triggered()), this , SLOT(downloadPoseGraph()));
@@ -3178,6 +3180,10 @@ void MainWindow::exportPosesTORO()
 {
 	exportPoses(3);
 }
+void MainWindow::exportPosesG2O()
+{
+	exportPoses(4);
+}
 
 void MainWindow::exportPoses(int format)
 {
@@ -3215,14 +3221,14 @@ void MainWindow::exportPoses(int format)
 
 		if(_exportPosesFileName[format].isEmpty())
 		{
-			_exportPosesFileName[format] = _preferencesDialog->getWorkingDirectory() + QDir::separator() + (format==3?"toro.graph":"poses.txt");
+			_exportPosesFileName[format] = _preferencesDialog->getWorkingDirectory() + QDir::separator() + (format==3?"toro.graph":format==4?"poses.g2o":"poses.txt");
 		}
 
 		QString path = QFileDialog::getSaveFileName(
 				this,
 				tr("Save File"),
 				_exportPosesFileName[format],
-				format == 3?tr("TORO file (*.graph)"):tr("Text file (*.txt)"));
+				format == 3?tr("TORO file (*.graph)"):format==4?tr("g2o file (*.g2o)"):tr("Text file (*.txt)"));
 
 		if(!path.isEmpty())
 		{
@@ -3233,7 +3239,7 @@ void MainWindow::exportPoses(int format)
 			_ui->dockWidget_console->show();
 			_ui->widget_console->appendMsg(
 					QString("%1 saved (global=%2, optimized=%3)... %4")
-					.arg(format == 3?"TORO graph":"Poses")
+					.arg(format == 3?"TORO graph":format == 4?"g2o graph":"Poses")
 					.arg(global?"true":"false")
 					.arg(optimized?"true":"false")
 					.arg(_exportPosesFileName[format]));

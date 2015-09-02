@@ -176,6 +176,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->graphOptimization_type->setItemData(1, 0, Qt::UserRole - 1);
 	}
+	if(!graph::GTSAMOptimizer::available())
+	{
+		_ui->graphOptimization_type->setItemData(2, 0, Qt::UserRole - 1);
+	}
+	if(!graph::G2OOptimizer::available() && !graph::GTSAMOptimizer::available())
+	{
+		_ui->graphOptimization_robust->setEnabled(false);
+	}
 	if(!CameraOpenni::available())
 	{
 		_ui->comboBox_cameraRGBD->setItemData(0, 0, Qt::UserRole - 1);
@@ -571,6 +579,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->graphOptimization_covarianceIgnored->setObjectName(Parameters::kRGBDOptimizeVarianceIgnored().c_str());
 	_ui->graphOptimization_fromGraphEnd->setObjectName(Parameters::kRGBDOptimizeFromGraphEnd().c_str());
 	_ui->graphOptimization_stopEpsilon->setObjectName(Parameters::kRGBDOptimizeEpsilon().c_str());
+	_ui->graphOptimization_robust->setObjectName(Parameters::kRGBDOptimizeRobust().c_str());
 
 	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
 	_ui->graphPlan_planWithNearNodesLinked->setObjectName(Parameters::kRGBDPlanVirtualLinks().c_str());
@@ -1854,11 +1863,21 @@ bool PreferencesDialog::validateForm()
 	// optimization strategy
 	if(!graph::G2OOptimizer::available())
 	{
-		if(_ui->graphOptimization_type->currentIndex() > 0)
+		if(_ui->graphOptimization_type->currentIndex() == 1)
 		{
 			QMessageBox::warning(this, tr("Parameter warning"),
 					tr("Selected graph optimization strategy (g2o) is not available. RTAB-Map is not built "
 					   "with g2o. TORO is set instead for graph optimization strategy."));
+			_ui->graphOptimization_type->setCurrentIndex(graph::Optimizer::kTypeTORO);
+		}
+	}
+	if(!graph::GTSAMOptimizer::available())
+	{
+		if(_ui->graphOptimization_type->currentIndex() == 2)
+		{
+			QMessageBox::warning(this, tr("Parameter warning"),
+					tr("Selected graph optimization strategy (GTSAM) is not available. RTAB-Map is not built "
+					   "with GTSAM. TORO is set instead for graph optimization strategy."));
 			_ui->graphOptimization_type->setCurrentIndex(graph::Optimizer::kTypeTORO);
 		}
 	}
@@ -2487,6 +2506,17 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 						ok = false;
 					}
 				}
+				if(!graph::GTSAMOptimizer::available())
+				{
+					if(valueInt==2 && combo->objectName().toStdString().compare(Parameters::kRGBDOptimizeStrategy()) == 0)
+					{
+						UWARN("Trying to set \"%s\" to GTSAM but RTAB-Map isn't built "
+							  "with GTSAM. Keeping default combo value: %s.",
+							  combo->objectName().toStdString().c_str(),
+							  combo->currentText().toStdString().c_str());
+						ok = false;
+					}
+				}
 				if(ok)
 				{
 					combo->setCurrentIndex(valueInt);
@@ -2649,6 +2679,22 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 					{
 						this->addParameters(_ui->groupBox_loopClosure_icp2);
 					}
+				}
+				else if(comboBox == _ui->loopClosure_estimationType)
+				{
+					this->addParameters(_ui->stackedWidget_loopClosureEstimation, _ui->loopClosure_estimationType->currentIndex());
+				}
+				else if(comboBox == _ui->odom_estimationType)
+				{
+					this->addParameters(_ui->stackedWidget_odomEstimation, _ui->stackedWidget_odomEstimation->currentIndex());
+				}
+				else if(comboBox == _ui->graphOptimization_type)
+				{
+					this->addParameter(_ui->graphOptimization_iterations,        _ui->graphOptimization_iterations->value());
+					this->addParameter(_ui->graphOptimization_covarianceIgnored, _ui->graphOptimization_covarianceIgnored->isChecked());
+					this->addParameter(_ui->graphOptimization_slam2d,            _ui->graphOptimization_slam2d->isChecked());
+					this->addParameter(_ui->graphOptimization_stopEpsilon,       _ui->graphOptimization_stopEpsilon->value());
+					this->addParameter(_ui->graphOptimization_robust,            _ui->graphOptimization_robust->isChecked());
 				}
 			}
 			// Add parameter
@@ -2816,13 +2862,22 @@ void PreferencesDialog::addParameters(const QObjectList & children)
 	}
 }
 
-void PreferencesDialog::addParameters(const QStackedWidget * stackedWidget)
+void PreferencesDialog::addParameters(const QStackedWidget * stackedWidget, int panel)
 {
 	if(stackedWidget)
 	{
-		for(int i=0; i<stackedWidget->count(); ++i)
+		if(panel == -1)
 		{
-			const QObjectList & children = stackedWidget->widget(i)->children();
+			for(int i=0; i<stackedWidget->count(); ++i)
+			{
+				const QObjectList & children = stackedWidget->widget(i)->children();
+				addParameters(children);
+			}
+		}
+		else
+		{
+			UASSERT(panel<stackedWidget->count());
+			const QObjectList & children = stackedWidget->widget(panel)->children();
 			addParameters(children);
 		}
 	}

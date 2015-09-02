@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>-392</y>
-            <width>755</width>
-            <height>1591</height>
+            <width>760</width>
+            <height>1570</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -6553,6 +6553,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <string>g2o</string>
                           </property>
                          </item>
+                         <item>
+                          <property name="text">
+                           <string>GTSAM</string>
+                          </property>
+                         </item>
                         </widget>
                        </item>
                        <item row="1" column="0">
@@ -6575,14 +6580,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="0">
+                       <item row="7" column="0">
                         <widget class="QCheckBox" name="graphOptimization_fromGraphEnd">
                          <property name="text">
                           <string/>
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="1">
+                       <item row="7" column="1">
                         <widget class="QLabel" name="label_151">
                          <property name="text">
                           <string>Optimize graph from the newest node.</string>
@@ -6595,7 +6600,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="5" column="1">
+                       <item row="6" column="1">
                         <widget class="Line" name="line">
                          <property name="orientation">
                           <enum>Qt::Horizontal</enum>
@@ -6632,7 +6637,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="1">
+                       <item row="9" column="1">
                         <widget class="QLabel" name="label_183">
                          <property name="text">
                           <string>-If false, the graph is optimized from the oldest node of the current graph. It can be useful to preserve the map referential from the oldest node. An odometry correction between frames /map to /odom is computed. Warning: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).</string>
@@ -6645,7 +6650,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="1">
+                       <item row="8" column="1">
                         <widget class="QLabel" name="label_211">
                          <property name="text">
                           <string>-If true, there is no odometry correction computed. All previous poses in the map are corrected instead, not the last one (which corresponds to latest odometry value). So, the transform between frames /map to /odom will be always Identity even on loop closures.</string>
@@ -6701,6 +6706,26 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <widget class="QLabel" name="label_141">
                          <property name="text">
                           <string>Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links (transitional and rotational variances).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="0">
+                        <widget class="QCheckBox" name="graphOptimization_robust">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="1">
+                        <widget class="QLabel" name="label_258">
+                         <property name="text">
+                          <string>Robust graph optimization using Vertigo (only for g2o and GTSAM optimization strategies). This approach can filter wrong loop closure detections.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>

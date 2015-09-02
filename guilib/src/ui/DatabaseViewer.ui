@@ -50,8 +50,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>154</width>
-             <height>184</height>
+             <width>175</width>
+             <height>173</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -236,8 +236,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>154</width>
-             <height>184</height>
+             <width>174</width>
+             <height>173</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -418,7 +418,7 @@
      <x>0</x>
      <y>0</y>
      <width>1285</width>
-     <height>22</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -441,6 +441,7 @@
     <addaction name="actionGenerate_graph_dot"/>
     <addaction name="actionGenerate_local_graph_dot"/>
     <addaction name="actionGenerate_TORO_graph_graph"/>
+    <addaction name="actionGenerate_g2o_graph_g2o"/>
     <addaction name="separator"/>
     <addaction name="actionDetect_more_loop_closures"/>
     <addaction name="actionVisual_Refine_all_neighbor_links"/>
@@ -828,15 +829,15 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>1</number>
+        <number>2</number>
        </property>
        <widget class="QWidget" name="page">
         <property name="geometry">
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>312</width>
-          <height>314</height>
+          <width>314</width>
+          <height>303</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1055,8 +1056,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>366</width>
-          <height>361</height>
+          <width>351</width>
+          <height>347</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1344,9 +1345,9 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>0</y>
-          <width>330</width>
-          <height>304</height>
+          <y>-26</y>
+          <width>333</width>
+          <height>333</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1363,14 +1364,14 @@
            </property>
           </widget>
          </item>
-         <item row="6" column="2">
+         <item row="7" column="2">
           <widget class="QLabel" name="label_48">
            <property name="text">
             <string>Ignore global loop closures</string>
            </property>
           </widget>
          </item>
-         <item row="9" column="0">
+         <item row="10" column="0">
           <widget class="QCheckBox" name="checkBox_ignoreUserLoop">
            <property name="text">
             <string/>
@@ -1419,14 +1420,14 @@
            </property>
           </widget>
          </item>
-         <item row="5" column="2">
+         <item row="6" column="2">
           <widget class="QLabel" name="label_35">
            <property name="text">
             <string>Ignore pose correction</string>
            </property>
           </widget>
          </item>
-         <item row="6" column="0">
+         <item row="7" column="0">
           <widget class="QCheckBox" name="checkBox_ignoreGlobalLoop">
            <property name="text">
             <string/>
@@ -1436,7 +1437,7 @@
            </property>
           </widget>
          </item>
-         <item row="5" column="0">
+         <item row="6" column="0">
           <widget class="QCheckBox" name="checkBox_ignorePoseCorrection">
            <property name="text">
             <string/>
@@ -1446,7 +1447,7 @@
            </property>
           </widget>
          </item>
-         <item row="8" column="0">
+         <item row="9" column="0">
           <widget class="QCheckBox" name="checkBox_ignoreLocalLoopTime">
            <property name="text">
             <string/>
@@ -1455,6 +1456,19 @@
             <bool>false</bool>
            </property>
           </widget>
+         </item>
+         <item row="11" column="0">
+          <spacer name="verticalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>0</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
          </item>
          <item row="0" column="0" colspan="2">
           <widget class="QComboBox" name="comboBox_graphOptimizer">
@@ -1471,6 +1485,11 @@
              <string>g2o</string>
             </property>
            </item>
+           <item>
+            <property name="text">
+             <string>GTSAM</string>
+            </property>
+           </item>
           </widget>
          </item>
          <item row="2" column="2">
@@ -1480,34 +1499,21 @@
            </property>
           </widget>
          </item>
-         <item row="9" column="2">
+         <item row="10" column="2">
           <widget class="QLabel" name="label_50">
            <property name="text">
             <string>Ignore user loop closures</string>
            </property>
           </widget>
          </item>
-         <item row="7" column="2">
+         <item row="8" column="2">
           <widget class="QLabel" name="label_47">
            <property name="text">
             <string>Ignore local loop closures (space)</string>
            </property>
           </widget>
          </item>
-         <item row="10" column="0">
-          <spacer name="verticalSpacer_3">
-           <property name="orientation">
-            <enum>Qt::Vertical</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>0</width>
-             <height>40</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item row="7" column="0">
+         <item row="8" column="0">
           <widget class="QCheckBox" name="checkBox_ignoreLocalLoopSpace">
            <property name="text">
             <string/>
@@ -1517,7 +1523,7 @@
            </property>
           </widget>
          </item>
-         <item row="8" column="2">
+         <item row="9" column="2">
           <widget class="QLabel" name="label_49">
            <property name="text">
             <string>Ignore local loop closures (time)</string>
@@ -1531,7 +1537,7 @@
            </property>
           </widget>
          </item>
-         <item row="4" column="0">
+         <item row="5" column="0">
           <widget class="QCheckBox" name="checkBox_ignoreCovariance">
            <property name="text">
             <string/>
@@ -1548,10 +1554,27 @@
            </property>
           </widget>
          </item>
-         <item row="4" column="2">
+         <item row="5" column="2">
           <widget class="QLabel" name="label_34">
            <property name="text">
             <string>Ignore covariance</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="2">
+          <widget class="QLabel" name="label_63">
+           <property name="text">
+            <string>Robust optimization</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="0">
+          <widget class="QCheckBox" name="checkBox_robust">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
            </property>
           </widget>
          </item>
@@ -1562,8 +1585,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>248</width>
-          <height>319</height>
+          <width>243</width>
+          <height>284</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1757,7 +1780,7 @@
           <x>0</x>
           <y>0</y>
           <width>201</width>
-          <height>126</height>
+          <height>117</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1856,8 +1879,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>283</width>
-          <height>322</height>
+          <width>285</width>
+          <height>309</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2299,6 +2322,11 @@
   <action name="actionReset_all_changes">
    <property name="text">
     <string>Reset all changes</string>
+   </property>
+  </action>
+  <action name="actionGenerate_g2o_graph_g2o">
+   <property name="text">
+    <string>Generate g2o graph (*.g2o)...</string>
    </property>
   </action>
  </widget>

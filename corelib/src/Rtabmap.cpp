@@ -742,6 +742,14 @@ void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global,
 		{
 			graph::TOROOptimizer::saveGraph(path, poses, constraints);
 		}
+		else if(type == 4) // g2o
+		{
+#ifdef WITH_G2O
+			graph::G2OOptimizer::saveGraph(path, poses, constraints);
+#else
+			UERROR("Cannot export in g2o format because RTAB-Map is not built with g2o support!");
+#endif
+		}
 		else
 		{
 			//get timestamps
@@ -2680,7 +2688,6 @@ void Rtabmap::optimizeCurrentMap(
 		std::multimap<int, Link> * constraints) const
 {
 	//Optimize the map
-	optimizedPoses.clear();
 	UINFO("Optimize map: around location %d", id);
 	if(_memory && id > 0)
 	{
@@ -2692,14 +2699,23 @@ void Rtabmap::optimizeCurrentMap(
 		}
 		UINFO("get %d ids time %f s", (int)ids.size(), timer.ticks());
 
-		optimizedPoses = Rtabmap::optimizeGraph(id, uKeysSet(ids), lookInDatabase, constraints);
-
-		if(_memory->getSignature(id) && uContains(optimizedPoses, id))
-		{
-			Transform t = optimizedPoses.at(id) * _memory->getSignature(id)->getPose().inverse();
-			UINFO("Correction (from node %d) %s", id, t.prettyPrint().c_str());
-		}
+		std::map<int, Transform> poses = Rtabmap::optimizeGraph(id, uKeysSet(ids), lookInDatabase, constraints);
 		UINFO("optimize time %f s", timer.ticks());
+
+		if(poses.size())
+		{
+			optimizedPoses = poses;
+
+			if(_memory->getSignature(id) && uContains(optimizedPoses, id))
+			{
+				Transform t = optimizedPoses.at(id) * _memory->getSignature(id)->getPose().inverse();
+				UINFO("Correction (from node %d) %s", id, t.prettyPrint().c_str());
+			}
+		}
+		else
+		{
+			UERROR("Failed to optimize the graph! Keeping the graph without optimization...");
+		}
 	}
 }
 

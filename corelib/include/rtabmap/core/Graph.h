@@ -51,7 +51,8 @@ public:
 		kTypeUndef = -1,
 		kTypeTORO = 0,
 		kTypeG2O = 1,
-		kTypeCVSBA = 2
+		kTypeGTSAM = 2,
+		kTypeCVSBA = 3
 	};
 	static Optimizer * create(const ParametersMap & parameters);
 	static Optimizer * create(Optimizer::Type & type, const ParametersMap & parameters = ParametersMap());
@@ -74,6 +75,7 @@ public:
 	bool isSlam2d() const {return slam2d_;}
 	bool isCovarianceIgnored() const {return covarianceIgnored_;}
 	double epsilon() const {return epsilon_;}
+	bool isRobust() const {return robust_;}
 
 	// inherited classes should implement one of these methods
 	virtual std::map<int, Transform> optimize(
@@ -94,7 +96,8 @@ protected:
 			int iterations         = Parameters::defaultRGBDOptimizeIterations(),
 			bool slam2d            = Parameters::defaultRGBDOptimizeSlam2D(),
 			bool covarianceIgnored = Parameters::defaultRGBDOptimizeVarianceIgnored(),
-			double epsilon         = Parameters::defaultRGBDOptimizeEpsilon());
+			double epsilon         = Parameters::defaultRGBDOptimizeEpsilon(),
+			bool robust            = Parameters::defaultRGBDOptimizeRobust());
 	Optimizer(const ParametersMap & parameters);
 
 private:
@@ -102,6 +105,7 @@ private:
 	bool slam2d_;
 	bool covarianceIgnored_;
 	double epsilon_;
+	bool robust_;
 };
 
 class RTABMAP_EXP TOROOptimizer : public Optimizer
@@ -117,8 +121,12 @@ public:
 			std::multimap<int, Link> & edgeConstraints);
 
 public:
-	TOROOptimizer(int iterations = 100, bool slam2d = false, bool covarianceIgnored = false) :
-		Optimizer(iterations, slam2d, covarianceIgnored) {}
+	TOROOptimizer(
+			int iterations         = Parameters::defaultRGBDOptimizeIterations(),
+			bool slam2d            = Parameters::defaultRGBDOptimizeSlam2D(),
+			bool covarianceIgnored = Parameters::defaultRGBDOptimizeVarianceIgnored(),
+			double epsilon         = Parameters::defaultRGBDOptimizeEpsilon()) :
+		Optimizer(iterations, slam2d, covarianceIgnored, epsilon) {}
 	TOROOptimizer(const ParametersMap & parameters) :
 		Optimizer(parameters) {}
 	virtual ~TOROOptimizer() {}
@@ -136,15 +144,53 @@ class RTABMAP_EXP G2OOptimizer : public Optimizer
 {
 public:
 	static bool available();
+	static bool saveGraph(
+			const std::string & fileName,
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & edgeConstraints,
+			bool useRobustConstraints = false);
 
 public:
-	G2OOptimizer(int iterations = 100, bool slam2d = false, bool covarianceIgnored = false) :
-		Optimizer(iterations, slam2d, covarianceIgnored) {}
+	G2OOptimizer(
+			int iterations         = Parameters::defaultRGBDOptimizeIterations(),
+			bool slam2d            = Parameters::defaultRGBDOptimizeSlam2D(),
+			bool covarianceIgnored = Parameters::defaultRGBDOptimizeVarianceIgnored(),
+			double epsilon         = Parameters::defaultRGBDOptimizeEpsilon(),
+			bool robust            = Parameters::defaultRGBDOptimizeRobust()) :
+		Optimizer(iterations, slam2d, covarianceIgnored, epsilon, robust) {}
+
 	G2OOptimizer(const ParametersMap & parameters) :
 		Optimizer(parameters) {}
 	virtual ~G2OOptimizer() {}
 
 	virtual Type type() const {return kTypeG2O;}
+
+	virtual std::map<int, Transform> optimize(
+			int rootId,
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & edgeConstraints,
+			std::list<std::map<int, Transform> > * intermediateGraphes = 0);
+};
+
+class RTABMAP_EXP GTSAMOptimizer : public Optimizer
+{
+public:
+	static bool available();
+
+public:
+	GTSAMOptimizer(
+			int iterations         = Parameters::defaultRGBDOptimizeIterations(),
+			bool slam2d            = Parameters::defaultRGBDOptimizeSlam2D(),
+			bool covarianceIgnored = Parameters::defaultRGBDOptimizeVarianceIgnored(),
+			double epsilon         = Parameters::defaultRGBDOptimizeEpsilon(),
+			bool robust            = Parameters::defaultRGBDOptimizeRobust()) :
+		Optimizer(iterations, slam2d, covarianceIgnored, epsilon, robust) {}
+
+	GTSAMOptimizer(const ParametersMap & parameters) :
+		Optimizer(parameters) {}
+	virtual ~GTSAMOptimizer() {}
+
+	virtual Type type() const {return kTypeGTSAM;}
 
 	virtual std::map<int, Transform> optimize(
 			int rootId,
