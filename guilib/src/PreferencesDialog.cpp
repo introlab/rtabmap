@@ -578,6 +578,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->graphOptimization_iterations->setObjectName(Parameters::kRGBDOptimizeIterations().c_str());
 	_ui->graphOptimization_covarianceIgnored->setObjectName(Parameters::kRGBDOptimizeVarianceIgnored().c_str());
 	_ui->graphOptimization_fromGraphEnd->setObjectName(Parameters::kRGBDOptimizeFromGraphEnd().c_str());
+	_ui->graphOptimization_maxError->setObjectName(Parameters::kRGBDOptimizeMaxError().c_str());
 	_ui->graphOptimization_stopEpsilon->setObjectName(Parameters::kRGBDOptimizeEpsilon().c_str());
 	_ui->graphOptimization_robust->setObjectName(Parameters::kRGBDOptimizeRobust().c_str());
 

@@ -191,6 +191,7 @@ private:
 	bool _localPathOdomPosesUsed;
 	std::string _databasePath;
 	bool _optimizeFromGraphEnd;
+	float _optimizationMaxLinearError;
 	bool _reextractLoopClosureFeatures;
 	int _reextractNNType;
 	float _reextractNNDR;
@@ -205,6 +206,7 @@ private:
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;
 	double _lastProcessTime;
+	bool _someNodesHaveBeenTransferred;
 
 	// Abstract classes containing all loop closure
 	// strategies for a type of signature or configuration.

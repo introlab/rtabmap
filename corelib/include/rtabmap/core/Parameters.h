@@ -284,18 +284,19 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(VhEp, RansacParam2,  float, 0.99, "Fundamental matrix (see cvFindFundamentalMat()): Performance of the RANSAC.");
 
 	// RGB-D SLAM
-	RTABMAP_PARAM(RGBD, Enabled,           bool, true, 	"");
-	RTABMAP_PARAM(RGBD, PoseScanMatching,  bool, false, "Laser scan matching for odometry pose correction (laser scans are required).");
-	RTABMAP_PARAM(RGBD, LinearUpdate,      float, 0.0, 	"Minimum linear displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
-	RTABMAP_PARAM(RGBD, AngularUpdate,     float, 0.0, 	"Minimum angular displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
-	RTABMAP_PARAM(RGBD, NewMapOdomChangeDistance, float, 0, "A new map is created if a change of odometry translation greater than X m is detected (0 m = disabled).");
-	RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd, bool, false,    "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
-	RTABMAP_PARAM(RGBD, GoalReachedRadius,    float, 0.5, "Goal reached radius (m).");
-	RTABMAP_PARAM(RGBD, PlanVirtualLinks,  bool, true, "Before planning in the graph, close nodes are linked together. Radius is defined by \"RGBD/GoalReachedRadius\" parameter.");
+	RTABMAP_PARAM(RGBD, Enabled,                  bool, true,  "");
+	RTABMAP_PARAM(RGBD, PoseScanMatching,         bool, false, "Laser scan matching for odometry pose correction (laser scans are required).");
+	RTABMAP_PARAM(RGBD, LinearUpdate,             float, 0.0,  "Minimum linear displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
+	RTABMAP_PARAM(RGBD, AngularUpdate,            float, 0.0,  "Minimum angular displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
+	RTABMAP_PARAM(RGBD, NewMapOdomChangeDistance, float, 0,    "A new map is created if a change of odometry translation greater than X m is detected (0 m = disabled).");
+	RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd,     bool, false, "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
+	RTABMAP_PARAM(RGBD, OptimizeMaxError,         float, 1.0,  "Reject loop closures if optimization error is greater than this value (0=disabled). This will help to detect when a wrong loop closure is added to the graph.");
+	RTABMAP_PARAM(RGBD, GoalReachedRadius,        float, 0.5,  "Goal reached radius (m).");
+	RTABMAP_PARAM(RGBD, PlanVirtualLinks,         bool, true,  "Before planning in the graph, close nodes are linked together. Radius is defined by \"RGBD/GoalReachedRadius\" parameter.");
 	RTABMAP_PARAM(RGBD, GoalsSavedInUserData,     bool, false, "When a goal is received and processed with success, it is saved in user data of the location with this format: \"GOAL:#\".");
-	RTABMAP_PARAM(RGBD, MaxLocalRetrieved, unsigned int, 2, "Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).");
-	RTABMAP_PARAM(RGBD, LocalRadius, float, 10, "Local radius (m) for nodes selection in the local map. This parameter is used in some approaches about the local map management.");
-	RTABMAP_PARAM(RGBD, LocalImmunizationRatio, float, 0.25, "Ratio of working memory for which local nodes are immunized from transfer.");
+	RTABMAP_PARAM(RGBD, MaxLocalRetrieved,        unsigned int, 2, "Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).");
+	RTABMAP_PARAM(RGBD, LocalRadius,              float, 10,   "Local radius (m) for nodes selection in the local map. This parameter is used in some approaches about the local map management.");
+	RTABMAP_PARAM(RGBD, LocalImmunizationRatio,   float, 0.25, "Ratio of working memory for which local nodes are immunized from transfer.");
 
 	// Local loop closure detection
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionTime,     bool, false, 	"Detection over all locations in STM.");

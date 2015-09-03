@@ -57,11 +57,12 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Highest_hypothesis_id,);
 	RTABMAP_STATS(Loop, Highest_hypothesis_value,);
 	RTABMAP_STATS(Loop, Vp_hypothesis,);
-	RTABMAP_STATS(Loop, ReactivateId,);
+	RTABMAP_STATS(Loop, Reactivate_id,);
 	RTABMAP_STATS(Loop, Hypothesis_ratio,);
 	RTABMAP_STATS(Loop, Hypothesis_reactivated,);
-	RTABMAP_STATS(Loop, VisualInliers,);
+	RTABMAP_STATS(Loop, Visual_inliers,);
 	RTABMAP_STATS(Loop, Last_id,);
+	RTABMAP_STATS(Loop, Optimization_max_error, m);
 
 	RTABMAP_STATS(LocalLoop, Time_closures,);
 	RTABMAP_STATS(LocalLoop, Space_last_closure_id,);

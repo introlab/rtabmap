@@ -100,6 +100,7 @@ Rtabmap::Rtabmap() :
 	_localPathOdomPosesUsed(Parameters::defaultRGBDLocalLoopDetectionPathOdomPosesUsed()),
 	_databasePath(""),
 	_optimizeFromGraphEnd(Parameters::defaultRGBDOptimizeFromGraphEnd()),
+	_optimizationMaxLinearError(Parameters::defaultRGBDOptimizeMaxError()),
 	_reextractLoopClosureFeatures(Parameters::defaultLccReextractActivated()),
 	_reextractNNType(Parameters::defaultLccReextractNNType()),
 	_reextractNNDR(Parameters::defaultLccReextractNNDR()),
@@ -113,6 +114,7 @@ Rtabmap::Rtabmap() :
 	_loopClosureHypothesis(0,0.0f),
 	_highestHypothesis(0,0.0f),
 	_lastProcessTime(0.0),
+	_someNodesHaveBeenTransferred(false),
 	_epipolarGeometry(0),
 	_bayesFilter(0),
 	_graphOptimizer(0),
@@ -319,6 +321,7 @@ void Rtabmap::close()
 	_highestHypothesis = std::make_pair(0,0.0f);
 	_loopClosureHypothesis = std::make_pair(0,0.0f);
 	_lastProcessTime = 0.0;
+	_someNodesHaveBeenTransferred = false;
 	_optimizedPoses.clear();
 	_constraints.clear();
 	_mapCorrection.setIdentity();
@@ -398,6 +401,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionPathFilteringRadius(), _localPathFilteringRadius);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionPathOdomPosesUsed(), _localPathOdomPosesUsed);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
+	Parameters::parse(parameters, Parameters::kRGBDOptimizeMaxError(), _optimizationMaxLinearError);
 	Parameters::parse(parameters, Parameters::kLccReextractActivated(), _reextractLoopClosureFeatures);
 	Parameters::parse(parameters, Parameters::kLccReextractNNType(), _reextractNNType);
 	Parameters::parse(parameters, Parameters::kLccReextractNNDR(), _reextractNNDR);
@@ -829,6 +833,7 @@ void Rtabmap::resetMemory()
 	_highestHypothesis = std::make_pair(0,0.0f);
 	_loopClosureHypothesis = std::make_pair(0,0.0f);
 	_lastProcessTime = 0.0;
+	_someNodesHaveBeenTransferred = false;
 	_optimizedPoses.clear();
 	_constraints.clear();
 	_mapCorrection.setIdentity();
@@ -902,7 +907,6 @@ bool Rtabmap::process(
 	std::map<int, int> childCount;
 	std::set<int> signaturesRetrieved;
 	int localLoopClosuresInTimeFound = 0;
-	bool scanMatchingSuccess = false;
 
 	const Signature * signature = 0;
 	const Signature * sLoop = 0;
@@ -1044,49 +1048,77 @@ bool Rtabmap::process(
 			}
 		}
 
-		Transform newPose = _mapCorrection * signature->getPose();
-		_optimizedPoses.insert(std::make_pair(signature->id(), newPose));
-		_lastLocalizationPose = newPose; // used in localization mode only (path planning)
-
-		//============================================================
-		// Scan matching
-		//============================================================
-		if(_poseScanMatching &&
-			signature->getLinks().size() == 1 &&
-			!signature->sensorData().laserScanCompressed().empty() &&
-			rehearsedId == 0) // don't do it if rehearsal happened
+		// Update optimizedPoses with the newly added node
+		Transform newPose;
+		if(signature->getLinks().size() == 1)
 		{
-			UINFO("Odometry correction by scan matching");
 			int oldId = signature->getLinks().begin()->first;
 			const Signature * oldS = _memory->getSignature(oldId);
 			UASSERT(oldS != 0);
-			std::string rejectedMsg;
-			Transform guess = signature->getLinks().begin()->second.transform();
-			double variance = 1.0;
-			int inliers = 0;
-			float inliersRatio = 0;
-			Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, false, &rejectedMsg, &inliers, &variance, &inliersRatio);
-			if(!t.isNull())
+
+			//============================================================
+			// Scan matching
+			//============================================================
+			if(_poseScanMatching &&
+				!signature->sensorData().laserScanCompressed().empty() &&
+				rehearsedId == 0) // don't do it if rehearsal happened
 			{
-				scanMatchingSuccess = true;
-				UINFO("Scan matching: update neighbor link (%d->%d) from %s to %s",
-						signature->id(),
-						oldId,
-						signature->getLinks().at(oldId).transform().prettyPrint().c_str(),
-						t.prettyPrint().c_str());
-				_memory->updateLink(signature->id(), oldId, t, variance, variance);
+				UINFO("Odometry correction by scan matching");
+				Transform guess = signature->getLinks().begin()->second.transform();
+				double variance = 1.0;
+				int inliers = 0;
+				float inliersRatio = 0;
+				std::string rejectedMsg;
+				Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, false, &rejectedMsg, &inliers, &variance, &inliersRatio);
+				if(!t.isNull())
+				{
+					UINFO("Scan matching: update neighbor link (%d->%d) from %s to %s",
+							signature->id(),
+							oldId,
+							signature->getLinks().at(oldId).transform().prettyPrint().c_str(),
+							t.prettyPrint().c_str());
+					_memory->updateLink(signature->id(), oldId, t, variance, variance);
+
+					if(_optimizeFromGraphEnd)
+					{
+						// update all previous nodes
+						// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
+						// parameters just changed state, we should put back all poses without map correction.
+						Transform u = guess.inverse() * t;
+						Transform mapCorrectionInv = _mapCorrection.inverse();
+						for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+						{
+							iter->second = mapCorrectionInv * iter->second * u;
+						}
+					}
+				}
+				else
+				{
+					UINFO("Scan matching rejected: %s", rejectedMsg.c_str());
+				}
+				statistics_.addStatistic(Statistics::kOdomCorrectionAccepted(), !t.isNull()?1.0f:0);
+				statistics_.addStatistic(Statistics::kOdomCorrectionInliers(), inliers);
+				statistics_.addStatistic(Statistics::kOdomCorrectionInliers_ratio(), inliersRatio);
+				statistics_.addStatistic(Statistics::kOdomCorrectionVariance(), variance);
 			}
-			else
+			timeScanMatching = timer.ticks();
+			ULOGGER_INFO("timeScanMatching=%fs", timeScanMatching);
+
+			UASSERT(oldS->hasLink(signature->id()));
+			UASSERT(uContains(_optimizedPoses, oldId));
+			newPose = _optimizedPoses.at(oldId) * oldS->getLinks().at(signature->id()).transform();
+			_mapCorrection = newPose * signature->getPose().inverse();
+			if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
 			{
-				UINFO("Scan matching rejected: %s", rejectedMsg.c_str());
+				UERROR("Map correction should be identity when optimizing from the last node. T=%s", _mapCorrection.prettyPrint().c_str());
 			}
-			statistics_.addStatistic(Statistics::kOdomCorrectionAccepted(), scanMatchingSuccess?1.0f:0);
-			statistics_.addStatistic(Statistics::kOdomCorrectionInliers(), inliers);
-			statistics_.addStatistic(Statistics::kOdomCorrectionInliers_ratio(), inliersRatio);
-			statistics_.addStatistic(Statistics::kOdomCorrectionVariance(), variance);
 		}
-		timeScanMatching = timer.ticks();
-		ULOGGER_INFO("timeScanMatching=%fs", timeScanMatching);
+		else
+		{
+			newPose = _mapCorrection * signature->getPose();
+		}
+		_optimizedPoses.insert(std::make_pair(signature->id(), newPose));
+		_lastLocalizationPose = newPose; // used in localization mode only (path planning)
 
 		if(signature->getLinks().size() == 1)
 		{
@@ -1543,7 +1575,7 @@ bool Rtabmap::process(
 						if(immunizedLocally >= maxLocalLocationsImmunized)
 						{
 							// set 20 to avoid this warning when starting mapping
-							if(maxLocalLocationsImmunized > 20)
+							if(maxLocalLocationsImmunized > 20 && _someNodesHaveBeenTransferred)
 							{
 								UWARN("Could not immunize the whole local path (%d) between "
 									  "%d and %d (max location immunized=%d). You may want "
@@ -1675,6 +1707,7 @@ bool Rtabmap::process(
 	// Update loop closure links
 	// (updated: place this after retrieval to be sure that neighbors of the loop closure are in RAM)
 	//=============================================================
+	std::list<std::pair<int, int> > loopClosureLinksAdded;
 	int loopClosureVisualInliers = 0; // for statistics
 	if(_loopClosureHypothesis.first>0)
 	{
@@ -1758,6 +1791,10 @@ bool Rtabmap::process(
 		{
 			// Make the new one the parent of the old one
 			rejectedHypothesis = !_memory->addLink(Link(signature->id(), _loopClosureHypothesis.first, Link::kGlobalClosure, transform, variance, variance));
+			if(!rejectedHypothesis)
+			{
+				loopClosureLinksAdded.push_back(std::make_pair(signature->id(), _loopClosureHypothesis.first));
+			}
 		}
 
 		if(rejectedHypothesis)
@@ -1911,6 +1948,7 @@ bool Rtabmap::process(
 									nearestId,
 									transform.prettyPrint().c_str());
 							_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, variance, variance));
+							loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
 							if(_loopClosureHypothesis.first == 0)
 							{
@@ -2000,6 +2038,7 @@ bool Rtabmap::process(
 												transform.prettyPrint().c_str());
 										// set Identify covariance for laser scan matching only
 										_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, 1, 1));
+										loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
 										++localSpaceClosuresAddedByICPOnly;
 
@@ -2027,10 +2066,10 @@ bool Rtabmap::process(
 	//============================================================
 	// Optimize map graph
 	//============================================================
+	float maxLinearError = 0.0f;
 	if(_rgbdSlamMode &&
-		(_loopClosureHypothesis.first>0 ||				// can be different map of the current one
+		(_loopClosureHypothesis.first>0 ||	// can be different map of the current one
 		 localLoopClosuresInTimeFound>0 || 	// only same map of the current one
-		 scanMatchingSuccess || 			// only same map of the current one
 		 lastLocalSpaceClosureId>0 || 	    // can be different map of the current one
 		 signaturesRetrieved.size()))  		// can be different map of the current one
 	{
@@ -2038,8 +2077,61 @@ bool Rtabmap::process(
 		{
 			UINFO("Update map correction: SLAM mode");
 			// SLAM mode!
-			optimizeCurrentMap(signature->id(), false, _optimizedPoses, &_constraints);
-			UASSERT(_optimizedPoses.find(signature->id()) != _optimizedPoses.end());
+			std::map<int, Transform> poses = _optimizedPoses;
+			std::multimap<int, Link> constraints;
+			optimizeCurrentMap(signature->id(), false, poses, &constraints);
+			UASSERT(poses.find(signature->id()) != poses.end());
+
+			// Check added loop closures have broken the graph
+			// (in case of wrong loop closures).
+			bool updateConstraints = true;
+			if(_optimizationMaxLinearError > 0.0f && loopClosureLinksAdded.size())
+			{
+				const Link * maxLinearLink = 0;
+				for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
+				{
+					Transform t1 = uValue(poses, iter->second.from(), Transform());
+					Transform t2 = uValue(poses, iter->second.to(), Transform());
+					Transform t = t1.inverse()*t2;
+					float linearError = uMax3(
+							fabs(iter->second.transform().x() - t.x()),
+							fabs(iter->second.transform().y() - t.y()),
+							fabs(iter->second.transform().z() - t.z()));
+					if(linearError > maxLinearError)
+					{
+						maxLinearError = linearError;
+						maxLinearLink = &iter->second;
+					}
+				}
+
+				if(maxLinearError > _optimizationMaxLinearError)
+				{
+					UWARN("Rejecting all added loop closures (%d) in this "
+						  "iteration because a wrong loop closure has been "
+						  "detected after graph optimization, resulting in "
+						  "a maximum graph error of %f m (edge %d->%d). The "
+						  "maximum error parameter is %f m.",
+						  (int)loopClosureLinksAdded.size(),
+						  maxLinearError,
+						  maxLinearLink->from(),
+						  maxLinearLink->to(),
+						  _optimizationMaxLinearError);
+					for(std::list<std::pair<int, int> >::iterator iter=loopClosureLinksAdded.begin(); iter!=loopClosureLinksAdded.end(); ++iter)
+					{
+						_memory->removeLink(iter->first, iter->second);
+						UWARN("Loop closure %d->%d rejected!", iter->first, iter->second);
+					}
+					updateConstraints = false;
+					_loopClosureHypothesis.first = 0;
+					lastLocalSpaceClosureId = 0;
+					rejectedHypothesis = true;
+				}
+			}
+			if(updateConstraints)
+			{
+				_optimizedPoses = poses;
+				_constraints = constraints;
+			}
 
 			// Update map correction, it should be identify when optimizing from the last node
 			_mapCorrection = _optimizedPoses.at(signature->id()) * signature->getPose().inverse();
@@ -2138,10 +2230,11 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopHighest_hypothesis_value(), _highestHypothesis.second);
 			statistics_.addStatistic(Statistics::kLoopHypothesis_reactivated(), lcHypothesisReactivated);
 			statistics_.addStatistic(Statistics::kLoopVp_hypothesis(), vpHypothesis);
-			statistics_.addStatistic(Statistics::kLoopReactivateId(), retrievalId);
+			statistics_.addStatistic(Statistics::kLoopReactivate_id(), retrievalId);
 			statistics_.addStatistic(Statistics::kLoopHypothesis_ratio(), hypothesisRatio);
-			statistics_.addStatistic(Statistics::kLoopVisualInliers(), loopClosureVisualInliers);
+			statistics_.addStatistic(Statistics::kLoopVisual_inliers(), loopClosureVisualInliers);
 			statistics_.addStatistic(Statistics::kLoopLast_id(), _memory->getLastGlobalLoopClosureId());
+			statistics_.addStatistic(Statistics::kLoopOptimization_max_error(), maxLinearError);
 
 			statistics_.addStatistic(Statistics::kLocalLoopTime_closures(), localLoopClosuresInTimeFound);
 			statistics_.addStatistic(Statistics::kLocalLoopSpace_closures_added_visually(), localSpaceClosuresAddedVisually);
@@ -2273,6 +2366,10 @@ bool Rtabmap::process(
 		ULOGGER_INFO("Removing old signatures because time limit is reached %f>%f or memory is reached %d>%d...", totalTime*1000, _maxTimeAllowed, _memory->getWorkingMem().size(), _maxMemoryAllowed);
 		std::list<int> transferred = _memory->forget(immunizedLocations);
 		signaturesRemoved.insert(signaturesRemoved.end(), transferred.begin(), transferred.end());
+		if(!_someNodesHaveBeenTransferred && transferred.size())
+		{
+			_someNodesHaveBeenTransferred = true; // only used to hide a warning on close ndoes immunization
+		}
 	}
 	_lastProcessTime = totalTime;
 
