@@ -83,6 +83,7 @@ public:
 	const QColor & getLocalLoopClosureColor() const {return _loopClosureLocalColor;}
 	const QColor & getUserLoopClosureColor() const {return _loopClosureUserColor;}
 	const QColor & getVirtualLoopClosureColor() const {return _loopClosureVirtualColor;}
+	const QColor & getRejectedLoopClosureColor() const {return _loopClosureRejectedColor;}
 	const QColor & getLocalPathColor() const {return _localPathColor;}
 	const QColor & getGlobalPathColor() const {return _globalPathColor;}
 	const QColor & getIntraSessionLoopColor() const {return _loopIntraSessionColor;}
@@ -92,6 +93,7 @@ public:
 	bool isOriginVisible() const;
 	bool isReferentialVisible() const;
 	bool isLocalRadiusVisible() const;
+	float getLoopClosureOutlierThr() const;
 
 	// setters
 	void setWorkingDirectory(const QString & path);
@@ -104,6 +106,7 @@ public:
 	void setLocalLoopClosureColor(const QColor & color);
 	void setUserLoopClosureColor(const QColor & color);
 	void setVirtualLoopClosureColor(const QColor & color);
+	void setRejectedLoopClosureColor(const QColor & color);
 	void setLocalPathColor(const QColor & color);
 	void setGlobalPathColor(const QColor & color);
 	void setIntraSessionLoopColor(const QColor & color);
@@ -113,6 +116,7 @@ public:
 	void setOriginVisible(bool visible);
 	void setReferentialVisible(bool visible);
 	void setLocalRadiusVisible(bool visible);
+	void setLoopClosureOutlierThr(float value);
 
 signals:
 	void configChanged();
@@ -133,6 +137,7 @@ private:
 	QColor _loopClosureLocalColor;
 	QColor _loopClosureUserColor;
 	QColor _loopClosureVirtualColor;
+	QColor _loopClosureRejectedColor;
 	QColor _localPathColor;
 	QColor _globalPathColor;
 	QColor _loopIntraSessionColor;
@@ -150,6 +155,7 @@ private:
 	QGraphicsItemGroup * _originReferential;
 	float _gridCellSize;
 	QGraphicsEllipseItem * _localRadius;
+	float _loopClosureOutlierThr;
 };
 
 } /* namespace rtabmap */
