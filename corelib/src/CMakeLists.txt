@@ -152,17 +152,15 @@ IF(G2O_FOUND)
 	#Newest versions require std11
 	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 	
-	IF(WITH_VERTIGO)
-		SET(SRC_FILES
-	    	${SRC_FILES}
-			vertigo/g2o/edge_se2MaxMixture.cpp
-			vertigo/g2o/edge_se2Switchable.cpp
-			vertigo/g2o/edge_se3Switchable.cpp
-			vertigo/g2o/edge_switchPrior.cpp
-			vertigo/g2o/types_g2o_robust.cpp
-			vertigo/g2o/vertex_switchLinear.cpp
-		)
-	ENDIF(WITH_VERTIGO)
+	SET(SRC_FILES
+    	${SRC_FILES}
+		vertigo/g2o/edge_se2MaxMixture.cpp
+		vertigo/g2o/edge_se2Switchable.cpp
+		vertigo/g2o/edge_se3Switchable.cpp
+		vertigo/g2o/edge_switchPrior.cpp
+		vertigo/g2o/types_g2o_robust.cpp
+		vertigo/g2o/vertex_switchLinear.cpp
+	)
 ENDIF(G2O_FOUND)
 
 IF(GTSAM_FOUND)
