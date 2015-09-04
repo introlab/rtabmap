@@ -37,6 +37,7 @@ void showUsage()
 {
 	printf("Usage:\n"
 			"imagesJoiner.exe [option] path\n"
+			"imagesJoiner.exe path_left path_right\n"
 			"  Options:\n"
 			"    -inv       option for copying odd images on the right\n\n");
 	exit(1);
@@ -58,15 +59,33 @@ int main(int argc, char * argv[])
 			printf(" Inversing option activated...\n");
 			continue;
 		}
-		showUsage();
-		printf(" Not recognized option: \"%s\"\n", argv[i]);
+		if(argc > 3)
+		{
+			showUsage();
+			printf(" Not recognized option: \"%s\"\n", argv[i]);
+		}
 	}
 
-	std::string path = argv[argc-1];
-	printf(" Path = %s\n", path.c_str());
+	std::string path, pathRight;
+
+	if(argc == 3 && !inv)
+	{
+		//two paths
+		path = argv[1];
+		pathRight = argv[2];
+
+		printf(" Path left = %s\n", path.c_str());
+		printf(" Path right = %s\n", pathRight.c_str());
+	}
+	else
+	{
+		path = argv[argc-1];
+		printf(" Path = %s\n", path.c_str());
+	}
 
 	UDirectory dir(path, "jpg bmp png tiff jpeg");
-	if(!dir.isValid())
+	UDirectory dirRight(pathRight, "jpg bmp png tiff jpeg");
+	if(!dir.isValid() || (!pathRight.empty() && !dirRight.isValid()))
 	{
 		printf("Path invalid!\n");
 		exit(-1);
@@ -78,7 +97,15 @@ int main(int argc, char * argv[])
 
 
 	std::string fileNameA = dir.getNextFilePath();
-	std::string fileNameB = dir.getNextFilePath();
+	std::string fileNameB;
+	if(dirRight.isValid())
+	{
+		fileNameB = dirRight.getNextFilePath();
+	}
+	else
+	{
+		fileNameB = dir.getNextFilePath();
+	}
 
 	int i=1;
 	while(!fileNameA.empty() && !fileNameB.empty())
@@ -124,7 +151,14 @@ int main(int argc, char * argv[])
 			}
 
 			fileNameA = dir.getNextFilePath();
-			fileNameB = dir.getNextFilePath();
+			if(dirRight.isValid())
+			{
+				fileNameB = dirRight.getNextFilePath();
+			}
+			else
+			{
+				fileNameB = dir.getNextFilePath();
+			}
 		}
 		else
 		{
