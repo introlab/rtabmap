@@ -55,15 +55,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "g2o/types/slam2d/vertex_se2.h"
 #include "g2o/types/slam2d/edge_se2.h"
 
-typedef g2o::BlockSolver< g2o::BlockSolverTraits<3, 3> > Slam2dBlockSolver;
-typedef g2o::LinearSolverCSparse<Slam2dBlockSolver::PoseMatrixType> Slam2dLinearCSparseSolver;
-typedef g2o::LinearSolverCholmod<Slam2dBlockSolver::PoseMatrixType> Slam2dLinearCholmodSolver;
-typedef g2o::LinearSolverPCG<Slam2dBlockSolver::PoseMatrixType> Slam2dLinearPCGSolver;
-
-typedef g2o::BlockSolver< g2o::BlockSolverTraits<6, 3> > Slam3dBlockSolver;
-typedef g2o::LinearSolverCSparse<Slam3dBlockSolver::PoseMatrixType> Slam3dLinearCSparseSolver;
-typedef g2o::LinearSolverCholmod<Slam3dBlockSolver::PoseMatrixType> Slam3dLinearCholmodSolver;
-typedef g2o::LinearSolverPCG<Slam3dBlockSolver::PoseMatrixType> Slam3dLinearPCGSolver;
+typedef g2o::BlockSolver< g2o::BlockSolverTraits<-1, -1> > SlamBlockSolver;
+typedef g2o::LinearSolverCSparse<SlamBlockSolver::PoseMatrixType> SlamLinearCSparseSolver;
+typedef g2o::LinearSolverCholmod<SlamBlockSolver::PoseMatrixType> SlamLinearCholmodSolver;
+typedef g2o::LinearSolverPCG<SlamBlockSolver::PoseMatrixType> SlamLinearPCGSolver;
 
 #include "vertigo/g2o/edge_switchPrior.h"
 #include "vertigo/g2o/edge_se2Switchable.h"
@@ -731,76 +726,40 @@ std::map<int, Transform> G2OOptimizer::optimize(
 		// Apply g2o optimization
 
 		g2o::SparseOptimizer optimizer;
-		optimizer.setVerbose(false);
+		optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
 		int solverApproach = 0;
-		int optimizationApproach = 0;
-		if(isSlam2d())
-		{
-			Slam2dBlockSolver * blockSolver;
-			if(solverApproach == 1)
-			{
-				//pcg
-				Slam2dLinearPCGSolver * linearSolver = new Slam2dLinearPCGSolver();
-				blockSolver = new Slam2dBlockSolver(linearSolver);
-			}
-			else if(solverApproach == 2)
-			{
-				//csparse
-				Slam2dLinearCSparseSolver* linearSolver = new Slam2dLinearCSparseSolver();
-				linearSolver->setBlockOrdering(false);
-				blockSolver = new Slam2dBlockSolver(linearSolver);
-			}
-			else
-			{
-				//chmold
-				Slam2dLinearCholmodSolver * linearSolver = new Slam2dLinearCholmodSolver();
-				linearSolver->setBlockOrdering(false);
-				blockSolver = new Slam2dBlockSolver(linearSolver);
-			}
+		int optimizationApproach = 1;
 
-			if(optimizationApproach == 1)
-			{
-				optimizer.setAlgorithm(new g2o::OptimizationAlgorithmGaussNewton(blockSolver));
-			}
-			else
-			{
-				optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(blockSolver));
-			}
+		SlamBlockSolver * blockSolver;
+		if(solverApproach == 1)
+		{
+			//pcg
+			SlamLinearPCGSolver * linearSolver = new SlamLinearPCGSolver();
+			blockSolver = new SlamBlockSolver(linearSolver);
+		}
+		else if(solverApproach == 2)
+		{
+			//csparse
+			SlamLinearCSparseSolver* linearSolver = new SlamLinearCSparseSolver();
+			linearSolver->setBlockOrdering(false);
+			blockSolver = new SlamBlockSolver(linearSolver);
 		}
 		else
 		{
-			Slam3dBlockSolver * blockSolver;
-			if(solverApproach == 1)
-			{
-				//pcg
-				Slam3dLinearPCGSolver * linearSolver = new Slam3dLinearPCGSolver();
-				blockSolver = new Slam3dBlockSolver(linearSolver);
-			}
-			else if(solverApproach == 2)
-			{
-				//csparse
-				Slam3dLinearCSparseSolver* linearSolver = new Slam3dLinearCSparseSolver();
-				linearSolver->setBlockOrdering(false);
-				blockSolver = new Slam3dBlockSolver(linearSolver);
-			}
-			else
-			{
-				//chmold
-				Slam3dLinearCholmodSolver * linearSolver = new Slam3dLinearCholmodSolver();
-				linearSolver->setBlockOrdering(false);
-				blockSolver = new Slam3dBlockSolver(linearSolver);
-			}
-
-			if(optimizationApproach == 1)
-			{
-				optimizer.setAlgorithm(new g2o::OptimizationAlgorithmGaussNewton(blockSolver));
-			}
-			else
-			{
-				optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(blockSolver));
-			}
+			//chmold
+			SlamLinearCholmodSolver * linearSolver = new SlamLinearCholmodSolver();
+			linearSolver->setBlockOrdering(false);
+			blockSolver = new SlamBlockSolver(linearSolver);
 		}
 
+		if(optimizationApproach == 1)
+		{
+			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmGaussNewton(blockSolver));
+		}
+		else
+		{
+			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(blockSolver));
+		}
 
 		UDEBUG("fill poses to g2o...");
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
