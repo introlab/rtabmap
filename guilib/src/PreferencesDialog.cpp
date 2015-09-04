@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QMainWindow>
 #include <QProgressDialog>
 #include <QScrollBar>
+#include <QStatusBar>
 #include <QtGui/QCloseEvent>
 
 #include "ui_preferencesDialog.h"
@@ -2047,12 +2048,13 @@ void PreferencesDialog::saveMainWindowState(const QMainWindow * mainWindow)
 		settings.beginGroup(mainWindow->objectName());
 		settings.setValue("state", mainWindow->saveState());
 		settings.setValue("maximized", mainWindow->isMaximized());
+		settings.setValue("status_bar", mainWindow->statusBar()->isVisible());
 		settings.endGroup(); // "MainWindow"
 		settings.endGroup(); // rtabmap
 	}
 }
 
-void PreferencesDialog::loadMainWindowState(QMainWindow * mainWindow,  bool & maximized)
+void PreferencesDialog::loadMainWindowState(QMainWindow * mainWindow,  bool & maximized, bool & statusBarShown)
 {
 	if(!mainWindow->objectName().isNull())
 	{
@@ -2068,6 +2070,8 @@ void PreferencesDialog::loadMainWindowState(QMainWindow * mainWindow,  bool & ma
 			mainWindow->restoreState(bytes);
 		}
 		maximized = settings.value("maximized", false).toBool();
+		statusBarShown = settings.value("status_bar", false).toBool();
+		mainWindow->statusBar()->setVisible(statusBarShown);
 		settings.endGroup(); // "MainWindow"
 		settings.endGroup(); // rtabmap
 	}

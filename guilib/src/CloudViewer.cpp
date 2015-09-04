@@ -889,6 +889,37 @@ void CloudViewer::clearTrajectory()
 	this->update();
 }
 
+void CloudViewer::resetCamera()
+{
+	_lastCameraOrientation= _lastCameraPose = cv::Vec3f(0,0,0);
+	if((_aFollowCamera->isChecked() || _aLockCamera->isChecked()) && !_lastPose.isNull())
+	{
+		// reset relative to last current pose
+		if(_aLockViewZ->isChecked())
+		{
+			_visualizer->setCameraPosition(
+					_lastPose.x()-1, _lastPose.y(), _lastPose.z(),
+					_lastPose.x(), _lastPose.y(), _lastPose.z(),
+					0, 0, 1);
+		}
+		else
+		{
+			_visualizer->setCameraPosition(
+					_lastPose.x()-1, _lastPose.y(), _lastPose.z(),
+					_lastPose.x(), _lastPose.y(), _lastPose.z(),
+					_lastPose.r31(), _lastPose.r32(), _lastPose.r33());
+		}
+	}
+	else
+	{
+		_visualizer->setCameraPosition(
+				-1, 0, 0,
+				0, 0, 0,
+				0, 0, 1);
+	}
+	this->update();
+}
+
 void CloudViewer::removeAllClouds()
 {
 	_addedClouds.clear();
@@ -1506,33 +1537,7 @@ void CloudViewer::handleAction(QAction * a)
 	}
 	else if(a == _aResetCamera)
 	{
-		_lastCameraOrientation= _lastCameraPose = cv::Vec3f(0,0,0);
-		if((_aFollowCamera->isChecked() || _aLockCamera->isChecked()) && !_lastPose.isNull())
-		{
-			// reset relative to last current pose
-			if(_aLockViewZ->isChecked())
-			{
-				_visualizer->setCameraPosition(
-						_lastPose.x()-1, _lastPose.y(), _lastPose.z(),
-						_lastPose.x(), _lastPose.y(), _lastPose.z(),
-						0, 0, 1);
-			}
-			else
-			{
-				_visualizer->setCameraPosition(
-						_lastPose.x()-1, _lastPose.y(), _lastPose.z(),
-						_lastPose.x(), _lastPose.y(), _lastPose.z(),
-						_lastPose.r31(), _lastPose.r32(), _lastPose.r33());
-			}
-		}
-		else
-		{
-			_visualizer->setCameraPosition(
-					-1, 0, 0,
-					0, 0, 0,
-					0, 0, 1);
-		}
-		this->update();
+		this->resetCamera();
 	}
 	else if(a == _aShowGrid)
 	{

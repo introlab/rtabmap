@@ -196,6 +196,7 @@ public:
 	void setTrajectoryShown(bool shown);
 	void setTrajectorySize(unsigned int value);
 	void clearTrajectory();
+	void resetCamera();
 
 	void removeAllClouds(); //including meshes
 	bool removeCloud(const std::string & id); //including mesh

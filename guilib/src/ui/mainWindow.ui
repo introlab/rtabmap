@@ -238,6 +238,8 @@
      <addaction name="action480p"/>
      <addaction name="action360p"/>
      <addaction name="action240p"/>
+     <addaction name="separator"/>
+     <addaction name="actionCustom"/>
     </widget>
     <addaction name="menuShow_view"/>
     <addaction name="actionDefault_views"/>
@@ -1263,6 +1265,11 @@
   <action name="actionG2o_g2o">
    <property name="text">
     <string>g2o (*.g2o)</string>
+   </property>
+  </action>
+  <action name="actionCustom">
+   <property name="text">
+    <string>Custom...</string>
    </property>
   </action>
  </widget>

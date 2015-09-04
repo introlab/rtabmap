@@ -180,6 +180,7 @@ private slots:
 	void setAspectRatio480p();
 	void setAspectRatio720p();
 	void setAspectRatio1080p();
+	void setAspectRatioCustom();
 	void exportGridMap();
 	void exportScans();
 	void exportClouds();
@@ -227,7 +228,7 @@ private:
 	void saveFigures();
 	void loadFigures();
 	void exportPoses(int format);
-	QString captureScreen();
+	QString captureScreen(bool cacheInRAM = false);
 
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > getClouds(
 			const std::map<int, Transform> & poses,
@@ -304,6 +305,8 @@ private:
 	QString _graphSavingFileName;
 	QMap<int, QString> _exportPosesFileName;
 	bool _autoScreenCaptureOdomSync;
+	bool _autoScreenCaptureRAM;
+	QMap<QString, QByteArray> _autoScreenCaptureCachedImages;
 
 	QVector<int> _refIds;
 	QVector<int> _loopClosureIds;

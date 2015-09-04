@@ -145,6 +145,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_likelihoodCurve(0),
 	_rawLikelihoodCurve(0),
 	_autoScreenCaptureOdomSync(false),
+	_autoScreenCaptureRAM(false),
 	_firstCall(true)
 {
 	UDEBUG("");
@@ -174,20 +175,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	this->setObjectName("MainWindow");
 
 	//Setup dock widgets position if it is the first time the application is started.
-	//if(!QFile::exists(PreferencesDialog::getIniFilePath()))
-	{
-		_ui->dockWidget_posterior->setVisible(false);
-		_ui->dockWidget_likelihood->setVisible(false);
-		_ui->dockWidget_rawlikelihood->setVisible(false);
-		_ui->dockWidget_statsV2->setVisible(false);
-		_ui->dockWidget_console->setVisible(false);
-		_ui->dockWidget_loopClosureViewer->setVisible(false);
-		_ui->dockWidget_mapVisibility->setVisible(false);
-		_ui->dockWidget_graphViewer->setVisible(false);
-		//_ui->dockWidget_odometry->setVisible(false);
-		//_ui->dockWidget_cloudViewer->setVisible(false);
-		//_ui->dockWidget_imageView->setVisible(false);
-	}
+	setDefaultViews();
 
 	_ui->widget_mainWindow->setVisible(false);
 
@@ -204,7 +192,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_preferencesDialog->init();
 
 	// Restore window geometry
-	_preferencesDialog->loadMainWindowState(this, _savedMaximized);
+	bool statusBarShown = false;
+	_preferencesDialog->loadMainWindowState(this, _savedMaximized, statusBarShown);
 	_preferencesDialog->loadWindowGeometry(_preferencesDialog);
 	_preferencesDialog->loadWindowGeometry(_exportDialog);
 	_preferencesDialog->loadWindowGeometry(_postProcessingDialog);
@@ -285,6 +274,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	QAction * a = _ui->menuShow_view->addAction("Progress dialog");
 	a->setCheckable(false);
 	connect(a, SIGNAL(triggered(bool)), _initProgressDialog, SLOT(show()));
+	QAction * statusBarAction = _ui->menuShow_view->addAction("Status bar");
+	statusBarAction->setCheckable(true);
+	statusBarAction->setChecked(statusBarShown);
+	connect(statusBarAction, SIGNAL(toggled(bool)), this->statusBar(), SLOT(setVisible(bool)));
 
 	// connect actions with custom slots
 	connect(_ui->actionSave_GUI_config, SIGNAL(triggered()), this, SLOT(saveConfigGUI()));
@@ -325,6 +318,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->action480p, SIGNAL(triggered()), this, SLOT(setAspectRatio480p()));
 	connect(_ui->action720p, SIGNAL(triggered()), this, SLOT(setAspectRatio720p()));
 	connect(_ui->action1080p, SIGNAL(triggered()), this, SLOT(setAspectRatio1080p()));
+	connect(_ui->actionCustom, SIGNAL(triggered()), this, SLOT(setAspectRatioCustom()));
 	connect(_ui->actionSave_point_cloud, SIGNAL(triggered()), this, SLOT(exportClouds()));
 	connect(_ui->actionExport_2D_scans_ply_pcd, SIGNAL(triggered()), this, SLOT(exportScans()));
 	connect(_ui->actionExport_2D_Grid_map_bmp_png, SIGNAL(triggered()), this, SLOT(exportGridMap()));
@@ -416,6 +410,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_postProcessingDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_ui->toolBar->toggleViewAction(), SIGNAL(toggled(bool)), this, SLOT(configGUIModified()));
 	connect(_ui->toolBar, SIGNAL(orientationChanged(Qt::Orientation)), this, SLOT(configGUIModified()));
+	connect(statusBarAction, SIGNAL(toggled(bool)), this, SLOT(configGUIModified()));
 	QList<QDockWidget*> dockWidgets = this->findChildren<QDockWidget*>();
 	for(int i=0; i<dockWidgets.size(); ++i)
 	{
@@ -946,7 +941,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 
 		if(_ui->actionAuto_screen_capture->isChecked() && _autoScreenCaptureOdomSync)
 		{
-			this->captureScreen();
+			this->captureScreen(_autoScreenCaptureRAM);
 		}
 	}
 
@@ -1330,7 +1325,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	_ui->statsToolBox->updateStat("/Gui refresh stats/ms", stat.refImageId(), elapsedTime);
 	if(_ui->actionAuto_screen_capture->isChecked() && !_autoScreenCaptureOdomSync)
 	{
-		this->captureScreen();
+		this->captureScreen(_autoScreenCaptureRAM);
 	}
 
 	if(!_preferencesDialog->isImagesKept())
@@ -2562,26 +2557,41 @@ void MainWindow::changeMappingMode()
 	emit mappingModeChanged(_ui->actionSLAM_mode->isChecked());
 }
 
-QString MainWindow::captureScreen()
+QString MainWindow::captureScreen(bool cacheInRAM)
 {
-	QString targetDir = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "ScreensCaptured";
-	QDir dir;
-	if(!dir.exists(targetDir))
-	{
-		dir.mkdir(targetDir);
-	}
-	targetDir += QDir::separator();
-	targetDir += "Main_window";
-	if(!dir.exists(targetDir))
-	{
-		dir.mkdir(targetDir);
-	}
-	targetDir += QDir::separator();
 	QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + ".png");
 	_ui->statusbar->clearMessage();
 	QPixmap figure = QPixmap::grabWidget(this);
-	figure.save(targetDir + name);
-	QString msg = tr("Screen captured \"%1\"").arg(targetDir + name);
+
+	QString targetDir = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "ScreensCaptured";
+	QString msg;
+	if(cacheInRAM)
+	{
+		msg = tr("Screen captured \"%1\"").arg(name);
+		QByteArray bytes;
+		QBuffer buffer(&bytes);
+		buffer.open(QIODevice::WriteOnly);
+		figure.save(&buffer, "PNG");
+		_autoScreenCaptureCachedImages.insert(name, bytes);
+	}
+	else
+	{
+		QDir dir;
+		if(!dir.exists(targetDir))
+		{
+			dir.mkdir(targetDir);
+		}
+		targetDir += QDir::separator();
+		targetDir += "Main_window";
+		if(!dir.exists(targetDir))
+		{
+			dir.mkdir(targetDir);
+		}
+		targetDir += QDir::separator();
+
+		figure.save(targetDir + name);
+		msg = tr("Screen captured \"%1\"").arg(targetDir + name);
+	}
 	_ui->statusbar->showMessage(msg, _preferencesDialog->getTimeLimit()*500);
 	_ui->widget_console->appendMsg(msg);
 
@@ -4131,6 +4141,9 @@ void MainWindow::setDefaultViews()
 	_ui->dockWidget_imageView->setVisible(true);
 	_ui->toolBar->setVisible(_state != kMonitoring && _state != kMonitoringPaused);
 	_ui->toolBar_2->setVisible(true);
+	_ui->statusbar->setVisible(false);
+	this->setAspectRatio720p();
+	_ui->widget_cloudViewer->resetCamera();
 }
 
 void MainWindow::selectScreenCaptureFormat(bool checked)
@@ -4151,11 +4164,55 @@ void MainWindow::selectScreenCaptureFormat(bool checked)
 			{
 				_autoScreenCaptureOdomSync = true;
 			}
+
+			if(_state != kMonitoring && _state != kMonitoringPaused)
+			{
+				int r = QMessageBox::question(this, tr("Hard drive or RAM?"), tr("Save in RAM? Images will be saved on disk when clicking auto screen capture again."), QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+				if(r == QMessageBox::No || r == QMessageBox::Yes)
+				{
+					_autoScreenCaptureRAM = r == QMessageBox::Yes;
+				}
+				else
+				{
+					_ui->actionAuto_screen_capture->setChecked(false);
+				}
+			}
 		}
 		else
 		{
 			_ui->actionAuto_screen_capture->setChecked(false);
 		}
+	}
+	else if(_autoScreenCaptureCachedImages.size())
+	{
+		QString targetDir = _preferencesDialog->getWorkingDirectory() + QDir::separator() + "ScreensCaptured";
+		QDir dir;
+		if(!dir.exists(targetDir))
+		{
+			dir.mkdir(targetDir);
+		}
+		targetDir += QDir::separator();
+		targetDir += "Main_window";
+		if(!dir.exists(targetDir))
+		{
+			dir.mkdir(targetDir);
+		}
+		targetDir += QDir::separator();
+
+		_initProgressDialog->resetProgress();
+		_initProgressDialog->show();
+		_initProgressDialog->setMaximumSteps(_autoScreenCaptureCachedImages.size());
+		int i=0;
+		for(QMap<QString, QByteArray>::iterator iter=_autoScreenCaptureCachedImages.begin(); iter!=_autoScreenCaptureCachedImages.end(); ++iter)
+		{
+			QPixmap figure;
+			figure.loadFromData(iter.value(), "PNG");
+			figure.save(targetDir + iter.key(), "PNG");
+			_initProgressDialog->appendText(tr("Saved image \"%1\" (%2/%3).").arg(targetDir + iter.key()).arg(++i).arg(_autoScreenCaptureCachedImages.size()));
+			_initProgressDialog->incrementStep();
+		}
+		_autoScreenCaptureCachedImages.clear();
+		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
 	}
 }
 
@@ -4228,6 +4285,20 @@ void MainWindow::setAspectRatio720p()
 void MainWindow::setAspectRatio1080p()
 {
 	this->setAspectRatio((1080*16)/9, 1080);
+}
+
+void MainWindow::setAspectRatioCustom()
+{
+	bool ok;
+	int width = QInputDialog::getInt(this, tr("Aspect ratio"), tr("Width (pixels):"), this->geometry().width(), 100, 10000, 100, &ok);
+	if(ok)
+	{
+		int height = QInputDialog::getInt(this, tr("Aspect ratio"), tr("Height (pixels):"), this->geometry().height(), 100, 10000, 100, &ok);
+		if(ok)
+		{
+			this->setAspectRatio(width, height);
+		}
+	}
 }
 
 void MainWindow::exportGridMap()
