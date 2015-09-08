@@ -289,9 +289,9 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 				for(std::list<int>::iterator iter = idsLoopMargin.begin(); iter!=idsLoopMargin.end(); ++iter)
 				{
 					float sum = 0.0f; // sum values added
-					sum += this->addNeighborProb(prediction, i, neighbors, idToIndexMap);
+					sum += this->addNeighborProb(prediction, idToIndexMap.at(*iter), neighbors, idToIndexMap);
 					idsDone.insert(*iter);
-					this->normalize(prediction, i, sum, ids[0]<0);
+					this->normalize(prediction, idToIndexMap.at(*iter), sum, ids[0]<0);
 				}
 			}
 			else
