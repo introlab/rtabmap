@@ -120,6 +120,8 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(TimingMem, Compressing_data, ms);
 
 	RTABMAP_STATS(Keypoint, Dictionary_size, words);
+	RTABMAP_STATS(Keypoint, Indexed_words, words);
+	RTABMAP_STATS(Keypoint, Index_memory_usage, KB);
 	RTABMAP_STATS(Keypoint, Response_threshold,);
 
 public:

@@ -230,6 +230,8 @@ void Rtabmap::setupLogFiles(bool overwrite)
 			fprintf(_foutInt, " 17-Is last location merged through Weight Update?\n");
 			fprintf(_foutInt, " 18-Local graph size\n");
 			fprintf(_foutInt, " 19-Sensor data id\n");
+			fprintf(_foutInt, " 20-Indexed words\n");
+			fprintf(_foutInt, " 21-Index memory usage (KB)\n");
 		}
 
 		ULOGGER_DEBUG("Log file (int)=%s", (_wDir+"/"+LOG_I).c_str());
@@ -2270,6 +2272,8 @@ bool Rtabmap::process(
 
 			// Surf specific parameters
 			statistics_.addStatistic(Statistics::kKeypointDictionary_size(), dictionarySize);
+			statistics_.addStatistic(Statistics::kKeypointIndexed_words(), _memory->getVWDictionary()->getIndexedWordsCount());
+			statistics_.addStatistic(Statistics::kKeypointIndex_memory_usage(), _memory->getVWDictionary()->getIndexMemoryUsed());
 
 			//Epipolar geometry constraint
 			statistics_.addStatistic(Statistics::kLoopRejectedHypothesis(), rejectedHypothesis?1.0f:0);
@@ -2514,7 +2518,7 @@ bool Rtabmap::process(
 									timeLocalTimeDetection,
 									timeLocalSpaceDetection,
 									timeMapOptimization);
-		std::string logI = uFormat("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
+		std::string logI = uFormat("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
 									_loopClosureHypothesis.first,
 									_highestHypothesis.first,
 									(int)signaturesRemoved.size(),
@@ -2533,7 +2537,9 @@ bool Rtabmap::process(
 									rehearsalMaxId,
 									rehearsalMaxId>0?1:0,
 									localGraphSize,
-									data.id());
+									data.id(),
+									_memory->getVWDictionary()->getIndexedWordsCount(),
+									_memory->getVWDictionary()->getIndexMemoryUsed());
 		if(_statisticLogsBufferedInRAM)
 		{
 			_bufferedLogsF.push_back(logF);

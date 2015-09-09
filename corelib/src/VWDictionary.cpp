@@ -83,6 +83,41 @@ public:
 		}
 	}
 
+	unsigned int indexedFeatures() const
+	{
+		if(!index_)
+		{
+			return 0;
+		}
+		if(binaryType_)
+		{
+			return ((const flann::Index<flann::Hamming<unsigned char> >*)index_)->size();
+
+		}
+		else
+		{
+			return ((const flann::Index<flann::L2<float> >*)index_)->size();
+		}
+	}
+
+	// return KB
+	unsigned int memoryUsed() const
+	{
+		if(!index_)
+		{
+			return 0;
+		}
+		if(binaryType_)
+		{
+			return ((const flann::Index<flann::Hamming<unsigned char> >*)index_)->usedMemory()/1000;
+
+		}
+		else
+		{
+			return ((const flann::Index<flann::L2<float> >*)index_)->usedMemory()/1000;
+		}
+	}
+
 	void build(
 			const cv::Mat & features,
 			const flann::IndexParams& params,
@@ -427,6 +462,16 @@ int VWDictionary::getLastIndexedWordId() const
 	}
 }
 
+unsigned int VWDictionary::getIndexedWordsCount() const
+{
+	return _flannIndex->indexedFeatures();
+}
+
+unsigned int VWDictionary::getIndexMemoryUsed() const
+{
+	return _flannIndex->memoryUsed();
+}
+
 void VWDictionary::update()
 {
 	ULOGGER_DEBUG("");
@@ -447,21 +492,27 @@ void VWDictionary::update()
 		   (_notIndexedWords.size() || _removedIndexedWords.size()) &&
 		   oldSize)
 		{
-			for(std::set<int>::iterator iter=_notIndexedWords.begin(); iter!=_notIndexedWords.end(); ++iter)
+			if(_notIndexedWords.size())
 			{
-				VisualWord* w = uValue(_visualWords, *iter, (VisualWord*)0);
-				UASSERT(w);
-				UASSERT(w->getDescriptor().cols == _dataTree.cols);
-				UASSERT(w->getDescriptor().type() == _dataTree.type());
-				_dataTree.push_back(w->getDescriptor());
-				_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(_dataTree.rows-1, w->id()));
-				std::pair<std::map<int, int>::iterator, bool> inserted = _mapIdIndex.insert(std::pair<int, int>(w->id(), _dataTree.rows-1));
-				if(!inserted.second)
+				int i = _dataTree.rows;
+				_dataTree.reserve(_dataTree.rows + _notIndexedWords.size());
+				for(std::set<int>::iterator iter=_notIndexedWords.begin(); iter!=_notIndexedWords.end(); ++iter)
 				{
-					//update to new index
-					inserted.first->second = _dataTree.rows-1;
+					VisualWord* w = uValue(_visualWords, *iter, (VisualWord*)0);
+					UASSERT(w);
+					UASSERT(w->getDescriptor().cols == _dataTree.cols);
+					UASSERT(w->getDescriptor().type() == _dataTree.type());
+					_dataTree.push_back(w->getDescriptor());
+					_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, w->id()));
+					std::pair<std::map<int, int>::iterator, bool> inserted = _mapIdIndex.insert(std::pair<int, int>(w->id(), i));
+					if(!inserted.second)
+					{
+						//update to new index
+						inserted.first->second = i;
+					}
+					_flannIndex->addPoints(w->getDescriptor());
+					++i;
 				}
-				_flannIndex->addPoints(w->getDescriptor());
 			}
 			for(std::set<int>::iterator iter=_removedIndexedWords.begin(); iter!=_removedIndexedWords.end(); ++iter)
 			{
@@ -475,6 +526,8 @@ void VWDictionary::update()
 				oldSize)
 		{
 			//just add not indexed words
+			int i = _dataTree.rows;
+			_dataTree.reserve(_dataTree.rows + _notIndexedWords.size());
 			for(std::set<int>::iterator iter=_notIndexedWords.begin(); iter!=_notIndexedWords.end(); ++iter)
 			{
 				VisualWord* w = uValue(_visualWords, *iter, (VisualWord*)0);
@@ -482,9 +535,10 @@ void VWDictionary::update()
 				UASSERT(w->getDescriptor().cols == _dataTree.cols);
 				UASSERT(w->getDescriptor().type() == _dataTree.type());
 				_dataTree.push_back(w->getDescriptor());
-				_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(_dataTree.rows-1, w->id()));
-				std::pair<std::map<int, int>::iterator, bool> inserted = _mapIdIndex.insert(std::pair<int, int>(w->id(), _dataTree.rows-1));
+				_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, w->id()));
+				std::pair<std::map<int, int>::iterator, bool> inserted = _mapIdIndex.insert(std::pair<int, int>(w->id(), i));
 				UASSERT(inserted.second);
+				++i;
 			}
 		}
 		else

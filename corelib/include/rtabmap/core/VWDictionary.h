@@ -75,6 +75,8 @@ public:
 	unsigned int getNotIndexedWordsCount() const {return (int)_notIndexedWords.size();}
 	int getLastIndexedWordId() const;
 	int getTotalActiveReferences() const {return _totalActiveReferences;}
+	unsigned int getIndexedWordsCount() const;
+	unsigned int getIndexMemoryUsed() const;
 	void setNNStrategy(NNStrategy strategy);
 	bool isIncremental() const {return _incrementalDictionary;}
 	void setIncrementalDictionary();
