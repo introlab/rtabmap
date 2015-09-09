@@ -947,32 +947,21 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 		// Check if this descriptor matches with a word from the last signature (a word not already added to the tree)
 		if(_newWordsComparedTogether && newWords.rows)
 		{
-			FlannIndex linearSeach;
-			linearSeach.build(newWords, flann::LinearIndexParams());
-			cv::Mat resultsLinear;
-			cv::Mat distsLinear;
-			linearSeach.knnSearch(descriptors.row(i), resultsLinear, distsLinear, newWords.rows>1?2:1);
-			// In case of binary descriptors
-			if(distsLinear.type() == CV_32S)
+			std::vector<std::vector<cv::DMatch> > matchesNewWords;
+			cv::BFMatcher matcher(type==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
+			matcher.knnMatch(descriptors.row(i), newWords, matchesNewWords, newWords.rows>1?2:1);
+			UASSERT(matchesNewWords.size() == 1);
+			for(unsigned int j=0; j<matchesNewWords.at(0).size(); ++j)
 			{
-				cv::Mat temp;
-				distsLinear.convertTo(temp, CV_32F);
-				distsLinear = temp;
-			}
-			if(resultsLinear.cols)
-			{
-				for(int j=0; j<resultsLinear.cols; ++j)
+				float d = matchesNewWords.at(0).at(j).distance;
+				int id = newWordsId[matchesNewWords.at(0).at(j).trainIdx];
+				if(d >= 0.0f && id > 0)
 				{
-					float d = distsLinear.at<float>(0,j);
-					if(d >= 0.0f && resultsLinear.at<int>(0,j) >= 0)
-					{
-						std::multimap<float, int>::iterator iter = fullResults.insert(std::pair<float, int>(d, newWordsId[resultsLinear.at<int>(0,j)]));
-						UASSERT(iter->second > 0);
-					}
-					else
-					{
-						break;
-					}
+					fullResults.insert(std::pair<float, int>(d, id));
+				}
+				else
+				{
+					break;
 				}
 			}
 		}
@@ -1153,9 +1142,8 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 		}
 		ULOGGER_DEBUG("Search dictionary time = %fs", timer.ticks());
 
-		cv::Mat resultsNotIndexed;
-		cv::Mat distsNotIndexed;
 		std::map<int, int> mapIndexIdNotIndexed;
+		std::vector<std::vector<cv::DMatch> > matchesNotIndexed;
 		if(_notIndexedWords.size())
 		{
 			cv::Mat dataNotIndexed = cv::Mat::zeros(_notIndexedWords.size(), dim, type);
@@ -1171,16 +1159,8 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 
 			// Find nearest neighbor
 			ULOGGER_DEBUG("Searching in words not indexed...");
-			FlannIndex linearSeach;
-			linearSeach.build(dataNotIndexed, flann::LinearIndexParams());
-			linearSeach.knnSearch(query, resultsNotIndexed, distsNotIndexed, _notIndexedWords.size()>1?2:1);
-			// In case of binary descriptors
-			if(distsNotIndexed.type() == CV_32S)
-			{
-				cv::Mat temp;
-				distsNotIndexed.convertTo(temp, CV_32F);
-				distsNotIndexed = temp;
-			}
+			cv::BFMatcher matcher(type==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
+			matcher.knnMatch(query, dataNotIndexed, matchesNotIndexed, dataNotIndexed.rows>1?2:1);
 		}
 		ULOGGER_DEBUG("Search not yet indexed words time = %fs", timer.ticks());
 
@@ -1213,13 +1193,17 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 			}
 
 			// not indexed..
-			for(int j=0; j<distsNotIndexed.cols; ++j)
+			for(unsigned int j=0; j<matchesNotIndexed.at(i).size(); ++j)
 			{
-				float d = distsNotIndexed.at<float>(i,j);
-				if(d >= 0.0f && resultsNotIndexed.at<int>(i,j) > 0)
+				float d = matchesNotIndexed.at(i).at(j).distance;
+				int id = uValue(mapIndexIdNotIndexed, matchesNotIndexed.at(i).at(j).trainIdx);
+				if(d >= 0.0f && id > 0)
 				{
-					std::multimap<float, int>::iterator iter = fullResults.insert(std::pair<float, int>(d, uValue(mapIndexIdNotIndexed, resultsNotIndexed.at<int>(i,j))));
-					UASSERT(iter->second > 0);
+					fullResults.insert(std::pair<float, int>(d, id));
+				}
+				else
+				{
+					break;
 				}
 			}
 
