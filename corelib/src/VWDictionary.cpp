@@ -571,7 +571,8 @@ void VWDictionary::update()
 		else if(_strategy >= kNNBruteForce &&
 				_notIndexedWords.size() &&
 				_removedIndexedWords.size() == 0 &&
-				_visualWords.size())
+				_visualWords.size() &&
+				_dataTree.rows)
 		{
 			//just add not indexed words
 			int i = _dataTree.rows;
