@@ -60,7 +60,8 @@ public:
 		index_(0),
 		nextIndex_(0),
 		featuresType_(0),
-		featuresDim_(0)
+		featuresDim_(0),
+		isLSH_(false)
 	{
 	}
 	virtual ~FlannIndex()
@@ -74,8 +75,20 @@ public:
 		{
 			if(featuresType_ == CV_8UC1)
 			{
-				delete (flann::Index<flann::Hamming<unsigned char> >*)index_;
-
+				
+#ifdef WITH_FLANN18
+			delete (flann::Index<flann::Hamming<unsigned char> >*)index_;
+#else
+			// issue with 1.7.1: we should explicitly use the corresponding index
+			if(isLSH_)
+			{
+				delete (flann::LshIndex<flann::Hamming<unsigned char> >*)index_;
+			}
+			else
+			{
+				delete (flann::LinearIndex<flann::Hamming<unsigned char> >*)index_;
+			}
+#endif
 			}
 			else
 			{
@@ -84,6 +97,7 @@ public:
 			index_ = 0;
 		}
 		nextIndex_ = 0;
+		isLSH_ = false;
 	}
 
 	unsigned int indexedFeatures() const
@@ -94,8 +108,19 @@ public:
 		}
 		if(featuresType_ == CV_8UC1)
 		{
+#ifdef WITH_FLANN18
 			return ((const flann::Index<flann::Hamming<unsigned char> >*)index_)->size();
-
+#else
+			// issue with 1.7.1: we should explicitly use the corresponding index
+			if(isLSH_)
+			{
+				return ((const flann::LshIndex<flann::Hamming<unsigned char> >*)index_)->size();
+			}
+			else
+			{
+				return ((const flann::LinearIndex<flann::Hamming<unsigned char> >*)index_)->size();
+			}
+#endif
 		}
 		else
 		{
@@ -111,9 +136,20 @@ public:
 			return 0;
 		}
 		if(featuresType_ == CV_8UC1)
-		{
+		{	
+#ifdef WITH_FLANN18
 			return ((const flann::Index<flann::Hamming<unsigned char> >*)index_)->usedMemory()/1000;
-
+#else
+			// issue with 1.7.1: we should explicitly use the corresponding index
+			if(isLSH_)
+			{
+				return ((const flann::LshIndex<flann::Hamming<unsigned char> >*)index_)->usedMemory()/1000;
+			}
+			else
+			{
+				return ((const flann::LinearIndex<flann::Hamming<unsigned char> >*)index_)->usedMemory()/1000;
+			}
+#endif
 		}
 		else
 		{
@@ -134,7 +170,21 @@ public:
 		if(featuresType_ == CV_8UC1)
 		{
 			flann::Matrix<unsigned char> dataset(features.data, features.rows, features.cols);
+#ifdef WITH_FLANN18
 			index_ = new flann::Index<flann::Hamming<unsigned char> >(dataset, params);
+#else
+			// issue with 1.7.1: we should explicitly create the corresponding index
+			flann::flann_algorithm_t algo = params.at("algorithm").cast<flann::flann_algorithm_t>();
+			if(algo == flann::FLANN_INDEX_LSH)
+			{
+				isLSH_ = true;
+				index_ = new flann::LshIndex<flann::Hamming<unsigned char> >(dataset, params);
+			}
+			else
+			{
+				index_ = new flann::LinearIndex<flann::Hamming<unsigned char> >(dataset, params);
+			}
+#endif
 			((flann::Index<flann::Hamming<unsigned char> >*)index_)->buildIndex();
 		}
 		else
@@ -235,7 +285,19 @@ public:
 		{
 			flann::Matrix<unsigned int> distsF((unsigned int*)dists.data, dists.rows, dists.cols);
 			flann::Matrix<unsigned char> queryF(query.data, query.rows, query.cols);
+#ifdef WITH_FLANN18
 			((flann::Index<flann::Hamming<unsigned char> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
+#else
+			// issue with 1.7.1: we should explicitly use the corresponding index
+			if(isLSH_)
+			{
+				((flann::LshIndex<flann::Hamming<unsigned char> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
+			}
+			else
+			{
+				((flann::LinearIndex<flann::Hamming<unsigned char> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
+			}
+#endif
 		}
 		else
 		{
@@ -250,6 +312,7 @@ private:
 	unsigned int nextIndex_;
 	int featuresType_;
 	int featuresDim_;
+	bool isLSH_;
 };
 
 const int VWDictionary::ID_START = 1;
