@@ -58,7 +58,9 @@ class FlannIndex
 public:
 	FlannIndex():
 		index_(0),
-		binaryType_(false)
+		nextIndex_(0),
+		featuresType_(0),
+		featuresDim_(0)
 	{
 	}
 	virtual ~FlannIndex()
@@ -70,7 +72,7 @@ public:
 	{
 		if(index_)
 		{
-			if(binaryType_)
+			if(featuresType_ == CV_8UC1)
 			{
 				delete (flann::Index<flann::Hamming<unsigned char> >*)index_;
 
@@ -81,6 +83,7 @@ public:
 			}
 			index_ = 0;
 		}
+		nextIndex_ = 0;
 	}
 
 	unsigned int indexedFeatures() const
@@ -89,7 +92,7 @@ public:
 		{
 			return 0;
 		}
-		if(binaryType_)
+		if(featuresType_ == CV_8UC1)
 		{
 			return ((const flann::Index<flann::Hamming<unsigned char> >*)index_)->size();
 
@@ -107,7 +110,7 @@ public:
 		{
 			return 0;
 		}
-		if(binaryType_)
+		if(featuresType_ == CV_8UC1)
 		{
 			return ((const flann::Index<flann::Hamming<unsigned char> >*)index_)->usedMemory()/1000;
 
@@ -120,14 +123,15 @@ public:
 
 	void build(
 			const cv::Mat & features,
-			const flann::IndexParams& params,
-			bool binaryType)
+			const flann::IndexParams& params)
 	{
 		this->release();
 		UASSERT(index_ == 0);
-		binaryType_ = binaryType;
+		UASSERT(features.type() == CV_32FC1 || features.type() == CV_8UC1);
+		featuresType_ = features.type();
+		featuresDim_ = features.cols;
 
-		if(binaryType)
+		if(featuresType_ == CV_8UC1)
 		{
 			flann::Matrix<unsigned char> dataset(features.data, features.rows, features.cols);
 			index_ = new flann::Index<flann::Hamming<unsigned char> >(dataset, params);
@@ -139,6 +143,7 @@ public:
 			index_ = new flann::Index<flann::L2<float> >(dataset, params);
 			((flann::Index<flann::L2<float> >*)index_)->buildIndex();
 		}
+		nextIndex_ = features.rows;
 	}
 
 	bool isIncremental()
@@ -150,28 +155,51 @@ public:
 #endif
 	}
 
-	void addPoints(const cv::Mat & features)
+	bool isBuilt()
+	{
+		return index_!=0;
+	}
+
+	int featuresType() const {return featuresType_;}
+	int featuresDim() const {return featuresDim_;}
+
+	unsigned int addPoint(const cv::Mat & feature)
 	{
 #ifdef WITH_FLANN18
-		if(binaryType_)
+		if(!index_)
 		{
-			flann::Matrix<unsigned char> dataset(features.data, features.rows, features.cols);
+			UERROR("Flann index not yet created!");
+			return 0;
+		}
+		UASSERT(feature.type() == featuresType_);
+		UASSERT(feature.cols == featuresDim_);
+		UASSERT(feature.rows == 1);
+		if(featuresType_ == CV_8UC1)
+		{
+			flann::Matrix<unsigned char> dataset(feature.data, feature.rows, feature.cols);
 			((flann::Index<flann::Hamming<unsigned char> >*)index_)->addPoints(dataset);
 		}
 		else
 		{
-			flann::Matrix<float> dataset((float*)features.data, features.rows, features.cols);
+			flann::Matrix<float> dataset((float*)feature.data, feature.rows, feature.cols);
 			((flann::Index<flann::L2<float> >*)index_)->addPoints(dataset);
 		}
+		return nextIndex_++;
 #else
 		UFATAL("Not built with FLANN 1.8! Only when isIncremental() returns true that you can call this method.");
+		return 0;
 #endif
 	}
 
 	void removePoint(unsigned int index)
 	{
 #ifdef WITH_FLANN18
-		if(binaryType_)
+		if(!index_)
+		{
+			UERROR("Flann index not yet created!");
+			return;
+		}
+		if(featuresType_ == CV_8UC1)
 		{
 			((flann::Index<flann::Hamming<unsigned char> >*)index_)->removePoint(index);
 		}
@@ -197,13 +225,13 @@ public:
 			return;
 		}
 		indices.create(query.rows, knn, CV_32S);
-		dists.create(query.rows, knn, binaryType_?CV_32S:CV_32F);
+		dists.create(query.rows, knn, featuresType_ == CV_8UC1?CV_32S:CV_32F);
 
 		cv::flann::IndexParams i;
 
 		flann::Matrix<int> indicesF((int*)indices.data, indices.rows, indices.cols);
 
-		if(binaryType_)
+		if(featuresType_ == CV_8UC1)
 		{
 			flann::Matrix<unsigned int> distsF((unsigned int*)dists.data, dists.rows, dists.cols);
 			flann::Matrix<unsigned char> queryF(query.data, query.rows, query.cols);
@@ -219,7 +247,9 @@ public:
 
 private:
 	void * index_;
-	bool binaryType_;
+	unsigned int nextIndex_;
+	int featuresType_;
+	int featuresDim_;
 };
 
 const int VWDictionary::ID_START = 1;
@@ -485,33 +515,51 @@ void VWDictionary::update()
 
 	if(_notIndexedWords.size() || _visualWords.size() == 0 || _removedIndexedWords.size())
 	{
-		int oldSize = _dataTree.rows;
 		if(_incrementalFlann &&
 		   _flannIndex->isIncremental() &&
 		   _strategy < kNNBruteForce &&
-		   (_notIndexedWords.size() || _removedIndexedWords.size()) &&
-		   oldSize)
+		   _visualWords.size())
 		{
 			if(_notIndexedWords.size())
 			{
-				int i = _dataTree.rows;
-				_dataTree.reserve(_dataTree.rows + _notIndexedWords.size());
 				for(std::set<int>::iterator iter=_notIndexedWords.begin(); iter!=_notIndexedWords.end(); ++iter)
 				{
 					VisualWord* w = uValue(_visualWords, *iter, (VisualWord*)0);
 					UASSERT(w);
-					UASSERT(w->getDescriptor().cols == _dataTree.cols);
-					UASSERT(w->getDescriptor().type() == _dataTree.type());
-					_dataTree.push_back(w->getDescriptor());
-					_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, w->id()));
-					std::pair<std::map<int, int>::iterator, bool> inserted = _mapIdIndex.insert(std::pair<int, int>(w->id(), i));
+					int index = 0;
+					if(!_flannIndex->isBuilt())
+					{
+						switch(_strategy)
+						{
+						case kNNFlannNaive:
+							_flannIndex->build(w->getDescriptor(), flann::LinearIndexParams());
+							break;
+						case kNNFlannKdTree:
+							UASSERT_MSG(w->getDescriptor().type() == CV_32F, "To use KdTree dictionary, float descriptors are required!");
+							_flannIndex->build(w->getDescriptor(), flann::KDTreeIndexParams());
+							break;
+						case kNNFlannLSH:
+							UASSERT_MSG(w->getDescriptor().type() == CV_8U, "To use LSH dictionary, binary descriptors are required!");
+							_flannIndex->build(w->getDescriptor(), flann::LshIndexParams(12, 20, 2));
+							break;
+						default:
+							UFATAL("Not supposed to be here!");
+							break;
+						}
+					}
+					else
+					{
+						UASSERT(w->getDescriptor().cols == _flannIndex->featuresDim());
+						UASSERT(w->getDescriptor().type() == _flannIndex->featuresType());
+						index = _flannIndex->addPoint(w->getDescriptor());
+					}
+					_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(index, w->id()));
+					std::pair<std::map<int, int>::iterator, bool> inserted = _mapIdIndex.insert(std::pair<int, int>(w->id(), index));
 					if(!inserted.second)
 					{
 						//update to new index
-						inserted.first->second = i;
+						inserted.first->second = index;
 					}
-					_flannIndex->addPoints(w->getDescriptor());
-					++i;
 				}
 			}
 			for(std::set<int>::iterator iter=_removedIndexedWords.begin(); iter!=_removedIndexedWords.end(); ++iter)
@@ -523,7 +571,7 @@ void VWDictionary::update()
 		else if(_strategy >= kNNBruteForce &&
 				_notIndexedWords.size() &&
 				_removedIndexedWords.size() == 0 &&
-				oldSize)
+				_visualWords.size())
 		{
 			//just add not indexed words
 			int i = _dataTree.rows;
@@ -578,15 +626,15 @@ void VWDictionary::update()
 				switch(_strategy)
 				{
 				case kNNFlannNaive:
-					_flannIndex->build(_dataTree, flann::LinearIndexParams(), type != CV_32F);
+					_flannIndex->build(_dataTree, flann::LinearIndexParams());
 					break;
 				case kNNFlannKdTree:
 					UASSERT_MSG(type == CV_32F, "To use KdTree dictionary, float descriptors are required!");
-					_flannIndex->build(_dataTree, flann::KDTreeIndexParams(), false);
+					_flannIndex->build(_dataTree, flann::KDTreeIndexParams());
 					break;
 				case kNNFlannLSH:
 					UASSERT_MSG(type == CV_8U, "To use LSH dictionary, binary descriptors are required!");
-					_flannIndex->build(_dataTree, flann::LshIndexParams(12, 20, 2), true);
+					_flannIndex->build(_dataTree, flann::LshIndexParams(12, 20, 2));
 					break;
 				default:
 					break;
@@ -595,8 +643,8 @@ void VWDictionary::update()
 				ULOGGER_DEBUG("Time to create kd tree = %f s", timer.ticks());
 			}
 		}
-		UDEBUG("Dictionary updated! (size=%d->%d added=%d removed=%d)",
-				oldSize, _dataTree.rows, _notIndexedWords.size(), _removedIndexedWords.size());
+		UDEBUG("Dictionary updated! (size=%d added=%d removed=%d)",
+				_dataTree.rows, _notIndexedWords.size(), _removedIndexedWords.size());
 	}
 	else
 	{
@@ -730,7 +778,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 	UTimer timerLocal;
 	timerLocal.start();
 
-	if(!_dataTree.empty() && _dataTree.rows >= (int)k)
+	if(_flannIndex->isBuilt() || (!_dataTree.empty() && _dataTree.rows >= (int)k))
 	{
 		//Find nearest neighbors
 		UDEBUG("newPts.total()=%d ", descriptors.rows);
@@ -807,7 +855,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 				int id = uValue(_mapIndexId, results.at<int>(i,j));
 				if(d >= 0.0f && id > 0)
 				{
-					std::multimap<float, int>::iterator iter = fullResults.insert(std::pair<float, int>(d, id));
+					fullResults.insert(std::pair<float, int>(d, id));
 				}
 				else
 				{
@@ -823,7 +871,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 				int id = uValue(_mapIndexId, matches.at(i).at(j).trainIdx);
 				if(d >= 0.0f && id > 0)
 				{
-					std::multimap<float, int>::iterator iter = fullResults.insert(std::pair<float, int>(d, id));
+					fullResults.insert(std::pair<float, int>(d, id));
 				}
 				else
 				{
@@ -836,7 +884,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 		if(_newWordsComparedTogether && newWords.rows)
 		{
 			FlannIndex linearSeach;
-			linearSeach.build(newWords, flann::LinearIndexParams(), type != CV_32F);
+			linearSeach.build(newWords, flann::LinearIndexParams());
 			cv::Mat resultsLinear;
 			cv::Mat distsLinear;
 			linearSeach.knnSearch(descriptors.row(i), resultsLinear, distsLinear, newWords.rows>1?2:1);
@@ -977,7 +1025,7 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 		}
 		ULOGGER_DEBUG("Preparation time = %fs", timer.ticks());
 
-		if(!_dataTree.empty() && _dataTree.rows >= (int)k)
+		if(_flannIndex->isBuilt() || (!_dataTree.empty() && _dataTree.rows >= (int)k))
 		{
 			//Find nearest neighbors
 			UDEBUG("newPts.total()=%d ", query.total());
@@ -1060,7 +1108,7 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 			// Find nearest neighbor
 			ULOGGER_DEBUG("Searching in words not indexed...");
 			FlannIndex linearSeach;
-			linearSeach.build(dataNotIndexed, flann::LinearIndexParams(), type != CV_32F);
+			linearSeach.build(dataNotIndexed, flann::LinearIndexParams());
 			linearSeach.knnSearch(query, resultsNotIndexed, distsNotIndexed, _notIndexedWords.size()>1?2:1);
 			// In case of binary descriptors
 			if(distsNotIndexed.type() == CV_32S)
