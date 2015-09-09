@@ -736,4 +736,26 @@ inline bool uStrContains(const std::string & string, const std::string & substri
 	return string.find(substring) != std::string::npos;
 }
 
+inline int uCompareVersion(const std::string & version, int major, int minor=-1, int patch=-1)
+{
+	std::vector<std::string> v = uListToVector(uSplit(version, '.'));
+	if(v.size() == 3)
+	{
+		int vMajor = atoi(v[0].c_str());
+		int vMinor = atoi(v[1].c_str());
+		int vPatch = atoi(v[2].c_str());
+		if(vMajor > major ||
+		(vMajor == major && minor!=-1 && vMinor > minor) ||
+		(vMajor == major && minor!=-1 && vMinor == minor && patch!=-1 && vPatch > patch))
+		{
+			return 1;
+		}
+		else if(vMajor == major && (minor == -1 || (vMinor == minor && (patch == -1 || vPatch == patch))))
+		{
+			return 0;
+		}
+	}
+	return -1;
+}
+
 #endif /* USTL_H */

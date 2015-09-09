@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UtiLite.h"
 
 #include <opencv2/opencv_modules.hpp>
+
 #if CV_MAJOR_VERSION < 3
 #include <opencv2/gpu/gpu.hpp>
 #else
@@ -44,11 +45,147 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
+#include <flann/flann.hpp>
+
 #include <fstream>
 #include <string>
 
 namespace rtabmap
 {
+
+class FlannIndex
+{
+public:
+	FlannIndex():
+		index_(0),
+		binaryType_(false)
+	{
+	}
+	virtual ~FlannIndex()
+	{
+		this->release();
+	}
+
+	void release()
+	{
+		if(index_)
+		{
+			if(binaryType_)
+			{
+				delete (flann::Index<flann::Hamming<unsigned char> >*)index_;
+
+			}
+			else
+			{
+				delete (flann::Index<flann::L2<float> >*)index_;
+			}
+			index_ = 0;
+		}
+	}
+
+	void build(
+			const cv::Mat & features,
+			const flann::IndexParams& params,
+			bool binaryType)
+	{
+		this->release();
+		UASSERT(index_ == 0);
+		binaryType_ = binaryType;
+
+		if(binaryType)
+		{
+			flann::Matrix<unsigned char> dataset(features.data, features.rows, features.cols);
+			index_ = new flann::Index<flann::Hamming<unsigned char> >(dataset, params);
+			((flann::Index<flann::Hamming<unsigned char> >*)index_)->buildIndex();
+		}
+		else
+		{
+			flann::Matrix<float> dataset((float*)features.data, features.rows, features.cols);
+			index_ = new flann::Index<flann::L2<float> >(dataset, params);
+			((flann::Index<flann::L2<float> >*)index_)->buildIndex();
+		}
+	}
+
+	bool isIncremental()
+	{
+#ifdef WITH_FLANN18
+		return true;
+#else
+		return false;
+#endif
+	}
+
+	void addPoints(const cv::Mat & features)
+	{
+#ifdef WITH_FLANN18
+		if(binaryType_)
+		{
+			flann::Matrix<unsigned char> dataset(features.data, features.rows, features.cols);
+			((flann::Index<flann::Hamming<unsigned char> >*)index_)->addPoints(dataset);
+		}
+		else
+		{
+			flann::Matrix<float> dataset((float*)features.data, features.rows, features.cols);
+			((flann::Index<flann::L2<float> >*)index_)->addPoints(dataset);
+		}
+#else
+		UFATAL("Not built with FLANN 1.8! Only when isIncremental() returns true that you can call this method.");
+#endif
+	}
+
+	void removePoint(unsigned int index)
+	{
+#ifdef WITH_FLANN18
+		if(binaryType_)
+		{
+			((flann::Index<flann::Hamming<unsigned char> >*)index_)->removePoint(index);
+		}
+		else
+		{
+			((flann::Index<flann::L2<float> >*)index_)->removePoint(index);
+		}
+#else
+		UFATAL("Not built with FLANN 1.8! Only when isIncremental() returns true that you can call this method.");
+#endif
+	}
+
+	void knnSearch(
+			const cv::Mat & query,
+			cv::Mat & indices,
+			cv::Mat & dists,
+	        int knn,
+	        const flann::SearchParams& params=flann::SearchParams())
+	{
+		if(!index_)
+		{
+			UERROR("Flann index not yet created!");
+			return;
+		}
+		indices.create(query.rows, knn, CV_32S);
+		dists.create(query.rows, knn, binaryType_?CV_32S:CV_32F);
+
+		cv::flann::IndexParams i;
+
+		flann::Matrix<int> indicesF((int*)indices.data, indices.rows, indices.cols);
+
+		if(binaryType_)
+		{
+			flann::Matrix<unsigned int> distsF((unsigned int*)dists.data, dists.rows, dists.cols);
+			flann::Matrix<unsigned char> queryF(query.data, query.rows, query.cols);
+			((flann::Index<flann::Hamming<unsigned char> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
+		}
+		else
+		{
+			flann::Matrix<float> distsF((float*)dists.data, dists.rows, dists.cols);
+			flann::Matrix<float> queryF((float*)query.data, query.rows, query.cols);
+			((flann::Index<flann::L2<float> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
+		}
+	}
+
+private:
+	void * index_;
+	bool binaryType_;
+};
 
 const int VWDictionary::ID_START = 1;
 const int VWDictionary::ID_INVALID = 0;
@@ -56,11 +193,12 @@ const int VWDictionary::ID_INVALID = 0;
 VWDictionary::VWDictionary(const ParametersMap & parameters) :
 	_totalActiveReferences(0),
 	_incrementalDictionary(Parameters::defaultKpIncrementalDictionary()),
+	_incrementalFlann(Parameters::defaultKpIncrementalFlann()),
 	_nndrRatio(Parameters::defaultKpNndrRatio()),
 	_dictionaryPath(Parameters::defaultKpDictionaryPath()),
 	_newWordsComparedTogether(Parameters::defaultKpNewWordsComparedTogether()),
 	_lastWordId(0),
-	_flannIndex(new cv::flann::Index()),
+	_flannIndex(new FlannIndex()),
 	_strategy(kNNBruteForce)
 {
 	this->setNNStrategy((NNStrategy)Parameters::defaultKpNNStrategy());
@@ -78,6 +216,13 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 	ParametersMap::const_iterator iter;
 	Parameters::parse(parameters, Parameters::kKpNndrRatio(), _nndrRatio);
 	Parameters::parse(parameters, Parameters::kKpNewWordsComparedTogether(), _newWordsComparedTogether);
+	Parameters::parse(parameters, Parameters::kKpIncrementalFlann(), _incrementalFlann);
+
+	if(_incrementalFlann && !_flannIndex->isIncremental())
+	{
+		UERROR("TRying to set \"KpIncrementalFlann\"=true but RTAB-Map is not built with FLANN>=1.8. Setting to false.");
+		_incrementalFlann = false;
+	}
 
 	UASSERT_MSG(_nndrRatio > 0.0f, uFormat("String=%s value=%f", uContains(parameters, Parameters::kKpNndrRatio())?parameters.at(Parameters::kKpNndrRatio()).c_str():"", _nndrRatio).c_str());
 
@@ -257,7 +402,15 @@ void VWDictionary::setNNStrategy(NNStrategy strategy)
 		}
 		else
 		{
+			bool update = _strategy != strategy;
 			_strategy = strategy;
+			if(update)
+			{
+				_dataTree = cv::Mat();
+				_notIndexedWords = uKeysSet(_visualWords);
+				_removedIndexedWords.clear();
+				this->update();
+			}
 		}
 	}
 }
@@ -287,55 +440,106 @@ void VWDictionary::update()
 
 	if(_notIndexedWords.size() || _visualWords.size() == 0 || _removedIndexedWords.size())
 	{
-		_mapIndexId.clear();
 		int oldSize = _dataTree.rows;
-		_dataTree = cv::Mat();
-		_flannIndex->release();
-
-		if(_visualWords.size())
+		if(_incrementalFlann &&
+		   _flannIndex->isIncremental() &&
+		   _strategy < kNNBruteForce &&
+		   (_notIndexedWords.size() || _removedIndexedWords.size()) &&
+		   oldSize)
 		{
-			UTimer timer;
-			timer.start();
-
-			int type = _visualWords.begin()->second->getDescriptor().type();
-			int dim = _visualWords.begin()->second->getDescriptor().cols;
-
-			UASSERT(type == CV_32F || type == CV_8U);
-			UASSERT(dim > 0);
-
-			// Create the data matrix
-			_dataTree = cv::Mat(_visualWords.size(), dim, type); // SURF descriptors are CV_32F
-			std::map<int, VisualWord*>::const_iterator iter = _visualWords.begin();
-			for(unsigned int i=0; i < _visualWords.size(); ++i, ++iter)
+			for(std::set<int>::iterator iter=_notIndexedWords.begin(); iter!=_notIndexedWords.end(); ++iter)
 			{
-				UASSERT(iter->second->getDescriptor().cols == dim);
-				UASSERT(iter->second->getDescriptor().type() == type);
-
-				iter->second->getDescriptor().copyTo(_dataTree.row(i));
-				_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, iter->second->id()));
+				VisualWord* w = uValue(_visualWords, *iter, (VisualWord*)0);
+				UASSERT(w);
+				UASSERT(w->getDescriptor().cols == _dataTree.cols);
+				UASSERT(w->getDescriptor().type() == _dataTree.type());
+				_dataTree.push_back(w->getDescriptor());
+				_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(_dataTree.rows-1, w->id()));
+				std::pair<std::map<int, int>::iterator, bool> inserted = _mapIdIndex.insert(std::pair<int, int>(w->id(), _dataTree.rows-1));
+				if(!inserted.second)
+				{
+					//update to new index
+					inserted.first->second = _dataTree.rows-1;
+				}
+				_flannIndex->addPoints(w->getDescriptor());
 			}
-
-			ULOGGER_DEBUG("_mapIndexId.size() = %d, words.size()=%d, _dim=%d",_mapIndexId.size(), _visualWords.size(), dim);
-			ULOGGER_DEBUG("copying data = %f s", timer.ticks());
-
-			switch(_strategy)
+			for(std::set<int>::iterator iter=_removedIndexedWords.begin(); iter!=_removedIndexedWords.end(); ++iter)
 			{
-			case kNNFlannNaive:
-				_flannIndex->build(_dataTree, cv::flann::LinearIndexParams(), type == CV_32F?cvflann::FLANN_DIST_L2:cvflann::FLANN_DIST_HAMMING);
-				break;
-			case kNNFlannKdTree:
-				UASSERT_MSG(type == CV_32F, "To use KdTree dictionary, float descriptors are required!");
-				_flannIndex->build(_dataTree, cv::flann::KDTreeIndexParams(), cvflann::FLANN_DIST_L2);
-				break;
-			case kNNFlannLSH:
-				UASSERT_MSG(type == CV_8U, "To use LSH dictionary, binary descriptors are required!");
-				_flannIndex->build(_dataTree, cv::flann::LshIndexParams(12, 20, 2), cvflann::FLANN_DIST_HAMMING);
-				break;
-			default:
-				break;
+				UASSERT(uContains(_mapIdIndex, *iter));
+				_flannIndex->removePoint(_mapIdIndex.at(*iter));
 			}
+		}
+		else if(_strategy >= kNNBruteForce &&
+				_notIndexedWords.size() &&
+				_removedIndexedWords.size() == 0 &&
+				oldSize)
+		{
+			//just add not indexed words
+			for(std::set<int>::iterator iter=_notIndexedWords.begin(); iter!=_notIndexedWords.end(); ++iter)
+			{
+				VisualWord* w = uValue(_visualWords, *iter, (VisualWord*)0);
+				UASSERT(w);
+				UASSERT(w->getDescriptor().cols == _dataTree.cols);
+				UASSERT(w->getDescriptor().type() == _dataTree.type());
+				_dataTree.push_back(w->getDescriptor());
+				_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(_dataTree.rows-1, w->id()));
+				std::pair<std::map<int, int>::iterator, bool> inserted = _mapIdIndex.insert(std::pair<int, int>(w->id(), _dataTree.rows-1));
+				UASSERT(inserted.second);
+			}
+		}
+		else
+		{
+			_mapIndexId.clear();
+			_mapIdIndex.clear();
+			_dataTree = cv::Mat();
+			_flannIndex->release();
 
-			ULOGGER_DEBUG("Time to create kd tree = %f s", timer.ticks());
+			if(_visualWords.size())
+			{
+				UTimer timer;
+				timer.start();
+
+				int type = _visualWords.begin()->second->getDescriptor().type();
+				int dim = _visualWords.begin()->second->getDescriptor().cols;
+
+				UASSERT(type == CV_32F || type == CV_8U);
+				UASSERT(dim > 0);
+
+				// Create the data matrix
+				_dataTree = cv::Mat(_visualWords.size(), dim, type); // SURF descriptors are CV_32F
+				std::map<int, VisualWord*>::const_iterator iter = _visualWords.begin();
+				for(unsigned int i=0; i < _visualWords.size(); ++i, ++iter)
+				{
+					UASSERT(iter->second->getDescriptor().cols == dim);
+					UASSERT(iter->second->getDescriptor().type() == type);
+
+					iter->second->getDescriptor().copyTo(_dataTree.row(i));
+					_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, iter->second->id()));
+					_mapIdIndex.insert(_mapIdIndex.end(), std::pair<int, int>(iter->second->id(), i));
+				}
+
+				ULOGGER_DEBUG("_mapIndexId.size() = %d, words.size()=%d, _dim=%d",_mapIndexId.size(), _visualWords.size(), dim);
+				ULOGGER_DEBUG("copying data = %f s", timer.ticks());
+
+				switch(_strategy)
+				{
+				case kNNFlannNaive:
+					_flannIndex->build(_dataTree, flann::LinearIndexParams(), type != CV_32F);
+					break;
+				case kNNFlannKdTree:
+					UASSERT_MSG(type == CV_32F, "To use KdTree dictionary, float descriptors are required!");
+					_flannIndex->build(_dataTree, flann::KDTreeIndexParams(), false);
+					break;
+				case kNNFlannLSH:
+					UASSERT_MSG(type == CV_8U, "To use LSH dictionary, binary descriptors are required!");
+					_flannIndex->build(_dataTree, flann::LshIndexParams(12, 20, 2), true);
+					break;
+				default:
+					break;
+				}
+
+				ULOGGER_DEBUG("Time to create kd tree = %f s", timer.ticks());
+			}
 		}
 		UDEBUG("Dictionary updated! (size=%d->%d added=%d removed=%d)",
 				oldSize, _dataTree.rows, _notIndexedWords.size(), _removedIndexedWords.size());
@@ -370,6 +574,7 @@ void VWDictionary::clear()
 	_lastWordId = 0;
 	_dataTree = cv::Mat();
 	_mapIndexId.clear();
+	_mapIdIndex.clear();
 	_unusedWords.clear();
 	_flannIndex->release();
 }
@@ -544,10 +749,15 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 		{
 			for(int j=0; j<dists.cols; ++j)
 			{
-				if(results.at<int>(i,j) >= 0)
+				float d = dists.at<float>(i,j);
+				int id = uValue(_mapIndexId, results.at<int>(i,j));
+				if(d >= 0.0f && id > 0)
 				{
-					float d = dists.at<float>(i,j);
-					fullResults.insert(std::pair<float, int>(d, uValue(_mapIndexId, results.at<int>(i,j))));
+					std::multimap<float, int>::iterator iter = fullResults.insert(std::pair<float, int>(d, id));
+				}
+				else
+				{
+					break;
 				}
 			}
 		}
@@ -555,10 +765,15 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 		{
 			for(unsigned int j=0; j<matches.at(i).size(); ++j)
 			{
-				if(matches.at(i).at(j).trainIdx >= 0)
+				float d = matches.at(i).at(j).distance;
+				int id = uValue(_mapIndexId, matches.at(i).at(j).trainIdx);
+				if(d >= 0.0f && id > 0)
 				{
-					float d = matches.at(i).at(j).distance;
-					fullResults.insert(std::pair<float, int>(d, uValue(_mapIndexId, matches.at(i).at(j).trainIdx)));
+					std::multimap<float, int>::iterator iter = fullResults.insert(std::pair<float, int>(d, id));
+				}
+				else
+				{
+					break;
 				}
 			}
 		}
@@ -566,8 +781,8 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 		// Check if this descriptor matches with a word from the last signature (a word not already added to the tree)
 		if(_newWordsComparedTogether && newWords.rows)
 		{
-			cv::flann::Index linearSeach;
-			linearSeach.build(newWords, cv::flann::LinearIndexParams(), type == CV_32F?cvflann::FLANN_DIST_L2:cvflann::FLANN_DIST_HAMMING);
+			FlannIndex linearSeach;
+			linearSeach.build(newWords, flann::LinearIndexParams(), type != CV_32F);
 			cv::Mat resultsLinear;
 			cv::Mat distsLinear;
 			linearSeach.knnSearch(descriptors.row(i), resultsLinear, distsLinear, newWords.rows>1?2:1);
@@ -582,10 +797,15 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 			{
 				for(int j=0; j<resultsLinear.cols; ++j)
 				{
-					if(resultsLinear.at<int>(0,j) >= 0)
+					float d = distsLinear.at<float>(0,j);
+					if(d >= 0.0f && resultsLinear.at<int>(0,j) >= 0)
 					{
-						 float d = distsLinear.at<float>(0,j);
-						 fullResults.insert(std::pair<float, int>(d, newWordsId[resultsLinear.at<int>(0,j)]));
+						std::multimap<float, int>::iterator iter = fullResults.insert(std::pair<float, int>(d, newWordsId[resultsLinear.at<int>(0,j)]));
+						UASSERT(iter->second > 0);
+					}
+					else
+					{
+						break;
 					}
 				}
 			}
@@ -637,7 +857,6 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
 
 				this->addWordRef(fullResults.begin()->second, signatureId);
 				wordIds.push_back(fullResults.begin()->second);
-				UASSERT(fullResults.begin()->second>0);
 			}
 		}
 		else if(fullResults.size())
@@ -786,8 +1005,8 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 
 			// Find nearest neighbor
 			ULOGGER_DEBUG("Searching in words not indexed...");
-			cv::flann::Index linearSeach;
-			linearSeach.build(dataNotIndexed, cv::flann::LinearIndexParams(), type == CV_32F?cvflann::FLANN_DIST_L2:cvflann::FLANN_DIST_HAMMING);
+			FlannIndex linearSeach;
+			linearSeach.build(dataNotIndexed, flann::LinearIndexParams(), type != CV_32F);
 			linearSeach.knnSearch(query, resultsNotIndexed, distsNotIndexed, _notIndexedWords.size()>1?2:1);
 			// In case of binary descriptors
 			if(distsNotIndexed.type() == CV_32S)
@@ -806,10 +1025,11 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 			{
 				for(int j=0; j<dists.cols; ++j)
 				{
-					if(results.at<int>(i,j) > 0)
+					float d = dists.at<float>(i,j);
+					int id = uValue(_mapIndexId, results.at<int>(i,j));
+					if(d >= 0.0f && id > 0)
 					{
-						float d = dists.at<float>(i,j);
-						fullResults.insert(std::pair<float, int>(d, uValue(_mapIndexId, results.at<int>(i,j))));
+						fullResults.insert(std::pair<float, int>(d, id));
 					}
 				}
 			}
@@ -817,10 +1037,11 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 			{
 				for(unsigned int j=0; j<matches.at(i).size(); ++j)
 				{
-					if(matches.at(i).at(j).trainIdx > 0)
+					float d = matches.at(i).at(j).distance;
+					int id = uValue(_mapIndexId, matches.at(i).at(j).trainIdx);
+					if(d >= 0.0f && id > 0)
 					{
-						float d = matches.at(i).at(j).distance;
-						fullResults.insert(std::pair<float, int>(d, uValue(_mapIndexId, matches.at(i).at(j).trainIdx)));
+						fullResults.insert(std::pair<float, int>(d, id));
 					}
 				}
 			}
@@ -828,10 +1049,11 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 			// not indexed..
 			for(int j=0; j<distsNotIndexed.cols; ++j)
 			{
-				if(resultsNotIndexed.at<int>(i,j) > 0)
+				float d = distsNotIndexed.at<float>(i,j);
+				if(d >= 0.0f && resultsNotIndexed.at<int>(i,j) > 0)
 				{
-					float d = distsNotIndexed.at<float>(i,j);
-					fullResults.insert(std::pair<float, int>(d, uValue(mapIndexIdNotIndexed, resultsNotIndexed.at<int>(i,j))));
+					std::multimap<float, int>::iterator iter = fullResults.insert(std::pair<float, int>(d, uValue(mapIndexIdNotIndexed, resultsNotIndexed.at<int>(i,j))));
+					UASSERT(iter->second > 0);
 				}
 			}
 

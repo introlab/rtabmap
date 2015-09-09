@@ -34,6 +34,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/core/version.hpp>
 #include <pcl/pcl_config.h>
 
+#include <flann/config.h>
+
 namespace rtabmap {
 
 AboutDialog::AboutDialog(QWidget * parent) :
@@ -53,6 +55,7 @@ AboutDialog::AboutDialog(QWidget * parent) :
 #endif
 	_ui->label_version->setText(version);
 	_ui->label_opencv_version->setText(cv_version);
+	_ui->label_flann_version->setText(FLANN_VERSION_);
 	_ui->label_pcl_version->setText(PCL_VERSION_PRETTY);
 	_ui->label_freenect->setText(CameraFreenect::available()?"Yes":"No");
 	_ui->label_openni2->setText(CameraOpenNI2::available()?"Yes":"No");

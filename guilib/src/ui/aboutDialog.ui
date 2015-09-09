@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>824</width>
-    <height>581</height>
+    <width>831</width>
+    <height>615</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -82,21 +82,31 @@ p, li { white-space: pre-wrap; }
         </item>
         <item>
          <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
-          <item row="10" column="0">
+          <item row="9" column="1">
+           <widget class="QLabel" name="label_pcl_version">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="11" column="0">
            <widget class="QLabel" name="label_12">
             <property name="text">
              <string>With Freenect :</string>
             </property>
            </widget>
           </item>
-          <item row="11" column="0">
+          <item row="12" column="0">
            <widget class="QLabel" name="label_13">
             <property name="text">
              <string>With OpenNI2 :</string>
             </property>
            </widget>
           </item>
-          <item row="13" column="0">
+          <item row="14" column="0">
            <widget class="QLabel" name="label_16">
             <property name="text">
              <string>With stereo dc1394 :</string>
@@ -202,24 +212,14 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="9" column="1">
-           <widget class="QLabel" name="label_pcl_version">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-            </property>
-           </widget>
-          </item>
-          <item row="15" column="0">
+          <item row="16" column="0">
            <widget class="QLabel" name="label_14">
             <property name="text">
              <string>With g2o :</string>
             </property>
            </widget>
           </item>
-          <item row="10" column="1">
+          <item row="11" column="1">
            <widget class="QLabel" name="label_freenect">
             <property name="text">
              <string/>
@@ -229,7 +229,7 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="11" column="1">
+          <item row="12" column="1">
            <widget class="QLabel" name="label_openni2">
             <property name="text">
              <string/>
@@ -239,7 +239,7 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="15" column="1">
+          <item row="16" column="1">
            <widget class="QLabel" name="label_g2o">
             <property name="text">
              <string/>
@@ -249,21 +249,21 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="12" column="0">
+          <item row="13" column="0">
            <widget class="QLabel" name="label_15">
             <property name="text">
              <string>With Freenect2 :</string>
             </property>
            </widget>
           </item>
-          <item row="14" column="0">
+          <item row="15" column="0">
            <widget class="QLabel" name="label_17">
             <property name="text">
              <string>With stereo FlyCapture2 :</string>
             </property>
            </widget>
           </item>
-          <item row="12" column="1">
+          <item row="13" column="1">
            <widget class="QLabel" name="label_freenect2">
             <property name="text">
              <string/>
@@ -273,7 +273,7 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="13" column="1">
+          <item row="14" column="1">
            <widget class="QLabel" name="label_dc1394">
             <property name="text">
              <string/>
@@ -283,7 +283,7 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="14" column="1">
+          <item row="15" column="1">
            <widget class="QLabel" name="label_flycapture2">
             <property name="text">
              <string/>
@@ -293,14 +293,14 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="17" column="0">
+          <item row="18" column="0">
            <widget class="QLabel" name="label_18">
             <property name="text">
              <string>With cvsba :</string>
             </property>
            </widget>
           </item>
-          <item row="17" column="1">
+          <item row="18" column="1">
            <widget class="QLabel" name="label_cvsba">
             <property name="text">
              <string/>
@@ -310,15 +310,32 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="16" column="0">
+          <item row="17" column="0">
            <widget class="QLabel" name="label_19">
             <property name="text">
              <string>With GTSAM :</string>
             </property>
            </widget>
           </item>
-          <item row="16" column="1">
+          <item row="17" column="1">
            <widget class="QLabel" name="label_gtsam">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="0">
+           <widget class="QLabel" name="label_20">
+            <property name="text">
+             <string>FLANN version :</string>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="1">
+           <widget class="QLabel" name="label_flann_version">
             <property name="text">
              <string/>
             </property>

@@ -490,6 +490,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	//Keypoint-based
 	_ui->comboBox_dictionary_strategy->setObjectName(Parameters::kKpNNStrategy().c_str());
 	_ui->checkBox_dictionary_incremental->setObjectName(Parameters::kKpIncrementalDictionary().c_str());
+	_ui->checkBox_kp_incrementalFlann->setObjectName(Parameters::kKpIncrementalFlann().c_str());
+#ifndef WITH_FLANN18
+	_ui->checkBox_kp_incrementalFlann->setEnabled(false);
+	_ui->checkBox_kp_incrementalFlann->setChecked(false);
+#endif
 	_ui->comboBox_detector_strategy->setObjectName(Parameters::kKpDetectorStrategy().c_str());
 	_ui->surf_doubleSpinBox_nndrRatio->setObjectName(Parameters::kKpNndrRatio().c_str());
 	_ui->surf_doubleSpinBox_maxDepth->setObjectName(Parameters::kKpMaxDepth().c_str());
