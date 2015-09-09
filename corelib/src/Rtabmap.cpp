@@ -1790,7 +1790,7 @@ bool Rtabmap::process(
 		if(!rejectedHypothesis)
 		{
 			// Make the new one the parent of the old one
-			rejectedHypothesis = !_memory->addLink(Link(signature->id(), _loopClosureHypothesis.first, Link::kGlobalClosure, transform, variance, variance));
+			rejectedHypothesis = !_memory->addLink(Link(signature->id(), _loopClosureHypothesis.first, Link::kGlobalClosure, transform, variance>0?variance:0.0001, variance>0?variance:0.0001));
 			if(!rejectedHypothesis)
 			{
 				loopClosureLinksAdded.push_back(std::make_pair(signature->id(), _loopClosureHypothesis.first));
