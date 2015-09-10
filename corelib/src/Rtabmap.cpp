@@ -1079,7 +1079,7 @@ bool Rtabmap::process(
 							oldId,
 							signature->getLinks().at(oldId).transform().prettyPrint().c_str(),
 							t.prettyPrint().c_str());
-					_memory->updateLink(signature->id(), oldId, t, variance, variance);
+					_memory->updateLink(signature->id(), oldId, t, variance>0?variance:0.0001, variance>0?variance:0.0001);
 
 					if(_optimizeFromGraphEnd)
 					{
@@ -1180,7 +1180,7 @@ bool Rtabmap::process(
 								*iter,
 								transform.prettyPrint().c_str());
 						// Add a loop constraint
-						if(_memory->addLink(Link(signature->id(), *iter, Link::kLocalTimeClosure, transform, variance, variance)))
+						if(_memory->addLink(Link(signature->id(), *iter, Link::kLocalTimeClosure, transform, variance>0?variance:0.0001, variance>0?variance:0.0001)))
 						{
 							++localLoopClosuresInTimeFound;
 							UINFO("Local loop closure found between %d and %d with t=%s",
@@ -1952,7 +1952,7 @@ bool Rtabmap::process(
 									signature->id(),
 									nearestId,
 									transform.prettyPrint().c_str());
-							_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, variance, variance));
+							_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, variance>0?variance:0.0001, variance>0?variance:0.0001));
 							loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
 							if(_loopClosureHypothesis.first == 0)
