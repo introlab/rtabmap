@@ -57,7 +57,7 @@ void showUsage()
 int main(int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kWarning);
+	ULogger::setLevel(ULogger::kError);
 
 	if(argc < 8)
 	{
@@ -100,7 +100,7 @@ int main(int argc, char * argv[])
 			false, // no timestamps in filenames
 			"",    // no file with timestamps
 			false, // assume that images are already rectified
-			0.0f,  // inf rate
+			(float)cameraRate,
 			opticalRotation);
 
 	if(camera.init(calibrationDir, calibrationName))
@@ -113,7 +113,6 @@ int main(int argc, char * argv[])
 		MapBuilder mapBuilder;
 		mapBuilder.show();
 		QApplication::processEvents();
-		float sleepTime = 1.0f/float(cameraRate);
 
 		SensorData data = camera.takeImage();
 		int cameraIteration = 0;
@@ -150,7 +149,6 @@ int main(int argc, char * argv[])
 			}
 
 			data = camera.takeImage();
-			uSleep(sleepTime);
 		}
 
 		if(mapBuilder.isVisible())
