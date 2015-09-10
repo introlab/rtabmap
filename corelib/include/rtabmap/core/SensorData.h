@@ -136,8 +136,8 @@ public:
 			_laserScanCompressed.empty() &&
 			_cameraModels.size() == 0 &&
 			!_stereoCameraModel.isValid() &&
-			!_userDataRaw.empty() &&
-			!_userDataCompressed.empty() &&
+			_userDataRaw.empty() &&
+			_userDataCompressed.empty() &&
 			_keypoints.size() == 0 &&
 			_descriptors.empty());
 	}
