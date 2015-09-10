@@ -205,19 +205,19 @@ void DBReader::mainLoop()
 					double delay = stamp - previousStamp;
 					UWARN("Goal %d detected, posting it! Waiting %f seconds before sending next data...",
 							goalId, delay);
-					this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, "", goalId));
+					this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, goalId));
 					uSleep(delay*1000);
 				}
 				else
 				{
 					UWARN("Goal %d detected, posting it!", goalId);
-					this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, "", goalId));
+					this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, goalId));
 				}
 			}
 			else
 			{
 				UWARN("Goal %d detected, posting it!", goalId);
-				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, "", goalId));
+				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, goalId));
 			}
 		}
 
