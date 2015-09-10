@@ -1193,17 +1193,20 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 			}
 
 			// not indexed..
-			for(unsigned int j=0; j<matchesNotIndexed.at(i).size(); ++j)
+			if(matchesNotIndexed.size())
 			{
-				float d = matchesNotIndexed.at(i).at(j).distance;
-				int id = uValue(mapIndexIdNotIndexed, matchesNotIndexed.at(i).at(j).trainIdx);
-				if(d >= 0.0f && id > 0)
+				for(unsigned int j=0; j<matchesNotIndexed.at(i).size(); ++j)
 				{
-					fullResults.insert(std::pair<float, int>(d, id));
-				}
-				else
-				{
-					break;
+					float d = matchesNotIndexed.at(i).at(j).distance;
+					int id = uValue(mapIndexIdNotIndexed, matchesNotIndexed.at(i).at(j).trainIdx);
+					if(d >= 0.0f && id > 0)
+					{
+						fullResults.insert(std::pair<float, int>(d, id));
+					}
+					else
+					{
+						break;
+					}
 				}
 			}
 

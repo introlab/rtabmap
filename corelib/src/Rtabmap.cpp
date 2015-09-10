@@ -1052,7 +1052,7 @@ bool Rtabmap::process(
 
 		// Update optimizedPoses with the newly added node
 		Transform newPose;
-		if(signature->getLinks().size() == 1)
+		if(signature->getLinks().size() == 1 && !smallDisplacement)
 		{
 			int oldId = signature->getLinks().begin()->first;
 			const Signature * oldS = _memory->getSignature(oldId);
@@ -1112,7 +1112,10 @@ bool Rtabmap::process(
 			_mapCorrection = newPose * signature->getPose().inverse();
 			if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
 			{
-				UERROR("Map correction should be identity when optimizing from the last node. T=%s", _mapCorrection.prettyPrint().c_str());
+				UERROR("Map correction should be identity when optimizing from the last node. T=%s NewPose=%s OldPose=%s",
+						_mapCorrection.prettyPrint().c_str(),
+						newPose.prettyPrint().c_str(),
+						signature->getPose().prettyPrint().c_str());
 			}
 		}
 		else
