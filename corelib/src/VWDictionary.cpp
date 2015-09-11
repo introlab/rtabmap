@@ -583,6 +583,12 @@ void VWDictionary::update()
 		   _strategy < kNNBruteForce &&
 		   _visualWords.size())
 		{
+			for(std::set<int>::iterator iter=_removedIndexedWords.begin(); iter!=_removedIndexedWords.end(); ++iter)
+			{
+				UASSERT(uContains(_mapIdIndex, *iter));
+				_flannIndex->removePoint(_mapIdIndex.at(*iter));
+			}
+
 			if(_notIndexedWords.size())
 			{
 				for(std::set<int>::iterator iter=_notIndexedWords.begin(); iter!=_notIndexedWords.end(); ++iter)
@@ -624,11 +630,6 @@ void VWDictionary::update()
 						inserted.first->second = index;
 					}
 				}
-			}
-			for(std::set<int>::iterator iter=_removedIndexedWords.begin(); iter!=_removedIndexedWords.end(); ++iter)
-			{
-				UASSERT(uContains(_mapIdIndex, *iter));
-				_flannIndex->removePoint(_mapIdIndex.at(*iter));
 			}
 		}
 		else if(_strategy >= kNNBruteForce &&
