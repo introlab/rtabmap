@@ -990,7 +990,7 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 					ids.insert(std::pair<int, int>(*jter, m));
 
 					UTimer timer;
-					_dbDriver->loadLinks(*jter, tmpLinks);
+					_dbDriver->loadLinks(*jter, tmpLinks, ignoreLoopIds?Link::kNeighbor:Link::kUndef);
 					if(dbAccessTime)
 					{
 						*dbAccessTime += timer.getElapsedTime();
