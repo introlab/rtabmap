@@ -249,6 +249,12 @@ public:
 			UERROR("Flann index not yet created!");
 			return;
 		}
+
+		// If a Segmentation fault occurs in removePoint(), verify that you have this fix in your installed "flann/algorithms/nn_index.h":
+		// 707 - if (ids_[id]==id) {
+		// 707 + if (id < ids_.size() && ids_[id]==id) {
+		// ref: https://github.com/mariusmuja/flann/commit/23051820b2314f07cf40ba633a4067782a982ff3#diff-33762b7383f957c2df17301639af5151
+
 		if(featuresType_ == CV_8UC1)
 		{
 			((flann::Index<flann::Hamming<unsigned char> >*)index_)->removePoint(index);
