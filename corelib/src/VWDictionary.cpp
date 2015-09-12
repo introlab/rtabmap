@@ -277,8 +277,6 @@ public:
 		indices.create(query.rows, knn, CV_32S);
 		dists.create(query.rows, knn, featuresType_ == CV_8UC1?CV_32S:CV_32F);
 
-		cv::flann::IndexParams i;
-
 		flann::Matrix<int> indicesF((int*)indices.data, indices.rows, indices.cols);
 
 		if(featuresType_ == CV_8UC1)
