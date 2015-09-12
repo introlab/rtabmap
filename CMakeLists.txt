@@ -386,12 +386,6 @@ IF(OpenCV_FOUND)
   ENDIF()
 ENDIF(OpenCV_FOUND)
 
-IF(FLANN18_FOUND)
-MESSAGE(STATUS "  With FLANN >= 1.8         = YES")
-ELSE()
-MESSAGE(STATUS "  With FLANN >= 1.8         = NO")
-ENDIF()
-
 IF(Freenect_FOUND)
 MESSAGE(STATUS "  With Freenect             = YES")
 ELSEIF(NOT WITH_FREENECT)

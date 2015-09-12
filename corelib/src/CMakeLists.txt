@@ -57,8 +57,8 @@ SET(SRC_FILES
 	toro3d/posegraph2.cpp
 	toro3d/treeoptimizer2.cpp
 	
-	flann/ext/lz4.c
-	flann/ext/lz4hc.c
+	rtflann/ext/lz4.c
+	rtflann/ext/lz4hc.c
 	
 	sqlite3/sqlite3.c
 )

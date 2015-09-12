@@ -45,7 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
-#include "flann/flann.hpp"
+#include "rtflann/flann.hpp"
 
 #include <fstream>
 #include <string>
@@ -75,11 +75,11 @@ public:
 		{
 			if(featuresType_ == CV_8UC1)
 			{
-				delete (flann::Index<flann::Hamming<unsigned char> >*)index_;
+				delete (rtflann::Index<rtflann::Hamming<unsigned char> >*)index_;
 			}
 			else
 			{
-				delete (flann::Index<flann::L2<float> >*)index_;
+				delete (rtflann::Index<rtflann::L2<float> >*)index_;
 			}
 			index_ = 0;
 		}
@@ -95,11 +95,11 @@ public:
 		}
 		if(featuresType_ == CV_8UC1)
 		{
-			return ((const flann::Index<flann::Hamming<unsigned char> >*)index_)->size();
+			return ((const rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->size();
 		}
 		else
 		{
-			return ((const flann::Index<flann::L2<float> >*)index_)->size();
+			return ((const rtflann::Index<rtflann::L2<float> >*)index_)->size();
 		}
 	}
 
@@ -112,17 +112,17 @@ public:
 		}
 		if(featuresType_ == CV_8UC1)
 		{	
-			return ((const flann::Index<flann::Hamming<unsigned char> >*)index_)->usedMemory()/1000;
+			return ((const rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->usedMemory()/1000;
 		}
 		else
 		{
-			return ((const flann::Index<flann::L2<float> >*)index_)->usedMemory()/1000;
+			return ((const rtflann::Index<rtflann::L2<float> >*)index_)->usedMemory()/1000;
 		}
 	}
 
 	void build(
 			const cv::Mat & features,
-			const flann::IndexParams& params)
+			const rtflann::IndexParams& params)
 	{
 		this->release();
 		UASSERT(index_ == 0);
@@ -132,15 +132,15 @@ public:
 
 		if(featuresType_ == CV_8UC1)
 		{
-			flann::Matrix<unsigned char> dataset(features.data, features.rows, features.cols);
-			index_ = new flann::Index<flann::Hamming<unsigned char> >(dataset, params);
-			((flann::Index<flann::Hamming<unsigned char> >*)index_)->buildIndex();
+			rtflann::Matrix<unsigned char> dataset(features.data, features.rows, features.cols);
+			index_ = new rtflann::Index<rtflann::Hamming<unsigned char> >(dataset, params);
+			((rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->buildIndex();
 		}
 		else
 		{
-			flann::Matrix<float> dataset((float*)features.data, features.rows, features.cols);
-			index_ = new flann::Index<flann::L2<float> >(dataset, params);
-			((flann::Index<flann::L2<float> >*)index_)->buildIndex();
+			rtflann::Matrix<float> dataset((float*)features.data, features.rows, features.cols);
+			index_ = new rtflann::Index<rtflann::L2<float> >(dataset, params);
+			((rtflann::Index<rtflann::L2<float> >*)index_)->buildIndex();
 		}
 		nextIndex_ = features.rows;
 	}
@@ -165,13 +165,13 @@ public:
 		UASSERT(feature.rows == 1);
 		if(featuresType_ == CV_8UC1)
 		{
-			flann::Matrix<unsigned char> dataset(feature.data, feature.rows, feature.cols);
-			((flann::Index<flann::Hamming<unsigned char> >*)index_)->addPoints(dataset);
+			rtflann::Matrix<unsigned char> dataset(feature.data, feature.rows, feature.cols);
+			((rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->addPoints(dataset);
 		}
 		else
 		{
-			flann::Matrix<float> dataset((float*)feature.data, feature.rows, feature.cols);
-			((flann::Index<flann::L2<float> >*)index_)->addPoints(dataset);
+			rtflann::Matrix<float> dataset((float*)feature.data, feature.rows, feature.cols);
+			((rtflann::Index<rtflann::L2<float> >*)index_)->addPoints(dataset);
 		}
 		return nextIndex_++;
 	}
@@ -191,11 +191,11 @@ public:
 
 		if(featuresType_ == CV_8UC1)
 		{
-			((flann::Index<flann::Hamming<unsigned char> >*)index_)->removePoint(index);
+			((rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->removePoint(index);
 		}
 		else
 		{
-			((flann::Index<flann::L2<float> >*)index_)->removePoint(index);
+			((rtflann::Index<rtflann::L2<float> >*)index_)->removePoint(index);
 		}
 	}
 
@@ -204,7 +204,7 @@ public:
 			cv::Mat & indices,
 			cv::Mat & dists,
 	        int knn,
-	        const flann::SearchParams& params=flann::SearchParams())
+	        const rtflann::SearchParams& params=rtflann::SearchParams())
 	{
 		if(!index_)
 		{
@@ -214,19 +214,19 @@ public:
 		indices.create(query.rows, knn, CV_32S);
 		dists.create(query.rows, knn, featuresType_ == CV_8UC1?CV_32S:CV_32F);
 
-		flann::Matrix<int> indicesF((int*)indices.data, indices.rows, indices.cols);
+		rtflann::Matrix<int> indicesF((int*)indices.data, indices.rows, indices.cols);
 
 		if(featuresType_ == CV_8UC1)
 		{
-			flann::Matrix<unsigned int> distsF((unsigned int*)dists.data, dists.rows, dists.cols);
-			flann::Matrix<unsigned char> queryF(query.data, query.rows, query.cols);
-			((flann::Index<flann::Hamming<unsigned char> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
+			rtflann::Matrix<unsigned int> distsF((unsigned int*)dists.data, dists.rows, dists.cols);
+			rtflann::Matrix<unsigned char> queryF(query.data, query.rows, query.cols);
+			((rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
 		}
 		else
 		{
-			flann::Matrix<float> distsF((float*)dists.data, dists.rows, dists.cols);
-			flann::Matrix<float> queryF((float*)query.data, query.rows, query.cols);
-			((flann::Index<flann::L2<float> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
+			rtflann::Matrix<float> distsF((float*)dists.data, dists.rows, dists.cols);
+			rtflann::Matrix<float> queryF((float*)query.data, query.rows, query.cols);
+			((rtflann::Index<rtflann::L2<float> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
 		}
 	}
 
@@ -517,15 +517,15 @@ void VWDictionary::update()
 						switch(_strategy)
 						{
 						case kNNFlannNaive:
-							_flannIndex->build(w->getDescriptor(), flann::LinearIndexParams());
+							_flannIndex->build(w->getDescriptor(), rtflann::LinearIndexParams());
 							break;
 						case kNNFlannKdTree:
 							UASSERT_MSG(w->getDescriptor().type() == CV_32F, "To use KdTree dictionary, float descriptors are required!");
-							_flannIndex->build(w->getDescriptor(), flann::KDTreeIndexParams());
+							_flannIndex->build(w->getDescriptor(), rtflann::KDTreeIndexParams());
 							break;
 						case kNNFlannLSH:
 							UASSERT_MSG(w->getDescriptor().type() == CV_8U, "To use LSH dictionary, binary descriptors are required!");
-							_flannIndex->build(w->getDescriptor(), flann::LshIndexParams(12, 20, 2));
+							_flannIndex->build(w->getDescriptor(), rtflann::LshIndexParams(12, 20, 2));
 							break;
 						default:
 							UFATAL("Not supposed to be here!");
@@ -607,15 +607,15 @@ void VWDictionary::update()
 				switch(_strategy)
 				{
 				case kNNFlannNaive:
-					_flannIndex->build(_dataTree, flann::LinearIndexParams());
+					_flannIndex->build(_dataTree, rtflann::LinearIndexParams());
 					break;
 				case kNNFlannKdTree:
 					UASSERT_MSG(type == CV_32F, "To use KdTree dictionary, float descriptors are required!");
-					_flannIndex->build(_dataTree, flann::KDTreeIndexParams());
+					_flannIndex->build(_dataTree, rtflann::KDTreeIndexParams());
 					break;
 				case kNNFlannLSH:
 					UASSERT_MSG(type == CV_8U, "To use LSH dictionary, binary descriptors are required!");
-					_flannIndex->build(_dataTree, flann::LshIndexParams(12, 20, 2));
+					_flannIndex->build(_dataTree, rtflann::LshIndexParams(12, 20, 2));
 					break;
 				default:
 					break;
