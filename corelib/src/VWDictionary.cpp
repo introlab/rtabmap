@@ -45,7 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
-#include <flann/flann.hpp>
+#include "flann/flann.hpp"
 
 #include <fstream>
 #include <string>
@@ -75,20 +75,7 @@ public:
 		{
 			if(featuresType_ == CV_8UC1)
 			{
-				
-#ifdef WITH_FLANN18
-			delete (flann::Index<flann::Hamming<unsigned char> >*)index_;
-#else
-			// issue with 1.7.1: we should explicitly use the corresponding index
-			if(isLSH_)
-			{
-				delete (flann::LshIndex<flann::Hamming<unsigned char> >*)index_;
-			}
-			else
-			{
-				delete (flann::LinearIndex<flann::Hamming<unsigned char> >*)index_;
-			}
-#endif
+				delete (flann::Index<flann::Hamming<unsigned char> >*)index_;
 			}
 			else
 			{
@@ -108,19 +95,7 @@ public:
 		}
 		if(featuresType_ == CV_8UC1)
 		{
-#ifdef WITH_FLANN18
 			return ((const flann::Index<flann::Hamming<unsigned char> >*)index_)->size();
-#else
-			// issue with 1.7.1: we should explicitly use the corresponding index
-			if(isLSH_)
-			{
-				return ((const flann::LshIndex<flann::Hamming<unsigned char> >*)index_)->size();
-			}
-			else
-			{
-				return ((const flann::LinearIndex<flann::Hamming<unsigned char> >*)index_)->size();
-			}
-#endif
 		}
 		else
 		{
@@ -137,19 +112,7 @@ public:
 		}
 		if(featuresType_ == CV_8UC1)
 		{	
-#ifdef WITH_FLANN18
 			return ((const flann::Index<flann::Hamming<unsigned char> >*)index_)->usedMemory()/1000;
-#else
-			// issue with 1.7.1: we should explicitly use the corresponding index
-			if(isLSH_)
-			{
-				return ((const flann::LshIndex<flann::Hamming<unsigned char> >*)index_)->usedMemory()/1000;
-			}
-			else
-			{
-				return ((const flann::LinearIndex<flann::Hamming<unsigned char> >*)index_)->usedMemory()/1000;
-			}
-#endif
 		}
 		else
 		{
@@ -170,21 +133,7 @@ public:
 		if(featuresType_ == CV_8UC1)
 		{
 			flann::Matrix<unsigned char> dataset(features.data, features.rows, features.cols);
-#ifdef WITH_FLANN18
 			index_ = new flann::Index<flann::Hamming<unsigned char> >(dataset, params);
-#else
-			// issue with 1.7.1: we should explicitly create the corresponding index
-			flann::flann_algorithm_t algo = params.at("algorithm").cast<flann::flann_algorithm_t>();
-			if(algo == flann::FLANN_INDEX_LSH)
-			{
-				isLSH_ = true;
-				index_ = new flann::LshIndex<flann::Hamming<unsigned char> >(dataset, params);
-			}
-			else
-			{
-				index_ = new flann::LinearIndex<flann::Hamming<unsigned char> >(dataset, params);
-			}
-#endif
 			((flann::Index<flann::Hamming<unsigned char> >*)index_)->buildIndex();
 		}
 		else
@@ -194,15 +143,6 @@ public:
 			((flann::Index<flann::L2<float> >*)index_)->buildIndex();
 		}
 		nextIndex_ = features.rows;
-	}
-
-	bool isIncremental()
-	{
-#ifdef WITH_FLANN18
-		return true;
-#else
-		return false;
-#endif
 	}
 
 	bool isBuilt()
@@ -215,7 +155,6 @@ public:
 
 	unsigned int addPoint(const cv::Mat & feature)
 	{
-#ifdef WITH_FLANN18
 		if(!index_)
 		{
 			UERROR("Flann index not yet created!");
@@ -235,15 +174,10 @@ public:
 			((flann::Index<flann::L2<float> >*)index_)->addPoints(dataset);
 		}
 		return nextIndex_++;
-#else
-		UFATAL("Not built with FLANN 1.8! Only when isIncremental() returns true that you can call this method.");
-		return 0;
-#endif
 	}
 
 	void removePoint(unsigned int index)
 	{
-#ifdef WITH_FLANN18
 		if(!index_)
 		{
 			UERROR("Flann index not yet created!");
@@ -263,9 +197,6 @@ public:
 		{
 			((flann::Index<flann::L2<float> >*)index_)->removePoint(index);
 		}
-#else
-		UFATAL("Not built with FLANN 1.8! Only when isIncremental() returns true that you can call this method.");
-#endif
 	}
 
 	void knnSearch(
@@ -289,19 +220,7 @@ public:
 		{
 			flann::Matrix<unsigned int> distsF((unsigned int*)dists.data, dists.rows, dists.cols);
 			flann::Matrix<unsigned char> queryF(query.data, query.rows, query.cols);
-#ifdef WITH_FLANN18
 			((flann::Index<flann::Hamming<unsigned char> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
-#else
-			// issue with 1.7.1: we should explicitly use the corresponding index
-			if(isLSH_)
-			{
-				((flann::LshIndex<flann::Hamming<unsigned char> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
-			}
-			else
-			{
-				((flann::LinearIndex<flann::Hamming<unsigned char> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
-			}
-#endif
 		}
 		else
 		{
@@ -349,12 +268,6 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kKpNndrRatio(), _nndrRatio);
 	Parameters::parse(parameters, Parameters::kKpNewWordsComparedTogether(), _newWordsComparedTogether);
 	Parameters::parse(parameters, Parameters::kKpIncrementalFlann(), _incrementalFlann);
-
-	if(_incrementalFlann && !_flannIndex->isIncremental())
-	{
-		UERROR("TRying to set \"KpIncrementalFlann\"=true but RTAB-Map is not built with FLANN>=1.8. Setting to false.");
-		_incrementalFlann = false;
-	}
 
 	UASSERT_MSG(_nndrRatio > 0.0f, uFormat("String=%s value=%f", uContains(parameters, Parameters::kKpNndrRatio())?parameters.at(Parameters::kKpNndrRatio()).c_str():"", _nndrRatio).c_str());
 
@@ -583,7 +496,6 @@ void VWDictionary::update()
 	if(_notIndexedWords.size() || _visualWords.size() == 0 || _removedIndexedWords.size())
 	{
 		if(_incrementalFlann &&
-		   _flannIndex->isIncremental() &&
 		   _strategy < kNNBruteForce &&
 		   _visualWords.size())
 		{

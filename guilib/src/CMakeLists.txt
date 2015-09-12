@@ -121,10 +121,6 @@ INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 add_definitions(${PCL_DEFINITIONS})
 
-IF(FLANN18_FOUND)
-	ADD_DEFINITIONS("-DWITH_FLANN18")
-ENDIF(FLANN18_FOUND)
-
 # create a library from the source files
 ADD_LIBRARY(rtabmap_gui ${SRC_FILES})
 # Linking with Qt libraries

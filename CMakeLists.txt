@@ -132,14 +132,8 @@ option(WITH_GTSAM         "Include GTSAM support"                ON)
 option(WITH_CVSBA         "Include cvsba support"                ON)
 option(WITH_FLYCAPTURE2   "Include FlyCapture2/Triclops support" ON)
 
-find_package(PkgConfig QUIET)
-FIND_PACKAGE(FLANN 1.8 QUIET)
-IF(PKG_CONFIG_FOUND AND FLANN_FOUND)
-    SET(FLANN18_FOUND TRUE)
-ENDIF(PKG_CONFIG_FOUND AND FLANN_FOUND)
-
 FIND_PACKAGE(OpenCV REQUIRED)
-FIND_PACKAGE(PCL 1.7 REQUIRED) # Will find FLANN too
+FIND_PACKAGE(PCL 1.7 REQUIRED)
 FIND_PACKAGE(ZLIB REQUIRED)
 
 IF(WITH_QT)
