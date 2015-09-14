@@ -205,7 +205,7 @@ class RTABMAP_EXP Parameters
 	// KeypointMemory (Keypoint-based)
 	RTABMAP_PARAM_COND(Kp, NNStrategy,       int, RTABMAP_NONFREE, 1, 3, "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
 	RTABMAP_PARAM(Kp, IncrementalDictionary, bool, true, 		"");
-	RTABMAP_PARAM(Kp, IncrementalFlann,      bool, false, 		"When using FLANN based strategy, add/remove points to its index without always rebuilding the index (the index is built only when the dictionary doubles in size).");
+	RTABMAP_PARAM(Kp, IncrementalFlann,      bool, true, 		"When using FLANN based strategy, add/remove points to its index without always rebuilding the index (the index is built only when the dictionary doubles in size).");
 	RTABMAP_PARAM(Kp, MaxDepth,              float, 0.0, 		"Filter extracted keypoints by depth (0=inf)");
 	RTABMAP_PARAM(Kp, WordsPerImage,         int, 400, 			"");
 	RTABMAP_PARAM(Kp, BadSignRatio,          float, 0.2, 		"Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
