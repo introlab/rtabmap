@@ -435,7 +435,7 @@ void UPlotCurve::addValue(float x, float y)
 	{
 		UWARN("New value (%f) added to curve \"%s\" is smaller "
 			  "than the last added (%f). Clearing the curve.",
-				x, this->name().toStdString().c_str(), _items.back()->pos().x());
+				x, this->name().toStdString().c_str(), ((UPlotItem*)_items.back())->data().x());
 		this->clear();
 	}
 

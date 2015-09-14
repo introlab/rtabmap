@@ -2222,7 +2222,7 @@ bool Rtabmap::process(
 	if(_loopClosureHypothesis.first || _publishStats)
 	{
 		ULOGGER_INFO("sending stats...");
-		statistics_.setRefImageId(signature->id());
+		statistics_.setRefImageId(_memory->getLastSignatureId()); // Use last id from Memory (in case of rehearsal)
 		if(_loopClosureHypothesis.first != Memory::kIdInvalid)
 		{
 			statistics_.setLoopClosureId(_loopClosureHypothesis.first);
@@ -2283,6 +2283,8 @@ bool Rtabmap::process(
 
 			//Epipolar geometry constraint
 			statistics_.addStatistic(Statistics::kLoopRejectedHypothesis(), rejectedHypothesis?1.0f:0);
+
+			statistics_.addStatistic(Statistics::kMemorySmall_movement(), smallDisplacement?1.0f:0);
 
 			if(_publishLikelihood || _publishPdf)
 			{

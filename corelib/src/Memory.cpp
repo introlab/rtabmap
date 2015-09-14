@@ -3287,7 +3287,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 			UERROR("newId=%d, oldId=%d, Signature %d not found in working/st memories", newId, oldId, oldId);
 		}
 	}
-	return false; // means that the newS can be removed without problem
+	return false;
 }
 
 Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const

@@ -1076,6 +1076,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		bool rehearsedSimilarity = (float)uValue(stat.data(), Statistics::kMemoryRehearsal_id(), 0.0f) != 0.0f;
 		int localTimeClosures = (int)uValue(stat.data(), Statistics::kLocalLoopTime_closures(), 0.0f);
 		bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kOdomCorrectionAccepted(), 0.0f);
+		bool smallMovement = (bool)uValue(stat.data(), Statistics::kMemorySmall_movement(), 0.0f);
 		_ui->label_stats_imageNumber->setText(QString("%1 [%2]").arg(stat.refImageId()).arg(refMapId));
 
 		if(rehearsalMerged > 0)
@@ -1088,11 +1089,15 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		}
 		else if(scanMatchingSuccess)
 		{
-			_ui->imageView_source->setBackgroundColor(Qt::gray);
+			_ui->imageView_source->setBackgroundColor(Qt::darkCyan);
 		}
 		else if(rehearsedSimilarity)
 		{
 			_ui->imageView_source->setBackgroundColor(Qt::darkBlue);
+		}
+		else if(smallMovement)
+		{
+			_ui->imageView_source->setBackgroundColor(Qt::gray);
 		}
 
 		UDEBUG("time= %d ms", time.restart());
