@@ -1087,10 +1087,13 @@ bool Rtabmap::process(
 						// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
 						// parameters just changed state, we should put back all poses without map correction.
 						Transform u = guess.inverse() * t;
+						std::map<int, Transform>::iterator iter = _optimizedPoses.find(oldId);
+						UASSERT(iter!=_optimizedPoses.end());
+						Transform up = iter->second * u * iter->second.inverse();
 						Transform mapCorrectionInv = _mapCorrection.inverse();
 						for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 						{
-							iter->second = mapCorrectionInv * iter->second * u;
+							iter->second = mapCorrectionInv * up * iter->second;
 						}
 					}
 				}
