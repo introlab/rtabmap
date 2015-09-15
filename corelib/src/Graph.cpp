@@ -1971,18 +1971,24 @@ std::list<std::pair<int, Transform> > computePath(
 			if(nodeIter == nodes.end())
 			{
 				std::map<int, rtabmap::Transform>::const_iterator poseIter = poses.find(iter->second);
-				UASSERT(poseIter != poses.end());
-				Node n(iter->second, currentNode->id(), poseIter->second);
-				n.setCostSoFar(currentNode->costSoFar() + currentNode->distFrom(poseIter->second));
-				n.setDistToEnd(n.distFrom(endPose));
-				nodes.insert(std::make_pair(iter->second, n));
-				if(updateNewCosts)
+				if(poseIter == poses.end())
 				{
-					pqmap.insert(std::make_pair(n.totalCost(), n.id()));
+					UERROR("Next pose %d (from %d) should be found in poses! Ignoring it!", iter->second, iter->first);
 				}
 				else
 				{
-					pq.push(Pair(n.id(), n.totalCost()));
+					Node n(iter->second, currentNode->id(), poseIter->second);
+					n.setCostSoFar(currentNode->costSoFar() + currentNode->distFrom(poseIter->second));
+					n.setDistToEnd(n.distFrom(endPose));
+					nodes.insert(std::make_pair(iter->second, n));
+					if(updateNewCosts)
+					{
+						pqmap.insert(std::make_pair(n.totalCost(), n.id()));
+					}
+					else
+					{
+						pq.push(Pair(n.id(), n.totalCost()));
+					}
 				}
 			}
 			else if(updateNewCosts && nodeIter->second.isOpened())

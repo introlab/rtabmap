@@ -3249,8 +3249,12 @@ bool Rtabmap::computePath(const Transform & targetPose)
 		UASSERT(s);
 		for(std::map<int, Link>::const_iterator jter=s->getLinks().begin(); jter!=s->getLinks().end(); ++jter)
 		{
-			links.insert(std::make_pair(jter->second.from(), jter->second.to()));
-			links.insert(std::make_pair(jter->second.to(), jter->second.from())); // <->
+			// only add links for which poses are in "nodes"
+			if(uContains(nodes, jter->second.to()))
+			{
+				links.insert(std::make_pair(jter->second.from(), jter->second.to()));
+				//links.insert(std::make_pair(jter->second.to(), jter->second.from())); // <-> (commented: already added when iterating in nodes)
+			}
 		}
 	}
 	UINFO("Time getting links = %fs", timer.ticks());
