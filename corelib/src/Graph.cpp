@@ -202,7 +202,7 @@ std::map<int, Transform> Optimizer::optimize(
 		const std::multimap<int, Link> & constraints,
 		std::list<std::map<int, Transform> > * intermediateGraphes)
 {
-	UERROR("Optimizer %d doesn't implement optimize() method. See optimizeBA().", (int)this->type());
+	UERROR("Optimizer %d doesn't implement optimize() method.", (int)this->type());
 	return std::map<int, Transform>();
 }
 
@@ -212,7 +212,7 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		const std::multimap<int, Link> & links,
 		const std::map<int, Signature> & signatures)
 {
-	UERROR("Optimizer %d doesn't implement optimizeBA() method. See optimize().", (int)this->type());
+	UERROR("Optimizer %d doesn't implement optimizeBA() method.", (int)this->type());
 	return std::map<int, Transform>();
 }
 
@@ -1347,6 +1347,14 @@ std::map<int, Transform> GTSAMOptimizer::optimize(
 				}
 			}
 		}
+	}
+	else if(poses.size() == 1 || iterations() <= 0)
+	{
+		optimizedPoses = poses;
+	}
+	else
+	{
+		UWARN("This method should be called at least with 1 pose!");
 	}
 	UDEBUG("Optimizing graph...end!");
 #else

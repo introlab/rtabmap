@@ -2013,6 +2013,7 @@ bool Rtabmap::process(
 								//optimize the path's poses locally
 								path = optimizeGraph(nearestId, uKeysSet(path), false);
 								// transform local poses in optimized graph referential
+								UASSERT(uContains(path, nearestId));
 								Transform t = _optimizedPoses.at(nearestId) * path.at(nearestId).inverse();
 								for(std::map<int, Transform>::iterator jter=path.begin(); jter!=path.end(); ++jter)
 								{
