@@ -231,6 +231,17 @@ bool CameraModel::save(const std::string & directory) const
 		fs << "data" << std::vector<double>((double*)D_.data, ((double*)D_.data)+(D_.rows*D_.cols));
 		fs << "}";
 
+		// compaibility with ROS
+
+		if(D_.cols > 5)
+		{
+			fs << "distortion_model" << "rational_polynomial";
+		}
+		else
+		{
+			fs << "distortion_model" << "plumb_bob";
+		}
+
 		fs << "rectification_matrix" << "{";
 		fs << "rows" << R_.rows;
 		fs << "cols" << R_.cols;
