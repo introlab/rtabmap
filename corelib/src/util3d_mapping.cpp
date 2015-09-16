@@ -349,7 +349,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 
 			if(erode)
 			{
-				// remove obstacles which touch to empty cells but not unknown cells
+				// remove obstacles which touch at least 3 empty cells but not unknown cells
 				cv::Mat erodedMap = map.clone();
 				for(std::list<std::pair<int,int> >::iterator iter = obstacleIndices.begin();
 					iter!= obstacleIndices.end();
@@ -357,11 +357,11 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 				{
 					int i = iter->first;
 					int j = iter->second;
-					bool touchEmpty = map.at<char>(i+1, j) == 0 ||
-						map.at<char>(i-1, j) == 0 ||
-						map.at<char>(i, j+1) == 0 ||
-						map.at<char>(i, j-1) == 0;
-					if(touchEmpty && map.at<char>(i+1, j) != -1 &&
+					int touchEmpty = (map.at<char>(i+1, j) == 0?1:0) +
+						(map.at<char>(i-1, j) == 0?1:0) +
+						(map.at<char>(i, j+1) == 0?1:0) +
+						(map.at<char>(i, j-1) == 0?1:0);
+					if(touchEmpty>=3 && map.at<char>(i+1, j) != -1 &&
 						map.at<char>(i-1, j) != -1 &&
 						map.at<char>(i, j+1) != -1 &&
 						map.at<char>(i, j-1) != -1)

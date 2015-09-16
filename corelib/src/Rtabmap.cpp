@@ -1334,6 +1334,7 @@ bool Rtabmap::process(
 					// When analysing logs, it's convenient to know
 					// if the hypothesis would be rejected if T_loop would be lower.
 					rejectedHypothesis = true;
+					UWARN("rejected hypothesis: under loop ratio %f < %f", _highestHypothesis.second, _loopRatio*lastHighestHypothesis.second);
 				}
 
 				//for statistic...
@@ -1791,7 +1792,7 @@ bool Rtabmap::process(
 			rejectedHypothesis = transform.isNull();
 			if(rejectedHypothesis)
 			{
-				UINFO("Rejected loop closure %d -> %d: %s",
+				UWARN("Rejected loop closure %d -> %d: %s",
 						_loopClosureHypothesis.first, signature->id(), rejectedMsg.c_str());
 			}
 		}
