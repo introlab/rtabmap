@@ -122,7 +122,7 @@ void occupancy2DFromLaserScan(
  * @param erode
  */
 cv::Mat create2DMapFromOccupancyLocalMaps(
-		const std::map<int, Transform> & poses,
+		const std::map<int, Transform> & posesIn,
 		const std::map<int, std::pair<cv::Mat, cv::Mat> > & occupancy,
 		float cellSize,
 		float & xMin,
@@ -137,11 +137,25 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 	std::map<int, cv::Mat> emptyLocalMaps;
 	std::map<int, cv::Mat> occupiedLocalMaps;
 
+	std::list<std::pair<int, Transform> > poses;
+	// place negative poses at the end
+	for(std::map<int, Transform>::const_reverse_iterator iter = posesIn.rbegin(); iter!=posesIn.rend(); ++iter)
+	{
+		if(iter->first>0)
+		{
+			poses.push_front(*iter);
+		}
+		else
+		{
+			poses.push_back(*iter);
+		}
+	}
+
 	float minX=-minMapSize/2.0, minY=-minMapSize/2.0, maxX=minMapSize/2.0, maxY=minMapSize/2.0;
 	bool undefinedSize = minMapSize == 0.0f;
 	float x=0.0f,y=0.0f,z=0.0f,roll=0.0f,pitch=0.0f,yaw=0.0f,cosT=0.0f,sinT=0.0f;
 	cv::Mat affineTransform(2,3,CV_32FC1);
-	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+	for(std::list<std::pair<int, Transform> >::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
 		UASSERT(!iter->second.isNull());
 
@@ -245,7 +259,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 
 
 			map = cv::Mat::ones((yMax - yMin) / cellSize + 0.5f, (xMax - xMin) / cellSize + 0.5f, CV_8S)*-1;
-			for(std::map<int, Transform>::const_iterator kter = poses.begin(); kter!=poses.end(); ++kter)
+			for(std::list<std::pair<int, Transform> >::const_iterator kter = poses.begin(); kter!=poses.end(); ++kter)
 			{
 				std::map<int, cv::Mat >::iterator iter = emptyLocalMaps.find(kter->first);
 				std::map<int, cv::Mat >::iterator jter = occupiedLocalMaps.find(kter->first);
