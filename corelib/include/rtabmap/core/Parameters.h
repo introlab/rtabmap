@@ -389,13 +389,13 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccIcp3, Samples,         int, 0, 		"Random samples to be used for ICP computation. Not used if voxelSize is set.");
 	RTABMAP_PARAM(LccIcp3, MaxCorrespondenceDistance, float, 0.05, "ICP 3D: Max distance for point correspondences.");
 	RTABMAP_PARAM(LccIcp3, Iterations,      int, 30, 		"Max iterations.");
-	RTABMAP_PARAM(LccIcp3, CorrespondenceRatio, float, 0.0, 	"Ratio of matching correspondences to accept the transform.");
+	RTABMAP_PARAM(LccIcp3, CorrespondenceRatio, float, 0.2, 	"Ratio of matching correspondences to accept the transform.");
 	RTABMAP_PARAM(LccIcp3, PointToPlane,      bool, false, 	"Use point to plane ICP.");
 	RTABMAP_PARAM(LccIcp3, PointToPlaneNormalNeighbors,      int, 20, 	"Number of neighbors to compute normals for point to plane.");
 
 	RTABMAP_PARAM(LccIcp2, MaxCorrespondenceDistance, float, 0.05, 	"Max distance for point correspondences.");
 	RTABMAP_PARAM(LccIcp2, Iterations,      int, 30, 				"Max iterations.");
-	RTABMAP_PARAM(LccIcp2, CorrespondenceRatio, float, 0.0, 		"Ratio of matching correspondences to accept the transform.");
+	RTABMAP_PARAM(LccIcp2, CorrespondenceRatio, float, 0.3, 		"Ratio of matching correspondences to accept the transform.");
 	RTABMAP_PARAM(LccIcp2, VoxelSize,       float, 0.025, 			"Voxel size to be used for ICP computation.");
 
 	// Stereo disparity
