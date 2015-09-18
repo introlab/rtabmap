@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define UTIL3D_FILTERING_H_
 
 #include <rtabmap/core/RtabmapExp.h>
+#include <rtabmap/core/Transform.h>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -63,12 +64,31 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP passThrough(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const std::string & axis,
 		float min,
-		float max);
+		float max,
+		bool negative = false);
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP passThrough(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const std::string & axis,
 		float min,
-		float max);
+		float max,
+		bool negative = false);
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP frustumFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const Transform & cameraPose,
+		float horizontalFOV, // in degrees, xfov = atan((image_width/2)/fx)*2
+		float verticalFOV,   // in degrees, yfov = atan((image_height/2)/fy)*2
+		float nearClipPlaneDistance,
+		float farClipPlaneDistance,
+		bool negative = false);
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP frustumFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const Transform & cameraPose,
+		float horizontalFOV, // in degrees, xfov = atan((image_width/2)/fx)*2
+		float verticalFOV,   // in degrees, yfov = atan((image_height/2)/fy)*2
+		float nearClipPlaneDistance,
+		float farClipPlaneDistance,
+		bool negative = false);
 
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP removeNaNFromPointCloud(

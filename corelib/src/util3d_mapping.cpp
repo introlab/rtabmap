@@ -50,7 +50,8 @@ void occupancy2DFromLaserScan(
 		cv::Mat & ground,
 		cv::Mat & obstacles,
 		float cellSize,
-		bool unknownSpaceFilled)
+		bool unknownSpaceFilled,
+		float scanMaxRange)
 {
 	if(scan.empty())
 	{
@@ -67,7 +68,7 @@ void occupancy2DFromLaserScan(
 	scans.insert(std::make_pair(1, obstaclesCloud));
 
 	float xMin, yMin;
-	cv::Mat map8S = create2DMap(poses, scans, cellSize, unknownSpaceFilled, xMin, yMin);
+	cv::Mat map8S = create2DMap(poses, scans, cellSize, unknownSpaceFilled, xMin, yMin, 0.0f, scanMaxRange);
 
 	// find ground cells
 	std::list<int> groundIndices;
@@ -388,6 +389,8 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
  * @param unknownSpaceFilled if false no fill, otherwise a virtual laser sweeps the unknown space from each pose (stopping on detected obstacle)
  * @param xMin
  * @param yMin
+ * @param minMapSize minimum map size in meters
+ * @param scanMaxRange laser scan maximum range, would be set if unknownSpaceFilled=true
  */
 cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans,
@@ -395,7 +398,8 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		bool unknownSpaceFilled,
 		float & xMin,
 		float & yMin,
-		float minMapSize)
+		float minMapSize,
+		float scanMaxRange)
 {
 	UDEBUG("poses=%d, scans = %d", poses.size(), scans.size());
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > localScans;
@@ -429,7 +433,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		pcl::getMinMax3D(minMax, min, max);
 
 		// Added X2 to make sure that all points are inside the map (when rounded to integer)
-		float marging = cellSize*10.0f;
+		float marging = cellSize*10.0f + (scanMaxRange>0.0f?scanMaxRange/cellSize:0.0f);
 		xMin = min.x-marging;
 		yMin = min.y-marging;
 		float xMax = max.x+marging;
@@ -440,7 +444,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		UTimer timer;
 
 		map = cv::Mat::ones((yMax - yMin) / cellSize + 0.5f, (xMax - xMin) / cellSize + 0.5f, CV_8S)*-1;
-		std::vector<float> maxSquaredLength(localScans.size(), 0.0f);
+		std::vector<float> maxSquaredLength(localScans.size(), scanMaxRange*scanMaxRange);
 		int j=0;
 		for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
 		{
@@ -510,7 +514,10 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 						endRotatedVector.at<float>(1) = endRotated.at<float>(1) - origin.at<float>(1);
 						endRotatedVector.at<float>(2) = 0.0f;
 						//UWARN("endRotated = %f %f", endRotated.at<float>(0), endRotated.at<float>(1));
-						while(endRotatedVector.cross(endLastVector).at<float>(2) > 0.0f)
+						float CV_PI_2 = CV_PI/2.0f;
+						float normEndRotatedVector = cv::norm(endRotatedVector);
+						endLastVector = endLastVector / cv::norm(endLastVector);
+						while(acos((endRotatedVector/normEndRotatedVector).dot(endLastVector)) > CV_PI_2 || endRotatedVector.cross(endLastVector).at<float>(2) > 0.0f)
 						{
 							cv::Point2i end((endRotated.at<float>(0)-xMin)/cellSize + 0.5f, (endRotated.at<float>(1)-yMin)/cellSize + 0.5f);
 							//end must be inside the grid
@@ -519,7 +526,6 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 							end.y = end.y < 0?0:end.y;
 							end.y = end.y >= map.rows?map.rows-1:end.y;
 							rayTrace(start, end, map, true); // trace free space
-
 							// next point
 							endRotated = rotation*(endRotated - origin) + origin;
 							endRotatedVector.at<float>(0) = endRotated.at<float>(0) - origin.at<float>(0);

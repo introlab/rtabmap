@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/frustum_culling.h>
 #include <pcl/filters/random_sample.h>
 #include <pcl/filters/passthrough.h>
 
@@ -114,13 +115,15 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr passThrough(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const std::string & axis,
 		float min,
-		float max)
+		float max,
+		bool negative)
 {
 	UASSERT(max > min);
 	UASSERT(axis.compare("x") == 0 || axis.compare("y") == 0 || axis.compare("z") == 0);
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PassThrough<pcl::PointXYZ> filter;
+	filter.setNegative(negative);
 	filter.setFilterFieldName(axis);
 	filter.setFilterLimits(min, max);
 	filter.setInputCloud(cloud);
@@ -132,17 +135,75 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr passThrough(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const std::string & axis,
 		float min,
-		float max)
+		float max,
+		bool negative)
 {
 	UASSERT(max > min);
 	UASSERT(axis.compare("x") == 0 || axis.compare("y") == 0 || axis.compare("z") == 0);
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
 	pcl::PassThrough<pcl::PointXYZRGB> filter;
+	filter.setNegative(negative);
 	filter.setFilterFieldName(axis);
 	filter.setFilterLimits(min, max);
 	filter.setInputCloud(cloud);
 	filter.filter(*output);
+	return output;
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr frustumFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const Transform & cameraPose,
+		float horizontalFOV, // in degrees
+		float verticalFOV,   // in degrees
+		float nearClipPlaneDistance,
+		float farClipPlaneDistance,
+		bool negative)
+{
+	UASSERT(horizontalFOV > 0.0f && verticalFOV > 0.0f);
+	UASSERT(farClipPlaneDistance > nearClipPlaneDistance);
+	UASSERT(!cameraPose.isNull());
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::FrustumCulling<pcl::PointXYZ> fc;
+	fc.setNegative(negative);
+	fc.setInputCloud (cloud);
+	fc.setVerticalFOV (verticalFOV);
+	fc.setHorizontalFOV (horizontalFOV);
+	fc.setNearPlaneDistance (nearClipPlaneDistance);
+	fc.setFarPlaneDistance (farClipPlaneDistance);
+
+	fc.setCameraPose (cameraPose.toEigen4f());
+	fc.filter (*output);
+
+	return output;
+}
+
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr frustumFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const Transform & cameraPose,
+		float horizontalFOV, // in degrees
+		float verticalFOV,   // in degrees
+		float nearClipPlaneDistance,
+		float farClipPlaneDistance,
+		bool negative)
+{
+	UASSERT(horizontalFOV > 0.0f && verticalFOV > 0.0f);
+	UASSERT(farClipPlaneDistance > nearClipPlaneDistance);
+	UASSERT(!cameraPose.isNull());
+
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
+	pcl::FrustumCulling<pcl::PointXYZRGB> fc;
+	fc.setNegative(negative);
+	fc.setInputCloud (cloud);
+	fc.setVerticalFOV (verticalFOV);
+	fc.setHorizontalFOV (horizontalFOV);
+	fc.setNearPlaneDistance (nearClipPlaneDistance);
+	fc.setFarPlaneDistance (farClipPlaneDistance);
+
+	fc.setCameraPose (cameraPose.toEigen4f());
+	fc.filter (*output);
+
 	return output;
 }
 

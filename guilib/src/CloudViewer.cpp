@@ -33,7 +33,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/core/util3d.h>
 #include <pcl/visualization/pcl_visualizer.h>
-#include <pcl/filters/frustum_culling.h>
 #include <QMenu>
 #include <QAction>
 #include <QtGui/QContextMenuEvent>

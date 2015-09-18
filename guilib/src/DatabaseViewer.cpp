@@ -848,6 +848,7 @@ void DatabaseViewer::exportDatabase()
 						sensorData = rtabmap::SensorData(
 							dialog.isDepth2dExported()?data.laserScanRaw():cv::Mat(),
 							dialog.isDepth2dExported()?data.laserScanMaxPts():0,
+							dialog.isDepth2dExported()?data.laserScanMaxRange():0,
 							dialog.isRgbExported()?data.imageRaw():cv::Mat(),
 							dialog.isDepthExported()?data.depthOrRightRaw():cv::Mat(),
 							data.cameraModels(),
@@ -860,6 +861,7 @@ void DatabaseViewer::exportDatabase()
 						sensorData = rtabmap::SensorData(
 							dialog.isDepth2dExported()?data.laserScanRaw():cv::Mat(),
 							dialog.isDepth2dExported()?data.laserScanMaxPts():0,
+							dialog.isDepth2dExported()?data.laserScanMaxRange():0,
 							dialog.isRgbExported()?data.imageRaw():cv::Mat(),
 							dialog.isDepthExported()?data.depthOrRightRaw():cv::Mat(),
 							data.stereoCameraModel(),

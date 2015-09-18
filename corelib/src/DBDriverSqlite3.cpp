@@ -457,7 +457,14 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures) con
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		if(uStrNumCmp(_version, "0.10.1") >= 0)
+		if(uStrNumCmp(_version, "0.10.7") >= 0)
+		{
+			query << "SELECT image, depth, calibration, scan_max_pts, scan_max_range, scan, user_data "
+				  << "FROM Data "
+				  << "WHERE id = ?"
+				  <<";";
+		}
+		else if(uStrNumCmp(_version, "0.10.1") >= 0)
 		{
 			query << "SELECT image, depth, calibration, scan_max_pts, scan, user_data "
 				  << "FROM Data "
@@ -653,6 +660,12 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures) con
 					laserScanMaxPts = sqlite3_column_int(ppStmt, index++);
 				}
 
+				float laserScanMaxRange = 0.0f;
+				if(uStrNumCmp(_version, "0.10.7") >= 0)
+				{
+					laserScanMaxRange = sqlite3_column_int(ppStmt, index++);
+				}
+
 				data = sqlite3_column_blob(ppStmt, index);
 				dataSize = sqlite3_column_bytes(ppStmt, index++);
 				//Create the laserScan
@@ -685,6 +698,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures) con
 					(*iter)->sensorData() = SensorData(
 							scanCompressed,
 							laserScanMaxPts,
+							laserScanMaxRange,
 							imageCompressed,
 							depthOrRightCompressed,
 							models,
@@ -697,6 +711,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures) con
 					(*iter)->sensorData() = SensorData(
 							scanCompressed,
 							laserScanMaxPts,
+							laserScanMaxRange,
 							imageCompressed,
 							depthOrRightCompressed,
 							stereoModel,
@@ -2360,7 +2375,11 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensor
 std::string DBDriverSqlite3::queryStepSensorData() const
 {
 	UASSERT(uStrNumCmp(_version, "0.10.0") >= 0);
-	if(uStrNumCmp(_version, "0.10.1") >= 0)
+	if(uStrNumCmp(_version, "0.10.7") >= 0)
+	{
+		return "INSERT INTO Data(id, image, depth, calibration, scan_max_pts, scan_max_range, scan, user_data) VALUES(?,?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.10.1") >= 0)
 	{
 		return "INSERT INTO Data(id, image, depth, calibration, scan_max_pts, scan, user_data) VALUES(?,?,?,?,?,?,?);";
 	}
@@ -2454,6 +2473,13 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	// scan_max_pts
 	rc = sqlite3_bind_int(ppStmt, index++, sensorData.laserScanMaxPts());
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+	// scan_max_range
+	if(uStrNumCmp(_version, "0.10.7") >= 0)
+	{
+		rc = sqlite3_bind_double(ppStmt, index++, sensorData.laserScanMaxRange());
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
 
 	// scan
 	if(!sensorData.laserScanCompressed().empty())

@@ -277,6 +277,24 @@ void CameraModel::scale(double scale)
 	P_.at<double>(1,2) *= scale;
 }
 
+double CameraModel::horizontalFOV() const
+{
+	if(imageWidth() > 0 && fx() > 0.0)
+	{
+		return atan((double(imageWidth())/2.0)/fx())*2.0*180.0/CV_PI;
+	}
+	return 0.0;
+}
+
+double CameraModel::verticalFOV() const
+{
+	if(imageHeight() > 0 && fy() > 0.0)
+	{
+		return atan((double(imageHeight())/2.0)/fy())*2.0*180.0/CV_PI;
+	}
+	return 0.0;
+}
+
 cv::Mat CameraModel::rectifyImage(const cv::Mat & raw, int interpolation) const
 {
 	if(!mapX_.empty() && !mapY_.empty())

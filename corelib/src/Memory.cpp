@@ -4302,6 +4302,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				SensorData(
 						ctDepth2d.getCompressedData(),
 						data.laserScanMaxPts(),
+						data.laserScanMaxRange(),
 						ctImage.getCompressedData(),
 						ctDepth.getCompressedData(),
 						stereoCameraModel,
@@ -4311,6 +4312,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				SensorData(
 						ctDepth2d.getCompressedData(),
 						data.laserScanMaxPts(),
+						data.laserScanMaxRange(),
 						ctImage.getCompressedData(),
 						ctDepth.getCompressedData(),
 						cameraModels,
@@ -4337,6 +4339,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				SensorData(
 						ctDepth2d.getCompressedData(),
 						data.laserScanMaxPts(),
+						data.laserScanMaxRange(),
 						cv::Mat(),
 						cv::Mat(),
 						stereoCameraModel,
@@ -4346,6 +4349,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				SensorData(
 						ctDepth2d.getCompressedData(),
 						data.laserScanMaxPts(),
+						data.laserScanMaxRange(),
 						cv::Mat(),
 						cv::Mat(),
 						cameraModels,
@@ -4359,7 +4363,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	{
 		s->sensorData().setImageRaw(image);
 		s->sensorData().setDepthOrRightRaw(depthOrRightImage);
-		s->sensorData().setLaserScanRaw(laserScan, data.laserScanMaxPts());
+		s->sensorData().setLaserScanRaw(laserScan, data.laserScanMaxPts(), data.laserScanMaxRange());
 		s->sensorData().setUserDataRaw(data.userDataRaw());
 	}
 
