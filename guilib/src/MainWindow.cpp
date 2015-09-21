@@ -2182,11 +2182,13 @@ void MainWindow::processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathE
 			QMessageBox * warn = new QMessageBox(
 					QMessageBox::Warning,
 					tr("Setting goal failed!"),
-					tr("Setting goal to location %1 failed. "
+					tr("Setting goal to location %1%2 failed. "
 						"Some reasons: \n"
 						"1) the location doesn't exist in the graph,\n"
 						"2) the location is not linked to the global graph or\n"
-						"3) the location is too near of the current location (goal already reached).").arg(event.getGoal()),
+						"3) the location is too near of the current location (goal already reached).")
+						.arg(event.getGoal())
+						.arg(!event.getGoalLabel().empty()?QString(" \"%1\"").arg(event.getGoalLabel().c_str()):""),
 					QMessageBox::Ok,
 					this);
 			warn->setAttribute(Qt::WA_DeleteOnClose, true);
@@ -2197,7 +2199,11 @@ void MainWindow::processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathE
 			QMessageBox * info = new QMessageBox(
 					QMessageBox::Information,
 					tr("Goal detected!"),
-					tr("Global path computed from %1 to %2 (%3 poses, %4 m).").arg(event.getPoses().front().first).arg(event.getGoal()).arg(event.getPoses().size()).arg(graph::computePathLength(event.getPoses())),
+					tr("Global path computed to %1%2 (%3 poses, %4 m).")
+					.arg(event.getGoal())
+					.arg(!event.getGoalLabel().empty()?QString(" \"%1\"").arg(event.getGoalLabel().c_str()):"")
+					.arg(event.getPoses().size())
+					.arg(graph::computePathLength(event.getPoses())),
 					QMessageBox::Ok,
 					this);
 			info->setAttribute(Qt::WA_DeleteOnClose, true);

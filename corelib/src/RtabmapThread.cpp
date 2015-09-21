@@ -262,7 +262,7 @@ void RtabmapThread::mainLoop()
 		{
 			UERROR("Failed to set a goal to location=%d.", id);
 		}
-		this->post(new RtabmapGlobalPathEvent(id, _rtabmap->getPath()));
+		this->post(new RtabmapGlobalPathEvent(id, parameters.at("label"), _rtabmap->getPath()));
 		break;
 	case kStateCancellingGoal:
 		_rtabmap->clearPath();

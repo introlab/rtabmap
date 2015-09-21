@@ -202,13 +202,19 @@ public:
 	RtabmapGlobalPathEvent(int goalId, const std::vector<std::pair<int, Transform> > & poses) :
 		UEvent(goalId),
 		_poses(poses) {}
+	RtabmapGlobalPathEvent(int goalId, const std::string & goalLabel, const std::vector<std::pair<int, Transform> > & poses) :
+			UEvent(goalId),
+			_goalLabel(goalLabel),
+			_poses(poses) {}
 
 	virtual ~RtabmapGlobalPathEvent() {}
 	int getGoal() const {return this->getCode();}
+	const std::string & getGoalLabel() const {return _goalLabel;}
 	const std::vector<std::pair<int, Transform> > & getPoses() const {return _poses;}
 	virtual std::string getClassName() const {return std::string("RtabmapGlobalPathEvent");}
 
 private:
+	std::string _goalLabel;
 	std::vector<std::pair<int, Transform> > _poses;
 };
 
