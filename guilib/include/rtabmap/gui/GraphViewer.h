@@ -62,7 +62,7 @@ public:
 	void updatePosterior(const std::map<int, float> & posterior);
 	void updateLocalPath(const std::vector<int> & localPath);
 	void setGlobalPath(const std::vector<std::pair<int, Transform> > & globalPath);
-	void setCurrentGoalID(int id);
+	void setCurrentGoalID(int id, const Transform & pose = Transform());
 	void setLocalRadius(float radius);
 	void clearGraph();
 	void clearMap();

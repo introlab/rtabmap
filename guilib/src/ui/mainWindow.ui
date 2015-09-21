@@ -72,9 +72,6 @@
      <addaction name="actionGenerate_map"/>
      <addaction name="menuExport_poses"/>
      <addaction name="actionPrint_loop_closure_IDs_to_console"/>
-     <addaction name="separator"/>
-     <addaction name="actionSend_goal"/>
-     <addaction name="actionCancel_goal"/>
     </widget>
     <addaction name="actionDownload_all_clouds"/>
     <addaction name="actionDownload_graph"/>
@@ -214,6 +211,8 @@
     <addaction name="actionTrigger_a_new_map"/>
     <addaction name="separator"/>
     <addaction name="actionLabel_current_location"/>
+    <addaction name="actionSend_goal"/>
+    <addaction name="actionCancel_goal"/>
    </widget>
    <widget class="QMenu" name="menuWindow">
     <property name="title">

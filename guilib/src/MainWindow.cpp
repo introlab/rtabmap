@@ -1311,7 +1311,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		// update current goal id
 		if(stat.currentGoalId() > 0)
 		{
-			_ui->graphicsView_graphView->setCurrentGoalID(stat.currentGoalId());
+			_ui->graphicsView_graphView->setCurrentGoalID(stat.currentGoalId(), uValue(stat.poses(), stat.currentGoalId(), Transform()));
 		}
 
 		UDEBUG("");
@@ -5799,6 +5799,9 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
+		_ui->actionLabel_current_location->setEnabled(false);
+		_ui->actionSend_goal->setEnabled(false);
+		_ui->actionCancel_goal->setEnabled(false);
 		_ui->toolBar->findChild<QAction*>("toolbar_source")->setEnabled(false);
 		_ui->actionTrigger_a_new_map->setEnabled(false);
 		_ui->doubleSpinBox_stats_imgRate->setEnabled(true);
@@ -5845,6 +5848,9 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
 		_ui->menuSelect_source->setEnabled(true);
+		_ui->actionLabel_current_location->setEnabled(true);
+		_ui->actionSend_goal->setEnabled(true);
+		_ui->actionCancel_goal->setEnabled(true);
 		_ui->toolBar->findChild<QAction*>("toolbar_source")->setEnabled(true);
 		_ui->actionTrigger_a_new_map->setEnabled(true);
 		_ui->doubleSpinBox_stats_imgRate->setEnabled(true);
@@ -5880,6 +5886,9 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
+		_ui->actionLabel_current_location->setEnabled(true);
+		_ui->actionSend_goal->setEnabled(true);
+		_ui->actionCancel_goal->setEnabled(true);
 		_ui->toolBar->findChild<QAction*>("toolbar_source")->setEnabled(false);
 		_ui->actionTrigger_a_new_map->setEnabled(true);
 		_ui->doubleSpinBox_stats_imgRate->setEnabled(true);
@@ -5971,6 +5980,9 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
 		_ui->actionTrigger_a_new_map->setEnabled(true);
+		_ui->actionLabel_current_location->setEnabled(true);
+		_ui->actionSend_goal->setEnabled(true);
+		_ui->actionCancel_goal->setEnabled(true);
 		_ui->statusbar->showMessage(tr("Monitoring..."));
 		_state = newState;
 		_elapsedTime->start();
@@ -5990,6 +6002,9 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
 		_ui->actionTrigger_a_new_map->setEnabled(true);
+		_ui->actionLabel_current_location->setEnabled(true);
+		_ui->actionSend_goal->setEnabled(true);
+		_ui->actionCancel_goal->setEnabled(true);
 		_ui->statusbar->showMessage(tr("Monitoring paused..."));
 		_state = newState;
 		_oneSecondTimer->stop();

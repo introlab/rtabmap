@@ -137,6 +137,8 @@ public:
 	std::vector<std::pair<int, Transform> > getPathNextPoses() const;
 	std::vector<int> getPathNextNodes() const;
 	int getPathCurrentGoalId() const;
+	unsigned int getPathCurrentIndex() const {return _pathCurrentIndex;}
+	unsigned int getPathCurrentGoalIndex() const {return _pathGoalIndex;}
 	const Transform & getPathTransformToGoal() const {return _pathTransformToGoal;}
 
 	std::map<int, Transform> getForwardWMPoses(int fromId, int maxNearestNeighbors, float radius, int maxDiffID) const;

@@ -129,6 +129,15 @@ public:
 		_poseB = poseB;
 	}
 
+	const Transform & getPoseA() const
+	{
+		return _poseA;
+	}
+	const Transform & getPoseB() const
+	{
+		return _poseB;
+	}
+
 	Link::Type linkType() const {return _type;}
 	bool isInterSession() const {return _interSession;}
 	int from() const {return _from;}
@@ -515,7 +524,7 @@ void GraphViewer::setGlobalPath(const std::vector<std::pair<int, Transform> > & 
 	}
 }
 
-void GraphViewer::setCurrentGoalID(int id)
+void GraphViewer::setCurrentGoalID(int id, const Transform & pose)
 {
 	NodeItem * node = _nodeItems.value(id, 0);
 	if(node)
@@ -524,7 +533,18 @@ void GraphViewer::setCurrentGoalID(int id)
 	}
 	else
 	{
-		UWARN("Curent goal %d not found in the graph", id);
+		UWARN("Current goal %d not found in the graph", id);
+	}
+
+	if(!pose.isNull() && _globalPathLinkItems.size() && _globalPathLinkItems.contains(id))
+	{
+		// transform the global path in the goal referential
+		const LinkItem * oldPose = _globalPathLinkItems.value(id);
+		Transform t = pose * oldPose->getPoseA().inverse();
+		for(QMultiMap<int, LinkItem*>::iterator iter=_globalPathLinkItems.begin(); iter!=_globalPathLinkItems.end(); ++iter)
+		{
+			iter.value()->setPoses(t*iter.value()->getPoseA(), t*iter.value()->getPoseB());
+		}
 	}
 }
 
