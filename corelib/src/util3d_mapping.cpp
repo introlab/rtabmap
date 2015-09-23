@@ -404,6 +404,12 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 	UDEBUG("poses=%d, scans = %d", poses.size(), scans.size());
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > localScans;
 
+	// For computation issue, the maximum scan range allowed is 6 meters
+	if(scanMaxRange > 6.0f)
+	{
+		scanMaxRange = 6.0f;
+	}
+
 	pcl::PointCloud<pcl::PointXYZ> minMax;
 	if(minMapSize > 0.0f)
 	{
@@ -433,13 +439,14 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		pcl::getMinMax3D(minMax, min, max);
 
 		// Added X2 to make sure that all points are inside the map (when rounded to integer)
-		float marging = cellSize*10.0f + (scanMaxRange>0.0f?scanMaxRange/cellSize:0.0f);
-		xMin = min.x-marging;
-		yMin = min.y-marging;
-		float xMax = max.x+marging;
-		float yMax = max.y+marging;
+		float margin = cellSize*10.0f + (scanMaxRange>0.0f?scanMaxRange/cellSize:0.0f);
+		xMin = min.x-margin;
+		yMin = min.y-margin;
+		float xMax = max.x+margin;
+		float yMax = max.y+margin;
 
-		UDEBUG("map min=(%f, %f) max=(%f,%f)", xMin, yMin, xMax, yMax);
+		UDEBUG("map min=(%f, %f) max=(%f,%f) (margin=%f, cellSize=%f, scan range=%f, min=[%f,%f] max=[%f,%f])",
+				xMin, yMin, xMax, yMax, margin, cellSize, scanMaxRange, min.x, min.y, max.x, max.y);
 
 		UTimer timer;
 
@@ -475,6 +482,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		if(unknownSpaceFilled)
 		{
 			j=0;
+			float a = CV_PI/256.0f; // angle increment
 			for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
 			{
 				if(iter->second->size() > 1 && maxSquaredLength[j] > 0.0f)
@@ -482,11 +490,6 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 					float maxLength = sqrt(maxSquaredLength[j]);
 					if(maxLength > cellSize)
 					{
-						// compute angle
-						float a = (CV_PI/2.0f) /  (maxLength / cellSize);
-						//UWARN("a=%f PI/256=%f", a, CV_PI/256.0f);
-						UASSERT_MSG(a >= 0 && a < 5.0f*CV_PI/8.0f, uFormat("a=%f length=%f cell=%f", a, maxLength, cellSize).c_str());
-
 						const Transform & pose = poses.at(iter->first);
 						cv::Point2i start((pose.x()-xMin)/cellSize + 0.5f, (pose.y()-yMin)/cellSize + 0.5f);
 
