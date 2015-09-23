@@ -3175,6 +3175,7 @@ bool Rtabmap::computePath(int targetNode, bool global)
 		}
 		if(currentNode && targetNode)
 		{
+
 			std::list<std::pair<int, Transform> > path = graph::computePath(
 					currentNode,
 					targetNode,
@@ -3198,6 +3199,7 @@ bool Rtabmap::computePath(int targetNode, bool global)
 	{
 		_path.clear();
 		UWARN("Cannot compute a path!");
+		return false;
 	}
 	else
 	{
@@ -3222,9 +3224,11 @@ bool Rtabmap::computePath(int targetNode, bool global)
 			setUserData(0, cv::Mat(1, int(goalStr.size()+1), CV_8SC1, (void *)goalStr.c_str()).clone());
 		}
 		updateGoalIndex();
+
+		return true;
 	}
 
-	return _path.size()>0;
+	return false;
 }
 
 bool Rtabmap::computePath(const Transform & targetPose)
@@ -3336,6 +3340,8 @@ bool Rtabmap::computePath(const Transform & targetPose)
 				_pathTransformToGoal = nodes.at(_path.back().first).inverse() * targetPose;
 
 				updateGoalIndex();
+
+				return true;
 			}
 		}
 	}
@@ -3344,7 +3350,7 @@ bool Rtabmap::computePath(const Transform & targetPose)
 		UWARN("Nearest node not found in graph (size=%d) for pose %s", (int)nodes.size(), targetPose.prettyPrint().c_str());
 	}
 
-	return _path.size()>0;
+	return false;
 }
 
 std::vector<std::pair<int, Transform> > Rtabmap::getPathNextPoses() const
