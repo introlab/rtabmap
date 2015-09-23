@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-349</y>
+            <y>-1094</y>
             <width>760</width>
-            <height>1598</height>
+            <height>1655</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>9</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -6986,14 +6986,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="1" column="0">
+                         <item row="2" column="0">
                           <widget class="QCheckBox" name="graphPlan_planWithNearNodesLinked">
                            <property name="text">
                             <string/>
                            </property>
                           </widget>
                          </item>
-                         <item row="1" column="1">
+                         <item row="2" column="1">
                           <widget class="QLabel" name="label_space3_4">
                            <property name="text">
                             <string>Add virtual links. Before planning in the graph, near nodes are linked together. The maximum distance is defined by &quot;Goal reached radius&quot; above. If &quot;Maximum ID difference&quot; below is set, only close nodes in time can be linked together.</string>
@@ -7006,7 +7006,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="1">
+                         <item row="3" column="1">
                           <widget class="QLabel" name="label_space3_5">
                            <property name="text">
                             <string>When a goal is received and processed with success, it is saved in user data of the location with this format: &quot;GOAL:#&quot;.</string>
@@ -7019,10 +7019,30 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="0">
+                         <item row="3" column="0">
                           <widget class="QCheckBox" name="graphPlan_goalsSavedInUserData">
                            <property name="text">
                             <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_space2_4">
+                           <property name="text">
+                            <string>Mark the current goal node on the path as unreachable if it a new goal is not updated after X iterations (0=disabled). If all upcoming nodes on the path are unreachabled, the plan fails.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QSpinBox" name="graphPlan_stuckIterations">
+                           <property name="maximum">
+                            <number>9999</number>
                            </property>
                           </widget>
                          </item>

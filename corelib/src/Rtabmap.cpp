@@ -111,6 +111,7 @@ Rtabmap::Rtabmap() :
 	_goalReachedRadius(Parameters::defaultRGBDGoalReachedRadius()),
 	_planVirtualLinks(Parameters::defaultRGBDPlanVirtualLinks()),
 	_goalsSavedInUserData(Parameters::defaultRGBDGoalsSavedInUserData()),
+	_pathStuckIterations(Parameters::defaultRGBDPlanStuckIterations()),
 	_loopClosureHypothesis(0,0.0f),
 	_highestHypothesis(0,0.0f),
 	_lastProcessTime(0.0),
@@ -124,9 +125,11 @@ Rtabmap::Rtabmap() :
 	_wDir("."),
 	_mapCorrection(Transform::getIdentity()),
 	_mapTransform(Transform::getIdentity()),
+	_pathStatus(0),
 	_pathCurrentIndex(0),
 	_pathGoalIndex(0),
-	_pathTransformToGoal(Transform::getIdentity())
+	_pathTransformToGoal(Transform::getIdentity()),
+	_pathStuckCount(0)
 {
 }
 
@@ -329,7 +332,7 @@ void Rtabmap::close()
 	_mapCorrection.setIdentity();
 	_mapTransform.setIdentity();
 	_lastLocalizationPose.setNull();
-	this->clearPath();
+	this->clearPath(0);
 
 	flushStatisticLogs();
 	if(_foutFloat)
@@ -414,6 +417,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDGoalReachedRadius(), _goalReachedRadius);
 	Parameters::parse(parameters, Parameters::kRGBDPlanVirtualLinks(), _planVirtualLinks);
 	Parameters::parse(parameters, Parameters::kRGBDGoalsSavedInUserData(), _goalsSavedInUserData);
+	Parameters::parse(parameters, Parameters::kRGBDPlanStuckIterations(), _pathStuckIterations);
 
 	UASSERT(_rgbdLinearUpdate >= 0.0f);
 	UASSERT(_rgbdAngularUpdate >= 0.0f);
@@ -841,7 +845,7 @@ void Rtabmap::resetMemory()
 	_mapCorrection.setIdentity();
 	_mapTransform.setIdentity();
 	_lastLocalizationPose.setNull();
-	this->clearPath();
+	this->clearPath(0);
 
 	if(_memory)
 	{
@@ -3124,12 +3128,15 @@ void Rtabmap::getGraph(
 	}
 }
 
-void Rtabmap::clearPath()
+void Rtabmap::clearPath(int status)
 {
+	_pathStatus = status;
 	_path.clear();
 	_pathCurrentIndex=0;
 	_pathGoalIndex = 0;
 	_pathTransformToGoal.setIdentity();
+	_pathUnreachableNodes.clear();
+	_pathStuckCount = 0;
 	if(_memory)
 	{
 		_memory->removeAllVirtualLinks();
@@ -3140,7 +3147,7 @@ void Rtabmap::clearPath()
 bool Rtabmap::computePath(int targetNode, bool global)
 {
 	UINFO("Planning a path to node %d (global=%d)", targetNode, global?1:0);
-	this->clearPath();
+	this->clearPath(0);
 
 	if(!_rgbdSlamMode)
 	{
@@ -3235,7 +3242,7 @@ bool Rtabmap::computePath(const Transform & targetPose)
 {
 	UINFO("Planning a path to pose %s ", targetPose.prettyPrint().c_str());
 
-	this->clearPath();
+	this->clearPath(0);
 	std::list<std::pair<int, Transform> > pathPoses;
 
 	if(!_rgbdSlamMode)
@@ -3316,7 +3323,6 @@ bool Rtabmap::computePath(const Transform & targetPose)
 
 			if(_path.size() == 0)
 			{
-				_path.clear();
 				UWARN("Cannot compute a path!");
 			}
 			else
@@ -3492,7 +3498,7 @@ void Rtabmap::updateGoalIndex()
 			   !uContains(_optimizedPoses, _memory->getLastWorkingSignature()->id()))
 			{
 				UERROR("Last node is null in memory or not in optimized poses. Aborting the plan...");
-				this->clearPath();
+				this->clearPath(-1);
 				return;
 			}
 			currentPose = _optimizedPoses.at(_memory->getLastWorkingSignature()->id());
@@ -3502,7 +3508,7 @@ void Rtabmap::updateGoalIndex()
 			if(_lastLocalizationPose.isNull())
 			{
 				UERROR("Last localization pose is null. Aborting the plan...");
-				this->clearPath();
+				this->clearPath(-1);
 				return;
 			}
 			currentPose = _lastLocalizationPose;
@@ -3516,31 +3522,36 @@ void Rtabmap::updateGoalIndex()
 			if(d < _goalReachedRadius)
 			{
 				UINFO("Goal %d reached!", goalId);
-				this->clearPath();
+				this->clearPath(1);
 			}
 		}
 
 		if(_path.size())
 		{
 			//Always check if the farthest node is accessible in local map (max to local space radius if set)
-			int goalIndex = _pathCurrentIndex;
+			unsigned int goalIndex = _pathCurrentIndex;
 			float distanceFromCurrentNode = 0.0f;
-			for(unsigned int i=_pathCurrentIndex; i<_path.size(); ++i)
+			bool sameGoalIndex = false;
+			for(unsigned int i=_pathCurrentIndex+1; i<_path.size(); ++i)
 			{
 				if(uContains(_optimizedPoses, _path[i].first))
 				{
-					if(_localRadius > 0.0f)
+					if((goalIndex == _pathCurrentIndex && i == _path.size()-1) ||
+					   _pathUnreachableNodes.find(i) == _pathUnreachableNodes.end())
 					{
-						distanceFromCurrentNode = currentPose.getDistance(_optimizedPoses.at(_path[i].first));
-					}
+						if(_localRadius > 0.0f)
+						{
+							distanceFromCurrentNode = currentPose.getDistance(_optimizedPoses.at(_path[i].first));
+						}
 
-					if(distanceFromCurrentNode <= _localRadius)
-					{
-						goalIndex = i;
-					}
-					else
-					{
-						break;
+						if(distanceFromCurrentNode <= _localRadius)
+						{
+							goalIndex = i;
+						}
+						else
+						{
+							break;
+						}
 					}
 				}
 				else
@@ -3548,17 +3559,22 @@ void Rtabmap::updateGoalIndex()
 					break;
 				}
 			}
-			UASSERT(_pathGoalIndex < _path.size() && goalIndex >= 0 && goalIndex < (int)_path.size());
-			if((int)_pathGoalIndex != goalIndex)
+			UASSERT(_pathGoalIndex < _path.size() && goalIndex < _path.size());
+			if(_pathGoalIndex != goalIndex)
 			{
 				UINFO("Updated current goal from %d to %d (%d/%d)",
-						(int)_path[_pathGoalIndex].first, _path[goalIndex].first, goalIndex+1, (int)_path.size());
+						(int)_path[_pathGoalIndex].first, _path[goalIndex].first, (int)goalIndex+1, (int)_path.size());
 				_pathGoalIndex = goalIndex;
+			}
+			else
+			{
+				sameGoalIndex = true;
 			}
 
 			// update nearest pose in the path
 			unsigned int nearestNodeIndex = 0;
 			float distance = -1.0f;
+			bool sameCurrentIndex = false;
 			UASSERT(_pathGoalIndex < _path.size() && _pathGoalIndex >= 0);
 			for(unsigned int i=_pathCurrentIndex; i<=_pathGoalIndex; ++i)
 			{
@@ -3576,7 +3592,7 @@ void Rtabmap::updateGoalIndex()
 			if(distance < 0)
 			{
 				UERROR("The nearest pose on the path not found! Aborting the plan...");
-				this->clearPath();
+				this->clearPath(-1);
 			}
 			else
 			{
@@ -3585,6 +3601,35 @@ void Rtabmap::updateGoalIndex()
 			if(distance >= 0 && nearestNodeIndex != _pathCurrentIndex)
 			{
 				_pathCurrentIndex = nearestNodeIndex;
+				_pathUnreachableNodes.erase(nearestNodeIndex); // if we are on it, it is reachable
+			}
+			else
+			{
+				sameCurrentIndex = true;
+			}
+
+			if(sameGoalIndex && sameCurrentIndex &&
+				_pathStuckIterations > 0 &&
+				++_pathStuckCount > _pathStuckIterations)
+			{
+				UWARN("Current goal %d not reached since %d iterations (\"RGBD/PlanStuckIterations\"=%d), mark that node as unreachable.",
+						_path[_pathGoalIndex].first,
+						_pathStuckCount,
+						_pathStuckIterations);
+				_pathStuckCount = 0;
+				_pathUnreachableNodes.insert(_pathGoalIndex);
+				// select previous one
+				if(_pathGoalIndex == 0 || --_pathGoalIndex <= _pathCurrentIndex)
+				{
+					// plan failed!
+					UERROR("No upcoming nodes on the path are reachable! Aborting the plan...");
+					this->clearPath(-1);
+					return;
+				}
+			}
+			else if(!sameGoalIndex || !sameCurrentIndex)
+			{
+				_pathStuckCount = 0;
 			}
 		}
 	}

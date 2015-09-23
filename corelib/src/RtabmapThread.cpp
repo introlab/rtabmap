@@ -265,7 +265,7 @@ void RtabmapThread::mainLoop()
 		this->post(new RtabmapGlobalPathEvent(id, parameters.at("label"), _rtabmap->getPath()));
 		break;
 	case kStateCancellingGoal:
-		_rtabmap->clearPath();
+		_rtabmap->clearPath(0);
 		break;
 	case kStateLabelling:
 		if(!_rtabmap->labelLocation(atoi(parameters.at("id").c_str()), parameters.at("label").c_str()))

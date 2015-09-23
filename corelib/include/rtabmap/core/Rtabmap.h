@@ -130,7 +130,9 @@ public:
 			bool optimized,
 			bool global,
 			std::map<int, Signature> * signatures = 0);
-	void clearPath();
+
+	int getPathStatus() const {return _pathStatus;} // -1=failed 0=idle/executing 1=success
+	void clearPath(int status); // -1=failed 0=idle/executing 1=success
 	bool computePath(int targetNode, bool global);
 	bool computePath(const Transform & targetPose); // only in current optimized map
 	const std::vector<std::pair<int, Transform> > & getPath() const {return _path;}
@@ -204,6 +206,7 @@ private:
 	float _goalReachedRadius; // meters
 	bool _planVirtualLinks;
 	bool _goalsSavedInUserData;
+	int _pathStuckIterations;
 
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;
@@ -235,10 +238,13 @@ private:
 	Transform _lastLocalizationPose; // for localization mode
 
 	// Planning stuff
+	int _pathStatus;
 	std::vector<std::pair<int,Transform> > _path;
+	std::set<unsigned int> _pathUnreachableNodes;
 	unsigned int _pathCurrentIndex;
 	unsigned int _pathGoalIndex;
 	Transform _pathTransformToGoal;
+	int _pathStuckCount;
 
 };
 
