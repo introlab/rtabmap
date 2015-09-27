@@ -3618,14 +3618,17 @@ void Rtabmap::updateGoalIndex()
 						_pathStuckIterations);
 				_pathStuckCount = 0;
 				_pathUnreachableNodes.insert(_pathGoalIndex);
-				// select previous one
-				if(_pathGoalIndex == 0 || --_pathGoalIndex <= _pathCurrentIndex)
+				// select previous reachable one
+				while(_pathUnreachableNodes.find(_pathGoalIndex) != _pathUnreachableNodes.end())
 				{
-					// plan failed!
-					UERROR("No upcoming nodes on the path are reachable! Aborting the plan...");
-					this->clearPath(-1);
-					return;
-				}
+					if(_pathGoalIndex == 0 || --_pathGoalIndex <= _pathCurrentIndex)
+					{
+						// plan failed!
+						UERROR("No upcoming nodes on the path are reachable! Aborting the plan...");
+						this->clearPath(-1);
+						return;
+					}
+				}				
 			}
 			else if(!sameGoalIndex || !sameCurrentIndex)
 			{
