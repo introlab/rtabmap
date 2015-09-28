@@ -405,7 +405,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > localScans;
 
 	// For computation issue, the maximum scan range allowed is 6 meters
-	if(scanMaxRange > 6.0f)
+	if(scanMaxRange > 6.0f || scanMaxRange <= 0.0f)
 	{
 		scanMaxRange = 6.0f;
 	}
@@ -438,20 +438,19 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		pcl::PointXYZ min, max;
 		pcl::getMinMax3D(minMax, min, max);
 
-		// Added X2 to make sure that all points are inside the map (when rounded to integer)
-		float margin = cellSize*10.0f + (scanMaxRange>0.0f?scanMaxRange/cellSize:0.0f);
-		xMin = min.x-margin;
-		yMin = min.y-margin;
-		float xMax = max.x+margin;
-		float yMax = max.y+margin;
+		// Added margin to make sure that all points are inside the map (when rounded to integer)
+		float margin = cellSize*10.0f;
+		xMin = (scanMaxRange > 0 && -scanMaxRange < min.x?-scanMaxRange:min.x) - margin;
+		yMin = (scanMaxRange > 0 && -scanMaxRange < min.y?-scanMaxRange:min.y) - margin;
+		float xMax = (scanMaxRange > 0 && scanMaxRange > max.x?scanMaxRange:max.x) + margin;
+		float yMax = (scanMaxRange > 0 && scanMaxRange > max.y?scanMaxRange:max.y) + margin;
 
-		UDEBUG("map min=(%f, %f) max=(%f,%f) (margin=%f, cellSize=%f, scan range=%f, min=[%f,%f] max=[%f,%f])",
-				xMin, yMin, xMax, yMax, margin, cellSize, scanMaxRange, min.x, min.y, max.x, max.y);
+		//UWARN("map min=(%fm, %fm) max=(%fm,%fm) (margin=%fm, cellSize=%fm, scan range=%f, min=[%fm,%fm] max=[%fm,%fm])",
+		//		xMin, yMin, xMax, yMax, margin, cellSize, scanMaxRange, min.x, min.y, max.x, max.y);
 
 		UTimer timer;
 
 		map = cv::Mat::ones((yMax - yMin) / cellSize + 0.5f, (xMax - xMin) / cellSize + 0.5f, CV_8S)*-1;
-		std::vector<float> maxSquaredLength(localScans.size(), scanMaxRange*scanMaxRange);
 		int j=0;
 		for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
 		{
@@ -459,19 +458,11 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 			cv::Point2i start((pose.x()-xMin)/cellSize + 0.5f, (pose.y()-yMin)/cellSize + 0.5f);
 			for(unsigned int i=0; i<iter->second->size(); ++i)
 			{
-				cv::Point2i end((iter->second->points[i].x-xMin)/cellSize + 0.5f, (iter->second->points[i].y-yMin)/cellSize + 0.5f);
-				map.at<char>(end.y, end.x) = 100; // obstacle
-				rayTrace(start, end, map, true); // trace free space
-
-				if(unknownSpaceFilled)
+				cv::Point2i end((iter->second->points[i].x-xMin)/cellSize, (iter->second->points[i].y-yMin)/cellSize);
+				if(end!=start)
 				{
-					float dx = iter->second->points[i].x - pose.x();
-					float dy = iter->second->points[i].y - pose.y();
-					float l = dx*dx + dy*dy;
-					if(l > maxSquaredLength[j])
-					{
-						maxSquaredLength[j] = l;
-					}
+					rayTrace(start, end, map, true); // trace free space
+					map.at<char>(end.y, end.x) = 100; // obstacle
 				}
 			}
 			++j;
@@ -479,36 +470,45 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		UDEBUG("Ray trace known space=%fs", timer.ticks());
 
 		// now fill unknown spaces
-		if(unknownSpaceFilled)
+		if(unknownSpaceFilled && scanMaxRange > 0)
 		{
 			j=0;
 			float a = CV_PI/256.0f; // angle increment
 			for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
 			{
-				if(iter->second->size() > 1 && maxSquaredLength[j] > 0.0f)
+				if(iter->second->size() > 1)
 				{
-					float maxLength = sqrt(maxSquaredLength[j]);
-					if(maxLength > cellSize)
+					if(scanMaxRange > cellSize)
 					{
 						const Transform & pose = poses.at(iter->first);
 						cv::Point2i start((pose.x()-xMin)/cellSize + 0.5f, (pose.y()-yMin)/cellSize + 0.5f);
 
 						//UWARN("maxLength = %f", maxLength);
 						//rotate counterclockwise from the first point until we pass the last point
+						// Note: assuming that first laser scan is negative y
 						cv::Mat rotation = (cv::Mat_<float>(2,2) << cos(a), -sin(a),
 																	 sin(a), cos(a));
 						cv::Mat origin(2,1,CV_32F), endFirst(2,1,CV_32F), endLast(2,1,CV_32F);
 						origin.at<float>(0) = pose.x();
 						origin.at<float>(1) = pose.y();
-						endFirst.at<float>(0) = iter->second->points[0].x;
-						endFirst.at<float>(1) = iter->second->points[0].y;
-						endLast.at<float>(0) = iter->second->points[iter->second->points.size()-1].x;
-						endLast.at<float>(1) = iter->second->points[iter->second->points.size()-1].y;
+						pcl::PointXYZ ptFirst = iter->second->points[0];
+						pcl::PointXYZ ptLast = iter->second->points[iter->second->points.size()-1];
+						if(ptFirst.y > ptLast.y)
+						{
+							// swap to iterate counterclockwise
+							pcl::PointXYZ tmp = ptLast;
+							ptLast = ptFirst;
+							ptFirst = tmp;
+						}
+						endFirst.at<float>(0) = ptFirst.x;
+						endFirst.at<float>(1) = ptFirst.y;
+						endLast.at<float>(0) = ptLast.x;
+						endLast.at<float>(1) = ptLast.y;
 						//UWARN("origin = %f %f", origin.at<float>(0), origin.at<float>(1));
 						//UWARN("endFirst = %f %f", endFirst.at<float>(0), endFirst.at<float>(1));
 						//UWARN("endLast = %f %f", endLast.at<float>(0), endLast.at<float>(1));
 						cv::Mat tmp = (endFirst - origin);
-						cv::Mat endRotated = rotation*((tmp/cv::norm(tmp))*maxLength) + origin;
+						cv::Mat endRotated = rotation*((tmp/cv::norm(tmp))*scanMaxRange) + origin;
 						cv::Mat endLastVector(3,1,CV_32F), endRotatedVector(3,1,CV_32F);
 						endLastVector.at<float>(0) = endLast.at<float>(0) - origin.at<float>(0);
 						endLastVector.at<float>(1) = endLast.at<float>(1) - origin.at<float>(1);
@@ -517,10 +517,11 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 						endRotatedVector.at<float>(1) = endRotated.at<float>(1) - origin.at<float>(1);
 						endRotatedVector.at<float>(2) = 0.0f;
 						//UWARN("endRotated = %f %f", endRotated.at<float>(0), endRotated.at<float>(1));
-						float CV_PI_2 = CV_PI/2.0f;
 						float normEndRotatedVector = cv::norm(endRotatedVector);
 						endLastVector = endLastVector / cv::norm(endLastVector);
-						while(acos((endRotatedVector/normEndRotatedVector).dot(endLastVector)) > CV_PI_2 || endRotatedVector.cross(endLastVector).at<float>(2) > 0.0f)
+						float angle = (endRotatedVector/normEndRotatedVector).dot(endLastVector);
+						angle = angle<-1.0f?-1.0f:angle>1.0f?1.0f:angle;
+						while(acos(angle) > M_PI_4 || endRotatedVector.cross(endLastVector).at<float>(2) > 0.0f)
 						{
 							cv::Point2i end((endRotated.at<float>(0)-xMin)/cellSize + 0.5f, (endRotated.at<float>(1)-yMin)/cellSize + 0.5f);
 							//end must be inside the grid
@@ -533,13 +534,22 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 							endRotated = rotation*(endRotated - origin) + origin;
 							endRotatedVector.at<float>(0) = endRotated.at<float>(0) - origin.at<float>(0);
 							endRotatedVector.at<float>(1) = endRotated.at<float>(1) - origin.at<float>(1);
-							//UWARN("endRotated = %f %f", endRotated.at<float>(0), endRotated.at<float>(1));
+							angle = (endRotatedVector/normEndRotatedVector).dot(endLastVector);
+							angle = angle<-1.0f?-1.0f:angle>1.0f?1.0f:angle;
+
+							//UWARN("endRotated = %f %f (%f %f %f)",
+							//		endRotated.at<float>(0), endRotated.at<float>(1),
+							//		acos(angle),
+							//		angle,
+							//		endRotatedVector.cross(endLastVector).at<float>(2));
 						}
 					}
 				}
 				++j;
 			}
 			UDEBUG("Fill empty space=%fs", timer.ticks());
+			//cv::imwrite("map.png", util3d::convertMap2Image8U(map));
+			//UWARN("saved map.png");
 		}
 	}
 	return map;

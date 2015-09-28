@@ -224,7 +224,8 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->comboBox_graphOptimizer, SIGNAL(currentIndexChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_2dslam, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->spinBox_optimizationDepth, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
-	connect(ui_->checkBox_gridErode, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_gridErode, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
+	connect(ui_->checkBox_gridFillUnkownSpace, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(updateGraphView()));
 	connect(ui_->doubleSpinBox_posefilteringRadius, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->doubleSpinBox_posefilteringAngle, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
@@ -267,6 +268,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->checkBox_2dslam, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->spinBox_optimizationDepth, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_gridErode, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_gridFillUnkownSpace, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->groupBox_gridFromProjection, SIGNAL(clicked(bool)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_gridCellSize, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->spinBox_projDecimation, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
@@ -387,6 +389,7 @@ void DatabaseViewer::readSettings()
 	ui_->checkBox_2dslam->setChecked(settings.value("slam2d", ui_->checkBox_2dslam->isChecked()).toBool());
 	ui_->spinBox_optimizationDepth->setValue(settings.value("depth", ui_->spinBox_optimizationDepth->value()).toInt());
 	ui_->checkBox_gridErode->setChecked(settings.value("erode", ui_->checkBox_gridErode->isChecked()).toBool());
+	ui_->checkBox_gridFillUnkownSpace->setChecked(settings.value("unknownSpaceFilled", ui_->checkBox_gridFillUnkownSpace->isChecked()).toBool());
 	settings.endGroup();
 
 	settings.beginGroup("grid");
@@ -481,6 +484,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("slam2d", ui_->checkBox_2dslam->isChecked());
 	settings.setValue("depth", ui_->spinBox_optimizationDepth->value());
 	settings.setValue("erode", ui_->checkBox_gridErode->isChecked());
+	settings.setValue("unknownSpaceFilled", ui_->checkBox_gridFillUnkownSpace->isChecked());
 	settings.endGroup();
 
 	// save Grid settings
@@ -2516,18 +2520,20 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 {
 	if(memory_ && value >=0 && value < (int)graphes_.size())
 	{
+		std::map<int, rtabmap::Transform> & graph = uValueAt(graphes_, value);
 		if(ui_->dockWidget_graphView->isVisible() && localMaps_.size() == 0)
 		{
 			//update scans
 			UINFO("Update local maps list...");
 
-			for(int i=0; i<ids_.size(); ++i)
+			std::vector<int> ids = uKeys(graph);
+			for(unsigned int i=0; i<ids.size(); ++i)
 			{
 				UTimer time;
 				bool added = false;
 				if(ui_->groupBox_gridFromProjection->isChecked())
 				{
-					SensorData data = memory_->getNodeData(ids_.at(i), true);
+					SensorData data = memory_->getNodeData(ids.at(i), true);
 					if(!data.depthOrRightRaw().empty())
 					{
 						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
@@ -2553,7 +2559,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 
 							if(!ground.empty() || !obstacles.empty())
 							{
-								localMaps_.insert(std::make_pair(ids_.at(i), std::make_pair(ground, obstacles)));
+								localMaps_.insert(std::make_pair(ids.at(i), std::make_pair(ground, obstacles)));
 								added = true;
 							}
 						}
@@ -2561,26 +2567,32 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				}
 				else
 				{
-					SensorData data = memory_->getNodeData(ids_.at(i), false);
+					SensorData data = memory_->getNodeData(ids.at(i), false);
 					if(!data.laserScanCompressed().empty())
 					{
 						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 						cv::Mat laserScan;
 						data.uncompressDataConst(0, 0, &laserScan);
 						cv::Mat ground, obstacles;
-						util3d::occupancy2DFromLaserScan(laserScan, ground, obstacles, ui_->doubleSpinBox_gridCellSize->value());
-						localMaps_.insert(std::make_pair(ids_.at(i), std::make_pair(ground, obstacles)));
+						util3d::occupancy2DFromLaserScan(
+								laserScan,
+								ground,
+								obstacles,
+								ui_->doubleSpinBox_gridCellSize->value(),
+								ui_->checkBox_gridFillUnkownSpace->isChecked(),
+								data.laserScanMaxRange());
+						localMaps_.insert(std::make_pair(ids.at(i), std::make_pair(ground, obstacles)));
 						added = true;
 					}
 				}
 				if(added)
 				{
-					UINFO("Processed grid map %d/%d (%fs)", i+1, (int)ids_.size(), time.ticks());
+					UINFO("Processed grid map %d/%d (%fs)", i+1, (int)ids.size(), time.ticks());
 				}
 			}
 			UINFO("Update local maps list... done");
 		}
-		std::map<int, rtabmap::Transform> & graph = uValueAt(graphes_, value);
+
 		ui_->graphViewer->updateGraph(graph, graphLinks_, mapIds_);
 		if(graph.size() && localMaps_.size() && ui_->graphViewer->isGridMapVisible())
 		{

@@ -829,7 +829,7 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>2</number>
+        <number>3</number>
        </property>
        <widget class="QWidget" name="page">
         <property name="geometry">
@@ -1345,7 +1345,7 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-26</y>
+          <y>0</y>
           <width>333</width>
           <height>333</height>
          </rect>
@@ -1585,8 +1585,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>243</width>
-          <height>284</height>
+          <width>320</width>
+          <height>311</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1630,6 +1630,20 @@
            </item>
            <item row="1" column="0">
             <widget class="QCheckBox" name="checkBox_gridErode">
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QLabel" name="label_64">
+             <property name="text">
+              <string>Fill unknown space</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QCheckBox" name="checkBox_gridFillUnkownSpace">
              <property name="text">
               <string/>
              </property>
