@@ -207,7 +207,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Kp, IncrementalDictionary, bool, true, 		"");
 	RTABMAP_PARAM(Kp, IncrementalFlann,      bool, true, 		"When using FLANN based strategy, add/remove points to its index without always rebuilding the index (the index is built only when the dictionary doubles in size).");
 	RTABMAP_PARAM(Kp, MaxDepth,              float, 0.0, 		"Filter extracted keypoints by depth (0=inf)");
-	RTABMAP_PARAM(Kp, WordsPerImage,         int, 400, 			"");
+	RTABMAP_PARAM(Kp, WordsPerImage,         int, 400, 			"Maximum features extracted from the images (0 means not bounded, <0 means no extraction).");
 	RTABMAP_PARAM(Kp, BadSignRatio,          float, 0.2, 		"Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
 	RTABMAP_PARAM_COND(Kp, NndrRatio, 	     float, RTABMAP_NONFREE, 0.8, 0.9,		"NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
 	RTABMAP_PARAM_COND(Kp, DetectorStrategy, int, RTABMAP_NONFREE, 0, 2, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
@@ -331,6 +331,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, Holonomic, 		        bool, true,     "If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).");
 	RTABMAP_PARAM(Odom, FillInfoData, 		    bool, true,     "Fill info with data (inliers/outliers features).");
 	RTABMAP_PARAM(Odom, ImageBufferSize,        unsigned int, 1, "Data buffer size (0 min inf).");
+	RTABMAP_PARAM(Odom, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
 	RTABMAP_PARAM(Odom, PnPReprojError, 		double, 5.0,     "PnP reprojection error.");
 	RTABMAP_PARAM(Odom, PnPFlags, 				int, 1,    	     "PnP flags: 0=Iterative, 1=EPNP, 2=P3P");
 	RTABMAP_PARAM(Odom, ParticleFiltering, 		bool, false,     "Particle filtering to smooth the odometry trajectory.");

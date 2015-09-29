@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-1094</y>
-            <width>760</width>
-            <height>1655</height>
+            <y>0</y>
+            <width>755</width>
+            <height>1715</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>19</number>
+                <number>23</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -8476,7 +8476,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="1">
+                      <item row="8" column="1">
                        <widget class="QLabel" name="label_232">
                         <property name="text">
                          <string>Data buffer size (0 means inf).</string>
@@ -8522,7 +8522,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
+                      <item row="8" column="0">
                        <widget class="QSpinBox" name="odom_dataBufferSize">
                         <property name="maximum">
                          <number>999999</number>
@@ -8584,10 +8584,30 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="0">
+                      <item row="9" column="0">
                        <widget class="QPushButton" name="pushButton_testOdometry">
                         <property name="text">
                          <string>Test selected odometry</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="1">
+                       <widget class="QLabel" name="label_261">
+                        <property name="text">
+                         <string>Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QCheckBox" name="odom_varianceFromInliersCount">
+                        <property name="text">
+                         <string/>
                         </property>
                        </widget>
                       </item>
