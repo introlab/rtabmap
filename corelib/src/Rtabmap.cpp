@@ -3243,8 +3243,7 @@ bool Rtabmap::computePath(int targetNode, bool global)
 			setUserData(0, cv::Mat(1, int(goalStr.size()+1), CV_8SC1, (void *)goalStr.c_str()).clone());
 		}
 		updateGoalIndex();
-
-		return true;
+		return _path.size() || _pathStatus > 0;
 	}
 
 	return false;
@@ -3450,6 +3449,8 @@ void Rtabmap::updateGoalIndex()
 			}
 		}
 		// for the current index, only keep the newest virtual link
+		// This will make sure that the path is still connected even
+		// if the new signature is removed (e.g., because of a small displacement)
 		UASSERT(_pathCurrentIndex < _path.size());
 		const Signature * currentIndexS = _memory->getSignature(_path[_pathCurrentIndex].first);
 		UASSERT(currentIndexS != 0);

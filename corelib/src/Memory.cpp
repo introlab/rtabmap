@@ -666,7 +666,6 @@ bool Memory::update(
 		}
 		_workingMem.insert(_workingMem.end(), std::make_pair(*_stMem.begin(), UTimer::now()));
 		_stMem.erase(*_stMem.begin());
-		++_signaturesAdded;
 	}
 
 	if(!_memoryChanged && _incrementalMemory)
@@ -768,6 +767,7 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 
 		_signatures.insert(_signatures.end(), std::pair<int, Signature *>(signature->id(), signature));
 		_stMem.insert(_stMem.end(), signature->id());
+		++_signaturesAdded;
 
 		if(_vwd)
 		{
@@ -1485,7 +1485,8 @@ std::list<int> Memory::forget(const std::set<int> & ignoredIds)
 	{
 		UDEBUG("");
 		// Remove one more than total added during the iteration
-		std::list<Signature *> signatures = getRemovableSignatures(_signaturesAdded+1, ignoredIds);
+		int signaturesAdded = _signaturesAdded;
+		std::list<Signature *> signatures = getRemovableSignatures(signaturesAdded+1, ignoredIds);
 		for(std::list<Signature *>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
 		{
 			signaturesRemoved.push_back((*iter)->id());
@@ -1493,7 +1494,15 @@ std::list<int> Memory::forget(const std::set<int> & ignoredIds)
 			// and it is removed from the memory list
 			this->moveToTrash(*iter);
 		}
-		UDEBUG("signaturesRemoved=%d, _signaturesAdded=%d", (int)signatures.size(), _signaturesAdded);
+		if((int)signatures.size() < signaturesAdded)
+		{
+			UWARN("Less signatures transferred (%d) than added (%d)! The working memory cannot decrease in size.",
+					(int)signatures.size(), signaturesAdded);
+		}
+		else
+		{
+			UDEBUG("signaturesRemoved=%d, _signaturesAdded=%d", (int)signatures.size(), signaturesAdded);
+		}
 	}
 	return signaturesRemoved;
 }
@@ -1513,10 +1522,6 @@ int Memory::cleanup()
 		}
 		signatureRemoved = _lastSignature->id();
 		moveToTrash(_lastSignature, _incrementalMemory);
-		if(_signaturesAdded>0)
-		{
-			--_signaturesAdded;
-		}
 	}
 
 	return signatureRemoved;
@@ -1656,42 +1661,39 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 		int recentWmCount = 0;
 		// make the list of removable signatures
 		// Criteria : Weight -> ID
-		UDEBUG("signatureMap.size()=%d", (int)weightAgeIdMap.size());
+		UDEBUG("signatureMap.size()=%d _lastGlobalLoopClosureId=%d currentRecentWmSize=%d recentWmMaxSize=%d",
+				(int)weightAgeIdMap.size(), _lastGlobalLoopClosureId, currentRecentWmSize, recentWmMaxSize);
 		for(std::map<WeightAgeIdKey, Signature*>::iterator iter=weightAgeIdMap.begin();
 			iter!=weightAgeIdMap.end();
 			++iter)
 		{
-			bool removable = true;
-			if(removable)
+			if(!recentWmImmunized)
 			{
-				if(!recentWmImmunized)
-				{
-					UDEBUG("weight=%d, id=%d",
-							iter->second->getWeight(),
-							iter->second->id());
-					removableSignatures.push_back(iter->second);
+				UDEBUG("weight=%d, id=%d",
+						iter->second->getWeight(),
+						iter->second->id());
+				removableSignatures.push_back(iter->second);
 
-					if(iter->second->id() > _lastGlobalLoopClosureId)
+				if(_lastGlobalLoopClosureId && iter->second->id() > _lastGlobalLoopClosureId)
+				{
+					++recentWmCount;
+					if(currentRecentWmSize - recentWmCount < recentWmMaxSize)
 					{
-						++recentWmCount;
-						if(currentRecentWmSize - recentWmCount < recentWmMaxSize)
-						{
-							UDEBUG("switched recentWmImmunized");
-							recentWmImmunized = true;
-						}
+						UDEBUG("switched recentWmImmunized");
+						recentWmImmunized = true;
 					}
 				}
-				else if(iter->second->id() < _lastGlobalLoopClosureId)
-				{
-					UDEBUG("weight=%d, id=%d",
-							iter->second->getWeight(),
-							iter->second->id());
-					removableSignatures.push_back(iter->second);
-				}
-				if(removableSignatures.size() >= (unsigned int)count)
-				{
-					break;
-				}
+			}
+			else if(_lastGlobalLoopClosureId == 0 || iter->second->id() < _lastGlobalLoopClosureId)
+			{
+				UDEBUG("weight=%d, id=%d",
+						iter->second->getWeight(),
+						iter->second->id());
+				removableSignatures.push_back(iter->second);
+			}
+			if(removableSignatures.size() >= (unsigned int)count)
+			{
+				break;
 			}
 		}
 	}
@@ -1778,6 +1780,10 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 		_workingMem.erase(s->id());
 		_stMem.erase(s->id());
 		_signatures.erase(s->id());
+		if(_signaturesAdded>0)
+		{
+			--_signaturesAdded;
+		}
 
 		if(_lastSignature == s)
 		{
