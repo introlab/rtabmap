@@ -650,6 +650,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_holonomic->setObjectName(Parameters::kOdomHolonomic().c_str());
 	_ui->odom_fillInfoData->setObjectName(Parameters::kOdomFillInfoData().c_str());
 	_ui->odom_dataBufferSize->setObjectName(Parameters::kOdomImageBufferSize().c_str());
+	_ui->odom_varianceFromInliersCount->setObjectName(Parameters::kOdomVarianceFromInliersCount().c_str());
 	_ui->lineEdit_odom_roi->setObjectName(Parameters::kOdomRoiRatios().c_str());
 	_ui->odom_estimationType->setObjectName(Parameters::kOdomEstimationType().c_str());
 	connect(_ui->odom_estimationType, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_odomEstimation, SLOT(setCurrentIndex(int)));
@@ -3744,6 +3745,10 @@ int PreferencesDialog::getOdomBufferSize() const
 {
 	return _ui->odom_dataBufferSize->value();
 }
+bool PreferencesDialog::getOdomVarianceFromInliersCount() const
+{
+	return _ui->odom_varianceFromInliersCount->isChecked();
+}
 
 QString PreferencesDialog::getCameraInfoDir() const
 {
@@ -3883,7 +3888,8 @@ void PreferencesDialog::testOdometry(int type)
 
 	OdometryThread odomThread(
 			odometry, // take ownership of odometry
-			_ui->odom_dataBufferSize->value());
+			_ui->odom_dataBufferSize->value(),
+			_ui->odom_varianceFromInliersCount->isChecked());
 	odomThread.registerToEventsManager();
 
 	OdometryViewer * odomViewer = new OdometryViewer(10,

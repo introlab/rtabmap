@@ -208,6 +208,7 @@ public:
 	double getSimThr() const;
 	int getOdomStrategy() const;
 	int getOdomBufferSize() const;
+	bool getOdomVarianceFromInliersCount() const;
 	QString getCameraInfoDir() const; // "workinfDir/camera_info"
 
 	//

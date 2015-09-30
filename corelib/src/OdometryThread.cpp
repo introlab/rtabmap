@@ -34,9 +34,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-OdometryThread::OdometryThread(Odometry * odometry, unsigned int dataBufferMaxSize) :
+OdometryThread::OdometryThread(Odometry * odometry, unsigned int dataBufferMaxSize, bool varianceFromInliersCount) :
 	_odometry(odometry),
 	_dataBufferMaxSize(dataBufferMaxSize),
+	_varianceFromInliersCount(varianceFromInliersCount),
 	_resetOdometry(false)
 {
 	UASSERT(_odometry != 0);
@@ -98,7 +99,17 @@ void OdometryThread::mainLoop()
 		OdometryInfo info;
 		Transform pose = _odometry->process(data, &info);
 		// a null pose notify that odometry could not be computed
-		double variance = info.variance>0?info.variance:1;
+
+		double variance;
+		if(_varianceFromInliersCount)
+		{
+			variance = info.inliers > 0?1.0/double(info.inliers):1.0;
+		}
+		else
+		{
+			variance = info.variance>0?info.variance:1.0;
+		}
+
 		this->post(new OdometryEvent(data, pose, variance, variance, info));
 	}
 }
