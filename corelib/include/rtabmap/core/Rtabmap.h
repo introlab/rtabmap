@@ -234,8 +234,8 @@ private:
 	std::map<int, Transform> _optimizedPoses;
 	std::multimap<int, Link> _constraints;
 	Transform _mapCorrection;
-	Transform _mapTransform; // for localization mode
 	Transform _lastLocalizationPose; // for localization mode
+	int _lastLocalizationNodeId; // for localization mode
 
 	// Planning stuff
 	int _pathStatus;

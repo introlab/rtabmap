@@ -1447,7 +1447,7 @@ std::list<int> Memory::forget(const std::set<int> & ignoredIds)
 {
 	UDEBUG("");
 	std::list<int> signaturesRemoved;
-	if(_vwd->isIncremental() && _vwd->getVisualWords().size())
+	if(this->isIncremental() && _vwd->isIncremental() && _vwd->getVisualWords().size())
 	{
 		int newWords = 0;
 		int wordsRemoved = 0;
@@ -1513,6 +1513,10 @@ int Memory::cleanup()
 		}
 		signatureRemoved = _lastSignature->id();
 		moveToTrash(_lastSignature, _incrementalMemory);
+		if(_signaturesAdded>0)
+		{
+			--_signaturesAdded;
+		}
 	}
 
 	return signatureRemoved;

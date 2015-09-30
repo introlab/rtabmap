@@ -124,7 +124,7 @@ Rtabmap::Rtabmap() :
 	_foutInt(0),
 	_wDir("."),
 	_mapCorrection(Transform::getIdentity()),
-	_mapTransform(Transform::getIdentity()),
+	_lastLocalizationNodeId(0),
 	_pathStatus(0),
 	_pathCurrentIndex(0),
 	_pathGoalIndex(0),
@@ -330,8 +330,8 @@ void Rtabmap::close()
 	_optimizedPoses.clear();
 	_constraints.clear();
 	_mapCorrection.setIdentity();
-	_mapTransform.setIdentity();
 	_lastLocalizationPose.setNull();
+	_lastLocalizationNodeId = 0;
 	this->clearPath(0);
 
 	flushStatisticLogs();
@@ -843,8 +843,8 @@ void Rtabmap::resetMemory()
 	_optimizedPoses.clear();
 	_constraints.clear();
 	_mapCorrection.setIdentity();
-	_mapTransform.setIdentity();
 	_lastLocalizationPose.setNull();
+	_lastLocalizationNodeId = 0;
 	this->clearPath(0);
 
 	if(_memory)
@@ -1056,7 +1056,9 @@ bool Rtabmap::process(
 
 		// Update optimizedPoses with the newly added node
 		Transform newPose;
-		if(signature->getLinks().size() == 1 && !smallDisplacement)
+		if(signature->getLinks().size() == 1 &&
+		   !smallDisplacement &&
+		   _memory->isIncremental()) // ignore pose matching in localization mode
 		{
 			int oldId = signature->getLinks().begin()->first;
 			const Signature * oldS = _memory->getSignature(oldId);
@@ -1161,7 +1163,8 @@ bool Rtabmap::process(
 		//============================================================
 		if(_localLoopClosureDetectionTime &&
 		   rehearsedId == 0 && // don't do it if rehearsal happened
-		   signature->getWords3().size())
+		   signature->getWords3().size() &&
+		   _memory->isIncremental()) // don't do it in localization mode
 		{
 			const std::set<int> & stm = _memory->getStMem();
 			for(std::set<int>::const_reverse_iterator iter = stm.rbegin(); iter!=stm.rend(); ++iter)
@@ -1814,13 +1817,6 @@ bool Rtabmap::process(
 		{
 			_loopClosureHypothesis.first = 0;
 		}
-		else
-		{
-			const Signature * oldS = _memory->getSignature(_loopClosureHypothesis.first);
-			UASSERT(oldS != 0);
-			// Old map -> new map, used for localization correction on loop closure
-			_mapTransform = oldS->getPose() * transform.inverse() * signature->getPose().inverse();
-		}
 	}
 
 	timeAddLoopClosureLink = timer.ticks();
@@ -1965,10 +1961,6 @@ bool Rtabmap::process(
 
 							if(_loopClosureHypothesis.first == 0)
 							{
-								// Old map -> new map, used for localization correction on loop closure
-								const Signature * oldS = _memory->getSignature(nearestId);
-								UASSERT(oldS != 0);
-								_mapTransform = oldS->getPose() * transform.inverse() * signature->getPose().inverse();
 								++localSpaceClosuresAddedVisually;
 								lastLocalSpaceClosureId = nearestId;
 							}
@@ -2059,10 +2051,6 @@ bool Rtabmap::process(
 										// no local loop closure added visually
 										if(localSpaceClosuresAddedVisually == 0 && _loopClosureHypothesis.first == 0)
 										{
-											// Old map -> new map, used for localization correction on loop closure
-											const Signature * oldS = _memory->getSignature(nearestId);
-											UASSERT(oldS != 0);
-											_mapTransform = oldS->getPose() * transform.inverse() * signature->getPose().inverse();
 											lastLocalSpaceClosureId = nearestId;
 										}
 									}
@@ -2078,126 +2066,113 @@ bool Rtabmap::process(
 	ULOGGER_INFO("timeLocalSpaceDetection=%fs", timeLocalSpaceDetection);
 
 	//============================================================
-	// Optimize map graph
-	//============================================================
-	float maxLinearError = 0.0f;
-	if(_rgbdSlamMode &&
-		(_loopClosureHypothesis.first>0 ||	// can be different map of the current one
-		 localLoopClosuresInTimeFound>0 || 	// only same map of the current one
-		 lastLocalSpaceClosureId>0 || 	    // can be different map of the current one
-		 signaturesRetrieved.size()))  		// can be different map of the current one
-	{
-		if(_memory->isIncremental())
-		{
-			UINFO("Update map correction: SLAM mode");
-			// SLAM mode!
-			std::map<int, Transform> poses = _optimizedPoses;
-			std::multimap<int, Link> constraints;
-			optimizeCurrentMap(signature->id(), false, poses, &constraints);
-			UASSERT(poses.find(signature->id()) != poses.end());
-
-			// Check added loop closures have broken the graph
-			// (in case of wrong loop closures).
-			bool updateConstraints = true;
-			if(_optimizationMaxLinearError > 0.0f && loopClosureLinksAdded.size())
-			{
-				const Link * maxLinearLink = 0;
-				for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
-				{
-					Transform t1 = uValue(poses, iter->second.from(), Transform());
-					Transform t2 = uValue(poses, iter->second.to(), Transform());
-					Transform t = t1.inverse()*t2;
-					float linearError = uMax3(
-							fabs(iter->second.transform().x() - t.x()),
-							fabs(iter->second.transform().y() - t.y()),
-							fabs(iter->second.transform().z() - t.z()));
-					if(linearError > maxLinearError)
-					{
-						maxLinearError = linearError;
-						maxLinearLink = &iter->second;
-					}
-				}
-
-				if(maxLinearError > _optimizationMaxLinearError)
-				{
-					UWARN("Rejecting all added loop closures (%d) in this "
-						  "iteration because a wrong loop closure has been "
-						  "detected after graph optimization, resulting in "
-						  "a maximum graph error of %f m (edge %d->%d). The "
-						  "maximum error parameter is %f m.",
-						  (int)loopClosureLinksAdded.size(),
-						  maxLinearError,
-						  maxLinearLink->from(),
-						  maxLinearLink->to(),
-						  _optimizationMaxLinearError);
-					for(std::list<std::pair<int, int> >::iterator iter=loopClosureLinksAdded.begin(); iter!=loopClosureLinksAdded.end(); ++iter)
-					{
-						_memory->removeLink(iter->first, iter->second);
-						UWARN("Loop closure %d->%d rejected!", iter->first, iter->second);
-					}
-					updateConstraints = false;
-					_loopClosureHypothesis.first = 0;
-					lastLocalSpaceClosureId = 0;
-					rejectedHypothesis = true;
-				}
-			}
-			if(updateConstraints)
-			{
-				_optimizedPoses = poses;
-				_constraints = constraints;
-			}
-
-			// Update map correction, it should be identify when optimizing from the last node
-			_mapCorrection = _optimizedPoses.at(signature->id()) * signature->getPose().inverse();
-			_mapTransform.setIdentity(); // reset mapTransform (used for localization only)
-			_lastLocalizationPose = _optimizedPoses.at(signature->id()); // update in case we switch to localization mode
-			if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
-			{
-				UERROR("Map correction should be identity when optimizing from the last node. T=%s", _mapCorrection.prettyPrint().c_str());
-			}
-		}
-		else if(_loopClosureHypothesis.first > 0 || lastLocalSpaceClosureId > 0 || signaturesRetrieved.size())
-		{
-			UINFO("Update map correction: Localization mode");
-			int oldId = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastLocalSpaceClosureId?lastLocalSpaceClosureId:_highestHypothesis.first;
-			UASSERT(oldId != 0);
-			if(signaturesRetrieved.size() || _optimizedPoses.find(oldId) == _optimizedPoses.end())
-			{
-				// update optimized poses
-				optimizeCurrentMap(oldId, false, _optimizedPoses, &_constraints);
-			}
-			UASSERT(_optimizedPoses.find(oldId) != _optimizedPoses.end());
-
-			// Localization mode! only update map correction
-			const Signature * oldS = _memory->getSignature(oldId);
-			UASSERT(oldS != 0);
-			Transform correction = _optimizedPoses.at(oldId) * oldS->getPose().inverse();
-			_mapCorrection = correction * _mapTransform;
-			_lastLocalizationPose = _mapCorrection * signature->getPose();
-		}
-		else
-		{
-			UERROR("Not supposed to be here!");
-		}
-	}
-
-	//============================================================
 	// Add virtual links if a path is activated
 	//============================================================
 	if(_path.size())
 	{
 		// Add a virtual loop closure link to keep the path linked to local map
 		if( signature->id() != _path[_pathCurrentIndex].first &&
-			!signature->hasLink(_path[_pathCurrentIndex].first) &&
-			uContains(_optimizedPoses, _path[_pathCurrentIndex].first))
+			!signature->hasLink(_path[_pathCurrentIndex].first))
 		{
+			UASSERT(uContains(_optimizedPoses, signature->id()));
+			UASSERT_MSG(uContains(_optimizedPoses, _path[_pathCurrentIndex].first), uFormat("id=%d", _path[_pathCurrentIndex].first).c_str());
 			Transform virtualLoop = _optimizedPoses.at(signature->id()).inverse() * _optimizedPoses.at(_path[_pathCurrentIndex].first);
-			if(_localRadius > 0.0f && virtualLoop.getNorm() < _localRadius)
+
+			if(_localRadius == 0.0f || virtualLoop.getNorm() < _localRadius)
 			{
 				_memory->addLink(Link(signature->id(), _path[_pathCurrentIndex].first, Link::kVirtualClosure, virtualLoop, 100, 100)); // set high variance
 			}
+			else
+			{
+				UERROR("Virtual link larger than local radius (%fm > %fm). Aborting the plan!",
+						virtualLoop.getNorm(), _localRadius);
+				this->clearPath(-1);
+			}
 		}
 	}
+
+	//============================================================
+	// Optimize map graph
+	//============================================================
+	float maxLinearError = 0.0f;
+	if(_rgbdSlamMode &&
+		(_loopClosureHypothesis.first>0 ||
+	     lastLocalSpaceClosureId>0 || // can be different map of the current one
+		 ((_memory->isIncremental() || signature->getLinks().size()) && // In localization mode, the new node should be linked
+				 (localLoopClosuresInTimeFound>0 || 	// only same map of the current one
+		          signaturesRetrieved.size()))))  		// can be different map of the current one
+	{
+		// Note that in localization mode, we update only
+		// if there is loop closure (so the last signature is linked to local map)
+
+		UINFO("Update map correction");
+		std::map<int, Transform> poses = _optimizedPoses;
+		std::multimap<int, Link> constraints;
+		optimizeCurrentMap(signature->id(), false, poses, &constraints);
+		UASSERT(poses.find(signature->id()) != poses.end());
+
+		// Check added loop closures have broken the graph
+		// (in case of wrong loop closures).
+		bool updateConstraints = true;
+		if(_optimizationMaxLinearError > 0.0f && loopClosureLinksAdded.size())
+		{
+			const Link * maxLinearLink = 0;
+			for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
+			{
+				Transform t1 = uValue(poses, iter->second.from(), Transform());
+				Transform t2 = uValue(poses, iter->second.to(), Transform());
+				Transform t = t1.inverse()*t2;
+				float linearError = uMax3(
+						fabs(iter->second.transform().x() - t.x()),
+						fabs(iter->second.transform().y() - t.y()),
+						fabs(iter->second.transform().z() - t.z()));
+				if(linearError > maxLinearError)
+				{
+					maxLinearError = linearError;
+					maxLinearLink = &iter->second;
+				}
+			}
+
+			if(maxLinearError > _optimizationMaxLinearError)
+			{
+				UWARN("Rejecting all added loop closures (%d) in this "
+					  "iteration because a wrong loop closure has been "
+					  "detected after graph optimization, resulting in "
+					  "a maximum graph error of %f m (edge %d->%d). The "
+					  "maximum error parameter is %f m.",
+					  (int)loopClosureLinksAdded.size(),
+					  maxLinearError,
+					  maxLinearLink->from(),
+					  maxLinearLink->to(),
+					  _optimizationMaxLinearError);
+				for(std::list<std::pair<int, int> >::iterator iter=loopClosureLinksAdded.begin(); iter!=loopClosureLinksAdded.end(); ++iter)
+				{
+					_memory->removeLink(iter->first, iter->second);
+					UWARN("Loop closure %d->%d rejected!", iter->first, iter->second);
+				}
+				updateConstraints = false;
+				_loopClosureHypothesis.first = 0;
+				lastLocalSpaceClosureId = 0;
+				rejectedHypothesis = true;
+			}
+		}
+
+		if(updateConstraints)
+		{
+			UINFO("Updated local map (old size=%d, new size=%d)", (int)_optimizedPoses.size(), (int)poses.size());
+			_optimizedPoses = poses;
+			_constraints = constraints;
+		}
+
+		// Update map correction, it should be identify when optimizing from the last node
+		_mapCorrection = _optimizedPoses.at(signature->id()) * signature->getPose().inverse();
+		_lastLocalizationPose = _optimizedPoses.at(signature->id()); // update in case we switch to localization mode
+		if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
+		{
+			UERROR("Map correction should be identity when optimizing from the last node. T=%s", _mapCorrection.prettyPrint().c_str());
+		}
+	}
+	_lastLocalizationNodeId = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastLocalSpaceClosureId>0?lastLocalSpaceClosureId:_lastLocalizationNodeId;
 
 	timeMapOptimization = timer.ticks();
 	ULOGGER_INFO("timeMapOptimization=%fs", timeMapOptimization);
@@ -2382,6 +2357,7 @@ bool Rtabmap::process(
 		(_maxMemoryAllowed != 0 && _memory->getWorkingMem().size() > _maxMemoryAllowed))
 	{
 		ULOGGER_INFO("Removing old signatures because time limit is reached %f>%f or memory is reached %d>%d...", totalTime*1000, _maxTimeAllowed, _memory->getWorkingMem().size(), _maxMemoryAllowed);
+		immunizedLocations.insert(_lastLocalizationNodeId); // keep the latest localization in working memory
 		std::list<int> transferred = _memory->forget(immunizedLocations);
 		signaturesRemoved.insert(signaturesRemoved.end(), transferred.begin(), transferred.end());
 		if(!_someNodesHaveBeenTransferred && transferred.size())
@@ -2395,13 +2371,40 @@ bool Rtabmap::process(
 	if(signaturesRemoved.size() && (_optimizedPoses.size() || _constraints.size()))
 	{
 		//refresh the local map because some transferred nodes may have broken the tree
-		if(_memory->getLastWorkingSignature())
+		int id = 0;
+		if(!_memory->isIncremental() && (_lastLocalizationNodeId > 0 || _path.size()))
 		{
-			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, 0, true);
+			if(_path.size())
+			{
+				// priority on node on the path
+				UASSERT(_pathCurrentIndex < _path.size());
+				UASSERT_MSG(uContains(_optimizedPoses, _path.at(_pathCurrentIndex).first), uFormat("id=%d", _path.at(_pathCurrentIndex).first).c_str());
+				id = _path.at(_pathCurrentIndex).first;
+				UDEBUG("Refresh local map from %d", id);
+			}
+			else
+			{
+				UASSERT_MSG(uContains(_optimizedPoses, _lastLocalizationNodeId), uFormat("id=%d", _lastLocalizationNodeId).c_str());
+				id = _lastLocalizationNodeId;
+				UDEBUG("Refresh local map from %d", id);
+			}
+		}
+		else if(_memory->isIncremental() &&
+				_optimizedPoses.size() &&
+				_memory->getLastWorkingSignature())
+		{
+			id = _memory->getLastWorkingSignature()->id();
+			UDEBUG("Refresh local map from %d", id);
+		}
+		if(id > 0)
+		{
+			UASSERT_MSG(_memory->getSignature(id) != 0, uFormat("id=%d", id).c_str());
+			std::map<int, int> ids = _memory->getNeighborsId(id, 0, 0, true);
 			for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end();)
 			{
 				if(!uContains(ids, iter->first))
 				{
+					UDEBUG("Removed %d from local map", iter->first);
 					_optimizedPoses.erase(iter++);
 				}
 				else
@@ -2426,6 +2429,14 @@ bool Rtabmap::process(
 			_optimizedPoses.clear();
 			_constraints.clear();
 		}
+	}
+	// just some verifications to make sure that planning path is still in the local map!
+	if(_path.size())
+	{
+		UASSERT(_pathCurrentIndex < _path.size());
+		UASSERT(_pathGoalIndex < _path.size());
+		UASSERT_MSG(uContains(_optimizedPoses, _path.at(_pathCurrentIndex).first), uFormat("local map size=%d, id=%d", (int)_optimizedPoses.size(), _path.at(_pathCurrentIndex).first).c_str());
+		UASSERT_MSG(uContains(_optimizedPoses, _path.at(_pathGoalIndex).first), uFormat("local map size=%d, id=%d", (int)_optimizedPoses.size(), _path.at(_pathGoalIndex).first).c_str());
 	}
 
 
@@ -3130,6 +3141,7 @@ void Rtabmap::getGraph(
 
 void Rtabmap::clearPath(int status)
 {
+	UINFO("status=%d", status);
 	_pathStatus = status;
 	_path.clear();
 	_pathCurrentIndex=0;
@@ -3460,7 +3472,7 @@ void Rtabmap::updateGoalIndex()
 
 		// Make sure the next signatures on the path are linked together
 		float distanceSoFar = 0.0f;
-		for(unsigned int i=_pathCurrentIndex;
+		for(unsigned int i=_pathCurrentIndex+1;
 			i<_path.size();
 			++i)
 		{
@@ -3536,14 +3548,14 @@ void Rtabmap::updateGoalIndex()
 			{
 				if(uContains(_optimizedPoses, _path[i].first))
 				{
+					if(_localRadius > 0.0f)
+					{
+						distanceFromCurrentNode += _path[i-1].second.getDistance(_path[i].second);
+					}
+
 					if((goalIndex == _pathCurrentIndex && i == _path.size()-1) ||
 					   _pathUnreachableNodes.find(i) == _pathUnreachableNodes.end())
 					{
-						if(_localRadius > 0.0f)
-						{
-							distanceFromCurrentNode = currentPose.getDistance(_optimizedPoses.at(_path[i].first));
-						}
-
 						if(distanceFromCurrentNode <= _localRadius)
 						{
 							goalIndex = i;
