@@ -421,6 +421,8 @@ void DatabaseViewer::readSettings()
 
 	// Visual parameters
 	settings.beginGroup("visual");
+	ui_->comboBox_estimationType->setCurrentIndex(settings.value("estimationType", ui_->comboBox_estimationType->currentIndex()).toInt());
+	ui_->comboBox_pnpFlags->setCurrentIndex(settings.value("pnpFlags", ui_->comboBox_pnpFlags->currentIndex()).toInt());
 	ui_->groupBox_visual_recomputeFeatures->setChecked(settings.value("reextract", ui_->groupBox_visual_recomputeFeatures->isChecked()).toBool());
 	ui_->comboBox_featureType->setCurrentIndex(settings.value("featureType", ui_->comboBox_featureType->currentIndex()).toInt());
 	ui_->comboBox_nnType->setCurrentIndex(settings.value("nnType", ui_->comboBox_nnType->currentIndex()).toInt());
@@ -517,6 +519,8 @@ void DatabaseViewer::writeSettings()
 
 	// save Visual parameters
 	settings.beginGroup("visual");
+	settings.setValue("estimationType", ui_->comboBox_estimationType->currentIndex());
+	settings.setValue("pnpFlags", ui_->comboBox_pnpFlags->currentIndex());
 	settings.setValue("reextract", ui_->groupBox_visual_recomputeFeatures->isChecked());
 	settings.setValue("featureType", ui_->comboBox_featureType->currentIndex());
 	settings.setValue("nnType", ui_->comboBox_nnType->currentIndex());
@@ -3173,6 +3177,7 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 		parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
 		parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
 		parameters.insert(ParametersPair(Parameters::kLccBowEstimationType(), uNumber2Str(ui_->comboBox_estimationType->currentIndex())));
+		parameters.insert(ParametersPair(Parameters::kLccBowPnPFlags(), uNumber2Str(ui_->comboBox_pnpFlags->currentIndex())));
 		parameters.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
 		parameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0"));
 		parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "0"));
@@ -3203,6 +3208,7 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 		parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
 		parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
 		parameters.insert(ParametersPair(Parameters::kLccBowEstimationType(), uNumber2Str(ui_->comboBox_estimationType->currentIndex())));
+		parameters.insert(ParametersPair(Parameters::kLccBowPnPFlags(), uNumber2Str(ui_->comboBox_pnpFlags->currentIndex())));
 		memory_->parseParameters(parameters);
 		t = memory_->computeVisualTransform(to, from, &rejectedMsg, &inliers, &variance);
 	}
@@ -3292,6 +3298,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 			parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
 			parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
 			parameters.insert(ParametersPair(Parameters::kLccBowEstimationType(), uNumber2Str(ui_->comboBox_estimationType->currentIndex())));
+			parameters.insert(ParametersPair(Parameters::kLccBowPnPFlags(), uNumber2Str(ui_->comboBox_pnpFlags->currentIndex())));
 			parameters.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
 			parameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0"));
 			parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "0"));
@@ -3329,6 +3336,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 			parameters.insert(ParametersPair(Parameters::kLccBowIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
 			parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
 			parameters.insert(ParametersPair(Parameters::kLccBowEstimationType(), uNumber2Str(ui_->comboBox_estimationType->currentIndex())));
+			parameters.insert(ParametersPair(Parameters::kLccBowPnPFlags(), uNumber2Str(ui_->comboBox_pnpFlags->currentIndex())));
 			memory_->parseParameters(parameters);
 			t = memory_->computeVisualTransform(to, from, &rejectedMsg, &inliers, &variance);
 		}

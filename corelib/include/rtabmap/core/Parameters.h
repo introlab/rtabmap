@@ -320,18 +320,18 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, FeatureType,            int, 6, 	    "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
 	RTABMAP_PARAM(Odom, EstimationType,  		int, 0,    	    "Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP)");
 	RTABMAP_PARAM(Odom, MaxFeatures,            int, 1000, 		"0 no limits.");
-	RTABMAP_PARAM(Odom, InlierDistance,         float, 0.02, 	"Maximum distance for visual word correspondences.");
+	RTABMAP_PARAM(Odom, InlierDistance,         float, 0.1,     "Maximum distance for visual word correspondences. Used by 3D->3D estimation approach.");
 	RTABMAP_PARAM(Odom, MinInliers,             int, 20, 		"Minimum visual word correspondences to compute geometry transform.");
 	RTABMAP_PARAM(Odom, Iterations,             int, 100, 		"Maximum iterations to compute the transform from visual words.");
-	RTABMAP_PARAM(Odom, RefineIterations,       int, 5,        "Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
-	RTABMAP_PARAM(Odom, MaxDepth,               float, 4.0, 	"Max depth of the words (0 means no limit).");
+	RTABMAP_PARAM(Odom, RefineIterations,       int, 5,         "Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
+	RTABMAP_PARAM(Odom, MaxDepth,               float, 0,       "Max depth of the words (0 means no limit).");
 	RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,         "Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).");
 	RTABMAP_PARAM_STR(Odom, RoiRatios,          "0.0 0.0 0.0 0.0", "Region of interest ratios [left, right, top, bottom].");
 	RTABMAP_PARAM(Odom, Force2D, 		        bool, false,     "Force 2D transform (3Dof: x,y and yaw).");
 	RTABMAP_PARAM(Odom, Holonomic, 		        bool, true,     "If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).");
 	RTABMAP_PARAM(Odom, FillInfoData, 		    bool, true,     "Fill info with data (inliers/outliers features).");
 	RTABMAP_PARAM(Odom, ImageBufferSize,        unsigned int, 1, "Data buffer size (0 min inf).");
-	RTABMAP_PARAM(Odom, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
+	RTABMAP_PARAM(Odom, VarianceFromInliersCount, bool, true,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
 	RTABMAP_PARAM(Odom, PnPReprojError, 		double, 5.0,     "PnP reprojection error.");
 	RTABMAP_PARAM(Odom, PnPFlags, 				int, 1,    	     "PnP flags: 0=Iterative, 1=EPNP, 2=P3P");
 	RTABMAP_PARAM(Odom, ParticleFiltering, 		bool, false,     "Particle filtering to smooth the odometry trajectory.");
@@ -371,7 +371,7 @@ class RTABMAP_EXP Parameters
 
 	RTABMAP_PARAM(LccBow, EstimationType,  int, 0,    	    "Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)");
 	RTABMAP_PARAM(LccBow, MinInliers,      int, 10, 		"Minimum visual word correspondences to compute geometry transform.");
-	RTABMAP_PARAM(LccBow, InlierDistance,  float, 0.05, 	"Maximum distance for visual word correspondences.");
+	RTABMAP_PARAM(LccBow, InlierDistance,  float, 0.1,      "Maximum distance for visual word correspondences. Used by 3D->3D estimation approach.");
 	RTABMAP_PARAM(LccBow, Iterations,      int, 100, 		"Maximum iterations to compute the transform from visual words.");
 	RTABMAP_PARAM(LccBow, RefineIterations,  int, 10,        "Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
 	RTABMAP_PARAM(LccBow, Force2D, 		   bool, false,     "Force 2D transform (3Dof: x,y and yaw).");

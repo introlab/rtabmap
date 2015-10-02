@@ -50,8 +50,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>175</width>
-             <height>173</height>
+             <width>154</width>
+             <height>184</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -236,8 +236,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>174</width>
-             <height>173</height>
+             <width>154</width>
+             <height>184</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -418,7 +418,7 @@
      <x>0</x>
      <y>0</y>
      <width>1285</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -829,15 +829,15 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>3</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="page">
         <property name="geometry">
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>314</width>
-          <height>303</height>
+          <width>312</width>
+          <height>314</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1056,8 +1056,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>351</width>
-          <height>347</height>
+          <width>366</width>
+          <height>391</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1066,7 +1066,7 @@
         <layout class="QVBoxLayout" name="verticalLayout_15">
          <item>
           <layout class="QGridLayout" name="gridLayout_3" columnstretch="0,1">
-           <item row="5" column="0">
+           <item row="6" column="0">
             <widget class="QSpinBox" name="spinBox_visual_iteration">
              <property name="minimum">
               <number>1</number>
@@ -1086,57 +1086,14 @@
              </property>
             </widget>
            </item>
-           <item row="4" column="1">
+           <item row="5" column="1">
             <widget class="QLabel" name="label_22">
              <property name="text">
               <string>Max correspondence distance</string>
              </property>
             </widget>
            </item>
-           <item row="5" column="1">
-            <widget class="QLabel" name="label_23">
-             <property name="text">
-              <string>Iteration</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="0">
-            <widget class="QDoubleSpinBox" name="doubleSpinBox_visual_nndr">
-             <property name="suffix">
-              <string> m</string>
-             </property>
-             <property name="decimals">
-              <number>1</number>
-             </property>
-             <property name="minimum">
-              <double>0.100000000000000</double>
-             </property>
-             <property name="maximum">
-              <double>1.000000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.100000000000000</double>
-             </property>
-             <property name="value">
-              <double>0.600000000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="1">
-            <widget class="QLabel" name="label_26">
-             <property name="text">
-              <string>NNDR</string>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="1">
-            <widget class="QLabel" name="label_21">
-             <property name="text">
-              <string>Min correspondences</string>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="0">
+           <item row="4" column="0">
             <widget class="QSpinBox" name="spinBox_visual_minCorrespondences">
              <property name="minimum">
               <number>3</number>
@@ -1156,7 +1113,7 @@
              </property>
             </widget>
            </item>
-           <item row="4" column="0">
+           <item row="5" column="0">
             <widget class="QDoubleSpinBox" name="doubleSpinBox_visual_maxCorrespDistance">
              <property name="suffix">
               <string> m</string>
@@ -1192,6 +1149,78 @@
              <item>
               <property name="text">
                <string>3D to 2D (PnP)</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="6" column="1">
+            <widget class="QLabel" name="label_23">
+             <property name="text">
+              <string>Iteration</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QDoubleSpinBox" name="doubleSpinBox_visual_nndr">
+             <property name="suffix">
+              <string> m</string>
+             </property>
+             <property name="decimals">
+              <number>1</number>
+             </property>
+             <property name="minimum">
+              <double>0.100000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>1.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.100000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.600000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QLabel" name="label_26">
+             <property name="text">
+              <string>NNDR</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="1">
+            <widget class="QLabel" name="label_21">
+             <property name="text">
+              <string>Min correspondences</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QLabel" name="label_65">
+             <property name="text">
+              <string>PnP flags.</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QComboBox" name="comboBox_pnpFlags">
+             <property name="currentIndex">
+              <number>1</number>
+             </property>
+             <item>
+              <property name="text">
+               <string>Iterative</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>EPNP</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>P3P</string>
               </property>
              </item>
             </widget>
@@ -1346,8 +1375,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>333</width>
-          <height>333</height>
+          <width>338</width>
+          <height>330</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1585,8 +1614,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>320</width>
-          <height>311</height>
+          <width>248</width>
+          <height>343</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1794,7 +1823,7 @@
           <x>0</x>
           <y>0</y>
           <width>201</width>
-          <height>117</height>
+          <height>126</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1893,8 +1922,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>285</width>
-          <height>309</height>
+          <width>283</width>
+          <height>322</height>
          </rect>
         </property>
         <attribute name="label">
