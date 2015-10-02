@@ -2931,7 +2931,7 @@ void MainWindow::startDetection()
 				{
 					odom = new OdometryBOW(parameters);
 				}
-				_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize(), _preferencesDialog->getOdomVarianceFromInliersCount());
+				_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize());
 
 				UEventsManager::addHandler(_odomThread);
 				UEventsManager::createPipe(_camera, _odomThread, "CameraEvent");
@@ -2968,7 +2968,7 @@ void MainWindow::startDetection()
 			{
 				odom = new OdometryBOW(parameters);
 			}
-			_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize(), _preferencesDialog->getOdomVarianceFromInliersCount());
+			_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize());
 
 			UEventsManager::addHandler(_odomThread);
 			_odomThread->start();

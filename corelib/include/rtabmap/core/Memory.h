@@ -281,6 +281,7 @@ private:
 	int _bowEstimationType;
 	double _bowPnPReprojError;
 	int _bowPnPFlags;
+	bool _bowVarianceFromInliersCount;
 	float _icpMaxTranslation;
 	float _icpMaxRotation;
 	int _icpDecimation;

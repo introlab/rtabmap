@@ -41,7 +41,7 @@ class Odometry;
 class RTABMAP_EXP OdometryThread : public UThread, public UEventsHandler {
 public:
 	// take ownership of Odometry
-	OdometryThread(Odometry * odometry, unsigned int dataBufferMaxSize = 1, bool varianceFromInliersCount = false);
+	OdometryThread(Odometry * odometry, unsigned int dataBufferMaxSize = 1);
 	virtual ~OdometryThread();
 
 protected:
@@ -63,7 +63,6 @@ private:
 	std::list<SensorData> _dataBuffer;
 	Odometry * _odometry;
 	unsigned int _dataBufferMaxSize;
-	bool _varianceFromInliersCount;
 	bool _resetOdometry;
 };
 

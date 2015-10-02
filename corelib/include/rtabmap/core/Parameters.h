@@ -331,7 +331,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, Holonomic, 		        bool, true,     "If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).");
 	RTABMAP_PARAM(Odom, FillInfoData, 		    bool, true,     "Fill info with data (inliers/outliers features).");
 	RTABMAP_PARAM(Odom, ImageBufferSize,        unsigned int, 1, "Data buffer size (0 min inf).");
-	RTABMAP_PARAM(Odom, VarianceFromInliersCount, bool, true,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
+	RTABMAP_PARAM(Odom, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
 	RTABMAP_PARAM(Odom, PnPReprojError, 		double, 5.0,     "PnP reprojection error.");
 	RTABMAP_PARAM(Odom, PnPFlags, 				int, 1,    	     "PnP flags: 0=Iterative, 1=EPNP, 2=P3P");
 	RTABMAP_PARAM(Odom, ParticleFiltering, 		bool, false,     "Particle filtering to smooth the odometry trajectory.");
@@ -378,6 +378,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(LccBow, EpipolarGeometryVar, float, 0.02, "Epipolar geometry maximum variance to accept the loop closure.");
 	RTABMAP_PARAM(LccBow, PnPReprojError, 	 double, 5.0,    "PnP reprojection error.");
 	RTABMAP_PARAM(LccBow, PnPFlags, 	     int, 1,    	 "PnP flags: 0=Iterative, 1=EPNP, 2=P3P");
+	RTABMAP_PARAM(LccBow, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
 	RTABMAP_PARAM_COND(LccReextract, Activated, bool, RTABMAP_NONFREE, false, true, "Activate re-extracting features on global loop closure.");
 	RTABMAP_PARAM(LccReextract, NNType, 	int, 3, 		"kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4.");
 	RTABMAP_PARAM(LccReextract, NNDR, 		float, 0.8, 	"NNDR: nearest neighbor distance ratio.");

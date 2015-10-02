@@ -88,6 +88,7 @@ private:
 	int _estimationType;
 	double _pnpReprojError;
 	int _pnpFlags;
+	bool _varianceFromInliersCount;
 	Transform _pose;
 	int _resetCurrentCount;
 	double previousStamp_;

@@ -108,6 +108,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_bowEstimationType(Parameters::defaultLccBowEstimationType()),
 	_bowPnPReprojError(Parameters::defaultLccBowPnPReprojError()),
 	_bowPnPFlags(Parameters::defaultLccBowPnPFlags()),
+	_bowVarianceFromInliersCount(Parameters::defaultLccBowVarianceFromInliersCount()),
 
 	_icpMaxTranslation(Parameters::defaultLccIcpMaxTranslation()),
 	_icpMaxRotation(Parameters::defaultLccIcpMaxRotation()),
@@ -450,6 +451,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kLccBowEpipolarGeometryVar(), _bowEpipolarGeometryVar);
 	Parameters::parse(parameters, Parameters::kLccBowPnPReprojError(), _bowPnPReprojError);
 	Parameters::parse(parameters, Parameters::kLccBowPnPFlags(), _bowPnPFlags);
+	Parameters::parse(parameters, Parameters::kLccBowVarianceFromInliersCount(), _bowVarianceFromInliersCount);
 	Parameters::parse(parameters, Parameters::kLccIcpMaxTranslation(), _icpMaxTranslation);
 	Parameters::parse(parameters, Parameters::kLccIcpMaxRotation(), _icpMaxRotation);
 	Parameters::parse(parameters, Parameters::kLccIcp3Decimation(), _icpDecimation);
@@ -2205,6 +2207,11 @@ Transform Memory::computeVisualTransform(
 			UDEBUG("Forcing 2D...");
 			transform = Transform(x,y,0, 0, 0, yaw);
 		}
+	}
+
+	if(_bowVarianceFromInliersCount)
+	{
+		variance = inliersCount > 0?1.0/double(inliersCount):1.0;
 	}
 
 	if(rejectedMsg)

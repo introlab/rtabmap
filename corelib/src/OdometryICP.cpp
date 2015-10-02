@@ -72,6 +72,7 @@ Transform OdometryICP::computeTransform(const SensorData & data, OdometryInfo * 
 	bool hasConverged = false;
 	double variance = 0;
 	unsigned int minPoints = 100;
+	int correspondences = 0;
 	if(!data.depthOrRightRaw().empty())
 	{
 		if(data.depthOrRightRaw().type() == CV_8UC1)
@@ -121,7 +122,6 @@ Transform OdometryICP::computeTransform(const SensorData & data, OdometryInfo * 
 						hasConverged,
 						*newCloudRegistered);
 
-				int correspondences = 0;
 				util3d::computeVarianceAndCorrespondences(
 						newCloudRegistered,
 						_previousCloudNormal,
@@ -164,7 +164,6 @@ Transform OdometryICP::computeTransform(const SensorData & data, OdometryInfo * 
 						hasConverged,
 						*newCloudRegistered);
 
-				int correspondences = 0;
 				util3d::computeVarianceAndCorrespondences(
 						newCloudRegistered,
 						_previousCloud,
@@ -202,6 +201,7 @@ Transform OdometryICP::computeTransform(const SensorData & data, OdometryInfo * 
 	if(info)
 	{
 		info->variance = variance;
+		info->inliers = correspondences;
 	}
 
 	UINFO("Odom update time = %fs hasConverged=%s variance=%f cloud=%d",

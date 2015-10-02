@@ -608,6 +608,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_bowEpipolarGeometryVar->setObjectName(Parameters::kLccBowEpipolarGeometryVar().c_str());
 	_ui->loopClosure_pnpReprojError->setObjectName(Parameters::kLccBowPnPReprojError().c_str());
 	_ui->loopClosure_pnpFlags->setObjectName(Parameters::kLccBowPnPFlags().c_str());
+	_ui->loopClosure_bowVarianceFromInliersCount->setObjectName(Parameters::kLccBowVarianceFromInliersCount().c_str());
 
 	_ui->groupBox_reextract->setObjectName(Parameters::kLccReextractActivated().c_str());
 	_ui->reextract_nn->setObjectName(Parameters::kLccReextractNNType().c_str());
@@ -651,6 +652,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_fillInfoData->setObjectName(Parameters::kOdomFillInfoData().c_str());
 	_ui->odom_dataBufferSize->setObjectName(Parameters::kOdomImageBufferSize().c_str());
 	_ui->odom_varianceFromInliersCount->setObjectName(Parameters::kOdomVarianceFromInliersCount().c_str());
+	connect(_ui->odom_varianceFromInliersCount, SIGNAL(clicked(bool)), _ui->loopClosure_bowVarianceFromInliersCount, SLOT(setChecked(bool)));
+	connect(_ui->loopClosure_bowVarianceFromInliersCount, SIGNAL(clicked(bool)), _ui->odom_varianceFromInliersCount, SLOT(setChecked(bool)));
 	_ui->lineEdit_odom_roi->setObjectName(Parameters::kOdomRoiRatios().c_str());
 	_ui->odom_estimationType->setObjectName(Parameters::kOdomEstimationType().c_str());
 	connect(_ui->odom_estimationType, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_odomEstimation, SLOT(setCurrentIndex(int)));
@@ -1936,6 +1939,17 @@ bool PreferencesDialog::validateForm()
 				tr("With the selected feature type (ORB, FAST, FREAK or BRIEF), parameter \"Odometry->Nearest Neighbor\" "
 				   "cannot be KD-Tree (used for float descriptor). BruteForce matching is set instead for odometry."));
 		_ui->odom_bin_nn->setCurrentIndex(VWDictionary::kNNBruteForce);
+	}
+
+	if(_ui->groupBox_odometry1->isEnabled() &&
+		_ui->loopClosure_bowVarianceFromInliersCount->isChecked() != _ui->odom_varianceFromInliersCount->isChecked())
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Odometry %1 variance from inliers count but Loop Closure constraint %2. "
+				   "Applying the same parameter to Loop Closure Constraint.")
+				   .arg(_ui->odom_varianceFromInliersCount->isChecked()?tr("uses"):tr("does not use"))
+				   .arg(_ui->odom_varianceFromInliersCount->isChecked()?tr("does not"):tr("does")));
+		_ui->loopClosure_bowVarianceFromInliersCount->setChecked(_ui->odom_varianceFromInliersCount->isChecked());
 	}
 
 	return true;
@@ -3745,9 +3759,9 @@ int PreferencesDialog::getOdomBufferSize() const
 {
 	return _ui->odom_dataBufferSize->value();
 }
-bool PreferencesDialog::getOdomVarianceFromInliersCount() const
+bool PreferencesDialog::getLccBowVarianceFromInliersCount() const
 {
-	return _ui->odom_varianceFromInliersCount->isChecked();
+	return _ui->loopClosure_bowVarianceFromInliersCount->isChecked();
 }
 
 QString PreferencesDialog::getCameraInfoDir() const
@@ -3888,8 +3902,7 @@ void PreferencesDialog::testOdometry(int type)
 
 	OdometryThread odomThread(
 			odometry, // take ownership of odometry
-			_ui->odom_dataBufferSize->value(),
-			_ui->odom_varianceFromInliersCount->isChecked());
+			_ui->odom_dataBufferSize->value());
 	odomThread.registerToEventsManager();
 
 	OdometryViewer * odomViewer = new OdometryViewer(10,

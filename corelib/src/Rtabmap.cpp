@@ -655,6 +655,7 @@ int Rtabmap::triggerNewMap()
 		UINFO("New map triggered, new map = %d", mapId);
 		_optimizedPoses.clear();
 		_constraints.clear();
+		_lastLocalizationNodeId = 0;
 	}
 	return mapId;
 }
