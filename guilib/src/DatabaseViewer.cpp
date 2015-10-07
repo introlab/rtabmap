@@ -203,6 +203,8 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->horizontalSlider_neighbors, SIGNAL(sliderMoved(int)), this, SLOT(sliderNeighborValueChanged(int)));
 	connect(ui_->horizontalSlider_loops, SIGNAL(sliderMoved(int)), this, SLOT(sliderLoopValueChanged(int)));
 	connect(ui_->checkBox_showOptimized, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
+	connect(ui_->checkBox_show3Dclouds, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
+	connect(ui_->checkBox_show2DScans, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
 	connect(ui_->checkBox_show3DWords, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
 	ui_->checkBox_showOptimized->setEnabled(false);
 
@@ -2334,6 +2336,11 @@ void DatabaseViewer::updateConstraintView(
 					ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
 				}
 			}
+			else
+			{
+				ui_->constraintsViewer->removeCloud("cloud0");
+				ui_->constraintsViewer->removeCloud("cloud1");
+			}
 			if(ui_->checkBox_show3DWords->isChecked())
 			{
 				const Signature * sFrom = memory_->getSignature(link.from());
@@ -2398,6 +2405,11 @@ void DatabaseViewer::updateConstraintView(
 					ui_->constraintsViewer->removeCloud("words1");
 				}
 			}
+			else
+			{
+				ui_->constraintsViewer->removeCloud("words0");
+				ui_->constraintsViewer->removeCloud("words1");
+			}
 		}
 		else
 		{
@@ -2436,6 +2448,11 @@ void DatabaseViewer::updateConstraintView(
 				{
 					ui_->constraintsViewer->removeCloud("scan1");
 				}
+			}
+			else
+			{
+				ui_->constraintsViewer->removeCloud("scan0");
+				ui_->constraintsViewer->removeCloud("scan1");
 			}
 		}
 		else
