@@ -1094,9 +1094,9 @@ bool Rtabmap::process(
 						// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
 						// parameters just changed state, we should put back all poses without map correction.
 						Transform u = guess.inverse() * t;
-						std::map<int, Transform>::iterator iter = _optimizedPoses.find(oldId);
-						UASSERT(iter!=_optimizedPoses.end());
-						Transform up = iter->second * u * iter->second.inverse();
+						std::map<int, Transform>::iterator jter = _optimizedPoses.find(oldId);
+						UASSERT(jter!=_optimizedPoses.end());
+						Transform up = jter->second * u * jter->second.inverse();
 						Transform mapCorrectionInv = _mapCorrection.inverse();
 						for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 						{
@@ -2103,66 +2103,105 @@ bool Rtabmap::process(
 				 (localLoopClosuresInTimeFound>0 || 	// only same map of the current one
 		          signaturesRetrieved.size()))))  		// can be different map of the current one
 	{
-		// Note that in localization mode, we update only
-		// if there is loop closure (so the last signature is linked to local map)
+		UASSERT(uContains(_optimizedPoses, signature->id()));
 
-		UINFO("Update map correction");
-		std::map<int, Transform> poses = _optimizedPoses;
-		std::multimap<int, Link> constraints;
-		optimizeCurrentMap(signature->id(), false, poses, &constraints);
-		UASSERT(poses.find(signature->id()) != poses.end());
-
-		// Check added loop closures have broken the graph
-		// (in case of wrong loop closures).
-		bool updateConstraints = true;
-		if(_optimizationMaxLinearError > 0.0f && loopClosureLinksAdded.size())
+		// Note that in localization mode, we don't re-optimize the graph
+		// if:
+		//  1- there are no signatures retrieved,
+		//  2- we are relocalizing on a node already in the optimized graph
+		if(!_memory->isIncremental() &&
+		   signaturesRetrieved.size() == 0 &&
+		   signature->getLinks().size() &&
+		   uContains(_optimizedPoses, signature->getLinks().begin()->first))
 		{
-			const Link * maxLinearLink = 0;
-			for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
+			// If there are no signatures retrieved, we don't
+			// need to re-optimize the graph. Just update the last
+			// position if OptimizeFromGraphEnd=false or transform the
+			// whole graph if OptimizeFromGraphEnd=true
+			UINFO("Localization without map optimization");
+			if(_optimizeFromGraphEnd)
 			{
-				Transform t1 = uValue(poses, iter->second.from(), Transform());
-				Transform t2 = uValue(poses, iter->second.to(), Transform());
-				Transform t = t1.inverse()*t2;
-				float linearError = uMax3(
-						fabs(iter->second.transform().x() - t.x()),
-						fabs(iter->second.transform().y() - t.y()),
-						fabs(iter->second.transform().z() - t.z()));
-				if(linearError > maxLinearError)
+				// update all previous nodes
+				// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
+				// parameters just changed state, we should put back all poses without map correction.
+				Transform oldPose = _optimizedPoses.at(signature->getLinks().begin()->first);
+				Transform u = signature->getPose() * signature->getLinks().begin()->second.transform();
+				Transform up = u * oldPose.inverse();
+				Transform mapCorrectionInv = _mapCorrection.inverse();
+				for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 				{
-					maxLinearError = linearError;
-					maxLinearLink = &iter->second;
+					iter->second = mapCorrectionInv * up * iter->second;
 				}
+				_optimizedPoses.at(signature->id()) = signature->getPose();
 			}
-
-			if(maxLinearError > _optimizationMaxLinearError)
+			else
 			{
-				UWARN("Rejecting all added loop closures (%d) in this "
-					  "iteration because a wrong loop closure has been "
-					  "detected after graph optimization, resulting in "
-					  "a maximum graph error of %f m (edge %d->%d). The "
-					  "maximum error parameter is %f m.",
-					  (int)loopClosureLinksAdded.size(),
-					  maxLinearError,
-					  maxLinearLink->from(),
-					  maxLinearLink->to(),
-					  _optimizationMaxLinearError);
-				for(std::list<std::pair<int, int> >::iterator iter=loopClosureLinksAdded.begin(); iter!=loopClosureLinksAdded.end(); ++iter)
-				{
-					_memory->removeLink(iter->first, iter->second);
-					UWARN("Loop closure %d->%d rejected!", iter->first, iter->second);
-				}
-				updateConstraints = false;
-				_loopClosureHypothesis.first = 0;
-				lastLocalSpaceClosureId = 0;
-				rejectedHypothesis = true;
+				_optimizedPoses.at(signature->id()) = _optimizedPoses.at(signature->getLinks().begin()->first) * signature->getLinks().begin()->second.transform().inverse();
 			}
 		}
-
-		if(updateConstraints)
+		else
 		{
-			UINFO("Updated local map (old size=%d, new size=%d)", (int)_optimizedPoses.size(), (int)poses.size());
-			_optimizedPoses = poses;
-			_constraints = constraints;
+
+			UINFO("Update map correction");
+			std::map<int, Transform> poses = _optimizedPoses;
+			std::multimap<int, Link> constraints;
+			optimizeCurrentMap(signature->id(), false, poses, &constraints);
+			UASSERT(poses.find(signature->id()) != poses.end());
+
+			// Check added loop closures have broken the graph
+			// (in case of wrong loop closures).
+			bool updateConstraints = true;
+			if(_memory->isIncremental() && // FIXME: not tested in localization mode, so do it only in mapping mode
+			  _optimizationMaxLinearError > 0.0f &&
+			  loopClosureLinksAdded.size())
+			{
+				const Link * maxLinearLink = 0;
+				for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
+				{
+					Transform t1 = uValue(poses, iter->second.from(), Transform());
+					Transform t2 = uValue(poses, iter->second.to(), Transform());
+					Transform t = t1.inverse()*t2;
+					float linearError = uMax3(
+							fabs(iter->second.transform().x() - t.x()),
+							fabs(iter->second.transform().y() - t.y()),
+							fabs(iter->second.transform().z() - t.z()));
+					if(linearError > maxLinearError)
+					{
+						maxLinearError = linearError;
+						maxLinearLink = &iter->second;
+					}
+				}
+
+				if(maxLinearError > _optimizationMaxLinearError)
+				{
+					UWARN("Rejecting all added loop closures (%d) in this "
+						  "iteration because a wrong loop closure has been "
+						  "detected after graph optimization, resulting in "
+						  "a maximum graph error of %f m (edge %d->%d). The "
+						  "maximum error parameter is %f m.",
+						  (int)loopClosureLinksAdded.size(),
+						  maxLinearError,
+						  maxLinearLink->from(),
+						  maxLinearLink->to(),
+						  _optimizationMaxLinearError);
+					for(std::list<std::pair<int, int> >::iterator iter=loopClosureLinksAdded.begin(); iter!=loopClosureLinksAdded.end(); ++iter)
+					{
+						_memory->removeLink(iter->first, iter->second);
+						UWARN("Loop closure %d->%d rejected!", iter->first, iter->second);
+					}
+					updateConstraints = false;
+					_loopClosureHypothesis.first = 0;
+					lastLocalSpaceClosureId = 0;
+					rejectedHypothesis = true;
+				}
+			}
+
+			if(updateConstraints)
+			{
+				UINFO("Updated local map (old size=%d, new size=%d)", (int)_optimizedPoses.size(), (int)poses.size());
+				_optimizedPoses = poses;
+				_constraints = constraints;
+			}
 		}
 
 		// Update map correction, it should be identify when optimizing from the last node
