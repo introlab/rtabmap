@@ -155,7 +155,10 @@ void DBReader::mainLoop()
 	{
 		int goalId = 0;
 		double previousStamp = odom.data().stamp();
-		odom.data().setStamp(UTimer::now());
+		if(previousStamp == 0)
+		{
+			odom.data().setStamp(UTimer::now());
+		}
 		if(odom.data().userDataRaw().type() == CV_8SC1 &&
 		   odom.data().userDataRaw().cols >= 7 && // including null str ending
 		   odom.data().userDataRaw().rows == 1 &&
