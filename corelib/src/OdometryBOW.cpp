@@ -120,6 +120,7 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 		// init the local map with a all 3D features contained in the database
 		customParameters.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false"));
 		customParameters.insert(ParametersPair(Parameters::kMemInitWMWithAllNodes(), "true"));
+		customParameters.insert(ParametersPair(Parameters::kMemSaveDepth16Format(), "false"));
 		_memory = new Memory(customParameters);
 		if(!_memory->init(_fixedLocalMapPath, false, ParametersMap()))
 		{
