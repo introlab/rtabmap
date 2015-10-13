@@ -211,6 +211,7 @@
     <addaction name="actionTrigger_a_new_map"/>
     <addaction name="separator"/>
     <addaction name="actionLabel_current_location"/>
+    <addaction name="actionSend_waypoints"/>
     <addaction name="actionSend_goal"/>
     <addaction name="actionCancel_goal"/>
    </widget>
@@ -1269,6 +1270,11 @@
   <action name="actionCustom">
    <property name="text">
     <string>Custom...</string>
+   </property>
+  </action>
+  <action name="actionSend_waypoints">
+   <property name="text">
+    <string>Send waypoints...</string>
    </property>
   </action>
  </widget>

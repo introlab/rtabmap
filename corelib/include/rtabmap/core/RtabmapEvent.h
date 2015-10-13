@@ -234,6 +234,16 @@ private:
 	std::string _label;
 };
 
+class RtabmapGoalStatusEvent : public UEvent
+{
+public:
+	RtabmapGoalStatusEvent(int status):
+		UEvent(status){}
+
+	virtual ~RtabmapGoalStatusEvent() {}
+	virtual std::string getClassName() const {return std::string("RtabmapGoalStatusEvent");}
+};
+
 } // namespace rtabmap
 
 #endif /* RTABMAPEVENT_H_ */

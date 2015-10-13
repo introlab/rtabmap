@@ -45,11 +45,13 @@ namespace rtabmap {
 DBReader::DBReader(const std::string & databasePath,
 				   float frameRate,
 				   bool odometryIgnored,
-				   bool ignoreGoalDelay) :
+				   bool ignoreGoalDelay,
+				   bool goalsIgnored) :
 	_paths(uSplit(databasePath, ';')),
 	_frameRate(frameRate),
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
+	_goalsIgnored(goalsIgnored),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousStamp(0)
@@ -59,11 +61,13 @@ DBReader::DBReader(const std::string & databasePath,
 DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   float frameRate,
 				   bool odometryIgnored,
-				   bool ignoreGoalDelay) :
+				   bool ignoreGoalDelay,
+				   bool goalsIgnored) :
    _paths(databasePaths),
    _frameRate(frameRate),
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
+	_goalsIgnored(goalsIgnored),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousStamp(0)
@@ -159,7 +163,8 @@ void DBReader::mainLoop()
 		{
 			odom.data().setStamp(UTimer::now());
 		}
-		if(odom.data().userDataRaw().type() == CV_8SC1 &&
+		if(!_goalsIgnored &&
+		   odom.data().userDataRaw().type() == CV_8SC1 &&
 		   odom.data().userDataRaw().cols >= 7 && // including null str ending
 		   odom.data().userDataRaw().rows == 1 &&
 		   memcmp(odom.data().userDataRaw().data, "GOAL:", 5) == 0)

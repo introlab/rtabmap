@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>755</width>
-            <height>1715</height>
+            <y>-374</y>
+            <width>760</width>
+            <height>1678</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>20</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1769,7 +1769,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>3</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -2409,7 +2409,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>2</number>
+                              <number>3</number>
                              </property>
                              <widget class="QWidget" name="page_49"/>
                              <widget class="QWidget" name="page_48"/>
@@ -2929,7 +2929,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item row="0" column="1">
                             <widget class="QLineEdit" name="source_database_lineEdit_path"/>
                            </item>
-                           <item row="4" column="1">
+                           <item row="5" column="1">
                             <widget class="QLabel" name="label_58">
                              <property name="text">
                               <string>Start position (index)</string>
@@ -2939,7 +2939,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              </property>
                             </widget>
                            </item>
-                           <item row="4" column="0">
+                           <item row="5" column="0">
                             <widget class="QSpinBox" name="source_spinBox_databaseStartPos">
                              <property name="minimum">
                               <number>0</number>
@@ -2962,7 +2962,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              </property>
                             </widget>
                            </item>
-                           <item row="3" column="1">
+                           <item row="4" column="1">
                             <widget class="QLabel" name="label_80">
                              <property name="text">
                               <string>Ignore goal delay.</string>
@@ -2975,7 +2975,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              </property>
                             </widget>
                            </item>
-                           <item row="3" column="0">
+                           <item row="4" column="0">
                             <widget class="QCheckBox" name="source_checkBox_ignoreGoalDelay">
                              <property name="text">
                               <string/>
@@ -3002,7 +3002,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              </property>
                             </widget>
                            </item>
-                           <item row="5" column="1">
+                           <item row="6" column="1">
                             <spacer name="verticalSpacer_35">
                              <property name="orientation">
                               <enum>Qt::Vertical</enum>
@@ -3014,6 +3014,26 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </size>
                              </property>
                             </spacer>
+                           </item>
+                           <item row="3" column="1">
+                            <widget class="QLabel" name="label_263">
+                             <property name="text">
+                              <string>Ignore goals saved in the database.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="3" column="0">
+                            <widget class="QCheckBox" name="source_checkBox_ignoreGoals">
+                             <property name="text">
+                              <string/>
+                             </property>
+                            </widget>
                            </item>
                           </layout>
                          </widget>
@@ -6986,27 +7006,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="0">
-                          <widget class="QCheckBox" name="graphPlan_planWithNearNodesLinked">
-                           <property name="text">
-                            <string/>
-                           </property>
-                          </widget>
-                         </item>
                          <item row="2" column="1">
-                          <widget class="QLabel" name="label_space3_4">
-                           <property name="text">
-                            <string>Add virtual links. Before planning in the graph, near nodes are linked together. The maximum distance is defined by &quot;Goal reached radius&quot; above. If &quot;Maximum ID difference&quot; below is set, only close nodes in time can be linked together.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="3" column="1">
                           <widget class="QLabel" name="label_space3_5">
                            <property name="text">
                             <string>When a goal is received and processed with success, it is saved in user data of the location with this format: &quot;GOAL:#&quot;.</string>
@@ -7019,7 +7019,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="3" column="0">
+                         <item row="2" column="0">
                           <widget class="QCheckBox" name="graphPlan_goalsSavedInUserData">
                            <property name="text">
                             <string/>
@@ -7043,6 +7043,58 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <widget class="QSpinBox" name="graphPlan_stuckIterations">
                            <property name="maximum">
                             <number>9999</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="0">
+                          <widget class="QDoubleSpinBox" name="graphPlan_linearVelocity">
+                           <property name="suffix">
+                            <string> m/s</string>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.100000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>0.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="4" column="0">
+                          <widget class="QDoubleSpinBox" name="graphPlan_angularVelocity">
+                           <property name="suffix">
+                            <string> rad/s</string>
+                           </property>
+                           <property name="maximum">
+                            <double>10.000000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>0.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="1">
+                          <widget class="QLabel" name="label_space3_6">
+                           <property name="text">
+                            <string>Linear velocity used to compute path weights based on time instead of distance (0=disabled).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="4" column="1">
+                          <widget class="QLabel" name="label_space3_7">
+                           <property name="text">
+                            <string>Angular velocity used to compute path weights based on time instead of distance. Paths with poses in the same direction of the robot will have lower costs (0=disabled).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>

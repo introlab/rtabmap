@@ -186,6 +186,7 @@ public:
 	QString getSourceDatabasePath() const; //Database group
 	bool getSourceDatabaseOdometryIgnored() const; //Database group
 	bool getSourceDatabaseGoalDelayIgnored() const; //Database group
+	bool getSourceDatabaseGoalsIgnored() const; //Database group
 	int getSourceDatabaseStartPos() const; //Database group
 	bool getSourceDatabaseStampsUsed() const;//Database group
 	bool isSourceRGBDColorOnly() const;

@@ -361,6 +361,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_database_lineEdit_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignoreOdometry, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignoreGoalDelay, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_checkBox_ignoreGoals, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_databaseStartPos, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_useDbStamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
@@ -585,9 +586,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->graphOptimization_robust->setObjectName(Parameters::kRGBDOptimizeRobust().c_str());
 
 	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
-	_ui->graphPlan_planWithNearNodesLinked->setObjectName(Parameters::kRGBDPlanVirtualLinks().c_str());
 	_ui->graphPlan_goalsSavedInUserData->setObjectName(Parameters::kRGBDGoalsSavedInUserData().c_str());
 	_ui->graphPlan_stuckIterations->setObjectName(Parameters::kRGBDPlanStuckIterations().c_str());
+	_ui->graphPlan_linearVelocity->setObjectName(Parameters::kRGBDPlanLinearVelocity().c_str());
+	_ui->graphPlan_angularVelocity->setObjectName(Parameters::kRGBDPlanAngularVelocity().c_str());
 
 	_ui->groupBox_localDetection_time->setObjectName(Parameters::kRGBDLocalLoopDetectionTime().c_str());
 	_ui->groupBox_localDetection_space->setObjectName(Parameters::kRGBDLocalLoopDetectionSpace().c_str());
@@ -1091,6 +1093,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->source_checkBox_ignoreOdometry->setChecked(false);
 		_ui->source_checkBox_ignoreGoalDelay->setChecked(false);
+		_ui->source_checkBox_ignoreGoals->setChecked(false);
 		_ui->source_spinBox_databaseStartPos->setValue(0);
 		_ui->source_checkBox_useDbStamps->setChecked(true);
 
@@ -1448,6 +1451,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->source_database_lineEdit_path->setText(settings.value("path",_ui->source_database_lineEdit_path->text()).toString());
 	_ui->source_checkBox_ignoreOdometry->setChecked(settings.value("ignoreOdometry", _ui->source_checkBox_ignoreOdometry->isChecked()).toBool());
 	_ui->source_checkBox_ignoreGoalDelay->setChecked(settings.value("ignoreGoalDelay", _ui->source_checkBox_ignoreGoalDelay->isChecked()).toBool());
+	_ui->source_checkBox_ignoreGoals->setChecked(settings.value("ignoreGoals", _ui->source_checkBox_ignoreGoals->isChecked()).toBool());
 	_ui->source_spinBox_databaseStartPos->setValue(settings.value("startPos", _ui->source_spinBox_databaseStartPos->value()).toInt());
 	_ui->source_checkBox_useDbStamps->setChecked(settings.value("useDatabaseStamps", _ui->source_checkBox_useDbStamps->isChecked()).toBool());
 	settings.endGroup(); // Database
@@ -1760,6 +1764,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("path", 			   _ui->source_database_lineEdit_path->text());
 	settings.setValue("ignoreOdometry",    _ui->source_checkBox_ignoreOdometry->isChecked());
 	settings.setValue("ignoreGoalDelay",   _ui->source_checkBox_ignoreGoalDelay->isChecked());
+	settings.setValue("ignoreGoals",       _ui->source_checkBox_ignoreGoals->isChecked());
 	settings.setValue("startPos",          _ui->source_spinBox_databaseStartPos->value());
 	settings.setValue("useDatabaseStamps", _ui->source_checkBox_useDbStamps->isChecked());
 	settings.endGroup(); // Database
@@ -3516,6 +3521,10 @@ bool PreferencesDialog::getSourceDatabaseOdometryIgnored() const
 bool PreferencesDialog::getSourceDatabaseGoalDelayIgnored() const
 {
 	return _ui->source_checkBox_ignoreGoalDelay->isChecked();
+}
+bool PreferencesDialog::getSourceDatabaseGoalsIgnored() const
+{
+	return _ui->source_checkBox_ignoreGoals->isChecked();
 }
 int PreferencesDialog::getSourceDatabaseStartPos() const
 {

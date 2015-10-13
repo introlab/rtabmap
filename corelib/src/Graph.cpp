@@ -1890,6 +1890,7 @@ public:
 	void setFromId(int fromId) {fromId_ = fromId;}
 	void setCostSoFar(float costSoFar) {costSoFar_ = costSoFar;}
 	void setDistToEnd(float distToEnd) {distToEnd_ = distToEnd;}
+	void setPose(const Transform & pose) {pose_ = pose;}
 
 private:
 	int id_;
@@ -2021,12 +2022,21 @@ std::list<std::pair<int, Transform> > computePath(
 		int toId,
 		const Memory * memory,
 		bool lookInDatabase,
-		bool updateNewCosts)
+		bool updateNewCosts,
+		float linearVelocity,  // m/sec
+		float angularVelocity) // rad/sec
 {
 	UASSERT(memory!=0);
 	UASSERT(fromId>=0);
 	UASSERT(toId>=0);
 	std::list<std::pair<int, Transform> > path;
+	UDEBUG("fromId=%d, toId=%d, lookInDatabase=%d, updateNewCosts=%d, linearVelocity=%f, angularVelocity=%f",
+			fromId,
+			toId,
+			lookInDatabase?1:0,
+			updateNewCosts?1:0,
+			linearVelocity,
+			angularVelocity);
 
 	std::multimap<int, Link> allLinks;
 	if(lookInDatabase)
@@ -2097,11 +2107,34 @@ std::list<std::pair<int, Transform> > computePath(
 		}
 		for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
 		{
+			Transform nextPose = currentNode->pose()*iter->second.transform();
+			float cost = 0.0f;
+			if(linearVelocity <= 0.0f && angularVelocity <= 0.0f)
+			{
+				// use distance only
+				cost = iter->second.transform().getNorm();
+			}
+			else // use time
+			{
+				if(linearVelocity > 0.0f)
+				{
+					cost += iter->second.transform().getNorm()/linearVelocity;
+				}
+				if(angularVelocity > 0.0f)
+				{
+					Eigen::Vector4f v1 = Eigen::Vector4f(nextPose.x()-currentNode->pose().x(), nextPose.y()-currentNode->pose().y(), nextPose.z()-currentNode->pose().z(), 1.0f);
+					Eigen::Vector4f v2 = nextPose.rotation().toEigen4f()*Eigen::Vector4f(1,0,0,1);
+					float angle = pcl::getAngle3D(v1, v2);
+					cost += angle / angularVelocity;
+				}
+			}
+
 			std::map<int, Node>::iterator nodeIter = nodes.find(iter->first);
 			if(nodeIter == nodes.end())
 			{
-				Node n(iter->second.to(), currentNode->id(), currentNode->pose()*iter->second.transform());
-				n.setCostSoFar(currentNode->costSoFar() + iter->second.transform().getNorm());
+				Node n(iter->second.to(), currentNode->id(), nextPose);
+
+				n.setCostSoFar(currentNode->costSoFar() + cost);
 				nodes.insert(std::make_pair(iter->second.to(), n));
 				if(updateNewCosts)
 				{
@@ -2114,9 +2147,12 @@ std::list<std::pair<int, Transform> > computePath(
 			}
 			else if(updateNewCosts && nodeIter->second.isOpened())
 			{
-				float newCostSoFar = currentNode->costSoFar() + currentNode->distFrom(nodeIter->second.pose());
+				float newCostSoFar = currentNode->costSoFar() + cost;
 				if(nodeIter->second.costSoFar() > newCostSoFar)
 				{
+					// update pose with new link
+					nodeIter->second.setPose(nextPose);
+
 					// update the cost in the priority queue
 					for(std::multimap<float, int>::iterator mapIter=pqmap.begin(); mapIter!=pqmap.end(); ++mapIter)
 					{
@@ -2132,6 +2168,61 @@ std::list<std::pair<int, Transform> > computePath(
 			}
 		}
 	}
+
+	// Debugging stuff
+	if(ULogger::level() == ULogger::kDebug)
+	{
+		std::stringstream stream;
+		std::vector<int> linkTypes(Link::kUndef, 0);
+		std::list<std::pair<int, Transform> >::const_iterator previousIter = path.end();
+		float length = 0.0f;
+		for(std::list<std::pair<int, Transform> >::const_iterator iter=path.begin(); iter!=path.end();++iter)
+		{
+			if(iter!=path.begin())
+			{
+				stream << ",";
+			}
+
+			if(previousIter!=path.end())
+			{
+				//UDEBUG("current  %d = %s", iter->first, iter->second.prettyPrint().c_str());
+				if(allLinks.size())
+				{
+					std::multimap<int, Link>::iterator jter = graph::findLink(allLinks, previousIter->first, iter->first);
+					if(jter != allLinks.end())
+					{
+						//Transform nextPose = iter->second;
+						//Eigen::Vector4f v1 = Eigen::Vector4f(nextPose.x()-previousIter->second.x(), nextPose.y()-previousIter->second.y(), nextPose.z()-previousIter->second.z(), 1.0f);
+						//Eigen::Vector4f v2 = nextPose.rotation().toEigen4f()*Eigen::Vector4f(1,0,0,1);
+						//float angle = pcl::getAngle3D(v1, v2);
+						//float cost = angle ;
+						//UDEBUG("v1=%f,%f,%f v2=%f,%f,%f a=%f", v1[0], v1[1], v1[2], v2[0], v2[1], v2[2], cost);
+
+						UASSERT(jter->second.type() >= Link::kNeighbor && jter->second.type()<Link::kUndef);
+						++linkTypes[jter->second.type()];
+						stream << "[" << jter->second.type() << "]";
+						length += jter->second.transform().getNorm();
+					}
+				}
+			}
+
+			stream << iter->first;
+
+			previousIter=iter;
+		}
+		UDEBUG("Path (%f m) = [%s]", length, stream.str().c_str());
+		std::stringstream streamB;
+		for(unsigned int i=0; i<linkTypes.size(); ++i)
+		{
+			if(i > 0)
+			{
+				streamB << " ";
+			}
+			streamB << i << "=" << linkTypes[i];
+		}
+		UDEBUG("Link types = %s", streamB.str().c_str());
+	}
+
 	return path;
 }
 
@@ -2300,6 +2391,39 @@ float computePathLength(
 		length = sqrt(x*x + y*y + z*z);
 	}
 	return length;
+}
+
+// return all paths linked only by neighbor links
+std::list<std::map<int, Transform> > getPaths(
+		std::map<int, Transform> poses,
+		const std::multimap<int, Link> & links)
+{
+	std::list<std::map<int, Transform> > paths;
+	if(poses.size() && links.size())
+	{
+		// Segment poses connected only by neighbor links
+		while(poses.size())
+		{
+			std::map<int, Transform> path;
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end();)
+			{
+				std::multimap<int, Link>::const_iterator jter = findLink(links, path.rbegin()->first, iter->first);
+				if(path.size() == 0 || (jter != links.end() && jter->second.type() == Link::kNeighbor))
+				{
+					path.insert(*iter);
+					poses.erase(iter++);
+				}
+				else
+				{
+					break;
+				}
+			}
+			UASSERT(path.size());
+			paths.push_back(path);
+		}
+
+	}
+	return paths;
 }
 
 } /* namespace graph */

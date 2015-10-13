@@ -42,6 +42,7 @@ SET(SRC_FILES
 	SensorData.cpp
 	Graph.cpp
 	Compression.cpp
+	Link.cpp
 	
 	Odometry.cpp
 	OdometryThread.cpp

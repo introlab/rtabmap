@@ -149,6 +149,8 @@ private slots:
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void sendGoal();
+	void sendWaypoints();
+	void postGoal(const QString & goal);
 	void cancelGoal();
 	void label();
 	void downloadAllClouds();
@@ -167,6 +169,7 @@ private slots:
 	void processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & event);
 	void processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathEvent & event);
 	void processRtabmapLabelErrorEvent(int id, const QString & label);
+	void processRtabmapGoalStatusEvent(int status);
 	void changeImgRateSetting();
 	void changeDetectionRateSetting();
 	void changeTimeLimitSetting();
@@ -202,6 +205,7 @@ signals:
 	void rtabmapEvent3DMapReceived(const rtabmap::RtabmapEvent3DMap & event);
 	void rtabmapGlobalPathEventReceived(const rtabmap::RtabmapGlobalPathEvent & event);
 	void rtabmapLabelErrorReceived(int id, const QString & label);
+	void rtabmapGoalStatusEventReceived(int status);
 	void imgRateChanged(double);
 	void detectionRateChanged(double);
 	void timeLimitChanged(float);
@@ -277,6 +281,8 @@ private:
 	bool _odomImageShow;
 	bool _odomImageDepthShow;
 	bool _savedMaximized;
+	QStringList _waypoints;
+	int _waypointsIndex;
 
 	QMap<int, Signature> _cachedSignatures;
 	std::map<int, Transform> _currentPosesMap; // <nodeId, pose>

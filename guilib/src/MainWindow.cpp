@@ -136,6 +136,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_databaseUpdated(false),
 	_odomImageShow(true),
 	_odomImageDepthShow(false),
+	_savedMaximized(false),
+	_waypointsIndex(0),
 	_odometryCorrection(Transform::getIdentity()),
 	_processingOdometry(false),
 	_lastOdomInfoUpdateTime(0),
@@ -255,6 +257,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	qRegisterMetaType<rtabmap::RtabmapGlobalPathEvent>("rtabmap::RtabmapGlobalPathEvent");
 	connect(this, SIGNAL(rtabmapGlobalPathEventReceived(const rtabmap::RtabmapGlobalPathEvent &)), this, SLOT(processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathEvent &)));
 	connect(this, SIGNAL(rtabmapLabelErrorReceived(int, const QString &)), this, SLOT(processRtabmapLabelErrorEvent(int, const QString &)));
+	connect(this, SIGNAL(rtabmapGoalStatusEventReceived(int)), this, SLOT(processRtabmapGoalStatusEvent(int)));
+
 	// Dock Widget view actions (Menu->Window)
 	_ui->menuShow_view->addAction(_ui->dockWidget_imageView->toggleViewAction());
 	_ui->menuShow_view->addAction(_ui->dockWidget_posterior->toggleViewAction());
@@ -291,6 +295,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionDump_the_memory, SIGNAL(triggered()), this, SLOT(dumpTheMemory()));
 	connect(_ui->actionDump_the_prediction_matrix, SIGNAL(triggered()), this, SLOT(dumpThePrediction()));
 	connect(_ui->actionSend_goal, SIGNAL(triggered()), this, SLOT(sendGoal()));
+	connect(_ui->actionSend_waypoints, SIGNAL(triggered()), this, SLOT(sendWaypoints()));
 	connect(_ui->actionCancel_goal, SIGNAL(triggered()), this, SLOT(cancelGoal()));
 	connect(_ui->actionLabel_current_location, SIGNAL(triggered()), this, SLOT(label()));
 	connect(_ui->actionClear_cache, SIGNAL(triggered()), this, SLOT(clearTheCache()));
@@ -661,6 +666,10 @@ void MainWindow::handleEvent(UEvent* anEvent)
 	{
 		RtabmapLabelErrorEvent * rtabmapLabelErrorEvent = (RtabmapLabelErrorEvent*)anEvent;
 		emit rtabmapLabelErrorReceived(rtabmapLabelErrorEvent->id(), QString(rtabmapLabelErrorEvent->label().c_str()));
+	}
+	else if(anEvent->getClassName().compare("RtabmapGoalStatusEvent") == 0)
+	{
+		emit rtabmapGoalStatusEventReceived(anEvent->getCode());
 	}
 	else if(anEvent->getClassName().compare("CameraEvent") == 0)
 	{
@@ -2227,6 +2236,15 @@ void MainWindow::processRtabmapLabelErrorEvent(int id, const QString & label)
 	warn->show();
 }
 
+void MainWindow::processRtabmapGoalStatusEvent(int status)
+{
+	_ui->widget_console->appendMsg(tr("Goal status received=%1").arg(status), ULogger::kInfo);
+	if(_waypoints.size())
+	{
+		this->postGoal(_waypoints.at(++_waypointsIndex % _waypoints.size()));
+	}
+}
+
 void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 {
 	ULOGGER_DEBUG("");
@@ -2944,7 +2962,8 @@ void MainWindow::startDetection()
 		_dbReader = new DBReader(_preferencesDialog->getSourceDatabasePath().toStdString(),
 								 _preferencesDialog->getSourceDatabaseStampsUsed()?-1:_preferencesDialog->getGeneralInputRate(),
 								 _preferencesDialog->getSourceDatabaseOdometryIgnored(),
-								 _preferencesDialog->getSourceDatabaseGoalDelayIgnored());
+								 _preferencesDialog->getSourceDatabaseGoalDelayIgnored(),
+								 _preferencesDialog->getSourceDatabaseGoalsIgnored());
 
 		//Create odometry thread if rgdb slam
 		if(uStr2Bool(parameters.at(Parameters::kRGBDEnabled()).c_str()) &&
@@ -3902,18 +3921,61 @@ void MainWindow::sendGoal()
 {
 	UINFO("Sending a goal...");
 	bool ok = false;
-	int id = QInputDialog::getInt(this, tr("Send a goal"), tr("Goal location ID: "), 1, 1, 99999, 1, &ok);
-	if(ok)
+	QString text = QInputDialog::getText(this, tr("Send a goal"), tr("Goal location ID or label: "), QLineEdit::Normal, "", &ok);
+	if(ok && !text.isEmpty())
 	{
+		_waypoints.clear();
+		_waypointsIndex = 0;
+
+		this->postGoal(text);
+	}
+}
+
+void MainWindow::sendWaypoints()
+{
+	UINFO("Sending waypoints...");
+	bool ok = false;
+	QString text = QInputDialog::getText(this, tr("Send waypoints"), tr("Waypoint IDs or labels (separated by spaces): "), QLineEdit::Normal, "", &ok);
+	if(ok && !text.isEmpty())
+	{
+		QStringList wp = text.split(' ');
+		if(wp.size() < 2)
+		{
+			QMessageBox::warning(this, tr("Send waypoints"), tr("At least two waypoints should be set. For only one goal, use send goal action."));
+		}
+		else
+		{
+			_waypoints = wp;
+			_waypointsIndex = 0;
+			this->postGoal(_waypoints.at(_waypointsIndex));
+		}
+	}
+}
+
+void MainWindow::postGoal(const QString & goal)
+{
+	if(!goal.isEmpty())
+	{
+		bool ok = false;
+		int id = goal.toInt(&ok);
 		_ui->graphicsView_graphView->setGlobalPath(std::vector<std::pair<int, Transform> >()); // clear
-		UINFO("Posting event with goal %d", id);
-		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, id));
+		UINFO("Posting event with goal %s", goal.toStdString().c_str());
+		if(ok)
+		{
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, id));
+		}
+		else
+		{
+			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, goal.toStdString()));
+		}
 	}
 }
 
 void MainWindow::cancelGoal()
 {
 	UINFO("Cancelling goal...");
+	_waypoints.clear();
+	_waypointsIndex = 0;
 	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdCancelGoal));
 }
 

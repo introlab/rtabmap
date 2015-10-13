@@ -463,12 +463,19 @@ void RtabmapThread::process()
 	{
 		if(_rtabmap->getMemory())
 		{
+			bool wasPlanning = _rtabmap->getPath().size()>0;
 			if(_rtabmap->process(data.data(), data.pose(), data.covariance()))
 			{
 				Statistics stats = _rtabmap->getStatistics();
 				stats.addStatistic(Statistics::kMemoryImages_buffered(), (float)_dataBuffer.size());
 				ULOGGER_DEBUG("posting statistics_ event...");
 				this->post(new RtabmapEvent(stats));
+
+				if(wasPlanning && _rtabmap->getPath().size() == 0)
+				{
+					// Goal reached or failed
+					this->post(new RtabmapGoalStatusEvent(_rtabmap->getPathStatus()));
+				}
 			}
 		}
 		else

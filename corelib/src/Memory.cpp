@@ -1090,7 +1090,8 @@ std::map<int, float> Memory::getNeighborsIdRadius(
 				for(std::map<int, Link>::const_iterator iter=links->begin(); iter!=links->end(); ++iter)
 				{
 					if(!uContains(ids, iter->first) &&
-						uContains(optimizedPoses, iter->first))
+						uContains(optimizedPoses, iter->first) &&
+						iter->second.type()!=Link::kVirtualClosure)
 					{
 						const Transform & t = optimizedPoses.at(iter->first);
 						UASSERT(!t.isNull());
@@ -2224,7 +2225,7 @@ Transform Memory::computeVisualTransform(
 	}
 	if(varianceOut)
 	{
-		*varianceOut = variance;
+		*varianceOut = variance>0.0f?variance:0.0001; // epsilon if exact transform
 	}
 	UDEBUG("transform=%s", transform.prettyPrint().c_str());
 	return transform;
@@ -2428,7 +2429,7 @@ Transform Memory::computeIcpTransform(
 
 				if(varianceOut)
 				{
-					*varianceOut = variance;
+					*varianceOut = variance>0.0f?variance:0.0001; // epsilon if exact transform
 				}
 				if(correspondencesOut)
 				{
@@ -2518,7 +2519,7 @@ Transform Memory::computeIcpTransform(
 				bool hasConverged = false;
 				float correspondencesRatio = 0.0f;
 				int correspondences = 0;
-				double variance = 1;
+				double variance = 1.0;
 				pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
 				icpT = util3d::icp2D(
 						newCloudVoxelized,
@@ -2567,7 +2568,6 @@ Transform Memory::computeIcpTransform(
 							newCloud = newCloudRegistered;
 						}
 
-						pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
 						util3d::computeVarianceAndCorrespondences(
 								newCloud,
 								oldCloud,
@@ -2592,12 +2592,12 @@ Transform Memory::computeIcpTransform(
 								hasConverged?"true":"false",
 								variance,
 								correspondences,
-								(int)(newS.sensorData().laserScanMaxPts()),
+								newS.sensorData().laserScanMaxPts()?newS.sensorData().laserScanMaxPts():(int)(newCloud->size()>oldCloud->size()?newCloud->size():oldCloud->size()),
 								correspondencesRatio*100.0f);
 
 						if(varianceOut)
 						{
-							*varianceOut = variance;
+							*varianceOut = variance>0.0f?variance:0.0001; // epsilon if exact transform
 						}
 						if(correspondencesOut)
 						{
@@ -2626,6 +2626,21 @@ Transform Memory::computeIcpTransform(
 					msg = uFormat("Cannot compute transform (converged=%s var=%f)",
 							hasConverged?"true":"false", variance);
 					UINFO(msg.c_str());
+				}
+
+				// still compute the variance for information
+				if(variance == 1 && varianceOut)
+				{
+					util3d::computeVarianceAndCorrespondences(
+						newCloudVoxelized,
+						oldCloudVoxelized,
+						_icpMaxCorrespondenceDistance,
+						variance,
+						correspondences);
+					if(variance > 0)
+					{
+						*varianceOut = variance;
+					}
 				}
 			}
 			else
@@ -2748,64 +2763,82 @@ Transform Memory::computeScanMatchingTransform(
 
 		if(!icpT.isNull() && hasConverged)
 		{
-			if(_icp2VoxelSize <= _laserScanVoxelSize)
+			float ix,iy,iz, iroll,ipitch,iyaw;
+			icpT.getTranslationAndEulerAngles(ix,iy,iz,iroll,ipitch,iyaw);
+			if((_icpMaxTranslation>0.0f &&
+				(fabs(ix) > _icpMaxTranslation ||
+				 fabs(iy) > _icpMaxTranslation ||
+				 fabs(iz) > _icpMaxTranslation))
+				||
+				(_icpMaxRotation>0.0f &&
+				 (fabs(iroll) > _icpMaxRotation ||
+				  fabs(ipitch) > _icpMaxRotation ||
+				  fabs(iyaw) > _icpMaxRotation)))
 			{
-				newCloud = util3d::transformPointCloud(newCloud, icpT);
-			}
-			else
-			{
-				newCloud = newCloudRegistered;
-			}
-
-			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
-			double v = 1;
-			util3d::computeVarianceAndCorrespondences(
-					newCloud,
-					assembledOldClouds,
-					_icpMaxCorrespondenceDistance,
-					v,
-					correspondences);
-			if(variance)
-			{
-				*variance = v;
-			}
-
-			// verify if there enough correspondences
-			float correspondencesRatio = 0.0f;
-			if(newS->sensorData().laserScanMaxPts())
-			{
-				correspondencesRatio = float(correspondences)/float(newS->sensorData().laserScanMaxPts());
-			}
-			else
-			{
-				UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set relative instead of absolute!",
-						newS->id());
-				correspondencesRatio = float(correspondences)/float(newCloud->size());
-			}
-
-			UDEBUG("variance=%f, correspondences=%d/%d (%f%%) %f",
-					variance?*variance:-1,
-					correspondences,
-					(int)newCloud->size(),
-					correspondencesRatio*100.0f);
-
-			if(inliers)
-			{
-				*inliers = correspondences;
-			}
-
-			if(correspondencesRatio >= _icp2CorrespondenceRatio)
-			{
-				transform = poses.at(newId).inverse()*icpT.inverse() * poses.at(oldId);
-			}
-			else
-			{
-				msg = uFormat("Constraints failed... variance=%f, correspondences=%d/%d (%f%%)",
-					variance?*variance:-1,
-					correspondences,
-					(int)newCloud->size(),
-					correspondencesRatio);
+				msg = uFormat("Cannot compute transform (ICP correction too large)");
 				UINFO(msg.c_str());
+			}
+			else
+			{
+				if(_icp2VoxelSize <= _laserScanVoxelSize)
+				{
+					newCloud = util3d::transformPointCloud(newCloud, icpT);
+				}
+				else
+				{
+					newCloud = newCloudRegistered;
+				}
+
+				pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
+				double v = 1;
+				util3d::computeVarianceAndCorrespondences(
+						newCloud,
+						assembledOldClouds,
+						_icpMaxCorrespondenceDistance,
+						v,
+						correspondences);
+				if(variance)
+				{
+					*variance = v>0.0f?v:0.0001; // epsilon if exact transform
+				}
+
+				// verify if there enough correspondences
+				float correspondencesRatio = 0.0f;
+				if(newS->sensorData().laserScanMaxPts())
+				{
+					correspondencesRatio = float(correspondences)/float(newS->sensorData().laserScanMaxPts());
+				}
+				else
+				{
+					UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set relative instead of absolute!",
+							newS->id());
+					correspondencesRatio = float(correspondences)/float(newCloud->size());
+				}
+
+				UDEBUG("variance=%f, correspondences=%d/%d (%f%%) %f",
+						v,
+						correspondences,
+						newS->sensorData().laserScanMaxPts()?newS->sensorData().laserScanMaxPts():(int)newCloud->size(),
+						correspondencesRatio*100.0f);
+
+				if(inliers)
+				{
+					*inliers = correspondences;
+				}
+
+				if(correspondencesRatio >= _icp2CorrespondenceRatio)
+				{
+					transform = poses.at(newId).inverse()*icpT.inverse() * poses.at(oldId);
+				}
+				else
+				{
+					msg = uFormat("Constraints failed... variance=%f, correspondences=%d/%d (%f%%)",
+						variance?*variance:-1,
+						correspondences,
+						newS->sensorData().laserScanMaxPts()?newS->sensorData().laserScanMaxPts():(int)newCloud->size(),
+						correspondencesRatio);
+					UINFO(msg.c_str());
+				}
 			}
 		}
 		else
@@ -4292,7 +4325,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 		if(_saveDepth16Format && !depthOrRightImage.empty() && depthOrRightImage.type() == CV_32FC1)
 		{
-			UWARN("Save depth data to 16 bits format: depth type detected is 32FC1, use 16UC1 depth format to avoid this conversion.");
+			UWARN("Save depth data to 16 bits format: depth type detected is 32FC1, use 16UC1 depth format to avoid this conversion (or set parameter \"Mem/SaveDepth16Format\"=false to use 32bits format).");
 			depthOrRightImage = util2d::cvtDepthFromFloat(depthOrRightImage);
 		}
 

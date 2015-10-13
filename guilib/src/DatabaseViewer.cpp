@@ -2221,11 +2221,11 @@ void DatabaseViewer::updateConstraintView(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & scanFrom,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & scanTo)
 {
-	std::multimap<int, Link>::iterator iter = rtabmap::graph::findLink(linksRefined_, linkIn.from(), linkIn.to());
+	std::multimap<int, Link>::iterator iterLink = rtabmap::graph::findLink(linksRefined_, linkIn.from(), linkIn.to());
 	rtabmap::Link link = linkIn;
-	if(iter != linksRefined_.end())
+	if(iterLink != linksRefined_.end())
 	{
-		link = iter->second;
+		link = iterLink->second;
 	}
 	rtabmap::Transform t = link.transform();
 
@@ -2428,6 +2428,141 @@ void DatabaseViewer::updateConstraintView(
 			if(ui_->checkBox_show2DScans->isChecked())
 			{
 				//cloud 2d
+
+				ui_->constraintsViewer->removeCloud("scan2");
+				ui_->constraintsViewer->removeGraph("scan2graph");
+				if(link.type() == Link::kLocalSpaceClosure && !link.userDataCompressed().empty())
+				{
+					std::vector<int> ids;
+					cv::Mat userData = link.uncompressUserDataConst();
+					if(userData.type() == CV_8SC1 &&
+					   userData.rows == 1 &&
+					   userData.cols >= 8 && // including null str ending
+					   userData.at<char>(userData.cols-1) == 0 &&
+					   memcmp(userData.data, "SCANS:", 6) == 0)
+					{
+						std::string scansStr = (const char *)userData.data;
+						if(!scansStr.empty())
+						{
+							std::list<std::string> strs = uSplit(scansStr, ':');
+							if(strs.size() == 2)
+							{
+								std::list<std::string> strIds = uSplit(strs.rbegin()->c_str(), ';');
+								for(std::list<std::string>::iterator iter=strIds.begin(); iter!=strIds.end(); ++iter)
+								{
+									ids.push_back(atoi(iter->c_str()));
+									if(ids.back() == link.from())
+									{
+										ids.pop_back();
+									}
+								}
+							}
+						}
+					}
+					if(ids.size())
+					{
+						//add other scans matching
+						//optimize the path's poses locally
+
+						graph::Optimizer * optimizer = 0;
+						if(ui_->comboBox_graphOptimizer->currentIndex() == graph::Optimizer::kTypeGTSAM)
+						{
+							optimizer = new graph::GTSAMOptimizer(
+									ui_->spinBox_iterations->value(),
+									ui_->checkBox_2dslam->isChecked(),
+									ui_->checkBox_ignoreCovariance->isChecked(),
+									0.0,
+									ui_->checkBox_robust->isChecked());
+						}
+						else if(ui_->comboBox_graphOptimizer->currentIndex() == graph::Optimizer::kTypeG2O)
+						{
+							UINFO("ui_->checkBox_robust->isChecked()=%d", ui_->checkBox_robust->isChecked()?1:0);
+							optimizer = new graph::G2OOptimizer(
+									ui_->spinBox_iterations->value(),
+									ui_->checkBox_2dslam->isChecked(),
+									ui_->checkBox_ignoreCovariance->isChecked(),
+									0.0,
+									ui_->checkBox_robust->isChecked());
+						}
+						else
+						{
+							optimizer = new graph::TOROOptimizer(
+									ui_->spinBox_iterations->value(),
+									ui_->checkBox_2dslam->isChecked(),
+									ui_->checkBox_ignoreCovariance->isChecked(),
+									0.0);
+						}
+						std::map<int, rtabmap::Transform> poses;
+						for(unsigned int i=0; i<ids.size(); ++i)
+						{
+							if(uContains(poses_, ids[i]))
+							{
+								poses.insert(*poses_.find(ids[i]));
+							}
+							else
+							{
+								UERROR("Not found %d node!", ids[i]);
+							}
+						}
+						if(poses.size())
+						{
+							UASSERT(uContains(poses, link.to()));
+							std::map<int, rtabmap::Transform> posesOut;
+							std::multimap<int, rtabmap::Link> linksOut;
+							optimizer->getConnectedGraph(
+									link.to(),
+									poses,
+									updateLinksWithModifications(links_),
+									posesOut,
+									linksOut);
+
+							QTime time;
+							time.start();
+							std::map<int, rtabmap::Transform> finalPoses = optimizer->optimize(link.to(), posesOut, linksOut);
+							delete optimizer;
+
+							// transform local poses in loop referential
+							Transform u = t * finalPoses.at(link.to()).inverse();
+							pcl::PointCloud<pcl::PointXYZ>::Ptr assembledScans(new pcl::PointCloud<pcl::PointXYZ>);
+							pcl::PointCloud<pcl::PointXYZ>::Ptr graph(new pcl::PointCloud<pcl::PointXYZ>);
+							for(std::map<int, Transform>::iterator iter=finalPoses.begin(); iter!=finalPoses.end(); ++iter)
+							{
+								iter->second = u * iter->second;
+								if(iter->first != link.to()) // already added to view
+								{
+									//create scan
+									SensorData data = memory_->getNodeData(iter->first, false);
+									cv::Mat scan;
+									data.uncompressDataConst(0, 0, &scan, 0);
+									if(!scan.empty())
+									{
+										pcl::PointCloud<pcl::PointXYZ>::Ptr scanCloud = util3d::laserScanToPointCloud(scan);
+										if(assembledScans->size() == 0)
+										{
+											assembledScans = util3d::transformPointCloud(scanCloud, iter->second);
+										}
+										else
+										{
+											*assembledScans += *util3d::transformPointCloud(scanCloud, iter->second);
+										}
+									}
+								}
+								graph->push_back(pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z()));
+							}
+
+							if(assembledScans->size())
+							{
+								ui_->constraintsViewer->addOrUpdateCloud("scan2", assembledScans, Transform::getIdentity(), Qt::cyan);
+							}
+							if(graph->size())
+							{
+								ui_->constraintsViewer->addOrUpdateGraph("scan2graph", graph, Qt::cyan);
+							}
+						}
+					}
+				}
+
+				// Added loop closure scans
 				pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
 				scanA = rtabmap::util3d::laserScanToPointCloud(dataFrom.laserScanRaw());
 				scanB = rtabmap::util3d::laserScanToPointCloud(dataTo.laserScanRaw());
@@ -2453,6 +2588,7 @@ void DatabaseViewer::updateConstraintView(
 			{
 				ui_->constraintsViewer->removeCloud("scan0");
 				ui_->constraintsViewer->removeCloud("scan1");
+				ui_->constraintsViewer->removeCloud("scan2");
 			}
 		}
 		else
@@ -2473,6 +2609,7 @@ void DatabaseViewer::updateConstraintView(
 			{
 				ui_->constraintsViewer->removeCloud("scan1");
 			}
+			ui_->constraintsViewer->removeCloud("scan2");
 		}
 
 		//update coordinate

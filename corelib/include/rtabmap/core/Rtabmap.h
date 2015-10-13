@@ -204,9 +204,10 @@ private:
 	float _reextractMaxDepth;
 	bool _startNewMapOnLoopClosure;
 	float _goalReachedRadius; // meters
-	bool _planVirtualLinks;
 	bool _goalsSavedInUserData;
 	int _pathStuckIterations;
+	float _pathLinearVelocity;
+	float _pathAngularVelocity;
 
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;

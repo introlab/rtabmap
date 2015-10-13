@@ -281,7 +281,10 @@ cv::Mat cvtDepthFromFloat(const cv::Mat & depth32F)
 		}
 		if(countOverMax)
 		{
-			UWARN("Depth conversion error, %d depth values ignored because they are over the maximum depth allowed (65535 mm).", countOverMax);
+			UWARN("Depth conversion error, %d depth values ignored because "
+				  "they are over the maximum depth allowed (65535 mm). Is the depth "
+				  "image really in meters? 32 bits images should be in meters, "
+				  "and 16 bits should be in mm.", countOverMax);
 		}
 	}
 	return depth16U;

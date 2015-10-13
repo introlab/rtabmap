@@ -307,7 +307,9 @@ std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
 		int toId,
 		const Memory * memory,
 		bool lookInDatabase = true,
-		bool updateNewCosts = false);
+		bool updateNewCosts = false,
+		float linearVelocity = 0.0f,   // m/sec
+		float angularVelocity = 0.0f); // rad/sec
 
 int RTABMAP_EXP findNearestNode(
 		const std::map<int, rtabmap::Transform> & nodes,
@@ -334,6 +336,10 @@ float RTABMAP_EXP computePathLength(
 		const std::vector<std::pair<int, Transform> > & path,
 		unsigned int fromIndex = 0,
 		unsigned int toIndex = 0);
+
+std::list<std::map<int, Transform> > RTABMAP_EXP getPaths(
+		std::map<int, Transform> poses,
+		const std::multimap<int, Link> & links);
 
 
 } /* namespace graph */
