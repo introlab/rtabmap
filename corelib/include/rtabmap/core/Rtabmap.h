@@ -188,6 +188,7 @@ private:
 	bool _poseScanMatching;
 	bool _localLoopClosureDetectionTime;
 	bool _localLoopClosureDetectionSpace;
+	bool _scanMatchingIdsSavedInLinks;
 	float _localRadius;
 	float _localImmunizationRatio;
 	int _localDetectMaxGraphDepth;

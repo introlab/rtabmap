@@ -201,7 +201,6 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, LaserScanVoxelSize,      float, 0.0,      "If > 0.0, voxelize laser scans when creating a signature.");
 	RTABMAP_PARAM(Mem, LocalSpaceLinksKeptInWM, bool, true,      "If local space links are kept in WM.");
 
-
 	// KeypointMemory (Keypoint-based)
 	RTABMAP_PARAM_COND(Kp, NNStrategy,       int, RTABMAP_NONFREE, 1, 3, "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
 	RTABMAP_PARAM(Kp, IncrementalDictionary, bool, true, 		"");
@@ -300,6 +299,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, MaxLocalRetrieved,        unsigned int, 2, "Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).");
 	RTABMAP_PARAM(RGBD, LocalRadius,              float, 10,   "Local radius (m) for nodes selection in the local map. This parameter is used in some approaches about the local map management.");
 	RTABMAP_PARAM(RGBD, LocalImmunizationRatio,   float, 0.25, "Ratio of working memory for which local nodes are immunized from transfer.");
+	RTABMAP_PARAM(RGBD,  ScanMatchingIdsSavedInLinks, bool, true,      "Save scan matching IDs in link's user data.");
 
 	// Local loop closure detection
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionTime,     bool, false, 	"Detection over all locations in STM.");

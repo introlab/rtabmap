@@ -94,6 +94,7 @@ Rtabmap::Rtabmap() :
 	_poseScanMatching(Parameters::defaultRGBDPoseScanMatching()),
 	_localLoopClosureDetectionTime(Parameters::defaultRGBDLocalLoopDetectionTime()),
 	_localLoopClosureDetectionSpace(Parameters::defaultRGBDLocalLoopDetectionSpace()),
+	_scanMatchingIdsSavedInLinks(Parameters::defaultRGBDScanMatchingIdsSavedInLinks()),
 	_localRadius(Parameters::defaultRGBDLocalRadius()),
 	_localImmunizationRatio(Parameters::defaultRGBDLocalImmunizationRatio()),
 	_localDetectMaxGraphDepth(Parameters::defaultRGBDLocalLoopDetectionMaxGraphDepth()),
@@ -402,6 +403,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDPoseScanMatching(), _poseScanMatching);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionTime(), _localLoopClosureDetectionTime);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionSpace(), _localLoopClosureDetectionSpace);
+	Parameters::parse(parameters, Parameters::kRGBDScanMatchingIdsSavedInLinks(), _scanMatchingIdsSavedInLinks);
 	Parameters::parse(parameters, Parameters::kRGBDLocalRadius(), _localRadius);
 	Parameters::parse(parameters, Parameters::kRGBDLocalImmunizationRatio(), _localImmunizationRatio);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionMaxGraphDepth(), _localDetectMaxGraphDepth);
@@ -2068,8 +2070,7 @@ bool Rtabmap::process(
 													transform.prettyPrint().c_str());
 
 											cv::Mat scanMatchingIds;
-											bool _scanMatchingIdsSavedInUserData = true;
-											if(_scanMatchingIdsSavedInUserData)
+											if(_scanMatchingIdsSavedInLinks)
 											{
 												std::stringstream stream;
 												stream << "SCANS:";
