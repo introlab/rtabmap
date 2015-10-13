@@ -214,6 +214,7 @@ private:
 	std::pair<int, float> _highestHypothesis;
 	double _lastProcessTime;
 	bool _someNodesHaveBeenTransferred;
+	float _distanceTravelled;
 
 	// Abstract classes containing all loop closure
 	// strategies for a type of signature or configuration.

@@ -88,6 +88,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Memory, Rehearsal_merged,);
 	RTABMAP_STATS(Memory, Local_graph_size,);
 	RTABMAP_STATS(Memory, Small_movement,);
+	RTABMAP_STATS(Memory, Distance_travelled, m);
 
 	RTABMAP_STATS(Timing, Memory_update, ms);
 	RTABMAP_STATS(Timing, Scan_matching, ms);

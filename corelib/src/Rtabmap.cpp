@@ -119,6 +119,7 @@ Rtabmap::Rtabmap() :
 	_highestHypothesis(0,0.0f),
 	_lastProcessTime(0.0),
 	_someNodesHaveBeenTransferred(false),
+	_distanceTravelled(0.0f),
 	_epipolarGeometry(0),
 	_bayesFilter(0),
 	_graphOptimizer(0),
@@ -335,6 +336,7 @@ void Rtabmap::close()
 	_mapCorrection.setIdentity();
 	_lastLocalizationPose.setNull();
 	_lastLocalizationNodeId = 0;
+	_distanceTravelled = 0.0f;
 	this->clearPath(0);
 
 	flushStatisticLogs();
@@ -661,6 +663,7 @@ int Rtabmap::triggerNewMap()
 		_optimizedPoses.clear();
 		_constraints.clear();
 		_lastLocalizationNodeId = 0;
+		_distanceTravelled = 0.0f;
 	}
 	return mapId;
 }
@@ -851,6 +854,7 @@ void Rtabmap::resetMemory()
 	_mapCorrection.setIdentity();
 	_lastLocalizationPose.setNull();
 	_lastLocalizationNodeId = 0;
+	_distanceTravelled = 0.0f;
 	this->clearPath(0);
 
 	if(_memory)
@@ -1154,6 +1158,8 @@ bool Rtabmap::process(
 					"Only forward links should be added.");
 
 			Link tmp = signature->getLinks().begin()->second.inverse();
+
+			_distanceTravelled += tmp.transform().getNorm();
 
 			// if the previous node is an intermediate node, remove it from the local graph
 			if(_constraints.size() &&
@@ -2371,6 +2377,7 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopRejectedHypothesis(), rejectedHypothesis?1.0f:0);
 
 			statistics_.addStatistic(Statistics::kMemorySmall_movement(), smallDisplacement?1.0f:0);
+			statistics_.addStatistic(Statistics::kMemoryDistance_travelled(), _distanceTravelled);
 
 			if(_publishLikelihood || _publishPdf)
 			{
