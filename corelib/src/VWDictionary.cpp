@@ -499,14 +499,20 @@ void VWDictionary::update()
 		   _strategy < kNNBruteForce &&
 		   _visualWords.size())
 		{
+			ULOGGER_DEBUG("Incremental FLANN: Removing %d words...", (int)_removedIndexedWords.size());
 			for(std::set<int>::iterator iter=_removedIndexedWords.begin(); iter!=_removedIndexedWords.end(); ++iter)
 			{
 				UASSERT(uContains(_mapIdIndex, *iter));
+				UASSERT(uContains(_mapIndexId, _mapIdIndex.at(*iter)));
 				_flannIndex->removePoint(_mapIdIndex.at(*iter));
+				_mapIndexId.erase(_mapIdIndex.at(*iter));
+				_mapIdIndex.erase(*iter);
 			}
+			ULOGGER_DEBUG("Incremental FLANN: Removing %d words... done!", (int)_removedIndexedWords.size());
 
 			if(_notIndexedWords.size())
 			{
+				ULOGGER_DEBUG("Incremental FLANN: Inserting %d words...", (int)_notIndexedWords.size());
 				for(std::set<int>::iterator iter=_notIndexedWords.begin(); iter!=_notIndexedWords.end(); ++iter)
 				{
 					VisualWord* w = uValue(_visualWords, *iter, (VisualWord*)0);
@@ -514,6 +520,7 @@ void VWDictionary::update()
 					int index = 0;
 					if(!_flannIndex->isBuilt())
 					{
+						UDEBUG("Building FLANN index...");
 						switch(_strategy)
 						{
 						case kNNFlannNaive:
@@ -531,6 +538,7 @@ void VWDictionary::update()
 							UFATAL("Not supposed to be here!");
 							break;
 						}
+						UDEBUG("Building FLANN index... done!");
 					}
 					else
 					{
@@ -538,14 +546,13 @@ void VWDictionary::update()
 						UASSERT(w->getDescriptor().type() == _flannIndex->featuresType());
 						index = _flannIndex->addPoint(w->getDescriptor());
 					}
-					_mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(index, w->id()));
-					std::pair<std::map<int, int>::iterator, bool> inserted = _mapIdIndex.insert(std::pair<int, int>(w->id(), index));
-					if(!inserted.second)
-					{
-						//update to new index
-						inserted.first->second = index;
-					}
+					std::pair<std::map<int, int>::iterator, bool> inserted;
+					inserted = _mapIndexId.insert(std::pair<int, int>(index, w->id()));
+					UASSERT(inserted.second);
+					inserted = _mapIdIndex.insert(std::pair<int, int>(w->id(), index));
+					UASSERT(inserted.second);
 				}
+				ULOGGER_DEBUG("Incremental FLANN: Inserting %d words... done!", (int)_notIndexedWords.size());
 			}
 		}
 		else if(_strategy >= kNNBruteForce &&
@@ -633,6 +640,7 @@ void VWDictionary::update()
 	}
 	_notIndexedWords.clear();
 	_removedIndexedWords.clear();
+	UDEBUG("");
 }
 
 void VWDictionary::clear()

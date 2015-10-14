@@ -252,12 +252,13 @@ protected:
      */
     void buildIndexImpl()
     {
+    	UDEBUG("");
         // Create a permutable array of indices to the input vectors.
     	std::vector<int> ind(size_);
         for (size_t i = 0; i < size_; ++i) {
             ind[i] = int(i);
         }
-
+        UDEBUG("");
         mean_ = new DistanceType[veclen_];
         var_ = new DistanceType[veclen_];
 
@@ -268,8 +269,10 @@ protected:
             std::random_shuffle(ind.begin(), ind.end());
             tree_roots_[i] = divideTree(&ind[0], int(size_) );
         }
+        UDEBUG("");
         delete[] mean_;
         delete[] var_;
+        UDEBUG("");
     }
 
     void freeIndex()

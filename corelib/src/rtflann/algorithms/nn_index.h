@@ -39,6 +39,7 @@
 #include "rtflann/util/result_set.h"
 #include "rtflann/util/dynamic_bitset.h"
 #include "rtflann/util/saving.h"
+#include "rtabmap/utilite/ULogger.h"
 
 namespace rtflann
 {
@@ -124,12 +125,15 @@ public:
 	 */
 	virtual void buildIndex()
 	{
+		UDEBUG("");
     	freeIndex();
+    	UDEBUG("");
     	cleanRemovedPoints();
+    	UDEBUG("");
 
     	// building index
 		buildIndexImpl();
-
+		UDEBUG("");
         size_at_build_ = size_;
 
 	}
