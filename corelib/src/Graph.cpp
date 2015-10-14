@@ -239,6 +239,7 @@ void Optimizer::getConnectedGraph(
 	std::multimap<int, int> biLinks;
 	for(std::multimap<int, Link>::const_iterator iter=linksIn.begin(); iter!=linksIn.end(); ++iter)
 	{
+		UASSERT_MSG(findLink(biLinks, iter->second.from(), iter->second.to()) == biLinks.end(), "Input links should be unique between two poses.");
 		biLinks.insert(std::make_pair(iter->second.from(), iter->second.to()));
 		biLinks.insert(std::make_pair(iter->second.to(), iter->second.from()));
 	}
@@ -262,7 +263,7 @@ void Optimizer::getConnectedGraph(
 					{
 						nextDepth.insert(nextId);
 
-						std::map<int, Link>::const_iterator kter = graph::findLink(linksIn, *jter, nextId);
+						std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, *jter, nextId);
 						if(depth == 0 || d < depth-1)
 						{
 							linksOut.insert(*kter);

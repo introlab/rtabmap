@@ -838,7 +838,7 @@ void DatabaseViewer::exportDatabase()
 				{
 					int id = ids.at(i);
 
-					SensorData data = memory_->getNodeData(id, true);
+					SensorData data = memory_->getNodeData(id, true, false);
 					cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
 					if(dialog.isOdomExported())
 					{
@@ -919,7 +919,7 @@ void DatabaseViewer::extractImages()
 		if(ids_.size())
 		{
 			int id = ids_.at(0);
-			SensorData data = memory_->getNodeData(id, true);
+			SensorData data = memory_->getNodeData(id, true, false);
 			if(!data.imageRaw().empty() && !data.rightRaw().empty())
 			{
 				QDir dir;
@@ -1001,7 +1001,7 @@ void DatabaseViewer::extractImages()
 		for(int i=0; i<ids_.size(); ++i)
 		{
 			int id = ids_.at(i);
-			SensorData data = memory_->getNodeData(id, true);
+			SensorData data = memory_->getNodeData(id, true, false);
 			if(!data.imageRaw().empty() && !data.rightRaw().empty())
 			{
 				cv::imwrite(QString("%1/left/%2.jpg").arg(path).arg(id).toStdString(), data.imageRaw());
@@ -1342,7 +1342,7 @@ void DatabaseViewer::view3DMap()
 					rtabmap::Transform pose = iter->second;
 					if(!pose.isNull())
 					{
-						SensorData data = memory_->getNodeData(iter->first, true);
+						SensorData data = memory_->getNodeData(iter->first, true, false);
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 						UASSERT(data.imageRaw().empty() || data.imageRaw().type()==CV_8UC3 || data.imageRaw().type() == CV_8UC1);
 						UASSERT(data.depthOrRightRaw().empty() || data.depthOrRightRaw().type()==CV_8UC1 || data.depthOrRightRaw().type() == CV_16UC1 || data.depthOrRightRaw().type() == CV_32FC1);
@@ -1426,7 +1426,7 @@ void DatabaseViewer::generate3DMap()
 						const rtabmap::Transform & pose = iter->second;
 						if(!pose.isNull())
 						{
-							SensorData data = memory_->getNodeData(iter->first, true);
+							SensorData data = memory_->getNodeData(iter->first, true, false);
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 							UASSERT(data.imageRaw().empty() || data.imageRaw().type()==CV_8UC3 || data.imageRaw().type() == CV_8UC1);
 							UASSERT(data.depthOrRightRaw().empty() || data.depthOrRightRaw().type()==CV_8UC1 || data.depthOrRightRaw().type() == CV_16UC1 || data.depthOrRightRaw().type() == CV_32FC1);
@@ -1690,7 +1690,7 @@ void DatabaseViewer::update(int value,
 			QImage imgDepth;
 			if(memory_)
 			{
-				SensorData data = memory_->getNodeData(id, true);
+				SensorData data = memory_->getNodeData(id, true, false);
 				if(!data.imageRaw().empty())
 				{
 					img = uCvMat2QImage(data.imageRaw());
@@ -1898,7 +1898,7 @@ void DatabaseViewer::updateStereo()
 	if(ui_->horizontalSlider_A->maximum())
 	{
 		int id = ids_.at(ui_->horizontalSlider_A->value());
-		SensorData data = memory_->getNodeData(id, true);
+		SensorData data = memory_->getNodeData(id, true, false);
 		updateStereo(&data);
 	}
 }
@@ -2308,11 +2308,11 @@ void DatabaseViewer::updateConstraintView(
 	{
 		SensorData dataFrom, dataTo;
 
-		dataFrom = memory_->getNodeData(link.from(), true);
+		dataFrom = memory_->getNodeData(link.from(), true, false);
 		UASSERT(dataFrom.imageRaw().empty() || dataFrom.imageRaw().type()==CV_8UC3 || dataFrom.imageRaw().type() == CV_8UC1);
 		UASSERT(dataFrom.depthOrRightRaw().empty() || dataFrom.depthOrRightRaw().type()==CV_8UC1 || dataFrom.depthOrRightRaw().type() == CV_16UC1 || dataFrom.depthOrRightRaw().type() == CV_32FC1);
 
-		dataTo = memory_->getNodeData(link.to(), true);
+		dataTo = memory_->getNodeData(link.to(), true, false);
 		UASSERT(dataTo.imageRaw().empty() || dataTo.imageRaw().type()==CV_8UC3 || dataTo.imageRaw().type() == CV_8UC1);
 		UASSERT(dataTo.depthOrRightRaw().empty() || dataTo.depthOrRightRaw().type()==CV_8UC1 || dataTo.depthOrRightRaw().type() == CV_16UC1 || dataTo.depthOrRightRaw().type() == CV_32FC1);
 
@@ -2699,7 +2699,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 					bool added = false;
 					if(ui_->groupBox_gridFromProjection->isChecked())
 					{
-						SensorData data = memory_->getNodeData(ids.at(i), true);
+						SensorData data = memory_->getNodeData(ids.at(i), true, false);
 						if(!data.depthOrRightRaw().empty())
 						{
 							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
@@ -2755,6 +2755,18 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 					{
 						UINFO("Processed grid map %d/%d (%fs)", i+1, (int)ids.size(), time.ticks());
 					}
+				}
+			}
+			//cleanup
+			for(std::map<int, std::pair<cv::Mat, cv::Mat> >::iterator iter=localMaps_.begin(); iter!=localMaps_.end();)
+			{
+				if(graphFiltered.find(iter->first) == graphFiltered.end())
+				{
+					localMaps_.erase(iter++);
+				}
+				else
+				{
+					++iter;
 				}
 			}
 			UINFO("Update local maps list... done");
@@ -3338,8 +3350,8 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 		Memory tmpMemory(parameters);
 
 		// Add signatures
-		SensorData dataFrom = memory_->getNodeData(from, true);
-		SensorData dataTo = memory_->getNodeData(to, true);
+		SensorData dataFrom = memory_->getNodeData(from, true, false);
+		SensorData dataTo = memory_->getNodeData(to, true, false);
 
 		if(from > to)
 		{
@@ -3459,8 +3471,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 			Memory tmpMemory(parameters);
 
 			// Add signatures
-			SensorData dataFrom = memory_->getNodeData(from, true);
-			SensorData dataTo = memory_->getNodeData(to, true);
+			SensorData dataFrom = memory_->getNodeData(from, true, false);
+			SensorData dataTo = memory_->getNodeData(to, true, false);
 
 			if(from > to)
 			{

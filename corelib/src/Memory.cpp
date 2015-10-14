@@ -3392,23 +3392,27 @@ cv::Mat Memory::getImageCompressed(int signatureId) const
 	return image;
 }
 
-SensorData Memory::getNodeData(int nodeId, bool uncompressedData)
+SensorData Memory::getNodeData(int nodeId, bool uncompressedData, bool keepLoadedDataInMemory)
 {
 	UDEBUG("nodeId=%d", nodeId);
 	SensorData r;
 	Signature * s = this->_getSignature(nodeId);
 	if(s && !s->sensorData().imageCompressed().empty())
 	{
-		if(uncompressedData)
+		if(keepLoadedDataInMemory && uncompressedData)
 		{
 			s->sensorData().uncompressData();
 		}
 		r = s->sensorData();
+		if(!keepLoadedDataInMemory && uncompressedData)
+		{
+			r.uncompressData();
+		}
 	}
 	else if(_dbDriver)
 	{
 		// load from database
-		if(s)
+		if(s && keepLoadedDataInMemory)
 		{
 			std::list<Signature*> signatures;
 			signatures.push_back(s);

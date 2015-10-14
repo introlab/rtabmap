@@ -61,7 +61,7 @@ public:
 	static void getConnectedGraph(
 			int fromId,
 			const std::map<int, Transform> & posesIn,
-			const std::multimap<int, Link> & linksIn,
+			const std::multimap<int, Link> & linksIn, // only one link between two poses
 			std::map<int, Transform> & posesOut,
 			std::multimap<int, Link> & linksOut,
 			int depth = 0);

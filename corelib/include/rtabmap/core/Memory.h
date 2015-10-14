@@ -141,7 +141,7 @@ public:
 			double & stamp,
 			bool lookInDatabase = false) const;
 	cv::Mat getImageCompressed(int signatureId) const;
-	SensorData getNodeData(int nodeId, bool uncompressedData = false);
+	SensorData getNodeData(int nodeId, bool uncompressedData = false, bool keepLoadedDataInMemory = true);
 	void getNodeWords(int nodeId,
 			std::multimap<int, cv::KeyPoint> & words,
 			std::multimap<int, pcl::PointXYZ> & words3);
