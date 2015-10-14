@@ -144,7 +144,9 @@ public:
 	 */
     virtual void buildIndex(const Matrix<ElementType>& dataset)
     {
+    	UDEBUG("");
         setDataset(dataset);
+        UDEBUG("");
         this->buildIndex();
     }
 
@@ -767,6 +769,7 @@ protected:
     void extendDataset(const Matrix<ElementType>& new_points)
     {
     	size_t new_size = size_ + new_points.rows;
+    	UDEBUG("size=%d, new_size=%d, removed_=%d", size_, new_size, removed_?1:0);
     	if (removed_) {
     		removed_points_.resize(new_size);
     		ids_.resize(new_size);
@@ -780,6 +783,7 @@ protected:
     		}
     	}
     	size_ = new_size;
+    	UDEBUG("last_id_=%d", last_id_);
     }
 
 

@@ -47,6 +47,7 @@
 #include "rtflann/util/allocator.h"
 #include "rtflann/util/random.h"
 #include "rtflann/util/saving.h"
+#include "rtabmap/utilite/ULogger.h"
 
 
 namespace rtflann
@@ -141,7 +142,7 @@ public:
     
     void addPoints(const Matrix<ElementType>& points, float rebuild_threshold = 2)
     {
-        assert(points.cols==veclen_);
+        UASSERT(points.cols==veclen_);
 
         size_t old_size = size_;
         extendDataset(points);
@@ -664,6 +665,7 @@ private:
     
     void addPointToTree(NodePtr node, int ind)
     {
+    	UDEBUG("ind=%d", ind);
         ElementType* point = points_[ind];
         
         if ((node->child1==NULL) && (node->child2==NULL)) {
