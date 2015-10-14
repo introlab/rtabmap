@@ -47,7 +47,6 @@
 #include "rtflann/util/allocator.h"
 #include "rtflann/util/random.h"
 #include "rtflann/util/saving.h"
-#include "rtabmap/utilite/ULogger.h"
 
 
 namespace rtflann
@@ -142,7 +141,7 @@ public:
     
     void addPoints(const Matrix<ElementType>& points, float rebuild_threshold = 2)
     {
-        UASSERT(points.cols==veclen_);
+        assert(points.cols==veclen_);
 
         size_t old_size = size_;
         extendDataset(points);
@@ -151,7 +150,6 @@ public:
             buildIndex();
         }
         else {
-        	UDEBUG("Add to trees (%d)", trees_);
             for (size_t i=old_size;i<size_;++i) {
                 for (int j = 0; j < trees_; j++) {
                     addPointToTree(tree_roots_[j], i);
@@ -254,13 +252,12 @@ protected:
      */
     void buildIndexImpl()
     {
-    	UDEBUG("");
         // Create a permutable array of indices to the input vectors.
     	std::vector<int> ind(size_);
         for (size_t i = 0; i < size_; ++i) {
             ind[i] = int(i);
         }
-        UDEBUG("");
+
         mean_ = new DistanceType[veclen_];
         var_ = new DistanceType[veclen_];
 
@@ -271,10 +268,8 @@ protected:
             std::random_shuffle(ind.begin(), ind.end());
             tree_roots_[i] = divideTree(&ind[0], int(size_) );
         }
-        UDEBUG("");
         delete[] mean_;
         delete[] var_;
-        UDEBUG("");
     }
 
     void freeIndex()

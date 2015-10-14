@@ -3903,6 +3903,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 	if(_parallelized)
 	{
+		UDEBUG("Start dictionary update thread");
 		preUpdateThread.start();
 	}
 
@@ -3916,12 +3917,14 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			// convert to grayscale
 			if(data.imageRaw().channels() > 1)
 			{
+				UDEBUG("convert to grayscale...");
 				cv::cvtColor(data.imageRaw(), imageMono, cv::COLOR_BGR2GRAY);
 			}
 			else
 			{
 				imageMono = data.imageRaw();
 			}
+			UDEBUG("Set ROI...");
 			cv::Rect roi = Feature2D::computeRoi(imageMono, _roiRatios);
 
 			if(!data.depthOrRightRaw().empty() && data.stereoCameraModel().isValid())
@@ -3933,6 +3936,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				{
 					subPixelOn = true;
 				}
+				UDEBUG("Generating keypoints...");
 				keypoints = _feature2D->generateKeypoints(imageMono, roi);
 				t = timer.ticks();
 				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
@@ -4019,6 +4023,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				{
 					subPixelOn = true;
 				}
+				UDEBUG("Generating keypoints...");
 				keypoints = _feature2D->generateKeypoints(imageMono, roi);
 				t = timer.ticks();
 				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
@@ -4080,6 +4085,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			else
 			{
 				//RGB only
+				UDEBUG("Generating keypoints...");
 				keypoints = _feature2D->generateKeypoints(imageMono, roi);
 				t = timer.ticks();
 				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
@@ -4199,7 +4205,9 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 	if(_parallelized)
 	{
+		UDEBUG("Joining dictionary update thread...");
 		preUpdateThread.join(); // Wait the dictionary to be updated
+		UDEBUG("Joining dictionary update thread... thread finished!");
 	}
 
 	std::list<int> wordIds;

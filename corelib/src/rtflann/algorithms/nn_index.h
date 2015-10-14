@@ -39,7 +39,6 @@
 #include "rtflann/util/result_set.h"
 #include "rtflann/util/dynamic_bitset.h"
 #include "rtflann/util/saving.h"
-#include "rtabmap/utilite/ULogger.h"
 
 namespace rtflann
 {
@@ -125,15 +124,12 @@ public:
 	 */
 	virtual void buildIndex()
 	{
-		UDEBUG("");
     	freeIndex();
-    	UDEBUG("");
     	cleanRemovedPoints();
-    	UDEBUG("");
 
     	// building index
 		buildIndexImpl();
-		UDEBUG("");
+
         size_at_build_ = size_;
 
 	}
@@ -144,9 +140,7 @@ public:
 	 */
     virtual void buildIndex(const Matrix<ElementType>& dataset)
     {
-    	UDEBUG("");
         setDataset(dataset);
-        UDEBUG("");
         this->buildIndex();
     }
 
@@ -769,7 +763,6 @@ protected:
     void extendDataset(const Matrix<ElementType>& new_points)
     {
     	size_t new_size = size_ + new_points.rows;
-    	UDEBUG("size=%d, new_size=%d, removed_=%d", size_, new_size, removed_?1:0);
     	if (removed_) {
     		removed_points_.resize(new_size);
     		ids_.resize(new_size);
@@ -783,7 +776,6 @@ protected:
     		}
     	}
     	size_ = new_size;
-    	UDEBUG("last_id_=%d", last_id_);
     }
 
 
