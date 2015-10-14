@@ -151,6 +151,7 @@ public:
             buildIndex();
         }
         else {
+        	UDEBUG("Add to trees (%d)", trees_);
             for (size_t i=old_size;i<size_;++i) {
                 for (int j = 0; j < trees_; j++) {
                     addPointToTree(tree_roots_[j], i);
@@ -665,7 +666,6 @@ private:
     
     void addPointToTree(NodePtr node, int ind)
     {
-    	UDEBUG("ind=%d", ind);
         ElementType* point = points_[ind];
         
         if ((node->child1==NULL) && (node->child2==NULL)) {
