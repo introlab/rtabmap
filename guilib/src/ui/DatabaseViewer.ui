@@ -50,8 +50,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>154</width>
-             <height>184</height>
+             <width>166</width>
+             <height>173</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -236,8 +236,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>154</width>
-             <height>184</height>
+             <width>165</width>
+             <height>173</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -418,7 +418,7 @@
      <x>0</x>
      <y>0</y>
      <width>1285</width>
-     <height>22</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -829,15 +829,15 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>1</number>
+        <number>3</number>
        </property>
        <widget class="QWidget" name="page">
         <property name="geometry">
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>312</width>
-          <height>314</height>
+          <width>338</width>
+          <height>303</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1056,8 +1056,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>366</width>
-          <height>391</height>
+          <width>351</width>
+          <height>380</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1376,7 +1376,7 @@
           <x>0</x>
           <y>0</y>
           <width>338</width>
-          <height>330</height>
+          <height>333</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1613,9 +1613,9 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>0</y>
-          <width>248</width>
-          <height>343</height>
+          <y>-100</y>
+          <width>338</width>
+          <height>377</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1741,6 +1741,55 @@
               </property>
              </widget>
             </item>
+            <item row="2" column="1">
+             <widget class="QLabel" name="label_66">
+              <property name="text">
+               <string>Cluster size</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QLabel" name="label_67">
+              <property name="text">
+               <string>Max ground angle</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_projMaxAngle">
+              <property name="suffix">
+               <string> rad</string>
+              </property>
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="minimum">
+               <double>0.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>3.140000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.100000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.790000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QSpinBox" name="spinBox_projClusterSize">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>10000</number>
+              </property>
+              <property name="value">
+               <number>20</number>
+              </property>
+             </widget>
+            </item>
            </layout>
           </widget>
          </item>
@@ -1822,8 +1871,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>201</width>
-          <height>126</height>
+          <width>351</width>
+          <height>176</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1922,8 +1971,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>283</width>
-          <height>322</height>
+          <width>338</width>
+          <height>309</height>
          </rect>
         </property>
         <attribute name="label">
