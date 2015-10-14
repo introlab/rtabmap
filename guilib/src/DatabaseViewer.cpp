@@ -2679,73 +2679,82 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 	if(memory_ && value >=0 && value < (int)graphes_.size())
 	{
 		std::map<int, rtabmap::Transform> & graph = uValueAt(graphes_, value);
-		if(ui_->dockWidget_graphView->isVisible() && localMaps_.size() == 0)
+		std::map<int, rtabmap::Transform> graphFiltered = graph;
+		if(ui_->groupBox_posefiltering->isChecked())
+		{
+			graphFiltered = graph::radiusPosesFiltering(graph,
+					ui_->doubleSpinBox_posefilteringRadius->value(),
+					ui_->doubleSpinBox_posefilteringAngle->value()*CV_PI/180.0);
+		}
+		if(ui_->dockWidget_graphView->isVisible())
 		{
 			//update scans
 			UINFO("Update local maps list...");
-
-			std::vector<int> ids = uKeys(graph);
+			std::vector<int> ids = uKeys(graphFiltered);
 			for(unsigned int i=0; i<ids.size(); ++i)
 			{
-				UTimer time;
-				bool added = false;
-				if(ui_->groupBox_gridFromProjection->isChecked())
+				if(localMaps_.find(ids[i]) == localMaps_.end())
 				{
-					SensorData data = memory_->getNodeData(ids.at(i), true);
-					if(!data.depthOrRightRaw().empty())
+					UTimer time;
+					bool added = false;
+					if(ui_->groupBox_gridFromProjection->isChecked())
 					{
-						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-						cloud = util3d::cloudFromSensorData(data,
-								ui_->spinBox_projDecimation->value(),
-								ui_->doubleSpinBox_projMaxDepth->value(),
-								ui_->doubleSpinBox_gridCellSize->value());
-
-						if(cloud->size())
+						SensorData data = memory_->getNodeData(ids.at(i), true);
+						if(!data.depthOrRightRaw().empty())
 						{
-							UTimer timer;
-							float cellSize = ui_->doubleSpinBox_gridCellSize->value();
-							float groundNormalMaxAngle = M_PI_4;
-							int minClusterSize = 20;
-							cv::Mat ground, obstacles;
+							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+							cloud = util3d::cloudFromSensorData(data,
+									ui_->spinBox_projDecimation->value(),
+									ui_->doubleSpinBox_projMaxDepth->value(),
+									ui_->doubleSpinBox_gridCellSize->value());
 
-							util3d::occupancy2DFromCloud3D<pcl::PointXYZ>(
-									cloud,
-									ground, obstacles,
-									cellSize,
-									groundNormalMaxAngle,
-									minClusterSize);
-
-							if(!ground.empty() || !obstacles.empty())
+							if(cloud->size())
 							{
-								localMaps_.insert(std::make_pair(ids.at(i), std::make_pair(ground, obstacles)));
-								added = true;
+								UTimer timer;
+								float cellSize = ui_->doubleSpinBox_gridCellSize->value();
+								float groundNormalMaxAngle = M_PI_4;
+								int minClusterSize = 20;
+								cv::Mat ground, obstacles;
+
+								util3d::occupancy2DFromCloud3D<pcl::PointXYZ>(
+										cloud,
+										ground, obstacles,
+										cellSize,
+										groundNormalMaxAngle,
+										minClusterSize);
+
+								if(!ground.empty() || !obstacles.empty())
+								{
+									localMaps_.insert(std::make_pair(ids.at(i), std::make_pair(ground, obstacles)));
+									added = true;
+								}
 							}
 						}
 					}
-				}
-				else
-				{
-					SensorData data = memory_->getNodeData(ids.at(i), false);
-					if(!data.laserScanCompressed().empty())
+					else
 					{
-						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-						cv::Mat laserScan;
-						data.uncompressDataConst(0, 0, &laserScan);
-						cv::Mat ground, obstacles;
-						util3d::occupancy2DFromLaserScan(
-								laserScan,
-								ground,
-								obstacles,
-								ui_->doubleSpinBox_gridCellSize->value(),
-								ui_->checkBox_gridFillUnkownSpace->isChecked(),
-								data.laserScanMaxRange());
-						localMaps_.insert(std::make_pair(ids.at(i), std::make_pair(ground, obstacles)));
-						added = true;
+						SensorData data = memory_->getNodeData(ids.at(i), false);
+						if(!data.laserScanCompressed().empty())
+						{
+							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+							cv::Mat laserScan;
+							data.uncompressDataConst(0, 0, &laserScan);
+							cv::Mat ground, obstacles;
+							util3d::occupancy2DFromLaserScan(
+									laserScan,
+									ground,
+									obstacles,
+									ui_->doubleSpinBox_gridCellSize->value(),
+									ui_->checkBox_gridFillUnkownSpace->isChecked(),
+									data.laserScanMaxRange());
+							localMaps_.insert(std::make_pair(ids.at(i), std::make_pair(ground, obstacles)));
+							added = true;
+						}
 					}
-				}
-				if(added)
-				{
-					UINFO("Processed grid map %d/%d (%fs)", i+1, (int)ids.size(), time.ticks());
+					if(added)
+					{
+						UINFO("Processed grid map %d/%d (%fs)", i+1, (int)ids.size(), time.ticks());
+					}
 				}
 			}
 			UINFO("Update local maps list... done");
@@ -2759,17 +2768,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			cv::Mat map;
 			QTime time;
 			time.start();
-			if(ui_->groupBox_posefiltering->isChecked())
-			{
-				std::map<int, rtabmap::Transform> graphFiltered = graph::radiusPosesFiltering(graph,
-						ui_->doubleSpinBox_posefilteringRadius->value(),
-						ui_->doubleSpinBox_posefilteringAngle->value()*CV_PI/180.0);
-				map = rtabmap::util3d::create2DMapFromOccupancyLocalMaps(graphFiltered, localMaps_, cell, xMin, yMin, 0, ui_->checkBox_gridErode->isChecked());
-			}
-			else
-			{
-				map = rtabmap::util3d::create2DMapFromOccupancyLocalMaps(graph, localMaps_, cell, xMin, yMin, 0, ui_->checkBox_gridErode->isChecked());
-			}
+			map = rtabmap::util3d::create2DMapFromOccupancyLocalMaps(graphFiltered, localMaps_, cell, xMin, yMin, 0, ui_->checkBox_gridErode->isChecked());
 			if(!map.empty())
 			{
 				ui_->graphViewer->updateMap(rtabmap::util3d::convertMap2Image8U(map), cell, xMin, yMin);
@@ -2966,6 +2965,7 @@ void DatabaseViewer::updateGraphView()
 		}
 		std::map<int, rtabmap::Transform> posesOut;
 		std::multimap<int, rtabmap::Link> linksOut;
+		UINFO("Get connected graph (%d poses, %d links)", (int)poses.size(), (int)links.size());
 		optimizer->getConnectedGraph(
 				fromId,
 				poses,
@@ -2973,7 +2973,7 @@ void DatabaseViewer::updateGraphView()
 				posesOut,
 				linksOut,
 				ui_->spinBox_optimizationDepth->value());
-
+		UINFO("Connected graph of %d poses and %d links", (int)posesOut.size(), (int)linksOut.size());
 		QTime time;
 		time.start();
 		std::map<int, rtabmap::Transform> finalPoses = optimizer->optimize(fromId, posesOut, linksOut, &graphes_);

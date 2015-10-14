@@ -236,6 +236,13 @@ void Optimizer::getConnectedGraph(
 	std::set<int> nextDepth;
 	nextDepth.insert(fromId);
 	int d = 0;
+	std::multimap<int, int> biLinks;
+	for(std::multimap<int, Link>::const_iterator iter=linksIn.begin(); iter!=linksIn.end(); ++iter)
+	{
+		biLinks.insert(std::make_pair(iter->second.from(), iter->second.to()));
+		biLinks.insert(std::make_pair(iter->second.to(), iter->second.from()));
+	}
+
 	while((depth == 0 || d < depth) && nextDepth.size())
 	{
 		curentDepth = nextDepth;
@@ -248,39 +255,22 @@ void Optimizer::getConnectedGraph(
 				ids.insert(*jter);
 				posesOut.insert(*posesIn.find(*jter));
 
-				for(std::multimap<int, Link>::const_iterator iter=linksIn.begin(); iter!=linksIn.end(); ++iter)
+				for(std::multimap<int, int>::const_iterator iter=biLinks.find(*jter); iter!=biLinks.end() && iter->first==*jter; ++iter)
 				{
-					if(iter->second.from() == *jter)
+					int nextId = iter->second;
+					if(ids.find(nextId) == ids.end() && uContains(posesIn, nextId))
 					{
-						if(ids.find(iter->second.to()) == ids.end() && uContains(posesIn, iter->second.to()))
-						{
-							nextDepth.insert(iter->second.to());
-							if(depth == 0 || d < depth-1)
-							{
-								linksOut.insert(*iter);
-							}
-							else if(curentDepth.find(iter->second.to()) != curentDepth.end() ||
-									ids.find(iter->second.to()) != ids.end())
-							{
-								linksOut.insert(*iter);
-							}
-						}
-					}
-					else if(iter->second.to() == *jter)
-					{
-						if(ids.find(iter->second.from()) == ids.end() && uContains(posesIn, iter->second.from()))
-						{
-							nextDepth.insert(iter->second.from());
+						nextDepth.insert(nextId);
 
-							if(depth == 0 || d < depth-1)
-							{
-								linksOut.insert(*iter);
-							}
-							else if(curentDepth.find(iter->second.from()) != curentDepth.end() ||
-									ids.find(iter->second.from()) != ids.end())
-							{
-								linksOut.insert(*iter);
-							}
+						std::map<int, Link>::const_iterator kter = graph::findLink(linksIn, *jter, nextId);
+						if(depth == 0 || d < depth-1)
+						{
+							linksOut.insert(*kter);
+						}
+						else if(curentDepth.find(nextId) != curentDepth.end() ||
+								ids.find(nextId) != ids.end())
+						{
+							linksOut.insert(*kter);
 						}
 					}
 				}
