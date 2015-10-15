@@ -390,7 +390,8 @@ CameraOpenNI2::CameraOpenNI2(
 #endif
 	_depthFx(0.0f),
 	_depthFy(0.0f),
-	_deviceId(deviceId)
+	_deviceId(deviceId),
+	_openNI2StampsAndIDsUsed(false)
 {
 }
 
@@ -715,7 +716,14 @@ SensorData CameraOpenNI2::captureImage()
 						float(rgb.cols/2) - 0.5f,  //cx
 						float(rgb.rows/2) - 0.5f,  //cy
 						this->getLocalTransform());
-				data = SensorData(rgb, depth, model, this->getNextSeqID(), UTimer::now());
+				if(_openNI2StampsAndIDsUsed)
+				{
+					data = SensorData(rgb, depth, model, depthFrame.getFrameIndex(), double(depthFrame.getTimestamp()) / 1000000.0);
+				}
+				else
+				{
+					data = SensorData(rgb, depth, model, this->getNextSeqID(), UTimer::now());
+				}
 			}
 		}
 	}

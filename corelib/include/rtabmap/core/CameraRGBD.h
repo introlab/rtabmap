@@ -160,6 +160,7 @@ public:
 	bool setExposure(int value);
 	bool setGain(int value);
 	bool setMirroring(bool enabled);
+	void setOpenNI2StampsAndIDsUsed(bool used) {_openNI2StampsAndIDsUsed = used;}
 
 protected:
 	virtual SensorData captureImage();
@@ -171,6 +172,7 @@ private:
 	float _depthFx;
 	float _depthFy;
 	std::string _deviceId;
+	bool _openNI2StampsAndIDsUsed;
 };
 
 

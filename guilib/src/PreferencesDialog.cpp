@@ -377,6 +377,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->openni2_exposure, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_gain, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_mirroring, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->openni2_stampsIdsUsed, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_freenect2Format, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->toolButton_cameraRGBDImages_timestamps, SIGNAL(clicked()), this, SLOT(selectSourceRGBDImagesStamps()));
@@ -1134,6 +1135,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->openni2_exposure->setValue(0);
 		_ui->openni2_gain->setValue(100);
 		_ui->openni2_mirroring->setChecked(false);
+		_ui->openni2_stampsIdsUsed->setChecked(false);
 		_ui->comboBox_freenect2Format->setCurrentIndex(0);
 		_ui->lineEdit_openniOniPath->clear();
 		_ui->lineEdit_openni2OniPath->clear();
@@ -1408,6 +1410,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->openni2_exposure->setValue(settings.value("exposure", _ui->openni2_exposure->value()).toInt());
 	_ui->openni2_gain->setValue(settings.value("gain", _ui->openni2_gain->value()).toInt());
 	_ui->openni2_mirroring->setChecked(settings.value("mirroring", _ui->openni2_mirroring->isChecked()).toBool());
+	_ui->openni2_stampsIdsUsed->setChecked(settings.value("stampsIdsUsed", _ui->openni2_stampsIdsUsed->isChecked()).toBool());
 	_ui->lineEdit_openni2OniPath->setText(settings.value("oniPath", _ui->lineEdit_openni2OniPath->text()).toString());
 	settings.endGroup(); // Openni2
 
@@ -1721,6 +1724,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("exposure", 		  _ui->openni2_exposure->value());
 	settings.setValue("gain", 		      _ui->openni2_gain->value());
 	settings.setValue("mirroring", 		  _ui->openni2_mirroring->isChecked());
+	settings.setValue("stampsIdsUsed",    _ui->openni2_stampsIdsUsed->isChecked());
 	settings.setValue("oniPath", 		  _ui->lineEdit_openni2OniPath->text());
 	settings.endGroup(); // Openni2
 
@@ -3733,6 +3737,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 				((CameraOpenNI2*)camera)->setAutoWhiteBalance(_ui->openni2_autoWhiteBalance->isChecked());
 				((CameraOpenNI2*)camera)->setAutoExposure(_ui->openni2_autoExposure->isChecked());
 				((CameraOpenNI2*)camera)->setMirroring(_ui->openni2_mirroring->isChecked());
+				((CameraOpenNI2*)camera)->setOpenNI2StampsAndIDsUsed(_ui->openni2_stampsIdsUsed->isChecked());
 				if(CameraOpenNI2::exposureGainAvailable())
 				{
 					((CameraOpenNI2*)camera)->setExposure(_ui->openni2_exposure->value());
