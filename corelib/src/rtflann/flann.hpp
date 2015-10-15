@@ -200,6 +200,16 @@ public:
         return nnIndex_->size();
     }
 
+    size_t removedCount() const
+	{
+		return nnIndex_->removedCount();
+	}
+
+    size_t sizeAtBuild() const
+	{
+		return nnIndex_->sizeAtBuild();
+	}
+
     /**
      * \returns The index type (kdtree, kmeans,...)
      */

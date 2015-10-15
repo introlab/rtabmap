@@ -203,6 +203,16 @@ public:
     	return size_ - removed_count_;
     }
 
+    inline size_t removedCount() const
+	{
+		return removed_count_;
+	}
+
+    inline size_t sizeAtBuild() const
+	{
+		return size_at_build_;
+	}
+
     /**
      * @return The dimensionality of the features in this index.
      */

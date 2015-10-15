@@ -85,6 +85,8 @@ public:
 		}
 		nextIndex_ = 0;
 		isLSH_ = false;
+		addedDescriptors_.clear();
+		removedIndexes_.clear();
 	}
 
 	unsigned int indexedFeatures() const
@@ -142,6 +144,14 @@ public:
 			index_ = new rtflann::Index<rtflann::L2<float> >(dataset, params);
 			((rtflann::Index<rtflann::L2<float> >*)index_)->buildIndex();
 		}
+
+		if(features.rows == 1)
+		{
+			// incremental FLANN
+			addedDescriptors_.insert(std::make_pair(nextIndex_, features));
+		}
+		// else assume that the features are kept in memory outside this class (e.g., dataTree_)
+
 		nextIndex_ = features.rows;
 	}
 
@@ -165,14 +175,41 @@ public:
 		UASSERT(feature.rows == 1);
 		if(featuresType_ == CV_8UC1)
 		{
-			rtflann::Matrix<unsigned char> dataset(feature.data, feature.rows, feature.cols);
-			((rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->addPoints(dataset);
+			rtflann::Matrix<unsigned char> point(feature.data, feature.rows, feature.cols);
+			rtflann::Index<rtflann::Hamming<unsigned char> > * index = (rtflann::Index<rtflann::Hamming<unsigned char> >*)index_;
+			index->addPoints(point, 0);
+			// Rebuild index if it doubles in size
+			if(index->sizeAtBuild() * 2 < index->size()+index->removedCount())
+			{
+				// clean not used features
+				for(std::list<int>::iterator iter=removedIndexes_.begin(); iter!=removedIndexes_.end(); ++iter)
+				{
+					addedDescriptors_.erase(*iter);
+				}
+				removedIndexes_.clear();
+				index->buildIndex();
+			}
 		}
 		else
 		{
-			rtflann::Matrix<float> dataset((float*)feature.data, feature.rows, feature.cols);
-			((rtflann::Index<rtflann::L2<float> >*)index_)->addPoints(dataset);
+			rtflann::Matrix<float> point((float*)feature.data, feature.rows, feature.cols);
+			rtflann::Index<rtflann::L2<float> > * index = (rtflann::Index<rtflann::L2<float> >*)index_;
+			index->addPoints(point, 0);
+			// Rebuild index if it doubles in size
+			if(index->sizeAtBuild() * 2 < index->size()+index->removedCount())
+			{
+				// clean not used features
+				for(std::list<int>::iterator iter=removedIndexes_.begin(); iter!=removedIndexes_.end(); ++iter)
+				{
+					addedDescriptors_.erase(*iter);
+				}
+				removedIndexes_.clear();
+				index->buildIndex();
+			}
 		}
+
+		addedDescriptors_.insert(std::make_pair(nextIndex_, feature));
+
 		return nextIndex_++;
 	}
 
@@ -197,6 +234,7 @@ public:
 		{
 			((rtflann::Index<rtflann::L2<float> >*)index_)->removePoint(index);
 		}
+		removedIndexes_.push_back(index);
 	}
 
 	void knnSearch(
@@ -236,6 +274,11 @@ private:
 	int featuresType_;
 	int featuresDim_;
 	bool isLSH_;
+
+	// keep feature in memory until the tree is rebuilt
+	// (in case the word is deleted when removed from the VWDictionary)
+	std::map<int, cv::Mat> addedDescriptors_;
+	std::list<int> removedIndexes_;
 };
 
 const int VWDictionary::ID_START = 1;
