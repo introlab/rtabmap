@@ -75,6 +75,7 @@
     </widget>
     <addaction name="actionDownload_all_clouds"/>
     <addaction name="actionDownload_graph"/>
+    <addaction name="actionUpdate_cache_from_database"/>
     <addaction name="actionClear_cache"/>
     <addaction name="separator"/>
     <addaction name="actionView_high_res_point_cloud"/>
@@ -1275,6 +1276,11 @@
   <action name="actionSend_waypoints">
    <property name="text">
     <string>Send waypoints...</string>
+   </property>
+  </action>
+  <action name="actionUpdate_cache_from_database">
+   <property name="text">
+    <string>Update cache from a local database copy...</string>
    </property>
   </action>
  </widget>

@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/ParamEvent.h"
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/Memory.h"
+#include "rtabmap/core/DBDriver.h"
 
 #include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/KeypointItem.h"
@@ -311,6 +312,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionDelete_memory, SIGNAL(triggered()), this , SLOT(deleteMemory()));
 	connect(_ui->actionDownload_all_clouds, SIGNAL(triggered()), this , SLOT(downloadAllClouds()));
 	connect(_ui->actionDownload_graph, SIGNAL(triggered()), this , SLOT(downloadPoseGraph()));
+	connect(_ui->actionUpdate_cache_from_database, SIGNAL(triggered()), this, SLOT(updateCacheFromDatabase()));
 	connect(_ui->menuEdit, SIGNAL(aboutToShow()), this, SLOT(updateEditMenu()));
 	connect(_ui->actionDefault_views, SIGNAL(triggered(bool)), this, SLOT(setDefaultViews()));
 	connect(_ui->actionAuto_screen_capture, SIGNAL(triggered(bool)), this, SLOT(selectScreenCaptureFormat(bool)));
@@ -3990,6 +3992,51 @@ void MainWindow::label()
 	}
 }
 
+void MainWindow::updateCacheFromDatabase()
+{
+	QString dir = getWorkingDirectory();
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("RTAB-Map database files (*.db)"));
+	if(!path.isEmpty())
+	{
+		updateCacheFromDatabase(path);
+	}
+}
+
+void MainWindow::updateCacheFromDatabase(const QString & path)
+{
+	if(!path.isEmpty())
+	{
+		DBDriver * driver = DBDriver::create();
+		if(driver->openConnection(path.toStdString()))
+		{
+			UINFO("Update cache...");
+			_initProgressDialog->resetProgress();
+			_initProgressDialog->show();
+			_initProgressDialog->appendText(tr("Downloading the map from \"%1\" (without poses and links)...")
+					.arg(path));
+
+			std::set<int> ids;
+			driver->getAllNodeIds(ids, true);
+			std::list<Signature*> signaturesList;
+			driver->loadSignatures(std::list<int>(ids.begin(), ids.end()), signaturesList);
+			std::map<int, Signature> signatures;
+			driver->loadNodeData(signaturesList);
+			for(std::list<Signature *>::iterator iter=signaturesList.begin(); iter!=signaturesList.end(); ++iter)
+			{
+				signatures.insert(std::make_pair((*iter)->id(), *(*iter)));
+				delete *iter;
+			}
+			RtabmapEvent3DMap event(signatures, _currentPosesMap, _currentLinksMap);
+			processRtabmapEvent3DMap(event);
+		}
+		else
+		{
+			QMessageBox::warning(this, tr("Update cache"), tr("Failed to open database \"%1\"").arg(path));
+		}
+		delete driver;
+	}
+}
+
 void MainWindow::downloadAllClouds()
 {
 	QStringList items;
@@ -5775,6 +5822,7 @@ void MainWindow::changeState(MainWindow::State newState)
 	_ui->actionDump_the_memory->setVisible(!monitoring);
 	_ui->actionDump_the_prediction_matrix->setVisible(!monitoring);
 	_ui->actionGenerate_map->setVisible(!monitoring);
+	_ui->actionUpdate_cache_from_database->setVisible(monitoring);
 	_ui->menuExport_poses->menuAction()->setVisible(!monitoring);
 	_ui->actionOpen_working_directory->setVisible(!monitoring);
 	_ui->actionData_recorder->setVisible(!monitoring);
