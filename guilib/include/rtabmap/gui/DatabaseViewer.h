@@ -50,7 +50,7 @@ class QLabel;
 
 namespace rtabmap
 {
-class Memory;
+class DBDriver;
 class ImageView;
 class SensorData;
 class CloudViewer;
@@ -155,7 +155,7 @@ private:
 	QMap<int, int> idToIndex_;
 	QList<rtabmap::Link> neighborLinks_;
 	QList<rtabmap::Link> loopLinks_;
-	rtabmap::Memory * memory_;
+	rtabmap::DBDriver * dbDriver_;
 	QString pathDatabase_;
 	std::string databaseFileName_;
 	std::list<std::map<int, rtabmap::Transform> > graphes_;

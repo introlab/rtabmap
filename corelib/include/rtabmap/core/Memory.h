@@ -48,7 +48,6 @@ namespace rtabmap {
 
 class Signature;
 class DBDriver;
-class GraphNode;
 class VWDictionary;
 class VisualWord;
 class Feature2D;
@@ -164,10 +163,7 @@ public:
 	virtual void dumpSignatures(const char * fileNameSign, bool words3D) const;
 	void dumpDictionary(const char * fileNameRef, const char * fileNameDesc) const;
 
-	void generateGraph(const std::string & fileName, std::set<int> ids = std::set<int>());
-	void createGraph(GraphNode * parent,
-			unsigned int maxDepth,
-			const std::set<int> & endIds = std::set<int>());
+	void generateGraph(const std::string & fileName, const std::set<int> & ids = std::set<int>());
 
 	//keypoint stuff
 	const VWDictionary * getVWDictionary() const;

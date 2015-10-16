@@ -3198,7 +3198,7 @@ void MainWindow::generateGraphDOT()
 				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGenerateDOTGraph, false, path.toStdString(), id, margin));
 
 				_ui->dockWidget_console->show();
-				_ui->widget_console->appendMsg(QString("Graph saved... Tip:\nneato -Tpdf \"%1\" -o out.pdf").arg(_graphSavingFileName).arg(_graphSavingFileName));
+				_ui->widget_console->appendMsg(QString("Graph saved... Tip:\nneato -Tpdf \"%1\" -o out.pdf").arg(_graphSavingFileName));
 			}
 		}
 	}

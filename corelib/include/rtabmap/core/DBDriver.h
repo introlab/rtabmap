@@ -61,6 +61,9 @@ class VisualWord;
 class RTABMAP_EXP DBDriver : public UThreadNode
 {
 public:
+	static DBDriver * create(const ParametersMap & parameters = ParametersMap());
+
+public:
 	virtual ~DBDriver();
 
 	virtual void parseParameters(const ParametersMap & parameters);
@@ -74,6 +77,15 @@ public:
 	void emptyTrashes(bool async = false);
 	double getEmptyTrashesTime() const {return _emptyTrashesTime;}
 	void setTimestampUpdateEnabled(bool enabled) {_timestampUpdate = enabled;} // used on Update Signature and Word queries
+
+	// Warning: the following functions don't look in the trash, direct database modifications
+	void generateGraph(
+			const std::string & fileName,
+			const std::set<int> & ids = std::set<int>(),
+			const std::map<int, Signature *> & otherSignatures = std::map<int, Signature *>());
+	void addLink(const Link & link);
+	void removeLink(int from, int to);
+	void updateLink(const Link & link);
 
 public:
 	void addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize) const;
@@ -128,6 +140,8 @@ private:
 	virtual void updateQuery(const std::list<Signature *> & signatures, bool updateTimestamp) const = 0;
 	virtual void updateQuery(const std::list<VisualWord *> & words, bool updateTimestamp) const = 0;
 
+	virtual void addLinkQuery(const Link & link) const = 0;
+	virtual void updateLinkQuery(const Link & link) const = 0;
 
 	// Load objects
 	virtual void loadQuery(VWDictionary * dictionary) const = 0;

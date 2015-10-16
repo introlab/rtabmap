@@ -2179,6 +2179,61 @@ void DBDriverSqlite3::saveQuery(const std::list<VisualWord *> & words) const
 	}
 }
 
+void DBDriverSqlite3::addLinkQuery(const Link & link) const
+{
+	UDEBUG("");
+	if(_ppDb)
+	{
+		std::string type;
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+
+		// Create new entries in table Link
+		std::string query = queryStepLink();
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		// Save link
+		stepLink(ppStmt, link);
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		UDEBUG("Time=%fs", timer.ticks());
+	}
+
+}
+
+void DBDriverSqlite3::updateLinkQuery(const Link & link) const
+{
+	UDEBUG("");
+	if(_ppDb)
+	{
+		std::string type;
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+
+		// Create new entries in table Link
+		std::string query = queryStepLinkUpdate();
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		// Save link
+		stepLink(ppStmt, link);
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		UDEBUG("Time=%fs", timer.ticks());
+	}
+}
+
 std::string DBDriverSqlite3::queryStepNode() const
 {
 	if(uStrNumCmp(_version, "0.10.1") >= 0)
@@ -2549,23 +2604,43 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 }
 
-std::string DBDriverSqlite3::queryStepLink() const
+std::string DBDriverSqlite3::queryStepLinkUpdate() const
 {
 	if(uStrNumCmp(_version, "0.10.10") >= 0)
 	{
-		return "INSERT INTO Link(from_id, to_id, type, rot_variance, trans_variance, transform, user_data) VALUES(?,?,?,?,?,?,?);";
+		return "UPDATE Link SET type=?, rot_variance=?, trans_variance=?, transform=?, user_data=? WHERE from_id=? AND to_id = ?;";
 	}
 	else if(uStrNumCmp(_version, "0.8.4") >= 0)
 	{
-		return "INSERT INTO Link(from_id, to_id, type, rot_variance, trans_variance, transform) VALUES(?,?,?,?,?,?);";
+		return "UPDATE Link SET type=?, rot_variance=?, trans_variance=?, transform=? WHERE from_id=? AND to_id = ?;";
 	}
 	else if(uStrNumCmp(_version, "0.7.4") >= 0)
 	{
-		return "INSERT INTO Link(from_id, to_id, type, variance, transform) VALUES(?,?,?,?,?);";
+		return "UPDATE Link SET type=?, variance=?, transform=? WHERE from_id=? AND to_id = ?;";
 	}
 	else
 	{
-		return "INSERT INTO Link(from_id, to_id, type, transform) VALUES(?,?,?,?);";
+		return "UPDATE Link SET type=?, transform=? WHERE from_id=? AND to_id = ?;";
+	}
+}
+std::string DBDriverSqlite3::queryStepLink() const
+{
+	// from_id, to_id are at the end to match the update query above
+	if(uStrNumCmp(_version, "0.10.10") >= 0)
+	{
+		return "INSERT INTO Link(type, rot_variance, trans_variance, transform, user_data, from_id, to_id) VALUES(?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.8.4") >= 0)
+	{
+		return "INSERT INTO Link(type, rot_variance, trans_variance, transform, from_id, to_id) VALUES(?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.7.4") >= 0)
+	{
+		return "INSERT INTO Link(type, variance, transform, from_id, to_id) VALUES(?,?,?,?,?);";
+	}
+	else
+	{
+		return "INSERT INTO Link(type, transform, from_id, to_id) VALUES(?,?,?,?);";
 	}
 }
 void DBDriverSqlite3::stepLink(
@@ -2587,10 +2662,6 @@ void DBDriverSqlite3::stepLink(
 
 	int rc = SQLITE_OK;
 	int index = 1;
-	rc = sqlite3_bind_int(ppStmt, index++, link.from());
-	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-	rc = sqlite3_bind_int(ppStmt, index++, link.to());
-	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_int(ppStmt, index++, link.type());
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
@@ -2623,6 +2694,11 @@ void DBDriverSqlite3::stepLink(
 		}
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	}
+
+	rc = sqlite3_bind_int(ppStmt, index++, link.from());
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	rc = sqlite3_bind_int(ppStmt, index++, link.to());
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 	rc=sqlite3_step(ppStmt);
 	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());

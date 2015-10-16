@@ -40,7 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/EpipolarGeometry.h>
 #include "rtabmap/core/VisualWord.h"
 #include "rtabmap/core/Features2d.h"
-#include "DBDriverSqlite3.h"
+#include "rtabmap/core/DBDriver.h"
 #include "rtabmap/core/util3d_features.h"
 #include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/util3d_correspondences.h"
@@ -184,7 +184,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 
 	if(_dbDriver == 0 && !dbUrl.empty())
 	{
-		_dbDriver = new DBDriverSqlite3(parameters);
+		_dbDriver = DBDriver::create(parameters);
 	}
 
 	bool success = true;
@@ -3523,7 +3523,7 @@ SensorData Memory::getSignatureDataConst(int locationId) const
 	return r;
 }
 
-void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
+void Memory::generateGraph(const std::string & fileName, const std::set<int> & ids)
 {
 	if(!_dbDriver)
 	{
@@ -3531,235 +3531,7 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 		return;
 	}
 
-	if(!fileName.empty())
-	{
-		FILE* fout = 0;
-		#ifdef _MSC_VER
-			fopen_s(&fout, fileName.c_str(), "w");
-		#else
-			fout = fopen(fileName.c_str(), "w");
-		#endif
-
-		 if (!fout)
-		 {
-			 UERROR("Cannot open file %s!", fileName.c_str());
-			 return;
-		 }
-
-		 if(ids.size() == 0)
-		 {
-			 _dbDriver->getAllNodeIds(ids);
-			 UDEBUG("ids.size()=%d", ids.size());
-			 for(std::map<int, Signature*>::iterator iter=_signatures.begin(); iter!=_signatures.end(); ++iter)
-			 {
-				 ids.insert(iter->first);
-			 }
-		 }
-
-		 const char * colorG = "green";
-		 const char * colorP = "pink";
-;		 UINFO("Generating map with %d locations", ids.size());
-		 fprintf(fout, "digraph G {\n");
-		 for(std::set<int>::iterator i=ids.begin(); i!=ids.end(); ++i)
-		 {
-			 if(_signatures.find(*i) == _signatures.end())
-			 {
-				 int id = *i;
-				 std::map<int, Link> links;
-				 _dbDriver->loadLinks(id, links);
-				 int weight = 0;
-				 _dbDriver->getWeight(id, weight);
-				 for(std::map<int, Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
-				 {
-					 int weightNeighbor = 0;
-					 if(_signatures.find(iter->first) == _signatures.end())
-					 {
-						 _dbDriver->getWeight(iter->first, weightNeighbor);
-					 }
-					 else
-					 {
-						 weightNeighbor = _signatures.find(iter->first)->second->getWeight();
-					 }
-					 //UDEBUG("Add neighbor link from %d to %d", id, iter->first);
-					 if(iter->second.type() == Link::kNeighbor)
-					 {
-						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\"\n",
-								 id,
-								 weight,
-								 iter->first,
-								 weightNeighbor);
-					 }
-					 else if(iter->first > id)
-					 {
-						 //loop
-						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
-								 id,
-								 weight,
-								 iter->first,
-								 weightNeighbor,
-								 colorG);
-					 }
-					 else
-					 {
-						 //child
-						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
-								 id,
-								 weight,
-								 iter->first,
-								 weightNeighbor,
-								 colorP);
-					 }
-				 }
-			 }
-		 }
-		 for(std::map<int, Signature*>::iterator i=_signatures.begin(); i!=_signatures.end(); ++i)
-		 {
-			 if(ids.find(i->first) != ids.end())
-			 {
-				 int id = i->second->id();
-				 const std::map<int, Link> & links = i->second->getLinks();
-				 int weight = i->second->getWeight();
-				 for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
-				 {
-					 int weightNeighbor = 0;
-					 const Signature * s = this->getSignature(iter->first);
-					 if(s)
-					 {
-						 weightNeighbor = s->getWeight();
-					 }
-					 else
-					 {
-						 _dbDriver->getWeight(iter->first, weightNeighbor);
-					 }
-					 //UDEBUG("Add neighbor link from %d to %d", id, iter->first);
-					 if(iter->second.type() == Link::kNeighbor)
-					 {
-						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\"\n",
-								 id,
-								 weight,
-								 iter->first,
-								 weightNeighbor);
-					 }
-					 else if(iter->first > id)
-					 {
-						 //loop
-						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
-								 id,
-								 weight,
-								 iter->first,
-								 weightNeighbor,
-								 colorG);
-					 }
-					 else
-					 {
-						 //child
-						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
-								 id,
-								 weight,
-								 iter->first,
-								 weightNeighbor,
-								 colorP);
-					 }
-				 }
-			 }
-		 }
-		 fprintf(fout, "}\n");
-		 fclose(fout);
-		 UINFO("Graph saved to \"%s\"", fileName.c_str());
-	}
-}
-
-// Only used to generate a .dot file
-class GraphNode
-{
-public:
-	GraphNode(int id, GraphNode * parent = 0) :
-		_parent(parent),
-		_id(id)
-	{
-		if(_parent)
-		{
-			_parent->addChild(this);
-		}
-	}
-	virtual ~GraphNode()
-	{
-		//We copy the set because when a child is destroyed, it is removed from its parent.
-		std::set<GraphNode*> children = _children;
-		_children.clear();
-		for(std::set<GraphNode*>::iterator iter=children.begin(); iter!=children.end(); ++iter)
-		{
-			delete *iter;
-		}
-		children.clear();
-		if(_parent)
-		{
-			_parent->removeChild(this);
-		}
-	}
-	int id() const {return _id;}
-	bool isAncestor(int id) const
-	{
-		if(_parent)
-		{
-			if(_parent->id() == id)
-			{
-				return true;
-			}
-			return _parent->isAncestor(id);
-		}
-		return false;
-	}
-
-	void expand(std::list<std::list<int> > & paths, std::list<int> currentPath = std::list<int>()) const
-	{
-		currentPath.push_back(_id);
-		if(_children.size() == 0)
-		{
-			paths.push_back(currentPath);
-			return;
-		}
-		for(std::set<GraphNode*>::const_iterator iter=_children.begin(); iter!=_children.end(); ++iter)
-		{
-			(*iter)->expand(paths, currentPath);
-		}
-	}
-
-private:
-	void addChild(GraphNode * child)
-	{
-		_children.insert(child);
-	}
-	void removeChild(GraphNode * child)
-	{
-		_children.erase(child);
-	}
-
-private:
-	std::set<GraphNode*> _children;
-	GraphNode * _parent;
-	int _id;
-};
-
-//recursive
-void Memory::createGraph(GraphNode * parent, unsigned int maxDepth, const std::set<int> & endIds)
-{
-	if(maxDepth == 0 || !parent)
-	{
-		return;
-	}
-	std::map<int, int> neighbors = this->getNeighborsId(parent->id(), 1, -1, false);
-	for(std::map<int, int>::iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
-	{
-		if(!parent->isAncestor(iter->first))
-		{
-			GraphNode * n = new GraphNode(iter->first, parent);
-			if(endIds.find(iter->first) == endIds.end())
-			{
-				this->createGraph(n, maxDepth-1, endIds);
-			}
-		}
-	}
+	_dbDriver->generateGraph(fileName, ids, _signatures);
 }
 
 int Memory::getNi(int signatureId) const

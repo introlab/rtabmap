@@ -64,6 +64,9 @@ private:
 	virtual void updateQuery(const std::list<Signature *> & signatures, bool updateTimestamp) const;
 	virtual void updateQuery(const std::list<VisualWord *> & words, bool updateTimestamp) const;
 
+	virtual void addLinkQuery(const Link & link) const;
+	virtual void updateLinkQuery(const Link & link) const;
+
 	// Load objects
 	virtual void loadQuery(VWDictionary * dictionary) const;
 	virtual void loadLastNodesQuery(std::list<Signature *> & signatures) const;
@@ -85,6 +88,7 @@ private:
 	std::string queryStepImage() const;
 	std::string queryStepDepth() const;
 	std::string queryStepSensorData() const;
+	std::string queryStepLinkUpdate() const;
 	std::string queryStepLink() const;
 	std::string queryStepWordsChanged() const;
 	std::string queryStepKeypoint() const;
