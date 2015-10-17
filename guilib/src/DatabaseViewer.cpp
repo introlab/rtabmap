@@ -297,6 +297,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->comboBox_featureType, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
 	connect(ui_->comboBox_nnType, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_visual_2d, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_visual_var_inliers, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_visual_nndr, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->spinBox_visual_minCorrespondences, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_visual_maxCorrespDistance, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
@@ -435,6 +436,7 @@ void DatabaseViewer::readSettings()
 	ui_->comboBox_featureType->setCurrentIndex(settings.value("featureType", ui_->comboBox_featureType->currentIndex()).toInt());
 	ui_->comboBox_nnType->setCurrentIndex(settings.value("nnType", ui_->comboBox_nnType->currentIndex()).toInt());
 	ui_->checkBox_visual_2d->setChecked(settings.value("force2d", ui_->checkBox_visual_2d->isChecked()).toBool());
+	ui_->checkBox_visual_var_inliers->setChecked(settings.value("varianceInliers", ui_->checkBox_visual_var_inliers->isChecked()).toBool());
 	ui_->doubleSpinBox_visual_nndr->setValue(settings.value("nndr", ui_->doubleSpinBox_visual_nndr->value()).toDouble());
 	ui_->spinBox_visual_minCorrespondences->setValue(settings.value("minCorr", ui_->spinBox_visual_minCorrespondences->value()).toInt());
 	ui_->doubleSpinBox_visual_maxCorrespDistance->setValue(settings.value("maxCorrDist", ui_->doubleSpinBox_visual_maxCorrespDistance->value()).toDouble());
@@ -535,6 +537,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("featureType", ui_->comboBox_featureType->currentIndex());
 	settings.setValue("nnType", ui_->comboBox_nnType->currentIndex());
 	settings.setValue("force2d", ui_->checkBox_visual_2d->isChecked());
+	settings.setValue("varianceInliers", ui_->checkBox_visual_var_inliers->isChecked());
 	settings.setValue("nndr", ui_->doubleSpinBox_visual_nndr->value());
 	settings.setValue("minCorr", ui_->spinBox_visual_minCorrespondences->value());
 	settings.setValue("maxCorrDist", ui_->doubleSpinBox_visual_maxCorrespDistance->value());
@@ -1091,10 +1094,9 @@ void DatabaseViewer::updateIds()
 				links_.clear();
 			}
 
-			int first = *ids.begin();
-			ui_->spinBox_optimizationsFrom->setRange(first, ids_.last());
+			ui_->spinBox_optimizationsFrom->setRange(ids_.first(), ids_.last());
 			ui_->spinBox_optimizationsFrom->setValue(ids_.first());
-			ui_->label_optimizeFrom->setText(tr("Optimize from [%1, %2]").arg(first).arg(ids_.first()));
+			ui_->label_optimizeFrom->setText(tr("Optimize from [%1, %2]").arg(ids_.first()).arg(ids_.last()));
 		}
 	}
 
@@ -3425,6 +3427,8 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 	parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
 	parameters.insert(ParametersPair(Parameters::kLccBowEstimationType(), uNumber2Str(ui_->comboBox_estimationType->currentIndex())));
 	parameters.insert(ParametersPair(Parameters::kLccBowPnPFlags(), uNumber2Str(ui_->comboBox_pnpFlags->currentIndex())));
+	parameters.insert(ParametersPair(Parameters::kLccBowForce2D(), uBool2Str(ui_->checkBox_visual_2d->isChecked())));
+	parameters.insert(ParametersPair(Parameters::kLccBowVarianceFromInliersCount(), uBool2Str(ui_->checkBox_visual_var_inliers->isChecked())));
 	parameters.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
 	parameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0"));
 	parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "0"));
@@ -3479,14 +3483,6 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 
 	if(!t.isNull())
 	{
-		if(ui_->checkBox_visual_2d->isChecked())
-		{
-			// We are 2D here, make sure the guess has only YAW rotation
-			float x,y,z,r,p,yaw;
-			t.getTranslationAndEulerAngles(x,y,z, r,p,yaw);
-			t = Transform::fromEigen3f(pcl::getTransformation(x,y,0, 0, 0, yaw));
-		}
-
 		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), t, variance, variance);
 
 		bool updated = false;
@@ -3557,6 +3553,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
 		parameters.insert(ParametersPair(Parameters::kLccBowEstimationType(), uNumber2Str(ui_->comboBox_estimationType->currentIndex())));
 		parameters.insert(ParametersPair(Parameters::kLccBowPnPFlags(), uNumber2Str(ui_->comboBox_pnpFlags->currentIndex())));
+		parameters.insert(ParametersPair(Parameters::kLccBowForce2D(), uBool2Str(ui_->checkBox_visual_2d->isChecked())));
+		parameters.insert(ParametersPair(Parameters::kLccBowVarianceFromInliersCount(), uBool2Str(ui_->checkBox_visual_var_inliers->isChecked())));
 		parameters.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
 		parameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0"));
 		parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "0"));
@@ -3618,14 +3616,6 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 
 		if(!t.isNull())
 		{
-			if(ui_->checkBox_visual_2d->isChecked())
-			{
-				// We are 2D here, make sure the guess has only YAW rotation
-				float x,y,z,r,p,yaw;
-				t.getTranslationAndEulerAngles(x,y,z, r,p,yaw);
-				t = Transform::fromEigen3f(pcl::getTransformation(x,y,0, 0, 0, yaw));
-			}
-
 			// transform is valid, make a link
 			if(from>to)
 			{

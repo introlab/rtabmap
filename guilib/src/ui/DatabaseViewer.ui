@@ -829,7 +829,7 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>3</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="page">
         <property name="geometry">
@@ -1055,9 +1055,9 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>0</y>
+          <y>-129</y>
           <width>351</width>
-          <height>380</height>
+          <height>407</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1223,6 +1223,20 @@
                <string>P3P</string>
               </property>
              </item>
+            </widget>
+           </item>
+           <item row="7" column="1">
+            <widget class="QLabel" name="label_32">
+             <property name="text">
+              <string>Variance from inliers count</string>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="0">
+            <widget class="QCheckBox" name="checkBox_visual_var_inliers">
+             <property name="text">
+              <string/>
+             </property>
             </widget>
            </item>
           </layout>
@@ -1871,8 +1885,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>289</width>
-          <height>176</height>
+          <width>201</width>
+          <height>117</height>
          </rect>
         </property>
         <attribute name="label">

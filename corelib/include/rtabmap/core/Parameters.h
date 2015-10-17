@@ -310,10 +310,10 @@ class RTABMAP_EXP Parameters
 
 	// Graph optimization
 	RTABMAP_PARAM(RGBD, OptimizeStrategy,          int, 0,        "Graph optimization strategy: 0=TORO and 1=g2o.");
-	RTABMAP_PARAM(RGBD, OptimizeIterations,        int, 10,      "Optimization iterations.");
+	RTABMAP_PARAM(RGBD, OptimizeIterations,        int, 100,      "Optimization iterations.");
 	RTABMAP_PARAM(RGBD, OptimizeSlam2D,            bool, false,  "If optimization is done only on x,y and theta (3DoF). Otherwise, it is done on full 6DoF poses.");
 	RTABMAP_PARAM(RGBD, OptimizeVarianceIgnored,   bool, false,  "Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links.");
-	RTABMAP_PARAM(RGBD, OptimizeEpsilon,           double, 0.001,  "Stop optimizing when the error improvement is less than this value.");
+	RTABMAP_PARAM(RGBD, OptimizeEpsilon,           double, 0.0001,  "Stop optimizing when the error improvement is less than this value.");
 	RTABMAP_PARAM(RGBD, OptimizeRobust,            bool, true,  "Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies).");
 
 	// Odometry
