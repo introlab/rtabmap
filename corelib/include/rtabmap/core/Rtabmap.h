@@ -112,7 +112,7 @@ public:
 			const std::string & path,
 			bool optimized,
 			bool global,
-			int type // 0=raw/KITTI format, 1=rgbd-slam format, 2=TORO
+			int format // 0=raw, 1=rgbd-slam format, 2=KITTI format, 3=TORO, 4=g2o
 	);
 	void resetMemory();
 	void dumpPrediction() const;

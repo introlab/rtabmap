@@ -34,6 +34,16 @@
     <property name="title">
      <string>File</string>
     </property>
+    <widget class="QMenu" name="menuExport_poses">
+     <property name="title">
+      <string>Export poses...</string>
+     </property>
+     <addaction name="actionRaw_format_txt"/>
+     <addaction name="actionRGBD_SLAM_format_txt"/>
+     <addaction name="actionKITTI_format_txt"/>
+     <addaction name="actionTORO_graph"/>
+     <addaction name="actionG2o_g2o"/>
+    </widget>
     <addaction name="actionNew_database"/>
     <addaction name="actionOpen_database"/>
     <addaction name="separator"/>
@@ -42,6 +52,8 @@
     <addaction name="actionSave_point_cloud"/>
     <addaction name="actionExport_2D_scans_ply_pcd"/>
     <addaction name="actionExport_2D_Grid_map_bmp_png"/>
+    <addaction name="menuExport_poses"/>
+    <addaction name="actionExport_images_RGB_jpg_Depth_png"/>
     <addaction name="actionExport_cameras_in_Bundle_format_out"/>
     <addaction name="separator"/>
     <addaction name="actionClose_database"/>
@@ -56,21 +68,10 @@
      <property name="title">
       <string>Advanced</string>
      </property>
-     <widget class="QMenu" name="menuExport_poses">
-      <property name="title">
-       <string>Export poses...</string>
-      </property>
-      <addaction name="actionRaw_format_txt"/>
-      <addaction name="actionRGBD_SLAM_format_txt"/>
-      <addaction name="actionKITTI_format_txt"/>
-      <addaction name="actionTORO_graph"/>
-      <addaction name="actionG2o_g2o"/>
-     </widget>
      <addaction name="actionOpen_working_directory"/>
      <addaction name="actionDump_the_memory"/>
      <addaction name="actionDump_the_prediction_matrix"/>
      <addaction name="actionGenerate_map"/>
-     <addaction name="menuExport_poses"/>
      <addaction name="actionPrint_loop_closure_IDs_to_console"/>
     </widget>
     <addaction name="actionDownload_all_clouds"/>
@@ -1281,6 +1282,11 @@
   <action name="actionUpdate_cache_from_database">
    <property name="text">
     <string>Update cache from a local database copy...</string>
+   </property>
+  </action>
+  <action name="actionExport_images_RGB_jpg_Depth_png">
+   <property name="text">
+    <string>Export images (RGB=*.jpg Depth=*.png)...</string>
    </property>
   </action>
  </widget>

@@ -231,6 +231,13 @@ private:
 	float minInliers_;
 };
 
+bool RTABMAP_EXP exportPoses(
+		const std::string & filePath,
+		int format, // 0=Raw (*.txt), 1=RGBD-SLAM (*.txt), 2=KITTI (*.txt), 3=TORO (*.graph), 4=g2o (*.g2o)
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & constraints, // required for formats 3 and 4
+		const std::map<int, double> & stamps); // required for format 1
+
 ////////////////////////////////////////////
 // Graph utilities
 ////////////////////////////////////////////

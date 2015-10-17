@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UFile.h>
 #include <rtabmap/core/Memory.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/common/eigen.h>
@@ -1572,6 +1573,109 @@ std::map<int, Transform> CVSBAOptimizer::optimizeBA(
 	return std::map<int, Transform>();
 #endif
 }
+
+bool exportPoses(
+		const std::string & filePath,
+		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & constraints, // required for formats 3 and 4
+		const std::map<int, double> & stamps) // required for format 1
+{
+	std::string tmpPath = filePath;
+	if(format==3) // TORO
+	{
+		if(UFile::getExtension(tmpPath).empty())
+		{
+			tmpPath+=".graph";
+		}
+		return graph::TOROOptimizer::saveGraph(tmpPath, poses, constraints);
+	}
+	else if(format == 4) // g2o
+	{
+		if(UFile::getExtension(tmpPath).empty())
+		{
+			tmpPath+=".g2o";
+		}
+#ifdef WITH_G2O
+		return graph::G2OOptimizer::saveGraph(tmpPath, poses, constraints);
+#else
+		UERROR("Cannot export in g2o format because RTAB-Map is not built with g2o support!");
+		return false;
+#endif
+	}
+	else
+	{
+		if(UFile::getExtension(tmpPath).empty())
+		{
+			tmpPath+=".txt";
+		}
+
+		if(format == 1)
+		{
+			if(stamps.size() != poses.size())
+			{
+				UERROR("When exporting poses to format 1 (RGBD-SLAM), stamps and poses maps should have the same size!");
+				return false;
+			}
+		}
+
+		FILE* fout = 0;
+#ifdef _MSC_VER
+		fopen_s(&fout, tmpPath.c_str(), "w");
+#else
+		fout = fopen(tmpPath.c_str(), "w");
+#endif
+		if(fout)
+		{
+			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				if(format == 1) // rgbd-slam format
+				{
+					// Format: stamp x y z qw qx qy qz
+					Eigen::Quaternionf q = (*iter).second.getQuaternionf();
+
+					UASSERT(uContains(stamps, iter->first));
+					fprintf(fout, "%f %f %f %f %f %f %f %f\n",
+							stamps.at(iter->first),
+							(*iter).second.x(),
+							(*iter).second.y(),
+							(*iter).second.z(),
+							q.w(),
+							q.x(),
+							q.y(),
+							q.z());
+				}
+				else // default / KITTI format
+				{
+					Transform pose = iter->second;
+					if(format == 2)
+					{
+						// for KITTI, we need to remove optical rotation
+						// z pointing front, x left, y down
+						Transform t( 0, 0, 1, 0,
+									-1, 0, 0, 0,
+									 0,-1, 0, 0);
+						pose = t.inverse() * pose * t;
+					}
+
+					// Format: r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz
+					const float * p = (const float *)pose.data();
+
+					fprintf(fout, "%f", p[0]);
+					for(int i=1; i<pose.size(); i++)
+					{
+						fprintf(fout, " %f", p[i]);
+					}
+					fprintf(fout, "\n");
+				}
+			}
+			fclose(fout);
+			return true;
+		}
+	}
+	return false;
+}
+
 
 ////////////////////////////////////////////
 // Graph utilities

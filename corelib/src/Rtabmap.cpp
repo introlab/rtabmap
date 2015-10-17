@@ -740,7 +740,7 @@ void Rtabmap::generateDOTGraph(const std::string & path, int id, int margin)
 	}
 }
 
-void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global, int type)
+void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global, int format)
 {
 	if(_memory && _memory->getLastWorkingSignature())
 	{
@@ -757,89 +757,21 @@ void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global,
 			_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, global);
 		}
 
-		if(type==3) // TORO
+		std::map<int, double> stamps;
+		if(format == 1)
 		{
-			graph::TOROOptimizer::saveGraph(path, poses, constraints);
-		}
-		else if(type == 4) // g2o
-		{
-#ifdef WITH_G2O
-			graph::G2OOptimizer::saveGraph(path, poses, constraints);
-#else
-			UERROR("Cannot export in g2o format because RTAB-Map is not built with g2o support!");
-#endif
-		}
-		else
-		{
-			//get timestamps
-			std::map<int, double> stamps;
-			if(type == 1)
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
-				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-				{
-					Transform o;
-					int m, w;
-					std::string l;
-					double stamp = 0.0;
-					_memory->getNodeInfo(iter->first, o, m, w, l, stamp, true);
-					stamps.insert(std::make_pair(iter->first, stamp));
-				}
-				UASSERT(stamps.size()== 0 || stamps.size() == poses.size());
-			}
-
-			FILE* fout = 0;
-#ifdef _MSC_VER
-			fopen_s(&fout, path.c_str(), "w");
-#else
-			fout = fopen(path.c_str(), "w");
-#endif
-			if(fout)
-			{
-				for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-				{
-					if(type == 1) // rgbd-slam format
-					{
-						// Format: stamp x y z qw qx qy qz
-						Eigen::Quaternionf q = (*iter).second.getQuaternionf();
-
-						UASSERT(uContains(stamps, iter->first));
-						fprintf(fout, "%f %f %f %f %f %f %f %f\n",
-								stamps.at(iter->first),
-								(*iter).second.x(),
-								(*iter).second.y(),
-								(*iter).second.z(),
-								q.w(),
-								q.x(),
-								q.y(),
-								q.z());
-					}
-					else // default / KITTI format
-					{
-						Transform pose = iter->second;
-						if(type == 2)
-						{
-							// for KITTI, we need to remove optical rotation
-							// z pointing front, x left, y down
-							Transform t( 0, 0, 1, 0,
-									    -1, 0, 0, 0,
-									     0,-1, 0, 0);
-							pose = t.inverse() * pose * t;
-						}
-
-						// Format: r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz
-						const float * p = (const float *)pose.data();
-
-						fprintf(fout, "%f", p[0]);
-						for(int i=1; i<pose.size(); i++)
-						{
-							fprintf(fout, " %f", p[i]);
-						}
-						fprintf(fout, "\n");
-					}
-				}
-				fclose(fout);
+				Transform o;
+				int m, w;
+				std::string l;
+				double stamp = 0.0;
+				_memory->getNodeInfo(iter->first, o, m, w, l, stamp, true);
+				stamps.insert(std::make_pair(iter->first, stamp));
 			}
 		}
+
+		graph::exportPoses(path, format, poses, constraints, stamps);
 	}
 }
 

@@ -134,6 +134,7 @@ private slots:
 	void exportPosesKITTI();
 	void exportPosesTORO();
 	void exportPosesG2O();
+	void exportImages();
 	void postProcessing();
 	void deleteMemory();
 	void openWorkingDirectory();

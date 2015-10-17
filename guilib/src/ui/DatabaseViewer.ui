@@ -50,7 +50,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>166</width>
+             <width>197</width>
              <height>173</height>
             </rect>
            </property>
@@ -236,7 +236,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>165</width>
+             <width>196</width>
              <height>173</height>
             </rect>
            </property>
@@ -429,6 +429,7 @@
     <addaction name="separator"/>
     <addaction name="actionSave_config"/>
     <addaction name="separator"/>
+    <addaction name="actionGenerate_3D_map_pcd"/>
     <addaction name="actionExport"/>
     <addaction name="actionExtract_images"/>
     <addaction name="separator"/>
@@ -452,7 +453,6 @@
     <addaction name="actionReset_all_changes"/>
     <addaction name="separator"/>
     <addaction name="actionView_3D_map"/>
-    <addaction name="actionGenerate_3D_map_pcd"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -836,7 +836,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>338</width>
+          <width>314</width>
           <height>303</height>
          </rect>
         </property>
@@ -1375,7 +1375,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>338</width>
+          <width>333</width>
           <height>333</height>
          </rect>
         </property>
@@ -1613,8 +1613,8 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-100</y>
-          <width>338</width>
+          <y>0</y>
+          <width>276</width>
           <height>377</height>
          </rect>
         </property>
@@ -1871,7 +1871,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>351</width>
+          <width>289</width>
           <height>176</height>
          </rect>
         </property>
@@ -1971,7 +1971,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>338</width>
+          <width>285</width>
           <height>309</height>
          </rect>
         </property>
@@ -2363,7 +2363,7 @@
   </action>
   <action name="actionExport">
    <property name="text">
-    <string>Export...</string>
+    <string>Export database...</string>
    </property>
   </action>
   <action name="actionExtract_images">

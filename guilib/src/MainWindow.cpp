@@ -329,6 +329,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionSave_point_cloud, SIGNAL(triggered()), this, SLOT(exportClouds()));
 	connect(_ui->actionExport_2D_scans_ply_pcd, SIGNAL(triggered()), this, SLOT(exportScans()));
 	connect(_ui->actionExport_2D_Grid_map_bmp_png, SIGNAL(triggered()), this, SLOT(exportGridMap()));
+	connect(_ui->actionExport_images_RGB_jpg_Depth_png, SIGNAL(triggered()), this , SLOT(exportImages()));
 	connect(_ui->actionExport_cameras_in_Bundle_format_out, SIGNAL(triggered()), SLOT(exportBundlerFormat()));
 	connect(_ui->actionView_scans, SIGNAL(triggered()), this, SLOT(viewScans()));
 	connect(_ui->actionView_high_res_point_cloud, SIGNAL(triggered()), this, SLOT(viewClouds()));
@@ -339,12 +340,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 
 	_ui->actionPause->setShortcut(Qt::Key_Space);
 	_ui->actionSave_GUI_config->setShortcut(QKeySequence::Save);
-	_ui->actionSave_point_cloud->setEnabled(false);
-	_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
-	_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
-	_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
-	_ui->actionView_scans->setEnabled(false);
-	_ui->actionView_high_res_point_cloud->setEnabled(false);
 	_ui->actionReset_Odometry->setEnabled(false);
 	_ui->actionPost_processing->setEnabled(false);
 
@@ -1348,6 +1343,11 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	{
 		_cachedSignatures.clear();
 	}
+	if(_state != kMonitoring && _state != kDetecting)
+	{
+		_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
+		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
+	}
 
 	_processingStatistics = false;
 }
@@ -1371,6 +1371,7 @@ void MainWindow::updateMapCloud(
 		if(_state != kMonitoring && _state != kDetecting)
 		{
 			_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
+			_ui->menuExport_poses->setEnabled(!_currentPosesMap.empty());
 		}
 	}
 
@@ -1517,12 +1518,14 @@ void MainWindow::updateMapCloud(
 	}
 
 	// activate actions
-	_ui->actionSave_point_cloud->setEnabled(!_createdClouds.empty());
-	_ui->actionView_high_res_point_cloud->setEnabled(!_createdClouds.empty());
-	_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
-	_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
-	_ui->actionView_scans->setEnabled(!_createdScans.empty());
-	_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_createdClouds.empty());
+	if(_state != kMonitoring && _state != kDetecting)
+	{
+		_ui->actionSave_point_cloud->setEnabled(!_createdClouds.empty());
+		_ui->actionView_high_res_point_cloud->setEnabled(!_createdClouds.empty());
+		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
+		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
+		_ui->actionView_scans->setEnabled(!_createdScans.empty());
+	}
 
 	//remove not used clouds
 	for(QMap<std::string, Transform>::iterator iter = viewerClouds.begin(); iter!=viewerClouds.end(); ++iter)
@@ -2172,6 +2175,11 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		if(!_preferencesDialog->isImagesKept())
 		{
 			_cachedSignatures.clear();
+		}
+		if(_state != kMonitoring && _state != kDetecting)
+		{
+			_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
+			_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		}
 		_processingDownloadedMap = false;
 	}
@@ -3229,36 +3237,24 @@ void MainWindow::exportPosesG2O()
 
 void MainWindow::exportPoses(int format)
 {
-	QStringList items;
-	items.append("Local map optimized");
-	items.append("Local map not optimized");
-	items.append("Global map optimized");
-	items.append("Global map not optimized");
-	bool ok;
-	QString item = QInputDialog::getItem(this, tr("Parameters"), tr("Options:"), items, 2, false, &ok);
-	if(ok)
+	if(_currentPosesMap.size())
 	{
-		bool optimized=false, global=false;
-		if(item.compare("Local map optimized") == 0)
+		std::map<int, double> stamps;
+		if(format == 1)
 		{
-			optimized = true;
-		}
-		else if(item.compare("Local map not optimized") == 0)
-		{
-
-		}
-		else if(item.compare("Global map optimized") == 0)
-		{
-			global=true;
-			optimized=true;
-		}
-		else if(item.compare("Global map not optimized") == 0)
-		{
-			global=true;
-		}
-		else
-		{
-			UFATAL("Item \"%s\" not found?!?", item.toStdString().c_str());
+			for(std::map<int, Transform>::iterator iter=_currentPosesMap.begin(); iter!=_currentPosesMap.end(); ++iter)
+			{
+				if(_cachedSignatures.contains(iter->first))
+				{
+					stamps.insert(std::make_pair(iter->first, _cachedSignatures.value(iter->first).getStamp()));
+				}
+			}
+			if(stamps.size()!=_currentPosesMap.size())
+			{
+				QMessageBox::warning(this, tr("Export poses..."), tr("RGB-D SLAM format: Poses (%1) and stamps (%2) have not the same size! Try again after updating the cache.")
+						.arg(_currentPosesMap.size()).arg(stamps.size()));
+				return;
+			}
 		}
 
 		if(_exportPosesFileName[format].isEmpty())
@@ -3276,17 +3272,25 @@ void MainWindow::exportPoses(int format)
 		{
 			_exportPosesFileName[format] = path;
 
-			this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdExportPoses, global, optimized, path.toStdString(), format));
+			bool saved = graph::exportPoses(path.toStdString(), format, _currentPosesMap, _currentLinksMap, stamps);
 
-			_ui->dockWidget_console->show();
-			_ui->widget_console->appendMsg(
-					QString("%1 saved (global=%2, optimized=%3)... %4")
-					.arg(format == 3?"TORO graph":format == 4?"g2o graph":"Poses")
-					.arg(global?"true":"false")
-					.arg(optimized?"true":"false")
-					.arg(_exportPosesFileName[format]));
+			if(saved)
+			{
+				QMessageBox::information(this,
+						tr("Export poses..."),
+						tr("%1 saved to \"%2\".")
+						.arg(format == 3?"TORO graph":format == 4?"g2o graph":"Poses")
+						.arg(_exportPosesFileName[format]));
+			}
+			else
+			{
+				QMessageBox::information(this,
+						tr("Export poses..."),
+						tr("Failed to save %1 to \"%2\"!")
+						.arg(format == 3?"TORO graph":format == 4?"g2o graph":"poses")
+						.arg(_exportPosesFileName[format]));
+			}
 		}
-
 	}
 }
 
@@ -4149,6 +4153,7 @@ void MainWindow::clearTheCache()
 	_ui->actionPost_processing->setEnabled(false);
 	_ui->actionSave_point_cloud->setEnabled(false);
 	_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
+	_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(false);
 	_ui->actionView_scans->setEnabled(false);
 	_ui->actionView_high_res_point_cloud->setEnabled(false);
 	_likelihoodCurve->clear();
@@ -5040,6 +5045,163 @@ bool MainWindow::getExportedClouds(
 	return false;
 }
 
+void MainWindow::exportImages()
+{
+	if(_cachedSignatures.empty())
+	{
+		QMessageBox::warning(this, tr("Export images..."), tr("Cannot export images, the cache is empty!"));
+		return;
+	}
+	std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
+
+	if(poses.empty())
+	{
+		QMessageBox::warning(this, tr("Export images..."), tr("There is no map!"));
+		return;
+	}
+
+	QString path = QFileDialog::getExistingDirectory(this, tr("Select directory where to save images..."), this->getWorkingDirectory());
+	if(!path.isNull())
+	{
+		SensorData data;
+		if(_cachedSignatures.contains(poses.rbegin()->first))
+		{
+			data = _cachedSignatures.value(poses.rbegin()->first).sensorData();
+			data.uncompressData();
+		}
+		if(!data.imageRaw().empty() && !data.rightRaw().empty())
+		{
+			QDir dir;
+			dir.mkdir(QString("%1/left").arg(path));
+			dir.mkdir(QString("%1/right").arg(path));
+			if(data.stereoCameraModel().isValid())
+			{
+				std::string cameraName = "calibration";
+				StereoCameraModel model(
+						cameraName,
+						data.imageRaw().size(),
+						data.stereoCameraModel().left().K(),
+						data.stereoCameraModel().left().D(),
+						data.stereoCameraModel().left().R(),
+						data.stereoCameraModel().left().P(),
+						data.rightRaw().size(),
+						data.stereoCameraModel().right().K(),
+						data.stereoCameraModel().right().D(),
+						data.stereoCameraModel().right().R(),
+						data.stereoCameraModel().right().P(),
+						data.stereoCameraModel().R(),
+						data.stereoCameraModel().T(),
+						data.stereoCameraModel().E(),
+						data.stereoCameraModel().F(),
+						data.stereoCameraModel().left().localTransform());
+				if(model.save(path.toStdString()))
+				{
+					UINFO("Saved stereo calibration \"%s\"", (path.toStdString()+"/"+cameraName).c_str());
+				}
+				else
+				{
+					UERROR("Failed saving calibration \"%s\"", (path.toStdString()+"/"+cameraName).c_str());
+				}
+			}
+		}
+		else if(!data.imageRaw().empty())
+		{
+			if(!data.depthRaw().empty())
+			{
+				QDir dir;
+				dir.mkdir(QString("%1/rgb").arg(path));
+				dir.mkdir(QString("%1/depth").arg(path));
+			}
+
+			if(data.cameraModels().size() > 1)
+			{
+				UERROR("Only one camera calibration can be saved at this time (%d detected)", (int)data.cameraModels().size());
+			}
+			else if(data.cameraModels().size() == 1 && data.cameraModels().front().isValid())
+			{
+				std::string cameraName = "calibration";
+				CameraModel model(cameraName,
+						data.imageRaw().size(),
+						data.cameraModels().front().K(),
+						data.cameraModels().front().D(),
+						data.cameraModels().front().R(),
+						data.cameraModels().front().P(),
+						data.cameraModels().front().localTransform());
+				if(model.save(path.toStdString()))
+				{
+					UINFO("Saved calibration \"%s\"", (path.toStdString()+"/"+cameraName).c_str());
+				}
+				else
+				{
+					UERROR("Failed saving calibration \"%s\"", (path.toStdString()+"/"+cameraName).c_str());
+				}
+			}
+		}
+		else
+		{
+			QMessageBox::warning(this,
+					tr("Export images..."),
+					tr("Data in the cache don't seem to have images (tested node %1). Calibration file will not be saved. Try refreshing the cache (with clouds).").arg(poses.rbegin()->first));
+		}
+	}
+
+	_initProgressDialog->resetProgress();
+	_initProgressDialog->show();
+	_initProgressDialog->setMaximumSteps(_cachedSignatures.size());
+
+	int saved = 0;
+	for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	{
+		int id = iter->first;
+		SensorData data;
+		if(_cachedSignatures.contains(iter->first))
+		{
+			data = _cachedSignatures.value(iter->first).sensorData();
+			data.uncompressData();
+		}
+		QString info;
+		bool warn = false;
+		if(!data.imageRaw().empty() && !data.rightRaw().empty())
+		{
+			cv::imwrite(QString("%1/left/%2.jpg").arg(path).arg(id).toStdString(), data.imageRaw());
+			cv::imwrite(QString("%1/right/%2.jpg").arg(path).arg(id).toStdString(), data.rightRaw());
+			info = tr("Saved left/%1.jpg and right/%1.jpg.").arg(id);
+		}
+		else if(!data.imageRaw().empty() && !data.depthRaw().empty())
+		{
+			cv::imwrite(QString("%1/rgb/%2.jpg").arg(path).arg(id).toStdString(), data.imageRaw());
+			cv::imwrite(QString("%1/depth/%2.png").arg(path).arg(id).toStdString(), data.depthRaw());
+			info = tr("Saved rgb/%1.jpg and depth/%1.png.").arg(id);
+		}
+		else if(!data.imageRaw().empty())
+		{
+			cv::imwrite(QString("%1/%2.jpg").arg(path).arg(id).toStdString(), data.imageRaw());
+			info = tr("Saved %1.jpg.").arg(id);
+		}
+		else
+		{
+			info = tr("No images saved for node %1!").arg(id);
+			warn = true;
+		}
+		saved += warn?0:1;
+		_initProgressDialog->appendText(info, !warn?Qt::black:Qt::darkYellow);
+		_initProgressDialog->incrementStep();
+		QApplication::processEvents();
+
+	}
+	if(saved!=poses.size())
+	{
+		_initProgressDialog->setAutoClose(false);
+		_initProgressDialog->appendText(tr("%1 images of %2 saved to \"%3\".").arg(saved).arg(poses.size()).arg(path));
+	}
+	else
+	{
+		_initProgressDialog->appendText(tr("%1 images saved to \"%2\".").arg(saved).arg(path));
+	}
+
+	_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
+}
+
 void MainWindow::exportBundlerFormat()
 {
 	std::map<int, Transform> posesIn = _ui->widget_mapVisibility->getVisiblePoses();
@@ -5148,7 +5310,7 @@ void MainWindow::exportBundlerFormat()
 	}
 	else
 	{
-		QMessageBox::warning(this, tr("Exporting cameras..."), tr("No poses exported..."));
+		QMessageBox::warning(this, tr("Exporting cameras..."), tr("No poses exported because of missing images. Try refreshing the cache (with clouds)."));
 	}
 }
 
@@ -5823,7 +5985,6 @@ void MainWindow::changeState(MainWindow::State newState)
 	_ui->actionDump_the_prediction_matrix->setVisible(!monitoring);
 	_ui->actionGenerate_map->setVisible(!monitoring);
 	_ui->actionUpdate_cache_from_database->setVisible(monitoring);
-	_ui->menuExport_poses->menuAction()->setVisible(!monitoring);
 	_ui->actionOpen_working_directory->setVisible(!monitoring);
 	_ui->actionData_recorder->setVisible(!monitoring);
 	_ui->menuSelect_source->menuAction()->setVisible(!monitoring);
@@ -5844,7 +6005,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		}
 	}
 	actions = _ui->menuFile->actions();
-	if(actions.size()>=10)
+	if(actions.size()==15)
 	{
 		if(actions.at(2)->isSeparator())
 		{
@@ -5854,9 +6015,9 @@ void MainWindow::changeState(MainWindow::State newState)
 		{
 			UWARN("Menu File separators have not the same order.");
 		}
-		if(actions.at(9)->isSeparator())
+		if(actions.at(11)->isSeparator())
 		{
-			actions.at(9)->setVisible(!monitoring);
+			actions.at(11)->setVisible(!monitoring);
 		}
 		else
 		{
@@ -5884,7 +6045,6 @@ void MainWindow::changeState(MainWindow::State newState)
 		UWARN("Menu File separators have not the same order.");
 	}
 
-
 	switch (newState)
 	{
 	case kIdle: // RTAB-Map is not initialized yet
@@ -5904,8 +6064,15 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDump_the_prediction_matrix->setEnabled(false);
 		_ui->actionDelete_memory->setEnabled(false);
 		_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
+		_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionGenerate_map->setEnabled(false);
-		_ui->menuExport_poses->setEnabled(false);
+		_ui->menuExport_poses->setEnabled(!_currentPosesMap.empty());
+		_ui->actionSave_point_cloud->setEnabled(!_createdClouds.empty());
+		_ui->actionView_high_res_point_cloud->setEnabled(!_createdClouds.empty());
+		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
+		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
+		_ui->actionView_scans->setEnabled(!_createdScans.empty());
+		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
@@ -5953,8 +6120,15 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDump_the_prediction_matrix->setEnabled(true);
 		_ui->actionDelete_memory->setEnabled(true);
 		_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
+		_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionGenerate_map->setEnabled(true);
-		_ui->menuExport_poses->setEnabled(true);
+		_ui->menuExport_poses->setEnabled(!_currentPosesMap.empty());
+		_ui->actionSave_point_cloud->setEnabled(!_createdClouds.empty());
+		_ui->actionView_high_res_point_cloud->setEnabled(!_createdClouds.empty());
+		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
+		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
+		_ui->actionView_scans->setEnabled(!_createdScans.empty());
+		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
 		_ui->menuSelect_source->setEnabled(true);
@@ -5991,8 +6165,15 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionDump_the_prediction_matrix->setEnabled(false);
 		_ui->actionDelete_memory->setEnabled(false);
 		_ui->actionPost_processing->setEnabled(false);
+		_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(false);
 		_ui->actionGenerate_map->setEnabled(false);
 		_ui->menuExport_poses->setEnabled(false);
+		_ui->actionSave_point_cloud->setEnabled(false);
+		_ui->actionView_high_res_point_cloud->setEnabled(false);
+		_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
+		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
+		_ui->actionView_scans->setEnabled(false);
+		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
@@ -6031,8 +6212,15 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionDump_the_prediction_matrix->setEnabled(false);
 			_ui->actionDelete_memory->setEnabled(false);
 			_ui->actionPost_processing->setEnabled(false);
+			_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(false);
 			_ui->actionGenerate_map->setEnabled(false);
 			_ui->menuExport_poses->setEnabled(false);
+			_ui->actionSave_point_cloud->setEnabled(false);
+			_ui->actionView_high_res_point_cloud->setEnabled(false);
+			_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
+			_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
+			_ui->actionView_scans->setEnabled(false);
+			_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
 			_ui->actionDownload_all_clouds->setEnabled(false);
 			_ui->actionDownload_graph->setEnabled(false);
 			_state = kDetecting;
@@ -6058,8 +6246,15 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionDump_the_prediction_matrix->setEnabled(true);
 			_ui->actionDelete_memory->setEnabled(false);
 			_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
+			_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 			_ui->actionGenerate_map->setEnabled(true);
-			_ui->menuExport_poses->setEnabled(true);
+			_ui->menuExport_poses->setEnabled(!_currentPosesMap.empty());
+			_ui->actionSave_point_cloud->setEnabled(!_createdClouds.empty());
+			_ui->actionView_high_res_point_cloud->setEnabled(!_createdClouds.empty());
+			_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
+			_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
+			_ui->actionView_scans->setEnabled(!_createdScans.empty());
+			_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 			_ui->actionDownload_all_clouds->setEnabled(true);
 			_ui->actionDownload_graph->setEnabled(true);
 			_state = kPaused;
@@ -6086,6 +6281,14 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionPause_when_a_loop_hypothesis_is_rejected->setEnabled(true);
 		_ui->actionReset_Odometry->setEnabled(true);
 		_ui->actionPost_processing->setEnabled(false);
+		_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(false);
+		_ui->menuExport_poses->setEnabled(false);
+		_ui->actionSave_point_cloud->setEnabled(false);
+		_ui->actionView_high_res_point_cloud->setEnabled(false);
+		_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
+		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
+		_ui->actionView_scans->setEnabled(false);
+		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
 		_ui->actionDelete_memory->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
@@ -6108,6 +6311,14 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionPause_when_a_loop_hypothesis_is_rejected->setEnabled(true);
 		_ui->actionReset_Odometry->setEnabled(true);
 		_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
+		_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
+		_ui->menuExport_poses->setEnabled(!_currentPosesMap.empty());
+		_ui->actionSave_point_cloud->setEnabled(!_createdClouds.empty());
+		_ui->actionView_high_res_point_cloud->setEnabled(!_createdClouds.empty());
+		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
+		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
+		_ui->actionView_scans->setEnabled(!_createdScans.empty());
+		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionDelete_memory->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
