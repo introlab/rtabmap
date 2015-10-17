@@ -124,7 +124,7 @@ void PostProcessingDialog::loadSettings(QSettings & settings, const QString & gr
 void PostProcessingDialog::restoreDefaults()
 {
 	setDetectMoreLoopClosures(true);
-	setClusterRadius(0.3);
+	setClusterRadius(0.5);
 	setClusterAngle(30);
 	setIterations(1);
 	setReextractFeatures(false);

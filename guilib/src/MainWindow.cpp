@@ -3298,7 +3298,11 @@ void MainWindow::postProcessing()
 {
 	if(_cachedSignatures.size() == 0)
 	{
-		UERROR("Signatures must be cached in the GUI to post processing.");
+		QMessageBox::warning(this,
+				tr("Post-processing..."),
+				tr("Signatures must be cached in the GUI for post-processing. "
+				   "Check the option in Preferences->General Settings (GUI), then "
+				   "refresh the cache."));
 		return;
 	}
 	if(_postProcessingDialog->exec() != QDialog::Accepted)
@@ -3344,6 +3348,7 @@ void MainWindow::postProcessing()
 			{
 				odomPoses.insert(*iter); // fill raw poses
 			}
+			/*
 			if(jter->sensorData().cameraModels().size() == 0 && !jter->sensorData().stereoCameraModel().isValid())
 			{
 				UWARN("Calibration of %d is null.", iter->first);
@@ -3367,7 +3372,7 @@ void MainWindow::postProcessing()
 						allDataAvailable = false;
 					}
 				}
-			}
+			}*/
 		}
 		else
 		{
@@ -3410,6 +3415,7 @@ void MainWindow::postProcessing()
 	bool optimizeFromGraphEnd =  Parameters::defaultRGBDOptimizeFromGraphEnd();
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), optimizeFromGraphEnd);
 
+	bool warn = false;
 	int loopClosuresAdded = 0;
 	if(detectMoreLoopClosures)
 	{
@@ -3716,13 +3722,24 @@ void MainWindow::postProcessing()
 							QString str = tr("Cannot refine link %1->%2 (converged=%3 variance=%4 correspondencesRatio=%5 (ref=%6))").arg(from).arg(to).arg(hasConverged?"true":"false").arg(variance).arg(correspondencesRatio).arg(correspondenceRatio);
 							_initProgressDialog->appendText(str, Qt::darkYellow);
 							UWARN("%s", str.toStdString().c_str());
+							warn = true;
 						}
 					}
 					else
 					{
-						QString str = tr("Cannot refine link %1->%2 (clouds empty!)").arg(from).arg(to);
+						QString str;
+						if(signatureFrom.getWeight() < 0 || signatureTo.getWeight() < 0)
+						{
+							str = tr("Cannot refine link %1->%2 (Intermediate node detected!)").arg(from).arg(to);
+						}
+						else
+						{
+							str = tr("Cannot refine link %1->%2 (clouds empty!)").arg(from).arg(to);
+						}
+
 						_initProgressDialog->appendText(str, Qt::darkYellow);
 						UWARN("%s", str.toStdString().c_str());
+						warn = true;
 					}
 				}
 			}
@@ -3783,6 +3800,11 @@ void MainWindow::postProcessing()
 			std::map<int, std::string>(_curentLabels),
 			false);
 	_initProgressDialog->appendText(tr("Updating map... done!"));
+
+	if(warn)
+	{
+		_initProgressDialog->setAutoClose(false);
+	}
 
 	_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
 	_initProgressDialog->appendText("Post-processing finished!");
@@ -5149,7 +5171,7 @@ void MainWindow::exportImages()
 	_initProgressDialog->show();
 	_initProgressDialog->setMaximumSteps(_cachedSignatures.size());
 
-	int saved = 0;
+	unsigned int saved = 0;
 	for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 	{
 		int id = iter->first;
