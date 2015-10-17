@@ -53,38 +53,45 @@ public:
 	void enableRegeneration(bool enabled);
 
 	//getters
-	bool getAssemble() const;
-	double getAssembleVoxel() const;
+	bool getBinaryFile() const;
+	int getNormalKSearch() const;
+
 	bool getGenerate() const;
 	int getGenerateDecimation() const;
 	double getGenerateVoxel() const;
 	double getGenerateMaxDepth() const;
-	bool getBinaryFile() const;
+
+	bool getFiltering() const;
+	double getFilteringRadius() const;
+	int getFilteringMinNeighbors() const;
+
+	bool getAssemble() const;
+	double getAssembleVoxel() const;
+
 	bool getMLS() const;
 	double getMLSRadius() const;
-	bool getMesh() const;
-	int getMeshNormalKSearch() const;
-	double getMeshGp3Radius() const;
+	int getMLSPolygonialOrder() const;
+	int getMLSUpsamplingMethod() const;
+	double getMLSUpsamplingRadius() const;
+	double getMLSUpsamplingStep() const;
+	int getMLSPointDensity() const;
+	double getMLSDilationVoxelSize() const;
+	int getMLSDilationIterations() const;
 
-	//setters
-	void setAssemble(bool on);
-	void setAssembleVoxel(double voxel);
-	void setGenerate(bool on);
-	void setGenerateDecimation(int decimation);
-	void setGenerateVoxel(double voxel);
-	void setGenerateMaxDepth(double maxDepth);
-	void setBinaryFile(bool on);
-	void setMLS(bool on);
-	void setMLSRadius(double radius);
-	void setMesh(bool on);
-	void setMeshNormalKSearch(int k);
-	void setMeshGp3Radius(double radius);
+	bool getMesh() const;
+	double getMeshGp3Radius() const;
+	double getMeshGp3Mu() const;
+	double getMeshDecimationFactor() const;
+	bool getMeshTexture() const;
 
 signals:
 	void configChanged();
 
 public slots:
 	void restoreDefaults();
+
+private slots:
+	void updateMLSGrpVisibility();
 
 private:
 	Ui_ExportCloudsDialog * _ui;

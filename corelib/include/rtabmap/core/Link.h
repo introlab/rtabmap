@@ -29,8 +29,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define LINK_H_
 
 #include <rtabmap/core/Transform.h>
-#include <rtabmap/utilite/ULogger.h>
-#include <rtabmap/utilite/UMath.h>
 #include <opencv2/core/core.hpp>
 
 namespace rtabmap {
@@ -39,38 +37,20 @@ class Link
 {
 public:
 	enum Type {kNeighbor, kGlobalClosure, kLocalSpaceClosure, kLocalTimeClosure, kUserClosure, kVirtualClosure, kUndef};
-	Link() :
-		from_(0),
-		to_(0),
-		type_(kUndef),
-		infMatrix_(cv::Mat::eye(6,6,CV_64FC1))
-	{
-	}
+	Link();
 	Link(int from,
 			int to,
 			Type type,
 			const Transform & transform,
-			const cv::Mat & infMatrix = cv::Mat::eye(6,6,CV_64FC1)) :
-		from_(from),
-		to_(to),
-		transform_(transform),
-		type_(type)
-	{
-		setInfMatrix(infMatrix);
-	}
+			const cv::Mat & infMatrix = cv::Mat::eye(6,6,CV_64FC1),
+			const cv::Mat & userData = cv::Mat());
 	Link(int from,
 			int to,
 			Type type,
 			const Transform & transform,
 			double rotVariance,
-			double transVariance) :
-		from_(from),
-		to_(to),
-		transform_(transform),
-		type_(type)
-	{
-		setVariance(rotVariance, transVariance);
-	}
+			double transVariance,
+			const cv::Mat & userData = cv::Mat());
 
 	bool isValid() const {return from_ > 0 && to_ > 0 && !transform_.isNull() && type_!=kUndef;}
 
@@ -79,65 +59,25 @@ public:
 	const Transform & transform() const {return transform_;}
 	Type type() const {return type_;}
 	const cv::Mat & infMatrix() const {return infMatrix_;}
-	double rotVariance() const
-	{
-		double min = uMin3(infMatrix_.at<double>(3,3), infMatrix_.at<double>(4,4), infMatrix_.at<double>(5,5));
-		UASSERT(min > 0.0);
-		return 1.0/min;
-	}
-	double transVariance() const
-	{
-		double min = uMin3(infMatrix_.at<double>(0,0), infMatrix_.at<double>(1,1), infMatrix_.at<double>(2,2));
-		UASSERT(min > 0.0);
-		return 1.0/min;
-	}
+	double rotVariance() const;
+	double transVariance() const;
 
 	void setFrom(int from) {from_ = from;}
 	void setTo(int to) {to_ = to;}
 	void setTransform(const Transform & transform) {transform_ = transform;}
 	void setType(Type type) {type_ = type;}
-	void setInfMatrix(const cv::Mat & infMatrix) {
-		UASSERT(infMatrix.cols == 6 && infMatrix.rows == 6 && infMatrix.type() == CV_64FC1);
-		UASSERT_MSG(uIsFinite(infMatrix.at<double>(0,0)) && infMatrix.at<double>(0,0)>0, "Transitional information should not be null! (set to 1 if unknown)");
-		UASSERT_MSG(uIsFinite(infMatrix.at<double>(1,1)) && infMatrix.at<double>(1,1)>0, "Transitional information should not be null! (set to 1 if unknown)");
-		UASSERT_MSG(uIsFinite(infMatrix.at<double>(2,2)) && infMatrix.at<double>(2,2)>0, "Transitional information should not be null! (set to 1 if unknown)");
-		UASSERT_MSG(uIsFinite(infMatrix.at<double>(3,3)) && infMatrix.at<double>(3,3)>0, "Rotational information should not be null! (set to 1 if unknown)");
-		UASSERT_MSG(uIsFinite(infMatrix.at<double>(4,4)) && infMatrix.at<double>(4,4)>0, "Rotational information should not be null! (set to 1 if unknown)");
-		UASSERT_MSG(uIsFinite(infMatrix.at<double>(5,5)) && infMatrix.at<double>(5,5)>0, "Rotational information should not be null! (set to 1 if unknown)");
-		infMatrix_ = infMatrix;
-	}
-	void setVariance(double rotVariance, double transVariance) {
-		UASSERT(uIsFinite(rotVariance) && rotVariance>0);
-		UASSERT(uIsFinite(transVariance) && transVariance>0);
-		infMatrix_ = cv::Mat::eye(6,6,CV_64FC1);
-		infMatrix_.at<double>(0,0) = 1.0/transVariance;
-		infMatrix_.at<double>(1,1) = 1.0/transVariance;
-		infMatrix_.at<double>(2,2) = 1.0/transVariance;
-		infMatrix_.at<double>(3,3) = 1.0/rotVariance;
-		infMatrix_.at<double>(4,4) = 1.0/rotVariance;
-		infMatrix_.at<double>(5,5) = 1.0/rotVariance;
-	}
+	void setInfMatrix(const cv::Mat & infMatrix);
+	void setVariance(double rotVariance, double transVariance);
 
-	Link merge(const Link & link) const
-	{
-		UASSERT(to_ == link.from());
-		UASSERT(type_ == link.type());
-		UASSERT(!transform_.isNull());
-		UASSERT(!link.transform().isNull());
-		UASSERT(infMatrix_.cols == 6 && infMatrix_.rows == 6 && infMatrix_.type() == CV_64FC1);
-		UASSERT(link.infMatrix().cols == 6 && link.infMatrix().rows == 6 && link.infMatrix().type() == CV_64FC1);
-		return Link(
-				from_,
-				link.to(),
-				type_,
-				transform_ * link.transform(),
-				infMatrix_ + link.infMatrix());
-	}
+	void setUserDataRaw(const cv::Mat & userDataRaw); // only set raw
+	void setUserData(const cv::Mat & userData); // detect automatically if raw or compressed. If raw, the data is compressed too.
+	const cv::Mat & userDataRaw() const {return _userDataRaw;}
+	const cv::Mat & userDataCompressed() const {return _userDataCompressed;}
+	void uncompressUserData();
+	cv::Mat uncompressUserDataConst() const;
 
-	Link inverse() const
-	{
-		return Link(to_, from_, type_, transform_.inverse(), infMatrix_);
-	}
+	Link merge(const Link & link, Type outputType) const;
+	Link inverse() const;
 
 private:
 	int from_;
@@ -145,6 +85,10 @@ private:
 	Transform transform_;
 	Type type_;
 	cv::Mat infMatrix_; // Information matrix = covariance matrix ^ -1
+
+	// user data
+	cv::Mat _userDataCompressed;      // compressed data
+	cv::Mat _userDataRaw;
 };
 
 }

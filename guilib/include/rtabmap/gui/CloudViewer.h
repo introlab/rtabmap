@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/PolygonMesh.h>
+#include <pcl/TextureMesh.h>
 #include "rtabmap/core/Transform.h"
 #include <QtCore/QMap>
 #include <QtCore/QSet>
@@ -73,6 +74,12 @@ public:
 		const Transform & pose); //including mesh
 
 	bool updateCloud(
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
+
+	bool updateCloud(
 		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const Transform & pose = Transform::getIdentity(),
@@ -83,6 +90,12 @@ public:
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const Transform & pose = Transform::getIdentity(),
 		const QColor & color = QColor());
+
+	bool addOrUpdateCloud(
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
 
 	bool addOrUpdateCloud(
 		const std::string & id,
@@ -101,30 +114,48 @@ public:
 			const pcl::PCLPointCloud2Ptr & binaryCloud,
 			const Transform & pose,
 			bool rgb,
+			bool haveNormals,
 			const QColor & color = QColor());
 
 	bool addCloud(
-		const std::string & id,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const Transform & pose = Transform::getIdentity(),
-		const QColor & color = QColor());
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
 
 	bool addCloud(
-		const std::string & id,
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const Transform & pose = Transform::getIdentity(),
-		const QColor & color = QColor());
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
+
+	bool addCloud(
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
 
 	bool addCloudMesh(
-		const std::string & id,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const std::vector<pcl::Vertices> & polygons,
-		const Transform & pose = Transform::getIdentity());
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+			const std::vector<pcl::Vertices> & polygons,
+			const Transform & pose = Transform::getIdentity());
 
 	bool addCloudMesh(
-		const std::string & id,
-		const pcl::PolygonMesh::Ptr & mesh,
-		const Transform & pose = Transform::getIdentity());
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+			const std::vector<pcl::Vertices> & polygons,
+			const Transform & pose = Transform::getIdentity());
+
+	bool addCloudMesh(
+			const std::string & id,
+			const pcl::PolygonMesh::Ptr & mesh,
+			const Transform & pose = Transform::getIdentity());
+
+	bool addCloudTextureMesh(
+			const std::string & id,
+			const pcl::TextureMesh::Ptr & textureMesh,
+			const Transform & pose = Transform::getIdentity());
 
 	bool addOccupancyGridMap(
 			const cv::Mat & map8U,
@@ -165,6 +196,7 @@ public:
 	void setTrajectoryShown(bool shown);
 	void setTrajectorySize(unsigned int value);
 	void clearTrajectory();
+	void resetCamera();
 
 	void removeAllClouds(); //including meshes
 	bool removeCloud(const std::string & id); //including mesh

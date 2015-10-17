@@ -96,14 +96,18 @@ public:
 	void setLocalTransform(const Transform & transform) {localTransform_ = transform;}
 	const Transform & localTransform() const {return localTransform_;}
 
+	void setImageSize(const cv::Size & size) {imageSize_ = size;}
 	const cv::Size & imageSize() const {return imageSize_;}
 	int imageWidth() const {return imageSize_.width;}
-	int imageWeight() const {return imageSize_.height;}
+	int imageHeight() const {return imageSize_.height;}
 
 	bool load(const std::string & directory, const std::string & cameraName);
 	bool save(const std::string & directory) const;
 
 	void scale(double scale);
+
+	double horizontalFOV() const; // in degrees
+	double verticalFOV() const;   // in degrees
 
 	// For depth images, your should use cv::INTER_NEAREST
 	cv::Mat rectifyImage(const cv::Mat & raw, int interpolation = cv::INTER_LINEAR) const;

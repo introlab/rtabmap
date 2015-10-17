@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UFile.h>
 #include <rtabmap/core/Memory.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/common/eigen.h>
@@ -48,10 +49,51 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "g2o/core/optimization_algorithm_gauss_newton.h"
 #include "g2o/core/optimization_algorithm_levenberg.h"
 #include "g2o/solvers/csparse/linear_solver_csparse.h"
+#include "g2o/solvers/cholmod/linear_solver_cholmod.h"
+#include "g2o/solvers/pcg/linear_solver_pcg.h"
 #include "g2o/types/slam3d/vertex_se3.h"
 #include "g2o/types/slam3d/edge_se3.h"
 #include "g2o/types/slam2d/vertex_se2.h"
 #include "g2o/types/slam2d/edge_se2.h"
+
+typedef g2o::BlockSolver< g2o::BlockSolverTraits<-1, -1> > SlamBlockSolver;
+typedef g2o::LinearSolverCSparse<SlamBlockSolver::PoseMatrixType> SlamLinearCSparseSolver;
+typedef g2o::LinearSolverCholmod<SlamBlockSolver::PoseMatrixType> SlamLinearCholmodSolver;
+typedef g2o::LinearSolverPCG<SlamBlockSolver::PoseMatrixType> SlamLinearPCGSolver;
+
+#include "vertigo/g2o/edge_switchPrior.h"
+#include "vertigo/g2o/edge_se2Switchable.h"
+#include "vertigo/g2o/edge_se3Switchable.h"
+#include "vertigo/g2o/vertex_switchLinear.h"
+
+#endif // end WITH_G2O
+
+#ifdef WITH_GTSAM
+#include <gtsam/geometry/Pose2.h>
+#include <gtsam/geometry/Pose3.h>
+#include <gtsam/inference/Key.h>
+#include <gtsam/inference/Symbol.h>
+#include <gtsam/slam/PriorFactor.h>
+#include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
+#include <gtsam/nonlinear/DoglegOptimizer.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/nonlinear/NonlinearOptimizer.h>
+#include <gtsam/nonlinear/Marginals.h>
+#include <gtsam/nonlinear/Values.h>
+
+#include "vertigo/gtsam/betweenFactorMaxMix.h"
+#include "vertigo/gtsam/betweenFactorSwitchable.h"
+#include "vertigo/gtsam/switchVariableLinear.h"
+#include "vertigo/gtsam/switchVariableSigmoid.h"
+#endif // end WITH_GTSAM
+
+#ifdef WITH_CVSBA
+#include <cvsba/cvsba.h>
+#include "rtabmap/core/util3d_motion_estimation.h"
+#include "rtabmap/core/util3d_transforms.h"
+#include "rtabmap/core/util3d_correspondences.h"
 #endif
 
 namespace rtabmap {
@@ -73,16 +115,23 @@ Optimizer * Optimizer::create(const ParametersMap & parameters)
 		UWARN("g2o optimizer not available. TORO will be used instead.");
 		type = Optimizer::kTypeTORO;
 	}
+	if(!GTSAMOptimizer::available() && type == Optimizer::kTypeGTSAM)
+	{
+		UWARN("GTSAM optimizer not available. TORO will be used instead.");
+		type = Optimizer::kTypeTORO;
+	}
 	Optimizer * optimizer = 0;
 	switch(type)
 	{
+	case Optimizer::kTypeGTSAM:
+		optimizer = new GTSAMOptimizer(parameters);
+		break;
 	case Optimizer::kTypeG2O:
 		optimizer = new G2OOptimizer(parameters);
 		break;
 	case Optimizer::kTypeTORO:
 	default:
 		optimizer = new TOROOptimizer(parameters);
-		type = Optimizer::kTypeTORO;
 		break;
 
 	}
@@ -96,9 +145,17 @@ Optimizer * Optimizer::create(Optimizer::Type & type, const ParametersMap & para
 		UWARN("g2o optimizer not available. TORO will be used instead.");
 		type = Optimizer::kTypeTORO;
 	}
+	if(!GTSAMOptimizer::available() && type == Optimizer::kTypeGTSAM)
+	{
+		UWARN("GTSAM optimizer not available. TORO will be used instead.");
+		type = Optimizer::kTypeTORO;
+	}
 	Optimizer * optimizer = 0;
 	switch(type)
 	{
+	case Optimizer::kTypeGTSAM:
+		optimizer = new GTSAMOptimizer(parameters);
+		break;
 	case Optimizer::kTypeG2O:
 		optimizer = new G2OOptimizer(parameters);
 		break;
@@ -112,11 +169,12 @@ Optimizer * Optimizer::create(Optimizer::Type & type, const ParametersMap & para
 	return optimizer;
 }
 
-Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored, double epsilon) :
+Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored, double epsilon, bool robust) :
 		iterations_(iterations),
 		slam2d_(slam2d),
 		covarianceIgnored_(covarianceIgnored),
-		epsilon_(epsilon)
+		epsilon_(epsilon),
+		robust_(robust)
 {
 }
 
@@ -124,7 +182,8 @@ Optimizer::Optimizer(const ParametersMap & parameters) :
 		iterations_(Parameters::defaultRGBDOptimizeIterations()),
 		slam2d_(Parameters::defaultRGBDOptimizeSlam2D()),
 		covarianceIgnored_(Parameters::defaultRGBDOptimizeVarianceIgnored()),
-		epsilon_(Parameters::defaultRGBDOptimizeEpsilon())
+		epsilon_(Parameters::defaultRGBDOptimizeEpsilon()),
+		robust_(Parameters::defaultRGBDOptimizeRobust())
 {
 	parseParameters(parameters);
 }
@@ -135,6 +194,27 @@ void Optimizer::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeVarianceIgnored(), covarianceIgnored_);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeSlam2D(), slam2d_);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeEpsilon(), epsilon_);
+	Parameters::parse(parameters, Parameters::kRGBDOptimizeRobust(), robust_);
+}
+
+std::map<int, Transform> Optimizer::optimize(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & constraints,
+		std::list<std::map<int, Transform> > * intermediateGraphes)
+{
+	UERROR("Optimizer %d doesn't implement optimize() method.", (int)this->type());
+	return std::map<int, Transform>();
+}
+
+std::map<int, Transform> Optimizer::optimizeBA(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		const std::map<int, Signature> & signatures)
+{
+	UERROR("Optimizer %d doesn't implement optimizeBA() method.", (int)this->type());
+	return std::map<int, Transform>();
 }
 
 void Optimizer::getConnectedGraph(
@@ -157,6 +237,14 @@ void Optimizer::getConnectedGraph(
 	std::set<int> nextDepth;
 	nextDepth.insert(fromId);
 	int d = 0;
+	std::multimap<int, int> biLinks;
+	for(std::multimap<int, Link>::const_iterator iter=linksIn.begin(); iter!=linksIn.end(); ++iter)
+	{
+		UASSERT_MSG(findLink(biLinks, iter->second.from(), iter->second.to()) == biLinks.end(), "Input links should be unique between two poses.");
+		biLinks.insert(std::make_pair(iter->second.from(), iter->second.to()));
+		biLinks.insert(std::make_pair(iter->second.to(), iter->second.from()));
+	}
+
 	while((depth == 0 || d < depth) && nextDepth.size())
 	{
 		curentDepth = nextDepth;
@@ -169,39 +257,22 @@ void Optimizer::getConnectedGraph(
 				ids.insert(*jter);
 				posesOut.insert(*posesIn.find(*jter));
 
-				for(std::multimap<int, Link>::const_iterator iter=linksIn.begin(); iter!=linksIn.end(); ++iter)
+				for(std::multimap<int, int>::const_iterator iter=biLinks.find(*jter); iter!=biLinks.end() && iter->first==*jter; ++iter)
 				{
-					if(iter->second.from() == *jter)
+					int nextId = iter->second;
+					if(ids.find(nextId) == ids.end() && uContains(posesIn, nextId))
 					{
-						if(ids.find(iter->second.to()) == ids.end() && uContains(posesIn, iter->second.to()))
-						{
-							nextDepth.insert(iter->second.to());
-							if(depth == 0 || d < depth-1)
-							{
-								linksOut.insert(*iter);
-							}
-							else if(curentDepth.find(iter->second.to()) != curentDepth.end() ||
-									ids.find(iter->second.to()) != ids.end())
-							{
-								linksOut.insert(*iter);
-							}
-						}
-					}
-					else if(iter->second.to() == *jter)
-					{
-						if(ids.find(iter->second.from()) == ids.end() && uContains(posesIn, iter->second.from()))
-						{
-							nextDepth.insert(iter->second.from());
+						nextDepth.insert(nextId);
 
-							if(depth == 0 || d < depth-1)
-							{
-								linksOut.insert(*iter);
-							}
-							else if(curentDepth.find(iter->second.from()) != curentDepth.end() ||
-									ids.find(iter->second.from()) != ids.end())
-							{
-								linksOut.insert(*iter);
-							}
+						std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, *jter, nextId);
+						if(depth == 0 || d < depth-1)
+						{
+							linksOut.insert(*kter);
+						}
+						else if(curentDepth.find(nextId) != curentDepth.end() ||
+								ids.find(nextId) != ids.end())
+						{
+							linksOut.insert(*kter);
 						}
 					}
 				}
@@ -346,9 +417,12 @@ std::map<int, Transform> TOROOptimizer::optimize(
 			pg3.initializeOptimization();
 		}
 
-		UINFO("TORO iterate begin (iterations=%d)", iterations());
+		UINFO("TORO optimizing begin (iterations=%d)", iterations());
 		double lasterror = 0;
-		for (int i=0; i<iterations(); i++)
+		double errorDelta = 0;
+		int i=0;
+		UTimer timer;
+		for (; i<iterations(); i++)
 		{
 			if(intermediateGraphes && i>0)
 			{
@@ -402,7 +476,7 @@ std::map<int, Transform> TOROOptimizer::optimize(
 			}
 
 			// early stop condition
-			double errorDelta = lasterror - error;
+			errorDelta = lasterror - error;
 			if(i>0 && errorDelta < this->epsilon())
 			{
 				UDEBUG("Stop optimizing, not enough improvement (%f < %f)", errorDelta, this->epsilon());
@@ -410,7 +484,7 @@ std::map<int, Transform> TOROOptimizer::optimize(
 			}
 			lasterror = error;
 		}
-		UINFO("TORO iterate end");
+		UINFO("TORO optimizing end (%d iterations done, error=%f, time = %f s)", i, errorDelta, timer.ticks());
 
 		if(isSlam2d())
 		{
@@ -643,20 +717,41 @@ std::map<int, Transform> G2OOptimizer::optimize(
 	{
 		// Apply g2o optimization
 
-		// create the linear solver
-		g2o::BlockSolverX::LinearSolverType * linearSolver = new g2o::LinearSolverCSparse<g2o::BlockSolverX::PoseMatrixType>();
-
-		// create the block solver on top of the linear solver
-		g2o::BlockSolverX* blockSolver = new g2o::BlockSolverX(linearSolver);
-
-		// create the algorithm to carry out the optimization
-		//g2o::OptimizationAlgorithmGaussNewton* optimizationAlgorithm = new g2o::OptimizationAlgorithmGaussNewton(blockSolver);
-		g2o::OptimizationAlgorithmLevenberg* optimizationAlgorithm = new g2o::OptimizationAlgorithmLevenberg(blockSolver);
-
-		// create the optimizer to load the data and carry out the optimization
 		g2o::SparseOptimizer optimizer;
-		optimizer.setVerbose(false);
-		optimizer.setAlgorithm(optimizationAlgorithm);
+		optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
+		int solverApproach = 0;
+		int optimizationApproach = 1;
+
+		SlamBlockSolver * blockSolver;
+		if(solverApproach == 1)
+		{
+			//pcg
+			SlamLinearPCGSolver * linearSolver = new SlamLinearPCGSolver();
+			blockSolver = new SlamBlockSolver(linearSolver);
+		}
+		else if(solverApproach == 2)
+		{
+			//csparse
+			SlamLinearCSparseSolver* linearSolver = new SlamLinearCSparseSolver();
+			linearSolver->setBlockOrdering(false);
+			blockSolver = new SlamBlockSolver(linearSolver);
+		}
+		else
+		{
+			//chmold
+			SlamLinearCholmodSolver * linearSolver = new SlamLinearCholmodSolver();
+			linearSolver->setBlockOrdering(false);
+			blockSolver = new SlamBlockSolver(linearSolver);
+		}
+
+		if(optimizationApproach == 1)
+		{
+			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmGaussNewton(blockSolver));
+		}
+		else
+		{
+			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(blockSolver));
+		}
 
 		UDEBUG("fill poses to g2o...");
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
@@ -667,16 +762,25 @@ std::map<int, Transform> G2OOptimizer::optimize(
 			{
 				g2o::VertexSE2 * v2 = new g2o::VertexSE2();
 				v2->setEstimate(g2o::SE2(iter->second.x(), iter->second.y(), iter->second.theta()));
+				if(iter->first == rootId)
+				{
+					v2->setFixed(true);
+				}
 				vertex = v2;
 			}
 			else
 			{
 				g2o::VertexSE3 * v3 = new g2o::VertexSE3();
-				Eigen::Isometry3d pose;
+
 				Eigen::Affine3d a = iter->second.toEigen3d();
+				Eigen::Isometry3d pose;
+				pose = a.rotation();
 				pose.translation() = a.translation();
-				pose.linear() = a.rotation();
 				v3->setEstimate(pose);
+				if(iter->first == rootId)
+				{
+					v3->setFixed(true);
+				}
 				vertex = v3;
 			}
 			vertex->setId(iter->first);
@@ -684,6 +788,7 @@ std::map<int, Transform> G2OOptimizer::optimize(
 		}
 
 		UDEBUG("fill edges to g2o...");
+		int vertigoVertexId = poses.rbegin()->first+1;
 		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
 			int id1 = iter->first;
@@ -692,6 +797,32 @@ std::map<int, Transform> G2OOptimizer::optimize(
 			UASSERT(!iter->second.transform().isNull());
 
 			g2o::HyperGraph::Edge * edge = 0;
+
+			VertexSwitchLinear * v = 0;
+			if(this->isRobust() && iter->second.type() != Link::kNeighbor)
+			{
+				// For loop closure links, add switchable edges
+
+				// create new switch variable
+				// Sunderhauf IROS 2012:
+				// "Since it is reasonable to initially accept all loop closure constraints,
+				//  a proper and convenient initial value for all switch variables would be
+				//  sij = 1 when using the linear switch function"
+				v = new VertexSwitchLinear();
+				v->setEstimate(1.0);
+				v->setId(vertigoVertexId++);
+				UASSERT_MSG(optimizer.addVertex(v), uFormat("cannot insert switchable vertex %d!?", v->id()).c_str());
+
+				// create switch prior factor
+				// "If the front-end is not able to assign sound individual values
+				//  for Ξij , it is save to set all Ξij = 1, since this value is close
+				//  to the individual optimal choice of Ξij for a large range of
+				//  outliers."
+				EdgeSwitchPrior * prior = new EdgeSwitchPrior();
+				prior->setMeasurement(1.0);
+				prior->setVertex(0, v);
+				UASSERT_MSG(optimizer.addEdge(prior), uFormat("cannot insert switchable prior edge %d!?", v->id()).c_str());
+			}
 
 			if(isSlam2d())
 			{
@@ -709,16 +840,33 @@ std::map<int, Transform> G2OOptimizer::optimize(
 					information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
 				}
 
-				g2o::EdgeSE2 * e = new g2o::EdgeSE2();
-				g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
-				g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
-				UASSERT(v1 != 0);
-				UASSERT(v2 != 0);
-				e->setVertex(0, v1);
-				e->setVertex(1, v2);
-				e->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
-				e->setInformation(information);
-				edge = e;
+				if(this->isRobust() && iter->second.type() != Link::kNeighbor)
+				{
+					EdgeSE2Switchable * e = new EdgeSE2Switchable();
+					g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
+					g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
+					UASSERT(v1 != 0);
+					UASSERT(v2 != 0);
+					e->setVertex(0, v1);
+					e->setVertex(1, v2);
+					e->setVertex(2, v);
+					e->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
+					e->setInformation(information);
+					edge = e;
+				}
+				else
+				{
+					g2o::EdgeSE2 * e = new g2o::EdgeSE2();
+					g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
+					g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
+					UASSERT(v1 != 0);
+					UASSERT(v2 != 0);
+					e->setVertex(0, v1);
+					e->setVertex(1, v2);
+					e->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
+					e->setInformation(information);
+					edge = e;
+				}
 			}
 			else
 			{
@@ -730,19 +878,36 @@ std::map<int, Transform> G2OOptimizer::optimize(
 
 				Eigen::Affine3d a = iter->second.transform().toEigen3d();
 				Eigen::Isometry3d constraint;
+				constraint = a.rotation();
 				constraint.translation() = a.translation();
-				constraint.linear() = a.rotation();
 
-				g2o::EdgeSE3 * e = new g2o::EdgeSE3();
-				g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
-				g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
-				UASSERT(v1 != 0);
-				UASSERT(v2 != 0);
-				e->setVertex(0, v1);
-				e->setVertex(1, v2);
-				e->setMeasurement(constraint);
-				e->setInformation(information);
-				edge = e;
+				if(this->isRobust() && iter->second.type() != Link::kNeighbor)
+				{
+					EdgeSE3Switchable * e = new EdgeSE3Switchable();
+					g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+					g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
+					UASSERT(v1 != 0);
+					UASSERT(v2 != 0);
+					e->setVertex(0, v1);
+					e->setVertex(1, v2);
+					e->setVertex(2, v);
+					e->setMeasurement(constraint);
+					e->setInformation(information);
+					edge = e;
+				}
+				else
+				{
+					g2o::EdgeSE3 * e = new g2o::EdgeSE3();
+					g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+					g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
+					UASSERT(v1 != 0);
+					UASSERT(v2 != 0);
+					e->setVertex(0, v1);
+					e->setVertex(1, v2);
+					e->setMeasurement(constraint);
+					e->setInformation(information);
+					edge = e;
+				}
 			}
 
 			if (!optimizer.addEdge(edge))
@@ -753,25 +918,13 @@ std::map<int, Transform> G2OOptimizer::optimize(
 		}
 
 		UDEBUG("Initial optimization...");
-		UASSERT(uContains(poses, rootId));
-		if(isSlam2d())
-		{
-			g2o::VertexSE2* firstRobotPose = (g2o::VertexSE2*)optimizer.vertex(rootId);
-			UASSERT(firstRobotPose != 0);
-			firstRobotPose->setFixed(true);
-		}
-		else
-		{
-			g2o::VertexSE3* firstRobotPose = (g2o::VertexSE3*)optimizer.vertex(rootId);
-			UASSERT(firstRobotPose != 0);
-			firstRobotPose->setFixed(true);
-		}
+		optimizer.initializeOptimization();
 
-		UINFO("g2o iterate begin (max iterations=%d)", iterations());
+		UINFO("g2o optimizing begin (max iterations=%d, robust=%d)", iterations(), isRobust()?1:0);
 		int it = 0;
+		UTimer timer;
 		if(intermediateGraphes)
 		{
-			optimizer.initializeOptimization();
 			for(int i=0; i<iterations(); ++i)
 			{
 				if(i > 0)
@@ -820,18 +973,17 @@ std::map<int, Transform> G2OOptimizer::optimize(
 				if(ULogger::level() == ULogger::kDebug)
 				{
 					optimizer.computeActiveErrors();
-					UDEBUG("iteration %d: %d nodes, %d edges, chi2: %f", i, (int)optimizer.vertices().size(), (int)optimizer.edges().size(), optimizer.chi2());
+					UDEBUG("iteration %d: %d nodes, %d edges, chi2: %f", i, (int)optimizer.vertices().size(), (int)optimizer.edges().size(), optimizer.activeRobustChi2());
 				}
 			}
 		}
 		else
 		{
-			optimizer.initializeOptimization();
 			it = optimizer.optimize(iterations());
 			optimizer.computeActiveErrors();
-			UDEBUG("%d nodes, %d edges, chi2: %f", (int)optimizer.vertices().size(), (int)optimizer.edges().size(), optimizer.chi2());
+			UDEBUG("%d nodes, %d edges, chi2: %f", (int)optimizer.vertices().size(), (int)optimizer.edges().size(), optimizer.activeRobustChi2());
 		}
-		UINFO("g2o iterate end (%d iterations done)", it);
+		UINFO("g2o optimizing end (%d iterations done, error=%f, time = %f s)", it, optimizer.activeRobustChi2(), timer.ticks());
 
 		if(isSlam2d())
 		{
@@ -888,6 +1040,642 @@ std::map<int, Transform> G2OOptimizer::optimize(
 #endif
 	return optimizedPoses;
 }
+
+bool G2OOptimizer::saveGraph(
+		const std::string & fileName,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & edgeConstraints,
+		bool useRobustConstraints)
+{
+	FILE * file = 0;
+
+#ifdef _MSC_VER
+	fopen_s(&file, fileName.c_str(), "w");
+#else
+	file = fopen(fileName.c_str(), "w");
+#endif
+
+	if(file)
+	{
+		// VERTEX_SE3 id x y z qw qx qy qz
+		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			Eigen::Quaternionf q = iter->second.getQuaternionf();
+			fprintf(file, "VERTEX_SE3:QUAT %d %f %f %f %f %f %f %f\n",
+					iter->first,
+					iter->second.x(),
+					iter->second.y(),
+					iter->second.z(),
+					q.x(),
+					q.y(),
+					q.z(),
+					q.w());
+		}
+
+		//EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
+		int virtualVertexId = poses.size()?poses.rbegin()->first+1:0;
+		for(std::multimap<int, Link>::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+		{
+			std::string prefix = "EDGE_SE3:QUAT";
+			std::string suffix = "";
+
+			if(useRobustConstraints && iter->second.type() != Link::kNeighbor)
+			{
+				prefix = "EDGE_SE3_SWITCHABLE";
+				fprintf(file, "VERTEX_SWITCH %d 1\n", virtualVertexId);
+				fprintf(file, "EDGE_SWITCH_PRIOR %d 1 1.0\n", virtualVertexId);
+				suffix = uFormat(" %d", virtualVertexId++);
+			}
+
+			Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
+			fprintf(file, "%s %d %d%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+					prefix.c_str(),
+					iter->first,
+					iter->second.to(),
+					suffix.c_str(),
+					iter->second.transform().x(),
+					iter->second.transform().y(),
+					iter->second.transform().z(),
+					q.x(),
+					q.y(),
+					q.z(),
+					q.w(),
+					iter->second.infMatrix().at<double>(0,0),
+					iter->second.infMatrix().at<double>(0,1),
+					iter->second.infMatrix().at<double>(0,2),
+					iter->second.infMatrix().at<double>(0,3),
+					iter->second.infMatrix().at<double>(0,4),
+					iter->second.infMatrix().at<double>(0,5),
+					iter->second.infMatrix().at<double>(1,1),
+					iter->second.infMatrix().at<double>(1,2),
+					iter->second.infMatrix().at<double>(1,3),
+					iter->second.infMatrix().at<double>(1,4),
+					iter->second.infMatrix().at<double>(1,5),
+					iter->second.infMatrix().at<double>(2,2),
+					iter->second.infMatrix().at<double>(2,3),
+					iter->second.infMatrix().at<double>(2,4),
+					iter->second.infMatrix().at<double>(2,5),
+					iter->second.infMatrix().at<double>(3,3),
+					iter->second.infMatrix().at<double>(3,4),
+					iter->second.infMatrix().at<double>(3,5),
+					iter->second.infMatrix().at<double>(4,4),
+					iter->second.infMatrix().at<double>(4,5),
+					iter->second.infMatrix().at<double>(5,5));
+		}
+		UINFO("Graph saved to %s", fileName.c_str());
+		fclose(file);
+	}
+	else
+	{
+		UERROR("Cannot save to file %s", fileName.c_str());
+		return false;
+	}
+	return true;
+}
+
+//////////////////////
+// GTSAM
+//////////////////////
+bool GTSAMOptimizer::available()
+{
+#ifdef WITH_GTSAM
+	return true;
+#else
+	return false;
+#endif
+}
+
+std::map<int, Transform> GTSAMOptimizer::optimize(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & edgeConstraints,
+		std::list<std::map<int, Transform> > * intermediateGraphes)
+{
+	std::map<int, Transform> optimizedPoses;
+#ifdef WITH_GTSAM
+	UDEBUG("Optimizing graph...");
+	if(edgeConstraints.size()>=1 && poses.size()>=2 && iterations() > 0)
+	{
+		gtsam::NonlinearFactorGraph graph;
+
+		//prior first pose
+		UASSERT(uContains(poses, rootId));
+		const Transform & initialPose = poses.at(rootId);
+		if(isSlam2d())
+		{
+			gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.01, 0.01, 0.01));
+			graph.add(gtsam::PriorFactor<gtsam::Pose2>(rootId, gtsam::Pose2(initialPose.x(), initialPose.y(), initialPose.theta()), priorNoise));
+		}
+		else
+		{
+			gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished());
+			graph.add(gtsam::PriorFactor<gtsam::Pose3>(rootId, gtsam::Pose3(initialPose.toEigen4d()), priorNoise));
+		}
+
+		UDEBUG("fill poses to gtsam...");
+		gtsam::Values initialEstimate;
+		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			UASSERT(!iter->second.isNull());
+			if(isSlam2d())
+			{
+				initialEstimate.insert(iter->first, gtsam::Pose2(iter->second.x(), iter->second.y(), iter->second.theta()));
+			}
+			else
+			{
+				initialEstimate.insert(iter->first, gtsam::Pose3(iter->second.toEigen4d()));
+			}
+		}
+
+		UDEBUG("fill edges to gtsam...");
+		int switchCounter = poses.rbegin()->first+1;
+		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+		{
+			int id1 = iter->first;
+			int id2 = iter->second.to();
+
+			UASSERT(!iter->second.transform().isNull());
+
+			if(this->isRobust() && iter->second.type()!=Link::kNeighbor)
+			{
+				// create new switch variable
+				// Sunderhauf IROS 2012:
+				// "Since it is reasonable to initially accept all loop closure constraints,
+				//  a proper and convenient initial value for all switch variables would be
+				//  sij = 1 when using the linear switch function"
+				double prior = 1.0;
+				initialEstimate.insert(gtsam::Symbol('s',switchCounter), vertigo::SwitchVariableLinear(prior));
+
+				// create switch prior factor
+				// "If the front-end is not able to assign sound individual values
+				//  for Ξij , it is save to set all Ξij = 1, since this value is close
+				//  to the individual optimal choice of Ξij for a large range of
+				//  outliers."
+				gtsam::noiseModel::Diagonal::shared_ptr switchPriorModel = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector1(1.0));
+				graph.add(gtsam::PriorFactor<vertigo::SwitchVariableLinear> (gtsam::Symbol('s',switchCounter), vertigo::SwitchVariableLinear(prior), switchPriorModel));
+			}
+
+			if(isSlam2d())
+			{
+				Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
+				if(!isCovarianceIgnored())
+				{
+					// For some reasons, dividing by 1000 avoids some exceptions (maybe too large numbers on optimization)
+					information(0,0) = iter->second.infMatrix().at<double>(0,0)/1000.0; // x-x
+					information(0,1) = iter->second.infMatrix().at<double>(0,1)/1000.0; // x-y
+					information(0,2) = iter->second.infMatrix().at<double>(0,5)/1000.0; // x-theta
+					information(1,0) = iter->second.infMatrix().at<double>(1,0)/1000.0; // y-x
+					information(1,1) = iter->second.infMatrix().at<double>(1,1)/1000.0; // y-y
+					information(1,2) = iter->second.infMatrix().at<double>(1,5)/1000.0; // y-theta
+					information(2,0) = iter->second.infMatrix().at<double>(5,0)/1000.0; // theta-x
+					information(2,1) = iter->second.infMatrix().at<double>(5,1)/1000.0; // theta-y
+					information(2,2) = iter->second.infMatrix().at<double>(5,5)/1000.0; // theta-theta
+				}
+				gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
+
+				if(this->isRobust() && iter->second.type()!=Link::kNeighbor)
+				{
+					// create switchable edge factor
+					graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose2>(id1, id2, gtsam::Symbol('s', switchCounter++), gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
+				}
+				else
+				{
+					graph.add(gtsam::BetweenFactor<gtsam::Pose2>(id1, id2, gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
+				}
+			}
+			else
+			{
+				Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
+				if(!isCovarianceIgnored())
+				{
+					memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
+					// For some reasons, dividing by 1000 avoids some exceptions (maybe too large numbers on optimization)
+					information = information / 1000.0;
+				}
+
+				gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
+
+				if(this->isRobust() && iter->second.type()!=Link::kNeighbor)
+				{
+					// create switchable edge factor
+					graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose3>(id1, id2, gtsam::Symbol('s', switchCounter++), gtsam::Pose3(iter->second.transform().toEigen4d()), model));
+				}
+				else
+				{
+					graph.add(gtsam::BetweenFactor<gtsam::Pose3>(id1, id2, gtsam::Pose3(iter->second.transform().toEigen4d()), model));
+				}
+			}
+		}
+
+		UDEBUG("create optimizer");
+		gtsam::GaussNewtonParams parameters;
+		parameters.relativeErrorTol = epsilon();
+		parameters.maxIterations = iterations();
+		gtsam::GaussNewtonOptimizer optimizer(graph, initialEstimate, parameters);
+		//gtsam::LevenbergMarquardtParams parametersLev;
+		//parametersLev.relativeErrorTol = epsilon();
+		//parametersLev.maxIterations = iterations();
+		//gtsam::LevenbergMarquardtOptimizer optimizer(graph, initialEstimate, parametersLev);
+		//gtsam::DoglegParams parametersDogleg;
+		//parametersDogleg.relativeErrorTol = epsilon();
+		//parametersDogleg.maxIterations = iterations();
+		//gtsam::DoglegOptimizer optimizer(graph, initialEstimate, parametersDogleg);
+
+		UINFO("GTSAM optimizing begin (max iterations=%d, robust=%d)", iterations(), isRobust()?1:0);
+		UTimer timer;
+		for(int i=0; i<iterations(); ++i)
+		{
+			if(intermediateGraphes && i > 0)
+			{
+				std::map<int, Transform> tmpPoses;
+				for(gtsam::Values::const_iterator iter=optimizer.values().begin(); iter!=optimizer.values().end(); ++iter)
+				{
+					if(iter->value.dim() > 1)
+					{
+						if(isSlam2d())
+						{
+							gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
+							tmpPoses.insert(std::make_pair((int)iter->key, Transform(p.x(), p.y(), p.theta())));
+						}
+						else
+						{
+							gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
+							tmpPoses.insert(std::make_pair((int)iter->key, Transform::fromEigen4d(p.matrix())));
+						}
+					}
+				}
+				intermediateGraphes->push_back(tmpPoses);
+			}
+			try
+			{
+				optimizer.iterate();
+			}
+			catch(gtsam::IndeterminantLinearSystemException & e)
+			{
+				UERROR("GTSAM exception catched: %s", e.what());
+				return optimizedPoses;
+			}
+			UDEBUG("iteration %d error =%f", i+1, optimizer.error());
+			if(optimizer.error() < epsilon())
+			{
+				break;
+			}
+		}
+		UINFO("GTSAM optimizing end (%d iterations done, error=%f (initial=%f final=%f), time=%f s)", optimizer.iterations(), optimizer.error(), graph.error(initialEstimate), graph.error(optimizer.values()), timer.ticks());
+
+		for(gtsam::Values::const_iterator iter=optimizer.values().begin(); iter!=optimizer.values().end(); ++iter)
+		{
+			if(iter->value.dim() > 1)
+			{
+				if(isSlam2d())
+				{
+					gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
+					optimizedPoses.insert(std::make_pair((int)iter->key, Transform(p.x(), p.y(), p.theta())));
+				}
+				else
+				{
+					gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
+					optimizedPoses.insert(std::make_pair((int)iter->key, Transform::fromEigen4d(p.matrix())));
+				}
+			}
+		}
+	}
+	else if(poses.size() == 1 || iterations() <= 0)
+	{
+		optimizedPoses = poses;
+	}
+	else
+	{
+		UWARN("This method should be called at least with 1 pose!");
+	}
+	UDEBUG("Optimizing graph...end!");
+#else
+	UERROR("Not built with GTSAM support!");
+#endif
+	return optimizedPoses;
+}
+
+//////////////////////
+// cvsba
+//////////////////////
+bool CVSBAOptimizer::available()
+{
+#ifdef WITH_CVSBA
+	return true;
+#else
+	return false;
+#endif
+}
+
+std::map<int, Transform> CVSBAOptimizer::optimizeBA(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		const std::map<int, Signature> & signatures)
+{
+#ifdef WITH_CVSBA
+	// run sba optimization
+	cvsba::Sba sba;
+
+	// change params if desired
+	cvsba::Sba::Params params ;
+	params.type = cvsba::Sba::MOTIONSTRUCTURE;
+	params.iterations = this->iterations();
+	params.minError = this->epsilon();
+	params.fixedIntrinsics = 5;
+	params.fixedDistortion = 5;
+	params.verbose=ULogger::level() <= ULogger::kInfo;
+	sba.setParams(params);
+
+	std::map<int, Transform> frames = poses;
+
+	std::vector<cv::Mat> cameraMatrix(frames.size()); //nframes
+	std::vector<cv::Mat> R(frames.size()); //nframes
+	std::vector<cv::Mat> T(frames.size()); //nframes
+	std::vector<cv::Mat> distCoeffs(frames.size()); //nframes
+	std::map<int, int> frameIdToIndex;
+	std::map<int, CameraModel> models;
+	int oi=0;
+	for(std::map<int, Transform>::iterator iter=frames.begin(); iter!=frames.end(); )
+	{
+		CameraModel model;
+		if(uContains(signatures, iter->first))
+		{
+			if(signatures.at(iter->first).sensorData().cameraModels().size() == 1 && signatures.at(iter->first).sensorData().cameraModels().at(0).isValid())
+			{
+				model = signatures.at(iter->first).sensorData().cameraModels()[0];
+			}
+			else if(signatures.at(iter->first).sensorData().stereoCameraModel().isValid())
+			{
+				model = signatures.at(iter->first).sensorData().stereoCameraModel().left();
+			}
+			else
+			{
+				UERROR("Missing calibration for node %d", iter->first);
+			}
+		}
+		else
+		{
+			UERROR("Did not find node %d in cache", iter->first);
+		}
+
+		if(model.isValid())
+		{
+			frameIdToIndex.insert(std::make_pair(iter->first, oi));
+
+			cameraMatrix[oi] = model.K();
+			distCoeffs[oi] = model.D();
+
+			Transform t = (iter->second * model.localTransform()).inverse();
+
+			R[oi] = (cv::Mat_<double>(3,3) <<
+					(double)t.r11(), (double)t.r12(), (double)t.r13(),
+					(double)t.r21(), (double)t.r22(), (double)t.r23(),
+					(double)t.r31(), (double)t.r32(), (double)t.r33());
+			T[oi] = (cv::Mat_<double>(1,3) << (double)t.x(), (double)t.y(), (double)t.z());
+			++oi;
+
+			models.insert(std::make_pair(iter->first, model));
+
+			UDEBUG("Pose %d = %s", iter->first, t.prettyPrint().c_str());
+
+			++iter;
+		}
+		else
+		{
+			frames.erase(iter++);
+		}
+	}
+	cameraMatrix.resize(oi);
+	R.resize(oi);
+	T.resize(oi);
+	distCoeffs.resize(oi);
+
+	std::map<int, pcl::PointXYZ> points3DMap;
+	std::multimap<int, std::pair<int, cv::Point2f> > wordReferences; // <ID words, IDs frames + keypoint>
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	{
+		Link link = iter->second;
+		if(link.to() < link.from())
+		{
+			link = link.inverse();
+		}
+		if(uContains(signatures, link.from()) &&
+		   uContains(signatures, link.to()) &&
+		   uContains(frames, link.from()))
+		{
+			const Signature & sFrom = signatures.at(link.from());
+			const Signature & sTo = signatures.at(link.to());
+
+			std::vector<int> inliers;
+			Transform t = util3d::estimateMotion3DTo3D(
+					uMultimapToMapUnique(sFrom.getWords3()),
+					uMultimapToMapUnique(sTo.getWords3()),
+					minInliers_,
+					inlierDistance_,
+					100,
+					10,
+					0,
+					0,
+					&inliers);
+
+			if(!t.isNull())
+			{
+				Transform pose = frames.at(sFrom.id());
+				for(unsigned int i=0; i<inliers.size(); ++i)
+				{
+					pcl::PointXYZ p = util3d::transformPoint(sFrom.getWords3().lower_bound(inliers[i])->second, pose);
+					std::map<int, pcl::PointXYZ>::iterator jter = points3DMap.find(inliers[i]);
+					if(jter == points3DMap.end())
+					{
+						points3DMap.insert(std::make_pair(inliers[i], p));
+						wordReferences.insert(std::make_pair(inliers[i], std::make_pair(sFrom.id(), sFrom.getWords().lower_bound(inliers[i])->second.pt)));
+						wordReferences.insert(std::make_pair(inliers[i], std::make_pair(sTo.id(), sTo.getWords().lower_bound(inliers[i])->second.pt)));
+					}
+					else
+					{
+						float dist = uNorm(p.x - jter->second.x, p.y - jter->second.y, p.z - jter->second.z);
+						if(dist <= inlierDistance_)
+						{
+							// in case of loop closure links
+							wordReferences.insert(std::make_pair(inliers[i], std::make_pair(sFrom.id(), sFrom.getWords().lower_bound(inliers[i])->second.pt)));
+							wordReferences.insert(std::make_pair(inliers[i], std::make_pair(sTo.id(), sTo.getWords().lower_bound(inliers[i])->second.pt)));
+						}
+					}
+				}
+			}
+			else
+			{
+				UWARN("Not enough inliers (%d) between %d and %d", inliers.size(), sFrom.id(), sTo.id());
+			}
+		}
+	}
+
+	std::list<int> wordReferencesKeys = uUniqueKeys(wordReferences);
+	UDEBUG("points=%d frames=%d", (int)wordReferencesKeys.size(), (int)frames.size());
+	std::vector<cv::Point3f> points(wordReferencesKeys.size()); //npoints
+	std::vector<std::vector<cv::Point2f> >  imagePoints(frames.size()); //nframes -> npoints
+	std::vector<std::vector<int> > visibility(frames.size()); //nframes -> npoints
+	for(unsigned int i=0; i<frames.size(); ++i)
+	{
+		imagePoints[i].resize(wordReferencesKeys.size(), cv::Point2f(std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN()));
+		visibility[i].resize(wordReferencesKeys.size(), 0);
+	}
+	int i=0;
+	for(std::list<int>::iterator iter = wordReferencesKeys.begin(); iter!=wordReferencesKeys.end(); ++iter)
+	{
+		pcl::PointXYZ & p = points3DMap.at(*iter);
+		points[i].x = p.x;
+		points[i].y = p.y;
+		points[i].z = p.z;
+
+		std::multimap<int, std::pair<int, cv::Point2f> >::iterator jter = wordReferences.lower_bound(*iter);
+		while(jter->first == *iter && jter != wordReferences.end())
+		{
+			imagePoints[frameIdToIndex.at(jter->second.first)][i] = jter->second.second;
+			visibility[frameIdToIndex.at(jter->second.first)][i] = 1;
+			++jter;
+		}
+
+		++i;
+	}
+
+	// SBA
+	try
+	{
+		sba.run( points, imagePoints, visibility, cameraMatrix, R, T, distCoeffs);
+	}
+	catch(cv::Exception & e)
+	{
+		UERROR("Running SBA... error! %s", e.what());
+		return std::map<int, Transform>();
+	}
+
+	//update poses
+	i=0;
+	for(std::map<int, Transform>::iterator iter=frames.begin(); iter!=frames.end(); ++iter)
+	{
+		Transform t(R[i].at<double>(0,0), R[i].at<double>(0,1), R[i].at<double>(0,2), T[i].at<double>(0),
+					R[i].at<double>(1,0), R[i].at<double>(1,1), R[i].at<double>(1,2), T[i].at<double>(1),
+					R[i].at<double>(2,0), R[i].at<double>(2,1), R[i].at<double>(2,2), T[i].at<double>(2));
+
+		UDEBUG("New pose %d = %s", iter->first, t.prettyPrint().c_str());
+
+		iter->second = (models.at(iter->first).localTransform() * t).inverse();
+
+		++i;
+	}
+
+	return frames;
+
+#else
+	UERROR("RTAB-Map is not built with cvsba!");
+	return std::map<int, Transform>();
+#endif
+}
+
+bool exportPoses(
+		const std::string & filePath,
+		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & constraints, // required for formats 3 and 4
+		const std::map<int, double> & stamps) // required for format 1
+{
+	std::string tmpPath = filePath;
+	if(format==3) // TORO
+	{
+		if(UFile::getExtension(tmpPath).empty())
+		{
+			tmpPath+=".graph";
+		}
+		return graph::TOROOptimizer::saveGraph(tmpPath, poses, constraints);
+	}
+	else if(format == 4) // g2o
+	{
+		if(UFile::getExtension(tmpPath).empty())
+		{
+			tmpPath+=".g2o";
+		}
+#ifdef WITH_G2O
+		return graph::G2OOptimizer::saveGraph(tmpPath, poses, constraints);
+#else
+		UERROR("Cannot export in g2o format because RTAB-Map is not built with g2o support!");
+		return false;
+#endif
+	}
+	else
+	{
+		if(UFile::getExtension(tmpPath).empty())
+		{
+			tmpPath+=".txt";
+		}
+
+		if(format == 1)
+		{
+			if(stamps.size() != poses.size())
+			{
+				UERROR("When exporting poses to format 1 (RGBD-SLAM), stamps and poses maps should have the same size!");
+				return false;
+			}
+		}
+
+		FILE* fout = 0;
+#ifdef _MSC_VER
+		fopen_s(&fout, tmpPath.c_str(), "w");
+#else
+		fout = fopen(tmpPath.c_str(), "w");
+#endif
+		if(fout)
+		{
+			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				if(format == 1) // rgbd-slam format
+				{
+					// Format: stamp x y z qw qx qy qz
+					Eigen::Quaternionf q = (*iter).second.getQuaternionf();
+
+					UASSERT(uContains(stamps, iter->first));
+					fprintf(fout, "%f %f %f %f %f %f %f %f\n",
+							stamps.at(iter->first),
+							(*iter).second.x(),
+							(*iter).second.y(),
+							(*iter).second.z(),
+							q.w(),
+							q.x(),
+							q.y(),
+							q.z());
+				}
+				else // default / KITTI format
+				{
+					Transform pose = iter->second;
+					if(format == 2)
+					{
+						// for KITTI, we need to remove optical rotation
+						// z pointing front, x left, y down
+						Transform t( 0, 0, 1, 0,
+									-1, 0, 0, 0,
+									 0,-1, 0, 0);
+						pose = t.inverse() * pose * t;
+					}
+
+					// Format: r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz
+					const float * p = (const float *)pose.data();
+
+					fprintf(fout, "%f", p[0]);
+					for(int i=1; i<pose.size(); i++)
+					{
+						fprintf(fout, " %f", p[i]);
+					}
+					fprintf(fout, "\n");
+				}
+			}
+			fclose(fout);
+			return true;
+		}
+	}
+	return false;
+}
+
 
 ////////////////////////////////////////////
 // Graph utilities
@@ -1197,6 +1985,7 @@ public:
 	void setFromId(int fromId) {fromId_ = fromId;}
 	void setCostSoFar(float costSoFar) {costSoFar_ = costSoFar;}
 	void setDistToEnd(float distToEnd) {distToEnd_ = distToEnd;}
+	void setPose(const Transform & pose) {pose_ = pose;}
 
 private:
 	int id_;
@@ -1278,18 +2067,24 @@ std::list<std::pair<int, Transform> > computePath(
 			if(nodeIter == nodes.end())
 			{
 				std::map<int, rtabmap::Transform>::const_iterator poseIter = poses.find(iter->second);
-				UASSERT(poseIter != poses.end());
-				Node n(iter->second, currentNode->id(), poseIter->second);
-				n.setCostSoFar(currentNode->costSoFar() + currentNode->distFrom(poseIter->second));
-				n.setDistToEnd(n.distFrom(endPose));
-				nodes.insert(std::make_pair(iter->second, n));
-				if(updateNewCosts)
+				if(poseIter == poses.end())
 				{
-					pqmap.insert(std::make_pair(n.totalCost(), n.id()));
+					UERROR("Next pose %d (from %d) should be found in poses! Ignoring it!", iter->second, iter->first);
 				}
 				else
 				{
-					pq.push(Pair(n.id(), n.totalCost()));
+					Node n(iter->second, currentNode->id(), poseIter->second);
+					n.setCostSoFar(currentNode->costSoFar() + currentNode->distFrom(poseIter->second));
+					n.setDistToEnd(n.distFrom(endPose));
+					nodes.insert(std::make_pair(iter->second, n));
+					if(updateNewCosts)
+					{
+						pqmap.insert(std::make_pair(n.totalCost(), n.id()));
+					}
+					else
+					{
+						pq.push(Pair(n.id(), n.totalCost()));
+					}
 				}
 			}
 			else if(updateNewCosts && nodeIter->second.isOpened())
@@ -1322,12 +2117,21 @@ std::list<std::pair<int, Transform> > computePath(
 		int toId,
 		const Memory * memory,
 		bool lookInDatabase,
-		bool updateNewCosts)
+		bool updateNewCosts,
+		float linearVelocity,  // m/sec
+		float angularVelocity) // rad/sec
 {
 	UASSERT(memory!=0);
 	UASSERT(fromId>=0);
 	UASSERT(toId>=0);
 	std::list<std::pair<int, Transform> > path;
+	UDEBUG("fromId=%d, toId=%d, lookInDatabase=%d, updateNewCosts=%d, linearVelocity=%f, angularVelocity=%f",
+			fromId,
+			toId,
+			lookInDatabase?1:0,
+			updateNewCosts?1:0,
+			linearVelocity,
+			angularVelocity);
 
 	std::multimap<int, Link> allLinks;
 	if(lookInDatabase)
@@ -1398,11 +2202,34 @@ std::list<std::pair<int, Transform> > computePath(
 		}
 		for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
 		{
+			Transform nextPose = currentNode->pose()*iter->second.transform();
+			float cost = 0.0f;
+			if(linearVelocity <= 0.0f && angularVelocity <= 0.0f)
+			{
+				// use distance only
+				cost = iter->second.transform().getNorm();
+			}
+			else // use time
+			{
+				if(linearVelocity > 0.0f)
+				{
+					cost += iter->second.transform().getNorm()/linearVelocity;
+				}
+				if(angularVelocity > 0.0f)
+				{
+					Eigen::Vector4f v1 = Eigen::Vector4f(nextPose.x()-currentNode->pose().x(), nextPose.y()-currentNode->pose().y(), nextPose.z()-currentNode->pose().z(), 1.0f);
+					Eigen::Vector4f v2 = nextPose.rotation().toEigen4f()*Eigen::Vector4f(1,0,0,1);
+					float angle = pcl::getAngle3D(v1, v2);
+					cost += angle / angularVelocity;
+				}
+			}
+
 			std::map<int, Node>::iterator nodeIter = nodes.find(iter->first);
 			if(nodeIter == nodes.end())
 			{
-				Node n(iter->second.to(), currentNode->id(), currentNode->pose()*iter->second.transform());
-				n.setCostSoFar(currentNode->costSoFar() + iter->second.transform().getNorm());
+				Node n(iter->second.to(), currentNode->id(), nextPose);
+
+				n.setCostSoFar(currentNode->costSoFar() + cost);
 				nodes.insert(std::make_pair(iter->second.to(), n));
 				if(updateNewCosts)
 				{
@@ -1415,9 +2242,12 @@ std::list<std::pair<int, Transform> > computePath(
 			}
 			else if(updateNewCosts && nodeIter->second.isOpened())
 			{
-				float newCostSoFar = currentNode->costSoFar() + currentNode->distFrom(nodeIter->second.pose());
+				float newCostSoFar = currentNode->costSoFar() + cost;
 				if(nodeIter->second.costSoFar() > newCostSoFar)
 				{
+					// update pose with new link
+					nodeIter->second.setPose(nextPose);
+
 					// update the cost in the priority queue
 					for(std::multimap<float, int>::iterator mapIter=pqmap.begin(); mapIter!=pqmap.end(); ++mapIter)
 					{
@@ -1433,6 +2263,61 @@ std::list<std::pair<int, Transform> > computePath(
 			}
 		}
 	}
+
+	// Debugging stuff
+	if(ULogger::level() == ULogger::kDebug)
+	{
+		std::stringstream stream;
+		std::vector<int> linkTypes(Link::kUndef, 0);
+		std::list<std::pair<int, Transform> >::const_iterator previousIter = path.end();
+		float length = 0.0f;
+		for(std::list<std::pair<int, Transform> >::const_iterator iter=path.begin(); iter!=path.end();++iter)
+		{
+			if(iter!=path.begin())
+			{
+				stream << ",";
+			}
+
+			if(previousIter!=path.end())
+			{
+				//UDEBUG("current  %d = %s", iter->first, iter->second.prettyPrint().c_str());
+				if(allLinks.size())
+				{
+					std::multimap<int, Link>::iterator jter = graph::findLink(allLinks, previousIter->first, iter->first);
+					if(jter != allLinks.end())
+					{
+						//Transform nextPose = iter->second;
+						//Eigen::Vector4f v1 = Eigen::Vector4f(nextPose.x()-previousIter->second.x(), nextPose.y()-previousIter->second.y(), nextPose.z()-previousIter->second.z(), 1.0f);
+						//Eigen::Vector4f v2 = nextPose.rotation().toEigen4f()*Eigen::Vector4f(1,0,0,1);
+						//float angle = pcl::getAngle3D(v1, v2);
+						//float cost = angle ;
+						//UDEBUG("v1=%f,%f,%f v2=%f,%f,%f a=%f", v1[0], v1[1], v1[2], v2[0], v2[1], v2[2], cost);
+
+						UASSERT(jter->second.type() >= Link::kNeighbor && jter->second.type()<Link::kUndef);
+						++linkTypes[jter->second.type()];
+						stream << "[" << jter->second.type() << "]";
+						length += jter->second.transform().getNorm();
+					}
+				}
+			}
+
+			stream << iter->first;
+
+			previousIter=iter;
+		}
+		UDEBUG("Path (%f m) = [%s]", length, stream.str().c_str());
+		std::stringstream streamB;
+		for(unsigned int i=0; i<linkTypes.size(); ++i)
+		{
+			if(i > 0)
+			{
+				streamB << " ";
+			}
+			streamB << i << "=" << linkTypes[i];
+		}
+		UDEBUG("Link types = %s", streamB.str().c_str());
+	}
+
 	return path;
 }
 
@@ -1601,6 +2486,39 @@ float computePathLength(
 		length = sqrt(x*x + y*y + z*z);
 	}
 	return length;
+}
+
+// return all paths linked only by neighbor links
+std::list<std::map<int, Transform> > getPaths(
+		std::map<int, Transform> poses,
+		const std::multimap<int, Link> & links)
+{
+	std::list<std::map<int, Transform> > paths;
+	if(poses.size() && links.size())
+	{
+		// Segment poses connected only by neighbor links
+		while(poses.size())
+		{
+			std::map<int, Transform> path;
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end();)
+			{
+				std::multimap<int, Link>::const_iterator jter = findLink(links, path.rbegin()->first, iter->first);
+				if(path.size() == 0 || (jter != links.end() && jter->second.type() == Link::kNeighbor))
+				{
+					path.insert(*iter);
+					poses.erase(iter++);
+				}
+				else
+				{
+					break;
+				}
+			}
+			UASSERT(path.size());
+			paths.push_back(path);
+		}
+
+	}
+	return paths;
 }
 
 } /* namespace graph */

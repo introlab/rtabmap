@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <list>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/Signature.h>
 
 namespace rtabmap {
 class Memory;
@@ -49,7 +50,9 @@ public:
 	enum Type {
 		kTypeUndef = -1,
 		kTypeTORO = 0,
-		kTypeG2O = 1
+		kTypeG2O = 1,
+		kTypeGTSAM = 2,
+		kTypeCVSBA = 3
 	};
 	static Optimizer * create(const ParametersMap & parameters);
 	static Optimizer * create(Optimizer::Type & type, const ParametersMap & parameters = ParametersMap());
@@ -58,7 +61,7 @@ public:
 	static void getConnectedGraph(
 			int fromId,
 			const std::map<int, Transform> & posesIn,
-			const std::multimap<int, Link> & linksIn,
+			const std::multimap<int, Link> & linksIn, // only one link between two poses
 			std::map<int, Transform> & posesOut,
 			std::multimap<int, Link> & linksOut,
 			int depth = 0);
@@ -72,12 +75,19 @@ public:
 	bool isSlam2d() const {return slam2d_;}
 	bool isCovarianceIgnored() const {return covarianceIgnored_;}
 	double epsilon() const {return epsilon_;}
+	bool isRobust() const {return robust_;}
 
+	// inherited classes should implement one of these methods
 	virtual std::map<int, Transform> optimize(
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & constraints,
-			std::list<std::map<int, Transform> > * intermediateGraphes = 0) = 0;
+			std::list<std::map<int, Transform> > * intermediateGraphes = 0);
+	virtual std::map<int, Transform> optimizeBA(
+			int rootId,
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & links,
+			const std::map<int, Signature> & signatures);
 
 	virtual void parseParameters(const ParametersMap & parameters);
 
@@ -86,7 +96,8 @@ protected:
 			int iterations         = Parameters::defaultRGBDOptimizeIterations(),
 			bool slam2d            = Parameters::defaultRGBDOptimizeSlam2D(),
 			bool covarianceIgnored = Parameters::defaultRGBDOptimizeVarianceIgnored(),
-			double epsilon         = Parameters::defaultRGBDOptimizeEpsilon());
+			double epsilon         = Parameters::defaultRGBDOptimizeEpsilon(),
+			bool robust            = Parameters::defaultRGBDOptimizeRobust());
 	Optimizer(const ParametersMap & parameters);
 
 private:
@@ -94,6 +105,7 @@ private:
 	bool slam2d_;
 	bool covarianceIgnored_;
 	double epsilon_;
+	bool robust_;
 };
 
 class RTABMAP_EXP TOROOptimizer : public Optimizer
@@ -109,8 +121,12 @@ public:
 			std::multimap<int, Link> & edgeConstraints);
 
 public:
-	TOROOptimizer(int iterations = 100, bool slam2d = false, bool covarianceIgnored = false) :
-		Optimizer(iterations, slam2d, covarianceIgnored) {}
+	TOROOptimizer(
+			int iterations         = Parameters::defaultRGBDOptimizeIterations(),
+			bool slam2d            = Parameters::defaultRGBDOptimizeSlam2D(),
+			bool covarianceIgnored = Parameters::defaultRGBDOptimizeVarianceIgnored(),
+			double epsilon         = Parameters::defaultRGBDOptimizeEpsilon()) :
+		Optimizer(iterations, slam2d, covarianceIgnored, epsilon) {}
 	TOROOptimizer(const ParametersMap & parameters) :
 		Optimizer(parameters) {}
 	virtual ~TOROOptimizer() {}
@@ -128,10 +144,21 @@ class RTABMAP_EXP G2OOptimizer : public Optimizer
 {
 public:
 	static bool available();
+	static bool saveGraph(
+			const std::string & fileName,
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & edgeConstraints,
+			bool useRobustConstraints = false);
 
 public:
-	G2OOptimizer(int iterations = 100, bool slam2d = false, bool covarianceIgnored = false) :
-		Optimizer(iterations, slam2d, covarianceIgnored) {}
+	G2OOptimizer(
+			int iterations         = Parameters::defaultRGBDOptimizeIterations(),
+			bool slam2d            = Parameters::defaultRGBDOptimizeSlam2D(),
+			bool covarianceIgnored = Parameters::defaultRGBDOptimizeVarianceIgnored(),
+			double epsilon         = Parameters::defaultRGBDOptimizeEpsilon(),
+			bool robust            = Parameters::defaultRGBDOptimizeRobust()) :
+		Optimizer(iterations, slam2d, covarianceIgnored, epsilon, robust) {}
+
 	G2OOptimizer(const ParametersMap & parameters) :
 		Optimizer(parameters) {}
 	virtual ~G2OOptimizer() {}
@@ -144,6 +171,72 @@ public:
 			const std::multimap<int, Link> & edgeConstraints,
 			std::list<std::map<int, Transform> > * intermediateGraphes = 0);
 };
+
+class RTABMAP_EXP GTSAMOptimizer : public Optimizer
+{
+public:
+	static bool available();
+
+public:
+	GTSAMOptimizer(
+			int iterations         = Parameters::defaultRGBDOptimizeIterations(),
+			bool slam2d            = Parameters::defaultRGBDOptimizeSlam2D(),
+			bool covarianceIgnored = Parameters::defaultRGBDOptimizeVarianceIgnored(),
+			double epsilon         = Parameters::defaultRGBDOptimizeEpsilon(),
+			bool robust            = Parameters::defaultRGBDOptimizeRobust()) :
+		Optimizer(iterations, slam2d, covarianceIgnored, epsilon, robust) {}
+
+	GTSAMOptimizer(const ParametersMap & parameters) :
+		Optimizer(parameters) {}
+	virtual ~GTSAMOptimizer() {}
+
+	virtual Type type() const {return kTypeGTSAM;}
+
+	virtual std::map<int, Transform> optimize(
+			int rootId,
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & edgeConstraints,
+			std::list<std::map<int, Transform> > * intermediateGraphes = 0);
+};
+
+class RTABMAP_EXP CVSBAOptimizer : public Optimizer
+{
+public:
+	static bool available();
+
+public:
+	CVSBAOptimizer(int iterations = 100, bool slam2d = false, bool covarianceIgnored = false) :
+		Optimizer(iterations, slam2d, covarianceIgnored),
+		inlierDistance_(0.02),
+		minInliers_(10){}
+	CVSBAOptimizer(const ParametersMap & parameters) :
+		Optimizer(parameters),
+		inlierDistance_(0.02),
+		minInliers_(10){}
+	virtual ~CVSBAOptimizer() {}
+
+	virtual Type type() const {return kTypeCVSBA;}
+
+	void setInlierDistance(float inlierDistance) {inlierDistance_ = inlierDistance;}
+	void setMinInliers(int minInliers) {minInliers_ = minInliers;}
+
+	virtual std::map<int, Transform> optimizeBA(
+			int rootId,
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & links,
+			const std::map<int, Signature> & signatures);
+
+private:
+	float inlierDistance_;
+	float minInliers_;
+};
+
+bool RTABMAP_EXP exportPoses(
+		const std::string & filePath,
+		int format, // 0=Raw (*.txt), 1=RGBD-SLAM (*.txt), 2=KITTI (*.txt), 3=TORO (*.graph), 4=g2o (*.g2o)
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & constraints, // required for formats 3 and 4
+		const std::map<int, double> & stamps); // required for format 1
 
 ////////////////////////////////////////////
 // Graph utilities
@@ -221,7 +314,9 @@ std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
 		int toId,
 		const Memory * memory,
 		bool lookInDatabase = true,
-		bool updateNewCosts = false);
+		bool updateNewCosts = false,
+		float linearVelocity = 0.0f,   // m/sec
+		float angularVelocity = 0.0f); // rad/sec
 
 int RTABMAP_EXP findNearestNode(
 		const std::map<int, rtabmap::Transform> & nodes,
@@ -248,6 +343,10 @@ float RTABMAP_EXP computePathLength(
 		const std::vector<std::pair<int, Transform> > & path,
 		unsigned int fromIndex = 0,
 		unsigned int toIndex = 0);
+
+std::list<std::map<int, Transform> > RTABMAP_EXP getPaths(
+		std::map<int, Transform> poses,
+		const std::multimap<int, Link> & links);
 
 
 } /* namespace graph */

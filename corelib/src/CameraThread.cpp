@@ -29,6 +29,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/CameraRGBD.h"
+#include "rtabmap/core/util2d.h"
+#include "rtabmap/core/util3d.h"
 
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
@@ -40,7 +42,8 @@ namespace rtabmap
 CameraThread::CameraThread(Camera * camera) :
 		_camera(camera),
 		_mirroring(false),
-		_colorOnly(false)
+		_colorOnly(false),
+		_stereoToDepth(false)
 {
 	UASSERT(_camera != 0);
 }
@@ -95,6 +98,16 @@ void CameraThread::mainLoop()
 				cv::flip(data.depthRaw(), tmpDepth, 1);
 				data.setDepthOrRightRaw(tmpDepth);
 			}
+		}
+		if(_stereoToDepth && data.stereoCameraModel().isValid() && !data.rightRaw().empty())
+		{
+			cv::Mat depth = util2d::depthFromDisparity(
+					util2d::disparityFromStereoImages(data.imageRaw(), data.rightRaw()),
+					data.stereoCameraModel().left().fx(),
+					data.stereoCameraModel().baseline());
+			data.setCameraModel(data.stereoCameraModel().left());
+			data.setDepthOrRightRaw(depth);
+			data.setStereoCameraModel(StereoCameraModel());
 		}
 
 		this->post(new CameraEvent(data, _camera->getSerial()));

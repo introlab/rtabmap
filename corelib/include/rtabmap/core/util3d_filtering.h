@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define UTIL3D_FILTERING_H_
 
 #include <rtabmap/core/RtabmapExp.h>
+#include <rtabmap/core/Transform.h>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -46,6 +47,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP voxelize(
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP voxelize(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float voxelSize);
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP voxelize(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		float voxelSize);
 
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP sampling(
@@ -60,12 +64,31 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP passThrough(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const std::string & axis,
 		float min,
-		float max);
+		float max,
+		bool negative = false);
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP passThrough(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const std::string & axis,
 		float min,
-		float max);
+		float max,
+		bool negative = false);
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP frustumFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const Transform & cameraPose,
+		float horizontalFOV, // in degrees, xfov = atan((image_width/2)/fx)*2
+		float verticalFOV,   // in degrees, yfov = atan((image_height/2)/fy)*2
+		float nearClipPlaneDistance,
+		float farClipPlaneDistance,
+		bool negative = false);
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP frustumFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const Transform & cameraPose,
+		float horizontalFOV, // in degrees, xfov = atan((image_width/2)/fx)*2
+		float verticalFOV,   // in degrees, yfov = atan((image_height/2)/fy)*2
+		float nearClipPlaneDistance,
+		float farClipPlaneDistance,
+		bool negative = false);
 
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP removeNaNFromPointCloud(
@@ -137,6 +160,32 @@ pcl::IndicesPtr RTABMAP_EXP subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & substractCloud,
+		const pcl::IndicesPtr & substractIndices,
+		float radiusSearch,
+		int minNeighborsInRadius = 0);
+
+/**
+ * For convenience.
+ */
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP subtractFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & substractCloud,
+		float radiusSearch,
+		int minNeighborsInRadius = 0);
+
+/**
+ * Subtract a cloud from another one using radius filtering.
+ * @param cloud the input cloud.
+ * @param indices the input indices of the cloud to check, if empty, all points in the cloud are checked.
+ * @param cloud the input cloud to subtract.
+ * @param indices the input indices of the subtracted cloud to check, if empty, all points in the cloud are checked.
+ * @param radiusSearch the radius in meter.
+ * @return the indices of the points satisfying the parameters.
+ */
+pcl::IndicesPtr RTABMAP_EXP subtractFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & substractCloud,
 		const pcl::IndicesPtr & substractIndices,
 		float radiusSearch,
 		int minNeighborsInRadius = 0);

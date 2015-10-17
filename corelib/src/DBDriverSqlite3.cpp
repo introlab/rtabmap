@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "DBDriverSqlite3.h"
 
 #include "rtabmap/core/Signature.h"
-#include "VisualWord.h"
+#include "rtabmap/core/VisualWord.h"
 #include "rtabmap/core/VWDictionary.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Compression.h"
@@ -457,7 +457,14 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures) con
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		if(uStrNumCmp(_version, "0.10.1") >= 0)
+		if(uStrNumCmp(_version, "0.10.7") >= 0)
+		{
+			query << "SELECT image, depth, calibration, scan_max_pts, scan_max_range, scan, user_data "
+				  << "FROM Data "
+				  << "WHERE id = ?"
+				  <<";";
+		}
+		else if(uStrNumCmp(_version, "0.10.1") >= 0)
 		{
 			query << "SELECT image, depth, calibration, scan_max_pts, scan, user_data "
 				  << "FROM Data "
@@ -653,6 +660,12 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures) con
 					laserScanMaxPts = sqlite3_column_int(ppStmt, index++);
 				}
 
+				float laserScanMaxRange = 0.0f;
+				if(uStrNumCmp(_version, "0.10.7") >= 0)
+				{
+					laserScanMaxRange = sqlite3_column_int(ppStmt, index++);
+				}
+
 				data = sqlite3_column_blob(ppStmt, index);
 				dataSize = sqlite3_column_bytes(ppStmt, index++);
 				//Create the laserScan
@@ -685,6 +698,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures) con
 					(*iter)->sensorData() = SensorData(
 							scanCompressed,
 							laserScanMaxPts,
+							laserScanMaxRange,
 							imageCompressed,
 							depthOrRightCompressed,
 							models,
@@ -697,6 +711,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures) con
 					(*iter)->sensorData() = SensorData(
 							scanCompressed,
 							laserScanMaxPts,
+							laserScanMaxRange,
 							imageCompressed,
 							depthOrRightCompressed,
 							stereoModel,
@@ -1537,7 +1552,11 @@ void DBDriverSqlite3::loadLinksQuery(
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		if(uStrNumCmp(_version, "0.8.4") >= 0)
+		if(uStrNumCmp(_version, "0.10.10") >= 0)
+		{
+			query << "SELECT to_id, type, transform, rot_variance, trans_variance, user_data FROM Link ";
+		}
+		else if(uStrNumCmp(_version, "0.8.4") >= 0)
 		{
 			query << "SELECT to_id, type, transform, rot_variance, trans_variance FROM Link ";
 		}
@@ -1603,7 +1622,20 @@ void DBDriverSqlite3::loadLinksQuery(
 			{
 				rotVariance = sqlite3_column_double(ppStmt, index++);
 				transVariance = sqlite3_column_double(ppStmt, index++);
-				neighbors.insert(neighbors.end(), std::make_pair(toId, Link(signatureId, toId, (Link::Type)type, transform, rotVariance, transVariance)));
+
+				cv::Mat userDataCompressed;
+				if(uStrNumCmp(_version, "0.10.10") >= 0)
+				{
+					const void * data = sqlite3_column_blob(ppStmt, index);
+					dataSize = sqlite3_column_bytes(ppStmt, index++);
+					//Create the userData
+					if(dataSize>4 && data)
+					{
+						userDataCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone(); // userData
+					}
+				}
+
+				neighbors.insert(neighbors.end(), std::make_pair(toId, Link(signatureId, toId, (Link::Type)type, transform, rotVariance, transVariance, userDataCompressed)));
 			}
 			else if(uStrNumCmp(_version, "0.7.4") >= 0)
 			{
@@ -1643,7 +1675,13 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 		std::stringstream query;
 		int totalLinksLoaded = 0;
 
-		if(uStrNumCmp(_version, "0.8.4") >= 0)
+		if(uStrNumCmp(_version, "0.10.10") >= 0)
+		{
+			query << "SELECT to_id, type, rot_variance, trans_variance, user_data, transform FROM Link "
+				  << "WHERE from_id = ? "
+				  << "ORDER BY to_id";
+		}
+		else if(uStrNumCmp(_version, "0.8.4") >= 0)
 		{
 			query << "SELECT to_id, type, rot_variance, trans_variance, transform FROM Link "
 				  << "WHERE from_id = ? "
@@ -1687,10 +1725,22 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 
 				toId = sqlite3_column_int(ppStmt, index++);
 				linkType = sqlite3_column_int(ppStmt, index++);
+				cv::Mat userDataCompressed;
 				if(uStrNumCmp(_version, "0.8.4") >= 0)
 				{
 					rotVariance = sqlite3_column_double(ppStmt, index++);
 					transVariance = sqlite3_column_double(ppStmt, index++);
+
+					if(uStrNumCmp(_version, "0.10.10") >= 0)
+					{
+						const void * data = sqlite3_column_blob(ppStmt, index);
+						dataSize = sqlite3_column_bytes(ppStmt, index++);
+						//Create the userData
+						if(dataSize>4 && data)
+						{
+							userDataCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone(); // userData
+						}
+					}
 				}
 				else if(uStrNumCmp(_version, "0.7.4") >= 0)
 				{
@@ -1714,11 +1764,11 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 				{
 					if(uStrNumCmp(_version, "0.7.4") >= 0)
 					{
-						links.push_back(Link((*iter)->id(), toId, (Link::Type)linkType, transform, rotVariance, transVariance));
+						links.push_back(Link((*iter)->id(), toId, (Link::Type)linkType, transform, rotVariance, transVariance, userDataCompressed));
 					}
 					else // neighbor is 0, loop closures are 1 and 2 (child)
 					{
-						links.push_back(Link((*iter)->id(), toId, linkType == 0?Link::kNeighbor:Link::kGlobalClosure, transform, rotVariance, transVariance));
+						links.push_back(Link((*iter)->id(), toId, linkType == 0?Link::kNeighbor:Link::kGlobalClosure, transform, rotVariance, transVariance, userDataCompressed));
 					}
 				}
 				else
@@ -2129,6 +2179,61 @@ void DBDriverSqlite3::saveQuery(const std::list<VisualWord *> & words) const
 	}
 }
 
+void DBDriverSqlite3::addLinkQuery(const Link & link) const
+{
+	UDEBUG("");
+	if(_ppDb)
+	{
+		std::string type;
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+
+		// Create new entries in table Link
+		std::string query = queryStepLink();
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		// Save link
+		stepLink(ppStmt, link);
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		UDEBUG("Time=%fs", timer.ticks());
+	}
+
+}
+
+void DBDriverSqlite3::updateLinkQuery(const Link & link) const
+{
+	UDEBUG("");
+	if(_ppDb)
+	{
+		std::string type;
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+
+		// Create new entries in table Link
+		std::string query = queryStepLinkUpdate();
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		// Save link
+		stepLink(ppStmt, link);
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+		UDEBUG("Time=%fs", timer.ticks());
+	}
+}
+
 std::string DBDriverSqlite3::queryStepNode() const
 {
 	if(uStrNumCmp(_version, "0.10.1") >= 0)
@@ -2360,7 +2465,11 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensor
 std::string DBDriverSqlite3::queryStepSensorData() const
 {
 	UASSERT(uStrNumCmp(_version, "0.10.0") >= 0);
-	if(uStrNumCmp(_version, "0.10.1") >= 0)
+	if(uStrNumCmp(_version, "0.10.7") >= 0)
+	{
+		return "INSERT INTO Data(id, image, depth, calibration, scan_max_pts, scan_max_range, scan, user_data) VALUES(?,?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.10.1") >= 0)
 	{
 		return "INSERT INTO Data(id, image, depth, calibration, scan_max_pts, scan, user_data) VALUES(?,?,?,?,?,?,?);";
 	}
@@ -2455,6 +2564,13 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	rc = sqlite3_bind_int(ppStmt, index++, sensorData.laserScanMaxPts());
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
+	// scan_max_range
+	if(uStrNumCmp(_version, "0.10.7") >= 0)
+	{
+		rc = sqlite3_bind_double(ppStmt, index++, sensorData.laserScanMaxRange());
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+
 	// scan
 	if(!sensorData.laserScanCompressed().empty())
 	{
@@ -2488,19 +2604,43 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 }
 
-std::string DBDriverSqlite3::queryStepLink() const
+std::string DBDriverSqlite3::queryStepLinkUpdate() const
 {
-	if(uStrNumCmp(_version, "0.8.4") >= 0)
+	if(uStrNumCmp(_version, "0.10.10") >= 0)
 	{
-		return "INSERT INTO Link(from_id, to_id, type, rot_variance, trans_variance, transform) VALUES(?,?,?,?,?,?);";
+		return "UPDATE Link SET type=?, rot_variance=?, trans_variance=?, transform=?, user_data=? WHERE from_id=? AND to_id = ?;";
+	}
+	else if(uStrNumCmp(_version, "0.8.4") >= 0)
+	{
+		return "UPDATE Link SET type=?, rot_variance=?, trans_variance=?, transform=? WHERE from_id=? AND to_id = ?;";
 	}
 	else if(uStrNumCmp(_version, "0.7.4") >= 0)
 	{
-		return "INSERT INTO Link(from_id, to_id, type, variance, transform) VALUES(?,?,?,?,?);";
+		return "UPDATE Link SET type=?, variance=?, transform=? WHERE from_id=? AND to_id = ?;";
 	}
 	else
 	{
-		return "INSERT INTO Link(from_id, to_id, type, transform) VALUES(?,?,?,?);";
+		return "UPDATE Link SET type=?, transform=? WHERE from_id=? AND to_id = ?;";
+	}
+}
+std::string DBDriverSqlite3::queryStepLink() const
+{
+	// from_id, to_id are at the end to match the update query above
+	if(uStrNumCmp(_version, "0.10.10") >= 0)
+	{
+		return "INSERT INTO Link(type, rot_variance, trans_variance, transform, user_data, from_id, to_id) VALUES(?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.8.4") >= 0)
+	{
+		return "INSERT INTO Link(type, rot_variance, trans_variance, transform, from_id, to_id) VALUES(?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.7.4") >= 0)
+	{
+		return "INSERT INTO Link(type, variance, transform, from_id, to_id) VALUES(?,?,?,?,?);";
+	}
+	else
+	{
+		return "INSERT INTO Link(type, transform, from_id, to_id) VALUES(?,?,?,?);";
 	}
 }
 void DBDriverSqlite3::stepLink(
@@ -2522,10 +2662,6 @@ void DBDriverSqlite3::stepLink(
 
 	int rc = SQLITE_OK;
 	int index = 1;
-	rc = sqlite3_bind_int(ppStmt, index++, link.from());
-	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
-	rc = sqlite3_bind_int(ppStmt, index++, link.to());
-	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_int(ppStmt, index++, link.type());
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
@@ -2543,6 +2679,25 @@ void DBDriverSqlite3::stepLink(
 	}
 
 	rc = sqlite3_bind_blob(ppStmt, index++, link.transform().data(), link.transform().size()*sizeof(float), SQLITE_STATIC);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+
+	if(uStrNumCmp(_version, "0.10.10") >= 0)
+	{
+		// user_data
+		if(!link.userDataCompressed().empty())
+		{
+			rc = sqlite3_bind_blob(ppStmt, index++, link.userDataCompressed().data, (int)link.userDataCompressed().cols, SQLITE_STATIC);
+		}
+		else
+		{
+			rc = sqlite3_bind_zeroblob(ppStmt, index++, 4);
+		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+
+	rc = sqlite3_bind_int(ppStmt, index++, link.from());
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	rc = sqlite3_bind_int(ppStmt, index++, link.to());
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
 	rc=sqlite3_step(ppStmt);

@@ -41,6 +41,7 @@ namespace rtabmap
 
 class DBDriver;
 class VisualWord;
+class FlannIndex;
 
 class RTABMAP_EXP VWDictionary
 {
@@ -74,6 +75,8 @@ public:
 	unsigned int getNotIndexedWordsCount() const {return (int)_notIndexedWords.size();}
 	int getLastIndexedWordId() const;
 	int getTotalActiveReferences() const {return _totalActiveReferences;}
+	unsigned int getIndexedWordsCount() const;
+	unsigned int getIndexMemoryUsed() const;
 	void setNNStrategy(NNStrategy strategy);
 	bool isIncremental() const {return _incrementalDictionary;}
 	void setIncrementalDictionary();
@@ -97,14 +100,16 @@ protected:
 
 private:
 	bool _incrementalDictionary;
+	bool _incrementalFlann;
 	float _nndrRatio;
 	std::string _dictionaryPath; // a pre-computed dictionary (.txt)
 	bool _newWordsComparedTogether;
 	int _lastWordId;
-	cv::flann::Index * _flannIndex;
+	FlannIndex * _flannIndex;
 	cv::Mat _dataTree;
 	NNStrategy _strategy;
 	std::map<int ,int> _mapIndexId;
+	std::map<int ,int> _mapIdIndex;
 	std::map<int, VisualWord*> _unusedWords; //<id,VisualWord*>, note that these words stay in _visualWords
 	std::set<int> _notIndexedWords; // Words that are not indexed in the dictionary
 	std::set<int> _removedIndexedWords; // Words not anymore in the dictionary but still indexed in the dictionary

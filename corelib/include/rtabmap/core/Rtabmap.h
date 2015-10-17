@@ -112,7 +112,7 @@ public:
 			const std::string & path,
 			bool optimized,
 			bool global,
-			int type // 0=raw/KITTI format, 1=rgbd-slam format, 2=TORO
+			int format // 0=raw, 1=rgbd-slam format, 2=KITTI format, 3=TORO, 4=g2o
 	);
 	void resetMemory();
 	void dumpPrediction() const;
@@ -130,13 +130,17 @@ public:
 			bool optimized,
 			bool global,
 			std::map<int, Signature> * signatures = 0);
-	void clearPath();
+
+	int getPathStatus() const {return _pathStatus;} // -1=failed 0=idle/executing 1=success
+	void clearPath(int status); // -1=failed 0=idle/executing 1=success
 	bool computePath(int targetNode, bool global);
 	bool computePath(const Transform & targetPose); // only in current optimized map
 	const std::vector<std::pair<int, Transform> > & getPath() const {return _path;}
 	std::vector<std::pair<int, Transform> > getPathNextPoses() const;
 	std::vector<int> getPathNextNodes() const;
 	int getPathCurrentGoalId() const;
+	unsigned int getPathCurrentIndex() const {return _pathCurrentIndex;}
+	unsigned int getPathCurrentGoalIndex() const {return _pathGoalIndex;}
 	const Transform & getPathTransformToGoal() const {return _pathTransformToGoal;}
 
 	std::map<int, Transform> getForwardWMPoses(int fromId, int maxNearestNeighbors, float radius, int maxDiffID) const;
@@ -184,6 +188,7 @@ private:
 	bool _poseScanMatching;
 	bool _localLoopClosureDetectionTime;
 	bool _localLoopClosureDetectionSpace;
+	bool _scanMatchingIdsSavedInLinks;
 	float _localRadius;
 	float _localImmunizationRatio;
 	int _localDetectMaxGraphDepth;
@@ -191,6 +196,7 @@ private:
 	bool _localPathOdomPosesUsed;
 	std::string _databasePath;
 	bool _optimizeFromGraphEnd;
+	float _optimizationMaxLinearError;
 	bool _reextractLoopClosureFeatures;
 	int _reextractNNType;
 	float _reextractNNDR;
@@ -199,12 +205,16 @@ private:
 	float _reextractMaxDepth;
 	bool _startNewMapOnLoopClosure;
 	float _goalReachedRadius; // meters
-	bool _planVirtualLinks;
 	bool _goalsSavedInUserData;
+	int _pathStuckIterations;
+	float _pathLinearVelocity;
+	float _pathAngularVelocity;
 
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;
 	double _lastProcessTime;
+	bool _someNodesHaveBeenTransferred;
+	float _distanceTravelled;
 
 	// Abstract classes containing all loop closure
 	// strategies for a type of signature or configuration.
@@ -227,14 +237,17 @@ private:
 	std::map<int, Transform> _optimizedPoses;
 	std::multimap<int, Link> _constraints;
 	Transform _mapCorrection;
-	Transform _mapTransform; // for localization mode
 	Transform _lastLocalizationPose; // for localization mode
+	int _lastLocalizationNodeId; // for localization mode
 
 	// Planning stuff
+	int _pathStatus;
 	std::vector<std::pair<int,Transform> > _path;
+	std::set<unsigned int> _pathUnreachableNodes;
 	unsigned int _pathCurrentIndex;
 	unsigned int _pathGoalIndex;
 	Transform _pathTransformToGoal;
+	int _pathStuckCount;
 
 };
 

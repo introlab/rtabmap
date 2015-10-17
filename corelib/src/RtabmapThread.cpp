@@ -262,10 +262,10 @@ void RtabmapThread::mainLoop()
 		{
 			UERROR("Failed to set a goal to location=%d.", id);
 		}
-		this->post(new RtabmapGlobalPathEvent(id, _rtabmap->getPath()));
+		this->post(new RtabmapGlobalPathEvent(id, parameters.at("label"), _rtabmap->getPath()));
 		break;
 	case kStateCancellingGoal:
-		_rtabmap->clearPath();
+		_rtabmap->clearPath(0);
 		break;
 	case kStateLabelling:
 		if(!_rtabmap->labelLocation(atoi(parameters.at("id").c_str()), parameters.at("label").c_str()))
@@ -463,12 +463,19 @@ void RtabmapThread::process()
 	{
 		if(_rtabmap->getMemory())
 		{
+			bool wasPlanning = _rtabmap->getPath().size()>0;
 			if(_rtabmap->process(data.data(), data.pose(), data.covariance()))
 			{
 				Statistics stats = _rtabmap->getStatistics();
 				stats.addStatistic(Statistics::kMemoryImages_buffered(), (float)_dataBuffer.size());
 				ULOGGER_DEBUG("posting statistics_ event...");
 				this->post(new RtabmapEvent(stats));
+
+				if(wasPlanning && _rtabmap->getPath().size() == 0)
+				{
+					// Goal reached or failed
+					this->post(new RtabmapGoalStatusEvent(_rtabmap->getPathStatus()));
+				}
 			}
 		}
 		else
@@ -510,6 +517,7 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 		lastPose_ = odomEvent.pose();
 		double maxRotVar = odomEvent.rotVariance();
 		double maxTransVar = odomEvent.transVariance();
+		// FIXME: should merge the transformations/variances like Link::merge();
 		if(maxRotVar > _rotVariance)
 		{
 			_rotVariance = maxRotVar;

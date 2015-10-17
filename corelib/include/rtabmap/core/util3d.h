@@ -127,9 +127,6 @@ pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImage(
 					float maxDepth = 0,
 					const Transform & localTransform = Transform::getIdentity());
 
-cv::Mat RTABMAP_EXP cvtDepthFromFloat(const cv::Mat & depth32F);
-cv::Mat RTABMAP_EXP cvtDepthToFloat(const cv::Mat & depth16U);
-
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud);
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const cv::Mat & laserScan);
 
@@ -146,10 +143,6 @@ pcl::PointXYZ RTABMAP_EXP projectDisparityTo3D(
 		const cv::Point2f & pt,
 		const cv::Mat & disparity,
 		float cx, float cy, float fx, float baseline);
-
-cv::Mat RTABMAP_EXP depthFromDisparity(const cv::Mat & disparity,
-		float fx, float baseline,
-		int type = CV_32FC1);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP concatenateClouds(
 		const std::list<pcl::PointCloud<pcl::PointXYZ>::Ptr> & clouds);

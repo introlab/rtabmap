@@ -38,9 +38,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/VWDictionary.h"
 #include <rtabmap/core/EpipolarGeometry.h>
-#include "VisualWord.h"
+#include "rtabmap/core/VisualWord.h"
 #include "rtabmap/core/Features2d.h"
-#include "DBDriverSqlite3.h"
+#include "rtabmap/core/DBDriver.h"
 #include "rtabmap/core/util3d_features.h"
 #include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/util3d_correspondences.h"
@@ -68,6 +68,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_similarityThreshold(Parameters::defaultMemRehearsalSimilarity()),
 	_rawDataKept(Parameters::defaultMemImageKept()),
 	_binDataKept(Parameters::defaultMemBinDataKept()),
+	_saveDepth16Format(Parameters::defaultMemSaveDepth16Format()),
 	_notLinkedNodesKeptInDb(Parameters::defaultMemNotLinkedNodesKept()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
 	_maxStMemSize(Parameters::defaultMemSTMSize()),
@@ -107,6 +108,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_bowEstimationType(Parameters::defaultLccBowEstimationType()),
 	_bowPnPReprojError(Parameters::defaultLccBowPnPReprojError()),
 	_bowPnPFlags(Parameters::defaultLccBowPnPFlags()),
+	_bowVarianceFromInliersCount(Parameters::defaultLccBowVarianceFromInliersCount()),
 
 	_icpMaxTranslation(Parameters::defaultLccIcpMaxTranslation()),
 	_icpMaxRotation(Parameters::defaultLccIcpMaxRotation()),
@@ -182,7 +184,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 
 	if(_dbDriver == 0 && !dbUrl.empty())
 	{
-		_dbDriver = new DBDriverSqlite3(parameters);
+		_dbDriver = DBDriver::create(parameters);
 	}
 
 	bool success = true;
@@ -399,6 +401,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 
 	Parameters::parse(parameters, Parameters::kMemImageKept(), _rawDataKept);
 	Parameters::parse(parameters, Parameters::kMemBinDataKept(), _binDataKept);
+	Parameters::parse(parameters, Parameters::kMemSaveDepth16Format(), _saveDepth16Format);
 	Parameters::parse(parameters, Parameters::kMemNotLinkedNodesKept(), _notLinkedNodesKeptInDb);
 	Parameters::parse(parameters, Parameters::kMemRehearsalIdUpdatedToNewOne(), _idUpdatedToNewOneRehearsal);
 	Parameters::parse(parameters, Parameters::kMemGenerateIds(), _generateIds);
@@ -418,6 +421,8 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
 	UASSERT_MSG(_recentWmRatio >= 0.0f && _recentWmRatio <= 1.0f, uFormat("value=%f", _recentWmRatio).c_str());
 	UASSERT(_imageDecimation >= 1);
+	UASSERT(_rehearsalMaxDistance >= 0.0f);
+	UASSERT(_rehearsalMaxAngle >= 0.0f);
 
 	// SLAM mode vs Localization mode
 	iter = parameters.find(Parameters::kMemIncrementalMemory());
@@ -446,6 +451,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kLccBowEpipolarGeometryVar(), _bowEpipolarGeometryVar);
 	Parameters::parse(parameters, Parameters::kLccBowPnPReprojError(), _bowPnPReprojError);
 	Parameters::parse(parameters, Parameters::kLccBowPnPFlags(), _bowPnPFlags);
+	Parameters::parse(parameters, Parameters::kLccBowVarianceFromInliersCount(), _bowVarianceFromInliersCount);
 	Parameters::parse(parameters, Parameters::kLccIcpMaxTranslation(), _icpMaxTranslation);
 	Parameters::parse(parameters, Parameters::kLccIcpMaxRotation(), _icpMaxRotation);
 	Parameters::parse(parameters, Parameters::kLccIcp3Decimation(), _icpDecimation);
@@ -662,7 +668,6 @@ bool Memory::update(
 		}
 		_workingMem.insert(_workingMem.end(), std::make_pair(*_stMem.begin(), UTimer::now()));
 		_stMem.erase(*_stMem.begin());
-		++_signaturesAdded;
 	}
 
 	if(!_memoryChanged && _incrementalMemory)
@@ -764,6 +769,7 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 
 		_signatures.insert(_signatures.end(), std::pair<int, Signature *>(signature->id(), signature));
 		_stMem.insert(_stMem.end(), signature->id());
+		++_signaturesAdded;
 
 		if(_vwd)
 		{
@@ -986,7 +992,7 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 					ids.insert(std::pair<int, int>(*jter, m));
 
 					UTimer timer;
-					_dbDriver->loadLinks(*jter, tmpLinks);
+					_dbDriver->loadLinks(*jter, tmpLinks, ignoreLoopIds?Link::kNeighbor:Link::kUndef);
 					if(dbAccessTime)
 					{
 						*dbAccessTime += timer.getElapsedTime();
@@ -1084,7 +1090,8 @@ std::map<int, float> Memory::getNeighborsIdRadius(
 				for(std::map<int, Link>::const_iterator iter=links->begin(); iter!=links->end(); ++iter)
 				{
 					if(!uContains(ids, iter->first) &&
-						uContains(optimizedPoses, iter->first))
+						uContains(optimizedPoses, iter->first) &&
+						iter->second.type()!=Link::kVirtualClosure)
 					{
 						const Transform & t = optimizedPoses.at(iter->first);
 						UASSERT(!t.isNull());
@@ -1443,7 +1450,7 @@ std::list<int> Memory::forget(const std::set<int> & ignoredIds)
 {
 	UDEBUG("");
 	std::list<int> signaturesRemoved;
-	if(_vwd->isIncremental() && _vwd->getVisualWords().size())
+	if(this->isIncremental() && _vwd->isIncremental() && _vwd->getVisualWords().size())
 	{
 		int newWords = 0;
 		int wordsRemoved = 0;
@@ -1481,7 +1488,8 @@ std::list<int> Memory::forget(const std::set<int> & ignoredIds)
 	{
 		UDEBUG("");
 		// Remove one more than total added during the iteration
-		std::list<Signature *> signatures = getRemovableSignatures(_signaturesAdded+1, ignoredIds);
+		int signaturesAdded = _signaturesAdded;
+		std::list<Signature *> signatures = getRemovableSignatures(signaturesAdded+1, ignoredIds);
 		for(std::list<Signature *>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
 		{
 			signaturesRemoved.push_back((*iter)->id());
@@ -1489,7 +1497,15 @@ std::list<int> Memory::forget(const std::set<int> & ignoredIds)
 			// and it is removed from the memory list
 			this->moveToTrash(*iter);
 		}
-		UDEBUG("signaturesRemoved=%d, _signaturesAdded=%d", (int)signatures.size(), _signaturesAdded);
+		if((int)signatures.size() < signaturesAdded)
+		{
+			UWARN("Less signatures transferred (%d) than added (%d)! The working memory cannot decrease in size.",
+					(int)signatures.size(), signaturesAdded);
+		}
+		else
+		{
+			UDEBUG("signaturesRemoved=%d, _signaturesAdded=%d", (int)signatures.size(), signaturesAdded);
+		}
 	}
 	return signaturesRemoved;
 }
@@ -1648,42 +1664,39 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 		int recentWmCount = 0;
 		// make the list of removable signatures
 		// Criteria : Weight -> ID
-		UDEBUG("signatureMap.size()=%d", (int)weightAgeIdMap.size());
+		UDEBUG("signatureMap.size()=%d _lastGlobalLoopClosureId=%d currentRecentWmSize=%d recentWmMaxSize=%d",
+				(int)weightAgeIdMap.size(), _lastGlobalLoopClosureId, currentRecentWmSize, recentWmMaxSize);
 		for(std::map<WeightAgeIdKey, Signature*>::iterator iter=weightAgeIdMap.begin();
 			iter!=weightAgeIdMap.end();
 			++iter)
 		{
-			bool removable = true;
-			if(removable)
+			if(!recentWmImmunized)
 			{
-				if(!recentWmImmunized)
-				{
-					UDEBUG("weight=%d, id=%d",
-							iter->second->getWeight(),
-							iter->second->id());
-					removableSignatures.push_back(iter->second);
+				UDEBUG("weight=%d, id=%d",
+						iter->second->getWeight(),
+						iter->second->id());
+				removableSignatures.push_back(iter->second);
 
-					if(iter->second->id() > _lastGlobalLoopClosureId)
+				if(_lastGlobalLoopClosureId && iter->second->id() > _lastGlobalLoopClosureId)
+				{
+					++recentWmCount;
+					if(currentRecentWmSize - recentWmCount < recentWmMaxSize)
 					{
-						++recentWmCount;
-						if(currentRecentWmSize - recentWmCount < recentWmMaxSize)
-						{
-							UDEBUG("switched recentWmImmunized");
-							recentWmImmunized = true;
-						}
+						UDEBUG("switched recentWmImmunized");
+						recentWmImmunized = true;
 					}
 				}
-				else if(iter->second->id() < _lastGlobalLoopClosureId)
-				{
-					UDEBUG("weight=%d, id=%d",
-							iter->second->getWeight(),
-							iter->second->id());
-					removableSignatures.push_back(iter->second);
-				}
-				if(removableSignatures.size() >= (unsigned int)count)
-				{
-					break;
-				}
+			}
+			else if(_lastGlobalLoopClosureId == 0 || iter->second->id() < _lastGlobalLoopClosureId)
+			{
+				UDEBUG("weight=%d, id=%d",
+						iter->second->getWeight(),
+						iter->second->id());
+				removableSignatures.push_back(iter->second);
+			}
+			if(removableSignatures.size() >= (unsigned int)count)
+			{
+				break;
 			}
 		}
 	}
@@ -1770,6 +1783,10 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 		_workingMem.erase(s->id());
 		_stMem.erase(s->id());
 		_signatures.erase(s->id());
+		if(_signaturesAdded>0)
+		{
+			--_signaturesAdded;
+		}
 
 		if(_lastSignature == s)
 		{
@@ -2193,6 +2210,11 @@ Transform Memory::computeVisualTransform(
 		}
 	}
 
+	if(_bowVarianceFromInliersCount)
+	{
+		variance = inliersCount > 0?1.0/double(inliersCount):1.0;
+	}
+
 	if(rejectedMsg)
 	{
 		*rejectedMsg = msg;
@@ -2203,7 +2225,7 @@ Transform Memory::computeVisualTransform(
 	}
 	if(varianceOut)
 	{
-		*varianceOut = variance;
+		*varianceOut = variance>0.0f?variance:0.0001; // epsilon if exact transform
 	}
 	UDEBUG("transform=%s", transform.prettyPrint().c_str());
 	return transform;
@@ -2346,7 +2368,7 @@ Transform Memory::computeIcpTransform(
 				bool hasConverged = false;
 				Transform icpT;
 				int correspondences = 0;
-				float correspondencesRatio = -1.0f;
+				float correspondencesRatio = 0.0f;
 				double variance = 1;
 				if(_icpPointToPlane)
 				{
@@ -2407,7 +2429,7 @@ Transform Memory::computeIcpTransform(
 
 				if(varianceOut)
 				{
-					*varianceOut = variance;
+					*varianceOut = variance>0.0f?variance:0.0001; // epsilon if exact transform
 				}
 				if(correspondencesOut)
 				{
@@ -2495,9 +2517,9 @@ Transform Memory::computeIcpTransform(
 			{
 				Transform icpT;
 				bool hasConverged = false;
-				float correspondencesRatio = -1.0f;
+				float correspondencesRatio = 0.0f;
 				int correspondences = 0;
-				double variance = 1;
+				double variance = 1.0;
 				pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
 				icpT = util3d::icp2D(
 						newCloudVoxelized,
@@ -2546,7 +2568,6 @@ Transform Memory::computeIcpTransform(
 							newCloud = newCloudRegistered;
 						}
 
-						pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
 						util3d::computeVarianceAndCorrespondences(
 								newCloud,
 								oldCloud,
@@ -2561,8 +2582,9 @@ Transform Memory::computeIcpTransform(
 						}
 						else
 						{
-							UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set to 0!",
+							UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set relative instead of absolute!",
 									newS.id());
+							correspondencesRatio = float(correspondences)/float(newCloud->size()>oldCloud->size()?newCloud->size():oldCloud->size());
 						}
 
 						UDEBUG("%d->%d hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
@@ -2570,12 +2592,12 @@ Transform Memory::computeIcpTransform(
 								hasConverged?"true":"false",
 								variance,
 								correspondences,
-								(int)(newS.sensorData().laserScanMaxPts()),
+								newS.sensorData().laserScanMaxPts()?newS.sensorData().laserScanMaxPts():(int)(newCloud->size()>oldCloud->size()?newCloud->size():oldCloud->size()),
 								correspondencesRatio*100.0f);
 
 						if(varianceOut)
 						{
-							*varianceOut = variance;
+							*varianceOut = variance>0.0f?variance:0.0001; // epsilon if exact transform
 						}
 						if(correspondencesOut)
 						{
@@ -2604,6 +2626,21 @@ Transform Memory::computeIcpTransform(
 					msg = uFormat("Cannot compute transform (converged=%s var=%f)",
 							hasConverged?"true":"false", variance);
 					UINFO(msg.c_str());
+				}
+
+				// still compute the variance for information
+				if(variance == 1 && varianceOut)
+				{
+					util3d::computeVarianceAndCorrespondences(
+						newCloudVoxelized,
+						oldCloudVoxelized,
+						_icpMaxCorrespondenceDistance,
+						variance,
+						correspondences);
+					if(variance > 0)
+					{
+						*varianceOut = variance;
+					}
 				}
 			}
 			else
@@ -2726,63 +2763,82 @@ Transform Memory::computeScanMatchingTransform(
 
 		if(!icpT.isNull() && hasConverged)
 		{
-			if(_icp2VoxelSize <= _laserScanVoxelSize)
+			float ix,iy,iz, iroll,ipitch,iyaw;
+			icpT.getTranslationAndEulerAngles(ix,iy,iz,iroll,ipitch,iyaw);
+			if((_icpMaxTranslation>0.0f &&
+				(fabs(ix) > _icpMaxTranslation ||
+				 fabs(iy) > _icpMaxTranslation ||
+				 fabs(iz) > _icpMaxTranslation))
+				||
+				(_icpMaxRotation>0.0f &&
+				 (fabs(iroll) > _icpMaxRotation ||
+				  fabs(ipitch) > _icpMaxRotation ||
+				  fabs(iyaw) > _icpMaxRotation)))
 			{
-				newCloud = util3d::transformPointCloud(newCloud, icpT);
-			}
-			else
-			{
-				newCloud = newCloudRegistered;
-			}
-
-			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
-			double v = 1;
-			util3d::computeVarianceAndCorrespondences(
-					newCloud,
-					assembledOldClouds,
-					_icpMaxCorrespondenceDistance,
-					v,
-					correspondences);
-			if(variance)
-			{
-				*variance = v;
-			}
-
-			// verify if there enough correspondences
-			float correspondencesRatio = 0.0f;
-			if(newS->sensorData().laserScanMaxPts())
-			{
-				correspondencesRatio = float(correspondences)/float(newS->sensorData().laserScanMaxPts());
-			}
-			else
-			{
-				UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set to 0!",
-						newS->id());
-			}
-
-			UDEBUG("variance=%f, correspondences=%d/%d (%f%%) %f",
-					variance?*variance:-1,
-					correspondences,
-					(int)newCloud->size(),
-					correspondencesRatio*100.0f);
-
-			if(inliers)
-			{
-				*inliers = correspondences;
-			}
-
-			if(correspondencesRatio >= _icp2CorrespondenceRatio)
-			{
-				transform = poses.at(newId).inverse()*icpT.inverse() * poses.at(oldId);
-			}
-			else
-			{
-				msg = uFormat("Constraints failed... variance=%f, correspondences=%d/%d (%f%%)",
-					variance?*variance:-1,
-					correspondences,
-					(int)newCloud->size(),
-					correspondencesRatio);
+				msg = uFormat("Cannot compute transform (ICP correction too large)");
 				UINFO(msg.c_str());
+			}
+			else
+			{
+				if(_icp2VoxelSize <= _laserScanVoxelSize)
+				{
+					newCloud = util3d::transformPointCloud(newCloud, icpT);
+				}
+				else
+				{
+					newCloud = newCloudRegistered;
+				}
+
+				pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
+				double v = 1;
+				util3d::computeVarianceAndCorrespondences(
+						newCloud,
+						assembledOldClouds,
+						_icpMaxCorrespondenceDistance,
+						v,
+						correspondences);
+				if(variance)
+				{
+					*variance = v>0.0f?v:0.0001; // epsilon if exact transform
+				}
+
+				// verify if there enough correspondences
+				float correspondencesRatio = 0.0f;
+				if(newS->sensorData().laserScanMaxPts())
+				{
+					correspondencesRatio = float(correspondences)/float(newS->sensorData().laserScanMaxPts());
+				}
+				else
+				{
+					UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set relative instead of absolute!",
+							newS->id());
+					correspondencesRatio = float(correspondences)/float(newCloud->size());
+				}
+
+				UDEBUG("variance=%f, correspondences=%d/%d (%f%%) %f",
+						v,
+						correspondences,
+						newS->sensorData().laserScanMaxPts()?newS->sensorData().laserScanMaxPts():(int)newCloud->size(),
+						correspondencesRatio*100.0f);
+
+				if(inliers)
+				{
+					*inliers = correspondences;
+				}
+
+				if(correspondencesRatio >= _icp2CorrespondenceRatio)
+				{
+					transform = poses.at(newId).inverse()*icpT.inverse() * poses.at(oldId);
+				}
+				else
+				{
+					msg = uFormat("Constraints failed... variance=%f, correspondences=%d/%d (%f%%)",
+						variance?*variance:-1,
+						correspondences,
+						newS->sensorData().laserScanMaxPts()?newS->sensorData().laserScanMaxPts():(int)newCloud->size(),
+						correspondencesRatio);
+					UINFO(msg.c_str());
+				}
 			}
 		}
 		else
@@ -3087,7 +3143,7 @@ void Memory::rehearsal(Signature * signature, Statistics * stats)
 	}
 
 	//============================================================
-	// Compare with the last (not null)
+	// Compare with the last (not intermediate node)
 	//============================================================
 	Signature * sB = 0;
 	for(std::set<int>::reverse_iterator iter=_stMem.rbegin(); iter!=_stMem.rend(); ++iter)
@@ -3112,55 +3168,9 @@ void Memory::rehearsal(Signature * signature, Statistics * stats)
 		{
 			if(_incrementalMemory)
 			{
-				if(signature->hasLink(id))
+				if(this->rehearsalMerge(id, signature->id()))
 				{
-					if(signature->getLinks().begin()->second.transform().isNull())
-					{
-						if(this->rehearsalMerge(id, signature->id()))
-						{
-							merged = id;
-						}
-					}
-					else
-					{
-						float x,y,z, roll,pitch,yaw;
-						signature->getLinks().begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-						if((_rehearsalMaxDistance>0.0f && (
-								fabs(x) > _rehearsalMaxDistance ||
-								fabs(y) > _rehearsalMaxDistance ||
-								fabs(z) > _rehearsalMaxDistance)) ||
-							(_rehearsalMaxAngle>0.0f && (
-								fabs(roll) > _rehearsalMaxAngle ||
-								fabs(pitch) > _rehearsalMaxAngle ||
-								fabs(yaw) > _rehearsalMaxAngle)))
-						{
-							if(_rehearsalWeightIgnoredWhileMoving)
-							{
-								UINFO("Rehearsal ignored because the robot has moved more than %f m or %f rad",
-										_rehearsalMaxDistance, _rehearsalMaxAngle);
-							}
-							else
-							{
-								// if the robot has moved, increase only weight of the new one
-								signature->setWeight(sB->getWeight() + signature->getWeight() + 1);
-								sB->setWeight(0);
-								UINFO("Only updated weight to %d of %d (old=%d) because the robot has moved. (d=%f a=%f)",
-										signature->getWeight(), signature->id(), sB->id(), _rehearsalMaxDistance, _rehearsalMaxAngle);
-							}
-						}
-						else if(this->rehearsalMerge(id, signature->id()))
-						{
-							merged = id;
-						}
-					}
-				}
-				else
-				{
-					// cannot merge not neighbor signatures, just update weight
-					signature->setWeight(sB->getWeight() + signature->getWeight() + 1);
-					sB->setWeight(0);
-					UINFO("Only updated weight to %d of %d (old=%d) because the signatures are not neighbors.",
-							signature->getWeight(), signature->id(), sB->id());
+					merged = id;
 				}
 			}
 			else
@@ -3171,6 +3181,7 @@ void Memory::rehearsal(Signature * signature, Statistics * stats)
 
 		if(stats) stats->addStatistic(Statistics::kMemoryRehearsal_merged(), merged);
 		if(stats) stats->addStatistic(Statistics::kMemoryRehearsal_sim(), sim);
+		if(stats) stats->addStatistic(Statistics::kMemoryRehearsal_id(), sim >= _similarityThreshold?id:0);
 		UDEBUG("merged=%d, sim=%f t=%fs", merged, sim, timer.ticks());
 	}
 	else
@@ -3198,65 +3209,122 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 
 		UINFO("Rehearsal merging %d and %d", oldS->id(), newS->id());
 
-		//remove mutual links
-		oldS->removeLink(newId);
-		newS->removeLink(oldId);
-
-		if(_idUpdatedToNewOneRehearsal)
+		bool fullMerge;
+		bool intermediateMerge = false;
+		if(!newS->getLinks().begin()->second.transform().isNull())
 		{
-			// redirect neighbor links
-			const std::map<int, Link> & links = oldS->getLinks();
-			for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
+			// we are in metric SLAM mode:
+			// 1) Normal merge if not moving AND has direct link
+			// 2) Transform to intermediate node (weight = -1) if not moving AND hasn't direct link.
+			float x,y,z, roll,pitch,yaw;
+			newS->getLinks().begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+			bool isMoving = fabs(x) > _rehearsalMaxDistance ||
+							fabs(y) > _rehearsalMaxDistance ||
+							fabs(z) > _rehearsalMaxDistance ||
+							fabs(roll) > _rehearsalMaxAngle ||
+							fabs(pitch) > _rehearsalMaxAngle ||
+							fabs(yaw) > _rehearsalMaxAngle;
+			if(isMoving && _rehearsalWeightIgnoredWhileMoving)
 			{
-				Link link = iter->second;
-				link.setFrom(newS->id());
-
-				Signature * s = this->_getSignature(link.to());
-				if(s)
-				{
-					// modify neighbor "from"
-					s->changeLinkIds(oldS->id(), newS->id());
-
-					newS->addLink(link);
-				}
-				else
-				{
-					UERROR("Didn't find neighbor %d of %d in RAM...", link.to(), oldS->id());
-				}
+				UINFO("Rehearsal ignored because the robot has moved more than %f m or %f rad (\"Mem/RehearsalWeightIgnoredWhileMoving\"=true)",
+						_rehearsalMaxDistance, _rehearsalMaxAngle);
+				return false;
 			}
-			newS->setLabel(oldS->getLabel());
-			oldS->setLabel("");
-			oldS->removeLinks(); // remove all links
-			oldS->addLink(Link(oldS->id(), newS->id(), Link::kGlobalClosure, Transform(), 1, 1)); // to keep track of the merged location
-
-			// Set old image to new signature
-			this->copyData(oldS, newS);
-
-			// update weight
-			newS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
-
-			if(_lastGlobalLoopClosureId == oldS->id())
-			{
-				_lastGlobalLoopClosureId = newS->id();
-			}
+			fullMerge = !isMoving && newS->hasLink(oldS->id());
+			intermediateMerge = !isMoving && !newS->hasLink(oldS->id());
 		}
 		else
 		{
-			newS->addLink(Link(newS->id(), oldS->id(), Link::kGlobalClosure, Transform() , 1, 1)); // to keep track of the merged location
-
-			// update weight
-			oldS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
-
-			if(_lastSignature == newS)
-			{
-				_lastSignature = oldS;
-			}
+			fullMerge = newS->hasLink(oldS->id()) && newS->getLinks().begin()->second.transform().isNull();
 		}
 
-		// remove location
-		moveToTrash(_idUpdatedToNewOneRehearsal?oldS:newS, _notLinkedNodesKeptInDb);
+		if(fullMerge)
+		{
+			//remove mutual links
+			Link newToOldLink = newS->getLinks().at(oldS->id());
+			oldS->removeLink(newId);
+			newS->removeLink(oldId);
 
-		return true;
+			if(_idUpdatedToNewOneRehearsal)
+			{
+				// redirect neighbor links
+				const std::map<int, Link> & links = oldS->getLinks();
+				for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
+				{
+					Link link = iter->second;
+					Link mergedLink = newToOldLink.merge(link, link.type());
+					UASSERT(mergedLink.from() == newS->id() && mergedLink.to() == link.to());
+
+					Signature * s = this->_getSignature(link.to());
+					if(s)
+					{
+						// modify neighbor "from"
+						s->removeLink(oldS->id());
+						s->addLink(mergedLink.inverse());
+
+						newS->addLink(mergedLink);
+					}
+					else
+					{
+						UERROR("Didn't find neighbor %d of %d in RAM...", link.to(), oldS->id());
+					}
+				}
+				newS->setLabel(oldS->getLabel());
+				oldS->setLabel("");
+				oldS->removeLinks(); // remove all links
+				oldS->addLink(Link(oldS->id(), newS->id(), Link::kGlobalClosure, Transform(), 1, 1)); // to keep track of the merged location
+
+				// Set old image to new signature
+				this->copyData(oldS, newS);
+
+				// update weight
+				newS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
+
+				if(_lastGlobalLoopClosureId == oldS->id())
+				{
+					_lastGlobalLoopClosureId = newS->id();
+				}
+			}
+			else
+			{
+				newS->addLink(Link(newS->id(), oldS->id(), Link::kGlobalClosure, Transform() , 1, 1)); // to keep track of the merged location
+
+				// update weight
+				oldS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
+
+				if(_lastSignature == newS)
+				{
+					_lastSignature = oldS;
+				}
+			}
+
+			// remove location
+			moveToTrash(_idUpdatedToNewOneRehearsal?oldS:newS, _notLinkedNodesKeptInDb);
+
+			return true;
+		}
+		else
+		{
+			// update only weights
+			if(_idUpdatedToNewOneRehearsal)
+			{
+				// just update weight
+				int w = oldS->getWeight()>=0?oldS->getWeight():0;
+				newS->setWeight(w + newS->getWeight() + 1);
+				oldS->setWeight(intermediateMerge?-1:0); // convert to intermediate node
+
+				if(_lastGlobalLoopClosureId == oldS->id())
+				{
+					_lastGlobalLoopClosureId = newS->id();
+				}
+			}
+			else // !_idUpdatedToNewOneRehearsal
+			{
+				int w = newS->getWeight()>=0?newS->getWeight():0;
+				oldS->setWeight(w + oldS->getWeight() + 1);
+				newS->setWeight(intermediateMerge?-1:0); // convert to intermediate node
+			}
+		}
 	}
 	else
 	{
@@ -3324,23 +3392,27 @@ cv::Mat Memory::getImageCompressed(int signatureId) const
 	return image;
 }
 
-SensorData Memory::getNodeData(int nodeId, bool uncompressedData)
+SensorData Memory::getNodeData(int nodeId, bool uncompressedData, bool keepLoadedDataInMemory)
 {
 	UDEBUG("nodeId=%d", nodeId);
 	SensorData r;
 	Signature * s = this->_getSignature(nodeId);
 	if(s && !s->sensorData().imageCompressed().empty())
 	{
-		if(uncompressedData)
+		if(keepLoadedDataInMemory && uncompressedData)
 		{
 			s->sensorData().uncompressData();
 		}
 		r = s->sensorData();
+		if(!keepLoadedDataInMemory && uncompressedData)
+		{
+			r.uncompressData();
+		}
 	}
 	else if(_dbDriver)
 	{
 		// load from database
-		if(s)
+		if(s && keepLoadedDataInMemory)
 		{
 			std::list<Signature*> signatures;
 			signatures.push_back(s);
@@ -3451,7 +3523,7 @@ SensorData Memory::getSignatureDataConst(int locationId) const
 	return r;
 }
 
-void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
+void Memory::generateGraph(const std::string & fileName, const std::set<int> & ids)
 {
 	if(!_dbDriver)
 	{
@@ -3459,235 +3531,7 @@ void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
 		return;
 	}
 
-	if(!fileName.empty())
-	{
-		FILE* fout = 0;
-		#ifdef _MSC_VER
-			fopen_s(&fout, fileName.c_str(), "w");
-		#else
-			fout = fopen(fileName.c_str(), "w");
-		#endif
-
-		 if (!fout)
-		 {
-			 UERROR("Cannot open file %s!", fileName.c_str());
-			 return;
-		 }
-
-		 if(ids.size() == 0)
-		 {
-			 _dbDriver->getAllNodeIds(ids);
-			 UDEBUG("ids.size()=%d", ids.size());
-			 for(std::map<int, Signature*>::iterator iter=_signatures.begin(); iter!=_signatures.end(); ++iter)
-			 {
-				 ids.insert(iter->first);
-			 }
-		 }
-
-		 const char * colorG = "green";
-		 const char * colorP = "pink";
-;		 UINFO("Generating map with %d locations", ids.size());
-		 fprintf(fout, "digraph G {\n");
-		 for(std::set<int>::iterator i=ids.begin(); i!=ids.end(); ++i)
-		 {
-			 if(_signatures.find(*i) == _signatures.end())
-			 {
-				 int id = *i;
-				 std::map<int, Link> links;
-				 _dbDriver->loadLinks(id, links);
-				 int weight = 0;
-				 _dbDriver->getWeight(id, weight);
-				 for(std::map<int, Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
-				 {
-					 int weightNeighbor = 0;
-					 if(_signatures.find(iter->first) == _signatures.end())
-					 {
-						 _dbDriver->getWeight(iter->first, weightNeighbor);
-					 }
-					 else
-					 {
-						 weightNeighbor = _signatures.find(iter->first)->second->getWeight();
-					 }
-					 //UDEBUG("Add neighbor link from %d to %d", id, iter->first);
-					 if(iter->second.type() == Link::kNeighbor)
-					 {
-						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\"\n",
-								 id,
-								 weight,
-								 iter->first,
-								 weightNeighbor);
-					 }
-					 else if(iter->first > id)
-					 {
-						 //loop
-						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
-								 id,
-								 weight,
-								 iter->first,
-								 weightNeighbor,
-								 colorG);
-					 }
-					 else
-					 {
-						 //child
-						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
-								 id,
-								 weight,
-								 iter->first,
-								 weightNeighbor,
-								 colorP);
-					 }
-				 }
-			 }
-		 }
-		 for(std::map<int, Signature*>::iterator i=_signatures.begin(); i!=_signatures.end(); ++i)
-		 {
-			 if(ids.find(i->first) != ids.end())
-			 {
-				 int id = i->second->id();
-				 const std::map<int, Link> & links = i->second->getLinks();
-				 int weight = i->second->getWeight();
-				 for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
-				 {
-					 int weightNeighbor = 0;
-					 const Signature * s = this->getSignature(iter->first);
-					 if(s)
-					 {
-						 weightNeighbor = s->getWeight();
-					 }
-					 else
-					 {
-						 _dbDriver->getWeight(iter->first, weightNeighbor);
-					 }
-					 //UDEBUG("Add neighbor link from %d to %d", id, iter->first);
-					 if(iter->second.type() == Link::kNeighbor)
-					 {
-						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\"\n",
-								 id,
-								 weight,
-								 iter->first,
-								 weightNeighbor);
-					 }
-					 else if(iter->first > id)
-					 {
-						 //loop
-						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
-								 id,
-								 weight,
-								 iter->first,
-								 weightNeighbor,
-								 colorG);
-					 }
-					 else
-					 {
-						 //child
-						 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
-								 id,
-								 weight,
-								 iter->first,
-								 weightNeighbor,
-								 colorP);
-					 }
-				 }
-			 }
-		 }
-		 fprintf(fout, "}\n");
-		 fclose(fout);
-		 UINFO("Graph saved to \"%s\"", fileName.c_str());
-	}
-}
-
-// Only used to generate a .dot file
-class GraphNode
-{
-public:
-	GraphNode(int id, GraphNode * parent = 0) :
-		_parent(parent),
-		_id(id)
-	{
-		if(_parent)
-		{
-			_parent->addChild(this);
-		}
-	}
-	virtual ~GraphNode()
-	{
-		//We copy the set because when a child is destroyed, it is removed from its parent.
-		std::set<GraphNode*> children = _children;
-		_children.clear();
-		for(std::set<GraphNode*>::iterator iter=children.begin(); iter!=children.end(); ++iter)
-		{
-			delete *iter;
-		}
-		children.clear();
-		if(_parent)
-		{
-			_parent->removeChild(this);
-		}
-	}
-	int id() const {return _id;}
-	bool isAncestor(int id) const
-	{
-		if(_parent)
-		{
-			if(_parent->id() == id)
-			{
-				return true;
-			}
-			return _parent->isAncestor(id);
-		}
-		return false;
-	}
-
-	void expand(std::list<std::list<int> > & paths, std::list<int> currentPath = std::list<int>()) const
-	{
-		currentPath.push_back(_id);
-		if(_children.size() == 0)
-		{
-			paths.push_back(currentPath);
-			return;
-		}
-		for(std::set<GraphNode*>::const_iterator iter=_children.begin(); iter!=_children.end(); ++iter)
-		{
-			(*iter)->expand(paths, currentPath);
-		}
-	}
-
-private:
-	void addChild(GraphNode * child)
-	{
-		_children.insert(child);
-	}
-	void removeChild(GraphNode * child)
-	{
-		_children.erase(child);
-	}
-
-private:
-	std::set<GraphNode*> _children;
-	GraphNode * _parent;
-	int _id;
-};
-
-//recursive
-void Memory::createGraph(GraphNode * parent, unsigned int maxDepth, const std::set<int> & endIds)
-{
-	if(maxDepth == 0 || !parent)
-	{
-		return;
-	}
-	std::map<int, int> neighbors = this->getNeighborsId(parent->id(), 1, -1, false);
-	for(std::map<int, int>::iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
-	{
-		if(!parent->isAncestor(iter->first))
-		{
-			GraphNode * n = new GraphNode(iter->first, parent);
-			if(endIds.find(iter->first) == endIds.end())
-			{
-				this->createGraph(n, maxDepth-1, endIds);
-			}
-		}
-	}
+	_dbDriver->generateGraph(fileName, ids, _signatures);
 }
 
 int Memory::getNi(int signatureId) const
@@ -3831,6 +3675,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 	if(_parallelized)
 	{
+		UDEBUG("Start dictionary update thread");
 		preUpdateThread.start();
 	}
 
@@ -3844,12 +3689,14 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			// convert to grayscale
 			if(data.imageRaw().channels() > 1)
 			{
+				UDEBUG("convert to grayscale...");
 				cv::cvtColor(data.imageRaw(), imageMono, cv::COLOR_BGR2GRAY);
 			}
 			else
 			{
 				imageMono = data.imageRaw();
 			}
+			UDEBUG("Set ROI...");
 			cv::Rect roi = Feature2D::computeRoi(imageMono, _roiRatios);
 
 			if(!data.depthOrRightRaw().empty() && data.stereoCameraModel().isValid())
@@ -3861,6 +3708,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				{
 					subPixelOn = true;
 				}
+				UDEBUG("Generating keypoints...");
 				keypoints = _feature2D->generateKeypoints(imageMono, roi);
 				t = timer.ticks();
 				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
@@ -3947,6 +3795,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				{
 					subPixelOn = true;
 				}
+				UDEBUG("Generating keypoints...");
 				keypoints = _feature2D->generateKeypoints(imageMono, roi);
 				t = timer.ticks();
 				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
@@ -4008,6 +3857,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			else
 			{
 				//RGB only
+				UDEBUG("Generating keypoints...");
 				keypoints = _feature2D->generateKeypoints(imageMono, roi);
 				t = timer.ticks();
 				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
@@ -4127,7 +3977,9 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 	if(_parallelized)
 	{
+		UDEBUG("Joining dictionary update thread...");
 		preUpdateThread.join(); // Wait the dictionary to be updated
+		UDEBUG("Joining dictionary update thread... thread finished!");
 	}
 
 	std::list<int> wordIds;
@@ -4255,10 +4107,10 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		std::vector<unsigned char> imageBytes;
 		std::vector<unsigned char> depthBytes;
 
-		if(!depthOrRightImage.empty() && depthOrRightImage.type() == CV_32FC1)
+		if(_saveDepth16Format && !depthOrRightImage.empty() && depthOrRightImage.type() == CV_32FC1)
 		{
-			UWARN("Keeping raw data in database: depth type is 32FC1, use 16UC1 depth format to avoid a conversion.");
-			depthOrRightImage = util3d::cvtDepthFromFloat(depthOrRightImage);
+			UWARN("Save depth data to 16 bits format: depth type detected is 32FC1, use 16UC1 depth format to avoid this conversion (or set parameter \"Mem/SaveDepth16Format\"=false to use 32bits format).");
+			depthOrRightImage = util2d::cvtDepthFromFloat(depthOrRightImage);
 		}
 
 		rtabmap::CompressionThread ctImage(image, std::string(".jpg"));
@@ -4284,6 +4136,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				SensorData(
 						ctDepth2d.getCompressedData(),
 						data.laserScanMaxPts(),
+						data.laserScanMaxRange(),
 						ctImage.getCompressedData(),
 						ctDepth.getCompressedData(),
 						stereoCameraModel,
@@ -4293,6 +4146,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				SensorData(
 						ctDepth2d.getCompressedData(),
 						data.laserScanMaxPts(),
+						data.laserScanMaxRange(),
 						ctImage.getCompressedData(),
 						ctDepth.getCompressedData(),
 						cameraModels,
@@ -4319,6 +4173,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				SensorData(
 						ctDepth2d.getCompressedData(),
 						data.laserScanMaxPts(),
+						data.laserScanMaxRange(),
 						cv::Mat(),
 						cv::Mat(),
 						stereoCameraModel,
@@ -4328,6 +4183,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				SensorData(
 						ctDepth2d.getCompressedData(),
 						data.laserScanMaxPts(),
+						data.laserScanMaxRange(),
 						cv::Mat(),
 						cv::Mat(),
 						cameraModels,
@@ -4341,10 +4197,9 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	{
 		s->sensorData().setImageRaw(image);
 		s->sensorData().setDepthOrRightRaw(depthOrRightImage);
-		s->sensorData().setLaserScanRaw(laserScan, data.laserScanMaxPts());
+		s->sensorData().setLaserScanRaw(laserScan, data.laserScanMaxPts(), data.laserScanMaxRange());
 		s->sensorData().setUserDataRaw(data.userDataRaw());
 	}
-
 
 	t = timer.ticks();
 	if(stats) stats->addStatistic(Statistics::kTimingMemCompressing_data(), t*1000.0f);
@@ -4596,7 +4451,7 @@ void Memory::getMetricConstraints(
 								const Signature * s2 = this->getSignature(uter->first);
 								if(s2)
 								{
-									link = link.merge(uter->second);
+									link = link.merge(uter->second, uter->second.type());
 									poses.erase(s->id());
 									s = s2;
 								}

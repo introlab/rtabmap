@@ -30,10 +30,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/RtabmapExp.h>
 
-
 #include <pcl/PolygonMesh.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/TextureMesh.h>
+#include <rtabmap/core/Transform.h>
+#include <rtabmap/core/CameraModel.h>
 
 namespace rtabmap
 {
@@ -49,7 +51,14 @@ pcl::PolygonMesh::Ptr RTABMAP_EXP createMesh(
 		float gp3MaximumSurfaceAngle = M_PI/4,
 		float gp3MinimumAngle = M_PI/18,
 		float gp3MaximumAngle = 2*M_PI/3,
-		bool gp3NormalConsistency = false);
+		bool gp3NormalConsistency = true);
+
+pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
+		const pcl::PolygonMesh::Ptr & mesh,
+		const std::map<int, Transform> & poses,
+		const std::map<int, CameraModel> & cameraModels,
+		const std::map<int, cv::Mat> & images,
+		const std::string & tmpDirectory = ".");
 
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
@@ -59,10 +68,54 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		int normalKSearch = 20);
 
-pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP computeNormalsSmoothed(
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP mls(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		float smoothingSearchRadius = 0.025,
-		bool smoothingPolynomialFit = true);
+		float searchRadius = 0.0f,
+		int polygonialOrder = 2,
+		int upsamplingMethod = 0, // NONE, DISTINCT_CLOUD, SAMPLE_LOCAL_PLANE, RANDOM_UNIFORM_DENSITY, VOXEL_GRID_DILATION
+		float upsamplingRadius = 0.0f,   // SAMPLE_LOCAL_PLANE
+		float upsamplingStep = 0.0f,     // SAMPLE_LOCAL_PLANE
+		int pointDensity = 0,            // RANDOM_UNIFORM_DENSITY
+		float dilationVoxelSize = 1.0f,  // VOXEL_GRID_DILATION
+		int dilationIterations = 0);     // VOXEL_GRID_DILATION
+
+void RTABMAP_EXP adjustNormalsToViewPoints(
+		const std::map<int, Transform> & poses,
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
+		const std::vector<int> & rawCameraIndices,
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud);
+
+pcl::PolygonMesh::Ptr RTABMAP_EXP meshDecimation(const pcl::PolygonMesh::Ptr & mesh, float factor);
+
+template<typename pointT>
+std::vector<pcl::Vertices> normalizePolygonsSide(
+		const pcl::PointCloud<pointT> & cloud,
+		const std::vector<pcl::Vertices> & polygons,
+		const pcl::PointXYZ & viewPoint = pcl::PointXYZ(0,0,0))
+{
+	std::vector<pcl::Vertices> output(polygons.size());
+	for(unsigned int i=0; i<polygons.size(); ++i)
+	{
+		pcl::Vertices polygon = polygons[i];
+		Eigen::Vector3f v1 = cloud.at(polygon.vertices[1]).getVector3fMap() - cloud.at(polygon.vertices[0]).getVector3fMap();
+		Eigen::Vector3f v2 = cloud.at(polygon.vertices[2]).getVector3fMap() - cloud.at(polygon.vertices[0]).getVector3fMap();
+		Eigen::Vector3f n = (v1.cross(v2)).normalized();
+
+		Eigen::Vector3f p = Eigen::Vector3f(viewPoint.x, viewPoint.y, viewPoint.z) - cloud.at(polygon.vertices[1]).getVector3fMap();
+
+		float result = n.dot(p);
+		if(result < 0)
+		{
+			//reverse vertices order
+			int tmp = polygon.vertices[0];
+			polygon.vertices[0] = polygon.vertices[2];
+			polygon.vertices[2] = tmp;
+		}
+
+		output[i] = polygon;
+	}
+	return output;
+}
 
 } // namespace util3d
 } // namespace rtabmap

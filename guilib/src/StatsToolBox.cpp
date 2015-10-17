@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "StatsToolBox.h"
+#include "rtabmap/gui/StatsToolBox.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -39,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QToolBox>
 #include <QDialog>
 
-#include "utilite/UPlot.h"
+#include "rtabmap/utilite/UPlot.h"
 #include <rtabmap/utilite/ULogger.h>
 
 namespace rtabmap {

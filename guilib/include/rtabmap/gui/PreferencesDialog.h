@@ -117,7 +117,7 @@ public:
 	void saveWindowGeometry(const QWidget * window);
 	void loadWindowGeometry(QWidget * window);
 	void saveMainWindowState(const QMainWindow * mainWindow);
-	void loadMainWindowState(QMainWindow * mainWindow, bool & maximized);
+	void loadMainWindowState(QMainWindow * mainWindow, bool & maximized, bool & statusBarShown);
 	void saveWidgetState(const QWidget * widget);
 	void loadWidgetState(QWidget * widget);
 
@@ -156,6 +156,7 @@ public:
 
 	int getMeshNormalKSearch() const;
 	double getMeshGP3Radius() const;
+	double getMeshGP3Mu() const;
 	bool getMeshSmoothing() const;
 	double getMeshSmoothingRadius() const;
 
@@ -185,9 +186,11 @@ public:
 	QString getSourceDatabasePath() const; //Database group
 	bool getSourceDatabaseOdometryIgnored() const; //Database group
 	bool getSourceDatabaseGoalDelayIgnored() const; //Database group
+	bool getSourceDatabaseGoalsIgnored() const; //Database group
 	int getSourceDatabaseStartPos() const; //Database group
 	bool getSourceDatabaseStampsUsed() const;//Database group
 	bool isSourceRGBDColorOnly() const;
+	bool isSourceStereoDepthGenerated() const;
 	Transform getSourceLocalTransform() const;    //Openni group
 	Camera * createCamera(bool useRawImages = false); // return camera should be deleted if not null
 
@@ -203,8 +206,10 @@ public:
 	bool isStatisticsPublished() const;
 	double getLoopThr() const;
 	double getVpThr() const;
+	double getSimThr() const;
 	int getOdomStrategy() const;
 	int getOdomBufferSize() const;
+	bool getLccBowVarianceFromInliersCount() const;
 	QString getCameraInfoDir() const; // "workinfDir/camera_info"
 
 	//
@@ -298,7 +303,7 @@ private:
 	void addParameter(const QObject * object, double value);
 	void addParameter(const QObject * object, const QString & value);
 	void addParameters(const QObjectList & children);
-	void addParameters(const QStackedWidget * stackedWidget);
+	void addParameters(const QStackedWidget * stackedWidget, int panel = -1);
 	void addParameters(const QGroupBox * box);
 	QList<QGroupBox*> getGroupBoxes();
 	void readSettingsBegin();

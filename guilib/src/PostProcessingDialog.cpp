@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ui_postProcessingDialog.h"
 
 #include <QPushButton>
+#include <rtabmap/core/Graph.h>
 
 namespace rtabmap {
 
@@ -38,9 +39,18 @@ PostProcessingDialog::PostProcessingDialog(QWidget * parent) :
 	_ui = new Ui_PostProcessingDialog();
 	_ui->setupUi(this);
 
+	if(!graph::CVSBAOptimizer::available())
+	{
+		_ui->sba->setEnabled(false);
+		_ui->sba->setChecked(false);
+	}
+
+	restoreDefaults();
+
 	connect(_ui->detectMoreLoopClosures, SIGNAL(clicked(bool)), this, SLOT(updateButtonBox()));
 	connect(_ui->refineNeighborLinks, SIGNAL(stateChanged(int)), this, SLOT(updateButtonBox()));
 	connect(_ui->refineLoopClosureLinks, SIGNAL(stateChanged(int)), this, SLOT(updateButtonBox()));
+	connect(_ui->sba, SIGNAL(clicked(bool)), this, SLOT(updateButtonBox()));
 	connect(_ui->buttonBox->button(QDialogButtonBox::RestoreDefaults), SIGNAL(clicked()), this, SLOT(restoreDefaults()));
 
 	connect(_ui->detectMoreLoopClosures, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
@@ -50,6 +60,12 @@ PostProcessingDialog::PostProcessingDialog(QWidget * parent) :
 	connect(_ui->reextractFeatures, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->refineNeighborLinks, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->refineLoopClosureLinks, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+
+	connect(_ui->sba, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->sba_iterations, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->sba_epsilon, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->sba_minInlierDistance, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->sba_minInliers, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 }
 
 PostProcessingDialog::~PostProcessingDialog()
@@ -70,6 +86,11 @@ void PostProcessingDialog::saveSettings(QSettings & settings, const QString & gr
 	settings.setValue("reextract_features", this->isReextractFeatures());
 	settings.setValue("refine_neigbors", this->isRefineNeighborLinks());
 	settings.setValue("refine_lc", this->isRefineLoopClosureLinks());
+	settings.setValue("sba", this->isSBA());
+	settings.setValue("sba_iterations", this->sbaIterations());
+	settings.setValue("sba_epsilon", this->sbaEpsilon());
+	settings.setValue("sba_inlier_distance", this->sbaInlierDistance());
+	settings.setValue("sba_min_inliers", this->sbaMinInliers());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -89,6 +110,11 @@ void PostProcessingDialog::loadSettings(QSettings & settings, const QString & gr
 	this->setReextractFeatures(settings.value("reextract_features", this->isReextractFeatures()).toBool());
 	this->setRefineNeighborLinks(settings.value("refine_neigbors", this->isRefineNeighborLinks()).toBool());
 	this->setRefineLoopClosureLinks(settings.value("refine_lc", this->isRefineLoopClosureLinks()).toBool());
+	this->setSBA(settings.value("sba", this->isSBA()).toBool());
+	this->setSBAIterations(settings.value("sba_iterations", this->sbaIterations()).toInt());
+	this->setSBAEpsilon(settings.value("sba_epsilon", this->sbaEpsilon()).toDouble());
+	this->setSBAInlierDistance(settings.value("sba_inlier_distance", this->sbaInlierDistance()).toDouble());
+	this->setSBAMinInliers(settings.value("sba_min_inliers", this->sbaMinInliers()).toInt());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -98,18 +124,23 @@ void PostProcessingDialog::loadSettings(QSettings & settings, const QString & gr
 void PostProcessingDialog::restoreDefaults()
 {
 	setDetectMoreLoopClosures(true);
-	setClusterRadius(0.3);
+	setClusterRadius(0.5);
 	setClusterAngle(30);
 	setIterations(1);
 	setReextractFeatures(false);
 	setRefineNeighborLinks(false);
 	setRefineLoopClosureLinks(false);
+	setSBA(false);
+	setSBAIterations(20);
+	setSBAEpsilon(0.0001);
+	setSBAInlierDistance(0.05);
+	setSBAMinInliers(10);
 }
 
 void PostProcessingDialog::updateButtonBox()
 {
 	_ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(
-			isDetectMoreLoopClosures() || isRefineNeighborLinks() || isRefineLoopClosureLinks());
+			isDetectMoreLoopClosures() || isRefineNeighborLinks() || isRefineLoopClosureLinks() || isSBA());
 }
 
 bool PostProcessingDialog::isDetectMoreLoopClosures() const
@@ -147,6 +178,28 @@ bool PostProcessingDialog::isRefineLoopClosureLinks() const
 	return _ui->refineLoopClosureLinks->isChecked();
 }
 
+bool PostProcessingDialog::isSBA() const
+{
+	return _ui->sba->isChecked();
+}
+
+int PostProcessingDialog::sbaIterations() const
+{
+	return _ui->sba_iterations->value();
+}
+double PostProcessingDialog::sbaEpsilon() const
+{
+	return _ui->sba_epsilon->value();
+}
+double PostProcessingDialog::sbaInlierDistance() const
+{
+	return _ui->sba_minInlierDistance->value();
+}
+int PostProcessingDialog::sbaMinInliers() const
+{
+	return _ui->sba_minInliers->value();
+}
+
 //setters
 void PostProcessingDialog::setDetectMoreLoopClosures(bool on)
 {
@@ -176,5 +229,26 @@ void PostProcessingDialog::setRefineLoopClosureLinks(bool on)
 {
 	_ui->refineLoopClosureLinks->setChecked(on);
 }
+void PostProcessingDialog::setSBA(bool on)
+{
+	_ui->sba->setChecked(graph::CVSBAOptimizer::available() && on);
+}
+void PostProcessingDialog::setSBAIterations(int iterations)
+{
+	_ui->sba_iterations->setValue(iterations);
+}
+void PostProcessingDialog::setSBAEpsilon(double epsilon)
+{
+	_ui->sba_epsilon->setValue(epsilon);
+}
+void PostProcessingDialog::setSBAInlierDistance(double inlierDistance)
+{
+	_ui->sba_minInlierDistance->setValue(inlierDistance);
+}
+void PostProcessingDialog::setSBAMinInliers(int minInliers)
+{
+	_ui->sba_minInliers->setValue(minInliers);
+}
+
 
 }

@@ -65,7 +65,7 @@ public:
 			kCmdDumpMemory,
 			kCmdDumpPrediction,
 			kCmdGenerateDOTGraph, // params: [bool] global, [string] path, if global=false: [int] id, [int] margin
-			kCmdExportPoses,      // params: [bool] global, [bool] optimized, [string] path, [int] type (0=KITTI/raw format, 1=RGBD-SLAM format, 2=TORO)
+			kCmdExportPoses,      // params: [bool] global, [bool] optimized, [string] path, [int] type (0=raw format, 1=RGBD-SLAM format, 2=KITTI format, 3=TORO, 4=g2o)
 			kCmdCleanDataBuffer,
 			kCmdPublish3DMap,     // params: [bool] global, [bool] optimized, [bool] graphOnly
 			kCmdTriggerNewMap,
@@ -202,13 +202,19 @@ public:
 	RtabmapGlobalPathEvent(int goalId, const std::vector<std::pair<int, Transform> > & poses) :
 		UEvent(goalId),
 		_poses(poses) {}
+	RtabmapGlobalPathEvent(int goalId, const std::string & goalLabel, const std::vector<std::pair<int, Transform> > & poses) :
+			UEvent(goalId),
+			_goalLabel(goalLabel),
+			_poses(poses) {}
 
 	virtual ~RtabmapGlobalPathEvent() {}
 	int getGoal() const {return this->getCode();}
+	const std::string & getGoalLabel() const {return _goalLabel;}
 	const std::vector<std::pair<int, Transform> > & getPoses() const {return _poses;}
 	virtual std::string getClassName() const {return std::string("RtabmapGlobalPathEvent");}
 
 private:
+	std::string _goalLabel;
 	std::vector<std::pair<int, Transform> > _poses;
 };
 
@@ -226,6 +232,16 @@ public:
 
 private:
 	std::string _label;
+};
+
+class RtabmapGoalStatusEvent : public UEvent
+{
+public:
+	RtabmapGoalStatusEvent(int status):
+		UEvent(status){}
+
+	virtual ~RtabmapGoalStatusEvent() {}
+	virtual std::string getClassName() const {return std::string("RtabmapGoalStatusEvent");}
 };
 
 } // namespace rtabmap

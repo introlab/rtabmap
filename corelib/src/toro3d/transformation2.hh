@@ -187,8 +187,10 @@ struct Transformation2{
   }
 
   /** Constructor that sets the translation and rotation  **/
-  Transformation2 (const T& _theta, const Vector2<T>& trans):
-    Transformation2(trans.x(), trans.y(), _theta){}
+  Transformation2 (const T& _theta, const Vector2<T>& trans){
+	  setRotation(_theta);
+	  setTranslation(trans.x(), trans.y());
+  }
 
 
   /** Copy constructor  **/

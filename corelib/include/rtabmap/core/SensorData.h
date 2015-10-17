@@ -75,6 +75,7 @@ public:
 	SensorData(
 			const cv::Mat & laserScan,
 			int laserScanMaxPts,
+			float laserScanMaxRange,
 			const cv::Mat & rgb,
 			const cv::Mat & depth,
 			const CameraModel & cameraModel,
@@ -95,6 +96,7 @@ public:
 	SensorData(
 			const cv::Mat & laserScan,
 			int laserScanMaxPts,
+			float laserScanMaxRange,
 			const cv::Mat & rgb,
 			const cv::Mat & depth,
 			const std::vector<CameraModel> & cameraModels,
@@ -115,6 +117,7 @@ public:
 	SensorData(
 			const cv::Mat & laserScan,
 			int laserScanMaxPts,
+			float laserScanMaxRange,
 			const cv::Mat & left,
 			const cv::Mat & right,
 			const StereoCameraModel & cameraModel,
@@ -136,8 +139,8 @@ public:
 			_laserScanCompressed.empty() &&
 			_cameraModels.size() == 0 &&
 			!_stereoCameraModel.isValid() &&
-			!_userDataRaw.empty() &&
-			!_userDataCompressed.empty() &&
+			_userDataRaw.empty() &&
+			_userDataCompressed.empty() &&
 			_keypoints.size() == 0 &&
 			_descriptors.empty());
 	}
@@ -147,6 +150,7 @@ public:
 	double stamp() const {return _stamp;}
 	void setStamp(double stamp) {_stamp = stamp;}
 	int laserScanMaxPts() const {return _laserScanMaxPts;}
+	float laserScanMaxRange() const {return _laserScanMaxRange;}
 
 	const cv::Mat & imageCompressed() const {return _imageCompressed;}
 	const cv::Mat & depthOrRightCompressed() const {return _depthOrRightCompressed;}
@@ -157,7 +161,7 @@ public:
 	const cv::Mat & laserScanRaw() const {return _laserScanRaw;}
 	void setImageRaw(const cv::Mat & imageRaw) {_imageRaw = imageRaw;}
 	void setDepthOrRightRaw(const cv::Mat & depthOrImageRaw) {_depthOrRightRaw =depthOrImageRaw;}
-	void setLaserScanRaw(const cv::Mat & laserScanRaw, int laserScanMaxPts) {_laserScanRaw =laserScanRaw;_laserScanMaxPts = laserScanMaxPts;}
+	void setLaserScanRaw(const cv::Mat & laserScanRaw, int maxPts, float maxRange) {_laserScanRaw =laserScanRaw;_laserScanMaxPts = maxPts;_laserScanMaxRange=maxRange;}
 	void setCameraModel(const CameraModel & model) {_cameraModels.clear(); _cameraModels.push_back(model);}
 	void setCameraModels(const std::vector<CameraModel> & models) {_cameraModels = models;}
 	void setStereoCameraModel(const StereoCameraModel & stereoCameraModel) {_stereoCameraModel = stereoCameraModel;}
@@ -190,6 +194,7 @@ private:
 	int _id;
 	double _stamp;
 	int _laserScanMaxPts;
+	float _laserScanMaxRange;
 
 	cv::Mat _imageCompressed;          // compressed image
 	cv::Mat _depthOrRightCompressed;   // compressed image

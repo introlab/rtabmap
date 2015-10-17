@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/PolygonMesh.h>
+#include <pcl/TextureMesh.h>
 
 namespace rtabmap {
 class CameraThread;
@@ -62,7 +63,7 @@ class AboutDialog;
 class Plot;
 class PdfPlotCurve;
 class StatsToolBox;
-class DetailedProgressDialog;
+class ProgressDialog;
 class TwistGridWidget;
 class ExportCloudsDialog;
 class PostProcessingDialog;
@@ -103,6 +104,7 @@ public:
 
 public slots:
 	void processStats(const rtabmap::Statistics & stat);
+	void updateCacheFromDatabase(const QString & path);
 
 protected:
 	virtual void closeEvent(QCloseEvent* event);
@@ -127,9 +129,12 @@ private slots:
 	void notifyNoMoreImages();
 	void printLoopClosureIds();
 	void generateGraphDOT();
-	void exportPosesKITTI();
+	void exportPosesRaw();
 	void exportPosesRGBDSLAM();
+	void exportPosesKITTI();
 	void exportPosesTORO();
+	void exportPosesG2O();
+	void exportImages();
 	void postProcessing();
 	void deleteMemory();
 	void openWorkingDirectory();
@@ -146,8 +151,11 @@ private slots:
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void sendGoal();
+	void sendWaypoints();
+	void postGoal(const QString & goal);
 	void cancelGoal();
 	void label();
+	void updateCacheFromDatabase();
 	void downloadAllClouds();
 	void downloadPoseGraph();
 	void clearTheCache();
@@ -164,6 +172,7 @@ private slots:
 	void processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & event);
 	void processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathEvent & event);
 	void processRtabmapLabelErrorEvent(int id, const QString & label);
+	void processRtabmapGoalStatusEvent(int status);
 	void changeImgRateSetting();
 	void changeDetectionRateSetting();
 	void changeTimeLimitSetting();
@@ -177,9 +186,11 @@ private slots:
 	void setAspectRatio480p();
 	void setAspectRatio720p();
 	void setAspectRatio1080p();
+	void setAspectRatioCustom();
 	void exportGridMap();
 	void exportScans();
 	void exportClouds();
+	void exportBundlerFormat();
 	void viewScans();
 	void viewClouds();
 	void resetOdometry();
@@ -197,6 +208,7 @@ signals:
 	void rtabmapEvent3DMapReceived(const rtabmap::RtabmapEvent3DMap & event);
 	void rtabmapGlobalPathEventReceived(const rtabmap::RtabmapGlobalPathEvent & event);
 	void rtabmapLabelErrorReceived(int id, const QString & label);
+	void rtabmapGoalStatusEventReceived(int status);
 	void imgRateChanged(double);
 	void detectionRateChanged(double);
 	void timeLimitChanged(float);
@@ -223,26 +235,26 @@ private:
 	void saveFigures();
 	void loadFigures();
 	void exportPoses(int format);
-	QString captureScreen();
+	QString captureScreen(bool cacheInRAM = false);
 
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getAssembledCloud(
-			const std::map<int, Transform> & poses,
-			float assembledVoxelSize,
-			bool regenerateClouds,
-			int regenerateDecimation,
-			float regenerateVoxelSize,
-			float regenerateMaxDepth) const;
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > getClouds(
 			const std::map<int, Transform> & poses,
 			bool regenerateClouds,
 			int regenerateDecimation,
 			float regenerateVoxelSize,
-			float regenerateMaxDepth) const;
+			float regenerateMaxDepth,
+			float filteringRadius,
+			float filteringMinNeighbors) const;
 
 	bool getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans);
-	bool getExportedClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds, std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool toSave);
-	void saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds, bool binaryMode = true);
+	bool getExportedClouds(
+			std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds,
+			std::map<int, pcl::PolygonMesh::Ptr> & meshes,
+			std::map<int, pcl::TextureMesh::Ptr> & textureMeshes,
+			bool toSave);
+	void saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, bool binaryMode = true);
 	void saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool binaryMode = true);
+	void saveTextureMeshes(const std::map<int, pcl::TextureMesh::Ptr> & meshes);
 	void saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> & clouds, bool binaryMode = true);
 
 private:
@@ -272,6 +284,8 @@ private:
 	bool _odomImageShow;
 	bool _odomImageDepthShow;
 	bool _savedMaximized;
+	QStringList _waypoints;
+	int _waypointsIndex;
 
 	QMap<int, Signature> _cachedSignatures;
 	std::map<int, Transform> _currentPosesMap; // <nodeId, pose>
@@ -295,11 +309,13 @@ private:
 	PdfPlotCurve * _likelihoodCurve;
 	PdfPlotCurve * _rawLikelihoodCurve;
 
-	DetailedProgressDialog * _initProgressDialog;
+	ProgressDialog * _initProgressDialog;
 
 	QString _graphSavingFileName;
 	QMap<int, QString> _exportPosesFileName;
 	bool _autoScreenCaptureOdomSync;
+	bool _autoScreenCaptureRAM;
+	QMap<QString, QByteArray> _autoScreenCaptureCachedImages;
 
 	QVector<int> _refIds;
 	QVector<int> _loopClosureIds;

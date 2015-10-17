@@ -28,6 +28,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef STATSTOOLBOX_H_
 #define STATSTOOLBOX_H_
 
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+
 #include <QWidget>
 #include <QtCore/QMap>
 
@@ -39,7 +41,7 @@ class QToolBox;
 
 namespace rtabmap {
 
-class StatItem : public QWidget
+class RTABMAPGUI_EXP StatItem : public QWidget
 {
 	Q_OBJECT;
 
@@ -75,7 +77,7 @@ private:
 
 
 
-class StatsToolBox : public QWidget
+class RTABMAPGUI_EXP StatsToolBox : public QWidget
 {
 	Q_OBJECT;
 

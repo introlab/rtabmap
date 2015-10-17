@@ -39,6 +39,7 @@ namespace rtabmap
 Signature::Signature() :
 	_id(0), // invalid id
 	_mapId(-1),
+	_stamp(0.0),
 	_weight(0),
 	_saved(false),
 	_modified(true),

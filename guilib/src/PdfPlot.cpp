@@ -25,9 +25,9 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "PdfPlot.h"
+#include "rtabmap/gui/PdfPlot.h"
 #include <rtabmap/utilite/ULogger.h>
-#include "rtabmap/gui/UCv2Qt.h"
+#include "rtabmap/utilite/UCv2Qt.h"
 #include "rtabmap/core/util3d.h"
 
 namespace rtabmap {

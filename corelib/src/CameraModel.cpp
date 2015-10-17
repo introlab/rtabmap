@@ -231,6 +231,17 @@ bool CameraModel::save(const std::string & directory) const
 		fs << "data" << std::vector<double>((double*)D_.data, ((double*)D_.data)+(D_.rows*D_.cols));
 		fs << "}";
 
+		// compaibility with ROS
+
+		if(D_.cols > 5)
+		{
+			fs << "distortion_model" << "rational_polynomial";
+		}
+		else
+		{
+			fs << "distortion_model" << "plumb_bob";
+		}
+
 		fs << "rectification_matrix" << "{";
 		fs << "rows" << R_.rows;
 		fs << "cols" << R_.cols;
@@ -264,6 +275,24 @@ void CameraModel::scale(double scale)
 	P_.at<double>(1,1) *= scale;
 	P_.at<double>(0,2) *= scale;
 	P_.at<double>(1,2) *= scale;
+}
+
+double CameraModel::horizontalFOV() const
+{
+	if(imageWidth() > 0 && fx() > 0.0)
+	{
+		return atan((double(imageWidth())/2.0)/fx())*2.0*180.0/CV_PI;
+	}
+	return 0.0;
+}
+
+double CameraModel::verticalFOV() const
+{
+	if(imageHeight() > 0 && fy() > 0.0)
+	{
+		return atan((double(imageHeight())/2.0)/fy())*2.0*180.0/CV_PI;
+	}
+	return 0.0;
 }
 
 cv::Mat CameraModel::rectifyImage(const cv::Mat & raw, int interpolation) const

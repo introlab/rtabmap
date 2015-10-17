@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/gui/ImageView.h>
 #include <rtabmap/gui/CloudViewer.h>
-#include <rtabmap/gui/UCv2Qt.h>
+#include <rtabmap/utilite/UCv2Qt.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <QtCore/QMetaType>
 #include <QHBoxLayout>

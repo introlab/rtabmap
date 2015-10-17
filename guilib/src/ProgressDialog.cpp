@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "DetailedProgressDialog.h"
+#include "rtabmap/gui/ProgressDialog.h"
 #include <QLayout>
 #include <QProgressBar>
 #include <QTextEdit>
@@ -40,7 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-DetailedProgressDialog::DetailedProgressDialog(QWidget *parent, Qt::WindowFlags flags) :
+ProgressDialog::ProgressDialog(QWidget *parent, Qt::WindowFlags flags) :
 		QDialog(parent, flags),
 		_delayedClosingTime(1)
 {
@@ -69,20 +69,25 @@ DetailedProgressDialog::DetailedProgressDialog(QWidget *parent, Qt::WindowFlags 
 	hLayout->addWidget(_closeWhenDoneCheckBox);
 	hLayout->addWidget(_closeButton);
 	this->setLayout(layout);
+
+	this->setModal(true);
 }
 
-DetailedProgressDialog::~DetailedProgressDialog()
+ProgressDialog::~ProgressDialog()
 {
 
 }
 
-void DetailedProgressDialog::setAutoClose(bool on, int delayedClosingTimeSec)
+void ProgressDialog::setAutoClose(bool on, int delayedClosingTimeSec)
 {
-	_delayedClosingTime = delayedClosingTimeSec;
+	if(delayedClosingTimeSec >= 0)
+	{
+		_delayedClosingTime = delayedClosingTimeSec;
+	}
 	_closeWhenDoneCheckBox->setChecked(on);
 }
 
-void DetailedProgressDialog::appendText(const QString & text, const QColor & color)
+void ProgressDialog::appendText(const QString & text, const QColor & color)
 {
 	_text->setText(text);
 	QString html = tr("<html><font color=\"#999999\">%1 </font><font color=\"%2\">%3</font></html>").arg(QTime::currentTime().toString("HH:mm:ss")).arg(color.name()).arg(text);
@@ -91,7 +96,7 @@ void DetailedProgressDialog::appendText(const QString & text, const QColor & col
 	_detailedText->horizontalScrollBar()->setSliderPosition(0);
 	_detailedText->verticalScrollBar()->setSliderPosition(_detailedText->verticalScrollBar()->maximum());
 }
-void DetailedProgressDialog::setValue(int value)
+void ProgressDialog::setValue(int value)
 {
 	_progressBar->setValue(value);
 	if(value == _progressBar->maximum())
@@ -108,16 +113,16 @@ void DetailedProgressDialog::setValue(int value)
 		}
 	}
 }
-int DetailedProgressDialog::maximumSteps() const
+int ProgressDialog::maximumSteps() const
 {
 	return _progressBar->maximum();
 }
-void DetailedProgressDialog::setMaximumSteps(int steps)
+void ProgressDialog::setMaximumSteps(int steps)
 {
 	_progressBar->setMaximum(steps);
 }
 
-void DetailedProgressDialog::incrementStep()
+void ProgressDialog::incrementStep()
 {
 	//incremental progress bar (if we don't know how many items will be added)
 	if(_progressBar->value() == _progressBar->maximum()-1)
@@ -127,7 +132,7 @@ void DetailedProgressDialog::incrementStep()
 	_progressBar->setValue(_progressBar->value()+1);
 }
 
-void DetailedProgressDialog::clear()
+void ProgressDialog::clear()
 {
 	_text->clear();
 	_progressBar->reset();
@@ -135,18 +140,17 @@ void DetailedProgressDialog::clear()
 	_closeButton->setEnabled(false);
 }
 
-void DetailedProgressDialog::resetProgress()
+void ProgressDialog::resetProgress()
 {
 	_progressBar->reset();
 	_closeButton->setEnabled(false);
 }
 
-void DetailedProgressDialog::closeEvent(QCloseEvent *event)
+void ProgressDialog::closeEvent(QCloseEvent *event)
 {
 	if(_progressBar->value() == _progressBar->maximum())
 	{
 		event->accept();
-		_closeWhenDoneCheckBox->setChecked(true);
 	}
 	else
 	{

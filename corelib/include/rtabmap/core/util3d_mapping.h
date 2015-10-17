@@ -47,7 +47,9 @@ void RTABMAP_EXP occupancy2DFromLaserScan(
 		const cv::Mat & scan,
 		cv::Mat & ground,
 		cv::Mat & obstacles,
-		float cellSize);
+		float cellSize,
+		bool unknownSpaceFilled = false,
+		float scanMaxRange = 0.0f); // would be set if unknownSpaceFilled=true
 
 cv::Mat RTABMAP_EXP create2DMapFromOccupancyLocalMaps(
 		const std::map<int, Transform> & poses,
@@ -64,7 +66,8 @@ cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
 		bool unknownSpaceFilled,
 		float & xMin,
 		float & yMin,
-		float minMapSize = 0.0f);
+		float minMapSize = 0.0f,
+		float scanMaxRange = 0.0f); // would be set if unknownSpaceFilled=true
 
 void RTABMAP_EXP rayTrace(const cv::Point2i & start,
 		const cv::Point2i & end,

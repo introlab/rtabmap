@@ -31,6 +31,7 @@ CREATE TABLE Data (
 	calibration BLOB,         -- fx, fy, cx, cy [,baseline] local_transform
 	scan BLOB,                -- compressed data (Laser scan)
 	scan_max_pts INTEGER,     -- Laser scan max points
+	scan_max_range FLOAT,     -- Laser max range
 	user_data BLOB,           -- compressed data (User data)
 	time_enter DATE,
 	PRIMARY KEY (id)
@@ -39,10 +40,11 @@ CREATE TABLE Data (
 CREATE TABLE Link (
 	from_id INTEGER NOT NULL,
 	to_id INTEGER NOT NULL,
-	type INTEGER NOT NULL, -- neighbor=0, loop=1, child=2
+	type INTEGER NOT NULL,    -- neighbor=0, loop=1, child=2
 	rot_variance FLOAT NOT NULL,
 	trans_variance FLOAT NOT NULL,
 	transform BLOB,
+	user_data BLOB,           -- compressed data (User data)
 	FOREIGN KEY (from_id) REFERENCES Node(id),
 	FOREIGN KEY (to_id) REFERENCES Node(id)
 );
@@ -81,7 +83,7 @@ CREATE TABLE Statistics (
 );
 
 CREATE TABLE Admin (
-	version INTEGER,
+	version TEXT,
 	time_enter DATE
 );
 

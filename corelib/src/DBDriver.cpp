@@ -28,14 +28,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/DBDriver.h"
 
 #include "rtabmap/core/Signature.h"
-#include "VisualWord.h"
+#include "rtabmap/core/VisualWord.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UMath.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UStl.h"
+#include "DBDriverSqlite3.h"
 
 namespace rtabmap {
+
+DBDriver * DBDriver::create(const ParametersMap & parameters)
+{
+	// well, we only have Sqlite3 database type for now :P
+	return new DBDriverSqlite3(parameters);
+}
 
 DBDriver::DBDriver(const ParametersMap & parameters) :
 	_emptyTrashesTime(0),
@@ -289,6 +296,23 @@ void DBDriver::saveOrUpdate(const std::vector<VisualWord *> & words) const
 			this->saveQuery(toSave);
 		}
 	}
+}
+
+void DBDriver::addLink(const Link & link)
+{
+	_dbSafeAccessMutex.lock();
+	this->addLinkQuery(link);
+	_dbSafeAccessMutex.unlock();
+}
+void DBDriver::removeLink(int from, int to)
+{
+	this->executeNoResult(uFormat("DELETE FROM Link WHERE from_id=%d and to_id=%d", from, to).c_str());
+}
+void DBDriver::updateLink(const Link & link)
+{
+	_dbSafeAccessMutex.lock();
+	this->updateLinkQuery(link);
+	_dbSafeAccessMutex.unlock();
 }
 
 void DBDriver::load(VWDictionary * dictionary) const
@@ -712,6 +736,157 @@ void DBDriver::addStatisticsAfterRun(int stMemSize, int lastSignAdded, int proce
 			  << dictionarySize << ");";
 
 		this->executeNoResultQuery(query.str());
+	}
+}
+
+void DBDriver::generateGraph(
+		const std::string & fileName,
+		const std::set<int> & idsInput,
+		const std::map<int, Signature *> & otherSignatures)
+{
+	if(this->isConnected())
+	{
+		if(!fileName.empty())
+		{
+			FILE* fout = 0;
+			#ifdef _MSC_VER
+				fopen_s(&fout, fileName.c_str(), "w");
+			#else
+				fout = fopen(fileName.c_str(), "w");
+			#endif
+
+			 if (!fout)
+			 {
+				 UERROR("Cannot open file %s!", fileName.c_str());
+				 return;
+			 }
+
+			 std::set<int> ids;
+			 if(idsInput.size() == 0)
+			 {
+				 this->getAllNodeIds(ids);
+				 UDEBUG("ids.size()=%d", ids.size());
+				 for(std::map<int, Signature*>::const_iterator iter=otherSignatures.begin(); iter!=otherSignatures.end(); ++iter)
+				 {
+					 ids.insert(iter->first);
+				 }
+			 }
+			 else
+			 {
+				 ids = idsInput;
+			 }
+
+			 const char * colorG = "green";
+			 const char * colorP = "pink";
+	;		 UINFO("Generating map with %d locations", ids.size());
+			 fprintf(fout, "digraph G {\n");
+			 for(std::set<int>::iterator i=ids.begin(); i!=ids.end(); ++i)
+			 {
+				 if(otherSignatures.find(*i) == otherSignatures.end())
+				 {
+					 int id = *i;
+					 std::map<int, Link> links;
+					 this->loadLinks(id, links);
+					 int weight = 0;
+					 this->getWeight(id, weight);
+					 for(std::map<int, Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
+					 {
+						 int weightNeighbor = 0;
+						 if(otherSignatures.find(iter->first) == otherSignatures.end())
+						 {
+							 this->getWeight(iter->first, weightNeighbor);
+						 }
+						 else
+						 {
+							 weightNeighbor = otherSignatures.find(iter->first)->second->getWeight();
+						 }
+						 //UDEBUG("Add neighbor link from %d to %d", id, iter->first);
+						 if(iter->second.type() == Link::kNeighbor)
+						 {
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\"\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor);
+						 }
+						 else if(iter->first > id)
+						 {
+							 //loop
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor,
+									 colorG);
+						 }
+						 else
+						 {
+							 //child
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor,
+									 colorP);
+						 }
+					 }
+				 }
+			 }
+			 for(std::map<int, Signature*>::const_iterator i=otherSignatures.begin(); i!=otherSignatures.end(); ++i)
+			 {
+				 if(ids.find(i->first) != ids.end())
+				 {
+					 int id = i->second->id();
+					 const std::map<int, Link> & links = i->second->getLinks();
+					 int weight = i->second->getWeight();
+					 for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
+					 {
+						 int weightNeighbor = 0;
+						 const Signature * s = uValue(otherSignatures, iter->first, (Signature*)0);
+						 if(s)
+						 {
+							 weightNeighbor = s->getWeight();
+						 }
+						 else
+						 {
+							 this->getWeight(iter->first, weightNeighbor);
+						 }
+						 //UDEBUG("Add neighbor link from %d to %d", id, iter->first);
+						 if(iter->second.type() == Link::kNeighbor)
+						 {
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\"\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor);
+						 }
+						 else if(iter->first > id)
+						 {
+							 //loop
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor,
+									 colorG);
+						 }
+						 else
+						 {
+							 //child
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor,
+									 colorP);
+						 }
+					 }
+				 }
+			 }
+			 fprintf(fout, "}\n");
+			 fclose(fout);
+			 UINFO("Graph saved to \"%s\" (Tip: $ neato -Tpdf \"%s\" -o out.pdf)", fileName.c_str(), fileName.c_str());
+		}
 	}
 }
 

@@ -28,6 +28,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CONSOLEWIDGET_H_
 #define CONSOLEWIDGET_H_
 
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+
 #include <rtabmap/utilite/UEventsHandler.h>
 #include <QWidget>
 #include <QtCore/QMutex>
@@ -40,7 +42,7 @@ class QTextCursor;
 
 namespace rtabmap {
 
-class ConsoleWidget : public QWidget, public UEventsHandler
+class RTABMAPGUI_EXP ConsoleWidget : public QWidget, public UEventsHandler
 {
 	Q_OBJECT;
 

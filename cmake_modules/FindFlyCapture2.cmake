@@ -34,9 +34,6 @@ IF (FlyCapture2_INCLUDE_DIR AND Triclops_INCLUDE_DIR AND FlyCapture2_LIBRARY AND
    SET(FlyCapture2_LIBRARIES ${FlyCapture2_LIBRARY} ${Triclops_LIBRARY} ${FlyCaptureBridge_LIBRARY} ${pnmutils_LIBRARY})
 ENDIF (FlyCapture2_INCLUDE_DIR AND Triclops_INCLUDE_DIR AND FlyCapture2_LIBRARY AND Triclops_LIBRARY AND FlyCaptureBridge_LIBRARY AND pnmutils_LIBRARY)
 
-MESSAGE(STATUS "FlyCapture2_INCLUDE_DIRS={FlyCapture2_INCLUDE_DIRS}")
-MESSAGE(STATUS "FlyCapture2_LIBRARIES={FlyCapture2_LIBRARIES}")
-
 IF (FlyCapture2_FOUND)
    # show which FlyCapture2 was found only if not quiet
    IF (NOT FlyCapture2_FIND_QUIETLY)

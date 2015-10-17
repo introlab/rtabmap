@@ -56,6 +56,11 @@ public:
 	bool isReextractFeatures() const;
 	bool isRefineNeighborLinks() const;
 	bool isRefineLoopClosureLinks() const;
+	bool isSBA() const;
+	int sbaIterations() const;
+	double sbaEpsilon() const;
+	double sbaInlierDistance() const;
+	int sbaMinInliers() const;
 
 	//setters
 	void setDetectMoreLoopClosures(bool on);
@@ -65,6 +70,11 @@ public:
 	void setReextractFeatures(bool on);
 	void setRefineNeighborLinks(bool on);
 	void setRefineLoopClosureLinks(bool on);
+	void setSBA(bool on);
+	void setSBAIterations(int iterations);
+	void setSBAEpsilon(double epsilon);
+	void setSBAInlierDistance(double inlierDistance);
+	void setSBAMinInliers(int minInliers);
 
 signals:
 	void configChanged();

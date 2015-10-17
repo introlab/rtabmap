@@ -38,7 +38,8 @@ namespace rtabmap
 SensorData::SensorData() :
 		_id(0),
 		_stamp(0.0),
-		_laserScanMaxPts(0)
+		_laserScanMaxPts(0),
+		_laserScanMaxRange(0.0f)
 {
 }
 
@@ -50,7 +51,8 @@ SensorData::SensorData(
 		const cv::Mat & userData) :
 		_id(id),
 		_stamp(stamp),
-		_laserScanMaxPts(0)
+		_laserScanMaxPts(0),
+		_laserScanMaxRange(0.0f)
 {
 	if(image.rows == 1)
 	{
@@ -84,6 +86,7 @@ SensorData::SensorData(
 		_id(id),
 		_stamp(stamp),
 		_laserScanMaxPts(0),
+		_laserScanMaxRange(0.0f),
 		_cameraModels(std::vector<CameraModel>(1, cameraModel))
 {
 	if(image.rows == 1)
@@ -119,6 +122,7 @@ SensorData::SensorData(
 		_id(id),
 		_stamp(stamp),
 		_laserScanMaxPts(0),
+		_laserScanMaxRange(0.0f),
 		_cameraModels(std::vector<CameraModel>(1, cameraModel))
 {
 	if(rgb.rows == 1)
@@ -159,6 +163,7 @@ SensorData::SensorData(
 SensorData::SensorData(
 		const cv::Mat & laserScan,
 		int laserScanMaxPts,
+		float laserScanMaxRange,
 		const cv::Mat & rgb,
 		const cv::Mat & depth,
 		const CameraModel & cameraModel,
@@ -168,6 +173,7 @@ SensorData::SensorData(
 		_id(id),
 		_stamp(stamp),
 		_laserScanMaxPts(laserScanMaxPts),
+		_laserScanMaxRange(laserScanMaxRange),
 		_cameraModels(std::vector<CameraModel>(1, cameraModel))
 {
 	if(rgb.rows == 1)
@@ -224,6 +230,7 @@ SensorData::SensorData(
 		_id(id),
 		_stamp(stamp),
 		_laserScanMaxPts(0),
+		_laserScanMaxRange(0.0f),
 		_cameraModels(cameraModels)
 {
 	if(rgb.rows == 1)
@@ -263,6 +270,7 @@ SensorData::SensorData(
 SensorData::SensorData(
 		const cv::Mat & laserScan,
 		int laserScanMaxPts,
+		float laserScanMaxRange,
 		const cv::Mat & rgb,
 		const cv::Mat & depth,
 		const std::vector<CameraModel> & cameraModels,
@@ -272,6 +280,7 @@ SensorData::SensorData(
 		_id(id),
 		_stamp(stamp),
 		_laserScanMaxPts(laserScanMaxPts),
+		_laserScanMaxRange(laserScanMaxRange),
 		_cameraModels(cameraModels)
 {
 	if(rgb.rows == 1)
@@ -328,6 +337,7 @@ SensorData::SensorData(
 		_id(id),
 		_stamp(stamp),
 		_laserScanMaxPts(0),
+		_laserScanMaxRange(0.0f),
 		_stereoCameraModel(cameraModel)
 {
 	if(left.rows == 1)
@@ -367,6 +377,7 @@ SensorData::SensorData(
 SensorData::SensorData(
 		const cv::Mat & laserScan,
 		int laserScanMaxPts,
+		float laserScanMaxRange,
 		const cv::Mat & left,
 		const cv::Mat & right,
 		const StereoCameraModel & cameraModel,
@@ -376,6 +387,7 @@ SensorData::SensorData(
 		_id(id),
 		_stamp(stamp),
 		_laserScanMaxPts(laserScanMaxPts),
+		_laserScanMaxRange(laserScanMaxRange),
 		_stereoCameraModel(cameraModel)
 {
 	if(left.rows == 1)

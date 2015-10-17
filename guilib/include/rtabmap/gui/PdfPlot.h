@@ -28,13 +28,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef PDFPLOT_H_
 #define PDFPLOT_H_
 
-#include <utilite/UPlot.h>
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+
+#include <rtabmap/utilite/UPlot.h>
 #include "opencv2/opencv.hpp"
 #include "rtabmap/core/Signature.h"
 
 namespace rtabmap {
 
-class PdfPlotItem : public UPlotItem
+class RTABMAPGUI_EXP PdfPlotItem : public UPlotItem
 {
 public:
 	PdfPlotItem(float dataX, float dataY, float width, int childCount = -1);
@@ -57,7 +59,7 @@ private:
 
 };
 
-class PdfPlotCurve : public UPlotCurve
+class RTABMAPGUI_EXP PdfPlotCurve : public UPlotCurve
 {
 	Q_OBJECT
 

@@ -65,6 +65,7 @@ void showUsage()
 			"  -warn                           Set Log level to Warning (Default Error)\n"
 			"  -exit_warn                      Set exit level to Warning (Default Fatal)\n"
 			"  -exit_error                     Set exit level to Error (Default Fatal)\n"
+			"  -log_console                    Log to console\n"
 			"  -v                              Get version of RTAB-Map\n"
 			"  -input \"path\"                 Load previous database if it exists.\n");
 	exit(1);
@@ -118,6 +119,7 @@ int main(int argc, char * argv[])
 	ParametersMap pm;
 	ULogger::Level logLevel = ULogger::kError;
 	ULogger::Level exitLevel = ULogger::kFatal;
+	bool logConsole = false;
 
 	for(int i=1; i<argc; ++i)
 	{
@@ -248,6 +250,11 @@ int main(int argc, char * argv[])
 			exitLevel = ULogger::kError;
 			continue;
 		}
+		if(strcmp(argv[i], "-log_console") == 0)
+		{
+			logConsole = true;
+			continue;
+		}
 
 		// Check for RTAB-Map's parameters
 		std::string key = argv[i];
@@ -289,7 +296,10 @@ int main(int argc, char * argv[])
 		showUsage();
 	}
 
-	ULogger::setType(ULogger::kTypeConsole);
+	if(logConsole)
+	{
+		ULogger::setType(ULogger::kTypeConsole);
+	}
 	//ULogger::setType(ULogger::kTypeFile, rtabmap.getWorkingDir()+"/LogConsole.txt", false);
 	//ULogger::setBuffered(true);
 	ULogger::setLevel(logLevel);
@@ -302,11 +312,11 @@ int main(int argc, char * argv[])
 	Camera * camera = 0;
 	if(UDirectory::exists(path))
 	{
-		camera = new CameraImages(path, startAt, false, false, false, 1.0f/rate);
+		camera = new CameraImages(path, startAt, false, false, false, rate>0.0f?1.0f/rate:0.0f);
 	}
 	else
 	{
-		camera = new CameraVideo(path, false, 1.0f/rate);
+		camera = new CameraVideo(path, false, rate>0.0f?1.0f/rate:0.0f);
 	}
 
 	if(!camera || !camera->init())

@@ -25,8 +25,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef DETAILEDPROGRESSDIALOG_H_
-#define DETAILEDPROGRESSDIALOG_H_
+#ifndef PROGRESSDIALOG_H_
+#define PROGRESSDIALOG_H_
+
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
 #include <QDialog>
 
@@ -38,19 +40,19 @@ class QCheckBox;
 
 namespace rtabmap {
 
-class DetailedProgressDialog : public QDialog
+class RTABMAPGUI_EXP ProgressDialog : public QDialog
 {
 	Q_OBJECT
 
 public:
-	DetailedProgressDialog(QWidget *parent = 0, Qt::WindowFlags flags = 0);
-	virtual ~DetailedProgressDialog();
+	ProgressDialog(QWidget *parent = 0, Qt::WindowFlags flags = 0);
+	virtual ~ProgressDialog();
 
 	void setEndMessage(const QString & message) {_endMessage = message;} // Message shown when the progress is finished
 	void setValue(int value);
 	int maximumSteps() const;
 	void setMaximumSteps(int steps);
-	void setAutoClose(bool on, int delayedClosingTimeMsec = 0);
+	void setAutoClose(bool on, int delayedClosingTimeMsec = -1);
 
 protected:
 	virtual void closeEvent(QCloseEvent * event);
@@ -73,4 +75,4 @@ private:
 
 }
 
-#endif /* DETAILEDPROGRESSDIALOG_H_ */
+#endif /* PROGRESSDIALOG_H_ */

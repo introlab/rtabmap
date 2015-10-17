@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "BayesFilter.h"
+#include "rtabmap/core/BayesFilter.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/Parameters.h"
@@ -289,9 +289,9 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 				for(std::list<int>::iterator iter = idsLoopMargin.begin(); iter!=idsLoopMargin.end(); ++iter)
 				{
 					float sum = 0.0f; // sum values added
-					sum += this->addNeighborProb(prediction, i, neighbors, idToIndexMap);
+					sum += this->addNeighborProb(prediction, idToIndexMap.at(*iter), neighbors, idToIndexMap);
 					idsDone.insert(*iter);
-					this->normalize(prediction, i, sum, ids[0]<0);
+					this->normalize(prediction, idToIndexMap.at(*iter), sum, ids[0]<0);
 				}
 			}
 			else
@@ -451,6 +451,7 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 	UDEBUG("time getting removed ids = %fs", timer.restart());
 
 	int added = 0;
+	float epsilon = 0.00001f;
 	// get ids to update
 	std::set<int> idsToUpdate;
 	for(unsigned int i=0; i<oldIds.size() || i<newIds.size(); ++i)
@@ -460,16 +461,19 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 			if(removedIds.find(oldIds[i]) != removedIds.end())
 			{
 				unsigned int cols = oldPrediction.cols;
+				int count = 0;
 				for(unsigned int j=0; j<cols; ++j)
 				{
-					if(((const float *)oldPrediction.data)[i + j*cols] != 0.0f &&
+					if(((const float *)oldPrediction.data)[i + j*cols] > epsilon &&
 					   j!=i &&
 					   removedIds.find(oldIds[j]) == removedIds.end())
 					{
 						//UDEBUG("to update id=%d from id=%d removed (value=%f)", oldIds[j], oldIds[i], ((const float *)oldPrediction.data)[i + j*cols]);
 						idsToUpdate.insert(oldIds[j]);
+						++count;
 					}
 				}
+				UDEBUG("From removed id %d, %d neighbors to update.", oldIds[i], count);
 			}
 		}
 		if(i<newIds.size() && !uContains(oldIdToIndexMap,newIds[i]))
@@ -478,29 +482,66 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 			float sum = this->addNeighborProb(prediction, i, neighbors, newIdToIndexMap);
 			this->normalize(prediction, i, sum, newIds[0]<0);
 			++added;
+			int count = 0;
 			for(std::map<int,int>::iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
 			{
 				if(uContains(oldIdToIndexMap, iter->first) &&
 				   removedIds.find(iter->first) == removedIds.end())
 				{
 					idsToUpdate.insert(iter->first);
+					++count;
 				}
 			}
+			UDEBUG("From added id %d, %d neighbors to update.", newIds[i], count);
 		}
 	}
-	UDEBUG("time getting ids to update = %fs", timer.restart());
+	UDEBUG("time getting %d ids to update = %fs", idsToUpdate.size(), timer.restart());
 
 	// update modified/added ids
 	int modified = 0;
+	std::set<int> idsDone;
 	for(std::set<int>::iterator iter = idsToUpdate.begin(); iter!=idsToUpdate.end(); ++iter)
 	{
-		std::map<int, int> neighbors = memory->getNeighborsId(*iter, _predictionLC.size()-1, 0, false, false, true);
-		int index = newIdToIndexMap.at(*iter);
-		float sum = this->addNeighborProb(prediction, index, neighbors, newIdToIndexMap);
-		this->normalize(prediction, index, sum, newIds[0]<0);
-		++modified;
+		if(idsDone.find(*iter) == idsDone.end() && *iter > 0)
+		{
+			std::map<int, int> neighbors = memory->getNeighborsId(*iter, _predictionLC.size()-1, 0, false, false, true);
+
+			std::list<int> idsLoopMargin;
+			//filter neighbors in STM
+			for(std::map<int, int>::iterator jter=neighbors.begin(); jter!=neighbors.end();)
+			{
+				if(memory->isInSTM(jter->first))
+				{
+					neighbors.erase(jter++);
+				}
+				else
+				{
+					if(jter->second == 0)
+					{
+						idsLoopMargin.push_back(jter->first);
+					}
+					++jter;
+				}
+			}
+
+			// should at least have 1 id in idsMarginLoop
+			if(idsLoopMargin.size() == 0)
+			{
+				UFATAL("No 0 margin neighbor for signature %d !?!?", *iter);
+			}
+
+			// same neighbor tree for loop signatures (margin = 0)
+			for(std::list<int>::iterator iter = idsLoopMargin.begin(); iter!=idsLoopMargin.end(); ++iter)
+			{
+				int index = newIdToIndexMap.at(*iter);
+				float sum = this->addNeighborProb(prediction, index, neighbors, newIdToIndexMap);
+				idsDone.insert(*iter);
+				this->normalize(prediction, index, sum, newIds[0]<0);
+				++modified;
+			}
+		}
 	}
-	UDEBUG("time updating modified/added ids = %fs", timer.restart());
+	UDEBUG("time updating modified/added %d ids = %fs", idsToUpdate.size(), timer.restart());
 
 	//UDEBUG("oldIds.size()=%d, oldPrediction.cols=%d, oldPrediction.rows=%d", oldIds.size(), oldPrediction.cols, oldPrediction.rows);
 	//UDEBUG("newIdToIndexMap.size()=%d, prediction.cols=%d, prediction.rows=%d", newIdToIndexMap.size(), prediction.cols, prediction.rows);
@@ -510,15 +551,22 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 	{
 		if(oldIds[i]>0 && removedIds.find(oldIds[i]) == removedIds.end() && idsToUpdate.find(oldIds[i]) == idsToUpdate.end())
 		{
-			for(int j=0; j<oldPrediction.cols; ++j)
+			for(int j=i; j<oldPrediction.cols; ++j)
 			{
-				if(removedIds.find(oldIds[j]) == removedIds.end() && ((const float *)oldPrediction.data)[i + j*oldPrediction.cols] != 0.0f)
+				if(removedIds.find(oldIds[j]) == removedIds.end() && ((const float *)oldPrediction.data)[i + j*oldPrediction.cols] > epsilon)
 				{
 					//UDEBUG("i=%d, j=%d", i, j);
 					//UDEBUG("oldIds[i]=%d, oldIds[j]=%d", oldIds[i], oldIds[j]);
 					//UDEBUG("newIdToIndexMap.at(oldIds[i])=%d", newIdToIndexMap.at(oldIds[i]));
 					//UDEBUG("newIdToIndexMap.at(oldIds[j])=%d", newIdToIndexMap.at(oldIds[j]));
-					((float *)prediction.data)[newIdToIndexMap.at(oldIds[i]) + newIdToIndexMap.at(oldIds[j])*prediction.cols] = ((const float *)oldPrediction.data)[i + j*oldPrediction.cols];
+					float v = ((const float *)oldPrediction.data)[i + j*oldPrediction.cols];
+					int ii = newIdToIndexMap.at(oldIds[i]);
+					int jj = newIdToIndexMap.at(oldIds[j]);
+					((float *)prediction.data)[ii + jj*prediction.cols] = v;
+					if(ii != jj)
+					{
+						((float *)prediction.data)[jj + ii*prediction.cols] = v;
+					}
 				}
 			}
 			++copied;
@@ -536,6 +584,7 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 			for(int j=1; j<prediction.cols; j++)
 			{
 				((float*)prediction.data)[j*prediction.cols] = val;
+				((float*)prediction.data)[j] = _predictionLC[0];
 			}
 		}
 		else if(prediction.cols>0)

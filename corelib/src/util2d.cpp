@@ -42,12 +42,13 @@ namespace util2d
 
 cv::Mat disparityFromStereoImages(
 		const cv::Mat & leftImage,
-		const cv::Mat & rightImage)
+		const cv::Mat & rightImage,
+		int type)
 {
-	UASSERT(!leftImage.empty() && !rightImage.empty() &&
-			(leftImage.type() == CV_8UC1 || leftImage.type() == CV_8UC3) && rightImage.type() == CV_8UC1 &&
-			leftImage.cols == rightImage.cols &&
-			leftImage.rows == rightImage.rows);
+	UASSERT(!leftImage.empty() && !rightImage.empty());
+	UASSERT(leftImage.cols == rightImage.cols && leftImage.rows == rightImage.rows);
+	UASSERT((leftImage.type() == CV_8UC1 || leftImage.type() == CV_8UC3) && rightImage.type() == CV_8UC1);
+	UASSERT(type == CV_32FC1 || type == CV_16SC1);
 
 	cv::Mat leftMono;
 	if(leftImage.channels() == 3)
@@ -70,7 +71,7 @@ cv::Mat disparityFromStereoImages(
 	stereo.state->textureThreshold = 10;
 	stereo.state->speckleWindowSize = 100;
 	stereo.state->speckleRange = 4;
-	stereo(leftMono, rightImage, disparity, CV_16SC1);
+	stereo(leftMono, rightImage, disparity, type);
 #else
 	cv::Ptr<cv::StereoBM> stereo = cv::StereoBM::create();
 	stereo->setBlockSize(15);
@@ -97,10 +98,9 @@ cv::Mat disparityFromStereoImages(
 		double flowEps,
 		float maxCorrespondencesSlope)
 {
-	UASSERT(!leftImage.empty() && !rightImage.empty() &&
-			leftImage.type() == CV_8UC1 && rightImage.type() == CV_8UC1 &&
-			leftImage.cols == rightImage.cols &&
-			leftImage.rows == rightImage.rows);
+	UASSERT(!leftImage.empty() && !rightImage.empty());
+	UASSERT(leftImage.type() == CV_8UC1 && rightImage.type() == CV_8UC1);
+	UASSERT(leftImage.cols == rightImage.cols && leftImage.rows == rightImage.rows);
 
 	// Find features in the new left image
 	std::vector<unsigned char> status;
@@ -120,6 +120,51 @@ cv::Mat disparityFromStereoImages(
 	UDEBUG("cv::calcOpticalFlowPyrLK() end");
 
 	return disparityFromStereoCorrespondences(leftImage, leftCorners, rightCorners, status, maxCorrespondencesSlope);
+}
+
+cv::Mat depthFromDisparity(const cv::Mat & disparity,
+		float fx, float baseline,
+		int type)
+{
+	UASSERT(!disparity.empty() && (disparity.type() == CV_32FC1 || disparity.type() == CV_16SC1));
+	UASSERT(type == CV_32FC1 || type == CV_16UC1);
+	cv::Mat depth = cv::Mat::zeros(disparity.rows, disparity.cols, type);
+	int countOverMax = 0;
+	for (int i = 0; i < disparity.rows; i++)
+	{
+		for (int j = 0; j < disparity.cols; j++)
+		{
+			float disparity_value = disparity.type() == CV_16SC1?float(disparity.at<short>(i,j))/16.0f:disparity.at<float>(i,j);
+			if (disparity_value > 0.0f)
+			{
+				// baseline * focal / disparity
+				float d = baseline * fx / disparity_value;
+				if(d>0)
+				{
+					if(depth.type() == CV_32FC1)
+					{
+						depth.at<float>(i,j) = d;
+					}
+					else
+					{
+						if(d*1000.0f <= (float)USHRT_MAX)
+						{
+							depth.at<unsigned short>(i,j) = (unsigned short)(d*1000.0f);
+						}
+						else
+						{
+							++countOverMax;
+						}
+					}
+				}
+			}
+		}
+	}
+	if(countOverMax)
+	{
+		UWARN("Depth conversion error, %d depth values ignored because they are over the maximum depth allowed (65535 mm).", countOverMax);
+	}
+	return depth;
 }
 
 cv::Mat depthFromStereoImages(
@@ -207,6 +252,61 @@ cv::Mat depthFromStereoCorrespondences(
 		}
 	}
 	return depth;
+}
+
+cv::Mat cvtDepthFromFloat(const cv::Mat & depth32F)
+{
+	UASSERT(depth32F.empty() || depth32F.type() == CV_32FC1);
+	cv::Mat depth16U;
+	if(!depth32F.empty())
+	{
+		depth16U = cv::Mat(depth32F.rows, depth32F.cols, CV_16UC1);
+		int countOverMax = 0;
+		for(int i=0; i<depth32F.rows; ++i)
+		{
+			for(int j=0; j<depth32F.cols; ++j)
+			{
+				float depth = (depth32F.at<float>(i,j)*1000.0f);
+				unsigned short depthMM = 0;
+				if(depth > 0 && depth <= (float)USHRT_MAX)
+				{
+					depthMM = (unsigned short)depth;
+				}
+				else if(depth > (float)USHRT_MAX)
+				{
+					++countOverMax;
+				}
+				depth16U.at<unsigned short>(i, j) = depthMM;
+			}
+		}
+		if(countOverMax)
+		{
+			UWARN("Depth conversion error, %d depth values ignored because "
+				  "they are over the maximum depth allowed (65535 mm). Is the depth "
+				  "image really in meters? 32 bits images should be in meters, "
+				  "and 16 bits should be in mm.", countOverMax);
+		}
+	}
+	return depth16U;
+}
+
+cv::Mat cvtDepthToFloat(const cv::Mat & depth16U)
+{
+	UASSERT(depth16U.empty() || depth16U.type() == CV_16UC1);
+	cv::Mat depth32F;
+	if(!depth16U.empty())
+	{
+		depth32F = cv::Mat(depth16U.rows, depth16U.cols, CV_32FC1);
+		for(int i=0; i<depth16U.rows; ++i)
+		{
+			for(int j=0; j<depth16U.cols; ++j)
+			{
+				float depth = float(depth16U.at<unsigned short>(i,j))/1000.0f;
+				depth32F.at<float>(i, j) = depth;
+			}
+		}
+	}
+	return depth32F;
 }
 
 float getDepth(

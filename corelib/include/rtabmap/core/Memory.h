@@ -48,7 +48,6 @@ namespace rtabmap {
 
 class Signature;
 class DBDriver;
-class GraphNode;
 class VWDictionary;
 class VisualWord;
 class Feature2D;
@@ -141,7 +140,7 @@ public:
 			double & stamp,
 			bool lookInDatabase = false) const;
 	cv::Mat getImageCompressed(int signatureId) const;
-	SensorData getNodeData(int nodeId, bool uncompressedData = false);
+	SensorData getNodeData(int nodeId, bool uncompressedData = false, bool keepLoadedDataInMemory = true);
 	void getNodeWords(int nodeId,
 			std::multimap<int, cv::KeyPoint> & words,
 			std::multimap<int, pcl::PointXYZ> & words3);
@@ -164,10 +163,7 @@ public:
 	virtual void dumpSignatures(const char * fileNameSign, bool words3D) const;
 	void dumpDictionary(const char * fileNameRef, const char * fileNameDesc) const;
 
-	void generateGraph(const std::string & fileName, std::set<int> ids = std::set<int>());
-	void createGraph(GraphNode * parent,
-			unsigned int maxDepth,
-			const std::set<int> & endIds = std::set<int>());
+	void generateGraph(const std::string & fileName, const std::set<int> & ids = std::set<int>());
 
 	//keypoint stuff
 	const VWDictionary * getVWDictionary() const;
@@ -232,6 +228,7 @@ private:
 	float _similarityThreshold;
 	bool _rawDataKept;
 	bool _binDataKept;
+	bool _saveDepth16Format;
 	bool _notLinkedNodesKeptInDb;
 	bool _incrementalMemory;
 	int _maxStMemSize;
@@ -280,6 +277,7 @@ private:
 	int _bowEstimationType;
 	double _bowPnPReprojError;
 	int _bowPnPFlags;
+	bool _bowVarianceFromInliersCount;
 	float _icpMaxTranslation;
 	float _icpMaxRotation;
 	int _icpDecimation;

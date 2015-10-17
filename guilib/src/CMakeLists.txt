@@ -6,13 +6,13 @@ SET(headers_ui
 	../include/${PROJECT_PREFIX}/gui/PreferencesDialog.h
 	../include/${PROJECT_PREFIX}/gui/DatabaseViewer.h
 	./AboutDialog.h
-	./ConsoleWidget.h
+	../include/${PROJECT_PREFIX}/gui/ConsoleWidget.h
 	../include/${PROJECT_PREFIX}/gui/ImageView.h
-	./PdfPlot.h
-	./StatsToolBox.h
-	./DetailedProgressDialog.h
-	./utilite/UPlot.h
-	./utilite/UImageView.h
+	../include/${PROJECT_PREFIX}/gui/PdfPlot.h
+	../include/${PROJECT_PREFIX}/gui/StatsToolBox.h
+	../include/${PROJECT_PREFIX}/gui/ProgressDialog.h
+	../include/${PROJECT_PREFIX}/utilite/UPlot.h
+	../include/${PROJECT_PREFIX}/utilite/UImageView.h
 	../include/${PROJECT_PREFIX}/gui/CloudViewer.h
 	../include/${PROJECT_PREFIX}/gui/OdometryViewer.h
 	../include/${PROJECT_PREFIX}/gui/LoopClosureViewer.h
@@ -23,7 +23,7 @@ SET(headers_ui
 	./PostProcessingDialog.h
 	./ExportCloudsDialog.h
 	./MapVisibilityWidget.h
-	./GraphViewer.h
+	../include/${PROJECT_PREFIX}/gui/GraphViewer.h
 	./CreateSimpleCalibrationDialog.h
 )
 
@@ -69,7 +69,7 @@ SET(SRC_FILES
 	./ImageView.cpp
 	./PdfPlot.cpp
 	./StatsToolBox.cpp
-	./DetailedProgressDialog.cpp
+	./ProgressDialog.cpp
 	./AboutDialog.cpp
 	./ConsoleWidget.cpp
 	./DatabaseViewer.cpp

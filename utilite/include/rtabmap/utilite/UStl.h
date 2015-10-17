@@ -26,6 +26,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <stdlib.h>
 
 /**
  * \file UStl.h
@@ -472,11 +473,31 @@ inline std::list<V> uVectorToList(const std::vector<V> & v)
 
 /**
  * Convert a std::multimap to a std::map
+ * @see uMultimapToMapUnique to keep only unique keys
  */
 template<class K, class V>
 inline std::map<K, V> uMultimapToMap(const std::multimap<K, V> & m)
 {
 	return std::map<K, V>(m.begin(), m.end());
+}
+
+/**
+ * Convert a std::multimap to a std::map, keeping only unique keys!
+ */
+template<class K, class V>
+inline std::map<K, V> uMultimapToMapUnique(const std::multimap<K, V> & m)
+{
+	std::map<K, V> mapOut;
+	std::list<K> uniqueKeys = uUniqueKeys(m);
+	for(typename std::list<K>::const_iterator iter = uniqueKeys.begin(); iter!=uniqueKeys.end(); ++iter)
+	{
+		if(m.count(*iter) == 1)
+		{
+			typename std::multimap<K, V>::const_iterator jter=m.find(*iter);
+			mapOut.insert(std::pair<K,V>(jter->first, jter->second));
+		}
+	}
+	return mapOut;
 }
 
 /**
@@ -714,6 +735,28 @@ inline int uStrNumCmp(const std::string & a, const std::string & b)
 inline bool uStrContains(const std::string & string, const std::string & substring)
 {
 	return string.find(substring) != std::string::npos;
+}
+
+inline int uCompareVersion(const std::string & version, int major, int minor=-1, int patch=-1)
+{
+	std::vector<std::string> v = uListToVector(uSplit(version, '.'));
+	if(v.size() == 3)
+	{
+		int vMajor = atoi(v[0].c_str());
+		int vMinor = atoi(v[1].c_str());
+		int vPatch = atoi(v[2].c_str());
+		if(vMajor > major ||
+		(vMajor == major && minor!=-1 && vMinor > minor) ||
+		(vMajor == major && minor!=-1 && vMinor == minor && patch!=-1 && vPatch > patch))
+		{
+			return 1;
+		}
+		else if(vMajor == major && (minor == -1 || (vMinor == minor && (patch == -1 || vPatch == patch))))
+		{
+			return 0;
+		}
+	}
+	return -1;
 }
 
 #endif /* USTL_H */

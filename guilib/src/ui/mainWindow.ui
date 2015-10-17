@@ -27,13 +27,23 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>22</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>File</string>
     </property>
+    <widget class="QMenu" name="menuExport_poses">
+     <property name="title">
+      <string>Export poses...</string>
+     </property>
+     <addaction name="actionRaw_format_txt"/>
+     <addaction name="actionRGBD_SLAM_format_txt"/>
+     <addaction name="actionKITTI_format_txt"/>
+     <addaction name="actionTORO_graph"/>
+     <addaction name="actionG2o_g2o"/>
+    </widget>
     <addaction name="actionNew_database"/>
     <addaction name="actionOpen_database"/>
     <addaction name="separator"/>
@@ -42,6 +52,9 @@
     <addaction name="actionSave_point_cloud"/>
     <addaction name="actionExport_2D_scans_ply_pcd"/>
     <addaction name="actionExport_2D_Grid_map_bmp_png"/>
+    <addaction name="menuExport_poses"/>
+    <addaction name="actionExport_images_RGB_jpg_Depth_png"/>
+    <addaction name="actionExport_cameras_in_Bundle_format_out"/>
     <addaction name="separator"/>
     <addaction name="actionClose_database"/>
     <addaction name="separator"/>
@@ -55,26 +68,15 @@
      <property name="title">
       <string>Advanced</string>
      </property>
-     <widget class="QMenu" name="menuExport_poses">
-      <property name="title">
-       <string>Export poses...</string>
-      </property>
-      <addaction name="actionKITTI_format_txt"/>
-      <addaction name="actionRGBD_SLAM_format_txt"/>
-      <addaction name="actionTORO_graph"/>
-     </widget>
      <addaction name="actionOpen_working_directory"/>
      <addaction name="actionDump_the_memory"/>
      <addaction name="actionDump_the_prediction_matrix"/>
      <addaction name="actionGenerate_map"/>
-     <addaction name="menuExport_poses"/>
      <addaction name="actionPrint_loop_closure_IDs_to_console"/>
-     <addaction name="separator"/>
-     <addaction name="actionSend_goal"/>
-     <addaction name="actionCancel_goal"/>
     </widget>
     <addaction name="actionDownload_all_clouds"/>
     <addaction name="actionDownload_graph"/>
+    <addaction name="actionUpdate_cache_from_database"/>
     <addaction name="actionClear_cache"/>
     <addaction name="separator"/>
     <addaction name="actionView_high_res_point_cloud"/>
@@ -211,6 +213,9 @@
     <addaction name="actionTrigger_a_new_map"/>
     <addaction name="separator"/>
     <addaction name="actionLabel_current_location"/>
+    <addaction name="actionSend_waypoints"/>
+    <addaction name="actionSend_goal"/>
+    <addaction name="actionCancel_goal"/>
    </widget>
    <widget class="QMenu" name="menuWindow">
     <property name="title">
@@ -235,6 +240,8 @@
      <addaction name="action480p"/>
      <addaction name="action360p"/>
      <addaction name="action240p"/>
+     <addaction name="separator"/>
+     <addaction name="actionCustom"/>
     </widget>
     <addaction name="menuShow_view"/>
     <addaction name="actionDefault_views"/>
@@ -986,7 +993,7 @@
   </action>
   <action name="actionSave_point_cloud">
    <property name="text">
-    <string>Export 3D clouds (*.ply *.pcd)...</string>
+    <string>Export 3D clouds (*.ply *.pcd *.obj)...</string>
    </property>
   </action>
   <action name="actionDownload_all_clouds">
@@ -1247,12 +1254,47 @@
     <string>TORO (*.graph)</string>
    </property>
   </action>
+  <action name="actionExport_cameras_in_Bundle_format_out">
+   <property name="text">
+    <string>Export cameras in Bundler format (*.out)...</string>
+   </property>
+  </action>
+  <action name="actionRaw_format_txt">
+   <property name="text">
+    <string>Raw format (*.txt)</string>
+   </property>
+  </action>
+  <action name="actionG2o_g2o">
+   <property name="text">
+    <string>g2o (*.g2o)</string>
+   </property>
+  </action>
+  <action name="actionCustom">
+   <property name="text">
+    <string>Custom...</string>
+   </property>
+  </action>
+  <action name="actionSend_waypoints">
+   <property name="text">
+    <string>Send waypoints...</string>
+   </property>
+  </action>
+  <action name="actionUpdate_cache_from_database">
+   <property name="text">
+    <string>Update cache from a local database copy...</string>
+   </property>
+  </action>
+  <action name="actionExport_images_RGB_jpg_Depth_png">
+   <property name="text">
+    <string>Export images (RGB=*.jpg Depth=*.png)...</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
    <class>UPlot</class>
    <extends>QWidget</extends>
-   <header>utilite/UPlot.h</header>
+   <header>../include/rtabmap/utilite/UPlot.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
@@ -1263,13 +1305,13 @@
   <customwidget>
    <class>rtabmap::StatsToolBox</class>
    <extends>QWidget</extends>
-   <header>StatsToolBox.h</header>
+   <header>../include/rtabmap/gui/StatsToolBox.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>rtabmap::ConsoleWidget</class>
    <extends>QWidget</extends>
-   <header>ConsoleWidget.h</header>
+   <header>../include/rtabmap/gui/ConsoleWidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
@@ -1293,7 +1335,7 @@
   <customwidget>
    <class>rtabmap::GraphViewer</class>
    <extends>QGraphicsView</extends>
-   <header>GraphViewer.h</header>
+   <header>../include/rtabmap/gui/GraphViewer.h</header>
   </customwidget>
  </customwidgets>
  <resources>

@@ -712,7 +712,7 @@
   <customwidget>
    <class>UImageView</class>
    <extends>QWidget</extends>
-   <header>utilite/UImageView.h</header>
+   <header>rtabmap/utilite/UImageView.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

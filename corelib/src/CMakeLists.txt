@@ -42,6 +42,7 @@ SET(SRC_FILES
 	SensorData.cpp
 	Graph.cpp
 	Compression.cpp
+	Link.cpp
 	
 	Odometry.cpp
 	OdometryThread.cpp
@@ -56,6 +57,9 @@ SET(SRC_FILES
 	
 	toro3d/posegraph2.cpp
 	toro3d/treeoptimizer2.cpp
+	
+	rtflann/ext/lz4.c
+	rtflann/ext/lz4hc.c
 	
 	sqlite3/sqlite3.c
 )
@@ -149,7 +153,43 @@ IF(G2O_FOUND)
 		${LIBRARIES}
 		${G2O_LIBRARIES}
 	)
+	#Newest versions require std11
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+	
+	SET(SRC_FILES
+    	${SRC_FILES}
+		vertigo/g2o/edge_se2MaxMixture.cpp
+		vertigo/g2o/edge_se2Switchable.cpp
+		vertigo/g2o/edge_se3Switchable.cpp
+		vertigo/g2o/edge_switchPrior.cpp
+		vertigo/g2o/types_g2o_robust.cpp
+		vertigo/g2o/vertex_switchLinear.cpp
+	)
 ENDIF(G2O_FOUND)
+
+IF(GTSAM_FOUND)
+	ADD_DEFINITIONS("-DWITH_GTSAM")
+	SET(INCLUDE_DIRS 
+		${INCLUDE_DIRS} 
+		${GTSAM_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		gtsam
+	)
+ENDIF(GTSAM_FOUND)
+
+IF(cvsba_FOUND)
+	ADD_DEFINITIONS("-DWITH_CVSBA")
+	SET(INCLUDE_DIRS 
+		${INCLUDE_DIRS} 
+		${cvsba_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${cvsba_LIBS}
+	)
+ENDIF(cvsba_FOUND)
 
 ####################################
 # Generate resources files

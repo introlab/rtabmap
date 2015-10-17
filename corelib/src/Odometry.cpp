@@ -30,7 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UConversion.h"
-#include "ParticleFilter.h"
+#include "rtabmap/core/ParticleFilter.h"
 
 namespace rtabmap {
 
@@ -54,6 +54,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_estimationType(Parameters::defaultOdomEstimationType()),
 		_pnpReprojError(Parameters::defaultOdomPnPReprojError()),
 		_pnpFlags(Parameters::defaultOdomPnPFlags()),
+		_varianceFromInliersCount(Parameters::defaultOdomVarianceFromInliersCount()),
 		_resetCurrentCount(0),
 		previousStamp_(0),
 		previousTransform_(Transform::getIdentity()),
@@ -73,6 +74,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomPnPReprojError(), _pnpReprojError);
 	Parameters::parse(parameters, Parameters::kOdomPnPFlags(), _pnpFlags);
 	UASSERT(_pnpFlags>=0 && _pnpFlags <=2);
+	Parameters::parse(parameters, Parameters::kOdomVarianceFromInliersCount(), _varianceFromInliersCount);
 	Parameters::parse(parameters, Parameters::kOdomParticleFiltering(), _particleFiltering);
 	Parameters::parse(parameters, Parameters::kOdomParticleSize(), _particleSize);
 	Parameters::parse(parameters, Parameters::kOdomParticleNoiseT(), _particleNoiseT);
@@ -269,6 +271,11 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 		{
 			distanceTravelled_ += t.getNorm();
 			info->distanceTravelled = distanceTravelled_;
+
+			if(_varianceFromInliersCount)
+			{
+				info->variance = info->inliers > 0?1.0/double(info->inliers):1.0;
+			}
 		}
 
 		return _pose *= t; // updated

@@ -52,6 +52,7 @@ public:
 
 	void setMirroringEnabled(bool enabled) {_mirroring = enabled;}
 	void setColorOnly(bool colorOnly) {_colorOnly = colorOnly;}
+	void setStereoToDepth(bool enabled) {_stereoToDepth = enabled;}
 
 	//getters
 	bool isPaused() const {return !this->isRunning();}
@@ -68,6 +69,7 @@ private:
 	Camera * _camera;
 	bool _mirroring;
 	bool _colorOnly;
+	bool _stereoToDepth;
 };
 
 } // namespace rtabmap

@@ -41,7 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/EpipolarGeometry.h"
 #include "rtabmap/core/VWDictionary.h"
 #include "rtabmap/core/Odometry.h"
-#include "rtabmap/gui/UCv2Qt.h"
+#include "rtabmap/utilite/UCv2Qt.h"
 
 #include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/KeypointItem.h"

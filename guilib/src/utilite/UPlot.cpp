@@ -17,7 +17,7 @@
 *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "UPlot.h"
+#include "rtabmap/utilite/UPlot.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UMath.h"
 
@@ -435,7 +435,7 @@ void UPlotCurve::addValue(float x, float y)
 	{
 		UWARN("New value (%f) added to curve \"%s\" is smaller "
 			  "than the last added (%f). Clearing the curve.",
-				x, this->name().toStdString().c_str(), _items.back()->pos().x());
+				x, this->name().toStdString().c_str(), ((UPlotItem*)_items.back())->data().x());
 		this->clear();
 	}
 

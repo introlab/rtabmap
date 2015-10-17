@@ -57,11 +57,12 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Highest_hypothesis_id,);
 	RTABMAP_STATS(Loop, Highest_hypothesis_value,);
 	RTABMAP_STATS(Loop, Vp_hypothesis,);
-	RTABMAP_STATS(Loop, ReactivateId,);
+	RTABMAP_STATS(Loop, Reactivate_id,);
 	RTABMAP_STATS(Loop, Hypothesis_ratio,);
 	RTABMAP_STATS(Loop, Hypothesis_reactivated,);
-	RTABMAP_STATS(Loop, VisualInliers,);
+	RTABMAP_STATS(Loop, Visual_inliers,);
 	RTABMAP_STATS(Loop, Last_id,);
+	RTABMAP_STATS(Loop, Optimization_max_error, m);
 
 	RTABMAP_STATS(LocalLoop, Time_closures,);
 	RTABMAP_STATS(LocalLoop, Space_last_closure_id,);
@@ -83,8 +84,11 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Memory, Signatures_retrieved,);
 	RTABMAP_STATS(Memory, Images_buffered,);
 	RTABMAP_STATS(Memory, Rehearsal_sim,);
+	RTABMAP_STATS(Memory, Rehearsal_id,);
 	RTABMAP_STATS(Memory, Rehearsal_merged,);
 	RTABMAP_STATS(Memory, Local_graph_size,);
+	RTABMAP_STATS(Memory, Small_movement,);
+	RTABMAP_STATS(Memory, Distance_travelled, m);
 
 	RTABMAP_STATS(Timing, Memory_update, ms);
 	RTABMAP_STATS(Timing, Scan_matching, ms);
@@ -118,6 +122,8 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(TimingMem, Compressing_data, ms);
 
 	RTABMAP_STATS(Keypoint, Dictionary_size, words);
+	RTABMAP_STATS(Keypoint, Indexed_words, words);
+	RTABMAP_STATS(Keypoint, Index_memory_usage, KB);
 	RTABMAP_STATS(Keypoint, Response_threshold,);
 
 public:

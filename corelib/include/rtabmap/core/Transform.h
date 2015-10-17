@@ -51,6 +51,8 @@ public:
 	Transform(const cv::Mat & transformationMatrix);
 	// x,y,z, roll,pitch,yaw
 	Transform(float x, float y, float z, float roll, float pitch, float yaw);
+	// x,y, theta
+	Transform(float x, float y, float theta);
 
 	float r11() const {return data()[0];}
 	float r12() const {return data()[1];}
