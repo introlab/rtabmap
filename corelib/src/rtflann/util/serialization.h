@@ -110,7 +110,7 @@ BASIC_TYPE_SERIALIZER(bool);
 // unsigned __int64 ~= unsigned long long
 // Will throw error on VS2013
 #if _MSC_VER != 1800
-BASIC_TYPE_SERIALIZER(unsigned __int64);
+//BASIC_TYPE_SERIALIZER(unsigned __int64);
 #endif
 #endif
 
