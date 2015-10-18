@@ -844,7 +844,7 @@ void CloudViewer::removeText(const std::string & id)
 		return;
 	}
 
-	if(_texts.find(id) != _coordinates.end())
+	if(_texts.find(id) != _texts.end())
 	{
 		_visualizer->removeText3D(id);
 		_texts.erase(id);
@@ -959,15 +959,28 @@ void CloudViewer::getCameraPosition(
 {
 	std::vector<pcl::visualization::Camera> cameras;
 	_visualizer->getCameras(cameras);
-	x = cameras.front().pos[0];
-	y = cameras.front().pos[1];
-	z = cameras.front().pos[2];
-	focalX = cameras.front().focal[0];
-	focalY = cameras.front().focal[1];
-	focalZ = cameras.front().focal[2];
-	upX = cameras.front().view[0];
-	upY = cameras.front().view[1];
-	upZ = cameras.front().view[2];
+	if(cameras.size())
+	{
+		x = cameras.begin()->pos[0];
+		y = cameras.begin()->pos[1];
+		z = cameras.begin()->pos[2];
+		focalX = cameras.begin()->focal[0];
+		focalY = cameras.begin()->focal[1];
+		focalZ = cameras.begin()->focal[2];
+		upX = cameras.begin()->view[0];
+		upY = cameras.begin()->view[1];
+		upZ = cameras.begin()->view[2];
+	}
+	else
+	{
+		_visualizer->setCameraPosition(
+				-1, 0, 0,
+				0, 0, 0,
+				0, 0, 1);
+		x=-1.0f;
+		y=z=focalX=focalY=focalZ=upX=upY=0;
+		upZ=1.0f;
+	}
 }
 
 void CloudViewer::setCameraPosition(
