@@ -356,10 +356,10 @@ class RTABMAP_EXP Parameters
 
 
 	// Odometry common stuff between BOW and Optical Flow approaches
-	RTABMAP_PARAM(OdomFlow, WinSize,               int, 16,       "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(OdomFlow, Iterations,            int, 30,       "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(OdomFlow, Eps,                   double, 0.01,  "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(OdomFlow, MaxLevel,              int, 3,        "Used for optical flow approach and for stereo matching. See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, WinSize,               int, 16,       "Used for optical flow approach. See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, Iterations,            int, 30,       "Used for optical flow approach. See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, Eps,                   double, 0.01,  "Used for optical flow approach. See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, MaxLevel,              int, 3,        "Used for optical flow approach. See cv::calcOpticalFlowPyrLK().");
 
 	RTABMAP_PARAM(OdomSubPix, WinSize,         int, 3,        "Can be used with BOW and optical flow approaches. See cv::cornerSubPix().");
 	RTABMAP_PARAM(OdomSubPix, Iterations,      int, 0,       "Can be used with BOW and optical flow approaches. See cv::cornerSubPix(). 0 disables sub pixel refining.");
