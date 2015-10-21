@@ -1039,7 +1039,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			_3dRenderingShowClouds[i]->setChecked(true);
 			_3dRenderingVoxelSize[i]->setValue(i==0?0.01:0.0); // voxel of 1 cm for cloud substracting
 			_3dRenderingDecimation[i]->setValue(i==0?4:2);
-			_3dRenderingMaxDepth[i]->setValue(i==1?0.0:4.0);
+			_3dRenderingMaxDepth[i]->setValue(0.0);
 			_3dRenderingShowScans[i]->setChecked(true);
 
 			_3dRenderingOpacity[i]->setValue(i==0?1.0:0.5);
