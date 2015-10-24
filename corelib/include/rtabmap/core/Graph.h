@@ -244,19 +244,23 @@ bool RTABMAP_EXP exportPoses(
 std::multimap<int, Link>::iterator RTABMAP_EXP findLink(
 		std::multimap<int, Link> & links,
 		int from,
-		int to);
+		int to,
+		bool checkBothWays = true);
 std::multimap<int, int>::iterator RTABMAP_EXP findLink(
 		std::multimap<int, int> & links,
 		int from,
-		int to);
+		int to,
+		bool checkBothWays = true);
 std::multimap<int, Link>::const_iterator RTABMAP_EXP findLink(
 		const std::multimap<int, Link> & links,
 		int from,
-		int to);
+		int to,
+		bool checkBothWays = true);
 std::multimap<int, int>::const_iterator RTABMAP_EXP findLink(
 		const std::multimap<int, int> & links,
 		int from,
-		int to);
+		int to,
+		bool checkBothWays = true);
 
 /**
  * Get only the the most recent or older poses in the defined radius.
@@ -284,6 +288,12 @@ std::multimap<int, int> RTABMAP_EXP radiusPosesClustering(
 		float radius,
 		float angle);
 
+void reduceGraph(
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		std::multimap<int, int> & hyperNodes, //<parent ID, child ID>
+		std::multimap<int, Link> & hyperLinks);
+
 /**
  * Perform A* path planning in the graph.
  * @param poses The graph's poses
@@ -299,6 +309,23 @@ std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
 			int from,
 			int to,
 			bool updateNewCosts = false);
+
+/**
+ * Perform Dijkstra path planning in the graph.
+ * @param poses The graph's poses
+ * @param links The graph's links (from node id -> to node id)
+ * @param from initial node
+ * @param to final node
+ * @param updateNewCosts Keep up-to-date costs while traversing the graph.
+ * @param useSameCostForAllLinks Ignore distance between nodes
+ * @return the path ids from id "from" to id "to" including initial and final nodes.
+ */
+std::list<int> RTABMAP_EXP computePath(
+			const std::multimap<int, Link> & links,
+			int from,
+			int to,
+			bool updateNewCosts = false,
+			bool useSameCostForAllLinks = false);
 
 /**
  * Perform Dijkstra path planning in the graph.

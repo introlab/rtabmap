@@ -97,7 +97,8 @@ void Signature::addLinks(const std::map<int, Link> & links)
 void Signature::addLink(const Link & link)
 {
 	UDEBUG("Add link %d to %d (type=%d)", link.to(), this->id(), (int)link.type());
-	UASSERT(link.from() == this->id());
+	UASSERT_MSG(link.from() == this->id(), uFormat("%d->%d for signature %d (type=%d)", link.from(), link.to(), this->id(), link.type()).c_str());
+	UASSERT_MSG(link.to() != this->id(), uFormat("%d->%d for signature %d (type=%d)", link.from(), link.to(), this->id(), link.type()).c_str());
 	std::pair<std::map<int, Link>::iterator, bool> pair = _links.insert(std::make_pair(link.to(), link));
 	UASSERT_MSG(pair.second, uFormat("Link %d (type=%d) already added to signature %d!", link.to(), link.type(), this->id()).c_str());
 	_linksModified = true;
@@ -134,6 +135,7 @@ void Signature::removeLink(int idTo)
 	int count = (int)_links.erase(idTo);
 	if(count)
 	{
+		UDEBUG("Removed link %d from %d", idTo, this->id());
 		_linksModified = true;
 	}
 }

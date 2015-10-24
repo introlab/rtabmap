@@ -72,7 +72,7 @@ void Feature2D::filterKeypointsByDepth(
 		const cv::Mat & depth,
 		float maxDepth)
 {
-	if(!depth.empty() && maxDepth > 0.0f && (descriptors.empty() || descriptors.rows == (int)keypoints.size()))
+	if(!depth.empty() && (descriptors.empty() || descriptors.rows == (int)keypoints.size()))
 	{
 		std::vector<cv::KeyPoint> output(keypoints.size());
 		std::vector<int> indexes(keypoints.size(), 0);
@@ -85,7 +85,7 @@ void Feature2D::filterKeypointsByDepth(
 			if(u >=0 && u<depth.cols && v >=0 && v<depth.rows)
 			{
 				float d = isInMM?(float)depth.at<uint16_t>(v,u)*0.001f:depth.at<float>(v,u);
-				if(d!=0.0f && uIsFinite(d) && d < maxDepth)
+				if(uIsFinite(d) && d>0.0f && (maxDepth <= 0.0f || d < maxDepth))
 				{
 					output[oi++] = keypoints[i];
 					indexes[i] = 1;

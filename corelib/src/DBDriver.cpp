@@ -106,6 +106,79 @@ long DBDriver::getMemoryUsed() const
 	return bytes;
 }
 
+long DBDriver::getImagesMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getImagesMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
+long DBDriver::getDepthImagesMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getDepthImagesMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
+long DBDriver::getLaserScansMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getLaserScansMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
+long DBDriver::getUserDataMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getUserDataMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
+long DBDriver::getWordsMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getWordsMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
+int DBDriver::getLastNodesSize() const
+{
+	int nodes;
+	_dbSafeAccessMutex.lock();
+	nodes = getLastNodesSizeQuery();
+	_dbSafeAccessMutex.unlock();
+	return nodes;
+}
+int DBDriver::getLastDictionarySize() const
+{
+	int words;
+	_dbSafeAccessMutex.lock();
+	words = getLastDictionarySizeQuery();
+	_dbSafeAccessMutex.unlock();
+	return words;
+}
+int DBDriver::getTotalNodesSize() const
+{
+	int words;
+	_dbSafeAccessMutex.lock();
+	words = getTotalNodesSizeQuery();
+	_dbSafeAccessMutex.unlock();
+	return words;
+}
+int DBDriver::getTotalDictionarySize() const
+{
+	int words;
+	_dbSafeAccessMutex.lock();
+	words = getTotalDictionarySizeQuery();
+	_dbSafeAccessMutex.unlock();
+	return words;
+}
+
 std::string DBDriver::getDatabaseVersion() const
 {
 	std::string version = "0.0.0";
@@ -473,7 +546,8 @@ void DBDriver::getNodeData(
 	}
 }
 
-bool DBDriver::getNodeInfo(int signatureId,
+bool DBDriver::getNodeInfo(
+		int signatureId,
 		Transform & pose,
 		int & mapId,
 		int & weight,
@@ -568,7 +642,8 @@ void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren) const
 						nIter!=sIter->second->getLinks().end();
 						++nIter)
 				{
-					if(nIter->second.type() == Link::kNeighbor)
+					if(nIter->second.type() == Link::kNeighbor ||
+					   nIter->second.type() == Link::kNeighborMerged)
 					{
 						hasNeighbors = true;
 						break;
@@ -778,7 +853,8 @@ void DBDriver::generateGraph(
 
 			 const char * colorG = "green";
 			 const char * colorP = "pink";
-	;		 UINFO("Generating map with %d locations", ids.size());
+			 const char * colorNM = "blue";
+			 UINFO("Generating map with %d locations", ids.size());
 			 fprintf(fout, "digraph G {\n");
 			 for(std::set<int>::iterator i=ids.begin(); i!=ids.end(); ++i)
 			 {
@@ -808,6 +884,16 @@ void DBDriver::generateGraph(
 									 weight,
 									 iter->first,
 									 weightNeighbor);
+						 }
+						 else if(iter->second.type() == Link::kNeighborMerged)
+						 {
+							 //merged neighbor
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"M\", fontcolor=%s, fontsize=8];\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor,
+									 colorNM);
 						 }
 						 else if(iter->first > id)
 						 {
@@ -859,6 +945,15 @@ void DBDriver::generateGraph(
 									 weight,
 									 iter->first,
 									 weightNeighbor);
+						 }
+						 else if(iter->second.type() == Link::kNeighborMerged)
+						 {
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"M\", fontcolor=%s, fontsize=8];\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor,
+									 colorNM);
 						 }
 						 else if(iter->first > id)
 						 {

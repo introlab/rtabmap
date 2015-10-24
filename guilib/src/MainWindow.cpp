@@ -2229,6 +2229,12 @@ void MainWindow::processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathE
 			info->show();
 		}
 	}
+	else if(event.getPoses().empty() && _waypoints.size())
+	{
+		// resend the same goal
+		uSleep(1000);
+		this->postGoal(_waypoints.at(_waypointsIndex % _waypoints.size()));
+	}
 }
 
 void MainWindow::processRtabmapLabelErrorEvent(int id, const QString & label)

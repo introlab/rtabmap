@@ -600,11 +600,26 @@ inline std::string uJoin(const std::list<std::string> & strings, const std::stri
 /**
  * Check if a character is a digit.
  * @param c the character
- * @return if the character is a digit (if c >= '0' && c <= '9')
+ * @return true if the character is a digit (if c >= '0' && c <= '9')
  */
 inline bool uIsDigit(const char c)
 {
 	return c >= '0' && c <= '9';
+}
+
+/**
+ * Check if a string is a interger number.
+ * @param str the string
+ * @return true if the string is a integer number
+ */
+inline bool uIsInteger(const std::string & str)
+{
+	bool isInteger = str.size();
+	for(unsigned int i=0; i<str.size() && isInteger; ++i)
+	{
+		isInteger = isdigit(str[i]);
+	}
+	return isInteger;
 }
 
 /**

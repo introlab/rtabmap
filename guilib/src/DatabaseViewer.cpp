@@ -96,6 +96,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	ui_->dockWidget_constraints->setVisible(false);
 	ui_->dockWidget_graphView->setVisible(false);
 	ui_->dockWidget_parameters->setVisible(false);
+	ui_->dockWidget_info->setVisible(false);
 	ui_->dockWidget_stereoView->setVisible(false);
 	ui_->dockWidget_view3d->setVisible(false);
 
@@ -146,6 +147,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	ui_->menuView->addAction(ui_->dockWidget_stereoView->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_view3d->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_parameters->toggleViewAction());
+	ui_->menuView->addAction(ui_->dockWidget_info->toggleViewAction());
 	connect(ui_->dockWidget_graphView->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateGraphView()));
 
 	connect(ui_->actionQuit, SIGNAL(triggered()), this, SLOT(close()));
@@ -328,6 +330,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	ui_->dockWidget_stereoView->installEventFilter(this);
 	ui_->dockWidget_view3d->installEventFilter(this);
 	ui_->dockWidget_parameters->installEventFilter(this);
+	ui_->dockWidget_info->installEventFilter(this);
 }
 
 DatabaseViewer::~DatabaseViewer()
@@ -828,6 +831,11 @@ void DatabaseViewer::exportDatabase()
 				progressDialog->setAttribute(Qt::WA_DeleteOnClose);
 				progressDialog->setMaximumSteps(ids.size());
 				progressDialog->show();
+				UINFO("Decompress: rgb=%d depth=%d scan=%d userData=%d",
+						dialog.isRgbExported()?1:0,
+						dialog.isDepthExported()?1:0,
+						dialog.isDepth2dExported()?1:0,
+						dialog.isUserDataExported()?1:0);
 
 				for(int i=0; i<ids.size(); ++i)
 				{
@@ -835,7 +843,12 @@ void DatabaseViewer::exportDatabase()
 
 					SensorData data;
 					dbDriver_->getNodeData(id, data);
-					data.uncompressData();
+					cv::Mat depth, rgb, scan, userData;
+					data.uncompressDataConst(
+							!dialog.isRgbExported()?0:&rgb,
+							!dialog.isDepthExported()?0:&depth,
+							!dialog.isDepth2dExported()?0:&scan,
+							!dialog.isUserDataExported()?0:&userData);
 					cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
 					if(dialog.isOdomExported())
 					{
@@ -851,28 +864,28 @@ void DatabaseViewer::exportDatabase()
 					if(data.cameraModels().size())
 					{
 						sensorData = rtabmap::SensorData(
-							dialog.isDepth2dExported()?data.laserScanRaw():cv::Mat(),
+							scan,
 							dialog.isDepth2dExported()?data.laserScanMaxPts():0,
 							dialog.isDepth2dExported()?data.laserScanMaxRange():0,
-							dialog.isRgbExported()?data.imageRaw():cv::Mat(),
-							dialog.isDepthExported()?data.depthOrRightRaw():cv::Mat(),
+							rgb,
+							depth,
 							data.cameraModels(),
 							data.id(),
 							data.stamp(),
-							dialog.isUserDataExported()?data.userDataRaw():cv::Mat());
+							userData);
 					}
 					else
 					{
 						sensorData = rtabmap::SensorData(
-							dialog.isDepth2dExported()?data.laserScanRaw():cv::Mat(),
+							scan,
 							dialog.isDepth2dExported()?data.laserScanMaxPts():0,
 							dialog.isDepth2dExported()?data.laserScanMaxRange():0,
-							dialog.isRgbExported()?data.imageRaw():cv::Mat(),
-							dialog.isDepthExported()?data.depthOrRightRaw():cv::Mat(),
+							rgb,
+							depth,
 							data.stereoCameraModel(),
 							data.id(),
 							data.stamp(),
-							dialog.isUserDataExported()?data.userDataRaw():cv::Mat());
+							userData);
 					}
 
 					recorder.addData(sensorData, dialog.isOdomExported()?poses.at(id):Transform(), covariance);
@@ -1029,6 +1042,7 @@ void DatabaseViewer::updateIds()
 		return;
 	}
 
+	UINFO("Loading all IDs...");
 	std::set<int> ids;
 	dbDriver_->getAllNodeIds(ids);
 	ids_ = QList<int>::fromStdList(std::list<int>(ids.begin(), ids.end()));
@@ -1040,6 +1054,12 @@ void DatabaseViewer::updateIds()
 	linksRefined_.clear();
 	linksRemoved_.clear();
 	ui_->label_optimizeFrom->setText(tr("Optimize from"));
+	std::multimap<int, Link> links;
+	dbDriver_->getAllLinks(links, true);
+	UDEBUG("%d total links loaded", (int)links.size());
+	double totalOdom = 0.0;
+	Transform previousPose;
+	int sessions = ids_.size()?1:0;
 	for(int i=0; i<ids_.size(); ++i)
 	{
 		idToIndex_.insert(ids_[i], i);
@@ -1051,22 +1071,60 @@ void DatabaseViewer::updateIds()
 		int mapId;
 		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
-		poses_.insert(std::make_pair(ids_[i], p));
 
-		//links
-		std::map<int, Link> neighbors;
-		dbDriver_->loadLinks(ids_[i], neighbors); // including loop closures
-		for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
+		if(i>0)
 		{
-			if(	jter->second.isValid() && // null transform means a rehearsed location
-				uContains(poses_, jter->first) &&
-				graph::findLink(links_, ids_[i], jter->first) == links_.end() &&
-				(jter->second.type() == Link::kNeighbor || jter->first < ids_[i])) //Loop parent to child
+			if(mapIds_.at(ids_[i-1]) == mapId)
 			{
-				links_.insert(std::make_pair(ids_[i], jter->second));
+				if(!p.isNull() && !previousPose.isNull())
+				{
+					totalOdom += p.getDistance(previousPose);
+				}
+			}
+			else
+			{
+				++sessions;
 			}
 		}
+		previousPose=p;
+
+		//links
+		bool linksInserted = false;
+		for(std::map<int, Link>::iterator jter=links.find(ids_[i]); jter!=links.end() && jter->first == ids_[i]; ++jter)
+		{
+			if(	jter->second.isValid() && // null transform means a rehearsed location
+				ids.find(jter->second.from()) != ids.end() &&
+				ids.find(jter->second.to()) != ids.end() &&
+				graph::findLink(links_, jter->second.from(), jter->second.to()) == links_.end() &&
+				graph::findLink(links, jter->second.from(), jter->second.to(), false) != links.end() &&
+				graph::findLink(links, jter->second.to(), jter->second.from(), false) != links.end())
+			{
+				links_.insert(std::make_pair(ids_[i], jter->second));
+				linksInserted = true;
+			}
+		}
+		if(linksInserted)
+		{
+			poses_.insert(std::make_pair(ids_[i], p));
+		}
 	}
+	UDEBUG("Update database info...");
+	ui_->label_odom->setText(tr("%1 m").arg(totalOdom));
+	ui_->label_sessions->setNum(sessions);
+	ui_->label_nodes->setText(tr("%1 nodes").arg(ids.size()));
+	ui_->label_version->setText(dbDriver_->getDatabaseVersion().c_str());
+	ui_->label_db_size->setText(tr("%1 MB").arg(dbDriver_->getMemoryUsed()/1000000));
+	ui_->label_words->setText(tr("%1 words").arg(dbDriver_->getTotalDictionarySize()));
+	ui_->label_global_map->setText(tr("%1 nodes").arg(poses_.size()));
+	ui_->label_rgb_size->setText(tr("%1 MB").arg(dbDriver_->getImagesMemoryUsed()/1000000));
+	ui_->label_depth_size->setText(tr("%1 MB").arg(dbDriver_->getDepthImagesMemoryUsed()/1000000));
+	ui_->label_scan_size->setText(tr("%1 MB").arg(dbDriver_->getLaserScansMemoryUsed()/1000000));
+	ui_->label_userData_size->setText(tr("%1 bytes").arg(dbDriver_->getUserDataMemoryUsed()));
+	ui_->label_words_size->setText(tr("%1 bytes").arg(dbDriver_->getWordsMemoryUsed()));
+	ui_->label_wm->setText(tr("%1 nodes").arg(dbDriver_->getLastNodesSize()));
+	ui_->label_dictionary->setText(tr("%1 words").arg(dbDriver_->getLastDictionarySize()));
+
+	UINFO("Loaded %d ids, %d poses and %d links", (int)ids_.size(), (int)poses_.size(), (int)links_.size());
 
 	if(ids.size())
 	{
@@ -1094,9 +1152,12 @@ void DatabaseViewer::updateIds()
 				links_.clear();
 			}
 
-			ui_->spinBox_optimizationsFrom->setRange(ids_.first(), ids_.last());
-			ui_->spinBox_optimizationsFrom->setValue(ids_.first());
-			ui_->label_optimizeFrom->setText(tr("Optimize from [%1, %2]").arg(ids_.first()).arg(ids_.last()));
+			if(poses_.size())
+			{
+				ui_->spinBox_optimizationsFrom->setRange(poses_.begin()->first, poses_.rbegin()->first);
+				ui_->spinBox_optimizationsFrom->setValue(poses_.begin()->first);
+				ui_->label_optimizeFrom->setText(tr("Optimize from [%1, %2]").arg(poses_.begin()->first).arg(poses_.rbegin()->first));
+			}
 		}
 	}
 
@@ -1110,7 +1171,8 @@ void DatabaseViewer::updateIds()
 	{
 		if(!iter->second.transform().isNull())
 		{
-			if(iter->second.type() == rtabmap::Link::kNeighbor)
+			if(iter->second.type() == rtabmap::Link::kNeighbor ||
+			   iter->second.type() == rtabmap::Link::kNeighborMerged)
 			{
 				neighborLinks_.append(iter->second);
 			}
@@ -1227,7 +1289,8 @@ void DatabaseViewer::generateLocalGraph()
 								if( !uContains(ids, iter->first))
 								{
 									UASSERT(iter->second.type() != Link::kUndef);
-									if(iter->second.type() == Link::kNeighbor)
+									if(iter->second.type() == Link::kNeighbor ||
+									   iter->second.type() == Link::kNeighborMerged)
 									{
 										nextMargin.insert(iter->first);
 									}
@@ -1338,6 +1401,7 @@ void DatabaseViewer::view3DMap()
 		QMessageBox::warning(this, tr("Cannot view 3D map"), tr("The database is empty..."));
 		return;
 	}
+
 	if(graphes_.empty())
 	{
 		this->updateGraphView();
@@ -1798,13 +1862,30 @@ void DatabaseViewer::update(int value,
 				}
 
 				// 3d view
-				if(view3D->isVisible() && !data.depthOrRightRaw().empty())
+				if(view3D->isVisible() &&
+						(!data.depthOrRightRaw().empty() ||
+						!data.laserScanRaw().empty()))
 				{
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-					cloud = util3d::cloudRGBFromSensorData(data);
-					if(cloud->size())
+					if(!data.depthOrRightRaw().empty())
 					{
-						view3D->addOrUpdateCloud("0", cloud);
+						if(!data.imageRaw().empty())
+						{
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+							cloud = util3d::cloudRGBFromSensorData(data);
+							if(cloud->size())
+							{
+								view3D->addOrUpdateCloud("0", cloud);
+							}
+						}
+						else
+						{
+							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+							cloud = util3d::cloudFromSensorData(data);
+							if(cloud->size())
+							{
+								view3D->addOrUpdateCloud("0", cloud);
+							}
+						}
 					}
 
 					//add scan
@@ -1845,7 +1926,8 @@ void DatabaseViewer::update(int value,
 				QString strParents, strChildren;
 				for(std::map<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 				{
-					if(iter->second.type() != Link::kNeighbor)
+					if(iter->second.type() != Link::kNeighbor &&
+				       iter->second.type() != Link::kNeighborMerged)
 					{
 						if(iter->first < id)
 						{
@@ -2271,7 +2353,8 @@ void DatabaseViewer::updateConstraintView()
 		Link link = this->findActiveLink(ids_.at(ui_->horizontalSlider_A->value()), ids_.at(ui_->horizontalSlider_B->value()));
 		if(link.isValid())
 		{
-			if(link.type() == Link::kNeighbor)
+			if(link.type() == Link::kNeighbor ||
+			   link.type() == Link::kNeighborMerged)
 			{
 				this->updateConstraintView(neighborLinks_.at(ui_->horizontalSlider_neighbors->value()), false);
 			}
@@ -2304,17 +2387,25 @@ void DatabaseViewer::updateConstraintView(
 	ui_->checkBox_showOptimized->setEnabled(false);
 	UASSERT(!t.isNull() && dbDriver_);
 
-	ui_->label_type->setNum(link.type());
+	ui_->label_type->setText(tr("%1 (%2)")
+			.arg(link.type())
+			.arg(link.type()==Link::kNeighbor?"Neigbor":
+				 link.type()==Link::kNeighbor?"Merged neighbor":
+				 link.type()==Link::kGlobalClosure?":Loop closure":
+				 link.type()==Link::kLocalSpaceClosure?"Space proximity link":
+				 link.type()==Link::kLocalTimeClosure?"Time proximity link":
+				 link.type()==Link::kUserClosure?"User link":
+				 link.type()==Link::kVirtualClosure?"Virtual link":"Undefined"));
 	ui_->label_variance->setText(QString("%1, %2")
 			.arg(sqrt(link.rotVariance()))
 			.arg(sqrt(link.transVariance())));
 	ui_->label_constraint->setText(QString("%1").arg(t.prettyPrint().c_str()).replace(" ", "\n"));
-	if(link.type() == Link::kNeighbor &&
+	if((link.type() == Link::kNeighbor || link.type() == Link::kNeighborMerged) &&
 	   graphes_.size() &&
 	   (int)graphes_.size()-1 == ui_->horizontalSlider_iterations->maximum())
 	{
 		std::map<int, rtabmap::Transform> & graph = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
-		if(link.type() == Link::kNeighbor)
+		if(link.type() == Link::kNeighbor || link.type() == Link::kNeighborMerged)
 		{
 			std::map<int, rtabmap::Transform>::iterator iterFrom = graph.find(link.from());
 			std::map<int, rtabmap::Transform>::iterator iterTo = graph.find(link.to());
@@ -2395,14 +2486,20 @@ void DatabaseViewer::updateConstraintView(
 			if(ui_->checkBox_show3Dclouds->isChecked())
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFrom, cloudTo;
-				cloudFrom=util3d::cloudRGBFromSensorData(dataFrom, 1);
-				cloudTo=util3d::cloudRGBFromSensorData(dataTo, 1);
+				if(!dataFrom.imageRaw().empty() && !dataFrom.depthOrRightRaw().empty())
+				{
+					cloudFrom=util3d::cloudRGBFromSensorData(dataFrom, 1);
+				}
+				if(!dataTo.imageRaw().empty() && !dataTo.depthOrRightRaw().empty())
+				{
+					cloudTo=util3d::cloudRGBFromSensorData(dataTo, 1);
+				}
 
-				if(cloudFrom->size())
+				if(cloudFrom.get() && cloudFrom->size())
 				{
 					ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
 				}
-				if(cloudTo->size())
+				if(cloudTo.get() && cloudTo->size())
 				{
 					cloudTo = rtabmap::util3d::transformPointCloud(cloudTo, t);
 					ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
@@ -2737,7 +2834,9 @@ void DatabaseViewer::updateConstraintButtons()
 	{
 		if(!containsLink(linksRemoved_, from ,to))
 		{
-			ui_->pushButton_reject->setEnabled(currentLink.type() != Link::kNeighbor);
+			ui_->pushButton_reject->setEnabled(
+					currentLink.type() != Link::kNeighbor &&
+					currentLink.type() != Link::kNeighborMerged);
 		}
 
 		//check for modified link
@@ -2887,7 +2986,8 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			{
 				const rtabmap::Transform & poseA = jterA->second;
 				const rtabmap::Transform & poseB = jterB->second;
-				if(iter->second.type() == rtabmap::Link::kNeighbor)
+				if(iter->second.type() == rtabmap::Link::kNeighbor ||
+				   iter->second.type() == rtabmap::Link::kNeighborMerged)
 				{
 					Eigen::Vector3f vA, vB;
 					poseA.getTranslation(vA[0], vA[1], vA[2]);
@@ -2901,8 +3001,13 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 }
 void DatabaseViewer::updateGraphView()
 {
+	if(!ui_->graphViewer->isVisible())
+	{
+		return;
+	}
+
 	ui_->label_loopClosures->clear();
-	ui_->label_nodes->clear();
+	ui_->label_poses->clear();
 	if(poses_.size())
 	{
 		int fromId = ui_->spinBox_optimizationsFrom->value();
@@ -2969,7 +3074,8 @@ void DatabaseViewer::updateGraphView()
 			std::multimap<int, Link> tmp = links;
 			for(std::multimap<int, Link>::iterator iter=tmp.begin(); iter!=tmp.end(); ++iter)
 			{
-				if(iter->second.type() == Link::kNeighbor)
+				if(iter->second.type() == Link::kNeighbor ||
+				   iter->second.type() == Link::kNeighborMerged)
 				{
 					Transform poseFrom = uValue(poses, iter->second.from(), Transform());
 					Transform poseTo = uValue(poses, iter->second.to(), Transform());
@@ -2988,13 +3094,23 @@ void DatabaseViewer::updateGraphView()
 		}
 
 		// filter links
+		int totalNeighbor = 0;
+		int totalNeighborMerged = 0;
 		int totalGlobal = 0;
 		int totalLocalTime = 0;
 		int totalLocalSpace = 0;
 		int totalUser = 0;
 		for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end();)
 		{
-			if(iter->second.type() == Link::kGlobalClosure)
+			if(iter->second.type() == Link::kNeighbor)
+			{
+				++totalNeighbor;
+			}
+			else if(iter->second.type() == Link::kNeighborMerged)
+			{
+				++totalNeighborMerged;
+			}
+			else if(iter->second.type() == Link::kGlobalClosure)
 			{
 				if(ui_->checkBox_ignoreGlobalLoop->isChecked())
 				{
@@ -3032,7 +3148,13 @@ void DatabaseViewer::updateGraphView()
 			}
 			++iter;
 		}
-		ui_->label_loopClosures->setText(tr("(%1, %2, %3, %4)").arg(totalGlobal).arg(totalLocalSpace).arg(totalLocalTime).arg(totalUser));
+		ui_->label_loopClosures->setText(tr("(%1, %2, %3, %4, %5, %6)")
+				.arg(totalNeighbor)
+				.arg(totalNeighborMerged)
+				.arg(totalGlobal)
+				.arg(totalLocalSpace)
+				.arg(totalLocalTime)
+				.arg(totalUser));
 
 		graph::Optimizer * optimizer = 0;
 		if(ui_->comboBox_graphOptimizer->currentIndex() == graph::Optimizer::kTypeGTSAM)
@@ -3064,7 +3186,7 @@ void DatabaseViewer::updateGraphView()
 		}
 		std::map<int, rtabmap::Transform> posesOut;
 		std::multimap<int, rtabmap::Link> linksOut;
-		UINFO("Get connected graph (%d poses, %d links)", (int)poses.size(), (int)links.size());
+		UINFO("Get connected graph from %d (%d poses, %d links)", fromId, (int)poses.size(), (int)links.size());
 		optimizer->getConnectedGraph(
 				fromId,
 				poses,
@@ -3079,7 +3201,7 @@ void DatabaseViewer::updateGraphView()
 		ui_->label_timeOptimization->setNum(double(time.elapsed())/1000.0);
 		graphes_.push_back(finalPoses);
 		graphLinks_ = linksOut;
-		ui_->label_nodes->setNum((int)finalPoses.size());
+		ui_->label_poses->setNum((int)finalPoses.size());
 		delete optimizer;
 		if(posesOut.size() && finalPoses.empty())
 		{
@@ -3169,12 +3291,12 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 	}
 	Transform t = currentLink.transform();
 	if(ui_->checkBox_showOptimized->isChecked() &&
-	   currentLink.type() == Link::kNeighbor &&
+	   (currentLink.type() == Link::kNeighbor || currentLink.type() == Link::kNeighborMerged) &&
 	   graphes_.size() &&
 	   (int)graphes_.size()-1 == ui_->horizontalSlider_iterations->maximum())
 	{
 		std::map<int, rtabmap::Transform> & graph = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
-		if(currentLink.type() == Link::kNeighbor)
+		if(currentLink.type() == Link::kNeighbor || currentLink.type() == Link::kNeighborMerged)
 		{
 			std::map<int, rtabmap::Transform>::iterator iterFrom = graph.find(currentLink.from());
 			std::map<int, rtabmap::Transform>::iterator iterTo = graph.find(currentLink.to());
@@ -3713,7 +3835,7 @@ void DatabaseViewer::rejectConstraint()
 	iter = rtabmap::graph::findLink(links_, from, to);
 	if(iter != links_.end())
 	{
-		if(iter->second.type() == Link::kNeighbor)
+		if(iter->second.type() == Link::kNeighbor || iter->second.type() == Link::kNeighborMerged)
 		{
 			UWARN("Cannot reject neighbor links (%d->%d)", from, to);
 			return;
@@ -3814,7 +3936,8 @@ void DatabaseViewer::updateLoopClosuresSlider(int from, int to)
 	{
 		if(!iter->second.transform().isNull())
 		{
-			if(iter->second.type() != rtabmap::Link::kNeighbor)
+			if(iter->second.type() != rtabmap::Link::kNeighbor &&
+			   iter->second.type() != rtabmap::Link::kNeighborMerged)
 			{
 				if((iter->second.from() == from && iter->second.to() == to) ||
 				   (iter->second.to() == from && iter->second.from() == to))

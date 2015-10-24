@@ -446,6 +446,259 @@ long DBDriverSqlite3::getMemoryUsedQuery() const
 	}
 }
 
+long DBDriverSqlite3::getImagesMemoryUsedQuery() const
+{
+	UDEBUG("");
+	long size = 0L;
+	if(_ppDb)
+	{
+		std::string query;
+		if(uStrNumCmp(_version, "0.10.1") >= 0)
+		{
+			query = "SELECT sum(length(image)) from Data;";
+		}
+		else
+		{
+			query = "SELECT sum(length(data)) from Image;";
+		}
+
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			size = sqlite3_column_int64(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return size;
+}
+long DBDriverSqlite3::getDepthImagesMemoryUsedQuery() const
+{
+	UDEBUG("");
+	long size = 0L;
+	if(_ppDb)
+	{
+		std::string query;
+		if(uStrNumCmp(_version, "0.10.1") >= 0)
+		{
+			query = "SELECT sum(length(depth)) from Data;";
+		}
+		else
+		{
+			query = "SELECT sum(length(data)) from Depth;";
+		}
+
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			size = sqlite3_column_int64(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return size;
+}
+long DBDriverSqlite3::getLaserScansMemoryUsedQuery() const
+{
+	UDEBUG("");
+	long size = 0L;
+	if(_ppDb)
+	{
+		std::string query;
+		if(uStrNumCmp(_version, "0.10.1") >= 0)
+		{
+			query = "SELECT sum(length(scan)) from Data;";
+		}
+		else
+		{
+			query = "SELECT sum(length(data2d)) from Depth;";
+		}
+
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			size = sqlite3_column_int64(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return size;
+}
+long DBDriverSqlite3::getUserDataMemoryUsedQuery() const
+{
+	UDEBUG("");
+	long size = 0L;
+	if(_ppDb)
+	{
+		std::string query;
+		if(uStrNumCmp(_version, "0.10.1") >= 0)
+		{
+			query = "SELECT sum(length(user_data)) from Data;";
+		}
+		else if(uStrNumCmp(_version, "0.8.8") >= 0)
+		{
+			query = "SELECT sum(length(user_data)) from Node;";
+		}
+		else
+		{
+			return size; // no user_data
+		}
+
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			size = sqlite3_column_int64(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return size;
+}
+long DBDriverSqlite3::getWordsMemoryUsedQuery() const
+{
+	UDEBUG("");
+	long size = 0L;
+	if(_ppDb)
+	{
+		std::string query = "SELECT sum(length(descriptor)) from Word;";
+
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			size = sqlite3_column_int64(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return size;
+}
+int DBDriverSqlite3::getLastNodesSizeQuery() const
+{
+	UDEBUG("");
+	int size = 0;
+	if(_ppDb)
+	{
+		std::string query = "SELECT count(id) from Node WHERE time_enter >= (SELECT MAX(time_enter) FROM Statistics);";
+
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			size = sqlite3_column_int(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return size;
+}
+int DBDriverSqlite3::getLastDictionarySizeQuery() const
+{
+	UDEBUG("");
+	int size = 0;
+	if(_ppDb)
+	{
+		std::string query = "SELECT count(id) from Word WHERE time_enter >= (SELECT MAX(time_enter) FROM Statistics);";
+
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			size = sqlite3_column_int(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return size;
+}
+int DBDriverSqlite3::getTotalNodesSizeQuery() const
+{
+	UDEBUG("");
+	int size = 0;
+	if(_ppDb)
+	{
+		std::string query = "SELECT count(id) from Node;";
+
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			size = sqlite3_column_int(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return size;
+}
+int DBDriverSqlite3::getTotalDictionarySizeQuery() const
+{
+	UDEBUG("");
+	int size = 0;
+	if(_ppDb)
+	{
+		std::string query = "SELECT count(id) from Word;";
+
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			size = sqlite3_column_int(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return size;
+}
+
 void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures) const
 {
 	UDEBUG("load data for %d signatures", (int)signatures.size());
@@ -830,7 +1083,7 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 			query << "SELECT id "
 				  << "FROM Node "
 				  << "INNER JOIN Link "
-				  << "ON id = to_id " // use to_id tp ignore all children (which don't have link pointing on them)
+				  << "ON id = to_id " // use to_id to ignore all children (which don't have link pointing on them)
 				  << "ORDER BY id";
 		}
 
@@ -2067,7 +2320,10 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 
 			for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 			{
-				if(!(*i)->sensorData().imageCompressed().empty())
+				if(!(*i)->sensorData().imageCompressed().empty() ||
+				   !(*i)->sensorData().depthOrRightCompressed().empty() ||
+				   !(*i)->sensorData().laserScanCompressed().empty() ||
+				   !(*i)->sensorData().userDataCompressed().empty())
 				{
 					UASSERT((*i)->id() == (*i)->sensorData().id());
 					stepSensorData(ppStmt, (*i)->sensorData());
@@ -2506,7 +2762,7 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	}
 	else
 	{
-		rc = sqlite3_bind_zeroblob(ppStmt, index++, 4);
+		rc = sqlite3_bind_null(ppStmt, index++);
 	}
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
@@ -2517,7 +2773,7 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	}
 	else
 	{
-		rc = sqlite3_bind_zeroblob(ppStmt, index++, 4);
+		rc = sqlite3_bind_null(ppStmt, index++);
 	}
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
@@ -2578,7 +2834,7 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	}
 	else
 	{
-		rc = sqlite3_bind_zeroblob(ppStmt, index++, 4);
+		rc = sqlite3_bind_null(ppStmt, index++);
 	}
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 
@@ -2591,7 +2847,7 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 		}
 		else
 		{
-			rc = sqlite3_bind_zeroblob(ppStmt, index++, 4);
+			rc = sqlite3_bind_null(ppStmt, index++);
 		}
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	}

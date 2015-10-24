@@ -83,6 +83,7 @@ public:
 	const QColor & getLocalLoopClosureColor() const {return _loopClosureLocalColor;}
 	const QColor & getUserLoopClosureColor() const {return _loopClosureUserColor;}
 	const QColor & getVirtualLoopClosureColor() const {return _loopClosureVirtualColor;}
+	const QColor & getNeighborMergedColor() const {return _neighborMergedColor;}
 	const QColor & getRejectedLoopClosureColor() const {return _loopClosureRejectedColor;}
 	const QColor & getLocalPathColor() const {return _localPathColor;}
 	const QColor & getGlobalPathColor() const {return _globalPathColor;}
@@ -106,6 +107,7 @@ public:
 	void setLocalLoopClosureColor(const QColor & color);
 	void setUserLoopClosureColor(const QColor & color);
 	void setVirtualLoopClosureColor(const QColor & color);
+	void setNeighborMergedColor(const QColor & color);
 	void setRejectedLoopClosureColor(const QColor & color);
 	void setLocalPathColor(const QColor & color);
 	void setGlobalPathColor(const QColor & color);
@@ -137,6 +139,7 @@ private:
 	QColor _loopClosureLocalColor;
 	QColor _loopClosureUserColor;
 	QColor _loopClosureVirtualColor;
+	QColor _neighborMergedColor;
 	QColor _loopClosureRejectedColor;
 	QColor _localPathColor;
 	QColor _globalPathColor;

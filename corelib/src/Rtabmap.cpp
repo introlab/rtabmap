@@ -658,12 +658,27 @@ int Rtabmap::triggerNewMap()
 	int mapId = -1;
 	if(_memory)
 	{
-		mapId = _memory->incrementMapId();
+		std::map<int, int> reducedIds;
+		mapId = _memory->incrementMapId(&reducedIds);
 		UINFO("New map triggered, new map = %d", mapId);
 		_optimizedPoses.clear();
 		_constraints.clear();
 		_lastLocalizationNodeId = 0;
 		_distanceTravelled = 0.0f;
+
+		//Verify if there are nodes that were merged through graph reduction
+		if(reducedIds.size() && _path.size())
+		{
+			for(unsigned int i=0; i<_path.size(); ++i)
+			{
+				std::map<int, int>::const_iterator iter = reducedIds.find(_path[i].first);
+				if(iter!= reducedIds.end())
+				{
+					// change path ID to loop closure ID
+					_path[i].first = iter->second;
+				}
+			}
+		}
 	}
 	return mapId;
 }
@@ -942,7 +957,6 @@ bool Rtabmap::process(
 		}
 	}
 
-
 	signature = _memory->getLastWorkingSignature();
 	if(!signature)
 	{
@@ -957,6 +971,7 @@ bool Rtabmap::process(
 	// Metric
 	//============================================================
 	bool smallDisplacement = false;
+	std::list<int> signaturesRemoved;
 	if(_rgbdSlamMode)
 	{
 		//Verify if there was a rehearsal
@@ -1080,9 +1095,10 @@ bool Rtabmap::process(
 		{
 			newPose = _mapCorrection * signature->getPose();
 		}
+
+		// Update Poses and Constraints
 		_optimizedPoses.insert(std::make_pair(signature->id(), newPose));
 		_lastLocalizationPose = newPose; // used in localization mode only (path planning)
-
 		if(signature->getLinks().size() == 1)
 		{
 			// link should be old to new
@@ -1108,6 +1124,43 @@ bool Rtabmap::process(
 			}
 			_constraints.insert(std::make_pair(tmp.from(), tmp));
 		}
+		//============================================================
+		// Reduced graph
+		//============================================================
+		//Verify if there are nodes that were merged through graph reduction
+		if(statistics_.reducedIds().size())
+		{
+			for(unsigned int i=0; i<_path.size(); ++i)
+			{
+				std::map<int, int>::const_iterator iter = statistics_.reducedIds().find(_path[i].first);
+				if(iter!= statistics_.reducedIds().end())
+				{
+					// change path ID to loop closure ID
+					_path[i].first = iter->second;
+				}
+			}
+
+			for(std::map<int, int>::const_iterator iter=statistics_.reducedIds().begin();
+				iter!=statistics_.reducedIds().end();
+				++iter)
+			{
+				int erased = _optimizedPoses.erase(iter->first);
+				if(erased)
+				{
+					for(std::multimap<int, Link>::iterator jter = _constraints.begin(); jter!=_constraints.end();)
+					{
+						if(jter->second.from() == iter->first || jter->second.to() == iter->first)
+						{
+							_constraints.erase(jter++);
+						}
+						else
+						{
+							++jter;
+						}
+					}
+				}
+			}
+		}
 
 		//============================================================
 		// Local loop closure in TIME
@@ -1132,7 +1185,6 @@ bool Rtabmap::process(
 					if(!transform.isNull() && _globalLoopClosureIcpType > 0)
 					{
 						transform = _memory->computeIcpTransform(*iter, signature->id(), transform, _globalLoopClosureIcpType==1, &rejectedMsg, 0, &variance);
-						variance = 1.0f; // ICP, set variance to 1 // FIXME why? all other links based on visual keep the variance
 					}
 					if(!transform.isNull())
 					{
@@ -2097,9 +2149,10 @@ bool Rtabmap::process(
 	if(_rgbdSlamMode &&
 		(_loopClosureHypothesis.first>0 ||
 	     lastLocalSpaceClosureId>0 || // can be different map of the current one
+	     statistics_.reducedIds().size() ||
+	     localLoopClosuresInTimeFound>0 ||
 		 ((_memory->isIncremental() || signature->getLinks().size()) && // In localization mode, the new node should be linked
-				 (localLoopClosuresInTimeFound>0 || 	// only same map of the current one
-		          signaturesRetrieved.size()))))  		// can be different map of the current one
+		          signaturesRetrieved.size())))  		// can be different map of the current one
 	{
 		UASSERT(uContains(_optimizedPoses, signature->id()));
 
@@ -2345,7 +2398,6 @@ bool Rtabmap::process(
 	}
 
 	// remove last signature if the memory is not incremental or is a bad signature (if bad signatures are ignored)
-	std::list<int> signaturesRemoved;
 	int signatureRemoved = _memory->cleanup();
 	if(signatureRemoved)
 	{
@@ -2898,11 +2950,46 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 {
 	UTimer timer;
 	std::map<int, Transform> optimizedPoses;
-	std::map<int, Transform> poses;
-	std::multimap<int, Link> edgeConstraints;
+	std::map<int, Transform> poses, posesOut;
+	std::multimap<int, Link> edgeConstraints, linksOut;
 	UDEBUG("ids=%d", (int)ids.size());
 	_memory->getMetricConstraints(ids, poses, edgeConstraints, lookInDatabase);
-	UINFO("get constraints (%d poses, %d edges) time %f s", (int)poses.size(), (int)edgeConstraints.size(), timer.ticks());
+	UINFO("get constraints (ids=%d, %d poses, %d edges) time %f s", (int)ids.size(), (int)poses.size(), (int)edgeConstraints.size(), timer.ticks());
+
+	// The constraints must be all already connected! Only check in debug
+	if(ULogger::level() == ULogger::kDebug)
+	{
+		_graphOptimizer->getConnectedGraph(fromId, poses, edgeConstraints, posesOut, linksOut);
+		if(poses.size() != posesOut.size())
+		{
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				if(posesOut.find(iter->first) == posesOut.end())
+				{
+					UERROR("Not found %d in posesOut", iter->first);
+					for(std::multimap<int, Link>::iterator jter=edgeConstraints.begin(); jter!=edgeConstraints.end(); ++jter)
+					{
+						if(jter->second.from() == iter->first || jter->second.to()==iter->first)
+						{
+							UERROR("Found link %d->%d", jter->second.from(), jter->second.to());
+						}
+					}
+				}
+			}
+		}
+		if(edgeConstraints.size() != linksOut.size())
+		{
+			for(std::multimap<int, Link>::iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+			{
+				if(graph::findLink(linksOut, iter->second.from(), iter->second.to()) == linksOut.end())
+				{
+					UERROR("Not found link %d->%d in linksOut", iter->second.from(), iter->second.to());
+				}
+			}
+		}
+		UASSERT_MSG(poses.size() == posesOut.size() && edgeConstraints.size() == linksOut.size(),
+				uFormat("nodes %d->%d, links %d->%d", poses.size(), posesOut.size(), edgeConstraints.size(), linksOut.size()).c_str());
+	}
 
 	if(constraints)
 	{
@@ -3285,6 +3372,24 @@ bool Rtabmap::computePath(int targetNode, bool global)
 		{
 			// set goal to latest signature
 			std::string goalStr = uFormat("GOAL:%d", targetNode);
+
+			// use label is exist
+			if(_memory->getSignature(targetNode))
+			{
+				if(!_memory->getSignature(targetNode)->getLabel().empty())
+				{
+					goalStr = std::string("GOAL:")+_memory->getSignature(targetNode)->getLabel();
+				}
+			}
+			else if(global)
+			{
+				std::map<int, std::string> labels = _memory->getAllLabels();
+				std::map<int, std::string>::iterator iter = labels.find(targetNode);
+				if(iter != labels.end() && !iter->second.empty())
+				{
+					goalStr = std::string("GOAL:")+labels.at(targetNode);
+				}
+			}
 			setUserData(0, cv::Mat(1, int(goalStr.size()+1), CV_8SC1, (void *)goalStr.c_str()).clone());
 		}
 		updateGoalIndex();
@@ -3474,17 +3579,19 @@ void Rtabmap::updateGoalIndex()
 		// remove all previous virtual links
 		for(unsigned int i=0; i<_pathCurrentIndex && i<_path.size(); ++i)
 		{
-			if(_memory->getSignature(_path[i].first))
+			const Signature * s = _memory->getSignature(_path[i].first);
+			if(s)
 			{
-				_memory->removeVirtualLinks(_path[i].first);
+				_memory->removeVirtualLinks(s->id());
 			}
 		}
+
 		// for the current index, only keep the newest virtual link
 		// This will make sure that the path is still connected even
 		// if the new signature is removed (e.g., because of a small displacement)
 		UASSERT(_pathCurrentIndex < _path.size());
 		const Signature * currentIndexS = _memory->getSignature(_path[_pathCurrentIndex].first);
-		UASSERT(currentIndexS != 0);
+		UASSERT_MSG(currentIndexS != 0, uFormat("_path[%d].first=%d", _pathCurrentIndex, _path[_pathCurrentIndex].first).c_str());
 		std::map<int, Link> links = currentIndexS->getLinks(); // make a copy
 		bool latestVirtualLinkFound = false;
 		for(std::map<int, Link>::reverse_iterator iter=links.rbegin(); iter!=links.rend(); ++iter)
@@ -3516,14 +3623,17 @@ void Rtabmap::updateGoalIndex()
 				}
 				if(distanceSoFar <= _localRadius)
 				{
-					const Signature * s = _memory->getSignature(_path[i].first);
-					if(s)
+					if(_path[i].first != _path[i-1].first)
 					{
-						if(!s->hasLink(_path[i-1].first) && _memory->getSignature(_path[i-1].first) != 0)
+						const Signature * s = _memory->getSignature(_path[i].first);
+						if(s)
 						{
-							Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
-							_memory->addLink(Link(_path[i].first, _path[i-1].first, Link::kVirtualClosure, virtualLoop, 100, 100)); // on the optimized path
-							UINFO("Added Virtual link between %d and %d", _path[i-1].first, _path[i].first);
+							if(!s->hasLink(_path[i-1].first) && _memory->getSignature(_path[i-1].first) != 0)
+							{
+								Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
+								_memory->addLink(Link(_path[i].first, _path[i-1].first, Link::kVirtualClosure, virtualLoop, 100, 100)); // on the optimized path
+								UINFO("Added Virtual link between %d and %d", _path[i-1].first, _path[i].first);
+							}
 						}
 					}
 				}

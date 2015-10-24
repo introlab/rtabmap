@@ -71,6 +71,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_saveDepth16Format(Parameters::defaultMemSaveDepth16Format()),
 	_notLinkedNodesKeptInDb(Parameters::defaultMemNotLinkedNodesKept()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
+	_reduceGraph(Parameters::defaultMemReduceGraph()),
 	_maxStMemSize(Parameters::defaultMemSTMSize()),
 	_recentWmRatio(Parameters::defaultMemRecentWmRatio()),
 	_transferSortingByWeightId(Parameters::defaultMemTransferSortingByWeightId()),
@@ -402,6 +403,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemImageKept(), _rawDataKept);
 	Parameters::parse(parameters, Parameters::kMemBinDataKept(), _binDataKept);
 	Parameters::parse(parameters, Parameters::kMemSaveDepth16Format(), _saveDepth16Format);
+	Parameters::parse(parameters, Parameters::kMemReduceGraph(), _reduceGraph);
 	Parameters::parse(parameters, Parameters::kMemNotLinkedNodesKept(), _notLinkedNodesKeptInDb);
 	Parameters::parse(parameters, Parameters::kMemRehearsalIdUpdatedToNewOne(), _idUpdatedToNewOneRehearsal);
 	Parameters::parse(parameters, Parameters::kMemGenerateIds(), _generateIds);
@@ -626,49 +628,36 @@ bool Memory::update(
 	//============================================================
 	// Transfer the oldest signature of the short-term memory to the working memory
 	//============================================================
-	int validSignaturesCount = 0;
+	int notIntermediateNodesCount = 0;
 	for(std::set<int>::iterator iter=_stMem.begin(); iter!=_stMem.end(); ++iter)
 	{
 		const Signature * s = this->getSignature(*iter);
 		UASSERT(s != 0);
-		if(!s->isBadSignature())
+		if(s->getWeight() >= 0)
 		{
-			++validSignaturesCount;
+			++notIntermediateNodesCount;
 		}
 	}
-	while(_stMem.size() && _maxStMemSize>0 && validSignaturesCount > _maxStMemSize)
+	std::map<int, int> reducedIds;
+	while(_stMem.size() && _maxStMemSize>0 && notIntermediateNodesCount > _maxStMemSize)
 	{
-		UDEBUG("Inserting node %d from STM in WM...", *_stMem.begin());
-		Signature * s = this->_getSignature(*_stMem.begin());
-		if(!_localSpaceLinksKeptInWM)
+		int id = *_stMem.begin();
+		Signature * s = this->_getSignature(id);
+		UASSERT(s != 0);
+		if(s->getWeight() >= 0)
 		{
-			// remove local space links outside STM
-			UASSERT(s!=0);
-			std::map<int, Link> links = s->getLinks(); // get a copy because we will remove some links in "s"
-			for(std::map<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
-			{
-				if(iter->second.type() == Link::kLocalSpaceClosure)
-				{
-					Signature * sTo = this->_getSignature(iter->first);
-					if(sTo)
-					{
-						sTo->removeLink(s->id());
-					}
-					else
-					{
-						UERROR("Link %d of %d not in WM/STM?!?", iter->first, s->id());
-					}
-					s->removeLink(iter->first);
-				}
-			}
+			--notIntermediateNodesCount;
 		}
-		if(!s->isBadSignature())
+
+		int reducedTo = 0;
+		moveSignatureToWMFromSTM(id, &reducedTo);
+
+		if(reducedTo > 0)
 		{
-			--validSignaturesCount;
+			reducedIds.insert(std::make_pair(id, reducedTo));
 		}
-		_workingMem.insert(_workingMem.end(), std::make_pair(*_stMem.begin(), UTimer::now()));
-		_stMem.erase(*_stMem.begin());
 	}
+	if(stats) stats->setReducedIds(reducedIds);
 
 	if(!_memoryChanged && _incrementalMemory)
 	{
@@ -784,7 +773,7 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 	UDEBUG("time = %fs", timer.ticks());
 }
 
-void Memory::addSignatureToWm(Signature * signature)
+void Memory::addSignatureToWmFromLTM(Signature * signature)
 {
 	if(signature)
 	{
@@ -797,6 +786,127 @@ void Memory::addSignatureToWm(Signature * signature)
 	{
 		UERROR("Signature is null ?!?");
 	}
+}
+
+void Memory::moveSignatureToWMFromSTM(int id, int * reducedTo)
+{
+	UDEBUG("Inserting node %d from STM in WM...", id);
+	UASSERT(_stMem.find(id) != _stMem.end());
+	Signature * s = this->_getSignature(id);
+	UASSERT(s!=0);
+	if(!_localSpaceLinksKeptInWM)
+	{
+		// remove local space links outside STM
+		std::map<int, Link> links = s->getLinks(); // get a copy because we will remove some links in "s"
+		for(std::map<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+		{
+			if(iter->second.type() == Link::kLocalSpaceClosure)
+			{
+				Signature * sTo = this->_getSignature(iter->first);
+				if(sTo)
+				{
+					sTo->removeLink(s->id());
+				}
+				else
+				{
+					UERROR("Link %d of %d not in WM/STM?!?", iter->first, s->id());
+				}
+				s->removeLink(iter->first);
+			}
+		}
+	}
+
+	if(_reduceGraph)
+	{
+		bool merge = false;
+		const std::map<int, Link> & links = s->getLinks();
+		std::map<int, Link> neighbors;
+		for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+		{
+			if(!merge)
+			{
+				merge = iter->second.to() < s->id() && // should be a parent->child link
+						iter->second.type() != Link::kNeighbor &&
+						iter->second.type() != Link::kNeighborMerged &&
+						iter->second.userDataCompressed().empty() &&
+						iter->second.type() != Link::kUndef &&
+						iter->second.type() != Link::kVirtualClosure;
+				if(merge)
+				{
+					UDEBUG("Reduce %d to %d", s->id(), iter->second.to());
+					if(reducedTo)
+					{
+						*reducedTo = iter->second.to();
+					}
+				}
+
+			}
+			if(iter->second.type() == Link::kNeighbor)
+			{
+				neighbors.insert(*iter);
+			}
+		}
+		if(merge)
+		{
+			if(s->getLabel().empty())
+			{
+				for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+				{
+					merge = true;
+					Signature * sTo = this->_getSignature(iter->first);
+					UASSERT(sTo!=0);
+					sTo->removeLink(s->id());
+					if(iter->second.type() != Link::kNeighbor &&
+					   iter->second.type() != Link::kNeighborMerged &&
+					   iter->second.type() != Link::kUndef)
+					{
+						// link to all neighbors
+						for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
+						{
+							if(!sTo->hasLink(jter->second.to()))
+							{
+								Link l = iter->second.inverse().merge(
+										jter->second,
+										iter->second.userDataCompressed().empty() && iter->second.type() != Link::kVirtualClosure?Link::kNeighborMerged:iter->second.type());
+								sTo->addLink(l);
+								Signature * sB = this->_getSignature(l.to());
+								UASSERT(sB!=0);
+								UASSERT(!sB->hasLink(l.to()));
+								sB->addLink(l.inverse());
+							}
+						}
+					}
+				}
+
+				//remove neighbor links
+				std::map<int, Link> linksCopy = links;
+				for(std::map<int, Link>::iterator iter=linksCopy.begin(); iter!=linksCopy.end(); ++iter)
+				{
+					if(iter->second.type() == Link::kNeighbor ||
+					   iter->second.type() == Link::kNeighborMerged)
+					{
+						s->removeLink(iter->first);
+						if(iter->second.type() == Link::kNeighbor)
+						{
+							if(_lastGlobalLoopClosureId == s->id())
+							{
+								_lastGlobalLoopClosureId = iter->first;
+							}
+						}
+					}
+				}
+
+				this->moveToTrash(s, _notLinkedNodesKeptInDb);
+				s = 0;
+			}
+		}
+	}
+	if(s != 0)
+	{
+		_workingMem.insert(_workingMem.end(), std::make_pair(*_stMem.begin(), UTimer::now()));
+		_stMem.erase(*_stMem.begin());
+	}
+	// else already removed from STM/WM in moveToTrash()
 }
 
 const Signature * Memory::getSignature(int id) const
@@ -825,7 +935,8 @@ std::map<int, Link> Memory::getNeighborLinks(
 		const std::map<int, Link> & allLinks = s->getLinks();
 		for(std::map<int, Link>::const_iterator iter = allLinks.begin(); iter!=allLinks.end(); ++iter)
 		{
-			if(iter->second.type() == Link::kNeighbor)
+			if(iter->second.type() == Link::kNeighbor ||
+			   iter->second.type() == Link::kNeighborMerged)
 			{
 				links.insert(*iter);
 			}
@@ -834,8 +945,19 @@ std::map<int, Link> Memory::getNeighborLinks(
 	else if(lookInDatabase && _dbDriver)
 	{
 		std::map<int, Link> neighbors;
-		_dbDriver->loadLinks(signatureId, neighbors, Link::kNeighbor);
-		links.insert(neighbors.begin(), neighbors.end());
+		_dbDriver->loadLinks(signatureId, neighbors);
+		for(std::map<int, Link>::iterator iter=neighbors.begin(); iter!=neighbors.end();)
+		{
+			if(iter->second.type() != Link::kNeighbor &&
+			   iter->second.type() != Link::kNeighborMerged)
+			{
+				neighbors.erase(iter++);
+			}
+			else
+			{
+				++iter;
+			}
+		}
 	}
 	else
 	{
@@ -855,7 +977,8 @@ std::map<int, Link> Memory::getLoopClosureLinks(
 		const std::map<int, Link> & allLinks = s->getLinks();
 		for(std::map<int, Link>::const_iterator iter = allLinks.begin(); iter!=allLinks.end(); ++iter)
 		{
-			if(iter->second.type() > Link::kNeighbor &&
+			if(iter->second.type() != Link::kNeighbor &&
+			   iter->second.type() != Link::kNeighborMerged &&
 			   iter->second.type() != Link::kUndef)
 			{
 				loopClosures.insert(*iter);
@@ -867,7 +990,9 @@ std::map<int, Link> Memory::getLoopClosureLinks(
 		_dbDriver->loadLinks(signatureId, loopClosures);
 		for(std::map<int, Link>::iterator iter=loopClosures.begin(); iter!=loopClosures.end();)
 		{
-			if(iter->second.type() == Link::kNeighbor)
+			if(iter->second.type() == Link::kNeighbor ||
+			   iter->second.type() == Link::kNeighborMerged ||
+			   iter->second.type() == Link::kUndef )
 			{
 				loopClosures.erase(iter++);
 			}
@@ -931,7 +1056,8 @@ std::multimap<int, Link> Memory::getAllLinks(bool lookInDatabase, bool ignoreNul
 // return map<Id,Margin>, including signatureId
 // maxCheckedInDatabase = -1 means no limit to check in database (default)
 // maxCheckedInDatabase = 0 means don't check in database
-std::map<int, int> Memory::getNeighborsId(int signatureId,
+std::map<int, int> Memory::getNeighborsId(
+		int signatureId,
 		int maxGraphDepth, // 0 means infinite margin
 		int maxCheckedInDatabase, // default -1 (no limit)
 		bool incrementMarginOnLoop, // default false
@@ -992,7 +1118,7 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 					ids.insert(std::pair<int, int>(*jter, m));
 
 					UTimer timer;
-					_dbDriver->loadLinks(*jter, tmpLinks, ignoreLoopIds?Link::kNeighbor:Link::kUndef);
+					_dbDriver->loadLinks(*jter, tmpLinks);
 					if(dbAccessTime)
 					{
 						*dbAccessTime += timer.getElapsedTime();
@@ -1005,7 +1131,8 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 					if( !uContains(ids, iter->first) && ignoredIds.find(iter->first) == ignoredIds.end())
 					{
 						UASSERT(iter->second.type() != Link::kUndef);
-						if(iter->second.type() == Link::kNeighbor)
+						if(iter->second.type() == Link::kNeighbor ||
+					       iter->second.type() == Link::kNeighborMerged)
 						{
 							if(ignoreIntermediateNodes && s->getWeight()==-1)
 							{
@@ -1116,7 +1243,7 @@ int Memory::getNextId()
 	return ++_idCount;
 }
 
-int Memory::incrementMapId()
+int Memory::incrementMapId(std::map<int, int> * reducedIds)
 {
 	//don't increment if there is no location in the current map
 	const Signature * s = getLastWorkingSignature();
@@ -1125,32 +1252,13 @@ int Memory::incrementMapId()
 		// New session! move all signatures from the STM to WM
 		while(_stMem.size())
 		{
-			UDEBUG("Inserting node %d from STM in WM...", *_stMem.begin());
-			if(!_localSpaceLinksKeptInWM)
+			int reducedId = 0;
+			int id = *_stMem.begin();
+			moveSignatureToWMFromSTM(id, &reducedId);
+			if(reducedIds && reducedId > 0)
 			{
-				// remove local space links outside STM
-				Signature * s = this->_getSignature(*_stMem.begin());
-				UASSERT(s!=0);
-				std::map<int, Link> links = s->getLinks(); // get a copy because we will remove some links in "s"
-				for(std::map<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
-				{
-					if(iter->second.type() == Link::kLocalSpaceClosure)
-					{
-						Signature * sTo = this->_getSignature(iter->first);
-						if(sTo)
-						{
-							sTo->removeLink(s->id());
-						}
-						else
-						{
-							UERROR("Link %d of %d not in WM/STM?!?", iter->first, s->id());
-						}
-						s->removeLink(iter->first);
-					}
-				}
+				reducedIds->insert(std::make_pair(id, reducedId));
 			}
-			_workingMem.insert(_workingMem.end(), std::make_pair(*_stMem.begin(), UTimer::now()));
-			_stMem.erase(*_stMem.begin());
 		}
 
 		return ++_idMapCount;
@@ -1210,12 +1318,29 @@ void Memory::clear()
 {
 	UDEBUG("");
 
+	// empty the STM
+	while(_stMem.size())
+	{
+		moveSignatureToWMFromSTM(*_stMem.begin());
+	}
+	if(_stMem.size() != 0)
+	{
+		ULOGGER_ERROR("_stMem must be empty here, size=%d", _stMem.size());
+	}
+	_stMem.clear();
+
 	this->cleanUnusedWords();
 
 	if(_dbDriver)
 	{
 		_dbDriver->emptyTrashes();
 		_dbDriver->join();
+	}
+	if(_dbDriver)
+	{
+		// make sure time_enter in database is at least 1 second
+		// after for the next stuf added to database
+		uSleep(1500);
 	}
 
 	// Save some stats to the db, save only when the mem is not empty
@@ -1261,11 +1386,6 @@ void Memory::clear()
 		ULOGGER_ERROR("_workingMem must be empty here, size=%d", _workingMem.size());
 	}
 	_workingMem.clear();
-	if(_stMem.size() != 0)
-	{
-		ULOGGER_ERROR("_stMem must be empty here, size=%d", _stMem.size());
-	}
-	_stMem.clear();
 	if(_signatures.size()!=0)
 	{
 		ULOGGER_ERROR("_signatures must be empty here, size=%d", _signatures.size());
@@ -1450,8 +1570,15 @@ std::list<int> Memory::forget(const std::set<int> & ignoredIds)
 {
 	UDEBUG("");
 	std::list<int> signaturesRemoved;
-	if(this->isIncremental() && _vwd->isIncremental() && _vwd->getVisualWords().size())
+	if(this->isIncremental() &&
+	   _vwd->isIncremental() &&
+	   _vwd->getVisualWords().size() &&
+	   !_vwd->isIncrementalFlann())
 	{
+		// Note that when using incremental FLANN, the number of words
+		// is not the biggest issue, so use the number of signatures instead
+		// of the number of words
+
 		int newWords = 0;
 		int wordsRemoved = 0;
 
@@ -1719,32 +1846,33 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 		if(!keepLinkedToGraph || (!s->isSaved() && s->isBadSignature() && _badSignaturesIgnored))
 		{
 			UASSERT_MSG(this->isInSTM(s->id()),
-					uFormat("Deleting location (%d) outside the STM is not implemented!", s->id()).c_str());
+						uFormat("Deleting location (%d) outside the "
+								"STM is not implemented!", s->id()).c_str());
 			const std::map<int, Link> & links = s->getLinks();
 			for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
 				Signature * sTo = this->_getSignature(iter->first);
 				// neighbor to s
-				if(sTo)
-				{
-					if(iter->first > s->id() && (sTo->getLinks().size() == 1 || !sTo->hasLink(s->id())))
-					{
-						UWARN("Link %d of %d is newer, removing neighbor link may split the map!",
-								iter->first, s->id());
-					}
+				UASSERT_MSG(sTo!=0,
+							uFormat("A neighbor (%d) of the deleted location %d is "
+									"not found in WM/STM! Are you deleting a location "
+									"outside the STM?", iter->first, s->id()).c_str());
 
-					// child
-					if(iter->second.type() == Link::kGlobalClosure && s->id() > sTo->id())
-					{
-						sTo->setWeight(sTo->getWeight() + s->getWeight()); // copy weight
-					}
-
-					sTo->removeLink(s->id());
-				}
-				else
+				if(iter->first > s->id() && links.size()>1 && sTo->hasLink(s->id()))
 				{
-					UERROR("Link %d of %d not in WM/STM?!?", iter->first, s->id());
+					UWARN("Link %d of %d is newer, removing neighbor link "
+						  "may split the map!",
+							iter->first, s->id());
 				}
+
+				// child
+				if(iter->second.type() == Link::kGlobalClosure && s->id() > sTo->id())
+				{
+					sTo->setWeight(sTo->getWeight() + s->getWeight()); // copy weight
+				}
+
+				sTo->removeLink(s->id());
+
 			}
 			s->removeLinks(); // remove all links
 			s->setWeight(0);
@@ -1799,6 +1927,11 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 			{
 				_lastSignature = this->_getSignature(_workingMem.rbegin()->first);
 			}
+		}
+
+		if(_lastGlobalLoopClosureId == s->id())
+		{
+			_lastGlobalLoopClosureId = 0;
 		}
 
 		if(	(_notLinkedNodesKeptInDb || keepLinkedToGraph) &&
@@ -1959,7 +2092,9 @@ void Memory::removeLink(int oldId, int newId)
 			bool noChildrenAnymore = true;
 			for(std::map<int, Link>::const_iterator iter=newS->getLinks().begin(); iter!=newS->getLinks().end(); ++iter)
 			{
-				if(iter->second.type() > Link::kNeighbor && iter->first < newS->id())
+				if(iter->second.type() != Link::kNeighbor &&
+				   iter->second.type() != Link::kNeighborMerged &&
+				   iter->first < newS->id())
 				{
 					noChildrenAnymore = false;
 					break;
@@ -2554,7 +2689,11 @@ Transform Memory::computeIcpTransform(
 						  fabs(ipitch) > _icpMaxRotation ||
 						  fabs(iyaw) > _icpMaxRotation)))
 					{
-						msg = uFormat("Cannot compute transform (ICP correction too large)");
+						msg = uFormat("Cannot compute transform (ICP correction too large -> %f m %f rad, limits=%f m, %f rad)",
+								uMax3(fabs(ix), fabs(iy), fabs(iz)),
+								uMax3(fabs(iroll), fabs(ipitch), fabs(iyaw)),
+								_icpMaxTranslation,
+								_icpMaxRotation);
 						UINFO(msg.c_str());
 					}
 					else
@@ -2888,23 +3027,28 @@ bool Memory::addLink(const Link & link)
 			if(link.type()!=Link::kVirtualClosure)
 			{
 				_linksChanged = true;
-			}
 
-			if(link.type() == Link::kGlobalClosure)
-			{
-				_lastGlobalLoopClosureId = fromS->id()>toS->id()?fromS->id():toS->id();
+				// update weight
+				// ignore scan matching loop closures
+				if(link.type() != Link::kLocalSpaceClosure ||
+				   link.userDataCompressed().empty())
+				{
+					_lastGlobalLoopClosureId = fromS->id()>toS->id()?fromS->id():toS->id();
 
-				// update weights only if the memory is incremental
-				UASSERT(fromS->getWeight() >= 0 && toS->getWeight() >=0);
-				if(fromS->id() > toS->id())
-				{
-					fromS->setWeight(fromS->getWeight() + toS->getWeight());
-					toS->setWeight(0);
-				}
-				else
-				{
-					toS->setWeight(toS->getWeight() + fromS->getWeight());
-					fromS->setWeight(0);
+					// update weights only if the memory is incremental
+					// When reducing the graph, transfer weight to the oldest signature
+					UASSERT(fromS->getWeight() >= 0 && toS->getWeight() >=0);
+					if((_reduceGraph && fromS->id() < toS->id()) ||
+					   (!_reduceGraph && fromS->id() > toS->id()))
+					{
+						fromS->setWeight(fromS->getWeight() + toS->getWeight());
+						toS->setWeight(0);
+					}
+					else
+					{
+						toS->setWeight(toS->getWeight() + fromS->getWeight());
+						fromS->setWeight(0);
+					}
 				}
 			}
 		}
@@ -3101,7 +3245,8 @@ void Memory::dumpMemoryTree(const char * fileNameTree) const
 					iter!=i->second->getLinks().end();
 					++iter)
 			{
-				if(iter->second.type() > Link::kNeighbor)
+				if(iter->second.type() != Link::kNeighbor &&
+			       iter->second.type() != Link::kNeighborMerged)
 				{
 					if(iter->first < i->first)
 					{
@@ -3199,7 +3344,9 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 	if(oldS && newS && _incrementalMemory)
 	{
 		std::map<int, Link>::const_iterator iter = oldS->getLinks().find(newS->id());
-		if(iter != oldS->getLinks().end() && iter->second.type() > Link::kNeighbor)
+		if(iter != oldS->getLinks().end() &&
+		   iter->second.type() != Link::kNeighbor &&
+		   iter->second.type() != Link::kNeighborMerged)
 		{
 			// do nothing, already merged
 			UWARN("already merged, old=%d, new=%d", oldId, newId);
@@ -3608,8 +3755,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			data.imageRaw().type() == CV_8UC3);
 	UASSERT_MSG(data.depthOrRightRaw().empty() ||
 			(  (data.depthOrRightRaw().type() == CV_16UC1 || data.depthOrRightRaw().type() == CV_32FC1 || data.depthOrRightRaw().type() == CV_8UC1) &&
-				data.depthOrRightRaw().rows == data.imageRaw().rows &&
-				data.depthOrRightRaw().cols == data.imageRaw().cols),
+				((data.imageRaw().empty() && data.depthOrRightRaw().type() != CV_8UC1) || (data.depthOrRightRaw().rows == data.imageRaw().rows && data.depthOrRightRaw().cols == data.imageRaw().cols))),
 				uFormat("image=(%d/%d) depth=(%d/%d, type=%d [accepted=%d,%d,%d])",
 						data.imageRaw().cols,
 						data.imageRaw().rows,
@@ -3912,7 +4058,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		descriptors = data.descriptors().clone();
 
 		// filter by depth
-		if(!data.depthOrRightRaw().empty() && data.stereoCameraModel().isValid())
+		if(!data.depthOrRightRaw().empty() && !data.imageRaw().empty() && data.stereoCameraModel().isValid())
 		{
 			//stereo
 			cv::Mat imageMono;
@@ -4104,6 +4250,12 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	Signature * s;
 	if(this->isBinDataKept())
 	{
+		UDEBUG("Bin data kept: rgb=%d, depth=%d, scan=%d, userData=%d",
+				image.empty()?0:1,
+				depthOrRightImage.empty()?0:1,
+				laserScan.empty()?0:1,
+				data.userDataRaw().empty()?0:1);
+
 		std::vector<unsigned char> imageBytes;
 		std::vector<unsigned char> depthBytes;
 
@@ -4398,7 +4550,7 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 	{
 		idsLoaded.push_back((*i)->id());
 		//append to working memory
-		this->addSignatureToWm(*i);
+		this->addSignatureToWmFromLTM(*i);
 	}
 	this->enableWordsRef(idsLoaded);
 	UDEBUG("time = %fs", timer.ticks());
@@ -4427,14 +4579,16 @@ void Memory::getMetricConstraints(
 	{
 		if(uContains(poses, *iter))
 		{
-			std::map<int, Link> neighbors = this->getNeighborLinks(*iter, lookInDatabase); // only direct neighbors
-			for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
+			std::map<int, Link> tmpLinks = getLinks(*iter, lookInDatabase);
+			for(std::map<int, Link>::iterator jter=tmpLinks.begin(); jter!=tmpLinks.end(); ++jter)
 			{
 				if(	jter->second.isValid() &&
 					uContains(poses, jter->first) &&
 					graph::findLink(links, *iter, jter->first) == links.end())
 				{
-					if(!lookInDatabase)
+					if(!lookInDatabase &&
+					   (jter->second.type() == Link::kNeighbor ||
+					    jter->second.type() == Link::kNeighborMerged))
 					{
 						Link link = jter->second;
 						const Signature * s = this->getSignature(jter->first);
@@ -4469,17 +4623,6 @@ void Memory::getMetricConstraints(
 					{
 						links.insert(std::make_pair(*iter, jter->second));
 					}
-				}
-			}
-
-			std::map<int, Link> loops = this->getLoopClosureLinks(*iter, lookInDatabase);
-			for(std::map<int, Link>::iterator jter=loops.begin(); jter!=loops.end(); ++jter)
-			{
-				if( jter->second.isValid() && // null transform means a rehearsed location
-					jter->first < *iter && // Loop parent to child
-					uContains(poses, jter->first))
-				{
-					links.insert(std::make_pair(*iter, jter->second));
 				}
 			}
 		}

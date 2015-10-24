@@ -505,6 +505,7 @@ Transform OdometryOpticalFlow::computeTransform(
 								data.cameraModels()[0].fy(),
 								true);
 						if(pcl::isFinite(pt) &&
+							pt.z > 0 &&
 							(this->getMaxDepth() == 0.0f || pt.z < this->getMaxDepth()))
 						{
 							newCorners3D->at(oi) = util3d::transformPoint(pt, data.cameraModels()[0].localTransform());

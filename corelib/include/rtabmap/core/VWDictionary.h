@@ -46,7 +46,13 @@ class FlannIndex;
 class RTABMAP_EXP VWDictionary
 {
 public:
-	enum NNStrategy{kNNFlannNaive, kNNFlannKdTree, kNNFlannLSH, kNNBruteForce, kNNBruteForceGPU, kNNUndef};
+	enum NNStrategy{
+		kNNFlannNaive,
+		kNNFlannKdTree,
+		kNNFlannLSH,
+		kNNBruteForce,
+		kNNBruteForceGPU,
+		kNNUndef};
 	static const int ID_START;
 	static const int ID_INVALID;
 
@@ -79,6 +85,7 @@ public:
 	unsigned int getIndexMemoryUsed() const;
 	void setNNStrategy(NNStrategy strategy);
 	bool isIncremental() const {return _incrementalDictionary;}
+	bool isIncrementalFlann() const {return _incrementalFlann;}
 	void setIncrementalDictionary();
 	void setFixedDictionary(const std::string & dictionaryPath);
 

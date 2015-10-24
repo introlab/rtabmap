@@ -58,6 +58,7 @@ signals:
 
 private slots:
 	void flushConsole();
+	void updateTextEditBufferSize();
 
 protected:
 	virtual void handleEvent(UEvent * anEvent);

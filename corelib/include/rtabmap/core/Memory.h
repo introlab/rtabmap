@@ -77,7 +77,7 @@ public:
 			bool postInitClosingEvents = false);
 	std::map<int, float> computeLikelihood(const Signature * signature,
 			const std::list<int> & ids);
-	int incrementMapId();
+	int incrementMapId(std::map<int, int> * reducedIds = 0);
 	void updateAge(int signatureId);
 
 	std::list<int> forget(const std::set<int> & ignoredIds = std::set<int>());
@@ -155,6 +155,7 @@ public:
 	bool isIDsGenerated() const {return _generateIds;}
 	int getLastGlobalLoopClosureId() const {return _lastGlobalLoopClosureId;}
 	const Feature2D * getFeature2D() const {return _feature2D;}
+	bool isGraphReduced() const {return _reduceGraph;}
 
 	void setRoi(const std::string & roi);
 
@@ -197,7 +198,8 @@ private:
 	void clear();
 	void moveToTrash(Signature * s, bool keepLinkedToGraph = true, std::list<int> * deletedWords = 0);
 
-	void addSignatureToWm(Signature * signature);
+	void moveSignatureToWMFromSTM(int id, int * reducedTo = 0);
+	void addSignatureToWmFromLTM(Signature * signature);
 	Signature * _getSignature(int id) const;
 	std::list<Signature *> getRemovableSignatures(int count,
 			const std::set<int> & ignoredIds = std::set<int>());
@@ -231,6 +233,7 @@ private:
 	bool _saveDepth16Format;
 	bool _notLinkedNodesKeptInDb;
 	bool _incrementalMemory;
+	bool _reduceGraph;
 	int _maxStMemSize;
 	float _recentWmRatio;
 	bool _transferSortingByWeightId;

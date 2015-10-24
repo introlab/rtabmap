@@ -33,9 +33,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QTextCursor>
 #include <QtCore/QTimer>
 
-#define OLD_TIME 1000 //ms
-#define MAXIMUM_ITEMS 100
-
 namespace rtabmap {
 
 ConsoleWidget::ConsoleWidget(QWidget * parent) :
@@ -44,7 +41,7 @@ ConsoleWidget::ConsoleWidget(QWidget * parent) :
 	_ui = new Ui_consoleWidget();
 	_ui->setupUi(this);
 	UEventsManager::addHandler(this);
-	_ui->textEdit->document()->setMaximumBlockCount(MAXIMUM_ITEMS);
+	_ui->textEdit->document()->setMaximumBlockCount(_ui->spinBox_lines->value());
 	_textCursor = new QTextCursor(_ui->textEdit->document());
 	_ui->textEdit->setFontPointSize(10);
 	QPalette p(_ui->textEdit->palette());
@@ -55,6 +52,7 @@ ConsoleWidget::ConsoleWidget(QWidget * parent) :
 	_time.start();
 	_timer.setSingleShot(true);
 	connect(_ui->pushButton_clear, SIGNAL(clicked()), _ui->textEdit, SLOT(clear()));
+	connect(_ui->spinBox_lines, SIGNAL(valueChanged(int)), this, SLOT(updateTextEditBufferSize()));
 	connect(this, SIGNAL(msgReceived(const QString &, int)), this, SLOT(appendMsg(const QString &, int)));
 	connect(&_timer, SIGNAL(timeout()), this, SLOT(flushConsole()));
 }
@@ -72,13 +70,13 @@ void ConsoleWidget::handleEvent(UEvent * anEvent)
 		ULogEvent * logEvent = (ULogEvent*)anEvent;
 		_msgListMutex.lock();
 		_msgList.append(QPair<QString, int>(logEvent->getMsg().c_str(), logEvent->getCode()));
-		if(_msgList.size()>MAXIMUM_ITEMS)
+		while(_ui->spinBox_lines->value()>0 && _msgList.size()>_ui->spinBox_lines->value())
 		{
 			_msgList.pop_front();
 		}
 		_msgListMutex.unlock();
 
-		if(_time.restart() < OLD_TIME)
+		if(_ui->spinBox_time->value()>0 && _time.restart() < _ui->spinBox_time->value())
 		{
 			if(logEvent->getCode() == ULogger::kFatal)
 			{
@@ -86,7 +84,7 @@ void ConsoleWidget::handleEvent(UEvent * anEvent)
 			}
 			else
 			{
-				QMetaObject::invokeMethod(&_timer, "start", Q_ARG(int, OLD_TIME));
+				QMetaObject::invokeMethod(&_timer, "start", Q_ARG(int, _ui->spinBox_time->value()));
 			}
 		}
 		else
@@ -151,6 +149,11 @@ void ConsoleWidget::flushConsole()
 	QTextCursor cursor = _ui->textEdit->textCursor();
 	cursor.movePosition(QTextCursor::End, QTextCursor::MoveAnchor);
 	_ui->textEdit->setTextCursor(cursor);
+}
+
+void ConsoleWidget::updateTextEditBufferSize()
+{
+	_ui->textEdit->document()->setMaximumBlockCount(_ui->spinBox_lines->value());
 }
 
 }

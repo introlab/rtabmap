@@ -98,6 +98,15 @@ public:
 	bool isConnected() const;
 	long getMemoryUsed() const; // In bytes
 	std::string getDatabaseVersion() const;
+	long getImagesMemoryUsed() const;
+	long getDepthImagesMemoryUsed() const;
+	long getLaserScansMemoryUsed() const;
+	long getUserDataMemoryUsed() const;
+	long getWordsMemoryUsed() const;
+	int getLastNodesSize() const; // working memory
+	int getLastDictionarySize() const; // working memory
+	int getTotalNodesSize() const;
+	int getTotalDictionarySize() const;
 
 	void executeNoResult(const std::string & sql) const;
 
@@ -130,6 +139,15 @@ private:
 	virtual bool isConnectedQuery() const = 0;
 	virtual long getMemoryUsedQuery() const = 0; // In bytes
 	virtual bool getDatabaseVersionQuery(std::string & version) const = 0;
+	virtual long getImagesMemoryUsedQuery() const = 0;
+	virtual long getDepthImagesMemoryUsedQuery() const = 0;
+	virtual long getLaserScansMemoryUsedQuery() const = 0;
+	virtual long getUserDataMemoryUsedQuery() const = 0;
+	virtual long getWordsMemoryUsedQuery() const = 0;
+	virtual int getLastNodesSizeQuery() const = 0;
+	virtual int getLastDictionarySizeQuery() const = 0;
+	virtual int getTotalNodesSizeQuery() const = 0;
+	virtual int getTotalDictionarySizeQuery() const = 0;
 
 	virtual void executeNoResultQuery(const std::string & sql) const = 0;
 

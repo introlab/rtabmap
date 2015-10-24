@@ -257,10 +257,18 @@ void RtabmapThread::mainLoop()
 		if(id == 0 && !parameters.at("label").empty() && _rtabmap->getMemory())
 		{
 			id = _rtabmap->getMemory()->getSignatureIdByLabel(parameters.at("label"));
+			if(id <= 0)
+			{
+				UERROR("Failed to find a node with label \"%s\".", parameters.at("label").c_str());
+			}
 		}
-		if(id <= 0 || !_rtabmap->computePath(id, true))
+		else if(id < 0)
 		{
-			UERROR("Failed to set a goal to location=%d.", id);
+			UERROR("Failed to set a goal. ID (%d) should be positive > 0", id);
+		}
+		if(id > 0 && !_rtabmap->computePath(id, true))
+		{
+			UERROR("Failed to compute a path to goal %d.", id);
 		}
 		this->post(new RtabmapGlobalPathEvent(id, parameters.at("label"), _rtabmap->getPath()));
 		break;

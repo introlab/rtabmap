@@ -240,7 +240,9 @@ void Optimizer::getConnectedGraph(
 	std::multimap<int, int> biLinks;
 	for(std::multimap<int, Link>::const_iterator iter=linksIn.begin(); iter!=linksIn.end(); ++iter)
 	{
-		UASSERT_MSG(findLink(biLinks, iter->second.from(), iter->second.to()) == biLinks.end(), "Input links should be unique between two poses.");
+		UASSERT_MSG(findLink(biLinks, iter->second.from(), iter->second.to()) == biLinks.end(),
+				uFormat("Input links should be unique between two poses (%d->%d).",
+						iter->second.from(), iter->second.to()).c_str());
 		biLinks.insert(std::make_pair(iter->second.from(), iter->second.to()));
 		biLinks.insert(std::make_pair(iter->second.to(), iter->second.from()));
 	}
@@ -396,12 +398,14 @@ std::map<int, Transform> TOROOptimizer::optimize(
 				}
 			}
 		}
-		UDEBUG("buildMST...");
+		UDEBUG("buildMST... root=%d", rootId);
 		UASSERT(uContains(poses, rootId));
 		if(isSlam2d())
 		{
 			pg2.buildMST(rootId); // pg.buildSimpleTree();
+			UDEBUG("initializeOnTree()");
 			pg2.initializeOnTree();
+			UDEBUG("initializeTreeParameters()");
 			pg2.initializeTreeParameters();
 			UDEBUG("Building TORO tree... (if a crash happens just after this msg, "
 				   "TORO is not able to find the root of the graph!)");
@@ -410,7 +414,9 @@ std::map<int, Transform> TOROOptimizer::optimize(
 		else
 		{
 			pg3.buildMST(rootId); // pg.buildSimpleTree();
+			UDEBUG("initializeOnTree()");
 			pg3.initializeOnTree();
+			UDEBUG("initializeTreeParameters()");
 			pg3.initializeTreeParameters();
 			UDEBUG("Building TORO tree... (if a crash happens just after this msg, "
 				   "TORO is not able to find the root of the graph!)");
@@ -799,7 +805,9 @@ std::map<int, Transform> G2OOptimizer::optimize(
 			g2o::HyperGraph::Edge * edge = 0;
 
 			VertexSwitchLinear * v = 0;
-			if(this->isRobust() && iter->second.type() != Link::kNeighbor)
+			if(this->isRobust() &&
+			   iter->second.type() != Link::kNeighbor &&
+			   iter->second.type() != Link::kNeighborMerged)
 			{
 				// For loop closure links, add switchable edges
 
@@ -840,7 +848,9 @@ std::map<int, Transform> G2OOptimizer::optimize(
 					information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
 				}
 
-				if(this->isRobust() && iter->second.type() != Link::kNeighbor)
+				if(this->isRobust() &&
+				   iter->second.type() != Link::kNeighbor  &&
+				   iter->second.type() != Link::kNeighborMerged)
 				{
 					EdgeSE2Switchable * e = new EdgeSE2Switchable();
 					g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
@@ -881,7 +891,9 @@ std::map<int, Transform> G2OOptimizer::optimize(
 				constraint = a.rotation();
 				constraint.translation() = a.translation();
 
-				if(this->isRobust() && iter->second.type() != Link::kNeighbor)
+				if(this->isRobust() &&
+				   iter->second.type() != Link::kNeighbor &&
+				   iter->second.type() != Link::kNeighborMerged)
 				{
 					EdgeSE3Switchable * e = new EdgeSE3Switchable();
 					g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
@@ -1079,7 +1091,9 @@ bool G2OOptimizer::saveGraph(
 			std::string prefix = "EDGE_SE3:QUAT";
 			std::string suffix = "";
 
-			if(useRobustConstraints && iter->second.type() != Link::kNeighbor)
+			if(useRobustConstraints &&
+			   iter->second.type() != Link::kNeighbor &&
+			   iter->second.type() != Link::kNeighborMerged)
 			{
 				prefix = "EDGE_SE3_SWITCHABLE";
 				fprintf(file, "VERTEX_SWITCH %d 1\n", virtualVertexId);
@@ -1196,7 +1210,9 @@ std::map<int, Transform> GTSAMOptimizer::optimize(
 
 			UASSERT(!iter->second.transform().isNull());
 
-			if(this->isRobust() && iter->second.type()!=Link::kNeighbor)
+			if(this->isRobust() &&
+			   iter->second.type()!=Link::kNeighbor &&
+			   iter->second.type() != Link::kNeighborMerged)
 			{
 				// create new switch variable
 				// Sunderhauf IROS 2012:
@@ -1233,7 +1249,9 @@ std::map<int, Transform> GTSAMOptimizer::optimize(
 				}
 				gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
 
-				if(this->isRobust() && iter->second.type()!=Link::kNeighbor)
+				if(this->isRobust() &&
+				   iter->second.type()!=Link::kNeighbor &&
+				   iter->second.type() != Link::kNeighborMerged)
 				{
 					// create switchable edge factor
 					graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose2>(id1, id2, gtsam::Symbol('s', switchCounter++), gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
@@ -1255,7 +1273,9 @@ std::map<int, Transform> GTSAMOptimizer::optimize(
 
 				gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
 
-				if(this->isRobust() && iter->second.type()!=Link::kNeighbor)
+				if(this->isRobust() &&
+				   iter->second.type()!=Link::kNeighbor &&
+				   iter->second.type() != Link::kNeighborMerged)
 				{
 					// create switchable edge factor
 					graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose3>(id1, id2, gtsam::Symbol('s', switchCounter++), gtsam::Pose3(iter->second.transform().toEigen4d()), model));
@@ -1683,7 +1703,8 @@ bool exportPoses(
 std::multimap<int, Link>::iterator findLink(
 		std::multimap<int, Link> & links,
 		int from,
-		int to)
+		int to,
+		bool checkBothWays)
 {
 	std::multimap<int, Link>::iterator iter = links.find(from);
 	while(iter != links.end() && iter->first == from)
@@ -1695,15 +1716,18 @@ std::multimap<int, Link>::iterator findLink(
 		++iter;
 	}
 
-	// let's try to -> from
-	iter = links.find(to);
-	while(iter != links.end() && iter->first == to)
+	if(checkBothWays)
 	{
-		if(iter->second.to() == from)
+		// let's try to -> from
+		iter = links.find(to);
+		while(iter != links.end() && iter->first == to)
 		{
-			return iter;
+			if(iter->second.to() == from)
+			{
+				return iter;
+			}
+			++iter;
 		}
-		++iter;
 	}
 	return links.end();
 }
@@ -1711,7 +1735,8 @@ std::multimap<int, Link>::iterator findLink(
 std::multimap<int, int>::iterator findLink(
 		std::multimap<int, int> & links,
 		int from,
-		int to)
+		int to,
+		bool checkBothWays)
 {
 	std::multimap<int, int>::iterator iter = links.find(from);
 	while(iter != links.end() && iter->first == from)
@@ -1723,22 +1748,26 @@ std::multimap<int, int>::iterator findLink(
 		++iter;
 	}
 
-	// let's try to -> from
-	iter = links.find(to);
-	while(iter != links.end() && iter->first == to)
+	if(checkBothWays)
 	{
-		if(iter->second == from)
+		// let's try to -> from
+		iter = links.find(to);
+		while(iter != links.end() && iter->first == to)
 		{
-			return iter;
+			if(iter->second == from)
+			{
+				return iter;
+			}
+			++iter;
 		}
-		++iter;
 	}
 	return links.end();
 }
 std::multimap<int, Link>::const_iterator findLink(
 		const std::multimap<int, Link> & links,
 		int from,
-		int to)
+		int to,
+		bool checkBothWays)
 {
 	std::multimap<int, Link>::const_iterator iter = links.find(from);
 	while(iter != links.end() && iter->first == from)
@@ -1750,15 +1779,18 @@ std::multimap<int, Link>::const_iterator findLink(
 		++iter;
 	}
 
-	// let's try to -> from
-	iter = links.find(to);
-	while(iter != links.end() && iter->first == to)
+	if(checkBothWays)
 	{
-		if(iter->second.to() == from)
+		// let's try to -> from
+		iter = links.find(to);
+		while(iter != links.end() && iter->first == to)
 		{
-			return iter;
+			if(iter->second.to() == from)
+			{
+				return iter;
+			}
+			++iter;
 		}
-		++iter;
 	}
 	return links.end();
 }
@@ -1766,7 +1798,8 @@ std::multimap<int, Link>::const_iterator findLink(
 std::multimap<int, int>::const_iterator findLink(
 		const std::multimap<int, int> & links,
 		int from,
-		int to)
+		int to,
+		bool checkBothWays)
 {
 	std::multimap<int, int>::const_iterator iter = links.find(from);
 	while(iter != links.end() && iter->first == from)
@@ -1778,15 +1811,18 @@ std::multimap<int, int>::const_iterator findLink(
 		++iter;
 	}
 
-	// let's try to -> from
-	iter = links.find(to);
-	while(iter != links.end() && iter->first == to)
+	if(checkBothWays)
 	{
-		if(iter->second == from)
+		// let's try to -> from
+		iter = links.find(to);
+		while(iter != links.end() && iter->first == to)
 		{
-			return iter;
+			if(iter->second == from)
+			{
+				return iter;
+			}
+			++iter;
 		}
-		++iter;
 	}
 	return links.end();
 }
@@ -1955,6 +1991,192 @@ std::multimap<int, int> radiusPosesClustering(const std::map<int, Transform> & p
 	return clusters;
 }
 
+void reduceGraph(
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		std::multimap<int, int> & hyperNodes, //<parent ID, child ID>
+		std::multimap<int, Link> & hyperLinks)
+{
+	UINFO("Input: poses=%d links=%d", (int)poses.size(), (int)links.size());
+	UTimer timer;
+	std::map<int, int> posesToHyperNodes;
+	std::map<int, std::multimap<int, Link> > clusterloopClosureLinks;
+
+	{
+		std::multimap<int, Link> bidirectionalLoopClosureLinks;
+		for(std::multimap<int, Link>::const_iterator jter=links.begin(); jter!=links.end(); ++jter)
+		{
+			if(jter->second.type() != Link::kNeighbor &&
+			   jter->second.type() != Link::kNeighborMerged &&
+			   jter->second.userDataCompressed().empty())
+			{
+				if(uContains(poses, jter->second.from()) &&
+				   uContains(poses, jter->second.to()))
+				{
+					UASSERT_MSG(graph::findLink(links, jter->second.to(), jter->second.from(), false) == links.end(), "Input links should be unique!");
+					bidirectionalLoopClosureLinks.insert(std::make_pair(jter->second.from(), jter->second));
+					//bidirectionalLoopClosureLinks.insert(std::make_pair(jter->second.to(), jter->second.inverse()));
+				}
+			}
+		}
+
+		UINFO("Clustering hyper nodes...");
+		// largest ID to smallest ID
+		for(std::map<int, Transform>::const_reverse_iterator iter=poses.rbegin(); iter!=poses.rend(); ++iter)
+		{
+			if(posesToHyperNodes.find(iter->first) == posesToHyperNodes.end())
+			{
+				int hyperNodeId = iter->first;
+				std::list<int> loopClosures;
+				std::set<int> loopClosuresAdded;
+				loopClosures.push_back(iter->first);
+				std::multimap<int, Link> clusterLinks;
+				while(loopClosures.size())
+				{
+					int id = loopClosures.front();
+					loopClosures.pop_front();
+
+					UASSERT(posesToHyperNodes.find(id) == posesToHyperNodes.end());
+
+					posesToHyperNodes.insert(std::make_pair(id, hyperNodeId));
+					hyperNodes.insert(std::make_pair(hyperNodeId, id));
+
+					for(std::multimap<int, Link>::const_iterator jter=bidirectionalLoopClosureLinks.find(id); jter!=bidirectionalLoopClosureLinks.end() && jter->first==id; ++jter)
+					{
+						if(posesToHyperNodes.find(jter->second.to()) == posesToHyperNodes.end() &&
+						   loopClosuresAdded.find(jter->second.to()) == loopClosuresAdded.end())
+						{
+							loopClosures.push_back(jter->second.to());
+							loopClosuresAdded.insert(jter->second.to());
+							clusterLinks.insert(*jter);
+							clusterLinks.insert(std::make_pair(jter->second.to(), jter->second.inverse()));
+							if(jter->second.from() < jter->second.to())
+							{
+								UWARN("Child to Parent link? %d->%d (type=%d)",
+										jter->second.from(),
+										jter->second.to(),
+										jter->second.type());
+							}
+						}
+					}
+				}
+				UASSERT(clusterloopClosureLinks.find(hyperNodeId) == clusterloopClosureLinks.end());
+				clusterloopClosureLinks.insert(std::make_pair(hyperNodeId, clusterLinks));
+				UDEBUG("Created hyper node %d with %d children (%f%%)",
+						hyperNodeId, (int)loopClosuresAdded.size(), float(posesToHyperNodes.size())/float(poses.size())*100.0f);
+			}
+		}
+		UINFO("Clustering hyper nodes... done! (%f s)", timer.ticks());
+	}
+
+	UINFO("Creating hyper links...");
+	int i=0;
+	for(std::multimap<int, Link>::const_reverse_iterator jter=links.rbegin(); jter!=links.rend(); ++jter)
+	{
+		if((jter->second.type() == Link::kNeighbor ||
+		   jter->second.type() == Link::kNeighborMerged ||
+		   !jter->second.userDataCompressed().empty()) &&
+		   uContains(poses, jter->second.from()) &&
+		   uContains(poses, jter->second.to()))
+		{
+			UASSERT_MSG(uContains(posesToHyperNodes, jter->second.from()), uFormat("%d->%d (type=%d)", jter->second.from(), jter->second.to(), jter->second.type()).c_str());
+			UASSERT_MSG(uContains(posesToHyperNodes, jter->second.to()), uFormat("%d->%d (type=%d)", jter->second.from(), jter->second.to(), jter->second.type()).c_str());
+			int hyperNodeIDFrom = posesToHyperNodes.at(jter->second.from());
+			int hyperNodeIDTo = posesToHyperNodes.at(jter->second.to());
+
+			// ignore links inside a hyper node
+			if(hyperNodeIDFrom != hyperNodeIDTo)
+			{
+				std::multimap<int, Link>::iterator tmpIter = graph::findLink(hyperLinks, hyperNodeIDFrom, hyperNodeIDTo);
+				if(tmpIter!=hyperLinks.end() &&
+					hyperNodeIDFrom == jter->second.from() &&
+					hyperNodeIDTo == jter->second.to() &&
+					tmpIter->second.type() > Link::kNeighbor &&
+					jter->second.type() == Link::kNeighbor)
+				{
+					// neighbor links have priority, so remove the previously added link
+					hyperLinks.erase(tmpIter);
+				}
+
+				// only add unique link between two hyper nodes (keeping only the more recent)
+				if(graph::findLink(hyperLinks, hyperNodeIDFrom, hyperNodeIDTo) == hyperLinks.end())
+				{
+					UASSERT(clusterloopClosureLinks.find(hyperNodeIDFrom) != clusterloopClosureLinks.end());
+					UASSERT(clusterloopClosureLinks.find(hyperNodeIDTo) != clusterloopClosureLinks.end());
+					std::multimap<int, Link> tmpLinks = clusterloopClosureLinks.at(hyperNodeIDFrom);
+					tmpLinks.insert(clusterloopClosureLinks.at(hyperNodeIDTo).begin(), clusterloopClosureLinks.at(hyperNodeIDTo).end());
+					tmpLinks.insert(std::make_pair(jter->second.from(), jter->second));
+
+					std::list<int> path = computePath(tmpLinks, hyperNodeIDFrom, hyperNodeIDTo, false, true);
+					UASSERT_MSG(path.size()>1,
+							uFormat("path.size()=%d, hyperNodeIDFrom=%d, hyperNodeIDTo=%d",
+									(int)path.size(),
+									hyperNodeIDFrom,
+									hyperNodeIDTo).c_str());
+
+					if(path.size() > 10)
+					{
+						UWARN("Large path! %d nodes", (int)path.size());
+						std::stringstream stream;
+						for(std::list<int>::const_iterator iter=path.begin(); iter!=path.end();++iter)
+						{
+							if(iter!=path.begin())
+							{
+								stream << ",";
+							}
+
+							stream << *iter;
+						}
+						UWARN("Path = [%s]", stream.str().c_str());
+					}
+
+					// create the hyperlink
+					std::list<int>::iterator iter=path.begin();
+					int from = *iter;
+					++iter;
+					int to = *iter;
+					std::multimap<int, Link>::const_iterator foundIter = graph::findLink(tmpLinks, from, to, false);
+					UASSERT(foundIter != tmpLinks.end());
+					Link hyperLink = foundIter->second;
+					++iter;
+					from = to;
+					for(; iter!=path.end(); ++iter)
+					{
+						to = *iter;
+						std::multimap<int, Link>::const_iterator foundIter = graph::findLink(tmpLinks, from, to, false);
+						UASSERT(foundIter != tmpLinks.end());
+						hyperLink = hyperLink.merge(foundIter->second, jter->second.type());
+
+						from = to;
+					}
+
+					UASSERT(hyperLink.from() == hyperNodeIDFrom);
+					UASSERT(hyperLink.to() == hyperNodeIDTo);
+					hyperLinks.insert(std::make_pair(hyperNodeIDFrom, hyperLink));
+
+					UDEBUG("Created hyper link %d->%d (%f%%)",
+							hyperLink.from(), hyperLink.to(), float(i)/float(links.size())*100.0f);
+					if(hyperLink.transform().getNorm() > jter->second.transform().getNorm()+1)
+					{
+						UWARN("Large hyper link %d->%d (%f m)! original %d->%d (%f m)",
+								hyperLink.from(),
+								hyperLink.to(),
+								hyperLink.transform().getNorm(),
+								jter->second.from(),
+								jter->second.to(),
+								jter->second.transform().getNorm());
+
+					}
+				}
+			}
+		}
+		++i;
+	}
+	UINFO("Creating hyper links... done! (%f s)", timer.ticks());
+
+	UINFO("Output: poses=%d links=%d", (int)uUniqueKeys(hyperNodes).size(), (int)links.size());
+}
+
 
 class Node
 {
@@ -2005,6 +2227,7 @@ struct Order
     }
 };
 
+// A*
 std::list<std::pair<int, Transform> > computePath(
 			const std::map<int, rtabmap::Transform> & poses,
 			const std::multimap<int, int> & links,
@@ -2014,7 +2237,6 @@ std::list<std::pair<int, Transform> > computePath(
 {
 	std::list<std::pair<int, Transform> > path;
 
-	//A*
 	int startNode = from;
 	int endNode = to;
 	rtabmap::Transform endPose = poses.at(endNode);
@@ -2076,6 +2298,7 @@ std::list<std::pair<int, Transform> > computePath(
 					Node n(iter->second, currentNode->id(), poseIter->second);
 					n.setCostSoFar(currentNode->costSoFar() + currentNode->distFrom(poseIter->second));
 					n.setDistToEnd(n.distFrom(endPose));
+
 					nodes.insert(std::make_pair(iter->second, n));
 					if(updateNewCosts)
 					{
@@ -2090,6 +2313,107 @@ std::list<std::pair<int, Transform> > computePath(
 			else if(updateNewCosts && nodeIter->second.isOpened())
 			{
 				float newCostSoFar = currentNode->costSoFar() + currentNode->distFrom(nodeIter->second.pose());
+				if(nodeIter->second.costSoFar() > newCostSoFar)
+				{
+					// update the cost in the priority queue
+					for(std::multimap<float, int>::iterator mapIter=pqmap.begin(); mapIter!=pqmap.end(); ++mapIter)
+					{
+						if(mapIter->second == nodeIter->first)
+						{
+							pqmap.erase(mapIter);
+							nodeIter->second.setCostSoFar(newCostSoFar);
+							pqmap.insert(std::make_pair(nodeIter->second.totalCost(), nodeIter->first));
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+	return path;
+}
+
+// Dijksta
+std::list<int> RTABMAP_EXP computePath(
+			const std::multimap<int, Link> & links,
+			int from,
+			int to,
+			bool updateNewCosts,
+			bool useSameCostForAllLinks)
+{
+	std::list<int> path;
+
+	int startNode = from;
+	int endNode = to;
+	std::map<int, Node> nodes;
+	nodes.insert(std::make_pair(startNode, Node(startNode, 0, Transform())));
+	std::priority_queue<Pair, std::vector<Pair>, Order> pq;
+	std::multimap<float, int> pqmap;
+	if(updateNewCosts)
+	{
+		pqmap.insert(std::make_pair(0, startNode));
+	}
+	else
+	{
+		pq.push(Pair(startNode, 0));
+	}
+
+	while((updateNewCosts && pqmap.size()) || (!updateNewCosts && pq.size()))
+	{
+		Node * currentNode;
+		if(updateNewCosts)
+		{
+			currentNode = &nodes.find(pqmap.begin()->second)->second;
+			pqmap.erase(pqmap.begin());
+		}
+		else
+		{
+			currentNode = &nodes.find(pq.top().first)->second;
+			pq.pop();
+		}
+
+		currentNode->setClosed(true);
+
+		if(currentNode->id() == endNode)
+		{
+			while(currentNode->id()!=startNode)
+			{
+				path.push_front(currentNode->id());
+				currentNode = &nodes.find(currentNode->fromId())->second;
+			}
+			path.push_front(startNode);
+			break;
+		}
+
+		// lookup neighbors
+		for(std::multimap<int, Link>::const_iterator iter = links.find(currentNode->id());
+			iter!=links.end() && iter->first == currentNode->id();
+			++iter)
+		{
+			std::map<int, Node>::iterator nodeIter = nodes.find(iter->second.to());
+			float cost = 1;
+			if(!useSameCostForAllLinks)
+			{
+				cost = iter->second.transform().getNorm();
+			}
+			if(nodeIter == nodes.end())
+			{
+				Node n(iter->second.to(), currentNode->id(), Transform());
+
+				n.setCostSoFar(currentNode->costSoFar() + cost);
+				nodes.insert(std::make_pair(iter->second.to(), n));
+				if(updateNewCosts)
+				{
+					pqmap.insert(std::make_pair(n.totalCost(), n.id()));
+				}
+				else
+				{
+					pq.push(Pair(n.id(), n.totalCost()));
+				}
+			}
+			else if(!useSameCostForAllLinks && updateNewCosts && nodeIter->second.isOpened())
+			{
+				float newCostSoFar = currentNode->costSoFar() + cost;
 				if(nodeIter->second.costSoFar() > newCostSoFar)
 				{
 					// update the cost in the priority queue
@@ -2503,7 +2827,7 @@ std::list<std::map<int, Transform> > getPaths(
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end();)
 			{
 				std::multimap<int, Link>::const_iterator jter = findLink(links, path.rbegin()->first, iter->first);
-				if(path.size() == 0 || (jter != links.end() && jter->second.type() == Link::kNeighbor))
+				if(path.size() == 0 || (jter != links.end() && (jter->second.type() == Link::kNeighbor || jter->second.type() == Link::kNeighborMerged)))
 				{
 					path.insert(*iter);
 					poses.erase(iter++);

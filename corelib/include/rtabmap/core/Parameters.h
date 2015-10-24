@@ -189,7 +189,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, SaveDepth16Format, 		bool, true, 	"Save depth image into 16 bits format to reduce memory used. Warning: values over ~65 meters are ignored (maximum 65535 millimeters).");
 	RTABMAP_PARAM(Mem, NotLinkedNodesKept, 	    bool, true, 	"Keep not linked nodes in db (rehearsed nodes and deleted nodes).");
 	RTABMAP_PARAM(Mem, STMSize, 		        unsigned int, 10, "Short-term memory size.");
-	RTABMAP_PARAM(Mem, IncrementalMemory, 	    bool, true, 	"SLAM mode, otherwise it is Localization mode.");
+	RTABMAP_PARAM(Mem, IncrementalMemory,       bool, true, 	"SLAM mode, otherwise it is Localization mode.");
+	RTABMAP_PARAM(Mem, ReduceGraph,             bool, false, 	"Reduce graph. Merge nodes when loop closures are added (ignoring those with user data set).");
 	RTABMAP_PARAM(Mem, RecentWmRatio,           float, 0.2, 	"Ratio of locations after the last loop closure in WM that cannot be transferred.");
 	RTABMAP_PARAM(Mem, TransferSortingByWeightId, bool, false,  "On transfer, signatures are sorted by weight->ID only (i.e. the oldest of the lowest weighted signatures are transferred first). If false, the signatures are sorted by weight->Age->ID (i.e. the oldest inserted in WM of the lowest weighted signatures are transferred first). Note that retrieval updates the age, not the ID.");
 	RTABMAP_PARAM(Mem, RehearsalIdUpdatedToNewOne, bool, false, "On merge, update to new id. When false, no copy.");
@@ -286,8 +287,8 @@ class RTABMAP_EXP Parameters
 	// RGB-D SLAM
 	RTABMAP_PARAM(RGBD, Enabled,                  bool, true,  "");
 	RTABMAP_PARAM(RGBD, PoseScanMatching,         bool, false, "Laser scan matching for odometry pose correction (laser scans are required).");
-	RTABMAP_PARAM(RGBD, LinearUpdate,             float, 0.0,  "Minimum linear displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
-	RTABMAP_PARAM(RGBD, AngularUpdate,            float, 0.0,  "Minimum angular displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
+	RTABMAP_PARAM(RGBD, LinearUpdate,             float, 0.1,  "Minimum linear displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
+	RTABMAP_PARAM(RGBD, AngularUpdate,            float, 0.1,  "Minimum angular displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
 	RTABMAP_PARAM(RGBD, NewMapOdomChangeDistance, float, 0,    "A new map is created if a change of odometry translation greater than X m is detected (0 m = disabled).");
 	RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd,     bool, false, "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest mode of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
 	RTABMAP_PARAM(RGBD, OptimizeMaxError,         float, 1.0,  "Reject loop closures if optimization error is greater than this value (0=disabled). This will help to detect when a wrong loop closure is added to the graph.");
@@ -303,7 +304,7 @@ class RTABMAP_EXP Parameters
 
 	// Local loop closure detection
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionTime,     bool, false, 	"Detection over all locations in STM.");
-	RTABMAP_PARAM(RGBD, LocalLoopDetectionSpace,    bool, false, 	"Detection over locations (in Working Memory or STM) near in space.");
+	RTABMAP_PARAM(RGBD, LocalLoopDetectionSpace,    bool, true, 	"Detection over locations (in Working Memory or STM) near in space.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxGraphDepth,   int, 50,      "Maximum depth from the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathFilteringRadius,   float, 0.5, "Path filtering radius.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathOdomPosesUsed,   bool, true, "When comparing to a local path, merge the scan using the odometry poses instead of the ones in the optimized local graph.");

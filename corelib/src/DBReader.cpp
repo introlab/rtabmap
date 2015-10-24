@@ -157,12 +157,13 @@ void DBReader::mainLoop()
 	OdometryEvent odom = this->getNextData();
 	if(odom.data().id())
 	{
-		int goalId = 0;
+		std::string goalId;
 		double previousStamp = odom.data().stamp();
 		if(previousStamp == 0)
 		{
 			odom.data().setStamp(UTimer::now());
 		}
+
 		if(!_goalsIgnored &&
 		   odom.data().userDataRaw().type() == CV_8SC1 &&
 		   odom.data().userDataRaw().cols >= 7 && // including null str ending
@@ -176,7 +177,7 @@ void DBReader::mainLoop()
 				std::list<std::string> strs = uSplit(goalStr, ':');
 				if(strs.size() == 2)
 				{
-					goalId = atoi(strs.rbegin()->c_str());
+					goalId = *strs.rbegin();
 					odom.data().setUserData(cv::Mat());
 				}
 			}
@@ -196,8 +197,9 @@ void DBReader::mainLoop()
 			this->post(new CameraEvent(odom.data()));
 		}
 
-		if(goalId > 0)
+		if(!goalId.empty())
 		{
+			double delay = 0.0;
 			if(!_ignoreGoalDelay && _currentId != _ids.end())
 			{
 				// get stamp for the next signature to compute the delay
@@ -210,22 +212,32 @@ void DBReader::mainLoop()
 				_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp);
 				if(previousStamp && stamp && stamp > previousStamp)
 				{
-					double delay = stamp - previousStamp;
-					UWARN("Goal %d detected, posting it! Waiting %f seconds before sending next data...",
-							goalId, delay);
-					this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, goalId));
-					uSleep(delay*1000);
+					delay = stamp - previousStamp;
 				}
-				else
-				{
-					UWARN("Goal %d detected, posting it!", goalId);
-					this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, goalId));
-				}
+			}
+
+			if(delay > 0.0)
+			{
+				UWARN("Goal \"%s\" detected, posting it! Waiting %f seconds before sending next data...",
+					   goalId.c_str(), delay);
 			}
 			else
 			{
-				UWARN("Goal %d detected, posting it!", goalId);
+				UWARN("Goal \"%s\" detected, posting it!", goalId.c_str());
+			}
+
+			if(uIsInteger(goalId))
+			{
+				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, atoi(goalId.c_str())));
+			}
+			else
+			{
 				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, goalId));
+			}
+
+			if(delay > 0.0)
+			{
+				uSleep(delay*1000);
 			}
 		}
 

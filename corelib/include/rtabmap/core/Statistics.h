@@ -154,6 +154,7 @@ public:
 	void setRawLikelihood(const std::map<int, float> & rawLikelihood) {_rawLikelihood = rawLikelihood;}
 	void setLocalPath(const std::vector<int> & localPath) {_localPath=localPath;}
 	void setCurrentGoalId(int goal) {_currentGoalId=goal;}
+	void setReducedIds(const std::map<int, int> & reducedIds) {_reducedIds = reducedIds;}
 
 	// getters
 	bool extended() const {return _extended;}
@@ -173,6 +174,7 @@ public:
 	const std::map<int, float> & rawLikelihood() const {return _rawLikelihood;}
 	const std::vector<int> & localPath() const {return _localPath;}
 	int currentGoalId() const {return _currentGoalId;}
+	const std::map<int, int> & reducedIds() const {return _reducedIds;}
 
 	const std::map<std::string, float> & data() const {return _data;}
 
@@ -197,6 +199,8 @@ private:
 
 	std::vector<int> _localPath;
 	int _currentGoalId;
+
+	std::map<int, int> _reducedIds;
 
 	// Format for statistics (Plottable statistics must go in that map) :
 	// {"Group/Name/Unit", value}
