@@ -1089,7 +1089,7 @@ void DatabaseViewer::updateIds()
 		previousPose=p;
 
 		//links
-		bool linksInserted = false;
+		bool addPose = false;
 		for(std::map<int, Link>::iterator jter=links.find(ids_[i]); jter!=links.end() && jter->first == ids_[i]; ++jter)
 		{
 			std::map<int, Link>::iterator invertedLinkIter = graph::findLink(links, jter->second.to(), jter->second.from(), false);
@@ -1110,11 +1110,14 @@ void DatabaseViewer::updateIds()
 				{
 					links_.insert(std::make_pair(ids_[i], jter->second));
 				}
-
-				linksInserted = true;
+				addPose = true;
+			}
+			else if(graph::findLink(links_, jter->second.from(), jter->second.to()) != links_.end())
+			{
+				addPose = true;
 			}
 		}
-		if(linksInserted)
+		if(addPose)
 		{
 			poses_.insert(std::make_pair(ids_[i], p));
 		}

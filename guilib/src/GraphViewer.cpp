@@ -301,9 +301,10 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 			const Transform & poseA = jterA->second;
 			const Transform & poseB = jterB->second;
 
+			QMultiMap<int, LinkItem*>::iterator itemIter = _linkItems.end();
 			if(_linkItems.contains(idFrom))
 			{
-				QMultiMap<int, LinkItem*>::iterator itemIter = _linkItems.find(iter->first);
+				itemIter = _linkItems.find(iter->first);
 				while(itemIter.key() == idFrom && itemIter != _linkItems.end())
 				{
 					if(itemIter.value()->to() == idTo)
@@ -323,79 +324,92 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				interSessionClosure = mapIds.at(jterA->first) != mapIds.at(jterB->first);
 			}
 
-			if(linkItem == 0)
+			if(poseA.getDistance(poseB) > 0.005)
 			{
-				//create a link item
-				linkItem = new LinkItem(idFrom, idTo, poseA, poseB, iter->second.type(), interSessionClosure);
-				QPen p = linkItem->pen();
-				p.setWidthF(_linkWidth);
-				linkItem->setPen(p);
-				linkItem->setZValue(10);
-				this->scene()->addItem(linkItem);
-				linkItem->setParentItem(_root);
-				_linkItems.insert(idFrom, linkItem);
+				if(linkItem == 0)
+				{
+					//create a link item
+					linkItem = new LinkItem(idFrom, idTo, poseA, poseB, iter->second.type(), interSessionClosure);
+					QPen p = linkItem->pen();
+					p.setWidthF(_linkWidth);
+					linkItem->setPen(p);
+					linkItem->setZValue(10);
+					this->scene()->addItem(linkItem);
+					linkItem->setParentItem(_root);
+					_linkItems.insert(idFrom, linkItem);
+				}
+			}
+			else if(linkItem && itemIter != _linkItems.end())
+			{
+				// erase small links
+				_linkItems.erase(itemIter);
+				delete linkItem;
+				linkItem = 0;
 			}
 
-			//update color
-			if(iter->second.type() == Link::kNeighbor)
+			if(linkItem)
 			{
-				linkItem->setColor(_neighborColor);
-			}
-			else if(iter->second.type() == Link::kVirtualClosure)
-			{
-				linkItem->setColor(_loopClosureVirtualColor);
-			}
-			else if(iter->second.type() == Link::kNeighborMerged)
-			{
-				linkItem->setColor(_neighborMergedColor);
-			}
-			else if(iter->second.type() == Link::kUserClosure)
-			{
-				linkItem->setColor(_loopClosureUserColor);
-			}
-			else if(iter->second.type() == Link::kLocalSpaceClosure || iter->second.type() == Link::kLocalTimeClosure)
-			{
-				if(_intraInterSessionColors)
+				//update color
+				if(iter->second.type() == Link::kNeighbor)
 				{
-					linkItem->setColor(interSessionClosure?_loopInterSessionColor:_loopIntraSessionColor);
-					linkItem->setZValue(interSessionClosure?8:9);
+					linkItem->setColor(_neighborColor);
 				}
-				else
+				else if(iter->second.type() == Link::kVirtualClosure)
 				{
-					linkItem->setColor(_loopClosureLocalColor);
+					linkItem->setColor(_loopClosureVirtualColor);
 				}
-			}
-			else
-			{
-				if(_intraInterSessionColors)
+				else if(iter->second.type() == Link::kNeighborMerged)
 				{
-					linkItem->setColor(interSessionClosure?_loopInterSessionColor:_loopIntraSessionColor);
-					linkItem->setZValue(interSessionClosure?8:9);
+					linkItem->setColor(_neighborMergedColor);
 				}
-				else
+				else if(iter->second.type() == Link::kUserClosure)
 				{
-					linkItem->setColor(_loopClosureColor);
+					linkItem->setColor(_loopClosureUserColor);
 				}
-			}
-
-			//rejected loop closures
-			if(_loopClosureOutlierThr > 0.0f)
-			{
-				Transform t = poseA.inverse()*poseB;
-				if(iter->second.to() != idTo)
+				else if(iter->second.type() == Link::kLocalSpaceClosure || iter->second.type() == Link::kLocalTimeClosure)
 				{
-					t = t.inverse();
-				}
-				if(iter->second.type() != Link::kNeighbor &&
-				   iter->second.type() != Link::kNeighborMerged)
-				{
-					float linearError = uMax3(
-							fabs(iter->second.transform().x() - t.x()),
-							fabs(iter->second.transform().y() - t.y()),
-							fabs(iter->second.transform().z() - t.z()));
-					if(linearError > _loopClosureOutlierThr)
+					if(_intraInterSessionColors)
 					{
-						linkItem->setColor(_loopClosureRejectedColor);
+						linkItem->setColor(interSessionClosure?_loopInterSessionColor:_loopIntraSessionColor);
+						linkItem->setZValue(interSessionClosure?8:9);
+					}
+					else
+					{
+						linkItem->setColor(_loopClosureLocalColor);
+					}
+				}
+				else
+				{
+					if(_intraInterSessionColors)
+					{
+						linkItem->setColor(interSessionClosure?_loopInterSessionColor:_loopIntraSessionColor);
+						linkItem->setZValue(interSessionClosure?8:9);
+					}
+					else
+					{
+						linkItem->setColor(_loopClosureColor);
+					}
+				}
+
+				//rejected loop closures
+				if(_loopClosureOutlierThr > 0.0f)
+				{
+					Transform t = poseA.inverse()*poseB;
+					if(iter->second.to() != idTo)
+					{
+						t = t.inverse();
+					}
+					if(iter->second.type() != Link::kNeighbor &&
+					   iter->second.type() != Link::kNeighborMerged)
+					{
+						float linearError = uMax3(
+								fabs(iter->second.transform().x() - t.x()),
+								fabs(iter->second.transform().y() - t.y()),
+								fabs(iter->second.transform().z() - t.z()));
+						if(linearError > _loopClosureOutlierThr)
+						{
+							linkItem->setColor(_loopClosureRejectedColor);
+						}
 					}
 				}
 			}
@@ -1271,6 +1285,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			else if(r == aChangeLocalPathColor)
 			{
 				this->setLocalPathColor(color);
+			}
+			else if(r == aChangeGlobalPathColor)
+			{
+				this->setGlobalPathColor(color);
 			}
 			else if(r == aChangeIntraSessionLoopColor)
 			{
