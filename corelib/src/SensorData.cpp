@@ -445,7 +445,11 @@ void SensorData::setUserData(const cv::Mat & userData)
 {
 	if(!userData.empty() && (!_userDataCompressed.empty() || !_userDataRaw.empty()))
 	{
-		UWARN("Writing new user data over existing user data. This may result in data loss.");
+		UWARN("Writing new user data (%d bytes) over existing user "
+			  "data (%d bytes, %d compressed). This may result in data loss.",
+			  int(userData.total()*userData.elemSize()),
+			  int(_userDataRaw.total()*_userDataRaw.elemSize()),
+			  _userDataCompressed.cols);
 	}
 	_userDataRaw = cv::Mat();
 	_userDataCompressed = cv::Mat();

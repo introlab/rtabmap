@@ -198,24 +198,36 @@ class RtabmapGlobalPathEvent : public UEvent
 {
 public:
 	RtabmapGlobalPathEvent():
-		UEvent(0) {}
-	RtabmapGlobalPathEvent(int goalId, const std::vector<std::pair<int, Transform> > & poses) :
-		UEvent(goalId),
-		_poses(poses) {}
-	RtabmapGlobalPathEvent(int goalId, const std::string & goalLabel, const std::vector<std::pair<int, Transform> > & poses) :
-			UEvent(goalId),
-			_goalLabel(goalLabel),
-			_poses(poses) {}
+		UEvent(0),
+		_planningTime(0.0) {}
+	RtabmapGlobalPathEvent(
+			int goalId,
+			const std::vector<std::pair<int, Transform> > & poses,
+			double planningTime) :
+				UEvent(goalId),
+				_poses(poses),
+				_planningTime(planningTime) {}
+	RtabmapGlobalPathEvent(
+			int goalId,
+			const std::string & goalLabel,
+			const std::vector<std::pair<int, Transform> > & poses,
+			double planningTime) :
+				UEvent(goalId),
+				_goalLabel(goalLabel),
+				_poses(poses),
+				_planningTime(planningTime) {}
 
 	virtual ~RtabmapGlobalPathEvent() {}
 	int getGoal() const {return this->getCode();}
 	const std::string & getGoalLabel() const {return _goalLabel;}
+	double getPlanningTime() const {return _planningTime;}
 	const std::vector<std::pair<int, Transform> > & getPoses() const {return _poses;}
 	virtual std::string getClassName() const {return std::string("RtabmapGlobalPathEvent");}
 
 private:
 	std::string _goalLabel;
 	std::vector<std::pair<int, Transform> > _poses;
+	double _planningTime;
 };
 
 class RtabmapLabelErrorEvent : public UEvent

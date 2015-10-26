@@ -79,6 +79,7 @@ private:
 	std::set<int> _ids;
 	std::set<int>::iterator _currentId;
 	double _previousStamp;
+	int _previousMapID;
 };
 
 } /* namespace rtabmap */

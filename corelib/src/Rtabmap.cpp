@@ -664,7 +664,6 @@ int Rtabmap::triggerNewMap()
 		_optimizedPoses.clear();
 		_constraints.clear();
 		_lastLocalizationNodeId = 0;
-		_distanceTravelled = 0.0f;
 
 		//Verify if there are nodes that were merged through graph reduction
 		if(reducedIds.size() && _path.size())
@@ -1099,7 +1098,8 @@ bool Rtabmap::process(
 		// Update Poses and Constraints
 		_optimizedPoses.insert(std::make_pair(signature->id(), newPose));
 		_lastLocalizationPose = newPose; // used in localization mode only (path planning)
-		if(signature->getLinks().size() == 1)
+		if(signature->getLinks().size() == 1 &&
+		   signature->getLinks().begin()->second.type() == Link::kNeighbor)
 		{
 			// link should be old to new
 			UASSERT_MSG(signature->id() > signature->getLinks().begin()->second.to(),

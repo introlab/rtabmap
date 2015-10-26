@@ -154,7 +154,6 @@ void RtabmapThread::publishMap(bool optimized, bool full, bool graphOnly) const
 void RtabmapThread::mainLoopKill()
 {
 	this->clearBufferedData();
-
 	// this will post the newData semaphore
 	_dataAdded.release();
 }
@@ -178,6 +177,7 @@ void RtabmapThread::mainLoop()
 
 	int id = 0;
 	cv::Mat userData;
+	UTimer timer;
 	switch(state)
 	{
 	case kStateDetecting:
@@ -266,11 +266,16 @@ void RtabmapThread::mainLoop()
 		{
 			UERROR("Failed to set a goal. ID (%d) should be positive > 0", id);
 		}
+		timer.start();
 		if(id > 0 && !_rtabmap->computePath(id, true))
 		{
 			UERROR("Failed to compute a path to goal %d.", id);
 		}
-		this->post(new RtabmapGlobalPathEvent(id, parameters.at("label"), _rtabmap->getPath()));
+		this->post(new RtabmapGlobalPathEvent(
+				id,
+				parameters.at("label"),
+				_rtabmap->getPath(),
+				timer.elapsed()));
 		break;
 	case kStateCancellingGoal:
 		_rtabmap->clearPath(0);

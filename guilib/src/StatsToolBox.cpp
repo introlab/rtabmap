@@ -71,10 +71,16 @@ StatItem::~StatItem()
 
 }
 
-void StatItem::setValue(float x, float y)
+void StatItem::addValue(float y)
 {
 	_value->setText(QString::number(y, 'g', 3));
-	emit valueChanged(x,y);
+	emit valueAdded(y);
+}
+
+void StatItem::addValue(float x, float y)
+{
+	_value->setText(QString::number(y, 'g', 3));
+	emit valueAdded(x,y);
 }
 
 void StatItem::setValues(const std::vector<float> & x, const std::vector<float> & y)
@@ -184,6 +190,13 @@ void StatsToolBox::closeFigures()
 	}
 }
 
+void StatsToolBox::updateStat(const QString & statFullName, float y)
+{
+	std::vector<float> vx,vy(1);
+	vy[0] = y;
+	updateStat(statFullName, vx, vy);
+}
+
 void StatsToolBox::updateStat(const QString & statFullName, float x, float y)
 {
 	std::vector<float> vx(1),vy(1);
@@ -203,7 +216,11 @@ void StatsToolBox::updateStat(const QString & statFullName, const std::vector<fl
 	{
 		if(y.size() == 1 && x.size() == 1)
 		{
-			item->setValue(x[0], y[0]);
+			item->addValue(x[0], y[0]);
+		}
+		else if(y.size() == 1 && x.size() == 0)
+		{
+			item->addValue(y[0]);
 		}
 		else
 		{
@@ -303,7 +320,8 @@ void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 		{
 			UPlotCurve * curve = new UPlotCurve(stat->objectName(), plot);
 			curve->setPen(plot->getRandomPenColored());
-			connect(stat, SIGNAL(valueChanged(float, float)), curve, SLOT(addValue(float, float)));
+			connect(stat, SIGNAL(valueAdded(float)), curve, SLOT(addValue(float)));
+			connect(stat, SIGNAL(valueAdded(float, float)), curve, SLOT(addValue(float, float)));
 			connect(stat, SIGNAL(valuesChanged(const std::vector<float> &, const std::vector<float> &)), curve, SLOT(setData(const std::vector<float> &, const std::vector<float> &)));
 			if(stat->value().compare("*") == 0)
 			{
@@ -351,7 +369,8 @@ void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 		//Add a new curve linked to the statBox
 		UPlotCurve * curve = new UPlotCurve(stat->objectName(), newPlot);
 		curve->setPen(newPlot->getRandomPenColored());
-		connect(stat, SIGNAL(valueChanged(float, float)), curve, SLOT(addValue(float, float)));
+		connect(stat, SIGNAL(valueAdded(float)), curve, SLOT(addValue(float)));
+		connect(stat, SIGNAL(valueAdded(float, float)), curve, SLOT(addValue(float, float)));
 		connect(stat, SIGNAL(valuesChanged(const std::vector<float> &, const std::vector<float> &)), curve, SLOT(setData(const std::vector<float> &, const std::vector<float> &)));
 		if(stat->value().compare("*") == 0)
 		{

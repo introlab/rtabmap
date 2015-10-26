@@ -1092,14 +1092,25 @@ void DatabaseViewer::updateIds()
 		bool linksInserted = false;
 		for(std::map<int, Link>::iterator jter=links.find(ids_[i]); jter!=links.end() && jter->first == ids_[i]; ++jter)
 		{
+			std::map<int, Link>::iterator invertedLinkIter = graph::findLink(links, jter->second.to(), jter->second.from(), false);
 			if(	jter->second.isValid() && // null transform means a rehearsed location
 				ids.find(jter->second.from()) != ids.end() &&
 				ids.find(jter->second.to()) != ids.end() &&
 				graph::findLink(links_, jter->second.from(), jter->second.to()) == links_.end() &&
 				graph::findLink(links, jter->second.from(), jter->second.to(), false) != links.end() &&
-				graph::findLink(links, jter->second.to(), jter->second.from(), false) != links.end())
+				invertedLinkIter != links.end())
 			{
-				links_.insert(std::make_pair(ids_[i], jter->second));
+				// check if user_data is set in opposite direction
+				if(jter->second.userDataCompressed().cols == 0 &&
+				   invertedLinkIter->second.userDataCompressed().cols != 0)
+				{
+					links_.insert(std::make_pair(invertedLinkIter->second.from(), invertedLinkIter->second));
+				}
+				else
+				{
+					links_.insert(std::make_pair(ids_[i], jter->second));
+				}
+
 				linksInserted = true;
 			}
 		}
@@ -2611,7 +2622,8 @@ void DatabaseViewer::updateConstraintView(
 
 				ui_->constraintsViewer->removeCloud("scan2");
 				ui_->constraintsViewer->removeGraph("scan2graph");
-				if(link.type() == Link::kLocalSpaceClosure && !link.userDataCompressed().empty())
+				if(link.type() == Link::kLocalSpaceClosure &&
+				   !link.userDataCompressed().empty())
 				{
 					std::vector<int> ids;
 					cv::Mat userData = link.uncompressUserDataConst();

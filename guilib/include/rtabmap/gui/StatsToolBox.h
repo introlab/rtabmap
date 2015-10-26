@@ -48,7 +48,8 @@ class RTABMAPGUI_EXP StatItem : public QWidget
 public:
 	StatItem(const QString & name, const std::vector<float> & x, const std::vector<float> & y, const QString & unit = QString(), const QMenu * menu = 0, QGridLayout * grid = 0, QWidget * parent = 0);
 	virtual ~StatItem();
-	void setValue(float x, float y);
+	void addValue(float y);
+	void addValue(float x, float y);
 	void setValues(const std::vector<float> & x, const std::vector<float> & y);
 	QString value() const;
 
@@ -56,7 +57,8 @@ public slots:
 	void updateMenu(const QMenu * menu);
 
 signals:
-	void valueChanged(float, float);
+	void valueAdded(float);
+	void valueAdded(float, float);
 	void valuesChanged(const std::vector<float> &, const std::vector<float> &);
 	void plotRequested(const StatItem *, const QString &);
 
@@ -91,6 +93,7 @@ public:
 	void closeFigures();
 
 public slots:
+	void updateStat(const QString & statFullName, float y);
 	void updateStat(const QString & statFullName, float x, float y);
 	void updateStat(const QString & statFullName, const std::vector<float> & x, const std::vector<float> & y);
 

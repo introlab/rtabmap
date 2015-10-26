@@ -1992,6 +1992,7 @@ bool Memory::labelSignature(int id, const std::string & label)
 		if(s)
 		{
 			s->setLabel(label);
+			UWARN("Label \"%s\" set to node %d", label.c_str(), id);
 			return true;
 		}
 		else if(_dbDriver)
@@ -2003,6 +2004,7 @@ bool Memory::labelSignature(int id, const std::string & label)
 			if(signatures.size())
 			{
 				signatures.front()->setLabel(label);
+				UWARN("Label \"%s\" set to node %d", label.c_str(), id);
 				_dbDriver->asyncSave(signatures.front()); // move it again to trash
 				return true;
 			}
@@ -2818,6 +2820,8 @@ Transform Memory::computeScanMatchingTransform(
 	UASSERT(uContains(poses, newId) && uContains(_signatures, newId));
 	UASSERT(uContains(poses, oldId) && uContains(_signatures, oldId));
 
+	UDEBUG("Guess=%s", (poses.at(newId).inverse() * poses.at(oldId)).prettyPrint().c_str());
+
 	// make sure that all depth2D are loaded
 	std::list<Signature*> depthToLoad;
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
@@ -2880,7 +2884,7 @@ Transform Memory::computeScanMatchingTransform(
 		int correspondences = 0;
 		bool hasConverged = false;
 		pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
-		Transform icpT = util3d::icp2D(
+		Transform icpGlobal = util3d::icp2D(
 				newCloudVoxelized,
 				assembledOldClouds,
 			   _icp2MaxCorrespondenceDistance,
@@ -2888,22 +2892,26 @@ Transform Memory::computeScanMatchingTransform(
 			   hasConverged,
 			   *newCloudRegistered);
 
-		UDEBUG("icpT=%s", icpT.prettyPrint().c_str());
+		// in global Referential
+		UDEBUG("icpGlobal=%s", icpGlobal.prettyPrint().c_str());
 
 		//pcl::io::savePCDFile("old.pcd", *assembledOldClouds, true);
 		//pcl::io::savePCDFile("new.pcd", *newCloud, true);
 		//UWARN("local scan matching old.pcd, new.pcd saved!");
-		//if(!icpT.isNull())
+		//if(!icpGlobal.isNull())
 		//{
-		//	newCloud = util3d::transformPointCloud<pcl::PointXYZ>(newCloud, icpT);
-		//	pcl::io::savePCDFile("newFinal.pcd", *newCloud, true);
+		//	pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudTmp = util3d::transformPointCloud(newCloud, icpGlobal);
+		//	pcl::io::savePCDFile("newFinal.pcd", *newCloudTmp, true);
 		//	UWARN("local scan matching newFinal.pcd saved!");
 		//}
 
-		if(!icpT.isNull() && hasConverged)
+		if(!icpGlobal.isNull() && hasConverged)
 		{
+			Transform icpLocal = poses.at(newId).inverse()*icpGlobal*poses.at(newId);
+			UDEBUG("icpLocal=%s", icpLocal.prettyPrint().c_str());
+
 			float ix,iy,iz, iroll,ipitch,iyaw;
-			icpT.getTranslationAndEulerAngles(ix,iy,iz,iroll,ipitch,iyaw);
+			icpLocal.getTranslationAndEulerAngles(ix,iy,iz,iroll,ipitch,iyaw);
 			if((_icpMaxTranslation>0.0f &&
 				(fabs(ix) > _icpMaxTranslation ||
 				 fabs(iy) > _icpMaxTranslation ||
@@ -2921,7 +2929,7 @@ Transform Memory::computeScanMatchingTransform(
 			{
 				if(_icp2VoxelSize <= _laserScanVoxelSize)
 				{
-					newCloud = util3d::transformPointCloud(newCloud, icpT);
+					newCloud = util3d::transformPointCloud(newCloud, icpGlobal);
 				}
 				else
 				{
@@ -2967,7 +2975,7 @@ Transform Memory::computeScanMatchingTransform(
 
 				if(correspondencesRatio >= _icp2CorrespondenceRatio)
 				{
-					transform = poses.at(newId).inverse()*icpT.inverse() * poses.at(oldId);
+					transform = poses.at(newId).inverse()*icpGlobal.inverse() * poses.at(oldId);
 				}
 				else
 				{
@@ -3019,7 +3027,7 @@ bool Memory::addLink(const Link & link)
 
 		UDEBUG("Add link between %d and %d", toS->id(), fromS->id());
 
-		toS->addLink(Link(link.to(), link.from(), link.type(), link.transform().inverse(), link.infMatrix()));
+		toS->addLink(link.inverse());
 		fromS->addLink(link);
 
 		if(_incrementalMemory)

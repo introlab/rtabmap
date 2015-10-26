@@ -470,6 +470,12 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 			_ui->statsToolBox->updateStat(QString((*iter).first.c_str()).replace('_', ' '), 0, (*iter).second);
 		}
 	}
+	// Specific MainWindow
+	_ui->statsToolBox->updateStat("Planning/From/", 0.0f);
+	_ui->statsToolBox->updateStat("Planning/Time/ms", 0.0f);
+	_ui->statsToolBox->updateStat("Planning/Goal/", 0.0f);
+	_ui->statsToolBox->updateStat("Planning/Poses/", 0.0f);
+	_ui->statsToolBox->updateStat("Planning/Length/m", 0.0f);
 	this->loadFigures();
 	connect(_ui->statsToolBox, SIGNAL(figuresSetupChanged()), this, SLOT(configGUIModified()));
 
@@ -1302,22 +1308,26 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			}
 		}
 
-		// update posterior on the graph view
-		if(_preferencesDialog->isPosteriorGraphView() && _ui->graphicsView_graphView->isVisible() && stat.posterior().size())
+		if( _ui->graphicsView_graphView->isVisible())
 		{
-			_ui->graphicsView_graphView->updatePosterior(stat.posterior());
-		}
-		// update local path on the graph view
-		_ui->graphicsView_graphView->updateLocalPath(stat.localPath());
-		if(stat.localPath().size() == 0)
-		{
-			// clear the global path if set (goal reached)
-			_ui->graphicsView_graphView->setGlobalPath(std::vector<std::pair<int, Transform> >());
-		}
-		// update current goal id
-		if(stat.currentGoalId() > 0)
-		{
-			_ui->graphicsView_graphView->setCurrentGoalID(stat.currentGoalId(), uValue(stat.poses(), stat.currentGoalId(), Transform()));
+			// update posterior on the graph view
+			if(_preferencesDialog->isPosteriorGraphView() &&
+			   stat.posterior().size())
+			{
+				_ui->graphicsView_graphView->updatePosterior(stat.posterior());
+			}
+			// update local path on the graph view
+			_ui->graphicsView_graphView->updateLocalPath(stat.localPath());
+			if(stat.localPath().size() == 0)
+			{
+				// clear the global path if set (goal reached)
+				_ui->graphicsView_graphView->setGlobalPath(std::vector<std::pair<int, Transform> >());
+			}
+			// update current goal id
+			if(stat.currentGoalId() > 0)
+			{
+				_ui->graphicsView_graphView->setCurrentGoalID(stat.currentGoalId(), uValue(stat.poses(), stat.currentGoalId(), Transform()));
+			}
 		}
 
 		UDEBUG("");
@@ -2192,6 +2202,12 @@ void MainWindow::processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathE
 	{
 		_ui->graphicsView_graphView->setGlobalPath(event.getPoses());
 	}
+
+	_ui->statsToolBox->updateStat("Planning/From/", float(event.getPoses().size()?event.getPoses().begin()->first:0));
+	_ui->statsToolBox->updateStat("Planning/Time/ms", float(event.getPlanningTime()*1000.0));
+	_ui->statsToolBox->updateStat("Planning/Goal/", float(event.getGoal()));
+	_ui->statsToolBox->updateStat("Planning/Poses/", float(event.getPoses().size()));
+	_ui->statsToolBox->updateStat("Planning/Length/m", float(graph::computePathLength(event.getPoses())));
 
 	if(_preferencesDialog->notifyWhenNewGlobalPathIsReceived())
 	{

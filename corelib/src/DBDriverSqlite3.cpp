@@ -1118,7 +1118,11 @@ void DBDriverSqlite3::getAllLinksQuery(std::multimap<int, Link> & links, bool ig
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		if(uStrNumCmp(_version, "0.8.4") >= 0)
+		if(uStrNumCmp(_version, "0.10.10") >= 0)
+		{
+			query << "SELECT from_id, to_id, type, transform, rot_variance, trans_variance, user_data FROM Link ORDER BY from_id, to_id";
+		}
+		else if(uStrNumCmp(_version, "0.8.4") >= 0)
 		{
 			query << "SELECT from_id, to_id, type, transform, rot_variance, trans_variance FROM Link ORDER BY from_id, to_id";
 		}
@@ -1171,7 +1175,20 @@ void DBDriverSqlite3::getAllLinksQuery(std::multimap<int, Link> & links, bool ig
 				{
 					rotVariance = sqlite3_column_double(ppStmt, index++);
 					transVariance = sqlite3_column_double(ppStmt, index++);
-					links.insert(links.end(), std::make_pair(fromId, Link(fromId, toId, (Link::Type)type, transform, rotVariance, transVariance)));
+
+					cv::Mat userDataCompressed;
+					if(uStrNumCmp(_version, "0.10.10") >= 0)
+					{
+						const void * data = sqlite3_column_blob(ppStmt, index);
+						dataSize = sqlite3_column_bytes(ppStmt, index++);
+						//Create the userData
+						if(dataSize>4 && data)
+						{
+							userDataCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone(); // userData
+						}
+					}
+
+					links.insert(links.end(), std::make_pair(fromId, Link(fromId, toId, (Link::Type)type, transform, rotVariance, transVariance, userDataCompressed)));
 				}
 				else if(uStrNumCmp(_version, "0.7.4") >= 0)
 				{
@@ -2946,7 +2963,7 @@ void DBDriverSqlite3::stepLink(
 		}
 		else
 		{
-			rc = sqlite3_bind_zeroblob(ppStmt, index++, 4);
+			rc = sqlite3_bind_null(ppStmt, index++);
 		}
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	}
