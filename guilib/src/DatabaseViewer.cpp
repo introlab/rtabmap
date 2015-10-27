@@ -2412,7 +2412,7 @@ void DatabaseViewer::updateConstraintView(
 			.arg(link.type())
 			.arg(link.type()==Link::kNeighbor?"Neigbor":
 				 link.type()==Link::kNeighbor?"Merged neighbor":
-				 link.type()==Link::kGlobalClosure?":Loop closure":
+				 link.type()==Link::kGlobalClosure?"Loop closure":
 				 link.type()==Link::kLocalSpaceClosure?"Space proximity link":
 				 link.type()==Link::kLocalTimeClosure?"Time proximity link":
 				 link.type()==Link::kUserClosure?"User link":
