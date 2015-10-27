@@ -836,7 +836,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>338</width>
+          <width>314</width>
           <height>303</height>
          </rect>
         </property>
@@ -1389,7 +1389,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>338</width>
+          <width>333</width>
           <height>333</height>
          </rect>
         </property>
@@ -1628,7 +1628,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>338</width>
+          <width>255</width>
           <height>377</height>
          </rect>
         </property>
@@ -1885,8 +1885,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>351</width>
-          <height>176</height>
+          <width>201</width>
+          <height>117</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1985,7 +1985,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>338</width>
+          <width>285</width>
           <height>309</height>
          </rect>
         </property>
@@ -2338,230 +2338,16 @@
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_4">
-    <layout class="QVBoxLayout" name="verticalLayout_12">
+    <layout class="QVBoxLayout" name="verticalLayout_12" stretch="0">
      <item>
-      <layout class="QGridLayout" name="gridLayout_15" columnstretch="0,1">
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_70">
-         <property name="text">
-          <string>Database version</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="label_version">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_69">
-         <property name="text">
-          <string>Sessions</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QLabel" name="label_sessions">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_9">
-         <property name="text">
-          <string>Nodes</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLabel" name="label_nodes">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_80">
-         <property name="text">
-          <string>Dictionary</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QLabel" name="label_words">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="label_78">
-         <property name="text">
-          <string>Global map</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="QLabel" name="label_global_map">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="0">
-        <widget class="QLabel" name="label_79">
-         <property name="text">
-          <string>Working memory</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="1">
-        <widget class="QLabel" name="label_wm">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="0">
-        <widget class="QLabel" name="label_77">
-         <property name="text">
-          <string>Last dictionary</string>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="1">
-        <widget class="QLabel" name="label_dictionary">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="7" column="0">
-        <widget class="QLabel" name="label_74">
-         <property name="text">
-          <string>Odometry</string>
-         </property>
-        </widget>
-       </item>
-       <item row="7" column="1">
-        <widget class="QLabel" name="label_odom">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <widget class="Line" name="line">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+      <widget class="QTextEdit" name="textEdit_info">
+       <property name="lineWrapMode">
+        <enum>QTextEdit::NoWrap</enum>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
        </property>
       </widget>
-     </item>
-     <item>
-      <layout class="QGridLayout" name="gridLayout_14" columnstretch="0,1">
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_68">
-         <property name="text">
-          <string>Database size</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="label_db_size">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_72">
-         <property name="text">
-          <string>RGB images</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QLabel" name="label_rgb_size">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_73">
-         <property name="text">
-          <string>Depth images</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLabel" name="label_depth_size">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_71">
-         <property name="text">
-          <string>Laser scans</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QLabel" name="label_scan_size">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="label_75">
-         <property name="text">
-          <string>User data </string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="QLabel" name="label_userData_size">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="0">
-        <widget class="QLabel" name="label_76">
-         <property name="text">
-          <string>Dictionary</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="1">
-        <widget class="QLabel" name="label_words_size">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <spacer name="verticalSpacer_7">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>0</width>
-         <height>0</height>
-        </size>
-       </property>
-      </spacer>
      </item>
     </layout>
    </widget>

@@ -1060,6 +1060,8 @@ void DatabaseViewer::updateIds()
 	double totalOdom = 0.0;
 	Transform previousPose;
 	int sessions = ids_.size()?1:0;
+	double totalTime = 0.0;
+	double previousStamp = 0.0;
 	for(int i=0; i<ids_.size(); ++i)
 	{
 		idToIndex_.insert(ids_[i], i);
@@ -1080,12 +1082,18 @@ void DatabaseViewer::updateIds()
 				{
 					totalOdom += p.getDistance(previousPose);
 				}
+
+				if(previousStamp > 0.0 && s > 0.0)
+				{
+					totalTime += s-previousStamp;
+				}
 			}
 			else
 			{
 				++sessions;
 			}
 		}
+		previousStamp=s;
 		previousPose=p;
 
 		//links
@@ -1122,23 +1130,24 @@ void DatabaseViewer::updateIds()
 			poses_.insert(std::make_pair(ids_[i], p));
 		}
 	}
-	UDEBUG("Update database info...");
-	ui_->label_odom->setText(tr("%1 m").arg(totalOdom));
-	ui_->label_sessions->setNum(sessions);
-	ui_->label_nodes->setText(tr("%1 nodes").arg(ids.size()));
-	ui_->label_version->setText(dbDriver_->getDatabaseVersion().c_str());
-	ui_->label_db_size->setText(tr("%1 MB").arg(dbDriver_->getMemoryUsed()/1000000));
-	ui_->label_words->setText(tr("%1 words").arg(dbDriver_->getTotalDictionarySize()));
-	ui_->label_global_map->setText(tr("%1 nodes").arg(poses_.size()));
-	ui_->label_rgb_size->setText(tr("%1 MB").arg(dbDriver_->getImagesMemoryUsed()/1000000));
-	ui_->label_depth_size->setText(tr("%1 MB").arg(dbDriver_->getDepthImagesMemoryUsed()/1000000));
-	ui_->label_scan_size->setText(tr("%1 MB").arg(dbDriver_->getLaserScansMemoryUsed()/1000000));
-	ui_->label_userData_size->setText(tr("%1 bytes").arg(dbDriver_->getUserDataMemoryUsed()));
-	ui_->label_words_size->setText(tr("%1 bytes").arg(dbDriver_->getWordsMemoryUsed()));
-	ui_->label_wm->setText(tr("%1 nodes").arg(dbDriver_->getLastNodesSize()));
-	ui_->label_dictionary->setText(tr("%1 words").arg(dbDriver_->getLastDictionarySize()));
-
 	UINFO("Loaded %d ids, %d poses and %d links", (int)ids_.size(), (int)poses_.size(), (int)links_.size());
+
+	UINFO("Update database info...");
+	ui_->textEdit_info->clear();
+	ui_->textEdit_info->append(tr("Version:\t\t%1").arg(dbDriver_->getDatabaseVersion().c_str()));
+	ui_->textEdit_info->append(tr("Sessions:\t\t%1").arg(sessions));
+	ui_->textEdit_info->append(tr("Total odometry length:\t%1 m").arg(totalOdom));
+	ui_->textEdit_info->append(tr("Total time:\t\t%1").arg(QDateTime::fromMSecsSinceEpoch(totalTime*1000).toUTC().toString("hh:mm:ss.zzz")));
+	ui_->textEdit_info->append(tr("LTM:\t\t%1 nodes and %2 words").arg(ids.size()).arg(dbDriver_->getTotalDictionarySize()));
+	ui_->textEdit_info->append(tr("WM:\t\t%1 nodes and %2 words").arg(dbDriver_->getLastNodesSize()).arg(dbDriver_->getLastDictionarySize()));
+	ui_->textEdit_info->append(tr("Global graph:\t%1 poses and %2 links").arg(poses_.size()).arg(links_.size()));
+	ui_->textEdit_info->append("");
+	ui_->textEdit_info->append(tr("Database size:\t%1 MB").arg(dbDriver_->getMemoryUsed()/1000000));
+	ui_->textEdit_info->append(tr("Images size:\t%1 MB").arg(dbDriver_->getImagesMemoryUsed()/1000000));
+	ui_->textEdit_info->append(tr("Depths size:\t%1 MB").arg(dbDriver_->getDepthImagesMemoryUsed()/1000000));
+	ui_->textEdit_info->append(tr("Scans size:\t\t%1 MB").arg(dbDriver_->getLaserScansMemoryUsed()/1000000));
+	ui_->textEdit_info->append(tr("User data size:\t%1 bytes").arg(dbDriver_->getUserDataMemoryUsed()));
+	ui_->textEdit_info->append(tr("Dictionary size:\t%1 bytes").arg(dbDriver_->getWordsMemoryUsed()));
 
 	if(ids.size())
 	{
@@ -1200,8 +1209,6 @@ void DatabaseViewer::updateIds()
 			UERROR("Transform null for link from %d to %d", iter->first, iter->second.to());
 		}
 	}
-
-	UINFO("Loaded %d ids", ids_.size());
 
 	if(ids_.size())
 	{
