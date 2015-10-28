@@ -1062,6 +1062,10 @@ void DatabaseViewer::updateIds()
 	int sessions = ids_.size()?1:0;
 	double totalTime = 0.0;
 	double previousStamp = 0.0;
+	std::set<int> idsWithoutBad;
+	dbDriver_->getAllNodeIds(idsWithoutBad, false, true);
+	int badcountInLTM = 0;
+	int badCountInGraph = 0;
 	for(int i=0; i<ids_.size(); ++i)
 	{
 		idToIndex_.insert(ids_[i], i);
@@ -1129,6 +1133,15 @@ void DatabaseViewer::updateIds()
 		{
 			poses_.insert(std::make_pair(ids_[i], p));
 		}
+
+		if(idsWithoutBad.find(ids_[i]) == idsWithoutBad.end())
+		{
+			++badcountInLTM;
+			if(addPose)
+			{
+				++badCountInGraph;
+			}
+		}
 	}
 	UINFO("Loaded %d ids, %d poses and %d links", (int)ids_.size(), (int)poses_.size(), (int)links_.size());
 
@@ -1148,6 +1161,9 @@ void DatabaseViewer::updateIds()
 	ui_->textEdit_info->append(tr("Scans size:\t\t%1 MB").arg(dbDriver_->getLaserScansMemoryUsed()/1000000));
 	ui_->textEdit_info->append(tr("User data size:\t%1 bytes").arg(dbDriver_->getUserDataMemoryUsed()));
 	ui_->textEdit_info->append(tr("Dictionary size:\t%1 bytes").arg(dbDriver_->getWordsMemoryUsed()));
+	ui_->textEdit_info->append("");
+	ui_->textEdit_info->append(tr("%1 bad signatures in LTM").arg(badcountInLTM));
+	ui_->textEdit_info->append(tr("%1 bad signatures in the global graph").arg(badCountInGraph));
 
 	if(ids.size())
 	{

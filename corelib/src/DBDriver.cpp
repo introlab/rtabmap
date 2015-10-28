@@ -627,7 +627,7 @@ void DBDriver::getWeight(int signatureId, int & weight) const
 	}
 }
 
-void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren) const
+void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const
 {
 	// look in the trash
 	_trashesMutex.lock();
@@ -662,7 +662,7 @@ void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren) const
 	_trashesMutex.unlock();
 
 	_dbSafeAccessMutex.lock();
-	this->getAllNodeIdsQuery(ids, ignoreChildren);
+	this->getAllNodeIdsQuery(ids, ignoreChildren, ignoreBadSignatures);
 	_dbSafeAccessMutex.unlock();
 }
 

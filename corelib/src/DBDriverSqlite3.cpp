@@ -1062,7 +1062,7 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 }
 
 
-void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const
+void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const
 {
 	if(_ppDb)
 	{
@@ -1072,20 +1072,18 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		if(!ignoreChildren)
+		query << "SELECT DISTINCT id "
+			  << "FROM Node ";
+		if(ignoreChildren)
 		{
-			query << "SELECT id "
-				  << "FROM Node "
-				  << "ORDER BY id";
+			query << "INNER JOIN Link "
+				  << "ON id = to_id "; // use to_id to ignore all children (which don't have link pointing on them)
 		}
-		else
+		if(ignoreBadSignatures)
 		{
-			query << "SELECT id "
-				  << "FROM Node "
-				  << "INNER JOIN Link "
-				  << "ON id = to_id " // use to_id to ignore all children (which don't have link pointing on them)
-				  << "ORDER BY id";
+			query << "WHERE id in (select node_id from Map_Node_Word) ";
 		}
+		query  << "ORDER BY id";
 
 		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());

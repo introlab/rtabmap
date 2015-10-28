@@ -122,7 +122,7 @@ public:
 	bool getNodeInfo(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp) const;
 	void loadLinks(int signatureId, std::map<int, Link> & links, Link::Type type = Link::kUndef) const;
 	void getWeight(int signatureId, int & weight) const;
-	void getAllNodeIds(std::set<int> & ids, bool ignoreChildren = false) const;
+	void getAllNodeIds(std::set<int> & ids, bool ignoreChildren = false, bool ignoreBadSignatures = false) const;
 	void getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLinks = true) const;
 	void getLastNodeId(int & id) const;
 	void getLastWordId(int & id) const;
@@ -170,7 +170,7 @@ private:
 
 	virtual void loadNodeDataQuery(std::list<Signature *> & signatures) const = 0;
 	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp) const = 0;
-	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const = 0;
+	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const = 0;
 	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks) const = 0;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const = 0;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const = 0;
