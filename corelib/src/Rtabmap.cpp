@@ -1832,7 +1832,8 @@ bool Rtabmap::process(
 	int lastLocalSpaceClosureId = 0;
 	int localSpacePaths = 0;
 	if(_localLoopClosureDetectionSpace &&
-	   _localRadius > 0)
+	   _localRadius > 0 &&
+	   _rgbdSlamMode)
 	{
 		if(_graphOptimizer->iterations() == 0)
 		{

@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>7</number>
+                <number>16</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -5995,7 +5995,10 @@ When set to false, no new words are added to dictionary, so no more updates are 
                     <item row="0" column="0">
                      <widget class="QDoubleSpinBox" name="doubleSpinBox_GFTT_qualityLevel">
                       <property name="decimals">
-                       <number>3</number>
+                       <number>4</number>
+                      </property>
+                      <property name="minimum">
+                       <double>0.000100000000000</double>
                       </property>
                       <property name="maximum">
                        <double>1.000000000000000</double>
