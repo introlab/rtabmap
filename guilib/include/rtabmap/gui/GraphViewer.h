@@ -94,7 +94,8 @@ public:
 	bool isOriginVisible() const;
 	bool isReferentialVisible() const;
 	bool isLocalRadiusVisible() const;
-	float getLoopClosureOutlierThr() const;
+	float getLoopClosureOutlierThr() const {return _loopClosureOutlierThr;}
+	float getMaxLinkLength() const {return _maxLinkLength;}
 
 	// setters
 	void setWorkingDirectory(const QString & path);
@@ -119,6 +120,7 @@ public:
 	void setReferentialVisible(bool visible);
 	void setLocalRadiusVisible(bool visible);
 	void setLoopClosureOutlierThr(float value);
+	void setMaxLinkLength(float value);
 
 signals:
 	void configChanged();
@@ -159,6 +161,7 @@ private:
 	float _gridCellSize;
 	QGraphicsEllipseItem * _localRadius;
 	float _loopClosureOutlierThr;
+	float _maxLinkLength;
 };
 
 } /* namespace rtabmap */

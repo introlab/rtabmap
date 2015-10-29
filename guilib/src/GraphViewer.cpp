@@ -187,13 +187,14 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_loopInterSessionColor(Qt::green),
 		_intraInterSessionColors(false),
 		_root(0),
-		_nodeRadius(0.01),
+		_nodeRadius(0.01f),
 		_linkWidth(0),
 		_gridMap(0),
 		_referential(0),
 		_gridCellSize(0.0f),
 		_localRadius(0),
-		_loopClosureOutlierThr(0)
+		_loopClosureOutlierThr(0),
+		_maxLinkLength(0.02f)
 {
 	this->setScene(new QGraphicsScene(this));
 	this->setDragMode(QGraphicsView::ScrollHandDrag);
@@ -324,7 +325,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				interSessionClosure = mapIds.at(jterA->first) != mapIds.at(jterB->first);
 			}
 
-			if(poseA.getDistance(poseB) > 0.005)
+			if(poseA.getDistance(poseB) > _maxLinkLength)
 			{
 				if(linkItem == 0)
 				{
@@ -454,6 +455,8 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		QRectF rect = this->scene()->itemsBoundingRect();
 		this->fitInView(rect.adjusted(-rect.width()/2.0f, -rect.height()/2.0f, rect.width()/2.0f, rect.height()/2.0f), Qt::KeepAspectRatio);
 	}
+
+	UDEBUG("_nodeItems=%d, _linkItems=%d", _nodeItems.size(), _linkItems.size());
 }
 
 void GraphViewer::updateReferentialPosition(const Transform & t)
@@ -700,6 +703,7 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("referential_visible", this->isReferentialVisible());
 	settings.setValue("local_radius_visible", this->isLocalRadiusVisible());
 	settings.setValue("loop_closure_outlier_thr", this->getLoopClosureOutlierThr());
+	settings.setValue("max_link_length", this->getMaxLinkLength());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -733,6 +737,7 @@ void GraphViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setLocalRadiusVisible(settings.value("local_radius_visible", this->isLocalRadiusVisible()).toBool());
 	this->setIntraInterSessionColorsEnabled(settings.value("intra_inter_session_colors_enabled", this->isIntraInterSessionColorsEnabled()).toBool());
 	this->setLoopClosureOutlierThr(settings.value("loop_closure_outlier_thr", this->getLoopClosureOutlierThr()).toDouble());
+	this->setMaxLinkLength(settings.value("max_link_length", this->getMaxLinkLength()).toDouble());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -754,10 +759,6 @@ bool GraphViewer::isReferentialVisible() const
 bool GraphViewer::isLocalRadiusVisible() const
 {
 	return _localRadius->isVisible();
-}
-float GraphViewer::getLoopClosureOutlierThr() const
-{
-	return _loopClosureOutlierThr;
 }
 
 void GraphViewer::setWorkingDirectory(const QString & path)
@@ -958,6 +959,10 @@ void GraphViewer::setLoopClosureOutlierThr(float value)
 {
 	_loopClosureOutlierThr = value;
 }
+void GraphViewer::setMaxLinkLength(float value)
+{
+	_maxLinkLength = value;
+}
 
 void GraphViewer::restoreDefaults()
 {
@@ -1049,6 +1054,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	menu.addSeparator();
 	QAction * aSetNodeSize = menu.addAction(tr("Set node radius..."));
 	QAction * aSetLinkSize = menu.addAction(tr("Set link width..."));
+	QAction * aChangeMaxLinkLength = menu.addAction(tr("Set maximum link length..."));
 	menu.addSeparator();
 	QAction * aShowHideGridMap;
 	QAction * aShowHideOrigin;
@@ -1177,6 +1183,15 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		if(ok)
 		{
 			setLoopClosureOutlierThr(value);
+		}
+	}
+	else if(r == aChangeMaxLinkLength)
+	{
+		bool ok;
+		double value = QInputDialog::getDouble(this, tr("Maximum link length to be shown"), tr("Value (m)"), _maxLinkLength, 0.0, 1000.0, 3, &ok);
+		if(ok)
+		{
+			setMaxLinkLength(value);
 		}
 	}
 	else if(r == aChangeNodeColor ||
