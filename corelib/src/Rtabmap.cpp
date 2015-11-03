@@ -1144,7 +1144,7 @@ bool Rtabmap::process(
 				iter!=statistics_.reducedIds().end();
 				++iter)
 			{
-				int erased = _optimizedPoses.erase(iter->first);
+				int erased = (int)_optimizedPoses.erase(iter->first);
 				if(erased)
 				{
 					for(std::multimap<int, Link>::iterator jter = _constraints.begin(); jter!=_constraints.end();)

@@ -614,10 +614,10 @@ inline bool uIsDigit(const char c)
  */
 inline bool uIsInteger(const std::string & str)
 {
-	bool isInteger = str.size();
+	bool isInteger = str.size()!=0;
 	for(unsigned int i=0; i<str.size() && isInteger; ++i)
 	{
-		isInteger = isdigit(str[i]);
+		isInteger = uIsDigit(str[i]);
 	}
 	return isInteger;
 }
