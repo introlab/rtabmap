@@ -224,7 +224,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with Freenect2 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraFreenect2(deviceId.size()?atoi(deviceId.c_str()):0, rtabmap::CameraFreenect2::kTypeRGBDepthSD, rate, t);
+		camera = new rtabmap::CameraFreenect2(deviceId.size()?atoi(deviceId.c_str()):0, rtabmap::CameraFreenect2::kTypeColor2DepthSD, rate, t);
 	}
 	else if(driver == 6)
 	{

@@ -34,6 +34,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QDialog>
 #include <rtabmap/core/SensorData.h>
 
+class QSpinBox;
+
 namespace rtabmap {
 
 class ImageView;
@@ -55,6 +57,8 @@ private:
 	ImageView* imageView_;
 	CloudViewer* cloudView_;
 	bool processingImages_;
+	QSpinBox * decimationSpin_;
+	int validDecimationValue_;
 };
 
 } /* namespace rtabmap */

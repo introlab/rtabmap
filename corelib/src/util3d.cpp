@@ -216,7 +216,6 @@ pcl::PointXYZ projectDepthTo3D(
 	UASSERT(depthImage.type() == CV_16UC1 || depthImage.type() == CV_32FC1);
 
 	pcl::PointXYZ pt;
-	float bad_point = std::numeric_limits<float>::quiet_NaN ();
 
 	float depth = util2d::getDepth(depthImage, x, y, smoothing, maxZError);
 	if(depth)
@@ -232,7 +231,7 @@ pcl::PointXYZ projectDepthTo3D(
 	}
 	else
 	{
-		pt.x = pt.y = pt.z = bad_point;
+		pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
 	}
 	return pt;
 }
@@ -323,11 +322,13 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 		for(int w = 0; w < imageDepth.cols && w/decimation < (int)cloud->width; w+=decimation)
 		{
 			pcl::PointXYZRGB & pt = cloud->at((h/decimation)*cloud->width + (w/decimation));
+			bool invalidColor = false;
 			if(!mono)
 			{
 				pt.b = imageRgb.at<cv::Vec3b>(h,w)[0];
 				pt.g = imageRgb.at<cv::Vec3b>(h,w)[1];
 				pt.r = imageRgb.at<cv::Vec3b>(h,w)[2];
+				invalidColor = pt.b <= 5 && pt.g <= 5 && pt.r <= 5;
 			}
 			else
 			{
@@ -335,12 +336,20 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 				pt.b = v;
 				pt.g = v;
 				pt.r = v;
+				invalidColor = v <= 0;
 			}
 
-			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, cx, cy, fx, fy, false);
-			pt.x = ptXYZ.x;
-			pt.y = ptXYZ.y;
-			pt.z = ptXYZ.z;
+			if(invalidColor)
+			{
+				pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
+			}
+			else
+			{
+				pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, cx, cy, fx, fy, false);
+				pt.x = ptXYZ.x;
+				pt.y = ptXYZ.y;
+				pt.z = ptXYZ.z;
+			}
 		}
 	}
 	return cloud;

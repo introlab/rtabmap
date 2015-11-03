@@ -184,7 +184,7 @@ int main(int argc, char * argv[])
 			exit(-1);
 		}
 		switchImages = true;
-		camera = new rtabmap::CameraFreenect2(0, rtabmap::CameraFreenect2::kTypeRGBIR);
+		camera = new rtabmap::CameraFreenect2(0, rtabmap::CameraFreenect2::kTypeColorIR);
 	}
 	else if(driver == 6)
 	{

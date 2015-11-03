@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>760</width>
-            <height>1705</height>
+            <width>759</width>
+            <height>966</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>16</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -1874,7 +1874,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>4</number>
+                              <number>5</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -2145,17 +2145,22 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                     <item>
                                      <property name="text">
-                                      <string>RGB+Depth SD</string>
+                                      <string>Registered Color to Depth SD</string>
                                      </property>
                                     </item>
                                     <item>
                                      <property name="text">
-                                      <string>RGB+Depth HD</string>
+                                      <string>Registered Depth to Color HD</string>
                                      </property>
                                     </item>
                                     <item>
                                      <property name="text">
-                                      <string>IR+Depth</string>
+                                      <string>Registered Depth to Color SD</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>IR + Depth</string>
                                      </property>
                                     </item>
                                    </widget>

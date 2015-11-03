@@ -3626,7 +3626,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	{
 		camera = new CameraFreenect2(
 			this->getSourceDevice().isEmpty()?0:atoi(this->getSourceDevice().toStdString().c_str()),
-			useRawImages?CameraFreenect2::kTypeRGBIR:(CameraFreenect2::Type)_ui->comboBox_freenect2Format->currentIndex(),
+			useRawImages?CameraFreenect2::kTypeColorIR:(CameraFreenect2::Type)_ui->comboBox_freenect2Format->currentIndex(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}

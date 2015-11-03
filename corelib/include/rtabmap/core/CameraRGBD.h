@@ -218,16 +218,17 @@ public:
 	static bool available();
 
 	enum Type{
-		kTypeRGBDepthSD,
-		kTypeRGBDepthHD,
+		kTypeColor2DepthSD,
+		kTypeDepth2ColorHD,
+		kTypeDepth2ColorSD,
 		kTypeIRDepth,
-		kTypeRGBIR
+		kTypeColorIR
 	};
 
 public:
 	// default local transform z in, x right, y down));
 	CameraFreenect2(int deviceId= 0,
-					Type type = kTypeRGBDepthSD,
+					Type type = kTypeColor2DepthSD,
 					float imageRate=0.0f,
 					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraFreenect2();
@@ -248,6 +249,8 @@ private:
 	libfreenect2::PacketPipeline * pipeline_;
 	libfreenect2::SyncMultiFrameListener * listener_;
 	libfreenect2::Registration * reg_;
+	double minKinect2Depth_;
+	double maxKinect2Depth_;
 };
 
 
