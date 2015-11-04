@@ -2138,6 +2138,19 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
+                                  <item row="6" column="0">
+                                   <spacer name="verticalSpacer_32">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>20</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
                                   <item row="0" column="0">
                                    <widget class="QComboBox" name="comboBox_freenect2Format">
                                     <property name="sizeAdjustPolicy">
@@ -2150,12 +2163,17 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </item>
                                     <item>
                                      <property name="text">
+                                      <string>Registered Depth to Color SD (old way)</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
                                       <string>Registered Depth to Color HD</string>
                                      </property>
                                     </item>
                                     <item>
                                      <property name="text">
-                                      <string>Registered Depth to Color SD</string>
+                                      <string>Registered Depth to Color HD (old way)</string>
                                      </property>
                                     </item>
                                     <item>
@@ -2165,18 +2183,123 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </item>
                                    </widget>
                                   </item>
+                                  <item row="3" column="1">
+                                   <widget class="QLabel" name="label_268">
+                                    <property name="text">
+                                     <string>Depth bilateral filtering.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="1">
+                                   <widget class="QLabel" name="label_266">
+                                    <property name="text">
+                                     <string>Min depth.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="4" column="1">
+                                   <widget class="QLabel" name="label_269">
+                                    <property name="text">
+                                     <string>Depth edge aware filtering.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="0">
+                                   <widget class="QDoubleSpinBox" name="doubleSpinBox_freenect2MaxDepth">
+                                    <property name="maximum">
+                                     <double>65.000000000000000</double>
+                                    </property>
+                                    <property name="value">
+                                     <double>12.000000000000000</double>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="3" column="0">
+                                   <widget class="QCheckBox" name="checkBox_freenect2BilateralFiltering">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                    <property name="checked">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="4" column="0">
+                                   <widget class="QCheckBox" name="checkBox_freenect2EdgeAwareFiltering">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                    <property name="checked">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="1">
+                                   <widget class="QLabel" name="label_267">
+                                    <property name="text">
+                                     <string>Max depth.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
                                   <item row="1" column="0">
-                                   <spacer name="verticalSpacer_32">
-                                    <property name="orientation">
-                                     <enum>Qt::Vertical</enum>
+                                   <widget class="QDoubleSpinBox" name="doubleSpinBox_freenect2MinDepth">
+                                    <property name="maximum">
+                                     <double>64.000000000000000</double>
                                     </property>
-                                    <property name="sizeHint" stdset="0">
-                                     <size>
-                                      <width>20</width>
-                                      <height>0</height>
-                                     </size>
+                                    <property name="singleStep">
+                                     <double>0.100000000000000</double>
                                     </property>
-                                   </spacer>
+                                    <property name="value">
+                                     <double>0.300000000000000</double>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="0">
+                                   <widget class="QCheckBox" name="checkBox_freenect2NoiseFiltering">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                    <property name="checked">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="1">
+                                   <widget class="QLabel" name="label_270">
+                                    <property name="text">
+                                     <string>Depth noise filtering.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
                                   </item>
                                  </layout>
                                 </widget>

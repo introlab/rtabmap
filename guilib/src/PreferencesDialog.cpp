@@ -379,6 +379,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->openni2_mirroring, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_stampsIdsUsed, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_freenect2Format, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_freenect2MinDepth, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_freenect2MaxDepth, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_freenect2BilateralFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_freenect2EdgeAwareFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_freenect2NoiseFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->toolButton_cameraRGBDImages_timestamps, SIGNAL(clicked()), this, SLOT(selectSourceRGBDImagesStamps()));
 	connect(_ui->lineEdit_cameraRGBDImages_timestamps, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1095,8 +1100,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_rgbVideo_rectify->setChecked(false);
 
 		_ui->source_checkBox_ignoreOdometry->setChecked(false);
-		_ui->source_checkBox_ignoreGoalDelay->setChecked(false);
-		_ui->source_checkBox_ignoreGoals->setChecked(false);
+		_ui->source_checkBox_ignoreGoalDelay->setChecked(true);
+		_ui->source_checkBox_ignoreGoals->setChecked(true);
 		_ui->source_spinBox_databaseStartPos->setValue(0);
 		_ui->source_checkBox_useDbStamps->setChecked(true);
 
@@ -1138,6 +1143,11 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->openni2_mirroring->setChecked(false);
 		_ui->openni2_stampsIdsUsed->setChecked(false);
 		_ui->comboBox_freenect2Format->setCurrentIndex(0);
+		_ui->doubleSpinBox_freenect2MinDepth->setValue(0.3);
+		_ui->doubleSpinBox_freenect2MaxDepth->setValue(12.0);
+		_ui->checkBox_freenect2BilateralFiltering->setChecked(true);
+		_ui->checkBox_freenect2EdgeAwareFiltering->setChecked(true);
+		_ui->checkBox_freenect2NoiseFiltering->setChecked(true);
 		_ui->lineEdit_openniOniPath->clear();
 		_ui->lineEdit_openni2OniPath->clear();
 		_ui->lineEdit_cameraRGBDImages_path_rgb->setText("");
@@ -1417,6 +1427,11 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 
 	settings.beginGroup("Freenect2");
 	_ui->comboBox_freenect2Format->setCurrentIndex(settings.value("format", _ui->comboBox_freenect2Format->currentIndex()).toInt());
+	_ui->doubleSpinBox_freenect2MinDepth->setValue(settings.value("minDepth", _ui->doubleSpinBox_freenect2MinDepth->value()).toDouble());
+	_ui->doubleSpinBox_freenect2MaxDepth->setValue(settings.value("maxDepth", _ui->doubleSpinBox_freenect2MaxDepth->value()).toDouble());
+	_ui->checkBox_freenect2BilateralFiltering->setChecked(settings.value("bilateralFiltering", _ui->checkBox_freenect2BilateralFiltering->isChecked()).toBool());
+	_ui->checkBox_freenect2EdgeAwareFiltering->setChecked(settings.value("edgeAwareFiltering", _ui->checkBox_freenect2EdgeAwareFiltering->isChecked()).toBool());
+	_ui->checkBox_freenect2NoiseFiltering->setChecked(settings.value("noiseFiltering", _ui->checkBox_freenect2NoiseFiltering->isChecked()).toBool());
 	settings.endGroup(); // Freenect2
 
 	settings.beginGroup("RGBDImages");
@@ -1730,7 +1745,12 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.endGroup(); // Openni2
 
 	settings.beginGroup("Freenect2");
-	settings.setValue("format",         _ui->comboBox_freenect2Format->currentIndex());
+	settings.setValue("format",             _ui->comboBox_freenect2Format->currentIndex());
+	settings.setValue("minDepth",           _ui->doubleSpinBox_freenect2MinDepth->value());
+	settings.setValue("maxDepth",           _ui->doubleSpinBox_freenect2MaxDepth->value());
+	settings.setValue("bilateralFiltering", _ui->checkBox_freenect2BilateralFiltering->isChecked());
+	settings.setValue("edgeAwareFiltering", _ui->checkBox_freenect2EdgeAwareFiltering->isChecked());
+	settings.setValue("noiseFiltering",     _ui->checkBox_freenect2NoiseFiltering->isChecked());
 	settings.endGroup(); // Freenect2
 
 	settings.beginGroup("RGBDImages");
@@ -1952,8 +1972,7 @@ bool PreferencesDialog::validateForm()
 		_ui->odom_bin_nn->setCurrentIndex(VWDictionary::kNNBruteForce);
 	}
 
-	if(_ui->groupBox_odometry1->isEnabled() &&
-		_ui->loopClosure_bowVarianceFromInliersCount->isChecked() != _ui->odom_varianceFromInliersCount->isChecked())
+	if(_ui->loopClosure_bowVarianceFromInliersCount->isChecked() != _ui->odom_varianceFromInliersCount->isChecked())
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Odometry %1 variance from inliers count but Loop Closure constraint %2. "
@@ -1961,6 +1980,16 @@ bool PreferencesDialog::validateForm()
 				   .arg(_ui->odom_varianceFromInliersCount->isChecked()?tr("uses"):tr("does not use"))
 				   .arg(_ui->odom_varianceFromInliersCount->isChecked()?tr("does not"):tr("does")));
 		_ui->loopClosure_bowVarianceFromInliersCount->setChecked(_ui->odom_varianceFromInliersCount->isChecked());
+	}
+
+	if(_ui->doubleSpinBox_freenect2MinDepth->value() >= _ui->doubleSpinBox_freenect2MaxDepth->value())
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Freenect2 minimum depth (%1 m) should be lower than maximum depth (%2 m). Setting maximum depth to %3 m.")
+				   .arg(_ui->doubleSpinBox_freenect2MinDepth->value())
+				   .arg(_ui->doubleSpinBox_freenect2MaxDepth->value())
+				   .arg(_ui->doubleSpinBox_freenect2MaxDepth->value()+1));
+		_ui->doubleSpinBox_freenect2MaxDepth->setValue(_ui->doubleSpinBox_freenect2MaxDepth->value()+1);
 	}
 
 	return true;
@@ -3628,7 +3657,12 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 			this->getSourceDevice().isEmpty()?0:atoi(this->getSourceDevice().toStdString().c_str()),
 			useRawImages?CameraFreenect2::kTypeColorIR:(CameraFreenect2::Type)_ui->comboBox_freenect2Format->currentIndex(),
 			this->getGeneralInputRate(),
-			this->getSourceLocalTransform());
+			this->getSourceLocalTransform(),
+			_ui->doubleSpinBox_freenect2MinDepth->value(),
+			_ui->doubleSpinBox_freenect2MaxDepth->value(),
+			_ui->checkBox_freenect2BilateralFiltering->isChecked(),
+			_ui->checkBox_freenect2EdgeAwareFiltering->isChecked(),
+			_ui->checkBox_freenect2NoiseFiltering->isChecked());
 	}
 	else if(driver == kSrcRGBDImages)
 	{

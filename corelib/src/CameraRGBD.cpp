@@ -1082,7 +1082,16 @@ bool CameraFreenect2::available()
 #endif
 }
 
-CameraFreenect2::CameraFreenect2(int deviceId, Type type, float imageRate, const Transform & localTransform) :
+CameraFreenect2::CameraFreenect2(
+	int deviceId, 
+	Type type, 
+	float imageRate, 
+	const Transform & localTransform, 
+	float minDepth,
+	float maxDepth,
+	bool bilateralFiltering,
+	bool edgeAwareFiltering,
+	bool noiseFiltering) :
 		Camera(imageRate, localTransform),
 		deviceId_(deviceId),
 		type_(type),
@@ -1091,10 +1100,14 @@ CameraFreenect2::CameraFreenect2(int deviceId, Type type, float imageRate, const
 		pipeline_(0),
 		listener_(0),
 		reg_(0),
-		minKinect2Depth_(0.1),
-		maxKinect2Depth_(12.0)
+		minKinect2Depth_(minDepth),
+		maxKinect2Depth_(maxDepth),
+		bilateralFiltering_(bilateralFiltering),
+		edgeAwareFiltering_(edgeAwareFiltering),
+		noiseFiltering_(noiseFiltering)
 {
 #ifdef WITH_FREENECT2
+	UASSERT(minKinect2Depth_ < maxKinect2Depth_ && minKinect2Depth_>0 && maxKinect2Depth_>0 && maxKinect2Depth_<=65.535f);
 	freenect2_ = new libfreenect2::Freenect2();
 	switch(type_)
 	{
@@ -1127,8 +1140,8 @@ CameraFreenect2::CameraFreenect2(int deviceId, Type type, float imageRate, const
 	//EnableBilateralFilter(true),
 	//EnableEdgeAwareFilter(true)
 	libfreenect2::DepthPacketProcessor::Config config;
-	config.EnableBilateralFilter = true;
-	config.EnableEdgeAwareFilter = true;
+	config.EnableBilateralFilter = bilateralFiltering_;
+	config.EnableEdgeAwareFilter = edgeAwareFiltering_;
 	config.MinDepth = minKinect2Depth_;
 	config.MaxDepth = maxKinect2Depth_;
 	pipeline_->getDepthPacketProcessor()->setConfiguration(config);
@@ -1225,7 +1238,8 @@ bool CameraFreenect2::init(const std::string & calibrationFolder, const std::str
 			{
 				if(type_==kTypeColor2DepthSD)
 				{
-					UWARN("Freenect2: When using custom calibration file, type kTypeColor2DepthSD is not supported. kTypeDepth2ColorSD is used instead...");
+					UWARN("Freenect2: When using custom calibration file, type "
+						  "kTypeColor2DepthSD is not supported. kTypeDepth2ColorSD is used instead...");
 					type_ = kTypeDepth2ColorSD;
 				}
 
@@ -1324,8 +1338,9 @@ SensorData CameraFreenect2::captureImage()
 				depthFrame = uValue(frames, libfreenect2::Frame::Depth, (libfreenect2::Frame*)0);
 				break;
 			case kTypeColor2DepthSD:
-			case kTypeDepth2ColorHD:
 			case kTypeDepth2ColorSD:
+			case kTypeDepth2ColorHD:
+			case kTypeDepth2ColorHD2:
 			default:
 				rgbFrame = uValue(frames, libfreenect2::Frame::Color, (libfreenect2::Frame*)0);
 				depthFrame = uValue(frames, libfreenect2::Frame::Depth, (libfreenect2::Frame*)0);
@@ -1440,20 +1455,66 @@ SensorData CameraFreenect2::captureImage()
 					{
 						//registration of the depth
 						UASSERT(reg_!=0);
-			
-						if(type_ != kTypeDepth2ColorSD)
+
+						float maxDepth = maxKinect2Depth_*1000.0f;
+						float minDepth =  minKinect2Depth_*1000.0f;
+						if(type_ == kTypeColor2DepthSD || type_ == kTypeDepth2ColorHD)
 						{
 							cv::Mat rgbMatBGRA;
 							libfreenect2::Frame depthUndistorted(512, 424, 4);
 							libfreenect2::Frame rgbRegistered(512, 424, 4);
 
+							// do it before registration
+							if(noiseFiltering_)
+							{
+								cv::Mat depthMat = cv::Mat((int)depthFrame->height, (int)depthFrame->width, CV_32FC1, depthFrame->data);
+								for(int dx=0; dx<depthMat.cols; ++dx)
+								{
+									bool onEdgeX = dx==depthMat.cols-1;
+									for(int dy=0; dy<depthMat.rows; ++dy)
+									{
+										bool onEdge = onEdgeX || dy==depthMat.rows-1;
+										float z = 0.0f;
+										float & dz = depthMat.at<float>(dy,dx);
+										if(dz>=minDepth && dz <= maxDepth)
+										{
+											z = dz;
+											if(noiseFiltering_ && !onEdge)
+											{
+												z=0;
+												const float & dz1 = depthMat.at<float>(dy,dx+1);
+												const float & dz2 = depthMat.at<float>(dy+1,dx);
+												const float & dz3 = depthMat.at<float>(dy+1,dx+1);
+												if( dz1>=minDepth && dz1 <= maxDepth &&
+													dz2>=minDepth && dz2 <= maxDepth &&
+													dz3>=minDepth && dz3 <= maxDepth)
+												{
+													float avg = (dz + dz1 + dz2 + dz3) / 4.0f;
+													float thres = 0.01f*avg;
+											
+													if( fabs(dz-avg) < thres &&
+														fabs(dz1-avg) < thres &&
+														fabs(dz2-avg) < thres &&
+														fabs(dz3-avg) < thres)
+													{
+														z = dz;
+													}
+												}
+											}
+										}
+										dz = z; 
+									}
+								}
+							}
+	
 							libfreenect2::Frame bidDepth(1920, 1082, 4); // HD
 							reg_->apply(rgbFrame, depthFrame, &depthUndistorted, &rgbRegistered, true, &bidDepth);
-
+	
+							cv::Mat depthMat;
 							if(type_ == kTypeColor2DepthSD)
 							{						
 								rgbMatBGRA = cv::Mat((int)rgbRegistered.height, (int)rgbRegistered.width, CV_8UC4, rgbRegistered.data);
-								cv::Mat((int)depthUndistorted.height, (int)depthUndistorted.width, CV_32FC1, depthUndistorted.data).convertTo(depth, CV_16U, 1);
+								depthMat = cv::Mat((int)depthUndistorted.height, (int)depthUndistorted.width, CV_32FC1, depthUndistorted.data);
 						
 								//use IR params
 								libfreenect2::Freenect2Device::IrCameraParams params = dev_->getIrCameraParams();
@@ -1465,21 +1526,9 @@ SensorData CameraFreenect2::captureImage()
 							else
 							{
 								rgbMatBGRA = cv::Mat((int)rgbFrame->height, (int)rgbFrame->width, CV_8UC4, rgbFrame->data);
-								cv::Mat((int)bidDepth.height, (int)bidDepth.width, CV_32FC1, bidDepth.data).convertTo(depth, CV_16U, 1);
-								depth = depth(cv::Range(1, 1081), cv::Range::all());
-								unsigned short maxDepth = (unsigned short)(maxKinect2Depth_*1000.0);
-								if(maxDepth < 65535)
-								{
-									int size = 1920*1080;
-									for(int i=0; i<size;++i)
-									{
-										if(((unsigned short *)depth.data)[i] > maxDepth)
-										{
-											((unsigned short *)depth.data)[i] = 0;
-										}
-									}
-								}
-
+								depthMat = cv::Mat((int)bidDepth.height, (int)bidDepth.width, CV_32FC1, bidDepth.data);
+								depthMat = depthMat(cv::Range(1, 1081), cv::Range::all());
+								
 								//use color params
 								libfreenect2::Freenect2Device::ColorCameraParams params = dev_->getColorCameraParams();
 								fx = params.fx;
@@ -1487,14 +1536,30 @@ SensorData CameraFreenect2::captureImage()
 								cx = params.cx;
 								cy = params.cy;
 							}
+
+							//filter max depth and flip
+							depth = cv::Mat(depthMat.size(), CV_16UC1);
+							for(int dx=0; dx<depthMat.cols; ++dx)
+							{
+								for(int dy=0; dy<depthMat.rows; ++dy)
+								{
+									unsigned short z = 0;
+									const float & dz = depthMat.at<float>(dy,dx);
+									if(dz>=minDepth && dz <= maxDepth)
+									{
+										z = (unsigned short)dz;
+									}
+									depth.at<unsigned short>(dy,(depthMat.cols-1)-dx) = z;  //flip
+								}
+							}
+	
 							// rtabmap uses 3 channels RGB
 							cv::cvtColor(rgbMatBGRA, rgb, CV_BGRA2BGR);
 							cv::flip(rgb, rgb, 1);
-							cv::flip(depth, depth, 1);
 						}
-						else //register depth to color
+						else //register depth to color (OLD WAY)
 						{
-							UASSERT(type_ == kTypeDepth2ColorSD || type_ == kTypeDepth2ColorHD);
+							UASSERT(type_ == kTypeDepth2ColorSD || type_ == kTypeDepth2ColorHD2);
 							cv::Mat rgbMatBGRA = cv::Mat((int)rgbFrame->height, (int)rgbFrame->width, CV_8UC4, rgbFrame->data);
 							if(type_ == kTypeDepth2ColorSD)
 							{
@@ -1513,17 +1578,31 @@ SensorData CameraFreenect2::captureImage()
 								for(int dy=0; dy<depthFrameMat.rows-1; ++dy)
 								{
 									float dz = depthFrameMat.at<float>(dy,dx);
-									float dz1 = depthFrameMat.at<float>(dy,dx+1);
-									float dz2 = depthFrameMat.at<float>(dy+1,dx);
-									float dz3 = depthFrameMat.at<float>(dy+1,dx+1);
-									if(dz && dz1 && dz2 && dz3)
+									if(dz>=minDepth && dz<=maxDepth)
 									{
-										float avg = (dz + dz1 + dz2 + dz3) / 4;
-										float thres = 0.01 * avg;
-										if( fabs(dz - avg) < thres &&
-											fabs(dz1 - avg) < thres &&
-											fabs(dz2 - avg) < thres &&
-											fabs(dz3 - avg) < thres)
+										bool goodDepth = true;
+										if(noiseFiltering_)
+										{
+											goodDepth = false;
+											float dz1 = depthFrameMat.at<float>(dy,dx+1);
+											float dz2 = depthFrameMat.at<float>(dy+1,dx);
+											float dz3 = depthFrameMat.at<float>(dy+1,dx+1);
+											if(dz1>=minDepth && dz1 <= maxDepth &&
+											   dz2>=minDepth && dz2 <= maxDepth &&
+											   dz3>=minDepth && dz3 <= maxDepth)
+											{
+												float avg = (dz + dz1 + dz2 + dz3) / 4.0f;
+												float thres = 0.01 * avg;
+												if( fabs(dz-avg) < thres &&
+													fabs(dz1-avg) < thres &&
+													fabs(dz2-avg) < thres &&
+													fabs(dz3-avg) < thres)
+												{
+													goodDepth = true;
+												}
+											}
+										}
+										if(goodDepth)
 										{
 											float cx=-1,cy=-1;
 											reg_->apply(dx, dy, dz, cx, cy);
@@ -1546,8 +1625,8 @@ SensorData CameraFreenect2::captureImage()
 									}
 								}
 							}
-							util2d::fillRegisteredDepthHoles(depth, true, true, type_==kTypeDepth2ColorHD);
-							util2d::fillRegisteredDepthHoles(depth, type_==kTypeDepth2ColorSD, type_==kTypeDepth2ColorHD);//second pass
+							util2d::fillRegisteredDepthHoles(depth, true, true, type_==kTypeDepth2ColorHD2);
+							util2d::fillRegisteredDepthHoles(depth, type_==kTypeDepth2ColorSD, type_==kTypeDepth2ColorHD2);//second pass
 							cv::flip(depth, depth, 1);
 							libfreenect2::Freenect2Device::ColorCameraParams params = dev_->getColorCameraParams();
 							fx = params.fx*(type_==kTypeDepth2ColorSD?0.5:1.0f);

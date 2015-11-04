@@ -219,8 +219,9 @@ public:
 
 	enum Type{
 		kTypeColor2DepthSD,
-		kTypeDepth2ColorHD,
 		kTypeDepth2ColorSD,
+		kTypeDepth2ColorHD,
+		kTypeDepth2ColorHD2,
 		kTypeIRDepth,
 		kTypeColorIR
 	};
@@ -230,7 +231,12 @@ public:
 	CameraFreenect2(int deviceId= 0,
 					Type type = kTypeColor2DepthSD,
 					float imageRate=0.0f,
-					const Transform & localTransform = Transform::getIdentity());
+					const Transform & localTransform = Transform::getIdentity(),
+					float minDepth = 0.3f,
+					float maxDepth = 12.0f,
+					bool bilateralFiltering = true,
+					bool edgeAwareFiltering = true,
+					bool noiseFiltering = true);
 	virtual ~CameraFreenect2();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -249,8 +255,11 @@ private:
 	libfreenect2::PacketPipeline * pipeline_;
 	libfreenect2::SyncMultiFrameListener * listener_;
 	libfreenect2::Registration * reg_;
-	double minKinect2Depth_;
-	double maxKinect2Depth_;
+	float minKinect2Depth_;
+	float maxKinect2Depth_;
+	bool bilateralFiltering_;
+	bool edgeAwareFiltering_;
+	bool noiseFiltering_;
 };
 
 

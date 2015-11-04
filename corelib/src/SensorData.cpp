@@ -434,22 +434,33 @@ SensorData::SensorData(
 
 void SensorData::setUserDataRaw(const cv::Mat & userDataRaw)
 {
-	if(!_userDataRaw.empty())
+	if(!userDataRaw.empty() && (!_userDataCompressed.empty() || !_userDataRaw.empty()))
 	{
-		UWARN("Writing new user data over existing user data. This may result in data loss.");
+		UWARN("Cannot write new user data (%d bytes) over existing user "
+			  "data (%d bytes, %d compressed). Set user data of %d to null "
+			  "before setting a new one.",
+			  int(userDataRaw.total()*userDataRaw.elemSize()),
+			  int(_userDataRaw.total()*_userDataRaw.elemSize()),
+			  _userDataCompressed.cols,
+			  this->id());
+		return;
 	}
 	_userDataRaw = userDataRaw;
+	_userDataCompressed = cv::Mat();
 }
 
 void SensorData::setUserData(const cv::Mat & userData)
 {
 	if(!userData.empty() && (!_userDataCompressed.empty() || !_userDataRaw.empty()))
 	{
-		UWARN("Writing new user data (%d bytes) over existing user "
-			  "data (%d bytes, %d compressed). This may result in data loss.",
+		UWARN("Cannot write new user data (%d bytes) over existing user "
+			  "data (%d bytes, %d compressed). Set user data of %d to null "
+			  "before setting a new one.",
 			  int(userData.total()*userData.elemSize()),
 			  int(_userDataRaw.total()*_userDataRaw.elemSize()),
-			  _userDataCompressed.cols);
+			  _userDataCompressed.cols,
+			  this->id());
+		return;
 	}
 	_userDataRaw = cv::Mat();
 	_userDataCompressed = cv::Mat();
