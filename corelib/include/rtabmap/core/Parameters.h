@@ -208,7 +208,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Kp, IncrementalFlann,      bool, true, 		"When using FLANN based strategy, add/remove points to its index without always rebuilding the index (the index is built only when the dictionary doubles in size).");
 	RTABMAP_PARAM(Kp, MaxDepth,              float, 0.0, 		"Filter extracted keypoints by depth (0=inf)");
 	RTABMAP_PARAM(Kp, WordsPerImage,         int, 400, 			"Maximum features extracted from the images (0 means not bounded, <0 means no extraction).");
-	RTABMAP_PARAM(Kp, BadSignRatio,          float, 0.2, 		"Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
+	RTABMAP_PARAM(Kp, BadSignRatio,          float, 0.5, 		"Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
 	RTABMAP_PARAM_COND(Kp, NndrRatio, 	     float, RTABMAP_NONFREE, 0.8, 0.9,		"NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
 	RTABMAP_PARAM_COND(Kp, DetectorStrategy, int, RTABMAP_NONFREE, 0, 2, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
 	RTABMAP_PARAM(Kp, TfIdfLikelihoodUsed,   bool, true, 		"Use of the td-idf strategy to compute the likelihood.");
@@ -230,7 +230,7 @@ class RTABMAP_EXP Parameters
 
 	// Keypoints descriptors/detectors
 	RTABMAP_PARAM(SURF, Extended, 		  bool, false, 	"Extended descriptor flag (true - use extended 128-element descriptors; false - use 64-element descriptors).");
-	RTABMAP_PARAM(SURF, HessianThreshold, float, 150.0,		"Threshold for hessian keypoint detector used in SURF.");
+	RTABMAP_PARAM(SURF, HessianThreshold, float, 500.0,		"Threshold for hessian keypoint detector used in SURF.");
 	RTABMAP_PARAM(SURF, Octaves, 		  int, 4, 			"Number of pyramid octaves the keypoint detector will use.");
 	RTABMAP_PARAM(SURF, OctaveLayers, 	  int, 2, 			"Number of octave layers within each octave.");
 	RTABMAP_PARAM(SURF, Upright, 	      bool, false, 	"Up-right or rotated features flag (true - do not compute orientation of features; false - compute orientation).");
