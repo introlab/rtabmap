@@ -2243,7 +2243,11 @@ Transform Memory::computeVisualTransform(
 		   (newS.sensorData().cameraModels().size() != 1 ||
 			!newS.sensorData().cameraModels()[0].isValid()))
 		{
-			UERROR("Calibrated camera required (multi-cameras not supported).");
+			UERROR("Calibrated camera required (multi-cameras not supported). Id=%d Models=%d StereoModel=%d weight=%d",
+					newS.id(),
+					(int)newS.sensorData().cameraModels().size(),
+					newS.sensorData().stereoCameraModel().isValid()?1:0,
+					newS.getWeight());
 		}
 		else
 		{

@@ -1833,7 +1833,8 @@ bool Rtabmap::process(
 	int localSpacePaths = 0;
 	if(_localLoopClosureDetectionSpace &&
 	   _localRadius > 0 &&
-	   _rgbdSlamMode)
+	   _rgbdSlamMode &&
+	   signature->getWeight() >= 0) // not an intermediate node
 	{
 		if(_graphOptimizer->iterations() == 0)
 		{
