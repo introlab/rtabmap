@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>759</width>
-            <height>966</height>
+            <y>-566</y>
+            <width>755</width>
+            <height>1764</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>23</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -4749,6 +4749,11 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                           <string>BRISK</string>
                          </property>
                         </item>
+                        <item>
+                         <property name="text">
+                          <string>GFTT+ORB</string>
+                         </property>
+                        </item>
                        </widget>
                       </item>
                       <item row="0" column="1">
@@ -7927,6 +7932,11 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                              <string>BRISK</string>
                             </property>
                            </item>
+                           <item>
+                            <property name="text">
+                             <string>GFTT+ORB</string>
+                            </property>
+                           </item>
                           </widget>
                          </item>
                          <item row="1" column="1">
@@ -9288,6 +9298,11 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <item>
                           <property name="text">
                            <string>BRISK</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>GFTT+ORB</string>
                           </property>
                          </item>
                         </widget>

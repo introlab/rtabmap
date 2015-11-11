@@ -1071,7 +1071,7 @@ cv::Mat GFTT_BRIEF::generateDescriptorsImpl(const cv::Mat & image, std::vector<c
 }
 
 //////////////////////////
-//FAST-FREAK
+//GFTT-FREAK
 //////////////////////////
 GFTT_FREAK::GFTT_FREAK(const ParametersMap & parameters) :
 	GFTT(parameters),
@@ -1121,6 +1121,32 @@ cv::Mat GFTT_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<c
 #endif
 #endif
 	return descriptors;
+}
+
+//////////////////////////
+//GFTT-ORB
+//////////////////////////
+GFTT_ORB::GFTT_ORB(const ParametersMap & parameters) :
+	GFTT(parameters),
+	_orb(parameters)
+{
+	parseParameters(parameters);
+}
+
+GFTT_ORB::~GFTT_ORB()
+{
+}
+
+void GFTT_ORB::parseParameters(const ParametersMap & parameters)
+{
+	GFTT::parseParameters(parameters);
+	_orb.parseParameters(parameters);
+}
+
+cv::Mat GFTT_ORB::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	return _orb.generateDescriptors(image, keypoints);
 }
 
 //////////////////////////

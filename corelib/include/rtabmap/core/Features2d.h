@@ -98,7 +98,8 @@ public:
 		kFeatureFastBrief=4,
 		kFeatureGfttFreak=5,
 		kFeatureGfttBrief=6,
-		kFeatureBrisk=7};
+		kFeatureBrisk=7,
+		kFeatureGfttOrb=8}; //new 0.10.11
 
 	static Feature2D * create(Feature2D::Type & type, const ParametersMap & parameters);
 
@@ -358,6 +359,23 @@ private:
 	int nOctaves_;
 
 	cv::Ptr<CV_FREAK> _freak;
+};
+
+//GFTT_ORB
+class RTABMAP_EXP GFTT_ORB : public GFTT
+{
+public:
+	GFTT_ORB(const ParametersMap & parameters = ParametersMap());
+	virtual ~GFTT_ORB();
+
+	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureGfttOrb;}
+
+private:
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+private:
+	ORB _orb;
 };
 
 //BRISK
