@@ -251,7 +251,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(FAST, GpuKeypointsRatio,  double, 0.05, 	"Used with FAST GPU.");
 
 	RTABMAP_PARAM(GFTT, QualityLevel, double, 0.0001, "");
-	RTABMAP_PARAM(GFTT, MinDistance, double, 5, "");
+	RTABMAP_PARAM(GFTT, MinDistance, double, 10, "");
 	RTABMAP_PARAM(GFTT, BlockSize, int, 3, "");
 	RTABMAP_PARAM(GFTT, UseHarrisDetector, bool, false, "");
 	RTABMAP_PARAM(GFTT, K, double, 0.04, "");
