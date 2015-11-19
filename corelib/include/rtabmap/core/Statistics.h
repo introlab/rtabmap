@@ -63,6 +63,8 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Visual_inliers,);
 	RTABMAP_STATS(Loop, Last_id,);
 	RTABMAP_STATS(Loop, Optimization_max_error, m);
+	RTABMAP_STATS(Loop, Optimization_error, );
+	RTABMAP_STATS(Loop, Optimization_iterations, );
 
 	RTABMAP_STATS(LocalLoop, Time_closures,);
 	RTABMAP_STATS(LocalLoop, Space_last_closure_id,);

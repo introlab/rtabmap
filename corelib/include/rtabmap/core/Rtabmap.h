@@ -153,12 +153,17 @@ private:
 	void optimizeCurrentMap(int id,
 			bool lookInDatabase,
 			std::map<int, Transform> & optimizedPoses,
-			std::multimap<int, Link> * constraints = 0) const;
+			std::multimap<int, Link> * constraints = 0,
+			double * error = 0,
+			int * iterationsDone = 0) const;
 	std::map<int, Transform> optimizeGraph(
 			int fromId,
 			const std::set<int> & ids,
+			const std::map<int, Transform> & guessPoses,
 			bool lookInDatabase,
-			std::multimap<int, Link> * constraints = 0) const;
+			std::multimap<int, Link> * constraints = 0,
+			double * error = 0,
+			int * iterationsDone = 0) const;
 	void updateGoalIndex();
 	bool computePath(int targetNode, std::map<int, Transform> nodes, const std::multimap<int, rtabmap::Link> & constraints);
 

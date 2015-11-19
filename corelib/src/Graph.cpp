@@ -201,7 +201,9 @@ std::map<int, Transform> Optimizer::optimize(
 		int rootId,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & constraints,
-		std::list<std::map<int, Transform> > * intermediateGraphes)
+		std::list<std::map<int, Transform> > * intermediateGraphes,
+		double * finalError,
+		int * iterationsDone)
 {
 	UERROR("Optimizer %d doesn't implement optimize() method.", (int)this->type());
 	return std::map<int, Transform>();
@@ -291,7 +293,9 @@ std::map<int, Transform> TOROOptimizer::optimize(
 		int rootId,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & edgeConstraints,
-		std::list<std::map<int, Transform> > * intermediateGraphes) // contains poses after tree init to last one before the end
+		std::list<std::map<int, Transform> > * intermediateGraphes, // contains poses after tree init to last one before the end
+		double * finalError,
+		int * iterationsDone)
 {
 	std::map<int, Transform> optimizedPoses;
 	UDEBUG("Optimizing graph (pose=%d constraints=%d)...", (int)poses.size(), (int)edgeConstraints.size());
@@ -403,8 +407,8 @@ std::map<int, Transform> TOROOptimizer::optimize(
 		if(isSlam2d())
 		{
 			pg2.buildMST(rootId); // pg.buildSimpleTree();
-			UDEBUG("initializeOnTree()");
-			pg2.initializeOnTree();
+			//UDEBUG("initializeOnTree()");
+			//pg2.initializeOnTree();
 			UDEBUG("initializeTreeParameters()");
 			pg2.initializeTreeParameters();
 			UDEBUG("Building TORO tree... (if a crash happens just after this msg, "
@@ -414,8 +418,8 @@ std::map<int, Transform> TOROOptimizer::optimize(
 		else
 		{
 			pg3.buildMST(rootId); // pg.buildSimpleTree();
-			UDEBUG("initializeOnTree()");
-			pg3.initializeOnTree();
+			//UDEBUG("initializeOnTree()");
+			//pg3.initializeOnTree();
 			UDEBUG("initializeTreeParameters()");
 			pg3.initializeTreeParameters();
 			UDEBUG("Building TORO tree... (if a crash happens just after this msg, "
@@ -423,9 +427,9 @@ std::map<int, Transform> TOROOptimizer::optimize(
 			pg3.initializeOptimization();
 		}
 
+		UINFO("Initial error = %f", pg2.error());
 		UINFO("TORO optimizing begin (iterations=%d)", iterations());
-		double lasterror = 0;
-		double errorDelta = 0;
+		double lastError = 0;
 		int i=0;
 		UTimer timer;
 		for (; i<iterations(); i++)
@@ -482,15 +486,35 @@ std::map<int, Transform> TOROOptimizer::optimize(
 			}
 
 			// early stop condition
-			errorDelta = lasterror - error;
+			double errorDelta = lastError - error;
 			if(i>0 && errorDelta < this->epsilon())
 			{
-				UDEBUG("Stop optimizing, not enough improvement (%f < %f)", errorDelta, this->epsilon());
+				if(errorDelta < 0)
+				{
+					UDEBUG("Negative improvement?! Ignore and continue optimizing... (%f < %f)", errorDelta, this->epsilon());
+				}
+				else
+				{
+					UINFO("Stop optimizing, not enough improvement (%f < %f)", errorDelta, this->epsilon());
+					break;
+				}
+			}
+			else if(i==0 && error < this->epsilon())
+			{
+				UINFO("Stop optimizing, error is already under epsilon (%f < %f)", error, this->epsilon());
 				break;
 			}
-			lasterror = error;
+			lastError = error;
 		}
-		UINFO("TORO optimizing end (%d iterations done, error=%f, time = %f s)", i, errorDelta, timer.ticks());
+		if(finalError)
+		{
+			*finalError = lastError;
+		}
+		if(iterationsDone)
+		{
+			*iterationsDone = i;
+		}
+		UINFO("TORO optimizing end (%d iterations done, error=%f, time = %f s)", i, lastError, timer.ticks());
 
 		if(isSlam2d())
 		{
@@ -713,7 +737,9 @@ std::map<int, Transform> G2OOptimizer::optimize(
 		int rootId,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & edgeConstraints,
-		std::list<std::map<int, Transform> > * intermediateGraphes)
+		std::list<std::map<int, Transform> > * intermediateGraphes,
+		double * finalError,
+		int * iterationsDone)
 {
 	std::map<int, Transform> optimizedPoses;
 #ifdef WITH_G2O
@@ -935,58 +961,81 @@ std::map<int, Transform> G2OOptimizer::optimize(
 		UINFO("g2o optimizing begin (max iterations=%d, robust=%d)", iterations(), isRobust()?1:0);
 		int it = 0;
 		UTimer timer;
-		if(intermediateGraphes)
+		double lastError = 0.0;
+		if(intermediateGraphes || this->epsilon() > 0.0)
 		{
 			for(int i=0; i<iterations(); ++i)
 			{
-				if(i > 0)
+				if(intermediateGraphes)
 				{
-					std::map<int, Transform> tmpPoses;
-					if(isSlam2d())
+					if(i > 0)
 					{
-						for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+						std::map<int, Transform> tmpPoses;
+						if(isSlam2d())
 						{
-							const g2o::VertexSE2* v = (const g2o::VertexSE2*)optimizer.vertex(iter->first);
-							if(v)
+							for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 							{
-								float roll, pitch, yaw;
-								iter->second.getEulerAngles(roll, pitch, yaw);
-								Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().rotation().angle());
-								tmpPoses.insert(std::pair<int, Transform>(iter->first, t));
-								UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
-							}
-							else
-							{
-								UERROR("Vertex %d not found!?", iter->first);
+								const g2o::VertexSE2* v = (const g2o::VertexSE2*)optimizer.vertex(iter->first);
+								if(v)
+								{
+									float roll, pitch, yaw;
+									iter->second.getEulerAngles(roll, pitch, yaw);
+									Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().rotation().angle());
+									tmpPoses.insert(std::pair<int, Transform>(iter->first, t));
+									UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
+								}
+								else
+								{
+									UERROR("Vertex %d not found!?", iter->first);
+								}
 							}
 						}
-					}
-					else
-					{
-						for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+						else
 						{
-							const g2o::VertexSE3* v = (const g2o::VertexSE3*)optimizer.vertex(iter->first);
-							if(v)
+							for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 							{
-								Transform t = Transform::fromEigen3d(v->estimate());
-								tmpPoses.insert(std::pair<int, Transform>(iter->first, t));
-								UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
-							}
-							else
-							{
-								UERROR("Vertex %d not found!?", iter->first);
+								const g2o::VertexSE3* v = (const g2o::VertexSE3*)optimizer.vertex(iter->first);
+								if(v)
+								{
+									Transform t = Transform::fromEigen3d(v->estimate());
+									tmpPoses.insert(std::pair<int, Transform>(iter->first, t));
+									UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
+								}
+								else
+								{
+									UERROR("Vertex %d not found!?", iter->first);
+								}
 							}
 						}
+						intermediateGraphes->push_back(tmpPoses);
 					}
-					intermediateGraphes->push_back(tmpPoses);
 				}
 
 				it += optimizer.optimize(1);
-				if(ULogger::level() == ULogger::kDebug)
+
+				// early stop condition
+				optimizer.computeActiveErrors();
+				double chi2 = optimizer.activeRobustChi2();
+				UDEBUG("iteration %d: %d nodes, %d edges, chi2: %f", i, (int)optimizer.vertices().size(), (int)optimizer.edges().size(), chi2);
+				double errorDelta = lastError - chi2;
+				if(i>0 && errorDelta < this->epsilon())
 				{
-					optimizer.computeActiveErrors();
-					UDEBUG("iteration %d: %d nodes, %d edges, chi2: %f", i, (int)optimizer.vertices().size(), (int)optimizer.edges().size(), optimizer.activeRobustChi2());
+					if(errorDelta < 0)
+					{
+						UDEBUG("Negative improvement?! Ignore and continue optimizing... (%f < %f)", errorDelta, this->epsilon());
+					}
+					else
+					{
+						UINFO("Stop optimizing, not enough improvement (%f < %f)", errorDelta, this->epsilon());
+						break;
+					}
 				}
+				else if(i==0 && chi2 < this->epsilon())
+				{
+					UINFO("Stop optimizing, error is already under epsilon (%f < %f)", chi2, this->epsilon());
+					break;
+				}
+				lastError = chi2;
 			}
 		}
 		else
@@ -994,6 +1043,14 @@ std::map<int, Transform> G2OOptimizer::optimize(
 			it = optimizer.optimize(iterations());
 			optimizer.computeActiveErrors();
 			UDEBUG("%d nodes, %d edges, chi2: %f", (int)optimizer.vertices().size(), (int)optimizer.edges().size(), optimizer.activeRobustChi2());
+		}
+		if(finalError)
+		{
+			*finalError = lastError;
+		}
+		if(iterationsDone)
+		{
+			*iterationsDone = it;
 		}
 		UINFO("g2o optimizing end (%d iterations done, error=%f, time = %f s)", it, optimizer.activeRobustChi2(), timer.ticks());
 
@@ -1163,7 +1220,9 @@ std::map<int, Transform> GTSAMOptimizer::optimize(
 		int rootId,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & edgeConstraints,
-		std::list<std::map<int, Transform> > * intermediateGraphes)
+		std::list<std::map<int, Transform> > * intermediateGraphes,
+		double * finalError,
+		int * iterationsDone)
 {
 	std::map<int, Transform> optimizedPoses;
 #ifdef WITH_GTSAM
@@ -1303,6 +1362,8 @@ std::map<int, Transform> GTSAMOptimizer::optimize(
 
 		UINFO("GTSAM optimizing begin (max iterations=%d, robust=%d)", iterations(), isRobust()?1:0);
 		UTimer timer;
+		int it = 0;
+		double lastError = 0.0;
 		for(int i=0; i<iterations(); ++i)
 		{
 			if(intermediateGraphes && i > 0)
@@ -1329,17 +1390,44 @@ std::map<int, Transform> GTSAMOptimizer::optimize(
 			try
 			{
 				optimizer.iterate();
+				++it;
 			}
 			catch(gtsam::IndeterminantLinearSystemException & e)
 			{
 				UERROR("GTSAM exception catched: %s", e.what());
 				return optimizedPoses;
 			}
-			UDEBUG("iteration %d error =%f", i+1, optimizer.error());
-			if(optimizer.error() < epsilon())
+
+			// early stop condition
+			double error = optimizer.error();
+			UDEBUG("iteration %d error =%f", i+1, error);
+			double errorDelta = lastError - error;
+			if(i>0 && errorDelta < this->epsilon())
 			{
+				if(errorDelta < 0)
+				{
+					UDEBUG("Negative improvement?! Ignore and continue optimizing... (%f < %f)", errorDelta, this->epsilon());
+				}
+				else
+				{
+					UINFO("Stop optimizing, not enough improvement (%f < %f)", errorDelta, this->epsilon());
+					break;
+				}
+			}
+			else if(i==0 && error < this->epsilon())
+			{
+				UINFO("Stop optimizing, error is already under epsilon (%f < %f)", error, this->epsilon());
 				break;
 			}
+			lastError = error;
+		}
+		if(finalError)
+		{
+			*finalError = lastError;
+		}
+		if(iterationsDone)
+		{
+			*iterationsDone = it;
 		}
 		UINFO("GTSAM optimizing end (%d iterations done, error=%f (initial=%f final=%f), time=%f s)", optimizer.iterations(), optimizer.error(), graph.error(initialEstimate), graph.error(optimizer.values()), timer.ticks());
 

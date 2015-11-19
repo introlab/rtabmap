@@ -67,7 +67,8 @@ struct ParameterPropagator{
   }
 };
 
-TreeOptimizer2::TreeOptimizer2(){
+TreeOptimizer2::TreeOptimizer2():
+	iteration(1){
   sortedEdges=0;
 }
 
@@ -280,7 +281,8 @@ void TreeOptimizer2::iterate(TreePoseGraph2::EdgeSet* eset){
   if (eset){
     sortedEdges=eset;
   }
-  computePreconditioner();
+  if (iteration==1)
+	  computePreconditioner();
   propagateErrors();
   sortedEdges=temp;
 }
