@@ -41,6 +41,16 @@ namespace rtabmap
 namespace util3d
 {
 
+cv::Mat RTABMAP_EXP downsample(
+		const cv::Mat & cloud,
+		int step);
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP downsample(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		int step);
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP downsample(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		int step);
+
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP voxelize(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		float voxelSize);
@@ -51,11 +61,30 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP voxelize(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		float voxelSize);
 
+inline pcl::PointCloud<pcl::PointXYZ>::Ptr uniformSampling(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		float voxelSize)
+{
+	return voxelize(cloud, voxelSize);
+}
+inline pcl::PointCloud<pcl::PointXYZRGB>::Ptr uniformSampling(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		float voxelSize)
+{
+	return voxelize(cloud, voxelSize);
+}
+inline pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr uniformSampling(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		float voxelSize)
+{
+	return voxelize(cloud, voxelSize);
+}
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP sampling(
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP randomSampling(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		int samples);
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP sampling(
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP randomSampling(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		int samples);
 

@@ -50,8 +50,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>166</width>
-             <height>173</height>
+             <width>181</width>
+             <height>184</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -236,8 +236,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>165</width>
-             <height>173</height>
+             <width>181</width>
+             <height>184</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -418,7 +418,7 @@
      <x>0</x>
      <y>0</y>
      <width>1285</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -430,6 +430,7 @@
     <addaction name="actionSave_config"/>
     <addaction name="separator"/>
     <addaction name="actionGenerate_3D_map_pcd"/>
+    <addaction name="actionExport_3D_laser_scans_ply_pcd"/>
     <addaction name="actionExport"/>
     <addaction name="actionExtract_images"/>
     <addaction name="separator"/>
@@ -453,6 +454,7 @@
     <addaction name="actionReset_all_changes"/>
     <addaction name="separator"/>
     <addaction name="actionView_3D_map"/>
+    <addaction name="actionView_3D_laser_scans"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -827,24 +829,102 @@
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QVBoxLayout" name="verticalLayout_10">
      <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_11">
+       <item>
+        <widget class="QComboBox" name="comboBox_logger_level">
+         <property name="currentIndex">
+          <number>1</number>
+         </property>
+         <item>
+          <property name="text">
+           <string>Debug</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Info</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Warning</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Error</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_logger_level">
+         <property name="text">
+          <string>Logger level</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>1</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="page">
         <property name="geometry">
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>314</width>
-          <height>303</height>
+          <width>312</width>
+          <height>374</height>
          </rect>
         </property>
         <attribute name="label">
          <string>ICP</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_4" columnstretch="0,1">
-         <item row="0" column="0">
+         <item row="8" column="0">
+          <widget class="QSpinBox" name="spinBox_icp_iteration">
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>1000</number>
+           </property>
+           <property name="value">
+            <number>30</number>
+           </property>
+          </widget>
+         </item>
+         <item row="8" column="1">
+          <widget class="QLabel" name="label_15">
+           <property name="text">
+            <string>Iteration</string>
+           </property>
+          </widget>
+         </item>
+         <item row="9" column="1">
+          <widget class="QLabel" name="label_11">
+           <property name="text">
+            <string>Point to plane</string>
+           </property>
+          </widget>
+         </item>
+         <item row="10" column="0">
+          <widget class="QSpinBox" name="spinBox_icp_normalKSearch">
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>1000</number>
+           </property>
+           <property name="value">
+            <number>20</number>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
           <widget class="QSpinBox" name="spinBox_icp_decimation">
            <property name="minimum">
             <number>1</number>
@@ -857,14 +937,14 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="1">
+         <item row="1" column="1">
           <widget class="QLabel" name="label_14">
            <property name="text">
             <string>Decimation</string>
            </property>
           </widget>
          </item>
-         <item row="1" column="0">
+         <item row="2" column="0">
           <widget class="QDoubleSpinBox" name="doubleSpinBox_icp_maxDepth">
            <property name="suffix">
             <string> m</string>
@@ -880,14 +960,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <widget class="QLabel" name="label_17">
-           <property name="text">
-            <string>Max depth</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="0">
+         <item row="4" column="0">
           <widget class="QDoubleSpinBox" name="doubleSpinBox_icp_voxel">
            <property name="suffix">
             <string> m</string>
@@ -903,14 +976,14 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="1">
+         <item row="4" column="1">
           <widget class="QLabel" name="label_13">
            <property name="text">
-            <string>Voxel</string>
+            <string>Voxel size</string>
            </property>
           </widget>
          </item>
-         <item row="4" column="0">
+         <item row="6" column="0">
           <widget class="QDoubleSpinBox" name="doubleSpinBox_icp_maxCorrespDistance">
            <property name="suffix">
             <string> m</string>
@@ -929,14 +1002,31 @@
            </property>
           </widget>
          </item>
-         <item row="4" column="1">
+         <item row="6" column="1">
           <widget class="QLabel" name="label_12">
            <property name="text">
             <string>Max correspondence distance</string>
            </property>
           </widget>
          </item>
-         <item row="5" column="0">
+         <item row="11" column="0">
+          <widget class="QCheckBox" name="checkBox_icp_2d">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLabel" name="label_17">
+           <property name="text">
+            <string>Max depth</string>
+           </property>
+          </widget>
+         </item>
+         <item row="7" column="0">
           <widget class="QDoubleSpinBox" name="doubleSpinBox_icp_minCorrespondenceRatio">
            <property name="suffix">
             <string/>
@@ -955,34 +1045,14 @@
            </property>
           </widget>
          </item>
-         <item row="5" column="1">
+         <item row="7" column="1">
           <widget class="QLabel" name="label_46">
            <property name="text">
             <string>Min correspondence ratio</string>
            </property>
           </widget>
          </item>
-         <item row="6" column="0">
-          <widget class="QSpinBox" name="spinBox_icp_iteration">
-           <property name="minimum">
-            <number>1</number>
-           </property>
-           <property name="maximum">
-            <number>1000</number>
-           </property>
-           <property name="value">
-            <number>30</number>
-           </property>
-          </widget>
-         </item>
-         <item row="6" column="1">
-          <widget class="QLabel" name="label_15">
-           <property name="text">
-            <string>Iteration</string>
-           </property>
-          </widget>
-         </item>
-         <item row="7" column="0">
+         <item row="9" column="0">
           <widget class="QCheckBox" name="checkBox_icp_p2plane">
            <property name="text">
             <string/>
@@ -992,51 +1062,21 @@
            </property>
           </widget>
          </item>
-         <item row="7" column="1">
-          <widget class="QLabel" name="label_11">
-           <property name="text">
-            <string>Point to plane</string>
-           </property>
-          </widget>
-         </item>
-         <item row="8" column="0">
-          <widget class="QSpinBox" name="spinBox_icp_normalKSearch">
-           <property name="minimum">
-            <number>1</number>
-           </property>
-           <property name="maximum">
-            <number>1000</number>
-           </property>
-           <property name="value">
-            <number>20</number>
-           </property>
-          </widget>
-         </item>
-         <item row="8" column="1">
+         <item row="10" column="1">
           <widget class="QLabel" name="label_20">
            <property name="text">
             <string>Normal K neighbors</string>
            </property>
           </widget>
          </item>
-         <item row="9" column="0">
-          <widget class="QCheckBox" name="checkBox_icp_2d">
-           <property name="text">
-            <string/>
-           </property>
-           <property name="checked">
-            <bool>false</bool>
-           </property>
-          </widget>
-         </item>
-         <item row="9" column="1">
+         <item row="11" column="1">
           <widget class="QLabel" name="label_27">
            <property name="text">
-            <string>2D icp (laser scans required)</string>
+            <string>2D icp</string>
            </property>
           </widget>
          </item>
-         <item row="10" column="0">
+         <item row="12" column="0">
           <spacer name="verticalSpacer">
            <property name="orientation">
             <enum>Qt::Vertical</enum>
@@ -1049,6 +1089,43 @@
            </property>
           </spacer>
          </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="label_68">
+           <property name="text">
+            <string>Use laser scans for ICP</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QCheckBox" name="checkBox_icp_laserScan">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QLabel" name="label_69">
+           <property name="text">
+            <string>Downsample step size</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QSpinBox" name="spinBox_icp_downsamplingStepSize">
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>999999</number>
+           </property>
+           <property name="singleStep">
+            <number>1000</number>
+           </property>
+           <property name="value">
+            <number>1</number>
+           </property>
+          </widget>
+         </item>
         </layout>
        </widget>
        <widget class="QWidget" name="page_2">
@@ -1056,8 +1133,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>351</width>
-          <height>407</height>
+          <width>366</width>
+          <height>420</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1389,8 +1466,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>333</width>
-          <height>333</height>
+          <width>338</width>
+          <height>330</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1628,8 +1705,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>255</width>
-          <height>377</height>
+          <width>261</width>
+          <height>411</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1886,7 +1963,7 @@
           <x>0</x>
           <y>0</y>
           <width>201</width>
-          <height>117</height>
+          <height>126</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1985,8 +2062,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>285</width>
-          <height>309</height>
+          <width>283</width>
+          <height>322</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2394,7 +2471,7 @@
   </action>
   <action name="actionGenerate_3D_map_pcd">
    <property name="text">
-    <string>Export 3D map (*.pcd) ...</string>
+    <string>Export 3D map (*.ply *.pcd) ...</string>
    </property>
   </action>
   <action name="actionExport">
@@ -2455,6 +2532,16 @@
   <action name="actionGenerate_g2o_graph_g2o">
    <property name="text">
     <string>Generate g2o graph (*.g2o)...</string>
+   </property>
+  </action>
+  <action name="actionView_3D_laser_scans">
+   <property name="text">
+    <string>View 3D laser scans...</string>
+   </property>
+  </action>
+  <action name="actionExport_3D_laser_scans_ply_pcd">
+   <property name="text">
+    <string>Export 3D laser scans (*.ply *.pcd) ...</string>
    </property>
   </action>
  </widget>

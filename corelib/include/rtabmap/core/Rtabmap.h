@@ -184,8 +184,8 @@ private:
 	float _rgbdLinearUpdate;
 	float _rgbdAngularUpdate;
 	float _newMapOdomChangeDistance;
-	int _globalLoopClosureIcpType;
-	bool _poseScanMatching;
+	bool _loopClosureIcpRefining;
+	bool _odomIcpRefining;
 	bool _localLoopClosureDetectionTime;
 	bool _localLoopClosureDetectionSpace;
 	bool _scanMatchingIdsSavedInLinks;
@@ -194,15 +194,10 @@ private:
 	int _localDetectMaxGraphDepth;
 	float _localPathFilteringRadius;
 	bool _localPathOdomPosesUsed;
+	bool _localPathScansMerged;
 	std::string _databasePath;
 	bool _optimizeFromGraphEnd;
 	float _optimizationMaxLinearError;
-	bool _reextractLoopClosureFeatures;
-	int _reextractNNType;
-	float _reextractNNDR;
-	int _reextractFeatureType;
-	int _reextractMaxWords;
-	float _reextractMaxDepth;
 	bool _startNewMapOnLoopClosure;
 	float _goalReachedRadius; // meters
 	bool _goalsSavedInUserData;

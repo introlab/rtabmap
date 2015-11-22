@@ -106,11 +106,13 @@ public:
 	static void filterKeypointsByDepth(
 				std::vector<cv::KeyPoint> & keypoints,
 				const cv::Mat & depth,
+				float minDepth,
 				float maxDepth);
 	static void filterKeypointsByDepth(
 			std::vector<cv::KeyPoint> & keypoints,
 			cv::Mat & descriptors,
 			const cv::Mat & depth,
+			float minDepth,
 			float maxDepth);
 
 	static void filterKeypointsByDisparity(

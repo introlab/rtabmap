@@ -286,6 +286,54 @@ int main(int argc, char * argv[])
 			continue;
 		}
 
+		//backward compatibility
+		// look for old parameter name
+		std::map<std::string, std::pair<bool, std::string> >::const_iterator oldIter = Parameters::getRemovedParameters().find(key);
+		if(oldIter!=Parameters::getRemovedParameters().end())
+		{
+			++i;
+			if(i < argc)
+			{
+				std::string value = argv[i];
+				if(value.empty())
+				{
+					showUsage();
+				}
+				else
+				{
+					value = uReplaceChar(value, ',', ' ');
+				}
+
+				if(oldIter->second.first)
+				{
+					key = oldIter->second.second;
+					UWARN("Parameter migration from \"%s\" to \"%s\" (value=%s).",
+							oldIter->first.c_str(), oldIter->second.second.c_str(), value.c_str());
+				}
+				else if(oldIter->second.second.empty())
+				{
+					UERROR("Parameter \"%s\" doesn't exist anymore.", oldIter->first.c_str());
+				}
+				else
+				{
+					UERROR("Parameter \"%s\" doesn't exist anymore, check this similar parameter \"%s\".", oldIter->first.c_str(), oldIter->second.second.c_str());
+				}
+				if(oldIter->second.first)
+				{
+					std::pair<ParametersMap::iterator, bool> inserted = pm.insert(ParametersPair(key, value));
+					if(inserted.second == false)
+					{
+						inserted.first->second = value;
+					}
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
+
 		printf("Unrecognized option : %s\n", argv[i]);
 		showUsage();
 	}

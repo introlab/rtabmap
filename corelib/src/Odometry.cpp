@@ -35,14 +35,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
-		_roiRatios(Parameters::defaultOdomRoiRatios()),
-		_minInliers(Parameters::defaultOdomMinInliers()),
-		_inlierDistance(Parameters::defaultOdomInlierDistance()),
-		_iterations(Parameters::defaultOdomIterations()),
-		_refineIterations(Parameters::defaultOdomRefineIterations()),
-		_maxDepth(Parameters::defaultOdomMaxDepth()),
+		_roiRatios(Parameters::defaultVisRoiRatios()),
+		_minInliers(Parameters::defaultVisMinInliers()),
+		_inlierDistance(Parameters::defaultVisInlierDistance()),
+		_iterations(Parameters::defaultVisIterations()),
+		_refineIterations(Parameters::defaultVisRefineIterations()),
+		_maxDepth(Parameters::defaultVisMaxDepth()),
 		_resetCountdown(Parameters::defaultOdomResetCountdown()),
-		_force2D(Parameters::defaultOdomForce2D()),
+		_force2D(Parameters::defaultVisForce2D()),
 		_holonomic(Parameters::defaultOdomHolonomic()),
 		_particleFiltering(Parameters::defaultOdomParticleFiltering()),
 		_particleSize(Parameters::defaultOdomParticleSize()),
@@ -51,30 +51,30 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_particleNoiseR(Parameters::defaultOdomParticleNoiseR()),
 		_particleLambdaR(Parameters::defaultOdomParticleLambdaR()),
 		_fillInfoData(Parameters::defaultOdomFillInfoData()),
-		_estimationType(Parameters::defaultOdomEstimationType()),
-		_pnpReprojError(Parameters::defaultOdomPnPReprojError()),
-		_pnpFlags(Parameters::defaultOdomPnPFlags()),
-		_varianceFromInliersCount(Parameters::defaultOdomVarianceFromInliersCount()),
+		_estimationType(Parameters::defaultVisEstimationType()),
+		_pnpReprojError(Parameters::defaultVisPnPReprojError()),
+		_pnpFlags(Parameters::defaultVisPnPFlags()),
+		_varianceFromInliersCount(Parameters::defaultRegVarianceFromInliersCount()),
 		_resetCurrentCount(0),
 		previousStamp_(0),
 		previousTransform_(Transform::getIdentity()),
 		distanceTravelled_(0)
 {
 	Parameters::parse(parameters, Parameters::kOdomResetCountdown(), _resetCountdown);
-	Parameters::parse(parameters, Parameters::kOdomMinInliers(), _minInliers);
-	Parameters::parse(parameters, Parameters::kOdomInlierDistance(), _inlierDistance);
-	Parameters::parse(parameters, Parameters::kOdomIterations(), _iterations);
-	Parameters::parse(parameters, Parameters::kOdomRefineIterations(), _refineIterations);
-	Parameters::parse(parameters, Parameters::kOdomMaxDepth(), _maxDepth);
-	Parameters::parse(parameters, Parameters::kOdomRoiRatios(), _roiRatios);
-	Parameters::parse(parameters, Parameters::kOdomForce2D(), _force2D);
+	Parameters::parse(parameters, Parameters::kVisMinInliers(), _minInliers);
+	Parameters::parse(parameters, Parameters::kVisInlierDistance(), _inlierDistance);
+	Parameters::parse(parameters, Parameters::kVisIterations(), _iterations);
+	Parameters::parse(parameters, Parameters::kVisRefineIterations(), _refineIterations);
+	Parameters::parse(parameters, Parameters::kVisMaxDepth(), _maxDepth);
+	Parameters::parse(parameters, Parameters::kVisRoiRatios(), _roiRatios);
+	Parameters::parse(parameters, Parameters::kVisForce2D(), _force2D);
 	Parameters::parse(parameters, Parameters::kOdomHolonomic(), _holonomic);
 	Parameters::parse(parameters, Parameters::kOdomFillInfoData(), _fillInfoData);
-	Parameters::parse(parameters, Parameters::kOdomEstimationType(), _estimationType);
-	Parameters::parse(parameters, Parameters::kOdomPnPReprojError(), _pnpReprojError);
-	Parameters::parse(parameters, Parameters::kOdomPnPFlags(), _pnpFlags);
+	Parameters::parse(parameters, Parameters::kVisEstimationType(), _estimationType);
+	Parameters::parse(parameters, Parameters::kVisPnPReprojError(), _pnpReprojError);
+	Parameters::parse(parameters, Parameters::kVisPnPFlags(), _pnpFlags);
 	UASSERT(_pnpFlags>=0 && _pnpFlags <=2);
-	Parameters::parse(parameters, Parameters::kOdomVarianceFromInliersCount(), _varianceFromInliersCount);
+	Parameters::parse(parameters, Parameters::kRegVarianceFromInliersCount(), _varianceFromInliersCount);
 	Parameters::parse(parameters, Parameters::kOdomParticleFiltering(), _particleFiltering);
 	Parameters::parse(parameters, Parameters::kOdomParticleSize(), _particleSize);
 	Parameters::parse(parameters, Parameters::kOdomParticleNoiseT(), _particleNoiseT);

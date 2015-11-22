@@ -199,7 +199,7 @@ SensorData::SensorData(
 		_depthOrRightRaw = depth;
 	}
 
-	if(laserScan.type() == CV_32FC2)
+	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3)
 	{
 		_laserScanRaw = laserScan;
 	}
@@ -306,7 +306,7 @@ SensorData::SensorData(
 		_depthOrRightRaw = depth;
 	}
 
-	if(laserScan.type() == CV_32FC2)
+	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3)
 	{
 		_laserScanRaw = laserScan;
 	}
@@ -412,7 +412,7 @@ SensorData::SensorData(
 		_depthOrRightRaw = right;
 	}
 
-	if(laserScan.type() == CV_32FC2)
+	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3)
 	{
 		_laserScanRaw = laserScan;
 	}

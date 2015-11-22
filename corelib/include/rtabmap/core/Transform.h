@@ -124,6 +124,7 @@ public:
 	static Transform fromEigen3d(const Eigen::Affine3d & matrix);
 	static Transform fromEigen3f(const Eigen::Isometry3f & matrix);
 	static Transform fromEigen3d(const Eigen::Isometry3d & matrix);
+	static Transform fromString(const std::string & string);
 
 private:
 	cv::Mat data_;

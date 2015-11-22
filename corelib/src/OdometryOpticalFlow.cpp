@@ -54,9 +54,9 @@ OdometryOpticalFlow::OdometryOpticalFlow(const ParametersMap & parameters) :
 	stereoEps_(Parameters::defaultStereoEps()),
 	stereoMaxLevel_(Parameters::defaultStereoMaxLevel()),
 	stereoMaxSlope_(Parameters::defaultStereoMaxSlope()),
-	subPixWinSize_(Parameters::defaultOdomSubPixWinSize()),
-	subPixIterations_(Parameters::defaultOdomSubPixIterations()),
-	subPixEps_(Parameters::defaultOdomSubPixEps()),
+	subPixWinSize_(Parameters::defaultVisSubPixWinSize()),
+	subPixIterations_(Parameters::defaultVisSubPixIterations()),
+	subPixEps_(Parameters::defaultVisSubPixEps()),
 	refCorners3D_(new pcl::PointCloud<pcl::PointXYZ>)
 {
 	Parameters::parse(parameters, Parameters::kOdomFlowWinSize(), flowWinSize_);
@@ -68,20 +68,20 @@ OdometryOpticalFlow::OdometryOpticalFlow(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kStereoEps(), stereoEps_);
 	Parameters::parse(parameters, Parameters::kStereoMaxLevel(), stereoMaxLevel_);
 	Parameters::parse(parameters, Parameters::kStereoMaxSlope(), stereoMaxSlope_);
-	Parameters::parse(parameters, Parameters::kOdomSubPixWinSize(), subPixWinSize_);
-	Parameters::parse(parameters, Parameters::kOdomSubPixIterations(), subPixIterations_);
-	Parameters::parse(parameters, Parameters::kOdomSubPixEps(), subPixEps_);
+	Parameters::parse(parameters, Parameters::kVisSubPixWinSize(), subPixWinSize_);
+	Parameters::parse(parameters, Parameters::kVisSubPixIterations(), subPixIterations_);
+	Parameters::parse(parameters, Parameters::kVisSubPixEps(), subPixEps_);
 
 	ParametersMap::const_iterator iter;
-	Feature2D::Type detectorStrategy = (Feature2D::Type)Parameters::defaultOdomFeatureType();
-	if((iter=parameters.find(Parameters::kOdomFeatureType())) != parameters.end())
+	Feature2D::Type detectorStrategy = (Feature2D::Type)Parameters::defaultVisFeatureType();
+	if((iter=parameters.find(Parameters::kVisFeatureType())) != parameters.end())
 	{
 		detectorStrategy = (Feature2D::Type)std::atoi((*iter).second.c_str());
 	}
 
 	ParametersMap customParameters;
-	int maxFeatures = Parameters::defaultOdomMaxFeatures();
-	Parameters::parse(parameters, Parameters::kOdomMaxFeatures(), maxFeatures);
+	int maxFeatures = Parameters::defaultVisMaxFeatures();
+	Parameters::parse(parameters, Parameters::kVisMaxFeatures(), maxFeatures);
 	customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(maxFeatures)));
 	// add only feature stuff
 	for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)

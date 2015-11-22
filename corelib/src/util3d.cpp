@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UFile.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/transforms.h>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -550,7 +551,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 
 					if(tmp->size() && samples)
 					{
-						tmp = util3d::sampling(tmp, samples);
+						tmp = util3d::randomSampling(tmp, samples);
 						filtered = true;
 					}
 
@@ -685,7 +686,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 
 					if(tmp->size() && samples)
 					{
-						tmp = util3d::sampling(tmp, samples);
+						tmp = util3d::randomSampling(tmp, samples);
 						filtered = true;
 					}
 
@@ -789,62 +790,58 @@ pcl::PointCloud<pcl::PointXYZ> laserScanFromDepthImage(
 	return scan;
 }
 
-cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud)
+cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform)
 {
-	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC2);
+	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC3);
+	bool nullTransform = transform.isNull();
+	Eigen::Affine3f transform3f = transform.toEigen3f();
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
-		laserScan.at<cv::Vec2f>(i)[0] = cloud.at(i).x;
-		laserScan.at<cv::Vec2f>(i)[1] = cloud.at(i).y;
+		if(!nullTransform)
+		{
+			pcl::PointXYZ pt = pcl::transformPoint(cloud.at(i), transform3f);
+			laserScan.at<cv::Vec3f>(i)[0] = pt.x;
+			laserScan.at<cv::Vec3f>(i)[1] = pt.y;
+			laserScan.at<cv::Vec3f>(i)[2] = pt.z;
+		}
+		else
+		{
+			laserScan.at<cv::Vec3f>(i)[0] = cloud.at(i).x;
+			laserScan.at<cv::Vec3f>(i)[1] = cloud.at(i).y;
+			laserScan.at<cv::Vec3f>(i)[2] = cloud.at(i).z;
+		}
+
 	}
 	return laserScan;
 }
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr laserScanToPointCloud(const cv::Mat & laserScan)
+pcl::PointCloud<pcl::PointXYZ>::Ptr laserScanToPointCloud(const cv::Mat & laserScan, const Transform & transform)
 {
-	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2);
+	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3);
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
 	output->resize(laserScan.cols);
+	bool nullTransform = transform.isNull();
+	Eigen::Affine3f transform3f = transform.toEigen3f();
 	for(int i=0; i<laserScan.cols; ++i)
 	{
-		output->at(i).x = laserScan.at<cv::Vec2f>(i)[0];
-		output->at(i).y = laserScan.at<cv::Vec2f>(i)[1];
+		if(laserScan.type() == CV_32FC2)
+		{
+			output->at(i).x = laserScan.at<cv::Vec2f>(i)[0];
+			output->at(i).y = laserScan.at<cv::Vec2f>(i)[1];
+		}
+		else
+		{
+			output->at(i).x = laserScan.at<cv::Vec3f>(i)[0];
+			output->at(i).y = laserScan.at<cv::Vec3f>(i)[1];
+			output->at(i).z = laserScan.at<cv::Vec3f>(i)[2];
+		}
+		if(!nullTransform)
+		{
+			output->at(i) = pcl::transformPoint(output->at(i), transform3f);
+		}
 	}
 	return output;
-}
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr cvMat2Cloud(
-		const cv::Mat & matrix,
-		const Transform & tranform)
-{
-	UASSERT(matrix.type() == CV_32FC2 || matrix.type() == CV_32FC3);
-	UASSERT(matrix.rows == 1);
-
-	Eigen::Affine3f t = tranform.toEigen3f();
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-	cloud->resize(matrix.cols);
-	if(matrix.channels() == 2)
-	{
-		for(int i=0; i<matrix.cols; ++i)
-		{
-			cloud->at(i).x = matrix.at<cv::Vec2f>(0,i)[0];
-			cloud->at(i).y = matrix.at<cv::Vec2f>(0,i)[1];
-			cloud->at(i).z = 0.0f;
-			cloud->at(i) = pcl::transformPoint(cloud->at(i), t);
-		}
-	}
-	else // channels=3
-	{
-		for(int i=0; i<matrix.cols; ++i)
-		{
-			cloud->at(i).x = matrix.at<cv::Vec3f>(0,i)[0];
-			cloud->at(i).y = matrix.at<cv::Vec3f>(0,i)[1];
-			cloud->at(i).z = matrix.at<cv::Vec3f>(0,i)[2];
-			cloud->at(i) = pcl::transformPoint(cloud->at(i), t);
-		}
-	}
-	return cloud;
 }
 
 // inspired from ROS image_geometry/src/stereo_camera_model.cpp
@@ -948,6 +945,42 @@ void savePCDWords(
 		}
 		pcl::io::savePCDFile(fileName, cloud);
 	}
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr loadBINCloud(const std::string & fileName, int dim)
+{
+	UASSERT(dim > 0);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+	long bytes = UFile::length(fileName);
+	if(bytes)
+	{
+		UASSERT(bytes % sizeof(float) == 0);
+		int32_t num = bytes/sizeof(float);
+		UASSERT(num % dim == 0);
+		float *data = (float*)malloc(num*sizeof(float));
+
+		// pointers
+		float *px = data+0;
+		float *py = data+1;
+		float *pz = data+2;
+		float *pr = data+3;
+
+		// load point cloud
+		FILE *stream;
+		stream = fopen (fileName.c_str(),"rb");
+		num = fread(data,sizeof(float),num,stream)/4;
+		cloud->resize(num);
+		for (int32_t i=0; i<num; i++) {
+			(*cloud)[i].x = *px;
+			(*cloud)[i].y = *py;
+			(*cloud)[i].z = *pz;
+			px+=4; py+=4; pz+=4; pr+=4;
+		}
+		fclose(stream);
+	}
+
+	return cloud;
 }
 
 }

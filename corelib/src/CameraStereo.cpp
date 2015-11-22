@@ -779,6 +779,28 @@ CameraStereoImages::CameraStereoImages(
 	}
 }
 
+CameraStereoImages::CameraStereoImages(
+		const std::string & scanPath,
+		const Transform & scanLocalTransform,
+		int scanMaxPts,
+		const std::string & pathLeftImages,
+		const std::string & pathRightImages,
+		bool filenamesAreTimestamps,
+		const std::string & timestampsPath,
+		bool rectifyImages,
+		float imageRate,
+		const Transform & localTransform) :
+		Camera(imageRate, localTransform),
+		camera_(0),
+		camera2_(0),
+		filenamesAreTimestamps_(filenamesAreTimestamps),
+		timestampsPath_(timestampsPath),
+		rectifyImages_(rectifyImages)
+{
+	camera_ = new CameraImages(scanPath, scanLocalTransform, scanMaxPts, pathLeftImages);
+	camera2_ = new CameraImages(pathRightImages);
+}
+
 CameraStereoImages::~CameraStereoImages()
 {
 	if(camera_)
@@ -811,6 +833,7 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 					stereoModel_.baseline());
 		}
 	}
+
 	stereoModel_.setLocalTransform(this->getLocalTransform());
 	if(rectifyImages_ && !stereoModel_.isValid())
 	{
@@ -968,7 +991,7 @@ SensorData CameraStereoImages::captureImage()
 					leftImage = stereoModel_.left().rectifyImage(leftImage);
 					rightImage = stereoModel_.right().rectifyImage(rightImage);
 				}
-				data = SensorData(leftImage, rightImage, stereoModel_, this->getNextSeqID(), stamp);
+				data = SensorData(left.laserScanRaw(), left.laserScanMaxPts(), 0, leftImage, rightImage, stereoModel_, this->getNextSeqID(), stamp);
 			}
 		}
 	}
@@ -1034,6 +1057,7 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 						stereoModel_.baseline());
 			}
 		}
+
 		stereoModel_.setLocalTransform(this->getLocalTransform());
 		if(rectifyImages_ && !stereoModel_.isValid())
 		{

@@ -40,6 +40,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/EpipolarGeometry.h>
 #include "rtabmap/core/VisualWord.h"
 #include "rtabmap/core/Features2d.h"
+#include "rtabmap/core/RegistrationIcp.h"
+#include "rtabmap/core/RegistrationVis.h"
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/core/util3d_features.h"
 #include "rtabmap/core/util3d_filtering.h"
@@ -79,8 +81,9 @@ Memory::Memory(const ParametersMap & parameters) :
 	_generateIds(Parameters::defaultMemGenerateIds()),
 	_badSignaturesIgnored(Parameters::defaultMemBadSignaturesIgnored()),
 	_imageDecimation(Parameters::defaultMemImageDecimation()),
-	_laserScanVoxelSize(Parameters::defaultMemLaserScanVoxelSize()),
+	_laserScanDownsampleStepSize(Parameters::defaultMemLaserScanDownsampleStepSize()),
 	_localSpaceLinksKeptInWM(Parameters::defaultMemLocalSpaceLinksKeptInWM()),
+	_reextractLoopClosureFeatures(Parameters::defaultRGBDLoopClosureReextractFeatures()),
 	_rehearsalMaxDistance(Parameters::defaultRGBDLinearUpdate()),
 	_rehearsalMaxAngle(Parameters::defaultRGBDAngularUpdate()),
 	_rehearsalWeightIgnoredWhileMoving(Parameters::defaultMemRehearsalWeightIgnoredWhileMoving()),
@@ -98,36 +101,8 @@ Memory::Memory(const ParametersMap & parameters) :
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
 	_parallelized(Parameters::defaultKpParallelized()),
 	_wordsMaxDepth(Parameters::defaultKpMaxDepth()),
+	_wordsMinDepth(Parameters::defaultKpMinDepth()),
 	_roiRatios(std::vector<float>(4, 0.0f)),
-
-	_bowMinInliers(Parameters::defaultLccBowMinInliers()),
-	_bowInlierDistance(Parameters::defaultLccBowInlierDistance()),
-	_bowIterations(Parameters::defaultLccBowIterations()),
-	_bowRefineIterations(Parameters::defaultLccBowRefineIterations()),
-	_bowForce2D(Parameters::defaultLccBowForce2D()),
-	_bowEpipolarGeometryVar(Parameters::defaultLccBowEpipolarGeometryVar()),
-	_bowEstimationType(Parameters::defaultLccBowEstimationType()),
-	_bowPnPReprojError(Parameters::defaultLccBowPnPReprojError()),
-	_bowPnPFlags(Parameters::defaultLccBowPnPFlags()),
-	_bowVarianceFromInliersCount(Parameters::defaultLccBowVarianceFromInliersCount()),
-
-	_icpMaxTranslation(Parameters::defaultLccIcpMaxTranslation()),
-	_icpMaxRotation(Parameters::defaultLccIcpMaxRotation()),
-
-	_icpDecimation(Parameters::defaultLccIcp3Decimation()),
-	_icpMaxDepth(Parameters::defaultLccIcp3MaxDepth()),
-	_icpVoxelSize(Parameters::defaultLccIcp3VoxelSize()),
-	_icpSamples(Parameters::defaultLccIcp3Samples()),
-	_icpMaxCorrespondenceDistance(Parameters::defaultLccIcp3MaxCorrespondenceDistance()),
-	_icpMaxIterations(Parameters::defaultLccIcp3Iterations()),
-	_icpCorrespondenceRatio(Parameters::defaultLccIcp3CorrespondenceRatio()),
-	_icpPointToPlane(Parameters::defaultLccIcp3PointToPlane()),
-	_icpPointToPlaneNormalNeighbors(Parameters::defaultLccIcp3PointToPlaneNormalNeighbors()),
-
-	_icp2MaxCorrespondenceDistance(Parameters::defaultLccIcp2MaxCorrespondenceDistance()),
-	_icp2MaxIterations(Parameters::defaultLccIcp2Iterations()),
-	_icp2CorrespondenceRatio(Parameters::defaultLccIcp2CorrespondenceRatio()),
-	_icp2VoxelSize(Parameters::defaultLccIcp2VoxelSize()),
 
 	_stereoFlowWinSize(Parameters::defaultStereoWinSize()),
 	_stereoFlowIterations(Parameters::defaultStereoIterations()),
@@ -141,6 +116,8 @@ Memory::Memory(const ParametersMap & parameters) :
 {
 	_feature2D = Feature2D::create(_featureType, parameters);
 	_vwd = new VWDictionary(parameters);
+	_registrationVis = new RegistrationVis(parameters);
+	_registrationIcp = new RegistrationIcp(parameters);
 	this->parseParameters(parameters);
 }
 
@@ -392,6 +369,14 @@ Memory::~Memory()
 	{
 		delete _vwd;
 	}
+	if(_registrationVis)
+	{
+		delete _registrationVis;
+	}
+	if(_registrationIcp)
+	{
+		delete _registrationIcp;
+	}
 	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosed));
 }
 
@@ -413,8 +398,9 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemTransferSortingByWeightId(), _transferSortingByWeightId);
 	Parameters::parse(parameters, Parameters::kMemSTMSize(), _maxStMemSize);
 	Parameters::parse(parameters, Parameters::kMemImageDecimation(), _imageDecimation);
-	Parameters::parse(parameters, Parameters::kMemLaserScanVoxelSize(), _laserScanVoxelSize);
+	Parameters::parse(parameters, Parameters::kMemLaserScanDownsampleStepSize(), _laserScanDownsampleStepSize);
 	Parameters::parse(parameters, Parameters::kMemLocalSpaceLinksKeptInWM(), _localSpaceLinksKeptInWM);
+	Parameters::parse(parameters, Parameters::kRGBDLoopClosureReextractFeatures(), _reextractLoopClosureFeatures);
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rehearsalMaxDistance);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
 	Parameters::parse(parameters, Parameters::kMemRehearsalWeightIgnoredWhileMoving(), _rehearsalWeightIgnoredWhileMoving);
@@ -444,54 +430,12 @@ void Memory::parseParameters(const ParametersMap & parameters)
 		_dbDriver->parseParameters(parameters);
 	}
 
-	Parameters::parse(parameters, Parameters::kLccBowMinInliers(), _bowMinInliers);
-	Parameters::parse(parameters, Parameters::kLccBowInlierDistance(), _bowInlierDistance);
-	Parameters::parse(parameters, Parameters::kLccBowIterations(), _bowIterations);
-	Parameters::parse(parameters, Parameters::kLccBowRefineIterations(), _bowRefineIterations);
-	Parameters::parse(parameters, Parameters::kLccBowForce2D(), _bowForce2D);
-	Parameters::parse(parameters, Parameters::kLccBowEstimationType(), _bowEstimationType);
-	Parameters::parse(parameters, Parameters::kLccBowEpipolarGeometryVar(), _bowEpipolarGeometryVar);
-	Parameters::parse(parameters, Parameters::kLccBowPnPReprojError(), _bowPnPReprojError);
-	Parameters::parse(parameters, Parameters::kLccBowPnPFlags(), _bowPnPFlags);
-	Parameters::parse(parameters, Parameters::kLccBowVarianceFromInliersCount(), _bowVarianceFromInliersCount);
-	Parameters::parse(parameters, Parameters::kLccIcpMaxTranslation(), _icpMaxTranslation);
-	Parameters::parse(parameters, Parameters::kLccIcpMaxRotation(), _icpMaxRotation);
-	Parameters::parse(parameters, Parameters::kLccIcp3Decimation(), _icpDecimation);
-	Parameters::parse(parameters, Parameters::kLccIcp3MaxDepth(), _icpMaxDepth);
-	Parameters::parse(parameters, Parameters::kLccIcp3VoxelSize(), _icpVoxelSize);
-	Parameters::parse(parameters, Parameters::kLccIcp3Samples(), _icpSamples);
-	Parameters::parse(parameters, Parameters::kLccIcp3MaxCorrespondenceDistance(), _icpMaxCorrespondenceDistance);
-	Parameters::parse(parameters, Parameters::kLccIcp3Iterations(), _icpMaxIterations);
-	Parameters::parse(parameters, Parameters::kLccIcp3CorrespondenceRatio(), _icpCorrespondenceRatio);
-	Parameters::parse(parameters, Parameters::kLccIcp3PointToPlane(), _icpPointToPlane);
-	Parameters::parse(parameters, Parameters::kLccIcp3PointToPlaneNormalNeighbors(), _icpPointToPlaneNormalNeighbors);
-	Parameters::parse(parameters, Parameters::kLccIcp2MaxCorrespondenceDistance(), _icp2MaxCorrespondenceDistance);
-	Parameters::parse(parameters, Parameters::kLccIcp2Iterations(), _icp2MaxIterations);
-	Parameters::parse(parameters, Parameters::kLccIcp2CorrespondenceRatio(), _icp2CorrespondenceRatio);
-	Parameters::parse(parameters, Parameters::kLccIcp2VoxelSize(), _icp2VoxelSize);
-
 	//stereo
 	Parameters::parse(parameters, Parameters::kStereoWinSize(), _stereoFlowWinSize);
 	Parameters::parse(parameters, Parameters::kStereoIterations(), _stereoFlowIterations);
 	Parameters::parse(parameters, Parameters::kStereoEps(), _stereoFlowEpsilon);
 	Parameters::parse(parameters, Parameters::kStereoMaxLevel(), _stereoFlowMaxLevel);
 	Parameters::parse(parameters, Parameters::kStereoMaxSlope(), _stereoMaxSlope);
-
-	UASSERT_MSG(_bowMinInliers >= 1, uFormat("value=%d", _bowMinInliers).c_str());
-	UASSERT_MSG(_bowInlierDistance > 0.0f, uFormat("value=%f", _bowInlierDistance).c_str());
-	UASSERT_MSG(_bowIterations > 0, uFormat("value=%d", _bowIterations).c_str());
-	UASSERT_MSG(_icpDecimation > 0, uFormat("value=%d", _icpDecimation).c_str());
-	UASSERT_MSG(_icpMaxDepth >= 0.0f, uFormat("value=%f", _icpMaxDepth).c_str());
-	UASSERT_MSG(_icpVoxelSize >= 0, uFormat("value=%d", _icpVoxelSize).c_str());
-	UASSERT_MSG(_icpSamples >= 0, uFormat("value=%d", _icpSamples).c_str());
-	UASSERT_MSG(_icpMaxCorrespondenceDistance > 0.0f, uFormat("value=%f", _icpMaxCorrespondenceDistance).c_str());
-	UASSERT_MSG(_icpMaxIterations > 0, uFormat("value=%d", _icpMaxIterations).c_str());
-	UASSERT_MSG(_icpCorrespondenceRatio >=0.0f && _icpCorrespondenceRatio <=1.0f, uFormat("value=%f", _icpCorrespondenceRatio).c_str());
-	UASSERT_MSG(_icpPointToPlaneNormalNeighbors > 0, uFormat("value=%d", _icpPointToPlaneNormalNeighbors).c_str());
-	UASSERT_MSG(_icp2MaxCorrespondenceDistance > 0.0f, uFormat("value=%f", _icp2MaxCorrespondenceDistance).c_str());
-	UASSERT_MSG(_icp2MaxIterations > 0, uFormat("value=%d", _icp2MaxIterations).c_str());
-	UASSERT_MSG(_icp2CorrespondenceRatio >=0.0f && _icp2CorrespondenceRatio <=1.0f, uFormat("value=%f", _icp2CorrespondenceRatio).c_str());
-	UASSERT_MSG(_icp2VoxelSize >= 0, uFormat("value=%d", _icp2VoxelSize).c_str());
 
 	// Keypoint stuff
 	if(_vwd)
@@ -503,6 +447,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kKpParallelized(), _parallelized);
 	Parameters::parse(parameters, Parameters::kKpBadSignRatio(), _badSignRatio);
 	Parameters::parse(parameters, Parameters::kKpMaxDepth(), _wordsMaxDepth);
+	Parameters::parse(parameters, Parameters::kKpMinDepth(), _wordsMinDepth);
 
 	Parameters::parse(parameters, Parameters::kKpSubPixWinSize(), _subPixWinSize);
 	Parameters::parse(parameters, Parameters::kKpSubPixIterations(), _subPixIterations);
@@ -536,6 +481,15 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	else if(_feature2D)
 	{
 		_feature2D->parseParameters(parameters);
+	}
+
+	if(_registrationVis)
+	{
+		_registrationVis->parseParameters(parameters);
+	}
+	if(_registrationIcp)
+	{
+		_registrationIcp->parseParameters(parameters);
 	}
 }
 
@@ -2125,26 +2079,44 @@ void Memory::removeLink(int oldId, int newId)
 	}
 }
 
-// compute transform newId -> oldId
+// compute transform fromId -> toId
 Transform Memory::computeVisualTransform(
-		int oldId,
-		int newId,
+		int fromId,
+		int toId,
 		std::string * rejectedMsg,
 		int * inliers,
-		double * variance) const
+		float * variance)
 {
-	const Signature * oldS = this->getSignature(oldId);
-	const Signature * newS = this->getSignature(newId);
+	const Signature * fromS = this->getSignature(fromId);
+	const Signature * toS = this->getSignature(toId);
 
 	Transform transform;
 
-	if(oldS && newId)
+	if(fromS && toS)
 	{
-		return computeVisualTransform(*oldS, *newS, rejectedMsg, inliers, variance);
+		// compute transform fromId -> toId
+		if(_reextractLoopClosureFeatures)
+		{
+			getNodeData(fromS->id(), true);
+			getNodeData(toS->id(), true);
+
+			Signature tmpFrom = *fromS;
+			Signature tmpTo = *toS;
+
+			tmpFrom.setWords(std::multimap<int, cv::KeyPoint>());
+			tmpFrom.setWords3(std::multimap<int, pcl::PointXYZ>());
+			tmpTo.setWords(std::multimap<int, cv::KeyPoint>());
+			tmpTo.setWords3(std::multimap<int, pcl::PointXYZ>());
+			return _registrationVis->computeTransformation(tmpFrom, tmpTo, Transform::getIdentity(), rejectedMsg, inliers, variance);
+		}
+		else
+		{
+			return _registrationVis->computeTransformation(*fromS, *toS, Transform::getIdentity(), rejectedMsg, inliers, variance);
+		}
 	}
 	else
 	{
-		std::string msg = uFormat("Did not find nodes %d and/or %d", oldId, newId);
+		std::string msg = uFormat("Did not find nodes %d and/or %d", fromId, toId);
 		if(rejectedMsg)
 		{
 			*rejectedMsg = msg;
@@ -2154,296 +2126,54 @@ Transform Memory::computeVisualTransform(
 	return Transform();
 }
 
-// compute transform newId -> oldId
-Transform Memory::computeVisualTransform(
-		const Signature & oldS,
-		const Signature & newS,
-		std::string * rejectedMsg,
-		int * inliersOut,
-		double * varianceOut) const
-{
-	Transform transform;
-	std::string msg;
-	// Guess transform from visual words
-
-	int inliersCount= 0;
-	double variance = 1.0;
-
-	if(_bowEstimationType == 2) // Epipolar Geometry
-	{
-		if(!newS.sensorData().stereoCameraModel().isValid() &&
-		   (newS.sensorData().cameraModels().size() != 1 ||
-			!newS.sensorData().cameraModels()[0].isValid()))
-		{
-			UERROR("Calibrated camera required (multi-cameras not supported).");
-		}
-		else if((int)oldS.getWords().size() >= _bowMinInliers &&
-				(int)newS.getWords().size() >= _bowMinInliers)
-		{
-			UASSERT(oldS.sensorData().stereoCameraModel().isValid() || (oldS.sensorData().cameraModels().size() == 1 && oldS.sensorData().cameraModels()[0].isValid()));
-			const CameraModel & cameraModel = oldS.sensorData().stereoCameraModel().isValid()?oldS.sensorData().stereoCameraModel().left():oldS.sensorData().cameraModels()[0];
-
-			// we only need the camera transform, send guess words3 for scale estimation
-			Transform cameraTransform;
-			std::multimap<int, pcl::PointXYZ> inliers3D = util3d::generateWords3DMono(
-					oldS.getWords(),
-					newS.getWords(),
-					cameraModel,
-					cameraTransform,
-					_bowIterations,
-					_bowPnPReprojError,
-					_bowPnPFlags, // cv::SOLVEPNP_ITERATIVE
-					1.0f,
-					0.99f,
-					oldS.getWords3(), // for scale estimation
-					&variance);
-
-			inliersCount = (int)inliers3D.size();
-
-			if(!cameraTransform.isNull())
-			{
-				if((int)inliers3D.size() >= _bowMinInliers)
-				{
-					if(variance <= _bowEpipolarGeometryVar)
-					{
-						transform = cameraTransform.inverse();
-					}
-					else
-					{
-						msg = uFormat("Variance is too high! (max inlier distance=%f, variance=%f)", _bowEpipolarGeometryVar, variance);
-						UINFO(msg.c_str());
-					}
-				}
-				else
-				{
-					msg = uFormat("Not enough inliers %d < %d", (int)inliers3D.size(), _bowMinInliers);
-					UINFO(msg.c_str());
-				}
-			}
-			else
-			{
-				msg = uFormat("No camera transform found");
-				UINFO(msg.c_str());
-			}
-		}
-		else if(oldS.getWords3().size() == 0)
-		{
-			msg = uFormat("No 3D guess words found");
-			UWARN(msg.c_str());
-		}
-		else
-		{
-			msg = uFormat("No camera model");
-			UWARN(msg.c_str());
-		}
-	}
-	else if(_bowEstimationType == 1) // PnP
-	{
-		if(!newS.sensorData().stereoCameraModel().isValid() &&
-		   (newS.sensorData().cameraModels().size() != 1 ||
-			!newS.sensorData().cameraModels()[0].isValid()))
-		{
-			UERROR("Calibrated camera required (multi-cameras not supported). Id=%d Models=%d StereoModel=%d weight=%d",
-					newS.id(),
-					(int)newS.sensorData().cameraModels().size(),
-					newS.sensorData().stereoCameraModel().isValid()?1:0,
-					newS.getWeight());
-		}
-		else
-		{
-			// 3D to 2D
-			if((int)oldS.getWords3().size() >= _bowMinInliers &&
-			   (int)newS.getWords().size() >= _bowMinInliers)
-			{
-				UASSERT(newS.sensorData().stereoCameraModel().isValid() || (newS.sensorData().cameraModels().size() == 1 && newS.sensorData().cameraModels()[0].isValid()));
-				const CameraModel & cameraModel = newS.sensorData().stereoCameraModel().isValid()?newS.sensorData().stereoCameraModel().left():newS.sensorData().cameraModels()[0];
-
-				std::vector<int> inliersV;
-				transform = util3d::estimateMotion3DTo2D(
-						uMultimapToMap(oldS.getWords3()),
-						uMultimapToMap(newS.getWords()),
-						cameraModel,
-						_bowMinInliers,
-						_bowIterations,
-						_bowPnPReprojError,
-						_bowPnPFlags,
-						Transform::getIdentity(),
-						uMultimapToMap(newS.getWords3()),
-						&variance,
-						0,
-						&inliersV);
-				inliersCount = (int)inliersV.size();
-				if(transform.isNull())
-				{
-					msg = uFormat("Not enough inliers %d/%d between %d and %d",
-							inliersCount, _bowMinInliers, oldS.id(), newS.id());
-					UINFO(msg.c_str());
-				}
-				else
-				{
-					transform = transform.inverse();
-				}
-			}
-			else
-			{
-				msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)",
-						(int)oldS.getWords3().size(), (int)newS.getWords().size(), _bowMinInliers);
-				UINFO(msg.c_str());
-			}
-		}
-
-	}
-	else
-	{
-		// 3D -> 3D
-		if((int)oldS.getWords3().size() >= _bowMinInliers &&
-		   (int)newS.getWords3().size() >= _bowMinInliers)
-		{
-			std::vector<int> inliersV;
-			transform = util3d::estimateMotion3DTo3D(
-					uMultimapToMap(oldS.getWords3()),
-					uMultimapToMap(newS.getWords3()),
-					_bowMinInliers,
-					_bowInlierDistance,
-					_bowIterations,
-					_bowRefineIterations,
-					&variance,
-					0,
-					&inliersV);
-			inliersCount = (int)inliersV.size();
-			if(transform.isNull())
-			{
-				msg = uFormat("Not enough inliers %d/%d between %d and %d",
-						inliersCount, _bowMinInliers, oldS.id(), newS.id());
-				UINFO(msg.c_str());
-			}
-			else
-			{
-				transform = transform.inverse();
-			}
-		}
-		else
-		{
-			msg = uFormat("Not enough 3D features in images (old=%d, new=%d, min=%d)",
-					(int)oldS.getWords3().size(), (int)newS.getWords3().size(), _bowMinInliers);
-			UINFO(msg.c_str());
-		}
-	}
-
-	if(!transform.isNull())
-	{
-		// verify if it is a 180 degree transform, well verify > 90
-		float x,y,z, roll,pitch,yaw;
-		transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-		if(fabs(roll) > CV_PI/2 ||
-		   fabs(pitch) > CV_PI/2 ||
-		   fabs(yaw) > CV_PI/2)
-		{
-			transform.setNull();
-			msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)",
-					roll, pitch, yaw);
-			UWARN(msg.c_str());
-		}
-		else if(_bowForce2D)
-		{
-			UDEBUG("Forcing 2D...");
-			transform = Transform(x,y,0, 0, 0, yaw);
-		}
-	}
-
-	if(_bowVarianceFromInliersCount)
-	{
-		variance = inliersCount > 0?1.0/double(inliersCount):1.0;
-	}
-
-	if(rejectedMsg)
-	{
-		*rejectedMsg = msg;
-	}
-	if(inliersOut)
-	{
-		*inliersOut = inliersCount;
-	}
-	if(varianceOut)
-	{
-		*varianceOut = variance>0.0f?variance:0.0001; // epsilon if exact transform
-	}
-	UDEBUG("transform=%s", transform.prettyPrint().c_str());
-	return transform;
-}
-
-// compute transform newId -> oldId
+// compute transform fromId -> toId
 Transform Memory::computeIcpTransform(
-		int oldId,
-		int newId,
+		int fromId,
+		int toId,
 		Transform guess,
-		bool icp3D,
 		std::string * rejectedMsg,
 		int * inliers,
-		double * variance,
+		float * variance,
 		float * inliersRatio)
 {
-	Signature * oldS = this->_getSignature(oldId);
-	Signature * newS = this->_getSignature(newId);
+	Signature * fromS = this->_getSignature(fromId);
+	Signature * toS = this->_getSignature(toId);
 
-	if(oldS && newS && _dbDriver)
+	if(fromS && toS && _dbDriver)
 	{
-		std::list<Signature*> depthToLoad;
-		std::set<int> added;
-		if(icp3D)
+		std::list<Signature*> depthsToLoad;
+		//Depth required, if not in RAM, load it from LTM
+		if(fromS->sensorData().depthOrRightCompressed().empty() &&
+		   fromS->sensorData().laserScanCompressed().empty())
 		{
-			//Depth required, if not in RAM, load it from LTM
-			if(oldS->sensorData().depthOrRightCompressed().empty())
-			{
-				depthToLoad.push_back(oldS);
-				added.insert(oldS->id());
-			}
-			if(newS->sensorData().depthOrRightCompressed().empty())
-			{
-				depthToLoad.push_back(newS);
-				added.insert(newS->id());
-			}
+			depthsToLoad.push_back(fromS);
 		}
-		else
+		if(toS->sensorData().depthOrRightCompressed().empty() &&
+		   toS->sensorData().laserScanCompressed().empty())
 		{
-			//Depth required, if not in RAM, load it from LTM
-			if(oldS->sensorData().laserScanCompressed().empty() && added.find(oldS->id()) == added.end())
-			{
-				depthToLoad.push_back(oldS);
-			}
-			if(newS->sensorData().laserScanCompressed().empty() && added.find(newS->id()) == added.end())
-			{
-				depthToLoad.push_back(newS);
-			}
+			depthsToLoad.push_back(toS);
 		}
-		if(depthToLoad.size())
+
+		if(depthsToLoad.size())
 		{
-			_dbDriver->loadNodeData(depthToLoad);
+			_dbDriver->loadNodeData(depthsToLoad);
 		}
 	}
 
 	Transform t;
-	if(oldS && newS)
+	if(fromS && toS)
 	{
 		//make sure data are uncompressed
-		if(icp3D)
-		{
-			cv::Mat tmp1, tmp2;
-			oldS->sensorData().uncompressData(0, &tmp1, 0);
-			newS->sensorData().uncompressData(0, &tmp2, 0);
-		}
-		else
-		{
-			cv::Mat tmp1, tmp2;
-			oldS->sensorData().uncompressData(0, 0, &tmp1);
-			newS->sensorData().uncompressData(0, 0, &tmp2);
-		}
+		cv::Mat tmp1, tmp2;
+		fromS->sensorData().uncompressData(0, 0, &tmp1);
+		toS->sensorData().uncompressData(0, 0, &tmp2);
 
-		t = computeIcpTransform(*oldS, *newS, guess, icp3D, rejectedMsg, inliers, variance, inliersRatio);
+		// compute transform fromId -> toId
+		t = _registrationIcp->computeTransformation(*fromS, *toS, guess, rejectedMsg, inliers, variance, inliersRatio);
 	}
 	else
 	{
-		std::string msg = uFormat("Did not find nodes %d and/or %d", oldId, newId);
+		std::string msg = uFormat("Did not find nodes %d and/or %d", fromId, toId);
 		if(rejectedMsg)
 		{
 			*rejectedMsg = msg;
@@ -2453,365 +2183,6 @@ Transform Memory::computeIcpTransform(
 	return t;
 }
 
-// get transform from the new to old node
-Transform Memory::computeIcpTransform(
-		const Signature & oldS,
-		const Signature & newS,
-		Transform guess,
-		bool icp3D,
-		std::string * rejectedMsg,
-		int * correspondencesOut,
-		double * varianceOut,
-		float * correspondencesRatioOut) const
-{
-	if(guess.isNull())
-	{
-		//Make a guess using odometry
-		guess = oldS.getPose().inverse() * newS.getPose();
-		UASSERT_MSG(oldS.mapId() == newS.mapId(), "Compute ICP from two different maps is not implemented!");
-	}
-	else
-	{
-		guess = guess.inverse(); // from pose to cloud data
-	}
-	UDEBUG("Guess transform = %s", guess.prettyPrint().c_str());
-
-	std::string msg;
-	Transform transform;
-
-	// ICP with guess transform
-	if(icp3D)
-	{
-		UDEBUG("3D ICP");
-		if(!oldS.sensorData().depthOrRightRaw().empty() &&
-			!newS.sensorData().depthOrRightRaw().empty() &&
-			(oldS.sensorData().cameraModels().size() || oldS.sensorData().stereoCameraModel().isValid()) &&
-			(newS.sensorData().cameraModels().size() || newS.sensorData().stereoCameraModel().isValid()))
-		{
-			pcl::PointCloud<pcl::PointXYZ>::Ptr oldCloudXYZ = util3d::cloudFromSensorData(
-					oldS.sensorData(),
-					_icpDecimation,
-					_icpMaxDepth,
-					_icpVoxelSize,
-					_icpSamples);
-			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudXYZ = util3d::cloudFromSensorData(
-					newS.sensorData(),
-					_icpDecimation,
-					_icpMaxDepth,
-					_icpVoxelSize,
-					_icpSamples);
-
-			// 3D
-			if(newCloudXYZ->size() && oldCloudXYZ->size())
-			{
-				newCloudXYZ = util3d::transformPointCloud(newCloudXYZ, guess);
-
-				bool hasConverged = false;
-				Transform icpT;
-				int correspondences = 0;
-				float correspondencesRatio = 0.0f;
-				double variance = 1;
-				if(_icpPointToPlane)
-				{
-					pcl::PointCloud<pcl::PointNormal>::Ptr oldCloud = util3d::computeNormals(oldCloudXYZ, _icpPointToPlaneNormalNeighbors);
-					pcl::PointCloud<pcl::PointNormal>::Ptr newCloud = util3d::computeNormals(newCloudXYZ, _icpPointToPlaneNormalNeighbors);
-
-					std::vector<int> indices;
-					newCloud = util3d::removeNaNNormalsFromPointCloud(newCloud);
-					oldCloud = util3d::removeNaNNormalsFromPointCloud(oldCloud);
-
-					if(newCloud->size() && oldCloud->size())
-					{
-						pcl::PointCloud<pcl::PointNormal>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointNormal>);
-						icpT = util3d::icpPointToPlane(
-								newCloud,
-								oldCloud,
-							   _icpMaxCorrespondenceDistance,
-							   _icpMaxIterations,
-							   hasConverged,
-							   *newCloudRegistered);
-
-						util3d::computeVarianceAndCorrespondences(
-								newCloudRegistered,
-								oldCloud,
-								_icpMaxCorrespondenceDistance,
-								variance,
-								correspondences);
-					}
-				}
-				else
-				{
-					pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
-					icpT = util3d::icp(
-							newCloudXYZ,
-							oldCloudXYZ,
-							_icpMaxCorrespondenceDistance,
-							_icpMaxIterations,
-							hasConverged,
-							*newCloudRegistered);
-
-					util3d::computeVarianceAndCorrespondences(
-							newCloudRegistered,
-							oldCloudXYZ,
-							_icpMaxCorrespondenceDistance,
-							variance,
-							correspondences);
-				}
-
-				// verify if there are enough correspondences
-				correspondencesRatio = float(correspondences)/float(newCloudXYZ->size()>oldCloudXYZ->size()?newCloudXYZ->size():oldCloudXYZ->size());
-
-				UDEBUG("%d->%d hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
-						hasConverged?"true":"false",
-						variance,
-						correspondences,
-						(int)(oldCloudXYZ->size()>newCloudXYZ->size()?oldCloudXYZ->size():newCloudXYZ->size()),
-						correspondencesRatio*100.0f);
-
-				if(varianceOut)
-				{
-					*varianceOut = variance>0.0f?variance:0.0001; // epsilon if exact transform
-				}
-				if(correspondencesOut)
-				{
-					*correspondencesOut = correspondences;
-				}
-				if(correspondencesRatioOut)
-				{
-					*correspondencesRatioOut = correspondencesRatio;
-				}
-
-				if(!icpT.isNull() && hasConverged &&
-				   correspondencesRatio >= _icpCorrespondenceRatio)
-				{
-					float x,y,z, roll,pitch,yaw;
-					icpT.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-					if((_icpMaxTranslation>0.0f &&
-						(fabs(x) > _icpMaxTranslation ||
-						 fabs(y) > _icpMaxTranslation ||
-						 fabs(z) > _icpMaxTranslation))
-						||
-						(_icpMaxRotation>0.0f &&
-						 (fabs(roll) > _icpMaxRotation ||
-						  fabs(pitch) > _icpMaxRotation ||
-						  fabs(yaw) > _icpMaxRotation)))
-					{
-						msg = uFormat("Cannot compute transform (ICP correction too large)");
-						UINFO(msg.c_str());
-					}
-					else
-					{
-						transform = icpT * guess;
-						transform = transform.inverse();
-					}
-				}
-				else
-				{
-					msg = uFormat("Cannot compute transform (converged=%s var=%f corr=%d corrRatio=%f/%f)",
-							hasConverged?"true":"false", variance, correspondences, correspondencesRatio, _icpCorrespondenceRatio);
-					UINFO(msg.c_str());
-				}
-			}
-			else
-			{
-				msg = "Clouds empty ?!?";
-				UWARN(msg.c_str());
-			}
-		}
-		else
-		{
-			msg = uFormat("Depths 3D empty?!? (new[%d]=%d old[%d]=%d)",
-					newS.id(), newS.sensorData().depthOrRightRaw().total(),
-					oldS.id(), oldS.sensorData().depthOrRightRaw().total());
-			UERROR(msg.c_str());
-		}
-	}
-	else // icp 2D
-	{
-		UDEBUG("2D ICP");
-
-		// We are 2D here, make sure the guess has only YAW rotation
-		float x,y,z,r,p,yaw;
-		guess.getTranslationAndEulerAngles(x,y,z, r,p,yaw);
-		guess = Transform(x,y,0, 0, 0, yaw);
-		if(r!=0 || p!=0)
-		{
-			UINFO("2D ICP: Dropping z (%f), roll (%f) and pitch (%f) rotation!", z, r, p);
-		}
-
-		if(!oldS.sensorData().laserScanRaw().empty() && !newS.sensorData().laserScanRaw().empty())
-		{
-			// 2D
-			pcl::PointCloud<pcl::PointXYZ>::Ptr oldCloud = util3d::cvMat2Cloud(oldS.sensorData().laserScanRaw());
-			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud = util3d::cvMat2Cloud(newS.sensorData().laserScanRaw(), guess);
-
-			//voxelize
-			pcl::PointCloud<pcl::PointXYZ>::Ptr oldCloudVoxelized = oldCloud;
-			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudVoxelized = newCloud;
-			if(_icp2VoxelSize > _laserScanVoxelSize)
-			{
-				oldCloudVoxelized = util3d::voxelize(oldCloud, _icp2VoxelSize);
-				newCloudVoxelized = util3d::voxelize(newCloud, _icp2VoxelSize);
-			}
-
-			if(newCloud->size() && oldCloud->size())
-			{
-				Transform icpT;
-				bool hasConverged = false;
-				float correspondencesRatio = 0.0f;
-				int correspondences = 0;
-				double variance = 1.0;
-				pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
-				icpT = util3d::icp2D(
-						newCloudVoxelized,
-						oldCloudVoxelized,
-					   _icp2MaxCorrespondenceDistance,
-					   _icp2MaxIterations,
-					   hasConverged,
-					   *newCloudRegistered);
-
-				//pcl::io::savePCDFile("oldCloud.pcd", *oldCloud);
-				//pcl::io::savePCDFile("newCloud.pcd", *newCloud);
-				//UWARN("saved oldCloud.pcd and newCloud.pcd");
-				//if(!icpT.isNull())
-				//{
-				//	newCloud = util3d::transformPointCloud<pcl::PointXYZ>(newCloud, icpT);
-				//	pcl::io::savePCDFile("newCloudFinal.pcd", *newCloud);
-				//	UWARN("saved newCloudFinal.pcd");
-				//}
-
-				if(!icpT.isNull() &&
-					hasConverged)
-				{
-					float ix,iy,iz, iroll,ipitch,iyaw;
-					icpT.getTranslationAndEulerAngles(ix,iy,iz,iroll,ipitch,iyaw);
-					if((_icpMaxTranslation>0.0f &&
-						(fabs(ix) > _icpMaxTranslation ||
-						 fabs(iy) > _icpMaxTranslation ||
-						 fabs(iz) > _icpMaxTranslation))
-						||
-						(_icpMaxRotation>0.0f &&
-						 (fabs(iroll) > _icpMaxRotation ||
-						  fabs(ipitch) > _icpMaxRotation ||
-						  fabs(iyaw) > _icpMaxRotation)))
-					{
-						msg = uFormat("Cannot compute transform (ICP correction too large -> %f m %f rad, limits=%f m, %f rad)",
-								uMax3(fabs(ix), fabs(iy), fabs(iz)),
-								uMax3(fabs(iroll), fabs(ipitch), fabs(iyaw)),
-								_icpMaxTranslation,
-								_icpMaxRotation);
-						UINFO(msg.c_str());
-					}
-					else
-					{
-						if(_icp2VoxelSize <= _laserScanVoxelSize)
-						{
-							newCloud = util3d::transformPointCloud(newCloud, icpT);
-						}
-						else
-						{
-							newCloud = newCloudRegistered;
-						}
-
-						util3d::computeVarianceAndCorrespondences(
-								newCloud,
-								oldCloud,
-								_icpMaxCorrespondenceDistance,
-								variance,
-								correspondences);
-
-						// verify if there are enough correspondences
-						if(newS.sensorData().laserScanMaxPts())
-						{
-							correspondencesRatio = float(correspondences)/float(newS.sensorData().laserScanMaxPts());
-						}
-						else
-						{
-							UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set relative instead of absolute!",
-									newS.id());
-							correspondencesRatio = float(correspondences)/float(newCloud->size()>oldCloud->size()?newCloud->size():oldCloud->size());
-						}
-
-						UDEBUG("%d->%d hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
-								newS.id(), oldS.id(),
-								hasConverged?"true":"false",
-								variance,
-								correspondences,
-								newS.sensorData().laserScanMaxPts()?newS.sensorData().laserScanMaxPts():(int)(newCloud->size()>oldCloud->size()?newCloud->size():oldCloud->size()),
-								correspondencesRatio*100.0f);
-
-						if(varianceOut)
-						{
-							*varianceOut = variance>0.0f?variance:0.0001; // epsilon if exact transform
-						}
-						if(correspondencesOut)
-						{
-							*correspondencesOut = correspondences;
-						}
-						if(correspondencesRatioOut)
-						{
-							*correspondencesRatioOut = correspondencesRatio;
-						}
-
-						if(correspondencesRatio < _icp2CorrespondenceRatio)
-						{
-							msg = uFormat("Cannot compute transform (cor=%d corrRatio=%f/%f)",
-									correspondences, correspondencesRatio, _icp2CorrespondenceRatio);
-							UINFO(msg.c_str());
-						}
-						else
-						{
-							transform = icpT * guess;
-							transform = transform.inverse();
-						}
-					}
-				}
-				else
-				{
-					msg = uFormat("Cannot compute transform (converged=%s var=%f)",
-							hasConverged?"true":"false", variance);
-					UINFO(msg.c_str());
-				}
-
-				// still compute the variance for information
-				if(variance == 1 && varianceOut)
-				{
-					util3d::computeVarianceAndCorrespondences(
-						newCloudVoxelized,
-						oldCloudVoxelized,
-						_icpMaxCorrespondenceDistance,
-						variance,
-						correspondences);
-					if(variance > 0)
-					{
-						*varianceOut = variance;
-					}
-				}
-			}
-			else
-			{
-				msg = "Clouds 2D empty ?!?";
-				UWARN(msg.c_str());
-			}
-		}
-		else
-		{
-			msg = uFormat("Depths 2D empty?!? (new[%d]=%d old[%d]=%d)",
-					newS.id(), newS.sensorData().laserScanRaw().total(),
-					oldS.id(), oldS.sensorData().laserScanRaw().total());
-			UERROR(msg.c_str());
-		}
-	}
-
-	if(rejectedMsg)
-	{
-		*rejectedMsg = msg;
-	}
-
-	UDEBUG("New transform = %s", transform.prettyPrint().c_str());
-	return transform;
-}
-
 // poses of newId and oldId must be in "poses"
 Transform Memory::computeScanMatchingTransform(
 		int newId,
@@ -2819,14 +2190,14 @@ Transform Memory::computeScanMatchingTransform(
 		const std::map<int, Transform> & poses,
 		std::string * rejectedMsg,
 		int * inliers,
-		double * variance)
+		float * variance)
 {
 	UASSERT(uContains(poses, newId) && uContains(_signatures, newId));
 	UASSERT(uContains(poses, oldId) && uContains(_signatures, oldId));
 
 	UDEBUG("Guess=%s", (poses.at(newId).inverse() * poses.at(oldId)).prettyPrint().c_str());
 
-	// make sure that all depth2D are loaded
+	// make sure that all laser scans are loaded
 	std::list<Signature*> depthToLoad;
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
@@ -2842,175 +2213,47 @@ Transform Memory::computeScanMatchingTransform(
 		_dbDriver->loadNodeData(depthToLoad);
 	}
 
-	std::string msg;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr assembledOldClouds(new pcl::PointCloud<pcl::PointXYZ>);
-	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-	{
-		if(iter->first != newId)
-		{
-			Signature * s = this->_getSignature(iter->first);
-			if(!s->sensorData().laserScanCompressed().empty())
-			{
-				cv::Mat scan;
-				s->sensorData().uncompressData(0, 0, &scan);
-				*assembledOldClouds += *util3d::cvMat2Cloud(scan, iter->second);
-			}
-			else
-			{
-				UWARN("Depth2D not found for signature %d", iter->first);
-			}
-		}
-	}
-
-	//voxelize
-	if(assembledOldClouds->size() && _icp2VoxelSize > 0.0f)
-	{
-		assembledOldClouds = util3d::voxelize(assembledOldClouds, _icp2VoxelSize);
-	}
-
-	// get the new cloud
 	Signature * newS = _getSignature(newId);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud;
 	cv::Mat newScan;
 	newS->sensorData().uncompressData(0, 0, &newScan);
-	newCloud = util3d::cvMat2Cloud(newScan, poses.at(newId));
 
-	//voxelize
-	pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudVoxelized = newCloud;
-	if(newCloud->size() && _icp2VoxelSize > _laserScanVoxelSize)
+	Transform t;
+	if(!newScan.empty())
 	{
-		newCloudVoxelized = util3d::voxelize(newCloud, _icp2VoxelSize);
-	}
-
-	Transform transform;
-	if(assembledOldClouds->size() && newCloudVoxelized->size())
-	{
-		int correspondences = 0;
-		bool hasConverged = false;
-		pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
-		Transform icpGlobal = util3d::icp2D(
-				newCloudVoxelized,
-				assembledOldClouds,
-			   _icp2MaxCorrespondenceDistance,
-			   _icp2MaxIterations,
-			   hasConverged,
-			   *newCloudRegistered);
-
-		// in global Referential
-		UDEBUG("icpGlobal=%s", icpGlobal.prettyPrint().c_str());
-
-		//pcl::io::savePCDFile("old.pcd", *assembledOldClouds, true);
-		//pcl::io::savePCDFile("new.pcd", *newCloud, true);
-		//UWARN("local scan matching old.pcd, new.pcd saved!");
-		//if(!icpGlobal.isNull())
-		//{
-		//	pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudTmp = util3d::transformPointCloud(newCloud, icpGlobal);
-		//	pcl::io::savePCDFile("newFinal.pcd", *newCloudTmp, true);
-		//	UWARN("local scan matching newFinal.pcd saved!");
-		//}
-
-		if(!icpGlobal.isNull() && hasConverged)
+		// Create a fake signature with all scans merged in oldId referential
+		SensorData assembledData;
+		Transform oldPose = poses.at(oldId);
+		std::string msg;
+		pcl::PointCloud<pcl::PointXYZ>::Ptr assembledOldClouds(new pcl::PointCloud<pcl::PointXYZ>);
+		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
-			Transform icpLocal = poses.at(newId).inverse()*icpGlobal*poses.at(newId);
-			UDEBUG("icpLocal=%s", icpLocal.prettyPrint().c_str());
-
-			float ix,iy,iz, iroll,ipitch,iyaw;
-			icpLocal.getTranslationAndEulerAngles(ix,iy,iz,iroll,ipitch,iyaw);
-			if((_icpMaxTranslation>0.0f &&
-				(fabs(ix) > _icpMaxTranslation ||
-				 fabs(iy) > _icpMaxTranslation ||
-				 fabs(iz) > _icpMaxTranslation))
-				||
-				(_icpMaxRotation>0.0f &&
-				 (fabs(iroll) > _icpMaxRotation ||
-				  fabs(ipitch) > _icpMaxRotation ||
-				  fabs(iyaw) > _icpMaxRotation)))
+			if(iter->first != newId)
 			{
-				msg = uFormat("Cannot compute transform (ICP correction too large)");
-				UINFO(msg.c_str());
-			}
-			else
-			{
-				if(_icp2VoxelSize <= _laserScanVoxelSize)
+				Signature * s = this->_getSignature(iter->first);
+				if(!s->sensorData().laserScanCompressed().empty())
 				{
-					newCloud = util3d::transformPointCloud(newCloud, icpGlobal);
+					cv::Mat scan;
+					s->sensorData().uncompressData(0, 0, &scan);
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(scan, oldPose.inverse() * iter->second);
+					*assembledOldClouds += *cloud;
 				}
 				else
 				{
-					newCloud = newCloudRegistered;
-				}
-
-				pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>);
-				double v = 1;
-				util3d::computeVarianceAndCorrespondences(
-						newCloud,
-						assembledOldClouds,
-						_icpMaxCorrespondenceDistance,
-						v,
-						correspondences);
-				if(variance)
-				{
-					*variance = v>0.0f?v:0.0001; // epsilon if exact transform
-				}
-
-				// verify if there enough correspondences
-				float correspondencesRatio = 0.0f;
-				if(newS->sensorData().laserScanMaxPts())
-				{
-					correspondencesRatio = float(correspondences)/float(newS->sensorData().laserScanMaxPts());
-				}
-				else
-				{
-					UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set relative instead of absolute!",
-							newS->id());
-					correspondencesRatio = float(correspondences)/float(newCloud->size());
-				}
-
-				UDEBUG("variance=%f, correspondences=%d/%d (%f%%) %f",
-						v,
-						correspondences,
-						newS->sensorData().laserScanMaxPts()?newS->sensorData().laserScanMaxPts():(int)newCloud->size(),
-						correspondencesRatio*100.0f);
-
-				if(inliers)
-				{
-					*inliers = correspondences;
-				}
-
-				if(correspondencesRatio >= _icp2CorrespondenceRatio)
-				{
-					transform = poses.at(newId).inverse()*icpGlobal.inverse() * poses.at(oldId);
-				}
-				else
-				{
-					msg = uFormat("Constraints failed... variance=%f, correspondences=%d/%d (%f%%)",
-						variance?*variance:-1,
-						correspondences,
-						newS->sensorData().laserScanMaxPts()?newS->sensorData().laserScanMaxPts():(int)newCloud->size(),
-						correspondencesRatio);
-					UINFO(msg.c_str());
+					UWARN("Depth2D not found for signature %d", iter->first);
 				}
 			}
 		}
-		else
+		if(assembledOldClouds->size())
 		{
-			msg = uFormat("Constraints failed... hasConverged=%s",
-				hasConverged?"true":"false");
-			UINFO(msg.c_str());
+			assembledData.setLaserScanRaw(util3d::laserScanFromPointCloud(*assembledOldClouds, Transform()), 0, 0);
 		}
-	}
-	else
-	{
-		msg = "Empty data ?!?";
-		UWARN(msg.c_str());
+
+		Transform guess = poses.at(newId).inverse() * poses.at(oldId);
+		Signature oldS(0, 0, 0, 0, "", oldPose, assembledData);
+		t = _registrationIcp->computeTransformation(*newS, oldS, guess, rejectedMsg, inliers, variance);
 	}
 
-	if(rejectedMsg)
-	{
-		*rejectedMsg = msg;
-	}
-
-	return transform;
+	return t;
 }
 
 bool Memory::addLink(const Link & link)
@@ -3294,7 +2537,8 @@ void Memory::dumpMemoryTree(const char * fileNameTree) const
 void Memory::rehearsal(Signature * signature, Statistics * stats)
 {
 	UTimer timer;
-	if(signature->getLinks().size() != 1)
+	if(signature->getLinks().size() != 1 ||
+	   signature->isBadSignature())
 	{
 		return;
 	}
@@ -3775,7 +3019,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						data.depthOrRightRaw().rows,
 						data.depthOrRightRaw().type(),
 						CV_16UC1, CV_32FC1, CV_8UC1).c_str());
-	UASSERT(data.laserScanRaw().empty() || data.laserScanRaw().type() == CV_32FC2);
+	UASSERT(data.laserScanRaw().empty() || data.laserScanRaw().type() == CV_32FC2 || data.laserScanRaw().type() == CV_32FC3);
 
 	if(!data.depthOrRightRaw().empty() &&
 		data.cameraModels().size() == 0 &&
@@ -3793,6 +3037,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	float t;
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat descriptors;
+	bool isIntermediateNode = data.id() < 0 || data.imageRaw().empty();
 	int id = data.id();
 	if(_generateIds)
 	{
@@ -3840,7 +3085,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	pcl::PointCloud<pcl::PointXYZ>::Ptr keypoints3D(new pcl::PointCloud<pcl::PointXYZ>);
 	if(data.keypoints().size() == 0)
 	{
-		if(_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty())
+		if(_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty() && !isIntermediateNode)
 		{
 			// Extract features
 			cv::Mat imageMono;
@@ -3986,9 +3231,9 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						UDEBUG("time subpix left kpts=%fs", t);
 					}
 
-					if(_wordsMaxDepth > 0.0f)
+					if(_wordsMaxDepth > 0.0f || _wordsMinDepth > 0.0f)
 					{
-						Feature2D::filterKeypointsByDepth(keypoints, descriptors, data.depthOrRightRaw(), _wordsMaxDepth);
+						Feature2D::filterKeypointsByDepth(keypoints, descriptors, data.depthOrRightRaw(), _wordsMinDepth, _wordsMaxDepth);
 						UDEBUG("filter keypoints by depth (%d)", (int)keypoints.size());
 					}
 
@@ -4059,12 +3304,16 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		{
 			UDEBUG("Empty image, cannot extract features...");
 		}
-		else
+		else if(_feature2D->getMaxFeatures() < 0)
 		{
 			UDEBUG("_feature2D->getMaxFeatures()(%d<0) so don't extract any features...", _feature2D->getMaxFeatures());
 		}
+		else
+		{
+			UDEBUG("Intermediate node detected, don't extract features!");
+		}
 	}
-	else
+	else if(!isIntermediateNode)
 	{
 		keypoints = data.keypoints();
 		descriptors = data.descriptors().clone();
@@ -4117,9 +3366,9 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		else if(!data.depthOrRightRaw().empty() && data.cameraModels().size())
 		{
 			//depth
-			if(_wordsMaxDepth)
+			if(_wordsMaxDepth > 0.0f || _wordsMinDepth > 0.0f)
 			{
-				Feature2D::filterKeypointsByDepth(keypoints, descriptors, _wordsMaxDepth);
+				Feature2D::filterKeypointsByDepth(keypoints, descriptors, _wordsMinDepth, _wordsMaxDepth);
 				UDEBUG("filter keypoints by depth (%d)", (int)keypoints.size());
 			}
 
@@ -4252,11 +3501,13 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		}
 	}
 
-	// apply icp2 voxel?
+	// downsampling the laser scan?
 	cv::Mat laserScan = data.laserScanRaw();
-	if(!laserScan.empty() && _laserScanVoxelSize > 0.0f)
+	int maxLaserScanMaxPts = data.laserScanMaxPts();
+	if(!laserScan.empty() && _laserScanDownsampleStepSize > 1)
 	{
-		laserScan = util3d::laserScanFromPointCloud(*util3d::voxelize(util3d::laserScanToPointCloud(laserScan), _laserScanVoxelSize));
+		laserScan = util3d::downsample(laserScan, _laserScanDownsampleStepSize);
+		maxLaserScanMaxPts /= _laserScanDownsampleStepSize;
 	}
 
 	Signature * s;
@@ -4292,14 +3543,14 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 		s = new Signature(id,
 			_idMapCount,
-			(data.imageRaw().empty()&&data.laserScanRaw().empty()&&words.size()==0)?-1:0, // tag intermediate nodes as weight=-1
+			isIntermediateNode?-1:0, // tag intermediate nodes as weight=-1
 			data.stamp(),
 			"",
 			pose,
 			stereoCameraModel.isValid()?
 				SensorData(
 						ctDepth2d.getCompressedData(),
-						data.laserScanMaxPts(),
+						maxLaserScanMaxPts,
 						data.laserScanMaxRange(),
 						ctImage.getCompressedData(),
 						ctDepth.getCompressedData(),
@@ -4309,7 +3560,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						ctUserData.getCompressedData()):
 				SensorData(
 						ctDepth2d.getCompressedData(),
-						data.laserScanMaxPts(),
+						maxLaserScanMaxPts,
 						data.laserScanMaxRange(),
 						ctImage.getCompressedData(),
 						ctDepth.getCompressedData(),
@@ -4329,14 +3580,14 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 		s = new Signature(id,
 			_idMapCount,
-			(data.imageRaw().empty()&&data.laserScanRaw().empty()&&words.size()==0)?-1:0, // tag intermediate nodes as weight=-1
+			isIntermediateNode?-1:0, // tag intermediate nodes as weight=-1
 			data.stamp(),
 			"",
 			pose,
 			stereoCameraModel.isValid()?
 				SensorData(
 						ctDepth2d.getCompressedData(),
-						data.laserScanMaxPts(),
+						maxLaserScanMaxPts,
 						data.laserScanMaxRange(),
 						cv::Mat(),
 						cv::Mat(),
@@ -4346,7 +3597,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						ctUserData.getCompressedData()):
 				SensorData(
 						ctDepth2d.getCompressedData(),
-						data.laserScanMaxPts(),
+						maxLaserScanMaxPts,
 						data.laserScanMaxRange(),
 						cv::Mat(),
 						cv::Mat(),
@@ -4361,7 +3612,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	{
 		s->sensorData().setImageRaw(image);
 		s->sensorData().setDepthOrRightRaw(depthOrRightImage);
-		s->sensorData().setLaserScanRaw(laserScan, data.laserScanMaxPts(), data.laserScanMaxRange());
+		s->sensorData().setLaserScanRaw(laserScan, maxLaserScanMaxPts, data.laserScanMaxRange());
 		s->sensorData().setUserDataRaw(data.userDataRaw());
 	}
 

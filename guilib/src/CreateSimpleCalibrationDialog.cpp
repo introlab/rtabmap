@@ -102,6 +102,7 @@ void CreateSimpleCalibrationDialog::saveCalibration()
 		QString dir = QFileInfo(filePath).absoluteDir().absolutePath();
 		if(!name.isEmpty())
 		{
+			cameraName_ = name;
 			std::string base = (dir+QDir::separator()+name).toStdString();
 			std::string leftPath = base+"_left.yaml";
 			std::string rightPath = base+"_right.yaml";

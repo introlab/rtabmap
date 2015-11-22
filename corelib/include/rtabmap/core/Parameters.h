@@ -199,14 +199,15 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, BadSignaturesIgnored,    bool, false,     "Bad signatures are ignored.");
 	RTABMAP_PARAM(Mem, InitWMWithAllNodes,      bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.");
 	RTABMAP_PARAM(Mem, ImageDecimation,         int, 1,          "Image decimation (>=1) when creating a signature.");
-	RTABMAP_PARAM(Mem, LaserScanVoxelSize,      float, 0.0,      "If > 0.0, voxelize laser scans when creating a signature.");
+	RTABMAP_PARAM(Mem, LaserScanDownsampleStepSize, int, 1,  "If > 1, downsample the laser scans when creating a signature.");
 	RTABMAP_PARAM(Mem, LocalSpaceLinksKeptInWM, bool, true,      "If local space links are kept in WM.");
 
 	// KeypointMemory (Keypoint-based)
 	RTABMAP_PARAM_COND(Kp, NNStrategy,       int, RTABMAP_NONFREE, 1, 3, "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
 	RTABMAP_PARAM(Kp, IncrementalDictionary, bool, true, 		"");
 	RTABMAP_PARAM(Kp, IncrementalFlann,      bool, true, 		"When using FLANN based strategy, add/remove points to its index without always rebuilding the index (the index is built only when the dictionary doubles in size).");
-	RTABMAP_PARAM(Kp, MaxDepth,              float, 0.0, 		"Filter extracted keypoints by depth (0=inf)");
+	RTABMAP_PARAM(Kp, MaxDepth,              float, 0.0, 		"Filter extracted keypoints by depth (0=inf).");
+	RTABMAP_PARAM(Kp, MinDepth,              float, 0.0, 		"Filter extracted keypoints by depth.");
 	RTABMAP_PARAM(Kp, WordsPerImage,         int, 400, 			"Maximum features extracted from the images (0 means not bounded, <0 means no extraction).");
 	RTABMAP_PARAM(Kp, BadSignRatio,          float, 0.5, 		"Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
 	RTABMAP_PARAM_COND(Kp, NndrRatio, 	     float, RTABMAP_NONFREE, 0.8, 0.9,		"NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
@@ -216,10 +217,9 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM_STR(Kp, RoiRatios, "0.0 0.0 0.0 0.0", 		"Region of interest ratios [left, right, top, bottom].");
 	RTABMAP_PARAM_STR(Kp, DictionaryPath,    "", 				"Path of the pre-computed dictionary");
 	RTABMAP_PARAM(Kp, NewWordsComparedTogether, bool, true,	"When adding new words to dictionary, they are compared also with each other (to detect same words in the same signature).");
-
-	RTABMAP_PARAM(Kp, SubPixWinSize,         int, 3,        "See cv::cornerSubPix().");
-	RTABMAP_PARAM(Kp, SubPixIterations,      int, 0,        "See cv::cornerSubPix(). 0 disables sub pixel refining.");
-	RTABMAP_PARAM(Kp, SubPixEps,             double, 0.02,  "See cv::cornerSubPix().");
+    RTABMAP_PARAM(Kp, SubPixWinSize,            int, 3,        "See cv::cornerSubPix().");
+	RTABMAP_PARAM(Kp, SubPixIterations,         int, 0,        "See cv::cornerSubPix(). 0 disables sub pixel refining.");
+	RTABMAP_PARAM(Kp, SubPixEps,                double, 0.02,  "See cv::cornerSubPix().");
 
 	//Database
 	RTABMAP_PARAM(DbSqlite3, InMemory, 	   bool, false, 		"Using database in the memory instead of a file on the hard disk.");
@@ -229,7 +229,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(DbSqlite3, TempStore,    int, 2, 				"0=DEFAULT, 1=FILE, 2=MEMORY (see sqlite3 doc : \"PRAGMA temp_store\")");
 
 	// Keypoints descriptors/detectors
-	RTABMAP_PARAM(SURF, Extended, 		  bool, false, 	"Extended descriptor flag (true - use extended 128-element descriptors; false - use 64-element descriptors).");
+	RTABMAP_PARAM(SURF, Extended, 		  bool, false, 	    "Extended descriptor flag (true - use extended 128-element descriptors; false - use 64-element descriptors).");
 	RTABMAP_PARAM(SURF, HessianThreshold, float, 500.0,		"Threshold for hessian keypoint detector used in SURF.");
 	RTABMAP_PARAM(SURF, Octaves, 		  int, 4, 			"Number of pyramid octaves the keypoint detector will use.");
 	RTABMAP_PARAM(SURF, OctaveLayers, 	  int, 2, 			"Number of octave layers within each octave.");
@@ -286,7 +286,6 @@ class RTABMAP_EXP Parameters
 
 	// RGB-D SLAM
 	RTABMAP_PARAM(RGBD, Enabled,                  bool, true,  "");
-	RTABMAP_PARAM(RGBD, PoseScanMatching,         bool, false, "Laser scan matching for odometry pose correction (laser scans are required).");
 	RTABMAP_PARAM(RGBD, LinearUpdate,             float, 0.1,  "Minimum linear displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
 	RTABMAP_PARAM(RGBD, AngularUpdate,            float, 0.1,  "Minimum angular displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
 	RTABMAP_PARAM(RGBD, NewMapOdomChangeDistance, float, 0,    "A new map is created if a change of odometry translation greater than X m is detected (0 m = disabled).");
@@ -300,18 +299,22 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, MaxLocalRetrieved,        unsigned int, 2, "Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).");
 	RTABMAP_PARAM(RGBD, LocalRadius,              float, 10,   "Local radius (m) for nodes selection in the local map. This parameter is used in some approaches about the local map management.");
 	RTABMAP_PARAM(RGBD, LocalImmunizationRatio,   float, 0.25, "Ratio of working memory for which local nodes are immunized from transfer.");
-	RTABMAP_PARAM(RGBD,  ScanMatchingIdsSavedInLinks, bool, true,      "Save scan matching IDs in link's user data.");
+	RTABMAP_PARAM(RGBD, ScanMatchingIdsSavedInLinks, bool, true,      "Save scan matching IDs in link's user data.");
+	RTABMAP_PARAM(RGBD, IcpOdomRefining,          bool, false,  "If the newest added node's pose is refined using ICP with the previous node to correct odometry from pose to pose (laser scans required!).");
+	RTABMAP_PARAM(RGBD, IcpLoopClosureRefining,   bool, false, 	"If the estimated loop closure transformation is refined using ICP (laser scans required!).");	
+	RTABMAP_PARAM(RGBD, LoopClosureReextractFeatures,  bool, true,    "Extract features even if there are some already in the nodes.");
 
-	// Local loop closure detection
+	// Local/Proximity loop closure detection
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionTime,     bool, false, 	"Detection over all locations in STM.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionSpace,    bool, true, 	"Detection over locations (in Working Memory or STM) near in space.");
+	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathScansMerged,   bool, true, 	"Merge close laser scans on each path. If false, only the nearest laser scan on the path is used for ICP.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxGraphDepth,   int, 50,      "Maximum depth from the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathFilteringRadius,   float, 0.5, "Path filtering radius.");
 	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathOdomPosesUsed,   bool, true, "When comparing to a local path, merge the scan using the odometry poses instead of the ones in the optimized local graph.");
 
 	// Graph optimization
-	RTABMAP_PARAM(RGBD, OptimizeStrategy,          int, 0,        "Graph optimization strategy: 0=TORO and 1=g2o.");
-	RTABMAP_PARAM(RGBD, OptimizeIterations,        int, 100,      "Optimization iterations.");
+	RTABMAP_PARAM(RGBD, OptimizeStrategy,          int, 0,       "Graph optimization strategy: 0=TORO and 1=g2o.");
+	RTABMAP_PARAM(RGBD, OptimizeIterations,        int, 100,     "Optimization iterations.");
 	RTABMAP_PARAM(RGBD, OptimizeSlam2D,            bool, false,  "If optimization is done only on x,y and theta (3DoF). Otherwise, it is done on full 6DoF poses.");
 	RTABMAP_PARAM(RGBD, OptimizeVarianceIgnored,   bool, false,  "Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links.");
 	RTABMAP_PARAM(RGBD, OptimizeEpsilon,           double, 0.0001,  "Stop optimizing when the error improvement is less than this value.");
@@ -319,23 +322,10 @@ class RTABMAP_EXP Parameters
 
 	// Odometry
 	RTABMAP_PARAM(Odom, Strategy,           	int, 0, 		"0=Bag-of-words 1=Optical Flow");
-	RTABMAP_PARAM(Odom, FeatureType,            int, 6, 	    "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
-	RTABMAP_PARAM(Odom, EstimationType,  		int, 0,    	    "Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP)");
-	RTABMAP_PARAM(Odom, MaxFeatures,            int, 1000, 		"0 no limits.");
-	RTABMAP_PARAM(Odom, InlierDistance,         float, 0.1,     "Maximum distance for visual word correspondences. Used by 3D->3D estimation approach.");
-	RTABMAP_PARAM(Odom, MinInliers,             int, 20, 		"Minimum visual word correspondences to compute geometry transform.");
-	RTABMAP_PARAM(Odom, Iterations,             int, 100, 		"Maximum iterations to compute the transform from visual words.");
-	RTABMAP_PARAM(Odom, RefineIterations,       int, 5,         "Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
-	RTABMAP_PARAM(Odom, MaxDepth,               float, 0,       "Max depth of the words (0 means no limit).");
 	RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,         "Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).");
-	RTABMAP_PARAM_STR(Odom, RoiRatios,          "0.0 0.0 0.0 0.0", "Region of interest ratios [left, right, top, bottom].");
-	RTABMAP_PARAM(Odom, Force2D, 		        bool, false,     "Force 2D transform (3Dof: x,y and yaw).");
 	RTABMAP_PARAM(Odom, Holonomic, 		        bool, true,     "If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).");
 	RTABMAP_PARAM(Odom, FillInfoData, 		    bool, true,     "Fill info with data (inliers/outliers features).");
 	RTABMAP_PARAM(Odom, ImageBufferSize,        unsigned int, 1, "Data buffer size (0 min inf).");
-	RTABMAP_PARAM(Odom, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
-	RTABMAP_PARAM(Odom, PnPReprojError, 		double, 5.0,     "PnP reprojection error.");
-	RTABMAP_PARAM(Odom, PnPFlags, 				int, 1,    	     "PnP flags: 0=Iterative, 1=EPNP, 2=P3P");
 	RTABMAP_PARAM(Odom, ParticleFiltering, 		bool, false,     "Particle filtering to smooth the odometry trajectory.");
 	RTABMAP_PARAM(Odom, ParticleSize, 		    unsigned int, 400,  "Number of particles of the filter.");
 	RTABMAP_PARAM(Odom, ParticleNoiseT, 		float, 0.002,     "Noise (m) of translation components (x,y,z).");
@@ -344,17 +334,14 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, ParticleLambdaR, 		float, 100,       "Lambda of rotational components (roll,pitch,yaw).");
 
 	// Odometry Bag-of-words
-	RTABMAP_PARAM(OdomBow, LocalHistorySize,       int, 1000,      "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
-	RTABMAP_PARAM(OdomBow, NNType,                 int, 3, 	    "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
-	RTABMAP_PARAM(OdomBow, NNDR,                   float, 0.8,  "NNDR: nearest neighbor distance ratio.");
+	RTABMAP_PARAM(OdomBow, LocalHistorySize,       int, 1000,   "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
 	RTABMAP_PARAM_STR(OdomBow, FixedLocalMapPath,   "",         "Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP estimation is used.")
 
 	// Odometry Mono
 	RTABMAP_PARAM(OdomMono, InitMinFlow,            float, 100,  "Minimum optical flow required for the initialization step.");
 	RTABMAP_PARAM(OdomMono, InitMinTranslation,     float, 0.1,  "Minimum translation required for the initialization step.");
-	RTABMAP_PARAM(OdomMono, MinTranslation,         float, 0.02,  "Minimum translation to add new points to local map. On initialization, translation x 5 is used as the minimum.");
-	RTABMAP_PARAM(OdomMono, MaxVariance,            float, 0.01,  "Maximum variance to add new points to local map.");
-
+	RTABMAP_PARAM(OdomMono, MinTranslation,         float, 0.02, "Minimum translation to add new points to local map. On initialization, translation x 5 is used as the minimum.");
+	RTABMAP_PARAM(OdomMono, MaxVariance,            float, 0.01, "Maximum variance to add new points to local map.");
 
 	// Odometry common stuff between BOW and Optical Flow approaches
 	RTABMAP_PARAM(OdomFlow, WinSize,               int, 16,       "Used for optical flow approach. See cv::calcOpticalFlowPyrLK().");
@@ -362,49 +349,45 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(OdomFlow, Eps,                   double, 0.01,  "Used for optical flow approach. See cv::calcOpticalFlowPyrLK().");
 	RTABMAP_PARAM(OdomFlow, MaxLevel,              int, 3,        "Used for optical flow approach. See cv::calcOpticalFlowPyrLK().");
 
-	RTABMAP_PARAM(OdomSubPix, WinSize,         int, 3,        "Can be used with BOW and optical flow approaches. See cv::cornerSubPix().");
-	RTABMAP_PARAM(OdomSubPix, Iterations,      int, 0,       "Can be used with BOW and optical flow approaches. See cv::cornerSubPix(). 0 disables sub pixel refining.");
-	RTABMAP_PARAM(OdomSubPix, Eps,             double, 0.02,  "Can be used with BOW and optical flow approaches. See cv::cornerSubPix().");
+	// Common registration parameters
+	RTABMAP_PARAM(Reg, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
+	
+	// Visual registration parameters
+	RTABMAP_PARAM(Vis, EstimationType,           int, 0,    	"Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)");
+	RTABMAP_PARAM(Vis, InlierDistance,           float, 0.1,    "[Vis/EstimationType = 0] Maximum distance for feature correspondences. Used by 3D->3D estimation approach.");
+	RTABMAP_PARAM(Vis, RefineIterations,         int, 10,       "[Vis/EstimationType = 0] Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
+	RTABMAP_PARAM(Vis, PnPReprojError, 	         double, 5.0,   "[Vis/EstimationType = 1] PnP reprojection error.");
+	RTABMAP_PARAM(Vis, PnPFlags,                 int, 1,    	"[Vis/EstimationType = 1] PnP flags: 0=Iterative, 1=EPNP, 2=P3P");
+	RTABMAP_PARAM(Vis, EpipolarGeometryVar,      float, 0.02,   "[Vis/EstimationType = 2] Epipolar geometry maximum variance to accept the transformation.");
+	RTABMAP_PARAM(Vis, MinInliers,               int, 10, 		"Minimum feature correspondences to compute/accept the transformation.");
+	RTABMAP_PARAM(Vis, Iterations,               int, 100, 		"Maximum iterations to compute the transform.");
+	RTABMAP_PARAM(Vis, Force2D,                  bool, false,   "Force 2D transform (3Dof: x,y and yaw). Parameters z, roll and pitch will be set to 0.");
+	RTABMAP_PARAM(Vis, NNType, 	                 int, 3,        "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4.");
+	RTABMAP_PARAM(Vis, NNDR,                     float, 0.8,    "NNDR: nearest neighbor distance ratio.");
+	RTABMAP_PARAM(Vis, FeatureType,              int, 6,        "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
+	RTABMAP_PARAM(Vis, MaxFeatures,              int, 1000,     "0 no limits.");
+	RTABMAP_PARAM(Vis, MaxDepth, 	             float, 0.0,    "Max depth of the features (0 means no limit).");
+	RTABMAP_PARAM(Vis, MinDepth, 	             float, 0.0,    "Min depth of the features (0 means no limit).");
+	RTABMAP_PARAM_STR(Vis, RoiRatios,        "0.0 0.0 0.0 0.0", "Region of interest ratios [left, right, top, bottom].");
+    RTABMAP_PARAM(Vis, SubPixWinSize,            int, 3,        "See cv::cornerSubPix().");
+	RTABMAP_PARAM(Vis, SubPixIterations,         int, 0,        "See cv::cornerSubPix(). 0 disables sub pixel refining.");
+	RTABMAP_PARAM(Vis, SubPixEps,                double, 0.02,  "See cv::cornerSubPix().");
 
-	// Loop closure constraint
-	RTABMAP_PARAM(LccIcp, Type,            int, 0, 			"0=No ICP, 1=ICP 3D, 2=ICP 2D");
-	RTABMAP_PARAM(LccIcp, MaxTranslation,  float, 0.2,      "Maximum ICP translation correction accepted (m).");
-	RTABMAP_PARAM(LccIcp, MaxRotation,     float, 0.78,     "Maximum ICP rotation correction accepted (rad).");
 
-	RTABMAP_PARAM(LccBow, EstimationType,  int, 0,    	    "Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)");
-	RTABMAP_PARAM(LccBow, MinInliers,      int, 10, 		"Minimum visual word correspondences to compute geometry transform.");
-	RTABMAP_PARAM(LccBow, InlierDistance,  float, 0.1,      "Maximum distance for visual word correspondences. Used by 3D->3D estimation approach.");
-	RTABMAP_PARAM(LccBow, Iterations,      int, 100, 		"Maximum iterations to compute the transform from visual words.");
-	RTABMAP_PARAM(LccBow, RefineIterations,  int, 10,        "Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
-	RTABMAP_PARAM(LccBow, Force2D, 		   bool, false,     "Force 2D transform (3Dof: x,y and yaw).");
-	RTABMAP_PARAM(LccBow, EpipolarGeometryVar, float, 0.02, "Epipolar geometry maximum variance to accept the loop closure.");
-	RTABMAP_PARAM(LccBow, PnPReprojError, 	 double, 5.0,    "PnP reprojection error.");
-	RTABMAP_PARAM(LccBow, PnPFlags, 	     int, 1,    	 "PnP flags: 0=Iterative, 1=EPNP, 2=P3P");
-	RTABMAP_PARAM(LccBow, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
-	RTABMAP_PARAM_COND(LccReextract, Activated, bool, RTABMAP_NONFREE, false, true, "Activate re-extracting features on global loop closure.");
-	RTABMAP_PARAM(LccReextract, NNType, 	int, 3, 		"kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4.");
-	RTABMAP_PARAM(LccReextract, NNDR, 		float, 0.8, 	"NNDR: nearest neighbor distance ratio.");
-	RTABMAP_PARAM(LccReextract, FeatureType, int, 4, 		"0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
-	RTABMAP_PARAM(LccReextract, MaxWords, 	int, 1000, 		"0 no limits.");
-	RTABMAP_PARAM(LccReextract, MaxDepth, 	float, 0.0,     "Max depth of the words (0 means no limit).");
-
-	RTABMAP_PARAM(LccIcp3, Decimation,      int, 4, 		"Depth image decimation.");
-	RTABMAP_PARAM(LccIcp3, MaxDepth,        float, 3.0, 	"Max cloud depth.");
-	RTABMAP_PARAM(LccIcp3, VoxelSize,       float, 0.025, 	"Voxel size to be used for ICP computation.");
-	RTABMAP_PARAM(LccIcp3, Samples,         int, 0, 		"Random samples to be used for ICP computation. Not used if voxelSize is set.");
-	RTABMAP_PARAM(LccIcp3, MaxCorrespondenceDistance, float, 0.05, "ICP 3D: Max distance for point correspondences.");
-	RTABMAP_PARAM(LccIcp3, Iterations,      int, 30, 		"Max iterations.");
-	RTABMAP_PARAM(LccIcp3, CorrespondenceRatio, float, 0.2, 	"Ratio of matching correspondences to accept the transform.");
-	RTABMAP_PARAM(LccIcp3, PointToPlane,      bool, false, 	"Use point to plane ICP.");
-	RTABMAP_PARAM(LccIcp3, PointToPlaneNormalNeighbors,      int, 20, 	"Number of neighbors to compute normals for point to plane.");
-
-	RTABMAP_PARAM(LccIcp2, MaxCorrespondenceDistance, float, 0.05, 	"Max distance for point correspondences.");
-	RTABMAP_PARAM(LccIcp2, Iterations,      int, 30, 				"Max iterations.");
-	RTABMAP_PARAM(LccIcp2, CorrespondenceRatio, float, 0.3, 		"Ratio of matching correspondences to accept the transform.");
-	RTABMAP_PARAM(LccIcp2, VoxelSize,       float, 0.025, 			"Voxel size to be used for ICP computation.");
+	// ICP registration parameters
+	RTABMAP_PARAM(Icp, MaxTranslation,            float, 0.2,   "Maximum ICP translation correction accepted (m).");
+	RTABMAP_PARAM(Icp, MaxRotation,               float, 0.78,  "Maximum ICP rotation correction accepted (rad).");
+	RTABMAP_PARAM(Icp, 2D,                        bool, true, 	"If 2D ICP is done (only 3Dof -> x,y,yaw).");
+	RTABMAP_PARAM(Icp, VoxelSize,                 float, 0.025, "Uniform sampling voxel size (0=disabled).");
+	RTABMAP_PARAM(Icp, DownsamplingStep,          int, 1, 	    "Downsampling step size (1=no sampling). This is done before uniform sampling.");
+	RTABMAP_PARAM(Icp, MaxCorrespondenceDistance, float, 0.05,  "Max distance for point correspondences.");
+	RTABMAP_PARAM(Icp, Iterations,                int, 30, 		"Max iterations.");
+	RTABMAP_PARAM(Icp, CorrespondenceRatio,       float, 0.3,   "Ratio of matching correspondences to accept the transform.");
+	RTABMAP_PARAM(Icp, PointToPlane,              bool, false, 	"Use point to plane ICP.");
+	RTABMAP_PARAM(Icp, PointToPlaneNormalNeighbors, int, 20,    "Number of neighbors to compute normals for point to plane.");
 
 	// Stereo disparity
-	RTABMAP_PARAM(Stereo, WinSize,               int, 16,        "See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(Stereo, WinSize,               int, 16,       "See cv::calcOpticalFlowPyrLK().");
 	RTABMAP_PARAM(Stereo, Iterations,            int, 30,       "See cv::calcOpticalFlowPyrLK().");
 	RTABMAP_PARAM(Stereo, Eps,                   double, 0.01,  "See cv::calcOpticalFlowPyrLK().");
 	RTABMAP_PARAM(Stereo, MaxLevel,              int, 3,        "See cv::calcOpticalFlowPyrLK().");
@@ -436,6 +419,17 @@ public:
 	static void parse(const ParametersMap & parameters, const std::string & key, std::string & value);
 
 	static std::string getDefaultDatabaseName();
+	
+	/**
+	 * Get removed parameters (backward compatibility)
+	 * <OldKeyName, <isEqual, NewKeyName> >, when isEqual=true, the old value can be safely copied to new parameter
+	 */
+	static const std::map<std::string, std::pair<bool, std::string> > & getRemovedParameters();
+	
+	/**
+	 * <NewKeyName, OldKeyName>
+	 */
+	static const ParametersMap & getBackwardCompatibilityMap();
 
 private:
 	Parameters();
@@ -445,6 +439,9 @@ private:
 	static ParametersMap parameters_;
 	static ParametersMap descriptions_;
 	static Parameters instance_;
+	
+	static std::map<std::string, std::pair<bool, std::string> > removedParameters_;
+	static ParametersMap backwardCompatibilityMap_;
 };
 
 }

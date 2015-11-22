@@ -520,6 +520,23 @@ bool CloudViewer::addCloud(
 
 bool CloudViewer::addCloud(
 		const std::string & id,
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const Transform & pose,
+		const QColor & color)
+{
+	if(!_addedClouds.contains(id))
+	{
+		UDEBUG("Adding %s with %d points", id.c_str(), (int)cloud->size());
+
+		pcl::PCLPointCloud2Ptr binaryCloud(new pcl::PCLPointCloud2);
+		pcl::toPCLPointCloud2(*cloud, *binaryCloud);
+		return addCloud(id, binaryCloud, pose, false, true, color);
+	}
+	return false;
+}
+
+bool CloudViewer::addCloud(
+		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const Transform & pose,
 		const QColor & color)

@@ -119,6 +119,17 @@ public:
 			bool rectifyImages = false,
 			float imageRate=0.0f,
 			const Transform & localTransform = Transform::getIdentity());
+	CameraStereoImages(
+			const std::string & scanPath,
+			const Transform & scanLocalTransform,
+			int scanMaxPts,
+			const std::string & pathLeftImages,
+			const std::string & pathRightImages,
+			bool filenamesAreTimestamps = false,
+			const std::string & timestampsPath = "", // "times.txt"
+			bool rectifyImages = false,
+			float imageRate=0.0f,
+			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraStereoImages();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

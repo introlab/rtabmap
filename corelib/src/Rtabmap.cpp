@@ -90,8 +90,8 @@ Rtabmap::Rtabmap() :
 	_rgbdLinearUpdate(Parameters::defaultRGBDLinearUpdate()),
 	_rgbdAngularUpdate(Parameters::defaultRGBDAngularUpdate()),
 	_newMapOdomChangeDistance(Parameters::defaultRGBDNewMapOdomChangeDistance()),
-	_globalLoopClosureIcpType(Parameters::defaultLccIcpType()),
-	_poseScanMatching(Parameters::defaultRGBDPoseScanMatching()),
+	_loopClosureIcpRefining(Parameters::defaultRGBDIcpLoopClosureRefining()),
+	_odomIcpRefining(Parameters::defaultRGBDIcpOdomRefining()),
 	_localLoopClosureDetectionTime(Parameters::defaultRGBDLocalLoopDetectionTime()),
 	_localLoopClosureDetectionSpace(Parameters::defaultRGBDLocalLoopDetectionSpace()),
 	_scanMatchingIdsSavedInLinks(Parameters::defaultRGBDScanMatchingIdsSavedInLinks()),
@@ -100,15 +100,10 @@ Rtabmap::Rtabmap() :
 	_localDetectMaxGraphDepth(Parameters::defaultRGBDLocalLoopDetectionMaxGraphDepth()),
 	_localPathFilteringRadius(Parameters::defaultRGBDLocalLoopDetectionPathFilteringRadius()),
 	_localPathOdomPosesUsed(Parameters::defaultRGBDLocalLoopDetectionPathOdomPosesUsed()),
+	_localPathScansMerged(Parameters::defaultRGBDLocalLoopDetectionPathScansMerged()),
 	_databasePath(""),
 	_optimizeFromGraphEnd(Parameters::defaultRGBDOptimizeFromGraphEnd()),
 	_optimizationMaxLinearError(Parameters::defaultRGBDOptimizeMaxError()),
-	_reextractLoopClosureFeatures(Parameters::defaultLccReextractActivated()),
-	_reextractNNType(Parameters::defaultLccReextractNNType()),
-	_reextractNNDR(Parameters::defaultLccReextractNNDR()),
-	_reextractFeatureType(Parameters::defaultLccReextractFeatureType()),
-	_reextractMaxWords(Parameters::defaultLccReextractMaxWords()),
-	_reextractMaxDepth(Parameters::defaultLccReextractMaxDepth()),
 	_startNewMapOnLoopClosure(Parameters::defaultRtabmapStartNewMapOnLoopClosure()),
 	_goalReachedRadius(Parameters::defaultRGBDGoalReachedRadius()),
 	_goalsSavedInUserData(Parameters::defaultRGBDGoalsSavedInUserData()),
@@ -402,7 +397,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rgbdLinearUpdate);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rgbdAngularUpdate);
 	Parameters::parse(parameters, Parameters::kRGBDNewMapOdomChangeDistance(), _newMapOdomChangeDistance);
-	Parameters::parse(parameters, Parameters::kRGBDPoseScanMatching(), _poseScanMatching);
+	Parameters::parse(parameters, Parameters::kRGBDIcpOdomRefining(), _odomIcpRefining);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionTime(), _localLoopClosureDetectionTime);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionSpace(), _localLoopClosureDetectionSpace);
 	Parameters::parse(parameters, Parameters::kRGBDScanMatchingIdsSavedInLinks(), _scanMatchingIdsSavedInLinks);
@@ -411,37 +406,19 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionMaxGraphDepth(), _localDetectMaxGraphDepth);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionPathFilteringRadius(), _localPathFilteringRadius);
 	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionPathOdomPosesUsed(), _localPathOdomPosesUsed);
+	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionPathScansMerged(), _localPathScansMerged);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeMaxError(), _optimizationMaxLinearError);
-	Parameters::parse(parameters, Parameters::kLccReextractActivated(), _reextractLoopClosureFeatures);
-	Parameters::parse(parameters, Parameters::kLccReextractNNType(), _reextractNNType);
-	Parameters::parse(parameters, Parameters::kLccReextractNNDR(), _reextractNNDR);
-	Parameters::parse(parameters, Parameters::kLccReextractFeatureType(), _reextractFeatureType);
-	Parameters::parse(parameters, Parameters::kLccReextractMaxWords(), _reextractMaxWords);
-	Parameters::parse(parameters, Parameters::kLccReextractMaxDepth(), _reextractMaxDepth);
 	Parameters::parse(parameters, Parameters::kRtabmapStartNewMapOnLoopClosure(), _startNewMapOnLoopClosure);
 	Parameters::parse(parameters, Parameters::kRGBDGoalReachedRadius(), _goalReachedRadius);
 	Parameters::parse(parameters, Parameters::kRGBDGoalsSavedInUserData(), _goalsSavedInUserData);
 	Parameters::parse(parameters, Parameters::kRGBDPlanStuckIterations(), _pathStuckIterations);
 	Parameters::parse(parameters, Parameters::kRGBDPlanLinearVelocity(), _pathLinearVelocity);
 	Parameters::parse(parameters, Parameters::kRGBDPlanAngularVelocity(), _pathAngularVelocity);
+	Parameters::parse(parameters, Parameters::kRGBDIcpLoopClosureRefining(), _loopClosureIcpRefining);
 
 	UASSERT(_rgbdLinearUpdate >= 0.0f);
 	UASSERT(_rgbdAngularUpdate >= 0.0f);
-
-	// RGB-D SLAM stuff
-	if((iter=parameters.find(Parameters::kLccIcpType())) != parameters.end())
-	{
-		int icpType = std::atoi((*iter).second.c_str());
-		if(icpType >= 0 && icpType <= 2)
-		{
-			_globalLoopClosureIcpType = icpType;
-		}
-		else
-		{
-			UERROR("Icp type must be 0, 1 or 2 (value=%d)", icpType);
-		}
-	}
 
 	// By default, we create our strategies if they are not already created.
 	// If they already exists, we check the parameters if a change is requested
@@ -1023,17 +1000,17 @@ bool Rtabmap::process(
 			//============================================================
 			// Scan matching
 			//============================================================
-			if(_poseScanMatching &&
+			if(_odomIcpRefining &&
 				!signature->sensorData().laserScanCompressed().empty() &&
 				rehearsedId == 0) // don't do it if rehearsal happened
 			{
 				UINFO("Odometry correction by scan matching");
-				Transform guess = signature->getLinks().begin()->second.transform();
-				double variance = 1.0;
+				Transform guess = signature->getLinks().begin()->second.transform().inverse();
+				float variance = 1.0f;
 				int inliers = 0;
 				float inliersRatio = 0;
 				std::string rejectedMsg;
-				Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, false, &rejectedMsg, &inliers, &variance, &inliersRatio);
+				Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, &rejectedMsg, &inliers, &variance, &inliersRatio);
 				if(!t.isNull())
 				{
 					UINFO("Scan matching: update neighbor link (%d->%d, variance=%f) from %s to %s",
@@ -1043,14 +1020,14 @@ bool Rtabmap::process(
 							signature->getLinks().at(oldId).transform().prettyPrint().c_str(),
 							t.prettyPrint().c_str());
 					UASSERT(variance > 0.0);
-					_memory->updateLink(signature->id(), oldId, t, variance, variance);
+					_memory->updateLink(oldId, signature->id(), t, variance, variance);
 
 					if(_optimizeFromGraphEnd)
 					{
 						// update all previous nodes
 						// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
 						// parameters just changed state, we should put back all poses without map correction.
-						Transform u = guess.inverse() * t;
+						Transform u = guess * t.inverse();
 						std::map<int, Transform>::iterator jter = _optimizedPoses.find(oldId);
 						UASSERT(jter!=_optimizedPoses.end());
 						Transform up = jter->second * u * jter->second.inverse();
@@ -1074,6 +1051,7 @@ bool Rtabmap::process(
 				statistics_.addStatistic(Statistics::kOdomCorrectionInliers(), inliers);
 				statistics_.addStatistic(Statistics::kOdomCorrectionInliers_ratio(), inliersRatio);
 				statistics_.addStatistic(Statistics::kOdomCorrectionVariance(), variance);
+				statistics_.addStatistic(Statistics::kOdomCorrectionPts(), signature->sensorData().laserScanRaw().cols);
 			}
 			timeScanMatching = timer.ticks();
 			ULOGGER_INFO("timeScanMatching=%fs", timeScanMatching);
@@ -1179,12 +1157,12 @@ bool Rtabmap::process(
 				{
 					std::string rejectedMsg;
 					UDEBUG("Check local transform between %d and %d", signature->id(), *iter);
-					double variance = 1.0;
+					float variance = 1.0f;
 					int inliers = -1;
-					Transform transform = _memory->computeVisualTransform(*iter, signature->id(), &rejectedMsg, &inliers, &variance);
-					if(!transform.isNull() && _globalLoopClosureIcpType > 0)
+					Transform transform = _memory->computeVisualTransform(signature->id(), *iter, &rejectedMsg, &inliers, &variance);
+					if(!transform.isNull() && _loopClosureIcpRefining)
 					{
-						transform = _memory->computeIcpTransform(*iter, signature->id(), transform, _globalLoopClosureIcpType==1, &rejectedMsg, 0, &variance);
+						transform = _memory->computeIcpTransform(signature->id(), *iter, transform, &rejectedMsg, 0, &variance);
 					}
 					if(!transform.isNull())
 					{
@@ -1733,72 +1711,16 @@ bool Rtabmap::process(
 	{
 		//Compute transform if metric data are present
 		Transform transform;
-		double variance = 1;
+		float variance = 1.0f;
 		if(_rgbdSlamMode)
 		{
 			std::string rejectedMsg;
-			if(_reextractLoopClosureFeatures)
+
+			transform = _memory->computeVisualTransform(signature->id(), _loopClosureHypothesis.first, &rejectedMsg, &loopClosureVisualInliers, &variance);
+
+			if(!transform.isNull() && _loopClosureIcpRefining)
 			{
-				ParametersMap customParameters = _modifiedParameters; // get BOW LCC parameters
-				// override some parameters
-				uInsert(customParameters, ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
-				uInsert(customParameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-				uInsert(customParameters, ParametersPair(Parameters::kMemBinDataKept(), "false"));
-				uInsert(customParameters, ParametersPair(Parameters::kMemSTMSize(), "0"));
-				uInsert(customParameters, ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
-				uInsert(customParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
-				uInsert(customParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(_reextractNNType))); // bruteforce
-				uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(_reextractNNDR)));
-				uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(_reextractFeatureType))); // FAST/BRIEF
-				uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(_reextractMaxWords)));
-				uInsert(customParameters, ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(_reextractMaxDepth)));
-				uInsert(customParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
-				uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
-				uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
-
-				//for(ParametersMap::iterator iter = customParameters.begin(); iter!=customParameters.end(); ++iter)
-				//{
-				//	UDEBUG("%s=%s", iter->first.c_str(), iter->second.c_str());
-				//}
-
-				Memory memory(customParameters);
-
-				UTimer timeT;
-
-				// Add signatures
-				SensorData dataFrom = data;
-				dataFrom.setId(signature->id());
-				SensorData dataTo = _memory->getNodeData(_loopClosureHypothesis.first, true);
-				UDEBUG("timeTo = %fs", timeT.ticks());
-
-				if(!dataFrom.depthOrRightRaw().empty() &&
-				   !dataTo.depthOrRightRaw().empty() &&
-				   dataFrom.id() != Memory::kIdInvalid &&
-				   dataTo.id() != Memory::kIdInvalid)
-				{
-					memory.update(dataTo);
-					UDEBUG("timeUpTo = %fs", timeT.ticks());
-					memory.update(dataFrom);
-					UDEBUG("timeUpFrom = %fs", timeT.ticks());
-
-					transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
-					UDEBUG("timeTransform = %fs", timeT.ticks());
-				}
-				else
-				{
-					// Fallback to normal way (raw data not kept in database...)
-					UWARN("Loop closure: Some images not found in memory for re-extracting "
-						  "features, is Mem/RawDataKept=false? Falling back with already extracted 3D features.");
-					transform = _memory->computeVisualTransform(_loopClosureHypothesis.first, signature->id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
-				}
-			}
-			else
-			{
-				transform = _memory->computeVisualTransform(_loopClosureHypothesis.first, signature->id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
-			}
-			if(!transform.isNull() && _globalLoopClosureIcpType > 0)
-			{
-				transform = _memory->computeIcpTransform(_loopClosureHypothesis.first, signature->id(), transform, _globalLoopClosureIcpType == 1, &rejectedMsg, 0, &variance);
+				transform = _memory->computeIcpTransform(signature->id(), _loopClosureHypothesis.first, transform, &rejectedMsg, 0, &variance);
 			}
 			rejectedHypothesis = transform.isNull();
 			if(rejectedHypothesis)
@@ -1896,70 +1818,11 @@ bool Rtabmap::process(
 						(_localPathFilteringRadius <= 0.0f ||
 						 _optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _localPathFilteringRadius*_localPathFilteringRadius))
 					{
-						double variance = 1.0;
-						Transform transform;
-						if(_reextractLoopClosureFeatures)
+						float variance = 1.0f;
+						Transform transform = _memory->computeVisualTransform(signature->id(), nearestId, 0, 0, &variance);
+						if(!transform.isNull() && _loopClosureIcpRefining)
 						{
-							ParametersMap customParameters = _modifiedParameters; // get BOW LCC parameters
-							// override some parameters
-							uInsert(customParameters, ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
-							uInsert(customParameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-							uInsert(customParameters, ParametersPair(Parameters::kMemBinDataKept(), "false"));
-							uInsert(customParameters, ParametersPair(Parameters::kMemSTMSize(), "0"));
-							uInsert(customParameters, ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
-							uInsert(customParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
-							uInsert(customParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(_reextractNNType))); // bruteforce
-							uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(_reextractNNDR)));
-							uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(_reextractFeatureType))); // FAST/BRIEF
-							uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(_reextractMaxWords)));
-							uInsert(customParameters, ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(_reextractMaxDepth)));
-							uInsert(customParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
-							uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
-							uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
-
-							//for(ParametersMap::iterator iter = customParameters.begin(); iter!=customParameters.end(); ++iter)
-							//{
-							//	UDEBUG("%s=%s", iter->first.c_str(), iter->second.c_str());
-							//}
-
-							Memory memory(customParameters);
-
-							UTimer timeT;
-
-							// Add signatures
-							SensorData dataFrom = data;
-							dataFrom.setId(signature->id());
-							SensorData dataTo = _memory->getNodeData(nearestId, true);
-							UDEBUG("timeTo = %fs", timeT.ticks());
-
-							if(!dataFrom.depthOrRightRaw().empty() &&
-							   !dataTo.depthOrRightRaw().empty() &&
-							   dataFrom.id() != Memory::kIdInvalid &&
-							   dataTo.id() != Memory::kIdInvalid)
-							{
-								memory.update(dataTo);
-								UDEBUG("timeUpTo = %fs", timeT.ticks());
-								memory.update(dataFrom);
-								UDEBUG("timeUpFrom = %fs", timeT.ticks());
-
-								transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), 0, 0, &variance);
-								UDEBUG("timeTransform = %fs", timeT.ticks());
-							}
-							else
-							{
-								// Fallback to normal way (raw data not kept in database...)
-								UWARN("Loop closure: Some images not found in memory for re-extracting "
-									  "features, is Mem/RawDataKept=false? Falling back with already extracted 3D features.");
-								transform = _memory->computeVisualTransform(nearestId, signature->id(), 0, 0, &variance);
-							}
-						}
-						else
-						{
-							transform = _memory->computeVisualTransform(nearestId, signature->id(), 0, 0, &variance);
-						}
-						if(!transform.isNull() && _globalLoopClosureIcpType > 0)
-						{
-							transform  = _memory->computeIcpTransform(nearestId, signature->id(), transform, _globalLoopClosureIcpType == 1, 0, 0, &variance);
+							transform  = _memory->computeIcpTransform(signature->id(), nearestId, transform, 0, 0, &variance);
 						}
 						if(!transform.isNull())
 						{
@@ -2019,38 +1882,48 @@ bool Rtabmap::process(
 						   (_localPathFilteringRadius <= 0.0f ||
 							_optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _localPathFilteringRadius*_localPathFilteringRadius))
 						{
-							// Assemble scans in the path and do ICP only
-							if(_localPathOdomPosesUsed)
+							if(!_localPathScansMerged)
 							{
-								//optimize the path's poses locally
-								path = optimizeGraph(nearestId, uKeysSet(path), false);
-								// transform local poses in optimized graph referential
-								UASSERT(uContains(path, nearestId));
-								Transform t = _optimizedPoses.at(nearestId) * path.at(nearestId).inverse();
-								for(std::map<int, Transform>::iterator jter=path.begin(); jter!=path.end(); ++jter)
+								//only keep the nearest node
+								std::map<int, Transform> tmp;
+								tmp.insert(*path.find(nearestId));
+								path = tmp;
+							}
+							else
+							{
+								// Assemble scans in the path and do ICP only
+								if(_localPathOdomPosesUsed)
 								{
-									jter->second = t * jter->second;
+									//optimize the path's poses locally
+									path = optimizeGraph(nearestId, uKeysSet(path), false);
+									// transform local poses in optimized graph referential
+									UASSERT(uContains(path, nearestId));
+									Transform t = _optimizedPoses.at(nearestId) * path.at(nearestId).inverse();
+									for(std::map<int, Transform>::iterator jter=path.begin(); jter!=path.end(); ++jter)
+									{
+										jter->second = t * jter->second;
+									}
+								}
+								if(path.size() > 2 && _localPathFilteringRadius > 0.0f)
+								{
+									// path filtering
+									std::map<int, Transform> filteredPath = graph::radiusPosesFiltering(path, _localPathFilteringRadius, 0, true);
+									// make sure the nearest and farthest poses are still here
+									filteredPath.insert(*path.find(nearestId));
+									filteredPath.insert(*path.begin());
+									filteredPath.insert(*path.rbegin());
+									path = filteredPath;
 								}
 							}
-							if(_localPathFilteringRadius > 0.0f)
-							{
-								// path filtering
-								std::map<int, Transform> filteredPath = graph::radiusPosesFiltering(path, _localPathFilteringRadius, 0, true);
-								// make sure the nearest and farthest poses are still here
-								filteredPath.insert(*path.find(nearestId));
-								filteredPath.insert(*path.begin());
-								filteredPath.insert(*path.rbegin());
-								path = filteredPath;
-							}
 
-							if(path.size() > 2) // more than current+nearest
+							if(path.size() > 0)
 							{
 								// add current node to poses
 								path.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
 								//The nearest will be the reference for a loop closure transform
 								if(signature->getLinks().find(nearestId) == signature->getLinks().end())
 								{
-									double variance = 1.0;
+									float variance = 1.0f;
 									Transform transform = _memory->computeScanMatchingTransform(signature->id(), nearestId, path, 0, 0, &variance);
 									if(!transform.isNull())
 									{
@@ -2340,7 +2213,7 @@ bool Rtabmap::process(
 
 			// timings...
 			statistics_.addStatistic(Statistics::kTimingMemory_update(), timeMemoryUpdate*1000);
-			statistics_.addStatistic(Statistics::kTimingScan_matching(), timeScanMatching*1000);
+			statistics_.addStatistic(Statistics::kTimingOdom_correction(), timeScanMatching*1000);
 			statistics_.addStatistic(Statistics::kTimingLocal_detection_TIME(), timeLocalTimeDetection*1000);
 			statistics_.addStatistic(Statistics::kTimingLocal_detection_SPACE(), timeLocalSpaceDetection*1000);
 			statistics_.addStatistic(Statistics::kTimingReactivation(), timeReactivations*1000);
@@ -3836,12 +3709,41 @@ void Rtabmap::readParameters(const std::string & configFile, ParametersMap & par
 			else
 			{
 				key = uReplaceChar(key, '\\', '/'); // Ini files use \ by default for separators, so replace them
+
+				// look for old parameter name
+				bool addParameter = true;
+				std::map<std::string, std::pair<bool, std::string> >::const_iterator oldIter = Parameters::getRemovedParameters().find(key);
+				if(oldIter!=Parameters::getRemovedParameters().end())
+				{
+					addParameter = oldIter->second.first;
+					if(addParameter)
+					{
+						key = oldIter->second.second;
+						UWARN("Parameter migration from \"%s\" to \"%s\" (value=%s).",
+								oldIter->first.c_str(), oldIter->second.second.c_str(), iter->second);
+					}
+					else if(oldIter->second.second.empty())
+					{
+						UWARN("Parameter \"%s\" doesn't exist anymore.",
+									oldIter->first.c_str());
+					}
+					else
+					{
+						UWARN("Parameter \"%s\" doesn't exist anymore, you may want to use this similar parameter \"%s\":\"%s\".",
+									oldIter->first.c_str(), oldIter->second.second.c_str(), Parameters::getDescription(oldIter->second.second).c_str());
+					}
+
+				}
+
 				ParametersMap::iterator jter = parameters.find(key);
 				if(jter != parameters.end())
 				{
 					parameters.erase(jter);
 				}
-				parameters.insert(ParametersPair(key, (*iter).second));
+				if(addParameter)
+				{
+					parameters.insert(ParametersPair(key, iter->second));
+				}
 			}
 		}
 	}

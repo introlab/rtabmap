@@ -52,6 +52,8 @@ class VWDictionary;
 class VisualWord;
 class Feature2D;
 class Statistics;
+class RegistrationVis;
+class RegistrationIcp;
 
 class RTABMAP_EXP Memory
 {
@@ -176,21 +178,16 @@ public:
 			std::map<int, Transform> & poses,
 			std::multimap<int, Link> & links,
 			bool lookInDatabase = false);
-	float getBowInlierDistance() const {return _bowInlierDistance;}
-	int getBowIterations() const {return _bowIterations;}
-	int getBowMinInliers() const {return _bowMinInliers;}
-	bool getBowForce2D() const {return _bowForce2D;}
-	Transform computeVisualTransform(int oldId, int newId, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
-	Transform computeVisualTransform(const Signature & oldS, const Signature & newS, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
-	Transform computeIcpTransform(int oldId, int newId, Transform guess, bool icp3D, std::string * rejectedMsg = 0, int * correspondences = 0, double * variance = 0, float * correspondencesRatio = 0);
-	Transform computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess, bool icp3D, std::string * rejectedMsg = 0, int * correspondences = 0, double * variance = 0, float * correspondencesRatio = 0) const;
+
+	Transform computeVisualTransform(int fromId, int toId, std::string * rejectedMsg = 0, int * inliers = 0, float * variance = 0);
+	Transform computeIcpTransform(int fromId, int toId, Transform guess, std::string * rejectedMsg = 0, int * correspondences = 0, float * variance = 0, float * correspondencesRatio = 0);
 	Transform computeScanMatchingTransform(
 			int newId,
 			int oldId,
 			const std::map<int, Transform> & poses,
 			std::string * rejectedMsg = 0,
 			int * inliers = 0,
-			double * variance = 0);
+			float * variance = 0);
 
 private:
 	void preUpdate();
@@ -241,8 +238,9 @@ private:
 	bool _generateIds;
 	bool _badSignaturesIgnored;
 	int _imageDecimation;
-	float _laserScanVoxelSize;
+	float _laserScanDownsampleStepSize;
 	bool _localSpaceLinksKeptInWM;
+	bool _reextractLoopClosureFeatures;
 	float _rehearsalMaxDistance;
 	float _rehearsalMaxAngle;
 	bool _rehearsalWeightIgnoredWhileMoving;
@@ -268,34 +266,11 @@ private:
 	bool _tfIdfLikelihoodUsed;
 	bool _parallelized;
 	float _wordsMaxDepth; // 0=inf
+	float _wordsMinDepth;
 	std::vector<float> _roiRatios; // size 4
 
-	// RGBD-SLAM stuff
-	int _bowMinInliers;
-	float _bowInlierDistance;
-	int _bowIterations;
-	int _bowRefineIterations;
-	bool _bowForce2D;
-	float _bowEpipolarGeometryVar;
-	int _bowEstimationType;
-	double _bowPnPReprojError;
-	int _bowPnPFlags;
-	bool _bowVarianceFromInliersCount;
-	float _icpMaxTranslation;
-	float _icpMaxRotation;
-	int _icpDecimation;
-	float _icpMaxDepth;
-	float _icpVoxelSize;
-	int _icpSamples;
-	float _icpMaxCorrespondenceDistance;
-	int _icpMaxIterations;
-	float _icpCorrespondenceRatio;
-	bool _icpPointToPlane;
-	int _icpPointToPlaneNormalNeighbors;
-	float _icp2MaxCorrespondenceDistance;
-	int _icp2MaxIterations;
-	float _icp2CorrespondenceRatio;
-	float _icp2VoxelSize;
+	RegistrationVis * _registrationVis;
+	RegistrationIcp * _registrationIcp;
 
 	// Stereo stuff
 	int _stereoFlowWinSize;

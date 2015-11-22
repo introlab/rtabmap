@@ -60,18 +60,22 @@ namespace rtabmap {
 void Feature2D::filterKeypointsByDepth(
 		std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & depth,
+		float minDepth,
 		float maxDepth)
 {
 	cv::Mat descriptors;
-	filterKeypointsByDepth(keypoints, descriptors, depth, maxDepth);
+	filterKeypointsByDepth(keypoints, descriptors, depth, minDepth, maxDepth);
 }
 
 void Feature2D::filterKeypointsByDepth(
 		std::vector<cv::KeyPoint> & keypoints,
 		cv::Mat & descriptors,
 		const cv::Mat & depth,
+		float minDepth,
 		float maxDepth)
 {
+	UASSERT(minDepth >= 0.0f);
+	UASSERT(maxDepth <= 0.0f || maxDepth > minDepth);
 	if(!depth.empty() && (descriptors.empty() || descriptors.rows == (int)keypoints.size()))
 	{
 		std::vector<cv::KeyPoint> output(keypoints.size());
@@ -85,7 +89,7 @@ void Feature2D::filterKeypointsByDepth(
 			if(u >=0 && u<depth.cols && v >=0 && v<depth.rows)
 			{
 				float d = isInMM?(float)depth.at<uint16_t>(v,u)*0.001f:depth.at<float>(v,u);
-				if(uIsFinite(d) && d>0.0f && (maxDepth <= 0.0f || d < maxDepth))
+				if(uIsFinite(d) && d>minDepth && (maxDepth <= 0.0f || d < maxDepth))
 				{
 					output[oi++] = keypoints[i];
 					indexes[i] = 1;

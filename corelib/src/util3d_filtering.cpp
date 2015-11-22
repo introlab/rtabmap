@@ -49,6 +49,101 @@ namespace rtabmap
 namespace util3d
 {
 
+cv::Mat downsample(
+		const cv::Mat & cloud,
+		int step)
+{
+	// 2D or 3D point clouds (laser scans)
+	UASSERT(cloud.type() == CV_32FC2 || cloud.type() == CV_32FC3);
+	UASSERT(step > 0);
+	cv::Mat output;
+	if(step == 1)
+	{
+		// no sampling
+		output = cloud.clone();
+	}
+	else
+	{
+		if(cloud.cols > step)
+		{
+			int finalSize = cloud.cols/step;
+			output = cv::Mat(1, finalSize, cloud.type());
+			int oi = 0;
+			for(unsigned int i=0; i<cloud.cols-step+1; i+=step)
+			{
+				cv::Mat(cloud, cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(output, cv::Range::all(), cv::Range(oi,oi+1)));
+				++oi;
+			}
+		}
+		else if(cloud.cols)
+		{
+			output = cv::Mat(1, 1, cloud.type());
+			cv::Mat(cloud, cv::Range::all(), cv::Range(0,1)).copyTo(output); // first point
+		}
+	}
+	return output;
+}
+pcl::PointCloud<pcl::PointXYZ>::Ptr downsample(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		int step)
+{
+	UASSERT(step > 0);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
+	if(step == 1)
+	{
+		// no sampling
+		*output = *cloud;
+	}
+	else
+	{
+		if(cloud->size() > step)
+		{
+			int finalSize = cloud->size()/step;
+			output->resize(finalSize);
+			int oi = 0;
+			for(unsigned int i=0; i<cloud->size()-step+1; i+=step)
+			{
+				(*output)[oi++] = cloud->at(i);
+			}
+		}
+		else if(cloud->size())
+		{
+			output->push_back(cloud->at(0));
+		}
+	}
+	return output;
+}
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr downsample(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		int step)
+{
+	UASSERT(step > 0);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
+	if(step == 1)
+	{
+		// no sampling
+		*output = *cloud;
+	}
+	else
+	{
+		if(cloud->size() > step)
+		{
+			int finalSize = cloud->size()/step;
+			output->resize(finalSize);
+			int oi = 0;
+			for(unsigned int i=0; i<cloud->size()-step+1; i+=step)
+			{
+				(*output)[oi++] = cloud->at(i);
+			}
+		}
+		else if(cloud->size())
+		{
+			output->push_back(cloud->at(0));
+		}
+	}
+	return output;
+}
+
 pcl::PointCloud<pcl::PointXYZ>::Ptr voxelize(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		float voxelSize)
@@ -87,7 +182,7 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr voxelize(
 }
 
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr sampling(
+pcl::PointCloud<pcl::PointXYZ>::Ptr randomSampling(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud, int samples)
 {
 	UASSERT(samples > 0);
@@ -98,7 +193,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr sampling(
 	filter.filter(*output);
 	return output;
 }
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr sampling(
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr randomSampling(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, int samples)
 {
 	UASSERT(samples > 0);

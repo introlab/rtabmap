@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UStl.h>
 #include <iomanip>
 
 namespace rtabmap {
@@ -313,6 +314,47 @@ Transform Transform::fromEigen3d(const Eigen::Isometry3d & matrix)
 	return Transform(matrix(0,0), matrix(0,1), matrix(0,2), matrix(0,3),
 					 matrix(1,0), matrix(1,1), matrix(1,2), matrix(1,3),
 					 matrix(2,0), matrix(2,1), matrix(2,2), matrix(2,3));
+}
+
+/**
+ * Format (6 values): x y z roll pitch yaw.
+ * Format (9 [+3] values): r11 r12 r13 r21 r22 r23 r31 r32 r33 [tx ty tz].
+ */
+Transform Transform::fromString(const std::string & string)
+{
+	Transform t;
+	std::list<std::string> list = uSplit(string, ' ');
+	if(list.size() == 6 || list.size() == 9 || list.size() == 12)
+	{
+		std::vector<float> numbers(list.size());
+		int i = 0;
+		for(std::list<std::string>::iterator iter=list.begin(); iter!=list.end(); ++iter)
+		{
+			numbers[i++] = uStr2Float(*iter);
+		}
+
+		if(numbers.size() == 6)
+		{
+			t = Transform(numbers[0], numbers[1], numbers[2], numbers[3], numbers[4], numbers[5]);
+		}
+		else if(numbers.size() == 9)
+		{
+			t = Transform(numbers[0], numbers[1], numbers[2], 0,
+						  numbers[3], numbers[4], numbers[5], 0,
+						  numbers[6], numbers[7], numbers[8], 0);
+		}
+		else if(numbers.size() == 12)
+		{
+			t = Transform(numbers[0], numbers[1], numbers[2], numbers[9],
+						  numbers[3], numbers[4], numbers[5], numbers[10],
+						  numbers[6], numbers[7], numbers[8], numbers[11]);
+		}
+	}
+	else
+	{
+		UERROR("Local transform is wrong! must have 6 or 9 items (%s)", string.c_str());
+	}
+	return t;
 }
 
 }

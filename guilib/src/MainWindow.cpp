@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/DBDriver.h"
+#include "rtabmap/core/RegistrationVis.h"
 
 #include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/KeypointItem.h"
@@ -94,6 +95,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_surface.h"
 #include "rtabmap/core/util3d_registration.h"
 #include "rtabmap/core/Graph.h"
+#include "rtabmap/core/RegistrationIcp.h"
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/common/transforms.h>
 #include <pcl/common/common.h>
@@ -481,9 +483,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 
 	// update loop closure viewer parameters
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
-	_ui->widget_loopClosureViewer->setDecimation(atoi(parameters.at(Parameters::kLccIcp3Decimation()).c_str()));
-	_ui->widget_loopClosureViewer->setMaxDepth(uStr2Float(parameters.at(Parameters::kLccIcp3MaxDepth())));
-	_ui->widget_loopClosureViewer->setSamples(atoi(parameters.at(Parameters::kLccIcp3Samples()).c_str()));
+	_ui->widget_loopClosureViewer->setDecimation(_preferencesDialog->getCloudDecimation(0));
+	_ui->widget_loopClosureViewer->setMaxDepth(_preferencesDialog->getCloudMaxDepth(0));
 
 	//update ui
 	_ui->doubleSpinBox_stats_detectionRate->setValue(_preferencesDialog->getDetectionRate());
@@ -810,21 +811,22 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 					_preferencesDialog->isScansShown(1))
 				{
 					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-					cloud = util3d::laserScanToPointCloud(odom.data().laserScanRaw());
-					cloud = util3d::transformPointCloud(cloud, pose);
+					cloud = util3d::laserScanToPointCloud(odom.data().laserScanRaw(), pose);
+					if(_preferencesDialog->getDownsamplingStepScan(1) > 0)
+					{
+						cloud = util3d::downsample(cloud, _preferencesDialog->getDownsamplingStepScan(1));
+					}
+					if(_preferencesDialog->getCloudVoxelSizeScan(1) > 0.0)
+					{
+						cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
+					}
 					if(!_ui->widget_cloudViewer->addOrUpdateCloud("scanOdom", cloud, _odometryCorrection))
 					{
-						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-						cloud = util3d::laserScanToPointCloud(odom.data().laserScanRaw());
-						cloud = util3d::transformPointCloud(cloud, pose);
-						if(!_ui->widget_cloudViewer->addOrUpdateCloud("scanOdom", cloud, _odometryCorrection))
-						{
-							UERROR("Adding scanOdom to viewer failed!");
-						}
-						_ui->widget_cloudViewer->setCloudVisibility("scanOdom", true);
-						_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
-						_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
+						UERROR("Adding scanOdom to viewer failed!");
 					}
+					_ui->widget_cloudViewer->setCloudVisibility("scanOdom", true);
+					_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
+					_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
 				}
 			}
 		}
@@ -1929,6 +1931,14 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 		cloud = util3d::laserScanToPointCloud(depth2D);
+		if(_preferencesDialog->getDownsamplingStepScan(0) > 0)
+		{
+			cloud = util3d::downsample(cloud, _preferencesDialog->getDownsamplingStepScan(0));
+		}
+		if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
+		{
+			cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(0));
+		}
 		QColor color = Qt::gray;
 		if(mapId >= 0)
 		{
@@ -1942,9 +1952,12 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		{
 			_createdScans.insert(std::make_pair(nodeId, cloud));
 
-			cv::Mat ground, obstacles;
-			util3d::occupancy2DFromLaserScan(depth2D, ground, obstacles, _preferencesDialog->getGridMapResolution());
-			_gridLocalMaps.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
+			if(depth2D.channels() == 2)
+			{
+				cv::Mat ground, obstacles;
+				util3d::occupancy2DFromLaserScan(depth2D, ground, obstacles, _preferencesDialog->getGridMapResolution());
+				_gridLocalMaps.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
+			}
 		}
 		_ui->widget_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
 		_ui->widget_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
@@ -2376,19 +2389,9 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bo
 			_ui->widget_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 		}
 
-		// update loop closure viewer parameters
-		if(uContains(parameters, Parameters::kLccIcp3Decimation()))
-		{
-			_ui->widget_loopClosureViewer->setDecimation(atoi(parameters.at(Parameters::kLccIcp3Decimation()).c_str()));
-		}
-		if(uContains(parameters, Parameters::kLccIcp3MaxDepth()))
-		{
-			_ui->widget_loopClosureViewer->setMaxDepth(uStr2Float(parameters.at(Parameters::kLccIcp3MaxDepth())));
-		}
-		if(uContains(parameters, Parameters::kLccIcp3Samples()))
-		{
-			_ui->widget_loopClosureViewer->setSamples(atoi(parameters.at(Parameters::kLccIcp3Samples()).c_str()));
-		}
+		// update loop closure viewer parameters (Use Map parameters)
+		_ui->widget_loopClosureViewer->setDecimation(_preferencesDialog->getCloudDecimation(0));
+		_ui->widget_loopClosureViewer->setMaxDepth(_preferencesDialog->getCloudMaxDepth(0));
 
 		// update graph view parameters
 		if(uContains(parameters, Parameters::kRGBDLocalRadius()))
@@ -3370,31 +3373,6 @@ void MainWindow::postProcessing()
 			{
 				odomPoses.insert(*iter); // fill raw poses
 			}
-			/*
-			if(jter->sensorData().cameraModels().size() == 0 && !jter->sensorData().stereoCameraModel().isValid())
-			{
-				UWARN("Calibration of %d is null.", iter->first);
-				allDataAvailable = false;
-			}
-			if(refineNeighborLinks || refineLoopClosureLinks || reextractFeatures)
-			{
-				// depth data required
-				if(jter->sensorData().depthOrRightCompressed().empty())
-				{
-					UWARN("Depth data of %d missing.", iter->first);
-					allDataAvailable = false;
-				}
-
-				if(reextractFeatures)
-				{
-					// rgb required
-					if(jter->sensorData().imageCompressed().empty())
-					{
-						UWARN("Rgb of %d missing.", iter->first);
-						allDataAvailable = false;
-					}
-				}
-			}*/
 		}
 		else
 		{
@@ -3442,22 +3420,6 @@ void MainWindow::postProcessing()
 	if(detectMoreLoopClosures)
 	{
 		UDEBUG("");
-		Memory memory(parameters);
-		if(reextractFeatures)
-		{
-			ParametersMap customParameters;
-			// override some parameters
-			customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-			customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
-			customParameters.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
-			customParameters.insert(ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
-			customParameters.insert(ParametersPair(Parameters::kKpNNStrategy(), parameters.at(Parameters::kLccReextractNNType())));
-			customParameters.insert(ParametersPair(Parameters::kKpNndrRatio(), parameters.at(Parameters::kLccReextractNNDR())));
-			customParameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), parameters.at(Parameters::kLccReextractFeatureType())));
-			customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), parameters.at(Parameters::kLccReextractMaxWords())));
-			customParameters.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
-			memory.parseParameters(customParameters);
-		}
 
 		UASSERT(detectLoopClosureIterations>0);
 		for(int n=0; n<detectLoopClosureIterations; ++n)
@@ -3502,52 +3464,24 @@ void MainWindow::postProcessing()
 						_initProgressDialog->incrementStep();
 						QApplication::processEvents();
 
-						Signature & signatureFrom = _cachedSignatures[from];
-						Signature & signatureTo = _cachedSignatures[to];
+						Signature signatureFrom = _cachedSignatures[from];
+						Signature signatureTo = _cachedSignatures[to];
+
+						if(reextractFeatures)
+						{
+							signatureFrom.setWords(std::multimap<int, cv::KeyPoint>());
+							signatureFrom.setWords3(std::multimap<int, pcl::PointXYZ>());
+							signatureTo.setWords(std::multimap<int, cv::KeyPoint>());
+							signatureTo.setWords3(std::multimap<int, pcl::PointXYZ>());
+						}
 
 						Transform transform;
 						std::string rejectedMsg;
 						int inliers = -1;
-						double variance = -1.0;
-						if(reextractFeatures)
-						{
-							memory.init("", true); // clear previously added signatures
+						float variance = -1.0f;
+						RegistrationVis registration(parameters);
+						transform = registration.computeTransformation(signatureFrom, signatureTo, Transform(), &rejectedMsg, &inliers, &variance);
 
-							// Add signatures
-							SensorData dataFrom = signatureFrom.sensorData();
-							SensorData dataTo = signatureTo.sensorData();
-
-							cv::Mat image, depth;
-							dataFrom.uncompressData(&image, &depth, 0);
-							dataTo.uncompressData(&image, &depth, 0);
-
-							if(dataFrom.isValid() &&
-							   dataTo.isValid() &&
-							   dataFrom.id() != Memory::kIdInvalid &&
-							   signatureFrom.id() != Memory::kIdInvalid)
-							{
-								if(from > to)
-								{
-									memory.update(dataTo);
-									memory.update(dataFrom);
-								}
-								else
-								{
-									memory.update(dataFrom);
-									memory.update(dataTo);
-								}
-
-								transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &inliers, &variance);
-							}
-							else
-							{
-								UERROR("not supposed to be here!");
-							}
-						}
-						else
-						{
-							transform = memory.computeVisualTransform(signatureTo, signatureFrom, &rejectedMsg, &inliers, &variance);
-						}
 						if(!transform.isNull())
 						{
 							UINFO("Added new loop closure between %d and %d.", from, to);
@@ -3597,26 +3531,10 @@ void MainWindow::postProcessing()
 		{
 			_initProgressDialog->setMaximumSteps(_initProgressDialog->maximumSteps()+loopClosuresAdded);
 		}
+		// TODO: support ICP from laser scans?
 		_initProgressDialog->appendText(tr("Refining links..."));
 
-		int decimation=Parameters::defaultLccIcp3Decimation();
-		float maxDepth=Parameters::defaultLccIcp3MaxDepth();
-		float voxelSize=Parameters::defaultLccIcp3VoxelSize();
-		int samples = Parameters::defaultLccIcp3Samples();
-		float maxCorrespondenceDistance = Parameters::defaultLccIcp3MaxCorrespondenceDistance();
-		float correspondenceRatio = Parameters::defaultLccIcp3CorrespondenceRatio();
-		float icpIterations = Parameters::defaultLccIcp3Iterations();
-		Parameters::parse(parameters, Parameters::kLccIcp3Decimation(), decimation);
-		Parameters::parse(parameters, Parameters::kLccIcp3MaxDepth(), maxDepth);
-		Parameters::parse(parameters, Parameters::kLccIcp3VoxelSize(), voxelSize);
-		Parameters::parse(parameters, Parameters::kLccIcp3Samples(), samples);
-		Parameters::parse(parameters, Parameters::kLccIcp3CorrespondenceRatio(), correspondenceRatio);
-		Parameters::parse(parameters, Parameters::kLccIcp3MaxCorrespondenceDistance(), maxCorrespondenceDistance);
-		Parameters::parse(parameters, Parameters::kLccIcp3Iterations(), icpIterations);
-		bool pointToPlane = Parameters::defaultLccIcp3PointToPlane();
-		int pointToPlaneNormalNeighbors = Parameters::defaultLccIcp3PointToPlaneNormalNeighbors();
-		Parameters::parse(parameters, Parameters::kLccIcp3PointToPlane(), pointToPlane);
-		Parameters::parse(parameters, Parameters::kLccIcp3PointToPlaneNormalNeighbors(), pointToPlaneNormalNeighbors);
+		RegistrationIcp regIcp(parameters);
 
 		int i=0;
 		for(std::multimap<int, Link>::iterator iter = _currentLinksMap.begin(); iter!=_currentLinksMap.end(); ++iter, ++i)
@@ -3646,102 +3564,21 @@ void MainWindow::postProcessing()
 					Signature & signatureFrom = _cachedSignatures[from];
 					Signature & signatureTo = _cachedSignatures[to];
 
-					//3D
-					UDEBUG("");
-					cv::Mat depthA, depthB;
-					if(signatureFrom.sensorData().stereoCameraModel().isValid())
+					if(!signatureFrom.sensorData().laserScanRaw().empty() &&
+					   !signatureTo.sensorData().laserScanRaw().empty())
 					{
-						cv::Mat leftA, leftB;
-						signatureFrom.sensorData().uncompressData(&leftA, &depthA, 0);
-						signatureTo.sensorData().uncompressData(&leftB, &depthB, 0);
-					}
-					else
-					{
-						signatureFrom.sensorData().uncompressData(0, &depthA, 0);
-						signatureTo.sensorData().uncompressData(0, &depthB, 0);
-					}
+						std::string rejectedMsg;
+						float variance = -1.0f;
+						Transform transform = regIcp.computeTransformation(signatureFrom, signatureTo, iter->second.transform(), &rejectedMsg, 0, &variance);
 
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA = util3d::cloudFromSensorData(
-							signatureFrom.sensorData(),
-							decimation,
-							maxDepth,
-							voxelSize,
-							samples);
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB = util3d::cloudFromSensorData(
-							signatureTo.sensorData(),
-							decimation,
-							maxDepth,
-							voxelSize,
-							samples);
-					if(cloudA->size() && cloudB->size())
-					{
-						cloudB = util3d::transformPointCloud(cloudB, iter->second.transform());
-
-						bool hasConverged = false;
-						double variance = -1;
-						int correspondences = 0;
-						Transform transform;
-						if(pointToPlane)
-						{
-							UDEBUG("");
-							pcl::PointCloud<pcl::PointNormal>::Ptr cloudANormals = util3d::computeNormals(cloudA, pointToPlaneNormalNeighbors);
-							pcl::PointCloud<pcl::PointNormal>::Ptr cloudBNormals = util3d::computeNormals(cloudB, pointToPlaneNormalNeighbors);
-
-							cloudANormals = util3d::removeNaNNormalsFromPointCloud(cloudANormals);
-							if(cloudA->size() != cloudANormals->size())
-							{
-								UWARN("removed nan normals...");
-							}
-
-							cloudBNormals = util3d::removeNaNNormalsFromPointCloud(cloudBNormals);
-							if(cloudB->size() != cloudBNormals->size())
-							{
-								UWARN("removed nan normals...");
-							}
-
-							pcl::PointCloud<pcl::PointNormal>::Ptr cloudBRegistered(new pcl::PointCloud<pcl::PointNormal>);
-							transform = util3d::icpPointToPlane(cloudBNormals,
-									cloudANormals,
-									maxCorrespondenceDistance,
-									icpIterations,
-									hasConverged,
-									*cloudBRegistered);
-							util3d::computeVarianceAndCorrespondences(
-									cloudBRegistered,
-									cloudANormals,
-									maxCorrespondenceDistance,
-									variance,
-									correspondences);
-						}
-						else
-						{
-							UDEBUG("");
-							pcl::PointCloud<pcl::PointXYZ>::Ptr cloudBRegistered(new pcl::PointCloud<pcl::PointXYZ>);
-							transform = util3d::icp(cloudB,
-									cloudA,
-									maxCorrespondenceDistance,
-									icpIterations,
-									hasConverged,
-									*cloudBRegistered);
-							util3d::computeVarianceAndCorrespondences(
-									cloudBRegistered,
-									cloudA,
-									maxCorrespondenceDistance,
-									variance,
-									correspondences);
-						}
-
-						float correspondencesRatio = float(correspondences)/float(cloudB->size()>cloudA->size()?cloudB->size():cloudA->size());
-
-						if(!transform.isNull() && hasConverged &&
-						   correspondencesRatio >= correspondenceRatio)
+						if(!transform.isNull())
 						{
 							Link newLink(from, to, iter->second.type(), transform*iter->second.transform(), variance, variance);
 							iter->second = newLink;
 						}
 						else
 						{
-							QString str = tr("Cannot refine link %1->%2 (converged=%3 variance=%4 correspondencesRatio=%5 (ref=%6))").arg(from).arg(to).arg(hasConverged?"true":"false").arg(variance).arg(correspondencesRatio).arg(correspondenceRatio);
+							QString str = tr("Cannot refine link %1->%2 (%3").arg(from).arg(to).arg(rejectedMsg.c_str());
 							_initProgressDialog->appendText(str, Qt::darkYellow);
 							UWARN("%s", str.toStdString().c_str());
 							warn = true;

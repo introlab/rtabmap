@@ -553,12 +553,10 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 			}
 			if(ignoreFrame)
 			{
-				// remove data from the frame, keeping only constraints
-				SensorData tmp(
-						cv::Mat(),
-						odomEvent.data().id(),
-						odomEvent.data().stamp(),
-						odomEvent.data().userDataRaw());
+				// set negative id so rtabmap will detect it as an intermediate node
+				SensorData tmp = odomEvent.data();
+				tmp.setId(-1);
+				tmp.setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());// remove features
 				_dataBuffer.push_back(OdometryEvent(tmp, odomEvent.pose(), _rotVariance, _transVariance));
 			}
 			else

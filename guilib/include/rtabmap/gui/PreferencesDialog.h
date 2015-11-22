@@ -151,6 +151,8 @@ public:
 	int getCloudPointSize(int index) const;    // 0=map, 1=odom
 
 	bool isScansShown(int index) const;       // 0=map, 1=odom
+	int getDownsamplingStepScan(int index) const; // 0=map, 1=odom
+	double getCloudVoxelSizeScan(int index) const; // 0=map, 1=odom
 	double getScanOpacity(int index) const;    // 0=map, 1=odom
 	int getScanPointSize(int index) const;     // 0=map, 1=odom
 
@@ -177,7 +179,6 @@ public:
 	// source panel
 	double getGeneralInputRate() const;
 	bool isSourceMirroring() const;
-	QString getCalibrationName() const;
 	PreferencesDialog::Src getSourceType() const;
 	PreferencesDialog::Src getSourceDriver() const;
 	QString getSourceDriverStr() const;
@@ -192,6 +193,7 @@ public:
 	bool isSourceRGBDColorOnly() const;
 	bool isSourceStereoDepthGenerated() const;
 	Transform getSourceLocalTransform() const;    //Openni group
+	Transform getStereoLaserLocalTransform() const; // stereo images
 	Camera * createCamera(bool useRawImages = false); // return camera should be deleted if not null
 
 	int getIgnoredDCComponents() const;
@@ -209,7 +211,7 @@ public:
 	double getSimThr() const;
 	int getOdomStrategy() const;
 	int getOdomBufferSize() const;
-	bool getLccBowVarianceFromInliersCount() const;
+	bool getRegVarianceFromInliersCount() const;
 	QString getCameraInfoDir() const; // "workinfDir/camera_info"
 
 	//
@@ -254,12 +256,14 @@ private slots:
 	void updateBasicParameter();
 	void openDatabaseViewer();
 	void selectSourceDatabase();
+	void selectCalibrationPath();
 	void selectSourceRGBDImagesStamps();
 	void selectSourceRGBDImagesPathRGB();
 	void selectSourceRGBDImagesPathDepth();
 	void selectSourceStereoImagesStamps();
 	void selectSourceStereoImagesPathLeft();
 	void selectSourceStereoImagesPathRight();
+	void selectSourceStereoImagesPathScans();
 	void selectSourceImagesPath();
 	void selectSourceVideoPath();
 	void selectSourceStereoVideoPath();
@@ -307,7 +311,6 @@ private:
 	void addParameters(const QGroupBox * box);
 	QList<QGroupBox*> getGroupBoxes();
 	void readSettingsBegin();
-	void testOdometry(int type);
 
 protected:
 	rtabmap::ParametersMap _parameters;
@@ -331,6 +334,8 @@ private:
 	QVector<QDoubleSpinBox*> _3dRenderingOpacity;
 	QVector<QSpinBox*> _3dRenderingPtSize;
 	QVector<QCheckBox*> _3dRenderingShowScans;
+	QVector<QSpinBox*> _3dRenderingDownsamplingScan;
+	QVector<QDoubleSpinBox*> _3dRenderingVoxelSizeScan;
 	QVector<QDoubleSpinBox*> _3dRenderingOpacityScan;
 	QVector<QSpinBox*> _3dRenderingPtSizeScan;
 };

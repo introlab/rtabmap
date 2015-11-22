@@ -38,6 +38,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/imgproc/imgproc.hpp>
 
+#include <rtabmap/core/util3d.h>
+#include <pcl/io/pcd_io.h>
+
 #include <iostream>
 #include <cmath>
 
@@ -61,7 +64,36 @@ CameraImages::CameraImages(const std::string & path,
 	_rectifyImages(rectifyImages),
 	_isDepth(isDepth),
 	_count(0),
-	_dir(0)
+	_dir(0),
+	_countScan(0),
+	_scanDir(0)
+{
+
+}
+
+CameraImages::CameraImages(const std::string & scanPath,
+					const Transform & scanLocalTransform,
+					int scanMaxPts,
+					const std::string & path,
+					 int startAt,
+					 bool refreshDir,
+					 bool rectifyImages,
+					 bool isDepth,
+					 float imageRate,
+					 const Transform & localTransform) :
+	Camera(imageRate, localTransform),
+	_path(path),
+	_startAt(startAt),
+	_refreshDir(refreshDir),
+	_rectifyImages(rectifyImages),
+	_isDepth(isDepth),
+	_count(0),
+	_dir(0),
+	_countScan(0),
+	_scanDir(0),
+	_scanPath(scanPath),
+	_scanLocalTransform(scanLocalTransform),
+	_scanMaxPts(scanMaxPts)
 {
 
 }
@@ -72,11 +104,19 @@ CameraImages::~CameraImages(void)
 	{
 		delete _dir;
 	}
+	if(_scanDir)
+	{
+		delete _scanDir;
+	}
 }
 
 bool CameraImages::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	_cameraName = cameraName;
+	_lastFileName.clear();
+	_lastScanFileName.clear();
+	_count = 0;
+	_countScan = 0;
 
 	UDEBUG("");
 	if(_dir)
@@ -87,7 +127,6 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	{
 		_dir = new UDirectory(_path, "jpg ppm png bmp pnm tiff");
 	}
-	_count = 0;
 	if(_path[_path.size()-1] != '\\' && _path[_path.size()-1] != '/')
 	{
 		_path.append("/");
@@ -103,6 +142,47 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	else
 	{
 		UINFO("path=%s images=%d", _path.c_str(), (int)this->imagesCount());
+	}
+
+	// check for scan directory
+	if(_scanDir)
+	{
+		delete _scanDir;
+		_scanDir = 0;
+	}
+	if(!_scanPath.empty())
+	{
+		_scanDir = new UDirectory(_scanPath, "pcd bin"); // "bin" is for KITTI format
+		if(_scanPath[_scanPath.size()-1] != '\\' && _scanPath[_scanPath.size()-1] != '/')
+		{
+			_scanPath.append("/");
+		}
+		if(!_scanDir->isValid())
+		{
+			UERROR("Scan directory path is not valid \"%s\"", _scanPath.c_str());
+			delete _scanDir;
+			_scanDir = 0;
+		}
+		else if(_scanDir->getFileNames().size() == 0)
+		{
+			UWARN("Scan directory is empty \"%s\"", _scanPath.c_str());
+			delete _scanDir;
+			_scanDir = 0;
+		}
+		else if(_scanDir->getFileNames().size() != _dir->getFileNames().size())
+		{
+			UERROR("Scan and image directories should be the same size \"%s\"(%d) vs \"%s\"(%d)",
+					_scanPath.c_str(),
+					(int)_scanDir->getFileNames().size(),
+					_path.c_str(),
+					(int)_dir->getFileNames().size());
+			delete _scanDir;
+			_scanDir = 0;
+		}
+		else
+		{
+			UINFO("path=%s scans=%d", _scanPath.c_str(), (int)this->imagesCount());
+		}
 	}
 
 	// look for calibration files
@@ -164,12 +244,17 @@ std::vector<std::string> CameraImages::filenames() const
 SensorData CameraImages::captureImage()
 {
 	cv::Mat img;
+	cv::Mat scan;
 	UDEBUG("");
 	if(_dir->isValid())
 	{
 		if(_refreshDir)
 		{
 			_dir->update();
+			if(_scanDir)
+			{
+				_scanDir->update();
+			}
 		}
 		if(_startAt == 0)
 		{
@@ -181,6 +266,28 @@ SensorData CameraImages::captureImage()
 					_lastFileName = *fileNames.rbegin();
 					std::string fullPath = _path + _lastFileName;
 					img = cv::imread(fullPath.c_str());
+				}
+			}
+			if(_scanDir)
+			{
+				const std::list<std::string> & scanFileNames = _scanDir->getFileNames();
+				if(scanFileNames.size())
+				{
+					if(_lastScanFileName.empty() || uStrNumCmp(_lastScanFileName,*scanFileNames.rbegin()) < 0)
+					{
+						_lastScanFileName = *scanFileNames.rbegin();
+						std::string fullPath = _scanPath + _lastScanFileName;
+						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+						if(UFile::getExtension(_lastScanFileName).compare("bin") == 0)
+						{
+							cloud = util3d::loadBINCloud(fullPath, 4); // Assume KITTI velodyne format
+						}
+						else
+						{
+							pcl::io::loadPCDFile(fullPath, *cloud);
+						}
+						scan = util3d::laserScanFromPointCloud(*cloud, _scanLocalTransform);
+					}
 				}
 			}
 		}
@@ -242,6 +349,33 @@ SensorData CameraImages::captureImage()
 					}
 				}
 			}
+
+			if(_scanDir)
+			{
+				fileName = _scanDir->getNextFileName();
+				if(fileName.size())
+				{
+					fullPath = _scanPath + fileName;
+					while(++_countScan < _startAt && (fileName = _scanDir->getNextFileName()).size())
+					{
+						fullPath = _scanPath + fileName;
+					}
+					if(fileName.size())
+					{
+						UDEBUG("Loading scan : %s", fullPath.c_str());
+						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+						if(UFile::getExtension(fileName).compare("bin") == 0)
+						{
+							cloud = util3d::loadBINCloud(fullPath, 4); // Assume KITTI velodyne format
+						}
+						else
+						{
+							pcl::io::loadPCDFile(fullPath, *cloud);
+						}
+						scan = util3d::laserScanFromPointCloud(*cloud, _scanLocalTransform);
+					}
+				}
+			}
 		}
 
 		if(!img.empty() && _model.isValid() && _rectifyImages)
@@ -256,9 +390,9 @@ SensorData CameraImages::captureImage()
 
 	if(_isDepth)
 	{
-		return SensorData(cv::Mat(), img, _model, this->getNextSeqID(), UTimer::now());
+		return SensorData(scan, scan.empty()?0:_scanMaxPts, 0, cv::Mat(), img, _model, this->getNextSeqID(), UTimer::now());
 	}
-	return SensorData(img, _model, this->getNextSeqID(), UTimer::now());
+	return SensorData(scan, scan.empty()?0:_scanMaxPts, 0, img, cv::Mat(), _model, this->getNextSeqID(), UTimer::now());
 }
 
 

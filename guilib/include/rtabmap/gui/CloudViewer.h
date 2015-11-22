@@ -131,6 +131,12 @@ public:
 
 	bool addCloud(
 			const std::string & id,
+			const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
+
+	bool addCloud(
+			const std::string & id,
 			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 			const Transform & pose = Transform::getIdentity(),
 			const QColor & color = QColor());

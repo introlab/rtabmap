@@ -84,7 +84,9 @@ private slots:
 	void generateTOROGraph();
 	void generateG2OGraph();
 	void view3DMap();
+	void view3DLaserScans();
 	void generate3DMap();
+	void generate3DLaserScans();
 	void detectMoreLoopClosures();
 	void refineAllNeighborLinks();
 	void refineAllLoopClosureLinks();
@@ -106,6 +108,7 @@ private slots:
 	void resetConstraint();
 	void rejectConstraint();
 	void updateConstraintView();
+	void updateLoggerLevel();
 	void updateStereo();
 
 private:

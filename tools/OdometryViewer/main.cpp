@@ -100,17 +100,17 @@ int main (int argc, char * argv[])
 	float rate = 0.0;
 	std::string inputDatabase;
 	int driver = 0;
-	int odomType = rtabmap::Parameters::defaultOdomFeatureType();
+	int odomType = rtabmap::Parameters::defaultVisFeatureType();
 	bool icp = false;
 	bool flow = false;
 	bool mono = false;
-	int nnType = rtabmap::Parameters::defaultOdomBowNNType();
-	float nndr = rtabmap::Parameters::defaultOdomBowNNDR();
-	float distance = rtabmap::Parameters::defaultOdomInlierDistance();
-	int maxWords = rtabmap::Parameters::defaultOdomMaxFeatures();
-	int minInliers = rtabmap::Parameters::defaultOdomMinInliers();
-	float maxDepth = rtabmap::Parameters::defaultOdomMaxDepth();
-	int iterations = rtabmap::Parameters::defaultOdomIterations();
+	int nnType = rtabmap::Parameters::defaultVisNNType();
+	float nndr = rtabmap::Parameters::defaultVisNNDR();
+	float distance = rtabmap::Parameters::defaultVisInlierDistance();
+	int maxWords = rtabmap::Parameters::defaultVisMaxFeatures();
+	int minInliers = rtabmap::Parameters::defaultVisMinInliers();
+	float maxDepth = rtabmap::Parameters::defaultVisMaxDepth();
+	int iterations = rtabmap::Parameters::defaultVisIterations();
 	int resetCountdown = rtabmap::Parameters::defaultOdomResetCountdown();
 	int decimation = 4;
 	float voxel = 0.005;
@@ -620,7 +620,7 @@ int main (int argc, char * argv[])
 
 	rtabmap::ParametersMap parameters;
 
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMaxDepth(), uNumber2Str(maxDepth)));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMaxDepth(), uNumber2Str(maxDepth)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomResetCountdown(), uNumber2Str(resetCountdown)));
 
 	if(!icp)
@@ -630,11 +630,11 @@ int main (int argc, char * argv[])
 		UINFO("RANSAC iterations =       %d", iterations);
 		UINFO("Max features =            %d", maxWords);
 		UINFO("GPU =                     %s", gpu?"true":"false");
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomInlierDistance(), uNumber2Str(distance)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMinInliers(), uNumber2Str(minInliers)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomIterations(), uNumber2Str(iterations)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomMaxFeatures(), uNumber2Str(maxWords)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomFeatureType(), uNumber2Str(odomType)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisInlierDistance(), uNumber2Str(distance)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), uNumber2Str(minInliers)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisIterations(), uNumber2Str(iterations)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMaxFeatures(), uNumber2Str(maxWords)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisFeatureType(), uNumber2Str(odomType)));
 		if(odomType == 0)
 		{
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), uBool2Str(gpu)));
@@ -666,15 +666,15 @@ int main (int argc, char * argv[])
 			UINFO("Nearest neighbor =         %s", nnName.c_str());
 			UINFO("Nearest neighbor ratio =  %f", nndr);
 			UINFO("Local history =           %d", localHistory);
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomBowNNType(), uNumber2Str(nnType)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomBowNNDR(), uNumber2Str(nndr)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisNNType(), uNumber2Str(nnType)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisNNDR(), uNumber2Str(nndr)));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomBowLocalHistorySize(), uNumber2Str(localHistory)));
 
 			if(mono)
 			{
-				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomPnPFlags(), uNumber2Str(0))); //CV_ITERATIVE
-				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomPnPReprojError(), "4.0"));
-				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomIterations(), "100"));
+				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), uNumber2Str(0))); //CV_ITERATIVE
+				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPReprojError(), "4.0"));
+				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisIterations(), "100"));
 				odom = new rtabmap::OdometryMono(parameters);
 			}
 			else

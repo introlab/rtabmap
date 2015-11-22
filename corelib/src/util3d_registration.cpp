@@ -306,7 +306,7 @@ Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 	// Set the maximum number of iterations (criterion 1)
 	icp.setMaximumIterations (maximumIterations);
 	// Set the transformation epsilon (criterion 2)
-	//icp.setTransformationEpsilon (transformationEpsilon);
+	//icp.setTransformationEpsilon (1e-8);
 	// Set the euclidean distance difference epsilon (criterion 3)
 	//icp.setEuclideanFitnessEpsilon (1);
 	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
@@ -340,7 +340,7 @@ Transform icpPointToPlane(
 	// Set the maximum number of iterations (criterion 1)
 	icp.setMaximumIterations (maximumIterations);
 	// Set the transformation epsilon (criterion 2)
-	//icp.setTransformationEpsilon (transformationEpsilon);
+	//icp.setTransformationEpsilon (1e-8);
 	// Set the euclidean distance difference epsilon (criterion 3)
 	//icp.setEuclideanFitnessEpsilon (1);
 	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
@@ -373,7 +373,7 @@ Transform icp2D(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 	// Set the maximum number of iterations (criterion 1)
 	icp.setMaximumIterations (maximumIterations);
 	// Set the transformation epsilon (criterion 2)
-	//icp.setTransformationEpsilon (transformationEpsilon);
+	//icp.setTransformationEpsilon (1e-8);
 	// Set the euclidean distance difference epsilon (criterion 3)
 	//icp.setEuclideanFitnessEpsilon (1);
 	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
@@ -423,7 +423,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr getICPReadyCloud(
 			}
 			else if(samples>0 && (int)cloud->size() > samples)
 			{
-				cloud = sampling(cloud, samples);
+				cloud = randomSampling(cloud, samples);
 			}
 
 			if(cloud->size())
@@ -438,7 +438,6 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr getICPReadyCloud(
 
 	return cloud;
 }
-
 
 }
 

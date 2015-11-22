@@ -56,6 +56,16 @@ public:
 			bool isDepth = false,
 			float imageRate = 0,
 			const Transform & localTransform = Transform::getIdentity());
+	CameraImages(const std::string & scanPath,
+				const Transform & scanLocalTransform,
+				int scanMaxPts,
+			    const std::string & path,
+				int startAt = 1,
+				bool refreshDir = false,
+				bool rectifyImages = false,
+				bool isDepth = false,
+				float imageRate = 0,
+				const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraImages();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -79,6 +89,12 @@ private:
 	int _count;
 	UDirectory * _dir;
 	std::string _lastFileName;
+	int _countScan;
+	UDirectory * _scanDir;
+	std::string _lastScanFileName;
+	std::string _scanPath;
+	Transform _scanLocalTransform;
+	int _scanMaxPts;
 
 	std::string _cameraName;
 	CameraModel _model;

@@ -231,11 +231,6 @@ cv::Mat uncompressData(const unsigned char * bytes, unsigned long size)
 		int width = *((int*)&bytes[size-2*sizeof(int)]);
 		int type = *((int*)&bytes[size-1*sizeof(int)]);
 
-		// If the size is higher, it may be a wrong data format.
-		UASSERT_MSG(height>=0 && height<10000 &&
-				    width>=0 && width<10000,
-				    uFormat("size=%d, height=%d width=%d type=%d", size, height, width, type).c_str());
-
 		data = cv::Mat(height, width, type);
 		uLongf totalUncompressed = uLongf(data.total())*uLongf(data.elemSize());
 

@@ -39,6 +39,8 @@ namespace rtabmap
 ParametersMap Parameters::parameters_;
 ParametersMap Parameters::descriptions_;
 Parameters Parameters::instance_;
+std::map<std::string, std::pair<bool, std::string> > Parameters::removedParameters_;
+ParametersMap Parameters::backwardCompatibilityMap_;
 
 Parameters::Parameters()
 {
@@ -67,6 +69,95 @@ std::string Parameters::getDefaultWorkingDirectory()
 std::string Parameters::getDefaultDatabaseName()
 {
 	return "rtabmap.db";
+}
+
+const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemovedParameters()
+{
+	if(removedParameters_.empty())
+	{
+		// removed parameters
+		removedParameters_.insert(std::make_pair("Mem/LaserScanVoxelSize",        std::make_pair(false, Parameters::kMemLaserScanDownsampleStepSize())));
+
+		removedParameters_.insert(std::make_pair("RGBD/PoseScanMatching",         std::make_pair(true,  Parameters::kRGBDIcpOdomRefining())));
+
+		removedParameters_.insert(std::make_pair("Odom/FeatureType",              std::make_pair(true,  Parameters::kVisFeatureType())));
+		removedParameters_.insert(std::make_pair("Odom/EstimationType",           std::make_pair(true,  Parameters::kVisEstimationType())));
+		removedParameters_.insert(std::make_pair("Odom/MaxFeatures",              std::make_pair(true,  Parameters::kVisMaxFeatures())));
+		removedParameters_.insert(std::make_pair("Odom/InlierDistance",           std::make_pair(true,  Parameters::kVisInlierDistance())));
+		removedParameters_.insert(std::make_pair("Odom/MinInliers",               std::make_pair(true,  Parameters::kVisMinInliers())));
+		removedParameters_.insert(std::make_pair("Odom/Iterations",               std::make_pair(true,  Parameters::kVisIterations())));
+		removedParameters_.insert(std::make_pair("Odom/RefineIterations",         std::make_pair(true,  Parameters::kVisRefineIterations())));
+		removedParameters_.insert(std::make_pair("Odom/MaxDepth",                 std::make_pair(true,  Parameters::kVisMaxDepth())));
+		removedParameters_.insert(std::make_pair("Odom/RoiRatios",                std::make_pair(true,  Parameters::kVisRoiRatios())));
+		removedParameters_.insert(std::make_pair("Odom/Force2D",                  std::make_pair(true,  Parameters::kVisForce2D())));
+		removedParameters_.insert(std::make_pair("Odom/VarianceFromInliersCount", std::make_pair(true,  Parameters::kRegVarianceFromInliersCount())));
+		removedParameters_.insert(std::make_pair("Odom/PnPReprojError",           std::make_pair(true,  Parameters::kVisPnPReprojError())));
+		removedParameters_.insert(std::make_pair("Odom/PnPFlags",                 std::make_pair(true,  Parameters::kVisPnPFlags())));
+
+		removedParameters_.insert(std::make_pair("OdomBow/NNType",                std::make_pair(true,  Parameters::kVisNNType())));
+		removedParameters_.insert(std::make_pair("OdomBow/NNDR",                  std::make_pair(true,  Parameters::kVisNNDR())));
+
+		removedParameters_.insert(std::make_pair("OdomSubPix/WinSize",            std::make_pair(true,  Parameters::kVisSubPixWinSize())));
+		removedParameters_.insert(std::make_pair("OdomSubPix/Iterations",         std::make_pair(true,  Parameters::kVisSubPixIterations())));
+		removedParameters_.insert(std::make_pair("OdomSubPix/Eps",                std::make_pair(true,  Parameters::kVisSubPixEps())));
+
+		removedParameters_.insert(std::make_pair("LccReextract/Activated",         std::make_pair(false,  Parameters::kRGBDLoopClosureReextractFeatures())));
+		removedParameters_.insert(std::make_pair("LccReextract/FeatureType",       std::make_pair(false,  Parameters::kVisFeatureType())));
+		removedParameters_.insert(std::make_pair("LccReextract/MaxWords",          std::make_pair(false,  Parameters::kVisMaxFeatures())));
+		removedParameters_.insert(std::make_pair("LccReextract/MaxDepth",          std::make_pair(false,  Parameters::kVisMaxDepth())));
+		removedParameters_.insert(std::make_pair("LccReextract/RoiRatios",         std::make_pair(false,  Parameters::kVisRoiRatios())));
+		removedParameters_.insert(std::make_pair("LccReextract/NNType",            std::make_pair(false,  Parameters::kVisNNType())));
+		removedParameters_.insert(std::make_pair("LccReextract/NNDR",              std::make_pair(false,  Parameters::kVisNNDR())));
+
+		removedParameters_.insert(std::make_pair("LccBow/EstimationType",           std::make_pair(false,  Parameters::kVisEstimationType())));
+		removedParameters_.insert(std::make_pair("LccBow/InlierDistance",           std::make_pair(false,  Parameters::kVisInlierDistance())));
+		removedParameters_.insert(std::make_pair("LccBow/MinInliers",               std::make_pair(false,  Parameters::kVisMinInliers())));
+		removedParameters_.insert(std::make_pair("LccBow/Iterations",               std::make_pair(false,  Parameters::kVisIterations())));
+		removedParameters_.insert(std::make_pair("LccBow/RefineIterations",         std::make_pair(false,  Parameters::kVisRefineIterations())));
+		removedParameters_.insert(std::make_pair("LccBow/Force2D",                  std::make_pair(false,  Parameters::kVisForce2D())));
+		removedParameters_.insert(std::make_pair("LccBow/VarianceFromInliersCount", std::make_pair(false,  Parameters::kRegVarianceFromInliersCount())));
+		removedParameters_.insert(std::make_pair("LccBow/PnPReprojError",           std::make_pair(false,  Parameters::kVisPnPReprojError())));
+		removedParameters_.insert(std::make_pair("LccBow/PnPFlags",                 std::make_pair(false,  Parameters::kVisPnPFlags())));
+		removedParameters_.insert(std::make_pair("LccBow/EpipolarGeometryVar",      std::make_pair(true,   Parameters::kVisEpipolarGeometryVar())));
+
+		removedParameters_.insert(std::make_pair("LccIcp/Type",                         std::make_pair(true,  Parameters::kRGBDIcpLoopClosureRefining())));
+
+		removedParameters_.insert(std::make_pair("LccIcp3/Decimation",                  std::make_pair(false, "")));
+		removedParameters_.insert(std::make_pair("LccIcp3/MaxDepth",                    std::make_pair(false, "")));
+		removedParameters_.insert(std::make_pair("LccIcp3/VoxelSize",                   std::make_pair(false, Parameters::kIcpVoxelSize())));
+		removedParameters_.insert(std::make_pair("LccIcp3/Samples",                     std::make_pair(false, Parameters::kIcpDownsamplingStep())));
+		removedParameters_.insert(std::make_pair("LccIcp3/MaxCorrespondenceDistance",   std::make_pair(false, Parameters::kIcpMaxCorrespondenceDistance())));
+		removedParameters_.insert(std::make_pair("LccIcp3/Iterations",                  std::make_pair(false, Parameters::kIcpIterations())));
+		removedParameters_.insert(std::make_pair("LccIcp3/CorrespondenceRatio",         std::make_pair(false, Parameters::kIcpCorrespondenceRatio())));
+		removedParameters_.insert(std::make_pair("LccIcp3/PointToPlane",                std::make_pair(true,  Parameters::kIcpPointToPlane())));
+		removedParameters_.insert(std::make_pair("LccIcp3/PointToPlaneNormalNeighbors", std::make_pair(true,  Parameters::kIcpPointToPlaneNormalNeighbors())));
+
+		removedParameters_.insert(std::make_pair("LccIcp2/MaxCorrespondenceDistance",   std::make_pair(true,  Parameters::kIcpMaxCorrespondenceDistance())));
+		removedParameters_.insert(std::make_pair("LccIcp2/Iterations",                  std::make_pair(true,  Parameters::kIcpIterations())));
+		removedParameters_.insert(std::make_pair("LccIcp2/CorrespondenceRatio",         std::make_pair(true,  Parameters::kIcpCorrespondenceRatio())));
+		removedParameters_.insert(std::make_pair("LccIcp2/VoxelSize",                   std::make_pair(true,  Parameters::kIcpVoxelSize())));
+	}
+	return removedParameters_;
+}
+
+const ParametersMap & Parameters::getBackwardCompatibilityMap()
+{
+	if(backwardCompatibilityMap_.empty())
+	{
+		getRemovedParameters(); // make sure removedParameters is filled
+
+		// compatibility
+		for(std::map<std::string, std::pair<bool, std::string> >::iterator iter=removedParameters_.begin();
+			iter!=removedParameters_.end();
+			++iter)
+		{
+			if(iter->second.first)
+			{
+				backwardCompatibilityMap_.insert(ParametersPair(iter->second.second, iter->first));
+			}
+		}
+	}
+	return backwardCompatibilityMap_;
 }
 
 std::string Parameters::getDescription(const std::string & paramKey)

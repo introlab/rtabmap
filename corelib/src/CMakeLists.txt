@@ -44,6 +44,9 @@ SET(SRC_FILES
 	Compression.cpp
 	Link.cpp
 	
+	RegistrationIcp.cpp
+	RegistrationVis.cpp
+	
 	Odometry.cpp
 	OdometryThread.cpp
 	OdometryBOW.cpp
