@@ -1895,7 +1895,7 @@ bool Rtabmap::process(
 								if(_localPathOdomPosesUsed)
 								{
 									//optimize the path's poses locally
-									path = optimizeGraph(nearestId, uKeysSet(path), false);
+									path = optimizeGraph(nearestId, uKeysSet(path), std::map<int, Transform>(), false);
 									// transform local poses in optimized graph referential
 									UASSERT(uContains(path, nearestId));
 									Transform t = _optimizedPoses.at(nearestId) * path.at(nearestId).inverse();
@@ -2021,6 +2021,8 @@ bool Rtabmap::process(
 	// Optimize map graph
 	//============================================================
 	float maxLinearError = 0.0f;
+	double optimizationError = 0.0;
+	int optimizationIterations = 0;
 	if(_rgbdSlamMode &&
 		(_loopClosureHypothesis.first>0 ||
 	     lastLocalSpaceClosureId>0 || // can be different map of the current one
@@ -2071,7 +2073,7 @@ bool Rtabmap::process(
 			UINFO("Update map correction");
 			std::map<int, Transform> poses = _optimizedPoses;
 			std::multimap<int, Link> constraints;
-			optimizeCurrentMap(signature->id(), false, poses, &constraints);
+			optimizeCurrentMap(signature->id(), false, poses, &constraints, &optimizationError, &optimizationIterations);
 			UASSERT(poses.find(signature->id()) != poses.end());
 
 			// Check added loop closures have broken the graph
@@ -2195,6 +2197,8 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopVisual_inliers(), loopClosureVisualInliers);
 			statistics_.addStatistic(Statistics::kLoopLast_id(), _memory->getLastGlobalLoopClosureId());
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_error(), maxLinearError);
+			statistics_.addStatistic(Statistics::kLoopOptimization_error(), optimizationError);
+			statistics_.addStatistic(Statistics::kLoopOptimization_iterations(), optimizationIterations);
 
 			statistics_.addStatistic(Statistics::kLocalLoopTime_closures(), localLoopClosuresInTimeFound);
 			statistics_.addStatistic(Statistics::kLocalLoopSpace_closures_added_visually(), localSpaceClosuresAddedVisually);
@@ -2783,7 +2787,9 @@ void Rtabmap::optimizeCurrentMap(
 		int id,
 		bool lookInDatabase,
 		std::map<int, Transform> & optimizedPoses,
-		std::multimap<int, Link> * constraints) const
+		std::multimap<int, Link> * constraints,
+		double * error,
+		int * iterationsDone) const
 {
 	//Optimize the map
 	UINFO("Optimize map: around location %d", id);
@@ -2797,7 +2803,7 @@ void Rtabmap::optimizeCurrentMap(
 		}
 		UINFO("get %d ids time %f s", (int)ids.size(), timer.ticks());
 
-		std::map<int, Transform> poses = Rtabmap::optimizeGraph(id, uKeysSet(ids), lookInDatabase, constraints);
+		std::map<int, Transform> poses = Rtabmap::optimizeGraph(id, uKeysSet(ids), optimizedPoses, lookInDatabase, constraints, error, iterationsDone);
 		UINFO("optimize time %f s", timer.ticks());
 
 		if(poses.size())
@@ -2820,8 +2826,11 @@ void Rtabmap::optimizeCurrentMap(
 std::map<int, Transform> Rtabmap::optimizeGraph(
 		int fromId,
 		const std::set<int> & ids,
+		const std::map<int, Transform> & guessPoses,
 		bool lookInDatabase,
-		std::multimap<int, Link> * constraints) const
+		std::multimap<int, Link> * constraints,
+		double * error,
+		int * iterationsDone) const
 {
 	UTimer timer;
 	std::map<int, Transform> optimizedPoses;
@@ -2830,6 +2839,19 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	UDEBUG("ids=%d", (int)ids.size());
 	_memory->getMetricConstraints(ids, poses, edgeConstraints, lookInDatabase);
 	UINFO("get constraints (ids=%d, %d poses, %d edges) time %f s", (int)ids.size(), (int)poses.size(), (int)edgeConstraints.size(), timer.ticks());
+
+	// Apply guess poses (if some)
+	if(_graphOptimizer->iterations() > 0)
+	{
+		for(std::map<int, Transform>::const_iterator iter=guessPoses.begin(); iter!=guessPoses.end(); ++iter)
+		{
+			std::map<int, Transform>::iterator foundPose = poses.find(iter->first);
+			if(foundPose!=poses.end())
+			{
+				foundPose->second = iter->second;
+			}
+		}
+	}
 
 	// The constraints must be all already connected! Only check in debug
 	if(ULogger::level() == ULogger::kDebug)
@@ -2879,7 +2901,7 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	}
 	else
 	{
-		optimizedPoses = _graphOptimizer->optimize(fromId, poses, edgeConstraints);
+		optimizedPoses = _graphOptimizer->optimize(fromId, poses, edgeConstraints, 0, error, iterationsDone);
 	}
 	UINFO("Optimization time %f s", timer.ticks());
 
@@ -3024,6 +3046,7 @@ void Rtabmap::get3DMap(
 		{
 			if(optimized)
 			{
+				poses = _optimizedPoses; // guess
 				this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), global, poses, &constraints);
 			}
 			else
@@ -3099,6 +3122,7 @@ void Rtabmap::getGraph(
 		{
 			if(optimized)
 			{
+				poses = _optimizedPoses; // guess
 				this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), global, poses, &constraints);
 			}
 			else

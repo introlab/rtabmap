@@ -82,7 +82,9 @@ public:
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & constraints,
-			std::list<std::map<int, Transform> > * intermediateGraphes = 0);
+			std::list<std::map<int, Transform> > * intermediateGraphes = 0,
+			double * finalError = 0,
+			int * iterationsDone = 0);
 	virtual std::map<int, Transform> optimizeBA(
 			int rootId,
 			const std::map<int, Transform> & poses,
@@ -137,7 +139,9 @@ public:
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & edgeConstraints,
-			std::list<std::map<int, Transform> > * intermediateGraphes = 0);
+			std::list<std::map<int, Transform> > * intermediateGraphes = 0,
+			double * finalError = 0,
+			int * iterationsDone = 0);
 };
 
 class RTABMAP_EXP G2OOptimizer : public Optimizer
@@ -169,7 +173,9 @@ public:
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & edgeConstraints,
-			std::list<std::map<int, Transform> > * intermediateGraphes = 0);
+			std::list<std::map<int, Transform> > * intermediateGraphes = 0,
+			double * finalError = 0,
+			int * iterationsDone = 0);
 };
 
 class RTABMAP_EXP GTSAMOptimizer : public Optimizer
@@ -196,7 +202,9 @@ public:
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & edgeConstraints,
-			std::list<std::map<int, Transform> > * intermediateGraphes = 0);
+			std::list<std::map<int, Transform> > * intermediateGraphes = 0,
+			double * finalError = 0,
+			int * iterationsDone = 0);
 };
 
 class RTABMAP_EXP CVSBAOptimizer : public Optimizer
