@@ -39,7 +39,7 @@ public:
 	virtual ~Registration() {}
 	virtual void parseParameters(const ParametersMap & parameters)
 	{
-		Parameters::parse(parameters, Parameters::kRegVarianceFromInliersCount(), _bowVarianceFromInliersCount);
+		Parameters::parse(parameters, Parameters::kRegVarianceFromInliersCount(), _varianceFromInliersCount);
 	}
 	virtual Transform computeTransformation(
 			const Signature & from,
@@ -51,13 +51,13 @@ public:
 			float * inliersRatioOut = 0) = 0;
 protected:
 	Registration(const ParametersMap & parameters = ParametersMap()) :
-		_bowVarianceFromInliersCount(Parameters::defaultRegVarianceFromInliersCount())
+		_varianceFromInliersCount(Parameters::defaultRegVarianceFromInliersCount())
 	{
 		this->parseParameters(parameters);
 	}
 
 protected:
-	bool _bowVarianceFromInliersCount;
+	bool _varianceFromInliersCount;
 
 };
 

@@ -200,7 +200,6 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, InitWMWithAllNodes,      bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.");
 	RTABMAP_PARAM(Mem, ImageDecimation,         int, 1,          "Image decimation (>=1) when creating a signature.");
 	RTABMAP_PARAM(Mem, LaserScanDownsampleStepSize, int, 1,  "If > 1, downsample the laser scans when creating a signature.");
-	RTABMAP_PARAM(Mem, LocalSpaceLinksKeptInWM, bool, true,      "If local space links are kept in WM.");
 
 	// KeypointMemory (Keypoint-based)
 	RTABMAP_PARAM_COND(Kp, NNStrategy,       int, RTABMAP_NONFREE, 1, 3, "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
@@ -300,17 +299,17 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, LocalRadius,              float, 10,   "Local radius (m) for nodes selection in the local map. This parameter is used in some approaches about the local map management.");
 	RTABMAP_PARAM(RGBD, LocalImmunizationRatio,   float, 0.25, "Ratio of working memory for which local nodes are immunized from transfer.");
 	RTABMAP_PARAM(RGBD, ScanMatchingIdsSavedInLinks, bool, true,      "Save scan matching IDs in link's user data.");
-	RTABMAP_PARAM(RGBD, IcpOdomRefining,          bool, false,  "If the newest added node's pose is refined using ICP with the previous node to correct odometry from pose to pose (laser scans required!).");
-	RTABMAP_PARAM(RGBD, IcpLoopClosureRefining,   bool, false, 	"If the estimated loop closure transformation is refined using ICP (laser scans required!).");	
+	RTABMAP_PARAM(RGBD, NeighborLinkRefining,          bool, false,  "When a new node is added to the graph, the transformation of its neighbor link to the previous node is refined using ICP (laser scans required!).");
+	RTABMAP_PARAM(RGBD, LoopClosureLinkRefining,      bool, false, 	"If the estimated loop closure transformation is refined using ICP (laser scans required!).");
 	RTABMAP_PARAM(RGBD, LoopClosureReextractFeatures,  bool, true,    "Extract features even if there are some already in the nodes.");
 
 	// Local/Proximity loop closure detection
-	RTABMAP_PARAM(RGBD, LocalLoopDetectionTime,     bool, false, 	"Detection over all locations in STM.");
-	RTABMAP_PARAM(RGBD, LocalLoopDetectionSpace,    bool, true, 	"Detection over locations (in Working Memory or STM) near in space.");
-	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathScansMerged,   bool, true, 	"Merge close laser scans on each path. If false, only the nearest laser scan on the path is used for ICP.");
-	RTABMAP_PARAM(RGBD, LocalLoopDetectionMaxGraphDepth,   int, 50,      "Maximum depth from the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.");
-	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathFilteringRadius,   float, 0.5, "Path filtering radius.");
-	RTABMAP_PARAM(RGBD, LocalLoopDetectionPathOdomPosesUsed,   bool, true, "When comparing to a local path, merge the scan using the odometry poses instead of the ones in the optimized local graph.");
+	RTABMAP_PARAM(RGBD, ProximityByTime,              bool, false, 	"Detection over all locations in STM.");
+	RTABMAP_PARAM(RGBD, ProximityBySpace,             bool, true, 	"Detection over locations (in Working Memory or STM) near in space.");
+	RTABMAP_PARAM(RGBD, ProximityPathScansMerged,     bool, true, 	"Merge close laser scans on each path. If false, only the nearest laser scan on the path is used for ICP.");
+	RTABMAP_PARAM(RGBD, ProximityMaxGraphDepth,       int, 50,      "Maximum depth from the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.");
+	RTABMAP_PARAM(RGBD, ProximityPathFilteringRadius, float, 0.5,   "Path filtering radius.");
+	RTABMAP_PARAM(RGBD, ProximityPathRawPosesUsed,    bool, true,   "When comparing to a local path, merge the scan using the odometry poses (with neighbor link optimizations) instead of the ones in the optimized local graph.");
 
 	// Graph optimization
 	RTABMAP_PARAM(RGBD, OptimizeStrategy,          int, 0,       "Graph optimization strategy: 0=TORO and 1=g2o.");

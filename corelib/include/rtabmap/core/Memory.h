@@ -239,7 +239,6 @@ private:
 	bool _badSignaturesIgnored;
 	int _imageDecimation;
 	float _laserScanDownsampleStepSize;
-	bool _localSpaceLinksKeptInWM;
 	bool _reextractLoopClosureFeatures;
 	float _rehearsalMaxDistance;
 	float _rehearsalMaxAngle;

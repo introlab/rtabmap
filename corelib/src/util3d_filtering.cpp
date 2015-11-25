@@ -69,7 +69,7 @@ cv::Mat downsample(
 			int finalSize = cloud.cols/step;
 			output = cv::Mat(1, finalSize, cloud.type());
 			int oi = 0;
-			for(unsigned int i=0; i<cloud.cols-step+1; i+=step)
+			for(int i=0; i<cloud.cols-step+1; i+=step)
 			{
 				cv::Mat(cloud, cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(output, cv::Range::all(), cv::Range(oi,oi+1)));
 				++oi;
@@ -96,7 +96,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr downsample(
 	}
 	else
 	{
-		if(cloud->size() > step)
+		if((int)cloud->size() > step)
 		{
 			int finalSize = cloud->size()/step;
 			output->resize(finalSize);
@@ -126,12 +126,12 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr downsample(
 	}
 	else
 	{
-		if(cloud->size() > step)
+		if((int)cloud->size() > step)
 		{
 			int finalSize = cloud->size()/step;
 			output->resize(finalSize);
 			int oi = 0;
-			for(unsigned int i=0; i<cloud->size()-step+1; i+=step)
+			for(int i=0; i<(int)cloud->size()-step+1; i+=step)
 			{
 				(*output)[oi++] = cloud->at(i);
 			}

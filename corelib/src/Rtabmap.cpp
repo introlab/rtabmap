@@ -90,17 +90,17 @@ Rtabmap::Rtabmap() :
 	_rgbdLinearUpdate(Parameters::defaultRGBDLinearUpdate()),
 	_rgbdAngularUpdate(Parameters::defaultRGBDAngularUpdate()),
 	_newMapOdomChangeDistance(Parameters::defaultRGBDNewMapOdomChangeDistance()),
-	_loopClosureIcpRefining(Parameters::defaultRGBDIcpLoopClosureRefining()),
-	_odomIcpRefining(Parameters::defaultRGBDIcpOdomRefining()),
-	_localLoopClosureDetectionTime(Parameters::defaultRGBDLocalLoopDetectionTime()),
-	_localLoopClosureDetectionSpace(Parameters::defaultRGBDLocalLoopDetectionSpace()),
+	_loopClosureRefining(Parameters::defaultRGBDLoopClosureLinkRefining()),
+	_neighborLinkRefining(Parameters::defaultRGBDNeighborLinkRefining()),
+	_proximityByTime(Parameters::defaultRGBDProximityByTime()),
+	_proximityBySpace(Parameters::defaultRGBDProximityBySpace()),
 	_scanMatchingIdsSavedInLinks(Parameters::defaultRGBDScanMatchingIdsSavedInLinks()),
 	_localRadius(Parameters::defaultRGBDLocalRadius()),
 	_localImmunizationRatio(Parameters::defaultRGBDLocalImmunizationRatio()),
-	_localDetectMaxGraphDepth(Parameters::defaultRGBDLocalLoopDetectionMaxGraphDepth()),
-	_localPathFilteringRadius(Parameters::defaultRGBDLocalLoopDetectionPathFilteringRadius()),
-	_localPathOdomPosesUsed(Parameters::defaultRGBDLocalLoopDetectionPathOdomPosesUsed()),
-	_localPathScansMerged(Parameters::defaultRGBDLocalLoopDetectionPathScansMerged()),
+	_proximityMaxGraphDepth(Parameters::defaultRGBDProximityMaxGraphDepth()),
+	_proximityFilteringRadius(Parameters::defaultRGBDProximityPathFilteringRadius()),
+	_proximityRawPosesUsed(Parameters::defaultRGBDProximityPathRawPosesUsed()),
+	_proximityScansMerged(Parameters::defaultRGBDProximityPathScansMerged()),
 	_databasePath(""),
 	_optimizeFromGraphEnd(Parameters::defaultRGBDOptimizeFromGraphEnd()),
 	_optimizationMaxLinearError(Parameters::defaultRGBDOptimizeMaxError()),
@@ -397,16 +397,16 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rgbdLinearUpdate);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rgbdAngularUpdate);
 	Parameters::parse(parameters, Parameters::kRGBDNewMapOdomChangeDistance(), _newMapOdomChangeDistance);
-	Parameters::parse(parameters, Parameters::kRGBDIcpOdomRefining(), _odomIcpRefining);
-	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionTime(), _localLoopClosureDetectionTime);
-	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionSpace(), _localLoopClosureDetectionSpace);
+	Parameters::parse(parameters, Parameters::kRGBDNeighborLinkRefining(), _neighborLinkRefining);
+	Parameters::parse(parameters, Parameters::kRGBDProximityByTime(), _proximityByTime);
+	Parameters::parse(parameters, Parameters::kRGBDProximityBySpace(), _proximityBySpace);
 	Parameters::parse(parameters, Parameters::kRGBDScanMatchingIdsSavedInLinks(), _scanMatchingIdsSavedInLinks);
 	Parameters::parse(parameters, Parameters::kRGBDLocalRadius(), _localRadius);
 	Parameters::parse(parameters, Parameters::kRGBDLocalImmunizationRatio(), _localImmunizationRatio);
-	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionMaxGraphDepth(), _localDetectMaxGraphDepth);
-	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionPathFilteringRadius(), _localPathFilteringRadius);
-	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionPathOdomPosesUsed(), _localPathOdomPosesUsed);
-	Parameters::parse(parameters, Parameters::kRGBDLocalLoopDetectionPathScansMerged(), _localPathScansMerged);
+	Parameters::parse(parameters, Parameters::kRGBDProximityMaxGraphDepth(), _proximityMaxGraphDepth);
+	Parameters::parse(parameters, Parameters::kRGBDProximityPathFilteringRadius(), _proximityFilteringRadius);
+	Parameters::parse(parameters, Parameters::kRGBDProximityPathRawPosesUsed(), _proximityRawPosesUsed);
+	Parameters::parse(parameters, Parameters::kRGBDProximityPathScansMerged(), _proximityScansMerged);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeMaxError(), _optimizationMaxLinearError);
 	Parameters::parse(parameters, Parameters::kRtabmapStartNewMapOnLoopClosure(), _startNewMapOnLoopClosure);
@@ -415,7 +415,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDPlanStuckIterations(), _pathStuckIterations);
 	Parameters::parse(parameters, Parameters::kRGBDPlanLinearVelocity(), _pathLinearVelocity);
 	Parameters::parse(parameters, Parameters::kRGBDPlanAngularVelocity(), _pathAngularVelocity);
-	Parameters::parse(parameters, Parameters::kRGBDIcpLoopClosureRefining(), _loopClosureIcpRefining);
+	Parameters::parse(parameters, Parameters::kRGBDLoopClosureLinkRefining(), _loopClosureRefining);
 
 	UASSERT(_rgbdLinearUpdate >= 0.0f);
 	UASSERT(_rgbdAngularUpdate >= 0.0f);
@@ -1000,7 +1000,7 @@ bool Rtabmap::process(
 			//============================================================
 			// Scan matching
 			//============================================================
-			if(_odomIcpRefining &&
+			if(_neighborLinkRefining &&
 				!signature->sensorData().laserScanCompressed().empty() &&
 				rehearsedId == 0) // don't do it if rehearsal happened
 			{
@@ -1143,7 +1143,7 @@ bool Rtabmap::process(
 		//============================================================
 		// Local loop closure in TIME
 		//============================================================
-		if(_localLoopClosureDetectionTime &&
+		if(_proximityByTime &&
 		   rehearsedId == 0 && // don't do it if rehearsal happened
 		   signature->getWords3().size() &&
 		   _memory->isIncremental()) // don't do it in localization mode
@@ -1160,7 +1160,7 @@ bool Rtabmap::process(
 					float variance = 1.0f;
 					int inliers = -1;
 					Transform transform = _memory->computeVisualTransform(signature->id(), *iter, &rejectedMsg, &inliers, &variance);
-					if(!transform.isNull() && _loopClosureIcpRefining)
+					if(!transform.isNull() && _loopClosureRefining)
 					{
 						transform = _memory->computeIcpTransform(signature->id(), *iter, transform, &rejectedMsg, 0, &variance);
 					}
@@ -1718,7 +1718,7 @@ bool Rtabmap::process(
 
 			transform = _memory->computeVisualTransform(signature->id(), _loopClosureHypothesis.first, &rejectedMsg, &loopClosureVisualInliers, &variance);
 
-			if(!transform.isNull() && _loopClosureIcpRefining)
+			if(!transform.isNull() && _loopClosureRefining)
 			{
 				transform = _memory->computeIcpTransform(signature->id(), _loopClosureHypothesis.first, transform, &rejectedMsg, 0, &variance);
 			}
@@ -1753,7 +1753,7 @@ bool Rtabmap::process(
 	int localSpaceClosuresAddedByICPOnly = 0;
 	int lastLocalSpaceClosureId = 0;
 	int localSpacePaths = 0;
-	if(_localLoopClosureDetectionSpace &&
+	if(_proximityBySpace &&
 	   _localRadius > 0 &&
 	   _rgbdSlamMode &&
 	   signature->getWeight() >= 0) // not an intermediate node
@@ -1782,7 +1782,7 @@ bool Rtabmap::process(
 				std::map<int, float> nearestIds;
 				if(_memory->isIncremental())
 				{
-					nearestIds = _memory->getNeighborsIdRadius(signature->id(), _localRadius, _optimizedPoses, _localDetectMaxGraphDepth);
+					nearestIds = _memory->getNeighborsIdRadius(signature->id(), _localRadius, _optimizedPoses, _proximityMaxGraphDepth);
 				}
 				else
 				{
@@ -1815,18 +1815,18 @@ bool Rtabmap::process(
 
 					// nearest pose must not be linked to current location and enough
 					if(!signature->hasLink(nearestId) &&
-						(_localPathFilteringRadius <= 0.0f ||
-						 _optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _localPathFilteringRadius*_localPathFilteringRadius))
+						(_proximityFilteringRadius <= 0.0f ||
+						 _optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _proximityFilteringRadius*_proximityFilteringRadius))
 					{
 						float variance = 1.0f;
 						Transform transform = _memory->computeVisualTransform(signature->id(), nearestId, 0, 0, &variance);
-						if(!transform.isNull() && _loopClosureIcpRefining)
+						if(!transform.isNull() && _loopClosureRefining)
 						{
 							transform  = _memory->computeIcpTransform(signature->id(), nearestId, transform, 0, 0, &variance);
 						}
 						if(!transform.isNull())
 						{
-							if(_localPathFilteringRadius <= 0 || transform.getNormSquared() <= _localPathFilteringRadius*_localPathFilteringRadius)
+							if(_proximityFilteringRadius <= 0 || transform.getNormSquared() <= _proximityFilteringRadius*_proximityFilteringRadius)
 							{
 								UINFO("[Visual] Add local loop closure in SPACE (%d->%d) %s",
 										signature->id(),
@@ -1846,7 +1846,7 @@ bool Rtabmap::process(
 							{
 								UWARN("Ignoring local loop closure with %d because resulting "
 									  "transform is to large!? (%fm > %fm)",
-										nearestId, transform.getNorm(), _localPathFilteringRadius);
+										nearestId, transform.getNorm(), _proximityFilteringRadius);
 							}
 						}
 					}
@@ -1879,10 +1879,10 @@ bool Rtabmap::process(
 
 						// nearest pose must be close and not linked to current location
 						if(!signature->hasLink(nearestId) &&
-						   (_localPathFilteringRadius <= 0.0f ||
-							_optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _localPathFilteringRadius*_localPathFilteringRadius))
+						   (_proximityFilteringRadius <= 0.0f ||
+							_optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _proximityFilteringRadius*_proximityFilteringRadius))
 						{
-							if(!_localPathScansMerged)
+							if(!_proximityScansMerged)
 							{
 								//only keep the nearest node
 								std::map<int, Transform> tmp;
@@ -1892,7 +1892,7 @@ bool Rtabmap::process(
 							else
 							{
 								// Assemble scans in the path and do ICP only
-								if(_localPathOdomPosesUsed)
+								if(_proximityRawPosesUsed)
 								{
 									//optimize the path's poses locally
 									path = optimizeGraph(nearestId, uKeysSet(path), std::map<int, Transform>(), false);
@@ -1904,10 +1904,10 @@ bool Rtabmap::process(
 										jter->second = t * jter->second;
 									}
 								}
-								if(path.size() > 2 && _localPathFilteringRadius > 0.0f)
+								if(path.size() > 2 && _proximityFilteringRadius > 0.0f)
 								{
 									// path filtering
-									std::map<int, Transform> filteredPath = graph::radiusPosesFiltering(path, _localPathFilteringRadius, 0, true);
+									std::map<int, Transform> filteredPath = graph::radiusPosesFiltering(path, _proximityFilteringRadius, 0, true);
 									// make sure the nearest and farthest poses are still here
 									filteredPath.insert(*path.find(nearestId));
 									filteredPath.insert(*path.begin());
@@ -1927,7 +1927,7 @@ bool Rtabmap::process(
 									Transform transform = _memory->computeScanMatchingTransform(signature->id(), nearestId, path, 0, 0, &variance);
 									if(!transform.isNull())
 									{
-										if(_localPathFilteringRadius <= 0 || transform.getNormSquared() <= _localPathFilteringRadius*_localPathFilteringRadius)
+										if(_proximityFilteringRadius <= 0 || transform.getNormSquared() <= _proximityFilteringRadius*_proximityFilteringRadius)
 										{
 											UINFO("[Scan matching] Add local loop closure in SPACE (%d->%d) %s",
 													signature->id(),
@@ -1973,7 +1973,7 @@ bool Rtabmap::process(
 										{
 											UWARN("Ignoring local loop closure with %d because resulting "
 												  "transform is to large!? (%fm > %fm)",
-													nearestId, transform.getNorm(), _localPathFilteringRadius);
+													nearestId, transform.getNorm(), _proximityFilteringRadius);
 										}
 									}
 								}

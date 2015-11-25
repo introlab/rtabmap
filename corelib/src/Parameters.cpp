@@ -76,9 +76,12 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	if(removedParameters_.empty())
 	{
 		// removed parameters
-		removedParameters_.insert(std::make_pair("Mem/LaserScanVoxelSize",        std::make_pair(false, Parameters::kMemLaserScanDownsampleStepSize())));
 
-		removedParameters_.insert(std::make_pair("RGBD/PoseScanMatching",         std::make_pair(true,  Parameters::kRGBDIcpOdomRefining())));
+		// 0.11.0
+		removedParameters_.insert(std::make_pair("Mem/LaserScanVoxelSize",        std::make_pair(false, Parameters::kMemLaserScanDownsampleStepSize())));
+		removedParameters_.insert(std::make_pair("Mem/LocalSpaceLinksKeptInWM",   std::make_pair(false, "")));
+
+		removedParameters_.insert(std::make_pair("RGBD/PoseScanMatching",         std::make_pair(true,  Parameters::kRGBDNeighborLinkRefining())));
 
 		removedParameters_.insert(std::make_pair("Odom/FeatureType",              std::make_pair(true,  Parameters::kVisFeatureType())));
 		removedParameters_.insert(std::make_pair("Odom/EstimationType",           std::make_pair(true,  Parameters::kVisEstimationType())));
@@ -101,7 +104,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("OdomSubPix/Iterations",         std::make_pair(true,  Parameters::kVisSubPixIterations())));
 		removedParameters_.insert(std::make_pair("OdomSubPix/Eps",                std::make_pair(true,  Parameters::kVisSubPixEps())));
 
-		removedParameters_.insert(std::make_pair("LccReextract/Activated",         std::make_pair(false,  Parameters::kRGBDLoopClosureReextractFeatures())));
+		removedParameters_.insert(std::make_pair("LccReextract/Activated",         std::make_pair(true,   Parameters::kRGBDLoopClosureReextractFeatures())));
 		removedParameters_.insert(std::make_pair("LccReextract/FeatureType",       std::make_pair(false,  Parameters::kVisFeatureType())));
 		removedParameters_.insert(std::make_pair("LccReextract/MaxWords",          std::make_pair(false,  Parameters::kVisMaxFeatures())));
 		removedParameters_.insert(std::make_pair("LccReextract/MaxDepth",          std::make_pair(false,  Parameters::kVisMaxDepth())));
@@ -120,7 +123,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("LccBow/PnPFlags",                 std::make_pair(false,  Parameters::kVisPnPFlags())));
 		removedParameters_.insert(std::make_pair("LccBow/EpipolarGeometryVar",      std::make_pair(true,   Parameters::kVisEpipolarGeometryVar())));
 
-		removedParameters_.insert(std::make_pair("LccIcp/Type",                         std::make_pair(true,  Parameters::kRGBDIcpLoopClosureRefining())));
+		removedParameters_.insert(std::make_pair("LccIcp/Type",                         std::make_pair(true,  Parameters::kRGBDLoopClosureLinkRefining())));
 
 		removedParameters_.insert(std::make_pair("LccIcp3/Decimation",                  std::make_pair(false, "")));
 		removedParameters_.insert(std::make_pair("LccIcp3/MaxDepth",                    std::make_pair(false, "")));
@@ -136,6 +139,31 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("LccIcp2/Iterations",                  std::make_pair(true,  Parameters::kIcpIterations())));
 		removedParameters_.insert(std::make_pair("LccIcp2/CorrespondenceRatio",         std::make_pair(true,  Parameters::kIcpCorrespondenceRatio())));
 		removedParameters_.insert(std::make_pair("LccIcp2/VoxelSize",                   std::make_pair(true,  Parameters::kIcpVoxelSize())));
+
+		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionByTime",              std::make_pair(true,  Parameters::kRGBDProximityByTime())));
+		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionBySpace",             std::make_pair(true,  Parameters::kRGBDProximityBySpace())));
+		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionPathScansMerged",     std::make_pair(true,  Parameters::kRGBDProximityPathScansMerged())));
+		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionMaxGraphDepth",       std::make_pair(true,  Parameters::kRGBDProximityMaxGraphDepth())));
+		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionPathFilteringRadius", std::make_pair(true,  Parameters::kRGBDProximityPathFilteringRadius())));
+		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionPathRawPosesUsed",    std::make_pair(true,  Parameters::kRGBDProximityPathRawPosesUsed())));
+
+		// before 0.11.0
+		removedParameters_.insert(std::make_pair("GFTT/MaxCorners",                  std::make_pair(true, Parameters::kVisMaxFeatures())));
+		removedParameters_.insert(std::make_pair("LccBow/MaxDepth",                  std::make_pair(true, Parameters::kVisMaxDepth())));
+		removedParameters_.insert(std::make_pair("LccReextract/LoopClosureFeatures", std::make_pair(true, Parameters::kRGBDLoopClosureReextractFeatures())));
+		removedParameters_.insert(std::make_pair("Rtabmap/DetectorStrategy",         std::make_pair(true, Parameters::kKpDetectorStrategy())));
+		removedParameters_.insert(std::make_pair("RGBD/ScanMatchingSize",            std::make_pair(true, Parameters::kRGBDNeighborLinkRefining())));
+		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionRadius",    std::make_pair(true, Parameters::kRGBDLocalRadius())));
+		removedParameters_.insert(std::make_pair("RGBD/ToroIterations",              std::make_pair(true, Parameters::kRGBDOptimizeIterations())));
+		removedParameters_.insert(std::make_pair("Mem/RehearsedNodesKept",           std::make_pair(true, Parameters::kMemNotLinkedNodesKept())));
+		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionMaxDiffID", std::make_pair(true, Parameters::kRGBDProximityMaxGraphDepth())));
+		removedParameters_.insert(std::make_pair("RGBD/PlanVirtualLinksMaxDiffID",   std::make_pair(false, "")));
+		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionMaxDiffID", std::make_pair(false, "")));
+		removedParameters_.insert(std::make_pair("Odom/Type",                        std::make_pair(true, Parameters::kVisFeatureType())));
+		removedParameters_.insert(std::make_pair("Odom/MaxWords",                    std::make_pair(true, Parameters::kVisMaxFeatures())));
+		removedParameters_.insert(std::make_pair("Odom/LocalHistory",                std::make_pair(true, Parameters::kOdomBowLocalHistorySize())));
+		removedParameters_.insert(std::make_pair("Odom/NearestNeighbor",             std::make_pair(true, Parameters::kVisNNType())));
+		removedParameters_.insert(std::make_pair("Odom/NNDR",                        std::make_pair(true, Parameters::kVisNNDR())));
 	}
 	return removedParameters_;
 }

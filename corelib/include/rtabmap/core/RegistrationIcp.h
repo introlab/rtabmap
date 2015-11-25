@@ -61,16 +61,16 @@ public:
 			float * inliersRatioOut = 0);
 
 private:
-	float _icpMaxTranslation;
-	float _icpMaxRotation;
+	float _maxTranslation;
+	float _maxRotation;
 	bool _icp2D;
-	float _icpVoxelSize;
-	int _icpDownsamplingStep;
-	float _icpMaxCorrespondenceDistance;
-	int _icpMaxIterations;
-	float _icpCorrespondenceRatio;
-	bool _icpPointToPlane;
-	int _icpPointToPlaneNormalNeighbors;
+	float _voxelSize;
+	int _downsamplingStep;
+	float _maxCorrespondenceDistance;
+	int _maxIterations;
+	float _correspondenceRatio;
+	bool _pointToPlane;
+	int _pointToPlaneNormalNeighbors;
 };
 
 }

@@ -478,7 +478,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_checkBox_generateIds->setObjectName(Parameters::kMemGenerateIds().c_str());
 	_ui->general_checkBox_badSignaturesIgnored->setObjectName(Parameters::kMemBadSignaturesIgnored().c_str());
 	_ui->general_checkBox_initWMWithAllNodes->setObjectName(Parameters::kMemInitWMWithAllNodes().c_str());
-	_ui->checkBox_localSpaceLinksKeptInWM->setObjectName(Parameters::kMemLocalSpaceLinksKeptInWM().c_str());
 	_ui->checkBox_localSpaceScanMatchingIDsSaved->setObjectName(Parameters::kRGBDScanMatchingIdsSavedInLinks().c_str());
 	_ui->spinBox_imageDecimation->setObjectName(Parameters::kMemImageDecimation().c_str());
 	_ui->general_spinBox_laserScanDownsample->setObjectName(Parameters::kMemLaserScanDownsampleStepSize().c_str());
@@ -590,7 +589,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->rgdb_angularUpdate->setObjectName(Parameters::kRGBDAngularUpdate().c_str());
 	_ui->rgdb_rehearsalWeightIgnoredWhileMoving->setObjectName(Parameters::kMemRehearsalWeightIgnoredWhileMoving().c_str());
 	_ui->rgdb_newMapOdomChange->setObjectName(Parameters::kRGBDNewMapOdomChangeDistance().c_str());
-	_ui->odomScanHistory->setObjectName(Parameters::kRGBDIcpOdomRefining().c_str());
+	_ui->odomScanHistory->setObjectName(Parameters::kRGBDNeighborLinkRefining().c_str());
 	_ui->spinBox_maxLocalLocationsRetrieved->setObjectName(Parameters::kRGBDMaxLocalRetrieved().c_str());
 
 	_ui->graphOptimization_type->setObjectName(Parameters::kRGBDOptimizeStrategy().c_str());
@@ -608,13 +607,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->graphPlan_linearVelocity->setObjectName(Parameters::kRGBDPlanLinearVelocity().c_str());
 	_ui->graphPlan_angularVelocity->setObjectName(Parameters::kRGBDPlanAngularVelocity().c_str());
 
-	_ui->groupBox_localDetection_time->setObjectName(Parameters::kRGBDLocalLoopDetectionTime().c_str());
-	_ui->groupBox_localDetection_space->setObjectName(Parameters::kRGBDLocalLoopDetectionSpace().c_str());
+	_ui->groupBox_localDetection_time->setObjectName(Parameters::kRGBDProximityByTime().c_str());
+	_ui->groupBox_localDetection_space->setObjectName(Parameters::kRGBDProximityBySpace().c_str());
 	_ui->localDetection_radius->setObjectName(Parameters::kRGBDLocalRadius().c_str());
-	_ui->localDetection_maxDiffID->setObjectName(Parameters::kRGBDLocalLoopDetectionMaxGraphDepth().c_str());
-	_ui->localDetection_pathFilteringRadius->setObjectName(Parameters::kRGBDLocalLoopDetectionPathFilteringRadius().c_str());
-	_ui->checkBox_localSpacePathOdomPosesUsed->setObjectName(Parameters::kRGBDLocalLoopDetectionPathOdomPosesUsed().c_str());
-	_ui->checkBox_localSpaceAssembleScans->setObjectName(Parameters::kRGBDLocalLoopDetectionPathScansMerged().c_str());
+	_ui->localDetection_maxDiffID->setObjectName(Parameters::kRGBDProximityMaxGraphDepth().c_str());
+	_ui->localDetection_pathFilteringRadius->setObjectName(Parameters::kRGBDProximityPathFilteringRadius().c_str());
+	_ui->checkBox_localSpacePathOdomPosesUsed->setObjectName(Parameters::kRGBDProximityPathRawPosesUsed().c_str());
+	_ui->checkBox_localSpaceAssembleScans->setObjectName(Parameters::kRGBDProximityPathScansMerged().c_str());
 	_ui->rgdb_localImmunizationRatio->setObjectName(Parameters::kRGBDLocalImmunizationRatio().c_str());
 
 	_ui->loopClosure_bowMinInliers->setObjectName(Parameters::kVisMinInliers().c_str());
@@ -642,7 +641,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->subpix_iterations->setObjectName(Parameters::kVisSubPixIterations().c_str());
 	_ui->subpix_eps->setObjectName(Parameters::kVisSubPixEps().c_str());
 
-	_ui->loopClosure_icp->setObjectName(Parameters::kRGBDIcpLoopClosureRefining().c_str());
+	_ui->loopClosure_icp->setObjectName(Parameters::kRGBDLoopClosureLinkRefining().c_str());
 	_ui->globalDetection_icpMaxTranslation->setObjectName(Parameters::kIcpMaxTranslation().c_str());
 	_ui->globalDetection_icpMaxRotation->setObjectName(Parameters::kIcpMaxRotation().c_str());
 	_ui->loopClosure_icp2D->setObjectName(Parameters::kIcp2D().c_str());

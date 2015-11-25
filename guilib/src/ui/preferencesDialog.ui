@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>755</width>
-            <height>1854</height>
+            <y>-1112</y>
+            <width>760</width>
+            <height>1802</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>8</number>
+                <number>20</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -6935,7 +6935,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="3" column="1">
                         <widget class="QLabel" name="label_scanMatching">
                          <property name="text">
-                          <string>Pose ICP refining: odometry pose correction using ICP.</string>
+                          <string>Neighbor link refining. When a new node is added to the graph, the transformation of its neighbor link with the previous node is refined using ICP (laser scans required!).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -6987,7 +6987,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="4" column="1">
                         <widget class="QLabel" name="label_scanMatching_8">
                          <property name="text">
-                          <string>ICP refining. When enabled, loop closure constraints are refined with ICP estimation (3D or 2D). See &quot;ICP&quot; panel for parameters.</string>
+                          <string>Loop closure link refining. If the estimated loop closure transformation is refined using ICP (laser scans required!).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -7007,7 +7007,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="5" column="1">
                         <widget class="QLabel" name="label_scanMatching_9">
                          <property name="text">
-                          <string>Re-extract visual features when computing loop closure constraints.</string>
+                          <string>Re-extract visual features when computing loop closure transformations.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -7268,7 +7268,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QGroupBox" name="groupBox_localDetection_time">
                       <property name="title">
-                       <string>Local loop closure detection in time</string>
+                       <string>Proximity detection in time</string>
                       </property>
                       <property name="checkable">
                        <bool>true</bool>
@@ -7277,7 +7277,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item>
                         <widget class="QLabel" name="label_54">
                          <property name="text">
-                          <string>Activate local detection over all locations in STM. The Bayes filter is not used here: If there are enough correspondences between the current image and others in STM, transformations are computed. This generates more constraints in the map's graph, so more time is required to optimize the graph.</string>
+                          <string>Activate proximity detection over all locations in STM. The Bayes filter is not used here: If there are enough correspondences between the current image and others in STM, transformations are computed. This generates more constraints in the map's graph, so more time is required to optimize the graph.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -7293,7 +7293,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QGroupBox" name="groupBox_localDetection_space">
                       <property name="title">
-                       <string>Local loop closure detection in space</string>
+                       <string>Proximity detection in space</string>
                       </property>
                       <property name="checkable">
                        <bool>true</bool>
@@ -7302,7 +7302,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item>
                         <widget class="QLabel" name="label_space1_2">
                          <property name="text">
-                          <string>Activate local detection over locations (in Working Memory) near in space. The locations are compared to those inside the local radius of the current estimated position of the robot (at a maximum distance of the path filtering radius below). If the laser scans are used, local locations are merged together and the current laser scan is compared to them. It is useful when the robot is visiting backward (camera not in the same direction) already visited locations.</string>
+                          <string>Activate proximity detection over locations (in Working Memory) near in space. The locations are compared to those inside the local radius of the current estimated position of the robot (at a maximum distance of the path filtering radius below). If the laser scans are used, local locations are merged together and the current laser scan is compared to them. It is useful when the robot is visiting backward (camera not in the same direction) already visited locations.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -7314,6 +7314,22 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </item>
                        <item>
                         <layout class="QGridLayout" name="gridLayout_50" columnstretch="0,1">
+                         <item row="2" column="0">
+                          <widget class="QDoubleSpinBox" name="localDetection_pathFilteringRadius">
+                           <property name="suffix">
+                            <string> m</string>
+                           </property>
+                           <property name="decimals">
+                            <number>2</number>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.100000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>1.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
                          <item row="2" column="1">
                           <widget class="QLabel" name="label_space3_3">
                            <property name="text">
@@ -7347,22 +7363,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="0">
-                          <widget class="QDoubleSpinBox" name="localDetection_pathFilteringRadius">
-                           <property name="suffix">
-                            <string> m</string>
-                           </property>
-                           <property name="decimals">
-                            <number>2</number>
-                           </property>
-                           <property name="singleStep">
-                            <double>0.100000000000000</double>
-                           </property>
-                           <property name="value">
-                            <double>1.000000000000000</double>
-                           </property>
-                          </widget>
-                         </item>
                          <item row="0" column="0">
                           <widget class="QSpinBox" name="localDetection_maxDiffID">
                            <property name="maximum">
@@ -7376,37 +7376,17 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <item row="0" column="1">
                           <widget class="QLabel" name="label_space3_2">
                            <property name="text">
-                            <string>Maximum graph depth between the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.</string>
+                            <string>Maximum graph depth between the current/last loop closure location and the proximity hypotheses. Set 0 to ignore.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
                            <property name="textInteractionFlags">
                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="5" column="0">
-                          <widget class="QCheckBox" name="checkBox_localSpaceLinksKeptInWM">
-                           <property name="text">
-                            <string/>
                            </property>
                           </widget>
                          </item>
                          <item row="5" column="1">
-                          <widget class="QLabel" name="label_scanMatching_2">
-                           <property name="text">
-                            <string>If local space links are kept in WM.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="6" column="1">
                           <widget class="QLabel" name="label_scanMatching_6">
                            <property name="text">
                             <string>Save scan matching IDs in link's user data.</string>
@@ -7419,7 +7399,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="6" column="0">
+                         <item row="5" column="0">
                           <widget class="QCheckBox" name="checkBox_localSpaceScanMatchingIDsSaved">
                            <property name="text">
                             <string/>

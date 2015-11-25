@@ -51,29 +51,29 @@ public:
 			float * varianceOut = 0,
 			float * inliersRatioOut = 0);
 
-	float getBowInlierDistance() const {return _bowInlierDistance;}
-	int getBowIterations() const {return _bowIterations;}
-	int getBowMinInliers() const {return _bowMinInliers;}
-	bool getBowForce2D() const {return _bowForce2D;}
+	float getBowInlierDistance() const {return _inlierDistance;}
+	int getBowIterations() const {return _iterations;}
+	int getBowMinInliers() const {return _minInliers;}
+	bool getBowForce2D() const {return _force2D;}
 
 private:
-	int _bowMinInliers;
-	float _bowInlierDistance;
-	int _bowIterations;
-	int _bowRefineIterations;
-	bool _bowForce2D;
-	float _bowEpipolarGeometryVar;
-	int _bowEstimationType;
-	double _bowPnPReprojError;
-	int _bowPnPFlags;
+	int _minInliers;
+	float _inlierDistance;
+	int _iterations;
+	int _refineIterations;
+	bool _force2D;
+	float _epipolarGeometryVar;
+	int _estimationType;
+	double _PnPReprojError;
+	int _PnPFlags;
 
-	int _reextractNNType;
-	float _reextractNNDR;
-	int _reextractFeatureType;
-	int _reextractMaxWords;
-	float _reextractMaxDepth;
-	float _reextractMinDepth;
-	std::string _reextractRoiRatios;
+	int _NNType;
+	float _NNDR;
+	int _featureType;
+	int _maxWords;
+	float _maxDepth;
+	float _minDepth;
+	std::string _roiRatios;
 
 	int _subPixWinSize;
 	int _subPixIterations;

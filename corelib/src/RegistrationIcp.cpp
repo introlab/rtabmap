@@ -40,16 +40,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 RegistrationIcp::RegistrationIcp(const ParametersMap & parameters) :
-	_icpMaxTranslation(Parameters::defaultIcpMaxTranslation()),
-	_icpMaxRotation(Parameters::defaultIcpMaxRotation()),
+	_maxTranslation(Parameters::defaultIcpMaxTranslation()),
+	_maxRotation(Parameters::defaultIcpMaxRotation()),
 	_icp2D(Parameters::defaultIcp2D()),
-	_icpVoxelSize(Parameters::defaultIcpVoxelSize()),
-	_icpDownsamplingStep(Parameters::defaultIcpDownsamplingStep()),
-	_icpMaxCorrespondenceDistance(Parameters::defaultIcpMaxCorrespondenceDistance()),
-	_icpMaxIterations(Parameters::defaultIcpIterations()),
-	_icpCorrespondenceRatio(Parameters::defaultIcpCorrespondenceRatio()),
-	_icpPointToPlane(Parameters::defaultIcpPointToPlane()),
-	_icpPointToPlaneNormalNeighbors(Parameters::defaultIcpPointToPlaneNormalNeighbors())
+	_voxelSize(Parameters::defaultIcpVoxelSize()),
+	_downsamplingStep(Parameters::defaultIcpDownsamplingStep()),
+	_maxCorrespondenceDistance(Parameters::defaultIcpMaxCorrespondenceDistance()),
+	_maxIterations(Parameters::defaultIcpIterations()),
+	_correspondenceRatio(Parameters::defaultIcpCorrespondenceRatio()),
+	_pointToPlane(Parameters::defaultIcpPointToPlane()),
+	_pointToPlaneNormalNeighbors(Parameters::defaultIcpPointToPlaneNormalNeighbors())
 {
 	this->parseParameters(parameters);
 }
@@ -58,23 +58,23 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 {
 	Registration::parseParameters(parameters);
 
-	Parameters::parse(parameters, Parameters::kIcpMaxTranslation(), _icpMaxTranslation);
-	Parameters::parse(parameters, Parameters::kIcpMaxRotation(), _icpMaxRotation);
+	Parameters::parse(parameters, Parameters::kIcpMaxTranslation(), _maxTranslation);
+	Parameters::parse(parameters, Parameters::kIcpMaxRotation(), _maxRotation);
 	Parameters::parse(parameters, Parameters::kIcp2D(), _icp2D);
-	Parameters::parse(parameters, Parameters::kIcpVoxelSize(), _icpVoxelSize);
-	Parameters::parse(parameters, Parameters::kIcpDownsamplingStep(), _icpDownsamplingStep);
-	Parameters::parse(parameters, Parameters::kIcpMaxCorrespondenceDistance(), _icpMaxCorrespondenceDistance);
-	Parameters::parse(parameters, Parameters::kIcpIterations(), _icpMaxIterations);
-	Parameters::parse(parameters, Parameters::kIcpCorrespondenceRatio(), _icpCorrespondenceRatio);
-	Parameters::parse(parameters, Parameters::kIcpPointToPlane(), _icpPointToPlane);
-	Parameters::parse(parameters, Parameters::kIcpPointToPlaneNormalNeighbors(), _icpPointToPlaneNormalNeighbors);
+	Parameters::parse(parameters, Parameters::kIcpVoxelSize(), _voxelSize);
+	Parameters::parse(parameters, Parameters::kIcpDownsamplingStep(), _downsamplingStep);
+	Parameters::parse(parameters, Parameters::kIcpMaxCorrespondenceDistance(), _maxCorrespondenceDistance);
+	Parameters::parse(parameters, Parameters::kIcpIterations(), _maxIterations);
+	Parameters::parse(parameters, Parameters::kIcpCorrespondenceRatio(), _correspondenceRatio);
+	Parameters::parse(parameters, Parameters::kIcpPointToPlane(), _pointToPlane);
+	Parameters::parse(parameters, Parameters::kIcpPointToPlaneNormalNeighbors(), _pointToPlaneNormalNeighbors);
 
-	UASSERT_MSG(_icpVoxelSize >= 0, uFormat("value=%d", _icpVoxelSize).c_str());
-	UASSERT_MSG(_icpDownsamplingStep >= 0, uFormat("value=%d", _icpDownsamplingStep).c_str());
-	UASSERT_MSG(_icpMaxCorrespondenceDistance > 0.0f, uFormat("value=%f", _icpMaxCorrespondenceDistance).c_str());
-	UASSERT_MSG(_icpMaxIterations > 0, uFormat("value=%d", _icpMaxIterations).c_str());
-	UASSERT_MSG(_icpCorrespondenceRatio >=0.0f && _icpCorrespondenceRatio <=1.0f, uFormat("value=%f", _icpCorrespondenceRatio).c_str());
-	UASSERT_MSG(_icpPointToPlaneNormalNeighbors > 0, uFormat("value=%d", _icpPointToPlaneNormalNeighbors).c_str());
+	UASSERT_MSG(_voxelSize >= 0, uFormat("value=%d", _voxelSize).c_str());
+	UASSERT_MSG(_downsamplingStep >= 0, uFormat("value=%d", _downsamplingStep).c_str());
+	UASSERT_MSG(_maxCorrespondenceDistance > 0.0f, uFormat("value=%f", _maxCorrespondenceDistance).c_str());
+	UASSERT_MSG(_maxIterations > 0, uFormat("value=%d", _maxIterations).c_str());
+	UASSERT_MSG(_correspondenceRatio >=0.0f && _correspondenceRatio <=1.0f, uFormat("value=%f", _correspondenceRatio).c_str());
+	UASSERT_MSG(_pointToPlaneNormalNeighbors > 0, uFormat("value=%d", _pointToPlaneNormalNeighbors).c_str());
 }
 
 Transform RegistrationIcp::computeTransformation(
@@ -106,17 +106,17 @@ Transform RegistrationIcp::computeTransformation(
 			float * inliersRatioOut)
 {
 	UDEBUG("Guess transform = %s", guess.prettyPrint().c_str());
-	UDEBUG("Voxel size=%f", _icpVoxelSize);
+	UDEBUG("Voxel size=%f", _voxelSize);
 	UDEBUG("2D=%d", _icp2D?1:0);
-	UDEBUG("PointToPlane=%d", _icpPointToPlane?1:0);
-	UDEBUG("Normal neighborhood=%d", _icpPointToPlaneNormalNeighbors);
-	UDEBUG("Max corrrespondence distance=%f", _icpMaxCorrespondenceDistance);
-	UDEBUG("Max Iterations=%d", _icpMaxIterations);
-	UDEBUG("Variance from inliers count=%d", _bowVarianceFromInliersCount?1:0);
-	UDEBUG("Correspondence Ratio=%f", _icpCorrespondenceRatio);
-	UDEBUG("Max translation=%f", _icpMaxTranslation);
-	UDEBUG("Max rotation=%f", _icpMaxRotation);
-	UDEBUG("Downsampling step=%d", _icpDownsamplingStep);
+	UDEBUG("PointToPlane=%d", _pointToPlane?1:0);
+	UDEBUG("Normal neighborhood=%d", _pointToPlaneNormalNeighbors);
+	UDEBUG("Max corrrespondence distance=%f", _maxCorrespondenceDistance);
+	UDEBUG("Max Iterations=%d", _maxIterations);
+	UDEBUG("Variance from inliers count=%d", _varianceFromInliersCount?1:0);
+	UDEBUG("Correspondence Ratio=%f", _correspondenceRatio);
+	UDEBUG("Max translation=%f", _maxTranslation);
+	UDEBUG("Max rotation=%f", _maxRotation);
+	UDEBUG("Downsampling step=%d", _downsamplingStep);
 
 	std::string msg;
 	Transform transform;
@@ -127,11 +127,11 @@ Transform RegistrationIcp::computeTransformation(
 		int maxLaserScans = dataTo.laserScanMaxPts();
 		cv::Mat fromScan = dataFrom.laserScanRaw();
 		cv::Mat toScan = dataTo.laserScanRaw();
-		if(_icpDownsamplingStep>1)
+		if(_downsamplingStep>1)
 		{
-			fromScan = util3d::downsample(fromScan, _icpDownsamplingStep);
-			toScan = util3d::downsample(toScan, _icpDownsamplingStep);
-			maxLaserScans/=_icpDownsamplingStep;
+			fromScan = util3d::downsample(fromScan, _downsamplingStep);
+			toScan = util3d::downsample(toScan, _downsamplingStep);
+			maxLaserScans/=_downsamplingStep;
 		}
 
 		pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloud = util3d::laserScanToPointCloud(fromScan, Transform());
@@ -143,10 +143,10 @@ Transform RegistrationIcp::computeTransformation(
 			pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudFiltered = fromCloud;
 			pcl::PointCloud<pcl::PointXYZ>::Ptr toCloudFiltered = toCloud;
 			bool filtered = false;
-			if(_icpVoxelSize > 0.0f)
+			if(_voxelSize > 0.0f)
 			{
-				fromCloudFiltered = util3d::voxelize(fromCloudFiltered, _icpVoxelSize);
-				toCloudFiltered = util3d::voxelize(toCloudFiltered, _icpVoxelSize);
+				fromCloudFiltered = util3d::voxelize(fromCloudFiltered, _voxelSize);
+				toCloudFiltered = util3d::voxelize(toCloudFiltered, _voxelSize);
 				filtered = true;
 			}
 
@@ -159,10 +159,10 @@ Transform RegistrationIcp::computeTransformation(
 			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
 			if(!_icp2D) // 3D ICP
 			{
-				if(_icpPointToPlane)
+				if(_pointToPlane)
 				{
-					pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals = util3d::computeNormals(fromCloudFiltered, _icpPointToPlaneNormalNeighbors);
-					pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals = util3d::computeNormals(toCloudFiltered, _icpPointToPlaneNormalNeighbors);
+					pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals = util3d::computeNormals(fromCloudFiltered, _pointToPlaneNormalNeighbors);
+					pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals = util3d::computeNormals(toCloudFiltered, _pointToPlaneNormalNeighbors);
 
 					std::vector<int> indices;
 					toCloudNormals = util3d::removeNaNNormalsFromPointCloud(toCloudNormals);
@@ -174,8 +174,8 @@ Transform RegistrationIcp::computeTransformation(
 						icpT = util3d::icpPointToPlane(
 								toCloudNormals,
 								fromCloudNormals,
-							   _icpMaxCorrespondenceDistance,
-							   _icpMaxIterations,
+							   _maxCorrespondenceDistance,
+							   _maxIterations,
 							   hasConverged,
 							   *newCloudNormalsRegistered);
 						if(!filtered &&
@@ -185,7 +185,7 @@ Transform RegistrationIcp::computeTransformation(
 							util3d::computeVarianceAndCorrespondences(
 								newCloudNormalsRegistered,
 								fromCloudNormals,
-								_icpMaxCorrespondenceDistance,
+								_maxCorrespondenceDistance,
 								variance,
 								correspondences);
 							correspondencesComputed = true;
@@ -197,8 +197,8 @@ Transform RegistrationIcp::computeTransformation(
 					icpT = util3d::icp(
 							toCloudFiltered,
 							fromCloudFiltered,
-							_icpMaxCorrespondenceDistance,
-							_icpMaxIterations,
+							_maxCorrespondenceDistance,
+							_maxIterations,
 							hasConverged,
 							*newCloudRegistered);
 				}
@@ -208,8 +208,8 @@ Transform RegistrationIcp::computeTransformation(
 				icpT = util3d::icp2D(
 							toCloudFiltered,
 							fromCloudFiltered,
-						   _icpMaxCorrespondenceDistance,
-						   _icpMaxIterations,
+						   _maxCorrespondenceDistance,
+						   _maxIterations,
 						   hasConverged,
 						   *newCloudRegistered);
 			}
@@ -229,21 +229,21 @@ Transform RegistrationIcp::computeTransformation(
 			{
 				float ix,iy,iz, iroll,ipitch,iyaw;
 				icpT.getTranslationAndEulerAngles(ix,iy,iz,iroll,ipitch,iyaw);
-				if((_icpMaxTranslation>0.0f &&
-					(fabs(ix) > _icpMaxTranslation ||
-					 fabs(iy) > _icpMaxTranslation ||
-					 fabs(iz) > _icpMaxTranslation))
+				if((_maxTranslation>0.0f &&
+					(fabs(ix) > _maxTranslation ||
+					 fabs(iy) > _maxTranslation ||
+					 fabs(iz) > _maxTranslation))
 					||
-					(_icpMaxRotation>0.0f &&
-					 (fabs(iroll) > _icpMaxRotation ||
-					  fabs(ipitch) > _icpMaxRotation ||
-					  fabs(iyaw) > _icpMaxRotation)))
+					(_maxRotation>0.0f &&
+					 (fabs(iroll) > _maxRotation ||
+					  fabs(ipitch) > _maxRotation ||
+					  fabs(iyaw) > _maxRotation)))
 				{
 					msg = uFormat("Cannot compute transform (ICP correction too large -> %f m %f rad, limits=%f m, %f rad)",
 							uMax3(fabs(ix), fabs(iy), fabs(iz)),
 							uMax3(fabs(iroll), fabs(ipitch), fabs(iyaw)),
-							_icpMaxTranslation,
-							_icpMaxRotation);
+							_maxTranslation,
+							_maxRotation);
 					UINFO(msg.c_str());
 				}
 				else
@@ -262,7 +262,7 @@ Transform RegistrationIcp::computeTransformation(
 						util3d::computeVarianceAndCorrespondences(
 								toCloud,
 								fromCloud,
-								_icpMaxCorrespondenceDistance,
+								_maxCorrespondenceDistance,
 								variance,
 								correspondences);
 					}
@@ -287,7 +287,7 @@ Transform RegistrationIcp::computeTransformation(
 							maxLaserScans>0?maxLaserScans:dataTo.laserScanMaxPts()?dataTo.laserScanMaxPts():(int)(toCloud->size()>fromCloud->size()?toCloud->size():fromCloud->size()),
 							correspondencesRatio*100.0f);
 
-					if(_bowVarianceFromInliersCount)
+					if(_varianceFromInliersCount)
 					{
 						variance = correspondencesRatio > 0?1.0/double(correspondencesRatio):1.0;
 					}
@@ -305,10 +305,10 @@ Transform RegistrationIcp::computeTransformation(
 						*inliersRatioOut = correspondencesRatio;
 					}
 
-					if(correspondencesRatio < _icpCorrespondenceRatio)
+					if(correspondencesRatio < _correspondenceRatio)
 					{
 						msg = uFormat("Cannot compute transform (cor=%d corrRatio=%f/%f)",
-								correspondences, correspondencesRatio, _icpCorrespondenceRatio);
+								correspondences, correspondencesRatio, _correspondenceRatio);
 						UINFO(msg.c_str());
 					}
 					else
