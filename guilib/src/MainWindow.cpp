@@ -773,6 +773,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 
 		if(_ui->dockWidget_cloudViewer->isVisible())
 		{
+			bool cloudUpdated = false;
+			bool scanUpdated = false;
 			if(!pose.isNull())
 			{
 				// 3d cloud
@@ -798,11 +800,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 						_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", true);
 						_ui->widget_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
 						_ui->widget_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
-					}
-					else
-					{
-						UWARN("Empty cloudOdom!");
-						_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", false);
+
+						cloudUpdated = true;
 					}
 				}
 
@@ -827,7 +826,17 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 					_ui->widget_cloudViewer->setCloudVisibility("scanOdom", true);
 					_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
 					_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
+
+					scanUpdated = true;
 				}
+			}
+			if(!cloudUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("cloudOdom"))
+			{
+				_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", false);
+			}
+			if(!scanUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("scanOdom"))
+			{
+				_ui->widget_cloudViewer->setCloudVisibility("scanOdom", false);
 			}
 		}
 

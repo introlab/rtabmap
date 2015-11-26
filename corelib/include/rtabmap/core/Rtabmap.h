@@ -95,6 +95,7 @@ public:
 	const Memory * getMemory() const {return _memory;}
 	float getGoalReachedRadius() const {return _goalReachedRadius;}
 	float getLocalRadius() const {return _localRadius;}
+	const Transform & getLastLocalizationPose() const {return _lastLocalizationPose;}
 
 	float getTimeThreshold() const {return _maxTimeAllowed;} // in ms
 	void setTimeThreshold(float maxTimeAllowed); // in ms
@@ -232,7 +233,7 @@ private:
 	std::map<int, Transform> _optimizedPoses;
 	std::multimap<int, Link> _constraints;
 	Transform _mapCorrection;
-	Transform _lastLocalizationPose; // for localization mode
+	Transform _lastLocalizationPose; // Corrected odometry pose. In mapping mode, this corresponds to last pose return by getLocalOptimizedPoses().
 	int _lastLocalizationNodeId; // for localization mode
 
 	// Planning stuff

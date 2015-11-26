@@ -1067,7 +1067,7 @@ bool Rtabmap::process(
 
 		// Update Poses and Constraints
 		_optimizedPoses.insert(std::make_pair(signature->id(), newPose));
-		_lastLocalizationPose = newPose; // used in localization mode only (path planning)
+		_lastLocalizationPose = newPose; // keep in cache the latest corrected pose
 		if(signature->getLinks().size() == 1 &&
 		   signature->getLinks().begin()->second.type() == Link::kNeighbor)
 		{
@@ -2131,7 +2131,7 @@ bool Rtabmap::process(
 
 		// Update map correction, it should be identify when optimizing from the last node
 		_mapCorrection = _optimizedPoses.at(signature->id()) * signature->getPose().inverse();
-		_lastLocalizationPose = _optimizedPoses.at(signature->id()); // update in case we switch to localization mode
+		_lastLocalizationPose = _optimizedPoses.at(signature->id()); // update
 		if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
 		{
 			UERROR("Map correction should be identity when optimizing from the last node. T=%s", _mapCorrection.prettyPrint().c_str());
