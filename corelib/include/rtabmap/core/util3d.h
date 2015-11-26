@@ -127,7 +127,10 @@ pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImage(
 					float maxDepth = 0,
 					const Transform & localTransform = Transform::getIdentity());
 
+// return CV_32FC3
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform());
+// return CV_32FC2
+cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform());
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const cv::Mat & laserScan, const Transform & transform = Transform());
 
 pcl::PointXYZ RTABMAP_EXP projectDisparityTo3D(

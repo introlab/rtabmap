@@ -815,6 +815,29 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, co
 	return laserScan;
 }
 
+cv::Mat laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform)
+{
+	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC2);
+	bool nullTransform = transform.isNull();
+	Eigen::Affine3f transform3f = transform.toEigen3f();
+	for(unsigned int i=0; i<cloud.size(); ++i)
+	{
+		if(!nullTransform)
+		{
+			pcl::PointXYZ pt = pcl::transformPoint(cloud.at(i), transform3f);
+			laserScan.at<cv::Vec2f>(i)[0] = pt.x;
+			laserScan.at<cv::Vec2f>(i)[1] = pt.y;
+		}
+		else
+		{
+			laserScan.at<cv::Vec2f>(i)[0] = cloud.at(i).x;
+			laserScan.at<cv::Vec2f>(i)[1] = cloud.at(i).y;
+		}
+
+	}
+	return laserScan;
+}
+
 pcl::PointCloud<pcl::PointXYZ>::Ptr laserScanToPointCloud(const cv::Mat & laserScan, const Transform & transform)
 {
 	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3);
