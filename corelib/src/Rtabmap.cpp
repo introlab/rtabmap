@@ -44,8 +44,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UMath.h>
 
-#include "SimpleIni.h"
-
 #include <pcl/search/kdtree.h>
 #include <pcl/filters/crop_box.h>
 #include <pcl/io/pcd_io.h>
@@ -135,12 +133,6 @@ Rtabmap::Rtabmap() :
 Rtabmap::~Rtabmap() {
 	UDEBUG("");
 	this->close();
-}
-
-std::string Rtabmap::getVersion()
-{
-	return RTABMAP_VERSION;
-	return ""; // Second return only to avoid compiler warning with RTABMAP_VERSION not yet set.
 }
 
 void Rtabmap::setupLogFiles(bool overwrite)
@@ -313,7 +305,7 @@ void Rtabmap::init(const std::string & configFile, const std::string & databaseP
 	if(!configFile.empty())
 	{
 		ULOGGER_DEBUG("Read parameters from = %s", configFile.c_str());
-		this->readParameters(configFile, param);
+		Parameters::readINI(configFile, param);
 	}
 
 	this->init(param, databasePath);
@@ -3689,112 +3681,6 @@ void Rtabmap::updateGoalIndex()
 			}
 		}
 	}
-}
-
-void Rtabmap::readParameters(const std::string & configFile, ParametersMap & parameters)
-{
-	CSimpleIniA ini;
-	ini.LoadFile(configFile.c_str());
-	const CSimpleIniA::TKeyVal * keyValMap = ini.GetSection("Core");
-	if(keyValMap)
-	{
-		for(CSimpleIniA::TKeyVal::const_iterator iter=keyValMap->begin(); iter!=keyValMap->end(); ++iter)
-		{
-			std::string key = (*iter).first.pItem;
-			if(key.compare("Version") == 0)
-			{
-				// Compare version in ini with the current RTAB-Map version
-				std::vector<std::string> version = uListToVector(uSplit((*iter).second, '.'));
-				if(version.size() == 3)
-				{
-					if(!RTABMAP_VERSION_COMPARE(std::atoi(version[0].c_str()), std::atoi(version[1].c_str()), std::atoi(version[2].c_str())))
-					{
-						if(configFile.find(".rtabmap") != std::string::npos)
-						{
-							UWARN("Version in the config file \"%s\" is more recent (\"%s\") than "
-								   "current RTAB-Map version used (\"%s\"). The config file will be upgraded "
-								   "to new version.",
-								   configFile.c_str(),
-								   (*iter).second,
-								   RTABMAP_VERSION);
-						}
-						else
-						{
-							UERROR("Version in the config file \"%s\" is more recent (\"%s\") than "
-								   "current RTAB-Map version used (\"%s\"). New parameters (if there are some) will "
-								   "be ignored.",
-								   configFile.c_str(),
-								   (*iter).second,
-								   RTABMAP_VERSION);
-						}
-					}
-				}
-			}
-			else
-			{
-				key = uReplaceChar(key, '\\', '/'); // Ini files use \ by default for separators, so replace them
-
-				// look for old parameter name
-				bool addParameter = true;
-				std::map<std::string, std::pair<bool, std::string> >::const_iterator oldIter = Parameters::getRemovedParameters().find(key);
-				if(oldIter!=Parameters::getRemovedParameters().end())
-				{
-					addParameter = oldIter->second.first;
-					if(addParameter)
-					{
-						key = oldIter->second.second;
-						UWARN("Parameter migration from \"%s\" to \"%s\" (value=%s).",
-								oldIter->first.c_str(), oldIter->second.second.c_str(), iter->second);
-					}
-					else if(oldIter->second.second.empty())
-					{
-						UWARN("Parameter \"%s\" doesn't exist anymore.",
-									oldIter->first.c_str());
-					}
-					else
-					{
-						UWARN("Parameter \"%s\" doesn't exist anymore, you may want to use this similar parameter \"%s\":\"%s\".",
-									oldIter->first.c_str(), oldIter->second.second.c_str(), Parameters::getDescription(oldIter->second.second).c_str());
-					}
-
-				}
-
-				ParametersMap::iterator jter = parameters.find(key);
-				if(jter != parameters.end())
-				{
-					parameters.erase(jter);
-				}
-				if(addParameter)
-				{
-					parameters.insert(ParametersPair(key, iter->second));
-				}
-			}
-		}
-	}
-	else
-	{
-		ULOGGER_WARN("Section \"Core\" in %s doesn't exist... "
-				    "Ignore this warning if the ini file does not exist yet. "
-				    "The ini file will be automatically created when this node will close.", configFile.c_str());
-	}
-}
-
-void Rtabmap::writeParameters(const std::string & configFile, const ParametersMap & parameters)
-{
-	CSimpleIniA ini;
-	ini.LoadFile(configFile.c_str());
-
-	// Save current version
-	ini.SetValue("Core", "Version", RTABMAP_VERSION, NULL, true);
-
-	for(ParametersMap::const_iterator i=parameters.begin(); i!=parameters.end(); ++i)
-	{
-		std::string key = (*i).first;
-		key = uReplaceChar(key, '/', '\\'); // Ini files use \ by default for separators, so replace the /
-		ini.SetValue("Core", key.c_str(), (*i).second.c_str(), NULL, true);
-	}
-
-	ini.SaveFile(configFile.c_str());
 }
 
 } // namespace rtabmap

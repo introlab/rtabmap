@@ -421,8 +421,15 @@ public:
 	static void parse(const ParametersMap & parameters, const std::string & key, double & value);
 	static void parse(const ParametersMap & parameters, const std::string & key, std::string & value);
 
+	static std::string getVersion();
 	static std::string getDefaultDatabaseName();
 	
+	static bool isFeatureParameter(const std::string & param);
+	static ParametersMap getDefaultOdometryParameters(bool stereo = false);
+
+	static void readINI(const std::string & configFile, ParametersMap & parameters);
+	static void writeINI(const std::string & configFile, const ParametersMap & parameters);
+
 	/**
 	 * Get removed parameters (backward compatibility)
 	 * <OldKeyName, <isEqual, NewKeyName> >, when isEqual=true, the old value can be safely copied to new parameter

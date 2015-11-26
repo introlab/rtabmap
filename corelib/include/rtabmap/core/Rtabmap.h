@@ -57,11 +57,6 @@ public:
 	enum VhStrategy {kVhNone, kVhEpipolar, kVhUndef};
 
 public:
-	static std::string getVersion();
-	static void readParameters(const std::string & configFile, ParametersMap & parameters);
-	static void writeParameters(const std::string & configFile, const ParametersMap & parameters);
-
-public:
 	Rtabmap();
 	virtual ~Rtabmap();
 

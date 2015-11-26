@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "AboutDialog.h"
-#include "rtabmap/core/Rtabmap.h"
+#include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraStereo.h"
 #include "rtabmap/core/Graph.h"
@@ -41,7 +41,7 @@ AboutDialog::AboutDialog(QWidget * parent) :
 {
 	_ui = new Ui_aboutDialog();
 	_ui->setupUi(this);
-	QString version = Rtabmap::getVersion().c_str();
+	QString version = Parameters::getVersion().c_str();
 #if DEMO_BUILD
 	version.append(" [DEMO]");
 #endif

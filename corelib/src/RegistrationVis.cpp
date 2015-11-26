@@ -94,15 +94,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	// override feature parameters
 	for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
-		std::string group = uSplit(iter->first, '/').front();
-		if(group.compare("SURF") == 0 ||
-			group.compare("SIFT") == 0 ||
-			group.compare("ORB") == 0 ||
-			group.compare("FAST") == 0 ||
-			group.compare("FREAK") == 0 ||
-			group.compare("BRIEF") == 0 ||
-			group.compare("GFTT") == 0 ||
-			group.compare("BRISK") == 0)
+		if(Parameters::isFeatureParameter(iter->first))
 		{
 			uInsert(_featureParameters, ParametersPair(iter->first, iter->second));
 		}

@@ -96,10 +96,10 @@ int main(int argc, char * argv[])
 	}
 	else if(argc == 2 && strcmp(argv[1], "-v") == 0)
 	{
-		printf("%s\n", Rtabmap::getVersion().c_str());
+		printf("%s\n", Parameters::getVersion().c_str());
 		exit(0);
 	}
-	else if(argc == 2 && strcmp(argv[1], "-default_params") == 0)
+	else if(argc == 2 && (strcmp(argv[1], "-default_params") == 0 || strcmp(argv[1], "--params") == 0))
 	{
 		for(ParametersMap::const_iterator iter = defaultParameters.begin(); iter!=defaultParameters.end(); ++iter)
 		{

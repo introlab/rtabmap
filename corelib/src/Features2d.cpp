@@ -417,6 +417,7 @@ Feature2D * Feature2D::create(Feature2D::Type & type, const ParametersMap & para
 
 	return feature2D;
 }
+
 std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const
 {
 	std::vector<cv::KeyPoint> keypoints;
