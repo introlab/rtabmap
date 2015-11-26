@@ -798,9 +798,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 						_ui->widget_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
 						_ui->widget_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
 					}
-					else
+					else if(_ui->widget_cloudViewer->getAddedClouds().contains(std::string("cloudOdom")))
 					{
-						UWARN("Empty cloudOdom!");
 						_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", false);
 					}
 				}
@@ -824,6 +823,10 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 						_ui->widget_cloudViewer->setCloudVisibility("scanOdom", true);
 						_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
 						_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
+					}
+					else if(_ui->widget_cloudViewer->getAddedClouds().contains(std::string("scanOdom")))
+					{
+						_ui->widget_cloudViewer->setCloudVisibility("scanOdom", false);
 					}
 				}
 			}
