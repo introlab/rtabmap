@@ -546,6 +546,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	//FAST detector
 	_ui->fastSuppressNonMax->setObjectName(Parameters::kFASTNonmaxSuppression().c_str());
 	_ui->fastThreshold->setObjectName(Parameters::kFASTThreshold().c_str());
+	_ui->fastThresholdMin->setObjectName(Parameters::kFASTMinThreshold().c_str());
+	_ui->fastThresholdMax->setObjectName(Parameters::kFASTMaxThreshold().c_str());
+	_ui->fastGridRows->setObjectName(Parameters::kFASTGridRows().c_str());
+	_ui->fastGridCols->setObjectName(Parameters::kFASTGridCols().c_str());
 	_ui->fastGpu->setObjectName(Parameters::kFASTGpu().c_str());
 	_ui->fastKeypointRatio->setObjectName(Parameters::kFASTGpuKeypointsRatio().c_str());
 
@@ -1997,6 +2001,25 @@ bool PreferencesDialog::validateForm()
 				   .arg(_ui->loopClosure_bowMaxDepth->value())
 				   .arg(_ui->loopClosure_bowMaxDepth->value()+1));
 		_ui->loopClosure_bowMinDepth->setValue(0);
+	}
+
+	if(_ui->fastThresholdMax->value() < _ui->fastThresholdMin->value())
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("FAST minimum threshold cannot be lower than maximum threshold. Setting minimum to 1."));
+		_ui->fastThresholdMin->setValue(1);
+	}
+	if(_ui->fastThreshold->value() > _ui->fastThresholdMax->value())
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("FAST threshold cannot be higher than maximum threshold. Maximum value set to current threshold."));
+		_ui->fastThresholdMax->setValue(_ui->fastThreshold->value());
+	}
+	if(_ui->fastThreshold->value() < _ui->fastThresholdMin->value())
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("FAST threshold cannot be lower than minimum threshold. Minimum value set to current threshold."));
+		_ui->fastThresholdMin->setValue(_ui->fastThreshold->value());
 	}
 
 	return true;

@@ -244,12 +244,16 @@ class RTABMAP_EXP Parameters
 
 	RTABMAP_PARAM(BRIEF, Bytes,         	   int, 32, 	"Bytes is a length of descriptor in bytes. It can be equal 16, 32 or 64 bytes.");
 
-	RTABMAP_PARAM(FAST, Threshold,          int, 30, 	   "Threshold on difference between intensity of the central pixel and pixels of a circle around this pixel.");
+	RTABMAP_PARAM(FAST, Threshold,          int, 30, 	    "Threshold on difference between intensity of the central pixel and pixels of a circle around this pixel.");
 	RTABMAP_PARAM(FAST, NonmaxSuppression,  bool, true, 	"If true, non-maximum suppression is applied to detected corners (keypoints).");
 	RTABMAP_PARAM(FAST, Gpu,                bool, false, 	"GPU-FAST: Use GPU version of FAST. This option is enabled only if OpenCV is built with CUDA and GPUs are detected.");
 	RTABMAP_PARAM(FAST, GpuKeypointsRatio,  double, 0.05, 	"Used with FAST GPU.");
+	RTABMAP_PARAM(FAST, MinThreshold,       int, 1, 	    "Minimum threshold. Used only when FAST/GridRows and FAST/GridCols are set.");
+	RTABMAP_PARAM(FAST, MaxThreshold,       int, 200, 	    "Maximum threshold. Used only when FAST/GridRows and FAST/GridCols are set.");
+	RTABMAP_PARAM(FAST, GridRows,           int, 4,         "Grid rows (0 to disable). Adapts the detector to partition the source image into a grid and detect points in each cell.");
+	RTABMAP_PARAM(FAST, GridCols,           int, 4,         "Grid cols (0 to disable). Adapts the detector to partition the source image into a grid and detect points in each cell.");
 
-	RTABMAP_PARAM(GFTT, QualityLevel, double, 0.0001, "");
+	RTABMAP_PARAM(GFTT, QualityLevel, double, 0.01, "");
 	RTABMAP_PARAM(GFTT, MinDistance, double, 10, "");
 	RTABMAP_PARAM(GFTT, BlockSize, int, 3, "");
 	RTABMAP_PARAM(GFTT, UseHarrisDetector, bool, false, "");
@@ -312,7 +316,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, ProximityPathRawPosesUsed,    bool, true,   "When comparing to a local path, merge the scan using the odometry poses (with neighbor link optimizations) instead of the ones in the optimized local graph.");
 
 	// Graph optimization
-	RTABMAP_PARAM(RGBD, OptimizeStrategy,          int, 0,       "Graph optimization strategy: 0=TORO and 1=g2o.");
+	RTABMAP_PARAM(RGBD, OptimizeStrategy,          int, 0,       "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.");
 	RTABMAP_PARAM(RGBD, OptimizeIterations,        int, 100,     "Optimization iterations.");
 	RTABMAP_PARAM(RGBD, OptimizeSlam2D,            bool, false,  "If optimization is done only on x,y and theta (3DoF). Otherwise, it is done on full 6DoF poses.");
 	RTABMAP_PARAM(RGBD, OptimizeVarianceIgnored,   bool, false,  "Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links.");

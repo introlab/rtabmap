@@ -47,18 +47,29 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters) :
 		_epipolarGeometryVar(Parameters::defaultVisEpipolarGeometryVar()),
 		_estimationType(Parameters::defaultVisEstimationType()),
 		_PnPReprojError(Parameters::defaultVisPnPReprojError()),
-		_PnPFlags(Parameters::defaultVisPnPFlags()),
-		_NNType(Parameters::defaultVisNNType()),
-		_NNDR(Parameters::defaultVisNNDR()),
-		_featureType(Parameters::defaultVisFeatureType()),
-		_maxWords(Parameters::defaultVisMaxFeatures()),
-		_maxDepth(Parameters::defaultVisMaxDepth()),
-		_minDepth(Parameters::defaultVisMinDepth()),
-		_roiRatios(Parameters::defaultVisRoiRatios()),
-		_subPixWinSize(Parameters::defaultKpSubPixWinSize()),
-		_subPixIterations(Parameters::defaultKpSubPixIterations()),
-		_subPixEps(Parameters::defaultKpSubPixEps())
+		_PnPFlags(Parameters::defaultVisPnPFlags())
 {
+	_featureParameters = Parameters::getDefaultParameters();
+	uInsert(_featureParameters, ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
+	uInsert(_featureParameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
+	uInsert(_featureParameters, ParametersPair(Parameters::kMemBinDataKept(), "false"));
+	uInsert(_featureParameters, ParametersPair(Parameters::kMemSTMSize(), "0"));
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
+	uInsert(_featureParameters, ParametersPair(Parameters::kMemGenerateIds(), "true"));
+
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpNNStrategy(), _featureParameters.at(Parameters::kVisNNType())));
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpNndrRatio(), _featureParameters.at(Parameters::kVisNNDR())));
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpDetectorStrategy(), _featureParameters.at(Parameters::kVisFeatureType())));
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpWordsPerImage(), _featureParameters.at(Parameters::kVisMaxFeatures())));
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpMaxDepth(), _featureParameters.at(Parameters::kVisMaxDepth())));
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpMinDepth(), _featureParameters.at(Parameters::kVisMinDepth())));
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpRoiRatios(), _featureParameters.at(Parameters::kVisRoiRatios())));
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpSubPixEps(), _featureParameters.at(Parameters::kVisSubPixWinSize())));
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpSubPixIterations(), _featureParameters.at(Parameters::kVisSubPixIterations())));
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpSubPixWinSize(), _featureParameters.at(Parameters::kVisSubPixEps())));
+
 	this->parseParameters(parameters);
 }
 
@@ -76,19 +87,71 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisPnPReprojError(), _PnPReprojError);
 	Parameters::parse(parameters, Parameters::kVisPnPFlags(), _PnPFlags);
 
-	Parameters::parse(parameters, Parameters::kVisNNType(), _NNType);
-	Parameters::parse(parameters, Parameters::kVisNNDR(), _NNDR);
-	Parameters::parse(parameters, Parameters::kVisFeatureType(), _featureType);
-	Parameters::parse(parameters, Parameters::kVisMaxFeatures(), _maxWords);
-	Parameters::parse(parameters, Parameters::kVisMaxDepth(), _maxDepth);
-
-	Parameters::parse(parameters, Parameters::kKpSubPixWinSize(), _subPixWinSize);
-	Parameters::parse(parameters, Parameters::kKpSubPixIterations(), _subPixIterations);
-	Parameters::parse(parameters, Parameters::kKpSubPixEps(), _subPixEps);
-
 	UASSERT_MSG(_minInliers >= 1, uFormat("value=%d", _minInliers).c_str());
 	UASSERT_MSG(_inlierDistance > 0.0f, uFormat("value=%f", _inlierDistance).c_str());
 	UASSERT_MSG(_iterations > 0, uFormat("value=%d", _iterations).c_str());
+
+	// override feature parameters
+	for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
+	{
+		std::string group = uSplit(iter->first, '/').front();
+		if(group.compare("SURF") == 0 ||
+			group.compare("SIFT") == 0 ||
+			group.compare("ORB") == 0 ||
+			group.compare("FAST") == 0 ||
+			group.compare("FREAK") == 0 ||
+			group.compare("BRIEF") == 0 ||
+			group.compare("GFTT") == 0 ||
+			group.compare("BRISK") == 0)
+		{
+			uInsert(_featureParameters, ParametersPair(iter->first, iter->second));
+		}
+	}
+
+	if(uContains(parameters, Parameters::kVisNNType()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kKpNNStrategy(), parameters.at(Parameters::kVisNNType())));
+	}
+	if(uContains(parameters, Parameters::kVisNNDR()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kKpNndrRatio(), parameters.at(Parameters::kVisNNDR())));
+	}
+	if(uContains(parameters, Parameters::kVisFeatureType()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kKpDetectorStrategy(), parameters.at(Parameters::kVisFeatureType())));
+	}
+	if(uContains(parameters, Parameters::kVisMaxFeatures()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kKpWordsPerImage(), parameters.at(Parameters::kVisMaxFeatures())));
+	}
+	if(uContains(parameters, Parameters::kVisMaxDepth()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kKpMaxDepth(), parameters.at(Parameters::kVisMaxDepth())));
+	}
+	if(uContains(parameters, Parameters::kVisMinDepth()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kKpMinDepth(), parameters.at(Parameters::kVisMinDepth())));
+	}
+	if(uContains(parameters, Parameters::kVisRoiRatios()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kKpRoiRatios(), parameters.at(Parameters::kVisRoiRatios())));
+	}
+	if(uContains(parameters, Parameters::kVisSubPixEps()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kKpSubPixEps(), parameters.at(Parameters::kVisSubPixEps())));
+	}
+	if(uContains(parameters, Parameters::kVisSubPixIterations()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kKpSubPixIterations(), parameters.at(Parameters::kVisSubPixIterations())));
+	}
+	if(uContains(parameters, Parameters::kVisSubPixWinSize()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kKpSubPixWinSize(), parameters.at(Parameters::kVisSubPixWinSize())));
+	}
+}
+
+RegistrationVis::~RegistrationVis()
+{
 }
 
 Transform RegistrationVis::computeTransformation(
@@ -117,28 +180,7 @@ Transform RegistrationVis::computeTransformation(
 	if(fromSignature.getWords().size() == 0 && toSignature.getWords().size() == 0)
 	{
 		// Use the Memory class to extract features
-		ParametersMap customParameters;
-		// override some parameters
-		uInsert(customParameters, ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
-		uInsert(customParameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-		uInsert(customParameters, ParametersPair(Parameters::kMemBinDataKept(), "false"));
-		uInsert(customParameters, ParametersPair(Parameters::kMemSTMSize(), "0"));
-		uInsert(customParameters, ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
-		uInsert(customParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
-		uInsert(customParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(_NNType))); // bruteforce
-		uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(_NNDR)));
-		uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(_featureType))); // FAST/BRIEF
-		uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(_maxWords)));
-		uInsert(customParameters, ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(_maxDepth)));
-		uInsert(customParameters, ParametersPair(Parameters::kKpMinDepth(), uNumber2Str(_minDepth)));
-		uInsert(customParameters, ParametersPair(Parameters::kKpSubPixEps(), uNumber2Str(_subPixEps)));
-		uInsert(customParameters, ParametersPair(Parameters::kKpSubPixIterations(), uNumber2Str(_subPixIterations)));
-		uInsert(customParameters, ParametersPair(Parameters::kKpSubPixWinSize(), uNumber2Str(_subPixWinSize)));
-		uInsert(customParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
-		uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), _roiRatios));
-		uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "true"));
-
-		Memory memory(customParameters);
+		Memory memory(_featureParameters);
 
 		// Add signatures
 		SensorData dataFrom = fromSignature.sensorData();

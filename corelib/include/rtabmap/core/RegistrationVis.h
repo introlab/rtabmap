@@ -38,7 +38,7 @@ class RegistrationVis : public Registration
 {
 public:
 	RegistrationVis(const ParametersMap & parameters = ParametersMap());
-	virtual ~RegistrationVis() {}
+	virtual ~RegistrationVis();
 
 	virtual void parseParameters(const ParametersMap & parameters);
 
@@ -67,18 +67,7 @@ private:
 	double _PnPReprojError;
 	int _PnPFlags;
 
-	int _NNType;
-	float _NNDR;
-	int _featureType;
-	int _maxWords;
-	float _maxDepth;
-	float _minDepth;
-	std::string _roiRatios;
-
-	int _subPixWinSize;
-	int _subPixIterations;
-	double _subPixEps;
-
+	ParametersMap _featureParameters;
 };
 
 }

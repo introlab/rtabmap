@@ -99,7 +99,8 @@ public:
 		kFeatureGfttFreak=5,
 		kFeatureGfttBrief=6,
 		kFeatureBrisk=7,
-		kFeatureGfttOrb=8}; //new 0.10.11
+		kFeatureGfttOrb=8,   //new 0.10.11
+		kFeatureFastOrb=9};  //new 0.11.0
 
 	static Feature2D * create(Feature2D::Type & type, const ParametersMap & parameters);
 
@@ -253,8 +254,13 @@ private:
 	bool nonmaxSuppression_;
 	bool gpu_;
 	double gpuKeypointsRatio_;
+	int minThreshold_;
+	int maxThreshold_;
+	int maxTotalKeypoints_;
+	int gridRows_;
+	int gridCols_;
 
-	cv::Ptr<CV_FAST> _fast;
+	cv::Ptr<cv::FeatureDetector> _fast;
 	cv::Ptr<CV_FAST_GPU> _gpuFast;
 };
 
@@ -297,6 +303,23 @@ private:
 	int nOctaves_;
 
 	cv::Ptr<CV_FREAK> _freak;
+};
+
+//FAST_ORB
+class RTABMAP_EXP FAST_ORB : public FAST
+{
+public:
+	FAST_ORB(const ParametersMap & parameters = ParametersMap());
+	virtual ~FAST_ORB();
+
+	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureFastOrb;}
+
+private:
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+private:
+	ORB _orb;
 };
 
 //GFTT

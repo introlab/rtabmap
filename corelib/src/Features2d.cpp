@@ -386,11 +386,17 @@ Feature2D * Feature2D::create(Feature2D::Type & type, const ParametersMap & para
 	case Feature2D::kFeatureFastFreak:
 		feature2D = new FAST_FREAK(parameters);
 		break;
+	case Feature2D::kFeatureFastOrb:
+		feature2D = new FAST_ORB(parameters);
+		break;
 	case Feature2D::kFeatureGfttFreak:
 		feature2D = new GFTT_FREAK(parameters);
 		break;
 	case Feature2D::kFeatureGfttBrief:
 		feature2D = new GFTT_BRIEF(parameters);
+		break;
+	case Feature2D::kFeatureGfttOrb:
+		feature2D = new GFTT_ORB(parameters);
 		break;
 	case Feature2D::kFeatureBrisk:
 		feature2D = new BRISK(parameters);
@@ -408,6 +414,7 @@ Feature2D * Feature2D::create(Feature2D::Type & type, const ParametersMap & para
 #endif
 
 	}
+
 	return feature2D;
 }
 std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const
@@ -798,7 +805,12 @@ FAST::FAST(const ParametersMap & parameters) :
 		threshold_(Parameters::defaultFASTThreshold()),
 		nonmaxSuppression_(Parameters::defaultFASTNonmaxSuppression()),
 		gpu_(Parameters::defaultFASTGpu()),
-		gpuKeypointsRatio_(Parameters::defaultFASTGpuKeypointsRatio())
+		gpuKeypointsRatio_(Parameters::defaultFASTGpuKeypointsRatio()),
+		minThreshold_(Parameters::defaultFASTMinThreshold()),
+		maxThreshold_(Parameters::defaultFASTMaxThreshold()),
+		maxTotalKeypoints_(Parameters::defaultKpWordsPerImage()),
+		gridRows_(Parameters::defaultFASTGridRows()),
+		gridCols_(Parameters::defaultFASTGridCols())
 {
 	parseParameters(parameters);
 }
@@ -815,6 +827,17 @@ void FAST::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kFASTNonmaxSuppression(), nonmaxSuppression_);
 	Parameters::parse(parameters, Parameters::kFASTGpu(), gpu_);
 	Parameters::parse(parameters, Parameters::kFASTGpuKeypointsRatio(), gpuKeypointsRatio_);
+
+	Parameters::parse(parameters, Parameters::kFASTMinThreshold(), minThreshold_);
+	Parameters::parse(parameters, Parameters::kFASTMaxThreshold(), maxThreshold_);
+	Parameters::parse(parameters, Parameters::kKpWordsPerImage(), maxTotalKeypoints_);
+	Parameters::parse(parameters, Parameters::kFASTGridRows(), gridRows_);
+	Parameters::parse(parameters, Parameters::kFASTGridCols(), gridCols_);
+
+	UWARN("minThreshold_=%d", minThreshold_);
+
+	UASSERT_MSG(threshold_ >= minThreshold_, uFormat("%d vs %d", threshold_, minThreshold_).c_str());
+	UASSERT_MSG(threshold_ <= maxThreshold_, uFormat("%d vs %d", threshold_, maxThreshold_).c_str());
 
 #if CV_MAJOR_VERSION < 3
 	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount() == 0)
@@ -854,7 +877,25 @@ void FAST::parseParameters(const ParametersMap & parameters)
 	else
 	{
 #if CV_MAJOR_VERSION < 3
-		_fast = cv::Ptr<CV_FAST>(new CV_FAST(threshold_, nonmaxSuppression_));
+		if(gridRows_ > 0 && gridCols_ > 0)
+		{
+			cv::Ptr<cv::FeatureDetector> fastAdjuster = cv::Ptr<cv::FastAdjuster>(new cv::FastAdjuster(threshold_, nonmaxSuppression_, minThreshold_, maxThreshold_));
+			_fast = cv::Ptr<cv::FeatureDetector>(new cv::GridAdaptedFeatureDetector(fastAdjuster, maxTotalKeypoints_, gridRows_, gridCols_));
+		}
+		else
+		{
+			if(gridRows_ > 0)
+			{
+				UWARN("Parameter \"%s\" is set (value=%d) but not \"%s\"! Grid adaptor will not be added.",
+						Parameters::kFASTGridRows().c_str(), gridRows_, Parameters::kFASTGridCols().c_str());
+			}
+			else if(gridCols_ > 0)
+			{
+				UWARN("Parameter \"%s\" is set (value=%d) but not \"%s\"! Grid adaptor will not be added.",
+						Parameters::kFASTGridCols().c_str(), gridCols_, Parameters::kFASTGridRows().c_str());
+			}
+			_fast = cv::Ptr<cv::FeatureDetector>(new CV_FAST(threshold_, nonmaxSuppression_));
+		}
 #else
 		_fast = CV_FAST::create(threshold_, nonmaxSuppression_);
 #endif
@@ -981,6 +1022,32 @@ cv::Mat FAST_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<c
 #endif
 #endif
 	return descriptors;
+}
+
+//////////////////////////
+//FAST-ORB
+//////////////////////////
+FAST_ORB::FAST_ORB(const ParametersMap & parameters) :
+	FAST(parameters),
+	_orb(parameters)
+{
+	parseParameters(parameters);
+}
+
+FAST_ORB::~FAST_ORB()
+{
+}
+
+void FAST_ORB::parseParameters(const ParametersMap & parameters)
+{
+	FAST::parseParameters(parameters);
+	_orb.parseParameters(parameters);
+}
+
+cv::Mat FAST_ORB::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	return _orb.generateDescriptors(image, keypoints);
 }
 
 //////////////////////////

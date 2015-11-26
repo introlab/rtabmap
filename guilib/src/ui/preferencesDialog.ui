@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-1112</y>
+            <y>0</y>
             <width>760</width>
             <height>1802</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>20</number>
+                <number>21</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -4907,6 +4907,11 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                              <string>GFTT+ORB</string>
                             </property>
                            </item>
+                           <item>
+                            <property name="text">
+                             <string>FAST+ORB</string>
+                            </property>
+                           </item>
                           </widget>
                          </item>
                          <item row="1" column="1">
@@ -5929,7 +5934,7 @@ When set to false, no new words are added to dictionary, so no more updates are 
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="0">
+                      <item row="6" column="0">
                        <widget class="QCheckBox" name="fastGpu">
                         <property name="text">
                          <string/>
@@ -5939,7 +5944,7 @@ When set to false, no new words are added to dictionary, so no more updates are 
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="1">
+                      <item row="6" column="1">
                        <widget class="QLabel" name="label_fastGPU">
                         <property name="text">
                          <string>GPU-FAST: Use GPU version of FAST. This option is enabled only if OpenCV is built with CUDA and GPUs are detected.</string>
@@ -5952,7 +5957,7 @@ When set to false, no new words are added to dictionary, so no more updates are 
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="0">
+                      <item row="7" column="0">
                        <widget class="QDoubleSpinBox" name="fastKeypointRatio">
                         <property name="maximum">
                          <double>1.000000000000000</double>
@@ -5965,7 +5970,7 @@ When set to false, no new words are added to dictionary, so no more updates are 
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="1">
+                      <item row="7" column="1">
                        <widget class="QLabel" name="label_fastGPUKptRatio">
                         <property name="text">
                          <string>Used with FAST GPU.</string>
@@ -5975,6 +5980,110 @@ When set to false, no new words are added to dictionary, so no more updates are 
                         </property>
                         <property name="textInteractionFlags">
                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QLabel" name="label_104">
+                        <property name="text">
+                         <string>Grid rows (0 to disable). Adapts a detector to partition the source image into a grid and detect points in each cell.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QSpinBox" name="fastGridRows">
+                        <property name="minimum">
+                         <number>0</number>
+                        </property>
+                        <property name="maximum">
+                         <number>9999</number>
+                        </property>
+                        <property name="value">
+                         <number>0</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QSpinBox" name="fastGridCols">
+                        <property name="minimum">
+                         <number>0</number>
+                        </property>
+                        <property name="maximum">
+                         <number>9999</number>
+                        </property>
+                        <property name="value">
+                         <number>0</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_109">
+                        <property name="text">
+                         <string>Grid cols (0 to disable). Adapts a detector to partition the source image into a grid and detect points in each cell.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QLabel" name="label_111">
+                        <property name="text">
+                         <string>Minimum threshold. Used only when FAST/GridRows and FAST/GridCols are set.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_115">
+                        <property name="text">
+                         <string>Maximum threshold. Used only when FAST/GridRows and FAST/GridCols are set.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QSpinBox" name="fastThresholdMin">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>9999</number>
+                        </property>
+                        <property name="value">
+                         <number>50</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QSpinBox" name="fastThresholdMax">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>9999</number>
+                        </property>
+                        <property name="value">
+                         <number>50</number>
                         </property>
                        </widget>
                       </item>
@@ -8054,6 +8163,11 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            <item>
                             <property name="text">
                              <string>GFTT+ORB</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>FAST+ORB</string>
                             </property>
                            </item>
                           </widget>
