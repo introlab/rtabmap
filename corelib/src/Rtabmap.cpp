@@ -1916,7 +1916,7 @@ bool Rtabmap::process(
 								if(signature->getLinks().find(nearestId) == signature->getLinks().end())
 								{
 									float variance = 1.0f;
-									Transform transform = _memory->computeScanMatchingTransform(signature->id(), nearestId, path, 0, 0, &variance);
+									Transform transform = _memory->computeIcpTransformMulti(signature->id(), nearestId, path, 0, 0, &variance);
 									if(!transform.isNull())
 									{
 										if(_proximityFilteringRadius <= 0 || transform.getNormSquared() <= _proximityFilteringRadius*_proximityFilteringRadius)

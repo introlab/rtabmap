@@ -181,7 +181,7 @@ public:
 
 	Transform computeVisualTransform(int fromId, int toId, std::string * rejectedMsg = 0, int * inliers = 0, float * variance = 0);
 	Transform computeIcpTransform(int fromId, int toId, Transform guess, std::string * rejectedMsg = 0, int * correspondences = 0, float * variance = 0, float * correspondencesRatio = 0);
-	Transform computeScanMatchingTransform(
+	Transform computeIcpTransformMulti(
 			int newId,
 			int oldId,
 			const std::map<int, Transform> & poses,

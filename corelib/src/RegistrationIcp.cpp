@@ -156,7 +156,7 @@ Transform RegistrationIcp::computeTransformation(
 			int correspondences = 0;
 			double variance = 1.0;
 			bool correspondencesComputed = false;
-			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
+			pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
 			if(!_icp2D) // 3D ICP
 			{
 				if(_pointToPlane)
@@ -170,24 +170,24 @@ Transform RegistrationIcp::computeTransformation(
 
 					if(toCloudNormals->size() && fromCloudNormals->size())
 					{
-						pcl::PointCloud<pcl::PointNormal>::Ptr newCloudNormalsRegistered(new pcl::PointCloud<pcl::PointNormal>());
+						pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormalsRegistered(new pcl::PointCloud<pcl::PointNormal>());
 						icpT = util3d::icpPointToPlane(
-								toCloudNormals,
 								fromCloudNormals,
+								toCloudNormals,
 							   _maxCorrespondenceDistance,
 							   _maxIterations,
 							   hasConverged,
-							   *newCloudNormalsRegistered);
+							   *fromCloudNormalsRegistered);
 						if(!filtered &&
 							!icpT.isNull() &&
 							hasConverged)
 						{
 							util3d::computeVarianceAndCorrespondences(
-								newCloudNormalsRegistered,
-								fromCloudNormals,
-								_maxCorrespondenceDistance,
-								variance,
-								correspondences);
+									fromCloudNormals,
+									fromCloudNormalsRegistered,
+									_maxCorrespondenceDistance,
+									variance,
+									correspondences);
 							correspondencesComputed = true;
 						}
 					}
@@ -195,34 +195,34 @@ Transform RegistrationIcp::computeTransformation(
 				else
 				{
 					icpT = util3d::icp(
-							toCloudFiltered,
 							fromCloudFiltered,
+							toCloudFiltered,
 							_maxCorrespondenceDistance,
 							_maxIterations,
 							hasConverged,
-							*newCloudRegistered);
+							*fromCloudRegistered);
 				}
 			}
 			else // 2D ICP
 			{
 				icpT = util3d::icp2D(
-							toCloudFiltered,
-							fromCloudFiltered,
-						   _maxCorrespondenceDistance,
-						   _maxIterations,
-						   hasConverged,
-						   *newCloudRegistered);
+						fromCloudFiltered,
+						toCloudFiltered,
+					   _maxCorrespondenceDistance,
+					   _maxIterations,
+					   hasConverged,
+					   *fromCloudRegistered);
 			}
 
-			/*pcl::io::savePCDFile("fromCloud.pcd", *fromCloud);
+			pcl::io::savePCDFile("fromCloud.pcd", *fromCloud);
 			pcl::io::savePCDFile("toCloud.pcd", *toCloud);
 			UWARN("saved fromCloud.pcd and toCloud.pcd");
 			if(!icpT.isNull())
 			{
-				pcl::PointCloud<pcl::PointXYZ>::Ptr toCloudTmp = util3d::transformPointCloud(toCloud, icpT);
-				pcl::io::savePCDFile("newCloudFinal.pcd", *toCloudTmp);
-				UWARN("saved toCloudFinal.pcd");
-			}*/
+				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudTmp = util3d::transformPointCloud(fromCloud, icpT);
+				pcl::io::savePCDFile("fromCloudFinal.pcd", *fromCloudTmp);
+				UWARN("saved fromCloudFinal.pcd");
+			}
 
 			if(!icpT.isNull() &&
 				hasConverged)
@@ -256,12 +256,12 @@ Transform RegistrationIcp::computeTransformation(
 						}
 						else
 						{
-							fromCloud = newCloudRegistered;
+							fromCloud = fromCloudRegistered;
 						}
 
 						util3d::computeVarianceAndCorrespondences(
-								toCloud,
 								fromCloud,
+								toCloud,
 								_maxCorrespondenceDistance,
 								variance,
 								correspondences);
@@ -313,7 +313,7 @@ Transform RegistrationIcp::computeTransformation(
 					}
 					else
 					{
-						transform = guess*icpT;
+						transform = icpT.inverse()*guess;
 					}
 				}
 			}

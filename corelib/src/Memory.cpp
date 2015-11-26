@@ -2160,19 +2160,19 @@ Transform Memory::computeIcpTransform(
 	return t;
 }
 
-// poses of newId and oldId must be in "poses"
-Transform Memory::computeScanMatchingTransform(
-		int newId,
-		int oldId,
+// compute transform fromId -> multiple toId
+Transform Memory::computeIcpTransformMulti(
+		int fromId,
+		int toId,
 		const std::map<int, Transform> & poses,
 		std::string * rejectedMsg,
 		int * inliers,
 		float * variance)
 {
-	UASSERT(uContains(poses, newId) && uContains(_signatures, newId));
-	UASSERT(uContains(poses, oldId) && uContains(_signatures, oldId));
+	UASSERT(uContains(poses, fromId) && uContains(_signatures, fromId));
+	UASSERT(uContains(poses, toId) && uContains(_signatures, toId));
 
-	UDEBUG("Guess=%s", (poses.at(newId).inverse() * poses.at(oldId)).prettyPrint().c_str());
+	UDEBUG("Guess=%s", (poses.at(fromId).inverse() * poses.at(toId)).prettyPrint().c_str());
 
 	// make sure that all laser scans are loaded
 	std::list<Signature*> depthToLoad;
@@ -2190,29 +2190,29 @@ Transform Memory::computeScanMatchingTransform(
 		_dbDriver->loadNodeData(depthToLoad);
 	}
 
-	Signature * newS = _getSignature(newId);
-	cv::Mat newScan;
-	newS->sensorData().uncompressData(0, 0, &newScan);
+	Signature * fromS = _getSignature(fromId);
+	cv::Mat fromScan;
+	fromS->sensorData().uncompressData(0, 0, &fromScan);
 
 	Transform t;
-	if(!newScan.empty())
+	if(!fromScan.empty())
 	{
 		// Create a fake signature with all scans merged in oldId referential
 		SensorData assembledData;
-		Transform oldPose = poses.at(oldId);
+		Transform toPose = poses.at(toId);
 		std::string msg;
-		pcl::PointCloud<pcl::PointXYZ>::Ptr assembledOldClouds(new pcl::PointCloud<pcl::PointXYZ>);
+		pcl::PointCloud<pcl::PointXYZ>::Ptr assembledToClouds(new pcl::PointCloud<pcl::PointXYZ>);
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
-			if(iter->first != newId)
+			if(iter->first != fromId)
 			{
 				Signature * s = this->_getSignature(iter->first);
 				if(!s->sensorData().laserScanCompressed().empty())
 				{
 					cv::Mat scan;
 					s->sensorData().uncompressData(0, 0, &scan);
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(scan, oldPose.inverse() * iter->second);
-					*assembledOldClouds += *cloud;
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(scan, toPose.inverse() * iter->second);
+					*assembledToClouds += *cloud;
 				}
 				else
 				{
@@ -2220,14 +2220,14 @@ Transform Memory::computeScanMatchingTransform(
 				}
 			}
 		}
-		if(assembledOldClouds->size())
+		if(assembledToClouds->size())
 		{
-			assembledData.setLaserScanRaw(util3d::laserScanFromPointCloud(*assembledOldClouds, Transform()), 0, 0);
+			assembledData.setLaserScanRaw(util3d::laserScanFromPointCloud(*assembledToClouds, Transform()), fromS->sensorData().laserScanMaxPts(), fromS->sensorData().laserScanMaxRange());
 		}
 
-		Transform guess = poses.at(newId).inverse() * poses.at(oldId);
-		Signature oldS(0, 0, 0, 0, "", oldPose, assembledData);
-		t = _registrationIcp->computeTransformation(*newS, oldS, guess, rejectedMsg, inliers, variance);
+		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
+		Signature toS(0, 0, 0, 0, "", toPose, assembledData);
+		t = _registrationIcp->computeTransformation(*fromS, toS, guess, rejectedMsg, inliers, variance);
 	}
 
 	return t;
