@@ -72,11 +72,11 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(LocalLoop, Space_closures_added_visually,);
 	RTABMAP_STATS(LocalLoop, Space_closures_added_icp_only,);
 
-	RTABMAP_STATS(OdomCorrection, Accepted,);
-	RTABMAP_STATS(OdomCorrection, Inliers,);
-	RTABMAP_STATS(OdomCorrection, Inliers_ratio,);
-	RTABMAP_STATS(OdomCorrection, Variance,);
-	RTABMAP_STATS(OdomCorrection, Pts,);
+	RTABMAP_STATS(NeighborLinkRefining, Accepted,);
+	RTABMAP_STATS(NeighborLinkRefining, Inliers,);
+	RTABMAP_STATS(NeighborLinkRefining, Inliers_ratio,);
+	RTABMAP_STATS(NeighborLinkRefining, Variance,);
+	RTABMAP_STATS(NeighborLinkRefining, Pts,);
 
 	RTABMAP_STATS(Memory, Working_memory_size,);
 	RTABMAP_STATS(Memory, Short_time_memory_size,);
@@ -94,9 +94,9 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Memory, Distance_travelled, m);
 
 	RTABMAP_STATS(Timing, Memory_update, ms);
-	RTABMAP_STATS(Timing, Odom_correction, ms);
-	RTABMAP_STATS(Timing, Local_detection_TIME, ms);
-	RTABMAP_STATS(Timing, Local_detection_SPACE, ms);
+	RTABMAP_STATS(Timing, Neighbor_link_refining, ms);
+	RTABMAP_STATS(Timing, Proximity_by_time, ms);
+	RTABMAP_STATS(Timing, Proximity_by_space, ms);
 	RTABMAP_STATS(Timing, Cleaning_neighbors, ms);
 	RTABMAP_STATS(Timing, Reactivation, ms);
 	RTABMAP_STATS(Timing, Add_loop_closure_link, ms);

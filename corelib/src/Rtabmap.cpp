@@ -807,9 +807,9 @@ bool Rtabmap::process(
 	UTimer timer;
 	UTimer timerTotal;
 	double timeMemoryUpdate = 0;
-	double timeScanMatching = 0;
-	double timeLocalTimeDetection = 0;
-	double timeLocalSpaceDetection = 0;
+	double timeNeighborLinkRefining = 0;
+	double timeProximityByTimeDetection = 0;
+	double timeProximityBySpaceDetection = 0;
 	double timeCleaningNeighbors = 0;
 	double timeReactivations = 0;
 	double timeAddLoopClosureLink = 0;
@@ -1039,14 +1039,14 @@ bool Rtabmap::process(
 						_memory->updateLink(signature->id(), oldId, guess, sqrtVar, sqrtVar);
 					}
 				}
-				statistics_.addStatistic(Statistics::kOdomCorrectionAccepted(), !t.isNull()?1.0f:0);
-				statistics_.addStatistic(Statistics::kOdomCorrectionInliers(), inliers);
-				statistics_.addStatistic(Statistics::kOdomCorrectionInliers_ratio(), inliersRatio);
-				statistics_.addStatistic(Statistics::kOdomCorrectionVariance(), variance);
-				statistics_.addStatistic(Statistics::kOdomCorrectionPts(), signature->sensorData().laserScanRaw().cols);
+				statistics_.addStatistic(Statistics::kNeighborLinkRefiningAccepted(), !t.isNull()?1.0f:0);
+				statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers(), inliers);
+				statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers_ratio(), inliersRatio);
+				statistics_.addStatistic(Statistics::kNeighborLinkRefiningVariance(), variance);
+				statistics_.addStatistic(Statistics::kNeighborLinkRefiningPts(), signature->sensorData().laserScanRaw().cols);
 			}
-			timeScanMatching = timer.ticks();
-			ULOGGER_INFO("timeScanMatching=%fs", timeScanMatching);
+			timeNeighborLinkRefining = timer.ticks();
+			ULOGGER_INFO("timeScanMatching=%fs", timeNeighborLinkRefining);
 
 			UASSERT(oldS->hasLink(signature->id()));
 			UASSERT(uContains(_optimizedPoses, oldId));
@@ -1186,8 +1186,8 @@ bool Rtabmap::process(
 		}
 	}
 
-	timeLocalTimeDetection = timer.ticks();
-	UINFO("timeLocalTimeDetection=%fs", timeLocalTimeDetection);
+	timeProximityByTimeDetection = timer.ticks();
+	UINFO("timeLocalTimeDetection=%fs", timeProximityByTimeDetection);
 
 	//============================================================
 	// Bayes filter update
@@ -1980,8 +1980,8 @@ bool Rtabmap::process(
 			}
 		}
 	}
-	timeLocalSpaceDetection = timer.ticks();
-	ULOGGER_INFO("timeLocalSpaceDetection=%fs", timeLocalSpaceDetection);
+	timeProximityBySpaceDetection = timer.ticks();
+	ULOGGER_INFO("timeProximityBySpaceDetection=%fs", timeProximityBySpaceDetection);
 
 	//============================================================
 	// Add virtual links if a path is activated
@@ -2209,9 +2209,9 @@ bool Rtabmap::process(
 
 			// timings...
 			statistics_.addStatistic(Statistics::kTimingMemory_update(), timeMemoryUpdate*1000);
-			statistics_.addStatistic(Statistics::kTimingOdom_correction(), timeScanMatching*1000);
-			statistics_.addStatistic(Statistics::kTimingLocal_detection_TIME(), timeLocalTimeDetection*1000);
-			statistics_.addStatistic(Statistics::kTimingLocal_detection_SPACE(), timeLocalSpaceDetection*1000);
+			statistics_.addStatistic(Statistics::kTimingNeighbor_link_refining(), timeNeighborLinkRefining*1000);
+			statistics_.addStatistic(Statistics::kTimingProximity_by_time(), timeProximityByTimeDetection*1000);
+			statistics_.addStatistic(Statistics::kTimingProximity_by_space(), timeProximityBySpaceDetection*1000);
 			statistics_.addStatistic(Statistics::kTimingReactivation(), timeReactivations*1000);
 			statistics_.addStatistic(Statistics::kTimingAdd_loop_closure_link(), timeAddLoopClosureLink*1000);
 			statistics_.addStatistic(Statistics::kTimingMap_optimization(), timeMapOptimization*1000);
@@ -2506,9 +2506,9 @@ bool Rtabmap::process(
 									timeRetrievalDbAccess,
 									timeAddLoopClosureLink,
 									timeMemoryCleanup,
-									timeScanMatching,
-									timeLocalTimeDetection,
-									timeLocalSpaceDetection,
+									timeNeighborLinkRefining,
+									timeProximityByTimeDetection,
+									timeProximityBySpaceDetection,
 									timeMapOptimization);
 		std::string logI = uFormat("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
 									_loopClosureHypothesis.first,
