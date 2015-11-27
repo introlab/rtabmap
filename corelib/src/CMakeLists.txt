@@ -44,6 +44,12 @@ SET(SRC_FILES
 	Compression.cpp
 	Link.cpp
 	
+	Optimizer.cpp
+	OptimizerTORO.cpp
+	OptimizerG2O.cpp
+	OptimizerGTSAM.cpp
+	OptimizerCVSBA.cpp
+	
 	RegistrationIcp.cpp
 	RegistrationVis.cpp
 	

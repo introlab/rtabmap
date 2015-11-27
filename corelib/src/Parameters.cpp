@@ -194,6 +194,13 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionPathFilteringRadius", std::make_pair(true,  Parameters::kRGBDProximityPathFilteringRadius())));
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionPathRawPosesUsed",    std::make_pair(true,  Parameters::kRGBDProximityPathRawPosesUsed())));
 
+		removedParameters_.insert(std::make_pair("RGBD/OptimizeStrategy",             std::make_pair(true,  Parameters::kOptimizerStrategy())));
+		removedParameters_.insert(std::make_pair("RGBD/OptimizeEpsilon",             std::make_pair(true,  Parameters::kOptimizerEpsilon())));
+		removedParameters_.insert(std::make_pair("RGBD/OptimizeIterations",          std::make_pair(true,  Parameters::kOptimizerIterations())));
+		removedParameters_.insert(std::make_pair("RGBD/OptimizeRobust",              std::make_pair(true,  Parameters::kOptimizerRobust())));
+		removedParameters_.insert(std::make_pair("RGBD/OptimizeSlam2D",              std::make_pair(true,  Parameters::kOptimizerSlam2D())));
+		removedParameters_.insert(std::make_pair("RGBD/OptimizeVarianceIgnored",     std::make_pair(true,  Parameters::kOptimizerVarianceIgnored())));
+
 		// before 0.11.0
 		removedParameters_.insert(std::make_pair("GFTT/MaxCorners",                  std::make_pair(true, Parameters::kVisMaxFeatures())));
 		removedParameters_.insert(std::make_pair("LccBow/MaxDepth",                  std::make_pair(true, Parameters::kVisMaxDepth())));
@@ -201,7 +208,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("Rtabmap/DetectorStrategy",         std::make_pair(true, Parameters::kKpDetectorStrategy())));
 		removedParameters_.insert(std::make_pair("RGBD/ScanMatchingSize",            std::make_pair(true, Parameters::kRGBDNeighborLinkRefining())));
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionRadius",    std::make_pair(true, Parameters::kRGBDLocalRadius())));
-		removedParameters_.insert(std::make_pair("RGBD/ToroIterations",              std::make_pair(true, Parameters::kRGBDOptimizeIterations())));
+		removedParameters_.insert(std::make_pair("RGBD/ToroIterations",              std::make_pair(true, Parameters::kOptimizerIterations())));
 		removedParameters_.insert(std::make_pair("Mem/RehearsedNodesKept",           std::make_pair(true, Parameters::kMemNotLinkedNodesKept())));
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionMaxDiffID", std::make_pair(true, Parameters::kRGBDProximityMaxGraphDepth())));
 		removedParameters_.insert(std::make_pair("RGBD/PlanVirtualLinksMaxDiffID",   std::make_pair(false, "")));

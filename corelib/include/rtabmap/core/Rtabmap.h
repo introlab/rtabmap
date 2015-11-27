@@ -47,9 +47,7 @@ class EpipolarGeometry;
 class Memory;
 class BayesFilter;
 class Signature;
-namespace graph {
 class Optimizer;
-}
 
 class RTABMAP_EXP Rtabmap
 {
@@ -216,7 +214,7 @@ private:
 	// strategies for a type of signature or configuration.
 	EpipolarGeometry * _epipolarGeometry;
 	BayesFilter * _bayesFilter;
-	graph::Optimizer * _graphOptimizer;
+	Optimizer * _graphOptimizer;
 	ParametersMap _modifiedParameters;
 
 	Memory * _memory;

@@ -60,6 +60,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/Compression.h"
 #include "rtabmap/core/Graph.h"
+#include "rtabmap/core/Optimizer.h"
 #include "rtabmap/core/RegistrationVis.h"
 #include "rtabmap/core/RegistrationIcp.h"
 #include "rtabmap/gui/DataRecorder.h"
@@ -126,7 +127,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 			ui_->comboBox_nnType->setCurrentIndex(3);
 		}
 	}
-	if(!graph::G2OOptimizer::available())
+	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
 	{
 		ui_->comboBox_graphOptimizer->setItemData(1, 0, Qt::UserRole - 1);
 		if(ui_->comboBox_graphOptimizer->currentIndex() == 1)
@@ -135,7 +136,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 			ui_->comboBox_graphOptimizer->setCurrentIndex(0);
 		}
 	}
-	if(!graph::GTSAMOptimizer::available())
+	if(!Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 	{
 		ui_->comboBox_graphOptimizer->setItemData(1, 0, Qt::UserRole - 1);
 		if(ui_->comboBox_graphOptimizer->currentIndex() == 2)
@@ -144,7 +145,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 			ui_->comboBox_graphOptimizer->setCurrentIndex(0);
 		}
 	}
-	if(!graph::G2OOptimizer::available() && !graph::GTSAMOptimizer::available())
+	if(!Optimizer::isAvailable(Optimizer::kTypeG2O) && !Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 	{
 		ui_->checkBox_robust->setEnabled(false);
 	}
@@ -169,7 +170,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->actionGenerate_local_graph_dot, SIGNAL(triggered()), this, SLOT(generateLocalGraph()));
 	connect(ui_->actionGenerate_TORO_graph_graph, SIGNAL(triggered()), this, SLOT(generateTOROGraph()));
 	connect(ui_->actionGenerate_g2o_graph_g2o, SIGNAL(triggered()), this, SLOT(generateG2OGraph()));
-	ui_->actionGenerate_g2o_graph_g2o->setEnabled(graph::G2OOptimizer::available());
+	ui_->actionGenerate_g2o_graph_g2o->setEnabled(Optimizer::isAvailable(Optimizer::kTypeG2O));
 	connect(ui_->actionView_3D_map, SIGNAL(triggered()), this, SLOT(view3DMap()));
 	connect(ui_->actionView_3D_laser_scans, SIGNAL(triggered()), this, SLOT(view3DLaserScans()));
 	connect(ui_->actionGenerate_3D_map_pcd, SIGNAL(triggered()), this, SLOT(generate3DMap()));
@@ -1410,11 +1411,11 @@ void DatabaseViewer::generateTOROGraph()
 				{
 					iter->second.setInfMatrix(cv::Mat::eye(6,6,CV_64FC1));
 				}
-				graph::TOROOptimizer::saveGraph(path.toStdString(), uValueAt(graphes_, id), links);
+				graph::exportPoses(path.toStdString(), 3, uValueAt(graphes_, id), links);
 			}
 			else
 			{
-				graph::TOROOptimizer::saveGraph(path.toStdString(), uValueAt(graphes_, id), graphLinks_);
+				graph::exportPoses(path.toStdString(), 3, uValueAt(graphes_, id), graphLinks_);
 			}
 		}
 	}
@@ -1442,11 +1443,11 @@ void DatabaseViewer::generateG2OGraph()
 				{
 					iter->second.setInfMatrix(cv::Mat::eye(6,6,CV_64FC1));
 				}
-				graph::G2OOptimizer::saveGraph(path.toStdString(), uValueAt(graphes_, id), links, ui_->checkBox_robust->isChecked());
+				graph::exportPoses(path.toStdString(), 4, uValueAt(graphes_, id), links, std::map<int, double>(), ui_->checkBox_robust->isChecked());
 			}
 			else
 			{
-				graph::G2OOptimizer::saveGraph(path.toStdString(), uValueAt(graphes_, id), graphLinks_, ui_->checkBox_robust->isChecked());
+				graph::exportPoses(path.toStdString(), 4, uValueAt(graphes_, id), graphLinks_, std::map<int, double>(), ui_->checkBox_robust->isChecked());
 			}
 		}
 	}
@@ -2985,34 +2986,6 @@ void DatabaseViewer::updateConstraintView(
 						//add other scans matching
 						//optimize the path's poses locally
 
-						graph::Optimizer * optimizer = 0;
-						if(ui_->comboBox_graphOptimizer->currentIndex() == graph::Optimizer::kTypeGTSAM)
-						{
-							optimizer = new graph::GTSAMOptimizer(
-									ui_->spinBox_iterations->value(),
-									ui_->checkBox_2dslam->isChecked(),
-									ui_->checkBox_ignoreCovariance->isChecked(),
-									0.0,
-									ui_->checkBox_robust->isChecked());
-						}
-						else if(ui_->comboBox_graphOptimizer->currentIndex() == graph::Optimizer::kTypeG2O)
-						{
-							UINFO("ui_->checkBox_robust->isChecked()=%d", ui_->checkBox_robust->isChecked()?1:0);
-							optimizer = new graph::G2OOptimizer(
-									ui_->spinBox_iterations->value(),
-									ui_->checkBox_2dslam->isChecked(),
-									ui_->checkBox_ignoreCovariance->isChecked(),
-									0.0,
-									ui_->checkBox_robust->isChecked());
-						}
-						else
-						{
-							optimizer = new graph::TOROOptimizer(
-									ui_->spinBox_iterations->value(),
-									ui_->checkBox_2dslam->isChecked(),
-									ui_->checkBox_ignoreCovariance->isChecked(),
-									0.0);
-						}
 						std::map<int, rtabmap::Transform> poses;
 						for(unsigned int i=0; i<ids.size(); ++i)
 						{
@@ -3027,6 +3000,14 @@ void DatabaseViewer::updateConstraintView(
 						}
 						if(poses.size())
 						{
+							ParametersMap optimizerParameters;
+							uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerStrategy(), uNumber2Str(ui_->comboBox_graphOptimizer->currentIndex())));
+							uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(ui_->spinBox_iterations->value())));
+							uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerSlam2D(), uBool2Str(ui_->checkBox_2dslam->isChecked())));
+							uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerVarianceIgnored(), uBool2Str(ui_->checkBox_ignoreCovariance->isChecked())));
+							uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerRobust(), uBool2Str(ui_->checkBox_robust->isChecked())));
+							Optimizer * optimizer = Optimizer::create(optimizerParameters);
+
 							UASSERT(uContains(poses, link.to()));
 							std::map<int, rtabmap::Transform> posesOut;
 							std::multimap<int, rtabmap::Link> linksOut;
@@ -3500,34 +3481,14 @@ void DatabaseViewer::updateGraphView()
 				.arg(totalLocalTime)
 				.arg(totalUser));
 
-		graph::Optimizer * optimizer = 0;
-		if(ui_->comboBox_graphOptimizer->currentIndex() == graph::Optimizer::kTypeGTSAM)
-		{
-			optimizer = new graph::GTSAMOptimizer(
-					ui_->spinBox_iterations->value(),
-					ui_->checkBox_2dslam->isChecked(),
-					ui_->checkBox_ignoreCovariance->isChecked(),
-					0.0,
-					ui_->checkBox_robust->isChecked());
-		}
-		else if(ui_->comboBox_graphOptimizer->currentIndex() == graph::Optimizer::kTypeG2O)
-		{
-			UINFO("ui_->checkBox_robust->isChecked()=%d", ui_->checkBox_robust->isChecked()?1:0);
-			optimizer = new graph::G2OOptimizer(
-					ui_->spinBox_iterations->value(),
-					ui_->checkBox_2dslam->isChecked(),
-					ui_->checkBox_ignoreCovariance->isChecked(),
-					0.0,
-					ui_->checkBox_robust->isChecked());
-		}
-		else
-		{
-			optimizer = new graph::TOROOptimizer(
-					ui_->spinBox_iterations->value(),
-					ui_->checkBox_2dslam->isChecked(),
-					ui_->checkBox_ignoreCovariance->isChecked(),
-					0.0);
-		}
+		ParametersMap optimizerParameters;
+		uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerStrategy(), uNumber2Str(ui_->comboBox_graphOptimizer->currentIndex())));
+		uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(ui_->spinBox_iterations->value())));
+		uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerSlam2D(), uBool2Str(ui_->checkBox_2dslam->isChecked())));
+		uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerVarianceIgnored(), uBool2Str(ui_->checkBox_ignoreCovariance->isChecked())));
+		uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerRobust(), uBool2Str(ui_->checkBox_robust->isChecked())));
+		Optimizer * optimizer = Optimizer::create(optimizerParameters);
+
 		std::map<int, rtabmap::Transform> posesOut;
 		std::multimap<int, rtabmap::Link> linksOut;
 		UINFO("Get connected graph from %d (%d poses, %d links)", fromId, (int)poses.size(), (int)links.size());

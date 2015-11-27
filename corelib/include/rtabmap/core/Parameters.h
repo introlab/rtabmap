@@ -316,12 +316,12 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, ProximityPathRawPosesUsed,    bool, true,   "When comparing to a local path, merge the scan using the odometry poses (with neighbor link optimizations) instead of the ones in the optimized local graph.");
 
 	// Graph optimization
-	RTABMAP_PARAM(RGBD, OptimizeStrategy,          int, 0,       "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.");
-	RTABMAP_PARAM(RGBD, OptimizeIterations,        int, 100,     "Optimization iterations.");
-	RTABMAP_PARAM(RGBD, OptimizeSlam2D,            bool, false,  "If optimization is done only on x,y and theta (3DoF). Otherwise, it is done on full 6DoF poses.");
-	RTABMAP_PARAM(RGBD, OptimizeVarianceIgnored,   bool, false,  "Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links.");
-	RTABMAP_PARAM(RGBD, OptimizeEpsilon,           double, 0.0001,  "Stop optimizing when the error improvement is less than this value.");
-	RTABMAP_PARAM(RGBD, OptimizeRobust,            bool, true,  "Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies).");
+	RTABMAP_PARAM(Optimizer, Strategy,          int, 0,          "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.")
+	RTABMAP_PARAM(Optimizer, Iterations,        int, 100,        "Optimization iterations.");
+	RTABMAP_PARAM(Optimizer, Slam2D,            bool, false,     "If optimization is done only on x,y and theta (3DoF). Otherwise, it is done on full 6DoF poses.");
+	RTABMAP_PARAM(Optimizer, VarianceIgnored,   bool, false,     "Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links.");
+	RTABMAP_PARAM(Optimizer, Epsilon,           double, 0.0001,  "Stop optimizing when the error improvement is less than this value.");
+	RTABMAP_PARAM(Optimizer, Robust,            bool, true,      "Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies).");
 
 	// Odometry
 	RTABMAP_PARAM(Odom, Strategy,           	int, 0, 		"0=Bag-of-words 1=Optical Flow");

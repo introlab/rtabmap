@@ -94,6 +94,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_mapping.h"
 #include "rtabmap/core/util3d_surface.h"
 #include "rtabmap/core/util3d_registration.h"
+#include "rtabmap/core/Optimizer.h"
+#include "rtabmap/core/OptimizerCVSBA.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/RegistrationIcp.h"
 #include <pcl/visualization/cloud_viewer.h>
@@ -310,7 +312,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionKITTI_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesKITTI()));
 	connect(_ui->actionTORO_graph, SIGNAL(triggered()), this , SLOT(exportPosesTORO()));
 	connect(_ui->actionG2o_g2o, SIGNAL(triggered()), this , SLOT(exportPosesG2O()));
-	_ui->actionG2o_g2o->setVisible(graph::G2OOptimizer::available());
+	_ui->actionG2o_g2o->setVisible(Optimizer::isAvailable(Optimizer::kTypeG2O));
 	connect(_ui->actionDelete_memory, SIGNAL(triggered()), this , SLOT(deleteMemory()));
 	connect(_ui->actionDownload_all_clouds, SIGNAL(triggered()), this , SLOT(downloadAllClouds()));
 	connect(_ui->actionDownload_graph, SIGNAL(triggered()), this , SLOT(downloadPoseGraph()));
@@ -3420,7 +3422,7 @@ void MainWindow::postProcessing()
 	_initProgressDialog->show();
 
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
-	graph::Optimizer * optimizer = graph::Optimizer::create(parameters);
+	Optimizer * optimizer = Optimizer::create(parameters);
 	bool optimizeFromGraphEnd =  Parameters::defaultRGBDOptimizeFromGraphEnd();
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), optimizeFromGraphEnd);
 
@@ -3436,7 +3438,7 @@ void MainWindow::postProcessing()
 			_initProgressDialog->appendText(tr("Looking for more loop closures, clustering poses... (iteration=%1/%2, radius=%3 m angle=%4 degrees)")
 					.arg(n+1).arg(detectLoopClosureIterations).arg(clusterRadius).arg(clusterAngle));
 
-			std::multimap<int, int> clusters = rtabmap::graph::radiusPosesClustering(
+			std::multimap<int, int> clusters = graph::radiusPosesClustering(
 					_currentPosesMap,
 					clusterRadius,
 					clusterAngle*CV_PI/180.0);
@@ -3634,6 +3636,7 @@ void MainWindow::postProcessing()
 
 	if(sba)
 	{
+		UASSERT(OptimizerCVSBA::available());
 		_initProgressDialog->appendText(tr("SBA (%1 nodes, %2 constraints, %3 iterations)...")
 					.arg(optimizedPoses.size()).arg(linksOut.size()).arg(sbaIterations));
 		QApplication::processEvents();
@@ -3641,9 +3644,9 @@ void MainWindow::postProcessing()
 		QApplication::processEvents();
 
 		ParametersMap parametersSBA = _preferencesDialog->getAllParameters();
-		uInsert(parametersSBA, std::make_pair(Parameters::kRGBDOptimizeIterations(), uNumber2Str(sbaIterations)));
-		uInsert(parametersSBA, std::make_pair(Parameters::kRGBDOptimizeEpsilon(), uNumber2Str(sbaEpsilon)));
-		graph::CVSBAOptimizer cvsba = graph::CVSBAOptimizer(parametersSBA);
+		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(sbaIterations)));
+		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerEpsilon(), uNumber2Str(sbaEpsilon)));
+		OptimizerCVSBA cvsba = OptimizerCVSBA(parametersSBA);
 		cvsba.setInlierDistance(sbaInlierDistance);
 		cvsba.setMinInliers(sbaMinInliers);
 		std::map<int, Transform>  newPoses = cvsba.optimizeBA(0, optimizedPoses, linksOut, _cachedSignatures.toStdMap());

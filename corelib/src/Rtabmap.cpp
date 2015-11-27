@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/Version.h"
 #include "rtabmap/core/Features2d.h"
+#include "rtabmap/core/Optimizer.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/Signature.h"
 
@@ -416,12 +417,12 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	// If they already exists, we check the parameters if a change is requested
 
 	// Graph optimizer
-	graph::Optimizer::Type optimizerType = graph::Optimizer::kTypeUndef;
-	if((iter=parameters.find(Parameters::kRGBDOptimizeStrategy())) != parameters.end())
+	Optimizer::Type optimizerType = Optimizer::kTypeUndef;
+	if((iter=parameters.find(Parameters::kOptimizerStrategy())) != parameters.end())
 	{
-		optimizerType = (graph::Optimizer::Type)std::atoi((*iter).second.c_str());
+		optimizerType = (Optimizer::Type)std::atoi((*iter).second.c_str());
 	}
-	if(optimizerType!=graph::Optimizer::kTypeUndef)
+	if(optimizerType!=Optimizer::kTypeUndef)
 	{
 		UDEBUG("new detector strategy %d", int(optimizerType));
 		if(_graphOptimizer)
@@ -430,7 +431,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 			_graphOptimizer = 0;
 		}
 
-		_graphOptimizer = graph::Optimizer::create(optimizerType, parameters);
+		_graphOptimizer = Optimizer::create(optimizerType, parameters);
 	}
 	else if(_graphOptimizer)
 	{
@@ -438,8 +439,8 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	}
 	else
 	{
-		optimizerType = (graph::Optimizer::Type)Parameters::defaultRGBDOptimizeStrategy();
-		_graphOptimizer = graph::Optimizer::create(optimizerType, parameters);
+		optimizerType = (Optimizer::Type)Parameters::defaultOptimizerStrategy();
+		_graphOptimizer = Optimizer::create(optimizerType, parameters);
 	}
 
 	if(_memory)

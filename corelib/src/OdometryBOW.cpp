@@ -33,7 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_registration.h"
 #include "rtabmap/core/util3d_correspondences.h"
 #include "rtabmap/core/util3d_motion_estimation.h"
-#include "rtabmap/core/Graph.h"
+#include "rtabmap/core/Optimizer.h"
 #include "rtabmap/core/VWDictionary.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
@@ -137,8 +137,9 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 			if(poses.size())
 			{
 				//optimize the graph
-				graph::TOROOptimizer optimizer;
-				std::map<int, Transform> optimizedPoses = optimizer.optimize(poses.begin()->first, poses, links);
+				Optimizer * optimizer = Optimizer::create(parameters);
+				std::map<int, Transform> optimizedPoses = optimizer->optimize(poses.begin()->first, poses, links);
+				delete optimizer;
 
 				// fill the local map
 				for(std::map<int, Transform>::iterator posesIter=optimizedPoses.begin();

@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraStereo.h"
-#include "rtabmap/core/Graph.h"
+#include "rtabmap/core/Optimizer.h"
 #include "ui_aboutDialog.h"
 #include <opencv2/core/version.hpp>
 #include <pcl/pcl_config.h>
@@ -60,9 +60,9 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_dc1394->setText(CameraStereoDC1394::available()?"Yes":"No");
 	_ui->label_flycapture2->setText(CameraStereoFlyCapture2::available()?"Yes":"No");
 
-	_ui->label_g2o->setText(graph::G2OOptimizer::available()?"Yes":"No");
-	_ui->label_gtsam->setText(graph::GTSAMOptimizer::available()?"Yes":"No");
-	_ui->label_cvsba->setText(graph::CVSBAOptimizer::available()?"Yes":"No");
+	_ui->label_g2o->setText(Optimizer::isAvailable(Optimizer::kTypeG2O)?"Yes":"No");
+	_ui->label_gtsam->setText(Optimizer::isAvailable(Optimizer::kTypeGTSAM)?"Yes":"No");
+	_ui->label_cvsba->setText(Optimizer::isAvailable(Optimizer::kTypeCVSBA)?"Yes":"No");
 
 }
 

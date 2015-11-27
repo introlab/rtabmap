@@ -56,7 +56,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraStereo.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/VWDictionary.h"
-#include "rtabmap/core/Graph.h"
+#include "rtabmap/core/Optimizer.h"
 #include "rtabmap/core/DBReader.h"
 
 #include "rtabmap/gui/LoopClosureViewer.h"
@@ -163,15 +163,15 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->reextract_type->setItemData(6, 0, Qt::UserRole - 1);
 #endif
 	}
-	if(!graph::G2OOptimizer::available())
+	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
 	{
 		_ui->graphOptimization_type->setItemData(1, 0, Qt::UserRole - 1);
 	}
-	if(!graph::GTSAMOptimizer::available())
+	if(!Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 	{
 		_ui->graphOptimization_type->setItemData(2, 0, Qt::UserRole - 1);
 	}
-	if(!graph::G2OOptimizer::available() && !graph::GTSAMOptimizer::available())
+	if(!Optimizer::isAvailable(Optimizer::kTypeG2O) && !Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 	{
 		_ui->graphOptimization_robust->setEnabled(false);
 	}
@@ -596,14 +596,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odomScanHistory->setObjectName(Parameters::kRGBDNeighborLinkRefining().c_str());
 	_ui->spinBox_maxLocalLocationsRetrieved->setObjectName(Parameters::kRGBDMaxLocalRetrieved().c_str());
 
-	_ui->graphOptimization_type->setObjectName(Parameters::kRGBDOptimizeStrategy().c_str());
-	_ui->graphOptimization_slam2d->setObjectName(Parameters::kRGBDOptimizeSlam2D().c_str());
-	_ui->graphOptimization_iterations->setObjectName(Parameters::kRGBDOptimizeIterations().c_str());
-	_ui->graphOptimization_covarianceIgnored->setObjectName(Parameters::kRGBDOptimizeVarianceIgnored().c_str());
+	_ui->graphOptimization_type->setObjectName(Parameters::kOptimizerStrategy().c_str());
+	_ui->graphOptimization_slam2d->setObjectName(Parameters::kOptimizerSlam2D().c_str());
+	_ui->graphOptimization_iterations->setObjectName(Parameters::kOptimizerIterations().c_str());
+	_ui->graphOptimization_covarianceIgnored->setObjectName(Parameters::kOptimizerVarianceIgnored().c_str());
 	_ui->graphOptimization_fromGraphEnd->setObjectName(Parameters::kRGBDOptimizeFromGraphEnd().c_str());
 	_ui->graphOptimization_maxError->setObjectName(Parameters::kRGBDOptimizeMaxError().c_str());
-	_ui->graphOptimization_stopEpsilon->setObjectName(Parameters::kRGBDOptimizeEpsilon().c_str());
-	_ui->graphOptimization_robust->setObjectName(Parameters::kRGBDOptimizeRobust().c_str());
+	_ui->graphOptimization_stopEpsilon->setObjectName(Parameters::kOptimizerEpsilon().c_str());
+	_ui->graphOptimization_robust->setObjectName(Parameters::kOptimizerRobust().c_str());
 
 	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
 	_ui->graphPlan_goalsSavedInUserData->setObjectName(Parameters::kRGBDGoalsSavedInUserData().c_str());
@@ -1915,24 +1915,24 @@ bool PreferencesDialog::validateForm()
 	}
 
 	// optimization strategy
-	if(!graph::G2OOptimizer::available())
+	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
 	{
 		if(_ui->graphOptimization_type->currentIndex() == 1)
 		{
 			QMessageBox::warning(this, tr("Parameter warning"),
 					tr("Selected graph optimization strategy (g2o) is not available. RTAB-Map is not built "
 					   "with g2o. TORO is set instead for graph optimization strategy."));
-			_ui->graphOptimization_type->setCurrentIndex(graph::Optimizer::kTypeTORO);
+			_ui->graphOptimization_type->setCurrentIndex(Optimizer::kTypeTORO);
 		}
 	}
-	if(!graph::GTSAMOptimizer::available())
+	if(!Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 	{
 		if(_ui->graphOptimization_type->currentIndex() == 2)
 		{
 			QMessageBox::warning(this, tr("Parameter warning"),
 					tr("Selected graph optimization strategy (GTSAM) is not available. RTAB-Map is not built "
 					   "with GTSAM. TORO is set instead for graph optimization strategy."));
-			_ui->graphOptimization_type->setCurrentIndex(graph::Optimizer::kTypeTORO);
+			_ui->graphOptimization_type->setCurrentIndex(Optimizer::kTypeTORO);
 		}
 	}
 
@@ -2613,9 +2613,9 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 						ok = false;
 					}
 				}
-				if(!graph::G2OOptimizer::available())
+				if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
 				{
-					if(valueInt==1 && combo->objectName().toStdString().compare(Parameters::kRGBDOptimizeStrategy()) == 0)
+					if(valueInt==1 && combo->objectName().toStdString().compare(Parameters::kOptimizerStrategy()) == 0)
 					{
 						UWARN("Trying to set \"%s\" to g2o but RTAB-Map isn't built "
 							  "with g2o. Keeping default combo value: %s.",
@@ -2624,9 +2624,9 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 						ok = false;
 					}
 				}
-				if(!graph::GTSAMOptimizer::available())
+				if(!Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 				{
-					if(valueInt==2 && combo->objectName().toStdString().compare(Parameters::kRGBDOptimizeStrategy()) == 0)
+					if(valueInt==2 && combo->objectName().toStdString().compare(Parameters::kOptimizerStrategy()) == 0)
 					{
 						UWARN("Trying to set \"%s\" to GTSAM but RTAB-Map isn't built "
 							  "with GTSAM. Keeping default combo value: %s.",

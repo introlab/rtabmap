@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ui_postProcessingDialog.h"
 
 #include <QPushButton>
-#include <rtabmap/core/Graph.h>
+#include <rtabmap/core/Optimizer.h>
 
 namespace rtabmap {
 
@@ -39,7 +39,7 @@ PostProcessingDialog::PostProcessingDialog(QWidget * parent) :
 	_ui = new Ui_PostProcessingDialog();
 	_ui->setupUi(this);
 
-	if(!graph::CVSBAOptimizer::available())
+	if(!Optimizer::isAvailable(Optimizer::kTypeCVSBA))
 	{
 		_ui->sba->setEnabled(false);
 		_ui->sba->setChecked(false);
@@ -231,7 +231,7 @@ void PostProcessingDialog::setRefineLoopClosureLinks(bool on)
 }
 void PostProcessingDialog::setSBA(bool on)
 {
-	_ui->sba->setChecked(graph::CVSBAOptimizer::available() && on);
+	_ui->sba->setChecked(Optimizer::isAvailable(Optimizer::kTypeCVSBA) && on);
 }
 void PostProcessingDialog::setSBAIterations(int iterations)
 {
