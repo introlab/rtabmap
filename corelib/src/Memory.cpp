@@ -78,6 +78,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_idUpdatedToNewOneRehearsal(Parameters::defaultMemRehearsalIdUpdatedToNewOne()),
 	_generateIds(Parameters::defaultMemGenerateIds()),
 	_badSignaturesIgnored(Parameters::defaultMemBadSignaturesIgnored()),
+	_mapLabelsAdded(Parameters::defaultMemMapLabelsAdded()),
 	_imageDecimation(Parameters::defaultMemImageDecimation()),
 	_laserScanVoxelSize(Parameters::defaultMemLaserScanVoxelSize()),
 	_localSpaceLinksKeptInWM(Parameters::defaultMemLocalSpaceLinksKeptInWM()),
@@ -408,6 +409,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemRehearsalIdUpdatedToNewOne(), _idUpdatedToNewOneRehearsal);
 	Parameters::parse(parameters, Parameters::kMemGenerateIds(), _generateIds);
 	Parameters::parse(parameters, Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
+	Parameters::parse(parameters, Parameters::kMemMapLabelsAdded(), _mapLabelsAdded);
 	Parameters::parse(parameters, Parameters::kMemRehearsalSimilarity(), _similarityThreshold);
 	Parameters::parse(parameters, Parameters::kMemRecentWmRatio(), _recentWmRatio);
 	Parameters::parse(parameters, Parameters::kMemTransferSortingByWeightId(), _transferSortingByWeightId);
@@ -745,7 +747,7 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 				}
 			}
 		}
-		else
+		else if(_mapLabelsAdded)
 		{
 			//Tag the first node of the map
 			std::string tag = uFormat("map%d", signature->mapId());

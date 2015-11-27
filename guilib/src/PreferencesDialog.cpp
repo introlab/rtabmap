@@ -472,6 +472,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_checkBox_RehearsalIdUpdatedToNewOne->setObjectName(Parameters::kMemRehearsalIdUpdatedToNewOne().c_str());
 	_ui->general_checkBox_generateIds->setObjectName(Parameters::kMemGenerateIds().c_str());
 	_ui->general_checkBox_badSignaturesIgnored->setObjectName(Parameters::kMemBadSignaturesIgnored().c_str());
+	_ui->general_checkBox_createMapLabels->setObjectName(Parameters::kMemMapLabelsAdded().c_str());
 	_ui->general_checkBox_initWMWithAllNodes->setObjectName(Parameters::kMemInitWMWithAllNodes().c_str());
 	_ui->checkBox_localSpaceLinksKeptInWM->setObjectName(Parameters::kMemLocalSpaceLinksKeptInWM().c_str());
 	_ui->checkBox_localSpaceScanMatchingIDsSaved->setObjectName(Parameters::kRGBDScanMatchingIdsSavedInLinks().c_str());
