@@ -1012,71 +1012,83 @@ bool Rtabmap::process(
 
 		// Update optimizedPoses with the newly added node
 		Transform newPose;
-		if(signature->getLinks().size() == 1 &&
-		   !smallDisplacement &&
-		   _memory->isIncremental()) // ignore pose matching in localization mode
+		if(_poseScanMatching &&
+			signature->getLinks().size() == 1 &&
+		   _memory->isIncremental() && // ignore pose matching in localization mode
+		   rehearsedId == 0) // don't do it if rehearsal happened
 		{
 			int oldId = signature->getLinks().begin()->first;
 			const Signature * oldS = _memory->getSignature(oldId);
 			UASSERT(oldS != 0);
 
-			//============================================================
-			// Scan matching
-			//============================================================
-			if(_poseScanMatching &&
-				!signature->sensorData().laserScanCompressed().empty() &&
-				rehearsedId == 0) // don't do it if rehearsal happened
-			{
-				UINFO("Odometry correction by scan matching");
-				Transform guess = signature->getLinks().begin()->second.transform();
-				double variance = 1.0;
-				int inliers = 0;
-				float inliersRatio = 0;
-				std::string rejectedMsg;
-				Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, false, &rejectedMsg, &inliers, &variance, &inliersRatio);
-				if(!t.isNull())
-				{
-					UINFO("Scan matching: update neighbor link (%d->%d, variance=%f) from %s to %s",
-							signature->id(),
-							oldId,
-							variance,
-							signature->getLinks().at(oldId).transform().prettyPrint().c_str(),
-							t.prettyPrint().c_str());
-					UASSERT(variance > 0.0);
-					_memory->updateLink(signature->id(), oldId, t, variance, variance);
+			Transform guess = signature->getLinks().begin()->second.transform();
 
-					if(_optimizeFromGraphEnd)
+			if(smallDisplacement)
+			{
+				if(signature->getLinks().begin()->second.transVariance() == 1)
+				{
+					// set small variance
+					UDEBUG("Set small variance. The robot is not moving.");
+					_memory->updateLink(signature->id(), oldId, guess, 0.0001, 0.0001);
+				}
+			}
+			else
+			{
+				//============================================================
+				// Scan matching
+				//============================================================
+				if(!signature->sensorData().laserScanCompressed().empty())
+				{
+					UINFO("Odometry correction by scan matching");
+					double variance = 1.0;
+					int inliers = 0;
+					float inliersRatio = 0;
+					std::string rejectedMsg;
+					Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, false, &rejectedMsg, &inliers, &variance, &inliersRatio);
+					if(!t.isNull())
 					{
-						// update all previous nodes
-						// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
-						// parameters just changed state, we should put back all poses without map correction.
-						Transform u = guess.inverse() * t;
-						std::map<int, Transform>::iterator jter = _optimizedPoses.find(oldId);
-						UASSERT(jter!=_optimizedPoses.end());
-						Transform up = jter->second * u * jter->second.inverse();
-						Transform mapCorrectionInv = _mapCorrection.inverse();
-						for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+						UINFO("Scan matching: update neighbor link (%d->%d, variance=%f) from %s to %s",
+								signature->id(),
+								oldId,
+								variance,
+								signature->getLinks().at(oldId).transform().prettyPrint().c_str(),
+								t.prettyPrint().c_str());
+						UASSERT(variance > 0.0);
+						_memory->updateLink(signature->id(), oldId, t, variance, variance);
+
+						if(_optimizeFromGraphEnd)
 						{
-							iter->second = mapCorrectionInv * up * iter->second;
+							// update all previous nodes
+							// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
+							// parameters just changed state, we should put back all poses without map correction.
+							Transform u = guess.inverse() * t;
+							std::map<int, Transform>::iterator jter = _optimizedPoses.find(oldId);
+							UASSERT(jter!=_optimizedPoses.end());
+							Transform up = jter->second * u * jter->second.inverse();
+							Transform mapCorrectionInv = _mapCorrection.inverse();
+							for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+							{
+								iter->second = mapCorrectionInv * up * iter->second;
+							}
 						}
 					}
-				}
-				else
-				{
-					UINFO("Scan matching rejected: %s", rejectedMsg.c_str());
-					if(variance > 0)
+					else
 					{
-						double sqrtVar = sqrt(variance);
-						_memory->updateLink(signature->id(), oldId, guess, sqrtVar, sqrtVar);
+						UINFO("Scan matching rejected: %s", rejectedMsg.c_str());
+						if(variance > 0)
+						{
+							double sqrtVar = sqrt(variance);
+							_memory->updateLink(signature->id(), oldId, guess, sqrtVar, sqrtVar);
+						}
 					}
+					statistics_.addStatistic(Statistics::kOdomCorrectionAccepted(), !t.isNull()?1.0f:0);
+					statistics_.addStatistic(Statistics::kOdomCorrectionInliers(), inliers);
+					statistics_.addStatistic(Statistics::kOdomCorrectionInliers_ratio(), inliersRatio);
+					statistics_.addStatistic(Statistics::kOdomCorrectionVariance(), variance);
 				}
-				statistics_.addStatistic(Statistics::kOdomCorrectionAccepted(), !t.isNull()?1.0f:0);
-				statistics_.addStatistic(Statistics::kOdomCorrectionInliers(), inliers);
-				statistics_.addStatistic(Statistics::kOdomCorrectionInliers_ratio(), inliersRatio);
-				statistics_.addStatistic(Statistics::kOdomCorrectionVariance(), variance);
+				timeScanMatching = timer.ticks();
+				ULOGGER_INFO("timeScanMatching=%fs", timeScanMatching);
 			}
-			timeScanMatching = timer.ticks();
-			ULOGGER_INFO("timeScanMatching=%fs", timeScanMatching);
 
 			UASSERT(oldS->hasLink(signature->id()));
 			UASSERT(uContains(_optimizedPoses, oldId));
