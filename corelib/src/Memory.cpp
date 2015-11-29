@@ -157,7 +157,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 
 	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory..."));
 	DBDriver * tmpDriver = 0;
-	if(!_memoryChanged && !_linksChanged)
+	if((!_memoryChanged && !_linksChanged) || dbOverwritten)
 	{
 		if(_dbDriver)
 		{
@@ -428,19 +428,6 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	UASSERT(_rehearsalMaxDistance >= 0.0f);
 	UASSERT(_rehearsalMaxAngle >= 0.0f);
 
-	// SLAM mode vs Localization mode
-	iter = parameters.find(Parameters::kMemIncrementalMemory());
-	if(iter != parameters.end())
-	{
-		bool value = uStr2Bool(iter->second.c_str());
-		if(value == false && _incrementalMemory)
-		{
-			// From SLAM to localization, change map id
-			this->incrementMapId();
-		}
-		_incrementalMemory = value;
-	}
-
 	if(_dbDriver)
 	{
 		_dbDriver->parseParameters(parameters);
@@ -538,6 +525,28 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	else if(_feature2D)
 	{
 		_feature2D->parseParameters(parameters);
+	}
+
+	// do this after all parameters are parsed
+	// SLAM mode vs Localization mode
+	iter = parameters.find(Parameters::kMemIncrementalMemory());
+	if(iter != parameters.end())
+	{
+		bool value = uStr2Bool(iter->second.c_str());
+		if(value == false && _incrementalMemory)
+		{
+			// From SLAM to localization, change map id
+			this->incrementMapId();
+
+			// The easiest way to make sure that the mapping session is saved
+			// is to save the memory in the database and reload it.
+			if((_memoryChanged || _linksChanged) && _dbDriver)
+			{
+				UWARN("Switching from Mapping to Localization mode, the database will be saved and reloaded.");
+				this->init(_dbDriver->getUrl());
+			}
+		}
+		_incrementalMemory = value;
 	}
 }
 
