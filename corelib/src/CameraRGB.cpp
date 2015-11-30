@@ -66,7 +66,8 @@ CameraImages::CameraImages(const std::string & path,
 	_count(0),
 	_dir(0),
 	_countScan(0),
-	_scanDir(0)
+	_scanDir(0),
+	_scanMaxPts(0)
 {
 
 }
@@ -152,6 +153,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	}
 	if(!_scanPath.empty())
 	{
+		UINFO("scan path=%s", _scanPath.c_str());
 		_scanDir = new UDirectory(_scanPath, "pcd bin"); // "bin" is for KITTI format
 		if(_scanPath[_scanPath.size()-1] != '\\' && _scanPath[_scanPath.size()-1] != '/')
 		{

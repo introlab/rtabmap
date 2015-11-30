@@ -320,7 +320,7 @@ Transform RegistrationVis::computeTransformation(
 						_PnPFlags,
 						Transform::getIdentity(),
 						uMultimapToMap(*words3To),
-						&variance,
+						_varianceFromInliersCount?0:&variance,
 						0,
 						&inliersV);
 				inliersCount = (int)inliersV.size();

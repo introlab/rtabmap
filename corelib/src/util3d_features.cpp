@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/EpipolarGeometry.h"
 
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UMath.h>
 
 #include <opencv2/video/tracking.hpp>
@@ -71,7 +72,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DDepth(
 		for(unsigned int i=0; i!=keypoints.size(); ++i)
 		{
 			int cameraIndex = int(keypoints[i].pt.x / subImageWidth);
-			UASSERT(cameraIndex < (int)cameraModels.size());
+			UASSERT_MSG(cameraIndex < (int)cameraModels.size(),
+					uFormat("cameraIndex=%d, models=%d, kpt.x=%f, subImageWidth=%f",
+							cameraIndex, (int)cameraModels.size(), keypoints[i].pt.x, subImageWidth).c_str());
 			pcl::PointXYZ pt = util3d::projectDepthTo3D(
 					depth,
 					keypoints[i].pt.x-subImageWidth*cameraIndex,

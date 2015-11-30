@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/highgui/highgui.hpp>
 #include "rtabmap/core/SensorData.h"
+#include "rtabmap/core/CameraInfo.h"
 #include <set>
 #include <stack>
 #include <list>
@@ -50,12 +51,11 @@ class RTABMAP_EXP Camera
 {
 public:
 	virtual ~Camera();
-	SensorData takeImage();
+	SensorData takeImage(CameraInfo * info = 0);
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "") = 0;
 	virtual bool isCalibrated() const = 0;
 	virtual std::string getSerial() const = 0;
-	int getNextSeqID() {return ++_seq;}
 
 	//getters
 	float getImageRate() const {return _imageRate;}
@@ -77,6 +77,8 @@ protected:
 	 * returned rgb and depth images should be already rectified if calibration was loaded
 	 */
 	virtual SensorData captureImage() = 0;
+
+	int getNextSeqID() {return ++_seq;}
 
 private:
 	float _imageRate;

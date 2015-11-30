@@ -448,6 +448,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	qRegisterMetaType<rtabmap::Statistics>("rtabmap::Statistics");
 	connect(this, SIGNAL(statsReceived(rtabmap::Statistics)), this, SLOT(processStats(rtabmap::Statistics)));
 
+	qRegisterMetaType<rtabmap::CameraInfo>("rtabmap::CameraInfo");
+	connect(this, SIGNAL(cameraInfoReceived(rtabmap::CameraInfo)), this, SLOT(processCameraInfo(rtabmap::CameraInfo)));
+
 	qRegisterMetaType<rtabmap::OdometryEvent>("rtabmap::OdometryEvent");
 	connect(this, SIGNAL(odometryReceived(rtabmap::OdometryEvent)), this, SLOT(processOdometry(rtabmap::OdometryEvent)));
 
@@ -688,6 +691,10 @@ void MainWindow::handleEvent(UEvent* anEvent)
 			}
 			emit noMoreImagesReceived();
 		}
+		else
+		{
+			emit cameraInfoReceived(cameraEvent->info());
+		}
 	}
 	else if(anEvent->getClassName().compare("OdometryEvent") == 0)
 	{
@@ -727,6 +734,13 @@ void MainWindow::handleEvent(UEvent* anEvent)
 			}
 		}
 	}
+}
+
+void MainWindow::processCameraInfo(const rtabmap::CameraInfo & info)
+{
+	_ui->statsToolBox->updateStat("Camera/Time capturing/ms", (float)info.id_, (float)info.timeCapture_*1000.0);
+	_ui->statsToolBox->updateStat("Camera/Time disparity/ms", (float)info.id_, (float)info.timeDisparity_*1000.0);
+	_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", (float)info.id_, (float)info.timeMirroring_*1000.0);
 }
 
 void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
@@ -2999,6 +3013,7 @@ void MainWindow::startDetection()
 
 				UEventsManager::addHandler(_odomThread);
 				UEventsManager::createPipe(_camera, _odomThread, "CameraEvent");
+				UEventsManager::createPipe(_camera, this, "CameraEvent");
 				_odomThread->start();
 			}
 		}
@@ -3059,6 +3074,7 @@ void MainWindow::startDetection()
 		if(_odomThread)
 		{
 			UEventsManager::createPipe(_dbReader, _odomThread, "CameraEvent");
+			UEventsManager::createPipe(_dbReader, this, "CameraEvent");
 		}
 	}
 

@@ -64,6 +64,7 @@ public:
 	double getPnPReprojError() const {return _pnpReprojError;}
 	int  getPnPFlags() const {return _pnpFlags;}
 	const Transform & previousTransform() const {return previousTransform_;}
+	bool isVarianceFromInliersCount() const {return _varianceFromInliersCount;}
 
 private:
 	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0) = 0;

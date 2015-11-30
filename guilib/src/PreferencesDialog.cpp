@@ -3725,7 +3725,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	else if(driver == kSrcStereoImages)
 	{
 		camera = new CameraStereoImages(
-			_ui->lineEdit_cameraStereoImages_path_scans->text().append(QDir::separator()).toStdString(),
+			_ui->lineEdit_cameraStereoImages_path_scans->text().isEmpty()?"":_ui->lineEdit_cameraStereoImages_path_scans->text().append(QDir::separator()).toStdString(),
 			this->getStereoLaserLocalTransform(),
 			_ui->spinBox_cameraStereoImages_max_scan_pts->value(),
 			_ui->lineEdit_cameraStereoImages_path_left->text().append(QDir::separator()).toStdString(),

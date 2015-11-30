@@ -62,6 +62,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 {
 	Parameters::parse(parameters, Parameters::kOdomResetCountdown(), _resetCountdown);
 	Parameters::parse(parameters, Parameters::kVisMinInliers(), _minInliers);
+	UASSERT(_minInliers >= 1);
 	Parameters::parse(parameters, Parameters::kVisInlierDistance(), _inlierDistance);
 	Parameters::parse(parameters, Parameters::kVisIterations(), _iterations);
 	Parameters::parse(parameters, Parameters::kVisRefineIterations(), _refineIterations);

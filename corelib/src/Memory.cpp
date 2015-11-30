@@ -3548,13 +3548,6 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	}
 	else
 	{
-		rtabmap::CompressionThread ctDepth2d(laserScan);
-		rtabmap::CompressionThread ctUserData(data.userDataRaw());
-		ctDepth2d.start();
-		ctUserData.start();
-		ctDepth2d.join();
-		ctUserData.join();
-
 		s = new Signature(id,
 			_idMapCount,
 			isIntermediateNode?-1:0, // tag intermediate nodes as weight=-1
@@ -3563,25 +3556,23 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			pose,
 			stereoCameraModel.isValid()?
 				SensorData(
-						ctDepth2d.getCompressedData(),
-						maxLaserScanMaxPts,
-						data.laserScanMaxRange(),
+						cv::Mat(),
+						0,
+						0,
 						cv::Mat(),
 						cv::Mat(),
 						stereoCameraModel,
 						id,
-						0,
-						ctUserData.getCompressedData()):
+						0):
 				SensorData(
-						ctDepth2d.getCompressedData(),
-						maxLaserScanMaxPts,
-						data.laserScanMaxRange(),
+						cv::Mat(),
+						0,
+						0,
 						cv::Mat(),
 						cv::Mat(),
 						cameraModels,
 						id,
-						0,
-						ctUserData.getCompressedData()));
+						0));
 	}
 	s->setWords(words);
 	s->setWords3(words3D);

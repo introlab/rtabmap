@@ -65,6 +65,7 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 	customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
 	customParameters.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
 	customParameters.insert(ParametersPair(Parameters::kMemNotLinkedNodesKept(), "false"));
+	customParameters.insert(ParametersPair(Parameters::kMemSaveDepth16Format(), "false"));
 	int nn = Parameters::defaultVisNNType();
 	float nndr = Parameters::defaultVisNNDR();
 	int featureType = Parameters::defaultVisFeatureType();
@@ -120,7 +121,6 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 		// init the local map with a all 3D features contained in the database
 		customParameters.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false"));
 		customParameters.insert(ParametersPair(Parameters::kMemInitWMWithAllNodes(), "true"));
-		customParameters.insert(ParametersPair(Parameters::kMemSaveDepth16Format(), "false"));
 		_memory = new Memory(customParameters);
 		if(!_memory->init(_fixedLocalMapPath, false, ParametersMap()))
 		{
@@ -257,7 +257,7 @@ Transform OdometryBOW::computeTransform(
 								this->getPnPFlags(),
 								this->getPose(),
 								uMultimapToMap(newSignature->getWords3()),
-								&variance,
+								isVarianceFromInliersCount()?0:&variance, // don't compute variance if we use inliers
 								&matches,
 								&inliers);
 					}

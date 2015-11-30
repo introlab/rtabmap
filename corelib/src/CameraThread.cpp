@@ -67,9 +67,9 @@ void CameraThread::setImageRate(float imageRate)
 
 void CameraThread::mainLoop()
 {
-	UTimer timer;
 	UDEBUG("");
-	SensorData data = _camera->takeImage();
+	CameraInfo info;
+	SensorData data = _camera->takeImage(&info);
 
 	if(!data.imageRaw().empty())
 	{
@@ -79,6 +79,7 @@ void CameraThread::mainLoop()
 		}
 		if(_mirroring && data.cameraModels().size() == 1)
 		{
+			UTimer timer;
 			cv::Mat tmpRgb;
 			cv::flip(data.imageRaw(), tmpRgb, 1);
 			data.setImageRaw(tmpRgb);
@@ -98,9 +99,11 @@ void CameraThread::mainLoop()
 				cv::flip(data.depthRaw(), tmpDepth, 1);
 				data.setDepthOrRightRaw(tmpDepth);
 			}
+			info.timeMirroring_ = timer.ticks();
 		}
 		if(_stereoToDepth && data.stereoCameraModel().isValid() && !data.rightRaw().empty())
 		{
+			UTimer timer;
 			cv::Mat depth = util2d::depthFromDisparity(
 					util2d::disparityFromStereoImages(data.imageRaw(), data.rightRaw()),
 					data.stereoCameraModel().left().fx(),
@@ -108,9 +111,11 @@ void CameraThread::mainLoop()
 			data.setCameraModel(data.stereoCameraModel().left());
 			data.setDepthOrRightRaw(depth);
 			data.setStereoCameraModel(StereoCameraModel());
+			info.timeDisparity_ = timer.ticks();
+			UINFO("Computing disparity = %f s", info.timeDisparity_);
 		}
-
-		this->post(new CameraEvent(data, _camera->getSerial()));
+		info.cameraName_ = _camera->getSerial();
+		this->post(new CameraEvent(data, info));
 	}
 	else if(!this->isKilled())
 	{

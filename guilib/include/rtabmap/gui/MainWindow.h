@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/OdometryEvent.h"
+#include "rtabmap/core/CameraInfo.h"
 #include "rtabmap/gui/PreferencesDialog.h"
 
 #include <pcl/point_cloud.h>
@@ -165,6 +166,7 @@ private slots:
 	void selectScreenCaptureFormat(bool checked);
 	void takeScreenshot();
 	void updateElapsedTime();
+	void processCameraInfo(const rtabmap::CameraInfo & info);
 	void processOdometry(const rtabmap::OdometryEvent & odom);
 	void applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags);
 	void applyPrefSettings(const rtabmap::ParametersMap & parameters);
@@ -201,6 +203,7 @@ private slots:
 
 signals:
 	void statsReceived(const rtabmap::Statistics &);
+	void cameraInfoReceived(const rtabmap::CameraInfo &);
 	void odometryReceived(const rtabmap::OdometryEvent &);
 	void thresholdsChanged(int, int);
 	void stateChanged(MainWindow::State);

@@ -61,7 +61,7 @@ Camera::~Camera()
 	}
 }
 
-SensorData Camera::takeImage()
+SensorData Camera::takeImage(CameraInfo * info)
 {
 	bool warnFrameRateTooHigh = false;
 	float actualFrameRate = 0;
@@ -91,14 +91,20 @@ SensorData Camera::takeImage()
 
 	UTimer timer;
 	SensorData data  = this->captureImage();
+	double captureTime = timer.ticks();
 	if(warnFrameRateTooHigh)
 	{
 		UWARN("Camera: Cannot reach target image rate %f Hz, current rate is %f Hz and capture time = %f s.",
-				_imageRate, actualFrameRate, timer.ticks());
+				_imageRate, actualFrameRate, captureTime);
 	}
 	else
 	{
-		UDEBUG("Time capturing image = %fs", timer.ticks());
+		UDEBUG("Time capturing image = %fs", captureTime);
+	}
+	if(info)
+	{
+		info->id_ = data.id();
+		info->timeCapture_ = captureTime;
 	}
 	return data;
 }

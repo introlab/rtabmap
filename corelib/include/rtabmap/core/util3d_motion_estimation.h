@@ -51,7 +51,7 @@ Transform RTABMAP_EXP estimateMotion3DTo2D(
 			int flagsPnP = 0,
 			const Transform & guess = Transform::getIdentity(),
 			const std::map<int, pcl::PointXYZ> & words3B = std::map<int, pcl::PointXYZ>(),
-			double * varianceOut = 0,
+			double * varianceOut = 0, // mean reproj error if words3B is not set
 			std::vector<int> * matchesOut = 0,
 			std::vector<int> * inliersOut = 0);
 

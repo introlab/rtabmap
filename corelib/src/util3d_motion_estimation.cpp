@@ -159,6 +159,18 @@ Transform estimateMotion3DTo2D(
 					*varianceOut = 2.1981 * median_error_sqr;
 				}
 			}
+			else if(varianceOut)
+			{
+				// compute variance, which is the rms of reprojection errors
+				std::vector<cv::Point2f> imagePointsReproj;
+				cv::projectPoints(objectPoints, rvec, tvec, K, cv::Mat(), imagePointsReproj);
+				float err = 0.0f;
+				for(unsigned int i=0; i<inliers.size(); ++i)
+				{
+					err += uNormSquared(imagePoints.at(inliers[i]).x - imagePointsReproj.at(inliers[i]).x, imagePoints.at(inliers[i]).y - imagePointsReproj.at(inliers[i]).y);
+				}
+				*varianceOut = std::sqrt(err/float(inliers.size()));
+			}
 		}
 	}
 
