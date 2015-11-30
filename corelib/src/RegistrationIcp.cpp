@@ -214,7 +214,7 @@ Transform RegistrationIcp::computeTransformation(
 					   *fromCloudRegistered);
 			}
 
-			pcl::io::savePCDFile("fromCloud.pcd", *fromCloud);
+			/*pcl::io::savePCDFile("fromCloud.pcd", *fromCloud);
 			pcl::io::savePCDFile("toCloud.pcd", *toCloud);
 			UWARN("saved fromCloud.pcd and toCloud.pcd");
 			if(!icpT.isNull())
@@ -222,7 +222,7 @@ Transform RegistrationIcp::computeTransformation(
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudTmp = util3d::transformPointCloud(fromCloud, icpT);
 				pcl::io::savePCDFile("fromCloudFinal.pcd", *fromCloudTmp);
 				UWARN("saved fromCloudFinal.pcd");
-			}
+			}*/
 
 			if(!icpT.isNull() &&
 				hasConverged)
