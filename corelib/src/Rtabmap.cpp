@@ -904,7 +904,7 @@ bool Rtabmap::process(
 				   "Image %d is ignored!", data.id());
 			return false;
 		}
-		else
+		else if(_memory->isIncremental()) // only in mapping mode
 		{
 			// Detect if the odometry is reset. If yes, trigger a new map.
 			if(_memory->getLastWorkingSignature())
