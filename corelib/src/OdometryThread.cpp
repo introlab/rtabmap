@@ -64,10 +64,6 @@ void OdometryThread::handleEvent(UEvent * event)
 			{
 				this->addData(cameraEvent->data());
 			}
-			else if(cameraEvent->getCode() == CameraEvent::kCodeNoMoreImages)
-			{
-				this->post(new CameraEvent()); // forward the event
-			}
 		}
 		else if(event->getClassName().compare("OdometryResetEvent") == 0)
 		{
