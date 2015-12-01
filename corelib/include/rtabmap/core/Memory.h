@@ -237,6 +237,7 @@ private:
 	bool _idUpdatedToNewOneRehearsal;
 	bool _generateIds;
 	bool _badSignaturesIgnored;
+	bool _mapLabelsAdded;
 	int _imageDecimation;
 	float _laserScanDownsampleStepSize;
 	bool _reextractLoopClosureFeatures;

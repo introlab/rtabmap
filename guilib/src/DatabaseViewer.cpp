@@ -1284,7 +1284,10 @@ void DatabaseViewer::updateIds()
 	if(ids_.size())
 	{
 		updateLoopClosuresSlider();
-		updateGraphView();
+		if(ui_->graphViewer->isVisible())
+		{
+			updateGraphView();
+		}
 	}
 }
 
@@ -1391,6 +1394,16 @@ void DatabaseViewer::generateLocalGraph()
 
 void DatabaseViewer::generateTOROGraph()
 {
+	if(graphes_.empty())
+	{
+		this->updateGraphView();
+		if(graphes_.empty() || ui_->horizontalSlider_iterations->maximum() != (int)graphes_.size()-1)
+		{
+			QMessageBox::warning(this, tr("Cannot generate a graph"), tr("No graph in database?!"));
+			return;
+		}
+	}
+
 	if(!graphes_.size() || !graphLinks_.size())
 	{
 		QMessageBox::warning(this, tr("Cannot generate a TORO graph"), tr("No poses or no links..."));
@@ -1423,6 +1436,16 @@ void DatabaseViewer::generateTOROGraph()
 
 void DatabaseViewer::generateG2OGraph()
 {
+	if(graphes_.empty())
+	{
+		this->updateGraphView();
+		if(graphes_.empty() || ui_->horizontalSlider_iterations->maximum() != (int)graphes_.size()-1)
+		{
+			QMessageBox::warning(this, tr("Cannot generate a graph"), tr("No graph in database?!"));
+			return;
+		}
+	}
+
 	if(!graphes_.size() || !graphLinks_.size())
 	{
 		QMessageBox::warning(this, tr("Cannot generate a g2o graph"), tr("No poses or no links..."));
@@ -1676,6 +1699,17 @@ void DatabaseViewer::generate3DMap()
 		QMessageBox::warning(this, tr("Cannot generate a graph"), tr("The database is empty..."));
 		return;
 	}
+
+	if(graphes_.empty())
+	{
+		this->updateGraphView();
+		if(graphes_.empty() || ui_->horizontalSlider_iterations->maximum() != (int)graphes_.size()-1)
+		{
+			QMessageBox::warning(this, tr("Cannot generate a graph"), tr("No graph in database?!"));
+			return;
+		}
+	}
+
 	bool ok = false;
 	QStringList items;
 	items.append("1");
@@ -1905,6 +1939,16 @@ void DatabaseViewer::generate3DLaserScans()
 
 void DatabaseViewer::detectMoreLoopClosures()
 {
+	if(graphes_.empty())
+	{
+		this->updateGraphView();
+		if(graphes_.empty() || ui_->horizontalSlider_iterations->maximum() != (int)graphes_.size()-1)
+		{
+			QMessageBox::warning(this, tr("Cannot generate a graph"), tr("No graph in database?!"));
+			return;
+		}
+	}
+
 	const std::map<int, Transform> & optimizedPoses = graphes_.back();
 
 	int iterations = ui_->spinBox_detectMore_iterations->value();
@@ -3326,11 +3370,6 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 }
 void DatabaseViewer::updateGraphView()
 {
-	if(!ui_->graphViewer->isVisible())
-	{
-		return;
-	}
-
 	ui_->label_loopClosures->clear();
 	ui_->label_poses->clear();
 	if(poses_.size())

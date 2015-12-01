@@ -80,6 +80,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_idUpdatedToNewOneRehearsal(Parameters::defaultMemRehearsalIdUpdatedToNewOne()),
 	_generateIds(Parameters::defaultMemGenerateIds()),
 	_badSignaturesIgnored(Parameters::defaultMemBadSignaturesIgnored()),
+	_mapLabelsAdded(Parameters::defaultMemMapLabelsAdded()),
 	_imageDecimation(Parameters::defaultMemImageDecimation()),
 	_laserScanDownsampleStepSize(Parameters::defaultMemLaserScanDownsampleStepSize()),
 	_reextractLoopClosureFeatures(Parameters::defaultRGBDLoopClosureReextractFeatures()),
@@ -132,7 +133,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 
 	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory..."));
 	DBDriver * tmpDriver = 0;
-	if(!_memoryChanged && !_linksChanged)
+	if((!_memoryChanged && !_linksChanged) || dbOverwritten)
 	{
 		if(_dbDriver)
 		{
@@ -392,6 +393,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemRehearsalIdUpdatedToNewOne(), _idUpdatedToNewOneRehearsal);
 	Parameters::parse(parameters, Parameters::kMemGenerateIds(), _generateIds);
 	Parameters::parse(parameters, Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
+	Parameters::parse(parameters, Parameters::kMemMapLabelsAdded(), _mapLabelsAdded);
 	Parameters::parse(parameters, Parameters::kMemRehearsalSimilarity(), _similarityThreshold);
 	Parameters::parse(parameters, Parameters::kMemRecentWmRatio(), _recentWmRatio);
 	Parameters::parse(parameters, Parameters::kMemTransferSortingByWeightId(), _transferSortingByWeightId);
@@ -409,19 +411,6 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	UASSERT(_imageDecimation >= 1);
 	UASSERT(_rehearsalMaxDistance >= 0.0f);
 	UASSERT(_rehearsalMaxAngle >= 0.0f);
-
-	// SLAM mode vs Localization mode
-	iter = parameters.find(Parameters::kMemIncrementalMemory());
-	if(iter != parameters.end())
-	{
-		bool value = uStr2Bool(iter->second.c_str());
-		if(value == false && _incrementalMemory)
-		{
-			// From SLAM to localization, change map id
-			this->incrementMapId();
-		}
-		_incrementalMemory = value;
-	}
 
 	if(_dbDriver)
 	{
@@ -488,6 +477,28 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	if(_registrationIcp)
 	{
 		_registrationIcp->parseParameters(parameters);
+	}
+
+	// do this after all parameters are parsed
+	// SLAM mode vs Localization mode
+	iter = parameters.find(Parameters::kMemIncrementalMemory());
+	if(iter != parameters.end())
+	{
+		bool value = uStr2Bool(iter->second.c_str());
+		if(value == false && _incrementalMemory)
+		{
+			// From SLAM to localization, change map id
+			this->incrementMapId();
+
+			// The easiest way to make sure that the mapping session is saved
+			// is to save the memory in the database and reload it.
+			if((_memoryChanged || _linksChanged) && _dbDriver)
+			{
+				UWARN("Switching from Mapping to Localization mode, the database will be saved and reloaded.");
+				this->init(_dbDriver->getUrl());
+			}
+		}
+		_incrementalMemory = value;
 	}
 }
 
@@ -697,7 +708,7 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 				}
 			}
 		}
-		else
+		else if(_mapLabelsAdded)
 		{
 			//Tag the first node of the map
 			std::string tag = uFormat("map%d", signature->mapId());

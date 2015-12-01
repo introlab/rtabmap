@@ -2257,9 +2257,10 @@ void MainWindow::processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathE
 					tr("Setting goal failed!"),
 					tr("Setting goal to location %1%2 failed. "
 						"Some reasons: \n"
-						"1) the location doesn't exist in the graph,\n"
-						"2) the location is not linked to the global graph or\n"
-						"3) the location is too near of the current location (goal already reached).")
+						"1) the robot is not yet localized in the map,\n"
+						"2) the location doesn't exist in the map,\n"
+						"3) the location is not linked to the global map or\n"
+						"4) the location is too near of the current location (goal already reached).")
 						.arg(event.getGoal())
 						.arg(!event.getGoalLabel().empty()?QString(" \"%1\"").arg(event.getGoalLabel().c_str()):""),
 					QMessageBox::Ok,
@@ -2843,21 +2844,17 @@ void MainWindow::editDatabase()
 		viewer->setWindowModality(Qt::WindowModal);
 		viewer->setAttribute(Qt::WA_DeleteOnClose, true);
 		viewer->showCloseButton();
-		if(viewer->openDatabase(path))
+
+		if(viewer->isSavedMaximized())
 		{
-			if(viewer->isSavedMaximized())
-			{
-				viewer->showMaximized();
-			}
-			else
-			{
-				viewer->show();
-			}
+			viewer->showMaximized();
 		}
 		else
 		{
-			delete viewer;
+			viewer->show();
 		}
+
+		viewer->openDatabase(path);
 	}
 }
 
