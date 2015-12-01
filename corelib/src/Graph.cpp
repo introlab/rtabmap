@@ -958,6 +958,8 @@ std::map<int, Transform> G2OOptimizer::optimize(
 		UDEBUG("Initial optimization...");
 		optimizer.initializeOptimization();
 
+		UASSERT(optimizer.verifyInformationMatrices());
+
 		UINFO("g2o optimizing begin (max iterations=%d, robust=%d)", iterations(), isRobust()?1:0);
 		int it = 0;
 		UTimer timer;
@@ -1017,6 +1019,14 @@ std::map<int, Transform> G2OOptimizer::optimize(
 				optimizer.computeActiveErrors();
 				double chi2 = optimizer.activeRobustChi2();
 				UDEBUG("iteration %d: %d nodes, %d edges, chi2: %f", i, (int)optimizer.vertices().size(), (int)optimizer.edges().size(), chi2);
+			
+				if(i>0 && optimizer.activeRobustChi2() > 1000000000000.0)
+	               		{
+                        		UWARN("g2o: Large optimimzation error detected (%f), aborting optimization!");
+                        		return optimizedPoses;
+               	 		}
+
+	
 				double errorDelta = lastError - chi2;
 				if(i>0 && errorDelta < this->epsilon())
 				{
@@ -1053,6 +1063,12 @@ std::map<int, Transform> G2OOptimizer::optimize(
 			*iterationsDone = it;
 		}
 		UINFO("g2o optimizing end (%d iterations done, error=%f, time = %f s)", it, optimizer.activeRobustChi2(), timer.ticks());
+
+		if(optimizer.activeRobustChi2() > 1000000000000.0)
+		{
+			UWARN("g2o: Large optimimzation error detected (%f), aborting optimization!");
+			return optimizedPoses;
+		}
 
 		if(isSlam2d())
 		{

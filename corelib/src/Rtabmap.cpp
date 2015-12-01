@@ -2213,12 +2213,24 @@ bool Rtabmap::process(
 			std::map<int, Transform> poses = _optimizedPoses;
 			std::multimap<int, Link> constraints;
 			optimizeCurrentMap(signature->id(), false, poses, &constraints, &optimizationError, &optimizationIterations);
-			UASSERT(poses.find(signature->id()) != poses.end());
 
 			// Check added loop closures have broken the graph
 			// (in case of wrong loop closures).
 			bool updateConstraints = true;
-			if(_memory->isIncremental() && // FIXME: not tested in localization mode, so do it only in mapping mode
+			if(poses.empty())
+			{
+				UWARN("Graph optimization failed! Rejecting last loop closures added.");
+				for(std::list<std::pair<int, int> >::iterator iter=loopClosureLinksAdded.begin(); iter!=loopClosureLinksAdded.end(); ++iter)
+                              	{
+                                	_memory->removeLink(iter->first, iter->second);
+                                        UWARN("Loop closure %d->%d rejected!", iter->first, iter->second);
+                                 }
+                                updateConstraints = false;
+                                _loopClosureHypothesis.first = 0;
+                                lastLocalSpaceClosureId = 0;
+                                rejectedHypothesis = true;
+			}
+			else if(_memory->isIncremental() && // FIXME: not tested in localization mode, so do it only in mapping mode
 			  _optimizationMaxLinearError > 0.0f &&
 			  loopClosureLinksAdded.size())
 			{
@@ -2498,7 +2510,7 @@ bool Rtabmap::process(
 			}
 			else
 			{
-				UASSERT_MSG(uContains(_optimizedPoses, _lastLocalizationNodeId), uFormat("id=%d", _lastLocalizationNodeId).c_str());
+				UASSERT_MSG(uContains(_optimizedPoses, _lastLocalizationNodeId), uFormat("id=%d isInWM?=%d", _lastLocalizationNodeId, _memory->isInWM(_lastLocalizationNodeId)?1:0).c_str());
 				id = _lastLocalizationNodeId;
 				UDEBUG("Refresh local map from %d", id);
 			}
@@ -2512,6 +2524,10 @@ bool Rtabmap::process(
 		}
 		if(id > 0)
 		{
+			if(_lastLocalizationNodeId != 0)
+                        {
+                        	_lastLocalizationNodeId = id;
+                        }
 			UASSERT_MSG(_memory->getSignature(id) != 0, uFormat("id=%d", id).c_str());
 			std::map<int, int> ids = _memory->getNeighborsId(id, 0, 0, true);
 			for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end();)
@@ -2519,6 +2535,7 @@ bool Rtabmap::process(
 				if(!uContains(ids, iter->first))
 				{
 					UDEBUG("Removed %d from local map", iter->first);
+					UASSERT(iter->first != _lastLocalizationNodeId);
 					_optimizedPoses.erase(iter++);
 				}
 				else
@@ -2957,7 +2974,12 @@ void Rtabmap::optimizeCurrentMap(
 		}
 		else
 		{
-			UERROR("Failed to optimize the graph! Keeping the graph without optimization...");
+			UERROR("Failed to optimize the graph! returning empty optimized poses...");
+			optimizedPoses.clear();
+			if(constraints)
+			{
+				constraints->clear();
+			}
 		}
 	}
 }
