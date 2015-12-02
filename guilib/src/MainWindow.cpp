@@ -5981,11 +5981,11 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
-		_ui->menuSelect_source->setEnabled(false);
+		_ui->menuSelect_source->setEnabled(true);
 		_ui->actionLabel_current_location->setEnabled(false);
 		_ui->actionSend_goal->setEnabled(false);
 		_ui->actionCancel_goal->setEnabled(false);
-		_ui->toolBar->findChild<QAction*>("toolbar_source")->setEnabled(false);
+		_ui->toolBar->findChild<QAction*>("toolbar_source")->setEnabled(true);
 		_ui->actionTrigger_a_new_map->setEnabled(false);
 		_ui->doubleSpinBox_stats_imgRate->setEnabled(true);
 		_ui->statusbar->clearMessage();

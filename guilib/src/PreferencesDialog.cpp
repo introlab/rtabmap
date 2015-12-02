@@ -3788,11 +3788,12 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 		QString name = QFileInfo(_ui->lineEdit_calibrationFile->text()
 				.remove("_left.yaml")
 				.remove("_right.yaml")
-				.remove("_pose.yaml")).baseName();
+				.remove("_pose.yaml")
+				.remove(".yaml")).baseName();
 		if(!_ui->lineEdit_calibrationFile->text().isEmpty())
 		{
 			QDir d = QFileInfo(_ui->lineEdit_calibrationFile->text()).dir();
-			if(!d.path().isEmpty())
+			if(!_ui->lineEdit_calibrationFile->text().remove(QFileInfo(_ui->lineEdit_calibrationFile->text()).baseName()).isEmpty())
 			{
 				dir = d.absolutePath();
 			}

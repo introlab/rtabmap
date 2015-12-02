@@ -258,6 +258,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->spinBox_stereo_gfttBlockSize, SIGNAL(valueChanged(int)), this, SLOT(updateStereo()));
 	connect(ui_->doubleSpinBox_stereo_flowEps, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
 	connect(ui_->doubleSpinBox_stereo_gfttMinDistance, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
+	connect(ui_->spinBox_stereo_gfttMaxFeatures, SIGNAL(valueChanged(int)), this, SLOT(updateStereo()));
 	connect(ui_->doubleSpinBox_stereo_gfttQuality, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
 	connect(ui_->doubleSpinBox_stereo_maxSlope, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
 	connect(ui_->checkBox_stereo_subpix, SIGNAL(stateChanged(int)), this, SLOT(updateStereo()));
@@ -329,6 +330,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->spinBox_stereo_gfttBlockSize, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_stereo_flowEps, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_stereo_gfttMinDistance, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->spinBox_stereo_gfttMaxFeatures, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_stereo_gfttQuality, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_stereo_maxSlope, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->checkBox_stereo_subpix, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
@@ -476,6 +478,7 @@ void DatabaseViewer::readSettings()
 	ui_->spinBox_stereo_gfttBlockSize->setValue(settings.value("gfttBlockSize", ui_->spinBox_stereo_gfttBlockSize->value()).toInt());
 	ui_->doubleSpinBox_stereo_flowEps->setValue(settings.value("flowEps", ui_->doubleSpinBox_stereo_flowEps->value()).toDouble());
 	ui_->doubleSpinBox_stereo_gfttMinDistance->setValue(settings.value("gfttMinDistance", ui_->doubleSpinBox_stereo_gfttMinDistance->value()).toDouble());
+	ui_->spinBox_stereo_gfttMaxFeatures->setValue(settings.value("gfttMaxFeatures", ui_->spinBox_stereo_gfttMaxFeatures->value()).toInt());
 	ui_->doubleSpinBox_stereo_gfttQuality->setValue(settings.value("gfttQuality", ui_->doubleSpinBox_stereo_gfttQuality->value()).toDouble());
 	ui_->doubleSpinBox_stereo_maxSlope->setValue(settings.value("maxSlope", ui_->doubleSpinBox_stereo_maxSlope->value()).toDouble());
 	ui_->checkBox_stereo_subpix->setChecked(settings.value("subpix", ui_->checkBox_stereo_subpix->isChecked()).toBool());
@@ -581,6 +584,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("gfttBlockSize", ui_->spinBox_stereo_gfttBlockSize->value());
 	settings.setValue("flowEps", ui_->doubleSpinBox_stereo_flowEps->value());
 	settings.setValue("gfttMinDistance", ui_->doubleSpinBox_stereo_gfttMinDistance->value());
+	settings.setValue("gfttMaxFeatures", ui_->spinBox_stereo_gfttMaxFeatures->value());
 	settings.setValue("gfttQuality", ui_->doubleSpinBox_stereo_gfttQuality->value());
 	settings.setValue("maxSlope", ui_->doubleSpinBox_stereo_maxSlope->value());
 	settings.setValue("subpix", ui_->checkBox_stereo_subpix->isChecked());
@@ -2452,7 +2456,7 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 		std::vector<cv::KeyPoint> kpts;
 		cv::Rect roi = Feature2D::computeRoi(leftMono, "0.03 0.03 0.04 0.04");
 		ParametersMap parameters;
-		parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "0"));
+		parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(ui_->spinBox_stereo_gfttMaxFeatures->value())));
 		parameters.insert(ParametersPair(Parameters::kGFTTMinDistance(), uNumber2Str(ui_->doubleSpinBox_stereo_gfttMinDistance->value())));
 		parameters.insert(ParametersPair(Parameters::kGFTTQualityLevel(), uNumber2Str(ui_->doubleSpinBox_stereo_gfttQuality->value())));
 		parameters.insert(ParametersPair(Parameters::kGFTTBlockSize(), uNumber2Str(ui_->spinBox_stereo_gfttBlockSize->value())));

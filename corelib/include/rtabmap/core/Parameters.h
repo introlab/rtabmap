@@ -254,7 +254,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(FAST, GridRows,           int, 4,         "Grid rows (0 to disable). Adapts the detector to partition the source image into a grid and detect points in each cell.");
 	RTABMAP_PARAM(FAST, GridCols,           int, 4,         "Grid cols (0 to disable). Adapts the detector to partition the source image into a grid and detect points in each cell.");
 
-	RTABMAP_PARAM(GFTT, QualityLevel, double, 0.01, "");
+	RTABMAP_PARAM(GFTT, QualityLevel, double, 0.002, "");
 	RTABMAP_PARAM(GFTT, MinDistance, double, 10, "");
 	RTABMAP_PARAM(GFTT, BlockSize, int, 3, "");
 	RTABMAP_PARAM(GFTT, UseHarrisDetector, bool, false, "");
