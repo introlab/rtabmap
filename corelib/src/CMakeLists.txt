@@ -162,8 +162,6 @@ IF(G2O_FOUND)
 		${LIBRARIES}
 		${G2O_LIBRARIES}
 	)
-	#Newest versions require std11
-	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 	
 	SET(SRC_FILES
     	${SRC_FILES}
