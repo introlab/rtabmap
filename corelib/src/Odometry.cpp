@@ -124,13 +124,13 @@ void Odometry::reset(const Transform & initialPose)
 
 		if(_force2D)
 		{
-			if(z != 0.0f || roll != 0.0f || yaw != 0.0f)
+			if(z != 0.0f || roll != 0.0f || pitch != 0.0f)
 			{
 				UWARN("Force2D=true and the initial pose contains z, roll or pitch values (%s). They are set to null.", initialPose.prettyPrint().c_str());
 			}
 			z = 0;
 			roll = 0;
-			yaw = 0;
+			pitch = 0;
 			Transform pose(x, y, z, roll, pitch, yaw);
 			_pose = pose;
 		}
