@@ -1139,12 +1139,6 @@ CameraFreenect2::CameraFreenect2(
 	//MaxDepth(4.5f),
 	//EnableBilateralFilter(true),
 	//EnableEdgeAwareFilter(true)
-	libfreenect2::DepthPacketProcessor::Config config;
-	config.EnableBilateralFilter = bilateralFiltering_;
-	config.EnableEdgeAwareFilter = edgeAwareFiltering_;
-	config.MinDepth = minKinect2Depth_;
-	config.MaxDepth = maxKinect2Depth_;
-	pipeline_->getDepthPacketProcessor()->setConfiguration(config);
 
 #endif
 }
@@ -1273,6 +1267,13 @@ bool CameraFreenect2::init(const std::string & calibrationFolder, const std::str
 						stereoModel_.R(), stereoModel_.T(), stereoModel_.E(), stereoModel_.F());
 			}
 		}
+
+		libfreenect2::Freenect2Device::Config config;
+		config.EnableBilateralFilter = bilateralFiltering_;
+		config.EnableEdgeAwareFilter = edgeAwareFiltering_;
+		config.MinDepth = minKinect2Depth_;
+		config.MaxDepth = maxKinect2Depth_;
+		dev_->setConfiguration(config);
 
 		return true;
 	}
