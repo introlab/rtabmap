@@ -1139,12 +1139,12 @@ CameraFreenect2::CameraFreenect2(
 	//MaxDepth(4.5f),
 	//EnableBilateralFilter(true),
 	//EnableEdgeAwareFilter(true)
-	libfreenect2::DepthPacketProcessor::Config config;
+	libfreenect2::Freenect2Device::Config config;
 	config.EnableBilateralFilter = bilateralFiltering_;
 	config.EnableEdgeAwareFilter = edgeAwareFiltering_;
 	config.MinDepth = minKinect2Depth_;
 	config.MaxDepth = maxKinect2Depth_;
-	pipeline_->getDepthPacketProcessor()->setConfiguration(config);
+	dev_->setConfiguration(config);
 
 #endif
 }
