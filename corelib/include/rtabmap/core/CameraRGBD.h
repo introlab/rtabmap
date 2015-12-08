@@ -252,7 +252,6 @@ private:
 	StereoCameraModel stereoModel_;
 	libfreenect2::Freenect2 * freenect2_;
 	libfreenect2::Freenect2Device *dev_;
-	libfreenect2::PacketPipeline * pipeline_;
 	libfreenect2::SyncMultiFrameListener * listener_;
 	libfreenect2::Registration * reg_;
 	float minKinect2Depth_;
