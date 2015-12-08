@@ -1097,7 +1097,6 @@ CameraFreenect2::CameraFreenect2(
 		type_(type),
 		freenect2_(0),
 		dev_(0),
-		pipeline_(0),
 		listener_(0),
 		reg_(0),
 		minKinect2Depth_(minDepth),
@@ -1124,38 +1123,18 @@ CameraFreenect2::CameraFreenect2(
 		listener_ = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Color  | libfreenect2::Frame::Depth);
 		break;
 	}
-
-#ifdef LIBFREENECT2_WITH_OPENGL_SUPPORT
-	pipeline_ = new libfreenect2::OpenGLPacketPipeline();
-#else
-#ifdef LIBFREENECT2_WITH_OPENCL_SUPPORT
-	pipeline_ = new libfreenect2::OpenCLPacketPipeline();
-#else
-	pipeline_ = new libfreenect2::CpuPacketPipeline();
-#endif
-#endif
-	//default
-	//MinDepth(0.5f),
-	//MaxDepth(4.5f),
-	//EnableBilateralFilter(true),
-	//EnableEdgeAwareFilter(true)
-	libfreenect2::DepthPacketProcessor::Config config;
-	config.EnableBilateralFilter = bilateralFiltering_;
-	config.EnableEdgeAwareFilter = edgeAwareFiltering_;
-	config.MinDepth = minKinect2Depth_;
-	config.MaxDepth = maxKinect2Depth_;
-	pipeline_->getDepthPacketProcessor()->setConfiguration(config);
-
 #endif
 }
 
 CameraFreenect2::~CameraFreenect2()
 {
 #ifdef WITH_FREENECT2
+	UDEBUG("");
 	if(dev_)
 	{
 		dev_->stop();
 		dev_->close();
+		//deleted in freenect2_ destructor (Freeenect2Impl::clearDevices())
 	}
 	if(listener_)
 	{
@@ -1167,11 +1146,6 @@ CameraFreenect2::~CameraFreenect2()
 		delete reg_;
 		reg_ = 0;
 	}
-	// commented, it seems released in freenect2_
-	//if(pipeline_)
-	//{
-	//	delete pipeline_;
-	//}
 
 	if(freenect2_)
 	{
@@ -1188,7 +1162,7 @@ bool CameraFreenect2::init(const std::string & calibrationFolder, const std::str
 	{
 		dev_->stop();
 		dev_->close();
-		dev_ = 0;
+		dev_ = 0; //deleted in freenect2_ destructor (Freeenect2Impl::clearDevices())
 	}
 
 	if(reg_)
@@ -1197,17 +1171,44 @@ bool CameraFreenect2::init(const std::string & calibrationFolder, const std::str
 		reg_ = 0;
 	}
 
+	libfreenect2::PacketPipeline * pipeline;
+#ifdef LIBFREENECT2_WITH_OPENGL_SUPPORT
+	pipeline = new libfreenect2::OpenGLPacketPipeline();
+#else
+#ifdef LIBFREENECT2_WITH_OPENCL_SUPPORT
+	pipeline = new libfreenect2::OpenCLPacketPipeline();
+#else
+	pipeline = new libfreenect2::CpuPacketPipeline();
+#endif
+#endif
+
 	if(deviceId_ <= 0)
 	{
-		dev_ = freenect2_->openDefaultDevice(pipeline_);
+		UDEBUG("Opening default device...");
+		dev_ = freenect2_->openDefaultDevice(pipeline);
+		pipeline = 0;// pipeline deleted in dev_ (Freenect2DeviceImpl::~Freenect2DeviceImpl())
 	}
 	else
 	{
-		dev_ = freenect2_->openDevice(deviceId_, pipeline_);
+		UDEBUG("Opening device ID=%d...", deviceId_);
+		dev_ = freenect2_->openDevice(deviceId_, pipeline);
+		pipeline = 0;// pipeline deleted in dev_ (Freenect2DeviceImpl::~Freenect2DeviceImpl())
 	}
 
 	if(dev_)
 	{
+		//default
+		//MinDepth(0.5f),
+		//MaxDepth(4.5f),
+		//EnableBilateralFilter(true),
+		//EnableEdgeAwareFilter(true)
+		libfreenect2::Freenect2Device::Config config;
+		config.EnableBilateralFilter = bilateralFiltering_;
+		config.EnableEdgeAwareFilter = edgeAwareFiltering_;
+		config.MinDepth = minKinect2Depth_;
+		config.MaxDepth = maxKinect2Depth_;
+		dev_->setConfiguration(config);
+
 		dev_->setColorFrameListener(listener_);
 		dev_->setIrAndDepthFrameListener(listener_);
 
@@ -1278,7 +1279,8 @@ bool CameraFreenect2::init(const std::string & calibrationFolder, const std::str
 	}
 	else
 	{
-		UERROR("CameraFreenect2: no device connected or failure opening the default one!");
+		UERROR("CameraFreenect2: no device connected or failure opening the default one! Note that rtabmap should link on libusb of libfreenect2. "
+					"Tip, before starting rtabmap: \"$ export LD_LIBRARY_PATH=~/libfreenect2/depends/libusb/lib:$LD_LIBRARY_PATH\"");
 	}
 #else
 	UERROR("CameraFreenect2: RTAB-Map is not built with Freenect2 support!");
