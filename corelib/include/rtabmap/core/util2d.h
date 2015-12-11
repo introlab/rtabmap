@@ -39,20 +39,36 @@ namespace rtabmap
 namespace util2d
 {
 
-cv::Mat RTABMAP_EXP disparityFromStereoImages(
+// SSD: Sum of Squared Differences
+float RTABMAP_EXP ssd(const cv::Mat & windowLeft, const cv::Mat & windowRight);
+// SAD: Sum of Absolute intensity Differences
+float RTABMAP_EXP sad(const cv::Mat & windowLeft, const cv::Mat & windowRight);
+
+std::vector<cv::Point2f> RTABMAP_EXP calcStereoCorrespondences(
 		const cv::Mat & leftImage,
 		const cv::Mat & rightImage,
-		int type = CV_32FC1); // CV_32FC1 or CV_16SC1
+		const std::vector<cv::Point2f> & leftCorners,
+		std::vector<unsigned char> & status,
+		cv::Size winSize = cv::Size(6,3),
+		int maxLevel = 3,
+		int iterations = 5,
+		int minDisparity = 0,
+		int maxDisparity = 64,
+		bool ssdApproach = true); // SSD by default, otherwise it is SAD
+
+// exactly as cv::calcOpticalFlowPyrLK but it should be called with pyramid (from cv::buildOpticalFlowPyramid()) and delta drops the y error.
+void RTABMAP_EXP calcOpticalFlowPyrLKStereo( cv::InputArray _prevImg, cv::InputArray _nextImg,
+                           cv::InputArray _prevPts, cv::InputOutputArray _nextPts,
+                           cv::OutputArray _status, cv::OutputArray _err,
+                           cv::Size winSize = cv::Size(15,3), int maxLevel = 3,
+						   cv::TermCriteria criteria = cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01),
+						   int flags = 0, double minEigThreshold = 1e-4 );
+
 
 cv::Mat RTABMAP_EXP disparityFromStereoImages(
 		const cv::Mat & leftImage,
 		const cv::Mat & rightImage,
-		const std::vector<cv::Point2f> & leftCorners,
-		int flowWinSize = 9,
-		int flowMaxLevel = 4,
-		int flowIterations = 20,
-		double flowEps = 0.02,
-		float maxCorrespondencesSlope = 0.1f);
+		int type = CV_32FC1); // CV_32FC1 or CV_16SC1
 
 cv::Mat RTABMAP_EXP depthFromDisparity(const cv::Mat & disparity,
 		float fx, float baseline,
@@ -70,11 +86,10 @@ cv::Mat RTABMAP_EXP depthFromStereoImages(
 		double flowEps = 0.02);
 
 cv::Mat RTABMAP_EXP disparityFromStereoCorrespondences(
-		const cv::Mat & leftImage,
+		const cv::Size & disparitySize,
 		const std::vector<cv::Point2f> & leftCorners,
 		const std::vector<cv::Point2f> & rightCorners,
-		const std::vector<unsigned char> & mask,
-		float maxSlope = 0.1f);
+		const std::vector<unsigned char> & mask);
 
 cv::Mat RTABMAP_EXP depthFromStereoCorrespondences(
 		const cv::Mat & leftImage,

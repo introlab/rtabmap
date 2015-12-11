@@ -673,10 +673,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->toolButton_odomBowFixedLocalMap, SIGNAL(clicked()), this, SLOT(changeOdomBowFixedLocalMapPath()));
 
 	//Odometry Optical Flow
+	_ui->odom_flow_keyframeThr->setObjectName(Parameters::kOdomFlowKeyFrameThr().c_str());
 	_ui->odom_flow_winSize->setObjectName(Parameters::kOdomFlowWinSize().c_str());
 	_ui->odom_flow_maxLevel->setObjectName(Parameters::kOdomFlowMaxLevel().c_str());
 	_ui->odom_flow_iterations->setObjectName(Parameters::kOdomFlowIterations().c_str());
 	_ui->odom_flow_eps->setObjectName(Parameters::kOdomFlowEps().c_str());
+	_ui->odom_flow_guessMotion->setObjectName(Parameters::kOdomFlowGuessMotion().c_str());
 
 	//Odometry Mono
 	_ui->doubleSpinBox_minFlow->setObjectName(Parameters::kOdomMonoInitMinFlow().c_str());
@@ -693,11 +695,28 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_particleLambdaR->setObjectName(Parameters::kOdomParticleLambdaR().c_str());
 
 	//Stereo
-	_ui->stereo_flow_winSize->setObjectName(Parameters::kStereoWinSize().c_str());
-	_ui->stereo_flow_maxLevel->setObjectName(Parameters::kStereoMaxLevel().c_str());
-	_ui->stereo_flow_iterations->setObjectName(Parameters::kStereoIterations().c_str());
+	_ui->stereo_winWidth->setObjectName(Parameters::kStereoWinWidth().c_str());
+	_ui->stereo_winHeight->setObjectName(Parameters::kStereoWinHeight().c_str());
+	_ui->stereo_maxLevel->setObjectName(Parameters::kStereoMaxLevel().c_str());
+	_ui->stereo_iterations->setObjectName(Parameters::kStereoIterations().c_str());
+	_ui->stereo_minDisparity->setObjectName(Parameters::kStereoMinDisparity().c_str());
+	_ui->stereo_maxDisparity->setObjectName(Parameters::kStereoMaxDisparity().c_str());
+	_ui->stereo_ssd->setObjectName(Parameters::kStereoSSD().c_str());
 	_ui->stereo_flow_eps->setObjectName(Parameters::kStereoEps().c_str());
+	_ui->stereo_opticalFlow->setObjectName(Parameters::kStereoOpticalFlow().c_str());
 	_ui->stereo_maxSlope->setObjectName(Parameters::kStereoMaxSlope().c_str());
+
+	//StereoBM
+	_ui->stereobm_blockSize->setObjectName(Parameters::kStereoBMBlockSize().c_str());
+	_ui->stereobm_minDisparity->setObjectName(Parameters::kStereoBMMinDisparity().c_str());
+	_ui->stereobm_numDisparities->setObjectName(Parameters::kStereoBMNumDisparities().c_str());
+	_ui->stereobm_preFilterCap->setObjectName(Parameters::kStereoBMPreFilterCap().c_str());
+	_ui->stereobm_preFilterSize->setObjectName(Parameters::kStereoBMPreFilterSize().c_str());
+	_ui->stereobm_speckleRange->setObjectName(Parameters::kStereoBMSpeckleRange().c_str());
+	_ui->stereobm_speckleWinSize->setObjectName(Parameters::kStereoBMSpeckleWindowSize().c_str());
+	_ui->stereobm_tetureThreshold->setObjectName(Parameters::kStereoBMTextureThreshold().c_str());
+	_ui->stereobm_uniquessRatio->setObjectName(Parameters::kStereoBMUniquenessRatio().c_str());
+
 
 
 	setupSignals();
@@ -711,7 +730,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	// This will add all parameters to the parameters Map
 	_ui->stackedWidget->setCurrentIndex(0);
 	this->setupTreeView();
-	connect(_ui->treeView, SIGNAL(clicked(QModelIndex)), this, SLOT(clicked(QModelIndex)));
 
 	_obsoletePanels = kPanelAll;
 
@@ -820,7 +838,10 @@ void PreferencesDialog::setupTreeView()
 	{
 		_ui->treeView->setCurrentIndex(_indexModel->index(currentIndex-2, 0));
 	}
-	_ui->treeView->expandToDepth(0);
+	_ui->treeView->expandToDepth(1);
+
+	// should be after setModel()
+	connect(_ui->treeView->selectionModel(), SIGNAL(currentChanged(const QModelIndex &, const QModelIndex &)), this, SLOT(clicked(const QModelIndex &, const QModelIndex &)));
 }
 
 // recursive...
@@ -933,9 +954,9 @@ void PreferencesDialog::setupSignals()
 	}
 }
 
-void PreferencesDialog::clicked(const QModelIndex &index)
+void PreferencesDialog::clicked(const QModelIndex & current, const QModelIndex & previous)
  {
-	QStandardItem * item = _indexModel->itemFromIndex(index);
+	QStandardItem * item = _indexModel->itemFromIndex(current);
 	if(item && item->isEnabled())
 	{
 		int index = item->data().toInt();
@@ -2045,7 +2066,7 @@ void PreferencesDialog::showEvent ( QShowEvent * event )
 		_ui->label_dictionaryPath->setEnabled(false);
 
 		_ui->groupBox_source0->setEnabled(false);
-		_ui->groupBox_odometry2->setEnabled(false);
+		_ui->groupBox_odometry1->setEnabled(false);
 
 		this->setWindowTitle(tr("Preferences [Monitoring mode]"));
 	}
@@ -2060,7 +2081,7 @@ void PreferencesDialog::showEvent ( QShowEvent * event )
 		_ui->label_dictionaryPath->setEnabled(true);
 
 		_ui->groupBox_source0->setEnabled(true);
-		_ui->groupBox_odometry2->setEnabled(true);
+		_ui->groupBox_odometry1->setEnabled(true);
 
 		this->setWindowTitle(tr("Preferences"));
 	}
@@ -4005,7 +4026,7 @@ void PreferencesDialog::testOdometry()
 
 	if(camera)
 	{
-		CameraThread cameraThread(camera); // take ownership of camera
+		CameraThread cameraThread(camera, this->getAllParameters()); // take ownership of camera
 		cameraThread.setMirroringEnabled(isSourceMirroring());
 		cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
 		cameraThread.setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
@@ -4072,7 +4093,7 @@ void PreferencesDialog::testCamera()
 		Camera * camera = this->createCamera();
 		if(camera)
 		{
-			CameraThread cameraThread(camera);
+			CameraThread cameraThread(camera, this->getAllParameters());
 			cameraThread.setMirroringEnabled(isSourceMirroring());
 			cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
 			cameraThread.setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
@@ -4123,7 +4144,7 @@ void PreferencesDialog::calibrate()
 	_calibrationDialog->setSavingDirectory(this->getCameraInfoDir());
 	_calibrationDialog->registerToEventsManager();
 
-	CameraThread cameraThread(camera);
+	CameraThread cameraThread(camera, this->getAllParameters());
 	UEventsManager::createPipe(&cameraThread, _calibrationDialog, "CameraEvent");
 
 	cameraThread.start();

@@ -31,8 +31,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d.h"
+#include "rtabmap/core/util2d.h"
 #include "rtabmap/core/util3d_features.h"
 #include "rtabmap/core/EpipolarGeometry.h"
+#include "rtabmap/core/Stereo.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UConversion.h"
@@ -51,11 +53,6 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	flowIterations_(Parameters::defaultOdomFlowIterations()),
 	flowEps_(Parameters::defaultOdomFlowEps()),
 	flowMaxLevel_(Parameters::defaultOdomFlowMaxLevel()),
-	stereoWinSize_(Parameters::defaultStereoWinSize()),
-	stereoIterations_(Parameters::defaultStereoIterations()),
-	stereoEps_(Parameters::defaultStereoEps()),
-	stereoMaxLevel_(Parameters::defaultStereoMaxLevel()),
-	stereoMaxSlope_(Parameters::defaultStereoMaxSlope()),
 	localHistoryMaxSize_(Parameters::defaultOdomBowLocalHistorySize()),
 	initMinFlow_(Parameters::defaultOdomMonoInitMinFlow()),
 	initMinTranslation_(Parameters::defaultOdomMonoInitMinTranslation()),
@@ -69,12 +66,6 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomFlowEps(), flowEps_);
 	Parameters::parse(parameters, Parameters::kOdomFlowMaxLevel(), flowMaxLevel_);
 	Parameters::parse(parameters, Parameters::kOdomBowLocalHistorySize(), localHistoryMaxSize_);
-
-	Parameters::parse(parameters, Parameters::kStereoWinSize(), stereoWinSize_);
-	Parameters::parse(parameters, Parameters::kStereoIterations(), stereoIterations_);
-	Parameters::parse(parameters, Parameters::kStereoEps(), stereoEps_);
-	Parameters::parse(parameters, Parameters::kStereoMaxLevel(), stereoMaxLevel_);
-	Parameters::parse(parameters, Parameters::kStereoMaxSlope(), stereoMaxSlope_);
 
 	Parameters::parse(parameters, Parameters::kOdomMonoInitMinFlow(), initMinFlow_);
 	Parameters::parse(parameters, Parameters::kOdomMonoInitMinTranslation(), initMinTranslation_);
@@ -139,11 +130,23 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	{
 		UERROR("Error initializing the memory for Mono Odometry.");
 	}
+
+	bool stereoOpticalFlow = Parameters::defaultStereoOpticalFlow();
+	Parameters::parse(parameters, Parameters::kStereoOpticalFlow(), stereoOpticalFlow);
+	if(stereoOpticalFlow)
+	{
+		stereo_ = new StereoOpticalFlow(parameters);
+	}
+	else
+	{
+		stereo_ = new Stereo(parameters);
+	}
 }
 
 OdometryMono::~OdometryMono()
 {
 	delete memory_;
+	delete stereo_;
 }
 
 void OdometryMono::reset(const Transform & initialPose)
@@ -735,20 +738,21 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 							{
 								if(refDepthOrRight_.type() == CV_8UC1)
 								{
-									 newCorners3D = util3d::generateKeypoints3DStereo(
-											 refCorners,
-											 refS->sensorData().imageRaw(),
-											 refDepthOrRight_,
-											 cameraModel.fx(),
-											 data.stereoCameraModel().baseline(),
-											 cameraModel.cx(),
-											 cameraModel.cy(),
-											 Transform::getIdentity(),
-											 stereoWinSize_,
-											 stereoMaxLevel_,
-											 stereoIterations_,
-											 stereoEps_,
-											 stereoMaxSlope_ );
+									StereoCameraModel m = data.stereoCameraModel();
+									m.setLocalTransform(Transform::getIdentity());
+									std::vector<unsigned char> stereoStatus;
+									std::vector<cv::Point2f> rightCorners;
+									rightCorners = stereo_->computeCorrespondences(
+											refS->sensorData().imageRaw(),
+											refDepthOrRight_,
+											refCorners,
+											stereoStatus);
+
+									newCorners3D = util3d::generateKeypoints3DStereo(
+											refCorners,
+											rightCorners,
+											m,
+											stereoStatus);
 								}
 								else if(refDepthOrRight_.type() == CV_32FC1 || refDepthOrRight_.type() == CV_16UC1)
 								{

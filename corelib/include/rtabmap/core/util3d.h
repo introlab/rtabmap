@@ -87,22 +87,19 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDepthRGB(
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromDisparity(
 		const cv::Mat & imageDisparity,
-		float cx, float cy,
-		float fx, float baseline,
+		const StereoCameraModel & model,
 		int decimation = 1);
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDisparityRGB(
 		const cv::Mat & imageRgb,
 		const cv::Mat & imageDisparity,
-		float cx, float cy,
-		float fx, float baseline,
+		const StereoCameraModel & model,
 		int decimation = 1);
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromStereoImages(
 		const cv::Mat & imageLeft,
 		const cv::Mat & imageRight,
-		float cx, float cy,
-		float fx, float baseline,
+		const StereoCameraModel & model,
 		int decimation = 1);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
@@ -136,12 +133,12 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const cv::
 pcl::PointXYZ RTABMAP_EXP projectDisparityTo3D(
 		const cv::Point2f & pt,
 		float disparity,
-		float cx, float cy, float fx, float baseline);
+		const StereoCameraModel & model);
 
 pcl::PointXYZ RTABMAP_EXP projectDisparityTo3D(
 		const cv::Point2f & pt,
 		const cv::Mat & disparity,
-		float cx, float cy, float fx, float baseline);
+		const StereoCameraModel & model);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP concatenateClouds(
 		const std::list<pcl::PointCloud<pcl::PointXYZ>::Ptr> & clouds);

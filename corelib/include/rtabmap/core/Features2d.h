@@ -102,7 +102,7 @@ public:
 		kFeatureGfttOrb=8,   //new 0.10.11
 		kFeatureFastOrb=9};  //new 0.11.0
 
-	static Feature2D * create(Feature2D::Type & type, const ParametersMap & parameters);
+	static Feature2D * create(Feature2D::Type type, const ParametersMap & parameters);
 
 	static void filterKeypointsByDepth(
 				std::vector<cv::KeyPoint> & keypoints,

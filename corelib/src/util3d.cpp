@@ -358,8 +358,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDisparity(
 		const cv::Mat & imageDisparity,
-		float cx, float cy,
-		float fx, float baseline,
+		const StereoCameraModel & model,
 		int decimation)
 {
 	UASSERT(imageDisparity.type() == CV_32FC1 || imageDisparity.type()==CV_16SC1);
@@ -382,7 +381,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDisparity(
 			for(int w = 0; w < imageDisparity.cols && w/decimation < (int)cloud->width; w+=decimation)
 			{
 				float disp = float(imageDisparity.at<short>(h,w))/16.0f;
-				cloud->at((h/decimation)*cloud->width + (w/decimation)) = projectDisparityTo3D(cv::Point2f(w, h), disp, cx, cy, fx, baseline);
+				cloud->at((h/decimation)*cloud->width + (w/decimation)) = projectDisparityTo3D(cv::Point2f(w, h), disp, model);
 			}
 		}
 	}
@@ -393,7 +392,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDisparity(
 			for(int w = 0; w < imageDisparity.cols && w/decimation < (int)cloud->width; w+=decimation)
 			{
 				float disp = imageDisparity.at<float>(h,w);
-				cloud->at((h/decimation)*cloud->width + (w/decimation)) = projectDisparityTo3D(cv::Point2f(w, h), disp, cx, cy, fx, baseline);
+				cloud->at((h/decimation)*cloud->width + (w/decimation)) = projectDisparityTo3D(cv::Point2f(w, h), disp, model);
 			}
 		}
 	}
@@ -403,8 +402,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDisparity(
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDisparityRGB(
 		const cv::Mat & imageRgb,
 		const cv::Mat & imageDisparity,
-		float cx, float cy,
-		float fx, float baseline,
+		const StereoCameraModel & model,
 		int decimation)
 {
 	UASSERT(!imageRgb.empty() && !imageDisparity.empty());
@@ -453,7 +451,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDisparityRGB(
 			}
 
 			float disp = imageDisparity.type()==CV_16SC1?float(imageDisparity.at<short>(h,w))/16.0f:imageDisparity.at<float>(h,w);
-			pcl::PointXYZ ptXYZ = projectDisparityTo3D(cv::Point2f(w, h), disp, cx, cy, fx, baseline);
+			pcl::PointXYZ ptXYZ = projectDisparityTo3D(cv::Point2f(w, h), disp, model);
 			pt.x = ptXYZ.x;
 			pt.y = ptXYZ.y;
 			pt.z = ptXYZ.z;
@@ -465,8 +463,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDisparityRGB(
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 		const cv::Mat & imageLeft,
 		const cv::Mat & imageRight,
-		float cx, float cy,
-		float fx, float baseline,
+		const StereoCameraModel & model,
 		int decimation)
 {
 	UASSERT(!imageLeft.empty() && !imageRight.empty());
@@ -479,14 +476,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 	cv::Mat leftColor = imageLeft;
 	cv::Mat rightMono = imageRight;
 
+	StereoCameraModel modelDecimation = model;
+
 	if(leftColor.rows % decimation != 0 ||
 	   leftColor.cols % decimation != 0)
 	{
 		leftColor = util2d::decimate(leftColor, decimation);
 		rightMono = util2d::decimate(rightMono, decimation);
-		fx /= float(decimation);
-		cx /= float(decimation);
-		cy /= float(decimation);
+		modelDecimation.scale(1/float(decimation));
 		decimation = 1;
 	}
 
@@ -503,8 +500,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 	return cloudFromDisparityRGB(
 			leftColor,
 			util2d::disparityFromStereoImages(leftMono, rightMono),
-			cx, cy,
-			fx, baseline,
+			modelDecimation,
 			decimation);
 }
 
@@ -595,10 +591,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 		}
 		cloud = cloudFromDisparity(
 				util2d::disparityFromStereoImages(leftMono, sensorData.rightRaw()),
-				sensorData.stereoCameraModel().left().cx(),
-				sensorData.stereoCameraModel().left().cy(),
-				sensorData.stereoCameraModel().left().fx(),
-				sensorData.stereoCameraModel().baseline(),
+				sensorData.stereoCameraModel(),
 				decimation);
 
 		if(cloud->size())
@@ -720,10 +713,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		UDEBUG("");
 		cloud = cloudFromStereoImages(sensorData.imageRaw(),
 				sensorData.rightRaw(),
-				sensorData.stereoCameraModel().left().cx(),
-				sensorData.stereoCameraModel().left().cy(),
-				sensorData.stereoCameraModel().left().fx(),
-				sensorData.stereoCameraModel().baseline(),
+				sensorData.stereoCameraModel(),
 				decimation);
 
 		if(cloud->size())
@@ -871,12 +861,13 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr laserScanToPointCloud(const cv::Mat & laserS
 pcl::PointXYZ projectDisparityTo3D(
 		const cv::Point2f & pt,
 		float disparity,
-		float cx, float cy, float fx, float baseline)
+		const StereoCameraModel & model)
 {
-	if(disparity > 0.0f && baseline > 0.0f && fx > 0.0f)
+	if(disparity != 0.0f && model.baseline() > 0.0f && model.left().fx() > 0.0f)
 	{
-		float W = disparity/baseline;// + (right_.cx() - left_.cx()) / Tx;
-		return pcl::PointXYZ((pt.x - cx)/W, (pt.y - cy)/W, fx/W);
+		//Z = baseline * f / (d + cx1-cx0);
+		float W = model.baseline()/(disparity + model.right().cx() - model.left().cx());
+		return pcl::PointXYZ((pt.x - model.left().cx())*W, (pt.y - model.left().cy())*W, model.left().fx()*W);
 	}
 	float bad_point = std::numeric_limits<float>::quiet_NaN ();
 	return pcl::PointXYZ(bad_point, bad_point, bad_point);
@@ -885,7 +876,7 @@ pcl::PointXYZ projectDisparityTo3D(
 pcl::PointXYZ projectDisparityTo3D(
 		const cv::Point2f & pt,
 		const cv::Mat & disparity,
-		float cx, float cy, float fx, float baseline)
+		const StereoCameraModel & model)
 {
 	UASSERT(!disparity.empty() && (disparity.type() == CV_32FC1 || disparity.type() == CV_16SC1));
 	int u = int(pt.x+0.5f);
@@ -895,7 +886,7 @@ pcl::PointXYZ projectDisparityTo3D(
 	   uIsInBounds(v, 0, disparity.rows))
 	{
 		float d = disparity.type() == CV_16SC1?float(disparity.at<short>(v,u))/16.0f:disparity.at<float>(v,u);
-		return projectDisparityTo3D(pt, d, cx, cy, fx, baseline);
+		return projectDisparityTo3D(pt, d, model);
 	}
 	return pcl::PointXYZ(bad_point, bad_point, bad_point);
 }

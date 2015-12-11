@@ -241,7 +241,7 @@ private slots:
 	void makeObsoleteCloudRenderingPanel();
 	void makeObsoleteLoggingPanel();
 	void makeObsoleteSourcePanel();
-	void clicked(const QModelIndex &index);
+	void clicked(const QModelIndex & current, const QModelIndex & previous);
 	void addParameter(int value);
 	void addParameter(bool value);
 	void addParameter(double value);

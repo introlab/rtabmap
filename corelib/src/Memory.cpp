@@ -55,6 +55,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Statistics.h"
 #include "rtabmap/core/Compression.h"
 #include "rtabmap/core/Graph.h"
+#include "rtabmap/core/Stereo.h"
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
@@ -104,20 +105,16 @@ Memory::Memory(const ParametersMap & parameters) :
 	_wordsMinDepth(Parameters::defaultKpMinDepth()),
 	_roiRatios(std::vector<float>(4, 0.0f)),
 
-	_stereoFlowWinSize(Parameters::defaultStereoWinSize()),
-	_stereoFlowIterations(Parameters::defaultStereoIterations()),
-	_stereoFlowEpsilon(Parameters::defaultStereoEps()),
-	_stereoFlowMaxLevel(Parameters::defaultStereoMaxLevel()),
-	_stereoMaxSlope(Parameters::defaultStereoMaxSlope()),
-
 	_subPixWinSize(Parameters::defaultKpSubPixWinSize()),
 	_subPixIterations(Parameters::defaultKpSubPixIterations()),
 	_subPixEps(Parameters::defaultKpSubPixEps())
 {
 	_feature2D = Feature2D::create(_featureType, parameters);
+	_featureType = _feature2D->getType();
 	_vwd = new VWDictionary(parameters);
 	_registrationVis = new RegistrationVis(parameters);
 	_registrationIcp = new RegistrationIcp(parameters);
+	_stereo = new Stereo(parameters);
 	this->parseParameters(parameters);
 }
 
@@ -377,6 +374,10 @@ Memory::~Memory()
 	{
 		delete _registrationIcp;
 	}
+	if(_stereo)
+	{
+		delete _stereo;
+	}
 	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosed));
 }
 
@@ -417,13 +418,6 @@ void Memory::parseParameters(const ParametersMap & parameters)
 		_dbDriver->parseParameters(parameters);
 	}
 
-	//stereo
-	Parameters::parse(parameters, Parameters::kStereoWinSize(), _stereoFlowWinSize);
-	Parameters::parse(parameters, Parameters::kStereoIterations(), _stereoFlowIterations);
-	Parameters::parse(parameters, Parameters::kStereoEps(), _stereoFlowEpsilon);
-	Parameters::parse(parameters, Parameters::kStereoMaxLevel(), _stereoFlowMaxLevel);
-	Parameters::parse(parameters, Parameters::kStereoMaxSlope(), _stereoMaxSlope);
-
 	// Keypoint stuff
 	if(_vwd)
 	{
@@ -463,7 +457,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 		}
 
 		_feature2D = Feature2D::create(detectorStrategy, parameters);
-		_featureType = detectorStrategy;
+		_featureType = _feature2D->getType();
 	}
 	else if(_feature2D)
 	{
@@ -477,6 +471,26 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	if(_registrationIcp)
 	{
 		_registrationIcp->parseParameters(parameters);
+	}
+
+	//stereo
+	UASSERT(_stereo != 0);
+	if((iter=parameters.find(Parameters::kStereoOpticalFlow())) != parameters.end())
+	{
+		bool opticalFlow = uStr2Bool(iter->second);
+		delete _stereo;
+		if(opticalFlow)
+		{
+			_stereo = new StereoOpticalFlow(parameters);
+		}
+		else
+		{
+			_stereo = new Stereo(parameters);
+		}
+	}
+	else
+	{
+		_stereo->parseParameters(parameters);
 	}
 
 	// do this after all parameters are parsed
@@ -3093,7 +3107,6 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			if(!data.depthOrRightRaw().empty() && data.stereoCameraModel().isValid())
 			{
 				//stereo
-				cv::Mat disparity;
 				bool subPixelOn = false;
 				if(_subPixWinSize > 0 && _subPixIterations > 0)
 				{
@@ -3137,26 +3150,34 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 					}
 
 					//generate a disparity map
-					disparity = util2d::disparityFromStereoImages(
+					std::vector<unsigned char> status;
+					std::vector<cv::Point2f> rightCorners;
+					rightCorners = _stereo->computeCorrespondences(
 							imageMono,
-							data.depthOrRightRaw(),
+							data.rightRaw(),
 							leftCorners,
-							_stereoFlowWinSize,
-							_stereoFlowMaxLevel,
-							_stereoFlowIterations,
-							_stereoFlowEpsilon,
-							_stereoMaxSlope);
+							status);
+					if(_wordsMaxDepth > 0.0f || _wordsMinDepth > 0.0f)
+					{
+						UASSERT(status.size() == leftCorners.size() && status.size() == rightCorners.size());
+						for(unsigned int i=0; i<status.size(); ++i)
+						{
+							if(status[i] != 0)
+							{
+								float d = data.stereoCameraModel().computeDepth(leftCorners[i].x - rightCorners[i].x);
+								if((_wordsMinDepth > 0.0f && d < _wordsMinDepth) ||
+								   (_wordsMaxDepth > 0.0f && d > _wordsMaxDepth))
+								{
+									status[i] = 0;
+								}
+							}
+						}
+					}
+
+
 					t = timer.ticks();
 					if(stats) stats->addStatistic(Statistics::kTimingMemStereo_correspondences(), t*1000.0f);
 					UDEBUG("generate disparity = %fs", t);
-
-					if(_wordsMaxDepth > 0.0f)
-					{
-						// disparity = baseline * fx / depth;
-						float minDisparity = data.stereoCameraModel().baseline() * data.stereoCameraModel().left().fx() / _wordsMaxDepth;
-						Feature2D::filterKeypointsByDisparity(keypoints, descriptors, disparity, minDisparity);
-						UDEBUG("filter keypoints by disparity (%d)", (int)keypoints.size());
-					}
 
 					if(keypoints.size())
 					{
@@ -3168,10 +3189,12 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 							UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
 						}
 
-						keypoints3D = util3d::generateKeypoints3DDisparity(
-								keypoints,
-								disparity,
-								data.stereoCameraModel());
+						keypoints3D = util3d::generateKeypoints3DStereo(
+								leftCorners,
+								rightCorners,
+								data.stereoCameraModel(),
+								status);
+
 						t = timer.ticks();
 						if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
 						UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), t);
@@ -3323,30 +3346,41 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			//generate a disparity map
 			std::vector<cv::Point2f> leftCorners;
 			cv::KeyPoint::convert(keypoints, leftCorners);
-			cv::Mat disparity = util2d::disparityFromStereoImages(
+			std::vector<unsigned char> status;
+
+			std::vector<cv::Point2f> rightCorners;
+			rightCorners = _stereo->computeCorrespondences(
 					imageMono,
-					data.depthOrRightRaw(),
+					data.rightRaw(),
 					leftCorners,
-					_stereoFlowWinSize,
-					_stereoFlowMaxLevel,
-					_stereoFlowIterations,
-					_stereoFlowEpsilon,
-					_stereoMaxSlope);
+					status);
+
+			if(_wordsMaxDepth > 0.0f || _wordsMinDepth > 0.0f)
+			{
+				UASSERT(status.size() == leftCorners.size() && status.size() == rightCorners.size());
+				for(unsigned int i=0; i<status.size(); ++i)
+				{
+					if(status[i] != 0)
+					{
+						float d = data.stereoCameraModel().computeDepth(leftCorners[i].x - rightCorners[i].x);
+						if((_wordsMinDepth > 0.0f && d < _wordsMinDepth) ||
+						   (_wordsMaxDepth > 0.0f && d > _wordsMaxDepth))
+						{
+							status[i] = 0;
+						}
+					}
+				}
+			}
+
 			t = timer.ticks();
 			if(stats) stats->addStatistic(Statistics::kTimingMemStereo_correspondences(), t*1000.0f);
 			UDEBUG("generate disparity = %fs", t);
 
-			if(_wordsMaxDepth)
-			{
-				// disparity = baseline * fx / depth;
-				float minDisparity = data.stereoCameraModel().baseline() * data.stereoCameraModel().left().fx() / _wordsMaxDepth;
-				Feature2D::filterKeypointsByDisparity(keypoints, descriptors, disparity, minDisparity);
-			}
-
-			keypoints3D = util3d::generateKeypoints3DDisparity(
-					keypoints,
-					disparity,
-					data.stereoCameraModel());
+			keypoints3D = util3d::generateKeypoints3DStereo(
+					leftCorners,
+					rightCorners,
+					data.stereoCameraModel(),
+					status);
 			t = timer.ticks();
 			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
 			UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), t);

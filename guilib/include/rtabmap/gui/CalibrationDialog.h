@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/opencv.hpp>
 
 #include <rtabmap/core/CameraModel.h>
+#include <rtabmap/core/StereoCameraModel.h>
 
 #include <rtabmap/utilite/UEventsHandler.h>
 

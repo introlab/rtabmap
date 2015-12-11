@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/calib3d/calib3d.hpp>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/CameraModel.h>
+#include <rtabmap/core/StereoCameraModel.h>
 #include <list>
 #include <map>
 
@@ -61,33 +62,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP generateKeypoints3DDisparity(
 		const StereoCameraModel & stereoCameraMode);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP generateKeypoints3DStereo(
-		const std::vector<cv::KeyPoint> & keypoints,
-		const cv::Mat & leftImage,
-		const cv::Mat & rightImage,
-		float fx,
-		float baseline,
-		float cx,
-		float cy,
-		Transform localTransform = Transform::getIdentity(),
-		int flowWinSize = 9,
-		int flowMaxLevel = 4,
-		int flowIterations = 20,
-		double flowEps = 0.02,
-		double maxCorrespondencesSlope = 0.0);
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP generateKeypoints3DStereo(
 		const std::vector<cv::Point2f> & leftCorners,
-		const cv::Mat & leftImage,
-		const cv::Mat & rightImage,
-		float fx,
-		float baseline,
-		float cx,
-		float cy,
-		Transform localTransform = Transform::getIdentity(),
-		int flowWinSize = 9,
-		int flowMaxLevel = 4,
-		int flowIterations = 20,
-		double flowEps = 0.02,
-		double maxCorrespondencesSlope = 0.0);
+		const std::vector<cv::Point2f> & rightCorners,
+		const StereoCameraModel & model,
+		const std::vector<unsigned char> & mask = std::vector<unsigned char>());
 
 std::multimap<int, pcl::PointXYZ> RTABMAP_EXP generateWords3DMono(
 		const std::multimap<int, cv::KeyPoint> & kpts,

@@ -2959,7 +2959,7 @@ void MainWindow::startDetection()
 			return;
 		}
 
-		_camera = new CameraThread(camera);
+		_camera = new CameraThread(camera, parameters);
 		_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
 		_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
 		_camera->setStereoToDepth(_preferencesDialog->isSourceStereoDepthGenerated());

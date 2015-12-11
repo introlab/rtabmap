@@ -60,6 +60,10 @@ SET(SRC_FILES
 	OdometryMono.cpp
 	OdometryICP.cpp
 	
+	Stereo.cpp
+	StereoDense.cpp
+	StereoCameraModel.cpp
+	
 	toro3d/posegraph3.cpp
 	toro3d/treeoptimizer3_iteration.cpp
 	toro3d/treeoptimizer3.cpp

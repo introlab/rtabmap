@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/util2d.h"
 #include "rtabmap/core/util3d.h"
+#include "rtabmap/core/StereoDense.h"
 
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
@@ -39,11 +40,12 @@ namespace rtabmap
 {
 
 // ownership transferred
-CameraThread::CameraThread(Camera * camera) :
+CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_camera(camera),
 		_mirroring(false),
 		_colorOnly(false),
-		_stereoToDepth(false)
+		_stereoToDepth(false),
+		_stereoDense(new StereoBM(parameters))
 {
 	UASSERT(_camera != 0);
 }
@@ -55,6 +57,7 @@ CameraThread::~CameraThread()
 	{
 		delete _camera;
 	}
+	delete _stereoDense;
 }
 
 void CameraThread::setImageRate(float imageRate)
@@ -105,7 +108,7 @@ void CameraThread::mainLoop()
 		{
 			UTimer timer;
 			cv::Mat depth = util2d::depthFromDisparity(
-					util2d::disparityFromStereoImages(data.imageRaw(), data.rightRaw()),
+					_stereoDense->computeDisparity(data.imageRaw(), data.rightRaw()),
 					data.stereoCameraModel().left().fx(),
 					data.stereoCameraModel().baseline());
 			data.setCameraModel(data.stereoCameraModel().left());

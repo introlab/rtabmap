@@ -262,6 +262,8 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->doubleSpinBox_stereo_gfttQuality, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
 	connect(ui_->doubleSpinBox_stereo_maxSlope, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
 	connect(ui_->checkBox_stereo_subpix, SIGNAL(stateChanged(int)), this, SLOT(updateStereo()));
+	connect(ui_->checkBox_stereo_opticalFlow, SIGNAL(stateChanged(int)), this, SLOT(updateStereo()));
+	connect(ui_->checkBox_stereo_ssd, SIGNAL(stateChanged(int)), this, SLOT(updateStereo()));
 	ui_->label_stereo_inliers_name->setStyleSheet("QLabel {color : blue; }");
 	ui_->label_stereo_flowOutliers_name->setStyleSheet("QLabel {color : red; }");
 	ui_->label_stereo_slopeOutliers_name->setStyleSheet("QLabel {color : yellow; }");
@@ -334,6 +336,9 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->doubleSpinBox_stereo_gfttQuality, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_stereo_maxSlope, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->checkBox_stereo_subpix, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_stereo_opticalFlow, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_stereo_ssd, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+
 	// dockwidget
 	QList<QDockWidget*> dockWidgets = this->findChildren<QDockWidget*>();
 	for(int i=0; i<dockWidgets.size(); ++i)
@@ -482,6 +487,8 @@ void DatabaseViewer::readSettings()
 	ui_->doubleSpinBox_stereo_gfttQuality->setValue(settings.value("gfttQuality", ui_->doubleSpinBox_stereo_gfttQuality->value()).toDouble());
 	ui_->doubleSpinBox_stereo_maxSlope->setValue(settings.value("maxSlope", ui_->doubleSpinBox_stereo_maxSlope->value()).toDouble());
 	ui_->checkBox_stereo_subpix->setChecked(settings.value("subpix", ui_->checkBox_stereo_subpix->isChecked()).toBool());
+	ui_->checkBox_stereo_opticalFlow->setChecked(settings.value("opticalFlow", ui_->checkBox_stereo_opticalFlow->isChecked()).toBool());
+	ui_->checkBox_stereo_ssd->setChecked(settings.value("ssd", ui_->checkBox_stereo_ssd->isChecked()).toBool());
 	settings.endGroup();
 
 	settings.endGroup(); // DatabaseViewer
@@ -588,6 +595,8 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("gfttQuality", ui_->doubleSpinBox_stereo_gfttQuality->value());
 	settings.setValue("maxSlope", ui_->doubleSpinBox_stereo_maxSlope->value());
 	settings.setValue("subpix", ui_->checkBox_stereo_subpix->isChecked());
+	settings.setValue("opticalFlow", ui_->checkBox_stereo_opticalFlow->isChecked());
+	settings.setValue("ssd", ui_->checkBox_stereo_ssd->isChecked());
 	settings.endGroup();
 
 	settings.endGroup(); // DatabaseViewer
@@ -2483,20 +2492,41 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 			UDEBUG("cv::cornerSubPix() end");
 		}
 
-		// Find features in the new left image
+		// Find features in the new right image
 		std::vector<unsigned char> status;
-		std::vector<float> err;
 		std::vector<cv::Point2f> rightCorners;
-		cv::calcOpticalFlowPyrLK(
-				leftMono,
-				data->depthOrRightRaw(),
-				leftCorners,
-				rightCorners,
-				status,
-				err,
-				cv::Size(ui_->spinBox_stereo_flowWinSize->value(), ui_->spinBox_stereo_flowWinSize->value()), ui_->spinBox_stereo_flowMaxLevel->value(),
-				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, ui_->spinBox_stereo_flowIterations->value(), ui_->doubleSpinBox_stereo_flowEps->value()));
 
+		if(ui_->checkBox_stereo_opticalFlow->isChecked())
+		{
+			UDEBUG("");
+			std::vector<float> err;
+			util2d::calcOpticalFlowPyrLKStereo(
+					leftMono,
+					data->rightRaw(),
+					leftCorners,
+					rightCorners,
+					status,
+					err,
+					cv::Size(ui_->spinBox_stereo_flowWinSize->value(), 3), ui_->spinBox_stereo_flowMaxLevel->value(),
+					cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, ui_->spinBox_stereo_flowIterations->value(), ui_->doubleSpinBox_stereo_flowEps->value()));
+			UDEBUG("");
+		}
+		else
+		{
+			UDEBUG("");
+			rightCorners = util2d::calcStereoCorrespondences(
+					leftMono,
+					data->rightRaw(),
+					leftCorners,
+					status,
+					cv::Size(ui_->spinBox_stereo_flowWinSize->value(), 3),
+					ui_->spinBox_stereo_flowMaxLevel->value(),
+					ui_->spinBox_stereo_flowIterations->value(),
+					0,
+					64,
+					ui_->checkBox_stereo_ssd->isChecked());
+			UDEBUG("");
+		}
 		float timeFlow = timer.ticks();
 
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -2513,6 +2543,8 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 			pcl::PointXYZ pt(bad_point, bad_point, bad_point);
 			if(status[i])
 			{
+				//UDEBUG("Left(%f,%f), right(%f,%f) disparity=%f", leftCorners[i].x, leftCorners[i].y, rightCorners[i].x, rightCorners[i].y, leftCorners[i].x - rightCorners[i].x);
+
 				float disparity = leftCorners[i].x - rightCorners[i].x;
 				if(disparity > 0.0f)
 				{
@@ -2521,10 +2553,7 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 						pcl::PointXYZ tmpPt = util3d::projectDisparityTo3D(
 								leftCorners[i],
 								disparity,
-								data->stereoCameraModel().left().cx(),
-								data->stereoCameraModel().left().cy(),
-								data->stereoCameraModel().left().fx(),
-								data->stereoCameraModel().baseline());
+								data->stereoCameraModel());
 
 						if(pcl::isFinite(tmpPt))
 						{
@@ -2599,33 +2628,37 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 		// Draw lines between corresponding features...
 		for(unsigned int i=0; i<kpts.size(); ++i)
 		{
-			QColor c = Qt::green;
-			if(status[i] == 0)
+			if(rightKpts[i].pt.x > 0 && rightKpts[i].pt.y > 0)
 			{
-				c = Qt::red;
+				QColor c = Qt::green;
+				if(status[i] == 0)
+				{
+					c = Qt::red;
+				}
+				else if(status[i] == 100)
+				{
+					c = Qt::blue;
+				}
+				else if(status[i] == 101)
+				{
+					c = Qt::yellow;
+				}
+				else if(status[i] == 102)
+				{
+					c = Qt::magenta;
+				}
+				else if(status[i] == 110)
+				{
+					c = Qt::cyan;
+				}
+				ui_->graphicsView_stereo->addLine(
+						kpts[i].pt.x,
+						kpts[i].pt.y,
+						rightKpts[i].pt.x,
+						rightKpts[i].pt.y,
+						c,
+						QString("%1: (%2,%3) -> (%4,%5)").arg(i).arg(kpts[i].pt.x).arg(kpts[i].pt.y).arg(rightKpts[i].pt.x).arg(rightKpts[i].pt.y));
 			}
-			else if(status[i] == 100)
-			{
-				c = Qt::blue;
-			}
-			else if(status[i] == 101)
-			{
-				c = Qt::yellow;
-			}
-			else if(status[i] == 102)
-			{
-				c = Qt::magenta;
-			}
-			else if(status[i] == 110)
-			{
-				c = Qt::cyan;
-			}
-			ui_->graphicsView_stereo->addLine(
-					kpts[i].pt.x,
-					kpts[i].pt.y,
-					rightKpts[i].pt.x,
-					rightKpts[i].pt.y,
-					c);
 		}
 		ui_->graphicsView_stereo->update();
 	}

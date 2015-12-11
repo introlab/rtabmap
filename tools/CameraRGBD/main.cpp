@@ -377,10 +377,7 @@ int main(int argc, char * argv[])
 				}
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromStereoImages(
 						rgb, right,
-						data.stereoCameraModel().left().cx(),
-						data.stereoCameraModel().left().cy(),
-						data.stereoCameraModel().left().fx(),
-						data.stereoCameraModel().baseline());
+						data.stereoCameraModel());
 				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
 				if(viewer)
 					viewer->showCloud(cloud, "cloud");

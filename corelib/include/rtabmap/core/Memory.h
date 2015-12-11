@@ -54,6 +54,7 @@ class Feature2D;
 class Statistics;
 class RegistrationVis;
 class RegistrationIcp;
+class Stereo;
 
 class RTABMAP_EXP Memory
 {
@@ -273,11 +274,7 @@ private:
 	RegistrationIcp * _registrationIcp;
 
 	// Stereo stuff
-	int _stereoFlowWinSize;
-	int _stereoFlowIterations;
-	double _stereoFlowEpsilon;
-	int _stereoFlowMaxLevel;
-	float _stereoMaxSlope;
+	Stereo * _stereo;
 
 	int _subPixWinSize;
 	int _subPixIterations;

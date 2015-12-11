@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ui_createSimpleCalibrationDialog.h"
 
 #include "rtabmap/core/CameraModel.h"
+#include "rtabmap/core/StereoCameraModel.h"
 #include "rtabmap/utilite/ULogger.h"
 
 #include <QFileDialog>

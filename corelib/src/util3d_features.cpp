@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/util3d_features.h"
 
+#include "rtabmap/core/util2d.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d_correspondences.h"
@@ -111,10 +112,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DDisparity(
 		pcl::PointXYZ pt = util3d::projectDisparityTo3D(
 				keypoints[i].pt,
 				disparity,
-				stereoCameraModel.left().cx(),
-				stereoCameraModel.left().cy(),
-				stereoCameraModel.left().fx(),
-				stereoCameraModel.baseline());
+				stereoCameraModel);
 
 		if(pcl::isFinite(pt) &&
 			!stereoCameraModel.left().localTransform().isNull() &&
@@ -128,104 +126,38 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DDisparity(
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DStereo(
-		const std::vector<cv::KeyPoint> & keypoints,
-		const cv::Mat & leftImage,
-		const cv::Mat & rightImage,
-		float fx,
-		float baseline,
-		float cx,
-		float cy,
-		Transform localTransform,
-		int flowWinSize,
-		int flowMaxLevel,
-		int flowIterations,
-		double flowEps,
-		double maxCorrespondencesSlope)
-{
-	std::vector<cv::Point2f> leftCorners;
-	cv::KeyPoint::convert(keypoints, leftCorners);
-	return generateKeypoints3DStereo(
-			leftCorners,
-			leftImage,
-			rightImage,
-			fx,
-			baseline,
-			cx,
-			cy,
-			localTransform,
-			flowWinSize,
-			flowMaxLevel,
-			flowIterations,
-			flowEps,
-			maxCorrespondencesSlope);
-}
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr generateKeypoints3DStereo(
 		const std::vector<cv::Point2f> & leftCorners,
-		const cv::Mat & leftImage,
-		const cv::Mat & rightImage,
-		float fx,
-		float baseline,
-		float cx,
-		float cy,
-		Transform localTransform,
-		int flowWinSize,
-		int flowMaxLevel,
-		int flowIterations,
-		double flowEps,
-		double maxCorrespondencesSlope)
+		const std::vector<cv::Point2f> & rightCorners,
+		const StereoCameraModel & model,
+		const std::vector<unsigned char> & mask)
 {
-	UASSERT(!leftImage.empty() && !rightImage.empty() &&
-			leftImage.type() == CV_8UC1 && rightImage.type() == CV_8UC1 &&
-			leftImage.rows == rightImage.rows && leftImage.cols == rightImage.cols);
-	UASSERT(fx > 0.0f && baseline > 0.0f);
-
-	// Find features in the new left image
-	std::vector<unsigned char> status;
-	std::vector<float> err;
-	std::vector<cv::Point2f> rightCorners;
-	UDEBUG("cv::calcOpticalFlowPyrLK() begin");
-	cv::calcOpticalFlowPyrLK(
-			leftImage,
-			rightImage,
-			leftCorners,
-			rightCorners,
-			status,
-			err,
-			cv::Size(flowWinSize, flowWinSize), flowMaxLevel,
-			cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, flowIterations, flowEps),
-			cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
-	UDEBUG("cv::calcOpticalFlowPyrLK() end");
+	UASSERT(leftCorners.size() == rightCorners.size());
+	UASSERT(mask.size() == 0 || leftCorners.size() == mask.size());
+	UASSERT(model.left().fx()> 0.0f && model.baseline() > 0.0f);
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr keypoints3d(new pcl::PointCloud<pcl::PointXYZ>);
 	keypoints3d->resize(leftCorners.size());
 	float bad_point = std::numeric_limits<float>::quiet_NaN ();
-	UASSERT(status.size() == leftCorners.size());
-	for(unsigned int i=0; i<status.size(); ++i)
+	for(unsigned int i=0; i<leftCorners.size(); ++i)
 	{
 		pcl::PointXYZ pt(bad_point, bad_point, bad_point);
-		if(status[i])
+		if(mask.empty() || mask[i])
 		{
 			float disparity = leftCorners[i].x - rightCorners[i].x;
-			float slope = fabs((leftCorners[i].y-rightCorners[i].y) / (leftCorners[i].x-rightCorners[i].x));
-			if(disparity > 0.0f &&
-			   (maxCorrespondencesSlope <=0 || fabs(leftCorners[i].y-rightCorners[i].y) <= 1.0f || slope <= maxCorrespondencesSlope))
+			if(disparity != 0.0f)
 			{
 				pcl::PointXYZ tmpPt = util3d::projectDisparityTo3D(
 						leftCorners[i],
 						disparity,
-						cx,
-						cy,
-						fx,
-						baseline);
+						model);
 
 				if(pcl::isFinite(tmpPt))
 				{
 					pt = tmpPt;
-					if(!localTransform.isNull() &&
-					   !localTransform.isIdentity())
+					if(!model.localTransform().isNull() &&
+					   !model.localTransform().isIdentity())
 					{
-						pt = util3d::transformPoint(pt, localTransform);
+						pt = util3d::transformPoint(pt, model.localTransform());
 					}
 				}
 			}

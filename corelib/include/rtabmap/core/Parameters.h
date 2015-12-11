@@ -347,11 +347,13 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(OdomMono, MinTranslation,         float, 0.02, "Minimum translation to add new points to local map. On initialization, translation x 5 is used as the minimum.");
 	RTABMAP_PARAM(OdomMono, MaxVariance,            float, 0.01, "Maximum variance to add new points to local map.");
 
-	// Odometry common stuff between BOW and Optical Flow approaches
+	// Odometry Optical Flow
+	RTABMAP_PARAM(OdomFlow, KeyFrameThr,           int, 0,        "Create a new keyframe when the number of inliers drops under this threshold. Setting the value to 0 means that a keyframe is created for each processed frame.");
 	RTABMAP_PARAM(OdomFlow, WinSize,               int, 16,       "Used for optical flow approach. See cv::calcOpticalFlowPyrLK().");
 	RTABMAP_PARAM(OdomFlow, Iterations,            int, 30,       "Used for optical flow approach. See cv::calcOpticalFlowPyrLK().");
 	RTABMAP_PARAM(OdomFlow, Eps,                   double, 0.01,  "Used for optical flow approach. See cv::calcOpticalFlowPyrLK().");
 	RTABMAP_PARAM(OdomFlow, MaxLevel,              int, 3,        "Used for optical flow approach. See cv::calcOpticalFlowPyrLK().");
+	RTABMAP_PARAM(OdomFlow, GuessMotion,           bool, true,    "Guess optical flow from the last motion computed.");
 
 	// Common registration parameters
 	RTABMAP_PARAM(Reg, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
@@ -391,11 +393,26 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Icp, PointToPlaneNormalNeighbors, int, 20,    "Number of neighbors to compute normals for point to plane.");
 
 	// Stereo disparity
-	RTABMAP_PARAM(Stereo, WinSize,               int, 16,       "See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(Stereo, Iterations,            int, 30,       "See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(Stereo, Eps,                   double, 0.01,  "See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(Stereo, MaxLevel,              int, 3,        "See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(Stereo, MaxSlope,              float, 0.1,    "The maximum slope for each stereo pairs.");
+	RTABMAP_PARAM(Stereo, WinWidth,              int, 15,       "Window width.");
+	RTABMAP_PARAM(Stereo, WinHeight,             int, 3,        "Window height.");
+	RTABMAP_PARAM(Stereo, Iterations,            int, 30,       "Maximum iterations.");
+	RTABMAP_PARAM(Stereo, MaxLevel,              int, 3,        "Maximum pyramid level.");
+	RTABMAP_PARAM(Stereo, MinDisparity,          int, 0,        "Minimum disparity.");
+	RTABMAP_PARAM(Stereo, MaxDisparity,          int, 64,       "Maximum disparity.");
+	RTABMAP_PARAM(Stereo, OpticalFlow,           bool, true,    "Use optical flow to find stereo correspondences, otherwise a simple block matching approach is used.");
+	RTABMAP_PARAM(Stereo, SSD,                   bool, true,    "[Stereo/OpticalFlow = false] Use Sum of Squared Differences (SSD) window, otherwise Sum of Absolute Differences (SAD) window is used.");
+	RTABMAP_PARAM(Stereo, Eps,                   double, 0.01,  "[Stereo/OpticalFlow = true] Epsilon stop criterion.");
+	RTABMAP_PARAM(Stereo, MaxSlope,              float, 0.1,    "[Stereo/OpticalFlow = true] The maximum slope for each stereo pairs.");
+
+	RTABMAP_PARAM(StereoBM, BlockSize,           int, 15,       "See cv::StereoBM");
+	RTABMAP_PARAM(StereoBM, MinDisparity,        int, 0,        "See cv::StereoBM");
+	RTABMAP_PARAM(StereoBM, NumDisparities,      int, 64,       "See cv::StereoBM");
+	RTABMAP_PARAM(StereoBM, PreFilterSize,       int, 9,        "See cv::StereoBM");
+	RTABMAP_PARAM(StereoBM, PreFilterCap,        int, 31,       "See cv::StereoBM");
+	RTABMAP_PARAM(StereoBM, UniquenessRatio,     int, 15,       "See cv::StereoBM");
+	RTABMAP_PARAM(StereoBM, TextureThreshold,    int, 10,       "See cv::StereoBM");
+	RTABMAP_PARAM(StereoBM, SpeckleWindowSize,   int, 100,      "See cv::StereoBM");
+	RTABMAP_PARAM(StereoBM, SpeckleRange,        int, 4,        "See cv::StereoBM");
 
 public:
 	virtual ~Parameters();
@@ -421,12 +438,14 @@ public:
 	static void parse(const ParametersMap & parameters, const std::string & key, float & value);
 	static void parse(const ParametersMap & parameters, const std::string & key, double & value);
 	static void parse(const ParametersMap & parameters, const std::string & key, std::string & value);
+	static void parse(const ParametersMap & parameters, ParametersMap & parametersOut);
 
 	static std::string getVersion();
 	static std::string getDefaultDatabaseName();
 	
 	static bool isFeatureParameter(const std::string & param);
 	static ParametersMap getDefaultOdometryParameters(bool stereo = false);
+	static ParametersMap getDefaultParameters(const std::string & group);
 
 	static void readINI(const std::string & configFile, ParametersMap & parameters);
 	static void writeINI(const std::string & configFile, const ParametersMap & parameters);

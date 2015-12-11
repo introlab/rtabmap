@@ -117,6 +117,12 @@ std::string UTILITE_EXP uNumber2Str(float number);
  */
 std::string UTILITE_EXP uNumber2Str(double number);
 
+/**
+ * Convert a string to an integer.
+ * @param the string
+ * @return the number
+ */
+int UTILITE_EXP uStr2Int(const std::string & str);
 
 /**
  * Convert a string to a float independent of the locale (comma/dot).

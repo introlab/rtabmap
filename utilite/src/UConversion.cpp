@@ -113,6 +113,11 @@ std::string uNumber2Str(double number)
 	return s.str();
 }
 
+int uStr2Int(const std::string & str)
+{
+	return atoi(str.c_str());
+}
+
 float uStr2Float(const std::string & str)
 {
 	float value = 0.0f;

@@ -50,7 +50,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>196</width>
+             <width>200</width>
              <height>184</height>
             </rect>
            </property>
@@ -236,7 +236,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>195</width>
+             <width>199</width>
              <height>184</height>
             </rect>
            </property>
@@ -2061,15 +2061,86 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-57</y>
-          <width>283</width>
-          <height>356</height>
+          <y>-198</y>
+          <width>263</width>
+          <height>460</height>
          </rect>
         </property>
         <attribute name="label">
          <string>Stereo correspondences</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_13">
+         <item row="7" column="0">
+          <widget class="QDoubleSpinBox" name="doubleSpinBox_stereo_flowEps">
+           <property name="decimals">
+            <number>4</number>
+           </property>
+           <property name="maximum">
+            <double>1.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+           <property name="value">
+            <double>0.010000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="6" column="1">
+          <widget class="QLabel" name="label_58">
+           <property name="text">
+            <string>Iterations</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLabel" name="label_54">
+           <property name="text">
+            <string>GFTT quality level</string>
+           </property>
+          </widget>
+         </item>
+         <item row="12" column="1">
+          <spacer name="verticalSpacer_6">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item row="10" column="0">
+          <widget class="QCheckBox" name="checkBox_stereo_subpix">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QLabel" name="label_70">
+           <property name="text">
+            <string>GFTT max features</string>
+           </property>
+          </widget>
+         </item>
+         <item row="7" column="1">
+          <widget class="QLabel" name="label_59">
+           <property name="text">
+            <string>Epsilon</string>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="1">
+          <widget class="QLabel" name="label_57">
+           <property name="text">
+            <string>Max level</string>
+           </property>
+          </widget>
+         </item>
          <item row="2" column="0">
           <widget class="QSpinBox" name="spinBox_stereo_gfttBlockSize">
            <property name="suffix">
@@ -2102,13 +2173,6 @@
            </property>
           </widget>
          </item>
-         <item row="7" column="1">
-          <widget class="QLabel" name="label_59">
-           <property name="text">
-            <string>Optical Flow eps</string>
-           </property>
-          </widget>
-         </item>
          <item row="2" column="1">
           <widget class="QLabel" name="label_55">
            <property name="text">
@@ -2122,7 +2186,7 @@
             <string> pixels</string>
            </property>
            <property name="minimum">
-            <number>3</number>
+            <number>6</number>
            </property>
            <property name="value">
             <number>16</number>
@@ -2132,14 +2196,14 @@
          <item row="4" column="1">
           <widget class="QLabel" name="label_56">
            <property name="text">
-            <string>Optical Flow win size</string>
+            <string>Win size</string>
            </property>
           </widget>
          </item>
          <item row="5" column="0">
           <widget class="QSpinBox" name="spinBox_stereo_flowMaxLevel">
            <property name="minimum">
-            <number>1</number>
+            <number>0</number>
            </property>
            <property name="value">
             <number>3</number>
@@ -2153,47 +2217,10 @@
            </property>
           </widget>
          </item>
-         <item row="7" column="0">
-          <widget class="QDoubleSpinBox" name="doubleSpinBox_stereo_flowEps">
-           <property name="decimals">
-            <number>4</number>
-           </property>
-           <property name="maximum">
-            <double>1.000000000000000</double>
-           </property>
-           <property name="singleStep">
-            <double>0.010000000000000</double>
-           </property>
-           <property name="value">
-            <double>0.010000000000000</double>
-           </property>
-          </widget>
-         </item>
-         <item row="5" column="1">
-          <widget class="QLabel" name="label_57">
-           <property name="text">
-            <string>Optical Flow max level</string>
-           </property>
-          </widget>
-         </item>
-         <item row="6" column="1">
-          <widget class="QLabel" name="label_58">
-           <property name="text">
-            <string>Optical Flow iterations</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="QLabel" name="label_54">
-           <property name="text">
-            <string>GFTT quality level</string>
-           </property>
-          </widget>
-         </item>
          <item row="6" column="0">
           <widget class="QSpinBox" name="spinBox_stereo_flowIterations">
            <property name="minimum">
-            <number>1</number>
+            <number>0</number>
            </property>
            <property name="maximum">
             <number>1000</number>
@@ -2232,7 +2259,7 @@
            </property>
           </widget>
          </item>
-         <item row="9" column="1">
+         <item row="10" column="1">
           <widget class="QLabel" name="label_62">
            <property name="text">
             <string>Sub pixel</string>
@@ -2243,33 +2270,6 @@
           <widget class="QLabel" name="label_60">
            <property name="text">
             <string>Matches max slope</string>
-           </property>
-          </widget>
-         </item>
-         <item row="10" column="1">
-          <spacer name="verticalSpacer_6">
-           <property name="orientation">
-            <enum>Qt::Vertical</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>20</width>
-             <height>40</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item row="9" column="0">
-          <widget class="QCheckBox" name="checkBox_stereo_subpix">
-           <property name="text">
-            <string/>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="1">
-          <widget class="QLabel" name="label_70">
-           <property name="text">
-            <string>GFTT max features</string>
            </property>
           </widget>
          </item>
@@ -2289,6 +2289,40 @@
            </property>
            <property name="value">
             <number>0</number>
+           </property>
+          </widget>
+         </item>
+         <item row="9" column="1">
+          <widget class="QLabel" name="label_71">
+           <property name="text">
+            <string>Optical Flow</string>
+           </property>
+          </widget>
+         </item>
+         <item row="9" column="0">
+          <widget class="QCheckBox" name="checkBox_stereo_opticalFlow">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="11" column="1">
+          <widget class="QLabel" name="label_72">
+           <property name="text">
+            <string>SSD (otherwise SAD is used)</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="11" column="0">
+          <widget class="QCheckBox" name="checkBox_stereo_ssd">
+           <property name="text">
+            <string/>
            </property>
           </widget>
          </item>

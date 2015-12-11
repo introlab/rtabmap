@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
+#include <rtabmap/core/Parameters.h>
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UEventsSender.h>
 
@@ -36,6 +37,7 @@ namespace rtabmap
 {
 
 class Camera;
+class StereoDense;
 
 /**
  * Class CameraThread
@@ -47,7 +49,7 @@ class RTABMAP_EXP CameraThread :
 {
 public:
 	// ownership transferred
-	CameraThread(Camera * camera);
+	CameraThread(Camera * camera, const ParametersMap & parameters = ParametersMap());
 	virtual ~CameraThread();
 
 	void setMirroringEnabled(bool enabled) {_mirroring = enabled;}
@@ -70,6 +72,7 @@ private:
 	bool _mirroring;
 	bool _colorOnly;
 	bool _stereoToDepth;
+	StereoDense * _stereoDense;
 };
 
 } // namespace rtabmap

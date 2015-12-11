@@ -118,6 +118,21 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo)
 	return odomParameters;
 }
 
+ParametersMap Parameters::getDefaultParameters(const std::string & group)
+{
+	rtabmap::ParametersMap parameters;
+	const rtabmap::ParametersMap & defaultParameters = rtabmap::Parameters::getDefaultParameters();
+	for(rtabmap::ParametersMap::const_iterator iter=defaultParameters.begin(); iter!=defaultParameters.end(); ++iter)
+	{
+		if(iter->first.compare(group) == 0)
+		{
+			parameters.insert(*iter);
+		}
+	}
+	UASSERT_MSG(parameters.size(), uFormat("No parameters found for group %s!", group.c_str()).c_str());
+	return parameters;
+}
+
 const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemovedParameters()
 {
 	if(removedParameters_.empty())
@@ -201,6 +216,8 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("RGBD/OptimizeSlam2D",              std::make_pair(true,  Parameters::kOptimizerSlam2D())));
 		removedParameters_.insert(std::make_pair("RGBD/OptimizeVarianceIgnored",     std::make_pair(true,  Parameters::kOptimizerVarianceIgnored())));
 
+		removedParameters_.insert(std::make_pair("Stereo/WinSize",                   std::make_pair(true,  Parameters::kStereoWinWidth())));
+
 		// before 0.11.0
 		removedParameters_.insert(std::make_pair("GFTT/MaxCorners",                  std::make_pair(true, Parameters::kVisMaxFeatures())));
 		removedParameters_.insert(std::make_pair("LccBow/MaxDepth",                  std::make_pair(true, Parameters::kVisMaxDepth())));
@@ -270,7 +287,7 @@ void Parameters::parse(const ParametersMap & parameters, const std::string & key
 	ParametersMap::const_iterator iter = parameters.find(key);
 	if(iter != parameters.end())
 	{
-		value = atoi(iter->second.c_str());
+		value = uStr2Int(iter->second.c_str());
 	}
 }
 void Parameters::parse(const ParametersMap & parameters, const std::string & key, unsigned int & value)
@@ -278,7 +295,7 @@ void Parameters::parse(const ParametersMap & parameters, const std::string & key
 	ParametersMap::const_iterator iter = parameters.find(key);
 	if(iter != parameters.end())
 	{
-		value = atoi(iter->second.c_str());
+		value = uStr2Int(iter->second.c_str());
 	}
 }
 void Parameters::parse(const ParametersMap & parameters, const std::string & key, float & value)
@@ -303,6 +320,17 @@ void Parameters::parse(const ParametersMap & parameters, const std::string & key
 	if(iter != parameters.end())
 	{
 		value = iter->second;
+	}
+}
+void Parameters::parse(const ParametersMap & parameters, ParametersMap & parametersOut)
+{
+	for(ParametersMap::iterator iter=parametersOut.begin(); iter!=parametersOut.end(); ++iter)
+	{
+		ParametersMap::const_iterator jter = parameters.find(iter->first);
+		if(jter != parameters.end())
+		{
+			iter->second = jter->second;
+		}
 	}
 }
 

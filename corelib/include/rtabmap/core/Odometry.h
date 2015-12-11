@@ -43,6 +43,7 @@ namespace rtabmap {
 class Feature2D;
 class OdometryInfo;
 class ParticleFilter;
+class Stereo;
 
 class RTABMAP_EXP Odometry
 {
@@ -143,16 +144,14 @@ private:
 
 private:
 	//Parameters:
+	int keyFrameThr_;
 	int flowWinSize_;
 	int flowIterations_;
 	double flowEps_;
 	int flowMaxLevel_;
+	bool flowGuessFromMotion_;
 
-	int stereoWinSize_;
-	int stereoIterations_;
-	double stereoEps_;
-	int stereoMaxLevel_;
-	float stereoMaxSlope_;
+	Stereo * stereo_;
 
 	int subPixWinSize_;
 	int subPixIterations_;
@@ -163,6 +162,8 @@ private:
 	cv::Mat refFrame_;
 	std::vector<cv::Point2f> refCorners_;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr refCorners3D_;
+
+	Transform motionSinceLastKeyFrame_;
 };
 
 class RTABMAP_EXP OdometryMono : public Odometry
@@ -181,11 +182,7 @@ private:
 	double flowEps_;
 	int flowMaxLevel_;
 
-	int stereoWinSize_;
-	int stereoIterations_;
-	double stereoEps_;
-	int stereoMaxLevel_;
-	float stereoMaxSlope_;
+	Stereo * stereo_;
 
 	Memory * memory_;
 	int localHistoryMaxSize_;
