@@ -44,7 +44,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_resetCountdown(Parameters::defaultOdomResetCountdown()),
 		_force2D(Parameters::defaultVisForce2D()),
 		_holonomic(Parameters::defaultOdomHolonomic()),
-		_particleFiltering(Parameters::defaultOdomParticleFiltering()),
+		_filteringStrategy(Parameters::defaultOdomFilteringStrategy()),
 		_particleSize(Parameters::defaultOdomParticleSize()),
 		_particleNoiseT(Parameters::defaultOdomParticleNoiseT()),
 		_particleLambdaT(Parameters::defaultOdomParticleLambdaT()),
@@ -55,6 +55,8 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_pnpReprojError(Parameters::defaultVisPnPReprojError()),
 		_pnpFlags(Parameters::defaultVisPnPFlags()),
 		_varianceFromInliersCount(Parameters::defaultRegVarianceFromInliersCount()),
+		_kalmanProcessNoise(Parameters::defaultOdomKalmanProcessNoise()),
+		_kalmanMeasurementNoise(Parameters::defaultOdomKalmanMeasurementNoise()),
 		_resetCurrentCount(0),
 		previousStamp_(0),
 		previousTransform_(Transform::getIdentity()),
@@ -76,7 +78,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kVisPnPFlags(), _pnpFlags);
 	UASSERT(_pnpFlags>=0 && _pnpFlags <=2);
 	Parameters::parse(parameters, Parameters::kRegVarianceFromInliersCount(), _varianceFromInliersCount);
-	Parameters::parse(parameters, Parameters::kOdomParticleFiltering(), _particleFiltering);
+	Parameters::parse(parameters, Parameters::kOdomFilteringStrategy(), _filteringStrategy);
 	Parameters::parse(parameters, Parameters::kOdomParticleSize(), _particleSize);
 	Parameters::parse(parameters, Parameters::kOdomParticleNoiseT(), _particleNoiseT);
 	Parameters::parse(parameters, Parameters::kOdomParticleLambdaT(), _particleLambdaT);
@@ -86,8 +88,11 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	UASSERT(_particleLambdaT>0);
 	UASSERT(_particleNoiseR>0);
 	UASSERT(_particleLambdaR>0);
-	if(_particleFiltering)
+	Parameters::parse(parameters, Parameters::kOdomKalmanProcessNoise(), _kalmanProcessNoise);
+	Parameters::parse(parameters, Parameters::kOdomKalmanMeasurementNoise(), _kalmanMeasurementNoise);
+	if(_filteringStrategy == 2)
 	{
+		// Initialize the Particle filters
 		filters_.resize(6);
 		for(unsigned int i = 0; i<filters_.size(); ++i)
 		{
@@ -100,6 +105,10 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 				filters_[i] = new ParticleFilter(_particleSize, _particleNoiseR, _particleLambdaR);
 			}
 		}
+	}
+	else if(_filteringStrategy == 1)
+	{
+		initKalmanFilter();
 	}
 }
 
@@ -150,6 +159,25 @@ void Odometry::reset(const Transform & initialPose)
 			filters_[4]->init(pitch);
 			filters_[5]->init(yaw);
 		}
+
+		if(_filteringStrategy == 1)
+		{
+			if(_force2D)
+			{
+				kalmanFilter_.statePost.at<float>(0) = x;
+				kalmanFilter_.statePost.at<float>(1) = y;
+				kalmanFilter_.statePost.at<float>(6) = yaw;
+			}
+			else
+			{
+				kalmanFilter_.statePost.at<float>(0) = x;
+				kalmanFilter_.statePost.at<float>(1) = y;
+				kalmanFilter_.statePost.at<float>(2) = z;
+				kalmanFilter_.statePost.at<float>(9) = roll;
+				kalmanFilter_.statePost.at<float>(10) = pitch;
+				kalmanFilter_.statePost.at<float>(11) = yaw;
+			}
+		}
 	}
 	else
 	{
@@ -176,12 +204,13 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 	UTimer time;
 	Transform t = this->computeTransform(data, info);
 
+	double dt = data.stamp() - previousStamp_;
 	if(info)
 	{
 		info->timeEstimation = time.ticks();
 		info->lost = t.isNull();
 		info->stamp = data.stamp();
-		info->interval = data.stamp() - previousStamp_;
+		info->interval = dt;
 		info->transform = t;
 	}
 
@@ -192,13 +221,27 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 	{
 		_resetCurrentCount = _resetCountdown;
 
-		if(_force2D || !_holonomic || filters_.size())
+		if(_force2D || !_holonomic || filters_.size() || _filteringStrategy==1)
 		{
 			float x,y,z, roll,pitch,yaw;
 			t.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
 
-			if(filters_.size())
+			if(_filteringStrategy == 1)
 			{
+				if(_pose.isIdentity())
+				{
+					// reset Kalman
+					initKalmanFilter();
+				}
+				else
+				{
+					// Kalman filtering
+					updateKalmanFilter(dt,x,y,z,roll,pitch,yaw);
+				}
+			}
+			else if(filters_.size())
+			{
+				// Particle filtering
 				UASSERT(filters_.size()==6);
 				if(_pose.isIdentity())
 				{
@@ -261,7 +304,7 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 							x, y, z, roll, pitch, yaw, t.prettyPrint().c_str()).c_str());
 			t = Transform(x,y,_force2D?0:z, _force2D?0:roll,_force2D?0:pitch,yaw);
 
-			if(info && filters_.size())
+			if(info && _filteringStrategy > 0)
 			{
 				info->transformFiltered = t;
 			}
@@ -294,6 +337,167 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 	}
 
 	return Transform();
+}
+
+void Odometry::initKalmanFilter()
+{
+	UDEBUG("");
+	// See OpenCV tutorial: http://docs.opencv.org/master/dc/d2c/tutorial_real_time_pose.html
+	// See Kalman filter pose/orientation estimation theory: http://campar.in.tum.de/Chair/KalmanFilter
+
+	// initialize the Kalman filter
+	int nStates = 18;            // the number of states (x,y,z,x',y',z',x'',y'',z'',roll,pitch,yaw,roll',pitch',yaw',roll'',pitch'',yaw'')
+	int nMeasurements = 6;       // the number of measured states (x,y,z,roll,pitch,yaw)
+	if(_force2D)
+	{
+		nStates = 9;             // the number of states (x,y,x',y',x'',y'',yaw,yaw',yaw'')
+		nMeasurements = 3;       // the number of measured states (x,y,z,roll,pitch,yaw)
+	}
+	int nInputs = 0;             // the number of action control
+
+	kalmanFilter_.init(nStates, nMeasurements, nInputs);                 // init Kalman Filter
+	cv::setIdentity(kalmanFilter_.processNoiseCov, cv::Scalar::all(_kalmanProcessNoise));       // set process noise
+	cv::setIdentity(kalmanFilter_.measurementNoiseCov, cv::Scalar::all(_kalmanMeasurementNoise));   // set measurement noise
+	cv::setIdentity(kalmanFilter_.errorCovPost, cv::Scalar::all(1));             // error covariance
+
+	if(_force2D)
+	{
+        /* MEASUREMENT MODEL */
+		//  [1 0 0 0 0 0 0 0 0]
+		//  [0 1 0 0 0 0 0 0 0]
+		//  [0 0 0 0 0 0 1 0 0]
+		kalmanFilter_.measurementMatrix.at<float>(0,0) = 1;  // x
+		kalmanFilter_.measurementMatrix.at<float>(1,1) = 1;  // y
+		kalmanFilter_.measurementMatrix.at<float>(2,6) = 1; // yaw
+	}
+	else
+	{
+	    /* MEASUREMENT MODEL */
+		//  [1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+		//  [0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+		//  [0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+		//  [0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0]
+		//  [0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0]
+		//  [0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0]
+		kalmanFilter_.measurementMatrix.at<float>(0,0) = 1;  // x
+		kalmanFilter_.measurementMatrix.at<float>(1,1) = 1;  // y
+		kalmanFilter_.measurementMatrix.at<float>(2,2) = 1;  // z
+		kalmanFilter_.measurementMatrix.at<float>(3,9) = 1;  // roll
+		kalmanFilter_.measurementMatrix.at<float>(4,10) = 1; // pitch
+		kalmanFilter_.measurementMatrix.at<float>(5,11) = 1; // yaw
+	}
+}
+
+void Odometry::updateKalmanFilter(float dt, float & x, float & y, float & z, float & roll, float & pitch, float & yaw)
+{
+	// Set transition matrix with current dt
+	if(_force2D)
+	{
+		// 2D:
+		//  [1 0 dt  0 dt2    0   0    0     0] x
+		//  [0 1  0 dt   0  dt2   0    0     0] y
+		//  [0 0  1  0   dt   0   0    0     0] x'
+		//  [0 0  0  1   0   dt   0    0     0] y'
+		//  [0 0  0  0   1    0   0    0     0] x''
+		//  [0 0  0  0   0    0   0    0     0] y''
+		//  [0 0  0  0   0    0   1   dt   dt2] yaw
+		//  [0 0  0  0   0    0   0    1    dt] yaw'
+		//  [0 0  0  0   0    0   0    0     1] yaw''
+		kalmanFilter_.transitionMatrix.at<float>(0,2) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(1,3) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(2,4) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(3,5) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(0,4) = 0.5*pow(dt,2);
+		kalmanFilter_.transitionMatrix.at<float>(1,5) = 0.5*pow(dt,2);
+		// orientation
+		kalmanFilter_.transitionMatrix.at<float>(6,7) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(7,8) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(6,8) = 0.5*pow(dt,2);
+	}
+	else
+	{
+		//  [1 0 0 dt  0  0 dt2   0   0 0 0 0  0  0  0   0   0   0] x
+		//  [0 1 0  0 dt  0   0 dt2   0 0 0 0  0  0  0   0   0   0] y
+		//  [0 0 1  0  0 dt   0   0 dt2 0 0 0  0  0  0   0   0   0] z
+		//  [0 0 0  1  0  0  dt   0   0 0 0 0  0  0  0   0   0   0] x'
+		//  [0 0 0  0  1  0   0  dt   0 0 0 0  0  0  0   0   0   0] y'
+		//  [0 0 0  0  0  1   0   0  dt 0 0 0  0  0  0   0   0   0] z'
+		//  [0 0 0  0  0  0   1   0   0 0 0 0  0  0  0   0   0   0] x''
+		//  [0 0 0  0  0  0   0   1   0 0 0 0  0  0  0   0   0   0] y''
+		//  [0 0 0  0  0  0   0   0   1 0 0 0  0  0  0   0   0   0] z''
+		//  [0 0 0  0  0  0   0   0   0 1 0 0 dt  0  0 dt2   0   0]
+		//  [0 0 0  0  0  0   0   0   0 0 1 0  0 dt  0   0 dt2   0]
+		//  [0 0 0  0  0  0   0   0   0 0 0 1  0  0 dt   0   0 dt2]
+		//  [0 0 0  0  0  0   0   0   0 0 0 0  1  0  0  dt   0   0]
+		//  [0 0 0  0  0  0   0   0   0 0 0 0  0  1  0   0  dt   0]
+		//  [0 0 0  0  0  0   0   0   0 0 0 0  0  0  1   0   0  dt]
+		//  [0 0 0  0  0  0   0   0   0 0 0 0  0  0  0   1   0   0]
+		//  [0 0 0  0  0  0   0   0   0 0 0 0  0  0  0   0   1   0]
+		//  [0 0 0  0  0  0   0   0   0 0 0 0  0  0  0   0   0   1]
+		// position
+		kalmanFilter_.transitionMatrix.at<float>(0,3) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(1,4) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(2,5) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(3,6) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(4,7) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(5,8) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(0,6) = 0.5*pow(dt,2);
+		kalmanFilter_.transitionMatrix.at<float>(1,7) = 0.5*pow(dt,2);
+		kalmanFilter_.transitionMatrix.at<float>(2,8) = 0.5*pow(dt,2);
+		// orientation
+		kalmanFilter_.transitionMatrix.at<float>(9,12) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(10,13) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(11,14) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(12,15) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(13,16) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(14,17) = dt;
+		kalmanFilter_.transitionMatrix.at<float>(9,15) = 0.5*pow(dt,2);
+		kalmanFilter_.transitionMatrix.at<float>(10,16) = 0.5*pow(dt,2);
+		kalmanFilter_.transitionMatrix.at<float>(11,17) = 0.5*pow(dt,2);
+	}
+
+	// Set measurement to predict
+	cv::Mat measurements;
+	if(!_force2D)
+	{
+		measurements = cv::Mat(6,1,CV_32FC1);
+		measurements.at<float>(0) = x;     // x
+		measurements.at<float>(1) = y;     // y
+		measurements.at<float>(2) = z;     // z
+		measurements.at<float>(3) = roll;  // roll
+		measurements.at<float>(4) = pitch; // pitch
+		measurements.at<float>(5) = yaw;   // yaw
+	}
+	else
+	{
+		measurements = cv::Mat(3,1,CV_32FC1);
+		measurements.at<float>(0) = x;     // x
+		measurements.at<float>(1) = y;     // y
+		measurements.at<float>(5) = yaw;   // yaw
+	}
+
+	// First predict, to update the internal statePre variable
+	UDEBUG("Predict");
+	cv::Mat prediction = kalmanFilter_.predict();
+	// The "correct" phase that is going to use the predicted value and our measurement
+	UDEBUG("Correct");
+	cv::Mat estimated = kalmanFilter_.correct(measurements);
+
+	if(_force2D)
+	{
+		x = estimated.at<float>(0);
+		y = estimated.at<float>(1);
+		yaw = estimated.at<float>(6);
+	}
+	else
+	{
+		x = estimated.at<float>(0);
+		y = estimated.at<float>(1);
+		z = estimated.at<float>(2);
+		roll = estimated.at<float>(9);
+		pitch = estimated.at<float>(10);
+		yaw = estimated.at<float>(11);
+	}
 }
 
 } /* namespace rtabmap */

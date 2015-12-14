@@ -145,6 +145,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 
 		removedParameters_.insert(std::make_pair("RGBD/PoseScanMatching",         std::make_pair(true,  Parameters::kRGBDNeighborLinkRefining())));
 
+		removedParameters_.insert(std::make_pair("Odom/ParticleFiltering",        std::make_pair(false, Parameters::kOdomFilteringStrategy())));
 		removedParameters_.insert(std::make_pair("Odom/FeatureType",              std::make_pair(true,  Parameters::kVisFeatureType())));
 		removedParameters_.insert(std::make_pair("Odom/EstimationType",           std::make_pair(true,  Parameters::kVisEstimationType())));
 		removedParameters_.insert(std::make_pair("Odom/MaxFeatures",              std::make_pair(true,  Parameters::kVisMaxFeatures())));

@@ -204,7 +204,7 @@ Transform OdometryOpticalFlow::computeTransform(
 		std::vector<unsigned char> status;
 		std::vector<float> err;
 		UDEBUG("cv::calcOpticalFlowPyrLK() begin");
-		int winSize = (newCorners.size()||!flowGuessFromMotion_)?flowWinSize_:(flowWinSize_*2);
+		int winSize = flowWinSize_;
 		cv::calcOpticalFlowPyrLK(
 				refFrame_,
 				newLeftFrame,
@@ -213,7 +213,7 @@ Transform OdometryOpticalFlow::computeTransform(
 				status,
 				err,
 				cv::Size(winSize, winSize),
-				(newCorners.size()||!flowGuessFromMotion_)?flowMaxLevel_:flowMaxLevel_*2,
+				(newCorners.size()||!flowGuessFromMotion_)?flowMaxLevel_:3,
 				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, flowIterations_, flowEps_),
 				cv::OPTFLOW_LK_GET_MIN_EIGENVALS | (newCorners.size()?cv::OPTFLOW_USE_INITIAL_FLOW:0), 1e-4);
 		UDEBUG("cv::calcOpticalFlowPyrLK() end");

@@ -70,6 +70,9 @@ public:
 private:
 	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0) = 0;
 
+	void initKalmanFilter();
+	void updateKalmanFilter(float dt, float & x, float & y, float & z, float & roll, float & pitch, float & yaw);
+
 private:
 	std::string _roiRatios;
 	int _minInliers;
@@ -80,7 +83,7 @@ private:
 	int _resetCountdown;
 	bool _force2D;
 	bool _holonomic;
-	bool _particleFiltering;
+	int _filteringStrategy;
 	int _particleSize;
 	float _particleNoiseT;
 	float _particleLambdaT;
@@ -91,6 +94,8 @@ private:
 	double _pnpReprojError;
 	int _pnpFlags;
 	bool _varianceFromInliersCount;
+	float _kalmanProcessNoise;
+	float _kalmanMeasurementNoise;
 	Transform _pose;
 	int _resetCurrentCount;
 	double previousStamp_;
@@ -98,6 +103,7 @@ private:
 	float distanceTravelled_;
 
 	std::vector<ParticleFilter *> filters_;
+	cv::KalmanFilter kalmanFilter_;
 
 protected:
 	Odometry(const rtabmap::ParametersMap & parameters);

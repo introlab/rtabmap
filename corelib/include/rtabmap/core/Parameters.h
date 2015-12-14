@@ -330,12 +330,14 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, Holonomic, 		        bool, true,     "If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).");
 	RTABMAP_PARAM(Odom, FillInfoData, 		    bool, true,     "Fill info with data (inliers/outliers features).");
 	RTABMAP_PARAM(Odom, ImageBufferSize,        unsigned int, 1, "Data buffer size (0 min inf).");
-	RTABMAP_PARAM(Odom, ParticleFiltering, 		bool, false,     "Particle filtering to smooth the odometry trajectory.");
+	RTABMAP_PARAM(Odom, FilteringStrategy, 		int, 0,         "0=No filtering 1=Kalman filtering 2=Particle filtering");
 	RTABMAP_PARAM(Odom, ParticleSize, 		    unsigned int, 400,  "Number of particles of the filter.");
 	RTABMAP_PARAM(Odom, ParticleNoiseT, 		float, 0.002,     "Noise (m) of translation components (x,y,z).");
 	RTABMAP_PARAM(Odom, ParticleLambdaT, 		float, 100,       "Lambda of translation components (x,y,z).");
 	RTABMAP_PARAM(Odom, ParticleNoiseR, 		float, 0.002,     "Noise (rad) of rotational components (roll,pitch,yaw).");
 	RTABMAP_PARAM(Odom, ParticleLambdaR, 		float, 100,       "Lambda of rotational components (roll,pitch,yaw).");
+	RTABMAP_PARAM(Odom, KalmanProcessNoise, 	float, 0.001,     "Process noise covariance value.");
+	RTABMAP_PARAM(Odom, KalmanMeasurementNoise, float, 0.01,      "Process measurement covariance value.");
 
 	// Odometry Bag-of-words
 	RTABMAP_PARAM(OdomBow, LocalHistorySize,       int, 1000,   "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
