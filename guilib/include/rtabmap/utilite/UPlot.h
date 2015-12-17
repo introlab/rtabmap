@@ -140,6 +140,7 @@ public:
 	bool isVisible() const {return _visible;}
 	void setData(QVector<UPlotItem*> & data); // take the ownership
 	void getData(QVector<float> & x, QVector<float> & y) const; // only call in Qt MainThread
+	void getData(QMap<float,float> & data) const; // only call in Qt MainThread
 	void draw(QPainter * painter, const QRect & limits);
 
 public slots:
@@ -416,6 +417,7 @@ private:
 	bool _flat;
 	QMenu * _menu;
 	QAction * _aUseFlatButtons;
+	QAction * _aCopyAllCurveToClipboard;
 };
 
 

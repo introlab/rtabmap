@@ -191,6 +191,9 @@ public:
 	const std::vector<cv::KeyPoint> & keypoints() const {return _keypoints;}
 	const cv::Mat & descriptors() const {return _descriptors;}
 
+	void setGroundTruth(const Transform & pose) {groundTruth_ = pose;}
+	const Transform & groundTruth() const {return groundTruth_;}
+
 private:
 	int _id;
 	double _stamp;
@@ -215,6 +218,8 @@ private:
 	// features
 	std::vector<cv::KeyPoint> _keypoints;
 	cv::Mat _descriptors;
+
+	Transform groundTruth_;
 };
 
 }

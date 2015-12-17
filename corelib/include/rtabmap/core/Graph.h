@@ -51,6 +51,13 @@ bool RTABMAP_EXP exportPoses(
 		const std::map<int, double> & stamps = std::map<int, double>(),  // required for format 1
 		bool g2oRobust = false); // optional for format 4
 
+bool RTABMAP_EXP importPoses(
+		const std::string & filePath,
+		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o
+		std::map<int, Transform> & poses,
+		std::multimap<int, Link> * constraints = 0, // optional for formats 3 and 4
+		std::map<int, double> * stamps = 0); // optional for format 1
+
 std::multimap<int, Link>::iterator RTABMAP_EXP findLink(
 		std::multimap<int, Link> & links,
 		int from,

@@ -124,6 +124,7 @@ Odometry::~Odometry()
 void Odometry::reset(const Transform & initialPose)
 {
 	previousTransform_.setIdentity();
+	previousGroundTruthPose_.setNull();
 	_resetCurrentCount = 0;
 	previousStamp_ = 0;
 	distanceTravelled_ = 0;
@@ -212,6 +213,15 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 		info->stamp = data.stamp();
 		info->interval = dt;
 		info->transform = t;
+
+		if(!data.groundTruth().isNull())
+		{
+			if(!previousGroundTruthPose_.isNull())
+			{
+				info->transformGroundTruth = previousGroundTruthPose_.inverse() * data.groundTruth();
+			}
+			previousGroundTruthPose_ = data.groundTruth();
+		}
 	}
 
 	previousTransform_.setIdentity();
@@ -304,10 +314,7 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 							x, y, z, roll, pitch, yaw, t.prettyPrint().c_str()).c_str());
 			t = Transform(x,y,_force2D?0:z, _force2D?0:roll,_force2D?0:pitch,yaw);
 
-			if(info && _filteringStrategy > 0)
-			{
-				info->transformFiltered = t;
-			}
+			info->transformFiltered = t;
 		}
 
 		previousTransform_ = t;

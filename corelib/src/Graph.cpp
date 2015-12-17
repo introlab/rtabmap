@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/common/common.h>
 #include <set>
 #include <queue>
+#include <fstream>
 
 #include <rtabmap/core/OptimizerTORO.h>
 #include <rtabmap/core/OptimizerG2O.h>
@@ -54,6 +55,7 @@ bool exportPoses(
 		const std::map<int, double> & stamps, // required for format 1
 		bool g2oRobust) // optional for format 4
 {
+	UDEBUG("%s", filePath.c_str());
 	std::string tmpPath = filePath;
 	if(format==3) // TORO
 	{
@@ -145,6 +147,98 @@ bool exportPoses(
 			fclose(fout);
 			return true;
 		}
+	}
+	return false;
+}
+
+bool importPoses(
+		const std::string & filePath,
+		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o
+		std::map<int, Transform> & poses,
+		std::multimap<int, Link> * constraints, // optional for formats 3 and 4
+		std::map<int, double> * stamps) // optional for format 1
+{
+	UDEBUG("%s", filePath.c_str());
+	if(format==3) // TORO
+	{
+		std::multimap<int, Link> constraintsTmp;
+		if(OptimizerTORO::loadGraph(filePath, poses, constraintsTmp))
+		{
+			if(constraints)
+			{
+				*constraints = constraintsTmp;
+			}
+			return true;
+		}
+		return false;
+	}
+	else if(format == 4) // g2o
+	{
+		std::multimap<int, Link> constraintsTmp;
+		UERROR("Cannot import from g2o format because it is not yet supported!");
+		return false;
+	}
+	else
+	{
+		std::ifstream file;
+		file.open(filePath.c_str(), std::ifstream::in);
+		if(!file.good())
+		{
+			return false;
+		}
+		int id=1;
+		while(file.good())
+		{
+			std::string str;
+			std::getline(file, str);
+
+			if(str.front() == '#' || str.empty())
+			{
+				continue;
+			}
+
+			if(format == 1) // rgbd-slam format
+			{
+				std::list<std::string> strList = uSplit(str);
+				if(strList.size() ==  8)
+				{
+					double stamp = uStr2Float(strList.front());
+					strList.pop_front();
+					str = uJoin(strList, " ");
+					Transform pose = Transform::fromString(str);
+					if(pose.isNull())
+					{
+						UWARN("Null transform read!? line parsed: \"%s\"", str.c_str());
+					}
+					if(stamps)
+					{
+						stamps->insert(std::make_pair(id, stamp));
+					}
+					poses.insert(std::make_pair(id, pose));
+				}
+				else
+				{
+					UERROR("Error parsing \"%s\" with RGBD-SLAM format (should have 8 values: stamp x y z qw qx qy qz)", str.c_str());
+				}
+			}
+			else // default / KITTI format
+			{
+				Transform pose = Transform::fromString(str);
+				if(format == 2)
+				{
+					// for KITTI, we need to remove optical rotation
+					// z pointing front, x left, y down
+					Transform t( 0, 0, 1, 0,
+								-1, 0, 0, 0,
+								 0,-1, 0, 0);
+					pose = t * pose * t.inverse();
+				}
+				poses.insert(std::make_pair(id, pose));
+			}
+			++id;
+		}
+		file.close();
+		return true;
 	}
 	return false;
 }

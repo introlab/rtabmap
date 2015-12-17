@@ -55,10 +55,9 @@ Camera::Camera(float imageRate, const Transform & localTransform) :
 
 Camera::~Camera()
 {
-	if(_frameRateTimer)
-	{
-		delete _frameRateTimer;
-	}
+	UDEBUG("");
+	delete _frameRateTimer;
+	UDEBUG("");
 }
 
 SensorData Camera::takeImage(CameraInfo * info)

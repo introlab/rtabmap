@@ -302,7 +302,6 @@ private:
 	Transform _odometryCorrection;
 	Transform _lastOdomPose;
 	bool _processingOdometry;
-	double _lastOdomInfoUpdateTime;
 
 	QTimer * _oneSecondTimer;
 	QTime * _elapsedTime;

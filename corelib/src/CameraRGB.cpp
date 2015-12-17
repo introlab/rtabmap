@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/core/CameraRGB.h"
-#include "rtabmap/core/DBDriver.h"
+#include "rtabmap/core/Graph.h"
 
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -50,57 +50,44 @@ namespace rtabmap
 /////////////////////////
 // CameraImages
 /////////////////////////
+CameraImages::CameraImages() :
+		_startAt(0),
+		_refreshDir(false),
+		_rectifyImages(false),
+		_isDepth(false),
+		_depthScaleFactor(1.0f),
+		_count(0),
+		_dir(0),
+		_countScan(0),
+		_scanDir(0),
+		_scanMaxPts(0),
+		_filenamesAreTimestamps(false),
+		_groundTruthFormat(0)
+	{}
 CameraImages::CameraImages(const std::string & path,
-					 int startAt,
-					 bool refreshDir,
-					 bool rectifyImages,
-					 bool isDepth,
 					 float imageRate,
 					 const Transform & localTransform) :
 	Camera(imageRate, localTransform),
 	_path(path),
-	_startAt(startAt),
-	_refreshDir(refreshDir),
-	_rectifyImages(rectifyImages),
-	_isDepth(isDepth),
+	_startAt(0),
+	_refreshDir(false),
+	_rectifyImages(false),
+	_isDepth(false),
+	_depthScaleFactor(1.0f),
 	_count(0),
 	_dir(0),
 	_countScan(0),
 	_scanDir(0),
-	_scanMaxPts(0)
+	_scanMaxPts(0),
+	_filenamesAreTimestamps(false),
+	_groundTruthFormat(0)
 {
 
 }
 
-CameraImages::CameraImages(const std::string & scanPath,
-					const Transform & scanLocalTransform,
-					int scanMaxPts,
-					const std::string & path,
-					 int startAt,
-					 bool refreshDir,
-					 bool rectifyImages,
-					 bool isDepth,
-					 float imageRate,
-					 const Transform & localTransform) :
-	Camera(imageRate, localTransform),
-	_path(path),
-	_startAt(startAt),
-	_refreshDir(refreshDir),
-	_rectifyImages(rectifyImages),
-	_isDepth(isDepth),
-	_count(0),
-	_dir(0),
-	_countScan(0),
-	_scanDir(0),
-	_scanPath(scanPath),
-	_scanLocalTransform(scanLocalTransform),
-	_scanMaxPts(scanMaxPts)
+CameraImages::~CameraImages()
 {
-
-}
-
-CameraImages::~CameraImages(void)
-{
+	UDEBUG("");
 	if(_dir)
 	{
 		delete _dir;
@@ -113,7 +100,6 @@ CameraImages::~CameraImages(void)
 
 bool CameraImages::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
-	_cameraName = cameraName;
 	_lastFileName.clear();
 	_lastScanFileName.clear();
 	_count = 0;
@@ -204,6 +190,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 					_model.cy());
 		}
 	}
+	_model.setName(cameraName);
 
 	_model.setLocalTransform(this->getLocalTransform());
 	if(_rectifyImages && !_model.isValid())
@@ -212,7 +199,140 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 		return false;
 	}
 
-	return _dir->isValid();
+	bool success = _dir->isValid();
+	stamps_.clear();
+	groundTruth_.clear();
+	if(success)
+	{
+		if(_filenamesAreTimestamps)
+		{
+			const std::list<std::string> & filenames = _dir->getFileNames();
+			for(std::list<std::string>::const_iterator iter=filenames.begin(); iter!=filenames.end(); ++iter)
+			{
+				// format is 12234456.12334.png
+				std::list<std::string> list = uSplit(*iter, '.');
+				if(list.size() == 3)
+				{
+					list.pop_back(); // remove extension
+					double stamp = uStr2Double(uJoin(list, "."));
+					if(stamp > 0.0)
+					{
+						stamps_.push_back(stamp);
+					}
+					else
+					{
+						UERROR("Conversion filename to timestamp failed! (filename=%s)", iter->c_str());
+					}
+				}
+			}
+			if(stamps_.size() != this->imagesCount())
+			{
+				UERROR("The stamps count is not the same as the images (%d vs %d)! "
+					   "Converting filenames to timestamps is activated.",
+						(int)stamps_.size(), this->imagesCount());
+				stamps_.clear();
+				success = false;
+			}
+		}
+		else if(timestampsPath_.size())
+		{
+			FILE * file = 0;
+#ifdef _MSC_VER
+			fopen_s(&file, timestampsPath_.c_str(), "r");
+#else
+			file = fopen(timestampsPath_.c_str(), "r");
+#endif
+			if(file)
+			{
+				char line[16];
+				while ( fgets (line , 16 , file) != NULL )
+				{
+					stamps_.push_back(uStr2Double(uReplaceChar(line, '\n', 0)));
+				}
+				fclose(file);
+			}
+			if(stamps_.size() != this->imagesCount())
+			{
+				UERROR("The stamps count is not the same as the images (%d vs %d)! Please remove "
+						"the timestamps file path if you don't want to use them (current file path=%s).",
+						(int)stamps_.size(), this->imagesCount(), timestampsPath_.c_str());
+				stamps_.clear();
+				success = false;
+			}
+		}
+
+		if(groundTruthPath_.size())
+		{
+			std::map<int, Transform> poses;
+			std::map<int, double> stamps;
+			if(!graph::importPoses(groundTruthPath_, _groundTruthFormat, poses, 0, &stamps))
+			{
+				UERROR("Cannot read ground truth file \"%s\".", groundTruthPath_.c_str());
+				success = false;
+			}
+			else if(_groundTruthFormat != 1 && poses.size() != this->imagesCount())
+			{
+				UERROR("The ground truth count is not the same as the images (%d vs %d)! Please remove "
+						"the ground truth file path if you don't want to use it (current file path=%s).",
+						(int)poses.size(), this->imagesCount(), groundTruthPath_.c_str());
+				success = false;
+			}
+			else if(_groundTruthFormat == 1 && stamps_.size() == 0)
+			{
+				UERROR("When using rgbd-slam format for ground truth, images must have timestamps!");
+				success = false;
+			}
+			else if(_groundTruthFormat == 1)
+			{
+				//Match ground truth values with images
+				groundTruth_.resize(stamps_.size(), Transform());
+				std::map<double, int> stampsToIds;
+				for(std::map<int, double>::iterator iter=stamps.begin(); iter!=stamps.end(); ++iter)
+				{
+					stampsToIds.insert(std::make_pair(iter->second, iter->first));
+				}
+				std::vector<double> values = uValues(stamps);
+
+				for(std::list<double>::iterator ster=stamps_.begin(); ster!=stamps_.end(); ++ster)
+				{
+					Transform pose; // null transform
+					std::map<double, int>::iterator endIter = stampsToIds.lower_bound(*ster);
+					if(endIter != stampsToIds.end())
+					{
+						if(endIter->first == *ster)
+						{
+							pose = poses.at(endIter->second);
+						}
+						else if(endIter != stampsToIds.begin())
+						{
+							//interpolate
+							std::map<double, int>::iterator beginIter = endIter;
+							--beginIter;
+							double stampBeg = beginIter->first;
+							double stampEnd = endIter->first;
+							UASSERT(stampEnd > stampBeg && *ster>stampBeg && *ster < stampEnd);
+							float t = (*ster - stampBeg) / (stampEnd-stampBeg);
+							Transform & ta = poses.at(beginIter->second);
+							Transform & tb = poses.at(endIter->second);
+							if(!ta.isNull() && !tb.isNull())
+							{
+								pose = ta.interpolate(t, tb);
+							}
+						}
+
+					}
+					groundTruth_.push_back(pose);
+				}
+			}
+			else
+			{
+				groundTruth_ = uValuesList(poses);
+			}
+			UASSERT(groundTruth_.size() == stamps_.size());
+		}
+	}
+
+	return success;
 }
 
 bool CameraImages::isCalibrated() const
@@ -222,7 +342,7 @@ bool CameraImages::isCalibrated() const
 
 std::string CameraImages::getSerial() const
 {
-	return _cameraName;
+	return _model.name();
 }
 
 unsigned int CameraImages::imagesCount() const
@@ -247,6 +367,8 @@ SensorData CameraImages::captureImage()
 {
 	cv::Mat img;
 	cv::Mat scan;
+	double stamp = UTimer::now();
+	Transform groundTruthPose;
 	UDEBUG("");
 	if(_dir->isValid())
 	{
@@ -258,7 +380,7 @@ SensorData CameraImages::captureImage()
 				_scanDir->update();
 			}
 		}
-		if(_startAt == 0)
+		if(_startAt < 0)
 		{
 			const std::list<std::string> & fileNames = _dir->getFileNames();
 			if(fileNames.size())
@@ -295,13 +417,24 @@ SensorData CameraImages::captureImage()
 		}
 		else
 		{
+			if(stamps_.size())
+			{
+				stamp = stamps_.front();
+				stamps_.pop_front();
+				if(groundTruth_.size())
+				{
+					groundTruthPose = groundTruth_.front();
+					groundTruth_.pop_front();
+				}
+			}
+
 			std::string fileName;
 			std::string fullPath;
 			fileName = _dir->getNextFileName();
 			if(fileName.size())
 			{
 				fullPath = _path + fileName;
-				while(++_count < _startAt && (fileName = _dir->getNextFileName()).size())
+				while(_count++ < _startAt && (fileName = _dir->getNextFileName()).size())
 				{
 					fullPath = _path + fileName;
 				}
@@ -325,6 +458,11 @@ SensorData CameraImages::captureImage()
 									"Formats supported are 16 bits 1 channel and 32 bits 1 channel.",
 									fileName.c_str());
 							img = cv::Mat();
+						}
+
+						if(_depthScaleFactor > 1.0f)
+						{
+							img /= _depthScaleFactor;
 						}
 					}
 					else
@@ -390,11 +528,9 @@ SensorData CameraImages::captureImage()
 		UWARN("Directory is not set, camera must be initialized.");
 	}
 
-	if(_isDepth)
-	{
-		return SensorData(scan, scan.empty()?0:_scanMaxPts, 0, cv::Mat(), img, _model, this->getNextSeqID(), UTimer::now());
-	}
-	return SensorData(scan, scan.empty()?0:_scanMaxPts, 0, img, cv::Mat(), _model, this->getNextSeqID(), UTimer::now());
+	SensorData data(scan, scan.empty()?0:_scanMaxPts, 0, _isDepth?cv::Mat():img, _isDepth?img:cv::Mat(), _model, this->getNextSeqID(), stamp);
+	data.setGroundTruth(groundTruthPose);
+	return data;
 }
 
 

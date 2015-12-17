@@ -95,7 +95,6 @@ Memory::Memory(const ParametersMap & parameters) :
 	_memoryChanged(false),
 	_linksChanged(false),
 	_signaturesAdded(0),
-	_postInitClosingEvents(false),
 
 	_featureType((Feature2D::Type)Parameters::defaultKpDetectorStrategy()),
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
@@ -120,15 +119,14 @@ Memory::Memory(const ParametersMap & parameters) :
 
 bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const ParametersMap & parameters, bool postInitClosingEvents)
 {
-	_postInitClosingEvents = postInitClosingEvents;
-	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
+	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
 
 	UDEBUG("");
 	this->parseParameters(parameters);
 	bool loadAllNodesInWM = Parameters::defaultMemInitWMWithAllNodes();
 	Parameters::parse(parameters, Parameters::kMemInitWMWithAllNodes(), loadAllNodesInWM);
 
-	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory..."));
+	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory..."));
 	DBDriver * tmpDriver = 0;
 	if((!_memoryChanged && !_linksChanged) || dbOverwritten)
 	{
@@ -143,7 +141,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 		_dbDriver->setTimestampUpdateEnabled(false); // update links only
 	}
 	this->clear();
-	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory, done!"));
+	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory, done!"));
 
 	if(tmpDriver)
 	{
@@ -152,9 +150,9 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 
 	if(_dbDriver)
 	{
-		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database connection..."));
+		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database connection..."));
 		_dbDriver->closeConnection();
-		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database connection, done!"));
+		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database connection, done!"));
 	}
 
 	if(_dbDriver == 0 && !dbUrl.empty())
@@ -167,18 +165,18 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	{
 		_dbDriver->setTimestampUpdateEnabled(true); // make sure that timestamp update is enabled (may be disabled above)
 		success = false;
-		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database ") + dbUrl + "..."));
+		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database ") + dbUrl + "..."));
 		if(_dbDriver->openConnection(dbUrl, dbOverwritten))
 		{
 			success = true;
-			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database ") + dbUrl + ", done!"));
+			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database ") + dbUrl + ", done!"));
 
 			// Load the last working memory...
 			std::list<Signature*> dbSignatures;
 
 			if(loadAllNodesInWM)
 			{
-				if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading all nodes to WM...")));
+				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading all nodes to WM...")));
 				std::set<int> ids;
 				_dbDriver->getAllNodeIds(ids, true);
 				_dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures);
@@ -186,7 +184,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 			else
 			{
 				// load previous session working memory
-				if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading last nodes to WM...")));
+				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading last nodes to WM...")));
 				_dbDriver->loadLastNodes(dbSignatures);
 			}
 			for(std::list<Signature*>::reverse_iterator iter=dbSignatures.rbegin(); iter!=dbSignatures.rend(); ++iter)
@@ -207,7 +205,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 					delete *iter;
 				}
 			}
-			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading nodes to WM, done! (") + uNumber2Str(int(_workingMem.size() + _stMem.size())) + " loaded)"));
+			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading nodes to WM, done! (") + uNumber2Str(int(_workingMem.size() + _stMem.size())) + " loaded)"));
 
 			// Assign the last signature
 			if(_stMem.size()>0)
@@ -225,7 +223,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 		}
 		else
 		{
-			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kError, std::string("Connecting to database ") + dbUrl + ", path is invalid!"));
+			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kError, std::string("Connecting to database ") + dbUrl + ", path is invalid!"));
 		}
 	}
 	else
@@ -243,7 +241,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	// Now load the dictionary if we have a connection
 	if(_dbDriver && _dbDriver->isConnected())
 	{
-		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Loading dictionary..."));
+		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Loading dictionary..."));
 		if(loadAllNodesInWM)
 		{
 			// load all referenced words in working memory
@@ -276,10 +274,10 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 		}
 		UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
 		_vwd->update();
-		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Loading dictionary, done! (%d words)", (int)_vwd->getUnusedWordsSize())));
+		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Loading dictionary, done! (%d words)", (int)_vwd->getUnusedWordsSize())));
 	}
 
-	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Adding word references...")));
+	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Adding word references...")));
 	// Enable loaded signatures
 	const std::map<int, Signature *> & signatures = this->getSignatures();
 	for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
@@ -298,7 +296,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 			s->setEnabled(true);
 		}
 	}
-	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Adding word references, done! (%d)", _vwd->getTotalActiveReferences())));
+	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Adding word references, done! (%d)", _vwd->getTotalActiveReferences())));
 
 	if(_vwd->getUnusedWordsSize())
 	{
@@ -306,35 +304,36 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	}
 	UDEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
 
-	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
+	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
 	return success;
 }
 
-Memory::~Memory()
+void Memory::close(bool databaseSaved, bool postInitClosingEvents)
 {
-	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosing));
+	UDEBUG("databaseSaved=%d, postInitClosingEvents=%d", databaseSaved?1:0, postInitClosingEvents?1:0);
+	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosing));
 
-	if(!_memoryChanged && !_linksChanged)
+	if(!databaseSaved || (!_memoryChanged && !_linksChanged))
 	{
-		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("No changes added to database.")));
+		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("No changes added to database.")));
 
 		UDEBUG("");
 		if(_dbDriver)
 		{
-			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
+			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
 			_dbDriver->closeConnection();
 			delete _dbDriver;
 			_dbDriver = 0;
-			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database, done!"));
+			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database, done!"));
 		}
-		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory..."));
+		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory..."));
 		this->clear();
-		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory, done!"));
+		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory, done!"));
 	}
 	else
 	{
 		UDEBUG("");
-		if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving memory..."));
+		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving memory..."));
 		if(!_memoryChanged && _linksChanged && _dbDriver)
 		{
 			// don't update the time stamps!
@@ -345,19 +344,29 @@ Memory::~Memory()
 		if(_dbDriver)
 		{
 			_dbDriver->emptyTrashes();
-			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving memory, done!"));
-			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
+			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving memory, done!"));
+			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
 			_dbDriver->closeConnection();
 			delete _dbDriver;
 			_dbDriver = 0;
-			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database, done!"));
+			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database, done!"));
 		}
 		else
 		{
-			if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving memory, done!"));
+			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving memory, done!"));
 		}
 	}
+	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosed));
+}
 
+Memory::~Memory()
+{
+	this->close();
+
+	if(_dbDriver)
+	{
+		UWARN("Please call Memory::close() before");
+	}
 	if(_feature2D)
 	{
 		delete _feature2D;
@@ -378,7 +387,6 @@ Memory::~Memory()
 	{
 		delete _stereo;
 	}
-	if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosed));
 }
 
 void Memory::parseParameters(const ParametersMap & parameters)
@@ -3120,16 +3128,16 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 				if(keypoints.size())
 				{
+					// descriptors should be extracted before subpixel
+					descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
+					t = timer.ticks();
+					if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
+					UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
+
 					std::vector<cv::Point2f> leftCorners;
+					cv::KeyPoint::convert(keypoints, leftCorners);
 					if(subPixelOn)
 					{
-						// descriptors should be extracted before subpixel
-						descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-						t = timer.ticks();
-						if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
-						UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
-
-						cv::KeyPoint::convert(keypoints, leftCorners);
 						cv::cornerSubPix( imageMono, leftCorners,
 								cv::Size( _subPixWinSize, _subPixWinSize ),
 								cv::Size( -1, -1 ),
@@ -3139,15 +3147,12 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						{
 							keypoints[i].pt = leftCorners[i];
 						}
-
 						t = timer.ticks();
 						if(stats) stats->addStatistic(Statistics::kTimingMemSubpixel(), t*1000.0f);
 						UDEBUG("time subpix left kpts=%fs", t);
 					}
-					else
-					{
-						cv::KeyPoint::convert(keypoints, leftCorners);
-					}
+
+					UASSERT(keypoints.size() == leftCorners.size());
 
 					//generate a disparity map
 					std::vector<unsigned char> status;
@@ -3181,19 +3186,15 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 					if(keypoints.size())
 					{
-						if(!subPixelOn)
-						{
-							descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-							t = timer.ticks();
-							if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
-							UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
-						}
+						UASSERT(keypoints.size() == descriptors.rows);
 
+						UASSERT(leftCorners.size() == keypoints.size());
 						keypoints3D = util3d::generateKeypoints3DStereo(
 								leftCorners,
 								rightCorners,
 								data.stereoCameraModel(),
 								status);
+						UASSERT(keypoints.size() == keypoints3D->size());
 
 						t = timer.ticks();
 						if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
@@ -3257,11 +3258,13 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 							if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
 							UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
 						}
+						UASSERT(keypoints.size() == descriptors.rows);
 
 						keypoints3D = util3d::generateKeypoints3DDepth(
 								keypoints,
 								data.depthOrRightRaw(),
 								data.cameraModels());
+						UASSERT(keypoints.size() == keypoints3D->size());
 						t = timer.ticks();
 						if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
 						UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), t);

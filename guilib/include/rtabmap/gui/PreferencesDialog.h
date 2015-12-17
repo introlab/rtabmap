@@ -194,6 +194,7 @@ public:
 	bool isSourceStereoDepthGenerated() const;
 	Transform getSourceLocalTransform() const;    //Openni group
 	Transform getStereoLaserLocalTransform() const; // stereo images
+	Transform getRGBDLaserLocalTransform() const; // rgbd images
 	Camera * createCamera(bool useRawImages = false); // return camera should be deleted if not null
 
 	int getIgnoredDCComponents() const;
@@ -260,10 +261,13 @@ private slots:
 	void selectSourceRGBDImagesStamps();
 	void selectSourceRGBDImagesPathRGB();
 	void selectSourceRGBDImagesPathDepth();
+	void selectSourceRGBDImagesPathScans();
+	void selectSourceRGBDImagesPathGt();
 	void selectSourceStereoImagesStamps();
 	void selectSourceStereoImagesPathLeft();
 	void selectSourceStereoImagesPathRight();
 	void selectSourceStereoImagesPathScans();
+	void selectSourceStereoImagesPathGt();
 	void selectSourceImagesPath();
 	void selectSourceVideoPath();
 	void selectSourceStereoVideoPath();

@@ -60,6 +60,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/Compression.h"
 #include "rtabmap/core/Graph.h"
+#include "rtabmap/core/Stereo.h"
 #include "rtabmap/core/Optimizer.h"
 #include "rtabmap/core/RegistrationVis.h"
 #include "rtabmap/core/RegistrationIcp.h"
@@ -67,6 +68,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/SensorData.h"
 #include "ExportDialog.h"
 #include "rtabmap/gui/ProgressDialog.h"
+#include "ParametersToolBox.h"
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
@@ -103,7 +105,8 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 
 	ui_->dockWidget_constraints->setVisible(false);
 	ui_->dockWidget_graphView->setVisible(false);
-	ui_->dockWidget_parameters->setVisible(false);
+	ui_->dockWidget_guiparameters->setVisible(false);
+	ui_->dockWidget_coreparameters->setVisible(false);
 	ui_->dockWidget_info->setVisible(false);
 	ui_->dockWidget_stereoView->setVisible(false);
 	ui_->dockWidget_view3d->setVisible(false);
@@ -113,50 +116,33 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 
 	ui_->graphicsView_stereo->setAlpha(255);
 
+	QSet<QString> ignoredGroups;
+	ignoredGroups.insert("Rtabmap");
+	ignoredGroups.insert("Mem");
+	ignoredGroups.insert("Kp");
+	ignoredGroups.insert("Odom");
+	ignoredGroups.insert("OdomBow");
+	ignoredGroups.insert("OdomFlow");
+	ignoredGroups.insert("OdomMono");
+	ignoredGroups.insert("VhEp");
+	ignoredGroups.insert("StereoBM");
+	ignoredGroups.insert("RGBD");
+	ignoredGroups.insert("DbSqlite3");
+	ignoredGroups.insert("Bayes");
+	ui_->parameters_toolbox->setupUi(ignoredGroups);
+
 	this->readSettings();
-
-	if(RTABMAP_NONFREE == 0)
-	{
-		ui_->comboBox_featureType->setItemData(0, 0, Qt::UserRole - 1);
-		ui_->comboBox_featureType->setItemData(1, 0, Qt::UserRole - 1);
-
-		if(ui_->comboBox_featureType->currentIndex() <= 1)
-		{
-			UWARN("SURF/SIFT not available, setting feature default to FAST/BRIEF.");
-			ui_->comboBox_featureType->setCurrentIndex(4);
-			ui_->comboBox_nnType->setCurrentIndex(3);
-		}
-	}
-	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
-	{
-		ui_->comboBox_graphOptimizer->setItemData(1, 0, Qt::UserRole - 1);
-		if(ui_->comboBox_graphOptimizer->currentIndex() == 1)
-		{
-			UWARN("g2o is not available, setting optimization default to TORO.");
-			ui_->comboBox_graphOptimizer->setCurrentIndex(0);
-		}
-	}
-	if(!Optimizer::isAvailable(Optimizer::kTypeGTSAM))
-	{
-		ui_->comboBox_graphOptimizer->setItemData(1, 0, Qt::UserRole - 1);
-		if(ui_->comboBox_graphOptimizer->currentIndex() == 2)
-		{
-			UWARN("GTSAM is not available, setting optimization default to TORO.");
-			ui_->comboBox_graphOptimizer->setCurrentIndex(0);
-		}
-	}
-	if(!Optimizer::isAvailable(Optimizer::kTypeG2O) && !Optimizer::isAvailable(Optimizer::kTypeGTSAM))
-	{
-		ui_->checkBox_robust->setEnabled(false);
-	}
 
 	ui_->menuView->addAction(ui_->dockWidget_constraints->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_graphView->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_stereoView->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_view3d->toggleViewAction());
-	ui_->menuView->addAction(ui_->dockWidget_parameters->toggleViewAction());
+	ui_->menuView->addAction(ui_->dockWidget_guiparameters->toggleViewAction());
+	ui_->menuView->addAction(ui_->dockWidget_coreparameters->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_info->toggleViewAction());
 	connect(ui_->dockWidget_graphView->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateGraphView()));
+
+	connect(ui_->parameters_toolbox, SIGNAL(parametersChanged(const QStringList &)), this, SLOT(notifyParametersChanged(const QStringList &)));
 
 	connect(ui_->actionQuit, SIGNAL(triggered()), this, SLOT(close()));
 
@@ -225,19 +211,14 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	ui_->spinBox_optimizationsFrom->setEnabled(false);
 	connect(ui_->horizontalSlider_iterations, SIGNAL(valueChanged(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->horizontalSlider_iterations, SIGNAL(sliderMoved(int)), this, SLOT(sliderIterationsValueChanged(int)));
-	connect(ui_->spinBox_iterations, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
-	connect(ui_->checkBox_robust, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
-	connect(ui_->checkBox_ignoreCovariance, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
 	connect(ui_->checkBox_ignoreGlobalLoop, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreLocalLoopSpace, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreLocalLoopTime, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreUserLoop, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
-	connect(ui_->comboBox_graphOptimizer, SIGNAL(currentIndexChanged(int)), this, SLOT(updateGraphView()));
-	connect(ui_->checkBox_2dslam, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->spinBox_optimizationDepth, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_gridErode, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->checkBox_gridFillUnkownSpace, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
@@ -252,18 +233,6 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->doubleSpinBox_projMaxAngle, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
 	connect(ui_->spinBox_projClusterSize, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
 
-	connect(ui_->spinBox_stereo_flowIterations, SIGNAL(valueChanged(int)), this, SLOT(updateStereo()));
-	connect(ui_->spinBox_stereo_flowMaxLevel, SIGNAL(valueChanged(int)), this, SLOT(updateStereo()));
-	connect(ui_->spinBox_stereo_flowWinSize, SIGNAL(valueChanged(int)), this, SLOT(updateStereo()));
-	connect(ui_->spinBox_stereo_gfttBlockSize, SIGNAL(valueChanged(int)), this, SLOT(updateStereo()));
-	connect(ui_->doubleSpinBox_stereo_flowEps, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
-	connect(ui_->doubleSpinBox_stereo_gfttMinDistance, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
-	connect(ui_->spinBox_stereo_gfttMaxFeatures, SIGNAL(valueChanged(int)), this, SLOT(updateStereo()));
-	connect(ui_->doubleSpinBox_stereo_gfttQuality, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
-	connect(ui_->doubleSpinBox_stereo_maxSlope, SIGNAL(valueChanged(double)), this, SLOT(updateStereo()));
-	connect(ui_->checkBox_stereo_subpix, SIGNAL(stateChanged(int)), this, SLOT(updateStereo()));
-	connect(ui_->checkBox_stereo_opticalFlow, SIGNAL(stateChanged(int)), this, SLOT(updateStereo()));
-	connect(ui_->checkBox_stereo_ssd, SIGNAL(stateChanged(int)), this, SLOT(updateStereo()));
 	ui_->label_stereo_inliers_name->setStyleSheet("QLabel {color : blue; }");
 	ui_->label_stereo_flowOutliers_name->setStyleSheet("QLabel {color : red; }");
 	ui_->label_stereo_slopeOutliers_name->setStyleSheet("QLabel {color : yellow; }");
@@ -276,17 +245,12 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	//connect(ui_->graphicsView_B, SIGNAL(configChanged()), this, SLOT(configModified()));
 	connect(ui_->comboBox_logger_level, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
 	// Graph view
-	connect(ui_->spinBox_iterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_robust, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_ignoreCovariance, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignoreGlobalLoop, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignoreLocalLoopSpace, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignoreLocalLoopTime, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignoreUserLoop, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->comboBox_graphOptimizer, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_2dslam, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->spinBox_optimizationDepth, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_gridErode, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_gridFillUnkownSpace, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
@@ -299,45 +263,14 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_posefilteringRadius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_posefilteringAngle, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	// ICP parameters
+
 	connect(ui_->spinBox_icp_decimation, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_icp_maxDepth, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	connect(ui_->doubleSpinBox_icp_voxel, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	connect(ui_->spinBox_icp_downsamplingStepSize, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
-	connect(ui_->doubleSpinBox_icp_maxCorrespDistance, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	connect(ui_->spinBox_icp_iteration, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_icp_p2plane, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->spinBox_icp_normalKSearch, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_icp_2d, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_icp_laserScan, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->doubleSpinBox_icp_minCorrespondenceRatio, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	// Visual parameters
-	connect(ui_->groupBox_visual_recomputeFeatures, SIGNAL(clicked(bool)), this, SLOT(configModified()));
-	connect(ui_->comboBox_featureType, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
-	connect(ui_->comboBox_nnType, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_visual_2d, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_visual_var_inliers, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->doubleSpinBox_visual_nndr, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	connect(ui_->spinBox_visual_minCorrespondences, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
-	connect(ui_->doubleSpinBox_visual_maxCorrespDistance, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	connect(ui_->spinBox_visual_iteration, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
-	connect(ui_->doubleSpinBox_visual_maxDepth, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	
 	connect(ui_->doubleSpinBox_detectMore_radius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_detectMore_angle, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->spinBox_detectMore_iterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
-	//stereo parameters
-	connect(ui_->spinBox_stereo_flowIterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
-	connect(ui_->spinBox_stereo_flowMaxLevel, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
-	connect(ui_->spinBox_stereo_flowWinSize, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
-	connect(ui_->spinBox_stereo_gfttBlockSize, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
-	connect(ui_->doubleSpinBox_stereo_flowEps, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	connect(ui_->doubleSpinBox_stereo_gfttMinDistance, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	connect(ui_->spinBox_stereo_gfttMaxFeatures, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
-	connect(ui_->doubleSpinBox_stereo_gfttQuality, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	connect(ui_->doubleSpinBox_stereo_maxSlope, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	connect(ui_->checkBox_stereo_subpix, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_stereo_opticalFlow, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_stereo_ssd, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 
 	// dockwidget
 	QList<QDockWidget*> dockWidgets = this->findChildren<QDockWidget*>();
@@ -350,7 +283,8 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	ui_->dockWidget_graphView->installEventFilter(this);
 	ui_->dockWidget_stereoView->installEventFilter(this);
 	ui_->dockWidget_view3d->installEventFilter(this);
-	ui_->dockWidget_parameters->installEventFilter(this);
+	ui_->dockWidget_guiparameters->installEventFilter(this);
+	ui_->dockWidget_coreparameters->installEventFilter(this);
 	ui_->dockWidget_info->installEventFilter(this);
 }
 
@@ -409,17 +343,12 @@ void DatabaseViewer::readSettings()
 	ui_->graphViewer->loadSettings(settings, "GraphView");
 
 	settings.beginGroup("optimization");
-	ui_->spinBox_iterations->setValue(settings.value("iterations", ui_->spinBox_iterations->value()).toInt());
 	ui_->checkBox_spanAllMaps->setChecked(settings.value("spanToAllMaps", ui_->checkBox_spanAllMaps->isChecked()).toBool());
-	ui_->checkBox_robust->setChecked(settings.value("robust", ui_->checkBox_robust->isChecked()).toBool());
-	ui_->checkBox_ignoreCovariance->setChecked(settings.value("ignoreCovariance", ui_->checkBox_ignoreCovariance->isChecked()).toBool());
 	ui_->checkBox_ignorePoseCorrection->setChecked(settings.value("ignorePoseCorrection", ui_->checkBox_ignorePoseCorrection->isChecked()).toBool());
 	ui_->checkBox_ignoreGlobalLoop->setChecked(settings.value("ignoreGlobalLoop", ui_->checkBox_ignoreGlobalLoop->isChecked()).toBool());
 	ui_->checkBox_ignoreLocalLoopSpace->setChecked(settings.value("ignoreLocalLoopSpace", ui_->checkBox_ignoreLocalLoopSpace->isChecked()).toBool());
 	ui_->checkBox_ignoreLocalLoopTime->setChecked(settings.value("ignoreLocalLoopTime", ui_->checkBox_ignoreLocalLoopTime->isChecked()).toBool());
 	ui_->checkBox_ignoreUserLoop->setChecked(settings.value("ignoreUserLoop", ui_->checkBox_ignoreUserLoop->isChecked()).toBool());
-	ui_->comboBox_graphOptimizer->setCurrentIndex(settings.value("strategy", ui_->comboBox_graphOptimizer->currentIndex()).toInt());
-	ui_->checkBox_2dslam->setChecked(settings.value("slam2d", ui_->checkBox_2dslam->isChecked()).toBool());
 	ui_->spinBox_optimizationDepth->setValue(settings.value("depth", ui_->spinBox_optimizationDepth->value()).toInt());
 	ui_->checkBox_gridErode->setChecked(settings.value("erode", ui_->checkBox_gridErode->isChecked()).toBool());
 	ui_->checkBox_gridFillUnkownSpace->setChecked(settings.value("unknownSpaceFilled", ui_->checkBox_gridFillUnkownSpace->isChecked()).toBool());
@@ -445,53 +374,23 @@ void DatabaseViewer::readSettings()
 	settings.beginGroup("icp");
 	ui_->spinBox_icp_decimation->setValue(settings.value("decimation", ui_->spinBox_icp_decimation->value()).toInt());
 	ui_->doubleSpinBox_icp_maxDepth->setValue(settings.value("maxDepth", ui_->doubleSpinBox_icp_maxDepth->value()).toDouble());
-	ui_->doubleSpinBox_icp_voxel->setValue(settings.value("voxel", ui_->doubleSpinBox_icp_voxel->value()).toDouble());
-	ui_->spinBox_icp_downsamplingStepSize->setValue(settings.value("samplingStep", ui_->spinBox_icp_downsamplingStepSize->value()).toInt());
-	ui_->doubleSpinBox_icp_maxCorrespDistance->setValue(settings.value("maxCorrDist", ui_->doubleSpinBox_icp_maxCorrespDistance->value()).toDouble());
-	ui_->spinBox_icp_iteration->setValue(settings.value("iterations", ui_->spinBox_icp_iteration->value()).toInt());
-	ui_->checkBox_icp_p2plane->setChecked(settings.value("point2place", ui_->checkBox_icp_p2plane->isChecked()).toBool());
-	ui_->spinBox_icp_normalKSearch->setValue(settings.value("normalKSearch", ui_->spinBox_icp_normalKSearch->value()).toInt());
-	ui_->checkBox_icp_2d->setChecked(settings.value("icp2d", ui_->checkBox_icp_2d->isChecked()).toBool());
 	ui_->checkBox_icp_laserScan->setChecked(settings.value("icpLaserScan", ui_->checkBox_icp_laserScan->isChecked()).toBool());
-	ui_->doubleSpinBox_icp_minCorrespondenceRatio->setValue(settings.value("icpMinRatio", ui_->doubleSpinBox_icp_minCorrespondenceRatio->value()).toDouble());
 	settings.endGroup();
-
 	// Visual parameters
 	settings.beginGroup("visual");
-	ui_->comboBox_estimationType->setCurrentIndex(settings.value("estimationType", ui_->comboBox_estimationType->currentIndex()).toInt());
-	ui_->comboBox_pnpFlags->setCurrentIndex(settings.value("pnpFlags", ui_->comboBox_pnpFlags->currentIndex()).toInt());
-	ui_->groupBox_visual_recomputeFeatures->setChecked(settings.value("reextract", ui_->groupBox_visual_recomputeFeatures->isChecked()).toBool());
-	ui_->comboBox_featureType->setCurrentIndex(settings.value("featureType", ui_->comboBox_featureType->currentIndex()).toInt());
-	ui_->comboBox_nnType->setCurrentIndex(settings.value("nnType", ui_->comboBox_nnType->currentIndex()).toInt());
-	ui_->checkBox_visual_2d->setChecked(settings.value("force2d", ui_->checkBox_visual_2d->isChecked()).toBool());
-	ui_->checkBox_visual_var_inliers->setChecked(settings.value("varianceInliers", ui_->checkBox_visual_var_inliers->isChecked()).toBool());
-	ui_->doubleSpinBox_visual_nndr->setValue(settings.value("nndr", ui_->doubleSpinBox_visual_nndr->value()).toDouble());
-	ui_->spinBox_visual_minCorrespondences->setValue(settings.value("minCorr", ui_->spinBox_visual_minCorrespondences->value()).toInt());
-	ui_->doubleSpinBox_visual_maxCorrespDistance->setValue(settings.value("maxCorrDist", ui_->doubleSpinBox_visual_maxCorrespDistance->value()).toDouble());
-	ui_->spinBox_visual_iteration->setValue(settings.value("iterations", ui_->spinBox_visual_iteration->value()).toDouble());
-	ui_->doubleSpinBox_visual_maxDepth->setValue(settings.value("maxDepth", ui_->doubleSpinBox_visual_maxDepth->value()).toDouble());
 	ui_->doubleSpinBox_detectMore_radius->setValue(settings.value("detectMoreRadius", ui_->doubleSpinBox_detectMore_radius->value()).toDouble());
 	ui_->doubleSpinBox_detectMore_angle->setValue(settings.value("detectMoreAngle", ui_->doubleSpinBox_detectMore_angle->value()).toDouble());
 	ui_->spinBox_detectMore_iterations->setValue(settings.value("detectMoreIterations", ui_->spinBox_detectMore_iterations->value()).toInt());
 	settings.endGroup();
 
-	//Stereo parameters
-	settings.beginGroup("stereo");
-	ui_->spinBox_stereo_flowIterations->setValue(settings.value("flowIterations", ui_->spinBox_stereo_flowIterations->value()).toInt());
-	ui_->spinBox_stereo_flowMaxLevel->setValue(settings.value("flowMaxLevel", ui_->spinBox_stereo_flowMaxLevel->value()).toInt());
-	ui_->spinBox_stereo_flowWinSize->setValue(settings.value("flowWinSize", ui_->spinBox_stereo_flowWinSize->value()).toInt());
-	ui_->spinBox_stereo_gfttBlockSize->setValue(settings.value("gfttBlockSize", ui_->spinBox_stereo_gfttBlockSize->value()).toInt());
-	ui_->doubleSpinBox_stereo_flowEps->setValue(settings.value("flowEps", ui_->doubleSpinBox_stereo_flowEps->value()).toDouble());
-	ui_->doubleSpinBox_stereo_gfttMinDistance->setValue(settings.value("gfttMinDistance", ui_->doubleSpinBox_stereo_gfttMinDistance->value()).toDouble());
-	ui_->spinBox_stereo_gfttMaxFeatures->setValue(settings.value("gfttMaxFeatures", ui_->spinBox_stereo_gfttMaxFeatures->value()).toInt());
-	ui_->doubleSpinBox_stereo_gfttQuality->setValue(settings.value("gfttQuality", ui_->doubleSpinBox_stereo_gfttQuality->value()).toDouble());
-	ui_->doubleSpinBox_stereo_maxSlope->setValue(settings.value("maxSlope", ui_->doubleSpinBox_stereo_maxSlope->value()).toDouble());
-	ui_->checkBox_stereo_subpix->setChecked(settings.value("subpix", ui_->checkBox_stereo_subpix->isChecked()).toBool());
-	ui_->checkBox_stereo_opticalFlow->setChecked(settings.value("opticalFlow", ui_->checkBox_stereo_opticalFlow->isChecked()).toBool());
-	ui_->checkBox_stereo_ssd->setChecked(settings.value("ssd", ui_->checkBox_stereo_ssd->isChecked()).toBool());
-	settings.endGroup();
-
 	settings.endGroup(); // DatabaseViewer
+
+	ParametersMap parameters;
+	Parameters::readINI(path.toStdString(), parameters);
+	for(ParametersMap::iterator iter = parameters.begin(); iter!= parameters.end(); ++iter)
+	{
+		ui_->parameters_toolbox->updateParameter(iter->first, iter->second);
+	}
 }
 
 void DatabaseViewer::writeSettings()
@@ -516,17 +415,16 @@ void DatabaseViewer::writeSettings()
 
 	// save optimization settings
 	settings.beginGroup("optimization");
-	settings.setValue("iterations", ui_->spinBox_iterations->value());
+	//settings.setValue("iterations", ui_->spinBox_iterations->value());
 	settings.setValue("spanToAllMaps", ui_->checkBox_spanAllMaps->isChecked());
-	settings.setValue("robust", ui_->checkBox_robust->isChecked());
-	settings.setValue("ignoreCovariance", ui_->checkBox_ignoreCovariance->isChecked());
+	//settings.setValue("robust", ui_->checkBox_robust->isChecked());
 	settings.setValue("ignorePoseCorrection", ui_->checkBox_ignorePoseCorrection->isChecked());
 	settings.setValue("ignoreGlobalLoop", ui_->checkBox_ignoreGlobalLoop->isChecked());
 	settings.setValue("ignoreLocalLoopSpace", ui_->checkBox_ignoreLocalLoopSpace->isChecked());
 	settings.setValue("ignoreLocalLoopTime", ui_->checkBox_ignoreLocalLoopTime->isChecked());
 	settings.setValue("ignoreUserLoop", ui_->checkBox_ignoreUserLoop->isChecked());
-	settings.setValue("strategy", ui_->comboBox_graphOptimizer->currentIndex());
-	settings.setValue("slam2d", ui_->checkBox_2dslam->isChecked());
+	//settings.setValue("strategy", ui_->comboBox_graphOptimizer->currentIndex());
+	//settings.setValue("slam2d", ui_->checkBox_2dslam->isChecked());
 	settings.setValue("depth", ui_->spinBox_optimizationDepth->value());
 	settings.setValue("erode", ui_->checkBox_gridErode->isChecked());
 	settings.setValue("unknownSpaceFilled", ui_->checkBox_gridFillUnkownSpace->isChecked());
@@ -553,53 +451,20 @@ void DatabaseViewer::writeSettings()
 	settings.beginGroup("icp");
 	settings.setValue("decimation", ui_->spinBox_icp_decimation->value());
 	settings.setValue("maxDepth", ui_->doubleSpinBox_icp_maxDepth->value());
-	settings.setValue("voxel", ui_->doubleSpinBox_icp_voxel->value());
-	settings.setValue("samplingStep", ui_->spinBox_icp_downsamplingStepSize->value());
-	settings.setValue("maxCorrDist", ui_->doubleSpinBox_icp_maxCorrespDistance->value());
-	settings.setValue("iterations", ui_->spinBox_icp_iteration->value());
-	settings.setValue("point2place", ui_->checkBox_icp_p2plane->isChecked());
-	settings.setValue("normalKSearch", ui_->spinBox_icp_normalKSearch->value());
-	settings.setValue("icp2d", ui_->checkBox_icp_2d->isChecked());
 	settings.setValue("icpLaserScan", ui_->checkBox_icp_laserScan->isChecked());
-	settings.setValue("icpMinRatio", ui_->doubleSpinBox_icp_minCorrespondenceRatio->value());
 	settings.endGroup();
-
+	
 	// save Visual parameters
 	settings.beginGroup("visual");
-	settings.setValue("estimationType", ui_->comboBox_estimationType->currentIndex());
-	settings.setValue("pnpFlags", ui_->comboBox_pnpFlags->currentIndex());
-	settings.setValue("reextract", ui_->groupBox_visual_recomputeFeatures->isChecked());
-	settings.setValue("featureType", ui_->comboBox_featureType->currentIndex());
-	settings.setValue("nnType", ui_->comboBox_nnType->currentIndex());
-	settings.setValue("force2d", ui_->checkBox_visual_2d->isChecked());
-	settings.setValue("varianceInliers", ui_->checkBox_visual_var_inliers->isChecked());
-	settings.setValue("nndr", ui_->doubleSpinBox_visual_nndr->value());
-	settings.setValue("minCorr", ui_->spinBox_visual_minCorrespondences->value());
-	settings.setValue("maxCorrDist", ui_->doubleSpinBox_visual_maxCorrespDistance->value());
-	settings.setValue("iterations", ui_->spinBox_visual_iteration->value());
-	settings.setValue("maxDepth", ui_->doubleSpinBox_visual_maxDepth->value());
 	settings.setValue("detectMoreRadius", ui_->doubleSpinBox_detectMore_radius->value());
 	settings.setValue("detectMoreAngle", ui_->doubleSpinBox_detectMore_angle->value());
 	settings.setValue("detectMoreIterations", ui_->spinBox_detectMore_iterations->value());
 	settings.endGroup();
 
-	//Stereo parameters
-	settings.beginGroup("stereo");
-	settings.setValue("flowIterations", ui_->spinBox_stereo_flowIterations->value());
-	settings.setValue("flowMaxLevel", ui_->spinBox_stereo_flowMaxLevel->value());
-	settings.setValue("flowWinSize", ui_->spinBox_stereo_flowWinSize->value());
-	settings.setValue("gfttBlockSize", ui_->spinBox_stereo_gfttBlockSize->value());
-	settings.setValue("flowEps", ui_->doubleSpinBox_stereo_flowEps->value());
-	settings.setValue("gfttMinDistance", ui_->doubleSpinBox_stereo_gfttMinDistance->value());
-	settings.setValue("gfttMaxFeatures", ui_->spinBox_stereo_gfttMaxFeatures->value());
-	settings.setValue("gfttQuality", ui_->doubleSpinBox_stereo_gfttQuality->value());
-	settings.setValue("maxSlope", ui_->doubleSpinBox_stereo_maxSlope->value());
-	settings.setValue("subpix", ui_->checkBox_stereo_subpix->isChecked());
-	settings.setValue("opticalFlow", ui_->checkBox_stereo_opticalFlow->isChecked());
-	settings.setValue("ssd", ui_->checkBox_stereo_ssd->isChecked());
-	settings.endGroup();
-
 	settings.endGroup(); // DatabaseViewer
+
+	const ParametersMap & parameters = ui_->parameters_toolbox->getParameters();
+	Parameters::writeINI(path.toStdString(), parameters);
 
 	this->setWindowModified(false);
 }
@@ -1430,7 +1295,8 @@ void DatabaseViewer::generateTOROGraph()
 		QString path = QFileDialog::getSaveFileName(this, tr("Save File"), pathDatabase_+"/constraints" + QString::number(id) + ".graph", tr("TORO file (*.graph)"));
 		if(!path.isEmpty())
 		{
-			if(ui_->checkBox_ignoreCovariance->isChecked())
+			bool varianceIgnored = uStr2Bool(ui_->parameters_toolbox->getParameters().at(Parameters::kOptimizerVarianceIgnored()));
+			if(varianceIgnored)
 			{
 				std::multimap<int, rtabmap::Link> links = graphLinks_;
 				for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
@@ -1472,18 +1338,20 @@ void DatabaseViewer::generateG2OGraph()
 		QString path = QFileDialog::getSaveFileName(this, tr("Save File"), pathDatabase_+"/constraints" + QString::number(id) + ".g2o", tr("g2o file (*.g2o)"));
 		if(!path.isEmpty())
 		{
-			if(ui_->checkBox_ignoreCovariance->isChecked())
+			bool varianceIgnored = uStr2Bool(ui_->parameters_toolbox->getParameters().at(Parameters::kOptimizerVarianceIgnored()));
+			bool robust = uStr2Bool(ui_->parameters_toolbox->getParameters().at(Parameters::kOptimizerRobust()));
+			if(varianceIgnored)
 			{
 				std::multimap<int, rtabmap::Link> links = graphLinks_;
 				for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 				{
 					iter->second.setInfMatrix(cv::Mat::eye(6,6,CV_64FC1));
 				}
-				graph::exportPoses(path.toStdString(), 4, uValueAt(graphes_, id), links, std::map<int, double>(), ui_->checkBox_robust->isChecked());
+				graph::exportPoses(path.toStdString(), 4, uValueAt(graphes_, id), links, std::map<int, double>(), robust);
 			}
 			else
 			{
-				graph::exportPoses(path.toStdString(), 4, uValueAt(graphes_, id), graphLinks_, std::map<int, double>(), ui_->checkBox_robust->isChecked());
+				graph::exportPoses(path.toStdString(), 4, uValueAt(graphes_, id), graphLinks_, std::map<int, double>(), robust);
 			}
 		}
 	}
@@ -1680,7 +1548,8 @@ void DatabaseViewer::view3DLaserScans()
 							color = (Qt::GlobalColor)(mapId % 12 + 7 );
 						}
 
-						pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals = util3d::computeNormals(cloud, ui_->spinBox_icp_normalKSearch->value());
+						int normalK = uStr2Int(ui_->parameters_toolbox->getParameters().at(Parameters::kIcpPointToPlaneNormalNeighbors()));
+						pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals = util3d::computeNormals(cloud, normalK);
 
 						viewer->addCloud(uFormat("cloud%d", iter->first), cloudNormals, pose, color);
 
@@ -2460,18 +2329,24 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 		}
 
 		UTimer timer;
+		ParametersMap parameters = ui_->parameters_toolbox->getParameters();
+		bool opticalFlow = uStr2Bool(parameters.at(Parameters::kStereoOpticalFlow()));
+		Stereo * stereo = 0;
+		if(opticalFlow)
+		{
+			stereo = new StereoOpticalFlow(parameters);
+		}
+		else
+		{
+			stereo = new Stereo(parameters);
+		}
 
 		// generate kpts
 		std::vector<cv::KeyPoint> kpts;
 		cv::Rect roi = Feature2D::computeRoi(leftMono, "0.03 0.03 0.04 0.04");
-		ParametersMap parameters;
-		parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(ui_->spinBox_stereo_gfttMaxFeatures->value())));
-		parameters.insert(ParametersPair(Parameters::kGFTTMinDistance(), uNumber2Str(ui_->doubleSpinBox_stereo_gfttMinDistance->value())));
-		parameters.insert(ParametersPair(Parameters::kGFTTQualityLevel(), uNumber2Str(ui_->doubleSpinBox_stereo_gfttQuality->value())));
-		parameters.insert(ParametersPair(Parameters::kGFTTBlockSize(), uNumber2Str(ui_->spinBox_stereo_gfttBlockSize->value())));
-		Feature2D::Type type = Feature2D::kFeatureGfttBrief;
-		Feature2D * kptDetector = Feature2D::create(type, parameters);
-		kpts = kptDetector->generateKeypoints(leftMono, roi);
+		uInsert(parameters, ParametersPair(Parameters::kKpWordsPerImage(), parameters.at(Parameters::kVisMaxFeatures())));
+		Feature2D * kptDetector = Feature2D::create(parameters);
+		kpts = kptDetector->generateKeypoints(leftMono, opticalFlow?roi:cv::Rect());
 		delete kptDetector;
 
 		float timeKpt = timer.ticks();
@@ -2479,55 +2354,18 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 		std::vector<cv::Point2f> leftCorners;
 		cv::KeyPoint::convert(kpts, leftCorners);
 
-		int subPixWinSize = 3;
-		int subPixIterations = 30;
-		double subPixEps = 0.02;
-		if(ui_->checkBox_stereo_subpix->isChecked())
-		{
-			UDEBUG("cv::cornerSubPix() begin");
-			cv::cornerSubPix(leftMono, leftCorners,
-				cv::Size( subPixWinSize, subPixWinSize ),
-				cv::Size( -1, -1 ),
-				cv::TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, subPixIterations, subPixEps ) );
-			UDEBUG("cv::cornerSubPix() end");
-		}
-
 		// Find features in the new right image
 		std::vector<unsigned char> status;
 		std::vector<cv::Point2f> rightCorners;
 
-		if(ui_->checkBox_stereo_opticalFlow->isChecked())
-		{
-			UDEBUG("");
-			std::vector<float> err;
-			util2d::calcOpticalFlowPyrLKStereo(
-					leftMono,
-					data->rightRaw(),
-					leftCorners,
-					rightCorners,
-					status,
-					err,
-					cv::Size(ui_->spinBox_stereo_flowWinSize->value(), 3), ui_->spinBox_stereo_flowMaxLevel->value(),
-					cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, ui_->spinBox_stereo_flowIterations->value(), ui_->doubleSpinBox_stereo_flowEps->value()));
-			UDEBUG("");
-		}
-		else
-		{
-			UDEBUG("");
-			rightCorners = util2d::calcStereoCorrespondences(
-					leftMono,
-					data->rightRaw(),
-					leftCorners,
-					status,
-					cv::Size(ui_->spinBox_stereo_flowWinSize->value(), 3),
-					ui_->spinBox_stereo_flowMaxLevel->value(),
-					ui_->spinBox_stereo_flowIterations->value(),
-					0,
-					64,
-					ui_->checkBox_stereo_ssd->isChecked());
-			UDEBUG("");
-		}
-		float timeFlow = timer.ticks();
+		rightCorners = stereo->computeCorrespondences(
+				leftMono,
+				data->rightRaw(),
+				leftCorners,
+				status);
+		delete stereo;
+
+		float timeStereo = timer.ticks();
 
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		cloud->resize(kpts.size());
@@ -2543,35 +2381,20 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 			pcl::PointXYZ pt(bad_point, bad_point, bad_point);
 			if(status[i])
 			{
-				//UDEBUG("Left(%f,%f), right(%f,%f) disparity=%f", leftCorners[i].x, leftCorners[i].y, rightCorners[i].x, rightCorners[i].y, leftCorners[i].x - rightCorners[i].x);
-
 				float disparity = leftCorners[i].x - rightCorners[i].x;
 				if(disparity > 0.0f)
 				{
-					if(fabs((leftCorners[i].y-rightCorners[i].y) / (leftCorners[i].x-rightCorners[i].x)) < ui_->doubleSpinBox_stereo_maxSlope->value())
-					{
-						pcl::PointXYZ tmpPt = util3d::projectDisparityTo3D(
-								leftCorners[i],
-								disparity,
-								data->stereoCameraModel());
+					pcl::PointXYZ tmpPt = util3d::projectDisparityTo3D(
+							leftCorners[i],
+							disparity,
+							data->stereoCameraModel());
 
-						if(pcl::isFinite(tmpPt))
-						{
-							pt = pcl::transformPoint(tmpPt, data->stereoCameraModel().left().localTransform().toEigen3f());
-							status[i] = 100; //blue
-							++inliers;
-							cloud->at(oi++) = pt;
-						}
-					}
-					else if(fabs(leftCorners[i].y-rightCorners[i].y) <=1.0f)
+					if(pcl::isFinite(tmpPt))
 					{
-						status[i] = 110; //cyan
+						pt = pcl::transformPoint(tmpPt, data->stereoCameraModel().left().localTransform().toEigen3f());
+						status[i] = 100; //blue
 						++inliers;
-					}
-					else
-					{
-						status[i] = 101; //yellow
-						++slopeOutliers;
+						cloud->at(oi++) = pt;
 					}
 				}
 				else
@@ -2587,8 +2410,8 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 		}
 		cloud->resize(oi);
 
-		UINFO("correspondences = %d/%d (%f) (time kpt=%fs flow=%fs)",
-				(int)cloud->size(), (int)leftCorners.size(), float(cloud->size())/float(leftCorners.size()), timeKpt, timeFlow);
+		UINFO("correspondences = %d/%d (%f) (time kpt=%fs stereo=%fs)",
+				(int)cloud->size(), (int)leftCorners.size(), float(cloud->size())/float(leftCorners.size()), timeKpt, timeStereo);
 
 		ui_->stereoViewer->updateCameraTargetPosition(Transform::getIdentity());
 		ui_->stereoViewer->addOrUpdateCloud("stereo", cloud);
@@ -3081,13 +2904,7 @@ void DatabaseViewer::updateConstraintView(
 						}
 						if(poses.size())
 						{
-							ParametersMap optimizerParameters;
-							uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerStrategy(), uNumber2Str(ui_->comboBox_graphOptimizer->currentIndex())));
-							uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(ui_->spinBox_iterations->value())));
-							uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerSlam2D(), uBool2Str(ui_->checkBox_2dslam->isChecked())));
-							uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerVarianceIgnored(), uBool2Str(ui_->checkBox_ignoreCovariance->isChecked())));
-							uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerRobust(), uBool2Str(ui_->checkBox_robust->isChecked())));
-							Optimizer * optimizer = Optimizer::create(optimizerParameters);
+							Optimizer * optimizer = Optimizer::create(ui_->parameters_toolbox->getParameters());
 
 							UASSERT(uContains(poses, link.to()));
 							std::map<int, rtabmap::Transform> posesOut;
@@ -3557,13 +3374,7 @@ void DatabaseViewer::updateGraphView()
 				.arg(totalLocalTime)
 				.arg(totalUser));
 
-		ParametersMap optimizerParameters;
-		uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerStrategy(), uNumber2Str(ui_->comboBox_graphOptimizer->currentIndex())));
-		uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(ui_->spinBox_iterations->value())));
-		uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerSlam2D(), uBool2Str(ui_->checkBox_2dslam->isChecked())));
-		uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerVarianceIgnored(), uBool2Str(ui_->checkBox_ignoreCovariance->isChecked())));
-		uInsert(optimizerParameters, std::make_pair(Parameters::kOptimizerRobust(), uBool2Str(ui_->checkBox_robust->isChecked())));
-		Optimizer * optimizer = Optimizer::create(optimizerParameters);
+		Optimizer * optimizer = Optimizer::create(ui_->parameters_toolbox->getParameters());
 
 		std::map<int, rtabmap::Transform> posesOut;
 		std::multimap<int, rtabmap::Link> linksOut;
@@ -3711,6 +3522,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 	dbDriver_->getNodeData(currentLink.from(), dataFrom);
 	dbDriver_->getNodeData(currentLink.to(), dataTo);
 
+	ParametersMap parameters = ui_->parameters_toolbox->getParameters();
 
 	UTimer timer;
 	if(!ui_->checkBox_icp_laserScan->isChecked())
@@ -3738,16 +3550,6 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 		dataTo.uncompressData(0, 0, &tmpB);
 	}
 	UINFO("Uncompress time: %f s", timer.ticks());
-
-	ParametersMap parameters;
-	parameters.insert(ParametersPair(Parameters::kIcpDownsamplingStep(), uNumber2Str(ui_->spinBox_icp_downsamplingStepSize->value())));
-	parameters.insert(ParametersPair(Parameters::kIcpVoxelSize(), uNumber2Str(ui_->doubleSpinBox_icp_voxel->value())));
-	parameters.insert(ParametersPair(Parameters::kIcp2D(), uBool2Str(ui_->checkBox_icp_2d->isChecked())));
-	parameters.insert(ParametersPair(Parameters::kIcpPointToPlane(), uBool2Str(ui_->checkBox_icp_p2plane->isChecked())));
-	parameters.insert(ParametersPair(Parameters::kIcpPointToPlaneNormalNeighbors(), uNumber2Str(ui_->spinBox_icp_normalKSearch->value())));
-	parameters.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), uNumber2Str(ui_->doubleSpinBox_icp_maxCorrespDistance->value())));
-	parameters.insert(ParametersPair(Parameters::kIcpIterations(), uNumber2Str(ui_->spinBox_icp_iteration->value())));
-	parameters.insert(ParametersPair(Parameters::kIcpCorrespondenceRatio(), uNumber2Str(ui_->doubleSpinBox_icp_minCorrespondenceRatio->value())));
 
 	RegistrationIcp registration(parameters);
 	transform = registration.computeTransformation(dataFrom, dataTo, t, 0, 0, &variance);
@@ -3803,6 +3605,7 @@ void DatabaseViewer::refineConstraintVisually()
 
 void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, bool updateGraph)
 {
+	UDEBUG("");
 	if(from == to)
 	{
 		UWARN("Cannot refine link to same node");
@@ -3816,72 +3619,26 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 		return;
 	}
 
-	ParametersMap parameters;
-	parameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(ui_->comboBox_featureType->currentIndex())));
-	parameters.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(ui_->comboBox_nnType->currentIndex())));
-	parameters.insert(ParametersPair(Parameters::kVisInlierDistance(), uNumber2Str(ui_->doubleSpinBox_visual_maxCorrespDistance->value())));
-	parameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(ui_->doubleSpinBox_visual_maxDepth->value())));
-	parameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(ui_->doubleSpinBox_visual_nndr->value())));
-	parameters.insert(ParametersPair(Parameters::kVisIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
-	parameters.insert(ParametersPair(Parameters::kVisMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
-	parameters.insert(ParametersPair(Parameters::kVisEstimationType(), uNumber2Str(ui_->comboBox_estimationType->currentIndex())));
-	parameters.insert(ParametersPair(Parameters::kVisPnPFlags(), uNumber2Str(ui_->comboBox_pnpFlags->currentIndex())));
-	parameters.insert(ParametersPair(Parameters::kVisForce2D(), uBool2Str(ui_->checkBox_visual_2d->isChecked())));
-	parameters.insert(ParametersPair(Parameters::kRegVarianceFromInliersCount(), uBool2Str(ui_->checkBox_visual_var_inliers->isChecked())));
-	parameters.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
-	parameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0"));
-	parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "0"));
+	ParametersMap parameters = ui_->parameters_toolbox->getParameters();
 
 	Transform t;
 	std::string rejectedMsg;
 	float variance = -1.0f;
 	int inliers = -1;
-	if(ui_->groupBox_visual_recomputeFeatures->isChecked())
-	{
-		// create a fake memory to compute transform
-		Memory tmpMemory(parameters);
 
-		// Add sensor data to generate features
-		SensorData dataFrom;
-		dbDriver_->getNodeData(from, dataFrom);
-		dataFrom.uncompressData();
-		SensorData dataTo;
-		dbDriver_->getNodeData(to, dataTo);
-		dataTo.uncompressData();
-
-		if(from > to)
-		{
-			tmpMemory.update(dataTo);
-			tmpMemory.update(dataFrom);
-		}
-		else
-		{
-			tmpMemory.update(dataFrom);
-			tmpMemory.update(dataTo);
-		}
+	// Add sensor data to generate features
+	SensorData dataFrom;
+	dbDriver_->getNodeData(from, dataFrom);
+	dataFrom.uncompressData();
+	SensorData dataTo;
+	dbDriver_->getNodeData(to, dataTo);
+	dataTo.uncompressData();
 
 
-		t = tmpMemory.computeVisualTransform(from, to, &rejectedMsg, &inliers, &variance);
-	}
-	else
-	{
-		std::list<int> ids;
-		ids.push_back(to);
-		ids.push_back(from);
-		std::list<Signature*> signatures;
-		dbDriver_->loadSignatures(ids, signatures);
-
-		if(signatures.size() == 2)
-		{
-			RegistrationVis registration(parameters);
-			t = registration.computeTransformation(*signatures.back(), *signatures.front(), Transform(), &rejectedMsg, &inliers, &variance);
-		}
-		//cleanup
-		for(std::list<Signature*>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
-		{
-			delete *iter;
-		}
-	}
+	UDEBUG("");
+	RegistrationVis reg(parameters);
+	t = reg.computeTransformation2(dataFrom, dataTo, Transform::getIdentity(), &rejectedMsg, &inliers, &variance);
+	UDEBUG("");
 
 	if(!t.isNull())
 	{
@@ -3944,79 +3701,49 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		UASSERT(!containsLink(linksRemoved_, from, to));
 		UASSERT(!containsLink(linksRefined_, from, to));
 
-		ParametersMap parameters;
-		parameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(ui_->comboBox_featureType->currentIndex())));
-		parameters.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(ui_->comboBox_nnType->currentIndex())));
-		parameters.insert(ParametersPair(Parameters::kVisInlierDistance(), uNumber2Str(ui_->doubleSpinBox_visual_maxCorrespDistance->value())));
-		parameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(ui_->doubleSpinBox_visual_maxDepth->value())));
-		parameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(ui_->doubleSpinBox_visual_nndr->value())));
-		parameters.insert(ParametersPair(Parameters::kVisIterations(), uNumber2Str(ui_->spinBox_visual_iteration->value())));
-		parameters.insert(ParametersPair(Parameters::kVisMinInliers(), uNumber2Str(ui_->spinBox_visual_minCorrespondences->value())));
-		parameters.insert(ParametersPair(Parameters::kVisEstimationType(), uNumber2Str(ui_->comboBox_estimationType->currentIndex())));
-		parameters.insert(ParametersPair(Parameters::kVisPnPFlags(), uNumber2Str(ui_->comboBox_pnpFlags->currentIndex())));
-		parameters.insert(ParametersPair(Parameters::kVisForce2D(), uBool2Str(ui_->checkBox_visual_2d->isChecked())));
-		parameters.insert(ParametersPair(Parameters::kRegVarianceFromInliersCount(), uBool2Str(ui_->checkBox_visual_var_inliers->isChecked())));
-		parameters.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
-		parameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0"));
-		parameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "0"));
+		ParametersMap parameters = ui_->parameters_toolbox->getParameters();
+		uInsert(parameters, ParametersPair(Parameters::kKpDetectorStrategy(), parameters.at(Parameters::kVisFeatureType())));
+		uInsert(parameters, ParametersPair(Parameters::kKpNNStrategy(), parameters.at(Parameters::kVisNNType())));
+		uInsert(parameters, ParametersPair(Parameters::kKpMaxDepth(), parameters.at(Parameters::kVisMaxDepth())));
+		uInsert(parameters, ParametersPair(Parameters::kKpWordsPerImage(), parameters.at(Parameters::kVisMaxFeatures())));
+		uInsert(parameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
+		uInsert(parameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0"));
 
 		Transform t;
 		std::string rejectedMsg;
 		float variance = -1.0f;
 		int inliers = -1;
-		if(ui_->groupBox_visual_recomputeFeatures->isChecked())
+
+		// create a fake memory to compute the transform
+		Memory tmpMemory(parameters);
+
+		// Add sensor data to generate features
+		SensorData dataFrom;
+		dbDriver_->getNodeData(from, dataFrom);
+		dataFrom.uncompressData();
+		SensorData dataTo;
+		dbDriver_->getNodeData(to, dataTo);
+		dataTo.uncompressData();
+
+		if(from > to)
 		{
-			// create a fake memory to compute the transform
-			Memory tmpMemory(parameters);
-
-			// Add sensor data to generate features
-			SensorData dataFrom;
-			dbDriver_->getNodeData(from, dataFrom);
-			dataFrom.uncompressData();
-			SensorData dataTo;
-			dbDriver_->getNodeData(to, dataTo);
-			dataTo.uncompressData();
-
-			if(from > to)
-			{
-				tmpMemory.update(dataTo);
-				tmpMemory.update(dataFrom);
-			}
-			else
-			{
-				tmpMemory.update(dataFrom);
-				tmpMemory.update(dataTo);
-			}
-
-
-			t = tmpMemory.computeVisualTransform(from, to, &rejectedMsg, &inliers, &variance);
-
-			if(!silent)
-			{
-				ui_->graphicsView_A->setFeatures(tmpMemory.getSignature(from)->getWords(), dataFrom.depthRaw());
-				ui_->graphicsView_B->setFeatures(tmpMemory.getSignature(to)->getWords(), dataTo.depthRaw());
-				updateWordsMatching();
-			}
+			tmpMemory.update(dataTo);
+			tmpMemory.update(dataFrom);
 		}
 		else
 		{
-			std::list<int> ids;
-			ids.push_back(to);
-			ids.push_back(from);
-			std::list<Signature*> signatures;
-			dbDriver_->loadSignatures(ids, signatures);
+			tmpMemory.update(dataFrom);
+			tmpMemory.update(dataTo);
+		}
 
-			if(signatures.size() == 2)
-			{
-				RegistrationVis registration(parameters);
 
-				t = registration.computeTransformation(*signatures.back(), *signatures.front(), Transform(), &rejectedMsg, &inliers, &variance);
-			}
-			//cleanup
-			for(std::list<Signature*>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
-			{
-				delete *iter;
-			}
+		t = tmpMemory.computeVisualTransform(from, to, &rejectedMsg, &inliers, &variance);
+
+		if(!silent)
+		{
+			ui_->graphicsView_A->setFeatures(tmpMemory.getSignature(from)->getWords(), dataFrom.depthRaw());
+			ui_->graphicsView_B->setFeatures(tmpMemory.getSignature(to)->getWords(), dataTo.depthRaw());
+			updateWordsMatching();
 		}
 
 		if(!t.isNull())
@@ -4262,6 +3989,38 @@ void DatabaseViewer::updateLoopClosuresSlider(int from, int to)
 		ui_->constraintsViewer->update();
 		updateConstraintButtons();
 	}
+}
+
+void DatabaseViewer::notifyParametersChanged(const QStringList & parametersChanged)
+{
+	bool updateStereo = false;
+	bool updateGraphView = false;
+	for(QStringList::const_iterator iter=parametersChanged.constBegin();
+	   iter!=parametersChanged.constEnd() && (!updateStereo || !updateGraphView);
+	   ++iter)
+	{
+		QString group = iter->split('/').first();
+		if(!updateStereo && group == "Stereo")
+		{
+			updateStereo = true;
+			continue;
+		}
+		if(!updateGraphView && group == "Optimize")
+		{
+			updateGraphView = true;
+			continue;
+		}
+	}
+
+	if(updateStereo)
+	{
+		this->updateStereo();
+	}
+	if(updateGraphView)
+	{
+		this->updateGraphView();
+	}
+	this->configModified();
 }
 
 } // namespace rtabmap

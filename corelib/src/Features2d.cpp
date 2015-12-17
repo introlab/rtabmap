@@ -343,7 +343,19 @@ void Feature2D::parseParameters(const ParametersMap & parameters)
 {
 	Parameters::parse(parameters, Parameters::kKpWordsPerImage(), maxFeatures_);
 }
+Feature2D * Feature2D::create(const ParametersMap & parameters)
+{
+	int type = Parameters::defaultKpDetectorStrategy();
+	Parameters::parse(parameters, Parameters::kKpDetectorStrategy(), type);
+	return create((Feature2D::Type)type, parameters);
+}
 Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parameters)
+{
+	int wordsPerImage = Parameters::defaultKpWordsPerImage();
+	Parameters::parse(parameters, Parameters::kKpWordsPerImage(), wordsPerImage);
+	return create(type, wordsPerImage, parameters);
+}
+Feature2D * Feature2D::create(Feature2D::Type type, int wordsPerImage, const ParametersMap & parameters)
 {
 	if(RTABMAP_NONFREE == 0)
 	{

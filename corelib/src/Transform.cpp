@@ -67,6 +67,23 @@ Transform::Transform(float x, float y, float z, float roll, float pitch, float y
 	*this = fromEigen3f(t);
 }
 
+Transform::Transform(float x, float y, float z, float qx, float qy, float qz, float qw)
+{
+	Eigen::Matrix3f rotation = Eigen::Quaternionf(qw, qx, qy, qz).toRotationMatrix();
+	data()[0] = rotation(0,0);
+	data()[1] = rotation(0,1);
+	data()[2] = rotation(0,2);
+	data()[3] = 0.0f;
+	data()[4] = rotation(1,0);
+	data()[5] = rotation(1,1);
+	data()[6] = rotation(1,2);
+	data()[7] = 0.0f;
+	data()[8] = rotation(2,0);
+	data()[9] = rotation(2,1);
+	data()[10] = rotation(2,2);
+	data()[11] = 0.0f;
+}
+
 Transform::Transform(float x, float y, float theta)
 {
 	Eigen::Affine3f t = pcl::getTransformation (x, y, 0, 0, 0, theta);
@@ -190,6 +207,19 @@ float Transform::getDistance(const Transform & t) const
 float Transform::getDistanceSquared(const Transform & t) const
 {
 	return uNormSquared(this->x()-t.x(), this->y()-t.y(), this->z()-t.z());
+}
+
+Transform Transform::interpolate(float t, const Transform & other) const
+{
+	Eigen::Quaternionf qa=this->getQuaternionf();
+	Eigen::Quaternionf qb=other.getQuaternionf();
+	Eigen::Quaternionf qres = qa.slerp(t, qb);
+
+	float x = this->x() + t*(other.x() - this->x());
+	float y = this->y() + t*(other.y() - this->y());
+	float z = this->z() + t*(other.z() - this->z());
+
+	return Transform(x,y,z, qres.x(), qres.y(), qres.z(), qres.w());
 }
 
 std::string Transform::prettyPrint() const
@@ -317,42 +347,50 @@ Transform Transform::fromEigen3d(const Eigen::Isometry3d & matrix)
 }
 
 /**
- * Format (6 values): x y z roll pitch yaw.
- * Format (9 [+3] values): r11 r12 r13 r21 r22 r23 r31 r32 r33 [tx ty tz].
+ * Format (3 values): x y z
+ * Format (6 values): x y z roll pitch yaw
+ * Format (7 values): x y z qx qy qz qw
+ * Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33
+ * Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz
  */
 Transform Transform::fromString(const std::string & string)
 {
-	Transform t;
 	std::list<std::string> list = uSplit(string, ' ');
-	if(list.size() == 6 || list.size() == 9 || list.size() == 12)
-	{
-		std::vector<float> numbers(list.size());
-		int i = 0;
-		for(std::list<std::string>::iterator iter=list.begin(); iter!=list.end(); ++iter)
-		{
-			numbers[i++] = uStr2Float(*iter);
-		}
+	UASSERT_MSG(list.size() == 3 || list.size() == 6 || list.size() == 7 || list.size() == 9 || list.size() == 12,
+			uFormat("Cannot parse \"%s\"", string.c_str()).c_str());
 
-		if(numbers.size() == 6)
-		{
-			t = Transform(numbers[0], numbers[1], numbers[2], numbers[3], numbers[4], numbers[5]);
-		}
-		else if(numbers.size() == 9)
-		{
-			t = Transform(numbers[0], numbers[1], numbers[2], 0,
-						  numbers[3], numbers[4], numbers[5], 0,
-						  numbers[6], numbers[7], numbers[8], 0);
-		}
-		else if(numbers.size() == 12)
-		{
-			t = Transform(numbers[0], numbers[1], numbers[2], numbers[9],
-						  numbers[3], numbers[4], numbers[5], numbers[10],
-						  numbers[6], numbers[7], numbers[8], numbers[11]);
-		}
-	}
-	else
+	std::vector<float> numbers(list.size());
+	int i = 0;
+	for(std::list<std::string>::iterator iter=list.begin(); iter!=list.end(); ++iter)
 	{
-		UERROR("Local transform is wrong! must have 6 or 9 items (%s)", string.c_str());
+		numbers[i++] = uStr2Float(*iter);
+	}
+
+	Transform t;
+	if(numbers.size() == 3)
+	{
+		t = Transform(numbers[0], numbers[1], numbers[2]);
+	}
+	else if(numbers.size() == 6)
+	{
+		t = Transform(numbers[0], numbers[1], numbers[2], numbers[3], numbers[4], numbers[5]);
+	}
+	else if(numbers.size() == 7)
+	{
+
+		t = Transform(numbers[0], numbers[1], numbers[2], numbers[3], numbers[4], numbers[5], numbers[6]);
+	}
+	else if(numbers.size() == 9)
+	{
+		t = Transform(numbers[0], numbers[1], numbers[2], 0,
+					  numbers[3], numbers[4], numbers[5], 0,
+					  numbers[6], numbers[7], numbers[8], 0);
+	}
+	else if(numbers.size() == 12)
+	{
+		t = Transform(numbers[0], numbers[1], numbers[2], numbers[3],
+					  numbers[4], numbers[5], numbers[6], numbers[7],
+					  numbers[8], numbers[9], numbers[10], numbers[11]);
 	}
 	return t;
 }

@@ -97,8 +97,6 @@ int main(int argc, char * argv[])
 	CameraStereoImages camera(
 			pathLeftImages,
 			pathRightImages,
-			false, // no timestamps in filenames
-			"",    // no file with timestamps
 			false, // assume that images are already rectified
 			(float)cameraRate,
 			opticalRotation);

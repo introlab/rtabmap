@@ -61,7 +61,7 @@ public:
 	enum Cmd {
 			kCmdInit,             // params: [string] database path + ParametersMap
 			kCmdResetMemory,
-			kCmdClose,
+			kCmdClose,            // params: [bool] database saved (default true)
 			kCmdDumpMemory,
 			kCmdDumpPrediction,
 			kCmdGenerateDOTGraph, // params: [bool] global, [string] path, if global=false: [int] id, [int] margin

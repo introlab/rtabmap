@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/util2d.h"
 #include "rtabmap/core/CameraRGB.h"
+#include "rtabmap/core/Graph.h"
 
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -1672,129 +1673,33 @@ bool CameraRGBDImages::available()
 CameraRGBDImages::CameraRGBDImages(
 		const std::string & pathRGBImages,
 		const std::string & pathDepthImages,
-		double depthScaleFactor,
-		bool filenamesAreTimestamps,
-		const std::string & timestampsPath,
+		float depthScaleFactor,
 		float imageRate,
 		const Transform & localTransform) :
-		Camera(imageRate, localTransform),
-		cameraRGB_(0),
-		cameraDepth_(0),
-		depthScaleFactor_(depthScaleFactor),
-		filenamesAreTimestamps_(filenamesAreTimestamps),
-		timestampsPath_(timestampsPath)
+		CameraImages(pathRGBImages, imageRate, localTransform)
 {
 	UASSERT(depthScaleFactor >= 1.0);
-	cameraRGB_ = new CameraImages(pathRGBImages);
-	cameraDepth_ = new CameraImages(pathDepthImages, 1, false, false, true);
+	cameraDepth_.setPath(pathDepthImages);
+	cameraDepth_.setDepth(true, depthScaleFactor);
 }
 
 CameraRGBDImages::~CameraRGBDImages()
 {
-	if(cameraRGB_)
-	{
-		delete cameraRGB_;
-	}
-	if(cameraDepth_)
-	{
-		delete cameraDepth_;
-	}
 }
 
 bool CameraRGBDImages::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
-	// look for calibration files
-	cameraName_ = cameraName;
-	if(!calibrationFolder.empty() && !cameraName.empty())
-	{
-		if(!cameraModel_.load(calibrationFolder, cameraName))
-		{
-			UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
-					cameraName.c_str(), calibrationFolder.c_str());
-		}
-		else
-		{
-			UINFO("Camera parameters: fx=%f fy=%f cx=%f cy=%f",
-					cameraModel_.fx(),
-					cameraModel_.fy(),
-					cameraModel_.cx(),
-					cameraModel_.cy());
-		}
-	}
-	cameraModel_.setLocalTransform(this->getLocalTransform());
-
 	bool success = false;
-	if(cameraRGB_->init() && cameraDepth_->init())
+	if(CameraImages::init() && cameraDepth_.init())
 	{
-		if(cameraRGB_->imagesCount() == cameraDepth_->imagesCount())
+		if(this->imagesCount() == cameraDepth_.imagesCount())
 		{
 			success = true;
 		}
 		else
 		{
 			UERROR("Cameras don't have the same number of images (%d vs %d)",
-					cameraRGB_->imagesCount(), cameraDepth_->imagesCount());
-		}
-	}
-
-	stamps_.clear();
-	if(success)
-	{
-		if(filenamesAreTimestamps_)
-		{
-			std::vector<std::string> filenames = cameraRGB_->filenames();
-			for(unsigned int i=0; i<filenames.size(); ++i)
-			{
-				// format is 12234456.12334.png
-				std::list<std::string> list = uSplit(filenames.at(i), '.');
-				if(list.size() == 3)
-				{
-					list.pop_back(); // remove extension
-					double stamp = uStr2Double(uJoin(list, "."));
-					if(stamp > 0.0)
-					{
-						stamps_.push_back(stamp);
-					}
-					else
-					{
-						UERROR("Conversion filename to timestamp failed! (filename=%s)", filenames.at(i).c_str());
-					}
-				}
-			}
-			if(stamps_.size() != cameraRGB_->imagesCount())
-			{
-				UERROR("The stamps count is not the same as the images (%d vs %d)! "
-					   "Converting filenames to timestamps is activated.",
-						(int)stamps_.size(), cameraRGB_->imagesCount());
-				stamps_.clear();
-				success = false;
-			}
-		}
-		else if(timestampsPath_.size())
-		{
-			FILE * file = 0;
-#ifdef _MSC_VER
-			fopen_s(&file, timestampsPath_.c_str(), "r");
-#else
-			file = fopen(timestampsPath_.c_str(), "r");
-#endif
-			if(file)
-			{
-				char line[16];
-				while ( fgets (line , 16 , file) != NULL )
-				{
-					stamps_.push_back(uStr2Double(uReplaceChar(line, '\n', 0)));
-				}
-				fclose(file);
-			}
-			if(stamps_.size() != cameraRGB_->imagesCount())
-			{
-				UERROR("The stamps count is not the same as the images (%d vs %d)! Please remove "
-						"the timestamps file path if you don't want to use them (current file path=%s).",
-						(int)stamps_.size(), cameraRGB_->imagesCount(), timestampsPath_.c_str());
-				stamps_.clear();
-				success = false;
-			}
+					this->imagesCount(), cameraDepth_.imagesCount());
 		}
 	}
 
@@ -1803,41 +1708,27 @@ bool CameraRGBDImages::init(const std::string & calibrationFolder, const std::st
 
 bool CameraRGBDImages::isCalibrated() const
 {
-	return cameraModel_.isValid();
+	return this->cameraModel().isValid();
 }
 
 std::string CameraRGBDImages::getSerial() const
 {
-	return cameraName_;
+	return this->cameraModel().name();
 }
 
 SensorData CameraRGBDImages::captureImage()
 {
 	SensorData data;
 
-	double stamp;
-	if(stamps_.size())
-	{
-		stamp = stamps_.front();
-		stamps_.pop_front();
-	}
-	else
-	{
-		stamp = UTimer::now();
-	}
 	SensorData rgb, depth;
-	rgb = cameraRGB_->takeImage();
+	rgb = CameraImages::captureImage();
 	if(!rgb.imageRaw().empty())
 	{
-		depth = cameraDepth_->takeImage();
+		depth = cameraDepth_.takeImage();
 		if(!depth.depthRaw().empty())
 		{
-			cv::Mat depthScaled = depth.depthRaw();
-			if(depthScaleFactor_ > 1.0)
-			{
-				depthScaled /= depthScaleFactor_;
-			}
-			data = SensorData(rgb.imageRaw(), depthScaled, cameraModel_, this->getNextSeqID(), stamp);
+			data = SensorData(rgb.imageRaw(), depth.depthRaw(), rgb.cameraModels(), rgb.id(), rgb.stamp());
+			data.setGroundTruth(rgb.groundTruth());
 		}
 	}
 	return data;

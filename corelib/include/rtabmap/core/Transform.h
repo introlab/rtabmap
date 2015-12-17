@@ -51,6 +51,8 @@ public:
 	Transform(const cv::Mat & transformationMatrix);
 	// x,y,z, roll,pitch,yaw
 	Transform(float x, float y, float z, float roll, float pitch, float yaw);
+	// x,y,z, qx,qy,qz,qw
+	Transform(float x, float y, float z, float qx, float qy, float qz, float qw);
 	// x,y, theta
 	Transform(float x, float y, float theta);
 
@@ -101,6 +103,7 @@ public:
 	float getNormSquared() const;
 	float getDistance(const Transform & t) const;
 	float getDistanceSquared(const Transform & t) const;
+	Transform interpolate(float t, const Transform & other) const;
 	std::string prettyPrint() const;
 
 	Transform operator*(const Transform & t) const;
@@ -124,6 +127,14 @@ public:
 	static Transform fromEigen3d(const Eigen::Affine3d & matrix);
 	static Transform fromEigen3f(const Eigen::Isometry3f & matrix);
 	static Transform fromEigen3d(const Eigen::Isometry3d & matrix);
+
+	/**
+	 * Format (3 values): x y z
+	 * Format (6 values): x y z roll pitch yaw
+	 * Format (7 values): x y z qx qy qz qw
+	 * Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33
+	 * Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz
+	 */
 	static Transform fromString(const std::string & string);
 
 private:

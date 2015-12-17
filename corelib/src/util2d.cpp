@@ -156,6 +156,7 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 	status = std::vector<unsigned char>(leftCorners.size(), 0);
 	int totalIterations = 0;
 	int noSubPixel = 0;
+	int added = 0;
 	for(unsigned int i=0; i<leftCorners.size(); ++i)
 	{
 		int oi=0;
@@ -320,10 +321,14 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 
 			rightCorners[i] = cv::Point2f(xc, leftCorners[i].y);
 			status[i] = reject?0:1;
+			if(!reject)
+			{
+				++added;
+			}
 		}
 		subpixelTime+=timer.ticks();
 	}
-	UDEBUG("noSubPixel=%d", noSubPixel);
+	UDEBUG("noSubPixel=%d/%d", noSubPixel, added);
 	UDEBUG("totalIterations=%d", totalIterations);
 	UDEBUG("Time pyramid = %f s", pyramidTime);
 	UDEBUG("Time disparity = %f s", disparityTime);

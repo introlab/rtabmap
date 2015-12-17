@@ -78,6 +78,7 @@ public:
 			bool dbOverwritten = false,
 			const ParametersMap & parameters = ParametersMap(),
 			bool postInitClosingEvents = false);
+	void close(bool databaseSaved = true, bool postInitClosingEvents = false);
 	std::map<int, float> computeLikelihood(const Signature * signature,
 			const std::list<int> & ids);
 	int incrementMapId(std::map<int, int> * reducedIds = 0);
@@ -253,7 +254,6 @@ private:
 	bool _memoryChanged; // False by default, become true only when Memory::update() is called.
 	bool _linksChanged; // False by default, become true when links are modified.
 	int _signaturesAdded;
-	bool _postInitClosingEvents;
 
 	std::map<int, Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
 	std::set<int> _stMem; // id

@@ -41,6 +41,7 @@ Stereo::Stereo(const ParametersMap & parameters) :
 		maxDisparity_(Parameters::defaultStereoMaxDisparity()),
 		winSSD_(Parameters::defaultStereoSSD())
 {
+	this->parseParameters(parameters);
 }
 
 void Stereo::parseParameters(const ParametersMap & parameters)

@@ -25,6 +25,7 @@ SET(headers_ui
 	./MapVisibilityWidget.h
 	../include/${PROJECT_PREFIX}/gui/GraphViewer.h
 	./CreateSimpleCalibrationDialog.h
+	./ParametersToolBox.h
 )
 
 SET(uis
@@ -86,6 +87,7 @@ SET(SRC_FILES
 	./MapVisibilityWidget.cpp
 	./GraphViewer.cpp
 	./CreateSimpleCalibrationDialog.cpp
+	./ParametersToolBox.cpp
 	${moc_srcs} 
 	${moc_uis} 
 	${srcs_qrc}

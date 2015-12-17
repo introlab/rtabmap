@@ -39,6 +39,7 @@ namespace rtabmap
 {
 
 ParametersMap Parameters::parameters_;
+ParametersMap Parameters::parametersType_;
 ParametersMap Parameters::descriptions_;
 Parameters Parameters::instance_;
 std::map<std::string, std::pair<bool, std::string> > Parameters::removedParameters_;
@@ -258,6 +259,21 @@ const ParametersMap & Parameters::getBackwardCompatibilityMap()
 		}
 	}
 	return backwardCompatibilityMap_;
+}
+
+std::string Parameters::getType(const std::string & paramKey)
+{
+	std::string type;
+	ParametersMap::iterator iter = parametersType_.find(paramKey);
+	if(iter != parametersType_.end())
+	{
+		type = iter->second;
+	}
+	else
+	{
+		UERROR("Parameters \"%s\" doesn't exist!", paramKey.c_str());
+	}
+	return type;
 }
 
 std::string Parameters::getDescription(const std::string & paramKey)

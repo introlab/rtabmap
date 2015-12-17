@@ -18,7 +18,7 @@ for i = 1:length(x);
     if sum(weights(:)) > 0
          weights = weights ./sum(weights(:));
     end
-   
+
     filtered(i) = weights'*particles;
     particles = pf_resample(particles, weights);
 end

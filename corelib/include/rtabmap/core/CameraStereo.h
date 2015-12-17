@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/Camera.h"
+#include "rtabmap/core/CameraRGB.h"
 #include <list>
 
 namespace FlyCapture2
@@ -98,7 +99,7 @@ private:
 /////////////////////////
 class CameraImages;
 class RTABMAP_EXP CameraStereoImages :
-	public Camera
+	public CameraImages
 {
 public:
 	static bool available();
@@ -107,26 +108,11 @@ public:
 	CameraStereoImages(
 			const std::string & pathLeftImages,
 			const std::string & pathRightImages,
-			bool filenamesAreTimestamps = false,
-			const std::string & timestampsPath = "", // "times.txt"
 			bool rectifyImages = false,
 			float imageRate=0.0f,
 			const Transform & localTransform = Transform::getIdentity());
 	CameraStereoImages(
 			const std::string & pathLeftRightImages,
-			bool filenamesAreTimestamps = false,
-			const std::string & timestampsPath = "", // "times.txt"
-			bool rectifyImages = false,
-			float imageRate=0.0f,
-			const Transform & localTransform = Transform::getIdentity());
-	CameraStereoImages(
-			const std::string & scanPath,
-			const Transform & scanLocalTransform,
-			int scanMaxPts,
-			const std::string & pathLeftImages,
-			const std::string & pathRightImages,
-			bool filenamesAreTimestamps = false,
-			const std::string & timestampsPath = "", // "times.txt"
 			bool rectifyImages = false,
 			float imageRate=0.0f,
 			const Transform & localTransform = Transform::getIdentity());
@@ -140,14 +126,8 @@ protected:
 	virtual SensorData captureImage();
 
 private:
-	CameraImages * camera_;
 	CameraImages * camera2_;
-	bool filenamesAreTimestamps_;
-	std::string timestampsPath_;
-	bool rectifyImages_;
-	std::list<double> stamps_;
 	StereoCameraModel stereoModel_;
-	std::string cameraName_;
 };
 
 

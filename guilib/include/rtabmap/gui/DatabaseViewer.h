@@ -110,6 +110,7 @@ private slots:
 	void updateConstraintView();
 	void updateLoggerLevel();
 	void updateStereo();
+	void notifyParametersChanged(const QStringList &);
 
 private:
 	QString getIniFilePath() const;

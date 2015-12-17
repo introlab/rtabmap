@@ -210,7 +210,7 @@ void RtabmapThread::mainLoop()
 			UWARN("Closing... %d data still buffered! They will be cleared.", (int)_dataBuffer.size());
 			this->clearBufferedData();
 		}
-		_rtabmap->close();
+		_rtabmap->close(uStr2Bool(parameters.at("saved")));
 		break;
 	case kStateDumpingMemory:
 		_rtabmap->dumpData();
@@ -358,7 +358,10 @@ void RtabmapThread::handleEvent(UEvent* event)
 		else if(cmd == RtabmapEventCmd::kCmdClose)
 		{
 			ULOGGER_DEBUG("CMD_CLOSE");
-			pushNewState(kStateClose);
+			UASSERT(rtabmapEvent->value1().isUndef() || rtabmapEvent->value1().isBool());
+			ParametersMap param;
+			param.insert(ParametersPair("saved", uBool2Str(rtabmapEvent->value1().isUndef() || rtabmapEvent->value1().toBool())));
+			pushNewState(kStateClose, param);
 		}
 		else if(cmd == RtabmapEventCmd::kCmdResetMemory)
 		{

@@ -360,7 +360,8 @@ int main(int argc, char * argv[])
 	Camera * camera = 0;
 	if(UDirectory::exists(path))
 	{
-		camera = new CameraImages(path, startAt, false, false, false, rate>0.0f?1.0f/rate:0.0f);
+		camera = new CameraImages(path, rate>0.0f?1.0f/rate:0.0f);
+		((CameraImages*)camera)->setStartIndex(startAt);
 	}
 	else
 	{

@@ -145,7 +145,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_waypointsIndex(0),
 	_odometryCorrection(Transform::getIdentity()),
 	_processingOdometry(false),
-	_lastOdomInfoUpdateTime(0),
 	_oneSecondTimer(0),
 	_elapsedTime(0),
 	_posteriorCurve(0),
@@ -509,6 +508,7 @@ MainWindow::~MainWindow()
 	this->stopDetection();
 	delete _ui;
 	delete _elapsedTime;
+	UDEBUG("");
 }
 
 void MainWindow::setupMainLayout(bool vertical)
@@ -698,22 +698,19 @@ void MainWindow::handleEvent(UEvent* anEvent)
 	}
 	else if(anEvent->getClassName().compare("OdometryEvent") == 0)
 	{
-		// limit 10 Hz max
-		if(UTimer::now() - _lastOdomInfoUpdateTime > 0.1)
+		OdometryEvent * odomEvent = (OdometryEvent*)anEvent;
+		if(!_processingOdometry && !_processingStatistics)
 		{
-			_lastOdomInfoUpdateTime = UTimer::now();
-			OdometryEvent * odomEvent = (OdometryEvent*)anEvent;
-			if(!_processingOdometry && !_processingStatistics)
-			{
-				_processingOdometry = true; // if we receive too many odometry events!
-				emit odometryReceived(*odomEvent);
-			}
-			else
-			{
-				// we receive too many odometry events! just send without data
-				OdometryEvent tmp(SensorData(cv::Mat(), odomEvent->data().id()), odomEvent->pose(), odomEvent->covariance(), odomEvent->info());
-				emit odometryReceived(tmp);
-			}
+			_processingOdometry = true; // if we receive too many odometry events!
+			emit odometryReceived(*odomEvent);
+		}
+		else
+		{
+			// we receive too many odometry events! just send without data
+			SensorData data(cv::Mat(), odomEvent->data().id(), odomEvent->data().stamp());
+			data.setGroundTruth(odomEvent->data().groundTruth());
+			OdometryEvent tmp(data, odomEvent->pose(), odomEvent->covariance(), odomEvent->info());
+			emit odometryReceived(tmp);
 		}
 	}
 	else if(anEvent->getClassName().compare("ULogEvent") == 0)
@@ -1034,12 +1031,45 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 	if(!odom.info().transformFiltered.isNull())
 	{
 		odom.info().transformFiltered.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-		_ui->statsToolBox->updateStat("Odometry/Fx/m", (float)odom.data().id(), x);
-		_ui->statsToolBox->updateStat("Odometry/Fy/m", (float)odom.data().id(), y);
-		_ui->statsToolBox->updateStat("Odometry/Fz/m", (float)odom.data().id(), z);
-		_ui->statsToolBox->updateStat("Odometry/Froll/deg", (float)odom.data().id(), roll*180.0/CV_PI);
-		_ui->statsToolBox->updateStat("Odometry/Fpitch/deg", (float)odom.data().id(), pitch*180.0/CV_PI);
-		_ui->statsToolBox->updateStat("Odometry/Fyaw/deg", (float)odom.data().id(), yaw*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/TFx/m", (float)odom.data().id(), x);
+		_ui->statsToolBox->updateStat("Odometry/TFy/m", (float)odom.data().id(), y);
+		_ui->statsToolBox->updateStat("Odometry/TFz/m", (float)odom.data().id(), z);
+		_ui->statsToolBox->updateStat("Odometry/TFroll/deg", (float)odom.data().id(), roll*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/TFpitch/deg", (float)odom.data().id(), pitch*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/TFyaw/deg", (float)odom.data().id(), yaw*180.0/CV_PI);
+	}
+
+	if(!odom.info().transformGroundTruth.isNull())
+	{
+		odom.info().transformGroundTruth.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+		_ui->statsToolBox->updateStat("Odometry/TGx/m", (float)odom.data().id(), x);
+		_ui->statsToolBox->updateStat("Odometry/TGy/m", (float)odom.data().id(), y);
+		_ui->statsToolBox->updateStat("Odometry/TGz/m", (float)odom.data().id(), z);
+		_ui->statsToolBox->updateStat("Odometry/TGroll/deg", (float)odom.data().id(), roll*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/TGpitch/deg", (float)odom.data().id(), pitch*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/TGyaw/deg", (float)odom.data().id(), yaw*180.0/CV_PI);
+	}
+
+	//cumulative pose
+	if(!odom.pose().isNull())
+	{
+		odom.pose().getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+		_ui->statsToolBox->updateStat("Odometry/Px/m", (float)odom.data().id(), x);
+		_ui->statsToolBox->updateStat("Odometry/Py/m", (float)odom.data().id(), y);
+		_ui->statsToolBox->updateStat("Odometry/Pz/m", (float)odom.data().id(), z);
+		_ui->statsToolBox->updateStat("Odometry/Proll/deg", (float)odom.data().id(), roll*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Ppitch/deg", (float)odom.data().id(), pitch*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Pyaw/deg", (float)odom.data().id(), yaw*180.0/CV_PI);
+	}
+	if(!odom.data().groundTruth().isNull())
+	{
+		odom.data().groundTruth().getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+		_ui->statsToolBox->updateStat("Odometry/PGx/m", (float)odom.data().id(), x);
+		_ui->statsToolBox->updateStat("Odometry/PGy/m", (float)odom.data().id(), y);
+		_ui->statsToolBox->updateStat("Odometry/PGz/m", (float)odom.data().id(), z);
+		_ui->statsToolBox->updateStat("Odometry/PGroll/deg", (float)odom.data().id(), roll*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/PGpitch/deg", (float)odom.data().id(), pitch*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/PGyaw/deg", (float)odom.data().id(), yaw*180.0/CV_PI);
 	}
 
 	if(odom.info().interval > 0)
@@ -2826,7 +2856,7 @@ bool MainWindow::closeDatabase()
 		}
 	}
 
-	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdClose));
+	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdClose, !_newDatabasePathOutput.isEmpty()));
 	return true;
 }
 

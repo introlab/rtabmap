@@ -94,7 +94,8 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	// override feature parameters
 	for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
-		if(Parameters::isFeatureParameter(iter->first))
+		std::string group = uSplit(iter->first, '/').front();
+		if(Parameters::isFeatureParameter(iter->first) || group.compare("Stereo") == 0)
 		{
 			uInsert(_featureParameters, ParametersPair(iter->first, iter->second));
 		}

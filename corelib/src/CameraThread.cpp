@@ -52,6 +52,7 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 
 CameraThread::~CameraThread()
 {
+	UDEBUG("");
 	join(true);
 	if(_camera)
 	{
@@ -130,6 +131,7 @@ void CameraThread::mainLoop()
 
 void CameraThread::mainLoopKill()
 {
+	UDEBUG("");
 	if(dynamic_cast<CameraFreenect2*>(_camera) != 0)
 	{
 		int i=20;

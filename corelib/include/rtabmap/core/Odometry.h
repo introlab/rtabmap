@@ -100,6 +100,7 @@ private:
 	int _resetCurrentCount;
 	double previousStamp_;
 	Transform previousTransform_;
+	Transform previousGroundTruthPose_;
 	float distanceTravelled_;
 
 	std::vector<ParticleFilter *> filters_;

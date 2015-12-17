@@ -62,10 +62,12 @@ typedef std::pair<std::string, std::string> ParametersPair;
 	public: \
 		static std::string k##PREFIX##NAME() {return std::string(#PREFIX "/" #NAME);} \
 		static TYPE default##PREFIX##NAME() {return DEFAULT_VALUE;} \
+		static std::string type##PREFIX##NAME() {return std::string(#TYPE);} \
 	private: \
 		class Dummy##PREFIX##NAME { \
 		public: \
 			Dummy##PREFIX##NAME() {parameters_.insert(ParametersPair(#PREFIX "/" #NAME, #DEFAULT_VALUE)); \
+								   parametersType_.insert(ParametersPair(#PREFIX "/" #NAME, #TYPE)); \
 								   descriptions_.insert(ParametersPair(#PREFIX "/" #NAME, DESCRIPTION));} \
 		}; \
 		Dummy##PREFIX##NAME dummy##PREFIX##NAME;
@@ -94,10 +96,12 @@ typedef std::pair<std::string, std::string> ParametersPair;
 	public: \
 		static std::string k##PREFIX##NAME() {return std::string(#PREFIX "/" #NAME);} \
 		static std::string default##PREFIX##NAME() {return DEFAULT_VALUE;} \
+		static std::string type##PREFIX##NAME() {return std::string("string");} \
 	private: \
 		class Dummy##PREFIX##NAME { \
 		public: \
 			Dummy##PREFIX##NAME() {parameters_.insert(ParametersPair(#PREFIX "/" #NAME, DEFAULT_VALUE)); \
+								   parametersType_.insert(ParametersPair(#PREFIX "/" #NAME, "string")); \
 								   descriptions_.insert(ParametersPair(#PREFIX "/" #NAME, DESCRIPTION));} \
 		}; \
 		Dummy##PREFIX##NAME dummy##PREFIX##NAME;
@@ -125,10 +129,12 @@ typedef std::pair<std::string, std::string> ParametersPair;
 	public: \
 		static std::string k##PREFIX##NAME() {return std::string(#PREFIX "/" #NAME);} \
 		static TYPE default##PREFIX##NAME() {return COND?DEFAULT_VALUE1:DEFAULT_VALUE2;} \
+		static std::string type##PREFIX##NAME() {return std::string(#TYPE);} \
 	private: \
 		class Dummy##PREFIX##NAME { \
 		public: \
 			Dummy##PREFIX##NAME() {parameters_.insert(ParametersPair(#PREFIX "/" #NAME, COND?#DEFAULT_VALUE1:#DEFAULT_VALUE2)); \
+								   parametersType_.insert(ParametersPair(#PREFIX "/" #NAME, #TYPE)); \
 								   descriptions_.insert(ParametersPair(#PREFIX "/" #NAME, DESCRIPTION));} \
 		}; \
 		Dummy##PREFIX##NAME dummy##PREFIX##NAME;
@@ -427,6 +433,12 @@ public:
 	{
 		return parameters_;
 	}
+	
+	/**
+	 * Get parameter type
+	 *
+	 */
+	static std::string getType(const std::string & paramKey);
 
 	/**
 	 * Get parameter description
@@ -469,6 +481,7 @@ private:
 
 private:
 	static ParametersMap parameters_;
+	static ParametersMap parametersType_;
 	static ParametersMap descriptions_;
 	static Parameters instance_;
 	

@@ -25,59 +25,62 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef ODOMETRYINFO_H_
-#define ODOMETRYINFO_H_
+//
+// Original version from Find-Object: https://github.com/introlab/find-object
+//
 
-#include <map>
+#ifndef PARAMETERSTOOLBOX_H_
+#define PARAMETERSTOOLBOX_H_
+
+#include <rtabmap/core/Parameters.h>
+#include <QToolBox>
+#include <QSet>
+
+class QVBoxLayout;
+class QAbstractButton;
 
 namespace rtabmap {
 
-class OdometryInfo
+class ParametersToolBox: public QToolBox
 {
+	Q_OBJECT
+
 public:
-	OdometryInfo() :
-		lost(true),
-		matches(-1),
-		inliers(-1),
-		variance(-1),
-		features(-1),
-		localMapSize(-1),
-		timeEstimation(-1),
-		timeParticleFiltering(-1),
-		stamp(0),
-		interval(0),
-		distanceTravelled(0),
-		type(-1)
-	{}
-	bool lost;
-	int matches;
-	int inliers;
-	float variance;
-	int features;
-	int localMapSize;
-	float timeEstimation;
-	float timeParticleFiltering;
-	double stamp;
-	double interval;
-	Transform transform;
-	Transform transformFiltered;
-	Transform transformGroundTruth;
-	float distanceTravelled;
+	ParametersToolBox(QWidget *parent = 0);
+	virtual ~ParametersToolBox();
 
-	int type; // 0=BOW, 1=Optical Flow, 2=ICP
+	void setupUi(const QSet<QString> & ignoredGroups);
+	QWidget * getParameterWidget(const QString & key);
+	void updateParameter(const std::string & key, const std::string & value);
+	const ParametersMap & getParameters() const {return parameters_;}
 
-	// BOW odometry
-	std::multimap<int, cv::KeyPoint> words;
-	std::vector<int> wordMatches;
-	std::vector<int> wordInliers;
-	std::map<int, cv::Point3f> localMap;
+private:
+	void addParameter(QVBoxLayout * layout, const std::string & key, const std::string & value);
+	void addParameter(QVBoxLayout * layout, const QString & key, const QString & value);
+	void addParameter(QVBoxLayout * layout, const QString & key, const int & value);
+	void addParameter(QVBoxLayout * layout, const QString & key, const double & value);
+	void addParameter(QVBoxLayout * layout, const QString & key, const bool & value);
+	void addParameter(QVBoxLayout * layout, const QString & name, QWidget * widget);
 
-	// Optical Flow odometry
-	std::vector<cv::Point2f> refCorners;
-	std::vector<cv::Point2f> newCorners;
-	std::vector<int> cornerInliers;
+Q_SIGNALS:
+	void parametersChanged(const QStringList & name);
+
+private Q_SLOTS:
+	void changeParameter();
+	void changeParameter(const QString & value);
+	void changeParameter(const int & value);
+	void resetCurrentPage();
+	void resetAllPages();
+
+private:
+	QStringList resetPage(int index);
+	void updateParametersVisibility();
+
+private:
+	ParametersMap parameters_;
+	QSet<QString> ignoredGroups_;
 };
 
-}
+} // namespace find_object
 
-#endif /* ODOMETRYINFO_H_ */
+#endif /* PARAMETERSTOOLBOX_H_ */

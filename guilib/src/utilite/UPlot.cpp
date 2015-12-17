@@ -1016,6 +1016,18 @@ void UPlotCurve::getData(QVector<float> & x, QVector<float> & y) const
 	}
 }
 
+void UPlotCurve::getData(QMap<float,float> & data) const
+{
+	data.clear();
+	if(_items.size())
+	{
+		for(int i=0; i<_items.size(); i+=2)
+		{
+			data.insert(((UPlotItem*)_items.at(i))->data().x(), ((UPlotItem*)_items.at(i))->data().y());
+		}
+	}
+}
+
 
 
 
@@ -1352,7 +1364,7 @@ UPlotLegendItem::UPlotLegendItem(UPlotCurve * curve, QWidget * parent) :
 	_aChangeText = new QAction(tr("Change text..."), this);
 	_aResetText = new QAction(tr("Reset text..."), this);
 	_aChangeColor = new QAction(tr("Change color..."), this);
-	_aCopyToClipboard = new QAction(tr("Copy curve data to the clipboard"), this);
+	_aCopyToClipboard = new QAction(tr("Copy curve data to clipboard"), this);
 	_aShowStdDev = new QAction(tr("Show std deviation"), this);
 	_aShowStdDev->setCheckable(true);
 	_aMoveUp = new QAction(tr("Move up"), this);
@@ -1495,8 +1507,10 @@ UPlotLegend::UPlotLegend(QWidget * parent) :
 	_aUseFlatButtons = new QAction(tr("Use flat buttons"), this);
 	_aUseFlatButtons->setCheckable(true);
 	_aUseFlatButtons->setChecked(_flat);
+	_aCopyAllCurveToClipboard = new QAction(tr("Copy all curve data to clipboard"), this);
 	_menu = new QMenu(tr("Legend"), this);
 	_menu->addAction(_aUseFlatButtons);
+	_menu->addAction(_aCopyAllCurveToClipboard);
 
 	QVBoxLayout * vLayout = new QVBoxLayout(this);
 	vLayout->setContentsMargins(0,0,0,0);
@@ -1634,6 +1648,63 @@ void UPlotLegend::contextMenuEvent(QContextMenuEvent * event)
 	if(action == _aUseFlatButtons)
 	{
 		this->setFlat(_aUseFlatButtons->isChecked());
+	}
+	else if(action == _aCopyAllCurveToClipboard)
+	{
+		QList<UPlotLegendItem *> items = this->findChildren<UPlotLegendItem*>();
+		if(items.size())
+		{
+			QMap<float,float> firstData;
+			QVector<QVector<float> > axes;
+			for(int i=0; i<items.size(); ++i)
+			{
+				QMap<float, float> data;
+				items.at(i)->curve()->getData(data);
+
+				if(i==0)
+				{
+					firstData = data;
+				}
+				else
+				{
+					QVector<float> y(firstData.size(), 0.0f);
+					// ust to make usre that we have the same number of data on each curve, set 0 for unknowns
+					int j=0;
+					for(QMap<float,float>::iterator iter=firstData.begin(); iter!=firstData.end(); ++iter)
+					{
+						if(data.contains(iter.key()))
+						{
+							y[j] = data.value(iter.key());
+						}
+						++j;
+					}
+					axes.push_back(y);
+				}
+			}
+			if(firstData.size())
+			{
+				axes.push_front(firstData.values().toVector());
+				axes.push_front(firstData.keys().toVector());
+				QString text;
+				for(int i=0; i<axes.size(); ++i)
+				{
+					for(int j=0; j<axes[i].size(); ++j)
+					{
+						text.append(QString::number(axes[i][j]));
+						if(j+1<axes[i].size())
+						{
+							text.append(' ');
+						}
+					}
+					if(i+1<axes.size())
+					{
+						text.append("\n");
+					}
+				}
+				QClipboard * clipboard = QApplication::clipboard();
+				clipboard->setText(text);
+			}
+		}
 	}
 }
 

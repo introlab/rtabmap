@@ -49,6 +49,21 @@ public:
 			int * inliersOut = 0,
 			float * varianceOut = 0,
 			float * inliersRatioOut = 0) = 0;
+
+	Transform computeTransformation2(
+				const SensorData & fromData,
+				const SensorData & toData,
+				Transform guess = Transform::getIdentity(), // guess is ignored for RegistrationVis
+				std::string * rejectedMsg = 0,
+				int * inliersOut = 0,
+				float * varianceOut = 0,
+				float * inliersRatioOut = 0)
+	{
+		Signature fromSignature(fromData.id(), -1, 0, 0.0, "", Transform::getIdentity(), fromData);
+		Signature toSignature(toData.id(), -1, 0, 0.0, "", Transform::getIdentity(), toData);
+		return computeTransformation(fromSignature, toSignature, guess, rejectedMsg, inliersOut, varianceOut, inliersRatioOut);
+	}
+
 protected:
 	Registration(const ParametersMap & parameters = ParametersMap()) :
 		_varianceFromInliersCount(Parameters::defaultRegVarianceFromInliersCount())

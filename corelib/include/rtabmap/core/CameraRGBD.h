@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/USemaphore.h"
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/Camera.h"
+#include "rtabmap/core/CameraRGB.h"
 
 #include <pcl/io/openni_camera/openni_depth_image.h>
 #include <pcl/io/openni_camera/openni_image.h>
@@ -267,7 +268,7 @@ private:
 /////////////////////////
 class CameraImages;
 class RTABMAP_EXP CameraRGBDImages :
-	public Camera
+	public CameraImages
 {
 public:
 	static bool available();
@@ -276,9 +277,7 @@ public:
 	CameraRGBDImages(
 			const std::string & pathRGBImages,
 			const std::string & pathDepthImages,
-			double depthScaleFactor = 1.0,
-			bool filenamesAreTimestamps = false,
-			const std::string & timestampsPath = "", // "times.txt"
+			float depthScaleFactor = 1.0f,
 			float imageRate=0.0f,
 			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraRGBDImages();
@@ -291,14 +290,7 @@ protected:
 	virtual SensorData captureImage();
 
 private:
-	CameraImages * cameraRGB_;
-	CameraImages * cameraDepth_;
-	double depthScaleFactor_;
-	bool filenamesAreTimestamps_;
-	std::string timestampsPath_;
-	std::list<double> stamps_;
-	CameraModel cameraModel_;
-	std::string cameraName_;
+	CameraImages cameraDepth_;
 };
 
 } // namespace rtabmap

@@ -312,7 +312,7 @@ void Rtabmap::init(const std::string & configFile, const std::string & databaseP
 	this->init(param, databasePath);
 }
 
-void Rtabmap::close()
+void Rtabmap::close(bool databaseSaved)
 {
 	UINFO("");
 	_highestHypothesis = std::make_pair(0,0.0f);
@@ -346,6 +346,7 @@ void Rtabmap::close()
 	}
 	if(_memory)
 	{
+		_memory->close(databaseSaved, true);
 		delete _memory;
 		_memory = 0;
 	}

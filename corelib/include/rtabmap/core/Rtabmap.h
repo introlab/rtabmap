@@ -67,7 +67,7 @@ public:
 	void init(const ParametersMap & parameters, const std::string & databasePath = "");
 	void init(const std::string & configFile = "", const std::string & databasePath = "");
 
-	void close();
+	void close(bool databaseSaved = true);
 
 	const std::string & getWorkingDir() const {return _wDir;}
 	int getLoopClosureId() const {return _loopClosureHypothesis.first;}
